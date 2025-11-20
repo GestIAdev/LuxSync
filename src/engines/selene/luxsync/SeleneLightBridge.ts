@@ -18,6 +18,7 @@
 
 import { AudioToMetricsAdapter, SystemMetrics } from './AudioToMetricsAdapter.js';
 import { NoteToColorMapper, RGB, MusicalNote } from './NoteToColorMapper.js';
+import { VisualEffects, EffectMode } from './effects/VisualEffects.js';
 import type { SeleneConsciousness } from '../consciousness/SeleneConsciousness.js';
 
 /**
@@ -100,6 +101,7 @@ export class SeleneLightBridge {
   private audioAdapter: AudioToMetricsAdapter;
   private seleneCore: SeleneConsciousness;
   private dmxDriver: DMXDriver;
+  private visualEffects: VisualEffects;
   
   private running: boolean = false;
   private intervalId: number | null = null;
@@ -129,6 +131,7 @@ export class SeleneLightBridge {
     this.audioAdapter = audioAdapter;
     this.seleneCore = seleneCore;
     this.dmxDriver = dmxDriver;
+    this.visualEffects = new VisualEffects();
   }
 
   /**
@@ -339,6 +342,36 @@ export class SeleneLightBridge {
       };
     });
 
+    // 🎨 APPLY VISUAL EFFECTS on top of frequency routing
+    // This adds dynamic patterns (chase, wave, strobe, etc.)
+    const audioMetrics = {
+      bass: seleneOutput.beauty,  // Simplified: use beauty as bass proxy
+      mid: seleneOutput.beauty * 0.8,
+      treble: seleneOutput.beauty * 0.6
+    };
+    const effectModifiers = this.visualEffects.applyEffect(fixtureCount, audioMetrics);
+
+    // Apply effect modifiers to fixtures
+    fixtures.forEach((fixture, index) => {
+      const modifier = effectModifiers[index];
+      if (modifier) {
+        // Multiply dimmer by effect modifier
+        fixture.channels.dimmer = Math.min(255, fixture.channels.dimmer * modifier.dimmerMultiplier);
+        
+        // Apply color shift if present (for wave effect)
+        if (modifier.colorShift !== undefined) {
+          const rgb = this.hslToRgb(
+            (this.rgbToHue(fixture.channels.red, fixture.channels.green, fixture.channels.blue) + modifier.colorShift) % 360,
+            100,
+            50
+          );
+          fixture.channels.red = rgb[0];
+          fixture.channels.green = rgb[1];
+          fixture.channels.blue = rgb[2];
+        }
+      }
+    });
+
     return {
       id: `scene_${Date.now()}`,
       timestamp: Date.now(),
@@ -347,6 +380,31 @@ export class SeleneLightBridge {
       fadeTime,
       fixtures
     };
+  }
+
+  /**
+   * RGB to Hue (for color shifting)
+   */
+  private rgbToHue(r: number, g: number, b: number): number {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0;
+    
+    if (max !== min) {
+      const d = max - min;
+      if (max === r) {
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      } else if (max === g) {
+        h = ((b - r) / d + 2) / 6;
+      } else {
+        h = ((r - g) / d + 4) / 6;
+      }
+    }
+    
+    return h * 360;
   }
 
   /**
@@ -496,5 +554,28 @@ export class SeleneLightBridge {
       this.stop();
       this.start();
     }
+  }
+
+  /**
+   * 🎨 Set visual effect mode
+   */
+  setEffect(mode: EffectMode, speed: number = 0.5, intensity: number = 0.5): void {
+    this.visualEffects.setEffect({ mode, speed, intensity });
+    console.log(`🎨 Effect set to: ${mode} (speed: ${speed}, intensity: ${intensity})`);
+  }
+
+  /**
+   * 🎨 Get current effect
+   */
+  getEffect() {
+    return this.visualEffects.getEffect();
+  }
+
+  /**
+   * 🎨 Clear all effects (return to normal)
+   */
+  clearEffects(): void {
+    this.visualEffects.setEffect({ mode: 'none' });
+    console.log('🎨 Effects cleared');
   }
 }

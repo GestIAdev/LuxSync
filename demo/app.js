@@ -201,6 +201,16 @@ class LuxSyncDemoApp {
     this.log('⚫ Blackout applied', 'info');
     this.simulator.blackout();
   }
+
+  setEffect(mode, speed = 0.5, intensity = 0.7) {
+    this.log(`🎨 Effect activated: ${mode}`, 'info');
+    this.bridge.setEffect(mode, speed, intensity);
+  }
+
+  clearEffects() {
+    this.log('🚫 Effects cleared', 'info');
+    this.bridge.clearEffects();
+  }
   
   startStatsUpdater() {
     this.statsInterval = setInterval(() => {
@@ -276,6 +286,16 @@ window.testPattern = async () => {
 window.blackout = () => {
   if (!app) return;
   app.blackout();
+};
+
+window.setEffect = (mode, speed, intensity) => {
+  if (!app) return;
+  app.setEffect(mode, speed, intensity);
+};
+
+window.clearEffects = () => {
+  if (!app) return;
+  app.clearEffects();
 };
 
 // Initialize on page load

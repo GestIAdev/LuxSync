@@ -262,6 +262,30 @@
             </button>
         </div>
 
+        <div class="controls" style="margin-top: 15px; border: 2px solid #8B5CF6; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);">
+            <h3 style="grid-column: 1 / -1; text-align: center; color: #8B5CF6; margin: 0; padding: 10px 0;">
+                🎨 Visual Effects
+            </h3>
+            <button class="btn-test" onclick="setEffect('chase')">
+                🏃 Chase Pattern
+            </button>
+            <button class="btn-test" onclick="setEffect('wave')">
+                🌊 Wave Effect
+            </button>
+            <button class="btn-test" onclick="setEffect('strobe')">
+                ⚡ Bass Strobe
+            </button>
+            <button class="btn-test" onclick="setEffect('pulse')">
+                💓 Pulse Beat
+            </button>
+            <button class="btn-test" onclick="setEffect('sparkle')">
+                ✨ Sparkle
+            </button>
+            <button class="btn-blackout" onclick="clearEffects()">
+                🚫 Clear Effects
+            </button>
+        </div>
+
         <canvas id="dmx-simulator"></canvas>
 
         <div class="info-panel">

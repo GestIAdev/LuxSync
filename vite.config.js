@@ -8,8 +8,9 @@ export default defineConfig({
   root: './demo',
   publicDir: false,
   server: {
-    port: 3000,
-    open: true
+    port: 5173,
+    open: true,
+    strictPort: false
   },
   resolve: {
     alias: {

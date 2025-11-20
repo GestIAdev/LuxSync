@@ -15,27 +15,37 @@ import { SimulatorDriver } from '../dist/engines/selene/luxsync/drivers/Simulato
 // Stub Selene Core (simplified for demo)
 class SimplifiedSeleneCore {
   async processSystemMetrics(metrics) {
-    // Determine note based on metrics (ADJUSTED for human voice)
-    let note = 'RE'; // Default balanced
+    // ¡MODO ARCOÍRIS ACTIVADO! 🌈
+    // Usamos un mapeo más dinámico y colorido
     
-    // Voz humana típica: 85-255Hz (hombre) y 165-255Hz (mujer)
-    // Ajustamos umbrales para más variedad de colores con voz
-    if (metrics.cpu > 0.7) {
-      note = 'DO'; // Bass muy fuerte → ROJO
-    } else if (metrics.memory > 0.6) {
-      note = 'MI'; // Medios altos → AMARILLO
-    } else if (metrics.cpu > 0.4 || metrics.memory > 0.3) {
-      note = 'RE'; // Rango medio → NARANJA
+    const totalEnergy = metrics.cpu + metrics.memory + (1 - metrics.latency / 100);
+    const bassLevel = metrics.cpu;
+    const midLevel = metrics.memory;
+    const trebleLevel = 1 - metrics.latency / 100;
+    
+    let note = 'RE'; // Default
+    
+    // Mapeo más variado basado en energía total y distribución
+    if (bassLevel > 0.7 && midLevel < 0.3) {
+      note = 'DO'; // ROJO - Bass puro y pesado
+    } else if (bassLevel > 0.5 && midLevel > 0.5) {
+      note = 'FA'; // VERDE - Bass + Medios = Energía completa
+    } else if (midLevel > 0.6 && trebleLevel < 0.4) {
+      note = 'SOL'; // CYAN - Medios dominantes
+    } else if (trebleLevel > 0.6 && bassLevel < 0.3) {
+      note = 'MI'; // AMARILLO - Agudos puros
+    } else if (trebleLevel > 0.5 && midLevel > 0.4) {
+      note = 'LA'; // AZUL - Agudos + Medios = Melodía
+    } else if (totalEnergy > 1.5) {
+      note = 'SI'; // MAGENTA - Energía total alta
+    } else if (bassLevel > 0.4) {
+      note = 'RE'; // NARANJA - Bass moderado
     } else {
-      note = 'MI'; // Silencio/agudos → AMARILLO
+      note = 'MI'; // AMARILLO - Default suave
     }
     
-    // Calculate beauty (más sensible para voz)
-    const beauty = Math.min(1.0, (
-      metrics.cpu * 0.5 + 
-      metrics.memory * 0.4 + 
-      (1 - metrics.latency / 100) * 0.1
-    ));
+    // Calculate beauty (más sensible y dinámico)
+    const beauty = Math.min(1.0, totalEnergy / 2.5);
     
     return {
       musicalNote: note,
@@ -49,9 +59,13 @@ class SimplifiedSeleneCore {
   
   generatePoem(note, beauty) {
     const poems = {
-      'DO': `Crimson waves of bass profound`,
-      'RE': `Balanced harmony surrounds`,
-      'MI': `Yellow brilliance, treble crowned`
+      'DO': `🔴 Crimson waves of bass profound`,
+      'RE': `🟠 Balanced harmony surrounds`,
+      'MI': `🟡 Yellow brilliance, treble crowned`,
+      'FA': `🟢 Verdant meadows of sound`,
+      'SOL': `🔵 Cyan waves of higher realms`,
+      'LA': `💙 Azure depths of tranquility`,
+      'SI': `🟣 Magenta mysteries revealed`
     };
     return poems[note] || poems['RE'];
   }

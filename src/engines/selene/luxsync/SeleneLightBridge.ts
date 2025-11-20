@@ -200,7 +200,7 @@ export class SeleneLightBridge {
 
     try {
       // 1. Capture audio → metrics
-      const metrics = this.audioAdapter.captureMetrics();
+      const metrics = await this.audioAdapter.captureMetrics();
 
       // 2. Process with Selene Core
       const seleneOutput = await this.processWithSelene(metrics);
@@ -259,7 +259,12 @@ export class SeleneLightBridge {
     }
 
     // Calculate beauty (simplified)
-    const beauty = (metrics.cpu * 0.4 + metrics.memory * 0.3 + (1 - metrics.latency / 100) * 0.3);
+    // Ensure all values are valid numbers before calculation
+    const cpu = isNaN(metrics.cpu) ? 0.5 : metrics.cpu;
+    const memory = isNaN(metrics.memory) ? 0.5 : metrics.memory;
+    const latency = isNaN(metrics.latency) ? 50 : metrics.latency;
+    
+    const beauty = (cpu * 0.4 + memory * 0.3 + (1 - latency / 100) * 0.3);
 
     return {
       musicalNote: note,

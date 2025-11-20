@@ -35,33 +35,31 @@ export class AudioSimulatorAdapter {
     return this.ready;
   }
 
-  /**
-   * Capture metrics from simulated audio
-   */
-  async captureMetrics(): Promise<SystemMetrics> {
-    if (!this.ready) {
-      throw new Error('AudioSimulatorAdapter not initialized');
-    }
+    /**
+     * Capture metrics from simulated audio
+     */
+    async captureMetrics(): Promise<SystemMetrics> {
+        if (!this.ready) {
+            throw new Error('AudioSimulatorAdapter not initialized');
+        }
 
-    // Get synthetic audio frame
-    const frame = await this.simulator.getFrame();
+        // Get synthetic audio frame
+        const frame = await this.simulator.getFrame();
 
-    // Map to SystemMetrics (same as AudioToMetricsAdapter)
-    // Ensure all values are valid numbers (0-1 for cpu/memory, 0-100 for latency)
-    const cpu = isNaN(frame.bass) ? 0.5 : Math.max(0, Math.min(1, frame.bass));
-    const memory = isNaN(frame.mid) ? 0.5 : Math.max(0, Math.min(1, frame.mid));
-    const treble = isNaN(frame.treble) ? 0.5 : Math.max(0, Math.min(1, frame.treble));
-    const latency = (1 - treble) * 100; // Treble → Latency (inverted)
+        // Map to SystemMetrics (same as AudioToMetricsAdapter)
+        // Ensure all values are valid numbers (0-1 for cpu/memory, 0-100 for latency)
+        const cpu = isNaN(frame.bass) ? 0.5 : Math.max(0, Math.min(1, frame.bass));
+        const memory = isNaN(frame.mid) ? 0.5 : Math.max(0, Math.min(1, frame.mid));
+        const treble = isNaN(frame.treble) ? 0.5 : Math.max(0, Math.min(1, frame.treble));
+        const latency = (1 - treble) * 100; // Treble → Latency (inverted)
 
-    return {
-      cpu,
-      memory,
-      latency,
-      timestamp: frame.timestamp || Date.now()
-    };
-  }
-
-  /**
+        return {
+            cpu,
+            memory,
+            latency,
+            timestamp: frame.timestamp || Date.now()
+        };
+    }  /**
    * Change BPM of simulation
    */
   setBPM(bpm: number): void {

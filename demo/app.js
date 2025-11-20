@@ -7,10 +7,10 @@
  * @date 2025-11-20
  */
 
-import { AudioToMetricsAdapter } from '../src/engines/selene/luxsync/AudioToMetricsAdapter.js';
-import { NoteToColorMapper } from '../src/engines/selene/luxsync/NoteToColorMapper.js';
-import { SeleneLightBridge } from '../src/engines/selene/luxsync/SeleneLightBridge.js';
-import { SimulatorDriver } from '../src/engines/selene/luxsync/drivers/SimulatorDriver.js';
+import { AudioToMetricsAdapter } from '../dist/engines/selene/luxsync/AudioToMetricsAdapter.js';
+import { NoteToColorMapper } from '../dist/engines/selene/luxsync/NoteToColorMapper.js';
+import { SeleneLightBridge } from '../dist/engines/selene/luxsync/SeleneLightBridge.js';
+import { SimulatorDriver } from '../dist/engines/selene/luxsync/drivers/SimulatorDriver.js';
 
 // Stub Selene Core (simplified for demo)
 class SimplifiedSeleneCore {

@@ -191,12 +191,18 @@ export class SimulatorDriver implements DMXDriver {
       
       if (fixtureState) {
         // Set target colors (will be smoothly interpolated in render loop)
+        // Validate and provide defaults to prevent NaN
+        const red = fixtureState.channels.red;
+        const green = fixtureState.channels.green;
+        const blue = fixtureState.channels.blue;
+        const dimmer = fixtureState.channels.dimmer;
+
         fixture.targetColor = {
-          r: fixtureState.channels.red,
-          g: fixtureState.channels.green,
-          b: fixtureState.channels.blue
+          r: (typeof red === 'number' && !isNaN(red)) ? red : 0,
+          g: (typeof green === 'number' && !isNaN(green)) ? green : 0,
+          b: (typeof blue === 'number' && !isNaN(blue)) ? blue : 0
         };
-        fixture.targetDimmer = fixtureState.channels.dimmer;
+        fixture.targetDimmer = (typeof dimmer === 'number' && !isNaN(dimmer)) ? dimmer : 0;
       }
     }
   }
@@ -268,10 +274,16 @@ export class SimulatorDriver implements DMXDriver {
       fixture.currentColor.b += (fixture.targetColor.b - fixture.currentColor.b) * (1 - smoothing);
       fixture.currentDimmer += (fixture.targetDimmer - fixture.currentDimmer) * (1 - smoothing);
 
-      // Apply dimmer to color
-      const r = Math.round(fixture.currentColor.r * (fixture.currentDimmer / 255));
-      const g = Math.round(fixture.currentColor.g * (fixture.currentDimmer / 255));
-      const b = Math.round(fixture.currentColor.b * (fixture.currentDimmer / 255));
+      // Validate current values to prevent NaN propagation
+      if (isNaN(fixture.currentColor.r)) fixture.currentColor.r = 0;
+      if (isNaN(fixture.currentColor.g)) fixture.currentColor.g = 0;
+      if (isNaN(fixture.currentColor.b)) fixture.currentColor.b = 0;
+      if (isNaN(fixture.currentDimmer)) fixture.currentDimmer = 0;
+
+      // Apply dimmer to color (clamp to 0-255)
+      const r = Math.max(0, Math.min(255, Math.round(fixture.currentColor.r * (fixture.currentDimmer / 255))));
+      const g = Math.max(0, Math.min(255, Math.round(fixture.currentColor.g * (fixture.currentDimmer / 255))));
+      const b = Math.max(0, Math.min(255, Math.round(fixture.currentColor.b * (fixture.currentDimmer / 255))));
 
       // Draw fixture glow (outer)
       const gradient = ctx.createRadialGradient(

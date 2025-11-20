@@ -129,21 +129,21 @@ export class SimulatorDriver implements DMXDriver {
    */
   private createVirtualFixtures(): void {
     const count = this.config.fixtureCount;
-    const padding = 100;
+    const padding = 80;
     const usableWidth = this.config.width - padding * 2;
-    const usableHeight = this.config.height - padding * 2;
+    const usableHeight = this.config.height - padding * 2 - 100; // Espacio para título
 
-    // Arrange in a grid
-    const cols = Math.ceil(Math.sqrt(count));
+    // Arrange in a grid (2 filas x 4 columnas para 8 fixtures)
+    const cols = 4; // Forzar 4 columnas para layout horizontal
     const rows = Math.ceil(count / cols);
-    const spacingX = usableWidth / (cols - 1 || 1);
-    const spacingY = usableHeight / (rows - 1 || 1);
+    const spacingX = usableWidth / cols;
+    const spacingY = usableHeight / rows;
 
     for (let i = 0; i < count; i++) {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const x = padding + col * spacingX;
-      const y = padding + row * spacingY;
+      const x = padding + col * spacingX + spacingX / 2; // Centrar en celda
+      const y = padding + 100 + row * spacingY + spacingY / 2; // Centrar + espacio título
 
       this.fixtures.push({
         id: `fixture_${i + 1}`,

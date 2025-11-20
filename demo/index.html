@@ -12,8 +12,8 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
             color: #fff;
             min-height: 100vh;
             padding: 20px;
@@ -36,10 +36,12 @@
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            background: linear-gradient(90deg, #00d4ff, #ff00ff);
+            font-weight: 800;
+            background: linear-gradient(90deg, #00FFFF, #8B5CF6, #EC4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            letter-spacing: -0.5px;
         }
 
         .subtitle {
@@ -75,28 +77,33 @@
         }
 
         .btn-start {
-            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            background: linear-gradient(135deg, #0891B2, #00FFFF);
             color: white;
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3);
         }
 
         .btn-stop {
-            background: linear-gradient(135deg, #ff4444, #cc0000);
+            background: linear-gradient(135deg, #DC2626, #EF4444);
             color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-test {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: black;
+            background: linear-gradient(135deg, #D97706, #F59E0B);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
 
         .btn-blackout {
-            background: #333;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
         }
 
         .btn-mic {
-            background: linear-gradient(135deg, #00ff88, #00cc66);
-            color: black;
+            background: linear-gradient(135deg, #059669, #10B981);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         #dmx-simulator {

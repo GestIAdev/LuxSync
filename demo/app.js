@@ -15,21 +15,27 @@ import { SimulatorDriver } from '../dist/engines/selene/luxsync/drivers/Simulato
 // Stub Selene Core (simplified for demo)
 class SimplifiedSeleneCore {
   async processSystemMetrics(metrics) {
-    // Determine note based on metrics
+    // Determine note based on metrics (ADJUSTED for human voice)
     let note = 'RE'; // Default balanced
     
-    if (metrics.cpu > 0.6) {
-      note = 'DO'; // Bass heavy
-    } else if (metrics.latency < 30) {
-      note = 'MI'; // Treble heavy
+    // Voz humana típica: 85-255Hz (hombre) y 165-255Hz (mujer)
+    // Ajustamos umbrales para más variedad de colores con voz
+    if (metrics.cpu > 0.7) {
+      note = 'DO'; // Bass muy fuerte → ROJO
+    } else if (metrics.memory > 0.6) {
+      note = 'MI'; // Medios altos → AMARILLO
+    } else if (metrics.cpu > 0.4 || metrics.memory > 0.3) {
+      note = 'RE'; // Rango medio → NARANJA
+    } else {
+      note = 'MI'; // Silencio/agudos → AMARILLO
     }
     
-    // Calculate beauty
-    const beauty = (
-      metrics.cpu * 0.4 + 
-      metrics.memory * 0.3 + 
-      (1 - metrics.latency / 100) * 0.3
-    );
+    // Calculate beauty (más sensible para voz)
+    const beauty = Math.min(1.0, (
+      metrics.cpu * 0.5 + 
+      metrics.memory * 0.4 + 
+      (1 - metrics.latency / 100) * 0.1
+    ));
     
     return {
       musicalNote: note,

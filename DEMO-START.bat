@@ -71,8 +71,8 @@ if not exist "demo\node_modules" (
 
 REM Start dev server
 echo Abriendo servidor de desarrollo...
-echo URL: http://localhost:3000
+echo URL: http://localhost:5173
 echo.
 cd demo
-start http://localhost:3000
+start http://localhost:5173
 call npm run dev

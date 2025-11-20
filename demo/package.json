@@ -1,0 +1,16 @@
+{
+  "name": "luxsync-demo",
+  "version": "1.0.0",
+  "description": "LuxSync Demo - Selene Audio Reactive Lighting",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "demo": "npm run build && vite preview --open"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "typescript": "^5.3.0"
+  }
+}

@@ -60,6 +60,19 @@ echo.
 echo Presiona Ctrl+C para detener el servidor
 echo.
 
-REM Open browser and start demo
-start http://localhost:3000/demo/
-node -e "const http=require('http'),fs=require('fs'),path=require('path');http.createServer((q,s)=>{let f=q.url==='/'?'/demo/index.html':q.url;let p=path.join(__dirname,f);fs.readFile(p,(e,d)=>{if(e){s.writeHead(404);s.end('404');return}s.writeHead(200,{'Content-Type':f.endsWith('.html')?'text/html':f.endsWith('.js')?'application/javascript':'text/plain'});s.end(d)})}).listen(3000,()=>console.log('Server: http://localhost:3000'))"
+REM Install demo dependencies
+if not exist "demo\node_modules" (
+    echo [INFO] Instalando dependencias de demo...
+    cd demo
+    call npm install
+    cd ..
+    echo.
+)
+
+REM Start dev server
+echo Abriendo servidor de desarrollo...
+echo URL: http://localhost:3000
+echo.
+cd demo
+start http://localhost:3000
+call npm run dev

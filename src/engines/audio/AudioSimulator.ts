@@ -36,20 +36,29 @@ export class AudioSimulator {
     }
 
     // Generar frecuencias sintéticas con variación
-    // Usamos funciones sinusoidales para simular música
+    // ¡SONSITO CUBANO! 🎺🎵 Más dramático y variado
     const time = elapsed / 1000; // segundos
 
-    // Bass: Frecuencia baja, picos en beats
+    // Bass: Frecuencia baja, PICOS DRAMÁTICOS en beats + variación aleatoria
     const bassWave = Math.sin(time * 2) * 0.5 + 0.5;
-    const bass = shouldBeat ? 0.9 : bassWave * 0.6;
+    const bassRandom = Math.random() * 0.2; // 20% variación aleatoria
+    const bass = shouldBeat 
+      ? 0.85 + Math.random() * 0.15  // Picos fuertes (0.85-1.0)
+      : bassWave * 0.6 + bassRandom;  // Variación suave
 
-    // Mid: Frecuencia media, más constante
-    const midWave = Math.sin(time * 4 + 1) * 0.3 + 0.5;
-    const mid = midWave * 0.7;
+    // Mid: Frecuencia media, MÁS MOVIMIENTO
+    // Combina 2 ondas para crear patrón más complejo
+    const midWave1 = Math.sin(time * 4 + 1) * 0.3 + 0.5;
+    const midWave2 = Math.sin(time * 6.5 + 2) * 0.2; // Segunda onda
+    const midRandom = Math.random() * 0.15;
+    const mid = (midWave1 + midWave2) * 0.6 + midRandom;
 
-    // Treble: Frecuencia alta, rápida
-    const trebleWave = Math.sin(time * 8 + 2) * 0.4 + 0.4;
-    const treble = trebleWave * 0.5;
+    // Treble: Frecuencia alta, RÁPIDA Y VARIADA
+    // Múltiples ondas para simular platillos/hi-hats
+    const trebleWave1 = Math.sin(time * 8 + 2) * 0.4 + 0.4;
+    const trebleWave2 = Math.sin(time * 12.3 + 3) * 0.3; // Más rápida
+    const trebleRandom = Math.random() * 0.25; // Más variación
+    const treble = (trebleWave1 + trebleWave2) * 0.4 + trebleRandom;
 
     // RMS global
     const rms = (bass + mid + treble) / 3;

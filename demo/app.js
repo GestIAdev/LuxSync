@@ -307,8 +307,24 @@ class LuxSyncDemoApp {
   }
   
   blackout() {
+    if (!this.isRunning) {
+      this.log('⚠️ Demo must be running to apply blackout', 'warning');
+      return;
+    }
+    
     this.log('⚫ Blackout applied', 'info');
+    
+    // Stop the bridge loop temporarily
+    const wasRunning = this.isRunning;
+    this.bridge.stop();
+    this.isRunning = false;
+    
+    // Apply blackout
     this.simulator.blackout();
+    
+    // Update UI
+    this.updateStatus('sim', 'inactive', 'Blackout');
+    this.log('⚫ All fixtures off. Click "Start Demo" to resume.', 'info');
   }
 
   setEffect(mode, speed = 0.5, intensity = 0.7) {

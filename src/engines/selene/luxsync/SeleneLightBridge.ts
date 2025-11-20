@@ -1,0 +1,439 @@
+/**
+ * 🌉 SELENE LIGHT BRIDGE
+ * 
+ * Main integration component that connects:
+ * Audio Input → Selene Core → DMX Output
+ * 
+ * Flow (30 FPS):
+ * 1. Capture audio frame (FFT)
+ * 2. Convert to Selene metrics
+ * 3. Process through Selene consciousness
+ * 4. Map musical note → RGB color
+ * 5. Apply beauty → intensity
+ * 6. Send to DMX fixtures
+ * 
+ * @date 2025-11-20
+ * @author LuxSync Integration Team
+ */
+
+import { AudioToMetricsAdapter, SystemMetrics } from './AudioToMetricsAdapter.js';
+import { NoteToColorMapper, RGB, MusicalNote } from './NoteToColorMapper.js';
+import type { SeleneConsciousness } from '../consciousness/SeleneConsciousness.js';
+
+/**
+ * Selene's output structure
+ */
+export interface SeleneOutput {
+  musicalNote: MusicalNote;
+  beauty: number;           // 0.0-1.0
+  poem?: string;           // Celebration poem (decorative)
+  midiSequence?: MidiNote[]; // For Fibonacci timing
+  entropyMode?: 'DETERMINISTIC' | 'BALANCED' | 'CHAOTIC';
+  timestamp: number;
+}
+
+export interface MidiNote {
+  note: MusicalNote;
+  duration: number;  // milliseconds
+  velocity: number;  // 0-127
+}
+
+/**
+ * DMX Scene to apply to fixtures
+ */
+export interface DMXScene {
+  id: string;
+  timestamp: number;
+  color: RGB;
+  dimmer: number;        // 0-255
+  fadeTime: number;      // milliseconds (from Fibonacci)
+  fixtures: FixtureState[];
+}
+
+export interface FixtureState {
+  id: string;
+  universe: number;      // DMX universe (1-N)
+  startChannel: number;  // 1-512
+  channels: {
+    red: number;         // 0-255
+    green: number;       // 0-255
+    blue: number;        // 0-255
+    dimmer: number;      // 0-255
+  };
+}
+
+/**
+ * DMX Driver interface (abstract)
+ */
+export interface DMXDriver {
+  applyScene(scene: DMXScene): Promise<void>;
+  getFixtures(): FixtureDefinition[];
+  isConnected(): boolean;
+}
+
+export interface FixtureDefinition {
+  id: string;
+  name: string;
+  type: 'PAR' | 'MOVING_HEAD' | 'STROBE' | 'WASH';
+  universe: number;
+  startChannel: number;
+  channelCount: number;
+}
+
+/**
+ * Bridge statistics for monitoring
+ */
+export interface BridgeStats {
+  framesProcessed: number;
+  lastNote: MusicalNote;
+  lastBeauty: number;
+  lastColor: RGB;
+  averageFps: number;
+  errors: number;
+  uptime: number; // milliseconds
+}
+
+/**
+ * Main bridge class
+ */
+export class SeleneLightBridge {
+  private audioAdapter: AudioToMetricsAdapter;
+  private seleneCore: SeleneConsciousness;
+  private dmxDriver: DMXDriver;
+  
+  private running: boolean = false;
+  private intervalId: number | null = null;
+  private targetFps: number = 30;
+  private frameTime: number = 1000 / this.targetFps; // ~33ms
+  
+  // Statistics
+  private stats: BridgeStats = {
+    framesProcessed: 0,
+    lastNote: 'RE',
+    lastBeauty: 0.5,
+    lastColor: NoteToColorMapper.mapNoteToColor('RE'),
+    averageFps: 0,
+    errors: 0,
+    uptime: 0
+  };
+  
+  private startTime: number = 0;
+  private lastFrameTime: number = 0;
+  private fpsHistory: number[] = [];
+
+  constructor(
+    audioAdapter: AudioToMetricsAdapter,
+    seleneCore: SeleneConsciousness,
+    dmxDriver: DMXDriver
+  ) {
+    this.audioAdapter = audioAdapter;
+    this.seleneCore = seleneCore;
+    this.dmxDriver = dmxDriver;
+  }
+
+  /**
+   * Start the bridge (begin processing loop)
+   */
+  async start(): Promise<void> {
+    if (this.running) {
+      console.warn('⚠️  Bridge already running');
+      return;
+    }
+
+    // Initialize audio adapter if needed
+    if (!this.audioAdapter.isReady()) {
+      console.log('🎤 Initializing audio adapter...');
+      await this.audioAdapter.initialize();
+    }
+
+    // Check DMX connection
+    if (!this.dmxDriver.isConnected()) {
+      console.warn('⚠️  DMX driver not connected, running in simulation mode');
+    }
+
+    this.running = true;
+    this.startTime = Date.now();
+    this.lastFrameTime = Date.now();
+
+    console.log(`🌉 Bridge started (${this.targetFps} FPS)`);
+    console.log(`   Fixtures: ${this.dmxDriver.getFixtures().length}`);
+    console.log(`   Audio: ${this.audioAdapter.isReady() ? 'Ready' : 'Not Ready'}`);
+    console.log(`   DMX: ${this.dmxDriver.isConnected() ? 'Connected' : 'Simulated'}`);
+
+    // Start processing loop
+    this.intervalId = window.setInterval(
+      () => this.tick(),
+      this.frameTime
+    );
+  }
+
+  /**
+   * Stop the bridge
+   */
+  stop(): void {
+    if (!this.running) return;
+
+    this.running = false;
+    
+    if (this.intervalId !== null) {
+      window.clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    console.log('🛑 Bridge stopped');
+    console.log(`   Total frames: ${this.stats.framesProcessed}`);
+    console.log(`   Uptime: ${(this.stats.uptime / 1000).toFixed(1)}s`);
+    console.log(`   Average FPS: ${this.stats.averageFps.toFixed(1)}`);
+    console.log(`   Errors: ${this.stats.errors}`);
+  }
+
+  /**
+   * Main processing loop (called every ~33ms for 30 FPS)
+   */
+  private async tick(): Promise<void> {
+    if (!this.running) return;
+
+    const frameStart = Date.now();
+
+    try {
+      // 1. Capture audio → metrics
+      const metrics = this.audioAdapter.captureMetrics();
+
+      // 2. Process with Selene Core
+      const seleneOutput = await this.processWithSelene(metrics);
+
+      // 3. Build DMX scene
+      const scene = this.buildScene(seleneOutput);
+
+      // 4. Apply to fixtures
+      await this.dmxDriver.applyScene(scene);
+
+      // 5. Update statistics
+      this.updateStats(seleneOutput, scene, frameStart);
+
+      // 6. Log (throttled - only every 30 frames = ~1 second)
+      if (this.stats.framesProcessed % 30 === 0) {
+        this.logStatus(seleneOutput, scene);
+      }
+
+    } catch (error) {
+      this.stats.errors++;
+      console.error('❌ Bridge tick error:', error);
+    }
+
+    // Calculate actual FPS
+    const frameEnd = Date.now();
+    const frameDuration = frameEnd - frameStart;
+    const actualFps = 1000 / Math.max(1, frameEnd - this.lastFrameTime);
+    this.fpsHistory.push(actualFps);
+    if (this.fpsHistory.length > 30) this.fpsHistory.shift();
+    this.lastFrameTime = frameEnd;
+
+    // Warn if frame took too long
+    if (frameDuration > this.frameTime * 1.5) {
+      console.warn(`⚠️  Slow frame: ${frameDuration}ms (target: ${this.frameTime}ms)`);
+    }
+  }
+
+  /**
+   * Process metrics through Selene consciousness
+   */
+  private async processWithSelene(metrics: SystemMetrics): Promise<SeleneOutput> {
+    // This is a simplified adapter - in real implementation, you'd call:
+    // const result = await this.seleneCore.processSystemMetrics(metrics);
+    
+    // For now, we'll create a stub that demonstrates the flow
+    // TODO: Implement actual Selene integration
+    
+    // Determine dominant note based on metrics
+    let note: MusicalNote;
+    if (metrics.cpu > 0.6) {
+      note = 'DO'; // Bass heavy → Red
+    } else if (metrics.latency < 30) {
+      note = 'MI'; // Treble heavy (low latency) → Yellow
+    } else {
+      note = 'RE'; // Balanced → Orange
+    }
+
+    // Calculate beauty (simplified)
+    const beauty = (metrics.cpu * 0.4 + metrics.memory * 0.3 + (1 - metrics.latency / 100) * 0.3);
+
+    return {
+      musicalNote: note,
+      beauty: Math.max(0, Math.min(1, beauty)),
+      poem: this.generatePoem(note, beauty),
+      midiSequence: this.generateMidiSequence(note),
+      entropyMode: 'BALANCED',
+      timestamp: Date.now()
+    };
+  }
+
+  /**
+   * Build DMX scene from Selene output
+   */
+  private buildScene(seleneOutput: SeleneOutput): DMXScene {
+    // Map note → color
+    const color = NoteToColorMapper.mapNoteToColor(seleneOutput.musicalNote);
+
+    // Map beauty → intensity
+    const dimmer = NoteToColorMapper.mapBeautyToIntensity(seleneOutput.beauty);
+
+    // Extract Fibonacci timing from MIDI
+    const fadeTime = this.extractFadeTime(seleneOutput.midiSequence);
+
+    // Apply to all fixtures
+    const fixtures = this.dmxDriver.getFixtures().map(fixture => ({
+      id: fixture.id,
+      universe: fixture.universe,
+      startChannel: fixture.startChannel,
+      channels: {
+        red: color.r,
+        green: color.g,
+        blue: color.b,
+        dimmer: dimmer
+      }
+    }));
+
+    return {
+      id: `scene_${Date.now()}`,
+      timestamp: Date.now(),
+      color,
+      dimmer,
+      fadeTime,
+      fixtures
+    };
+  }
+
+  /**
+   * Extract fade time from MIDI sequence (Fibonacci timing)
+   */
+  private extractFadeTime(midiSequence?: MidiNote[]): number {
+    if (!midiSequence || midiSequence.length === 0) {
+      return 500; // Default 500ms
+    }
+
+    // Use first note's duration (Fibonacci-based)
+    const firstNote = midiSequence[0];
+    return Math.max(100, Math.min(2000, firstNote.duration || 500));
+  }
+
+  /**
+   * Generate a simple celebration poem (decorative)
+   */
+  private generatePoem(note: MusicalNote, beauty: number): string {
+    const poems: Record<MusicalNote, string[]> = {
+      'DO': [
+        'In crimson waves the bass does flow',
+        'Deep rhythms make the darkness glow',
+        'Fire dances, energy ascending'
+      ],
+      'RE': [
+        'Balanced harmony in orange light',
+        'Between the depths and heights we ride',
+        'Warmth embraces the dancing night'
+      ],
+      'MI': [
+        'Yellow brilliance, clarity profound',
+        'Treble frequencies all around',
+        'In luminous heights, wisdom found'
+      ],
+      'FA': ['Verdant meadows of sound'],
+      'SOL': ['Cyan waves of higher realms'],
+      'LA': ['Azure depths of tranquility'],
+      'SI': ['Magenta mysteries revealed']
+    };
+
+    const options = poems[note] || poems['RE'];
+    const index = Math.floor(beauty * options.length);
+    return options[Math.min(index, options.length - 1)];
+  }
+
+  /**
+   * Generate MIDI sequence (Fibonacci timing stub)
+   */
+  private generateMidiSequence(note: MusicalNote): MidiNote[] {
+    // Fibonacci sequence: 1, 1, 2, 3, 5, 8, 13...
+    const fibonacciMs = [500, 500, 1000, 1500, 2500];
+    
+    return fibonacciMs.map((duration, i) => ({
+      note: note,
+      duration: duration,
+      velocity: Math.floor(80 + i * 5) // Crescendo
+    }));
+  }
+
+  /**
+   * Update statistics
+   */
+  private updateStats(
+    seleneOutput: SeleneOutput,
+    scene: DMXScene,
+    frameStart: number
+  ): void {
+    this.stats.framesProcessed++;
+    this.stats.lastNote = seleneOutput.musicalNote;
+    this.stats.lastBeauty = seleneOutput.beauty;
+    this.stats.lastColor = scene.color;
+    this.stats.uptime = Date.now() - this.startTime;
+    
+    // Calculate average FPS
+    if (this.fpsHistory.length > 0) {
+      const sum = this.fpsHistory.reduce((a, b) => a + b, 0);
+      this.stats.averageFps = sum / this.fpsHistory.length;
+    }
+  }
+
+  /**
+   * Log current status (throttled)
+   */
+  private logStatus(seleneOutput: SeleneOutput, scene: DMXScene): void {
+    console.log(
+      `🎵 ${seleneOutput.musicalNote} | ` +
+      `Beauty: ${seleneOutput.beauty.toFixed(2)} | ` +
+      `Color: ${scene.color.name} (${scene.color.hex}) | ` +
+      `Dimmer: ${scene.dimmer} | ` +
+      `FPS: ${this.stats.averageFps.toFixed(1)}`
+    );
+  }
+
+  /**
+   * Get current statistics
+   */
+  getStats(): BridgeStats {
+    return { ...this.stats };
+  }
+
+  /**
+   * Check if bridge is running
+   */
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  /**
+   * Get current target FPS
+   */
+  getTargetFps(): number {
+    return this.targetFps;
+  }
+
+  /**
+   * Set target FPS (will apply on next start)
+   */
+  setTargetFps(fps: number): void {
+    if (fps < 1 || fps > 60) {
+      console.warn(`⚠️  Invalid FPS: ${fps}, must be 1-60`);
+      return;
+    }
+
+    this.targetFps = fps;
+    this.frameTime = 1000 / fps;
+
+    // If running, restart with new FPS
+    if (this.running) {
+      console.log(`🔄 Restarting bridge with ${fps} FPS`);
+      this.stop();
+      this.start();
+    }
+  }
+}

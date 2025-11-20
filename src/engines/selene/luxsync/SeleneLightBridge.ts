@@ -245,30 +245,67 @@ export class SeleneLightBridge {
     // This is a simplified adapter - in real implementation, you'd call:
     // const result = await this.seleneCore.processSystemMetrics(metrics);
     
-    // For now, we'll create a stub that demonstrates the flow
-    // TODO: Implement actual Selene integration
-    
-    // Determine dominant note based on metrics
+    // Ensure all values are valid numbers before calculation
+    const bassLevel = isNaN(metrics.cpu) ? 0.5 : metrics.cpu;
+    const midLevel = isNaN(metrics.memory) ? 0.5 : metrics.memory;
+    const latency = isNaN(metrics.latency) ? 50 : metrics.latency;
+    const trebleLevel = 1 - latency / 100;
+
+    // 🌈 MAPEO COMPLETO DE 7 COLORES (Escala Cromática Musical)
+    // Cada nota tiene condiciones específicas para activarse
     let note: MusicalNote;
-    if (metrics.cpu > 0.6) {
-      note = 'DO'; // Bass heavy → Red
-    } else if (metrics.latency < 30) {
-      note = 'MI'; // Treble heavy (low latency) → Yellow
+
+    if (bassLevel > 0.7 && midLevel < 0.35 && trebleLevel < 0.35) {
+      // 🔴 DO (Red): Bass explosivo puro (bombos, 808s)
+      note = 'DO';
+    } else if (bassLevel > 0.5 && midLevel > 0.35 && trebleLevel < 0.4) {
+      // 🟠 RE (Orange): Bass + Mid (groove, bajo con melodía)
+      note = 'RE';
+    } else if (bassLevel < 0.4 && midLevel > 0.6 && trebleLevel < 0.5) {
+      // 🟡 MI (Yellow): Mid puro (guitarras, voces, piano)
+      note = 'MI';
+    } else if (midLevel > 0.5 && trebleLevel > 0.45 && bassLevel < 0.5) {
+      // 🟢 FA (Green): Mid + Treble (sintetizadores, pads)
+      note = 'FA';
+    } else if (midLevel > 0.4 && trebleLevel > 0.55 && bassLevel < 0.4) {
+      // 🔵 SOL (Cyan): Mid-High (transición, armonías altas)
+      note = 'SOL';
+    } else if (trebleLevel > 0.65 && midLevel < 0.45 && bassLevel < 0.35) {
+      // 💙 LA (Blue): Treble dominante (hi-hats, shakers)
+      note = 'LA';
+    } else if (trebleLevel > 0.75 && bassLevel < 0.25) {
+      // 💜 SI (Magenta): Treble explosivo (crashes, platillos, FX)
+      note = 'SI';
     } else {
-      note = 'RE'; // Balanced → Orange
+      // Fallback inteligente: elige por frecuencia dominante
+      if (bassLevel > midLevel && bassLevel > trebleLevel) {
+        note = 'DO'; // Rojo
+      } else if (trebleLevel > bassLevel && trebleLevel > midLevel) {
+        note = 'LA'; // Azul
+      } else {
+        note = 'MI'; // Amarillo (centro)
+      }
     }
 
-    // Calculate beauty (simplified)
-    // Ensure all values are valid numbers before calculation
-    const cpu = isNaN(metrics.cpu) ? 0.5 : metrics.cpu;
-    const memory = isNaN(metrics.memory) ? 0.5 : metrics.memory;
-    const latency = isNaN(metrics.latency) ? 50 : metrics.latency;
-    
-    const beauty = (cpu * 0.4 + memory * 0.3 + (1 - latency / 100) * 0.3);
+    // Calculate beauty with enhanced sensitivity
+    const totalEnergy = bassLevel + midLevel + trebleLevel;
+    let beauty = Math.pow(totalEnergy / 2.0, 0.8);
+
+    // Amplify peaks for dramatic highs
+    if (beauty > 0.7) {
+      beauty = 0.7 + (beauty - 0.7) * 1.5;
+    }
+
+    // Never go fully dark (minimum 10% visibility)
+    if (beauty < 0.2) {
+      beauty = Math.max(0.1, beauty * 0.7);
+    }
+
+    beauty = Math.max(0, Math.min(1, beauty));
 
     return {
       musicalNote: note,
-      beauty: Math.max(0, Math.min(1, beauty)),
+      beauty,
       poem: this.generatePoem(note, beauty),
       midiSequence: this.generateMidiSequence(note),
       entropyMode: 'BALANCED',

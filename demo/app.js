@@ -44,12 +44,26 @@ class SimplifiedSeleneCore {
       note = 'MI'; // AMARILLO - Default suave
     }
     
-    // Calculate beauty (más sensible y dinámico)
-    const beauty = Math.min(1.0, totalEnergy / 2.5);
+    // Calculate beauty with ENHANCED SENSITIVITY for high/down effects
+    // More dramatic response = better visual impact
+    let beauty = totalEnergy / 2.0; // More sensitive (was /2.5)
+    
+    // Apply exponential curve for dramatic highs and soft lows
+    beauty = Math.pow(beauty, 0.8); // Slight curve to enhance mid-range
+    
+    // Boost peaks for "high" effect
+    if (beauty > 0.7) {
+      beauty = 0.7 + (beauty - 0.7) * 1.5; // Amplify peaks
+    }
+    
+    // Compress lows for "down" effect (never fully dark)
+    if (beauty < 0.2) {
+      beauty = Math.max(0.1, beauty * 0.7); // Keep minimum visibility
+    }
     
     return {
       musicalNote: note,
-      beauty: Math.max(0, Math.min(1, beauty)),
+      beauty: Math.max(0.1, Math.min(1.0, beauty)), // Never go below 0.1 (always visible)
       poem: this.generatePoem(note, beauty),
       midiSequence: this.generateMidi(note),
       entropyMode: 'BALANCED',

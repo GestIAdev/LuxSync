@@ -270,38 +270,99 @@ export class SeleneLightBridge {
 
   /**
    * Build DMX scene from Selene output
+   * NOW WITH FIXTURE-SPECIFIC ROUTING! 🌈
+   * Each fixture responds to different frequency ranges
    */
   private buildScene(seleneOutput: SeleneOutput): DMXScene {
-    // Map note → color
-    const color = NoteToColorMapper.mapNoteToColor(seleneOutput.musicalNote);
-
-    // Map beauty → intensity
-    const dimmer = NoteToColorMapper.mapBeautyToIntensity(seleneOutput.beauty);
-
-    // Extract Fibonacci timing from MIDI
+    // Base color from main note
+    const baseColor = NoteToColorMapper.mapNoteToColor(seleneOutput.musicalNote);
+    const baseDimmer = NoteToColorMapper.mapBeautyToIntensity(seleneOutput.beauty);
     const fadeTime = this.extractFadeTime(seleneOutput.midiSequence);
 
-    // Apply to all fixtures
-    const fixtures = this.dmxDriver.getFixtures().map(fixture => ({
-      id: fixture.id,
-      universe: fixture.universe,
-      startChannel: fixture.startChannel,
-      channels: {
-        red: color.r,
-        green: color.g,
-        blue: color.b,
-        dimmer: dimmer
+    // Get all fixtures
+    const allFixtures = this.dmxDriver.getFixtures();
+    const fixtureCount = allFixtures.length;
+
+    // Map each fixture to different frequency zones
+    const fixtures = allFixtures.map((fixture, index) => {
+      let fixtureColor = { ...baseColor };
+      let fixtureDimmer = baseDimmer;
+
+      // FREQUENCY ZONE ROUTING (8 fixtures = 8 frequency zones)
+      // This creates visual variety and shows different audio components
+      if (fixtureCount === 8) {
+        // Zone 1-2: Pure BASS (Red zone)
+        if (index === 0 || index === 1) {
+          fixtureColor = NoteToColorMapper.mapNoteToColor('DO'); // Red
+          fixtureDimmer = Math.max(30, baseDimmer * 1.2); // More intensity for bass
+        }
+        // Zone 3-4: LOW-MID (Orange-Yellow zone)
+        else if (index === 2 || index === 3) {
+          fixtureColor = NoteToColorMapper.mapNoteToColor('RE'); // Orange
+          fixtureDimmer = Math.max(20, baseDimmer * 0.9);
+        }
+        // Zone 5-6: MID-HIGH (Green-Cyan zone)
+        else if (index === 4 || index === 5) {
+          fixtureColor = NoteToColorMapper.mapNoteToColor('SOL'); // Cyan
+          fixtureDimmer = Math.max(20, baseDimmer * 1.0);
+        }
+        // Zone 7-8: TREBLE (Blue-Magenta zone)
+        else if (index === 6 || index === 7) {
+          fixtureColor = NoteToColorMapper.mapNoteToColor('LA'); // Blue
+          fixtureDimmer = Math.max(20, baseDimmer * 0.8);
+        }
       }
-    }));
+      // For other fixture counts, use rainbow spread
+      else {
+        const hue = (index / fixtureCount) * 360;
+        const rgb = this.hslToRgb(hue, 100, 50);
+        fixtureColor = { 
+          r: rgb[0], 
+          g: rgb[1], 
+          b: rgb[2],
+          name: 'rainbow',
+          hex: `#${rgb[0].toString(16).padStart(2, '0')}${rgb[1].toString(16).padStart(2, '0')}${rgb[2].toString(16).padStart(2, '0')}`
+        };
+        fixtureDimmer = Math.max(30, baseDimmer);
+      }
+
+      return {
+        id: fixture.id,
+        universe: fixture.universe,
+        startChannel: fixture.startChannel,
+        channels: {
+          red: fixtureColor.r,
+          green: fixtureColor.g,
+          blue: fixtureColor.b,
+          dimmer: Math.min(255, fixtureDimmer)
+        }
+      };
+    });
 
     return {
       id: `scene_${Date.now()}`,
       timestamp: Date.now(),
-      color,
-      dimmer,
+      color: baseColor,
+      dimmer: baseDimmer,
       fadeTime,
       fixtures
     };
+  }
+
+  /**
+   * HSL to RGB conversion for rainbow effects
+   */
+  private hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    s /= 100;
+    l /= 100;
+    const k = (n: number) => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [
+      Math.round(255 * f(0)),
+      Math.round(255 * f(8)),
+      Math.round(255 * f(4))
+    ];
   }
 
   /**

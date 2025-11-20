@@ -1,0 +1,1322 @@
+/**
+ * 🗄️ SELENE DATABASE - TOTAL CONTROL MODULE
+ * By PunkClaude & RaulVisionario - September 18, 2025
+ *
+ * MISSION: Complete database control (PostgreSQL + Redis)
+ * STRATEGY: Nuclear-powered data management
+ */
+
+import { Pool } from "pg";
+import { RedisClientType } from "redis";
+import { redisManager } from "./RedisConnectionManager.js";
+
+/**
+ * 🔧 Helper: Convert PostgreSQL date to ISO string (YYYY-MM-DD)
+ * CRITICAL: Must return a string that Apollo Server won't auto-convert to Date
+ */
+function formatDateOfBirth(dateValue: any): string | null {
+  if (!dateValue) return null;
+  
+  // Handle Date objects
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString().split('T')[0]; // YYYY-MM-DD
+  }
+  
+  // Handle ISO strings like "1990-01-01T02:00:00.000Z"
+  const dateStr = String(dateValue);
+  if (dateStr.includes('T')) {
+    return dateStr.split('T')[0]; // Extract YYYY-MM-DD
+  }
+  
+  // Already in YYYY-MM-DD format
+  return dateStr;
+}
+
+interface DatabaseConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: boolean;
+  maxConnections: number;
+}
+
+interface CacheConfig {
+  host: string;
+  port: number;
+  password?: string;
+  db: number;
+}
+
+/**
+ * 🌟 SELENE DATABASE - THE DATA GOD
+ * Complete control over PostgreSQL + Redis
+ */
+export class SeleneDatabase {
+  private pool!: Pool;
+  private redis!: RedisClientType;
+  private isConnected: boolean = false;
+  private isRedisConnected: boolean = false;
+  private lastRedisCheck: number = 0;
+  private redisCheckInterval: number = 30000; // Check Redis every 30 seconds
+  private dbConfig: DatabaseConfig;
+  private cacheConfig: CacheConfig;
+  private redisConnectionId: string;
+
+  constructor() {
+    console.log("🗄️ Initializing Selene Database...");
+
+    this.dbConfig = {
+      host: process.env.DB_HOST || "localhost",
+      port: parseInt(process.env.DB_PORT || "5432"),
+      database: process.env.DB_NAME || "dentiagest",
+      user: process.env.DB_USER || "postgres",
+      password: process.env.DB_PASSWORD || "11111111",
+      ssl: process.env.DB_SSL === "true",
+      maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || "20"),
+    };
+
+    this.cacheConfig = {
+      host: process.env.REDIS_HOST || "localhost",
+      port: parseInt(process.env.REDIS_PORT || "6379"),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || "0"),
+    };
+
+    // Get Redis client from manager
+    this.redis = redisManager.createRedisClient("apollo-database");
+    this.redisConnectionId = `apollo-database_${Date.now()}`;
+
+    this.initializeConnections();
+  }
+
+  /**
+   * 🔌 Initialize database connections
+   */
+  private async initializeConnections(): Promise<void> {
+    try {
+      // PostgreSQL connection
+      this.pool = new Pool({
+        host: this.dbConfig.host,
+        port: this.dbConfig.port,
+        database: this.dbConfig.database,
+        user: this.dbConfig.user,
+        password: this.dbConfig.password,
+        ssl: this.dbConfig.ssl,
+        max: this.dbConfig.maxConnections,
+      });
+
+      console.log("✅ Database connections initialized");
+    } catch (error) {
+      console.error("💥 Failed to initialize database connections:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🚀 Connect to databases
+   */
+  public async connect(): Promise<void> {
+    try {
+      console.log("🔌 Connecting to databases...");
+
+      // Test PostgreSQL connection
+      const client = await this.pool.connect();
+      await client.query("SELECT 1");
+      client.release();
+      console.log("✅ PostgreSQL connected");
+
+      // Connect to Redis (don't fail if Redis is down)
+      try {
+        const isConnected = await redisManager.ensureConnection(
+          this.redis,
+          this.redisConnectionId,
+        );
+        if (isConnected) {
+          console.log("✅ Redis connected");
+        } else {
+          console.warn("⚠️ Redis connection failed, continuing without cache");
+        }
+      } catch (redisError) {
+        console.warn(
+          "⚠️ Redis connection failed, continuing without cache:",
+          redisError instanceof Error ? redisError.message : String(redisError),
+        );
+      }
+
+      this.isConnected = true;
+      console.log("🎯 Selene Database operational (Redis optional)");
+    } catch (error) {
+      console.error("💥 Database connection failed:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🔌 Disconnect from databases
+   */
+  public async disconnect(): Promise<void> {
+    try {
+      console.log("🔌 Disconnecting from databases...");
+
+      await this.pool.end();
+      await redisManager.closeConnection(this.redisConnectionId);
+
+      this.isConnected = false;
+      console.log("✅ Databases disconnected");
+    } catch (error) {
+      console.error("💥 Database disconnection error:", error as Error);
+    }
+  }
+
+  /**
+   * ⚡ Safe Redis operation wrapper
+   */
+  private async safeRedisOperation(
+    _operation: () => Promise<any>,
+    fallback: any = null,
+  ): Promise<any> {
+    try {
+      if (!this.redis) return fallback;
+      return await _operation();
+    } catch (error) {
+      console.warn(
+        "⚠️ Redis operation failed, continuing without cache:",
+        error instanceof Error ? error.message : String(error),
+      );
+      return fallback;
+    }
+  }
+
+  /**
+   * 👥 Get all patients with nuclear efficiency
+   */
+  public async getPatients(filters?: any): Promise<any[]> {
+    const cacheKey = `patients:${JSON.stringify(filters || {})}`;
+
+    try {
+      // Try cache first
+      const cached = await this.safeRedisOperation(() =>
+        this.redis.get(cacheKey),
+      );
+      if (cached) {
+        console.log("⚡ Patients served from cache");
+        return JSON.parse(cached);
+      }
+
+      // Query database usando APOLLO_PATIENTS VIEW - V169 Schema Bridge
+      let query = "SELECT * FROM apollo_patients";
+      const params: any[] = [];
+
+      if (filters) {
+        if (filters.search) {
+          query += " WHERE (name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1)";
+          params.push(`%${filters.search}%`);
+        }
+        if (filters.status) {
+          const whereClause = filters.search ? " AND" : " WHERE";
+          query += `${whereClause} is_active = $${params.length + 1}`;
+          params.push(filters.status === "active");
+        }
+      }
+
+      query += " ORDER BY created_at DESC";
+
+      if (filters?.limit) {
+        query += ` LIMIT $${params.length + 1}`;
+        params.push(filters.limit);
+      }
+
+      const result = await this.pool.query(query, params);
+      const patients = result.rows;
+
+      // Map database fields to GraphQL format
+      const graphqlPatients = patients.map((dbPatient) => ({
+        id: dbPatient.id,
+        firstName: dbPatient.first_name,
+        lastName: dbPatient.last_name,
+        fullName: `${dbPatient.first_name} ${dbPatient.last_name}`,
+        email: dbPatient.email,
+        phone: dbPatient.phone_primary,
+        phoneSecondary: dbPatient.phone_secondary,
+        dateOfBirth: formatDateOfBirth(dbPatient.date_of_birth),
+        age: null, // Will be calculated if needed
+        gender: dbPatient.gender,
+        addressStreet: dbPatient.address_street,
+        addressCity: dbPatient.address_city,
+        addressState: dbPatient.address_state,
+        addressPostalCode: dbPatient.address_postal_code,
+        addressCountry: dbPatient.address_country,
+        fullAddress: null, // Will be computed if needed
+        emergencyContactName: dbPatient.emergency_contact_name,
+        emergencyContactPhone: dbPatient.emergency_contact_phone,
+        emergencyContactRelationship: dbPatient.emergency_contact_relationship,
+        medicalConditions: dbPatient.medical_history,
+        medicationsCurrent: dbPatient.current_medications,
+        allergies: dbPatient.allergies,
+        anxietyLevel: dbPatient.anxiety_level,
+        specialNeeds: dbPatient.special_needs,
+        insuranceProvider: dbPatient.insurance_provider,
+        policyNumber: dbPatient.insurance_policy_number, // Corrected field name
+        insuranceGroupNumber: dbPatient.insurance_group_number,
+        insuranceStatus: dbPatient.insurance_provider
+          ? "private"
+          : "no_insurance",
+        consentToTreatment: dbPatient.consent_to_treatment || false,
+        consentToContact: dbPatient.consent_to_contact || true,
+        preferredContactMethod: dbPatient.preferred_contact_method,
+        notes: dbPatient.notes,
+        isActive: dbPatient.is_active,
+        createdAt: dbPatient.created_at,
+        updatedAt: dbPatient.updated_at,
+        hasInsurance: !!dbPatient.insurance_provider,
+        requiresSpecialCare: !!(
+          dbPatient.special_needs || dbPatient.anxiety_level
+        ),
+      }));
+
+      // Cache results (don't fail if Redis is down)
+      await this.safeRedisOperation(() =>
+        this.redis.setEx(cacheKey, 300, JSON.stringify(graphqlPatients)),
+      );
+
+      return graphqlPatients;
+    } catch (error) {
+      console.error("💥 Failed to get patients:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 👤 Get patient by ID
+   */
+  public async getPatientById(id: string): Promise<any> {
+    const cacheKey = `patient:${id}`;
+
+    try {
+      // Try cache first
+      const cached = await this.safeRedisOperation(() =>
+        this.redis.get(cacheKey),
+      );
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
+      const result = await this.pool.query(
+        "SELECT * FROM patients WHERE id = $1 AND deleted_at IS NULL",
+        [id],
+      );
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const dbPatient = result.rows[0];
+
+      // Map database fields to GraphQL format
+      const patient = {
+        id: dbPatient.id,
+        firstName: dbPatient.first_name,
+        lastName: dbPatient.last_name,
+        fullName: `${dbPatient.first_name} ${dbPatient.last_name}`,
+        email: dbPatient.email,
+        phone: dbPatient.phone_primary,
+        phoneSecondary: dbPatient.phone_secondary,
+        dateOfBirth: formatDateOfBirth(dbPatient.date_of_birth),
+        age: null, // Will be calculated if needed
+        gender: dbPatient.gender,
+        addressStreet: dbPatient.address_street,
+        addressCity: dbPatient.address_city,
+        addressState: dbPatient.address_state,
+        addressPostalCode: dbPatient.address_postal_code,
+        addressCountry: dbPatient.address_country,
+        fullAddress: null, // Will be computed if needed
+        emergencyContactName: dbPatient.emergency_contact_name,
+        emergencyContactPhone: dbPatient.emergency_contact_phone,
+        emergencyContactRelationship: dbPatient.emergency_contact_relationship,
+        medicalConditions: dbPatient.medical_history,
+        medicationsCurrent: dbPatient.current_medications,
+        allergies: dbPatient.allergies,
+        anxietyLevel: dbPatient.anxiety_level,
+        specialNeeds: dbPatient.special_needs,
+        insuranceProvider: dbPatient.insurance_provider,
+        policyNumber: dbPatient.insurance_policy_number, // Corrected field name
+        insuranceGroupNumber: dbPatient.insurance_group_number,
+        insuranceStatus: dbPatient.insurance_provider
+          ? "private"
+          : "no_insurance",
+        consentToTreatment: dbPatient.consent_to_treatment || false,
+        consentToContact: dbPatient.consent_to_contact || true,
+        preferredContactMethod: dbPatient.preferred_contact_method,
+        notes: dbPatient.notes,
+        isActive: dbPatient.is_active,
+        createdAt: dbPatient.created_at,
+        updatedAt: dbPatient.updated_at,
+        hasInsurance: !!dbPatient.insurance_provider,
+        requiresSpecialCare: !!(
+          dbPatient.special_needs || dbPatient.anxiety_level
+        ),
+      };
+
+      // Cache result (don't fail if Redis is down)
+      await this.safeRedisOperation(() =>
+        this.redis.setEx(cacheKey, 600, JSON.stringify(patient)),
+      );
+
+      return patient;
+    } catch (error) {
+      console.error("💥 Failed to get patient:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * ➕ Create new patient
+   */
+  public async createPatient(patientData: any): Promise<any> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `
+        INSERT INTO patients (
+          id, first_name, last_name, email, phone_primary, date_of_birth,
+          address_country, medical_history, is_active, created_at, updated_at
+        ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING *
+      `,
+        [
+          patientData.firstName || patientData.first_name,
+          patientData.lastName || patientData.last_name,
+          patientData.email,
+          patientData.phone,
+          patientData.dateOfBirth || patientData.date_of_birth,
+          "México", // Default country
+          patientData.medicalHistory || patientData.medical_history || "",
+          true, // is_active default to true
+        ],
+      );
+
+      const dbPatient = result.rows[0];
+
+      await client.query("COMMIT");
+
+      // Invalidate cache
+      await this.safeRedisOperation(() => this.invalidatePatientCache());
+
+      // Emit real-time update
+      await this.emitRealtimeUpdate("patients", "created", dbPatient);
+
+      // Map database fields to GraphQL format
+      const graphqlPatient = {
+        id: dbPatient.id,
+        firstName: dbPatient.first_name,
+        lastName: dbPatient.last_name,
+        fullName: `${dbPatient.first_name} ${dbPatient.last_name}`,
+        email: dbPatient.email,
+        phone: dbPatient.phone_primary,
+        phoneSecondary: dbPatient.phone_secondary,
+        dateOfBirth: formatDateOfBirth(dbPatient.date_of_birth),
+        age: null, // Will be calculated if needed
+        gender: dbPatient.gender,
+        addressStreet: dbPatient.address_street,
+        addressCity: dbPatient.address_city,
+        addressState: dbPatient.address_state,
+        addressPostalCode: dbPatient.address_postal_code,
+        addressCountry: dbPatient.address_country,
+        fullAddress: null, // Will be computed if needed
+        emergencyContactName: dbPatient.emergency_contact_name,
+        emergencyContactPhone: dbPatient.emergency_contact_phone,
+        emergencyContactRelationship: dbPatient.emergency_contact_relationship,
+        medicalConditions: dbPatient.medical_history,
+        medicationsCurrent: dbPatient.current_medications,
+        allergies: dbPatient.allergies,
+        anxietyLevel: dbPatient.anxiety_level,
+        specialNeeds: dbPatient.special_needs,
+        insuranceProvider: dbPatient.insurance_provider,
+        policyNumber: dbPatient.insurance_policy_number, // Corrected field name
+        insuranceGroupNumber: dbPatient.insurance_group_number,
+        insuranceStatus: dbPatient.insurance_provider
+          ? "private"
+          : "no_insurance",
+        consentToTreatment: dbPatient.consent_to_treatment || false,
+        consentToContact: dbPatient.consent_to_contact || true,
+        preferredContactMethod: dbPatient.preferred_contact_method,
+        notes: dbPatient.notes,
+        isActive: dbPatient.is_active,
+        createdAt: dbPatient.created_at,
+        updatedAt: dbPatient.updated_at,
+        hasInsurance: !!dbPatient.insurance_provider,
+        requiresSpecialCare: !!(
+          dbPatient.special_needs || dbPatient.anxiety_level
+        ),
+      };
+
+      return graphqlPatient;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("💥 Failed to create patient:", error as Error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * ✏️ Update patient
+   */
+  public async updatePatient(id: string, patientData: any): Promise<any> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `
+        UPDATE patients SET
+          first_name = $1, last_name = $2, email = $3, phone_primary = $4, date_of_birth = $5,
+          address_country = $6, medical_history = $7,
+          updated_at = NOW()
+        WHERE id = $8 AND deleted_at IS NULL
+        RETURNING *
+      `,
+        [
+          patientData.firstName || patientData.first_name,
+          patientData.lastName || patientData.last_name,
+          patientData.email,
+          patientData.phone,
+          patientData.dateOfBirth || patientData.date_of_birth,
+          "México", // Default country
+          patientData.medicalHistory || patientData.medical_history,
+          id,
+        ],
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error("Patient not found");
+      }
+
+      const patient = result.rows[0];
+
+      await client.query("COMMIT");
+
+      // Invalidate cache
+      await this.invalidatePatientCache(id);
+
+      // Emit real-time update
+      await this.emitRealtimeUpdate("patients", "updated", patient);
+
+      return patient;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("💥 Failed to update patient:", error as Error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * 🗑️ Delete patient (soft delete)
+   */
+  public async deletePatient(id: string): Promise<boolean> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `
+        UPDATE patients SET
+          deleted_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING id
+      `,
+        [id],
+      );
+
+      await client.query("COMMIT");
+
+      if (result.rows.length === 0) {
+        return false;
+      }
+
+      // Invalidate cache
+      await this.invalidatePatientCache(id);
+
+      // Emit real-time update
+      await this.emitRealtimeUpdate("patients", "deleted", { id });
+
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("💥 Failed to delete patient:", error as Error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // ==========================================
+  // 📅 APPOINTMENTS OPERATIONS
+  // ==========================================
+
+  /**
+   * 📅 Get all appointments
+   */
+  public async getAppointments(filters?: any): Promise<any[]> {
+    console.log("🔥🔥🔥 PUNKCLAUDE DATABASE REAL METHOD EXECUTING!!! 🔥🔥🔥");
+    console.log(
+      "🔥 PUNK DEBUG: getAppointments() called with filters:",
+      filters,
+    );
+    const _cacheKey = `appointments:${JSON.stringify(filters || {})}`;
+
+    try {
+      // Skip cache for testing
+      // const cached = await this.redis.get(_cacheKey);
+      // if (cached) {
+      //   return JSON.parse(cached);
+      // }
+
+      // PUNK FIX: Query usando medical_records en lugar de apollo_appointments (que no existe)
+      let query = `
+        SELECT 
+          id,
+          patient_id as "patientId",
+          created_by as "practitionerId",
+          TO_CHAR(visit_date, 'YYYY-MM-DD') as date,
+          TO_CHAR(visit_date, 'HH24:MI') as time,
+          60 as duration,
+          procedure_category as type,
+          CASE 
+            WHEN treatment_status = 'COMPLETED' THEN 'completed'
+            WHEN treatment_status = 'IN_PROGRESS' THEN 'in_progress' 
+            ELSE 'scheduled'
+          END as status,
+          COALESCE(clinical_notes, '') as notes,
+          TO_CHAR(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
+          TO_CHAR(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
+        FROM medical_records 
+        WHERE is_active = true AND deleted_at IS NULL AND patient_id IS NOT NULL
+      `;
+      const params: any[] = [];
+
+      console.log(
+        "🔥 PUNK DEBUG: About to execute query:",
+        query.slice(0, 100) + "...",
+      );
+
+      if (filters) {
+        if (filters.patientId) {
+          query += ` AND patient_id = $${params.length + 1}`;
+          params.push(filters.patientId);
+        }
+        if (filters.date) {
+          query += ` AND TO_CHAR(visit_date, 'YYYY-MM-DD') = $${params.length + 1}`;
+          params.push(filters.date);
+        }
+        if (filters.status) {
+          query += ` AND treatment_status = $${params.length + 1}`;
+          params.push(filters.status);
+        }
+      }
+
+      query += " ORDER BY visit_date DESC";
+
+      console.log("🔥 PUNK DEBUG: Final query:", query);
+      console.log("🔥 PUNK DEBUG: Params:", params);
+
+      const result = await this.pool.query(query, params);
+      const appointments = result.rows;
+
+      console.log(
+        "🔥 PUNK DEBUG: Query returned",
+        appointments.length,
+        "appointments",
+      );
+      if (appointments.length > 0) {
+        console.log("🔥 PUNK DEBUG: First appointment:", appointments[0]);
+      }
+
+      // Skip cache for debugging
+      // await this.safeRedisOperation(() => this.redis.setEx(_cacheKey, 180, JSON.stringify(appointments)));
+
+      return appointments;
+    } catch (error) {
+      console.error("💥 Failed to get appointments:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * ➕ Create appointment
+   */
+  public async createAppointment(appointmentData: any): Promise<any> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `
+        INSERT INTO appointments (
+          id, patient_id, dentist_id, scheduled_date,
+          duration_minutes, appointment_type, status, priority,
+          title, notes, created_at, updated_at, created_by
+        ) VALUES (
+          gen_random_uuid(), 
+          $1, 
+          COALESCE($2::uuid, (SELECT id FROM users ORDER BY created_at ASC LIMIT 1)), 
+          $3, 
+          $4, 
+          $5::appointmenttype, 
+          $6::appointmentstatus,
+          $7::appointmentpriority,
+          $8,
+          $9, 
+          NOW(), 
+          NOW(),
+          COALESCE($2::uuid, (SELECT id FROM users ORDER BY created_at ASC LIMIT 1))
+        )
+        RETURNING *
+      `,
+        [
+          appointmentData.patientId,
+          appointmentData.practitionerId || null,
+          `${appointmentData.appointmentDate} ${appointmentData.appointmentTime}`,
+          appointmentData.duration || 30,
+          appointmentData.type || "CONSULTATION",
+          appointmentData.status || "SCHEDULED",
+          appointmentData.priority || "NORMAL",
+          appointmentData.title || `Appointment on ${appointmentData.appointmentDate}`,
+          appointmentData.notes || "",
+        ],
+      );
+
+      const dbAppointment = result.rows[0];
+
+      await client.query("COMMIT");
+
+      // Invalidate cache
+      await this.invalidateAppointmentCache();
+
+      // Emit real-time update
+      await this.emitRealtimeUpdate("appointments", "created", dbAppointment);
+
+      // Map database fields to GraphQL format
+      // Extract date and time from scheduled_date timestamp
+      const scheduledDate = new Date(dbAppointment.scheduled_date);
+      const appointmentDate = scheduledDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const appointmentTime = scheduledDate.toTimeString().slice(0, 5); // HH:MM
+
+      const graphqlAppointment = {
+        id: dbAppointment.id,
+        patientId: dbAppointment.patient_id,
+        practitionerId: dbAppointment.dentist_id,
+        appointmentDate,
+        appointmentTime,
+        duration: dbAppointment.duration_minutes,
+        type: dbAppointment.appointment_type,
+        status: dbAppointment.status,
+        notes: dbAppointment.notes,
+        treatmentDetails: dbAppointment.description,
+        createdAt: dbAppointment.created_at,
+        updatedAt: dbAppointment.updated_at,
+      };
+
+      return graphqlAppointment;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("💥 Failed to create appointment:", error as Error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // ==========================================
+  // 🩺 TREATMENTS OPERATIONS
+  // ==========================================
+
+  /**
+   * 🩺 Get all treatments
+   */
+  public async getTreatments(filters?: any): Promise<any[]> {
+    const cacheKey = `treatments:${JSON.stringify(filters || {})}`;
+
+    try {
+      // Try cache first
+      const cached = await this.safeRedisOperation(() =>
+        this.redis.get(cacheKey),
+      );
+      if (cached) {
+        console.log("⚡ Treatments served from cache");
+        return JSON.parse(cached);
+      }
+
+      // Query treatments from medical_records table (similar to GraphQL resolvers)
+      let query = `
+        SELECT
+          id,
+          patient_id as "patientId",
+          created_by as "practitionerId",
+          procedure_category as "treatmentType",
+          diagnosis as description,
+          treatment_status as status,
+          visit_date as "startDate",
+          follow_up_date as "endDate",
+          estimated_cost as cost,
+          clinical_notes as notes,
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+        FROM medical_records
+        WHERE is_active = true AND deleted_at IS NULL
+      `;
+      const params: any[] = [];
+
+      if (filters) {
+        if (filters.patientId) {
+          query += ` AND patient_id = $${params.length + 1}`;
+          params.push(filters.patientId);
+        }
+        if (filters.status) {
+          query += ` AND treatment_status = $${params.length + 1}`;
+          params.push(filters.status);
+        }
+      }
+
+      query += " ORDER BY created_at DESC";
+
+      if (filters?.limit) {
+        query += ` LIMIT $${params.length + 1}`;
+        params.push(filters.limit);
+      }
+
+      const result = await this.pool.query(query, params);
+      const treatments = result.rows;
+
+      // Map to expected format for REST endpoints
+      const mappedTreatments = treatments.map((treatment) => ({
+        id: treatment.id,
+        name:
+          treatment.treatmentType ||
+          treatment.procedure_category ||
+          "Treatment",
+        description: treatment.description || treatment.diagnosis || "",
+        duration: 60, // Default duration
+        price: treatment.cost || treatment.estimated_cost || 0,
+        status: treatment.status || treatment.treatment_status || "pending",
+        patientId: treatment.patientId,
+        practitionerId: treatment.practitionerId,
+        startDate: treatment.startDate,
+        endDate: treatment.endDate,
+        notes: treatment.notes || treatment.clinical_notes || "",
+        createdAt: treatment.createdAt,
+        updatedAt: treatment.updatedAt,
+      }));
+
+      // Cache results (don't fail if Redis is down)
+      await this.safeRedisOperation(() =>
+        this.redis.setEx(cacheKey, 300, JSON.stringify(mappedTreatments)),
+      );
+
+      return mappedTreatments;
+    } catch (error) {
+      console.error("💥 Failed to get treatments:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📋 Get medical records
+   */
+  public async getMedicalRecords(filters?: any): Promise<any[]> {
+    const cacheKey = `medical_records:${JSON.stringify(filters || {})}`;
+
+    try {
+      // Try cache first
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
+      // Query usando APOLLO_MEDICAL_RECORDS VIEW - V169 Schema Bridge
+      let query = `
+        SELECT mr.*, p.name as patient_name
+        FROM apollo_medical_records mr
+        LEFT JOIN apollo_patients p ON mr.patient_id = p.id
+      `;
+      const params: any[] = [];
+
+      if (filters) {
+        if (filters.patientId) {
+          query += ` ${params.length === 0 ? "WHERE" : "AND"} mr.patient_id = $${params.length + 1}`;
+          params.push(filters.patientId);
+        }
+        if (filters.recordType) {
+          query += ` ${params.length === 0 ? "WHERE" : "AND"} mr.procedure_category = $${params.length + 1}`;
+          params.push(filters.recordType);
+        }
+      }
+
+      query += " ORDER BY mr.created_at DESC";
+
+      const result = await this.pool.query(query, params);
+      const records = result.rows;
+
+      // Cache results
+      await this.safeRedisOperation(() =>
+        this.redis.setEx(cacheKey, 600, JSON.stringify(records)),
+      );
+
+      return records;
+    } catch (error) {
+      console.error("💥 Failed to get medical records:", error as Error);
+      throw error;
+    }
+  }
+
+  // ==========================================
+  // 🔧 UTILITY METHODS
+  // ==========================================
+
+  /**
+   * 🗑️ Invalidate patient cache
+   */
+  private async invalidatePatientCache(patientId?: string): Promise<void> {
+    try {
+      const keys = await this.safeRedisOperation(
+        () => this.redis.keys("patients:*"),
+        [],
+      );
+      if (patientId) {
+        keys.push(`patient:${patientId}`);
+      }
+
+      if (keys.length > 0) {
+        await this.safeRedisOperation(() => this.redis.del(keys));
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ Failed to invalidate patient cache:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  /**
+   * 🗑️ Invalidate appointment cache
+   */
+  private async invalidateAppointmentCache(): Promise<void> {
+    try {
+      const keys = await this.redis.keys("appointments:*");
+      if (keys.length > 0) {
+        await this.redis.del(keys);
+      }
+    } catch (error) {
+      console.error("⚠️ Failed to invalidate appointment cache:", error as Error);
+    }
+  }
+
+  /**
+   * 📡 Emit real-time updates
+   */
+  private async emitRealtimeUpdate(
+    _room: string,
+    _event: string,
+    _data: any,
+  ): Promise<void> {
+    try {
+      // This will be connected to Socket.IO in the main server
+      await this.safeRedisOperation(() =>
+        this.redis.publish(
+          `realtime:${_room}`,
+          JSON.stringify({
+            _event,
+            _data,
+            timestamp: new Date().toISOString(),
+          }),
+        ),
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Failed to emit realtime update:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  /**
+   * 📊 Get database status
+   */
+  public async getStatus(): Promise<any> {
+    try {
+      // Test PostgreSQL
+      const pgClient = await this.pool.connect();
+      await pgClient.query("SELECT 1");
+      pgClient.release();
+
+      // Test Redis with throttling - don't spam console or connections
+      let redisStatus = "disconnected";
+      const now = Date.now();
+
+      if (now - this.lastRedisCheck > this.redisCheckInterval) {
+        try {
+          // Only ensure connection if we suspect it's disconnected
+          if (!this.isRedisConnected) {
+            const isConnected = await redisManager.ensureConnection(
+              this.redis,
+              this.redisConnectionId,
+            );
+            if (!isConnected) {
+              redisStatus = "disconnected";
+              this.isRedisConnected = false;
+            }
+          }
+
+          // Test connection with ping if we think it's connected
+          if (this.isRedisConnected) {
+            await this.redis.ping();
+            redisStatus = "connected";
+          } else {
+            // Try to connect and ping
+            await this.redis.ping();
+            redisStatus = "connected";
+            this.isRedisConnected = true;
+          }
+        } catch (error) {
+          this.isRedisConnected = false;
+          redisStatus = "disconnected";
+          console.warn(
+            "⚠️ Redis status check failed:",
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        this.lastRedisCheck = now;
+      } else {
+        // Use cached status
+        redisStatus = this.isRedisConnected ? "connected" : "disconnected";
+      }
+
+      return {
+        connected: true,
+        postgresql: "connected",
+        redis: redisStatus,
+        connectionPool: {
+          total: this.pool.totalCount,
+          idle: this.pool.idleCount,
+          waiting: this.pool.waitingCount,
+        },
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        postgresql: "disconnected",
+        redis: "disconnected",
+      };
+    }
+  }
+
+  /**
+   * 🔧 Execute raw query (for advanced operations)
+   */
+  public async executeQuery(_query: string, _params?: any[]): Promise<any> {
+    try {
+      const result = await this.pool.query(_query, _params);
+      return { rows: result.rows };
+    } catch (error) {
+      console.error("💥 Query execution failed:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📊 Get database statistics
+   */
+  public async getStatistics(): Promise<any> {
+    try {
+      const stats = await this.pool.query(`
+        SELECT
+          schemaname,
+          tablename,
+          n_tup_ins as inserts,
+          n_tup_upd as updates,
+          n_tup_del as deletes
+        FROM pg_stat_user_tables
+        ORDER BY schemaname, tablename
+      `);
+
+      return {
+        tables: stats.rows,
+        connectionPool: {
+          total: this.pool.totalCount,
+          idle: this.pool.idleCount,
+          waiting: this.pool.waitingCount,
+        },
+      };
+    } catch (error) {
+      console.error("💥 Failed to get statistics:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🛡️ Get all data for Veritas verification (Merkle Tree building)
+   */
+  public async getAllDataForVerification(): Promise<any[]> {
+    try {
+      // Get data from all main tables
+      const tables = [
+        "patients",
+        "appointments",
+        "medical_records",
+        "documents",
+      ];
+
+      const allData: any[] = [];
+      const MAX_ALL_RECORDS = 1000; // 🔥 AGGRESSIVE LIMIT: Max 1000 records total for verification
+
+      for (const table of tables) {
+        try {
+          const result = await this.pool.query(
+            `SELECT * FROM ${table} LIMIT 100`,
+          ); // Reduced from unlimited
+          result.rows.forEach((row) => {
+            // 🔥 AGGRESSIVE MEMORY LIMIT: Check total size
+            if (allData.length >= MAX_ALL_RECORDS) {
+              return; // Stop adding more records
+            }
+
+            allData.push({
+              table,
+              id: row.id,
+              data: row,
+              entity: table.slice(0, -1), // Remove 's' from table name
+              timestamp: row.created_at || row.updated_at || new Date(),
+            });
+          });
+        } catch (error) {
+          // Table might not exist, continue
+          console.log(`⚠️ Table ${table} not found for verification`);
+        }
+      }
+
+      return allData;
+    } catch (error) {
+      console.error("💥 Failed to get data for verification:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🛡️ Get data sample for continuous integrity monitoring
+   */
+  public async getDataSampleForVerification(): Promise<any[]> {
+    try {
+      // Get sample of recent data from all tables (last 100 records each)
+      const tables = [
+        "patients",
+        "appointments",
+        "medical_records",
+        "documents",
+      ];
+
+      const sampleData: any[] = [];
+      const MAX_SAMPLE_RECORDS = 200; // 🔥 AGGRESSIVE LIMIT: Max 200 records total for sample
+
+      for (const table of tables) {
+        try {
+          const result = await this.pool.query(`
+            SELECT * FROM ${table}
+            ORDER BY COALESCE(updated_at, created_at, now()) DESC
+            LIMIT 20
+          `);
+
+          result.rows.forEach((row) => {
+            // 🔥 AGGRESSIVE MEMORY LIMIT: Check total sample size
+            if (sampleData.length >= MAX_SAMPLE_RECORDS) {
+              return; // Stop adding more records
+            }
+
+            sampleData.push({
+              table,
+              id: row.id,
+              data: row,
+              entity: table.slice(0, -1), // Remove 's' from table name
+              timestamp: row.created_at || row.updated_at || new Date(),
+            });
+          });
+        } catch (error) {
+          // Table might not exist, continue
+          console.log(`⚠️ Table ${table} not found for sample verification`);
+        }
+      }
+
+      return sampleData;
+    } catch (error) {
+      console.error("💥 Failed to get data sample for verification:", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🛡️ Get data for specific entity (for lazy Veritas loading)
+   * 🎯 DIRECTIVA V164: VERITAS GLOBAL ENTITY HANDLER - OPTIMIZED FOR 34 BD TABLES
+   */
+  public async getDataForEntity(entity: string): Promise<any[]> {
+    try {
+      // Special handling for 'global' entity - combine data from populated tables only
+      if (entity === "global") {
+        console.log(
+          "🌍 VERITAS GLOBAL REQUEST: Scanning 34 BD tables for data...",
+        );
+
+        // Core tables with guaranteed data
+        const coreTables = [
+          "patients",
+          "appointments",
+          "medical_records",
+          "treatments",
+          "users",
+          "medical_documents",
+          "mouth_scans",
+          "odontogramas",
+          "odontograma_teeth",
+          "tooth_3d_models",
+          "treatment_categories",
+          "treatment_types",
+          "treatment_rooms",
+          "dental_equipment",
+          "dental_materials",
+          "auto_order_rules",
+          "suppliers",
+          "viewer_sessions",
+          "viewer_settings",
+          "treatment_materials",
+        ];
+
+        let globalData: any[] = [];
+        let processedTables = 0;
+        const MAX_GLOBAL_RECORDS = 500; // 🔥 AGGRESSIVE LIMIT: Max 500 records total for global entity
+
+        for (const table of coreTables) {
+          try {
+            const result = await this.pool.query(
+              `SELECT * FROM ${table} LIMIT 50`,
+            ); // Limit for performance
+            if (result.rows.length > 0) {
+              const tableData = result.rows.map((row) => ({
+                table: table,
+                id: row.id,
+                data: row,
+                entity: this.getEntityNameFromTable(table),
+                timestamp: row.created_at || row.updated_at || new Date(),
+              }));
+
+              // 🔥 AGGRESSIVE MEMORY LIMIT: Check if adding would exceed total limit
+              if (globalData.length + tableData.length > MAX_GLOBAL_RECORDS) {
+                const remainingSlots = MAX_GLOBAL_RECORDS - globalData.length;
+                if (remainingSlots > 0) {
+                  globalData = globalData.concat(
+                    tableData.slice(0, remainingSlots),
+                  );
+                  console.log(
+                    `⚠️ ${table}: Limited to ${remainingSlots} records (global limit reached)`,
+                  );
+                } else {
+                  console.log(
+                    `🚫 ${table}: Skipped (global limit of ${MAX_GLOBAL_RECORDS} reached)`,
+                  );
+                }
+                break; // Stop processing further tables
+              } else {
+                globalData = globalData.concat(tableData);
+                processedTables++;
+                console.log(`✅ ${table}: Added ${tableData.length} records`);
+              }
+            } else {
+              console.log(`⚪ ${table}: Empty, skipped`);
+            }
+          } catch (tableError) {
+            console.log(
+              `⚠️ ${table}: Access error, skipped - ${tableError instanceof Error ? tableError.message : String(tableError)}`,
+            );
+          }
+        }
+
+        console.log(
+          `🎯 VERITAS GLOBAL: Combined ${globalData.length} records from ${processedTables} tables`,
+        );
+        return globalData;
+      }
+
+      // Map entity names to table names for specific entities
+      const tableMap: { [key: string]: string } = {
+        patient: "patients",
+        appointment: "appointments",
+        medical_record: "medical_records",
+        document: "documents",
+        treatment: "treatments",
+        user: "users",
+        medical_document: "medical_documents",
+        mouth_scan: "mouth_scans",
+        tooth_3d_model: "tooth_3d_models",
+        odontograma: "odontogramas",
+      };
+
+      const tableName = tableMap[entity] || entity;
+
+      const result = await this.pool.query(`SELECT * FROM ${tableName}`);
+
+      return result.rows.map((row) => ({
+        table: tableName,
+        id: row.id,
+        data: row,
+        entity: entity,
+        timestamp: row.created_at || row.updated_at || new Date(),
+      }));
+    } catch (error) {
+      console.error(`💥 Failed to get data for entity ${entity}:`, error as Error);
+      // Return empty array instead of throwing to prevent Veritas failures
+      return [];
+    }
+  }
+
+  /**
+   * 🎯 Convert table name to singular entity name
+   */
+  private getEntityNameFromTable(tableName: string): string {
+    const entityMap: { [key: string]: string } = {
+      patients: "patient",
+      appointments: "appointment",
+      medical_records: "medical_record",
+      treatments: "treatment",
+      users: "user",
+      medical_documents: "medical_document",
+      mouth_scans: "mouth_scan",
+      odontogramas: "odontograma",
+      odontograma_teeth: "odontograma_tooth",
+      tooth_3d_models: "tooth_3d_model",
+      treatment_categories: "treatment_category",
+      treatment_types: "treatment_type",
+      treatment_rooms: "treatment_room",
+      dental_equipment: "dental_equipment",
+      dental_materials: "dental_material",
+      auto_order_rules: "auto_order_rule",
+      suppliers: "supplier",
+      viewer_sessions: "viewer_session",
+      viewer_settings: "viewer_setting",
+      treatment_materials: "treatment_material",
+    };
+
+    return entityMap[tableName] || tableName.slice(0, -1); // fallback: remove 's'
+  }
+}
+
+

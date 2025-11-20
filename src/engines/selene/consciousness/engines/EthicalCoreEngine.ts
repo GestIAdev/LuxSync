@@ -184,8 +184,13 @@ export class EthicalCoreEngine implements BaseMetaEngine {
       dilemma.id
     );
 
-    if (!integrityCheck.verified) {
-      throw new Error(`Dilemma integrity check failed: ${integrityCheck.anomalies.join(', ')}`);
+    // TODO: Update to use 'valid' property instead of 'verified' and 'anomalies'
+    // if (!integrityCheck.verified) {
+    //   throw new Error(`Dilemma integrity check failed: ${integrityCheck.anomalies.join(', ')}`);
+    // }
+
+    if (!integrityCheck.valid) {
+      throw new Error(`Dilemma integrity check failed`);
     }
 
     // ⚖️ EVALUATE OPTIONS WITH VERITAS

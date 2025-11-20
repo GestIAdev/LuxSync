@@ -223,11 +223,11 @@ export class VeritasCodeValidator {
         codeHash
       );
 
-      if (!integrityCheck.isValid || integrityCheck.confidence < 95) {
+      if (!integrityCheck.valid || (integrityCheck.confidence || 0) < 95) {
         violations.push({
           type: 'mathematical',
           severity: 'high',
-          description: `Veritas mathematical integrity check failed: ${integrityCheck.confidence.toFixed(1)}% confidence`,
+          description: `Veritas mathematical integrity check failed: ${(integrityCheck.confidence || 0).toFixed(1)}% confidence`,
           recommendation: 'Code failed mathematical integrity verification by Veritas.'
         });
       }
@@ -283,11 +283,11 @@ export class VeritasCodeValidator {
         codeHash
       );
 
-      if (!integrityCheck.isValid || integrityCheck.confidence < 95) {
+      if (!integrityCheck.valid || (integrityCheck.confidence || 0) < 95) {
         violations.push({
           type: 'ethical',
           severity: 'high',
-          description: `Veritas ethical integrity check failed: ${integrityCheck.confidence.toFixed(1)}% confidence`,
+          description: `Veritas ethical integrity check failed: ${(integrityCheck.confidence || 0).toFixed(1)}% confidence`,
           recommendation: 'Code failed ethical integrity verification by Veritas.'
         });
       }
@@ -455,7 +455,7 @@ export class VeritasCodeValidator {
       issuedBy: '@veritas',
       issuedAt: new Date(),
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
-      signature: certificate.signature
+      signature: certificate.signature ?? ''
     };
   }
 

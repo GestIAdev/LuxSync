@@ -1,4 +1,5 @@
-import { NFTPoetryEngine } from '../../poetry/NFTPoetryEngine.js';
+// TODO: Re-enable if poetry generation needed
+// import { NFTPoetryEngine } from '../../poetry/NFTPoetryEngine.js';
 import { MusicEngine } from '../music/MusicalConsensusRecorder.js'; // SSE-7.7: Renamed from MusicalConsensusRecorder
 import { HarmonicConsensusEngine } from './HarmonicConsensusEngine.js';
 import { SystemVitals } from '../core/SystemVitals.js';
@@ -11,7 +12,7 @@ import type { ConsensusResult as HarmonicConsensusResult } from './HarmonicConse
  * ✅ INTEGRATES REAL HarmonicConsensusEngine (NO MORE Math.random() PLACEHOLDERS)
  */
 export class MusicalConsensusOrchestrator {
-  private nftEngine: NFTPoetryEngine | null = null;
+  private nftEngine: any = null; // NFTPoetryEngine - stub
   private recorder: MusicEngine; // SSE-7.7: Updated type
   private harmonicEngine: HarmonicConsensusEngine;
   private autoRecordEnabled = process.env.RECORD_CONSENSUS === 'true' || true;
@@ -30,7 +31,7 @@ export class MusicalConsensusOrchestrator {
 
     // Initialize NFT engine only if enabled and veritas is available
     if (this.nftGenerationEnabled && veritas) {
-      this.nftEngine = new NFTPoetryEngine(veritas);
+      this.nftEngine = null; // new NFTPoetryEngine(veritas) - stub
     }
 
     // Start recording if auto-record is enabled

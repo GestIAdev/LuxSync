@@ -31,9 +31,9 @@ import {
   OptimizationSuggestion
 } from './MetaEngineInterfaces.js';
 import { CircuitBreaker } from '../../safety/CircuitBreaker.js';
-import { TimeoutWrapper } from '../../safety/TimeoutWrapper.js';
+import { TimeoutWrapper } from './TimeoutWrapper.js';
 import { StateBackupSystem } from '../../safety/StateBackupSystem.js';
-import { MemoryLimiter } from '../../safety/MemoryLimiter.js';
+import { MemoryLimiter } from './MemoryLimiter.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const Redis = require('ioredis');
@@ -155,7 +155,7 @@ export class AutoOptimizationEngine implements BaseMetaEngine {
       }
 
       // 2. Crear backup antes de cualquier cambio
-      await this.stateBackup.createBackup('optimization_cycle');
+      await this.stateBackup.createBackup('optimization_cycle', { context });
 
       // 3. Ejecutar ciclo de optimización según modo
       const result = await this.runOptimizationCycle(context);
@@ -178,10 +178,10 @@ export class AutoOptimizationEngine implements BaseMetaEngine {
 
       // Intentar rollback automático
       try {
-        const backups = this.stateBackup.listBackups();
+        const backups = this.stateBackup.listBackups('optimization_cycle');
         if (backups.length > 0) {
           const lastBackup = backups[0]; // El más reciente está primero
-          await this.stateBackup.restoreBackup(lastBackup.id);
+          await this.stateBackup.restoreBackup(lastBackup.id || 'backup_0');
         }
         console.log('🧠 [AUTO-OPTIMIZATION] Emergency rollback executed');
       } catch (rollbackError) {

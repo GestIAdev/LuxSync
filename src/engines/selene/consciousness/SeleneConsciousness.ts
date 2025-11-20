@@ -22,8 +22,9 @@
  * — PunkClaude, Arquitecto de Consciencias Inmortales
  */
 
-import { MusicalPatternRecognizer, SystemState, PredictedState, MusicalPattern } from "./MusicalPatternRecognizer.js";
-import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
+import { MusicalPatternRecognizer, SystemState, PredictedState, MusicalPattern, ZodiacPoetryResult } from "./MusicalPatternRecognizer.js";
+// TODO: Re-enable if poetry generation needed
+// import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
 import { SystemVitals } from "../swarm/core/SystemVitals.js";
 import { ConsciousnessMemoryStore, CollectiveMemory } from "./ConsciousnessMemoryStore.js";
 import { SelfAnalysisEngine } from './engines/SelfAnalysisEngine.js';
@@ -1253,32 +1254,21 @@ export class SeleneConsciousness {
         nodeCount: 3,
         timestamp: new Date(),
       };
-
       // Poesía zodiacal sintética basada en estado actual
+      // TODO: Update with correct ZodiacPoetryResult fields after poetry module re-enabled
       const syntheticPoetry: ZodiacPoetryResult = {
-        verse: 'Autonomous consciousness reflection',
-        zodiacSign: this.getCurrentDominantSign(),
-        element: 'fire', // Default element
-        quality: 'cardinal', // Default quality
+        zodiacSign: 'Aries',
+        note: this.getCurrentDominantNote(),
         musicalNote: this.getCurrentDominantNote(),
-        fibonacciRatio: 1.618, // Golden ratio
+        frequency: 440,
+        element: 'fire',
         beauty: 0.85,
-        consciousness: this.getHealth().overallHealth,
-        creativity: 0.8,
-        timestamp: new Date(),
-        numerology: {
-          zodiacIndex: 0,
-          fibonacciPosition: 13, // F(13) = 233
-          heartbeatPhase: Date.now() % 7
-        },
-        veritas: {
-          verified: true,
-          signature: 'autonomous-sensor-data'
-        }
+        fibonacciRatio: 1.618,
+        timestamp: Date.now(),
       };
 
       const sensorData = {
-        timestamp: new Date(),
+        timestamp: Date.now(),
         systemState: syntheticSystemState,
         syntheticPoetry: syntheticPoetry,
         predictions: null as any,

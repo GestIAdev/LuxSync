@@ -43,13 +43,28 @@ export class TimeoutWrapper {
   private operationMetrics: Map<string, OperationMetrics> = new Map();
   private cleanupInterval?: NodeJS.Timeout;
 
-  constructor(config: TimeoutConfig) {
-    this.config = config;
+  constructor(configOrTimeout?: TimeoutConfig | number) {
+    // Support both config object and simple timeout number
+    if (typeof configOrTimeout === 'number') {
+      this.config = {
+        defaultTimeoutMs: configOrTimeout,
+        maxConcurrentOperations: 10,
+        cleanupIntervalMs: 300000,
+        name: 'TimeoutWrapper'
+      };
+    } else {
+      this.config = configOrTimeout || {
+        defaultTimeoutMs: 30000,
+        maxConcurrentOperations: 10,
+        cleanupIntervalMs: 300000,
+        name: 'TimeoutWrapper'
+      };
+    }
 
     // Start cleanup interval
     this.startCleanupInterval();
 
-    console.log(`⏱️ Timeout Wrapper "${config.name}" initialized: default=${config.defaultTimeoutMs}ms, maxConcurrent=${config.maxConcurrentOperations}`);
+    console.log(`⏱️ Timeout Wrapper "${this.config.name}" initialized: default=${this.config.defaultTimeoutMs}ms, maxConcurrent=${this.config.maxConcurrentOperations}`);
   }
 
   /**

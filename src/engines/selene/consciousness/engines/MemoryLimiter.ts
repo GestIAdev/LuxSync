@@ -19,8 +19,20 @@ interface MemoryCheckResult {
 export class MemoryLimiter {
   private config: MemoryLimiterConfig;
 
-  constructor(config: MemoryLimiterConfig) {
-    this.config = config;
+  constructor(configOrLimit?: MemoryLimiterConfig | number) {
+    if (typeof configOrLimit === 'number') {
+      this.config = {
+        maxMemoryMB: configOrLimit,
+        warningThresholdMB: configOrLimit * 0.8,
+        name: 'MemoryLimiter'
+      };
+    } else {
+      this.config = configOrLimit || {
+        maxMemoryMB: 500,
+        warningThresholdMB: 400,
+        name: 'MemoryLimiter'
+      };
+    }
   }
 
   checkMemory(): MemoryCheckResult {

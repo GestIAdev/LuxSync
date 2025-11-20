@@ -8,7 +8,8 @@ import * as os from "os";
 import { HealthOracle } from "./HealthOracle.js";
 import { HarmonicConsensusEngine } from "./HarmonicConsensusEngine.js";
 import { HarmonicConsensusSingleton } from "./HarmonicConsensusSingleton.js";
-import { QuantumPoetryEngine } from "./QuantumPoetryEngine.js";
+// TODO: Re-enable if poetry generation needed
+// import { QuantumPoetryEngine } from "./QuantumPoetryEngine.js";
 import { SystemVitals } from "../core/SystemVitals.js";
 import { QuantumSwarmCoordinator } from "./QuantumSwarmCoordinator.js";
 import { RealVeritasInterface } from "../veritas/VeritasInterface.js";
@@ -138,7 +139,7 @@ export class PhoenixProtocol {
   // 🔥 REAL COMPONENT DEPENDENCIES - NO MORE SIMULATIONS
   private health_oracle: HealthOracle;
   private consensus_engine: HarmonicConsensusEngine;
-  private poetry_engine: QuantumPoetryEngine;
+  private poetry_engine: any; // QuantumPoetryEngine - stub
   private system_vitals: SystemVitals;
   private swarm_coordinator?: QuantumSwarmCoordinator;
 
@@ -146,7 +147,7 @@ export class PhoenixProtocol {
     nodeId: string = "default-node",
     healthOracle?: HealthOracle,
     consensusEngine?: HarmonicConsensusEngine,
-    poetryEngine?: QuantumPoetryEngine,
+    poetryEngine?: any,
     systemVitals?: SystemVitals,
     swarmCoordinator?: QuantumSwarmCoordinator,
   ) {
@@ -158,12 +159,7 @@ export class PhoenixProtocol {
     const singleton = HarmonicConsensusSingleton.getInstance(); // Fixed: get singleton first
     this.consensus_engine =
       consensusEngine || singleton.getConsensusEngine(); // Fixed: extract actual engine
-    this.poetry_engine =
-      poetryEngine ||
-      new QuantumPoetryEngine(
-        systemVitals || SystemVitals.getInstance(),
-        new RealVeritasInterface(),
-      );
+    this.poetry_engine = poetryEngine || null; // new QuantumPoetryEngine(...) - stub
     this.system_vitals = systemVitals || SystemVitals.getInstance();
     this.swarm_coordinator = swarmCoordinator;
 

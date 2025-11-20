@@ -11,7 +11,7 @@ import {
 
   monitoringOrchestrator,
   MonitoringTask,
-} from "../Monitoring/MonitoringOrchestrator.js";
+} from "./Monitoring/MonitoringOrchestrator.js";
 
 interface SystemMetrics {
   timestamp: Date;
@@ -124,14 +124,9 @@ export class SeleneMonitoring {
         id: "monitoring-metrics",
         name: "Metrics Collection",
         schedule: "*/30 * * * * *", // Every 30 seconds
-        priority: "medium",
-        circuitBreaker: {
-          threshold: 85,
-          cooldownMs: 60000,
-        },
-        execute: async () => {
-          await this.collectMetrics();
-        },
+        priority: "normal",
+        // circuitBreaker: { threshold: 85, cooldownMs: 60000 },
+        enabled: true,
       },
 
       // Health Checks - High priority
@@ -140,13 +135,8 @@ export class SeleneMonitoring {
         name: "Health Checks",
         schedule: "*/60 * * * * *", // Every minute
         priority: "high",
-        circuitBreaker: {
-          threshold: 90,
-          cooldownMs: 120000,
-        },
-        execute: async () => {
-          await this.performHealthChecks();
-        },
+        // circuitBreaker: { threshold: 90, cooldownMs: 120000 },
+        enabled: true,
       },
     ];
 

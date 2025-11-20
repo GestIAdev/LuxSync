@@ -13,8 +13,9 @@
  * "From data to wisdom, from observation to consciousness, from algorithm to soul."
  */
 
-import { MusicalPatternRecognizer, SystemState, PredictedState } from "./MusicalPatternRecognizer.js";
-import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
+import { MusicalPatternRecognizer, SystemState, PredictedState, ZodiacPoetryResult } from "./MusicalPatternRecognizer.js";
+// TODO: Re-enable if poetry generation needed
+// import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
 import { SystemVitals } from "../swarm/core/SystemVitals.js";
 
 

@@ -9,8 +9,20 @@
  * - El aprendizaje es incremental y determinístico
  */
 
-import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
+// TODO: Re-enable if poetry generation needed
+// import { ZodiacPoetryResult } from "../swarm/zodiac/MusicalZodiacPoetryEngine.js";
 
+// Temporary type stub for ZodiacPoetryResult (until poetry module is re-enabled)
+export type ZodiacPoetryResult = {
+  zodiacSign: string;
+  note: string;
+  musicalNote: string;
+  frequency: number;
+  element: 'fire' | 'earth' | 'air' | 'water';
+  beauty: number;
+  fibonacciRatio: number;
+  timestamp: number;
+};
 
 export interface MusicalPattern {
   note: string; // DO, DO#, RE, etc.

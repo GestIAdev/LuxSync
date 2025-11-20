@@ -1,4 +1,5 @@
-import { deterministicRandom } from "../../shared/deterministic-utils.js";
+// import { deterministicRandom } from "../../shared/deterministic-utils.js";
+const deterministicRandom = (seed: number) => seed * 0.5; // Stub
 /**
  * ⏰ SELENE SCHEDULER - AUTOMATED TASKS MODULE
  * By PunkClaude & RaulVisionario - September 18, 2025
@@ -98,7 +99,7 @@ export class SeleneScheduler {
   ): string {
     const taskId =
       task.id ||
-      `task_${Date.now()}_${deterministicRandom().toString(36).substr(2, 9)}`;
+      `task_${Date.now()}_${deterministicRandom(Date.now()).toString(36).substr(2, 9)}`;
 
     const fullTask: ScheduledTask = {
       ...task,

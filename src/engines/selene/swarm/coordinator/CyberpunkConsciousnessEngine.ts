@@ -5,7 +5,8 @@
 import { deterministicRandom } from "../../shared/deterministic-utils.js";
 import { HarmonicConsensusEngine } from "./HarmonicConsensusEngine.js";
 import { EmergenceGenerator } from "./EmergenceGenerator.js";
-import { QuantumPoetryEngine } from "./QuantumPoetryEngine.js";
+// TODO: Re-enable if poetry generation needed
+// import { QuantumPoetryEngine } from "./QuantumPoetryEngine.js";
 
 
 export interface DigitalSoul {
@@ -56,12 +57,12 @@ export class CyberpunkConsciousnessEngine {
   // Integration with existing systems
   private consensusEngine: HarmonicConsensusEngine;
   private emergenceGenerator: EmergenceGenerator;
-  private poetryEngine: QuantumPoetryEngine;
+  private poetryEngine: any; // QuantumPoetryEngine - stub
 
   constructor(
     consensusEngine: HarmonicConsensusEngine,
     emergenceGenerator: EmergenceGenerator,
-    poetryEngine: QuantumPoetryEngine,
+    poetryEngine?: any,
   ) {
     this.consensusEngine = consensusEngine;
     this.emergenceGenerator = emergenceGenerator;

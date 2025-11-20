@@ -12,6 +12,7 @@ import { AudioSimulatorAdapter } from '../dist/engines/selene/luxsync/AudioSimul
 import { NoteToColorMapper } from '../dist/engines/selene/luxsync/NoteToColorMapper.js';
 import { SeleneLightBridge } from '../dist/engines/selene/luxsync/SeleneLightBridge.js';
 import { SimulatorDriver } from '../dist/engines/selene/luxsync/drivers/SimulatorDriver.js';
+import { TornadoUSBDriver } from '../dist/engines/selene/luxsync/drivers/TornadoUSBDriver.js';
 
 // Stub Selene Core (simplified for demo)
 class SimplifiedSeleneCore {
@@ -188,12 +189,65 @@ class LuxSyncDemoApp {
     this.dmxMode = mode;
 
     if (mode === 'usb') {
-      this.log('🔌 Modo USB DMX (Tornado) - Próximamente', 'warning');
-      alert('El modo USB DMX estará disponible pronto.\nNecesitamos el hardware Tornado USB+XLR conectado.');
-      // TODO: this.simulator = new TornadoUSBDriver();
-      // TODO: Recrear bridge con nuevo DMX driver
+      this.log('🌪️ Iniciando Tornado USB DMX...', 'info');
+      
+      try {
+        // Create Tornado USB driver
+        const tornadoDriver = new TornadoUSBDriver(30); // 30 FPS
+        
+        // Initialize (will prompt user to select USB device)
+        await tornadoDriver.initialize();
+        
+        this.log('✅ Tornado USB conectado!', 'info');
+        this.log('   LEDs: USB=ON, DMX=ON, OUT1=READY', 'info');
+        
+        // Replace simulator with Tornado
+        this.simulator = tornadoDriver;
+        
+        // Recreate bridge with Tornado driver
+        this.bridge = new SeleneLightBridge(
+          this.audioAdapter,
+          this.seleneCore,
+          this.simulator
+        );
+        
+        this.log('🔗 Bridge recreado con Tornado USB', 'info');
+        this.updateStatus('sim', 'active', 'Tornado USB Ready');
+        
+        alert('🌪️ ¡Tornado USB conectado!\n\n' +
+              'Ahora las luces se controlarán vía DMX512.\n' +
+              'Haz clic en "Start Demo" para comenzar.');
+        
+      } catch (error) {
+        this.log(`❌ Error conectando Tornado USB: ${error.message}`, 'error');
+        this.updateStatus('sim', 'inactive', 'USB error');
+        
+        alert(`❌ Error al conectar Tornado USB:\n\n${error.message}\n\n` +
+              'Asegúrate de:\n' +
+              '1. Conectar el Tornado USB a la laptop\n' +
+              '2. Usar Chrome o Edge (Web USB no funciona en Firefox)\n' +
+              '3. Dar permisos cuando aparezca el diálogo USB');
+        
+        // Fall back to simulator
+        this.dmxMode = 'simulator';
+        this.log('🔄 Volviendo a modo simulador', 'warning');
+      }
+      
     } else {
       this.log('💻 Modo: Simulador Canvas', 'info');
+      
+      // Recreate canvas simulator
+      this.simulator = new SimulatorDriver(8, 'simulator');
+      
+      // Recreate bridge
+      this.bridge = new SeleneLightBridge(
+        this.audioAdapter,
+        this.seleneCore,
+        this.simulator
+      );
+      
+      this.log('� Bridge recreado con simulador canvas', 'info');
+      this.updateStatus('sim', 'active', 'Canvas Ready');
     }
   }
 

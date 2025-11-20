@@ -47,11 +47,17 @@ export class AudioSimulatorAdapter {
     const frame = await this.simulator.getFrame();
 
     // Map to SystemMetrics (same as AudioToMetricsAdapter)
+    // Ensure all values are valid numbers (0-1 for cpu/memory, 0-100 for latency)
+    const cpu = isNaN(frame.bass) ? 0.5 : Math.max(0, Math.min(1, frame.bass));
+    const memory = isNaN(frame.mid) ? 0.5 : Math.max(0, Math.min(1, frame.mid));
+    const treble = isNaN(frame.treble) ? 0.5 : Math.max(0, Math.min(1, frame.treble));
+    const latency = (1 - treble) * 100; // Treble → Latency (inverted)
+
     return {
-      cpu: frame.bass,           // Bass → CPU (low freq = heavy load)
-      memory: frame.mid,          // Mid → Memory (balanced)
-      latency: (1 - frame.treble) * 100, // Treble → Latency (inverted)
-      timestamp: frame.timestamp
+      cpu,
+      memory,
+      latency,
+      timestamp: frame.timestamp || Date.now()
     };
   }
 

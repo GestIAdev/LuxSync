@@ -30,7 +30,8 @@
             padding: 20px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
-            border: 2px solid #0f3460;
+            border: 2px solid #00FFFF;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
         }
 
         h1 {
@@ -106,9 +107,24 @@
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
+        .btn-reload {
+            background: linear-gradient(135deg, #8B5CF6, #EC4899) !important;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+        }
+
+        /* Canvas styling - CRÍTICO para que se vea */
         #dmx-simulator {
-            border: 3px solid #0f3460 !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: block;
+            width: 100%;
+            max-width: 1200px;
+            height: 600px;
+            margin: 0 auto;
+            background: #000;
+            border: 3px solid #00FFFF !important;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.3),
+                0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .info-panel {
@@ -116,7 +132,8 @@
             padding: 20px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
-            border: 2px solid #0f3460;
+            border: 2px solid #8B5CF6;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
         }
 
         .info-grid {
@@ -130,13 +147,15 @@
             background: rgba(0, 0, 0, 0.5);
             padding: 15px;
             border-radius: 8px;
-            border-left: 4px solid #00d4ff;
+            border-left: 4px solid #00FFFF;
+            border: 1px solid rgba(0, 255, 255, 0.2);
         }
 
         .info-card h3 {
-            color: #00d4ff;
+            color: #00FFFF;
             margin-bottom: 10px;
             font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .info-card p {
@@ -150,11 +169,14 @@
             border-radius: 20px;
             font-size: 0.9rem;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .status.active {
-            background: #00ff88;
-            color: black;
+            background: #00FFFF;
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .status.inactive {
@@ -176,14 +198,15 @@
         #log {
             margin-top: 20px;
             padding: 15px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             border-radius: 8px;
-            border: 1px solid #333;
+            border: 1px solid #00FFFF;
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
             max-height: 200px;
             overflow-y: auto;
             color: #0f0;
+            box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
         }
 
         .log-entry {
@@ -192,15 +215,16 @@
         }
 
         .log-error {
-            color: #ff4444;
+            color: #EC4899;
+            text-shadow: 0 0 5px rgba(236, 72, 153, 0.5);
         }
 
         .log-warning {
-            color: #ffaa00;
+            color: #F59E0B;
         }
 
         .log-info {
-            color: #00d4ff;
+            color: #00FFFF;
         }
     </style>
 </head>
@@ -233,7 +257,7 @@
             <button class="btn-blackout" onclick="blackout()">
                 ⚫ Blackout
             </button>
-            <button class="btn-blackout" onclick="location.reload(true)" style="background: linear-gradient(135deg, #8B5CF6, #EC4899);">
+            <button class="btn-reload" onclick="location.reload(true)">
                 🔄 Force Reload
             </button>
         </div>

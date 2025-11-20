@@ -105,6 +105,10 @@ export class SimulatorDriver implements DMXDriver {
       this.canvas.style.display = 'block';
       this.canvas.style.margin = '20px auto';
       document.body.appendChild(this.canvas);
+    } else {
+      // Canvas existe, aplicar dimensiones
+      this.canvas.width = this.config.width;
+      this.canvas.height = this.config.height;
     }
 
     this.ctx = this.canvas.getContext('2d');

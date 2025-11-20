@@ -241,10 +241,22 @@
             </p>
         </header>
 
-        <div class="controls">
-            <button class="btn-mic" onclick="initAudio()">
-                🎤 Enable Microphone
+        <div class="controls" style="border: 2px solid #00FFFF; box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);">
+            <h3 style="grid-column: 1 / -1; text-align: center; color: #00FFFF; margin: 0; padding: 10px 0;">
+                🎮 Audio Input Mode
+            </h3>
+            <button class="btn-mic" onclick="setAudioMode('microphone')">
+                🎤 Microphone
             </button>
+            <button class="btn-test" onclick="setAudioMode('simulator')" style="background: linear-gradient(135deg, #8B5CF6, #EC4899);">
+                � Audio Simulator
+            </button>
+            <button class="btn-blackout" onclick="setDMXMode('usb')" style="background: linear-gradient(135deg, #10B981, #059669);">
+                🔌 USB DMX (Tornado)
+            </button>
+        </div>
+
+        <div class="controls">
             <button class="btn-start" onclick="startDemo()">
                 ▶️ Start Demo
             </button>

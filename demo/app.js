@@ -8,6 +8,7 @@
  */
 
 import { AudioToMetricsAdapter } from '../dist/engines/selene/luxsync/AudioToMetricsAdapter.js';
+import { AudioSimulatorAdapter } from '../dist/engines/selene/luxsync/AudioSimulatorAdapter.js';
 import { NoteToColorMapper } from '../dist/engines/selene/luxsync/NoteToColorMapper.js';
 import { SeleneLightBridge } from '../dist/engines/selene/luxsync/SeleneLightBridge.js';
 import { SimulatorDriver } from '../dist/engines/selene/luxsync/drivers/SimulatorDriver.js';
@@ -104,13 +105,15 @@ class LuxSyncDemoApp {
     this.simulator = null;
     this.bridge = null;
     this.isRunning = false;
+    this.audioMode = 'microphone'; // 'microphone' or 'simulator'
+    this.dmxMode = 'simulator'; // 'simulator' or 'usb'
   }
   
   async initialize() {
     try {
       this.log('🚀 Initializing LuxSync Demo...', 'info');
       
-      // Create components
+      // Create components (default: microphone mode)
       this.audioAdapter = new AudioToMetricsAdapter();
       this.seleneCore = new SimplifiedSeleneCore();
       this.simulator = new SimulatorDriver({
@@ -142,6 +145,58 @@ class LuxSyncDemoApp {
     }
   }
   
+  async setAudioMode(mode) {
+    if (this.isRunning) {
+      this.log('⚠️ Detén el demo antes de cambiar el modo de audio', 'warning');
+      return;
+    }
+
+    this.audioMode = mode;
+
+    if (mode === 'microphone') {
+      this.audioAdapter = new AudioToMetricsAdapter();
+      this.log('🎤 Modo: Micrófono', 'info');
+    } else if (mode === 'simulator') {
+      this.audioAdapter = new AudioSimulatorAdapter(128);
+      this.log('🎵 Modo: Simulador de Audio (128 BPM)', 'info');
+    }
+
+    try {
+      await this.audioAdapter.initialize();
+      this.log('✅ Audio adapter inicializado', 'info');
+      this.updateStatus('audio', 'active', `${mode === 'microphone' ? 'Micrófono' : 'Simulador'} activo`);
+
+      // Recrear el bridge con el nuevo adapter
+      this.bridge = new SeleneLightBridge(
+        this.audioAdapter,
+        this.seleneCore,
+        this.simulator
+      );
+      this.log('🔗 Bridge recreado con nuevo audio adapter', 'info');
+    } catch (error) {
+      this.log(`❌ Error inicializando audio: ${error.message}`, 'error');
+      this.updateStatus('audio', 'inactive', 'Error de audio');
+    }
+  }
+
+  async setDMXMode(mode) {
+    if (this.isRunning) {
+      this.log('⚠️ Detén el demo antes de cambiar el modo DMX', 'warning');
+      return;
+    }
+
+    this.dmxMode = mode;
+
+    if (mode === 'usb') {
+      this.log('🔌 Modo USB DMX (Tornado) - Próximamente', 'warning');
+      alert('El modo USB DMX estará disponible pronto.\nNecesitamos el hardware Tornado USB+XLR conectado.');
+      // TODO: this.simulator = new TornadoUSBDriver();
+      // TODO: Recrear bridge con nuevo DMX driver
+    } else {
+      this.log('💻 Modo: Simulador Canvas', 'info');
+    }
+  }
+
   async initAudio() {
     try {
       this.log('🎤 Requesting microphone access...', 'info');
@@ -296,6 +351,16 @@ window.setEffect = (mode, speed, intensity) => {
 window.clearEffects = () => {
   if (!app) return;
   app.clearEffects();
+};
+
+window.setAudioMode = async (mode) => {
+  if (!app) return;
+  await app.setAudioMode(mode);
+};
+
+window.setDMXMode = async (mode) => {
+  if (!app) return;
+  await app.setDMXMode(mode);
 };
 
 // Initialize on page load

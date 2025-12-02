@@ -183,7 +183,18 @@ class SeleneConsciousnessLite {
       },
     };
 
-    console.log('🌙 Selene V15 inicializada - Human Touch + Deterministic Chaos');
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎭 V16: MOTOR DE MOVIMIENTO ABSTRACTO
+    // ═══════════════════════════════════════════════════════════════════════
+    // Coordenadas abstractas (-1 a +1) → DMX físico
+    // Patrones Lissajous, Perlin Noise, etc.
+    // ═══════════════════════════════════════════════════════════════════════
+    this.movementEngine = null;    // Se inicializa en initMovement()
+    this.physicsDriver = null;     // Se inicializa en initMovement()
+    this.lastFrameTime = Date.now();
+    this.movementEnabled = true;   // Flag para habilitar/deshabilitar
+
+    console.log('🌙 Selene V16 inicializada - Movement Engine + Deterministic Chaos');
   }
 
   /**
@@ -479,7 +490,150 @@ class SeleneConsciousnessLite {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌑 V13: SISTEMA DE BLACKOUTS Y SILENCIOS
+  // � V16: MOTOR DE MOVIMIENTO ABSTRACTO
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * 🎭 Inicializa los motores de movimiento
+   * Llamar después de que las clases estén disponibles (window.loaded)
+   */
+  initMovement() {
+    // Verificar que las clases están disponibles
+    if (typeof SeleneMovementEngine === 'undefined') {
+      console.warn('[Selene] SeleneMovementEngine no disponible. Movimiento deshabilitado.');
+      this.movementEnabled = false;
+      return this;
+    }
+    
+    if (typeof FixturePhysicsDriver === 'undefined') {
+      console.warn('[Selene] FixturePhysicsDriver no disponible. Movimiento deshabilitado.');
+      this.movementEnabled = false;
+      return this;
+    }
+    
+    // Crear motor de movimiento abstracto
+    this.movementEngine = new SeleneMovementEngine(this.personality);
+    
+    // Crear driver físico
+    this.physicsDriver = new FixturePhysicsDriver();
+    
+    // Registrar fixtures con configuración de TECHO (tu sala)
+    this.physicsDriver.registerFixture('moving_left', {
+      installationType: 'ceiling',
+      home: { pan: 127, tilt: 40 },      // Mirando a la pista
+      invert: { pan: false, tilt: true }, // Tilt invertido (colgado)
+      limits: { tiltMin: 20, tiltMax: 200 }, // Safety Box
+      mirror: false,
+    });
+    
+    this.physicsDriver.registerFixture('moving_right', {
+      installationType: 'ceiling',
+      home: { pan: 127, tilt: 40 },
+      invert: { pan: true, tilt: true },  // Pan también invertido (espejo)
+      limits: { tiltMin: 20, tiltMax: 200 },
+      mirror: true,  // Es espejo del izquierdo
+    });
+    
+    this.movementEnabled = true;
+    console.log('🎭 [Selene V16] Motor de movimiento inicializado - Ceiling mode');
+    
+    return this;
+  }
+
+  /**
+   * 🎭 Actualiza el movimiento basado en audio
+   * Llamar cada frame después de process()
+   * 
+   * @param {Object} audioData - { bass, mid, treble, beat, bpm }
+   * @returns {Object} - { moving_left: {pan, tilt}, moving_right: {pan, tilt} }
+   */
+  updateMovement(audioData) {
+    if (!this.movementEnabled || !this.movementEngine || !this.physicsDriver) {
+      return null;
+    }
+    
+    const now = Date.now();
+    const deltaTime = now - this.lastFrameTime;
+    this.lastFrameTime = now;
+    
+    // 1. Sugerir patrón basado en paleta activa
+    const suggestedPattern = this.movementEngine.suggestPatternFromMood(this.activePalette);
+    
+    // 2. Cambiar patrón en beats fuertes (transición natural)
+    if (audioData.beat && audioData.bass > 0.7) {
+      if (suggestedPattern !== this.movementEngine.activePattern) {
+        this.movementEngine.setPattern(suggestedPattern, 500); // Transición 500ms
+      }
+    }
+    
+    // 3. Ajustar velocidad con BPM
+    if (audioData.bpm > 0) {
+      this.movementEngine.setSpeed(audioData.bpm);
+    }
+    
+    // 4. Tick del motor (obtener posiciones abstractas)
+    const abstractPositions = this.movementEngine.tick(
+      audioData, 
+      deltaTime, 
+      ['moving_left', 'moving_right']
+    );
+    
+    // 5. Traducir a DMX físico
+    const physicalOutputs = {};
+    
+    abstractPositions.forEach(pos => {
+      const physical = this.physicsDriver.translate(pos, deltaTime);
+      physicalOutputs[pos.fixtureId] = {
+        pan: physical.panDMX,
+        tilt: physical.tiltDMX,
+        panFine: physical.panFine,
+        tiltFine: physical.tiltFine,
+      };
+    });
+    
+    return physicalOutputs;
+  }
+
+  /**
+   * 🎭 Cambiar patrón de movimiento manualmente
+   * @param {string} patternName - 'circle' | 'infinity' | 'sweep' | 'cloud' | 'waves' | 'static'
+   */
+  setMovementPattern(patternName) {
+    if (this.movementEngine) {
+      this.movementEngine.setPattern(patternName, 500);
+    }
+    return this;
+  }
+
+  /**
+   * 🎭 Disparar evento especial de movimiento
+   * @param {string} eventType - 'drop' | 'break' | 'rest'
+   * @param {Object} params - Parámetros del evento
+   */
+  triggerMovementEvent(eventType, params = {}) {
+    if (this.movementEngine) {
+      this.movementEngine.triggerEvent(eventType, params);
+    }
+    return this;
+  }
+
+  /**
+   * 🎭 Obtener info de debug del movimiento
+   */
+  getMovementDebugInfo() {
+    if (!this.movementEngine || !this.physicsDriver) {
+      return { enabled: false };
+    }
+    
+    return {
+      enabled: this.movementEnabled,
+      pattern: this.movementEngine.getCurrentPatternInfo(),
+      physics: this.physicsDriver.getDebugInfo(),
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // �🌑 V13: SISTEMA DE BLACKOUTS Y SILENCIOS
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -1485,5 +1639,13 @@ window.SeleneZoneController = SeleneZoneController;
 if (!window.selene) {
   window.selene = new SeleneConsciousnessLite();
   window.seleneZones = new SeleneZoneController(window.selene);
-  console.log('🌙✨ Selene lista para la fiesta! ✨🌙');
+  
+  // 🎭 V16: Inicializar motor de movimiento
+  // (Solo si las clases de movimiento están disponibles)
+  if (typeof SeleneMovementEngine !== 'undefined' && typeof FixturePhysicsDriver !== 'undefined') {
+    window.selene.initMovement();
+    console.log('�✨ Selene V16 con Motor de Movimiento! ✨🎭');
+  } else {
+    console.log('�🌙✨ Selene lista para la fiesta! (Sin motor de movimiento) ✨🌙');
+  }
 }

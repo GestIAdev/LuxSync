@@ -1071,8 +1071,9 @@ function updateSelenePanel(decision) {
  * - Moving LEFT = Melodía → Colores FRÍOS (verdes, cyans)
  * - Moving RIGHT = Melodía → Colores CÁLIDOS (rosas, violetas)
  * - Silencios = Fade out suave
+ * - 🎭 V16: Moving heads con patrones Lissajous (circle, infinity, sweep, etc)
  */
-function applySeleneDecision(decision) {
+function applySeleneDecision(decision, audioData = null) {
   if (!decision) return;
   
   const { color, intensity, zones } = decision;
@@ -1087,6 +1088,12 @@ function applySeleneDecision(decision) {
     'EFFECTS': 'effects',
   };
   
+  // 🎭 V16: Actualizar movimiento si está disponible
+  let movementOutput = null;
+  if (window.selene && window.selene.movementEnabled && audioData) {
+    movementOutput = window.selene.updateMovement(audioData);
+  }
+  
   state.fixtures.forEach((fixture) => {
     const fixtureZone = fixture.zone || 'FRONT_PARS';
     const seleneZone = ZONE_MAP[fixtureZone] || 'front';
@@ -1100,6 +1107,21 @@ function applySeleneDecision(decision) {
       // Fallback
       fixture.currentColor = { ...color };
       fixture.currentDimmer = intensity;
+    }
+    
+    // 🎭 V16: Aplicar movimiento a moving heads
+    if (movementOutput && fixture.type === 'moving_head') {
+      const movementId = fixtureZone === 'MOVING_LEFT' ? 'moving_left' : 
+                         fixtureZone === 'MOVING_RIGHT' ? 'moving_right' : null;
+      
+      if (movementId && movementOutput[movementId]) {
+        const movement = movementOutput[movementId];
+        fixture.pan = movement.pan;
+        fixture.tilt = movement.tilt;
+        // Fine channels si existen
+        if (fixture.panFine !== undefined) fixture.panFine = movement.panFine || 0;
+        if (fixture.tiltFine !== undefined) fixture.tiltFine = movement.tiltFine || 0;
+      }
     }
   });
 }
@@ -1362,8 +1384,14 @@ function renderLoop() {
     // Actualizar panel de Selene
     updateSelenePanel(seleneDecision);
     
-    // Aplicar colores de Selene a los fixtures
-    applySeleneDecision(seleneDecision);
+    // Aplicar colores de Selene a los fixtures (+ movimiento V16)
+    applySeleneDecision(seleneDecision, {
+      bass: audio.bass,
+      mid: audio.mid,
+      treble: audio.treble,
+      beat: audio.beat,
+      bpm: audio.bpm || state.calculatedBPM || 120,
+    });
     
     // Render y siguiente frame
     renderFixtures();

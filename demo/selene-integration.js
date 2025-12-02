@@ -52,70 +52,54 @@ class SeleneConsciousnessLite {
       energy: 0.5,               // Nivel de energía actual
     };
 
-    // 🎨 SELENE PALETTES - Paletas de color MANUALES
-    // El usuario elige la paleta según el mood de la fiesta
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎨 SELENE V14 - LIVING PALETTES
+    // ═══════════════════════════════════════════════════════════════════════
+    // Solo definimos la IDENTIDAD de cada paleta, no colores fijos.
+    // El color se calcula matemáticamente en tiempo real por getLivingColor()
+    // 
+    // Ventajas:
+    // - Los colores "respiran" con drift temporal (no son estáticos)
+    // - Cada zona (wash/spot) tiene su propio comportamiento
+    // - Los acentos aparecen naturalmente en momentos de alta energía
+    // - Menos código, más expresividad
+    // ═══════════════════════════════════════════════════════════════════════
     this.PALETTES = {
-      // 🔥 FUEGO: Latino, Reggaeton, Salsa - Colores CÁLIDOS
-      fuego: {
-        name: 'Fuego',
-        icon: '🔥',
-        front:  { base: { r: 255, g: 0, b: 0 },    accent: { r: 255, g: 80, b: 0 } },    // Rojo → Naranja
-        back:   { base: { r: 255, g: 150, b: 0 },  accent: { r: 255, g: 220, b: 0 } },   // Naranja → Amarillo
-        left:   { base: { r: 255, g: 50, b: 0 },   accent: { r: 255, g: 120, b: 0 } },   // Rojo-naranja
-        right:  { base: { r: 255, g: 0, b: 50 },   accent: { r: 255, g: 0, b: 120 } },   // Rojo-rosa
-        // 🎨 V13: Acentos extra para picos altos (solicitados por usuario)
-        peakAccents: [
-          { r: 148, g: 0, b: 211 },   // Violeta (en picos muy altos)
-          { r: 0, g: 200, b: 100 },   // Verde esmeralda (en melodías fuertes)
-        ],
-        // HSL ranges para gradientes continuos
-        hsl: { hueMin: 0, hueMax: 45, satMin: 80, satMax: 100, lightMin: 30, lightMax: 60 },
+      // 🔥 FUEGO: Latino, Reggaeton, Salsa - Cálido y apasionado
+      fuego: { 
+        name: 'Fuego Vivo', 
+        icon: '🔥', 
+        type: 'dynamic',
+        // Personalidad: De brasa oscura a llama dorada, con sorpresas violeta
       },
-      // ❄️ HIELO: Chill, Ambient, Downtempo - Colores FRÍOS
-      hielo: {
-        name: 'Hielo',
-        icon: '❄️',
-        front:  { base: { r: 0, g: 150, b: 255 },  accent: { r: 100, g: 200, b: 255 } }, // Azul cielo
-        back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 150, g: 255, b: 255 } }, // Cyan
-        left:   { base: { r: 50, g: 100, b: 200 }, accent: { r: 100, g: 150, b: 255 } }, // Azul profundo
-        right:  { base: { r: 200, g: 220, b: 255 },accent: { r: 255, g: 255, b: 255 } }, // Blanco azulado
-        // 🎨 V13: Acento violeta sutil
-        peakAccents: [
-          { r: 180, g: 150, b: 255 },  // Violeta pastel
-        ],
-        hsl: { hueMin: 180, hueMax: 220, satMin: 60, satMax: 90, lightMin: 40, lightMax: 80 },
-        minIntensity: 0.4,  // Hielo nunca baja de 40% (elegante, siempre presente)
+      
+      // ❄️ HIELO: Chill, Ambient, Downtempo - Elegante y etéreo
+      hielo: { 
+        name: 'Hielo Eterno', 
+        icon: '❄️', 
+        type: 'dynamic',
+        minIntensity: 0.25, // Hielo nunca es negro total (elegante)
+        // Personalidad: Abismo azul a blanco estroboscópico, auroras boreales
       },
-      // 🌿 SELVA: Tropical House, Reggae, Summer - Colores NATURALES
-      selva: {
-        name: 'Selva',
-        icon: '🌿',
-        front:  { base: { r: 0, g: 200, b: 100 },  accent: { r: 50, g: 255, b: 100 } },  // Verde lima
-        back:   { base: { r: 0, g: 150, b: 100 },  accent: { r: 0, g: 200, b: 150 } },   // Verde bosque
-        left:   { base: { r: 0, g: 255, b: 180 },  accent: { r: 100, g: 255, b: 200 } }, // Turquesa
-        right:  { base: { r: 180, g: 255, b: 0 },  accent: { r: 220, g: 255, b: 50 } },  // Lima brillante
-        // 🎨 V13: Acentos extra (solicitados: violeta + amarillo cálido)
-        peakAccents: [
-          { r: 148, g: 0, b: 211 },   // Violeta (en drops)
-          { r: 255, g: 200, b: 50 },  // Amarillo cálido (en percusión)
-        ],
-        hsl: { hueMin: 80, hueMax: 150, satMin: 70, satMax: 100, lightMin: 35, lightMax: 65 },
+      
+      // 🌿 SELVA: Tropical House, Reggae, Summer - Natural y colorido
+      selva: { 
+        name: 'Selva Neón', 
+        icon: '🌿', 
+        type: 'dynamic',
+        // Personalidad: Verde esmeralda con flores magenta/rosa en los spots
       },
-      // ⚡ NEÓN: Techno, Cyberpunk, EDM - Colores ELÉCTRICOS
-      neon: {
-        name: 'Neón',
-        icon: '⚡',
-        front:  { base: { r: 255, g: 0, b: 150 },  accent: { r: 255, g: 50, b: 200 } },  // Magenta
-        back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 100, g: 255, b: 255 } }, // Cyan neón
-        left:   { base: { r: 150, g: 0, b: 255 },  accent: { r: 200, g: 50, b: 255 } },  // Violeta
-        right:  { base: { r: 255, g: 255, b: 0 },  accent: { r: 255, g: 255, b: 100 } }, // Amarillo neón
-        peakAccents: [
-          { r: 255, g: 255, b: 255 }, // Blanco puro (strobes)
-        ],
-        hsl: { hueMin: 280, hueMax: 320, satMin: 90, satMax: 100, lightMin: 40, lightMax: 70 },
-        allowBlackout: true,  // Neón permite negro total (0%)
+      
+      // ⚡ NEÓN: Techno, Cyberpunk, EDM - Agresivo y binario
+      neon: { 
+        name: 'Cyberpunk', 
+        icon: '⚡', 
+        type: 'binary', // Neón no es gradual, es on/off con colores duros
+        allowBlackout: true,
+        // Personalidad: Pares de colores complementarios que rotan cada 30s
       },
-      // Legacy mappings (para compatibilidad)
+      
+      // Legacy redirects (compatibilidad)
       latino: { redirect: 'fuego' },
       electronica: { redirect: 'neon' },
       techno: { redirect: 'neon' },
@@ -310,8 +294,9 @@ class SeleneConsciousnessLite {
     const isSilence = totalEnergy < SILENCE_THRESHOLD;
     const isQuiet = totalEnergy < 0.25;
     
-    // 🎨 OBTENER PALETA ACTIVA
-    const palette = this.PALETTES[this.activePalette];
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎨 V14: LIVING PALETTES - Los colores se generan proceduralmente
+    // ═══════════════════════════════════════════════════════════════════════
     
     // === ZONA FRONT PARS: KICK/BASS ===
     let frontColor, frontIntensity;
@@ -319,137 +304,83 @@ class SeleneConsciousnessLite {
     if (bass < BASS_THRESHOLD) {
       frontColor = { r: 0, g: 0, b: 0 };
       frontIntensity = 0;
-    } else if (bass > 0.7) {
-      // KICK MUY fuerte: Color accent de la paleta
-      frontColor = { ...palette.front.accent };
-      frontIntensity = Math.round(200 + (bass - 0.7) * 183);
-    } else if (bass > 0.5) {
-      // KICK fuerte: Mezcla base-accent
-      const t = (bass - 0.5) / 0.2;
-      frontColor = this._lerpColor(palette.front.base, palette.front.accent, t);
-      frontIntensity = Math.round(120 + (bass - 0.5) * 400);
     } else {
-      // KICK suave: Color base tenue
-      const fadeIn = (bass - BASS_THRESHOLD) / (0.5 - BASS_THRESHOLD);
-      frontColor = { ...palette.front.base };
-      frontIntensity = Math.round(fadeIn * 120);
+      // 🎨 V14: Generar color procedural basado en intensidad del bass
+      const bassNormalized = Math.min(1, (bass - BASS_THRESHOLD) / (1 - BASS_THRESHOLD));
+      frontColor = this.getLivingColor(this.activePalette, bassNormalized, 'wash');
+      
+      if (bass > 0.7) {
+        // KICK MUY fuerte
+        frontIntensity = Math.round(200 + (bass - 0.7) * 183);
+      } else if (bass > 0.5) {
+        // KICK fuerte
+        frontIntensity = Math.round(120 + (bass - 0.5) * 400);
+      } else {
+        // KICK suave
+        const fadeIn = (bass - BASS_THRESHOLD) / (0.5 - BASS_THRESHOLD);
+        frontIntensity = Math.round(fadeIn * 120);
+      }
     }
     
     // === ZONA BACK PARS: SNARE/CLAPS (TREBLE-FOCUSED) ===
     // V13.2: Más treble (80%), menos mid (20%) para evitar capturar voces
-    // Las voces están en 200-2000Hz (mid), los snares/claps en 2k-8kHz (treble)
     let backColor, backIntensity;
-    const snareEnergy = (mid * 0.2 + treble * 0.8);  // Era 0.4/0.6
+    const snareEnergy = (mid * 0.2 + treble * 0.8);
     
-    // V13.2: También aplicar filtro de bass rumble a back pars
+    // V13.2: Filtro de bass rumble a back pars
     const backBassDominante = bass > 0.7 && treble < 0.15;
     
     if (snareEnergy < SNARE_THRESHOLD || backBassDominante) {
       backColor = { r: 0, g: 0, b: 0 };
       backIntensity = 0;
-    } else if (snareEnergy > 0.6) {
-      // Snare fuerte: Color accent
-      backColor = { ...palette.back.accent };
-      backIntensity = Math.round(200 + (snareEnergy - 0.6) * 137);
-    } else if (snareEnergy > 0.4) {
-      // Medio-alto: Mezcla
-      const t = (snareEnergy - 0.4) / 0.2;
-      backColor = this._lerpColor(palette.back.base, palette.back.accent, t);
-      backIntensity = Math.round(130 + (snareEnergy - 0.4) * 350);
     } else {
-      // Bajo: Base tenue
-      const fadeIn = (snareEnergy - SNARE_THRESHOLD) / (0.4 - SNARE_THRESHOLD);
-      backColor = { ...palette.back.base };
-      backIntensity = Math.round(fadeIn * 130);
+      // 🎨 V14: Generar color procedural basado en snare energy
+      const snareNormalized = Math.min(1, (snareEnergy - SNARE_THRESHOLD) / (1 - SNARE_THRESHOLD));
+      backColor = this.getLivingColor(this.activePalette, snareNormalized, 'wash');
+      
+      if (snareEnergy > 0.6) {
+        backIntensity = Math.round(200 + (snareEnergy - 0.6) * 137);
+      } else if (snareEnergy > 0.4) {
+        backIntensity = Math.round(130 + (snareEnergy - 0.4) * 350);
+      } else {
+        const fadeIn = (snareEnergy - SNARE_THRESHOLD) / (0.4 - SNARE_THRESHOLD);
+        backIntensity = Math.round(fadeIn * 130);
+      }
     }
     
     // === ZONA MOVING HEADS: MELODÍA ===
-    // LEFT = Colores de paleta.left (fríos)
-    // RIGHT = Colores de paleta.right (cálidos)
-    // 🎯 V13: Los móviles ignoran shakers (ruido constante bajo)
+    // 🎨 V14: Los spots usan getLivingColor con zoneType='spot'
+    // Esto les da comportamientos únicos (flores en selva, violeta en fuego, etc.)
     
     const melodyEnergy = mid + treble;
     const isMelodySilence = melodyEnergy < MELODY_THRESHOLD;
     
-    // 🎯 V13.2: Consultar si los móviles deben responder (ahora también filtra bass rumble)
+    // 🎯 V13.2: Consultar si los móviles deben responder
     const movingResponse = this.shouldMovingHeadsRespond(mid, treble, bass);
-    
-    // Calcular ratio para determinar intensidad del interpolar
-    const midRatio = mid / Math.max(0.01, melodyEnergy);
-    const trebleRatio = treble / Math.max(0.01, melodyEnergy);
     
     let leftColor, rightColor, movingIntensity;
     
-    // 🎯 V13: Si el sistema dice que no respondan (shakers), apagar
     if (isMelodySilence || !movingResponse.respond) {
       leftColor = { r: 0, g: 0, b: 0 };
       rightColor = { r: 0, g: 0, b: 0 };
       movingIntensity = 0;
     } else {
-      // Interpolación basada en energía melódica
-      const t = Math.min(1, melodyEnergy / 1.5); // 0-1 normalizado
+      // 🎨 V14: Los spots obtienen colores especiales (flores, violetas, etc.)
+      const melodyNormalized = Math.min(1, melodyEnergy / 1.5);
       
-      // LEFT: Colores fríos de la paleta
-      leftColor = this._lerpColor(palette.left.base, palette.left.accent, t);
+      // LEFT y RIGHT usan el mismo motor pero con ligera variación temporal
+      leftColor = this.getLivingColor(this.activePalette, melodyNormalized, 'spot');
       
-      // RIGHT: Colores cálidos de la paleta
-      rightColor = this._lerpColor(palette.right.base, palette.right.accent, t);
+      // Para RIGHT, añadimos un pequeño offset temporal para que no sean idénticos
+      const rightIntensity = Math.min(1, melodyNormalized * 1.1);
+      rightColor = this.getLivingColor(this.activePalette, rightIntensity, 'spot');
       
-      // 🎯 V13.1: Intensidad AUMENTADA - base más alto, más reactivo
-      // Era: 60 + intensity * 195 (max 255)
-      // Ahora: 100 + intensity * 200 (más presencia base, mismo techo)
+      // Intensidad aumentada V13.1
       movingIntensity = Math.round(100 + movingResponse.intensity * 200);
       
-      // 🎯 V13.1: Si es un PICO real, boost extra del 30%
+      // Boost en picos
       if (movingResponse.reason === 'pico') {
         movingIntensity = Math.min(255, Math.round(movingIntensity * 1.3));
-      }
-    }
-    
-    // === APLICAR SATURACIÓN EXTRA SEGÚN RATIO ===
-    // Más MID = más saturado LEFT, Más TREBLE = más saturado RIGHT
-    if (!isMelodySilence) {
-      if (midRatio > 0.55) {
-        // Boost LEFT
-        leftColor.g = Math.min(255, Math.round(leftColor.g * 1.2));
-      } else if (trebleRatio > 0.55) {
-        // Boost RIGHT
-        rightColor.r = Math.min(255, Math.round(rightColor.r * 1.1));
-        rightColor.b = Math.min(255, Math.round(rightColor.b * 1.2));
-      }
-    }
-    
-    // === 🎨 V13.1: APLICAR ACENTOS DE COLOR EN MOMENTOS INTENSOS ===
-    const totalEnergyForAccents = bass + mid + treble;
-    const shouldShowAccent = totalEnergyForAccents > 1.2 || (beat && totalEnergyForAccents > 0.9);
-    
-    if (shouldShowAccent && palette.peakAccents && palette.peakAccents.length > 0) {
-      // Elegir un acento aleatorio
-      const accentIndex = Math.floor(Math.random() * palette.peakAccents.length);
-      const accent = palette.peakAccents[accentIndex];
-      
-      // 🎨 Aplicar acento al color del BACK (cegadoras) - 80% acento!
-      if (backIntensity > 150) {
-        backColor = {
-          r: Math.round(backColor.r * 0.2 + accent.r * 0.8),
-          g: Math.round(backColor.g * 0.2 + accent.g * 0.8),
-          b: Math.round(backColor.b * 0.2 + accent.b * 0.8),
-        };
-      }
-      
-      // 🎨 Aplicar acento a móviles en picos - 60% acento
-      if (movingResponse.reason === 'pico' && Math.random() > 0.4) {
-        const accentMix = 0.6;
-        leftColor = {
-          r: Math.round(leftColor.r * (1-accentMix) + accent.r * accentMix),
-          g: Math.round(leftColor.g * (1-accentMix) + accent.g * accentMix),
-          b: Math.round(leftColor.b * (1-accentMix) + accent.b * accentMix),
-        };
-        rightColor = {
-          r: Math.round(rightColor.r * (1-accentMix) + accent.r * accentMix),
-          g: Math.round(rightColor.g * (1-accentMix) + accent.g * accentMix),
-          b: Math.round(rightColor.b * (1-accentMix) + accent.b * accentMix),
-        };
       }
     }
     
@@ -950,114 +881,206 @@ class SeleneConsciousnessLite {
     };
   }
 
-  /**
-   * 🎨 Obtiene colores de la paleta activa mezclados con intensidad
-   */
-  getPaletteColors(zone, intensity) {
-    let palette = this.PALETTES[this.activePalette];
-    
-    // Manejar redirects (legacy palettes)
-    if (palette && palette.redirect) {
-      palette = this.PALETTES[palette.redirect];
-    }
-    
-    if (!palette) {
-      palette = this.PALETTES['fuego']; // Fallback
-    }
-    
-    const zoneColors = palette[zone];
-    
-    if (!zoneColors) return { r: 0, g: 0, b: 0 };
-    
-    // Interpolar entre base y accent según intensidad
-    const t = intensity / 255;
-    return {
-      r: Math.round(zoneColors.base.r + (zoneColors.accent.r - zoneColors.base.r) * t),
-      g: Math.round(zoneColors.base.g + (zoneColors.accent.g - zoneColors.base.g) * t),
-      b: Math.round(zoneColors.base.b + (zoneColors.accent.b - zoneColors.base.b) * t),
-    };
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎨 SELENE V14 - LIVING PALETTES - MOTOR DE COLOR PROCEDURAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  // En lugar de arrays estáticos de RGB, generamos colores matemáticamente.
+  // El color "respira" con el tiempo (timeDrift) y reacciona a la música.
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * � V13: GRADIENTES CONTINUOS HSL
+   * 🎨 V14: MOTOR LIVING PALETTES
    * 
-   * Genera colores usando interpolación HSL para mayor variedad visual.
-   * Incluye acentos de color en picos altos (violeta, verde, amarillo según paleta)
+   * Genera colores proceduralmente usando HSL.
+   * El color evoluciona con el tiempo (no es estático) y reacciona a la música.
    * 
-   * @param {string} zone - Zona del fixture (front, back, left, right)
-   * @param {number} intensity - Intensidad 0-255
-   * @param {number} bass - Nivel de bass 0-1
-   * @param {number} mid - Nivel de mid 0-1
-   * @param {number} treble - Nivel de treble 0-1
-   * @param {boolean} isPeak - Si es un pico de energía
-   * @returns {Object} - { r, g, b }
+   * @param {string} paletteName - Nombre de la paleta (fuego, hielo, selva, neon)
+   * @param {number} intensity - Intensidad normalizada 0-1
+   * @param {string} zoneType - 'wash' (pars, amplios) o 'spot' (moving heads, focalizados)
+   * @returns {Object} - { r, g, b } (0-255)
    */
-  getGradientColor(zone, intensity, bass, mid, treble, isPeak = false) {
-    let palette = this.PALETTES[this.activePalette];
+  getLivingColor(paletteName, intensity, zoneType = 'wash') {
+    // 🕐 TIME DRIFT: El color "respira" cada ~15 segundos
+    // Esto evita que 2 horas de sesión sean visualmente aburridas
+    const timeDrift = (Date.now() / 15000) % 1; // 0-1 cada 15s
+    
+    // Resolver redirects
+    let palette = this.PALETTES[paletteName];
     if (palette && palette.redirect) {
-      palette = this.PALETTES[palette.redirect];
+      paletteName = palette.redirect;
+      palette = this.PALETTES[paletteName];
     }
-    if (!palette) palette = this.PALETTES['fuego'];
+    if (!palette) paletteName = 'fuego';
     
-    const hsl = palette.hsl;
-    const t = intensity / 255; // 0-1 normalizado
+    // Variables HSL base
+    let h = 0, s = 100, l = 50;
     
-    // === GRADIENTE HSL BASE ===
-    // Hue varía según la intensidad dentro del rango de la paleta
-    let hue = hsl.hueMin + (hsl.hueMax - hsl.hueMin) * t;
-    
-    // Saturación: más intensa con más energía
-    let saturation = hsl.satMin + (hsl.satMax - hsl.satMin) * t;
-    
-    // Luminosidad: más brillante con más intensidad
-    let lightness = hsl.lightMin + (hsl.lightMax - hsl.lightMin) * t;
-    
-    // === 🎨 V13.1: ACENTOS MÁS VISIBLES ===
-    if (palette.peakAccents && palette.peakAccents.length > 0) {
-      const totalEnergy = bass + mid + treble;
-      
-      // V13.1: Umbral MÁS BAJO para que los acentos aparezcan más
-      // Era: totalEnergy > 2.0 (casi imposible)
-      // Ahora: totalEnergy > 1.2 (frecuente en momentos intensos)
-      if (totalEnergy > 1.2 || (isPeak && totalEnergy > 0.8)) {
-        const accentIndex = Math.floor(Math.random() * palette.peakAccents.length);
-        const accent = palette.peakAccents[accentIndex];
+    switch (paletteName) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔥 FUEGO: Brasa oscura → Llama dorada → Sorpresas violeta
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'fuego': {
+        // Hue base: 0 (rojo) → 45 (amarillo dorado)
+        // Con drift temporal: ±10° de variación orgánica
+        h = 15 + (intensity * 30) + (timeDrift * 10);
         
-        // 🎨 V13.1: MEZCLA 70% ACENTO (era 30%) - ¡Que se VEA!
-        const baseColor = this.hslToRgb(hue / 360, saturation / 100, lightness / 100);
-        return {
-          r: Math.round(baseColor.r * 0.3 + accent.r * 0.7),
-          g: Math.round(baseColor.g * 0.3 + accent.g * 0.7),
-          b: Math.round(baseColor.b * 0.3 + accent.b * 0.7),
-        };
+        // Saturación: siempre alta para colores vivos
+        s = 85 + (intensity * 15);
+        
+        // Luminosidad: 
+        // - intensity 0 → L=25 (brasa oscura, casi apagada)
+        // - intensity 1 → L=60 (llama brillante)
+        l = 25 + (intensity * 35);
+        
+        // 🎨 SORPRESA VIOLETA: en momentos de alta energía
+        // Los spots (moving heads) en picos muy altos muestran violeta
+        if (zoneType === 'spot' && intensity > 0.8) {
+          // 20% de probabilidad de violeta en picos extremos
+          if (Math.random() > 0.8) {
+            h = 280; // Violeta
+            s = 90;
+            l = 45;
+          }
+        }
+        break;
       }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // ❄️ HIELO: Abismo azul → Blanco estroboscópico → Auroras boreales
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'hielo': {
+        // Mínimo de intensidad (hielo nunca es negro total, es elegante)
+        const minIntensity = this.PALETTES.hielo?.minIntensity || 0.25;
+        intensity = Math.max(intensity, minIntensity);
+        
+        // Hue base: 200 (azul frío) → varía hasta 220 (azul-violeta)
+        // Con drift: simula auroras boreales
+        h = 200 + (timeDrift * 20) + (intensity * 10);
+        
+        // Saturación: 
+        // - Baja intensidad → saturado (azul profundo)
+        // - Alta intensidad → desaturado (blanco estroboscópico)
+        s = 80 - (intensity * 30);
+        
+        // Luminosidad: elegante, nunca muy oscuro
+        // - intensity 0.25 → L=40 (azul profundo pero visible)
+        // - intensity 1 → L=85 (casi blanco)
+        l = 40 + (intensity * 45);
+        
+        // 🎨 AURORA: en washes con energía alta
+        if (zoneType === 'wash' && intensity > 0.6 && timeDrift > 0.7) {
+          // Shift hacia verde-cyan (aurora boreal)
+          h = 170 + (Math.random() * 20);
+          s = 70;
+        }
+        break;
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌿 SELVA: Verde esmeralda → Flores magenta/rosa en spots
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'selva': {
+        // Hue base: 120 (verde puro) → 140 (turquesa)
+        h = 120 + (timeDrift * 20) + (intensity * 10);
+        
+        // Saturación: siempre tropical y vibrante
+        s = 75 + (intensity * 25);
+        
+        // Luminosidad: 
+        // - intensity 0 → L=30 (selva oscura)
+        // - intensity 1 → L=55 (verde neón)
+        l = 30 + (intensity * 25);
+        
+        // 🎨 FLORES: los spots muestran magenta/rosa en momentos altos
+        // Esto representa las flores tropicales brillantes
+        if (zoneType === 'spot' && intensity > 0.5) {
+          // 40% probabilidad de flor magenta
+          if (Math.random() > 0.6) {
+            h = 320 + (Math.random() * 30); // Magenta a rosa
+            s = 90;
+            l = 50;
+          }
+        }
+        break;
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // ⚡ NEÓN: Binario (on/off), colores duros, pares complementarios
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'neon': {
+        // Neón es BINARIO: no hay gradientes suaves
+        // Si intensity < 0.3, es negro total (techno/EDM permite blackouts)
+        if (intensity < 0.3) {
+          return { r: 0, g: 0, b: 0 };
+        }
+        
+        // Pares de colores complementarios que ROTAN cada ~30 segundos
+        const pairCycle = Math.floor(Date.now() / 30000) % 3;
+        
+        // El zoneType determina cuál color del par usar
+        const isSecondary = (zoneType === 'spot');
+        
+        switch (pairCycle) {
+          case 0: // MAGENTA ↔ CYAN
+            h = isSecondary ? 180 : 310;
+            break;
+          case 1: // VIOLETA ↔ AMARILLO
+            h = isSecondary ? 60 : 280;
+            break;
+          case 2: // AZUL ELÉCTRICO ↔ NARANJA
+            h = isSecondary ? 30 : 220;
+            break;
+        }
+        
+        // Neón: SIEMPRE saturación máxima, luminosidad media-alta
+        s = 100;
+        l = 50 + (intensity * 15);
+        break;
+      }
+      
+      default:
+        // Fallback a fuego
+        h = 20;
+        s = 90;
+        l = 40 + (intensity * 20);
     }
     
-    // === VARIACIÓN POR FRECUENCIA DOMINANTE ===
-    // Ajustar ligeramente el hue según qué frecuencia domina
-    const total = bass + mid + treble;
-    if (total > 0.3) {
-      const bassRatio = bass / total;
-      const trebleRatio = treble / total;
-      
-      // Bass dominante: shift hacia rojo/cálido
-      if (bassRatio > 0.5) {
-        hue = Math.max(hsl.hueMin, hue - 10);
-        saturation = Math.min(100, saturation + 5);
-      }
-      // Treble dominante: shift hacia el extremo frío de la paleta
-      else if (trebleRatio > 0.5) {
-        hue = Math.min(hsl.hueMax, hue + 10);
-        lightness = Math.min(80, lightness + 10);
-      }
-    }
+    // Clamp valores HSL
+    h = h % 360;
+    s = Math.max(0, Math.min(100, s));
+    l = Math.max(0, Math.min(100, l));
     
     // Convertir HSL a RGB
-    return this.hslToRgb(hue / 360, saturation / 100, lightness / 100);
+    return this.hslToRgb(h / 360, s / 100, l / 100);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 MÉTODOS LEGACY (compatibilidad temporal)
+  // Estos métodos llaman al nuevo getLivingColor() para compatibilidad
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * @deprecated Use getLivingColor() instead
+   */
+  getPaletteColors(zone, intensity) {
+    const normalizedIntensity = intensity / 255;
+    const zoneType = (zone === 'front' || zone === 'back') ? 'wash' : 'spot';
+    return this.getLivingColor(this.activePalette, normalizedIntensity, zoneType);
   }
 
   /**
-   * �🎨 Cambia la paleta manualmente
+   * @deprecated Use getLivingColor() instead - wraps getLivingColor for compatibility
+   */
+  getGradientColor(zone, intensity, bass, mid, treble, isPeak = false) {
+    const normalizedIntensity = intensity / 255;
+    const zoneType = (zone === 'front' || zone === 'back') ? 'wash' : 'spot';
+    // isPeak aumenta ligeramente la intensidad para acentos
+    const adjustedIntensity = isPeak ? Math.min(1, normalizedIntensity * 1.2) : normalizedIntensity;
+    return this.getLivingColor(this.activePalette, adjustedIntensity, zoneType);
+  }
+
+  /**
+   * 🎨 Cambia la paleta manualmente
    */
   setPalette(paletteName) {
     if (this.PALETTES[paletteName]) {

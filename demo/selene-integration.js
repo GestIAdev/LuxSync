@@ -335,12 +335,16 @@ class SeleneConsciousnessLite {
       frontIntensity = Math.round(fadeIn * 120);
     }
     
-    // === ZONA BACK PARS: SNARE/CLAPS (MID-HIGH) ===
-    // Usa colores de paleta.back
+    // === ZONA BACK PARS: SNARE/CLAPS (TREBLE-FOCUSED) ===
+    // V13.2: Más treble (80%), menos mid (20%) para evitar capturar voces
+    // Las voces están en 200-2000Hz (mid), los snares/claps en 2k-8kHz (treble)
     let backColor, backIntensity;
-    const snareEnergy = (mid * 0.4 + treble * 0.6);
+    const snareEnergy = (mid * 0.2 + treble * 0.8);  // Era 0.4/0.6
     
-    if (snareEnergy < SNARE_THRESHOLD) {
+    // V13.2: También aplicar filtro de bass rumble a back pars
+    const backBassDominante = bass > 0.7 && treble < 0.15;
+    
+    if (snareEnergy < SNARE_THRESHOLD || backBassDominante) {
       backColor = { r: 0, g: 0, b: 0 };
       backIntensity = 0;
     } else if (snareEnergy > 0.6) {
@@ -367,8 +371,8 @@ class SeleneConsciousnessLite {
     const melodyEnergy = mid + treble;
     const isMelodySilence = melodyEnergy < MELODY_THRESHOLD;
     
-    // 🎯 V13: Consultar si los móviles deben responder (filtra shakers)
-    const movingResponse = this.shouldMovingHeadsRespond(mid, treble);
+    // 🎯 V13.2: Consultar si los móviles deben responder (ahora también filtra bass rumble)
+    const movingResponse = this.shouldMovingHeadsRespond(mid, treble, bass);
     
     // Calcular ratio para determinar intensidad del interpolar
     const midRatio = mid / Math.max(0.01, melodyEnergy);
@@ -622,13 +626,27 @@ class SeleneConsciousnessLite {
   /**
    * 🎯 Detecta si los móviles deberían responder (filtra shakers)
    * Los móviles responden a PICOS (melodía), no a ruido constante
+   * 
+   * V13.2: También filtra "retumbar de bass" - cuando bass domina y mid es solo reverb
    */
-  shouldMovingHeadsRespond(mid, treble) {
+  shouldMovingHeadsRespond(mid, treble, bass = 0) {
     const ss = this.silenceSystem;
     const melodyEnergy = (mid + treble) / 2;
     
     // Si estamos en blackout o fade, no responder
     if (ss.modo === 'BLACKOUT') return { respond: false, intensity: 0 };
+    
+    // === 🎯 V13.2: FILTRO DE RETUMBAR DE BASS ===
+    // Si bass > 0.6 Y treble < 0.20 → El mid es solo reverb del bass, NO melodía
+    // Típico de drops de electrónica: bass=0.85, mid=0.55, treble=0.10
+    const bassRatio = bass / Math.max(0.01, bass + mid + treble);
+    const trebleMuyBajo = treble < 0.20;
+    const bassDominante = bass > 0.6 && bassRatio > 0.45;
+    
+    if (bassDominante && trebleMuyBajo) {
+      // El "mid" es solo la reverb del subgrave, no hay melodía real
+      return { respond: false, intensity: 0, reason: 'bass_rumble' };
+    }
     
     // Calcular promedio reciente de melodía
     const promedioReciente = ss.historialNivel.length > 0 
@@ -639,7 +657,8 @@ class SeleneConsciousnessLite {
     const esPicoMelodia = diferencia > 0.15;
     
     // Si es ruido constante bajo (shakers), no responder
-    if (melodyEnergy < 0.25 && Math.abs(diferencia) < 0.08) {
+    // V13.2: Subir umbral de 0.25 a 0.35
+    if (melodyEnergy < 0.35 && Math.abs(diferencia) < 0.08) {
       return { respond: false, intensity: 0, reason: 'shakers' };
     }
     
@@ -649,8 +668,9 @@ class SeleneConsciousnessLite {
     }
     
     // Respuesta normal basada en energía
+    // V13.2: Subir umbral de respuesta de 0.20 a 0.30
     return { 
-      respond: melodyEnergy > 0.2, 
+      respond: melodyEnergy > 0.30, 
       intensity: melodyEnergy * ss.intensidadMultiplier,
       reason: 'normal'
     };

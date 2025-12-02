@@ -161,7 +161,29 @@ class SeleneConsciousnessLite {
       intensidadMultiplier: 1.0, // 0.0 - 1.0
     };
 
-    console.log('🌙 Selene V13 inicializada - Blackouts Inteligentes + Paletas (🔥❄️🌿⚡)');
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔀 V15: MOTOR DE ENTROPÍA DETERMINISTA
+    // ═══════════════════════════════════════════════════════════════════════
+    // Selene NO usa Math.random(). Selene REACCIONA al estado del sistema.
+    // La "aleatoriedad" viene de fuentes deterministas:
+    // - Date.now() decimales para drift temporal
+    // - Audio energy decimales como semilla de ruido
+    // - Fibonacci patterns para selección de colores
+    // 
+    // AXIOMA: Mismo tiempo + mismo audio = mismo resultado (reproducible)
+    // ═══════════════════════════════════════════════════════════════════════
+    this.entropyState = {
+      lastEnergy: 0,             // Última energía total para semilla
+      lastSpectralCentroid: 0.5, // Centroid espectral simulado
+      timeSeed: 0,               // Semilla temporal actualizada cada frame
+      audioSeed: 0,              // Semilla basada en audio
+      hysteresis: {              // Estado para transiciones suaves
+        selvaRosa: false,        // ¿Estamos en modo rosa en selva?
+        lastPalette: 'fuego',    // Última paleta para transiciones
+      },
+    };
+
+    console.log('🌙 Selene V15 inicializada - Human Touch + Deterministic Chaos');
   }
 
   /**
@@ -295,7 +317,11 @@ class SeleneConsciousnessLite {
     const isQuiet = totalEnergy < 0.25;
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎨 V14: LIVING PALETTES - Los colores se generan proceduralmente
+    // 🎨 V15: HUMAN TOUCH & DETERMINISTIC CHAOS
+    // - Living Palettes (V14) + Lateralidad + Depth
+    // - getSystemEntropy() en lugar de Math.random()
+    // - RIGHT: +30° hue offset (asimetría artística)
+    // - BACK: -15° hue offset (profundidad visual)
     // ═══════════════════════════════════════════════════════════════════════
     
     // === ZONA FRONT PARS: KICK/BASS ===
@@ -305,9 +331,9 @@ class SeleneConsciousnessLite {
       frontColor = { r: 0, g: 0, b: 0 };
       frontIntensity = 0;
     } else {
-      // 🎨 V14: Generar color procedural basado en intensidad del bass
+      // 🎨 V15: Generar color procedural + lateralidad (front = sin offset)
       const bassNormalized = Math.min(1, (bass - BASS_THRESHOLD) / (1 - BASS_THRESHOLD));
-      frontColor = this.getLivingColor(this.activePalette, bassNormalized, 'wash');
+      frontColor = this.getLivingColor(this.activePalette, bassNormalized, 'wash', 'front');
       
       if (bass > 0.7) {
         // KICK MUY fuerte
@@ -334,9 +360,9 @@ class SeleneConsciousnessLite {
       backColor = { r: 0, g: 0, b: 0 };
       backIntensity = 0;
     } else {
-      // 🎨 V14: Generar color procedural basado en snare energy
+      // 🎨 V15: Generar color procedural + depth (back = -15° offset para profundidad)
       const snareNormalized = Math.min(1, (snareEnergy - SNARE_THRESHOLD) / (1 - SNARE_THRESHOLD));
-      backColor = this.getLivingColor(this.activePalette, snareNormalized, 'wash');
+      backColor = this.getLivingColor(this.activePalette, snareNormalized, 'wash', 'back');
       
       if (snareEnergy > 0.6) {
         backIntensity = Math.round(200 + (snareEnergy - 0.6) * 137);
@@ -365,15 +391,16 @@ class SeleneConsciousnessLite {
       rightColor = { r: 0, g: 0, b: 0 };
       movingIntensity = 0;
     } else {
-      // 🎨 V14: Los spots obtienen colores especiales (flores, violetas, etc.)
+      // 🎨 V15: Los spots obtienen colores especiales + LATERALIDAD
+      // LEFT = sin offset, RIGHT = +30° (asimetría artística)
       const melodyNormalized = Math.min(1, melodyEnergy / 1.5);
       
-      // LEFT y RIGHT usan el mismo motor pero con ligera variación temporal
-      leftColor = this.getLivingColor(this.activePalette, melodyNormalized, 'spot');
+      // LEFT: colores puros de paleta
+      leftColor = this.getLivingColor(this.activePalette, melodyNormalized, 'spot', 'left');
       
-      // Para RIGHT, añadimos un pequeño offset temporal para que no sean idénticos
+      // RIGHT: +30° hue offset escalado por creatividad (asimetría determinista)
       const rightIntensity = Math.min(1, melodyNormalized * 1.1);
-      rightColor = this.getLivingColor(this.activePalette, rightIntensity, 'spot');
+      rightColor = this.getLivingColor(this.activePalette, rightIntensity, 'spot', 'right');
       
       // Intensidad aumentada V13.1
       movingIntensity = Math.round(100 + movingResponse.intensity * 200);
@@ -855,54 +882,93 @@ class SeleneConsciousnessLite {
     };
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔀 V15: MOTOR DE ENTROPÍA DETERMINISTA
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Selene NO usa Math.random(). Selene REACCIONA al estado del sistema.
+  // ═══════════════════════════════════════════════════════════════════════════
+
   /**
-   * 🎨 SELENE DECIDE: Devuelve la paleta activa (MANUAL)
+   * 🔀 V15: Genera valor pseudo-caótico (0-1) basado en el estado actual.
    * 
-   * ═══════════════════════════════════════════════════════════════════════
-   * V12.0 "Paletas Manuales" - El DJ elige, Selene ejecuta
-   * ═══════════════════════════════════════════════════════════════════════
+   * DETERMINISTA: Mismo tiempo + mismo audio = mismo "caos".
+   * Inspirado en fibonacci-pattern-engine.ts del core de Selene.
    * 
-   * Después de 11 versiones de autodetección fallida, la solución simple:
-   * - El usuario elige la paleta con los 4 botones (🔥❄️🌿⚡)
-   * - Selene aplica los colores según la intensidad del audio
-   * 
-   * RIP V1-V11: BPM, Varianza, Sustain, WarmthRatio... ninguno funcionó.
-   * A veces la solución más simple es la mejor. 🎯
-   * ═══════════════════════════════════════════════════════════════════════
+   * @param {number} seedOffset - Offset para generar diferentes valores en la misma llamada
+   * @returns {number} - Valor 0-1 determinista basado en estado del sistema
    */
-  detectPalette(bass, mid, treble, mood, beat, bpm = 0, bpmConfidence = 0) {
-    // V12: Simplemente devolver la paleta manual activa
-    // No hay magia, no hay autodetección, solo lo que el usuario eligió
+  getSystemEntropy(seedOffset = 0) {
+    const time = Date.now();
     
-    return {
-      palette: this.activePalette,
-      confidence: 1.0,  // Siempre 100% seguro - el usuario eligió
-      manual: true,
-    };
+    // Usar los decimales del audio como semilla de ruido
+    const audioNoise = (this.personality.energy * 1000) % 1;
+    
+    // Combinar tiempo + audio + offset para entropía determinista
+    // Fórmula inspirada en deterministicNoise() de shared/deterministic-utils.ts
+    const combinedSeed = time * 0.001 + audioNoise * 100 + seedOffset * 7.3;
+    
+    // Función de hash determinista (sin Math.random)
+    const entropy = (Math.sin(combinedSeed) + Math.cos(combinedSeed * 0.7) + 2) / 4;
+    
+    // Actualizar estado de entropía
+    this.entropyState.timeSeed = (time % 100000) / 100000;
+    this.entropyState.audioSeed = audioNoise;
+    
+    return Math.max(0, Math.min(1, entropy)); // Clamp 0-1
+  }
+
+  /**
+   * 🔀 V15: Genera valor determinista con semilla específica
+   * 
+   * Útil para selecciones que deben ser consistentes dentro del mismo frame.
+   * Inspirado en seededRandom() de MusicalConsensusRecorder.ts
+   * 
+   * @param {number} seed - Semilla numérica
+   * @returns {number} - Valor 0-1 determinista
+   */
+  seededDeterministic(seed) {
+    // Linear Congruential Generator (LCG) - igual que deterministic-utils.ts
+    const a = 1664525;
+    const c = 1013904223;
+    const m = 4294967296; // 2^32
+    
+    const state = (a * Math.abs(seed) + c) % m;
+    return state / m;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 SELENE V14 - LIVING PALETTES - MOTOR DE COLOR PROCEDURAL
+  // 🎨 SELENE V15 - LIVING PALETTES - MOTOR DE COLOR PROCEDURAL
   // ═══════════════════════════════════════════════════════════════════════════
   // En lugar de arrays estáticos de RGB, generamos colores matemáticamente.
   // El color "respira" con el tiempo (timeDrift) y reacciona a la música.
+  // 
+  // V15 CAMBIOS:
+  // - Añadido parámetro 'side' para lateralidad (rompe simetría)
+  // - Eliminado Math.random() → getSystemEntropy()
+  // - Hysteresis para transiciones suaves (selva rosa)
+  // - Offset cromático para profundidad 3D
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * 🎨 V14: MOTOR LIVING PALETTES
+   * 🎨 V15: MOTOR LIVING PALETTES CON LATERALIDAD
    * 
    * Genera colores proceduralmente usando HSL.
    * El color evoluciona con el tiempo (no es estático) y reacciona a la música.
    * 
    * @param {string} paletteName - Nombre de la paleta (fuego, hielo, selva, neon)
    * @param {number} intensity - Intensidad normalizada 0-1
-   * @param {string} zoneType - 'wash' (pars, amplios) o 'spot' (moving heads, focalizados)
+   * @param {string} zoneType - 'wash' (pars) o 'spot' (moving heads)
+   * @param {string} side - 'left' | 'right' | 'front' | 'back' (V15: lateralidad)
    * @returns {Object} - { r, g, b } (0-255)
    */
-  getLivingColor(paletteName, intensity, zoneType = 'wash') {
-    // 🕐 TIME DRIFT: El color "respira" cada ~15 segundos
-    // Esto evita que 2 horas de sesión sean visualmente aburridas
-    const timeDrift = (Date.now() / 15000) % 1; // 0-1 cada 15s
+  getLivingColor(paletteName, intensity, zoneType = 'wash', side = 'left') {
+    // 🎨 V15: Multiplicador de creatividad afecta varianza
+    const creativityBoost = 0.5 + (this.personality.creativity * 0.5); // 0.5-1.0
+    
+    // 🕐 TIME DRIFT: El color "respira" - velocidad afectada por creativity
+    // Creatividad alta = drift más rápido (más cambio)
+    const driftSpeed = 15000 / creativityBoost; // 15s base, 10s con creativity=1
+    const timeDrift = (Date.now() / driftSpeed) % 1; // 0-1
     
     // Resolver redirects
     let palette = this.PALETTES[paletteName];
@@ -915,29 +981,43 @@ class SeleneConsciousnessLite {
     // Variables HSL base
     let h = 0, s = 100, l = 50;
     
+    // 🔀 V15: Semilla determinista para este frame+zona
+    const frameSeed = Date.now() + intensity * 1000 + (side === 'right' ? 500 : 0);
+    const entropy = this.getSystemEntropy(frameSeed);
+    
     switch (paletteName) {
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔥 FUEGO: Brasa oscura → Llama dorada → Sorpresas violeta
+      // 🔥 FUEGO V15: Sangre y Oro - Rojo Puro con sorpresas Violeta
       // ═══════════════════════════════════════════════════════════════════════
       case 'fuego': {
-        // Hue base: 0 (rojo) → 45 (amarillo dorado)
-        // Con drift temporal: ±10° de variación orgánica
-        h = 15 + (intensity * 30) + (timeDrift * 10);
+        // 🎯 CLAMP ESTRICTO: Hue entre 350° (-10°) y 20° - ROJO PURO
+        // El amarillo (50°) SOLO aparece si intensity > 0.9
+        let baseHue;
+        if (intensity > 0.9) {
+          // Llama dorada en picos máximos
+          baseHue = 20 + (intensity - 0.9) * 300; // 20° → 50° (naranja-amarillo)
+        } else {
+          // Rojo puro con variación mínima
+          baseHue = 5 + (intensity * 15) + (timeDrift * 5); // 5° → 25° (rojo-naranja sutil)
+        }
         
-        // Saturación: siempre alta para colores vivos
-        s = 85 + (intensity * 15);
+        // 🎯 V15: Clamp final a rango rojo (350-20, con wrap-around)
+        h = baseHue < 0 ? 360 + baseHue : baseHue;
+        if (h > 50 && h < 280) h = 20; // Forzar rojo si se sale
         
-        // Luminosidad: 
-        // - intensity 0 → L=25 (brasa oscura, casi apagada)
-        // - intensity 1 → L=60 (llama brillante)
+        s = 90 + (intensity * 10); // Siempre muy saturado
         l = 25 + (intensity * 35);
         
-        // 🎨 SORPRESA VIOLETA: en momentos de alta energía
-        // Los spots (moving heads) en picos muy altos muestran violeta
-        if (zoneType === 'spot' && intensity > 0.8) {
-          // 20% de probabilidad de violeta en picos extremos
-          if (Math.random() > 0.8) {
-            h = 280; // Violeta
+        // 🎨 V15: SORPRESA VIOLETA DETERMINISTA
+        // Los spots RIGHT muestran violeta para profundidad
+        if (zoneType === 'spot' && side === 'right' && intensity > 0.7) {
+          h = 280; // Violeta
+          s = 85;
+          l = 40 + (intensity * 15);
+        } else if (zoneType === 'spot' && intensity > 0.85) {
+          // Violeta determinista en picos extremos (usa entropy, no random)
+          if (entropy > 0.8) {
+            h = 280;
             s = 90;
             l = 45;
           }
@@ -946,57 +1026,73 @@ class SeleneConsciousnessLite {
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // ❄️ HIELO: Abismo azul → Blanco estroboscópico → Auroras boreales
+      // ❄️ HIELO V15: Saturación Alta + Rosa Chicle en Right
       // ═══════════════════════════════════════════════════════════════════════
       case 'hielo': {
-        // Mínimo de intensidad (hielo nunca es negro total, es elegante)
         const minIntensity = this.PALETTES.hielo?.minIntensity || 0.25;
         intensity = Math.max(intensity, minIntensity);
         
-        // Hue base: 200 (azul frío) → varía hasta 220 (azul-violeta)
-        // Con drift: simula auroras boreales
+        // Hue base: Azul profundo con auroras
         h = 200 + (timeDrift * 20) + (intensity * 10);
         
-        // Saturación: 
-        // - Baja intensidad → saturado (azul profundo)
-        // - Alta intensidad → desaturado (blanco estroboscópico)
-        s = 80 - (intensity * 30);
+        // 🎯 V15: Saturación ALTA (90% base) - menos blanco lavado
+        s = 90 - (intensity * 20); // 90% → 70% (aún saturado en picos)
         
-        // Luminosidad: elegante, nunca muy oscuro
-        // - intensity 0.25 → L=40 (azul profundo pero visible)
-        // - intensity 1 → L=85 (casi blanco)
         l = 40 + (intensity * 45);
         
-        // 🎨 AURORA: en washes con energía alta
-        if (zoneType === 'wash' && intensity > 0.6 && timeDrift > 0.7) {
-          // Shift hacia verde-cyan (aurora boreal)
-          h = 170 + (Math.random() * 20);
+        // 🎨 V15: ROSA CHICLE en Moving Right para romper monotonía azul
+        if (zoneType === 'spot' && side === 'right' && intensity > 0.5) {
+          h = 330; // Rosa chicle
+          s = 80;
+          l = 55 + (intensity * 15);
+        }
+        
+        // 🎨 Aurora determinista (no random)
+        if (zoneType === 'wash' && intensity > 0.6 && entropy > 0.7) {
+          h = 170 + (entropy * 20); // Verde-cyan aurora
           s = 70;
         }
         break;
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🌿 SELVA: Verde esmeralda → Flores magenta/rosa en spots
+      // 🌿 SELVA V15: Sol, Flores y Hysteresis Anti-Epilepsia
       // ═══════════════════════════════════════════════════════════════════════
       case 'selva': {
-        // Hue base: 120 (verde puro) → 140 (turquesa)
-        h = 120 + (timeDrift * 20) + (intensity * 10);
+        // 🎯 V15: Introducir ÁMBAR (45°) entre verde y rosa
+        // Rango: Verde (120°) → Turquesa (150°) → Ámbar sutil
+        h = 120 + (timeDrift * 20) + (intensity * 15);
         
-        // Saturación: siempre tropical y vibrante
-        s = 75 + (intensity * 25);
+        // Si intensity es media-alta, shift hacia ámbar
+        if (intensity > 0.4 && intensity < 0.7) {
+          const ambarMix = (intensity - 0.4) / 0.3; // 0-1 en rango 0.4-0.7
+          h = h + (ambarMix * 15); // Shift hacia amarillo-verde
+        }
         
-        // Luminosidad: 
-        // - intensity 0 → L=30 (selva oscura)
-        // - intensity 1 → L=55 (verde neón)
+        s = 80 + (intensity * 20);
         l = 30 + (intensity * 25);
         
-        // 🎨 FLORES: los spots muestran magenta/rosa en momentos altos
-        // Esto representa las flores tropicales brillantes
-        if (zoneType === 'spot' && intensity > 0.5) {
-          // 40% probabilidad de flor magenta
-          if (Math.random() > 0.6) {
-            h = 320 + (Math.random() * 30); // Magenta a rosa
+        // 🎨 V15: HYSTERESIS para ROSA (Schmitt Trigger anti-parpadeo)
+        // Entrar en rosa: intensity > 0.75
+        // Salir de rosa: intensity < 0.60
+        const wasInRosa = this.entropyState.hysteresis.selvaRosa;
+        let goRosa = false;
+        
+        if (zoneType === 'spot') {
+          if (intensity > 0.75) {
+            goRosa = true;
+          } else if (intensity < 0.60) {
+            goRosa = false;
+          } else {
+            // En la banda muerta (0.60-0.75): mantener estado anterior
+            goRosa = wasInRosa;
+          }
+          
+          this.entropyState.hysteresis.selvaRosa = goRosa;
+          
+          if (goRosa) {
+            // Rosa/Magenta determinista
+            h = 320 + (entropy * 30); // 320-350 (magenta a rosa)
             s = 90;
             l = 50;
           }
@@ -1005,53 +1101,109 @@ class SeleneConsciousnessLite {
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // ⚡ NEÓN: Binario (on/off), colores duros, pares complementarios
+      // ⚡ NEÓN V15: Caos Determinista (entropy-based pairs)
       // ═══════════════════════════════════════════════════════════════════════
       case 'neon': {
-        // Neón es BINARIO: no hay gradientes suaves
-        // Si intensity < 0.3, es negro total (techno/EDM permite blackouts)
         if (intensity < 0.3) {
           return { r: 0, g: 0, b: 0 };
         }
         
-        // Pares de colores complementarios que ROTAN cada ~30 segundos
-        const pairCycle = Math.floor(Date.now() / 30000) % 3;
-        
-        // El zoneType determina cuál color del par usar
-        const isSecondary = (zoneType === 'spot');
-        
-        switch (pairCycle) {
-          case 0: // MAGENTA ↔ CYAN
-            h = isSecondary ? 180 : 310;
-            break;
-          case 1: // VIOLETA ↔ AMARILLO
-            h = isSecondary ? 60 : 280;
-            break;
-          case 2: // AZUL ELÉCTRICO ↔ NARANJA
-            h = isSecondary ? 30 : 220;
-            break;
+        // 🔀 V15: Usar entropy para seleccionar pares (no ciclo fijo de tiempo)
+        // Esto hace que el cambio sea reactivo al audio, no predecible
+        let pairIndex;
+        if (entropy > 0.8) {
+          pairIndex = 0; // Verde Ácido vs Violeta
+        } else if (entropy > 0.5) {
+          pairIndex = 1; // Magenta vs Cyan
+        } else if (entropy > 0.2) {
+          pairIndex = 2; // Violeta vs Amarillo
+        } else {
+          pairIndex = 3; // Azul Eléctrico vs Naranja
         }
         
-        // Neón: SIEMPRE saturación máxima, luminosidad media-alta
+        const isSecondary = (side === 'right' || zoneType === 'spot');
+        
+        const colorPairs = [
+          { primary: 120, secondary: 280 },  // Verde Ácido ↔ Violeta
+          { primary: 310, secondary: 180 },  // Magenta ↔ Cyan
+          { primary: 280, secondary: 60 },   // Violeta ↔ Amarillo
+          { primary: 220, secondary: 30 },   // Azul Eléctrico ↔ Naranja
+        ];
+        
+        h = isSecondary ? colorPairs[pairIndex].secondary : colorPairs[pairIndex].primary;
         s = 100;
         l = 50 + (intensity * 15);
         break;
       }
       
       default:
-        // Fallback a fuego
         h = 20;
         s = 90;
         l = 40 + (intensity * 20);
     }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔦 V15: OFFSETS CROMÁTICOS PARA LATERALIDAD Y PROFUNDIDAD
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🎯 PROFUNDIDAD 3D: Back pars -15° respecto a Front
+    // Genera diferencia de temperatura que el ojo percibe como profundidad
+    if (side === 'back') {
+      h = (h - 15 + 360) % 360;
+    }
+    
+    // 🎯 LATERALIDAD: Right side offset para romper simetría
+    // (Solo si no se aplicó un color específico arriba)
+    if (side === 'right' && paletteName !== 'neon') {
+      // Modo análogo: +30° (armonía suave)
+      const lateralOffset = 30 * creativityBoost; // Más agresivo con creativity alta
+      h = (h + lateralOffset) % 360;
+    }
+    
     // Clamp valores HSL
-    h = h % 360;
+    h = ((h % 360) + 360) % 360; // Normalize to 0-360
     s = Math.max(0, Math.min(100, s));
     l = Math.max(0, Math.min(100, l));
     
     // Convertir HSL a RGB
     return this.hslToRgb(h / 360, s / 100, l / 100);
+  }
+
+  /**
+   * 🎨 SELENE DECIDE: Devuelve la paleta activa (MANUAL)
+   */
+  detectPalette(bass, mid, treble, mood, beat, bpm = 0, bpmConfidence = 0) {
+    return {
+      palette: this.activePalette,
+      confidence: 1.0,
+      manual: true,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 MÉTODOS LEGACY (compatibilidad temporal)
+  // Estos métodos llaman al nuevo getLivingColor() para compatibilidad
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * @deprecated Use getLivingColor() instead
+   */
+  getPaletteColors(zone, intensity) {
+    const normalizedIntensity = intensity / 255;
+    const zoneType = (zone === 'front' || zone === 'back') ? 'wash' : 'spot';
+    const side = zone; // Usar zone como side para lateralidad
+    return this.getLivingColor(this.activePalette, normalizedIntensity, zoneType, side);
+  }
+
+  /**
+   * @deprecated Use getLivingColor() instead - wraps getLivingColor for compatibility
+   */
+  getGradientColor(zone, intensity, bass, mid, treble, isPeak = false) {
+    const normalizedIntensity = intensity / 255;
+    const zoneType = (zone === 'front' || zone === 'back') ? 'wash' : 'spot';
+    const adjustedIntensity = isPeak ? Math.min(1, normalizedIntensity * 1.2) : normalizedIntensity;
+    const side = zone;
+    return this.getLivingColor(this.activePalette, adjustedIntensity, zoneType, side);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

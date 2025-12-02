@@ -349,11 +349,26 @@ class FixturePhysicsDriver {
       // Calcular nueva posición
       newPos[axis] = pos + newVel[axis] * dt;
       
+      // 🛡️ FIX V16.4: Clamp posición DENTRO del bucle de física
+      // Evita que la posición se dispare a valores absurdos
+      newPos[axis] = Math.max(0, Math.min(255, newPos[axis]));
+      
       // Anti-overshoot: Si pasamos el objetivo, quedarnos ahí
       if ((distance > 0 && newPos[axis] > target) || 
           (distance < 0 && newPos[axis] < target)) {
         newPos[axis] = target;
         newVel[axis] = 0;
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🛡️ FIX V16.4: ANTI-STUCK EN LÍMITES
+      // Si estamos pegados al límite (0 o 255) pero el objetivo está lejos,
+      // resetear velocidad para poder "despegarse"
+      // ═══════════════════════════════════════════════════════════════════════
+      if ((newPos[axis] >= 254 || newPos[axis] <= 1) && absDistance > 20) {
+        // Estamos en el límite pero el objetivo está lejos - forzar movimiento
+        newVel[axis] = -Math.sign(newPos[axis] - 127) * maxSpeed * 0.3;
+        console.warn(`[PhysicsDriver] 🔓 Unstuck ${axis}: pos=${newPos[axis].toFixed(0)}, target=${target.toFixed(0)}`);
       }
     });
     

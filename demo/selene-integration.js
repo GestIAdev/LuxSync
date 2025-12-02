@@ -63,6 +63,13 @@ class SeleneConsciousnessLite {
         back:   { base: { r: 255, g: 150, b: 0 },  accent: { r: 255, g: 220, b: 0 } },   // Naranja → Amarillo
         left:   { base: { r: 255, g: 50, b: 0 },   accent: { r: 255, g: 120, b: 0 } },   // Rojo-naranja
         right:  { base: { r: 255, g: 0, b: 50 },   accent: { r: 255, g: 0, b: 120 } },   // Rojo-rosa
+        // 🎨 V13: Acentos extra para picos altos (solicitados por usuario)
+        peakAccents: [
+          { r: 148, g: 0, b: 211 },   // Violeta (en picos muy altos)
+          { r: 0, g: 200, b: 100 },   // Verde esmeralda (en melodías fuertes)
+        ],
+        // HSL ranges para gradientes continuos
+        hsl: { hueMin: 0, hueMax: 45, satMin: 80, satMax: 100, lightMin: 30, lightMax: 60 },
       },
       // ❄️ HIELO: Chill, Ambient, Downtempo - Colores FRÍOS
       hielo: {
@@ -72,6 +79,12 @@ class SeleneConsciousnessLite {
         back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 150, g: 255, b: 255 } }, // Cyan
         left:   { base: { r: 50, g: 100, b: 200 }, accent: { r: 100, g: 150, b: 255 } }, // Azul profundo
         right:  { base: { r: 200, g: 220, b: 255 },accent: { r: 255, g: 255, b: 255 } }, // Blanco azulado
+        // 🎨 V13: Acento violeta sutil
+        peakAccents: [
+          { r: 180, g: 150, b: 255 },  // Violeta pastel
+        ],
+        hsl: { hueMin: 180, hueMax: 220, satMin: 60, satMax: 90, lightMin: 40, lightMax: 80 },
+        minIntensity: 0.4,  // Hielo nunca baja de 40% (elegante, siempre presente)
       },
       // 🌿 SELVA: Tropical House, Reggae, Summer - Colores NATURALES
       selva: {
@@ -81,6 +94,12 @@ class SeleneConsciousnessLite {
         back:   { base: { r: 0, g: 150, b: 100 },  accent: { r: 0, g: 200, b: 150 } },   // Verde bosque
         left:   { base: { r: 0, g: 255, b: 180 },  accent: { r: 100, g: 255, b: 200 } }, // Turquesa
         right:  { base: { r: 180, g: 255, b: 0 },  accent: { r: 220, g: 255, b: 50 } },  // Lima brillante
+        // 🎨 V13: Acentos extra (solicitados: violeta + amarillo cálido)
+        peakAccents: [
+          { r: 148, g: 0, b: 211 },   // Violeta (en drops)
+          { r: 255, g: 200, b: 50 },  // Amarillo cálido (en percusión)
+        ],
+        hsl: { hueMin: 80, hueMax: 150, satMin: 70, satMax: 100, lightMin: 35, lightMax: 65 },
       },
       // ⚡ NEÓN: Techno, Cyberpunk, EDM - Colores ELÉCTRICOS
       neon: {
@@ -90,6 +109,11 @@ class SeleneConsciousnessLite {
         back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 100, g: 255, b: 255 } }, // Cyan neón
         left:   { base: { r: 150, g: 0, b: 255 },  accent: { r: 200, g: 50, b: 255 } },  // Violeta
         right:  { base: { r: 255, g: 255, b: 0 },  accent: { r: 255, g: 255, b: 100 } }, // Amarillo neón
+        peakAccents: [
+          { r: 255, g: 255, b: 255 }, // Blanco puro (strobes)
+        ],
+        hsl: { hueMin: 280, hueMax: 320, satMin: 90, satMax: 100, lightMin: 40, lightMax: 70 },
+        allowBlackout: true,  // Neón permite negro total (0%)
       },
       // Legacy mappings (para compatibilidad)
       latino: { redirect: 'fuego' },
@@ -119,7 +143,36 @@ class SeleneConsciousnessLite {
     this.frameInterval = 1000 / this.targetFPS;
     this.lastDecision = null;
 
-    console.log('🌙 Selene V12 inicializada - Paletas Manuales (🔥❄️🌿⚡)');
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌑 V13: SISTEMA DE BLACKOUTS Y SILENCIOS
+    // ═══════════════════════════════════════════════════════════════════════
+    this.silenceSystem = {
+      // Umbrales de detección
+      UMBRAL_SILENCIO: 0.05,     // <5% = silencio real → BLACKOUT
+      UMBRAL_BAJO: 0.20,         // <20% = casi silencio → FADE
+      UMBRAL_SHAKERS: 0.10,      // <10% pero constante = shakers → ignorar
+      
+      // Tiempos (en milisegundos)
+      TIEMPO_BLACKOUT: 1000,     // 1 segundo para blackout total
+      TIEMPO_FADE: 500,          // 500ms para empezar fade
+      
+      // Estado actual
+      tiempoEnSilencio: 0,       // ms acumulados en silencio
+      tiempoEnBajo: 0,           // ms acumulados en nivel bajo
+      ultimoNivelTotal: 0,       // para detectar cambios
+      lastUpdateTime: Date.now(),
+      
+      // Historial para detectar picos vs ruido constante
+      historialNivel: [],        // últimos N frames
+      VENTANA_HISTORIAL: 15,     // frames para analizar
+      UMBRAL_PICO: 0.25,         // 25% de cambio = pico real
+      
+      // Estado de salida
+      modo: 'NORMAL',            // 'NORMAL' | 'FADE_DOWN' | 'BLACKOUT'
+      intensidadMultiplier: 1.0, // 0.0 - 1.0
+    };
+
+    console.log('🌙 Selene V13 inicializada - Blackouts Inteligentes + Paletas (🔥❄️🌿⚡)');
   }
 
   /**
@@ -196,13 +249,16 @@ class SeleneConsciousnessLite {
       palette: this.activePalette,
       paletteName: this.PALETTES[this.activePalette].name,
       paletteConfidence: this.paletteConfidence,
+      // 🌑 V13: Info de sistema de silencios
+      silenceMode: zoneColors.silenceMode || 'NORMAL',
+      silenceMultiplier: zoneColors.silenceMultiplier || 1.0,
     };
   }
 
   /**
    * 🎨 COLORES POR ZONA - Teoría de Iluminación por Frecuencias
    * 
-   * AHORA USA PALETAS DINÁMICAS (Selene decide!)
+   * V13: AHORA CON BLACKOUTS INTELIGENTES
    * 
    * FRONT PARs = KICK/Bass directo → Color de paleta.front
    * BACK PARs = Snare/Claps + Reverb → Color de paleta.back
@@ -211,9 +267,34 @@ class SeleneConsciousnessLite {
    * SENSIBILIDAD AJUSTADA:
    * - Umbral alto para evitar ruido (voces público, ambiente)
    * - Respeta upswings/downswings de DJ
-   * - Oscuridad real en silencios para buildups dramáticos
+   * - 🌑 BLACKOUT REAL en silencios (>1 segundo)
+   * - 🌑 FADE en niveles bajos (>500ms)
+   * - 🎯 Móviles ignoran shakers (ruido constante)
    */
   calculateZoneColors(bass, mid, treble, beat, mood) {
+    // === 🌑 V13: ACTUALIZAR SISTEMA DE SILENCIOS ===
+    const silenceState = this.updateSilenceState(bass, mid, treble);
+    const { modo: silenceMode, intensidadMultiplier, esPico } = silenceState;
+    
+    // === Si estamos en BLACKOUT TOTAL, devolver todo negro ===
+    if (silenceMode === 'BLACKOUT') {
+      const black = { r: 0, g: 0, b: 0 };
+      return {
+        front: { color: black, intensity: 0 },
+        back: { color: black, intensity: 0 },
+        movingLeft: { color: black, intensity: 0 },
+        movingRight: { color: black, intensity: 0 },
+        effects: { color: black, intensity: 0 },
+        mid: { color: black, intensity: 0 },
+        treble: { color: black, intensity: 0 },
+        bass: { color: black, intensity: 0 },
+        ambient: { color: black, intensity: 0 },
+        // 🌑 Info de debug
+        silenceMode: 'BLACKOUT',
+        silenceMultiplier: 0,
+      };
+    }
+    
     // === UMBRALES DE SENSIBILIDAD ===
     const BASS_THRESHOLD = 0.25;
     const SNARE_THRESHOLD = 0.20;
@@ -276,9 +357,13 @@ class SeleneConsciousnessLite {
     // === ZONA MOVING HEADS: MELODÍA ===
     // LEFT = Colores de paleta.left (fríos)
     // RIGHT = Colores de paleta.right (cálidos)
+    // 🎯 V13: Los móviles ignoran shakers (ruido constante bajo)
     
     const melodyEnergy = mid + treble;
     const isMelodySilence = melodyEnergy < MELODY_THRESHOLD;
+    
+    // 🎯 V13: Consultar si los móviles deben responder (filtra shakers)
+    const movingResponse = this.shouldMovingHeadsRespond(mid, treble);
     
     // Calcular ratio para determinar intensidad del interpolar
     const midRatio = mid / Math.max(0.01, melodyEnergy);
@@ -286,7 +371,8 @@ class SeleneConsciousnessLite {
     
     let leftColor, rightColor, movingIntensity;
     
-    if (isMelodySilence) {
+    // 🎯 V13: Si el sistema dice que no respondan (shakers), apagar
+    if (isMelodySilence || !movingResponse.respond) {
       leftColor = { r: 0, g: 0, b: 0 };
       rightColor = { r: 0, g: 0, b: 0 };
       movingIntensity = 0;
@@ -300,8 +386,8 @@ class SeleneConsciousnessLite {
       // RIGHT: Colores cálidos de la paleta
       rightColor = this._lerpColor(palette.right.base, palette.right.accent, t);
       
-      // Intensidad basada en energía
-      movingIntensity = Math.round(60 + melodyEnergy * 195);
+      // 🎯 V13: Intensidad basada en respuesta del sistema (considera picos)
+      movingIntensity = Math.round(60 + movingResponse.intensity * 195);
     }
     
     // === APLICAR SATURACIÓN EXTRA SEGÚN RATIO ===
@@ -321,7 +407,7 @@ class SeleneConsciousnessLite {
     let effectColor, effectIntensity;
     const isPeak = beat && treble > 0.6 && bass > 0.5;
     
-    if (isPeak) {
+    if (isPeak && silenceMode === 'NORMAL') {
       effectColor = { r: 255, g: 255, b: 255 };
       effectIntensity = 255;
     } else {
@@ -329,36 +415,41 @@ class SeleneConsciousnessLite {
       effectIntensity = 0;
     }
     
+    // === 🌑 V13: APLICAR MULTIPLICADOR DE SILENCIO ===
+    // En FADE_DOWN o FADE_TO_BLACK, reducir todas las intensidades
+    const applyMultiplier = (intensity) => 
+      Math.round(Math.min(255, intensity * intensidadMultiplier));
+    
     return {
       // FRONT = KICK
       front: {
         color: frontColor,
-        intensity: Math.min(255, frontIntensity),
+        intensity: applyMultiplier(frontIntensity),
       },
       // BACK = SNARE  
       back: {
         color: backColor,
-        intensity: Math.min(255, backIntensity),
+        intensity: applyMultiplier(backIntensity),
       },
       // MOVING LEFT = Colores fríos (melodía)
       movingLeft: {
         color: leftColor,
-        intensity: Math.min(255, movingIntensity),
+        intensity: applyMultiplier(movingIntensity),
       },
       // MOVING RIGHT = Colores cálidos (melodía)
       movingRight: {
         color: rightColor,
-        intensity: Math.min(255, movingIntensity),
+        intensity: applyMultiplier(movingIntensity),
       },
       // EFFECTS = PEAKS
       effects: {
         color: effectColor,
-        intensity: effectIntensity,
+        intensity: effectIntensity, // Effects no se reducen
       },
       // Legacy compatibility
       mid: {
-        color: leftColor, // Default to left
-        intensity: Math.min(255, movingIntensity),
+        color: leftColor,
+        intensity: applyMultiplier(movingIntensity),
       },
       treble: {
         color: effectColor,
@@ -366,12 +457,141 @@ class SeleneConsciousnessLite {
       },
       bass: {
         color: frontColor,
-        intensity: Math.min(255, frontIntensity),
+        intensity: applyMultiplier(frontIntensity),
       },
       ambient: {
         color: { r: 30, g: 20, b: 40 },
-        intensity: isQuiet ? 30 : 60,
+        intensity: isQuiet ? 30 : Math.round(60 * intensidadMultiplier),
       },
+      // 🌑 V13: Info de debug del sistema de silencios
+      silenceMode,
+      silenceMultiplier: intensidadMultiplier,
+      movingReason: movingResponse.reason || 'normal',
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌑 V13: SISTEMA DE BLACKOUTS Y SILENCIOS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * 🌑 Actualiza el estado del sistema de silencios
+   * Detecta silencios reales vs ruido constante (shakers)
+   * 
+   * @param {number} bass - Nivel de graves 0-1
+   * @param {number} mid - Nivel de medios 0-1
+   * @param {number} treble - Nivel de agudos 0-1
+   * @returns {Object} - { modo, intensidadMultiplier, esPico }
+   */
+  updateSilenceState(bass, mid, treble) {
+    const ss = this.silenceSystem;
+    const now = Date.now();
+    const deltaTime = now - ss.lastUpdateTime;
+    ss.lastUpdateTime = now;
+    
+    // Calcular nivel total de energía
+    const nivelTotal = (bass + mid + treble) / 3;
+    
+    // === HISTORIAL PARA DETECTAR PICOS VS RUIDO CONSTANTE ===
+    ss.historialNivel.push(nivelTotal);
+    if (ss.historialNivel.length > ss.VENTANA_HISTORIAL) {
+      ss.historialNivel.shift();
+    }
+    
+    // Calcular promedio y detectar si hay pico
+    const promedio = ss.historialNivel.reduce((a, b) => a + b, 0) / ss.historialNivel.length;
+    const diferencia = nivelTotal - promedio;
+    const esPico = diferencia > ss.UMBRAL_PICO;
+    const esRuidoConstante = Math.abs(diferencia) < 0.05 && nivelTotal < ss.UMBRAL_BAJO;
+    
+    // === LÓGICA DE DETECCIÓN DE SILENCIOS ===
+    
+    // 1. SILENCIO REAL (<5% energía)
+    if (nivelTotal < ss.UMBRAL_SILENCIO) {
+      ss.tiempoEnSilencio += deltaTime;
+      ss.tiempoEnBajo = 0; // Reset
+      
+      if (ss.tiempoEnSilencio >= ss.TIEMPO_BLACKOUT) {
+        // ¡BLACKOUT TOTAL!
+        ss.modo = 'BLACKOUT';
+        ss.intensidadMultiplier = 0;
+        return { modo: 'BLACKOUT', intensidadMultiplier: 0, esPico: false };
+      } else {
+        // Fade hacia blackout
+        const progreso = ss.tiempoEnSilencio / ss.TIEMPO_BLACKOUT;
+        ss.modo = 'FADE_TO_BLACK';
+        ss.intensidadMultiplier = 1 - progreso;
+        return { modo: 'FADE_TO_BLACK', intensidadMultiplier: 1 - progreso, esPico: false };
+      }
+    }
+    
+    // 2. NIVEL BAJO (5-20% energía)
+    if (nivelTotal < ss.UMBRAL_BAJO) {
+      ss.tiempoEnSilencio = 0; // Reset silencio
+      ss.tiempoEnBajo += deltaTime;
+      
+      if (ss.tiempoEnBajo >= ss.TIEMPO_FADE) {
+        // Fade sostenido
+        ss.modo = 'FADE_DOWN';
+        // Multiplicador proporcional al nivel (más bajo = más oscuro)
+        ss.intensidadMultiplier = 0.3 + (nivelTotal / ss.UMBRAL_BAJO) * 0.5;
+        return { modo: 'FADE_DOWN', intensidadMultiplier: ss.intensidadMultiplier, esPico };
+      } else {
+        // Transición hacia fade
+        const progreso = ss.tiempoEnBajo / ss.TIEMPO_FADE;
+        ss.intensidadMultiplier = 1 - (progreso * 0.3);
+        return { modo: 'TRANSITIONING', intensidadMultiplier: ss.intensidadMultiplier, esPico };
+      }
+    }
+    
+    // 3. NIVEL NORMAL/ALTO (>20%)
+    ss.tiempoEnSilencio = 0;
+    ss.tiempoEnBajo = 0;
+    ss.modo = 'NORMAL';
+    ss.intensidadMultiplier = 1.0;
+    
+    // Si hay pico, dar boost
+    if (esPico && nivelTotal > 0.5) {
+      ss.intensidadMultiplier = Math.min(1.3, 1 + diferencia);
+    }
+    
+    return { modo: 'NORMAL', intensidadMultiplier: ss.intensidadMultiplier, esPico };
+  }
+
+  /**
+   * 🎯 Detecta si los móviles deberían responder (filtra shakers)
+   * Los móviles responden a PICOS (melodía), no a ruido constante
+   */
+  shouldMovingHeadsRespond(mid, treble) {
+    const ss = this.silenceSystem;
+    const melodyEnergy = (mid + treble) / 2;
+    
+    // Si estamos en blackout o fade, no responder
+    if (ss.modo === 'BLACKOUT') return { respond: false, intensity: 0 };
+    
+    // Calcular promedio reciente de melodía
+    const promedioReciente = ss.historialNivel.length > 0 
+      ? ss.historialNivel.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, ss.historialNivel.length)
+      : melodyEnergy;
+    
+    const diferencia = melodyEnergy - promedioReciente;
+    const esPicoMelodia = diferencia > 0.15;
+    
+    // Si es ruido constante bajo (shakers), no responder
+    if (melodyEnergy < 0.25 && Math.abs(diferencia) < 0.08) {
+      return { respond: false, intensity: 0, reason: 'shakers' };
+    }
+    
+    // Si hay pico melódico, responder con fuerza
+    if (esPicoMelodia) {
+      return { respond: true, intensity: Math.min(1, melodyEnergy * 1.2), reason: 'pico' };
+    }
+    
+    // Respuesta normal basada en energía
+    return { 
+      respond: melodyEnergy > 0.2, 
+      intensity: melodyEnergy * ss.intensidadMultiplier,
+      reason: 'normal'
     };
   }
 
@@ -678,7 +898,84 @@ class SeleneConsciousnessLite {
   }
 
   /**
-   * 🎨 Cambia la paleta manualmente
+   * � V13: GRADIENTES CONTINUOS HSL
+   * 
+   * Genera colores usando interpolación HSL para mayor variedad visual.
+   * Incluye acentos de color en picos altos (violeta, verde, amarillo según paleta)
+   * 
+   * @param {string} zone - Zona del fixture (front, back, left, right)
+   * @param {number} intensity - Intensidad 0-255
+   * @param {number} bass - Nivel de bass 0-1
+   * @param {number} mid - Nivel de mid 0-1
+   * @param {number} treble - Nivel de treble 0-1
+   * @param {boolean} isPeak - Si es un pico de energía
+   * @returns {Object} - { r, g, b }
+   */
+  getGradientColor(zone, intensity, bass, mid, treble, isPeak = false) {
+    let palette = this.PALETTES[this.activePalette];
+    if (palette && palette.redirect) {
+      palette = this.PALETTES[palette.redirect];
+    }
+    if (!palette) palette = this.PALETTES['fuego'];
+    
+    const hsl = palette.hsl;
+    const t = intensity / 255; // 0-1 normalizado
+    
+    // === GRADIENTE HSL BASE ===
+    // Hue varía según la intensidad dentro del rango de la paleta
+    let hue = hsl.hueMin + (hsl.hueMax - hsl.hueMin) * t;
+    
+    // Saturación: más intensa con más energía
+    let saturation = hsl.satMin + (hsl.satMax - hsl.satMin) * t;
+    
+    // Luminosidad: más brillante con más intensidad
+    let lightness = hsl.lightMin + (hsl.lightMax - hsl.lightMin) * t;
+    
+    // === ACENTOS EN PICOS ALTOS ===
+    if (isPeak && palette.peakAccents && palette.peakAccents.length > 0) {
+      // En picos muy altos, hay probabilidad de mostrar un acento
+      const totalEnergy = bass + mid + treble;
+      
+      if (totalEnergy > 2.0) {
+        // Energía muy alta: usar acento
+        const accentIndex = Math.floor(Math.random() * palette.peakAccents.length);
+        const accent = palette.peakAccents[accentIndex];
+        
+        // Mezclar 30% del acento con el color base
+        const baseColor = this.hslToRgb(hue / 360, saturation / 100, lightness / 100);
+        return {
+          r: Math.round(baseColor.r * 0.7 + accent.r * 0.3),
+          g: Math.round(baseColor.g * 0.7 + accent.g * 0.3),
+          b: Math.round(baseColor.b * 0.7 + accent.b * 0.3),
+        };
+      }
+    }
+    
+    // === VARIACIÓN POR FRECUENCIA DOMINANTE ===
+    // Ajustar ligeramente el hue según qué frecuencia domina
+    const total = bass + mid + treble;
+    if (total > 0.3) {
+      const bassRatio = bass / total;
+      const trebleRatio = treble / total;
+      
+      // Bass dominante: shift hacia rojo/cálido
+      if (bassRatio > 0.5) {
+        hue = Math.max(hsl.hueMin, hue - 10);
+        saturation = Math.min(100, saturation + 5);
+      }
+      // Treble dominante: shift hacia el extremo frío de la paleta
+      else if (trebleRatio > 0.5) {
+        hue = Math.min(hsl.hueMax, hue + 10);
+        lightness = Math.min(80, lightness + 10);
+      }
+    }
+    
+    // Convertir HSL a RGB
+    return this.hslToRgb(hue / 360, saturation / 100, lightness / 100);
+  }
+
+  /**
+   * �🎨 Cambia la paleta manualmente
    */
   setPalette(paletteName) {
     if (this.PALETTES[paletteName]) {

@@ -1092,6 +1092,10 @@ function applySeleneDecision(decision, audioData = null) {
   let movementOutput = null;
   if (window.selene && window.selene.movementEnabled && audioData) {
     movementOutput = window.selene.updateMovement(audioData);
+    // DEBUG V16
+    if (movementOutput && Math.random() < 0.01) {
+      console.log('🎭 Movement:', movementOutput);
+    }
   }
   
   state.fixtures.forEach((fixture) => {
@@ -1110,17 +1114,17 @@ function applySeleneDecision(decision, audioData = null) {
     }
     
     // 🎭 V16: Aplicar movimiento a moving heads
-    if (movementOutput && fixture.type === 'moving_head') {
+    if (movementOutput && fixture.type === 'MOVING_HEAD') {
       const movementId = fixtureZone === 'MOVING_LEFT' ? 'moving_left' : 
                          fixtureZone === 'MOVING_RIGHT' ? 'moving_right' : null;
       
       if (movementId && movementOutput[movementId]) {
         const movement = movementOutput[movementId];
-        fixture.pan = movement.pan;
-        fixture.tilt = movement.tilt;
+        fixture.currentPan = movement.pan;
+        fixture.currentTilt = movement.tilt;
         // Fine channels si existen
-        if (fixture.panFine !== undefined) fixture.panFine = movement.panFine || 0;
-        if (fixture.tiltFine !== undefined) fixture.tiltFine = movement.tiltFine || 0;
+        if (fixture.currentPanFine !== undefined) fixture.currentPanFine = movement.panFine || 0;
+        if (fixture.currentTiltFine !== undefined) fixture.currentTiltFine = movement.tiltFine || 0;
       }
     }
   });

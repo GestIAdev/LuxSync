@@ -79,7 +79,11 @@ class SeleneMovementEngine {
         // Lissajous: a=1, b=1, delta=π/2 = círculo perfecto
         calculate: (phase, amplitude, intensity) => {
           // 🫁 Amplitude Modulation: La amplitud crece con la energía
-          const effectiveAmp = amplitude * (0.3 + intensity * 0.7);
+          const intensityMod = 0.3 + intensity * 0.7;
+          const effectiveAmp = {
+            x: amplitude.x * intensityMod,
+            y: amplitude.y * intensityMod,
+          };
           
           return {
             x: Math.cos(phase) * effectiveAmp.x,

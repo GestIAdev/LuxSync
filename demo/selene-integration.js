@@ -144,7 +144,7 @@ class SeleneConsciousnessLite {
     this.lastDecision = null;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌑 V13: SISTEMA DE BLACKOUTS Y SILENCIOS
+    // 🌑 V13.1: SISTEMA DE BLACKOUTS Y SILENCIOS (AJUSTADO)
     // ═══════════════════════════════════════════════════════════════════════
     this.silenceSystem = {
       // Umbrales de detección
@@ -152,9 +152,14 @@ class SeleneConsciousnessLite {
       UMBRAL_BAJO: 0.20,         // <20% = casi silencio → FADE
       UMBRAL_SHAKERS: 0.10,      // <10% pero constante = shakers → ignorar
       
-      // Tiempos (en milisegundos)
-      TIEMPO_BLACKOUT: 1000,     // 1 segundo para blackout total
-      TIEMPO_FADE: 500,          // 500ms para empezar fade
+      // 🎯 V13.1: Tiempos MUCHO más rápidos (la música es rápida!)
+      TIEMPO_BLACKOUT: 300,      // 300ms para blackout (era 1000ms)
+      TIEMPO_FADE: 150,          // 150ms para empezar fade (era 500ms)
+      TIEMPO_CORTE_DJ: 50,       // 50ms para cortes BRUSCOS de DJ
+      
+      // 🎯 V13.1: Detección de cortes bruscos
+      UMBRAL_CORTE_BRUSCO: 0.4,  // Si la energía cae >40% de golpe = CORTE DJ
+      ultimaEnergiaTotal: 0,     // Para comparar cambios bruscos
       
       // Estado actual
       tiempoEnSilencio: 0,       // ms acumulados en silencio
@@ -386,8 +391,15 @@ class SeleneConsciousnessLite {
       // RIGHT: Colores cálidos de la paleta
       rightColor = this._lerpColor(palette.right.base, palette.right.accent, t);
       
-      // 🎯 V13: Intensidad basada en respuesta del sistema (considera picos)
-      movingIntensity = Math.round(60 + movingResponse.intensity * 195);
+      // 🎯 V13.1: Intensidad AUMENTADA - base más alto, más reactivo
+      // Era: 60 + intensity * 195 (max 255)
+      // Ahora: 100 + intensity * 200 (más presencia base, mismo techo)
+      movingIntensity = Math.round(100 + movingResponse.intensity * 200);
+      
+      // 🎯 V13.1: Si es un PICO real, boost extra del 30%
+      if (movingResponse.reason === 'pico') {
+        movingIntensity = Math.min(255, Math.round(movingIntensity * 1.3));
+      }
     }
     
     // === APLICAR SATURACIÓN EXTRA SEGÚN RATIO ===
@@ -400,6 +412,40 @@ class SeleneConsciousnessLite {
         // Boost RIGHT
         rightColor.r = Math.min(255, Math.round(rightColor.r * 1.1));
         rightColor.b = Math.min(255, Math.round(rightColor.b * 1.2));
+      }
+    }
+    
+    // === 🎨 V13.1: APLICAR ACENTOS DE COLOR EN MOMENTOS INTENSOS ===
+    const totalEnergyForAccents = bass + mid + treble;
+    const shouldShowAccent = totalEnergyForAccents > 1.2 || (beat && totalEnergyForAccents > 0.9);
+    
+    if (shouldShowAccent && palette.peakAccents && palette.peakAccents.length > 0) {
+      // Elegir un acento aleatorio
+      const accentIndex = Math.floor(Math.random() * palette.peakAccents.length);
+      const accent = palette.peakAccents[accentIndex];
+      
+      // 🎨 Aplicar acento al color del BACK (cegadoras) - 80% acento!
+      if (backIntensity > 150) {
+        backColor = {
+          r: Math.round(backColor.r * 0.2 + accent.r * 0.8),
+          g: Math.round(backColor.g * 0.2 + accent.g * 0.8),
+          b: Math.round(backColor.b * 0.2 + accent.b * 0.8),
+        };
+      }
+      
+      // 🎨 Aplicar acento a móviles en picos - 60% acento
+      if (movingResponse.reason === 'pico' && Math.random() > 0.4) {
+        const accentMix = 0.6;
+        leftColor = {
+          r: Math.round(leftColor.r * (1-accentMix) + accent.r * accentMix),
+          g: Math.round(leftColor.g * (1-accentMix) + accent.g * accentMix),
+          b: Math.round(leftColor.b * (1-accentMix) + accent.b * accentMix),
+        };
+        rightColor = {
+          r: Math.round(rightColor.r * (1-accentMix) + accent.r * accentMix),
+          g: Math.round(rightColor.g * (1-accentMix) + accent.g * accentMix),
+          b: Math.round(rightColor.b * (1-accentMix) + accent.b * accentMix),
+        };
       }
     }
     
@@ -504,6 +550,20 @@ class SeleneConsciousnessLite {
     const esPico = diferencia > ss.UMBRAL_PICO;
     const esRuidoConstante = Math.abs(diferencia) < 0.05 && nivelTotal < ss.UMBRAL_BAJO;
     
+    // === 🎯 V13.1: DETECCIÓN DE CORTE BRUSCO DE DJ ===
+    const cambioEnergia = ss.ultimaEnergiaTotal - nivelTotal;
+    const esCortesBrusco = cambioEnergia > ss.UMBRAL_CORTE_BRUSCO && nivelTotal < ss.UMBRAL_BAJO;
+    ss.ultimaEnergiaTotal = nivelTotal; // Guardar para siguiente frame
+    
+    // Si es corte brusco de DJ → BLACKOUT CASI INSTANTÁNEO
+    if (esCortesBrusco) {
+      ss.tiempoEnSilencio = ss.TIEMPO_BLACKOUT; // Forzar blackout inmediato
+      ss.modo = 'BLACKOUT';
+      ss.intensidadMultiplier = 0;
+      console.log('🎧 CORTE DJ detectado! Blackout instantáneo');
+      return { modo: 'BLACKOUT', intensidadMultiplier: 0, esPico: false, corteDJ: true };
+    }
+    
     // === LÓGICA DE DETECCIÓN DE SILENCIOS ===
     
     // 1. SILENCIO REAL (<5% energía)
@@ -517,11 +577,12 @@ class SeleneConsciousnessLite {
         ss.intensidadMultiplier = 0;
         return { modo: 'BLACKOUT', intensidadMultiplier: 0, esPico: false };
       } else {
-        // Fade hacia blackout
+        // Fade hacia blackout - RÁPIDO
         const progreso = ss.tiempoEnSilencio / ss.TIEMPO_BLACKOUT;
         ss.modo = 'FADE_TO_BLACK';
-        ss.intensidadMultiplier = 1 - progreso;
-        return { modo: 'FADE_TO_BLACK', intensidadMultiplier: 1 - progreso, esPico: false };
+        // V13.1: Fade más agresivo (cuadrático en vez de lineal)
+        ss.intensidadMultiplier = Math.pow(1 - progreso, 2);
+        return { modo: 'FADE_TO_BLACK', intensidadMultiplier: ss.intensidadMultiplier, esPico: false };
       }
     }
     
@@ -534,12 +595,12 @@ class SeleneConsciousnessLite {
         // Fade sostenido
         ss.modo = 'FADE_DOWN';
         // Multiplicador proporcional al nivel (más bajo = más oscuro)
-        ss.intensidadMultiplier = 0.3 + (nivelTotal / ss.UMBRAL_BAJO) * 0.5;
+        ss.intensidadMultiplier = 0.2 + (nivelTotal / ss.UMBRAL_BAJO) * 0.4; // V13.1: más oscuro
         return { modo: 'FADE_DOWN', intensidadMultiplier: ss.intensidadMultiplier, esPico };
       } else {
-        // Transición hacia fade
+        // Transición hacia fade - más rápida
         const progreso = ss.tiempoEnBajo / ss.TIEMPO_FADE;
-        ss.intensidadMultiplier = 1 - (progreso * 0.3);
+        ss.intensidadMultiplier = 1 - (progreso * 0.5); // V13.1: fade más notable
         return { modo: 'TRANSITIONING', intensidadMultiplier: ss.intensidadMultiplier, esPico };
       }
     }
@@ -550,9 +611,9 @@ class SeleneConsciousnessLite {
     ss.modo = 'NORMAL';
     ss.intensidadMultiplier = 1.0;
     
-    // Si hay pico, dar boost
-    if (esPico && nivelTotal > 0.5) {
-      ss.intensidadMultiplier = Math.min(1.3, 1 + diferencia);
+    // 🎯 V13.1: Si hay pico, dar boost MÁS FUERTE
+    if (esPico && nivelTotal > 0.4) {
+      ss.intensidadMultiplier = Math.min(1.5, 1 + diferencia * 1.5); // Boost más agresivo
     }
     
     return { modo: 'NORMAL', intensidadMultiplier: ss.intensidadMultiplier, esPico };
@@ -931,22 +992,23 @@ class SeleneConsciousnessLite {
     // Luminosidad: más brillante con más intensidad
     let lightness = hsl.lightMin + (hsl.lightMax - hsl.lightMin) * t;
     
-    // === ACENTOS EN PICOS ALTOS ===
-    if (isPeak && palette.peakAccents && palette.peakAccents.length > 0) {
-      // En picos muy altos, hay probabilidad de mostrar un acento
+    // === 🎨 V13.1: ACENTOS MÁS VISIBLES ===
+    if (palette.peakAccents && palette.peakAccents.length > 0) {
       const totalEnergy = bass + mid + treble;
       
-      if (totalEnergy > 2.0) {
-        // Energía muy alta: usar acento
+      // V13.1: Umbral MÁS BAJO para que los acentos aparezcan más
+      // Era: totalEnergy > 2.0 (casi imposible)
+      // Ahora: totalEnergy > 1.2 (frecuente en momentos intensos)
+      if (totalEnergy > 1.2 || (isPeak && totalEnergy > 0.8)) {
         const accentIndex = Math.floor(Math.random() * palette.peakAccents.length);
         const accent = palette.peakAccents[accentIndex];
         
-        // Mezclar 30% del acento con el color base
+        // 🎨 V13.1: MEZCLA 70% ACENTO (era 30%) - ¡Que se VEA!
         const baseColor = this.hslToRgb(hue / 360, saturation / 100, lightness / 100);
         return {
-          r: Math.round(baseColor.r * 0.7 + accent.r * 0.3),
-          g: Math.round(baseColor.g * 0.7 + accent.g * 0.3),
-          b: Math.round(baseColor.b * 0.7 + accent.b * 0.3),
+          r: Math.round(baseColor.r * 0.3 + accent.r * 0.7),
+          g: Math.round(baseColor.g * 0.3 + accent.g * 0.7),
+          b: Math.round(baseColor.b * 0.3 + accent.b * 0.7),
         };
       }
     }

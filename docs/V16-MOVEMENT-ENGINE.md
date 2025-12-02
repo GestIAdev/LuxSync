@@ -386,6 +386,33 @@ limits: {
 }
 ```
 
+### 6. Anti-Stuck en Límites (V16.4)
+
+**Problema**: La física de inercia puede hacer que la posición se "pegue" a 0 o 255 y no pueda volver.
+
+```javascript
+// ANTES: Se quedaba pegado durante 20+ segundos
+🎭 [waves] L:pan=255 R:pan=255
+🎭 [waves] L:pan=255 R:pan=255
+🎭 [waves] L:pan=255 R:pan=255  // ... muchos más
+
+// AHORA: Clamp dentro del bucle + mecanismo de despegue
+newPos[axis] = Math.max(0, Math.min(255, newPos[axis]));
+
+// Si estamos pegados pero el objetivo está lejos, forzar movimiento
+if ((newPos[axis] >= 254 || newPos[axis] <= 1) && absDistance > 20) {
+  newVel[axis] = -Math.sign(newPos[axis] - 127) * maxSpeed * 0.3;
+  console.warn(`🔓 Unstuck ${axis}`);
+}
+```
+
+**Síntomas del bug**:
+- Los beams se quedaban fijos en una posición extrema
+- Solo el tilt (longitud del beam) cambiaba
+- Después de 10-20 segundos "mágicamente" volvían a moverse
+
+**Causa raíz**: La velocidad acumulada empujaba la posición más allá de 255, y al clampear solo al final, el estado interno quedaba corrupto.
+
 ---
 
 ## 🎨 Integración con Paletas
@@ -610,6 +637,7 @@ class ChoreographyEngine {
 | V16.1 | `9944e26` | Hardware Protection - NaN guard, singularity fix, anti-jitter |
 | V16.2 | `51a915e` | Fix circle pattern amplitude bug |
 | V16.3 | `0a46538` | Canvas visualiza TILT, fix mirror config |
+| V16.4 | `22c9db5` | Fix stuck at limits - clamp in physics loop + unstuck mechanism |
 
 ---
 

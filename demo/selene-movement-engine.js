@@ -124,6 +124,7 @@ class SeleneMovementEngine {
       // Uso: Neón, Cyberpunk, builds intensos
       // V17.1 FIX: Cambio de triángulo a seno achatado para evitar picos de
       //            aceleración infinita que causaban "Unstuck" excesivos
+      // V17.2 FIX: Reducir amplitud y velocidad para menos Unstuck
       // ═══════════════════════════════════════════════════════════════════════
       sweep: {
         name: 'sweep',
@@ -131,19 +132,20 @@ class SeleneMovementEngine {
         calculate: (phase, amplitude, intensity) => {
           // V17.1 FIX: Seno saturado en lugar de triángulo
           // Parece lineal en el centro pero tiene transiciones suaves en los extremos
-          // pow(0.7) achata la curva para que parezca más lineal
+          // pow(0.5) más suave que 0.7 - transiciones aún más graduales
           const rawSine = Math.sin(phase);
-          const sweepX = Math.sign(rawSine) * Math.pow(Math.abs(rawSine), 0.7);
+          const sweepX = Math.sign(rawSine) * Math.pow(Math.abs(rawSine), 0.5);
           
-          const effectiveAmp = amplitude.x * (0.5 + intensity * 0.5);
+          // V17.2 FIX: Reducir efectiveAmp para menos rango de movimiento
+          const effectiveAmp = amplitude.x * (0.4 + intensity * 0.4);
           
           return {
             x: sweepX * effectiveAmp,
-            y: Math.sin(phase * 0.5) * amplitude.y * 0.1 * intensity,  // Ligera ondulación
+            y: Math.sin(phase * 0.5) * amplitude.y * 0.1 * intensity,
           };
         },
-        baseAmplitude: { x: 0.9, y: 0.15 },
-        speedMultiplier: 1.5,  // Rápido
+        baseAmplitude: { x: 0.7, y: 0.15 },  // V17.2: Reducido de 0.9 a 0.7
+        speedMultiplier: 1.0,  // V17.2: Reducido de 1.5 a 1.0 (más lento)
         moods: ['neon', 'cyberpunk', 'edm'],
       },
       

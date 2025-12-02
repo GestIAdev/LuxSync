@@ -120,25 +120,25 @@ class SeleneMovementEngine {
       },
       
       // ═══════════════════════════════════════════════════════════════════════
-      // ⚡ SWEEP: Barrido horizontal (zigzag)
+      // ⚡ SWEEP: Barrido horizontal (zigzag suavizado)
       // Uso: Neón, Cyberpunk, builds intensos
+      // V17.1 FIX: Cambio de triángulo a seno achatado para evitar picos de
+      //            aceleración infinita que causaban "Unstuck" excesivos
       // ═══════════════════════════════════════════════════════════════════════
       sweep: {
         name: 'sweep',
-        description: 'Barrido lineal horizontal',
+        description: 'Barrido lineal horizontal (suavizado)',
         calculate: (phase, amplitude, intensity) => {
-          // Onda triangular para movimiento lineal
-          const triangle = (p) => {
-            const normalized = (p % (Math.PI * 2)) / (Math.PI * 2);
-            return normalized < 0.5 
-              ? (normalized * 4 - 1) 
-              : (3 - normalized * 4);
-          };
+          // V17.1 FIX: Seno saturado en lugar de triángulo
+          // Parece lineal en el centro pero tiene transiciones suaves en los extremos
+          // pow(0.7) achata la curva para que parezca más lineal
+          const rawSine = Math.sin(phase);
+          const sweepX = Math.sign(rawSine) * Math.pow(Math.abs(rawSine), 0.7);
           
           const effectiveAmp = amplitude.x * (0.5 + intensity * 0.5);
           
           return {
-            x: triangle(phase) * effectiveAmp,
+            x: sweepX * effectiveAmp,
             y: Math.sin(phase * 0.5) * amplitude.y * 0.1 * intensity,  // Ligera ondulación
           };
         },

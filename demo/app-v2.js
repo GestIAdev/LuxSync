@@ -1826,10 +1826,19 @@ function renderFixtures() {
       ctx.fill();
     }
     
-    // Moving head beam indicator
+    // Moving head beam indicator - V16 mejorado con PAN + TILT
     if (fixture.type === 'MOVING_HEAD' && fixture.capabilities.pan) {
+      // PAN: Ángulo horizontal (-135° a +135° = 270° total)
       const panAngle = ((fixture.currentPan || 127) / 255) * Math.PI * 1.5 - Math.PI * 0.75;
-      const beamLength = 50 + dimmer * 30;
+      
+      // TILT: Afecta la LONGITUD del beam (0=mirando arriba/corto, 127=horizontal, 255=abajo/corto)
+      // Normalizamos: tilt 40-200 (zona segura) → 0.3 a 1.0 de longitud
+      const tiltNorm = (fixture.currentTilt || 127) / 255;
+      // Parábola: máxima longitud en tilt=127 (horizontal), mínima en extremos
+      const tiltFactor = 1 - Math.pow((tiltNorm - 0.5) * 2, 2) * 0.7;
+      
+      const baseLength = 50 + dimmer * 30;
+      const beamLength = baseLength * Math.max(0.3, tiltFactor);
       
       // Beam glow
       const beamGradient = ctx.createLinearGradient(
@@ -1860,6 +1869,16 @@ function renderFixtures() {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
       ctx.stroke();
+      
+      // 🎯 Indicador de TILT (círculo en la punta que cambia de tamaño)
+      const tipX = x + Math.cos(panAngle) * beamLength * 0.9;
+      const tipY = y + Math.sin(panAngle) * beamLength * 0.9;
+      const tiltIndicatorSize = 3 + (1 - Math.abs(tiltNorm - 0.5) * 2) * 5; // Grande=horizontal
+      
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, tiltIndicatorSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.9)`;
+      ctx.fill();
     }
     
     // Label

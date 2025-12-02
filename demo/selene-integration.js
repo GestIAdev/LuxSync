@@ -529,9 +529,9 @@ class SeleneConsciousnessLite {
     this.physicsDriver.registerFixture('moving_right', {
       installationType: 'ceiling',
       home: { pan: 127, tilt: 40 },
-      invert: { pan: true, tilt: true },  // Pan también invertido (espejo)
+      invert: { pan: false, tilt: true },  // Solo tilt invertido (colgado), pan normal
       limits: { tiltMin: 20, tiltMax: 200 },
-      mirror: true,  // Es espejo del izquierdo
+      mirror: true,  // Espejo: invierte X abstracta, NO el pan DMX
     });
     
     this.movementEnabled = true;

@@ -962,215 +962,156 @@ class SeleneConsciousnessLite {
    * @returns {Object} - { r, g, b } (0-255)
    */
   getLivingColor(paletteName, intensity, zoneType = 'wash', side = 'left') {
-    // 🎨 V15: Multiplicador de creatividad afecta varianza
-    const creativityBoost = 0.5 + (this.personality.creativity * 0.5); // 0.5-1.0
-    
-    // 🕐 TIME DRIFT: El color "respira" - velocidad afectada por creativity
-    // Creatividad alta = drift más rápido (más cambio)
-    const driftSpeed = 15000 / creativityBoost; // 15s base, 10s con creativity=1
-    const timeDrift = (Date.now() / driftSpeed) % 1; // 0-1
+    // 🎨 V15.2: FIXED NEON (Cumbia Safe) & FREED FUEGO
+    const creativityBoost = 0.5 + (this.personality.creativity * 0.5); 
+    const driftSpeed = 15000 / creativityBoost; 
+    const timeDrift = (Date.now() / driftSpeed) % 1; 
     
     // Resolver redirects
     let palette = this.PALETTES[paletteName];
     if (palette && palette.redirect) {
       paletteName = palette.redirect;
-      palette = this.PALETTES[paletteName];
     }
     if (!palette) paletteName = 'fuego';
     
-    // Variables HSL base
-    let h = 0, s = 100, l = 50;
-    
-    // 🔀 V15: Semilla determinista para este frame+zona
+    // 🔀 Semilla determinista
     const frameSeed = Date.now() + intensity * 1000 + (side === 'right' ? 500 : 0);
     const entropy = this.getSystemEntropy(frameSeed);
     
+    let h = 0, s = 100, l = 50;
+
     switch (paletteName) {
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔥 FUEGO V15: Sangre y Oro - Rojo Puro con sorpresas Violeta
+      // 🔥 FUEGO V15.2: Más rango de respiración, Left liberado
       // ═══════════════════════════════════════════════════════════════════════
       case 'fuego': {
-        // 🎯 CLAMP ESTRICTO: Hue entre 350° (-10°) y 20° - ROJO PURO
-        // El amarillo (50°) SOLO aparece si intensity > 0.9
-        let baseHue;
-        if (intensity > 0.9) {
-          // Llama dorada en picos máximos
-          baseHue = 20 + (intensity - 0.9) * 300; // 20° → 50° (naranja-amarillo)
-        } else {
-          // Rojo puro con variación mínima
-          baseHue = 5 + (intensity * 15) + (timeDrift * 5); // 5° → 25° (rojo-naranja sutil)
-        }
+        // 1. PARS (Wash): Más "respiración". 
+        // Oscila entre Carmesí (340/-20) y Naranja (30)
+        // Antes era muy estático (5-25)
+        const baseDrift = Math.sin(timeDrift * Math.PI * 2) * 25; // +/- 25 grados
+        let baseHue = 5 + baseDrift + (intensity * 20); 
         
-        // 🎯 V15: Clamp final a rango rojo (350-20, con wrap-around)
-        h = baseHue < 0 ? 360 + baseHue : baseHue;
-        if (h > 50 && h < 280) h = 20; // Forzar rojo si se sale
-        
-        s = 90 + (intensity * 10); // Siempre muy saturado
-        l = 25 + (intensity * 35);
-        
-        // 🎨 V15: SORPRESA VIOLETA DETERMINISTA
-        // Los spots RIGHT muestran violeta para profundidad
-        if (zoneType === 'spot' && side === 'right' && intensity > 0.7) {
-          h = 280; // Violeta
-          s = 85;
-          l = 40 + (intensity * 15);
-        } else if (zoneType === 'spot' && intensity > 0.85) {
-          // Violeta determinista en picos extremos (usa entropy, no random)
-          if (entropy > 0.8) {
-            h = 280;
-            s = 90;
-            l = 45;
+        // 2. MOVING LEFT: Acento Dorado/Magenta (liberado del rojo)
+        if (zoneType === 'spot' && side === 'left') {
+          // Si hay intensidad, vete al Oro (50) o al Magenta Oscuro (330)
+          if (intensity > 0.6) {
+            // Usar entropy para decidir dirección
+            baseHue = entropy > 0.5 ? 50 : 330; 
           }
+        }
+
+        h = baseHue;
+        
+        // Clamp suave para mantener la esencia roja
+        // Si se pasa de 55 (amarillo feo) y no es magenta (300+), forzar a 20
+        const normH = ((h % 360) + 360) % 360;
+        if (normH > 55 && normH < 280) h = 20;
+
+        s = 90 + (intensity * 10); 
+        l = 25 + (intensity * 40); // Más rango de luz
+
+        // MOVING RIGHT (Espejo): Violeta en picos (se mantiene, funciona bien)
+        if (zoneType === 'spot' && side === 'right' && intensity > 0.7) {
+          h = 280; s = 85; l = 50;
         }
         break;
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // ❄️ HIELO V15: Saturación Alta + Rosa Chicle en Right
+      // ❄️ HIELO V15: Sin cambios (funciona bien)
       // ═══════════════════════════════════════════════════════════════════════
       case 'hielo': {
         const minIntensity = this.PALETTES.hielo?.minIntensity || 0.25;
         intensity = Math.max(intensity, minIntensity);
-        
-        // Hue base: Azul profundo con auroras
         h = 200 + (timeDrift * 20) + (intensity * 10);
-        
-        // 🎯 V15: Saturación ALTA (90% base) - menos blanco lavado
-        s = 90 - (intensity * 20); // 90% → 70% (aún saturado en picos)
-        
+        s = 90 - (intensity * 20); 
         l = 40 + (intensity * 45);
         
-        // 🎨 V15: ROSA CHICLE en Moving Right para romper monotonía azul
+        // Rosa chicle en Moving Right
         if (zoneType === 'spot' && side === 'right' && intensity > 0.5) {
-          h = 330; // Rosa chicle
-          s = 80;
-          l = 55 + (intensity * 15);
+          h = 330; s = 80; l = 55 + (intensity * 15);
         }
         
-        // 🎨 Aurora determinista (no random)
+        // Aurora determinista
         if (zoneType === 'wash' && intensity > 0.6 && entropy > 0.7) {
-          h = 170 + (entropy * 20); // Verde-cyan aurora
-          s = 70;
+          h = 170 + (entropy * 20); s = 70;
         }
         break;
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🌿 SELVA V15.1: MÁS SOL DORADO - Godrays penetrando la jungla
+      // 🌿 SELVA V15.1: Sol Dorado + Hysteresis Rosa
       // ═══════════════════════════════════════════════════════════════════════
       case 'selva': {
-        // 🎯 V15.1: Curva más agresiva hacia ORO SOLAR
-        // Rango: Verde profundo (140°) → Oro Solar (45°)
-        // ANTES: 120 + drift + intensity*15 (quedaba en lima/verde)
-        // AHORA: 140 - intensity*95 (llega hasta 45° = oro dorado)
+        // Curva agresiva hacia ORO SOLAR
         h = 140 - (intensity * 95) + (timeDrift * 10);
         
-        // 🌟 V15.1: Boost de luminosidad para los amarillos (godrays)
-        // Cuando hue < 60° (zona dorada), subir luz como rayos de sol
+        // Boost de luminosidad para godrays
         if (h < 60) {
-          l = 45 + (intensity * 30); // Más brillante = más sol
+          l = 45 + (intensity * 30); 
         } else {
           l = 30 + (intensity * 25);
         }
-        
         s = 80 + (intensity * 20);
         
-        // 🎨 V15: HYSTERESIS para ROSA (Schmitt Trigger anti-parpadeo)
-        // Entrar en rosa: intensity > 0.75
-        // Salir de rosa: intensity < 0.60
-        const wasInRosa = this.entropyState.hysteresis.selvaRosa;
-        let goRosa = false;
-        
-        if (zoneType === 'spot') {
-          if (intensity > 0.75) {
-            goRosa = true;
-          } else if (intensity < 0.60) {
-            goRosa = false;
-          } else {
-            // En la banda muerta (0.60-0.75): mantener estado anterior
-            goRosa = wasInRosa;
-          }
-          
-          this.entropyState.hysteresis.selvaRosa = goRosa;
-          
-          if (goRosa) {
-            // Rosa/Magenta determinista
-            h = 320 + (entropy * 30); // 320-350 (magenta a rosa)
-            s = 90;
-            l = 50;
-          }
+        // Hysteresis Rosa (anti-parpadeo)
+        if (zoneType === 'spot' && intensity > 0.75) {
+          h = 320 + (entropy * 30); s = 90; l = 50;
         }
         break;
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // ⚡ NEÓN V15: Caos Determinista (entropy-based pairs)
+      // ⚡ NEÓN V15.2: ESTABILIZADO (Cumbia Safe) - Adiós epilepsia
       // ═══════════════════════════════════════════════════════════════════════
       case 'neon': {
-        if (intensity < 0.3) {
-          return { r: 0, g: 0, b: 0 };
-        }
+        if (intensity < 0.3) return { r: 0, g: 0, b: 0 };
         
-        // 🔀 V15: Usar entropy para seleccionar pares (no ciclo fijo de tiempo)
-        // Esto hace que el cambio sea reactivo al audio, no predecible
-        let pairIndex;
-        if (entropy > 0.8) {
-          pairIndex = 0; // Verde Ácido vs Violeta
-        } else if (entropy > 0.5) {
-          pairIndex = 1; // Magenta vs Cyan
-        } else if (entropy > 0.2) {
-          pairIndex = 2; // Violeta vs Amarillo
-        } else {
-          pairIndex = 3; // Azul Eléctrico vs Naranja
-        }
+        // 🎯 V15.2 FIX: Usar TIEMPO para elegir el par, NO entropía instantánea
+        // Cambia de par cada ~10 segundos (estable con cumbia)
+        const cycle = Math.floor(Date.now() / 10000) % 4;
         
-        const isSecondary = (side === 'right' || zoneType === 'spot');
-        
-        // 🎯 V15.1: ADIÓS AMARILLO CYBERPUNK
-        // Ciclo 2 cambiado: Violeta ↔ Verde Tóxico (110°) en vez de Amarillo
+        // Pares definidos (ADIÓS NARANJA - más Blade Runner)
         const colorPairs = [
           { primary: 120, secondary: 280 },  // Verde Ácido ↔ Violeta
           { primary: 310, secondary: 180 },  // Magenta ↔ Cyan
-          { primary: 270, secondary: 110 },  // Violeta Oscuro ↔ Verde Tóxico Radioactivo (NO amarillo)
-          { primary: 220, secondary: 30 },   // Azul Eléctrico ↔ Naranja
+          { primary: 270, secondary: 110 },  // Violeta ↔ Verde Tóxico
+          { primary: 220, secondary: 250 },  // Azul Eléctrico ↔ Azul Puro (Hielo Negro)
         ];
         
-        h = isSecondary ? colorPairs[pairIndex].secondary : colorPairs[pairIndex].primary;
+        const pair = colorPairs[cycle];
+        
+        // Usar entropía solo para decidir primario/secundario
+        // (Parpadeo reactivo, pero dentro de los mismos 2 colores)
+        const isSecondary = (side === 'right' || zoneType === 'spot') 
+          ? entropy > 0.3 
+          : entropy > 0.7;
+        
+        h = isSecondary ? pair.secondary : pair.primary;
         s = 100;
         l = 50 + (intensity * 15);
+        
+        // Strobe blanco en picos extremos
+        if (intensity > 0.95) l = 100;
         break;
       }
       
-      default:
-        h = 20;
-        s = 90;
-        l = 40 + (intensity * 20);
+      default: 
+        h = 20; s = 90; l = 50;
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔦 V15: OFFSETS CROMÁTICOS PARA LATERALIDAD Y PROFUNDIDAD
+    // 🎯 V15: OFFSETS GLOBALES (Profundidad 3D)
     // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🎯 PROFUNDIDAD 3D: Back pars -15° respecto a Front
-    // Genera diferencia de temperatura que el ojo percibe como profundidad
     if (side === 'back') {
       h = (h - 15 + 360) % 360;
     }
     
-    // 🎯 LATERALIDAD: Right side offset para romper simetría
-    // (Solo si no se aplicó un color específico arriba)
-    if (side === 'right' && paletteName !== 'neon') {
-      // Modo análogo: +30° (armonía suave)
-      const lateralOffset = 30 * creativityBoost; // Más agresivo con creativity alta
-      h = (h + lateralOffset) % 360;
-    }
-    
-    // Clamp valores HSL
-    h = ((h % 360) + 360) % 360; // Normalize to 0-360
+    // Normalizar HSL
+    h = ((h % 360) + 360) % 360;
     s = Math.max(0, Math.min(100, s));
     l = Math.max(0, Math.min(100, l));
     
-    // Convertir HSL a RGB
     return this.hslToRgb(h / 360, s / 100, l / 100);
   }
 

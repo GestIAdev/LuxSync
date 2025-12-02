@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎪 LuxSync Demo V2 - Fixtures del Casero</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a0a15 0%, #1a1025 50%, #0a0a15 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            border: 2px solid #00FFFF;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00FFFF, #8B5CF6, #EC4899, #F59E0B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbow 3s linear infinite;
+        }
+
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 15px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* CANVAS PRINCIPAL */
+        .canvas-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            border: 3px solid #00FFFF;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                inset 0 0 50px rgba(0, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        #fixture-canvas {
+            display: block;
+            width: 100%;
+            height: 350px;
+        }
+
+        /* PANEL LATERAL */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel h3 {
+            color: #00FFFF;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* MODO DE AUDIO */
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .mode-btn {
+            padding: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-btn:hover {
+            transform: translateX(5px);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .mode-btn.active {
+            box-shadow: 0 0 20px currentColor, inset 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        .btn-mic { background: linear-gradient(135deg, #059669, #10B981); color: white; }
+        .btn-sim { background: linear-gradient(135deg, #8B5CF6, #EC4899); color: white; }
+        .btn-tornado { background: linear-gradient(135deg, #DC2626, #F59E0B); color: white; }
+
+        /* CONTROLES */
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .ctrl-btn {
+            padding: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .ctrl-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-start { background: #10B981; color: white; }
+        .btn-stop { background: #EF4444; color: white; }
+        .btn-test { background: #F59E0B; color: white; }
+        .btn-blackout { background: #1F2937; color: white; border: 1px solid #374151; }
+
+        /* AUDIO VISUALIZER */
+        .audio-bars {
+            display: flex;
+            gap: 4px;
+            height: 60px;
+            align-items: flex-end;
+            margin-top: 10px;
+        }
+
+        .audio-bar {
+            flex: 1;
+            background: linear-gradient(to top, #00FFFF, #8B5CF6);
+            border-radius: 2px;
+            transition: height 0.05s;
+            min-height: 4px;
+        }
+
+        .audio-bar.bass { background: linear-gradient(to top, #EF4444, #F59E0B); }
+        .audio-bar.mid { background: linear-gradient(to top, #10B981, #00FFFF); }
+        .audio-bar.treble { background: linear-gradient(to top, #8B5CF6, #EC4899); }
+
+        /* STATS */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.8rem;
+        }
+
+        .stat-label { color: #888; }
+        .stat-value { color: #00FFFF; font-weight: bold; }
+        .stat-value.beat { color: #EF4444; animation: pulse 0.1s; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* FIXTURE LIST */
+        .fixture-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+        }
+
+        .fixture-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .fixture-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .fixture-name { flex: 1; color: #ccc; }
+        .fixture-dmx { color: #888; font-family: monospace; }
+
+        /* LOG */
+        #log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            max-height: 100px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 4px;
+            color: #0f0;
+        }
+
+        .log-error { color: #EF4444; }
+        .log-warn { color: #F59E0B; }
+        .log-info { color: #00FFFF; }
+
+        /* EFFECTS */
+        .effects-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .effect-btn {
+            padding: 8px 4px;
+            font-size: 0.7rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .effect-btn:hover {
+            background: rgba(139, 92, 246, 0.5);
+            transform: scale(1.05);
+        }
+
+        .effect-btn.active {
+            background: #8B5CF6;
+            box-shadow: 0 0 10px #8B5CF6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎪 LuxSync Demo V2</h1>
+            <p class="subtitle">Fixtures del Casero + Selene AI + Audio Reactivo</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- CANVAS PRINCIPAL -->
+            <div class="canvas-container">
+                <canvas id="fixture-canvas"></canvas>
+                
+                <!-- � INFO OVERLAY - Panel compacto en esquina inferior -->
+                <div id="selene-overlay" style="
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                    right: 10px;
+                    background: rgba(0,0,0,0.8);
+                    border: 2px solid #00FFFF;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 15px;
+                    backdrop-filter: blur(8px);
+                    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+                ">
+                    <!-- Paleta activa -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="overlay-palette-icon" style="font-size: 1.5em;">🔥</span>
+                        <div>
+                            <div style="font-size: 0.7em; color: #888;">PALETA</div>
+                            <div id="overlay-palette-name" style="font-weight: bold; color: #F59E0B;">FUEGO</div>
+                        </div>
+                    </div>
+                    
+                    <!-- BPM -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.7em; color: #888;">BPM</div>
+                        <div id="overlay-bpm" style="font-size: 1.3em; font-weight: bold; color: #00FFFF;">---</div>
+                    </div>
+                    
+                    <!-- Audio Levels Mini -->
+                    <div style="display: flex; gap: 8px; align-items: flex-end; height: 35px;">
+                        <div style="text-align: center;">
+                            <div id="overlay-bass" style="width: 20px; background: linear-gradient(to top, #EF4444, #F59E0B); border-radius: 2px; height: 10px; transition: height 0.1s;"></div>
+                            <div style="font-size: 0.6em; color: #EF4444;">B</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="overlay-mid" style="width: 20px; background: linear-gradient(to top, #10B981, #00FFFF); border-radius: 2px; height: 15px; transition: height 0.1s;"></div>
+                            <div style="font-size: 0.6em; color: #10B981;">M</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div id="overlay-treble" style="width: 20px; background: linear-gradient(to top, #8B5CF6, #EC4899); border-radius: 2px; height: 20px; transition: height 0.1s;"></div>
+                            <div style="font-size: 0.6em; color: #8B5CF6;">T</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Beat indicator -->
+                    <div id="overlay-beat" style="
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: radial-gradient(circle, #333 0%, #111 100%);
+                        border: 2px solid #444;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.2em;
+                        transition: all 0.1s;
+                    ">🥁</div>
+                </div>
+            </div>
+
+            <!-- PANEL LATERAL -->
+            <div class="side-panel">
+                <!-- MODO DE AUDIO -->
+                <div class="panel">
+                    <h3>🎵 Entrada de Audio</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn btn-mic" onclick="setAudioMode('mic')" id="btn-mode-mic">
+                            🎤 Micrófono
+                            <span style="font-size: 0.7em; opacity: 0.7;">Captura ambiente</span>
+                        </button>
+                        <button class="mode-btn active" onclick="setAudioMode('desktop')" id="btn-mode-desktop" style="background: linear-gradient(135deg, #DC2626, #F59E0B);">
+                            🖥️ Audio Sistema
+                            <span style="font-size: 0.7em; opacity: 0.7;">Spotify · YouTube · DJ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MODO DMX -->
+                <div class="panel">
+                    <h3>💡 Salida DMX</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn btn-sim active" onclick="setDMXMode('canvas')" id="btn-dmx-canvas">
+                            🖥️ Simulador Canvas
+                        </button>
+                        <button class="mode-btn btn-tornado" onclick="setDMXMode('tornado')" id="btn-dmx-tornado">
+                            🌪️ Tornado USB DMX
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CONTROLES -->
+                <div class="panel">
+                    <h3>🎮 Controles</h3>
+                    <div class="control-grid">
+                        <button class="ctrl-btn btn-start" onclick="startDemo()">▶️ START</button>
+                        <button class="ctrl-btn btn-stop" onclick="stopDemo()">⏹️ STOP</button>
+                        <button class="ctrl-btn btn-test" onclick="testPattern()">🌈 TEST</button>
+                        <button class="ctrl-btn btn-blackout" onclick="blackout()">⚫ BLACKOUT</button>
+                    </div>
+                </div>
+
+                <!-- AUDIO VISUALIZER -->
+                <div class="panel">
+                    <h3>📊 Audio</h3>
+                    <div class="audio-bars">
+                        <div class="audio-bar bass" id="bar-bass" style="height: 20%"></div>
+                        <div class="audio-bar bass" id="bar-bass2" style="height: 15%"></div>
+                        <div class="audio-bar mid" id="bar-mid" style="height: 30%"></div>
+                        <div class="audio-bar mid" id="bar-mid2" style="height: 25%"></div>
+                        <div class="audio-bar treble" id="bar-treble" style="height: 40%"></div>
+                        <div class="audio-bar treble" id="bar-treble2" style="height: 35%"></div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <div class="stat-row">
+                            <span class="stat-label">BPM</span>
+                            <span class="stat-value" id="stat-bpm">128</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Beat</span>
+                            <span class="stat-value" id="stat-beat">⚫</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EFECTOS -->
+                <div class="panel">
+                    <h3>✨ Efectos</h3>
+                    <div class="effects-grid">
+                        <button class="effect-btn" onclick="setEffect('chase')">🏃 Chase</button>
+                        <button class="effect-btn" onclick="setEffect('wave')">🌊 Wave</button>
+                        <button class="effect-btn" onclick="setEffect('strobe')">⚡ Strobe</button>
+                        <button class="effect-btn" onclick="setEffect('pulse')">💓 Pulse</button>
+                        <button class="effect-btn" onclick="setEffect('rainbow')">🌈 Rainbow</button>
+                        <button class="effect-btn" onclick="setEffect('blackout')" style="background: #000; border: 2px solid #FF0000;">⬛ Blackout</button>
+                        <button class="effect-btn" onclick="clearEffects()">🚫 Clear</button>
+                    </div>
+                </div>
+
+                <!-- � PALETAS DE COLOR (MANUAL) -->
+                <div class="panel" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1)); border: 2px solid #8B5CF6;">
+                    <h3 style="color: #8B5CF6;">� Paleta de Colores</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button class="palette-btn" onclick="setPalette('fuego')" id="btn-palette-fuego" style="
+                            padding: 15px 10px;
+                            border: 2px solid #F59E0B;
+                            border-radius: 8px;
+                            background: linear-gradient(135deg, #DC2626, #F59E0B);
+                            color: white;
+                            font-weight: bold;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            🔥 FUEGO
+                            <div style="font-size: 0.7em; opacity: 0.8;">Latino · Reggaeton</div>
+                        </button>
+                        <button class="palette-btn" onclick="setPalette('hielo')" id="btn-palette-hielo" style="
+                            padding: 15px 10px;
+                            border: 2px solid #06B6D4;
+                            border-radius: 8px;
+                            background: linear-gradient(135deg, #0EA5E9, #06B6D4);
+                            color: white;
+                            font-weight: bold;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            ❄️ HIELO
+                            <div style="font-size: 0.7em; opacity: 0.8;">Chill · Ambient</div>
+                        </button>
+                        <button class="palette-btn" onclick="setPalette('selva')" id="btn-palette-selva" style="
+                            padding: 15px 10px;
+                            border: 2px solid #10B981;
+                            border-radius: 8px;
+                            background: linear-gradient(135deg, #059669, #10B981);
+                            color: white;
+                            font-weight: bold;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            🌿 SELVA
+                            <div style="font-size: 0.7em; opacity: 0.8;">Tropical · House</div>
+                        </button>
+                        <button class="palette-btn" onclick="setPalette('neon')" id="btn-palette-neon" style="
+                            padding: 15px 10px;
+                            border: 2px solid #A855F7;
+                            border-radius: 8px;
+                            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+                            color: white;
+                            font-weight: bold;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            ⚡ NEÓN
+                            <div style="font-size: 0.7em; opacity: 0.8;">Techno · Cyberpunk</div>
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; text-align: center; font-size: 0.8em; color: #888;">
+                        Paleta activa: <span id="active-palette" style="color: #F59E0B; font-weight: bold;">🔥 FUEGO</span>
+                    </div>
+                </div>
+
+                <!-- FIXTURES -->
+                <div class="panel">
+                    <h3>💡 Fixtures Activos</h3>
+                    <div class="fixture-list" id="fixture-list">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- LOG -->
+                <div class="panel">
+                    <h3>📜 Log</h3>
+                    <div id="log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🌙 Selene Consciousness Integration -->
+    <script src="./selene-integration.js"></script>
+    <script type="module" src="./app-v2.js"></script>
+</body>
+</html>

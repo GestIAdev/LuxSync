@@ -52,61 +52,56 @@ class SeleneConsciousnessLite {
       energy: 0.5,               // Nivel de energía actual
     };
 
-    // 🎨 SELENE PALETTES - Paletas de color por mood
-    // Selene DECIDE qué paleta usar según análisis musical
+    // 🎨 SELENE PALETTES - Paletas de color MANUALES
+    // El usuario elige la paleta según el mood de la fiesta
     this.PALETTES = {
-      // 🌙 DEFAULT: Colores naturales equilibrados
-      default: {
-        name: 'Clásica',
-        front:  { base: { r: 255, g: 60, b: 0 },   accent: { r: 255, g: 120, b: 0 } },   // Naranjas
-        back:   { base: { r: 0, g: 150, b: 255 },  accent: { r: 0, g: 220, b: 255 } },   // Azules
-        left:   { base: { r: 0, g: 180, b: 150 },  accent: { r: 0, g: 255, b: 200 } },   // Cyans fríos
-        right:  { base: { r: 255, g: 80, b: 120 }, accent: { r: 255, g: 0, b: 180 } },   // Magentas
+      // 🔥 FUEGO: Latino, Reggaeton, Salsa - Colores CÁLIDOS
+      fuego: {
+        name: 'Fuego',
+        icon: '🔥',
+        front:  { base: { r: 255, g: 0, b: 0 },    accent: { r: 255, g: 80, b: 0 } },    // Rojo → Naranja
+        back:   { base: { r: 255, g: 150, b: 0 },  accent: { r: 255, g: 220, b: 0 } },   // Naranja → Amarillo
+        left:   { base: { r: 255, g: 50, b: 0 },   accent: { r: 255, g: 120, b: 0 } },   // Rojo-naranja
+        right:  { base: { r: 255, g: 0, b: 50 },   accent: { r: 255, g: 0, b: 120 } },   // Rojo-rosa
       },
-      // 🔥 LATINO: Cumbia, reggaeton, salsa, bachata - colores CÁLIDOS
-      latino: {
-        name: 'Latino',
-        front:  { base: { r: 255, g: 0, b: 0 },    accent: { r: 255, g: 50, b: 0 } },    // Rojo puro
-        back:   { base: { r: 255, g: 180, b: 0 },  accent: { r: 255, g: 220, b: 0 } },   // Dorado/Amarillo
-        left:   { base: { r: 255, g: 100, b: 0 },  accent: { r: 255, g: 150, b: 0 } },   // Naranja
-        right:  { base: { r: 255, g: 0, b: 100 },  accent: { r: 255, g: 0, b: 150 } },   // Rosa caliente
+      // ❄️ HIELO: Chill, Ambient, Downtempo - Colores FRÍOS
+      hielo: {
+        name: 'Hielo',
+        icon: '❄️',
+        front:  { base: { r: 0, g: 150, b: 255 },  accent: { r: 100, g: 200, b: 255 } }, // Azul cielo
+        back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 150, g: 255, b: 255 } }, // Cyan
+        left:   { base: { r: 50, g: 100, b: 200 }, accent: { r: 100, g: 150, b: 255 } }, // Azul profundo
+        right:  { base: { r: 200, g: 220, b: 255 },accent: { r: 255, g: 255, b: 255 } }, // Blanco azulado
       },
-      // ⚡ ELECTRÓNICA: Techno, House, Trance, Cyberpunk - colores FRÍOS/NEÓN
-      electronica: {
-        name: 'Electrónica',
-        front:  { base: { r: 255, g: 0, b: 100 },  accent: { r: 255, g: 50, b: 150 } },  // Rosa neón
+      // 🌿 SELVA: Tropical House, Reggae, Summer - Colores NATURALES
+      selva: {
+        name: 'Selva',
+        icon: '🌿',
+        front:  { base: { r: 0, g: 200, b: 100 },  accent: { r: 50, g: 255, b: 100 } },  // Verde lima
+        back:   { base: { r: 0, g: 150, b: 100 },  accent: { r: 0, g: 200, b: 150 } },   // Verde bosque
+        left:   { base: { r: 0, g: 255, b: 180 },  accent: { r: 100, g: 255, b: 200 } }, // Turquesa
+        right:  { base: { r: 180, g: 255, b: 0 },  accent: { r: 220, g: 255, b: 50 } },  // Lima brillante
+      },
+      // ⚡ NEÓN: Techno, Cyberpunk, EDM - Colores ELÉCTRICOS
+      neon: {
+        name: 'Neón',
+        icon: '⚡',
+        front:  { base: { r: 255, g: 0, b: 150 },  accent: { r: 255, g: 50, b: 200 } },  // Magenta
         back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 100, g: 255, b: 255 } }, // Cyan neón
-        left:   { base: { r: 0, g: 255, b: 150 },  accent: { r: 0, g: 255, b: 200 } },   // Verde neón
-        right:  { base: { r: 150, g: 0, b: 255 },  accent: { r: 200, g: 50, b: 255 } },  // Violeta neón
+        left:   { base: { r: 150, g: 0, b: 255 },  accent: { r: 200, g: 50, b: 255 } },  // Violeta
+        right:  { base: { r: 255, g: 255, b: 0 },  accent: { r: 255, g: 255, b: 100 } }, // Amarillo neón
       },
-      // 💀 TECHNO: (legacy - redirige a electronica)
-      techno: {
-        name: 'Techno',
-        front:  { base: { r: 200, g: 0, b: 0 },    accent: { r: 255, g: 0, b: 0 } },     // Rojo oscuro
-        back:   { base: { r: 0, g: 50, b: 150 },   accent: { r: 0, g: 100, b: 255 } },   // Azul profundo
-        left:   { base: { r: 100, g: 0, b: 150 },  accent: { r: 150, g: 0, b: 255 } },   // Violeta
-        right:  { base: { r: 150, g: 0, b: 100 },  accent: { r: 255, g: 0, b: 150 } },   // Magenta oscuro
-      },
-      // 🌆 CYBERPUNK: (legacy - redirige a electronica)
-      cyberpunk: {
-        name: 'Cyberpunk',
-        front:  { base: { r: 255, g: 0, b: 100 },  accent: { r: 255, g: 50, b: 150 } },  // Rosa neón
-        back:   { base: { r: 0, g: 255, b: 255 },  accent: { r: 100, g: 255, b: 255 } }, // Cyan neón
-        left:   { base: { r: 0, g: 255, b: 150 },  accent: { r: 0, g: 255, b: 200 } },   // Verde neón
-        right:  { base: { r: 255, g: 0, b: 255 },  accent: { r: 255, g: 100, b: 255 } }, // Magenta neón
-      },
-      // 🌀 TRANCE: (legacy - redirige a electronica)
-      trance: {
-        name: 'Trance',
-        front:  { base: { r: 100, g: 0, b: 255 },  accent: { r: 150, g: 50, b: 255 } },  // Violeta
-        back:   { base: { r: 0, g: 100, b: 255 },  accent: { r: 0, g: 150, b: 255 } },   // Azul celeste
-        left:   { base: { r: 0, g: 200, b: 255 },  accent: { r: 50, g: 220, b: 255 } },  // Cyan claro
-        right:  { base: { r: 200, g: 100, b: 255 },accent: { r: 220, g: 150, b: 255 } }, // Lavanda
-      },
+      // Legacy mappings (para compatibilidad)
+      latino: { redirect: 'fuego' },
+      electronica: { redirect: 'neon' },
+      techno: { redirect: 'neon' },
+      cyberpunk: { redirect: 'neon' },
+      trance: { redirect: 'hielo' },
+      default: { redirect: 'fuego' },
     };
 
-    // 🎨 Paleta activa (Selene la cambia dinámicamente)
-    this.activePalette = 'default';
+    // 🎨 Paleta activa (MANUAL - el usuario la elige)
+    this.activePalette = 'fuego';
     this.paletteConfidence = 0.5;  // Confianza en la elección
     this.paletteHistory = [];      // Historial para suavizar cambios
 
@@ -835,7 +830,17 @@ class SeleneConsciousnessLite {
    * 🎨 Obtiene colores de la paleta activa mezclados con intensidad
    */
   getPaletteColors(zone, intensity) {
-    const palette = this.PALETTES[this.activePalette];
+    let palette = this.PALETTES[this.activePalette];
+    
+    // Manejar redirects (legacy palettes)
+    if (palette && palette.redirect) {
+      palette = this.PALETTES[palette.redirect];
+    }
+    
+    if (!palette) {
+      palette = this.PALETTES['fuego']; // Fallback
+    }
+    
     const zoneColors = palette[zone];
     
     if (!zoneColors) return { r: 0, g: 0, b: 0 };
@@ -846,6 +851,42 @@ class SeleneConsciousnessLite {
       r: Math.round(zoneColors.base.r + (zoneColors.accent.r - zoneColors.base.r) * t),
       g: Math.round(zoneColors.base.g + (zoneColors.accent.g - zoneColors.base.g) * t),
       b: Math.round(zoneColors.base.b + (zoneColors.accent.b - zoneColors.base.b) * t),
+    };
+  }
+
+  /**
+   * 🎨 Cambia la paleta manualmente
+   */
+  setPalette(paletteName) {
+    if (this.PALETTES[paletteName]) {
+      const oldPalette = this.activePalette;
+      this.activePalette = paletteName;
+      
+      // Resolver redirect si existe
+      let palette = this.PALETTES[paletteName];
+      if (palette.redirect) {
+        this.activePalette = palette.redirect;
+        palette = this.PALETTES[palette.redirect];
+      }
+      
+      console.log(`🎨 Paleta cambiada: ${oldPalette} → ${this.activePalette} (${palette.icon || '🎨'} ${palette.name})`);
+      return { success: true, palette: this.activePalette, name: palette.name, icon: palette.icon };
+    }
+    return { success: false, error: 'Paleta no encontrada' };
+  }
+
+  /**
+   * 🎨 Obtiene info de la paleta activa
+   */
+  getActivePaletteInfo() {
+    let palette = this.PALETTES[this.activePalette];
+    if (palette && palette.redirect) {
+      palette = this.PALETTES[palette.redirect];
+    }
+    return {
+      id: this.activePalette,
+      name: palette?.name || 'Desconocida',
+      icon: palette?.icon || '🎨',
     };
   }
 

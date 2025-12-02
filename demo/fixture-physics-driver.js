@@ -197,13 +197,24 @@ class FixturePhysicsDriver {
     // 3. Aplicar física de inercia (Physics Easing - Curva S)
     const smoothedDMX = this._applyPhysicsEasing(fixtureId, safeDMX, deltaTime);
     
-    // 4. Redondear a valores DMX válidos
-    const panDMX = Math.round(Math.max(0, Math.min(255, smoothedDMX.pan)));
-    const tiltDMX = Math.round(Math.max(0, Math.min(255, smoothedDMX.tilt)));
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ NaN GUARD V16.1: SEGURO DE VIDA PARA HARDWARE
+    // Si las matemáticas explotan, NUNCA enviar basura al motor
+    // ═══════════════════════════════════════════════════════════════════════════
+    const safePan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan;
+    const safeTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt;
+    
+    if (!Number.isFinite(smoothedDMX.pan) || !Number.isFinite(smoothedDMX.tilt)) {
+      console.error(`[PhysicsDriver] ⚠️ NaN/Infinity detectado en "${fixtureId}"! Usando home position`);
+    }
+    
+    // 4. Redondear a valores DMX válidos (CLAMP FINAL DE SEGURIDAD)
+    const panDMX = Math.round(Math.max(0, Math.min(255, safePan)));
+    const tiltDMX = Math.round(Math.max(0, Math.min(255, safeTilt)));
     
     // 5. Calcular valores Fine (16-bit) para suavidad extra
-    const panFine = Math.round((smoothedDMX.pan - panDMX) * 255);
-    const tiltFine = Math.round((smoothedDMX.tilt - tiltDMX) * 255);
+    const panFine = Math.round((safePan - panDMX) * 255);
+    const tiltFine = Math.round((safeTilt - tiltDMX) * 255);
     
     return {
       fixtureId,
@@ -314,9 +325,14 @@ class FixturePhysicsDriver {
       
       if (absDistance <= brakingDistance + 5) {
         // 🛑 FASE DE FRENADO: Deceleración suave
+        // ⚠️ FIX V16.1: PROTECCIÓN CONTRA SINGULARIDAD
+        // Si absDistance es muy pequeño, la división tiende a infinito → latigazo
+        const safeDistance = Math.max(0.5, absDistance); // Mínimo 0.5 unidades DMX
+        
         // Calcular aceleración necesaria para llegar a velocidad 0 justo en el objetivo
-        acceleration = -(vel * vel) / (2 * absDistance) * direction;
-        // Limitar la deceleración
+        acceleration = -(vel * vel) / (2 * safeDistance) * direction;
+        
+        // Limitar la deceleración (nunca frenar más fuerte que el motor permite)
         acceleration = Math.max(-this.physicsConfig.maxAcceleration, 
                                Math.min(this.physicsConfig.maxAcceleration, acceleration));
       } else {
@@ -340,6 +356,14 @@ class FixturePhysicsDriver {
         newVel[axis] = 0;
       }
     });
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ FILTRO ANTI-JITTER V16.1
+    // Si la velocidad es ridículamente baja, forzar parada para que el motor descanse
+    // Los servos baratos sufren con micro-correcciones constantes (se calientan)
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (Math.abs(newVel.pan) < 5) newVel.pan = 0;
+    if (Math.abs(newVel.tilt) < 5) newVel.tilt = 0;
     
     // Actualizar estado
     this.currentPositions.set(fixtureId, newPos);

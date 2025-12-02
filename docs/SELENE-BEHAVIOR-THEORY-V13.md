@@ -22,7 +22,7 @@ Después de 11 versiones fallidas de autodetección de género musical, V12 impl
 
 | Decisión | Valor | Razón |
 |----------|-------|-------|
-| Umbral de silencio para BLACKOUT | **1 segundo** | "Un silencio palpable para un humano" |
+| Umbral de silencio para BLACKOUT | **500ms** | "Un silencio palpable para un humano" |
 | Umbral para bajar intensidad | **500ms** | "Visualmente se sentiría sin ser strobe" |
 | Tipo de gradientes | **Continuos** | "Espectro mayor, mínimo esfuerzo, Selene aprende" |
 | Sensibilidad por paleta | **Global** | "95% del tiempo es latino, menos complejo" |

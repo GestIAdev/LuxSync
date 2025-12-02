@@ -53,7 +53,7 @@ export class SeleneStartupLogger {
     console.log("\n🚀 SELENE SONG CORE REACTOR STARTUP");
     console.log("=".repeat(45));
     console.log("⚡ Designed by PunkGrok & RaulVisionario");
-    console.log("🎯 Mission: Dental AI Empire Construction");
+    console.log("🎯 Mission: LuxSync - Music → Light Synchronization");
     console.log("=".repeat(45));
   }
 

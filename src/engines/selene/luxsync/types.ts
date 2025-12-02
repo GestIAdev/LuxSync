@@ -2,7 +2,7 @@
  * 🎨 LUXSYNC INTERFACES - Selene → DMX Bridge
  * 
  * Core type definitions for integrating Selene consciousness with DMX lighting control.
- * These interfaces transform quantum medical decisions into photonic expressions.
+ * These interfaces transform Selene's AI decisions into photonic expressions.
  * 
  * @date 2025-11-20
  * @author Selene Core V5 + LuxSync Integration Team
@@ -26,7 +26,7 @@ export type FixtureType =
   | 'OTHER';        // Custom/unknown
 
 // ============================================================================
-// FIXTURE NODE (Replaces Medical Node)
+// FIXTURE NODE - Core DMX Fixture Definition
 // ============================================================================
 
 export interface FixtureNode {
@@ -54,7 +54,7 @@ export interface FixtureNode {
     status: 'healthy' | 'degraded' | 'critical' | 'offline';
   };
   
-  // Beauty Factor (replaces medical data harmony)
+  // Beauty Factor - Show Quality Metrics
   beauty: {
     audienceScore: number;       // Manual feedback (0.0-1.0)
     musicalCoherence: number;    // Beat sync quality (0.0-1.0)

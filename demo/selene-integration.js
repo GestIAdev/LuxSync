@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🌙 SELENE INTEGRATION MODULE FOR LUXSYNC DEMO
  * 
  * Este módulo conecta la inteligencia de Selene con el demo de canvas.
@@ -194,7 +194,16 @@ class SeleneConsciousnessLite {
     this.lastFrameTime = Date.now();
     this.movementEnabled = true;   // Flag para habilitar/deshabilitar
 
-    console.log('🌙 Selene V16 inicializada - Movement Engine + Deterministic Chaos');
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ V17: MOTOR DE EFECTOS Y ÓPTICAS
+    // ═══════════════════════════════════════════════════════════════════════
+    // Sistema de capas: Base + Effects + Optics = Final Output
+    // Mechanical Debounce de 2000ms para Gobo/Prism
+    // ═══════════════════════════════════════════════════════════════════════
+    this.effectsEngine = null;     // Se inicializa en initEffects()
+    this.effectsEnabled = true;    // Flag para habilitar/deshabilitar
+
+    console.log('🌙 Selene V17 inicializada - Movement + Effects Engine');
   }
 
   /**
@@ -538,6 +547,98 @@ class SeleneConsciousnessLite {
     console.log('🎭 [Selene V16] Motor de movimiento inicializado - Ceiling mode');
     
     return this;
+  }
+
+  /**
+   * ⚡ Inicializa el motor de efectos y ópticas
+   * Llamar después de que las clases estén disponibles (window.loaded)
+   */
+  initEffects() {
+    // Verificar que la clase está disponible
+    if (typeof SeleneEffectsEngine === 'undefined') {
+      console.warn('[Selene] SeleneEffectsEngine no disponible. Efectos deshabilitados.');
+      this.effectsEnabled = false;
+      return this;
+    }
+    
+    // Crear motor de efectos
+    this.effectsEngine = new SeleneEffectsEngine();
+    
+    this.effectsEnabled = true;
+    console.log('⚡ [Selene V17] Motor de efectos inicializado - Mechanical Hold: 2000ms');
+    
+    return this;
+  }
+
+  /**
+   * ⚡ Actualiza el motor de efectos
+   * Procesa efectos activos y retorna estado final
+   * 
+   * @param {Object} baseState - Estado base (color, position)
+   * @param {Object} audioData - { bass, mid, treble, beat, bpm }
+   * @returns {Object} - Estado con efectos aplicados
+   */
+  updateEffects(baseState, audioData) {
+    if (!this.effectsEnabled || !this.effectsEngine) {
+      return baseState;
+    }
+    
+    // El effectsEngine aplica la capa de efectos sobre el estado base
+    const paletteIndex = Object.keys(this.PALETTES).indexOf(this.activePalette);
+    return this.effectsEngine.update(baseState, audioData, paletteIndex);
+  }
+
+  /**
+   * ⚡ Disparar un efecto
+   * @param {string} effectName - 'strobe' | 'pulse' | 'blinder' | 'shake' | 'dizzy' | 'police' | 'rainbow' | 'breathe'
+   * @param {Object} params - Parámetros override (opcional)
+   * @param {number} duration - Duración en ms (0 = indefinido)
+   * @returns {number} effectId para poder cancelarlo
+   */
+  triggerEffect(effectName, params = {}, duration = 0) {
+    if (!this.effectsEnabled || !this.effectsEngine) {
+      console.warn('[Selene] Effects engine not initialized');
+      return -1;
+    }
+    return this.effectsEngine.triggerEffect(effectName, params, duration);
+  }
+
+  /**
+   * ⚡ Cancelar un efecto
+   */
+  cancelEffect(effectId) {
+    if (this.effectsEngine) {
+      this.effectsEngine.cancelEffect(effectId);
+    }
+  }
+
+  /**
+   * ⚡ Cancelar todos los efectos
+   */
+  cancelAllEffects() {
+    if (this.effectsEngine) {
+      this.effectsEngine.cancelAllEffects();
+    }
+  }
+
+  /**
+   * ⚡ Establecer estado óptico abstracto
+   * @param {Object} opticsMood - { beamWidth: 0-1, texture: 0-1, fragmentation: 0-1 }
+   */
+  setOptics(opticsMood) {
+    if (this.effectsEngine) {
+      this.effectsEngine.setOptics(opticsMood);
+    }
+  }
+
+  /**
+   * ⚡ Estado de debug del motor de efectos
+   */
+  getEffectsDebugState() {
+    if (this.effectsEngine) {
+      return this.effectsEngine.getDebugState();
+    }
+    return null;
   }
 
   /**
@@ -1641,11 +1742,17 @@ if (!window.selene) {
   window.seleneZones = new SeleneZoneController(window.selene);
   
   // 🎭 V16: Inicializar motor de movimiento
-  // (Solo si las clases de movimiento están disponibles)
   if (typeof SeleneMovementEngine !== 'undefined' && typeof FixturePhysicsDriver !== 'undefined') {
     window.selene.initMovement();
-    console.log('�✨ Selene V16 con Motor de Movimiento! ✨🎭');
-  } else {
-    console.log('�🌙✨ Selene lista para la fiesta! (Sin motor de movimiento) ✨🌙');
+    console.log('[V16] Motor de Movimiento activo');
   }
+
+  // V17: Inicializar motor de efectos
+  if (typeof SeleneEffectsEngine !== 'undefined') {
+    window.selene.initEffects();
+    console.log('[V17] Motor de Efectos activo');
+  }
+
+  console.log('Selene V17 lista!');
 }
+

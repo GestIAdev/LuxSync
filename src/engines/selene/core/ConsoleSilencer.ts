@@ -72,7 +72,7 @@ export class ConsoleSilencer {
       "ERROR",
       "startup summary",
       "Designed by PunkGrok",
-      "Mission: Dental AI Empire",
+      "Mission: LuxSync Light Show Empire",
     ];
 
     return criticalKeywords.some((_keyword) =>

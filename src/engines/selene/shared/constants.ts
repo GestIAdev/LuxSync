@@ -1,155 +1,187 @@
 /**
- * 🏥 VIRTUAL PATIENT CONSTANTS
+ * � LUXSYNC CONSTANTS
  * 
- * The Virtual Patient is a special entity that acts as a container for 
- * administrative documents that don't belong to any specific patient.
+ * Core constants for the LuxSync lighting system.
+ * Selene AI adapted for DMX control and music synchronization.
  * 
- * Created: August 2025
- * Status: Production-ready
+ * Created: November 2025
+ * Status: Development
  */
 
-export const VIRTUAL_PATIENT = {
-  /**
-   * Unique identifier for the Virtual Patient
-   * This ID must match the patient record in the database
-   */
-  ID: 'd76a8a03-1411-4143-85ba-6f064c7b564b',
-  
-  /**
-   * Display name components
-   */
-  FIRST_NAME: 'Documentos',
-  LAST_NAME: 'Clínica',
-  
-  /**
-   * Full display name
-   */
-  FULL_NAME: 'Documentos Clínica',
-  
-  /**
-   * Default category for Virtual Patient documents
-   */
-  DEFAULT_CATEGORY: 'administrative' as const,
-  
-  /**
-   * Icon for UI display
-   */
-  ICON: '📁',
-  
-  /**
-   * Check if a patient ID is the Virtual Patient
-   */
-  isVirtual: (patientId: string | undefined): boolean => {
-    return patientId === VIRTUAL_PATIENT.ID;
-  },
-  
-  /**
-   * Get display name with icon
-   */
-  getDisplayName: (): string => {
-    return `${VIRTUAL_PATIENT.ICON} ${VIRTUAL_PATIENT.FULL_NAME}`;
-  },
-  
-  /**
-   * Validation: Virtual Patient SHOULD be excluded from:
-   * - Normal patient queries/lists
-   * - Appointments (cannot have appointments)
-   * - Medical Records (no clinical history)
-   * - Clinical workflows
-   * - Patient Portal access
-   */
-  EXCLUDED_FROM: [
-    'patient_lists',
-    'patient_search',
-    'appointments',
-    'medical_records',
-    'clinical_workflows',
-    'patient_portal'
-  ] as const,
-  
-  /**
-   * Validation: Virtual Patient SHOULD be included in:
-   * - Document uploads (administrative category)
-   * - Document selectors (for admin docs)
-   * - Billing queries (clinic expenses)
-   * - Inventory queries (supplier invoices)
-   * - Marketplace operations (purchase orders)
-   */
-  INCLUDED_IN: [
-    'document_uploads',
-    'document_selectors',
-    'billing_clinic_expenses',
-    'inventory_supplier_invoices',
-    'marketplace_operations'
-  ] as const,
-  
-  /**
-   * Common use cases for Virtual Patient documents
-   */
-  USE_CASES: {
-    legal: [
-      'Pólizas de seguro',
-      'Certificados y licencias',
-      'Contratos de arrendamiento',
-      'Documentos legales'
-    ],
-    financial: [
-      'Facturas de proveedores',
-      'Estados de cuenta',
-      'Gastos fijos',
-      'Presupuestos'
-    ],
-    hr: [
-      'Contratos de empleados',
-      'Certificaciones profesionales',
-      'Documentos de formación'
-    ],
-    operational: [
-      'Manuales de equipos',
-      'Garantías',
-      'Documentos de mantenimiento'
-    ]
-  } as const,
-  
-  /**
-   * Security: RBAC permissions required to access Virtual Patient documents
-   */
-  REQUIRED_PERMISSIONS: [
-    'owner',
-    'admin',
-    'view_clinic_documents'
-  ] as const,
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// MUSICAL NOTES - The 7 nodes of Selene's lighting consciousness
+// ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * 🔮 FUTURE: Multiple Virtual Entities
- * 
- * The Virtual Patient concept is scalable. Additional virtual entities
- * can be created for specialized document storage:
- */
-export const VIRTUAL_ENTITIES = {
-  CLINIC_DOCUMENTS: VIRTUAL_PATIENT.ID,
-  // HR_DOCUMENTS: '...', // Future: Human Resources
-  // LEGAL_DOCUMENTS: '...', // Future: Legal department
-  // MARKETING: '...', // Future: Marketing materials
+export const MUSICAL_NOTES = {
+  DO: { frequency: 261.63, color: '#FF0000', role: 'bass', element: 'fire' },
+  RE: { frequency: 293.66, color: '#FF7F00', role: 'rhythm', element: 'fire' },
+  MI: { frequency: 329.63, color: '#FFFF00', role: 'melody', element: 'air' },
+  FA: { frequency: 349.23, color: '#00FF00', role: 'harmony', element: 'earth' },
+  SOL: { frequency: 392.00, color: '#00FFFF', role: 'atmosphere', element: 'water' },
+  LA: { frequency: 440.00, color: '#0000FF', role: 'treble', element: 'water' },
+  SI: { frequency: 493.88, color: '#FF00FF', role: 'chaos', element: 'air' },
 } as const;
 
+export type MusicalNote = keyof typeof MUSICAL_NOTES;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXTURE ZONES - Professional disco layout
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ZONE_TYPES = {
+  FRONT_PARS: {
+    role: 'rhythm',
+    frequency: 'bass',
+    colors: 'warm',
+    description: 'Front audience - responds to kick/bass',
+  },
+  BACK_PARS: {
+    role: 'rhythm',
+    frequency: 'bass+mid',
+    colors: 'cold',
+    description: 'Back stage - responds to snare/claps with delay',
+  },
+  MOVING_LEFT: {
+    role: 'melody',
+    frequency: 'mid+treble',
+    colors: 'cold-complementary',
+    description: 'Left moving heads - follows melody',
+  },
+  MOVING_RIGHT: {
+    role: 'melody',
+    frequency: 'mid+treble',
+    colors: 'warm-complementary',
+    description: 'Right moving heads - mirrors left',
+  },
+} as const;
+
+export type ZoneType = keyof typeof ZONE_TYPES;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DMX CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const DMX = {
+  CHANNELS_PER_UNIVERSE: 512,
+  MAX_UNIVERSES: 16,
+  REFRESH_RATE_HZ: 30,
+  FRAME_TIME_MS: 33, // ~30 FPS
+  
+  // Start code
+  START_CODE: 0x00,
+  
+  // Value ranges
+  MIN_VALUE: 0,
+  MAX_VALUE: 255,
+  CENTER_VALUE: 127,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIO ANALYSIS CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const AUDIO = {
+  // Frequency bands (Hz)
+  BASS_MIN: 20,
+  BASS_MAX: 250,
+  MID_MIN: 250,
+  MID_MAX: 4000,
+  TREBLE_MIN: 4000,
+  TREBLE_MAX: 20000,
+  
+  // FFT settings
+  FFT_SIZE: 2048,
+  SMOOTHING: 0.8,
+  
+  // Thresholds (to ignore ambient noise)
+  NOISE_THRESHOLD: 0.08,
+  PARS_THRESHOLD: 0.22,
+  BACK_THRESHOLD: 0.18,
+  MELODY_THRESHOLD: 0.12,
+  
+  // Smoothing factors
+  COLOR_SMOOTHING: 0.08,
+  POSITION_SMOOTHING: 0.08,
+  BEAT_SMOOTHING: 0.3,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SAFETY LIMITS (Ethics Layer)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SAFETY = {
+  // Epilepsy prevention
+  MAX_STROBE_HZ: 15, // Must be < 20 Hz
+  
+  // Power limits
+  MAX_SIMULTANEOUS_STROBES: 4,
+  
+  // Brightness change limits
+  MAX_BRIGHTNESS_CHANGE_PER_FRAME: 50, // Out of 255
+  
+  // DMX health
+  MAX_DMX_ERRORS_BEFORE_RESET: 10,
+  DMX_TIMEOUT_MS: 1000,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SELENE AI STATES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const CONSCIOUSNESS_STATES = {
+  AWAKENING: { minPatterns: 0, description: 'Learning basics' },
+  LEARNING: { minPatterns: 100, description: 'Building pattern library' },
+  WISE: { minPatterns: 1000, description: 'Reliable predictions' },
+  ENLIGHTENED: { minPatterns: 5000, description: 'Advanced anticipation' },
+  TRANSCENDENT: { minPatterns: 10000, description: 'Musical mastery' },
+} as const;
+
+export type ConsciousnessState = keyof typeof CONSCIOUSNESS_STATES;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTROPY MODES (for scene evolution)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ENTROPY_MODES = {
+  DETERMINISTIC: { mutationRate: 0.05, description: 'Stable, predictable' },
+  BALANCED: { mutationRate: 0.15, description: 'Normal operation' },
+  CHAOTIC: { mutationRate: 0.40, description: 'Drops, buildups, peaks' },
+} as const;
+
+export type EntropyMode = keyof typeof ENTROPY_MODES;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
- * Helper function to check if a patient ID is any virtual entity
+ * Get note info by name
  */
-export const isVirtualEntity = (patientId: string | undefined): boolean => {
-  if (!patientId) return false;
-  return Object.values(VIRTUAL_ENTITIES).includes(patientId);
+export const getNoteInfo = (note: MusicalNote) => MUSICAL_NOTES[note];
+
+/**
+ * Get zone info by type
+ */
+export const getZoneInfo = (zone: ZoneType) => ZONE_TYPES[zone];
+
+/**
+ * Check if a consciousness has reached a certain state
+ */
+export const hasReachedState = (
+  patterns: number, 
+  state: ConsciousnessState
+): boolean => {
+  return patterns >= CONSCIOUSNESS_STATES[state].minPatterns;
 };
 
 /**
- * Helper function to filter out virtual entities from patient lists
+ * Get current consciousness state based on pattern count
  */
-export const filterVirtualEntities = <T extends { id?: string; patientId?: string }>(
-  items: T[]
-): T[] => {
-  return items.filter(item => {
-    const id = item.id || item.patientId;
-    return id && !isVirtualEntity(id);
-  });
+export const getCurrentState = (patterns: number): ConsciousnessState => {
+  if (patterns >= CONSCIOUSNESS_STATES.TRANSCENDENT.minPatterns) return 'TRANSCENDENT';
+  if (patterns >= CONSCIOUSNESS_STATES.ENLIGHTENED.minPatterns) return 'ENLIGHTENED';
+  if (patterns >= CONSCIOUSNESS_STATES.WISE.minPatterns) return 'WISE';
+  if (patterns >= CONSCIOUSNESS_STATES.LEARNING.minPatterns) return 'LEARNING';
+  return 'AWAKENING';
 };
+

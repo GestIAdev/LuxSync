@@ -87,14 +87,14 @@ export class SelenePubSub {
   ): Promise<any> {
     // Define critical topics that need Veritas validation
     const criticalTopics = [
-      "MEDICAL_RECORD_V3_CREATED",
-      "MEDICAL_RECORD_V3_UPDATED",
-      "DOCUMENT_V3_CREATED",
-      "DOCUMENT_V3_UPDATED",
-      "PATIENT_CREATED",
-      "PATIENT_UPDATED",
-      "APPOINTMENT_V3_CREATED",
-      "APPOINTMENT_V3_UPDATED",
+      "SCENE_CREATED",
+      "SCENE_UPDATED",
+      "FIXTURE_CREATED",
+      "FIXTURE_UPDATED",
+      "SHOW_CREATED",
+      "SHOW_UPDATED",
+      "DMX_UNIVERSE_CREATED",
+      "DMX_UNIVERSE_UPDATED",
     ];
 
     if (criticalTopics.includes(topic)) {
@@ -186,14 +186,14 @@ export class SelenePubSub {
    */
   private getDataTypeFromTopic(_topic: string): string {
     const topicMap: { [key: string]: string } = {
-      MEDICAL_RECORD_V3_CREATED: "medical_records",
-      MEDICAL_RECORD_V3_UPDATED: "medical_records",
-      DOCUMENT_V3_CREATED: "documents",
-      DOCUMENT_V3_UPDATED: "documents",
-      PATIENT_CREATED: "patients",
-      PATIENT_UPDATED: "patients",
-      APPOINTMENT_V3_CREATED: "appointments",
-      APPOINTMENT_V3_UPDATED: "appointments",
+      SCENE_CREATED: "scenes",
+      SCENE_UPDATED: "scenes",
+      FIXTURE_CREATED: "fixtures",
+      FIXTURE_UPDATED: "fixtures",
+      SHOW_CREATED: "shows",
+      SHOW_UPDATED: "shows",
+      DMX_UNIVERSE_CREATED: "dmx_universes",
+      DMX_UNIVERSE_UPDATED: "dmx_universes",
     };
 
     return topicMap[_topic] || "unknown";
@@ -204,17 +204,17 @@ export class SelenePubSub {
    */
   private getVeritasLevelFromTopic(topic: string): string {
     const criticalTopics = [
-      "MEDICAL_RECORD_V3_CREATED",
-      "MEDICAL_RECORD_V3_UPDATED",
-      "DOCUMENT_V3_CREATED",
-      "DOCUMENT_V3_UPDATED",
+      "SCENE_CREATED",
+      "SCENE_UPDATED",
+      "FIXTURE_CREATED",
+      "FIXTURE_UPDATED",
     ];
 
     const highTopics = [
-      "PATIENT_CREATED",
-      "PATIENT_UPDATED",
-      "APPOINTMENT_V3_CREATED",
-      "APPOINTMENT_V3_UPDATED",
+      "SHOW_CREATED",
+      "SHOW_UPDATED",
+      "DMX_UNIVERSE_CREATED",
+      "DMX_UNIVERSE_UPDATED",
     ];
 
     if (criticalTopics.includes(topic)) return "CRITICAL";

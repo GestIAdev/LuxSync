@@ -122,6 +122,8 @@ export class SeleneLightBridge {
   private startTime: number = 0;
   private lastFrameTime: number = 0;
   private fpsHistory: number[] = [];
+  // Últimas métricas de audio capturadas (guardadas cada frame)
+  private lastMetrics: SystemMetrics | null = null;
 
   constructor(
     audioAdapter: AudioToMetricsAdapter,
@@ -199,8 +201,10 @@ export class SeleneLightBridge {
     const frameStart = Date.now();
 
     try {
-      // 1. Capture audio → metrics
-      const metrics = await this.audioAdapter.captureMetrics();
+  // 1. Capture audio → metrics
+  const metrics = await this.audioAdapter.captureMetrics();
+  // Guardar las métricas para que buildScene pueda mapear por banda
+  this.lastMetrics = metrics;
 
       // 2. Process with Selene Core
       const seleneOutput = await this.processWithSelene(metrics);
@@ -328,42 +332,49 @@ export class SeleneLightBridge {
     const allFixtures = this.dmxDriver.getFixtures();
     const fixtureCount = allFixtures.length;
 
-    // Map each fixture to different frequency zones
+    // Map each fixture to different frequency zones (4 groups of 2 PARs)
+    const metrics = this.lastMetrics || { cpu: 0.5, memory: 0.5, latency: 50 };
+    const bassLevel = isNaN(metrics.cpu) ? 0.5 : metrics.cpu;
+    const midLevel = isNaN(metrics.memory) ? 0.5 : metrics.memory;
+    const latencyVal = isNaN(metrics.latency) ? 50 : metrics.latency;
+    const trebleLevel = 1 - latencyVal / 100;
+
     const fixtures = allFixtures.map((fixture, index) => {
       let fixtureColor = { ...baseColor };
       let fixtureDimmer = baseDimmer;
 
-      // FREQUENCY ZONE ROUTING (8 fixtures = 8 frequency zones)
-      // This creates visual variety and shows different audio components
       if (fixtureCount === 8) {
-        // Zone 1-2: Pure BASS (Red zone)
+        // Group 1 (PAR 1-2): Bajos
         if (index === 0 || index === 1) {
-          fixtureColor = NoteToColorMapper.mapNoteToColor('DO'); // Red
-          fixtureDimmer = Math.max(30, baseDimmer * 1.2); // More intensity for bass
+          const note = this.getBassNote(bassLevel, midLevel, trebleLevel);
+          fixtureColor = NoteToColorMapper.mapNoteToColor(note);
+          fixtureDimmer = Math.max(30, baseDimmer * (0.5 + bassLevel * 0.5));
         }
-        // Zone 3-4: LOW-MID (Orange-Yellow zone)
+        // Group 2 (PAR 3-4): Medios bajos
         else if (index === 2 || index === 3) {
-          fixtureColor = NoteToColorMapper.mapNoteToColor('RE'); // Orange
-          fixtureDimmer = Math.max(20, baseDimmer * 0.9);
+          const note = this.getMidLowNote(bassLevel, midLevel, trebleLevel);
+          fixtureColor = NoteToColorMapper.mapNoteToColor(note);
+          fixtureDimmer = Math.max(20, baseDimmer * (0.4 + midLevel * 0.6));
         }
-        // Zone 5-6: MID-HIGH (Green-Cyan zone)
+        // Group 3 (PAR 5-6): Medios altos
         else if (index === 4 || index === 5) {
-          fixtureColor = NoteToColorMapper.mapNoteToColor('SOL'); // Cyan
-          fixtureDimmer = Math.max(20, baseDimmer * 1.0);
+          const note = this.getMidHighNote(bassLevel, midLevel, trebleLevel);
+          fixtureColor = NoteToColorMapper.mapNoteToColor(note);
+          fixtureDimmer = Math.max(20, baseDimmer * (0.4 + midLevel * 0.6));
         }
-        // Zone 7-8: TREBLE (Blue-Magenta zone)
+        // Group 4 (PAR 7-8): Agudos
         else if (index === 6 || index === 7) {
-          fixtureColor = NoteToColorMapper.mapNoteToColor('LA'); // Blue
-          fixtureDimmer = Math.max(20, baseDimmer * 0.8);
+          const note = this.getTrebleNote(bassLevel, midLevel, trebleLevel);
+          fixtureColor = NoteToColorMapper.mapNoteToColor(note);
+          fixtureDimmer = Math.max(20, baseDimmer * (0.4 + trebleLevel * 0.6));
         }
-      }
-      // For other fixture counts, use rainbow spread
-      else {
+      } else {
+        // Fallback: rainbow spread for non-8 setups
         const hue = (index / fixtureCount) * 360;
         const rgb = this.hslToRgb(hue, 100, 50);
-        fixtureColor = { 
-          r: rgb[0], 
-          g: rgb[1], 
+        fixtureColor = {
+          r: rgb[0],
+          g: rgb[1],
           b: rgb[2],
           name: 'rainbow',
           hex: `#${rgb[0].toString(16).padStart(2, '0')}${rgb[1].toString(16).padStart(2, '0')}${rgb[2].toString(16).padStart(2, '0')}`
@@ -376,10 +387,10 @@ export class SeleneLightBridge {
         universe: fixture.universe,
         startChannel: fixture.startChannel,
         channels: {
-          red: fixtureColor.r,
-          green: fixtureColor.g,
-          blue: fixtureColor.b,
-          dimmer: Math.min(255, fixtureDimmer)
+          red: Math.round(fixtureColor.r),
+          green: Math.round(fixtureColor.g),
+          blue: Math.round(fixtureColor.b),
+          dimmer: Math.min(255, Math.round(fixtureDimmer))
         }
       };
     });
@@ -447,6 +458,30 @@ export class SeleneLightBridge {
     }
     
     return h * 360;
+  }
+
+  /**
+   * Métodos privados: mapeo de nota dominante por banda
+   */
+  private getBassNote(bass: number, mid: number, treble: number): MusicalNote {
+    if (bass > 0.7 && mid < 0.35 && treble < 0.35) return 'DO';
+    if (bass > 0.5 && mid > 0.35 && treble < 0.4) return 'RE';
+    return 'DO';
+  }
+  private getMidLowNote(bass: number, mid: number, treble: number): MusicalNote {
+    if (mid > 0.6 && bass < 0.4 && treble < 0.5) return 'MI';
+    if (mid > 0.5 && treble > 0.45 && bass < 0.5) return 'FA';
+    return 'MI';
+  }
+  private getMidHighNote(bass: number, mid: number, treble: number): MusicalNote {
+    if (mid > 0.4 && treble > 0.55 && bass < 0.4) return 'SOL';
+    if (treble > 0.65 && mid < 0.45 && bass < 0.35) return 'LA';
+    return 'SOL';
+  }
+  private getTrebleNote(bass: number, mid: number, treble: number): MusicalNote {
+    if (treble > 0.75 && bass < 0.25) return 'SI';
+    if (treble > 0.65) return 'LA';
+    return 'SI';
   }
 
   /**

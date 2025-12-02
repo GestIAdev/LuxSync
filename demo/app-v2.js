@@ -1092,10 +1092,14 @@ function applySeleneDecision(decision, audioData = null) {
   let movementOutput = null;
   if (window.selene && window.selene.movementEnabled && audioData) {
     movementOutput = window.selene.updateMovement(audioData);
-    // DEBUG V16
-    if (movementOutput && Math.random() < 0.01) {
-      console.log('🎭 Movement:', movementOutput);
-    }
+  }
+  
+  // ⚡ V17: Procesar efectos activos
+  let effectsState = null;
+  if (window.selene && window.selene.effectsEnabled && window.selene.effectsEngine) {
+    effectsState = window.selene.effectsEngine.effectManager.process(
+      window.selene.effectsEngine.entropy
+    );
   }
   
   state.fixtures.forEach((fixture) => {
@@ -1104,13 +1108,31 @@ function applySeleneDecision(decision, audioData = null) {
     
     if (zones && zones[seleneZone]) {
       const zoneData = zones[seleneZone];
-      // Aplicar color e intensidad directamente, SIN modificaciones
+      // Aplicar color e intensidad directamente
       fixture.currentColor = { ...zoneData.color };
       fixture.currentDimmer = zoneData.intensity;
     } else {
       // Fallback
       fixture.currentColor = { ...color };
       fixture.currentDimmer = intensity;
+    }
+    
+    // ⚡ V17: Aplicar efectos si están activos
+    if (effectsState && effectsState.active) {
+      // Dimmer multiplier (strobe, pulse, blinder)
+      fixture.currentDimmer = Math.round(fixture.currentDimmer * effectsState.dimmerMultiplier);
+      
+      // Color override (blinder, police, rainbow)
+      if (effectsState.colorOverride) {
+        fixture.currentColor = { ...effectsState.colorOverride };
+      }
+      
+      // Guardar estado de efecto para visualización
+      fixture.effectActive = true;
+      fixture.effectDimmerMult = effectsState.dimmerMultiplier;
+    } else {
+      fixture.effectActive = false;
+      fixture.effectDimmerMult = 1.0;
     }
     
     // 🎭 V16: Aplicar movimiento a moving heads
@@ -1122,6 +1144,15 @@ function applySeleneDecision(decision, audioData = null) {
         const movement = movementOutput[movementId];
         fixture.currentPan = movement.pan;
         fixture.currentTilt = movement.tilt;
+        
+        // ⚡ V17: Aplicar position offset de efectos (shake, dizzy)
+        if (effectsState && effectsState.active && effectsState.positionOffset) {
+          fixture.currentPan = Math.max(0, Math.min(255, 
+            fixture.currentPan + effectsState.positionOffset.pan));
+          fixture.currentTilt = Math.max(0, Math.min(255, 
+            fixture.currentTilt + effectsState.positionOffset.tilt));
+        }
+        
         // Fine channels si existen
         if (fixture.currentPanFine !== undefined) fixture.currentPanFine = movement.panFine || 0;
         if (fixture.currentTiltFine !== undefined) fixture.currentTiltFine = movement.tiltFine || 0;
@@ -1771,6 +1802,10 @@ function renderFixtures() {
   ctx.font = '10px Inter';
   ctx.fillText('─── ESCENARIO ───', centerX, canvas.height - 285);
   
+  // ⚡ V17: Obtener estado de efectos para visualización
+  const effectsDebug = window.selene?.getEffectsDebugState?.() || null;
+  const activeEffects = effectsDebug?.activeEffects || [];
+  
   // Renderizar cada fixture
   state.fixtures.forEach((fixture) => {
     const pos = positions[fixture.id];
@@ -1780,6 +1815,10 @@ function renderFixtures() {
     const y = pos.y;
     const color = fixture.currentColor;
     const dimmer = fixture.currentDimmer / 255;
+    
+    // ⚡ V17: Efecto de strobe visual (parpadeo rápido del halo)
+    const isStrobeActive = fixture.effectActive && fixture.effectDimmerMult < 0.5;
+    const strobeFlash = isStrobeActive ? (Math.random() > 0.5 ? 1.5 : 0.3) : 1.0;
     
     // === HALO/GLOW - Diferente por zona ===
     // FRONT PARs: Halo normal (90px)
@@ -1792,7 +1831,8 @@ function renderFixtures() {
       glowMultiplier = 85;
     }
     
-    const glowRadius = glowMultiplier * dimmer;
+    // ⚡ V17: Multiplicar por strobe flash si está activo
+    const glowRadius = glowMultiplier * dimmer * strobeFlash;
     if (glowRadius > 5) {
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
       gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.9)`);

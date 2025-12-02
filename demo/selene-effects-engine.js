@@ -201,7 +201,8 @@ const EFFECT_DEFINITIONS = {
     },
     
     // -------------------------------------------------------------------------
-    // BLINDER - Flash blanco total
+    // BLINDER - Flash blanco total con fade out gradual
+    // V17.2: Fogonazo repentino de 1s con apagado suave
     // -------------------------------------------------------------------------
     blinder: {
         name: 'Blinder',
@@ -209,16 +210,33 @@ const EFFECT_DEFINITIONS = {
         params: {
             useWhite: true,     // Usar canal W si existe
             intensity: 1.0,
+            fadeOutTime: 300,   // ms de fade out al final
         },
-        process: (time, params, entropy) => {
+        process: (time, params, entropy, duration) => {
+            // Calcular fade out: los últimos fadeOutTime ms se desvanecen
+            let intensityMult = params.intensity;
+            
+            // Si duration está definido y estamos en la fase final
+            if (duration && duration > 0) {
+                const timeRemaining = duration - time;
+                if (timeRemaining < params.fadeOutTime && timeRemaining > 0) {
+                    // Fade out suave usando ease-out
+                    const fadeProgress = timeRemaining / params.fadeOutTime;
+                    // Curva cuadrática para fade más natural (rápido al principio, lento al final)
+                    intensityMult = params.intensity * (fadeProgress * fadeProgress);
+                } else if (timeRemaining <= 0) {
+                    intensityMult = 0;
+                }
+            }
+            
             return {
-                dimmerMultiplier: params.intensity,
+                dimmerMultiplier: intensityMult,
                 colorOverride: params.useWhite 
                     ? { r: 255, g: 255, b: 255, w: 255 }
                     : { r: 255, g: 255, b: 255 },
             };
         },
-        minDuration: 100,  // Puede ser muy corto
+        minDuration: 1000,  // V17.2: Subido de 100ms a 1000ms (1 segundo)
     },
     
     // -------------------------------------------------------------------------
@@ -474,7 +492,9 @@ class EffectManager {
         // Procesar cada efecto
         for (const [id, fx] of this.activeEffects) {
             const relativeTime = now - fx.startTime;
-            const fxResult = fx.def.process(relativeTime, fx.params, entropy);
+            // V17.2: Pasar duración al proceso para efectos con fade
+            const effectDuration = fx.endTime !== Infinity ? fx.endTime - fx.startTime : 0;
+            const fxResult = fx.def.process(relativeTime, fx.params, entropy, effectDuration);
             
             // Merge resultados (último gana para color, multiplicativo para dimmer)
             if (fxResult.dimmerMultiplier !== undefined) {

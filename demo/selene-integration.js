@@ -1056,21 +1056,24 @@ class SeleneConsciousnessLite {
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🌿 SELVA V15: Sol, Flores y Hysteresis Anti-Epilepsia
+      // 🌿 SELVA V15.1: MÁS SOL DORADO - Godrays penetrando la jungla
       // ═══════════════════════════════════════════════════════════════════════
       case 'selva': {
-        // 🎯 V15: Introducir ÁMBAR (45°) entre verde y rosa
-        // Rango: Verde (120°) → Turquesa (150°) → Ámbar sutil
-        h = 120 + (timeDrift * 20) + (intensity * 15);
+        // 🎯 V15.1: Curva más agresiva hacia ORO SOLAR
+        // Rango: Verde profundo (140°) → Oro Solar (45°)
+        // ANTES: 120 + drift + intensity*15 (quedaba en lima/verde)
+        // AHORA: 140 - intensity*95 (llega hasta 45° = oro dorado)
+        h = 140 - (intensity * 95) + (timeDrift * 10);
         
-        // Si intensity es media-alta, shift hacia ámbar
-        if (intensity > 0.4 && intensity < 0.7) {
-          const ambarMix = (intensity - 0.4) / 0.3; // 0-1 en rango 0.4-0.7
-          h = h + (ambarMix * 15); // Shift hacia amarillo-verde
+        // 🌟 V15.1: Boost de luminosidad para los amarillos (godrays)
+        // Cuando hue < 60° (zona dorada), subir luz como rayos de sol
+        if (h < 60) {
+          l = 45 + (intensity * 30); // Más brillante = más sol
+        } else {
+          l = 30 + (intensity * 25);
         }
         
         s = 80 + (intensity * 20);
-        l = 30 + (intensity * 25);
         
         // 🎨 V15: HYSTERESIS para ROSA (Schmitt Trigger anti-parpadeo)
         // Entrar en rosa: intensity > 0.75
@@ -1123,10 +1126,12 @@ class SeleneConsciousnessLite {
         
         const isSecondary = (side === 'right' || zoneType === 'spot');
         
+        // 🎯 V15.1: ADIÓS AMARILLO CYBERPUNK
+        // Ciclo 2 cambiado: Violeta ↔ Verde Tóxico (110°) en vez de Amarillo
         const colorPairs = [
           { primary: 120, secondary: 280 },  // Verde Ácido ↔ Violeta
           { primary: 310, secondary: 180 },  // Magenta ↔ Cyan
-          { primary: 280, secondary: 60 },   // Violeta ↔ Amarillo
+          { primary: 270, secondary: 110 },  // Violeta Oscuro ↔ Verde Tóxico Radioactivo (NO amarillo)
           { primary: 220, secondary: 30 },   // Azul Eléctrico ↔ Naranja
         ];
         

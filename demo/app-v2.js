@@ -227,8 +227,8 @@ let state = {
   analyser: null,
   animationFrame: null,
   
-  // 🌙 SELENE MODE
-  seleneMode: false,      // true = Selene controla las luces
+  // 🌙 SELENE MODE - Siempre activa por defecto
+  seleneMode: true,       // Selene siempre controla las luces
   seleneDecision: null,   // Última decisión de Selene
   
   // Audio data

@@ -102,8 +102,7 @@ class SeleneConsciousnessLite {
 
     // 🎨 Paleta activa (MANUAL - el usuario la elige)
     this.activePalette = 'fuego';
-    this.paletteConfidence = 0.5;  // Confianza en la elección
-    this.paletteHistory = [];      // Historial para suavizar cambios
+    this.paletteConfidence = 1.0;  // Siempre 100% - el usuario eligió
 
     // 📊 Estadísticas de sesión
     this.sessionStats = {
@@ -120,7 +119,7 @@ class SeleneConsciousnessLite {
     this.frameInterval = 1000 / this.targetFPS;
     this.lastDecision = null;
 
-    console.log('🌙 Selene Consciousness Lite inicializada (24 FPS - cine mode)');
+    console.log('🌙 Selene V12 inicializada - Paletas Manuales (🔥❄️🌿⚡)');
   }
 
   /**
@@ -625,204 +624,28 @@ class SeleneConsciousnessLite {
   }
 
   /**
-   * 🎨 SELENE DECIDE: Detecta qué paleta usar según el audio
+   * 🎨 SELENE DECIDE: Devuelve la paleta activa (MANUAL)
    * 
    * ═══════════════════════════════════════════════════════════════════════
-   * 🆕 V11.0 "WarmthRatio" - ANÁLISIS ESPECTRAL (by GeminiPunk)
+   * V12.0 "Paletas Manuales" - El DJ elige, Selene ejecuta
    * ═══════════════════════════════════════════════════════════════════════
    * 
-   * PROBLEMA de V10.0: El "Efecto Güiro"
-   * - El güiro/shaker de la cumbia suena CONSTANTE como un synth
-   * - Varianza baja + sustain alto = falso Electrónica
-   * - El análisis TEMPORAL no funciona para este caso
+   * Después de 11 versiones de autodetección fallida, la solución simple:
+   * - El usuario elige la paleta con los 4 botones (🔥❄️🌿⚡)
+   * - Selene aplica los colores según la intensidad del audio
    * 
-   * SOLUCIÓN: WARMTH RATIO (Análisis ESPECTRAL)
-   * 
-   * La diferencia está en la FORMA del espectro, no en el tiempo:
-   * 
-   * ELECTRÓNICA (Cyberpunk/Techno):
-   * - Sonido "V-shaped": bass alto, mids recortados, treble alto
-   * - Ratio treble/mid ≈ 1.0 (treble ≥ mids)
-   * 
-   * LATINO (Cumbia/Reggaeton):  
-   * - Sonido "cálido": mids prominentes (voces, percusión)
-   * - Ratio treble/mid < 0.80 (mids dominan sobre treble)
-   * 
-   * FÓRMULA: warmthRatio = treble / mid
-   * - > 0.90 → Electrónica (frío/digital)
-   * - < 0.80 → Latino (cálido/orgánico)
-   * 
-   * + ESCUDO DE SILENCIO: Breakdowns no cambian género
-   * + INERCIA: Confidence score -100 a +100, umbral ±60
+   * RIP V1-V11: BPM, Varianza, Sustain, WarmthRatio... ninguno funcionó.
+   * A veces la solución más simple es la mejor. 🎯
    * ═══════════════════════════════════════════════════════════════════════
    */
   detectPalette(bass, mid, treble, mood, beat, bpm = 0, bpmConfidence = 0) {
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎛️ INICIALIZACIÓN DE ESTADO
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // Buffer de treble para varianza
-    if (!this._trebleHistory) {
-      this._trebleHistory = [];
-    }
-    
-    // 🆕 CONFIDENCE SCORE: -100 (Latino) a +100 (Electro)
-    if (this._confidenceScore === undefined) {
-      this._confidenceScore = 0;
-    }
-    
-    // Configuración de inercia
-    const CONFIDENCE_THRESHOLD = 60;  // Hay que llegar a ±60 para cambiar
-    const CONFIDENCE_STEP = 2;        // Puntos por frame
-    const CONFIDENCE_MAX = 100;
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // ❄️ ESCUDO DE SILENCIO (Anti-Breakdown)
-    // ═══════════════════════════════════════════════════════════════════════
-    // Si hay poca energía en agudos/medios = breakdown/pausa
-    // NO es un cambio de género, es una bajada del DJ
-    // CONGELAMOS la decisión
-    
-    if (treble < 0.25 && mid < 0.40) {
-      // DEBUG cada ~2 segundos
-      this._debugCounter = (this._debugCounter || 0) + 1;
-      if (this._debugCounter % 48 === 0) {
-        console.log(`❄️ FROZEN | T=${treble.toFixed(2)} M=${mid.toFixed(2)} | score=${this._confidenceScore} | ${this.activePalette}`);
-      }
-      
-      return {
-        palette: this.activePalette,
-        confidence: this.paletteConfidence,
-        frozen: true,
-        score: this._confidenceScore,
-      };
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 📊 BUFFER DE TREBLE
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    const TREBLE_BUFFER_SIZE = 60;  // ~1 segundo
-    this._trebleHistory.push(treble);
-    if (this._trebleHistory.length > TREBLE_BUFFER_SIZE) {
-      this._trebleHistory.shift();
-    }
-    
-    const bufferReady = this._trebleHistory.length >= TREBLE_BUFFER_SIZE;
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 CÁLCULO DE MÉTRICAS
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    let avgTreble = 0;
-    let variance = 0;
-    let sustainRatio = 0;
-    let vote = 0;  // El "voto" de este frame
-    let voteReason = '';  // Para debug
-    
-    // 🆕 V11.0: WARMTH RATIO - La clave del análisis espectral
-    // Evita división por cero: si mid es muy bajo, asumimos ratio = 1.0 (neutral)
-    const warmthRatio = mid > 0.1 ? (treble / mid) : 1.0;
-    
-    if (bufferReady) {
-      // Promedio de treble
-      avgTreble = this._trebleHistory.reduce((a, b) => a + b, 0) / this._trebleHistory.length;
-      
-      // Varianza
-      variance = this._trebleHistory.reduce((sq, n) => sq + Math.pow(n - avgTreble, 2), 0) / this._trebleHistory.length;
-      
-      // Sustain ratio
-      const SUSTAIN_THRESHOLD = 0.40;
-      const sustainCount = this._trebleHistory.filter(t => t > SUSTAIN_THRESHOLD).length;
-      sustainRatio = sustainCount / TREBLE_BUFFER_SIZE;
-      
-      // ═══════════════════════════════════════════════════════════════════
-      // 🗳️ V11.0: SISTEMA DE VOTACIÓN POR WARMTH RATIO
-      // ═══════════════════════════════════════════════════════════════════
-      
-      // CRITERIO PRINCIPAL: WarmthRatio (análisis espectral)
-      if (warmthRatio > 0.90) {
-        // Treble ≥ Mids → Sonido frío/digital → ELECTRÓNICA
-        vote = +CONFIDENCE_STEP;
-        voteReason = 'W>';
-      } else if (warmthRatio < 0.80) {
-        // Mids dominan → Sonido cálido/orgánico → LATINO
-        vote = -CONFIDENCE_STEP;
-        voteReason = 'W<';
-      }
-      // CRITERIO SECUNDARIO: BPM (solo si warmthRatio es ambiguo)
-      else if (bpm > 0 && bpmConfidence > 0.5) {
-        if (bpm >= 118) {
-          vote = +1;  // Voto débil hacia Electro
-          voteReason = 'B>';
-        } else if (bpm <= 108) {
-          vote = -1;  // Voto débil hacia Latino
-          voteReason = 'B<';
-        }
-      }
-      // Zona 0.80-0.90 sin BPM claro: no votar
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 📈 ACTUALIZAR CONFIDENCE SCORE
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    this._confidenceScore += vote;
-    // Clampear entre -100 y +100
-    this._confidenceScore = Math.max(-CONFIDENCE_MAX, Math.min(CONFIDENCE_MAX, this._confidenceScore));
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎯 DECISIÓN FINAL (con histéresis)
-    // ═══════════════════════════════════════════════════════════════════════
-    // Solo cambiamos si estamos MUY seguros (cruzamos umbral)
-    
-    let detectionStatus = '➖HOLD';
-    let newPalette = this.activePalette;
-    
-    if (this._confidenceScore >= CONFIDENCE_THRESHOLD) {
-      // Score alto → ELECTRÓNICA
-      newPalette = 'electronica';
-      detectionStatus = '⚡ELE';
-    } else if (this._confidenceScore <= -CONFIDENCE_THRESHOLD) {
-      // Score bajo → LATINO
-      newPalette = 'latino';
-      detectionStatus = '🔥LAT';
-    } else {
-      // Entre -60 y +60 → MANTENER género actual (zona de duda)
-      detectionStatus = vote > 0 ? '⚡...' : (vote < 0 ? '🔥...' : '➖');
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔄 CAMBIO DE PALETA (si corresponde)
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    if (newPalette !== this.activePalette && newPalette !== 'default') {
-      const oldName = this.PALETTES[this.activePalette]?.name || this.activePalette || 'none';
-      const newName = this.PALETTES[newPalette]?.name || newPalette;
-      console.log(`🎨 Selene: ${oldName} → ${newName} [score=${this._confidenceScore}]`);
-      this.activePalette = newPalette;
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    //  DEBUG LOG (V11.0 WarmthRatio)
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    this._debugCounter = (this._debugCounter || 0) + 1;
-    if (this._debugCounter % 48 === 0) {
-      const wStr = `W=${warmthRatio.toFixed(2)}`;
-      const bpmStr = bpm > 0 ? `BPM=${Math.round(bpm)}` : 'BPM=???';
-      const reasonStr = voteReason || (vote > 0 ? '⚡' : (vote < 0 ? '🔥' : '➖'));
-      console.log(`🎧 ${wStr} ${bpmStr} ${reasonStr} score=${this._confidenceScore.toString().padStart(4)} ${detectionStatus} | ${this.activePalette}`);
-    }
+    // V12: Simplemente devolver la paleta manual activa
+    // No hay magia, no hay autodetección, solo lo que el usuario eligió
     
     return {
       palette: this.activePalette,
-      confidence: Math.abs(this._confidenceScore) / 100,
-      score: this._confidenceScore,
-      vote: vote,
-      warmthRatio: warmthRatio,
-      bpm: bpm,
+      confidence: 1.0,  // Siempre 100% seguro - el usuario eligió
+      manual: true,
     };
   }
 

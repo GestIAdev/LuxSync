@@ -28,6 +28,9 @@ import { MovementEngine, type MovementOutput } from '../visual/MovementEngine'
 import { BeatDetector, type BeatState } from '../audio/BeatDetector'
 // 🧬 Wave 6: Evolution Integration
 import { SeleneEvolutionEngine, type ConsciousnessState, type EvaluatedDecision } from './SeleneEvolutionEngine'
+// 🌙 Wave 7: Meta-Consciousness Integration
+import { DreamForgeEngine, type DreamResult, type DreamScenario, type DreamForgeState } from './DreamForgeEngine'
+import { SelfAnalysisEngine, type DetectedBias, type SelfAnalysisState } from './SelfAnalysisEngine'
 
 // ============================================================================
 // TYPES
@@ -136,6 +139,12 @@ export class SeleneLuxConscious extends EventEmitter {
   private evolutionEngine: SeleneEvolutionEngine
   private lastEvaluatedDecision: EvaluatedDecision | null = null
   
+  // === 🌙 META-CONSCIENCIA (Wave 7) ===
+  private dreamForge: DreamForgeEngine
+  private selfAnalysis: SelfAnalysisEngine
+  private lastDreamResult: DreamResult | null = null
+  private activebiases: DetectedBias[] = []
+  
   // === ESTADO DE CONSCIENCIA ===
   private consciousness: ConsciousnessStateV2 = {
     status: 'awakening',
@@ -193,6 +202,11 @@ export class SeleneLuxConscious extends EventEmitter {
     this.evolutionEngine = new SeleneEvolutionEngine()
     this.setupEvolutionEvents()
     
+    // 🌙 Inicializar meta-consciencia (Wave 7)
+    this.dreamForge = new DreamForgeEngine()
+    this.selfAnalysis = new SelfAnalysisEngine()
+    this.setupMetaConsciousnessEvents()
+    
     // Configuración de consciencia con defaults
     this.config = {
       strikeBeautyThreshold: config.consciousness?.strikeBeautyThreshold ?? 0.85,
@@ -233,6 +247,49 @@ export class SeleneLuxConscious extends EventEmitter {
       console.log(`🔮 [SELENE] Prediction fulfilled: ${data.prediction.what}`)
       this.emit('prediction-fulfilled', data)
     })
+  }
+
+  /**
+   * 🌙 CONFIGURA EVENTOS DE META-CONSCIENCIA (Wave 7)
+   */
+  private setupMetaConsciousnessEvents(): void {
+    // DreamForge: escuchar sueños completados
+    this.dreamForge.on('dream-completed', (result: DreamResult) => {
+      this.lastDreamResult = result
+      
+      const emoji = result.recommendation === 'execute' ? '✨' : 
+                    result.recommendation === 'modify' ? '🔄' : '⛔'
+      console.log(`🌙 [SELENE-DREAM] ${emoji} ${result.scenario.type}: beauty=${result.projectedBeautyScore.toFixed(2)}`)
+      
+      this.emit('dream-completed', {
+        type: result.scenario.type,
+        recommendation: result.recommendation,
+        beautyScore: result.projectedBeautyScore,
+        confidence: result.confidence
+      })
+    })
+    
+    // SelfAnalysis: escuchar sesgos detectados
+    this.selfAnalysis.on('bias-detected', (bias: DetectedBias) => {
+      console.log(`🔍 [SELENE-BIAS] ${bias.severity}: ${bias.type} - ${bias.description}`)
+      
+      this.activebiases = this.selfAnalysis.getState().activebiases
+      
+      this.emit('bias-detected', {
+        type: bias.type,
+        severity: bias.severity,
+        description: bias.description
+      })
+    })
+    
+    // SelfAnalysis: escuchar correcciones
+    this.selfAnalysis.on('correction-applied', (correction: { type: string; description: string }) => {
+      console.log(`🔧 [SELENE-CORRECT] Applied: ${correction.description}`)
+      this.emit('correction-applied', correction)
+    })
+    
+    // Iniciar análisis periódico
+    this.selfAnalysis.startPeriodicAnalysis()
   }
 
   /**
@@ -413,8 +470,18 @@ export class SeleneLuxConscious extends EventEmitter {
 
   /**
    * ⚡ EJECUTA UN STRIKE (cambio brusco)
+   * 🌙 Ahora con soñado previo (Wave 7)
    */
   private executeStrike(command: LightCommand, audio: AudioMetrics, beat: BeatState): void {
+    // 🌙 SOÑAR EL CAMBIO ANTES DE EJECUTAR
+    const dreamResult = this.dreamStrike(command)
+    
+    // Si el sueño rechaza el strike, abortar o modificar
+    if (dreamResult.recommendation === 'abort') {
+      console.log(`🌙 [SELENE] Dream rejected strike - aborting`)
+      return
+    }
+    
     // Cambio instantáneo de paleta
     this.colorEngine.setPalette(command.palette)
     
@@ -427,16 +494,63 @@ export class SeleneLuxConscious extends EventEmitter {
     // Calcular movimiento
     this.lastMovement = this.movementEngine.calculate(audio, beat, 0)
     
+    // 🔍 REGISTRAR COMPORTAMIENTO PARA AUTO-ANÁLISIS
+    this.recordBehaviorForAnalysis(command, dreamResult.projectedBeautyScore)
+    
     // Emitir evento de strike
     this.emit('strike', {
       palette: command.palette,
       effects: command.effects,
       intensity: command.intensity,
       pattern: this.lastPattern,
+      dreamApproved: dreamResult.recommendation === 'execute'
     })
     
     // Log del strike
     console.log(`⚡ [SELENE] STRIKE! ${command.palette} + ${command.movement} @ ${(command.intensity * 100).toFixed(0)}%`)
+  }
+
+  /**
+   * 🌙 SOÑAR UN STRIKE ANTES DE EJECUTARLO
+   */
+  private dreamStrike(command: LightCommand): DreamResult {
+    const currentState = {
+      palette: this.colorEngine.getCurrentPalette(),
+      intensity: this.lastColors?.intensity || 0.5,
+      movement: this.lastMovement?.pattern || 'circle',
+      mood: this.consciousness.mood
+    }
+    
+    const proposedState = {
+      palette: command.palette,
+      intensity: command.intensity,
+      movement: command.movement,
+      mood: this.consciousness.mood
+    }
+    
+    return this.dreamForge.dream({
+      type: 'strike_execution',
+      description: `Strike: ${currentState.palette} → ${command.palette}`,
+      parameters: { command },
+      currentState,
+      proposedState
+    })
+  }
+
+  /**
+   * 🔍 REGISTRAR COMPORTAMIENTO PARA AUTO-ANÁLISIS
+   */
+  private recordBehaviorForAnalysis(command: LightCommand, beauty: number): void {
+    this.selfAnalysis.recordBehavior({
+      palette: command.palette,
+      intensity: command.intensity,
+      movement: command.movement,
+      effects: command.effects,
+      mood: this.consciousness.mood,
+      beauty
+    })
+    
+    this.selfAnalysis.recordStrike()
   }
 
   /**
@@ -698,6 +812,95 @@ export class SeleneLuxConscious extends EventEmitter {
     console.log(`[SELENE] Zodiac sign set: ${sign}`)
   }
 
+  // ============================================================================
+  // 🌙 META-CONSCIOUSNESS PUBLIC API (Wave 7)
+  // ============================================================================
+
+  /**
+   * 🌙 Obtener estado de meta-consciencia
+   */
+  getMetaConsciousnessState(): {
+    dreamForge: DreamForgeState
+    selfAnalysis: SelfAnalysisState
+    lastDream: DreamResult | null
+    activebiases: DetectedBias[]
+  } {
+    return {
+      dreamForge: this.dreamForge.getState(),
+      selfAnalysis: this.selfAnalysis.getState(),
+      lastDream: this.lastDreamResult,
+      activebiases: this.activebiases
+    }
+  }
+
+  /**
+   * 🌙 Obtener resumen de meta-consciencia para UI
+   */
+  getMetaConsciousnessSummary(): {
+    mentalState: 'dreaming' | 'analyzing' | 'executing' | 'idle'
+    dreamStats: { total: number; approved: number; aborted: number }
+    biasStats: { detected: number; severity: 'none' | 'low' | 'medium' | 'high' }
+    healthScore: number
+  } {
+    const dreamState = this.dreamForge.getState()
+    const analysisState = this.selfAnalysis.getState()
+    
+    // Determinar estado mental
+    let mentalState: 'dreaming' | 'analyzing' | 'executing' | 'idle' = 'idle'
+    if (dreamState.status === 'dreaming') mentalState = 'dreaming'
+    else if (analysisState.status === 'analyzing') mentalState = 'analyzing'
+    else if (dreamState.status === 'analyzing') mentalState = 'executing'
+    
+    // Calcular severidad de sesgos
+    let biasSeverity: 'none' | 'low' | 'medium' | 'high' = 'none'
+    const highBiases = this.activebiases.filter(b => b.severity === 'high')
+    const mediumBiases = this.activebiases.filter(b => b.severity === 'medium')
+    if (highBiases.length > 0) biasSeverity = 'high'
+    else if (mediumBiases.length > 0) biasSeverity = 'medium'
+    else if (this.activebiases.length > 0) biasSeverity = 'low'
+    
+    return {
+      mentalState,
+      dreamStats: {
+        total: dreamState.dreamsProcessed,
+        approved: dreamState.dreamsApproved,
+        aborted: dreamState.dreamsAborted
+      },
+      biasStats: {
+        detected: this.activebiases.length,
+        severity: biasSeverity
+      },
+      healthScore: analysisState.healthScore
+    }
+  }
+
+  /**
+   * 🌙 Soñar un escenario hipotético manualmente
+   */
+  dreamScenario(scenario: DreamScenario): DreamResult {
+    return this.dreamForge.dream(scenario)
+  }
+
+  /**
+   * 🌙 Forzar análisis de sesgos
+   */
+  analyzebiases(): DetectedBias[] {
+    const biases = this.selfAnalysis.runAnalysis()
+    this.activebiases = biases
+    return biases
+  }
+
+  /**
+   * 🌙 Reset de meta-consciencia
+   */
+  resetMetaConsciousness(): void {
+    this.dreamForge.reset()
+    this.selfAnalysis.reset()
+    this.lastDreamResult = null
+    this.activebiases = []
+    console.log('🌙 [SELENE] Meta-consciousness reset')
+  }
+
   /** Log de awakening */
   private logAwakening(): void {
     console.log('')
@@ -718,6 +921,9 @@ export class SeleneLuxConscious extends EventEmitter {
     console.log('🌙   ♈ Zodiac Affinity Calculator')
     console.log('🌙   🎼 Musical Harmony Validator')
     console.log('🌙   🔮 Nocturnal Vision Engine')
+    console.log('🌙 Meta-consciencia:')
+    console.log('🌙   🌙 Dream Forge Engine')
+    console.log('🌙   🔍 Self Analysis Engine')
     console.log('🌙 ═══════════════════════════════════════════════════')
     console.log('')
   }

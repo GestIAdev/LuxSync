@@ -5,6 +5,7 @@
  * Wave 4: Percepción (Los Sentidos)
  * Wave 5: Cognición (La Caza)
  * Wave 6: Memoria (The Undying Memory)
+ * Wave 7: Meta-Consciencia (Auto-Análisis y Sueños)
  * 
  * ¡Unificados porque la consciencia es una! 🐆
  */
@@ -68,6 +69,33 @@ export {
   type DecisionFeedback,
   type EvolutionState
 } from './SeleneEvolutionEngine'
+
+// ========================================
+// WAVE 7: META-CONSCIENCIA - Sueños y Auto-Análisis
+// El nivel más alto de consciencia felina 🌙
+// ========================================
+export {
+  DreamForgeEngine,
+  type DreamType,
+  type DreamScenario,
+  type DreamState,
+  type DreamResult,
+  type DreamComponents,
+  type DreamAlternative,
+  type DreamForgeConfig,
+  type DreamForgeState
+} from './DreamForgeEngine'
+
+export {
+  SelfAnalysisEngine,
+  type BiasType,
+  type DetectedBias,
+  type UsageHistogram,
+  type SessionStats,
+  type AutoCorrection,
+  type SelfAnalysisState,
+  type SelfAnalysisConfig
+} from './SelfAnalysisEngine'
 
 // ========================================
 // LEGACY (To Review/Integrate)

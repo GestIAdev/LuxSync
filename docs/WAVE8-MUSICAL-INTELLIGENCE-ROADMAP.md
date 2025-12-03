@@ -112,7 +112,9 @@ engines/musical/
 ### Tests Fase 1
 - [ ] Test: Detecta kick en bass > 0.7
 - [ ] Test: Detecta pattern "four_on_floor"
-- [ ] Test: Detecta pattern "reggaeton" (syncopation > 0.4)  ← **Regla 3**
+- [ ] Test: Detecta pattern "reggaeton" (syncopation > 0.4, dembow)  ← **Regla 3**
+- [ ] Test: Detecta pattern "cumbia" (caballito güiro, high perc constante)  ← **🇦🇷 Argentina**
+- [ ] Test: **NO confunde** cumbia con reggaeton (mismo BPM, diferente patrón)
 - [ ] Test: Calcula swing > 0.15 para jazz
 - [ ] Test: `analyze()` completa en < 5ms  ← **Regla 1**
 
@@ -186,10 +188,13 @@ classification/
 
 - [ ] **3.2** Crear `classification/GenreClassifier.ts` (~150 líneas)
   - [ ] Interface `GenreClassification` con campo `confidence`  ← **Regla 2**
-  - [ ] Type `MusicGenre` (20+ géneros)
+  - [ ] Type `MusicGenre` (20+ géneros incluyendo CUMBIA)
   - [ ] Método `classify(rhythm, harmony, section, audio)` ← **Throttled 500ms**
   - [ ] **Priorizar syncopation en classify()** ← **REGLA 3 CRÍTICA**
-  - [ ] Lógica para reggaeton: `syncopation > 0.4` (NO solo BPM)
+  - [ ] Lógica para reggaeton: `syncopation > 0.4 + dembow` (NO solo BPM)
+  - [ ] Lógica para **cumbia**: `treble > 0.5 + caballito constante + NO dembow`  ← **🇦🇷**
+  - [ ] Helper `hasConstantHighPercussion()` para detectar güiro
+  - [ ] Helper `hasDembowPattern()` para diferenciar reggaeton vs cumbia
   - [ ] Lógica para techno/house: `syncopation < 0.15` + BPM para desempatar
   - [ ] Lógica para jazz: `swingAmount > 0.15`
   - [ ] Cache de último resultado para Main Thread
@@ -199,7 +204,9 @@ classification/
   - [ ] Combinar múltiples señales en mood unificado
 
 ### Tests Fase 3
-- [ ] Test: Clasifica reggaeton con **syncopation > 0.4** (NO por BPM)  ← **Regla 3**
+- [ ] Test: Clasifica reggaeton con **syncopation > 0.4 + dembow** (NO solo BPM)  ← **Regla 3**
+- [ ] Test: Clasifica **cumbia** con caballito güiro + NO dembow  ← **🇦🇷 Argentina**
+- [ ] Test: **NO confunde** cumbia con reggaeton (BPM overlap 85-100)  ← **CRÍTICO**
 - [ ] Test: Clasifica house con syncopation < 0.15 + 125 BPM
 - [ ] Test: **NO confunde** techno 120 BPM con reggaeton 100 BPM  ← **Regla 3**
 - [ ] Test: Detecta buildup → predice drop
@@ -297,9 +304,11 @@ context/
 
 ### Tests Fase 5
 - [ ] Test: Reggaeton → paleta 'neon'
+- [ ] Test: **Cumbia → paleta 'fuego' + movement 'figure8'**  ← **🇦🇷 Argentina**
 - [ ] Test: House → paleta 'rainbow'
 - [ ] Test: Drop → intensidad 1.0
 - [ ] Test: Jazz → movement 'lissajous'
+- [ ] Test: Cumbia break → efecto 'breathe'  ← **Característico**
 
 ### Entregables
 ```

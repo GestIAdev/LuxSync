@@ -149,7 +149,8 @@ Crear un sistema de "Oído Absoluto" que permita a Selene Lux:
 │  ┌──────────────────────────────▼─────────────────────────────────┐ │
 │  │           PATTERN LEARNER (Reinforcement Loop)                 │ │
 │  │                                                                │ │
-│  │  "Reggaeton = Bass heavy + Simple groove + 90-100 BPM"        │ │
+│  │  "Reggaeton = Bass heavy + Dembow pattern + 90-100 BPM"       │ │
+│  │  "Cumbia = Caballito güiro + Constant high + 85-115 BPM"      │ │
 │  │  "EDM Drop = Build → Silence → Maximum energy"                 │ │
 │  │  "Jazz = Complex harmony + Swing > 15% + Unpredictable"       │ │
 │  └────────────────────────────────────────────────────────────────┘ │
@@ -161,6 +162,7 @@ Crear un sistema de "Oído Absoluto" que permita a Selene Lux:
 │  │   Genre → Palette       Section → Intensity      Mood → Motion │ │
 │  │   ─────────────────     ────────────────────     ───────────── │ │
 │  │   Reggaeton → Neon      Verse → 0.5              Happy → Fast  │ │
+│  │   Cumbia → Fuego        Break → 0.3 (Breathe)    Fiesta→ Flow  │ │
 │  │   Jazz → Warm Amber     Chorus → 0.9             Sad → Slow    │ │
 │  │   EDM → Rainbow         Drop → 1.0 + Strobe      Tense → Sharp │ │
 │  └────────────────────────────────────────────────────────────────┘ │
@@ -247,7 +249,8 @@ type DrumPatternType =
   | 'four_on_floor'    // EDM, House, Disco
   | 'breakbeat'        // Drum & Bass, Jungle
   | 'half_time'        // Dubstep, Trap
-  | 'reggaeton'        // Dembow pattern
+  | 'reggaeton'        // Dembow pattern (Kick...Snare)
+  | 'cumbia'           // Caballito güiro (Argentina/Villera)
   | 'rock_standard'    // Rock básico 4/4
   | 'jazz_swing'       // Swing con ride
   | 'latin'            // Clave patterns
@@ -270,6 +273,13 @@ detectPatternType(analysis: FrequencyBands, rhythm: RhythmAnalysis): DrumPattern
   // Reggaeton: Bass heavy + dembow pattern + 90-100 BPM
   if (bass > 0.7 && rhythm.bpm >= 90 && rhythm.bpm <= 100 && groove.complexity === 'low') {
     return 'reggaeton';
+  }
+  
+  // CUMBIA: Caballito güiro constante + high percussion + 85-115 BPM
+  // Diferenciador clave: Alta percusión CONSTANTE (güiro arrastrado) vs Dembow (Kick...Snare)
+  if (treble > 0.6 && this.detectConstantHighPercussion(rhythm) && 
+      rhythm.bpm >= 85 && rhythm.bpm <= 115 && !this.hasDembowPattern(rhythm)) {
+    return 'cumbia';
   }
   
   // Half time: Snare en beat 3, no 2
@@ -476,7 +486,7 @@ type MusicGenre =
   // Electrónica
   | 'edm' | 'house' | 'techno' | 'trance' | 'dubstep' | 'drum_and_bass'
   // Latino
-  | 'reggaeton' | 'latin_pop' | 'salsa' | 'bachata'
+  | 'reggaeton' | 'cumbia' | 'latin_pop' | 'salsa' | 'bachata'
   // Pop/Rock
   | 'pop' | 'rock' | 'indie' | 'alternative'
   // Urbano
@@ -495,15 +505,32 @@ classifyGenre(
 ): GenreClassification {
   const features = this.extractFeatures(rhythm, harmony, section, audio);
   
-  // REGGAETON: El patrón de Bad Bunny
+  // REGGAETON: El patrón de Bad Bunny (Dembow: Kick...Snare)
   if (
     rhythm.pattern.type === 'reggaeton' ||
     (features.bpm >= 85 && features.bpm <= 100 &&
      features.bass > 0.7 &&
      rhythm.groove.complexity === 'low' &&
-     features.syncopation > 0.4)
+     features.syncopation > 0.4 &&
+     this.hasDembowPattern(rhythm))
   ) {
     return { primary: 'reggaeton', confidence: 0.85, characteristics: ['bass_heavy', 'dembow'] };
+  }
+  
+  // CUMBIA: El patrón argentino (Caballito: güiro constante)
+  // ⚠️ CRÍTICO: Detectar ANTES de fallback a reggaeton por BPM similar
+  if (
+    rhythm.pattern.type === 'cumbia' ||
+    (features.bpm >= 85 && features.bpm <= 115 &&
+     features.treble > 0.5 &&              // Güiro vive en agudos
+     this.hasConstantHighPercussion(rhythm) && // Caballito constante
+     !this.hasDembowPattern(rhythm))       // NO tiene Dembow
+  ) {
+    return { 
+      primary: 'cumbia', 
+      confidence: 0.80, 
+      characteristics: ['caballito', 'guiro', 'constant_high_perc'] 
+    };
   }
   
   // EDM/HOUSE: El patrón de Daft Punk
@@ -598,6 +625,7 @@ interface MusicLightMapping {
 // GÉNERO → PALETA
 const GENRE_TO_PALETTE: Record<MusicGenre, LivingPaletteId> = {
   'reggaeton': 'neon',          // Neones vibrantes (Bad Bunny vibes)
+  'cumbia': 'fuego',            // 🇦🇷 Cálidos, festivos (Argentina villera)
   'house': 'rainbow',           // Colores cálidos (Daft Punk)
   'techno': 'hielo',            // Fríos industriales
   'trance': 'cosmos',           // Cósmicos, etéreos
@@ -631,6 +659,20 @@ const MOOD_TO_MOVEMENT: Record<HarmonicMood, MovementPattern> = {
   'bluesy': 'scan',             // Lento, expresivo
   'tense': 'random',            // Impredecible
   'universal': 'wave',          // Neutral
+};
+
+// GÉNERO → MOVIMIENTO OVERRIDE (cuando el género tiene movimiento característico)
+const GENRE_TO_MOVEMENT_OVERRIDE: Partial<Record<MusicGenre, MovementPattern>> = {
+  'cumbia': 'figure8',          // 🇦🇷 Ochos/Infinity - el movimiento de la cumbia
+  'salsa': 'circle',            // Giros constantes
+  'trance': 'lissajous',        // Patrones hipnóticos
+};
+
+// GÉNERO → EFECTO CARACTERÍSTICO
+const GENRE_TO_SIGNATURE_EFFECT: Partial<Record<MusicGenre, EffectSuggestion>> = {
+  'cumbia': { id: 'breathe', intensity: 0.6, duration: 2000 }, // 🇦🇷 Breaks de cumbia
+  'dubstep': { id: 'strobe', intensity: 0.9, duration: 100 },
+  'trance': { id: 'pulse', intensity: 0.7, duration: 500 },
 };
 
 // DRUMS → EFECTOS
@@ -1075,6 +1117,12 @@ describe('Wave 8: Musical Intelligence', () => {
   
   describe('GenreClassifier', () => {
     test('clasifica reggaeton correctamente', () => {...});
+    test('clasifica cumbia argentina correctamente', () => {...});
+    test('diferencia cumbia de reggaeton por patrón de percusión', () => {
+      // CRÍTICO: Mismo BPM pero diferente patrón
+      // Cumbia = Caballito constante (güiro)
+      // Reggaeton = Dembow (Kick...Snare)
+    });
     test('clasifica house correctamente', () => {...});
     test('diferencia trap de hip-hop', () => {...});
   });

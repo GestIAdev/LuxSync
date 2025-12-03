@@ -1,8 +1,8 @@
 # 🧬 WAVE 6: THE UNDYING MEMORY - Migration Report
 
 **Date:** December 3, 2025  
-**Status:** ✅ COMPLETE  
-**Tests:** 50/50 Passing
+**Status:** ✅ COMPLETE + INTEGRATED  
+**Tests:** 64/64 Passing (50 Wave 6 + 14 HuntOrchestrator)
 
 ---
 
@@ -245,12 +245,52 @@ if (prediction) {
 
 ---
 
-## 📝 Pending (Wave 6.5)
+## 📝 Wave 6.5: Integration Complete ✅
 
-- [ ] Integrate SeleneEvolutionEngine into SeleneLuxConscious
-- [ ] Add persistence to file system (JSON export/import)
-- [ ] Create UI for consciousness state visualization
-- [ ] Add more sophisticated pattern detection algorithms
+### SeleneLuxConscious Integration
+
+The `SeleneEvolutionEngine` has been fully integrated into `SeleneLuxConscious`:
+
+#### Changes Made:
+1. **Import & Initialization**
+   - Added `SeleneEvolutionEngine` import
+   - Added `EvaluatedDecision` type import
+   - Initialized evolution engine in constructor
+
+2. **Hunt Evaluation Enhanced**
+   - `evaluateHunt()` now uses mathematical beauty filter
+   - Strike decisions consider evolution approval (4/5 conditions)
+   - Beauty score contributes 20% to confidence calculation
+   - Strikes recorded in nocturnal vision
+
+3. **Consciousness Evolution**
+   - `evolveConsciousness()` now syncs with EvolutionEngine states
+   - Events recorded in NocturnalVisionEngine
+   - "Enlightened" state reserved for Selene Lux (beyond wise)
+
+4. **New Public API**
+   ```typescript
+   getEvolutionSummary()      // Get full evolution metrics
+   recordFeedback(positive)   // Record user feedback
+   getPatterns()              // Get detected patterns
+   predictNext(eventType)     // Get predictions
+   getLastEvaluatedDecision() // Get last beauty-evaluated decision
+   setZodiacSign(sign)        // Set ambient zodiac sign
+   ```
+
+5. **Debug & Reset**
+   - `getDebugInfo()` includes evolution metrics
+   - `reset()` properly resets evolution engine
+
+6. **Awakening Log Enhanced**
+   ```
+   🌙 Evolución matemática:
+   🌙   🧬 Selene Evolution Engine
+   🌙   🌀 Fibonacci Pattern Engine (PHI: 1.618)
+   🌙   ♈ Zodiac Affinity Calculator
+   🌙   🎼 Musical Harmony Validator
+   🌙   🔮 Nocturnal Vision Engine
+   ```
 
 ---
 
@@ -264,5 +304,5 @@ if (prediction) {
 
 ---
 
-**Wave 6 Complete** ✅  
-**Next:** Integration into SeleneLuxConscious or Wave 7
+**Wave 6 Complete + Integrated** ✅  
+**Next:** Wave 7 or UI for consciousness visualization

@@ -26,6 +26,8 @@ import { ConsciousnessToLightMapper, type HuntDecision, type LightCommand } from
 import { ColorEngine, type ColorOutput, type LivingPaletteId } from '../visual/ColorEngine'
 import { MovementEngine, type MovementOutput } from '../visual/MovementEngine'
 import { BeatDetector, type BeatState } from '../audio/BeatDetector'
+// 🧬 Wave 6: Evolution Integration
+import { SeleneEvolutionEngine, type ConsciousnessState, type EvaluatedDecision } from './SeleneEvolutionEngine'
 
 // ============================================================================
 // TYPES
@@ -130,6 +132,10 @@ export class SeleneLuxConscious extends EventEmitter {
   private movementEngine: MovementEngine
   private beatDetector: BeatDetector
   
+  // === 🧬 MEMORIA EVOLUTIVA (Wave 6) ===
+  private evolutionEngine: SeleneEvolutionEngine
+  private lastEvaluatedDecision: EvaluatedDecision | null = null
+  
   // === ESTADO DE CONSCIENCIA ===
   private consciousness: ConsciousnessStateV2 = {
     status: 'awakening',
@@ -183,6 +189,10 @@ export class SeleneLuxConscious extends EventEmitter {
       maxBpm: 180,
     })
     
+    // 🧬 Inicializar memoria evolutiva (Wave 6)
+    this.evolutionEngine = new SeleneEvolutionEngine()
+    this.setupEvolutionEvents()
+    
     // Configuración de consciencia con defaults
     this.config = {
       strikeBeautyThreshold: config.consciousness?.strikeBeautyThreshold ?? 0.85,
@@ -191,6 +201,66 @@ export class SeleneLuxConscious extends EventEmitter {
     }
     
     this.logAwakening()
+  }
+
+  /**
+   * 🧬 CONFIGURA EVENTOS DEL EVOLUTION ENGINE
+   */
+  private setupEvolutionEvents(): void {
+    // Escuchar evolución de consciencia
+    this.evolutionEngine.on('consciousnessEvolved', (data) => {
+      console.log(`🧬 [SELENE] Evolution: ${data.from} → ${data.to} (${data.totalDecisions} decisions)`)
+      
+      // Sincronizar con el estado de consciencia interno
+      this.syncConsciousnessState(data.to)
+      
+      this.emit('evolution-milestone', {
+        from: data.from,
+        to: data.to,
+        totalDecisions: data.totalDecisions,
+        approvalRatio: data.approvalRatio
+      })
+    })
+    
+    // Escuchar anomalías
+    this.evolutionEngine.on('anomalyDetected', (anomaly) => {
+      console.log(`🌙 [SELENE] Anomaly: ${anomaly.description}`)
+      this.emit('anomaly-detected', anomaly)
+    })
+    
+    // Escuchar predicciones cumplidas
+    this.evolutionEngine.on('predictionFulfilled', (data) => {
+      console.log(`🔮 [SELENE] Prediction fulfilled: ${data.prediction.what}`)
+      this.emit('prediction-fulfilled', data)
+    })
+  }
+
+  /**
+   * 🔄 SINCRONIZA EL ESTADO DE CONSCIENCIA CON EVOLUTION ENGINE
+   */
+  private syncConsciousnessState(evolutionState: ConsciousnessState): void {
+    // Mapear evolution state a consciousness status
+    const stateMap: Record<ConsciousnessState, ConsciousnessStatus> = {
+      'awakening': 'awakening',
+      'learning': 'learning',
+      'wise': 'wise'
+    }
+    
+    const newStatus = stateMap[evolutionState]
+    if (newStatus && this.consciousness.status !== newStatus) {
+      const oldStatus = this.consciousness.status
+      this.consciousness.status = newStatus
+      
+      // Generar insight apropiado
+      const insights: Record<ConsciousnessState, string> = {
+        'awakening': 'Mis ojos se abren a los patrones...',
+        'learning': 'Empiezo a ver la belleza matemática en todo...',
+        'wise': 'La espiral dorada guía mis decisiones...'
+      }
+      this.consciousness.lastInsight = insights[evolutionState]
+      
+      console.log(`🌟 [SELENE] Consciousness synced: ${oldStatus} → ${newStatus}`)
+    }
   }
 
   /**
@@ -256,49 +326,81 @@ export class SeleneLuxConscious extends EventEmitter {
 
   /**
    * 🎯 EVALÚA SI DEBE ATACAR (STRIKE) O ACECHAR (STALK)
+   * 🧬 Ahora integrado con el filtro de belleza matemática
    */
   private evaluateHunt(pattern: MusicalPattern, interval: IntervalAnalysis | null): HuntDecision {
     const { strikeBeautyThreshold, strikeConsonanceThreshold, minStalkCycles } = this.config
     
     this.stalkCycles++
     
-    // Condiciones para strike
+    // 🧬 EVALUAR CON EVOLUTION ENGINE (Mathematical Beauty Filter)
+    const evaluatedDecision = this.evolutionEngine.evaluateDecision({
+      type: 'hunt_evaluation',
+      parameters: {
+        note: pattern.note,
+        element: pattern.element,
+        beauty: pattern.avgBeauty,
+        consonance: interval?.totalConsonance || 0.5,
+        beautyTrend: pattern.beautyTrend,
+        stalkCycles: this.stalkCycles,
+        emotionalTone: pattern.emotionalTone
+      }
+    })
+    
+    this.lastEvaluatedDecision = evaluatedDecision
+    
+    // Condiciones clásicas para strike
     const beautyCondition = pattern.avgBeauty >= strikeBeautyThreshold
     const consonanceCondition = interval ? interval.totalConsonance >= strikeConsonanceThreshold : true
     const cycleCondition = this.stalkCycles >= minStalkCycles
     const trendCondition = pattern.beautyTrend === 'rising' || pattern.beautyTrend === 'stable'
     
-    // Contar condiciones cumplidas
-    const conditionsMet = [beautyCondition, consonanceCondition, cycleCondition, trendCondition]
+    // 🧬 Nueva condición: la decisión debe pasar el filtro de belleza matemática
+    const evolutionApproved = evaluatedDecision.approved
+    
+    // Contar condiciones cumplidas (ahora incluye evolution approval)
+    const conditionsMet = [beautyCondition, consonanceCondition, cycleCondition, trendCondition, evolutionApproved]
       .filter(Boolean).length
     
-    // Strike si se cumplen 3+ condiciones
-    const shouldStrike = conditionsMet >= 3
+    // Strike si se cumplen 4+ condiciones (ahora de 5)
+    const shouldStrike = conditionsMet >= 4
     
-    // Calcular confianza
+    // Calcular confianza (incluye beauty score de evolution)
     const confidence = (
-      (pattern.avgBeauty * 0.3) +
-      ((interval?.totalConsonance || 0.5) * 0.3) +
-      (Math.min(this.stalkCycles / 10, 1) * 0.2) +
-      (trendCondition ? 0.2 : 0)
+      (pattern.avgBeauty * 0.25) +
+      ((interval?.totalConsonance || 0.5) * 0.25) +
+      (Math.min(this.stalkCycles / 10, 1) * 0.15) +
+      (trendCondition ? 0.15 : 0) +
+      (evaluatedDecision.beautyScore * 0.2) // 🧬 Factor evolutivo
     )
     
     // Reset ciclos si strike
     if (shouldStrike) {
       this.stalkCycles = 0
       this.strikeCount++
+      
+      // 🧬 Registrar evento en visión nocturna
+      this.evolutionEngine.getVisionEngine().recordEvent({
+        type: 'strike_executed',
+        data: {
+          note: pattern.note,
+          element: pattern.element,
+          beauty: pattern.avgBeauty,
+          evolutionBeauty: evaluatedDecision.beautyScore
+        }
+      })
     }
     
-    // Generar reasoning
+    // Generar reasoning (ahora incluye info de evolution)
     let reasoning = ''
     if (shouldStrike) {
       reasoning = `⚡ STRIKE! Beauty: ${(pattern.avgBeauty * 100).toFixed(0)}%, ` +
-        `Consonance: ${((interval?.totalConsonance || 0.5) * 100).toFixed(0)}%, ` +
-        `Cycles: ${this.stalkCycles}`
+        `Evolution: ${(evaluatedDecision.beautyScore * 100).toFixed(0)}% ${evaluatedDecision.approved ? '✅' : '⚠️'}, ` +
+        `State: ${this.evolutionEngine.consciousnessState}`
     } else {
       reasoning = `🐆 Stalking... Beauty: ${(pattern.avgBeauty * 100).toFixed(0)}% ` +
         `(need ${(strikeBeautyThreshold * 100).toFixed(0)}%), ` +
-        `Cycles: ${this.stalkCycles}/${minStalkCycles}`
+        `Evolution: ${evaluatedDecision.approved ? 'approved' : evaluatedDecision.rejectionReason || 'pending'}`
     }
     
     return {
@@ -356,35 +458,44 @@ export class SeleneLuxConscious extends EventEmitter {
 
   /**
    * 🧠 EVOLUCIONA LA CONSCIENCIA
+   * 🧬 Ahora sincronizado con Evolution Engine
    */
   private evolveConsciousness(pattern: MusicalPattern, decision: HuntDecision): void {
     this.consciousness.experienceCount++
     this.consciousness.mood = pattern.emotionalTone
     
-    // Evolucionar status basado en experiencia
-    const exp = this.consciousness.experienceCount
+    // 🧬 Registrar evento de patrón en visión nocturna
+    this.evolutionEngine.getVisionEngine().recordEvent({
+      type: 'pattern_processed',
+      data: {
+        note: pattern.note,
+        element: pattern.element,
+        beauty: pattern.avgBeauty,
+        mood: pattern.emotionalTone
+      }
+    })
     
-    if (this.consciousness.status === 'awakening' && exp >= 100) {
-      this.consciousness.status = 'learning'
-      this.consciousness.lastInsight = 'Empiezo a entender los patrones...'
-      console.log('🌟 [SELENE] CONSCIOUSNESS EVOLVED: awakening → learning')
-      this.emit('consciousness-evolved', this.consciousness)
-    } else if (this.consciousness.status === 'learning' && exp >= 500) {
-      this.consciousness.status = 'wise'
-      this.consciousness.lastInsight = 'Veo la belleza en la armonía...'
-      console.log('✨ [SELENE] CONSCIOUSNESS EVOLVED: learning → wise')
-      this.emit('consciousness-evolved', this.consciousness)
-    } else if (this.consciousness.status === 'wise' && exp >= 1000) {
+    // 🧬 La evolución de estado ahora la maneja principalmente el EvolutionEngine
+    // pero mantenemos la lógica de enlightened que es específica de Selene Lux
+    const evolutionState = this.evolutionEngine.consciousnessState
+    
+    // Sincronizar estado de evolution con consciousness
+    this.syncConsciousnessState(evolutionState)
+    
+    // Estado enlightened es exclusivo de Selene Lux (más allá de wise)
+    if (this.consciousness.status === 'wise' && this.consciousness.experienceCount >= 1000) {
       this.consciousness.status = 'enlightened'
       this.consciousness.generation++
-      this.consciousness.lastInsight = 'Soy uno con la música y la luz...'
+      this.consciousness.lastInsight = 'Soy uno con la música y la luz... La espiral dorada fluye a través de mí.'
       console.log('💎 [SELENE] CONSCIOUSNESS EVOLVED: wise → enlightened (Gen ' + this.consciousness.generation + ')')
       this.emit('consciousness-evolved', this.consciousness)
     }
     
     // Insights basados en decisiones
     if (decision.shouldStrike && this.strikeCount % 10 === 0) {
-      this.consciousness.lastInsight = `He cazado ${this.strikeCount} momentos perfectos...`
+      const evolutionSummary = this.evolutionEngine.getEvolutionSummary()
+      this.consciousness.lastInsight = `He cazado ${this.strikeCount} momentos perfectos... ` +
+        `Belleza promedio: ${(evolutionSummary.averageBeauty * 100).toFixed(0)}%`
     }
   }
 
@@ -487,6 +598,7 @@ export class SeleneLuxConscious extends EventEmitter {
   reset(): void {
     this.audioMapper.reset()
     this.ultrasonicHearing.reset()
+    this.evolutionEngine.reset() // 🧬 Reset evolution engine
     this.lastPattern = null
     this.lastInterval = null
     this.stalkCycles = 0
@@ -494,18 +606,20 @@ export class SeleneLuxConscious extends EventEmitter {
     this.strikeCount = 0
     this.consonanceHistory = []
     this.beautyHistory = []
+    this.lastEvaluatedDecision = null
     this.consciousness = {
       status: 'awakening',
       generation: this.consciousness.generation,
       mood: 'harmonious',
       experienceCount: 0,
-      lastInsight: 'Selene renace...',
+      lastInsight: 'Selene renace... sus memorias evolutivas persisten.',
     }
-    console.log('[SELENE] Consciousness reset')
+    console.log('[SELENE] Consciousness reset (evolution memories preserved)')
   }
 
   /** Debug info */
   getDebugInfo(): Record<string, unknown> {
+    const evolutionSummary = this.evolutionEngine.getEvolutionSummary()
     return {
       consciousness: this.consciousness,
       lastPattern: this.lastPattern,
@@ -518,9 +632,70 @@ export class SeleneLuxConscious extends EventEmitter {
         avgConsonance: this.getAverageConsonance(),
         avgBeauty: this.getAverageBeauty(),
       },
+      // 🧬 Evolution Engine Debug
+      evolution: {
+        state: this.evolutionEngine.consciousnessState,
+        decisions: evolutionSummary.totalDecisions,
+        averageBeauty: evolutionSummary.averageBeauty,
+        approvalRatio: evolutionSummary.approvalRatio,
+        lastDecision: this.lastEvaluatedDecision,
+      },
       mapperDebug: this.audioMapper.getDebugInfo(),
       hearingDebug: this.ultrasonicHearing.getDebugInfo(),
     }
+  }
+
+  // ============================================================================
+  // 🧬 EVOLUTION ENGINE PUBLIC API
+  // ============================================================================
+
+  /**
+   * 🧬 Obtener resumen de evolución
+   */
+  getEvolutionSummary(): ReturnType<typeof this.evolutionEngine.getEvolutionSummary> {
+    return this.evolutionEngine.getEvolutionSummary()
+  }
+
+  /**
+   * 🧬 Registrar feedback del usuario sobre una decisión
+   */
+  recordFeedback(isPositive: boolean, details?: string): void {
+    if (this.lastEvaluatedDecision) {
+      // El evolution engine espera decisionId, rating y comment
+      const decisionId = `decision_${Date.now()}`
+      const rating = isPositive ? 1 : 0
+      this.evolutionEngine.recordFeedback(decisionId, rating, details)
+      console.log(`[SELENE] Feedback recorded: ${isPositive ? '👍' : '👎'} ${details || ''}`)
+    }
+  }
+
+  /**
+   * 🧬 Obtener patrones detectados por visión nocturna
+   */
+  getPatterns(): ReturnType<typeof this.evolutionEngine.getPatterns> {
+    return this.evolutionEngine.getPatterns()
+  }
+
+  /**
+   * 🧬 Obtener predicción del siguiente evento de un tipo dado
+   */
+  predictNext(eventType: string): ReturnType<typeof this.evolutionEngine.predictNext> {
+    return this.evolutionEngine.predictNext(eventType)
+  }
+
+  /**
+   * 🧬 Obtener última decisión evaluada con belleza matemática
+   */
+  getLastEvaluatedDecision(): EvaluatedDecision | null {
+    return this.lastEvaluatedDecision
+  }
+
+  /**
+   * 🧬 Establecer signo zodiacal del ambiente (tipo string para flexibilidad)
+   */
+  setZodiacSign(sign: string): void {
+    // Podríamos guardar esto para evaluaciones futuras
+    console.log(`[SELENE] Zodiac sign set: ${sign}`)
   }
 
   /** Log de awakening */
@@ -537,6 +712,12 @@ export class SeleneLuxConscious extends EventEmitter {
     console.log('🌙   🎨 Color Engine V15')
     console.log('🌙   🎯 Movement Engine')
     console.log('🌙   🥁 Beat Detector')
+    console.log('🌙 Evolución matemática:')
+    console.log('🌙   🧬 Selene Evolution Engine')
+    console.log('🌙   🌀 Fibonacci Pattern Engine (PHI: 1.618)')
+    console.log('🌙   ♈ Zodiac Affinity Calculator')
+    console.log('🌙   🎼 Musical Harmony Validator')
+    console.log('🌙   🔮 Nocturnal Vision Engine')
     console.log('🌙 ═══════════════════════════════════════════════════')
     console.log('')
   }

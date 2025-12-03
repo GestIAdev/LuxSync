@@ -1,15 +1,18 @@
-/**
- * 🚀 LUXSYNC ELECTRON - MAIN PROCESS
- * El corazón de la nave espacial
+﻿/**
+ * LUXSYNC ELECTRON - MAIN PROCESS
  */
 
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
+import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
+import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
+import type { MovementPattern } from '../src/main/selene-lux-core/types'
 
-// Variable global para la ventana principal
 let mainWindow: BrowserWindow | null = null
+let selene: SeleneLux | null = null
+let mainLoopInterval: NodeJS.Timeout | null = null
+let lastFrameTime = Date.now()
 
-// Detectar si estamos en desarrollo
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 function createWindow() {
@@ -31,10 +34,9 @@ function createWindow() {
       contextIsolation: true,
     },
     icon: path.join(__dirname, '../public/icon.png'),
-    show: false, // No mostrar hasta que esté listo
+    show: false,
   })
 
-  // Mostrar cuando esté listo (evita flash blanco)
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
     if (isDev) {
@@ -42,24 +44,20 @@ function createWindow() {
     }
   })
 
-  // Cargar la app
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
-  // Limpiar referencia cuando se cierra
   mainWindow.on('closed', () => {
     mainWindow = null
   })
 }
 
-// Cuando Electron está listo
 app.whenReady().then(() => {
   createWindow()
 
-  // macOS: recrear ventana si se hace clic en el dock
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -67,7 +65,6 @@ app.whenReady().then(() => {
   })
 })
 
-// Cerrar app cuando todas las ventanas se cierran (excepto macOS)
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -75,22 +72,139 @@ app.on('window-all-closed', () => {
 })
 
 // ============================================
-// IPC HANDLERS - Comunicación con el Renderer
+// IPC HANDLERS - Basic
 // ============================================
 
-// Ejemplo: Obtener versión de la app
 ipcMain.handle('app:getVersion', () => {
   return app.getVersion()
 })
 
-// Placeholder para DMX
 ipcMain.handle('dmx:getStatus', () => {
   return { connected: false, interface: 'none' }
 })
 
-// Placeholder para Audio
 ipcMain.handle('audio:getDevices', async () => {
   return []
 })
 
-console.log('🚀 LuxSync Electron Main Process Started')
+// ============================================
+// SELENE LUX CORE - Engine & Loop
+// ============================================
+
+function initSelene() {
+  selene = new SeleneLux({
+    audio: {
+      device: 'default',
+      sensitivity: 0.7,
+      noiseGate: 0.05,
+      fftSize: 2048,
+      smoothing: 0.8,
+    },
+    visual: {
+      transitionTime: 300,
+      colorSmoothing: 0.85,
+      movementSmoothing: 0.8,
+      effectIntensity: 1.0,
+    },
+    dmx: {
+      universe: 1,
+      driver: 'virtual',
+      frameRate: 40,
+    },
+  })
+  console.log('Selene LUX initialized')
+}
+
+function startMainLoop() {
+  if (mainLoopInterval) return
+  
+  mainLoopInterval = setInterval(() => {
+    if (!selene || !mainWindow) return
+    
+    const now = Date.now()
+    const deltaTime = now - lastFrameTime
+    lastFrameTime = now
+    
+    const state = selene.processAudioFrame({
+      bass: 0.5 + Math.sin(now * 0.002) * 0.3,
+      mid: 0.4 + Math.sin(now * 0.003) * 0.2,
+      treble: 0.3 + Math.sin(now * 0.005) * 0.2,
+      energy: 0.5 + Math.sin(now * 0.001) * 0.3,
+      spectralCentroid: 2000,
+      spectralFlux: 0.1,
+      rms: 0.4,
+      peak: 0.7,
+      zeroCrossings: 100,
+    }, deltaTime)
+    
+    mainWindow.webContents.send('lux:update-state', state)
+  }, 30)
+  
+  console.log('Selene main loop started (30ms)')
+}
+
+function stopMainLoop() {
+  if (mainLoopInterval) {
+    clearInterval(mainLoopInterval)
+    mainLoopInterval = null
+  }
+}
+
+// ============================================
+// SELENE IPC HANDLERS
+// ============================================
+
+ipcMain.handle('lux:set-palette', (_event, palette: LivingPaletteId) => {
+  if (!selene) return { success: false, error: 'Selene not initialized' }
+  selene.setPalette(palette)
+  return { success: true, palette }
+})
+
+ipcMain.handle('lux:set-movement', (_event, pattern: MovementPattern) => {
+  if (!selene) return { success: false, error: 'Selene not initialized' }
+  selene.setMovementPattern(pattern)
+  return { success: true, pattern }
+})
+
+ipcMain.handle('lux:get-state', () => {
+  if (!selene) return null
+  return selene.getState()
+})
+
+ipcMain.handle('lux:start', () => {
+  initSelene()
+  startMainLoop()
+  return { success: true }
+})
+
+ipcMain.handle('lux:stop', () => {
+  stopMainLoop()
+  selene = null
+  return { success: true }
+})
+
+ipcMain.handle('lux:audio-frame', (_event, audioData: {
+  bass: number
+  mid: number
+  treble: number
+  energy: number
+}) => {
+  if (!selene || !mainWindow) return null
+  
+  const now = Date.now()
+  const deltaTime = now - lastFrameTime
+  lastFrameTime = now
+  
+  const state = selene.processAudioFrame({
+    ...audioData,
+    spectralCentroid: 2000,
+    spectralFlux: 0.1,
+    rms: audioData.energy * 0.8,
+    peak: audioData.energy,
+    zeroCrossings: 100,
+  }, deltaTime)
+  
+  return state
+})
+
+console.log('LuxSync Main Process Started')

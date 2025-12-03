@@ -1,39 +1,52 @@
 /**
- * 🔴 BLACKOUT - Botón maestro de apagado
- * El gran botón rojo de emergencia
+ * 🔴 BLACKOUT MASTER - Botón de emergencia GENEROSO
+ * El gran botón rojo que todo DJ necesita
  */
 
+import { useEffect } from 'react'
 import { useLuxSyncStore } from '../stores/luxsyncStore'
 
 export default function Blackout() {
   const { blackout, toggleBlackout } = useLuxSyncStore()
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC para salir del blackout
+      if (e.key === 'Escape' && blackout) {
+        toggleBlackout()
+      }
+      // SPACE para toggle (solo si no está en un input)
+      if (e.key === ' ' && e.target === document.body) {
+        e.preventDefault()
+        toggleBlackout()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [blackout, toggleBlackout])
+
   return (
-    <div className="blackout-container">
-      <button 
-        className={`blackout-btn ${blackout ? 'active' : ''}`}
-        onClick={toggleBlackout}
-      >
+    <button 
+      className={`blackout-btn ${blackout ? 'active' : ''}`}
+      onClick={toggleBlackout}
+    >
+      <div className="blackout-content">
         <span className="blackout-icon">■</span>
         <span className="blackout-label">BLACKOUT MASTER</span>
-        {blackout && <div className="blackout-glow" />}
-      </button>
+        <span className="blackout-hint">[SPACE]</span>
+      </div>
+      
+      {blackout && <div className="danger-pulse" />}
 
       <style>{`
-        .blackout-container {
-          padding: var(--space-md) var(--space-lg);
-          background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-deep) 100%);
-          border-top: 1px solid var(--border-subtle);
-        }
-
         .blackout-btn {
-          width: 100%;
+          height: 50px;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: var(--space-md);
-          padding: var(--space-lg);
-          background: linear-gradient(135deg, #1a0000 0%, #0a0000 100%);
+          background: linear-gradient(180deg, #1a0505 0%, #0a0000 100%);
           border: 2px solid #331111;
           border-radius: var(--radius-lg);
           cursor: pointer;
@@ -44,29 +57,29 @@ export default function Blackout() {
 
         .blackout-btn:hover {
           border-color: var(--accent-danger);
-          background: linear-gradient(135deg, #2a0000 0%, #1a0000 100%);
+          background: linear-gradient(180deg, #2a0808 0%, #1a0303 100%);
+          box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
         }
 
         .blackout-btn.active {
-          background: linear-gradient(135deg, var(--accent-danger) 0%, #aa0000 100%);
+          background: linear-gradient(180deg, var(--accent-danger) 0%, #990000 100%);
           border-color: #ff4444;
           box-shadow: 
-            0 0 30px rgba(255, 0, 0, 0.5),
+            0 0 40px rgba(255, 0, 0, 0.6),
             inset 0 0 30px rgba(255, 255, 255, 0.1);
-          animation: blackout-pulse 0.5s ease-in-out infinite alternate;
+          animation: danger-border 0.3s infinite alternate;
         }
 
-        @keyframes blackout-pulse {
-          from { 
-            box-shadow: 
-              0 0 30px rgba(255, 0, 0, 0.5),
-              inset 0 0 30px rgba(255, 255, 255, 0.1);
-          }
-          to { 
-            box-shadow: 
-              0 0 50px rgba(255, 0, 0, 0.8),
-              inset 0 0 50px rgba(255, 255, 255, 0.2);
-          }
+        @keyframes danger-border {
+          from { border-color: #ff4444; }
+          to { border-color: #ff0000; }
+        }
+
+        .blackout-content {
+          display: flex;
+          align-items: center;
+          gap: var(--space-md);
+          z-index: 1;
         }
 
         .blackout-icon {
@@ -77,51 +90,52 @@ export default function Blackout() {
 
         .blackout-btn.active .blackout-icon {
           color: white;
-          text-shadow: 0 0 10px white;
+          filter: drop-shadow(0 0 15px #ff0000);
+          animation: icon-pulse 0.5s infinite alternate;
+        }
+
+        @keyframes icon-pulse {
+          from { transform: scale(1); }
+          to { transform: scale(1.1); }
         }
 
         .blackout-label {
           font-family: var(--font-display);
           font-size: 1rem;
-          font-weight: 700;
-          letter-spacing: 0.2em;
+          font-weight: 900;
+          letter-spacing: 0.15em;
           color: var(--accent-danger);
           transition: all 0.2s ease;
         }
 
         .blackout-btn.active .blackout-label {
           color: white;
-          text-shadow: 0 0 10px white;
+          text-shadow: 0 0 20px #ff0000;
         }
 
-        .blackout-glow {
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(
-            circle at center,
-            rgba(255, 255, 255, 0.2) 0%,
-            transparent 70%
-          );
-          animation: glow-rotate 2s linear infinite;
-        }
-
-        @keyframes glow-rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        /* Keyboard hint */
-        .blackout-btn::after {
-          content: 'SPACE';
-          position: absolute;
-          bottom: var(--space-xs);
-          right: var(--space-md);
+        .blackout-hint {
           font-family: var(--font-mono);
-          font-size: 0.625rem;
+          font-size: 0.65rem;
           color: var(--text-muted);
           opacity: 0.5;
         }
+
+        .blackout-btn.active .blackout-hint {
+          color: rgba(255,255,255,0.5);
+        }
+
+        .danger-pulse {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.3) 0%, transparent 70%);
+          animation: pulse-danger 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulse-danger {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
       `}</style>
-    </div>
+    </button>
   )
 }

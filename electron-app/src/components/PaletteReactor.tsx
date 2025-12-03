@@ -1,6 +1,6 @@
 /**
- * 🎨 PALETTE REACTOR - Selección de paletas de colores
- * Fire, Ice, Jungle, Neon + controles de saturación e intensidad
+ * 🎨 PALETTE REACTOR - FILL SCREEN MODE
+ * Botones que crecen para llenar el espacio disponible
  */
 
 import { useLuxSyncStore, PALETTES, PaletteId } from '../stores/luxsyncStore'
@@ -18,13 +18,11 @@ export default function PaletteReactor() {
 
   return (
     <div className="palette-reactor">
-      <div className="palette-header">
-        <h2 className="palette-title">PALETTE REACTOR</h2>
-        <span className="palette-subtitle">Color Engine</span>
-      </div>
+      <h2 className="section-title">PALETTE REACTOR</h2>
 
+      {/* Panel que crece - flex: 1 */}
       <div className="palette-panel">
-        {/* Paletas */}
+        {/* Grid de Paletas - CRECEN verticalmente */}
         <div className="palette-grid">
           {PALETTE_IDS.map((id) => {
             const palette = PALETTES[id]
@@ -35,99 +33,62 @@ export default function PaletteReactor() {
                 key={id}
                 className={`palette-btn ${isActive ? 'active' : ''}`}
                 onClick={() => setActivePalette(id)}
-                style={{
-                  '--p-color-1': palette.colors[0],
-                  '--p-color-2': palette.colors[1],
-                  '--p-color-3': palette.colors[2] || palette.colors[1],
-                } as React.CSSProperties}
               >
-                <div className="palette-preview">
-                  <div className="preview-color c1" />
-                  <div className="preview-color c2" />
-                  <div className="preview-color c3" />
+                {/* Preview de colores - ocupa todo el botón */}
+                <div className="palette-colors">
+                  {palette.colors.map((color, i) => (
+                    <div 
+                      key={i} 
+                      className="color-band" 
+                      style={{ background: color }} 
+                    />
+                  ))}
                 </div>
-                <span className="palette-emoji">{palette.emoji}</span>
-                <span className="palette-name">{palette.name}</span>
-                {isActive && <div className="active-indicator" />}
+                
+                {/* Info overlay */}
+                <div className="palette-info">
+                  <span className="palette-emoji">{palette.emoji}</span>
+                  <span className="palette-name">{palette.name}</span>
+                </div>
+
+                {/* Active indicator */}
+                {isActive && <div className="active-glow" />}
               </button>
             )
           })}
         </div>
 
-        {/* Preview de colores activos */}
-        <div className="active-palette-preview">
-          {PALETTES[activePalette].colors.map((color, i) => (
-            <div 
-              key={i}
-              className="color-chip"
-              style={{ background: color }}
-            >
-              <span className="color-hex">{color}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Controles de saturación e intensidad */}
+        {/* Controles de Saturación e Intensidad */}
         <div className="color-controls">
           <div className="control-row">
-            <label className="control-label">
-              <span className="label-icon">🎨</span>
-              <span>Saturación</span>
-            </label>
-            <div className="slider-container">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={colors.saturation}
-                onChange={(e) => setColorSaturation(parseFloat(e.target.value))}
-                className="control-slider saturation"
-              />
-              <span className="slider-value">{Math.round(colors.saturation * 100)}%</span>
-            </div>
+            <span className="label-icon">🎨</span>
+            <span className="label-text">Saturation</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={colors.saturation}
+              onChange={(e) => setColorSaturation(parseFloat(e.target.value))}
+              className="control-slider"
+            />
+            <span className="slider-value">{Math.round(colors.saturation * 100)}%</span>
           </div>
 
           <div className="control-row">
-            <label className="control-label">
-              <span className="label-icon">💡</span>
-              <span>Intensidad</span>
-            </label>
-            <div className="slider-container">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={colors.intensity}
-                onChange={(e) => setColorIntensity(parseFloat(e.target.value))}
-                className="control-slider intensity"
-              />
-              <span className="slider-value">{Math.round(colors.intensity * 100)}%</span>
-            </div>
+            <span className="label-icon">💡</span>
+            <span className="label-text">Intensity</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={colors.intensity}
+              onChange={(e) => setColorIntensity(parseFloat(e.target.value))}
+              className="control-slider"
+            />
+            <span className="slider-value">{Math.round(colors.intensity * 100)}%</span>
           </div>
-        </div>
-
-        {/* Quick presets */}
-        <div className="quick-presets">
-          <button 
-            className="preset-btn"
-            onClick={() => { setColorSaturation(0.5); setColorIntensity(0.3) }}
-          >
-            🌙 Suave
-          </button>
-          <button 
-            className="preset-btn"
-            onClick={() => { setColorSaturation(0.8); setColorIntensity(0.7) }}
-          >
-            ☀️ Normal
-          </button>
-          <button 
-            className="preset-btn"
-            onClick={() => { setColorSaturation(1); setColorIntensity(1) }}
-          >
-            🔥 Full
-          </button>
         </div>
       </div>
 
@@ -135,180 +96,153 @@ export default function PaletteReactor() {
         .palette-reactor {
           display: flex;
           flex-direction: column;
-          gap: var(--space-md);
-        }
-
-        .palette-header {
-          display: flex;
-          flex-direction: column;
           gap: var(--space-xs);
+          flex: 1;
+          min-height: 0;
         }
 
-        .palette-title {
+        .section-title {
           font-family: var(--font-display);
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           font-weight: 700;
           color: var(--text-secondary);
           letter-spacing: 0.1em;
           margin: 0;
-        }
-
-        .palette-subtitle {
-          font-size: 0.75rem;
-          color: var(--text-muted);
+          flex: 0 0 auto;
         }
 
         .palette-panel {
-          background: var(--bg-surface);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-xl);
-          padding: var(--space-lg);
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: var(--space-lg);
+          gap: var(--space-sm);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-lg);
+          padding: var(--space-sm);
+          min-height: 0;
         }
 
-        /* Palette Grid */
+        /* Grid 4 columnas - CRECE */
         .palette-grid {
+          flex: 1;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: var(--space-sm);
+          min-height: 80px;
         }
 
+        /* Botones que llenan todo */
         .palette-btn {
           position: relative;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: var(--space-xs);
-          padding: var(--space-md);
           background: var(--bg-deep);
-          border: 2px solid transparent;
+          border: 3px solid transparent;
           border-radius: var(--radius-lg);
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
+          overflow: hidden;
+          min-height: 100%;
         }
 
         .palette-btn:hover {
-          transform: translateY(-2px);
           border-color: var(--border-active);
+          transform: scale(1.02);
         }
 
         .palette-btn.active {
-          border-color: var(--p-color-1);
-          box-shadow: 0 0 20px color-mix(in srgb, var(--p-color-1) 30%, transparent);
+          border-color: var(--accent-primary);
+          box-shadow: 0 0 20px var(--accent-primary-glow);
         }
 
-        .palette-preview {
+        /* Colores ocupan TODO el botón */
+        .palette-colors {
+          position: absolute;
+          inset: 0;
           display: flex;
-          gap: 2px;
-          border-radius: var(--radius-sm);
-          overflow: hidden;
+          flex-direction: column;
+          z-index: 1;
         }
 
-        .preview-color {
-          width: 16px;
-          height: 24px;
+        .color-band {
+          flex: 1;
+          min-height: 20px;
+          transition: all 0.3s ease;
         }
 
-        .preview-color.c1 { background: var(--p-color-1); }
-        .preview-color.c2 { background: var(--p-color-2); }
-        .preview-color.c3 { background: var(--p-color-3); }
+        .palette-btn:hover .color-band {
+          filter: brightness(1.2);
+        }
+
+        /* Info overlay en la parte inferior */
+        .palette-info {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: var(--space-sm);
+          background: linear-gradient(transparent 0%, rgba(0,0,0,0.95) 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-xs);
+          z-index: 2;
+        }
 
         .palette-emoji {
-          font-size: 1.5rem;
+          font-size: 1rem;
         }
 
         .palette-name {
           font-family: var(--font-display);
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--text-secondary);
-        }
-
-        .palette-btn.active .palette-name {
+          font-size: 0.65rem;
+          font-weight: 700;
           color: var(--text-primary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        .active-indicator {
+        .active-glow {
           position: absolute;
-          bottom: var(--space-xs);
-          left: 50%;
-          transform: translateX(-50%);
-          width: 4px;
-          height: 4px;
-          background: var(--p-color-1);
-          border-radius: 50%;
-          box-shadow: 0 0 8px var(--p-color-1);
+          inset: 0;
+          background: radial-gradient(ellipse at center, var(--accent-primary-glow) 0%, transparent 70%);
+          pointer-events: none;
+          animation: glow-pulse 2s ease-in-out infinite;
         }
 
-        /* Active Palette Preview */
-        .active-palette-preview {
-          display: flex;
-          gap: var(--space-xs);
-          padding: var(--space-sm);
-          background: var(--bg-deep);
-          border-radius: var(--radius-md);
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
         }
 
-        .color-chip {
-          flex: 1;
-          height: 40px;
-          border-radius: var(--radius-sm);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s ease;
-        }
-
-        .color-chip:hover {
-          transform: scale(1.05);
-        }
-
-        .color-hex {
-          font-family: var(--font-mono);
-          font-size: 0.625rem;
-          color: white;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-          opacity: 0;
-          transition: opacity 0.2s ease;
-        }
-
-        .color-chip:hover .color-hex {
-          opacity: 1;
-        }
-
-        /* Color Controls */
+        /* Controles - fijos abajo */
         .color-controls {
+          flex: 0 0 auto;
           display: flex;
           flex-direction: column;
-          gap: var(--space-md);
+          gap: var(--space-xs);
+          padding-top: var(--space-sm);
+          border-top: 1px solid var(--border-subtle);
         }
 
         .control-row {
           display: flex;
           align-items: center;
-          gap: var(--space-md);
-        }
-
-        .control-label {
-          display: flex;
-          align-items: center;
-          gap: var(--space-xs);
-          min-width: 100px;
-          font-size: 0.875rem;
-          color: var(--text-secondary);
+          gap: var(--space-sm);
         }
 
         .label-icon {
-          font-size: 1rem;
+          font-size: 0.875rem;
+          width: 20px;
         }
 
-        .slider-container {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
+        .label-text {
+          font-size: 0.65rem;
+          color: var(--text-muted);
+          width: 60px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .control-slider {
@@ -316,9 +250,16 @@ export default function PaletteReactor() {
           height: 8px;
           -webkit-appearance: none;
           appearance: none;
-          background: var(--bg-deep);
-          border-radius: var(--radius-full);
+          background: linear-gradient(to right, var(--bg-deep) 0%, var(--border-subtle) 100%);
+          border-radius: 4px;
           outline: none;
+          border: 1px solid var(--border-subtle);
+        }
+
+        .control-slider::-webkit-slider-runnable-track {
+          height: 8px;
+          background: linear-gradient(to right, var(--bg-elevated) 0%, var(--accent-primary-glow) 100%);
+          border-radius: 4px;
         }
 
         .control-slider::-webkit-slider-thumb {
@@ -327,52 +268,35 @@ export default function PaletteReactor() {
           width: 18px;
           height: 18px;
           border-radius: 50%;
+          background: var(--accent-primary);
           cursor: pointer;
-          transition: transform 0.15s ease;
+          box-shadow: 0 0 15px var(--accent-primary), 0 2px 4px rgba(0,0,0,0.5);
+          margin-top: -5px;
+          border: 2px solid var(--bg-deepest);
         }
 
-        .control-slider.saturation::-webkit-slider-thumb {
-          background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+        .control-slider::-moz-range-track {
+          height: 8px;
+          background: linear-gradient(to right, var(--bg-elevated) 0%, var(--accent-primary-glow) 100%);
+          border-radius: 4px;
         }
 
-        .control-slider.intensity::-webkit-slider-thumb {
-          background: linear-gradient(135deg, #FBBF24, #FFFFFF);
-        }
-
-        .control-slider::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
+        .control-slider::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--accent-primary);
+          cursor: pointer;
+          box-shadow: 0 0 15px var(--accent-primary);
+          border: 2px solid var(--bg-deepest);
         }
 
         .slider-value {
           font-family: var(--font-mono);
-          font-size: 0.875rem;
-          color: var(--text-secondary);
-          min-width: 45px;
+          font-size: 0.7rem;
+          color: var(--accent-primary);
+          width: 40px;
           text-align: right;
-        }
-
-        /* Quick Presets */
-        .quick-presets {
-          display: flex;
-          gap: var(--space-sm);
-        }
-
-        .preset-btn {
-          flex: 1;
-          padding: var(--space-sm) var(--space-md);
-          background: var(--bg-deep);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .preset-btn:hover {
-          background: var(--bg-elevated);
-          border-color: var(--border-active);
-          color: var(--text-primary);
         }
       `}</style>
     </div>

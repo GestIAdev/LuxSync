@@ -1,6 +1,6 @@
 /**
  * 🚀 LUXSYNC - APP PRINCIPAL
- * La Nave Espacial de Iluminación
+ * La Nave Espacial de Iluminación - FILL SCREEN MODE
  */
 
 import Header from './components/Header'
@@ -12,14 +12,14 @@ import Blackout from './components/Blackout'
 import { useLuxSyncStore } from './stores/luxsyncStore'
 
 function App() {
-  const { blackout } = useLuxSyncStore()
+  const { blackout, toggleBlackout } = useLuxSyncStore()
 
   return (
     <div className="app-container">
-      {/* Header - Status Bar */}
+      {/* Header - Status Bar (FIJO) */}
       <Header />
 
-      {/* Main Content */}
+      {/* Main Content - FLEX GROW para llenar espacio */}
       <main className="main-content">
         {/* Left Column - Big Switch */}
         <section className="left-column">
@@ -33,14 +33,17 @@ function App() {
         </section>
       </main>
 
-      {/* Footer - Effects & Blackout */}
-      <EffectsBar />
-      <Blackout />
+      {/* Footer - Effects & Blackout (FIJO GENEROSO) */}
+      <footer className="footer-bar">
+        <EffectsBar />
+        <Blackout />
+      </footer>
 
       {/* Blackout Overlay */}
       {blackout && (
-        <div className="blackout-overlay">
+        <div className="blackout-overlay" onClick={toggleBlackout}>
           <span className="blackout-text">BLACKOUT</span>
+          <span className="blackout-hint">Click o ESC para salir</span>
         </div>
       )}
 
@@ -53,25 +56,39 @@ function App() {
           overflow: hidden;
         }
 
+        /* MAIN - SE ESTIRA para llenar todo */
         .main-content {
           flex: 1;
           display: grid;
-          grid-template-columns: 380px 1fr;
-          gap: var(--space-lg);
-          padding: var(--space-lg);
+          grid-template-columns: 240px 1fr;
+          gap: var(--space-md);
+          padding: var(--space-sm) var(--space-md);
           overflow: hidden;
+          min-height: 0;
         }
 
         .left-column {
           display: flex;
           flex-direction: column;
-          gap: var(--space-lg);
+          gap: var(--space-md);
         }
 
         .right-column {
           display: flex;
           flex-direction: column;
-          gap: var(--space-lg);
+          gap: var(--space-md);
+          min-height: 0;
+        }
+
+        /* FOOTER - Fijo pero generoso */
+        .footer-bar {
+          flex: 0 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-xs);
+          padding: var(--space-sm) var(--space-md) var(--space-md);
+          background: linear-gradient(180deg, transparent 0%, var(--bg-surface) 30%);
+          border-top: 1px solid var(--border-subtle);
         }
 
         .blackout-overlay {
@@ -79,10 +96,12 @@ function App() {
           inset: 0;
           background: #000;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           z-index: var(--z-overlay);
           animation: fade-in 0.2s ease-out;
+          cursor: pointer;
         }
 
         .blackout-text {
@@ -92,6 +111,23 @@ function App() {
           color: var(--accent-danger);
           text-shadow: 0 0 30px var(--accent-danger);
           animation: pulse-glow 1s ease-in-out infinite;
+        }
+
+        .blackout-hint {
+          margin-top: var(--space-lg);
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          opacity: 0.5;
+        }
+
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 1; text-shadow: 0 0 30px var(--accent-danger); }
+          50% { opacity: 0.7; text-shadow: 0 0 60px var(--accent-danger); }
+        }
+
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>

@@ -1,5 +1,5 @@
 /**
- * 🎯 HEADER - Mission Control Status Bar
+ * 🎯 HEADER - Mission Control Status Bar (COMPACT)
  * Muestra: Vibe, Mood, BPM, Selene Status, Master Volume
  */
 
@@ -10,14 +10,14 @@ const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }
   energetic: { label: 'ENERGY', icon: '⚡', color: '#FF6B6B' },
   chaotic: { label: 'CHAOS', icon: '🌪️', color: '#A855F7' },
   harmonious: { label: 'FLOW', icon: '🌊', color: '#4ADE80' },
-  building: { label: 'BUILD-UP', icon: '📈', color: '#FBBF24' },
+  building: { label: 'BUILD', icon: '📈', color: '#FBBF24' },
   dropping: { label: 'DROP!', icon: '💥', color: '#FF1744' },
 }
 
-const MODE_LABELS: Record<string, { label: string; color: string }> = {
-  flow: { label: 'FLOW', color: '#4ADE80' },
-  selene: { label: 'SELENE AI', color: '#7C4DFF' },
-  locked: { label: 'LOCKED', color: '#FF4444' },
+const MODE_COLORS: Record<string, string> = {
+  flow: '#4ADE80',
+  selene: '#7C4DFF',
+  locked: '#FF4444',
 }
 
 export default function Header() {
@@ -31,286 +31,200 @@ export default function Header() {
 
   const palette = PALETTES[activePalette]
   const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
-  const mode = MODE_LABELS[selene.mode]
+  const modeColor = MODE_COLORS[selene.mode]
 
   return (
     <header className="header">
-      {/* Drag area for Electron window */}
-      <div className="header-drag-area titlebar-drag" />
-
-      <div className="header-content titlebar-no-drag">
+      <div className="header-content">
         {/* Vibe/Palette Actual */}
-        <div className="header-section vibe-section">
+        <div className="header-item vibe-item">
           <div 
-            className="vibe-indicator"
-            style={{ 
-              background: `linear-gradient(135deg, ${palette.colors[0]}, ${palette.colors[1]})` 
-            }}
+            className="vibe-bar"
+            style={{ background: `linear-gradient(90deg, ${palette.colors[0]}, ${palette.colors[1]})` }}
           />
-          <div className="vibe-info">
-            <span className="vibe-emoji">{palette.emoji}</span>
-            <div className="vibe-text">
-              <span className="vibe-name">{palette.name.toUpperCase()}</span>
-              <span className="vibe-desc">{palette.description}</span>
-            </div>
+          <span className="vibe-emoji">{palette.emoji}</span>
+          <div className="vibe-text">
+            <span className="vibe-name">{palette.name.toUpperCase()}</span>
           </div>
         </div>
 
         {/* Mood Detectado */}
-        <div className="header-section mood-section">
+        <div className="header-item mood-item">
           <span className="mood-icon">{mood.icon}</span>
-          <div className="mood-info">
-            <span className="mood-label" style={{ color: mood.color }}>
-              {mood.label}
-            </span>
-            <span className="mood-subtitle">Mood Detectado</span>
-          </div>
+          <span className="mood-label" style={{ color: mood.color }}>{mood.label}</span>
         </div>
 
         {/* BPM */}
-        <div className="header-section bpm-section">
+        <div className="header-item bpm-item">
           <span className="bpm-icon">♫</span>
-          <div className="bpm-info">
-            <span className="bpm-value">{audio.bpm.toFixed(1)}</span>
-            <span className="bpm-label">BPM</span>
-          </div>
-          <div className={`sync-indicator ${audio.beatSync ? 'synced' : ''}`}>
-            {audio.beatSync ? '✓' : '○'}
-          </div>
+          <span className="bpm-value">{audio.bpm.toFixed(1)}</span>
+          <span className="bpm-unit">BPM</span>
+          <div className={`sync-dot ${audio.beatSync ? 'synced' : ''}`} />
         </div>
 
         {/* Selene Status */}
-        <div className="header-section selene-section">
-          <div className="selene-indicator" style={{ background: mode.color }} />
-          <div className="selene-info">
-            <span className="selene-mode" style={{ color: mode.color }}>
-              {mode.label}
-            </span>
-            <span className="selene-gen">Gen {selene.generation}</span>
-          </div>
-          <div className={`health-dot ${selene.health > 0.7 ? 'healthy' : 'warning'}`} />
+        <div className="header-item selene-item">
+          <div className="selene-dot" style={{ background: modeColor }} />
+          <span className="selene-mode" style={{ color: modeColor }}>
+            {selene.mode.toUpperCase()}
+          </span>
+          <span className="selene-gen">Gen {selene.generation}</span>
         </div>
 
-        {/* Master Volume */}
-        <div className="header-section master-section">
+        {/* Master Volume - Con espacio para botones de ventana */}
+        <div className="header-item master-item">
           <span className="master-icon">🎚️</span>
-          <div className="master-control">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={masterDimmer}
-              onChange={(e) => setMasterDimmer(parseFloat(e.target.value))}
-              className="master-slider"
-            />
-            <span className="master-value">{Math.round(masterDimmer * 100)}%</span>
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={masterDimmer}
+            onChange={(e) => setMasterDimmer(parseFloat(e.target.value))}
+            className="master-slider"
+          />
+          <span className="master-value">{Math.round(masterDimmer * 100)}%</span>
         </div>
       </div>
 
       <style>{`
         .header {
-          position: relative;
-          height: 60px;
+          height: 44px;
           background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-deepest) 100%);
           border-bottom: 1px solid var(--border-subtle);
           display: flex;
           align-items: center;
-        }
-
-        .header-drag-area {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 40px;
+          padding: 0 var(--space-md);
+          padding-right: 150px; /* Espacio para botones de ventana */
+          -webkit-app-region: drag;
         }
 
         .header-content {
           display: flex;
           align-items: center;
-          gap: var(--space-xl);
-          padding: 0 var(--space-lg);
+          gap: var(--space-md);
           width: 100%;
-          height: 100%;
+          -webkit-app-region: no-drag;
         }
 
-        .header-section {
+        .header-item {
           display: flex;
           align-items: center;
-          gap: var(--space-sm);
-          padding: var(--space-sm) var(--space-md);
+          gap: var(--space-xs);
+          padding: var(--space-xs) var(--space-sm);
           background: var(--bg-surface);
-          border-radius: var(--radius-lg);
+          border-radius: var(--radius-md);
           border: 1px solid var(--border-subtle);
+          height: 32px;
         }
 
-        /* Vibe Section */
-        .vibe-section {
-          min-width: 200px;
+        /* Vibe */
+        .vibe-item {
+          min-width: 140px;
         }
 
-        .vibe-indicator {
-          width: 8px;
-          height: 40px;
-          border-radius: var(--radius-sm);
-        }
-
-        .vibe-info {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
+        .vibe-bar {
+          width: 4px;
+          height: 20px;
+          border-radius: 2px;
         }
 
         .vibe-emoji {
-          font-size: 1.5rem;
-        }
-
-        .vibe-text {
-          display: flex;
-          flex-direction: column;
+          font-size: 1rem;
         }
 
         .vibe-name {
           font-family: var(--font-display);
           font-weight: 700;
-          font-size: 0.875rem;
+          font-size: 0.7rem;
           color: var(--text-primary);
         }
 
-        .vibe-desc {
-          font-size: 0.75rem;
-          color: var(--text-muted);
-        }
-
-        /* Mood Section */
-        .mood-section {
-          min-width: 140px;
+        /* Mood */
+        .mood-item {
+          min-width: 90px;
         }
 
         .mood-icon {
-          font-size: 1.5rem;
-        }
-
-        .mood-info {
-          display: flex;
-          flex-direction: column;
+          font-size: 1rem;
         }
 
         .mood-label {
           font-family: var(--font-display);
           font-weight: 700;
-          font-size: 0.875rem;
-        }
-
-        .mood-subtitle {
           font-size: 0.7rem;
-          color: var(--text-muted);
         }
 
-        /* BPM Section */
-        .bpm-section {
-          min-width: 120px;
+        /* BPM */
+        .bpm-item {
+          min-width: 100px;
         }
 
         .bpm-icon {
-          font-size: 1.25rem;
+          font-size: 0.875rem;
           color: var(--accent-secondary);
-        }
-
-        .bpm-info {
-          display: flex;
-          flex-direction: column;
         }
 
         .bpm-value {
           font-family: var(--font-mono);
           font-weight: 700;
-          font-size: 1.125rem;
+          font-size: 0.875rem;
           color: var(--text-primary);
         }
 
-        .bpm-label {
-          font-size: 0.7rem;
+        .bpm-unit {
+          font-size: 0.6rem;
           color: var(--text-muted);
         }
 
-        .sync-indicator {
-          width: 20px;
-          height: 20px;
+        .sync-dot {
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
-          background: var(--bg-deep);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.75rem;
-          color: var(--text-muted);
+          background: var(--text-muted);
         }
 
-        .sync-indicator.synced {
+        .sync-dot.synced {
           background: var(--accent-success);
-          color: var(--bg-deepest);
+          box-shadow: 0 0 6px var(--accent-success);
         }
 
-        /* Selene Section */
-        .selene-section {
-          min-width: 140px;
+        /* Selene */
+        .selene-item {
+          min-width: 100px;
         }
 
-        .selene-indicator {
-          width: 8px;
-          height: 8px;
+        .selene-dot {
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
           animation: pulse-glow 2s ease-in-out infinite;
-        }
-
-        .selene-info {
-          display: flex;
-          flex-direction: column;
         }
 
         .selene-mode {
           font-family: var(--font-display);
           font-weight: 700;
-          font-size: 0.875rem;
+          font-size: 0.7rem;
         }
 
         .selene-gen {
-          font-size: 0.7rem;
+          font-size: 0.6rem;
           color: var(--text-muted);
         }
 
-        .health-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: var(--accent-warning);
-        }
-
-        .health-dot.healthy {
-          background: var(--accent-success);
-        }
-
-        /* Master Section */
-        .master-section {
-          min-width: 160px;
+        /* Master */
+        .master-item {
           margin-left: auto;
+          min-width: 130px;
         }
 
         .master-icon {
-          font-size: 1.25rem;
-        }
-
-        .master-control {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
+          font-size: 0.875rem;
         }
 
         .master-slider {
-          width: 80px;
-          height: 6px;
+          width: 60px;
+          height: 4px;
           -webkit-appearance: none;
           appearance: none;
           background: var(--bg-deep);
@@ -321,23 +235,19 @@ export default function Header() {
         .master-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 14px;
-          height: 14px;
+          width: 12px;
+          height: 12px;
           background: var(--accent-primary);
           border-radius: 50%;
           cursor: pointer;
-          transition: transform 0.15s ease;
-        }
-
-        .master-slider::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
         }
 
         .master-value {
           font-family: var(--font-mono);
-          font-size: 0.875rem;
+          font-size: 0.7rem;
           color: var(--text-secondary);
-          min-width: 40px;
+          min-width: 30px;
+          text-align: right;
         }
       `}</style>
     </header>

@@ -115,8 +115,29 @@ function initSelene() {
   console.log('Selene LUX initialized')
 }
 
+// ============================================
+// AUDIO STATE (receives real data from renderer)
+// ============================================
+let currentAudioData: {
+  bass: number
+  mid: number
+  treble: number
+  energy: number
+  bpm: number
+  onBeat: boolean
+} = {
+  bass: 0.3,
+  mid: 0.3,
+  treble: 0.3,
+  energy: 0.3,
+  bpm: 120,
+  onBeat: false,
+}
+
 function startMainLoop() {
   if (mainLoopInterval) return
+  
+  let frameIndex = 0
   
   mainLoopInterval = setInterval(() => {
     if (!selene || !mainWindow) return
@@ -125,22 +146,47 @@ function startMainLoop() {
     const deltaTime = now - lastFrameTime
     lastFrameTime = now
     
+    // Use real audio data or fallback to gentle simulation
+    const useRealAudio = currentAudioData.energy > 0.05
+    const audioInput = useRealAudio ? currentAudioData : {
+      bass: 0.3 + Math.sin(now * 0.002) * 0.1,
+      mid: 0.3 + Math.sin(now * 0.003) * 0.1,
+      treble: 0.3 + Math.sin(now * 0.005) * 0.1,
+      energy: 0.3 + Math.sin(now * 0.001) * 0.1,
+      bpm: 120,
+      onBeat: Math.sin(now * 0.008) > 0.95,
+    }
+    
+    frameIndex++
+    
     const state = selene.processAudioFrame({
-      bass: 0.5 + Math.sin(now * 0.002) * 0.3,
-      mid: 0.4 + Math.sin(now * 0.003) * 0.2,
-      treble: 0.3 + Math.sin(now * 0.005) * 0.2,
-      energy: 0.5 + Math.sin(now * 0.001) * 0.3,
-      spectralCentroid: 2000,
-      spectralFlux: 0.1,
-      rms: 0.4,
-      peak: 0.7,
-      zeroCrossings: 100,
+      bass: audioInput.bass,
+      mid: audioInput.mid,
+      treble: audioInput.treble,
+      energy: audioInput.energy,
+      bpm: audioInput.bpm,
+      beatPhase: (now % (60000 / audioInput.bpm)) / (60000 / audioInput.bpm),
+      beatConfidence: useRealAudio ? 0.8 : 0.5,
+      onBeat: audioInput.onBeat,
+      peak: audioInput.energy * 1.2,
+      timestamp: now,
+      frameIndex,
     }, deltaTime)
+    
+    // 🔊 DMX LOG - Log every 30 frames (~1 second)
+    if (Math.random() < 0.033) {
+      const c = state.colors
+      console.log('[DMX] 🎨 RGB:', 
+        c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
+        '| 🎯 Pos:', state.movement?.pan?.toFixed(2) || 0, state.movement?.tilt?.toFixed(2) || 0,
+        '| 🥁 Beat:', state.beat?.onBeat ? 'HIT' : '---',
+        '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM')
+    }
     
     mainWindow.webContents.send('lux:update-state', state)
   }, 30)
   
-  console.log('Selene main loop started (30ms)')
+  console.log('Selene main loop started (30ms) - DMX output active')
 }
 
 function stopMainLoop() {
@@ -188,23 +234,19 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
   mid: number
   treble: number
   energy: number
+  bpm?: number
 }) => {
-  if (!selene || !mainWindow) return null
+  // 🔗 WAVE 3: Update current audio data for main loop
+  currentAudioData = {
+    bass: audioData.bass,
+    mid: audioData.mid,
+    treble: audioData.treble,
+    energy: audioData.energy,
+    bpm: audioData.bpm || 120,
+    onBeat: audioData.bass > 0.7, // High bass = beat hit
+  }
   
-  const now = Date.now()
-  const deltaTime = now - lastFrameTime
-  lastFrameTime = now
-  
-  const state = selene.processAudioFrame({
-    ...audioData,
-    spectralCentroid: 2000,
-    spectralFlux: 0.1,
-    rms: audioData.energy * 0.8,
-    peak: audioData.energy,
-    zeroCrossings: 100,
-  }, deltaTime)
-  
-  return state
+  return { success: true }
 })
 
 console.log('LuxSync Main Process Started')

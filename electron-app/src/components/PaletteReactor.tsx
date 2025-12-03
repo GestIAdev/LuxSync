@@ -1,11 +1,22 @@
 /**
  * 🎨 PALETTE REACTOR - FILL SCREEN MODE
  * Botones que crecen para llenar el espacio disponible
+ * 
+ * Wave 3: Conectado con Selene Lux Core via window.lux
  */
 
 import { useLuxSyncStore, PALETTES, PaletteId } from '../stores/luxsyncStore'
+import { useSeleneColor } from '../hooks'
 
 const PALETTE_IDS: PaletteId[] = ['fire', 'ice', 'jungle', 'neon']
+
+// Mapeo de PaletteId a índice para Selene
+const PALETTE_INDEX_MAP: Record<PaletteId, number> = {
+  fire: 0,
+  ice: 1,
+  jungle: 2,
+  neon: 3,
+}
 
 export default function PaletteReactor() {
   const { 
@@ -16,9 +27,34 @@ export default function PaletteReactor() {
     setColorIntensity 
   } = useLuxSyncStore()
 
+  // Color actual de Selene para preview
+  const seleneColor = useSeleneColor()
+
+  // Handler que actualiza UI y envía a Selene
+  const handlePaletteClick = (id: PaletteId) => {
+    setActivePalette(id)
+    
+    // Enviar a Selene Lux Core
+    if (window.lux) {
+      const paletteIndex = PALETTE_INDEX_MAP[id]
+      window.lux.setPalette(paletteIndex)
+      console.log(`[PaletteReactor] 🎨 Sent palette ${id} (index: ${paletteIndex}) to Selene`)
+    }
+  }
+
   return (
     <div className="palette-reactor">
-      <h2 className="section-title">PALETTE REACTOR</h2>
+      <h2 className="section-title">
+        PALETTE REACTOR
+        {/* Preview del color actual de Selene */}
+        <span 
+          className="selene-color-preview"
+          style={{ 
+            background: `rgb(${seleneColor.r}, ${seleneColor.g}, ${seleneColor.b})`,
+            boxShadow: `0 0 10px rgb(${seleneColor.r}, ${seleneColor.g}, ${seleneColor.b})`
+          }}
+        />
+      </h2>
 
       {/* Panel que crece - flex: 1 */}
       <div className="palette-panel">
@@ -32,7 +68,7 @@ export default function PaletteReactor() {
               <button
                 key={id}
                 className={`palette-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setActivePalette(id)}
+                onClick={() => handlePaletteClick(id)}
               >
                 {/* Preview de colores - ocupa todo el botón */}
                 <div className="palette-colors">
@@ -109,6 +145,16 @@ export default function PaletteReactor() {
           letter-spacing: 0.1em;
           margin: 0;
           flex: 0 0 auto;
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+        }
+
+        .selene-color-preview {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          transition: all 0.1s ease;
         }
 
         .palette-panel {

@@ -18,3 +18,14 @@ export type {
   DMXUniverse, 
   OnDMXSendCallback 
 } from './DMXDriver'
+
+// V16.1 Physics Driver - Movimiento abstracto → DMX físico
+export { FixturePhysicsDriver } from './FixturePhysicsDriver'
+export type {
+  Position2D,
+  AbstractPosition,
+  DMXPosition,
+  InstallationPreset,
+  FixtureConfig,
+  PhysicsConfig,
+} from './FixturePhysicsDriver'

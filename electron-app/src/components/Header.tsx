@@ -1,9 +1,12 @@
 /**
  * 🎯 HEADER - Mission Control Status Bar (COMPACT)
  * Muestra: Vibe, Mood, BPM, Selene Status, Master Volume
+ * 
+ * WAVE 3: Connected to useSeleneAudio for real-time BPM from Selene
  */
 
 import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
+import { useSeleneAudio } from '../hooks/useSelene'
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
@@ -29,9 +32,16 @@ export default function Header() {
     setMasterDimmer 
   } = useLuxSyncStore()
 
+  // 🔗 WAVE 3: Get real-time audio from Selene (overrides store when available)
+  const seleneAudio = useSeleneAudio()
+
   const palette = PALETTES[activePalette]
   const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
   const modeColor = MODE_COLORS[selene.mode]
+
+  // Use Selene BPM if available, fallback to store
+  const displayBpm = seleneAudio.bpm > 0 ? seleneAudio.bpm : audio.bpm
+  const isBeatSync = seleneAudio.bass > 0.7 // High bass = beat
 
   return (
     <header className="header">
@@ -54,12 +64,12 @@ export default function Header() {
           <span className="mood-label" style={{ color: mood.color }}>{mood.label}</span>
         </div>
 
-        {/* BPM */}
+        {/* BPM - Now uses real-time Selene data */}
         <div className="header-item bpm-item">
           <span className="bpm-icon">♫</span>
-          <span className="bpm-value">{audio.bpm.toFixed(1)}</span>
+          <span className="bpm-value">{displayBpm.toFixed(1)}</span>
           <span className="bpm-unit">BPM</span>
-          <div className={`sync-dot ${audio.beatSync ? 'synced' : ''}`} />
+          <div className={`sync-dot ${isBeatSync ? 'synced' : ''}`} />
         </div>
 
         {/* Selene Status */}

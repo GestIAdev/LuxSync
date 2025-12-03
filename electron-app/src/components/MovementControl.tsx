@@ -1,10 +1,22 @@
 /**
  * 🎯 MOVEMENT CONTROL - FILL SCREEN MODE
  * Visualizador de partículas grande + controles compactos
+ * 
+ * WAVE 3: Connected to window.lux.setMovement() for Selene integration
  */
 
-import { useLuxSyncStore, MovementPattern, MOVEMENT_PATTERNS } from '../stores/luxsyncStore'
-import { useEffect, useRef } from 'react'
+import { useLuxSyncStore, MovementPattern } from '../stores/luxsyncStore'
+import { useEffect, useRef, useCallback } from 'react'
+
+// Map UI patterns to Selene MovementPatternId
+const PATTERN_TO_SELENE: Record<MovementPattern, string> = {
+  lissajous: 'lissajous',
+  circle: 'circle',
+  wave: 'wave',
+  figure8: 'figure8',
+  scan: 'scan',
+  random: 'random',
+}
 
 const PATTERNS: { id: MovementPattern; icon: string; name: string }[] = [
   { id: 'lissajous', icon: '∞', name: 'Lissajous' },
@@ -17,6 +29,36 @@ const PATTERNS: { id: MovementPattern; icon: string; name: string }[] = [
 
 export default function MovementControl() {
   const { movement, setMovementPattern, setMovementSpeed, setMovementRange } = useLuxSyncStore()
+  
+  // 🔗 WAVE 3: Send movement changes to Selene via IPC
+  const sendToSelene = useCallback((pattern: string, speed: number, range: number) => {
+    if (typeof window !== 'undefined' && window.lux?.setMovement) {
+      window.lux.setMovement({
+        pattern: pattern as any,
+        speed,
+        intensity: range, // range maps to intensity
+      })
+      console.log('[MovementControl] 🎯 Sent to Selene:', { pattern, speed, range })
+    }
+  }, [])
+
+  // Handle pattern change
+  const handlePatternChange = useCallback((patternId: MovementPattern) => {
+    setMovementPattern(patternId)
+    sendToSelene(PATTERN_TO_SELENE[patternId], movement.speed, movement.range)
+  }, [setMovementPattern, sendToSelene, movement.speed, movement.range])
+
+  // Handle speed change
+  const handleSpeedChange = useCallback((speed: number) => {
+    setMovementSpeed(speed)
+    sendToSelene(PATTERN_TO_SELENE[movement.pattern], speed, movement.range)
+  }, [setMovementSpeed, sendToSelene, movement.pattern, movement.range])
+
+  // Handle range change
+  const handleRangeChange = useCallback((range: number) => {
+    setMovementRange(range)
+    sendToSelene(PATTERN_TO_SELENE[movement.pattern], movement.speed, range)
+  }, [setMovementRange, sendToSelene, movement.pattern, movement.speed])
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Visualizador de partículas animado
@@ -192,7 +234,7 @@ export default function MovementControl() {
               <button
                 key={id}
                 className={`pattern-btn ${movement.pattern === id ? 'active' : ''}`}
-                onClick={() => setMovementPattern(id)}
+                onClick={() => handlePatternChange(id)}
                 title={name}
               >
                 <span className="pattern-icon">{icon}</span>
@@ -210,7 +252,7 @@ export default function MovementControl() {
                 max="1"
                 step="0.01"
                 value={movement.speed}
-                onChange={(e) => setMovementSpeed(parseFloat(e.target.value))}
+                onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
                 className="control-slider"
               />
               <span className="slider-value">{Math.round(movement.speed * 100)}%</span>
@@ -224,7 +266,7 @@ export default function MovementControl() {
                 max="1"
                 step="0.01"
                 value={movement.range}
-                onChange={(e) => setMovementRange(parseFloat(e.target.value))}
+                onChange={(e) => handleRangeChange(parseFloat(e.target.value))}
                 className="control-slider"
               />
               <span className="slider-value">{Math.round(movement.range * 100)}%</span>

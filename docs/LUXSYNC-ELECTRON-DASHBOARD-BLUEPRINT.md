@@ -851,7 +851,7 @@ const IPC_COMMANDS = {
 ║                                                                              ║
 ║    Y lo haremos JUNTOS.                                                      ║
 ║                                                                              ║
-║                    — Claude + PunkClaude + Radwulf + Raúl                   ║
+║                    — Gemini + PunkClaude + Radwulf                    ║
 ║                       La Triada + El Visionario                              ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝

@@ -593,3 +593,78 @@ export const BPM_RANGES = {
   trap: { min: 60, max: 90 },
   drum_and_bass: { min: 160, max: 180 },
 } as const;
+
+// ============================================================
+// 🎧 AUDIO ANALYSIS INPUT
+// ============================================================
+
+/**
+ * Espectro de audio por bandas de frecuencia
+ * Compatible con BeatDetector output
+ */
+export interface AudioSpectrum {
+  /** 20-250 Hz (0.0-1.0) */
+  bass: number;
+  /** 250-500 Hz */
+  lowMid: number;
+  /** 500-2000 Hz */
+  mid: number;
+  /** 2000-4000 Hz */
+  highMid: number;
+  /** 4000-20000 Hz */
+  treble: number;
+}
+
+/**
+ * Información de beat del BeatDetector
+ */
+export interface BeatInfo {
+  detected: boolean;
+  bpm: number;
+  confidence: number;       // 0.0-1.0
+  beatPhase: number;        // 0.0-1.0 (posición en el beat actual)
+  timeSinceLastBeat: number; // milliseconds
+}
+
+/**
+ * Información de energía del audio
+ */
+export interface EnergyInfo {
+  current: number;          // 0.0-1.0 (energía instantánea)
+  average: number;          // Rolling average (5s window)
+  variance: number;         // Volatilidad de la energía
+  trend: 'rising' | 'falling' | 'stable';
+  peakRecent: number;       // Máximo en últimos 10s
+}
+
+/**
+ * Análisis de audio completo
+ * Input estándar para todos los motores de Wave 8
+ * 
+ * Compatible con BeatDetector y FFTAnalyzer outputs
+ */
+export interface AudioAnalysis {
+  timestamp: number;
+  
+  /** Espectro de frecuencias (FFT resumido) */
+  spectrum: AudioSpectrum;
+  
+  /** Detección de beat */
+  beat: BeatInfo;
+  
+  /** Análisis de energía */
+  energy: EnergyInfo;
+  
+  /** FFT crudo para análisis avanzado (chromagrama) */
+  rawFFT?: Float32Array;
+  
+  /** Waveform crudo */
+  waveform?: Float32Array;
+  
+  /** Transientes detectados (para drums) */
+  transients?: {
+    bass: number;       // 0-1
+    mid: number;        // 0-1
+    treble: number;     // 0-1
+  };
+}

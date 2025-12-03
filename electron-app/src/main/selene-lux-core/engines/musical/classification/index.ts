@@ -8,13 +8,21 @@
  * Componentes:
  * - GenreClassifier: Clasificación de género (reggaeton vs cumbia vs house...)
  * - MoodSynthesizer: Síntesis de mood de múltiples señales
- * - ScaleIdentifier: Identificación de escalas musicales
+ * - ScaleIdentifier: Identificación de escalas musicales ✅
  * 
  * @module engines/musical/classification
  */
 
-// TODO: FASE 2 - ScaleIdentifier
-// export { ScaleIdentifier } from './ScaleIdentifier';
+// ✅ FASE 2 - ScaleIdentifier COMPLETADO
+export { 
+  ScaleIdentifier, 
+  SCALE_INTERVALS,
+  NOTE_NAMES,
+  createScaleIdentifier,
+  defaultScaleIdentifier,
+  type ScaleMatch,
+  type ScaleIdentifierConfig,
+} from './ScaleIdentifier.js';
 
 // TODO: FASE 3 - GenreClassifier
 // export { GenreClassifier } from './GenreClassifier';

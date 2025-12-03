@@ -1,5 +1,18 @@
-# 🎼 WAVE 8: MUSICAL INTELLIGENCE - ROADMAP
-## El Oído Absoluto de Selene Lux - Checklist de Implementación
+# 🎼 WAVE 8: MUSICAL INTELLIGENCE - ROADMAP## 📊 RESUMEN DE PROGRESO
+
+| Fase | Descripción | Archivos | Estado |
+|------|-------------|----------|--------|
+| 0 | Setup estructura | 7 | ✅ **COMPLETADO** |
+| 1 | Análisis Rítmico | 3 | ✅ **COMPLETADO** |
+| 2 | Análisis Armónico | 4 | ✅ **COMPLETADO** |
+| 3 | Clasificación | 3 | ⬜ Pendiente |
+| 4 | Orquestación | 2 | ⬜ Pendiente |
+| 5 | Mapeo Luces | 2 | ⬜ Pendiente |
+| 6 | Aprendizaje | 2 | ⬜ Pendiente |
+| 7 | Integración | 1 | ⬜ Pendiente |
+| 8 | Tests | 1 | ⬜ Pendiente |
+
+**TOTAL:** 25 archivos | ~3,500 líneas implementadas (actualizado FASE 2)oluto de Selene Lux - Checklist de Implementación
 
 **Fecha:** Diciembre 2025  
 **Blueprint:** [Blueprint-Integracion-Selene-Musical-Theory.md](./Blueprint-Integracion-Selene-Musical-Theory.md)  
@@ -138,45 +151,62 @@ analysis/
 ├── index.ts                             # ✅ Actualizado con exports
 └── __tests__/
     └── RhythmAnalyzer.test.ts           # ✅ ~350 líneas (15+ tests)
-└── types.ts              # ⬜ ~50 líneas
 ```
 
 ---
 
-## 🎸 FASE 2: ANÁLISIS ARMÓNICO
-**Tiempo estimado:** 2-3 horas  
+## 🎸 FASE 2: ANÁLISIS ARMÓNICO ✅
+**Tiempo estimado:** 2-3 horas | **Tiempo real:** ~1 hora  
 **Fuente:** HarmonyEngine.ts + ScaleUtils.ts (~370 líneas)
 
-### Checklist
-- [ ] **2.1** Crear `classification/ScaleIdentifier.ts` (~80 líneas)
-  - [ ] Constante `SCALE_INTERVALS` (13 escalas)
-  - [ ] Método `identifyScale(frequencies)`
-  - [ ] Método `getScaleNotes(root, scale)`
-  - [ ] Método `isInScale(pitch, root, scale)`
+### ⚠️ REGLAS APLICABLES
+- **REGLA 1:** `HarmonyDetector.analyze()` debe ser THROTTLED (500ms) ✅
+- **REGLA 2:** Campo `confidence` incluido para fallback ✅
 
-- [ ] **2.2** Crear `analysis/HarmonyDetector.ts` (~250 líneas)
-  - [ ] Interface `HarmonyAnalysis`
-  - [ ] Type `ModalScale`
-  - [ ] Type `HarmonicMood`
-  - [ ] Constante `MODE_TO_MOOD`
-  - [ ] Método `analyze(audio)`
-  - [ ] Método `detectKey()`
-  - [ ] Método `detectMode()`
-  - [ ] Método `estimateChord()`
+### Checklist
+- [x] **2.1** Crear `classification/ScaleIdentifier.ts` (~260 líneas)
+  - [x] Constante `SCALE_INTERVALS` (13 escalas)
+  - [x] Método `identifyScale(chroma)` con ScaleMatch
+  - [x] Método `getScaleNotes(root, scale)`
+  - [x] Método `isInScale(pitch, root, scale)`
+  - [x] Helpers: `pitchToName()`, `nameToPitch()`
+
+- [x] **2.2** Crear `analysis/HarmonyDetector.ts` (~600 líneas)
+  - [x] Interface `HarmonyAnalysis` (desde types.ts)
+  - [x] Type `ModalScale` (desde types.ts)
+  - [x] Type `HarmonicMood` (desde types.ts)
+  - [x] Constante `MODE_TO_MOOD` ← **El Alma de la Fiesta** 🎭
+  - [x] Constante `MOOD_TEMPERATURE` (warm/cool/neutral)
+  - [x] Método `analyze(audio)` ← **THROTTLED 500ms** ⏱️
+  - [x] Método `detectKey()` → Tonalidad
+  - [x] Método `detectMode()` → Escala + Mood
+  - [x] Método `estimateChord()` → Acorde actual
+  - [x] Método `detectDissonance()` → Tensión 😈
+  - [x] Buffer de historial para smoothing
+  - [x] Eventos: 'harmony', 'tension', 'key-change'
 
 ### Tests Fase 2
-- [ ] Test: Detecta escala mayor
-- [ ] Test: Mapea dorian → "jazzy"
-- [ ] Test: Mapea minor → "sad"
-- [ ] Test: Detecta cambio de tonalidad
-- [ ] Test: `analyze()` completa en < 10ms (Worker Thread, pero eficiente)
+- [x] Test: Detecta escala mayor ✅
+- [x] Test: Detecta escala menor ✅
+- [x] Test: Mapea dorian → "jazzy" ✅
+- [x] Test: Mapea minor → "sad" ✅
+- [x] Test: Mapea phrygian → "spanish_exotic" ✅
+- [x] Test: Detecta acordes major/minor ✅
+- [x] Test: Detecta tritono como disonancia ✅
+- [x] Test: `analyze()` completa en < 10ms ✅ **Regla 1**
+- [x] Test: Retorna confidence para fallback ✅ **Regla 2**
 
 ### Entregables
 ```
 analysis/
-├── HarmonyDetector.ts    # ⬜ ~250 líneas
+├── HarmonyDetector.ts                   # ✅ ~600 líneas
+├── index.ts                             # ✅ Actualizado con exports
+└── __tests__/
+    └── HarmonyAnalysis.test.ts          # ✅ ~580 líneas (40+ tests)
 classification/
-└── ScaleIdentifier.ts    # ⬜ ~80 líneas
+├── ScaleIdentifier.ts                   # ✅ ~260 líneas
+└── index.ts                             # ✅ Actualizado con exports
+types.ts                                 # ✅ Añadido AudioAnalysis (~80 líneas)
 ```
 
 ---

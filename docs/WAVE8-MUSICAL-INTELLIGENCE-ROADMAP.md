@@ -3,11 +3,46 @@
 
 **Fecha:** Diciembre 2025  
 **Blueprint:** [Blueprint-Integracion-Selene-Musical-Theory.md](./Blueprint-Integracion-Selene-Musical-Theory.md)  
-**Objetivo:** Que Selene diferencie Bad Bunny de Daft Punk y reaccione en consecuencia 🎧
+**Objetivo:** Que Selene diferencie Bad Bunny de Daft Punk y reaccione en consecuencia 🎧  
+**Revisión:** v1.1 - Con Reglas de Oro del Arquitecto ✅
 
 ---
 
-## 📊 RESUMEN DE PROGRESO
+## ⚠️ REGLAS DE ORO (LEER ANTES DE IMPLEMENTAR)
+
+> **Estas reglas son OBLIGATORIAS en TODA la implementación.**
+
+### � REGLA 1: RENDIMIENTO (Anti-Lag)
+| Componente | Hilo | Frecuencia | Razón |
+|------------|------|------------|-------|
+| BeatDetector | Main | 30ms | Reacción instantánea |
+| FFTAnalyzer | Main | 30ms | Datos en tiempo real |
+| RhythmAnalyzer (básico) | Main | 30ms | Solo kick/snare detect |
+| **GenreClassifier** | **Worker/Throttle** | **500ms** | **Análisis pesado** |
+| **SectionTracker** | **Worker/Throttle** | **500ms** | **Análisis pesado** |
+| **HarmonyDetector** | **Worker/Throttle** | **500ms** | **Análisis pesado** |
+| **PredictionMatrix** | **Worker/Throttle** | **500ms** | **Análisis pesado** |
+
+### ❄️ REGLA 2: FALLBACK (Anti-Cold-Start)
+```
+Si confidence < 0.5:
+  → Usar MODO REACTIVO (V17): Bass→Pulso, Treble→Shimmer, Beat→Flash
+  → NO esperar al análisis de género
+  
+Si confidence >= 0.5:
+  → Usar MODO INTELIGENTE: Aplicar paleta/efectos según género
+```
+
+### 🎵 REGLA 3: SINCOPACIÓN > BPM
+**Prioridad de clasificación:**
+1. **Sincopación** → Reggaeton (>0.4) vs Techno (<0.15)
+2. **Swing** → Jazz (>0.15)
+3. **BPM** → Solo para desempatar
+4. **Bass level** → Confirmar géneros bass-heavy
+
+---
+
+## �📊 RESUMEN DE PROGRESO
 
 | Fase | Descripción | Archivos | Estado |
 |------|-------------|----------|--------|
@@ -55,15 +90,20 @@ engines/musical/
 **Tiempo estimado:** 2-3 horas  
 **Fuente:** DrumPatternEngine.ts (877 líneas)
 
+### ⚠️ REGLAS APLICABLES
+- **REGLA 1:** `RhythmAnalyzer.analyze()` debe ser LIGERO (Main Thread)
+- **REGLA 3:** `calculateSyncopation()` es CRÍTICO para clasificación
+
 ### Checklist
 - [ ] **1.1** Crear `analysis/RhythmAnalyzer.ts` (~200 líneas)
   - [ ] Interface `RhythmAnalysis`
   - [ ] Interface `DrumDetection`
   - [ ] Interface `GrooveAnalysis`
   - [ ] Type `DrumPatternType`
-  - [ ] Método `analyze(audio, beat)`
+  - [ ] Método `analyze(audio, beat)` ← **LIGERO, Main Thread**
   - [ ] Método `detectPatternType()`
   - [ ] Método `calculateSwing()`
+  - [ ] Método `calculateSyncopation()` ← **CRÍTICO para Regla 3**
   - [ ] Método `detectFill()`
 
 - [ ] **1.2** Crear `analysis/types.ts` (~50 líneas)
@@ -72,8 +112,9 @@ engines/musical/
 ### Tests Fase 1
 - [ ] Test: Detecta kick en bass > 0.7
 - [ ] Test: Detecta pattern "four_on_floor"
-- [ ] Test: Detecta pattern "reggaeton" (85-100 BPM + bass)
+- [ ] Test: Detecta pattern "reggaeton" (syncopation > 0.4)  ← **Regla 3**
 - [ ] Test: Calcula swing > 0.15 para jazz
+- [ ] Test: `analyze()` completa en < 5ms  ← **Regla 1**
 
 ### Entregables
 ```
@@ -110,6 +151,7 @@ analysis/
 - [ ] Test: Mapea dorian → "jazzy"
 - [ ] Test: Mapea minor → "sad"
 - [ ] Test: Detecta cambio de tonalidad
+- [ ] Test: `analyze()` completa en < 10ms (Worker Thread, pero eficiente)
 
 ### Entregables
 ```
@@ -125,34 +167,44 @@ classification/
 **Tiempo estimado:** 2-3 horas  
 **Fuente:** Nuevo código + SongStructure.ts (~200 líneas)
 
+### ⚠️ REGLAS APLICABLES
+- **REGLA 1:** `GenreClassifier` y `SectionTracker` corren en **Worker Thread** o **Throttled** (500ms)
+- **REGLA 2:** Deben retornar `confidence` para que el orquestador sepa si usar fallback
+- **REGLA 3:** `GenreClassifier` DEBE priorizar sincopación sobre BPM
+
 ### Checklist
 - [ ] **3.1** Crear `analysis/SectionTracker.ts` (~180 líneas)
-  - [ ] Interface `SectionAnalysis`
+  - [ ] Interface `SectionAnalysis` con campo `confidence`  ← **Regla 2**
   - [ ] Interface `SectionProfile`
   - [ ] Type `SectionType`
   - [ ] Type `TransitionType`
-  - [ ] Método `track(rhythm, harmony, audio)`
+  - [ ] Método `track(rhythm, harmony, audio)` ← **Throttled 500ms**
   - [ ] Método `detectSectionType()`
   - [ ] Método `predictNextSection()`
   - [ ] Historial de intensidad para trend
+  - [ ] Cache de último resultado para Main Thread
 
 - [ ] **3.2** Crear `classification/GenreClassifier.ts` (~150 líneas)
-  - [ ] Interface `GenreClassification`
+  - [ ] Interface `GenreClassification` con campo `confidence`  ← **Regla 2**
   - [ ] Type `MusicGenre` (20+ géneros)
-  - [ ] Método `classify(rhythm, harmony, section, audio)`
-  - [ ] Lógica para reggaeton (Bad Bunny)
-  - [ ] Lógica para house (Daft Punk)
-  - [ ] Lógica para jazz, trap, rock, etc.
+  - [ ] Método `classify(rhythm, harmony, section, audio)` ← **Throttled 500ms**
+  - [ ] **Priorizar syncopation en classify()** ← **REGLA 3 CRÍTICA**
+  - [ ] Lógica para reggaeton: `syncopation > 0.4` (NO solo BPM)
+  - [ ] Lógica para techno/house: `syncopation < 0.15` + BPM para desempatar
+  - [ ] Lógica para jazz: `swingAmount > 0.15`
+  - [ ] Cache de último resultado para Main Thread
 
 - [ ] **3.3** Crear `classification/MoodSynthesizer.ts` (~100 líneas)
   - [ ] Método `synthesize(harmony, section, genre)`
   - [ ] Combinar múltiples señales en mood unificado
 
 ### Tests Fase 3
-- [ ] Test: Clasifica reggaeton con 90 BPM + bass > 0.7
-- [ ] Test: Clasifica house con 125 BPM + four_on_floor
+- [ ] Test: Clasifica reggaeton con **syncopation > 0.4** (NO por BPM)  ← **Regla 3**
+- [ ] Test: Clasifica house con syncopation < 0.15 + 125 BPM
+- [ ] Test: **NO confunde** techno 120 BPM con reggaeton 100 BPM  ← **Regla 3**
 - [ ] Test: Detecta buildup → predice drop
 - [ ] Test: Detecta verse → chorus transition
+- [ ] Test: Retorna confidence < 0.5 en primeros 5 segundos  ← **Regla 2**
 
 ### Entregables
 ```
@@ -169,35 +221,53 @@ classification/
 **Tiempo estimado:** 3-4 horas  
 **Componente central del sistema**
 
+### ⚠️ REGLAS APLICABLES
+- **REGLA 1:** `MusicalContextEngine` coordina Main Thread y Worker Thread
+- **REGLA 2:** Implementar `fallbackReactiveMode()` para confidence < 0.5
+- **REGLA 3:** Pasar sincopación al GenreClassifier correctamente
+
 ### Checklist
 - [ ] **4.1** Crear `context/PredictionMatrix.ts` (~120 líneas)
   - [ ] Interface `Prediction`
   - [ ] Type `PredictionType`
   - [ ] Interface `LightingAction`
-  - [ ] Método `generate(rhythm, section, history)`
+  - [ ] Método `generate(rhythm, section, history)` ← **Throttled 500ms**
   - [ ] Método `predictDrop()`
   - [ ] Método `predictTransition()`
 
-- [ ] **4.2** Crear `context/MusicalContextEngine.ts` (~300 líneas)
-  - [ ] Interface `MusicalContext`
+- [ ] **4.2** Crear `context/MusicalContextEngine.ts` (~350 líneas)
+  - [ ] Interface `MusicalContext` con campo `confidence`
   - [ ] EventEmitter para eventos
-  - [ ] Método `process(audio, beat)` - Orquestador principal
+  - [ ] **Método `fallbackReactiveMode(audio, beat)`** ← **REGLA 2 CRÍTICA**
+  - [ ] **Método `intelligentMode(context)`**
+  - [ ] Método `process(audio, beat)` - Orquestador principal:
+    ```typescript
+    // PSEUDO-CÓDIGO OBLIGATORIO:
+    if (this.overallConfidence < 0.5) {
+      return this.fallbackReactiveMode(audio, beat);  // V17 style
+    }
+    return this.intelligentMode(this.cachedContext);
+    ```
   - [ ] Método `synthesizeMood()`
   - [ ] Método `calculateEnergy()`
   - [ ] Método `calculateOverallConfidence()`
-  - [ ] Eventos: 'context', 'prediction', 'section-change'
+  - [ ] Cache de resultados de Worker Thread
+  - [ ] Eventos: 'context', 'prediction', 'section-change', 'mode-change'
 
 ### Tests Fase 4
+- [ ] Test: **Usa fallback cuando confidence < 0.5** ← **Regla 2**
+- [ ] Test: **Transiciona a intelligent mode cuando confidence > 0.5**
 - [ ] Test: Predice drop con 85% probabilidad en buildup
 - [ ] Test: Emite evento 'section-change' al cambiar sección
+- [ ] Test: Emite evento 'mode-change' al cambiar fallback↔intelligent
 - [ ] Test: Calcula confianza combinada correctamente
-- [ ] Test: Latencia < 50ms
+- [ ] Test: **Main thread process() completa en < 5ms** ← **Regla 1**
 
 ### Entregables
 ```
 context/
 ├── PredictionMatrix.ts       # ⬜ ~120 líneas
-└── MusicalContextEngine.ts   # ⬜ ~300 líneas
+└── MusicalContextEngine.ts   # ⬜ ~350 líneas (incluye fallback)
 ```
 
 ---
@@ -206,6 +276,9 @@ context/
 **Tiempo estimado:** 2-3 horas  
 **El puente entre análisis y acción**
 
+### ⚠️ REGLAS APLICABLES
+- **REGLA 2:** `MusicToLightMapper` debe tener `mapFallback()` para modo reactivo
+
 ### Checklist
 - [ ] **5.1** Crear `mapping/MusicToLightMapper.ts` (~200 líneas)
   - [ ] Interface `MusicLightMapping`
@@ -213,7 +286,8 @@ context/
   - [ ] Constante `SECTION_TO_INTENSITY`
   - [ ] Constante `MOOD_TO_MOVEMENT`
   - [ ] Constante `DRUM_TO_EFFECT`
-  - [ ] Método `map(context)`
+  - [ ] Método `map(context)` - Para modo inteligente
+  - [ ] **Método `mapFallback(audio, beat)`** - Para modo reactivo V17 ← **Regla 2**
   - [ ] Método `calculateTransitionDuration()`
 
 - [ ] **5.2** Crear `mapping/TransitionPredictor.ts` (~100 líneas)

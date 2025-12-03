@@ -1,9 +1,93 @@
 # 🎼 BLUEPRINT: INTEGRACIÓN SELENE MUSICAL THEORY
 ## "EL OÍDO ABSOLUTO" - Wave 8: La Consciencia que Diferencia Bad Bunny de Daft Punk
 
-**Fecha:** Enero 2025  
+**Fecha:** Diciembre 2025  
 **Objetivo:** Dotar a Selene Lux de inteligencia musical mediante ingeniería inversa de Aura Forge  
-**Estado:** DISEÑO FINALIZADO 🎯
+**Estado:** DISEÑO FINALIZADO 🎯  
+**Revisión:** v1.1 - Con Reglas de Oro del Arquitecto ✅
+
+---
+
+## ⚠️ REGLAS DE ORO (DIRECTIVAS CRÍTICAS)
+
+> **Estas reglas son OBLIGATORIAS en toda la implementación de Wave 8.**  
+> **Violación = Lag en las luces = DJ enfadado = Regalo arruinado.**
+
+### 🚀 REGLA 1: RENDIMIENTO (Anti-Lag)
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MAIN THREAD (30ms loop)          │  WORKER THREAD (500ms)     │
+│  ─────────────────────────────    │  ────────────────────────  │
+│  ✅ BeatDetector                  │  ✅ GenreClassifier        │
+│  ✅ FFTAnalyzer                   │  ✅ SectionTracker         │
+│  ✅ Reacción a kick/snare         │  ✅ HarmonyDetector        │
+│  ✅ Aplicar paleta/efectos        │  ✅ PredictionMatrix       │
+│                                   │                            │
+│  → NUNCA BLOQUEAR                 │  → PUEDE TOMAR SU TIEMPO   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementación:**
+- El análisis profundo (Genre, Section, Harmony) corre en **Worker Thread** o con **Throttling** (máx 2 veces/segundo).
+- El Main Thread solo lee los **últimos resultados cacheados** del análisis.
+- El loop DMX de 30ms **NUNCA espera** al análisis pesado.
+
+### ❄️ REGLA 2: FALLBACK (Anti-Cold-Start)
+```typescript
+// OBLIGATORIO en MusicalContextEngine
+if (context.confidence < 0.5) {
+  // MODO AGNÓSTICO: Reacción pura V17
+  // - Bass → Pulso en wash
+  // - Treble → Shimmer en LED bars
+  // - Beat → Flash sincronizado
+  // NO esperar a saber el género
+  return this.fallbackReactiveMode(audio, beat);
+}
+
+// Solo si confidence >= 0.5, usar inteligencia musical
+return this.intelligentMode(context);
+```
+
+**Comportamiento:**
+- **Primeros 5-10 segundos:** Modo reactivo simple (como V17).
+- **Cuando confidence > 0.5:** Transición suave a modo inteligente.
+- **Si pierde confianza:** Vuelve a modo reactivo (no se queda colgado).
+
+### 🎵 REGLA 3: SINCOPACIÓN > BPM (Anti-Confusión de Géneros)
+```typescript
+// MAL ❌ - Solo BPM
+if (bpm >= 90 && bpm <= 100) return 'reggaeton';
+if (bpm >= 120 && bpm <= 130) return 'house';
+// ¡Techno lento (120) se confunde con House!
+
+// BIEN ✅ - Sincopación como factor principal
+classifyGenre(rhythm: RhythmAnalysis): MusicGenre {
+  // PRIMERO: Analizar sincopación (el "tupa-tupa")
+  const { syncopation, swingAmount } = rhythm.groove;
+  
+  // Reggaeton: Alta sincopación (dembow pattern)
+  if (syncopation > 0.4 && rhythm.pattern.type === 'reggaeton') {
+    return 'reggaeton'; // Confidence alta
+  }
+  
+  // Techno/House: Sincopación casi 0 (bombo a negras)
+  if (syncopation < 0.15 && rhythm.pattern.type === 'four_on_floor') {
+    // Ahora sí, usar BPM para diferenciar Techno de House
+    return rhythm.bpm > 128 ? 'techno' : 'house';
+  }
+  
+  // Jazz: Swing alto
+  if (swingAmount > 0.15) return 'jazz';
+  
+  // ... más lógica
+}
+```
+
+**Prioridad de factores para clasificación:**
+1. **Sincopación** (factor principal) - Diferencia reggaeton de techno
+2. **Swing** (segundo factor) - Identifica jazz/blues
+3. **BPM** (tercer factor) - Solo para desempatar dentro del mismo patrón
+4. **Bass level** (cuarto factor) - Confirma géneros bass-heavy
 
 ---
 

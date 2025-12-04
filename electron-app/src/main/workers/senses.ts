@@ -1,0 +1,600 @@
+/**
+ * 👂 BETA WORKER - SENSES (Audio Analysis)
+ * 
+ * Worker Thread dedicado al análisis de audio en tiempo real.
+ * 
+ * TRINITY PHASE 1: Integrado con motores Wave 8 vía TrinityBridge
+ * 
+ * Procesa buffers de audio y extrae:
+ * - Beat detection (BPM, on-beat)
+ * - Rhythm analysis (subdivision, groove, SYNCOPATION)  ← REGLA 3
+ * - Spectrum analysis (bass, mid, treble)
+ * - Harmony detection (mood, temperature)
+ * - Section tracking (intro, verse, chorus, drop)
+ * - Genre hints (para GAMMA)
+ * 
+ * Comunica con ALPHA vía postMessage.
+ * GAMMA (mind) nunca habla directamente con BETA.
+ */
+
+import { parentPort, workerData } from 'worker_threads';
+import {
+  WorkerMessage,
+  MessageType,
+  MessagePriority,
+  AudioAnalysis,
+  WorkerHealth,
+  HeartbeatPayload,
+  HeartbeatAckPayload,
+  createMessage,
+  TrinityConfig,
+  DEFAULT_CONFIG
+} from './WorkerProtocol';
+
+// Wave 8 Bridge - Analizadores simplificados para Worker
+import {
+  SimpleRhythmDetector,
+  SimpleHarmonyDetector,
+  SimpleSectionTracker,
+  SimpleGenreClassifier,
+  AudioMetrics,
+  RhythmOutput,
+  HarmonyOutput,
+  SectionOutput,
+  GenreOutput,
+} from './TrinityBridge';
+
+// ============================================
+// CONFIGURATION
+// ============================================
+
+const config: TrinityConfig = workerData?.config ?? DEFAULT_CONFIG;
+const NODE_ID = 'beta' as const;
+
+// ============================================
+// STATE
+// ============================================
+
+interface BetaState {
+  isRunning: boolean;
+  frameCount: number;
+  startTime: number;
+  lastHeartbeat: number;
+  heartbeatSequence: number;
+  
+  // Audio state
+  currentBpm: number;
+  bpmHistory: number[];
+  beatPhase: number;
+  lastBeatTime: number;
+  
+  // Wave 8 Analysis Outputs (cached for GAMMA)
+  lastRhythmOutput: RhythmOutput | null;
+  lastHarmonyOutput: HarmonyOutput | null;
+  lastSectionOutput: SectionOutput | null;
+  lastGenreOutput: GenreOutput | null;
+  
+  // Performance metrics
+  messagesProcessed: number;
+  totalProcessingTime: number;
+  errors: string[];
+}
+
+const state: BetaState = {
+  isRunning: false,
+  frameCount: 0,
+  startTime: Date.now(),
+  lastHeartbeat: Date.now(),
+  heartbeatSequence: 0,
+  
+  currentBpm: 120,
+  bpmHistory: [],
+  beatPhase: 0,
+  lastBeatTime: Date.now(),
+  
+  // Wave 8 outputs
+  lastRhythmOutput: null,
+  lastHarmonyOutput: null,
+  lastSectionOutput: null,
+  lastGenreOutput: null,
+  
+  messagesProcessed: 0,
+  totalProcessingTime: 0,
+  errors: []
+};
+
+// ============================================
+// BEAT DETECTION
+// ============================================
+
+class BeatDetector {
+  private readonly historySize = 43; // ~1 second at 44100Hz/1024 samples
+  private energyHistory: number[] = [];
+  private lastPeakTime = 0;
+  private beatIntervals: number[] = [];
+  
+  analyze(buffer: Float32Array, _sampleRate: number): {
+    onBeat: boolean;
+    beatStrength: number;
+    bpm: number;
+    confidence: number;
+  } {
+    const now = Date.now();
+    
+    // Calculate energy (RMS)
+    let energy = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      energy += buffer[i] * buffer[i];
+    }
+    energy = Math.sqrt(energy / buffer.length);
+    
+    // Add to history
+    this.energyHistory.push(energy);
+    if (this.energyHistory.length > this.historySize) {
+      this.energyHistory.shift();
+    }
+    
+    // Calculate average and threshold
+    const avgEnergy = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
+    const threshold = avgEnergy * 1.5;
+    
+    // Detect peak (beat)
+    const onBeat = energy > threshold && (now - this.lastPeakTime) > 200; // Min 200ms between beats
+    
+    if (onBeat) {
+      // Calculate interval since last beat
+      if (this.lastPeakTime > 0) {
+        const interval = now - this.lastPeakTime;
+        this.beatIntervals.push(interval);
+        if (this.beatIntervals.length > 16) {
+          this.beatIntervals.shift();
+        }
+      }
+      this.lastPeakTime = now;
+    }
+    
+    // Calculate BPM from intervals
+    let bpm = 120; // default
+    let confidence = 0;
+    
+    if (this.beatIntervals.length >= 4) {
+      const avgInterval = this.beatIntervals.reduce((a, b) => a + b, 0) / this.beatIntervals.length;
+      bpm = Math.round(60000 / avgInterval);
+      
+      // Clamp to reasonable range
+      bpm = Math.max(60, Math.min(200, bpm));
+      
+      // Calculate confidence based on interval consistency
+      const variance = this.beatIntervals.reduce((sum, interval) => {
+        return sum + Math.pow(interval - avgInterval, 2);
+      }, 0) / this.beatIntervals.length;
+      const stdDev = Math.sqrt(variance);
+      confidence = Math.max(0, 1 - (stdDev / avgInterval));
+    }
+    
+    return {
+      onBeat,
+      beatStrength: Math.min(1, energy / (avgEnergy * 2)),
+      bpm,
+      confidence
+    };
+  }
+}
+
+// ============================================
+// SPECTRUM ANALYZER
+// ============================================
+
+class SpectrumAnalyzer {
+  private readonly fftSize = 256;
+  
+  analyze(buffer: Float32Array, _sampleRate: number): {
+    bass: number;
+    mid: number;
+    treble: number;
+    spectralCentroid: number;
+    spectralFlux: number;
+  } {
+    // Simple frequency band analysis
+    // Note: In production, use Web Audio API's AnalyserNode or a proper FFT library
+    
+    const length = Math.min(buffer.length, this.fftSize);
+    
+    // Split buffer into frequency bands (simplified)
+    const lowEnd = Math.floor(length * 0.15);    // ~0-200Hz
+    const midEnd = Math.floor(length * 0.5);     // ~200-2000Hz
+    
+    let bassEnergy = 0;
+    let midEnergy = 0;
+    let trebleEnergy = 0;
+    
+    for (let i = 0; i < length; i++) {
+      const value = Math.abs(buffer[i]);
+      if (i < lowEnd) {
+        bassEnergy += value;
+      } else if (i < midEnd) {
+        midEnergy += value;
+      } else {
+        trebleEnergy += value;
+      }
+    }
+    
+    // Normalize
+    const normalize = (val: number, count: number) => 
+      Math.min(1, (val / count) * 5);
+    
+    const bass = normalize(bassEnergy, lowEnd);
+    const mid = normalize(midEnergy, midEnd - lowEnd);
+    const treble = normalize(trebleEnergy, length - midEnd);
+    
+    // Spectral centroid (center of mass of spectrum)
+    let weightedSum = 0;
+    let totalEnergy = 0;
+    for (let i = 0; i < length; i++) {
+      const value = Math.abs(buffer[i]);
+      weightedSum += i * value;
+      totalEnergy += value;
+    }
+    const spectralCentroid = totalEnergy > 0 ? weightedSum / totalEnergy : length / 2;
+    
+    // Spectral flux (simplified - change in energy)
+    const spectralFlux = Math.abs(bassEnergy + midEnergy + trebleEnergy - 
+      (this.lastEnergy ?? (bassEnergy + midEnergy + trebleEnergy)));
+    this.lastEnergy = bassEnergy + midEnergy + trebleEnergy;
+    
+    return {
+      bass,
+      mid,
+      treble,
+      spectralCentroid: spectralCentroid / length, // Normalize to 0-1
+      spectralFlux: Math.min(1, spectralFlux)
+    };
+  }
+  
+  private lastEnergy?: number;
+}
+
+// ============================================
+// MAIN ANALYZERS - WAVE 8 INTEGRATION
+// ============================================
+
+const beatDetector = new BeatDetector();
+const spectrumAnalyzer = new SpectrumAnalyzer();
+
+// Wave 8 Analyzers (from TrinityBridge)
+const rhythmDetector = new SimpleRhythmDetector();
+const harmonyDetector = new SimpleHarmonyDetector();
+const sectionTracker = new SimpleSectionTracker();
+const genreClassifier = new SimpleGenreClassifier();
+
+// ============================================
+// AUDIO PROCESSING - WAVE 8 INTEGRATED
+// ============================================
+
+/**
+ * Extended AudioAnalysis with Wave 8 data
+ * This gets sent to GAMMA for intelligent decisions
+ */
+interface ExtendedAudioAnalysis extends AudioAnalysis {
+  // Wave 8 Rich Analysis (attached as metadata)
+  wave8?: {
+    rhythm: RhythmOutput;
+    harmony: HarmonyOutput;
+    section: SectionOutput;
+    genre: GenreOutput;
+  };
+}
+
+function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
+  const startTime = performance.now();
+  state.frameCount++;
+  
+  // === PHASE 1: Basic Beat Detection ===
+  const beatResult = beatDetector.analyze(buffer, config.audioSampleRate);
+  
+  // Update BPM smoothing
+  if (beatResult.confidence > 0.5) {
+    state.bpmHistory.push(beatResult.bpm);
+    if (state.bpmHistory.length > 10) {
+      state.bpmHistory.shift();
+    }
+    state.currentBpm = Math.round(
+      state.bpmHistory.reduce((a, b) => a + b, 0) / state.bpmHistory.length
+    );
+  }
+  
+  // Update beat phase (0-1 within current beat)
+  const beatInterval = 60000 / state.currentBpm;
+  const timeSinceLastBeat = Date.now() - state.lastBeatTime;
+  state.beatPhase = (timeSinceLastBeat % beatInterval) / beatInterval;
+  
+  if (beatResult.onBeat) {
+    state.lastBeatTime = Date.now();
+  }
+  
+  // === PHASE 2: Spectrum Analysis ===
+  const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
+  
+  // Calculate overall energy
+  const energy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
+  
+  // === PHASE 3: Wave 8 Rich Analysis ===
+  // Create AudioMetrics for Wave 8 analyzers
+  const audioMetrics: AudioMetrics = {
+    bass: spectrum.bass,
+    mid: spectrum.mid,
+    treble: spectrum.treble,
+    volume: energy,
+    bpm: state.currentBpm,
+    bpmConfidence: beatResult.confidence,
+    onBeat: beatResult.onBeat,
+    beatPhase: state.beatPhase,
+    timestamp: Date.now(),
+  };
+  
+  // Run Wave 8 analyzers
+  const rhythmOutput = rhythmDetector.analyze(audioMetrics);
+  const harmonyOutput = harmonyDetector.analyze(audioMetrics);
+  const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
+  const genreOutput = genreClassifier.classify(rhythmOutput, audioMetrics);
+  
+  // Cache for state snapshots
+  state.lastRhythmOutput = rhythmOutput;
+  state.lastHarmonyOutput = harmonyOutput;
+  state.lastSectionOutput = sectionOutput;
+  state.lastGenreOutput = genreOutput;
+  
+  // === PHASE 4: Build Response ===
+  // Mood from Wave 8 harmony (richer than simple bass/treble)
+  let mood: 'dark' | 'bright' | 'neutral' = 'neutral';
+  if (harmonyOutput.temperature === 'cool') mood = 'dark';
+  else if (harmonyOutput.temperature === 'warm') mood = 'bright';
+  
+  // Track processing time
+  state.totalProcessingTime += performance.now() - startTime;
+  state.messagesProcessed++;
+  
+  return {
+    timestamp: Date.now(),
+    frameId: state.frameCount,
+    
+    // Core beat info
+    bpm: state.currentBpm,
+    bpmConfidence: beatResult.confidence,
+    onBeat: beatResult.onBeat,
+    beatPhase: state.beatPhase,
+    beatStrength: beatResult.beatStrength,
+    
+    // Wave 8 Rhythm (REGLA 3: Syncopation is king)
+    syncopation: rhythmOutput.syncopation,
+    groove: rhythmOutput.groove,
+    subdivision: rhythmOutput.subdivision,
+    
+    // Spectrum
+    bass: spectrum.bass,
+    mid: spectrum.mid,
+    treble: spectrum.treble,
+    
+    // Mood (from Wave 8 Harmony)
+    mood,
+    key: harmonyOutput.key ?? undefined,
+    energy,
+    
+    // Technical metrics
+    spectralCentroid: spectrum.spectralCentroid,
+    spectralFlux: spectrum.spectralFlux,
+    zeroCrossingRate: calculateZeroCrossingRate(buffer),
+    
+    // === WAVE 8 RICH DATA FOR GAMMA ===
+    wave8: {
+      rhythm: rhythmOutput,
+      harmony: harmonyOutput,
+      section: sectionOutput,
+      genre: genreOutput,
+    }
+  };
+}
+
+function calculateZeroCrossingRate(buffer: Float32Array): number {
+  let crossings = 0;
+  for (let i = 1; i < buffer.length; i++) {
+    if ((buffer[i] >= 0) !== (buffer[i-1] >= 0)) {
+      crossings++;
+    }
+  }
+  return crossings / buffer.length;
+}
+
+// ============================================
+// HEALTH REPORTING
+// ============================================
+
+function generateHealthReport(): WorkerHealth {
+  const uptime = Date.now() - state.startTime;
+  const memUsage = process.memoryUsage();
+  
+  // Determine status
+  let status: WorkerHealth['status'] = 'healthy';
+  if (memUsage.heapUsed / memUsage.heapTotal > 0.9) {
+    status = 'critical';
+  } else if (memUsage.heapUsed / memUsage.heapTotal > 0.7) {
+    status = 'degraded';
+  }
+  
+  return {
+    nodeId: NODE_ID,
+    timestamp: Date.now(),
+    cpuUsage: 0, // Would need native module for accurate CPU
+    memoryUsage: memUsage.heapUsed / memUsage.heapTotal,
+    heapUsed: memUsage.heapUsed,
+    heapTotal: memUsage.heapTotal,
+    messagesProcessed: state.messagesProcessed,
+    messagesPerSecond: state.messagesProcessed / (uptime / 1000),
+    avgProcessingTime: state.messagesProcessed > 0 
+      ? state.totalProcessingTime / state.messagesProcessed 
+      : 0,
+    status,
+    lastError: state.errors[state.errors.length - 1],
+    uptime,
+    framesProcessed: state.frameCount
+  };
+}
+
+// ============================================
+// STATE SNAPSHOT (For Phoenix Protocol)
+// ============================================
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createStateSnapshot(): unknown {
+  return {
+    frameCount: state.frameCount,
+    currentBpm: state.currentBpm,
+    bpmHistory: [...state.bpmHistory],
+    beatPhase: state.beatPhase,
+    messagesProcessed: state.messagesProcessed
+  };
+}
+
+function restoreStateSnapshot(snapshot: unknown): void {
+  if (typeof snapshot === 'object' && snapshot !== null) {
+    const s = snapshot as Record<string, unknown>;
+    if (typeof s.frameCount === 'number') state.frameCount = s.frameCount;
+    if (typeof s.currentBpm === 'number') state.currentBpm = s.currentBpm;
+    if (Array.isArray(s.bpmHistory)) state.bpmHistory = s.bpmHistory;
+    if (typeof s.beatPhase === 'number') state.beatPhase = s.beatPhase;
+  }
+  console.log(`[BETA] State restored: frame ${state.frameCount}, BPM ${state.currentBpm}`);
+}
+
+// ============================================
+// MESSAGE HANDLER
+// ============================================
+
+function handleMessage(message: WorkerMessage): void {
+  try {
+    switch (message.type) {
+      case MessageType.INIT:
+        state.isRunning = true;
+        state.startTime = Date.now();
+        console.log('[BETA] 👂 Senses initialized');
+        sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
+        break;
+        
+      case MessageType.SHUTDOWN:
+        console.log('[BETA] Shutting down...');
+        state.isRunning = false;
+        // Send final health before shutdown
+        sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
+        process.exit(0);
+        break;
+        
+      case MessageType.HEARTBEAT:
+        const hbPayload = message.payload as HeartbeatPayload;
+        const ackPayload: HeartbeatAckPayload = {
+          originalTimestamp: hbPayload.timestamp,
+          ackTimestamp: Date.now(),
+          sequence: hbPayload.sequence,
+          latency: Date.now() - hbPayload.timestamp
+        };
+        sendMessage(MessageType.HEARTBEAT_ACK, 'alpha', ackPayload, MessagePriority.HIGH);
+        state.lastHeartbeat = Date.now();
+        break;
+        
+      case MessageType.HEALTH_REQUEST:
+        sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
+        break;
+        
+      case MessageType.AUDIO_BUFFER:
+        if (!state.isRunning) break;
+        const buffer = message.payload as Float32Array;
+        const analysis = processAudioBuffer(buffer);
+        sendMessage(
+          MessageType.AUDIO_ANALYSIS, 
+          'alpha', 
+          analysis,
+          analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL
+        );
+        break;
+        
+      case MessageType.STATE_RESTORE:
+        const snapshot = message.payload as { state: unknown };
+        restoreStateSnapshot(snapshot.state);
+        break;
+        
+      case MessageType.CONFIG_UPDATE:
+        Object.assign(config, message.payload);
+        console.log('[BETA] Config updated');
+        break;
+        
+      default:
+        console.warn(`[BETA] Unknown message type: ${message.type}`);
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    state.errors.push(errorMsg);
+    console.error(`[BETA] Error handling ${message.type}:`, errorMsg);
+    
+    sendMessage(MessageType.WORKER_ERROR, 'alpha', {
+      nodeId: NODE_ID,
+      error: errorMsg,
+      messageType: message.type
+    }, MessagePriority.CRITICAL);
+  }
+}
+
+// ============================================
+// SEND MESSAGE
+// ============================================
+
+function sendMessage<T>(
+  type: MessageType,
+  target: 'alpha' | 'gamma' | 'broadcast',
+  payload: T,
+  priority: MessagePriority = MessagePriority.NORMAL
+): void {
+  const message = createMessage(type, NODE_ID, target, payload, priority);
+  parentPort?.postMessage(message);
+}
+
+// ============================================
+// MAIN LISTENER
+// ============================================
+
+if (parentPort) {
+  parentPort.on('message', handleMessage);
+  
+  // Notify Alpha we're alive
+  console.log('[BETA] 👂 Worker thread started, waiting for INIT...');
+  
+  // Handle uncaught errors
+  process.on('uncaughtException', (error) => {
+    console.error('[BETA] Uncaught exception:', error);
+    sendMessage(MessageType.WORKER_ERROR, 'alpha', {
+      nodeId: NODE_ID,
+      error: error.message,
+      fatal: true
+    }, MessagePriority.CRITICAL);
+  });
+  
+  process.on('unhandledRejection', (reason) => {
+    console.error('[BETA] Unhandled rejection:', reason);
+    sendMessage(MessageType.WORKER_ERROR, 'alpha', {
+      nodeId: NODE_ID,
+      error: String(reason),
+      fatal: false
+    }, MessagePriority.CRITICAL);
+  });
+} else {
+  console.error('[BETA] No parentPort - not running as worker thread!');
+  process.exit(1);
+}
+
+// ============================================
+// PERIODIC HEALTH REPORT
+// ============================================
+
+setInterval(() => {
+  if (state.isRunning) {
+    sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
+  }
+}, 5000); // Every 5 seconds

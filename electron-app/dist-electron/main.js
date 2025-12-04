@@ -7231,7 +7231,7 @@ function startMainLoop() {
   if (mainLoopInterval) return;
   let frameIndex = 0;
   mainLoopInterval = setInterval(() => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
     if (!selene || !mainWindow) return;
     const now = Date.now();
     const deltaTime = now - lastFrameTime;
@@ -7272,10 +7272,45 @@ function startMainLoop() {
         "| 🥁 Beat:",
         ((_e = state.beat) == null ? void 0 : _e.onBeat) ? "HIT" : "---",
         "| 🎵 Audio:",
-        useRealAudio ? "LIVE" : "SIM"
+        useRealAudio ? "LIVE" : "SIM",
+        "| 🧠 Mode:",
+        state.brainMode || "legacy"
       );
     }
-    mainWindow.webContents.send("lux:update-state", state);
+    const uiState = {
+      colors: state.colors ? {
+        primary: state.colors.primary,
+        secondary: state.colors.secondary,
+        accent: state.colors.accent
+      } : void 0,
+      movement: state.movement ? {
+        pan: state.movement.pan,
+        tilt: state.movement.tilt,
+        pattern: state.movement.pattern,
+        speed: state.movement.speed
+      } : void 0,
+      beat: state.beat ? {
+        bpm: state.beat.bpm,
+        onBeat: state.beat.onBeat,
+        beatPhase: state.beat.phase,
+        confidence: state.beat.confidence
+      } : void 0,
+      brain: {
+        mode: state.brainMode || "reactive",
+        confidence: ((_f = state.brainOutput) == null ? void 0 : _f.confidence) || 0.5,
+        beautyScore: ((_g = state.consciousness) == null ? void 0 : _g.beautyScore) || 0.5,
+        energy: audioInput.energy,
+        mood: ((_i = (_h = state.brainOutput) == null ? void 0 : _h.context) == null ? void 0 : _i.mood) || "neutral",
+        section: ((_m = (_l = (_k = (_j = state.brainOutput) == null ? void 0 : _j.context) == null ? void 0 : _k.section) == null ? void 0 : _l.current) == null ? void 0 : _m.type) || "unknown"
+      },
+      palette: {
+        name: String(state.palette),
+        source: state.paletteSource || "legacy"
+      },
+      frameId: ((_n = state.stats) == null ? void 0 : _n.frames) || frameIndex,
+      timestamp: now
+    };
+    mainWindow.webContents.send("lux:state-update", uiState);
   }, 30);
   console.log("Selene main loop started (30ms) - DMX output active");
 }

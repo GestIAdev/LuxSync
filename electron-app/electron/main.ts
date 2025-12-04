@@ -180,10 +180,46 @@ function startMainLoop() {
         c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
         '| 🎯 Pos:', state.movement?.pan?.toFixed(2) || 0, state.movement?.tilt?.toFixed(2) || 0,
         '| 🥁 Beat:', state.beat?.onBeat ? 'HIT' : '---',
-        '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM')
+        '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM',
+        '| 🧠 Mode:', state.brainMode || 'legacy')
     }
     
-    mainWindow.webContents.send('lux:update-state', state)
+    // 🔺 TRINITY PHASE 2: Transform state to UI format
+    const uiState = {
+      colors: state.colors ? {
+        primary: state.colors.primary,
+        secondary: state.colors.secondary,
+        accent: state.colors.accent,
+      } : undefined,
+      movement: state.movement ? {
+        pan: state.movement.pan,
+        tilt: state.movement.tilt,
+        pattern: state.movement.pattern,
+        speed: state.movement.speed,
+      } : undefined,
+      beat: state.beat ? {
+        bpm: state.beat.bpm,
+        onBeat: state.beat.onBeat,
+        beatPhase: state.beat.phase,
+        confidence: state.beat.confidence,
+      } : undefined,
+      brain: {
+        mode: state.brainMode || 'reactive',
+        confidence: state.brainOutput?.confidence || 0.5,
+        beautyScore: state.consciousness?.beautyScore || 0.5,
+        energy: audioInput.energy,
+        mood: state.brainOutput?.context?.mood || 'neutral',
+        section: state.brainOutput?.context?.section?.current?.type || 'unknown',
+      },
+      palette: {
+        name: String(state.palette),
+        source: state.paletteSource || 'legacy',
+      },
+      frameId: state.stats?.frames || frameIndex,
+      timestamp: now,
+    }
+    
+    mainWindow.webContents.send('lux:state-update', uiState)
   }, 30)
   
   console.log('Selene main loop started (30ms) - DMX output active')

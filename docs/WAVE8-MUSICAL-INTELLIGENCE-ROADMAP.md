@@ -1,6 +1,18 @@
-# 🎼 WAVE 8: MUSICAL INTELLIGENCE - ROADMAP## 📊 RESUMEN DE PROGRESO
+# 🎼 WAVE 8: MUSICAL INTELLIGENCE - ROADMAP## 📊 RESUMEN ## 📊 RESUMEN DE PROGRESO
 
 | Fase | Descripción | Archivos | Estado |
+|------|-------------|----------|--------|
+| 0 | Setup estructura | 7 | ✅ **COMPLETADO** |
+| 1 | Análisis Rítmico | 2 | ✅ **COMPLETADO** |
+| 2 | Análisis Armónico | 3 | ✅ **COMPLETADO** |
+| 3 | Clasificación | 4 | ✅ **COMPLETADO** |
+| 4 | Orquestación | 4 | ✅ **COMPLETADO** |
+| 5 | Mapeo Luces (Procedural) | 5 | ✅ **COMPLETADO** |
+| 6 | Aprendizaje | 2 | ⬜ Pendiente |
+| 7 | Integración | 1 | ⬜ Pendiente |
+| 8 | Tests | 1 | ⬜ Pendiente |
+
+**TOTAL ACTUAL:** 26 archivos | ~7,500 líneas | **389 tests** ✅| Fase | Descripción | Archivos | Estado |
 |------|-------------|----------|--------|
 | 0 | Setup estructura | 7 | ✅ **COMPLETADO** |
 | 1 | Análisis Rítmico | 3 | ✅ **COMPLETADO** |
@@ -352,42 +364,109 @@ context/
 
 ---
 
-## 🎨 FASE 5: MAPEO MÚSICA → LUCES
-**Tiempo estimado:** 2-3 horas  
-**El puente entre análisis y acción**
+## 🎨 FASE 5: MAPEO MÚSICA → LUCES ✅
+**Tiempo estimado:** 2-3 horas | **Tiempo real:** ~3 horas  
+**El puente entre análisis y acción - PARADIGM SHIFT: Generación Procedural**
+
+### ⚠️ CAMBIO DE PARADIGMA
+**Problema identificado:** Static GENRE_TO_PALETTE = 4 horas mismo color = DJ ABURRIDO 😴
+
+**Solución:** Generación procedural de paletas basada en ADN musical:
+- **Key Musical → Hue Base** (Círculo de Quintas Cromático)
+- **Mode → Modificadores** (Major = cálido, Minor = frío)
+- **Energy → Estrategia de Color** (baja=análogos, alta=complementarios)
 
 ### ⚠️ REGLAS APLICABLES
-- **REGLA 2:** `MusicToLightMapper` debe tener `mapFallback()` para modo reactivo
+- **REGLA 2:** `MusicToLightMapper` debe tener `mapFallback()` para modo reactivo ✅
 
 ### Checklist
-- [ ] **5.1** Crear `mapping/MusicToLightMapper.ts` (~200 líneas)
-  - [ ] Interface `MusicLightMapping`
-  - [ ] Constante `GENRE_TO_PALETTE`
-  - [ ] Constante `SECTION_TO_INTENSITY`
-  - [ ] Constante `MOOD_TO_MOVEMENT`
-  - [ ] Constante `DRUM_TO_EFFECT`
-  - [ ] Método `map(context)` - Para modo inteligente
-  - [ ] **Método `mapFallback(audio, beat)`** - Para modo reactivo V17 ← **Regla 2**
-  - [ ] Método `calculateTransitionDuration()`
+- [x] **5.0** Crear Blueprint `BLUEPRINT-SELENE-CHROMATIC-FORMULA.md` (~674 líneas)
+  - [x] Fórmula cromática completa
+  - [x] Círculo de Quintas Cromático documentado
+  - [x] Modificadores de modo
+  - [x] Estrategias de energía
+  - [x] Casos de uso (Cumbia, Reggaeton, Techno)
 
-- [ ] **5.2** Crear `mapping/TransitionPredictor.ts` (~100 líneas)
-  - [ ] Anticipar cambios de iluminación
-  - [ ] Preparar efectos antes de drops
-  - [ ] Método `prepareForPrediction(prediction)`
+- [x] **5.1** Crear `mapping/ProceduralPaletteGenerator.ts` (~550 líneas)
+  - [x] Interface `ProceduralPalette` con 5 colores HSL
+  - [x] Interface `MusicalDNA` (key, mode, energy, syncopation)
+  - [x] Constante `KEY_TO_HUE` - Círculo de Quintas Cromático
+  - [x] Constante `MODE_MODIFIERS` - 7 modos (major, minor, dorian, phrygian, lydian, mixolydian, locrian)
+  - [x] Método `generateFromDNA(dna)` - Genera paleta única
+  - [x] Método `keyToBaseHue(key)` - Mapea nota a hue
+  - [x] Método `applyModeModifier(baseHue, mode)` - Modifica temperatura
+  - [x] Método `calculateColorStrategy(energy)` - analogous/triadic/complementary
+  - [x] Método `generateContrastColor(primary, strategy)` - Color secundario
+  - [x] Método `calculateTransitionSpeed(energy)` - Velocidad de fade
+  - [x] Método `applySectionVariation(palette, section)` - Ajustes por sección
+  - [x] Helpers `hslToRgb()`, `hslToHex()`, `paletteToHex()`
+  - [x] EventEmitter: 'palette-generated', 'dna-change', 'palette-variation'
+
+- [x] **5.2** Crear `mapping/PaletteManager.ts` (~500 líneas)
+  - [x] Sistema de histéresis anti-flicker (MIN_KEY_CHANGE_INTERVAL = 10000ms)
+  - [x] Método `update(dna)` - Actualiza con histéresis
+  - [x] Método `shouldUpdatePalette(newDNA)` - Detecta cambio significativo
+  - [x] Método `transitionTo(newPalette, duration)` - Fade suave
+  - [x] Método `interpolateColor(from, to, progress)` - Interpolación HSL
+  - [x] Método `getCurrentPalette()` - Paleta actual (interpolada)
+  - [x] Buffer de ADN histórico para estabilidad
+  - [x] EventEmitter: 'palette-change', 'transition-start', 'transition-end'
+
+- [x] **5.3** Crear `mapping/MusicToLightMapper.ts` (~600 líneas)
+  - [x] Interface `LightingSuggestion` con fixtures + colores + movimiento
+  - [x] Constante `SECTION_TO_INTENSITY` - Modificadores por sección
+  - [x] Constante `MOOD_TO_MOVEMENT_TYPE` - Patrones de movimiento
+  - [x] Método `map(palette, context)` - Modo inteligente
+  - [x] **Método `mapFallback(audio)`** - Modo reactivo ← **REGLA 2** ✅
+  - [x] Método `generateBeatEffect(intensity)` - Efectos en beat
+  - [x] Método `generateDropEffect()` - Efectos en drop
+  - [x] Método `mapPaletteToFixture(palette, fixtureType)` - Color por fixture
+  - [x] EventEmitter: 'suggestion', 'beat-effect', 'drop-effect'
+
+- [x] **5.4** Actualizar `mapping/index.ts` con exports
 
 ### Tests Fase 5
-- [ ] Test: Reggaeton → paleta 'neon'
-- [ ] Test: **Cumbia → paleta 'fuego' + movement 'figure8'**  ← **🇦🇷 Argentina**
-- [ ] Test: House → paleta 'rainbow'
-- [ ] Test: Drop → intensidad 1.0
-- [ ] Test: Jazz → movement 'lissajous'
-- [ ] Test: Cumbia break → efecto 'breathe'  ← **Característico**
+- [x] Test: C Major → Hue ~0-15° (Rojo) ✅
+- [x] Test: A Minor → Hue ~270° (Índigo) ✅
+- [x] Test: G Major energia 0.55 → Triadic strategy ✅
+- [x] Test: Reggaeton en A Menor alta energía → complementarios ✅
+- [x] Test: Cumbia en G Mayor → paleta equilibrada (triadic) ✅
+- [x] Test: Techno en F# Minor → verde industrial (~180°) ✅
+- [x] Test: Drop → máxima intensidad (1.0) ✅
+- [x] Test: Intro → baja intensidad ✅
+- [x] Test: **mapFallback() funciona sin contexto musical** ← **Regla 2** ✅
+- [x] Test: Euphoric mood → movimiento circular ✅
+- [x] Test: Chill mood → sin movimiento ✅
+- [x] Test: Beat detectado → strobe activo ✅
 
 ### Entregables
 ```
 mapping/
-├── MusicToLightMapper.ts     # ⬜ ~200 líneas
-└── TransitionPredictor.ts    # ⬜ ~100 líneas
+├── ProceduralPaletteGenerator.ts           # ✅ ~550 líneas
+├── PaletteManager.ts                       # ✅ ~500 líneas  
+├── MusicToLightMapper.ts                   # ✅ ~600 líneas
+├── index.ts                                # ✅ Actualizado con exports
+└── __tests__/
+    ├── ProceduralPaletteGenerator.test.ts  # ✅ ~500 líneas (58 tests)
+    └── MusicToLightMapper.test.ts          # ✅ ~467 líneas (39 tests)
+
+docs/
+└── BLUEPRINT-SELENE-CHROMATIC-FORMULA.md   # ✅ ~674 líneas
+```
+
+### Performance Benchmarks (FASE 5)
+| Componente | Tests | Target |
+|------------|-------|--------|
+| ProceduralPaletteGenerator | 58 ✅ | N/A |
+| MusicToLightMapper | 39 ✅ | N/A |
+| **Total FASE 5** | **97 tests** | All passing ✅ |
+
+### Círculo de Quintas Cromático (Implementado)
+```
+C = 0° (Rojo)      G = 210° (Cyan)
+D = 60° (Naranja)  A = 270° (Índigo)
+E = 120° (Verde)   B = 330° (Magenta)
+F = 150° (Verde)   F# = 180° (Cyan)
 ```
 
 ---

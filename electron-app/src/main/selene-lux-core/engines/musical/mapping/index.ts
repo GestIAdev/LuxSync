@@ -3,23 +3,70 @@
  * =================
  * Traducción de análisis musical a decisiones de iluminación
  * 
- * ⚠️ REGLA 2: Incluir mapFallback() para modo reactivo
- * 
  * Componentes:
- * - MusicToLightMapper: Mapeo género→paleta, sección→intensidad
- * - TransitionPredictor: Anticipación de transiciones
+ * - ProceduralPaletteGenerator: Genera paletas basadas en ADN musical (sinestesia)
+ * - PaletteManager: Gestiona transiciones con histéresis anti-flicker
+ * - MusicToLightMapper: Traduce paleta + contexto a parámetros de fixtures
+ * 
+ * PRINCIPIO FUNDAMENTAL:
+ * "No le decimos a Selene qué colores usar.
+ *  Le enseñamos a SENTIR la música y PINTAR lo que siente."
  * 
  * @module engines/musical/mapping
  */
 
-// TODO: FASE 5 - MusicToLightMapper
-// export { MusicToLightMapper } from './MusicToLightMapper';
+// ============================================================
+// PROCEDURAL PALETTE GENERATOR
+// ============================================================
+export {
+  ProceduralPaletteGenerator,
+  createProceduralPaletteGenerator,
+  hslToRgb,
+  hslToHex,
+  CONSTANTS as PALETTE_CONSTANTS,
+} from './ProceduralPaletteGenerator';
 
-// TODO: FASE 5 - TransitionPredictor
-// export { TransitionPredictor } from './TransitionPredictor';
-
-// Re-export types
 export type {
+  HSLColor,
+  RGBColor,
+  MusicalDNA,
+  SelenePalette,
+  PaletteMetadata,
+} from './ProceduralPaletteGenerator';
+
+// ============================================================
+// PALETTE MANAGER
+// ============================================================
+export {
+  PaletteManager,
+  createPaletteManager,
+} from './PaletteManager';
+
+export type {
+  PaletteManagerConfig,
+  PaletteTransition,
+  PaletteChangeReason,
+} from './PaletteManager';
+
+// ============================================================
+// MUSIC TO LIGHT MAPPER
+// ============================================================
+export {
+  MusicToLightMapper,
+  createMusicToLightMapper,
+  MAPPING_CONSTANTS,
+} from './MusicToLightMapper';
+
+export type {
+  FixtureType,
+  MovementEffect,
+  FixtureLightingParams,
   LightingSuggestion,
+  AudioFeatures,
+  MusicContext,
+} from './MusicToLightMapper';
+
+// Re-export types from parent
+export type {
   EffectSuggestion,
 } from '../types';

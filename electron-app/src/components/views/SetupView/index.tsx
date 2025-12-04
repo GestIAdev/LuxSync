@@ -215,29 +215,45 @@ const SetupView: React.FC = () => {
       if (source === 'system') {
         console.log('[SetupView] 🖥️ Requesting system audio...')
         
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: {
-            // @ts-expect-error - systemAudio es experimental
-            systemAudio: 'include',
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        })
-        
-        const audioTracks = stream.getAudioTracks()
-        if (audioTracks.length === 0) {
-          stream.getTracks().forEach(t => t.stop())
-          // Fallback graceful a simulation
-          console.warn('[SetupView] ⚠️ No audio - fallback to simulation')
+        // En Electron, getDisplayMedia puede no estar disponible
+        // Intentamos, pero con fallback automático a simulation
+        if (!navigator.mediaDevices.getDisplayMedia) {
+          console.warn('[SetupView] ⚠️ getDisplayMedia not available - using simulation')
           trinity.setSimulating(true)
           setAudioSource('simulation')
-          setAudioError('No se detectó audio. Activado modo simulación.')
-        } else {
-          console.log('[SetupView] ✅ System audio OK')
-          trinity.setSimulating(false)
-          setAudioSource('system')
+          setIsConnectingAudio(false)
+          return
+        }
+        
+        try {
+          const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: {
+              // @ts-expect-error - systemAudio es experimental
+              systemAudio: 'include',
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          })
+          
+          const audioTracks = stream.getAudioTracks()
+          if (audioTracks.length === 0) {
+            stream.getTracks().forEach(t => t.stop())
+            // Fallback graceful a simulation
+            console.warn('[SetupView] ⚠️ No audio tracks - fallback to simulation')
+            trinity.setSimulating(true)
+            setAudioSource('simulation')
+          } else {
+            console.log('[SetupView] ✅ System audio OK')
+            trinity.setSimulating(false)
+            setAudioSource('system')
+          }
+        } catch (displayError) {
+          // getDisplayMedia falló - usar simulation
+          console.warn('[SetupView] ⚠️ System audio failed - using simulation:', displayError)
+          trinity.setSimulating(true)
+          setAudioSource('simulation')
         }
         
       } else if (source === 'microphone') {

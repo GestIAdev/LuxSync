@@ -67,7 +67,8 @@ interface Window {
     // Control
     start: () => Promise<{ success: boolean }>
     stop: () => Promise<{ success: boolean }>
-    setPalette: (paletteIndex: number) => Promise<{ success: boolean }>
+    // FIX: Ahora acepta string canónico del ColorEngine ('fuego' | 'hielo' | 'selva' | 'neon')
+    setPalette: (paletteId: string) => Promise<{ success: boolean }>
     setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => Promise<{ success: boolean }>
     triggerEffect: (effectName: string, params?: Record<string, unknown>, duration?: number) => Promise<{ success: boolean; effectId?: number }>
     cancelEffect: (effectId: number) => Promise<{ success: boolean }>
@@ -77,7 +78,7 @@ interface Window {
     
     // Events
     onStateUpdate: (callback: (state: SeleneStateUpdate) => void) => () => void
-    onPaletteChange: (callback: (paletteIndex: number) => void) => () => void
+    onPaletteChange: (callback: (paletteId: string) => void) => () => void
     onEffectTriggered: (callback: (effectName: string, effectId: number) => void) => () => void
   }
 }

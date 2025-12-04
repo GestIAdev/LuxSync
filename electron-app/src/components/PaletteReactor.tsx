@@ -3,19 +3,26 @@
  * Botones que crecen para llenar el espacio disponible
  * 
  * Wave 3: Conectado con Selene Lux Core via window.lux
+ * 
+ * FIX Trinity: Los botones ahora envían strings canónicos al ColorEngine
+ * UI usa inglés (fire/ice) → Engine usa español (fuego/hielo)
  */
 
 import { useLuxSyncStore, PALETTES, PaletteId } from '../stores/luxsyncStore'
 import { useSeleneColor } from '../hooks'
 
+// IDs canónicos que espera el ColorEngine (español)
+type LivingPaletteId = 'fuego' | 'hielo' | 'selva' | 'neon'
+
 const PALETTE_IDS: PaletteId[] = ['fire', 'ice', 'jungle', 'neon']
 
-// Mapeo de PaletteId a índice para Selene
-const PALETTE_INDEX_MAP: Record<PaletteId, number> = {
-  fire: 0,
-  ice: 1,
-  jungle: 2,
-  neon: 3,
+// 🔗 MAPEO UI → ENGINE (inglés → español)
+// El ColorEngine usa nombres en español para las fórmulas matemáticas
+const PALETTE_ENGINE_MAP: Record<PaletteId, LivingPaletteId> = {
+  fire: 'fuego',    // Algoritmo de rojos/naranjas dinámicos
+  ice: 'hielo',     // Algoritmo de azules/cyans con mínimo 25%
+  jungle: 'selva',  // Algoritmo de verdes/dorados tropicales  
+  neon: 'neon',     // Algoritmo de magentas/cyans cyberpunk
 }
 
 export default function PaletteReactor() {
@@ -34,11 +41,11 @@ export default function PaletteReactor() {
   const handlePaletteClick = (id: PaletteId) => {
     setActivePalette(id)
     
-    // Enviar a Selene Lux Core
+    // Enviar a Selene Lux Core - AHORA CON STRING CANÓNICO
     if (window.lux) {
-      const paletteIndex = PALETTE_INDEX_MAP[id]
-      window.lux.setPalette(paletteIndex)
-      console.log(`[PaletteReactor] 🎨 Sent palette ${id} (index: ${paletteIndex}) to Selene`)
+      const enginePaletteId = PALETTE_ENGINE_MAP[id]
+      window.lux.setPalette(enginePaletteId)
+      console.log(`[PaletteReactor] 🎨 Sent palette "${enginePaletteId}" to ColorEngine (UI: ${id})`)
     }
   }
 

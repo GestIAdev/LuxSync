@@ -119,8 +119,8 @@ const luxApi = {
   /** Detener el motor Selene */
   stop: () => ipcRenderer.invoke('lux:stop'),
   
-  /** Cambiar paleta de colores */
-  setPalette: (paletteIndex: number) => ipcRenderer.invoke('lux:set-palette', paletteIndex),
+  /** Cambiar paleta de colores - Acepta IDs canónicos del ColorEngine */
+  setPalette: (paletteId: string) => ipcRenderer.invoke('lux:set-palette', paletteId),
   
   /** Configurar movimiento */
   setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => 
@@ -156,8 +156,8 @@ const luxApi = {
   },
   
   /** Suscribirse a cambios de paleta */
-  onPaletteChange: (callback: (paletteIndex: number) => void) => {
-    const handler = (_: Electron.IpcRendererEvent, index: number) => callback(index)
+  onPaletteChange: (callback: (paletteId: string) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, id: string) => callback(id)
     ipcRenderer.on('lux:palette-change', handler)
     return () => ipcRenderer.removeListener('lux:palette-change', handler)
   },

@@ -57,8 +57,8 @@ const luxApi = {
   start: () => electron.ipcRenderer.invoke("lux:start"),
   /** Detener el motor Selene */
   stop: () => electron.ipcRenderer.invoke("lux:stop"),
-  /** Cambiar paleta de colores */
-  setPalette: (paletteIndex) => electron.ipcRenderer.invoke("lux:set-palette", paletteIndex),
+  /** Cambiar paleta de colores - Acepta IDs canónicos del ColorEngine */
+  setPalette: (paletteId) => electron.ipcRenderer.invoke("lux:set-palette", paletteId),
   /** Configurar movimiento */
   setMovement: (config) => electron.ipcRenderer.invoke("lux:set-movement", config),
   /** Disparar un efecto */
@@ -82,7 +82,7 @@ const luxApi = {
   },
   /** Suscribirse a cambios de paleta */
   onPaletteChange: (callback) => {
-    const handler = (_, index) => callback(index);
+    const handler = (_, id) => callback(id);
     electron.ipcRenderer.on("lux:palette-change", handler);
     return () => electron.ipcRenderer.removeListener("lux:palette-change", handler);
   },

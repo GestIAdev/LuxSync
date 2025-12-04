@@ -12,11 +12,26 @@
  * @module engines/musical/context
  */
 
-// TODO: FASE 4 - MusicalContextEngine
-// export { MusicalContextEngine } from './MusicalContextEngine';
+// FASE 4 - MusicalContextEngine
+export { 
+  MusicalContextEngine, 
+  createMusicalContextEngine,
+  type OperationMode,
+  type ReactiveResult,
+  type IntelligentResult,
+  type EngineResult,
+  type MusicalContextEngineConfig,
+} from './MusicalContextEngine.js';
 
-// TODO: FASE 4 - PredictionMatrix
-// export { PredictionMatrix } from './PredictionMatrix';
+// FASE 4 - PredictionMatrix
+export { 
+  PredictionMatrix, 
+  createPredictionMatrix,
+  type LightingAction,
+  type PredictionActions,
+  type ExtendedPrediction,
+  type PredictionMatrixConfig,
+} from './PredictionMatrix.js';
 
 // Re-export types
 export type {

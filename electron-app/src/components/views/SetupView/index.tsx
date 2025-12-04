@@ -178,12 +178,12 @@ const SetupView: React.FC = () => {
 
   // === DMX: AUTO-CONNECT VIRTUAL ===
   useEffect(() => {
-    if (selectedDMXDriver === 'virtual') {
-      // Virtual mode = SIEMPRE conectado
+    if (selectedDMXDriver === 'virtual' && !dmxConnected) {
+      // Virtual mode = SIEMPRE conectado (solo una vez)
       setDmxConnected(true)
       dmxStore.connect('virtual', 'VIRTUAL')
     }
-  }, [selectedDMXDriver, dmxStore])
+  }, [selectedDMXDriver]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================================================
   // AUDIO HANDLERS - FIXED

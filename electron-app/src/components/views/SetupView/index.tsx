@@ -1,17 +1,17 @@
 /**
- * ⚙️ SETUP VIEW - CYBERPUNK EDITION
- * WAVE 9.6: El Wizard que merece LuxSync
+ * ⚙️ SETUP VIEW - CYBERPUNK EDITION v2
+ * WAVE 9.6.1: UX Fixes
  * 
- * FEATURES:
- * - Diseño Glassmorphism + Neon
- * - Audio: Simulation (sin permisos), System (getDisplayMedia), Microphone
- * - Fixtures: Iconos por tipo, layout profesional
- * - Patch Table: DMX address management
+ * FIXES:
+ * - Simulation: Activación INMEDIATA sin permisos
+ * - System Audio: Manejo graceful de cancelación
+ * - DMX Virtual: Connected inmediato
+ * - Fixtures: Layout 2 columnas con scroll independiente
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAudioStore } from '../../../stores/audioStore'
-import { useDMXStore, DMX_DRIVERS } from '../../../stores/dmxStore'
+import { useDMXStore } from '../../../stores/dmxStore'
 import { useSeleneStore } from '../../../stores/seleneStore'
 import { useTrinity } from '../../../providers/TrinityProvider'
 import './SetupView.css'
@@ -38,6 +38,17 @@ interface PatchedFixture extends FixtureLibraryItem {
 }
 
 // ============================================================================
+// DMX DRIVERS
+// ============================================================================
+
+const DMX_DRIVERS = [
+  { id: 'virtual', label: '🎮 Virtual (Demo)', description: 'Sin hardware - perfecto para testing' },
+  { id: 'enttec-open', label: '🔌 Enttec Open DMX', description: 'USB DMX barato y funcional' },
+  { id: 'enttec-pro', label: '⚡ Enttec DMX USB Pro', description: 'Interfaz profesional con feedback' },
+  { id: 'artnet', label: '🌐 Art-Net', description: 'DMX sobre red Ethernet' },
+]
+
+// ============================================================================
 // FIXTURE TYPE ICONS
 // ============================================================================
 
@@ -45,10 +56,10 @@ const getFixtureTypeIcon = (name: string, type: string): { icon: string; classNa
   const nameLower = name.toLowerCase()
   const typeLower = type.toLowerCase()
   
-  if (nameLower.includes('spot') || nameLower.includes('beam') || typeLower.includes('moving')) {
+  if (nameLower.includes('spot') || nameLower.includes('vizi') || typeLower.includes('moving')) {
     return { icon: '🎯', className: 'moving-head' }
   }
-  if (nameLower.includes('wash') || nameLower.includes('led wash')) {
+  if (nameLower.includes('wash') || nameLower.includes('quantum')) {
     return { icon: '💧', className: 'wash' }
   }
   if (nameLower.includes('par') || nameLower.includes('flat')) {
@@ -75,16 +86,15 @@ const SetupView: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<SetupStep>(1)
   
   // === AUDIO STATE ===
-  const [audioSource, setAudioSource] = useState<AudioSourceType>('simulation')
+  const [audioSource, setAudioSource] = useState<AudioSourceType>('none')
   const [audioLevel, setAudioLevel] = useState(0)
   const [sensitivity, setSensitivity] = useState(50)
   const [isConnectingAudio, setIsConnectingAudio] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
   
   // === DMX STATE ===
-  const [selectedDMXDriver, setSelectedDMXDriver] = useState('enttec-open')
-  const [isTestingDMX, setIsTestingDMX] = useState(false)
-  const [dmxTestResult, setDmxTestResult] = useState<'none' | 'success' | 'fail'>('none')
+  const [selectedDMXDriver, setSelectedDMXDriver] = useState('virtual')
+  const [dmxConnected, setDmxConnected] = useState(false)
   
   // === FIXTURE STATE ===
   const [fixtureLibrary, setFixtureLibrary] = useState<FixtureLibraryItem[]>([])
@@ -96,39 +106,44 @@ const SetupView: React.FC = () => {
   
   // Stores
   const { bpm, bpmConfidence } = useAudioStore()
-  const { isConnected: dmxConnected } = useDMXStore()
+  const dmxStore = useDMXStore()
   useSeleneStore()
   
   // Trinity provider
   const trinity = useTrinity()
 
-  // === EFFECTS ===
-  
-  // Load config on mount
+  // === LOAD CONFIG ON MOUNT ===
   useEffect(() => {
     const loadConfig = async () => {
       if (!window.lux) return
       try {
         const result = await window.lux.getConfig()
         if (result.success && result.config) {
-          setAudioSource(result.config.audio?.source || 'simulation')
+          const savedSource = result.config.audio?.source
+          if (savedSource) {
+            setAudioSource(savedSource as AudioSourceType)
+            if (savedSource === 'simulation') {
+              trinity.setSimulating(true)
+            }
+          }
           setSensitivity(result.config.audio?.sensitivity || 50)
-          setSelectedDMXDriver(result.config.dmx?.driver || 'enttec-open')
+          setSelectedDMXDriver(result.config.dmx?.driver || 'virtual')
         }
       } catch (err) {
         console.error('[SetupView] Error loading config:', err)
       }
     }
     loadConfig()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
-  // Scan fixtures on mount
+  // === SCAN FIXTURES ON MOUNT ===
   useEffect(() => {
     scanFixtures()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
-  // Load patched fixtures
+  // === LOAD PATCHED FIXTURES ===
   useEffect(() => {
     const loadPatched = async () => {
       if (!window.lux) return
@@ -144,7 +159,7 @@ const SetupView: React.FC = () => {
     loadPatched()
   }, [])
 
-  // Audio level animation
+  // === AUDIO LEVEL ANIMATION ===
   useEffect(() => {
     if (trinity.state.isAudioActive && trinity.audioMetrics) {
       setAudioLevel(trinity.audioMetrics.energy)
@@ -161,89 +176,123 @@ const SetupView: React.FC = () => {
     }
   }, [trinity.state.isAudioActive, trinity.audioMetrics, audioSource])
 
-  // === AUDIO HANDLERS ===
+  // === DMX: AUTO-CONNECT VIRTUAL ===
+  useEffect(() => {
+    if (selectedDMXDriver === 'virtual') {
+      // Virtual mode = SIEMPRE conectado
+      setDmxConnected(true)
+      dmxStore.connect('virtual', 'VIRTUAL')
+    }
+  }, [selectedDMXDriver, dmxStore])
+
+  // ============================================================================
+  // AUDIO HANDLERS - FIXED
+  // ============================================================================
   
   const connectAudio = useCallback(async (source: 'microphone' | 'system' | 'simulation') => {
-    setIsConnectingAudio(true)
     setAudioError(null)
     
+    // ========================================
+    // SIMULATION: Activación INMEDIATA
+    // ========================================
+    if (source === 'simulation') {
+      console.log('[SetupView] 🎵 SIMULATION - Instant activation, NO permissions')
+      trinity.setSimulating(true)
+      setAudioSource('simulation')
+      
+      if (window.lux) {
+        await window.lux.saveConfig({ audio: { source, sensitivity } })
+      }
+      return // Salir inmediato - no loading
+    }
+    
+    // ========================================
+    // SYSTEM / MICROPHONE: Requieren permisos
+    // ========================================
+    setIsConnectingAudio(true)
+    
     try {
-      if (source === 'simulation') {
-        // SIMULATION: NO pedir permisos, solo activar generador interno
-        console.log('[SetupView] 🎵 Activating simulation mode - NO permissions needed')
-        trinity.setSimulating(true)
-        setAudioSource('simulation')
+      if (source === 'system') {
+        console.log('[SetupView] 🖥️ Requesting system audio...')
         
-      } else if (source === 'system') {
-        // SYSTEM AUDIO: Lanzar getDisplayMedia inmediatamente
-        console.log('[SetupView] 🖥️ Launching getDisplayMedia for system audio...')
-        
-        try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: {
-              // @ts-expect-error - systemAudio es una API nueva
-              systemAudio: 'include',
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
-            }
-          })
-          
-          // Verificar que tenemos audio
-          const audioTracks = stream.getAudioTracks()
-          if (audioTracks.length === 0) {
-            throw new Error('No se capturó audio del sistema. Asegúrate de compartir una pestaña con audio.')
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            // @ts-expect-error - systemAudio es experimental
+            systemAudio: 'include',
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
           }
-          
-          console.log('[SetupView] ✅ System audio captured:', audioTracks[0].label)
+        })
+        
+        const audioTracks = stream.getAudioTracks()
+        if (audioTracks.length === 0) {
+          stream.getTracks().forEach(t => t.stop())
+          // Fallback graceful a simulation
+          console.warn('[SetupView] ⚠️ No audio - fallback to simulation')
+          trinity.setSimulating(true)
+          setAudioSource('simulation')
+          setAudioError('No se detectó audio. Activado modo simulación.')
+        } else {
+          console.log('[SetupView] ✅ System audio OK')
           trinity.setSimulating(false)
-          // TODO: Conectar el stream al AudioContext del Trinity
           setAudioSource('system')
-          
-        } catch (displayError) {
-          console.error('[SetupView] getDisplayMedia error:', displayError)
-          throw new Error('Permiso denegado o cancelado. Debes compartir una ventana con audio.')
         }
         
       } else if (source === 'microphone') {
-        // MICROPHONE: getUserMedia estándar
-        console.log('[SetupView] 🎤 Requesting microphone access...')
-        
-        try {
-          await navigator.mediaDevices.getUserMedia({ audio: true })
-          console.log('[SetupView] ✅ Microphone access granted')
-          trinity.setSimulating(false)
-          setAudioSource('microphone')
-          
-        } catch (micError) {
-          console.error('[SetupView] getUserMedia error:', micError)
-          throw new Error('Permiso de micrófono denegado')
-        }
+        console.log('[SetupView] 🎤 Requesting microphone...')
+        await navigator.mediaDevices.getUserMedia({ audio: true })
+        console.log('[SetupView] ✅ Microphone OK')
+        trinity.setSimulating(false)
+        setAudioSource('microphone')
       }
       
-      // Guardar en config
       if (window.lux) {
-        await window.lux.saveConfig({
-          audio: { source, sensitivity }
-        })
+        await window.lux.saveConfig({ audio: { source, sensitivity } })
       }
       
     } catch (err) {
-      console.error('[SetupView] Audio error:', err)
-      setAudioError(err instanceof Error ? err.message : 'Error al conectar audio')
+      // Usuario canceló o denegó
+      console.warn('[SetupView] Audio cancelled/denied:', err)
+      // Fallback silencioso a simulation
+      trinity.setSimulating(true)
+      setAudioSource('simulation')
+      setAudioError('Permiso cancelado. Usando simulación.')
     } finally {
       setIsConnectingAudio(false)
     }
   }, [sensitivity, trinity])
 
-  // === FIXTURE HANDLERS ===
+  // ============================================================================
+  // DMX HANDLERS
+  // ============================================================================
+  
+  const selectDMXDriver = useCallback((driverId: string) => {
+    setSelectedDMXDriver(driverId)
+    
+    if (driverId === 'virtual') {
+      // Virtual = Connected inmediato
+      setDmxConnected(true)
+      dmxStore.connect('virtual', 'VIRTUAL')
+      console.log('[SetupView] 🎮 Virtual DMX - CONNECTED')
+    } else {
+      // Hardware real - requiere detección
+      setDmxConnected(false)
+      dmxStore.disconnect()
+    }
+    
+    if (window.lux) {
+      window.lux.saveConfig({ dmx: { driver: driverId, port: 'AUTO', universe: 1, frameRate: 40 } })
+    }
+  }, [dmxStore])
+
+  // ============================================================================
+  // FIXTURE HANDLERS
+  // ============================================================================
   
   const scanFixtures = useCallback(async () => {
-    if (!window.lux) {
-      console.warn('[SetupView] window.lux not available')
-      return
-    }
+    if (!window.lux) return
     
     setIsScanning(true)
     try {
@@ -292,31 +341,23 @@ const SetupView: React.FC = () => {
 
   const clearAllPatch = useCallback(async () => {
     if (!window.lux) return
+    if (!confirm('¿Eliminar todos los fixtures?')) return
     
-    if (confirm('¿Eliminar todos los fixtures del patch?')) {
-      try {
-        const result = await window.lux.clearPatch()
-        if (result.success) {
-          setPatchedFixtures([])
-          setNextDmxAddress(1)
-        }
-      } catch (err) {
-        console.error('[SetupView] Clear error:', err)
+    try {
+      const result = await window.lux.clearPatch()
+      if (result.success) {
+        setPatchedFixtures([])
+        setNextDmxAddress(1)
       }
+    } catch (err) {
+      console.error('[SetupView] Clear error:', err)
     }
   }, [])
 
-  // === DMX TEST ===
-  const testDMXConnection = () => {
-    setIsTestingDMX(true)
-    setDmxTestResult('none')
-    setTimeout(() => {
-      setIsTestingDMX(false)
-      setDmxTestResult(Math.random() > 0.3 ? 'success' : 'fail')
-    }, 1500)
-  }
-
-  // === COMPUTED ===
+  // ============================================================================
+  // COMPUTED
+  // ============================================================================
+  
   const filteredLibrary = fixtureLibrary.filter(f => 
     f.name.toLowerCase().includes(librarySearchTerm.toLowerCase()) ||
     f.manufacturer.toLowerCase().includes(librarySearchTerm.toLowerCase())
@@ -335,7 +376,7 @@ const SetupView: React.FC = () => {
   const isStepComplete = (step: number): boolean => {
     switch(step) {
       case 1: return audioSource !== 'none'
-      case 2: return dmxConnected || selectedDMXDriver !== ''
+      case 2: return dmxConnected
       case 3: return patchedFixtures.length > 0
       case 4: return audioSource !== 'none' && patchedFixtures.length > 0
       default: return false
@@ -354,8 +395,8 @@ const SetupView: React.FC = () => {
       <header className="setup-header">
         <div className="setup-title">
           <h2>⚙️ SETUP</h2>
-          <span className={`setup-badge ${currentStep === 4 && isStepComplete(4) ? 'complete' : ''}`}>
-            {currentStep === 4 && isStepComplete(4) ? '✓ READY' : `STEP ${currentStep}/4`}
+          <span className={`setup-badge ${isStepComplete(4) ? 'complete' : ''}`}>
+            {isStepComplete(4) ? '✓ READY' : `STEP ${currentStep}/4`}
           </span>
         </div>
       </header>
@@ -382,22 +423,30 @@ const SetupView: React.FC = () => {
       <div className="setup-wizard">
         <div className="wizard-content">
           
-          {/* === STEP 1: AUDIO === */}
+          {/* ========== STEP 1: AUDIO ========== */}
           {currentStep === 1 && (
             <div className="wizard-step">
-              <h3>
-                <span className="step-emoji">🎤</span>
-                AUDIO INPUT SETUP
-              </h3>
+              <h3><span className="step-emoji">🎤</span> AUDIO INPUT SETUP</h3>
               
               {audioError && (
-                <div className="error-banner">
-                  <span>⚠️</span>
-                  {audioError}
+                <div className="error-banner warning">
+                  <span>⚠️</span> {audioError}
                 </div>
               )}
               
               <div className="audio-sources">
+                {/* Simulation - PRIMERA OPCIÓN */}
+                <button 
+                  className={`source-card simulation ${audioSource === 'simulation' ? 'active' : ''}`}
+                  onClick={() => connectAudio('simulation')}
+                  disabled={isConnectingAudio}
+                >
+                  <div className="source-icon-wrapper">🎵</div>
+                  <span className="source-name">Simulation</span>
+                  <span className="source-desc">Demo mode - Sin permisos necesarios</span>
+                  {audioSource === 'simulation' && <span className="source-check">✓</span>}
+                </button>
+                
                 {/* System Audio */}
                 <button 
                   className={`source-card system ${audioSource === 'system' ? 'active' : ''}`}
@@ -406,7 +455,7 @@ const SetupView: React.FC = () => {
                 >
                   <div className="source-icon-wrapper">🖥️</div>
                   <span className="source-name">System Audio</span>
-                  <span className="source-desc">Captura el audio que reproduce tu PC (Spotify, YouTube, etc.)</span>
+                  <span className="source-desc">Spotify, YouTube, etc.</span>
                   {audioSource === 'system' && <span className="source-check">✓</span>}
                 </button>
                 
@@ -418,20 +467,8 @@ const SetupView: React.FC = () => {
                 >
                   <div className="source-icon-wrapper">🎤</div>
                   <span className="source-name">Microphone</span>
-                  <span className="source-desc">Usa un micrófono o entrada de línea externa</span>
+                  <span className="source-desc">Entrada de línea externa</span>
                   {audioSource === 'microphone' && <span className="source-check">✓</span>}
-                </button>
-                
-                {/* Simulation */}
-                <button 
-                  className={`source-card simulation ${audioSource === 'simulation' ? 'active' : ''}`}
-                  onClick={() => connectAudio('simulation')}
-                  disabled={isConnectingAudio}
-                >
-                  <div className="source-icon-wrapper">🎵</div>
-                  <span className="source-name">Simulation</span>
-                  <span className="source-desc">Audio generado para demos y testing</span>
-                  {audioSource === 'simulation' && <span className="source-check">✓</span>}
                 </button>
               </div>
               
@@ -443,10 +480,7 @@ const SetupView: React.FC = () => {
               <div className="audio-visualizer">
                 <div className="visualizer-label">AUDIO LEVEL</div>
                 <div className="vu-meter">
-                  <div 
-                    className="vu-bar" 
-                    style={{ width: `${Math.min(100, audioLevel * 100)}%` }} 
-                  />
+                  <div className="vu-bar" style={{ width: `${Math.min(100, audioLevel * 100)}%` }} />
                 </div>
               </div>
               
@@ -456,8 +490,7 @@ const SetupView: React.FC = () => {
                 <input 
                   type="range" 
                   className="sensitivity-slider"
-                  min="0" 
-                  max="100" 
+                  min="0" max="100" 
                   value={sensitivity}
                   onChange={(e) => setSensitivity(parseInt(e.target.value))}
                 />
@@ -466,280 +499,191 @@ const SetupView: React.FC = () => {
                 </span>
               </div>
               
-              {/* BPM Display */}
+              {/* BPM */}
               <div className="bpm-display">
-                <span className="bpm-value">
-                  {(trinity.audioMetrics?.bpm || bpm || 120).toFixed(1)}
-                </span>
+                <span className="bpm-value">{(trinity.audioMetrics?.bpm || bpm || 120).toFixed(1)}</span>
                 <span className="bpm-label">BPM ♪</span>
-                <span className="bpm-confidence">
-                  Confidence: {((bpmConfidence || 0.5) * 100).toFixed(0)}%
-                </span>
+                <span className="bpm-confidence">Confidence: {((bpmConfidence || 0.5) * 100).toFixed(0)}%</span>
               </div>
             </div>
           )}
 
-          {/* === STEP 2: DMX === */}
+          {/* ========== STEP 2: DMX ========== */}
           {currentStep === 2 && (
             <div className="wizard-step">
-              <h3>
-                <span className="step-emoji">💡</span>
-                DMX INTERFACE SETUP
-              </h3>
+              <h3><span className="step-emoji">💡</span> DMX INTERFACE</h3>
               
               <div className="dmx-interfaces">
                 {DMX_DRIVERS.map(driver => (
                   <div 
                     key={driver.id} 
                     className={`dmx-interface-card ${selectedDMXDriver === driver.id ? 'selected' : ''}`}
-                    onClick={() => setSelectedDMXDriver(driver.id)}
+                    onClick={() => selectDMXDriver(driver.id)}
                   >
                     <div className="dmx-radio" />
                     <div className="dmx-info">
                       <span className="dmx-name">{driver.label}</span>
                       <span className="dmx-desc">{driver.description}</span>
                     </div>
+                    {selectedDMXDriver === driver.id && dmxConnected && (
+                      <span className="dmx-status connected">✓ Connected</span>
+                    )}
                   </div>
                 ))}
               </div>
               
-              <div className="patch-controls">
-                <span className="patch-label">Port:</span>
-                <select 
-                  className="patch-address-input" 
-                  defaultValue="AUTO"
-                  style={{ width: 'auto' }}
-                >
-                  <option value="AUTO">AUTO</option>
-                  <option value="COM3">COM3</option>
-                  <option value="COM4">COM4</option>
-                </select>
-                
-                <span className="patch-label" style={{ marginLeft: '16px' }}>Universe:</span>
-                <input 
-                  type="number" 
-                  className="patch-address-input"
-                  defaultValue={1} 
-                  min={1} 
-                  max={32768} 
-                />
-                
-                <button 
-                  className="patch-btn"
-                  onClick={testDMXConnection}
-                  disabled={isTestingDMX}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  {isTestingDMX ? '⏳ Testing...' : '🔌 Test Connection'}
-                </button>
+              {/* Status */}
+              <div className={`dmx-connection-status ${dmxConnected ? 'connected' : ''}`}>
+                <span className="status-dot" />
+                <span>{dmxConnected ? 'DMX CONNECTED' : 'DMX NOT CONNECTED'}</span>
               </div>
-              
-              {dmxTestResult !== 'none' && (
-                <div className={`test-item ${dmxTestResult === 'success' ? 'pass' : 'fail'}`} style={{ marginTop: '16px' }}>
-                  <span className="test-icon">{dmxTestResult === 'success' ? '✓' : '✗'}</span>
-                  <span className="test-name">Connection Test</span>
-                  <span className="test-status">
-                    {dmxTestResult === 'success' ? 'Interface detected!' : 'No device found'}
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
-          {/* === STEP 3: FIXTURES === */}
+          {/* ========== STEP 3: FIXTURES - 2 COLUMN LAYOUT ========== */}
           {currentStep === 3 && (
             <div className="wizard-step fixture-section">
-              <h3>
-                <span className="step-emoji">🔦</span>
-                FIXTURE LIBRARY
-              </h3>
+              <h3><span className="step-emoji">🔦</span> FIXTURE PATCH</h3>
               
-              {/* Search + Scan */}
-              <div className="fixture-search">
-                <input 
-                  type="text"
-                  className="search-input"
-                  placeholder="🔍 Buscar fixtures..."
-                  value={librarySearchTerm}
-                  onChange={(e) => setLibrarySearchTerm(e.target.value)}
-                />
-                <button 
-                  className="scan-btn"
-                  onClick={scanFixtures}
-                  disabled={isScanning}
-                >
-                  {isScanning ? '⏳' : '📂'} 
-                  {isScanning ? 'Escaneando...' : 'Scan Library'}
-                </button>
-              </div>
-              
-              {/* Fixture Library */}
-              <div className="fixture-library">
-                {filteredLibrary.length === 0 ? (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📦</div>
-                    <div className="empty-state-text">
-                      {isScanning ? 'Escaneando...' : 'No se encontraron fixtures. Usa "Scan Library".'}
-                    </div>
-                  </div>
-                ) : (
-                  filteredLibrary.map(fixture => {
-                    const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
-                    return (
-                      <div 
-                        key={fixture.id}
-                        className={`fixture-card ${selectedLibraryFixture === fixture.id ? 'selected' : ''}`}
-                        onClick={() => setSelectedLibraryFixture(fixture.id)}
-                      >
-                        <div className={`fixture-type-icon ${className}`}>
-                          {icon}
-                        </div>
-                        <div className="fixture-info">
-                          <div className="fixture-name">{fixture.name}</div>
-                          <div className="fixture-meta">
-                            <span className="fixture-manufacturer">{fixture.manufacturer}</span>
-                            <span className="fixture-channels">{fixture.channelCount}ch</span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-              
-              {/* Patch Controls */}
-              {selectedLibraryFixture && (
-                <div className="patch-controls">
-                  <span className="patch-label">DMX Address:</span>
-                  <input 
-                    type="number"
-                    className="patch-address-input"
-                    value={nextDmxAddress}
-                    onChange={(e) => setNextDmxAddress(parseInt(e.target.value) || 1)}
-                    min={1}
-                    max={512}
-                  />
-                  <button 
-                    className="patch-btn"
-                    onClick={() => patchFixture(selectedLibraryFixture)}
-                  >
-                    ➕ ADD TO PATCH
-                  </button>
-                </div>
-              )}
-              
-              {/* Patched Fixtures Table */}
-              {patchedFixtures.length > 0 && (
-                <div className="patch-table-section">
-                  <div className="patch-table-header">
-                    <div className="patch-table-title">
-                      📋 PATCHED FIXTURES
-                      <span className="patch-count">{patchedFixtures.length} fixtures • {totalChannelsUsed}/512 ch</span>
-                    </div>
-                    <button className="clear-patch-btn" onClick={clearAllPatch}>
-                      🗑️ Clear All
+              {/* 2-COLUMN GRID LAYOUT */}
+              <div className="fixture-grid">
+                {/* LEFT: Library */}
+                <div className="fixture-column library-column">
+                  <div className="column-header">
+                    <span className="column-title">📦 LIBRARY</span>
+                    <button className="scan-btn-mini" onClick={scanFixtures} disabled={isScanning}>
+                      {isScanning ? '⏳' : '🔄'}
                     </button>
                   </div>
                   
-                  <div className="patch-table">
-                    <div className="patch-row header">
-                      <div className="patch-cell">ADDR</div>
-                      <div className="patch-cell">TYPE</div>
-                      <div className="patch-cell">NAME</div>
-                      <div className="patch-cell">CH</div>
-                      <div className="patch-cell"></div>
-                    </div>
-                    {patchedFixtures.map(fixture => {
-                      const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
-                      return (
-                        <div key={fixture.dmxAddress} className="patch-row">
-                          <div className="patch-cell address">{fixture.dmxAddress}</div>
-                          <div className="patch-cell">
-                            <div className={`fixture-type-icon ${className}`} style={{ width: 28, height: 28, fontSize: '0.9rem' }}>
-                              {icon}
+                  <input 
+                    type="text"
+                    className="search-input"
+                    placeholder="🔍 Buscar..."
+                    value={librarySearchTerm}
+                    onChange={(e) => setLibrarySearchTerm(e.target.value)}
+                  />
+                  
+                  <div className="fixture-list">
+                    {filteredLibrary.length === 0 ? (
+                      <div className="empty-state-mini">
+                        {isScanning ? '⏳ Escaneando...' : '📦 Sin fixtures'}
+                      </div>
+                    ) : (
+                      filteredLibrary.map(fixture => {
+                        const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
+                        return (
+                          <div 
+                            key={fixture.id}
+                            className={`fixture-card-mini ${selectedLibraryFixture === fixture.id ? 'selected' : ''}`}
+                            onClick={() => setSelectedLibraryFixture(fixture.id)}
+                          >
+                            <div className={`fixture-icon ${className}`}>{icon}</div>
+                            <div className="fixture-details">
+                              <span className="fixture-name">{fixture.name}</span>
+                              <span className="fixture-meta">{fixture.manufacturer} • {fixture.channelCount}ch</span>
                             </div>
                           </div>
-                          <div className="patch-cell">{fixture.name}</div>
-                          <div className="patch-cell channels">{fixture.channelCount}</div>
-                          <div className="patch-cell">
-                            <button 
-                              className="patch-remove-btn"
-                              onClick={() => unpatchFixture(fixture.dmxAddress)}
-                            >
-                              ✕
-                            </button>
+                        )
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Patch Button */}
+                  {selectedLibraryFixture && (
+                    <div className="patch-action">
+                      <span>DMX:</span>
+                      <input 
+                        type="number"
+                        className="dmx-input"
+                        value={nextDmxAddress}
+                        onChange={(e) => setNextDmxAddress(parseInt(e.target.value) || 1)}
+                        min={1} max={512}
+                      />
+                      <button className="patch-btn" onClick={() => patchFixture(selectedLibraryFixture)}>
+                        ➕ PATCH
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* RIGHT: Patched */}
+                <div className="fixture-column patch-column">
+                  <div className="column-header">
+                    <span className="column-title">📋 PATCHED</span>
+                    <span className="patch-stats">{patchedFixtures.length} • {totalChannelsUsed}/512ch</span>
+                  </div>
+                  
+                  {patchedFixtures.length > 0 && (
+                    <button className="clear-all-btn" onClick={clearAllPatch}>🗑️ Clear</button>
+                  )}
+                  
+                  <div className="fixture-list">
+                    {patchedFixtures.length === 0 ? (
+                      <div className="empty-state-mini">
+                        📋 Sin fixtures patcheados
+                      </div>
+                    ) : (
+                      patchedFixtures.map(fixture => {
+                        const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
+                        return (
+                          <div key={fixture.dmxAddress} className="patched-card">
+                            <span className="patched-addr">{fixture.dmxAddress}</span>
+                            <div className={`fixture-icon ${className}`}>{icon}</div>
+                            <div className="fixture-details">
+                              <span className="fixture-name">{fixture.name}</span>
+                              <span className="fixture-meta">{fixture.channelCount}ch</span>
+                            </div>
+                            <button className="remove-btn" onClick={() => unpatchFixture(fixture.dmxAddress)}>✕</button>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* === STEP 4: SYSTEM TEST === */}
+          {/* ========== STEP 4: TEST ========== */}
           {currentStep === 4 && (
             <div className="wizard-step">
-              <h3>
-                <span className="step-emoji">✓</span>
-                SYSTEM TEST
-              </h3>
+              <h3><span className="step-emoji">✓</span> SYSTEM TEST</h3>
               
               <div className="test-results">
-                {/* Audio Test */}
                 <div className={`test-item ${audioSource !== 'none' ? 'pass' : 'fail'}`}>
                   <span className="test-icon">{audioSource !== 'none' ? '✓' : '✗'}</span>
                   <span className="test-name">Audio Input</span>
                   <span className="test-status">
-                    {audioSource === 'system' ? '🖥️ System Audio' :
-                     audioSource === 'microphone' ? '🎤 Microphone' :
-                     audioSource === 'simulation' ? '🎵 Simulation' : 'Not configured'}
+                    {audioSource === 'system' ? '🖥️ System' :
+                     audioSource === 'microphone' ? '🎤 Mic' :
+                     audioSource === 'simulation' ? '🎵 Sim' : 'Off'}
                   </span>
                 </div>
                 
-                {/* Beat Detection Test */}
-                <div className={`test-item ${trinity.audioMetrics?.bpm ? 'pass' : 'pending'}`}>
-                  <span className="test-icon">{trinity.audioMetrics?.bpm ? '✓' : '○'}</span>
-                  <span className="test-name">Beat Detection</span>
-                  <span className="test-status">
-                    {trinity.audioMetrics?.bpm 
-                      ? `Working • ${trinity.audioMetrics.bpm.toFixed(1)} BPM` 
-                      : 'Waiting for audio...'}
-                  </span>
-                </div>
-                
-                {/* DMX Test */}
-                <div className={`test-item ${dmxConnected ? 'pass' : selectedDMXDriver ? 'pending' : 'fail'}`}>
-                  <span className="test-icon">{dmxConnected ? '✓' : selectedDMXDriver ? '○' : '✗'}</span>
+                <div className={`test-item ${dmxConnected ? 'pass' : 'fail'}`}>
+                  <span className="test-icon">{dmxConnected ? '✓' : '✗'}</span>
                   <span className="test-name">DMX Interface</span>
-                  <span className="test-status">
-                    {dmxConnected ? 'Connected' : selectedDMXDriver ? 'Ready to connect' : 'Not configured'}
-                  </span>
+                  <span className="test-status">{dmxConnected ? 'Connected' : 'Not connected'}</span>
                 </div>
                 
-                {/* Fixtures Test */}
                 <div className={`test-item ${patchedFixtures.length > 0 ? 'pass' : 'fail'}`}>
                   <span className="test-icon">{patchedFixtures.length > 0 ? '✓' : '✗'}</span>
                   <span className="test-name">Fixtures</span>
                   <span className="test-status">
-                    {patchedFixtures.length > 0 
-                      ? `${patchedFixtures.length} fixtures • ${totalChannelsUsed} channels` 
-                      : 'No fixtures patched'}
+                    {patchedFixtures.length > 0 ? `${patchedFixtures.length} patched` : 'None'}
                   </span>
                 </div>
               </div>
               
-              {/* Ready Status */}
-              {audioSource !== 'none' && patchedFixtures.length > 0 ? (
-                <div className="bpm-display" style={{ marginTop: '24px', background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 255, 136, 0.05))' }}>
-                  <span className="bpm-value" style={{ color: '#00ff88' }}>✓</span>
-                  <span className="bpm-label" style={{ color: '#00ff88' }}>SYSTEM READY</span>
-                  <span className="bpm-confidence">You can start using LuxSync!</span>
+              {isStepComplete(4) ? (
+                <div className="ready-banner">
+                  <span className="ready-icon">🚀</span>
+                  <span>SYSTEM READY - Start using LuxSync!</span>
                 </div>
               ) : (
-                <div className="error-banner" style={{ marginTop: '24px' }}>
-                  ⚠️ Complete the setup to start: Configure audio and patch at least one fixture.
+                <div className="error-banner">
+                  ⚠️ Complete setup: Audio + Fixtures required
                 </div>
               )}
             </div>
@@ -748,58 +692,44 @@ const SetupView: React.FC = () => {
 
         {/* Navigation */}
         <div className="wizard-nav">
-          <button 
-            className="nav-btn prev"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-          >
+          <button className="nav-btn prev" onClick={prevStep} disabled={currentStep === 1}>
             ← Previous
           </button>
           
           {currentStep < 4 ? (
-            <button 
-              className="nav-btn next"
-              onClick={nextStep}
-            >
+            <button className="nav-btn next" onClick={nextStep}>
               Next →
             </button>
           ) : (
-            <button 
-              className="nav-btn finish"
-              onClick={() => {
-                // Aquí podrías cerrar el wizard o ir a LIVE
-                console.log('[SetupView] ✅ Setup complete!')
-              }}
-              disabled={!isStepComplete(4)}
-            >
-              🚀 START LUXSYNC
+            <button className="nav-btn finish" disabled={!isStepComplete(4)}>
+              🚀 START
             </button>
           )}
         </div>
       </div>
 
-      {/* Quick Status Footer */}
+      {/* Quick Status */}
       <div className="quick-status">
         <div className={`status-item ${audioSource !== 'none' ? 'ok' : 'error'}`}>
           <span className="status-dot" />
           <span className="status-label">Audio:</span>
           <span className="status-value">
-            {audioSource === 'system' ? 'System' :
-             audioSource === 'microphone' ? 'Mic' :
-             audioSource === 'simulation' ? 'Sim' : 'Off'}
+            {audioSource === 'simulation' ? '🎵 Sim' :
+             audioSource === 'system' ? '🖥️' :
+             audioSource === 'microphone' ? '🎤' : 'Off'}
           </span>
         </div>
         
-        <div className={`status-item ${dmxConnected ? 'ok' : selectedDMXDriver ? 'pending' : 'error'}`}>
+        <div className={`status-item ${dmxConnected ? 'ok' : 'error'}`}>
           <span className="status-dot" />
           <span className="status-label">DMX:</span>
-          <span className="status-value">{dmxConnected ? 'Connected' : 'Not connected'}</span>
+          <span className="status-value">{dmxConnected ? '✓' : '✗'}</span>
         </div>
         
         <div className={`status-item ${patchedFixtures.length > 0 ? 'ok' : 'error'}`}>
           <span className="status-dot" />
           <span className="status-label">Fixtures:</span>
-          <span className="status-value">{patchedFixtures.length} patched</span>
+          <span className="status-value">{patchedFixtures.length}</span>
         </div>
       </div>
     </div>

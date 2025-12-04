@@ -1194,3 +1194,356 @@
 .empty-state-text {
   font-size: 0.9rem;
 }
+
+/* ============================================================================
+   FIXTURE 2-COLUMN GRID LAYOUT (NEW)
+   ============================================================================ */
+
+.fixture-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  height: 420px; /* Altura fija */
+}
+
+.fixture-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.column-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.patch-stats {
+  font-size: 0.7rem;
+  color: #00fff0;
+  background: rgba(0, 255, 240, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.scan-btn-mini {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 255, 240, 0.1);
+  border: 1px solid rgba(0, 255, 240, 0.2);
+  border-radius: 6px;
+  color: #00fff0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scan-btn-mini:hover {
+  background: rgba(0, 255, 240, 0.2);
+}
+
+.fixture-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.fixture-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fixture-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.fixture-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 240, 0.3);
+  border-radius: 2px;
+}
+
+.fixture-card-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fixture-card-mini:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(0, 255, 240, 0.2);
+}
+
+.fixture-card-mini.selected {
+  background: rgba(0, 255, 240, 0.1);
+  border-color: #00fff0;
+}
+
+.fixture-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.fixture-icon.moving-head { background: rgba(138, 43, 226, 0.15); }
+.fixture-icon.wash { background: rgba(0, 255, 240, 0.15); }
+.fixture-icon.par { background: rgba(0, 255, 136, 0.15); }
+.fixture-icon.strobe { background: rgba(255, 215, 0, 0.15); }
+.fixture-icon.beam { background: rgba(255, 107, 53, 0.15); }
+.fixture-icon.laser { background: rgba(255, 51, 102, 0.15); }
+
+.fixture-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fixture-details .fixture-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fixture-details .fixture-meta {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.empty-state-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+}
+
+/* Patch Action Row */
+.patch-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(0, 255, 240, 0.05);
+  border: 1px solid rgba(0, 255, 240, 0.2);
+  border-radius: 8px;
+  margin-top: auto;
+}
+
+.patch-action span {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dmx-input {
+  width: 60px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 240, 0.3);
+  border-radius: 6px;
+  color: #00fff0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.patch-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #00fff0, #00ff88);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.patch-btn:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 240, 0.4);
+}
+
+/* Patched Column */
+.clear-all-btn {
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  background: rgba(255, 51, 102, 0.1);
+  border: 1px solid rgba(255, 51, 102, 0.2);
+  border-radius: 4px;
+  color: #ff3366;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-all-btn:hover {
+  background: rgba(255, 51, 102, 0.2);
+}
+
+.patched-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 8px;
+}
+
+.patched-addr {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #00fff0;
+  min-width: 32px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.patched-card .fixture-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 0.9rem;
+}
+
+.patched-card .fixture-details .fixture-name {
+  font-size: 0.75rem;
+}
+
+.patched-card .fixture-details .fixture-meta {
+  font-size: 0.6rem;
+}
+
+.remove-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 51, 102, 0.1);
+  border: none;
+  border-radius: 4px;
+  color: #ff3366;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.patched-card:hover .remove-btn {
+  opacity: 1;
+}
+
+.remove-btn:hover {
+  background: rgba(255, 51, 102, 0.3);
+}
+
+/* ============================================================================
+   DMX STATUS
+   ============================================================================ */
+
+.dmx-connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: rgba(255, 51, 102, 0.08);
+  border: 1px solid rgba(255, 51, 102, 0.2);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ff3366;
+  margin-top: 16px;
+}
+
+.dmx-connection-status.connected {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+}
+
+.dmx-connection-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3366;
+}
+
+.dmx-connection-status.connected .status-dot {
+  background: #00ff88;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.dmx-status {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-left: auto;
+}
+
+.dmx-status.connected {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+}
+
+/* ============================================================================
+   READY BANNER
+   ============================================================================ */
+
+.ready-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 255, 136, 0.05));
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 12px;
+  margin-top: 20px;
+  color: #00ff88;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ready-icon {
+  font-size: 1.5rem;
+}
+
+/* Warning style for error banner */
+.error-banner.warning {
+  background: rgba(255, 180, 0, 0.1);
+  border-color: rgba(255, 180, 0, 0.3);
+  color: #ffb400;
+}

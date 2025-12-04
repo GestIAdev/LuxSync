@@ -7325,10 +7325,13 @@ electron.ipcMain.handle("lux:set-palette", (_event, palette) => {
   selene.setPalette(palette);
   return { success: true, palette };
 });
-electron.ipcMain.handle("lux:set-movement", (_event, pattern) => {
+electron.ipcMain.handle("lux:set-movement", (_event, config) => {
   if (!selene) return { success: false, error: "Selene not initialized" };
-  selene.setMovementPattern(pattern);
-  return { success: true, pattern };
+  if (config.pattern) {
+    selene.setMovementPattern(config.pattern);
+  }
+  console.log("[Main] 🎯 Movement config:", config);
+  return { success: true, config };
 });
 electron.ipcMain.handle("lux:get-state", () => {
   if (!selene) return null;

@@ -242,10 +242,19 @@ ipcMain.handle('lux:set-palette', (_event, palette: LivingPaletteId) => {
   return { success: true, palette }
 })
 
-ipcMain.handle('lux:set-movement', (_event, pattern: MovementPattern) => {
+ipcMain.handle('lux:set-movement', (_event, config: { pattern?: MovementPattern; speed?: number; intensity?: number }) => {
   if (!selene) return { success: false, error: 'Selene not initialized' }
-  selene.setMovementPattern(pattern)
-  return { success: true, pattern }
+  
+  // Aplicar pattern si viene en el config
+  if (config.pattern) {
+    selene.setMovementPattern(config.pattern)
+  }
+  
+  // TODO: speed e intensity se pueden usar para configurar el MovementEngine
+  // Por ahora solo loggeamos
+  console.log('[Main] 🎯 Movement config:', config)
+  
+  return { success: true, config }
 })
 
 ipcMain.handle('lux:get-state', () => {

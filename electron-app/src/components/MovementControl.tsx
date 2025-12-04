@@ -3,6 +3,10 @@
  * Visualizador de partículas grande + controles compactos
  * 
  * WAVE 3: Connected to window.lux.setMovement() for Selene integration
+ * 
+ * ✅ PATTERNS MATCH 1:1 - No translation needed!
+ * UI: lissajous, circle, wave, figure8, scan, random
+ * Engine: lissajous, circle, wave, figure8, scan, random, static
  */
 
 import { useLuxSyncStore, MovementPattern } from '../stores/luxsyncStore'

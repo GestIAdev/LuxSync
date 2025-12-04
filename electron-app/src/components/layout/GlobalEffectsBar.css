@@ -1,0 +1,145 @@
+/**
+ * ⚡ GLOBAL EFFECTS BAR - CSS
+ * WAVE 9: Bottom Effects Panel Styles
+ */
+
+.effects-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, #15151f 0%, #0a0a0f 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 80px;
+}
+
+.effects-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Effect Button */
+.effect-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 80px;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, #1f1f2e 0%, #15151f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.effect-btn:hover:not(.disabled) {
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 255, 240, 0.2);
+}
+
+.effect-btn.active {
+  background: linear-gradient(180deg, #00fff0 0%, #0088aa 100%);
+  border-color: #00fff0;
+  color: #000000;
+  box-shadow: 0 0 30px rgba(0, 255, 240, 0.5);
+  animation: effectPulse 0.5s ease infinite;
+}
+
+.effect-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+@keyframes effectPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 240, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(0, 255, 240, 0.8); }
+}
+
+.effect-icon {
+  font-size: 1.25rem;
+}
+
+.effect-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.effect-shortcut {
+  font-size: 0.6rem;
+  color: #6b7280;
+}
+
+.effect-btn.active .effect-shortcut {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Blackout Master Button */
+.blackout-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 140px;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, #2d1a1a 0%, #1a0a0a 100%);
+  border: 2px solid #4a1a1a;
+  border-radius: 12px;
+  color: #ff6b6b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.blackout-btn:hover {
+  border-color: #ff4444;
+  box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+}
+
+.blackout-btn.active {
+  background: linear-gradient(180deg, #ff0000 0%, #aa0000 100%);
+  border-color: #ff0000;
+  color: #ffffff;
+  box-shadow: 0 0 50px rgba(255, 0, 0, 0.8);
+  animation: blackoutPulse 0.3s ease infinite;
+}
+
+@keyframes blackoutPulse {
+  0%, 100% { 
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 60px rgba(255, 0, 0, 1);
+    transform: scale(1.02);
+  }
+}
+
+.blackout-icon {
+  font-size: 0.875rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.blackout-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.blackout-shortcut {
+  font-size: 0.65rem;
+  color: #9ca3af;
+}
+
+.blackout-btn.active .blackout-shortcut {
+  color: rgba(255, 255, 255, 0.7);
+}

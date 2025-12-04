@@ -1,0 +1,232 @@
+/**
+ * 📱 SIDEBAR - CSS
+ * WAVE 9: Navigation Panel Styles
+ */
+
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  height: 100vh;
+  background: linear-gradient(180deg, #12121a 0%, #0a0a0f 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Logo Area */
+.sidebar-logo {
+  text-align: center;
+  padding: 20px 0;
+  margin-bottom: 20px;
+}
+
+.logo-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.logo-moon {
+  animation: moonPulse 3s ease-in-out infinite;
+}
+
+.logo-stars {
+  animation: starTwinkle 2s ease-in-out infinite;
+  margin-left: 4px;
+}
+
+@keyframes moonPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #00fff0;
+  text-shadow: 0 0 20px rgba(0, 255, 240, 0.5);
+  margin: 0;
+}
+
+.logo-version {
+  font-size: 0.75rem;
+  color: #6b7280;
+  letter-spacing: 2px;
+}
+
+/* Navigation */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, rgba(0, 255, 240, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #00fff0;
+  box-shadow: 0 0 20px rgba(0, 255, 240, 0.2);
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+}
+
+.nav-label {
+  text-transform: uppercase;
+}
+
+/* Divider */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  margin: 16px 0;
+}
+
+/* Status Panel */
+.sidebar .status-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.sidebar .status-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #6b7280;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+}
+
+.sidebar .status-panel .status-item {
+  display: flex;
+  flex-direction: column !important;
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar .status-panel .status-item:last-child {
+  border-bottom: none;
+}
+
+.sidebar .status-item-row {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar .status-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sidebar .status-value {
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 0.8rem;
+}
+
+.sidebar .status-value.active {
+  color: #00ff88;
+}
+
+.sidebar .status-value.inactive {
+  color: #6b7280;
+}
+
+.sidebar .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sidebar .status-dot.connected {
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.sidebar .status-dot.disconnected {
+  color: #ef4444;
+}
+
+.sidebar .status-label {
+  font-size: 0.75rem;
+}
+
+/* Mini bars - ahora debajo del valor */
+.sidebar .mini-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.mini-bar-fill.bpm-pulse {
+  background: linear-gradient(90deg, #00fff0, #a855f7);
+}
+
+.mini-bar-fill.audio-level {
+  background: linear-gradient(90deg, #00ff88, #ffd700);
+}
+
+/* Footer */
+.sidebar-footer {
+  text-align: center;
+  padding: 12px 0 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 16px;
+}
+
+.footer-text {
+  font-size: 0.65rem;
+  color: #4b5563;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}

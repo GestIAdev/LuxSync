@@ -12,7 +12,7 @@
  * 3. SINCOPACIÓN > BPM: Para clasificación de géneros
  * 
  * @module engines/musical
- * @version 1.0.0
+ * @version 2.0.0 - FASE 7 Integration
  * @date December 2025
  */
 
@@ -34,7 +34,7 @@ export * from './classification';
 // 🧠 Context (Orquestación)
 export * from './context';
 
-// 📚 Learning (Memoria)
+// 📚 Learning (Memoria SQLite)
 export * from './learning';
 
 // 🎨 Mapping (Música → Luces)
@@ -57,26 +57,69 @@ export { SectionTracker } from './analysis/SectionTracker';
 export { ScaleIdentifier } from './classification/ScaleIdentifier';
 // ✅ FASE 3
 export { GenreClassifier } from './classification/GenreClassifier';
-// TODO: FASE 3+ (opcional)
-// export { MoodSynthesizer } from './classification/MoodSynthesizer';
 
 // ============================================================
 // 🧠 CONTEXT COMPONENTS
 // ============================================================
-// TODO: FASE 4
-// export { MusicalContextEngine } from './context/MusicalContextEngine';
-// export { PredictionMatrix } from './context/PredictionMatrix';
+// ✅ FASE 4
+export { MusicalContextEngine } from './context/MusicalContextEngine';
+export { PredictionMatrix } from './context/PredictionMatrix';
 
 // ============================================================
 // 📚 LEARNING COMPONENTS
 // ============================================================
-// TODO: FASE 6
-// export { GenrePatternLibrary } from './learning/GenrePatternLibrary';
-// export { PatternLearner } from './learning/PatternLearner';
+// ✅ FASE 6
+export { 
+  SeleneMemoryManager, 
+  getMemoryManager, 
+  resetMemoryManager 
+} from './learning/SeleneMemoryManager';
+
+export type {
+  MusicalDNA,
+  PaletteRecord,
+  LearnedPattern,
+  SessionRecord,
+  DreamRecord,
+  FixtureCalibration,
+  MemoryManagerConfig,
+} from './learning/SeleneMemoryManager';
 
 // ============================================================
 // 🎨 MAPPING COMPONENTS
 // ============================================================
-// TODO: FASE 5
-// export { MusicToLightMapper } from './mapping/MusicToLightMapper';
-// export { TransitionPredictor } from './mapping/TransitionPredictor';
+// ✅ FASE 5
+export { 
+  ProceduralPaletteGenerator,
+  hslToRgb,
+  hslToHex,
+} from './mapping/ProceduralPaletteGenerator';
+
+export type {
+  HSLColor,
+  RGBColor,
+  MusicalDNA as PaletteDNA,
+} from './mapping/ProceduralPaletteGenerator';
+
+export { PaletteManager } from './mapping/PaletteManager';
+export { MusicToLightMapper } from './mapping/MusicToLightMapper';
+
+export type {
+  LightingSuggestion,
+} from './mapping/MusicToLightMapper';
+
+// ============================================================
+// 🧠 INTEGRATION - SELENE MUSICAL BRAIN
+// ============================================================
+// ✅ FASE 7 - El Sistema Nervioso Central
+export { 
+  SeleneMusicalBrain,
+  getMusicalBrain,
+  resetMusicalBrain,
+} from './SeleneMusicalBrain';
+
+export type {
+  BrainOutput,
+  BrainConfig,
+  UserFeedback,
+} from './SeleneMusicalBrain';

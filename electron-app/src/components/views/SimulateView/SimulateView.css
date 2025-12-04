@@ -1,0 +1,205 @@
+/**
+ * 🔭 SIMULATE VIEW - CSS
+ * WAVE 9: 3D Stage Visualization Styles
+ */
+
+.simulate-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.simulate-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Stage Canvas */
+.stage-canvas {
+  flex: 1;
+  min-height: 300px;
+  background: linear-gradient(180deg, #0a0a15 0%, #05050a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px;
+}
+
+.truss {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  border-radius: 4px;
+}
+
+.fixture-dot {
+  font-size: 1.5rem;
+  color: #00fff0;
+  text-shadow: 0 0 20px rgba(0, 255, 240, 0.8);
+  animation: fixtureGlow 2s ease-in-out infinite;
+}
+
+.fixture-dot:nth-child(2n) {
+  animation-delay: 0.5s;
+}
+
+@keyframes fixtureGlow {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.light-beams {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 100px;
+  position: relative;
+}
+
+.beam {
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 255, 240, 0.8) 0%, transparent 100%);
+  transform: skewX(-5deg);
+}
+
+.beam-2 {
+  transform: skewX(0deg);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.8) 0%, transparent 100%);
+}
+
+.beam-3 {
+  transform: skewX(5deg);
+  background: linear-gradient(180deg, rgba(255, 0, 255, 0.8) 0%, transparent 100%);
+}
+
+.floor {
+  padding: 30px;
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+  text-align: center;
+  border-radius: 4px;
+}
+
+.floor-text {
+  color: #3a3a4a;
+  font-size: 0.75rem;
+  letter-spacing: 4px;
+}
+
+.canvas-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+  font-size: 0.7rem;
+  color: #4b5563;
+}
+
+/* Bottom Panels */
+.simulate-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.fixture-list h3,
+.simulator-controls h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin: 0 0 16px 0;
+}
+
+.fixture-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fixture-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.fixture-status {
+  color: #00fff0;
+}
+
+.fixture-name {
+  flex: 1;
+  color: #ffffff;
+}
+
+.fixture-address {
+  color: #6b7280;
+  font-family: monospace;
+}
+
+/* Controls */
+.control-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.control-checkbox input {
+  accent-color: #00fff0;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background: rgba(0, 255, 240, 0.1);
+  border-color: rgba(0, 255, 240, 0.2);
+  color: #00fff0;
+}

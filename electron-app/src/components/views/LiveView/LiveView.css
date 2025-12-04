@@ -1,0 +1,179 @@
+/**
+ * 🎛️ LIVE VIEW - CSS
+ * WAVE 9: Main Control View Styles
+ */
+
+.live-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden; /* NO SCROLL! */
+}
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.view-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+/* BigSwitch compacto en el header */
+.header-switch {
+  flex-shrink: 0;
+}
+
+/* Forzar BigSwitch a ser compacto y horizontal */
+.header-switch .big-switch {
+  flex-direction: row !important;
+  gap: 12px !important;
+  height: auto !important;
+  align-items: center;
+}
+
+.header-switch .power-btn {
+  width: 60px !important;
+  height: 60px !important;
+  padding: 8px !important;
+  flex-shrink: 0;
+}
+
+.header-switch .power-icon {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.header-switch .power-label {
+  font-size: 0.6rem !important;
+}
+
+.header-switch .mode-selector {
+  flex-direction: row !important;
+  flex: 0 !important;
+  gap: 4px !important;
+  padding: 6px !important;
+}
+
+.header-switch .mode-title {
+  display: none !important;
+}
+
+.header-switch .mode-btn {
+  padding: 8px 12px !important;
+  min-width: 70px;
+}
+
+.header-switch .mode-icon {
+  font-size: 1rem !important;
+}
+
+.header-switch .mode-info {
+  display: none !important;
+}
+
+.header-switch .status-panel {
+  display: none !important;
+}
+
+.live-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+  overflow: hidden; /* NO SCROLL! */
+}
+
+.live-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.panel-header {
+  margin-bottom: 16px;
+}
+
+.panel-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+/* Brain Preview */
+.brain-panel {
+  min-height: 150px;
+}
+
+.brain-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brain-mode {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #a855f7;
+  letter-spacing: 1px;
+}
+
+.brain-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.metric-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00fff0, #a855f7);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.brain-stats {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.movement-section {
+  flex: 1;
+  min-height: 0; /* Important for flex overflow */
+  overflow: hidden;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .live-panels {
+    grid-template-columns: 1fr;
+  }
+}

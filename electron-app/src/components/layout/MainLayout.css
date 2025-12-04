@@ -1,0 +1,20 @@
+/**
+ * 🏗️ MAIN LAYOUT - CSS
+ * WAVE 9: Commander Layout Styles
+ */
+
+.main-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-primary, #0a0a0f);
+}
+
+.layout-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
+  height: 100vh;
+}

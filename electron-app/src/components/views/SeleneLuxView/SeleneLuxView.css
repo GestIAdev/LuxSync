@@ -1,0 +1,338 @@
+/**
+ * 🧠 SELENE LUX VIEW - CSS
+ * WAVE 9: AI Brain Dashboard Styles
+ */
+
+.selene-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.selene-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Top Panels */
+.selene-top-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.panel h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin: 0 0 16px 0;
+  letter-spacing: 1px;
+}
+
+/* Consciousness Panel */
+.neural-activity {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.neural-wave {
+  font-family: monospace;
+  font-size: 1rem;
+  color: #a855f7;
+  opacity: 0.8;
+  animation: neuralPulse 2s ease-in-out infinite;
+}
+
+.neural-wave:nth-child(2) {
+  animation-delay: 0.3s;
+  color: #00fff0;
+}
+
+.neural-wave:nth-child(3) {
+  animation-delay: 0.6s;
+  color: #ff00ff;
+}
+
+@keyframes neuralPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.neural-label {
+  display: block;
+  margin-top: 12px;
+  font-size: 0.7rem;
+  color: #6b7280;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.consciousness-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.info-row .value {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
+.status-badge.inactive {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Memory Panel */
+.memory-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.stat-row .value {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.memory-usage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00fff0, #a855f7);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.memory-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Metrics Panel */
+.metrics-panel {
+  min-height: 120px;
+}
+
+.metrics-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.metric-label {
+  width: 100px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.metric-bar {
+  flex: 1;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.metric-fill.confidence {
+  background: linear-gradient(90deg, #3b82f6, #00fff0);
+}
+
+.metric-fill.energy {
+  background: linear-gradient(90deg, #ffd700, #ff6b35);
+}
+
+.metric-fill.beauty {
+  background: linear-gradient(90deg, #ff00ff, #a855f7);
+}
+
+.metric-value {
+  width: 50px;
+  font-size: 0.8rem;
+  color: #ffffff;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Log Panel */
+.log-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.log-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.log-filter {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.log-entries {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.log-empty {
+  color: #4b5563;
+  text-align: center;
+  padding: 40px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: #6b7280;
+  min-width: 100px;
+}
+
+.log-type {
+  min-width: 80px;
+  font-weight: 600;
+}
+
+.log-message {
+  flex: 1;
+  color: #d1d5db;
+}
+
+.log-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.btn.active {
+  background: rgba(0, 255, 240, 0.2);
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #00fff0;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .selene-top-panels {
+    grid-template-columns: 1fr;
+  }
+}

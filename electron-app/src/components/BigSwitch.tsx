@@ -53,9 +53,9 @@ export default function BigSwitch() {
       </div>
 
       {/* STATUS INDICATOR */}
-      <div className="status-panel">
-        <div className={`status-dot ${isActive ? 'live' : ''}`} />
-        <span className="status-text">
+      <div className="big-switch-status">
+        <div className={`big-switch-dot ${isActive ? 'live' : ''}`} />
+        <span className="big-switch-status-text">
           {isActive ? 'Sistema Activo' : 'Sistema Pausado'}
         </span>
       </div>
@@ -69,7 +69,7 @@ export default function BigSwitch() {
         }
 
         /* POWER BUTTON */
-        .power-btn {
+        .big-switch .power-btn {
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -83,29 +83,29 @@ export default function BigSwitch() {
           transition: all 0.3s ease;
         }
 
-        .power-btn:hover {
+        .big-switch .power-btn:hover {
           border-color: var(--border-active);
         }
 
-        .power-btn.active {
+        .big-switch .power-btn.active {
           border-color: var(--accent-primary);
           background: radial-gradient(ellipse at center, var(--accent-primary-glow) 0%, var(--bg-surface) 70%);
           box-shadow: 0 0 40px var(--accent-primary-glow);
         }
 
-        .power-icon {
+        .big-switch .power-icon {
           width: 48px;
           height: 48px;
           color: var(--text-muted);
           transition: all 0.3s ease;
         }
 
-        .power-btn.active .power-icon {
+        .big-switch .power-btn.active .power-icon {
           color: var(--accent-primary);
           filter: drop-shadow(0 0 15px var(--accent-primary));
         }
 
-        .power-label {
+        .big-switch .power-label {
           font-family: var(--font-display);
           font-size: 0.875rem;
           font-weight: 700;
@@ -113,12 +113,12 @@ export default function BigSwitch() {
           color: var(--text-muted);
         }
 
-        .power-btn.active .power-label {
+        .big-switch .power-btn.active .power-label {
           color: var(--accent-primary);
         }
 
         /* MODE SELECTOR */
-        .mode-selector {
+        .big-switch .mode-selector {
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -129,7 +129,7 @@ export default function BigSwitch() {
           padding: var(--space-sm);
         }
 
-        .mode-title {
+        .big-switch .mode-title {
           font-family: var(--font-display);
           font-size: 0.65rem;
           font-weight: 700;
@@ -140,7 +140,7 @@ export default function BigSwitch() {
           border-bottom: 1px solid var(--border-subtle);
         }
 
-        .mode-btn {
+        .big-switch .mode-btn {
           display: flex;
           align-items: center;
           gap: var(--space-sm);
@@ -154,29 +154,29 @@ export default function BigSwitch() {
           overflow: hidden;
         }
 
-        .mode-btn:hover {
+        .big-switch .mode-btn:hover {
           border-color: var(--mode-color);
           background: var(--bg-elevated);
         }
 
-        .mode-btn.active {
+        .big-switch .mode-btn.active {
           border-color: var(--mode-color);
           background: color-mix(in srgb, var(--mode-color) 15%, var(--bg-deep));
           box-shadow: 0 0 20px color-mix(in srgb, var(--mode-color) 30%, transparent);
         }
 
-        .mode-icon {
+        .big-switch .mode-icon {
           font-size: 1.25rem;
         }
 
-        .mode-info {
+        .big-switch .mode-info {
           display: flex;
           flex-direction: column;
           align-items: flex-start;
           gap: 2px;
         }
 
-        .mode-label {
+        .big-switch .mode-label {
           font-family: var(--font-display);
           font-size: 0.75rem;
           font-weight: 700;
@@ -184,16 +184,16 @@ export default function BigSwitch() {
           letter-spacing: 0.1em;
         }
 
-        .mode-btn.active .mode-label {
+        .big-switch .mode-btn.active .mode-label {
           color: var(--mode-color);
         }
 
-        .mode-desc {
+        .big-switch .mode-desc {
           font-size: 0.6rem;
           color: var(--text-muted);
         }
 
-        .active-bar {
+        .big-switch .active-bar {
           position: absolute;
           right: 0;
           top: 0;
@@ -203,8 +203,8 @@ export default function BigSwitch() {
           box-shadow: 0 0 10px var(--mode-color);
         }
 
-        /* STATUS PANEL */
-        .status-panel {
+        /* BIG SWITCH STATUS (renamed to avoid conflicts) */
+        .big-switch-status {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -215,7 +215,7 @@ export default function BigSwitch() {
           border-radius: var(--radius-md);
         }
 
-        .status-dot {
+        .big-switch-dot {
           width: 10px;
           height: 10px;
           border-radius: 50%;
@@ -223,7 +223,7 @@ export default function BigSwitch() {
           transition: all 0.3s ease;
         }
 
-        .status-dot.live {
+        .big-switch-dot.live {
           background: var(--accent-primary);
           box-shadow: 0 0 15px var(--accent-primary);
           animation: pulse-dot 2s ease-in-out infinite;
@@ -234,15 +234,16 @@ export default function BigSwitch() {
           50% { opacity: 0.7; transform: scale(1.2); }
         }
 
-        .status-text {
+        .big-switch-status-text {
           font-size: 0.7rem;
           color: var(--text-muted);
         }
 
-        .status-dot.live + .status-text {
+        .big-switch-dot.live + .big-switch-status-text {
           color: var(--accent-primary);
         }
       `}</style>
     </div>
   )
 }
+

@@ -1,0 +1,510 @@
+/**
+ * ⚙️ SETUP VIEW - CSS
+ * WAVE 9: Configuration Wizard Styles
+ */
+
+.setup-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.setup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Progress */
+.setup-progress {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  position: relative;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.step-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.progress-step.active .step-icon {
+  background: rgba(0, 255, 240, 0.2);
+  border-color: #00fff0;
+  color: #00fff0;
+}
+
+.progress-step.current .step-icon {
+  box-shadow: 0 0 20px rgba(0, 255, 240, 0.5);
+}
+
+.step-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.progress-step.active .step-label {
+  color: #00fff0;
+}
+
+.progress-line {
+  position: absolute;
+  top: 44px;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 0;
+}
+
+.progress-line .progress-fill {
+  height: 100%;
+  background: #00fff0;
+  transition: width 0.3s ease;
+}
+
+/* Wizard */
+.setup-wizard {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.wizard-step h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 24px 0;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* Device List */
+.device-list,
+.interface-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.device-item,
+.interface-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.device-item:hover,
+.interface-item:hover {
+  border-color: rgba(0, 255, 240, 0.3);
+}
+
+.device-item.selected,
+.interface-item.selected {
+  background: rgba(0, 255, 240, 0.1);
+  border-color: #00fff0;
+}
+
+.device-radio,
+.interface-radio {
+  color: #00fff0;
+  font-size: 1.25rem;
+}
+
+.device-name,
+.interface-name {
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.interface-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.interface-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Audio Setup */
+.audio-level-display {
+  margin-bottom: 20px;
+}
+
+.vu-meter {
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.vu-bar {
+  height: 100%;
+  width: 60%;
+  background: linear-gradient(90deg, #00ff88, #ffd700, #ff6b35);
+  border-radius: 12px;
+  animation: vuPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes vuPulse {
+  0%, 100% { width: 55%; }
+  50% { width: 70%; }
+}
+
+.sensitivity-control {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.sensitivity-control input[type="range"] {
+  flex: 1;
+  accent-color: #00fff0;
+}
+
+.bpm-detection {
+  font-size: 1rem;
+  color: #00fff0;
+}
+
+.confidence {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-left: 8px;
+}
+
+/* DMX Config */
+.dmx-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.config-row label {
+  width: 100px;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.config-row select,
+.config-row input {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.config-row input[type="range"] {
+  flex: 1;
+  accent-color: #00fff0;
+}
+
+.dmx-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* Fixture Setup */
+.fixture-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.fixture-library h4,
+.patch-table h4 {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin: 0 0 12px 0;
+}
+
+.library-search input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.library-tree {
+  font-size: 0.85rem;
+}
+
+.library-folder {
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.library-items {
+  padding-left: 20px;
+}
+
+.library-item {
+  padding: 6px 0;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.library-item:hover {
+  color: #00fff0;
+}
+
+.patch-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.patch-table th,
+.patch-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.patch-table th {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.patch-table td {
+  color: #d1d5db;
+}
+
+.patch-summary {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 12px;
+}
+
+.patch-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* System Test */
+.test-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.test-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.test-item.pass {
+  border-left: 3px solid #00ff88;
+}
+
+.test-item.fail {
+  border-left: 3px solid #ef4444;
+}
+
+.test-icon {
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.test-item.fail .test-icon {
+  color: #ef4444;
+}
+
+.test-name {
+  flex: 1;
+  color: #ffffff;
+}
+
+.test-status {
+  color: #6b7280;
+}
+
+.test-success {
+  text-align: center;
+  padding: 30px;
+  background: rgba(0, 255, 136, 0.1);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.success-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.success-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #00ff88;
+}
+
+.success-subtext {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+.test-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Quick Status */
+.quick-status {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.quick-status h4 {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.status-item.ok span:last-child {
+  color: #00ff88;
+}
+
+.status-item.error span:last-child {
+  color: #ef4444;
+}
+
+/* Wizard Nav */
+.wizard-nav {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00fff0, #0088aa);
+  border-color: #00fff0;
+  color: #000000;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 30px rgba(0, 255, 240, 0.5);
+}
+
+.btn-secondary {
+  background: rgba(0, 255, 240, 0.1);
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #00fff0;
+}
+
+.btn-small {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .status-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .fixture-panels {
+    grid-template-columns: 1fr;
+  }
+}

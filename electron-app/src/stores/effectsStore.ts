@@ -1,0 +1,182 @@
+/**
+ * ⚡ EFFECTS STORE - Global Effects & Blackout
+ * WAVE 9: Efectos instantáneos disponibles en cualquier pestaña
+ */
+
+import { create } from 'zustand'
+
+// ============================================
+// TYPES
+// ============================================
+
+export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police'
+
+export interface EffectConfig {
+  id: EffectId
+  label: string
+  icon: string
+  shortcut: string
+  color: string
+  description: string
+}
+
+export interface EffectsState {
+  // Blackout es especial - override total
+  blackout: boolean
+  
+  // Efectos activos (puede haber varios)
+  activeEffects: Set<EffectId>
+  
+  // Historial para debug
+  lastToggled: EffectId | 'blackout' | null
+  lastToggleTime: number
+  
+  // Actions
+  toggleBlackout: () => void
+  setBlackout: (value: boolean) => void
+  toggleEffect: (effect: EffectId) => void
+  activateEffect: (effect: EffectId) => void
+  deactivateEffect: (effect: EffectId) => void
+  clearAllEffects: () => void
+  isEffectActive: (effect: EffectId) => boolean
+}
+
+// ============================================
+// EFFECTS CONFIGURATION
+// ============================================
+
+export const EFFECTS: EffectConfig[] = [
+  {
+    id: 'strobe',
+    label: 'STROBE',
+    icon: '⚡',
+    shortcut: '1',
+    color: '#ffffff',
+    description: 'Flash rápido estroboscópico',
+  },
+  {
+    id: 'blinder',
+    label: 'BLINDER',
+    icon: '💥',
+    shortcut: '2',
+    color: '#ffd700',
+    description: 'Destello cegador momentáneo',
+  },
+  {
+    id: 'smoke',
+    label: 'SMOKE',
+    icon: '💨',
+    shortcut: '3',
+    color: '#9ca3af',
+    description: 'Activar máquina de humo',
+  },
+  {
+    id: 'laser',
+    label: 'LASER',
+    icon: '🔴',
+    shortcut: '4',
+    color: '#ff0000',
+    description: 'Efectos láser',
+  },
+  {
+    id: 'rainbow',
+    label: 'RAINBOW',
+    icon: '🌈',
+    shortcut: '5',
+    color: 'linear-gradient(90deg, #ff0000, #ff9900, #ffff00, #00ff00, #00ffff, #ff00ff)',
+    description: 'Ciclo de colores arcoíris',
+  },
+  {
+    id: 'police',
+    label: 'POLICE',
+    icon: '🚨',
+    shortcut: '6',
+    color: '#3b82f6',
+    description: 'Rojo y azul alternando',
+  },
+]
+
+// ============================================
+// STORE
+// ============================================
+
+export const useEffectsStore = create<EffectsState>((set, get) => ({
+  blackout: false,
+  activeEffects: new Set(),
+  lastToggled: null,
+  lastToggleTime: 0,
+  
+  toggleBlackout: () => {
+    set((state) => ({
+      blackout: !state.blackout,
+      // Blackout desactiva todos los efectos
+      activeEffects: state.blackout ? state.activeEffects : new Set(),
+      lastToggled: 'blackout',
+      lastToggleTime: Date.now(),
+    }))
+  },
+  
+  setBlackout: (value: boolean) => {
+    set({
+      blackout: value,
+      activeEffects: value ? new Set() : get().activeEffects,
+      lastToggled: 'blackout',
+      lastToggleTime: Date.now(),
+    })
+  },
+  
+  toggleEffect: (effect: EffectId) => {
+    const { blackout } = get()
+    // No permitir efectos durante blackout
+    if (blackout) return
+    
+    set((state) => {
+      const newEffects = new Set(state.activeEffects)
+      if (newEffects.has(effect)) {
+        newEffects.delete(effect)
+      } else {
+        newEffects.add(effect)
+      }
+      return {
+        activeEffects: newEffects,
+        lastToggled: effect,
+        lastToggleTime: Date.now(),
+      }
+    })
+  },
+  
+  activateEffect: (effect: EffectId) => {
+    const { blackout, activeEffects } = get()
+    if (blackout || activeEffects.has(effect)) return
+    
+    set((state) => ({
+      activeEffects: new Set([...state.activeEffects, effect]),
+      lastToggled: effect,
+      lastToggleTime: Date.now(),
+    }))
+  },
+  
+  deactivateEffect: (effect: EffectId) => {
+    set((state) => {
+      const newEffects = new Set(state.activeEffects)
+      newEffects.delete(effect)
+      return {
+        activeEffects: newEffects,
+        lastToggled: effect,
+        lastToggleTime: Date.now(),
+      }
+    })
+  },
+  
+  clearAllEffects: () => {
+    set({
+      activeEffects: new Set(),
+      lastToggled: null,
+      lastToggleTime: Date.now(),
+    })
+  },
+  
+  isEffectActive: (effect: EffectId) => {
+    return get().activeEffects.has(effect)
+  },
+}))

@@ -1,30 +1,67 @@
 /**
  * ⚙️ SETUP VIEW - CSS
- * WAVE 9: Configuration Wizard Styles
+ * WAVE 9.2: Configuration Wizard Styles
  */
 
 .setup-view {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   height: 100%;
+  overflow: hidden;
+}
+
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.view-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.setup-progress-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  color: #00fff0;
+  background: rgba(0, 255, 240, 0.1);
+}
+
+.setup-progress-badge.complete {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
 }
 
 .setup-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   flex: 1;
+  overflow: hidden;
 }
 
 /* Progress */
 .setup-progress {
   display: flex;
   justify-content: center;
-  gap: 60px;
-  padding: 24px;
+  gap: 50px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
+  border-radius: 12px;
   position: relative;
 }
 
@@ -32,21 +69,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   z-index: 1;
 }
 
 .step-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: all 0.3s ease;
 }
 
@@ -56,12 +93,18 @@
   color: #00fff0;
 }
 
+.progress-step.complete .step-icon {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
 .progress-step.current .step-icon {
-  box-shadow: 0 0 20px rgba(0, 255, 240, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 240, 0.5);
 }
 
 .step-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #6b7280;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -71,11 +114,15 @@
   color: #00fff0;
 }
 
+.progress-step.complete .step-label {
+  color: #00ff88;
+}
+
 .progress-line {
   position: absolute;
-  top: 44px;
-  left: 15%;
-  right: 15%;
+  top: 34px;
+  left: 20%;
+  right: 20%;
   height: 2px;
   background: rgba(255, 255, 255, 0.1);
   z-index: 0;
@@ -93,7 +140,7 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -408,6 +455,74 @@
   display: flex;
   justify-content: center;
   gap: 16px;
+}
+
+/* Test Warning */
+.test-warning {
+  text-align: center;
+  padding: 24px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.warning-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.warning-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.warning-subtext {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* Test item states */
+.test-item.pending .test-icon {
+  color: #6b7280;
+}
+
+.test-item.pending .test-status {
+  color: #6b7280;
+}
+
+/* DMX Test Result */
+.test-result {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.test-result.success {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+}
+
+.test-result.fail {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.btn.testing {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Device type badge */
+.device-type {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: #6b7280;
 }
 
 /* Quick Status */

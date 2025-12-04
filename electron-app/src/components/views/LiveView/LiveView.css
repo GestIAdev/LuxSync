@@ -132,8 +132,8 @@
 .brain-mode {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #a855f7;
   letter-spacing: 1px;
+  transition: color 0.3s ease;
 }
 
 .brain-metric {
@@ -154,15 +154,105 @@
 
 .metric-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00fff0, #a855f7);
   border-radius: 3px;
   transition: width 0.3s ease;
 }
 
+.metric-fill.beauty {
+  background: linear-gradient(90deg, #ff00ff, #a855f7);
+}
+
+.metric-fill.confidence {
+  background: linear-gradient(90deg, #00fff0, #00ff88);
+}
+
+/* Audio Spectrum Mini */
+.audio-spectrum-mini {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  padding: 4px 0;
+}
+
+.spectrum-bar {
+  width: 20px;
+  min-height: 4px;
+  border-radius: 2px;
+  transition: height 0.1s ease;
+}
+
+.spectrum-bar.bass {
+  background: linear-gradient(180deg, #ef4444, #ff6b35);
+}
+
+.spectrum-bar.mid {
+  background: linear-gradient(180deg, #00fff0, #22d3ee);
+}
+
+.spectrum-bar.treble {
+  background: linear-gradient(180deg, #a855f7, #ff00ff);
+}
+
+/* Brain Stats */
 .brain-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 0.75rem;
   color: #6b7280;
-  line-height: 1.5;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-value {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Brain Status Badge */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.panel-header h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.brain-status {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.brain-status.connected {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.brain-status.disconnected {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .movement-section {

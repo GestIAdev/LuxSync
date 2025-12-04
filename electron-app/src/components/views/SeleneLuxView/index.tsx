@@ -1,16 +1,15 @@
 /**
  * 🧠 SELENE LUX VIEW - AI Brain Dashboard
- * WAVE 9: Estado del cerebro, métricas y decision log
+ * WAVE 9.2: Estado del cerebro, métricas y decision log
  */
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSeleneStore, LOG_ENTRY_CONFIG } from '../../../stores/seleneStore'
 import './SeleneLuxView.css'
 
 const SeleneLuxView: React.FC = () => {
   const {
     brainConnected,
-    brainInitialized,
     currentMode,
     confidence,
     energy,
@@ -27,6 +26,28 @@ const SeleneLuxView: React.FC = () => {
     clearLog,
   } = useSeleneStore()
 
+  // Neural wave animation
+  const [neuralPhase, setNeuralPhase] = useState(0)
+  
+  useEffect(() => {
+    if (!brainConnected) return
+    const interval = setInterval(() => {
+      setNeuralPhase(p => (p + 1) % 20)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [brainConnected])
+
+  // Generate animated neural wave based on energy
+  const generateNeuralWave = (row: number) => {
+    const chars = []
+    for (let i = 0; i < 24; i++) {
+      const phase = (i + neuralPhase + row * 3) % 6
+      const char = phase < 2 ? '∿' : phase < 4 ? '∼' : '~'
+      chars.push(char)
+    }
+    return chars.join('')
+  }
+
   const filteredLog = logFilter === 'ALL' 
     ? decisionLog 
     : decisionLog.filter(entry => entry.type === logFilter)
@@ -42,10 +63,24 @@ const SeleneLuxView: React.FC = () => {
     return `${time}.${ms}`
   }
 
+  // Get status based on metrics
+  const getConsciousnessLevel = () => {
+    if (!brainConnected) return 'OFFLINE'
+    if (energy > 0.8) return 'HYPER-AWARE'
+    if (energy > 0.5) return 'ACTIVE'
+    if (energy > 0.2) return 'DREAMING'
+    return 'RESTING'
+  }
+
   return (
     <div className="selene-view">
       <header className="view-header">
         <h2 className="view-title">🧠 SELENE LUX</h2>
+        <div className="view-status">
+          <span className={`consciousness-level ${getConsciousnessLevel().toLowerCase().replace('-', '')}`}>
+            {getConsciousnessLevel()}
+          </span>
+        </div>
       </header>
 
       <div className="selene-content">
@@ -54,10 +89,10 @@ const SeleneLuxView: React.FC = () => {
           {/* Consciousness State */}
           <section className="panel consciousness-panel">
             <h3>🌙 CONSCIOUSNESS STATE</h3>
-            <div className="neural-activity">
-              <div className="neural-wave">∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿</div>
-              <div className="neural-wave">∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿</div>
-              <div className="neural-wave">∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿∿</div>
+            <div className={`neural-activity ${brainConnected ? 'active' : ''}`}>
+              <div className="neural-wave" style={{ opacity: 0.4 + energy * 0.3 }}>{generateNeuralWave(0)}</div>
+              <div className="neural-wave" style={{ opacity: 0.5 + energy * 0.3 }}>{generateNeuralWave(1)}</div>
+              <div className="neural-wave" style={{ opacity: 0.6 + energy * 0.3 }}>{generateNeuralWave(2)}</div>
               <span className="neural-label">Neural Activity</span>
             </div>
             <div className="consciousness-info">
@@ -68,7 +103,7 @@ const SeleneLuxView: React.FC = () => {
               </div>
               <div className="info-row">
                 <span>Mode:</span>
-                <span className="value">{currentMode.toUpperCase()}</span>
+                <span className="value mode-value">{currentMode.toUpperCase()}</span>
               </div>
               <div className="info-row">
                 <span>Beauty:</span>

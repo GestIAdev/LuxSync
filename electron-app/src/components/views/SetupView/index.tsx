@@ -1,20 +1,54 @@
 /**
  * ⚙️ SETUP VIEW - Configuration Wizard
- * WAVE 9: Audio, DMX, Fixtures y System Test
+ * WAVE 9.2: Audio, DMX, Fixtures y System Test
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAudioStore } from '../../../stores/audioStore'
 import { useDMXStore, DMX_DRIVERS } from '../../../stores/dmxStore'
+import { useSeleneStore } from '../../../stores/seleneStore'
 import './SetupView.css'
 
 type SetupStep = 1 | 2 | 3 | 4
 
+// Demo audio devices
+const AUDIO_DEVICES = [
+  { id: 'scarlett', name: 'Focusrite Scarlett 2i2 USB', type: 'USB' },
+  { id: 'realtek', name: 'Realtek High Definition Audio', type: 'Built-in' },
+  { id: 'nvidia', name: 'NVIDIA High Definition Audio', type: 'HDMI' },
+  { id: 'stereo', name: 'Stereo Mix (Realtek)', type: 'Virtual' },
+]
+
 const SetupView: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<SetupStep>(1)
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState('scarlett')
+  const [selectedDMXDriver, setSelectedDMXDriver] = useState('enttec-open')
+  const [audioLevel, setAudioLevel] = useState(0)
+  const [sensitivity, setSensitivity] = useState(50)
+  const [isTestingDMX, setIsTestingDMX] = useState(false)
+  const [dmxTestResult, setDmxTestResult] = useState<'none' | 'success' | 'fail'>('none')
   
-  const { isConnected: audioConnected, deviceName } = useAudioStore()
-  const { isConnected: dmxConnected, fixtureCount } = useDMXStore()
+  const { isConnected: audioConnected, deviceName, bpm, bpmConfidence } = useAudioStore()
+  const { isConnected: dmxConnected, fixtureCount, channelsUsed } = useDMXStore()
+  const { brainConnected, patternsLearned } = useSeleneStore()
+
+  // Simulate audio level animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAudioLevel(Math.random() * 0.7 + 0.1)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
+
+  // DMX test simulation
+  const testDMXConnection = () => {
+    setIsTestingDMX(true)
+    setDmxTestResult('none')
+    setTimeout(() => {
+      setIsTestingDMX(false)
+      setDmxTestResult(Math.random() > 0.3 ? 'success' : 'fail')
+    }, 1500)
+  }
 
   const steps = [
     { step: 1, label: 'Audio', icon: '🎤' },
@@ -26,10 +60,26 @@ const SetupView: React.FC = () => {
   const nextStep = () => setCurrentStep(prev => Math.min(4, prev + 1) as SetupStep)
   const prevStep = () => setCurrentStep(prev => Math.max(1, prev - 1) as SetupStep)
 
+  // Get step completion status
+  const isStepComplete = (step: number): boolean => {
+    switch(step) {
+      case 1: return audioConnected
+      case 2: return dmxConnected
+      case 3: return fixtureCount > 0
+      case 4: return audioConnected && dmxConnected && fixtureCount > 0
+      default: return false
+    }
+  }
+
   return (
     <div className="setup-view">
       <header className="view-header">
         <h2 className="view-title">⚙️ SETUP</h2>
+        <div className="view-status">
+          <span className={`setup-progress-badge ${currentStep === 4 ? 'complete' : ''}`}>
+            Step {currentStep}/4
+          </span>
+        </div>
       </header>
 
       <div className="setup-content">
@@ -38,10 +88,10 @@ const SetupView: React.FC = () => {
           {steps.map(({ step, label, icon }) => (
             <div 
               key={step}
-              className={`progress-step ${step <= currentStep ? 'active' : ''} ${step === currentStep ? 'current' : ''}`}
+              className={`progress-step ${step <= currentStep ? 'active' : ''} ${step === currentStep ? 'current' : ''} ${isStepComplete(step) ? 'complete' : ''}`}
               onClick={() => setCurrentStep(step as SetupStep)}
             >
-              <span className="step-icon">{step < currentStep ? '✓' : icon}</span>
+              <span className="step-icon">{isStepComplete(step) ? '✓' : icon}</span>
               <span className="step-label">{label}</span>
             </div>
           ))}
@@ -59,37 +109,38 @@ const SetupView: React.FC = () => {
             <div className="wizard-step audio-setup">
               <h3>🎤 AUDIO INPUT SETUP</h3>
               <div className="device-list">
-                <div className="device-item selected">
-                  <span className="device-radio">◉</span>
-                  <span className="device-name">Focusrite Scarlett 2i2 USB</span>
-                </div>
-                <div className="device-item">
-                  <span className="device-radio">○</span>
-                  <span className="device-name">Realtek High Definition Audio</span>
-                </div>
-                <div className="device-item">
-                  <span className="device-radio">○</span>
-                  <span className="device-name">NVIDIA High Definition Audio</span>
-                </div>
-                <div className="device-item">
-                  <span className="device-radio">○</span>
-                  <span className="device-name">Stereo Mix (Realtek)</span>
-                </div>
+                {AUDIO_DEVICES.map(device => (
+                  <div 
+                    key={device.id}
+                    className={`device-item ${selectedAudioDevice === device.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedAudioDevice(device.id)}
+                  >
+                    <span className="device-radio">{selectedAudioDevice === device.id ? '◉' : '○'}</span>
+                    <span className="device-name">{device.name}</span>
+                    <span className="device-type">{device.type}</span>
+                  </div>
+                ))}
               </div>
               <div className="audio-level-display">
                 <span>Audio Level:</span>
                 <div className="vu-meter">
-                  <div className="vu-bar" />
+                  <div className="vu-bar" style={{ width: `${audioLevel * 100}%` }} />
                 </div>
               </div>
               <div className="sensitivity-control">
                 <span>Sensitivity:</span>
-                <input type="range" min="0" max="100" defaultValue="50" />
-                <span>Medium</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(parseInt(e.target.value))}
+                />
+                <span>{sensitivity < 33 ? 'Low' : sensitivity < 66 ? 'Medium' : 'High'}</span>
               </div>
               <div className="bpm-detection">
-                <span>Detected BPM: 128.0 ♪</span>
-                <span className="confidence">(Confidence: 92%)</span>
+                <span>Detected BPM: {bpm.toFixed(1)} ♪</span>
+                <span className="confidence">(Confidence: {(bpmConfidence * 100).toFixed(0)}%)</span>
               </div>
             </div>
           )}
@@ -99,8 +150,12 @@ const SetupView: React.FC = () => {
               <h3>💡 DMX INTERFACE SETUP</h3>
               <div className="interface-list">
                 {DMX_DRIVERS.map(driver => (
-                  <div key={driver.id} className={`interface-item ${driver.id === 'enttec-open' ? 'selected' : ''}`}>
-                    <span className="interface-radio">{driver.id === 'enttec-open' ? '◉' : '○'}</span>
+                  <div 
+                    key={driver.id} 
+                    className={`interface-item ${selectedDMXDriver === driver.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedDMXDriver(driver.id)}
+                  >
+                    <span className="interface-radio">{selectedDMXDriver === driver.id ? '◉' : '○'}</span>
                     <div className="interface-info">
                       <span className="interface-name">{driver.label}</span>
                       <span className="interface-desc">{driver.description}</span>
@@ -127,9 +182,20 @@ const SetupView: React.FC = () => {
                 </div>
               </div>
               <div className="dmx-actions">
-                <button className="btn">🔌 Test Connection</button>
+                <button 
+                  className={`btn ${isTestingDMX ? 'testing' : ''}`}
+                  onClick={testDMXConnection}
+                  disabled={isTestingDMX}
+                >
+                  {isTestingDMX ? '⏳ Testing...' : '🔌 Test Connection'}
+                </button>
                 <button className="btn btn-secondary">Auto-Detect</button>
               </div>
+              {dmxTestResult !== 'none' && (
+                <div className={`test-result ${dmxTestResult}`}>
+                  {dmxTestResult === 'success' ? '✓ Connection successful!' : '✗ Connection failed. Check cables.'}
+                </div>
+              )}
             </div>
           )}
 
@@ -184,7 +250,7 @@ const SetupView: React.FC = () => {
                     </tbody>
                   </table>
                   <div className="patch-summary">
-                    Total: 3 fixtures | Channels: 39/512
+                    Total: {fixtureCount} fixtures | Channels: {channelsUsed}/512
                   </div>
                   <div className="patch-actions">
                     <button className="btn btn-small">+ Add</button>
@@ -200,30 +266,30 @@ const SetupView: React.FC = () => {
             <div className="wizard-step system-test">
               <h3>✓ SYSTEM TEST</h3>
               <div className="test-results">
-                <div className="test-item pass">
-                  <span className="test-icon">✓</span>
+                <div className={`test-item ${audioConnected ? 'pass' : 'fail'}`}>
+                  <span className="test-icon">{audioConnected ? '✓' : '✗'}</span>
                   <span className="test-name">Audio Input</span>
-                  <span className="test-status">Working (Latency: 12ms)</span>
+                  <span className="test-status">{audioConnected ? `Working (${deviceName})` : 'Not connected'}</span>
                 </div>
-                <div className="test-item pass">
-                  <span className="test-icon">✓</span>
+                <div className={`test-item ${bpm > 0 ? 'pass' : 'pending'}`}>
+                  <span className="test-icon">{bpm > 0 ? '✓' : '○'}</span>
                   <span className="test-name">Beat Detection</span>
-                  <span className="test-status">Working (BPM: 128.0)</span>
+                  <span className="test-status">{bpm > 0 ? `Working (BPM: ${bpm.toFixed(1)})` : 'Waiting for audio...'}</span>
                 </div>
-                <div className="test-item pass">
-                  <span className="test-icon">✓</span>
+                <div className={`test-item ${dmxConnected ? 'pass' : 'fail'}`}>
+                  <span className="test-icon">{dmxConnected ? '✓' : '✗'}</span>
                   <span className="test-name">DMX Interface</span>
-                  <span className="test-status">Connected (44 fps)</span>
+                  <span className="test-status">{dmxConnected ? 'Connected (44 fps)' : 'Not connected'}</span>
                 </div>
-                <div className="test-item pass">
-                  <span className="test-icon">✓</span>
+                <div className={`test-item ${fixtureCount > 0 ? 'pass' : 'pending'}`}>
+                  <span className="test-icon">{fixtureCount > 0 ? '✓' : '○'}</span>
                   <span className="test-name">Fixture Response</span>
-                  <span className="test-status">All 3 responding</span>
+                  <span className="test-status">{fixtureCount > 0 ? `All ${fixtureCount} responding` : 'No fixtures patched'}</span>
                 </div>
-                <div className="test-item pass">
-                  <span className="test-icon">✓</span>
+                <div className={`test-item ${brainConnected ? 'pass' : 'pending'}`}>
+                  <span className="test-icon">{brainConnected ? '✓' : '○'}</span>
                   <span className="test-name">Selene Core</span>
-                  <span className="test-status">Active (Memory: 1247 patterns)</span>
+                  <span className="test-status">{brainConnected ? `Active (Memory: ${patternsLearned.toLocaleString()} patterns)` : 'Initializing...'}</span>
                 </div>
                 <div className="test-item pass">
                   <span className="test-icon">✓</span>
@@ -231,11 +297,19 @@ const SetupView: React.FC = () => {
                   <span className="test-status">60 FPS stable</span>
                 </div>
               </div>
-              <div className="test-success">
-                <div className="success-icon">🎉</div>
-                <div className="success-text">All systems operational!</div>
-                <div className="success-subtext">Ready to rock! 🤘</div>
-              </div>
+              {audioConnected && dmxConnected && fixtureCount > 0 ? (
+                <div className="test-success">
+                  <div className="success-icon">🎉</div>
+                  <div className="success-text">All systems operational!</div>
+                  <div className="success-subtext">Ready to rock! 🤘</div>
+                </div>
+              ) : (
+                <div className="test-warning">
+                  <div className="warning-icon">⚠️</div>
+                  <div className="warning-text">Some systems need attention</div>
+                  <div className="warning-subtext">Check failed items above</div>
+                </div>
+              )}
               <div className="test-actions">
                 <button className="btn">Run Full Test</button>
                 <button className="btn btn-primary">▶ Start Live Mode</button>

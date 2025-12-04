@@ -195,11 +195,18 @@ export class HarmonyDetector extends EventEmitter {
       return this.lastAnalysis;
     }
 
+    // === CHECK SILENCIO PRIMERO ===
+    // Verificar energía del audio ANTES de procesar
+    const audioEnergy = this.calculateRawAudioEnergy(audio);
+    if (audioEnergy < 0.05) {
+      return this.createEmptyAnalysis(now);
+    }
+
     // === PASO 1: Convertir FFT a Chromagrama ===
     const chromaAnalysis = this.extractChromagrama(audio);
     
-    // Si no hay energía, retornar análisis vacío con baja confianza
-    if (chromaAnalysis.totalEnergy < 0.05) {
+    // Si el chromagrama no tiene información útil
+    if (chromaAnalysis.totalEnergy < 0.1) {
       return this.createEmptyAnalysis(now);
     }
 
@@ -600,6 +607,23 @@ export class HarmonyDetector extends EventEmitter {
       chordConfidence * 0.3 +
       energyConfidence * 0.3
     );
+  }
+
+  /**
+   * Calcular energía raw del audio (antes de normalización)
+   * Útil para detectar silencio
+   */
+  private calculateRawAudioEnergy(audio: AudioAnalysis): number {
+    const { spectrum, energy } = audio;
+    
+    // Si tenemos energía calculada, usarla directamente
+    if (energy && typeof energy.current === 'number') {
+      return energy.current;
+    }
+    
+    // Fallback: calcular desde spectrum
+    const { bass, lowMid, mid, highMid, treble } = spectrum;
+    return (bass + lowMid + mid + highMid + treble) / 5;
   }
 
   /**

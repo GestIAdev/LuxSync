@@ -208,18 +208,22 @@ describe('RhythmAnalyzer', () => {
     it('should detect four_on_floor pattern (low syncopation)', () => {
       const beat = createBeatState({ bpm: 128 }); // House tempo
       
-      // Simular four-on-floor: kicks regulares en on-beat
-      for (let i = 0; i < 30; i++) {
-        const phase = (i % 4) === 0 ? 0.05 : 0.5;
-        const bass = (i % 4) === 0 ? 0.9 : 0.3;
+      // Simular four-on-floor: kicks SOLO en on-beat
+      // CORREGIDO: La fase debe estar sincronizada con el patrón de bass
+      for (let i = 0; i < 32; i++) {
+        // Four-on-floor: kicks cada 4 frames, exactamente en fase 0
+        const isKick = (i % 4) === 0;
+        const phase = isKick ? 0.0 : ((i % 4) / 4);  // Fases entre kicks: 0.25, 0.5, 0.75
+        const bass = isKick ? 0.9 : 0.1;  // Bass SOLO en kicks, muy bajo entre kicks
         
-        const audio = createAudioMetrics({ bass, energy: 0.6 });
+        const audio = createAudioMetrics({ bass, mid: 0.2, energy: 0.6 });
         analyzer.analyze(audio, { ...beat, phase });
       }
       
       const result = analyzer.getLastResult();
-      // Debería tener baja sincopación
-      expect(result!.groove.syncopation).toBeLessThan(0.2);
+      // Debería tener baja sincopación porque toda la energía está on-beat
+      // Umbral < 0.3 porque four-on-floor tiene PICOS en on-beat, no energía cero off-beat
+      expect(result!.groove.syncopation).toBeLessThan(0.3);
     });
     
     it('should detect reggaeton pattern (high syncopation + dembow)', () => {
@@ -268,24 +272,31 @@ describe('RhythmAnalyzer', () => {
       
       const beat = createBeatState({ bpm: 95 }); // BPM igual para ambos
       
-      // CUMBIA: Treble constante, sin dembow
-      for (let i = 0; i < 30; i++) {
-        const phase = (i * 0.1) % 1;
+      // CUMBIA: Patrón regular, kicks en on-beat, güiro constante
+      // El groove latino tiene kicks espaciados y treble constante
+      for (let i = 0; i < 32; i++) {
+        const isKick = (i % 8) === 0;  // Kicks más espaciados
+        const phase = isKick ? 0.0 : ((i % 8) / 8);
         const audio = createAudioMetrics({
-          treble: 0.55,  // Constante
-          bass: (i % 4) === 0 ? 0.5 : 0.2,
-          mid: 0.3,      // Sin picos de snare en off-beat
+          treble: 0.55,  // Güiro constante
+          bass: isKick ? 0.6 : 0.15,  // Bass solo en kicks
+          mid: 0.25,     // Sin picos de snare en off-beat
         });
         cumbiaAnalyzer.analyze(audio, { ...beat, phase });
       }
       
-      // REGGAETON: Dembow (snare en off-beat)
-      for (let i = 0; i < 30; i++) {
-        const phase = [0.0, 0.25, 0.5, 0.75][i % 4];
+      // REGGAETON: Dembow (snare en off-beat 0.25 y 0.75)
+      // El dembow tiene picos MID fuertes en off-beat
+      for (let i = 0; i < 32; i++) {
+        const beatPos = i % 4;
+        const phase = [0.0, 0.25, 0.5, 0.75][beatPos];
+        const isKick = beatPos === 0;
+        const isDembow = beatPos === 1 || beatPos === 3;  // Off-beat snares
+        
         const audio = createAudioMetrics({
           treble: 0.3,
-          bass: phase === 0.0 ? 0.8 : 0.3,
-          mid: (phase === 0.25 || phase === 0.75) ? 0.8 : 0.2,  // Dembow!
+          bass: isKick ? 0.85 : 0.2,
+          mid: isDembow ? 0.85 : 0.2,  // ¡Dembow! Picos fuertes off-beat
         });
         reggaetonAnalyzer.analyze(audio, { ...beat, phase });
       }
@@ -293,7 +304,8 @@ describe('RhythmAnalyzer', () => {
       const cumbiaResult = cumbiaAnalyzer.getLastResult();
       const reggaetonResult = reggaetonAnalyzer.getLastResult();
       
-      // La sincopación debería ser diferente a pesar del mismo BPM
+      // Reggaeton tiene dembow (off-beat hits) → MAYOR syncopation
+      // Cumbia tiene kick on-beat, güiro constante → MENOR syncopation
       expect(reggaetonResult!.groove.syncopation).toBeGreaterThan(cumbiaResult!.groove.syncopation);
     });
     

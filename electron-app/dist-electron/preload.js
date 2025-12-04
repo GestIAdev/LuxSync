@@ -51,4 +51,47 @@ const api = {
     setMovement: (params) => electron.ipcRenderer.invoke("controls:setMovement", params)
   }
 };
+const luxApi = {
+  // === CONTROL ===
+  /** Iniciar el motor Selene */
+  start: () => electron.ipcRenderer.invoke("lux:start"),
+  /** Detener el motor Selene */
+  stop: () => electron.ipcRenderer.invoke("lux:stop"),
+  /** Cambiar paleta de colores */
+  setPalette: (paletteIndex) => electron.ipcRenderer.invoke("lux:set-palette", paletteIndex),
+  /** Configurar movimiento */
+  setMovement: (config) => electron.ipcRenderer.invoke("lux:set-movement", config),
+  /** Disparar un efecto */
+  triggerEffect: (effectName, params, duration) => electron.ipcRenderer.invoke("lux:trigger-effect", { effectName, params, duration }),
+  /** Cancelar efecto */
+  cancelEffect: (effectId) => electron.ipcRenderer.invoke("lux:cancel-effect", effectId),
+  /** Cancelar todos los efectos */
+  cancelAllEffects: () => electron.ipcRenderer.invoke("lux:cancel-all-effects"),
+  /** Simular frame de audio */
+  audioFrame: (metrics) => electron.ipcRenderer.invoke("lux:audio-frame", metrics),
+  /** Obtener estado actual */
+  getState: () => electron.ipcRenderer.invoke("lux:get-state"),
+  // === EVENTOS ===
+  /** Suscribirse a actualizaciones de estado (30fps) */
+  onStateUpdate: (callback) => {
+    const handler = (_, state) => callback(state);
+    electron.ipcRenderer.on("lux:state-update", handler);
+    return () => {
+      electron.ipcRenderer.removeListener("lux:state-update", handler);
+    };
+  },
+  /** Suscribirse a cambios de paleta */
+  onPaletteChange: (callback) => {
+    const handler = (_, index) => callback(index);
+    electron.ipcRenderer.on("lux:palette-change", handler);
+    return () => electron.ipcRenderer.removeListener("lux:palette-change", handler);
+  },
+  /** Suscribirse a eventos de efectos */
+  onEffectTriggered: (callback) => {
+    const handler = (_, data) => callback(data.name, data.id);
+    electron.ipcRenderer.on("lux:effect-triggered", handler);
+    return () => electron.ipcRenderer.removeListener("lux:effect-triggered", handler);
+  }
+};
 electron.contextBridge.exposeInMainWorld("luxsync", api);
+electron.contextBridge.exposeInMainWorld("lux", luxApi);

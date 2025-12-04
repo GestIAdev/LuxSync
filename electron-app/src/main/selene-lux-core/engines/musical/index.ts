@@ -43,20 +43,21 @@ export * from './mapping';
 // ============================================================
 // 🥁 ANALYSIS COMPONENTS
 // ============================================================
-// TODO: FASE 1
-// export { RhythmAnalyzer } from './analysis/RhythmAnalyzer';
-// TODO: FASE 2
-// export { HarmonyDetector } from './analysis/HarmonyDetector';
-// TODO: FASE 3
-// export { SectionTracker } from './analysis/SectionTracker';
+// ✅ FASE 1
+export { RhythmAnalyzer } from './analysis/RhythmAnalyzer';
+// ✅ FASE 2
+export { HarmonyDetector } from './analysis/HarmonyDetector';
+// ✅ FASE 3
+export { SectionTracker } from './analysis/SectionTracker';
 
 // ============================================================
 // 🎭 CLASSIFICATION COMPONENTS
 // ============================================================
-// TODO: FASE 2
-// export { ScaleIdentifier } from './classification/ScaleIdentifier';
-// TODO: FASE 3
-// export { GenreClassifier } from './classification/GenreClassifier';
+// ✅ FASE 2
+export { ScaleIdentifier } from './classification/ScaleIdentifier';
+// ✅ FASE 3
+export { GenreClassifier } from './classification/GenreClassifier';
+// TODO: FASE 3+ (opcional)
 // export { MoodSynthesizer } from './classification/MoodSynthesizer';
 
 // ============================================================

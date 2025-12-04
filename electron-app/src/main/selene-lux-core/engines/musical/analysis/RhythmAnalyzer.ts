@@ -287,9 +287,15 @@ export class RhythmAnalyzer {
   /**
    * 🎯 Calcular groove (sincopación, swing, complejidad)
    * 
-   * MATEMÁTICA DE SINCOPACIÓN:
-   * - Dividir el beat en ON-BEAT (fase 0.0-0.2, 0.8-1.0) y OFF-BEAT (0.2-0.8)
-   * - syncopation = OffBeatEnergy / TotalEnergy
+   * MATEMÁTICA DE SINCOPACIÓN - FÓRMULA FINAL:
+   * - Dividir el beat en ON-BEAT (fase 0.0-0.15, 0.85-1.0) y OFF-BEAT (0.15-0.85)
+   * - Medir qué % de la energía TOTAL está en off-beat
+   * - PERO ponderar por la INTENSIDAD de los picos off-beat
+   * 
+   * CLAVE: Four-on-floor tiene picos SOLO en on-beat
+   *        Reggaeton tiene picos FUERTES en off-beat (dembow)
+   * 
+   * FÓRMULA: syncopation = (peakOffBeat / maxPeak) * (offBeatEnergy / totalEnergy)
    * 
    * UMBRALES (de types.ts):
    * - < 0.15: Straight/Four-on-floor (Techno, House)
@@ -310,31 +316,49 @@ export class RhythmAnalyzer {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // 🎯 CÁLCULO DE SINCOPACIÓN
+    // 🎯 CÁLCULO DE SINCOPACIÓN - FÓRMULA MEJORADA V2
     // ═══════════════════════════════════════════════════════════
     
     let onBeatEnergy = 0;
     let offBeatEnergy = 0;
-    let totalEnergy = 0;
+    let peakOnBeat = 0;   // Pico más alto en on-beat
+    let peakOffBeat = 0;  // Pico más alto en off-beat
     
     for (const frame of frames) {
-      const energy = frame.bass + frame.mid * 0.5; // Bass domina
-      totalEnergy += energy;
+      // Usar bass + mid ponderado (bass domina el groove)
+      const energy = frame.bass + frame.mid * 0.5;
       
       // On-beat: cerca de 0.0 o 1.0 (inicio del beat)
       const isOnBeat = frame.phase < 0.15 || frame.phase > 0.85;
       
       if (isOnBeat) {
         onBeatEnergy += energy;
+        peakOnBeat = Math.max(peakOnBeat, energy);
       } else {
         offBeatEnergy += energy;
+        peakOffBeat = Math.max(peakOffBeat, energy);
       }
     }
     
-    // Evitar división por cero
-    const syncopation = totalEnergy > 0.01 
-      ? offBeatEnergy / totalEnergy 
-      : 0.2;
+    const totalEnergy = onBeatEnergy + offBeatEnergy;
+    
+    // Factor 1: Qué proporción de energía está off-beat (0-1)
+    const offBeatRatio = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0.5;
+    
+    // Factor 2: Qué tan fuertes son los picos off-beat vs ON-beat
+    // Si peakOffBeat ≈ peakOnBeat → hay golpes importantes off-beat (alto syncopation)
+    // Si peakOffBeat << peakOnBeat → toda la acción está on-beat (bajo syncopation)
+    // CLAVE: Comparar con peakOnBeat, no con maxPeak
+    const peakDominance = peakOnBeat > 0.01 
+      ? Math.min(1, peakOffBeat / peakOnBeat)  // 0 si offBeat débil, 1 si igual o mayor
+      : (peakOffBeat > 0.3 ? 1 : 0.5);         // Si no hay onBeat, usar offBeat
+    
+    // FÓRMULA FINAL:
+    // - offBeatRatio alto + peakDominance alto = ALTA syncopation (reggaeton)
+    // - offBeatRatio bajo + peakDominance bajo = BAJA syncopation (four-on-floor)
+    // El peakDominance es clave: si los picos off-beat son débiles comparados con on-beat,
+    // la syncopation es baja aunque haya energía background off-beat
+    const syncopation = peakDominance * 0.7 + offBeatRatio * 0.3;
     
     // ═══════════════════════════════════════════════════════════
     // 🎷 CÁLCULO DE SWING
@@ -734,6 +758,7 @@ export class RhythmAnalyzer {
    * - Alta densidad de hits
    * - Variación rápida de intensidad
    * - Duración corta (típicamente 1-2 beats)
+   * - O energía sostenida muy alta (builds en EDM)
    */
   private detectFill(audio: AudioMetrics, drums: DrumDetection, now: number): boolean {
     // Verificar intervalo mínimo entre fills
@@ -742,13 +767,19 @@ export class RhythmAnalyzer {
       if (this.consecutiveHighEnergy > 3) return true;
     }
     
-    // Alta energía + muchos hits
+    // OPCIÓN 1: Alta energía + muchos hits (fill clásico)
     const highEnergy = audio.energy > this.config.fillThreshold;
     const manyHits = (drums.kickDetected ? 1 : 0) + 
                      (drums.snareDetected ? 1 : 0) + 
                      (drums.hihatDetected ? 1 : 0) >= 2;
     
-    if (highEnergy && manyHits) {
+    // OPCIÓN 2: Energía MUY alta sostenida (build/riser)
+    // Bass + mid + treble todos altos simultáneamente
+    const extremeEnergy = audio.energy > 0.85 && 
+                          audio.bass > 0.7 && 
+                          audio.mid > 0.7;
+    
+    if ((highEnergy && manyHits) || extremeEnergy) {
       this.consecutiveHighEnergy++;
       
       if (this.consecutiveHighEnergy >= 4) {

@@ -2,7 +2,7 @@
  * LUXSYNC ELECTRON - MAIN PROCESS
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
@@ -32,9 +32,21 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      // WAVE 9.6.2: Permisos para audio del sistema
+      backgroundThrottling: false,
     },
     icon: path.join(__dirname, '../public/icon.png'),
     show: false,
+  })
+  
+  // WAVE 9.6.2: Permitir captura de audio del sistema
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowedPermissions = ['media', 'mediaKeySystem', 'audioCapture', 'display-capture']
+    if (allowedPermissions.includes(permission)) {
+      callback(true)
+    } else {
+      callback(false)
+    }
   })
 
   mainWindow.once('ready-to-show', () => {
@@ -85,6 +97,25 @@ ipcMain.handle('dmx:getStatus', () => {
 
 ipcMain.handle('audio:getDevices', async () => {
   return []
+})
+
+// WAVE 9.6.2: Desktop Capturer para audio del sistema
+ipcMain.handle('audio:getDesktopSources', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 0, height: 0 }
+    })
+    console.log('[Main] Desktop sources found:', sources.length)
+    return sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      displayId: s.display_id
+    }))
+  } catch (err) {
+    console.error('[Main] Failed to get desktop sources:', err)
+    return []
+  }
 })
 
 // ============================================

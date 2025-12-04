@@ -213,47 +213,98 @@ const SetupView: React.FC = () => {
     
     try {
       if (source === 'system') {
-        console.log('[SetupView] 🖥️ Requesting system audio...')
+        console.log('[SetupView] 🖥️ Requesting system audio via Electron...')
         
-        // En Electron, getDisplayMedia puede no estar disponible
-        // Intentamos, pero con fallback automático a simulation
-        if (!navigator.mediaDevices.getDisplayMedia) {
-          console.warn('[SetupView] ⚠️ getDisplayMedia not available - using simulation')
-          trinity.setSimulating(true)
-          setAudioSource('simulation')
-          setIsConnectingAudio(false)
-          return
+        // En Electron, usamos desktopCapturer para capturar audio del sistema
+        // Primero obtenemos las fuentes disponibles
+        let sources: Array<{ id: string; name: string }> = []
+        
+        if (window.luxsync?.audio?.getDesktopSources) {
+          sources = await window.luxsync.audio.getDesktopSources()
+          console.log('[SetupView] 📺 Desktop sources:', sources.length)
         }
         
-        try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: {
-              // @ts-expect-error - systemAudio es experimental
-              systemAudio: 'include',
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
+        if (sources.length === 0) {
+          // Fallback: intentar con getDisplayMedia del navegador
+          if (navigator.mediaDevices.getDisplayMedia) {
+            try {
+              const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: {
+                  // @ts-expect-error - systemAudio es experimental
+                  systemAudio: 'include',
+                  echoCancellation: false,
+                  noiseSuppression: false,
+                  autoGainControl: false
+                }
+              })
+              
+              const audioTracks = stream.getAudioTracks()
+              if (audioTracks.length > 0) {
+                console.log('[SetupView] ✅ System audio via getDisplayMedia OK')
+                trinity.setSimulating(false)
+                setAudioSource('system')
+                if (window.lux) {
+                  await window.lux.saveConfig({ audio: { source, sensitivity } })
+                }
+                setIsConnectingAudio(false)
+                return
+              }
+              stream.getTracks().forEach(t => t.stop())
+            } catch (displayError) {
+              console.warn('[SetupView] getDisplayMedia failed:', displayError)
             }
-          })
-          
-          const audioTracks = stream.getAudioTracks()
-          if (audioTracks.length === 0) {
-            stream.getTracks().forEach(t => t.stop())
-            // Fallback graceful a simulation
-            console.warn('[SetupView] ⚠️ No audio tracks - fallback to simulation')
-            trinity.setSimulating(true)
-            setAudioSource('simulation')
-          } else {
-            console.log('[SetupView] ✅ System audio OK')
-            trinity.setSimulating(false)
-            setAudioSource('system')
           }
-        } catch (displayError) {
-          // getDisplayMedia falló - usar simulation
-          console.warn('[SetupView] ⚠️ System audio failed - using simulation:', displayError)
+          
+          // Si todo falla, usar simulación
+          console.warn('[SetupView] ⚠️ No system audio sources - using simulation')
           trinity.setSimulating(true)
           setAudioSource('simulation')
+        } else {
+          // Usar la primera fuente (pantalla entera o ventana)
+          const screenSource = sources.find(s => s.name.includes('Entire Screen') || s.name.includes('Screen')) || sources[0]
+          
+          try {
+            // Crear stream con la fuente de Electron
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                // @ts-expect-error - chromeMediaSource es de Electron
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: screenSource.id
+                }
+              },
+              video: {
+                // @ts-expect-error - chromeMediaSource es de Electron
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: screenSource.id,
+                  minWidth: 1,
+                  maxWidth: 1,
+                  minHeight: 1,
+                  maxHeight: 1
+                }
+              }
+            })
+            
+            const audioTracks = stream.getAudioTracks()
+            // Detener video track inmediatamente
+            stream.getVideoTracks().forEach(t => t.stop())
+            
+            if (audioTracks.length > 0) {
+              console.log('[SetupView] ✅ System audio via Electron OK:', audioTracks[0].label)
+              trinity.setSimulating(false)
+              setAudioSource('system')
+            } else {
+              console.warn('[SetupView] ⚠️ No audio tracks - using simulation')
+              trinity.setSimulating(true)
+              setAudioSource('simulation')
+            }
+          } catch (captureError) {
+            console.warn('[SetupView] ⚠️ Electron capture failed:', captureError)
+            trinity.setSimulating(true)
+            setAudioSource('simulation')
+          }
         }
         
       } else if (source === 'microphone') {

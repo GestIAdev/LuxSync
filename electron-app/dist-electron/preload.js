@@ -25,7 +25,9 @@ const api = {
     },
     onSpectrum: (callback) => {
       electron.ipcRenderer.on("audio:spectrum", (_, spectrum) => callback(spectrum));
-    }
+    },
+    // WAVE 9.6.2: Desktop Capturer via IPC (main process)
+    getDesktopSources: () => electron.ipcRenderer.invoke("audio:getDesktopSources")
   },
   // ============================================
   // SELENE

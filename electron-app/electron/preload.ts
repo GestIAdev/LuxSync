@@ -3,6 +3,7 @@
  * Puente seguro entre Main y Renderer
  * 
  * V2.0: Añadido window.lux para comunicación con Selene Lux Core
+ * V2.1: Añadido desktopCapturer para audio del sistema (via IPC)
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
@@ -80,6 +81,9 @@ const api = {
     onSpectrum: (callback: (spectrum: number[]) => void) => {
       ipcRenderer.on('audio:spectrum', (_, spectrum) => callback(spectrum))
     },
+    
+    // WAVE 9.6.2: Desktop Capturer via IPC (main process)
+    getDesktopSources: () => ipcRenderer.invoke('audio:getDesktopSources')
   },
 
   // ============================================

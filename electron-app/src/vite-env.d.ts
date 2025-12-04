@@ -54,6 +54,11 @@ interface Window {
     startAudioCapture: () => void
     stopAudioCapture: () => void
     onAudioData: (callback: (data: AudioData) => void) => void
+    
+    // WAVE 9.6.2: Desktop Capturer para audio del sistema
+    audio: {
+      getDesktopSources: () => Promise<Array<{ id: string; name: string; displayId: string }>>
+    }
 
     // App
     minimize: () => void

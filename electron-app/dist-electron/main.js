@@ -7154,10 +7154,20 @@ function createWindow() {
     webPreferences: {
       preload: path$1.join(__dirname, "preload.js"),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      // WAVE 9.6.2: Permisos para audio del sistema
+      backgroundThrottling: false
     },
     icon: path$1.join(__dirname, "../public/icon.png"),
     show: false
+  });
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowedPermissions = ["media", "mediaKeySystem", "audioCapture", "display-capture"];
+    if (allowedPermissions.includes(permission)) {
+      callback(true);
+    } else {
+      callback(false);
+    }
   });
   mainWindow.once("ready-to-show", () => {
     mainWindow == null ? void 0 : mainWindow.show();
@@ -7195,6 +7205,23 @@ electron.ipcMain.handle("dmx:getStatus", () => {
 });
 electron.ipcMain.handle("audio:getDevices", async () => {
   return [];
+});
+electron.ipcMain.handle("audio:getDesktopSources", async () => {
+  try {
+    const sources = await electron.desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: { width: 0, height: 0 }
+    });
+    console.log("[Main] Desktop sources found:", sources.length);
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      displayId: s.display_id
+    }));
+  } catch (err) {
+    console.error("[Main] Failed to get desktop sources:", err);
+    return [];
+  }
 });
 function initSelene() {
   selene = new SeleneLux({

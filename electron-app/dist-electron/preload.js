@@ -91,7 +91,31 @@ const luxApi = {
     const handler = (_, data) => callback(data.name, data.id);
     electron.ipcRenderer.on("lux:effect-triggered", handler);
     return () => electron.ipcRenderer.removeListener("lux:effect-triggered", handler);
-  }
+  },
+  // ============================================
+  // WAVE 9.5: FIXTURES
+  // ============================================
+  /** Escanear carpeta de fixtures */
+  scanFixtures: (customPath) => electron.ipcRenderer.invoke("lux:scan-fixtures", customPath),
+  /** Obtener biblioteca de fixtures */
+  getFixtureLibrary: () => electron.ipcRenderer.invoke("lux:get-fixture-library"),
+  /** Obtener fixtures patcheados */
+  getPatchedFixtures: () => electron.ipcRenderer.invoke("lux:get-patched-fixtures"),
+  /** Añadir fixture al patch */
+  patchFixture: (fixtureId, dmxAddress, universe) => electron.ipcRenderer.invoke("lux:patch-fixture", { fixtureId, dmxAddress, universe }),
+  /** Eliminar fixture del patch */
+  unpatchFixture: (dmxAddress) => electron.ipcRenderer.invoke("lux:unpatch-fixture", dmxAddress),
+  /** Limpiar todo el patch */
+  clearPatch: () => electron.ipcRenderer.invoke("lux:clear-patch"),
+  // ============================================
+  // WAVE 9.5: CONFIG
+  // ============================================
+  /** Obtener configuración */
+  getConfig: () => electron.ipcRenderer.invoke("lux:get-config"),
+  /** Guardar configuración */
+  saveConfig: (config) => electron.ipcRenderer.invoke("lux:save-config", config),
+  /** Resetear configuración */
+  resetConfig: () => electron.ipcRenderer.invoke("lux:reset-config")
 };
 electron.contextBridge.exposeInMainWorld("luxsync", api);
 electron.contextBridge.exposeInMainWorld("lux", luxApi);

@@ -5,7 +5,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 const electron = require("electron");
 const path$1 = require("path");
 const events = require("events");
-const require$$0 = require("fs");
+const fs$1 = require("fs");
 const require$$2 = require("util");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
@@ -24,7 +24,7 @@ function _interopNamespaceDefault(e) {
   return Object.freeze(n);
 }
 const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path$1);
-const require$$0__namespace = /* @__PURE__ */ _interopNamespaceDefault(require$$0);
+const fs__namespace = /* @__PURE__ */ _interopNamespaceDefault(fs$1);
 class ColorEngine {
   constructor(config) {
     __publicField(this, "activePalette", "fuego");
@@ -3728,7 +3728,7 @@ function requireBindings() {
   if (hasRequiredBindings) return bindings.exports;
   hasRequiredBindings = 1;
   (function(module2, exports$1) {
-    var fs2 = require$$0, path2 = path$1, fileURLToPath = requireFileUriToPath(), join = path2.join, dirname = path2.dirname, exists = fs2.accessSync && function(path3) {
+    var fs2 = fs$1, path2 = path$1, fileURLToPath = requireFileUriToPath(), join = path2.join, dirname = path2.dirname, exists = fs2.accessSync && function(path3) {
       try {
         fs2.accessSync(path3);
       } catch (e) {
@@ -4018,7 +4018,7 @@ var hasRequiredBackup;
 function requireBackup() {
   if (hasRequiredBackup) return backup;
   hasRequiredBackup = 1;
-  const fs2 = require$$0;
+  const fs2 = fs$1;
   const path2 = path$1;
   const { promisify } = require$$2;
   const { cppdb } = util$1;
@@ -4335,7 +4335,7 @@ function requireInspect() {
   };
   return inspect;
 }
-const fs = require$$0;
+const fs = fs$1;
 const path = path$1;
 const util = util$1;
 const SqliteError = sqliteError;
@@ -4443,8 +4443,8 @@ class SeleneMemoryManager {
     }
     try {
       const dbDir = path__namespace.dirname(this.config.dbPath);
-      if (!require$$0__namespace.existsSync(dbDir)) {
-        require$$0__namespace.mkdirSync(dbDir, { recursive: true });
+      if (!fs__namespace.existsSync(dbDir)) {
+        fs__namespace.mkdirSync(dbDir, { recursive: true });
       }
       this.db = new Database(this.config.dbPath);
       if (this.config.enableWAL) {
@@ -5319,7 +5319,7 @@ class SeleneMemoryManager {
     const oldest = this.db.prepare(`SELECT MIN(timestamp) as oldest FROM palettes`).get();
     let dbSizeBytes = 0;
     try {
-      const stats = require$$0__namespace.statSync(this.config.dbPath);
+      const stats = fs__namespace.statSync(this.config.dbPath);
       dbSizeBytes = stats.size;
     } catch {
     }
@@ -7359,4 +7359,184 @@ electron.ipcMain.handle("lux:audio-frame", (_event, audioData) => {
   };
   return { success: true };
 });
+let fixtureLibrary = [];
+let patchedFixtures = [];
+function parseFXTFile(filePath) {
+  var _a;
+  try {
+    const content = fs$1.readFileSync(filePath, "utf-8");
+    const lines = content.split(/\r?\n/);
+    const manufacturer = ((_a = lines[0]) == null ? void 0 : _a.trim()) || "Unknown";
+    let name = path$1.basename(filePath, ".fxt");
+    let channelCount = 0;
+    for (let i = 0; i < Math.min(lines.length, 20); i++) {
+      const line = lines[i].trim();
+      if (/^\d+$/.test(line) && parseInt(line) > 0 && parseInt(line) <= 512) {
+        channelCount = parseInt(line);
+      }
+      if (line.length > 3 && !line.includes('"') && !line.includes(".") && !line.includes("\\")) {
+        if (i > 2 && i < 10) {
+          name = line;
+        }
+      }
+    }
+    const nameLower = name.toLowerCase();
+    let type = "generic";
+    if (nameLower.includes("moving") || nameLower.includes("beam") || nameLower.includes("spot")) {
+      type = "moving_head";
+    } else if (nameLower.includes("par") || nameLower.includes("led")) {
+      type = "par";
+    } else if (nameLower.includes("strobe")) {
+      type = "strobe";
+    } else if (nameLower.includes("wash")) {
+      type = "wash";
+    }
+    return {
+      id: path$1.basename(filePath, ".fxt").replace(/\s+/g, "_").toLowerCase(),
+      name,
+      manufacturer,
+      channelCount: channelCount || 1,
+      type,
+      filePath
+    };
+  } catch (err) {
+    console.error(`Error parsing ${filePath}:`, err);
+    return null;
+  }
+}
+electron.ipcMain.handle("lux:scan-fixtures", async (_event, customPath) => {
+  try {
+    const defaultPaths = [
+      path$1.join(electron.app.getPath("userData"), "fixtures"),
+      path$1.join(__dirname, "../../fixtures"),
+      path$1.join(__dirname, "../../../fixtures"),
+      path$1.join(__dirname, "../../librerias"),
+      path$1.join(__dirname, "../../../librerias")
+    ];
+    const searchPaths = customPath ? [customPath, ...defaultPaths] : defaultPaths;
+    const foundFixtures = [];
+    for (const searchPath of searchPaths) {
+      if (!fs$1.existsSync(searchPath)) continue;
+      const files = fs$1.readdirSync(searchPath);
+      for (const file of files) {
+        if (file.toLowerCase().endsWith(".fxt")) {
+          const fullPath = path$1.join(searchPath, file);
+          const fixture = parseFXTFile(fullPath);
+          if (fixture) {
+            foundFixtures.push(fixture);
+          }
+        }
+      }
+    }
+    fixtureLibrary = foundFixtures;
+    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures`);
+    return {
+      success: true,
+      fixtures: foundFixtures,
+      searchPaths: searchPaths.filter((p) => fs$1.existsSync(p))
+    };
+  } catch (err) {
+    console.error("[Fixtures] Scan error:", err);
+    return { success: false, error: String(err), fixtures: [] };
+  }
+});
+electron.ipcMain.handle("lux:get-fixture-library", () => {
+  return { success: true, fixtures: fixtureLibrary };
+});
+electron.ipcMain.handle("lux:get-patched-fixtures", () => {
+  return { success: true, fixtures: patchedFixtures };
+});
+electron.ipcMain.handle("lux:patch-fixture", (_event, data) => {
+  const libraryFixture = fixtureLibrary.find((f) => f.id === data.fixtureId);
+  if (!libraryFixture) {
+    return { success: false, error: "Fixture not found in library" };
+  }
+  const patched = {
+    ...libraryFixture,
+    dmxAddress: data.dmxAddress,
+    universe: data.universe || 1
+  };
+  patchedFixtures.push(patched);
+  console.log(`[Fixtures] ✅ Patched ${libraryFixture.name} at DMX ${data.dmxAddress}`);
+  return { success: true, fixture: patched, totalPatched: patchedFixtures.length };
+});
+electron.ipcMain.handle("lux:unpatch-fixture", (_event, dmxAddress) => {
+  const index = patchedFixtures.findIndex((f) => f.dmxAddress === dmxAddress);
+  if (index === -1) {
+    return { success: false, error: "Fixture not found at that address" };
+  }
+  const removed = patchedFixtures.splice(index, 1)[0];
+  console.log(`[Fixtures] 🗑️ Unpatched ${removed.name} from DMX ${dmxAddress}`);
+  return { success: true, removed, totalPatched: patchedFixtures.length };
+});
+electron.ipcMain.handle("lux:clear-patch", () => {
+  const count = patchedFixtures.length;
+  patchedFixtures = [];
+  console.log(`[Fixtures] 🧹 Cleared ${count} fixtures from patch`);
+  return { success: true, cleared: count };
+});
+const CONFIG_FILE = path$1.join(electron.app.getPath("userData"), "luxsync-config.json");
+function getDefaultConfig() {
+  return {
+    audio: {
+      source: "simulation",
+      sensitivity: 50
+    },
+    dmx: {
+      driver: "enttec-open",
+      port: "COM3",
+      universe: 1,
+      frameRate: 44
+    },
+    fixtures: [],
+    ui: {
+      theme: "dark",
+      showAdvanced: false
+    }
+  };
+}
+function loadConfig() {
+  try {
+    if (fs$1.existsSync(CONFIG_FILE)) {
+      const data = fs$1.readFileSync(CONFIG_FILE, "utf-8");
+      const config = JSON.parse(data);
+      patchedFixtures = config.fixtures || [];
+      return config;
+    }
+  } catch (err) {
+    console.error("[Config] Error loading config:", err);
+  }
+  return getDefaultConfig();
+}
+function saveConfig(config) {
+  try {
+    const currentConfig = loadConfig();
+    const newConfig = { ...currentConfig, ...config, fixtures: patchedFixtures };
+    fs$1.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2));
+    console.log("[Config] 💾 Config saved");
+    return true;
+  } catch (err) {
+    console.error("[Config] Error saving config:", err);
+    return false;
+  }
+}
+electron.ipcMain.handle("lux:get-config", () => {
+  return { success: true, config: loadConfig() };
+});
+electron.ipcMain.handle("lux:save-config", (_event, config) => {
+  const success = saveConfig(config);
+  return { success };
+});
+electron.ipcMain.handle("lux:reset-config", () => {
+  try {
+    if (fs$1.existsSync(CONFIG_FILE)) {
+      fs$1.unlinkSync(CONFIG_FILE);
+    }
+    patchedFixtures = [];
+    return { success: true, config: getDefaultConfig() };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+});
+loadConfig();
 console.log("LuxSync Main Process Started");

@@ -80,6 +80,53 @@ interface Window {
     onStateUpdate: (callback: (state: SeleneStateUpdate) => void) => () => void
     onPaletteChange: (callback: (paletteId: string) => void) => () => void
     onEffectTriggered: (callback: (effectName: string, effectId: number) => void) => () => void
+    
+    // WAVE 9.5: Fixtures
+    scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>
+    getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>
+    getPatchedFixtures: () => Promise<{ success: boolean; fixtures: PatchedFixture[] }>
+    patchFixture: (fixtureId: string, dmxAddress: number, universe?: number) => Promise<{ success: boolean; fixture?: PatchedFixture; totalPatched?: number }>
+    unpatchFixture: (dmxAddress: number) => Promise<{ success: boolean; removed?: PatchedFixture }>
+    clearPatch: () => Promise<{ success: boolean; cleared?: number }>
+    
+    // WAVE 9.5: Config
+    getConfig: () => Promise<{ success: boolean; config: LuxSyncConfig }>
+    saveConfig: (config: Partial<LuxSyncConfig>) => Promise<{ success: boolean }>
+    resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
+  }
+}
+
+// WAVE 9.5: Fixture Types
+interface FixtureLibraryItem {
+  id: string
+  name: string
+  manufacturer: string
+  channelCount: number
+  type: string
+  filePath: string
+}
+
+interface PatchedFixture extends FixtureLibraryItem {
+  dmxAddress: number
+  universe: number
+}
+
+interface LuxSyncConfig {
+  audio: {
+    source: 'microphone' | 'system' | 'simulation'
+    deviceId?: string
+    sensitivity: number
+  }
+  dmx: {
+    driver: string
+    port: string
+    universe: number
+    frameRate: number
+  }
+  fixtures: PatchedFixture[]
+  ui: {
+    theme: string
+    showAdvanced: boolean
   }
 }
 

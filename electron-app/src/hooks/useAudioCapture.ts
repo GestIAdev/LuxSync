@@ -2,6 +2,11 @@
  * 🎤 USE AUDIO CAPTURE
  * Web Audio API hook para capturar y analizar audio en tiempo real
  * 
+ * WAVE 9.5: Soporta múltiples fuentes de audio:
+ * - Micrófono (getUserMedia)
+ * - Audio del Sistema (getDisplayMedia con audio)
+ * - Simulación (para testing)
+ * 
  * Envía métricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
  */
 
@@ -10,6 +15,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 // ============================================================================
 // TYPES
 // ============================================================================
+
+export type AudioSource = 'microphone' | 'system' | 'simulation' | 'none'
 
 export interface AudioMetrics {
   bass: number      // 0-1 (20-250Hz)
@@ -26,9 +33,13 @@ export interface UseAudioCaptureReturn {
   isCapturing: boolean
   isPermissionGranted: boolean
   error: string | null
-  startCapture: () => Promise<void>
+  audioSource: AudioSource
+  startCapture: (source?: AudioSource) => Promise<void>
   stopCapture: () => void
   setSimulationMode: (enabled: boolean) => void
+  // WAVE 9.5: Nuevos métodos
+  startSystemAudio: () => Promise<void>
+  startMicrophone: () => Promise<void>
 }
 
 // ============================================================================
@@ -59,6 +70,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   const [isPermissionGranted, setIsPermissionGranted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [simulationMode, setSimulationMode] = useState(false)
+  const [audioSource, setAudioSource] = useState<AudioSource>('none')
 
   // Refs para audio context
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -239,20 +251,90 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     }
   }, [simulationMode, isCapturing])
 
-  // Start capture
-  const startCapture = useCallback(async () => {
+  // ============================================================================
+  // WAVE 9.5: Setup audio from stream (shared logic)
+  // ============================================================================
+  const setupAudioFromStream = useCallback((stream: MediaStream, sourceName: string) => {
+    streamRef.current = stream
+    setIsPermissionGranted(true)
+
+    // Crear audio context
+    const audioContext = new AudioContext()
+    audioContextRef.current = audioContext
+
+    // Crear analyser
+    const analyser = audioContext.createAnalyser()
+    analyser.fftSize = FFT_SIZE
+    analyser.smoothingTimeConstant = SMOOTHING
+    analyserRef.current = analyser
+
+    // Conectar stream al analyser
+    const source = audioContext.createMediaStreamSource(stream)
+    source.connect(analyser)
+
+    setIsCapturing(true)
+    animationFrameRef.current = requestAnimationFrame(processFrame)
+    
+    console.log(`[AudioCapture] � ${sourceName} capture started`)
+  }, [processFrame])
+
+  // ============================================================================
+  // WAVE 9.5: Start System Audio (getDisplayMedia)
+  // ============================================================================
+  const startSystemAudio = useCallback(async () => {
     try {
       setError(null)
+      cleanup() // Limpiar captura anterior
 
-      if (simulationMode) {
-        setIsCapturing(true)
-        simulationStartRef.current = performance.now()
-        animationFrameRef.current = requestAnimationFrame(processSimulatedFrame)
-        console.log('[AudioCapture] 🎵 Simulation mode started')
-        return
+      console.log('[AudioCapture] 🖥️ Requesting system audio...')
+      
+      // getDisplayMedia con audio - captura audio del sistema
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { width: 1, height: 1 }, // Mínimo video requerido
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      } as DisplayMediaStreamOptions)
+
+      // Desactivar video track (solo queremos audio)
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = false
+        // No lo eliminamos porque algunos navegadores lo necesitan
+      })
+
+      // Verificar que tenemos audio
+      const audioTracks = stream.getAudioTracks()
+      if (audioTracks.length === 0) {
+        throw new Error('No audio track in system capture. Select "Share system audio" in the dialog.')
       }
 
-      // Pedir permiso de micrófono
+      console.log('[AudioCapture] 🖥️ Got system audio track:', audioTracks[0].label)
+      
+      setAudioSource('system')
+      setupAudioFromStream(stream, 'System audio')
+      
+    } catch (err) {
+      console.error('[AudioCapture] System audio error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to capture system audio'
+      setError(errorMessage)
+      
+      // No fallback automático - dejar que el usuario decida
+      throw err
+    }
+  }, [cleanup, setupAudioFromStream])
+
+  // ============================================================================
+  // WAVE 9.5: Start Microphone (getUserMedia)
+  // ============================================================================
+  const startMicrophone = useCallback(async () => {
+    try {
+      setError(null)
+      cleanup() // Limpiar captura anterior
+
+      console.log('[AudioCapture] 🎤 Requesting microphone...')
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: false,
@@ -260,45 +342,61 @@ export function useAudioCapture(): UseAudioCaptureReturn {
           autoGainControl: false,
         }
       })
+
+      console.log('[AudioCapture] 🎤 Got microphone track:', stream.getAudioTracks()[0]?.label)
       
-      streamRef.current = stream
-      setIsPermissionGranted(true)
-
-      // Crear audio context
-      const audioContext = new AudioContext()
-      audioContextRef.current = audioContext
-
-      // Crear analyser
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = FFT_SIZE
-      analyser.smoothingTimeConstant = SMOOTHING
-      analyserRef.current = analyser
-
-      // Conectar stream al analyser
-      const source = audioContext.createMediaStreamSource(stream)
-      source.connect(analyser)
-
-      setIsCapturing(true)
-      animationFrameRef.current = requestAnimationFrame(processFrame)
+      setAudioSource('microphone')
+      setupAudioFromStream(stream, 'Microphone')
       
-      console.log('[AudioCapture] 🎤 Real audio capture started')
+    } catch (err) {
+      console.error('[AudioCapture] Microphone error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to access microphone')
+      throw err
+    }
+  }, [cleanup, setupAudioFromStream])
+
+  // Start capture (legacy - defaults to microphone with simulation fallback)
+  const startCapture = useCallback(async (source: AudioSource = 'microphone') => {
+    try {
+      setError(null)
+
+      if (source === 'simulation' || simulationMode) {
+        setAudioSource('simulation')
+        setIsCapturing(true)
+        simulationStartRef.current = performance.now()
+        animationFrameRef.current = requestAnimationFrame(processSimulatedFrame)
+        console.log('[AudioCapture] 🎵 Simulation mode started')
+        return
+      }
+
+      if (source === 'system') {
+        await startSystemAudio()
+        return
+      }
+
+      // Default: microphone with fallback
+      try {
+        await startMicrophone()
+      } catch {
+        // Fallback a simulación
+        console.log('[AudioCapture] ⚠️ Falling back to simulation mode')
+        setSimulationMode(true)
+        setAudioSource('simulation')
+        setIsCapturing(true)
+        simulationStartRef.current = performance.now()
+        animationFrameRef.current = requestAnimationFrame(processSimulatedFrame)
+      }
     } catch (err) {
       console.error('[AudioCapture] Error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to access microphone')
-      
-      // Fallback a simulación
-      console.log('[AudioCapture] ⚠️ Falling back to simulation mode')
-      setSimulationMode(true)
-      setIsCapturing(true)
-      simulationStartRef.current = performance.now()
-      animationFrameRef.current = requestAnimationFrame(processSimulatedFrame)
+      setError(err instanceof Error ? err.message : 'Failed to start audio capture')
     }
-  }, [simulationMode, processFrame, processSimulatedFrame])
+  }, [simulationMode, processSimulatedFrame, startSystemAudio, startMicrophone])
 
   // Stop capture
   const stopCapture = useCallback(() => {
     cleanup()
     setIsCapturing(false)
+    setAudioSource('none')
     console.log('[AudioCapture] 🛑 Capture stopped')
   }, [cleanup])
 
@@ -314,9 +412,13 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     isCapturing,
     isPermissionGranted,
     error,
+    audioSource,
     startCapture,
     stopCapture,
     setSimulationMode,
+    // WAVE 9.5
+    startSystemAudio,
+    startMicrophone,
   }
 }
 

@@ -169,6 +169,50 @@ const luxApi = {
     ipcRenderer.on('lux:effect-triggered', handler)
     return () => ipcRenderer.removeListener('lux:effect-triggered', handler)
   },
+  
+  // ============================================
+  // WAVE 9.5: FIXTURES
+  // ============================================
+  
+  /** Escanear carpeta de fixtures */
+  scanFixtures: (customPath?: string) => 
+    ipcRenderer.invoke('lux:scan-fixtures', customPath),
+  
+  /** Obtener biblioteca de fixtures */
+  getFixtureLibrary: () => 
+    ipcRenderer.invoke('lux:get-fixture-library'),
+  
+  /** Obtener fixtures patcheados */
+  getPatchedFixtures: () => 
+    ipcRenderer.invoke('lux:get-patched-fixtures'),
+  
+  /** Añadir fixture al patch */
+  patchFixture: (fixtureId: string, dmxAddress: number, universe?: number) =>
+    ipcRenderer.invoke('lux:patch-fixture', { fixtureId, dmxAddress, universe }),
+  
+  /** Eliminar fixture del patch */
+  unpatchFixture: (dmxAddress: number) =>
+    ipcRenderer.invoke('lux:unpatch-fixture', dmxAddress),
+  
+  /** Limpiar todo el patch */
+  clearPatch: () => 
+    ipcRenderer.invoke('lux:clear-patch'),
+  
+  // ============================================
+  // WAVE 9.5: CONFIG
+  // ============================================
+  
+  /** Obtener configuración */
+  getConfig: () => 
+    ipcRenderer.invoke('lux:get-config'),
+  
+  /** Guardar configuración */
+  saveConfig: (config: Record<string, any>) =>
+    ipcRenderer.invoke('lux:save-config', config),
+  
+  /** Resetear configuración */
+  resetConfig: () =>
+    ipcRenderer.invoke('lux:reset-config'),
 }
 
 // Exponer las APIs al renderer

@@ -93,24 +93,7 @@ const DEFAULT_STATE: SeleneState = {
 // HOOK
 // ============================================================================
 
-declare global {
-  interface Window {
-    lux?: {
-      start: () => Promise<void>
-      stop: () => Promise<void>
-      setPalette: (index: number) => Promise<void>
-      setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => Promise<void>
-      triggerEffect: (name: string, params?: Record<string, any>, duration?: number) => Promise<number>
-      cancelEffect: (effectId: number) => Promise<void>
-      cancelAllEffects: () => Promise<void>
-      audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) => Promise<void>
-      getState: () => Promise<SeleneState>
-      onStateUpdate: (callback: (state: SeleneState) => void) => () => void
-      onPaletteChange: (callback: (index: number) => void) => () => void
-      onEffectTriggered: (callback: (name: string, id: number) => void) => () => void
-    }
-  }
-}
+// NOTA: Los tipos de window.lux están definidos en vite-env.d.ts
 
 export function useSelene(): UseSeleneReturn {
   const [state, setState] = useState<SeleneState | null>(null)
@@ -125,14 +108,45 @@ export function useSelene(): UseSeleneReturn {
       setIsConnected(true)
       
       // Suscribirse a actualizaciones de estado
-      unsubscribeRef.current = window.lux.onStateUpdate((newState) => {
-        setState(newState)
+      // El callback recibe SeleneStateUpdate, lo convertimos a SeleneState
+      unsubscribeRef.current = window.lux.onStateUpdate((update) => {
+        setState(prev => ({
+          ...DEFAULT_STATE,
+          ...prev,
+          // Mapear colores
+          r: update.colors?.primary.r ?? prev?.r ?? 0,
+          g: update.colors?.primary.g ?? prev?.g ?? 0,
+          b: update.colors?.primary.b ?? prev?.b ?? 0,
+          // Mapear movimiento
+          pan: update.movement?.pan ?? prev?.pan ?? 127,
+          tilt: update.movement?.tilt ?? prev?.tilt ?? 127,
+          // Mapear audio
+          audioMetrics: update.beat ? {
+            bass: 0,
+            mid: 0,
+            treble: 0,
+            energy: 0,
+            bpm: update.beat.bpm
+          } : prev?.audioMetrics,
+          // Timestamp
+          timestamp: update.timestamp ?? Date.now()
+        }))
       })
       
       // Obtener estado inicial
       window.lux.getState().then((initialState) => {
         if (initialState) {
-          setState(initialState)
+          // Convertir SeleneStateUpdate a SeleneState
+          setState({
+            ...DEFAULT_STATE,
+            r: initialState.colors?.primary.r ?? 0,
+            g: initialState.colors?.primary.g ?? 0,
+            b: initialState.colors?.primary.b ?? 0,
+            pan: initialState.movement?.pan ?? 127,
+            tilt: initialState.movement?.tilt ?? 127,
+            paletteName: initialState.palette?.name ?? 'fire',
+            timestamp: initialState.timestamp ?? Date.now()
+          })
           setIsRunning(true)
         }
       }).catch(() => {
@@ -171,7 +185,11 @@ export function useSelene(): UseSeleneReturn {
 
   const setPalette = useCallback(async (index: number) => {
     if (window.lux) {
-      await window.lux.setPalette(index)
+      // La API ahora espera string. Mapear index a nombre si es necesario.
+      // Por compatibilidad, convertimos el índice a string del nombre de paleta
+      const paletteNames = ['fuego', 'hielo', 'selva', 'neon', 'arcoiris', 'sunset', 'ocean']
+      const paletteName = paletteNames[index] ?? 'fuego'
+      await window.lux.setPalette(paletteName)
     }
   }, [])
 
@@ -181,9 +199,10 @@ export function useSelene(): UseSeleneReturn {
     }
   }, [])
 
-  const triggerEffect = useCallback(async (name: string, params?: Record<string, any>, duration?: number): Promise<number> => {
+  const triggerEffect = useCallback(async (name: string, params?: Record<string, unknown>, duration?: number): Promise<number> => {
     if (window.lux) {
-      return await window.lux.triggerEffect(name, params, duration)
+      const result = await window.lux.triggerEffect(name, params, duration)
+      return result.effectId ?? -1
     }
     return -1
   }, [])

@@ -393,8 +393,12 @@ function parseFXTFile(filePath: string): FixtureLibraryItem | null {
       type = 'wash'
     }
     
+    // ID único basado en filepath normalizado (determinista)
+    const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase()
+    const id = Buffer.from(normalizedPath).toString('base64').replace(/[+/=]/g, '_').slice(0, 32)
+    
     return {
-      id: path.basename(filePath, '.fxt').replace(/\s+/g, '_').toLowerCase(),
+      id,
       name,
       manufacturer,
       channelCount: channelCount || 1,
@@ -421,6 +425,7 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
     
     const searchPaths = customPath ? [customPath, ...defaultPaths] : defaultPaths
     const foundFixtures: FixtureLibraryItem[] = []
+    const seenFilenames = new Set<string>() // Evitar duplicados por nombre de archivo
     
     for (const searchPath of searchPaths) {
       if (!fs.existsSync(searchPath)) continue
@@ -428,6 +433,11 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
       const files = fs.readdirSync(searchPath)
       for (const file of files) {
         if (file.toLowerCase().endsWith('.fxt')) {
+          // Skip si ya vimos este archivo (evita duplicados entre carpetas)
+          const filenameKey = file.toLowerCase()
+          if (seenFilenames.has(filenameKey)) continue
+          seenFilenames.add(filenameKey)
+          
           const fullPath = path.join(searchPath, file)
           const fixture = parseFXTFile(fullPath)
           if (fixture) {

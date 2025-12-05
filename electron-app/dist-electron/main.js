@@ -7418,8 +7418,10 @@ function parseFXTFile(filePath) {
     } else if (nameLower.includes("wash")) {
       type = "wash";
     }
+    const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
+    const id = Buffer.from(normalizedPath).toString("base64").replace(/[+/=]/g, "_").slice(0, 32);
     return {
-      id: path$1.basename(filePath, ".fxt").replace(/\s+/g, "_").toLowerCase(),
+      id,
       name,
       manufacturer,
       channelCount: channelCount || 1,
@@ -7442,11 +7444,15 @@ electron.ipcMain.handle("lux:scan-fixtures", async (_event, customPath) => {
     ];
     const searchPaths = customPath ? [customPath, ...defaultPaths] : defaultPaths;
     const foundFixtures = [];
+    const seenFilenames = /* @__PURE__ */ new Set();
     for (const searchPath of searchPaths) {
       if (!fs$1.existsSync(searchPath)) continue;
       const files = fs$1.readdirSync(searchPath);
       for (const file of files) {
         if (file.toLowerCase().endsWith(".fxt")) {
+          const filenameKey = file.toLowerCase();
+          if (seenFilenames.has(filenameKey)) continue;
+          seenFilenames.add(filenameKey);
           const fullPath = path$1.join(searchPath, file);
           const fixture = parseFXTFile(fullPath);
           if (fixture) {

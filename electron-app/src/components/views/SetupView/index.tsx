@@ -641,13 +641,11 @@ const SetupView: React.FC = () => {
                         {isScanning ? '⏳ Escaneando...' : '📦 Sin fixtures'}
                       </div>
                     ) : (
-                      filteredLibrary.map((fixture, index) => {
+                      filteredLibrary.map(fixture => {
                         const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
-                        // Use index as fallback for duplicate IDs
-                        const uniqueKey = `${fixture.id}-${index}`
                         return (
                           <div 
-                            key={uniqueKey}
+                            key={fixture.id}
                             className={`fixture-card-mini ${selectedLibraryFixture === fixture.id ? 'selected' : ''}`}
                             onClick={() => setSelectedLibraryFixture(fixture.id)}
                           >

@@ -7418,8 +7418,7 @@ function parseFXTFile(filePath) {
     } else if (nameLower.includes("wash")) {
       type = "wash";
     }
-    const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
-    const id = Buffer.from(normalizedPath).toString("base64").replace(/[+/=]/g, "_").slice(0, 32);
+    const id = path$1.basename(filePath, ".fxt").replace(/\s+/g, "_").toLowerCase();
     return {
       id,
       name,
@@ -7435,24 +7434,13 @@ function parseFXTFile(filePath) {
 }
 electron.ipcMain.handle("lux:scan-fixtures", async (_event, customPath) => {
   try {
-    const defaultPaths = [
-      path$1.join(electron.app.getPath("userData"), "fixtures"),
-      path$1.join(__dirname, "../../fixtures"),
-      path$1.join(__dirname, "../../../fixtures"),
-      path$1.join(__dirname, "../../librerias"),
-      path$1.join(__dirname, "../../../librerias")
-    ];
-    const searchPaths = customPath ? [customPath, ...defaultPaths] : defaultPaths;
+    const defaultPath = path$1.join(__dirname, "../../../librerias");
+    const searchPath = customPath || defaultPath;
     const foundFixtures = [];
-    const seenFilenames = /* @__PURE__ */ new Set();
-    for (const searchPath of searchPaths) {
-      if (!fs$1.existsSync(searchPath)) continue;
+    if (fs$1.existsSync(searchPath)) {
       const files = fs$1.readdirSync(searchPath);
       for (const file of files) {
         if (file.toLowerCase().endsWith(".fxt")) {
-          const filenameKey = file.toLowerCase();
-          if (seenFilenames.has(filenameKey)) continue;
-          seenFilenames.add(filenameKey);
           const fullPath = path$1.join(searchPath, file);
           const fixture = parseFXTFile(fullPath);
           if (fixture) {
@@ -7460,13 +7448,15 @@ electron.ipcMain.handle("lux:scan-fixtures", async (_event, customPath) => {
           }
         }
       }
+    } else {
+      console.warn(`[Fixtures] ⚠️ Folder not found: ${searchPath}`);
     }
     fixtureLibrary = foundFixtures;
-    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures`);
+    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures in ${searchPath}`);
     return {
       success: true,
       fixtures: foundFixtures,
-      searchPaths: searchPaths.filter((p) => fs$1.existsSync(p))
+      searchPath
     };
   } catch (err) {
     console.error("[Fixtures] Scan error:", err);

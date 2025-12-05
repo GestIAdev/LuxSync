@@ -393,9 +393,8 @@ function parseFXTFile(filePath: string): FixtureLibraryItem | null {
       type = 'wash'
     }
     
-    // ID único basado en filepath normalizado (determinista)
-    const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase()
-    const id = Buffer.from(normalizedPath).toString('base64').replace(/[+/=]/g, '_').slice(0, 32)
+    // ID único = nombre de archivo sin extensión (único dentro de /librerias)
+    const id = path.basename(filePath, '.fxt').replace(/\s+/g, '_').toLowerCase()
     
     return {
       id,
@@ -414,30 +413,16 @@ function parseFXTFile(filePath: string): FixtureLibraryItem | null {
 // Escanear carpeta de fixtures
 ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
   try {
-    // Rutas por defecto
-    const defaultPaths = [
-      path.join(app.getPath('userData'), 'fixtures'),
-      path.join(__dirname, '../../fixtures'),
-      path.join(__dirname, '../../../fixtures'),
-      path.join(__dirname, '../../librerias'),
-      path.join(__dirname, '../../../librerias'),
-    ]
+    // UNA SOLA carpeta: /librerias (la que tiene los fixtures reales)
+    const defaultPath = path.join(__dirname, '../../../librerias')
+    const searchPath = customPath || defaultPath
     
-    const searchPaths = customPath ? [customPath, ...defaultPaths] : defaultPaths
     const foundFixtures: FixtureLibraryItem[] = []
-    const seenFilenames = new Set<string>() // Evitar duplicados por nombre de archivo
     
-    for (const searchPath of searchPaths) {
-      if (!fs.existsSync(searchPath)) continue
-      
+    if (fs.existsSync(searchPath)) {
       const files = fs.readdirSync(searchPath)
       for (const file of files) {
         if (file.toLowerCase().endsWith('.fxt')) {
-          // Skip si ya vimos este archivo (evita duplicados entre carpetas)
-          const filenameKey = file.toLowerCase()
-          if (seenFilenames.has(filenameKey)) continue
-          seenFilenames.add(filenameKey)
-          
           const fullPath = path.join(searchPath, file)
           const fixture = parseFXTFile(fullPath)
           if (fixture) {
@@ -445,15 +430,17 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
           }
         }
       }
+    } else {
+      console.warn(`[Fixtures] ⚠️ Folder not found: ${searchPath}`)
     }
     
     fixtureLibrary = foundFixtures
-    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures`)
+    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures in ${searchPath}`)
     
     return { 
       success: true, 
       fixtures: foundFixtures,
-      searchPaths: searchPaths.filter(p => fs.existsSync(p))
+      searchPath
     }
   } catch (err) {
     console.error('[Fixtures] Scan error:', err)

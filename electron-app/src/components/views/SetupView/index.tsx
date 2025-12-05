@@ -13,6 +13,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useAudioStore } from '../../../stores/audioStore'
 import { useDMXStore } from '../../../stores/dmxStore'
 import { useSeleneStore } from '../../../stores/seleneStore'
+import { useNavigationStore } from '../../../stores/navigationStore'
 import { useTrinity } from '../../../providers/TrinityProvider'
 import './SetupView.css'
 
@@ -107,6 +108,7 @@ const SetupView: React.FC = () => {
   // Stores
   const { bpm, bpmConfidence } = useAudioStore()
   const dmxStore = useDMXStore()
+  const { setActiveTab } = useNavigationStore()
   useSeleneStore()
   
   // Trinity provider
@@ -190,6 +192,7 @@ const SetupView: React.FC = () => {
   // ============================================================================
   
   const connectAudio = useCallback(async (source: 'microphone' | 'system' | 'simulation') => {
+    console.log('[SetupView] 🔊 connectAudio called with:', source)
     setAudioError(null)
     
     // ========================================
@@ -199,6 +202,7 @@ const SetupView: React.FC = () => {
       console.log('[SetupView] 🎵 SIMULATION - Instant activation, NO permissions')
       trinity.setSimulating(true)
       setAudioSource('simulation')
+      console.log('[SetupView] ✅ Simulation activated!')
       
       if (window.lux) {
         await window.lux.saveConfig({ audio: { source, sensitivity } })
@@ -637,11 +641,13 @@ const SetupView: React.FC = () => {
                         {isScanning ? '⏳ Escaneando...' : '📦 Sin fixtures'}
                       </div>
                     ) : (
-                      filteredLibrary.map(fixture => {
+                      filteredLibrary.map((fixture, index) => {
                         const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
+                        // Use index as fallback for duplicate IDs
+                        const uniqueKey = `${fixture.id}-${index}`
                         return (
                           <div 
-                            key={fixture.id}
+                            key={uniqueKey}
                             className={`fixture-card-mini ${selectedLibraryFixture === fixture.id ? 'selected' : ''}`}
                             onClick={() => setSelectedLibraryFixture(fixture.id)}
                           >
@@ -768,7 +774,14 @@ const SetupView: React.FC = () => {
               Next →
             </button>
           ) : (
-            <button className="nav-btn finish" disabled={!isStepComplete(4)}>
+            <button 
+              className="nav-btn finish" 
+              disabled={!isStepComplete(4)}
+              onClick={() => {
+                console.log('[SetupView] 🚀 START - Navigating to LIVE view')
+                setActiveTab('live')
+              }}
+            >
               🚀 START
             </button>
           )}

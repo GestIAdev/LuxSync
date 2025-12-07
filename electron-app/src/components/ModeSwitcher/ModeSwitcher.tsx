@@ -48,7 +48,11 @@ const ModeSwitcher: React.FC = () => {
   // 🔗 Conectar al store global de Selene (SOLO LECTURA - el backend actualiza vía IPC)
   const currentMode = useSeleneStore((state) => state.mode)
   
-  // 🐛 DEBUG: Log re-renders con stack trace
+  // � HOTFIX: Prevenir clics duplicados/rápidos
+  const [isChanging, setIsChanging] = React.useState(false)
+  const lastClickTime = React.useRef(0)
+  
+  // �🐛 DEBUG: Log re-renders con stack trace
   const renderCount = React.useRef(0)
   renderCount.current++
   
@@ -63,6 +67,16 @@ const ModeSwitcher: React.FC = () => {
   // Evita loops infinitos y duplicación de lógica
 
   const handleModeChange = async (mode: SeleneMode) => {
+    // 🔥 HOTFIX: Prevenir clics duplicados (debounce 500ms)
+    const now = Date.now()
+    if (isChanging || (now - lastClickTime.current) < 500) {
+      console.warn(`[ModeSwitcher] ⏸️ Ignoring duplicate click (too fast)`)
+      return
+    }
+    
+    lastClickTime.current = now
+    setIsChanging(true)
+    
     console.log(`[ModeSwitcher] 🎚️ Requesting mode change: ${currentMode} → ${mode}`)
     
     try {
@@ -77,6 +91,9 @@ const ModeSwitcher: React.FC = () => {
       }
     } catch (error) {
       console.error('[ModeSwitcher] ❌ Error sending mode change:', error)
+    } finally {
+      // Desbloquear después de 500ms
+      setTimeout(() => setIsChanging(false), 500)
     }
   }
 
@@ -102,7 +119,12 @@ const ModeSwitcher: React.FC = () => {
               key={mode.id}
               className={`mode-option ${isActive ? 'active' : ''}`}
               onClick={() => handleModeChange(mode.id)}
-              style={{ '--mode-color': mode.color } as React.CSSProperties}
+              disabled={isChanging}
+              style={{ 
+                '--mode-color': mode.color,
+                opacity: isChanging ? 0.5 : 1,
+                cursor: isChanging ? 'wait' : 'pointer'
+              } as React.CSSProperties}
             >
               <div className="mode-icon-wrapper">
                 <IconComponent 

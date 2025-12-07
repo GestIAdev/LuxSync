@@ -1,16 +1,17 @@
 ﻿/**
- * ðŸŽ¤ USE AUDIO CAPTURE
+ * 🎤 USE AUDIO CAPTURE
  * Web Audio API hook para capturar y analizar audio en tiempo real
  * 
- * WAVE 9.5: Soporta mÃºltiples fuentes de audio:
- * - MicrÃ³fono (getUserMedia)
+ * WAVE 9.5: Soporta múltiples fuentes de audio:
+ * - Micrófono (getUserMedia)
  * - Audio del Sistema (getDisplayMedia con audio)
- * - SimulaciÃ³n (para testing)
+ * - Simulación (para testing)
  * 
- * EnvÃ­a mÃ©tricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
+ * Envía métricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useAudioStore } from '../stores/audioStore'  // 🎯 WAVE 14
 
 // ============================================================================
 // TYPES
@@ -71,6 +72,9 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   const [error, setError] = useState<string | null>(null)
   const [simulationMode, setSimulationMode] = useState(false)
   const [audioSource, setAudioSource] = useState<AudioSource>('none')
+
+  // 🎯 WAVE 14: Input Gain from audioStore
+  const inputGain = useAudioStore(state => state.inputGain)
 
   // Refs para audio context
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -141,10 +145,16 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     }
 
     // Normalizar (con smoothing aplicado por el AnalyserNode)
-    const bass = Math.min(1, bassSum / bassMaxBin)
-    const mid = Math.min(1, midSum / (midMaxBin - bassMaxBin))
-    const treble = Math.min(1, trebleSum / (bufferLength - midMaxBin))
-    const energy = Math.min(1, totalSum / bufferLength)
+    let bass = Math.min(1, bassSum / bassMaxBin)
+    let mid = Math.min(1, midSum / (midMaxBin - bassMaxBin))
+    let treble = Math.min(1, trebleSum / (bufferLength - midMaxBin))
+    let energy = Math.min(1, totalSum / bufferLength)
+
+    // 🎯 WAVE 14: Aplicar Input Gain para calibración
+    bass = Math.min(1, bass * inputGain)
+    mid = Math.min(1, mid * inputGain)
+    treble = Math.min(1, treble * inputGain)
+    energy = Math.min(1, energy * inputGain)
 
     // BPM Detection
     energyHistoryRef.current.push(energy)

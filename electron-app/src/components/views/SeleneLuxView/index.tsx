@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useSeleneStore, LOG_ENTRY_CONFIG, initializeSeleneStoreIPC } from '../../../stores/seleneStore'
+import { useAudioStore } from '../../../stores/audioStore'
 import './SeleneLuxView.css'
 
 const SeleneLuxView: React.FC = () => {
@@ -27,33 +28,25 @@ const SeleneLuxView: React.FC = () => {
     clearLog,
   } = useSeleneStore()
 
+  // 🎯 WAVE 14: Leer espectro real + Input Gain desde audioStore
+  const { bass, mid, treble, inputGain, setInputGain } = useAudioStore()
+
   // 🧠 WAVE 10: Initialize IPC subscriptions on mount
   useEffect(() => {
     const cleanup = initializeSeleneStoreIPC()
     return cleanup
   }, [])
 
-  // Neural wave animation
-  const [neuralPhase, setNeuralPhase] = useState(0)
+  // 🎯 WAVE 14: Auto-scroll control
+  const [autoScroll, setAutoScroll] = useState(true)
+  const logEntriesRef = React.useRef<HTMLDivElement>(null)
   
+  // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
-    if (!brainConnected) return
-    const interval = setInterval(() => {
-      setNeuralPhase(p => (p + 1) % 20)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [brainConnected])
-
-  // Generate animated neural wave based on energy
-  const generateNeuralWave = (row: number) => {
-    const chars = []
-    for (let i = 0; i < 24; i++) {
-      const phase = (i + neuralPhase + row * 3) % 6
-      const char = phase < 2 ? '∿' : phase < 4 ? '∼' : '~'
-      chars.push(char)
+    if (autoScroll && logEntriesRef.current) {
+      logEntriesRef.current.scrollTop = 0 // Scroll to top (newest first)
     }
-    return chars.join('')
-  }
+  }, [decisionLog, autoScroll])
 
   const filteredLog = logFilter === 'ALL' 
     ? decisionLog 
@@ -96,12 +89,23 @@ const SeleneLuxView: React.FC = () => {
           {/* Consciousness State */}
           <section className="panel consciousness-panel">
             <h3>🌙 CONSCIOUSNESS STATE</h3>
-            <div className={`neural-activity ${brainConnected ? 'active' : ''}`}>
-              <div className="neural-wave" style={{ opacity: 0.4 + energy * 0.3 }}>{generateNeuralWave(0)}</div>
-              <div className="neural-wave" style={{ opacity: 0.5 + energy * 0.3 }}>{generateNeuralWave(1)}</div>
-              <div className="neural-wave" style={{ opacity: 0.6 + energy * 0.3 }}>{generateNeuralWave(2)}</div>
-              <span className="neural-label">Neural Activity</span>
+            
+            {/* 🎯 WAVE 14: Real Spectrum Analyzer */}
+            <div className={`spectrum-analyzer ${brainConnected ? 'active' : ''}`}>
+              <div className="spectrum-bar bass" style={{ height: `${bass * 100}%` }}>
+                <span className="spectrum-label">BASS</span>
+                <span className="spectrum-value">{Math.round(bass * 100)}%</span>
+              </div>
+              <div className="spectrum-bar mid" style={{ height: `${mid * 100}%` }}>
+                <span className="spectrum-label">MID</span>
+                <span className="spectrum-value">{Math.round(mid * 100)}%</span>
+              </div>
+              <div className="spectrum-bar treble" style={{ height: `${treble * 100}%` }}>
+                <span className="spectrum-label">TREBLE</span>
+                <span className="spectrum-value">{Math.round(treble * 100)}%</span>
+              </div>
             </div>
+            
             <div className="consciousness-info">
               <div className="info-row">
                 <span className={`status-badge ${brainConnected ? 'active' : 'inactive'}`}>
@@ -190,6 +194,31 @@ const SeleneLuxView: React.FC = () => {
           </div>
         </section>
 
+        {/* 🎯 WAVE 14: Input Gain Control */}
+        <section className="panel gain-panel">
+          <h3>🎚️ INPUT GAIN CALIBRATION</h3>
+          <div className="gain-control">
+            <div className="gain-slider-container">
+              <span className="gain-label">Audio Input Boost</span>
+              <input 
+                type="range" 
+                min="0.1" 
+                max="4.0" 
+                step="0.1" 
+                value={inputGain}
+                onChange={(e) => setInputGain(parseFloat(e.target.value))}
+                className="gain-slider"
+              />
+              <span className="gain-value">{Math.round(inputGain * 100)}%</span>
+            </div>
+            <div className="gain-info">
+              <span className="gain-tip">
+                💡 Adjust gain if energy bars don't reach 100% on music drops
+              </span>
+            </div>
+          </div>
+        </section>
+
         {/* Decision Log */}
         <section className="panel log-panel">
           <div className="log-header">
@@ -216,12 +245,19 @@ const SeleneLuxView: React.FC = () => {
               >
                 {logPaused ? '▶ Resume' : '⏸ Pause'}
               </button>
+              <button 
+                className={`btn btn-small ${autoScroll ? 'active' : ''}`}
+                onClick={() => setAutoScroll(!autoScroll)}
+                title="Toggle auto-scroll"
+              >
+                {autoScroll ? '📜 Auto' : '📜 Manual'}
+              </button>
               <button className="btn btn-small" onClick={clearLog}>
                 🗑 Clear
               </button>
             </div>
           </div>
-          <div className="log-entries">
+          <div className="log-entries" ref={logEntriesRef}>
             {filteredLog.length === 0 ? (
               <div className="log-empty">No log entries yet...</div>
             ) : (

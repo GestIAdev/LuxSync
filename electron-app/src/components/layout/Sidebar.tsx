@@ -31,7 +31,7 @@ const Sidebar: React.FC = () => {
   const { activeTab, setActiveTab } = useNavigationStore()
   const { bpm, isConnected: audioConnected, level } = useAudioStore()
   const { isConnected: dmxConnected } = useDMXStore()
-  const { brainConnected, currentMode } = useSeleneStore()
+  const { brainConnected, mode } = useSeleneStore() // Use 'mode' instead of 'currentMode'
   
   // 🌪️ WAVE 11: DMX Watchdog status from IPC
   const [dmxStatus, setDmxStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected')
@@ -147,7 +147,7 @@ const Sidebar: React.FC = () => {
           <div className="status-item-row">
             <span className="status-icon">🌙</span>
             <span className={`status-value ${brainConnected ? 'active' : 'inactive'}`}>
-              {brainConnected ? (currentMode === 'intelligent' ? 'Intelligent' : 'Active') : 'Offline'}
+              {brainConnected ? (mode === 'selene' ? 'SELENE' : mode === 'flow' ? 'FLOW' : 'LOCKED') : 'Offline'}
             </span>
           </div>
         </div>

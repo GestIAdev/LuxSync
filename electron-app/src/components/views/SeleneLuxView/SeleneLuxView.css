@@ -100,44 +100,70 @@
   letter-spacing: 1px;
 }
 
-/* Consciousness Panel */
-.neural-activity {
+/* 🎯 WAVE 14: Spectrum Analyzer - Real audio visualization */
+.spectrum-analyzer {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
   padding: 16px;
-  text-align: center;
   margin-bottom: 12px;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 12px;
+  height: 120px;
+  position: relative;
 }
 
-.neural-activity.active {
+.spectrum-analyzer.active {
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
 }
 
-.neural-wave {
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: #a855f7;
-  opacity: 0.8;
-  letter-spacing: -1px;
-  transition: opacity 0.1s ease;
+.spectrum-bar {
+  flex: 1;
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.9) 0%, rgba(168, 85, 247, 0.5) 100%);
+  border-radius: 6px;
+  min-height: 20px;
+  transition: height 0.1s ease-out;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
 }
 
-.neural-wave:nth-child(2) {
-  color: #00fff0;
+.spectrum-bar.bass {
+  background: linear-gradient(180deg, rgba(255, 0, 255, 0.9) 0%, rgba(255, 0, 255, 0.4) 100%);
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
 }
 
-.neural-wave:nth-child(3) {
-  color: #ff00ff;
+.spectrum-bar.mid {
+  background: linear-gradient(180deg, rgba(0, 255, 240, 0.9) 0%, rgba(0, 255, 240, 0.4) 100%);
+  box-shadow: 0 0 10px rgba(0, 255, 240, 0.3);
 }
 
-.neural-label {
-  display: block;
-  margin-top: 10px;
-  font-size: 0.65rem;
-  color: #6b7280;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+.spectrum-bar.treble {
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.9) 0%, rgba(168, 85, 247, 0.4) 100%);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+
+.spectrum-label {
+  font-size: 0.6rem;
+  font-weight: bold;
+  color: white;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px currentColor;
+  opacity: 0.9;
+}
+
+.spectrum-value {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: white;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px currentColor;
 }
 
 .consciousness-info {
@@ -285,6 +311,99 @@
   text-align: right;
 }
 
+/* 🎯 WAVE 14: Input Gain Control Panel */
+.gain-panel {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.gain-control {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gain-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gain-label {
+  width: 140px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.gain-slider {
+  flex: 1;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  outline: none;
+  transition: background 0.3s ease;
+}
+
+.gain-slider:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.gain-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #00fff0, #a855f7);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.gain-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.gain-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #00fff0, #a855f7);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  border: none;
+  transition: transform 0.2s ease;
+}
+
+.gain-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+.gain-value {
+  width: 60px;
+  font-size: 1rem;
+  color: #00fff0;
+  font-weight: 700;
+  text-align: right;
+  text-shadow: 0 0 8px rgba(0, 255, 240, 0.5);
+}
+
+.gain-info {
+  padding: 8px 12px;
+  background: rgba(0, 255, 240, 0.05);
+  border-left: 3px solid #00fff0;
+  border-radius: 4px;
+}
+
+.gain-tip {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
 /* Log Panel */
 .log-panel {
   flex: 1;
@@ -323,6 +442,11 @@
   padding: 12px;
   font-family: monospace;
   font-size: 0.75rem;
+  /* 🎯 WAVE 14: Hacer el log seleccionable y copiable */
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .log-empty {

@@ -178,6 +178,26 @@ export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
   addLogEntry: (entry) => {
     if (get().logPaused) return
     
+    const state = get()
+    const lastEntry = state.decisionLog[0]
+    
+    // 🎯 WAVE 14: Anti-spam - Deduplicar mensajes repetidos
+    if (lastEntry && lastEntry.message === entry.message) {
+      // Mismo mensaje que el anterior - actualizar contador en lugar de duplicar
+      const updatedEntry: DecisionEntry = {
+        ...lastEntry,
+        message: lastEntry.message.includes('(x') 
+          ? lastEntry.message.replace(/\(x(\d+)\)/, (_, count) => `(x${parseInt(count) + 1})`)
+          : `${lastEntry.message} (x2)`,
+        timestamp: Date.now(), // Actualizar timestamp
+      }
+      
+      set((state) => ({
+        decisionLog: [updatedEntry, ...state.decisionLog.slice(1)],
+      }))
+      return
+    }
+    
     const newEntry: DecisionEntry = {
       ...entry,
       id: generateId(),

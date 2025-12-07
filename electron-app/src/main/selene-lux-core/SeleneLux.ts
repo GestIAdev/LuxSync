@@ -248,10 +248,21 @@ export class SeleneLux extends EventEmitter {
       }
     } else {
       // ─────────────────────────────────────────────────────────────────────
-      // LEGACY: Modo sin Brain (para compatibilidad)
+      // LEGACY: Modo sin Brain (FLOW/reactive mode)
       // ─────────────────────────────────────────────────────────────────────
       const colors = this.colorEngine.generate(metrics, beatState, this.currentPattern)
-      this.lastColors = colors
+      
+      // 🎨 WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturación)
+      // CRÍTICO: Los sliders del usuario deben afectar el modo FLOW
+      this.lastColors = {
+        primary: this.applyGlobalMultipliers(colors.primary),
+        secondary: this.applyGlobalMultipliers(colors.secondary),
+        accent: this.applyGlobalMultipliers(colors.accent),
+        ambient: this.applyGlobalMultipliers(colors.ambient),
+        intensity: colors.intensity * this.globalIntensity,
+        saturation: colors.saturation * this.globalSaturation,
+      }
+      
       this.colorEngine.updateTransition(deltaTime)
       
       const movement = this.movementEngine.calculate(metrics, beatState, deltaTime)
@@ -562,6 +573,29 @@ export class SeleneLux extends EventEmitter {
     return {
       saturation: this.globalSaturation,
       intensity: this.globalIntensity
+    }
+  }
+  
+  /**
+   * 🎨 WAVE 13.6: Aplica multiplicadores globales a un color RGB
+   * CRÍTICO: Atenúa la intensidad multiplicando cada canal por globalIntensity
+   */
+  private applyGlobalMultipliers(rgb: { r: number; g: number; b: number }): { r: number; g: number; b: number } {
+    // Aplicar intensidad (dimmer) - afecta todos los canales por igual
+    const dimmedR = rgb.r * this.globalIntensity
+    const dimmedG = rgb.g * this.globalIntensity
+    const dimmedB = rgb.b * this.globalIntensity
+    
+    // Aplicar saturación - desatura hacia el promedio de los canales
+    const avg = (dimmedR + dimmedG + dimmedB) / 3
+    const finalR = avg + (dimmedR - avg) * this.globalSaturation
+    const finalG = avg + (dimmedG - avg) * this.globalSaturation
+    const finalB = avg + (dimmedB - avg) * this.globalSaturation
+    
+    return {
+      r: Math.round(Math.max(0, Math.min(255, finalR))),
+      g: Math.round(Math.max(0, Math.min(255, finalG))),
+      b: Math.round(Math.max(0, Math.min(255, finalB))),
     }
   }
   

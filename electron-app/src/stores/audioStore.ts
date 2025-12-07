@@ -37,8 +37,9 @@ export interface AudioState {
   beatCount: number
   lastBeatTime: number
   
-  // Sensitivity
+  // Sensitivity & Gain
   sensitivity: number    // 0-1
+  inputGain: number      // 🎯 WAVE 14: Multiplicador de ganancia (1.0 = 100%, 2.0 = 200%)
   
   // Actions
   setDevice: (id: string, name: string) => void
@@ -46,6 +47,7 @@ export interface AudioState {
   setAvailableDevices: (devices: AudioDevice[]) => void
   updateMetrics: (metrics: Partial<AudioState>) => void
   setSensitivity: (sensitivity: number) => void
+  setInputGain: (gain: number) => void  // 🎯 WAVE 14
   registerBeat: () => void
   reset: () => void
 }
@@ -70,6 +72,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   beatCount: 0,
   lastBeatTime: 0,
   sensitivity: 0.5,
+  inputGain: 1.0,  // 🎯 WAVE 14: Default = 100% (sin boost)
   
   // Actions
   setDevice: (id, name) => {
@@ -103,6 +106,10 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   
   setSensitivity: (sensitivity) => {
     set({ sensitivity: Math.max(0, Math.min(1, sensitivity)) })
+  },
+  
+  setInputGain: (gain) => {  // 🎯 WAVE 14
+    set({ inputGain: Math.max(0.1, Math.min(4.0, gain)) }) // 10% - 400%
   },
   
   registerBeat: () => {

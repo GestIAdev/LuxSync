@@ -321,12 +321,13 @@ function startMainLoop() {
     // 🔊 DMX LOG - Log every ~10 seconds (very sparse)
     if (Math.random() < 0.003) {
       const c = state.colors
+      const currentMode = selene?.getState()?.mode || 'unknown' // Use Selene's actual mode (flow/selene/locked)
       console.log('[DMX] 🎨 RGB:', 
         c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
         '| 🎯 Pos:', state.movement?.pan?.toFixed(2) || 0, state.movement?.tilt?.toFixed(2) || 0,
         '| 🥁 Beat:', state.beat?.onBeat ? 'HIT' : '---',
         '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM',
-        '| 🧠 Mode:', state.brainMode || 'legacy')
+        '| 🧠 Mode:', currentMode)
     }
     
     // 🔺 TRINITY PHASE 2: Transform state to UI format

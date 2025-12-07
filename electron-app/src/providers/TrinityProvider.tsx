@@ -466,9 +466,13 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
   }, [audioMetrics, isCapturing, updateAudioStore])
   
-  // Auto-start on mount
+  // 🔥 HOTFIX: Auto-start solo UNA VEZ al montar
+  const hasStartedRef = useRef(false)
+  
   useEffect(() => {
-    if (autoStart) {
+    if (autoStart && !hasStartedRef.current) {
+      hasStartedRef.current = true
+      
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
         startTrinity()
@@ -476,7 +480,7 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
       
       return () => clearTimeout(timer)
     }
-  }, [autoStart, startTrinity])
+  }, [autoStart]) // ⚠️ REMOVIDO startTrinity de dependencias para evitar re-ejecución
   
   // Cleanup on unmount
   useEffect(() => {

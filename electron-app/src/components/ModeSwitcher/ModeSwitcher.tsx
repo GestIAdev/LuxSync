@@ -47,6 +47,9 @@ const MODES: ModeOption[] = [
 const ModeSwitcher: React.FC = () => {
   // 🔗 Conectar al store global de Selene (SOLO LECTURA - el backend actualiza vía IPC)
   const currentMode = useSeleneStore((state) => state.mode)
+  
+  // 🐛 DEBUG: Log re-renders
+  console.log('[ModeSwitcher] 🔄 Render with mode:', currentMode)
 
   // 🎯 Sincronizar con backend al montar
   useEffect(() => {

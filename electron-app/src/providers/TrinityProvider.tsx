@@ -69,6 +69,9 @@ interface SeleneStateUpdate {
     source: 'memory' | 'procedural' | 'fallback'
   }
   
+  // 🎯 WAVE 13.6: brainMode directo del SeleneLux (STATE OF TRUTH)
+  brainMode?: 'reactive' | 'intelligent'
+  
   // WAVE 9.6.3: Fixture values from main loop
   fixtures?: FixtureValues[]
   
@@ -191,7 +194,32 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
     
     // === UPDATE SELENE STORE ===
-    if (seleneState.brain) {
+    // 🎯 WAVE 13.6: STATE OF TRUTH - Sincronizar modo desde brainMode (no brain.mode)
+    if (seleneState.brainMode) {
+      // Actualizar currentMode directamente desde brainMode (refleja useBrain && mode)
+      updateBrainMetrics({
+        currentMode: seleneState.brainMode,
+      })
+      
+      // Sincronizar el modo de UI basado en brainMode
+      const uiMode = seleneState.brainMode === 'intelligent' ? 'selene' : 'flow'
+      const currentStoreMode = useSeleneStore.getState().mode
+      if (currentStoreMode !== uiMode) {
+        useSeleneStore.getState().setMode(uiMode)
+        console.log(`[Trinity] 🔄 Mode synced from brainMode: ${seleneState.brainMode} → UI: ${uiMode}`)
+      }
+      
+      // Log mode changes
+      if (seleneState.brainMode !== lastModeRef.current) {
+        lastModeRef.current = seleneState.brainMode
+        addLogEntry({
+          type: 'MODE' as LogEntryType,
+          message: `Mode: ${seleneState.brainMode.toUpperCase()}`,
+          data: { brainMode: seleneState.brainMode },
+        })
+      }
+    } else if (seleneState.brain) {
+      // Fallback: usar brain.mode si brainMode no está disponible
       const { mode, confidence, beautyScore, energy } = seleneState.brain
       
       updateBrainMetrics({

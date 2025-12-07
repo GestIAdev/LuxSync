@@ -517,9 +517,10 @@ export class SeleneLux extends EventEmitter {
         uptime: Date.now() - this.startTime,
       },
       // 🧠 WAVE-8: Estado del Brain
+      // 🔧 FIX CRÍTICO: brainMode debe reflejar el estado REAL de SeleneLux, no el del Brain
       brainOutput: this.lastBrainOutput,
-      brainMode: this.lastBrainOutput?.mode,
-      paletteSource: this.lastBrainOutput?.paletteSource || 'legacy',
+      brainMode: this.useBrain && this.mode === 'selene' ? 'intelligent' : 'reactive',
+      paletteSource: this.useBrain ? (this.lastBrainOutput?.paletteSource || 'legacy') : 'legacy',
     }
   }
   

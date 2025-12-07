@@ -1,6 +1,6 @@
 /**
  * 📱 SIDEBAR - CSS
- * WAVE 9: Navigation Panel Styles
+ * WAVE 10.6: Night Shift Polish - Larger tabs, glow borders
  */
 
 .sidebar {
@@ -56,50 +56,80 @@
 }
 
 .logo-version {
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.3);
   letter-spacing: 2px;
+  margin-top: 4px;
+  display: block;
 }
 
-/* Navigation */
+/* Navigation - WAVE 10.6: Larger tabs with glow */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
 }
 
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid transparent;
-  border-radius: 12px;
+  gap: 14px;
+  padding: 18px 20px;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0 12px 12px 0;
   background: transparent;
-  color: #9ca3af;
-  font-size: 0.875rem;
+  color: #6b7280;
+  font-size: 0.9rem;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-tab::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: var(--tab-color, #00fff0);
+  opacity: 0.1;
+  transition: width 0.3s ease;
 }
 
 .nav-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
   color: #ffffff;
+  border-left-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-tab:hover::before {
+  width: 100%;
 }
 
 .nav-tab.active {
-  background: linear-gradient(135deg, rgba(0, 255, 240, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
-  border-color: rgba(0, 255, 240, 0.3);
-  color: #00fff0;
-  box-shadow: 0 0 20px rgba(0, 255, 240, 0.2);
+  background: linear-gradient(90deg, rgba(var(--tab-color-rgb, 0, 255, 240), 0.15) 0%, transparent 100%);
+  border-left-color: var(--tab-color, #00fff0);
+  border-left-width: 4px;
+  color: var(--tab-color, #00fff0);
+  box-shadow: 
+    inset 4px 0 20px -10px var(--tab-color, #00fff0),
+    0 0 30px -15px var(--tab-color, #00fff0);
+}
+
+.nav-tab.active .nav-icon {
+  filter: drop-shadow(0 0 8px var(--tab-color, #00fff0));
+  transform: scale(1.1);
 }
 
 .nav-icon {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
+  transition: all 0.25s ease;
 }
 
 .nav-label {
@@ -113,22 +143,22 @@
   margin: 16px 0;
 }
 
-/* Status Panel */
+/* Status Panel - WAVE 10.6: Real data binding */
 .sidebar .status-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  padding: 12px;
+  padding: 14px;
   margin-top: auto;
   flex-shrink: 0;
 }
 
 .sidebar .status-title {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.6rem;
+  font-weight: 700;
   letter-spacing: 2px;
-  color: #6b7280;
-  margin: 0 0 10px 0;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 12px 0;
   text-transform: uppercase;
 }
 
@@ -136,14 +166,42 @@
   display: flex;
   flex-direction: column !important;
   gap: 4px;
-  padding: 6px 0;
+  padding: 8px 0;
   font-size: 0.75rem;
   color: #9ca3af;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .sidebar .status-panel .status-item:last-child {
   border-bottom: none;
+}
+
+/* DMX Status Special Styling */
+.sidebar .status-item.dmx-status.ok {
+  background: rgba(0, 255, 136, 0.05);
+  margin: 0 -14px;
+  padding: 8px 14px;
+  border-radius: 0;
+}
+
+.sidebar .status-item.dmx-status.error {
+  background: rgba(255, 68, 68, 0.08);
+  margin: 0 -14px;
+  padding: 8px 14px;
+  border-radius: 0;
+}
+
+.sidebar .status-item.dmx-status.reconnecting {
+  background: rgba(255, 200, 0, 0.08);
+  margin: 0 -14px;
+  padding: 8px 14px;
+  border-radius: 0;
+  animation: dmx-pulse 1.5s infinite;
+}
+
+@keyframes dmx-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .sidebar .status-item-row {
@@ -173,24 +231,47 @@
 }
 
 .sidebar .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
+  font-size: 0.7rem;
   flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .sidebar .status-dot.connected {
   color: #00ff88;
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+  animation: dot-glow 2s ease-in-out infinite;
 }
 
 .sidebar .status-dot.disconnected {
   color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  animation: dot-blink 0.8s infinite;
+}
+
+.sidebar .status-dot.reconnecting {
+  color: #ffc800;
+  text-shadow: 0 0 8px rgba(255, 200, 0, 0.5);
+  animation: dot-spin 1s linear infinite;
+}
+
+@keyframes dot-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes dot-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .sidebar .status-label {
   font-size: 0.75rem;
+  font-weight: 500;
 }
 
 /* Mini bars - ahora debajo del valor */

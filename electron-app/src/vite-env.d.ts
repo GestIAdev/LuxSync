@@ -37,16 +37,42 @@ interface SeleneStateUpdate {
   timestamp?: number
 }
 
+// 🌪️ WAVE 11: DMX Device (from UniversalDMXDriver)
+interface DMXDevice {
+  path: string
+  manufacturer?: string
+  serialNumber?: string
+  vendorId?: string
+  productId?: string
+  deviceType: 'ftdi' | 'ch340' | 'prolific' | 'cp210x' | 'generic' | 'unknown'
+  friendlyName: string
+  confidence: number
+}
+
 // ============================================================================
 // WINDOW INTERFACES
 // ============================================================================
 interface Window {
   luxsync: {
-    // DMX
+    // DMX (legacy)
     getDMXDevices: () => Promise<string[]>
     selectDMXDevice: (deviceId: string) => Promise<boolean>
     sendDMX: (channel: number, value: number) => void
     sendDMXBatch: (values: { channel: number; value: number }[]) => void
+
+    // 🌪️ WAVE 11: Universal DMX Driver
+    dmx: {
+      getStatus: () => Promise<{ success: boolean; state: string; device?: DMXDevice }>
+      listDevices: () => Promise<{ success: boolean; devices: DMXDevice[] }>
+      autoConnect: () => Promise<{ success: boolean; device?: DMXDevice; state: string; error?: string }>
+      connect: (portPath: string) => Promise<{ success: boolean; device?: DMXDevice; state: string; error?: string }>
+      disconnect: () => Promise<{ success: boolean; state: string }>
+      blackout: () => Promise<{ success: boolean }>
+      highlightFixture: (startChannel: number, channelCount: number, isMovingHead: boolean) => Promise<{ success: boolean }>
+      onStatus: (callback: (status: { state: string; device?: DMXDevice; error?: string }) => void) => () => void
+      onConnected: (callback: (device: DMXDevice) => void) => () => void
+      onDisconnected: (callback: () => void) => () => void
+    }
 
     // Audio
     getAudioDevices: () => Promise<string[]>
@@ -58,6 +84,13 @@ interface Window {
     // WAVE 9.6.2: Desktop Capturer para audio del sistema
     audio: {
       getDesktopSources: () => Promise<Array<{ id: string; name: string; displayId: string }>>
+    }
+    
+    // 🧠 WAVE 10: Selene Mode Control
+    selene: {
+      onDecision: (callback: (decision: unknown) => void) => void
+      onMoodChange: (callback: (mood: string) => void) => void
+      setMode: (mode: 'flow' | 'selene' | 'locked') => void
     }
 
     // App
@@ -75,11 +108,44 @@ interface Window {
     // FIX: Ahora acepta string canónico del ColorEngine ('fuego' | 'hielo' | 'selva' | 'neon')
     setPalette: (paletteId: string) => Promise<{ success: boolean }>
     setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => Promise<{ success: boolean }>
+    
+    // 🎚️ WAVE 13.6: Mode control (flow, selene, locked)
+    setMode: (mode: 'flow' | 'selene' | 'locked') => Promise<{ success: boolean; mode?: string; brain?: boolean; error?: string }>
+    
+    // 🎨 WAVE 13.6: Global color multipliers (STATE OF TRUTH)
+    setGlobalColorParams: (params: { saturation?: number; intensity?: number }) => Promise<{ 
+      success: boolean
+      params?: { saturation: number; intensity: number }
+      error?: string
+    }>
+    
     triggerEffect: (effectName: string, params?: Record<string, unknown>, duration?: number) => Promise<{ success: boolean; effectId?: number }>
-    cancelEffect: (effectId: number) => Promise<{ success: boolean }>
+    cancelEffect: (effectIdOrName: number | string) => Promise<{ success: boolean }>
     cancelAllEffects: () => Promise<{ success: boolean }>
+    setBlackout: (active: boolean) => Promise<{ success: boolean }>
     audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number }) => Promise<{ success: boolean }>
     getState: () => Promise<SeleneStateUpdate | null>
+    
+    // 🎯 WAVE 13.6: Full state sync for initial handshake
+    getFullState: () => Promise<{
+      dmx: {
+        isConnected: boolean
+        status: string
+        driver: string | null
+        port: string | null
+      }
+      selene: {
+        isRunning: boolean
+        mode: string | null
+        brainMode: string | null
+        paletteSource: string | null
+        consciousness: unknown | null
+      }
+      fixtures: PatchedFixture[]
+      audio: {
+        hasWorkers: boolean
+      }
+    }>
     
     // Events
     onStateUpdate: (callback: (state: SeleneStateUpdate) => void) => () => void
@@ -93,6 +159,20 @@ interface Window {
     patchFixture: (fixtureId: string, dmxAddress: number, universe?: number) => Promise<{ success: boolean; fixture?: PatchedFixture; totalPatched?: number }>
     unpatchFixture: (dmxAddress: number) => Promise<{ success: boolean; removed?: PatchedFixture }>
     clearPatch: () => Promise<{ success: boolean; cleared?: number }>
+    
+    // WAVE 10.5: Force fixture type override
+    forceFixtureType: (dmxAddress: number, newType: string) => Promise<{ success: boolean; fixture?: PatchedFixture }>
+    
+    // 🎯 WAVE 12.5: Installation Type Selector (ceiling/floor)
+    setInstallationType: (type: 'ceiling' | 'floor') => Promise<{ 
+      success: boolean
+      installationType?: 'ceiling' | 'floor'
+      appliedTo?: number
+      description?: string 
+    }>
+    
+    // WAVE 10.6: New show - full reset
+    newShow: () => Promise<{ success: boolean; message?: string; clearedFixtures?: number }>
     
     // WAVE 9.5: Config
     getConfig: () => Promise<{ success: boolean; config: LuxSyncConfig }>
@@ -114,6 +194,7 @@ interface FixtureLibraryItem {
 interface PatchedFixture extends FixtureLibraryItem {
   dmxAddress: number
   universe: number
+  zone?: string  // WAVE 10: Auto-assigned zone
 }
 
 interface LuxSyncConfig {

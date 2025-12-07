@@ -558,23 +558,113 @@ export class SimpleSectionTracker {
 
 /**
  * Simplified genre classifier for workers
+ * 🔥 WAVE 12.2: HISTÉRESIS + REGLA DE HIERRO
+ * - Sync < 0.30 = ELECTRÓNICO (robótico)
+ * - Sync > 0.35 = LATINO (con swing)
+ * - HISTÉRESIS: Mantener género estable mínimo 2 segundos
  */
 export class SimpleGenreClassifier {
   private scoreHistory: Map<string, number[]> = new Map();
   private readonly historySize = 20;
+  private lastLogFrame = 0;
+  private frameCount = 0;
+  
+  // 🔥 WAVE 12.2: HISTÉRESIS
+  private currentStableGenre: string = 'unknown';
+  private genreVotes: string[] = [];
+  private readonly VOTE_THRESHOLD = 5;  // Necesita 5 votos para cambiar
+  private lastGenreChangeFrame = 0;
+  private readonly MIN_FRAMES_BETWEEN_CHANGES = 120;  // ~2 segundos a 60fps
   
   classify(rhythm: RhythmOutput, audio: AudioMetrics): GenreOutput {
+    this.frameCount++;
+    
     const scores: Record<string, number> = {
       edm: 0,
       house: 0,
       techno: 0,
+      cyberpunk: 0,
       reggaeton: 0,
       cumbia: 0,
+      latin_pop: 0,
       hip_hop: 0,
       rock: 0,
       pop: 0,
-      unknown: 0.1, // Base score
+      unknown: 0.1,
     };
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 12.1: REGLA DE HIERRO BIDIRECCIONAL
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // 🤖 CAMINO ELECTRÓNICO: Sync < 0.30 = robótico
+    if (rhythm.syncopation < 0.30) {
+      if (audio.bpm >= 85 && audio.bpm <= 130) {
+        if (this.frameCount - this.lastLogFrame > 60) {
+          console.log(`[SimpleGenreClassifier] 🤖 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} < 0.30 → CYBERPUNK`);
+          this.lastLogFrame = this.frameCount;
+        }
+        return {
+          primary: 'cyberpunk',
+          secondary: 'techno',
+          confidence: 0.85,
+          scores: { ...scores, cyberpunk: 0.85, techno: 0.5 },
+        };
+      } else if (audio.bpm > 130) {
+        if (this.frameCount - this.lastLogFrame > 60) {
+          console.log(`[SimpleGenreClassifier] 🤖 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} < 0.30, BPM=${audio.bpm.toFixed(0)} → TECHNO`);
+          this.lastLogFrame = this.frameCount;
+        }
+        return {
+          primary: 'techno',
+          secondary: 'house',
+          confidence: 0.85,
+          scores: { ...scores, techno: 0.85, house: 0.5 },
+        };
+      }
+    }
+    
+    // 💃 CAMINO LATINO: Sync > 0.35 = tiene swing
+    if (rhythm.syncopation > 0.35 && audio.bpm >= 85 && audio.bpm <= 125) {
+      // Treble > 0.15 = güiro presente → CUMBIA
+      if (audio.treble > 0.15) {
+        if (this.frameCount - this.lastLogFrame > 60) {
+          console.log(`[SimpleGenreClassifier] � REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35, Treble=${audio.treble.toFixed(2)} > 0.15 → CUMBIA`);
+          this.lastLogFrame = this.frameCount;
+        }
+        return {
+          primary: 'cumbia',
+          secondary: 'reggaeton',
+          confidence: 0.90,
+          scores: { ...scores, cumbia: 0.90, reggaeton: 0.5 },
+        };
+      } else if (rhythm.pattern === 'reggaeton') {
+        if (this.frameCount - this.lastLogFrame > 60) {
+          console.log(`[SimpleGenreClassifier] 🎤 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35, Dembow=true → REGGAETON`);
+          this.lastLogFrame = this.frameCount;
+        }
+        return {
+          primary: 'reggaeton',
+          secondary: 'cumbia',
+          confidence: 0.85,
+          scores: { ...scores, reggaeton: 0.85, cumbia: 0.5 },
+        };
+      } else {
+        // Swing pero sin güiro ni dembow → LATIN_POP
+        if (this.frameCount - this.lastLogFrame > 60) {
+          console.log(`[SimpleGenreClassifier] 🎵 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35 → LATIN_POP`);
+          this.lastLogFrame = this.frameCount;
+        }
+        return {
+          primary: 'latin_pop',
+          secondary: 'cumbia',
+          confidence: 0.70,
+          scores: { ...scores, latin_pop: 0.70, cumbia: 0.4 },
+        };
+      }
+    }
+    
+    // === FALLBACK: Score-based para casos intermedios ===
     
     // BPM-based scoring
     if (audio.bpm >= 120 && audio.bpm <= 130) {
@@ -597,6 +687,7 @@ export class SimpleGenreClassifier {
       scores.house += 0.3;
       scores.techno += 0.3;
       scores.edm += 0.2;
+      scores.cyberpunk += 0.2;
     }
     if (rhythm.syncopation > 0.3 && rhythm.syncopation < 0.5) {
       scores.reggaeton += 0.3;
@@ -617,36 +708,89 @@ export class SimpleGenreClassifier {
     
     // Find top scores
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    const primary = sorted[0][0];
+    const detectedPrimary = sorted[0][0];
     const secondary = sorted[1][1] > 0.2 ? sorted[1][0] : null;
     
     // Track history
-    if (!this.scoreHistory.has(primary)) {
-      this.scoreHistory.set(primary, []);
+    if (!this.scoreHistory.has(detectedPrimary)) {
+      this.scoreHistory.set(detectedPrimary, []);
     }
-    this.scoreHistory.get(primary)!.push(sorted[0][1]);
+    this.scoreHistory.get(detectedPrimary)!.push(sorted[0][1]);
     
     // Calculate confidence from consistency
-    const history = this.scoreHistory.get(primary) || [];
+    const history = this.scoreHistory.get(detectedPrimary) || [];
     const avgScore = history.length > 0 
       ? history.slice(-this.historySize).reduce((a, b) => a + b, 0) / Math.min(history.length, this.historySize)
       : sorted[0][1];
     
+    // 🔥 WAVE 12.2: HISTÉRESIS - Estabilizar género
+    const stabilizedPrimary = this.stabilizeGenre(detectedPrimary, avgScore);
+    
     return {
-      primary,
+      primary: stabilizedPrimary,
       secondary,
       confidence: Math.min(1, avgScore),
       scores,
     };
   }
   
+  /**
+   * 🔥 WAVE 12.2: HISTÉRESIS - Estabiliza el género
+   */
+  private stabilizeGenre(detected: string, confidence: number): string {
+    // Añadir voto
+    this.genreVotes.push(detected);
+    if (this.genreVotes.length > this.VOTE_THRESHOLD) {
+      this.genreVotes.shift();
+    }
+    
+    // Contar votos
+    const voteCounts: Record<string, number> = {};
+    for (const vote of this.genreVotes) {
+      voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+    }
+    
+    // Encontrar género con mayoría
+    let maxVotes = 0;
+    let majorityGenre = detected;
+    for (const [genre, count] of Object.entries(voteCounts)) {
+      if (count > maxVotes) {
+        maxVotes = count;
+        majorityGenre = genre;
+      }
+    }
+    
+    // ¿El género mayoritario es diferente al estable actual?
+    if (majorityGenre !== this.currentStableGenre) {
+      // ¿Tiene suficientes votos Y ha pasado suficiente tiempo?
+      const framesSinceChange = this.frameCount - this.lastGenreChangeFrame;
+      const hasEnoughVotes = maxVotes >= Math.ceil(this.VOTE_THRESHOLD * 0.6);
+      const canChange = framesSinceChange > this.MIN_FRAMES_BETWEEN_CHANGES;
+      
+      if (hasEnoughVotes && canChange && confidence > 0.5) {
+        console.log(`[SimpleGenreClassifier] 🔄 CAMBIO ESTABLE: ${this.currentStableGenre} → ${majorityGenre} (votos: ${maxVotes}/${this.VOTE_THRESHOLD})`);
+        this.currentStableGenre = majorityGenre;
+        this.lastGenreChangeFrame = this.frameCount;
+      }
+    }
+    
+    return this.currentStableGenre !== 'unknown' ? this.currentStableGenre : detected;
+  }
+  
   reset(): void {
     this.scoreHistory.clear();
+    this.frameCount = 0;
+    this.lastLogFrame = 0;
+    this.currentStableGenre = 'unknown';
+    this.genreVotes = [];
+    this.lastGenreChangeFrame = 0;
   }
 }
 
 /**
  * Simplified palette generator for workers
+ * � WAVE 12.5: SELENE LIBRE - Colores de matemática pura
+ * La música HABLA a través de sus números, no de etiquetas.
  */
 export class SimplePaletteGenerator {
   /**
@@ -659,29 +803,69 @@ export class SimplePaletteGenerator {
     'Bb': 300, 'F': 150,
   };
   
+  /**
+   * 🌊 WAVE 12.5: UI_PALETTE_MAP mantenido solo para cuando el USUARIO
+   * elige manualmente una paleta. Selene ya no fuerza paletas por género.
+   */
+  private static readonly UI_PALETTE_MAP: Record<string, {
+    primaryHue: number,    // PARs
+    accentHue: number,     // Moving Heads (CONTRASTE)
+    secondaryHue: number,
+  }> = {
+    'fuego': { primaryHue: 10, accentHue: 52, secondaryHue: 0 },
+    'selva': { primaryHue: 120, accentHue: 320, secondaryHue: 90 },
+    'hielo': { primaryHue: 210, accentHue: 185, secondaryHue: 240 },
+    'neon': { primaryHue: 300, accentHue: 180, secondaryHue: 330 },
+  };
+  
   generate(
     mood: HarmonyOutput['mood'],
     energy: number,
     syncopation: number,
-    key: string | null
+    key: string | null,
+    uiPalette?: string  // Solo si el USUARIO elige manualmente
   ): SelenePalette {
-    // Base hue from key or mood
+    // 🎯 MAPEO DIRECTO SOLO SI EL USUARIO ELIGIÓ MANUALMENTE
+    const uiMap = uiPalette ? SimplePaletteGenerator.UI_PALETTE_MAP[uiPalette.toLowerCase()] : null;
+    
     let baseHue: number;
-    if (key && SimplePaletteGenerator.KEY_TO_HUE[key] !== undefined) {
+    let accentHue: number;
+    let secondaryHue: number;
+    
+    if (uiMap) {
+      // PALETA MANUAL: El usuario eligió una paleta específica
+      baseHue = uiMap.primaryHue;
+      accentHue = uiMap.accentHue;
+      secondaryHue = uiMap.secondaryHue;
+    } else if (key && SimplePaletteGenerator.KEY_TO_HUE[key] !== undefined) {
+      // 🌊 WAVE 12.5: COLOR DESDE LA ARMONÍA (Key musical)
+      // La tonalidad de la música determina el tono base
       baseHue = SimplePaletteGenerator.KEY_TO_HUE[key];
+      
+      // 🌊 SYNCOPATION modula el contraste del accent
+      // Alta syncopation (latino) → Colores complementarios (máximo contraste)
+      // Baja syncopation (electrónico) → Colores análogos (menor contraste)
+      const contrastAngle = 90 + syncopation * 90;  // 90° a 180° según syncopation
+      accentHue = (baseHue + contrastAngle) % 360;
+      secondaryHue = (baseHue + 30 + syncopation * 30) % 360;
     } else {
-      // Mood-based hue
+      // 🌊 WAVE 12.5: Mood-based hue con MODULACIÓN por syncopation
       const moodHues: Record<string, number> = {
         happy: 45,      // Orange
         sad: 220,       // Blue
         tense: 0,       // Red
         dreamy: 280,    // Purple
-        bluesy: 30,     // Orange-brown
+        bluesy: 30,     // Warm orange
         jazzy: 260,     // Purple-blue
         spanish_exotic: 15, // Red-orange
-        universal: 180, // Cyan
+        universal: 120, // Green
       };
-      baseHue = moodHues[mood] ?? 180;
+      baseHue = moodHues[mood] ?? 120;
+      
+      // Syncopation modula hacia dónde va el accent
+      const contrastAngle = 90 + syncopation * 90;
+      accentHue = (baseHue + contrastAngle) % 360;
+      secondaryHue = (baseHue + 30 + syncopation * 30) % 360;
     }
     
     // Strategy based on energy
@@ -690,31 +874,54 @@ export class SimplePaletteGenerator {
       energy > 0.4 ? 'triadic' :
       'analogous';
     
-    // Saturation based on syncopation
-    const baseSaturation = 60 + syncopation * 30;
+    // 🌊 WAVE 12.5: ENERGY → SATURACIÓN (más energía = más saturado)
+    // 🌊 WAVE 12.5: SYNCOPATION → LIGHTNESS VARIATION (más sync = más contraste)
+    const MIN_SATURATION = 70;
+    const MIN_LIGHTNESS = 45;
     
-    // Lightness based on energy
-    const baseLightness = 30 + energy * 30;
+    // Energy impulsa la saturación: E=0.3 → S=85%, E=0.9 → S=100%
+    const baseSaturation = Math.max(MIN_SATURATION, 70 + energy * 30);
     
-    // Generate palette
-    const primary: HSLColor = { h: baseHue, s: baseSaturation, l: baseLightness };
+    // Energy también impulsa la luz: E=0.3 → L=50%, E=0.9 → L=70%
+    const baseLightness = Math.max(MIN_LIGHTNESS, 45 + energy * 25);
     
-    let secondary: HSLColor;
-    let accent: HSLColor;
+    // PRIMARY (PARs) - Color base vibrante modulado por ENERGY
+    const primary: HSLColor = { 
+      h: baseHue, 
+      s: baseSaturation, 
+      l: baseLightness 
+    };
     
-    if (strategy === 'complementary') {
-      secondary = { h: (baseHue + 180) % 360, s: baseSaturation, l: baseLightness };
-      accent = { h: (baseHue + 90) % 360, s: 90, l: 60 };
-    } else if (strategy === 'triadic') {
-      secondary = { h: (baseHue + 120) % 360, s: baseSaturation, l: baseLightness };
-      accent = { h: (baseHue + 240) % 360, s: 90, l: 60 };
-    } else {
-      secondary = { h: (baseHue + 30) % 360, s: baseSaturation, l: baseLightness };
-      accent = { h: (baseHue - 30 + 360) % 360, s: 90, l: 60 };
-    }
+    // SECONDARY - Variación del primary
+    const secondary: HSLColor = { 
+      h: secondaryHue, 
+      s: Math.max(MIN_SATURATION, baseSaturation - 5), 
+      l: Math.max(MIN_LIGHTNESS, baseLightness - 5) 
+    };
     
-    const ambient: HSLColor = { h: baseHue, s: baseSaturation * 0.5, l: baseLightness * 0.6 };
-    const contrast: HSLColor = { h: (baseHue + 180) % 360, s: 20, l: 80 };
+    // � ACCENT (Moving Heads) - SYNCOPATION controla el contraste
+    // Alta syncopation = accent MÁS brillante y saturado
+    const accentBoost = 15 + syncopation * 15;  // 15-30% boost según syncopation
+    const accent: HSLColor = { 
+      h: accentHue, 
+      s: 100,  // Siempre saturación máxima
+      l: Math.max(55, baseLightness + accentBoost)
+    };
+    
+    const ambient: HSLColor = { 
+      h: baseHue, 
+      s: Math.max(60, baseSaturation * 0.7), 
+      l: Math.max(40, baseLightness * 0.8) 
+    };
+    
+    const contrast: HSLColor = { 
+      h: (baseHue + 180) % 360, 
+      s: 40, 
+      l: 75 
+    };
+    
+    // 🌊 WAVE 12.5: Description muestra la matemática pura
+    const mathDescription = `E:${energy.toFixed(2)} S:${syncopation.toFixed(2)} K:${key ?? mood}`;
     
     return {
       primary,
@@ -725,8 +932,8 @@ export class SimplePaletteGenerator {
       metadata: {
         strategy,
         transitionSpeed: energy > 0.7 ? 100 : 300,
-        confidence: 0.7,
-        description: `${mood} mood with ${strategy} harmony`,
+        confidence: 0.8,
+        description: uiPalette ? `UI:${uiPalette}` : mathDescription,
       },
     };
   }

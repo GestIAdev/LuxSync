@@ -48,6 +48,33 @@ export default function PaletteReactor() {
       console.log(`[PaletteReactor] 🎨 Sent palette "${enginePaletteId}" to ColorEngine (UI: ${id})`)
     }
   }
+  
+  // 🎨 WAVE 13.6: STATE OF TRUTH - Controlar multiplicadores globales en el Backend
+  const handleSaturationChange = (value: number) => {
+    setColorSaturation(value) // Update UI
+    if (window.lux?.setGlobalColorParams) {
+      window.lux.setGlobalColorParams({ saturation: value })
+        .then(result => {
+          if (result.success) {
+            console.log(`[PaletteReactor] 🎨 Global Saturation: ${(value * 100).toFixed(0)}%`)
+          }
+        })
+        .catch(err => console.error('[PaletteReactor] ❌ Failed to set saturation:', err))
+    }
+  }
+  
+  const handleIntensityChange = (value: number) => {
+    setColorIntensity(value) // Update UI
+    if (window.lux?.setGlobalColorParams) {
+      window.lux.setGlobalColorParams({ intensity: value })
+        .then(result => {
+          if (result.success) {
+            console.log(`[PaletteReactor] 💡 Global Intensity: ${(value * 100).toFixed(0)}%`)
+          }
+        })
+        .catch(err => console.error('[PaletteReactor] ❌ Failed to set intensity:', err))
+    }
+  }
 
   return (
     <div className="palette-reactor">
@@ -112,7 +139,7 @@ export default function PaletteReactor() {
               max="1"
               step="0.01"
               value={colors.saturation}
-              onChange={(e) => setColorSaturation(parseFloat(e.target.value))}
+              onChange={(e) => handleSaturationChange(parseFloat(e.target.value))}
               className="control-slider"
             />
             <span className="slider-value">{Math.round(colors.saturation * 100)}%</span>
@@ -127,7 +154,7 @@ export default function PaletteReactor() {
               max="1"
               step="0.01"
               value={colors.intensity}
-              onChange={(e) => setColorIntensity(parseFloat(e.target.value))}
+              onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
               className="control-slider"
             />
             <span className="slider-value">{Math.round(colors.intensity * 100)}%</span>

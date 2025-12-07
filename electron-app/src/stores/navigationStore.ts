@@ -32,35 +32,35 @@ export interface NavigationState {
 }
 
 // ============================================
-// TAB CONFIGURATION
+// TAB CONFIGURATION - WAVE 10.6: Pro Icons
 // ============================================
 
 export const TABS: TabConfig[] = [
   {
     id: 'live',
     label: 'LIVE',
-    icon: '🎛️',
+    icon: 'activity',  // Lucide: Activity (pulse wave)
     shortcut: 'Alt+1',
     description: 'Control en vivo con paletas y movimiento',
   },
   {
     id: 'simulate',
     label: 'SIMULATE',
-    icon: '🔭',
+    icon: 'monitor',   // Lucide: Monitor (screen)
     shortcut: 'Alt+2',
     description: 'Visualización 3D del escenario',
   },
   {
     id: 'selene',
     label: 'SELENE LUX',
-    icon: '🧠',
+    icon: 'sparkles',  // Lucide: Sparkles (magic)
     shortcut: 'Alt+3',
     description: 'Inteligencia artificial y métricas',
   },
   {
     id: 'setup',
     label: 'SETUP',
-    icon: '⚙️',
+    icon: 'settings',  // Lucide: Settings (gear)
     shortcut: 'Alt+4',
     description: 'Configuración de audio, DMX y fixtures',
   },

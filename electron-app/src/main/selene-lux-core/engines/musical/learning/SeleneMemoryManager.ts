@@ -534,7 +534,7 @@ export class SeleneMemoryManager {
    * Obtiene paletas recientes
    */
   getRecentPalettes(limit = 100): PaletteRecord[] {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return [];
 
     const rows = this.db.prepare(`
       SELECT * FROM palettes 
@@ -549,7 +549,7 @@ export class SeleneMemoryManager {
    * Obtiene paletas por género
    */
   getPalettesByGenre(genre: string, limit = 50): PaletteRecord[] {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return [];
 
     const rows = this.db.prepare(`
       SELECT * FROM palettes 
@@ -565,7 +565,7 @@ export class SeleneMemoryManager {
    * Actualiza el beauty score de una paleta
    */
   updatePaletteBeauty(paletteId: number, beautyScore: number): void {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return;
 
     this.db.prepare(`
       UPDATE palettes SET beauty_score = ? WHERE id = ?
@@ -576,7 +576,10 @@ export class SeleneMemoryManager {
    * Registra feedback del usuario
    */
   recordUserFeedback(paletteId: number, feedback: -1 | 0 | 1): void {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      console.log('[SeleneMemory] ⚠️ No DB, skipping user feedback');
+      return;
+    }
 
     this.db.prepare(`
       UPDATE palettes SET user_feedback = ? WHERE id = ?
@@ -642,7 +645,8 @@ export class SeleneMemoryManager {
       strobeIntensity?: number;
     }
   ): void {
-    if (!this.db) throw new Error('Database not initialized');
+    // 🧠 WAVE 10: Skip gracefully if DB not available
+    if (!this.db) return;
 
     const hash = this.generatePatternHash(genre, key, mode, section);
     const now = Date.now();
@@ -735,7 +739,7 @@ export class SeleneMemoryManager {
     section?: string,
     minTimesUsed = 3
   ): LearnedPattern[] {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return [];
 
     const rows = this.db.prepare(`
       SELECT *,
@@ -756,8 +760,9 @@ export class SeleneMemoryManager {
    * Obtiene el mejor patrón para un contexto
    */
   getBestPattern(genre: string, key?: string, section?: string): LearnedPattern | null {
+    // 🧠 WAVE 10: Return null gracefully if DB not available
     if (!this.db || !this.statements.getBestPattern) {
-      throw new Error('Database not initialized');
+      return null;
     }
 
     const row = this.statements.getBestPattern.get(genre, key, section) as Record<string, unknown> | undefined;
@@ -768,7 +773,8 @@ export class SeleneMemoryManager {
    * Registra feedback positivo/negativo en un patrón
    */
   recordPatternFeedback(patternHash: string, positive: boolean): void {
-    if (!this.db) throw new Error('Database not initialized');
+    // 🧠 WAVE 10: Skip gracefully if DB not available
+    if (!this.db) return;
 
     const column = positive ? 'positive_feedback' : 'negative_feedback';
     this.db.prepare(`
@@ -815,8 +821,11 @@ export class SeleneMemoryManager {
    * Inicia una nueva sesión
    */
   startSession(appVersion?: string): string {
+    // 🧠 WAVE 10: Return fake session if DB not available
     if (!this.db || !this.statements.insertSession) {
-      throw new Error('Database not initialized');
+      const fakeSessionId = `no-db-${Date.now()}`;
+      this.currentSessionId = fakeSessionId;
+      return fakeSessionId;
     }
 
     const sessionId = this.generateSessionId();
@@ -884,7 +893,7 @@ export class SeleneMemoryManager {
    * Obtiene sesiones recientes
    */
   getRecentSessions(limit = 30): SessionRecord[] {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return [];
 
     const rows = this.db.prepare(`
       SELECT * FROM sessions 
@@ -957,7 +966,7 @@ export class SeleneMemoryManager {
    * Obtiene todas las preferencias de una categoría
    */
   getPreferencesByCategory(category: string): Record<string, unknown> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return {};
 
     const rows = this.db.prepare(`
       SELECT key, value FROM preferences WHERE category = ?
@@ -983,7 +992,8 @@ export class SeleneMemoryManager {
    */
   saveDream(dream: DreamRecord): number {
     if (!this.db || !this.statements.insertDream) {
-      throw new Error('Database not initialized');
+      console.log('[SeleneMemory] ⚠️ No DB, skipping dream save');
+      return -1;
     }
 
     const result = this.statements.insertDream.run({
@@ -1013,7 +1023,9 @@ export class SeleneMemoryManager {
     avgProjectedBeauty: number;
     byType: Record<string, { count: number; acceptanceRate: number }>;
   } {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      return { total: 0, accepted: 0, acceptanceRate: 0, avgProjectedBeauty: 0, byType: {} };
+    }
 
     const total = this.db.prepare(`SELECT COUNT(*) as count FROM dreams`).get() as { count: number };
     const accepted = this.db.prepare(`SELECT COUNT(*) as count FROM dreams WHERE was_accepted = 1`).get() as { count: number };
@@ -1053,7 +1065,7 @@ export class SeleneMemoryManager {
    * Guarda o actualiza calibración de un fixture
    */
   saveFixtureCalibration(calibration: FixtureCalibration): void {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return;
 
     this.db.prepare(`
       INSERT INTO fixture_calibration (
@@ -1119,7 +1131,7 @@ export class SeleneMemoryManager {
    * Obtiene calibración de un fixture
    */
   getFixtureCalibration(fixtureId: string): FixtureCalibration | null {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return null;
 
     const row = this.db.prepare(`
       SELECT * FROM fixture_calibration WHERE fixture_id = ?
@@ -1161,7 +1173,7 @@ export class SeleneMemoryManager {
    * Limpia datos antiguos
    */
   cleanup(daysToKeep = 90): { palettesDeleted: number; dreamsDeleted: number } {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return { palettesDeleted: 0, dreamsDeleted: 0 };
 
     const cutoffMs = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
 
@@ -1196,7 +1208,10 @@ export class SeleneMemoryManager {
    * Crea un backup de la base de datos
    */
   async backup(backupPath?: string): Promise<string> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      console.log('[SeleneMemory] ⚠️ No DB, skipping backup');
+      return '';
+    }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const finalPath = backupPath ?? this.config.dbPath.replace('.db', `-backup-${timestamp}.db`);
@@ -1216,7 +1231,17 @@ export class SeleneMemoryManager {
     dbSizeBytes: number;
     oldestData: number | null;
   } {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      console.log('[SeleneMemory] ⚠️ No DB, returning empty stats');
+      return {
+        totalPalettes: 0,
+        totalPatterns: 0,
+        totalSessions: 0,
+        totalDreams: 0,
+        dbSizeBytes: 0,
+        oldestData: null,
+      };
+    }
 
     const palettes = this.db.prepare(`SELECT COUNT(*) as count FROM palettes`).get() as { count: number };
     const patterns = this.db.prepare(`SELECT COUNT(*) as count FROM patterns`).get() as { count: number };

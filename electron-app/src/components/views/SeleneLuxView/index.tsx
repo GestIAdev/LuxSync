@@ -1,30 +1,37 @@
 /**
  * 🧠 SELENE LUX VIEW - AI Brain Dashboard
  * WAVE 9.2: Estado del cerebro, métricas y decision log
+ * WAVE 10: Connected to real brain data via IPC
  */
 
 import React, { useEffect, useState } from 'react'
-import { useSeleneStore, LOG_ENTRY_CONFIG } from '../../../stores/seleneStore'
+import { useSeleneStore, LOG_ENTRY_CONFIG, initializeSeleneStoreIPC } from '../../../stores/seleneStore'
 import './SeleneLuxView.css'
 
 const SeleneLuxView: React.FC = () => {
   const {
-    brainConnected,
-    currentMode,
-    confidence,
-    energy,
-    beautyScore,
-    framesProcessed,
-    patternsLearned,
-    sessionPatterns,
-    memoryUsage,
-    decisionLog,
-    logPaused,
-    logFilter,
+    brainConnected = false,
+    currentMode = 'flow',
+    confidence = 0.5,
+    energy = 0,
+    beautyScore = 0.75,
+    framesProcessed = 0,
+    patternsLearned = 0,
+    sessionPatterns = 0,
+    memoryUsage = 0,
+    decisionLog = [],
+    logPaused = false,
+    logFilter = 'ALL',
     toggleLogPause,
     setLogFilter,
     clearLog,
   } = useSeleneStore()
+
+  // 🧠 WAVE 10: Initialize IPC subscriptions on mount
+  useEffect(() => {
+    const cleanup = initializeSeleneStoreIPC()
+    return cleanup
+  }, [])
 
   // Neural wave animation
   const [neuralPhase, setNeuralPhase] = useState(0)

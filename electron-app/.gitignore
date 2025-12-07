@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Build outputs
+/dist
+/dist-electron
+/release
+/build
+
+# Keep only source, not compiled binaries
+electron-app/release/**
+!electron-app/release/.gitkeep
+electron-app/dist/**
+!electron-app/dist/.gitkeep
+electron-app/dist-electron/**
+!electron-app/dist-electron/.gitkeep
+
+# Binaries
+*.exe
+*.msi
+*.dmg
+*.zip
+*.asar
+
+# Testing
+/coverage
+
+# Production
+/build
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Temporary files
+.tmp/
+temp/
+
+# OS
+Thumbs.db
+.DS_Store

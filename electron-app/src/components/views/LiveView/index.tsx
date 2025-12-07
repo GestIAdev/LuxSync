@@ -1,13 +1,14 @@
 /**
  * 🎛️ LIVE VIEW - Main Control View
  * WAVE 9.2: Paletas, movimiento y control en tiempo real
+ * WAVE 13.6: ModeSwitcher gigante integrado (DEBAJO de panels)
  * Conectado a Selene Brain via stores
  */
 
 import React from 'react'
 import PaletteReactor from '../../PaletteReactor'
 import MovementControl from '../../MovementControl'
-import BigSwitch from '../../BigSwitch'
+import ModeSwitcher from '../../ModeSwitcher'
 import { useSeleneStore } from '../../../stores/seleneStore'
 import { useAudioStore } from '../../../stores/audioStore'
 import './LiveView.css'
@@ -31,23 +32,20 @@ const LiveView: React.FC = () => {
 
   return (
     <div className="live-view">
+      {/* Header simple */}
       <header className="view-header">
         <h2 className="view-title">🎛️ LIVE MODE</h2>
-        {/* BigSwitch compacto al lado del título */}
-        <div className="header-switch">
-          <BigSwitch />
-        </div>
       </header>
 
       <div className="live-content">
-        {/* Main Controls Grid */}
+        {/* Fila 1: Palette Reactor + Brain Preview (2 columnas) */}
         <div className="live-panels">
           {/* Palette Reactor */}
           <section className="panel palette-panel">
             <PaletteReactor />
           </section>
 
-          {/* Brain Preview - Ahora con datos reales */}
+          {/* Brain Preview */}
           <section className="panel brain-panel">
             <div className="panel-header">
               <h3>🧠 BRAIN PREVIEW</h3>
@@ -107,9 +105,14 @@ const LiveView: React.FC = () => {
           </section>
         </div>
 
-        {/* Movement Control */}
+        {/* Fila 2: Movement Control (ocupa todo el ancho) */}
         <section className="movement-section">
           <MovementControl />
+        </section>
+
+        {/* Fila 3: ModeSwitcher (ocupa todo el ancho) */}
+        <section className="mode-switcher-section">
+          <ModeSwitcher />
         </section>
       </div>
     </div>

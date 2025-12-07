@@ -55,7 +55,12 @@ export enum MessageType {
   WORKER_RESURRECTING = 'worker_resurrecting',
   
   // Config
-  CONFIG_UPDATE = 'config_update'
+  CONFIG_UPDATE = 'config_update',
+  
+  // 🧠 WAVE 10: Brain Control
+  SET_MODE = 'set_mode',          // Enable/disable brain
+  ENABLE_BRAIN = 'enable_brain',  // Full brain activation
+  DISABLE_BRAIN = 'disable_brain' // Fallback to reactive
 }
 
 export enum MessagePriority {

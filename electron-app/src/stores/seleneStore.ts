@@ -10,6 +10,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type BrainMode = 'reactive' | 'intelligent'
+export type SeleneMode = 'flow' | 'selene' | 'locked'
 export type PaletteSource = 'memory' | 'procedural' | 'fallback'
 export type LogEntryType = 'LEARN' | 'MEMORY' | 'SECTION' | 'GENRE' | 'MODE' | 'INIT' | 'ERROR' | 'PALETTE' | 'ENERGY'
 
@@ -27,6 +28,7 @@ export interface SeleneStoreState {
   brainInitialized: boolean
   
   // Real-time Brain data
+  mode: SeleneMode            // 🎚️ WAVE 13.6: UI mode (flow, selene, locked)
   currentMode: BrainMode
   paletteSource: PaletteSource
   confidence: number       // 0-1
@@ -52,6 +54,7 @@ export interface SeleneStoreState {
   // Actions
   setConnected: (connected: boolean) => void
   setInitialized: (initialized: boolean) => void
+  setMode: (mode: SeleneMode) => void
   updateBrainMetrics: (metrics: Partial<SeleneStoreState>) => void
   incrementFrames: () => void
   
@@ -94,11 +97,14 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9
 // ============================================
 
 export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
-  // Initial state
-  brainConnected: false,
-  brainInitialized: false,
-  currentMode: 'reactive',
-  paletteSource: 'fallback',
+  // 🎯 WAVE 13.6: DEFAULTS PESIMISTAS - "Truth First"
+  // La UI nace asumiendo que Selene NO está conectado ni inicializado
+  // El Backend dirá la verdad en el Initial State Handshake
+  brainConnected: false,      // ❌ PESIMISTA: No conectado por defecto
+  brainInitialized: false,    // ❌ PESIMISTA: No inicializado por defecto
+  mode: 'selene',             // 🎚️ UI mode por defecto (se sincroniza vía handshake)
+  currentMode: 'reactive',    // Default conservador
+  paletteSource: 'fallback',  // Default conservador
   confidence: 0,
   energy: 0,
   beautyScore: 0.5,
@@ -125,6 +131,19 @@ export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
     set({ brainInitialized: initialized })
     if (initialized) {
       get().addLogEntry({ type: 'INIT', message: 'Selene Brain initialized, loading memory...' })
+    }
+  },
+  
+  // 🎚️ WAVE 13.6: Cambiar modo UI (flow, selene, locked)
+  setMode: (mode) => {
+    const prev = get().mode
+    set({ mode })
+    if (mode !== prev) {
+      get().addLogEntry({
+        type: 'MODE',
+        message: `UI Mode changed: ${prev} → ${mode}`,
+        data: { from: prev, to: mode },
+      })
     }
   },
   
@@ -207,3 +226,103 @@ export const useSeleneStore = create<SeleneStoreState>((set, get) => ({
     })
   },
 }))
+
+// ============================================
+// 🧠 WAVE 10: Initialize IPC subscriptions
+// ============================================
+export function initializeSeleneStoreIPC(): () => void {
+  const store = useSeleneStore.getState()
+  const unsubscribers: Array<() => void> = []
+  
+  // 🎯 WAVE 13.6: STATE OF TRUTH - Escuchar cambios de modo confirmados por el Backend
+  if (typeof window !== 'undefined' && (window as any).electron?.ipcRenderer) {
+    const ipcRenderer = (window as any).electron.ipcRenderer
+    
+    const handleModeChanged = (_event: any, payload: { mode: string; brain: boolean; timestamp: number }) => {
+      console.log(`[SeleneStore] 📡 Mode change confirmed from Backend: ${payload.mode}`)
+      useSeleneStore.setState({
+        mode: payload.mode as SeleneMode,
+        currentMode: payload.brain ? 'intelligent' : 'reactive'
+      })
+      
+      store.addLogEntry({
+        type: 'MODE',
+        message: `Backend confirmed mode: ${payload.mode.toUpperCase()} (brain: ${payload.brain ? 'ON' : 'OFF'})`,
+        data: payload
+      })
+    }
+    
+    ipcRenderer.on('selene:mode-changed', handleModeChanged)
+    unsubscribers.push(() => ipcRenderer.removeListener('selene:mode-changed', handleModeChanged))
+  }
+  
+  // Check if we're in Electron renderer
+  if (typeof window !== 'undefined' && (window as any).luxsync?.selene) {
+    const seleneApi = (window as any).luxsync.selene
+    
+    // Subscribe to brain metrics
+    if (seleneApi.onBrainMetrics) {
+      const unsub = seleneApi.onBrainMetrics((metrics: any) => {
+        useSeleneStore.setState({
+          brainConnected: metrics.hasMemory ?? false,
+          currentMode: metrics.mode ?? 'flow',
+          energy: metrics.energy ?? 0,
+          confidence: metrics.confidence ?? 0.5,
+          beautyScore: metrics.beautyScore ?? 0.75,
+          framesProcessed: metrics.framesAnalyzed ?? 0, // Backend usa framesAnalyzed
+          patternsLearned: metrics.patternsLearned ?? 0,
+          sessionPatterns: metrics.sessionPatterns ?? 0,
+          memoryUsage: metrics.memoryUsage ?? 0,
+          sessionId: metrics.sessionId ?? '',
+        })
+      })
+      if (unsub) unsubscribers.push(unsub)
+    }
+    
+    // Subscribe to decision log entries
+    if (seleneApi.onDecisionLog) {
+      const unsub = seleneApi.onDecisionLog((entry: any) => {
+        store.addLogEntry({
+          type: entry.type as LogEntryType,
+          message: entry.message,
+          data: entry.data,
+        })
+      })
+      if (unsub) unsubscribers.push(unsub)
+    }
+    
+    // Fetch initial brain stats
+    if (seleneApi.getBrainStats) {
+      seleneApi.getBrainStats().then((stats: any) => {
+        if (stats) {
+          useSeleneStore.setState({
+            brainConnected: stats.connected,
+            currentMode: stats.mode,
+            energy: stats.energy,
+            confidence: stats.confidence,
+            beautyScore: stats.beautyScore,
+            framesProcessed: stats.framesProcessed,
+            patternsLearned: stats.patternsLearned,
+            sessionPatterns: stats.sessionPatterns,
+            memoryUsage: stats.memoryUsage,
+            sessionId: stats.sessionId,
+          })
+          
+          if (stats.connected) {
+            store.addLogEntry({
+              type: 'INIT',
+              message: `Connected to Selene Brain (${stats.hasMemory ? 'with memory' : 'amnesia mode'})`,
+            })
+          }
+        }
+      }).catch(console.error)
+    }
+    
+    console.log('[SeleneStore] 🧠 IPC subscriptions initialized')
+  }
+  
+  // Return cleanup function
+  return () => {
+    unsubscribers.forEach(unsub => unsub())
+  }
+}

@@ -1,53 +1,66 @@
-/**
- * ╔══════════════════════════════════════════════════════════════════════════════╗
- * ║                         🎭 GENRE CLASSIFIER                                  ║
- * ║━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━║
- * ║  Clasificador de géneros musicales basado en características rítmicas,      ║
- * ║  armónicas y espectrales. Diseñado para música latina y electrónica.        ║
- * ╚══════════════════════════════════════════════════════════════════════════════╝
+﻿/**
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘                         ðŸŽ­ GENRE CLASSIFIER                                  â•‘
+ * â•‘â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â•‘
+ * â•‘  Clasificador de gÃ©neros musicales basado en caracterÃ­sticas rÃ­tmicas,      â•‘
+ * â•‘  armÃ³nicas y espectrales. DiseÃ±ado para mÃºsica latina y electrÃ³nica.        â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * 
- * 🎯 FILOSOFÍA: Cada género tiene "reglas" específicas basadas en características
- *    medibles. No adivinamos - analizamos patrones reales de la música.
+ * ï¿½ WAVE 12.5: SELENE LIBRE
+ * El gÃ©nero ya NO afecta los colores. Solo se clasifica para logging opcional.
+ * Los colores emergen de la MATEMÃTICA PURA (Energy, Syncopation, Key).
  * 
- * 📊 GÉNEROS SOPORTADOS:
- *    - CUMBIA: Güiro (treble density) + BPM medio (85-115) + sincopación media
- *    - REGGAETON: Dembow + BPM medio (90-100) + sincopación alta
- *    - TECHNO: Four-on-floor + BPM alto (120-150) + sincopación baja
- *    - HOUSE: Four-on-floor + BPM medio (118-130) + sincopación media
- *    - LATIN_POP: Características latinas suaves + BPM variable
- *    - TRAP: 808s + hi-hats rápidos + BPM lento (60-85)
- *    - UNKNOWN: No se detectó patrón claro
+ * ï¿½ðŸŽ¯ FILOSOFÃA: Cada gÃ©nero tiene "reglas" especÃ­ficas basadas en caracterÃ­sticas
+ *    medibles. No adivinamos - analizamos patrones reales de la mÃºsica.
  * 
- * 🔬 CARACTERÍSTICAS ANALIZADAS:
+ * ðŸ“Š GÃ‰NEROS SOPORTADOS:
+ *    - CUMBIA: GÃ¼iro (treble density) + BPM medio (85-115) + sincopaciÃ³n media
+ *    - REGGAETON: Dembow + BPM medio (90-100) + sincopaciÃ³n alta
+ *    - TECHNO: Four-on-floor + BPM alto (120-150) + sincopaciÃ³n baja
+ *    - HOUSE: Four-on-floor + BPM medio (118-130) + sincopaciÃ³n media
+ *    - LATIN_POP: CaracterÃ­sticas latinas suaves + BPM variable
+ *    - TRAP: 808s + hi-hats rÃ¡pidos + BPM lento (60-85)
+ *    - UNKNOWN: No se detectÃ³ patrÃ³n claro
+ * 
+ * ðŸ”¬ CARACTERÃSTICAS ANALIZADAS:
  *    1. BPM y rango
- *    2. Sincopación (groove)
- *    3. Patrón de kick (four-on-floor vs dembow)
- *    4. Treble density (güiro, hi-hats)
- *    5. Bass character (808s vs kicks acústicos)
- *    6. Mood armónico
+ *    2. SincopaciÃ³n (groove)
+ *    3. PatrÃ³n de kick (four-on-floor vs dembow)
+ *    4. Treble density (gÃ¼iro, hi-hats)
+ *    5. Bass character (808s vs kicks acÃºsticos)
+ *    6. Mood armÃ³nico
  * 
- * ⚡ PERFORMANCE:
- *    - Throttled a 200ms (5 análisis/segundo máximo)
- *    - Caché de resultados para frames similares
+ * âš¡ PERFORMANCE:
+ *    - Throttled a 200ms (5 anÃ¡lisis/segundo mÃ¡ximo)
+ *    - CachÃ© de resultados para frames similares
  *    - Early-return si no hay suficiente data
  * 
  * @author Selene AI
- * @version WAVE-8
+ * @version WAVE-12.5
  */
 
 import { RhythmAnalysis, HarmonyAnalysis } from '../types.js';
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ðŸŒŠ WAVE 12.5: LOGGING SILENCIADO
+// El gÃ©nero ya no afecta la iluminaciÃ³n, solo es informativo
+// Poner en TRUE para debugging cuando se necesite
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+const VERBOSE_LOGGING = false;
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TIPOS Y CONSTANTES
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /**
- * Géneros musicales soportados por el clasificador
+ * GÃ©neros musicales soportados por el clasificador
+ * ðŸ”¥ WAVE 12: AÃ±adido 'cyberpunk' para Mid-Tempo Electronic
  */
 export type MusicGenre = 
   | 'cumbia'
   | 'reggaeton'
   | 'techno'
+  | 'cyberpunk'    // ðŸ”¥ WAVE 12: Mid-tempo electronic (90-120 BPM, robÃ³tico)
   | 'house'
   | 'latin_pop'
   | 'trap'
@@ -56,7 +69,8 @@ export type MusicGenre =
   | 'unknown';
 
 /**
- * Subgéneros para mayor precisión
+ * SubgÃ©neros para mayor precisiÃ³n
+ * ðŸ”¥ WAVE 12: AÃ±adidos subgÃ©neros cyberpunk
  */
 export type MusicSubgenre =
   | 'cumbia_villera'
@@ -72,48 +86,50 @@ export type MusicSubgenre =
   | 'progressive_house'
   | 'latin_trap'
   | 'trap_808'
+  | 'cyberpunk_dark'      // ðŸ”¥ WAVE 12
+  | 'cyberpunk_synthwave' // ðŸ”¥ WAVE 12
   | 'none';
 
 /**
- * Resultado del análisis de género
+ * Resultado del anÃ¡lisis de gÃ©nero
  */
 export interface GenreAnalysis {
-  /** Género principal detectado */
+  /** GÃ©nero principal detectado */
   genre: MusicGenre;
-  /** Subgénero si se puede determinar */
+  /** SubgÃ©nero si se puede determinar */
   subgenre: MusicSubgenre;
-  /** Confianza en la clasificación (0-1) */
+  /** Confianza en la clasificaciÃ³n (0-1) */
   confidence: number;
-  /** Scores de todos los géneros analizados */
+  /** Scores de todos los gÃ©neros analizados */
   scores: Record<MusicGenre, number>;
-  /** Características que llevaron a esta clasificación */
+  /** CaracterÃ­sticas que llevaron a esta clasificaciÃ³n */
   features: GenreFeatures;
-  /** Mood sugerido basado en el género */
+  /** Mood sugerido basado en el gÃ©nero */
   mood: GenreMood;
 }
 
 /**
- * Características extraídas para clasificación
+ * CaracterÃ­sticas extraÃ­das para clasificaciÃ³n
  */
 export interface GenreFeatures {
   /** BPM detectado */
   bpm: number;
-  /** Nivel de sincopación (0-1) */
+  /** Nivel de sincopaciÃ³n (0-1) */
   syncopation: number;
-  /** Patrón four-on-floor detectado */
+  /** PatrÃ³n four-on-floor detectado */
   hasFourOnFloor: boolean;
-  /** Patrón dembow detectado */
+  /** PatrÃ³n dembow detectado */
   hasDembow: boolean;
-  /** Densidad de treble (güiro/hi-hats) */
+  /** Densidad de treble (gÃ¼iro/hi-hats) */
   trebleDensity: number;
   /** Presencia de 808 bass */
   has808Bass: boolean;
-  /** Energía promedio */
+  /** EnergÃ­a promedio */
   avgEnergy: number;
 }
 
 /**
- * Mood derivado del género
+ * Mood derivado del gÃ©nero
  */
 export type GenreMood = 
   | 'fiesta'       // Cumbia, reggaeton
@@ -125,29 +141,29 @@ export type GenreMood =
   | 'neutral';
 
 /**
- * Configuración del clasificador
+ * ConfiguraciÃ³n del clasificador
  */
 export interface GenreClassifierConfig {
-  /** Tiempo mínimo entre análisis (ms) */
+  /** Tiempo mÃ­nimo entre anÃ¡lisis (ms) */
   throttleMs: number;
-  /** Umbral mínimo de confianza para declarar un género */
+  /** Umbral mÃ­nimo de confianza para declarar un gÃ©nero */
   minConfidence: number;
-  /** Peso del BPM en la clasificación */
+  /** Peso del BPM en la clasificaciÃ³n */
   bpmWeight: number;
-  /** Peso de la sincopación */
+  /** Peso de la sincopaciÃ³n */
   syncopationWeight: number;
-  /** Peso del patrón rítmico */
+  /** Peso del patrÃ³n rÃ­tmico */
   patternWeight: number;
   /** Peso del treble */
   trebleWeight: number;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// REGLAS DE GÉNERO
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// REGLAS DE GÃ‰NERO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /**
- * Reglas para identificar cada género
+ * Reglas para identificar cada gÃ©nero
  * Cada regla define rangos ideales y pesos
  */
 interface GenreRule {
@@ -158,38 +174,57 @@ interface GenreRule {
   requiresDembow?: boolean;
   trebleDensityRange?: { min: number; max: number };
   requires808?: boolean;
-  priorityBonus?: number; // Bonus para géneros con patrones muy específicos
+  priorityBonus?: number; // Bonus para gÃ©neros con patrones muy especÃ­ficos
 }
 
 const GENRE_RULES: GenreRule[] = [
-  // CUMBIA: Güiro (treble) + BPM medio + sincopación media
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ðŸ”¥ WAVE 12.1: CALIBRACIÃ“N FINA - "El gÃ¼iro ya no es elitista"
+  // El audio real (YouTube/Micro) no viene masterizado al mÃ¡ximo
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  
+  // CUMBIA: Treble bajo pero CONSTANTE (gÃ¼iro no calla)
+  // ðŸ”¥ WAVE 12.1: Bajado de 0.7 a 0.15 + BPM hasta 125
   {
     genre: 'cumbia',
-    bpmRange: { min: 85, max: 115, ideal: 95 },
-    syncopationRange: { min: 0.2, max: 0.45 },
-    trebleDensityRange: { min: 0.4, max: 0.9 },
-    priorityBonus: 0.1, // Bonus por treble característico
+    bpmRange: { min: 85, max: 125, ideal: 100 },  // ðŸ”¥ Expandido hasta 125 BPM
+    syncopationRange: { min: 0.35, max: 0.65 },   // ðŸ”¥ Sync > 0.35 = tiene swing
+    trebleDensityRange: { min: 0.15, max: 0.95 }, // ðŸ”¥ Bajado a 0.15
+    priorityBonus: 0.15,
   },
   
-  // REGGAETON: Dembow + BPM específico + sincopación alta
+  // REGGAETON: Dembow + BPM especÃ­fico + sincopaciÃ³n alta
   {
     genre: 'reggaeton',
     bpmRange: { min: 88, max: 102, ideal: 95 },
     syncopationRange: { min: 0.35, max: 0.7 },
     requiresDembow: true,
-    priorityBonus: 0.15, // El dembow es muy distintivo
+    priorityBonus: 0.15,
   },
   
-  // TECHNO: Four-on-floor + BPM alto + sincopación muy baja
+  // ðŸ”¥ CYBERPUNK / MID-TEMPO ELECTRONIC
+  // Ritmo cuadrado (sincopaciÃ³n baja) + BPM 85-130
+  // "El Cyberpunk es ROBÃ“TICO, la Cumbia tiene SWING"
+  // ðŸ”¥ WAVE 12.1: Sync < 0.30 = ELECTRÃ“NICO (sin swing)
+  {
+    genre: 'cyberpunk',
+    bpmRange: { min: 85, max: 130, ideal: 100 },
+    syncopationRange: { min: 0, max: 0.30 },  // ðŸ”¥ Sync < 0.30 = robÃ³tico
+    requiresFourOnFloor: true,
+    priorityBonus: 0.25,  // Alta prioridad para ritmos robÃ³ticos
+  },
+  
+  // TECHNO: Four-on-floor + BPM ampliado 90-180
+  // ðŸ”¥ WAVE 12: Ahora acepta desde 90 BPM
   {
     genre: 'techno',
-    bpmRange: { min: 125, max: 150, ideal: 135 },
+    bpmRange: { min: 125, max: 180, ideal: 140 },  // BPM alto
     syncopationRange: { min: 0, max: 0.15 },
     requiresFourOnFloor: true,
     priorityBonus: 0.1,
   },
   
-  // HOUSE: Four-on-floor + BPM medio + sincopación moderada
+  // HOUSE: Four-on-floor + BPM medio + sincopaciÃ³n moderada
   {
     genre: 'house',
     bpmRange: { min: 118, max: 132, ideal: 125 },
@@ -197,7 +232,7 @@ const GENRE_RULES: GenreRule[] = [
     requiresFourOnFloor: true,
   },
   
-  // TRAP: BPM lento + 808s + hi-hats rápidos
+  // TRAP: BPM lento + 808s + hi-hats rÃ¡pidos
   {
     genre: 'trap',
     bpmRange: { min: 60, max: 90, ideal: 75 },
@@ -207,21 +242,21 @@ const GENRE_RULES: GenreRule[] = [
     priorityBonus: 0.1,
   },
   
-  // DRUM AND BASS: BPM muy alto + sincopación alta
+  // DRUM AND BASS: BPM muy alto + sincopaciÃ³n alta
   {
     genre: 'drum_and_bass',
     bpmRange: { min: 160, max: 180, ideal: 174 },
     syncopationRange: { min: 0.4, max: 0.8 },
   },
   
-  // LATIN POP: BPM variable + sincopación media + sin patrones extremos
+  // LATIN POP: BPM variable + sincopaciÃ³n media + sin patrones extremos
   {
     genre: 'latin_pop',
     bpmRange: { min: 90, max: 130, ideal: 110 },
     syncopationRange: { min: 0.15, max: 0.4 },
   },
   
-  // AMBIENT: BPM bajo o variable + sincopación muy baja
+  // AMBIENT: BPM bajo o variable + sincopaciÃ³n muy baja
   {
     genre: 'ambient',
     bpmRange: { min: 60, max: 120, ideal: 90 },
@@ -230,7 +265,7 @@ const GENRE_RULES: GenreRule[] = [
 ];
 
 /**
- * Mapeo de género + mood armónico → subgénero
+ * Mapeo de gÃ©nero + mood armÃ³nico â†’ subgÃ©nero
  */
 const SUBGENRE_RULES: Record<MusicGenre, Record<string, MusicSubgenre>> = {
   cumbia: {
@@ -248,6 +283,12 @@ const SUBGENRE_RULES: Record<MusicGenre, Record<string, MusicSubgenre>> = {
     dark: 'techno_dark',
     melancholic: 'techno_melodic',
     default: 'techno_dark',
+  },
+  // ðŸ”¥ WAVE 12: Cyberpunk subgÃ©neros
+  cyberpunk: {
+    dark: 'cyberpunk_dark',
+    melancholic: 'cyberpunk_synthwave',
+    default: 'cyberpunk_dark',
   },
   house: {
     happy: 'progressive_house',
@@ -267,12 +308,14 @@ const SUBGENRE_RULES: Record<MusicGenre, Record<string, MusicSubgenre>> = {
 };
 
 /**
- * Mapeo de género → mood por defecto
+ * Mapeo de gÃ©nero â†’ mood por defecto
+ * ðŸ”¥ WAVE 12: Cyberpunk = OSCURO (dark/tense)
  */
 const GENRE_MOOD_MAP: Record<MusicGenre, GenreMood> = {
   cumbia: 'fiesta',
   reggaeton: 'fiesta',
   techno: 'hipnotico',
+  cyberpunk: 'oscuro',     // ðŸ”¥ WAVE 12: Cyberpunk es OSCURO/TENSE
   house: 'relajado',
   trap: 'oscuro',
   drum_and_bass: 'energetico',
@@ -281,12 +324,12 @@ const GENRE_MOOD_MAP: Record<MusicGenre, GenreMood> = {
   unknown: 'neutral',
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // GENRE CLASSIFIER CLASS
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 /**
- * Configuración por defecto
+ * ConfiguraciÃ³n por defecto
  */
 const DEFAULT_CONFIG: GenreClassifierConfig = {
   throttleMs: 200,
@@ -306,25 +349,32 @@ export class GenreClassifier {
   private genreHistory: MusicGenre[] = [];
   private readonly historySize = 8;
   
+  // ðŸ”¥ WAVE 12.2: HISTÃ‰RESIS - Estabilidad de gÃ©nero
+  private currentStableGenre: MusicGenre = 'unknown';
+  private stableGenreCount: number = 0;
+  private readonly STABILITY_THRESHOLD = 5;  // Necesita 5 detecciones consecutivas para cambiar
+  private lastGenreChangeTime: number = 0;
+  private readonly MIN_GENRE_HOLD_MS = 2000;  // Mantener gÃ©nero mÃ­nimo 2 segundos
+  
   constructor(config: Partial<GenreClassifierConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // API PÚBLICA
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // API PÃšBLICA
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   /**
-   * 🎭 CLASSIFY - Punto de entrada principal
+   * ðŸŽ­ CLASSIFY - Punto de entrada principal
    * 
-   * Analiza el frame actual y clasifica el género musical.
+   * Analiza el frame actual y clasifica el gÃ©nero musical.
    * 
-   * ⚠️ THROTTLED: Solo ejecuta análisis completo cada 200ms
-   * ⚠️ REGLA 2: Siempre retorna confidence
+   * âš ï¸ THROTTLED: Solo ejecuta anÃ¡lisis completo cada 200ms
+   * âš ï¸ REGLA 2: Siempre retorna confidence
    * 
-   * @param rhythm Análisis rítmico del frame
-   * @param harmony Análisis armónico (puede ser null)
-   * @param audio Métricas de audio
+   * @param rhythm AnÃ¡lisis rÃ­tmico del frame
+   * @param harmony AnÃ¡lisis armÃ³nico (puede ser null)
+   * @param audio MÃ©tricas de audio
    * @param forceAnalysis Ignorar throttle (para tests)
    */
   classify(
@@ -342,16 +392,16 @@ export class GenreClassifier {
       return this.cachedAnalysis;
     }
 
-    // === PASO 1: Extraer características ===
+    // === PASO 1: Extraer caracterÃ­sticas ===
     const features = this.extractFeatures(rhythm, audio);
     
-    // === PASO 2: Calcular scores para cada género ===
+    // === PASO 2: Calcular scores para cada gÃ©nero ===
     const scores = this.calculateGenreScores(features);
     
-    // === PASO 3: Seleccionar género ganador ===
+    // === PASO 3: Seleccionar gÃ©nero ganador ===
     const { genre, confidence } = this.selectWinningGenre(scores, features);
     
-    // === PASO 4: Determinar subgénero ===
+    // === PASO 4: Determinar subgÃ©nero ===
     const subgenre = this.determineSubgenre(genre, harmony);
     
     // === PASO 5: Determinar mood ===
@@ -360,9 +410,13 @@ export class GenreClassifier {
     // === PASO 6: Actualizar historial ===
     this.updateHistory(genre);
     
+    // === PASO 6.5: ðŸ”¥ WAVE 12.2 - HISTÃ‰RESIS ===
+    // Estabilizar gÃ©nero para evitar cambios frame-a-frame
+    const stabilizedGenre = this.stabilizeGenre(genre, confidence);
+    
     // === PASO 7: Construir resultado ===
     const analysis: GenreAnalysis = {
-      genre,
+      genre: stabilizedGenre,  // ðŸ”¥ Usar gÃ©nero estabilizado
       subgenre,
       confidence,
       scores,
@@ -376,10 +430,48 @@ export class GenreClassifier {
     
     return analysis;
   }
+  
+  /**
+   * ðŸ”¥ WAVE 12.2: HISTÃ‰RESIS - Estabiliza el gÃ©nero detectado
+   * Evita cambios caÃ³ticos frame-a-frame
+   */
+  private stabilizeGenre(detectedGenre: MusicGenre, confidence: number): MusicGenre {
+    const now = Date.now();
+    
+    // Si es el mismo gÃ©nero que el estable actual, reforzar
+    if (detectedGenre === this.currentStableGenre) {
+      this.stableGenreCount++;
+      return this.currentStableGenre;
+    }
+    
+    // Si es diferente, contar cuÃ¡ntas veces seguidas aparece
+    // Buscar en historial reciente
+    const recentHistory = this.genreHistory.slice(-this.STABILITY_THRESHOLD);
+    const detectedCount = recentHistory.filter(g => g === detectedGenre).length;
+    
+    // Â¿El nuevo gÃ©nero aparece consistentemente?
+    const isConsistent = detectedCount >= Math.ceil(this.STABILITY_THRESHOLD * 0.6); // 60% del umbral
+    
+    // Â¿Ha pasado suficiente tiempo desde el Ãºltimo cambio?
+    const timeSinceLastChange = now - this.lastGenreChangeTime;
+    const canChange = timeSinceLastChange > this.MIN_GENRE_HOLD_MS;
+    
+    // Cambiar solo si es consistente Y ha pasado tiempo suficiente Y confianza alta
+    if (isConsistent && canChange && confidence > 0.6) {
+      if (VERBOSE_LOGGING) if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸ”„ CAMBIO DE GÃ‰NERO: ${this.currentStableGenre} â†’ ${detectedGenre} (despuÃ©s de ${(timeSinceLastChange/1000).toFixed(1)}s)`);
+      this.currentStableGenre = detectedGenre;
+      this.stableGenreCount = 1;
+      this.lastGenreChangeTime = now;
+      return detectedGenre;
+    }
+    
+    // Mantener el gÃ©nero estable actual
+    return this.currentStableGenre !== 'unknown' ? this.currentStableGenre : detectedGenre;
+  }
 
   /**
-   * Obtiene el género más común del historial reciente
-   * Útil para estabilidad en la clasificación
+   * Obtiene el gÃ©nero mÃ¡s comÃºn del historial reciente
+   * Ãštil para estabilidad en la clasificaciÃ³n
    */
   getDominantGenre(): MusicGenre {
     if (this.genreHistory.length === 0) return 'unknown';
@@ -410,28 +502,28 @@ export class GenreClassifier {
     this.genreHistory = [];
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // EXTRACCIÓN DE CARACTERÍSTICAS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // EXTRACCIÃ“N DE CARACTERÃSTICAS
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   /**
-   * Extrae las características relevantes para clasificación
+   * Extrae las caracterÃ­sticas relevantes para clasificaciÃ³n
    */
   private extractFeatures(
     rhythm: RhythmAnalysis,
     audio: { energy: number; bass: number; mid: number; treble: number }
   ): GenreFeatures {
-    // BPM desde el análisis rítmico
+    // BPM desde el anÃ¡lisis rÃ­tmico
     const bpm = rhythm.bpm;
     
-    // Sincopación desde groove
+    // SincopaciÃ³n desde groove
     const syncopation = rhythm.groove.syncopation;
     
     // Detectar patrones
     const hasFourOnFloor = this.detectFourOnFloor(rhythm);
     const hasDembow = this.detectDembow(rhythm, bpm);
     
-    // Treble density - proporción de treble vs total
+    // Treble density - proporciÃ³n de treble vs total
     const totalSpectrum = audio.bass + audio.mid + audio.treble + 0.001;
     const trebleDensity = audio.treble / totalSpectrum;
     
@@ -450,13 +542,13 @@ export class GenreClassifier {
   }
 
   /**
-   * Detecta patrón four-on-floor (kick en cada beat)
-   * Característico de techno, house
+   * Detecta patrÃ³n four-on-floor (kick en cada beat)
+   * CaracterÃ­stico de techno, house
    */
   private detectFourOnFloor(rhythm: RhythmAnalysis): boolean {
     // Four-on-floor tiene:
     // 1. Alta regularidad en beats
-    // 2. Baja sincopación
+    // 2. Baja sincopaciÃ³n
     // 3. Alta confianza de BPM
     // 4. Kick prominente
     const groove = rhythm.groove;
@@ -469,20 +561,20 @@ export class GenreClassifier {
   }
 
   /**
-   * Detecta patrón dembow (reggaeton)
-   * El dembow tiene kick + snare en patrón específico 3+3+2
+   * Detecta patrÃ³n dembow (reggaeton)
+   * El dembow tiene kick + snare en patrÃ³n especÃ­fico 3+3+2
    */
   private detectDembow(rhythm: RhythmAnalysis, bpm: number): boolean {
     // Dembow requiere:
     // 1. BPM en rango reggaeton (88-102)
-    // 2. Sincopación ALTA (> 0.45) - diferencia clave con cumbia
+    // 2. SincopaciÃ³n ALTA (> 0.45) - diferencia clave con cumbia
     // 3. Snare prominente (el dembow tiene snare muy marcado)
     
     if (bpm < 85 || bpm > 105) return false;
     
     const groove = rhythm.groove;
     
-    // El dembow tiene sincopación MÁS ALTA que cumbia
+    // El dembow tiene sincopaciÃ³n MÃS ALTA que cumbia
     // Cumbia: 0.2-0.4, Reggaeton: 0.45-0.7
     // Y requiere snare muy prominente (el "tun-tun" del dembow)
     return (
@@ -492,18 +584,20 @@ export class GenreClassifier {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CÁLCULO DE SCORES
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // CÃLCULO DE SCORES
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   /**
-   * Calcula el score para cada género basado en las características
+   * Calcula el score para cada gÃ©nero basado en las caracterÃ­sticas
+   * ðŸ”¥ WAVE 12: AÃ±adido cyberpunk
    */
   private calculateGenreScores(features: GenreFeatures): Record<MusicGenre, number> {
     const scores: Record<MusicGenre, number> = {
       cumbia: 0,
       reggaeton: 0,
       techno: 0,
+      cyberpunk: 0,  // ðŸ”¥ WAVE 12
       house: 0,
       trap: 0,
       drum_and_bass: 0,
@@ -520,7 +614,7 @@ export class GenreClassifier {
   }
 
   /**
-   * Calcula el score para una regla específica
+   * Calcula el score para una regla especÃ­fica
    */
   private calculateRuleScore(rule: GenreRule, features: GenreFeatures): number {
     let score = 0;
@@ -579,7 +673,7 @@ export class GenreClassifier {
     // === 808 Requirement ===
     if (rule.requires808 !== undefined) {
       if (rule.requires808 !== features.has808Bass) {
-        score *= 0.5; // Penalización significativa
+        score *= 0.5; // PenalizaciÃ³n significativa
       }
     }
 
@@ -611,7 +705,7 @@ export class GenreClassifier {
       return Math.max(0, 0.5 - (distance / 20));
     }
     
-    // Dentro del rango - score basado en cercanía al ideal
+    // Dentro del rango - score basado en cercanÃ­a al ideal
     const distanceToIdeal = Math.abs(bpm - ideal);
     const maxDistance = Math.max(ideal - min, max - ideal);
     
@@ -623,7 +717,7 @@ export class GenreClassifier {
    */
   private calculateRangeScore(value: number, min: number, max: number): number {
     if (value < min || value > max) {
-      // Fuera del rango - penalización basada en distancia
+      // Fuera del rango - penalizaciÃ³n basada en distancia
       const distance = value < min ? min - value : value - max;
       return Math.max(0, 1.0 - distance * 2);
     }
@@ -637,18 +731,68 @@ export class GenreClassifier {
     return 1.0 - (distanceToCenter / halfRange) * 0.3;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELECCIÓN Y DETERMINACIÓN
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // SELECCIÃ“N Y DETERMINACIÃ“N
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   /**
-   * Selecciona el género ganador basado en scores
+   * Selecciona el gÃ©nero ganador basado en scores
+   * 
+   * ðŸ”¥ WAVE 12.1: REGLA DE HIERRO BIDIRECCIONAL
+   * - Sync < 0.30 = ELECTRÃ“NICO (robÃ³tico)
+   * - Sync > 0.35 = LATINO (con swing)
    */
   private selectWinningGenre(
     scores: Record<MusicGenre, number>,
     features: GenreFeatures
   ): { genre: MusicGenre; confidence: number } {
-    // Encontrar el máximo score
+    
+    // ðŸ” DEBUG: Log de caracterÃ­sticas para diagnÃ³stico
+    // ðŸ”¥ WAVE 12.1: 20% de frames durante calibraciÃ³n
+    if (Math.random() < 0.20) {
+      if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸ“Š Features: BPM=${features.bpm.toFixed(0)}, Sync=${features.syncopation.toFixed(2)}, Treble=${features.trebleDensity.toFixed(2)}, FourFloor=${features.hasFourOnFloor}`)
+    }
+    
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ”¥ WAVE 12.1: REGLA DE HIERRO BIDIRECCIONAL
+    // La sincopaciÃ³n es el FACTOR DECISIVO:
+    // - Sync < 0.30 = ELECTRÃ“NICO (ritmo robÃ³tico, sin swing)
+    // - Sync > 0.35 = LATINO (tiene swing/groove)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
+    // ðŸ¤– CAMINO ELECTRÃ“NICO: Sync < 0.30 = robÃ³tico
+    if (features.syncopation < 0.30) {
+      if (features.bpm >= 85 && features.bpm <= 130) {
+        if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸ¤– REGLA DE HIERRO: Sync=${features.syncopation.toFixed(2)} < 0.30 â†’ CYBERPUNK`)
+        return { genre: 'cyberpunk', confidence: 0.85 }
+      } else if (features.bpm > 130) {
+        if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸ¤– REGLA DE HIERRO: Sync=${features.syncopation.toFixed(2)} < 0.30, BPM=${features.bpm.toFixed(0)} â†’ TECHNO`)
+        return { genre: 'techno', confidence: 0.85 }
+      }
+    }
+    
+    // ðŸ’ƒ CAMINO LATINO: Sync > 0.35 = tiene swing
+    if (features.syncopation > 0.35 && features.bpm >= 85 && features.bpm <= 125) {
+      // Tiene swing! Ahora distinguir entre Cumbia y Reggaeton
+      // Cumbia: treble > 0.15 (gÃ¼iro presente, no necesita ser fuerte)
+      // Reggaeton: dembow pattern
+      
+      if (features.trebleDensity > 0.15) {
+        // Hay gÃ¼iro (aunque sea suave) â†’ CUMBIA
+        if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ï¿½ REGLA DE HIERRO: Sync=${features.syncopation.toFixed(2)} > 0.35, Treble=${features.trebleDensity.toFixed(2)} > 0.15 â†’ CUMBIA`)
+        return { genre: 'cumbia', confidence: 0.90 }
+      } else if (features.hasDembow) {
+        // Sin gÃ¼iro pero con dembow â†’ REGGAETON
+        if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸŽ¤ REGLA DE HIERRO: Sync=${features.syncopation.toFixed(2)} > 0.35, Dembow=true â†’ REGGAETON`)
+        return { genre: 'reggaeton', confidence: 0.85 }
+      } else {
+        // Swing pero sin gÃ¼iro ni dembow â†’ LATIN_POP genÃ©rico
+        if (VERBOSE_LOGGING) console.log(`[GenreClassifier] ðŸŽµ REGLA DE HIERRO: Sync=${features.syncopation.toFixed(2)} > 0.35 â†’ LATIN_POP`)
+        return { genre: 'latin_pop', confidence: 0.70 }
+      }
+    }
+    
+    // Encontrar el mÃ¡ximo score (fallback para casos intermedios)
     let maxScore = 0;
     let winningGenre: MusicGenre = 'unknown';
     
@@ -664,16 +808,16 @@ export class GenreClassifier {
     if (dominantGenre !== 'unknown' && 
         dominantGenre !== winningGenre &&
         scores[dominantGenre] > maxScore * 0.85) {
-      // El género dominante está muy cerca, mantenerlo para estabilidad
+      // El gÃ©nero dominante estÃ¡ muy cerca, mantenerlo para estabilidad
       winningGenre = dominantGenre;
       maxScore = scores[dominantGenre];
     }
 
-    // Calcular confianza basada en separación de scores
+    // Calcular confianza basada en separaciÃ³n de scores
     const sortedScores = Object.values(scores).sort((a, b) => b - a);
     const scoreDiff = sortedScores[0] - (sortedScores[1] || 0);
     
-    // Confianza = score máximo * factor de separación
+    // Confianza = score mÃ¡ximo * factor de separaciÃ³n
     let confidence = maxScore * (0.5 + scoreDiff);
     
     // Bonus de confianza si hay patrones claros
@@ -681,6 +825,10 @@ export class GenreClassifier {
       confidence += 0.1;
     }
     if (features.hasDembow && winningGenre === 'reggaeton') {
+      confidence += 0.15;
+    }
+    // ðŸ”¥ WAVE 12: Bonus para cyberpunk con ritmo robÃ³tico
+    if (features.syncopation < 0.15 && winningGenre === 'cyberpunk') {
       confidence += 0.15;
     }
     
@@ -696,7 +844,7 @@ export class GenreClassifier {
   }
 
   /**
-   * Determina el subgénero basado en características armónicas
+   * Determina el subgÃ©nero basado en caracterÃ­sticas armÃ³nicas
    */
   private determineSubgenre(
     genre: MusicGenre,
@@ -705,12 +853,12 @@ export class GenreClassifier {
     const subgenreRules = SUBGENRE_RULES[genre];
     if (!subgenreRules) return 'none';
     
-    // Si no hay análisis armónico o no tiene mood, usar default
+    // Si no hay anÃ¡lisis armÃ³nico o no tiene mood, usar default
     if (!harmony || !harmony.mode?.mood) {
       return subgenreRules['default'] || 'none';
     }
     
-    // Buscar subgénero que coincida con el mood armónico
+    // Buscar subgÃ©nero que coincida con el mood armÃ³nico
     const mood = harmony.mode.mood.toLowerCase();
     
     if (subgenreRules[mood]) {
@@ -721,20 +869,20 @@ export class GenreClassifier {
   }
 
   /**
-   * Determina el mood basado en género y armonía
+   * Determina el mood basado en gÃ©nero y armonÃ­a
    */
   private determineMood(
     genre: MusicGenre,
     harmony: HarmonyAnalysis | null
   ): GenreMood {
-    // Base mood del género
+    // Base mood del gÃ©nero
     const baseMood = GENRE_MOOD_MAP[genre];
     
-    // Modificar basado en armonía si está disponible
+    // Modificar basado en armonÃ­a si estÃ¡ disponible
     if (harmony?.mode?.mood) {
       const harmonyMood = harmony.mode.mood.toLowerCase();
       
-      // Mapear mood armónico a genre mood
+      // Mapear mood armÃ³nico a genre mood
       if (harmonyMood.includes('dark') || harmonyMood.includes('tense')) {
         return 'oscuro';
       }
@@ -753,12 +901,12 @@ export class GenreClassifier {
   }
 
   /**
-   * Actualiza el historial de géneros
+   * Actualiza el historial de gÃ©neros
    */
   private updateHistory(genre: MusicGenre): void {
     this.genreHistory.push(genre);
     
-    // Mantener tamaño máximo
+    // Mantener tamaÃ±o mÃ¡ximo
     while (this.genreHistory.length > this.historySize) {
       this.genreHistory.shift();
     }
@@ -766,3 +914,4 @@ export class GenreClassifier {
 }
 
 export default GenreClassifier;
+

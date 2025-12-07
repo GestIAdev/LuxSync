@@ -21,9 +21,25 @@ export interface PatchedFixture {
   id: string
   name: string
   type: string
-  address: number
-  channels: number
+  manufacturer: string
+  channelCount: number
+  dmxAddress: number
   universe: number
+  filePath: string
+  zone?: string  // WAVE 10: Auto-assigned zone (FRONT_PARS, BACK_PARS, MOVING_LEFT, etc.)
+  manualOverride?: string  // WAVE 10.5: Manual type override by user
+}
+
+// WAVE 9.6.3: Real-time DMX values for each fixture
+export interface FixtureValues {
+  dmxAddress: number
+  dimmer: number      // 0-255
+  r: number           // 0-255
+  g: number           // 0-255
+  b: number           // 0-255
+  pan?: number        // 0-255
+  tilt?: number       // 0-255
+  zone?: string
 }
 
 export interface DMXState {
@@ -45,6 +61,9 @@ export interface DMXState {
   fixtureCount: number
   channelsUsed: number
   
+  // WAVE 9.6.3: Real-time fixture values from Selene
+  fixtureValues: Map<number, FixtureValues>  // keyed by dmxAddress
+  
   // Status
   lastFrameTime: number
   framesPerSecond: number
@@ -56,11 +75,16 @@ export interface DMXState {
   setAvailableInterfaces: (interfaces: DMXInterface[]) => void
   setUniverse: (universe: number) => void
   setFrameRate: (rate: number) => void
+  setFixtures: (fixtures: PatchedFixture[]) => void
   addFixture: (fixture: PatchedFixture) => void
   removeFixture: (id: string) => void
+  removeFixtureByAddress: (dmxAddress: number) => void
   updateFixture: (id: string, updates: Partial<PatchedFixture>) => void
+  updateFixtureByAddress: (dmxAddress: number, updates: Partial<PatchedFixture>) => void  // WAVE 10.5
   clearFixtures: () => void
   updateStats: (fps: number) => void
+  // WAVE 9.6.3: Update fixture values from main process
+  updateFixtureValues: (values: FixtureValues[]) => void
 }
 
 // ============================================
@@ -80,10 +104,12 @@ export const DMX_DRIVERS: { id: DMXDriver; label: string; description: string }[
 // ============================================
 
 export const useDMXStore = create<DMXState>((set, get) => ({
-  // Initial state
+  // 🎯 WAVE 13.6: DEFAULTS PESIMISTAS - "Truth First"
+  // La UI nace asumiendo que TODO está desconectado
+  // El Backend dirá la verdad en el Initial State Handshake
   driver: null,
   port: null,
-  isConnected: false,
+  isConnected: false,  // ❌ PESIMISTA: Desconectado por defecto
   connectionError: null,
   availableInterfaces: [],
   universe: 1,
@@ -91,6 +117,7 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   fixtures: [],
   fixtureCount: 0,
   channelsUsed: 0,
+  fixtureValues: new Map(),  // WAVE 9.6.3
   lastFrameTime: 0,
   framesPerSecond: 0,
   
@@ -128,10 +155,19 @@ export const useDMXStore = create<DMXState>((set, get) => ({
     set({ frameRate: Math.max(1, Math.min(rate, 44)) })
   },
   
+  setFixtures: (fixtures) => {
+    const channelsUsed = fixtures.reduce((sum, f) => sum + f.channelCount, 0)
+    set({
+      fixtures,
+      fixtureCount: fixtures.length,
+      channelsUsed,
+    })
+  },
+  
   addFixture: (fixture) => {
     const { fixtures } = get()
     const newFixtures = [...fixtures, fixture]
-    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channels, 0)
+    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channelCount, 0)
     
     set({
       fixtures: newFixtures,
@@ -143,7 +179,19 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   removeFixture: (id) => {
     const { fixtures } = get()
     const newFixtures = fixtures.filter(f => f.id !== id)
-    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channels, 0)
+    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channelCount, 0)
+    
+    set({
+      fixtures: newFixtures,
+      fixtureCount: newFixtures.length,
+      channelsUsed,
+    })
+  },
+  
+  removeFixtureByAddress: (dmxAddress) => {
+    const { fixtures } = get()
+    const newFixtures = fixtures.filter(f => f.dmxAddress !== dmxAddress)
+    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channelCount, 0)
     
     set({
       fixtures: newFixtures,
@@ -155,7 +203,19 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   updateFixture: (id, updates) => {
     const { fixtures } = get()
     const newFixtures = fixtures.map(f => f.id === id ? { ...f, ...updates } : f)
-    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channels, 0)
+    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channelCount, 0)
+    
+    set({
+      fixtures: newFixtures,
+      channelsUsed,
+    })
+  },
+
+  // WAVE 10.5: Update fixture by DMX address
+  updateFixtureByAddress: (dmxAddress, updates) => {
+    const { fixtures } = get()
+    const newFixtures = fixtures.map(f => f.dmxAddress === dmxAddress ? { ...f, ...updates } : f)
+    const channelsUsed = newFixtures.reduce((sum, f) => sum + f.channelCount, 0)
     
     set({
       fixtures: newFixtures,
@@ -176,5 +236,12 @@ export const useDMXStore = create<DMXState>((set, get) => ({
       framesPerSecond: fps,
       lastFrameTime: Date.now(),
     })
+  },
+  
+  // WAVE 9.6.3: Update fixture values from Selene main loop
+  updateFixtureValues: (values) => {
+    const newMap = new Map<number, FixtureValues>()
+    values.forEach(v => newMap.set(v.dmxAddress, v))
+    set({ fixtureValues: newMap })
   },
 }))

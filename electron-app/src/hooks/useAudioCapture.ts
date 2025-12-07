@@ -1,13 +1,13 @@
-/**
- * 🎤 USE AUDIO CAPTURE
+﻿/**
+ * ðŸŽ¤ USE AUDIO CAPTURE
  * Web Audio API hook para capturar y analizar audio en tiempo real
  * 
- * WAVE 9.5: Soporta múltiples fuentes de audio:
- * - Micrófono (getUserMedia)
+ * WAVE 9.5: Soporta mÃºltiples fuentes de audio:
+ * - MicrÃ³fono (getUserMedia)
  * - Audio del Sistema (getDisplayMedia con audio)
- * - Simulación (para testing)
+ * - SimulaciÃ³n (para testing)
  * 
- * Envía métricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
+ * EnvÃ­a mÃ©tricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -37,7 +37,7 @@ export interface UseAudioCaptureReturn {
   startCapture: (source?: AudioSource) => Promise<void>
   stopCapture: () => void
   setSimulationMode: (enabled: boolean) => void
-  // WAVE 9.5: Nuevos métodos
+  // WAVE 9.5: Nuevos mÃ©todos
   startSystemAudio: () => Promise<void>
   startMicrophone: () => Promise<void>
 }
@@ -120,11 +120,11 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const sampleRate = audioContextRef.current.sampleRate
     const binWidth = sampleRate / FFT_SIZE
 
-    // Calcular índices de frecuencia
+    // Calcular Ã­ndices de frecuencia
     const bassMaxBin = Math.floor(BASS_MAX / binWidth)
     const midMaxBin = Math.floor(MID_MAX / binWidth)
 
-    // Calcular energía por banda
+    // Calcular energÃ­a por banda
     let bassSum = 0, midSum = 0, trebleSum = 0, totalSum = 0
 
     for (let i = 0; i < bufferLength; i++) {
@@ -156,7 +156,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const now = performance.now()
     let onBeat = false
 
-    // Detectar beat: energía supera umbral y cooldown
+    // Detectar beat: energÃ­a supera umbral y cooldown
     if (energy > avgEnergy * 1.3 && energy > BEAT_THRESHOLD) {
       const timeSinceLastBeat = now - lastBeatTimeRef.current
       if (timeSinceLastBeat > 200) { // Min 200ms entre beats (300 BPM max)
@@ -197,12 +197,12 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     animationFrameRef.current = requestAnimationFrame(processFrame)
   }, [simulationMode])
 
-  // Simulated audio frame (cuando no hay micrófono)
+  // Simulated audio frame (cuando no hay micrÃ³fono)
   const processSimulatedFrame = useCallback(() => {
     const now = performance.now()
     const t = (now - simulationStartRef.current) / 1000
 
-    // Simular música electrónica
+    // Simular mÃºsica electrÃ³nica
     const bpm = 128
     const beatInterval = 60000 / bpm
     const beatPhase = ((now % beatInterval) / beatInterval)
@@ -212,7 +212,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const bassPulse = Math.pow(Math.max(0, Math.sin(beatPhase * Math.PI * 2 - Math.PI / 2)), 2)
     const bass = 0.3 + bassPulse * 0.5 + Math.sin(t * 0.5) * 0.1
 
-    // Mid: más constante con variación
+    // Mid: mÃ¡s constante con variaciÃ³n
     const mid = 0.4 + Math.sin(t * 1.3) * 0.15 + Math.sin(t * 2.7) * 0.1
 
     // Treble: hi-hats en off-beats
@@ -220,7 +220,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const treblePulse = Math.pow(Math.max(0, Math.sin(offBeatPhase * Math.PI * 2 - Math.PI / 2)), 4)
     const treble = 0.2 + treblePulse * 0.4 + Math.sin(t * 5) * 0.1
 
-    // Energy: combinación
+    // Energy: combinaciÃ³n
     const energy = (bass * 0.5 + mid * 0.3 + treble * 0.2)
 
     const newMetrics: AudioMetrics = {
@@ -254,13 +254,43 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   // ============================================================================
   // WAVE 9.5: Setup audio from stream (shared logic)
   // ============================================================================
-  const setupAudioFromStream = useCallback((stream: MediaStream, sourceName: string) => {
+  const setupAudioFromStream = useCallback(async (stream: MediaStream, sourceName: string) => {
     streamRef.current = stream
     setIsPermissionGranted(true)
+
+    // VERIFY AUDIO TRACKS EXIST
+    const audioTracks = stream.getAudioTracks()
+    console.log(`[AudioCapture] Audio tracks found: ${audioTracks.length}`)
+    
+    if (audioTracks.length === 0) {
+      const errorMsg = 'NO AUDIO DETECTED! Did you check Share audio in the popup?'
+      console.error('[AudioCapture]', errorMsg)
+      setError(errorMsg)
+      throw new Error(errorMsg)
+    }
+
+    // Log track info
+    audioTracks.forEach((track, i) => {
+      console.log(`[AudioCapture] Track ${i}: label=${track.label} enabled=${track.enabled} muted=${track.muted}`)
+    })
 
     // Crear audio context
     const audioContext = new AudioContext()
     audioContextRef.current = audioContext
+
+    // DEFIBRILLATOR: Force resume AudioContext
+    console.log('[AudioCapture] AudioContext state:', audioContext.state)
+    if (audioContext.state === 'suspended') {
+      console.log('[AudioCapture] FORCE RESUMING AudioContext...')
+      await audioContext.resume()
+    }
+    // Double-check it actually resumed
+    if (audioContext.state !== 'running') {
+      console.warn('[AudioCapture] AudioContext still not running, trying again...')
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await audioContext.resume()
+    }
+    console.log('[AudioCapture] AudioContext state after resume:', audioContext.state)
 
     // Crear analyser
     const analyser = audioContext.createAnalyser()
@@ -268,59 +298,92 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     analyser.smoothingTimeConstant = SMOOTHING
     analyserRef.current = analyser
 
-    // Conectar stream al analyser
+    // Crear source
     const source = audioContext.createMediaStreamSource(stream)
+    
+    // KEEP-ALIVE HACK: Connect to destination via silent gain
+    // This tricks Chrome into keeping the audio pipeline active
+    const keepAliveGain = audioContext.createGain()
+    keepAliveGain.gain.value = 0.01 // Almost silent but not zero
+    
+    // Connect: source -> analyser -> keepAliveGain -> destination
     source.connect(analyser)
+    analyser.connect(keepAliveGain)
+    keepAliveGain.connect(audioContext.destination)
+    
+    console.log('[AudioCapture] Audio graph: source -> analyser -> keepAlive -> destination')
 
     setIsCapturing(true)
     animationFrameRef.current = requestAnimationFrame(processFrame)
     
-    console.log(`[AudioCapture] � ${sourceName} capture started`)
+    console.log(`[AudioCapture] ${sourceName} capture ACTIVE`)
   }, [processFrame])
 
   // ============================================================================
-  // WAVE 9.5: Start System Audio (getDisplayMedia)
+  // WAVE 9.6.3: Start System Audio (Electron desktopCapturer)
   // ============================================================================
   const startSystemAudio = useCallback(async () => {
     try {
       setError(null)
-      cleanup() // Limpiar captura anterior
+      cleanup()
 
-      console.log('[AudioCapture] 🖥️ Requesting system audio...')
+      console.log('[AudioCapture] Requesting system audio...')
       
-      // getDisplayMedia con audio - captura audio del sistema
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: 1, height: 1 }, // Mínimo video requerido
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
-      } as DisplayMediaStreamOptions)
-
-      // Desactivar video track (solo queremos audio)
-      stream.getVideoTracks().forEach(track => {
-        track.enabled = false
-        // No lo eliminamos porque algunos navegadores lo necesitan
-      })
-
-      // Verificar que tenemos audio
-      const audioTracks = stream.getAudioTracks()
-      if (audioTracks.length === 0) {
-        throw new Error('No audio track in system capture. Select "Share system audio" in the dialog.')
+      // ELECTRON: Get sources from main process
+      let sources: Array<{ id: string; name: string }> = []
+      const luxAny = window.lux as any // Casting para APIs opcionales
+      if (luxAny?.getDesktopSources) {
+        sources = await luxAny.getDesktopSources()
+        console.log('[AudioCapture] Desktop sources:', sources.map(s => s.name))
+      }
+      
+      const screenSource = sources.find(s => 
+        s.name.includes('Screen') || 
+        s.name.includes('Pantalla') || 
+        s.name.includes('Entire') ||
+        s.id.startsWith('screen:')
+      )
+      
+      let stream: MediaStream
+      
+      if (screenSource) {
+        console.log('[AudioCapture] Using desktopCapturer:', screenSource.name)
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            // @ts-expect-error Electron
+            mandatory: { chromeMediaSource: 'desktop' }
+          },
+          video: {
+            // @ts-expect-error Electron  
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: screenSource.id,
+              minWidth: 1, maxWidth: 1, minHeight: 1, maxHeight: 1,
+            }
+          }
+        })
+      } else {
+        console.log('[AudioCapture] Fallback getDisplayMedia...')
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: 1, height: 1 },
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        } as DisplayMediaStreamOptions)
       }
 
-      console.log('[AudioCapture] 🖥️ Got system audio track:', audioTracks[0].label)
+      stream.getVideoTracks().forEach(t => { t.enabled = false })
       
+      const audioTracks = stream.getAudioTracks()
+      if (audioTracks.length === 0) {
+        throw new Error('No audio! Enable Stereo Mix in Windows Sound settings.')
+      }
+
+      console.log('[AudioCapture] Got track:', audioTracks[0].label)
       setAudioSource('system')
-      setupAudioFromStream(stream, 'System audio')
+      await setupAudioFromStream(stream, 'System audio')
       
     } catch (err) {
       console.error('[AudioCapture] System audio error:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to capture system audio'
-      setError(errorMessage)
-      
-      // No fallback automático - dejar que el usuario decida
+      setError(err instanceof Error ? err.message : 'Failed')
       throw err
     }
   }, [cleanup, setupAudioFromStream])
@@ -333,7 +396,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
       setError(null)
       cleanup() // Limpiar captura anterior
 
-      console.log('[AudioCapture] 🎤 Requesting microphone...')
+      console.log('[AudioCapture] ðŸŽ¤ Requesting microphone...')
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -343,10 +406,10 @@ export function useAudioCapture(): UseAudioCaptureReturn {
         }
       })
 
-      console.log('[AudioCapture] 🎤 Got microphone track:', stream.getAudioTracks()[0]?.label)
+      console.log('[AudioCapture] ðŸŽ¤ Got microphone track:', stream.getAudioTracks()[0]?.label)
       
       setAudioSource('microphone')
-      setupAudioFromStream(stream, 'Microphone')
+      await setupAudioFromStream(stream, 'Microphone')
       
     } catch (err) {
       console.error('[AudioCapture] Microphone error:', err)
@@ -365,7 +428,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
         setIsCapturing(true)
         simulationStartRef.current = performance.now()
         animationFrameRef.current = requestAnimationFrame(processSimulatedFrame)
-        console.log('[AudioCapture] 🎵 Simulation mode started')
+        console.log('[AudioCapture] ðŸŽµ Simulation mode started')
         return
       }
 
@@ -378,8 +441,8 @@ export function useAudioCapture(): UseAudioCaptureReturn {
       try {
         await startMicrophone()
       } catch {
-        // Fallback a simulación
-        console.log('[AudioCapture] ⚠️ Falling back to simulation mode')
+        // Fallback a simulaciÃ³n
+        console.log('[AudioCapture] âš ï¸ Falling back to simulation mode')
         setSimulationMode(true)
         setAudioSource('simulation')
         setIsCapturing(true)
@@ -397,7 +460,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     cleanup()
     setIsCapturing(false)
     setAudioSource('none')
-    console.log('[AudioCapture] 🛑 Capture stopped')
+    console.log('[AudioCapture] ðŸ›‘ Capture stopped')
   }, [cleanup])
 
   // Cleanup on unmount
@@ -423,3 +486,4 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 }
 
 export default useAudioCapture
+

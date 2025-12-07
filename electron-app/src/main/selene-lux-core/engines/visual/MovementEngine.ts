@@ -47,7 +47,17 @@ export class MovementEngine {
   private audioEnergy = 0.5
   
   private readonly patterns: Record<string, PatternConfig> = {
-    circle: { freqX: 1, freqY: 1, phaseShift: Math.PI / 2, amplitude: 0.8 },
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 UI PATTERNS (match MovementControl.tsx exactly)
+    // ═══════════════════════════════════════════════════════════════════════
+    lissajous: { freqX: 2, freqY: 3, phaseShift: Math.PI / 4, amplitude: 0.8 },  // Classic Lissajous 2:3
+    circle: { freqX: 1, freqY: 1, phaseShift: Math.PI / 2, amplitude: 0.8 },     // Perfect circle
+    wave: { freqX: 1, freqY: 2, phaseShift: Math.PI / 3, amplitude: 0.6 },       // Wave pattern
+    figure8: { freqX: 2, freqY: 1, phaseShift: 0, amplitude: 0.7 },              // Figure 8 (infinity)
+    scan: { freqX: 1, freqY: 0.1, phaseShift: 0, amplitude: 0.9 },               // Horizontal scan
+    random: { freqX: 1.7, freqY: 2.3, phaseShift: Math.PI / 7, amplitude: 0.5 }, // Organic/random-like
+    
+    // ═══ Legacy patterns (backward compatibility) ═══
     infinity: { freqX: 2, freqY: 1, phaseShift: 0, amplitude: 0.7 },
     sweep: { freqX: 1, freqY: 0.1, phaseShift: 0, amplitude: 0.9 },
     cloud: { freqX: 1.3, freqY: 1.7, phaseShift: Math.PI / 4, amplitude: 0.5 },
@@ -62,6 +72,18 @@ export class MovementEngine {
     harmonious: 'circle',
     building: 'waves',
     dropping: 'sweep',
+  }
+  
+  // 🧠 WAVE 13: PALETTE → PATTERN MAP
+  // Cuando el usuario selecciona una paleta manual, el movimiento debe coincidir
+  private readonly palettePatternMap: Record<string, string> = {
+    'fuego': 'infinity',   // 🔥 Latino caliente → Figure 8 apasionado
+    'fire': 'infinity',    // Alias inglés
+    'hielo': 'cloud',      // ❄️ Arctic dreams → Suave, etéreo
+    'ice': 'cloud',        // Alias inglés
+    'selva': 'waves',      // 🌴 Tropical storm → Ondulante, orgánico
+    'jungle': 'waves',     // Alias inglés
+    'neon': 'sweep',       // ⚡ Cyberpunk → Barridos electrónicos
   }
   
   private readonly smoothing: number
@@ -161,22 +183,24 @@ export class MovementEngine {
     beatState: BeatState,
     deltaTime: number = 16
   ): MovementOutput {
-    const speedMultiplier = this.state.syncToBpm
-      ? beatState.bpm / 120
-      : 1.0
+    // 🔧 WAVE 10 FIX: Speed SIEMPRE afecta el movimiento
+    // Multiplicador base: speed va de 0.01 (muy lento) a 1.0 (normal)
+    const baseSpeedFactor = this.state.speed * 0.5  // Reducir velocidad general
     
-    this.time += (deltaTime / 1000) * this.state.speed * speedMultiplier
+    // Si syncToBpm está activo, el BPM modifica la velocidad
+    const bpmFactor = this.state.syncToBpm ? (beatState.bpm / 120) : 1.0
     
-    if (this.state.syncToBpm) {
-      this.phase = beatState.phase * Math.PI * 2
-    } else {
-      this.phase = this.time * Math.PI * 2
-    }
+    // Incremento de tiempo respetando la velocidad configurada
+    this.time += (deltaTime / 1000) * baseSpeedFactor * bpmFactor
+    
+    // La fase SIEMPRE se calcula desde this.time (que respeta speed)
+    this.phase = this.time * Math.PI * 2
     
     let pan = 0.5
     let tilt = 0.5
     
-    const patternName = this.state.pattern === 'lissajous' ? 'circle' : this.state.pattern
+    // 🔧 FIX: Use pattern directly (lissajous now has its own config)
+    const patternName = this.state.pattern
     const config = this.patterns[patternName] || this.patterns.circle
     
     if (config.amplitude > 0) {
@@ -198,10 +222,15 @@ export class MovementEngine {
     pan = Math.max(0, Math.min(1, pan))
     tilt = Math.max(0, Math.min(1, tilt))
     
+    // Movement log disabled - too spammy
+    // if (Math.random() < 0.01) {
+    //   console.log(`[Movement] Pattern: ${patternName} | Pan: ${pan.toFixed(2)} Tilt: ${tilt.toFixed(2)}`)
+    // }
+    
     return {
       pan,
       tilt,
-      speed: this.state.speed * speedMultiplier,
+      speed: this.state.speed,
       pattern: this.state.pattern,
     }
   }
@@ -234,10 +263,12 @@ export class MovementEngine {
   
   setSpeed(speed: number): void {
     this.state.speed = Math.max(0, Math.min(1, speed))
+    console.log(`[MovementEngine] ⚡ Speed set to: ${this.state.speed.toFixed(3)}`)
   }
   
   setRange(range: number): void {
     this.state.range = Math.max(0, Math.min(1, range))
+    console.log(`[MovementEngine] 📐 Range set to: ${this.state.range.toFixed(3)}`)
   }
   
   setSyncToBpm(sync: boolean): void {
@@ -284,5 +315,36 @@ export class MovementEngine {
         this.state.range = this.state.range * 0.7
         break
     }
+  }
+  
+  /**
+   * 🧠 WAVE 13: Get pattern suggestion based on palette
+   * When user selects a manual palette, return the matching pattern
+   */
+  getPatternForPalette(paletteId: string): string | null {
+    const normalized = paletteId.toLowerCase()
+    return this.palettePatternMap[normalized] ?? null
+  }
+  
+  /**
+   * 🧠 WAVE 13: Set pattern from palette (for Flow mode)
+   * Returns true if a matching pattern was found and set
+   */
+  setPatternFromPalette(paletteId: string): boolean {
+    const pattern = this.getPatternForPalette(paletteId)
+    if (pattern && this.patterns[pattern]) {
+      this.state.pattern = pattern as MovementPattern
+      console.log(`[MovementEngine] 🎨 Palette "${paletteId}" → Pattern "${pattern}"`)
+      return true
+    }
+    return false
+  }
+  
+  /**
+   * 🧠 WAVE 13: Get pattern suggestion based on mood
+   */
+  getPatternForMood(mood: string): string | null {
+    const normalized = mood.toLowerCase()
+    return this.moodPatternMap[normalized] ?? null
   }
 }

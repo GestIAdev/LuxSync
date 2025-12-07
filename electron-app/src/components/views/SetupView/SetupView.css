@@ -63,6 +63,26 @@
   border-color: rgba(0, 255, 136, 0.4);
 }
 
+/* 🎭 WAVE 10.6: NEW SHOW Button */
+.new-show-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(255, 136, 0, 0.2), rgba(255, 51, 102, 0.15));
+  border: 1px solid rgba(255, 136, 0, 0.4);
+  border-radius: 8px;
+  color: #ff8800;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-show-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 136, 0, 0.3), rgba(255, 51, 102, 0.25));
+  box-shadow: 0 0 20px rgba(255, 136, 0, 0.3);
+  transform: scale(1.02);
+}
+
 /* ============================================================================
    PROGRESS STEPPER
    ============================================================================ */
@@ -160,6 +180,19 @@
 .stepper-connector.filled {
   background: linear-gradient(90deg, #00ff88, #00fff0);
   box-shadow: 0 0 10px rgba(0, 255, 240, 0.5);
+}
+
+/* 🔒 WAVE 10.6: Locked stepper steps */
+.stepper-step.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.stepper-step.locked .stepper-icon {
+  background: rgba(100, 100, 100, 0.3);
+  border-color: rgba(100, 100, 100, 0.3);
+  color: #666;
 }
 
 /* ============================================================================
@@ -525,19 +558,20 @@
 
 .fixture-search {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .search-input {
   flex: 1;
-  padding: 12px 16px;
+  padding: 8px 12px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  border-radius: 6px;
   color: #fff;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  height: 32px;
 }
 
 .search-input:focus {
@@ -551,18 +585,19 @@
 }
 
 .scan-btn {
-  padding: 12px 20px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, rgba(0, 255, 240, 0.15), rgba(0, 255, 136, 0.1));
   border: 1px solid rgba(0, 255, 240, 0.3);
-  border-radius: 10px;
+  border-radius: 6px;
   color: #00fff0;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  height: 32px;
 }
 
 .scan-btn:hover {
@@ -937,6 +972,126 @@
   margin-top: 4px;
 }
 
+/* 🔌 WAVE 10.6: DMX Card V2 - Improved UX */
+.dmx-interfaces-v2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dmx-card-v2 {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dmx-card-v2:hover {
+  border-color: rgba(0, 255, 240, 0.3);
+  background: rgba(0, 255, 240, 0.03);
+}
+
+.dmx-card-v2.selected {
+  border-color: #00fff0;
+  background: rgba(0, 255, 240, 0.08);
+  box-shadow: 0 0 20px rgba(0, 255, 240, 0.15);
+}
+
+.dmx-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-indicator {
+  font-size: 0.9rem;
+}
+
+.status-indicator.connected {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.dmx-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dmx-card-desc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 12px 0;
+}
+
+.dmx-card-actions {
+  display: flex;
+  align-items: center;
+}
+
+.dmx-status-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #00ff88;
+}
+
+.rescan-btn {
+  padding: 6px 12px;
+  background: rgba(0, 255, 240, 0.15);
+  border: 1px solid rgba(0, 255, 240, 0.4);
+  border-radius: 6px;
+  color: #00fff0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rescan-btn:hover {
+  background: rgba(0, 255, 240, 0.25);
+  box-shadow: 0 0 10px rgba(0, 255, 240, 0.3);
+}
+
+/* DMX Status Bar */
+.dmx-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 51, 102, 0.08);
+  border: 1px solid rgba(255, 51, 102, 0.2);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ff3366;
+}
+
+.dmx-status-bar.connected {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+}
+
+.dmx-status-bar .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff3366;
+}
+
+.dmx-status-bar.connected .status-dot {
+  background: #00ff88;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
 /* ============================================================================
    TEST RESULTS
    ============================================================================ */
@@ -1196,6 +1351,86 @@
 }
 
 /* ============================================================================
+   🎯 WAVE 12.5: INSTALLATION TYPE SELECTOR (COLGADOS/DE PIE)
+   ============================================================================ */
+
+.installation-selector {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(255, 100, 0, 0.05));
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 12px;
+}
+
+.installation-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.installation-buttons {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.installation-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 4px;
+}
+
+.installation-btn:hover {
+  background: rgba(255, 165, 0, 0.15);
+  border-color: rgba(255, 165, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.installation-btn.active {
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.3), rgba(255, 100, 0, 0.2));
+  border-color: #ff9500;
+  box-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
+}
+
+.installation-icon {
+  font-size: 1.5rem;
+}
+
+.installation-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.installation-sub {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+}
+
+.installation-btn.active .installation-text {
+  color: #ff9500;
+}
+
+.installation-btn.active .installation-sub {
+  color: rgba(255, 165, 0, 0.7);
+}
+
+/* ============================================================================
    FIXTURE 2-COLUMN GRID LAYOUT (NEW)
    ============================================================================ */
 
@@ -1203,18 +1438,20 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  height: 420px; /* Altura fija */
+  height: calc(100vh - 380px); /* Altura dinámica basada en viewport */
+  min-height: 300px;
+  max-height: 500px;
 }
 
 .fixture-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 12px;
   overflow: hidden;
+  height: 100%;
 }
 
 .column-header {
@@ -1223,6 +1460,7 @@
   align-items: center;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .column-title {
@@ -1230,6 +1468,26 @@
   font-weight: 600;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Search Input - WAVE 10.6: 40px altura, diseño mejorado */
+.fixture-column .search-input {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  flex-shrink: 0;
+  padding: 0 14px 0 36px;
+  margin: 10px 0;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  position: relative;
+}
+
+.fixture-column .search-input:focus {
+  border-color: rgba(0, 255, 240, 0.4);
+  box-shadow: 0 0 20px rgba(0, 255, 240, 0.1);
 }
 
 .patch-stats {
@@ -1258,26 +1516,35 @@
   background: rgba(0, 255, 240, 0.2);
 }
 
+/* WAVE 10.6: Improved fixture list with smooth scroll */
 .fixture-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 4px;
+  padding: 4px 6px 4px 4px;
+  min-height: 0; /* CRÍTICO: Permite que flex-shrink funcione */
+  scroll-behavior: smooth;
 }
 
 .fixture-list::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .fixture-list::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
 }
 
 .fixture-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 240, 0.3);
-  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(0, 255, 240, 0.4), rgba(168, 85, 247, 0.3));
+  border-radius: 3px;
+}
+
+.fixture-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(0, 255, 240, 0.6), rgba(168, 85, 247, 0.5));
 }
 
 .fixture-card-mini {
@@ -1470,6 +1737,35 @@
   background: rgba(255, 51, 102, 0.3);
 }
 
+/* WAVE 10.5: Type Selector */
+.type-selector {
+  appearance: none;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #00fff0;
+  background: rgba(0, 255, 240, 0.1);
+  border: 1px solid rgba(0, 255, 240, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+  font-family: inherit;
+}
+
+.type-selector:hover,
+.type-selector:focus {
+  background: rgba(0, 255, 240, 0.2);
+  border-color: rgba(0, 255, 240, 0.5);
+  outline: none;
+}
+
+.type-selector option {
+  background: #1a1a2e;
+  color: #ffffff;
+  padding: 8px;
+}
+
 /* ============================================================================
    DMX STATUS
    ============================================================================ */
@@ -1546,4 +1842,370 @@
   background: rgba(255, 180, 0, 0.1);
   border-color: rgba(255, 180, 0, 0.3);
   color: #ffb400;
+}
+
+/* ============================================================================
+   🎭 SHOW MANAGEMENT (WAVE 10.6)
+   ============================================================================ */
+
+.show-management {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.show-management h4 {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 1px;
+}
+
+.show-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.show-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.show-btn.save {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+}
+
+.show-btn.save:hover {
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+}
+
+.show-btn.load {
+  background: rgba(0, 255, 240, 0.1);
+  border-color: rgba(0, 255, 240, 0.3);
+  color: #00fff0;
+}
+
+.show-btn.load:hover {
+  background: rgba(0, 255, 240, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 240, 0.2);
+}
+
+.show-btn.new {
+  background: rgba(255, 136, 0, 0.1);
+  border-color: rgba(255, 136, 0, 0.3);
+  color: #ff8800;
+}
+
+.show-btn.new:hover {
+  background: rgba(255, 136, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 136, 0, 0.2);
+}
+
+/* ============================================================================
+   🌪️ WAVE 11: DMX WATCHDOG STATUS BANNER
+   ============================================================================ */
+
+.dmx-watchdog-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.dmx-watchdog-banner.connected {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.dmx-watchdog-banner.disconnected {
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  animation: pulse-red 1s infinite;
+}
+
+.dmx-watchdog-banner.reconnecting {
+  background: rgba(255, 200, 0, 0.15);
+  border: 1px solid rgba(255, 200, 0, 0.5);
+  animation: pulse-amber 1.5s infinite;
+}
+
+.dmx-watchdog-banner.error {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.6);
+}
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(255, 200, 0, 0.3); }
+  50% { opacity: 0.8; box-shadow: 0 0 20px rgba(255, 200, 0, 0.5); }
+}
+
+.watchdog-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.watchdog-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.watchdog-dot.connected {
+  background: #00ff88;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+}
+
+.watchdog-dot.disconnected {
+  background: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.6);
+  animation: blink-red 0.5s infinite;
+}
+
+.watchdog-dot.reconnecting {
+  background: #ffc800;
+  box-shadow: 0 0 10px rgba(255, 200, 0, 0.6);
+  animation: spin-dot 1s linear infinite;
+}
+
+.watchdog-dot.error {
+  background: #ff0000;
+}
+
+@keyframes blink-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes spin-dot {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.watchdog-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dmx-watchdog-banner.connected .watchdog-text { color: #00ff88; }
+.dmx-watchdog-banner.disconnected .watchdog-text { color: #ff4444; }
+.dmx-watchdog-banner.reconnecting .watchdog-text { color: #ffc800; }
+.dmx-watchdog-banner.error .watchdog-text { color: #ff0000; }
+
+.reconnect-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reconnect-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.02);
+}
+
+/* ============================================================================
+   🔦 WAVE 11: HIGHLIGHT MODE - Fixture Diagnostic
+   ============================================================================ */
+
+.highlight-mode {
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 255, 136, 0.05) 100%);
+  border: 1px solid rgba(124, 77, 255, 0.3);
+  border-radius: 12px;
+}
+
+.highlight-mode h4 {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #7C4DFF;
+  letter-spacing: 1px;
+}
+
+.highlight-hint {
+  margin: 0 0 16px 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.highlight-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.highlight-btn {
+  flex: 0 0 auto;
+  padding: 16px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: 2px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.highlight-btn.prev {
+  background: rgba(0, 200, 255, 0.1);
+  border-color: rgba(0, 200, 255, 0.4);
+  color: #00c8ff;
+}
+
+.highlight-btn.prev:hover:not(:disabled) {
+  background: rgba(0, 200, 255, 0.2);
+  transform: translateX(-2px);
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.3);
+}
+
+.highlight-btn.next {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.4);
+  color: #00ff88;
+}
+
+.highlight-btn.next:hover:not(:disabled) {
+  background: rgba(0, 255, 136, 0.2);
+  transform: translateX(2px);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.highlight-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.highlight-display {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  min-height: 80px;
+  transition: all 0.3s ease;
+}
+
+.highlight-display.on {
+  background: rgba(255, 220, 0, 0.1);
+  border-color: rgba(255, 220, 0, 0.5);
+  box-shadow: 0 0 30px rgba(255, 220, 0, 0.2);
+}
+
+.highlight-display.active {
+  animation: flash-highlight 0.3s ease;
+}
+
+@keyframes flash-highlight {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); box-shadow: 0 0 50px rgba(255, 220, 0, 0.5); }
+}
+
+.highlight-number {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffdc00;
+  text-shadow: 0 0 10px rgba(255, 220, 0, 0.5);
+}
+
+.highlight-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-top: 4px;
+}
+
+.highlight-dmx {
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.highlight-off {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.highlight-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.highlight-action-btn {
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.highlight-action-btn.test {
+  background: rgba(255, 220, 0, 0.1);
+  border-color: rgba(255, 220, 0, 0.4);
+  color: #ffdc00;
+}
+
+.highlight-action-btn.test:hover:not(:disabled) {
+  background: rgba(255, 220, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 220, 0, 0.3);
+}
+
+.highlight-action-btn.stop {
+  background: rgba(100, 100, 100, 0.1);
+  border-color: rgba(100, 100, 100, 0.4);
+  color: #888;
+}
+
+.highlight-action-btn.stop:hover:not(:disabled) {
+  background: rgba(100, 100, 100, 0.2);
+}
+
+.highlight-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }

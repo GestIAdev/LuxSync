@@ -24,12 +24,15 @@ const PHI = (1 + Math.sqrt(5)) / 2; // ≈ 1.6180339887...
  * IMPORTANTE: 'cumbia' y 'reggaeton' son DISTINTOS
  * - Cumbia: Caballito güiro constante, 85-115 BPM
  * - Reggaeton: Dembow pattern (Kick...Snare), 90-100 BPM
+ * 
+ * 🔥 WAVE 12: Añadido 'cyberpunk' (mid-tempo electronic robótico)
  */
 export type MusicGenre =
   // Electrónica
   | 'edm'
   | 'house'
   | 'techno'
+  | 'cyberpunk'        // 🔥 WAVE 12: Mid-tempo robótico 90-125 BPM, sincopación < 0.15
   | 'trance'
   | 'dubstep'
   | 'drum_and_bass'

@@ -116,11 +116,13 @@ const DEFAULT_ENGINE_CONFIG: MusicalContextEngineConfig = {
 
 /**
  * Mapeo de género a paleta sugerida
+ * 🔥 WAVE 12: Cyberpunk → NEÓN obligatorio
  */
 const GENRE_TO_PALETTE: Record<MusicGenre, string> = {
   cumbia: 'fuego',
   reggaeton: 'neon',
   techno: 'cyber',
+  cyberpunk: 'neon',    // 🔥 WAVE 12: CYBERPUNK → NEÓN SIEMPRE
   house: 'rainbow',
   latin_pop: 'tropical',
   trap: 'dark',

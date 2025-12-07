@@ -9,7 +9,7 @@ import { create } from 'zustand'
 // TYPES
 // ============================================
 
-export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police'
+export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police' | 'beam' | 'prism'
 
 export interface EffectConfig {
   id: EffectId
@@ -46,11 +46,29 @@ export interface EffectsState {
 // ============================================
 
 export const EFFECTS: EffectConfig[] = [
+  // 🔦 OPTICAL CONTROLS (primero - más importantes)
+  {
+    id: 'beam',
+    label: 'BEAM',
+    icon: '🔦',
+    shortcut: 'B',
+    color: '#00ffff',
+    description: 'Haz cerrado spotlight',
+  },
+  {
+    id: 'prism',
+    label: 'PRISM',
+    icon: '💎',
+    shortcut: 'P',
+    color: '#ff00ff',
+    description: 'Fragmentación prisma RGB',
+  },
+  // ⚡ PANIC BUTTONS
   {
     id: 'strobe',
     label: 'STROBE',
     icon: '⚡',
-    shortcut: '1',
+    shortcut: 'S',
     color: '#ffffff',
     description: 'Flash rápido estroboscópico',
   },
@@ -58,7 +76,7 @@ export const EFFECTS: EffectConfig[] = [
     id: 'blinder',
     label: 'BLINDER',
     icon: '💥',
-    shortcut: '2',
+    shortcut: 'L',
     color: '#ffd700',
     description: 'Destello cegador momentáneo',
   },

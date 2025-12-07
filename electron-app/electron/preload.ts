@@ -60,13 +60,38 @@ const api = {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
 
   // ============================================
-  // DMX
+  // DMX - WAVE 11: Universal Driver
   // ============================================
   dmx: {
-    getStatus: () => ipcRenderer.invoke('dmx:getStatus'),
+    getStatus: () => ipcRenderer.invoke('dmx:get-status'),
     sendValues: (values: number[]) => ipcRenderer.invoke('dmx:send', values),
     onUpdate: (callback: (values: number[]) => void) => {
       ipcRenderer.on('dmx:update', (_, values) => callback(values))
+    },
+    // 🌪️ WAVE 11: Nuevas funciones
+    listDevices: () => ipcRenderer.invoke('dmx:list-devices'),
+    autoConnect: () => ipcRenderer.invoke('dmx:auto-connect'),
+    connect: (portPath: string) => ipcRenderer.invoke('dmx:connect', portPath),
+    disconnect: () => ipcRenderer.invoke('dmx:disconnect'),
+    blackout: () => ipcRenderer.invoke('dmx:blackout'),
+    // 🔦 Highlight fixture para testing
+    highlightFixture: (startChannel: number, channelCount: number, isMovingHead: boolean) =>
+      ipcRenderer.invoke('dmx:highlight-fixture', startChannel, channelCount, isMovingHead),
+    // 📡 Status events (connected/disconnected/reconnecting)
+    onStatus: (callback: (status: { state: string; device?: any; error?: string }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
+      ipcRenderer.on('dmx:status', handler)
+      return () => ipcRenderer.removeListener('dmx:status', handler)
+    },
+    onConnected: (callback: (device: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, device: any) => callback(device)
+      ipcRenderer.on('dmx:connected', handler)
+      return () => ipcRenderer.removeListener('dmx:connected', handler)
+    },
+    onDisconnected: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('dmx:disconnected', handler)
+      return () => ipcRenderer.removeListener('dmx:disconnected', handler)
     },
   },
 
@@ -99,6 +124,35 @@ const api = {
     setMode: (mode: 'flow' | 'selene' | 'locked') => {
       ipcRenderer.invoke('selene:setMode', mode)
     },
+    // 🧠 WAVE 10: Brain metrics subscription
+    onBrainMetrics: (callback: (metrics: {
+      connected: boolean
+      mode: 'reactive' | 'intelligent'
+      energy: number
+      confidence: number
+      beautyScore: number
+      framesProcessed: number
+      patternsLearned: number
+      sessionPatterns: number
+      memoryUsage: number
+      sessionId: string | null
+    }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, metrics: any) => callback(metrics)
+      ipcRenderer.on('selene:brain-metrics', handler)
+      return () => ipcRenderer.removeListener('selene:brain-metrics', handler)
+    },
+    // 🧠 WAVE 10: Decision log entries
+    onDecisionLog: (callback: (entry: {
+      type: string
+      message: string
+      data?: any
+    }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, entry: any) => callback(entry)
+      ipcRenderer.on('selene:decision-log', handler)
+      return () => ipcRenderer.removeListener('selene:decision-log', handler)
+    },
+    // 🧠 WAVE 10: Get brain stats on demand
+    getBrainStats: () => ipcRenderer.invoke('selene:getBrainStats'),
   },
 
   // ============================================
@@ -130,15 +184,25 @@ const luxApi = {
   setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => 
     ipcRenderer.invoke('lux:set-movement', config),
   
+  /** 🎚️ WAVE 13.6: Cambiar modo Selene (flow, selene, locked) */
+  setMode: (mode: 'flow' | 'selene' | 'locked') => ipcRenderer.invoke('selene:setMode', mode),
+  
+  /** 🎨 WAVE 13.6: Multiplicadores Globales de Color (saturation, intensity) */
+  setGlobalColorParams: (params: { saturation?: number; intensity?: number }) => 
+    ipcRenderer.invoke('lux:set-global-color-params', params),
+  
   /** Disparar un efecto */
   triggerEffect: (effectName: string, params?: Record<string, any>, duration?: number) =>
     ipcRenderer.invoke('lux:trigger-effect', { effectName, params, duration }),
   
-  /** Cancelar efecto */
-  cancelEffect: (effectId: number) => ipcRenderer.invoke('lux:cancel-effect', effectId),
+  /** Cancelar efecto por ID o nombre */
+  cancelEffect: (effectIdOrName: number | string) => ipcRenderer.invoke('lux:cancel-effect', effectIdOrName),
   
   /** Cancelar todos los efectos */
   cancelAllEffects: () => ipcRenderer.invoke('lux:cancel-all-effects'),
+  
+  /** Blackout master - todas las luces apagadas */
+  setBlackout: (active: boolean) => ipcRenderer.invoke('lux:set-blackout', active),
   
   /** Simular frame de audio */
   audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) =>
@@ -146,6 +210,9 @@ const luxApi = {
   
   /** Obtener estado actual */
   getState: () => ipcRenderer.invoke('lux:get-state'),
+  
+  /** 🎯 WAVE 13.6: Obtener estado COMPLETO del Backend (DMX, Selene, Fixtures, Audio) */
+  getFullState: () => ipcRenderer.invoke('lux:get-full-state'),
   
   // === EVENTOS ===
   /** Suscribirse a actualizaciones de estado (30fps) */
@@ -198,9 +265,21 @@ const luxApi = {
   unpatchFixture: (dmxAddress: number) =>
     ipcRenderer.invoke('lux:unpatch-fixture', dmxAddress),
   
+  /** 🔬 WAVE 10.5: Forzar tipo de fixture manualmente */
+  forceFixtureType: (dmxAddress: number, newType: string) =>
+    ipcRenderer.invoke('lux:force-fixture-type', dmxAddress, newType),
+  
+  /** 🎯 WAVE 12.5: Selector de Montaje (ceiling/floor) */
+  setInstallationType: (type: 'ceiling' | 'floor') =>
+    ipcRenderer.invoke('lux:set-installation', type),
+  
   /** Limpiar todo el patch */
   clearPatch: () => 
     ipcRenderer.invoke('lux:clear-patch'),
+  
+  /** 🎭 WAVE 10.6: Nuevo show - reset completo */
+  newShow: () =>
+    ipcRenderer.invoke('lux:new-show'),
   
   // ============================================
   // WAVE 9.5: CONFIG
@@ -219,10 +298,24 @@ const luxApi = {
     ipcRenderer.invoke('lux:reset-config'),
 }
 
+// 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
+const electronAPI = {
+  ipcRenderer: {
+    on: (channel: string, listener: (event: any, ...args: any[]) => void) => {
+      ipcRenderer.on(channel, listener)
+    },
+    removeListener: (channel: string, listener: (...args: any[]) => void) => {
+      ipcRenderer.removeListener(channel, listener)
+    }
+  }
+}
+
 // Exponer las APIs al renderer
 contextBridge.exposeInMainWorld('luxsync', api)
 contextBridge.exposeInMainWorld('lux', luxApi)
+contextBridge.exposeInMainWorld('electron', electronAPI)
 
 // Tipos para TypeScript en el renderer
 export type LuxSyncAPI = typeof api
 export type LuxAPI = typeof luxApi
+export type ElectronAPI = typeof electronAPI

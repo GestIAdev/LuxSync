@@ -9,6 +9,13 @@ dist/
 build/
 *.tsbuildinfo
 
+# Electron build artifacts - WAVE 13.6: STATE OF TRUTH
+dist-electron/
+release/
+*.exe
+*.asar
+*.blockmap
+
 # Environment variables
 .env
 .env.local

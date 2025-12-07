@@ -1,20 +1,20 @@
 /**
  * 🎛️ LIVE VIEW - CSS
  * WAVE 9: Main Control View Styles
+ * WAVE 13.6: Layout 3 filas (2 panels arriba, Movement medio, ModeSwitcher abajo)
  */
 
 .live-view {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   height: 100%;
-  overflow: hidden; /* NO SCROLL! */
+  overflow: hidden;
 }
 
 .view-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 20px;
   flex-shrink: 0;
 }
@@ -27,87 +27,67 @@
   letter-spacing: 2px;
 }
 
-/* BigSwitch compacto en el header */
-.header-switch {
-  flex-shrink: 0;
-}
-
-/* Forzar BigSwitch a ser compacto y horizontal */
-.header-switch .big-switch {
-  flex-direction: row !important;
-  gap: 12px !important;
-  height: auto !important;
-  align-items: center;
-}
-
-.header-switch .power-btn {
-  width: 60px !important;
-  height: 60px !important;
-  padding: 8px !important;
-  flex-shrink: 0;
-}
-
-.header-switch .power-icon {
-  width: 24px !important;
-  height: 24px !important;
-}
-
-.header-switch .power-label {
-  font-size: 0.6rem !important;
-}
-
-.header-switch .mode-selector {
-  flex-direction: row !important;
-  flex: 0 !important;
-  gap: 4px !important;
-  padding: 6px !important;
-}
-
-.header-switch .mode-title {
-  display: none !important;
-}
-
-.header-switch .mode-btn {
-  padding: 8px 12px !important;
-  min-width: 70px;
-}
-
-.header-switch .mode-icon {
-  font-size: 1rem !important;
-}
-
-.header-switch .mode-info {
-  display: none !important;
-}
-
-.header-switch .status-panel {
-  display: none !important;
-}
-
+/* Contenedor principal - 3 filas */
 .live-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   flex: 1;
-  overflow: hidden; /* NO SCROLL! */
+  min-height: 0;
+  overflow: hidden;
 }
 
+/* Fila 1: Panels (Palette + Brain) */
 .live-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 12px;
   flex-shrink: 0;
+  height: 220px;
+}
+
+/* Fila 2: Movement Control */
+.movement-section {
+  flex-shrink: 0;
+  height: 180px;
+}
+
+/* Fila 3: ModeSwitcher (resto del espacio) */
+.mode-switcher-section {
+  flex: 1;
+  min-height: 140px;
+  display: flex;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.mode-switcher-section > * {
+  width: 100%;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .panel {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
+  overflow: hidden;
 }
 
 .panel-header {
-  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .panel-header h3 {
@@ -120,13 +100,15 @@
 
 /* Brain Preview */
 .brain-panel {
-  min-height: 150px;
+  display: flex;
+  flex-direction: column;
 }
 
 .brain-preview-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
 }
 
 .brain-mode {

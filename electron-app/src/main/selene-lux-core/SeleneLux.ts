@@ -80,7 +80,7 @@ export interface SeleneState {
 export class SeleneLux extends EventEmitter {
   private initialized = false
   private running = false
-  private mode: SeleneMode = 'flow'
+  private mode: SeleneMode = 'selene' // WAVE 13.6: Arrancar SIEMPRE en Selene (Intelligent mode)
   
   // Legacy engines (para compatibilidad gradual)
   private colorEngine: ColorEngine
@@ -91,6 +91,10 @@ export class SeleneLux extends EventEmitter {
   private brain: SeleneMusicalBrain
   private useBrain = true // Flag para activar/desactivar el Brain
   private brainInitialized = false
+  
+  // 🎨 WAVE 13.6: Multiplicadores Globales de Color (STATE OF TRUTH)
+  private globalSaturation = 1.0  // 0-1, default 100%
+  private globalIntensity = 1.0   // 0-1, default 100%
   
   private currentPalette: LivingPaletteId = 'fuego'
   private currentPattern: MusicalPattern | null = null
@@ -151,6 +155,13 @@ export class SeleneLux extends EventEmitter {
     
     console.info('[SeleneLux] Initialized (WAVE-8 Brain Active)')
     this.emit('ready')
+    
+    // WAVE 13.6: Auto-inicializar el cerebro si arrancamos en modo Selene
+    if (this.mode === 'selene') {
+      this.initializeBrain().catch((err) => {
+        console.warn('[SeleneLux] ⚠️ Auto brain init failed:', err)
+      })
+    }
   }
   
   /**
@@ -217,6 +228,13 @@ export class SeleneLux extends EventEmitter {
       
       // Convertir salida del Brain a colores RGB para hardware
       this.lastColors = this.brainOutputToColors(brainOutput)
+      
+      // 🌊 WAVE 12.5 DEBUG: Log de colores del Brain cada ~3 segundos
+      if (this.frameCount % 100 === 0) {
+        const p = brainOutput.palette.primary
+        const c = this.lastColors.primary
+        console.log(`[SeleneLux] 🎨 Brain HSL: H=${p.h.toFixed(0)} S=${p.s.toFixed(0)} L=${p.l.toFixed(0)} → RGB: ${c.r} ${c.g} ${c.b} | Energy=${metrics.energy.toFixed(2)} | Source=${brainOutput.paletteSource}`)
+      }
       
       // El movimiento viene de la sugerencia del Brain
       this.lastMovement = this.brainOutputToMovement(brainOutput, deltaTime)
@@ -293,19 +311,37 @@ export class SeleneLux extends EventEmitter {
     const primaryRGB = this.hslToRgb(palette.primary)
     const secondaryRGB = this.hslToRgb(palette.secondary)
     const accentRGB = this.hslToRgb(palette.accent)
-    const ambientRGB = palette.ambient ? this.hslToRgb(palette.ambient) : { r: 100, g: 100, b: 100 }
+    
+    // 🪞 ESPEJO CROMÁTICO: Si hay ambient en la paleta, usarlo
+    // Si no, crear una variación cálida del accent para coherencia visual
+    let ambientRGB: { r: number; g: number; b: number }
+    if (palette.ambient) {
+      ambientRGB = this.hslToRgb(palette.ambient)
+    } else {
+      // Crear espejo cromático: variación más cálida del accent
+      // Shift hacia magenta/rosa para complementar el accent
+      ambientRGB = {
+        r: Math.min(255, Math.round(accentRGB.r * 1.1)),
+        g: Math.round(accentRGB.g * 0.85),
+        b: Math.min(255, Math.round(accentRGB.b * 1.15)),
+      }
+    }
     
     // Obtener intensidad promedio de los fixtures
     const movingHeadParams = lighting.fixtures['moving_head']
     const avgIntensity = movingHeadParams ? movingHeadParams.intensity / 255 : 0.5
+    
+    // 🎨 WAVE 13.6: Aplicar multiplicadores globales
+    const finalIntensity = avgIntensity * this.globalIntensity
+    const finalSaturation = (palette.primary.s / 100) * this.globalSaturation
     
     return {
       primary: primaryRGB,
       secondary: secondaryRGB,
       accent: accentRGB,
       ambient: ambientRGB,
-      intensity: avgIntensity,
-      saturation: palette.primary.s / 100, // Normalizar a 0-1
+      intensity: finalIntensity,
+      saturation: finalSaturation,
     }
   }
   
@@ -347,35 +383,51 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * 🎯 Convierte BrainOutput a MovementOutput
+   * WAVE 10: Ahora usa MovementEngine para posiciones dinámicas
+   * Respeta los parámetros configurados por el UI (speed, range, pattern)
    */
-  private brainOutputToMovement(output: BrainOutput, _deltaTime: number): MovementOutput {
-    const { lighting } = output
+  private brainOutputToMovement(output: BrainOutput, deltaTime: number): MovementOutput {
+    // 🔥 WAVE 10 FIX: NO sobrescribir el pattern del UI
+    // El pattern, speed y range se configuran desde MovementControl.tsx via IPC
+    // Solo usamos el MovementEngine para calcular las posiciones
     
-    // Obtener parámetros del moving head
-    const movingHeadParams = lighting.fixtures['moving_head']
-    
-    // Mapear tipo de movimiento a patrón compatible
-    type CompatiblePattern = 'lissajous' | 'circle' | 'figure8' | 'random'
-    const movementTypeMap: Record<string, CompatiblePattern> = {
-      'circle': 'circle',
-      'figure_eight': 'figure8',
-      'random': 'random',
-      'sync_beat': 'lissajous',
-      'chase': 'lissajous',
-      'static': 'lissajous',
-      'slow_pan': 'lissajous',
-      'slow_tilt': 'lissajous',
+    // Usar lastBeat o crear uno por defecto
+    const beatState = this.lastBeat || {
+      bpm: 120,
+      phase: 0,
+      confidence: 0.5,
+      onBeat: false,
+      kickDetected: false,
+      snareDetected: false,
+      hihatDetected: false,
+      beatCount: 0,
+      lastBeatTime: Date.now(),
     }
     
-    const movementType = movingHeadParams?.movement || 'static'
-    const pattern = movementTypeMap[movementType] || 'lissajous'
-    const speed = movingHeadParams?.movementSpeed ? movingHeadParams.movementSpeed / 255 : 0.5
+    // Calcular movimiento real usando el engine (con los params del UI ya configurados)
+    const calculatedMovement = this.movementEngine.calculate(
+      {
+        bass: 0.5,
+        mid: 0.5,
+        treble: 0.5,
+        bpm: 120,
+        beatConfidence: 0.7,
+        onBeat: false,
+        beatPhase: (Date.now() % 500) / 500,
+        timestamp: Date.now(),
+        energy: 0.6,
+        peak: 0.7,
+        frameIndex: this.frameCount,
+      },
+      beatState,
+      deltaTime
+    )
     
     return {
-      pan: movingHeadParams?.pan ? movingHeadParams.pan / 255 : 0.5,
-      tilt: movingHeadParams?.tilt ? movingHeadParams.tilt / 255 : 0.5,
-      speed,
-      pattern,
+      pan: calculatedMovement.pan,
+      tilt: calculatedMovement.tilt,
+      speed: calculatedMovement.speed,
+      pattern: calculatedMovement.pattern,
     }
   }
   
@@ -391,11 +443,12 @@ export class SeleneLux extends EventEmitter {
   /**
    * 📊 Obtiene estadísticas del Brain
    */
-  getBrainStats(): { session: unknown; memory: unknown } | null {
+  getBrainStats(): { session: unknown; memory: unknown; hasMemory: boolean } | null {
     if (!this.brainInitialized) return null
     return {
       session: this.brain.getSessionStats(),
       memory: this.brain.getMemoryStats(),
+      hasMemory: this.brain.hasMemory(),
     }
   }
   
@@ -408,6 +461,17 @@ export class SeleneLux extends EventEmitter {
   setMovementPattern(pattern: MovementPattern): void {
     this.movementEngine.setPattern(pattern)
     console.info(`[SeleneLux] Movement pattern changed to: ${pattern}`)
+  }
+  
+  // 🎯 WAVE 10: New methods for movement control
+  setMovementSpeed(speed: number): void {
+    this.movementEngine.setSpeed(speed)
+    console.info(`[SeleneLux] Movement speed changed to: ${speed.toFixed(2)}`)
+  }
+  
+  setMovementRange(range: number): void {
+    this.movementEngine.setRange(range)
+    console.info(`[SeleneLux] Movement range changed to: ${range.toFixed(2)}`)
   }
   
   setMode(mode: SeleneMode): void {
@@ -479,6 +543,26 @@ export class SeleneLux extends EventEmitter {
   stop(): void {
     this.running = false
     console.info('[SeleneLux] Stopped')
+  }
+  
+  /**
+   * 🎨 WAVE 13.6: STATE OF TRUTH - Multiplicadores Globales de Color
+   */
+  setGlobalSaturation(value: number): void {
+    this.globalSaturation = Math.max(0, Math.min(1, value))
+    console.log(`[SeleneLux] 🎨 Global Saturation: ${(this.globalSaturation * 100).toFixed(0)}%`)
+  }
+  
+  setGlobalIntensity(value: number): void {
+    this.globalIntensity = Math.max(0, Math.min(1, value))
+    console.log(`[SeleneLux] 💡 Global Intensity: ${(this.globalIntensity * 100).toFixed(0)}%`)
+  }
+  
+  getGlobalColorParams(): { saturation: number; intensity: number } {
+    return {
+      saturation: this.globalSaturation,
+      intensity: this.globalIntensity
+    }
   }
   
   /**

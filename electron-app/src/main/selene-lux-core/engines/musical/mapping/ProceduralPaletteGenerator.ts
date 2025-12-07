@@ -63,6 +63,9 @@ export interface MusicalDNA {
   
   /** Sección actual */
   section: string;
+  
+  /** 🔮 WAVE 13.5: Elemento zodiacal del momento (fire/water/air/earth) */
+  zodiacElement?: 'fire' | 'water' | 'air' | 'earth';
 }
 
 /**
@@ -352,16 +355,70 @@ const SECTION_VARIATIONS: Record<string, SectionVariation> = {
 };
 
 /**
- * Valores por defecto para DNA desconocido
+ * 🔮 WAVE 13.5: THE SOUL CONNECTION - Valores por defecto con influencias esotéricas
+ * Key define el color, Energy solo el brillo/saturación, Zodiaco empuja el hue
  */
 const DEFAULT_DNA: MusicalDNA = {
-  key: 'C',
+  key: null,  // Si null, usamos MOOD para determinar el color
   mode: 'major',
   energy: 0.5,
   syncopation: 0.3,
-  mood: 'neutral',
+  mood: 'neutral',  // 🧠 WAVE 13: Mood es el respaldo cuando no hay Key
   section: 'unknown',
+  zodiacElement: undefined,  // 🔮 WAVE 13.5: Elemento zodiacal (opcional)
 };
+
+/**
+ * 🧠 WAVE 13: MOOD → HUE MAPPING
+ * Cuando no hay Key detectada, el MOOD define el color base
+ * Esto es más inteligente que usar energía pura
+ */
+const MOOD_TO_HUE: Record<string, number> = {
+  // Moods cálidos → Colores cálidos
+  'happy': 45,        // Amarillo-Naranja (alegría)
+  'energetic': 30,    // Naranja (energía)
+  'euphoric': 60,     // Amarillo (euforia)
+  'aggressive': 0,    // Rojo (agresión)
+  'powerful': 15,     // Rojo-Naranja (poder)
+  
+  // Moods fríos → Colores fríos
+  'sad': 220,         // Azul (tristeza)
+  'melancholic': 240, // Índigo (melancolía)
+  'peaceful': 180,    // Cyan (paz)
+  'calm': 160,        // Verde-Azul (calma)
+  'dreamy': 270,      // Violeta (sueños)
+  
+  // Moods neutros → Colores intermedios
+  'neutral': 280,     // Magenta (neutral pero interesante)
+  'mysterious': 290,  // Púrpura (misterio)
+  'tense': 300,       // Magenta-Rosa (tensión)
+  'dark': 250,        // Azul-Violeta (oscuridad)
+  
+  // Moods especiales
+  'groovy': 120,      // Verde-Lima (groove)
+  'funky': 90,        // Lima (funky)
+  'epic': 330,        // Magenta-Rojo (épico)
+};
+
+/**
+ * 🔮 WAVE 13.5: ZODIAC ELEMENT → HUE SHIFT
+ * El elemento zodiacal empuja el color base hacia su territorio
+ * Peso: 30% del color final (menos que Key, más que Energy)
+ * 
+ * "Los astros no obligan, pero inclinan" - Selene escucha su susurro
+ */
+const ELEMENT_TO_HUE_SHIFT: Record<string, number> = {
+  'fire': 15,    // 🔥 Fuego → Empujar hacia Rojo-Naranja
+  'water': 210,  // 🌊 Agua → Empujar hacia Azul-Cyan
+  'air': 55,     // 💨 Aire → Empujar hacia Amarillo-Blanco
+  'earth': 100,  // 🌍 Tierra → Empujar hacia Verde-Ámbar
+};
+
+/**
+ * 🌀 WAVE 13.5: PHI (Golden Ratio) para rotación secundaria
+ * Fibonacci dicta el spacing armónico entre colores
+ */
+const PHI = 1.618033988749895; // Φ = (1 + √5) / 2
 
 // ============================================================
 // FUNCIONES UTILITARIAS
@@ -454,10 +511,44 @@ export function hslToHex(hsl: HSLColor): string {
 export class ProceduralPaletteGenerator extends EventEmitter {
   private lastGeneratedPalette: SelenePalette | null = null;
   private generationCount: number = 0;
+  private lastLoggedKeyMode: string = '';
+  
+  // 🔮 WAVE 13.5: Anti-estancamiento
+  private forceMutationNextGen: boolean = false;
+  private mutationReason: string = '';
   
   constructor() {
     super();
     console.log('🎨 [PALETTE-GENERATOR] Initialized - Selene can now paint music');
+  }
+  
+  /**
+   * 🔮 WAVE 13.5: FORCE COLOR MUTATION
+   * El SelfAnalysisEngine detecta color_fixation y ordena un cambio radical
+   * 
+   * "Me observo a mí misma para ser mejor" - Selene, Gen 1
+   */
+  forceColorMutation(reason: string = 'Self-correction') {
+    this.forceMutationNextGen = true;
+    this.mutationReason = reason;
+    console.log(`🧬 [PALETTE-GENERATOR] MUTATION FORCED: ${reason}`);
+  }
+  
+  /**
+   * 🔮 WAVE 13.5: CHECK IF MUTATION NEEDED
+   * Returns true if SelfAnalysis forced a mutation
+   */
+  shouldMutate(): boolean {
+    return this.forceMutationNextGen;
+  }
+  
+  /**
+   * 🔮 WAVE 13.5: CLEAR MUTATION FLAG
+   * Llamar después de aplicar la mutación
+   */
+  private clearMutationFlag() {
+    this.forceMutationNextGen = false;
+    this.mutationReason = '';
   }
 
   // ============================================================
@@ -465,20 +556,54 @@ export class ProceduralPaletteGenerator extends EventEmitter {
   // ============================================================
 
   /**
-   * Convierte una tonalidad musical a un ángulo HSL
-   * Basado en el Círculo de Quintas Cromático
+   * 🔮 WAVE 13.5: THE SOUL CONNECTION
+   * Convierte ADN musical a un ángulo HSL (Hue) con influencia zodiacal
+   * 
+   * JERARQUÍA DE COLOR:
+   * 1. KEY (Círculo de Quintas) - Si existe, es REY
+   * 2. MOOD (Estado emocional) - Si no hay Key, el mood decide
+   * 3. MODE (Mayor/Menor) - Modifica el hue base
+   * 4. ZODIAC ELEMENT - Los astros empujan el color (30% weight)
+   * 
+   * La ENERGÍA ya NO define el color, solo el brillo/saturación
    */
-  keyToHue(key: string | null): number {
-    if (!key) {
-      // Si no hay key, usar un hue neutral basado en timestamp
-      // para variar un poco sin información
-      return (Date.now() % 36000) / 100; // Rotación lenta cada 100 segundos
+  keyToHue(
+    key: string | null, 
+    mood?: string, 
+    mode?: string,
+    zodiacElement?: 'fire' | 'water' | 'air' | 'earth'
+  ): number {
+    // 1. Si hay KEY detectada → Círculo de Quintas (COLOR BASE)
+    let baseHue: number;
+    
+    if (key) {
+      const normalizedKey = key.replace(/[0-9]/g, '').trim();
+      const keyHue = KEY_TO_HUE[normalizedKey];
+      if (keyHue !== undefined) {
+        baseHue = keyHue;
+      } else {
+        // Key inválida → fallback a mood
+        const moodNormalized = (mood || 'neutral').toLowerCase();
+        baseHue = MOOD_TO_HUE[moodNormalized] ?? 280;
+      }
+    } else {
+      // 2. Sin Key → Usar MOOD para determinar el color
+      const moodNormalized = (mood || 'neutral').toLowerCase();
+      const moodHue = MOOD_TO_HUE[moodNormalized];
+      baseHue = moodHue ?? 280; // Fallback a magenta neutral
     }
     
-    // Normalizar key (quitar números de octava si existen)
-    const normalizedKey = key.replace(/[0-9]/g, '').trim();
+    // 🔮 WAVE 13.5: ZODIAC ELEMENT SHIFT (30% weight)
+    // "Los astros no obligan, pero inclinan"
+    if (zodiacElement && ELEMENT_TO_HUE_SHIFT[zodiacElement] !== undefined) {
+      const elementTarget = ELEMENT_TO_HUE_SHIFT[zodiacElement];
+      // Interpolar 30% hacia el color elemental
+      const zodiacInfluence = 0.3;
+      baseHue = normalizeHue(baseHue * (1 - zodiacInfluence) + elementTarget * zodiacInfluence);
+    }
     
-    return KEY_TO_HUE[normalizedKey] ?? 0;
+    // Retornar el hue calculado con todas las influencias
+    return baseHue;
   }
 
   /**
@@ -556,7 +681,13 @@ export class ProceduralPaletteGenerator extends EventEmitter {
   /**
    * 🎨 GENERA UNA PALETA COMPLETA
    * 
+   * 🧠 WAVE 13: BRAIN UNLOCK
    * Este es el método principal que convierte ADN musical en colores.
+   * 
+   * JERARQUÍA:
+   * - KEY/MODE define el HUE (color)
+   * - ENERGY define SATURACIÓN y BRILLO
+   * - SYNCOPATION define ESTRATEGIA DE CONTRASTE
    * 
    * @param dna - ADN musical (key, mode, energy, syncopation, section)
    * @returns SelenePalette - Paleta de 5 colores + metadata
@@ -564,63 +695,80 @@ export class ProceduralPaletteGenerator extends EventEmitter {
   generatePalette(dna: Partial<MusicalDNA> = {}): SelenePalette {
     const fullDNA: MusicalDNA = { ...DEFAULT_DNA, ...dna };
     
-    // 1. COLOR BASE desde la tonalidad
-    const baseHue = this.keyToHue(fullDNA.key);
+    // 🔮 WAVE 13.5: COLOR BASE con influencia ZODIACAL
+    let baseHue = this.keyToHue(fullDNA.key, fullDNA.mood, fullDNA.mode, fullDNA.zodiacElement);
+    
+    // 🧬 WAVE 13.5: FORCED MUTATION - Anti-estancamiento
+    // Si SelfAnalysisEngine detectó color_fixation → INVERTIR color (180°)
+    if (this.forceMutationNextGen) {
+      baseHue = normalizeHue(baseHue + 180);
+      console.log(`🧬 [PALETTE-GENERATOR] 🔥 MUTATION APPLIED: ${this.mutationReason} - Hue inverted to ${baseHue.toFixed(0)}°`);
+      this.clearMutationFlag();
+    }
+    
+    // 🔍 DEBUG WAVE 13.5
+    if (Math.random() < 0.02) { // 2% de los frames
+      const zodiacInfo = fullDNA.zodiacElement ? ` zodiac=${fullDNA.zodiacElement}` : '';
+      console.log(`[PaletteGen] 🔮 WAVE 13.5: key=${fullDNA.key || 'null'} mood=${fullDNA.mood}${zodiacInfo} → baseHue=${baseHue.toFixed(0)}° | Energy=${fullDNA.energy.toFixed(2)} (solo brillo)`);
+    }
     
     // 2. MODIFICADORES desde el modo
     const modeModifier = this.getModeModifier(fullDNA.mode);
     
-    // 3. ESTRATEGIA de color
-    const colorStrategy = this.calculateColorStrategy(fullDNA.energy);
+    // 3. ESTRATEGIA de color desde SYNCOPATION (no energía)
+    // Alta sincopación = colores más contrastados (complementarios)
+    // Baja sincopación = colores más armoniosos (análogos)
+    const colorStrategy = fullDNA.syncopation > 0.5 ? 'complementary' : 
+                          fullDNA.syncopation > 0.25 ? 'triadic' : 'analogous';
     
-    // 4. PRIMARY - Color base con modificadores de modo
+    // 🧠 WAVE 13: ENERGY solo controla SATURACIÓN y BRILLO
+    // Más energía = colores más VIBRANTES y BRILLANTES (pero mismo Hue!)
+    const energySat = 50 + fullDNA.energy * 50;  // 50-100% saturación
+    const energyLight = 40 + fullDNA.energy * 30; // 40-70% brillo
+    
+    // 4. PRIMARY - Color base: KEY/MOOD define hue, MODE modifica, ENERGY da brillo
     const primaryHue = normalizeHue(baseHue + modeModifier.hueDelta);
     const primary: HSLColor = {
       h: primaryHue,
-      s: clamp(70 + modeModifier.saturationDelta, 20, 100),
-      l: clamp(50 + modeModifier.lightnessDelta, 20, 80),
+      s: clamp(energySat + modeModifier.saturationDelta, 50, 100),
+      l: clamp(energyLight + modeModifier.lightnessDelta, 35, 75),
     };
     
-    // 5. SECONDARY - Según energía y sincopación
-    const secondaryHue = this.calculateSecondaryHue(
-      primary.h,
-      fullDNA.energy,
-      fullDNA.syncopation
-    );
+    // 🌀 WAVE 13.5: SECONDARY - Rotación FIBONACCI (Back PARs)
+    // NO usar complementario estático (aburrido)
+    // Fibonacci dicta el spacing armónico: secondaryHue = (primary + PHI * 360) % 360
+    // Esto crea un desplazamiento áureo (≈222.5°) que rompe el patrón predecible
+    const fibonacciRotation = (PHI * 360) % 360; // ≈ 222.5°
+    const secondaryHue = normalizeHue(primary.h + fibonacciRotation);
     const secondary: HSLColor = {
       h: secondaryHue,
-      s: this.calculateSecondarySaturation(primary.s, fullDNA.syncopation),
-      l: clamp(
-        primary.l + (fullDNA.energy > 0.5 ? 10 : -10),
-        20,
-        85
-      ),
+      s: clamp(energySat + 10, 50, 100), // Ligeramente más saturado
+      l: clamp(energyLight + (fullDNA.energy > 0.5 ? 10 : -5), 35, 80),
     };
     
-    // 6. ACCENT - Siempre complementario para máximo impacto
+    // 🧠 WAVE 13: ACCENT - SIEMPRE complementario (180°) para máximo contraste en móviles
+    // Este es el color que usarán los Moving Heads
     const accent: HSLColor = {
-      h: normalizeHue(primary.h + 180),
-      s: clamp(primary.s + 20, 20, 100),
-      l: clamp(primary.l + 20, 20, 90),
+      h: normalizeHue(primary.h + 180),  // Opuesto exacto
+      s: clamp(energySat + 20, 60, 100), // Muy saturado
+      l: clamp(energyLight + 15, 45, 85), // Más brillante
     };
     
     // 7. AMBIENT - Desaturado y oscuro para atmósfera
     const ambient: HSLColor = {
       h: primary.h,
-      s: clamp(primary.s - 40, 10, 40),
-      l: clamp(primary.l - 25, 10, 30),
+      s: clamp(energySat - 30, 15, 45),
+      l: clamp(energyLight - 20, 15, 35),
     };
     
-    // 8. CONTRAST - Muy oscuro para siluetas
+    // 8. CONTRAST - Color terciario para siluetas
     const contrast: HSLColor = {
-      h: normalizeHue(primary.h + 30),
-      s: 30,
-      l: 10,
+      h: normalizeHue(primary.h + 120), // Triádico
+      s: clamp(energySat - 10, 30, 60),
+      l: 20,
     };
     
     // 9. VELOCIDAD DE TRANSICIÓN según energía
-    // Baja energía = transiciones lentas (2000ms)
-    // Alta energía = transiciones rápidas (300ms)
     const transitionSpeed = Math.round(
       mapRange(fullDNA.energy, 0, 1, 2000, 300)
     );
@@ -653,7 +801,12 @@ export class ProceduralPaletteGenerator extends EventEmitter {
     
     this.emit('palette-generated', palette);
     
-    console.log(`🎨 [PALETTE] Generated: ${description} (confidence: ${(confidence * 100).toFixed(0)}%)`);
+    // 🔇 Solo loguear cuando cambia KEY o MODE (no energía)
+    const keyModeSignature = `${fullDNA.key || 'Unknown'}-${fullDNA.mode}`;
+    if (keyModeSignature !== this.lastLoggedKeyMode) {
+      console.log(`🎨 [PALETTE] ${description} (confidence: ${(confidence * 100).toFixed(0)}%)`);
+      this.lastLoggedKeyMode = keyModeSignature;
+    }
     
     return palette;
   }

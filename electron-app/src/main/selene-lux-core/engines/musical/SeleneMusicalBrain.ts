@@ -10,7 +10,28 @@
  * - MusicToLightMapper (acción)
  * 
  * FLUJO INTELIGENTE:
- * 1. Recibe audio frame
+       // Extraer valores de tipos anidados correctamente
+      const modeScale = context.harmony?.mode?.scale ?? 'major';
+      const sectionType = context.section?.current?.type ?? 'unknown';
+      const syncopation = context.rhythm?.groove?.syncopation ?? 0.5;
+      
+      // 🧠 WAVE 13: BRAIN UNLOCK - Reactivamos memoria con KEY-driven colors
+      // La tonalidad musical determina el Hue base
+      // Si no hay key detectada, el fallback es mood > mode
+      const detectedKey = context.harmony?.key ?? null;
+      
+      // 🔮 WAVE 13.5: THE SOUL CONNECTION - Calcular elemento zodiacal desde audio
+      const zodiacElement = this.calculateZodiacElement(audio);
+      
+      const musicalDNA = {
+        key: detectedKey, // 🧠 WAVE 13: Key-driven colors (si disponible)
+        mode: modeScale,
+        energy: context.energy,
+        syncopation: syncopation,
+        mood: context.mood,
+        section: sectionType,
+        zodiacElement: zodiacElement, // 🔮 WAVE 13.5: Elemento zodiacal desde frecuencias
+      };frame
  * 2. MusicalContextEngine analiza y crea contexto
  * 3. Consulta Memoria: ¿Existe patrón exitoso para este contexto?
  *    - SÍ → Usar configuración aprendida (recall)
@@ -157,8 +178,16 @@ export class SeleneMusicalBrain extends EventEmitter {
   private config: BrainConfig;
   private currentSessionId: string | null = null;
   private isInitialized = false;
+  private hasMemoryDB = false; // 🧠 WAVE 10: Track if SQLite is available
   private frameCount = 0;
   private lastOutput: BrainOutput | null = null;
+  
+  // 🔒 WAVE 14: Histéresis para evitar parpadeo entre fuentes
+  private sourceHysteresis = {
+    lastSource: 'procedural' as 'memory' | 'procedural' | 'fallback',
+    lastSwitchTime: 0,
+    lockDurationMs: 5000, // 5 segundos de lock antes de poder cambiar de fuente
+  };
   
   // Estadísticas de sesión
   private sessionStats = {
@@ -233,22 +262,77 @@ export class SeleneMusicalBrain extends EventEmitter {
     const startTime = Date.now();
     
     try {
-      // Inicializar memoria
+      // Inicializar memoria (puede fallar si SQLite no está disponible)
       await this.memory.initialize();
       
       // Iniciar sesión
       this.currentSessionId = this.memory.startSession('1.0.0');
       
       this.isInitialized = true;
+      this.hasMemoryDB = true; // SQLite available!
       
       const elapsed = Date.now() - startTime;
-      console.log(`[Brain] 🧠 Initialized in ${elapsed}ms. Session: ${this.currentSessionId}`);
+      console.log(`[Brain] 🧠 Initialized WITH MEMORY in ${elapsed}ms. Session: ${this.currentSessionId}`);
       
-      this.emit('initialized', { sessionId: this.currentSessionId, elapsed });
+      this.emit('initialized', { sessionId: this.currentSessionId, elapsed, hasMemory: true });
     } catch (error) {
-      console.error('[Brain] ❌ Initialization failed:', error);
-      throw error;
+      // 🧠 WAVE 10: Si SQLite falla, seguimos sin memoria persistente
+      console.warn('[Brain] ⚠️ SQLite not available, running WITHOUT persistent memory');
+      console.warn('[Brain] ⚠️ GenreClassifier, Palettes, Movement will work, but no pattern learning');
+      
+      this.currentSessionId = `no-db-${Date.now()}`;
+      this.isInitialized = true;
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`[Brain] 🧠 Initialized WITHOUT MEMORY in ${elapsed}ms (SQLite unavailable)`);
+      
+      this.emit('initialized', { sessionId: this.currentSessionId, elapsed, hasMemory: false });
     }
+  }
+
+  /**
+   * 🔮 WAVE 13.5: CALCULATE ZODIAC ELEMENT FROM AUDIO
+   * 
+   * Los 4 elementos zodiacales se mapean a las frecuencias de audio:
+   * - FIRE (🔥): Bajos fuertes (bombo, grave) - Energía primordial
+   * - WATER (🌊): Medios altos (voz, melodía) - Flujo emocional
+   * - AIR (💨): Agudos (hi-hats, cymbals) - Ligereza mental
+   * - EARTH (🌍): Medios bajos (bajo, ritmo) - Estabilidad fundamental
+   * 
+   * "La música es elemental, solo hay que saber escucharla" - Selene
+   */
+  private calculateZodiacElement(audio: AudioAnalysis): 'fire' | 'water' | 'air' | 'earth' {
+    // Usar el espectro de frecuencias del análisis
+    const bass = audio.spectrum.bass;
+    const mid = audio.spectrum.mid;
+    const treble = audio.spectrum.treble;
+    
+    // Calcular ratios de energía por banda
+    const total = bass + mid + treble + 0.001; // Evitar división por cero
+    const bassRatio = bass / total;
+    const midRatio = mid / total;
+    const trebleRatio = treble / total;
+    
+    // Determinar el elemento dominante con pesos ajustados
+    const scores = {
+      fire: bassRatio * 1.5,      // 🔥 Bajos = Fuego (peso extra por ser visceral)
+      earth: midRatio * 0.8,      // 🌍 Medios bajos = Tierra (estable)
+      water: midRatio * 1.2,      // 🌊 Medios altos = Agua (emocional)
+      air: trebleRatio * 1.0,     // 💨 Agudos = Aire (etéreo)
+    };
+    
+    // El elemento con mayor score es el ganador
+    let maxElement: 'fire' | 'water' | 'air' | 'earth' = 'earth';
+    let maxScore = scores.earth;
+    
+    for (const [element, score] of Object.entries(scores)) {
+      if (score > maxScore) {
+        maxScore = score;
+        maxElement = element as 'fire' | 'water' | 'air' | 'earth';
+      }
+    }
+    
+    return maxElement;
   }
 
   /**
@@ -272,6 +356,9 @@ export class SeleneMusicalBrain extends EventEmitter {
       paletteMs: 0,
       mappingMs: 0,
     };
+    
+    // 🔮 WAVE 13.5: Calcular elemento zodiacal UNA VEZ al inicio
+    const zodiacElement = this.calculateZodiacElement(audio);
     
     // ─────────────────────────────────────────────────────────────────────────
     // PASO 1: Análisis de contexto musical
@@ -298,7 +385,8 @@ export class SeleneMusicalBrain extends EventEmitter {
       output = this.processIntelligentMode(
         contextResult as IntelligentResult,
         timestamp,
-        perfMetrics
+        perfMetrics,
+        zodiacElement
       );
     }
     
@@ -376,15 +464,17 @@ export class SeleneMusicalBrain extends EventEmitter {
   private processIntelligentMode(
     result: IntelligentResult,
     timestamp: number,
-    perf: BrainOutput['performance']
+    perf: BrainOutput['performance'],
+    zodiacElement: 'fire' | 'water' | 'air' | 'earth' // 🔮 WAVE 13.5
   ): BrainOutput {
     const context = result.context;
     
     // ─────────────────────────────────────────────────────────────────────────
     // PASO 2A: Consultar memoria - ¿Existe patrón exitoso?
+    // 🧠 WAVE 13: BRAIN UNLOCK - Reactivamos memoria con KEY-driven colors
     // ─────────────────────────────────────────────────────────────────────────
     const memoryStart = performance.now();
-    const pattern = this.consultMemory(context);
+    const pattern = this.consultMemory(context); // 🧠 WAVE 13: Reactivado
     perf.memoryMs = performance.now() - memoryStart;
     
     let palette: BrainOutput['palette'];
@@ -392,7 +482,30 @@ export class SeleneMusicalBrain extends EventEmitter {
     let patternId: string | undefined;
     let estimatedBeauty: number;
     
-    if (pattern && pattern.timesUsed >= this.config.minPatternUsage) {
+    // 🔒 WAVE 14: Calcular fuente preferida pero aplicar histéresis
+    const now = Date.now();
+    const timeSinceSwitch = now - this.sourceHysteresis.lastSwitchTime;
+    const isLocked = timeSinceSwitch < this.sourceHysteresis.lockDurationMs;
+    
+    // Determinar fuente preferida basada en lógica original
+    const preferredSource: 'memory' | 'procedural' = 
+      (pattern && pattern.timesUsed >= this.config.minPatternUsage) ? 'memory' : 'procedural';
+    
+    // 🔒 WAVE 14: Si estamos en lock y la fuente cambió, mantener la anterior
+    let actualSource = preferredSource;
+    if (isLocked && preferredSource !== this.sourceHysteresis.lastSource && this.sourceHysteresis.lastSource !== 'fallback') {
+      actualSource = this.sourceHysteresis.lastSource;
+      if (this.config.debug && this.frameCount % 100 === 0) {
+        console.log(`[Brain] 🔒 Hysteresis: keeping ${actualSource} (${(this.sourceHysteresis.lockDurationMs - timeSinceSwitch) / 1000}s left)`);
+      }
+    } else if (preferredSource !== this.sourceHysteresis.lastSource) {
+      // Source changed, reset lock timer
+      this.sourceHysteresis.lastSource = preferredSource;
+      this.sourceHysteresis.lastSwitchTime = now;
+      console.log(`[Brain] 🔄 Source switched to: ${preferredSource}`);
+    }
+    
+    if (actualSource === 'memory' && pattern) {
       // ─────────────────────────────────────────────────────────────────────
       // USAR PATRÓN DE MEMORIA (Recall)
       // ─────────────────────────────────────────────────────────────────────
@@ -421,8 +534,13 @@ export class SeleneMusicalBrain extends EventEmitter {
       const sectionType = context.section?.current?.type ?? 'unknown';
       const syncopation = context.rhythm?.groove?.syncopation ?? 0.5;
       
+      // 🧠 WAVE 13: BRAIN UNLOCK - KEY define el color, NO la energía
+      // La tonalidad musical determina el Hue base
+      // Si no hay key detectada, el fallback es mood > mode
+      const detectedKey = context.harmony?.key ?? null;
+      
       const musicalDNA = {
-        key: context.harmony?.key ?? null,
+        key: detectedKey, // 🧠 WAVE 13: Key-driven colors (si disponible)
         mode: modeScale,
         energy: context.energy,
         syncopation: syncopation,
@@ -463,6 +581,8 @@ export class SeleneMusicalBrain extends EventEmitter {
       fillInProgress: context.rhythm?.fillInProgress ?? false,
     };
     
+    // 🔮 WAVE 13.5: Usar el zodiacElement ya calculado al inicio del process()
+    
     const lighting = this.lightMapper.map(
       {
         primary: palette.primary,
@@ -473,12 +593,13 @@ export class SeleneMusicalBrain extends EventEmitter {
         metadata: {
           generatedAt: timestamp,
           musicalDNA: {
-            key: context.harmony?.key ?? null,
+            key: context.harmony?.key ?? null, // 🧠 WAVE 13: Key-driven colors
             mode: context.harmony?.mode?.scale ?? 'major',
             energy: context.energy,
             syncopation: musicContext.syncopation,
             mood: context.mood,
             section: musicContext.section,
+            zodiacElement: zodiacElement, // 🔮 WAVE 13.5: Elemento zodiacal
           },
           confidence: context.confidence,
           transitionSpeed: 300,
@@ -600,11 +721,21 @@ export class SeleneMusicalBrain extends EventEmitter {
       s: saturation * 100,
       l: 45 + context.energy * 10,
     };
+
+    // 🪞 ESPEJO CROMÁTICO: ambient es variación del accent, NO complementario
+    // Usa el mismo hue que accent pero con shift de saturación/luminosidad
+    // Esto crea coherencia visual entre LEFT y RIGHT
+    const ambient: HSLColor = {
+      h: accent.h,                    // Mismo hue que accent (espejo)
+      s: Math.max(40, accent.s * 0.7), // Menos saturado para suavidad
+      l: Math.min(60, accent.l + 10),  // Ligeramente más claro
+    };
     
     return {
       primary,
       secondary,
       accent,
+      ambient,
       strategy,
     };
   }
@@ -704,14 +835,16 @@ export class SeleneMusicalBrain extends EventEmitter {
 
   /**
    * Genera paleta de fallback basada solo en energía
+   * 🌊 WAVE 12.5: Energy controla TODO el espectro de colores
    */
   private generateFallbackPalette(energy: number): {
     primary: HSLColor;
     secondary: HSLColor;
     accent: HSLColor;
   } {
-    // Hue basado en energía: bajo=azul, alto=rojo
-    const hue = energy * 60; // 0-60 (azul a naranja)
+    // 🌊 WAVE 12.5: Energy modula TODO el espectro
+    // E=0 → H=200 (azul frío), E=0.5 → H=300 (magenta), E=1 → H=30 (naranja)
+    const hue = (200 + energy * 190) % 360;
     
     return {
       primary: { h: hue, s: 70 + energy * 20, l: 50 },
@@ -789,6 +922,13 @@ export class SeleneMusicalBrain extends EventEmitter {
    */
   getMemoryStats(): ReturnType<SeleneMemoryManager['getStats']> {
     return this.memory.getStats();
+  }
+
+  /**
+   * 🧠 WAVE 10: Check if SQLite memory is available
+   */
+  hasMemory(): boolean {
+    return this.hasMemoryDB;
   }
 
   /**

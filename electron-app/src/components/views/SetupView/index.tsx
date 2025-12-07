@@ -1,12 +1,12 @@
 /**
  * ⚙️ SETUP VIEW - CYBERPUNK EDITION v2
- * WAVE 9.6.1: UX Fixes
+ * WAVE 9.6.2: Fixture Store Integration
  * 
  * FIXES:
  * - Simulation: Activación INMEDIATA sin permisos
  * - System Audio: Manejo graceful de cancelación
  * - DMX Virtual: Connected inmediato
- * - Fixtures: Layout 2 columnas con scroll independiente
+ * - Fixtures: Usa dmxStore.fixtures como fuente única de verdad
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -33,10 +33,7 @@ interface FixtureLibraryItem {
   filePath: string
 }
 
-interface PatchedFixture extends FixtureLibraryItem {
-  dmxAddress: number
-  universe: number
-}
+// PatchedFixture is now imported from dmxStore
 
 // ============================================================================
 // DMX DRIVERS
@@ -99,15 +96,35 @@ const SetupView: React.FC = () => {
   
   // === FIXTURE STATE ===
   const [fixtureLibrary, setFixtureLibrary] = useState<FixtureLibraryItem[]>([])
-  const [patchedFixtures, setPatchedFixtures] = useState<PatchedFixture[]>([])
+  // patchedFixtures now comes from dmxStore
   const [isScanning, setIsScanning] = useState(false)
   const [selectedLibraryFixture, setSelectedLibraryFixture] = useState<string | null>(null)
   const [nextDmxAddress, setNextDmxAddress] = useState(1)
   const [librarySearchTerm, setLibrarySearchTerm] = useState('')
   
+  // 🔦 WAVE 11: Highlight Mode
+  const [highlightIndex, setHighlightIndex] = useState<number>(-1) // -1 = ninguno
+  const [isHighlighting, setIsHighlighting] = useState(false)
+  
+  // 🌪️ WAVE 11: DMX Watchdog Status
+  const [dmxStatus, setDmxStatus] = useState<'disconnected' | 'connected' | 'reconnecting' | 'error'>('disconnected')
+  const [dmxDevice, setDmxDevice] = useState<any>(null)
+  
+  // 🎯 WAVE 12.5: Installation Type Selector (ceiling = colgados, floor = de pie)
+  const [installationType, setInstallationType] = useState<'ceiling' | 'floor'>('ceiling')
+  
   // Stores
   const { bpm, bpmConfidence } = useAudioStore()
-  const dmxStore = useDMXStore()
+  const { 
+    fixtures: patchedFixtures, 
+    addFixture, 
+    removeFixtureByAddress, 
+    updateFixtureByAddress,  // WAVE 10.5
+    clearFixtures,
+    setFixtures: setPatchedFixtures,
+    connect: dmxConnect,
+    disconnect: dmxDisconnect
+  } = useDMXStore()
   const { setActiveTab } = useNavigationStore()
   useSeleneStore()
   
@@ -130,6 +147,13 @@ const SetupView: React.FC = () => {
           }
           setSensitivity(result.config.audio?.sensitivity || 50)
           setSelectedDMXDriver(result.config.dmx?.driver || 'virtual')
+          
+          // 🎯 WAVE 12.5: Load saved installation type
+          const savedInstallation = (result.config as any).installationType
+          if (savedInstallation === 'ceiling' || savedInstallation === 'floor') {
+            setInstallationType(savedInstallation)
+            console.log(`[SetupView] 🎯 Loaded installation type: ${savedInstallation}`)
+          }
         }
       } catch (err) {
         console.error('[SetupView] Error loading config:', err)
@@ -183,12 +207,36 @@ const SetupView: React.FC = () => {
     if (selectedDMXDriver === 'virtual' && !dmxConnected) {
       // Virtual mode = SIEMPRE conectado (solo una vez)
       setDmxConnected(true)
-      dmxStore.connect('virtual', 'VIRTUAL')
+      setDmxStatus('connected')
+      dmxConnect('virtual', 'VIRTUAL')
     }
   }, [selectedDMXDriver]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 🌪️ WAVE 11: DMX Watchdog Status Listener
+  useEffect(() => {
+    if (!window.luxsync?.dmx?.onStatus) return
+    
+    const unsubscribe = window.luxsync.dmx.onStatus((status) => {
+      console.log('[SetupView] 🌪️ DMX Status:', status)
+      setDmxStatus(status.state as any)
+      if (status.device) {
+        setDmxDevice(status.device)
+      }
+      // Actualizar dmxConnected basado en el status
+      if (status.state === 'connected') {
+        setDmxConnected(true)
+      } else if (status.state === 'disconnected' || status.state === 'error') {
+        setDmxConnected(false)
+      }
+    })
+    
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [])
+
   // ============================================================================
-  // AUDIO HANDLERS - FIXED
+  // AUDIO HANDLERS - WAVE 9.6.4: Use Trinity methods!
   // ============================================================================
   
   const connectAudio = useCallback(async (source: 'microphone' | 'system' | 'simulation') => {
@@ -211,112 +259,24 @@ const SetupView: React.FC = () => {
     }
     
     // ========================================
-    // SYSTEM / MICROPHONE: Requieren permisos
+    // SYSTEM / MICROPHONE: Use Trinity's audio capture!
     // ========================================
     setIsConnectingAudio(true)
     
     try {
       if (source === 'system') {
-        console.log('[SetupView] 🖥️ Requesting system audio via Electron...')
-        
-        // En Electron, usamos desktopCapturer para capturar audio del sistema
-        // Primero obtenemos las fuentes disponibles
-        let sources: Array<{ id: string; name: string }> = []
-        
-        if (window.luxsync?.audio?.getDesktopSources) {
-          sources = await window.luxsync.audio.getDesktopSources()
-          console.log('[SetupView] 📺 Desktop sources:', sources.length)
-        }
-        
-        if (sources.length === 0) {
-          // Fallback: intentar con getDisplayMedia del navegador
-          if (navigator.mediaDevices.getDisplayMedia) {
-            try {
-              const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
-                audio: {
-                  // @ts-expect-error - systemAudio es experimental
-                  systemAudio: 'include',
-                  echoCancellation: false,
-                  noiseSuppression: false,
-                  autoGainControl: false
-                }
-              })
-              
-              const audioTracks = stream.getAudioTracks()
-              if (audioTracks.length > 0) {
-                console.log('[SetupView] ✅ System audio via getDisplayMedia OK')
-                trinity.setSimulating(false)
-                setAudioSource('system')
-                if (window.lux) {
-                  await window.lux.saveConfig({ audio: { source, sensitivity } })
-                }
-                setIsConnectingAudio(false)
-                return
-              }
-              stream.getTracks().forEach(t => t.stop())
-            } catch (displayError) {
-              console.warn('[SetupView] getDisplayMedia failed:', displayError)
-            }
-          }
-          
-          // Si todo falla, usar simulación
-          console.warn('[SetupView] ⚠️ No system audio sources - using simulation')
-          trinity.setSimulating(true)
-          setAudioSource('simulation')
-        } else {
-          // Usar la primera fuente (pantalla entera o ventana)
-          const screenSource = sources.find(s => s.name.includes('Entire Screen') || s.name.includes('Screen')) || sources[0]
-          
-          try {
-            // Crear stream con la fuente de Electron
-            const stream = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                // @ts-expect-error - chromeMediaSource es de Electron
-                mandatory: {
-                  chromeMediaSource: 'desktop',
-                  chromeMediaSourceId: screenSource.id
-                }
-              },
-              video: {
-                // @ts-expect-error - chromeMediaSource es de Electron
-                mandatory: {
-                  chromeMediaSource: 'desktop',
-                  chromeMediaSourceId: screenSource.id,
-                  minWidth: 1,
-                  maxWidth: 1,
-                  minHeight: 1,
-                  maxHeight: 1
-                }
-              }
-            })
-            
-            const audioTracks = stream.getAudioTracks()
-            // Detener video track inmediatamente
-            stream.getVideoTracks().forEach(t => t.stop())
-            
-            if (audioTracks.length > 0) {
-              console.log('[SetupView] ✅ System audio via Electron OK:', audioTracks[0].label)
-              trinity.setSimulating(false)
-              setAudioSource('system')
-            } else {
-              console.warn('[SetupView] ⚠️ No audio tracks - using simulation')
-              trinity.setSimulating(true)
-              setAudioSource('simulation')
-            }
-          } catch (captureError) {
-            console.warn('[SetupView] ⚠️ Electron capture failed:', captureError)
-            trinity.setSimulating(true)
-            setAudioSource('simulation')
-          }
-        }
+        console.log('[SetupView] 🖥️ Starting system audio via Trinity...')
+        await trinity.startSystemAudio()
+        trinity.setSimulating(false)
+        setAudioSource('system')
+        console.log('[SetupView] ✅ System audio CONNECTED via Trinity!')
         
       } else if (source === 'microphone') {
-        console.log('[SetupView] 🎤 Requesting microphone...')
-        await navigator.mediaDevices.getUserMedia({ audio: true })
-        console.log('[SetupView] ✅ Microphone OK')
+        console.log('[SetupView] 🎤 Starting microphone via Trinity...')
+        await trinity.startMicrophone()
         trinity.setSimulating(false)
         setAudioSource('microphone')
+        console.log('[SetupView] ✅ Microphone CONNECTED via Trinity!')
       }
       
       if (window.lux) {
@@ -345,18 +305,18 @@ const SetupView: React.FC = () => {
     if (driverId === 'virtual') {
       // Virtual = Connected inmediato
       setDmxConnected(true)
-      dmxStore.connect('virtual', 'VIRTUAL')
+      dmxConnect('virtual', 'VIRTUAL')
       console.log('[SetupView] 🎮 Virtual DMX - CONNECTED')
     } else {
       // Hardware real - requiere detección
       setDmxConnected(false)
-      dmxStore.disconnect()
+      dmxDisconnect()
     }
     
     if (window.lux) {
       window.lux.saveConfig({ dmx: { driver: driverId, port: 'AUTO', universe: 1, frameRate: 40 } })
     }
-  }, [dmxStore])
+  }, [dmxConnect, dmxDisconnect])
 
   // ============================================================================
   // FIXTURE HANDLERS
@@ -369,6 +329,8 @@ const SetupView: React.FC = () => {
     try {
       const result = await window.lux.scanFixtures()
       if (result.success) {
+        // DEBUG: Log fixture IDs
+        console.log('[SetupView] 📦 Fixture IDs:', result.fixtures.map(f => f.id))
         setFixtureLibrary(result.fixtures)
         console.log(`[SetupView] 📦 Found ${result.fixtures.length} fixtures`)
       }
@@ -385,7 +347,8 @@ const SetupView: React.FC = () => {
     try {
       const result = await window.lux.patchFixture(fixtureId, nextDmxAddress)
       if (result.success && result.fixture) {
-        setPatchedFixtures(prev => [...prev, result.fixture!])
+        // Add to dmxStore - this is the single source of truth
+        addFixture(result.fixture)
         const fixture = fixtureLibrary.find(f => f.id === fixtureId)
         if (fixture) {
           setNextDmxAddress(prev => prev + fixture.channelCount)
@@ -395,7 +358,7 @@ const SetupView: React.FC = () => {
     } catch (err) {
       console.error('[SetupView] Patch error:', err)
     }
-  }, [nextDmxAddress, fixtureLibrary])
+  }, [nextDmxAddress, fixtureLibrary, addFixture])
 
   const unpatchFixture = useCallback(async (dmxAddress: number) => {
     if (!window.lux) return
@@ -403,10 +366,43 @@ const SetupView: React.FC = () => {
     try {
       const result = await window.lux.unpatchFixture(dmxAddress)
       if (result.success) {
-        setPatchedFixtures(prev => prev.filter(f => f.dmxAddress !== dmxAddress))
+        // Remove from dmxStore - this is the single source of truth
+        removeFixtureByAddress(dmxAddress)
       }
     } catch (err) {
       console.error('[SetupView] Unpatch error:', err)
+    }
+  }, [removeFixtureByAddress])
+
+  // 🔬 WAVE 10.5: Forzar tipo de fixture manualmente
+  const forceFixtureType = useCallback(async (dmxAddress: number, newType: string) => {
+    if (!window.lux) return
+    
+    try {
+      // Actualizar en el backend
+      const result = await window.lux.forceFixtureType(dmxAddress, newType)
+      if (result.success) {
+        // Actualizar en el store local usando la nueva función
+        updateFixtureByAddress(dmxAddress, { type: newType })
+        console.log(`[SetupView] 🔧 Forced fixture @${dmxAddress} to type: ${newType}`)
+      }
+    } catch (err) {
+      console.error('[SetupView] Force type error:', err)
+    }
+  }, [updateFixtureByAddress])
+
+  // 🎯 WAVE 12.5: Selector de Montaje - Aplica preset físico a Moving Heads
+  const applyInstallationType = useCallback(async (type: 'ceiling' | 'floor') => {
+    setInstallationType(type)
+    console.log(`[SetupView] 🎯 Installation type set to: ${type === 'ceiling' ? 'COLGADOS (Techo)' : 'DE PIE (Suelo)'}`)
+    
+    if (window.lux?.setInstallationType) {
+      try {
+        const result = await window.lux.setInstallationType(type)
+        console.log('[SetupView] 🎯 Installation type applied:', result)
+      } catch (err) {
+        console.error('[SetupView] Installation type error:', err)
+      }
     }
   }, [])
 
@@ -417,11 +413,205 @@ const SetupView: React.FC = () => {
     try {
       const result = await window.lux.clearPatch()
       if (result.success) {
-        setPatchedFixtures([])
+        // Clear from dmxStore - this is the single source of truth
+        clearFixtures()
         setNextDmxAddress(1)
       }
     } catch (err) {
       console.error('[SetupView] Clear error:', err)
+    }
+  }, [clearFixtures])
+
+  // 🎭 WAVE 10.6: NEW SHOW - Reset completo
+  const newShow = useCallback(async () => {
+    if (!window.lux) return
+    if (!confirm('⚠️ NEW SHOW: ¿Borrar TODA la configuración y empezar de cero?')) return
+    
+    try {
+      const result = await window.lux.newShow()
+      if (result.success) {
+        // Reset local state
+        clearFixtures()
+        setNextDmxAddress(1)
+        setAudioSource('none')
+        setCurrentStep(1)
+        setDmxConnected(false)
+        console.log(`[SetupView] 🎭 NEW SHOW - Cleared ${result.clearedFixtures} fixtures`)
+      }
+    } catch (err) {
+      console.error('[SetupView] New show error:', err)
+    }
+  }, [clearFixtures])
+
+  // 💾 WAVE 10.6: SAVE SHOW - Exportar configuración a JSON
+  const saveShow = useCallback(async () => {
+    try {
+      const showData = {
+        version: '1.0',
+        savedAt: new Date().toISOString(),
+        audio: {
+          source: audioSource,
+          sensitivity
+        },
+        dmx: {
+          driver: selectedDMXDriver,
+          connected: dmxConnected
+        },
+        fixtures: patchedFixtures.map(f => ({
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          manufacturer: f.manufacturer,
+          channelCount: f.channelCount,
+          dmxAddress: f.dmxAddress,
+          universe: f.universe,
+          zone: f.zone,
+          filePath: f.filePath
+        }))
+      }
+      
+      const blob = new Blob([JSON.stringify(showData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `luxsync-show-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      console.log('[SetupView] 💾 Show saved:', showData.fixtures.length, 'fixtures')
+    } catch (err) {
+      console.error('[SetupView] Save show error:', err)
+      alert('Error guardando show: ' + err)
+    }
+  }, [audioSource, sensitivity, selectedDMXDriver, dmxConnected, patchedFixtures])
+
+  // 📂 WAVE 10.6: LOAD SHOW - Importar configuración desde JSON
+  const loadShow = useCallback(() => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      
+      try {
+        const text = await file.text()
+        const showData = JSON.parse(text)
+        
+        // Validar versión
+        if (!showData.version || !showData.fixtures) {
+          alert('Archivo de show inválido')
+          return
+        }
+        
+        // Confirmar carga
+        if (!confirm(`¿Cargar show con ${showData.fixtures.length} fixtures? (${showData.savedAt})`)) {
+          return
+        }
+        
+        // Limpiar primero
+        await window.lux?.clearPatch()
+        clearFixtures()
+        
+        // Restaurar fixtures
+        for (const fixture of showData.fixtures) {
+          try {
+            await window.lux?.patchFixture(fixture.id, fixture.dmxAddress, fixture.universe)
+          } catch (err) {
+            console.warn('[SetupView] Could not patch fixture:', fixture.name, err)
+          }
+        }
+        
+        // Restaurar audio config
+        if (showData.audio?.source) {
+          setAudioSource(showData.audio.source)
+        }
+        if (showData.audio?.sensitivity) {
+          setSensitivity(showData.audio.sensitivity)
+        }
+        
+        // Recargar fixtures del backend
+        const result = await window.lux?.getPatchedFixtures()
+        if (result?.success) {
+          setPatchedFixtures(result.fixtures)
+        }
+        
+        console.log('[SetupView] 📂 Show loaded:', showData.fixtures.length, 'fixtures')
+        alert(`✅ Show cargado: ${showData.fixtures.length} fixtures`)
+        
+      } catch (err) {
+        console.error('[SetupView] Load show error:', err)
+        alert('Error cargando show: ' + err)
+      }
+    }
+    input.click()
+  }, [clearFixtures, setPatchedFixtures])
+
+  // ============================================================================
+  // 🔦 WAVE 11: HIGHLIGHT MODE HANDLERS
+  // ============================================================================
+  
+  const highlightCurrentFixture = useCallback(async () => {
+    if (patchedFixtures.length === 0 || highlightIndex < 0) return
+    
+    const fixture = patchedFixtures[highlightIndex]
+    if (!fixture) return
+    
+    setIsHighlighting(true)
+    
+    try {
+      // Detectar si es moving head por el tipo o por el número de canales
+      const isMovingHead = fixture.type?.toLowerCase().includes('moving') || 
+                          fixture.name?.toLowerCase().includes('spot') ||
+                          fixture.name?.toLowerCase().includes('beam') ||
+                          fixture.channelCount >= 8
+      
+      await window.luxsync?.dmx?.highlightFixture(
+        fixture.dmxAddress, 
+        fixture.channelCount, 
+        isMovingHead
+      )
+      console.log(`[SetupView] 🔦 Highlighting: ${fixture.name} @ DMX ${fixture.dmxAddress}`)
+    } catch (err) {
+      console.error('[SetupView] Highlight error:', err)
+    } finally {
+      setTimeout(() => setIsHighlighting(false), 300)
+    }
+  }, [patchedFixtures, highlightIndex])
+  
+  const highlightPrev = useCallback(() => {
+    if (patchedFixtures.length === 0) return
+    setHighlightIndex(prev => {
+      const newIndex = prev <= 0 ? patchedFixtures.length - 1 : prev - 1
+      return newIndex
+    })
+  }, [patchedFixtures.length])
+  
+  const highlightNext = useCallback(() => {
+    if (patchedFixtures.length === 0) return
+    setHighlightIndex(prev => {
+      const newIndex = prev >= patchedFixtures.length - 1 ? 0 : prev + 1
+      return newIndex
+    })
+  }, [patchedFixtures.length])
+  
+  // Auto-highlight when index changes
+  useEffect(() => {
+    if (highlightIndex >= 0 && patchedFixtures.length > 0) {
+      highlightCurrentFixture()
+    }
+  }, [highlightIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // Stop highlight (blackout)
+  const stopHighlight = useCallback(async () => {
+    setHighlightIndex(-1)
+    try {
+      await window.luxsync?.dmx?.blackout()
+      console.log('[SetupView] 🌑 Highlight stopped (blackout)')
+    } catch (err) {
+      console.error('[SetupView] Blackout error:', err)
     }
   }, [])
 
@@ -441,8 +631,24 @@ const SetupView: React.FC = () => {
     { step: 4, label: 'TEST', icon: '✓' },
   ]
 
-  const nextStep = () => setCurrentStep(prev => Math.min(4, prev + 1) as SetupStep)
+  // 🔒 WAVE 10.6: Solo permite avanzar si el paso actual está completo
+  const nextStep = () => {
+    if (isStepComplete(currentStep)) {
+      setCurrentStep(prev => Math.min(4, prev + 1) as SetupStep)
+    }
+  }
   const prevStep = () => setCurrentStep(prev => Math.max(1, prev - 1) as SetupStep)
+
+  // 🔒 WAVE 10.6: Solo permite ir a pasos anteriores o al actual
+  const canGoToStep = (step: number): boolean => {
+    // Siempre puede ir a pasos anteriores
+    if (step < currentStep) return true
+    // Puede ir al paso actual
+    if (step === currentStep) return true
+    // Solo puede avanzar si el paso anterior está completo
+    if (step === currentStep + 1 && isStepComplete(currentStep)) return true
+    return false
+  }
 
   const isStepComplete = (step: number): boolean => {
     switch(step) {
@@ -472,15 +678,15 @@ const SetupView: React.FC = () => {
         </div>
       </header>
 
-      {/* Progress Stepper */}
+      {/* Progress Stepper - 🔒 WAVE 10.6: Bloqueado */}
       <nav className="setup-stepper">
         {steps.map(({ step, label, icon }, index) => (
           <React.Fragment key={step}>
             <div 
-              className={`stepper-step ${step <= currentStep ? 'active' : ''} ${step === currentStep ? 'current' : ''} ${isStepComplete(step) ? 'complete' : ''}`}
-              onClick={() => setCurrentStep(step as SetupStep)}
+              className={`stepper-step ${step <= currentStep ? 'active' : ''} ${step === currentStep ? 'current' : ''} ${isStepComplete(step) ? 'complete' : ''} ${!canGoToStep(step) ? 'locked' : ''}`}
+              onClick={() => canGoToStep(step) && setCurrentStep(step as SetupStep)}
             >
-              <span className="stepper-icon">{isStepComplete(step) ? '✓' : icon}</span>
+              <span className="stepper-icon">{isStepComplete(step) ? '✓' : !canGoToStep(step) ? '🔒' : icon}</span>
               <span className="stepper-label">{label}</span>
             </div>
             {index < steps.length - 1 && (
@@ -579,34 +785,64 @@ const SetupView: React.FC = () => {
             </div>
           )}
 
-          {/* ========== STEP 2: DMX ========== */}
+          {/* ========== STEP 2: DMX - WAVE 10.6 UX IMPROVEMENTS ========== */}
           {currentStep === 2 && (
             <div className="wizard-step">
               <h3><span className="step-emoji">💡</span> DMX INTERFACE</h3>
               
-              <div className="dmx-interfaces">
-                {DMX_DRIVERS.map(driver => (
-                  <div 
-                    key={driver.id} 
-                    className={`dmx-interface-card ${selectedDMXDriver === driver.id ? 'selected' : ''}`}
-                    onClick={() => selectDMXDriver(driver.id)}
-                  >
-                    <div className="dmx-radio" />
-                    <div className="dmx-info">
-                      <span className="dmx-name">{driver.label}</span>
-                      <span className="dmx-desc">{driver.description}</span>
-                    </div>
-                    {selectedDMXDriver === driver.id && dmxConnected && (
-                      <span className="dmx-status connected">✓ Connected</span>
+              {/* 🔌 WAVE 10.6: Siempre mostrar Tornado/Enttec con estado */}
+              <div className="dmx-interfaces-v2">
+                {/* Tornado USB - Siempre visible */}
+                <div 
+                  className={`dmx-card-v2 ${selectedDMXDriver === 'enttec-open' ? 'selected' : ''}`}
+                  onClick={() => selectDMXDriver('enttec-open')}
+                >
+                  <div className="dmx-card-header">
+                    <span className={`status-indicator ${dmxConnected && selectedDMXDriver === 'enttec-open' ? 'connected' : 'disconnected'}`}>
+                      {dmxConnected && selectedDMXDriver === 'enttec-open' ? '🟢' : '🔴'}
+                    </span>
+                    <span className="dmx-card-title">🔌 Tornado / Enttec USB</span>
+                  </div>
+                  <p className="dmx-card-desc">Interface DMX profesional por USB</p>
+                  <div className="dmx-card-actions">
+                    {dmxConnected && selectedDMXDriver === 'enttec-open' ? (
+                      <span className="dmx-status-text">✓ Conectado</span>
+                    ) : (
+                      <button className="rescan-btn" onClick={(e) => { e.stopPropagation(); selectDMXDriver('enttec-open'); }}>
+                        🔄 Conectar
+                      </button>
                     )}
                   </div>
-                ))}
+                </div>
+                
+                {/* Virtual - Para testing */}
+                <div 
+                  className={`dmx-card-v2 ${selectedDMXDriver === 'virtual' ? 'selected' : ''}`}
+                  onClick={() => selectDMXDriver('virtual')}
+                >
+                  <div className="dmx-card-header">
+                    <span className={`status-indicator ${dmxConnected && selectedDMXDriver === 'virtual' ? 'connected' : 'disconnected'}`}>
+                      {dmxConnected && selectedDMXDriver === 'virtual' ? '🟢' : '⚪'}
+                    </span>
+                    <span className="dmx-card-title">🎮 Virtual (Demo)</span>
+                  </div>
+                  <p className="dmx-card-desc">Sin hardware - perfecto para testing</p>
+                  <div className="dmx-card-actions">
+                    {dmxConnected && selectedDMXDriver === 'virtual' ? (
+                      <span className="dmx-status-text">✓ Simulación activa</span>
+                    ) : (
+                      <button className="rescan-btn" onClick={(e) => { e.stopPropagation(); selectDMXDriver('virtual'); }}>
+                        ▶️ Activar
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
               
-              {/* Status */}
-              <div className={`dmx-connection-status ${dmxConnected ? 'connected' : ''}`}>
+              {/* Status Footer */}
+              <div className={`dmx-status-bar ${dmxConnected ? 'connected' : ''}`}>
                 <span className="status-dot" />
-                <span>{dmxConnected ? 'DMX CONNECTED' : 'DMX NOT CONNECTED'}</span>
+                <span>{dmxConnected ? `DMX ACTIVO: ${selectedDMXDriver?.toUpperCase()}` : 'Selecciona una interface DMX'}</span>
               </div>
             </div>
           )}
@@ -615,6 +851,31 @@ const SetupView: React.FC = () => {
           {currentStep === 3 && (
             <div className="wizard-step fixture-section">
               <h3><span className="step-emoji">🔦</span> FIXTURE PATCH</h3>
+              
+              {/* 🎯 WAVE 12.5: Installation Type Selector */}
+              <div className="installation-selector">
+                <span className="installation-label">📐 MONTAJE DE MOVING HEADS:</span>
+                <div className="installation-buttons">
+                  <button 
+                    className={`installation-btn ${installationType === 'ceiling' ? 'active' : ''}`}
+                    onClick={() => applyInstallationType('ceiling')}
+                    title="Fixtures colgados del techo - Tilt invertido"
+                  >
+                    <span className="installation-icon">⬇️</span>
+                    <span className="installation-text">COLGADOS</span>
+                    <span className="installation-sub">(Techo)</span>
+                  </button>
+                  <button 
+                    className={`installation-btn ${installationType === 'floor' ? 'active' : ''}`}
+                    onClick={() => applyInstallationType('floor')}
+                    title="Fixtures en el suelo - Tilt normal"
+                  >
+                    <span className="installation-icon">⬆️</span>
+                    <span className="installation-text">DE PIE</span>
+                    <span className="installation-sub">(Suelo)</span>
+                  </button>
+                </div>
+              </div>
               
               {/* 2-COLUMN GRID LAYOUT */}
               <div className="fixture-grid">
@@ -698,13 +959,27 @@ const SetupView: React.FC = () => {
                       patchedFixtures.map(fixture => {
                         const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
                         return (
-                          <div key={fixture.dmxAddress} className="patched-card">
+                          <div key={`${fixture.id}_${fixture.dmxAddress}`} className="patched-card">
                             <span className="patched-addr">{fixture.dmxAddress}</span>
                             <div className={`fixture-icon ${className}`}>{icon}</div>
                             <div className="fixture-details">
                               <span className="fixture-name">{fixture.name}</span>
-                              <span className="fixture-meta">{fixture.channelCount}ch</span>
+                              <span className="fixture-meta">{fixture.channelCount}ch • {fixture.zone || 'no-zone'}</span>
                             </div>
+                            {/* WAVE 10.5: Type Override Selector */}
+                            <select 
+                              className="type-selector"
+                              value={fixture.type}
+                              onChange={(e) => forceFixtureType(fixture.dmxAddress, e.target.value)}
+                              title="Cambiar tipo de fixture"
+                            >
+                              <option value="par">💡 PAR</option>
+                              <option value="moving_head">🎯 Moving Head</option>
+                              <option value="wash">🌊 Wash</option>
+                              <option value="strobe">⚡ Strobe</option>
+                              <option value="laser">🔴 Laser</option>
+                              <option value="generic">⚙️ Generic</option>
+                            </select>
                             <button className="remove-btn" onClick={() => unpatchFixture(fixture.dmxAddress)}>✕</button>
                           </div>
                         )
@@ -720,6 +995,41 @@ const SetupView: React.FC = () => {
           {currentStep === 4 && (
             <div className="wizard-step">
               <h3><span className="step-emoji">✓</span> SYSTEM TEST</h3>
+              
+              {/* 🌪️ WAVE 11: DMX Watchdog Status Banner */}
+              <div className={`dmx-watchdog-banner ${dmxStatus}`}>
+                <div className="watchdog-indicator">
+                  <span className={`watchdog-dot ${dmxStatus}`} />
+                  <span className="watchdog-text">
+                    {dmxStatus === 'connected' && (
+                      <>🟢 DMX CONNECTED {dmxDevice?.friendlyName && `- ${dmxDevice.friendlyName}`}</>
+                    )}
+                    {dmxStatus === 'disconnected' && (
+                      <>🔴 NO SIGNAL - Check USB cable</>
+                    )}
+                    {dmxStatus === 'reconnecting' && (
+                      <>🟡 SEARCHING USB... Reconnecting</>
+                    )}
+                    {dmxStatus === 'error' && (
+                      <>❌ DMX ERROR - Replug device</>
+                    )}
+                  </span>
+                </div>
+                {dmxStatus === 'disconnected' && selectedDMXDriver !== 'virtual' && (
+                  <button 
+                    className="reconnect-btn"
+                    onClick={async () => {
+                      const result = await window.luxsync?.dmx?.autoConnect()
+                      if (result?.success) {
+                        setDmxConnected(true)
+                        setDmxStatus('connected')
+                      }
+                    }}
+                  >
+                    🔄 RECONECTAR
+                  </button>
+                )}
+              </div>
               
               <div className="test-results">
                 <div className={`test-item ${audioSource !== 'none' ? 'pass' : 'fail'}`}>
@@ -747,6 +1057,61 @@ const SetupView: React.FC = () => {
                 </div>
               </div>
               
+              {/* 🔦 WAVE 11: HIGHLIGHT MODE - Diagnóstico de Fixtures */}
+              {patchedFixtures.length > 0 && (
+                <div className="highlight-mode">
+                  <h4>🔦 FIXTURE DIAGNOSTIC</h4>
+                  <p className="highlight-hint">Test each fixture one by one. If it lights up, it's working!</p>
+                  
+                  <div className="highlight-controls">
+                    <button 
+                      className="highlight-btn prev"
+                      onClick={highlightPrev}
+                      disabled={patchedFixtures.length === 0}
+                    >
+                      ← PREV
+                    </button>
+                    
+                    <div className={`highlight-display ${isHighlighting ? 'active' : ''} ${highlightIndex >= 0 ? 'on' : 'off'}`}>
+                      {highlightIndex >= 0 && patchedFixtures[highlightIndex] ? (
+                        <>
+                          <span className="highlight-number">#{highlightIndex + 1}</span>
+                          <span className="highlight-name">{patchedFixtures[highlightIndex].name}</span>
+                          <span className="highlight-dmx">DMX {String(patchedFixtures[highlightIndex].dmxAddress).padStart(3, '0')}</span>
+                        </>
+                      ) : (
+                        <span className="highlight-off">🌑 Press NEXT to start</span>
+                      )}
+                    </div>
+                    
+                    <button 
+                      className="highlight-btn next"
+                      onClick={highlightNext}
+                      disabled={patchedFixtures.length === 0}
+                    >
+                      NEXT →
+                    </button>
+                  </div>
+                  
+                  <div className="highlight-actions">
+                    <button 
+                      className="highlight-action-btn test"
+                      onClick={highlightCurrentFixture}
+                      disabled={highlightIndex < 0}
+                    >
+                      🔦 TEST AGAIN
+                    </button>
+                    <button 
+                      className="highlight-action-btn stop"
+                      onClick={stopHighlight}
+                      disabled={highlightIndex < 0}
+                    >
+                      🌑 BLACKOUT
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               {isStepComplete(4) ? (
                 <div className="ready-banner">
                   <span className="ready-icon">🚀</span>
@@ -757,6 +1122,22 @@ const SetupView: React.FC = () => {
                   ⚠️ Complete setup: Audio + Fixtures required
                 </div>
               )}
+              
+              {/* 🎭 WAVE 10.6: Show Management */}
+              <div className="show-management">
+                <h4>💾 SHOW MANAGEMENT</h4>
+                <div className="show-buttons">
+                  <button className="show-btn save" onClick={saveShow}>
+                    💾 GUARDAR SHOW
+                  </button>
+                  <button className="show-btn load" onClick={loadShow}>
+                    📂 CARGAR SHOW
+                  </button>
+                  <button className="show-btn new" onClick={newShow}>
+                    🎭 NEW SHOW
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

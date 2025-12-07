@@ -175,12 +175,13 @@ export class PatternRecognizer {
       }
     })
     
-    if (bestPattern) {
+    if (bestPattern !== null) {
+      const bp = bestPattern as MusicalPattern // Type assertion para TS
       return {
-        suggestedNote: bestPattern.note,
-        confidence: bestPattern.confidence,
-        basedOnPattern: bestPattern,
-        reasoning: `Patrón ${bestPattern.note}-${bestPattern.element} tiene belleza ${(bestPattern.avgBeauty * 100).toFixed(0)}%`,
+        suggestedNote: bp.note,
+        confidence: bp.confidence,
+        basedOnPattern: bp,
+        reasoning: `Patrón ${bp.note}-${bp.element} tiene belleza ${(bp.avgBeauty * 100).toFixed(0)}%`,
       }
     }
     

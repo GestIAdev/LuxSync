@@ -13,6 +13,10 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+            rollupOptions: {
+              // 🧠 WAVE 10: Excluir módulos nativos del bundle
+              external: ['better-sqlite3'],
+            },
           },
         },
       },
@@ -24,6 +28,39 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+          },
+        },
+      },
+      // 🧠 WAVE 10: Trinity Workers - BETA (Senses) and GAMMA (Mind)
+      {
+        entry: 'src/main/workers/senses.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            lib: {
+              entry: 'src/main/workers/senses.ts',
+              formats: ['cjs'],
+              fileName: () => 'senses.js',
+            },
+            rollupOptions: {
+              external: ['worker_threads', 'better-sqlite3'],
+            },
+          },
+        },
+      },
+      {
+        entry: 'src/main/workers/mind.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            lib: {
+              entry: 'src/main/workers/mind.ts',
+              formats: ['cjs'],
+              fileName: () => 'mind.js',
+            },
+            rollupOptions: {
+              external: ['worker_threads', 'better-sqlite3'],
+            },
           },
         },
       },

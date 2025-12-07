@@ -14,6 +14,8 @@ import { createContext, useContext, useEffect, useRef, ReactNode, useCallback, u
 import { useAudioCapture, AudioMetrics } from '../hooks/useAudioCapture'
 import { useAudioStore } from '../stores/audioStore'
 import { useSeleneStore, LogEntryType } from '../stores/seleneStore'
+import { useDMXStore, FixtureValues } from '../stores/dmxStore'
+import { useLuxSyncStore, EffectId } from '../stores/luxsyncStore'  // 🔥 WAVE 10.7: Effects sync
 
 // ============================================================================
 // TYPES
@@ -48,6 +50,7 @@ interface SeleneStateUpdate {
     onBeat: boolean
     beatPhase: number
     confidence: number
+    energy?: number  // 🔊 WAVE 10.6: RMS energy 0-1
   }
   
   // Brain state (from GAMMA)
@@ -66,6 +69,20 @@ interface SeleneStateUpdate {
     source: 'memory' | 'procedural' | 'fallback'
   }
   
+  // WAVE 9.6.3: Fixture values from main loop
+  fixtures?: FixtureValues[]
+  
+  // 🔥 WAVE 10.7: Effects from main loop
+  effects?: {
+    blackout: boolean
+    strobe: boolean
+    blinder: boolean
+    police: boolean
+    rainbow: boolean
+    beam: boolean
+    prism: boolean
+  }
+  
   // Performance
   frameId?: number
   timestamp?: number
@@ -78,6 +95,9 @@ interface TrinityContextValue {
   audioMetrics: AudioMetrics
   isSimulating: boolean
   setSimulating: (enabled: boolean) => void
+  // WAVE 9.6.4: Audio source controls
+  startSystemAudio: () => Promise<void>
+  startMicrophone: () => Promise<void>
 }
 
 // ============================================================================
@@ -111,6 +131,8 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     startCapture,
     stopCapture,
     setSimulationMode,
+    startSystemAudio,
+    startMicrophone,
   } = useAudioCapture()
   
   // Stores
@@ -122,6 +144,8 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     incrementFrames,
     addLogEntry,
   } = useSeleneStore()
+  const { updateFixtureValues } = useDMXStore()  // WAVE 9.6.3
+  const { setActiveEffects, setBlackout } = useLuxSyncStore()  // 🔥 WAVE 10.7: Effects sync
   
   // Local state
   const [state, setState] = useState<TrinityState>({
@@ -149,10 +173,16 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     
     // === UPDATE AUDIO STORE ===
     if (seleneState.beat) {
+      // 🔊 WAVE 10.6: Calculate real dB from energy (0-1)
+      // Formula: dB = 20 * log10(energy), clamped to -60..0
+      const energy = seleneState.beat.energy ?? seleneState.brain?.energy ?? 0.001
+      const db = Math.max(-60, Math.min(0, 20 * Math.log10(Math.max(0.001, energy))))
+      
       updateAudioStore({
         bpm: seleneState.beat.bpm,
         bpmConfidence: seleneState.beat.confidence,
         onBeat: seleneState.beat.onBeat,
+        level: db, // 🎚️ Real dB value!
       })
       
       if (seleneState.beat.onBeat) {
@@ -199,17 +229,56 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
       })
     }
     
-  }, [updateAudioStore, registerBeat, updateBrainMetrics, incrementFrames, addLogEntry])
+    // WAVE 9.6.3: Update fixture values for SimulateView
+    if (seleneState.fixtures && seleneState.fixtures.length > 0) {
+      // 🔍 DEBUG: Log ALL fixture addresses and zones (more detail)
+      if (Math.random() < 0.01) { // 1% of frames
+        const summary = seleneState.fixtures.map(f => {
+          const zoneShort = f.zone === 'MOVING_LEFT' ? 'M_L' : 
+                           f.zone === 'MOVING_RIGHT' ? 'M_R' : 
+                           f.zone?.substring(0,3) || 'UNK'
+          return `${f.dmxAddress}:${zoneShort}`
+        }).join(', ')
+        console.log('[Trinity] 📍 All fixtures:', summary)
+      }
+      updateFixtureValues(seleneState.fixtures)
+    }
+    
+    // 🔥 WAVE 10.7: Update effects state from backend
+    if (seleneState.effects) {
+      const activeEffects = new Set<EffectId>()
+      
+      if (seleneState.effects.strobe) activeEffects.add('strobe')
+      if (seleneState.effects.blinder) activeEffects.add('blinder')
+      if (seleneState.effects.rainbow) activeEffects.add('rainbow')
+      if (seleneState.effects.police) activeEffects.add('police')
+      if (seleneState.effects.beam) activeEffects.add('beam')
+      if (seleneState.effects.prism) activeEffects.add('prism')
+      
+      setActiveEffects(activeEffects)
+      setBlackout(seleneState.effects.blackout)
+    }
+    
+  }, [updateAudioStore, registerBeat, updateBrainMetrics, incrementFrames, addLogEntry, updateFixtureValues, setActiveEffects, setBlackout])
   
   // Start Trinity System
   const startTrinity = useCallback(async () => {
     console.log('[Trinity] 🔺 Starting Trinity System...')
     
     try {
-      // 1. Start Selene in Main Process
+      // 1. Query backend state and start Selene only if not running.
+      // If getState() returns null, Selene is not initialized yet.
       if (window.lux) {
-        const result = await window.lux.start()
-        console.log('[Trinity] ✅ Selene LUX started:', result)
+        const current = await window.lux.getState()
+        console.log('[Trinity] 🔎 Backend state:', current)
+        if (!current) {
+          // Selene not running → start it
+          const result = await window.lux.start()
+          console.log('[Trinity] ✅ Selene LUX started:', result)
+        } else {
+          // Selene already running → skip start, just subscribe
+          console.log('[Trinity] ℹ️ Backend already running, skipping start')
+        }
       }
       
       // 2. Subscribe to state updates
@@ -292,6 +361,70 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     })
   }, [setSimulationMode, addLogEntry])
   
+  // 🎯 WAVE 13.6: INITIAL STATE HANDSHAKE - "Truth First"
+  // Al montar, pedir el estado COMPLETO del Backend y sincronizar TODOS los stores
+  useEffect(() => {
+    const syncInitialState = async () => {
+      if (!window.lux?.getFullState) {
+        console.warn('[Trinity] ⚠️ getFullState not available, skipping initial sync')
+        return
+      }
+      
+      try {
+        const fullState = await window.lux.getFullState()
+        console.log('[Trinity] 🎯 Initial State Handshake:', fullState)
+        
+        // Sync DMX Store
+        if (fullState.dmx) {
+          if (fullState.dmx.isConnected && fullState.dmx.driver && fullState.dmx.port) {
+            useDMXStore.getState().connect(
+              fullState.dmx.driver as 'enttec-open' | 'enttec-pro' | 'artnet' | 'sacn' | 'virtual',
+              fullState.dmx.port
+            )
+          } else {
+            useDMXStore.getState().disconnect()
+          }
+          
+          console.log(`[Trinity] 💡 DMX synced: ${fullState.dmx.status} (${fullState.dmx.driver || 'none'})`)
+        }
+        
+        // Sync Selene Store
+        if (fullState.selene) {
+          if (fullState.selene.isRunning) {
+            setConnected(true)
+            setInitialized(true)
+            
+            // 🎚️ WAVE 13.6: Sincronizar modo UI (flow, selene, locked)
+            if (fullState.selene.mode) {
+              useSeleneStore.getState().setMode(fullState.selene.mode as 'flow' | 'selene' | 'locked')
+            }
+            
+            if (fullState.selene.brainMode) {
+              updateBrainMetrics({ 
+                currentMode: fullState.selene.brainMode as 'reactive' | 'intelligent',
+                paletteSource: (fullState.selene.paletteSource || 'fallback') as 'memory' | 'procedural' | 'fallback'
+              })
+            }
+            
+            console.log(`[Trinity] 🧠 Selene synced: mode=${fullState.selene.mode}, brain=${fullState.selene.brainMode}`)
+          }
+        }
+        
+        // Sync Fixtures
+        if (fullState.fixtures && fullState.fixtures.length > 0) {
+          useDMXStore.getState().setFixtures(fullState.fixtures)
+          console.log(`[Trinity] 🎭 Fixtures synced: ${fullState.fixtures.length} fixtures loaded`)
+        }
+        
+        console.log('[Trinity] ✅ Initial State Handshake complete')
+      } catch (error) {
+        console.error('[Trinity] ❌ Initial State Handshake failed:', error)
+      }
+    }
+    
+    syncInitialState()
+  }, [setConnected, setInitialized, updateBrainMetrics]) // Solo ejecutar una vez al montar
+  
   // Sync audio metrics to store (from useAudioCapture → audioStore)
   useEffect(() => {
     if (isCapturing) {
@@ -332,6 +465,8 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     audioMetrics,
     isSimulating,
     setSimulating,
+    startSystemAudio,
+    startMicrophone,
   }
   
   return (

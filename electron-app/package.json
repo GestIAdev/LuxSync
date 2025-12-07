@@ -19,9 +19,11 @@
     "lucide-react": "^0.303.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "serialport": "^13.0.0",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",

@@ -166,6 +166,7 @@ export interface EffectState {
 export type EffectId = 
   | 'strobe' | 'blinder' | 'smoke' | 'laser' 
   | 'rainbow' | 'police' | 'breathe' | 'chase'
+  | 'beam' | 'prism' // WAVE 10.7: Optical Controls
 
 /**
  * Estado de un fixture individual

@@ -239,6 +239,16 @@ export class TrinityOrchestrator extends EventEmitter {
     
     const workerPath = this.WORKER_PATHS[nodeId];
     
+    // 🧠 WAVE 10: Check if worker file exists before spawning
+    const fs = await import('fs');
+    if (!fs.existsSync(workerPath)) {
+      console.warn(`[ALPHA] ⚠️ Worker file not found: ${workerPath}`);
+      console.warn(`[ALPHA] ⚠️ ${NODE_NAMES[nodeId]} will run in MAIN THREAD mode`);
+      // Mark as "ready" but without actual worker
+      node.isReady = true;
+      return;
+    }
+    
     const worker = new Worker(workerPath, {
       workerData: { config: this.config }
     });
@@ -584,6 +594,36 @@ export class TrinityOrchestrator extends EventEmitter {
     }
     
     console.log('[ALPHA] Config updated and propagated');
+  }
+  
+  // ============================================
+  // 🧠 WAVE 10: BRAIN CONTROL
+  // ============================================
+  
+  /**
+   * Enable the Brain in GAMMA worker
+   * Called when user switches to SELENE mode
+   */
+  enableBrain(): void {
+    console.log('[ALPHA] 🧠 Sending ENABLE_BRAIN to GAMMA...');
+    this.sendToWorker('gamma', MessageType.ENABLE_BRAIN, {}, MessagePriority.HIGH);
+  }
+  
+  /**
+   * Disable the Brain in GAMMA worker  
+   * Called when user switches to FLOW mode
+   */
+  disableBrain(): void {
+    console.log('[ALPHA] 💤 Sending DISABLE_BRAIN to GAMMA...');
+    this.sendToWorker('gamma', MessageType.DISABLE_BRAIN, {}, MessagePriority.HIGH);
+  }
+  
+  /**
+   * Set operation mode on GAMMA worker
+   */
+  setGammaMode(mode: 'reactive' | 'intelligent' | 'forced'): void {
+    console.log(`[ALPHA] 🎚️ Setting GAMMA mode to: ${mode}`);
+    this.sendToWorker('gamma', MessageType.SET_MODE, { mode }, MessagePriority.HIGH);
   }
 }
 

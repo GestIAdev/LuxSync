@@ -7,13 +7,49 @@ import path from 'path'
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
+import { configManager, type PatchedFixtureConfig } from './ConfigManager'
+// 🧠 WAVE 10: Trinity Orchestrator for worker communication
+import { getTrinity } from '../src/main/workers/TrinityOrchestrator'
+// 🌪️ WAVE 11: UniversalDMXDriver - Soporte para CUALQUIER chip serial
+import { universalDMX, type DMXDevice } from './UniversalDMXDriver'
+// ⚡ WAVE 10.7: EffectsEngine para efectos de pánico
+import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/EffectsEngine'
 
 let mainWindow: BrowserWindow | null = null
 let selene: SeleneLux | null = null
+let effectsEngine: EffectsEngine | null = null // ⚡ Global effects engine
 let mainLoopInterval: NodeJS.Timeout | null = null
 let lastFrameTime = Date.now()
+let brainMetricsCounter = 0 // 🧠 Para throttle de métricas al UI
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+
+// ⚡ WAVE 10.7: HSL to RGB helper for rainbow effect
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  let r: number, g: number, b: number
+  if (s === 0) {
+    r = g = b = l
+  } else {
+    const hue2rgb = (p: number, q: number, t: number): number => {
+      if (t < 0) t += 1
+      if (t > 1) t -= 1
+      if (t < 1/6) return p + (q - p) * 6 * t
+      if (t < 1/2) return q
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+      return p
+    }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    r = hue2rgb(p, q, h + 1/3)
+    g = hue2rgb(p, q, h)
+    b = hue2rgb(p, q, h - 1/3)
+  }
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255),
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -49,6 +85,30 @@ function createWindow() {
     }
   })
 
+  // WAVE 9.6.3: CRITICAL - Handler para getDisplayMedia popup
+  // Sin esto, el popup de selección de pantalla NO aparece en Electron
+  mainWindow.webContents.session.setDisplayMediaRequestHandler(async (request, callback) => {
+    console.log('[Main] Display media request received')
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 150, height: 150 }
+      })
+      console.log('[Main] Available sources:', sources.map(s => s.name))
+      
+      // Devolver la primera fuente (pantalla completa) con audio
+      // El usuario puede cambiar esto en el popup nativo
+      if (sources.length > 0) {
+        callback({ video: sources[0], audio: 'loopback' })
+      } else {
+        callback({ video: undefined, audio: undefined })
+      }
+    } catch (err) {
+      console.error('[Main] Display media error:', err)
+      callback({ video: undefined, audio: undefined })
+    }
+  })
+
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
     if (isDev) {
@@ -68,6 +128,28 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // 🔧 WAVE 10: Cargar configuración guardada ANTES de crear la ventana
+  const savedConfig = configManager.load()
+  
+  // Restaurar patch de fixtures
+  if (savedConfig.patchedFixtures.length > 0) {
+    // 🔥 WAVE 10 FIX: Re-asignar zonas al restaurar para corregir cualquier inconsistencia
+    resetZoneCounters()
+    patchedFixtures = savedConfig.patchedFixtures.map(f => ({
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      manufacturer: f.manufacturer,
+      channelCount: f.channelCount,
+      dmxAddress: f.dmxAddress,
+      universe: f.universe,
+      zone: autoAssignZone(f.type, f.name), // 🔥 Re-calcular zona, NO usar la guardada
+      filePath: f.filePath,
+    }))
+    recalculateZoneCounters()
+    console.log(`[Main] 🔄 Restored ${patchedFixtures.length} fixtures from config`)
+  }
+  
   createWindow()
 
   app.on('activate', () => {
@@ -75,6 +157,12 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+})
+
+// 🔧 WAVE 10: Guardar config al cerrar
+app.on('before-quit', () => {
+  configManager.forceSave()
+  console.log('[Main] 💾 Config saved before quit')
 })
 
 app.on('window-all-closed', () => {
@@ -123,6 +211,12 @@ ipcMain.handle('audio:getDesktopSources', async () => {
 // ============================================
 
 function initSelene() {
+  // Idempotent init: if selene already exists, do nothing
+  if (globalThis.__lux_isSystemRunning) {
+    console.log('[Main] ⚠️ initSelene called but system already running - skipping')
+    return
+  }
+
   selene = new SeleneLux({
     audio: {
       device: 'default',
@@ -143,7 +237,22 @@ function initSelene() {
       frameRate: 40,
     },
   })
+  
+  // ⚡ WAVE 10.7: Initialize effects engine for panic buttons
+  effectsEngine = new EffectsEngine()
+  console.log('[Main] ⚡ EffectsEngine initialized for panic buttons')
+  
   console.log('Selene LUX initialized')
+  
+  // 🌊 WAVE 12.5: Auto-inicializar el Brain para que los colores procedan del ProceduralPaletteGenerator
+  selene.initializeBrain().then(() => {
+    console.log('[Main] 🧠 Brain auto-initialized for procedural colors')
+  }).catch((err) => {
+    console.warn('[Main] ⚠️ Brain init failed (colors will be legacy):', err)
+  })
+
+  // mark system as running
+  globalThis.__lux_isSystemRunning = true
 }
 
 // ============================================
@@ -164,6 +273,11 @@ let currentAudioData: {
   bpm: 120,
   onBeat: false,
 }
+
+// 🔄 FIX CRÍTICO 4: Anti-flicker smoothing para moving heads
+const smoothedIntensities = new Map<number, number>()
+const SMOOTHING_DECAY = 0.75 // 25% decay por frame (caída rápida y dramática)
+const MOVING_HEAD_GATE = 0.15 // Threshold: si energy < 15%, NEGRO total
 
 function startMainLoop() {
   if (mainLoopInterval) return
@@ -204,8 +318,8 @@ function startMainLoop() {
       frameIndex,
     }, deltaTime)
     
-    // 🔊 DMX LOG - Log every 30 frames (~1 second)
-    if (Math.random() < 0.033) {
+    // 🔊 DMX LOG - Log every ~10 seconds (very sparse)
+    if (Math.random() < 0.003) {
       const c = state.colors
       console.log('[DMX] 🎨 RGB:', 
         c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
@@ -250,7 +364,236 @@ function startMainLoop() {
       timestamp: now,
     }
     
-    mainWindow.webContents.send('lux:state-update', uiState)
+    // 🔗 WAVE 9.6: Process fixtures by zone and send DMX values
+    // 🔇 FIX CRÍTICO 1: SILENCE GATE - Si no hay audio real, BLACKOUT TOTAL
+    const isSilence = !useRealAudio || audioInput.energy < 0.05
+    
+    const fixtureStates = patchedFixtures.map(fixture => {
+      const color = state.colors?.primary || { r: 0, g: 0, b: 0 }
+      const secondary = state.colors?.secondary || { r: 0, g: 0, b: 0 }
+      const accent = state.colors?.accent || color // Para MOVING_LEFT
+      const ambient = state.colors?.ambient || accent // Para MOVING_RIGHT (espejo cromático)
+      
+      // 🚨 DEBUG: Log RGB values periodically
+      if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
+        console.log(`[DEBUG-RGB] ${fixture.zone}:`, 
+          `Primary=[${color.r},${color.g},${color.b}]`,
+          `Accent=[${accent.r},${accent.g},${accent.b}]`,
+          `Ambient=[${ambient.r},${ambient.g},${ambient.b}]`)
+      }
+      
+      // 🔇 SILENCE GATE: Sin audio = sin luz
+      if (isSilence) {
+        return {
+          dmxAddress: fixture.dmxAddress,
+          universe: fixture.universe,
+          name: fixture.name,
+          zone: fixture.zone || 'UNASSIGNED',
+          type: fixture.type || 'unknown',
+          dimmer: 0, r: 0, g: 0, b: 0, pan: 127, tilt: 127, // Centro en silencio
+        }
+      }
+      
+      // Calculate intensity based on zone and audio
+      let intensity = 0
+      let fixtureColor = color
+      const zone = fixture.zone || 'UNASSIGNED'
+      
+      switch (zone) {
+        case 'FRONT_PARS':
+          // PARs react strongly to bass (bombo)
+          intensity = Math.min(1, audioInput.bass * 1.5)
+          fixtureColor = color
+          break
+          
+        case 'BACK_PARS':
+          // Back PARs react to mid frequencies
+          intensity = Math.min(1, audioInput.mid * 1.3)
+          fixtureColor = secondary
+          break
+          
+        case 'MOVING_LEFT': {
+          // 🎨 MOVING_LEFT usa ACCENT (side='left') - CON DRAMA
+          // Gate: sin energía suficiente = NEGRO
+          if (audioInput.energy < MOVING_HEAD_GATE) {
+            intensity = 0
+            smoothedIntensities.set(fixture.dmxAddress, 0)
+          } else {
+            // Base intensity + bass punch (variación dramática)
+            const bassPunch = audioInput.bass > 0.6 ? audioInput.bass * 0.4 : 0
+            const targetIntensity = Math.min(1, (audioInput.energy * 1.0) + bassPunch)
+            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
+            // Subida rápida, bajada más lenta pero no infinita
+            if (targetIntensity > prevIntensity) {
+              intensity = targetIntensity // Subida INSTANTÁNEA
+            } else {
+              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
+            }
+            smoothedIntensities.set(fixture.dmxAddress, intensity)
+          }
+          fixtureColor = accent
+          break
+        }
+          
+        case 'MOVING_RIGHT': {
+          // 🪞 MOVING_RIGHT usa AMBIENT (side='right') - ESPEJO CON TREBLE
+          // Gate: sin energía suficiente = NEGRO
+          if (audioInput.energy < MOVING_HEAD_GATE) {
+            intensity = 0
+            smoothedIntensities.set(fixture.dmxAddress, 0)
+          } else {
+            // Treble punch (diferente al LEFT que usa bass)
+            const treblePunch = audioInput.treble > 0.5 ? audioInput.treble * 0.3 : 0
+            const targetIntensity = Math.min(1, (audioInput.energy * 0.9) + treblePunch)
+            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
+            // Subida rápida, bajada suave
+            if (targetIntensity > prevIntensity) {
+              intensity = targetIntensity // Subida INSTANTÁNEA
+            } else {
+              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
+            }
+            smoothedIntensities.set(fixture.dmxAddress, intensity)
+          }
+          fixtureColor = ambient
+          break
+        }
+          
+        case 'STROBES':
+          // Strobes only on strong beats
+          intensity = audioInput.onBeat && audioInput.bass > 0.8 ? 1 : 0
+          fixtureColor = { r: 255, g: 255, b: 255 }
+          break
+          
+        default:
+          intensity = audioInput.energy
+          fixtureColor = color
+      }
+      
+      // 🪞 FIX CRÍTICO 2: Espejo para MOVING_RIGHT
+      let panValue = state.movement?.pan ?? 0.5
+      if (zone === 'MOVING_RIGHT') {
+        panValue = 1 - panValue // Invertir para efecto espejo
+      }
+      
+      return {
+        dmxAddress: fixture.dmxAddress,
+        universe: fixture.universe,
+        name: fixture.name,
+        zone: fixture.zone || 'UNASSIGNED',
+        type: fixture.type || 'unknown',
+        // DMX values
+        // 🎨 FIX CRÍTICO: El DIMMER controla intensidad, RGB mantiene color PURO
+        // Antes: RGB * intensity = colores lavados/grises
+        // Ahora: RGB puro, dimmer = intensity
+        dimmer: Math.round(intensity * 255),
+        r: fixtureColor.r,  // ¡Color PURO sin multiplicar!
+        g: fixtureColor.g,
+        b: fixtureColor.b,
+        // Movement for moving heads - Convert 0-1 to 0-255
+        pan: zone.includes('MOVING') 
+          ? Math.round(panValue * 255) 
+          : 0,
+        tilt: zone.includes('MOVING') 
+          ? Math.round((state.movement?.tilt ?? 0.5) * 255) 
+          : 0,
+      }
+    })
+    
+    // 🌪️ WAVE 11: Enviar valores DMX reales si el driver está conectado
+    if (universalDMX.isConnected) {
+      for (const fixture of fixtureStates) {
+        const addr = fixture.dmxAddress
+        
+        // ⚡ WAVE 10.7: Apply effects override
+        let finalDimmer = fixture.dimmer
+        let finalR = fixture.r
+        let finalG = fixture.g
+        let finalB = fixture.b
+        
+        // 🔲 BLACKOUT: Override todo a 0
+        if (blackoutActive) {
+          finalDimmer = 0
+          finalR = 0
+          finalG = 0
+          finalB = 0
+        } else {
+          // ⚡ Apply active effects
+          if (activeEffectIds.has('strobe')) {
+            // Strobe: parpadeo rápido (50% on/off cada ~50ms)
+            const strobeOn = (Math.floor(now / 50) % 2) === 0
+            finalDimmer = strobeOn ? 255 : 0
+          }
+          
+          if (activeEffectIds.has('blinder')) {
+            // Blinder: full white
+            finalDimmer = 255
+            finalR = 255
+            finalG = 255
+            finalB = 255
+          }
+          
+          if (activeEffectIds.has('police')) {
+            // Police: rojo/azul alternando cada 250ms
+            const policePhase = (Math.floor(now / 250) % 2) === 0
+            finalDimmer = 255
+            finalR = policePhase ? 255 : 0
+            finalG = 0
+            finalB = policePhase ? 0 : 255
+          }
+          
+          if (activeEffectIds.has('rainbow')) {
+            // Rainbow: ciclo HSL
+            const hue = (now / 3000) % 1
+            const rgb = hslToRgb(hue, 1.0, 0.5)
+            finalR = rgb.r
+            finalG = rgb.g
+            finalB = rgb.b
+            finalDimmer = 255
+          }
+        }
+        
+        // Formato típico de moving head: Pan, Tilt, Dimmer, R, G, B, ...
+        universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
+        universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
+        universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
+        universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
+        universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
+        universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+      }
+    }
+    
+    // ⚡ WAVE 10.7: Apply effects to UI state too
+    const effectOverrides = {
+      blackout: blackoutActive,
+      strobe: activeEffectIds.has('strobe'),
+      blinder: activeEffectIds.has('blinder'),
+      police: activeEffectIds.has('police'),
+      rainbow: activeEffectIds.has('rainbow'),
+      beam: activeEffectIds.has('beam'),
+      prism: activeEffectIds.has('prism'),
+    }
+    
+    mainWindow.webContents.send('lux:state-update', { ...uiState, fixtures: fixtureStates, effects: effectOverrides })
+    
+    // 🧠 BRAIN METRICS - cada ~200ms (6 frames de 30ms)
+    brainMetricsCounter++
+    if (brainMetricsCounter >= 6) {
+      brainMetricsCounter = 0
+      const brainStats = selene.getBrainStats?.()
+      if (brainStats) {
+        mainWindow.webContents.send('selene:brain-metrics', {
+          energy: audioInput.energy,
+          confidence: brainStats.hasMemory ? 0.95 : 0.7,
+          mode: (selene as any).mode ?? 'flow',
+          framesAnalyzed: (brainStats.session as any)?.frames ?? 0,
+          patternsLearned: (brainStats.memory as any)?.totalLearned ?? 0,
+          hasMemory: brainStats.hasMemory,
+          beautyScore: (brainStats as any).beauty?.current ?? 0.75, // 🎨 Belleza actual
+          sessionPatterns: (brainStats.session as any)?.patterns ?? 0,
+          timestamp: Date.now()
+        })
+      }
+    }
   }, 30)
   
   console.log('Selene main loop started (30ms) - DMX output active')
@@ -276,16 +619,127 @@ ipcMain.handle('lux:set-palette', (_event, palette: LivingPaletteId) => {
 ipcMain.handle('lux:set-movement', (_event, config: { pattern?: MovementPattern; speed?: number; intensity?: number }) => {
   if (!selene) return { success: false, error: 'Selene not initialized' }
   
-  // Aplicar pattern si viene en el config
+  // 🔧 WAVE 10 FIX: Apply ALL movement parameters
   if (config.pattern) {
     selene.setMovementPattern(config.pattern)
   }
   
-  // TODO: speed e intensity se pueden usar para configurar el MovementEngine
-  // Por ahora solo loggeamos
-  console.log('[Main] 🎯 Movement config:', config)
+  if (config.speed !== undefined) {
+    selene.setMovementSpeed(config.speed)
+  }
+  
+  if (config.intensity !== undefined) {
+    selene.setMovementRange(config.intensity)  // intensity maps to range
+  }
+  
+  console.log('[Main] 🎯 Movement config applied:', config)
   
   return { success: true, config }
+})
+
+// ============================================
+// ⚡ WAVE 10.7: EFFECTS CONTROL (Connected to EffectsEngine)
+// ============================================
+
+// Tracking active effects
+let activeEffectIds = new Map<string, number>()
+
+ipcMain.handle('lux:trigger-effect', (_event, data: { effectName: string; params?: Record<string, unknown>; duration?: number }) => {
+  console.log(`[Main] ⚡ Effect request: ${data.effectName}`, data.params, `duration: ${data.duration || 0}ms`)
+  
+  if (!effectsEngine) {
+    // Initialize if not ready
+    effectsEngine = new EffectsEngine()
+    console.log('[Main] ⚡ EffectsEngine lazy-initialized')
+  }
+  
+  // Trigger effect in the engine
+  const effectId = effectsEngine.triggerEffect(
+    data.effectName, 
+    data.params as Record<string, number> || {}, 
+    data.duration || 0
+  )
+  
+  activeEffectIds.set(data.effectName, effectId)
+  console.log(`[Main] ⚡ Effect ACTIVE: ${data.effectName} (id: ${effectId})`)
+  
+  // 🔥 WAVE 10.7: Auto-expire effects with duration
+  if (data.duration && data.duration > 0) {
+    setTimeout(() => {
+      if (activeEffectIds.has(data.effectName)) {
+        activeEffectIds.delete(data.effectName)
+        console.log(`[Main] ⏱️ Effect auto-expired: ${data.effectName}`)
+        
+        // Notify UI
+        if (mainWindow) {
+          mainWindow.webContents.send('lux:effect-expired', data.effectName)
+        }
+      }
+    }, data.duration)
+  }
+  
+  // Broadcast to UI
+  if (mainWindow) {
+    mainWindow.webContents.send('lux:effect-triggered', data.effectName, effectId)
+  }
+  
+  return { success: true, effectId }
+})
+
+ipcMain.handle('lux:cancel-effect', (_event, effectIdOrName: number | string) => {
+  // Support both numeric ID and effect name
+  if (typeof effectIdOrName === 'string') {
+    // Cancel by name
+    const effectId = activeEffectIds.get(effectIdOrName)
+    if (effectId !== undefined && effectsEngine) {
+      effectsEngine.cancelEffect(effectId)
+      activeEffectIds.delete(effectIdOrName)
+      console.log(`[Main] 🛑 Effect cancelled by name: ${effectIdOrName}`)
+    }
+  } else {
+    // Cancel by ID (legacy)
+    if (effectsEngine) {
+      effectsEngine.cancelEffect(effectIdOrName)
+    }
+    
+    // Find and remove from tracking
+    activeEffectIds.forEach((id, name) => {
+      if (id === effectIdOrName) {
+        activeEffectIds.delete(name)
+        console.log(`[Main] 🛑 Effect cancelled: ${name}`)
+      }
+    })
+  }
+  return { success: true }
+})
+
+ipcMain.handle('lux:cancel-all-effects', () => {
+  if (effectsEngine) {
+    effectsEngine.cancelAllEffects()
+  }
+  activeEffectIds.clear()
+  console.log('[Main] 🛑 All effects cancelled')
+  return { success: true }
+})
+
+// Blackout state
+let blackoutActive = false
+
+ipcMain.handle('lux:set-blackout', (_event, active: boolean) => {
+  blackoutActive = active
+  console.log(`[Main] 🔲 Blackout: ${active ? 'ON' : 'OFF'}`)
+  
+  // Broadcast to DMX - set all dimmers to 0
+  if (active && selene) {
+    // TODO: Add blackout method to selene
+    console.log('[Main] 🔲 Blackout applied to all fixtures')
+  }
+  
+  if (mainWindow) {
+    mainWindow.webContents.send('lux:blackout-changed', active)
+  }
+  
+  return { success: true, blackout: active }
 })
 
 ipcMain.handle('lux:get-state', () => {
@@ -293,7 +747,47 @@ ipcMain.handle('lux:get-state', () => {
   return selene.getState()
 })
 
+// 🎯 WAVE 13.6: FULL STATE SYNC - "Truth First"
+// Devuelve el estado completo del Backend para sincronización inicial de la UI
+ipcMain.handle('lux:get-full-state', () => {
+  const seleneState = selene ? selene.getState() : null
+  
+  return {
+    // DMX Status
+    dmx: {
+      isConnected: universalDMX.isConnected,
+      status: universalDMX.isConnected ? 'connected' : 'disconnected',
+      driver: universalDMX.device?.friendlyName || null,
+      port: universalDMX.device?.path || null,
+    },
+    
+    // Selene Status
+    selene: {
+      isRunning: selene !== null,
+      mode: seleneState?.mode || null,
+      brainMode: seleneState?.brainMode || null,
+      paletteSource: seleneState?.paletteSource || null,
+      consciousness: seleneState?.consciousness || null,
+    },
+    
+    // Fixtures
+    fixtures: patchedFixtures,
+    
+    // Audio Status (Trinity)
+    audio: {
+      hasWorkers: getTrinity() !== null,
+    },
+  }
+})
+
 ipcMain.handle('lux:start', () => {
+  if (globalThis.__lux_isSystemRunning) {
+    console.log('[Main] ⚠️ lux:start called but system already running - ignoring')
+    // still ensure main loop is running
+    startMainLoop()
+    return { success: true, alreadyRunning: true }
+  }
+
   initSelene()
   startMainLoop()
   return { success: true }
@@ -301,8 +795,269 @@ ipcMain.handle('lux:start', () => {
 
 ipcMain.handle('lux:stop', () => {
   stopMainLoop()
+  if (selene) {
+    try {
+      // attempt graceful shutdown
+      selene.shutdown && selene.shutdown()
+    } catch (e) {
+      console.warn('[Main] ⚠️ Error during selene.shutdown()', e)
+    }
+  }
   selene = null
+  globalThis.__lux_isSystemRunning = false
   return { success: true }
+})
+
+// ============================================
+// 🧠 WAVE 10: MODE CONTROL (Brain Link)
+// ============================================
+// Modos disponibles:
+// - 'reactive': Respuesta básica al audio (legacy)
+// - 'intelligent': SeleneMusicalBrain toma el control (AI full)
+
+ipcMain.handle('lux:set-mode', async (_event, mode: 'reactive' | 'intelligent') => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  console.log(`[Main] 🧠 Setting mode to: ${mode}`)
+  
+  if (mode === 'intelligent') {
+    // Activar el Brain (necesita inicialización si no está hecho)
+    if (!selene['brainInitialized']) {
+      await selene.initializeBrain()
+    }
+    selene.setUseBrain(true)
+    console.log('[Main] 🧠 Intelligent mode ACTIVATED - SeleneMusicalBrain in control')
+  } else {
+    // Modo reactivo - desactivar el Brain
+    selene.setUseBrain(false)
+    console.log('[Main] 🔄 Reactive mode ACTIVATED - Legacy fallback')
+  }
+  
+  return { success: true, mode }
+})
+
+// ============================================
+// 🎚️ WAVE 10: BIG SWITCH HANDLER (UI Bridge)
+// ============================================
+// El Frontend usa 'flow' | 'selene' | 'locked'
+// Este handler traduce al sistema interno y DESPIERTA LA BESTIA
+
+ipcMain.handle('selene:setMode', async (_event, uiMode: 'flow' | 'selene' | 'locked') => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  console.log(`[Main] 🎚️ BIG SWITCH: ${uiMode.toUpperCase()}`)
+  
+  // 🧠 WAVE 10: Get Trinity orchestrator for worker communication
+  let trinity: ReturnType<typeof getTrinity> | null = null
+  try {
+    trinity = getTrinity()
+  } catch {
+    console.log('[Main] Trinity not initialized yet - worker commands skipped')
+  }
+  
+  let result: { success: boolean; mode?: string; brain?: boolean; error?: string }
+  
+  switch (uiMode) {
+    case 'flow':
+      // FLOW = Modo reactivo simple (lo que acabamos de pulir)
+      selene.setMode('flow')
+      selene.setUseBrain(false)
+      
+      // 🧠 WAVE 10: Disable brain in worker
+      if (trinity) {
+        trinity.disableBrain()
+      }
+      
+      console.log('[Main] 🔄 FLOW MODE - Reactive lighting, no AI')
+      result = { success: true, mode: 'flow', brain: false }
+      break
+      
+    case 'selene':
+      // SELENE = ACTIVAR EL CEREBRO COMPLETO 🧠
+      selene.setMode('selene')
+      
+      // Inicializar el Brain si no está listo
+      if (!selene['brainInitialized']) {
+        console.log('[Main] 🧠 Initializing SeleneMusicalBrain...')
+        await selene.initializeBrain()
+      }
+      
+      // ENCENDER TODO
+      selene.setUseBrain(true)
+      
+      // 🧠 WAVE 10: Start Trinity if not running, then enable brain in GAMMA
+      if (trinity) {
+        try {
+          // Start Trinity (spawns BETA and GAMMA workers)
+          await trinity.start()
+          console.log('[Main] 🛡️ TRINITY ONLINE - All workers spawned')
+        } catch (err) {
+          console.warn('[Main] ⚠️ Trinity start failed (non-fatal):', err)
+        }
+        trinity.enableBrain()
+      }
+      
+      // Check actual brain status
+      const brainStats = selene.getBrainStats?.()
+      const hasMemory = brainStats?.hasMemory ?? false
+      
+      console.log('[Main] ⚡ SELENE MODE ACTIVATED!')
+      console.log('[Main] 🧠 Brain: ENABLED')
+      console.log('[Main] 🎵 GenreClassifier: ACTIVE')
+      console.log('[Main] 👁️ StalkingEngine: HUNTING')
+      console.log('[Main] 🧬 EvolutionEngine: MUTATING')
+      console.log(`[Main] 💾 Memory: ${hasMemory ? 'SQLite CONNECTED' : 'AMNESIA MODE (no persistence)'}`)
+      
+      result = { success: true, mode: 'selene', brain: true }
+      break
+      
+    case 'locked':
+      // LOCKED = Modo manual (colores estáticos, sin reacción)
+      selene.setMode('locked')
+      selene.setUseBrain(false)
+      
+      // 🧠 WAVE 10: Disable brain in worker
+      if (trinity) {
+        trinity.disableBrain()
+      }
+      
+      console.log('[Main] 🔒 LOCKED MODE - Manual control only')
+      result = { success: true, mode: 'locked', brain: false }
+      break
+      
+    default:
+      console.warn(`[Main] Unknown mode: ${uiMode}`)
+      result = { success: false, error: `Unknown mode: ${uiMode}` }
+  }
+  
+  // 🎯 WAVE 13.6: STATE OF TRUTH - Emitir evento de confirmación para que la UI se sincronice
+  if (result.success && mainWindow) {
+    mainWindow.webContents.send('selene:mode-changed', {
+      mode: result.mode,
+      brain: result.brain,
+      timestamp: Date.now()
+    })
+    console.log(`[Main] 📡 Mode change confirmed to UI: ${result.mode}`)
+  }
+  
+  return result
+})
+
+// 🎨 WAVE 13.6: STATE OF TRUTH - Multiplicadores Globales de Color
+ipcMain.handle('lux:set-global-color-params', async (_event, params: { saturation?: number; intensity?: number }) => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  try {
+    if (params.saturation !== undefined) {
+      selene.setGlobalSaturation(params.saturation)
+    }
+    
+    if (params.intensity !== undefined) {
+      selene.setGlobalIntensity(params.intensity)
+    }
+    
+    const current = selene.getGlobalColorParams()
+    console.log(`[Main] 🎨 Global Color Params updated: Saturation=${(current.saturation * 100).toFixed(0)}%, Intensity=${(current.intensity * 100).toFixed(0)}%`)
+    
+    return { 
+      success: true, 
+      params: {
+        saturation: current.saturation,
+        intensity: current.intensity
+      }
+    }
+  } catch (error) {
+    console.error('[Main] ❌ Error setting global color params:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// ============================================
+// 🧠 WAVE 10: GET BRAIN STATS (for UI)
+// ============================================
+ipcMain.handle('selene:getBrainStats', async () => {
+  const brainStats = selene.getBrainStats?.()
+  if (!brainStats) {
+    return {
+      connected: false,
+      mode: 'reactive' as const,
+      energy: 0,
+      confidence: 0,
+      beautyScore: 0.5,
+      framesProcessed: 0,
+      patternsLearned: 0,
+      sessionPatterns: 0,
+      memoryUsage: 0,
+      sessionId: null,
+    }
+  }
+  
+  const sessionStats = brainStats.session as any
+  const memoryStats = brainStats.memory as any
+  
+  return {
+    connected: true,
+    mode: (selene as any).mode === 'selene' ? 'intelligent' : 'reactive',
+    energy: sessionStats?.avgEnergy ?? 0,
+    confidence: sessionStats?.avgBeautyScore ?? 0.5,
+    beautyScore: sessionStats?.avgBeautyScore ?? 0.5,
+    framesProcessed: sessionStats?.framesProcessed ?? 0,
+    patternsLearned: memoryStats?.totalPatterns ?? 0,
+    sessionPatterns: sessionStats?.patternsLearned ?? 0,
+    memoryUsage: (memoryStats?.dbSizeBytes ?? 0) / (10 * 1024 * 1024), // 10MB max reference
+    sessionId: sessionStats?.sessionId ?? null,
+    hasMemory: brainStats.hasMemory,
+  }
+})
+
+// ============================================
+// 🔗 WAVE 10: SYSTEM INITIALIZATION
+// ============================================
+// Handler para inicializar el sistema con auto-zoning
+
+ipcMain.handle('lux:initialize-system', async () => {
+  console.log('[Main] 🚀 Initializing LuxSync System...')
+  
+  // 1. Recalcular zonas de fixtures existentes
+  recalculateZoneCounters()
+  
+  // 2. Reasignar zonas a fixtures existentes si no tienen
+  patchedFixtures.forEach((fixture, index) => {
+    if (!fixture.zone || fixture.zone === 'UNASSIGNED') {
+      fixture.zone = autoAssignZone(fixture.type, fixture.name)
+      console.log(`[Main] 📍 Re-assigned zone for ${fixture.name}: ${fixture.zone}`)
+    }
+  })
+  
+  // 3. Inicializar Selene si no está
+  if (!selene) {
+    initSelene()
+    globalThis.__lux_isSystemRunning = true
+  }
+  
+  // 4. Inicializar el Brain
+  if (selene && !selene['brainInitialized']) {
+    // ensure only one initialization occurs
+    try {
+      await selene.initializeBrain()
+    } catch (err) {
+      console.warn('[Main] ⚠️ Brain init failed during initialize-system:', err)
+    }
+  }
+  
+  console.log('[Main] ✅ System initialized with', patchedFixtures.length, 'fixtures')
+  
+  return { 
+    success: true, 
+    fixtures: patchedFixtures,
+    zoneCounters,
+  }
 })
 
 ipcMain.handle('lux:audio-frame', (_event, audioData: {
@@ -312,7 +1067,9 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
   energy: number
   bpm?: number
 }) => {
-  // 🔗 WAVE 3: Update current audio data for main loop
+  // Audio packet received - no spam logging
+  
+  // WAVE 3: Update current audio data for main loop
   currentAudioData = {
     bass: audioData.bass,
     mid: audioData.mid,
@@ -331,6 +1088,9 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
 
 import fs from 'fs'
 
+// 🔗 WAVE 9.6: Zone types for auto-assignment
+type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
+
 // Tipos para fixtures (simplificados para IPC)
 interface FixtureLibraryItem {
   id: string
@@ -339,83 +1099,152 @@ interface FixtureLibraryItem {
   channelCount: number
   type: string
   filePath: string
+  // 🔬 WAVE 10.5: Metadatos del parser avanzado
+  confidence?: number              // Confianza en la detección (0-1)
+  detectionMethod?: string         // 'channels' | 'model' | 'heuristic' | 'name' | 'manual'
+  hasMovementChannels?: boolean    // Tiene Pan/Tilt
+  has16bitMovement?: boolean       // Tiene Pan16bit/Tilt16bit
+  hasColorMixing?: boolean         // Tiene RGB
+  hasColorWheel?: boolean          // Tiene rueda de colores
+  manualOverride?: string          // Tipo forzado manualmente por el usuario
 }
 
 interface PatchedFixture extends FixtureLibraryItem {
   dmxAddress: number
   universe: number
+  zone: FixtureZone // 🔗 WAVE 9.6: Auto-assigned zone
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌙 WAVE 10: AUTO-ZONING INTELIGENTE
+// ═══════════════════════════════════════════════════════════════════════════
+// Contadores separados por tipo para asignación de zonas correcta:
+// - PARs: Primeros 50% → BACK_PARS, resto → FRONT_PARS
+// - Moving Heads: Par → MOVING_LEFT, Impar → MOVING_RIGHT
+let zoneCounters = {
+  par: 0,        // Contador de PARs/Wash
+  moving: 0,     // Contador de Moving Heads
+  strobe: 0,     // Contador de Strobes
+  laser: 0,      // Contador de Lasers
+}
+
+// Reset de contadores (llamar al limpiar patch o inicializar sistema)
+function resetZoneCounters(): void {
+  zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 }
+  console.log('[Zoning] 🔄 Zone counters reset')
+}
+
+// Recalcular contadores basado en fixtures existentes
+function recalculateZoneCounters(): void {
+  resetZoneCounters()
+  patchedFixtures.forEach(f => {
+    const typeUpper = (f.type || '').toUpperCase()
+    if (typeUpper.includes('PAR') || typeUpper.includes('WASH') || typeUpper.includes('LED')) {
+      zoneCounters.par++
+    } else if (typeUpper.includes('MOVING') || typeUpper.includes('SPOT') || typeUpper.includes('BEAM') || typeUpper.includes('HEAD')) {
+      zoneCounters.moving++
+    } else if (typeUpper.includes('STROBE')) {
+      zoneCounters.strobe++
+    } else if (typeUpper.includes('LASER')) {
+      zoneCounters.laser++
+    }
+  })
+  console.log('[Zoning] 📊 Counters recalculated:', zoneCounters)
+}
+
+// 🔗 WAVE 10: Auto-assign zone based on fixture type with proper counters
+function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): FixtureZone {
+  const typeUpper = (fixtureType || '').toUpperCase()
+  const nameUpper = (fixtureName || '').toUpperCase()
+  
+  // Moving heads -> MOVING_LEFT (par) / MOVING_RIGHT (impar)
+  // PRIORIDAD: Detectar móviles ANTES que PARs (algunos móviles tienen PAR en el nombre)
+  // Layout: Izquierda y derecha del escenario, espejados
+  if (typeUpper.includes('MOVING') || typeUpper.includes('SPOT') || typeUpper.includes('BEAM') || typeUpper.includes('HEAD') ||
+      nameUpper.includes('BEAM') || nameUpper.includes('SPOT') || nameUpper.includes('VIZI') || 
+      nameUpper.includes('5R') || nameUpper.includes('7R') || nameUpper.includes('MOVING')) {
+    const currentCount = zoneCounters.moving
+    zoneCounters.moving++
+    
+    // Par → LEFT, Impar → RIGHT (alternado)
+    const zone = currentCount % 2 === 0 ? 'MOVING_LEFT' : 'MOVING_RIGHT'
+    console.log(`[Zoning] 🎯 Moving Head #${currentCount} "${fixtureName}" → ${zone}`)
+    return zone
+  }
+  
+  // Strobes
+  if (typeUpper.includes('STROBE') || nameUpper.includes('STROBE')) {
+    zoneCounters.strobe++
+    return 'STROBES'
+  }
+  
+  // Lasers
+  if (typeUpper.includes('LASER') || nameUpper.includes('LASER')) {
+    zoneCounters.laser++
+    return 'LASERS'
+  }
+  
+  // PAR fixtures -> BACK_PARS (primeros 50%) / FRONT_PARS (resto 50%)
+  // Layout: Back = detrás del DJ (ambiente), Front = frente al público (impacto)
+  // Incluye: PAR, WASH, LED, y cualquier fixture desconocido
+  const currentParCount = zoneCounters.par
+  zoneCounters.par++
+  
+  // Alternamos: 0→BACK, 1→FRONT, 2→BACK, 3→FRONT... para distribución uniforme
+  const zone = currentParCount % 2 === 0 ? 'BACK_PARS' : 'FRONT_PARS'
+  console.log(`[Zoning] 💡 PAR/LED #${currentParCount} "${fixtureName}" → ${zone}`)
+  return zone
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔬 WAVE 10.5: FXTParser Profesional
+// ─────────────────────────────────────────────────────────────────────────────
+import { FXTParser, fxtParser, type ParsedFixture as FXTParsedFixture } from './FXTParser'
 
 // Estado de fixtures
 let fixtureLibrary: FixtureLibraryItem[] = []
 let patchedFixtures: PatchedFixture[] = []
 
-// Parsear archivo .fxt (simplificado)
-function parseFXTFile(filePath: string): FixtureLibraryItem | null {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8')
-    const lines = content.split(/\r?\n/)
-    
-    // Línea 0: Fabricante
-    const manufacturer = lines[0]?.trim() || 'Unknown'
-    
-    // Buscar nombre y canales
-    let name = path.basename(filePath, '.fxt')
-    let channelCount = 0
-    
-    // Líneas típicas de .fxt tienen estructura específica
-    for (let i = 0; i < Math.min(lines.length, 20); i++) {
-      const line = lines[i].trim()
-      
-      // Detectar número de canales (línea con solo número)
-      if (/^\d+$/.test(line) && parseInt(line) > 0 && parseInt(line) <= 512) {
-        channelCount = parseInt(line)
-      }
-      
-      // Algunas líneas tienen el nombre real del fixture
-      if (line.length > 3 && !line.includes('"') && !line.includes('.') && !line.includes('\\')) {
-        if (i > 2 && i < 10) {
-          name = line
-        }
-      }
-    }
-    
-    // Detectar tipo por nombre
-    const nameLower = name.toLowerCase()
-    let type = 'generic'
-    if (nameLower.includes('moving') || nameLower.includes('beam') || nameLower.includes('spot')) {
-      type = 'moving_head'
-    } else if (nameLower.includes('par') || nameLower.includes('led')) {
-      type = 'par'
-    } else if (nameLower.includes('strobe')) {
-      type = 'strobe'
-    } else if (nameLower.includes('wash')) {
-      type = 'wash'
-    }
-    
-    // ID único = nombre de archivo sin extensión (único dentro de /librerias)
-    const id = path.basename(filePath, '.fxt').replace(/\s+/g, '_').toLowerCase()
-    
-    return {
-      id,
-      name,
-      manufacturer,
-      channelCount: channelCount || 1,
-      type,
-      filePath,
-    }
-  } catch (err) {
-    console.error(`Error parsing ${filePath}:`, err)
-    return null
+// Función auxiliar para convertir ParsedFixture del parser a FixtureLibraryItem
+function convertToLibraryItem(parsed: FXTParsedFixture): FixtureLibraryItem {
+  return {
+    id: parsed.id,
+    name: parsed.name,
+    manufacturer: parsed.manufacturer,
+    channelCount: parsed.channelCount,
+    type: parsed.type === 'wash' ? 'moving_head' : parsed.type, // Wash = Moving para zoning
+    filePath: parsed.filePath,
+    // Metadatos extra del parser avanzado
+    confidence: parsed.confidence,
+    detectionMethod: parsed.detectionMethod,
+    hasMovementChannels: parsed.hasMovementChannels,
+    has16bitMovement: parsed.has16bitMovement,
+    hasColorMixing: parsed.hasColorMixing,
+    hasColorWheel: parsed.hasColorWheel,
   }
+}
+
+// DEPRECATED: Parsear archivo .fxt (mantener por compatibilidad)
+function parseFXTFile(filePath: string): FixtureLibraryItem | null {
+  // 🔬 WAVE 10.5: Usar el nuevo parser profesional
+  const parsed = fxtParser.parseFile(filePath)
+  if (!parsed) return null
+  return convertToLibraryItem(parsed)
 }
 
 // Escanear carpeta de fixtures
 ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
   try {
-    // UNA SOLA carpeta: /librerias (la que tiene los fixtures reales)
-    const defaultPath = path.join(__dirname, '../../../librerias')
+    // __dirname en dev = electron-app/dist-electron
+    // Necesitamos: LuxSync/librerias
+    // Desde dist-electron: ../.. = electron-app, ../../.. = LuxSync ❌ NO
+    // Correcto: .. = electron-app, ../.. = LuxSync ✓
+    const projectRoot = path.join(__dirname, '../..')  // dist-electron -> electron-app -> LuxSync
+    const defaultPath = path.join(projectRoot, 'librerias')
     const searchPath = customPath || defaultPath
+    
+    console.log(`[Fixtures] 🔍 __dirname: ${__dirname}`)
+    console.log(`[Fixtures] 🔍 Searching in: ${searchPath}`)
     
     const foundFixtures: FixtureLibraryItem[] = []
     
@@ -435,7 +1264,7 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
     }
     
     fixtureLibrary = foundFixtures
-    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures in ${searchPath}`)
+    console.log(`[Fixtures] 📦 Found ${foundFixtures.length} fixtures`)
     
     return { 
       success: true, 
@@ -459,20 +1288,38 @@ ipcMain.handle('lux:get-patched-fixtures', () => {
 })
 
 // Añadir fixture al patch
-ipcMain.handle('lux:patch-fixture', (_event, data: { fixtureId: string; dmxAddress: number; universe?: number }) => {
+ipcMain.handle('lux:patch-fixture', (_event, data: { fixtureId: string; dmxAddress: number; universe?: number; zone?: FixtureZone }) => {
   const libraryFixture = fixtureLibrary.find(f => f.id === data.fixtureId)
   if (!libraryFixture) {
     return { success: false, error: 'Fixture not found in library' }
   }
   
+  // 🔗 WAVE 10: Auto-assign zone if not provided (usando el nuevo sistema de contadores)
+  const assignedZone = data.zone || autoAssignZone(libraryFixture.type, libraryFixture.name)
+  
   const patched: PatchedFixture = {
     ...libraryFixture,
     dmxAddress: data.dmxAddress,
     universe: data.universe || 1,
+    zone: assignedZone,
   }
   
   patchedFixtures.push(patched)
-  console.log(`[Fixtures] ✅ Patched ${libraryFixture.name} at DMX ${data.dmxAddress}`)
+  
+  // 🔧 WAVE 10: Auto-save al ConfigManager
+  configManager.setPatchedFixtures(patchedFixtures.map(f => ({
+    id: f.id,
+    name: f.name,
+    type: f.type,
+    manufacturer: f.manufacturer,
+    channelCount: f.channelCount,
+    dmxAddress: f.dmxAddress,
+    universe: f.universe,
+    zone: f.zone,
+    filePath: f.filePath,
+  })))
+  
+  console.log(`[Fixtures] ✅ Patched ${libraryFixture.name} at DMX ${data.dmxAddress} -> Zone: ${assignedZone}`)
   
   return { success: true, fixture: patched, totalPatched: patchedFixtures.length }
 })
@@ -485,115 +1332,273 @@ ipcMain.handle('lux:unpatch-fixture', (_event, dmxAddress: number) => {
   }
   
   const removed = patchedFixtures.splice(index, 1)[0]
+  // 🔗 WAVE 10: Recalcular contadores después de eliminar
+  recalculateZoneCounters()
+  
+  // 🔧 WAVE 10: Auto-save al ConfigManager
+  configManager.setPatchedFixtures(patchedFixtures.map(f => ({
+    id: f.id,
+    name: f.name,
+    type: f.type,
+    manufacturer: f.manufacturer,
+    channelCount: f.channelCount,
+    dmxAddress: f.dmxAddress,
+    universe: f.universe,
+    zone: f.zone,
+    filePath: f.filePath,
+  })))
+  
   console.log(`[Fixtures] 🗑️ Unpatched ${removed.name} from DMX ${dmxAddress}`)
   
   return { success: true, removed, totalPatched: patchedFixtures.length }
+})
+
+// 🔬 WAVE 10.5: Forzar tipo de fixture manualmente
+ipcMain.handle('lux:force-fixture-type', (_event, dmxAddress: number, newType: string) => {
+  const fixture = patchedFixtures.find(f => f.dmxAddress === dmxAddress)
+  if (!fixture) {
+    return { success: false, error: 'Fixture not found at that address' }
+  }
+  
+  const oldType = fixture.type
+  fixture.type = newType
+  fixture.manualOverride = newType
+  
+  // Reasignar zona basada en nuevo tipo
+  const oldZone = fixture.zone
+  fixture.zone = autoAssignZone(newType, fixture.name)
+  
+  // Guardar en config
+  configManager.setPatchedFixtures(patchedFixtures.map(f => ({
+    id: f.id,
+    name: f.name,
+    type: f.type,
+    manufacturer: f.manufacturer,
+    channelCount: f.channelCount,
+    dmxAddress: f.dmxAddress,
+    universe: f.universe,
+    zone: f.zone,
+    filePath: f.filePath,
+    manualOverride: f.manualOverride,
+  })))
+  
+  console.log(`[Fixtures] 🔧 Forced ${fixture.name} @${dmxAddress}: ${oldType} → ${newType} (zone: ${oldZone} → ${fixture.zone})`)
+  
+  return { success: true, fixture, oldType, newType }
+})
+
+// 🎯 WAVE 12.5: Selector de Montaje - Aplica preset físico a Moving Heads
+ipcMain.handle('lux:set-installation', (_event, installationType: 'ceiling' | 'floor') => {
+  // Guardar en config
+  configManager.setInstallationType(installationType)
+  
+  // Nota: El FixturePhysicsDriver se aplicará cuando se envíen comandos de movimiento
+  // La configuración se persiste y afectará a futuros comandos
+  
+  console.log(`[Installation] 🎯 Installation type set to: ${installationType}`)
+  console.log(`[Installation] 📐 ${installationType === 'ceiling' ? 'COLGADOS - Tilt invertido' : 'DE PIE - Tilt normal'}`)
+  
+  return { 
+    success: true, 
+    installationType, 
+    appliedTo: patchedFixtures.length,
+    description: installationType === 'ceiling' ? 'Moving Heads colgados del techo' : 'Moving Heads de pie en el suelo'
+  }
 })
 
 // Limpiar todo el patch
 ipcMain.handle('lux:clear-patch', () => {
   const count = patchedFixtures.length
   patchedFixtures = []
+  // 🔗 WAVE 10: Resetear contadores de zonas
+  resetZoneCounters()
+  
+  // 🔧 WAVE 10: Auto-save al ConfigManager
+  configManager.clearPatch()
+  
   console.log(`[Fixtures] 🧹 Cleared ${count} fixtures from patch`)
   return { success: true, cleared: count }
 })
 
+// 🎭 WAVE 10.6: NEW SHOW - Reset completo para empezar de cero
+ipcMain.handle('lux:new-show', () => {
+  console.log('[Show] 🎭 NEW SHOW - Resetting everything...')
+  
+  // 1. Limpiar fixtures
+  const fixtureCount = patchedFixtures.length
+  patchedFixtures = []
+  resetZoneCounters()
+  
+  // 2. Resetear config a defaults
+  configManager.clearPatch()
+  configManager.setAudioConfig({ source: 'simulation' })
+  configManager.setSeleneMode('reactive')
+  
+  // 3. Detener Selene si está corriendo
+  if (selene) {
+    selene.stop()
+  }
+  
+  console.log(`[Show] 🎭 NEW SHOW created - Cleared ${fixtureCount} fixtures`)
+  return { 
+    success: true, 
+    message: 'New show created',
+    clearedFixtures: fixtureCount 
+  }
+})
+
 // ============================================
-// WAVE 9.5: CONFIG PERSISTENCE
+// 🔧 WAVE 10: CONFIG PERSISTENCE (NEW ConfigManager)
 // ============================================
 
-interface LuxSyncConfig {
-  audio: {
-    source: 'microphone' | 'system' | 'simulation'
-    deviceId?: string
-    sensitivity: number
-  }
-  dmx: {
-    driver: string
-    port: string
-    universe: number
-    frameRate: number
-  }
-  fixtures: PatchedFixture[]
-  ui: {
-    theme: string
-    showAdvanced: boolean
-  }
-}
-
-const CONFIG_FILE = path.join(app.getPath('userData'), 'luxsync-config.json')
-
-function getDefaultConfig(): LuxSyncConfig {
-  return {
-    audio: {
-      source: 'simulation',
-      sensitivity: 50,
-    },
-    dmx: {
-      driver: 'enttec-open',
-      port: 'COM3',
-      universe: 1,
-      frameRate: 44,
-    },
-    fixtures: [],
-    ui: {
-      theme: 'dark',
-      showAdvanced: false,
-    },
-  }
-}
-
-function loadConfig(): LuxSyncConfig {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const data = fs.readFileSync(CONFIG_FILE, 'utf-8')
-      const config = JSON.parse(data) as LuxSyncConfig
-      // Restaurar fixtures patcheados
-      patchedFixtures = config.fixtures || []
-      return config
-    }
-  } catch (err) {
-    console.error('[Config] Error loading config:', err)
-  }
-  return getDefaultConfig()
-}
-
-function saveConfig(config: Partial<LuxSyncConfig>): boolean {
-  try {
-    const currentConfig = loadConfig()
-    const newConfig = { ...currentConfig, ...config, fixtures: patchedFixtures }
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2))
-    console.log('[Config] 💾 Config saved')
-    return true
-  } catch (err) {
-    console.error('[Config] Error saving config:', err)
-    return false
-  }
-}
-
-// IPC Handlers para config
+// IPC Handlers para config - usando ConfigManager
 ipcMain.handle('lux:get-config', () => {
-  return { success: true, config: loadConfig() }
+  return { success: true, config: configManager.getConfig() }
 })
 
-ipcMain.handle('lux:save-config', (_event, config: Partial<LuxSyncConfig>) => {
-  const success = saveConfig(config)
-  return { success }
-})
-
-ipcMain.handle('lux:reset-config', () => {
+ipcMain.handle('lux:save-config', (_event, config: Partial<ReturnType<typeof configManager.getConfig>>) => {
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      fs.unlinkSync(CONFIG_FILE)
-    }
-    patchedFixtures = []
-    return { success: true, config: getDefaultConfig() }
+    if (config.dmx) configManager.setDMXConfig(config.dmx)
+    if (config.audio) configManager.setAudioConfig(config.audio)
+    if (config.seleneMode) configManager.setSeleneMode(config.seleneMode)
+    if (config.ui) configManager.setUIPreferences(config.ui)
+    return { success: true }
   } catch (err) {
     return { success: false, error: String(err) }
   }
 })
 
-// Cargar config al iniciar
-loadConfig()
+ipcMain.handle('lux:reset-config', () => {
+  try {
+    patchedFixtures = []
+    resetZoneCounters()
+    configManager.clearPatch()
+    configManager.forceSave()
+    return { success: true, config: configManager.getConfig() }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+// Handler para obtener config cargada (llamado desde UI al iniciar)
+ipcMain.handle('lux:get-loaded-config', () => {
+  return {
+    success: true,
+    config: configManager.getConfig(),
+    fixtures: patchedFixtures,
+    fixtureCount: patchedFixtures.length,
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌪️ WAVE 11: UNIVERSAL DMX DRIVER - Soporte para CUALQUIER chip serial
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Lista dispositivos DMX USB disponibles (detecta FTDI, CH340, Prolific, etc.)
+ipcMain.handle('dmx:list-devices', async () => {
+  try {
+    const devices = await universalDMX.listDevices()
+    return { success: true, devices }
+  } catch (err) {
+    console.error('[DMX] List devices error:', err)
+    return { success: false, error: String(err), devices: [] }
+  }
+})
+
+// Autodetecta y conecta al dispositivo DMX
+ipcMain.handle('dmx:auto-connect', async () => {
+  try {
+    const connected = await universalDMX.autoConnect()
+    return { 
+      success: connected, 
+      device: universalDMX.device,
+      state: universalDMX.currentState,
+      error: connected ? null : universalDMX.error
+    }
+  } catch (err) {
+    console.error('[DMX] Auto-connect error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Conecta a un dispositivo específico
+ipcMain.handle('dmx:connect', async (_event, portPath: string) => {
+  try {
+    const connected = await universalDMX.connect(portPath)
+    return { 
+      success: connected, 
+      device: universalDMX.device,
+      state: universalDMX.currentState,
+      error: connected ? null : universalDMX.error
+    }
+  } catch (err) {
+    console.error('[DMX] Connect error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Desconecta del dispositivo DMX
+ipcMain.handle('dmx:disconnect', async () => {
+  try {
+    await universalDMX.disconnect()
+    return { success: true, state: universalDMX.currentState }
+  } catch (err) {
+    console.error('[DMX] Disconnect error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Obtiene el estado actual del driver DMX
+ipcMain.handle('dmx:get-status', () => {
+  return {
+    success: true,
+    ...universalDMX.getStats()
+  }
+})
+
+// Blackout (todos los canales a 0)
+ipcMain.handle('dmx:blackout', () => {
+  universalDMX.blackout()
+  return { success: true }
+})
+
+// 🔦 WAVE 11: Highlight fixture para testing
+ipcMain.handle('dmx:highlight-fixture', async (_event, startChannel: number, channelCount: number, isMovingHead: boolean) => {
+  try {
+    await universalDMX.highlightFixture(startChannel, channelCount, isMovingHead)
+    return { success: true }
+  } catch (err) {
+    console.error('[DMX] Highlight error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Eventos del driver DMX al renderer (incluyendo watchdog)
+universalDMX.on('connected', (device: DMXDevice) => {
+  console.log(`[DMX] 🌪️ Connected to ${device.friendlyName}`)
+  mainWindow?.webContents.send('dmx:connected', device)
+  mainWindow?.webContents.send('dmx:status', { state: 'connected', device })
+})
+
+universalDMX.on('disconnected', () => {
+  console.log('[DMX] 🔌 Disconnected')
+  mainWindow?.webContents.send('dmx:disconnected')
+  mainWindow?.webContents.send('dmx:status', { state: 'disconnected' })
+})
+
+universalDMX.on('reconnecting', () => {
+  console.log('[DMX] 🔄 Reconnecting...')
+  mainWindow?.webContents.send('dmx:status', { state: 'reconnecting' })
+})
+
+universalDMX.on('state', (state: string) => {
+  mainWindow?.webContents.send('dmx:state', state)
+  mainWindow?.webContents.send('dmx:status', { state })
+})
+
+universalDMX.on('error', (error: string) => {
+  console.error('[DMX] ❌ Error:', error)
+  mainWindow?.webContents.send('dmx:status', { state: 'error', error })
+})
 
 console.log('LuxSync Main Process Started')

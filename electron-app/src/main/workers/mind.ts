@@ -62,6 +62,20 @@ const NODE_ID = 'gamma' as const;
 const paletteGenerator = new SimplePaletteGenerator();
 
 // ============================================
+// 🌊 WAVE 12.5: SELENE LIBRE - Sin Etiquetas
+// ============================================
+// FILOSOFÍA: El arte no necesita etiquetas de género.
+// Los colores emergen PURAMENTE de la matemática musical:
+//   - Energy → Saturación
+//   - Syncopation → Contraste  
+//   - Key → Tono (Hue)
+//   - Density → Complejidad
+// 
+// El mismo Cyberpunk y la misma Cumbia producirán colores
+// DIFERENTES porque su DNA musical es matemáticamente diferente.
+// ============================================
+
+// ============================================
 // PERSONALITY & AESTHETIC SYSTEM
 // ============================================
 
@@ -129,6 +143,9 @@ interface GammaState {
   operationMode: 'intelligent' | 'reactive';
   combinedConfidence: number;
   
+  // 🧠 WAVE 10: Brain forced mode (from main process Big Switch)
+  brainForced: boolean;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -174,6 +191,9 @@ const state: GammaState = {
   operationMode: 'reactive',
   combinedConfidence: 0,
   
+  // 🧠 WAVE 10: Brain activation flag (from main process)
+  brainForced: false,  // When true, ALWAYS use intelligent mode
+  
   learnedPatterns: new Map(),
   
   messagesProcessed: 0,
@@ -215,6 +235,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   }
   
   // === REGLA 2: Check confidence for mode selection ===
+  // 🧠 WAVE 10: brainForced overrides REGLA 2 - si el usuario puso SELENE, ¡USAMOS EL BRAIN!
   const wave8 = analysis.wave8;
   if (wave8) {
     // Calculate combined confidence (REGLA 2)
@@ -224,14 +245,21 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       wave8.section.confidence * 0.20 +
       wave8.genre.confidence * 0.25;
     
-    state.operationMode = state.combinedConfidence >= 0.5 ? 'intelligent' : 'reactive';
+    // 🧠 WAVE 10: brainForced ignora la confidence - SI EL USUARIO DIJO SELENE, SELENE ES
+    if (state.brainForced) {
+      state.operationMode = 'intelligent';
+    } else {
+      state.operationMode = state.combinedConfidence >= 0.5 ? 'intelligent' : 'reactive';
+    }
   } else {
-    state.operationMode = 'reactive';
-    state.combinedConfidence = 0.3;
+    // Sin wave8 data, pero si brainForced, intentamos intelligent anyway
+    state.operationMode = state.brainForced ? 'intelligent' : 'reactive';
+    state.combinedConfidence = state.brainForced ? 0.6 : 0.3;
   }
   
   // === REACTIVE MODE (V17 Style) ===
-  if (state.operationMode === 'reactive') {
+  // 🧠 WAVE 10: Solo si NO está forzado el brain
+  if (state.operationMode === 'reactive' && !state.brainForced) {
     // Direct audio → light mapping (fast fallback)
     const reactiveDecision = createReactiveDecision(analysis, state.frameCount);
     state.totalProcessingTime += performance.now() - startTime;
@@ -243,12 +271,25 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // === INTELLIGENT MODE (Wave 8 Full Analysis) ===
   const { rhythm, harmony, section, genre } = wave8!;
   
-  // Generate procedural palette from Wave 8 data
+  // 🌊 WAVE 12.5: SELENE LIBRE - Sin etiquetas de género
+  // Los colores emergen de la MATEMÁTICA PURA:
+  //   - Energy (energía) → Saturación
+  //   - Syncopation (ritmo) → Contraste entre colores
+  //   - Key (armonía) → Tono base (hue)
+  // El género se mantiene solo para logging informativo
+  
+  // Log informativo cada segundo (solo para observar, no para decidir)
+  if (state.frameCount % 60 === 0) {
+    console.log(`[GAMMA] � SELENE LIBRE: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} (genre=${genre.primary} - ignored)`);
+  }
+  
+  // Generate procedural palette from Wave 8 data - PURE MATH, NO GENRE
   const selenePalette = paletteGenerator.generate(
     harmony.mood,
     analysis.energy,
     rhythm.syncopation,  // REGLA 3: Syncopation shapes the palette
     harmony.key
+    // 🌊 WAVE 12.5: Ya NO pasamos genrePalette - la matemática decide TODO
   );
   
   // Convert HSL palette to RGB
@@ -506,6 +547,36 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.CONFIG_UPDATE:
         Object.assign(config, message.payload);
         console.log('[GAMMA] Config updated');
+        break;
+      
+      // 🧠 WAVE 10: Brain Control Messages
+      case MessageType.SET_MODE: {
+        const modePayload = message.payload as { mode: 'reactive' | 'intelligent' | 'forced' };
+        if (modePayload.mode === 'intelligent' || modePayload.mode === 'forced') {
+          state.brainForced = true;
+          state.operationMode = 'intelligent';
+          console.log('[GAMMA] 🧠 BRAIN MODE ACTIVATED - Full AI control');
+        } else {
+          state.brainForced = false;
+          state.operationMode = 'reactive';
+          console.log('[GAMMA] 🔄 REACTIVE MODE - Simple audio response');
+        }
+        break;
+      }
+      
+      case MessageType.ENABLE_BRAIN:
+        state.brainForced = true;
+        state.operationMode = 'intelligent';
+        console.log('[GAMMA] ⚡ ENABLE_BRAIN received!');
+        console.log('[GAMMA] 🎵 GenreClassifier: HUNTING for Cumbia/Reggaeton...');
+        console.log('[GAMMA] 🧬 EvolutionEngine: MUTATING palettes...');
+        console.log('[GAMMA] 👁️ StalkingEngine: WATCHING the music...');
+        break;
+      
+      case MessageType.DISABLE_BRAIN:
+        state.brainForced = false;
+        state.operationMode = 'reactive';
+        console.log('[GAMMA] 💤 Brain disabled - Reactive mode active');
         break;
         
       default:

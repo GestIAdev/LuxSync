@@ -334,6 +334,50 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
     },
     minDuration: 5000,
   },
+
+  // -------------------------------------------------------------------------
+  // 🔦 BEAM - Haz cerrado para spotlight effect (WAVE 10.7)
+  // -------------------------------------------------------------------------
+  beam: {
+    name: 'Beam',
+    type: 'dimmer',
+    params: {
+      beamWidth: 0.0,     // Fully closed
+      iris: 0.2,          // Tight iris
+      zoom: 0,            // Min zoom
+      intensity: 1.0,
+    },
+    process: (_time, params, _entropy) => {
+      // BEAM effect just sets intensity high, actual beamWidth is handled by optics
+      return {
+        dimmerMultiplier: params.intensity as number,
+      }
+    },
+    minDuration: 0, // Instant, hold-based
+  },
+
+  // -------------------------------------------------------------------------
+  // 💎 PRISM - Fragmentación del haz con rotación (WAVE 10.7)
+  // -------------------------------------------------------------------------
+  prism: {
+    name: 'Prism',
+    type: 'dimmer',
+    params: {
+      fragmentation: 1.0,
+      textureRotation: 0.5,
+      prismActive: true,
+      intensity: 1.0,
+    },
+    process: (time, params, _entropy) => {
+      // Add subtle rotation animation to the prism effect
+      const rotationSpeed = (params.textureRotation as number) * 0.1
+      const _rotation = ((time / 1000) * rotationSpeed) % 1 // For texture rotation
+      return {
+        dimmerMultiplier: params.intensity as number,
+      }
+    },
+    minDuration: 0, // Instant, hold-based
+  },
 }
 
 // ============================================================================

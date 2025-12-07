@@ -12,7 +12,7 @@ import { create } from 'zustand'
 export type SeleneMode = 'flow' | 'selene' | 'locked'
 export type PaletteId = 'fire' | 'ice' | 'jungle' | 'neon'
 export type MoodType = 'peaceful' | 'energetic' | 'chaotic' | 'harmonious' | 'building' | 'dropping'
-export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police'
+export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police' | 'beam' | 'prism'
 export type MovementPattern = 'lissajous' | 'circle' | 'wave' | 'figure8' | 'scan' | 'random'
 
 export interface Palette {
@@ -127,8 +127,13 @@ export interface Effect {
 }
 
 export const EFFECTS: Record<EffectId, Effect> = {
-  strobe: { id: 'strobe', label: 'STROBE', icon: '⚡', color: '#FFFFFF', keyBind: '1' },
-  blinder: { id: 'blinder', label: 'BLINDER', icon: '💡', color: '#FFD700', keyBind: '2' },
+  // Optical Controls (Hold mode)
+  beam: { id: 'beam', label: 'BEAM', icon: '🔦', color: '#00FFFF', keyBind: 'B' },
+  prism: { id: 'prism', label: 'PRISM', icon: '💎', color: '#FF00FF', keyBind: 'P' },
+  
+  // Panic Buttons (Toggle mode)
+  strobe: { id: 'strobe', label: 'STROBE', icon: '⚡', color: '#FFFFFF', keyBind: 'S' },
+  blinder: { id: 'blinder', label: 'BLINDER', icon: '💡', color: '#FFD700', keyBind: 'L' },
   smoke: { id: 'smoke', label: 'SMOKE', icon: '💨', color: '#888888', keyBind: '3' },
   laser: { id: 'laser', label: 'LASER', icon: '🔴', color: '#FF0000', keyBind: '4' },
   rainbow: { id: 'rainbow', label: 'RAINBOW', icon: '🌈', color: '#FF69B4', keyBind: '5' },
@@ -172,6 +177,7 @@ interface LuxSyncStore {
   effects: EffectsState
   toggleEffect: (effect: EffectId) => void
   triggerEffect: (effect: EffectId) => void
+  setActiveEffects: (effects: Set<EffectId>) => void  // 🔥 WAVE 10.7: From backend
 
   // Blackout
   blackout: boolean
@@ -200,10 +206,21 @@ export const useLuxSyncStore = create<LuxSyncStore>((set) => ({
     lastInsight: 'Sistema iniciado. Esperando audio...',
   },
 
-  setSeleneMode: (mode: SeleneMode) =>
+  setSeleneMode: (mode: SeleneMode) => {
+    // Update local state
     set((state) => ({
       selene: { ...state.selene, mode },
-    })),
+    }))
+    
+    // 🧠 WAVE 10: Call backend to actually switch modes!
+    // API exposed via preload as window.luxsync.selene.setMode
+    if (typeof window !== 'undefined' && window.luxsync?.selene?.setMode) {
+      console.log('[Store] 🎚️ Sending mode to backend:', mode)
+      window.luxsync.selene.setMode(mode)
+    } else {
+      console.warn('[Store] ⚠️ window.luxsync.selene.setMode not available')
+    }
+  },
 
   setSeleneMood: (mood: MoodType) =>
     set((state) => ({
@@ -215,8 +232,8 @@ export const useLuxSyncStore = create<LuxSyncStore>((set) => ({
   // ============================================
   activePalette: 'fire' as PaletteId,
   colors: {
-    saturation: 0.8,
-    intensity: 1.0,
+    saturation: 1.0,  // 🎨 WAVE 13.6: STATE OF TRUTH - Default 100%
+    intensity: 1.0,   // 💡 Default 100%
   },
 
   setActivePalette: (id: PaletteId) => set({ activePalette: id }),
@@ -311,6 +328,11 @@ export const useLuxSyncStore = create<LuxSyncStore>((set) => ({
         return { effects: { active: newEffects } }
       })
     }, 1000)
+  },
+
+  // 🔥 WAVE 10.7: Set effects from backend state-update
+  setActiveEffects: (effects: Set<EffectId>) => {
+    set({ effects: { active: effects } })
   },
 
   // ============================================

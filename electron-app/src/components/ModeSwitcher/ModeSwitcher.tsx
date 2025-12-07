@@ -5,7 +5,7 @@
  * ✅ Conectado a seleneStore para persistencia entre vistas
  */
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Waves, Brain, Lock, LucideIcon } from 'lucide-react'
 import { useSeleneStore } from '../../stores/seleneStore'
 import './ModeSwitcher.css'
@@ -48,25 +48,19 @@ const ModeSwitcher: React.FC = () => {
   // 🔗 Conectar al store global de Selene (SOLO LECTURA - el backend actualiza vía IPC)
   const currentMode = useSeleneStore((state) => state.mode)
   
-  // 🐛 DEBUG: Log re-renders
-  console.log('[ModeSwitcher] 🔄 Render with mode:', currentMode)
+  // 🐛 DEBUG: Log re-renders con stack trace
+  const renderCount = React.useRef(0)
+  renderCount.current++
+  
+  if (renderCount.current > 5) {
+    console.warn(`[ModeSwitcher] 🔥 LOOP DETECTED! Render #${renderCount.current}`)
+    console.trace('[ModeSwitcher] Stack trace:')
+  } else {
+    console.log(`[ModeSwitcher] 🔄 Render #${renderCount.current} with mode:`, currentMode)
+  }
 
-  // 🎯 Sincronizar con backend al montar
-  useEffect(() => {
-    const fetchMode = async () => {
-      try {
-        const state = await window.lux.getFullState()
-        if (state.selene.mode) {
-          // Sincronizar modo inicial desde backend
-          useSeleneStore.getState().setMode(state.selene.mode as SeleneMode)
-          console.log(`[ModeSwitcher] 🔄 Synced initial mode from backend: ${state.selene.mode}`)
-        }
-      } catch (error) {
-        console.warn('[ModeSwitcher] Could not fetch initial mode:', error)
-      }
-    }
-    fetchMode()
-  }, [])
+  // 🎯 NOTE: Sincronización inicial la hace TrinityProvider, NO este componente
+  // Evita loops infinitos y duplicación de lógica
 
   const handleModeChange = async (mode: SeleneMode) => {
     console.log(`[ModeSwitcher] 🎚️ Requesting mode change: ${currentMode} → ${mode}`)
@@ -135,4 +129,6 @@ const ModeSwitcher: React.FC = () => {
   )
 }
 
-export default ModeSwitcher
+// 🔥 HOTFIX: Usar React.memo para evitar re-renders innecesarios
+// El parent component (LiveView, etc.) se re-renderiza a 30fps por los frames de audio
+export default React.memo(ModeSwitcher)

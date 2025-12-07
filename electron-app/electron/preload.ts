@@ -241,6 +241,14 @@ const luxApi = {
     return () => ipcRenderer.removeListener('lux:effect-triggered', handler)
   },
   
+  /** 🎯 WAVE 13.6: Suscribirse a cambios de modo confirmados por el Backend */
+  onModeChange: (callback: (data: { mode: string; brain: boolean }) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: { mode: string; brain: boolean }) => 
+      callback(data)
+    ipcRenderer.on('selene:mode-changed', handler)
+    return () => ipcRenderer.removeListener('selene:mode-changed', handler)
+  },
+
   // ============================================
   // WAVE 9.5: FIXTURES
   // ============================================

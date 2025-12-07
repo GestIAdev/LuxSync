@@ -605,6 +605,11 @@ export class TrinityOrchestrator extends EventEmitter {
    * Called when user switches to SELENE mode
    */
   enableBrain(): void {
+    const gamma = this.nodes.get('gamma');
+    if (!gamma?.worker) {
+      console.warn('[ALPHA] ⚠️ Cannot enable brain: GAMMA worker not spawned yet');
+      return;
+    }
     console.log('[ALPHA] 🧠 Sending ENABLE_BRAIN to GAMMA...');
     this.sendToWorker('gamma', MessageType.ENABLE_BRAIN, {}, MessagePriority.HIGH);
   }
@@ -614,6 +619,12 @@ export class TrinityOrchestrator extends EventEmitter {
    * Called when user switches to FLOW mode
    */
   disableBrain(): void {
+    const gamma = this.nodes.get('gamma');
+    if (!gamma?.worker) {
+      // No worker yet - this is expected if Trinity hasn't started
+      // (e.g., app started in FLOW mode)
+      return;
+    }
     console.log('[ALPHA] 💤 Sending DISABLE_BRAIN to GAMMA...');
     this.sendToWorker('gamma', MessageType.DISABLE_BRAIN, {}, MessagePriority.HIGH);
   }

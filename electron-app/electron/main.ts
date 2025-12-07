@@ -475,10 +475,6 @@ function startMainLoop() {
         panValue = 1 - panValue // Invertir para efecto espejo
       }
       
-      // 🎨 WAVE 13.6: Aplicar multiplicador global de intensidad
-      const globalIntensity = state.colors?.intensity ?? 1.0
-      const finalIntensity = intensity * globalIntensity
-      
       return {
         dmxAddress: fixture.dmxAddress,
         universe: fixture.universe,
@@ -488,8 +484,8 @@ function startMainLoop() {
         // DMX values
         // 🎨 FIX CRÍTICO: El DIMMER controla intensidad, RGB mantiene color PURO
         // Antes: RGB * intensity = colores lavados/grises
-        // Ahora: RGB puro, dimmer = intensity * globalIntensity
-        dimmer: Math.round(finalIntensity * 255),
+        // Ahora: RGB puro, dimmer = intensity
+        dimmer: Math.round(intensity * 255),
         r: fixtureColor.r,  // ¡Color PURO sin multiplicar!
         g: fixtureColor.g,
         b: fixtureColor.b,

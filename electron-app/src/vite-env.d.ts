@@ -152,6 +152,9 @@ interface Window {
     onPaletteChange: (callback: (paletteId: string) => void) => () => void
     onEffectTriggered: (callback: (effectName: string, effectId: number) => void) => () => void
     
+    // 🎯 WAVE 13.6: Mode change confirmation from Backend
+    onModeChange: (callback: (data: { mode: string; brain: boolean }) => void) => () => void
+    
     // WAVE 9.5: Fixtures
     scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>
     getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>

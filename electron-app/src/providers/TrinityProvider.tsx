@@ -69,9 +69,6 @@ interface SeleneStateUpdate {
     source: 'memory' | 'procedural' | 'fallback'
   }
   
-  // 🎯 WAVE 13.6: brainMode directo del SeleneLux (STATE OF TRUTH)
-  brainMode?: 'reactive' | 'intelligent'
-  
   // WAVE 9.6.3: Fixture values from main loop
   fixtures?: FixtureValues[]
   
@@ -194,32 +191,7 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
     
     // === UPDATE SELENE STORE ===
-    // 🎯 WAVE 13.6: STATE OF TRUTH - Sincronizar modo desde brainMode (no brain.mode)
-    if (seleneState.brainMode) {
-      // Actualizar currentMode directamente desde brainMode (refleja useBrain && mode)
-      updateBrainMetrics({
-        currentMode: seleneState.brainMode,
-      })
-      
-      // Sincronizar el modo de UI basado en brainMode
-      const uiMode = seleneState.brainMode === 'intelligent' ? 'selene' : 'flow'
-      const currentStoreMode = useSeleneStore.getState().mode
-      if (currentStoreMode !== uiMode) {
-        useSeleneStore.getState().setMode(uiMode)
-        console.log(`[Trinity] 🔄 Mode synced from brainMode: ${seleneState.brainMode} → UI: ${uiMode}`)
-      }
-      
-      // Log mode changes
-      if (seleneState.brainMode !== lastModeRef.current) {
-        lastModeRef.current = seleneState.brainMode
-        addLogEntry({
-          type: 'MODE' as LogEntryType,
-          message: `Mode: ${seleneState.brainMode.toUpperCase()}`,
-          data: { brainMode: seleneState.brainMode },
-        })
-      }
-    } else if (seleneState.brain) {
-      // Fallback: usar brain.mode si brainMode no está disponible
+    if (seleneState.brain) {
       const { mode, confidence, beautyScore, energy } = seleneState.brain
       
       updateBrainMetrics({
@@ -228,6 +200,10 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
         beautyScore,
         energy,
       })
+      
+      // 🎯 WAVE 13.6: Mode sync ahora lo hace onModeChange directamente
+      // NO sincronizar aquí - handleStateUpdate solo actualiza métricas visuales
+      // La confirmación de modo viene por el evento 'selene:mode-changed'
       
       // Log mode changes
       if (mode !== lastModeRef.current) {
@@ -313,6 +289,21 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
       if (window.lux?.onStateUpdate) {
         unsubscribeRef.current = window.lux.onStateUpdate(handleStateUpdate)
         console.log('[Trinity] 📡 Subscribed to state updates')
+      }
+      
+      // 🎯 WAVE 13.6: Subscribe to mode changes from Backend
+      if (window.lux?.onModeChange) {
+        const unsubMode = window.lux.onModeChange((data: { mode: string; brain: boolean }) => {
+          console.log('[Trinity] 🎚️ Mode confirmed by Backend:', data)
+          const uiMode = data.mode as 'flow' | 'selene' | 'locked'
+          useSeleneStore.getState().setMode(uiMode)
+        })
+        // Store cleanup function (combined with state update unsub)
+        const originalUnsub = unsubscribeRef.current
+        unsubscribeRef.current = () => {
+          originalUnsub?.()
+          unsubMode()
+        }
       }
       
       // 3. Start audio capture
@@ -451,7 +442,7 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
     
     syncInitialState()
-  }, [setConnected, setInitialized, updateBrainMetrics]) // Solo ejecutar una vez al montar
+  }, []) // 🎯 WAVE 13.6 FIX: Solo ejecutar una vez al montar (sin dependencias)
   
   // Sync audio metrics to store (from useAudioCapture → audioStore)
   useEffect(() => {
@@ -466,21 +457,25 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
   }, [audioMetrics, isCapturing, updateAudioStore])
   
-  // 🔥 HOTFIX: Auto-start solo UNA VEZ al montar
+  // Auto-start on mount (with ref to prevent double execution)
   const hasStartedRef = useRef(false)
   
   useEffect(() => {
+    // 🎯 WAVE 13.6 FIX: StrictMode ejecuta efectos 2 veces
+    // Solo marcar como iniciado DESPUÉS de que startTrinity se ejecute realmente
     if (autoStart && !hasStartedRef.current) {
-      hasStartedRef.current = true
-      
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
+        hasStartedRef.current = true  // Marcar DESPUÉS del delay
         startTrinity()
       }, 500)
       
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+        // NO resetear hasStartedRef aquí - si ya se inició, no volver a iniciar
+      }
     }
-  }, [autoStart]) // ⚠️ REMOVIDO startTrinity de dependencias para evitar re-ejecución
+  }, [autoStart]) // 🎯 WAVE 13.6 FIX: Removido startTrinity de deps para evitar re-ejecución
   
   // Cleanup on unmount
   useEffect(() => {

@@ -307,25 +307,19 @@ export class SeleneLux extends EventEmitter {
   private brainOutputToColors(output: BrainOutput): ColorOutput {
     const { palette, lighting } = output
     
-    // 🎨 WAVE 13.6: Aplicar multiplicador global de saturación ANTES de convertir HSL→RGB
-    const applySaturationMultiplier = (hsl: { h: number; s: number; l: number }) => ({
-      h: hsl.h,
-      s: hsl.s * this.globalSaturation, // Multiplicar saturación (0-100 scale)
-      l: hsl.l
-    })
-    
-    // Convertir HSL a RGB con saturación aplicada
-    const primaryRGB = this.hslToRgb(applySaturationMultiplier(palette.primary))
-    const secondaryRGB = this.hslToRgb(applySaturationMultiplier(palette.secondary))
-    const accentRGB = this.hslToRgb(applySaturationMultiplier(palette.accent))
+    // Convertir HSL a RGB
+    const primaryRGB = this.hslToRgb(palette.primary)
+    const secondaryRGB = this.hslToRgb(palette.secondary)
+    const accentRGB = this.hslToRgb(palette.accent)
     
     // 🪞 ESPEJO CROMÁTICO: Si hay ambient en la paleta, usarlo
     // Si no, crear una variación cálida del accent para coherencia visual
     let ambientRGB: { r: number; g: number; b: number }
     if (palette.ambient) {
-      ambientRGB = this.hslToRgb(applySaturationMultiplier(palette.ambient))
+      ambientRGB = this.hslToRgb(palette.ambient)
     } else {
-      // Crear espejo cromático: variación más cálida del accent (sin saturación - ya aplicada en accent)
+      // Crear espejo cromático: variación más cálida del accent
+      // Shift hacia magenta/rosa para complementar el accent
       ambientRGB = {
         r: Math.min(255, Math.round(accentRGB.r * 1.1)),
         g: Math.round(accentRGB.g * 0.85),
@@ -523,10 +517,9 @@ export class SeleneLux extends EventEmitter {
         uptime: Date.now() - this.startTime,
       },
       // 🧠 WAVE-8: Estado del Brain
-      // 🔧 FIX CRÍTICO: brainMode debe reflejar el estado REAL de SeleneLux, no el del Brain
       brainOutput: this.lastBrainOutput,
-      brainMode: this.useBrain && this.mode === 'selene' ? 'intelligent' : 'reactive',
-      paletteSource: this.useBrain ? (this.lastBrainOutput?.paletteSource || 'legacy') : 'legacy',
+      brainMode: this.lastBrainOutput?.mode,
+      paletteSource: this.lastBrainOutput?.paletteSource || 'legacy',
     }
   }
   

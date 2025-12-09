@@ -47,6 +47,9 @@ import {
   GenreOutput,
 } from './TrinityBridge';
 
+// 🎯 WAVE 16: Normalización adaptativa de energía
+import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
+
 // ============================================
 // CONFIGURATION
 // ============================================
@@ -365,12 +368,19 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
   
   // Calculate overall energy (weighted by perceptual importance)
-  const energy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
+  const rawEnergy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
   
-  // 🔍 WAVE 15.2 DIAGNOSTIC: Log FFT results cada 60 frames SIEMPRE (sin condición de valor)
+  // 🎯 WAVE 16: Normalizar energía con Rolling Peak 15s
+  // Esto auto-ajusta la sensibilidad según el nivel de la canción
+  const energyNormalizer = getEnergyNormalizer();
+  const normalizedEnergy = energyNormalizer.normalize(rawEnergy);
+  const energy = normalizedEnergy; // Usar energía normalizada en todo el pipeline
+  
+  // 🔍 WAVE 15.2 + 16 DIAGNOSTIC: Log FFT results cada 60 frames
   if (state.frameCount % 60 === 0) {
     const gain = config.inputGain || 1.0;
-    console.log(`[BETA 🧮] FFT: bass=${spectrum.bass.toFixed(2)}, mid=${spectrum.mid.toFixed(2)}, treble=${spectrum.treble.toFixed(2)}, energy=${energy.toFixed(2)}, gain=${gain.toFixed(1)}, dom=${spectrum.dominantFrequency.toFixed(0)}Hz`);
+    const normStats = energyNormalizer.getStats();
+    console.log(`[BETA 🧮] FFT: bass=${spectrum.bass.toFixed(2)}, mid=${spectrum.mid.toFixed(2)}, treble=${spectrum.treble.toFixed(2)}, rawE=${rawEnergy.toFixed(2)}, normE=${normalizedEnergy.toFixed(2)}, peak=${normStats.currentPeak.toFixed(2)}, gain=${gain.toFixed(1)}`);
   }
   
   // === PHASE 3: Wave 8 Rich Analysis ===

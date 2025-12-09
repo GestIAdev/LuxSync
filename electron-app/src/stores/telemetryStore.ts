@@ -381,6 +381,7 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
   
   // 📡 WAVE 15.3: Actualizar con datos REALES de Beta (audio-analysis)
   // 📡 WAVE 15.4: Añadido syncopation, groove, key, mood
+  // 🎯 WAVE 16: Cooldown para Key/Mood (anti-epilepsia UI)
   updateFromTrinityAudio: (analysis: unknown) => {
     const data = analysis as {
       bass?: number
@@ -401,6 +402,33 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
     }
     
     const currentState = get()
+    const now = Date.now()
+    
+    // 🎯 WAVE 16: Cooldown para Key y Mood (3 segundos)
+    // Esto evita que la UI flashee cada frame cuando la detección cambia
+    const KEY_MOOD_COOLDOWN_MS = 3000; // 3 segundos de estabilidad
+    
+    // Determinar si podemos actualizar Key
+    let newKey = currentState.dna?.key ?? null;
+    if (data.key !== undefined && data.key !== currentState.dna?.key) {
+      const lastKeyChange = (currentState as unknown as { _lastKeyChange?: number })._lastKeyChange ?? 0;
+      if (now - lastKeyChange >= KEY_MOOD_COOLDOWN_MS) {
+        newKey = data.key;
+        // Guardar timestamp del cambio
+        (currentState as unknown as { _lastKeyChange: number })._lastKeyChange = now;
+      }
+    }
+    
+    // Determinar si podemos actualizar Mood
+    let newMood = currentState.dna?.mood ?? 'neutral';
+    if (data.mood !== undefined && data.mood !== currentState.dna?.mood) {
+      const lastMoodChange = (currentState as unknown as { _lastMoodChange?: number })._lastMoodChange ?? 0;
+      if (now - lastMoodChange >= KEY_MOOD_COOLDOWN_MS) {
+        newMood = data.mood;
+        // Guardar timestamp del cambio
+        (currentState as unknown as { _lastMoodChange: number })._lastMoodChange = now;
+      }
+    }
     
     // Construir nuevo DNA con syncopation actualizado
     const updatedDna: MusicalDNATelemetry | null = currentState.dna ? {
@@ -411,8 +439,8 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
         bpmConfidence: data.bpmConfidence ?? currentState.dna.rhythm.bpmConfidence,
         syncopation: data.syncopation ?? currentState.dna.rhythm.syncopation,
       },
-      mood: data.mood ?? currentState.dna.mood,
-      key: data.key ?? currentState.dna.key,
+      mood: newMood,  // 🎯 WAVE 16: Usa valor con cooldown
+      key: newKey,    // 🎯 WAVE 16: Usa valor con cooldown
     } : null
     
     set({

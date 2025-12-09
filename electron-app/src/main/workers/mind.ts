@@ -48,6 +48,9 @@ import {
   SelenePalette,
 } from './TrinityBridge';
 
+// 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
+import { getEffectTriggers } from './utils/HysteresisTrigger';
+
 // ============================================
 // CONFIGURATION
 // ============================================
@@ -327,16 +330,39 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
            section.type === 'chorus' || section.type === 'drop' ? 'phrase' : 'free') as 'beat' | 'phrase' | 'free'
   };
   
-  // Effects (section-aware)
+  // Effects (section-aware) - 🎯 WAVE 16: Con Schmitt Triggers
+  // Los triggers tienen histéresis para evitar flicker
+  const effectTriggers = getEffectTriggers();
+  const triggerStates = effectTriggers.processAll(analysis.energy);
+  
+  // Lógica mejorada: combina triggers con contexto musical
+  const shouldStrobe = triggerStates.strobe && 
+                       (section.type === 'drop' || section.type === 'chorus') && 
+                       analysis.onBeat && 
+                       personality.boldness > 0.5;
+  
+  const shouldChase = triggerStates.chase &&
+                      (section.type === 'drop' || section.type === 'buildup');
+  
+  const shouldPulse = triggerStates.pulse &&
+                      analysis.onBeat;
+  
+  const shouldLaser = triggerStates.laser &&
+                      (harmony.mood === 'tense' || analysis.treble > 0.7);
+  
+  const shouldPrism = triggerStates.prism &&
+                      (section.type === 'chorus' || harmony.mood === 'dreamy');
+  
   const effects = {
-    strobe: (section.type === 'drop' || section.type === 'chorus') && 
-            analysis.onBeat && 
-            analysis.energy > 0.85 && 
-            personality.boldness > 0.6,
-    strobeRate: analysis.bpm > 140 ? analysis.bpm / 60 : undefined,
+    strobe: shouldStrobe,
+    strobeRate: shouldStrobe && analysis.bpm > 140 ? analysis.bpm / 60 : undefined,
     fog: section.type === 'buildup' ? section.energy * 0.8 :
          section.type === 'breakdown' ? 0.3 : 0,
-    laser: harmony.mood === 'tense' || (analysis.treble > 0.8 && personality.boldness > 0.6)
+    laser: shouldLaser,
+    // 🎯 WAVE 16: Nuevos efectos con triggers
+    chase: shouldChase,
+    pulse: shouldPulse,
+    prism: shouldPrism,
   };
   
   // Calculate beauty score with Wave 8 data

@@ -438,7 +438,24 @@ export class SimpleRhythmDetector {
  * 🎵 WAVE 15.5: Añadido Key detection basado en frecuencia dominante
  * 🎵 WAVE 15.6: Estabilización de Key/Mood (anti-epilepsia)
  */
+/**
+ * 🎵 WAVE 16 PRO: SimpleHarmonyDetector con VOTACIÓN PONDERADA POR ENERGÍA
+ * 
+ * MEJORA PRO #2: Los votos para Key/Mood se ponderan por energía:
+ *   peso = energia^1.2
+ * 
+ * Esto significa que los momentos de alta energía (drops, chorus)
+ * tienen 3-4x más influencia que las partes quietas (intros).
+ * 
+ * RESULTADO: Key y Mood detectados reflejan las partes "importantes"
+ * de la canción, no las partes silenciosas.
+ */
 export class SimpleHarmonyDetector {
+  // 🎯 WAVE 16: Votación ponderada por energía
+  private moodWeightedVotes: Map<string, number> = new Map();
+  private temperatureWeightedVotes: Map<string, number> = new Map();
+  
+  // Legacy history para fallback
   private moodHistory: string[] = [];
   private temperatureHistory: string[] = [];
   private readonly historySize = 32; // WAVE 15.6: Era 16, ahora 32 (~2 seg) para estabilidad
@@ -449,11 +466,18 @@ export class SimpleHarmonyDetector {
   
   // 🎵 WAVE 15.5: Key detection
   // 🎵 WAVE 15.6: Aumentado historial para estabilidad
+  // 🎯 WAVE 16: Ahora con votación ponderada
+  private noteWeightedVotes: Map<string, number> = new Map();
   private noteHistory: string[] = [];
   private readonly noteHistorySize = 64; // WAVE 15.6: Era 32, ahora 64 (~4 segundos)
   private lastDetectedKey: string | null = null;
   private keyStabilityCounter = 0; // WAVE 15.6: Contador de estabilidad
   private readonly keyStabilityThreshold = 8; // Necesita 8 frames consecutivos para cambiar
+  
+  // 🎯 WAVE 16: Tracking de energía para ponderación
+  private totalWeightAccumulated = 0;
+  private readonly WEIGHT_DECAY = 0.997; // Decaimiento exponencial suave
+  private readonly ENERGY_POWER = 1.2;   // Exponente para peso: energia^1.2
   
   // Notas musicales ordenadas (A4 = 440Hz como referencia)
   private readonly NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -476,12 +500,48 @@ export class SimpleHarmonyDetector {
   }
   
   /**
-   * 🎵 Detectar Key basándose en la nota más frecuente
-   * WAVE 15.6: Añadida lógica de estabilidad anti-epilepsia
+   * 🎵 Detectar Key basándose en votación ponderada por energía
+   * WAVE 16 PRO: Votos ponderados - momentos de alta energía pesan más
+   * WAVE 15.6: Lógica de estabilidad anti-epilepsia
    */
   private detectKey(): string | null {
     if (this.noteHistory.length < 16) return this.lastDetectedKey; // WAVE 15.6: Era 8, ahora 16
     
+    // 🎯 WAVE 16: Usar votos ponderados si hay suficiente peso acumulado
+    if (this.totalWeightAccumulated > 1.0) {
+      // Encontrar la nota con más peso ponderado
+      let dominantNote = '';
+      let maxWeight = 0;
+      let totalWeight = 0;
+      
+      for (const [note, weight] of this.noteWeightedVotes) {
+        totalWeight += weight;
+        if (weight > maxWeight) {
+          dominantNote = note;
+          maxWeight = weight;
+        }
+      }
+      
+      // Threshold: nota dominante debe tener >30% del peso total
+      const threshold = 0.30;
+      if (totalWeight > 0 && maxWeight > totalWeight * threshold) {
+        if (dominantNote !== this.lastDetectedKey) {
+          this.keyStabilityCounter++;
+          
+          // Solo cambiar si ha sido estable por suficientes frames
+          if (this.keyStabilityCounter >= this.keyStabilityThreshold) {
+            this.lastDetectedKey = dominantNote;
+            this.keyStabilityCounter = 0;
+          }
+        } else {
+          this.keyStabilityCounter = 0;
+        }
+        
+        return this.lastDetectedKey;
+      }
+    }
+    
+    // === FALLBACK: Método original por conteo simple ===
     // Contar ocurrencias de cada nota
     const noteCounts = new Map<string, number>();
     for (const note of this.noteHistory) {
@@ -527,6 +587,14 @@ export class SimpleHarmonyDetector {
   analyze(audio: AudioMetrics): HarmonyOutput {
     // 🧮 WAVE 15: Umbrales dinámicos basados en energía global
     const energyLevel = audio.volume;
+    
+    // 🎯 WAVE 16 PRO: Calcular peso para votación ponderada
+    // peso = energia^1.2 (drops tienen 3-4x más influencia)
+    const weight = Math.pow(Math.max(0.01, energyLevel), this.ENERGY_POWER);
+    
+    // Aplicar decaimiento a votos anteriores (evita que el pasado lejano domine)
+    this.applyDecayToVotes();
+    this.totalWeightAccumulated = this.totalWeightAccumulated * this.WEIGHT_DECAY + weight;
     
     // Con más energía, los umbrales son más estrictos (la música está clara)
     // Con menos energía, los umbrales son más relajados (evitar defaults constantes)
@@ -577,7 +645,14 @@ export class SimpleHarmonyDetector {
       temperature = energyLevel > 0.5 ? 'warm' : 'neutral';
     }
     
-    // Track mood history for stability (EMA-like)
+    // 🎯 WAVE 16 PRO: Votación ponderada para Mood y Temperature
+    const currentMoodWeight = this.moodWeightedVotes.get(mood) || 0;
+    this.moodWeightedVotes.set(mood, currentMoodWeight + weight);
+    
+    const currentTempWeight = this.temperatureWeightedVotes.get(temperature) || 0;
+    this.temperatureWeightedVotes.set(temperature, currentTempWeight + weight);
+    
+    // Track mood history for stability (legacy fallback)
     this.moodHistory.push(mood);
     if (this.moodHistory.length > this.historySize) {
       this.moodHistory.shift();
@@ -588,14 +663,23 @@ export class SimpleHarmonyDetector {
       this.temperatureHistory.shift();
     }
     
-    // Use most common mood and temperature
-    const dominantMood = this.getMostCommon(this.moodHistory) as HarmonyOutput['mood'];
-    const dominantTemp = this.getMostCommon(this.temperatureHistory) as HarmonyOutput['temperature'];
+    // 🎯 WAVE 16: Usar votos ponderados para dominante (si hay suficiente peso)
+    let dominantMood = this.getMostCommon(this.moodHistory) as HarmonyOutput['mood'];
+    let dominantTemp = this.getMostCommon(this.temperatureHistory) as HarmonyOutput['temperature'];
     
-    // 🎵 WAVE 15.5: Key detection basado en frecuencia dominante
+    if (this.totalWeightAccumulated > 0.5) {
+      dominantMood = this.getWeightedDominant(this.moodWeightedVotes, 'universal') as HarmonyOutput['mood'];
+      dominantTemp = this.getWeightedDominant(this.temperatureWeightedVotes, 'neutral') as HarmonyOutput['temperature'];
+    }
+    
+    // 🎵 WAVE 15.5 + WAVE 16: Key detection con votación ponderada
     if (audio.dominantFrequency && audio.dominantFrequency > 0) {
       const note = this.frequencyToNote(audio.dominantFrequency);
       if (note) {
+        // 🎯 WAVE 16: Votación ponderada para Key
+        const currentNoteWeight = this.noteWeightedVotes.get(note) || 0;
+        this.noteWeightedVotes.set(note, currentNoteWeight + weight);
+        
         this.noteHistory.push(note);
         if (this.noteHistory.length > this.noteHistorySize) {
           this.noteHistory.shift();
@@ -621,6 +705,39 @@ export class SimpleHarmonyDetector {
       chromaticNotes: [],
       confidence: Math.min(1, (this.moodHistory.length / this.historySize) * (energyLevel + 0.3)),
     };
+  }
+  
+  /**
+   * 🎯 WAVE 16: Aplica decaimiento exponencial a todos los votos ponderados
+   * Esto evita que el pasado lejano domine la votación
+   */
+  private applyDecayToVotes(): void {
+    for (const [key, value] of this.moodWeightedVotes) {
+      this.moodWeightedVotes.set(key, value * this.WEIGHT_DECAY);
+    }
+    for (const [key, value] of this.temperatureWeightedVotes) {
+      this.temperatureWeightedVotes.set(key, value * this.WEIGHT_DECAY);
+    }
+    for (const [key, value] of this.noteWeightedVotes) {
+      this.noteWeightedVotes.set(key, value * this.WEIGHT_DECAY);
+    }
+  }
+  
+  /**
+   * 🎯 WAVE 16: Obtiene el valor con mayor peso acumulado
+   */
+  private getWeightedDominant(votes: Map<string, number>, defaultValue: string): string {
+    let maxKey = defaultValue;
+    let maxWeight = 0;
+    
+    for (const [key, weight] of votes) {
+      if (weight > maxWeight) {
+        maxKey = key;
+        maxWeight = weight;
+      }
+    }
+    
+    return maxKey;
   }
   
   private getMostCommon(arr: string[]): string {
@@ -649,6 +766,12 @@ export class SimpleHarmonyDetector {
     this.noteHistory = [];
     this.lastDetectedKey = null;
     this.keyStabilityCounter = 0; // WAVE 15.6
+    
+    // 🎯 WAVE 16: Limpiar votos ponderados
+    this.moodWeightedVotes.clear();
+    this.temperatureWeightedVotes.clear();
+    this.noteWeightedVotes.clear();
+    this.totalWeightAccumulated = 0;
   }
 }
 

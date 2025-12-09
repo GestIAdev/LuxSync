@@ -17,6 +17,11 @@ import { useNavigationStore } from '../../../stores/navigationStore'
 import { useTrinity } from '../../../providers/TrinityProvider'
 import './SetupView.css'
 
+// 🚨 WAVE 14.9: FLAGS GLOBALES (sobreviven React Strict Mode)
+let _hasLoadedConfig = false
+let _hasScannedLibrary = false
+let _hasLoadedFixtures = false
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -131,8 +136,13 @@ const SetupView: React.FC = () => {
   // Trinity provider
   const trinity = useTrinity()
 
+  // 🚨 WAVE 14.9: Los flags ahora son GLOBALES (fuera del componente, sobreviven StrictMode)
+
   // === LOAD CONFIG ON MOUNT ===
   useEffect(() => {
+    if (_hasLoadedConfig) return // 🛑 PREVENIR BUCLE (flag global)
+    _hasLoadedConfig = true
+    
     const loadConfig = async () => {
       if (!window.lux) return
       try {
@@ -165,12 +175,23 @@ const SetupView: React.FC = () => {
   
   // === SCAN FIXTURES ON MOUNT ===
   useEffect(() => {
-    scanFixtures()
+    if (_hasScannedLibrary) return // 🛑 PREVENIR BUCLE (flag global)
+    _hasScannedLibrary = true
+    
+    // Pequeño delay para evitar race conditions
+    const timer = setTimeout(() => {
+      scanFixtures()
+    }, 100)
+    
+    return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
   // === LOAD PATCHED FIXTURES ===
   useEffect(() => {
+    if (_hasLoadedFixtures) return // 🛑 PREVENIR BUCLE (flag global)
+    _hasLoadedFixtures = true
+    
     const loadPatched = async () => {
       if (!window.lux) return
       try {
@@ -776,11 +797,22 @@ const SetupView: React.FC = () => {
                 </span>
               </div>
               
-              {/* BPM */}
+              {/* BPM - 🚑 RESCUE DIRECTIVE: Show REAL BPM, no mocks */}
               <div className="bpm-display">
-                <span className="bpm-value">{(trinity.audioMetrics?.bpm || bpm || 120).toFixed(1)}</span>
+                <span className="bpm-value">
+                  {trinity.audioMetrics?.bpm ?? bpm ?? 0 > 0 
+                    ? (trinity.audioMetrics?.bpm ?? bpm ?? 0).toFixed(0) 
+                    : '--'}
+                </span>
                 <span className="bpm-label">BPM ♪</span>
-                <span className="bpm-confidence">Confidence: {((bpmConfidence || 0.5) * 100).toFixed(0)}%</span>
+                <span 
+                  className="bpm-confidence" 
+                  style={{ 
+                    color: (bpmConfidence ?? 0) > 0.7 ? '#4ADE80' : (bpmConfidence ?? 0) > 0.4 ? '#FBBF24' : '#EF4444' 
+                  }}
+                >
+                  Confidence: {((bpmConfidence ?? 0) * 100).toFixed(0)}%
+                </span>
               </div>
             </div>
           )}

@@ -40,6 +40,7 @@ export interface AudioConfig {
   source: 'microphone' | 'system' | 'simulation'
   deviceId?: string
   sensitivity: number
+  inputGain: number  // 🔧 WAVE 15: Ganancia de entrada (1.0 = 100%)
 }
 
 export interface LuxSyncUserConfig {
@@ -90,6 +91,7 @@ const DEFAULT_CONFIG: LuxSyncUserConfig = {
   audio: {
     source: 'simulation',
     sensitivity: 0.7,
+    inputGain: 1.0,  // 🔧 WAVE 15: Default 100%
   },
   
   seleneMode: 'idle',

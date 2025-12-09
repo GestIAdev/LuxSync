@@ -580,6 +580,7 @@ export class SectionTracker extends EventEmitter {
 
   /**
    * Calcular confianza de la sección actual
+   * 🔧 WAVE 14.6: Protección contra NaN
    */
   private calculateSectionConfidence(): number {
     // Basado en:
@@ -587,18 +588,23 @@ export class SectionTracker extends EventEmitter {
     // 2. Consistencia de votos
     // 3. Match con perfil típico
     
-    const duration = Date.now() - this.sectionStartTime;
+    const now = Date.now();
+    const duration = this.sectionStartTime > 0 ? now - this.sectionStartTime : 0;
     const durationFactor = Math.min(1, duration / 10000);  // Max confidence después de 10s
     
-    const voteConfidence = Math.min(1, this.consecutiveSection / 10);
+    const voteConfidence = Math.min(1, (this.consecutiveSection || 0) / 10);
     
-    return durationFactor * 0.5 + voteConfidence * 0.5;
+    const result = durationFactor * 0.5 + voteConfidence * 0.5;
+    
+    // 🔧 WAVE 14.6: Protección contra NaN
+    return Number.isFinite(result) ? result : 0;
   }
 
   /**
    * Calcular confianza general del análisis
    * 
    * ⚠️ REGLA 2: Si < 0.5, el orquestador usará fallback
+   * 🔧 WAVE 14.6: Protección contra NaN
    */
   private calculateConfidence(rhythm: RhythmAnalysis): number {
     // Factores:
@@ -606,11 +612,14 @@ export class SectionTracker extends EventEmitter {
     // 2. Confianza del análisis rítmico
     // 3. Estabilidad de sección
     
-    const historyFactor = Math.min(1, this.energyHistory.length / 10);
-    const rhythmFactor = rhythm.confidence;
+    const historyFactor = Math.min(1, (this.energyHistory.length || 0) / 10);
+    const rhythmFactor = rhythm?.confidence ?? 0; // 🔧 Protección
     const stabilityFactor = this.calculateSectionConfidence();
     
-    return historyFactor * 0.3 + rhythmFactor * 0.4 + stabilityFactor * 0.3;
+    const result = historyFactor * 0.3 + rhythmFactor * 0.4 + stabilityFactor * 0.3;
+    
+    // 🔧 WAVE 14.6: Protección contra NaN
+    return Number.isFinite(result) ? result : 0;
   }
 
   // ============================================================

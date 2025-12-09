@@ -3,10 +3,11 @@
  * Muestra: Vibe, Mood, BPM, Selene Status, Master Volume
  * 
  * WAVE 3: Connected to useSeleneAudio for real-time BPM from Selene
+ * 🚑 RESCUE DIRECTIVE: Now shows REAL BPM from telemetry with confidence indicator
  */
 
 import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
-import { useSeleneAudio } from '../hooks/useSelene'
+import { useTelemetryStore } from '../stores/telemetryStore'
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
@@ -27,21 +28,24 @@ export default function Header() {
   const { 
     activePalette, 
     selene, 
-    audio, 
     masterDimmer, 
     setMasterDimmer 
   } = useLuxSyncStore()
 
-  // 🔗 WAVE 3: Get real-time audio from Selene (overrides store when available)
-  const seleneAudio = useSeleneAudio()
+  // � RESCUE DIRECTIVE: Get REAL BPM from telemetry (with confidence)
+  const { audio: telemetryAudio } = useTelemetryStore()
 
   const palette = PALETTES[activePalette]
   const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
   const modeColor = MODE_COLORS[selene.mode]
 
-  // Use Selene BPM if available, fallback to store
-  const displayBpm = seleneAudio.bpm > 0 ? seleneAudio.bpm : audio.bpm
-  const isBeatSync = seleneAudio.bass > 0.7 // High bass = beat
+  // 🚑 RESCUE DIRECTIVE: Use real telemetry BPM with confidence indicator
+  const displayBpm = telemetryAudio?.beat?.bpm ?? 0
+  const bpmConfidence = telemetryAudio?.beat?.confidence ?? 0
+  const isBeatSync = telemetryAudio?.beat?.detected ?? false
+  
+  // Determine BPM text color based on confidence
+  const bpmColor = bpmConfidence > 0.7 ? '#4ADE80' : bpmConfidence > 0.4 ? '#FBBF24' : '#EF4444'
 
   return (
     <header className="header">
@@ -64,10 +68,12 @@ export default function Header() {
           <span className="mood-label" style={{ color: mood.color }}>{mood.label}</span>
         </div>
 
-        {/* BPM - Now uses real-time Selene data */}
+        {/* BPM - Now uses real-time telemetry data with confidence */}
         <div className="header-item bpm-item">
           <span className="bpm-icon">♫</span>
-          <span className="bpm-value">{displayBpm.toFixed(1)}</span>
+          <span className="bpm-value" style={{ color: bpmColor }}>
+            {displayBpm > 0 ? displayBpm.toFixed(0) : '--'}
+          </span>
           <span className="bpm-unit">BPM</span>
           <div className={`sync-dot ${isBeatSync ? 'synced' : ''}`} />
         </div>

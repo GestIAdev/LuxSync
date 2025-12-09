@@ -321,6 +321,9 @@ export class TrinityOrchestrator extends EventEmitter {
         node.circuit.state = CircuitState.CLOSED;
         node.circuit.failures = 0;
         console.log(`[ALPHA] ${NODE_NAMES[sourceId]} is READY`);
+        
+        // 🔧 WAVE 15.1: Enviar configuración pendiente ahora que está listo
+        this.flushPendingConfig(sourceId);
         break;
         
       case MessageType.HEARTBEAT_ACK:
@@ -384,13 +387,14 @@ export class TrinityOrchestrator extends EventEmitter {
     // This is where we'd convert the decision to DMX values
     // and send to the USB DMX interface
     
-    // For now, just log high-confidence decisions
-    if (decision.confidence > 0.8) {
-      console.log(
-        `[ALPHA] 💡 DMX: palette=${decision.palette.intensity.toFixed(2)}, ` +
-        `movement=${decision.movement.pattern}, beauty=${decision.beautyScore.toFixed(2)}`
-      );
-    }
+    // 🔇 WAVE 15.3: Comentado para evitar log spam - Ya hay logs en Beta/Gamma
+    // Los cambios de estado se logean en los handlers de AUDIO_ANALYSIS/LIGHTING_DECISION
+    // if (decision.confidence > 0.8) {
+    //   console.log(
+    //     `[ALPHA] 💡 DMX: palette=${decision.palette.intensity.toFixed(2)}, ` +
+    //     `movement=${decision.movement.pattern}, beauty=${decision.beautyScore.toFixed(2)}`
+    //   );
+    // }
     
     // TODO: Integrate with actual DMX driver
     // this.dmxDriver.sendDecision(decision);
@@ -511,7 +515,10 @@ export class TrinityOrchestrator extends EventEmitter {
   
   /**
    * Feed audio buffer to BETA for analysis.
-   * Called from audio input system.
+   * Called from audio input system via IPC lux:audio-buffer.
+   * 
+   * 🗡️ WAVE 15.3 REAL: This is the ONLY way audio enters the system.
+   * NO BYPASS. NO PRE-PROCESSED DATA. RAW BUFFER → BETA → FFT → GAMMA.
    */
   feedAudioBuffer(buffer: Float32Array): void {
     if (!this.isRunning) return;
@@ -522,9 +529,16 @@ export class TrinityOrchestrator extends EventEmitter {
     }
   }
   
+  // �️ WAVE 15.3: feedAudioMetrics ELIMINADO
+  // El bypass de datos pre-procesados ha sido DESTRUIDO.
+  // El único camino válido es: RAW BUFFER → BETA (FFT) → GAMMA
+  
   // ============================================
   // SEND TO WORKER
   // ============================================
+  
+  // 🔧 WAVE 15.1: Cola de configuración pendiente
+  private pendingConfig: Partial<TrinityConfig> | null = null;
   
   private sendToWorker<T>(
     nodeId: NodeId,
@@ -535,11 +549,35 @@ export class TrinityOrchestrator extends EventEmitter {
     const node = this.nodes.get(nodeId);
     if (!node?.worker) {
       console.warn(`[ALPHA] Cannot send to ${nodeId}: no worker`);
+      
+      // 🔧 WAVE 15.1: Si es CONFIG_UPDATE, guardar para enviar después
+      if (type === MessageType.CONFIG_UPDATE) {
+        this.pendingConfig = payload as unknown as Partial<TrinityConfig>;
+        console.log(`[ALPHA] 📦 Config queued for ${nodeId} (will send when worker ready)`);
+      }
       return;
     }
     
     const message = createMessage(type, 'alpha', nodeId, payload, priority);
     node.worker.postMessage(message);
+  }
+  
+  /**
+   * 🔧 WAVE 15.2: SIEMPRE inyectar configuración completa cuando worker nace
+   * No esperar a que haya config pendiente - inyectar la config actual siempre
+   */
+  private flushPendingConfig(nodeId: NodeId): void {
+    // 💉 FORCE FEED: Inyectar configuración actual SIEMPRE al worker que nace
+    const configToInject = this.pendingConfig || this.config;
+    const gainPercent = ((configToInject.inputGain || 1.0) * 100).toFixed(0);
+    
+    console.log(`[ALPHA] � Injecting initial config to ${nodeId} (Gain: ${gainPercent}%)`);
+    this.sendToWorker(nodeId, MessageType.CONFIG_UPDATE, configToInject);
+    
+    // Limpiar config pendiente si existía
+    if (this.pendingConfig) {
+      this.pendingConfig = null;
+    }
   }
   
   // ============================================

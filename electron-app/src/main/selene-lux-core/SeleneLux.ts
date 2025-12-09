@@ -39,6 +39,12 @@ import {
   type BrainConfig,
 } from './engines/musical'
 import type { AudioAnalysis } from './engines/musical/types'
+// 📡 WAVE-14: Telemetry Collector
+import { 
+  SeleneTelemetryCollector, 
+  getTelemetryCollector,
+  type SeleneTelemetryPacket,
+} from './engines/telemetry/SeleneTelemetryCollector'
 
 export interface SeleneConfig {
   audio: {
@@ -92,6 +98,10 @@ export class SeleneLux extends EventEmitter {
   private useBrain = true // Flag para activar/desactivar el Brain
   private brainInitialized = false
   
+  // 📡 WAVE-14: Telemetry Collector
+  private telemetryCollector: SeleneTelemetryCollector
+  private inputGain = 1.0 // From audio settings
+  
   // 🎨 WAVE 13.6: Multiplicadores Globales de Color (STATE OF TRUTH)
   private globalSaturation = 1.0  // 0-1, default 100%
   private globalIntensity = 1.0   // 0-1, default 100%
@@ -137,6 +147,9 @@ export class SeleneLux extends EventEmitter {
     this.brain = getMusicalBrain(config.brain)
     this.setupBrainEventListeners()
     
+    // 📡 WAVE-14: Inicializar Telemetry Collector (20 FPS)
+    this.telemetryCollector = getTelemetryCollector(20)
+    
     this.consciousness = {
       generation: 1,
       status: 'awakening',
@@ -176,14 +189,49 @@ export class SeleneLux extends EventEmitter {
       this.consciousness.totalPatternsDiscovered++
       this.consciousness.lastInsight = `Aprendí un nuevo patrón: ${data.patternHash?.slice(0, 8)}`
       this.emit('pattern-learned', data)
+      
+      // 📡 WAVE-14.5: Log to telemetry
+      this.telemetryCollector.addLog(
+        'MEMORY',
+        `📚 Nuevo patrón aprendido: ${data.emotionalTone} (Beauty: ${(data.avgBeautyScore * 100).toFixed(0)}%)`,
+        'success',
+        { patternHash: data.patternHash, beauty: data.avgBeautyScore }
+      )
+      this.telemetryCollector.recordPatternLearned()
     })
     
     this.brain.on('mode-change', (data) => {
       this.emit('brain-mode-change', data)
+      
+      // 📡 WAVE-14.5: Log to telemetry
+      this.telemetryCollector.addLog(
+        'MODE',
+        `🔄 Cambio de modo: ${data.from} → ${data.to} (${data.reason})`,
+        'info',
+        data
+      )
     })
     
     this.brain.on('section-change', (data) => {
       this.emit('section-change', data)
+      
+      // 📡 WAVE-14.5: Log to telemetry
+      this.telemetryCollector.addLog(
+        'SECTION',
+        `🎵 Nueva sección: ${data.to} (Confianza: ${(data.confidence * 100).toFixed(0)}%)`,
+        'info',
+        data
+      )
+    })
+    
+    // 📡 WAVE-14.5: Capturar generación de paletas
+    this.brain.on('palette-generated', (data: any) => {
+      this.telemetryCollector.addLog(
+        'PALETTE',
+        `🎨 Paleta generada: ${data.source} - ${data.colors?.length || 0} colores`,
+        'info',
+        { source: data.source, colors: data.colors }
+      )
     })
   }
   
@@ -272,6 +320,23 @@ export class SeleneLux extends EventEmitter {
         this.consciousness.totalExperiences++
       }
       this.decisionCount++
+    }
+    
+    // ───────────────────────────────────────────────────────────────────────
+    // 📡 WAVE-14: Collect & Emit Telemetry
+    // ───────────────────────────────────────────────────────────────────────
+    const audioAnalysis = this.useBrain && this.brainInitialized 
+      ? this.convertToAudioAnalysis(metrics, beatState)
+      : this.convertToAudioAnalysis(metrics, beatState)
+    
+    const telemetryPacket = this.telemetryCollector.collect(
+      audioAnalysis,
+      this.lastBrainOutput,
+      this.inputGain
+    )
+    
+    if (telemetryPacket) {
+      this.emit('telemetry-update', telemetryPacket)
     }
     
     return this.getState()
@@ -600,7 +665,44 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * 🔒 Cierra limpiamente Selene (incluyendo el Brain)
+   * � WAVE-14: Input Gain para telemetría
+   */
+  setInputGain(value: number): void {
+    this.inputGain = Math.max(0, Math.min(4, value))
+    console.log(`[SeleneLux] 🎚️ Input Gain: ${(this.inputGain * 100).toFixed(0)}%`)
+  }
+  
+  getInputGain(): number {
+    return this.inputGain
+  }
+  
+  /**
+   * 🎨 WAVE-14.5: Forzar mutación de color (Lab Control)
+   */
+  forceColorMutation(reason: string = 'Manual trigger'): void {
+    if (this.brainInitialized) {
+      this.brain.forceColorMutation(reason)
+    }
+  }
+  
+  /**
+   * 🧠 WAVE-14.5: Resetear memoria del sistema (Lab Control)
+   */
+  resetMemory(): void {
+    if (this.brainInitialized) {
+      this.brain.resetMemory()
+    }
+  }
+  
+  /**
+   * 📡 WAVE-14: Acceso al TelemetryCollector
+   */
+  getTelemetryCollector(): SeleneTelemetryCollector {
+    return this.telemetryCollector
+  }
+  
+  /**
+   * �🔒 Cierra limpiamente Selene (incluyendo el Brain)
    */
   async shutdown(): Promise<void> {
     this.running = false

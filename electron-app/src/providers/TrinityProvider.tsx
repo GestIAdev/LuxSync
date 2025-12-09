@@ -106,6 +106,13 @@ interface TrinityContextValue {
 
 const TrinityContext = createContext<TrinityContextValue | null>(null)
 
+// 🚨 WAVE 14.9: FLAGS GLOBALES (sobreviven React Strict Mode)
+// React 18 StrictMode monta/desmonta componentes 2 veces en desarrollo.
+// Los useRef dentro del componente se reinician. Estos flags son GLOBALES.
+let _hasInitializedHandshake = false
+let _hasSubscribedToFixtures = false
+let _fixtureListener: ((event: any, fixtures: any[]) => void) | null = null
+
 export function useTrinity() {
   const context = useContext(TrinityContext)
   if (!context) {
@@ -234,17 +241,8 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
     
     // WAVE 9.6.3: Update fixture values for SimulateView
+    // � WAVE 14.9: Solo actualizar valores DMX, sin logs
     if (seleneState.fixtures && seleneState.fixtures.length > 0) {
-      // 🔍 DEBUG: Log ALL fixture addresses and zones (more detail)
-      if (Math.random() < 0.01) { // 1% of frames
-        const summary = seleneState.fixtures.map(f => {
-          const zoneShort = f.zone === 'MOVING_LEFT' ? 'M_L' : 
-                           f.zone === 'MOVING_RIGHT' ? 'M_R' : 
-                           f.zone?.substring(0,3) || 'UNK'
-          return `${f.dmxAddress}:${zoneShort}`
-        }).join(', ')
-        console.log('[Trinity] 📍 All fixtures:', summary)
-      }
       updateFixtureValues(seleneState.fixtures)
     }
     
@@ -279,9 +277,23 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
           // Selene not running → start it
           const result = await window.lux.start()
           console.log('[Trinity] ✅ Selene LUX started:', result)
+          
+          // 🔧 WAVE 15.1: Sync saved inputGain from config to audioStore
+          if (result?.inputGain !== undefined) {
+            useAudioStore.getState().setInputGain(result.inputGain)
+            console.log(`[Trinity] 🎚️ Synced inputGain from config: ${(result.inputGain * 100).toFixed(0)}%`)
+          }
         } else {
           // Selene already running → skip start, just subscribe
           console.log('[Trinity] ℹ️ Backend already running, skipping start')
+          
+          // 🔧 WAVE 15.1: Still need to fetch inputGain from backend
+          // Re-call start to get current inputGain (it will return alreadyRunning: true)
+          const result = await window.lux.start()
+          if (result?.inputGain !== undefined) {
+            useAudioStore.getState().setInputGain(result.inputGain)
+            console.log(`[Trinity] 🎚️ Synced inputGain from running backend: ${(result.inputGain * 100).toFixed(0)}%`)
+          }
         }
       }
       
@@ -382,7 +394,14 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
   
   // 🎯 WAVE 13.6: INITIAL STATE HANDSHAKE - "Truth First"
   // Al montar, pedir el estado COMPLETO del Backend y sincronizar TODOS los stores
+  // 🚨 WAVE 14.9: Usa FLAG GLOBAL para sobrevivir StrictMode
   useEffect(() => {
+    if (_hasInitializedHandshake) {
+      console.log('[Trinity] ⏭️ Handshake already done, skipping')
+      return
+    }
+    _hasInitializedHandshake = true
+    
     const syncInitialState = async () => {
       if (!window.lux?.getFullState) {
         console.warn('[Trinity] ⚠️ getFullState not available, skipping initial sync')
@@ -429,11 +448,13 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
           }
         }
         
-        // Sync Fixtures
-        if (fullState.fixtures && fullState.fixtures.length > 0) {
-          useDMXStore.getState().setFixtures(fullState.fixtures)
-          console.log(`[Trinity] 🎭 Fixtures synced: ${fullState.fixtures.length} fixtures loaded`)
-        }
+        // 🚨 WAVE 14.9: FIXTURES ELIMINADOS DEL HANDSHAKE
+        // Ya NO se sincronizan aquí (causaba bucle infinito).
+        // Ahora vienen por canal dedicado 'lux:fixtures-loaded'
+        // if (fullState.fixtures && fullState.fixtures.length > 0) {
+        //   useDMXStore.getState().setFixtures(fullState.fixtures)
+        //   console.log(`[Trinity] 🎭 Fixtures synced: ${fullState.fixtures.length} fixtures loaded`)
+        // }
         
         console.log('[Trinity] ✅ Initial State Handshake complete')
       } catch (error) {
@@ -443,6 +464,28 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     
     syncInitialState()
   }, []) // 🎯 WAVE 13.6 FIX: Solo ejecutar una vez al montar (sin dependencias)
+  
+  // 🚨 WAVE 14.9: Listener Dedicado para Fixtures (Canal Separado)
+  // Usa FLAGS GLOBALES para sobrevivir React StrictMode
+  useEffect(() => {
+    if (!window.electron || _hasSubscribedToFixtures) return
+    _hasSubscribedToFixtures = true
+    
+    _fixtureListener = (_event: any, fixtures: any[]) => {
+      console.log(`[Trinity] 🎭 Fixtures loaded via dedicated channel: ${fixtures.length} fixtures`)
+      useDMXStore.getState().setFixtures(fixtures)
+    }
+    
+    // Suscribirse al canal dedicado
+    window.electron.ipcRenderer.on('lux:fixtures-loaded', _fixtureListener)
+    console.log('[Trinity] 📡 Listening for fixture updates on dedicated channel')
+    
+    // 🚨 NO resetear _hasSubscribedToFixtures en cleanup (sobrevive StrictMode)
+    return () => {
+      // Solo log, NO desuscribir (la suscripción persiste)
+      console.log('[Trinity] 📡 Component unmount (fixture subscription persists)')
+    }
+  }, [])
   
   // Sync audio metrics to store (from useAudioCapture → audioStore)
   useEffect(() => {

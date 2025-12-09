@@ -204,7 +204,13 @@ const luxApi = {
   /** Blackout master - todas las luces apagadas */
   setBlackout: (active: boolean) => ipcRenderer.invoke('lux:set-blackout', active),
   
-  /** Simular frame de audio */
+  /** 🗡️ WAVE 15.3 REAL: Enviar buffer de audio CRUDO a Trinity
+   * Este es el ÚNICO camino válido. El buffer pasa por Beta (FFT) antes de llegar a Gamma.
+   */
+  audioBuffer: (buffer: Float32Array) => 
+    ipcRenderer.invoke('lux:audio-buffer', buffer.buffer),
+  
+  /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */
   audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) =>
     ipcRenderer.invoke('lux:audio-frame', metrics),
   
@@ -248,6 +254,36 @@ const luxApi = {
     ipcRenderer.on('selene:mode-changed', handler)
     return () => ipcRenderer.removeListener('selene:mode-changed', handler)
   },
+
+  /** 📡 WAVE-14: Suscribirse a telemetría en tiempo real (20 FPS) */
+  onTelemetryUpdate: (callback: (packet: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, packet: any) => callback(packet)
+    ipcRenderer.on('selene:telemetry-update', handler)
+    return () => ipcRenderer.removeListener('selene:telemetry-update', handler)
+  },
+  
+  /** 📡 WAVE 15.3: TRUTH CABLE - Datos reales de Trinity Workers */
+  onAudioAnalysis: (callback: (analysis: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, analysis: any) => callback(analysis)
+    ipcRenderer.on('trinity:audio-analysis', handler)
+    return () => ipcRenderer.removeListener('trinity:audio-analysis', handler)
+  },
+  
+  /** 📡 WAVE 15.3: TRUTH CABLE - Decisiones reales de Gamma */
+  onLightingDecision: (callback: (decision: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, decision: any) => callback(decision)
+    ipcRenderer.on('trinity:lighting-decision', handler)
+    return () => ipcRenderer.removeListener('trinity:lighting-decision', handler)
+  },
+  
+  /** 📡 WAVE-14: Establecer Input Gain */
+  setInputGain: (value: number) => ipcRenderer.invoke('lux:set-input-gain', value),
+  
+  /** 🎨 WAVE-14.5: Forzar mutación de paleta */
+  forceMutate: () => ipcRenderer.invoke('selene:force-mutate'),
+  
+  /** 🧠 WAVE-14.5: Resetear memoria de Selene */
+  resetMemory: () => ipcRenderer.invoke('selene:reset-memory'),
 
   // ============================================
   // WAVE 9.5: FIXTURES

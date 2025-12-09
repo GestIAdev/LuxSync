@@ -107,6 +107,9 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     analyserRef.current = null
   }, [])
 
+  // 🗡️ WAVE 15.3: Buffer crudo para Trinity Workers
+  const timeDomainBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null)
+
   // Process audio frame
   const processFrame = useCallback(() => {
     if (!analyserRef.current || !audioContextRef.current) {
@@ -120,6 +123,27 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const bufferLength = analyser.frequencyBinCount
     const dataArray = new Uint8Array(bufferLength)
     analyser.getByteFrequencyData(dataArray)
+
+    // 🗡️ WAVE 15.3 REAL: Capturar buffer crudo en time-domain para Trinity
+    if (!timeDomainBufferRef.current || timeDomainBufferRef.current.length !== analyser.fftSize) {
+      timeDomainBufferRef.current = new Float32Array(analyser.fftSize) as Float32Array<ArrayBuffer>
+    }
+    analyser.getFloatTimeDomainData(timeDomainBufferRef.current)
+    
+    // 🎚️ WAVE 15.4: Pre-amplificar buffer ANTES de enviar a Trinity
+    // El audio de sistema (YouTube/Spotify) llega muy bajo (RawRMS ~0.01-0.04)
+    // Aplicamos ganancia aquí para que el Worker reciba señal útil
+    const preAmpGain = inputGain * 10; // Base x10 + inputGain del slider
+    const amplifiedBuffer = new Float32Array(timeDomainBufferRef.current.length);
+    for (let i = 0; i < timeDomainBufferRef.current.length; i++) {
+      // Amplificar pero evitar clipping
+      amplifiedBuffer[i] = Math.max(-1, Math.min(1, timeDomainBufferRef.current[i] * preAmpGain));
+    }
+    
+    // Enviar buffer AMPLIFICADO a Trinity Workers (Beta hará FFT)
+    if (window.lux?.audioBuffer) {
+      window.lux.audioBuffer(amplifiedBuffer)
+    }
 
     const sampleRate = audioContextRef.current.sampleRate
     const binWidth = sampleRate / FFT_SIZE

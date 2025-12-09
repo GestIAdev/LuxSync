@@ -100,10 +100,18 @@ interface Window {
     onBlackout: (callback: () => void) => void
   }
   
+  // 🎯 WAVE 13.6: Electron IPC API (for direct event subscriptions)
+  electron: {
+    ipcRenderer: {
+      on: (channel: string, listener: (event: any, ...args: any[]) => void) => void
+      removeListener: (channel: string, listener: (...args: any[]) => void) => void
+    }
+  }
+  
   // Lux API (TRINITY PHASE 2)
   lux: {
     // Control
-    start: () => Promise<{ success: boolean }>
+    start: () => Promise<{ success: boolean; inputGain?: number; alreadyRunning?: boolean }>  // 🔧 WAVE 15.1
     stop: () => Promise<{ success: boolean }>
     // FIX: Ahora acepta string canónico del ColorEngine ('fuego' | 'hielo' | 'selva' | 'neon')
     setPalette: (paletteId: string) => Promise<{ success: boolean }>
@@ -123,6 +131,11 @@ interface Window {
     cancelEffect: (effectIdOrName: number | string) => Promise<{ success: boolean }>
     cancelAllEffects: () => Promise<{ success: boolean }>
     setBlackout: (active: boolean) => Promise<{ success: boolean }>
+    
+    // 🗡️ WAVE 15.3 REAL: Raw audio buffer - El único camino a Trinity
+    audioBuffer: (buffer: Float32Array) => Promise<{ success: boolean }>
+    
+    // Legacy: NO alimenta Trinity Workers
     audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number }) => Promise<{ success: boolean }>
     getState: () => Promise<SeleneStateUpdate | null>
     
@@ -154,6 +167,20 @@ interface Window {
     
     // 🎯 WAVE 13.6: Mode change confirmation from Backend
     onModeChange: (callback: (data: { mode: string; brain: boolean }) => void) => () => void
+    
+    // 📡 WAVE-14: Telemetry updates (20 FPS)
+    onTelemetryUpdate: (callback: (packet: unknown) => void) => () => void
+    
+    // 📡 WAVE 15.3: TRUTH CABLE - Datos reales de Trinity Workers
+    onAudioAnalysis: (callback: (analysis: unknown) => void) => () => void
+    onLightingDecision: (callback: (decision: unknown) => void) => () => void
+    
+    // 📡 WAVE-14: Input Gain control
+    setInputGain: (value: number) => Promise<{ success: boolean; inputGain?: number; error?: string }>
+    
+    // 🎨 WAVE-14.5: Lab Controls
+    forceMutate: () => Promise<{ success: boolean; error?: string }>
+    resetMemory: () => Promise<{ success: boolean; error?: string }>
     
     // WAVE 9.5: Fixtures
     scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>

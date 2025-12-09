@@ -109,7 +109,7 @@ const ModeSwitcher: React.FC = () => {
             >
               <div className="mode-icon-wrapper">
                 <IconComponent 
-                  size={32} 
+                  size={36} 
                   strokeWidth={isActive ? 2.5 : 1.5}
                   className="mode-icon"
                 />

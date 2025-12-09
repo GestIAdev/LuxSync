@@ -258,10 +258,11 @@ export function useSeleneColor(): { r: number; g: number; b: number } {
 
 /**
  * Hook para obtener solo las métricas de audio
+ * 🚑 RESCUE DIRECTIVE: Removed 120 BPM mock default
  */
 export function useSeleneAudio() {
   const { state } = useSelene()
-  return state?.audioMetrics ?? { bass: 0, mid: 0, treble: 0, energy: 0, bpm: 120 }
+  return state?.audioMetrics ?? { bass: 0, mid: 0, treble: 0, energy: 0, bpm: 0 }
 }
 
 /**

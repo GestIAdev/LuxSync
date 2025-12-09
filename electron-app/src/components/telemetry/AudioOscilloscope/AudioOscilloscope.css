@@ -1,0 +1,364 @@
+/**
+ * 🎵 AUDIO OSCILLOSCOPE STYLES
+ * WAVE 14: Cyberpunk-themed audio visualization
+ */
+
+.audio-oscilloscope {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  overflow: hidden;
+  overflow-y: auto;
+}
+
+.audio-oscilloscope.disconnected {
+  opacity: 0.6;
+}
+
+/* 📡 WAVE 15.3: SIGNAL LOST - Indicador visual de desconexión */
+.audio-oscilloscope.signal-lost {
+  border-color: rgba(239, 68, 68, 0.6);
+  animation: signal-lost-pulse 1s ease-in-out infinite;
+}
+
+@keyframes signal-lost-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+}
+
+.audio-oscilloscope.trinity-connected {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.signal-lost-badge {
+  font-size: 10px;
+  color: #ef4444;
+  margin-left: 8px;
+  animation: blink 0.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Scrollbar styling */
+.audio-oscilloscope::-webkit-scrollbar {
+  width: 4px;
+}
+
+.audio-oscilloscope::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.audio-oscilloscope::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 2px;
+}
+
+.audio-oscilloscope::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.audio-oscilloscope .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.audio-oscilloscope .panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #a855f7;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Beat Indicator */
+.beat-indicator {
+  font-size: 12px;
+  color: rgba(139, 92, 246, 0.4);
+  transition: all 0.05s ease;
+}
+
+.beat-indicator.pulse {
+  color: #22c55e;
+  text-shadow: 0 0 10px #22c55e, 0 0 20px #22c55e;
+  transform: scale(1.5);
+}
+
+/* Spectrum Bars */
+.spectrum-section {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.spectrum-bars {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  height: 100px;
+  align-items: flex-end;
+}
+
+.spectrum-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  gap: 4px;
+}
+
+.spectrum-bar {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: height 0.05s ease-out;
+  overflow: hidden;
+}
+
+.spectrum-bar.bass {
+  background: linear-gradient(to top, #ef4444 0%, #f97316 50%, #fbbf24 100%);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.spectrum-bar.mid {
+  background: linear-gradient(to top, #22c55e 0%, #84cc16 50%, #a3e635 100%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.spectrum-bar.treble {
+  background: linear-gradient(to top, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.bar-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bar-value {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Metrics Section */
+.metrics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  width: 50px;
+  text-transform: uppercase;
+}
+
+.metric-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.1s ease-out;
+}
+
+.metric-fill.energy {
+  background: linear-gradient(90deg, #22c55e, #84cc16, #fbbf24, #ef4444);
+}
+
+.metric-peak {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  transition: left 0.3s ease-out;
+}
+
+.metric-trend {
+  font-size: 14px;
+  width: 24px;
+  text-align: center;
+}
+
+.trend-rising {
+  color: #22c55e;
+}
+
+.trend-falling {
+  color: #ef4444;
+}
+
+.trend-stable {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* BPM Row */
+.bpm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 8px;
+}
+
+.bpm-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #a855f7;
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 60px;
+}
+
+.bpm-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.bpm-confidence {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.3), #a855f7);
+  transition: width 0.3s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* GAIN CONTROL - WAVE 14.3: Control Embebido */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.gain-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 8px;
+  margin-top: auto;
+}
+
+.gain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gain-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gain-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fbbf24;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.gain-slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gain-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+  background: linear-gradient(to right, 
+    rgba(251, 191, 36, 0.3) 0%, 
+    #fbbf24 50%, 
+    #f97316 100%);
+  outline: none;
+  cursor: pointer;
+}
+
+.gain-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 8px rgba(251, 191, 36, 0.4);
+  cursor: grab;
+  transition: transform 0.1s ease;
+}
+
+.gain-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.gain-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+
+.gain-quick-btns {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.gain-quick {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gain-quick:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+}
+
+.gain-quick.active {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+}

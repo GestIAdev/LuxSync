@@ -284,8 +284,9 @@ export default function MovementControl() {
           display: flex;
           flex-direction: column;
           gap: var(--space-xs);
-          flex: 1;
-          min-height: 0;
+          height: 100%;
+          max-height: 100%;
+          overflow: hidden;
         }
 
         .section-title {
@@ -295,7 +296,7 @@ export default function MovementControl() {
           color: var(--text-secondary);
           letter-spacing: 0.1em;
           margin: 0;
-          flex: 0 0 auto;
+          flex-shrink: 0;
         }
 
         .movement-panel {
@@ -307,13 +308,15 @@ export default function MovementControl() {
           border-radius: var(--radius-lg);
           overflow: hidden;
           min-height: 0;
+          max-height: 100%;
         }
 
         /* Visualizador GRANDE */
         .visualizer-container {
           flex: 1;
           position: relative;
-          min-height: 150px;
+          min-height: 120px;
+          max-height: 200px;
         }
 
         .movement-canvas {

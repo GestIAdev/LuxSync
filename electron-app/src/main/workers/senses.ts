@@ -31,6 +31,9 @@ import {
   DEFAULT_CONFIG
 } from './WorkerProtocol';
 
+// 🧮 WAVE 15: FFT REAL - Matemática pura, sin simulaciones
+import { FFTAnalyzer, BandEnergy } from './FFT';
+
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
   SimpleRhythmDetector,
@@ -113,6 +116,11 @@ class BeatDetector {
   private lastPeakTime = 0;
   private beatIntervals: number[] = [];
   
+  // 🚑 RESCUE DIRECTIVE: AGC (Auto-Gain Control)
+  private maxEnergyHistory: number[] = [];
+  private readonly maxEnergyWindowSize = 1290; // ~30 seconds at 43 frames/sec
+  private currentMaxEnergy = 0.01; // Start with small value to avoid division by zero
+  
   analyze(buffer: Float32Array, _sampleRate: number): {
     onBeat: boolean;
     beatStrength: number;
@@ -128,8 +136,24 @@ class BeatDetector {
     }
     energy = Math.sqrt(energy / buffer.length);
     
-    // Add to history
-    this.energyHistory.push(energy);
+    // 🚑 RESCUE DIRECTIVE: AGC - Track max energy over 30 seconds
+    this.maxEnergyHistory.push(energy);
+    if (this.maxEnergyHistory.length > this.maxEnergyWindowSize) {
+      this.maxEnergyHistory.shift();
+    }
+    
+    // Update current max (use 95th percentile to avoid outlier spikes)
+    if (this.maxEnergyHistory.length > 10) {
+      const sorted = [...this.maxEnergyHistory].sort((a, b) => b - a);
+      const percentile95Index = Math.floor(sorted.length * 0.05);
+      this.currentMaxEnergy = Math.max(0.01, sorted[percentile95Index]);
+    }
+    
+    // Normalize energy to 0-1 range based on dynamic max
+    const normalizedEnergy = Math.min(1, energy / this.currentMaxEnergy);
+    
+    // Add to history (use normalized energy for beat detection)
+    this.energyHistory.push(normalizedEnergy);
     if (this.energyHistory.length > this.historySize) {
       this.energyHistory.shift();
     }
@@ -138,8 +162,8 @@ class BeatDetector {
     const avgEnergy = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
     const threshold = avgEnergy * 1.5;
     
-    // Detect peak (beat)
-    const onBeat = energy > threshold && (now - this.lastPeakTime) > 200; // Min 200ms between beats
+    // Detect peak (beat) - use normalized energy
+    const onBeat = normalizedEnergy > threshold && (now - this.lastPeakTime) > 200; // Min 200ms between beats
     
     if (onBeat) {
       // Calculate interval since last beat
@@ -174,7 +198,7 @@ class BeatDetector {
     
     return {
       onBeat,
-      beatStrength: Math.min(1, energy / (avgEnergy * 2)),
+      beatStrength: Math.min(1, normalizedEnergy / (avgEnergy * 2)), // Use normalized energy
       bpm,
       confidence
     };
@@ -182,76 +206,79 @@ class BeatDetector {
 }
 
 // ============================================
-// SPECTRUM ANALYZER
+// SPECTRUM ANALYZER - 🧮 WAVE 15: FFT REAL
 // ============================================
 
+/**
+ * Analizador espectral usando FFT matemático puro (Cooley-Tukey).
+ * 
+ * WAVE 15: Reemplaza la versión anterior que solo dividía el buffer
+ * por índice sin hacer análisis de frecuencia real.
+ * 
+ * Ahora usa transformada de Fourier para obtener:
+ * - Energía real en bandas de frecuencia (20-250Hz = bass, etc.)
+ * - Detección de kicks, snares, hi-hats
+ * - Centroide espectral para "brillo" tonal
+ */
 class SpectrumAnalyzer {
-  private readonly fftSize = 256;
+  private readonly fftAnalyzer: FFTAnalyzer;
+  private lastSpectralFlux: number = 0;
+  private prevEnergy: number = 0;
   
-  analyze(buffer: Float32Array, _sampleRate: number): {
+  constructor(sampleRate: number = 44100) {
+    // FFT con 2048 muestras para buena resolución en graves
+    this.fftAnalyzer = new FFTAnalyzer(sampleRate, 2048);
+    console.log('[BETA] 🧮 FFT Analyzer initialized (Cooley-Tukey Radix-2)');
+  }
+  
+  analyze(buffer: Float32Array, sampleRate: number): {
     bass: number;
     mid: number;
     treble: number;
     spectralCentroid: number;
     spectralFlux: number;
+    // 🧮 WAVE 15: Datos adicionales del FFT real
+    subBass: number;
+    lowMid: number;
+    highMid: number;
+    dominantFrequency: number;
+    kickDetected: boolean;
+    snareDetected: boolean;
+    hihatDetected: boolean;
   } {
-    // Simple frequency band analysis
-    // Note: In production, use Web Audio API's AnalyserNode or a proper FFT library
+    // 🧮 Ejecutar FFT REAL
+    const fftResult = this.fftAnalyzer.analyze(buffer);
     
-    const length = Math.min(buffer.length, this.fftSize);
-    
-    // Split buffer into frequency bands (simplified)
-    const lowEnd = Math.floor(length * 0.15);    // ~0-200Hz
-    const midEnd = Math.floor(length * 0.5);     // ~200-2000Hz
-    
-    let bassEnergy = 0;
-    let midEnergy = 0;
-    let trebleEnergy = 0;
-    
-    for (let i = 0; i < length; i++) {
-      const value = Math.abs(buffer[i]);
-      if (i < lowEnd) {
-        bassEnergy += value;
-      } else if (i < midEnd) {
-        midEnergy += value;
-      } else {
-        trebleEnergy += value;
-      }
-    }
-    
-    // Normalize
-    const normalize = (val: number, count: number) => 
-      Math.min(1, (val / count) * 5);
-    
-    const bass = normalize(bassEnergy, lowEnd);
-    const mid = normalize(midEnergy, midEnd - lowEnd);
-    const treble = normalize(trebleEnergy, length - midEnd);
-    
-    // Spectral centroid (center of mass of spectrum)
-    let weightedSum = 0;
-    let totalEnergy = 0;
-    for (let i = 0; i < length; i++) {
-      const value = Math.abs(buffer[i]);
-      weightedSum += i * value;
-      totalEnergy += value;
-    }
-    const spectralCentroid = totalEnergy > 0 ? weightedSum / totalEnergy : length / 2;
-    
-    // Spectral flux (simplified - change in energy)
-    const spectralFlux = Math.abs(bassEnergy + midEnergy + trebleEnergy - 
-      (this.lastEnergy ?? (bassEnergy + midEnergy + trebleEnergy)));
-    this.lastEnergy = bassEnergy + midEnergy + trebleEnergy;
+    // Calcular flujo espectral (cambio de energía total)
+    const currentEnergy = fftResult.bass + fftResult.mid + fftResult.treble;
+    const spectralFlux = Math.min(1, Math.abs(currentEnergy - this.prevEnergy) * 2);
+    this.prevEnergy = currentEnergy;
     
     return {
-      bass,
-      mid,
-      treble,
-      spectralCentroid: spectralCentroid / length, // Normalize to 0-1
-      spectralFlux: Math.min(1, spectralFlux)
+      // Bandas principales (normalizadas 0-1)
+      bass: fftResult.bass,
+      mid: fftResult.mid,
+      treble: fftResult.treble,
+      
+      // Métricas espectrales
+      spectralCentroid: Math.min(1, fftResult.spectralCentroid / 10000), // Normalizar
+      spectralFlux,
+      
+      // 🧮 WAVE 15: Datos adicionales para análisis avanzado
+      subBass: fftResult.subBass,
+      lowMid: fftResult.lowMid,
+      highMid: fftResult.highMid,
+      dominantFrequency: fftResult.dominantFrequency,
+      kickDetected: fftResult.kickDetected,
+      snareDetected: fftResult.snareDetected,
+      hihatDetected: fftResult.hihatDetected,
     };
   }
   
-  private lastEnergy?: number;
+  reset(): void {
+    this.fftAnalyzer.reset();
+    this.prevEnergy = 0;
+  }
 }
 
 // ============================================
@@ -259,7 +286,7 @@ class SpectrumAnalyzer {
 // ============================================
 
 const beatDetector = new BeatDetector();
-const spectrumAnalyzer = new SpectrumAnalyzer();
+const spectrumAnalyzer = new SpectrumAnalyzer(config.audioSampleRate); // 🧮 WAVE 15: Con sample rate real
 
 // Wave 8 Analyzers (from TrinityBridge)
 const rhythmDetector = new SimpleRhythmDetector();
@@ -289,6 +316,28 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const startTime = performance.now();
   state.frameCount++;
   
+  // 🎯 WAVE 14/15: Apply Input Gain (CRITICAL FIX)
+  // Si la señal es débil, los analizadores (Spectrum, Rhythm) ven "silencio".
+  // El BeatDetector tiene su propio AGC, pero el resto NO.
+  // Aplicamos el gain AQUÍ para que afecte a TODO el pipeline.
+  const gain = config.inputGain ?? 1.0;
+  
+  // 🔍 WAVE 15.2 DIAGNOSTIC: Log cada 60 frames SIEMPRE
+  if (state.frameCount % 60 === 0) {
+    let rawRms = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      rawRms += buffer[i] * buffer[i];
+    }
+    rawRms = Math.sqrt(rawRms / buffer.length);
+    console.log(`[BETA 🎚️] Frame ${state.frameCount}: RawRMS=${rawRms.toFixed(4)}, Gain=${gain.toFixed(1)}, PostRMS=${(rawRms * gain).toFixed(4)}`);
+  }
+  
+  if (gain !== 1.0) {
+    for (let i = 0; i < buffer.length; i++) {
+      buffer[i] *= gain;
+    }
+  }
+  
   // === PHASE 1: Basic Beat Detection ===
   const beatResult = beatDetector.analyze(buffer, config.audioSampleRate);
   
@@ -312,11 +361,17 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     state.lastBeatTime = Date.now();
   }
   
-  // === PHASE 2: Spectrum Analysis ===
+  // === PHASE 2: Spectrum Analysis (🧮 FFT REAL) ===
   const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
   
-  // Calculate overall energy
+  // Calculate overall energy (weighted by perceptual importance)
   const energy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
+  
+  // 🔍 WAVE 15.2 DIAGNOSTIC: Log FFT results cada 60 frames SIEMPRE (sin condición de valor)
+  if (state.frameCount % 60 === 0) {
+    const gain = config.inputGain || 1.0;
+    console.log(`[BETA 🧮] FFT: bass=${spectrum.bass.toFixed(2)}, mid=${spectrum.mid.toFixed(2)}, treble=${spectrum.treble.toFixed(2)}, energy=${energy.toFixed(2)}, gain=${gain.toFixed(1)}, dom=${spectrum.dominantFrequency.toFixed(0)}Hz`);
+  }
   
   // === PHASE 3: Wave 8 Rich Analysis ===
   // Create AudioMetrics for Wave 8 analyzers
@@ -327,9 +382,11 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     volume: energy,
     bpm: state.currentBpm,
     bpmConfidence: beatResult.confidence,
-    onBeat: beatResult.onBeat,
+    onBeat: beatResult.onBeat || spectrum.kickDetected, // 🧮 Use FFT kick detection too
     beatPhase: state.beatPhase,
     timestamp: Date.now(),
+    // 🎵 WAVE 15.5: Para Key detection
+    dominantFrequency: spectrum.dominantFrequency,
   };
   
   // Run Wave 8 analyzers
@@ -522,8 +579,15 @@ function handleMessage(message: WorkerMessage): void {
         break;
         
       case MessageType.CONFIG_UPDATE:
-        Object.assign(config, message.payload);
-        console.log('[BETA] Config updated');
+        const newConfig = message.payload as Partial<TrinityConfig>;
+        Object.assign(config, newConfig);
+        
+        // 🔧 WAVE 15.1: Log detallado del inputGain
+        if (newConfig.inputGain !== undefined) {
+          console.log(`[BETA] 🎚️ Gain updated to: ${(newConfig.inputGain * 100).toFixed(0)}%`);
+        } else {
+          console.log('[BETA] Config updated');
+        }
         break;
         
       default:

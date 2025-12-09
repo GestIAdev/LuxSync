@@ -8,7 +8,7 @@ import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
 import { useAudioStore } from '../../stores/audioStore'
 import { useDMXStore } from '../../stores/dmxStore'
 import { useSeleneStore } from '../../stores/seleneStore'
-import { Activity, Monitor, Sparkles, Settings, LucideIcon } from 'lucide-react'
+import { Activity, Monitor, Settings, LucideIcon, Brain } from 'lucide-react'
 import './Sidebar.css'
 
 // Colores por tab
@@ -16,15 +16,15 @@ const TAB_COLORS: Record<TabId, string> = {
   'live': '#00fff0',     // Cian
   'setup': '#a855f7',    // Violeta  
   'simulate': '#ff00ff', // Magenta
-  'selene': '#00ff88'    // Verde Selene
+  'core': '#f59e0b'      // Naranja (Orange-Amber) - LUX CORE
 }
 
 // 🎨 WAVE 10.6: Pro Icons (Lucide React)
 const TAB_ICONS: Record<string, LucideIcon> = {
   'activity': Activity,
   'monitor': Monitor,
-  'sparkles': Sparkles,
   'settings': Settings,
+  'brain': Brain,
 }
 
 const Sidebar: React.FC = () => {

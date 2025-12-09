@@ -1,0 +1,348 @@
+/**
+ * 🎯 HUNT MONITOR STYLES
+ * WAVE 14: Stalking & Strike visualization
+ */
+
+.hunt-monitor {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  overflow: hidden;
+  overflow-y: auto;
+}
+
+.hunt-monitor.disconnected {
+  opacity: 0.6;
+}
+
+/* Scrollbar styling */
+.hunt-monitor::-webkit-scrollbar {
+  width: 4px;
+}
+
+.hunt-monitor::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.hunt-monitor::-webkit-scrollbar-thumb {
+  background: rgba(249, 115, 22, 0.3);
+  border-radius: 2px;
+}
+
+.hunt-monitor::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.5);
+}
+
+.hunt-monitor .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hunt-monitor .panel-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #f97316;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hunt-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 1px solid;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Strike Score Section */
+.strike-score-section {
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.score-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.score-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+
+.score-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #f97316;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.score-bar {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
+  border-radius: 6px;
+  transition: width 0.2s ease-out;
+}
+
+.score-fill.ready {
+  background: linear-gradient(90deg, #22c55e, #84cc16);
+  animation: pulse-ready 1s ease-in-out infinite;
+}
+
+@keyframes pulse-ready {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.score-threshold {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.score-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.conditions-count {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ready-badge {
+  font-size: 10px;
+  color: #22c55e;
+  font-weight: 600;
+  animation: flash 0.5s ease-in-out infinite;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Conditions Section */
+.conditions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.conditions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.condition-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.condition-item.met {
+  background: rgba(34, 197, 94, 0.15);
+  border-left-color: #22c55e;
+}
+
+.condition-icon {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.condition-item.met .condition-icon {
+  color: #22c55e;
+}
+
+.condition-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  flex: 1;
+}
+
+.condition-value {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.condition-item.met .condition-value {
+  color: #22c55e;
+}
+
+/* Target Section */
+.target-section {
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.target-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.target-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.target-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.target-value {
+  font-size: 11px;
+  color: #a855f7;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ACTION TOOLBAR - WAVE 14.3: Controles Embebidos */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.action-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-top: auto;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.action-btn.mutate {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #a855f7;
+}
+
+.action-btn.mutate:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.action-btn.reset {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.action-btn.reset:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.action-btn.settings {
+  flex: 0 0 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.action-btn.settings:hover,
+.action-btn.settings.active {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.3);
+  color: #f97316;
+}
+
+/* Inline Settings Panel */
+.inline-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 8px;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.setting-value {
+  font-size: 11px;
+  color: #f97316;
+  font-family: 'JetBrains Mono', monospace;
+}

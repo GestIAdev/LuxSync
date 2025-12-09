@@ -2,10 +2,12 @@
  * 🎛️ LIVE VIEW - Main Control View
  * WAVE 9.2: Paletas, movimiento y control en tiempo real
  * WAVE 13.6: ModeSwitcher gigante integrado (DEBAJO de panels)
+ * WAVE 14.4: Iconos Lucide + Brain Preview optimizado
  * Conectado a Selene Brain via stores
  */
 
 import React from 'react'
+import { BrainCircuit, Activity, Zap, Sparkles, Music } from 'lucide-react'
 import PaletteReactor from '../../PaletteReactor'
 import MovementControl from '../../MovementControl'
 import ModeSwitcher from '../../ModeSwitcher'
@@ -48,7 +50,7 @@ const LiveView: React.FC = () => {
           {/* Brain Preview */}
           <section className="panel brain-panel">
             <div className="panel-header">
-              <h3>🧠 BRAIN PREVIEW</h3>
+              <h3><BrainCircuit size={16} className="inline mr-2" />BRAIN PREVIEW</h3>
               <span className={`brain-status ${brainConnected ? 'connected' : 'disconnected'}`}>
                 {brainConnected ? '● LIVE' : '○ OFFLINE'}
               </span>
@@ -59,6 +61,7 @@ const LiveView: React.FC = () => {
               </div>
               
               <div className="brain-metric">
+                <Sparkles size={12} className="metric-icon" />
                 <span>Beauty:</span>
                 <div className="metric-bar">
                   <div 
@@ -70,6 +73,7 @@ const LiveView: React.FC = () => {
               </div>
               
               <div className="brain-metric">
+                <Activity size={12} className="metric-icon" />
                 <span>Confidence:</span>
                 <div className="metric-bar">
                   <div 
@@ -89,15 +93,18 @@ const LiveView: React.FC = () => {
               
               <div className="brain-stats">
                 <div className="stat-row">
-                  <span>🎵 BPM:</span>
+                  <Music size={12} className="inline mr-1" />
+                  <span>BPM:</span>
                   <span className="stat-value">{bpm.toFixed(0)}</span>
                 </div>
                 <div className="stat-row">
-                  <span>📊 Patterns:</span>
+                  <Activity size={12} className="inline mr-1" />
+                  <span>Patterns:</span>
                   <span className="stat-value">{patternsLearned} learned</span>
                 </div>
                 <div className="stat-row">
-                  <span>✨ Session:</span>
+                  <Sparkles size={12} className="inline mr-1" />
+                  <span>Session:</span>
                   <span className="stat-value">{sessionPatterns} new</span>
                 </div>
               </div>

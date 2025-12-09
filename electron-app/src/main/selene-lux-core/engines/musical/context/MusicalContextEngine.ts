@@ -766,6 +766,14 @@ export class MusicalContextEngine extends EventEmitter {
   }
   
   /**
+   * 🎵 WAVE 14.5: Obtiene el último análisis rítmico
+   * Útil para modo reactivo donde no hay context completo
+   */
+  getLastRhythm(): RhythmAnalysis | null {
+    return this.rhythmAnalyzer.getLastResult();
+  }
+  
+  /**
    * Obtiene estadísticas de rendimiento
    */
   getPerformanceStats(): {

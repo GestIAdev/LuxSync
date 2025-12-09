@@ -10,7 +10,7 @@ import './ContentArea.css'
 // Lazy load views for better performance
 const LiveView = lazy(() => import('../views/LiveView'))
 const SimulateView = lazy(() => import('../views/SimulateView'))
-const SeleneLuxView = lazy(() => import('../views/SeleneLuxView'))
+const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 const SetupView = lazy(() => import('../views/SetupView'))
 
 // Loading fallback
@@ -30,8 +30,8 @@ const ContentArea: React.FC = () => {
         return <LiveView />
       case 'simulate':
         return <SimulateView />
-      case 'selene':
-        return <SeleneLuxView />
+      case 'core':
+        return <LuxCoreView />
       case 'setup':
         return <SetupView />
       default:
@@ -42,7 +42,8 @@ const ContentArea: React.FC = () => {
   return (
     <main className="content-area">
       <Suspense fallback={<ViewLoader />}>
-        <div className="view-container" key={activeTab}>
+        {/* 🚨 WAVE 14.9: REMOVIDO key={activeTab} que causaba re-mount en cada cambio de tab */}
+        <div className="view-container">
           {renderView()}
         </div>
       </Suspense>

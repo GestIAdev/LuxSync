@@ -260,6 +260,7 @@ export interface TrinityConfig {
   // Audio
   audioBufferSize: number;    // samples
   audioSampleRate: number;    // Hz
+  inputGain?: number;         // 🎯 WAVE 14: Input Gain (1.0 = 100%)
   
   // Performance
   targetFps: number;          // Target frame rate for decisions
@@ -272,6 +273,7 @@ export const DEFAULT_CONFIG: TrinityConfig = {
   resurrectionDelay: 500,
   audioBufferSize: 2048,
   audioSampleRate: 44100,
+  inputGain: 1.0,  // 🔧 WAVE 15: Default 100%
   targetFps: 60
 };
 

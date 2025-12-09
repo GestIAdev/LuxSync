@@ -308,7 +308,7 @@ export class RhythmAnalyzer {
     // Si no hay suficientes datos, devolver valores neutros
     if (frames.length < 4) {
       return {
-        syncopation: 0.2,  // Neutral
+        syncopation: 0, // RESCUE DIRECTIVE: NO DEFAULTS - use 0 if no data
         swingAmount: 0.0,
         complexity: 'low',
         humanization: 0.05,
@@ -343,7 +343,7 @@ export class RhythmAnalyzer {
     const totalEnergy = onBeatEnergy + offBeatEnergy;
     
     // Factor 1: Qué proporción de energía está off-beat (0-1)
-    const offBeatRatio = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0.5;
+    const offBeatRatio = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0; // RESCUE DIRECTIVE: NO DEFAULTS - use 0 if no energy
     
     // Factor 2: Qué tan fuertes son los picos off-beat vs ON-beat
     // Si peakOffBeat ≈ peakOnBeat → hay golpes importantes off-beat (alto syncopation)
@@ -351,7 +351,7 @@ export class RhythmAnalyzer {
     // CLAVE: Comparar con peakOnBeat, no con maxPeak
     const peakDominance = peakOnBeat > 0.01 
       ? Math.min(1, peakOffBeat / peakOnBeat)  // 0 si offBeat débil, 1 si igual o mayor
-      : (peakOffBeat > 0.3 ? 1 : 0.5);         // Si no hay onBeat, usar offBeat
+      : (peakOffBeat > 0.3 ? 1 : 0); // RESCUE DIRECTIVE: If no onBeat, use 0 not 0.5
     
     // FÓRMULA FINAL:
     // - offBeatRatio alto + peakDominance alto = ALTA syncopation (reggaeton)

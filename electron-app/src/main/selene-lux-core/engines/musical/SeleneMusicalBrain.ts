@@ -13,7 +13,7 @@
        // Extraer valores de tipos anidados correctamente
       const modeScale = context.harmony?.mode?.scale ?? 'major';
       const sectionType = context.section?.current?.type ?? 'unknown';
-      const syncopation = context.rhythm?.groove?.syncopation ?? 0.5;
+      const syncopation = context.rhythm?.groove?.syncopation ?? 0; // RESCUE DIRECTIVE: NO DEFAULTS
       
       // 🧠 WAVE 13: BRAIN UNLOCK - Reactivamos memoria con KEY-driven colors
       // La tonalidad musical determina el Hue base
@@ -57,6 +57,7 @@ import {
 import { 
   SeleneMemoryManager, 
   getMemoryManager,
+  resetMemoryManager,
   type LearnedPattern,
 } from './learning/SeleneMemoryManager';
 
@@ -414,6 +415,7 @@ export class SeleneMusicalBrain extends EventEmitter {
 
   /**
    * Procesa en modo reactivo (sin análisis musical completo)
+   * 🔧 WAVE 14.5: Ahora incluye context parcial con rhythm para telemetría
    */
   private processReactiveMode(
     _result: ReactiveResult,
@@ -442,6 +444,54 @@ export class SeleneMusicalBrain extends EventEmitter {
     const energy = audio.energy.current;
     const palette = this.generateFallbackPalette(energy);
     
+    // 🔧 WAVE 14.5: Obtener último rhythm análisis para telemetría
+    // Aunque estamos en modo reactivo, el RhythmAnalyzer siempre corre
+    const lastRhythm = this.contextEngine.getLastRhythm();
+    
+    // 🔧 WAVE 14.5: Crear context MÍNIMO para telemetría de syncopation
+    // Esto permite que la UI muestre métricas incluso en modo reactivo
+    const minimalContext: MusicalContext | undefined = lastRhythm ? {
+      rhythm: lastRhythm,
+      harmony: {
+        key: null,
+        mode: { 
+          scale: 'major', 
+          confidence: 0,
+          mood: 'universal',
+        },
+        currentChord: {
+          root: null,
+          quality: null,
+          confidence: 0,
+        },
+        confidence: 0,
+        timestamp: timestamp,
+      },
+      section: {
+        current: { 
+          type: 'unknown', 
+          confidence: 0,
+          startedAt: timestamp,
+          duration: 0,
+        },
+        predicted: null,
+        intensity: energy,
+        intensityTrend: 'stable',
+        confidence: 0,
+        timestamp: timestamp,
+      },
+      genre: {
+        primary: 'unknown',
+        confidence: 0,
+        characteristics: [],
+        timestamp: timestamp,
+      },
+      mood: 'neutral',
+      energy: energy,
+      confidence: 0.3,
+      timestamp: timestamp,
+    } : undefined;
+
     return {
       timestamp,
       sessionId: this.currentSessionId!,
@@ -452,6 +502,7 @@ export class SeleneMusicalBrain extends EventEmitter {
         strategy: 'reactive',
       },
       lighting,
+      context: minimalContext, // 🔧 WAVE 14.5: Ahora incluye context con rhythm!
       paletteSource: 'fallback',
       estimatedBeauty: 0.5, // Neutral en modo reactivo
       performance: perf,
@@ -532,7 +583,7 @@ export class SeleneMusicalBrain extends EventEmitter {
       // Extraer valores de tipos anidados correctamente
       const modeScale = context.harmony?.mode?.scale ?? 'major';
       const sectionType = context.section?.current?.type ?? 'unknown';
-      const syncopation = context.rhythm?.groove?.syncopation ?? 0.5;
+      const syncopation = context.rhythm?.groove?.syncopation ?? 0; // RESCUE DIRECTIVE: NO DEFAULTS
       
       // 🧠 WAVE 13: BRAIN UNLOCK - KEY define el color, NO la energía
       // La tonalidad musical determina el Hue base
@@ -576,7 +627,7 @@ export class SeleneMusicalBrain extends EventEmitter {
       section: context.section?.current?.type ?? 'unknown',
       mood: context.mood,
       energy: context.energy,
-      syncopation: context.rhythm?.groove?.syncopation ?? 0.5,
+      syncopation: context.rhythm?.groove?.syncopation ?? 0, // RESCUE DIRECTIVE: NO DEFAULTS
       beatPhase: context.rhythm?.beatPhase ?? 0,
       fillInProgress: context.rhythm?.fillInProgress ?? false,
     };
@@ -997,6 +1048,38 @@ export class SeleneMusicalBrain extends EventEmitter {
     
     console.log('[Brain] 🔒 Shutdown complete. Session stats:', stats);
     this.emit('shutdown', stats);
+  }
+
+  /**
+   * 🎨 WAVE 14.5: Forzar mutación de color (Lab Control)
+   * Útil para debugging o controles manuales
+   */
+  forceColorMutation(reason: string = 'Manual trigger'): void {
+    if (this.config.debug) {
+      console.log(`[Brain] 🎨 Force color mutation: ${reason}`);
+    }
+    this.paletteGenerator.forceColorMutation(reason);
+  }
+
+  /**
+   * 🧠 WAVE 14.5: Resetear memoria del sistema (Lab Control)
+   * CUIDADO: Borra todos los patrones aprendidos
+   */
+  resetMemory(): void {
+    if (this.config.debug) {
+      console.log('[Brain] 🧠 Resetting memory...');
+    }
+    resetMemoryManager();
+    this.patternCache.clear();
+    this.sessionStats = {
+      framesProcessed: 0,
+      palettesFromMemory: 0,
+      palettesGenerated: 0,
+      patternsLearned: 0,
+      totalBeautyScore: 0,
+      maxBeautyScore: 0,
+      minBeautyScore: 1,
+    };
   }
 
   /**

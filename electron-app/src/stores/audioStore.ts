@@ -57,12 +57,12 @@ export interface AudioState {
 // ============================================
 
 export const useAudioStore = create<AudioState>((set, get) => ({
-  // Initial state
+  // Initial state - 🚑 RESCUE DIRECTIVE: No mock BPM
   deviceId: null,
   deviceName: null,
   isConnected: false,
   availableDevices: [],
-  bpm: 120,
+  bpm: 0,
   bpmConfidence: 0,
   level: -60,
   bass: 0,
@@ -127,7 +127,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   
   reset: () => {
     set({
-      bpm: 120,
+      bpm: 0, // 🚑 RESCUE DIRECTIVE: No mock BPM
       bpmConfidence: 0,
       level: -60,
       bass: 0,

@@ -156,6 +156,28 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   },
   
   setFixtures: (fixtures) => {
+    const { fixtures: currentFixtures } = get()
+    
+    // 🚨 WAVE 14.9: Prevención de Bucle Infinito
+    // Comparar fixtures antes de actualizar para evitar re-renders innecesarios
+    if (currentFixtures.length === fixtures.length) {
+      const isIdentical = currentFixtures.every((current, idx) => {
+        const incoming = fixtures[idx]
+        return (
+          current.id === incoming.id &&
+          current.dmxAddress === incoming.dmxAddress &&
+          current.name === incoming.name &&
+          current.type === incoming.type &&
+          current.zone === incoming.zone
+        )
+      })
+      
+      if (isIdentical) {
+        // Lista idéntica - NO actualizar estado para evitar re-render
+        return
+      }
+    }
+    
     const channelsUsed = fixtures.reduce((sum, f) => sum + f.channelCount, 0)
     set({
       fixtures,

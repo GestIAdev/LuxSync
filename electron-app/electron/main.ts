@@ -114,6 +114,12 @@ function createWindow() {
     if (isDev) {
       mainWindow?.webContents.openDevTools()
     }
+    
+    // 🚨 WAVE 14.9: Broadcast fixtures por canal dedicado (solo una vez al inicio)
+    if (patchedFixtures.length > 0 && mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+      console.log(`[Main] 📡 Broadcasted ${patchedFixtures.length} fixtures to renderer`)
+    }
   })
 
   if (isDev) {
@@ -148,6 +154,9 @@ app.whenReady().then(() => {
     }))
     recalculateZoneCounters()
     console.log(`[Main] 🔄 Restored ${patchedFixtures.length} fixtures from config`)
+    
+    // 🚨 WAVE 14.9: Broadcast fixtures por canal dedicado (después de crear ventana)
+    // Nota: La ventana aún no existe aquí, se enviará en createWindow
   }
   
   createWindow()
@@ -245,11 +254,66 @@ function initSelene() {
   console.log('Selene LUX initialized')
   
   // 🌊 WAVE 12.5: Auto-inicializar el Brain para que los colores procedan del ProceduralPaletteGenerator
-  selene.initializeBrain().then(() => {
+  selene.initializeBrain().then(async () => {
     console.log('[Main] 🧠 Brain auto-initialized for procedural colors')
+    
+    // 🔧 WAVE 15.2: AUTO-START SELENE MODE - No esperar al clic del usuario
+    // El modo Selene es el default profesional - arrancamos Trinity inmediatamente
+    selene.setMode('selene')
+    selene.setUseBrain(true)
+    
+    const trinity = getTrinity()
+    if (trinity) {
+      try {
+        await trinity.start()
+        console.log('[Main] 🛡️ TRINITY AUTO-STARTED - All workers spawned')
+        trinity.enableBrain()
+        
+        // 💉 Inyectar configuración inicial incluyendo inputGain
+        const savedConfig = configManager.getConfig()
+        const savedGain = savedConfig.audio?.inputGain ?? 1.0
+        trinity.updateConfig({ inputGain: savedGain })
+        console.log(`[Main] 💉 Injected initial config: Gain=${(savedGain * 100).toFixed(0)}%`)
+        
+        // 📡 WAVE 15.3: CONECTAR TRINITY → FRONTEND (El Cable de la Verdad)
+        // Los datos REALES de Beta/Gamma ahora fluyen al frontend
+        trinity.on('audio-analysis', (analysis) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('trinity:audio-analysis', analysis)
+          }
+        })
+        
+        trinity.on('lighting-decision', (decision) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('trinity:lighting-decision', decision)
+          }
+        })
+        
+        console.log('[Main] 📡 TRUTH CABLE CONNECTED - Trinity → Frontend')
+        
+      } catch (err) {
+        console.warn('[Main] ⚠️ Trinity auto-start failed (non-fatal):', err)
+      }
+    }
+    
+    console.log('[Main] ⚡ SELENE MODE AUTO-ACTIVATED!')
+    console.log('[Main] 🧠 Brain: ENABLED (default)')
+    
+    // Notify UI that mode is 'selene' by default
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('lux:mode-change', { mode: 'selene', brain: true })
+    }
   }).catch((err) => {
     console.warn('[Main] ⚠️ Brain init failed (colors will be legacy):', err)
   })
+  
+  // 📡 WAVE-14: Forward telemetry updates to renderer
+  selene.on('telemetry-update', (packet) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('selene:telemetry-update', packet)
+    }
+  })
+  console.log('[Main] 📡 Telemetry forwarding enabled')
 
   // mark system as running
   globalThis.__lux_isSystemRunning = true
@@ -771,8 +835,9 @@ ipcMain.handle('lux:get-full-state', () => {
       consciousness: seleneState?.consciousness || null,
     },
     
-    // Fixtures
-    fixtures: patchedFixtures,
+    // 🚨 WAVE 14.9: Fixtures ELIMINADOS del handshake inicial
+    // Ahora se cargan por canal dedicado (lux:config-loaded)
+    // fixtures: patchedFixtures,  ← CORTADO
     
     // Audio Status (Trinity)
     audio: {
@@ -786,12 +851,25 @@ ipcMain.handle('lux:start', () => {
     console.log('[Main] ⚠️ lux:start called but system already running - ignoring')
     // still ensure main loop is running
     startMainLoop()
-    return { success: true, alreadyRunning: true }
+    
+    // 🔧 WAVE 15.1: Return saved inputGain even when already running
+    const savedConfig = configManager.getConfig()
+    const savedGain = savedConfig.audio?.inputGain ?? 1.0
+    return { success: true, alreadyRunning: true, inputGain: savedGain }
   }
 
   initSelene()
   startMainLoop()
-  return { success: true }
+  
+  // 🔧 WAVE 15.1: Return saved inputGain on fresh start
+  const savedConfig = configManager.getConfig()
+  const savedGain = savedConfig.audio?.inputGain ?? 1.0
+  if (selene) {
+    selene.setInputGain(savedGain)
+  }
+  console.log(`[Main] 🎚️ Restored inputGain from config: ${(savedGain * 100).toFixed(0)}%`)
+  
+  return { success: true, inputGain: savedGain }
 })
 
 ipcMain.handle('lux:stop', () => {
@@ -1018,6 +1096,65 @@ ipcMain.handle('selene:getBrainStats', async () => {
 })
 
 // ============================================
+// 🎚️ WAVE-14: INPUT GAIN
+// ============================================
+ipcMain.handle('lux:set-input-gain', (_event, value: number) => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  try {
+    selene.setInputGain(value)
+    
+    // 🔧 WAVE 15 FIX: Propagar al Worker Beta
+    const trinity = getTrinity()
+    if (trinity) {
+      trinity.updateConfig({ inputGain: value })
+      console.log(`[Main] 🎚️ Input Gain propagado a Worker: ${(value * 100).toFixed(0)}%`)
+    }
+    
+    // 🔧 WAVE 15: Persistir en config
+    configManager.setAudioConfig({ inputGain: value })
+    
+    return { success: true, inputGain: selene.getInputGain() }
+  } catch (error) {
+    console.error('[Main] ❌ Error setting input gain:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// ============================================
+// 🎨 WAVE-14.5: LAB CONTROLS
+// ============================================
+ipcMain.handle('selene:force-mutate', () => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  try {
+    selene.forceColorMutation('UI Manual Trigger')
+    return { success: true }
+  } catch (error) {
+    console.error('[Main] ❌ Error forcing mutation:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+ipcMain.handle('selene:reset-memory', () => {
+  if (!selene) {
+    return { success: false, error: 'Selene not initialized' }
+  }
+  
+  try {
+    selene.resetMemory()
+    return { success: true }
+  } catch (error) {
+    console.error('[Main] ❌ Error resetting memory:', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// ============================================
 // 🔗 WAVE 10: SYSTEM INITIALIZATION
 // ============================================
 // Handler para inicializar el sistema con auto-zoning
@@ -1052,15 +1189,41 @@ ipcMain.handle('lux:initialize-system', async () => {
     }
   }
   
+  // 🔧 WAVE 15: Propagar inputGain guardado al Worker Beta
+  const savedConfig = configManager.getConfig()
+  const savedGain = savedConfig.audio?.inputGain ?? 1.0
+  if (selene) {
+    selene.setInputGain(savedGain)
+  }
+  const trinity = getTrinity()
+  if (trinity) {
+    trinity.updateConfig({ inputGain: savedGain })
+    console.log(`[Main] 🎚️ Restored inputGain from config: ${(savedGain * 100).toFixed(0)}%`)
+  }
+  
   console.log('[Main] ✅ System initialized with', patchedFixtures.length, 'fixtures')
   
   return { 
     success: true, 
     fixtures: patchedFixtures,
     zoneCounters,
+    inputGain: savedGain,  // 🔧 WAVE 15.1: Return saved gain so Renderer can update audioStore
   }
 })
 
+// 🗡️ WAVE 15.3 REAL: RAW AUDIO BUFFER - El único camino válido
+// Frontend envía Float32Array crudo → Beta hace FFT → Gamma recibe análisis real
+ipcMain.handle('lux:audio-buffer', (_event, bufferData: ArrayBuffer) => {
+  const trinity = getTrinity()
+  if (trinity) {
+    // Convertir ArrayBuffer a Float32Array
+    const buffer = new Float32Array(bufferData)
+    trinity.feedAudioBuffer(buffer)
+  }
+  return { success: true }
+})
+
+// Legacy handler - mantener para compatibilidad pero SIN bypass a Trinity
 ipcMain.handle('lux:audio-frame', (_event, audioData: {
   bass: number
   mid: number
@@ -1070,7 +1233,7 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
 }) => {
   // Audio packet received - no spam logging
   
-  // WAVE 3: Update current audio data for main loop
+  // WAVE 3: Update current audio data for main loop (SeleneLux legacy)
   currentAudioData = {
     bass: audioData.bass,
     mid: audioData.mid,
@@ -1079,6 +1242,10 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
     bpm: audioData.bpm || 120,
     onBeat: audioData.bass > 0.7, // High bass = beat hit
   }
+  
+  // �️ WAVE 15.3: BYPASS ELIMINADO
+  // El frontend DEBE enviar el buffer crudo via lux:audio-buffer
+  // Este handler legacy NO alimenta a Trinity Workers
   
   return { success: true }
 })
@@ -1322,6 +1489,11 @@ ipcMain.handle('lux:patch-fixture', (_event, data: { fixtureId: string; dmxAddre
   
   console.log(`[Fixtures] ✅ Patched ${libraryFixture.name} at DMX ${data.dmxAddress} -> Zone: ${assignedZone}`)
   
+  // 🚨 WAVE 14.9: Broadcast cambio de fixtures por canal dedicado
+  if (mainWindow) {
+    mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+  }
+  
   return { success: true, fixture: patched, totalPatched: patchedFixtures.length }
 })
 
@@ -1350,6 +1522,11 @@ ipcMain.handle('lux:unpatch-fixture', (_event, dmxAddress: number) => {
   })))
   
   console.log(`[Fixtures] 🗑️ Unpatched ${removed.name} from DMX ${dmxAddress}`)
+  
+  // 🚨 WAVE 14.9: Broadcast cambio de fixtures por canal dedicado
+  if (mainWindow) {
+    mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+  }
   
   return { success: true, removed, totalPatched: patchedFixtures.length }
 })

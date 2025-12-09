@@ -36,6 +36,8 @@ export interface AudioMetrics {
   onBeat: boolean;
   beatPhase: number;   // 0-1
   timestamp: number;
+  // 🎵 WAVE 15.5: Para Key detection
+  dominantFrequency?: number; // Hz
 }
 
 /**
@@ -321,7 +323,7 @@ export function createReactiveDecision(
   const palette = generator.generate(
     derivedMood as HarmonyOutput['mood'],
     analysis.energy,
-    0.3, // Moderate syncopation (unknown in reactive)
+    0, // Zero syncopation (unknown in reactive) - RESCUE DIRECTIVE: NO DEFAULTS
     null // No key detection in reactive mode
   );
   
@@ -428,67 +430,225 @@ export class SimpleRhythmDetector {
 }
 
 /**
- * Simplified harmony detection for workers
+ * 🧮 WAVE 15: Harmony detection with dynamic thresholds
+ * 
+ * Mejorado para trabajar con datos FFT reales.
+ * Los umbrales se ajustan según el nivel de energía global.
+ * 
+ * 🎵 WAVE 15.5: Añadido Key detection basado en frecuencia dominante
+ * 🎵 WAVE 15.6: Estabilización de Key/Mood (anti-epilepsia)
  */
 export class SimpleHarmonyDetector {
   private moodHistory: string[] = [];
-  private readonly historySize = 10;
+  private temperatureHistory: string[] = [];
+  private readonly historySize = 32; // WAVE 15.6: Era 16, ahora 32 (~2 seg) para estabilidad
   
-  analyze(audio: AudioMetrics): HarmonyOutput {
-    // Simple mood detection based on spectral balance
-    let mood: HarmonyOutput['mood'] = 'neutral' as any;
-    let temperature: HarmonyOutput['temperature'] = 'neutral';
+  // Historial de ratios para detección de cambios
+  private bassToTrebleHistory: number[] = [];
+  private readonly ratioHistorySize = 16; // WAVE 15.6: Era 8, ahora 16
+  
+  // 🎵 WAVE 15.5: Key detection
+  // 🎵 WAVE 15.6: Aumentado historial para estabilidad
+  private noteHistory: string[] = [];
+  private readonly noteHistorySize = 64; // WAVE 15.6: Era 32, ahora 64 (~4 segundos)
+  private lastDetectedKey: string | null = null;
+  private keyStabilityCounter = 0; // WAVE 15.6: Contador de estabilidad
+  private readonly keyStabilityThreshold = 8; // Necesita 8 frames consecutivos para cambiar
+  
+  // Notas musicales ordenadas (A4 = 440Hz como referencia)
+  private readonly NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  
+  /**
+   * 🎵 Convertir frecuencia a nota musical
+   * Usa A4 = 440Hz como referencia
+   */
+  private frequencyToNote(freq: number): string | null {
+    // Ignorar frecuencias muy bajas (sub-bass) o muy altas (ruido)
+    if (freq < 65 || freq > 4000) return null;
     
-    const bassToTreble = audio.bass / (audio.treble + 0.01);
+    const A4 = 440;
+    // Calcular cuántos semitonos desde A4
+    const semitonesFromA4 = 12 * Math.log2(freq / A4);
+    // A4 es índice 9 (A), así que calculamos el índice en el array
+    const noteIndex = Math.round(semitonesFromA4 + 9) % 12;
     
-    if (bassToTreble > 2) {
-      mood = 'sad';
-      temperature = 'cool';
-    } else if (bassToTreble < 0.5) {
-      mood = 'happy';
-      temperature = 'warm';
-    } else if (audio.mid > 0.7) {
-      mood = 'tense';
-      temperature = 'neutral';
-    } else {
-      mood = 'universal';
-      temperature = 'neutral';
+    return this.NOTE_NAMES[(noteIndex + 12) % 12]; // Handle negative
+  }
+  
+  /**
+   * 🎵 Detectar Key basándose en la nota más frecuente
+   * WAVE 15.6: Añadida lógica de estabilidad anti-epilepsia
+   */
+  private detectKey(): string | null {
+    if (this.noteHistory.length < 16) return this.lastDetectedKey; // WAVE 15.6: Era 8, ahora 16
+    
+    // Contar ocurrencias de cada nota
+    const noteCounts = new Map<string, number>();
+    for (const note of this.noteHistory) {
+      noteCounts.set(note, (noteCounts.get(note) || 0) + 1);
     }
     
-    // Track mood history for stability
+    // Encontrar la nota más común
+    let dominantNote = '';
+    let maxCount = 0;
+    for (const [note, count] of noteCounts) {
+      if (count > maxCount) {
+        dominantNote = note;
+        maxCount = count;
+      }
+    }
+    
+    // WAVE 15.6: Lógica de estabilidad anti-epilepsia
+    // Solo cambiar Key si la nueva nota dominante es clara (>35%) Y estable
+    const threshold = 0.35; // WAVE 15.6: Era 0.25, ahora 0.35
+    
+    if (maxCount > this.noteHistory.length * threshold) {
+      if (dominantNote === this.lastDetectedKey) {
+        // Misma nota, resetear contador
+        this.keyStabilityCounter = 0;
+      } else {
+        // Nueva nota candidata
+        this.keyStabilityCounter++;
+        
+        // Solo cambiar si ha sido estable por suficientes frames
+        if (this.keyStabilityCounter >= this.keyStabilityThreshold) {
+          this.lastDetectedKey = dominantNote;
+          this.keyStabilityCounter = 0;
+        }
+      }
+    } else {
+      // No hay nota dominante clara, no cambiar
+      this.keyStabilityCounter = 0;
+    }
+    
+    return this.lastDetectedKey;
+  }
+  
+  analyze(audio: AudioMetrics): HarmonyOutput {
+    // 🧮 WAVE 15: Umbrales dinámicos basados en energía global
+    const energyLevel = audio.volume;
+    
+    // Con más energía, los umbrales son más estrictos (la música está clara)
+    // Con menos energía, los umbrales son más relajados (evitar defaults constantes)
+    const bassThresholdHigh = energyLevel > 0.3 ? 2.0 : 1.4;
+    const bassThresholdLow = energyLevel > 0.3 ? 0.5 : 0.7;
+    const midThreshold = energyLevel > 0.3 ? 0.6 : 0.4;
+    
+    const bassToTreble = audio.bass / (audio.treble + 0.001); // Más precisión
+    
+    // Tracking del ratio para detectar cambios significativos
+    this.bassToTrebleHistory.push(bassToTreble);
+    if (this.bassToTrebleHistory.length > this.ratioHistorySize) {
+      this.bassToTrebleHistory.shift();
+    }
+    
+    // Calcular varianza del ratio (cambio = música dinámica)
+    const avgRatio = this.bassToTrebleHistory.reduce((a, b) => a + b, 0) / this.bassToTrebleHistory.length;
+    const ratioVariance = this.bassToTrebleHistory.reduce((sum, r) => sum + Math.pow(r - avgRatio, 2), 0) / this.bassToTrebleHistory.length;
+    
+    // Determinar mood y temperature
+    let mood: HarmonyOutput['mood'];
+    let temperature: HarmonyOutput['temperature'];
+    
+    // 🎭 Lógica de mood mejorada con más estados
+    if (bassToTreble > bassThresholdHigh) {
+      // Mucho bass, poco treble = oscuro/profundo
+      mood = audio.mid > midThreshold ? 'bluesy' : 'sad';
+      temperature = 'cool';
+    } else if (bassToTreble < bassThresholdLow) {
+      // Poco bass, mucho treble = brillante/alegre
+      mood = audio.mid > midThreshold ? 'happy' : 'dreamy';
+      temperature = 'warm';
+    } else if (audio.mid > midThreshold * 1.2) {
+      // Medios dominantes = tensión/presencia
+      mood = audio.bass > 0.4 ? 'tense' : 'jazzy';
+      temperature = 'neutral';
+    } else if (audio.treble > 0.5 && audio.bass > 0.5) {
+      // Bass y treble altos, mids bajos = "scooped" sound (electrónica)
+      mood = 'happy';
+      temperature = 'warm';
+    } else if (ratioVariance > 0.3) {
+      // Alta varianza = música dinámica/exótica
+      mood = 'spanish_exotic';
+      temperature = 'warm';
+    } else {
+      // Default: depende de la energía
+      mood = energyLevel > 0.5 ? 'happy' : 'universal';
+      temperature = energyLevel > 0.5 ? 'warm' : 'neutral';
+    }
+    
+    // Track mood history for stability (EMA-like)
     this.moodHistory.push(mood);
     if (this.moodHistory.length > this.historySize) {
       this.moodHistory.shift();
     }
     
-    // Use most common mood
-    const moodCounts = new Map<string, number>();
-    for (const m of this.moodHistory) {
-      moodCounts.set(m, (moodCounts.get(m) || 0) + 1);
+    this.temperatureHistory.push(temperature);
+    if (this.temperatureHistory.length > this.historySize) {
+      this.temperatureHistory.shift();
     }
     
-    let dominantMood: HarmonyOutput['mood'] = mood;
+    // Use most common mood and temperature
+    const dominantMood = this.getMostCommon(this.moodHistory) as HarmonyOutput['mood'];
+    const dominantTemp = this.getMostCommon(this.temperatureHistory) as HarmonyOutput['temperature'];
+    
+    // 🎵 WAVE 15.5: Key detection basado en frecuencia dominante
+    if (audio.dominantFrequency && audio.dominantFrequency > 0) {
+      const note = this.frequencyToNote(audio.dominantFrequency);
+      if (note) {
+        this.noteHistory.push(note);
+        if (this.noteHistory.length > this.noteHistorySize) {
+          this.noteHistory.shift();
+        }
+      }
+    }
+    const detectedKey = this.detectKey();
+    
+    // Determinar mode basándose en mood (heurística)
+    const mode: HarmonyOutput['mode'] = 
+      (dominantMood === 'sad' || dominantMood === 'bluesy' || dominantMood === 'tense') 
+        ? 'minor' 
+        : (dominantMood === 'happy' || dominantMood === 'dreamy') 
+          ? 'major' 
+          : 'unknown';
+    
+    return {
+      key: detectedKey,  // 🎵 WAVE 15.5: Ahora detecta Key real
+      mode: mode,
+      mood: dominantMood,
+      temperature: dominantTemp,
+      dissonance: Math.min(1, ratioVariance), // Usar varianza como proxy de disonancia
+      chromaticNotes: [],
+      confidence: Math.min(1, (this.moodHistory.length / this.historySize) * (energyLevel + 0.3)),
+    };
+  }
+  
+  private getMostCommon(arr: string[]): string {
+    const counts = new Map<string, number>();
+    for (const item of arr) {
+      counts.set(item, (counts.get(item) || 0) + 1);
+    }
+    
+    let maxItem = arr[arr.length - 1] || 'universal';
     let maxCount = 0;
-    for (const [m, count] of moodCounts) {
+    
+    for (const [item, count] of counts) {
       if (count > maxCount) {
-        dominantMood = m as HarmonyOutput['mood'];
+        maxItem = item;
         maxCount = count;
       }
     }
     
-    return {
-      key: null,  // Would need FFT for real key detection
-      mode: 'unknown',
-      mood: dominantMood as HarmonyOutput['mood'],
-      temperature,
-      dissonance: Math.random() * 0.3, // Simplified
-      chromaticNotes: [],
-      confidence: this.moodHistory.length / this.historySize * 0.5, // Lower confidence for simplified
-    };
+    return maxItem;
   }
   
   reset(): void {
     this.moodHistory = [];
+    this.temperatureHistory = [];
+    this.bassToTrebleHistory = [];
+    this.noteHistory = [];
+    this.lastDetectedKey = null;
+    this.keyStabilityCounter = 0; // WAVE 15.6
   }
 }
 

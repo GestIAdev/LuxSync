@@ -528,6 +528,14 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.AUDIO_ANALYSIS:
         if (!state.isRunning) break;
         const analysis = message.payload;
+        
+        // 🔍 WAVE 15.3 DIAGNOSTIC: Log audio reception cada 60 frames
+        state.frameCount = (state.frameCount || 0) + 1;
+        if (state.frameCount % 60 === 0) {
+          const a = analysis as { spectrum?: { bass?: number; mid?: number; treble?: number }; dynamics?: { energy?: number } };
+          console.log(`[GAMMA 🎵] Audio frame ${state.frameCount}: bass=${a.spectrum?.bass?.toFixed(2) || '?'}, mid=${a.spectrum?.mid?.toFixed(2) || '?'}, energy=${a.dynamics?.energy?.toFixed(2) || '?'}`);
+        }
+        
         if (isAudioAnalysis(analysis)) {
           const decision = generateDecision(analysis);
           sendMessage(

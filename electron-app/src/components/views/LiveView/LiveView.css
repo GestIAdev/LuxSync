@@ -2,12 +2,13 @@
  * 🎛️ LIVE VIEW - CSS
  * WAVE 9: Main Control View Styles
  * WAVE 13.6: Layout 3 filas (2 panels arriba, Movement medio, ModeSwitcher abajo)
+ * WAVE 14.4: Gaps reducidos + overflow fixes + OPERACIÓN RELLENO
  */
 
 .live-view {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   height: 100%;
   overflow: hidden;
 }
@@ -31,7 +32,7 @@
 .live-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -41,23 +42,28 @@
 .live-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
   height: 220px;
+  max-height: 220px;
 }
 
-/* Fila 2: Movement Control */
+/* Fila 2: Movement Control - ALTURA FIJA */
 .movement-section {
   flex-shrink: 0;
-  height: 180px;
+  height: 240px;
+  min-height: 240px;
+  max-height: 240px;
+  overflow: hidden;
 }
 
-/* Fila 3: ModeSwitcher (resto del espacio) */
+/* Fila 3: ModeSwitcher - CRECE para llenar */
 .mode-switcher-section {
   flex: 1;
-  min-height: 140px;
+  min-height: 180px;
   display: flex;
   animation: fadeInUp 0.5s ease-out;
+  overflow: hidden;
 }
 
 .mode-switcher-section > * {
@@ -102,28 +108,38 @@
 .brain-panel {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  max-height: 220px;
 }
 
 .brain-preview-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
+  overflow: hidden;
 }
 
 .brain-mode {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 1px;
   transition: color 0.3s ease;
+  flex-shrink: 0;
 }
 
 .brain-metric {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 0.75rem;
+  gap: 8px;
+  font-size: 0.7rem;
   color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.metric-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
 }
 
 .metric-bar {
@@ -153,14 +169,15 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 4px;
-  height: 30px;
-  padding: 4px 0;
+  gap: 3px;
+  height: 24px;
+  padding: 2px 0;
+  flex-shrink: 0;
 }
 
 .spectrum-bar {
-  width: 20px;
-  min-height: 4px;
+  width: 16px;
+  min-height: 3px;
   border-radius: 2px;
   transition: height 0.1s ease;
 }
@@ -181,20 +198,24 @@
 .brain-stats {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.75rem;
+  gap: 3px;
+  font-size: 0.7rem;
   color: #6b7280;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .stat-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 4px;
 }
 
 .stat-value {
   color: #ffffff;
   font-weight: 600;
+  margin-left: auto;
 }
 
 /* Brain Status Badge */
@@ -202,7 +223,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .panel-header h3 {
@@ -211,6 +233,9 @@
   color: #9ca3af;
   letter-spacing: 1px;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .brain-status {

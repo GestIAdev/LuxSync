@@ -9,7 +9,7 @@ import { create } from 'zustand'
 // TYPES
 // ============================================
 
-export type TabId = 'live' | 'simulate' | 'selene' | 'setup'
+export type TabId = 'live' | 'simulate' | 'core' | 'setup'
 
 export interface TabConfig {
   id: TabId
@@ -51,11 +51,11 @@ export const TABS: TabConfig[] = [
     description: 'Visualización 3D del escenario',
   },
   {
-    id: 'selene',
-    label: 'SELENE LUX',
-    icon: 'sparkles',  // Lucide: Sparkles (magic)
+    id: 'core',
+    label: 'LUX CORE',
+    icon: 'brain',     // Lucide: Brain (AI core)
     shortcut: 'Alt+3',
-    description: 'Inteligencia artificial y métricas',
+    description: 'Centro de monitorización y diagnóstico de Selene',
   },
   {
     id: 'setup',
@@ -66,7 +66,7 @@ export const TABS: TabConfig[] = [
   },
 ]
 
-const TAB_ORDER: TabId[] = ['live', 'simulate', 'selene', 'setup']
+const TAB_ORDER: TabId[] = ['live', 'simulate', 'core', 'setup']
 
 // ============================================
 // STORE

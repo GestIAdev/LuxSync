@@ -385,11 +385,16 @@ export class SimpleRhythmDetector {
     }
     
     // Calculate syncopation (off-beat energy ratio)
+    // 🎯 WAVE 16.5: WIDEN THE NET - Fix "Techno Syncopation Bug"
+    // Ventana ampliada a 50% para capturar kicks largos completos
     let onBeatEnergy = 0;
     let offBeatEnergy = 0;
     
     for (const frame of this.phaseHistory) {
-      const isOnBeat = frame.phase < 0.15 || frame.phase > 0.85;
+      // ANTES: frame.phase < 0.15 || frame.phase > 0.85 (30% ventana)
+      // AHORA: frame.phase < 0.25 || frame.phase > 0.75 (50% ventana)
+      // RAZÓN: Kicks de Techno duran ~200ms en beat de 500ms = 40% del ciclo
+      const isOnBeat = frame.phase < 0.25 || frame.phase > 0.75;
       if (isOnBeat) {
         onBeatEnergy += frame.energy;
       } else {
@@ -401,10 +406,11 @@ export class SimpleRhythmDetector {
     const syncopation = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
     
     // Pattern detection (simplified)
+    // 🎯 WAVE 16.5: Umbrales ajustados para ventana 50%
     let pattern: RhythmOutput['pattern'] = 'unknown';
     if (syncopation < 0.2) pattern = 'four_on_floor';
-    else if (syncopation > 0.6) pattern = 'breakbeat';
-    else if (audio.bpm >= 90 && audio.bpm <= 105 && syncopation > 0.3) pattern = 'reggaeton';
+    else if (syncopation > 0.5) pattern = 'breakbeat'; // Era 0.6, ahora 0.5
+    else if (audio.bpm >= 90 && audio.bpm <= 105 && syncopation > 0.25) pattern = 'reggaeton'; // Era 0.3, ahora 0.25
     
     return {
       pattern,
@@ -842,8 +848,9 @@ export class SimpleSectionTracker {
 /**
  * Simplified genre classifier for workers
  * 🔥 WAVE 12.2: HISTÉRESIS + REGLA DE HIERRO
+ * 🎯 WAVE 16.5: WIDEN THE NET - Umbrales ajustados
  * - Sync < 0.30 = ELECTRÓNICO (robótico)
- * - Sync > 0.35 = LATINO (con swing)
+ * - Sync > 0.30 = LATINO (con swing)
  * - HISTÉRESIS: Mantener género estable mínimo 2 segundos
  */
 export class SimpleGenreClassifier {
@@ -907,12 +914,13 @@ export class SimpleGenreClassifier {
       }
     }
     
-    // 💃 CAMINO LATINO: Sync > 0.35 = tiene swing
-    if (rhythm.syncopation > 0.35 && audio.bpm >= 85 && audio.bpm <= 125) {
+    // 💃 CAMINO LATINO: Sync > 0.30 = tiene swing
+    // 🎯 WAVE 16.5: Umbral bajado de 0.35 a 0.30 por ventana ampliada
+    if (rhythm.syncopation > 0.30 && audio.bpm >= 85 && audio.bpm <= 125) {
       // Treble > 0.15 = güiro presente → CUMBIA
       if (audio.treble > 0.15) {
         if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] � REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35, Treble=${audio.treble.toFixed(2)} > 0.15 → CUMBIA`);
+          console.log(`[SimpleGenreClassifier] 🪘 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30, Treble=${audio.treble.toFixed(2)} > 0.15 → CUMBIA`);
           this.lastLogFrame = this.frameCount;
         }
         return {
@@ -923,7 +931,7 @@ export class SimpleGenreClassifier {
         };
       } else if (rhythm.pattern === 'reggaeton') {
         if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🎤 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35, Dembow=true → REGGAETON`);
+          console.log(`[SimpleGenreClassifier] 🎤 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30, Dembow=true → REGGAETON`);
           this.lastLogFrame = this.frameCount;
         }
         return {
@@ -935,7 +943,7 @@ export class SimpleGenreClassifier {
       } else {
         // Swing pero sin güiro ni dembow → LATIN_POP
         if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🎵 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.35 → LATIN_POP`);
+          console.log(`[SimpleGenreClassifier] 🎵 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30 → LATIN_POP`);
           this.lastLogFrame = this.frameCount;
         }
         return {

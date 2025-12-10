@@ -1,8 +1,23 @@
 ﻿/**
  * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
  * â•‘                         ðŸŽ­ GENRE CLASSIFIER                                  â•‘
- * â•‘â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â•‘
- * â•‘  Clasificador de gÃ©neros musicales basado en caracterÃ­sticas rÃ­tmicas,      â•‘
+ * â•‘â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â•‘    if (bpm < 85 || bpm > 105) return false;
+    
+    // WAVE 19.3: Syncopation desde raiz o groove
+    const syncopation = typeof (rhythm as any).syncopation === 'number'
+      ? (rhythm as any).syncopation
+      // WAVE 19.3: CAMINO LATINO - Sync >= 0.30 = tiene swing (GAP CERRADO!)
+    if (features.syncopation >= 0.30 && features.bpm >= 85 && features.bpm <= 125) {  : (rhythm.groove?.syncopation ?? 0.35);
+    
+    // El dembow tiene sincopacion MAS ALTA que cumbia
+    // Cumbia: 0.2-0.4, Reggaeton: 0.45-0.7
+    // Y requiere snare muy prominente (el "tun-tun" del dembow)
+    return (
+      syncopation > 0.45 &&
+      syncopation < 0.75 &&
+      rhythm.drums.snareIntensity > 0.6  // Snare muy prominente en dembow
+    );
+  }sificador de gÃ©neros musicales basado en caracterÃ­sticas rÃ­tmicas,      â•‘
  * â•‘  armÃ³nicas y espectrales. DiseÃ±ado para mÃºsica latina y electrÃ³nica.        â•‘
  * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * 
@@ -513,11 +528,19 @@ export class GenreClassifier {
     rhythm: RhythmAnalysis,
     audio: { energy: number; bass: number; mid: number; treble: number }
   ): GenreFeatures {
-    // BPM desde el anÃ¡lisis rÃ­tmico
+    // BPM desde el analisis ritmico
     const bpm = rhythm.bpm;
     
-    // SincopaciÃ³n desde groove
-    const syncopation = rhythm.groove.syncopation;
+    // WAVE 19.3: Syncopation - soportar AMBOS formatos:
+    // - SimpleRhythmDetector: rhythm.syncopation (en la raiz)
+    // - RhythmAnalyzer: rhythm.groove.syncopation (objeto anidado)
+    const syncopation = typeof (rhythm as any).syncopation === 'number'
+      ? (rhythm as any).syncopation
+      : (rhythm.groove?.syncopation ?? 0.35);
+    
+    if (VERBOSE_LOGGING && Math.random() < 0.1) {
+      console.log(`[GenreClassifier] SYNC: raw=${(rhythm as any).syncopation}, groove=${rhythm.groove?.syncopation}, final=${syncopation}`);
+    }
     
     // Detectar patrones
     const hasFourOnFloor = this.detectFourOnFloor(rhythm);
@@ -542,19 +565,23 @@ export class GenreClassifier {
   }
 
   /**
-   * Detecta patrÃ³n four-on-floor (kick en cada beat)
-   * CaracterÃ­stico de techno, house
+   * Detecta patron four-on-floor (kick en cada beat)
+   * Caracteristico de techno, house
    */
   private detectFourOnFloor(rhythm: RhythmAnalysis): boolean {
     // Four-on-floor tiene:
     // 1. Alta regularidad en beats
-    // 2. Baja sincopaciÃ³n
+    // 2. Baja sincopacion
     // 3. Alta confianza de BPM
     // 4. Kick prominente
-    const groove = rhythm.groove;
+    
+    // WAVE 19.3: Syncopation desde raiz o groove
+    const syncopation = typeof (rhythm as any).syncopation === 'number'
+      ? (rhythm as any).syncopation
+      : (rhythm.groove?.syncopation ?? 0.5);
     
     return (
-      groove.syncopation < 0.2 &&
+      syncopation < 0.2 &&
       rhythm.drums.kickIntensity > 0.5 &&
       rhythm.confidence > 0.5
     );

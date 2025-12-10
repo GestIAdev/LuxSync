@@ -131,8 +131,15 @@ export interface CosmicTelemetry {
 }
 
 export interface PaletteTelemetry {
-  strategy: 'analogous' | 'triadic' | 'complementary'
+  strategy: 'analogous' | 'triadic' | 'complementary' | 'split-complementary'
   source: 'memory' | 'procedural' | 'fallback'
+  
+  // 🎨 WAVE 17.4: SeleneColorEngine debug info
+  macroGenre?: string        // e.g., "ELECTRONIC_4X4", "LATINO_TRADICIONAL"
+  temperature?: string       // e.g., "warm", "cool", "neutral"
+  description?: string       // e.g., "Azul profundo hipnótico (Techno A minor)"
+  debugKey?: string          // Musical key from SeleneColorEngine
+  debugMode?: string         // Musical mode from SeleneColorEngine
   
   colors: {
     primary: { h: number; s: number; l: number; hex: string }
@@ -461,11 +468,38 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
   },
   
   // 📡 WAVE 15.3: Actualizar con decisiones REALES de Gamma (lighting-decision)
+  // 🎨 WAVE 17.4: Incluye debugInfo del SeleneColorEngine
   updateFromTrinityDecision: (decision: unknown) => {
     const data = decision as {
       beautyScore?: number
       palette?: { intensity: number }
       movement?: { pattern: string }
+      // 🎨 WAVE 17.4: SeleneColorEngine debug info
+      debugInfo?: {
+        macroGenre?: string
+        strategy?: string
+        temperature?: string
+        description?: string
+        key?: string | null
+        mode?: string
+      }
+    }
+    
+    const currentState = get()
+    const currentPalette = currentState.palette ?? DEFAULT_PALETTE
+    
+    // 🎨 WAVE 17.4: Actualizar palette con debugInfo si existe
+    let updatedPalette: PaletteTelemetry = currentPalette
+    if (data.debugInfo) {
+      updatedPalette = {
+        ...currentPalette,
+        macroGenre: data.debugInfo.macroGenre,
+        temperature: data.debugInfo.temperature,
+        description: data.debugInfo.description,
+        debugKey: data.debugInfo.key ?? undefined,
+        debugMode: data.debugInfo.mode,
+        strategy: (data.debugInfo.strategy as PaletteTelemetry['strategy']) || currentPalette.strategy,
+      }
     }
     
     set({
@@ -477,6 +511,7 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
         paletteIntensity: data.palette?.intensity ?? 0,
         movementPattern: data.movement?.pattern ?? 'unknown',
       },
+      palette: updatedPalette,
     })
   },
   

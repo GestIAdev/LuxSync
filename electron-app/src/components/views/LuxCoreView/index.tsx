@@ -94,18 +94,18 @@ const LuxCoreView: React.FC = () => {
       <div className="core-content">
         {activeSubTab === 'monitor-lab' && (
           <div className="monitor-lab-grid">
-            {/* Col 1: Audio Rack */}
+            {/* Col 1: Palette (NEW - Tiene TODO el espacio vertical) */}
             <div className="column-audio">
-              <AudioOscilloscope />
+              <PalettePreview />
             </div>
             
-            {/* Col 2-3: Cerebro (Hunt + Palette) */}
+            {/* Col 2-3: Cerebro (Hunt + Audio) */}
             <div className="column-cerebro">
               <div className="cerebro-top">
                 <HuntMonitor />
               </div>
               <div className="cerebro-bottom">
-                <PalettePreview />
+                <AudioOscilloscope />
               </div>
             </div>
             

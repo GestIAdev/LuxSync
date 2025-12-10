@@ -154,6 +154,7 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* MONITOR & LAB LAYOUT - WAVE 14.3: Grid Asimétrico 1-2-1 */
+/* WAVE 17.5: GRID SWAP - Palette a la izquierda, Audio compacto en centro */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 .monitor-lab-grid {
@@ -165,16 +166,23 @@
   overflow: hidden;
 }
 
-/* Columna 1: Audio Rack (25%) */
+/* Columna 1: Palette (NUEVO - Era Audio) (25%) */
 .column-audio {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* WAVE 17.5: Permite que PalettePreview use todo el espacio vertical */
+  overflow: hidden;
 }
 
 .column-audio > * {
   height: 100%;
+  /* WAVE 17.5: Flex para expansión completa sin jitter */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Columna 2: Cerebro Visual (50%) */
@@ -192,11 +200,19 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .cerebro-top > *,
 .cerebro-bottom > * {
   height: 100%;
+}
+
+/* WAVE 17.5: Audio en cerebro-bottom - compacto y controlado */
+.cerebro-bottom > * {
+  /* Forzar que AudioOscilloscope no se expanda excesivamente */
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* Columna 3: Contexto (25%) */

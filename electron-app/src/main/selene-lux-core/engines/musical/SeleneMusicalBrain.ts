@@ -121,6 +121,16 @@ export interface BrainOutput {
   /** Beauty score estimado (0-1) */
   estimatedBeauty: number;
   
+  /** 🎨 WAVE 17.2: Debug info from SeleneColorEngine (GAMMA worker) */
+  debugInfo?: {
+    macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
+    strategy?: string;         // e.g., "analogous", "complementary"
+    temperature?: string;      // e.g., "warm", "cool", "neutral"
+    description?: string;      // e.g., "Azul profundo hipnótico (Techno A minor)"
+    key?: string | null;       // e.g., "A", "D#"
+    mode?: string;             // e.g., "major", "minor"
+  };
+  
   /** Métricas de performance */
   performance: {
     totalMs: number;

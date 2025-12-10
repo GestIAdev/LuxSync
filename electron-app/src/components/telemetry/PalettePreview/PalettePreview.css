@@ -208,3 +208,156 @@
   text-transform: capitalize;
   font-weight: 600;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 17.4: SELENE COLOR ENGINE DEBUG INFO
+ * WAVE 17.5: UI STABILIZATION - Fixed heights to prevent flicker
+ * Displays macro genre, temperature, key/mode, and description from GAMMA
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.selene-engine-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
+  margin-top: 4px;
+  /* WAVE 17.5: Altura mínima fija - evita colapso cuando datos son null */
+  min-height: 160px;
+}
+
+.selene-engine-section .section-title {
+  font-size: 10px;
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  /* WAVE 17.5: Altura fija para evitar saltos */
+  height: 14px;
+  line-height: 14px;
+}
+
+/* Macro Genre Badge */
+.macro-genre-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(192, 132, 252, 0.1));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  /* WAVE 17.5: Altura fija */
+  min-height: 38px;
+}
+
+.genre-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.genre-value {
+  font-size: 11px;
+  color: #c4b5fd;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* WAVE 17.5: Placeholder styling - color atenuado cuando está esperando datos */
+.genre-value.genre-placeholder {
+  color: rgba(196, 181, 253, 0.4);
+  font-style: italic;
+}
+
+/* Temperature Indicator */
+.temperature-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  /* WAVE 17.5: Altura fija */
+  min-height: 32px;
+}
+
+.temp-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.temp-value {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* WAVE 17.5: Placeholder styling */
+.temp-value.temp-placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+/* Key/Mode Debug Info */
+.key-mode-info {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'JetBrains Mono', monospace;
+  /* WAVE 17.5: Altura fija */
+  min-height: 20px;
+  align-items: center;
+}
+
+.debug-key {
+  color: #fbbf24;
+  flex: 1;
+}
+
+.debug-mode {
+  color: #60a5fa;
+  text-transform: capitalize;
+  flex: 1;
+}
+
+/* WAVE 17.5: Placeholder styling */
+.debug-placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Description Tooltip */
+.description-tooltip {
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 2px solid rgba(139, 92, 246, 0.5);
+  /* WAVE 17.5: Altura mínima para evitar colapso */
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.description-text {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  line-height: 1.4;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* WAVE 17.5: Placeholder styling */
+.description-text.description-placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.description-tooltip:hover .description-text {
+  white-space: normal;
+  color: rgba(255, 255, 255, 0.7);
+}

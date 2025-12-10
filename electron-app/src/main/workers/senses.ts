@@ -47,6 +47,9 @@ import {
   GenreOutput,
 } from './TrinityBridge';
 
+// 🔥 WAVE 18: Enhanced GenreClassifier with 4x4 shield + calibration
+import { GenreClassifier } from '../selene-lux-core/engines/musical/classification/GenreClassifier';
+
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
@@ -295,7 +298,7 @@ const spectrumAnalyzer = new SpectrumAnalyzer(config.audioSampleRate); // 🧮 W
 const rhythmDetector = new SimpleRhythmDetector();
 const harmonyDetector = new SimpleHarmonyDetector();
 const sectionTracker = new SimpleSectionTracker();
-const genreClassifier = new SimpleGenreClassifier();
+const genreClassifier = new GenreClassifier();  // WAVE 18.3: Switched to enhanced GenreClassifier
 
 // ============================================
 // AUDIO PROCESSING - WAVE 8 INTEGRATED
@@ -403,13 +406,35 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const rhythmOutput = rhythmDetector.analyze(audioMetrics);
   const harmonyOutput = harmonyDetector.analyze(audioMetrics);
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
-  const genreOutput = genreClassifier.classify(rhythmOutput, audioMetrics);
+  
+  // WAVE 18.3: Pass enhanced parameters to GenreClassifier
+  const audioForClassifier = {
+    energy: energy,
+    bass: spectrum.bass,
+    mid: spectrum.mid,
+    treble: spectrum.treble,
+  };
+  const genreOutput = genreClassifier.classify(
+    rhythmOutput as any,  // RhythmOutput compatible with RhythmAnalysis
+    harmonyOutput as any, // HarmonyOutput compatible with HarmonyAnalysis
+    audioForClassifier
+  );
+  
+  // WAVE 18.3.1: DEBUG - Log what GenreClassifier returns
+  if (state.frameCount % 120 === 0) {
+    console.log('[SENSES DEBUG] genreOutput:', JSON.stringify({
+      genre: (genreOutput as any).genre,
+      primary: (genreOutput as any).primary,
+      confidence: (genreOutput as any).confidence,
+      keys: Object.keys(genreOutput)
+    }));
+  }
   
   // Cache for state snapshots
   state.lastRhythmOutput = rhythmOutput;
   state.lastHarmonyOutput = harmonyOutput;
   state.lastSectionOutput = sectionOutput;
-  state.lastGenreOutput = genreOutput;
+  state.lastGenreOutput = genreOutput as any;  // GenreAnalysis casted to GenreOutput for compatibility
   
   // === PHASE 4: Build Response ===
   // Mood from Wave 8 harmony (richer than simple bass/treble)
@@ -457,7 +482,7 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
       rhythm: rhythmOutput,
       harmony: harmonyOutput,
       section: sectionOutput,
-      genre: genreOutput,
+      genre: genreOutput as any,  // GenreAnalysis casted to GenreOutput
     }
   };
 }

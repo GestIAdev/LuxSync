@@ -146,6 +146,10 @@ export interface HSLColor {
 
 /**
  * Convert HSL to Trinity RGB
+ * 
+ * @deprecated WAVE 17.2 - Reemplazado por SeleneColorEngine.hslToRgb()
+ * Esta función permanece SOLO para compatibilidad con createReactiveDecision (modo fallback).
+ * Para modo INTELLIGENT, usa SeleneColorEngine.generateRgb() directamente.
  */
 export function hslToTrinityRgb(hsl: HSLColor): TrinityRGBColor {
   const h = hsl.h / 360;
@@ -1080,8 +1084,12 @@ export class SimpleGenreClassifier {
 
 /**
  * Simplified palette generator for workers
- * � WAVE 12.5: SELENE LIBRE - Colores de matemática pura
+ * 🌊 WAVE 12.5: SELENE LIBRE - Colores de matemática pura
  * La música HABLA a través de sus números, no de etiquetas.
+ * 
+ * @deprecated WAVE 17.2 - Reemplazado por SeleneColorEngine
+ * Esta clase permanece SOLO para compatibilidad con createReactiveDecision (modo fallback).
+ * Para modo INTELLIGENT, usa SeleneColorEngine directamente.
  */
 export class SimplePaletteGenerator {
   /**

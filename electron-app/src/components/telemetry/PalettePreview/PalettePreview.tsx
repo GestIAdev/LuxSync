@@ -1,14 +1,17 @@
 /**
  * 🎨 PALETTE PREVIEW
  * WAVE 14: Real-time color palette visualization
+ * WAVE 17.4: SeleneColorEngine debug info integration
+ * WAVE 17.5: UI STABILIZATION - Anti-flicker defensive rendering
  * 
  * Shows:
  * - Current palette colors (primary, secondary, accent, ambient, contrast)
  * - Color derivation info (key→hue, mode shift, zodiac pull)
  * - Palette source (memory/procedural/fallback)
+ * - SeleneColorEngine metadata (macroGenre, temperature, description)
  */
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTelemetryStore, type PaletteTelemetry } from '../../../stores/telemetryStore'
 import './PalettePreview.css'
 
@@ -34,6 +37,15 @@ const PalettePreview: React.FC = () => {
       finalHue: 280,
     },
   }
+
+  // WAVE 17.5: STABILIZED VALUES - Evita undefined/null que colapsan el layout
+  const stableDebugInfo = useMemo(() => ({
+    macroGenre: data.macroGenre || 'ANALYZING',
+    temperature: data.temperature || 'neutral',
+    description: data.description || 'Waiting for audio analysis...',
+    debugKey: data.debugKey || null,
+    debugMode: data.debugMode || null,
+  }), [data.macroGenre, data.temperature, data.description, data.debugKey, data.debugMode])
   
   const getSourceIcon = (source: string) => {
     switch (source) {
@@ -41,6 +53,14 @@ const PalettePreview: React.FC = () => {
       case 'procedural': return '🔧'
       case 'fallback': return '⚠️'
       default: return '❓'
+    }
+  }
+
+  const getTemperatureIcon = (temp: string) => {
+    switch (temp) {
+      case 'warm': return '🔥'
+      case 'cool': return '❄️'
+      default: return '⚖️'
     }
   }
 
@@ -140,6 +160,50 @@ const PalettePreview: React.FC = () => {
       <div className="strategy-badge">
         <span className="strategy-label">Strategy:</span>
         <span className="strategy-value">{data.strategy}</span>
+      </div>
+
+      {/* WAVE 17.4/17.5: SeleneColorEngine Debug Info - ALWAYS RENDERED (Anti-Flicker) */}
+      <div className="selene-engine-section">
+        <span className="section-title">🌙 Selene Engine</span>
+        
+        {/* Macro Genre Badge - ALWAYS visible con placeholder */}
+        <div className="macro-genre-badge">
+          <span className="genre-icon">🎵</span>
+          <span className={`genre-value ${stableDebugInfo.macroGenre === 'ANALYZING' ? 'genre-placeholder' : ''}`}>
+            {stableDebugInfo.macroGenre.replace(/_/g, ' ')}
+          </span>
+        </div>
+        
+        {/* Temperature Indicator - ALWAYS visible con neutral por defecto */}
+        <div className="temperature-indicator">
+          <span className="temp-icon">
+            {getTemperatureIcon(stableDebugInfo.temperature)}
+          </span>
+          <span className={`temp-value ${stableDebugInfo.temperature === 'neutral' ? 'temp-placeholder' : ''}`}>
+            {stableDebugInfo.temperature.toUpperCase()}
+          </span>
+        </div>
+        
+        {/* Key/Mode Debug Info - Renderiza espacio incluso si está vacío */}
+        <div className="key-mode-info">
+          {stableDebugInfo.debugKey ? (
+            <span className="debug-key">🎹 {stableDebugInfo.debugKey}</span>
+          ) : (
+            <span className="debug-key debug-placeholder">🎹 —</span>
+          )}
+          {stableDebugInfo.debugMode ? (
+            <span className="debug-mode">{stableDebugInfo.debugMode}</span>
+          ) : (
+            <span className="debug-mode debug-placeholder">—</span>
+          )}
+        </div>
+        
+        {/* Description Tooltip - ALWAYS visible */}
+        <div className="description-tooltip">
+          <span className={`description-text ${stableDebugInfo.description === 'Waiting for audio analysis...' ? 'description-placeholder' : ''}`}>
+            {stableDebugInfo.description}
+          </span>
+        </div>
       </div>
     </div>
   )

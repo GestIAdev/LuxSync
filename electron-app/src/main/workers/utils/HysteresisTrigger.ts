@@ -63,7 +63,8 @@ export class HysteresisTrigger {
       );
     }
     
-    console.log(`[Hysteresis] 🔄 Trigger "${name}" created: ON>${thresholdOn} OFF<${thresholdOff}`);
+    // WAVE 18.3: Silenced for cleaner logs (uncomment for debug)
+    // console.log(`[Hysteresis] 🔄 Trigger "${name}" created: ON>${thresholdOn} OFF<${thresholdOff}`);
   }
   
   /**
@@ -83,7 +84,8 @@ export class HysteresisTrigger {
       this.lastTransitionTime = Date.now();
       this.framesSinceLastTransition = 0;
       
-      console.log(`[Hysteresis] ⚡ ${this.name}: OFF→ON (E=${energy.toFixed(3)} > ${this.thresholdOn})`);
+      // WAVE 18.3: Silenced for cleaner logs
+      // console.log(`[Hysteresis] ⚡ ${this.name}: OFF→ON (E=${energy.toFixed(3)} > ${this.thresholdOn})`);
       
     } else if (this.state && energy < this.thresholdOff) {
       // Transición: ON → OFF
@@ -92,7 +94,8 @@ export class HysteresisTrigger {
       this.lastTransitionTime = Date.now();
       this.framesSinceLastTransition = 0;
       
-      console.log(`[Hysteresis] 💤 ${this.name}: ON→OFF (E=${energy.toFixed(3)} < ${this.thresholdOff})`);
+      // WAVE 18.3: Silenced for cleaner logs
+      // console.log(`[Hysteresis] 💤 ${this.name}: ON→OFF (E=${energy.toFixed(3)} < ${this.thresholdOff})`);
     }
     // Si energía está entre OFF y ON, no cambiar estado (histéresis)
     

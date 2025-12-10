@@ -1,198 +1,247 @@
-[Main] ­ƒºá Brain auto-initialized for procedural colors
-[SeleneLux] Mode changed to: selene
-[SeleneLux] Brain ENABLED
-[ALPHA] ­ƒÜÇ Starting Trinity...
-[ALPHA] Spawning ­ƒæé BETA (Senses)...
-[ALPHA] Spawning ­ƒºá GAMMA (Mind)...
-[GAMMA] ­ƒºá Worker thread started, waiting for INIT...
-[GAMMA] ­ƒºá Mind initialized
-[ALPHA] ­ƒºá GAMMA (Mind) is READY
-[ALPHA] ´┐¢ Injecting initial config to gamma (Gain: 100%)
-[GAMMA] Config updated
-[FFT] ­ƒº« Initialized: 2048 bins, 44100Hz sample rate
-[BETA] ­ƒº« FFT Analyzer initialized (Cooley-Tukey Radix-2)
-[BETA] ­ƒæé Worker thread started, waiting for INIT...
-[BETA] ­ƒæé Senses initialized
-[ALPHA] ­ƒæé BETA (Senses) is READY
-[ALPHA] ´┐¢ Injecting initial config to beta (Gain: 100%)
-[BETA] ­ƒÄÜ´©Å Gain updated to: 100%
-[ALPHA] Ô£à Trinity is LIVE
-[Main] ­ƒøí´©Å TRINITY AUTO-STARTED - All workers spawned
-[ALPHA] ­ƒºá Sending ENABLE_BRAIN to GAMMA...
-[ALPHA] Config updated and propagated
-[Main] ­ƒÆë Injected initial config: Gain=100%
-[Main] ÔÜí SELENE MODE AUTO-ACTIVATED!
-[Main] ­ƒºá Brain: ENABLED (default)
-[GAMMA] ÔÜí ENABLE_BRAIN received!
-[BETA] ­ƒÄÜ´©Å Gain updated to: 100%
-[GAMMA] ­ƒÄÁ GenreClassifier: HUNTING for Cumbia/Reggaeton...
-[GAMMA] ­ƒº¼ EvolutionEngine: MUTATING palettes...
-[GAMMA] ­ƒæü´©Å StalkingEngine: WATCHING the music...
-[GAMMA] Config updated
-[DEBUG-RGB] MOVING_RIGHT: Primary=[93,30,225] Accent=[207,23,148] Ambient=[228,20,170]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=243 S=74 L=50 ÔåÆ RGB: 40 33 222 | Energy=0.22 | Source=fallback
-[DEBUG-RGB] MOVING_LEFT: Primary=[33,37,222] Accent=[202,23,207] Ambient=[222,20,238]
-[Brain] ­ƒöä Source switched to: memory
+Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.481 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.336 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.336 < 0.35)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.336 < 0.45)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.627 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.671 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.813 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.813 > 0.7)
+[BETA ­ƒÄÜ´©Å] Frame 64140: RawRMS=0.1554, Gain=1.0, PostRMS=0.1554
+[BETA ­ƒº«] FFT: bass=0.18, mid=0.13, treble=0.09, rawE=0.15, normE=0.41, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.41 S=0.59 K=D M=minor G=techno
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.414 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.414 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.364 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.307 < 0.35)
 [DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.38 | Source=memory
-[Main] Display media request received
-[Main] Available sources: [
-  'Pantalla 1',
-  'Pantalla 2',
-  'Administrador:  C:\\WINDOWS\\system32\\cmd.exe ',
-  'main.ts - Untitled (Workspace) - Visual Studio Code [Administrator]',
-  'Google Gemini - Google Chrome',
-  'RETIRADA MASIVA UCRANIANA EN MIRNOGRAD.LOS RUSOS ATRAVIESAN SIVERSK.SE ACELERA OFENSIVA EN ZAPORIYIA - YouTube - Brave'
-]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.31 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[120,88,213]
-[ConfigManager] ­ƒÆ¥ Config saved: 8 fixtures
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.37 | Source=memory
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.28 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.24 0.67 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,234] Ambient=[121,90,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.39 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.41 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,233] Ambient=[121,90,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.33 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.17 0.19 | ­ƒÑü Beat: HIT | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.41 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.15 0.84 | ­ƒÑü Beat: HIT | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.29 0.57 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[73,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.41 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,234] Ambient=[121,91,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.38 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.32 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.22 0.30 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.34 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,230] Ambient=[119,87,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,230] Ambient=[118,87,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.28 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.17 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,211]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,18,228] Ambient=[117,85,212]
-[SeleneLux] ­ƒÄÜ´©Å Input Gain: 200%
-[ALPHA] Config updated and propagated
-[Main] ­ƒÄÜ´©Å Input Gain propagado a Worker: 200%
-[BETA] ­ƒÄÜ´©Å Gain updated to: 200%
-[GAMMA] Config updated
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,228] Ambient=[117,86,212]
-[ConfigManager] ­ƒÆ¥ Config saved: 8 fixtures
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,86,212]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.71 0.85 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,228] Ambient=[117,86,212]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.83 0.69 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.17 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,18,228] Ambient=[117,85,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,18,227] Ambient=[117,85,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,86,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.22 | Source=memory
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,18,227] Ambient=[116,85,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,228] Ambient=[117,86,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,86,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,86,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,18,227] Ambient=[117,85,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,18,228] Ambient=[117,86,212]
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.621 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.862 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.862 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.862 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.539 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.444 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.389 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.343 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.766 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.766 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.766 > 0.7)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.46 S=0.46 K=D M=minor G=techno
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.348 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.348 < 0.35)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.348 < 0.45)
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
+[Hysteresis] ­ƒÆñ pulse: ONÔåÆOFF (E=0.185 < 0.2)
+[Hysteresis] ÔÜí pulse: OFFÔåÆON (E=0.501 > 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.783 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.783 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.783 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.820 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.401 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.401 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.367 < 0.4)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.876 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.876 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.876 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.529 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.380 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.380 < 0.45)
+[BETA ­ƒÄÜ´©Å] Frame 64200: RawRMS=0.1134, Gain=1.0, PostRMS=0.1134
+[AdaptiveNorm] Raw=0.115 Peak=0.414 ÔåÆ Normalized=0.336 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.15, mid=0.09, treble=0.07, rawE=0.11, normE=0.34, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.34 S=0.55 K=A# M=minor G=techno
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.336 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.760 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.760 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.760 > 0.7)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.427 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.279 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.279 < 0.35)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.22 S=0.53 K=A# M=minor G=techno
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.560 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.763 > 0.65)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.763 > 0.7)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.422 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.368 < 0.4)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.758 > 0.65)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.758 > 0.7)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.402 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.325 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.325 < 0.35)
+[BETA ­ƒÄÜ´©Å] Frame 64260: RawRMS=0.1077, Gain=1.0, PostRMS=0.1077
+[BETA ­ƒº«] FFT: bass=0.15, mid=0.05, treble=0.05, rawE=0.10, normE=0.30, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.30 S=0.53 K=A# M=minor G=techno
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.586 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.805 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.805 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.805 > 0.7)
+[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.48 0.27 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
 [SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.24 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,230] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,230] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,230] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,228] Ambient=[117,86,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,228] Ambient=[117,86,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.16 0.17 | ­ƒÑü Beat: HIT | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.31 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,230] Ambient=[119,87,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,230] Ambient=[119,88,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.37 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[73,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.42 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.35 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[120,88,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.26 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.54 0.21 | ­ƒÑü Beat: HIT | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.37 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.29 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.38 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.39 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.85 0.43 | ­ƒÑü Beat: HIT | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,87,212]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[71,19,229] Ambient=[118,87,212]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.38 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[120,88,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.34 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,230] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.39 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.15 0.16 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.31 | Source=memory
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.42 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.17 0.81 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.37 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.33 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.547 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.389 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.389 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.321 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.815 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.815 > 0.8)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.815 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.815 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.407 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.407 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.299 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.299 < 0.35)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.25 S=0.33 K=A# M=minor G=techno
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[69,18,222] Ambient=[113,81,211]
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[69,18,222] Ambient=[113,81,211]
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.726 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.726 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.726 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.886 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.539 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.362 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.362 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.335 < 0.35)
+[BETA ­ƒÄÜ´©Å] Frame 64320: RawRMS=0.0795, Gain=1.0, PostRMS=0.0795
+[BETA ­ƒº«] FFT: bass=0.12, mid=0.05, treble=0.03, rawE=0.08, normE=0.25, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.25 S=0.59 K=A# M=minor G=techno
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.562 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.809 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.809 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.809 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.529 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.365 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.365 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.281 < 0.35)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.648 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.707 > 0.65)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.707 > 0.7)
+[AdaptiveNorm] Raw=0.175 Peak=0.414 ÔåÆ Normalized=0.481 (window: 450/450)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.48 S=0.45 K=A# M=minor G=techno
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.826 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.518 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.380 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.380 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.309 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.717 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.717 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.717 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.808 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.542 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.439 < 0.45)
+[BETA ­ƒÄÜ´©Å] Frame 64380: RawRMS=0.1777, Gain=1.0, PostRMS=0.1777
+[BETA ­ƒº«] FFT: bass=0.25, mid=0.07, treble=0.04, rawE=0.15, normE=0.43, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.43 S=0.61 K=A# M=minor G=techno
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.359 < 0.4)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.803 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.803 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.803 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.481 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.357 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.357 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.288 < 0.35)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.638 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.677 > 0.65)
 [DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.15 0.15 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.28 | Source=memory
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.38 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.33 | Source=memory
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.31 0.53 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[120,90,213]
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.17 0.20 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.31 | Source=memory
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,231] Ambient=[119,88,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.29 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,234] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.36 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,232] Ambient=[120,89,213]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[73,19,233] Ambient=[121,90,213]
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.36 | Source=memory
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[72,19,233] Ambient=[121,90,213]
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.372 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.328 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.759 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.759 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.759 > 0.7)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.368 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.368 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.284 < 0.35)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.24 S=0.58 K=D M=minor G=techno
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.703 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.703 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.703 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.871 > 0.8)
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.16 | Source=memory
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.540 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.370 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.370 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.316 < 0.35)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.616 > 0.55)
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
+[BETA ­ƒÄÜ´©Å] Frame 64440: RawRMS=0.1739, Gain=1.0, PostRMS=0.1739
+[BETA ­ƒº«] FFT: bass=0.17, mid=0.08, treble=0.12, rawE=0.13, normE=0.38, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.38 S=0.42 K=A# M=minor G=techno
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.669 > 0.65)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.329 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.329 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.670 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.670 > 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.396 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.335 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.683 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.683 > 0.55)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.47 S=0.71 K=A# M=minor G=cumbia
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.390 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.335 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.679 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.679 > 0.55)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.862 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.862 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.495 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.382 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.382 < 0.45)
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.311 < 0.35)
+[BETA ­ƒÄÜ´©Å] Frame 64500: RawRMS=0.1370, Gain=1.0, PostRMS=0.1370
+[AdaptiveNorm] Raw=0.116 Peak=0.414 ÔåÆ Normalized=0.340 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.15, mid=0.10, treble=0.05, rawE=0.12, normE=0.34, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.34 S=0.59 K=A# M=minor G=cumbia
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.622 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.863 > 0.65)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.863 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.863 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.522 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.368 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.368 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.331 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.734 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.734 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.734 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.969 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.549 < 0.55)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.396 < 0.4)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.396 < 0.45)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.338 < 0.35)
+[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.33 S=0.50 K=A# M=minor G=cumbia
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.669 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.669 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.767 > 0.7)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.438 < 0.45)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.810 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.810 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.421 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.421 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.346 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.346 < 0.35)
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.14 | Source=memory
+[BETA ­ƒÄÜ´©Å] Frame 64560: RawRMS=0.2832, Gain=1.0, PostRMS=0.2832
+[BETA ­ƒº«] FFT: bass=0.16, mid=0.13, treble=0.19, rawE=0.16, normE=0.49, peak=0.36, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.49 S=0.55 K=A# M=minor G=cumbia
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.719 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.719 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.719 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.833 > 0.8)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.482 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.439 < 0.45)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.827 > 0.8)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.827 > 0.7)
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.540 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.433 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.367 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.324 < 0.35)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.686 > 0.65)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.686 > 0.55)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.792 > 0.7)
+[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.840 > 0.8)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.74 S=0.31 K=A# M=minor G=reggaeton
+[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.458 < 0.55)
+[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.431 < 0.45)
+[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.332 < 0.4)
+[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.332 < 0.35)
+[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.630 > 0.55)
+[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.707 > 0.65)
+[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.707 > 0.7)
+[BETA ­ƒÄÜ´©Å] Frame 64620: RawRMS=0.1535, Gain=1.0, PostRMS=0.1535

@@ -12,6 +12,26 @@
  * - Predictive Engine
  * - Aesthetic Decision Making
  * - Personality System
+    console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${genreName}`);
+  }DE (Wave 8 Full Analysis) ===
+  const { rhythm, harmony, section, genre } = wave8!;
+  
+  // WAVE 18.3: Normalize genre format (GenreAnalysis vs GenreOutput)
+  const genreName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+  
+  // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista procedural
+  // Los colores emergen de la MATEMÁTICA MUSICAL:TELLIGENT MODE (Wave 8 Full Analysis) ===
+  const { rhythm, harmony, section, genre } = wave8!;
+  
+  // WAVE 18.3: Normalize genre format (GenreAnalysis vs GenreOutput)
+  const genreName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+  
+  // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista proceduralo Reactivo (V17 style)
+ * - REGLA 3: Syncopation > BPM para selección de patrones
+ * - Memory Management (patrones aprendidos)
+ * - Predictive Engine
+ * - Aesthetic Decision Making
+ * - Personality System
  * 
  * Recibe AudioAnalysis+Wave8Data de ALPHA (via BETA).
  * Envía LightingDecisions a ALPHA para DMX.
@@ -37,16 +57,21 @@ import {
 
 // Wave 8 Bridge imports
 import {
-  SimplePaletteGenerator,
-  hslToTrinityRgb,
   sectionToMovement,
   createReactiveDecision,
   RhythmOutput,
   HarmonyOutput,
   SectionOutput,
   GenreOutput,
-  SelenePalette,
 } from './TrinityBridge';
+
+// 🎨 WAVE 17.2: Selene Color Engine - Motor procedural determinista
+import {
+  SeleneColorEngine,
+  type SelenePalette,
+  type RGBColor as SeleneRGBColor,
+  type ExtendedAudioAnalysis as SeleneExtendedAnalysis,
+} from '../selene-lux-core/engines/visual/SeleneColorEngine';
 
 // 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
@@ -59,10 +84,10 @@ const config: TrinityConfig = workerData?.config ?? DEFAULT_CONFIG;
 const NODE_ID = 'gamma' as const;
 
 // ============================================
-// WAVE 8 PALETTE GENERATOR (must be before state)
+// 🎨 WAVE 17.2: SeleneColorEngine (Static Class)
 // ============================================
-
-const paletteGenerator = new SimplePaletteGenerator();
+// Ya NO necesitamos instanciarlo - todos los métodos son estáticos
+// El motor lee ExtendedAudioAnalysis y produce SelenePalette proceduralmente
 
 // ============================================
 // 🌊 WAVE 12.5: SELENE LIBRE - Sin Etiquetas
@@ -105,8 +130,13 @@ const personality: SelenePersonality = {
 
 // ============================================
 // NOTE: PALETTES eliminado en PHASE 1.5 (OPERATION PURGE)
-// Ahora usamos ÚNICAMENTE SimplePaletteGenerator de Wave 8
-// que genera colores proceduralmente basados en mood + energy + syncopation
+// 🎨 WAVE 17.2: Ahora usamos ÚNICAMENTE SeleneColorEngine
+// que genera colores proceduralmente basados en:
+//   - Key (Círculo de Quintas → Cromático)
+//   - Mode (temperature modifiers)
+//   - Energy → saturación y brillo
+//   - Syncopation → estrategia de contraste
+//   - Macro-Género → subtle bias (NO forzado)
 // ============================================
 
 // ============================================
@@ -115,6 +145,7 @@ const personality: SelenePersonality = {
 
 /**
  * Extended AudioAnalysis with Wave 8 data (from BETA)
+ * 🎨 WAVE 17.2: Compatible con SeleneColorEngine.ExtendedAudioAnalysis
  */
 interface ExtendedAudioAnalysis extends AudioAnalysis {
   wave8?: {
@@ -136,9 +167,9 @@ interface GammaState {
   audioHistory: ExtendedAudioAnalysis[];
   maxAudioHistory: number;
   
-  // Current state (Pure Wave 8 - GENERATED, not hardcoded)
-  currentPalette: SelenePalette;   // Generated procedurally
-  currentMoodHint: string;         // From Wave 8 harmony
+  // 🎨 WAVE 17.2: Current state con nuevo motor
+  currentPalette: SelenePalette | null;  // SelenePalette del nuevo motor (o null inicial)
+  currentMoodHint: string;               // From Wave 8 harmony
   currentMovement: MovementPattern;
   lastDecisionTime: number;
   
@@ -184,8 +215,8 @@ const state: GammaState = {
   audioHistory: [],
   maxAudioHistory: 60, // ~1 second at 60fps
   
-  // Wave 8 Pure - GENERATED procedurally, NOT hardcoded
-  currentPalette: paletteGenerator.generate('universal', 0.5, 0, null),  // Neutral procedural palette
+  // 🎨 WAVE 17.2: Inicialización neutral (se genera en primer frame con audio real)
+  currentPalette: null,  // Se genera dinámicamente con SeleneColorEngine
   currentMoodHint: 'neutral',
   currentMovement: 'sweep',
   lastDecisionTime: Date.now(),
@@ -274,31 +305,28 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // === INTELLIGENT MODE (Wave 8 Full Analysis) ===
   const { rhythm, harmony, section, genre } = wave8!;
   
-  // 🌊 WAVE 12.5: SELENE LIBRE - Sin etiquetas de género
-  // Los colores emergen de la MATEMÁTICA PURA:
-  //   - Energy (energía) → Saturación
-  //   - Syncopation (ritmo) → Contraste entre colores
-  //   - Key (armonía) → Tono base (hue)
-  // El género se mantiene solo para logging informativo
+  // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista procedural
+  // Los colores emergen de la MATEMÁTICA MUSICAL:
+  //   - Key → Hue (Círculo de Quintas = Círculo Cromático)
+  //   - Mode → Temperature modifier (major +15°, minor -15°, etc.)
+  //   - Energy → Saturación y Brillo (NUNCA cambia el hue)
+  //   - Syncopation → Estrategia de contraste (analogous/complementary/triadic/split)
+  //   - Macro-Género → Subtle bias (tempBias, satBoost, lightBoost)
+  //   - Fibonacci rotation → Secondary color (φ × 360° = 222.5°)
   
-  // Log informativo cada segundo (solo para observar, no para decidir)
+  // Log informativo cada segundo
   if (state.frameCount % 60 === 0) {
-    console.log(`[GAMMA] � SELENE LIBRE: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} (genre=${genre.primary} - ignored)`);
+    // WAVE 18.3: genre is now GenreAnalysis (.genre) not GenreOutput (.primary)
+    const gName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+    console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${gName}`);
   }
   
-  // Generate procedural palette from Wave 8 data - PURE MATH, NO GENRE
-  const selenePalette = paletteGenerator.generate(
-    harmony.mood,
-    analysis.energy,
-    rhythm.syncopation,  // REGLA 3: Syncopation shapes the palette
-    harmony.key
-    // 🌊 WAVE 12.5: Ya NO pasamos genrePalette - la matemática decide TODO
-  );
+  // 🎨 Generar paleta con nuevo motor determinista
+  const selenePalette = SeleneColorEngine.generate(analysis as SeleneExtendedAnalysis);
+  const rgbPalette = SeleneColorEngine.generateRgb(analysis as SeleneExtendedAnalysis);
   
-  // Convert HSL palette to RGB
-  const primaryRgb = hslToTrinityRgb(selenePalette.primary);
-  const secondaryRgb = hslToTrinityRgb(selenePalette.secondary);
-  const accentRgb = hslToTrinityRgb(selenePalette.accent);
+  // Guardar en state
+  state.currentPalette = selenePalette;
   
   // Calculate intensity
   const baseIntensity = section.energy;
@@ -309,18 +337,20 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const movementPattern = sectionToMovement(section, analysis.energy, rhythm.syncopation);
   state.currentMovement = movementPattern;
   
-  // Build palette with intensity
+  // Build palette with intensity applied to RGB from SeleneColorEngine
   const palette = {
-    primary: adjustColorIntensity(primaryRgb, intensity),
-    secondary: adjustColorIntensity(secondaryRgb, intensity * 0.8),
-    accent: adjustColorIntensity(accentRgb, intensity * 0.6),
+    primary: adjustColorIntensity(rgbPalette.primary, intensity),
+    secondary: adjustColorIntensity(rgbPalette.secondary, intensity * 0.8),
+    accent: adjustColorIntensity(rgbPalette.accent, intensity * 0.6),
     intensity
   };
   
   // Movement parameters (influenced by genre)
-  const genreSpeedMultiplier = genre.primary === 'techno' ? 1.2 : 
-                               genre.primary === 'reggaeton' ? 0.9 :
-                               genre.primary === 'cumbia' ? 0.85 : 1.0;
+  // WAVE 18.3: genre is now GenreAnalysis (.genre) not GenreOutput (.primary)
+  const genreValue = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+  const genreSpeedMultiplier = genreValue === 'techno' ? 1.2 : 
+                               genreValue === 'reggaeton' ? 0.9 :
+                               genreValue === 'cumbia' ? 0.85 : 1.0;
   
   const movement = {
     pattern: movementPattern,
@@ -395,7 +425,17 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     
     palette,
     movement,
-    effects
+    effects,
+    
+    // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+    debugInfo: {
+      macroGenre: selenePalette.meta.macroGenre,
+      strategy: selenePalette.meta.strategy,
+      temperature: selenePalette.meta.temperature,
+      description: selenePalette.meta.description,
+      key: harmony.key,
+      mode: harmony.mode,
+    }
   };
 }
 
@@ -498,11 +538,9 @@ function restoreStateSnapshot(snapshot: unknown): void {
     if (typeof s.decisionCount === 'number') state.decisionCount = s.decisionCount;
     if (typeof s.currentMoodHint === 'string') {
       state.currentMoodHint = s.currentMoodHint;
-      // Regenerate palette from mood hint (procedural, not stored)
-      state.currentPalette = paletteGenerator.generate(
-        s.currentMoodHint as 'happy' | 'sad' | 'tense' | 'dreamy' | 'bluesy' | 'jazzy' | 'spanish_exotic' | 'universal',
-        0.5, 0, null
-      );
+      // 🎨 WAVE 17.2: Palette se genera dinámicamente en el próximo frame
+      // No necesitamos regenerar aquí - será null hasta que llegue audio real
+      state.currentPalette = null;
     }
     if (s.personality && typeof s.personality === 'object') {
       Object.assign(personality, s.personality);

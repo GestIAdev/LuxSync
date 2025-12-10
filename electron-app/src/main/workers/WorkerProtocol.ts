@@ -160,6 +160,16 @@ export interface LightingDecision {
     laser: boolean;
   };
   
+  // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+  debugInfo?: {
+    macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
+    strategy?: string;         // e.g., "analogous", "complementary"
+    temperature?: string;      // e.g., "warm", "cool", "neutral"
+    description?: string;      // e.g., "Azul profundo hipnótico (Techno A minor)"
+    key?: string | null;       // e.g., "A", "D#"
+    mode?: string;             // e.g., "major", "minor"
+  };
+  
   // Per-fixture overrides (optional)
   fixtureOverrides?: Map<number, FixtureOverride>;
 }

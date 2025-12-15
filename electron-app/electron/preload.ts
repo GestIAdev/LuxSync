@@ -124,23 +124,9 @@ const api = {
     setMode: (mode: 'flow' | 'selene' | 'locked') => {
       ipcRenderer.invoke('selene:setMode', mode)
     },
-    // 🧠 WAVE 10: Brain metrics subscription
-    onBrainMetrics: (callback: (metrics: {
-      connected: boolean
-      mode: 'reactive' | 'intelligent'
-      energy: number
-      confidence: number
-      beautyScore: number
-      framesProcessed: number
-      patternsLearned: number
-      sessionPatterns: number
-      memoryUsage: number
-      sessionId: string | null
-    }) => void) => {
-      const handler = (_: Electron.IpcRendererEvent, metrics: any) => callback(metrics)
-      ipcRenderer.on('selene:brain-metrics', handler)
-      return () => ipcRenderer.removeListener('selene:brain-metrics', handler)
-    },
+    // 🌙 WAVE 25: DEPRECATED - Brain metrics now in selene:truth broadcast
+    // onBrainMetrics: (callback: (metrics: {...}) => void) => {...}
+    
     // 🧠 WAVE 10: Decision log entries
     onDecisionLog: (callback: (entry: {
       type: string

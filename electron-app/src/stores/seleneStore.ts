@@ -280,7 +280,10 @@ export function initializeSeleneStoreIPC(): () => void {
   if (typeof window !== 'undefined' && (window as any).luxsync?.selene) {
     const seleneApi = (window as any).luxsync.selene
     
-    // Subscribe to brain metrics
+    // 🌙 WAVE 25: DEPRECATED - Brain metrics now in truthStore.system
+    // Brain metrics are now part of the selene:truth broadcast
+    // Old code kept for reference:
+    /*
     if (seleneApi.onBrainMetrics) {
       const unsub = seleneApi.onBrainMetrics((metrics: any) => {
         useSeleneStore.setState({
@@ -289,7 +292,7 @@ export function initializeSeleneStoreIPC(): () => void {
           energy: metrics.energy ?? 0,
           confidence: metrics.confidence ?? 0.5,
           beautyScore: metrics.beautyScore ?? 0.75,
-          framesProcessed: metrics.framesAnalyzed ?? 0, // Backend usa framesAnalyzed
+          framesProcessed: metrics.framesAnalyzed ?? 0,
           patternsLearned: metrics.patternsLearned ?? 0,
           sessionPatterns: metrics.sessionPatterns ?? 0,
           memoryUsage: metrics.memoryUsage ?? 0,
@@ -298,6 +301,7 @@ export function initializeSeleneStoreIPC(): () => void {
       })
       if (unsub) unsubscribers.push(unsub)
     }
+    */
     
     // Subscribe to decision log entries
     if (seleneApi.onDecisionLog) {

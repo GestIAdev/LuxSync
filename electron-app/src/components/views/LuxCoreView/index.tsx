@@ -8,8 +8,7 @@
  * - LOGS: Consola táctica a pantalla completa
  */
 
-import React, { useState, useEffect } from 'react'
-import { initializeTelemetryIPC } from '../../../stores/telemetryStore'
+import React, { useState } from 'react'
 import { useTruthSystem, useTruthConnected } from '../../../hooks'
 import { 
   AudioOscilloscope, 
@@ -28,12 +27,6 @@ const LuxCoreView: React.FC = () => {
   // 🧠 WAVE 25.6: Use truthStore instead of telemetryStore
   const connected = useTruthConnected()
   const system = useTruthSystem()
-  
-  // Initialize telemetry IPC on mount (still needed for legacy components)
-  useEffect(() => {
-    const cleanup = initializeTelemetryIPC()
-    return cleanup
-  }, [])
   
   const formatUptime = (ms: number) => {
     const seconds = Math.floor(ms / 1000) % 60

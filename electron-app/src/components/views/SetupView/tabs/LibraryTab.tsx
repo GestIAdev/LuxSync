@@ -1,17 +1,65 @@
 /**
- * 🎭 LIBRARY TAB - The Library Vault (Show Management)
- * WAVE 26 Phase 4: Complete Implementation
+ * 📚 LIBRARY TAB - The Memory Vault (AAA Game-Style UI)
+ * WAVE 26 Phase 4.5: UI Facelift - Cyberpunk/Netflix Aesthetic
  * 
  * Features:
- * - Master-Detail layout (show list + details panel)
- * - Save/Load/Delete shows
- * - Show metadata display (name, description, fixtures, date)
- * - Auto-create Default.json if folder is empty
+ * - Sidebar con tarjetas de show (300px fijo)
+ * - Panel de detalle Glass-style
+ * - SVG icons inline (Lucide-style)
+ * - Botones con hierarchy: LOAD (primary cyan), SAVE (bordered), DELETE (danger)
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSetupStore } from '../../../../stores/setupStore'
 import './LibraryTab.css'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SVG ICONS (Lucide-style, outline)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>
+)
+
+const SaveIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+    <polyline points="7 3 7 8 15 8"></polyline>
+  </svg>
+)
+
+const FolderIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+  </svg>
+)
+
+const PlayIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <polygon points="10 8 16 12 10 16 10 8"></polygon>
+  </svg>
+)
+
+const XIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -253,87 +301,107 @@ export const LibraryTab: React.FC = () => {
 
   return (
     <div className="library-tab">
-      {/* LEFT: SHOW LIST */}
-      <div className="library-list">
-        <div className="list-header">
-          <h3>📂 Shows</h3>
+      {/* ═══ SIDEBAR: SHOW LIST ═══ */}
+      <aside className="library-sidebar">
+        <div className="sidebar-header">
+          <h3 className="sidebar-title">SHOWS</h3>
           <button 
-            className="new-show-btn"
+            className="btn-new-show"
             onClick={handleNewShow}
             title="Create new show"
           >
-            ➕ NEW
+            <PlusIcon />
+            <span>NEW</span>
           </button>
         </div>
         
-        <div className="show-list">
+        <div className="show-cards">
           {shows.length === 0 ? (
-            <div className="list-empty">
-              <span>No shows found</span>
+            <div className="empty-sidebar">
+              <FolderIcon />
+              <p>No shows found</p>
             </div>
           ) : (
             shows.map((show) => (
               <div
                 key={show.filename}
-                className={`show-item ${selectedShow?.filename === show.filename ? 'selected' : ''}`}
+                className={`show-card ${selectedShow?.filename === show.filename ? 'active' : ''}`}
                 onClick={() => handleSelectShow(show)}
               >
-                <div className="show-item-icon">🎭</div>
-                <div className="show-item-info">
-                  <span className="show-item-name">{show.name}</span>
-                  <span className="show-item-meta">
-                    {show.fixtureCount} fixtures • {formatSize(show.sizeBytes)}
-                  </span>
+                <div className="card-header">
+                  <h4 className="card-title">{show.name}</h4>
                 </div>
-                <div className="show-item-date">
-                  {formatDate(show.modifiedAt)}
+                <div className="card-meta">
+                  <span className="meta-fixtures">{show.fixtureCount} fixtures</span>
+                  <span className="meta-divider">•</span>
+                  <span className="meta-size">{formatSize(show.sizeBytes)}</span>
+                </div>
+                <div className="card-footer">
+                  <span className="card-date">{formatDate(show.modifiedAt)}</span>
                 </div>
               </div>
             ))
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* RIGHT: DETAIL PANEL */}
-      <div className="library-detail">
+      {/* ═══ MAIN: DETAIL PANEL ═══ */}
+      <main className="library-content">
         {/* MESSAGES */}
         {error && (
-          <div className="detail-error">
-            ⚠️ {error}
-            <button onClick={() => setError(null)}>✕</button>
+          <div className="alert alert-error">
+            <span>{error}</span>
+            <button className="alert-close" onClick={() => setError(null)}>
+              <XIcon />
+            </button>
           </div>
         )}
         {successMessage && (
-          <div className="detail-success">
-            ✅ {successMessage}
+          <div className="alert alert-success">
+            <span>{successMessage}</span>
           </div>
         )}
 
-        {/* NO SELECTION */}
+        {/* NO SELECTION STATE */}
         {!selectedShow && !isCreatingNew && (
-          <div className="detail-empty">
-            <div className="empty-icon">📂</div>
-            <p>Select a show or create a new one</p>
-            <button className="primary-btn" onClick={handleNewShow}>
-              ➕ Create New Show
+          <div className="content-empty">
+            <FolderIcon />
+            <h3>Select a show to view details</h3>
+            <p>or create a new one to get started</p>
+            <button className="btn-primary btn-large" onClick={handleNewShow}>
+              <PlusIcon />
+              <span>Create New Show</span>
             </button>
           </div>
         )}
 
-        {/* DETAIL CARD */}
+        {/* DETAIL VIEW */}
         {(selectedShow || isCreatingNew) && (
-          <div className="detail-card">
-            <div className="detail-header">
-              <span className="detail-icon">🎭</span>
-              <h2>{isCreatingNew ? 'New Show' : selectedShow?.name}</h2>
-            </div>
+          <div className="detail-panel">
+            {/* HEADER */}
+            <header className="panel-header">
+              <h1 className="panel-title">{isCreatingNew ? 'NEW SHOW' : selectedShow?.name}</h1>
+              {!isCreatingNew && selectedShow && (
+                <div className="panel-actions">
+                  <button
+                    className="btn-icon btn-danger"
+                    onClick={handleDeleteShow}
+                    disabled={saving || shows.length <= 1}
+                    title={shows.length <= 1 ? 'Cannot delete the last show' : 'Delete this show'}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              )}
+            </header>
 
             {/* FORM */}
-            <div className="detail-form">
-              <div className="form-group">
-                <label>Show Name</label>
+            <div className="panel-body">
+              <div className="form-section">
+                <label className="form-label">Show Name</label>
                 <input
                   type="text"
+                  className="form-input glass"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Enter show name..."
@@ -341,45 +409,46 @@ export const LibraryTab: React.FC = () => {
                 />
               </div>
               
-              <div className="form-group">
-                <label>Description / Notes</label>
+              <div className="form-section">
+                <label className="form-label">Description / Notes</label>
                 <textarea
+                  className="form-textarea glass"
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Add notes about this show..."
+                  placeholder="Add notes about this show setup..."
                   rows={4}
                 />
               </div>
+
+              {/* METADATA GRID (only for existing shows) */}
+              {selectedShow && !isCreatingNew && (
+                <div className="metadata-grid">
+                  <div className="meta-item">
+                    <span className="meta-label">Fixtures</span>
+                    <span className="meta-value">{selectedShow.fixtureCount}</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="meta-label">Size</span>
+                    <span className="meta-value">{formatSize(selectedShow.sizeBytes)}</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="meta-label">Created</span>
+                    <span className="meta-value">{formatDate(selectedShow.createdAt)}</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="meta-label">Modified</span>
+                    <span className="meta-value">{formatDate(selectedShow.modifiedAt)}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* METADATA (only for existing shows) */}
-            {selectedShow && !isCreatingNew && (
-              <div className="detail-metadata">
-                <div className="meta-row">
-                  <span className="meta-label">Fixtures:</span>
-                  <span className="meta-value">{selectedShow.fixtureCount}</span>
-                </div>
-                <div className="meta-row">
-                  <span className="meta-label">Created:</span>
-                  <span className="meta-value">{formatDate(selectedShow.createdAt)}</span>
-                </div>
-                <div className="meta-row">
-                  <span className="meta-label">Modified:</span>
-                  <span className="meta-value">{formatDate(selectedShow.modifiedAt)}</span>
-                </div>
-                <div className="meta-row">
-                  <span className="meta-label">File:</span>
-                  <span className="meta-value filename">{selectedShow.filename}</span>
-                </div>
-              </div>
-            )}
-
-            {/* ACTION BUTTONS */}
-            <div className="detail-actions">
+            {/* FOOTER ACTIONS */}
+            <footer className="panel-footer">
               {isCreatingNew ? (
                 <>
                   <button
-                    className="action-btn cancel"
+                    className="btn-secondary"
                     onClick={() => {
                       setIsCreatingNew(false)
                       if (shows.length > 0) {
@@ -391,43 +460,38 @@ export const LibraryTab: React.FC = () => {
                     Cancel
                   </button>
                   <button
-                    className="action-btn save"
+                    className="btn-primary"
                     onClick={handleSaveShow}
                     disabled={saving || !editName.trim()}
                   >
-                    {saving ? '💾 Saving...' : '💾 CREATE & SAVE'}
+                    <SaveIcon />
+                    <span>{saving ? 'Saving...' : 'CREATE & SAVE'}</span>
                   </button>
                 </>
               ) : (
                 <>
                   <button
-                    className="action-btn delete"
-                    onClick={handleDeleteShow}
-                    disabled={saving || shows.length <= 1}
-                    title={shows.length <= 1 ? 'Cannot delete the last show' : 'Delete this show'}
-                  >
-                    🗑️ DELETE
-                  </button>
-                  <button
-                    className="action-btn save"
+                    className="btn-secondary"
                     onClick={handleSaveShow}
                     disabled={saving || !editName.trim()}
                   >
-                    {saving ? '💾 Saving...' : '💾 SAVE'}
+                    <SaveIcon />
+                    <span>{saving ? 'Saving...' : 'SAVE CHANGES'}</span>
                   </button>
                   <button
-                    className="action-btn load"
+                    className="btn-primary btn-glow"
                     onClick={handleLoadShow}
                     disabled={saving}
                   >
-                    {saving ? '📂 Loading...' : '📂 LOAD'}
+                    <PlayIcon />
+                    <span>{saving ? 'Loading...' : 'LOAD SHOW'}</span>
                   </button>
                 </>
               )}
-            </div>
+            </footer>
           </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }

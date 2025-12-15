@@ -715,10 +715,10 @@ export class SeleneColorEngine {
     
     // === E. ENERGÍA → SATURACIÓN Y BRILLO ===
     // REGLA DE ORO: Energía NUNCA modifica el Hue, solo S y L
-    // Energy 0.0 → Sat 40%, Light 30%
-    // Energy 1.0 → Sat 100%, Light 80%
+    // Energy 0.0 → Sat 40%, Light 25%
+    // Energy 1.0 → Sat 100%, Light 95%
     const baseSat = 40 + (energy * 60);  // 40-100%
-    const baseLight = 30 + (energy * 50); // 30-80%
+    const baseLight = 25 + (energy * 70); // 25-95% (WAVE 24.5.2: Rango más dinámico)
     
     // Aplicar modifiers
     const primarySat = clamp(

@@ -1,6 +1,7 @@
 /**
  * 🎵 AUDIO OSCILLOSCOPE
  * WAVE 14.3: Real-time audio visualization + Gain Control embebido
+ * 🧠 WAVE 25.6: Migrado a truthStore
  * 
  * Shows:
  * - Bass/Mid/Treble spectrum bars
@@ -11,56 +12,41 @@
  */
 
 import React, { useState, useCallback } from 'react'
-import { useTelemetryStore, type AudioTelemetry } from '../../../stores/telemetryStore'
-import { useAudioStore } from '../../../stores/audioStore'  // 🔧 WAVE 15.1: Sync gain to store
+import { useTruthSensory, useTruthConnected } from '../../../hooks'
+import { useAudioStore } from '../../../stores/audioStore'
 import './AudioOscilloscope.css'
 
 const AudioOscilloscope: React.FC = () => {
-  const audio = useTelemetryStore((state) => state.audio)
-  const connected = useTelemetryStore((state) => state.connected)
+  // 🧠 WAVE 25.6: Use truthStore
+  const sensory = useTruthSensory()
+  const connected = useTruthConnected()
   
-  // � WAVE 15.3: TRUTH CABLE - Datos reales de Trinity Workers
-  const trinityAudio = useTelemetryStore((state) => state.trinityAudio)
-  const trinityConnected = useTelemetryStore((state) => state.trinityConnected)
-  const signalLost = useTelemetryStore((state) => state.signalLost)
-  
-  // �🔧 WAVE 15.1: Get initial gain from store (persisted from config)
+  // 🔧 WAVE 15.1: Get initial gain from store (persisted from config)
   const storeGain = useAudioStore(state => state.inputGain)
   
   // Estado local para el control de ganancia - initialize from store
   const [localGain, setLocalGain] = useState(storeGain)
   
-  // 📡 WAVE 15.3: Priorizar datos de Trinity (reales) sobre legacy
-  // Si Trinity está conectado y no hay SIGNAL LOST, usar datos reales
-  const useTrinityData = trinityConnected && !signalLost && trinityAudio
-  
-  // Default values if no telemetry
-  const data: AudioTelemetry = useTrinityData 
-    ? {
-        spectrum: { 
-          bass: trinityAudio.bass, 
-          mid: trinityAudio.mid, 
-          treble: trinityAudio.treble 
-        },
-        energy: { 
-          current: trinityAudio.energy, 
-          peak: trinityAudio.energy, 
-          trend: 'stable' 
-        },
-        beat: { 
-          detected: trinityAudio.onBeat, 
-          bpm: trinityAudio.bpm, 
-          confidence: 0.8, 
-          phase: 0 
-        },
-        inputGain: storeGain,
-      }
-    : audio || {
-        spectrum: { bass: 0, mid: 0, treble: 0 },
-        energy: { current: 0, peak: 0, trend: 'stable' },
-        beat: { detected: false, bpm: 0, confidence: 0, phase: 0 },
-        inputGain: 1,
-      }
+  // Build audio data from truth
+  const data = {
+    spectrum: { 
+      bass: sensory?.audio?.bass ?? 0, 
+      mid: sensory?.audio?.mid ?? 0, 
+      treble: sensory?.audio?.high ?? 0 
+    },
+    energy: { 
+      current: sensory?.audio?.energy ?? 0, 
+      peak: sensory?.audio?.peak ?? 0, 
+      trend: 'stable' as const
+    },
+    beat: { 
+      detected: sensory?.beat?.onBeat ?? false, 
+      bpm: sensory?.beat?.bpm ?? 0, 
+      confidence: sensory?.beat?.confidence ?? 0, 
+      phase: sensory?.beat?.beatPhase ?? 0 
+    },
+    inputGain: storeGain,
+  }
   
   // Handler para cambio de ganancia
   // 🔧 WAVE 15.1: Update BOTH local state AND audioStore for useAudioCapture
@@ -89,15 +75,15 @@ const AudioOscilloscope: React.FC = () => {
     }
   }
   
-  // 📡 WAVE 15.3: Determinar estado de conexión para CSS
-  const connectionStatus = signalLost ? 'signal-lost' : (useTrinityData ? 'trinity-connected' : (connected ? 'connected' : 'disconnected'))
+  // 🧠 WAVE 25.6: Estado de conexión simplificado
+  const connectionStatus = connected ? 'connected' : 'disconnected'
 
   return (
     <div className={`telemetry-panel audio-oscilloscope ${connectionStatus}`}>
       <div className="panel-header">
-        <h3>🎵 AUDIO {signalLost && <span className="signal-lost-badge">⚠️ SIGNAL LOST</span>}</h3>
+        <h3>🎵 AUDIO</h3>
         <span className={`beat-indicator ${data.beat.detected ? 'pulse' : ''}`}>
-          {useTrinityData ? '🟢' : '●'}
+          {connected ? '🟢' : '●'}
         </span>
       </div>
       

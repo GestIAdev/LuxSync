@@ -15,6 +15,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useDMXStore } from '../../../stores/dmxStore'
 import { useLuxSyncStore } from '../../../stores/luxsyncStore'
+// 🔥 WAVE 24.10: REMOVED telemetryStore import - SINGLE SOURCE OF TRUTH (DMX Store only)
 import './SimulateView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -51,11 +52,16 @@ const SimulateView: React.FC = () => {
   // 🔥 WAVE 10 FIX: Get fixtureValues as array to force re-renders
   const fixtureValuesArray = useDMXStore(state => Array.from(state.fixtureValues.entries()))
   
+  // 🔥 WAVE 24.10: REMOVED palette bypass - TRUTH RESTORATION (DMX Store = Source of Truth)
+  
   // 🔥 WAVE 10.7: Get active effects for visual overlays
   const activeEffects = useLuxSyncStore(state => state.effects.active)
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const strobePhase = useRef(0) // For strobe animation
+  
+  // 🔥 WAVE 24.10: Blackout detector throttle (prevent infinite loop spam)
+  const lastBlackoutWarning = useRef<Map<string, number>>(new Map())
   
   // Control states
   const [showBeams, setShowBeams] = useState(true)
@@ -83,12 +89,33 @@ const SimulateView: React.FC = () => {
       // Get real-time DMX values for this fixture
       const liveValues = fixtureValues.get(f.dmxAddress)
       
-      // Calculate color from DMX values or fallback
-      const color = liveValues 
-        ? { r: liveValues.r, g: liveValues.g, b: liveValues.b }
-        : { r: 100, g: 100, b: 100 }
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 24.10: TRUTH RESTORATION - Read ONLY from DMX Store
+      // El Canvas DEBE representar la JODIDA REALIDAD de lo que sale por el USB
+      // Si el backend (SeleneLux.ts) está arreglado (WAVE 24.6 NaN guards), 
+      // entonces el DMX Store DEBE ser estable.
+      // ═══════════════════════════════════════════════════════════════════════
       
+      // Extract RGB color from DMX (channels r, g, b from FixtureValues)
+      const r = liveValues?.r ?? 0
+      const g = liveValues?.g ?? 0
+      const b = liveValues?.b ?? 0
       const intensity = liveValues ? liveValues.dimmer / 255 : 0.3
+      
+      // ⚠️ WAVE 24.10: BLACKOUT DETECTOR - Anomaly detection (THROTTLED to prevent spam)
+      // NOTA: Movido a useEffect separado para evitar bucle infinito en useMemo
+      
+      // Convert RGB to hex for canvas
+      const rgbToHex = (r: number, g: number, b: number): string => {
+        const toHex = (n: number) => {
+          const hex = Math.max(0, Math.min(255, Math.round(n))).toString(16)
+          return hex.length === 1 ? '0' + hex : hex
+        }
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+      }
+      
+      const colorStr = rgbToHex(r, g, b)
+      const color = { r, g, b }
       
       // Get zone from fixture (assigned by auto-zoning in main.ts)
       const zone = f.zone || 'UNASSIGNED'
@@ -101,14 +128,35 @@ const SimulateView: React.FC = () => {
         channels: f.channelCount,
         active: intensity > 0.05,
         color,
-        colorStr: `rgb(${color.r}, ${color.g}, ${color.b})`,
+        colorStr,  // 🔥 Hex directo desde DMX RGB (LA VERDAD ABSOLUTA)
         intensity,
         pan: liveValues?.pan ?? 127,
         tilt: liveValues?.tilt ?? 127,
         zone,
       }
     })
-  }, [patchedFixtures, fixtureValuesArray]) // 🔥 Array triggers re-render on changes
+  }, [patchedFixtures, fixtureValuesArray]) // 🔥 WAVE 24.10: NO palette dependency (DMX only)
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 24.10: BLACKOUT DETECTOR (Throttled) - Separate useEffect
+  // Detecta fixtures con dimmer > 0 pero RGB = (0,0,0) sin spamear la consola
+  // ═══════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    const THROTTLE_MS = 5000 // Solo 1 warning cada 5 segundos por fixture
+    const now = Date.now()
+    
+    renderableFixtures.forEach((f) => {
+      if (f.color.r === 0 && f.color.g === 0 && f.color.b === 0 && f.intensity > 0.1) {
+        const lastWarning = lastBlackoutWarning.current.get(f.id)
+        
+        // Solo warn si pasaron 5+ segundos desde último warning de esta fixture
+        if (!lastWarning || now - lastWarning > THROTTLE_MS) {
+          console.warn(`⚠️ BLACKOUT ANÓMALO: ${f.id} (${f.name}) - Dimmer: ${(f.intensity * 100).toFixed(0)}%`)
+          lastBlackoutWarning.current.set(f.id, now)
+        }
+      }
+    })
+  }, [renderableFixtures])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🎨 CYBERPUNK CANVAS RENDERING - Ported from Demo V2

@@ -22,6 +22,21 @@ let mainLoopInterval: NodeJS.Timeout | null = null
 let lastFrameTime = Date.now()
 let brainMetricsCounter = 0 // 🧠 Para throttle de métricas al UI
 
+// 🌙 WAVE 25.5: Last calculated fixture states para el broadcast
+let lastFixtureStatesForBroadcast: Array<{
+  dmxAddress: number
+  universe: number
+  name: string
+  zone: string
+  type: string
+  dimmer: number
+  r: number
+  g: number
+  b: number
+  pan: number
+  tilt: number
+}> = []
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // ⚡ WAVE 10.7: HSL to RGB helper for rainbow effect
@@ -308,15 +323,62 @@ function initSelene() {
   })
   
   // 📡 WAVE-14: Forward telemetry updates to renderer
+  // 🌙 WAVE 25: DEPRECATED - Now included in selene:truth broadcast
+  // TODO: Remove after frontend migration complete
   selene.on('telemetry-update', (packet) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('selene:telemetry-update', packet)
+      // mainWindow.webContents.send('selene:telemetry-update', packet)
     }
   })
-  console.log('[Main] 📡 Telemetry forwarding enabled')
+  console.log('[Main] 📡 Telemetry forwarding DISABLED (WAVE 25 - use selene:truth)')
+
+  // 📜 WAVE 25.7: THE CHRONICLER - Forward logs to renderer via dedicated channel
+  selene.on('log', (logEntry) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('selene:log', logEntry)
+    }
+  })
+  console.log('[Main] 📜 Log forwarding ENABLED (WAVE 25.7 - selene:log)')
 
   // mark system as running
   globalThis.__lux_isSystemRunning = true
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌙 WAVE 25: UNIVERSAL TRUTH BROADCAST - 30 FPS Heartbeat
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Este loop es SEPARADO del mainLoop de audio/DMX para garantizar 30fps
+  // El Frontend recibe la VERDAD COMPLETA aquí, no fragmentos dispersos
+  setInterval(() => {
+    if (selene && mainWindow && !mainWindow.isDestroyed()) {
+      const truth = selene.getBroadcast()
+      
+      // 🌙 WAVE 25.5: Poblar hardwareState.fixtures con datos reales
+      truth.hardwareState.fixturesTotal = lastFixtureStatesForBroadcast.length
+      truth.hardwareState.fixturesActive = lastFixtureStatesForBroadcast.filter(f => f.dimmer > 0).length
+      truth.hardwareState.fixtures = lastFixtureStatesForBroadcast.map(f => ({
+        id: `fixture-${f.dmxAddress}`,
+        name: f.name,
+        type: f.type,
+        dmxAddress: f.dmxAddress,
+        zone: f.zone,
+        color: {
+          r: f.r,
+          g: f.g,
+          b: f.b,
+          h: 0, s: 0, l: 0, // Simplificado, el Canvas calcula si necesita
+          hex: `#${f.r.toString(16).padStart(2,'0')}${f.g.toString(16).padStart(2,'0')}${f.b.toString(16).padStart(2,'0')}`
+        },
+        intensity: f.dimmer / 255,
+        pan: f.pan / 255,
+        tilt: f.tilt / 255,
+        active: f.dimmer > 0,
+      }))
+      truth.hardwareState.dmx.connected = universalDMX.isConnected
+      
+      mainWindow.webContents.send('selene:truth', truth)
+    }
+  }, 33) // 33ms ≈ 30 FPS
+  console.log('[Main] 🌙 WAVE 25: Universal Truth Broadcast started @ 30fps')
 }
 
 // ============================================
@@ -381,6 +443,25 @@ function startMainLoop() {
       timestamp: now,
       frameIndex,
     }, deltaTime)
+    
+    // 🌙 WAVE 25: Update audio state for Universal Truth Broadcast
+    selene.setAudioState(
+      {
+        bass: audioInput.bass,
+        mid: audioInput.mid,
+        treble: audioInput.treble,
+        energy: audioInput.energy,
+        bpm: audioInput.bpm,
+        beatPhase: (now % (60000 / audioInput.bpm)) / (60000 / audioInput.bpm),
+        beatConfidence: useRealAudio ? 0.8 : 0.5,
+        onBeat: audioInput.onBeat,
+        peak: audioInput.energy * 1.2,
+        timestamp: now,
+        frameIndex,
+      },
+      null, // AudioAnalysis se genera internamente en SeleneLux
+      useRealAudio ? 'System Audio' : 'Simulation'
+    )
     
     // 🔊 DMX LOG - Log every ~10 seconds (very sparse)
     if (Math.random() < 0.003) {
@@ -540,6 +621,19 @@ function startMainLoop() {
         panValue = 1 - panValue // Invertir para efecto espejo
       }
       
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🏠 WAVE 24.6: CEILING TILT INVERSION (Hardware Safety)
+      // Para fixtures COLGADOS del techo, invertimos TILT globalmente.
+      // Esto asegura que "arriba" en la UI sea "arriba" en la pista.
+      // Sin inversión: tilt=0 apunta al techo (incorrecto si está colgado)
+      // Con inversión: tilt=0 apunta a la pista (correcto para ceiling)
+      // ═══════════════════════════════════════════════════════════════════════
+      let tiltValue = state.movement?.tilt ?? 0.5
+      const installationType = configManager.getInstallationType()
+      if (installationType === 'ceiling' && zone.includes('MOVING')) {
+        tiltValue = 1 - tiltValue // Invertir para fixtures colgados
+      }
+      
       return {
         dmxAddress: fixture.dmxAddress,
         universe: fixture.universe,
@@ -559,12 +653,15 @@ function startMainLoop() {
           ? Math.round(panValue * 255) 
           : 0,
         tilt: zone.includes('MOVING') 
-          ? Math.round((state.movement?.tilt ?? 0.5) * 255) 
+          ? Math.round(tiltValue * 255) 
           : 0,
       }
     })
     
-    // 🌪️ WAVE 11: Enviar valores DMX reales si el driver está conectado
+    // � WAVE 25.5: Guardar para broadcast de verdad
+    lastFixtureStatesForBroadcast = fixtureStates
+    
+    // �🌪️ WAVE 11: Enviar valores DMX reales si el driver está conectado
     if (universalDMX.isConnected) {
       for (const fixture of fixtureStates) {
         const addr = fixture.dmxAddress
@@ -638,12 +735,17 @@ function startMainLoop() {
       prism: activeEffectIds.has('prism'),
     }
     
-    mainWindow.webContents.send('lux:state-update', { ...uiState, fixtures: fixtureStates, effects: effectOverrides })
+    // 🌙 WAVE 25: DEPRECATED - Now included in selene:truth broadcast
+    // TODO: Remove after frontend migration complete
+    // mainWindow.webContents.send('lux:state-update', { ...uiState, fixtures: fixtureStates, effects: effectOverrides })
     
     // 🧠 BRAIN METRICS - cada ~200ms (6 frames de 30ms)
+    // 🌙 WAVE 25: DEPRECATED - Now included in selene:truth broadcast
+    // TODO: Remove after frontend migration complete
     brainMetricsCounter++
     if (brainMetricsCounter >= 6) {
       brainMetricsCounter = 0
+      /* WAVE 25 DEPRECATED
       const brainStats = selene.getBrainStats?.()
       if (brainStats) {
         mainWindow.webContents.send('selene:brain-metrics', {
@@ -658,6 +760,7 @@ function startMainLoop() {
           timestamp: Date.now()
         })
       }
+      */
     }
   }, 30)
   

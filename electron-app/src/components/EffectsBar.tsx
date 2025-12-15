@@ -2,11 +2,15 @@
  * ⚡ EFFECTS BAR - WAVE 10.7: Optical Controls + Panic Buttons
  * Controles manuales de BEAM, PRISM, STROBE, BLINDER
  * Hold = Momentáneo, Click = Toggle
+ * 
+ * WAVE 25.5: Migrado a truthStore (lectura) - muestra estado REAL del backend
  */
 
 import { useState, useCallback } from 'react'
 import { useLuxSyncStore, EffectId, EFFECTS } from '../stores/luxsyncStore'
 import { Flashlight, Triangle, Zap, Sun, Wind, Siren } from 'lucide-react'
+// 🌙 WAVE 25.5: Truth hook para lectura de estado real
+import { useTruthEffects } from '../hooks'
 
 // Tipos de efecto: 'hold' = solo mientras mantienes, 'toggle' = on/off
 type EffectMode = 'hold' | 'toggle'
@@ -37,6 +41,9 @@ const EFFECT_BUTTONS: EffectButton[] = [
 export default function EffectsBar() {
   const { effects, toggleEffect, triggerEffect } = useLuxSyncStore()
   const [holdingEffects, setHoldingEffects] = useState<Set<EffectId>>(new Set())
+  
+  // 🌙 WAVE 25.5: Estado REAL de efectos desde el backend
+  const truthEffects = useTruthEffects()
 
   // 🔌 WAVE 10.7: Conectar al backend via IPC
   const sendEffectToBackend = useCallback(async (effectId: EffectId, active: boolean) => {
@@ -108,10 +115,17 @@ export default function EffectsBar() {
         const isActive = effects.active.has(id) || holdingEffects.has(id)
         const isHoldMode = mode === 'hold'
         
+        // 🌙 WAVE 25.5: Verificar estado real del backend
+        const truthEffect = truthEffects?.[id as keyof typeof truthEffects]
+        // truthEffect puede ser boolean o { active: boolean, ... }
+        const isConfirmedByBackend = typeof truthEffect === 'boolean' 
+          ? truthEffect 
+          : (truthEffect as { active?: boolean } | undefined)?.active === true
+        
         return (
           <button
             key={id}
-            className={`effect-btn ${isActive ? 'active' : ''} ${isHoldMode ? 'hold-mode' : ''}`}
+            className={`effect-btn ${isActive ? 'active' : ''} ${isHoldMode ? 'hold-mode' : ''} ${isConfirmedByBackend ? 'backend-confirmed' : ''}`}
             onClick={() => handleClick(id, mode)}
             onMouseDown={() => handleMouseDown(id, mode)}
             onMouseUp={() => handleMouseUp(id, mode)}
@@ -119,12 +133,13 @@ export default function EffectsBar() {
             style={{
               '--effect-color': color,
             } as React.CSSProperties}
-            title={`${label}${shortcut ? ` (${shortcut})` : ''} - ${isHoldMode ? 'Hold' : 'Toggle'}`}
+            title={`${label}${shortcut ? ` (${shortcut})` : ''} - ${isHoldMode ? 'Hold' : 'Toggle'}${isConfirmedByBackend ? ' ✓ Active' : ''}`}
           >
             <span className="effect-icon">{icon}</span>
             <span className="effect-label">{label}</span>
             {shortcut && <span className="effect-shortcut">{shortcut}</span>}
             {isActive && <div className="active-indicator" />}
+            {isConfirmedByBackend && <div className="backend-indicator" title="Active in backend" />}
             {isHoldMode && <span className="hold-badge">HOLD</span>}
           </button>
         )
@@ -242,6 +257,28 @@ export default function EffectsBar() {
           background: var(--effect-color);
           box-shadow: 0 0 15px var(--effect-color);
           animation: pulse-bar 0.5s ease-in-out infinite alternate;
+        }
+
+        /* 🌙 WAVE 25.5: Indicador de confirmación backend */
+        .backend-indicator {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          width: 8px;
+          height: 8px;
+          background: #00ff88;
+          border-radius: 50%;
+          box-shadow: 0 0 8px #00ff88;
+          animation: pulse-dot 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        .effect-btn.backend-confirmed {
+          border-color: #00ff88 !important;
         }
 
         @keyframes pulse-bar {

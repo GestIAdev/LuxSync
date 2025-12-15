@@ -415,9 +415,8 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     treble: spectrum.treble,
   };
   const genreOutput = genreClassifier.classify(
-    rhythmOutput as any,  // RhythmOutput compatible with RhythmAnalysis
-    harmonyOutput as any, // HarmonyOutput compatible with HarmonyAnalysis
-    audioForClassifier
+    rhythmOutput as any,  // RhythmOutput compatible with RhythmInput
+    audioForClassifier    // AudioForClassifier with treble, energy, bass
   );
   
   // WAVE 18.3.1: DEBUG - Log what GenreClassifier returns

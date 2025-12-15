@@ -9,12 +9,13 @@
  * - Fixtures: Usa dmxStore.fixtures como fuente única de verdad
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAudioStore } from '../../../stores/audioStore'
 import { useDMXStore } from '../../../stores/dmxStore'
 import { useSeleneStore } from '../../../stores/seleneStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useTrinity } from '../../../providers/TrinityProvider'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
 import './SetupView.css'
 
 // 🚨 WAVE 14.9: FLAGS GLOBALES (sobreviven React Strict Mode)
@@ -132,6 +133,18 @@ const SetupView: React.FC = () => {
   } = useDMXStore()
   const { setActiveTab } = useNavigationStore()
   useSeleneStore()
+  
+  // 🌙 WAVE 25: Hardware State from Truth (real-time fixture colors/state)
+  const hardwareState = useTruthStore(selectHardware)
+  
+  // Create a map of dmxAddress → live fixture state for quick lookup
+  const liveFixtureMap = useMemo(() => {
+    const map = new Map<number, typeof hardwareState.fixtures[0]>()
+    for (const fix of hardwareState.fixtures) {
+      map.set(fix.dmxAddress, fix)
+    }
+    return map
+  }, [hardwareState.fixtures])
   
   // Trinity provider
   const trinity = useTrinity()
@@ -990,8 +1003,25 @@ const SetupView: React.FC = () => {
                     ) : (
                       patchedFixtures.map(fixture => {
                         const { icon, className } = getFixtureTypeIcon(fixture.name, fixture.type)
+                        // 🌙 WAVE 25: Get live state from Truth
+                        const liveState = liveFixtureMap.get(fixture.dmxAddress)
+                        const liveColor = liveState?.color || { r: 0, g: 0, b: 0, h: 0, s: 0, l: 0, hex: '#000000' }
+                        const liveIntensity = liveState?.intensity ?? 0
+                        
                         return (
                           <div key={`${fixture.id}_${fixture.dmxAddress}`} className="patched-card">
+                            {/* 🌙 WAVE 25: Live color indicator */}
+                            <div 
+                              className="live-color-dot"
+                              style={{
+                                backgroundColor: `rgb(${liveColor.r}, ${liveColor.g}, ${liveColor.b})`,
+                                opacity: liveIntensity / 100,
+                                boxShadow: liveIntensity > 50 
+                                  ? `0 0 8px 2px rgba(${liveColor.r}, ${liveColor.g}, ${liveColor.b}, 0.6)`
+                                  : 'none'
+                              }}
+                              title={`Live: RGB(${liveColor.r}, ${liveColor.g}, ${liveColor.b}) @ ${liveIntensity.toFixed(0)}%`}
+                            />
                             <span className="patched-addr">{fixture.dmxAddress}</span>
                             <div className={`fixture-icon ${className}`}>{icon}</div>
                             <div className="fixture-details">
@@ -1078,6 +1108,17 @@ const SetupView: React.FC = () => {
                   <span className="test-icon">{dmxConnected ? '✓' : '✗'}</span>
                   <span className="test-name">DMX Interface</span>
                   <span className="test-status">{dmxConnected ? 'Connected' : 'Not connected'}</span>
+                </div>
+                
+                {/* 🌙 WAVE 25: Real-time DMX Stats from Truth */}
+                <div className={`test-item ${hardwareState.dmx.connected ? 'pass' : 'neutral'}`}>
+                  <span className="test-icon">📡</span>
+                  <span className="test-name">DMX Output</span>
+                  <span className="test-status">
+                    {hardwareState.dmx.connected 
+                      ? `${hardwareState.dmx.frameRate.toFixed(0)} fps • ${hardwareState.fixturesActive}/${hardwareState.fixturesTotal} active`
+                      : 'Waiting...'}
+                  </span>
                 </div>
                 
                 <div className={`test-item ${patchedFixtures.length > 0 ? 'pass' : 'fail'}`}>

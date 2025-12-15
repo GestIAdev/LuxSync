@@ -1,6 +1,7 @@
 /**
  * 🧠 LUX CORE VIEW - Brain Surgery & Monitoring Center
  * WAVE 14.3: Reestructuración Final - 2 tabs (MONITOR & LAB | LOGS)
+ * 🧠 WAVE 25.6: Migrado a truthStore para datos en tiempo real
  * 
  * Estructura:
  * - MONITOR & LAB: Grid asimétrico 1-2-1 (Audio | Hunt+Palette | DNA)
@@ -8,7 +9,8 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { initializeTelemetryIPC, useTelemetryStore } from '../../../stores/telemetryStore'
+import { initializeTelemetryIPC } from '../../../stores/telemetryStore'
+import { useTruthSystem, useTruthConnected } from '../../../hooks'
 import { 
   AudioOscilloscope, 
   MusicalDNAPanel, 
@@ -22,10 +24,12 @@ type SubTab = 'monitor-lab' | 'logs'
 
 const LuxCoreView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('monitor-lab')
-  const connected = useTelemetryStore((state) => state.connected)
-  const session = useTelemetryStore((state) => state.session)
   
-  // Initialize telemetry IPC on mount
+  // 🧠 WAVE 25.6: Use truthStore instead of telemetryStore
+  const connected = useTruthConnected()
+  const system = useTruthSystem()
+  
+  // Initialize telemetry IPC on mount (still needed for legacy components)
   useEffect(() => {
     const cleanup = initializeTelemetryIPC()
     return cleanup
@@ -56,17 +60,17 @@ const LuxCoreView: React.FC = () => {
         
         <div className="header-stats">
           <div className="stat-item">
-            <span className="stat-label">Uptime</span>
-            <span className="stat-value">{formatUptime(session?.uptime || 0)}</span>
+            <span className="stat-label">FPS</span>
+            <span className="stat-value">{system?.actualFPS?.toFixed(0) || '--'}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Frames</span>
-            <span className="stat-value">{(session?.framesProcessed || 0).toLocaleString()}</span>
+            <span className="stat-label">Brain</span>
+            <span className="stat-value">{system?.brainStatus?.toUpperCase() || 'IDLE'}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Mode</span>
-            <span className={`stat-value mode-${session?.brainMode || 'reactive'}`}>
-              {session?.brainMode?.toUpperCase() || 'REACTIVE'}
+            <span className={`stat-value mode-${system?.mode || 'reactive'}`}>
+              {system?.mode?.toUpperCase() || 'REACTIVE'}
             </span>
           </div>
         </div>

@@ -3,13 +3,15 @@
  * Botones que crecen para llenar el espacio disponible
  * 
  * Wave 3: Conectado con Selene Lux Core via window.lux
+ * Wave 25.5: Migrado a truthStore (lectura) - setters mantienen IPC
  * 
  * FIX Trinity: Los botones ahora envían strings canónicos al ColorEngine
  * UI usa inglés (fire/ice) → Engine usa español (fuego/hielo)
  */
 
 import { useLuxSyncStore, PALETTES, PaletteId } from '../stores/luxsyncStore'
-import { useSeleneColor } from '../hooks'
+// 🌙 WAVE 25.5: Truth hooks para lectura
+import { useTruthPalette, useTruthColorParams } from '../hooks'
 
 // IDs canónicos que espera el ColorEngine (español)
 type LivingPaletteId = 'fuego' | 'hielo' | 'selva' | 'neon'
@@ -34,8 +36,12 @@ export default function PaletteReactor() {
     setColorIntensity 
   } = useLuxSyncStore()
 
-  // Color actual de Selene para preview
-  const seleneColor = useSeleneColor()
+  // 🌙 WAVE 25.5: Lectura de verdad desde truthStore
+  const truthPalette = useTruthPalette()
+  const truthColorParams = useTruthColorParams()
+  
+  // Color del preview viene de la verdad (primary color)
+  const previewColor = truthPalette.primary
 
   // Handler que actualiza UI y envía a Selene
   const handlePaletteClick = (id: PaletteId) => {
@@ -80,13 +86,14 @@ export default function PaletteReactor() {
     <div className="palette-reactor">
       <h2 className="section-title">
         PALETTE REACTOR
-        {/* Preview del color actual de Selene */}
+        {/* 🌙 WAVE 25.5: Preview del color REAL del backend */}
         <span 
           className="selene-color-preview"
           style={{ 
-            background: `rgb(${seleneColor.r}, ${seleneColor.g}, ${seleneColor.b})`,
-            boxShadow: `0 0 10px rgb(${seleneColor.r}, ${seleneColor.g}, ${seleneColor.b})`
+            background: previewColor.hex || `rgb(${previewColor.r}, ${previewColor.g}, ${previewColor.b})`,
+            boxShadow: `0 0 10px ${previewColor.hex || `rgb(${previewColor.r}, ${previewColor.g}, ${previewColor.b})`}`
           }}
+          title={truthPalette.description}
         />
       </h2>
 

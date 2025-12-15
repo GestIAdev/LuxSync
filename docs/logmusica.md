@@ -1,583 +1,256 @@
-[SimpleGenreClassifier] ­ƒ¬ÿ REGLA DE HIERRO: Sync=0.54 > 0.30, Treble=0.20 > 0.15 ÔåÆ CUMBIA
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.707 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.707 > 0.7)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.394 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.394 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.312 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.43 S=0.61 K=A M=minor G=latin_pop
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.552 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.729 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.729 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.441 < 0.45)
-[BETA ­ƒÄÜ´©Å] Frame 540: RawRMS=0.4358, Gain=1.0, PostRMS=0.4358
-[BETA ­ƒº«] FFT: bass=0.70, mid=0.28, treble=0.15, rawE=0.46, normE=0.65, peak=0.76, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.65 S=0.57 K=A M=minor G=latin_pop
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.735 > 0.7)
-[SimpleGenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.29 < 0.30 ÔåÆ CYBERPUNK
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.391 < 0.4)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.391 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.338 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.620 > 0.55)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.43 S=0.36 K=A M=minor G=latin_pop
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.336 < 0.35)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[115,82,211]
-[BETA ­ƒÄÜ´©Å] Frame 600: RawRMS=0.5277, Gain=1.0, PostRMS=0.5277
-[AdaptiveNorm] Raw=0.409 Peak=0.764 ÔåÆ Normalized=0.587 (window: 450/450)
-[BETA ­ƒº«] FFT: bass=0.66, mid=0.17, treble=0.13, rawE=0.41, normE=0.59, peak=0.76, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.59 S=0.48 K=A M=minor G=latin_pop
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.587 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.254 < 0.35)
-[Hysteresis] ­ƒÆñ pulse: ONÔåÆOFF (E=0.196 < 0.2)
-[SimpleGenreClassifier] ­ƒÄÁ REGLA DE HIERRO: Sync=0.57 > 0.30 ÔåÆ LATIN_POP
-[Hysteresis] ÔÜí pulse: OFFÔåÆON (E=0.376 > 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.584 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.659 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.731 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.900 > 0.8)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.63 S=0.39 K=A M=minor G=latin_pop
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.376 < 0.4)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.376 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.376 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.278 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.859 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.859 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.859 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.859 > 0.7)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[115,82,211]
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.493 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.430 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.875 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.875 > 0.7)
+[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[69,18,223] Ambient=[113,81,211]
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.47 S=0.34 K=A M=minor G=unknown
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.24 S=0.92 K=D M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1620: RawRMS=0.3329, Gain=1.0, PostRMS=0.3329
+[BETA ­ƒº«] FFT: bass=0.27, mid=0.29, treble=0.32, rawE=0.29, normE=0.77, peak=0.39, gain=1.0
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.20, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.35 S=0.35 K=D M=minor G=unknown
+[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
+[AdaptiveNorm] Raw=0.115 Peak=0.392 ÔåÆ Normalized=0.352 (window: 450/450)
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.58 S=0.61 K=D M=minor G=unknown
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.18, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 1680: RawRMS=0.2054, Gain=1.0, PostRMS=0.2054
+[BETA ­ƒº«] FFT: bass=0.19, mid=0.12, treble=0.08, rawE=0.15, normE=0.44, peak=0.39, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[69,18,224] Ambient=[114,82,211]
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.24 S=0.76 K=D M=minor G=unknown
 [SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.23 | Source=memory
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.484 < 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 660: RawRMS=0.1515, Gain=1.0, PostRMS=0.1515
-[BETA ­ƒº«] FFT: bass=0.22, mid=0.15, treble=0.11, rawE=0.17, normE=0.37, peak=0.57, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.37 S=0.40 K=A M=minor G=latin_pop
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.368 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.368 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.330 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.561 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.873 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.873 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.873 > 0.7)
-[SimpleGenreClassifier] ­ƒ¬ÿ REGLA DE HIERRO: Sync=0.44 > 0.30, Treble=0.18 > 0.15 ÔåÆ CUMBIA
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.546 < 0.55)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,211]
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.398 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.398 < 0.45)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.815 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.815 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.815 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.497 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.390 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.390 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.307 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.28 S=0.43 K=A M=minor G=latin_pop
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.579 > 0.55)
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.85 0.55 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.339 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 720: RawRMS=0.3446, Gain=1.0, PostRMS=0.3446
-[BETA ­ƒº«] FFT: bass=0.33, mid=0.12, treble=0.39, rawE=0.28, normE=0.55, peak=0.57, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.55 S=0.50 K=A M=minor G=house
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.655 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.655 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.763 > 0.7)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.393 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.393 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.312 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.559 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.793 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.793 > 0.7)
-[AdaptiveNorm] Raw=0.164 Peak=0.566 ÔåÆ Normalized=0.350 (window: 450/450)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.35 S=0.44 K=A M=minor G=house
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.350 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.350 < 0.35)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.350 < 0.45)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.554 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.782 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.782 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.447 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.392 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.319 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 780: RawRMS=0.3503, Gain=1.0, PostRMS=0.3503
-[BETA ­ƒº«] FFT: bass=0.29, mid=0.11, treble=0.38, rawE=0.25, normE=0.51, peak=0.56, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.51 S=0.49 K=A M=minor G=house
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.65 0.15 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.576 > 0.55)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.851 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.851 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.851 > 0.7)
-[SimpleGenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.28 < 0.30, BPM=131 ÔåÆ TECHNO
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.488 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.376 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.376 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.334 < 0.35)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.26 | Source=memory
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.558 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.694 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.828 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.828 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.522 < 0.55)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.42 S=0.44 K=A M=minor G=techno
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.416 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.373 < 0.4)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.827 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.827 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.827 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.546 < 0.55)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,227] Ambient=[116,84,212]
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.399 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.399 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.343 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.623 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.692 > 0.65)
-[BETA ­ƒÄÜ´©Å] Frame 840: RawRMS=0.3444, Gain=1.0, PostRMS=0.3444
-[BETA ­ƒº«] FFT: bass=0.49, mid=0.17, treble=0.24, rawE=0.34, normE=0.68, peak=0.55, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.68 S=0.40 K=A M=minor G=reggaeton
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.880 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.880 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.474 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.353 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.353 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.291 < 0.35)
-[SimpleGenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.22 < 0.30, BPM=156 ÔåÆ TECHNO
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.564 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.325 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.848 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.848 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.848 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.848 > 0.7)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.46 S=0.19 K=A M=minor G=techno
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.464 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.360 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.360 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.331 < 0.35)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.887 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.887 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.887 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.887 > 0.7)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.359 < 0.4)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.359 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.359 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.286 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.597 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 900: RawRMS=0.1421, Gain=1.0, PostRMS=0.1421
-[AdaptiveNorm] Raw=0.162 Peak=0.537 ÔåÆ Normalized=0.361 (window: 450/450)
-[BETA ­ƒº«] FFT: bass=0.25, mid=0.06, treble=0.10, rawE=0.16, normE=0.36, peak=0.54, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.36 S=0.41 K=A M=minor G=reggaeton
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.30 | Source=memory
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.740 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.740 > 0.7)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.382 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.382 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.321 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.786 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.786 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.786 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.445 < 0.45)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.35 S=0.60 K=A M=minor G=cumbia
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.354 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.281 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.799 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.799 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.799 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.421 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.306 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.306 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.565 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 960: RawRMS=0.2953, Gain=1.0, PostRMS=0.2953
-[BETA ­ƒº«] FFT: bass=0.44, mid=0.09, treble=0.23, rawE=0.29, normE=0.59, peak=0.54, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.59 S=0.67 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.865 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.865 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.865 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.453 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.362 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.362 < 0.45)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.653 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.733 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.804 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.436 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.436 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.878 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.878 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.460 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.323 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.323 < 0.35)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.323 < 0.45)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.29 S=0.73 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.571 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.854 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.854 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.854 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.447 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.447 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.330 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.330 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.569 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 1020: RawRMS=0.2171, Gain=1.0, PostRMS=0.2171
-[BETA ­ƒº«] FFT: bass=0.30, mid=0.05, treble=0.12, rawE=0.19, normE=0.42, peak=0.53, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.42 S=0.40 K=A M=minor G=reggaeton
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.776 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.776 > 0.7)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.345 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.345 < 0.35)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.345 < 0.45)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.18 | Source=memory
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.564 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.660 > 0.65)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.346 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.346 < 0.35)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.48 S=0.26 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1740: RawRMS=0.2512, Gain=1.0, PostRMS=0.2512
+[BETA ­ƒº«] FFT: bass=0.17, mid=0.07, treble=0.05, rawE=0.12, normE=0.36, peak=0.39, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.27 S=0.87 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.38 S=0.34 K=D M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1800: RawRMS=0.3187, Gain=1.0, PostRMS=0.3187
+[AdaptiveNorm] Raw=0.370 Peak=0.392 ÔåÆ Normalized=0.952 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.60, mid=0.14, treble=0.15, rawE=0.37, normE=0.95, peak=0.39, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=1.00 S=0.46 K=D M=minor G=unknown
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.14, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.35 S=0.70 K=D M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1860: RawRMS=0.1245, Gain=1.0, PostRMS=0.1245
+[BETA ­ƒº«] FFT: bass=0.13, mid=0.05, treble=0.05, rawE=0.09, normE=0.27, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.70 S=0.12 K=D M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.25 S=0.75 K=D M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1920: RawRMS=0.1501, Gain=1.0, PostRMS=0.1501
+[BETA ­ƒº«] FFT: bass=0.11, mid=0.15, treble=0.04, rawE=0.11, normE=0.33, peak=0.41, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.52 S=0.24 K=A M=minor G=unknown
+[AdaptiveNorm] Raw=0.187 Peak=0.411 ÔåÆ Normalized=0.512 (window: 450/450)
+[GenreClassifier] SYNC: raw=0.7027675808363724, groove=undefined, final=0.7027675808363724
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.11, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.27 S=0.71 K=A M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 1980: RawRMS=0.0903, Gain=1.0, PostRMS=0.0903
+[BETA ­ƒº«] FFT: bass=0.11, mid=0.04, treble=0.02, rawE=0.07, normE=0.22, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.39 S=0.35 K=D M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[69,18,222] Ambient=[113,80,211]
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.18 S=0.56 K=D M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2040: RawRMS=0.3196, Gain=1.0, PostRMS=0.3196
+[BETA ­ƒº«] FFT: bass=0.14, mid=0.20, treble=0.26, rawE=0.18, normE=0.50, peak=0.41, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.66 S=0.55 K=A# M=minor G=unknown
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.16 | Source=memory
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.09, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.55 S=0.17 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2100: RawRMS=0.2789, Gain=1.0, PostRMS=0.2789
+[AdaptiveNorm] Raw=0.161 Peak=0.411 ÔåÆ Normalized=0.450 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.20, mid=0.13, treble=0.11, rawE=0.16, normE=0.45, peak=0.41, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.21 S=0.74 K=A# M=minor G=unknown
+[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[69,18,222] Ambient=[113,80,211]
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GenreClassifier] SYNC: raw=0.20675926564213568, groove=undefined, final=0.20675926564213568
+[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.85 0.54 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.48 S=0.11 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2160: RawRMS=0.2223, Gain=1.0, PostRMS=0.2223
+[BETA ­ƒº«] FFT: bass=0.21, mid=0.14, treble=0.07, rawE=0.16, normE=0.45, peak=0.41, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GenreClassifier] SYNC: raw=0.39574126752769295, groove=undefined, final=0.39574126752769295
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.39 S=0.61 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.38 S=0.57 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2220: RawRMS=0.1631, Gain=1.0, PostRMS=0.1631
+[BETA ­ƒº«] FFT: bass=0.20, mid=0.08, treble=0.04, rawE=0.13, normE=0.38, peak=0.41, gain=1.0
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[AdaptiveNorm] Raw=0.174 Peak=0.411 ÔåÆ Normalized=0.483 (window: 450/450)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.70 S=0.55 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.18, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 2280: RawRMS=0.1350, Gain=1.0, PostRMS=0.1350
+[BETA ­ƒº«] FFT: bass=0.19, mid=0.11, treble=0.08, rawE=0.14, normE=0.42, peak=0.40, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.38 S=0.63 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=undefined, groove=0, final=0
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.54 S=0.09 K=A M=minor G=unknown
 [DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.572 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.893 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.893 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.893 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.543 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.397 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.397 < 0.45)
-[AdaptiveNorm] Raw=0.146 Peak=0.531 ÔåÆ Normalized=0.333 (window: 450/450)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.33 S=0.53 K=A M=minor G=cumbia
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.333 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.592 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.292 < 0.35)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.609 > 0.55)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[BETA ­ƒÄÜ´©Å] Frame 1080: RawRMS=0.3686, Gain=1.0, PostRMS=0.3686
-[BETA ­ƒº«] FFT: bass=0.24, mid=0.16, treble=0.31, rawE=0.23, normE=0.49, peak=0.53, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.49 S=0.59 K=A M=minor G=cumbia
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.340 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.857 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.857 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.857 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.857 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.416 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.416 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.336 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.336 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.560 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.672 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.710 > 0.7)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.46 S=0.59 K=A M=minor G=cumbia
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.444 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.944 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.944 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.523 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.376 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.376 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.326 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.720 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.720 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.720 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.835 > 0.8)
-[BETA ­ƒÄÜ´©Å] Frame 1140: RawRMS=0.4816, Gain=1.0, PostRMS=0.4816
-[BETA ­ƒº«] FFT: bass=0.80, mid=0.11, treble=0.11, rawE=0.46, normE=0.98, peak=0.47, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.98 S=0.48 K=A M=minor G=reggaeton
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.520 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.331 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.331 < 0.35)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.331 < 0.45)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.562 > 0.55)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.28 | Source=memory
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.833 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.833 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.833 > 0.7)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.49 S=0.43 K=A M=minor G=reggaeton
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.487 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.406 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.371 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.344 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.639 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.656 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.761 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.908 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.487 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.362 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.362 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.308 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 1200: RawRMS=0.1140, Gain=1.0, PostRMS=0.1140
-[AdaptiveNorm] Raw=0.130 Peak=0.466 ÔåÆ Normalized=0.338 (window: 450/450)
-[BETA ­ƒº«] FFT: bass=0.22, mid=0.03, treble=0.04, rawE=0.13, normE=0.34, peak=0.47, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.34 S=0.56 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.600 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.344 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.575 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.670 > 0.65)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.330 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.330 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.554 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.947 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.947 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.947 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.527 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.412 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.360 < 0.4)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.47 S=0.61 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.750 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.750 > 0.7)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.401 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.917 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.917 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.424 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.424 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.336 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.336 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 1260: RawRMS=0.1026, Gain=1.0, PostRMS=0.1026
-[BETA ­ƒº«] FFT: bass=0.16, mid=0.06, treble=0.03, rawE=0.10, normE=0.28, peak=0.47, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.28 S=0.63 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.554 > 0.55)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.668 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.980 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.980 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.422 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.422 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.332 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.332 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.54 S=0.58 K=A M=minor G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.552 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.666 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=1.000 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=1.000 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.413 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.413 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.315 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.315 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.665 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.665 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 1320: RawRMS=0.3327, Gain=1.0, PostRMS=0.3327
-[BETA ­ƒº«] FFT: bass=0.34, mid=0.18, treble=0.32, rawE=0.29, normE=0.64, peak=0.49, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.64 S=0.34 K=A M=unknown G=reggaeton
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.941 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.941 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.545 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.424 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.374 < 0.4)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.25 | Source=memory
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.654 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.708 > 0.7)
-[AdaptiveNorm] Raw=0.203 Peak=0.486 ÔåÆ Normalized=0.476 (window: 450/450)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.48 S=0.51 K=A M=unknown G=cumbia
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.449 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.927 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.927 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.448 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.448 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.366 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.321 < 0.35)
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,211]
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.562 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.345 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.802 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.802 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.802 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.802 > 0.7)
-[BETA ­ƒÄÜ´©Å] Frame 1380: RawRMS=0.1804, Gain=1.0, PostRMS=0.1804
-[BETA ­ƒº«] FFT: bass=0.32, mid=0.08, treble=0.15, rawE=0.21, normE=0.50, peak=0.49, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.50 S=0.49 K=A M=unknown G=reggaeton
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.497 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.362 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.362 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.304 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.551 > 0.55)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,211]
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.976 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.976 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.976 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.540 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.385 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.385 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.303 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.27 S=0.55 K=A M=unknown G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.601 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.658 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.964 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.964 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.485 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.359 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.359 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.330 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 1440: RawRMS=0.2115, Gain=1.0, PostRMS=0.2115
-[BETA ­ƒº«] FFT: bass=0.21, mid=0.19, treble=0.05, rawE=0.17, normE=0.42, peak=0.49, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.42 S=0.60 K=A M=unknown G=cumbia
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.575 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.655 > 0.65)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,212]
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.779 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=1.000 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.512 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.407 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.351 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.297 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.618 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.674 > 0.65)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.60 S=0.49 K=A M=unknown G=reggaeton
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,226] Ambient=[116,84,211]
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.917 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.917 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.503 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.358 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.358 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.312 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.580 > 0.55)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.30 | Source=memory
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.656 > 0.65)
-[BETA ­ƒÄÜ´©Å] Frame 1500: RawRMS=0.3317, Gain=1.0, PostRMS=0.3317
-[AdaptiveNorm] Raw=0.290 Peak=0.497 ÔåÆ Normalized=0.633 (window: 450/450)
-[BETA ­ƒº«] FFT: bass=0.41, mid=0.13, treble=0.21, rawE=0.29, normE=0.63, peak=0.50, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.63 S=0.55 K=A M=unknown G=cumbia
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.909 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.909 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.528 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.400 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.306 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.306 < 0.35)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
+[BETA ­ƒÄÜ´©Å] Frame 2340: RawRMS=0.0956, Gain=1.0, PostRMS=0.0956
+[BETA ­ƒº«] FFT: bass=0.11, mid=0.06, treble=0.04, rawE=0.08, normE=0.25, peak=0.40, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.28 S=0.81 K=A M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.71 S=0.28 K=A M=minor G=unknown
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA ­ƒÄÜ´©Å] Frame 2400: RawRMS=0.0756, Gain=1.0, PostRMS=0.0756
+[AdaptiveNorm] Raw=0.062 Peak=0.373 ÔåÆ Normalized=0.218 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.09, mid=0.04, treble=0.02, rawE=0.06, normE=0.22, peak=0.37, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.21 S=0.71 K=A M=minor G=unknown
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.08 | Source=memory
+[GenreClassifier] SYNC: raw=undefined, groove=0, final=0
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.44 S=0.42 K=D M=minor G=unknown
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA ­ƒÄÜ´©Å] Frame 2460: RawRMS=0.1791, Gain=1.0, PostRMS=0.1791
+[BETA ­ƒº«] FFT: bass=0.12, mid=0.06, treble=0.05, rawE=0.09, normE=0.30, peak=0.37, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.71 S=0.53 K=D M=minor G=unknown
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.12, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.29 S=0.67 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=0.23267152167378297, groove=undefined, final=0.23267152167378297
+[BETA ­ƒÄÜ´©Å] Frame 2520: RawRMS=0.2740, Gain=1.0, PostRMS=0.2740
+[BETA ­ƒº«] FFT: bass=0.31, mid=0.11, treble=0.10, rawE=0.21, normE=0.61, peak=0.37, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.49 S=0.03 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[AdaptiveNorm] Raw=0.085 Peak=0.403 ÔåÆ Normalized=0.266 (window: 450/450)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.26 S=0.57 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2580: RawRMS=0.2024, Gain=1.0, PostRMS=0.2024
+[BETA ­ƒº«] FFT: bass=0.16, mid=0.12, treble=0.08, rawE=0.13, normE=0.39, peak=0.40, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.44 S=0.60 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=0.6090027478701163, groove=undefined, final=0.6090027478701163
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.34 S=0.60 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=0.5550907517041181, groove=undefined, final=0.5550907517041181
+[BETA ­ƒÄÜ´©Å] Frame 2640: RawRMS=0.2180, Gain=1.0, PostRMS=0.2180
+[BETA ­ƒº«] FFT: bass=0.29, mid=0.10, treble=0.08, rawE=0.19, normE=0.53, peak=0.40, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.41 S=0.58 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.10, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.51 S=0.52 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2700: RawRMS=0.3123, Gain=1.0, PostRMS=0.3123
+[AdaptiveNorm] Raw=0.216 Peak=0.403 ÔåÆ Normalized=0.590 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.30, mid=0.15, treble=0.09, rawE=0.22, normE=0.59, peak=0.40, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.44 S=0.59 K=A# M=minor G=unknown
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GenreClassifier] SYNC: raw=0.19978030897859986, groove=undefined, final=0.19978030897859986
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.54 S=0.13 K=A# M=minor G=unknown
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.19 | Source=memory
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA ­ƒÄÜ´©Å] Frame 2760: RawRMS=0.1654, Gain=1.0, PostRMS=0.1654
+[BETA ­ƒº«] FFT: bass=0.23, mid=0.04, treble=0.06, rawE=0.14, normE=0.40, peak=0.40, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.26 S=0.79 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
 [DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.653 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.653 > 0.55)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.921 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.921 > 0.7)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.92 S=0.52 K=A M=unknown G=cumbia
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.438 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.438 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.351 < 0.4)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.721 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.721 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.819 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.537 < 0.55)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.944 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.489 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.414 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.303 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.303 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 1560: RawRMS=0.1291, Gain=1.0, PostRMS=0.1291
-[BETA ­ƒº«] FFT: bass=0.19, mid=0.08, treble=0.06, rawE=0.13, normE=0.32, peak=0.50, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.32 S=0.49 K=A M=minor G=reggaeton
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.569 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.690 > 0.65)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.381 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.317 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.865 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.865 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.865 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.865 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.492 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.395 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.395 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.307 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.22 S=0.49 K=A M=minor G=reggaeton
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.585 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.339 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.576 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.342 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.891 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.891 > 0.8)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.891 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.891 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.487 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.394 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.394 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.306 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.662 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.662 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 1620: RawRMS=0.2831, Gain=1.0, PostRMS=0.2831
-[BETA ­ƒº«] FFT: bass=0.30, mid=0.06, treble=0.36, rawE=0.24, normE=0.53, peak=0.50, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.53 S=0.44 K=A M=unknown G=reggaeton
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.396 < 0.4)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.659 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.874 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.874 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.528 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.410 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.318 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.318 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.665 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.665 > 0.55)
-[AdaptiveNorm] Raw=0.210 Peak=0.497 ÔåÆ Normalized=0.481 (window: 450/450)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.48 S=0.52 K=A M=unknown G=cumbia
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.375 < 0.4)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.892 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.892 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.892 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.489 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.391 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.391 < 0.45)
-[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.21 | Source=memory
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.302 < 0.35)
-[DMX] ­ƒÄ¿ RGB: 238 91 43 | ­ƒÄ» Pos: 0.65 0.15 | ­ƒÑü Beat: --- | ­ƒÄÁ Audio: LIVE | ­ƒºá Mode: selene
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
-[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,225] Ambient=[115,83,211]
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.582 > 0.55)
-[BETA ­ƒÄÜ´©Å] Frame 1680: RawRMS=0.2201, Gain=1.0, PostRMS=0.2201
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.51 S=0.57 K=A M=unknown G=cumbia
-[BETA ­ƒº«] FFT: bass=0.32, mid=0.09, treble=0.19, rawE=0.22, normE=0.51, peak=0.50, gain=1.0
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.864 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.864 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.864 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.511 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.444 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.345 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.345 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.552 > 0.55)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.346 < 0.35)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.29 S=0.58 K=A M=unknown G=cumbia
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.689 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.689 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.768 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.443 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.331 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.331 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.670 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.670 > 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.356 < 0.4)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.902 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.902 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.902 > 0.7)
-[BETA ­ƒÄÜ´©Å] Frame 1740: RawRMS=0.3891, Gain=1.0, PostRMS=0.3891
-[BETA ­ƒº«] FFT: bass=0.62, mid=0.13, treble=0.17, rawE=0.38, normE=0.80, peak=0.50, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.80 S=0.54 K=A M=unknown G=cumbia
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.492 < 0.55)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.388 < 0.4)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.388 < 0.45)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.323 < 0.35)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.688 > 0.65)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.688 > 0.55)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.783 > 0.7)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.409 < 0.45)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.880 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.880 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.441 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.441 < 0.45)
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.37 S=0.48 K=A M=unknown G=reggaeton
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.369 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.306 < 0.35)
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.586 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.776 > 0.65)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.776 > 0.7)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=1.000 > 0.8)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.541 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.444 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.388 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.341 < 0.35)
-[BETA ­ƒÄÜ´©Å] Frame 1800: RawRMS=0.1212, Gain=1.0, PostRMS=0.1212
-[AdaptiveNorm] Raw=0.120 Peak=0.505 ÔåÆ Normalized=0.296 (window: 450/450)
-[BETA ­ƒº«] FFT: bass=0.17, mid=0.06, treble=0.08, rawE=0.12, normE=0.30, peak=0.51, gain=1.0
-[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.30 S=0.47 K=A M=unknown G=reggaeton
-[Hysteresis] ÔÜí laser: OFFÔåÆON (E=0.621 > 0.55)
-[Hysteresis] ÔÜí chase: OFFÔåÆON (E=0.681 > 0.65)
-[Hysteresis] ÔÜí strobe: OFFÔåÆON (E=0.852 > 0.8)
-[Hysteresis] ÔÜí prism: OFFÔåÆON (E=0.852 > 0.7)
-[Hysteresis] ­ƒÆñ strobe: ONÔåÆOFF (E=0.536 < 0.55)
-[Hysteresis] ­ƒÆñ prism: ONÔåÆOFF (E=0.448 < 0.45)
-[Hysteresis] ­ƒÆñ chase: ONÔåÆOFF (E=0.384 < 0.4)
-[Hysteresis] ­ƒÆñ laser: ONÔåÆOFF (E=0.310 < 0.35)
-[DEBUG-RGB] MOVING_RIGHT: Primary=[238,91,43] Accent=[70,18,224] Ambient=
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.65 S=0.33 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2820: RawRMS=0.0930, Gain=1.0, PostRMS=0.0930
+[BETA ­ƒº«] FFT: bass=0.11, mid=0.05, treble=0.08, rawE=0.09, normE=0.27, peak=0.40, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.29 S=0.66 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[AdaptiveNorm] Raw=0.140 Peak=0.403 ÔåÆ Normalized=0.408 (window: 450/450)
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.44 S=0.48 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2880: RawRMS=0.0912, Gain=1.0, PostRMS=0.0912
+[BETA ­ƒº«] FFT: bass=0.11, mid=0.05, treble=0.07, rawE=0.09, normE=0.27, peak=0.40, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.19, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.58 S=0.38 K=A# M=minor G=unknown
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.32 S=0.73 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 2940: RawRMS=0.3196, Gain=1.0, PostRMS=0.3196
+[BETA ­ƒº«] FFT: bass=0.19, mid=0.30, treble=0.30, rawE=0.25, normE=0.66, peak=0.40, gain=1.0
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.20, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.66 S=0.15 K=A# M=minor G=unknown
+[DEBUG-RGB] MOVING_LEFT: Primary=[238,91,43] Accent=[70,18,224] Ambient=[114,82,211]
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.32 S=0.81 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 3000: RawRMS=0.2028, Gain=1.0, PostRMS=0.2028
+[AdaptiveNorm] Raw=0.160 Peak=0.386 ÔåÆ Normalized=0.474 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.22, mid=0.10, treble=0.12, rawE=0.16, normE=0.47, peak=0.39, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.45 S=0.73 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=0.4309635730049788, groove=undefined, final=0.4309635730049788
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.77 S=0.30 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 3060: RawRMS=0.1526, Gain=1.0, PostRMS=0.1526
+[BETA ­ƒº«] FFT: bass=0.09, mid=0.10, treble=0.07, rawE=0.09, normE=0.29, peak=0.39, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.51 S=0.24 K=A# M=minor G=unknown
+[SeleneLux] ­ƒÄ¿ Brain HSL: H=15 S=85 L=55 ÔåÆ RGB: 238 91 43 | Energy=0.17 | Source=memory
+[BETA] Error handling audio_buffer: Cannot read properties of undefined (reading 'toFixed')
+[ALPHA] Error from beta: Cannot read properties of undefined (reading 'toFixed')
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.68 S=0.33 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 3120: RawRMS=0.2254, Gain=1.0, PostRMS=0.2254
+[BETA ­ƒº«] FFT: bass=0.36, mid=0.05, treble=0.07, rawE=0.21, normE=0.59, peak=0.39, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.30 S=0.80 K=A# M=minor G=unknown
+[AdaptiveNorm] Raw=0.229 Peak=0.386 ÔåÆ Normalized=0.640 (window: 450/450)
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.58 S=0.05 K=A# M=minor G=unknown
+[GenreClassifier] SYNC: raw=0.47454977951978794, groove=undefined, final=0.47454977951978794
+[GenreClassifier] SYNC: raw=undefined, groove=0, final=0
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 3180: RawRMS=0.3088, Gain=1.0, PostRMS=0.3088
+[BETA ­ƒº«] FFT: bass=0.62, mid=0.14, treble=0.07, rawE=0.36, normE=0.95, peak=0.39, gain=1.0
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.30 S=0.86 K=A# M=minor G=unknown
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.56 S=0.13 K=A# M=minor G=unknown
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[BETA ­ƒÄÜ´©Å] Frame 3240: RawRMS=0.1716, Gain=1.0, PostRMS=0.1716
+[BETA ­ƒº«] FFT: bass=0.19, mid=0.12, treble=0.15, rawE=0.16, normE=0.46, peak=0.40, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.33 S=0.86 K=A# M=minor G=unknown
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.55 S=0.21 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 3300: RawRMS=0.1872, Gain=1.0, PostRMS=0.1872
+[AdaptiveNorm] Raw=0.126 Peak=0.502 ÔåÆ Normalized=0.310 (window: 450/450)
+[BETA ­ƒº«] FFT: bass=0.15, mid=0.04, treble=0.19, rawE=0.13, normE=0.31, peak=0.50, gain=1.0
+[GenreClassifier] ­ƒôè Features: BPM=120, Sync=0.00, Treble=0.17, FourFloor=false
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.28 S=0.76 K=D M=minor G=unknown
+[GAMMA] ­ƒÄ¿ WAVE 17.2: E=0.68 S=0.40 K=A# M=minor G=unknown
+[BETA ­ƒÄÜ´©Å] Frame 3360: RawRMS=0.1545, Gain=1.0, PostRMS=0.1545
+[BETA ­ƒº«] FFT: bass=0.08, mid=0.04, treble=0.19, rawE=0.09, normE=0.24, peak=0.50, gain=1.0
+[SENSES DEBUG] genreOutput: {"genre":"unknown","confidence":0.1,"keys":["genre","subgenre","confidence","scores","features","mood"]}
+[GenreClassifier] ­ƒñû REGLA DE HIERRO: Sync=0.00 < 0.30 ÔåÆ CYBERPUNK
+[GenreClassifier] SYNC: raw=0.8396571409769951, groove=undefined, final=0.8396571409769951

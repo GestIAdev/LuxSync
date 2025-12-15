@@ -4,10 +4,11 @@
  * 
  * WAVE 3: Connected to useSeleneAudio for real-time BPM from Selene
  * 🚑 RESCUE DIRECTIVE: Now shows REAL BPM from telemetry with confidence indicator
+ * 🧠 WAVE 25.6: Migrado a truthStore - BPM desde sensory.beat
  */
 
 import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
-import { useTelemetryStore } from '../stores/telemetryStore'
+import { useTruthSensory } from '../hooks'
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
@@ -32,17 +33,17 @@ export default function Header() {
     setMasterDimmer 
   } = useLuxSyncStore()
 
-  // � RESCUE DIRECTIVE: Get REAL BPM from telemetry (with confidence)
-  const { audio: telemetryAudio } = useTelemetryStore()
+  // 🧠 WAVE 25.6: Get REAL BPM from truthStore (sensory)
+  const sensory = useTruthSensory()
 
   const palette = PALETTES[activePalette]
   const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
   const modeColor = MODE_COLORS[selene.mode]
 
-  // 🚑 RESCUE DIRECTIVE: Use real telemetry BPM with confidence indicator
-  const displayBpm = telemetryAudio?.beat?.bpm ?? 0
-  const bpmConfidence = telemetryAudio?.beat?.confidence ?? 0
-  const isBeatSync = telemetryAudio?.beat?.detected ?? false
+  // 🧠 WAVE 25.6: Use truth sensory data
+  const displayBpm = sensory?.beat?.bpm ?? 0
+  const bpmConfidence = sensory?.beat?.confidence ?? 0
+  const isBeatSync = sensory?.beat?.onBeat ?? false
   
   // Determine BPM text color based on confidence
   const bpmColor = bpmConfidence > 0.7 ? '#4ADE80' : bpmConfidence > 0.4 ? '#FBBF24' : '#EF4444'

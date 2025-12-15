@@ -175,7 +175,13 @@ interface Window {
     onAudioAnalysis: (callback: (analysis: unknown) => void) => () => void
     onLightingDecision: (callback: (decision: unknown) => void) => () => void
     
-    // 📡 WAVE-14: Input Gain control
+    // 🌙 WAVE 25: UNIVERSAL TRUTH PROTOCOL - La Verdad Única a 30fps
+    onTruthUpdate: (callback: (data: import('./types/SeleneProtocol').SeleneBroadcast) => void) => () => void
+    
+    // � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
+    onLog: (callback: (logEntry: { id: string; timestamp: number; category: string; message: string; data?: any }) => void) => () => void
+    
+    // �📡 WAVE-14: Input Gain control
     setInputGain: (value: number) => Promise<{ success: boolean; inputGain?: number; error?: string }>
     
     // 🎨 WAVE-14.5: Lab Controls

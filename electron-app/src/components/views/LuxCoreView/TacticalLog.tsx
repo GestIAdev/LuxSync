@@ -1,6 +1,7 @@
 /**
  * 📜 TACTICAL LOG - Full-screen Decision Console
  * WAVE 14: Consola gigante para leer la mente de Selene
+ * 📜 WAVE 25.7: Migrado a logStore dedicado
  * 
  * Features:
  * - Filtros por tipo de log
@@ -11,11 +12,20 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { useTelemetryStore, type TelemetryLogEntry } from '../../../stores/telemetryStore'
+import { useLogStore, type LogEntry } from '../../../stores/logStore'
 import './TacticalLog.css'
 
 // Log type configuration with colors and icons
 const LOG_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
+  Mode: { icon: '🎭', color: '#a855f7', label: 'Mode' },
+  Beat: { icon: '🥁', color: '#22c55e', label: 'Beat' },
+  Music: { icon: '🎵', color: '#06b6d4', label: 'Music' },
+  Genre: { icon: '🎶', color: '#ec4899', label: 'Genre' },
+  Brain: { icon: '🧠', color: '#fbbf24', label: 'Brain' },
+  Visual: { icon: '🎨', color: '#d946ef', label: 'Visual' },
+  DMX: { icon: '💡', color: '#14b8a6', label: 'DMX' },
+  System: { icon: '⚙️', color: '#64748b', label: 'System' },
+  // Legacy categories (for backwards compat)
   MODE: { icon: '🎭', color: '#a855f7', label: 'Mode' },
   BEAT: { icon: '🥁', color: '#22c55e', label: 'Beat' },
   BPM: { icon: '💓', color: '#ec4899', label: 'BPM' },
@@ -39,13 +49,12 @@ const SEVERITY_COLORS: Record<string, string> = {
 }
 
 export const TacticalLog: React.FC = () => {
-  const logs = useTelemetryStore((state) => state.logs)
-  const logFilter = useTelemetryStore((state) => state.logFilter)
-  const logAutoScroll = useTelemetryStore((state) => state.logAutoScroll)
-  const setLogFilter = useTelemetryStore((state) => state.setLogFilter)
-  const toggleLogAutoScroll = useTelemetryStore((state) => state.toggleLogAutoScroll)
-  const clearLogs = useTelemetryStore((state) => state.clearLogs)
+  // 📜 WAVE 25.7: Use dedicated logStore
+  const logs = useLogStore((state) => state.logs)
+  const clearLogs = useLogStore((state) => state.clearLogs)
   
+  const [logFilter, setLogFilter] = useState<string>('ALL')
+  const [logAutoScroll, setLogAutoScroll] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(true)
   const logContainerRef = useRef<HTMLDivElement>(null)
@@ -56,7 +65,7 @@ export const TacticalLog: React.FC = () => {
     
     // Type filter
     if (logFilter !== 'ALL') {
-      result = result.filter(log => log.type === logFilter)
+      result = result.filter(log => log.category === logFilter)
     }
     
     // Search filter
@@ -64,7 +73,7 @@ export const TacticalLog: React.FC = () => {
       const query = searchQuery.toLowerCase()
       result = result.filter(log => 
         log.message.toLowerCase().includes(query) ||
-        log.type.toLowerCase().includes(query)
+        log.category.toLowerCase().includes(query)
       )
     }
     
@@ -90,11 +99,10 @@ export const TacticalLog: React.FC = () => {
   }
   
   const exportToCSV = () => {
-    const headers = ['Timestamp', 'Type', 'Severity', 'Message']
+    const headers = ['Timestamp', 'Category', 'Message']
     const rows = filteredLogs.map(log => [
       new Date(log.timestamp).toISOString(),
-      log.type,
-      log.severity,
+      log.category,
       `"${log.message.replace(/"/g, '""')}"`,
     ])
     
@@ -109,6 +117,8 @@ export const TacticalLog: React.FC = () => {
     
     URL.revokeObjectURL(url)
   }
+  
+  const toggleAutoScroll = () => setLogAutoScroll(!logAutoScroll)
   
   const logTypes = ['ALL', ...Object.keys(LOG_CONFIG)]
 
@@ -151,7 +161,7 @@ export const TacticalLog: React.FC = () => {
           
           <button 
             className={`toolbar-btn ${logAutoScroll ? 'active' : ''}`}
-            onClick={toggleLogAutoScroll}
+            onClick={toggleAutoScroll}
             title="Toggle auto-scroll"
           >
             {logAutoScroll ? '📜 Auto' : '📜 Manual'}
@@ -183,7 +193,7 @@ export const TacticalLog: React.FC = () => {
             const isActive = logFilter === type
             const count = type === 'ALL' 
               ? logs.length 
-              : logs.filter(l => l.type === type).length
+              : logs.filter(l => l.category === type).length
             
             return (
               <button
@@ -217,29 +227,26 @@ export const TacticalLog: React.FC = () => {
         ) : (
           <div className="log-entries">
             {filteredLogs.map((entry) => {
-              const config = LOG_CONFIG[entry.type] || LOG_CONFIG.INFO
+              const config = LOG_CONFIG[entry.category] || LOG_CONFIG.INFO
               
               return (
                 <div 
                   key={entry.id} 
-                  className={`log-entry severity-${entry.severity}`}
+                  className="log-entry"
                 >
                   <span className="log-time">{formatTime(entry.timestamp)}</span>
                   <span 
                     className="log-type"
                     style={{ color: config.color }}
                   >
-                    {config.icon} {entry.type}
+                    {config.icon} {entry.category}
                   </span>
-                  <span 
-                    className="log-message"
-                    style={{ color: SEVERITY_COLORS[entry.severity] }}
-                  >
+                  <span className="log-message">
                     {entry.message}
                   </span>
-                  {entry.duplicateCount > 1 && (
-                    <span className="log-duplicate">
-                      ×{entry.duplicateCount}
+                  {entry.data && (
+                    <span className="log-data" title={JSON.stringify(entry.data)}>
+                      📎
                     </span>
                   )}
                 </div>

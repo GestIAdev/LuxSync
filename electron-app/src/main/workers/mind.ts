@@ -9,7 +9,17 @@
  * - REGLA 2: confidence < 0.5 → Modo Reactivo (V17 style)
  * - REGLA 3: Syncopation > BPM para selección de patrones
  * - Memory Management (patrones aprendidos)
- * - Predictive Engine
+ * - Predic    // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+    // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer source real (sin histéresis)
+    debugInfo: {
+      macroGenre: selenePalette.meta.macroGenre,
+      strategy: selenePalette.meta.strategy,
+      temperature: selenePalette.meta.temperature,
+      description: selenePalette.meta.description,
+      key: harmony.key,
+      mode: harmony.mode,
+      source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural
+    }
  * - Aesthetic Decision Making
  * - Personality System
     console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${genreName}`);
@@ -180,6 +190,9 @@ interface GammaState {
   // 🧠 WAVE 10: Brain forced mode (from main process Big Switch)
   brainForced: boolean;
   
+  // 🌊 WAVE 23.4: Smoothed syncopation (EMA filter)
+  smoothedSync: number;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -227,6 +240,9 @@ const state: GammaState = {
   
   // 🧠 WAVE 10: Brain activation flag (from main process)
   brainForced: false,  // When true, ALWAYS use intelligent mode
+  
+  // 🌊 WAVE 23.4: Smoothed syncopation (inicializado en 0)
+  smoothedSync: 0,
   
   learnedPatterns: new Map(),
   
@@ -304,6 +320,12 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   
   // === INTELLIGENT MODE (Wave 8 Full Analysis) ===
   const { rhythm, harmony, section, genre } = wave8!;
+  
+  // 🌊 WAVE 23.4: SUAVIZADO DE SYNCOPATION (EMA Filter)
+  // Evita parpadeo visual causado por cambios abruptos (0.90 → 0.10)
+  // EMA: smoothed = (smoothed * alpha) + (new * (1 - alpha))
+  // alpha = 0.8 (80% histórico, 20% nuevo) → suavizado agresivo
+  state.smoothedSync = (state.smoothedSync * 0.8) + (rhythm.syncopation * 0.2);
   
   // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista procedural
   // Los colores emergen de la MATEMÁTICA MUSICAL:
@@ -428,6 +450,8 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     effects,
     
     // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+    // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer paletteSource real (sin histéresis)
+    // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para DNA derivation
     debugInfo: {
       macroGenre: selenePalette.meta.macroGenre,
       strategy: selenePalette.meta.strategy,
@@ -435,6 +459,8 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       description: selenePalette.meta.description,
       key: harmony.key,
       mode: harmony.mode,
+      source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural (no usa Brain)
+      syncopation: state.smoothedSync,  // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para evitar flicker en DNA
     }
   };
 }

@@ -1,6 +1,7 @@
 /**
  * 🎯 HUNT MONITOR
  * WAVE 14.3: Stalking & Strike engine visualization + Control Actions embebidos
+ * 🧠 WAVE 25.6: Migrado a truthStore
  * 
  * Shows:
  * - Hunt status (idle/stalking/evaluating/striking)
@@ -11,12 +12,14 @@
  */
 
 import React, { useState, useCallback } from 'react'
-import { useTelemetryStore, type HuntTelemetry } from '../../../stores/telemetryStore'
+import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
 import './HuntMonitor.css'
 
 const HuntMonitor: React.FC = () => {
-  const hunt = useTelemetryStore((state) => state.hunt)
-  const connected = useTelemetryStore((state) => state.connected)
+  // 🧠 WAVE 25.6: Use truthStore
+  const prediction = useTruthMusicalDNA()?.prediction
+  const cognitive = useTruthCognitive()
+  const connected = useTruthConnected()
   
   // Estado para settings expandidos
   const [showSettings, setShowSettings] = useState(false)
@@ -34,24 +37,32 @@ const HuntMonitor: React.FC = () => {
     }
   }, [])
   
-  // Default values
-  const data: HuntTelemetry = hunt || {
-    status: 'idle',
+  // Build hunt data from truth
+  const huntStatus = prediction?.huntStatus?.phase ?? 'idle'
+  const beauty = cognitive?.beauty
+  
+  const data = {
+    status: huntStatus,
     cycleId: null,
-    currentTarget: null,
+    currentTarget: prediction?.huntStatus?.targetType ? { 
+      pattern: prediction.huntStatus.targetType,
+      huntWorthiness: prediction.huntStatus.lockPercentage / 100,
+      cyclesObserved: 0,
+      maxCycles: 10
+    } : null,
     strikeConditions: {
-      beauty: { current: 0, threshold: 0.85, met: false },
+      beauty: { current: beauty?.current ?? 0, threshold: 0.85, met: (beauty?.current ?? 0) >= 0.85 },
       trend: { direction: 'stable', required: 'rising', met: false },
       harmony: { consonance: 0, threshold: 0.7, met: false },
       health: { current: 0, threshold: 0.6, met: false },
       cooldown: { ready: true, timeUntilReady: 0 },
       conditionsMet: 0,
       totalConditions: 5,
-      strikeScore: 0,
+      strikeScore: beauty?.current ?? 0,
       allConditionsMet: false,
     },
     preyCandidates: [],
-    estimatedTimeToStrike: -1,
+    estimatedTimeToStrike: prediction?.dropPrediction?.barsUntil ?? -1,
   }
   
   const getStatusIcon = (status: string) => {

@@ -15,6 +15,7 @@ import Blackout from './components/Blackout'
 import { useLuxSyncStore } from './stores/luxsyncStore'
 import { useAudioCapture } from './hooks'
 import { useSelene } from './hooks'
+import { initializeLogIPC } from './stores/logStore'
 
 function App() {
   const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore()
@@ -26,6 +27,9 @@ function App() {
     const initSystem = async () => {
       console.log('[App] 🚀 Initializing LuxSync System...')
       
+      // 📜 WAVE 25.7: Initialize Log IPC listener
+      const cleanupLogs = initializeLogIPC()
+      
       // Iniciar Selene en Main Process
       if (window.lux) {
         await startSelene()
@@ -36,6 +40,8 @@ function App() {
       setSimulationMode(true) // Empezar con simulación para demo
       await startCapture()
       console.log('[App] 🎵 Audio capture started')
+      
+      return cleanupLogs
     }
 
     initSystem()

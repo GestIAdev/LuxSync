@@ -268,13 +268,12 @@ export class MusicalContextEngine extends EventEmitter {
       // Genre (throttled)
       const genreResult = this.genreClassifier.classify(
         rhythm,
-        this.cachedHarmony!,
-        simpleAudio
+        simpleAudio  // ← AudioInput (correcto)
       );
       this.cachedGenre = {
-        primary: genreResult.genre,
+        primary: genreResult.genre as any,  // ← WAVE 24.11: Cast to fix TS MacroGenre → MusicGenre
         confidence: genreResult.confidence,
-        secondary: genreResult.subgenre !== 'none' ? genreResult.genre : undefined,
+        secondary: genreResult.subgenre !== 'none' ? (genreResult.genre as any) : undefined,
         characteristics: this.extractCharacteristics(genreResult),
         timestamp: now,
       };

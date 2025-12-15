@@ -1132,6 +1132,16 @@
   color: #ff3366;
 }
 
+/* 🌙 WAVE 25: Neutral state for info items */
+.test-item.neutral .test-icon {
+  background: rgba(0, 255, 240, 0.15);
+  color: #00fff0;
+}
+
+.test-item.neutral .test-status {
+  color: #00fff0;
+}
+
 .test-item.pending .test-icon {
   background: rgba(255, 215, 0, 0.15);
   color: #ffd700;
@@ -1688,6 +1698,16 @@
   background: rgba(0, 255, 136, 0.05);
   border: 1px solid rgba(0, 255, 136, 0.15);
   border-radius: 8px;
+}
+
+/* 🌙 WAVE 25: Live color indicator */
+.live-color-dot {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: background-color 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
 }
 
 .patched-addr {

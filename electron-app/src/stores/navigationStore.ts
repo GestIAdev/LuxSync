@@ -48,7 +48,7 @@ export const TABS: TabConfig[] = [
     label: 'SIMULATE',
     icon: 'monitor',   // Lucide: Monitor (screen)
     shortcut: 'Alt+2',
-    description: 'Visualización 3D del escenario',
+    description: 'Visualización del escenario - Canvas 2.0',
   },
   {
     id: 'core',

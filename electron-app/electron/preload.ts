@@ -276,7 +276,26 @@ const luxApi = {
     return () => ipcRenderer.removeListener('trinity:lighting-decision', handler)
   },
   
-  /** 📡 WAVE-14: Establecer Input Gain */
+  /** 🌙 WAVE 25: UNIVERSAL TRUTH PROTOCOL - La Verdad Única a 30fps
+   * Este es el ÚNICO canal que el Frontend necesita para renderizar TODO.
+   * Reemplaza: telemetry-update, state-update, brain-metrics
+   */
+  onTruthUpdate: (callback: (data: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: any) => callback(data)
+    ipcRenderer.on('selene:truth', handler)
+    return () => ipcRenderer.removeListener('selene:truth', handler)
+  },
+  
+  /** � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
+   * Logs llegan por canal separado para no interferir con el broadcast de 30fps
+   */
+  onLog: (callback: (logEntry: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, logEntry: any) => callback(logEntry)
+    ipcRenderer.on('selene:log', handler)
+    return () => ipcRenderer.removeListener('selene:log', handler)
+  },
+  
+  /** �📡 WAVE-14: Establecer Input Gain */
   setInputGain: (value: number) => ipcRenderer.invoke('lux:set-input-gain', value),
   
   /** 🎨 WAVE-14.5: Forzar mutación de paleta */

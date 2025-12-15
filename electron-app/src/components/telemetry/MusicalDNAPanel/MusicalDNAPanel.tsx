@@ -1,6 +1,7 @@
 /**
  * 🧬 MUSICAL DNA PANEL
  * WAVE 14: Real-time musical analysis display
+ * 🧠 WAVE 25.6: Migrado a truthStore
  * 
  * Shows:
  * - Key & Mode (with description)
@@ -12,24 +13,50 @@
  */
 
 import React from 'react'
-import { useTelemetryStore, type MusicalDNATelemetry } from '../../../stores/telemetryStore'
+import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
 import './MusicalDNAPanel.css'
 
 const MusicalDNAPanel: React.FC = () => {
-  const dna = useTelemetryStore((state) => state.dna)
-  const connected = useTelemetryStore((state) => state.connected)
+  // 🧠 WAVE 25.6: Use truthStore
+  const musicalDNA = useTruthMusicalDNA()
+  const cognitive = useTruthCognitive()
+  const connected = useTruthConnected()
   
-  // Default values
-  const data: MusicalDNATelemetry = dna || {
-    key: null,
+  // Build data from truth (adaptar a tipos de SeleneProtocol)
+  const zodiacElement = cognitive?.zodiac?.element ?? 'earth'
+  const zodiacSign = cognitive?.zodiac?.sign ?? 'Taurus'
+  
+  // Mapear signo a símbolo
+  const getZodiacSymbol = (sign: string): string => {
+    const symbols: Record<string, string> = {
+      'Aries': '♈', 'Taurus': '♉', 'Gemini': '♊', 'Cancer': '♋',
+      'Leo': '♌', 'Virgo': '♍', 'Libra': '♎', 'Scorpio': '♏',
+      'Sagittarius': '♐', 'Capricorn': '♑', 'Aquarius': '♒', 'Pisces': '♓'
+    }
+    return symbols[sign] || '⭐'
+  }
+  
+  const data = {
+    key: musicalDNA?.key ?? null,
     mode: 'major',
-    modeDescription: 'Desconocido',
-    mood: 'neutral',
-    zodiac: { element: 'earth', position: 0, sign: 'Taurus', symbol: '♉' },
-    section: { type: 'unknown', confidence: 0, estimatedDuration: 0 },
-    rhythm: { bpm: 120, bpmConfidence: 0, syncopation: 0 },
-    genre: { primary: 'unknown', secondary: null, confidence: 0 },
-    energy: 0,
+    modeDescription: 'Musical Key',
+    mood: cognitive?.mood ?? 'neutral',
+    zodiac: { 
+      element: zodiacElement, 
+      sign: zodiacSign, 
+      symbol: getZodiacSymbol(zodiacSign) 
+    },
+    section: { 
+      type: musicalDNA?.section?.current ?? 'unknown', 
+      confidence: musicalDNA?.section?.confidence ?? 0 
+    },
+    rhythm: musicalDNA?.rhythm ?? { groove: 0.5, syncopation: 0, percussiveness: 0.5 },
+    genre: { 
+      primary: musicalDNA?.genre?.primary ?? 'unknown', 
+      secondary: musicalDNA?.genre?.subGenre ?? null, 
+      confidence: musicalDNA?.genre?.confidence ?? 0 
+    },
+    energy: cognitive?.beauty?.current ?? 0,
     energyTrend: 'stable',
   }
   

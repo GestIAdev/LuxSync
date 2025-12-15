@@ -3,6 +3,7 @@
  * Visualizador de partículas grande + controles compactos
  * 
  * WAVE 3: Connected to window.lux.setMovement() for Selene integration
+ * WAVE 25.5: Migrado a truthStore (lectura) - muestra posición REAL del backend
  * 
  * ✅ PATTERNS MATCH 1:1 - No translation needed!
  * UI: lissajous, circle, wave, figure8, scan, random
@@ -11,6 +12,8 @@
 
 import { useLuxSyncStore, MovementPattern } from '../stores/luxsyncStore'
 import { useEffect, useRef, useCallback } from 'react'
+// 🌙 WAVE 25.5: Truth hook para lectura de posición real
+import { useTruthMovement } from '../hooks'
 
 // Map UI patterns to Selene MovementPatternId
 const PATTERN_TO_SELENE: Record<MovementPattern, string> = {
@@ -33,6 +36,15 @@ const PATTERNS: { id: MovementPattern; icon: string; name: string }[] = [
 
 export default function MovementControl() {
   const { movement, setMovementPattern, setMovementSpeed, setMovementRange } = useLuxSyncStore()
+  
+  // 🌙 WAVE 25.5: Truth hook para posición REAL del backend
+  const truthMovement = useTruthMovement()
+  
+  // Ref para acceder a truthMovement dentro del animation loop sin re-crear el useEffect
+  const truthMovementRef = useRef(truthMovement)
+  useEffect(() => {
+    truthMovementRef.current = truthMovement
+  }, [truthMovement])
   
   // 🔗 WAVE 3: Send movement changes to Selene via IPC
   const sendToSelene = useCallback((pattern: string, speed: number, range: number) => {
@@ -151,6 +163,33 @@ export default function MovementControl() {
       ctx.shadowBlur = 20
       ctx.fill()
       ctx.shadowBlur = 0
+
+      // 🌙 WAVE 25.5: Ghost dot - posición REAL del backend
+      // pan/tilt son 0-255, convertir a coordenadas canvas
+      const truth = truthMovementRef.current
+      if (truth && (truth.pan !== 0 || truth.tilt !== 0)) {
+        const ghostX = (truth.pan / 255) * width
+        const ghostY = (truth.tilt / 255) * height
+        
+        // Dibujar conexión fantasma al punto de destino
+        ctx.beginPath()
+        ctx.moveTo(headX, headY)
+        ctx.lineTo(ghostX, ghostY)
+        ctx.strokeStyle = 'rgba(255, 136, 0, 0.3)'
+        ctx.lineWidth = 2
+        ctx.setLineDash([5, 5])
+        ctx.stroke()
+        ctx.setLineDash([])
+        
+        // Ghost dot (naranja para diferenciarlo)
+        ctx.beginPath()
+        ctx.arc(ghostX, ghostY, 6, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(255, 136, 0, 0.8)'
+        ctx.shadowColor = '#ff8800'
+        ctx.shadowBlur = 15
+        ctx.fill()
+        ctx.shadowBlur = 0
+      }
 
       // Actualizar y dibujar partículas
       particles.forEach((p) => {

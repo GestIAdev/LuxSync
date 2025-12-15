@@ -3,6 +3,7 @@
  * WAVE 14: Real-time color palette visualization
  * WAVE 17.4: SeleneColorEngine debug info integration
  * WAVE 17.5: UI STABILIZATION - Anti-flicker defensive rendering
+ * 🧠 WAVE 25.6: Migrado a truthStore
  * 
  * Shows:
  * - Current palette colors (primary, secondary, accent, ambient, contrast)
@@ -12,30 +13,35 @@
  */
 
 import React, { useMemo } from 'react'
-import { useTelemetryStore, type PaletteTelemetry } from '../../../stores/telemetryStore'
+import { useTruthPalette, useTruthConnected, useTruthMusicalDNA } from '../../../hooks'
 import './PalettePreview.css'
 
 const PalettePreview: React.FC = () => {
-  const palette = useTelemetryStore((state) => state.palette)
-  const connected = useTelemetryStore((state) => state.connected)
+  // 🧠 WAVE 25.6: Use truthStore
+  const palette = useTruthPalette()
+  const connected = useTruthConnected()
+  const musicalDNA = useTruthMusicalDNA()
   
-  // Default values
-  const data: PaletteTelemetry = palette || {
+  // Build data from truth
+  const data = {
     strategy: 'analogous',
     source: 'procedural',
     colors: {
-      primary: { h: 280, s: 70, l: 50, hex: '#a855f7' },
-      secondary: { h: 200, s: 70, l: 50, hex: '#0ea5e9' },
-      accent: { h: 40, s: 80, l: 60, hex: '#f59e0b' },
-      ambient: { h: 280, s: 40, l: 30, hex: '#6b21a8' },
-      contrast: { h: 100, s: 60, l: 50, hex: '#84cc16' },
+      primary: palette?.primary ?? { h: 280, s: 70, l: 50, hex: '#a855f7' },
+      secondary: palette?.secondary ?? { h: 200, s: 70, l: 50, hex: '#0ea5e9' },
+      accent: palette?.accent ?? { h: 40, s: 80, l: 60, hex: '#f59e0b' },
+      ambient: palette?.ambient ?? { h: 280, s: 40, l: 30, hex: '#6b21a8' },
+      contrast: palette?.contrast ?? { h: 100, s: 60, l: 50, hex: '#84cc16' },
     },
     dnaDerivation: {
-      keyToHue: { key: null, hue: 280 },
+      keyToHue: { key: musicalDNA?.key ?? null, hue: 280 },
       modeShift: { mode: 'major', delta: 0 },
       zodiacPull: { element: 'earth', delta: 0 },
-      finalHue: 280,
+      finalHue: palette?.primary?.h ?? 280,
     },
+    macroGenre: String(musicalDNA?.genre?.primary ?? 'UNKNOWN'),
+    temperature: 'neutral',
+    description: 'Live palette from truthStore',
   }
 
   // WAVE 17.5: STABILIZED VALUES - Evita undefined/null que colapsan el layout
@@ -43,9 +49,9 @@ const PalettePreview: React.FC = () => {
     macroGenre: data.macroGenre || 'ANALYZING',
     temperature: data.temperature || 'neutral',
     description: data.description || 'Waiting for audio analysis...',
-    debugKey: data.debugKey || null,
-    debugMode: data.debugMode || null,
-  }), [data.macroGenre, data.temperature, data.description, data.debugKey, data.debugMode])
+    debugKey: musicalDNA?.key ?? null,
+    debugMode: 'major',
+  }), [data.macroGenre, data.temperature, data.description, musicalDNA?.key])
   
   const getSourceIcon = (source: string) => {
     switch (source) {

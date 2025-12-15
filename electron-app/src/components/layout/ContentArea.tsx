@@ -1,6 +1,7 @@
 /**
  * 📺 CONTENT AREA - Dynamic View Container
  * WAVE 9: Renders active view based on navigation state
+ * WAVE 25.5: SimulateView now uses StageSimulator2 (Canvas 2.0)
  */
 
 import React, { Suspense, lazy } from 'react'
@@ -9,7 +10,8 @@ import './ContentArea.css'
 
 // Lazy load views for better performance
 const LiveView = lazy(() => import('../views/LiveView'))
-const SimulateView = lazy(() => import('../views/SimulateView'))
+// 🌙 WAVE 25.5: El Cambiazo - SimulateView ahora es StageSimulator2
+const SimulateView = lazy(() => import('../views/StageView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 const SetupView = lazy(() => import('../views/SetupView'))
 

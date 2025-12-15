@@ -469,12 +469,20 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
   
   // 📡 WAVE 15.3: Actualizar con decisiones REALES de Gamma (lighting-decision)
   // 🎨 WAVE 17.4: Incluye debugInfo del SeleneColorEngine
+  // 🔥 WAVE 23.1: Incluir source (la verdad cruda)
+  // 🔥 WAVE 23.3: Throttle a 10 FPS + legacy Canvas support
   updateFromTrinityDecision: (decision: unknown) => {
+    // 🔥 WAVE 23.3: THROTTLE A 10 FPS (100ms)
+    // Limita actualizaciones de UI para evitar flicker y reducir carga
+    const now = Date.now()
+    if (now - get().lastUpdate < 100) {
+      return; // Ignorar si hace menos de 100ms de la última actualización
+    }
+    
     const data = decision as {
       beautyScore?: number
-      palette?: { intensity: number }
+      palette?: { intensity: number; primary: { r: number; g: number; b: number }; secondary: { r: number; g: number; b: number }; accent: { r: number; g: number; b: number } }
       movement?: { pattern: string }
-      // 🎨 WAVE 17.4: SeleneColorEngine debug info
       debugInfo?: {
         macroGenre?: string
         strategy?: string
@@ -482,6 +490,8 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
         description?: string
         key?: string | null
         mode?: string
+        source?: 'memory' | 'procedural' | 'fallback'
+        energy?: number
       }
     }
     
@@ -489,6 +499,8 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
     const currentPalette = currentState.palette ?? DEFAULT_PALETTE
     
     // 🎨 WAVE 17.4: Actualizar palette con debugInfo si existe
+    // 🔥 WAVE 23.1 OPERATION TRUTH: Forzar actualización de source desde debugInfo
+    // 🔥 WAVE 23.2 LOBOTOMÍA: Actualizar COLORES desde data.palette (bypass total del cache)
     let updatedPalette: PaletteTelemetry = currentPalette
     if (data.debugInfo) {
       updatedPalette = {
@@ -499,19 +511,78 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
         debugKey: data.debugInfo.key ?? undefined,
         debugMode: data.debugInfo.mode,
         strategy: (data.debugInfo.strategy as PaletteTelemetry['strategy']) || currentPalette.strategy,
+        source: (data.debugInfo.source as PaletteTelemetry['source']) || currentPalette.source,
       }
     }
     
+    // 🔥 WAVE 23.2: Convertir RGB de Trinity a HSL para el UI
+    // CRÍTICO: data.palette viene en RGB {r,g,b}, pero UI espera HSL {h,s,l,hex}
+    if (data.palette && data.palette.primary && data.palette.secondary && data.palette.accent) {
+      const rgbToHsl = (r: number, g: number, b: number) => {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+        
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+          }
+        }
+        
+        h = Math.round(h * 360);
+        s = Math.round(s * 100);
+        l = Math.round(l * 100);
+        const hex = '#' + [r * 255, g * 255, b * 255].map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+        return { h, s, l, hex };
+      };
+      
+      const primary = rgbToHsl(data.palette.primary.r, data.palette.primary.g, data.palette.primary.b);
+      const secondary = rgbToHsl(data.palette.secondary.r, data.palette.secondary.g, data.palette.secondary.b);
+      const accent = rgbToHsl(data.palette.accent.r, data.palette.accent.g, data.palette.accent.b);
+      const ambient = currentPalette.colors.ambient;
+      
+      updatedPalette = {
+        ...updatedPalette,
+        colors: {
+          primary,
+          secondary,
+          accent,
+          ambient,
+          contrast: currentPalette.colors.contrast,
+        }
+      };
+    }
+    
+    // 🔥 WAVE 23.3: Mapear colores a legacy format para Canvas 3D y móviles DMX
+    // El Canvas y componentes legados esperan array de hex strings
+    const legacyColors = [
+      updatedPalette.colors.primary.hex,
+      updatedPalette.colors.secondary.hex,
+      updatedPalette.colors.accent.hex,
+      updatedPalette.colors.ambient.hex,
+    ];
+    
     set({
+      lastUpdate: now,  // 🔥 CRITICAL: Actualizar timestamp para throttle
       trinityConnected: true,
-      trinityLastUpdate: Date.now(),
+      trinityLastUpdate: now,
       signalLost: false,
       trinityDecision: {
         beautyScore: data.beautyScore ?? 0,
         paletteIntensity: data.palette?.intensity ?? 0,
         movementPattern: data.movement?.pattern ?? 'unknown',
       },
-      palette: updatedPalette,
+      palette: {
+        ...updatedPalette,
+        // 🔥 WAVE 23.3: Asegurar compatibilidad con Canvas/DMX legacy
+        legacyColors: legacyColors as any,
+        // 🔥 WAVE 23.3: Capturar intensidad para brillo del Canvas y DMX
+        intensity: (data.palette?.intensity ?? data.debugInfo?.energy ?? 0.5) as any,
+      } as any,
     })
   },
   

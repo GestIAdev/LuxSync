@@ -7,9 +7,21 @@
  * WAVE-8 FASE 8: Integración Nuclear
  * 
  * El flujo ahora es:
- *   AUDIO → BRAIN → HARDWARE
- * 
- * El SeleneMusicalBrain unifica:
+ *   AUDIO → BRAIN → HARD      // 🛡️ WAVE 24.5.1: ANTI-FLICKER OUTPUT GUARD
+      // Si detectamos NaN, mantenemos el color anterior en vez de negro
+      const isInvalid = (n: number) => !Number.isFinite(n) || isNaN(n)
+      
+      if (isInvalid(freshRgbValues.primary.r) || isInvalid(freshRgbValues.primary.g)) {
+        // Solo loguear ocasionalmente para no saturar
+        if (this.frameCount % 120 === 0) {
+          console.warn(`[SeleneLux] ⚠️ NaN detected! Holding previous color. E=${metrics.energy.toFixed(4)}`)
+        }
+        // ANTI-FLICKER: Mantener el último color válido en vez de apagar
+        freshRgbValues.primary = this.lastColors.primary
+        freshRgbValues.secondary = this.lastColors.secondary
+        freshRgbValues.accent = this.lastColors.accent
+        freshRgbValues.ambient = this.lastColors.ambient
+      }l SeleneMusicalBrain unifica:
  * - Análisis musical contextual
  * - Memoria de patrones exitosos
  * - Generación procedural de paletas
@@ -39,12 +51,21 @@ import {
   type BrainConfig,
 } from './engines/musical'
 import type { AudioAnalysis } from './engines/musical/types'
+// 🎨 WAVE 24.4: Motor de Color Procedural + Helper de conversión HSL→RGB
+// 🔥 WAVE 24.9: Añadir rgbToHsl para sincronizar Flow Mode palette
+import { SeleneColorEngine, paletteToRgb, rgbToHsl } from './engines/visual/SeleneColorEngine'
 // 📡 WAVE-14: Telemetry Collector
 import { 
   SeleneTelemetryCollector, 
   getTelemetryCollector,
   type SeleneTelemetryPacket,
 } from './engines/telemetry/SeleneTelemetryCollector'
+// 🌙 WAVE-25: Universal Truth Protocol
+import {
+  type SeleneBroadcast,
+  type UnifiedColor,
+  createDefaultBroadcast,
+} from '../../types/SeleneProtocol'
 
 export interface SeleneConfig {
   audio: {
@@ -110,10 +131,29 @@ export class SeleneLux extends EventEmitter {
   private currentPattern: MusicalPattern | null = null
   private consciousness: ConsciousnessState
   
-  private lastColors: ColorOutput | null = null
+  // 🔥 WAVE 24.11: ARCHITECTURAL FIX - Initialize with VALID colors (not null/black)
+  // Previene blackout anómalo en primer frame cuando ColorEngine aún no generó output
+  private lastColors: ColorOutput = {
+    primary: { r: 150, g: 50, b: 50 },    // Rojo cálido (Fuego default)
+    secondary: { r: 200, g: 100, b: 50 }, // Naranja
+    accent: { r: 255, g: 150, b: 0 },     // Amarillo
+    ambient: { r: 255, g: 100, b: 50 },   // Naranja brillante
+    intensity: 0.5,
+    saturation: 0.8,
+  }
+  
   private lastMovement: MovementOutput | null = null
   private lastBeat: BeatState | null = null
   private lastBrainOutput: BrainOutput | null = null
+  
+  // 🌙 WAVE-25: Tracking para Universal Truth Broadcast
+  private lastAudioMetrics: AudioMetrics | null = null
+  private lastAudioAnalysis: AudioAnalysis | null = null
+  private lastFrameTime = Date.now()
+  private sessionId = `selene-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+  private fpsCounter = { frames: 0, lastCheck: Date.now(), currentFPS: 30 }
+  private audioDeviceName = 'System Audio'
+  private audioActive = false
   
   private frameCount = 0
   private decisionCount = 0
@@ -190,7 +230,13 @@ export class SeleneLux extends EventEmitter {
       this.consciousness.lastInsight = `Aprendí un nuevo patrón: ${data.patternHash?.slice(0, 8)}`
       this.emit('pattern-learned', data)
       
-      // 📡 WAVE-14.5: Log to telemetry
+      // � WAVE 25.7: Emit to dedicated log channel
+      this.emitLog('Brain', `Nuevo patrón aprendido: ${data.emotionalTone}`, { 
+        patternHash: data.patternHash, 
+        beauty: data.avgBeautyScore 
+      })
+      
+      // �📡 WAVE-14.5: Log to telemetry
       this.telemetryCollector.addLog(
         'MEMORY',
         `📚 Nuevo patrón aprendido: ${data.emotionalTone} (Beauty: ${(data.avgBeautyScore * 100).toFixed(0)}%)`,
@@ -203,7 +249,10 @@ export class SeleneLux extends EventEmitter {
     this.brain.on('mode-change', (data) => {
       this.emit('brain-mode-change', data)
       
-      // 📡 WAVE-14.5: Log to telemetry
+      // � WAVE 25.7: Emit to dedicated log channel
+      this.emitLog('Mode', `Cambio de modo: ${data.from} → ${data.to}`, { reason: data.reason })
+      
+      // �📡 WAVE-14.5: Log to telemetry
       this.telemetryCollector.addLog(
         'MODE',
         `🔄 Cambio de modo: ${data.from} → ${data.to} (${data.reason})`,
@@ -215,7 +264,13 @@ export class SeleneLux extends EventEmitter {
     this.brain.on('section-change', (data) => {
       this.emit('section-change', data)
       
-      // 📡 WAVE-14.5: Log to telemetry
+      // � WAVE 25.7: Emit to dedicated log channel
+      this.emitLog('Music', `Nueva sección: ${data.to}`, { 
+        from: data.from, 
+        confidence: data.confidence 
+      })
+      
+      // �📡 WAVE-14.5: Log to telemetry
       this.telemetryCollector.addLog(
         'SECTION',
         `🎵 Nueva sección: ${data.to} (Confianza: ${(data.confidence * 100).toFixed(0)}%)`,
@@ -226,6 +281,9 @@ export class SeleneLux extends EventEmitter {
     
     // 📡 WAVE-14.5: Capturar generación de paletas
     this.brain.on('palette-generated', (data: any) => {
+      // 📜 WAVE 25.7: Emit to dedicated log channel
+      this.emitLog('Visual', `Paleta generada: ${data.source}`, { colors: data.colors?.length || 0 })
+      
       this.telemetryCollector.addLog(
         'PALETTE',
         `🎨 Paleta generada: ${data.source} - ${data.colors?.length || 0} colores`,
@@ -248,8 +306,30 @@ export class SeleneLux extends EventEmitter {
     
     console.info('[SeleneLux] 🧠 Brain initialized with memory')
     this.emit('brain-ready')
+    this.emitLog('System', 'Brain initialized with memory')
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📜 WAVE 25.7: THE CHRONICLER - Centralized Log Emission
+  // ═══════════════════════════════════════════════════════════════════════════
   
+  /**
+   * Emite un log estructurado para el frontend (canal dedicado, no en broadcast 30fps)
+   * @param category 'Music' | 'DMX' | 'System' | 'Brain' | 'Visual' | 'Mode'
+   * @param message Mensaje descriptivo
+   * @param data Datos adicionales opcionales
+   */
+  public emitLog(category: string, message: string, data?: any) {
+    const logEntry = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      timestamp: Date.now(),
+      category,
+      message,
+      data
+    }
+    this.emit('log', logEntry)
+  }
+
   /**
    * ═══════════════════════════════════════════════════════════════════════════
    * 🎯 PROCESO PRINCIPAL - Audio → Brain → Hardware
@@ -270,18 +350,127 @@ export class SeleneLux extends EventEmitter {
       // Convertir AudioMetrics a AudioAnalysis para el Brain
       const audioAnalysis = this.convertToAudioAnalysis(metrics, beatState)
       
-      // El Brain procesa todo: contexto + memoria + paleta + mapeo
+      // 1️⃣ PRIMERO: EJECUTAR EL CEREBRO PARA SABER QUÉ SUENA
+      // Necesitamos el género real antes de calcular el color
       const brainOutput = this.brain.process(audioAnalysis)
       this.lastBrainOutput = brainOutput
       
-      // Convertir salida del Brain a colores RGB para hardware
-      this.lastColors = this.brainOutputToColors(brainOutput)
+      // �️ WAVE 24.3: EXTRAER GÉNERO REAL (Desde el contexto del cerebro)
+      // Usamos context.genre.primary que es donde vive realmente
+      const realGenre = brainOutput.context?.genre?.primary || 
+                        (brainOutput.debugInfo as any)?.macroGenre || 
+                        'ELECTROLATINO'
       
-      // 🌊 WAVE 12.5 DEBUG: Log de colores del Brain cada ~3 segundos
+      // 2️⃣ SEGUNDO: PREPARAR DATOS SEGUROS (FIX DE TIPOS WAVE 24.3)
+      // 🔥 WAVE 24.1: DATA SANITIZATION (NaN Prevention)
+      // 🔥 WAVE 24.3: TYPE ALIGNMENT (Corregir estructura de datos)
+      // PROBLEMA 1: El proceso Main no tiene los datos complejos (Wave 8) que tienen los workers.
+      //   → audioAnalysis.wave8 puede ser undefined
+      //   → SeleneColorEngine intenta acceder a propiedades que no existen
+      // PROBLEMA 2: SeleneColorEngine espera energy como NUMBER (top-level), no como objeto
+      //   → audioAnalysis.energy puede ser objeto {current, peak, ...}
+      //   → Matemáticas usan energy directamente → undefined → NaN
+      // PROBLEMA 3: SeleneColorEngine espera genre.primary, no genre.genre
+      //   → Estructura incorrecta → no encuentra género → fallback
+      // SOLUCIÓN: Crear 'safeAnalysis' con estructura correcta + defaults
+      //   → Inyectar mock data (Wave 8 mínimo)
+      //   → energy como NUMBER top-level
+      //   → genre.primary en lugar de genre.genre
+      //   → Verificar salida con isInvalid()
+      //   → Fallback a Negro si hay NaN (seguridad)
+      
+      const safeAnalysis = {
+        ...audioAnalysis,
+        
+        // 🔥 FIX CRÍTICO 1: ENERGY DEBE SER NÚMERO (TOP-LEVEL)
+        // El engine espera .energy como number, no como objeto.
+        energy: metrics.energy,
+        
+        wave8: {
+          rhythm: {
+            syncopation: 0,
+            confidence: 1,
+            // activity no es crítico, syncopation sí
+          },
+          harmony: {
+            key: brainOutput.context?.harmony?.key || 'C',
+            mode: brainOutput.context?.harmony?.mode || 'major',
+            confidence: 0,
+            mood: 'neutral'
+          },
+          section: {
+            type: 'unknown',
+            energy: metrics.energy,
+            confidence: 0
+          },
+          genre: {
+            // 🔥 FIX CRÍTICO 2: USAR PROPIEDAD 'primary'
+            primary: realGenre,  // ELECTRONIC_4X4, LATINO_TRADICIONAL, etc.
+            confidence: 1
+          }
+        }
+      }
+      
+      // 🔥 WAVE 24.4: GENERAR HSL PRIMERO (Para la UI)
+      // En lugar de generateRgb (que devuelve solo RGB), usamos generate (HSL)
+      // Esto resuelve el problema de NaN en UI Palette
+      const freshHslPalette = SeleneColorEngine.generate(safeAnalysis as any)
+      
+      // � WAVE 24.4: CONVERTIR A RGB (Para los Focos/DMX)
+      // Usamos el helper del motor para obtener los valores físicos
+      const freshRgbValues = paletteToRgb(freshHslPalette)
+      
+      // �🛡️ WAVE 24.1: OUTPUT GUARD (Red de Seguridad Final)
+      // Verificamos matemáticamente que no haya NaN. Si hay, fallback a Negro.
+      const isInvalid = (n: number) => !Number.isFinite(n) || isNaN(n)
+      
+      if (isInvalid(freshRgbValues.primary.r) || isInvalid(freshRgbValues.primary.g)) {
+        // Solo loguear ocasionalmente para no saturar
+        if (this.frameCount % 120 === 0) {
+          console.warn(`[SeleneLux] ⚠️ NaN detected in RGB! Metrics: E=${metrics.energy.toFixed(4)}`)
+        }
+        const safeColor = { r: 0, g: 0, b: 0 }
+        freshRgbValues.primary = safeColor
+        freshRgbValues.secondary = safeColor
+        freshRgbValues.accent = safeColor
+        freshRgbValues.ambient = safeColor
+      }
+      
+      // 2. Calcular intensidad (manteniendo lógica existente)
+      const baseIntensity = audioAnalysis.energy.current
+      const intensity = Math.min(1, baseIntensity * this.globalIntensity)
+      
+      // 3️⃣ WAVE 24.4: INYECTAR HSL EN BRAIN OUTPUT (Fix UI Palette NaN)
+      // Ahora la UI recibe {h,s,l} como espera
+      brainOutput.palette = {
+        primary: freshHslPalette.primary,
+        secondary: freshHslPalette.secondary,
+        accent: freshHslPalette.accent,
+        ambient: freshHslPalette.ambient,
+        contrast: freshHslPalette.contrast,
+        strategy: freshHslPalette.meta.strategy,
+      }
+      brainOutput.paletteSource = 'procedural'  // Forzar etiqueta correcta
+      
+      // 4️⃣ WAVE 24.4: ASIGNAR RGB A HARDWARE (Fix DMX/Canvas)
+      this.lastColors = {
+        primary: freshRgbValues.primary,       // RGB Correcto {r,g,b}
+        secondary: freshRgbValues.secondary,   // RGB Correcto
+        accent: freshRgbValues.accent,         // RGB Correcto
+        ambient: freshRgbValues.ambient,       // RGB Correcto
+        intensity: isInvalid(intensity) ? 0 : intensity,  // Protección extra
+        saturation: this.globalSaturation       // State of Truth
+      }
+      
+      // 🌊 WAVE 24.4 DEBUG: Log de colores HSL (UI) + RGB (DMX) cada ~3 segundos
       if (this.frameCount % 100 === 0) {
-        const p = brainOutput.palette.primary
-        const c = this.lastColors.primary
-        console.log(`[SeleneLux] 🎨 Brain HSL: H=${p.h.toFixed(0)} S=${p.s.toFixed(0)} L=${p.l.toFixed(0)} → RGB: ${c.r} ${c.g} ${c.b} | Energy=${metrics.energy.toFixed(2)} | Source=${brainOutput.paletteSource}`)
+        const hsl = freshHslPalette.primary
+        const rgb = this.lastColors.primary
+        const contextGenre = brainOutput.context?.genre?.primary || 'unknown'
+        const rgbCheck = `[${isInvalid(rgb.r) ? 'NaN!' : 'OK'}]`
+        const hslCheck = `[${isInvalid(hsl.h) ? 'NaN!' : 'OK'}]`
+        const energyValue = typeof safeAnalysis.energy === 'number' ? safeAnalysis.energy.toFixed(2) : 'invalid'
+        console.log(`[SeleneLux] 🎨 WAVE24.4 DUAL: HSL(UI)=${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}% ${hslCheck} | RGB(DMX)=${rgb.r},${rgb.g},${rgb.b} ${rgbCheck} | Genre=${contextGenre} | Energy=${energyValue}`)
       }
       
       // El movimiento viene de la sugerencia del Brain
@@ -291,24 +480,116 @@ export class SeleneLux extends EventEmitter {
       this.consciousness.beautyScore = brainOutput.estimatedBeauty
       this.consciousness.totalExperiences++
       
-      if (brainOutput.mode === 'intelligent' && brainOutput.paletteSource === 'memory') {
-        this.decisionCount++ // Usó su experiencia
+      // 🔥 WAVE 23.4: Esta condición nunca se cumple (paletteSource siempre 'procedural' tras lobotomía)
+      // 🔥 WAVE 24.11: Added 'as any' cast to silence TS warning
+      // Mantenido para compatibilidad pero inactivo
+      if (brainOutput.mode === 'intelligent' && (brainOutput.paletteSource as any) === 'memory') {
+        this.decisionCount++ // Usó su experiencia (NUNCA ocurre tras WAVE 23.4)
       }
     } else {
       // ─────────────────────────────────────────────────────────────────────
       // LEGACY: Modo sin Brain (FLOW/reactive mode)
       // ─────────────────────────────────────────────────────────────────────
-      const colors = this.colorEngine.generate(metrics, beatState, this.currentPattern)
+      
+      // 🛡️ WAVE 24.6: Validar métricas antes de generar colores
+      // Si energy/bass/mid/treble son NaN, usamos valores seguros (0)
+      const safeMetrics: typeof metrics = {
+        ...metrics,
+        energy: Number.isFinite(metrics.energy) ? metrics.energy : 0,
+        bass: Number.isFinite(metrics.bass) ? metrics.bass : 0,
+        mid: Number.isFinite(metrics.mid) ? metrics.mid : 0,
+        treble: Number.isFinite(metrics.treble) ? metrics.treble : 0,
+        peak: Number.isFinite(metrics.peak) ? metrics.peak : 0,
+      }
+      
+      const colors = this.colorEngine.generate(safeMetrics, beatState, this.currentPattern)
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🛡️ WAVE 24.8: HARDENING - Sanitize helper para asegurar RGB válido
+      // Doble barrera: Primero sanitize, luego HOLD si aún hay problemas
+      // ═══════════════════════════════════════════════════════════════════════
+      const sanitize = (c: { r: number; g: number; b: number }): { r: number; g: number; b: number } => ({
+        r: Number.isFinite(c.r) ? Math.round(Math.max(0, Math.min(255, c.r))) : 0,
+        g: Number.isFinite(c.g) ? Math.round(Math.max(0, Math.min(255, c.g))) : 0,
+        b: Number.isFinite(c.b) ? Math.round(Math.max(0, Math.min(255, c.b))) : 0,
+      })
+      
+      // Sanitize TODOS los colores antes de aplicar multiplicadores
+      const sanitizedPrimary = sanitize(colors.primary)
+      const sanitizedSecondary = sanitize(colors.secondary)
+      const sanitizedAccent = sanitize(colors.accent)
+      const sanitizedAmbient = sanitize(colors.ambient)
+      
+      // 🛡️ WAVE 24.6: Output Guard - Validar colores antes de asignar
+      // Si ColorEngine retorna NaN, mantenemos el último color válido (HOLD pattern)
+      const isValidColor = (c: { r: number; g: number; b: number }) => 
+        Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b)
+      
+      const validPrimary = isValidColor(sanitizedPrimary)
+      const validSecondary = isValidColor(sanitizedSecondary)
+      const validAccent = isValidColor(sanitizedAccent)
+      const validAmbient = isValidColor(sanitizedAmbient)
       
       // 🎨 WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturación)
       // CRÍTICO: Los sliders del usuario deben afectar el modo FLOW
+      // 🛡️ WAVE 24.6: Solo asignar colores válidos, else HOLD anterior
+      // 🛡️ WAVE 24.8: Usar colores sanitizados (clamped 0-255, NaN→0)
+      // 🔥 WAVE 24.11: lastColors SIEMPRE tiene valores (inicializado con Fuego warm colors)
       this.lastColors = {
-        primary: this.applyGlobalMultipliers(colors.primary),
-        secondary: this.applyGlobalMultipliers(colors.secondary),
-        accent: this.applyGlobalMultipliers(colors.accent),
-        ambient: this.applyGlobalMultipliers(colors.ambient),
-        intensity: colors.intensity * this.globalIntensity,
-        saturation: colors.saturation * this.globalSaturation,
+        primary: validPrimary 
+          ? this.applyGlobalMultipliers(sanitizedPrimary) 
+          : this.lastColors.primary,  // HOLD último color válido (NO fallback a negro)
+        secondary: validSecondary 
+          ? this.applyGlobalMultipliers(sanitizedSecondary) 
+          : this.lastColors.secondary,
+        accent: validAccent 
+          ? this.applyGlobalMultipliers(sanitizedAccent) 
+          : this.lastColors.accent,
+        ambient: validAmbient 
+          ? this.applyGlobalMultipliers(sanitizedAmbient) 
+          : this.lastColors.ambient,
+        intensity: Number.isFinite(colors.intensity) 
+          ? colors.intensity * this.globalIntensity 
+          : this.lastColors.intensity,
+        saturation: Number.isFinite(colors.saturation) 
+          ? colors.saturation * this.globalSaturation 
+          : this.lastColors.saturation,
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 24.9: PALETTE SYNC - Sincronizar Flow palette a telemetría
+      // El Canvas (con bypass WAVE 24.8) lee telemetryStore.palette
+      // Debemos inyectar los colores que ColorEngine generó en modo Flow
+      // ═══════════════════════════════════════════════════════════════════════
+      const flowPalette = {
+        primary: rgbToHsl(this.lastColors.primary),
+        secondary: rgbToHsl(this.lastColors.secondary),
+        accent: rgbToHsl(this.lastColors.accent),
+        ambient: rgbToHsl(this.lastColors.ambient),
+        contrast: { h: 0, s: 0, l: 0, hex: '#000000' },  // Dummy
+        strategy: 'flow_preset' as const,
+        source: 'fallback' as const,  // Flow colorEngine = fallback legacy engine
+        description: `Flow: ${this.currentPalette}`,  // "Flow: fuego", "Flow: hielo"
+      }
+      
+      // Construir Brain Output simulado para engañar a la UI
+      // Esto asegura que Canvas reciba los colores de las Living Palettes
+      this.lastBrainOutput = {
+        timestamp: Date.now(),
+        sessionId: 'flow-session',
+        mode: 'reactive' as const,
+        palette: flowPalette,  // ← AQUÍ VIAJAN LOS COLORES BONITOS 🔥❄️🌴⚡
+        paletteSource: 'fallback' as const,  // Flow usa ColorEngine legacy (fallback)
+        confidence: 1.0,
+        estimatedBeauty: this.lastColors.saturation || 0.8,
+        lighting: { fixtures: {} } as any,  // Dummy
+        performance: { 
+          totalMs: 0, 
+          contextMs: 0,
+          memoryMs: 0,
+          paletteMs: 0,
+          mappingMs: 0
+        },
       }
       
       this.colorEngine.updateTransition(deltaTime)
@@ -329,10 +610,12 @@ export class SeleneLux extends EventEmitter {
       ? this.convertToAudioAnalysis(metrics, beatState)
       : this.convertToAudioAnalysis(metrics, beatState)
     
+    // 🔧 WAVE 24: Pasar lastColors para generar FixtureValues en telemetría
     const telemetryPacket = this.telemetryCollector.collect(
       audioAnalysis,
       this.lastBrainOutput,
-      this.inputGain
+      this.inputGain,
+      this.lastColors  // Colores RGB reales para sincronizar canvas
     )
     
     if (telemetryPacket) {
@@ -644,12 +927,21 @@ export class SeleneLux extends EventEmitter {
   /**
    * 🎨 WAVE 13.6: Aplica multiplicadores globales a un color RGB
    * CRÍTICO: Atenúa la intensidad multiplicando cada canal por globalIntensity
+   * 
+   * 🛡️ WAVE 24.6: Anti-NaN Guard añadido
+   * Si llega NaN, usamos 0 para evitar flicker y propagación
    */
   private applyGlobalMultipliers(rgb: { r: number; g: number; b: number }): { r: number; g: number; b: number } {
+    // 🛡️ WAVE 24.6: Validar entrada antes de multiplicar
+    // NaN * globalIntensity = NaN → FLICKER
+    const safeR = Number.isFinite(rgb.r) ? rgb.r : 0
+    const safeG = Number.isFinite(rgb.g) ? rgb.g : 0
+    const safeB = Number.isFinite(rgb.b) ? rgb.b : 0
+    
     // Aplicar intensidad (dimmer) - afecta todos los canales por igual
-    const dimmedR = rgb.r * this.globalIntensity
-    const dimmedG = rgb.g * this.globalIntensity
-    const dimmedB = rgb.b * this.globalIntensity
+    const dimmedR = safeR * this.globalIntensity
+    const dimmedG = safeG * this.globalIntensity
+    const dimmedB = safeB * this.globalIntensity
     
     // Aplicar saturación - desatura hacia el promedio de los canales
     const avg = (dimmedR + dimmedG + dimmedB) / 3
@@ -699,6 +991,334 @@ export class SeleneLux extends EventEmitter {
    */
   getTelemetryCollector(): SeleneTelemetryCollector {
     return this.telemetryCollector
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌙 WAVE 25: UNIVERSAL TRUTH PROTOCOL - getBroadcast()
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🌙 WAVE 25: Obtiene el broadcast completo de Selene
+   * Este es el ÚNICO objeto que el Frontend necesita para renderizar todo.
+   * 
+   * FLUJO: Brain + ColorEngine + Movement + Consciousness → SeleneBroadcast
+   * 
+   * @returns SeleneBroadcast - La Verdad Universal de Selene a 30fps
+   */
+  public getBroadcast(): SeleneBroadcast {
+    const now = Date.now()
+    const deltaTime = now - this.lastFrameTime
+    
+    // 📊 FPS Tracking
+    this.fpsCounter.frames++
+    if (now - this.fpsCounter.lastCheck >= 1000) {
+      this.fpsCounter.currentFPS = this.fpsCounter.frames
+      this.fpsCounter.frames = 0
+      this.fpsCounter.lastCheck = now
+    }
+    
+    // Safe defaults para optional chaining
+    const brain = this.lastBrainOutput
+    const beat = this.lastBeat
+    const movement = this.lastMovement
+    const metrics = this.lastAudioMetrics
+    const analysis = this.lastAudioAnalysis
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // HELPER: RGB → UnifiedColor (HSL + RGB + HEX)
+    // ═══════════════════════════════════════════════════════════════════════
+    const toUnifiedColor = (rgb: { r: number; g: number; b: number }): UnifiedColor => {
+      const r = Math.max(0, Math.min(255, Math.round(rgb.r ?? 0)))
+      const g = Math.max(0, Math.min(255, Math.round(rgb.g ?? 0)))
+      const b = Math.max(0, Math.min(255, Math.round(rgb.b ?? 0)))
+      
+      // RGB → HSL
+      const rNorm = r / 255
+      const gNorm = g / 255
+      const bNorm = b / 255
+      const max = Math.max(rNorm, gNorm, bNorm)
+      const min = Math.min(rNorm, gNorm, bNorm)
+      const l = (max + min) / 2
+      
+      let h = 0
+      let s = 0
+      
+      if (max !== min) {
+        const d = max - min
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+        switch (max) {
+          case rNorm: h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0)) / 6; break
+          case gNorm: h = ((bNorm - rNorm) / d + 2) / 6; break
+          case bNorm: h = ((rNorm - gNorm) / d + 4) / 6; break
+        }
+      }
+      
+      // HEX
+      const toHex = (n: number) => n.toString(16).padStart(2, '0')
+      const hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`
+      
+      return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        l: Math.round(l * 100),
+        r, g, b,
+        hex
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1. SENSORY DATA (Audio crudo)
+    // ═══════════════════════════════════════════════════════════════════════
+    const sensory = {
+      audio: {
+        energy: metrics?.energy ?? 0,
+        peak: metrics?.peak ?? 0,
+        average: analysis?.energy?.average ?? metrics?.energy ?? 0,
+        bass: metrics?.bass ?? 0,
+        mid: metrics?.mid ?? 0,
+        high: metrics?.treble ?? 0,
+        spectralCentroid: 0, // TODO: Calcular desde FFT si disponible
+        spectralFlux: 0,
+        zeroCrossingRate: 0,
+      },
+      fft: new Array(256).fill(0), // TODO: Exponer FFT real desde workers
+      beat: {
+        onBeat: beat?.onBeat ?? false,
+        confidence: beat?.confidence ?? 0,
+        bpm: beat?.bpm ?? 120,
+        beatPhase: beat?.phase ?? 0,
+        barPhase: ((beat?.beatCount ?? 0) % 4) / 4,
+        timeSinceLastBeat: now - (beat?.lastBeatTime ?? now),
+      },
+      input: {
+        gain: this.inputGain,
+        device: this.audioDeviceName,
+        active: this.audioActive,
+        isClipping: (metrics?.peak ?? 0) > 0.98,
+      },
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 2. COGNITIVE DATA (Consciencia)
+    // ═══════════════════════════════════════════════════════════════════════
+    const cognitive = {
+      mood: this.consciousness.currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric',
+      consciousnessLevel: this.consciousness.beautyScore ?? 0.5,
+      evolution: {
+        stage: this.consciousness.status as 'awakening' | 'learning' | 'wise',
+        totalExperiences: this.consciousness.totalExperiences,
+        patternsDiscovered: this.consciousness.totalPatternsDiscovered,
+        generation: this.consciousness.generation,
+        lineage: this.consciousness.lineage,
+      },
+      dream: {
+        isActive: false, // TODO: Conectar con DreamForge si existe
+        currentType: null,
+        currentThought: this.consciousness.lastInsight,
+        projectedBeauty: brain?.estimatedBeauty ?? 0.5,
+        lastRecommendation: null,
+      },
+      zodiac: {
+        element: 'fire' as const, // TODO: Conectar con ZodiacAffinityCalculator
+        sign: '♈',
+        affinity: 0.5,
+        quality: 'cardinal' as const,
+        description: 'The passionate initiator',
+      },
+      beauty: {
+        current: brain?.estimatedBeauty ?? this.consciousness.beautyScore ?? 0.5,
+        average: this.consciousness.beautyScore ?? 0.5,
+        max: 1.0,
+        components: {
+          fibonacciAlignment: 0,
+          zodiacResonance: 0,
+          musicalHarmony: brain?.confidence ?? 0,
+          patternResonance: 0,
+          historicalBonus: 0,
+        },
+      },
+      lastInsight: this.consciousness.lastInsight,
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 3. MUSICAL DNA (Análisis musical profundo)
+    // ═══════════════════════════════════════════════════════════════════════
+    const context = brain?.context
+    
+    // Extraer syncopation de la estructura real: context.rhythm.groove.syncopation
+    const syncopationValue = context?.rhythm?.groove?.syncopation ?? 0
+    
+    // Extraer pattern type de la estructura real: context.rhythm.pattern.type
+    const patternType = context?.rhythm?.pattern?.type ?? 'unknown'
+    
+    // Extraer section intensity de la estructura real: context.section.intensity
+    const sectionIntensity = context?.section?.intensity ?? metrics?.energy ?? 0
+    
+    // Calcular bars aproximados desde duration
+    const sectionBars = context?.section?.current 
+      ? Math.floor((Date.now() - context.section.current.startedAt) / (60000 / (beat?.bpm ?? 120)) / 4)
+      : 0
+    
+    const musicalDNA = {
+      key: context?.harmony?.key ?? null,
+      mode: {
+        scale: (context?.harmony?.mode?.scale ?? 'major') as 'major' | 'minor' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'locrian' | 'harmonic_minor' | 'melodic_minor' | 'pentatonic_major' | 'pentatonic_minor' | 'blues' | 'chromatic',
+        mood: (context?.harmony?.mode?.mood ?? 'universal') as 'happy' | 'sad' | 'jazzy' | 'spanish_exotic' | 'dreamy' | 'bluesy' | 'tense' | 'universal',
+        confidence: context?.harmony?.confidence ?? 0,
+      },
+      genre: {
+        primary: (context?.genre?.primary ?? 'UNKNOWN') as 'ELECTRONIC_4X4' | 'ELECTRONIC_BREAK' | 'LATINO_TRADICIONAL' | 'LATINO_URBANO' | 'ROCK_POP' | 'JAZZ_SOUL' | 'AMBIENT_CHILL' | 'UNKNOWN',
+        subGenre: context?.genre?.secondary ?? null,
+        confidence: context?.genre?.confidence ?? 0,
+        distribution: {},
+      },
+      rhythm: {
+        bpm: beat?.bpm ?? 120,
+        confidence: context?.rhythm?.confidence ?? beat?.confidence ?? 0,
+        syncopation: syncopationValue,
+        syncopationSmoothed: syncopationValue, // Use same value, smoothing applied upstream
+        swing: context?.rhythm?.groove?.swingAmount ?? 0,
+        complexity: (context?.rhythm?.groove?.complexity ?? 'medium') as 'low' | 'medium' | 'high',
+        pattern: patternType as 'four_on_floor' | 'breakbeat' | 'half_time' | 'reggaeton' | 'cumbia' | 'rock_standard' | 'jazz_swing' | 'latin' | 'minimal' | 'unknown',
+      },
+      section: {
+        current: (context?.section?.current?.type ?? 'unknown') as 'intro' | 'verse' | 'chorus' | 'bridge' | 'breakdown' | 'drop' | 'buildup' | 'outro' | 'transition' | 'unknown',
+        energy: sectionIntensity,
+        barsInSection: sectionBars,
+        confidence: context?.section?.current?.confidence ?? 0,
+      },
+      prediction: {
+        nextSection: {
+          type: context?.section?.predicted?.type ?? 'unknown',
+          probability: context?.section?.predicted?.probability ?? 0,
+          barsUntil: context?.section?.predicted?.estimatedIn 
+            ? Math.floor(context.section.predicted.estimatedIn / (60000 / (beat?.bpm ?? 120)) / 4)
+            : 0,
+        },
+        dropPrediction: {
+          isImminent: false,
+          barsUntil: 0,
+          probability: 0,
+        },
+        huntStatus: {
+          phase: 'idle' as const,
+          lockPercentage: 0,
+          targetType: null,
+        },
+      },
+      harmony: {
+        chordRoot: context?.harmony?.key ?? null,
+        chordQuality: null,
+        confidence: context?.harmony?.confidence ?? 0,
+      },
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 4. VISUAL DECISION (Colores y Movimiento)
+    // ═══════════════════════════════════════════════════════════════════════
+    const colors = this.lastColors
+    const palette = brain?.palette
+    
+    // Crear paleta unificada (RGB + HSL + HEX)
+    const defaultColor = toUnifiedColor({ r: 128, g: 128, b: 128 })
+    
+    const visualDecision = {
+      palette: {
+        primary: colors?.primary ? toUnifiedColor(colors.primary) : defaultColor,
+        secondary: colors?.secondary ? toUnifiedColor(colors.secondary) : defaultColor,
+        accent: colors?.accent ? toUnifiedColor(colors.accent) : defaultColor,
+        ambient: colors?.ambient ? toUnifiedColor(colors.ambient) : defaultColor,
+        contrast: palette?.contrast ? toUnifiedColor(this.hslToRgb(palette.contrast)) : defaultColor,
+        strategy: (palette?.strategy ?? 'analogous') as 'analogous' | 'triadic' | 'complementary',
+        temperature: (brain?.debugInfo?.temperature ?? 'neutral') as 'warm' | 'cool' | 'neutral',
+        description: brain?.debugInfo?.description ?? `Palette: ${this.currentPalette}`,
+        source: (brain?.paletteSource ?? 'fallback') as 'procedural' | 'memory' | 'fallback',
+      },
+      intensity: this.globalIntensity,
+      saturation: this.globalSaturation,
+      movement: {
+        pan: movement?.pan ?? 127,
+        tilt: movement?.tilt ?? 127,
+        speed: movement?.speed ?? 0.5,
+        patternName: movement?.pattern ?? 'static',
+        physicsActive: false, // TODO: Conectar con FixturePhysicsDriver
+        physics: null,
+      },
+      effects: {
+        strobe: { active: false, rate: 0, intensity: 0 },
+        fog: { active: false, density: 0 },
+        laser: { active: false, pattern: '', color: null },
+        beam: { active: false, width: 0 },
+        prism: { active: false, facets: 0 },
+        blackout: false,
+      },
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 5. HARDWARE STATE (DMX - placeholder, se llenará en main.ts)
+    // ═══════════════════════════════════════════════════════════════════════
+    const hardwareState = {
+      dmxOutput: new Array(512).fill(0),
+      fixturesActive: 0,
+      fixturesTotal: 0,
+      fixtures: [],
+      dmx: {
+        connected: false,
+        driver: 'universal',
+        universe: 1,
+        frameRate: 40,
+        lastUpdate: now,
+      },
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 6. SYSTEM METADATA
+    // ═══════════════════════════════════════════════════════════════════════
+    const system = {
+      frameNumber: this.frameCount,
+      timestamp: now,
+      deltaTime,
+      targetFPS: 30,
+      actualFPS: this.fpsCounter.currentFPS,
+      mode: this.mode as 'selene' | 'flow' | 'manual',
+      brainStatus: (brain?.mode ?? 'reactive') as 'reactive' | 'intelligent',
+      uptime: Math.floor((now - this.startTime) / 1000),
+      performance: {
+        audioProcessingMs: 0,
+        brainProcessingMs: brain?.performance?.totalMs ?? 0,
+        colorEngineMs: brain?.performance?.paletteMs ?? 0,
+        dmxOutputMs: 0,
+        totalFrameMs: deltaTime,
+      },
+      workers: {
+        alpha: { healthy: true, lastHeartbeat: now },
+        beta: { healthy: true, lastHeartbeat: now },
+        gamma: { healthy: true, lastHeartbeat: now },
+      },
+      sessionId: this.sessionId,
+      version: '25.0.0',
+    }
+    
+    this.lastFrameTime = now
+    
+    return {
+      sensory,
+      cognitive,
+      musicalDNA,
+      visualDecision,
+      hardwareState,
+      system,
+    }
+  }
+  
+  /**
+   * 🌙 WAVE 25: Actualiza el estado de audio (para tracking en broadcast)
+   */
+  setAudioState(metrics: AudioMetrics, analysis: AudioAnalysis | null, deviceName?: string): void {
+    this.lastAudioMetrics = metrics
+    this.lastAudioAnalysis = analysis
+    if (deviceName) this.audioDeviceName = deviceName
+    this.audioActive = metrics.energy > 0.02
   }
   
   /**

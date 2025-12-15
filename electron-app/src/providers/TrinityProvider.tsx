@@ -318,6 +318,22 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
         }
       }
       
+      // 🔧 WAVE 24: Subscribe to telemetry updates (for Canvas synchronization)
+      if (window.lux?.onTelemetryUpdate) {
+        const unsubTelemetry = window.lux.onTelemetryUpdate((packet: any) => {
+          // Extract fixtureValues and update DMX store
+          if (packet?.fixtureValues && packet.fixtureValues.length > 0) {
+            useDMXStore.getState().updateFixtureValues(packet.fixtureValues)
+          }
+        })
+        // Store cleanup function (combined with previous unsubs)
+        const originalUnsub = unsubscribeRef.current
+        unsubscribeRef.current = () => {
+          originalUnsub?.()
+          unsubTelemetry()
+        }
+      }
+      
       // 3. Start audio capture
       await startCapture()
       console.log('[Trinity] 🎤 Audio capture started')

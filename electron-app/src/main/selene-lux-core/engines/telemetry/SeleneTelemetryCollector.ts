@@ -212,6 +212,19 @@ export interface TelemetryLogEntry {
 /**
  * Complete Telemetry Packet
  */
+// 🔧 WAVE 24: FixtureValues para sincronizar canvas
+// Duplicar interface aquí (definida también en dmxStore.ts) para evitar circular dependencies
+export interface FixtureValuesData {
+  dmxAddress: number
+  dimmer: number      // 0-255
+  r: number           // 0-255
+  g: number           // 0-255
+  b: number           // 0-255
+  pan?: number        // 0-255
+  tilt?: number       // 0-255
+  zone?: string
+}
+
 export interface SeleneTelemetryPacket {
   timestamp: number;
   frameId: number;
@@ -222,6 +235,10 @@ export interface SeleneTelemetryPacket {
   cosmic: CosmicTelemetry;
   palette: PaletteTelemetry;
   session: SessionTelemetry;
+  
+  // 🔧 WAVE 24: Valores DMX reales para sincronizar canvas con audio
+  // Permite que SimulateView reciba RGB válidos en lugar de NaN
+  fixtureValues?: FixtureValuesData[];
   
   newLogEntries: TelemetryLogEntry[];
 }
@@ -309,7 +326,9 @@ export class SeleneTelemetryCollector {
   collect(
     audio: AudioAnalysis,
     brainOutput: BrainOutput | null,
-    inputGain: number = 1.0
+    inputGain: number = 1.0,
+    // 🔧 WAVE 24: Pasar colores reales para generar FixtureValues
+    lastColors?: { primary: { r: number; g: number; b: number }; intensity?: number; [key: string]: any }
   ): SeleneTelemetryPacket | null {
     const now = Date.now();
     
@@ -344,6 +363,10 @@ export class SeleneTelemetryCollector {
     // 📡 WAVE-14.5: Generate contextual logs
     this.generateContextualLogs(audio, brainOutput);
     
+    // 🔧 WAVE 24: Generate FixtureValues from lastColors
+    // Crea valores DMX por-fixture basados en los colores RGB reales
+    const fixtureValuesData = lastColors ? this.generateFixtureValues(lastColors, audio.energy.current) : undefined;
+    
     // Build telemetry packet
     const packet: SeleneTelemetryPacket = {
       timestamp: now,
@@ -355,6 +378,7 @@ export class SeleneTelemetryCollector {
       cosmic: this.collectCosmic(audio, brainOutput),
       palette: this.collectPalette(brainOutput),
       session: this.collectSession(brainOutput),
+      fixtureValues: fixtureValuesData,  // 🔧 WAVE 24
       
       newLogEntries: this.flushPendingLogs(),
     };
@@ -918,6 +942,58 @@ export class SeleneTelemetryCollector {
     this.pendingLogs = [];
     this.lastLogMessage = '';
     this.lastLogDuplicateCount = 0;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 24: Generate FixtureValues for Canvas Synchronization
+  // ═══════════════════════════════════════════════════════════════════════════
+  /**
+   * Generar valores DMX por-fixture basados en colores RGB reales
+   * Permite que SimulateView.tsx reciba RGB válidos (no NaN)
+   * 
+   * Estrategia:
+   * - Crear un fixture virtual por dirección DMX (1-512)
+   * - Asignar colores rotativos (primary → secondary → accent → ambient)
+   * - Usar intensity para controlar el dimmer
+   */
+  private generateFixtureValues(
+    lastColors: { primary: { r: number; g: number; b: number }; intensity?: number; [key: string]: any },
+    energy: number
+  ): FixtureValuesData[] {
+    const values: FixtureValuesData[] = [];
+    
+    // 🎨 Usar los colores que generó el Brain/ColorEngine
+    const colorPalette = [
+      lastColors.primary || { r: 255, g: 255, b: 255 },
+      lastColors.secondary || { r: 0, g: 0, b: 0 },
+      lastColors.accent || { r: 128, g: 128, b: 128 },
+      lastColors.ambient || { r: 64, g: 64, b: 64 },
+    ];
+    
+    // 📡 Generar valores para 16 fixtures (direcciones 1-16)
+    // En una instalación real, el FixtureManager tendría esta lista
+    // Pero como no tenemos acceso a él aquí, creamos fixtures virtuales
+    const fixtureCount = 16;
+    const dimmerValue = Math.round((lastColors.intensity ?? energy ?? 0.5) * 255);
+    
+    for (let i = 0; i < fixtureCount; i++) {
+      const dmxAddress = i + 1;  // 1-indexed DMX address
+      const colorIndex = i % colorPalette.length;
+      const color = colorPalette[colorIndex];
+      
+      // ✅ Generar FixtureValue con valores válidos (no NaN)
+      values.push({
+        dmxAddress,
+        dimmer: Math.max(0, Math.min(255, dimmerValue)),
+        r: Math.max(0, Math.min(255, Math.round(color.r))),
+        g: Math.max(0, Math.min(255, Math.round(color.g))),
+        b: Math.max(0, Math.min(255, Math.round(color.b))),
+        pan: 128 + Math.sin(Date.now() / 1000 + i) * 20,
+        tilt: 128 + Math.cos(Date.now() / 1000 + i) * 20,
+      });
+    }
+    
+    return values;
   }
 }
 

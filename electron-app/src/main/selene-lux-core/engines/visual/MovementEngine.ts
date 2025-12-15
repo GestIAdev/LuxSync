@@ -46,6 +46,13 @@ export class MovementEngine {
   private entropyState = { timeSeed: 0, audioSeed: 0 }
   private audioEnergy = 0.5
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 24.6: HARDWARE SAFETY - Smoothed position tracking
+  // Previene latigazos mecánicos en motores de moving heads
+  // ═══════════════════════════════════════════════════════════════════════════
+  private lastPan = 0.5   // Centro por defecto
+  private lastTilt = 0.5  // Centro por defecto
+  
   private readonly patterns: Record<string, PatternConfig> = {
     // ═══════════════════════════════════════════════════════════════════════
     // 🎯 UI PATTERNS (match MovementControl.tsx exactly)
@@ -222,14 +229,29 @@ export class MovementEngine {
     pan = Math.max(0, Math.min(1, pan))
     tilt = Math.max(0, Math.min(1, tilt))
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 24.6: INTERPOLACIÓN OBLIGATORIA (Hardware Safety)
+    // Los motores de moving heads NO pueden teletransportarse.
+    // Usamos lerp para suavizar la transición hacia el target.
+    // smoothFactor bajo = movimiento más suave pero con más latencia
+    // smoothFactor alto = respuesta rápida pero más brusca
+    // ═══════════════════════════════════════════════════════════════════════
+    const smoothFactor = this.smoothing * 0.15  // 0.8 * 0.15 = 0.12 → suave
+    this.lastPan += (pan - this.lastPan) * smoothFactor
+    this.lastTilt += (tilt - this.lastTilt) * smoothFactor
+    
+    // Clamp final por seguridad
+    this.lastPan = Math.max(0, Math.min(1, this.lastPan))
+    this.lastTilt = Math.max(0, Math.min(1, this.lastTilt))
+    
     // Movement log disabled - too spammy
     // if (Math.random() < 0.01) {
     //   console.log(`[Movement] Pattern: ${patternName} | Pan: ${pan.toFixed(2)} Tilt: ${tilt.toFixed(2)}`)
     // }
     
     return {
-      pan,
-      tilt,
+      pan: this.lastPan,
+      tilt: this.lastTilt,
       speed: this.state.speed,
       pattern: this.state.pattern,
     }

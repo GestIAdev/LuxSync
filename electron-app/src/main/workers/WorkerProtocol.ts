@@ -161,6 +161,8 @@ export interface LightingDecision {
   };
   
   // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+  // 🔥 WAVE 23.1: Exponer source real (sin histéresis)
+  // 🌊 WAVE 23.4: Syncopation suavizado para DNA
   debugInfo?: {
     macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
     strategy?: string;         // e.g., "analogous", "complementary"
@@ -168,6 +170,8 @@ export interface LightingDecision {
     description?: string;      // e.g., "Azul profundo hipnótico (Techno A minor)"
     key?: string | null;       // e.g., "A", "D#"
     mode?: string;             // e.g., "major", "minor"
+    source?: 'memory' | 'procedural' | 'fallback';  // 🔥 LA VERDAD CRUDA
+    syncopation?: number;      // 🌊 WAVE 23.4: Syncopation suavizado (EMA filter)
   };
   
   // Per-fixture overrides (optional)

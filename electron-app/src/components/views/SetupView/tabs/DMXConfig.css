@@ -1,0 +1,357 @@
+/**
+ * 🔌 DMX CONFIG STYLES
+ * WAVE 26 Phase 2: Professional DMX Panel
+ */
+
+.dmx-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(138, 96, 255, 0.2);
+  border-radius: 12px;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.dmx-config-panel .config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dmx-config-panel .config-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: white;
+}
+
+/* ============================================
+   CONNECTION STATUS
+   ============================================ */
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.connection-status.connected {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.connection-status.disconnected {
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.connection-status.connected .status-dot {
+  background: #00ff88;
+  box-shadow: 0 0 10px #00ff88;
+}
+
+.connection-status.disconnected .status-dot {
+  background: #ff4444;
+  box-shadow: 0 0 10px #ff4444;
+}
+
+.status-dot.pulse {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.status-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.connection-status.connected .status-text {
+  color: #00ff88;
+}
+
+.connection-status.disconnected .status-text {
+  color: #ff6b6b;
+}
+
+.status-details {
+  display: flex;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.detail-value {
+  font-size: 11px;
+  color: white;
+  font-weight: 600;
+}
+
+/* ============================================
+   DRIVER SELECTOR
+   ============================================ */
+
+.driver-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.driver-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.driver-btn:hover {
+  background: rgba(138, 96, 255, 0.1);
+  border-color: rgba(138, 96, 255, 0.3);
+}
+
+.driver-btn.active {
+  background: rgba(138, 96, 255, 0.15);
+  border-color: rgba(138, 96, 255, 0.5);
+}
+
+.driver-icon {
+  font-size: 24px;
+}
+
+.driver-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.driver-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.driver-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.driver-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #00ff88;
+  font-size: 14px;
+}
+
+/* ============================================
+   ERROR MESSAGE
+   ============================================ */
+
+.dmx-config-panel .error-message {
+  padding: 10px 14px;
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 12px;
+}
+
+/* ============================================
+   PORT SELECTOR
+   ============================================ */
+
+.port-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.port-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.port-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rescan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(138, 96, 255, 0.2);
+  border: 1px solid rgba(138, 96, 255, 0.3);
+  border-radius: 6px;
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rescan-btn:hover {
+  background: rgba(138, 96, 255, 0.3);
+}
+
+.rescan-btn.scanning {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.rescan-btn.scanning::before {
+  content: '';
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Auto-connect toggle */
+.auto-connect-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.auto-connect-toggle input {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  transition: background 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.auto-connect-toggle input:checked + .toggle-slider {
+  background: rgba(0, 255, 136, 0.5);
+}
+
+.auto-connect-toggle input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+
+.toggle-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Port dropdown */
+.port-dropdown {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.port-dropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.port-dropdown option {
+  background: #1a1a2e;
+  color: white;
+}
+
+.no-ports-message {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  padding: 8px;
+}
+
+/* ============================================
+   ARTNET PLACEHOLDER
+   ============================================ */
+
+.artnet-placeholder {
+  padding: 20px;
+  background: rgba(255, 200, 0, 0.1);
+  border: 1px solid rgba(255, 200, 0, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.artnet-placeholder span {
+  color: #ffc800;
+  font-size: 12px;
+}

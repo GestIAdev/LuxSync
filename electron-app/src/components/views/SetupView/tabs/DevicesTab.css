@@ -1,0 +1,29 @@
+/**
+ * 🔌 DEVICES TAB STYLES
+ * WAVE 26 Phase 2: 2-Column Layout
+ */
+
+.devices-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  height: 100%;
+}
+
+.devices-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Responsive: Stack on narrow screens */
+@media (max-width: 900px) {
+  .devices-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Panel equal heights */
+.devices-grid > * {
+  min-height: 400px;
+}

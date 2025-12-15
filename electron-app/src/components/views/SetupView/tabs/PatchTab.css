@@ -1,0 +1,388 @@
+/**
+ * 💡 PATCH TAB - Professional Fixture Table Styles
+ * WAVE 26 Phase 3
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  gap: 12px;
+  background: var(--surface-darker, #0d1117);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color, #30363d);
+}
+
+.patch-header-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.patch-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cyan-primary, #00d4ff);
+}
+
+.patch-library {
+  font-size: 12px;
+  color: var(--text-dim, #8b949e);
+}
+
+.patch-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--cyan-primary, #00d4ff), var(--cyan-dark, #0099cc));
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.patch-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.patch-add-btn:active {
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ERROR BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(255, 85, 85, 0.1);
+  border: 1px solid rgba(255, 85, 85, 0.3);
+  border-radius: 6px;
+  color: #ff5555;
+  font-size: 13px;
+}
+
+.patch-error button {
+  background: none;
+  border: none;
+  color: #ff5555;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-table-container {
+  flex: 1;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #30363d);
+  background: var(--surface-dark, #161b22);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.patch-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface-darker, #0d1117);
+}
+
+.patch-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim, #8b949e);
+  border-bottom: 1px solid var(--border-color, #30363d);
+  white-space: nowrap;
+}
+
+.patch-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle, #21262d);
+  color: var(--text-primary, #e6edf3);
+}
+
+.patch-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.patch-table tbody tr:hover {
+  background: var(--surface-hover, rgba(0, 212, 255, 0.05));
+}
+
+.patch-table tbody tr.flashing {
+  background: rgba(0, 212, 255, 0.15);
+  animation: flash-pulse 0.5s ease-out;
+}
+
+@keyframes flash-pulse {
+  0% { background: rgba(0, 212, 255, 0.4); }
+  100% { background: rgba(0, 212, 255, 0.15); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLUMN WIDTHS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.col-status {
+  width: 60px;
+  text-align: center;
+}
+
+.col-id {
+  width: 80px;
+}
+
+.col-address {
+  width: 100px;
+}
+
+.col-fixture {
+  min-width: 180px;
+}
+
+.col-channels {
+  width: 60px;
+  text-align: center;
+}
+
+.col-zone {
+  width: 120px;
+}
+
+.col-actions {
+  width: 100px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CELL CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Live Dot */
+.live-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.live-dot.live {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Fixture ID */
+.fixture-id {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-dim, #8b949e);
+}
+
+/* DMX Address */
+.dmx-address {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cyan-primary, #00d4ff);
+}
+
+.address-range {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-dim, #8b949e);
+}
+
+/* Fixture Name */
+.fixture-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.fixture-name {
+  font-weight: 500;
+}
+
+/* Channel Count */
+.channel-count {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-dim, #8b949e);
+}
+
+/* Zone Select */
+.zone-select {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--surface-darker, #0d1117);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 4px;
+  color: var(--text-primary, #e6edf3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.zone-select:hover {
+  border-color: var(--cyan-dim, #00b3d9);
+}
+
+.zone-select:focus {
+  outline: none;
+  border-color: var(--cyan-primary, #00d4ff);
+}
+
+/* Action Buttons */
+.action-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0 4px;
+  background: var(--surface-darker, #0d1117);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.flash-btn:hover {
+  background: rgba(255, 200, 0, 0.15);
+  border-color: #ffc800;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 85, 85, 0.15);
+  border-color: #ff5555;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-empty-row td {
+  padding: 0;
+  border: none;
+}
+
+.patch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: var(--text-dim, #8b949e);
+}
+
+.patch-empty .empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.patch-empty button {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: var(--surface-darker, #0d1117);
+  border: 1px solid var(--cyan-primary, #00d4ff);
+  color: var(--cyan-primary, #00d4ff);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.patch-empty button:hover {
+  background: rgba(0, 212, 255, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-dim, #8b949e);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color, #30363d);
+  border-top-color: var(--cyan-primary, #00d4ff);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .patch-table {
+    font-size: 12px;
+  }
+  
+  .patch-table th,
+  .patch-table td {
+    padding: 8px 10px;
+  }
+  
+  .col-channels,
+  .col-id {
+    display: none;
+  }
+}

@@ -14,6 +14,8 @@ import { getTrinity } from '../src/main/workers/TrinityOrchestrator'
 import { universalDMX, type DMXDevice } from './UniversalDMXDriver'
 // ⚡ WAVE 10.7: EffectsEngine para efectos de pánico
 import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/EffectsEngine'
+// 🎭 WAVE 26: ShowManager for save/load/delete shows
+import { showManager } from './ShowManager'
 
 let mainWindow: BrowserWindow | null = null
 let selene: SeleneLux | null = null
@@ -1726,6 +1728,85 @@ ipcMain.handle('lux:new-show', () => {
     message: 'New show created',
     clearedFixtures: fixtureCount 
   }
+})
+
+// ============================================
+// 🎭 WAVE 26: SHOW MANAGEMENT (Save/Load/Delete)
+// ============================================
+
+// List all shows in the folder
+ipcMain.handle('lux:list-shows', () => {
+  return showManager.listShows()
+})
+
+// Save current config as a show
+ipcMain.handle('lux:save-show', (_event, data: { name: string; description: string }) => {
+  const currentConfig = configManager.getConfig()
+  return showManager.saveShow(data.name, data.description, currentConfig)
+})
+
+// Load a show from file
+ipcMain.handle('lux:load-show', async (_event, filename: string) => {
+  const result = showManager.loadShow(filename)
+  
+  if (result.success && result.data) {
+    // Apply the loaded config
+    const showData = result.data
+    
+    // Update audio config
+    if (showData.audio) {
+      configManager.setAudioConfig(showData.audio)
+    }
+    
+    // Update DMX config
+    if (showData.dmx) {
+      configManager.setDMXConfig(showData.dmx)
+    }
+    
+    // Update fixtures
+    if (showData.patchedFixtures) {
+      patchedFixtures = showData.patchedFixtures.map(f => ({
+        ...f,
+        zone: f.zone as any, // Cast to FixtureZone
+      }))
+      configManager.setPatchedFixtures(showData.patchedFixtures)
+      recalculateZoneCounters()
+      
+      // Broadcast to UI
+      if (mainWindow) {
+        mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+      }
+    }
+    
+    // Update Selene mode
+    if (showData.seleneMode) {
+      configManager.setSeleneMode(showData.seleneMode as any)
+    }
+    
+    // Update installation type
+    if (showData.installationType) {
+      configManager.setInstallationType(showData.installationType)
+    }
+    
+    console.log(`[Show] 📂 Loaded show: ${showData.name} (${showData.patchedFixtures?.length || 0} fixtures)`)
+  }
+  
+  return result
+})
+
+// Delete a show file
+ipcMain.handle('lux:delete-show', (_event, filename: string) => {
+  return showManager.deleteShow(filename)
+})
+
+// Create a new empty show
+ipcMain.handle('lux:create-show', (_event, data: { name: string; description?: string }) => {
+  return showManager.createNewShow(data.name, data.description || '')
+})
+
+// Get shows folder path
+ipcMain.handle('lux:get-shows-path', () => {
+  return { success: true, path: showManager.getShowsPath() }
 })
 
 // ============================================

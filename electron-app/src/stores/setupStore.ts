@@ -67,6 +67,10 @@ export interface SetupState {
   markDirty: () => void
   markClean: () => void
   
+  // === CURRENT SHOW ===
+  currentShowName: string
+  setCurrentShowName: (name: string) => void
+  
   // === RESET ===
   reset: () => void
 }
@@ -93,6 +97,8 @@ const initialState = {
   isAudioScanning: false,
   
   hasUnsavedChanges: false,
+  
+  currentShowName: 'Default',
 }
 
 // ============================================
@@ -140,6 +146,9 @@ export const useSetupStore = create<SetupState>((set) => ({
   // === DIRTY STATE ===
   markDirty: () => set({ hasUnsavedChanges: true }),
   markClean: () => set({ hasUnsavedChanges: false }),
+  
+  // === CURRENT SHOW ===
+  setCurrentShowName: (name) => set({ currentShowName: name }),
   
   // === RESET ===
   reset: () => set(initialState),

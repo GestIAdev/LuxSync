@@ -210,11 +210,80 @@ interface Window {
     // WAVE 10.6: New show - full reset
     newShow: () => Promise<{ success: boolean; message?: string; clearedFixtures?: number }>
     
+    // 🎭 WAVE 26: Show Management (Save/Load/Delete)
+    listShows: () => Promise<{
+      success: boolean
+      shows: ShowMetadata[]
+      showsPath: string
+      error?: string
+    }>
+    saveShow: (name: string, description: string) => Promise<{
+      success: boolean
+      filename?: string
+      path?: string
+      error?: string
+    }>
+    loadShow: (filename: string) => Promise<{
+      success: boolean
+      data?: ShowData
+      error?: string
+    }>
+    deleteShow: (filename: string) => Promise<{
+      success: boolean
+      error?: string
+    }>
+    createShow: (name: string, description?: string) => Promise<{
+      success: boolean
+      filename?: string
+      path?: string
+      error?: string
+    }>
+    getShowsPath: () => Promise<{ success: boolean; path: string }>
+    
     // WAVE 9.5: Config
     getConfig: () => Promise<{ success: boolean; config: LuxSyncConfig }>
     saveConfig: (config: Partial<LuxSyncConfig>) => Promise<{ success: boolean }>
     resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
   }
+}
+
+// 🎭 WAVE 26: Show Types
+interface ShowMetadata {
+  filename: string
+  name: string
+  description: string
+  createdAt: string
+  modifiedAt: string
+  sizeBytes: number
+  fixtureCount: number
+  version: string
+}
+
+interface ShowData {
+  name: string
+  description: string
+  createdAt: string
+  modifiedAt: string
+  version: string
+  audio: AudioConfig
+  dmx: DMXConfig
+  patchedFixtures: PatchedFixture[]
+  seleneMode: string
+  installationType: 'ceiling' | 'floor'
+}
+
+interface AudioConfig {
+  source: 'microphone' | 'system' | 'simulation'
+  deviceId?: string
+  sensitivity: number
+  inputGain?: number
+}
+
+interface DMXConfig {
+  driver: string
+  port: string
+  universe: number
+  frameRate: number
 }
 
 // WAVE 9.5: Fixture Types

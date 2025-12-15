@@ -331,6 +331,34 @@ const luxApi = {
     ipcRenderer.invoke('lux:new-show'),
   
   // ============================================
+  // 🎭 WAVE 26: SHOW MANAGEMENT (Save/Load/Delete)
+  // ============================================
+  
+  /** List all shows in the shows folder */
+  listShows: () =>
+    ipcRenderer.invoke('lux:list-shows'),
+  
+  /** Save current config as a show */
+  saveShow: (name: string, description: string) =>
+    ipcRenderer.invoke('lux:save-show', { name, description }),
+  
+  /** Load a show from file */
+  loadShow: (filename: string) =>
+    ipcRenderer.invoke('lux:load-show', filename),
+  
+  /** Delete a show file */
+  deleteShow: (filename: string) =>
+    ipcRenderer.invoke('lux:delete-show', filename),
+  
+  /** Create a new empty show */
+  createShow: (name: string, description?: string) =>
+    ipcRenderer.invoke('lux:create-show', { name, description }),
+  
+  /** Get shows folder path */
+  getShowsPath: () =>
+    ipcRenderer.invoke('lux:get-shows-path'),
+  
+  // ============================================
   // WAVE 9.5: CONFIG
   // ============================================
   

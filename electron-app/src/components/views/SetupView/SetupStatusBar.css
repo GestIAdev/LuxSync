@@ -1,0 +1,161 @@
+/**
+ * 🏛️ SETUP STATUS BAR STYLES
+ * WAVE 26 Phase 1: The Immutable Header
+ */
+
+.setup-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+  border-bottom: 1px solid rgba(138, 96, 255, 0.2);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   SECTIONS
+   ============================================ */
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-left {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.status-center {
+  flex: 0 0 auto;
+}
+
+.status-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+/* ============================================
+   MINI VU METER
+   ============================================ */
+
+.mini-vu-meter {
+  position: relative;
+  width: 80px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mini-vu-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 50ms ease-out, background-color 100ms ease;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.mini-vu-peak {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: white;
+  opacity: 0.8;
+  transition: left 30ms ease-out;
+}
+
+/* ============================================
+   SHOW NAME
+   ============================================ */
+
+.show-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4px 12px;
+  background: rgba(138, 96, 255, 0.15);
+  border-radius: 4px;
+  border: 1px solid rgba(138, 96, 255, 0.3);
+}
+
+/* ============================================
+   DMX STATUS
+   ============================================ */
+
+.dmx-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.dmx-status.online {
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.dmx-status.offline {
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+.dmx-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dmx-status.online .dmx-indicator {
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88;
+}
+
+.dmx-status.offline .dmx-indicator {
+  background: #ff4444;
+  box-shadow: 0 0 8px #ff4444;
+}
+
+.dmx-indicator.pulse {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dmx-label {
+  color: white;
+}
+
+.dmx-status.online .dmx-label {
+  color: #00ff88;
+}
+
+.dmx-status.offline .dmx-label {
+  color: #ff4444;
+}
+
+.dmx-fps {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  margin-left: 4px;
+}

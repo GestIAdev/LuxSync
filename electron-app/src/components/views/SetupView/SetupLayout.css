@@ -1,0 +1,117 @@
+/**
+ * 🏗️ SETUP LAYOUT STYLES
+ * WAVE 26 Phase 1: Edge-to-Edge Dashboard
+ */
+
+/* ============================================
+   MAIN LAYOUT - EDGE TO EDGE
+   ============================================ */
+
+.setup-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #0f0f1f 100%);
+  overflow: hidden;
+  /* NO PADDING - Edge to edge! */
+}
+
+/* ============================================
+   TABS NAVIGATION
+   ============================================ */
+
+.setup-tabs-nav {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(138, 96, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.setup-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.setup-tab-btn::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.setup-tab-btn:hover {
+  background: rgba(138, 96, 255, 0.1);
+}
+
+.setup-tab-btn.active {
+  background: rgba(138, 96, 255, 0.15);
+}
+
+.setup-tab-btn.active::before {
+  background: linear-gradient(90deg, #8a60ff, #a78bfa);
+}
+
+.tab-icon {
+  font-size: 20px;
+}
+
+.tab-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.2s ease;
+}
+
+.setup-tab-btn:hover .tab-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.setup-tab-btn.active .tab-label {
+  color: #a78bfa;
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+
+.setup-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+}
+
+/* Custom scrollbar */
+.setup-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.setup-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.setup-content::-webkit-scrollbar-thumb {
+  background: rgba(138, 96, 255, 0.3);
+  border-radius: 4px;
+}
+
+.setup-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(138, 96, 255, 0.5);
+}

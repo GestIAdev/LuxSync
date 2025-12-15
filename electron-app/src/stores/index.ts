@@ -24,7 +24,10 @@ export * from './seleneStore'
 export * from './audioStore'
 export * from './dmxStore'
 
-// 🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
+// �️ WAVE 26: Setup Command Center
+export * from './setupStore'
+
+// �🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
 export { 
   useTruthStore,
   selectAudio,

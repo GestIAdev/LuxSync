@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, DragEvent } from 'react'
 import { FixtureDefinition, ChannelType } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
-import { X, Server, Factory, Save } from 'lucide-react'
+import { X, Server, Factory, Save, GripVertical } from 'lucide-react'
 import './FixtureEditor.css'
 
 // =============================================================================
@@ -22,32 +22,32 @@ interface FunctionDef {
 }
 
 // =============================================================================
-// FUNCTION PALETTE - Todas las funciones DMX disponibles
+// FUNCTION PALETTE
 // =============================================================================
 
 const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
   'INTENSITY': [
     { type: 'dimmer', label: 'Dimmer', color: '#ffffff', icon: '💡' },
-    { type: 'shutter', label: 'Shutter', color: '#e0e0e0', icon: '🚪' },
-    { type: 'strobe', label: 'Strobe', color: '#ffeb3b', icon: '⚡' },
+    { type: 'shutter', label: 'Shutter', color: '#a0a0a0', icon: '🚪' },
+    { type: 'strobe', label: 'Strobe', color: '#ffd700', icon: '⚡' },
   ],
   'COLOR': [
-    { type: 'red', label: 'Red', color: '#ff3366', icon: '🔴' },
-    { type: 'green', label: 'Green', color: '#00ff88', icon: '🟢' },
-    { type: 'blue', label: 'Blue', color: '#3366ff', icon: '🔵' },
+    { type: 'red', label: 'Red', color: '#ff0000', icon: '🔴' },
+    { type: 'green', label: 'Green', color: '#00ff00', icon: '🟢' },
+    { type: 'blue', label: 'Blue', color: '#0088ff', icon: '🔵' },
     { type: 'white', label: 'White', color: '#ffffff', icon: '⚪' },
     { type: 'amber', label: 'Amber', color: '#ffaa00', icon: '🟠' },
-    { type: 'uv', label: 'UV', color: '#bb00ff', icon: '🟣' },
+    { type: 'uv', label: 'UV', color: '#bf00ff', icon: '🟣' },
     { type: 'color_wheel', label: 'Color Wheel', color: '#ff00ff', icon: '🎨' },
   ],
   'POSITION': [
-    { type: 'pan', label: 'Pan', color: '#00d4ff', icon: '↔️' },
-    { type: 'pan_fine', label: 'Pan Fine', color: '#0099cc', icon: '↔' },
-    { type: 'tilt', label: 'Tilt', color: '#00d4ff', icon: '↕️' },
-    { type: 'tilt_fine', label: 'Tilt Fine', color: '#0099cc', icon: '↕' },
+    { type: 'pan', label: 'Pan', color: '#00f3ff', icon: '↔️' },
+    { type: 'pan_fine', label: 'Pan Fine', color: '#0088aa', icon: '↔' },
+    { type: 'tilt', label: 'Tilt', color: '#00f3ff', icon: '↕️' },
+    { type: 'tilt_fine', label: 'Tilt Fine', color: '#0088aa', icon: '↕' },
   ],
   'BEAM': [
-    { type: 'gobo', label: 'Gobo', color: '#aa00ff', icon: '🕸️' },
+    { type: 'gobo', label: 'Gobo', color: '#bf00ff', icon: '🕸️' },
     { type: 'prism', label: 'Prism', color: '#dd00ff', icon: '💎' },
     { type: 'focus', label: 'Focus', color: '#00ffcc', icon: '🎯' },
     { type: 'zoom', label: 'Zoom', color: '#00ffcc', icon: '🔍' },
@@ -75,7 +75,6 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
 
   // =========== EFFECTS ===========
   
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setFixture(FixtureFactory.createEmpty())
@@ -85,19 +84,23 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
     }
   }, [isOpen])
 
-  // Update channels when totalChannels changes
   useEffect(() => {
     if (totalChannels > 0 && totalChannels <= 64) {
+      // Nota: Asegúrate de que FixtureFactory maneje 'unknown' por defecto al generar
       const newChannels = FixtureFactory.generateChannels(totalChannels, fixture.channels)
-      setFixture(prev => ({ ...prev, channels: newChannels }))
+      // Forzar que los nuevos sean unknown si vienen vacíos
+      const sanitizedChannels = newChannels.map(ch => 
+        ch.type ? ch : { ...ch, type: 'unknown', name: '' }
+      )
+      // @ts-ignore
+      setFixture(prev => ({ ...prev, channels: sanitizedChannels }))
     }
   }, [totalChannels])
 
-  // Validation
   useEffect(() => {
-    const activeChannels = fixture.channels.filter(ch => ch.type !== 'unknown' && ch.name.trim().length > 0)
+    const activeChannels = fixture.channels.filter(ch => ch.type !== 'unknown')
     
-    if (fixture.name.trim().length === 0) {
+    if (!fixture.name || fixture.name.trim().length === 0) {
       setValidationMessage('⚠️ Enter a model name')
       setIsFormValid(false)
     } else if (activeChannels.length === 0) {
@@ -111,7 +114,7 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
 
   // =========== HANDLERS ===========
   
-  const handleDragStart = (e: DragEvent<HTMLButtonElement>, func: FunctionDef) => {
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, func: FunctionDef) => {
     e.dataTransfer.setData('application/json', JSON.stringify(func))
     e.dataTransfer.effectAllowed = 'copy'
   }
@@ -120,10 +123,6 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
     e.preventDefault()
     e.dataTransfer.dropEffect = 'copy'
     setDragOverSlot(slotIndex)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverSlot(null)
   }
 
   const handleDrop = (e: DragEvent<HTMLDivElement>, slotIndex: number) => {
@@ -139,7 +138,7 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
         ...newChannels[slotIndex],
         type: func.type,
         name: func.label,
-        defaultValue: 0,
+        defaultValue: func.type === 'dimmer' ? 255 : (func.type === 'pan' || func.type === 'tilt' ? 127 : 0),
         is16bit: false
       }
       
@@ -149,45 +148,49 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
     }
   }
 
+  // FIX LOGICO: Borrar ahora resetea a 'unknown'
   const handleClearSlot = (slotIndex: number) => {
     const newChannels = [...fixture.channels]
     newChannels[slotIndex] = {
       ...newChannels[slotIndex],
-      type: 'unknown' as ChannelType,
-      name: '',
+      type: 'unknown' as ChannelType, // Type vacío
+      name: '', // Nombre vacío
       defaultValue: 0,
       is16bit: false
     }
     setFixture(prev => ({ ...prev, channels: newChannels }))
   }
 
-  const handleChannelNameChange = (slotIndex: number, name: string) => {
-    const newChannels = [...fixture.channels]
-    newChannels[slotIndex] = { ...newChannels[slotIndex], name }
-    setFixture(prev => ({ ...prev, channels: newChannels }))
+  const getCategoryColor = (type: string | undefined) => {
+    if (!type || type === 'unknown') return '#333'
+    const def = Object.values(FUNCTION_PALETTE).flat().find(f => f.type === type)
+    return def?.color || '#333'
   }
 
   const handleSave = () => {
-    if (!isFormValid) return
-    
-    const activeChannels = fixture.channels.filter(ch => ch.type !== 'unknown' && ch.name.trim().length > 0)
-    const fixtureToSave = { ...fixture, channels: activeChannels }
-    
-    const validationResult = FixtureFactory.validate(fixtureToSave)
-    if (validationResult) {
-      onSave(fixtureToSave)
+    if (!fixture.name || fixture.name.trim().length === 0) return;
+
+    const channels = fixture.channels
+    const newFixture = {
+      id: (crypto as any).randomUUID ? (crypto as any).randomUUID() : `${Date.now()}`,
+      name: fixture.name,
+      manufacturer: fixture.manufacturer || 'Generic',
+      type: fixture.type,
+      channelCount: channels.length,
+      modes: [{ name: 'Standard', channels: channels }],
+      channels: channels
     }
+
+    // @ts-ignore
+    onSave(newFixture)
   }
 
-  // =========== EARLY RETURN - CRÍTICO PARA MODAL ===========
-  if (!isOpen) {
-    return null
-  }
+  if (!isOpen) return null
 
   // =========== RENDER ===========
   return (
-    <div className="fixture-editor-overlay" onClick={onClose}>
-      <div className="fixture-editor-window" onClick={(e) => e.stopPropagation()}>
+    <div className="fixture-editor-overlay">
+      <div className="fixture-editor-window">
         
         {/* === HEADER === */}
         <header className="forge-header">
@@ -196,7 +199,7 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
             <input
               type="text"
               className="forge-input"
-              placeholder="e.g. Chauvet, ADJ, Elation"
+              placeholder="e.g. Chauvet"
               value={fixture.manufacturer}
               onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
             />
@@ -218,8 +221,7 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
             <input
               type="number"
               className="forge-input"
-              min={1}
-              max={64}
+              min={1} max={64}
               value={totalChannels}
               onChange={(e) => setTotalChannels(Math.max(1, Math.min(64, parseInt(e.target.value) || 1)))}
             />
@@ -254,54 +256,66 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
             
             <div className="rack-grid">
               {fixture.channels.map((channel, index) => {
-                const hasFunction = channel.type !== 'unknown' && channel.name.trim().length > 0
-                const funcDef = hasFunction 
-                  ? Object.values(FUNCTION_PALETTE).flat().find(f => f.type === channel.type)
-                  : null
+                const isEmpty = channel.type === 'unknown';
+                const color = getCategoryColor(channel.type);
                 
                 return (
                   <div 
                     key={index}
-                    className={'dmx-slot' + (hasFunction ? ' active' : '') + (dragOverSlot === index ? ' drag-over' : '')}
+                    // CAMBIO CLAVE: Usamos 'dmx-slot' en vez de 'channel-slot'
+                    className={`dmx-slot ${!isEmpty ? 'active' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    style={{ '--slot-color': color } as any}
                   >
                     <div className="slot-header">
-                      <span>CH {index + 1}</span>
-                      <span>DMX {index + 1}</span>
-                    </div>
-                    
-                    <div
-                      className={'slot-dropzone' + (hasFunction ? ' has-function' : '')}
-                      style={{ '--slot-color': funcDef?.color || '#333' } as React.CSSProperties}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, index)}
-                    >
-                      {hasFunction ? (
-                        <span style={{ color: funcDef?.color }}>
-                          {funcDef?.icon} {channel.name}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#555' }}>Drop function here</span>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        className="slot-input-name"
-                        placeholder="Custom name..."
-                        value={channel.name}
-                        onChange={(e) => handleChannelNameChange(index, e.target.value)}
-                      />
-                      {hasFunction && (
+                      <span>CH {channel.index}</span>
+                      {/* Solo mostrar X si tiene contenido */}
+                      {!isEmpty && (
                         <button 
                           className="slot-clear-btn"
                           onClick={() => handleClearSlot(index)}
-                          title="Clear"
+                          title="Clear Slot"
                         >
-                          ✕
+                          <X size={14} />
                         </button>
                       )}
+                    </div>
+
+                    {/* ZONA DE DROP - VISUALIZA 'DROP HERE' O EL TIPO */}
+                    <div 
+                      className={`slot-dropzone ${!isEmpty ? 'has-function' : ''}`}
+                    >
+                      {isEmpty ? 'DROP HERE' : channel.type?.toUpperCase()}
+                    </div>
+
+                    <input 
+                      className="slot-input-name" 
+                      value={channel.name} 
+                      placeholder={isEmpty ? "Empty..." : "Name..."}
+                      disabled={isEmpty} // Desactivar si no hay función
+                      onChange={(e) => {
+                        const newCh = [...fixture.channels]; 
+                        newCh[index].name = e.target.value; 
+                        setFixture(prev => ({ ...prev, channels: newCh }));
+                      }} 
+                    />
+
+                    <div className="slot-footer">
+                      <span style={{fontSize: '0.7rem', color: '#666', opacity: isEmpty ? 0.3 : 1}}>INIT VAL:</span>
+                      <input 
+                        type="number" 
+                        className="slot-input-val" 
+                        min={0} max={255}
+                        value={channel.defaultValue} 
+                        disabled={isEmpty}
+                        style={{opacity: isEmpty ? 0.3 : 1}}
+                        onChange={(e) => {
+                          const newCh = [...fixture.channels]; 
+                          newCh[index].defaultValue = parseInt(e.target.value) || 0; 
+                          setFixture(prev => ({ ...prev, channels: newCh }));
+                        }}
+                      />
                     </div>
                   </div>
                 )
@@ -323,16 +337,17 @@ export const FixtureEditorModal: React.FC<FixtureEditorModalProps> = ({ isOpen, 
                   <div className="category-label">{category}</div>
                   
                   {functions.map((func) => (
-                    <button
+                    <div
                       key={func.type}
                       className="function-cartridge"
-                      style={{ '--cartridge-color': func.color } as React.CSSProperties}
+                      style={{ '--cartridge-color': func.color } as any}
                       draggable
                       onDragStart={(e) => handleDragStart(e, func)}
                     >
                       <span className="cartridge-icon">{func.icon}</span>
                       <span className="cartridge-label">{func.label}</span>
-                    </button>
+                      <GripVertical size={16} color="#666" />
+                    </div>
                   ))}
                 </div>
               ))}

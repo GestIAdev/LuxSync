@@ -4,7 +4,8 @@
 
 import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
-import fs from 'fs/promises'
+import * as fs from 'fs'
+import * as fsp from 'fs/promises'
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
@@ -24,6 +25,7 @@ let mainWindow: BrowserWindow | null = null
 let selene: SeleneLux | null = null
 let effectsEngine: EffectsEngine | null = null // ⚡ Global effects engine
 let mainLoopInterval: NodeJS.Timeout | null = null
+let lastBroadcastInterval: NodeJS.Timeout | null = null
 let lastFrameTime = Date.now()
 let brainMetricsCounter = 0 // 🧠 Para throttle de métricas al UI
 
@@ -353,7 +355,7 @@ function initSelene() {
   // ═══════════════════════════════════════════════════════════════════════════
   // Este loop es SEPARADO del mainLoop de audio/DMX para garantizar 30fps
   // El Frontend recibe la VERDAD COMPLETA aquí, no fragmentos dispersos
-  setInterval(() => {
+  lastBroadcastInterval = setInterval(() => {
     if (selene && mainWindow && !mainWindow.isDestroyed()) {
       const truth = selene.getBroadcast()
       
@@ -1362,7 +1364,7 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
 // WAVE 9.5: FIXTURE LIBRARY IPC HANDLERS
 // ============================================
 
-import fs from 'fs'
+// using native fs (sync) via top-level imports; promise-based fs is `fsp`
 
 // 🔗 WAVE 9.6: Zone types for auto-assignment
 type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
@@ -1535,7 +1537,7 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
           }
         } else if (file.toLowerCase().endsWith('.json')) {
           try {
-            const content = await fs.readFile(fullPath, 'utf-8')
+            const content = await fsp.readFile(fullPath, 'utf-8')
             const fixture = JSON.parse(content) as FixtureLibraryItem
             if (fixture && fixture.id && fixture.name) {
               foundFixtures.push(fixture)
@@ -1571,15 +1573,15 @@ ipcMain.handle('lux:save-fixture-definition', async (_event, def: FixtureDefinit
     // 1. Determinar la ruta.
     // process.cwd() suele ser la raíz del proyecto en desarrollo.
     const librariesPath = isDev
-      ? path.join(process.cwd(), 'librerias')
+      ? path.resolve(process.cwd(), '..', 'librerias')
       : path.join(process.resourcesPath, 'librerias');
 
     // 2. Asegurar que la carpeta existe
     try {
-      await fs.access(librariesPath);
+      await fsp.access(librariesPath);
     } catch {
       console.log('[Main] Creating /librerias folder...');
-      await fs.mkdir(librariesPath, { recursive: true });
+      await fsp.mkdir(librariesPath, { recursive: true });
     }
 
     // 3. Sanitizar nombre (cambiar espacios por guiones, etc)
@@ -1588,7 +1590,7 @@ ipcMain.handle('lux:save-fixture-definition', async (_event, def: FixtureDefinit
     const fullPath = path.join(librariesPath, fileName);
 
     // 4. Escribir el archivo
-    await fs.writeFile(fullPath, JSON.stringify(def, null, 2), 'utf-8');
+  await fsp.writeFile(fullPath, JSON.stringify(def, null, 2), 'utf-8');
 
     console.log('[Main] ✅ Saved successfully at:', fullPath);
 

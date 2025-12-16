@@ -1,0 +1,78 @@
+{
+  "id": "437cdd71-b48b-4a40-8c67-79a5654cd44a",
+  "name": "barato",
+  "manufacturer": "movil chino",
+  "type": "Moving Head",
+  "channels": [
+    {
+      "index": 1,
+      "type": "red",
+      "name": "Red",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "type": "strobe",
+      "name": "Strobe",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "type": "shutter",
+      "name": "Shutter",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "type": "green",
+      "name": "Green",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "type": "blue",
+      "name": "Blue",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "type": "white",
+      "name": "White",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "type": "amber",
+      "name": "Amber",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "type": "uv",
+      "name": "UV",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 10,
+      "type": "color_wheel",
+      "name": "Color Wheel",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ]
+}

@@ -1,0 +1,368 @@
+/* FixtureEditor.css - PHOENIX FORGE EDITION */
+/* DIRECTIVA: Clases exactas sincronizadas con FixtureEditorModal.tsx */
+
+/* --- OVERLAY & MODAL CONTAINER (CRÍTICO) --- */
+.fixture-editor-overlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(5px);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  isolation: isolate;
+}
+
+.fixture-editor-window {
+  width: 95vw;
+  height: 90vh;
+  max-width: 1600px;
+  background-color: #09090b;
+  border: 1px solid #00f3ff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 50px rgba(0, 243, 255, 0.2);
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+/* --- LAYOUT GENERAL --- */
+.forge-header {
+  padding: 1.5rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
+.forge-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.forge-footer {
+  padding: 1.5rem;
+  background: #111;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+/* --- INPUTS & CONTROLS --- */
+.forge-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.forge-label {
+  color: #00f3ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.forge-input, .forge-select {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 10px;
+  color: #fff;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+}
+
+.forge-input:focus, .forge-select:focus {
+  border-color: #00f3ff;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+}
+
+.close-icon-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-icon-btn:hover { color: #fff; }
+
+/* --- LEFT PANEL: THE RACK --- */
+.rack-area {
+  flex: 3;
+  padding: 2rem;
+  background-color: #050505;
+  background-image: 
+    linear-gradient(#222 1px, transparent 1px),
+    linear-gradient(90deg, #222 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow-y: auto;
+  border-right: 1px solid #333;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  color: #0f0;
+}
+
+.rack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.dmx-slot {
+  background: rgba(20, 20, 25, 0.9);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.2s;
+}
+
+.dmx-slot.active {
+  border-color: #00f3ff;
+  box-shadow: 0 0 15px rgba(0,243,255,0.1);
+}
+
+.dmx-slot.drag-over {
+  border-color: #bf00ff;
+  box-shadow: 0 0 20px rgba(191,0,255,0.3);
+  background: rgba(191,0,255,0.05);
+}
+
+.slot-header {
+  font-family: monospace;
+  color: #666;
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.slot-dropzone {
+  flex: 1;
+  min-height: 40px;
+  border: 1px dashed #444;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  background: rgba(0,0,0,0.3);
+  transition: all 0.2s;
+}
+
+.slot-dropzone.has-function {
+  border-style: solid;
+  border-color: var(--slot-color, #00f3ff);
+  background: rgba(0,0,0,0.5);
+}
+
+.slot-input-name {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #444;
+  color: #eee;
+  width: 100%;
+  padding: 4px;
+  font-family: inherit;
+}
+
+.slot-input-name:focus {
+  border-color: #00f3ff;
+  outline: none;
+}
+
+.slot-input-val {
+  background: #111;
+  border: 1px solid #333;
+  color: #fff;
+  width: 50px;
+  text-align: center;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.slot-clear-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+}
+.slot-clear-btn:hover { color: #ff4444; }
+
+/* --- RIGHT PANEL: THE FOUNDRY --- */
+.foundry-area {
+  flex: 1;
+  min-width: 320px;
+  background: #08080a;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #bf00ff;
+}
+
+.foundry-header {
+  padding: 1rem 1.5rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+}
+
+.foundry-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #bf00ff;
+}
+
+.foundry-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.function-category {
+  margin-bottom: 1.5rem;
+}
+
+.category-label {
+  color: #666;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+/* --- CARTRIDGE BUTTONS (FIXED STYLE) --- */
+.function-cartridge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background-color: #141414 !important;
+  border: 1px solid #333;
+  border-left: 6px solid var(--cartridge-color) !important;
+  border-radius: 4px;
+  color: #fff !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  cursor: grab;
+  transition: transform 0.1s;
+}
+
+.function-cartridge:hover {
+  transform: translateX(-4px);
+  background-color: #1f1f1f !important;
+  box-shadow: -8px 0 15px -5px var(--cartridge-color);
+}
+
+.function-cartridge:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.function-cartridge.dragging {
+  opacity: 0.5;
+}
+
+.cartridge-icon {
+  font-size: 1.2rem;
+}
+
+.cartridge-label {
+  flex: 1;
+  text-align: left;
+  margin-left: 12px;
+}
+
+/* --- ACTION BUTTONS --- */
+.btn-save {
+  background: #00f3ff;
+  color: #000;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-save:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(0,243,255,0.4);
+}
+
+.btn-save:disabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  border-color: #888;
+}
+
+/* --- VALIDATION MESSAGE --- */
+.validation-message {
+  color: #888;
+  font-size: 0.85rem;
+  margin-right: auto;
+}
+
+.validation-message.valid {
+  color: #0f0;
+}
+
+.validation-message.invalid {
+  color: #ff4444;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

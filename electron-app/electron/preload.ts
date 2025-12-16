@@ -326,9 +326,21 @@ const luxApi = {
   clearPatch: () => 
     ipcRenderer.invoke('lux:clear-patch'),
   
+  /** ⚡ WAVE 27: Guardar definición de fixture desde Fixture Forge */
+  saveDefinition: (definition: any) =>
+    ipcRenderer.invoke('lux:save-fixture-definition', definition),
+  
   /** 🎭 WAVE 10.6: Nuevo show - reset completo */
   newShow: () =>
     ipcRenderer.invoke('lux:new-show'),
+  
+  // ============================================
+  // ⚡ WAVE 27: FIXTURES OBJECT
+  // ============================================
+  fixtures: {
+    saveDefinition: (definition: any) =>
+      ipcRenderer.invoke('lux:save-fixture-definition', definition),
+  },
   
   // ============================================
   // 🎭 WAVE 26: SHOW MANAGEMENT (Save/Load/Delete)

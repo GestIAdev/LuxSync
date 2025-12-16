@@ -4,6 +4,7 @@
 
 import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
+import fs from 'fs/promises'
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
@@ -16,6 +17,8 @@ import { universalDMX, type DMXDevice } from './UniversalDMXDriver'
 import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/EffectsEngine'
 // 🎭 WAVE 26: ShowManager for save/load/delete shows
 import { showManager } from './ShowManager'
+// ⚡ WAVE 27: FixtureDefinition types for Fixture Forge
+import type { FixtureDefinition } from '../src/types/FixtureDefinition'
 
 let mainWindow: BrowserWindow | null = null
 let selene: SeleneLux | null = null
@@ -1524,11 +1527,21 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
     if (fs.existsSync(searchPath)) {
       const files = fs.readdirSync(searchPath)
       for (const file of files) {
+        const fullPath = path.join(searchPath, file)
         if (file.toLowerCase().endsWith('.fxt')) {
-          const fullPath = path.join(searchPath, file)
           const fixture = parseFXTFile(fullPath)
           if (fixture) {
             foundFixtures.push(fixture)
+          }
+        } else if (file.toLowerCase().endsWith('.json')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf-8')
+            const fixture = JSON.parse(content) as FixtureLibraryItem
+            if (fixture && fixture.id && fixture.name) {
+              foundFixtures.push(fixture)
+            }
+          } catch (err) {
+            console.warn(`[Fixtures] Failed to parse JSON fixture: ${file}`, err)
           }
         }
       }
@@ -1547,6 +1560,43 @@ ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
   } catch (err) {
     console.error('[Fixtures] Scan error:', err)
     return { success: false, error: String(err), fixtures: [] }
+  }
+})
+
+// ⚡ WAVE 27 - PHASE 1.5: Fixture Forge - Save Definition
+ipcMain.handle('lux:save-fixture-definition', async (_event, def: FixtureDefinition) => {
+  try {
+    console.log('[Main] 💾 Request to save fixture:', def.name);
+
+    // 1. Determinar la ruta.
+    // process.cwd() suele ser la raíz del proyecto en desarrollo.
+    const librariesPath = isDev
+      ? path.join(process.cwd(), 'librerias')
+      : path.join(process.resourcesPath, 'librerias');
+
+    // 2. Asegurar que la carpeta existe
+    try {
+      await fs.access(librariesPath);
+    } catch {
+      console.log('[Main] Creating /librerias folder...');
+      await fs.mkdir(librariesPath, { recursive: true });
+    }
+
+    // 3. Sanitizar nombre (cambiar espacios por guiones, etc)
+    const safeName = def.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `${safeName}.json`;
+    const fullPath = path.join(librariesPath, fileName);
+
+    // 4. Escribir el archivo
+    await fs.writeFile(fullPath, JSON.stringify(def, null, 2), 'utf-8');
+
+    console.log('[Main] ✅ Saved successfully at:', fullPath);
+
+    return { success: true, path: fullPath };
+
+  } catch (error) {
+    console.error('[Main] ❌ Error saving fixture:', error);
+    return { success: false, error: String(error) };
   }
 })
 
@@ -1698,6 +1748,8 @@ ipcMain.handle('lux:clear-patch', () => {
   
   // 🔧 WAVE 10: Auto-save al ConfigManager
   configManager.clearPatch()
+
+
   
   console.log(`[Fixtures] 🧹 Cleared ${count} fixtures from patch`)
   return { success: true, cleared: count }

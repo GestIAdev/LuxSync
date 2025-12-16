@@ -1,5 +1,46 @@
 /// <reference types="vite/client" />
 
+// ⚡ WAVE 27: Fixture Definition Types (Fixture Forge)
+type ChannelType = 
+  | 'dimmer'
+  | 'strobe'
+  | 'shutter'
+  | 'red'
+  | 'green'
+  | 'blue'
+  | 'white'
+  | 'amber'
+  | 'uv'
+  | 'pan'
+  | 'pan_fine'
+  | 'tilt'
+  | 'tilt_fine'
+  | 'color_wheel'
+  | 'gobo'
+  | 'prism'
+  | 'focus'
+  | 'zoom'
+  | 'speed'
+  | 'macro'
+  | 'control'
+  | 'unknown'
+
+interface FixtureChannel {
+  index: number
+  name: string
+  type: ChannelType
+  defaultValue: number
+  is16bit: boolean
+}
+
+interface FixtureDefinition {
+  id: string
+  name: string
+  manufacturer: string
+  type: string
+  channels: FixtureChannel[]
+}
+
 // ============================================================================
 // SELENE STATE UPDATE (from Main Process)
 // ============================================================================
@@ -209,6 +250,24 @@ interface Window {
     
     // WAVE 10.6: New show - full reset
     newShow: () => Promise<{ success: boolean; message?: string; clearedFixtures?: number }>
+    
+    // ⚡ WAVE 27: Fixture Forge - Save Definition
+    saveDefinition: (definition: FixtureDefinition) => Promise<{
+      success: boolean
+      path?: string
+      filename?: string
+      error?: string
+    }>
+    
+    // ⚡ WAVE 27: Fixtures Object
+    fixtures: {
+      saveDefinition: (definition: FixtureDefinition) => Promise<{
+        success: boolean
+        path?: string
+        filename?: string
+        error?: string
+      }>
+    }
     
     // 🎭 WAVE 26: Show Management (Save/Load/Delete)
     listShows: () => Promise<{

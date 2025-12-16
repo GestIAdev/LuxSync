@@ -14,6 +14,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
 import { AddFixtureModal, type LibraryItem } from './AddFixtureModal'
+import { FixtureEditorModal } from '../../../modals/FixtureEditor/FixtureEditorModal'
+import type { FixtureDefinition } from '../../../../types/FixtureDefinition'
 import './PatchTab.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,6 +92,7 @@ export const PatchTab: React.FC = () => {
   const [library, setLibrary] = useState<LibraryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showForgeModal, setShowForgeModal] = useState(false)
   const [flashingFixture, setFlashingFixture] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -184,6 +187,31 @@ export const PatchTab: React.FC = () => {
     } catch (err) {
       console.error('[PatchTab] Add error:', err)
       setError('Error adding fixtures')
+    }
+  }
+
+  const handleSaveFixtureDefinition = async (definition: FixtureDefinition) => {
+    try {
+      console.log("🔌 Connecting to Matrix...", definition);
+      
+      // 1. LLAMADA AL BRIDGE (Esto es lo que faltaba)
+      const result = await window.lux.fixtures.saveDefinition(definition);
+      
+      if (result.success) {
+        console.log("✅ Fixture saved at:", result.path);
+        
+        // 2. IMPORTANTE: Recargar la librería para ver el nuevo archivo
+        const scanResult = await window.lux.scanFixtures();
+        setLibrary(scanResult.fixtures); // Actualizar estado de la tabla
+        
+        setShowForgeModal(false); // Cerrar modal
+      } else {
+        console.error("❌ Failed to save");
+        setError("Failed to save fixture");
+      }
+    } catch (error) {
+      console.error("❌ IPC Error:", error);
+      setError("Error saving fixture definition");
     }
   }
 
@@ -285,12 +313,21 @@ export const PatchTab: React.FC = () => {
           <span className="patch-count">{fixtures.length} fixtures</span>
           <span className="patch-library">{library.length} in library</span>
         </div>
-        <button 
-          className="patch-add-btn"
-          onClick={() => setShowAddModal(true)}
-        >
-          ➕ ADD FIXTURE
-        </button>
+        <div className="patch-header-actions">
+          <button 
+            className="patch-forge-btn"
+            onClick={() => setShowForgeModal(true)}
+            title="Create new fixture definition"
+          >
+            ⚡ CREATE FIXTURE
+          </button>
+          <button 
+            className="patch-add-btn"
+            onClick={() => setShowAddModal(true)}
+          >
+            ➕ ADD PATCH
+          </button>
+        </div>
       </div>
 
       {/* ERROR */}
@@ -420,6 +457,13 @@ export const PatchTab: React.FC = () => {
           onClose={() => setShowAddModal(false)}
         />
       )}
+
+      {/* FIXTURE FORGE MODAL */}
+      <FixtureEditorModal
+        isOpen={showForgeModal}
+        onClose={() => setShowForgeModal(false)}
+        onSave={handleSaveFixtureDefinition}
+      />
     </div>
   )
 }

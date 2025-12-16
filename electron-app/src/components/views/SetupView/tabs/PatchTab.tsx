@@ -121,7 +121,12 @@ export const PatchTab: React.FC = () => {
       // Scan library
       const scanResult = await api.scanFixtures()
       if (scanResult?.success && scanResult.fixtures) {
-        setLibrary(scanResult.fixtures)
+        // Normalize fixtures to ensure 'modes' exists for older files
+        const normalized = scanResult.fixtures.map((f: any) => ({
+          ...f,
+          modes: f.modes ?? [{ name: 'Standard', channels: f.channels ?? [] }]
+        }))
+        setLibrary(normalized)
       }
 
       setLoading(false)
@@ -160,10 +165,14 @@ export const PatchTab: React.FC = () => {
   /**
    * Handle adding new fixtures
    */
+  /**
+   * Handle adding new fixtures with Professional Config
+   */
   const handleAddFixtures = async (
     modelId: string, 
     quantity: number, 
-    startAddress: number
+    startAddress: number,
+    config: any // Ahora recibimos la config física
   ) => {
     const api = getLuxApi()
     if (!api) return
@@ -177,7 +186,18 @@ export const PatchTab: React.FC = () => {
 
       let currentAddr = startAddress
       for (let i = 0; i < quantity; i++) {
-        await api.patchFixture(modelId, currentAddr)
+        // Enviar al backend incluyendo la config física
+        // El backend debe pasar esto al PhysicsDriver.registerFixture
+        await api.patchFixture(modelId, currentAddr, {
+          // Metadata estándar
+          universe: 1,
+          // Configuración física PRO
+          physics: {
+            installationType: config.orientation,
+            invert: { pan: config.invertPan, tilt: config.invertTilt },
+            swapXY: config.swapXY
+          }
+        })
         currentAddr += model.channelCount
       }
 
@@ -202,7 +222,13 @@ export const PatchTab: React.FC = () => {
         
         // 2. IMPORTANTE: Recargar la librería para ver el nuevo archivo
         const scanResult = await window.lux.scanFixtures();
-        setLibrary(scanResult.fixtures); // Actualizar estado de la tabla
+        if (scanResult?.fixtures) {
+          const normalized = scanResult.fixtures.map((f: any) => ({
+            ...f,
+            modes: f.modes ?? [{ name: 'Standard', channels: f.channels ?? [] }]
+          }))
+          setLibrary(normalized)
+        }
         
         setShowForgeModal(false); // Cerrar modal
       } else {
@@ -371,15 +397,26 @@ export const PatchTab: React.FC = () => {
                   key={fixture.dmxAddress}
                   className={flashingFixture === fixture.dmxAddress ? 'flashing' : ''}
                 >
-                  {/* STATUS - Live Dot */}
+                  {/* STATUS - Live Dot con lógica de color explícita */}
                   <td className="col-status">
                     <div 
-                      className={`live-dot ${isLive(fixture.dmxAddress) ? 'live' : ''}`}
+                      className={`live-dot ${isLive(fixture.dmxAddress) ? 'live' : ''} ${flashingFixture === fixture.dmxAddress ? 'flashing' : ''}`}
                       style={{ 
-                        backgroundColor: getLiveDotColor(fixture.dmxAddress),
-                        boxShadow: isLive(fixture.dmxAddress) 
-                          ? `0 0 8px ${getLiveDotColor(fixture.dmxAddress)}` 
-                          : 'none'
+                        // Lógica de color inline:
+                        // 1. Si está flasheando -> AMARILLO ORO
+                        // 2. Si está Online -> CYAN NEÓN
+                        // 3. Si está Offline -> GRIS OSCURO (pero visible)
+                        backgroundColor: flashingFixture === fixture.dmxAddress 
+                          ? '#ffd700' 
+                          : (isLive(fixture.dmxAddress) ? '#00f3ff' : '#333'),
+                        
+                        // Brillo (Glow)
+                        boxShadow: flashingFixture === fixture.dmxAddress
+                          ? '0 0 15px #ffd700'
+                          : (isLive(fixture.dmxAddress) ? '0 0 8px #00f3ff' : 'none'),
+                          
+                        // Borde sutil para que el estado "offline" no desaparezca
+                        border: '1px solid #555'
                       }}
                     />
                   </td>

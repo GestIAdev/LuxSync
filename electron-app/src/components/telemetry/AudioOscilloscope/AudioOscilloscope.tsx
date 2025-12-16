@@ -11,23 +11,24 @@
  * - Input Gain Control (INTEGRADO)
  */
 
-import React, { useState, useCallback } from 'react'
+import React from 'react'
 import { useTruthSensory, useTruthConnected } from '../../../hooks'
-import { useAudioStore } from '../../../stores/audioStore'
 import './AudioOscilloscope.css'
 
+/**
+ * 🎵 AUDIO OSCILLOSCOPE - MONITOR ONLY
+ * WAVE 29: Refactorizado para Selene Lux Core
+ * * - Spectrum Bars (Bass/Mid/Treble)
+ * - Energy Level & Trend
+ * - Beat Pulse & BPM
+ * - SIN CONTROL DE GANANCIA (Movido a Setup)
+ */
+
 const AudioOscilloscope: React.FC = () => {
-  // 🧠 WAVE 25.6: Use truthStore
   const sensory = useTruthSensory()
   const connected = useTruthConnected()
   
-  // 🔧 WAVE 15.1: Get initial gain from store (persisted from config)
-  const storeGain = useAudioStore(state => state.inputGain)
-  
-  // Estado local para el control de ganancia - initialize from store
-  const [localGain, setLocalGain] = useState(storeGain)
-  
-  // Build audio data from truth
+  // Datos directos del Truth Store
   const data = {
     spectrum: { 
       bass: sensory?.audio?.bass ?? 0, 
@@ -37,153 +38,111 @@ const AudioOscilloscope: React.FC = () => {
     energy: { 
       current: sensory?.audio?.energy ?? 0, 
       peak: sensory?.audio?.peak ?? 0, 
-      trend: 'stable' as const
+      trend: 'stable' as const // TODO: Implementar tendencia real en backend si es necesario
     },
     beat: { 
       detected: sensory?.beat?.onBeat ?? false, 
       bpm: sensory?.beat?.bpm ?? 0, 
-      confidence: sensory?.beat?.confidence ?? 0, 
-      phase: sensory?.beat?.beatPhase ?? 0 
-    },
-    inputGain: storeGain,
-  }
-  
-  // Handler para cambio de ganancia
-  // 🔧 WAVE 15.1: Update BOTH local state AND audioStore for useAudioCapture
-  const setStoreGain = useAudioStore(state => state.setInputGain)
-  
-  const handleGainChange = useCallback((value: number) => {
-    setLocalGain(value)
-    setStoreGain(value)  // 🔧 WAVE 15.1: Sync to audioStore (used by useAudioCapture)
-    window.lux?.setInputGain?.(value)  // Persist to main process
-    console.log('[AUDIO] Gain changed:', value, '→ Store + IPC synced')
-  }, [setStoreGain])
-  
-  const getTrendIcon = (trend: 'rising' | 'falling' | 'stable') => {
-    switch (trend) {
-      case 'rising': return '↗️'
-      case 'falling': return '↘️'
-      default: return '→'
+      confidence: sensory?.beat?.confidence ?? 0
     }
   }
   
-  const getTrendClass = (trend: 'rising' | 'falling' | 'stable') => {
-    switch (trend) {
-      case 'rising': return 'trend-rising'
-      case 'falling': return 'trend-falling'
-      default: return 'trend-stable'
-    }
+  const getTrendIcon = (trend: string) => {
+    if (trend === 'rising') return '↗'
+    if (trend === 'falling') return '↘'
+    return '→'
   }
   
-  // 🧠 WAVE 25.6: Estado de conexión simplificado
-  const connectionStatus = connected ? 'connected' : 'disconnected'
-
   return (
-    <div className={`telemetry-panel audio-oscilloscope ${connectionStatus}`}>
-      <div className="panel-header">
-        <h3>🎵 AUDIO</h3>
-        <span className={`beat-indicator ${data.beat.detected ? 'pulse' : ''}`}>
-          {connected ? '🟢' : '●'}
-        </span>
+    <div className={`audio-scope-panel ${connected ? 'online' : 'offline'}`}>
+      {/* HEADER */}
+      <div className="scope-header">
+        <div className="scope-title">
+          <span className="icon">🎵</span>
+          <span>AUDIO SENSORY</span>
+        </div>
+        <div className={`scope-pulse ${data.beat.detected ? 'active' : ''}`} />
       </div>
       
-      {/* Spectrum Bars */}
-      <div className="spectrum-section">
-        <div className="spectrum-bars">
-          <div className="spectrum-bar-container">
+      {/* SPECTRUM VISUALIZER */}
+      <div className="scope-visualizer">
+        {/* BASS */}
+        <div className="freq-column">
+          <div className="freq-bar-track">
             <div 
-              className="spectrum-bar bass" 
+              className="freq-bar-fill bass" 
               style={{ height: `${data.spectrum.bass * 100}%` }}
-            >
-              <span className="bar-fill" />
-            </div>
-            <span className="bar-label">BASS</span>
-            <span className="bar-value">{Math.round(data.spectrum.bass * 100)}</span>
+            />
           </div>
-          
-          <div className="spectrum-bar-container">
+          <div className="freq-info">
+            <span className="freq-label">BASS</span>
+            <span className="freq-val">{Math.round(data.spectrum.bass * 100)}</span>
+          </div>
+        </div>
+
+        {/* MID */}
+        <div className="freq-column">
+          <div className="freq-bar-track">
             <div 
-              className="spectrum-bar mid" 
+              className="freq-bar-fill mid" 
               style={{ height: `${data.spectrum.mid * 100}%` }}
-            >
-              <span className="bar-fill" />
-            </div>
-            <span className="bar-label">MID</span>
-            <span className="bar-value">{Math.round(data.spectrum.mid * 100)}</span>
+            />
           </div>
-          
-          <div className="spectrum-bar-container">
+          <div className="freq-info">
+            <span className="freq-label">MID</span>
+            <span className="freq-val">{Math.round(data.spectrum.mid * 100)}</span>
+          </div>
+        </div>
+
+        {/* TREBLE */}
+        <div className="freq-column">
+          <div className="freq-bar-track">
             <div 
-              className="spectrum-bar treble" 
+              className="freq-bar-fill treble" 
               style={{ height: `${data.spectrum.treble * 100}%` }}
-            >
-              <span className="bar-fill" />
-            </div>
-            <span className="bar-label">TREBLE</span>
-            <span className="bar-value">{Math.round(data.spectrum.treble * 100)}</span>
+            />
+          </div>
+          <div className="freq-info">
+            <span className="freq-label">HIGH</span>
+            <span className="freq-val">{Math.round(data.spectrum.treble * 100)}</span>
           </div>
         </div>
       </div>
       
-      {/* Energy & BPM */}
-      <div className="metrics-section">
-        <div className="metric-row">
-          <span className="metric-label">Energy</span>
-          <div className="metric-bar">
+      {/* METRICS FOOTER */}
+      <div className="scope-metrics">
+        
+        {/* ENERGY BAR */}
+        <div className="metric-group energy-group">
+          <div className="metric-header">
+            <span className="metric-name">ENERGY</span>
+            <span className="metric-trend">{getTrendIcon(data.energy.trend)}</span>
+          </div>
+          <div className="energy-meter-track">
             <div 
-              className="metric-fill energy"
+              className="energy-meter-fill"
               style={{ width: `${data.energy.current * 100}%` }}
             />
+            {/* Peak indicator */}
             <div 
-              className="metric-peak"
+              className="energy-meter-peak"
               style={{ left: `${data.energy.peak * 100}%` }}
             />
           </div>
-          <span className={`metric-trend ${getTrendClass(data.energy.trend)}`}>
-            {getTrendIcon(data.energy.trend)}
-          </span>
         </div>
         
-        <div className="bpm-row">
-          <span className="bpm-value">{Math.round(data.beat.bpm)}</span>
+        {/* BPM DISPLAY */}
+        <div className="metric-group bpm-group">
+          <span className="bpm-number">{Math.round(data.beat.bpm)}</span>
           <span className="bpm-label">BPM</span>
-          <div className="bpm-confidence">
-            <div 
-              className="confidence-fill"
-              style={{ width: `${data.beat.confidence * 100}%` }}
-            />
+          <div className="confidence-dots">
+            {/* 3 puntos de confianza */}
+            <div className={`dot ${data.beat.confidence > 0.3 ? 'on' : ''}`} />
+            <div className={`dot ${data.beat.confidence > 0.6 ? 'on' : ''}`} />
+            <div className={`dot ${data.beat.confidence > 0.9 ? 'on' : ''}`} />
           </div>
         </div>
-      </div>
-      
-      {/* Input Gain Control - INTEGRADO */}
-      <div className="gain-control">
-        <div className="gain-header">
-          <span className="gain-label">🎚️ GAIN</span>
-          <span className="gain-value">{localGain.toFixed(1)}x</span>
-        </div>
-        <div className="gain-slider-container">
-          <input
-            type="range"
-            min="0.1"
-            max="3.0"
-            step="0.1"
-            value={localGain}
-            onChange={(e) => handleGainChange(parseFloat(e.target.value))}
-            className="gain-slider"
-          />
-          <div className="gain-quick-btns">
-            {[0.5, 1.0, 1.5, 2.0].map((val) => (
-              <button
-                key={val}
-                className={`gain-quick ${localGain === val ? 'active' : ''}`}
-                onClick={() => handleGainChange(val)}
-              >
-                {val}x
-              </button>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
   )

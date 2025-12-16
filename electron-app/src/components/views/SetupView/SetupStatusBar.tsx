@@ -10,6 +10,8 @@
 
 import React from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../stores/truthStore'
+// IMPORTANTE: Importamos el store de Setup donde guardaste el nombre
+import { useSetupStore } from '../../../stores/setupStore'
 import './SetupStatusBar.css'
 
 // ============================================
@@ -73,9 +75,10 @@ const DmxStatus: React.FC<DmxStatusProps> = ({ connected, fps }) => {
 // ============================================
 
 export const SetupStatusBar: React.FC = () => {
-  // Subscribe to truth store with selectors
   const audio = useTruthStore(selectAudio)
   const hardware = useTruthStore(selectHardware)
+  // CONEXIÓN AL STORE REAL:
+  const currentShowName = useSetupStore((s) => s.currentShowName)
   
   return (
     <div className="setup-status-bar">
@@ -85,9 +88,11 @@ export const SetupStatusBar: React.FC = () => {
         <span className="status-label">AUDIO INPUT</span>
       </div>
       
-      {/* CENTER: Show Name */}
+      {/* CENTER: Show Name (AHORA ES DINÁMICO) */}
       <div className="status-section status-center">
-        <span className="show-name">SHOW: Default.json</span>
+        <span className="show-name">
+          SHOW: <span style={{color: '#fff', fontWeight: 'bold'}}>{currentShowName || 'Default.json'}</span>
+        </span>
       </div>
       
       {/* RIGHT: DMX Status */}

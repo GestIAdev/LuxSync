@@ -10,6 +10,7 @@ import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
 import { configManager, type PatchedFixtureConfig } from './ConfigManager'
+import { FixturePhysicsDriver } from '../src/main/selene-lux-core/hardware'
 // 🧠 WAVE 10: Trinity Orchestrator for worker communication
 import { getTrinity } from '../src/main/workers/TrinityOrchestrator'
 // 🌪️ WAVE 11: UniversalDMXDriver - Soporte para CUALQUIER chip serial
@@ -43,6 +44,9 @@ let lastFixtureStatesForBroadcast: Array<{
   pan: number
   tilt: number
 }> = []
+
+// Instancia global del driver de física de fixtures (si está disponible)
+const fixturePhysicsDriver = new FixturePhysicsDriver()
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
@@ -1630,6 +1634,18 @@ ipcMain.handle('lux:patch-fixture', (_event, data: { fixtureId: string; dmxAddre
   }
   
   patchedFixtures.push(patched)
+
+  // Si el frontend envía opciones de física, registrar la fixture en el FixturePhysicsDriver
+  try {
+    const anyData: any = data as any
+    if (anyData.physics) {
+      // Usamos el id único del patched para registrar
+      fixturePhysicsDriver.registerFixture(patched.id, anyData.physics)
+      console.log(`[Physics] Registered fixture ${patched.id} with physics config`)
+    }
+  } catch (err) {
+    console.warn('[Physics] Failed to register fixture physics:', err)
+  }
   
   // 🔧 WAVE 10: Auto-save al ConfigManager
   configManager.setPatchedFixtures(patchedFixtures.map(f => ({

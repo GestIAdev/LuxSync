@@ -1,6 +1,6 @@
 /**
- * 💡 PATCH TAB - Professional Fixture Table Styles
- * WAVE 26 Phase 3
+ * 💡 PATCH TAB - CYBERPUNK EDITION
+ * WAVE 28: Visual Unification
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -11,9 +11,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
-  gap: 12px;
-  background: var(--surface-darker, #0d1117);
+  padding: 1rem;
+  gap: 1rem;
+  background: #050505; /* Negro profundo */
+  font-family: 'Segoe UI', sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -24,25 +25,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color, #30363d);
+  padding: 10px 0;
+  border-bottom: 1px solid #222;
 }
 
 .patch-header-info {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   align-items: center;
 }
 
 .patch-count {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--cyan-primary, #00d4ff);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #00f3ff; /* Neon Cyan */
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .patch-library {
-  font-size: 12px;
-  color: var(--text-dim, #8b949e);
+  font-size: 0.8rem;
+  color: #666;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .patch-header-actions {
@@ -51,54 +55,50 @@
   align-items: center;
 }
 
+/* BOTÓN FORGE (El del editor) */
 .patch-forge-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: transparent;
-  color: var(--neon-cyan, #00f3ff);
-  border: 1px solid var(--neon-cyan, #00f3ff);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  color: #bf00ff; /* Neon Purple */
+  border: 1px solid #bf00ff;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .patch-forge-btn:hover {
-  background: rgba(0, 243, 255, 0.1);
-  border-color: var(--neon-cyan, #00f3ff);
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+  background: rgba(191, 0, 255, 0.15);
+  box-shadow: 0 0 15px rgba(191, 0, 255, 0.3);
   transform: translateY(-1px);
 }
 
-.patch-forge-btn:active {
-  transform: translateY(0);
-}
-
+/* BOTÓN ADD (El de parchear) */
 .patch-add-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, var(--cyan-primary, #00d4ff), var(--cyan-dark, #0099cc));
+  background: #00f3ff;
   color: #000;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
 }
 
 .patch-add-btn:hover {
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
-}
-
-.patch-add-btn:active {
-  transform: translateY(0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -109,21 +109,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  background: rgba(255, 85, 85, 0.1);
-  border: 1px solid rgba(255, 85, 85, 0.3);
+  padding: 12px 16px;
+  background: rgba(255, 0, 85, 0.1);
+  border: 1px solid #ff0055;
   border-radius: 6px;
-  color: #ff5555;
-  font-size: 13px;
+  color: #ff0055;
+  font-size: 0.9rem;
+  animation: slideIn 0.2s ease;
 }
 
 .patch-error button {
-  background: none;
-  border: none;
-  color: #ff5555;
-  cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
+  background: none; border: none; color: #ff0055; cursor: pointer; font-weight: bold;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -134,287 +130,181 @@
   flex: 1;
   overflow: auto;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #30363d);
-  background: var(--surface-dark, #161b22);
+  border: 1px solid #222;
+  background: #09090b; /* Fondo tabla oscuro */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TABLE
+   TABLE STYLES
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .patch-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.9rem;
 }
 
 .patch-table thead {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--surface-darker, #0d1117);
+  background: #111; /* Header oscuro */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
 .patch-table th {
-  padding: 12px 16px;
+  padding: 14px 16px;
   text-align: left;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-dim, #8b949e);
-  border-bottom: 1px solid var(--border-color, #30363d);
-  white-space: nowrap;
+  letter-spacing: 1px;
+  color: #00f3ff; /* Headers Cyan */
+  border-bottom: 1px solid #333;
 }
 
 .patch-table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-subtle, #21262d);
-  color: var(--text-primary, #e6edf3);
+  padding: 12px 16px;
+  border-bottom: 1px solid #1a1a1a;
+  color: #ddd;
 }
 
-.patch-table tbody tr {
-  transition: background 0.15s ease;
-}
+/* Hover Rows */
+.patch-table tbody tr { transition: background 0.1s; }
+.patch-table tbody tr:hover { background: #141414; }
 
-.patch-table tbody tr:hover {
-  background: var(--surface-hover, rgba(0, 212, 255, 0.05));
-}
-
+/* Flashing Effect (cuando haces test) */
 .patch-table tbody tr.flashing {
-  background: rgba(0, 212, 255, 0.15);
+  background: rgba(0, 243, 255, 0.2);
   animation: flash-pulse 0.5s ease-out;
 }
-
 @keyframes flash-pulse {
-  0% { background: rgba(0, 212, 255, 0.4); }
-  100% { background: rgba(0, 212, 255, 0.15); }
+  0% { background: #fff; }
+  100% { background: rgba(0, 243, 255, 0.2); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   COLUMN WIDTHS
+   COLUMNS & CELLS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.col-status {
-  width: 60px;
-  text-align: center;
-}
-
-.col-id {
-  width: 80px;
-}
-
-.col-address {
-  width: 100px;
-}
-
-.col-fixture {
-  min-width: 180px;
-}
-
-.col-channels {
-  width: 60px;
-  text-align: center;
-}
-
-.col-zone {
-  width: 120px;
-}
-
-.col-actions {
-  width: 100px;
-  text-align: center;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CELL CONTENT
-   ═══════════════════════════════════════════════════════════════════════════ */
+.col-status { width: 50px; text-align: center; }
+.col-id { width: 80px; }
+.col-address { width: 120px; }
+.col-fixture { min-width: 200px; }
+.col-channels { width: 80px; text-align: center; }
+.col-zone { width: 150px; }
+.col-actions { width: 100px; text-align: right; }
 
 /* Live Dot */
 .live-dot {
-  width: 12px;
-  height: 12px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   margin: 0 auto;
+  background: #333;
   transition: all 0.3s ease;
 }
-
 .live-dot.live {
-  animation: pulse 2s infinite;
+  background: #00f3ff;
+  box-shadow: 0 0 10px #00f3ff;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Fixture ID */
+/* Typography */
 .fixture-id {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  color: var(--text-dim, #8b949e);
+  font-family: 'JetBrains Mono', monospace;
+  color: #666;
+  font-size: 0.8rem;
 }
 
-/* DMX Address */
 .dmx-address {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--cyan-primary, #00d4ff);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #fff;
+  background: #222;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .address-range {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  color: var(--text-dim, #8b949e);
+  font-family: 'JetBrains Mono', monospace;
+  color: #666;
+  margin-left: 6px;
+  font-size: 0.8rem;
 }
 
-/* Fixture Name */
-.fixture-icon {
-  margin-right: 8px;
-  font-size: 14px;
-}
+.fixture-name { font-weight: 600; color: #fff; }
+.channel-count { font-family: 'JetBrains Mono', monospace; color: #888; font-size: 0.8rem; }
 
-.fixture-name {
-  font-weight: 500;
-}
-
-/* Channel Count */
-.channel-count {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  color: var(--text-dim, #8b949e);
-}
-
-/* Zone Select */
+/* Zone Select (Cyberpunk Style) */
 .zone-select {
   width: 100%;
   padding: 6px 10px;
-  background: var(--surface-darker, #0d1117);
-  border: 1px solid var(--border-color, #30363d);
+  background: #111;
+  border: 1px solid #333;
   border-radius: 4px;
-  color: var(--text-primary, #e6edf3);
-  font-size: 12px;
+  color: #aaa;
+  font-size: 0.85rem;
+  font-family: 'Segoe UI', sans-serif;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s;
 }
+.zone-select:hover { border-color: #666; color: #fff; }
+.zone-select:focus { outline: none; border-color: #00f3ff; color: #fff; }
 
-.zone-select:hover {
-  border-color: var(--cyan-dim, #00b3d9);
-}
-
-.zone-select:focus {
-  outline: none;
-  border-color: var(--cyan-primary, #00d4ff);
-}
-
-/* Action Buttons */
+/* Actions */
 .action-btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  margin: 0 4px;
-  background: var(--surface-darker, #0d1117);
-  border: 1px solid var(--border-color, #30363d);
+  width: 30px; height: 30px;
+  background: transparent;
+  border: 1px solid #333;
   border-radius: 4px;
-  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  margin-left: 6px;
+  transition: all 0.2s;
+  color: #888;
 }
-
-.flash-btn:hover {
-  background: rgba(255, 200, 0, 0.15);
-  border-color: #ffc800;
-}
-
-.delete-btn:hover {
-  background: rgba(255, 85, 85, 0.15);
-  border-color: #ff5555;
-}
+.flash-btn:hover { border-color: #ffd700; color: #ffd700; background: rgba(255, 215, 0, 0.1); }
+.delete-btn:hover { border-color: #ff0055; color: #ff0055; background: rgba(255, 0, 85, 0.1); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EMPTY STATE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.patch-empty-row td {
-  padding: 0;
-  border: none;
-}
-
 .patch-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  gap: 12px;
-  color: var(--text-dim, #8b949e);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 20px; gap: 15px; color: #444;
 }
-
-.patch-empty .empty-icon {
-  font-size: 48px;
-  opacity: 0.3;
-}
-
+.patch-empty .empty-icon { font-size: 48px; opacity: 0.5; filter: grayscale(1); }
 .patch-empty button {
-  margin-top: 12px;
-  padding: 10px 20px;
-  background: var(--surface-darker, #0d1117);
-  border: 1px solid var(--cyan-primary, #00d4ff);
-  color: var(--cyan-primary, #00d4ff);
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  background: transparent; border: 1px solid #00f3ff; color: #00f3ff;
+  padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px;
 }
-
-.patch-empty button:hover {
-  background: rgba(0, 212, 255, 0.1);
-}
+.patch-empty button:hover { background: rgba(0, 243, 255, 0.1); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LOADING STATE
+   LOADING
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .patch-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 16px;
-  color: var(--text-dim, #8b949e);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; color: #666; gap: 20px;
 }
-
 .loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color, #30363d);
-  border-top-color: var(--cyan-primary, #00d4ff);
+  width: 40px; height: 40px;
+  border: 3px solid #333; border-top-color: #00f3ff;
+  border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Añadir al final de PatchTab.css */
+.live-dot {
+  width: 10px; height: 10px;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  margin: 0 auto;
+  transition: all 0.1s ease; /* Transición rápida para el flash */
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-@media (max-width: 768px) {
-  .patch-table {
-    font-size: 12px;
-  }
-  
-  .patch-table th,
-  .patch-table td {
-    padding: 8px 10px;
-  }
-  
-  .col-channels,
-  .col-id {
-    display: none;
-  }
+/* Animación cuando está flasheando */
+.live-dot.flashing {
+  transform: scale(1.4);
+  background-color: #ffd700 !important;
+  z-index: 10;
 }

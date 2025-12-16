@@ -9,307 +9,229 @@
  * - Preview of channel usage
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
+import { X, ArrowUp, ArrowDown, Move, RefreshCw, Settings } from 'lucide-react'
 import './AddFixtureModal.css'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export interface LibraryItem {
   id: string
   name: string
   manufacturer: string
-  channelCount: number
   type: string
-  filePath: string
-  confidence?: number
-  hasMovementChannels?: boolean
-  hasColorMixing?: boolean
+  channelCount: number
+  modes: any[]
+}
+
+interface FixturePatchConfig {
+  orientation: 'ceiling' | 'floor' | 'truss_front' | 'truss_back'
+  invertPan: boolean
+  invertTilt: boolean
+  swapXY: boolean
 }
 
 interface AddFixtureModalProps {
   library: LibraryItem[]
   nextAddress: number
-  onAdd: (modelId: string, quantity: number, startAddress: number) => void
+  onAdd: (modelId: string, quantity: number, startAddress: number, config: FixturePatchConfig) => void
   onClose: () => void
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
+export const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ library, nextAddress, onAdd, onClose }) => {
+  // Estado Básico
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [quantity, setQuantity] = useState(1)
+  const [address, setAddress] = useState(nextAddress)
 
-/**
- * Get fixture type icon
- */
-const getTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    'moving_head': '🎯',
-    'par': '💡',
-    'wash': '🌊',
-    'strobe': '⚡',
-    'laser': '🔴',
-    'generic': '○',
-  }
-  return icons[type] || '○'
-}
+  // Estado Avanzado (Orientación y Física)
+  const [config, setConfig] = useState<FixturePatchConfig>({
+    orientation: 'ceiling', // Default standard
+    invertPan: false,
+    invertTilt: false,
+    swapXY: false
+  })
 
-/**
- * Format type for display
- */
-const formatType = (type: string): string => {
-  const names: Record<string, string> = {
-    'moving_head': 'Moving Head',
-    'par': 'PAR',
-    'wash': 'Wash',
-    'strobe': 'Strobe',
-    'laser': 'Laser',
-    'generic': 'Generic',
-  }
-  return names[type] || type
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-
-export const AddFixtureModal: React.FC<AddFixtureModalProps> = ({
-  library,
-  nextAddress,
-  onAdd,
-  onClose,
-}) => {
-  // State
-  const [selectedId, setSelectedId] = useState<string>(library[0]?.id || '')
-  const [quantity, setQuantity] = useState<number>(1)
-  const [startAddress, setStartAddress] = useState<number>(nextAddress)
-  const [useAutoAddress, setUseAutoAddress] = useState(true)
-
-  // Selected model
-  const selectedModel = useMemo(() => 
-    library.find(f => f.id === selectedId),
-    [library, selectedId]
-  )
-
-  // Calculate end address
-  const endAddress = useMemo(() => {
-    if (!selectedModel) return startAddress
-    return startAddress + (selectedModel.channelCount * quantity) - 1
-  }, [selectedModel, startAddress, quantity])
-
-  // Check if address is valid
-  const isAddressValid = endAddress <= 512
-
-  // Group library by type for better UX
-  const groupedLibrary = useMemo(() => {
-    const groups: Record<string, LibraryItem[]> = {}
-    for (const item of library) {
-      const type = item.type || 'generic'
-      if (!groups[type]) groups[type] = []
-      groups[type].push(item)
+  // Auto-seleccionar el primero si hay librería
+  useEffect(() => {
+    if (library.length > 0 && !selectedModel) {
+      setSelectedModel(library[0].id)
     }
-    return groups
   }, [library])
 
-  // Handlers
-  const handleQuantityChange = (value: number) => {
-    setQuantity(Math.max(1, Math.min(32, value))) // Max 32 fixtures at once
-  }
-
-  const handleStartAddressChange = (value: number) => {
-    setUseAutoAddress(false)
-    setStartAddress(Math.max(1, Math.min(512, value)))
-  }
-
-  const handleModelChange = (id: string) => {
-    setSelectedId(id)
-    if (useAutoAddress) {
-      setStartAddress(nextAddress)
-    }
-  }
-
   const handleAdd = () => {
-    if (selectedModel && isAddressValid) {
-      onAdd(selectedId, quantity, startAddress)
-    }
+    if (!selectedModel) return
+    onAdd(selectedModel, quantity, address, config)
   }
 
-  // Reset to auto address
-  const handleResetAddress = () => {
-    setUseAutoAddress(true)
-    setStartAddress(nextAddress)
-  }
+  // Helper para mostrar info del modelo seleccionado
+  const getSelectedModelInfo = () => library.find(f => f.id === selectedModel)
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="add-fixture-modal" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content add-fixture-window" style={{ maxWidth: '600px' }}>
+        
         {/* HEADER */}
         <div className="modal-header">
-          <h2>➕ Add Fixtures</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <h3>➕ Add Fixtures</h3>
+          <button className="close-btn" onClick={onClose}><X /></button>
         </div>
 
-        {/* CONTENT */}
-        <div className="modal-content">
-          {library.length === 0 ? (
-            <div className="modal-empty">
-              <span className="empty-icon">📂</span>
-              <p>No fixtures found in library</p>
-              <p className="empty-hint">
-                Add .fxt files to the /librerias folder
-              </p>
+        {/* BODY */}
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* SELECCIÓN DE MODELO */}
+          <div className="form-group">
+            <label>Select Model</label>
+            <select 
+              className="cyber-select" 
+              value={selectedModel} 
+              onChange={(e) => setSelectedModel(e.target.value)}
+              style={{ width: '100%', padding: '12px', fontSize: '1rem' }}
+            >
+              {library.map(fix => (
+                <option key={fix.id} value={fix.id}>
+                  {fix.manufacturer} - {fix.name} ({fix.channelCount}ch)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* CANTIDAD Y DIRECCIÓN (Dos columnas) */}
+          <div className="form-row" style={{ display: 'flex', gap: '20px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Quantity</label>
+              <div className="number-control">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
+                <input 
+                  type="number" 
+                  value={quantity} 
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} 
+                />
+                <button onClick={() => setQuantity(quantity + 1)}>+</button>
+              </div>
             </div>
-          ) : (
-            <>
-              {/* MODEL SELECTOR */}
-              <div className="form-group">
-                <label>Model</label>
-                <select 
-                  className="model-select"
-                  value={selectedId}
-                  onChange={e => handleModelChange(e.target.value)}
-                >
-                  {Object.entries(groupedLibrary).map(([type, items]) => (
-                    <optgroup key={type} label={formatType(type)}>
-                      {items.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {getTypeIcon(item.type)} {item.name} ({item.channelCount}ch)
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
 
-              {/* SELECTED MODEL INFO */}
-              {selectedModel && (
-                <div className="model-info">
-                  <div className="model-info-row">
-                    <span className="model-icon">{getTypeIcon(selectedModel.type)}</span>
-                    <span className="model-name">{selectedModel.name}</span>
-                  </div>
-                  <div className="model-stats">
-                    <span className="stat">
-                      <strong>{selectedModel.channelCount}</strong> channels
-                    </span>
-                    <span className="stat">
-                      <strong>{formatType(selectedModel.type)}</strong>
-                    </span>
-                    {selectedModel.confidence && (
-                      <span className="stat confidence">
-                        {Math.round(selectedModel.confidence * 100)}% confidence
-                      </span>
-                    )}
-                  </div>
-                  <div className="model-features">
-                    {selectedModel.hasMovementChannels && (
-                      <span className="feature">🎯 Movement</span>
-                    )}
-                    {selectedModel.hasColorMixing && (
-                      <span className="feature">🌈 RGB</span>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Start Address <span className="badge-auto">Auto: {nextAddress}</span></label>
+              <input 
+                type="number" 
+                className="cyber-input" 
+                value={address} 
+                onChange={(e) => setAddress(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+            </div>
+          </div>
 
-              {/* QUANTITY */}
-              <div className="form-group">
-                <label>Quantity</label>
-                <div className="quantity-input">
-                  <button 
-                    className="qty-btn"
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                    disabled={quantity <= 1}
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={e => handleQuantityChange(parseInt(e.target.value) || 1)}
-                    min={1}
-                    max={32}
-                  />
-                  <button 
-                    className="qty-btn"
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                    disabled={quantity >= 32}
-                  >
-                    +
-                  </button>
-                </div>
-                <span className="form-hint">Batch patch multiple fixtures at once</span>
-              </div>
+          {/* --- CONFIGURACIÓN FÍSICA PRO --- */}
+          <div className="physics-section" style={{ 
+            background: 'rgba(0,0,0,0.3)', 
+            padding: '15px', 
+            borderRadius: '8px',
+            border: '1px solid #333'
+          }}>
+            <div className="section-title" style={{ color: '#00f3ff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Settings size={16} /> PHYSICAL INSTALLATION
+            </div>
 
-              {/* START ADDRESS */}
-              <div className="form-group">
-                <label>
-                  Start Address
-                  {useAutoAddress && <span className="auto-badge">AUTO</span>}
-                </label>
-                <div className="address-input">
-                  <input
-                    type="number"
-                    value={startAddress}
-                    onChange={e => handleStartAddressChange(parseInt(e.target.value) || 1)}
-                    min={1}
-                    max={512}
-                    className={!isAddressValid ? 'invalid' : ''}
-                  />
-                  {!useAutoAddress && (
-                    <button 
-                      className="reset-btn"
-                      onClick={handleResetAddress}
-                      title="Reset to auto"
-                    >
-                      ↻
-                    </button>
-                  )}
-                </div>
-                <span className="form-hint">
-                  Next available address: {nextAddress}
-                </span>
+            {/* ORIENTATION */}
+            <div className="form-group">
+              <label style={{ fontSize: '0.8rem', color: '#888' }}>Orientation</label>
+              <div className="orientation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '5px' }}>
+                <OrientationBtn 
+                  label="Ceiling (Down)" 
+                  active={config.orientation === 'ceiling'} 
+                  onClick={() => setConfig({...config, orientation: 'ceiling'})}
+                  icon={<ArrowDown size={14} />}
+                />
+                <OrientationBtn 
+                  label="Floor (Up)" 
+                  active={config.orientation === 'floor'} 
+                  onClick={() => setConfig({...config, orientation: 'floor'})}
+                  icon={<ArrowUp size={14} />}
+                />
+                <OrientationBtn 
+                  label="Truss (Front)" 
+                  active={config.orientation === 'truss_front'} 
+                  onClick={() => setConfig({...config, orientation: 'truss_front'})}
+                  icon={<Move size={14} />}
+                />
+                <OrientationBtn 
+                  label="Truss (Back)" 
+                  active={config.orientation === 'truss_back'} 
+                  onClick={() => setConfig({...config, orientation: 'truss_back'})}
+                  icon={<RefreshCw size={14} />}
+                />
               </div>
+            </div>
 
-              {/* ADDRESS PREVIEW */}
-              <div className={`address-preview ${!isAddressValid ? 'invalid' : ''}`}>
-                <div className="preview-label">DMX Range:</div>
-                <div className="preview-range">
-                  <span className="preview-start">{startAddress.toString().padStart(3, '0')}</span>
-                  <span className="preview-arrow">→</span>
-                  <span className="preview-end">{endAddress.toString().padStart(3, '0')}</span>
-                </div>
-                {!isAddressValid && (
-                  <div className="preview-error">
-                    ⚠️ Exceeds universe limit (512)
-                  </div>
-                )}
-                {quantity > 1 && selectedModel && (
-                  <div className="preview-breakdown">
-                    {quantity} × {selectedModel.channelCount}ch = {quantity * selectedModel.channelCount} channels
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+            {/* SWITCHES */}
+            <div className="switches-row" style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
+              <ToggleCheckbox 
+                label="Invert Pan" 
+                checked={config.invertPan} 
+                onChange={(v: boolean) => setConfig({...config, invertPan: v})} 
+              />
+              <ToggleCheckbox 
+                label="Invert Tilt" 
+                checked={config.invertTilt} 
+                onChange={(v: boolean) => setConfig({...config, invertTilt: v})} 
+              />
+              <ToggleCheckbox 
+                label="Swap X/Y" 
+                checked={config.swapXY} 
+                onChange={(v: boolean) => setConfig({...config, swapXY: v})} 
+              />
+            </div>
+          </div>
+
+          {/* INFO FOOTER */}
+          <div className="patch-summary" style={{ fontSize: '0.9rem', color: '#666', fontStyle: 'italic' }}>
+            Adding {quantity} {getSelectedModelInfo()?.name || 'fixtures'} starting at {address}. 
+            Range: {address} → {address + (quantity * (getSelectedModelInfo()?.channelCount || 0)) - 1}
+          </div>
+
         </div>
 
-        {/* FOOTER */}
+        {/* FOOTER ACTIONS */}
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>
-            Cancel
-          </button>
-          <button 
-            className="btn-add"
-            onClick={handleAdd}
-            disabled={!selectedModel || !isAddressValid || library.length === 0}
-          >
-            Add {quantity > 1 ? `${quantity} Fixtures` : 'Fixture'}
-          </button>
+          <button className="btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="btn-save" onClick={handleAdd}>Confirm Patch</button>
         </div>
+
       </div>
     </div>
   )
 }
+
+// Sub-componentes para UI limpia
+const OrientationBtn = ({ label, active, onClick, icon }: { label: string; active: boolean; onClick: () => void; icon: React.ReactNode }) => (
+  <button 
+    onClick={onClick}
+    style={{
+      background: active ? 'rgba(0, 243, 255, 0.1)' : '#111',
+      border: `1px solid ${active ? '#00f3ff' : '#444'}`,
+      color: active ? '#fff' : '#888',
+      padding: '8px',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+      fontSize: '0.85rem',
+      transition: 'all 0.2s'
+    }}
+  >
+    {icon} {label}
+  </button>
+)
+
+const ToggleCheckbox = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
+  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#ccc' }}>
+    <input 
+      type="checkbox" 
+      checked={checked} 
+      onChange={e => onChange((e.target as HTMLInputElement).checked)}
+      style={{ accentColor: '#bf00ff', width: '16px', height: '16px' }} 
+    />
+    {label}
+  </label>
+)
 
 export default AddFixtureModal

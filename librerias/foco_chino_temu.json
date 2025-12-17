@@ -1,0 +1,64 @@
+{
+  "id": "8b78c42d-60fa-4f0e-9772-6c872dadfad8",
+  "name": "Foco Chino Temu",
+  "manufacturer": "Chuan Li",
+  "type": "Moving Head",
+  "channels": [
+    {
+      "index": 1,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "type": "shutter",
+      "name": "Shutter",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "type": "strobe",
+      "name": "Strobe",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "type": "red",
+      "name": "Red",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "type": "green",
+      "name": "Green",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "type": "blue",
+      "name": "Blue",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "type": "white",
+      "name": "White",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "type": "amber",
+      "name": "Amber",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ]
+}

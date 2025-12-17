@@ -1,0 +1,107 @@
+/**
+ * 🔄 VIEW MODE SWITCHER STYLES - WAVE 30
+ */
+
+.view-mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(20, 20, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 2px;
+  backdrop-filter: blur(10px);
+}
+
+.view-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #888;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.view-mode-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(0, 255, 255, 0.2));
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+}
+
+.view-mode-btn.active .view-mode-icon {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.view-mode-icon {
+  font-size: 14px;
+}
+
+.view-mode-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.view-mode-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
+}
+
+/* COMPACT VERSION */
+.view-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+}
+
+.view-mode-toggle.mode-2d {
+  background: rgba(255, 170, 0, 0.15);
+  border-color: #ffaa00;
+  color: #ffaa00;
+}
+
+.view-mode-toggle.mode-2d:hover {
+  background: rgba(255, 170, 0, 0.25);
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+}
+
+.view-mode-toggle.mode-3d {
+  background: rgba(0, 255, 136, 0.15);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.view-mode-toggle.mode-3d:hover {
+  background: rgba(0, 255, 136, 0.25);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+}

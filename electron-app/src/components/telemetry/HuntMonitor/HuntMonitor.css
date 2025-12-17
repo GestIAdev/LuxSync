@@ -1,348 +1,163 @@
-/**
- * 🎯 HUNT MONITOR STYLES
- * WAVE 14: Stalking & Strike visualization
- */
+/* HuntMonitor.css - TACTICAL HUD EDITION */
 
-.hunt-monitor {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  border-radius: 12px;
-  padding: 14px;
+.hunt-panel-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 200px;
+  height: 100%;
+  background: rgba(10, 10, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
   overflow: hidden;
-  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  gap: 16px;
+  font-family: 'JetBrains Mono', monospace; /* Fuente Táctica */
 }
 
-.hunt-monitor.disconnected {
-  opacity: 0.6;
-}
+.hunt-panel-container.online { border-color: rgba(249, 115, 22, 0.3); }
+.hunt-panel-container.offline { opacity: 0.6; border-color: #333; }
 
-/* Scrollbar styling */
-.hunt-monitor::-webkit-scrollbar {
-  width: 4px;
-}
-
-.hunt-monitor::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.hunt-monitor::-webkit-scrollbar-thumb {
-  background: rgba(249, 115, 22, 0.3);
-  border-radius: 2px;
-}
-
-.hunt-monitor::-webkit-scrollbar-thumb:hover {
-  background: rgba(249, 115, 22, 0.5);
-}
-
-.hunt-monitor .panel-header {
+/* --- HEADER --- */
+.hunt-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 24px;
 }
 
-.hunt-monitor .panel-header h3 {
-  margin: 0;
-  font-size: 14px;
-  color: #f97316;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.hunt-status-badge {
-  font-size: 10px;
-  font-weight: 600;
+.status-indicator {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.3);
   padding: 4px 8px;
-  border-radius: 12px;
-  border: 1px solid;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Strike Score Section */
-.strike-score-section {
-  background: rgba(249, 115, 22, 0.1);
-  border-radius: 8px;
-  padding: 12px;
+.status-led {
+  width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: 0 0 5px currentColor;
+  animation: blink 2s infinite;
 }
 
-.score-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+.status-text {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 1px;
 }
 
-.score-label {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
+.target-lock {
+  display: flex; align-items: center; gap: 6px;
+  color: #fbbf24; font-size: 0.7rem;
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.3);
+}
+.lock-icon { font-size: 1rem; animation: rotate-lock 4s linear infinite; }
+
+/* --- STRIKE GAUGE --- */
+.strike-gauge-section {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: auto; margin-bottom: auto; /* Centrado vertical si sobra sitio */
 }
 
-.score-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #f97316;
-  font-family: 'JetBrains Mono', monospace;
+.gauge-labels {
+  display: flex; justify-content: space-between;
+  font-size: 0.65rem; color: #888; text-transform: uppercase;
 }
+.gauge-labels .value { color: #f97316; font-weight: 700; font-size: 0.8rem; }
 
-.score-bar {
-  height: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
+.gauge-track {
+  height: 14px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 2px;
   position: relative;
+  overflow: hidden;
 }
 
-.score-fill {
+.gauge-threshold {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: #fff; z-index: 2; opacity: 0.5;
+}
+
+.gauge-fill {
   height: 100%;
+  background: linear-gradient(90deg, #c2410c, #f97316);
+  width: 0%;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.2);
+}
+
+.gauge-fill.ready {
   background: linear-gradient(90deg, #f97316, #fbbf24);
-  border-radius: 6px;
-  transition: width 0.2s ease-out;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+  animation: pulse-ready 0.5s infinite alternate;
 }
 
-.score-fill.ready {
-  background: linear-gradient(90deg, #22c55e, #84cc16);
-  animation: pulse-ready 1s ease-in-out infinite;
+.gauge-ruler {
+  display: flex; justify-content: space-between;
+  font-size: 0.5rem; color: #444; padding: 0 2px;
 }
 
-@keyframes pulse-ready {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.score-threshold {
-  position: absolute;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.score-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
-}
-
-.conditions-count {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.ready-badge {
-  font-size: 10px;
-  color: #22c55e;
-  font-weight: 600;
-  animation: flash 0.5s ease-in-out infinite;
-}
-
-@keyframes flash {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Conditions Section */
-.conditions-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-title {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.conditions-grid {
+/* --- DIAGNOSTICS GRID --- */
+.diagnostics-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.condition-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  border-left: 2px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.2s ease;
-}
-
-.condition-item.met {
-  background: rgba(34, 197, 94, 0.15);
-  border-left-color: #22c55e;
-}
-
-.condition-icon {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.condition-item.met .condition-icon {
-  color: #22c55e;
-}
-
-.condition-name {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  flex: 1;
-}
-
-.condition-value {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.condition-item.met .condition-value {
-  color: #22c55e;
-}
-
-/* Target Section */
-.target-section {
-  background: rgba(168, 85, 247, 0.1);
-  border-radius: 8px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: repeat(3, 1fr); /* 3 columnas para compactar */
   gap: 8px;
 }
 
-.target-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.diag-item {
+  display: flex; align-items: center; gap: 6px;
+  opacity: 0.4; transition: opacity 0.2s;
+}
+.diag-item.met { opacity: 1; }
+
+.diag-box {
+  width: 6px; height: 6px; border: 1px solid #666;
+}
+.diag-item.met .diag-box {
+  background: #22c55e; border-color: #22c55e;
+  box-shadow: 0 0 5px #22c55e;
 }
 
-.target-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.diag-label { font-size: 0.6rem; color: #ccc; }
+
+/* --- CONTROLS --- */
+.tactical-controls {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 
-.target-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+.tac-btn {
+  background: transparent; border: 1px solid #444;
+  color: #888; border-radius: 4px;
+  padding: 6px 12px; font-size: 0.7rem; font-family: inherit;
+  cursor: pointer; transition: all 0.1s;
+  display: flex; align-items: center; gap: 6px;
 }
 
-.target-value {
-  font-size: 11px;
-  color: #a855f7;
-  font-family: 'JetBrains Mono', monospace;
+.tac-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+.tac-btn.mutate {
+  border-color: #a855f7; color: #a855f7; flex: 1; justify-content: center; font-weight: 700;
+}
+.tac-btn.mutate:hover {
+  background: rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
-/* ACTION TOOLBAR - WAVE 14.3: Controles Embebidos */
-/* ═══════════════════════════════════════════════════════════════════════════ */
+.tac-btn.reset:hover { color: #ef4444; border-color: #ef4444; }
 
-.action-toolbar {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  margin-top: auto;
-}
+.control-group-right { display: flex; gap: 8px; }
 
-.action-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* --- SETTINGS --- */
+.tactical-settings {
+  background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;
+  font-size: 0.65rem; color: #888;
+  display: flex; flex-direction: column; gap: 4px;
 }
+.setting-row { display: flex; justify-content: space-between; }
+.setting-row .val { color: #f97316; }
 
-.action-btn.mutate {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: rgba(168, 85, 247, 0.3);
-  color: #a855f7;
-}
-
-.action-btn.mutate:hover {
-  background: rgba(168, 85, 247, 0.25);
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
-}
-
-.action-btn.reset {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.action-btn.reset:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.action-btn.settings {
-  flex: 0 0 36px;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.action-btn.settings:hover,
-.action-btn.settings.active {
-  background: rgba(249, 115, 22, 0.15);
-  border-color: rgba(249, 115, 22, 0.3);
-  color: #f97316;
-}
-
-/* Inline Settings Panel */
-.inline-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background: rgba(249, 115, 22, 0.08);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  border-radius: 8px;
-  animation: slideDown 0.15s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.setting-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.setting-value {
-  font-size: 11px;
-  color: #f97316;
-  font-family: 'JetBrains Mono', monospace;
-}
+/* --- ANIMATIONS --- */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes rotate-lock { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulse-ready { from { opacity: 0.8; } to { opacity: 1; filter: brightness(1.2); } }

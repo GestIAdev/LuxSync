@@ -346,10 +346,11 @@ function initSelene() {
   // 📜 WAVE 25.7: THE CHRONICLER - Forward logs to renderer via dedicated channel
   selene.on('log', (logEntry) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('selene:log', logEntry)
+      // Standardize to 'lux:log' channel for frontend
+      mainWindow.webContents.send('lux:log', logEntry)
     }
   })
-  console.log('[Main] 📜 Log forwarding ENABLED (WAVE 25.7 - selene:log)')
+  console.log('[Main] 📜 Log forwarding ENABLED (WAVE 25.7 - lux:log)')
 
   // mark system as running
   globalThis.__lux_isSystemRunning = true

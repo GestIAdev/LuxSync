@@ -1,0 +1,156 @@
+{
+  "id": "f16b6b0a-843e-42a5-9fd9-d7d3cdea25e2",
+  "name": "Foco Temu",
+  "manufacturer": "trliri",
+  "type": "Moving Head",
+  "channelCount": 10,
+  "modes": [
+    {
+      "name": "Standard",
+      "channels": [
+        {
+          "index": 1,
+          "type": "dimmer",
+          "name": "Dimmer",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 2,
+          "type": "dimmer",
+          "name": "Dimmer",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 3,
+          "type": "dimmer",
+          "name": "Dimmer",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 4,
+          "type": "red",
+          "name": "Red",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 5,
+          "type": "color_wheel",
+          "name": "Color Wheel",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 6,
+          "type": "uv",
+          "name": "UV",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 7,
+          "type": "amber",
+          "name": "Amber",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 8,
+          "type": "blue",
+          "name": "Blue",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 9,
+          "type": "gobo",
+          "name": "Gobo",
+          "defaultValue": 0,
+          "is16bit": false
+        },
+        {
+          "index": 10,
+          "type": "tilt_fine",
+          "name": "Tilt Fine",
+          "defaultValue": 0,
+          "is16bit": false
+        }
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "index": 1,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "type": "red",
+      "name": "Red",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "type": "color_wheel",
+      "name": "Color Wheel",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "type": "uv",
+      "name": "UV",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "type": "amber",
+      "name": "Amber",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "type": "blue",
+      "name": "Blue",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "type": "gobo",
+      "name": "Gobo",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 10,
+      "type": "tilt_fine",
+      "name": "Tilt Fine",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ]
+}

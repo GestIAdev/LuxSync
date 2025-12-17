@@ -274,11 +274,18 @@ const luxApi = {
   
   /** � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
    * Logs llegan por canal separado para no interferir con el broadcast de 30fps
+   * Standard channel: 'lux:log' (legacy 'selene:log' is supported for compatibility)
    */
   onLog: (callback: (logEntry: any) => void) => {
     const handler = (_: Electron.IpcRendererEvent, logEntry: any) => callback(logEntry)
+    // Prefer the standardized 'lux:log' channel
+    ipcRenderer.on('lux:log', handler)
+    // Also subscribe to legacy 'selene:log' for older main process versions
     ipcRenderer.on('selene:log', handler)
-    return () => ipcRenderer.removeListener('selene:log', handler)
+    return () => {
+      ipcRenderer.removeListener('lux:log', handler)
+      ipcRenderer.removeListener('selene:log', handler)
+    }
   },
   
   /** �📡 WAVE-14: Establecer Input Gain */

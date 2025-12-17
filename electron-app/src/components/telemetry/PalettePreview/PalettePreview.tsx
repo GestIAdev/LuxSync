@@ -1,218 +1,150 @@
-/**
- * 🎨 PALETTE PREVIEW
- * WAVE 14: Real-time color palette visualization
- * WAVE 17.4: SeleneColorEngine debug info integration
- * WAVE 17.5: UI STABILIZATION - Anti-flicker defensive rendering
- * 🧠 WAVE 25.6: Migrado a truthStore
- * 
- * Shows:
- * - Current palette colors (primary, secondary, accent, ambient, contrast)
- * - Color derivation info (key→hue, mode shift, zodiac pull)
- * - Palette source (memory/procedural/fallback)
- * - SeleneColorEngine metadata (macroGenre, temperature, description)
- */
-
-import React, { useMemo } from 'react'
-import { useTruthPalette, useTruthConnected, useTruthMusicalDNA } from '../../../hooks'
+import React from 'react'
+import { useTruthPalette, useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
 import './PalettePreview.css'
 
 const PalettePreview: React.FC = () => {
-  // 🧠 WAVE 25.6: Use truthStore
   const palette = useTruthPalette()
+  const dna = useTruthMusicalDNA()
+  const cognitive = useTruthCognitive()
   const connected = useTruthConnected()
-  const musicalDNA = useTruthMusicalDNA()
-  
-  // Build data from truth
-  const data = {
-    strategy: 'analogous',
-    source: 'procedural',
-    colors: {
-      primary: palette?.primary ?? { h: 280, s: 70, l: 50, hex: '#a855f7' },
-      secondary: palette?.secondary ?? { h: 200, s: 70, l: 50, hex: '#0ea5e9' },
-      accent: palette?.accent ?? { h: 40, s: 80, l: 60, hex: '#f59e0b' },
-      ambient: palette?.ambient ?? { h: 280, s: 40, l: 30, hex: '#6b21a8' },
-      contrast: palette?.contrast ?? { h: 100, s: 60, l: 50, hex: '#84cc16' },
-    },
-    dnaDerivation: {
-      keyToHue: { key: musicalDNA?.key ?? null, hue: 280 },
-      modeShift: { mode: 'major', delta: 0 },
-      zodiacPull: { element: 'earth', delta: 0 },
-      finalHue: palette?.primary?.h ?? 280,
-    },
-    macroGenre: String(musicalDNA?.genre?.primary ?? 'UNKNOWN'),
-    temperature: 'neutral',
-    description: 'Live palette from truthStore',
-  }
 
-  // WAVE 17.5: STABILIZED VALUES - Evita undefined/null que colapsan el layout
-  const stableDebugInfo = useMemo(() => ({
-    macroGenre: data.macroGenre || 'ANALYZING',
-    temperature: data.temperature || 'neutral',
-    description: data.description || 'Waiting for audio analysis...',
-    debugKey: musicalDNA?.key ?? null,
-    debugMode: 'major',
-  }), [data.macroGenre, data.temperature, data.description, musicalDNA?.key])
-  
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'memory': return '🧠'
-      case 'procedural': return '🔧'
-      case 'fallback': return '⚠️'
-      default: return '❓'
-    }
+  const currentPalette = {
+    primary: palette?.primary?.hex || '#ff0055',
+    secondary: palette?.secondary?.hex || '#ff5500',
+    accent: palette?.accent?.hex || '#00f3ff',
+    ambient: palette?.ambient?.hex || '#220033',
+    contrast: palette?.contrast?.hex || '#ffffff'
   }
+  
+  const primaryH = palette?.primary?.h ? Math.round(palette.primary.h) : 345
+  const primaryS = palette?.primary?.s ? Math.round(palette.primary.s) : 80
+  const primaryL = palette?.primary?.l ? Math.round(palette.primary.l) : 50
 
-  const getTemperatureIcon = (temp: string) => {
-    switch (temp) {
-      case 'warm': return '🔥'
-      case 'cool': return '❄️'
-      default: return '⚖️'
-    }
+  const strategy = palette?.strategy || 'analogous'
+  const origin = palette?.source || 'procedural'
+  
+  const derivation = {
+    key: dna?.key || '---',
+    mood: cognitive?.mood || 'Neutral',
+    finalHue: primaryH
   }
 
   return (
-    <div className={`telemetry-panel palette-preview ${connected ? 'connected' : 'disconnected'}`}>
-      <div className="panel-header">
-        <h3>🎨 PALETTE</h3>
-        <span className="palette-source">
-          {getSourceIcon(data.source)} {data.source}
-        </span>
-      </div>
+    <div className={`palette-panel-container ${connected ? 'online' : 'offline'}`}>
       
-      {/* Color Swatches */}
-      <div className="color-swatches">
-        <div 
-          className="color-swatch primary"
-          style={{ backgroundColor: data.colors.primary.hex }}
-          title={`Primary: ${data.colors.primary.hex}`}
-        >
-          <span className="swatch-label">P</span>
+      {/* HEADER */}
+      <div className="palette-header">
+        <div className="palette-title">
+          <span className="icon">🎨</span>
+          <span>CHROMATIC CORE</span>
         </div>
-        <div 
-          className="color-swatch secondary"
-          style={{ backgroundColor: data.colors.secondary.hex }}
-          title={`Secondary: ${data.colors.secondary.hex}`}
-        >
-          <span className="swatch-label">S</span>
+        <div className={`origin-badge ${origin}`}>
+          <span className="origin-dot" />
+          {origin.toUpperCase()}
         </div>
-        <div 
-          className="color-swatch accent"
-          style={{ backgroundColor: data.colors.accent.hex }}
-          title={`Accent: ${data.colors.accent.hex}`}
-        >
-          <span className="swatch-label">A</span>
-        </div>
-        <div 
-          className="color-swatch ambient"
-          style={{ backgroundColor: data.colors.ambient.hex }}
-          title={`Ambient: ${data.colors.ambient.hex}`}
-        >
-          <span className="swatch-label">Am</span>
-        </div>
-        <div 
-          className="color-swatch contrast"
-          style={{ backgroundColor: data.colors.contrast.hex }}
-          title={`Contrast: ${data.colors.contrast.hex}`}
-        >
-          <span className="swatch-label">C</span>
-        </div>
-      </div>
-      
-      {/* Primary Color Details */}
-      <div className="primary-details">
-        <span className="detail-label">Primary</span>
-        <div className="hsl-values">
-          <span className="hsl-value">
-            H: <strong>{Math.round(data.colors.primary.h)}°</strong>
-          </span>
-          <span className="hsl-value">
-            S: <strong>{Math.round(data.colors.primary.s)}%</strong>
-          </span>
-          <span className="hsl-value">
-            L: <strong>{Math.round(data.colors.primary.l)}%</strong>
-          </span>
-        </div>
-        <span className="hex-value">{data.colors.primary.hex}</span>
-      </div>
-      
-      {/* DNA Derivation */}
-      <div className="derivation-section">
-        <span className="section-title">DNA Derivation</span>
-        <div className="derivation-flow">
-          <div className="derivation-step">
-            <span className="step-label">Key</span>
-            <span className="step-value">
-              {data.dnaDerivation.keyToHue.key || '—'} → {data.dnaDerivation.keyToHue.hue}°
-            </span>
-          </div>
-          <span className="flow-arrow">→</span>
-          <div className="derivation-step">
-            <span className="step-label">Mode</span>
-            <span className="step-value">
-              {data.dnaDerivation.modeShift.delta >= 0 ? '+' : ''}{data.dnaDerivation.modeShift.delta}°
-            </span>
-          </div>
-          <span className="flow-arrow">→</span>
-          <div className="derivation-step">
-            <span className="step-label">Final</span>
-            <span className="step-value highlight">
-              {data.dnaDerivation.finalHue}°
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Strategy */}
-      <div className="strategy-badge">
-        <span className="strategy-label">Strategy:</span>
-        <span className="strategy-value">{data.strategy}</span>
       </div>
 
-      {/* WAVE 17.4/17.5: SeleneColorEngine Debug Info - ALWAYS RENDERED (Anti-Flicker) */}
-      <div className="selene-engine-section">
-        <span className="section-title">🌙 Selene Engine</span>
-        
-        {/* Macro Genre Badge - ALWAYS visible con placeholder */}
-        <div className="macro-genre-badge">
-          <span className="genre-icon">🎵</span>
-          <span className={`genre-value ${stableDebugInfo.macroGenre === 'ANALYZING' ? 'genre-placeholder' : ''}`}>
-            {stableDebugInfo.macroGenre.replace(/_/g, ' ')}
-          </span>
+      {/* STRATEGY */}
+      <div className="strategy-display">
+        <div className="strategy-info">
+          <div className="strategy-label">COLOR STRATEGY</div>
+          <div className="strategy-value">{strategy.toUpperCase()}</div>
         </div>
-        
-        {/* Temperature Indicator - ALWAYS visible con neutral por defecto */}
-        <div className="temperature-indicator">
-          <span className="temp-icon">
-            {getTemperatureIcon(stableDebugInfo.temperature)}
-          </span>
-          <span className={`temp-value ${stableDebugInfo.temperature === 'neutral' ? 'temp-placeholder' : ''}`}>
-            {stableDebugInfo.temperature.toUpperCase()}
-          </span>
-        </div>
-        
-        {/* Key/Mode Debug Info - Renderiza espacio incluso si está vacío */}
-        <div className="key-mode-info">
-          {stableDebugInfo.debugKey ? (
-            <span className="debug-key">🎹 {stableDebugInfo.debugKey}</span>
-          ) : (
-            <span className="debug-key debug-placeholder">🎹 —</span>
-          )}
-          {stableDebugInfo.debugMode ? (
-            <span className="debug-mode">{stableDebugInfo.debugMode}</span>
-          ) : (
-            <span className="debug-mode debug-placeholder">—</span>
-          )}
-        </div>
-        
-        {/* Description Tooltip - ALWAYS visible */}
-        <div className="description-tooltip">
-          <span className={`description-text ${stableDebugInfo.description === 'Waiting for audio analysis...' ? 'description-placeholder' : ''}`}>
-            {stableDebugInfo.description}
-          </span>
+        <div className="strategy-graph">
+          <div className="color-wheel-mini" style={{borderColor: `${currentPalette.primary}40`}}>
+            <div className="spoke primary" style={{background: currentPalette.primary, transform: 'rotate(0deg)'}} />
+            <div className="spoke secondary" style={{background: currentPalette.secondary, transform: 'rotate(30deg)'}} />
+            <div className="spoke accent" style={{background: currentPalette.accent, transform: 'rotate(180deg)'}} />
+          </div>
         </div>
       </div>
+
+      {/* MAIN REACTOR (SWATCHES + DATA INTEGRATED) */}
+      <div className="swatch-rack">
+        
+        {/* 1. PRIMARY FUEL ROD */}
+        <SwatchSlot role="PRI" color={currentPalette.primary} label="PRIMARY" large />
+        
+        {/* 2. TECHNICAL READOUT (MOVED HERE TO FILL GAP) */}
+        <div className="tech-readout integrated">
+          <div className="readout-col main">
+            <span className="label">HEX CODE</span>
+            <span className="value hex" style={{color: currentPalette.primary}}>
+              {currentPalette.primary.toUpperCase()}
+            </span>
+          </div>
+          <div className="readout-divider" />
+          <div className="readout-col">
+            <span className="label">HUE</span>
+            <span className="value">{primaryH}°</span>
+          </div>
+          <div className="readout-col">
+            <span className="label">SAT</span>
+            <span className="value">{primaryS}%</span>
+          </div>
+          <div className="readout-col">
+            <span className="label">LUM</span>
+            <span className="value">{primaryL}%</span>
+          </div>
+        </div>
+
+        {/* 3. SECONDARY RODS */}
+        <div className="sub-swatches">
+          <div className="sub-row">
+            <SwatchSlot role="SEC" color={currentPalette.secondary} label="SECONDARY" />
+            <SwatchSlot role="ACC" color={currentPalette.accent} label="ACCENT" />
+          </div>
+          <div className="sub-row">
+            <SwatchSlot role="AMB" color={currentPalette.ambient} label="AMBIENT" />
+            <SwatchSlot role="CON" color={currentPalette.contrast} label="CONTRAST" />
+          </div>
+        </div>
+      </div>
+
+      {/* DERIVATION LOGIC */}
+      <div className="derivation-logic">
+        <div className="logic-header">DERIVATION PATH</div>
+        <div className="logic-chain">
+          <div className="chain-node">
+            <span className="node-label">KEY</span>
+            <span className="node-val">{derivation.key.replace(/Major|Minor/, '').trim()}</span>
+          </div>
+          <div className="chain-operator">+</div>
+          <div className="chain-node">
+            <span className="node-label">MOOD</span>
+            <span className="node-val mood">{derivation.mood}</span>
+          </div>
+          <div className="chain-arrow">→</div>
+          <div className="chain-node final">
+            <span className="node-label">HUE</span>
+            <span className="node-val" style={{color: currentPalette.primary}}>
+              {derivation.finalHue}°
+            </span>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }
+
+interface SwatchProps { role: string, color: string, label: string, large?: boolean }
+
+const SwatchSlot: React.FC<SwatchProps> = ({ role, color, label, large }) => (
+  <div className={`swatch-slot ${large ? 'large' : ''}`}>
+    <div 
+      className="swatch-color" 
+      style={{ 
+        background: color, 
+        boxShadow: `0 0 15px ${color}60`
+      }}
+    >
+      <span className="role-tag">{role}</span>
+    </div>
+    <div className="swatch-meta">
+      <span className="swatch-label">{label}</span>
+    </div>
+  </div>
+)
 
 export default PalettePreview

@@ -2,6 +2,7 @@
  * 🗃️ STORES INDEX - Export all stores
  * WAVE 9: Commander Layout State Management
  * WAVE 25: Universal Truth Protocol
+ * WAVE 30: Control Store - Stage Command & Dashboard
  */
 
 // Legacy store (mantener compatibilidad)
@@ -24,10 +25,13 @@ export * from './seleneStore'
 export * from './audioStore'
 export * from './dmxStore'
 
-// �️ WAVE 26: Setup Command Center
+// 🗃️ WAVE 26: Setup Command Center
 export * from './setupStore'
 
-// �🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
+// 🎮 WAVE 30: Control Store - Stage Command & Dashboard
+export * from './controlStore'
+
+// 🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
 export { 
   useTruthStore,
   selectAudio,
@@ -48,3 +52,4 @@ export {
   selectBrainStatus,
   debugTruth,
 } from './truthStore'
+

@@ -9,7 +9,7 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../stores/truthStore';
+import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../stores/truthStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

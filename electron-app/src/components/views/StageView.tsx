@@ -1,5 +1,11 @@
 /**
- * 🎭 StageSimulator2 View Wrapper
- * WAVE 25: Simple export for ContentArea lazy loading
+ * 🎭 STAGE VIEW - WAVE 32: Hybrid 2D/3D Stage Command
+ * Now exports StageViewDual with interactive controls and sidebar
+ * 
+ * This is the main stage visualization with:
+ * - 2D/3D view switching
+ * - Interactive fixture selection
+ * - Contextual sidebar with Inspector/Global controls
+ * - Scene management (REC/PLAY)
  */
-export { StageSimulator2 as default } from './SimulateView/StageSimulator2'
+export { StageViewDual as default } from './StageViewDual/StageViewDual'

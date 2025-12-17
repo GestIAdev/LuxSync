@@ -1,21 +1,23 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💡 FIXTURE 3D - WAVE 30.1: Stage Command & Dashboard
- * Componente genérico de fixture 3D con efectos de luz e interactividad
+ * 💡 FIXTURE 3D - WAVE 33.1: Visual Polish & Moving Head Geometry
+ * Componente genérico de fixture 3D con efectos de luz realistas
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Este componente renderiza cualquier tipo de fixture:
- * - Modelo 3D básico del cuerpo
- * - PointLight para iluminación de escena
- * - Sprite con glow para efecto visual
- * - Cono de luz volumétrico (para moving heads)
- * - Selection Ring (cuando está seleccionado)
- * - Hover Ring (feedback visual de cursor)
+ * WAVE 33.1 MEJORAS:
+ * ✅ Circular Glow Sprites con alphaMap radial (fix square halos)
+ * ✅ Moving Head = Base + Yoke (PAN) + Head (TILT)
+ * ✅ Haz de luz nace del centro del Head
+ * ✅ SpotLight con sombras correctas
  * 
- * WAVE 30.1: Integración con selectionStore
+ * Features:
+ * - Modelo 3D realista de cabeza móvil
+ * - Glow suave con degradado radial
+ * - Cono volumétrico desde el Head
+ * - Selection/Hover Rings interactivos
  * 
  * @module components/stage3d/fixtures/Fixture3D
- * @version 30.1.0
+ * @version 33.1.0
  */
 
 import React, { useRef, useMemo, useState, useCallback } from 'react'
@@ -64,18 +66,52 @@ const FIXTURE_SCALE: Record<string, number> = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GLOW SPRITE MATERIAL
+// GLOW TEXTURE GENERATOR - Radial gradient for soft circular halos
 // ═══════════════════════════════════════════════════════════════════════════
 
-const createGlowMaterial = (color: THREE.Color, opacity: number) => {
-  return new THREE.SpriteMaterial({
-    map: null, // Usaremos color sólido con blending
-    color: color,
-    transparent: true,
-    opacity: opacity,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  })
+const GLOW_TEXTURE_SIZE = 128
+
+/** Cache de textura para no recrearla cada render */
+let cachedGlowTexture: THREE.Texture | null = null
+
+/**
+ * Crea una textura circular con degradado radial suave
+ * para eliminar los "square halos" y lograr luces difusas realistas
+ */
+const createRadialGlowTexture = (): THREE.Texture => {
+  if (cachedGlowTexture) return cachedGlowTexture
+  
+  const canvas = document.createElement('canvas')
+  canvas.width = GLOW_TEXTURE_SIZE
+  canvas.height = GLOW_TEXTURE_SIZE
+  const ctx = canvas.getContext('2d')!
+  
+  const centerX = GLOW_TEXTURE_SIZE / 2
+  const centerY = GLOW_TEXTURE_SIZE / 2
+  const radius = GLOW_TEXTURE_SIZE / 2
+  
+  // Crear degradado radial: blanco centro → transparente borde
+  const gradient = ctx.createRadialGradient(
+    centerX, centerY, 0,           // Centro
+    centerX, centerY, radius       // Borde
+  )
+  
+  // Curva suave de falloff
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  gradient.addColorStop(0.15, 'rgba(255, 255, 255, 0.9)')
+  gradient.addColorStop(0.35, 'rgba(255, 255, 255, 0.5)')
+  gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.2)')
+  gradient.addColorStop(0.85, 'rgba(255, 255, 255, 0.05)')
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+  
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, GLOW_TEXTURE_SIZE, GLOW_TEXTURE_SIZE)
+  
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+  cachedGlowTexture = texture
+  
+  return texture
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,8 +134,14 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   onPointerOut,
   allFixtureIds = [],
 }) => {
+  // ═════════════════════════════════════════════════════════════════════════
+  // REFS - Moving Head Hierarchy: Base → Yoke (PAN) → Head (TILT)
+  // ═════════════════════════════════════════════════════════════════════════
   const groupRef = useRef<THREE.Group>(null)
+  const yokeRef = useRef<THREE.Group>(null)      // Rota en Y (PAN)
+  const headRef = useRef<THREE.Group>(null)      // Rota en X (TILT)
   const lightRef = useRef<THREE.PointLight>(null)
+  const spotLightRef = useRef<THREE.SpotLight>(null)
   const coneRef = useRef<THREE.Mesh>(null)
   const selectionRingRef = useRef<THREE.Mesh>(null)
   
@@ -109,21 +151,29 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   // Selection store actions
   const { select, toggleSelection, selectRange, lastSelectedId, setHovered } = useSelectionStore()
   
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🎨 Computed Values
+  // ─────────────────────────────────────────────────────────────────────────
+  
   // Calcular color Three.js
   const threeColor = useMemo(() => {
     return new THREE.Color(color.r / 255, color.g / 255, color.b / 255)
   }, [color.r, color.g, color.b])
   
-  // Calcular rotación del beam para moving heads
+  // Glow texture radial (circular, soft falloff)
+  const glowTexture = useMemo(() => createRadialGlowTexture(), [])
+  
+  // PAN angle (Yoke rotation around Y axis) - ±72°
+  const panAngle = useMemo(() => (pan - 0.5) * Math.PI * 0.8, [pan])
+  
+  // TILT angle (Head rotation around X axis) - ±45°
+  const tiltAngle = useMemo(() => (tilt - 0.5) * Math.PI * 0.5, [tilt])
+  
+  // Calcular rotación del beam para fixtures simples (no moving heads)
   const beamRotation = useMemo(() => {
     if (type !== 'moving') return rotation
-    
-    // Convertir pan/tilt (0-1) a ángulos de rotación
-    const panAngle = (pan - 0.5) * Math.PI * 0.8  // ±72°
-    const tiltAngle = rotation[0] + (tilt - 0.5) * Math.PI * 0.5  // ±45° adicional
-    
-    return [tiltAngle, panAngle, 0] as [number, number, number]
-  }, [type, pan, tilt, rotation])
+    return rotation // Moving heads usan la jerarquía Base/Yoke/Head
+  }, [type, rotation])
   
   // Scale del fixture según tipo
   const scale = FIXTURE_SCALE[type] || 0.4
@@ -172,20 +222,46 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   }, [setHovered, onPointerOut])
   
   // ═════════════════════════════════════════════════════════════════════════
-  // ANIMATIONS
+  // ANIMATIONS & PAN/TILT UPDATES
   // ═════════════════════════════════════════════════════════════════════════
   
-  // Animación para efectos
   useFrame((state) => {
+    // ─────────────────────────────────────────────────────────────────────
+    // Moving Head: Aplicar PAN al Yoke, TILT al Head
+    // ─────────────────────────────────────────────────────────────────────
+    if (type === 'moving') {
+      // Yoke rota en Y (PAN) - suavizado
+      if (yokeRef.current) {
+        yokeRef.current.rotation.y = THREE.MathUtils.lerp(
+          yokeRef.current.rotation.y,
+          panAngle,
+          0.15
+        )
+      }
+      
+      // Head rota en X (TILT) - suavizado
+      if (headRef.current) {
+        headRef.current.rotation.x = THREE.MathUtils.lerp(
+          headRef.current.rotation.x,
+          tiltAngle,
+          0.15
+        )
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // Strobe Flash Effect
+    // ─────────────────────────────────────────────────────────────────────
     if (type === 'strobe' && intensity > 0.8) {
-      // Parpadeo de strobe
       const flash = Math.sin(state.clock.elapsedTime * 30) > 0
       if (lightRef.current) {
         lightRef.current.intensity = flash ? intensity * 5 : 0
       }
     }
     
-    // Animación del selection ring (pulso)
+    // ─────────────────────────────────────────────────────────────────────
+    // Selection Ring Pulse Animation
+    // ─────────────────────────────────────────────────────────────────────
     if (selectionRingRef.current && selected) {
       const pulse = 0.8 + Math.sin(state.clock.elapsedTime * 4) * 0.2
       selectionRingRef.current.scale.setScalar(pulse)
@@ -198,23 +274,143 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   // Determinar estado visual
   const showHover = localHover || hovered
   
-  return (
-    <group
-      ref={groupRef}
-      position={position}
-      onClick={handleClick}
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
-    >
-      {/* CUERPO DEL FIXTURE */}
+  // ═════════════════════════════════════════════════════════════════════════
+  // RENDER HELPER: Moving Head (Base + Yoke + Head)
+  // ═════════════════════════════════════════════════════════════════════════
+  const renderMovingHead = () => (
+    <>
+      {/* ═══════════════════════════════════════════════════════════════════
+          BASE - Estática, anclada al truss/suelo
+          ═══════════════════════════════════════════════════════════════════ */}
+      <mesh castShadow position={[0, scale * 0.3, 0]}>
+        <cylinderGeometry args={[scale * 0.4, scale * 0.5, scale * 0.4, 16]} />
+        <meshStandardMaterial
+          color={selected ? '#444466' : '#1a1a2e'}
+          metalness={0.8}
+          roughness={0.2}
+        />
+      </mesh>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+          YOKE - Rota en PAN (eje Y)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <group ref={yokeRef}>
+        {/* Brazos laterales del yoke */}
+        <mesh position={[-scale * 0.35, 0, 0]} castShadow>
+          <boxGeometry args={[scale * 0.08, scale * 0.6, scale * 0.08]} />
+          <meshStandardMaterial
+            color={selected ? '#555577' : '#252538'}
+            metalness={0.7}
+            roughness={0.3}
+          />
+        </mesh>
+        <mesh position={[scale * 0.35, 0, 0]} castShadow>
+          <boxGeometry args={[scale * 0.08, scale * 0.6, scale * 0.08]} />
+          <meshStandardMaterial
+            color={selected ? '#555577' : '#252538'}
+            metalness={0.7}
+            roughness={0.3}
+          />
+        </mesh>
+        
+        {/* ═════════════════════════════════════════════════════════════════
+            HEAD - Rota en TILT (eje X), emite luz
+            ═════════════════════════════════════════════════════════════════ */}
+        <group ref={headRef} position={[0, -scale * 0.1, 0]}>
+          {/* Cuerpo del Head (capsule) */}
+          <mesh castShadow>
+            <capsuleGeometry args={[scale * 0.25, scale * 0.35, 8, 16]} />
+            <meshStandardMaterial
+              color={selected ? '#ffffff' : '#2d2d44'}
+              metalness={0.7}
+              roughness={0.3}
+              emissive={threeColor}
+              emissiveIntensity={isActive ? 0.2 : 0}
+            />
+          </mesh>
+          
+          {/* Lente / Apertura del Head */}
+          <mesh position={[0, -scale * 0.35, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[scale * 0.22, 24]} />
+            <meshBasicMaterial
+              color={threeColor}
+              transparent
+              opacity={intensity * 0.8 + 0.2}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          
+          {/* ═══════════════════════════════════════════════════════════════
+              LIGHT EFFECTS - Nacen del centro del Head
+              ═══════════════════════════════════════════════════════════════ */}
+          
+          {/* SpotLight - Luz dirigida real */}
+          {isActive && (
+            <spotLight
+              ref={spotLightRef}
+              position={[0, -scale * 0.4, 0]}
+              color={threeColor}
+              intensity={intensity * 8}
+              distance={20}
+              angle={0.5 + intensity * 0.3}
+              penumbra={0.5}
+              decay={1.5}
+              castShadow
+              shadow-mapSize-width={512}
+              shadow-mapSize-height={512}
+              // Apunta hacia abajo (relativo al head)
+              target-position={[0, -10, 0]}
+            />
+          )}
+          
+          {/* GLOW SPRITE - Circular suave (NO cuadrado) */}
+          {isActive && (
+            <sprite
+              position={[0, -scale * 0.45, 0]}
+              scale={[intensity * 2.5 + 0.8, intensity * 2.5 + 0.8, 1]}
+            >
+              <spriteMaterial
+                map={glowTexture}
+                color={threeColor}
+                transparent
+                opacity={intensity * 0.7}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </sprite>
+          )}
+          
+          {/* CONO DE LUZ VOLUMÉTRICO */}
+          {isActive && intensity > 0.1 && (
+            <mesh
+              ref={coneRef}
+              position={[0, -4 - intensity * 2, 0]}
+              rotation={[Math.PI, 0, 0]}
+            >
+              <coneGeometry args={[2 + intensity * 1.5, 8 + intensity * 4, 24, 1, true]} />
+              <meshBasicMaterial
+                color={threeColor}
+                transparent
+                opacity={intensity * 0.12}
+                side={THREE.DoubleSide}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </mesh>
+          )}
+        </group>
+      </group>
+    </>
+  )
+  
+  // ═════════════════════════════════════════════════════════════════════════
+  // RENDER HELPER: PAR Can (simple)
+  // ═════════════════════════════════════════════════════════════════════════
+  const renderParCan = () => (
+    <>
+      {/* Cuerpo del PAR */}
       <mesh castShadow>
-        {type === 'moving' ? (
-          <capsuleGeometry args={[scale * 0.5, scale, 8, 16]} />
-        ) : type === 'strobe' ? (
-          <boxGeometry args={[scale * 2, scale * 0.5, scale]} />
-        ) : (
-          <cylinderGeometry args={[scale * 0.3, scale * 0.5, scale, 16]} />
-        )}
+        <cylinderGeometry args={[scale * 0.3, scale * 0.5, scale, 16]} />
         <meshStandardMaterial
           color={selected ? '#ffffff' : '#2d2d44'}
           metalness={0.7}
@@ -224,40 +420,37 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
         />
       </mesh>
       
-      {/* LENTE / APERTURA */}
-      <mesh
-        position={[0, -scale * 0.4, 0]}
-        rotation={beamRotation}
-      >
-        <circleGeometry args={[scale * 0.35, 16]} />
+      {/* Lente */}
+      <mesh position={[0, -scale * 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[scale * 0.45, 24]} />
         <meshBasicMaterial
           color={threeColor}
           transparent
-          opacity={intensity}
+          opacity={intensity * 0.8 + 0.2}
           side={THREE.DoubleSide}
         />
       </mesh>
       
-      {/* POINT LIGHT - Iluminación de escena */}
+      {/* PointLight */}
       {isActive && (
         <pointLight
           ref={lightRef}
           position={[0, -scale * 0.5, 0]}
           color={threeColor}
-          intensity={intensity * 2}
-          distance={type === 'moving' ? 15 : 10}
+          intensity={intensity * 3}
+          distance={10}
           decay={2}
-          castShadow={type === 'moving'}
         />
       )}
       
-      {/* GLOW SPRITE */}
+      {/* GLOW SPRITE - Circular */}
       {isActive && (
         <sprite
-          position={[0, -scale * 0.3, 0]}
-          scale={[intensity * 2 + 0.5, intensity * 2 + 0.5, 1]}
+          position={[0, -scale * 0.4, 0]}
+          scale={[intensity * 2 + 0.6, intensity * 2 + 0.6, 1]}
         >
           <spriteMaterial
+            map={glowTexture}
             color={threeColor}
             transparent
             opacity={intensity * 0.6}
@@ -266,34 +459,77 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
           />
         </sprite>
       )}
+    </>
+  )
+  
+  // ═════════════════════════════════════════════════════════════════════════
+  // RENDER HELPER: Strobe
+  // ═════════════════════════════════════════════════════════════════════════
+  const renderStrobe = () => (
+    <>
+      <mesh castShadow>
+        <boxGeometry args={[scale * 2, scale * 0.5, scale]} />
+        <meshStandardMaterial
+          color={selected ? '#ffffff' : '#2d2d44'}
+          metalness={0.7}
+          roughness={0.3}
+          emissive={threeColor}
+          emissiveIntensity={isActive ? 0.3 : 0}
+        />
+      </mesh>
       
-      {/* CONO DE LUZ VOLUMÉTRICO (solo moving heads activos) */}
-      {type === 'moving' && isActive && intensity > 0.1 && (
-        <mesh
-          ref={coneRef}
-          position={[0, -scale * 0.5, 0]}
-          rotation={beamRotation}
+      {isActive && (
+        <pointLight
+          ref={lightRef}
+          position={[0, -scale * 0.3, 0]}
+          color={threeColor}
+          intensity={intensity * 5}
+          distance={12}
+          decay={2}
+        />
+      )}
+      
+      {isActive && (
+        <sprite
+          position={[0, -scale * 0.25, 0]}
+          scale={[intensity * 3 + 1, intensity * 1.5 + 0.5, 1]}
         >
-          <coneGeometry args={[2 + intensity, 8, 16, 1, true]} />
-          <meshBasicMaterial
+          <spriteMaterial
+            map={glowTexture}
             color={threeColor}
             transparent
-            opacity={intensity * 0.15}
-            side={THREE.DoubleSide}
+            opacity={intensity * 0.8}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
-        </mesh>
+        </sprite>
       )}
+    </>
+  )
+  
+  return (
+    <group
+      ref={groupRef}
+      position={position}
+      rotation={rotation}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      {/* FIXTURE GEOMETRY - Según tipo */}
+      {type === 'moving' && renderMovingHead()}
+      {type === 'par' && renderParCan()}
+      {type === 'strobe' && renderStrobe()}
+      {type === 'laser' && renderParCan()} {/* Laser usa mismo render que PAR por ahora */}
       
       {/* SELECTION RING - Anillo cyan animado */}
       {selected && (
         <mesh 
           ref={selectionRingRef}
           rotation={[-Math.PI / 2, 0, 0]} 
-          position={[0, 0.1, 0]}
+          position={[0, 0.15, 0]}
         >
-          <ringGeometry args={[scale * 0.8, scale * 1.0, 32]} />
+          <ringGeometry args={[scale * 0.9, scale * 1.1, 32]} />
           <meshBasicMaterial
             color="#00ffff"
             transparent
@@ -305,8 +541,8 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
       
       {/* HOVER RING - Anillo magenta para feedback */}
       {showHover && !selected && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-          <ringGeometry args={[scale * 0.7, scale * 0.85, 32]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]}>
+          <ringGeometry args={[scale * 0.8, scale * 0.95, 32]} />
           <meshBasicMaterial
             color="#ff00ff"
             transparent

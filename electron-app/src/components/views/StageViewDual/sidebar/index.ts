@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📋 SIDEBAR INDEX - WAVE 30.1: Stage Command & Dashboard
+ * 📋 SIDEBAR INDEX - WAVE 32: Stage Command & Dashboard + Scene Engine
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -24,3 +24,7 @@ export type { InspectorControlsProps } from './InspectorControls'
 
 export { GlobalControls } from './GlobalControls'
 export type { GlobalControlsProps } from './GlobalControls'
+
+// WAVE 32: Scene Browser
+export { SceneBrowser } from './SceneBrowser'
+export type { SceneBrowserProps } from './SceneBrowser'

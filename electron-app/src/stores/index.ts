@@ -35,7 +35,10 @@ export * from './controlStore'
 export * from './selectionStore'
 export * from './overrideStore'
 
-// 🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
+// � WAVE 32: Scene Engine & Snapshots
+export * from './sceneStore'
+
+// �🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
 export { 
   useTruthStore,
   selectAudio,

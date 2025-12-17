@@ -1,15 +1,17 @@
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║  StageSimulator2.tsx - WAVE 25 Canvas 2.0                                 ║
- * ║  "THE NEON STAGE" - La Verdad Visualizada                                 ║
+ * ║  StageSimulator2.tsx - WAVE 30.1 Canvas 2.0                               ║
+ * ║  "THE NEON STAGE" - La Verdad Visualizada + Interactividad                ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  Este canvas consume SOLO truthStore - la única fuente de verdad          ║
  * ║  Motor híbrido: LOW (retro) vs HIGH (neon volumétrico)                    ║
+ * ║  WAVE 30.1: Integración con selectionStore (click para seleccionar)       ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../stores/truthStore';
+import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../../stores/selectionStore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -29,6 +31,14 @@ interface FixtureVisual {
   tilt: number;
   type: 'par' | 'moving' | 'strobe' | 'laser';
   zone: 'front' | 'back' | 'left' | 'right' | 'center';
+}
+
+/** Posición calculada de un fixture para hit testing */
+interface FixturePosition {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
 }
 
 interface ZoneLayout {
@@ -69,6 +79,9 @@ export const StageSimulator2: React.FC = () => {
   const animationRef = useRef<number>(0);
   const lastFrameRef = useRef<number>(0);
   
+  // Posiciones calculadas de fixtures para hit testing
+  const fixturePositionsRef = useRef<FixturePosition[]>([]);
+  
   // Quality mode state
   const [qualityMode, setQualityMode] = useState<QualityMode>('high');
   const [showFPS, setShowFPS] = useState(false);
@@ -78,6 +91,11 @@ export const StageSimulator2: React.FC = () => {
   const hardware = useTruthStore(selectHardware);
   const palette = useTruthStore(selectPalette);
   const beat = useTruthStore(selectBeat);
+  
+  // SELECTION STORE - WAVE 30.1
+  const selectedIds = useSelectionStore(selectSelectedIds);
+  const hoveredId = useSelectionStore(selectHoveredId);
+  const { select, toggleSelection, selectRange, lastSelectedId, setHovered, deselectAll } = useSelectionStore();
   
   // ═════════════════════════════════════════════════════════════════════════
   // FIXTURE PROCESSING - Transformar fixtures del backend a visuales
@@ -229,12 +247,18 @@ export const StageSimulator2: React.FC = () => {
     // FIXTURES - El corazón del render
     // ═══════════════════════════════════════════════════════════════════════
     
+    // Reset posiciones para hit testing
+    const newPositions: FixturePosition[] = [];
+    
     // Agrupar por zona para posicionamiento
     const frontPars = fixtures.filter(f => f.zone === 'front');
     const backPars = fixtures.filter(f => f.zone === 'back');
     const movingLeft = fixtures.filter(f => f.zone === 'left');
     const movingRight = fixtures.filter(f => f.zone === 'right');
     const centerFixtures = fixtures.filter(f => f.zone === 'center');
+    
+    // Lista de todos los IDs para Shift+Click
+    const allFixtureIds = fixtures.map(f => f.id);
     
     // Función para distribuir X en una zona
     const distributeX = (count: number, index: number, startX: number, endX: number): number => {
@@ -243,13 +267,23 @@ export const StageSimulator2: React.FC = () => {
     };
     
     // ─────────────────────────────────────────────────────────────────────────
-    // RENDER FIXTURE FUNCTION
+    // RENDER FIXTURE FUNCTION - WAVE 30.1: Con selección visual
     // ─────────────────────────────────────────────────────────────────────────
     
     const renderFixture = (fixture: FixtureVisual, x: number, y: number) => {
-      const { r, g, b, intensity, pan, tilt, type } = fixture;
+      const { id, r, g, b, intensity, pan, tilt, type } = fixture;
+      const isSelected = selectedIds.has(id);
+      const isHovered = hoveredId === id;
       
-      // Skip si está apagado
+      // Calcular radio del fixture
+      const baseRadius = type === 'moving' ? 12 : 16;
+      const fixtureRadius = baseRadius + intensity * (type === 'moving' ? 8 : 10);
+      
+      // Guardar posición para hit testing
+      newPositions.push({ id, x, y, radius: Math.max(fixtureRadius, 20) });
+      
+      // Skip si está apagado (pero mantener hit area)
+      const shouldRenderLight = r + g + b >= 10 || intensity >= 0.05;
       if (r + g + b < 10 && intensity < 0.05) return;
       
       const color = `rgb(${r}, ${g}, ${b})`;
@@ -373,6 +407,38 @@ export const StageSimulator2: React.FC = () => {
           ctx.stroke();
         }
       }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // WAVE 30.1: SELECTION & HOVER RINGS
+      // ═══════════════════════════════════════════════════════════════════
+      
+      // HOVER RING - Magenta feedback
+      if (isHovered && !isSelected) {
+        ctx.beginPath();
+        ctx.arc(x, y, fixtureRadius + 8, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 0, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      
+      // SELECTION RING - Cyan animado
+      if (isSelected) {
+        const time = Date.now() / 1000;
+        const pulse = 0.7 + Math.sin(time * 4) * 0.3;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, fixtureRadius + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 255, 255, ${pulse})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Segundo anillo exterior
+        ctx.beginPath();
+        ctx.arc(x, y, fixtureRadius + 16, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 255, 255, ${pulse * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     };
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -487,11 +553,14 @@ export const StageSimulator2: React.FC = () => {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // LOOP
+    // LOOP - Guardar posiciones y continuar
     // ═══════════════════════════════════════════════════════════════════════
     
+    // Guardar posiciones calculadas para hit testing
+    fixturePositionsRef.current = newPositions;
+    
     animationRef.current = requestAnimationFrame(render);
-  }, [qualityMode, fixtures, showFPS, palette, beat]);
+  }, [qualityMode, fixtures, showFPS, palette, beat, selectedIds, hoveredId]);
   
   // ═════════════════════════════════════════════════════════════════════════
   // RESIZE HANDLER
@@ -530,6 +599,90 @@ export const StageSimulator2: React.FC = () => {
   }, [render]);
   
   // ═════════════════════════════════════════════════════════════════════════
+  // WAVE 30.1: CLICK & HOVER HANDLERS
+  // ═════════════════════════════════════════════════════════════════════════
+  
+  // Convertir coordenadas de mouse a coordenadas de canvas
+  const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    return {
+      x: (e.clientX - rect.left) * dpr,
+      y: (e.clientY - rect.top) * dpr,
+    };
+  }, []);
+  
+  // Encontrar fixture bajo el cursor
+  const findFixtureAt = useCallback((x: number, y: number): string | null => {
+    const positions = fixturePositionsRef.current;
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Buscar de adelante hacia atrás (últimos dibujados primero)
+    for (let i = positions.length - 1; i >= 0; i--) {
+      const pos = positions[i];
+      const dx = x - pos.x * dpr;
+      const dy = y - pos.y * dpr;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance <= pos.radius * dpr) {
+        return pos.id;
+      }
+    }
+    return null;
+  }, []);
+  
+  // Lista de todos los IDs para Shift+Click
+  const allFixtureIds = useMemo(() => fixtures.map(f => f.id), [fixtures]);
+  
+  // Handle click
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoords(e);
+    if (!coords) return;
+    
+    const fixtureId = findFixtureAt(coords.x, coords.y);
+    
+    if (fixtureId) {
+      if (e.shiftKey && lastSelectedId) {
+        // Shift+Click: Selección de rango
+        selectRange(lastSelectedId, fixtureId, allFixtureIds);
+      } else if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Click: Toggle individual
+        toggleSelection(fixtureId);
+      } else {
+        // Click normal: Reemplazar selección
+        select(fixtureId, 'replace');
+      }
+    } else {
+      // Click en vacío: Deseleccionar todo
+      deselectAll();
+    }
+  }, [getCanvasCoords, findFixtureAt, select, toggleSelection, selectRange, deselectAll, lastSelectedId, allFixtureIds]);
+  
+  // Handle hover
+  const handleCanvasMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoords(e);
+    if (!coords) return;
+    
+    const fixtureId = findFixtureAt(coords.x, coords.y);
+    setHovered(fixtureId);
+    
+    // Cambiar cursor
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = fixtureId ? 'pointer' : 'default';
+    }
+  }, [getCanvasCoords, findFixtureAt, setHovered]);
+  
+  // Handle mouse leave
+  const handleCanvasLeave = useCallback(() => {
+    setHovered(null);
+  }, [setHovered]);
+  
+  // ═════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═════════════════════════════════════════════════════════════════════════
   
@@ -549,6 +702,9 @@ export const StageSimulator2: React.FC = () => {
     >
       <canvas
         ref={canvasRef}
+        onClick={handleCanvasClick}
+        onMouseMove={handleCanvasMove}
+        onMouseLeave={handleCanvasLeave}
         style={{
           position: 'absolute',
           top: 0,

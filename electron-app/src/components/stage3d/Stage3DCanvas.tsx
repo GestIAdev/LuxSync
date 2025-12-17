@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 30: Stage Command & Dashboard
+ * 🎬 STAGE 3D CANVAS - WAVE 30.1: Stage Command & Dashboard
  * Canvas principal de React Three Fiber para visualización 3D
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -9,16 +9,18 @@
  * - Fixtures 3D posicionados según layoutGenerator3D
  * - Efectos de luz volumétricos
  * - Controles de cámara orbital
+ * - WAVE 30.1: Integración con selectionStore (click, hover)
  * 
  * @module components/stage3d/Stage3DCanvas
- * @version 30.0.0
+ * @version 30.1.0
  */
 
-import React, { Suspense, useMemo } from 'react'
+import React, { Suspense, useMemo, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei'
 import { useTruthStore, selectHardware, selectPalette } from '../../stores/truthStore'
 import { useControlStore, selectViewMode } from '../../stores/controlStore'
+import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../stores/selectionStore'
 import { generateLayout3D, DEFAULT_STAGE_CONFIG } from '../../utils/layoutGenerator3D'
 import { Fixture3D } from './fixtures/Fixture3D'
 import { StageFloor } from './environment/StageFloor'
@@ -43,6 +45,11 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
   const hardware = useTruthStore(selectHardware)
   const palette = useTruthStore(selectPalette)
   
+  // SELECTION STORE
+  const selectedIds = useSelectionStore(selectSelectedIds)
+  const hoveredId = useSelectionStore(selectHoveredId)
+  const deselectAll = useSelectionStore(state => state.deselectAll)
+  
   // Generar layouts 3D a partir de fixtures
   const fixtureLayouts = useMemo(() => {
     const fixtureArray = hardware?.fixtures || []
@@ -60,6 +67,11 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
     return generateLayout3D(fixtureInputs, DEFAULT_STAGE_CONFIG)
   }, [hardware?.fixtures])
   
+  // Lista de todos los IDs para Shift+Click
+  const allFixtureIds = useMemo(() => {
+    return fixtureLayouts.map(l => l.id)
+  }, [fixtureLayouts])
+  
   // Crear mapa de valores de fixtures para lookup rápido
   const fixtureValues = useMemo(() => {
     const fixtureArray = hardware?.fixtures || []
@@ -75,6 +87,11 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
     
     return map
   }, [hardware?.fixtures])
+  
+  // Click en el fondo para deseleccionar todo
+  const handleBackgroundClick = useCallback(() => {
+    deselectAll()
+  }, [deselectAll])
   
   return (
     <>
@@ -103,12 +120,14 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
       <ambientLight intensity={0.05} color="#1a1a2e" />
       
       {/* ENVIRONMENT */}
-      <StageFloor />
+      <StageFloor onClick={handleBackgroundClick} />
       <StageTruss />
       
       {/* FIXTURES */}
       {fixtureLayouts.map(layout => {
         const fixtureData = fixtureValues.get(layout.id)
+        const isSelected = selectedIds.has(layout.id)
+        const isHovered = hoveredId === layout.id
         
         return (
           <Fixture3D
@@ -121,6 +140,9 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
             intensity={fixtureData?.intensity ?? 0}
             pan={fixtureData?.pan ?? 0.5}
             tilt={fixtureData?.tilt ?? 0.5}
+            selected={isSelected}
+            hovered={isHovered}
+            allFixtureIds={allFixtureIds}
           />
         )
       })}

@@ -31,6 +31,10 @@ export * from './setupStore'
 // 🎮 WAVE 30: Control Store - Stage Command & Dashboard
 export * from './controlStore'
 
+// 🎯 WAVE 30.1: Selection & Override Stores
+export * from './selectionStore'
+export * from './overrideStore'
+
 // 🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
 export { 
   useTruthStore,

@@ -1,30 +1,34 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🏟️ STAGE FLOOR - WAVE 30: Stage Command & Dashboard
+ * 🏟️ STAGE FLOOR - WAVE 30.1: Stage Command & Dashboard
  * Suelo del escenario con grid cyberpunk
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import React from 'react'
 import { Grid } from '@react-three/drei'
+import { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 
 export interface StageFloorProps {
   size?: number
   gridDivisions?: number
+  onClick?: (event: ThreeEvent<MouseEvent>) => void
 }
 
 export const StageFloor: React.FC<StageFloorProps> = ({
   size = 20,
   gridDivisions = 20,
+  onClick,
 }) => {
   return (
     <group>
-      {/* PLANO BASE */}
+      {/* PLANO BASE - Clickeable para deseleccionar */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
         receiveShadow
+        onClick={onClick}
       >
         <planeGeometry args={[size, size]} />
         <meshStandardMaterial

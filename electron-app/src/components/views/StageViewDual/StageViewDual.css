@@ -1,6 +1,6 @@
 /**
- * 🎭 STAGE VIEW DUAL STYLES - WAVE 30.1
- * Updated with sidebar layout
+ * 🎭 STAGE VIEW DUAL STYLES - WAVE 33.2
+ * Updated with 70/30 layout (Canvas/Sidebar)
  */
 
 .stage-view-dual {
@@ -22,11 +22,26 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  background: rgba(15, 15, 20, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  background: rgba(15, 15, 20, 0.98);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.15);
   z-index: 10;
   flex-shrink: 0;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(0, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-right: 4px;
 }
 
 .toolbar-spacer {
@@ -59,8 +74,51 @@
   color: #ff00ff;
 }
 
+/* Mode Switcher Buttons in Toolbar */
+.mode-switcher {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mode-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #666;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-btn.active {
+  background: linear-gradient(180deg, 
+    rgba(0, 255, 255, 0.25) 0%,
+    rgba(0, 200, 200, 0.2) 100%
+  );
+  color: #00ffff;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+}
+
+.mode-btn.active.manual { background: linear-gradient(180deg, rgba(255, 180, 0, 0.25) 0%, rgba(200, 140, 0, 0.2) 100%); color: #ffb400; }
+.mode-btn.active.flow { background: linear-gradient(180deg, rgba(0, 255, 100, 0.25) 0%, rgba(0, 200, 80, 0.2) 100%); color: #00ff64; }
+.mode-btn.active.selene { background: linear-gradient(180deg, rgba(180, 0, 255, 0.25) 0%, rgba(140, 0, 200, 0.2) 100%); color: #b400ff; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
- * MAIN CONTENT AREA (Viewport + Sidebar)
+ * MAIN CONTENT AREA (Viewport 70% + Sidebar 30%)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .stage-view-main {
@@ -71,11 +129,12 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * VIEWPORT
+ * VIEWPORT (70% width)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .stage-view-viewport {
-  flex: 1;
+  flex: 7; /* 70% ratio */
+  min-width: 0;
   position: relative;
   min-height: 400px;
   overflow: hidden;

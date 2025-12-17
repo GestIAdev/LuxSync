@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 CONTROL STORE - WAVE 30: Stage Command & Dashboard
+ * 🎮 CONTROL STORE - WAVE 33.2: Color Migration & Polish
  * Gestiona el modo global y parámetros de control de la UI
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -9,9 +9,11 @@
  * - globalMode: Manual / Flow / Selene AI
  * - flowParams: Parámetros de patrones Flow
  * - aiEnabled: Override para habilitar/deshabilitar Selene
+ * - activePalette: Paleta de colores vivos activa (WAVE 33.2)
+ * - globalSaturation/globalIntensity: Controles globales (WAVE 33.2)
  * 
  * @module stores/controlStore
- * @version 30.0.0
+ * @version 33.2.0
  */
 
 import { create } from 'zustand'
@@ -29,6 +31,9 @@ export type GlobalMode = 'manual' | 'flow' | 'selene'
 
 /** Patrones disponibles para Flow mode */
 export type FlowPattern = 'static' | 'chase' | 'wave' | 'rainbow' | 'strobe'
+
+/** IDs de paletas vivas disponibles - WAVE 33.2 */
+export type LivingPaletteId = 'fuego' | 'hielo' | 'selva' | 'neon'
 
 /** Parámetros de Flow Engine */
 export interface FlowParams {
@@ -95,6 +100,28 @@ export interface ControlState {
   /** Toggle sidebar */
   toggleSidebar: () => void
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // COLOR & PALETTE - WAVE 33.2
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Paleta de colores vivos activa */
+  activePalette: LivingPaletteId
+  
+  /** Saturación global (0-1) */
+  globalSaturation: number
+  
+  /** Intensidad global (0-1) */
+  globalIntensity: number
+  
+  /** Cambiar paleta activa */
+  setPalette: (palette: LivingPaletteId) => void
+  
+  /** Establecer saturación global */
+  setGlobalSaturation: (value: number) => void
+  
+  /** Establecer intensidad global */
+  setGlobalIntensity: (value: number) => void
+  
   /** Reset a valores por defecto */
   reset: () => void
 }
@@ -118,6 +145,10 @@ const DEFAULT_STATE = {
   flowParams: DEFAULT_FLOW_PARAMS,
   showDebugOverlay: false,
   sidebarExpanded: true,
+  // WAVE 33.2: Color & Palette
+  activePalette: 'fuego' as LivingPaletteId,
+  globalSaturation: 1.0,
+  globalIntensity: 1.0,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -185,6 +216,27 @@ export const useControlStore = create<ControlState>()(
         set((state) => ({ sidebarExpanded: !state.sidebarExpanded }))
       },
       
+      // ═══════════════════════════════════════════════════════════════════
+      // COLOR & PALETTE ACTIONS - WAVE 33.2
+      // ═══════════════════════════════════════════════════════════════════
+      
+      setPalette: (palette) => {
+        console.log(`[ControlStore] 🎨 Palette changed: ${get().activePalette} → ${palette}`)
+        set({ activePalette: palette })
+      },
+      
+      setGlobalSaturation: (value) => {
+        const clamped = Math.max(0, Math.min(1, value))
+        console.log(`[ControlStore] 🌈 Saturation: ${clamped.toFixed(2)}`)
+        set({ globalSaturation: clamped })
+      },
+      
+      setGlobalIntensity: (value) => {
+        const clamped = Math.max(0, Math.min(1, value))
+        console.log(`[ControlStore] 💡 Intensity: ${clamped.toFixed(2)}`)
+        set({ globalIntensity: clamped })
+      },
+      
       reset: () => {
         console.log('[ControlStore] 🔄 Reset to defaults')
         set(DEFAULT_STATE)
@@ -192,13 +244,17 @@ export const useControlStore = create<ControlState>()(
     }),
     {
       name: 'luxsync-control-store',
-      version: 1,
+      version: 2, // Bumped for WAVE 33.2
       partialize: (state) => ({
         // Solo persistir preferencias de UI, no estados temporales
         viewMode: state.viewMode,
         showDebugOverlay: state.showDebugOverlay,
         sidebarExpanded: state.sidebarExpanded,
         flowParams: state.flowParams,
+        // WAVE 33.2: Persist palette preferences
+        activePalette: state.activePalette,
+        globalSaturation: state.globalSaturation,
+        globalIntensity: state.globalIntensity,
       }),
     }
   )
@@ -214,3 +270,8 @@ export const selectAIEnabled = (state: ControlState) => state.aiEnabled
 export const selectFlowParams = (state: ControlState) => state.flowParams
 export const selectIs3DMode = (state: ControlState) => state.viewMode === '3D'
 export const selectIs2DMode = (state: ControlState) => state.viewMode === '2D'
+
+// WAVE 33.2: Palette selectors
+export const selectActivePalette = (state: ControlState) => state.activePalette
+export const selectGlobalSaturation = (state: ControlState) => state.globalSaturation
+export const selectGlobalIntensity = (state: ControlState) => state.globalIntensity

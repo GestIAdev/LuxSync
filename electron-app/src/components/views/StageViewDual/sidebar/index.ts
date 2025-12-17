@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📋 SIDEBAR INDEX - WAVE 32: Stage Command & Dashboard + Scene Engine
+ * 📋 SIDEBAR INDEX - WAVE 33.2: Color Migration & Polish
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -28,3 +28,7 @@ export type { GlobalControlsProps } from './GlobalControls'
 // WAVE 32: Scene Browser
 export { SceneBrowser } from './SceneBrowser'
 export type { SceneBrowserProps } from './SceneBrowser'
+
+// WAVE 33.2: Palette Control
+export { PaletteControlMini } from './PaletteControlMini'
+export type { PaletteControlMiniProps } from './PaletteControlMini'

@@ -1,23 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌍 GLOBAL CONTROLS - WAVE 30.1: Stage Command & Dashboard
+ * 🌍 GLOBAL CONTROLS - WAVE 33.2: Color Migration & Polish
  * Panel de control global cuando no hay selección
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Muestra cuando NO hay selección:
- * - Selector de modo (Manual/Flow/Selene)
+ * - Selector de paleta de colores (PaletteControlMini)
  * - Blackout button
  * - Estadísticas generales
  * - Info de conexión DMX
  * 
+ * WAVE 33.2: Mode Switcher moved to StageViewDual header
+ * 
  * @module components/views/StageViewDual/sidebar/GlobalControls
- * @version 30.1.0
+ * @version 33.2.0
  */
 
 import React, { useCallback } from 'react'
-import { useControlStore, GlobalMode } from '../../../../stores/controlStore'
+import { useControlStore } from '../../../../stores/controlStore'
 import { useTruthStore, selectHardware, selectSystem } from '../../../../stores/truthStore'
 import { useOverrideStore, selectOverrideCount, selectHasAnyOverride } from '../../../../stores/overrideStore'
+import { PaletteControlMini } from './PaletteControlMini'
 import './GlobalControls.css'
 
 export interface GlobalControlsProps {
@@ -27,9 +30,7 @@ export interface GlobalControlsProps {
 export const GlobalControls: React.FC<GlobalControlsProps> = ({
   className = '',
 }) => {
-  // Control Store
-  const globalMode = useControlStore(state => state.globalMode)
-  const setGlobalMode = useControlStore(state => state.setGlobalMode)
+  // Control Store - Only AI toggle (Mode moved to Header)
   const aiEnabled = useControlStore(state => state.aiEnabled)
   const toggleAI = useControlStore(state => state.toggleAI)
   
@@ -47,20 +48,9 @@ export const GlobalControls: React.FC<GlobalControlsProps> = ({
   const dmxConnected = hardware?.dmx?.connected ?? false
   
   // Handlers
-  const handleModeChange = useCallback((mode: GlobalMode) => {
-    setGlobalMode(mode)
-  }, [setGlobalMode])
-  
   const handleReleaseAll = useCallback(() => {
     clearAllOverrides()
   }, [clearAllOverrides])
-  
-  // Mode buttons config
-  const modes: { id: GlobalMode; label: string; icon: string; description: string }[] = [
-    { id: 'manual', label: 'Manual', icon: '🎚️', description: 'Control directo' },
-    { id: 'flow', label: 'Flow', icon: '🌊', description: 'Patrones reactivos' },
-    { id: 'selene', label: 'Selene', icon: '🌙', description: 'IA automática' },
-  ]
   
   return (
     <div className={`global-controls ${className}`}>
@@ -69,23 +59,8 @@ export const GlobalControls: React.FC<GlobalControlsProps> = ({
         <span className="title">🎮 Control Global</span>
       </div>
       
-      {/* MODE SELECTOR */}
-      <div className="control-section">
-        <h4 className="section-title">Modo de Control</h4>
-        <div className="mode-buttons">
-          {modes.map(mode => (
-            <button
-              key={mode.id}
-              className={`mode-btn ${globalMode === mode.id ? 'active' : ''}`}
-              onClick={() => handleModeChange(mode.id)}
-              title={mode.description}
-            >
-              <span className="mode-icon">{mode.icon}</span>
-              <span className="mode-label">{mode.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 🎨 WAVE 33.2: PALETTE CONTROL - Replaces Mode Selector (moved to Header) */}
+      <PaletteControlMini />
       
       {/* AI TOGGLE */}
       <div className="control-section">

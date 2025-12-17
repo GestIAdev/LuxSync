@@ -5,9 +5,11 @@
  * WAVE 3: Connected to useSeleneAudio for real-time BPM from Selene
  * 🚑 RESCUE DIRECTIVE: Now shows REAL BPM from telemetry with confidence indicator
  * 🧠 WAVE 25.6: Migrado a truthStore - BPM desde sensory.beat
+ * 🎨 WAVE 33.2: Mode Switcher migrado aquí desde GlobalControls
  */
 
 import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
+import { useControlStore, GlobalMode } from '../stores/controlStore'
 import { useTruthSensory } from '../hooks'
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -25,6 +27,13 @@ const MODE_COLORS: Record<string, string> = {
   locked: '#FF4444',
 }
 
+// 🎨 WAVE 33.2: Mode config for switcher
+const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = [
+  { id: 'manual', label: 'MAN', icon: '🎚️', color: '#FF6B6B' },
+  { id: 'flow', label: 'FLOW', icon: '🌊', color: '#4ADE80' },
+  { id: 'selene', label: 'AI', icon: '🌙', color: '#7C4DFF' },
+]
+
 export default function Header() {
   const { 
     activePalette, 
@@ -33,12 +42,16 @@ export default function Header() {
     setMasterDimmer 
   } = useLuxSyncStore()
 
+  // 🎨 WAVE 33.2: Control mode from controlStore
+  const globalMode = useControlStore(state => state.globalMode)
+  const setGlobalMode = useControlStore(state => state.setGlobalMode)
+
   // 🧠 WAVE 25.6: Get REAL BPM from truthStore (sensory)
   const sensory = useTruthSensory()
 
   const palette = PALETTES[activePalette]
   const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
-  const modeColor = MODE_COLORS[selene.mode]
+  const currentModeConfig = MODES.find(m => m.id === globalMode) || MODES[0]
 
   // 🧠 WAVE 25.6: Use truth sensory data
   const displayBpm = sensory?.beat?.bpm ?? 0
@@ -79,12 +92,27 @@ export default function Header() {
           <div className={`sync-dot ${isBeatSync ? 'synced' : ''}`} />
         </div>
 
-        {/* Selene Status */}
-        <div className="header-item selene-item">
-          <div className="selene-dot" style={{ background: modeColor }} />
-          <span className="selene-mode" style={{ color: modeColor }}>
-            {selene.mode.toUpperCase()}
-          </span>
+        {/* 🎨 WAVE 33.2: Mode Switcher - Manual | Flow | Selene */}
+        <div className="header-item mode-switcher">
+          {MODES.map(mode => (
+            <button
+              key={mode.id}
+              className={`mode-btn ${globalMode === mode.id ? 'active' : ''}`}
+              onClick={() => setGlobalMode(mode.id)}
+              style={{ 
+                '--mode-color': mode.color,
+                borderColor: globalMode === mode.id ? mode.color : 'transparent'
+              } as React.CSSProperties}
+            >
+              <span className="mode-icon">{mode.icon}</span>
+              <span className="mode-label">{mode.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Selene Generation indicator */}
+        <div className="header-item selene-gen-item">
+          <span style={{ color: currentModeConfig.color }}>●</span>
           <span className="selene-gen">Gen {selene.generation}</span>
         </div>
 
@@ -265,6 +293,55 @@ export default function Header() {
           color: var(--text-secondary);
           min-width: 30px;
           text-align: right;
+        }
+
+        /* 🎨 WAVE 33.2: Mode Switcher */
+        .mode-switcher {
+          display: flex;
+          gap: 2px;
+          padding: 2px !important;
+          background: var(--bg-deep);
+        }
+
+        .mode-switcher .mode-btn {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          color: var(--text-muted);
+        }
+
+        .mode-switcher .mode-btn:hover {
+          background: var(--bg-surface);
+          color: var(--text-primary);
+        }
+
+        .mode-switcher .mode-btn.active {
+          background: rgba(var(--mode-color-rgb, 124, 77, 255), 0.2);
+          color: var(--mode-color);
+          border-color: var(--mode-color);
+        }
+
+        .mode-switcher .mode-icon {
+          font-size: 0.75rem;
+        }
+
+        .mode-switcher .mode-label {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 0.65rem;
+          letter-spacing: 0.5px;
+        }
+
+        /* Selene Gen indicator */
+        .selene-gen-item {
+          gap: 4px;
+          min-width: 60px;
         }
       `}</style>
     </header>

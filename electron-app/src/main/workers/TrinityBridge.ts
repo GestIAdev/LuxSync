@@ -372,10 +372,15 @@ export function createReactiveDecision(
 
 /**
  * Simplified rhythm detection for workers
+ * 🌊 WAVE 41.1: Agregado EMA para suavizar sincopación
  */
 export class SimpleRhythmDetector {
   private phaseHistory: { phase: number; energy: number }[] = [];
   private readonly historySize = 32;
+  
+  // 🌊 WAVE 41.1: EMA para sincopación suavizada
+  private smoothedSyncopation: number = 0.35; // Default neutral
+  private readonly SYNC_ALPHA = 0.08; // Factor de suavizado (lento y estable)
   
   analyze(audio: AudioMetrics): RhythmOutput {
     // Track energy at different beat phases
@@ -407,7 +412,12 @@ export class SimpleRhythmDetector {
     }
     
     const totalEnergy = onBeatEnergy + offBeatEnergy;
-    const syncopation = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
+    const instantSync = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
+    
+    // 🌊 WAVE 41.1: Aplicar EMA para suavizar sincopación
+    // Evita saltos bruscos (0.03 → 1.00) que confunden al GenreClassifier
+    this.smoothedSyncopation = (this.SYNC_ALPHA * instantSync) + ((1 - this.SYNC_ALPHA) * this.smoothedSyncopation);
+    const syncopation = this.smoothedSyncopation;
     
     // Pattern detection (simplified)
     // 🎯 WAVE 16.5: Umbrales ajustados para ventana 50%

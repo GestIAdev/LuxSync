@@ -287,8 +287,15 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * 🧠 Configura listeners de eventos del Brain
+   * 🪓 WAVE 39.9.3: Agregado early-return guard - brain vive en Worker
    */
   private setupBrainEventListeners(): void {
+    // 🪓 WAVE 39.9.3: Guard para prevenir crash si brain no existe
+    if (!this.brain) {
+      console.info('[SeleneLux] 🪓 setupBrainEventListeners() skipped (no local brain)')
+      return
+    }
+    
     this.brain.on('output', (output: BrainOutput) => {
       this.emit('brain-output', output)
     })
@@ -411,8 +418,10 @@ export class SeleneLux extends EventEmitter {
     
     // ─────────────────────────────────────────────────────────────────────────
     // 🧠 WAVE-8: FLUJO PRINCIPAL - Audio → Brain → Hardware
+    // 🧠 WAVE 39.9.3: Agregado guard `this.brain` para prevenir crash
+    // Desde WAVE 39.9.2 useBrain=false, así que este bloque NUNCA se ejecuta
     // ─────────────────────────────────────────────────────────────────────────
-    if (this.useBrain && this.brainInitialized) {
+    if (this.useBrain && this.brainInitialized && this.brain) {
       // Convertir AudioMetrics a AudioAnalysis para el Brain
       const audioAnalysis = this.convertToAudioAnalysis(metrics, beatState)
       

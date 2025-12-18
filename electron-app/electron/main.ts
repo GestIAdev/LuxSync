@@ -303,15 +303,30 @@ function initSelene() {
         
         // 📡 WAVE 15.3: CONECTAR TRINITY → FRONTEND (El Cable de la Verdad)
         // Los datos REALES de Beta/Gamma ahora fluyen al frontend
+        let pipelineAuditCounter = 0
+        
         trinity.on('audio-analysis', (analysis) => {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('trinity:audio-analysis', analysis)
+          }
+          
+          // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
+          pipelineAuditCounter++
+          if (pipelineAuditCounter % 150 === 0) {
+            const keys = analysis ? Object.keys(analysis) : []
+            console.log('[PIPELINE AUDIT] 🔬 BETA→Main keys:', keys.join(', ') || 'EMPTY')
           }
         })
         
         trinity.on('lighting-decision', (decision) => {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('trinity:lighting-decision', decision)
+          }
+          
+          // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
+          if (pipelineAuditCounter % 150 === 0) {
+            const keys = decision ? Object.keys(decision) : []
+            console.log('[PIPELINE AUDIT] 🔬 GAMMA→Main keys:', keys.join(', ') || 'EMPTY')
           }
         })
         

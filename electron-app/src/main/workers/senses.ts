@@ -407,11 +407,14 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
   
   // WAVE 18.3: Pass enhanced parameters to GenreClassifier
+  // 🔧 WAVE 45.4: THE BPM WIRE FIX - El BPM no llegaba al GenreClassifier!
+  // Era undefined → fallback 120 → Boris Brejcha @ 200 BPM detectado como cumbia
   const audioForClassifier = {
     energy: energy,
     bass: spectrum.bass,
     mid: spectrum.mid,
     treble: spectrum.treble,
+    bpm: state.currentBpm,  // 🔧 WAVE 45.4: ¡EL CABLE QUE FALTABA!
   };
   const genreOutput = genreClassifier.classify(
     rhythmOutput as any,  // RhythmOutput compatible with RhythmInput
@@ -422,6 +425,53 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   // if (state.frameCount % 120 === 0) {
   //   console.log('[SENSES DEBUG] genreOutput:', JSON.stringify({...}));
   // }
+  
+  // 💓 WAVE 44.0: HOLISTIC HEARTBEAT - Estado de TODOS los motores cada 5 segundos
+  if (state.frameCount % 150 === 0) {
+    console.log('[BETA HEARTBEAT] 💓📊', JSON.stringify({
+      frame: state.frameCount,
+      rhythm: {
+        bpm: state.currentBpm,
+        syncRaw: rhythmOutput.syncopation,
+        pattern: rhythmOutput.pattern,
+        groove: rhythmOutput.groove,
+        drums: {
+          kick: rhythmOutput.drums?.kick || false,
+          snare: rhythmOutput.drums?.snare || false,
+          hihat: rhythmOutput.drums?.hihat || false,
+        }
+      },
+      harmony: {
+        key: harmonyOutput.key ?? 'NULL',
+        mode: harmonyOutput.mode ?? 'NULL',
+        mood: harmonyOutput.mood ?? 'NULL',
+        temp: harmonyOutput.temperature ?? 'NULL',
+        confidence: harmonyOutput.confidence ?? 0,
+      },
+      section: {
+        type: sectionOutput.type ?? 'NULL',
+        energy: sectionOutput.energy ?? 0,
+        confidence: sectionOutput.confidence ?? 0,
+      },
+      senate: {
+        winner: genreOutput.genre,
+        confidence: genreOutput.confidence,
+        votes: genreOutput.scores, // ← LOS VOTOS DEL SENADO
+        features: {
+          sync: genreOutput.features?.syncopation ?? 0,
+          bpm: genreOutput.features?.bpm ?? 0,
+          fourOnFloor: genreOutput.features?.hasFourOnFloor ?? false,
+          dembow: genreOutput.features?.hasDembow ?? false,
+        }
+      },
+      audio: {
+        energy: energy,
+        bass: spectrum.bass,
+        mid: spectrum.mid,
+        treble: spectrum.treble,
+      }
+    }, null, 0));
+  }
   
   // Cache for state snapshots
   state.lastRhythmOutput = rhythmOutput;

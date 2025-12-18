@@ -373,6 +373,7 @@ export function createReactiveDecision(
 /**
  * Simplified rhythm detection for workers
  * 🌊 WAVE 41.1: Agregado EMA para suavizar sincopación
+ * 🔧 WAVE 45.1: Confidence mide consistencia real, no solo historial
  */
 export class SimpleRhythmDetector {
   private phaseHistory: { phase: number; energy: number }[] = [];
@@ -381,6 +382,9 @@ export class SimpleRhythmDetector {
   // 🌊 WAVE 41.1: EMA para sincopación suavizada
   private smoothedSyncopation: number = 0.35; // Default neutral
   private readonly SYNC_ALPHA = 0.08; // Factor de suavizado (lento y estable)
+  
+  // 🔧 WAVE 45.1: Historial de sync para calcular varianza
+  private syncHistory: number[] = [];
   
   analyze(audio: AudioMetrics): RhythmOutput {
     // Track energy at different beat phases
@@ -419,12 +423,24 @@ export class SimpleRhythmDetector {
     this.smoothedSyncopation = (this.SYNC_ALPHA * instantSync) + ((1 - this.SYNC_ALPHA) * this.smoothedSyncopation);
     const syncopation = this.smoothedSyncopation;
     
+    // 🔧 WAVE 45.1: Guardar historial de sync para calcular varianza
+    this.syncHistory.push(syncopation);
+    if (this.syncHistory.length > this.historySize) {
+      this.syncHistory.shift();
+    }
+    
+    // 🔧 WAVE 45.1: Calcular confidence basada en CONSISTENCIA real
+    const syncVariance = this.calculateVariance(this.syncHistory);
+    const rhythmQuality = Math.max(0, 1 - syncVariance * 4); // Varianza alta = baja calidad
+    const coverage = Math.min(1, this.phaseHistory.length / this.historySize);
+    const realConfidence = Math.min(0.95, coverage * rhythmQuality * 0.85 + 0.1); // Cap 0.95, min 0.10
+    
     // Pattern detection (simplified)
-    // 🎯 WAVE 16.5: Umbrales ajustados para ventana 50%
+    // 🔧 WAVE 45.1: Thresholds realistas basados en logs reales
     let pattern: RhythmOutput['pattern'] = 'unknown';
-    if (syncopation < 0.2) pattern = 'four_on_floor';
-    else if (syncopation > 0.5) pattern = 'breakbeat'; // Era 0.6, ahora 0.5
-    else if (audio.bpm >= 90 && audio.bpm <= 105 && syncopation > 0.25) pattern = 'reggaeton'; // Era 0.3, ahora 0.25
+    if (syncopation < 0.40) pattern = 'four_on_floor';  // Era 0.2 (inalcanzable)
+    else if (syncopation > 0.55) pattern = 'breakbeat'; // Era 0.5
+    else if (audio.bpm >= 90 && audio.bpm <= 105 && syncopation > 0.25) pattern = 'reggaeton';
     
     return {
       pattern,
@@ -432,7 +448,7 @@ export class SimpleRhythmDetector {
       groove: 1 - Math.abs(syncopation - 0.3) * 2, // Groove peaks at moderate syncopation
       subdivision: audio.bpm > 140 ? 16 : audio.bpm > 100 ? 8 : 4,
       fillDetected: false,
-      confidence: Math.min(1, this.phaseHistory.length / this.historySize),
+      confidence: realConfidence,  // 🔧 WAVE 45.1: Ahora mide consistencia real
       drums: {
         kick: audio.bass > 0.6,
         kickIntensity: audio.bass,
@@ -444,8 +460,17 @@ export class SimpleRhythmDetector {
     };
   }
   
+  // 🔧 WAVE 45.1: Calcular varianza para medir consistencia
+  private calculateVariance(arr: number[]): number {
+    if (arr.length < 2) return 0;
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const squaredDiffs = arr.map(x => (x - mean) ** 2);
+    return squaredDiffs.reduce((a, b) => a + b, 0) / arr.length;
+  }
+  
   reset(): void {
     this.phaseHistory = [];
+    this.syncHistory = [];  // 🔧 WAVE 45.1
   }
 }
 
@@ -492,7 +517,7 @@ export class SimpleHarmonyDetector {
   private readonly noteHistorySize = 64; // WAVE 15.6: Era 32, ahora 64 (~4 segundos)
   private lastDetectedKey: string | null = null;
   private keyStabilityCounter = 0; // WAVE 15.6: Contador de estabilidad
-  private readonly keyStabilityThreshold = 8; // Necesita 8 frames consecutivos para cambiar
+  private readonly keyStabilityThreshold = 90; // 🔧 WAVE 45.1: Era 8, ahora 90 (~3 seg @ 30fps)
   
   // 🎯 WAVE 16: Tracking de energía para ponderación
   private totalWeightAccumulated = 0;
@@ -686,9 +711,12 @@ export class SimpleHarmonyDetector {
     // 🎯 WAVE 16: Usar votos ponderados para dominante (si hay suficiente peso)
     let dominantMood = this.getMostCommon(this.moodHistory) as HarmonyOutput['mood'];
     let dominantTemp = this.getMostCommon(this.temperatureHistory) as HarmonyOutput['temperature'];
+    let moodDominance = 0.5; // 🔧 WAVE 45.1: Track dominancia para confidence
     
     if (this.totalWeightAccumulated > 0.5) {
-      dominantMood = this.getWeightedDominant(this.moodWeightedVotes, 'universal') as HarmonyOutput['mood'];
+      const moodResult = this.getWeightedDominantWithDominance(this.moodWeightedVotes, 'universal');
+      dominantMood = moodResult.winner as HarmonyOutput['mood'];
+      moodDominance = moodResult.dominance;
       dominantTemp = this.getWeightedDominant(this.temperatureWeightedVotes, 'neutral') as HarmonyOutput['temperature'];
     }
     
@@ -716,6 +744,10 @@ export class SimpleHarmonyDetector {
           ? 'major' 
           : 'unknown';
     
+    // 🔧 WAVE 45.1: Confidence basada en dominancia real, no solo historial
+    const coverage = Math.min(1, this.moodHistory.length / this.historySize);
+    const realConfidence = Math.min(0.95, coverage * moodDominance * 0.9 + 0.05); // Cap 0.95, min 0.05
+    
     return {
       key: detectedKey,  // 🎵 WAVE 15.5: Ahora detecta Key real
       mode: mode,
@@ -723,7 +755,7 @@ export class SimpleHarmonyDetector {
       temperature: dominantTemp,
       dissonance: Math.min(1, ratioVariance), // Usar varianza como proxy de disonancia
       chromaticNotes: [],
-      confidence: Math.min(1, (this.moodHistory.length / this.historySize) * (energyLevel + 0.3)),
+      confidence: realConfidence,  // 🔧 WAVE 45.1: Ahora mide dominancia real
     };
   }
   
@@ -747,17 +779,26 @@ export class SimpleHarmonyDetector {
    * 🎯 WAVE 16: Obtiene el valor con mayor peso acumulado
    */
   private getWeightedDominant(votes: Map<string, number>, defaultValue: string): string {
+    return this.getWeightedDominantWithDominance(votes, defaultValue).winner;
+  }
+  
+  // 🔧 WAVE 45.1: Versión que también devuelve dominancia para confidence real
+  private getWeightedDominantWithDominance(votes: Map<string, number>, defaultValue: string): { winner: string; dominance: number } {
     let maxKey = defaultValue;
     let maxWeight = 0;
+    let totalWeight = 0;
     
     for (const [key, weight] of votes) {
+      totalWeight += weight;
       if (weight > maxWeight) {
         maxKey = key;
         maxWeight = weight;
       }
     }
     
-    return maxKey;
+    // Dominancia = qué tan dominante es el ganador (0.0 a 1.0)
+    const dominance = totalWeight > 0 ? maxWeight / totalWeight : 0.5;
+    return { winner: maxKey, dominance };
   }
   
   private getMostCommon(arr: string[]): string {

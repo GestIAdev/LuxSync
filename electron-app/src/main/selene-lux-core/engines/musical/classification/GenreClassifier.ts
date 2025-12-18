@@ -1,13 +1,13 @@
 ﻿/**
- * WAVE 20: THE GREAT RESET
- * 5 Categorias Fisicas | ~80 lineas | 0 subgeneros culturales
- * "Selene ya no PIENSA que cultura es. Ahora SIENTE que fisica tiene."
- * 
- * @author Selene AI Engineering
- * @version WAVE-20
+ * WAVE 43.0: THE SENATE CLASSIFIER (Score-Based Inertia)
+ * ======================================================
+ * Sistema de clasificación basado en acumulación de confianza.
+ * Elimina el flickeo instantáneo mediante un sistema de "votos"
+ * acumulativos con decadencia temporal.
+ * * FILOSOFÍA:
+ * "El contexto no cambia por un golpe fuera de tiempo.
+ * Se requiere una tendencia sostenida para cambiar la realidad."
  */
-
-// TIPOS
 
 export type MacroGenre = 
   | 'ELECTRONIC_4X4'
@@ -49,165 +49,88 @@ interface AudioInput {
   bpm?: number;
 }
 
-// CLASIFICADOR
+// CONFIGURACIÓN DEL SENADO
+// 🔧 WAVE 45.3: Senate Reform - Más reactivo para techno rápido
+const SENATE_CONFIG = {
+  MAX_SCORE: 100,
+  VOTE_WEIGHT: 3,       // Puntos que gana el género detectado en este frame
+  DECAY_RATE: 0.5,      // Puntos que pierden todos cada frame (olvido)
+  SWITCH_MARGIN: 15,    // 🔧 WAVE 45.3: Era 30 (muy lento reaccionar). Ahora más ágil
+  MIN_CONFIDENCE: 0.4,  // Confianza mínima para emitir un voto válido
+  SMOOTHING_ALPHA: 0.1  // Para suavizar metricas de entrada
+};
 
 export class GenreClassifier {
-  private lastGenre: MacroGenre = 'ELECTROLATINO';
-  private lastSync: number = 0.35;  // WAVE 22: Guardar sync anterior para Anti-Glue
-  private framesSinceChange = 0;
-  private readonly STABILITY_FRAMES = 30;
-  private frameCount = 0;
-  private lastLogFrame = 0;
+  // Estado del Senado
+  // 🔧 WAVE 45.3: Balanceamos scores iniciales (no solo ELECTROLATINO gana)
+  private scores: Record<MacroGenre, number> = {
+    'ELECTRONIC_4X4': 25,       // 🔧 Igual que otros electrónicos
+    'ELECTRONIC_BREAKS': 25,    // 🔧 Igual
+    'LATINO_TRADICIONAL': 0,    // Sin ventaja
+    'LATINO_URBANO': 0,         // Sin ventaja
+    'ELECTROLATINO': 25         // 🔧 Era 50, ahora igual que otros
+  };
 
+  private currentGenre: MacroGenre = 'ELECTROLATINO';
+  private smoothedSync: number = 0.35; // EMA para input
+  private frameCount = 0;
+
+  /**
+   * Clasifica el género basado en acumulación de evidencia
+   */
   classify(rhythm: RhythmInput, audio: AudioInput): GenreAnalysis {
     this.frameCount++;
 
-    // WAVE 19.2 FIX: Extraer metricas con fallbacks
-    const sync = typeof rhythm.syncopation === 'number'
+    // 1. EXTRACCIÓN Y SUAVIZADO DE DATOS
+    const rawSync = typeof rhythm.syncopation === 'number'
       ? rhythm.syncopation
       : (rhythm.groove?.syncopation ?? 0.35);
     
+    // EMA (Exponential Moving Average) para limpiar ruido de entrada
+    this.smoothedSync = (rawSync * SENATE_CONFIG.SMOOTHING_ALPHA) + 
+                        (this.smoothedSync * (1 - SENATE_CONFIG.SMOOTHING_ALPHA));
+    
+    const sync = this.smoothedSync;
     const bpm = audio.bpm ?? rhythm.bpm ?? 120;
-    const treble = audio.treble ?? 0.1;
-    const snare = rhythm.drums?.snareIntensity ?? 0.3;
-    const kick = rhythm.drums?.kickIntensity ?? 0.5;
     const energy = audio.energy ?? 0.5;
+    const treble = audio.treble ?? 0.1;
     const bass = audio.bass ?? 0.3;
+    const kick = rhythm.drums?.kickIntensity ?? 0.5;
+    const snare = rhythm.drums?.snareIntensity ?? 0.3;
 
-    // ARBOL DE DECISION FISICO
-    let detectedGenre: MacroGenre;
-    let confidence: number;
-    let mood: GenreAnalysis['mood'] = 'energetic';
+    // 2. VOTACIÓN DEL FRAME (Instant Candidate)
+    // Quién ganaría si solo miráramos este milisegundo?
+    const candidate = this.getInstantCandidate(bpm, sync, energy, treble, kick, snare);
 
-    // 🧴 WAVE 22: ANTI-GLUE (Quick Release)
-    // Si el ritmo cambia drásticamente, romper el lock incluso en silencio
-    const syncDelta = Math.abs(sync - this.lastSync);
+    // 3. ACTUALIZACIÓN DEL SENADO (Score Update)
+    this.updateScores(candidate);
+
+    // 4. ELECCIÓN DEL LÍDER (Leader Selection)
+    this.electLeader();
+
+    // 5. CONSTRUCCIÓN DE RESPUESTA
+    const currentScore = this.scores[this.currentGenre];
+    const confidence = Math.min(1, currentScore / SENATE_CONFIG.MAX_SCORE);
     
-    // 🛡️ WAVE 21.2: BREAKDOWN LOCK (Escudo Contextual) + ANTI-GLUE
-    // Mantener lock SOLO si: energía baja Y ritmo NO ha cambiado drásticamente
-    // Si syncDelta > 0.3, es que ha entrado un ritmo nuevo (ej: Techno→Cumbia)
-    const isBreakdown = energy < 0.25 && syncDelta < 0.3;
-    
-    if (
-      isBreakdown &&
-      (this.lastGenre === 'ELECTRONIC_4X4' || this.lastGenre === 'ELECTRONIC_BREAKS')
-    ) {
-      // Estamos en un breakdown techno -> mantener el contexto
-      detectedGenre = this.lastGenre;
-      confidence = 0.75; // Confianza menor porque no detectamos energía, pero contexto es sólido
-      mood = 'dark';
-      // 🔇 WAVE 39.5: Log de breakdown removido (spam)
-    }
-    // 🇦🇷 WAVE 22: GAUCHO BPM FIX (Normalización Selectiva)
-    // Detectar Cumbia Rápida (180 BPM) vs Breaks (DnB real)
-    // Si BPM alto pero NO es potente (energy/kick bajos), es Cumbia -> Normalizar a evalBpm
-    else {
-      // Evaluar BPM: Si es muy rápido pero sin potencia de breaks, tratarlo como cumbia rápida
-      let evalBpm = bpm;
-      if (bpm > 155 && !(energy > 0.8 && kick > 0.7)) {
-        // No es Breaks potente, es Cumbia Rápida -> Normalizar octava
-        evalBpm = Math.floor(bpm / 2);  // 180 → 90, 170 → 85
-        // 🔇 WAVE 39.5: Log de GAUCHO FIX removido (spam)
-      }
+    // Determinar Mood basado en características físicas estables
+    let mood: GenreAnalysis['mood'] = 'chill';
+    if (energy > 0.7) mood = 'energetic';
+    else if (energy < 0.3) mood = 'dark';
+    else if (this.currentGenre.includes('LATINO')) mood = 'festive';
 
-      if (evalBpm > 155 && energy > 0.8 && kick > 0.7) {
-        // ELECTRONIC_BREAKS: DnB/Breaks real con mucha potencia
-        detectedGenre = 'ELECTRONIC_BREAKS';
-        confidence = 0.85;
-        mood = 'dark';
-      }
-      // WAVE 22.4: SMART SWING GATE (Darkness Check)
-      else if (
-        kick > 0.3 && 
-        evalBpm > 110 && evalBpm <= 150 && 
-        treble <= 0.45 &&  // Rechazar brillantes (Cumbia)
-        (sync < 0.40 || (sync < 0.60 && treble < 0.35))  // Robo O (Groovy Y Oscuro)
-      ) {
-        detectedGenre = 'ELECTRONIC_4X4';
-        confidence = treble < 0.35 ? 0.95 : 0.85;
-        mood = energy > 0.6 ? 'energetic' : 'dark';
-      }
-      // TERCERO: Detectar electronic 4x4 por sync bajo (si no tenía kick fuerte)
-      // WAVE 21.1: Solo es Electrónica si tiene energía o kick - silencio no es Techno
-      else if (sync < 0.30 && (energy > 0.3 || kick > 0.2)) {
-        detectedGenre = 'ELECTRONIC_4X4';
-        confidence = 0.90;
-        mood = energy > 0.6 ? 'energetic' : 'dark';
-      }
-      // CUARTO: Latino range (70-125 BPM evaluado)
-      // WAVE 22.2: Bajamos de 85 a 70 BPM para atrapar Cumbia Rebajada y Reggaeton Lento
-      // WAVE 21: Calibración para audio sucio (MP3/YouTube)
-      else if (evalBpm >= 70 && evalBpm <= 125) {
-        if (treble > 0.10) {  // WAVE 21: Bajamos de 0.15 a 0.10 (MP3 mata agudos)
-          detectedGenre = 'LATINO_TRADICIONAL';
-          confidence = 0.88;
-          mood = 'festive';
-        } else if (snare > 0.5) {
-          detectedGenre = 'LATINO_URBANO';  // WAVE 21: Refugio para ritmo roto sin agudos
-          confidence = 0.85;
-          mood = 'dark';
-        } else {
-          detectedGenre = 'ELECTROLATINO';
-          confidence = 0.70;
-          mood = 'chill';
-        }
-      }
-      // FALLBACK: Fuera de rangos conocidos
-      // WAVE 22.2: Si sincopación es muy alta (> 0.6), es más probable Reggaeton/Urbano que Pop
-      else {
-        if (sync > 0.6 && evalBpm < 140) {
-          // Ritmo lento y muy roto -> es Reggaeton/Dembow
-          detectedGenre = 'LATINO_URBANO';
-          confidence = 0.60;
-          mood = 'dark';
-        } else {
-          detectedGenre = 'ELECTROLATINO';
-          confidence = 0.50;
-          mood = 'chill';
-        }
-      }
-    }
-    
-    // Guardar sync actual para Anti-Glue en siguiente frame
-    this.lastSync = sync;
-
-    // HISTERESIS
-    if (detectedGenre !== this.lastGenre) {
-      this.framesSinceChange++;
-      if (this.framesSinceChange < this.STABILITY_FRAMES) {
-        detectedGenre = this.lastGenre;
-      } else {
-        // 🔇 WAVE 39.5: Solo loguear CAMBIOS reales de género
-        console.info(`[GenreClassifier] 🎵 CAMBIO: ${this.lastGenre} → ${detectedGenre} (sync=${sync.toFixed(2)}, bpm=${bpm.toFixed(0)})`);
-        this.lastLogFrame = this.frameCount;
-        this.lastGenre = detectedGenre;
-        this.framesSinceChange = 0;
-      }
-    } else {
-      this.framesSinceChange = 0;
-    }
-
-    // 🔇 WAVE 39.5: LOG PERIODICO ELIMINADO (spam)
-    // Solo se loguea cuando HAY cambio de género
-
-    const scores: Record<MacroGenre, number> = {
-      'ELECTRONIC_4X4': detectedGenre === 'ELECTRONIC_4X4' ? confidence : 0.1,
-      'ELECTRONIC_BREAKS': detectedGenre === 'ELECTRONIC_BREAKS' ? confidence : 0.1,
-      'LATINO_TRADICIONAL': detectedGenre === 'LATINO_TRADICIONAL' ? confidence : 0.1,
-      'LATINO_URBANO': detectedGenre === 'LATINO_URBANO' ? confidence : 0.1,
-      'ELECTROLATINO': detectedGenre === 'ELECTROLATINO' ? confidence : 0.1,
-    };
+    // Solo loguear cambios de LÍDER (no de candidato instantáneo)
+    // El log se hace fuera, aquí solo devolvemos el estado estable
 
     return {
-      genre: detectedGenre,
+      genre: this.currentGenre,
       subgenre: 'none',
       confidence,
-      scores,
+      scores: { ...this.scores }, // Copia para inmutabilidad
       features: {
         bpm,
         syncopation: sync,
-        hasFourOnFloor: sync < 0.20 && kick > 0.5,
-        hasDembow: snare > 0.5 && sync > 0.30,
+        hasFourOnFloor: sync < 0.40 && kick > 0.3,  // 🔧 WAVE 45.1: Era sync<0.25 (inalcanzable)
+        hasDembow: sync > 0.30 && snare > 0.4,
         trebleDensity: treble,
         has808Bass: bass > 0.6,
         avgEnergy: energy,
@@ -216,28 +139,171 @@ export class GenreClassifier {
     };
   }
 
+  /**
+   * Lógica pura de decisión instantánea (Frame Voter)
+   * Define fronteras claras y zonas muertas
+   */
+  private getInstantCandidate(
+    bpm: number, 
+    sync: number, 
+    energy: number, 
+    treble: number, 
+    kick: number, 
+    snare: number
+  ): MacroGenre {
+    
+    // GAUCHO FIX: Normalización de BPM para Cumbia Rápida vs Techno rápido
+    // 🔧 WAVE 45.3: MEJORADO - Más requisitos para considerar "cumbia doblada"
+    // Solo dividir si:
+    // 1. BPM > 155 (podría ser conteo doble)
+    // 2. Energy < 0.7 (cumbia no es explosiva como techno)
+    // 3. Treble > 0.30 (muchos agudos de percusión latina)
+    // 4. Sync > 0.40 (muy sincopado - techno NO es así)
+    // 5. Kick < 0.50 (cumbia no tiene bombo tan marcado como techno)
+    let evalBpm = bpm;
+    const looksLikeFastCumbia = 
+      bpm > 155 && 
+      energy < 0.70 && 
+      treble > 0.30 && 
+      sync > 0.40 && 
+      kick < 0.50;
+    
+    if (looksLikeFastCumbia) {
+      evalBpm = bpm / 2;
+    }
+
+    // A. ZONA DE ALTA ENERGÍA Y VELOCIDAD (DnB / Jungle)
+    if (evalBpm > 160 && energy > 0.70 && sync > 0.45) {
+      return 'ELECTRONIC_BREAKS';
+    }
+    
+    // 🔧 WAVE 45.3: ZONA FAST TECHNO MEJORADA (Boris Brejcha, Amelie Lens, Charlotte de Witte)
+    // BPM alto (145-210), Sync MEDIO-BAJO (no tan estricto - techno rápido no es house puro)
+    // Threshold: sync < 0.65 (antes era 0.55, muy estricto para YouTube audio comprimido)
+    if (evalBpm >= 145 && evalBpm <= 210) {
+      if (sync < 0.65 && kick > 0.15) {
+        return 'ELECTRONIC_4X4';
+      }
+    }
+
+    // B. ZONA LATINA CLÁSICA (Cumbia, Salsa, Merengue)
+    // Característica: Agudos altos (percusión), Sync medio-alto
+    // 🔧 WAVE 45.3: Agregar check de BPM evaluado - evitar falsos positivos con techno rápido
+    if (evalBpm >= 75 && evalBpm <= 130) {
+      // Diferenciación por Sync y Agudos
+      if (sync > 0.35 && treble > 0.15) {
+        return 'LATINO_TRADICIONAL';
+      }
+    }
+
+    // C. ZONA URBANA / DEMBOW (Reggaeton, Trap)
+    // Característica: Sync marcado, Snare fuerte, BPM medio-bajo
+    // 🔧 WAVE 45.3: También limitar a BPM real bajo (no aplicar a techno dividido)
+    if (evalBpm >= 80 && evalBpm <= 135) {
+      if (sync > 0.25 && snare > 0.4) {
+        // Reggaeton suele tener sync ~0.33 (3-3-2 pattern)
+        return 'LATINO_URBANO';
+      }
+    }
+
+    // D. ZONA ELECTRÓNICA 4x4 (House, Tech House, Techno normal)
+    // Característica: Sync BAJO (recto), Kick constante
+    // 🔧 WAVE 45.1: Threshold ajustado
+    if (evalBpm >= 110 && evalBpm <= 150) {
+      if (sync < 0.45 && kick > 0.20) {
+        return 'ELECTRONIC_4X4';
+      }
+    }
+
+    // E. ZONA DE NADIE (Fusion / Pop / Transition)
+    // Si la sync está entre 0.25 y 0.35, es zona de peligro.
+    // Votamos por ELECTROLATINO como "buffer" seguro.
+    return 'ELECTROLATINO';
+  }
+
+  /**
+   * Aplica decadencia y suma votos
+   */
+  private updateScores(candidate: MacroGenre) {
+    const genres = Object.keys(this.scores) as MacroGenre[];
+    
+    for (const genre of genres) {
+      // 1. Decadencia natural (Olvido)
+      this.scores[genre] -= SENATE_CONFIG.DECAY_RATE;
+      
+      // 2. Voto positivo
+      if (genre === candidate) {
+        this.scores[genre] += SENATE_CONFIG.VOTE_WEIGHT;
+      }
+
+      // Clamp entre 0 y MAX
+      this.scores[genre] = Math.max(0, Math.min(SENATE_CONFIG.MAX_SCORE, this.scores[genre]));
+    }
+  }
+
+  /**
+   * Decide si cambiamos de líder basado en margen de victoria
+   */
+  private electLeader() {
+    let bestGenre: MacroGenre = this.currentGenre;
+    let bestScore = -1;
+
+    // Buscar quién tiene la puntuación más alta
+    const genres = Object.keys(this.scores) as MacroGenre[];
+    for (const genre of genres) {
+      if (this.scores[genre] > bestScore) {
+        bestScore = this.scores[genre];
+        bestGenre = genre;
+      }
+    }
+
+    // LÓGICA DE GOLPE DE ESTADO (Switch Logic)
+    // Para cambiar, el nuevo candidato debe superar al actual por un MARGEN
+    // Esto evita que si están 50 vs 51 cambien a cada frame.
+    const currentScore = this.scores[this.currentGenre];
+    
+    if (bestGenre !== this.currentGenre) {
+      if (bestScore > (currentScore + SENATE_CONFIG.SWITCH_MARGIN)) {
+        // Golpe de estado exitoso
+        console.info(`[GenreClassifier] 🏛️ CAMBIO DE MANDO: ${this.currentGenre} (${currentScore.toFixed(0)}) → ${bestGenre} (${bestScore.toFixed(0)})`);
+        this.currentGenre = bestGenre;
+      }
+    }
+  }
+
+  /**
+   * WAVE 44.0: Debug method for transparency in Senate votes
+   * Returns internal state for HOLISTIC HEARTBEAT visibility
+   */
+  getDebugState(): {
+    current: MacroGenre;
+    scores: Record<MacroGenre, number>;
+    smoothedSync: number;
+    frameCount: number;
+    switchMargin: number;
+  } {
+    return {
+      current: this.currentGenre,
+      scores: { ...this.scores },
+      smoothedSync: this.smoothedSync,
+      frameCount: this.frameCount,
+      switchMargin: SENATE_CONFIG.SWITCH_MARGIN
+    };
+  }
+
   reset(): void {
-    this.lastGenre = 'ELECTROLATINO';
-    this.lastSync = 0.35;  // WAVE 22: Reset sync tracking
-    this.framesSinceChange = 0;
+    // 🔧 WAVE 45.3: Mismos valores iniciales que el constructor
+    this.scores = {
+      'ELECTRONIC_4X4': 25,
+      'ELECTRONIC_BREAKS': 25,
+      'LATINO_TRADICIONAL': 0,
+      'LATINO_URBANO': 0,
+      'ELECTROLATINO': 25
+    };
+    this.currentGenre = 'ELECTROLATINO';
+    this.smoothedSync = 0.35;
     this.frameCount = 0;
   }
 }
-
-// EXPORTS LEGACY
-export type MusicGenre = MacroGenre;
-export type MusicSubgenre = 'none';
-
-export interface GenreFeatures {
-  bpm: number;
-  syncopation: number;
-  hasFourOnFloor: boolean;
-  hasDembow: boolean;
-  trebleDensity: number;
-  has808Bass: boolean;
-  avgEnergy: number;
-}
-
-export type GenreMood = 'energetic' | 'chill' | 'dark' | 'festive';
 
 export default GenreClassifier;

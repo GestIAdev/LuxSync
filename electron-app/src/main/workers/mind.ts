@@ -316,6 +316,56 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${gName}`);
   }
   
+  // 💓 WAVE 44.0: HOLISTIC HEARTBEAT - Estado completo de GAMMA cada 5 segundos
+  if (state.frameCount % 150 === 0) {
+    const gName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+    console.log('[GAMMA HEARTBEAT] 💓🧠', JSON.stringify({
+      frame: state.frameCount,
+      mode: state.operationMode,
+      brainForced: state.brainForced,
+      confidence: {
+        combined: state.combinedConfidence.toFixed(2),
+        rhythm: rhythm.confidence.toFixed(2),
+        harmony: harmony.confidence.toFixed(2),
+        section: section.confidence.toFixed(2),
+        genre: genre.confidence.toFixed(2),
+      },
+      rhythm: {
+        syncRaw: rhythm.syncopation.toFixed(3),
+        syncSmoothed: state.smoothedSync.toFixed(3),
+        pattern: rhythm.pattern,
+        bpm: analysis.bpm,
+      },
+      harmony: {
+        key: harmony.key ?? 'NULL',
+        mode: harmony.mode ?? 'NULL',
+        mood: harmony.mood ?? 'NULL',
+        temp: harmony.temperature ?? 'NULL',
+      },
+      section: {
+        type: section.type,
+        energy: section.energy.toFixed(2),
+      },
+      genre: {
+        winner: gName,
+        scores: (genre as any).scores ?? {},
+        mood: (genre as any).mood ?? 'NULL',
+      },
+      personality: {
+        mood: personality.currentMood,
+        boldness: personality.boldness,
+      },
+      colorEngine: {
+        paletteGenerated: !!state.currentPalette,
+        strategy: state.currentPalette?.meta?.strategy ?? 'NULL',
+      },
+      perf: {
+        decisions: state.decisionCount,
+        avgMs: (state.totalProcessingTime / Math.max(1, state.messagesProcessed)).toFixed(2),
+      }
+    }, null, 0));
+  }
+  
   // 🎨 Generar paleta con nuevo motor determinista
   const selenePalette = SeleneColorEngine.generate(analysis as SeleneExtendedAnalysis);
   const rgbPalette = SeleneColorEngine.generateRgb(analysis as SeleneExtendedAnalysis);

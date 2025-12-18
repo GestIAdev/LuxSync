@@ -158,6 +158,9 @@ export class DreamForgeEngine extends EventEmitter {
   private dreamHistory: DreamHistory[] = []
   private dreamCounter = 0
   
+  // 🔇 WAVE 39.5: Throttle para logs
+  private _lastLogTime = 0
+  
   // Estadísticas
   private dreamsProcessed = 0
   private dreamsApproved = 0
@@ -272,10 +275,16 @@ export class DreamForgeEngine extends EventEmitter {
       
       this.emit('dream-completed', result)
       
-      // Log para depuración
-      const emoji = recommendation === 'execute' ? '✨' : 
-                    recommendation === 'modify' ? '🔄' : '⛔'
-      console.log(`🔮 [DREAM] ${emoji} ${scenario.type}: ${projectedBeauty.toFixed(2)} (${beautyDelta >= 0 ? '+' : ''}${beautyDelta.toFixed(2)}) - ${reasoning}`)
+      // 🔇 WAVE 39.5: Solo loguear sueños ACEPTADOS (execute/modify) con throttle 10s
+      // Los rechazos son silenciosos para evitar spam
+      if (recommendation === 'execute' || recommendation === 'modify') {
+        const now = Date.now()
+        if (now - this._lastLogTime > 10000) {
+          const emoji = recommendation === 'execute' ? '✨' : '🔄'
+          console.info(`🔮 [DREAM] ${emoji} ${scenario.type}: ${projectedBeauty.toFixed(2)} (${beautyDelta >= 0 ? '+' : ''}${beautyDelta.toFixed(2)}) - ${reasoning}`)
+          this._lastLogTime = now
+        }
+      }
       
       return result
       

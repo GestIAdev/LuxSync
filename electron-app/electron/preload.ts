@@ -197,7 +197,8 @@ const luxApi = {
     ipcRenderer.invoke('lux:audio-buffer', buffer.buffer),
   
   /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */
-  audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number }) =>
+  // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
+  audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm: number; fftBins?: number[] }) =>
     ipcRenderer.invoke('lux:audio-frame', metrics),
   
   /** Obtener estado actual */

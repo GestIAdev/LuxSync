@@ -1,18 +1,18 @@
 /**
  * 🪟 TITLE BAR - WAVE 35.3: Global Window Drag Region
- * Always visible, max z-index
+ * WAVE 39.9: FLEXBOX STRUCTURAL - No more position:fixed
+ * Always visible, physically occupies space in DOM
  */
 
 .global-title-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
+  /* WAVE 39.9: Eliminado position:fixed - ahora es flex item */
+  flex: 0 0 auto;         /* No encoger, no crecer, altura fija */
+  width: 100%;
+  height: 32px;
+  z-index: 9999;          /* Aún alto para overlays */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 32px;
   background: linear-gradient(
     180deg,
     rgba(10, 10, 15, 0.95) 0%,
@@ -20,7 +20,6 @@
   );
   border-bottom: 1px solid rgba(0, 255, 255, 0.1);
   -webkit-app-region: drag;
-  flex-shrink: 0;
 }
 
 .title-bar-drag {

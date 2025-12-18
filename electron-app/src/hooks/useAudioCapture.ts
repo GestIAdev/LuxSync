@@ -223,9 +223,23 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     const newMetrics: AudioMetrics = { bass, mid, treble, energy, bpm, beatPhase, onBeat }
     setMetrics(newMetrics)
 
-    // Enviar al Main Process
+    // 🎯 WAVE 39.1: Downsample FFT a 64 bins para visualización
+    // dataArray tiene bufferLength bins (típicamente 1024), reducimos a 64 para eficiencia
+    const FFT_BINS_TO_SEND = 64
+    const binRatio = Math.floor(bufferLength / FFT_BINS_TO_SEND)
+    const fftBins: number[] = new Array(FFT_BINS_TO_SEND)
+    for (let i = 0; i < FFT_BINS_TO_SEND; i++) {
+      // Promediar grupo de bins y normalizar a 0-1
+      let sum = 0
+      for (let j = 0; j < binRatio; j++) {
+        sum += dataArray[i * binRatio + j]
+      }
+      fftBins[i] = (sum / binRatio) / 255
+    }
+
+    // Enviar al Main Process (ahora con FFT bins)
     if (window.lux) {
-      window.lux.audioFrame({ bass, mid, treble, energy, bpm })
+      window.lux.audioFrame({ bass, mid, treble, energy, bpm, fftBins })
     }
 
     animationFrameRef.current = requestAnimationFrame(processFrame)

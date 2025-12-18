@@ -328,15 +328,14 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   // Aplicamos el gain AQUÍ para que afecte a TODO el pipeline.
   const gain = config.inputGain ?? 1.0;
   
-  // 🔍 WAVE 15.2 DIAGNOSTIC: Log cada 60 frames SIEMPRE
-  if (state.frameCount % 60 === 0) {
-    let rawRms = 0;
-    for (let i = 0; i < buffer.length; i++) {
-      rawRms += buffer[i] * buffer[i];
-    }
-    rawRms = Math.sqrt(rawRms / buffer.length);
-    console.log(`[BETA 🎚️] Frame ${state.frameCount}: RawRMS=${rawRms.toFixed(4)}, Gain=${gain.toFixed(1)}, PostRMS=${(rawRms * gain).toFixed(4)}`);
-  }
+  // � WAVE 39.5: DIAGNOSTIC logs silenciados (spam)
+  // Solo activar para debugging con DEBUG_VERBOSE
+  // if (state.frameCount % 60 === 0) {
+  //   let rawRms = 0;
+  //   for (let i = 0; i < buffer.length; i++) { rawRms += buffer[i] * buffer[i]; }
+  //   rawRms = Math.sqrt(rawRms / buffer.length);
+  //   console.log(`[BETA 🎚️] Frame ${state.frameCount}: RawRMS=${rawRms.toFixed(4)}`);
+  // }
   
   if (gain !== 1.0) {
     for (let i = 0; i < buffer.length; i++) {
@@ -379,12 +378,12 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const normalizedEnergy = energyNormalizer.normalize(rawEnergy);
   const energy = normalizedEnergy; // Usar energía normalizada en todo el pipeline
   
-  // 🔍 WAVE 15.2 + 16 DIAGNOSTIC: Log FFT results cada 60 frames
-  if (state.frameCount % 60 === 0) {
-    const gain = config.inputGain || 1.0;
-    const normStats = energyNormalizer.getStats();
-    console.log(`[BETA 🧮] FFT: bass=${spectrum.bass.toFixed(2)}, mid=${spectrum.mid.toFixed(2)}, treble=${spectrum.treble.toFixed(2)}, rawE=${rawEnergy.toFixed(2)}, normE=${normalizedEnergy.toFixed(2)}, peak=${normStats.currentPeak.toFixed(2)}, gain=${gain.toFixed(1)}`);
-  }
+  // � WAVE 39.5: DIAGNOSTIC silenciado (spam)
+  // if (state.frameCount % 60 === 0) {
+  //   const gain = config.inputGain || 1.0;
+  //   const normStats = energyNormalizer.getStats();
+  //   console.log(`[BETA 🧮] FFT: bass=... normE=...`);
+  // }
   
   // === PHASE 3: Wave 8 Rich Analysis ===
   // Create AudioMetrics for Wave 8 analyzers
@@ -419,15 +418,10 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     audioForClassifier    // AudioForClassifier with treble, energy, bass
   );
   
-  // WAVE 18.3.1: DEBUG - Log what GenreClassifier returns
-  if (state.frameCount % 120 === 0) {
-    console.log('[SENSES DEBUG] genreOutput:', JSON.stringify({
-      genre: (genreOutput as any).genre,
-      primary: (genreOutput as any).primary,
-      confidence: (genreOutput as any).confidence,
-      keys: Object.keys(genreOutput)
-    }));
-  }
+  // 🔇 WAVE 39.5: DEBUG silenciado - genera demasiado spam
+  // if (state.frameCount % 120 === 0) {
+  //   console.log('[SENSES DEBUG] genreOutput:', JSON.stringify({...}));
+  // }
   
   // Cache for state snapshots
   state.lastRhythmOutput = rhythmOutput;

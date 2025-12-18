@@ -475,17 +475,17 @@ function startMainLoop() {
       useRealAudio ? 'System Audio' : 'Simulation'
     )
     
-    // 🔊 DMX LOG - Log every ~10 seconds (very sparse)
-    if (Math.random() < 0.003) {
-      const c = state.colors
-      const currentMode = selene?.getState()?.mode || 'unknown' // Use Selene's actual mode (flow/selene/locked)
-      console.log('[DMX] 🎨 RGB:', 
-        c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
-        '| 🎯 Pos:', state.movement?.pan?.toFixed(2) || 0, state.movement?.tilt?.toFixed(2) || 0,
-        '| 🥁 Beat:', state.beat?.onBeat ? 'HIT' : '---',
-        '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM',
-        '| 🧠 Mode:', currentMode)
-    }
+    // � WAVE 39.5: Silenciado DMX log periódico (era ~10 segundos)
+    // if (Math.random() < 0.003) {
+    //   const c = state.colors
+    //   const currentMode = selene?.getState()?.mode || 'unknown' // Use Selene's actual mode (flow/selene/locked)
+    //   console.log('[DMX] 🎨 RGB:', 
+    //     c.primary.r.toFixed(0), c.primary.g.toFixed(0), c.primary.b.toFixed(0), 
+    //     '| 🎯 Pos:', state.movement?.pan?.toFixed(2) || 0, state.movement?.tilt?.toFixed(2) || 0,
+    //     '| 🥁 Beat:', state.beat?.onBeat ? 'HIT' : '---',
+    //     '| 🎵 Audio:', useRealAudio ? 'LIVE' : 'SIM',
+    //     '| 🧠 Mode:', currentMode)
+    // }
     
     // 🔺 TRINITY PHASE 2: Transform state to UI format
     const uiState = {
@@ -532,13 +532,13 @@ function startMainLoop() {
       const accent = state.colors?.accent || color // Para MOVING_LEFT
       const ambient = state.colors?.ambient || accent // Para MOVING_RIGHT (espejo cromático)
       
-      // 🚨 DEBUG: Log RGB values periodically
-      if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
-        console.log(`[DEBUG-RGB] ${fixture.zone}:`, 
-          `Primary=[${color.r},${color.g},${color.b}]`,
-          `Accent=[${accent.r},${accent.g},${accent.b}]`,
-          `Ambient=[${ambient.r},${ambient.g},${ambient.b}]`)
-      }
+      // � WAVE 39.5: Silenciado DEBUG-RGB (log periódico)
+      // if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
+      //   console.log(`[DEBUG-RGB] ${fixture.zone}:`, 
+      //     `Primary=[${color.r},${color.g},${color.b}]`,
+      //     `Accent=[${accent.r},${accent.g},${accent.b}]`,
+      //     `Ambient=[${ambient.r},${ambient.g},${ambient.b}]`)
+      // }
       
       // 🔇 SILENCE GATE: Sin audio = sin luz
       if (isSilence) {
@@ -1339,12 +1339,14 @@ ipcMain.handle('lux:audio-buffer', (_event, bufferData: ArrayBuffer) => {
 })
 
 // Legacy handler - mantener para compatibilidad pero SIN bypass a Trinity
+// 🎯 WAVE 39.1: Ahora recibe fftBins (64 bins normalizados 0-1)
 ipcMain.handle('lux:audio-frame', (_event, audioData: {
   bass: number
   mid: number
   treble: number
   energy: number
   bpm?: number
+  fftBins?: number[]  // 🎯 WAVE 39.1: FFT bins para visualización
 }) => {
   // Audio packet received - no spam logging
   
@@ -1358,7 +1360,12 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
     onBeat: audioData.bass > 0.7, // High bass = beat hit
   }
   
-  // �️ WAVE 15.3: BYPASS ELIMINADO
+  // 🎯 WAVE 39.1: Almacenar FFT bins en SeleneLux para getBroadcast()
+  if (audioData.fftBins && selene) {
+    selene.setFftBins(audioData.fftBins)
+  }
+  
+  // 🛡️ WAVE 15.3: BYPASS ELIMINADO
   // El frontend DEBE enviar el buffer crudo via lux:audio-buffer
   // Este handler legacy NO alimenta a Trinity Workers
   

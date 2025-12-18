@@ -158,6 +158,10 @@ export class SeleneLuxConscious extends EventEmitter {
   private lastPattern: MusicalPattern | null = null
   private lastInterval: IntervalAnalysis | null = null
   private lastLightCommand: LightCommand | null = null
+  
+  // === 🔇 WAVE 39.5: Throttle para logs ===
+  private _lastStrikeLogTime: number = 0
+  private _lastDreamLogTime: number = 0
   private stalkCycles = 0
   
   // === CONFIGURACIÓN ===
@@ -257,9 +261,14 @@ export class SeleneLuxConscious extends EventEmitter {
     this.dreamForge.on('dream-completed', (result: DreamResult) => {
       this.lastDreamResult = result
       
-      const emoji = result.recommendation === 'execute' ? '✨' : 
-                    result.recommendation === 'modify' ? '🔄' : '⛔'
-      console.log(`🌙 [SELENE-DREAM] ${emoji} ${result.scenario.type}: beauty=${result.projectedBeautyScore.toFixed(2)}`)
+      // 🔇 WAVE 39.5: Solo loguear sueños ACEPTADOS, y con throttle de 10s
+      if (result.recommendation === 'execute' || result.recommendation === 'modify') {
+        if (Date.now() - this._lastDreamLogTime > 10000) {
+          const emoji = result.recommendation === 'execute' ? '✨' : '🔄'
+          console.info(`🌙 [SELENE-DREAM] ${emoji} ${result.scenario.type}: beauty=${result.projectedBeautyScore.toFixed(2)}`)
+          this._lastDreamLogTime = Date.now()
+        }
+      }
       
       this.emit('dream-completed', {
         type: result.scenario.type,
@@ -270,8 +279,12 @@ export class SeleneLuxConscious extends EventEmitter {
     })
     
     // SelfAnalysis: escuchar sesgos detectados
+    // 🔇 WAVE 39.5: Silenciado - solo logs importantes
     this.selfAnalysis.on('bias-detected', (bias: DetectedBias) => {
-      console.log(`🔍 [SELENE-BIAS] ${bias.severity}: ${bias.type} - ${bias.description}`)
+      // Solo loguear sesgos críticos
+      if (bias.severity === 'high') {
+        console.warn(`🔍 [SELENE-BIAS] ${bias.severity}: ${bias.type} - ${bias.description}`)
+      }
       
       this.activebiases = this.selfAnalysis.getState().activebiases
       
@@ -294,8 +307,15 @@ export class SeleneLuxConscious extends EventEmitter {
 
   /**
    * 🔄 SINCRONIZA EL ESTADO DE CONSCIENCIA CON EVOLUTION ENGINE
+   * 🛡️ WAVE 39.5: Añadido hysteresis para evitar ping-pong
    */
   private syncConsciousnessState(evolutionState: ConsciousnessState): void {
+    // 🛡️ WAVE 39.5: Si ya estamos en enlightened, NO bajar a wise
+    // enlightened es un estado terminal que no se revierte
+    if (this.consciousness.status === 'enlightened') {
+      return // Ya alcanzamos la iluminación, no hay vuelta atrás
+    }
+    
     // Mapear evolution state a consciousness status
     const stateMap: Record<ConsciousnessState, ConsciousnessStatus> = {
       'awakening': 'awakening',
@@ -316,7 +336,8 @@ export class SeleneLuxConscious extends EventEmitter {
       }
       this.consciousness.lastInsight = insights[evolutionState]
       
-      console.log(`🌟 [SELENE] Consciousness synced: ${oldStatus} → ${newStatus}`)
+      // 🔇 WAVE 39.5: Solo loguear transiciones significativas (no spam)
+      console.info(`🌟 [SELENE] Consciousness synced: ${oldStatus} → ${newStatus}`)
     }
   }
 
@@ -477,8 +498,8 @@ export class SeleneLuxConscious extends EventEmitter {
     const dreamResult = this.dreamStrike(command)
     
     // Si el sueño rechaza el strike, abortar o modificar
+    // 🔇 WAVE 39.5: Silenciado - demasiado spam
     if (dreamResult.recommendation === 'abort') {
-      console.log(`🌙 [SELENE] Dream rejected strike - aborting`)
       return
     }
     
@@ -506,8 +527,12 @@ export class SeleneLuxConscious extends EventEmitter {
       dreamApproved: dreamResult.recommendation === 'execute'
     })
     
-    // Log del strike
-    console.log(`⚡ [SELENE] STRIKE! ${command.palette} + ${command.movement} @ ${(command.intensity * 100).toFixed(0)}%`)
+    // 🔇 WAVE 39.5: Log de STRIKE silenciado (spam)
+    // Solo loguear strikes significativos (cada 30 segundos máximo)
+    if (!this._lastStrikeLogTime || Date.now() - this._lastStrikeLogTime > 30000) {
+      console.info(`⚡ [SELENE] STRIKE! ${command.palette} + ${command.movement} @ ${(command.intensity * 100).toFixed(0)}%`)
+      this._lastStrikeLogTime = Date.now()
+    }
   }
 
   /**

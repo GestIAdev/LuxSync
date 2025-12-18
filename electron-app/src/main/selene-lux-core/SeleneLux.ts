@@ -35,6 +35,9 @@ import { EventEmitter } from 'events'
 import type {
   AudioMetrics,
   MusicalPattern,
+  MusicalNote,
+  ElementType,
+  EmotionalTone,
   ConsciousnessState,
   SeleneMode,
   MovementPattern,
@@ -143,6 +146,13 @@ export class SeleneLux extends EventEmitter {
   private advancedConscious: SeleneLuxConscious | null = null
   private lastAdvancedState: SeleneLuxConsciousState | null = null
   private useAdvancedConscious = true // Flag para activar meta-consciencia
+
+  // 🐅 WAVE 39.0: HuntOrchestrator + ZodiacAffinity (Engine Wiring)
+  private huntOrchestrator: HuntOrchestrator | null = null
+  private lastHuntResult: HuntFrameResult | null = null
+  private lastZodiacInfo: ZodiacInfo | null = null
+  private currentZodiacPosition: number = 0
+  private lastFftBins: number[] = new Array(256).fill(0)
   
   // �🎨 WAVE 13.6: Multiplicadores Globales de Color (STATE OF TRUTH)
   private globalSaturation = 1.0  // 0-1, default 100%
@@ -232,6 +242,15 @@ export class SeleneLux extends EventEmitter {
         console.warn('[SeleneLux] ⚠️ Meta-Consciencia no pudo inicializar:', err)
         this.useAdvancedConscious = false
       }
+    }
+    
+    // 🐅 WAVE 39.0: Inicializar HuntOrchestrator (El Cazador)
+    try {
+      this.huntOrchestrator = new HuntOrchestrator()
+      console.info('[SeleneLux] 🐅 WAVE 39.0: HuntOrchestrator activado (El Cazador)')
+    } catch (err) {
+      console.warn('[SeleneLux] ⚠️ HuntOrchestrator no pudo inicializar:', err)
+      this.huntOrchestrator = null
     }
     
     this.consciousness = {
@@ -573,7 +592,65 @@ export class SeleneLux extends EventEmitter {
         }
       }
       
-      // 🔥 WAVE 23.4: Esta condición nunca se cumple (paletteSource siempre 'procedural' tras lobotomía)
+      //  WAVE 39.0: Procesar con HuntOrchestrator (El Cazador)
+      // Construir MusicalPattern desde brainOutput para alimentar la caza
+      if (this.huntOrchestrator) {
+        try {
+          // Mapear key (C, D, E...) a nota (DO, RE, MI...)
+          const keyToNote: Record<string, MusicalNote> = {
+            'C': 'DO', 'D': 'RE', 'E': 'MI', 'F': 'FA', 'G': 'SOL', 'A': 'LA', 'B': 'SI'
+          }
+          const keyStr = brainOutput.context?.harmony?.key || 'C'
+          const note: MusicalNote = keyToNote[keyStr] || 'DO'
+          
+          // Mapear energy a elemento
+          const element: ElementType = metrics.energy > 0.7 ? 'fire'
+            : metrics.energy > 0.5 ? 'air'
+            : metrics.energy > 0.3 ? 'water'
+            : 'earth'
+          
+          // Mapear mood a tono emocional
+          const moodToTone: Record<string, EmotionalTone> = {
+            'happy': 'energetic', 'sad': 'peaceful', 'energetic': 'energetic',
+            'calm': 'peaceful', 'tense': 'chaotic', 'neutral': 'harmonious'
+          }
+          const moodStr = brainOutput.context?.mood || 'neutral'
+          const emotionalTone: EmotionalTone = moodToTone[moodStr] || 'harmonious'
+          
+          const pattern: MusicalPattern = {
+            note,
+            element,
+            emotionalTone,
+            avgBeauty: brainOutput.estimatedBeauty ?? 0.5,
+            beautyTrend: 'stable',
+            occurrences: this.frameCount,
+            confidence: brainOutput.confidence ?? 0.8,
+          }
+          
+          const clusterHealth = brainOutput.confidence ?? 0.8
+          this.lastHuntResult = this.huntOrchestrator.processFrame(pattern, clusterHealth)
+          this.currentPattern = pattern
+          
+          if (this.frameCount % 300 === 0 && this.lastHuntResult.actionTaken) {
+            console.info(`[SeleneLux]  Hunt: ${this.lastHuntResult.actionType} (${this.lastHuntResult.details?.reasoning || 'ok'})`)
+          }
+        } catch (err) {
+          if (this.frameCount % 600 === 0) {
+            console.warn('[SeleneLux]  HuntOrchestrator error (silenciado):', err)
+          }
+        }
+      }
+      // ✨ WAVE 39.0: Actualizar ZodiacInfo cada ~5 segundos
+      if (this.frameCount % 150 === 0) {
+        try {
+          this.currentZodiacPosition = ZodiacAffinityCalculator.calculateZodiacPosition(Date.now())
+          this.lastZodiacInfo = ZodiacAffinityCalculator.getZodiacInfo(this.currentZodiacPosition)
+        } catch (err) {
+          // Silenciar errores de zodiac
+        }
+      }
+      
+      // �🔥 WAVE 23.4: Esta condición nunca se cumple (paletteSource siempre 'procedural' tras lobotomía)
       // 🔥 WAVE 24.11: Added 'as any' cast to silence TS warning
       // Mantenido para compatibilidad pero inactivo
       if (brainOutput.mode === 'intelligent' && (brainOutput.paletteSource as any) === 'memory') {
@@ -910,6 +987,16 @@ export class SeleneLux extends EventEmitter {
     console.info(`[SeleneLux] Palette changed to: ${palette}`)
   }
   
+  /**
+   * 🎯 WAVE 39.1: Recibir FFT bins desde IPC para visualización
+   * @param bins Array de 64 valores normalizados (0-1)
+   */
+  setFftBins(bins: number[]): void {
+    if (bins && bins.length > 0) {
+      this.lastFftBins = bins
+    }
+  }
+  
   setMovementPattern(pattern: MovementPattern): void {
     this.movementEngine.setPattern(pattern)
     console.info(`[SeleneLux] Movement pattern changed to: ${pattern}`)
@@ -1174,7 +1261,11 @@ export class SeleneLux extends EventEmitter {
         spectralFlux: 0,
         zeroCrossingRate: 0,
       },
-      fft: new Array(256).fill(0), // TODO: Exponer FFT real desde workers
+      // 🎯 WAVE 39.1: FFT bins reales desde useAudioCapture (64 bins normalizados)
+      // Si tenemos menos de 256, pad con ceros; si tenemos más, truncar
+      fft: this.lastFftBins.length >= 256 
+        ? this.lastFftBins.slice(0, 256) 
+        : [...this.lastFftBins, ...new Array(256 - this.lastFftBins.length).fill(0)],
       beat: {
         onBeat: beat?.onBeat ?? false,
         confidence: beat?.confidence ?? 0,
@@ -1212,11 +1303,11 @@ export class SeleneLux extends EventEmitter {
         lastRecommendation: (this.lastAdvancedState?.felina?.isHunting ? 'execute' : null) as 'execute' | 'modify' | 'abort' | null,
       },
       zodiac: {
-        element: 'fire' as const, // TODO: Conectar con ZodiacAffinityCalculator
-        sign: '♈',
-        affinity: 0.5,
-        quality: 'cardinal' as const,
-        description: 'The passionate initiator',
+        element: (this.lastZodiacInfo?.sign?.element ?? 'fire') as 'fire' | 'earth' | 'air' | 'water',
+        sign: this.lastZodiacInfo?.sign?.symbol ?? '♈',
+        affinity: this.lastZodiacInfo?.sign?.creativity ?? 0.5,
+        quality: (this.lastZodiacInfo?.sign?.quality ?? 'cardinal') as 'cardinal' | 'fixed' | 'mutable',
+        description: this.lastZodiacInfo?.sign?.description ?? 'The passionate initiator',
       },
       beauty: {
         current: brain?.estimatedBeauty ?? this.consciousness.beautyScore ?? 0.5,
@@ -1294,9 +1385,22 @@ export class SeleneLux extends EventEmitter {
           probability: 0,
         },
         huntStatus: {
-          phase: 'idle' as const,
-          lockPercentage: 0,
-          targetType: null,
+          // Mapear estados de HuntOrchestrator a los esperados por MusicalDNAData
+          phase: (() => {
+            const huntPhase = this.lastHuntResult?.actionType ?? 'idle'
+            const phaseMap: Record<string, 'locked' | 'idle' | 'stalking' | 'striking' | 'tracking'> = {
+              'idle': 'idle',
+              'stalking': 'stalking',
+              'evaluating': 'tracking',
+              'striking': 'striking',
+              'learning': 'locked',
+              'completed': 'locked',
+              'aborted': 'idle',
+            }
+            return phaseMap[huntPhase] ?? 'idle'
+          })(),
+          lockPercentage: this.lastHuntResult?.details?.confidence ?? 0,
+          targetType: this.lastHuntResult?.details?.targetPrey ?? null,
         },
       },
       harmony: {

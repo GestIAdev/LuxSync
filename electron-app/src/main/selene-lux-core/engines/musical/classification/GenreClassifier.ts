@@ -96,11 +96,7 @@ export class GenreClassifier {
       detectedGenre = this.lastGenre;
       confidence = 0.75; // Confianza menor porque no detectamos energía, pero contexto es sólido
       mood = 'dark';
-      // Log ocasional
-      if (this.frameCount - this.lastLogFrame > 120) {
-        console.log(`[GenreClassifier] BREAKDOWN LOCK: ${detectedGenre} (energy=${energy.toFixed(2)}, syncDelta=${syncDelta.toFixed(2)})`);
-        this.lastLogFrame = this.frameCount;
-      }
+      // 🔇 WAVE 39.5: Log de breakdown removido (spam)
     }
     // 🇦🇷 WAVE 22: GAUCHO BPM FIX (Normalización Selectiva)
     // Detectar Cumbia Rápida (180 BPM) vs Breaks (DnB real)
@@ -111,10 +107,7 @@ export class GenreClassifier {
       if (bpm > 155 && !(energy > 0.8 && kick > 0.7)) {
         // No es Breaks potente, es Cumbia Rápida -> Normalizar octava
         evalBpm = Math.floor(bpm / 2);  // 180 → 90, 170 → 85
-        if (this.frameCount - this.lastLogFrame > 120) {
-          console.log(`[GenreClassifier] GAUCHO FIX: BPM normalizado ${bpm} → ${evalBpm}`);
-          this.lastLogFrame = this.frameCount;
-        }
+        // 🔇 WAVE 39.5: Log de GAUCHO FIX removido (spam)
       }
 
       if (evalBpm > 155 && energy > 0.8 && kick > 0.7) {
@@ -184,10 +177,9 @@ export class GenreClassifier {
       if (this.framesSinceChange < this.STABILITY_FRAMES) {
         detectedGenre = this.lastGenre;
       } else {
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[GenreClassifier] CAMBIO: ${this.lastGenre} -> ${detectedGenre} (sync=${sync.toFixed(2)}, bpm=${bpm.toFixed(0)})`);
-          this.lastLogFrame = this.frameCount;
-        }
+        // 🔇 WAVE 39.5: Solo loguear CAMBIOS reales de género
+        console.info(`[GenreClassifier] 🎵 CAMBIO: ${this.lastGenre} → ${detectedGenre} (sync=${sync.toFixed(2)}, bpm=${bpm.toFixed(0)})`);
+        this.lastLogFrame = this.frameCount;
         this.lastGenre = detectedGenre;
         this.framesSinceChange = 0;
       }
@@ -195,11 +187,8 @@ export class GenreClassifier {
       this.framesSinceChange = 0;
     }
 
-    // LOG PERIODICO
-    if (this.frameCount - this.lastLogFrame > 120) {
-      console.log(`[GenreClassifier] ${detectedGenre} | sync=${sync.toFixed(2)} bpm=${bpm.toFixed(0)} treble=${treble.toFixed(2)}`);
-      this.lastLogFrame = this.frameCount;
-    }
+    // 🔇 WAVE 39.5: LOG PERIODICO ELIMINADO (spam)
+    // Solo se loguea cuando HAY cambio de género
 
     const scores: Record<MacroGenre, number> = {
       'ELECTRONIC_4X4': detectedGenre === 'ELECTRONIC_4X4' ? confidence : 0.1,

@@ -1,12 +1,14 @@
 /**
  * 📱 SIDEBAR - CSS
  * WAVE 10.6: Night Shift Polish - Larger tabs, glow borders
+ * WAVE 39.9: height: 100% (no vh) - flex child del main-layout
  */
 
 .sidebar {
   width: 280px;
   min-width: 280px;
-  height: 100vh;
+  flex-shrink: 0;        /* WAVE 39.9: No encoger */
+  height: 100%;          /* WAVE 39.9: 100% del parent, NO 100vh */
   background: linear-gradient(180deg, #12121a 0%, #0a0a0f 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;

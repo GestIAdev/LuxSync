@@ -177,7 +177,8 @@ interface Window {
     audioBuffer: (buffer: Float32Array) => Promise<{ success: boolean }>
     
     // Legacy: NO alimenta Trinity Workers
-    audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number }) => Promise<{ success: boolean }>
+    // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)
+    audioFrame: (metrics: { bass: number; mid: number; treble: number; energy: number; bpm?: number; fftBins?: number[] }) => Promise<{ success: boolean }>
     getState: () => Promise<SeleneStateUpdate | null>
     
     // 🎯 WAVE 13.6: Full state sync for initial handshake

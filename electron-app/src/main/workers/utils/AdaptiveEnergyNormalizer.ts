@@ -96,10 +96,10 @@ export class AdaptiveEnergyNormalizer {
     
     this.lastNormalizedEnergy = normalized;
     
-    // 8. Debug log cada ~5 segundos (150 frames @ 30fps)
-    if (this.frameCount % 150 === 0) {
-      console.log(`[AdaptiveNorm] Raw=${rawEnergy.toFixed(3)} Peak=${this.currentPeakMax.toFixed(3)} → Normalized=${normalized.toFixed(3)} (window: ${this.rollingMaxWindow.length}/${this.WINDOW_SIZE})`);
-    }
+    // 🔇 WAVE 39.5: Debug log silenciado (spam)
+    // if (this.frameCount % 150 === 0) {
+    //   console.log(`[AdaptiveNorm] Raw=${rawEnergy.toFixed(3)} Peak=... Normalized=...`);
+    // }
     
     return normalized;
   }
@@ -111,7 +111,8 @@ export class AdaptiveEnergyNormalizer {
     this.rollingMaxWindow = [];
     this.currentPeakMax = this.INITIAL_PEAK;
     this.frameCount = 0;
-    console.log('[AdaptiveNorm] Reset - Ventana limpia, sensibilidad en default');
+    // 🔇 WAVE 39.5: Silenciado
+    // console.log('[AdaptiveNorm] Reset - Ventana limpia, sensibilidad en default');
   }
   
   /**

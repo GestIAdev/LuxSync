@@ -2,6 +2,7 @@
  * 🏗️ MAIN LAYOUT - Commander Layout Structure
  * WAVE 9: Sidebar + Content Area + Global Effects Bar
  * WAVE 35.3: Global TitleBar always visible
+ * WAVE 39.9: FLEXBOX STRUCTURAL LAYOUT - TitleBar ocupa espacio real (no position:fixed)
  */
 
 import React from 'react'
@@ -17,19 +18,22 @@ const MainLayout: React.FC = () => {
   const { blackout } = useEffectsStore()
 
   return (
-    <div className="main-layout">
-      {/* Global Title Bar - Always visible, max z-index */}
+    <div className="app-layout">
+      {/* 🪟 Global Title Bar - Flex item, NO position:fixed */}
       <TitleBar />
       
-      {/* Sidebar - Fixed 280px */}
-      <Sidebar />
-      
-      {/* Content Area - Flexible */}
-      <div className="layout-content">
-        <ContentArea />
+      {/* 🏗️ Main content row: Sidebar + Content */}
+      <div className="main-layout">
+        {/* Sidebar - Fixed 280px */}
+        <Sidebar />
         
-        {/* Global Effects Bar - Fixed 80px bottom */}
-        <GlobalEffectsBar />
+        {/* Content Area - Flexible */}
+        <div className="layout-content">
+          <ContentArea />
+          
+          {/* Global Effects Bar - Fixed 80px bottom */}
+          <GlobalEffectsBar />
+        </div>
       </div>
       
       {/* Blackout Overlay */}

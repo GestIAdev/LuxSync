@@ -2,13 +2,24 @@
  * 🏗️ MAIN LAYOUT - CSS
  * WAVE 9: Commander Layout Styles
  * WAVE 35.3: Padding for global TitleBar (32px)
+ * WAVE 39.9: FLEXBOX STRUCTURAL LAYOUT - No more position:fixed overlap bugs
  */
 
-.main-layout {
+/* 🏗️ OUTER SHELL: Flex column to stack TitleBar + content vertically */
+.app-layout {
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
-  padding-top: 32px; /* Space for global TitleBar */
+  overflow: hidden;
+  background: var(--bg-primary, #0a0a0f);
+}
+
+/* 🪟 INNER LAYOUT: Sidebar + Content horizontal layout */
+.main-layout {
+  display: flex;
+  flex: 1;               /* Ocupar todo el espacio restante tras TitleBar */
+  min-height: 0;         /* Crucial para overflow correcto en flex children */
   overflow: hidden;
   background: var(--bg-primary, #0a0a0f);
 }
@@ -17,6 +28,6 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 0; /* Allow shrinking */
-  height: calc(100vh - 32px); /* Account for TitleBar */
+  min-width: 0;   /* Allow shrinking */
+  min-height: 0;  /* Allow shrinking for overflow */
 }

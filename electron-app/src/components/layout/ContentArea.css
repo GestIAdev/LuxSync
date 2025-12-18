@@ -1,21 +1,28 @@
 /**
  * 📺 CONTENT AREA - CSS
  * WAVE 35.2: Dashboard takes full space, no padding
+ * WAVE 39.9: FLEXBOX STRUCTURAL - scroll ocurre AQUÍ dentro
  */
 
 .content-area {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
+  flex: 1;                 /* Ocupar el resto del espacio */
+  overflow: hidden;        /* Contener el absolute child */
+  position: relative;      /* Ancla para el absolute child */
+  min-height: 0;           /* Crucial para flex children */
+  min-width: 0;            /* Evitar que crezca más allá del parent */
   background: var(--bg-primary, #0a0a0f);
 }
 
 .view-container {
+  /* WAVE 39.9: Mantenemos absolute pero ahora el parent está correctamente contenido */
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: fadeIn 0.2s ease-out;
 }
 

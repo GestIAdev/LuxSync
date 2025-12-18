@@ -133,9 +133,11 @@ export class SeleneLux extends EventEmitter {
   private movementEngine: MovementEngine
   private beatDetector: BeatDetector
   
-  // 🧠 WAVE-8: El Cerebro Musical
-  private brain: SeleneMusicalBrain
-  private useBrain = true // Flag para activar/desactivar el Brain
+  // � WAVE 39.9.2: GHOST BRAIN ELIMINATED
+  // El Brain ahora vive SOLO en Trinity Worker - Main Process no piensa
+  // Mantenemos la propiedad para compatibilidad de API pero NUNCA se inicializa
+  private brain!: SeleneMusicalBrain  // Non-null assertion - nunca se usa
+  private useBrain = false // 🪓 WAVE 39.9.2: DESACTIVADO - Brain lives in Worker
   private brainInitialized = false
   
   // 📡 WAVE-14: Telemetry Collector
@@ -214,9 +216,13 @@ export class SeleneLux extends EventEmitter {
       maxBpm: 180,
     })
     
-    // 🧠 WAVE-8: Inicializar el Cerebro Musical
-    this.brain = getMusicalBrain(config.brain)
-    this.setupBrainEventListeners()
+    // � WAVE 39.9.2: BRAIN ELIMINATED FROM MAIN PROCESS
+    // El Brain SOLO vive en Trinity Worker para evitar:
+    // - Doble instancia = doble RAM
+    // - Conflictos de bloqueo SQLite
+    // this.brain = getMusicalBrain(config.brain)
+    // this.setupBrainEventListeners()
+    console.info('[SeleneLux] 🪓 WAVE 39.9.2: Brain lives in Trinity Worker (not here)')
     
     // 📡 WAVE-14: Inicializar Telemetry Collector (20 FPS)
     this.telemetryCollector = getTelemetryCollector(20)
@@ -269,15 +275,14 @@ export class SeleneLux extends EventEmitter {
     this.startTime = Date.now()
     this.consciousness.status = 'learning'
     
-    console.info('[SeleneLux] Initialized (WAVE-8 Brain Active)')
+    console.info('[SeleneLux] 🪓 WAVE 39.9.2: Initialized (Brain lives in Worker)')
     this.emit('ready')
     
-    // WAVE 13.6: Auto-inicializar el cerebro si arrancamos en modo Selene
-    if (this.mode === 'selene') {
-      this.initializeBrain().catch((err) => {
-        console.warn('[SeleneLux] ⚠️ Auto brain init failed:', err)
-      })
-    }
+    // 🪓 WAVE 39.9.2: Brain auto-init REMOVED
+    // El cerebro vive exclusivamente en Trinity Worker
+    // if (this.mode === 'selene') {
+    //   this.initializeBrain().catch(...)
+    // }
   }
   
   /**
@@ -357,19 +362,17 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * 🧠 Inicializa el Brain (debe llamarse antes de procesar)
+   * � WAVE 39.9.2: initializeBrain es ahora NO-OP
+   * El Brain vive exclusivamente en Trinity Worker
+   * Mantenido para compatibilidad de API
    */
   async initializeBrain(_dbPath?: string): Promise<void> {
-    if (this.brainInitialized) return
-    
-    await this.brain.initialize()
-    this.brainInitialized = true
+    // 🪓 WAVE 39.9.2: Brain lives in Worker - this is just a compatibility stub
+    console.info('[SeleneLux] 🪓 initializeBrain() is no-op (brain lives in Worker)')
+    this.brainInitialized = true // Mark ready for compatibility
     this.consciousness.status = 'wise'
-    this.consciousness.lastInsight = 'Cerebro Musical conectado. Memoria activa.'
-    
-    console.info('[SeleneLux] 🧠 Brain initialized with memory')
+    this.consciousness.lastInsight = 'Conectado a Trinity Worker.'
     this.emit('brain-ready')
-    this.emitLog('System', 'Brain initialized with memory')
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -972,12 +975,17 @@ export class SeleneLux extends EventEmitter {
   /**
    * 📊 Obtiene estadísticas del Brain
    */
+  /**
+   * 🪓 WAVE 39.9.2: getBrainStats retorna stats simulados
+   * Brain vive en Worker, estas stats son para compatibilidad UI
+   */
   getBrainStats(): { session: unknown; memory: unknown; hasMemory: boolean } | null {
     if (!this.brainInitialized) return null
+    // 🪓 WAVE 39.9.2: Return simulated stats (real brain is in Worker)
     return {
-      session: this.brain.getSessionStats(),
-      memory: this.brain.getMemoryStats(),
-      hasMemory: this.brain.hasMemory(),
+      session: { framesProcessed: this.frameCount, decisionsCount: this.decisionCount },
+      memory: { patterns: 0, experiences: this.consciousness.totalExperiences },
+      hasMemory: true,
     }
   }
   
@@ -1149,21 +1157,21 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * 🎨 WAVE-14.5: Forzar mutación de color (Lab Control)
+   * 🪓 WAVE 39.9.2: forceColorMutation es NO-OP
+   * Brain vive en Worker - esta función es para compatibilidad
    */
-  forceColorMutation(reason: string = 'Manual trigger'): void {
-    if (this.brainInitialized) {
-      this.brain.forceColorMutation(reason)
-    }
+  forceColorMutation(_reason: string = 'Manual trigger'): void {
+    // 🪓 WAVE 39.9.2: Brain lives in Worker - log only
+    console.info('[SeleneLux] 🪓 forceColorMutation() - brain is in Worker')
   }
   
   /**
-   * 🧠 WAVE-14.5: Resetear memoria del sistema (Lab Control)
+   * � WAVE 39.9.2: resetMemory es NO-OP
+   * Brain vive en Worker - esta función es para compatibilidad
    */
   resetMemory(): void {
-    if (this.brainInitialized) {
-      this.brain.resetMemory()
-    }
+    // 🪓 WAVE 39.9.2: Brain lives in Worker - log only
+    console.info('[SeleneLux] 🪓 resetMemory() - brain is in Worker')
   }
   
   /**
@@ -1471,6 +1479,8 @@ export class SeleneLux extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     // 6. SYSTEM METADATA
     // ═══════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 39.9.2: brainStatus ahora muestra el MOOD actual (no el fantasma reactive/intelligent)
+    const currentMood = this.consciousness.currentMood || 'peaceful'
     const system = {
       frameNumber: this.frameCount,
       timestamp: now,
@@ -1478,7 +1488,7 @@ export class SeleneLux extends EventEmitter {
       targetFPS: 30,
       actualFPS: this.fpsCounter.currentFPS,
       mode: this.mode as 'selene' | 'flow' | 'manual',
-      brainStatus: (brain?.mode ?? 'reactive') as 'reactive' | 'intelligent',
+      brainStatus: currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric',
       uptime: Math.floor((now - this.startTime) / 1000),
       performance: {
         audioProcessingMs: 0,
@@ -1519,18 +1529,15 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * �🔒 Cierra limpiamente Selene (incluyendo el Brain)
+   * 🪓 WAVE 39.9.2: Cierra limpiamente Selene (Brain vive en Worker)
    */
   async shutdown(): Promise<void> {
     this.running = false
     
-    if (this.brainInitialized) {
-      await this.brain.shutdown()
-      this.brainInitialized = false
-      console.info('[SeleneLux] 🧠 Brain shutdown complete')
-    }
+    // 🪓 WAVE 39.9.2: Brain lives in Worker, nothing to shutdown here
+    this.brainInitialized = false
     
-    console.info('[SeleneLux] Shutdown complete')
+    console.info('[SeleneLux] � WAVE 39.9.2: Shutdown complete (brain is in Worker)')
     this.emit('shutdown')
   }
 }

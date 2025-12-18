@@ -488,8 +488,8 @@ export interface SystemMetadata {
   /** Current operation mode */
   mode: 'selene' | 'flow' | 'manual';
   
-  /** Brain status */
-  brainStatus: 'reactive' | 'intelligent';
+  /** 🧠 WAVE 39.9.2: Brain status now shows current MOOD (not ghost reactive/intelligent) */
+  brainStatus: 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric';
   
   /** Session uptime (seconds) */
   uptime: number;
@@ -662,7 +662,7 @@ export function createDefaultBroadcast(): SeleneBroadcast {
       targetFPS: 30,
       actualFPS: 0,
       mode: 'selene',
-      brainStatus: 'reactive',
+      brainStatus: 'peaceful', // 🧠 WAVE 39.9.2: Default mood instead of 'reactive'
       uptime: 0,
       performance: { audioProcessingMs: 0, brainProcessingMs: 0, colorEngineMs: 0, dmxOutputMs: 0, totalFrameMs: 0 },
       workers: {

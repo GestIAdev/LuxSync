@@ -166,6 +166,10 @@ export class RhythmAnalyzer {
   // Cache del último resultado
   private cachedResult: RhythmAnalysis | null = null;
   
+  // 🌊 WAVE 41.0: EMA para suavizar sincopación (evitar saltos 0→1)
+  private smoothedSyncopation: number = 0;
+  private readonly SYNC_ALPHA = 0.08; // Factor de suavizado (lento y estable)
+  
   constructor(config: Partial<RhythmAnalyzerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.energyBuffer = new CircularBuffer<EnergyFrame>(this.config.bufferSize);
@@ -415,8 +419,13 @@ export class RhythmAnalyzer {
     
     const humanization = this.calculateHumanization();
     
+    // 🌊 WAVE 41.0: Aplicar EMA para suavizar sincopación
+    // Evita saltos bruscos (0.00 → 1.00) que confunden al GenreClassifier
+    const instantSync = Math.max(0, Math.min(1, syncopation));
+    this.smoothedSyncopation = (this.SYNC_ALPHA * instantSync) + ((1 - this.SYNC_ALPHA) * this.smoothedSyncopation);
+    
     return {
-      syncopation: Math.max(0, Math.min(1, syncopation)),
+      syncopation: this.smoothedSyncopation, // 🌊 WAVE 41.0: Exportar valor suavizado
       swingAmount: normalizedSwing,
       complexity,
       humanization,

@@ -756,6 +756,7 @@ export class SeleneLux extends EventEmitter {
       
       // Construir Brain Output simulado para engañar a la UI
       // Esto asegura que Canvas reciba los colores de las Living Palettes
+      // 🌊 WAVE 41.0: Agregado context con rhythm.groove.syncopation para telemetría
       this.lastBrainOutput = {
         timestamp: Date.now(),
         sessionId: 'flow-session',
@@ -772,6 +773,44 @@ export class SeleneLux extends EventEmitter {
           paletteMs: 0,
           mappingMs: 0
         },
+        // 🌊 WAVE 41.0: Context mínimo para que telemetría no crashee
+        context: {
+          rhythm: {
+            bpm: beatState.bpm || 120,
+            confidence: beatState.confidence || 0.5,
+            beatPhase: beatState.phase || 0,
+            barPhase: ((beatState.beatCount || 0) % 4) / 4,
+            pattern: { type: 'unknown' as const, confidence: 0 },
+            drums: { kick: false, snare: false, hihat: false, clap: false, tom: false },
+            groove: {
+              syncopation: 0, // Modo FLOW no tiene sincopación avanzada
+              swingAmount: 0,
+              complexity: 'low' as const,
+              humanization: 0,
+            },
+            fillInProgress: false,
+            timestamp: Date.now(),
+          },
+          harmony: {
+            key: null,
+            mode: { scale: 'major' as const, confidence: 0 },
+            confidence: 0,
+          },
+          section: {
+            current: { type: 'unknown' as const, confidence: 0, startedAt: 0, duration: 0 },
+            predicted: null,
+            confidence: 0,
+          },
+          genre: {
+            primary: 'UNKNOWN',
+            secondary: null,
+            confidence: 0,
+          },
+          mood: 'neutral' as const,
+          energy: metrics.energy || 0,
+          confidence: 0.5,
+          timestamp: Date.now(),
+        } as any,  // Cast temporal para compatibilidad
       }
       
       this.colorEngine.updateTransition(deltaTime)

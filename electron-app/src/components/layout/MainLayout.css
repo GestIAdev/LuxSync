@@ -1,12 +1,14 @@
 /**
  * 🏗️ MAIN LAYOUT - CSS
  * WAVE 9: Commander Layout Styles
+ * WAVE 35.3: Padding for global TitleBar (32px)
  */
 
 .main-layout {
   display: flex;
   width: 100vw;
   height: 100vh;
+  padding-top: 32px; /* Space for global TitleBar */
   overflow: hidden;
   background: var(--bg-primary, #0a0a0f);
 }
@@ -16,5 +18,5 @@
   flex-direction: column;
   flex: 1;
   min-width: 0; /* Allow shrinking */
-  height: 100vh;
+  height: calc(100vh - 32px); /* Account for TitleBar */
 }

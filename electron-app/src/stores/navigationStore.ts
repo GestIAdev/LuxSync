@@ -38,14 +38,14 @@ export interface NavigationState {
 export const TABS: TabConfig[] = [
   {
     id: 'live',
-    label: 'LIVE',
+    label: 'COMMAND',  // 🔄 WAVE 35.2: Rebranded from LIVE
     icon: 'activity',  // Lucide: Activity (pulse wave)
     shortcut: 'Alt+1',
-    description: 'Control en vivo con paletas y movimiento',
+    description: 'Centro de comando y monitorización',
   },
   {
     id: 'simulate',
-    label: 'SIMULATE',
+    label: 'LUX STAGE',  // 🔄 WAVE 34.5: Rebranded from SIMULATE
     icon: 'monitor',   // Lucide: Monitor (screen)
     shortcut: 'Alt+2',
     description: 'Visualización del escenario - Canvas 2.0',

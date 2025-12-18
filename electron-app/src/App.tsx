@@ -3,13 +3,12 @@
  * La Nave Espacial de Iluminación - FILL SCREEN MODE
  * 
  * Wave 3: Conectado con Selene Lux Core via Audio Capture
+ * Wave 33.3: Cleaned up legacy components (moved to StageViewDual)
  */
 
 import { useEffect } from 'react'
 import Header from './components/Header'
 import BigSwitch from './components/BigSwitch'
-import PaletteReactor from './components/PaletteReactor'
-import MovementControl from './components/MovementControl'
 import EffectsBar from './components/EffectsBar'
 import Blackout from './components/Blackout'
 import { useLuxSyncStore } from './stores/luxsyncStore'
@@ -73,10 +72,12 @@ function App() {
           <BigSwitch />
         </section>
 
-        {/* Right Column - Controls */}
+        {/* Right Column - Controls (Legacy removed in WAVE 33.3, now in StageViewDual sidebar) */}
         <section className="right-column">
-          <PaletteReactor />
-          <MovementControl />
+          {/* PaletteControlMini and MovementRadar are now in GlobalControls */}
+          <p style={{ color: '#666', fontSize: '12px', padding: '20px' }}>
+            ℹ️ Use StageViewDual for new controls
+          </p>
         </section>
       </main>
 

@@ -1,17 +1,21 @@
 /**
  * 📺 CONTENT AREA - CSS
- * WAVE 9: Dynamic View Container Styles
+ * WAVE 35.2: Dashboard takes full space, no padding
  */
 
 .content-area {
   flex: 1;
-  overflow: auto;
-  padding: 24px;
+  overflow: hidden;
+  position: relative;
   background: var(--bg-primary, #0a0a0f);
 }
 
 .view-container {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   animation: fadeIn 0.2s ease-out;
 }
 

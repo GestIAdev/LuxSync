@@ -1,13 +1,10 @@
 /**
  * 📱 SIDEBAR - Commander Navigation Panel
- * WAVE 10.6: Night Shift Polish - Pro Icons + Real Data
+ * WAVE 35: Cleaned up - Status moved to Dashboard
  */
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
-import { useAudioStore } from '../../stores/audioStore'
-import { useDMXStore } from '../../stores/dmxStore'
-import { useSeleneStore } from '../../stores/seleneStore'
 import { Activity, Monitor, Settings, LucideIcon, Brain } from 'lucide-react'
 import './Sidebar.css'
 
@@ -29,32 +26,6 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 
 const Sidebar: React.FC = () => {
   const { activeTab, setActiveTab } = useNavigationStore()
-  const { bpm, isConnected: audioConnected, level } = useAudioStore()
-  const { isConnected: dmxConnected } = useDMXStore()
-  const { brainConnected, mode } = useSeleneStore() // Use 'mode' instead of 'currentMode'
-  
-  // 🌪️ WAVE 11: DMX Watchdog status from IPC
-  const [dmxStatus, setDmxStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected')
-  const [dmxDeviceName, setDmxDeviceName] = useState<string | null>(null)
-  
-  // Suscribirse a eventos DMX
-  useEffect(() => {
-    if (!window.luxsync?.dmx?.onStatus) return
-    
-    const unsubscribe = window.luxsync.dmx.onStatus((status) => {
-      setDmxStatus(status.state as any)
-      if (status.device?.friendlyName) {
-        setDmxDeviceName(status.device.friendlyName)
-      }
-    })
-    
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [])
-  
-  // Determinar estado DMX real (combina store + watchdog)
-  const isDmxOk = dmxConnected || dmxStatus === 'connected'
 
   return (
     <aside className="sidebar">
@@ -91,67 +62,8 @@ const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Divider */}
-      <div className="sidebar-divider" />
-
-      {/* Status Panel */}
-      <div className="status-panel">
-        <h3 className="status-title">STATUS</h3>
-        
-        {/* BPM Display */}
-        <div className="status-item">
-          <div className="status-item-row">
-            <span className="status-icon">♪</span>
-            <span className="status-value">{bpm.toFixed(0)} BPM</span>
-          </div>
-          <div className="mini-bar">
-            <div 
-              className="mini-bar-fill bpm-pulse" 
-              style={{ width: `${Math.min(100, (bpm / 180) * 100)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Audio Level - REAL DATA */}
-        <div className="status-item">
-          <div className="status-item-row">
-            <span className="status-icon">🎤</span>
-            <span className={`status-value ${audioConnected ? 'active' : ''}`}>
-              {level.toFixed(0)} dB
-            </span>
-          </div>
-          <div className="mini-bar">
-            <div 
-              className="mini-bar-fill audio-level" 
-              style={{ 
-                width: `${Math.max(0, Math.min(100, ((level + 60) / 60) * 100))}%`,
-                background: level > -10 ? '#ff4444' : level > -30 ? '#ffd700' : '#00ff88'
-              }}
-            />
-          </div>
-        </div>
-
-        {/* DMX Status - REAL WATCHDOG */}
-        <div className={`status-item dmx-status ${isDmxOk ? 'ok' : dmxStatus === 'reconnecting' ? 'reconnecting' : 'error'}`}>
-          <div className="status-item-row">
-            <span className={`status-dot ${isDmxOk ? 'connected' : dmxStatus === 'reconnecting' ? 'reconnecting' : 'disconnected'}`}>◉</span>
-            <span className="status-label">
-              {isDmxOk ? (dmxDeviceName || 'DMX OK') : 
-               dmxStatus === 'reconnecting' ? 'Reconnecting...' : 'DMX OFF'}
-            </span>
-          </div>
-        </div>
-
-        {/* Selene Status */}
-        <div className="status-item">
-          <div className="status-item-row">
-            <span className="status-icon">🌙</span>
-            <span className={`status-value ${brainConnected ? 'active' : 'inactive'}`}>
-              {brainConnected ? (mode === 'selene' ? 'SELENE' : mode === 'flow' ? 'FLOW' : 'LOCKED') : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Spacer to push footer down */}
+      <div style={{ flex: 1 }} />
 
       {/* Footer */}
       <div className="sidebar-footer">

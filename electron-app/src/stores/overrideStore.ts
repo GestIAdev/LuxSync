@@ -213,6 +213,14 @@ export const useOverrideStore = create<OverrideState>()(
           ),
         }
         
+        // 🎯 WAVE 34.3: Log override activation (moved from render loop)
+        const activeChannels: string[] = []
+        if (inferredMask.color) activeChannels.push('COLOR')
+        if (inferredMask.dimmer) activeChannels.push('DIMMER')
+        if (inferredMask.position) activeChannels.push('POSITION')
+        if (inferredMask.optics) activeChannels.push('OPTICS')
+        console.log(`🎯 [Override] ${fixtureId} → [${activeChannels.join(', ')}]`, values)
+        
         const newOverride: Override = {
           values: {
             ...existing?.values,

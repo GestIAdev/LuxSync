@@ -22,6 +22,7 @@ import {
   selectGlobalSaturation,
   selectGlobalIntensity,
 } from '../../../../stores/controlStore'
+import { PALETTES } from '../../../../constants/palettes'
 import './PaletteControlMini.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -31,49 +32,6 @@ import './PaletteControlMini.css'
 export interface PaletteControlMiniProps {
   className?: string
 }
-
-interface PaletteConfig {
-  id: LivingPaletteId
-  name: string
-  icon: string
-  gradient: string
-  description: string
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PALETTE DEFINITIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-const PALETTES: PaletteConfig[] = [
-  {
-    id: 'fuego',
-    name: 'Fuego',
-    icon: '🔥',
-    gradient: 'linear-gradient(135deg, #ff4444 0%, #ff8800 50%, #ffcc00 100%)',
-    description: 'Latino Heat - Rojos/naranjas cálidos',
-  },
-  {
-    id: 'hielo',
-    name: 'Hielo',
-    icon: '❄️',
-    gradient: 'linear-gradient(135deg, #4488ff 0%, #00ddff 50%, #ff88cc 100%)',
-    description: 'Arctic Dreams - Azules con aurora',
-  },
-  {
-    id: 'selva',
-    name: 'Selva',
-    icon: '🌴',
-    gradient: 'linear-gradient(135deg, #00cc66 0%, #00ff88 50%, #ff00ff 100%)',
-    description: 'Tropical Storm - Verdes vibrantes',
-  },
-  {
-    id: 'neon',
-    name: 'Neon',
-    icon: '⚡',
-    gradient: 'linear-gradient(135deg, #ff00ff 0%, #00ffff 50%, #00ff00 100%)',
-    description: 'Cyberpunk - Ciclo de neón',
-  },
-]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -94,8 +52,9 @@ export const PaletteControlMini: React.FC<PaletteControlMiniProps> = ({
   
   // Handlers
   const handlePaletteClick = useCallback((id: LivingPaletteId) => {
+    console.log(`[PaletteControl] 🎨 Palette switched: ${activePalette} → ${id}`)
     setPalette(id)
-  }, [setPalette])
+  }, [setPalette, activePalette])
   
   const handleSaturationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalSaturation(parseFloat(e.target.value))

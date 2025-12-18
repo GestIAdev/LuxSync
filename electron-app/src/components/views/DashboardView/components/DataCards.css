@@ -1,0 +1,129 @@
+/**
+ * 📊 DATA CARDS - WAVE 35.2: Balanced Cyberpunk Cards
+ */
+
+.data-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.data-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(20, 15, 35, 0.95), rgba(10, 8, 20, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.data-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 255, 255, 0.3);
+}
+
+.data-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--card-accent, #00ffff), transparent);
+  opacity: 0.5;
+}
+
+/* Status colors */
+.data-card.status-ok { --card-accent: #00ff00; }
+.data-card.status-warning { --card-accent: #ffa500; }
+.data-card.status-error { --card-accent: #ff0040; }
+.data-card.status-neutral { --card-accent: #00ffff; }
+
+.card-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--card-accent, #00ffff);
+  filter: drop-shadow(0 0 6px var(--card-accent));
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.card-value {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--card-accent);
+  text-shadow: 0 0 10px var(--card-accent);
+  line-height: 1;
+}
+
+.card-unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 3px;
+}
+
+.card-sublabel {
+  display: none; /* Hidden for compact mode */
+}
+
+.card-glow {
+  position: absolute;
+  bottom: -30%;
+  right: -15%;
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle, var(--card-accent) 0%, transparent 70%);
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* Responsive: stack on smaller screens */
+@media (max-width: 1200px) {
+  .data-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .data-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Animations for status-ok cards */
+.data-card.status-ok .card-value {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 10px var(--card-accent); }
+  50% { text-shadow: 0 0 20px var(--card-accent), 0 0 30px var(--card-accent); }
+}

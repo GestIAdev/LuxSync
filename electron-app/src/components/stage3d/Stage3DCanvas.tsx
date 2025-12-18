@@ -22,6 +22,7 @@ import { useTruthStore, selectHardware, selectPalette } from '../../stores/truth
 import { useControlStore, selectViewMode } from '../../stores/controlStore'
 import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../stores/selectionStore'
 import { generateLayout3D, DEFAULT_STAGE_CONFIG } from '../../utils/layoutGenerator3D'
+import { useFixtureRender } from '../../hooks/useFixtureRender'
 import { Fixture3D } from './fixtures/Fixture3D'
 import { StageFloor } from './environment/StageFloor'
 import { StageTruss } from './environment/StageTruss'
@@ -34,6 +35,31 @@ import './Stage3DCanvas.css'
 interface Stage3DCanvasProps {
   showStats?: boolean
   className?: string
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SMART FIXTURE WRAPPER - WAVE 34.1: Priority Logic with Living Colors
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SmartFixture3D: React.FC<any> = ({ layout, truthData, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
+  // Use the Priority Hook to get final render values (with fixture index for pattern offset)
+  const { color, intensity, pan, tilt } = useFixtureRender(truthData, layout.id, fixtureIndex)
+  
+  return (
+    <Fixture3D
+      id={layout.id}
+      position={[layout.position.x, layout.position.y, layout.position.z]}
+      rotation={[layout.rotation.x, layout.rotation.y, layout.rotation.z]}
+      type={layout.type}
+      color={color}
+      intensity={intensity}
+      pan={pan}
+      tilt={tilt}
+      selected={isSelected}
+      hovered={isHovered}
+      allFixtureIds={allFixtureIds}
+    />
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -124,25 +150,20 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
       <StageTruss />
       
       {/* FIXTURES */}
-      {fixtureLayouts.map(layout => {
+      {fixtureLayouts.map((layout, index) => {
         const fixtureData = fixtureValues.get(layout.id)
         const isSelected = selectedIds.has(layout.id)
         const isHovered = hoveredId === layout.id
         
         return (
-          <Fixture3D
+          <SmartFixture3D
             key={layout.id}
-            id={layout.id}
-            position={[layout.position.x, layout.position.y, layout.position.z]}
-            rotation={[layout.rotation.x, layout.rotation.y, layout.rotation.z]}
-            type={layout.type}
-            color={fixtureData?.color || { r: 0, g: 0, b: 0, hex: '#000000' }}
-            intensity={fixtureData?.intensity ?? 0}
-            pan={fixtureData?.pan ?? 0.5}
-            tilt={fixtureData?.tilt ?? 0.5}
-            selected={isSelected}
-            hovered={isHovered}
+            layout={layout}
+            truthData={fixtureData}
+            isSelected={isSelected}
+            isHovered={isHovered}
             allFixtureIds={allFixtureIds}
+            fixtureIndex={index}
           />
         )
       })}

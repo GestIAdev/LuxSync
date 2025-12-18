@@ -1,0 +1,67 @@
+/**
+ * 🪟 TITLE BAR - WAVE 35.3: Global Window Drag Region
+ * Always visible, max z-index
+ */
+
+.global-title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 15, 0.95) 0%,
+    rgba(10, 10, 15, 0.85) 100%
+  );
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.title-bar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+  height: 100%;
+}
+
+.title-bar-text {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: rgba(0, 255, 255, 0.5);
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+/* Safe zone for native window controls (Windows: ~140px, Mac: ~80px) */
+.title-bar-safe-zone {
+  width: 140px;
+  height: 100%;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+/* macOS uses left side for controls */
+@supports (-webkit-touch-callout: none) {
+  .global-title-bar {
+    flex-direction: row-reverse;
+  }
+  
+  .title-bar-safe-zone {
+    width: 80px;
+  }
+  
+  .title-bar-drag {
+    padding-left: 0;
+    padding-right: 16px;
+    justify-content: flex-end;
+  }
+}

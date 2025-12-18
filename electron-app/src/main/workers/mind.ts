@@ -9,36 +9,6 @@
  * - REGLA 2: confidence < 0.5 → Modo Reactivo (V17 style)
  * - REGLA 3: Syncopation > BPM para selección de patrones
  * - Memory Management (patrones aprendidos)
- * - Predic    // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
-    // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer source real (sin histéresis)
-    debugInfo: {
-      macroGenre: selenePalette.meta.macroGenre,
-      strategy: selenePalette.meta.strategy,
-      temperature: selenePalette.meta.temperature,
-      description: selenePalette.meta.description,
-      key: harmony.key,
-      mode: harmony.mode,
-      source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural
-    }
- * - Aesthetic Decision Making
- * - Personality System
-    console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${genreName}`);
-  }DE (Wave 8 Full Analysis) ===
-  const { rhythm, harmony, section, genre } = wave8!;
-  
-  // WAVE 18.3: Normalize genre format (GenreAnalysis vs GenreOutput)
-  const genreName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
-  
-  // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista procedural
-  // Los colores emergen de la MATEMÁTICA MUSICAL:TELLIGENT MODE (Wave 8 Full Analysis) ===
-  const { rhythm, harmony, section, genre } = wave8!;
-  
-  // WAVE 18.3: Normalize genre format (GenreAnalysis vs GenreOutput)
-  const genreName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
-  
-  // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista proceduralo Reactivo (V17 style)
- * - REGLA 3: Syncopation > BPM para selección de patrones
- * - Memory Management (patrones aprendidos)
  * - Predictive Engine
  * - Aesthetic Decision Making
  * - Personality System
@@ -46,6 +16,9 @@
  * Recibe AudioAnalysis+Wave8Data de ALPHA (via BETA).
  * Envía LightingDecisions a ALPHA para DMX.
  */
+
+// 🔇 WAVE 37.0: Silencio Táctico - Solo logs de alto nivel
+const DEBUG_VERBOSE = false;
 
 import { parentPort, workerData } from 'worker_threads';
 import {
@@ -337,7 +310,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   //   - Fibonacci rotation → Secondary color (φ × 360° = 222.5°)
   
   // Log informativo cada segundo
-  if (state.frameCount % 60 === 0) {
+  if (DEBUG_VERBOSE && state.frameCount % 60 === 0) {
     // WAVE 18.3: genre is now GenreAnalysis (.genre) not GenreOutput (.primary)
     const gName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
     console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${gName}`);
@@ -575,7 +548,7 @@ function restoreStateSnapshot(snapshot: unknown): void {
       state.learnedPatterns = new Map(s.learnedPatterns);
     }
   }
-  console.log(`[GAMMA] State restored: ${state.decisionCount} decisions, mood: ${personality.currentMood}`);
+  if (DEBUG_VERBOSE) console.log(`[GAMMA] State restored: ${state.decisionCount} decisions, mood: ${personality.currentMood}`);
 }
 
 // ============================================
@@ -588,12 +561,12 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.INIT:
         state.isRunning = true;
         state.startTime = Date.now();
-        console.log('[GAMMA] 🧠 Mind initialized');
+        console.log('[GAMMA] 🧠 Mind initialized');  // Keep - startup only
         sendMessage(MessageType.READY, 'alpha', { nodeId: NODE_ID });
         break;
         
       case MessageType.SHUTDOWN:
-        console.log('[GAMMA] Shutting down...');
+        console.log('[GAMMA] Shutting down...');  // Keep - shutdown only
         state.isRunning = false;
         sendMessage(MessageType.HEALTH_REPORT, 'alpha', generateHealthReport());
         process.exit(0);
@@ -644,7 +617,7 @@ function handleMessage(message: WorkerMessage): void {
         
       case MessageType.CONFIG_UPDATE:
         Object.assign(config, message.payload);
-        console.log('[GAMMA] Config updated');
+        if (DEBUG_VERBOSE) console.log('[GAMMA] Config updated');
         break;
       
       // 🧠 WAVE 10: Brain Control Messages
@@ -653,11 +626,11 @@ function handleMessage(message: WorkerMessage): void {
         if (modePayload.mode === 'intelligent' || modePayload.mode === 'forced') {
           state.brainForced = true;
           state.operationMode = 'intelligent';
-          console.log('[GAMMA] 🧠 BRAIN MODE ACTIVATED - Full AI control');
+          console.log('[GAMMA] 🧠 BRAIN MODE ACTIVATED');  // Keep - high level
         } else {
           state.brainForced = false;
           state.operationMode = 'reactive';
-          console.log('[GAMMA] 🔄 REACTIVE MODE - Simple audio response');
+          console.log('[GAMMA] 🔄 REACTIVE MODE');  // Keep - high level
         }
         break;
       }
@@ -665,16 +638,13 @@ function handleMessage(message: WorkerMessage): void {
       case MessageType.ENABLE_BRAIN:
         state.brainForced = true;
         state.operationMode = 'intelligent';
-        console.log('[GAMMA] ⚡ ENABLE_BRAIN received!');
-        console.log('[GAMMA] 🎵 GenreClassifier: HUNTING for Cumbia/Reggaeton...');
-        console.log('[GAMMA] 🧬 EvolutionEngine: MUTATING palettes...');
-        console.log('[GAMMA] 👁️ StalkingEngine: WATCHING the music...');
+        console.log('[GAMMA] ⚡ BRAIN ENABLED');  // Keep - one clean log
         break;
       
       case MessageType.DISABLE_BRAIN:
         state.brainForced = false;
         state.operationMode = 'reactive';
-        console.log('[GAMMA] 💤 Brain disabled - Reactive mode active');
+        console.log('[GAMMA] 💤 BRAIN DISABLED');  // Keep - one clean log
         break;
         
       default:
@@ -714,7 +684,7 @@ function sendMessage<T>(
 if (parentPort) {
   parentPort.on('message', handleMessage);
   
-  console.log('[GAMMA] 🧠 Worker thread started, waiting for INIT...');
+  console.log('[GAMMA] 🧠 Worker ready');  // Keep - startup only
   
   // Handle uncaught errors
   process.on('uncaughtException', (error) => {

@@ -1,0 +1,145 @@
+/**
+ * 🎛️ MODE SWITCHER SLEEK - WAVE 35: Cyberpunk Styling
+ */
+
+.mode-switcher-sleek {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.switcher-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  padding-left: 4px;
+}
+
+.switcher-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: linear-gradient(135deg, rgba(20, 15, 35, 0.9), rgba(10, 8, 20, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.switcher-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 33.333%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid var(--indicator-color, #00ffff);
+  border-radius: 7px;
+  box-shadow: 
+    0 0 20px rgba(var(--indicator-color), 0.3),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mode-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.mode-button:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mode-button.active {
+  /* Active state handled by indicator */
+}
+
+.mode-icon {
+  font-size: 20px;
+  filter: grayscale(0.5);
+  transition: all 0.3s ease;
+}
+
+.mode-button.active .mode-icon {
+  filter: grayscale(0) drop-shadow(0 0 8px var(--mode-color));
+  transform: scale(1.1);
+}
+
+.mode-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.mode-button.active .mode-label {
+  color: var(--mode-color);
+  text-shadow: 0 0 10px var(--mode-color);
+}
+
+.mode-desc {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.mode-button.active .mode-desc {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Power line indicator */
+.switcher-power-line {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.power-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--power-color, #00ffff),
+    transparent
+  );
+  animation: power-flow 2s linear infinite;
+}
+
+@keyframes power-flow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .mode-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  
+  .mode-desc {
+    display: none;
+  }
+}

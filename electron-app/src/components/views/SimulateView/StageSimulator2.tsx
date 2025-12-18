@@ -12,6 +12,9 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../stores/truthStore';
 import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../../stores/selectionStore';
+import { useControlStore } from '../../../stores/controlStore';
+import { useOverrideStore } from '../../../stores/overrideStore';
+import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -97,6 +100,20 @@ export const StageSimulator2: React.FC = () => {
   const hoveredId = useSelectionStore(selectHoveredId);
   const { select, toggleSelection, selectRange, lastSelectedId, setHovered, deselectAll } = useSelectionStore();
   
+  // CONTROL STORE - WAVE 34.0: Priority Logic
+  const globalMode = useControlStore(state => state.globalMode);
+  const flowParams = useControlStore(state => state.flowParams);
+  const activePaletteId = useControlStore(state => state.activePalette);
+  const globalIntensity = useControlStore(state => state.globalIntensity);
+  const globalSaturation = useControlStore(state => state.globalSaturation);
+  
+  // 🔄 WAVE 34.5: Smooth palette transitions
+  const targetPalette = useControlStore(state => state.targetPalette);
+  const transitionProgress = useControlStore(state => state.transitionProgress);
+  
+  // OVERRIDE STORE - WAVE 34.2: Per-fixture manual overrides (TOP PRIORITY)
+  const overrides = useOverrideStore(state => state.overrides);
+  
   // ═════════════════════════════════════════════════════════════════════════
   // FIXTURE PROCESSING - Transformar fixtures del backend a visuales
   // ═════════════════════════════════════════════════════════════════════════
@@ -106,7 +123,7 @@ export const StageSimulator2: React.FC = () => {
     const fixtureArray = hardware?.fixtures || [];
     if (!Array.isArray(fixtureArray)) return [];
     
-    return fixtureArray.map((fixture) => {
+    return fixtureArray.map((fixture, index) => {
       if (!fixture) return null;
       
       // 🔗 Usar zona del backend directamente (viene de auto-zoning)
@@ -143,26 +160,41 @@ export const StageSimulator2: React.FC = () => {
       }
       
       // Extraer valores RGB e intensidad
-      const color = fixture.color || { r: 0, g: 0, b: 0, h: 0, s: 0, l: 0, hex: '#000000' };
-      const intensity = fixture.intensity ?? 1;
-      const pan = fixture.pan ?? 0.5;
-      const tilt = fixture.tilt ?? 0.5;
+      // WAVE 34.2: Apply Priority Logic with Override Support
+      const fixtureId = fixture.id || `fixture-${fixture.dmxAddress}`;
+      const fixtureIndex = index; // Use loop index for wave phase offset
+      const fixtureOverride = overrides.get(fixtureId);
+      
+      // 🔄 WAVE 34.5: Pass transition params for smooth palette blending
+      const { color: finalColor, intensity: finalIntensity, pan: finalPan, tilt: finalTilt } = calculateFixtureRenderValues(
+        fixture,
+        globalMode,
+        flowParams,
+        activePaletteId,
+        globalIntensity,
+        globalSaturation,
+        fixtureIndex,
+        fixtureOverride?.values,
+        fixtureOverride?.mask,
+        targetPalette,
+        transitionProgress
+      );
       
       return {
-        id: fixture.id || `fixture-${fixture.dmxAddress}`,
+        id: fixtureId,
         x: 0,
         y: 0,
-        r: Math.round(color.r * intensity),
-        g: Math.round(color.g * intensity),
-        b: Math.round(color.b * intensity),
-        intensity,
-        pan,
-        tilt,
+        r: finalColor.r,
+        g: finalColor.g,
+        b: finalColor.b,
+        intensity: finalIntensity,
+        pan: finalPan,
+        tilt: finalTilt,
         type,
         zone,
       };
     }).filter(Boolean) as FixtureVisual[];
-  }, [hardware?.fixtures]);
+  }, [hardware?.fixtures, globalMode, flowParams, activePaletteId, globalIntensity, globalSaturation, overrides, targetPalette, transitionProgress]);
   
   // ═════════════════════════════════════════════════════════════════════════
   // RENDER ENGINE

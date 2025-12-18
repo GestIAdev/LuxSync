@@ -1,26 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌍 GLOBAL CONTROLS - WAVE 33.2: Color Migration & Polish
+ * 🌍 GLOBAL CONTROLS - WAVE 33.3: Sidebar Cleanup
  * Panel de control global cuando no hay selección
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Muestra cuando NO hay selección:
  * - Selector de paleta de colores (PaletteControlMini)
- * - Blackout button
- * - Estadísticas generales
- * - Info de conexión DMX
+ * - Toggle Selene AI
+ * - Release All Overrides button
  * 
- * WAVE 33.2: Mode Switcher moved to StageViewDual header
+ * WAVE 33.2: Mode Switcher moved to StageViewDual toolbar
+ * WAVE 33.3: Status panel removed (redundant with main sidebar)
  * 
  * @module components/views/StageViewDual/sidebar/GlobalControls
- * @version 33.2.0
+ * @version 33.3.0
  */
 
 import React, { useCallback } from 'react'
 import { useControlStore } from '../../../../stores/controlStore'
-import { useTruthStore, selectHardware, selectSystem } from '../../../../stores/truthStore'
 import { useOverrideStore, selectOverrideCount, selectHasAnyOverride } from '../../../../stores/overrideStore'
 import { PaletteControlMini } from './PaletteControlMini'
+import { MovementRadar } from './widgets'
 import './GlobalControls.css'
 
 export interface GlobalControlsProps {
@@ -30,22 +30,14 @@ export interface GlobalControlsProps {
 export const GlobalControls: React.FC<GlobalControlsProps> = ({
   className = '',
 }) => {
-  // Control Store - Only AI toggle (Mode moved to Header)
+  // Control Store - AI toggle
   const aiEnabled = useControlStore(state => state.aiEnabled)
   const toggleAI = useControlStore(state => state.toggleAI)
-  
-  // Truth Store
-  const hardware = useTruthStore(selectHardware)
-  const system = useTruthStore(selectSystem)
   
   // Override Store
   const overrideCount = useOverrideStore(selectOverrideCount)
   const hasOverrides = useOverrideStore(selectHasAnyOverride)
   const clearAllOverrides = useOverrideStore(state => state.clearAllOverrides)
-  
-  // Fixture stats
-  const fixtureCount = hardware?.fixtures?.length || 0
-  const dmxConnected = hardware?.dmx?.connected ?? false
   
   // Handlers
   const handleReleaseAll = useCallback(() => {
@@ -59,8 +51,11 @@ export const GlobalControls: React.FC<GlobalControlsProps> = ({
         <span className="title">🎮 Control Global</span>
       </div>
       
-      {/* 🎨 WAVE 33.2: PALETTE CONTROL - Replaces Mode Selector (moved to Header) */}
+      {/* 🎨 PALETTE CONTROL */}
       <PaletteControlMini />
+      
+      {/* 🕹️ MOVEMENT RADAR - WAVE 33.3 */}
+      <MovementRadar />
       
       {/* AI TOGGLE */}
       <div className="control-section">
@@ -75,35 +70,7 @@ export const GlobalControls: React.FC<GlobalControlsProps> = ({
         </div>
       </div>
       
-      {/* DIVIDER */}
-      <div className="divider" />
-      
-      {/* SYSTEM STATUS */}
-      <div className="control-section">
-        <h4 className="section-title">📊 Estado</h4>
-        <div className="status-grid">
-          <div className="status-item">
-            <span className="status-label">Fixtures</span>
-            <span className="status-value">{fixtureCount}</span>
-          </div>
-          <div className="status-item">
-            <span className="status-label">DMX</span>
-            <span className={`status-value ${dmxConnected ? 'connected' : 'disconnected'}`}>
-              {dmxConnected ? '🟢' : '🔴'}
-            </span>
-          </div>
-          <div className="status-item">
-            <span className="status-label">Overrides</span>
-            <span className="status-value">{overrideCount}</span>
-          </div>
-          <div className="status-item">
-            <span className="status-label">FPS</span>
-            <span className="status-value">{(system as { fps?: number })?.fps ?? '--'}</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* RELEASE ALL */}
+      {/* RELEASE ALL OVERRIDES */}
       {hasOverrides && (
         <>
           <div className="divider" />

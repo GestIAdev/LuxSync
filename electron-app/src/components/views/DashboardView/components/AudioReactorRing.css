@@ -1,0 +1,26 @@
+/**
+ * 🎵 AUDIO REACTOR RING - WAVE 35: Cyberpunk Styling
+ */
+
+.audio-reactor-ring {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-reactor-ring canvas {
+  border-radius: 50%;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
+}
+
+.reactor-label {
+  margin-top: 12px;
+  font-family: 'Orbitron', 'Rajdhani', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: rgba(0, 255, 255, 0.6);
+  text-transform: uppercase;
+}

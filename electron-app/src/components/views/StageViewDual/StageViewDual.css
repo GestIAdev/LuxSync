@@ -117,6 +117,80 @@
 .mode-btn.active.flow { background: linear-gradient(180deg, rgba(0, 255, 100, 0.25) 0%, rgba(0, 200, 80, 0.2) 100%); color: #00ff64; }
 .mode-btn.active.selene { background: linear-gradient(180deg, rgba(180, 0, 255, 0.25) 0%, rgba(140, 0, 200, 0.2) 100%); color: #b400ff; }
 
+/* Mode Button Icons and Labels */
+.mode-btn .mode-icon {
+  font-size: 12px;
+}
+
+.mode-btn .mode-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Toolbar Divider */
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 4px;
+}
+
+/* Toolbar Indicators (BPM, Mood) */
+.toolbar-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.toolbar-indicator .indicator-icon {
+  font-size: 14px;
+}
+
+.toolbar-indicator .indicator-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 28px;
+}
+
+.toolbar-indicator .indicator-unit,
+.toolbar-indicator .indicator-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.toolbar-indicator .indicator-unit {
+  color: #666;
+}
+
+/* Beat Dot Animation */
+.beat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #333;
+  transition: all 0.1s ease;
+}
+
+.beat-dot.pulse {
+  background: #4ADE80;
+  box-shadow: 0 0 8px #4ADE80;
+  animation: beat-pulse 0.15s ease-out;
+}
+
+@keyframes beat-pulse {
+  0% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * MAIN CONTENT AREA (Viewport 70% + Sidebar 30%)
  * ═══════════════════════════════════════════════════════════════════════════ */

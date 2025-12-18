@@ -53,13 +53,29 @@ import {
 import type { AudioAnalysis } from './engines/musical/types'
 // 🎨 WAVE 24.4: Motor de Color Procedural + Helper de conversión HSL→RGB
 // 🔥 WAVE 24.9: Añadir rgbToHsl para sincronizar Flow Mode palette
-import { SeleneColorEngine, paletteToRgb, rgbToHsl } from './engines/visual/SeleneColorEngine'
+// 🌙 WAVE 37.0: Import SelenePalette type para Brain Transplant
+import { SeleneColorEngine, paletteToRgb, rgbToHsl, type SelenePalette } from './engines/visual/SeleneColorEngine'
 // 📡 WAVE-14: Telemetry Collector
 import { 
   SeleneTelemetryCollector, 
   getTelemetryCollector,
   type SeleneTelemetryPacket,
 } from './engines/telemetry/SeleneTelemetryCollector'
+// 🌙 WAVE 37.0: Meta-Consciencia Avanzada (Resurrección de Motores)
+import { 
+  SeleneLuxConscious,
+  type SeleneLuxConsciousState,
+} from './engines/consciousness/SeleneLuxConscious'
+// 🐅 WAVE 39.0: HuntOrchestrator + ZodiacAffinity (Engine Wiring)
+import { 
+  HuntOrchestrator,
+  type HuntFrameResult,
+  type HuntStatus,
+} from './engines/consciousness/HuntOrchestrator'
+import { 
+  ZodiacAffinityCalculator,
+  type ZodiacInfo,
+} from './engines/consciousness/ZodiacAffinityCalculator'
 // 🌙 WAVE-25: Universal Truth Protocol
 import {
   type SeleneBroadcast,
@@ -123,7 +139,12 @@ export class SeleneLux extends EventEmitter {
   private telemetryCollector: SeleneTelemetryCollector
   private inputGain = 1.0 // From audio settings
   
-  // 🎨 WAVE 13.6: Multiplicadores Globales de Color (STATE OF TRUTH)
+  // � WAVE 37.0: Meta-Consciencia Avanzada (DreamForge + SelfAnalysis)
+  private advancedConscious: SeleneLuxConscious | null = null
+  private lastAdvancedState: SeleneLuxConsciousState | null = null
+  private useAdvancedConscious = true // Flag para activar meta-consciencia
+  
+  // �🎨 WAVE 13.6: Multiplicadores Globales de Color (STATE OF TRUTH)
   private globalSaturation = 1.0  // 0-1, default 100%
   private globalIntensity = 1.0   // 0-1, default 100%
   
@@ -189,6 +210,29 @@ export class SeleneLux extends EventEmitter {
     
     // 📡 WAVE-14: Inicializar Telemetry Collector (20 FPS)
     this.telemetryCollector = getTelemetryCollector(20)
+    
+    // 🌙 WAVE 37.0: Inicializar Meta-Consciencia Avanzada
+    // DreamForge simula escenarios futuros, SelfAnalysis detecta sesgos
+    if (this.useAdvancedConscious) {
+      try {
+        this.advancedConscious = new SeleneLuxConscious({
+          visual: {
+            transitionTime: config.visual.transitionTime,
+            colorSmoothing: config.visual.colorSmoothing,
+            movementSmoothing: config.visual.movementSmoothing,
+          },
+          consciousness: {
+            strikeBeautyThreshold: 0.85,
+            strikeConsonanceThreshold: 0.7,
+            minStalkCycles: 3,
+          }
+        })
+        console.info('[SeleneLux] 🌙 WAVE 37.0: Meta-Consciencia activada (DreamForge + SelfAnalysis)')
+      } catch (err) {
+        console.warn('[SeleneLux] ⚠️ Meta-Consciencia no pudo inicializar:', err)
+        this.useAdvancedConscious = false
+      }
+    }
     
     this.consciousness = {
       generation: 1,
@@ -412,13 +456,37 @@ export class SeleneLux extends EventEmitter {
       }
       
       // 🔥 WAVE 24.4: GENERAR HSL PRIMERO (Para la UI)
-      // En lugar de generateRgb (que devuelve solo RGB), usamos generate (HSL)
-      // Esto resuelve el problema de NaN en UI Palette
-      const freshHslPalette = SeleneColorEngine.generate(safeAnalysis as any)
+      // 🌙 WAVE 37.0: RESPETAR DECISIONES DEL BRAIN - Detener Lobotomía
+      // Si el Brain tiene una paleta desde memoria (experiencias exitosas),
+      // la respetamos en lugar de sobrescribirla con ColorEngine procedural.
       
-      // � WAVE 24.4: CONVERTIR A RGB (Para los Focos/DMX)
+      let finalHslPalette: SelenePalette
+      let finalPaletteSource = brainOutput.paletteSource
+      
+      // El Brain YA viene con una paleta. Verificamos si es de memoria.
+      const brainHasMemoryPalette = brainOutput.paletteSource === 'memory' && brainOutput.palette?.primary
+      
+      if (brainHasMemoryPalette) {
+        // 🧠 WAVE 37.0: BRAIN RESPECTED - Usar paleta de memoria
+        finalHslPalette = {
+          primary: brainOutput.palette.primary,
+          secondary: brainOutput.palette.secondary,
+          accent: brainOutput.palette.accent,
+          ambient: brainOutput.palette.ambient,
+          contrast: brainOutput.palette.contrast || { h: 180, s: 50, l: 50 },
+          meta: { strategy: brainOutput.palette.strategy || 'memory-recalled' }
+        } as SelenePalette
+        finalPaletteSource = 'memory'
+      } else {
+        // 🎨 WAVE 24.4: Backup procedural - ColorEngine genera la paleta
+        const proceduralPalette = SeleneColorEngine.generate(safeAnalysis as any)
+        finalHslPalette = proceduralPalette
+        finalPaletteSource = 'procedural'
+      }
+      
+      // 🎨 WAVE 24.4: CONVERTIR A RGB (Para los Focos/DMX)
       // Usamos el helper del motor para obtener los valores físicos
-      const freshRgbValues = paletteToRgb(freshHslPalette)
+      const freshRgbValues = paletteToRgb(finalHslPalette)
       
       // �🛡️ WAVE 24.1: OUTPUT GUARD (Red de Seguridad Final)
       // Verificamos matemáticamente que no haya NaN. Si hay, fallback a Negro.
@@ -440,17 +508,18 @@ export class SeleneLux extends EventEmitter {
       const baseIntensity = audioAnalysis.energy.current
       const intensity = Math.min(1, baseIntensity * this.globalIntensity)
       
-      // 3️⃣ WAVE 24.4: INYECTAR HSL EN BRAIN OUTPUT (Fix UI Palette NaN)
-      // Ahora la UI recibe {h,s,l} como espera
+      // 3️⃣ WAVE 37.0: INYECTAR PALETA FINAL EN BRAIN OUTPUT
+      // 🌙 Si viene de memoria, ya tiene los valores correctos
+      // 🎨 Si es procedural, usamos lo generado por ColorEngine
       brainOutput.palette = {
-        primary: freshHslPalette.primary,
-        secondary: freshHslPalette.secondary,
-        accent: freshHslPalette.accent,
-        ambient: freshHslPalette.ambient,
-        contrast: freshHslPalette.contrast,
-        strategy: freshHslPalette.meta.strategy,
+        primary: finalHslPalette.primary,
+        secondary: finalHslPalette.secondary,
+        accent: finalHslPalette.accent,
+        ambient: finalHslPalette.ambient,
+        contrast: finalHslPalette.contrast,
+        strategy: finalHslPalette.meta?.strategy || 'unknown',
       }
-      brainOutput.paletteSource = 'procedural'  // Forzar etiqueta correcta
+      brainOutput.paletteSource = finalPaletteSource as 'memory' | 'procedural' | 'fallback'
       
       // 4️⃣ WAVE 24.4: ASIGNAR RGB A HARDWARE (Fix DMX/Canvas)
       this.lastColors = {
@@ -462,16 +531,13 @@ export class SeleneLux extends EventEmitter {
         saturation: this.globalSaturation       // State of Truth
       }
       
-      // 🌊 WAVE 24.4 DEBUG: Log de colores HSL (UI) + RGB (DMX) cada ~3 segundos
-      if (this.frameCount % 100 === 0) {
-        const hsl = freshHslPalette.primary
-        const rgb = this.lastColors.primary
-        const contextGenre = brainOutput.context?.genre?.primary || 'unknown'
-        const rgbCheck = `[${isInvalid(rgb.r) ? 'NaN!' : 'OK'}]`
-        const hslCheck = `[${isInvalid(hsl.h) ? 'NaN!' : 'OK'}]`
-        const energyValue = typeof safeAnalysis.energy === 'number' ? safeAnalysis.energy.toFixed(2) : 'invalid'
-        console.log(`[SeleneLux] 🎨 WAVE24.4 DUAL: HSL(UI)=${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}% ${hslCheck} | RGB(DMX)=${rgb.r},${rgb.g},${rgb.b} ${rgbCheck} | Genre=${contextGenre} | Energy=${energyValue}`)
-      }
+      // 🔇 WAVE 37.0: Silenciado - log WAVE24.4 DUAL removido para consola limpia
+      // Si necesitas debug, descomentar:
+      // if (this.frameCount % 100 === 0) {
+      //   const hsl = finalHslPalette.primary
+      //   const rgb = this.lastColors.primary
+      //   console.log(`[SeleneLux] HSL=${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}% | RGB=${rgb.r},${rgb.g},${rgb.b}`)
+      // }
       
       // El movimiento viene de la sugerencia del Brain
       this.lastMovement = this.brainOutputToMovement(brainOutput, deltaTime)
@@ -479,6 +545,33 @@ export class SeleneLux extends EventEmitter {
       // Actualizar consciencia con datos del Brain
       this.consciousness.beautyScore = brainOutput.estimatedBeauty
       this.consciousness.totalExperiences++
+      
+      // 🌙 WAVE 37.0: Procesar con Meta-Consciencia Avanzada
+      // DreamForge simula escenarios futuros, SelfAnalysis detecta sesgos
+      if (this.advancedConscious && this.useAdvancedConscious) {
+        try {
+          this.lastAdvancedState = this.advancedConscious.processAudioFrame(metrics, deltaTime)
+          
+          // Enriquecer consciencia básica con insights de la meta-consciencia
+          if (this.lastAdvancedState.consciousness.lastInsight) {
+            this.consciousness.lastInsight = this.lastAdvancedState.consciousness.lastInsight
+          }
+          if (this.lastAdvancedState.consciousness.mood) {
+            // Sincronizar mood (emotional tone) desde la meta-consciencia
+            // Cast seguro: EmotionalTone tiene más variantes en meta-consciencia
+            const advMood = this.lastAdvancedState.consciousness.mood as string
+            const validMoods = ['peaceful', 'energetic', 'dark', 'playful', 'calm', 'dramatic', 'euphoric', 'melancholic', 'aggressive']
+            if (validMoods.includes(advMood)) {
+              this.consciousness.currentMood = advMood as any
+            }
+          }
+        } catch (err) {
+          // Silenciar errores de meta-consciencia para no afectar flujo principal
+          if (this.frameCount % 300 === 0) {
+            console.warn('[SeleneLux] ⚠️ Meta-consciencia error (silenciado):', err)
+          }
+        }
+      }
       
       // 🔥 WAVE 23.4: Esta condición nunca se cumple (paletteSource siempre 'procedural' tras lobotomía)
       // 🔥 WAVE 24.11: Added 'as any' cast to silence TS warning
@@ -1112,11 +1205,11 @@ export class SeleneLux extends EventEmitter {
         lineage: this.consciousness.lineage,
       },
       dream: {
-        isActive: false, // TODO: Conectar con DreamForge si existe
-        currentType: null,
-        currentThought: this.consciousness.lastInsight,
-        projectedBeauty: brain?.estimatedBeauty ?? 0.5,
-        lastRecommendation: null,
+        isActive: this.advancedConscious !== null && this.useAdvancedConscious,
+        currentType: (this.lastAdvancedState?.lastLightCommand ? 'mood_transition' : null) as 'palette_change' | 'intensity_shift' | 'movement_change' | 'effect_activation' | 'mood_transition' | 'strike_execution' | 'full_scene_change' | null,
+        currentThought: this.lastAdvancedState?.consciousness?.lastInsight || this.consciousness.lastInsight,
+        projectedBeauty: this.lastAdvancedState?.stats?.averageBeauty ?? brain?.estimatedBeauty ?? 0.5,
+        lastRecommendation: (this.lastAdvancedState?.felina?.isHunting ? 'execute' : null) as 'execute' | 'modify' | 'abort' | null,
       },
       zodiac: {
         element: 'fire' as const, // TODO: Conectar con ZodiacAffinityCalculator

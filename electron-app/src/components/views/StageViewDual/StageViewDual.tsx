@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 STAGE VIEW DUAL - WAVE 30.1: Stage Command & Dashboard
+ * 🎭 STAGE VIEW DUAL - WAVE 33.3: Header Fix & Kinetic Radar
  * Vista dual que alterna entre Canvas 2D (Tactical) y R3F 3D (Visualizer)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -9,13 +9,15 @@
  * 2. Renderiza condicionalmente StageSimulator2 (2D) o Stage3DCanvas (3D)
  * 3. Incluye el ViewModeSwitcher para alternar
  * 4. WAVE 30.1: Sidebar contextual con InspectorControls/GlobalControls
+ * 5. WAVE 33.3: Mode Switcher, BPM, Mood en toolbar superior
  * 
  * @module components/views/StageViewDual
- * @version 30.1.0
+ * @version 33.3.0
  */
 
 import React, { Suspense, lazy, useState, useCallback } from 'react'
-import { useControlStore, selectViewMode, selectIs3DMode } from '../../../stores/controlStore'
+import { useControlStore, selectViewMode, selectIs3DMode, GlobalMode } from '../../../stores/controlStore'
+import { useTruthSensory } from '../../../hooks'
 import { ViewModeSwitcher } from '../../shared/ViewModeSwitcher'
 import { StageSimulator2 } from '../SimulateView/StageSimulator2'
 import { StageSidebar } from './sidebar'
@@ -23,6 +25,25 @@ import './StageViewDual.css'
 
 // Lazy load del componente 3D (es pesado con Three.js)
 const Stage3DCanvas = lazy(() => import('../../stage3d/Stage3DCanvas'))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = [
+  { id: 'manual', label: 'MAN', icon: '🎚️', color: '#FF6B6B' },
+  { id: 'flow', label: 'FLOW', icon: '🌊', color: '#4ADE80' },
+  { id: 'selene', label: 'AI', icon: '🌙', color: '#7C4DFF' },
+]
+
+const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
+  energetic: { label: 'ENERGY', icon: '⚡', color: '#FF6B6B' },
+  chaotic: { label: 'CHAOS', icon: '🌪️', color: '#A855F7' },
+  harmonious: { label: 'VIBE', icon: '🌊', color: '#4ADE80' },
+  building: { label: 'BUILD', icon: '📈', color: '#FBBF24' },
+  dropping: { label: 'DROP!', icon: '💥', color: '#FF1744' },
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LOADING FALLBACK
@@ -56,6 +77,21 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   const showDebugOverlay = useControlStore(state => state.showDebugOverlay)
   const toggleDebugOverlay = useControlStore(state => state.toggleDebugOverlay)
   
+  // 🎨 WAVE 33.3: Mode Switcher state
+  const globalMode = useControlStore(state => state.globalMode)
+  const setGlobalMode = useControlStore(state => state.setGlobalMode)
+  
+  // 🎵 WAVE 33.3: BPM & Mood from truthStore
+  const sensory = useTruthSensory()
+  const displayBpm = sensory?.beat?.bpm ?? 0
+  const bpmConfidence = sensory?.beat?.confidence ?? 0
+  const isBeatSync = sensory?.beat?.onBeat ?? false
+  // Mood inferred from audio energy
+  const energy = sensory?.audio?.energy ?? 0.5
+  const currentMood = energy > 0.7 ? 'energetic' : energy > 0.4 ? 'harmonious' : 'peaceful'
+  const moodConfig = MOOD_LABELS[currentMood] || MOOD_LABELS.harmonious
+  const bpmColor = bpmConfidence > 0.7 ? '#4ADE80' : bpmConfidence > 0.4 ? '#FBBF24' : '#EF4444'
+  
   // Sidebar collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const handleToggleSidebar = useCallback(() => {
@@ -65,14 +101,61 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   return (
     <div className={`stage-view-dual ${className}`}>
       {/* ═══════════════════════════════════════════════════════════════════
-       * TOOLBAR
+       * TOOLBAR - WAVE 33.3: Command Center
        * ═══════════════════════════════════════════════════════════════════ */}
       {showSwitcher && (
         <div className="stage-view-toolbar">
+          {/* View Mode Switcher (2D/3D) */}
           <ViewModeSwitcher />
+          
+          {/* DIVIDER */}
+          <div className="toolbar-divider" />
+          
+          {/* 🎨 MODE SWITCHER: Manual | Flow | Selene */}
+          <div className="mode-switcher">
+            {MODES.map(mode => (
+              <button
+                key={mode.id}
+                className={`mode-btn ${globalMode === mode.id ? 'active' : ''}`}
+                onClick={() => {
+                  console.log(`[StageViewDual] 🎛️ Mode switched: ${globalMode} → ${mode.id}`)
+                  setGlobalMode(mode.id)
+                }}
+                style={{ 
+                  '--mode-color': mode.color,
+                  borderColor: globalMode === mode.id ? mode.color : 'transparent'
+                } as React.CSSProperties}
+              >
+                <span className="mode-icon">{mode.icon}</span>
+                <span className="mode-label">{mode.label}</span>
+              </button>
+            ))}
+          </div>
+          
+          {/* DIVIDER */}
+          <div className="toolbar-divider" />
+          
+          {/* 🎵 BPM INDICATOR */}
+          <div className="toolbar-indicator bpm-indicator">
+            <span className="indicator-icon">💓</span>
+            <span className="indicator-value" style={{ color: bpmColor }}>
+              {displayBpm > 0 ? displayBpm.toFixed(0) : '--'}
+            </span>
+            <span className="indicator-unit">BPM</span>
+            <div className={`beat-dot ${isBeatSync ? 'pulse' : ''}`} />
+          </div>
+          
+          {/* 🎭 MOOD INDICATOR */}
+          <div className="toolbar-indicator mood-indicator">
+            <span className="indicator-icon">{moodConfig.icon}</span>
+            <span className="indicator-label" style={{ color: moodConfig.color }}>
+              {moodConfig.label}
+            </span>
+          </div>
           
           <div className="toolbar-spacer" />
           
+          {/* DEBUG TOGGLE */}
           <button
             className={`toolbar-btn ${showDebugOverlay ? 'active' : ''}`}
             onClick={toggleDebugOverlay}

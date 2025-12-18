@@ -30,7 +30,7 @@ export type ViewMode = '2D' | '3D'
 export type GlobalMode = 'manual' | 'flow' | 'selene'
 
 /** Patrones disponibles para Flow mode */
-export type FlowPattern = 'static' | 'chase' | 'wave' | 'rainbow' | 'strobe'
+export type FlowPattern = 'static' | 'chase' | 'wave' | 'rainbow' | 'strobe' | 'circle' | 'eight'
 
 /** IDs de paletas vivas disponibles - WAVE 33.2 */
 export type LivingPaletteId = 'fuego' | 'hielo' | 'selva' | 'neon'
@@ -42,6 +42,10 @@ export interface FlowParams {
   intensity: number       // 0-100 (blend con AI)
   direction: 'forward' | 'backward' | 'bounce' | 'random'
   spread: number          // 0-100 (para wave)
+  // WAVE 33.4: Kinetic Radar parameters
+  basePan: number         // 0-1 (normalized, 0.5 = center)
+  baseTilt: number        // 0-1 (normalized, 0.5 = center)
+  size: number            // 0-1 (movement amplitude)
 }
 
 /** Estado del Control Store */
@@ -101,11 +105,17 @@ export interface ControlState {
   toggleSidebar: () => void
   
   // ═══════════════════════════════════════════════════════════════════════
-  // COLOR & PALETTE - WAVE 33.2
+  // COLOR & PALETTE - WAVE 33.2 + WAVE 34.5 (Smooth Transitions)
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Paleta de colores vivos activa */
   activePalette: LivingPaletteId
+  
+  /** Paleta objetivo durante transición (null si no hay transición) */
+  targetPalette: LivingPaletteId | null
+  
+  /** Progreso de transición 0-1 (1 = completa) */
+  transitionProgress: number
   
   /** Saturación global (0-1) */
   globalSaturation: number
@@ -113,8 +123,11 @@ export interface ControlState {
   /** Intensidad global (0-1) */
   globalIntensity: number
   
-  /** Cambiar paleta activa */
+  /** Cambiar paleta activa (inicia transición suave) */
   setPalette: (palette: LivingPaletteId) => void
+  
+  /** Actualizar progreso de transición (llamado por animation frame) */
+  updateTransition: (progress: number) => void
   
   /** Establecer saturación global */
   setGlobalSaturation: (value: number) => void
@@ -136,6 +149,10 @@ const DEFAULT_FLOW_PARAMS: FlowParams = {
   intensity: 50,
   direction: 'forward',
   spread: 50,
+  // WAVE 33.4: Kinetic Radar defaults
+  basePan: 0.5,   // Center
+  baseTilt: 0.5,  // Center
+  size: 0.5,      // 50% amplitude
 }
 
 const DEFAULT_STATE = {
@@ -145,8 +162,10 @@ const DEFAULT_STATE = {
   flowParams: DEFAULT_FLOW_PARAMS,
   showDebugOverlay: false,
   sidebarExpanded: true,
-  // WAVE 33.2: Color & Palette
+  // WAVE 33.2 + 34.5: Color & Palette with transitions
   activePalette: 'fuego' as LivingPaletteId,
+  targetPalette: null as LivingPaletteId | null,
+  transitionProgress: 1,  // 1 = no transition in progress
   globalSaturation: 1.0,
   globalIntensity: 1.0,
 }
@@ -217,12 +236,48 @@ export const useControlStore = create<ControlState>()(
       },
       
       // ═══════════════════════════════════════════════════════════════════
-      // COLOR & PALETTE ACTIONS - WAVE 33.2
+      // COLOR & PALETTE ACTIONS - WAVE 33.2 + 34.5 (Smooth Transitions)
       // ═══════════════════════════════════════════════════════════════════
       
       setPalette: (palette) => {
-        console.log(`[ControlStore] 🎨 Palette changed: ${get().activePalette} → ${palette}`)
-        set({ activePalette: palette })
+        const current = get().activePalette
+        if (current === palette) return // No change needed
+        
+        console.log(`[ControlStore] 🎨 Palette transition: ${current} → ${palette}`)
+        
+        // Start transition animation
+        set({ 
+          targetPalette: palette,
+          transitionProgress: 0 
+        })
+        
+        // Animate over 2 seconds
+        const duration = 2000
+        const startTime = Date.now()
+        
+        const animate = () => {
+          const elapsed = Date.now() - startTime
+          const progress = Math.min(elapsed / duration, 1)
+          
+          if (progress < 1) {
+            set({ transitionProgress: progress })
+            requestAnimationFrame(animate)
+          } else {
+            // Transition complete
+            set({ 
+              activePalette: palette,
+              targetPalette: null,
+              transitionProgress: 1 
+            })
+            console.log(`[ControlStore] 🎨 Palette transition complete: ${palette}`)
+          }
+        }
+        
+        requestAnimationFrame(animate)
+      },
+      
+      updateTransition: (progress) => {
+        set({ transitionProgress: Math.max(0, Math.min(1, progress)) })
       },
       
       setGlobalSaturation: (value) => {

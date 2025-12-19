@@ -179,6 +179,20 @@ export class SeleneLux extends EventEmitter {
   private lastBeat: BeatState | null = null
   private lastBrainOutput: BrainOutput | null = null
   
+  // 📡 WAVE 46.0: DATA BRIDGE - Recibe datos de Trinity Worker
+  // El Worker (GAMMA) tiene el género, key, syncopation real
+  // Este es el puente que conecta Worker → getBroadcast() → UI
+  private lastTrinityData: {
+    macroGenre?: string
+    key?: string | null
+    mode?: string
+    syncopation?: number
+    strategy?: string
+    temperature?: string
+    description?: string
+    timestamp: number
+  } | null = null
+  
   // 🌙 WAVE-25: Tracking para Universal Truth Broadcast
   private lastAudioMetrics: AudioMetrics | null = null
   private lastAudioAnalysis: AudioAnalysis | null = null
@@ -739,30 +753,87 @@ export class SeleneLux extends EventEmitter {
       }
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔥 WAVE 24.9: PALETTE SYNC - Sincronizar Flow palette a telemetría
-      // El Canvas (con bypass WAVE 24.8) lee telemetryStore.palette
-      // Debemos inyectar los colores que ColorEngine generó en modo Flow
+      // 🎨 WAVE 46.5: CHROMATIC UNLOCK - Usar SeleneColorEngine cuando Trinity esté activo
+      // Si tenemos datos del Worker (género, key, etc.), generamos colores procedurales
+      // en lugar de usar Flow fallback. Esto desbloquea paletas reales (Techno = cian/magenta)
       // ═══════════════════════════════════════════════════════════════════════
-      const flowPalette = {
-        primary: rgbToHsl(this.lastColors.primary),
-        secondary: rgbToHsl(this.lastColors.secondary),
-        accent: rgbToHsl(this.lastColors.accent),
-        ambient: rgbToHsl(this.lastColors.ambient),
-        contrast: { h: 0, s: 0, l: 0, hex: '#000000' },  // Dummy
-        strategy: 'flow_preset' as const,
-        source: 'fallback' as const,  // Flow colorEngine = fallback legacy engine
-        description: `Flow: ${this.currentPalette}`,  // "Flow: fuego", "Flow: hielo"
+      
+      let finalPalette: any
+      let finalPaletteSource: 'procedural' | 'fallback' = 'fallback'
+      
+      // 🔓 WAVE 46.5: Si Trinity tiene un género válido, generamos colores procedurales
+      const hasTrinityContext = this.lastTrinityData?.macroGenre && 
+                                 this.lastTrinityData.macroGenre !== 'UNKNOWN'
+      
+      if (hasTrinityContext) {
+        // Construir análisis seguro para SeleneColorEngine
+        const safeAnalysis = {
+          energy: metrics.energy,
+          wave8: {
+            rhythm: {
+              syncopation: this.lastTrinityData?.syncopation ?? 0,
+              confidence: 1,
+            },
+            harmony: {
+              key: this.lastTrinityData?.key ?? 'C',
+              mode: this.lastTrinityData?.mode ?? 'major',
+              confidence: 0.8,
+              mood: 'energetic' as const  // Forzar energetic para géneros electrónicos
+            },
+            section: {
+              type: 'drop' as const,  // Asumir drop para máxima energía
+              energy: metrics.energy,
+              confidence: 0.8
+            },
+            genre: {
+              primary: this.lastTrinityData?.macroGenre ?? 'ELECTRONIC_4X4',
+              confidence: 1
+            }
+          }
+        }
+        
+        // 🎨 Generar paleta procedural con contexto real
+        const proceduralPalette = SeleneColorEngine.generate(safeAnalysis as any)
+        
+        // Convertir HSL → RGB para hardware
+        const rgbPalette = paletteToRgb(proceduralPalette)
+        
+        // Aplicar multiplicadores globales y asignar a lastColors
+        this.lastColors = {
+          primary: this.applyGlobalMultipliers(rgbPalette.primary),
+          secondary: this.applyGlobalMultipliers(rgbPalette.secondary),
+          accent: this.applyGlobalMultipliers(rgbPalette.accent),
+          ambient: this.applyGlobalMultipliers(rgbPalette.ambient),
+          intensity: this.lastColors.intensity,
+          saturation: this.globalSaturation
+        }
+        
+        finalPalette = proceduralPalette
+        finalPaletteSource = 'procedural'
+        
+      } else {
+        // 🔥 WAVE 24.9: FALLBACK - Modo Flow cuando no hay Trinity data
+        finalPalette = {
+          primary: rgbToHsl(this.lastColors.primary),
+          secondary: rgbToHsl(this.lastColors.secondary),
+          accent: rgbToHsl(this.lastColors.accent),
+          ambient: rgbToHsl(this.lastColors.ambient),
+          contrast: { h: 0, s: 0, l: 0, hex: '#000000' },
+          strategy: 'flow_preset' as const,
+          source: 'fallback' as const,
+          description: `Flow: ${this.currentPalette}`,
+        }
+        finalPaletteSource = 'fallback'
       }
       
-      // Construir Brain Output simulado para engañar a la UI
-      // Esto asegura que Canvas reciba los colores de las Living Palettes
+      // Construir Brain Output (Procedural o Flow según Trinity data)
       // 🌊 WAVE 41.0: Agregado context con rhythm.groove.syncopation para telemetría
       this.lastBrainOutput = {
         timestamp: Date.now(),
-        sessionId: 'flow-session',
+        sessionId: hasTrinityContext ? 'trinity-session' : 'flow-session',
         mode: 'reactive' as const,
-        palette: flowPalette,  // ← AQUÍ VIAJAN LOS COLORES BONITOS 🔥❄️🌴⚡
-        paletteSource: 'fallback' as const,  // Flow usa ColorEngine legacy (fallback)
+        palette: finalPalette,  // Procedural (Selene) o Flow (Presets)
+        paletteSource: finalPaletteSource as 'procedural' | 'fallback',
         confidence: 1.0,
         estimatedBeauty: this.lastColors.saturation || 0.8,
         lighting: { fixtures: {} } as any,  // Dummy
@@ -1221,15 +1292,48 @@ export class SeleneLux extends EventEmitter {
     // 🪓 WAVE 39.9.2: Brain lives in Worker - log only
     console.info('[SeleneLux] 🪓 resetMemory() - brain is in Worker')
   }
-  
+
+  /**
+   * 📡 WAVE 46.0: DATA BRIDGE - Recibe datos de Trinity Worker
+   * 
+   * Este método conecta el Worker (GAMMA/mind.ts) con getBroadcast() para la UI.
+   * El Worker tiene la data correcta (género, key, syncopation) pero antes
+   * no llegaba a la UI porque lastBrainOutput estaba vacío (useBrain=false).
+   * 
+   * @param debugInfo - debugInfo del LightingDecision que viene del Worker
+   */
+  updateFromTrinity(debugInfo: {
+    macroGenre?: string
+    key?: string | null
+    mode?: string
+    syncopation?: number
+    strategy?: string
+    temperature?: string
+    description?: string
+  } | undefined): void {
+    if (!debugInfo) return
+    
+    this.lastTrinityData = {
+      ...debugInfo,
+      timestamp: Date.now()
+    }
+    
+    // Log periódico para debug (cada 5 segundos aprox)
+    if (this.frameCount % 150 === 0) {
+      console.log('[SeleneLux] 📡 WAVE 46.0 Trinity Data:', {
+        genre: debugInfo.macroGenre,
+        key: debugInfo.key,
+        synco: debugInfo.syncopation?.toFixed(2)
+      })
+    }
+  }
+
   /**
    * 📡 WAVE-14: Acceso al TelemetryCollector
    */
   getTelemetryCollector(): SeleneTelemetryCollector {
     return this.telemetryCollector
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════════════
+  }  // ═══════════════════════════════════════════════════════════════════════════
   // 🌙 WAVE 25: UNIVERSAL TRUTH PROTOCOL - getBroadcast()
   // ═══════════════════════════════════════════════════════════════════════════
   
@@ -1385,8 +1489,13 @@ export class SeleneLux extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     const context = brain?.context
     
+    // 📡 WAVE 46.0: Usar datos de Trinity Worker cuando estén disponibles
+    // El Worker (GAMMA) tiene género/key/syncopation correctos
+    const trinityData = this.lastTrinityData
+    
     // Extraer syncopation de la estructura real: context.rhythm.groove.syncopation
-    const syncopationValue = context?.rhythm?.groove?.syncopation ?? 0
+    // WAVE 46.0: Priorizar Trinity data
+    const syncopationValue = trinityData?.syncopation ?? context?.rhythm?.groove?.syncopation ?? 0
     
     // Extraer pattern type de la estructura real: context.rhythm.pattern.type
     const patternType = context?.rhythm?.pattern?.type ?? 'unknown'
@@ -1400,16 +1509,19 @@ export class SeleneLux extends EventEmitter {
       : 0
     
     const musicalDNA = {
-      key: context?.harmony?.key ?? null,
+      // 📡 WAVE 46.0: Priorizar Trinity data para key
+      key: trinityData?.key ?? context?.harmony?.key ?? null,
       mode: {
-        scale: (context?.harmony?.mode?.scale ?? 'major') as 'major' | 'minor' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'locrian' | 'harmonic_minor' | 'melodic_minor' | 'pentatonic_major' | 'pentatonic_minor' | 'blues' | 'chromatic',
+        // 📡 WAVE 46.0: Usar mode de Trinity si disponible
+        scale: ((trinityData?.mode === 'minor' ? 'minor' : trinityData?.mode === 'major' ? 'major' : context?.harmony?.mode?.scale) ?? 'major') as 'major' | 'minor' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'locrian' | 'harmonic_minor' | 'melodic_minor' | 'pentatonic_major' | 'pentatonic_minor' | 'blues' | 'chromatic',
         mood: (context?.harmony?.mode?.mood ?? 'universal') as 'happy' | 'sad' | 'jazzy' | 'spanish_exotic' | 'dreamy' | 'bluesy' | 'tense' | 'universal',
-        confidence: context?.harmony?.confidence ?? 0,
+        confidence: context?.harmony?.confidence ?? (trinityData ? 0.8 : 0),
       },
       genre: {
-        primary: (context?.genre?.primary ?? 'UNKNOWN') as 'ELECTRONIC_4X4' | 'ELECTRONIC_BREAK' | 'LATINO_TRADICIONAL' | 'LATINO_URBANO' | 'ROCK_POP' | 'JAZZ_SOUL' | 'AMBIENT_CHILL' | 'UNKNOWN',
+        // 📡 WAVE 46.0: PRIORIZAR Trinity data para género - LA VERDAD DEL WORKER
+        primary: ((trinityData?.macroGenre ?? context?.genre?.primary ?? 'UNKNOWN') as 'ELECTRONIC_4X4' | 'ELECTRONIC_BREAK' | 'LATINO_TRADICIONAL' | 'LATINO_URBANO' | 'ROCK_POP' | 'JAZZ_SOUL' | 'AMBIENT_CHILL' | 'UNKNOWN'),
         subGenre: context?.genre?.secondary ?? null,
-        confidence: context?.genre?.confidence ?? 0,
+        confidence: trinityData?.macroGenre ? 0.9 : (context?.genre?.confidence ?? 0),
         distribution: {},
       },
       rhythm: {

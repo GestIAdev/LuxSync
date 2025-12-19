@@ -323,7 +323,13 @@ function initSelene() {
             mainWindow.webContents.send('trinity:lighting-decision', decision)
           }
           
-          // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
+          // � WAVE 46.0: DATA BRIDGE - Enviar debugInfo a SeleneLux
+          // Esto conecta el Worker (género/key/syncopation correctos) con la UI
+          if (decision?.debugInfo && selene) {
+            selene.updateFromTrinity(decision.debugInfo)
+          }
+          
+          // �💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
           if (pipelineAuditCounter % 150 === 0) {
             const keys = decision ? Object.keys(decision) : []
             console.log('[PIPELINE AUDIT] 🔬 GAMMA→Main keys:', keys.join(', ') || 'EMPTY')

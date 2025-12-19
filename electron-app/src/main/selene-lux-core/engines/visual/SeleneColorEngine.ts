@@ -683,12 +683,21 @@ export class SeleneColorEngine {
     const mode = wave8.harmony.mode || 'minor';
     const mood = wave8.harmony.mood || data.mood || 'universal';
     const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
-    const genrePrimary = wave8.genre.primary || 'unknown';
+    // 🔧 WAVE 46.1: FIX - GenreClassifier devuelve .genre, pero este código buscaba .primary
+    // Ahora soporta ambos formatos para compatibilidad
+    const genrePrimary = (wave8.genre as any).genre || wave8.genre.primary || 'unknown';
     const energy = clamp(data.energy ?? 0.5, 0, 1);
     const genreConfidence = wave8.genre.confidence ?? 0.5;
     
     // === B. DETECTAR MACRO-GÉNERO ===
-    const macroId = GENRE_MAP[genrePrimary.toLowerCase()] || DEFAULT_GENRE;
+    // 🔧 WAVE 46.2: El GenreClassifier YA devuelve macro-géneros (ELECTRONIC_4X4, etc.)
+    // Si genrePrimary ya es un macro-género válido, usarlo directamente
+    // Solo mapear si es un sub-género (techno, house, cumbia, etc.)
+    const upperGenre = genrePrimary.toUpperCase();
+    const isAlreadyMacro = MACRO_GENRES[upperGenre] !== undefined;
+    const macroId = isAlreadyMacro 
+      ? upperGenre 
+      : (GENRE_MAP[genrePrimary.toLowerCase()] || DEFAULT_GENRE);
     const profile = MACRO_GENRES[macroId];
     
     // === C. DETERMINAR HUE BASE (Matemática Pura) ===

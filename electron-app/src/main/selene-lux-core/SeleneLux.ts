@@ -179,9 +179,10 @@ export class SeleneLux extends EventEmitter {
   private lastBeat: BeatState | null = null
   private lastBrainOutput: BrainOutput | null = null
   
-  // 📡 WAVE 46.0: DATA BRIDGE - Recibe datos de Trinity Worker
+  // 📡 WAVE 46.0 → 47.2: DATA BRIDGE - Recibe datos de Trinity Worker
   // El Worker (GAMMA) tiene el género, key, syncopation real
   // Este es el puente que conecta Worker → getBroadcast() → UI
+  // WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
   private lastTrinityData: {
     macroGenre?: string
     key?: string | null
@@ -191,7 +192,20 @@ export class SeleneLux extends EventEmitter {
     temperature?: string
     description?: string
     timestamp: number
+    mood?: any  // 💫 WAVE 47.2: MoodSynthesizer output (copado directo del spread)
+    sectionDetail?: any  // 💫 WAVE 47.2: SectionTracker output (copado directo del spread)
+    debugInfo?: {
+      mood?: any
+      sectionDetail?: any
+    }
   } | null = null
+  
+  // 💫 WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker
+  private lastStableSection: { type: string; timestamp: number; confidence: number } = {
+    type: 'unknown',
+    timestamp: Date.now(),
+    confidence: 0
+  }
   
   // 🌙 WAVE-25: Tracking para Universal Truth Broadcast
   private lastAudioMetrics: AudioMetrics | null = null
@@ -1294,11 +1308,13 @@ export class SeleneLux extends EventEmitter {
   }
 
   /**
-   * 📡 WAVE 46.0: DATA BRIDGE - Recibe datos de Trinity Worker
+   * 📡 WAVE 46.0 → 47.2: DATA BRIDGE - Recibe datos de Trinity Worker
    * 
    * Este método conecta el Worker (GAMMA/mind.ts) con getBroadcast() para la UI.
    * El Worker tiene la data correcta (género, key, syncopation) pero antes
    * no llegaba a la UI porque lastBrainOutput estaba vacío (useBrain=false).
+   * 
+   * WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
    * 
    * @param debugInfo - debugInfo del LightingDecision que viene del Worker
    */
@@ -1310,6 +1326,8 @@ export class SeleneLux extends EventEmitter {
     strategy?: string
     temperature?: string
     description?: string
+    mood?: any  // 💫 WAVE 47.2: MoodSynthesizer output (VAD)
+    sectionDetail?: any  // 💫 WAVE 47.2: SectionTracker output
   } | undefined): void {
     if (!debugInfo) return
     
@@ -1318,13 +1336,18 @@ export class SeleneLux extends EventEmitter {
       timestamp: Date.now()
     }
     
-    // Log periódico para debug (cada 5 segundos aprox)
+    // 💫 WAVE 47.2: Log actualizado para verificar mood & section desde spread directo
     if (this.frameCount % 150 === 0) {
-      console.log('[SeleneLux] 📡 WAVE 46.0 Trinity Data:', {
-        genre: debugInfo.macroGenre,
-        key: debugInfo.key,
-        synco: debugInfo.syncopation?.toFixed(2)
-      })
+      console.log('[SeleneLux] 📡 WAVE 47.2 Trinity Data:', JSON.stringify({
+        genre: this.lastTrinityData.macroGenre,
+        key: this.lastTrinityData.key,
+        synco: this.lastTrinityData.syncopation?.toFixed(2),
+        mood: this.lastTrinityData.mood?.primary,  // Acceso directo (spread)
+        arousal: this.lastTrinityData.mood?.arousal?.toFixed(2),
+        valence: this.lastTrinityData.mood?.valence?.toFixed(2),
+        section: this.lastTrinityData.sectionDetail?.type,  // Acceso directo (spread)
+        sectionConf: this.lastTrinityData.sectionDetail?.confidence?.toFixed(2)
+      }, null, 0))
     }
   }
 
@@ -1442,11 +1465,19 @@ export class SeleneLux extends EventEmitter {
       },
     }
     
+    // 📡 WAVE 46.0: Trinity Worker Data - Mover ANTES para usarlo en cognitive
+    const trinityData = this.lastTrinityData
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 2. COGNITIVE DATA (Consciencia)
     // ═══════════════════════════════════════════════════════════════════════
+    // 💫 WAVE 47.1.3: Mood arbitrado viene del GAMMA Worker (mind.ts)
+    // La arbitración ya se hizo en el Worker con prioridad: genre > harmony > VAD
+    const calculatedMood = trinityData?.mood?.primary
+    const moodFallback = this.consciousness.currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric'
+    
     const cognitive = {
-      mood: this.consciousness.currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric',
+      mood: calculatedMood ?? moodFallback,
       consciousnessLevel: this.consciousness.beautyScore ?? 0.5,
       evolution: {
         stage: this.consciousness.status as 'awakening' | 'learning' | 'wise',
@@ -1489,9 +1520,8 @@ export class SeleneLux extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     const context = brain?.context
     
-    // 📡 WAVE 46.0: Usar datos de Trinity Worker cuando estén disponibles
+    // 📡 WAVE 46.0: trinityData ya declarado arriba (línea 1446) para uso en cognitive
     // El Worker (GAMMA) tiene género/key/syncopation correctos
-    const trinityData = this.lastTrinityData
     
     // Extraer syncopation de la estructura real: context.rhythm.groove.syncopation
     // WAVE 46.0: Priorizar Trinity data
@@ -1534,10 +1564,28 @@ export class SeleneLux extends EventEmitter {
         pattern: patternType as 'four_on_floor' | 'breakbeat' | 'half_time' | 'reggaeton' | 'cumbia' | 'rock_standard' | 'jazz_swing' | 'latin' | 'minimal' | 'unknown',
       },
       section: {
-        current: (context?.section?.current?.type ?? 'unknown') as 'intro' | 'verse' | 'chorus' | 'bridge' | 'breakdown' | 'drop' | 'buildup' | 'outro' | 'transition' | 'unknown',
-        energy: sectionIntensity,
+        // 💫 WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker de 10 cambios/segundo
+        // Solo cambiar sección si: 1) confidence > 0.8, 2) distinta a actual, 3) han pasado >3 segundos
+        current: (() => {
+          const rawSection = trinityData?.sectionDetail?.type ?? context?.section?.current?.type ?? 'unknown'
+          const rawConfidence = trinityData?.sectionDetail?.confidence ?? context?.section?.current?.confidence ?? 0
+          const timeSinceLastChange = now - this.lastStableSection.timestamp
+          const MIN_SECTION_DURATION = 3000 // 3 segundos mínimo por sección
+          
+          // Si la sección es diferente Y tiene alta confianza Y ha pasado suficiente tiempo → cambiar
+          if (rawSection !== this.lastStableSection.type && rawConfidence > 0.8 && timeSinceLastChange > MIN_SECTION_DURATION) {
+            this.lastStableSection = {
+              type: rawSection,
+              timestamp: now,
+              confidence: rawConfidence
+            }
+          }
+          
+          return this.lastStableSection.type as 'intro' | 'verse' | 'chorus' | 'bridge' | 'breakdown' | 'drop' | 'buildup' | 'outro' | 'transition' | 'unknown'
+        })(),
+        energy: trinityData?.sectionDetail?.energy ?? sectionIntensity,
         barsInSection: sectionBars,
-        confidence: context?.section?.current?.confidence ?? 0,
+        confidence: trinityData?.sectionDetail?.confidence ?? context?.section?.current?.confidence ?? 0,
       },
       prediction: {
         nextSection: {

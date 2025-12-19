@@ -163,6 +163,7 @@ export interface LightingDecision {
   // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
   // 🔥 WAVE 23.1: Exponer source real (sin histéresis)
   // 🌊 WAVE 23.4: Syncopation suavizado para DNA
+  // 💫 WAVE 47.1: MOOD & SECTION - Conectar MoodSynthesizer y SectionTracker
   debugInfo?: {
     macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
     strategy?: string;         // e.g., "analogous", "complementary"
@@ -172,6 +173,8 @@ export interface LightingDecision {
     mode?: string;             // e.g., "major", "minor"
     source?: 'memory' | 'procedural' | 'fallback';  // 🔥 LA VERDAD CRUDA
     syncopation?: number;      // 🌊 WAVE 23.4: Syncopation suavizado (EMA filter)
+    mood?: any;                // 💫 WAVE 47.1: MoodSynthesizer output (VAD: valence, arousal, dominance)
+    sectionDetail?: any;       // 💫 WAVE 47.1: SectionTracker output completo (type, energy, confidence)
   };
   
   // Per-fixture overrides (optional)

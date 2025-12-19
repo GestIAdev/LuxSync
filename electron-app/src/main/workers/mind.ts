@@ -166,6 +166,10 @@ interface GammaState {
   // 🌊 WAVE 23.4: Smoothed syncopation (EMA filter)
   smoothedSync: number;
   
+  // 💫 WAVE 47.1.7: Mood hysteresis (evitar flickeo)
+  lastStableMood: string;
+  lastMoodChangeTime: number;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -216,6 +220,10 @@ const state: GammaState = {
   
   // 🌊 WAVE 23.4: Smoothed syncopation (inicializado en 0)
   smoothedSync: 0,
+  
+  // 💫 WAVE 47.1.7: Mood hysteresis (evitar flickeo)
+  lastStableMood: 'dark',           // Default para electrónica
+  lastMoodChangeTime: Date.now(),   // Timestamp del último cambio
   
   learnedPatterns: new Map(),
   
@@ -351,6 +359,12 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         scores: (genre as any).scores ?? {},
         mood: (genre as any).mood ?? 'NULL',
       },
+      consciousness: {
+        mood: (analysis.wave8 as any)?.mood?.primary ?? 'NULL',  // 💫 WAVE 47.1: MoodSynthesizer output
+        arousal: (analysis.wave8 as any)?.mood?.arousal?.toFixed(2) ?? 'NULL',
+        valence: (analysis.wave8 as any)?.mood?.valence?.toFixed(2) ?? 'NULL',
+        dominance: (analysis.wave8 as any)?.mood?.dominance?.toFixed(2) ?? 'NULL',
+      },
       personality: {
         mood: personality.currentMood,
         boldness: personality.boldness,
@@ -443,15 +457,107 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // Calculate beauty score with Wave 8 data
   const beautyScore = calculateBeautyScore(analysis, palette, movement, wave8);
   
-  // Update personality mood based on harmony
-  if (harmony.mood === 'happy' || harmony.mood === 'bluesy') {
+  // 💫 WAVE 47.1.3: MOOD ARBITRATION - Jerarquía de 4 niveles
+  // Prioridad: genre.mood > harmony.mood > VAD.mood > fallback
+  // Este es el "árbitro final" que consolida todas las fuentes de mood
+  let finalMood: string = 'peaceful'; // 4️⃣ Default Fallback
+  
+  // Extraer VAD mood del MoodSynthesizer
+  const vadMood = (analysis.wave8 as any)?.mood?.primary ?? 'peaceful';
+  
+  // Extraer genre mood (de GenreAnalysis)
+  const genreMood = (genre as any).mood ?? null;
+  const genreConfidence = genre.confidence;
+  const genreName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
+  
+  // Extraer harmony mood
+  const harmonyMood = harmony.mood ?? null;
+  const harmonyConfidence = harmony.confidence;
+  
+  // 🔧 WAVE 47.1.6: ELECTRONIC GENRE OVERRIDE
+  // Si el género detectado es ELECTRONIC (aunque confidence sea baja),
+  // NO permitir que VAD "harmonious" gane - es incorrecto para techno
+  const isElectronicGenre = genreName.startsWith('ELECTRONIC');
+  const electronicMoodOverride = isElectronicGenre ? 
+    (genreMood === 'chill' ? 'calm' : genreMood ?? 'dark') : null;
+  
+  // 1️⃣ PRIORIDAD MÁXIMA: Contexto de Género (The Senate)
+  // Si el género está claro (>0.6) y tiene opinión fuerte (no neutral)
+  if (genreConfidence > 0.6 && genreMood && genreMood !== 'chill') {
+    finalMood = genreMood;
+  }
+  // 🔧 WAVE 47.1.6: Si es género electrónico pero confidence baja, usar override
+  else if (isElectronicGenre && electronicMoodOverride) {
+    finalMood = electronicMoodOverride;
+  }
+  // 2️⃣ PRIORIDAD MEDIA: Teoría Musical (Harmony)
+  // Si no hay género fuerte, pero la tonalidad dicta emoción (ej: Minor -> Sad)
+  else if (harmonyConfidence > 0.7 && harmonyMood) {
+    // Mapear harmony.mood a finalMood (UI moods)
+    if (harmonyMood === 'happy' || harmonyMood === 'bluesy') {
+      finalMood = 'energetic';
+    } else if (harmonyMood === 'sad' || harmonyMood === 'tense') {
+      finalMood = 'dark';
+    } else if (harmonyMood === 'dreamy' || harmonyMood === 'jazzy') {
+      finalMood = 'calm';
+    } else if (harmonyMood === 'spanish_exotic') {
+      finalMood = 'playful';
+    }
+  }
+  // 3️⃣ PRIORIDAD BAJA: VAD (Instinto Crudo del MoodSynthesizer)
+  // Solo si los anteriores fallan o son neutros
+  else {
+    finalMood = vadMood;
+  }
+  
+  // 💫 WAVE 47.1.7: MOOD HYSTERESIS
+  // El mood de un DJ set no cambia 10 veces por segundo.
+  // Solo permitir cambio si han pasado al menos 10 segundos.
+  const MOOD_HYSTERESIS_MS = 10000; // 10 segundos mínimo entre cambios
+  const now = Date.now();
+  const timeSinceLastChange = now - state.lastMoodChangeTime;
+  
+  if (finalMood !== state.lastStableMood) {
+    if (timeSinceLastChange >= MOOD_HYSTERESIS_MS) {
+      // Suficiente tiempo ha pasado, permitir el cambio
+      state.lastStableMood = finalMood;
+      state.lastMoodChangeTime = now;
+    } else {
+      // No ha pasado suficiente tiempo, mantener el mood anterior
+      finalMood = state.lastStableMood;
+    }
+  }
+  
+  // Update personality mood (ahora basado en finalMood arbitrado + hysteresis)
+  // Mapear a los 4 moods permitidos por personality interface
+  if (finalMood === 'energetic' || finalMood === 'dramatic' || finalMood === 'euphoric') {
     personality.currentMood = 'energetic';
-  } else if (harmony.mood === 'sad' || harmony.mood === 'tense') {
+  } else if (finalMood === 'dark') {
     personality.currentMood = 'dark';
-  } else if (harmony.mood === 'dreamy' || harmony.mood === 'jazzy') {
+  } else if (finalMood === 'calm' || finalMood === 'peaceful') {
     personality.currentMood = 'calm';
-  } else if (harmony.mood === 'spanish_exotic') {
+  } else if (finalMood === 'playful') {
     personality.currentMood = 'playful';
+  }
+
+  // 💫 WAVE 47.1.3: Log de arbitración cada 5 segundos
+  if (state.frameCount % 150 === 0) {
+    console.log('[MOOD ARBITRATION] 🎭', JSON.stringify({
+      WINNER: finalMood,
+      stable: state.lastStableMood,  // 💫 WAVE 47.1.7: Mood estable después de hysteresis
+      hysteresis: { 
+        timeSinceChange: Math.round(timeSinceLastChange / 1000) + 's',
+        wasBlocked: finalMood === state.lastStableMood && timeSinceLastChange < MOOD_HYSTERESIS_MS
+      },
+      genre: genreName,
+      sources: {
+        '1_GENRE': { mood: genreMood ?? 'NULL', confidence: genreConfidence.toFixed(2), won: genreConfidence > 0.6 && genreMood && genreMood !== 'chill' },
+        '1B_ELECTRONIC_OVERRIDE': { active: isElectronicGenre && !(genreConfidence > 0.6), override: electronicMoodOverride },
+        '2_HARMONY': { mood: harmonyMood ?? 'NULL', confidence: harmonyConfidence.toFixed(2) },
+        '3_VAD': { mood: vadMood }
+      },
+      personality_mapped: personality.currentMood
+    }, null, 0));
   }
   
   // Track processing time
@@ -475,6 +581,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
     // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer paletteSource real (sin histéresis)
     // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para DNA derivation
+    // 💫 WAVE 47.1.3: MOOD ARBITRATION - Enviar finalMood (arbitrado) no VAD raw
     debugInfo: {
       macroGenre: selenePalette.meta.macroGenre,
       strategy: selenePalette.meta.strategy,
@@ -484,6 +591,16 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       mode: harmony.mode,
       source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural (no usa Brain)
       syncopation: state.smoothedSync,  // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para evitar flicker en DNA
+      mood: {
+        primary: finalMood,  // 💫 WAVE 47.1.3: Mood arbitrado (genre > harmony > VAD)
+        raw: (analysis.wave8 as any)?.mood,  // ⚠️ VAD raw preservado para debug
+        sources: {
+          genre: { mood: genreMood, confidence: genreConfidence },
+          harmony: { mood: harmonyMood, confidence: harmonyConfidence },
+          vad: { mood: vadMood }
+        }
+      },
+      sectionDetail: section,  // 💫 WAVE 47.1: SectionTracker output completo
     }
   };
 }

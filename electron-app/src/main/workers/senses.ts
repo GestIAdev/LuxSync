@@ -53,6 +53,9 @@ import { GenreClassifier } from '../selene-lux-core/engines/musical/classificati
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
+// 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
+import { MoodSynthesizer } from '../selene-lux-core/engines/consciousness/MoodSynthesizer';
+
 // ============================================
 // CONFIGURATION
 // ============================================
@@ -300,6 +303,10 @@ const harmonyDetector = new SimpleHarmonyDetector();
 const sectionTracker = new SimpleSectionTracker();
 const genreClassifier = new GenreClassifier();  // WAVE 18.3: Switched to enhanced GenreClassifier
 
+// 🌈 WAVE 47.1: MoodSynthesizer - Emotional tone analysis
+const moodSynthesizer = new MoodSynthesizer();
+console.log('[BETA] 🌈 MoodSynthesizer initialized (VAD Model)');
+
 // ============================================
 // AUDIO PROCESSING - WAVE 8 INTEGRATED
 // ============================================
@@ -315,6 +322,16 @@ interface ExtendedAudioAnalysis extends AudioAnalysis {
     harmony: HarmonyOutput;
     section: SectionOutput;
     genre: GenreOutput;
+    // 🌈 WAVE 47.1: MoodSynthesizer output
+    mood?: {
+      primary: string;
+      secondary: string | null;
+      valence: number;
+      arousal: number;
+      dominance: number;
+      intensity: number;
+      stability: number;
+    };
   };
 }
 
@@ -405,6 +422,25 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const rhythmOutput = rhythmDetector.analyze(audioMetrics);
   const harmonyOutput = harmonyDetector.analyze(audioMetrics);
   const sectionOutput = sectionTracker.analyze(audioMetrics, rhythmOutput);
+  
+  // 🌈 WAVE 47.1: MoodSynthesizer - VAD emotional analysis
+  const beatState = {
+    bpm: state.currentBpm,
+    confidence: beatResult.confidence,
+    onBeat: beatResult.onBeat,
+    phase: state.beatPhase,
+    beatCount: Math.floor((Date.now() - state.startTime) / (60000 / state.currentBpm))
+  };
+  
+  // Adapt AudioMetrics for MoodSynthesizer (different type signature)
+  const metricsForMood = {
+    ...audioMetrics,
+    energy: energy,  // MoodSynthesizer expects 'energy' not 'volume'
+    beatConfidence: beatResult.confidence,
+    peak: energy,
+    frameIndex: state.frameCount
+  };
+  const moodOutput = moodSynthesizer.process(metricsForMood as any, beatState as any);
   
   // WAVE 18.3: Pass enhanced parameters to GenreClassifier
   // 🔧 WAVE 45.4: THE BPM WIRE FIX - El BPM no llegaba al GenreClassifier!
@@ -526,6 +562,16 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
       harmony: harmonyOutput,
       section: sectionOutput,
       genre: genreOutput as any,  // GenreAnalysis casted to GenreOutput
+      // 🌈 WAVE 47.1: MoodSynthesizer output (VAD emotional analysis)
+      mood: {
+        primary: moodOutput.primary,
+        secondary: moodOutput.secondary,
+        valence: moodOutput.valence,
+        arousal: moodOutput.arousal,
+        dominance: moodOutput.dominance,
+        intensity: moodOutput.intensity,
+        stability: moodOutput.stability,
+      }
     }
   };
 }

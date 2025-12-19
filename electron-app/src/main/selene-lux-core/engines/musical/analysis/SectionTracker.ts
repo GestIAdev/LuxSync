@@ -166,15 +166,24 @@ export interface SectionTrackerConfig {
   energyHistorySize: number;
   /** Umbral de cambio de energía para detectar transición */
   energyChangeThreshold: number;
-  /** Mínima duración de sección en ms */
+  /** Mínima duración de sección en ms - WAVE 47.2: Aumentado a 8s */
   minSectionDuration: number;
+  /** WAVE 47.2: Tamaño del buffer para calcular baseline de energía */
+  energyBaselineSize: number;
+  /** WAVE 47.2: Umbral de confianza para cambiar de sección */
+  transitionConfidenceThreshold: number;
+  /** WAVE 47.2: Frames consecutivos necesarios para confirmar transición */
+  transitionConfirmationFrames: number;
 }
 
 const DEFAULT_CONFIG: SectionTrackerConfig = {
-  throttleMs: 500,              // REGLA 1: Throttled
-  energyHistorySize: 20,        // ~10 segundos de historial
-  energyChangeThreshold: 0.25,  // Cambio del 25% = transición
-  minSectionDuration: 4000,     // Mínimo 4 segundos por sección
+  throttleMs: 500,                      // REGLA 1: Throttled
+  energyHistorySize: 20,                // ~10 segundos de historial
+  energyChangeThreshold: 0.25,          // Cambio del 25% = transición
+  minSectionDuration: 8000,             // WAVE 47.2: Mínimo 8 segundos por sección
+  energyBaselineSize: 120,              // WAVE 47.2: ~60 segundos de baseline (120 frames a 500ms)
+  transitionConfidenceThreshold: 0.65,  // WAVE 47.2: Mínimo 65% confianza para transición
+  transitionConfirmationFrames: 6,      // WAVE 47.2: 6 frames = 3 segundos de confirmación
 };
 
 // ============================================================
@@ -189,7 +198,36 @@ interface EnergyFrame {
 }
 
 /**
+ * WAVE 47.2: Baseline de energía para cálculos relativos
+ * Almacena percentiles calculados de toda la canción/sesión
+ */
+interface EnergyBaseline {
+  p25: number;    // Percentil 25 (baja energía)
+  p50: number;    // Mediana
+  p75: number;    // Percentil 75 (alta energía)
+  min: number;
+  max: number;
+  sampleCount: number;
+}
+
+/**
+ * WAVE 47.2: Historial de transiciones para memoria narrativa
+ */
+interface SectionHistoryEntry {
+  section: SectionType;
+  timestamp: number;
+  duration: number;
+  avgIntensity: number;
+}
+
+/**
  * Tracker de secciones musicales
+ * 
+ * WAVE 47.2: Refactorizado con:
+ * - Energía relativa (percentiles)
+ * - Matriz de transición como gate
+ * - Histéresis temporal aumentada
+ * - Memoria narrativa
  * 
  * Detecta intro, verse, buildup, drop, breakdown, chorus, outro
  * y predice la siguiente sección basado en patrones típicos
@@ -206,8 +244,21 @@ export class SectionTracker extends EventEmitter {
   // Historial de energía para detectar trends
   private energyHistory: EnergyFrame[] = [];
   
-  // Contadores para estabilizar detección
+  // WAVE 47.2: Baseline de energía para cálculos relativos
+  private energyBaseline: EnergyBaseline = {
+    p25: 0.3, p50: 0.5, p75: 0.7, min: 0, max: 1, sampleCount: 0
+  };
+  private allEnergySamples: number[] = [];
+  
+  // WAVE 47.2: Acumulador de votos persistente (no se resetea cada frame)
   private sectionVotes: Map<SectionType, number> = new Map();
+  private pendingTransition: SectionType | null = null;
+  private pendingTransitionFrames: number = 0;
+  
+  // WAVE 47.2: Memoria narrativa - historial de secciones
+  private sectionHistory: SectionHistoryEntry[] = [];
+  
+  // Contadores para estabilizar detección
   private consecutiveSection: number = 0;
   
   constructor(config: Partial<SectionTrackerConfig> = {}) {
@@ -297,15 +348,18 @@ export class SectionTracker extends EventEmitter {
 
   /**
    * Actualizar historial de energía
+   * WAVE 47.2: También actualiza baseline para cálculos relativos
    */
   private updateEnergyHistory(
     audio: { energy: number; bass: number; mid: number; treble: number },
     timestamp: number
   ): void {
+    const rawIntensity = (audio.bass * 0.4 + audio.mid * 0.3 + audio.energy * 0.3);
+    
     const frame: EnergyFrame = {
       energy: audio.energy,
       bass: audio.bass,
-      intensity: (audio.bass * 0.4 + audio.mid * 0.3 + audio.energy * 0.3),
+      intensity: rawIntensity,
       timestamp,
     };
     
@@ -315,10 +369,44 @@ export class SectionTracker extends EventEmitter {
     while (this.energyHistory.length > this.config.energyHistorySize) {
       this.energyHistory.shift();
     }
+    
+    // WAVE 47.2: Actualizar baseline de energía
+    this.updateEnergyBaseline(rawIntensity);
+  }
+
+  /**
+   * WAVE 47.2: Actualizar baseline de energía (percentiles)
+   * Mantiene un buffer grande para calcular percentiles estables
+   */
+  private updateEnergyBaseline(intensity: number): void {
+    this.allEnergySamples.push(intensity);
+    
+    // Limitar tamaño del buffer
+    while (this.allEnergySamples.length > this.config.energyBaselineSize) {
+      this.allEnergySamples.shift();
+    }
+    
+    // Recalcular percentiles cada 10 muestras para eficiencia
+    if (this.allEnergySamples.length % 10 === 0 && this.allEnergySamples.length >= 20) {
+      const sorted = [...this.allEnergySamples].sort((a, b) => a - b);
+      const len = sorted.length;
+      
+      this.energyBaseline = {
+        p25: sorted[Math.floor(len * 0.25)],
+        p50: sorted[Math.floor(len * 0.50)],
+        p75: sorted[Math.floor(len * 0.75)],
+        min: sorted[0],
+        max: sorted[len - 1],
+        sampleCount: len,
+      };
+    }
   }
 
   /**
    * Calcular intensidad actual (0-1)
+   * 
+   * WAVE 47.2: Ahora usa energía RELATIVA basada en percentiles
+   * En lugar de umbrales absolutos, compara con el baseline de la canción
    * 
    * Combina:
    * - Energía del audio (40%)
@@ -329,6 +417,7 @@ export class SectionTracker extends EventEmitter {
     audio: { energy: number; bass: number; mid: number; treble: number },
     rhythm: RhythmAnalysis
   ): number {
+    // Calcular intensidad raw
     const audioIntensity = audio.energy;
     const bassIntensity = audio.bass;
     const drumActivity = (
@@ -337,7 +426,25 @@ export class SectionTracker extends EventEmitter {
       (rhythm.drums.hihatDetected ? rhythm.drums.hihatIntensity : 0) * 0.3
     );
     
-    return Math.min(1, audioIntensity * 0.4 + bassIntensity * 0.3 + drumActivity * 0.3);
+    const rawIntensity = audioIntensity * 0.4 + bassIntensity * 0.3 + drumActivity * 0.3;
+    
+    // WAVE 47.2: Convertir a intensidad RELATIVA usando baseline
+    // Si no hay suficientes muestras, usar valor raw normalizado
+    if (this.energyBaseline.sampleCount < 20) {
+      return Math.min(1, rawIntensity);
+    }
+    
+    // Normalizar: 0 = P25 (baja), 0.5 = P50 (media), 1 = P75+ (alta)
+    const range = this.energyBaseline.p75 - this.energyBaseline.p25;
+    if (range < 0.05) {
+      // Rango muy pequeño = canción muy plana, usar raw
+      return Math.min(1, rawIntensity);
+    }
+    
+    const relativeIntensity = (rawIntensity - this.energyBaseline.p25) / range;
+    
+    // Clamp entre 0 y 1, pero permitir valores > 1 para picos extremos
+    return Math.max(0, Math.min(1.2, relativeIntensity));
   }
 
   /**
@@ -380,11 +487,17 @@ export class SectionTracker extends EventEmitter {
   /**
    * Detectar tipo de sección actual
    * 
+   * WAVE 47.2: Refactorizado con:
+   * - Intensidad RELATIVA (comparada con baseline de la canción)
+   * - Votos ACUMULATIVOS (no se resetean, solo decaen)
+   * - Validación de transición con matriz
+   * 
    * Algoritmo:
-   * 1. Analizar nivel de intensidad
-   * 2. Analizar trend de energía
-   * 3. Analizar características de drums
+   * 1. Decay de votos existentes (memoria temporal)
+   * 2. Analizar nivel de intensidad RELATIVA
+   * 3. Analizar trend de energía
    * 4. Votar por sección más probable
+   * 5. Validar transición con SECTION_TRANSITIONS
    */
   private detectSection(
     intensity: number,
@@ -392,58 +505,122 @@ export class SectionTracker extends EventEmitter {
     rhythm: RhythmAnalysis,
     audio: { energy: number; bass: number; mid: number; treble: number }
   ): SectionType {
-    // Resetear votos
-    this.sectionVotes.clear();
-    
-    // === REGLAS DE DETECCIÓN ===
-    
-    // 🔥 DROP: Alta intensidad + bass pesado + drums activos
-    if (intensity > 0.75 && audio.bass > 0.7 && rhythm.drums.kickDetected) {
-      this.addVote('drop', 0.8);
-    }
-    
-    // 📈 BUILDUP: Energía subiendo + posible riser/filter sweep
-    if (trend === 'rising' && intensity > 0.4 && intensity < 0.9) {
-      this.addVote('buildup', 0.7);
-      
-      // Bonus si hay fill de batería
-      if (rhythm.fillInProgress) {
-        this.addVote('buildup', 0.2);
+    // WAVE 47.2: Decay de votos (memoria temporal, no reset total)
+    const DECAY_FACTOR = 0.85;
+    for (const [section, votes] of this.sectionVotes) {
+      const decayed = votes * DECAY_FACTOR;
+      if (decayed < 0.1) {
+        this.sectionVotes.delete(section);
+      } else {
+        this.sectionVotes.set(section, decayed);
       }
     }
     
-    // 📉 BREAKDOWN: Baja energía después de alta + falling trend
-    if (intensity < 0.4 && trend === 'falling') {
-      this.addVote('breakdown', 0.6);
+    // === REGLAS DE DETECCIÓN CON INTENSIDAD RELATIVA ===
+    // intensity > 0.8 = por encima del P75 (energía alta para ESTA canción)
+    // intensity < 0.3 = por debajo del P25 (energía baja para ESTA canción)
+    
+    // Calcular bass relativo también
+    const bassRange = this.energyBaseline.p75 - this.energyBaseline.p25;
+    const relativeBass = bassRange > 0.05 
+      ? (audio.bass - this.energyBaseline.p25) / bassRange 
+      : audio.bass;
+    
+    // 🔥 DROP: Intensidad muy por encima de la media + bass pesado + kick
+    if (intensity > 0.85 && relativeBass > 0.7 && rhythm.drums.kickDetected) {
+      this.addVote('drop', 1.0);
+    } else if (intensity > 0.75 && rhythm.drums.kickDetected && rhythm.drums.kickIntensity > 0.6) {
+      this.addVote('drop', 0.6);
     }
     
-    // 🎤 VERSE: Energía media + estable + sin bass dominante
-    if (intensity >= 0.3 && intensity <= 0.6 && trend === 'stable') {
+    // 📈 BUILDUP: Energía subiendo + zona media-alta
+    if (trend === 'rising') {
+      if (intensity > 0.4 && intensity < 0.85) {
+        this.addVote('buildup', 0.8);
+      }
+      // Bonus si hay fill de batería
+      if (rhythm.fillInProgress) {
+        this.addVote('buildup', 0.4);
+      }
+    }
+    
+    // 📉 BREAKDOWN: Por debajo de la media + trend descendente
+    if (intensity < 0.4 && trend === 'falling') {
+      this.addVote('breakdown', 0.7);
+    } else if (intensity < 0.3 && !rhythm.drums.kickDetected) {
+      // Muy baja energía sin kick = definitivamente breakdown
+      this.addVote('breakdown', 0.5);
+    }
+    
+    // 🎤 VERSE: Zona media + estable
+    if (intensity >= 0.35 && intensity <= 0.65 && trend === 'stable') {
       this.addVote('verse', 0.5);
     }
     
-    // 🎵 CHORUS: Alta energía + estable (ya pasó el buildup)
-    if (intensity > 0.6 && intensity < 0.85 && trend === 'stable') {
+    // 🎵 CHORUS: Zona alta + estable (post-buildup)
+    if (intensity > 0.65 && intensity < 0.85 && trend === 'stable') {
       this.addVote('chorus', 0.6);
     }
     
-    // 🎬 INTRO: Baja energía + principio (primeros 30 segundos implícitos)
+    // 🎬 INTRO: Baja energía al principio
     if (intensity < 0.35 && this.currentSection === 'unknown') {
-      this.addVote('intro', 0.7);
+      this.addVote('intro', 0.8);
+    } else if (intensity < 0.4 && this.sectionHistory.length === 0) {
+      this.addVote('intro', 0.5);
     }
     
-    // 👋 OUTRO: Baja energía + falling + después de drop/chorus
-    if (intensity < 0.35 && trend === 'falling' && 
-        (this.currentSection === 'drop' || this.currentSection === 'chorus')) {
-      this.addVote('outro', 0.5);
+    // 👋 OUTRO: Baja energía + falling + contexto narrativo
+    if (intensity < 0.35 && trend === 'falling') {
+      const wasHighEnergy = this.currentSection === 'drop' || this.currentSection === 'chorus';
+      if (wasHighEnergy) {
+        this.addVote('outro', 0.5);
+      }
     }
     
-    // Obtener sección con más votos
-    return this.getMostVotedSection();
+    // WAVE 47.2: Bonus por consistencia con sección actual
+    if (this.consecutiveSection > 3) {
+      this.addVote(this.currentSection, 0.3);
+    }
+    
+    // Obtener candidato con más votos
+    const candidate = this.getMostVotedSection();
+    
+    // WAVE 47.2: Validar transición con matriz
+    return this.validateTransition(candidate);
+  }
+
+  /**
+   * WAVE 47.2: Validar que la transición sea lógica usando la matriz
+   * Solo permite transiciones definidas en SECTION_TRANSITIONS
+   */
+  private validateTransition(candidate: SectionType): SectionType {
+    // Si es la misma sección, siempre válido
+    if (candidate === this.currentSection) {
+      return candidate;
+    }
+    
+    // Obtener transiciones válidas desde la sección actual
+    const validTransitions = SECTION_TRANSITIONS[this.currentSection] || [];
+    const isValidTransition = validTransitions.some(t => t.to === candidate);
+    
+    // Si la transición es válida, aceptarla
+    if (isValidTransition) {
+      return candidate;
+    }
+    
+    // WAVE 47.2: Transición inválida - buscar camino alternativo
+    // Ejemplo: intro → drop es inválido, pero intro → buildup → drop es válido
+    // Por ahora, mantener sección actual si la transición no es válida
+    
+    // Log para debug (en producción se puede quitar)
+    // console.log(`[SectionTracker] Blocked invalid transition: ${this.currentSection} → ${candidate}`);
+    
+    return this.currentSection;
   }
 
   /**
    * Añadir voto para una sección
+   * WAVE 47.2: Ahora es acumulativo
    */
   private addVote(section: SectionType, weight: number): void {
     const current = this.sectionVotes.get(section) || 0;
@@ -452,6 +629,7 @@ export class SectionTracker extends EventEmitter {
 
   /**
    * Obtener sección con más votos
+   * WAVE 47.2: Requiere umbral mínimo de confianza para cambiar
    */
   private getMostVotedSection(): SectionType {
     let maxVotes = 0;
@@ -464,33 +642,95 @@ export class SectionTracker extends EventEmitter {
       }
     }
     
+    // WAVE 47.2: Calcular confianza del ganador
+    const totalVotes = Array.from(this.sectionVotes.values()).reduce((a, b) => a + b, 0);
+    const winnerConfidence = totalVotes > 0 ? maxVotes / totalVotes : 0;
+    
+    // Si el ganador no tiene suficiente confianza, mantener sección actual
+    if (winnerConfidence < this.config.transitionConfidenceThreshold) {
+      return this.currentSection;
+    }
+    
     return winner;
   }
 
   /**
    * Manejar cambio de sección
+   * 
+   * WAVE 47.2: Sistema de confirmación de frames
+   * - No cambia inmediatamente cuando se detecta nueva sección
+   * - Requiere N frames consecutivos confirmando la misma sección
+   * - Previene flickeo en transiciones ambiguas
    */
   private handleSectionChange(detected: SectionType, now: number): void {
     // Verificar si es diferente a la actual
     if (detected !== this.currentSection) {
-      // Verificar duración mínima de sección actual
-      const duration = now - this.sectionStartTime;
-      
-      if (duration >= this.config.minSectionDuration || this.currentSection === 'unknown') {
-        const oldSection = this.currentSection;
-        this.currentSection = detected;
-        this.sectionStartTime = now;
-        this.consecutiveSection = 1;
+      // WAVE 47.2: Sistema de confirmación de transición pendiente
+      if (this.pendingTransition === detected) {
+        // Misma sección pendiente - incrementar contador
+        this.pendingTransitionFrames++;
         
-        // Emitir evento de cambio
-        this.emit('section-change', {
-          from: oldSection,
-          to: detected,
-          timestamp: now,
-        });
+        // Verificar si tenemos suficientes frames de confirmación
+        if (this.pendingTransitionFrames >= this.config.transitionConfirmationFrames) {
+          // Verificar duración mínima de sección actual
+          const duration = now - this.sectionStartTime;
+          
+          if (duration >= this.config.minSectionDuration || this.currentSection === 'unknown') {
+            // WAVE 47.2: Guardar en historial narrativo antes de cambiar
+            this.addToSectionHistory(now);
+            
+            const oldSection = this.currentSection;
+            this.currentSection = detected;
+            this.sectionStartTime = now;
+            this.consecutiveSection = 1;
+            
+            // Reset pendiente
+            this.pendingTransition = null;
+            this.pendingTransitionFrames = 0;
+            
+            // Emitir evento de cambio
+            this.emit('section-change', {
+              from: oldSection,
+              to: detected,
+              timestamp: now,
+            });
+          }
+        }
+      } else {
+        // Nueva sección diferente - resetear contador
+        this.pendingTransition = detected;
+        this.pendingTransitionFrames = 1;
       }
     } else {
+      // Sección igual a la actual - resetear pendiente
+      this.pendingTransition = null;
+      this.pendingTransitionFrames = 0;
       this.consecutiveSection++;
+    }
+  }
+
+  /**
+   * WAVE 47.2: Añadir sección actual al historial narrativo
+   */
+  private addToSectionHistory(now: number): void {
+    const duration = now - this.sectionStartTime;
+    
+    // Calcular intensidad promedio durante esta sección
+    const recentEnergy = this.energyHistory.slice(-10);
+    const avgIntensity = recentEnergy.length > 0
+      ? recentEnergy.reduce((sum, f) => sum + f.intensity, 0) / recentEnergy.length
+      : 0.5;
+    
+    this.sectionHistory.push({
+      section: this.currentSection,
+      timestamp: this.sectionStartTime,
+      duration,
+      avgIntensity,
+    });
+    
+    // Mantener solo las últimas 20 secciones
+    while (this.sectionHistory.length > 20) {
+      this.sectionHistory.shift();
     }
   }
 
@@ -655,7 +895,22 @@ export class SectionTracker extends EventEmitter {
   }
 
   /**
+   * WAVE 47.2: Obtener historial de secciones (memoria narrativa)
+   */
+  getSectionHistory(): SectionHistoryEntry[] {
+    return [...this.sectionHistory];
+  }
+
+  /**
+   * WAVE 47.2: Obtener baseline de energía actual
+   */
+  getEnergyBaseline(): EnergyBaseline {
+    return { ...this.energyBaseline };
+  }
+
+  /**
    * Reset del tracker
+   * WAVE 47.2: Incluye nuevos campos
    */
   reset(): void {
     this.currentSection = 'unknown';
@@ -665,6 +920,13 @@ export class SectionTracker extends EventEmitter {
     this.energyHistory = [];
     this.sectionVotes.clear();
     this.consecutiveSection = 0;
+    
+    // WAVE 47.2: Reset nuevos campos
+    this.energyBaseline = { p25: 0.3, p50: 0.5, p75: 0.7, min: 0, max: 1, sampleCount: 0 };
+    this.allEnergySamples = [];
+    this.pendingTransition = null;
+    this.pendingTransitionFrames = 0;
+    this.sectionHistory = [];
   }
 }
 

@@ -839,50 +839,83 @@ export class SimpleHarmonyDetector {
 /**
  * Simplified section tracker for workers
  */
+/**
+ * ⚡ WAVE 50: SimpleSectionTracker - DETECCIÓN DROP RELATIVA
+ * ===========================================================
+ * "IT'S THE KICK, STUPID" - El Arquitecto
+ * 
+ * LÓGICA SIMPLIFICADA:
+ * - DROP: bassRatio > 1.2 && kick presente && energía alta
+ * - BUILDUP: energía subiendo progresivamente  
+ * - VERSE: todo lo demás (breakdown, intro, outro son "verse" para efectos)
+ * 
+ * 3 estados efectivos en lugar de 9. El color reacciona al DROP, no al tipo de verso.
+ */
 export class SimpleSectionTracker {
   private energyHistory: number[] = [];
-  private currentSection: SectionOutput['type'] = 'unknown';
+  private bassHistory: number[] = [];
+  private currentSection: SectionOutput['type'] = 'verse';
   private beatsSinceChange = 0;
-  private readonly historySize = 64;
+  private readonly historySize = 64;  // ~1 segundo a 60fps
   
   analyze(audio: AudioMetrics, rhythm: RhythmOutput): SectionOutput {
+    // Acumular historial
     this.energyHistory.push(audio.volume);
+    this.bassHistory.push(audio.bass);
     if (this.energyHistory.length > this.historySize) {
       this.energyHistory.shift();
+      this.bassHistory.shift();
     }
     
     if (audio.onBeat) {
       this.beatsSinceChange++;
     }
     
-    // Calculate current and recent energy
+    // === MÉTRICAS CLAVE ===
     const currentEnergy = audio.volume;
-    const recentEnergy = this.energyHistory.slice(-16).reduce((a, b) => a + b, 0) / 16;
-    const olderEnergy = this.energyHistory.slice(0, 16).reduce((a, b) => a + b, 0) / Math.max(16, this.energyHistory.length);
+    const currentBass = audio.bass;
+    const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.5;
     
-    // Detect section changes
+    // Promedios recientes vs históricos
+    const recentEnergy = this.avg(this.energyHistory.slice(-16));
+    const olderEnergy = this.avg(this.energyHistory.slice(0, 32));
+    const recentBass = this.avg(this.bassHistory.slice(-16));
+    const olderBass = this.avg(this.bassHistory.slice(0, 32)) || 0.1;  // Evitar división por 0
+    
+    // Ratios relativos (WAVE 47.3: "It's the kick, stupid")
+    const bassRatio = recentBass / olderBass;
     const energyDelta = recentEnergy - olderEnergy;
+    
+    // === DECISIÓN DE SECCIÓN (3 ESTADOS EFECTIVOS) ===
     let newSection = this.currentSection;
     
-    if (energyDelta > 0.3 && currentEnergy > 0.7) {
+    // 🔴 DROP: Explosión de bass + kick + energía alta
+    if (bassRatio > 1.20 && hasKick && currentEnergy > 0.6) {
       newSection = 'drop';
       this.beatsSinceChange = 0;
-    } else if (energyDelta > 0.15 && currentEnergy > 0.5) {
+    }
+    // 🟡 BUILDUP: Energía subiendo pero aún no explotan los bajos
+    else if (energyDelta > 0.12 && currentEnergy > 0.4 && bassRatio < 1.15) {
       newSection = 'buildup';
-    } else if (energyDelta < -0.3) {
+    }
+    // 🔵 BREAKDOWN: Caída súbita de energía
+    else if (energyDelta < -0.25 && currentEnergy < 0.4) {
       newSection = 'breakdown';
       this.beatsSinceChange = 0;
-    } else if (currentEnergy < 0.3) {
-      newSection = this.beatsSinceChange < 32 ? 'intro' : 'outro';
-    } else if (rhythm.fillDetected) {
-      // After a fill, likely transitioning
+    }
+    // 🟢 VERSE: Estado neutral (intro/outro/verse son lo mismo para iluminación)
+    else if (this.beatsSinceChange > 48) {  // ~8 beats sin cambio
       newSection = 'verse';
     }
     
     this.currentSection = newSection;
     
-    // Transition likelihood
-    const transitionLikelihood = Math.min(1, Math.abs(energyDelta) * 2 + (rhythm.fillDetected ? 0.3 : 0));
+    // Probabilidad de transición (para efectos anticipatorios)
+    const transitionLikelihood = Math.min(1, 
+      Math.abs(energyDelta) * 2 + 
+      (rhythm.fillDetected ? 0.4 : 0) +
+      (bassRatio > 1.1 && !hasKick ? 0.3 : 0)  // Bass subiendo sin kick = buildup inminente
+    );
     
     return {
       type: this.currentSection,
@@ -893,245 +926,115 @@ export class SimpleSectionTracker {
     };
   }
   
+  /** Promedio de array con protección de longitud 0 */
+  private avg(arr: number[]): number {
+    return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  }
+  
   reset(): void {
     this.energyHistory = [];
-    this.currentSection = 'unknown';
+    this.bassHistory = [];
+    this.currentSection = 'verse';
     this.beatsSinceChange = 0;
   }
 }
 
 /**
- * Simplified genre classifier for workers
- * 🔥 WAVE 12.2: HISTÉRESIS + REGLA DE HIERRO
- * 🎯 WAVE 16.5: WIDEN THE NET - Umbrales ajustados
- * - Sync < 0.30 = ELECTRÓNICO (robótico)
- * - Sync > 0.30 = LATINO (con swing)
- * - HISTÉRESIS: Mantener género estable mínimo 2 segundos
+ * ⚖️ WAVE 50: SimpleBinaryBias - THE ARCHITECT'S PURGE
+ * =====================================================
+ * "El género es un 5% de la generación de color. Llevamos 24 horas
+ * perdiendo el tiempo. El Arquitecto ha hablado: STOP."
+ * 
+ * LÓGICA BINARIA PURA:
+ * - 4x4 pattern detectado → ELECTRONIC (Cool Bias)
+ * - Todo lo demás → ORGANIC (Warm Bias)
+ * 
+ * Skrillex con synth sucio? ELECTRONIC.
+ * Skrillex con ritmo roto? ORGANIC. 
+ * Ambos son aceptables. El color solo cambia 5%.
  */
-export class SimpleGenreClassifier {
-  private scoreHistory: Map<string, number[]> = new Map();
-  private readonly historySize = 20;
-  private lastLogFrame = 0;
+export class SimpleBinaryBias {
+  private silenceFrames = 0;
+  private readonly SILENCE_RESET_THRESHOLD = 180;  // 3 segundos a 60fps
+  private readonly SILENCE_ENERGY_MIN = 0.05;
   private frameCount = 0;
+  private lastLogFrame = 0;
   
-  // 🔥 WAVE 12.2: HISTÉRESIS
-  private currentStableGenre: string = 'unknown';
-  private genreVotes: string[] = [];
-  private readonly VOTE_THRESHOLD = 5;  // Necesita 5 votos para cambiar
-  private lastGenreChangeFrame = 0;
-  private readonly MIN_FRAMES_BETWEEN_CHANGES = 120;  // ~2 segundos a 60fps
-  
-  classify(rhythm: RhythmOutput, audio: AudioMetrics): GenreOutput {
-    this.frameCount++;
-    
-    const scores: Record<string, number> = {
-      edm: 0,
-      house: 0,
-      techno: 0,
-      cyberpunk: 0,
-      reggaeton: 0,
-      cumbia: 0,
-      latin_pop: 0,
-      hip_hop: 0,
-      rock: 0,
-      pop: 0,
-      unknown: 0.1,
-    };
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 12.1: REGLA DE HIERRO BIDIRECCIONAL
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    // 🤖 CAMINO ELECTRÓNICO: Sync < 0.30 = robótico
-    if (rhythm.syncopation < 0.30) {
-      if (audio.bpm >= 85 && audio.bpm <= 130) {
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🤖 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} < 0.30 → CYBERPUNK`);
-          this.lastLogFrame = this.frameCount;
-        }
-        return {
-          primary: 'cyberpunk',
-          secondary: 'techno',
-          confidence: 0.85,
-          scores: { ...scores, cyberpunk: 0.85, techno: 0.5 },
-        };
-      } else if (audio.bpm > 130) {
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🤖 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} < 0.30, BPM=${audio.bpm.toFixed(0)} → TECHNO`);
-          this.lastLogFrame = this.frameCount;
-        }
-        return {
-          primary: 'techno',
-          secondary: 'house',
-          confidence: 0.85,
-          scores: { ...scores, techno: 0.85, house: 0.5 },
-        };
-      }
-    }
-    
-    // 💃 CAMINO LATINO: Sync > 0.30 = tiene swing
-    // 🎯 WAVE 16.5: Umbral bajado de 0.35 a 0.30 por ventana ampliada
-    if (rhythm.syncopation > 0.30 && audio.bpm >= 85 && audio.bpm <= 125) {
-      // Treble > 0.15 = güiro presente → CUMBIA
-      if (audio.treble > 0.15) {
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🪘 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30, Treble=${audio.treble.toFixed(2)} > 0.15 → CUMBIA`);
-          this.lastLogFrame = this.frameCount;
-        }
-        return {
-          primary: 'cumbia',
-          secondary: 'reggaeton',
-          confidence: 0.90,
-          scores: { ...scores, cumbia: 0.90, reggaeton: 0.5 },
-        };
-      } else if (rhythm.pattern === 'reggaeton') {
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🎤 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30, Dembow=true → REGGAETON`);
-          this.lastLogFrame = this.frameCount;
-        }
-        return {
-          primary: 'reggaeton',
-          secondary: 'cumbia',
-          confidence: 0.85,
-          scores: { ...scores, reggaeton: 0.85, cumbia: 0.5 },
-        };
-      } else {
-        // Swing pero sin güiro ni dembow → LATIN_POP
-        if (this.frameCount - this.lastLogFrame > 60) {
-          console.log(`[SimpleGenreClassifier] 🎵 REGLA DE HIERRO: Sync=${rhythm.syncopation.toFixed(2)} > 0.30 → LATIN_POP`);
-          this.lastLogFrame = this.frameCount;
-        }
-        return {
-          primary: 'latin_pop',
-          secondary: 'cumbia',
-          confidence: 0.70,
-          scores: { ...scores, latin_pop: 0.70, cumbia: 0.4 },
-        };
-      }
-    }
-    
-    // === FALLBACK: Score-based para casos intermedios ===
-    
-    // BPM-based scoring
-    if (audio.bpm >= 120 && audio.bpm <= 130) {
-      scores.house += 0.3;
-      scores.techno += 0.2;
-    }
-    if (audio.bpm >= 90 && audio.bpm <= 105) {
-      scores.reggaeton += 0.4;
-      scores.cumbia += 0.3;
-    }
-    if (audio.bpm >= 70 && audio.bpm <= 95) {
-      scores.hip_hop += 0.3;
-    }
-    if (audio.bpm >= 135 && audio.bpm <= 150) {
-      scores.techno += 0.3;
-    }
-    
-    // Syncopation-based scoring
-    if (rhythm.syncopation < 0.2) {
-      scores.house += 0.3;
-      scores.techno += 0.3;
-      scores.edm += 0.2;
-      scores.cyberpunk += 0.2;
-    }
-    if (rhythm.syncopation > 0.3 && rhythm.syncopation < 0.5) {
-      scores.reggaeton += 0.3;
-      scores.hip_hop += 0.2;
-    }
-    if (rhythm.syncopation > 0.5) {
-      scores.cumbia += 0.2;
-    }
-    
-    // Pattern-based scoring
-    if (rhythm.pattern === 'four_on_floor') {
-      scores.house += 0.4;
-      scores.techno += 0.3;
-    }
-    if (rhythm.pattern === 'reggaeton') {
-      scores.reggaeton += 0.5;
-    }
-    
-    // Find top scores
-    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    const detectedPrimary = sorted[0][0];
-    const secondary = sorted[1][1] > 0.2 ? sorted[1][0] : null;
-    
-    // Track history
-    if (!this.scoreHistory.has(detectedPrimary)) {
-      this.scoreHistory.set(detectedPrimary, []);
-    }
-    this.scoreHistory.get(detectedPrimary)!.push(sorted[0][1]);
-    
-    // Calculate confidence from consistency
-    const history = this.scoreHistory.get(detectedPrimary) || [];
-    const avgScore = history.length > 0 
-      ? history.slice(-this.historySize).reduce((a, b) => a + b, 0) / Math.min(history.length, this.historySize)
-      : sorted[0][1];
-    
-    // 🔥 WAVE 12.2: HISTÉRESIS - Estabilizar género
-    const stabilizedPrimary = this.stabilizeGenre(detectedPrimary, avgScore);
-    
-    return {
-      primary: stabilizedPrimary,
-      secondary,
-      confidence: Math.min(1, avgScore),
-      scores,
-    };
+  /**
+   * Reset completo en silencio prolongado
+   */
+  public hardReset(): void {
+    console.log('[SimpleBinaryBias] 🧹 HARD RESET: Nueva canción');
+    this.silenceFrames = 0;
+    this.frameCount = 0;
+    this.lastLogFrame = 0;
   }
   
   /**
-   * 🔥 WAVE 12.2: HISTÉRESIS - Estabiliza el género
+   * ⚖️ CLASIFICACIÓN BINARIA PURA
+   * 
+   * 4x4 + confidence > 0.5 → ELECTRONIC_4X4 (Cool)
+   * Todo lo demás → LATINO_TRADICIONAL (Warm)
    */
-  private stabilizeGenre(detected: string, confidence: number): string {
-    // Añadir voto
-    this.genreVotes.push(detected);
-    if (this.genreVotes.length > this.VOTE_THRESHOLD) {
-      this.genreVotes.shift();
-    }
+  classify(rhythm: RhythmOutput, audio: AudioMetrics): GenreOutput {
+    this.frameCount++;
     
-    // Contar votos
-    const voteCounts: Record<string, number> = {};
-    for (const vote of this.genreVotes) {
-      voteCounts[vote] = (voteCounts[vote] || 0) + 1;
-    }
-    
-    // Encontrar género con mayoría
-    let maxVotes = 0;
-    let majorityGenre = detected;
-    for (const [genre, count] of Object.entries(voteCounts)) {
-      if (count > maxVotes) {
-        maxVotes = count;
-        majorityGenre = genre;
+    // === HARD RESET: Silencio prolongado = nueva canción ===
+    if (audio.volume < this.SILENCE_ENERGY_MIN && audio.bpm === 0) {
+      this.silenceFrames++;
+      if (this.silenceFrames >= this.SILENCE_RESET_THRESHOLD) {
+        this.hardReset();
+        return {
+          primary: 'unknown',
+          secondary: null,
+          confidence: 0,
+          scores: { ELECTRONIC_4X4: 0, LATINO_TRADICIONAL: 0 },
+        };
       }
+    } else {
+      this.silenceFrames = 0;
     }
     
-    // ¿El género mayoritario es diferente al estable actual?
-    if (majorityGenre !== this.currentStableGenre) {
-      // ¿Tiene suficientes votos Y ha pasado suficiente tiempo?
-      const framesSinceChange = this.frameCount - this.lastGenreChangeFrame;
-      const hasEnoughVotes = maxVotes >= Math.ceil(this.VOTE_THRESHOLD * 0.6);
-      const canChange = framesSinceChange > this.MIN_FRAMES_BETWEEN_CHANGES;
-      
-      if (hasEnoughVotes && canChange && confidence > 0.5) {
-        console.log(`[SimpleGenreClassifier] 🔄 CAMBIO ESTABLE: ${this.currentStableGenre} → ${majorityGenre} (votos: ${maxVotes}/${this.VOTE_THRESHOLD})`);
-        this.currentStableGenre = majorityGenre;
-        this.lastGenreChangeFrame = this.frameCount;
+    // === DECISIÓN BINARIA ===
+    // ELECTRONIC: 4x4 pattern con confianza razonable
+    const isFourOnFloor = rhythm.pattern === 'four_on_floor' && rhythm.confidence > 0.5;
+    
+    if (isFourOnFloor) {
+      if (this.frameCount - this.lastLogFrame > 300) {  // Log cada 5 segundos
+        console.log(`[SimpleBinaryBias] ❄️ ELECTRONIC (4x4, conf=${rhythm.confidence.toFixed(2)})`);
+        this.lastLogFrame = this.frameCount;
       }
+      return {
+        primary: 'ELECTRONIC_4X4',
+        secondary: null,
+        confidence: 0.9,
+        scores: { ELECTRONIC_4X4: 0.9, LATINO_TRADICIONAL: 0.1 },
+      };
     }
     
-    return this.currentStableGenre !== 'unknown' ? this.currentStableGenre : detected;
+    // ORGANIC: Todo lo demás (cumbia, reggaeton, rock, pop, jazz, Skrillex roto...)
+    if (this.frameCount - this.lastLogFrame > 300) {
+      console.log(`[SimpleBinaryBias] 🔥 ORGANIC (pattern=${rhythm.pattern}, conf=${rhythm.confidence.toFixed(2)})`);
+      this.lastLogFrame = this.frameCount;
+    }
+    return {
+      primary: 'LATINO_TRADICIONAL',
+      secondary: null,
+      confidence: 0.8,
+      scores: { ELECTRONIC_4X4: 0.2, LATINO_TRADICIONAL: 0.8 },
+    };
   }
   
   reset(): void {
-    this.scoreHistory.clear();
-    this.frameCount = 0;
-    this.lastLogFrame = 0;
-    this.currentStableGenre = 'unknown';
-    this.genreVotes = [];
-    this.lastGenreChangeFrame = 0;
+    this.hardReset();
   }
 }
+
+/**
+ * @deprecated WAVE 50: Reemplazado por SimpleBinaryBias
+ * Alias para compatibilidad backward. La clase tiene el mismo API.
+ */
+export { SimpleBinaryBias as SimpleGenreClassifier };
 
 /**
  * Simplified palette generator for workers

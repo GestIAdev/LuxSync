@@ -381,16 +381,18 @@ interface GenreProfile {
 }
 
 /**
- * 🎭 PERFILES DE MACRO-GÉNEROS
+ * ⚖️ WAVE 50: PERFILES BINARIOS DE MACRO-GÉNEROS
  * 
- * 5 macro-géneros que cubren el 95% de la música comercial.
- * Cada uno guía sutilmente la paleta sin forzarla.
+ * Solo 2 macro-géneros: ELECTRONIC_4X4 (Cool) vs LATINO_TRADICIONAL (Warm)
+ * El género es responsable del 5-10% del color final.
+ * No vale la pena mantener 5 perfiles para tan poca diferencia.
+ * 
+ * "El Arquitecto ha hablado: SIMPLIFICACIÓN BRUTAL"
  */
 const MACRO_GENRES: Record<string, GenreProfile> = {
   /**
-   * ELECTRONIC_4X4: Techno, House, Trance
-   * - Sincopation < 0.30 (metrónomo, kicks on-beat)
-   * - FRÍO, HIPNÓTICO, MINIMALISTA
+   * ELECTRONIC_4X4: Techno, House, Trance, DnB, Dubstep...
+   * COOL BIAS: Azules, Cyans, Neones, Púrpuras
    */
   'ELECTRONIC_4X4': {
     tempBias: -15,        // Shift hacia azules/violetas
@@ -404,25 +406,9 @@ const MACRO_GENRES: Record<string, GenreProfile> = {
   },
   
   /**
-   * ELECTRONIC_BREAKS: Drum & Bass, Dubstep, Jungle
-   * - Sincopation > 0.50 (breakbeats, off-beat)
-   * - TENSO, CAÓTICO, ENERGÉTICO
-   */
-  'ELECTRONIC_BREAKS': {
-    tempBias: 0,           // Neutro
-    satBoost: 5,           // Moderadamente saturado
-    lightBoost: -5,        // Ligeramente oscuro
-    contrast: 'triadic',   // Triángulo de colores (±120°)
-    minLight: 30,
-    maxLight: 70,
-    transitionSpeed: 800,  // Rápido, frenético
-    description: 'Tenso, caótico, industrial',
-  },
-  
-  /**
-   * LATINO_TRADICIONAL: Cumbia, Salsa, Merengue
-   * - Sincopation > 0.30 (off-beat latino)
-   * - CÁLIDO, FESTIVO, EXPLOSIVO
+   * LATINO_TRADICIONAL: Cumbia, Reggaeton, Salsa, Pop, Rock...
+   * WARM BIAS: Ámbar, Magenta, Sunset, Cálido
+   * (Ahora es el perfil "catch-all" para todo lo no-4x4)
    */
   'LATINO_TRADICIONAL': {
     tempBias: 25,          // MÁXIMO shift hacia cálidos
@@ -434,86 +420,52 @@ const MACRO_GENRES: Record<string, GenreProfile> = {
     transitionSpeed: 1000, // Moderado, rítmico
     description: 'Cálido, festivo, explosivo',
   },
-  
-  /**
-   * LATINO_URBANO: Reggaeton, Trap Latino, Dembow
-   * - Sincopation > 0.25 (patrón dembow)
-   * - OSCURO, URBANO, POTENTE
-   */
-  'LATINO_URBANO': {
-    tempBias: 10,          // Cálido pero no tanto
-    satBoost: 10,          // Saturado controlado
-    lightBoost: 0,         // Moderado
-    contrast: 'triadic',   // Mix electrónico + latino
-    minLight: 35,
-    maxLight: 70,
-    transitionSpeed: 1200, // Moderado-lento
-    description: 'Oscuro, urbano, pesado',
-  },
-  
-  /**
-   * ELECTROLATINO: Pop, Fusion, Afro House, Tropical
-   * - Sincopation 0.20-0.40 (borderline)
-   * - FLEXIBLE, ADAPTATIVO
-   */
-  'ELECTROLATINO': {
-    tempBias: 0,           // Neutro (no forzar)
-    satBoost: 0,           // Neutro
-    lightBoost: 0,         // Neutro
-    contrast: 'adaptive',  // Según energía
-    minLight: 35,
-    maxLight: 75,
-    transitionSpeed: 1000, // Moderado
-    description: 'Flexible, adaptativo, fusion',
-  },
 };
 
 /**
- * 🗺️ MAPEO DE GÉNEROS DETALLADOS → MACRO-GÉNEROS
+ * 🗺️ WAVE 50: MAPEO SIMPLIFICADO
+ * Todo se reduce a 2 perfiles: ELECTRONIC_4X4 o LATINO_TRADICIONAL
  */
 const GENRE_MAP: Record<string, string> = {
-  // ELECTRONIC_4X4
+  // === ELECTRONIC_4X4 (Cool Bias) ===
   'techno': 'ELECTRONIC_4X4',
   'house': 'ELECTRONIC_4X4',
   'trance': 'ELECTRONIC_4X4',
   'minimal': 'ELECTRONIC_4X4',
   'four_on_floor': 'ELECTRONIC_4X4',
   'cyberpunk': 'ELECTRONIC_4X4',
+  'edm': 'ELECTRONIC_4X4',
+  'drum_and_bass': 'ELECTRONIC_4X4',  // Antes ELECTRONIC_BREAKS, ahora fusionado
+  'dnb': 'ELECTRONIC_4X4',
+  'dubstep': 'ELECTRONIC_4X4',
+  'jungle': 'ELECTRONIC_4X4',
+  'breakbeat': 'ELECTRONIC_4X4',
+  'breaks': 'ELECTRONIC_4X4',
   
-  // ELECTRONIC_BREAKS
-  'drum_and_bass': 'ELECTRONIC_BREAKS',
-  'dnb': 'ELECTRONIC_BREAKS',
-  'dubstep': 'ELECTRONIC_BREAKS',
-  'jungle': 'ELECTRONIC_BREAKS',
-  'breakbeat': 'ELECTRONIC_BREAKS',
-  'breaks': 'ELECTRONIC_BREAKS',
-  
-  // LATINO_TRADICIONAL
+  // === LATINO_TRADICIONAL (Warm Bias) - Default para todo lo demás ===
   'cumbia': 'LATINO_TRADICIONAL',
   'salsa': 'LATINO_TRADICIONAL',
   'merengue': 'LATINO_TRADICIONAL',
   'bachata': 'LATINO_TRADICIONAL',
   'vallenato': 'LATINO_TRADICIONAL',
-  
-  // LATINO_URBANO
-  'reggaeton': 'LATINO_URBANO',
-  'trap': 'LATINO_URBANO',
-  'dembow': 'LATINO_URBANO',
-  'perreo': 'LATINO_URBANO',
-  
-  // ELECTROLATINO (catch-all fusion)
-  'latin_pop': 'ELECTROLATINO',
-  'pop': 'ELECTROLATINO',
-  'afro_house': 'ELECTROLATINO',
-  'tropical': 'ELECTROLATINO',
-  'moombahton': 'ELECTROLATINO',
-  'unknown': 'ELECTROLATINO',
+  'reggaeton': 'LATINO_TRADICIONAL',  // Antes LATINO_URBANO, ahora fusionado
+  'trap': 'LATINO_TRADICIONAL',
+  'dembow': 'LATINO_TRADICIONAL',
+  'perreo': 'LATINO_TRADICIONAL',
+  'latin_pop': 'LATINO_TRADICIONAL',  // Antes ELECTROLATINO, ahora fusionado
+  'pop': 'LATINO_TRADICIONAL',
+  'rock': 'LATINO_TRADICIONAL',
+  'afro_house': 'LATINO_TRADICIONAL',
+  'tropical': 'LATINO_TRADICIONAL',
+  'moombahton': 'LATINO_TRADICIONAL',
+  'unknown': 'LATINO_TRADICIONAL',
 };
 
 /**
  * Perfil por defecto cuando no hay género detectado
+ * WAVE 50: Ahora es LATINO_TRADICIONAL (warm fallback)
  */
-const DEFAULT_GENRE = 'ELECTROLATINO';
+const DEFAULT_GENRE = 'LATINO_TRADICIONAL';
 
 // ============================================================
 // 4. UTILIDADES
@@ -927,6 +879,169 @@ export {
   clamp,
   mapRange,
 };
+
+// ============================================================
+// 7. WAVE 49: COLOR INTERPOLATOR (Smooth Transitions)
+// ============================================================
+
+/**
+ * 🎨 WAVE 49: SELENE COLOR INTERPOLATOR
+ * ====================================
+ * Wrapper con estado para interpolación suave de colores.
+ * Evita "epilepsia cromática" cuando cambia Key/Género.
+ * 
+ * REGLAS:
+ * - Transición normal: 4 beats (~2 segundos a 120 BPM)
+ * - Transición DROP: 0.5 segundos (rápido pero no instantáneo)
+ * - NUNCA cambio instantáneo (0 frames)
+ * - Reset en nueva canción
+ */
+export class SeleneColorInterpolator {
+  // Estado actual (lo que se envía a fixtures)
+  private currentPalette: SelenePalette | null = null;
+  
+  // Estado objetivo (hacia donde interpolamos)
+  private targetPalette: SelenePalette | null = null;
+  
+  // Progreso de interpolación (0 = inicio, 1 = completado)
+  private transitionProgress = 1.0;
+  
+  // Velocidad de transición (incremento por frame)
+  private transitionSpeed = 0.02;  // ~50 frames = ~0.8s default
+  
+  // Configuración
+  private readonly NORMAL_TRANSITION_FRAMES = 120;  // 4 beats @ 120bpm @ 60fps ≈ 2s
+  private readonly DROP_TRANSITION_FRAMES = 30;     // 0.5 segundos
+  private readonly MIN_TRANSITION_FRAMES = 6;       // Mínimo 0.1s (nunca instantáneo)
+  
+  // Frame counter para logging
+  private frameCount = 0;
+  private lastLogFrame = 0;
+  
+  /**
+   * Actualiza el color interpolado cada frame
+   * 
+   * @param targetData - Datos de análisis de audio
+   * @param isDrop - Si estamos en un DROP (transición rápida)
+   * @returns Paleta interpolada para enviar a fixtures
+   */
+  update(targetData: ExtendedAudioAnalysis, isDrop: boolean = false): SelenePalette {
+    this.frameCount++;
+    
+    // Generar la paleta objetivo
+    const newTarget = SeleneColorEngine.generate(targetData);
+    
+    // Si no hay paleta actual, inicializar sin transición
+    if (!this.currentPalette) {
+      this.currentPalette = newTarget;
+      this.targetPalette = newTarget;
+      this.transitionProgress = 1.0;
+      return newTarget;
+    }
+    
+    // Detectar si el target cambió significativamente (cambio de Key/Género)
+    const hueChanged = Math.abs(this.targetPalette!.primary.h - newTarget.primary.h) > 10;
+    const genreChanged = this.targetPalette?.meta.macroGenre !== newTarget.meta.macroGenre;
+    
+    if (hueChanged || genreChanged) {
+      // Iniciar nueva transición
+      this.targetPalette = newTarget;
+      this.transitionProgress = 0;
+      
+      // Velocidad según contexto
+      const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
+      this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
+      
+      // Log solo cada segundo
+      if (this.frameCount - this.lastLogFrame > 60) {
+        console.log(`[ColorInterpolator] 🎨 Nueva transición: ${this.currentPalette.meta.macroGenre} → ${newTarget.meta.macroGenre} (${isDrop ? 'DROP' : 'normal'})`);
+        this.lastLogFrame = this.frameCount;
+      }
+    }
+    
+    // Avanzar transición
+    if (this.transitionProgress < 1.0) {
+      this.transitionProgress = Math.min(1.0, this.transitionProgress + this.transitionSpeed);
+      
+      // Interpolar todos los colores de la paleta
+      this.currentPalette = this.lerpPalette(
+        this.currentPalette!,
+        this.targetPalette!,
+        this.transitionProgress
+      );
+    }
+    
+    return this.currentPalette;
+  }
+  
+  /**
+   * Interpola entre dos paletas completas
+   */
+  private lerpPalette(from: SelenePalette, to: SelenePalette, t: number): SelenePalette {
+    return {
+      primary: this.lerpHSL(from.primary, to.primary, t),
+      secondary: this.lerpHSL(from.secondary, to.secondary, t),
+      accent: this.lerpHSL(from.accent, to.accent, t),
+      ambient: this.lerpHSL(from.ambient, to.ambient, t),
+      contrast: this.lerpHSL(from.contrast, to.contrast, t),
+      meta: t >= 0.5 ? to.meta : from.meta, // Metadata cambia a mitad de transición
+    };
+  }
+  
+  /**
+   * Interpola entre dos colores HSL
+   * Usa el camino más corto en el círculo de hue (evita saltos de 350° a 10°)
+   */
+  private lerpHSL(from: HSLColor, to: HSLColor, t: number): HSLColor {
+    // Hue: usar el camino más corto en el círculo
+    let hueDiff = to.h - from.h;
+    if (hueDiff > 180) hueDiff -= 360;
+    if (hueDiff < -180) hueDiff += 360;
+    const h = normalizeHue(from.h + hueDiff * t);
+    
+    // S y L: interpolación lineal simple
+    const s = from.s + (to.s - from.s) * t;
+    const l = from.l + (to.l - from.l) * t;
+    
+    return { h, s, l };
+  }
+  
+  /**
+   * 🧹 WAVE 49: HARD RESET - Limpiar estado para nueva canción
+   */
+  reset(): void {
+    console.log('[ColorInterpolator] 🧹 RESET: Estado limpiado para nueva canción');
+    this.currentPalette = null;
+    this.targetPalette = null;
+    this.transitionProgress = 1.0;
+    this.frameCount = 0;
+    this.lastLogFrame = 0;
+  }
+  
+  /**
+   * Obtiene el progreso actual de la transición (0-1)
+   */
+  getTransitionProgress(): number {
+    return this.transitionProgress;
+  }
+  
+  /**
+   * Comprueba si hay una transición en curso
+   */
+  isTransitioning(): boolean {
+    return this.transitionProgress < 1.0;
+  }
+  
+  /**
+   * Fuerza una transición inmediata (para casos especiales)
+   * ⚠️ Usar con precaución - puede causar saltos visuales
+   */
+  forceImmediate(palette: SelenePalette): void {
+    this.currentPalette = palette;
+    this.targetPalette = palette;
+    this.transitionProgress = 1.0;
+  }
+}
 
 // Default export
 export default SeleneColorEngine;

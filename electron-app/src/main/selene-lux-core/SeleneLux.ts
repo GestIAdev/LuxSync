@@ -57,7 +57,8 @@ import type { AudioAnalysis } from './engines/musical/types'
 // 🎨 WAVE 24.4: Motor de Color Procedural + Helper de conversión HSL→RGB
 // 🔥 WAVE 24.9: Añadir rgbToHsl para sincronizar Flow Mode palette
 // 🌙 WAVE 37.0: Import SelenePalette type para Brain Transplant
-import { SeleneColorEngine, paletteToRgb, rgbToHsl, type SelenePalette } from './engines/visual/SeleneColorEngine'
+// 🎨 WAVE 49: Import SeleneColorInterpolator para transiciones suaves
+import { SeleneColorEngine, SeleneColorInterpolator, paletteToRgb, rgbToHsl, type SelenePalette } from './engines/visual/SeleneColorEngine'
 // 📡 WAVE-14: Telemetry Collector
 import { 
   SeleneTelemetryCollector, 
@@ -174,6 +175,9 @@ export class SeleneLux extends EventEmitter {
     intensity: 0.5,
     saturation: 0.8,
   }
+  
+  // 🎨 WAVE 49: COLOR INTERPOLATOR - Transiciones suaves (anti-epilepsia)
+  private colorInterpolator: SeleneColorInterpolator = new SeleneColorInterpolator()
   
   private lastMovement: MovementOutput | null = null
   private lastBeat: BeatState | null = null
@@ -537,9 +541,13 @@ export class SeleneLux extends EventEmitter {
         } as SelenePalette
         finalPaletteSource = 'memory'
       } else {
-        // 🎨 WAVE 24.4: Backup procedural - ColorEngine genera la paleta
-        const proceduralPalette = SeleneColorEngine.generate(safeAnalysis as any)
-        finalHslPalette = proceduralPalette
+        // 🎨 WAVE 49: COLOR INTERPOLATION - Transiciones suaves anti-epilepsia
+        // Detectar si estamos en DROP para transición rápida (pero no instantánea)
+        const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
+        const isDrop = currentSection === 'drop'
+        
+        // Usar interpolador en lugar de generar directamente
+        finalHslPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
         finalPaletteSource = 'procedural'
       }
       
@@ -806,8 +814,10 @@ export class SeleneLux extends EventEmitter {
           }
         }
         
-        // 🎨 Generar paleta procedural con contexto real
-        const proceduralPalette = SeleneColorEngine.generate(safeAnalysis as any)
+        // 🎨 WAVE 49: Generar paleta CON INTERPOLACIÓN
+        const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
+        const isDrop = currentSection === 'drop'
+        const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
         
         // Convertir HSL → RGB para hardware
         const rgbPalette = paletteToRgb(proceduralPalette)

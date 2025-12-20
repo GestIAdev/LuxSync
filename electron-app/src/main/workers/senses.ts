@@ -254,6 +254,9 @@ class SpectrumAnalyzer {
     kickDetected: boolean;
     snareDetected: boolean;
     hihatDetected: boolean;
+    // 🤖 WAVE 50.1: Texture-based detection
+    harshness: number;
+    spectralFlatness: number;
   } {
     // 🧮 Ejecutar FFT REAL
     const fftResult = this.fftAnalyzer.analyze(buffer);
@@ -281,6 +284,10 @@ class SpectrumAnalyzer {
       kickDetected: fftResult.kickDetected,
       snareDetected: fftResult.snareDetected,
       hihatDetected: fftResult.hihatDetected,
+      
+      // 🤖 WAVE 50.1: Texture-based detection (Skrillex/DnB)
+      harshness: fftResult.harshness,
+      spectralFlatness: fftResult.spectralFlatness,
     };
   }
   
@@ -416,6 +423,11 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     timestamp: Date.now(),
     // 🎵 WAVE 15.5: Para Key detection
     dominantFrequency: spectrum.dominantFrequency,
+    // 🤖 WAVE 50.1: Texture-based detection para Skrillex/DnB
+    subBass: spectrum.subBass,
+    harshness: spectrum.harshness,
+    spectralFlatness: spectrum.spectralFlatness,
+    spectralCentroid: spectrum.spectralCentroid,
   };
   
   // Run Wave 8 analyzers

@@ -45,6 +45,10 @@ export interface BandEnergy {
   dominantFrequency: number;
   /** Centroide espectral (brillo tonal) */
   spectralCentroid: number;
+  /** WAVE 50.1: Harshness - ratio de energía harsh (2-5kHz) vs total */
+  harshness: number;
+  /** WAVE 50.1: Spectral Flatness - qué tan ruidoso (0=tonal, 1=ruido) */
+  spectralFlatness: number;
 }
 
 // ============================================
@@ -189,11 +193,19 @@ export function computeBandEnergies(fftResult: FFTResult, sampleRate: number): B
   let highMidEnergy = 0, highMidCount = 0;
   let trebleEnergy = 0, trebleCount = 0;
   
+  // WAVE 50.1: Acumuladores para harshness (2-5kHz = "synth sucio")
+  let harshEnergy = 0, harshCount = 0;
+  let totalEnergy = 0;
+  
   // Para frecuencia dominante y centroide
   let maxMag = 0;
   let dominantBin = 0;
   let weightedFreqSum = 0;
   let totalMag = 0;
+  
+  // WAVE 50.1: Para spectral flatness (geometric mean)
+  let logSum = 0;
+  let validBins = 0;
   
   for (let i = 0; i < numBins; i++) {
     const freq = frequencies[i];
@@ -209,6 +221,21 @@ export function computeBandEnergies(fftResult: FFTResult, sampleRate: number): B
     // Para centroide espectral
     weightedFreqSum += freq * mag;
     totalMag += mag;
+    
+    // WAVE 50.1: Para spectral flatness (geometric mean)
+    if (mag > 1e-10) {
+      logSum += Math.log(mag);
+      validBins++;
+    }
+    
+    // WAVE 50.1: Para harshness (2-5kHz = synth agresivo, distorsión)
+    if (freq >= 2000 && freq <= 5000) {
+      harshEnergy += magSquared;
+      harshCount++;
+    }
+    
+    // Acumular energía total
+    totalEnergy += magSquared;
     
     // Clasificar en bandas
     if (freq >= FREQ_BANDS.SUB_BASS.min && freq < FREQ_BANDS.SUB_BASS.max) {
@@ -246,6 +273,14 @@ export function computeBandEnergies(fftResult: FFTResult, sampleRate: number): B
     return Math.min(1, rms * scaleFactor);
   };
   
+  // WAVE 50.1: Calcular harshness (ratio de energía harsh vs total)
+  const harshness = totalEnergy > 0 ? Math.min(1, harshEnergy / totalEnergy) : 0;
+  
+  // WAVE 50.1: Calcular spectral flatness (geometric mean / arithmetic mean)
+  const geometricMean = validBins > 0 ? Math.exp(logSum / validBins) : 0;
+  const arithmeticMean = validBins > 0 ? totalMag / validBins : 0;
+  const spectralFlatness = arithmeticMean > 0 ? Math.min(1, geometricMean / arithmeticMean) : 0;
+  
   return {
     subBass: normalize(subBassEnergy, subBassCount, PINK_NOISE_COMPENSATION.SUB_BASS),
     bass: normalize(bassEnergy + subBassEnergy, bassCount + subBassCount, PINK_NOISE_COMPENSATION.BASS),
@@ -255,6 +290,8 @@ export function computeBandEnergies(fftResult: FFTResult, sampleRate: number): B
     treble: normalize(trebleEnergy + highMidEnergy, trebleCount + highMidCount, PINK_NOISE_COMPENSATION.TREBLE),
     dominantFrequency: frequencies[dominantBin] || 0,
     spectralCentroid: totalMag > 0 ? weightedFreqSum / totalMag : 0,
+    harshness,
+    spectralFlatness,
   };
 }
 

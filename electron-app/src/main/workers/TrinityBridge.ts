@@ -38,6 +38,11 @@ export interface AudioMetrics {
   timestamp: number;
   // 🎵 WAVE 15.5: Para Key detection
   dominantFrequency?: number; // Hz
+  // 🤖 WAVE 50.1: Texture-based detection para Skrillex/DnB
+  subBass?: number;           // 0-1 (20-60Hz sub-woofer range)
+  harshness?: number;         // 0-1 (ratio 2-5kHz harsh synths)
+  spectralFlatness?: number;  // 0-1 (0=tonal, 1=ruido/noise)
+  spectralCentroid?: number;  // Hz (brillo tonal)
 }
 
 /**
@@ -971,10 +976,15 @@ export class SimpleBinaryBias {
   }
   
   /**
-   * ⚖️ CLASIFICACIÓN BINARIA PURA
+   * 🤖 WAVE 50.1: TEXTURE-BASED DETECTION
    * 
-   * 4x4 + confidence > 0.5 → ELECTRONIC_4X4 (Cool)
-   * Todo lo demás → LATINO_TRADICIONAL (Warm)
+   * BINARY DECISION:
+   * - ELECTRONIC_4X4 (Cool) if:
+   *   1. 4x4 pattern (techno/house)
+   *   2. OR "digital dirt" detected (Skrillex/DnB/Dubstep)
+   * - LATINO_TRADICIONAL (Warm) otherwise
+   * 
+   * "Digital Dirt" = harsh synths + sub-bass OR high spectral flatness (noise-like)
    */
   classify(rhythm: RhythmOutput, audio: AudioMetrics): GenreOutput {
     this.frameCount++;
@@ -995,13 +1005,23 @@ export class SimpleBinaryBias {
       this.silenceFrames = 0;
     }
     
-    // === DECISIÓN BINARIA ===
-    // ELECTRONIC: 4x4 pattern con confianza razonable
+    // === WAVE 50.1: BINARY DECISION WITH TEXTURE ===
+    // Path 1: 4x4 pattern (techno, house, trance)
     const isFourOnFloor = rhythm.pattern === 'four_on_floor' && rhythm.confidence > 0.5;
     
-    if (isFourOnFloor) {
+    // Path 2: "Robot" detection - Skrillex, DnB, Dubstep
+    // Harsh synths (2-5kHz distorted) + sub-bass (< 60Hz extreme)
+    // OR high spectral flatness (noise-like = electronic texture)
+    const harshness = audio.harshness ?? 0;
+    const subBass = audio.subBass ?? 0;
+    const spectralFlatness = audio.spectralFlatness ?? 0;
+    
+    const isRobot = (harshness > 0.4 && subBass > 0.6) || (spectralFlatness > 0.4);
+    
+    if (isFourOnFloor || isRobot) {
       if (this.frameCount - this.lastLogFrame > 300) {  // Log cada 5 segundos
-        console.log(`[SimpleBinaryBias] ❄️ ELECTRONIC (4x4, conf=${rhythm.confidence.toFixed(2)})`);
+        const reason = isFourOnFloor ? '4x4' : 'robot-texture';
+        console.log(`[SimpleBinaryBias] ❄️ ELECTRONIC (${reason}, harsh=${harshness.toFixed(2)}, subBass=${subBass.toFixed(2)}, flat=${spectralFlatness.toFixed(2)})`);
         this.lastLogFrame = this.frameCount;
       }
       return {
@@ -1012,9 +1032,9 @@ export class SimpleBinaryBias {
       };
     }
     
-    // ORGANIC: Todo lo demás (cumbia, reggaeton, rock, pop, jazz, Skrillex roto...)
+    // ORGANIC: Todo lo demás (cumbia, reggaeton, rock, pop, jazz)
     if (this.frameCount - this.lastLogFrame > 300) {
-      console.log(`[SimpleBinaryBias] 🔥 ORGANIC (pattern=${rhythm.pattern}, conf=${rhythm.confidence.toFixed(2)})`);
+      console.log(`[SimpleBinaryBias] 🔥 ORGANIC (pattern=${rhythm.pattern}, harsh=${harshness.toFixed(2)})`);
       this.lastLogFrame = this.frameCount;
     }
     return {

@@ -281,14 +281,9 @@ export class StrategyArbiter {
       if (this.dropState === 'DROP_ACTIVE') {
         this.dropState = 'DROP_COOLDOWN';
         this.dropCooldownFrames = this.DROP_COOLDOWN_DURATION;
+        console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
       }
-      else if (this.dropState === 'DROP_COOLDOWN') {
-        this.dropCooldownFrames--;
-        if (this.dropCooldownFrames <= 0) {
-          this.dropState = 'IDLE';
-          console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
-        }
-      }
+      // En COOLDOWN, el decremento ya se hace al inicio del método
       this.currentOverride = 'none';
     }
     

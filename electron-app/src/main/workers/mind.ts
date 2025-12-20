@@ -59,6 +59,9 @@ import {
 // ⚓ WAVE 51: Key Stabilizer - Estabilización tonal para evitar parpadeo de color
 import { KeyStabilizer } from '../selene-lux-core/engines/visual/KeyStabilizer';
 
+// 🏎️ WAVE 52: Energy Stabilizer - Suavizado de energía y detección de silencio
+import { EnergyStabilizer } from '../selene-lux-core/engines/visual/EnergyStabilizer';
+
 // 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
 
@@ -176,6 +179,9 @@ interface GammaState {
   // ⚓ WAVE 51: Key Stabilizer instance
   keyStabilizer: KeyStabilizer;
   
+  // 🏎️ WAVE 52: Energy Stabilizer instance
+  energyStabilizer: EnergyStabilizer;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -239,12 +245,29 @@ const state: GammaState = {
     useEnergyWeighting: true,  // Votos ponderados por energía
   }),
   
+  // 🏎️ WAVE 52: Energy Stabilizer - Suavizado de energía + detección de silencio
+  // NOTA: Se configura después de state para poder conectar el callback
+  energyStabilizer: new EnergyStabilizer({
+    smoothingWindowFrames: 120,  // 2 segundos @ 60fps
+    silenceThreshold: 0.02,      // Prácticamente silencio
+    silenceResetFrames: 180,     // 3 segundos = nueva canción
+    emaFactor: 0.95,             // 95% histórico, 5% nuevo
+  }),
+  
   learnedPatterns: new Map(),
   
   messagesProcessed: 0,
   totalProcessingTime: 0,
   errors: []
 };
+
+// 🏎️ WAVE 52: Conectar Energy Stabilizer → Key Stabilizer reset
+// Cuando EnergyStabilizer detecta silencio prolongado (entre canciones),
+// reseteamos el KeyStabilizer para que la nueva canción empiece limpia.
+state.energyStabilizer.onReset(() => {
+  console.log('[GAMMA] 🏎️→⚓ SILENCE RESET: KeyStabilizer cleared for new song');
+  state.keyStabilizer.reset();
+});
 
 // ============================================
 // COLOR UTILITIES (Pure functions - no legacy dependencies)
@@ -272,6 +295,10 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const startTime = performance.now();
   state.frameCount++;
   state.decisionCount++;
+  
+  // 🏎️ WAVE 52: Procesar energía a través del stabilizer
+  // Esto detecta silencio y suaviza la energía para evitar parpadeo
+  const energyOutput = state.energyStabilizer.update(analysis.energy);
   
   // Add to history
   state.audioHistory.push(analysis);
@@ -387,6 +414,13 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         paletteGenerated: !!state.currentPalette,
         strategy: state.currentPalette?.meta?.strategy ?? 'NULL',
       },
+      energyEngine: {  // 🏎️ WAVE 52: Energy Engine stats
+        instant: energyOutput.instantEnergy.toFixed(2),
+        smoothed: energyOutput.smoothedEnergy.toFixed(2),
+        silence: energyOutput.isSilence,
+        silenceFrames: energyOutput.silenceFrames,
+        recentPeak: energyOutput.recentPeak.toFixed(2),
+      },
       perf: {
         decisions: state.decisionCount,
         avgMs: (state.totalProcessingTime / Math.max(1, state.messagesProcessed)).toFixed(2),
@@ -402,9 +436,12 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     energy: analysis.energy,
   });
   
-  // Crear una copia del analysis con la key estabilizada
+  // 🏎️ WAVE 52: Crear una copia del analysis con key estabilizada Y energía suavizada
+  // - stableKey: evita cambio de color por acordes de paso
+  // - smoothedEnergy: evita parpadeo por picos de kick
   const stabilizedAnalysis = {
     ...analysis,
+    energy: energyOutput.smoothedEnergy,  // 🏎️ Energía suavizada para Sat/Light base
     wave8: {
       ...wave8,
       harmony: {

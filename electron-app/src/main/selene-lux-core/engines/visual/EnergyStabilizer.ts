@@ -1,0 +1,261 @@
+/**
+ * 🏎️ WAVE 52: ENERGY STABILIZER - "El Motor"
+ * 
+ * PROBLEMA: La energía cruda causa parpadeo visual
+ *           porque cada kick causa un pico instantáneo.
+ * 
+ * SOLUCIÓN: Rolling average de 2 segundos para "smoothedEnergy"
+ *           que representa la "vibe" de la sección, más
+ *           detección de silencio para reset.
+ * 
+ * OUTPUTS:
+ * - smoothedEnergy: Vibe general (2s rolling average) → para Sat/Light base
+ * - instantEnergy: Golpe actual → para efectos/strobes
+ * - isSilence: true si <0.02 por >3 segundos
+ * 
+ * EFECTO VISUAL: La sala "respira" con la música
+ * - Breakdowns → colores lavados, oscuros
+ * - Drops → neón saturado, brillante
+ * 
+ * @author GitHub Copilot (Claude) para GestIAdev
+ * @version WAVE 52 - "The Energy Engine"
+ */
+
+/**
+ * Configuración del estabilizador de energía
+ */
+export interface EnergyStabilizerConfig {
+  /** Tamaño del buffer para smoothing (default: 120 = 2 segundos @ 60fps) */
+  smoothingWindowFrames: number;
+  
+  /** Umbral de silencio (default: 0.02) */
+  silenceThreshold: number;
+  
+  /** Frames de silencio para trigger reset (default: 180 = 3 segundos) */
+  silenceResetFrames: number;
+  
+  /** Factor de suavizado EMA para instant → smooth (default: 0.95) */
+  emaFactor: number;
+}
+
+/**
+ * Salida del estabilizador de energía
+ */
+export interface EnergyOutput {
+  /** Energía suavizada (rolling average 2s) - para Sat/Light base */
+  smoothedEnergy: number;
+  
+  /** Energía instantánea (frame actual) - para efectos/strobes */
+  instantEnergy: number;
+  
+  /** ¿Estamos en silencio? (>3s bajo umbral) */
+  isSilence: boolean;
+  
+  /** Frames en silencio */
+  silenceFrames: number;
+  
+  /** ¿Se disparó un reset este frame? */
+  resetTriggered: boolean;
+  
+  /** Delta de energía (para detectar transientes) */
+  energyDelta: number;
+  
+  /** Pico reciente (máximo en últimos 30 frames) */
+  recentPeak: number;
+}
+
+/**
+ * Callback para cuando se detecta reset por silencio
+ */
+export type SilenceResetCallback = () => void;
+
+/**
+ * 🏎️ WAVE 52: ENERGY STABILIZER
+ * 
+ * Suaviza la energía para evitar parpadeo visual y detecta silencios
+ * para resetear el sistema entre canciones.
+ */
+export class EnergyStabilizer {
+  // Configuración
+  private readonly config: EnergyStabilizerConfig;
+  
+  // Buffer circular para rolling average
+  private energyBuffer: number[] = [];
+  private bufferIndex = 0;
+  
+  // EMA para smoothing adicional
+  private emaEnergy = 0;
+  
+  // Detección de silencio
+  private silenceFrameCount = 0;
+  private lastResetFrame = 0;
+  
+  // Para detectar transientes
+  private previousEnergy = 0;
+  
+  // Pico reciente
+  private peakBuffer: number[] = [];
+  private peakBufferIndex = 0;
+  private readonly PEAK_WINDOW = 30; // 0.5 segundos
+  
+  // Callbacks para reset
+  private onSilenceReset: SilenceResetCallback[] = [];
+  
+  // Métricas
+  private frameCount = 0;
+  private lastLogFrame = 0;
+  private totalResets = 0;
+  
+  // Default config
+  private static readonly DEFAULT_CONFIG: EnergyStabilizerConfig = {
+    smoothingWindowFrames: 120,  // 2 segundos @ 60fps
+    silenceThreshold: 0.02,      // Prácticamente silencio
+    silenceResetFrames: 180,     // 3 segundos de silencio = reset
+    emaFactor: 0.95,             // 95% histórico, 5% nuevo
+  };
+  
+  constructor(config: Partial<EnergyStabilizerConfig> = {}) {
+    this.config = { ...EnergyStabilizer.DEFAULT_CONFIG, ...config };
+    
+    // Inicializar buffers
+    this.energyBuffer = new Array(this.config.smoothingWindowFrames).fill(0);
+    this.peakBuffer = new Array(this.PEAK_WINDOW).fill(0);
+    
+    console.log(`[EnergyStabilizer] 🏎️ Initialized: smoothing=${this.config.smoothingWindowFrames} frames (~${(this.config.smoothingWindowFrames / 60).toFixed(1)}s), silence=${this.config.silenceResetFrames} frames`);
+  }
+  
+  /**
+   * 🏎️ PROCESO PRINCIPAL
+   * 
+   * Recibe la energía cruda y retorna energía suavizada + estado de silencio.
+   */
+  update(instantEnergy: number): EnergyOutput {
+    this.frameCount++;
+    
+    // Clamp energía a 0-1
+    const energy = Math.max(0, Math.min(1, instantEnergy));
+    
+    // === PASO 1: Rolling Average ===
+    this.energyBuffer[this.bufferIndex] = energy;
+    this.bufferIndex = (this.bufferIndex + 1) % this.config.smoothingWindowFrames;
+    
+    const rollingAvg = this.energyBuffer.reduce((a, b) => a + b, 0) / this.config.smoothingWindowFrames;
+    
+    // === PASO 2: EMA Smoothing adicional ===
+    this.emaEnergy = this.emaEnergy * this.config.emaFactor + rollingAvg * (1 - this.config.emaFactor);
+    
+    // === PASO 3: Peak tracking ===
+    this.peakBuffer[this.peakBufferIndex] = energy;
+    this.peakBufferIndex = (this.peakBufferIndex + 1) % this.PEAK_WINDOW;
+    const recentPeak = Math.max(...this.peakBuffer);
+    
+    // === PASO 4: Delta (para transientes) ===
+    const energyDelta = energy - this.previousEnergy;
+    this.previousEnergy = energy;
+    
+    // === PASO 5: Detección de silencio ===
+    let resetTriggered = false;
+    
+    if (energy < this.config.silenceThreshold) {
+      this.silenceFrameCount++;
+      
+      // ¿Umbral de reset alcanzado?
+      if (this.silenceFrameCount >= this.config.silenceResetFrames && 
+          this.frameCount - this.lastResetFrame > this.config.silenceResetFrames * 2) {
+        // ¡RESET!
+        resetTriggered = true;
+        this.lastResetFrame = this.frameCount;
+        this.totalResets++;
+        
+        console.log(`[EnergyStabilizer] 🧹 SILENCE RESET triggered after ${this.silenceFrameCount} frames (~${(this.silenceFrameCount / 60).toFixed(1)}s). Total resets: ${this.totalResets}`);
+        
+        // Notificar callbacks
+        for (const callback of this.onSilenceReset) {
+          try {
+            callback();
+          } catch (e) {
+            console.error('[EnergyStabilizer] Callback error:', e);
+          }
+        }
+        
+        // Reset interno parcial (no el buffer, solo contadores)
+        this.silenceFrameCount = 0;
+      }
+    } else {
+      // No silencio, resetear contador
+      this.silenceFrameCount = 0;
+    }
+    
+    const isSilence = this.silenceFrameCount > 30; // >0.5s es "en silencio"
+    
+    // === PASO 6: Log periódico ===
+    if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
+      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f`);
+      this.lastLogFrame = this.frameCount;
+    }
+    
+    return {
+      smoothedEnergy: this.emaEnergy,
+      instantEnergy: energy,
+      isSilence,
+      silenceFrames: this.silenceFrameCount,
+      resetTriggered,
+      energyDelta,
+      recentPeak,
+    };
+  }
+  
+  /**
+   * Registra un callback para cuando se detecta silencio prolongado
+   */
+  onReset(callback: SilenceResetCallback): void {
+    this.onSilenceReset.push(callback);
+  }
+  
+  /**
+   * 🧹 HARD RESET manual
+   */
+  reset(): void {
+    this.energyBuffer = new Array(this.config.smoothingWindowFrames).fill(0);
+    this.peakBuffer = new Array(this.PEAK_WINDOW).fill(0);
+    this.bufferIndex = 0;
+    this.peakBufferIndex = 0;
+    this.emaEnergy = 0;
+    this.silenceFrameCount = 0;
+    this.previousEnergy = 0;
+    this.frameCount = 0;
+    this.lastLogFrame = 0;
+    this.lastResetFrame = 0;
+    
+    console.log('[EnergyStabilizer] 🧹 Manual RESET: All buffers cleared');
+  }
+  
+  /**
+   * Obtiene la energía suavizada actual sin actualizar
+   */
+  getSmoothedEnergy(): number {
+    return this.emaEnergy;
+  }
+  
+  /**
+   * Obtiene estadísticas para debug
+   */
+  getStats(): {
+    smoothedEnergy: number;
+    silenceFrames: number;
+    totalResets: number;
+    bufferFullness: number;
+  } {
+    const nonZeroEntries = this.energyBuffer.filter(e => e > 0).length;
+    
+    return {
+      smoothedEnergy: this.emaEnergy,
+      silenceFrames: this.silenceFrameCount,
+      totalResets: this.totalResets,
+      bufferFullness: nonZeroEntries / this.config.smoothingWindowFrames,
+    };
+  }
+}
+
+// Export para uso en workers
+export default EnergyStabilizer;

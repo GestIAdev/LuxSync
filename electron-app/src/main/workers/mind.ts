@@ -56,6 +56,9 @@ import {
   type ExtendedAudioAnalysis as SeleneExtendedAnalysis,
 } from '../selene-lux-core/engines/visual/SeleneColorEngine';
 
+// ⚓ WAVE 51: Key Stabilizer - Estabilización tonal para evitar parpadeo de color
+import { KeyStabilizer } from '../selene-lux-core/engines/visual/KeyStabilizer';
+
 // 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
 
@@ -170,6 +173,9 @@ interface GammaState {
   lastStableMood: string;
   lastMoodChangeTime: number;
   
+  // ⚓ WAVE 51: Key Stabilizer instance
+  keyStabilizer: KeyStabilizer;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -224,6 +230,14 @@ const state: GammaState = {
   // 💫 WAVE 47.1.7: Mood hysteresis (evitar flickeo)
   lastStableMood: 'dark',           // Default para electrónica
   lastMoodChangeTime: Date.now(),   // Timestamp del último cambio
+  
+  // ⚓ WAVE 51: Key Stabilizer - Evita cambios frenéticos de color
+  keyStabilizer: new KeyStabilizer({
+    bufferSize: 480,        // 8 segundos de historia @ 60fps
+    lockingFrames: 180,     // 3 segundos para confirmar cambio de key
+    dominanceThreshold: 0.35,  // Key debe tener >35% de votos
+    useEnergyWeighting: true,  // Votos ponderados por energía
+  }),
   
   learnedPatterns: new Map(),
   
@@ -380,9 +394,29 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     }, null, 0));
   }
   
-  // 🎨 Generar paleta con nuevo motor determinista
-  const selenePalette = SeleneColorEngine.generate(analysis as SeleneExtendedAnalysis);
-  const rgbPalette = SeleneColorEngine.generateRgb(analysis as SeleneExtendedAnalysis);
+  // ⚓ WAVE 51: KEY STABILIZATION - Estabilizar la Key antes de generar colores
+  // Esto evita que acordes de paso cambien el color de toda la sala
+  const keyStabilizerOutput = state.keyStabilizer.update({
+    key: harmony.key,
+    confidence: harmony.confidence,
+    energy: analysis.energy,
+  });
+  
+  // Crear una copia del analysis con la key estabilizada
+  const stabilizedAnalysis = {
+    ...analysis,
+    wave8: {
+      ...wave8,
+      harmony: {
+        ...harmony,
+        key: keyStabilizerOutput.stableKey,  // ⚓ Usamos la key estable, no la instantánea
+      },
+    },
+  } as SeleneExtendedAnalysis;
+  
+  // 🎨 Generar paleta con nuevo motor determinista (usando key estabilizada)
+  const selenePalette = SeleneColorEngine.generate(stabilizedAnalysis);
+  const rgbPalette = SeleneColorEngine.generateRgb(stabilizedAnalysis);
   
   // Guardar en state
   state.currentPalette = selenePalette;

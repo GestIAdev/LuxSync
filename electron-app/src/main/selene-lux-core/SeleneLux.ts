@@ -1662,7 +1662,8 @@ export class SeleneLux extends EventEmitter {
         accent: colors?.accent ? toUnifiedColor(colors.accent) : defaultColor,
         ambient: colors?.ambient ? toUnifiedColor(colors.ambient) : defaultColor,
         contrast: palette?.contrast ? toUnifiedColor(this.hslToRgb(palette.contrast)) : defaultColor,
-        strategy: (palette?.strategy ?? 'analogous') as 'analogous' | 'triadic' | 'complementary',
+        // 🔧 WAVE 57: Fix STRATEGY - Leer de StrategyArbiter (GAMMA Worker) en lugar de palette legacy
+        strategy: (trinityData?.mood?.colorStrategy?.stable ?? 'analogous') as 'analogous' | 'triadic' | 'complementary',
         temperature: (brain?.debugInfo?.temperature ?? 'neutral') as 'warm' | 'cool' | 'neutral',
         description: brain?.debugInfo?.description ?? `Palette: ${this.currentPalette}`,
         source: (brain?.paletteSource ?? 'fallback') as 'procedural' | 'memory' | 'fallback',

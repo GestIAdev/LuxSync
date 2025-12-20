@@ -39,7 +39,7 @@ import {
   SimpleRhythmDetector,
   SimpleHarmonyDetector,
   SimpleSectionTracker,
-  SimpleGenreClassifier,
+  SimpleGenreClassifier,  // 🔧 WAVE 55.1: Alias de SimpleBinaryBias
   AudioMetrics,
   RhythmOutput,
   HarmonyOutput,
@@ -47,8 +47,9 @@ import {
   GenreOutput,
 } from './TrinityBridge';
 
-// 🔥 WAVE 18: Enhanced GenreClassifier with 4x4 shield + calibration
-import { GenreClassifier } from '../selene-lux-core/engines/musical/classification/GenreClassifier';
+// � WAVE 55.1: ZOMBIE HUNT - GenreClassifier ELIMINADO
+// El viejo "Senate" con votaciones ha sido reemplazado por SimpleBinaryBias
+// import { GenreClassifier } from '../selene-lux-core/engines/musical/classification/GenreClassifier';
 
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
@@ -308,7 +309,7 @@ const spectrumAnalyzer = new SpectrumAnalyzer(config.audioSampleRate); // 🧮 W
 const rhythmDetector = new SimpleRhythmDetector();
 const harmonyDetector = new SimpleHarmonyDetector();
 const sectionTracker = new SimpleSectionTracker();
-const genreClassifier = new GenreClassifier();  // WAVE 18.3: Switched to enhanced GenreClassifier
+const genreClassifier = new SimpleGenreClassifier();  // 💀 WAVE 55.1: SimpleBinaryBias (20s lock, no senate)
 
 // 🌈 WAVE 47.1: MoodSynthesizer - Emotional tone analysis
 const moodSynthesizer = new MoodSynthesizer();
@@ -456,17 +457,21 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   
   // WAVE 18.3: Pass enhanced parameters to GenreClassifier
   // 🔧 WAVE 45.4: THE BPM WIRE FIX - El BPM no llegaba al GenreClassifier!
-  // Era undefined → fallback 120 → Boris Brejcha @ 200 BPM detectado como cumbia
-  const audioForClassifier = {
-    energy: energy,
+  // 💀 WAVE 55.1: Ahora SimpleBinaryBias requiere AudioMetrics completo
+  const audioForClassifier: AudioMetrics = {
+    volume: energy,
     bass: spectrum.bass,
     mid: spectrum.mid,
     treble: spectrum.treble,
-    bpm: state.currentBpm,  // 🔧 WAVE 45.4: ¡EL CABLE QUE FALTABA!
+    bpm: state.currentBpm,
+    bpmConfidence: rhythmOutput.confidence ?? 0.5,
+    onBeat: beatState.onBeat ?? false,
+    beatPhase: beatState.phase ?? 0,
+    timestamp: Date.now(),
   };
   const genreOutput = genreClassifier.classify(
-    rhythmOutput as any,  // RhythmOutput compatible with RhythmInput
-    audioForClassifier    // AudioForClassifier with treble, energy, bass
+    rhythmOutput as any,  // RhythmOutput compatible
+    audioForClassifier    // 💀 WAVE 55.1: Full AudioMetrics
   );
   
   // 🔇 WAVE 39.5: DEBUG silenciado - genera demasiado spam

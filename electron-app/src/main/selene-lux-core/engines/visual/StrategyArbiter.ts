@@ -3,7 +3,26 @@
  * 
  * PROBLEMA: La estrategia de color (Análogo vs Complementario)
  *           cambia demasiado rápido con la síncopa instantánea,
- *           rompiendo la estética visual.
+ *           rompi      if (this.currentOverride !== 'breakdown') {
+        console.log(`[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation`);
+        this.currentOverride = 'breakdown';
+        this.overrideStartFrame = this.frameCount;
+        this.dropState = 'IDLE';  // 🎢 Reset DROP state machine
+      }
+    }
+    // 📉 WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
+    else if (input.isRelativeBreakdown) {
+      sectionOverride = true;
+      overrideType = 'breakdown';
+      effectiveStrategy = 'analogous';
+      
+      if (this.currentOverride !== 'breakdown') {
+        console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
+        this.currentOverride = 'breakdown';
+        this.overrideStartFrame = this.frameCount;
+        this.dropState = 'IDLE';  // 🎢 Reset DROP state machine
+      }
+    }isual.
  * 
  * SOLUCIÓN: Rolling average de síncopa (10-15 segundos) con
  *           histéresis y overrides de sección.
@@ -145,6 +164,11 @@ export class StrategyArbiter {
   // Histéresis state
   private lastDecisionZone: 'low' | 'mid' | 'high' = 'mid';
   
+  // 🎢 WAVE 55.1: DROP STATE MACHINE - Evita ametrallamiento de logs
+  private dropState: 'IDLE' | 'DROP_ACTIVE' | 'DROP_COOLDOWN' = 'IDLE';
+  private dropCooldownFrames = 0;
+  private readonly DROP_COOLDOWN_DURATION = 120;  // 2 segundos @ 60fps
+  
   // Contadores
   private frameCount = 0;
   private totalChanges = 0;
@@ -179,6 +203,14 @@ export class StrategyArbiter {
    */
   update(input: StrategyArbiterInput): StrategyArbiterOutput {
     this.frameCount++;
+    
+    // 🎢 WAVE 55.1: Decrementar cooldown del DROP state machine
+    if (this.dropCooldownFrames > 0) {
+      this.dropCooldownFrames--;
+      if (this.dropCooldownFrames === 0) {
+        this.dropState = 'IDLE';
+      }
+    }
     
     // === PASO 1: Actualizar rolling average ===
     const sync = Math.max(0, Math.min(1, input.syncopation));
@@ -221,7 +253,7 @@ export class StrategyArbiter {
       }
     }
     // 📉 WAVE 55: DROP RELATIVO (energía alta respecto al promedio)
-    // Ya NO usa umbral absoluto - ahora usa isRelativeDrop del EnergyStabilizer
+    // 🎢 WAVE 55.1: DROP STATE MACHINE - Evita ametrallamiento de logs
     else if (input.sectionType === 'drop' && input.isRelativeDrop) {
       sectionOverride = true;
       overrideType = 'drop';
@@ -230,13 +262,33 @@ export class StrategyArbiter {
         effectiveStrategy = 'complementary';
       }
       
-      if (this.currentOverride !== 'drop') {
-        console.log(`[StrategyArbiter] 🚀 RELATIVE DROP: Real energy spike detected (not constant high)`);
+      // 🎢 STATE MACHINE: Solo loguear en transición IDLE → DROP_ACTIVE
+      if (this.dropState === 'IDLE') {
+        console.log(`[StrategyArbiter] 🚀 DROP START: Real energy spike detected`);
+        this.dropState = 'DROP_ACTIVE';
         this.currentOverride = 'drop';
         this.overrideStartFrame = this.frameCount;
       }
+      // Si ya estamos en DROP_ACTIVE, mantener sin log (evita ametrallamiento)
+      else if (this.dropState === 'DROP_COOLDOWN') {
+        // Volvió DROP durante cooldown, reactivar
+        this.dropState = 'DROP_ACTIVE';
+        this.currentOverride = 'drop';
+      }
     }
     else {
+      // 🎢 STATE MACHINE: Transición cuando sale de DROP
+      if (this.dropState === 'DROP_ACTIVE') {
+        this.dropState = 'DROP_COOLDOWN';
+        this.dropCooldownFrames = this.DROP_COOLDOWN_DURATION;
+      }
+      else if (this.dropState === 'DROP_COOLDOWN') {
+        this.dropCooldownFrames--;
+        if (this.dropCooldownFrames <= 0) {
+          this.dropState = 'IDLE';
+          console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
+        }
+      }
       this.currentOverride = 'none';
     }
     

@@ -91,12 +91,26 @@ export interface SectionOutput {
 
 /**
  * Genre Classification Output (from GenreClassifier)
+ * 🔧 WAVE 55.1: Extended to include GenreAnalysis fields for senses.ts compatibility
  */
 export interface GenreOutput {
-  primary: string;              // e.g., "reggaeton"
-  secondary: string | null;     // e.g., "latin_pop"
+  primary: string;              // e.g., "ELECTRONIC_4X4" or "LATINO_TRADICIONAL"
+  secondary: string | null;     // Always null in binary system
   confidence: number;
   scores: Record<string, number>;
+  // 🔧 WAVE 55.1: GenreAnalysis compatibility fields
+  genre?: 'ELECTRONIC_4X4' | 'LATINO_TRADICIONAL';
+  subgenre?: 'none';
+  features?: {
+    bpm: number;
+    syncopation: number;
+    hasFourOnFloor: boolean;
+    hasDembow: boolean;
+    trebleDensity: number;
+    has808Bass: boolean;
+    avgEnergy: number;
+  };
+  mood?: 'energetic' | 'chill' | 'dark' | 'festive';
 }
 
 /**
@@ -1070,20 +1084,36 @@ export class SimpleBinaryBias {
     
     // Retornar resultado actual (puede ser pre-lock o post-lock)
     const currentGenre = isElectronic ? 'ELECTRONIC_4X4' : 'LATINO_TRADICIONAL';
+    const finalGenre = this.lockedGenre ?? currentGenre;
     
     if (this.frameCount - this.lastLogFrame > 300) {
       const reason = isFourOnFloor ? '4x4' : isRobot ? 'robot' : 'organic';
-      console.log(`[SimpleBinaryBias] ${isElectronic ? '❄️' : '🔥'} ${currentGenre} (${reason}, votes E=${this.genreVotes.electronic} O=${this.genreVotes.organic})`);
+      console.log(`[SimpleBinaryBias] ${isElectronic ? '❄️' : '🔥'} ${finalGenre} (${reason}, votes E=${this.genreVotes.electronic} O=${this.genreVotes.organic}${this.lockedGenre ? ' LOCKED' : ''})`);
       this.lastLogFrame = this.frameCount;
     }
     
+    // 🔧 WAVE 55.1: Retornar GenreAnalysis compatible (para senses.ts)
     return {
-      primary: this.lockedGenre ?? currentGenre,
+      // Legacy GenreOutput fields
+      primary: finalGenre,
       secondary: null,
       confidence: this.lockedGenre ? 0.95 : (isElectronic ? 0.9 : 0.8),
-      scores: (this.lockedGenre ?? currentGenre) === 'ELECTRONIC_4X4'
+      scores: finalGenre === 'ELECTRONIC_4X4'
         ? { ELECTRONIC_4X4: 0.9, LATINO_TRADICIONAL: 0.1 }
         : { ELECTRONIC_4X4: 0.2, LATINO_TRADICIONAL: 0.8 },
+      // GenreAnalysis fields (for senses.ts BETA heartbeat)
+      genre: finalGenre as 'ELECTRONIC_4X4' | 'LATINO_TRADICIONAL',
+      subgenre: 'none' as const,
+      features: {
+        bpm: audio.bpm ?? 120,
+        syncopation: rhythm.syncopation ?? 0,
+        hasFourOnFloor: isFourOnFloor,
+        hasDembow: !isFourOnFloor && !isRobot,  // Si no es robot ni 4x4, asume dembow
+        trebleDensity: 0,
+        has808Bass: false,
+        avgEnergy: audio.volume ?? 0.5,
+      },
+      mood: finalGenre === 'ELECTRONIC_4X4' ? 'dark' : 'festive' as const,
     };
   }
   

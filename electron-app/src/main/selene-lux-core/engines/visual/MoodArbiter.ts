@@ -69,29 +69,36 @@ export interface MoodArbiterInput {
  * Output del árbitro emocional
  */
 export interface MoodArbiterOutput {
-  /** Meta-emoción estable actual */
+  /** Meta-emocion estable actual */
   stableEmotion: MetaEmotion;
   
-  /** Meta-emoción instantánea (sin estabilizar) */
+  /** Meta-emocion instantanea (sin estabilizar) */
   instantEmotion: MetaEmotion;
   
-  /** ¿Hubo cambio de emoción este frame? */
+  /** Hubo cambio de emocion este frame? */
   emotionChanged: boolean;
   
-  /** Frames desde el último cambio */
+  /** Frames desde el ultimo cambio */
   framesSinceChange: number;
   
-  /** ¿Está bloqueado el estado? (en período de estabilización) */
+  /** Esta bloqueado el estado? (en periodo de estabilizacion) */
   isLocked: boolean;
   
   /** Porcentaje de dominancia actual del estado estable */
   dominance: number;
   
-  /** Temperatura térmica (0=frío, 0.5=neutro, 1=cálido) */
+  /** Temperatura termica (0=frio, 0.5=neutro, 1=calido) */
   thermalTemperature: number;
   
-  /** Debug: votos por categoría */
+  /** Debug: votos por categoria */
   votes: { bright: number; dark: number; neutral: number };
+  
+  /** WAVE 55.1: Zodiac affinity info for debug */
+  zodiacAffinity?: {
+    key: string | null;
+    isEarthSign: boolean;
+    boost: number;
+  };
 }
 
 /**
@@ -296,14 +303,24 @@ export class MoodArbiter {
       this.isLocked = false;
     }
     
-    // === PASO 7: Calcular temperatura térmica ===
-    // BRIGHT = 1.0 (cálido), DARK = 0.0 (frío), NEUTRAL = 0.5
+    // === PASO 7: Calcular temperatura termica ===
+    // BRIGHT = 1.0 (calido), DARK = 0.0 (frio), NEUTRAL = 0.5
     // WAVE 55: Aplicar Zodiac Affinity (Virgo Easter Egg)
     const thermalTemperature = this.calculateThermalTemperature(votes, totalWeight, input.key);
     
-    // === PASO 8: Log periódico ===
+    // WAVE 55.1: Calcular Zodiac Affinity info para debug
+    const earthKeys = ['C', 'F', 'G'];  // Tauro, Virgo, Capricornio
+    const keyUpper = input.key?.toUpperCase() || null;
+    const isEarthSign = keyUpper ? earthKeys.includes(keyUpper) : false;
+    const zodiacAffinity = {
+      key: keyUpper,
+      isEarthSign,
+      boost: isEarthSign ? 0.10 : 0,
+    };
+    
+    // === PASO 8: Log periodico ===
     if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[MoodArbiter] 🎭 Stable=${this.stableEmotion} Instant=${instantEmotion} Dom=${(maxDominance * 100).toFixed(0)}% Temp=${thermalTemperature.toFixed(2)} Votes(B/D/N)=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}`);
+      console.log(`[MoodArbiter] 🎭 Stable=${this.stableEmotion} Instant=${instantEmotion} Dom=${(maxDominance * 100).toFixed(0)}% Temp=${thermalTemperature.toFixed(2)} Votes(B/D/N)=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}${zodiacAffinity.isEarthSign ? ` ♍ Zodiac=${zodiacAffinity.key}` : ''}`);
       this.lastLogFrame = this.frameCount;
     }
     
@@ -316,6 +333,7 @@ export class MoodArbiter {
       dominance: maxDominance,
       thermalTemperature,
       votes,
+      zodiacAffinity,
     };
   }
   

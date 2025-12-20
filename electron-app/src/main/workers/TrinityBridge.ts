@@ -954,9 +954,10 @@ export class SimpleSectionTracker {
  * - 4x4 pattern detectado → ELECTRONIC (Cool Bias)
  * - Todo lo demás → ORGANIC (Warm Bias)
  * 
- * Skrillex con synth sucio? ELECTRONIC.
- * Skrillex con ritmo roto? ORGANIC. 
- * Ambos son aceptables. El color solo cambia 5%.
+ * 🔒 WAVE 55: REGLA DE LOS 20 SEGUNDOS
+ * - Una vez confirmado un género, NO puede cambiar durante 20 segundos
+ * - Solo HardReset (silencio) puede romper el bloqueo
+ * - Esto elimina el "parpadeo de género" en DJ mixes
  */
 export class SimpleBinaryBias {
   private silenceFrames = 0;
@@ -965,26 +966,36 @@ export class SimpleBinaryBias {
   private frameCount = 0;
   private lastLogFrame = 0;
   
+  // 🔒 WAVE 55: Locking de género (20 segundos)
+  private readonly GENRE_LOCK_FRAMES = 1200;  // 20 segundos @ 60fps
+  private lockedGenre: 'ELECTRONIC_4X4' | 'LATINO_TRADICIONAL' | null = null;
+  private lockStartFrame = 0;
+  private genreVotes = { electronic: 0, organic: 0 };
+  private readonly CONFIRMATION_VOTES = 60;  // 1 segundo para confirmar
+  
   /**
    * Reset completo en silencio prolongado
    */
   public hardReset(): void {
-    console.log('[SimpleBinaryBias] 🧹 HARD RESET: Nueva canción');
+    console.log('[SimpleBinaryBias] 🧹 HARD RESET: Nueva canción - Liberando lock de género');
     this.silenceFrames = 0;
     this.frameCount = 0;
     this.lastLogFrame = 0;
+    // 🔒 WAVE 55: Liberar lock
+    this.lockedGenre = null;
+    this.lockStartFrame = 0;
+    this.genreVotes = { electronic: 0, organic: 0 };
   }
   
   /**
    * 🤖 WAVE 50.1: TEXTURE-BASED DETECTION
+   * 🔒 WAVE 55: Con LOCKING de 20 segundos
    * 
    * BINARY DECISION:
    * - ELECTRONIC_4X4 (Cool) if:
    *   1. 4x4 pattern (techno/house)
    *   2. OR "digital dirt" detected (Skrillex/DnB/Dubstep)
    * - LATINO_TRADICIONAL (Warm) otherwise
-   * 
-   * "Digital Dirt" = harsh synths + sub-bass OR high spectral flatness (noise-like)
    */
   classify(rhythm: RhythmOutput, audio: AudioMetrics): GenreOutput {
     this.frameCount++;
@@ -1005,43 +1016,74 @@ export class SimpleBinaryBias {
       this.silenceFrames = 0;
     }
     
-    // === WAVE 50.1: BINARY DECISION WITH TEXTURE ===
-    // Path 1: 4x4 pattern (techno, house, trance)
-    const isFourOnFloor = rhythm.pattern === 'four_on_floor' && rhythm.confidence > 0.5;
+    // === 🔒 WAVE 55: CHECK GENRE LOCK ===
+    const framesSinceLock = this.frameCount - this.lockStartFrame;
+    const isLocked = this.lockedGenre !== null && framesSinceLock < this.GENRE_LOCK_FRAMES;
     
-    // Path 2: "Robot" detection - Skrillex, DnB, Dubstep
-    // Harsh synths (2-5kHz distorted) + sub-bass (< 60Hz extreme)
-    // OR high spectral flatness (noise-like = electronic texture)
-    const harshness = audio.harshness ?? 0;
-    const subBass = audio.subBass ?? 0;
-    const spectralFlatness = audio.spectralFlatness ?? 0;
-    
-    const isRobot = (harshness > 0.4 && subBass > 0.6) || (spectralFlatness > 0.4);
-    
-    if (isFourOnFloor || isRobot) {
-      if (this.frameCount - this.lastLogFrame > 300) {  // Log cada 5 segundos
-        const reason = isFourOnFloor ? '4x4' : 'robot-texture';
-        console.log(`[SimpleBinaryBias] ❄️ ELECTRONIC (${reason}, harsh=${harshness.toFixed(2)}, subBass=${subBass.toFixed(2)}, flat=${spectralFlatness.toFixed(2)})`);
+    if (isLocked) {
+      // Género bloqueado - retornar el género locked sin recalcular
+      if (this.frameCount - this.lastLogFrame > 300) {
+        const remainingSeconds = ((this.GENRE_LOCK_FRAMES - framesSinceLock) / 60).toFixed(0);
+        console.log(`[SimpleBinaryBias] 🔒 LOCKED: ${this.lockedGenre} (${remainingSeconds}s restantes)`);
         this.lastLogFrame = this.frameCount;
       }
       return {
-        primary: 'ELECTRONIC_4X4',
+        primary: this.lockedGenre!,
         secondary: null,
-        confidence: 0.9,
-        scores: { ELECTRONIC_4X4: 0.9, LATINO_TRADICIONAL: 0.1 },
+        confidence: 0.95,  // Alta confidence cuando está locked
+        scores: this.lockedGenre === 'ELECTRONIC_4X4' 
+          ? { ELECTRONIC_4X4: 0.95, LATINO_TRADICIONAL: 0.05 }
+          : { ELECTRONIC_4X4: 0.05, LATINO_TRADICIONAL: 0.95 },
       };
     }
     
-    // ORGANIC: Todo lo demás (cumbia, reggaeton, rock, pop, jazz)
+    // === WAVE 50.1: BINARY DECISION WITH TEXTURE ===
+    const isFourOnFloor = rhythm.pattern === 'four_on_floor' && rhythm.confidence > 0.5;
+    const harshness = audio.harshness ?? 0;
+    const subBass = audio.subBass ?? 0;
+    const spectralFlatness = audio.spectralFlatness ?? 0;
+    const isRobot = (harshness > 0.4 && subBass > 0.6) || (spectralFlatness > 0.4);
+    
+    const isElectronic = isFourOnFloor || isRobot;
+    
+    // === 🔒 WAVE 55: VOTING SYSTEM para confirmar género antes de lock ===
+    if (isElectronic) {
+      this.genreVotes.electronic++;
+      this.genreVotes.organic = Math.max(0, this.genreVotes.organic - 1);
+    } else {
+      this.genreVotes.organic++;
+      this.genreVotes.electronic = Math.max(0, this.genreVotes.electronic - 1);
+    }
+    
+    // ¿Suficientes votos para confirmar y lockear?
+    if (this.genreVotes.electronic >= this.CONFIRMATION_VOTES && this.lockedGenre !== 'ELECTRONIC_4X4') {
+      this.lockedGenre = 'ELECTRONIC_4X4';
+      this.lockStartFrame = this.frameCount;
+      this.genreVotes = { electronic: 0, organic: 0 };
+      console.log(`[SimpleBinaryBias] 🔒 GENRE LOCKED: ELECTRONIC_4X4 for 20 seconds`);
+    } else if (this.genreVotes.organic >= this.CONFIRMATION_VOTES && this.lockedGenre !== 'LATINO_TRADICIONAL') {
+      this.lockedGenre = 'LATINO_TRADICIONAL';
+      this.lockStartFrame = this.frameCount;
+      this.genreVotes = { electronic: 0, organic: 0 };
+      console.log(`[SimpleBinaryBias] 🔒 GENRE LOCKED: LATINO_TRADICIONAL for 20 seconds`);
+    }
+    
+    // Retornar resultado actual (puede ser pre-lock o post-lock)
+    const currentGenre = isElectronic ? 'ELECTRONIC_4X4' : 'LATINO_TRADICIONAL';
+    
     if (this.frameCount - this.lastLogFrame > 300) {
-      console.log(`[SimpleBinaryBias] 🔥 ORGANIC (pattern=${rhythm.pattern}, harsh=${harshness.toFixed(2)})`);
+      const reason = isFourOnFloor ? '4x4' : isRobot ? 'robot' : 'organic';
+      console.log(`[SimpleBinaryBias] ${isElectronic ? '❄️' : '🔥'} ${currentGenre} (${reason}, votes E=${this.genreVotes.electronic} O=${this.genreVotes.organic})`);
       this.lastLogFrame = this.frameCount;
     }
+    
     return {
-      primary: 'LATINO_TRADICIONAL',
+      primary: this.lockedGenre ?? currentGenre,
       secondary: null,
-      confidence: 0.8,
-      scores: { ELECTRONIC_4X4: 0.2, LATINO_TRADICIONAL: 0.8 },
+      confidence: this.lockedGenre ? 0.95 : (isElectronic ? 0.9 : 0.8),
+      scores: (this.lockedGenre ?? currentGenre) === 'ELECTRONIC_4X4'
+        ? { ELECTRONIC_4X4: 0.9, LATINO_TRADICIONAL: 0.1 }
+        : { ELECTRONIC_4X4: 0.2, LATINO_TRADICIONAL: 0.8 },
     };
   }
   

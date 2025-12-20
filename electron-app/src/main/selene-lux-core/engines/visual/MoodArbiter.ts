@@ -60,6 +60,9 @@ export interface MoodArbiterInput {
   
   /** Energía actual (0-1) para ponderación */
   energy: number;
+  
+  /** WAVE 55: Key musical (opcional, para Easter Egg Zodiac) */
+  key?: string | null;
 }
 
 /**
@@ -295,7 +298,8 @@ export class MoodArbiter {
     
     // === PASO 7: Calcular temperatura térmica ===
     // BRIGHT = 1.0 (cálido), DARK = 0.0 (frío), NEUTRAL = 0.5
-    const thermalTemperature = this.calculateThermalTemperature(votes, totalWeight);
+    // WAVE 55: Aplicar Zodiac Affinity (Virgo Easter Egg)
+    const thermalTemperature = this.calculateThermalTemperature(votes, totalWeight, input.key);
     
     // === PASO 8: Log periódico ===
     if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
@@ -339,10 +343,15 @@ export class MoodArbiter {
   /**
    * Calcula temperatura térmica continua (0-1)
    * Permite transiciones más suaves que estados discretos
+   * 
+   * WAVE 55: Zodiac Affinity Easter Egg
+   * - Si la Key es TIERRA (C/Tauro, F/Virgo, G/Capricornio): +10% brightness
+   * - Sutil, pero se siente bien (dedicado al usuario Virgo ♍)
    */
   private calculateThermalTemperature(
     votes: { bright: number; dark: number; neutral: number },
-    totalWeight: number
+    totalWeight: number,
+    key?: string | null
   ): number {
     if (totalWeight === 0) return 0.5;
     
@@ -351,7 +360,16 @@ export class MoodArbiter {
     const rawTemp = (votes.bright - votes.dark) / totalWeight;
     
     // Mapear de [-1, 1] a [0, 1]
-    return (rawTemp + 1) / 2;
+    let temperature = (rawTemp + 1) / 2;
+    
+    // 🌍 WAVE 55: Zodiac Affinity (Virgo Easter Egg)
+    // Keys de TIERRA obtienen boost de brillo +10%
+    const earthKeys = ['C', 'F', 'G'];  // Tauro, Virgo, Capricornio
+    if (key && earthKeys.includes(key.toUpperCase())) {
+      temperature = Math.min(1.0, temperature + 0.10);
+    }
+    
+    return temperature;
   }
   
   /**

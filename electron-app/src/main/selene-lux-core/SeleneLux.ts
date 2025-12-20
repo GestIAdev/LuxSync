@@ -542,9 +542,14 @@ export class SeleneLux extends EventEmitter {
         finalPaletteSource = 'memory'
       } else {
         // 🎨 WAVE 49: COLOR INTERPOLATION - Transiciones suaves anti-epilepsia
-        // Detectar si estamos en DROP para transición rápida (pero no instantánea)
+        // WAVE 55: Usar DROP confirmado (override) en lugar de section bruta
+        // Solo transición rápida si StrategyArbiter confirmó DROP con energía relativa
         const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
-        const isDrop = currentSection === 'drop'
+        const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
+        const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
+        
+        // isDrop = true solo si el StrategyArbiter lo confirmó con energía relativa
+        const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
         
         // Usar interpolador en lugar de generar directamente
         finalHslPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
@@ -815,8 +820,11 @@ export class SeleneLux extends EventEmitter {
         }
         
         // 🎨 WAVE 49: Generar paleta CON INTERPOLACIÓN
+        // WAVE 55: Usar DROP confirmado (override) en lugar de section bruta
         const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
-        const isDrop = currentSection === 'drop'
+        const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
+        const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
+        const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
         const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
         
         // Convertir HSL → RGB para hardware

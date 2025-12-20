@@ -62,6 +62,12 @@ export interface EnergyOutput {
   
   /** Pico reciente (máximo en últimos 30 frames) */
   recentPeak: number;
+  
+  /** 📉 WAVE 55: ¿Es un DROP RELATIVO? (instant > smoothed + threshold) */
+  isRelativeDrop: boolean;
+  
+  /** 📉 WAVE 55: ¿Es un BREAKDOWN RELATIVO? (instant < smoothed - threshold) */
+  isRelativeBreakdown: boolean;
 }
 
 /**
@@ -188,9 +194,19 @@ export class EnergyStabilizer {
     
     const isSilence = this.silenceFrameCount > 30; // >0.5s es "en silencio"
     
+    // === 📉 WAVE 55: DETECCIÓN RELATIVA DE DROP/BREAKDOWN ===
+    // En lugar de umbral absoluto (>0.8), usamos RELATIVO al promedio
+    // Si toda la canción está al 0.9, NADA será un Drop (correcto)
+    // Solo los picos REALES por encima del promedio dispararán el efecto
+    const DROP_RELATIVE_THRESHOLD = 0.15;  // instant debe ser smoothed + 0.15
+    const BREAKDOWN_RELATIVE_THRESHOLD = 0.12;  // instant debe ser smoothed - 0.12
+    
+    const isRelativeDrop = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD) && energy > 0.5;
+    const isRelativeBreakdown = energy < (this.emaEnergy - BREAKDOWN_RELATIVE_THRESHOLD) && this.emaEnergy > 0.3;
+    
     // === PASO 6: Log periódico ===
     if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f`);
+      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f Drop=${isRelativeDrop} Breakdown=${isRelativeBreakdown}`);
       this.lastLogFrame = this.frameCount;
     }
     
@@ -202,6 +218,8 @@ export class EnergyStabilizer {
       resetTriggered,
       energyDelta,
       recentPeak,
+      isRelativeDrop,
+      isRelativeBreakdown,
     };
   }
   

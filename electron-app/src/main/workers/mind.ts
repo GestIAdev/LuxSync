@@ -484,6 +484,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     mood: harmony.mood,
     confidence: harmony.confidence,
     energy: analysis.energy,
+    key: keyStabilizerOutput.stableKey,  // 🌍 WAVE 55: Para Zodiac Affinity
   });
   
   // � WAVE 54: STRATEGY ARBITRATION - Estabilizar estrategia de color
@@ -493,6 +494,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     sectionType: section.type as SectionType,
     energy: analysis.energy,
     confidence: rhythm.confidence,
+    isRelativeDrop: energyOutput.isRelativeDrop, // WAVE 55: DROP relativo
   });
   
   // WAVE 52-54: Crear analisis FULL STABILIZED

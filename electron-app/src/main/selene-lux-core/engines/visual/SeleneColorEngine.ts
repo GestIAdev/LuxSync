@@ -910,7 +910,8 @@ export class SeleneColorInterpolator {
   private transitionSpeed = 0.02;  // ~50 frames = ~0.8s default
   
   // Configuración
-  private readonly NORMAL_TRANSITION_FRAMES = 120;  // 4 beats @ 120bpm @ 60fps ≈ 2s
+  // WAVE 55: Transiciones lentas para evitar parpadeo en Cumbia
+  private readonly NORMAL_TRANSITION_FRAMES = 240;  // 8 beats @ 120bpm @ 60fps ≈ 4s
   private readonly DROP_TRANSITION_FRAMES = 30;     // 0.5 segundos
   private readonly MIN_TRANSITION_FRAMES = 6;       // Mínimo 0.1s (nunca instantáneo)
   

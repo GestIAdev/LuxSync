@@ -55,7 +55,7 @@ export interface StrategyArbiterConfig {
   /** Histéresis para evitar oscilación en umbrales (default: 0.05) */
   hysteresisBand: number;
   
-  /** Energía mínima para permitir override de DROP (default: 0.85) */
+  /** @deprecated WAVE 55: Ya no se usa - ahora usamos isRelativeDrop */
   dropOverrideEnergy: number;
 }
 
@@ -74,6 +74,12 @@ export interface StrategyArbiterInput {
   
   /** Confidence del análisis rítmico (0-1) */
   confidence: number;
+  
+  /** 📉 WAVE 55: ¿Es un DROP RELATIVO? (del EnergyStabilizer) */
+  isRelativeDrop?: boolean;
+  
+  /** 📉 WAVE 55: ¿Es un BREAKDOWN RELATIVO? (del EnergyStabilizer) */
+  isRelativeBreakdown?: boolean;
 }
 
 /**
@@ -202,17 +208,30 @@ export class StrategyArbiter {
         this.overrideStartFrame = this.frameCount;
       }
     }
-    // 🚀 DROP OVERRIDE: Permitir saltar bloqueo si energía extrema
-    else if (input.sectionType === 'drop' && input.energy >= this.config.dropOverrideEnergy) {
+    // � WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
+    else if (input.isRelativeBreakdown) {
+      sectionOverride = true;
+      overrideType = 'breakdown';
+      effectiveStrategy = 'analogous';
+      
+      if (this.currentOverride !== 'breakdown') {
+        console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
+        this.currentOverride = 'breakdown';
+        this.overrideStartFrame = this.frameCount;
+      }
+    }
+    // 📉 WAVE 55: DROP RELATIVO (energía alta respecto al promedio)
+    // Ya NO usa umbral absoluto - ahora usa isRelativeDrop del EnergyStabilizer
+    else if (input.sectionType === 'drop' && input.isRelativeDrop) {
       sectionOverride = true;
       overrideType = 'drop';
-      // En DROP con alta energía, preferir COMPLEMENTARY para impacto
+      // En DROP REAL, preferir COMPLEMENTARY para impacto
       if (avgSync > 0.3) {
         effectiveStrategy = 'complementary';
       }
       
       if (this.currentOverride !== 'drop') {
-        console.log(`[StrategyArbiter] 🚀 DROP OVERRIDE: High energy (${input.energy.toFixed(2)}) allows strategy jump`);
+        console.log(`[StrategyArbiter] 🚀 RELATIVE DROP: Real energy spike detected (not constant high)`);
         this.currentOverride = 'drop';
         this.overrideStartFrame = this.frameCount;
       }

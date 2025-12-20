@@ -62,6 +62,9 @@ import { KeyStabilizer } from '../selene-lux-core/engines/visual/KeyStabilizer';
 // 🏎️ WAVE 52: Energy Stabilizer - Suavizado de energía y detección de silencio
 import { EnergyStabilizer } from '../selene-lux-core/engines/visual/EnergyStabilizer';
 
+// 🎭 WAVE 53: Mood Arbiter - Estabilización emocional para coherencia térmica
+import { MoodArbiter, type MetaEmotion } from '../selene-lux-core/engines/visual/MoodArbiter';
+
 // 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
 
@@ -182,6 +185,9 @@ interface GammaState {
   // 🏎️ WAVE 52: Energy Stabilizer instance
   energyStabilizer: EnergyStabilizer;
   
+  // 🎭 WAVE 53: Mood Arbiter instance
+  moodArbiter: MoodArbiter;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -254,6 +260,15 @@ const state: GammaState = {
     emaFactor: 0.95,             // 95% histórico, 5% nuevo
   }),
   
+  // 🎭 WAVE 53: Mood Arbiter - Estabilización emocional (temperatura térmica)
+  moodArbiter: new MoodArbiter({
+    bufferSize: 600,           // 10 segundos @ 60fps
+    lockingFrames: 300,        // 5 segundos para confirmar cambio emocional
+    dominanceThreshold: 0.60,  // 60% de dominancia requerida
+    useEnergyWeighting: true,
+    confidenceBonus: 1.5,
+  }),
+  
   learnedPatterns: new Map(),
   
   messagesProcessed: 0,
@@ -261,12 +276,13 @@ const state: GammaState = {
   errors: []
 };
 
-// 🏎️ WAVE 52: Conectar Energy Stabilizer → Key Stabilizer reset
+// 🏎️ WAVE 52 + 🎭 WAVE 53: Conectar cadena de reset
 // Cuando EnergyStabilizer detecta silencio prolongado (entre canciones),
-// reseteamos el KeyStabilizer para que la nueva canción empiece limpia.
+// reseteamos TODOS los estabilizadores para que la nueva canción empiece limpia.
 state.energyStabilizer.onReset(() => {
-  console.log('[GAMMA] 🏎️→⚓ SILENCE RESET: KeyStabilizer cleared for new song');
+  console.log('[GAMMA] 🏎️→⚓🎭 SILENCE RESET: All stabilizers cleared for new song');
   state.keyStabilizer.reset();
+  state.moodArbiter.reset();
 });
 
 // ============================================
@@ -421,6 +437,10 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         silenceFrames: energyOutput.silenceFrames,
         recentPeak: energyOutput.recentPeak.toFixed(2),
       },
+      moodArbiter: {  // 🎭 WAVE 53: Mood Arbiter stats
+        stable: state.moodArbiter.getStableEmotion(),
+        stats: state.moodArbiter.getStats(),
+      },
       perf: {
         decisions: state.decisionCount,
         avgMs: (state.totalProcessingTime / Math.max(1, state.messagesProcessed)).toFixed(2),
@@ -436,9 +456,19 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     energy: analysis.energy,
   });
   
-  // 🏎️ WAVE 52: Crear una copia del analysis con key estabilizada Y energía suavizada
+  // � WAVE 53: MOOD ARBITRATION - Estabilizar estado emocional
+  // Esto evita fluctuaciones térmicas (Cálido↔Frío) por acordes pasajeros
+  const moodArbiterOutput = state.moodArbiter.update({
+    mode: harmony.mode,
+    mood: harmony.mood,
+    confidence: harmony.confidence,
+    energy: analysis.energy,
+  });
+  
+  // 🏎️ WAVE 52 + 🎭 WAVE 53: Crear análisis estabilizado
   // - stableKey: evita cambio de color por acordes de paso
   // - smoothedEnergy: evita parpadeo por picos de kick
+  // - stableEmotion: coherencia térmica emocional
   const stabilizedAnalysis = {
     ...analysis,
     energy: energyOutput.smoothedEnergy,  // 🏎️ Energía suavizada para Sat/Light base
@@ -446,7 +476,10 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       ...wave8,
       harmony: {
         ...harmony,
-        key: keyStabilizerOutput.stableKey,  // ⚓ Usamos la key estable, no la instantánea
+        key: keyStabilizerOutput.stableKey,  // ⚓ Key estable, no instantánea
+        // 🎭 Inyectar temperatura emocional estabilizada
+        temperature: moodArbiterOutput.stableEmotion === 'BRIGHT' ? 'warm' :
+                     moodArbiterOutput.stableEmotion === 'DARK' ? 'cold' : 'neutral',
       },
     },
   } as SeleneExtendedAnalysis;
@@ -653,17 +686,20 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer paletteSource real (sin histéresis)
     // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para DNA derivation
     // 💫 WAVE 47.1.3: MOOD ARBITRATION - Enviar finalMood (arbitrado) no VAD raw
+    // 🎭 WAVE 53: Mood Arbiter - Meta-emoción estabilizada
     debugInfo: {
       macroGenre: selenePalette.meta.macroGenre,
       strategy: selenePalette.meta.strategy,
       temperature: selenePalette.meta.temperature,
       description: selenePalette.meta.description,
-      key: harmony.key,
+      key: keyStabilizerOutput.stableKey,  // ⚓ WAVE 51: Key ESTABILIZADA
       mode: harmony.mode,
       source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural (no usa Brain)
       syncopation: state.smoothedSync,  // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para evitar flicker en DNA
       mood: {
         primary: finalMood,  // 💫 WAVE 47.1.3: Mood arbitrado (genre > harmony > VAD)
+        stableEmotion: moodArbiterOutput.stableEmotion,  // 🎭 WAVE 53
+        thermalTemperature: moodArbiterOutput.thermalTemperature,  // 🎭 WAVE 53
         raw: (analysis.wave8 as any)?.mood,  // ⚠️ VAD raw preservado para debug
         sources: {
           genre: { mood: genreMood, confidence: genreConfidence },

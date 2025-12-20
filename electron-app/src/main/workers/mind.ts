@@ -65,7 +65,10 @@ import { EnergyStabilizer } from '../selene-lux-core/engines/visual/EnergyStabil
 // 🎭 WAVE 53: Mood Arbiter - Estabilización emocional para coherencia térmica
 import { MoodArbiter, type MetaEmotion } from '../selene-lux-core/engines/visual/MoodArbiter';
 
-// 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
+// � WAVE 54: Strategy Arbiter - Estabilización de estrategia de color
+import { StrategyArbiter, type ColorStrategy, type SectionType } from '../selene-lux-core/engines/visual/StrategyArbiter';
+
+// �🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
 
 // ============================================
@@ -188,6 +191,9 @@ interface GammaState {
   // 🎭 WAVE 53: Mood Arbiter instance
   moodArbiter: MoodArbiter;
   
+  // 🎨 WAVE 54: Strategy Arbiter instance
+  strategyArbiter: StrategyArbiter;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -269,6 +275,16 @@ const state: GammaState = {
     confidenceBonus: 1.5,
   }),
   
+  // 🎨 WAVE 54: Strategy Arbiter - Estabilización de estrategia de color
+  strategyArbiter: new StrategyArbiter({
+    bufferSize: 900,           // 15 segundos @ 60fps
+    lockingFrames: 900,        // 15 segundos de bloqueo
+    lowSyncThreshold: 0.35,    // < 0.35 = ANALOGOUS (orden)
+    highSyncThreshold: 0.55,   // > 0.55 = COMPLEMENTARY (caos)
+    hysteresisBand: 0.05,
+    dropOverrideEnergy: 0.85,
+  }),
+  
   learnedPatterns: new Map(),
   
   messagesProcessed: 0,
@@ -276,13 +292,14 @@ const state: GammaState = {
   errors: []
 };
 
-// 🏎️ WAVE 52 + 🎭 WAVE 53: Conectar cadena de reset
+// 🏎️ WAVE 52 + 🎭 WAVE 53 + 🎨 WAVE 54: Conectar cadena de reset COMPLETA
 // Cuando EnergyStabilizer detecta silencio prolongado (entre canciones),
 // reseteamos TODOS los estabilizadores para que la nueva canción empiece limpia.
 state.energyStabilizer.onReset(() => {
-  console.log('[GAMMA] 🏎️→⚓🎭 SILENCE RESET: All stabilizers cleared for new song');
+  console.log('[GAMMA] 🏎️→⚓🎭🎨 SILENCE RESET: All stabilizers cleared for new song');
   state.keyStabilizer.reset();
   state.moodArbiter.reset();
+  state.strategyArbiter.reset();
 });
 
 // ============================================
@@ -441,6 +458,10 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         stable: state.moodArbiter.getStableEmotion(),
         stats: state.moodArbiter.getStats(),
       },
+      strategyArbiter: {  // 🎨 WAVE 54: Strategy Arbiter stats
+        stable: state.strategyArbiter.getStableStrategy(),
+        stats: state.strategyArbiter.getStats(),
+      },
       perf: {
         decisions: state.decisionCount,
         avgMs: (state.totalProcessingTime / Math.max(1, state.messagesProcessed)).toFixed(2),
@@ -465,19 +486,32 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     energy: analysis.energy,
   });
   
-  // 🏎️ WAVE 52 + 🎭 WAVE 53: Crear análisis estabilizado
+  // � WAVE 54: STRATEGY ARBITRATION - Estabilizar estrategia de color
+  // Esto evita cambios de contraste por picos de sincopa momentaneos
+  const strategyArbiterOutput = state.strategyArbiter.update({
+    syncopation: rhythm.syncopation,
+    sectionType: section.type as SectionType,
+    energy: analysis.energy,
+    confidence: rhythm.confidence,
+  });
+  
+  // WAVE 52-54: Crear analisis FULL STABILIZED
   // - stableKey: evita cambio de color por acordes de paso
   // - smoothedEnergy: evita parpadeo por picos de kick
-  // - stableEmotion: coherencia térmica emocional
+  // - stableEmotion: coherencia termica emocional
+  // - stableStrategy: coherencia de contraste de color
   const stabilizedAnalysis = {
     ...analysis,
-    energy: energyOutput.smoothedEnergy,  // 🏎️ Energía suavizada para Sat/Light base
+    energy: energyOutput.smoothedEnergy,
     wave8: {
       ...wave8,
+      rhythm: {
+        ...rhythm,
+        syncopation: strategyArbiterOutput.averagedSyncopation,
+      },
       harmony: {
         ...harmony,
-        key: keyStabilizerOutput.stableKey,  // ⚓ Key estable, no instantánea
-        // 🎭 Inyectar temperatura emocional estabilizada
+        key: keyStabilizerOutput.stableKey,
         temperature: moodArbiterOutput.stableEmotion === 'BRIGHT' ? 'warm' :
                      moodArbiterOutput.stableEmotion === 'DARK' ? 'cold' : 'neutral',
       },
@@ -700,6 +734,14 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         primary: finalMood,  // 💫 WAVE 47.1.3: Mood arbitrado (genre > harmony > VAD)
         stableEmotion: moodArbiterOutput.stableEmotion,  // 🎭 WAVE 53
         thermalTemperature: moodArbiterOutput.thermalTemperature,  // 🎭 WAVE 53
+        // 🎨 WAVE 54: Strategy Arbiter output (dentro de mood porque debugInfo tiene tipos estrictos)
+        colorStrategy: {
+          stable: strategyArbiterOutput.stableStrategy,
+          instant: strategyArbiterOutput.instantStrategy,
+          avgSyncopation: strategyArbiterOutput.averagedSyncopation,
+          contrastLevel: strategyArbiterOutput.contrastLevel,
+          sectionOverride: strategyArbiterOutput.overrideType,
+        },
         raw: (analysis.wave8 as any)?.mood,  // ⚠️ VAD raw preservado para debug
         sources: {
           genre: { mood: genreMood, confidence: genreConfidence },

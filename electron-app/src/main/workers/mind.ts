@@ -752,6 +752,11 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
         }
       },
       sectionDetail: section,  // 💫 WAVE 47.1: SectionTracker output completo
+      // 🎢 WAVE 57.5: DROP STATE MACHINE - Estado real del drop
+      drop: {
+        isDropActive: state.energyStabilizer.isDropActive,
+        dropState: state.energyStabilizer.getDropState(),
+      },
     }
   };
 }

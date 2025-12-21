@@ -187,6 +187,7 @@ export class SeleneLux extends EventEmitter {
   // El Worker (GAMMA) tiene el género, key, syncopation real
   // Este es el puente que conecta Worker → getBroadcast() → UI
   // WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
+  // 🎢 WAVE 57.5: Añadido drop (DROP STATE MACHINE)
   private lastTrinityData: {
     macroGenre?: string
     key?: string | null
@@ -198,9 +199,14 @@ export class SeleneLux extends EventEmitter {
     timestamp: number
     mood?: any  // 💫 WAVE 47.2: MoodSynthesizer output (copado directo del spread)
     sectionDetail?: any  // 💫 WAVE 47.2: SectionTracker output (copado directo del spread)
+    drop?: {  // 🎢 WAVE 57.5: DROP STATE MACHINE output
+      isDropActive?: boolean
+      dropState?: any
+    }
     debugInfo?: {
       mood?: any
       sectionDetail?: any
+      drop?: any
     }
   } | null = null
   
@@ -1333,6 +1339,7 @@ export class SeleneLux extends EventEmitter {
    * no llegaba a la UI porque lastBrainOutput estaba vacío (useBrain=false).
    * 
    * WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
+   * 🎢 WAVE 57.5: Añadido drop (DROP STATE MACHINE)
    * 
    * @param debugInfo - debugInfo del LightingDecision que viene del Worker
    */
@@ -1346,6 +1353,10 @@ export class SeleneLux extends EventEmitter {
     description?: string
     mood?: any  // 💫 WAVE 47.2: MoodSynthesizer output (VAD)
     sectionDetail?: any  // 💫 WAVE 47.2: SectionTracker output
+    drop?: {  // 🎢 WAVE 57.5: DROP STATE MACHINE output
+      isDropActive?: boolean
+      dropState?: any
+    }
   } | undefined): void {
     if (!debugInfo) return
     
@@ -1533,6 +1544,43 @@ export class SeleneLux extends EventEmitter {
         },
       },
       lastInsight: this.consciousness.lastInsight,
+      // 🔍 WAVE 57.5: Active data sources influencing mood/behavior
+      activeSources: (() => {
+        const sources: string[] = [];
+        const moodSources = trinityData?.mood?.sources;
+        
+        // GENRE: Si el clasificador de género tiene confianza
+        if (moodSources?.genre?.confidence && moodSources.genre.confidence > 0.3) {
+          sources.push('GENRE');
+        }
+        
+        // HARMONY: Si el analizador armónico tiene confianza
+        if (moodSources?.harmony?.confidence && moodSources.harmony.confidence > 0.3) {
+          sources.push('HARMONY');
+        }
+        
+        // VAD: Siempre activo si hay audio (energía > umbral mínimo)
+        if ((metrics?.energy ?? 0) > 0.01) {
+          sources.push('VAD');
+        }
+        
+        // ZODIAC: Si hay información de signo zodiacal activa
+        if (this.lastZodiacInfo?.sign) {
+          sources.push('ZODIAC');
+        }
+        
+        // SECTION: Si el tracker de sección tiene confianza
+        if (trinityData?.sectionDetail?.confidence && trinityData.sectionDetail.confidence > 0.5) {
+          sources.push('SECTION');
+        }
+        
+        // STRATEGY: Si StrategyArbiter tiene estrategia no-default
+        if (trinityData?.mood?.colorStrategy?.stable && trinityData.mood.colorStrategy.stable !== 'analogous') {
+          sources.push('STRATEGY');
+        }
+        
+        return sources;
+      })(),
     }
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -1585,8 +1633,15 @@ export class SeleneLux extends EventEmitter {
       },
       section: {
         // 💫 WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker de 10 cambios/segundo
+        // 🎢 WAVE 57.5: DROP STATE MACHINE OVERRIDE - Si isDropActive, FORZAR 'drop'
         // Solo cambiar sección si: 1) confidence > 0.8, 2) distinta a actual, 3) han pasado >3 segundos
         current: (() => {
+          // 🎢 WAVE 57.5: DROP STATE MACHINE tiene PRIORIDAD ABSOLUTA
+          const isDropActive = trinityData?.drop?.isDropActive === true;
+          if (isDropActive) {
+            return 'drop' as const;
+          }
+          
           const rawSection = trinityData?.sectionDetail?.type ?? context?.section?.current?.type ?? 'unknown'
           const rawConfidence = trinityData?.sectionDetail?.confidence ?? context?.section?.current?.confidence ?? 0
           const timeSinceLastChange = now - this.lastStableSection.timestamp

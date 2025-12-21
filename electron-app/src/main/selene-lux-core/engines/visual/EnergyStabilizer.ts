@@ -17,9 +17,39 @@
  * - Breakdowns → colores lavados, oscuros
  * - Drops → neón saturado, brillante
  * 
+ * 🎢 WAVE 57.5: DROP STATE MACHINE
+ * - Evita el "ametralladora" de drops rápidos
+ * - Estados: IDLE → ATTACK → SUSTAIN → RELEASE → COOLDOWN
+ * 
  * @author GitHub Copilot (Claude) para GestIAdev
- * @version WAVE 52 - "The Energy Engine"
+ * @version WAVE 57.5 - "Drop State Machine"
  */
+
+/**
+ * 🎢 WAVE 57.5: DROP STATE MACHINE
+ * Estados del ciclo de vida del Drop
+ */
+export type DropState = 'IDLE' | 'ATTACK' | 'SUSTAIN' | 'RELEASE' | 'COOLDOWN';
+
+/**
+ * Configuración de la máquina de estados Drop
+ */
+export interface DropStateMachineConfig {
+  /** Frames en ATTACK antes de ir a SUSTAIN (default: 30 = 0.5s) */
+  attackFrames: number;
+  
+  /** Frames mínimos en SUSTAIN (default: 120 = 2s) */
+  minSustainFrames: number;
+  
+  /** Frames máximos en SUSTAIN si energía sigue alta (default: 480 = 8s) */
+  maxSustainFrames: number;
+  
+  /** Frames en RELEASE (fade out) (default: 60 = 1s) */
+  releaseFrames: number;
+  
+  /** Frames en COOLDOWN antes de poder triggear otro drop (default: 180 = 3s) */
+  cooldownFrames: number;
+}
 
 /**
  * Configuración del estabilizador de energía
@@ -80,6 +110,8 @@ export type SilenceResetCallback = () => void;
  * 
  * Suaviza la energía para evitar parpadeo visual y detecta silencios
  * para resetear el sistema entre canciones.
+ * 
+ * 🎢 WAVE 57.5: Incluye DROP STATE MACHINE para evitar "ametralladora"
  */
 export class EnergyStabilizer {
   // Configuración
@@ -111,6 +143,20 @@ export class EnergyStabilizer {
   private frameCount = 0;
   private lastLogFrame = 0;
   private totalResets = 0;
+  
+  // 🎢 WAVE 57.5: DROP STATE MACHINE
+  private dropState: DropState = 'IDLE';
+  private dropStateFrames = 0;
+  private readonly dropConfig: DropStateMachineConfig = {
+    attackFrames: 30,       // 0.5s de build
+    minSustainFrames: 120,  // 2s mínimo de drop
+    maxSustainFrames: 480,  // 8s máximo de drop
+    releaseFrames: 60,      // 1s de fade out
+    cooldownFrames: 180,    // 3s antes de otro drop
+  };
+  
+  /** 🎢 WAVE 57.5: PUBLIC - ¿Está el DROP activo para la UI? */
+  public isDropActive = false;
   
   // Default config
   private static readonly DEFAULT_CONFIG: EnergyStabilizerConfig = {
@@ -204,9 +250,13 @@ export class EnergyStabilizer {
     const isRelativeDrop = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD) && energy > 0.5;
     const isRelativeBreakdown = energy < (this.emaEnergy - BREAKDOWN_RELATIVE_THRESHOLD) && this.emaEnergy > 0.3;
     
+    // === 🎢 WAVE 57.5: DROP STATE MACHINE ===
+    // Evita el "ametralladora" de drops rápidos con ciclo de vida controlado
+    this.updateDropStateMachine(isRelativeDrop, isRelativeBreakdown, energy);
+    
     // === PASO 6: Log periódico ===
     if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f Drop=${isRelativeDrop} Breakdown=${isRelativeBreakdown}`);
+      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f Drop=${isRelativeDrop} Breakdown=${isRelativeBreakdown} DropState=${this.dropState} Active=${this.isDropActive}`);
       this.lastLogFrame = this.frameCount;
     }
     
@@ -263,6 +313,8 @@ export class EnergyStabilizer {
     silenceFrames: number;
     totalResets: number;
     bufferFullness: number;
+    dropState: DropState;
+    isDropActive: boolean;
   } {
     const nonZeroEntries = this.energyBuffer.filter(e => e > 0).length;
     
@@ -271,6 +323,128 @@ export class EnergyStabilizer {
       silenceFrames: this.silenceFrameCount,
       totalResets: this.totalResets,
       bufferFullness: nonZeroEntries / this.config.smoothingWindowFrames,
+      dropState: this.dropState,
+      isDropActive: this.isDropActive,
+    };
+  }
+  
+  /**
+   * 🎢 WAVE 57.5: DROP STATE MACHINE
+   * 
+   * Ciclo de vida del DROP para evitar el efecto "ametralladora":
+   * 
+   * IDLE ─────(isRelativeDrop)────→ ATTACK
+   *   │                               │
+   *   │                        (attackFrames)
+   *   │                               ↓
+   *   │                            SUSTAIN ←──(energía sigue alta)──┐
+   *   │                               │                             │
+   *   │                        (min/maxFrames o breakdown)          │
+   *   │                               ↓                             │
+   *   │                            RELEASE                          │
+   *   │                               │                             │
+   *   │                        (releaseFrames)                      │
+   *   │                               ↓                             │
+   *   └────────────────────────── COOLDOWN ─────────────────────────┘
+   *                                   │
+   *                            (cooldownFrames)
+   *                                   ↓
+   *                                 IDLE
+   */
+  private updateDropStateMachine(isRelativeDrop: boolean, isRelativeBreakdown: boolean, energy: number): void {
+    this.dropStateFrames++;
+    
+    const prevState = this.dropState;
+    
+    switch (this.dropState) {
+      case 'IDLE':
+        // Solo entramos en ATTACK si detectamos un drop relativo
+        if (isRelativeDrop) {
+          this.dropState = 'ATTACK';
+          this.dropStateFrames = 0;
+          console.log('[EnergyStabilizer] 🎢 DROP: IDLE → ATTACK');
+        }
+        this.isDropActive = false;
+        break;
+        
+      case 'ATTACK':
+        // Build-up del drop
+        this.isDropActive = true;
+        
+        if (this.dropStateFrames >= this.dropConfig.attackFrames) {
+          this.dropState = 'SUSTAIN';
+          this.dropStateFrames = 0;
+          console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → SUSTAIN');
+        }
+        // Si la energía cae durante attack, abortar
+        else if (isRelativeBreakdown || energy < 0.3) {
+          this.dropState = 'RELEASE';
+          this.dropStateFrames = 0;
+          console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → RELEASE (aborted)');
+        }
+        break;
+        
+      case 'SUSTAIN':
+        // El corazón del drop - mantener mientras la energía sea alta
+        this.isDropActive = true;
+        
+        // Salir de SUSTAIN si:
+        // 1. Breakdown detectado
+        // 2. Energía baja significativamente
+        // 3. Llegamos al máximo de sustain
+        const shouldRelease = 
+          isRelativeBreakdown ||
+          energy < 0.4 ||
+          this.dropStateFrames >= this.dropConfig.maxSustainFrames;
+        
+        // Pero solo si hemos pasado el mínimo
+        if (shouldRelease && this.dropStateFrames >= this.dropConfig.minSustainFrames) {
+          this.dropState = 'RELEASE';
+          this.dropStateFrames = 0;
+          console.log(`[EnergyStabilizer] 🎢 DROP: SUSTAIN → RELEASE (after ${this.dropStateFrames} frames)`);
+        }
+        break;
+        
+      case 'RELEASE':
+        // Fade out gradual
+        // isDropActive baja gradualmente durante release (para transición suave)
+        const releaseProgress = this.dropStateFrames / this.dropConfig.releaseFrames;
+        this.isDropActive = releaseProgress < 0.5; // Activo solo primera mitad del release
+        
+        if (this.dropStateFrames >= this.dropConfig.releaseFrames) {
+          this.dropState = 'COOLDOWN';
+          this.dropStateFrames = 0;
+          this.isDropActive = false;
+          console.log('[EnergyStabilizer] 🎢 DROP: RELEASE → COOLDOWN');
+        }
+        break;
+        
+      case 'COOLDOWN':
+        // Período refractario - NO SE PUEDE TRIGGEAR OTRO DROP
+        this.isDropActive = false;
+        
+        if (this.dropStateFrames >= this.dropConfig.cooldownFrames) {
+          this.dropState = 'IDLE';
+          this.dropStateFrames = 0;
+          console.log('[EnergyStabilizer] 🎢 DROP: COOLDOWN → IDLE (ready for next drop)');
+        }
+        break;
+    }
+    
+    // Log de transiciones importantes
+    if (prevState !== this.dropState && this.dropState !== 'IDLE') {
+      console.log(`[EnergyStabilizer] 🎢 State: ${prevState} → ${this.dropState}, Active: ${this.isDropActive}`);
+    }
+  }
+  
+  /**
+   * 🎢 WAVE 57.5: Obtiene el estado actual del drop
+   */
+  getDropState(): { state: DropState; framesInState: number; isActive: boolean } {
+    return {
+      state: this.dropState,
+      framesInState: this.dropStateFrames,
+      isActive: this.isDropActive,
     };
   }
 }

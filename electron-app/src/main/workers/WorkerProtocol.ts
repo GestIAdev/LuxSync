@@ -164,6 +164,7 @@ export interface LightingDecision {
   // 🔥 WAVE 23.1: Exponer source real (sin histéresis)
   // 🌊 WAVE 23.4: Syncopation suavizado para DNA
   // 💫 WAVE 47.1: MOOD & SECTION - Conectar MoodSynthesizer y SectionTracker
+  // 🎢 WAVE 57.5: DROP STATE MACHINE
   debugInfo?: {
     macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
     strategy?: string;         // e.g., "analogous", "complementary"
@@ -175,6 +176,10 @@ export interface LightingDecision {
     syncopation?: number;      // 🌊 WAVE 23.4: Syncopation suavizado (EMA filter)
     mood?: any;                // 💫 WAVE 47.1: MoodSynthesizer output (VAD: valence, arousal, dominance)
     sectionDetail?: any;       // 💫 WAVE 47.1: SectionTracker output completo (type, energy, confidence)
+    drop?: {                   // 🎢 WAVE 57.5: DROP STATE MACHINE output
+      isDropActive?: boolean;
+      dropState?: any;
+    };
   };
   
   // Per-fixture overrides (optional)

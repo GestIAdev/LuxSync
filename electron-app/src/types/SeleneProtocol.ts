@@ -173,6 +173,13 @@ export interface CognitiveData {
   
   /** Last insight or thought as string */
   lastInsight: string;
+
+  /** 
+   * 🔍 WAVE 57.5: Active data sources influencing current mood/behavior
+   * Shows which engines are actively contributing to decisions
+   * @example ['GENRE', 'HARMONY', 'VAD', 'ZODIAC']
+   */
+  activeSources: string[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -615,7 +622,8 @@ export function createDefaultBroadcast(): SeleneBroadcast {
       dream: { isActive: false, currentType: null, currentThought: 'Selene awakening...', projectedBeauty: 0, lastRecommendation: null },
       zodiac: { element: 'water', sign: 'Pisces', affinity: 0.5, quality: 'mutable', description: 'The dreaming mystic' },
       beauty: { current: 0.5, average: 0.5, max: 0.5, components: { fibonacciAlignment: 0, zodiacResonance: 0, musicalHarmony: 0, patternResonance: 0, historicalBonus: 0 } },
-      lastInsight: 'Selene Lux awakening...'
+      lastInsight: 'Selene Lux awakening...',
+      activeSources: []  // 🔍 WAVE 57.5: Empty until audio analysis begins
     },
     musicalDNA: {
       key: null,

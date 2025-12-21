@@ -1,8 +1,39 @@
 # 🎛️ WAVE 62: VIBE SELECTOR UI & IPC INTEGRATION
 
-**Fecha:** $(date)
-**Status:** ✅ COMPLETE
+**Fecha:** 21 Diciembre 2025
+**Status:** ✅ COMPLETE (v62.5 UI Redesign)
 **Build:** ✅ PASS
+
+---
+
+## 🔄 WAVE 62.5 HOTFIX - UI REDESIGN
+
+### Problema Original
+Los botones de WAVE 62 tenían fondos blancos que rompían el tema oscuro Cyberpunk y bloqueaban el espacio del logger.
+
+### Correcciones Aplicadas
+
+1. **Estilo Glassmorphism Oscuro:**
+   - ❌ PROHIBIDO: `bg-white`, fondos claros
+   - ✅ BASE: `bg-black/20`, `bg-transparent`
+   - ✅ BORDE: `border border-white/10`
+   - ✅ TEXTO: `text-gray-500`, `text-[10px] font-mono uppercase`
+
+2. **Active State (Solo aquí hay color):**
+   - Fondo: `bg-{color}-900/20` (muy sutil)
+   - Borde: `border-{color}-500`
+   - Texto: `text-{color}-400`
+   - Glow: `shadow-[0_0_12px_rgba(...,0.4)]`
+
+3. **Reubicación a Footer:**
+   - VibeSelector movido al FONDO del panel
+   - Terminal (`brain-terminal`) ahora tiene `flex-1` para crecer
+   - Actúa como "dock" inferior del panel SELENE AI
+
+4. **Layout Compacto:**
+   - Flex row horizontal con `gap-2`
+   - Botones `h-12` con iconos `w-4 h-4`
+   - Texto minúsculo `text-[10px]` solo visible en sm+
 
 ---
 

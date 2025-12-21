@@ -90,7 +90,7 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
   }
   
   return (
-    <div className={`selene-brain ${className}`}>
+    <div className={`selene-brain ${className} flex flex-col`}>
       {/* Stats Row */}
       <div className="brain-stats">
         <div className="stat-item">
@@ -110,11 +110,8 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
         </div>
       </div>
       
-      {/* 🎛️ WAVE 62: Vibe Context Selector */}
-      <VibeSelector />
-      
-      {/* Terminal - Real Logs */}
-      <div className="brain-terminal" ref={terminalRef}>
+      {/* Terminal - Real Logs (flex-1 to grow and fill space) */}
+      <div className="brain-terminal flex-1" ref={terminalRef}>
         {filteredLogs.length === 0 ? (
           <div className="terminal-line waiting">
             <span className="terminal-time">[--:--:--]</span>
@@ -144,6 +141,9 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
           <span className="cursor">▊</span>
         </div>
       </div>
+      
+      {/* 🎛️ WAVE 62.5: Vibe Context Selector - FOOTER DOCK */}
+      <VibeSelector />
     </div>
   )
 }

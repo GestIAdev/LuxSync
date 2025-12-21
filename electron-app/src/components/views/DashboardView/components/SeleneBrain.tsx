@@ -6,6 +6,8 @@
  * Filtered feed for DJ-facing dashboard:
  * ✅ MUSIC, MOOD, BRAIN, VISUAL, MODE, BEAT, GENRE
  * ❌ SYSTEM, DEBUG, NETWORK, ERROR (hidden unless critical)
+ * 
+ * 🎛️ WAVE 62: Added VibeSelector for context switching
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -18,6 +20,7 @@ import {
 } from '../../../../stores/truthStore'
 import { useLogStore, selectLogs, LogEntry } from '../../../../stores/logStore'
 import { useControlStore } from '../../../../stores/controlStore'
+import { VibeSelector } from './VibeSelector'
 import './SeleneBrain.css'
 
 // Categories to show in Dashboard (DJ-facing, narrative flow)
@@ -106,6 +109,9 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
           <span className="stat-value trigger">{lastTrigger}</span>
         </div>
       </div>
+      
+      {/* 🎛️ WAVE 62: Vibe Context Selector */}
+      <VibeSelector />
       
       {/* Terminal - Real Logs */}
       <div className="brain-terminal" ref={terminalRef}>

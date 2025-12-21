@@ -230,6 +230,11 @@ interface Window {
     forceMutate: () => Promise<{ success: boolean; error?: string }>
     resetMemory: () => Promise<{ success: boolean; error?: string }>
     
+    // 🎛️ WAVE 62: Vibe Selector
+    setVibe: (vibeId: string) => Promise<{ success: boolean; vibeId?: string; error?: string }>
+    getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>
+    onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => () => void
+    
     // WAVE 9.5: Fixtures
     scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>
     getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>

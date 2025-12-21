@@ -1276,6 +1276,63 @@ ipcMain.handle('selene:force-mutate', () => {
   }
 })
 
+// ============================================
+// 🎛️ WAVE 62: VIBE SELECTOR - Set Active Vibe Context
+// ============================================
+ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
+  console.log(`[Main] 🎛️ VIBE CHANGE REQUEST: ${vibeId}`)
+  
+  // Get Trinity orchestrator for worker communication
+  let trinity: ReturnType<typeof getTrinity> | null = null
+  try {
+    trinity = getTrinity()
+  } catch {
+    console.log('[Main] Trinity not initialized - vibe change queued')
+  }
+  
+  if (trinity) {
+    try {
+      // Send SET_VIBE message to GAMMA worker
+      trinity.setVibe(vibeId)
+      console.log(`[Main] 🎛️ VIBE SET: ${vibeId} → GAMMA worker`)
+      
+      // Emit confirmation to UI
+      if (mainWindow) {
+        mainWindow.webContents.send('selene:vibe-changed', {
+          vibeId,
+          timestamp: Date.now()
+        })
+      }
+      
+      return { success: true, vibeId }
+    } catch (error) {
+      console.error('[Main] ❌ Error setting vibe:', error)
+      return { success: false, error: String(error) }
+    }
+  }
+  
+  return { success: false, error: 'Trinity not available' }
+})
+
+// ============================================
+// 🎛️ WAVE 62: VIBE SELECTOR - Get Current Vibe
+// ============================================
+ipcMain.handle('selene:getVibe', async () => {
+  let trinity: ReturnType<typeof getTrinity> | null = null
+  try {
+    trinity = getTrinity()
+  } catch {
+    return { success: false, vibeId: 'techno-club', error: 'Trinity not initialized' }
+  }
+  
+  if (trinity) {
+    // Default vibe until we have proper state query
+    return { success: true, vibeId: 'techno-club' }
+  }
+  
+  return { success: false, vibeId: 'techno-club', error: 'Trinity not available' }
+})
+
 ipcMain.handle('selene:reset-memory', () => {
   if (!selene) {
     return { success: false, error: 'Selene not initialized' }

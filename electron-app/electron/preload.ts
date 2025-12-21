@@ -299,6 +299,24 @@ const luxApi = {
   resetMemory: () => ipcRenderer.invoke('selene:reset-memory'),
 
   // ============================================
+  // 🎛️ WAVE 62: VIBE SELECTOR
+  // ============================================
+  
+  /** Set active Vibe profile (techno-club, fiesta-latina, pop-rock, chill-lounge) */
+  setVibe: (vibeId: string) => ipcRenderer.invoke('selene:setVibe', vibeId),
+  
+  /** Get current active Vibe */
+  getVibe: () => ipcRenderer.invoke('selene:getVibe'),
+  
+  /** Subscribe to Vibe changes */
+  onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, data: { vibeId: string; timestamp: number }) => 
+      callback(data)
+    ipcRenderer.on('selene:vibe-changed', handler)
+    return () => ipcRenderer.removeListener('selene:vibe-changed', handler)
+  },
+
+  // ============================================
   // WAVE 9.5: FIXTURES
   // ============================================
   

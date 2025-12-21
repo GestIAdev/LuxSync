@@ -674,6 +674,20 @@ export class TrinityOrchestrator extends EventEmitter {
     console.log(`[ALPHA] 🎚️ Setting GAMMA mode to: ${mode}`);
     this.sendToWorker('gamma', MessageType.SET_MODE, { mode }, MessagePriority.HIGH);
   }
+  
+  /**
+   * 🎛️ WAVE 62: Set active Vibe profile on GAMMA worker
+   * Routes UI vibe selection to the Mind worker
+   */
+  setVibe(vibeId: string): void {
+    const gamma = this.nodes.get('gamma');
+    if (!gamma?.worker) {
+      console.warn('[ALPHA] ⚠️ Cannot set vibe: GAMMA worker not spawned yet');
+      return;
+    }
+    console.log(`[ALPHA] 🎛️ Setting VIBE to: ${vibeId}`);
+    this.sendToWorker('gamma', MessageType.SET_VIBE, { vibeId }, MessagePriority.HIGH);
+  }
 }
 
 // ============================================

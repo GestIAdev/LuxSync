@@ -1,14 +1,14 @@
 /**
- * 🎛️ VIBE SELECTOR - WAVE 62.5 REDESIGN
+ * 🎛️ VIBE SELECTOR - WAVE 62.7 NUCLEAR DARK MODE
  * 
- * Cyberpunk dock-style component for Vibe context switching.
- * Glassmorphism dark theme - NO WHITE BACKGROUNDS.
+ * CSS NUCLEAR: Force dark mode with inline styles + !important.
+ * Industrial-size buttons (h-20) at footer of SeleneBrain.
  * 
  * Design:
- * - Horizontal flex row (dock/footer style)
- * - Transparent/dark backgrounds only
- * - Subtle neon accents on active state only
- * - Compact h-12 buttons, small icons
+ * - INLINE STYLES to override any CSS contamination
+ * - appearance: none to kill browser defaults
+ * - h-20 (80px) industrial size buttons
+ * - Large icons (w-8 h-8)
  */
 
 import React from 'react'
@@ -27,38 +27,43 @@ const ICON_MAP: Record<string, React.ElementType> = {
 }
 
 // ============================================================================
-// COLOR CONFIG - Active state colors per vibe
+// COLOR CONFIG - NEON ACTIVE STATES
 // ============================================================================
 
-const VIBE_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
+const VIBE_STYLES: Record<string, { 
+  bgActive: string
+  borderActive: string  
+  textActive: string
+  shadow: string
+}> = {
   cyan: {
-    bg: 'bg-cyan-900/20',
-    border: 'border-cyan-500',
-    text: 'text-cyan-400',
-    glow: 'shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+    bgActive: 'rgba(8, 51, 68, 0.5)',      // cyan-950/50
+    borderActive: '#06b6d4',                // cyan-500
+    textActive: '#22d3ee',                  // cyan-400
+    shadow: '0 0 30px rgba(6, 182, 212, 0.4)'
   },
   orange: {
-    bg: 'bg-orange-900/20',
-    border: 'border-orange-500',
-    text: 'text-orange-400',
-    glow: 'shadow-[0_0_12px_rgba(249,115,22,0.4)]'
+    bgActive: 'rgba(67, 20, 7, 0.5)',       // orange-950/50
+    borderActive: '#f97316',                 // orange-500
+    textActive: '#fb923c',                   // orange-400
+    shadow: '0 0 30px rgba(249, 115, 22, 0.4)'
   },
   fuchsia: {
-    bg: 'bg-fuchsia-900/20',
-    border: 'border-fuchsia-500',
-    text: 'text-fuchsia-400',
-    glow: 'shadow-[0_0_12px_rgba(217,70,239,0.4)]'
+    bgActive: 'rgba(74, 4, 78, 0.5)',       // fuchsia-950/50
+    borderActive: '#d946ef',                 // fuchsia-500
+    textActive: '#e879f9',                   // fuchsia-400
+    shadow: '0 0 30px rgba(217, 70, 239, 0.4)'
   },
   teal: {
-    bg: 'bg-teal-900/20',
-    border: 'border-teal-500',
-    text: 'text-teal-400',
-    glow: 'shadow-[0_0_12px_rgba(45,212,191,0.4)]'
+    bgActive: 'rgba(4, 47, 46, 0.5)',       // teal-950/50
+    borderActive: '#14b8a6',                 // teal-500
+    textActive: '#2dd4bf',                   // teal-400
+    shadow: '0 0 30px rgba(45, 212, 191, 0.4)'
   }
 }
 
 // ============================================================================
-// VIBE BUTTON - Compact dock-style button
+// VIBE BUTTON - INDUSTRIAL SIZE with INLINE STYLES
 // ============================================================================
 
 interface VibeButtonProps {
@@ -75,43 +80,91 @@ const VibeButton: React.FC<VibeButtonProps> = ({
   onClick 
 }) => {
   const Icon = ICON_MAP[vibe.icon] || Zap
-  const colors = VIBE_COLORS[vibe.accentColor] || VIBE_COLORS.cyan
+  const colors = VIBE_STYLES[vibe.accentColor] || VIBE_STYLES.cyan
   
-  // INACTIVE: Dark transparent, subtle border
-  // ACTIVE: Colored tint, bright border, glow
-  const baseClasses = `
-    flex-1 h-12 flex items-center justify-center gap-2
-    rounded-md transition-all duration-200 ease-out
-    ${isTransitioning ? 'opacity-50 cursor-wait' : 'cursor-pointer'}
-  `
+  // NUCLEAR INLINE STYLES - Cannot be overridden
+  const baseStyle: React.CSSProperties = {
+    // RESET BROWSER DEFAULTS
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    outline: 'none',
+    
+    // FORCE DARK
+    backgroundColor: isActive ? colors.bgActive : 'rgba(0, 0, 0, 0.4)',
+    color: isActive ? colors.textActive : 'rgba(156, 163, 175, 0.8)', // gray-400
+    
+    // BORDERS
+    border: `2px solid ${isActive ? colors.borderActive : 'rgba(255, 255, 255, 0.1)'}`,
+    borderRadius: '12px',
+    
+    // SIZE - INDUSTRIAL
+    flex: 1,
+    height: '80px',
+    minHeight: '80px',
+    
+    // LAYOUT
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    
+    // EFFECTS
+    boxShadow: isActive ? colors.shadow : 'none',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    
+    // INTERACTION
+    cursor: isTransitioning ? 'wait' : 'pointer',
+    opacity: isTransitioning ? 0.5 : 1,
+    transition: 'all 200ms ease-out',
+  }
   
-  const inactiveClasses = `
-    bg-black/20 border border-white/10 
-    hover:bg-white/5 hover:border-white/20
-    text-gray-500
-  `
+  const iconStyle: React.CSSProperties = {
+    width: '32px',
+    height: '32px',
+    color: 'inherit',
+  }
   
-  const activeClasses = `
-    ${colors.bg} ${colors.border} ${colors.glow}
-    border ${colors.text}
-  `
+  const labelStyle: React.CSSProperties = {
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase' as const,
+    opacity: isActive ? 1 : 0.7,
+    color: 'inherit',
+    fontFamily: 'ui-monospace, monospace',
+  }
   
   return (
     <button
       onClick={onClick}
       disabled={isTransitioning}
-      className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
+      style={baseStyle}
       title={vibe.description}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
+        }
+      }}
     >
-      {/* Icon */}
+      {/* Icon - LARGE */}
       {isTransitioning && isActive ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 style={{ ...iconStyle, animation: 'spin 1s linear infinite' }} />
       ) : (
-        <Icon className="w-4 h-4" />
+        <Icon style={iconStyle} />
       )}
       
-      {/* Label - small mono text */}
-      <span className="text-[10px] font-mono uppercase tracking-wider hidden sm:inline">
+      {/* Label */}
+      <span style={labelStyle}>
         {vibe.name}
       </span>
     </button>
@@ -119,7 +172,7 @@ const VibeButton: React.FC<VibeButtonProps> = ({
 }
 
 // ============================================================================
-// VIBE SELECTOR - Dock/Footer component
+// VIBE SELECTOR - FOOTER DOCK with mt-auto
 // ============================================================================
 
 export const VibeSelector: React.FC = () => {
@@ -136,10 +189,21 @@ export const VibeSelector: React.FC = () => {
     return null
   }
   
+  const containerStyle: React.CSSProperties = {
+    marginTop: 'auto',
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+  }
+  
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: '8px',
+  }
+  
   return (
-    <div className="vibe-selector-dock pt-2 border-t border-white/5">
+    <div style={containerStyle}>
       {/* Dock Row */}
-      <div className="flex gap-2">
+      <div style={rowStyle}>
         {allVibes.map((vibe: VibeInfo) => (
           <VibeButton
             key={vibe.id}

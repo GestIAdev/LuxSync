@@ -90,7 +90,7 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
   }
   
   return (
-    <div className={`selene-brain ${className} flex flex-col`}>
+    <div className={`selene-brain ${className} flex flex-col h-full`}>
       {/* Stats Row */}
       <div className="brain-stats">
         <div className="stat-item">

@@ -39,17 +39,20 @@ import {
   SimpleRhythmDetector,
   SimpleHarmonyDetector,
   SimpleSectionTracker,
-  SimpleGenreClassifier,  // 🔧 WAVE 55.1: Alias de SimpleBinaryBias
   AudioMetrics,
   RhythmOutput,
   HarmonyOutput,
   SectionOutput,
-  GenreOutput,
+  GenreOutput,  // 🗑️ WAVE 61: Type kept for protocol compatibility, classifier eliminated
 } from './TrinityBridge';
 
-// � WAVE 55.1: ZOMBIE HUNT - GenreClassifier ELIMINADO
-// El viejo "Senate" con votaciones ha sido reemplazado por SimpleBinaryBias
-// import { GenreClassifier } from '../selene-lux-core/engines/musical/classification/GenreClassifier';
+// 🎛️ WAVE 61: LEGACY ELIMINATION
+// ===================================
+// La detección de género (SimpleBinaryBias/SimpleGenreClassifier) ha sido ELIMINADA.
+// El Vibe es seleccionado MANUALMENTE por el DJ via VibeManager en GAMMA.
+//
+// FILOSOFÍA: "El DJ sabe qué está pinchando. Selene opera dentro del contexto."
+// ===================================
 
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
@@ -309,7 +312,7 @@ const spectrumAnalyzer = new SpectrumAnalyzer(config.audioSampleRate); // 🧮 W
 const rhythmDetector = new SimpleRhythmDetector();
 const harmonyDetector = new SimpleHarmonyDetector();
 const sectionTracker = new SimpleSectionTracker();
-const genreClassifier = new SimpleGenreClassifier();  // 💀 WAVE 55.1: SimpleBinaryBias (20s lock, no senate)
+// 🗑️ WAVE 61: genreClassifier ELIMINADO - VibeManager en GAMMA es el nuevo dueño del contexto
 
 // 🌈 WAVE 47.1: MoodSynthesizer - Emotional tone analysis
 const moodSynthesizer = new MoodSynthesizer();
@@ -455,24 +458,27 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   };
   const moodOutput = moodSynthesizer.process(metricsForMood as any, beatState as any);
   
-  // WAVE 18.3: Pass enhanced parameters to GenreClassifier
-  // 🔧 WAVE 45.4: THE BPM WIRE FIX - El BPM no llegaba al GenreClassifier!
-  // 💀 WAVE 55.1: Ahora SimpleBinaryBias requiere AudioMetrics completo
-  const audioForClassifier: AudioMetrics = {
-    volume: energy,
-    bass: spectrum.bass,
-    mid: spectrum.mid,
-    treble: spectrum.treble,
-    bpm: state.currentBpm,
-    bpmConfidence: rhythmOutput.confidence ?? 0.5,
-    onBeat: beatState.onBeat ?? false,
-    beatPhase: beatState.phase ?? 0,
-    timestamp: Date.now(),
+  // 🗑️ WAVE 61: GenreClassifier ELIMINADO
+  // El contexto musical ahora es determinado por VibeManager en GAMMA (selección manual del DJ)
+  // Generamos un GenreOutput neutro para compatibilidad con el protocolo
+  const genreOutput: GenreOutput = {
+    primary: 'ELECTRONIC_4X4',  // Default neutral
+    secondary: null,
+    confidence: 0,  // Zero confidence = "no genre detection"
+    scores: { ELECTRONIC_4X4: 0.5, LATINO_TRADICIONAL: 0.5 },
+    genre: 'ELECTRONIC_4X4',
+    subgenre: 'none' as const,
+    features: {
+      bpm: state.currentBpm,
+      syncopation: rhythmOutput.syncopation ?? 0,
+      hasFourOnFloor: rhythmOutput.pattern === 'four_on_floor',
+      hasDembow: false,
+      trebleDensity: 0,
+      has808Bass: false,
+      avgEnergy: energy,
+    },
+    mood: 'neutral' as any,  // Neutral mood = let VibeManager decide
   };
-  const genreOutput = genreClassifier.classify(
-    rhythmOutput as any,  // RhythmOutput compatible
-    audioForClassifier    // 💀 WAVE 55.1: Full AudioMetrics
-  );
   
   // 🔇 WAVE 39.5: DEBUG silenciado - genera demasiado spam
   // if (state.frameCount % 120 === 0) {
@@ -480,6 +486,7 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   // }
   
   // 💓 WAVE 44.0: HOLISTIC HEARTBEAT - Estado de TODOS los motores cada 5 segundos
+  // 🗑️ WAVE 61: senate/genre detection ELIMINADO - VibeManager controla el contexto
   if (state.frameCount % 150 === 0) {
     console.log('[BETA HEARTBEAT] 💓📊', JSON.stringify({
       frame: state.frameCount,
@@ -506,17 +513,7 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
         energy: sectionOutput.energy ?? 0,
         confidence: sectionOutput.confidence ?? 0,
       },
-      senate: {
-        winner: genreOutput.genre,
-        confidence: genreOutput.confidence,
-        votes: genreOutput.scores, // ← LOS VOTOS DEL SENADO
-        features: {
-          sync: genreOutput.features?.syncopation ?? 0,
-          bpm: genreOutput.features?.bpm ?? 0,
-          fourOnFloor: genreOutput.features?.hasFourOnFloor ?? false,
-          dembow: genreOutput.features?.hasDembow ?? false,
-        }
-      },
+      // 🗑️ WAVE 61: "senate" eliminado - era parte del sistema GenreClassifier
       audio: {
         energy: energy,
         bass: spectrum.bass,
@@ -772,7 +769,7 @@ if (parentPort) {
   console.log('[BETA] 👂 Worker thread started, waiting for INIT...');
   
   // Handle uncaught errors
-  process.on('uncaughtException', (error) => {
+  (process as NodeJS.EventEmitter).on('uncaughtException', (error: Error) => {
     console.error('[BETA] Uncaught exception:', error);
     sendMessage(MessageType.WORKER_ERROR, 'alpha', {
       nodeId: NODE_ID,
@@ -781,7 +778,7 @@ if (parentPort) {
     }, MessagePriority.CRITICAL);
   });
   
-  process.on('unhandledRejection', (reason) => {
+  (process as NodeJS.EventEmitter).on('unhandledRejection', (reason: unknown) => {
     console.error('[BETA] Unhandled rejection:', reason);
     sendMessage(MessageType.WORKER_ERROR, 'alpha', {
       nodeId: NODE_ID,

@@ -60,7 +60,10 @@ export enum MessageType {
   // 🧠 WAVE 10: Brain Control
   SET_MODE = 'set_mode',          // Enable/disable brain
   ENABLE_BRAIN = 'enable_brain',  // Full brain activation
-  DISABLE_BRAIN = 'disable_brain' // Fallback to reactive
+  DISABLE_BRAIN = 'disable_brain', // Fallback to reactive
+  
+  // 🎛️ WAVE 60: Vibe Control
+  SET_VIBE = 'set_vibe'           // Change active Vibe profile
 }
 
 export enum MessagePriority {
@@ -180,6 +183,9 @@ export interface LightingDecision {
       isDropActive?: boolean;
       dropState?: any;
     };
+    // 🎛️ WAVE 60: Vibe Engine output
+    activeVibe?: string;
+    vibeTransitioning?: boolean;
   };
   
   // Per-fixture overrides (optional)

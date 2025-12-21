@@ -44,7 +44,7 @@ import {
 import { RhythmAnalyzer } from '../analysis/RhythmAnalyzer.js';
 import { HarmonyDetector, createHarmonyDetector } from '../analysis/HarmonyDetector.js';
 import { SectionTracker, createSectionTracker } from '../analysis/SectionTracker.js';
-import { GenreClassifier } from '../classification/GenreClassifier.js';
+// 🗑️ WAVE 61: GenreClassifier ELIMINADO - VibeManager en GAMMA es el nuevo dueño del contexto
 import { PredictionMatrix, createPredictionMatrix, ExtendedPrediction } from './PredictionMatrix.js';
 
 // ============================================================
@@ -165,13 +165,14 @@ const MOOD_TO_MOVEMENT: Record<SynthesizedMood, string> = {
 
 /**
  * Motor de Contexto Musical - El Cerebro de Wave 8
+ * 🗑️ WAVE 61: GenreClassifier ELIMINADO - VibeManager controla el contexto
  */
 export class MusicalContextEngine extends EventEmitter {
   // Analizadores
   private rhythmAnalyzer: RhythmAnalyzer;
   private harmonyDetector: HarmonyDetector;
   private sectionTracker: SectionTracker;
-  private genreClassifier: GenreClassifier;
+  // 🗑️ WAVE 61: genreClassifier eliminado
   private predictionMatrix: PredictionMatrix;
   
   // Estado
@@ -202,7 +203,7 @@ export class MusicalContextEngine extends EventEmitter {
     this.rhythmAnalyzer = new RhythmAnalyzer();
     this.harmonyDetector = createHarmonyDetector();
     this.sectionTracker = createSectionTracker();
-    this.genreClassifier = new GenreClassifier();
+    // 🗑️ WAVE 61: genreClassifier eliminado - contexto controlado por VibeManager
     this.predictionMatrix = createPredictionMatrix();
     
     // Escuchar eventos de los analizadores
@@ -265,16 +266,14 @@ export class MusicalContextEngine extends EventEmitter {
         simpleAudio
       );
       
-      // Genre (throttled)
-      const genreResult = this.genreClassifier.classify(
-        rhythm,
-        simpleAudio  // ← AudioInput (correcto)
-      );
+      // 🗑️ WAVE 61: GenreClassifier ELIMINADO
+      // El contexto musical ahora es controlado por VibeManager (selección manual del DJ)
+      // Generamos un GenreClassification neutro para compatibilidad con el protocolo
       this.cachedGenre = {
-        primary: genreResult.genre as any,  // ← WAVE 24.11: Cast to fix TS MacroGenre → MusicGenre
-        confidence: genreResult.confidence,
-        secondary: genreResult.subgenre !== 'none' ? (genreResult.genre as any) : undefined,
-        characteristics: this.extractCharacteristics(genreResult),
+        primary: 'unknown' as any,
+        confidence: 0,  // Zero confidence = "sin detección de género"
+        secondary: undefined,
+        characteristics: [],
         timestamp: now,
       };
     }
@@ -813,7 +812,7 @@ export class MusicalContextEngine extends EventEmitter {
     this.rhythmAnalyzer.reset?.();
     this.harmonyDetector.reset?.();
     this.sectionTracker.reset?.();
-    this.genreClassifier.reset?.();
+    // 🗑️ WAVE 61: genreClassifier.reset eliminado
     this.predictionMatrix.reset();
     
     this.emit('reset');

@@ -24,10 +24,8 @@ export {
   type ScaleIdentifierConfig,
 } from './ScaleIdentifier.js';
 
-// TODO: FASE 3 - GenreClassifier
-// export { GenreClassifier } from './GenreClassifier';
-
-// TODO: FASE 3 - MoodSynthesizer
+// 🗑️ WAVE 61: GenreClassifier ELIMINADO
+// La detección automática de género fue reemplazada por VibeManager (selección manual del DJ)
 // export { MoodSynthesizer } from './MoodSynthesizer';
 
 // Re-export types

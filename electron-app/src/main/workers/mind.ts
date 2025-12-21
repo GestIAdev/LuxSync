@@ -65,10 +65,14 @@ import { EnergyStabilizer } from '../selene-lux-core/engines/visual/EnergyStabil
 // 🎭 WAVE 53: Mood Arbiter - Estabilización emocional para coherencia térmica
 import { MoodArbiter, type MetaEmotion } from '../selene-lux-core/engines/visual/MoodArbiter';
 
-// � WAVE 54: Strategy Arbiter - Estabilización de estrategia de color
+// 🎨 WAVE 54: Strategy Arbiter - Estabilización de estrategia de color
 import { StrategyArbiter, type ColorStrategy, type SectionType } from '../selene-lux-core/engines/visual/StrategyArbiter';
 
-// �🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
+// 🎛️ WAVE 60: Vibe Manager - Bounded Context Provider (RESTRINGIR, NO FORZAR)
+import { VibeManager } from '../../engines/context/VibeManager';
+import type { VibeId } from '../../types/VibeProfile';
+
+// 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
 
 // ============================================
@@ -292,7 +296,11 @@ const state: GammaState = {
   errors: []
 };
 
-// 🏎️ WAVE 52 + 🎭 WAVE 53 + 🎨 WAVE 54: Conectar cadena de reset COMPLETA
+// �️ WAVE 60: Vibe Manager - Singleton para restricciones de contexto
+// FILOSOFÍA: RESTRINGIR, NO FORZAR - El DJ define el contexto, Selene opera dentro
+const vibeManager = VibeManager.getInstance();
+
+// �🏎️ WAVE 52 + 🎭 WAVE 53 + 🎨 WAVE 54: Conectar cadena de reset COMPLETA
 // Cuando EnergyStabilizer detecta silencio prolongado (entre canciones),
 // reseteamos TODOS los estabilizadores para que la nueva canción empiece limpia.
 state.energyStabilizer.onReset(() => {
@@ -497,11 +505,24 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     isRelativeDrop: energyOutput.isRelativeDrop, // WAVE 55: DROP relativo
   });
   
-  // WAVE 52-54: Crear analisis FULL STABILIZED
+  // 🎛️ WAVE 60: VIBE CONSTRAINTS - Aplicar restricciones del contexto
+  // El VibeManager actúa como "Gatekeeper" que restringe las decisiones
+  // de los Arbiters según el Vibe seleccionado por el DJ.
+  vibeManager.updateTransition(state.frameCount);
+  
+  // Constrain MetaEmotion (BRIGHT/DARK/NEUTRAL) según Vibe
+  const constrainedEmotion = vibeManager.constrainMetaEmotion(moodArbiterOutput.stableEmotion);
+  
+  // Constrain Strategy según Vibe
+  const constrainedStrategy = vibeManager.constrainStrategy(
+    strategyArbiterOutput.stableStrategy as ColorStrategy
+  );
+  
+  // WAVE 52-54 + 60: Crear analisis FULL STABILIZED + VIBE CONSTRAINED
   // - stableKey: evita cambio de color por acordes de paso
   // - smoothedEnergy: evita parpadeo por picos de kick
-  // - stableEmotion: coherencia termica emocional
-  // - stableStrategy: coherencia de contraste de color
+  // - constrainedEmotion: coherencia térmica según Vibe (WAVE 60)
+  // - constrainedStrategy: coherencia de contraste según Vibe (WAVE 60)
   const stabilizedAnalysis = {
     ...analysis,
     energy: energyOutput.smoothedEnergy,
@@ -514,8 +535,8 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       harmony: {
         ...harmony,
         key: keyStabilizerOutput.stableKey,
-        temperature: moodArbiterOutput.stableEmotion === 'BRIGHT' ? 'warm' :
-                     moodArbiterOutput.stableEmotion === 'DARK' ? 'cold' : 'neutral',
+        temperature: constrainedEmotion === 'BRIGHT' ? 'warm' :
+                     constrainedEmotion === 'DARK' ? 'cold' : 'neutral',
       },
     },
   } as SeleneExtendedAnalysis;
@@ -527,10 +548,14 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // Guardar en state
   state.currentPalette = selenePalette;
   
-  // Calculate intensity
+  // Calculate intensity - 🎛️ WAVE 60: Apply Vibe dimmer constraints
   const baseIntensity = section.energy;
   const beatBoost = analysis.onBeat ? 0.2 * analysis.beatStrength : 0;
-  const intensity = Math.min(1, baseIntensity + beatBoost);
+  const rawIntensity = Math.min(1, baseIntensity + beatBoost);
+  
+  // 🎛️ WAVE 60: Constrain intensity through VibeManager
+  // Aplica floor/ceiling y reglas de blackout según el Vibe activo
+  const intensity = vibeManager.constrainDimmer(rawIntensity);
   
   // Select movement based on section (from Wave 8)
   const movementPattern = sectionToMovement(section, analysis.energy, rhythm.syncopation);
@@ -582,9 +607,21 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const shouldPrism = triggerStates.prism &&
                       (section.type === 'chorus' || harmony.mood === 'dreamy');
   
+  // 🎛️ WAVE 60: Apply Vibe effect constraints
+  // El VibeManager puede prohibir strobe o limitar su velocidad
+  const maxStrobeRate = vibeManager.getMaxStrobeRate();
+  const vibeAllowsStrobe = maxStrobeRate > 0 && vibeManager.isEffectAllowed('strobe');
+  
+  // Calculate strobe rate respecting Vibe constraints
+  let strobeRate: number | undefined;
+  if (shouldStrobe && vibeAllowsStrobe && analysis.bpm > 140) {
+    const rawStrobeRate = analysis.bpm / 60;
+    strobeRate = maxStrobeRate > 0 ? Math.min(rawStrobeRate, maxStrobeRate) : rawStrobeRate;
+  }
+  
   const effects = {
-    strobe: shouldStrobe,
-    strobeRate: shouldStrobe && analysis.bpm > 140 ? analysis.bpm / 60 : undefined,
+    strobe: shouldStrobe && vibeAllowsStrobe,
+    strobeRate,
     fog: section.type === 'buildup' ? section.energy * 0.8 :
          section.type === 'breakdown' ? 0.3 : 0,
     laser: shouldLaser,
@@ -723,6 +760,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para DNA derivation
     // 💫 WAVE 47.1.3: MOOD ARBITRATION - Enviar finalMood (arbitrado) no VAD raw
     // 🎭 WAVE 53: Mood Arbiter - Meta-emoción estabilizada
+    // 🎛️ WAVE 60: Vibe activo
     debugInfo: {
       macroGenre: selenePalette.meta.macroGenre,
       strategy: selenePalette.meta.strategy,
@@ -732,13 +770,16 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       mode: harmony.mode,
       source: 'procedural' as const,  // 🔥 LA VERDAD CRUDA - mind.ts siempre es procedural (no usa Brain)
       syncopation: state.smoothedSync,  // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para evitar flicker en DNA
+      // 🎛️ WAVE 60: Vibe Engine Info
+      activeVibe: vibeManager.getActiveVibe().id,
+      vibeTransitioning: vibeManager.isTransitioning(),
       mood: {
         primary: finalMood,  // 💫 WAVE 47.1.3: Mood arbitrado (genre > harmony > VAD)
-        stableEmotion: moodArbiterOutput.stableEmotion,  // 🎭 WAVE 53
+        stableEmotion: constrainedEmotion,  // 🎭 WAVE 53 + 60: Constrained by Vibe
         thermalTemperature: moodArbiterOutput.thermalTemperature,  // 🎭 WAVE 53
         // 🎨 WAVE 54: Strategy Arbiter output (dentro de mood porque debugInfo tiene tipos estrictos)
         colorStrategy: {
-          stable: strategyArbiterOutput.stableStrategy,
+          stable: constrainedStrategy,  // 🎛️ WAVE 60: Constrained by Vibe
           instant: strategyArbiterOutput.instantStrategy,
           avgSyncopation: strategyArbiterOutput.averagedSyncopation,
           contrastLevel: strategyArbiterOutput.contrastLevel,
@@ -969,6 +1010,18 @@ function handleMessage(message: WorkerMessage): void {
         state.operationMode = 'reactive';
         console.log('[GAMMA] 💤 BRAIN DISABLED');  // Keep - one clean log
         break;
+      
+      // 🎛️ WAVE 60: Vibe Control
+      case MessageType.SET_VIBE: {
+        const vibePayload = message.payload as { vibeId: string };
+        const success = vibeManager.setActiveVibe(vibePayload.vibeId as VibeId, state.frameCount);
+        if (success) {
+          console.log(`[GAMMA] 🎛️ VIBE CHANGED: ${vibePayload.vibeId}`);
+        } else {
+          console.warn(`[GAMMA] ⚠️ Invalid vibe ID: ${vibePayload.vibeId}`);
+        }
+        break;
+      }
         
       default:
         console.warn(`[GAMMA] Unknown message type: ${message.type}`);
@@ -1010,7 +1063,7 @@ if (parentPort) {
   console.log('[GAMMA] 🧠 Worker ready');  // Keep - startup only
   
   // Handle uncaught errors
-  process.on('uncaughtException', (error) => {
+  (process as NodeJS.EventEmitter).on('uncaughtException', (error: Error) => {
     console.error('[GAMMA] Uncaught exception:', error);
     sendMessage(MessageType.WORKER_ERROR, 'alpha', {
       nodeId: NODE_ID,
@@ -1019,7 +1072,7 @@ if (parentPort) {
     }, MessagePriority.CRITICAL);
   });
   
-  process.on('unhandledRejection', (reason) => {
+  (process as NodeJS.EventEmitter).on('unhandledRejection', (reason: unknown) => {
     console.error('[GAMMA] Unhandled rejection:', reason);
     sendMessage(MessageType.WORKER_ERROR, 'alpha', {
       nodeId: NODE_ID,

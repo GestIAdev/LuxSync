@@ -55,8 +55,7 @@ export { SectionTracker } from './analysis/SectionTracker';
 // ============================================================
 // ✅ FASE 2
 export { ScaleIdentifier } from './classification/ScaleIdentifier';
-// ✅ FASE 3
-export { GenreClassifier } from './classification/GenreClassifier';
+// 🗑️ WAVE 61: GenreClassifier ELIMINADO - Reemplazado por VibeManager
 
 // ============================================================
 // 🧠 CONTEXT COMPONENTS

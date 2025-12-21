@@ -259,7 +259,7 @@ export class TrinityOrchestrator extends EventEmitter {
     });
     
     // Handle errors
-    worker.on('error', (error) => {
+    worker.on('error', (error: Error) => {
       console.error(`[ALPHA] Worker ${nodeId} error:`, error);
       this.handleWorkerFailure(nodeId, error.message);
     });

@@ -953,11 +953,12 @@ export class SeleneColorInterpolator {
       const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
       this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
       
+      // 🧹 WAVE 63.5: Log comentado - solo vibes y errores importan
       // Log solo cada segundo
-      if (this.frameCount - this.lastLogFrame > 60) {
-        console.log(`[ColorInterpolator] 🎨 Nueva transición: ${this.currentPalette.meta.macroGenre} → ${newTarget.meta.macroGenre} (${isDrop ? 'DROP' : 'normal'})`);
-        this.lastLogFrame = this.frameCount;
-      }
+      // if (this.frameCount - this.lastLogFrame > 60) {
+      //   console.log(`[ColorInterpolator] 🎨 Nueva transición: ${this.currentPalette.meta.macroGenre} → ${newTarget.meta.macroGenre} (${isDrop ? 'DROP' : 'normal'})`);
+      //   this.lastLogFrame = this.frameCount;
+      // }
     }
     
     // Avanzar transición

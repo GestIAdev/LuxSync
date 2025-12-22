@@ -67,12 +67,9 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     // Verificar que window.lux existe (preload cargado)
     if (!window.lux?.onTruthUpdate) {
       console.error('[useSeleneTruth] ❌ window.lux.onTruthUpdate not found!')
-      console.error('[useSeleneTruth] 💡 Ensure preload.ts exposes onTruthUpdate')
       setConnected(false)
       return
     }
-    
-    console.log('[useSeleneTruth] 🌙 Connecting to Universal Truth Protocol...')
     
     // Suscribirse al canal de la verdad
     const removeListener = window.lux.onTruthUpdate((data: SeleneBroadcast) => {
@@ -103,11 +100,11 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     })
     
     setConnected(true)
-    console.log('[useSeleneTruth] ✅ Connected! Data flowing at 30fps')
+    // 🧹 WAVE 63.7: Log silenciado - conexión automática
     
     // Cleanup al desmontar
     return () => {
-      console.log('[useSeleneTruth] 🔌 Disconnecting from Universal Truth Protocol')
+      // 🧹 WAVE 63.7: Log silenciado
       if (removeListener) {
         removeListener()
       }

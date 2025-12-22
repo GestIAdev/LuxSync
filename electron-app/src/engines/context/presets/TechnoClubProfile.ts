@@ -52,10 +52,13 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
 
   // ═══════════════════════════════════════════════════════════════
   // DROP CONSTRAINTS
+  // 🎛️ WAVE 63: Tuning para reducir "drop constante"
+  // - energyThreshold: 0.18 → 0.25 (requiere spike más significativo)
+  // - cooldownFrames: 240 → 300 (5s entre drops en lugar de 4s)
   // ═══════════════════════════════════════════════════════════════
   drop: {
     sensitivity: 0.6,         // Sensibilidad media-alta
-    energyThreshold: 0.18,    // Requiere spike de energía real
+    energyThreshold: 0.25,    // 🎛️ WAVE 63: Subido de 0.18 → 0.25 (requiere spike real)
     curves: {
       attack: 'exponential',  // Build de tensión
       sustain: 'linear',
@@ -65,7 +68,7 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
       minAttack: 45,          // 0.75s mínimo de build (precisión)
       maxSustain: 600,        // 10s máximo
       releaseFrames: 90,      // 1.5s release
-      cooldownFrames: 240,    // 4s entre drops (evita spam)
+      cooldownFrames: 300,    // 🎛️ WAVE 63: Subido de 240 → 300 (5s entre drops)
     },
     allowMicroDrops: false,   // ❌ No micro-drops (control total)
   },

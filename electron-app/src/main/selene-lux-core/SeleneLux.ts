@@ -1367,19 +1367,20 @@ export class SeleneLux extends EventEmitter {
     
     // 💫 WAVE 47.2: Log actualizado para verificar mood & section desde spread directo
     // 🔥 WAVE 56: Añadido colorStrategy para debug
-    if (this.frameCount % 150 === 0) {
-      const cs = this.lastTrinityData.mood?.colorStrategy
-      console.log('[SeleneLux] 📡 WAVE 47.2 Trinity Data:', JSON.stringify({
-        genre: this.lastTrinityData.macroGenre,
-        key: this.lastTrinityData.key,
-        synco: this.lastTrinityData.syncopation?.toFixed(2),
-        mood: this.lastTrinityData.mood?.primary,  // Acceso directo (spread)
-        section: this.lastTrinityData.sectionDetail?.type,  // Acceso directo (spread)
-        sectionConf: this.lastTrinityData.sectionDetail?.confidence?.toFixed(2),
-        strategy: cs?.stable,  // 🔥 WAVE 56: colorStrategy debug
-        override: cs?.sectionOverride,
-      }, null, 0))
-    }
+    // 🧹 WAVE 63: Comentado - solo vibes importan
+    // if (this.frameCount % 150 === 0) {
+    //   const cs = this.lastTrinityData.mood?.colorStrategy
+    //   console.log('[SeleneLux] 📡 WAVE 47.2 Trinity Data:', JSON.stringify({
+    //     genre: this.lastTrinityData.macroGenre,
+    //     key: this.lastTrinityData.key,
+    //     synco: this.lastTrinityData.syncopation?.toFixed(2),
+    //     mood: this.lastTrinityData.mood?.primary,  // Acceso directo (spread)
+    //     section: this.lastTrinityData.sectionDetail?.type,  // Acceso directo (spread)
+    //     sectionConf: this.lastTrinityData.sectionDetail?.confidence?.toFixed(2),
+    //     strategy: cs?.stable,  // 🔥 WAVE 56: colorStrategy debug
+    //     override: cs?.sectionOverride,
+    //   }, null, 0))
+    // }
   }
 
   /**

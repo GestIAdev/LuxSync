@@ -399,83 +399,9 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   //   - Macro-Género → Subtle bias (tempBias, satBoost, lightBoost)
   //   - Fibonacci rotation → Secondary color (φ × 360° = 222.5°)
   
-  // Log informativo cada segundo
-  if (DEBUG_VERBOSE && state.frameCount % 60 === 0) {
-    // WAVE 18.3: genre is now GenreAnalysis (.genre) not GenreOutput (.primary)
-    const gName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
-    console.log(`[GAMMA] 🎨 WAVE 17.2: E=${analysis.energy.toFixed(2)} S=${rhythm.syncopation.toFixed(2)} K=${harmony.key ?? '?'} M=${harmony.mode} G=${gName}`);
-  }
-  
-  // 💓 WAVE 44.0: HOLISTIC HEARTBEAT - Estado completo de GAMMA cada 5 segundos
-  if (state.frameCount % 150 === 0) {
-    const gName = (genre as any).genre ?? (genre as any).primary ?? 'unknown';
-    console.log('[GAMMA HEARTBEAT] 💓🧠', JSON.stringify({
-      frame: state.frameCount,
-      mode: state.operationMode,
-      brainForced: state.brainForced,
-      confidence: {
-        combined: state.combinedConfidence.toFixed(2),
-        rhythm: rhythm.confidence.toFixed(2),
-        harmony: harmony.confidence.toFixed(2),
-        section: section.confidence.toFixed(2),
-        genre: genre.confidence.toFixed(2),
-      },
-      rhythm: {
-        syncRaw: rhythm.syncopation.toFixed(3),
-        syncSmoothed: state.smoothedSync.toFixed(3),
-        pattern: rhythm.pattern,
-        bpm: analysis.bpm,
-      },
-      harmony: {
-        key: harmony.key ?? 'NULL',
-        mode: harmony.mode ?? 'NULL',
-        mood: harmony.mood ?? 'NULL',
-        temp: harmony.temperature ?? 'NULL',
-      },
-      section: {
-        type: section.type,
-        energy: section.energy.toFixed(2),
-      },
-      genre: {
-        winner: gName,
-        scores: (genre as any).scores ?? {},
-        mood: (genre as any).mood ?? 'NULL',
-      },
-      consciousness: {
-        mood: (analysis.wave8 as any)?.mood?.primary ?? 'NULL',  // 💫 WAVE 47.1: MoodSynthesizer output
-        arousal: (analysis.wave8 as any)?.mood?.arousal?.toFixed(2) ?? 'NULL',
-        valence: (analysis.wave8 as any)?.mood?.valence?.toFixed(2) ?? 'NULL',
-        dominance: (analysis.wave8 as any)?.mood?.dominance?.toFixed(2) ?? 'NULL',
-      },
-      personality: {
-        mood: personality.currentMood,
-        boldness: personality.boldness,
-      },
-      colorEngine: {
-        paletteGenerated: !!state.currentPalette,
-        strategy: state.currentPalette?.meta?.strategy ?? 'NULL',
-      },
-      energyEngine: {  // 🏎️ WAVE 52: Energy Engine stats
-        instant: energyOutput.instantEnergy.toFixed(2),
-        smoothed: energyOutput.smoothedEnergy.toFixed(2),
-        silence: energyOutput.isSilence,
-        silenceFrames: energyOutput.silenceFrames,
-        recentPeak: energyOutput.recentPeak.toFixed(2),
-      },
-      moodArbiter: {  // 🎭 WAVE 53: Mood Arbiter stats
-        stable: state.moodArbiter.getStableEmotion(),
-        stats: state.moodArbiter.getStats(),
-      },
-      strategyArbiter: {  // 🎨 WAVE 54: Strategy Arbiter stats
-        stable: state.strategyArbiter.getStableStrategy(),
-        stats: state.strategyArbiter.getStats(),
-      },
-      perf: {
-        decisions: state.decisionCount,
-        avgMs: (state.totalProcessingTime / Math.max(1, state.messagesProcessed)).toFixed(2),
-      }
-    }, null, 0));
-  }
+  // 🧹 WAVE 63: LOGS CLEANUP - Eliminados logs masivos de HEARTBEAT/genre/scores
+  // Los logs de genre/senate/votes fueron ELIMINADOS (VibeManager es el nuevo dueño)
+  // Se mantienen: [VibeManager], [StrategyArbiter] DROP START/END, [ColorEngine] Palette
   
   // ⚓ WAVE 51: KEY STABILIZATION - Estabilizar la Key antes de generar colores
   // Esto evita que acordes de paso cambien el color de toda la sala
@@ -717,25 +643,8 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     personality.currentMood = 'playful';
   }
 
-  // 💫 WAVE 47.1.3: Log de arbitración cada 5 segundos
-  if (state.frameCount % 150 === 0) {
-    console.log('[MOOD ARBITRATION] 🎭', JSON.stringify({
-      WINNER: finalMood,
-      stable: state.lastStableMood,  // 💫 WAVE 47.1.7: Mood estable después de hysteresis
-      hysteresis: { 
-        timeSinceChange: Math.round(timeSinceLastChange / 1000) + 's',
-        wasBlocked: finalMood === state.lastStableMood && timeSinceLastChange < MOOD_HYSTERESIS_MS
-      },
-      genre: genreName,
-      sources: {
-        '1_GENRE': { mood: genreMood ?? 'NULL', confidence: genreConfidence.toFixed(2), won: genreConfidence > 0.6 && genreMood && genreMood !== 'chill' },
-        '1B_ELECTRONIC_OVERRIDE': { active: isElectronicGenre && !(genreConfidence > 0.6), override: electronicMoodOverride },
-        '2_HARMONY': { mood: harmonyMood ?? 'NULL', confidence: harmonyConfidence.toFixed(2) },
-        '3_VAD': { mood: vadMood }
-      },
-      personality_mapped: personality.currentMood
-    }, null, 0));
-  }
+  // 🧹 WAVE 63: MOOD ARBITRATION log eliminado (contenía genre/senate legacy)
+  // El VibeManager es el nuevo dueño del contexto
   
   // Track processing time
   state.totalProcessingTime += performance.now() - startTime;

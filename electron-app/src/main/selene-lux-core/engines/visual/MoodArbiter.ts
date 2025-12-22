@@ -206,7 +206,8 @@ export class MoodArbiter {
     // Inicializar buffer
     this.voteBuffer = new Array(this.config.bufferSize).fill(null);
     
-    console.log(`[MoodArbiter] 🎭 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(1)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(1)}s)`);
+    // 🧹 WAVE 63: Log init comentado - solo vibes importan
+    // console.log(`[MoodArbiter] 🎭 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(1)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(1)}s)`);
   }
   
   /**
@@ -319,10 +320,11 @@ export class MoodArbiter {
     };
     
     // === PASO 8: Log periodico ===
-    if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[MoodArbiter] 🎭 Stable=${this.stableEmotion} Instant=${instantEmotion} Dom=${(maxDominance * 100).toFixed(0)}% Temp=${thermalTemperature.toFixed(2)} Votes(B/D/N)=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}${zodiacAffinity.isEarthSign ? ` ♍ Zodiac=${zodiacAffinity.key}` : ''}`);
-      this.lastLogFrame = this.frameCount;
-    }
+    // 🧹 WAVE 63: Comentado - solo vibes importan
+    // if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
+    //   console.log(`[MoodArbiter] 🎭 Stable=${this.stableEmotion} Instant=${instantEmotion} Dom=${(maxDominance * 100).toFixed(0)}% Temp=${thermalTemperature.toFixed(2)} Votes(B/D/N)=${votes.bright.toFixed(0)}/${votes.dark.toFixed(0)}/${votes.neutral.toFixed(0)}${zodiacAffinity.isEarthSign ? ` ♍ Zodiac=${zodiacAffinity.key}` : ''}`);
+    //   this.lastLogFrame = this.frameCount;
+    // }
     
     return {
       stableEmotion: this.stableEmotion,

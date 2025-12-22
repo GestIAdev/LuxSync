@@ -193,7 +193,8 @@ export class StrategyArbiter {
     // Inicializar buffer con valores neutros
     this.syncBuffer = new Array(this.config.bufferSize).fill(0.45);
     
-    console.log(`[StrategyArbiter] 🎨 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(0)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(0)}s)`);
+    // 🧹 WAVE 63: Log init comentado - solo vibes importan
+    // console.log(`[StrategyArbiter] 🎨 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(0)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(0)}s)`);
   }
   
   /**
@@ -281,7 +282,8 @@ export class StrategyArbiter {
       if (this.dropState === 'DROP_ACTIVE') {
         this.dropState = 'DROP_COOLDOWN';
         this.dropCooldownFrames = this.DROP_COOLDOWN_DURATION;
-        console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
+        // 🧹 WAVE 63.5: Log comentado - spameaba cada frame
+        // console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
       }
       // En COOLDOWN, el decremento ya se hace al inicio del método
       this.currentOverride = 'none';
@@ -322,10 +324,11 @@ export class StrategyArbiter {
     const contrastLevel = this.calculateContrastLevel(this.stableStrategy, avgSync);
     
     // === PASO 6: Log periódico ===
-    if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[StrategyArbiter] 🎨 Strategy=${this.stableStrategy} AvgSync=${avgSync.toFixed(2)} Contrast=${contrastLevel.toFixed(2)} Locked=${this.isLocked} Override=${overrideType}`);
-      this.lastLogFrame = this.frameCount;
-    }
+    // 🧹 WAVE 63: Comentado - solo vibes importan
+    // if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
+    //   console.log(`[StrategyArbiter] 🎨 Strategy=${this.stableStrategy} AvgSync=${avgSync.toFixed(2)} Contrast=${contrastLevel.toFixed(2)} Locked=${this.isLocked} Override=${overrideType}`);
+    //   this.lastLogFrame = this.frameCount;
+    // }
     
     return {
       stableStrategy: this.stableStrategy,

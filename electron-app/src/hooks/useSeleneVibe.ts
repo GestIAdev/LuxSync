@@ -67,9 +67,10 @@ export const VIBE_PRESETS: Record<VibeId, VibeInfo> = {
 
 export interface UseSeleneVibeReturn {
   // State
-  activeVibe: VibeId
+  activeVibe: VibeId | null  // 🔄 WAVE 63.5: null mientras carga
   isTransitioning: boolean
-  vibeInfo: VibeInfo
+  vibeInfo: VibeInfo | null  // 🔄 WAVE 63.5: null mientras carga
+  isLoading: boolean         // 🔄 WAVE 63.5: true mientras fetching inicial
   
   // Actions
   setVibe: (vibeId: VibeId) => Promise<void>
@@ -84,7 +85,8 @@ export interface UseSeleneVibeReturn {
 // ============================================================================
 
 export function useSeleneVibe(): UseSeleneVibeReturn {
-  const [activeVibe, setActiveVibe] = useState<VibeId>('techno-club')
+  // 🔄 WAVE 63.5: null inicial hasta fetch desde backend (evita flash de Techno)
+  const [activeVibe, setActiveVibe] = useState<VibeId | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const unsubscribeRef = useRef<(() => void) | null>(null)
   
@@ -155,10 +157,14 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
     }
   }, [activeVibe])
   
+  // 🔄 WAVE 63.5: isLoading = true mientras no hemos recibido el vibe del backend
+  const isLoading = activeVibe === null
+  
   return {
     activeVibe,
     isTransitioning,
-    vibeInfo: VIBE_PRESETS[activeVibe],
+    vibeInfo: activeVibe ? VIBE_PRESETS[activeVibe] : null,
+    isLoading,
     setVibe,
     isGhostMode,
     allVibes: Object.values(VIBE_PRESETS)

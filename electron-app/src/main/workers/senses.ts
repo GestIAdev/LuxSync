@@ -485,43 +485,9 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   //   console.log('[SENSES DEBUG] genreOutput:', JSON.stringify({...}));
   // }
   
-  // 💓 WAVE 44.0: HOLISTIC HEARTBEAT - Estado de TODOS los motores cada 5 segundos
-  // 🗑️ WAVE 61: senate/genre detection ELIMINADO - VibeManager controla el contexto
-  if (state.frameCount % 150 === 0) {
-    console.log('[BETA HEARTBEAT] 💓📊', JSON.stringify({
-      frame: state.frameCount,
-      rhythm: {
-        bpm: state.currentBpm,
-        syncRaw: rhythmOutput.syncopation,
-        pattern: rhythmOutput.pattern,
-        groove: rhythmOutput.groove,
-        drums: {
-          kick: rhythmOutput.drums?.kick || false,
-          snare: rhythmOutput.drums?.snare || false,
-          hihat: rhythmOutput.drums?.hihat || false,
-        }
-      },
-      harmony: {
-        key: harmonyOutput.key ?? 'NULL',
-        mode: harmonyOutput.mode ?? 'NULL',
-        mood: harmonyOutput.mood ?? 'NULL',
-        temp: harmonyOutput.temperature ?? 'NULL',
-        confidence: harmonyOutput.confidence ?? 0,
-      },
-      section: {
-        type: sectionOutput.type ?? 'NULL',
-        energy: sectionOutput.energy ?? 0,
-        confidence: sectionOutput.confidence ?? 0,
-      },
-      // 🗑️ WAVE 61: "senate" eliminado - era parte del sistema GenreClassifier
-      audio: {
-        energy: energy,
-        bass: spectrum.bass,
-        mid: spectrum.mid,
-        treble: spectrum.treble,
-      }
-    }, null, 0));
-  }
+  // 🧹 WAVE 63: BETA HEARTBEAT eliminado - generaba spam de logs cada 5 segundos
+  // Los datos de ritmo/armonía se transmiten vía broadcast, no necesitan log constante
+  // Se mantienen solo logs de inicialización, errores y cambios de estado
   
   // Cache for state snapshots
   state.lastRhythmOutput = rhythmOutput;

@@ -311,11 +311,12 @@ function initSelene() {
           }
           
           // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
+          // 🧹 WAVE 63: Comentado - solo vibes importan
           pipelineAuditCounter++
-          if (pipelineAuditCounter % 150 === 0) {
-            const keys = analysis ? Object.keys(analysis) : []
-            console.log('[PIPELINE AUDIT] 🔬 BETA→Main keys:', keys.join(', ') || 'EMPTY')
-          }
+          // if (pipelineAuditCounter % 150 === 0) {
+          //   const keys = analysis ? Object.keys(analysis) : []
+          //   console.log('[PIPELINE AUDIT] 🔬 BETA→Main keys:', keys.join(', ') || 'EMPTY')
+          // }
         })
         
         trinity.on('lighting-decision', (decision) => {
@@ -329,11 +330,12 @@ function initSelene() {
             selene.updateFromTrinity(decision.debugInfo)
           }
           
-          // �💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
-          if (pipelineAuditCounter % 150 === 0) {
-            const keys = decision ? Object.keys(decision) : []
-            console.log('[PIPELINE AUDIT] 🔬 GAMMA→Main keys:', keys.join(', ') || 'EMPTY')
-          }
+          // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds
+          // 🧹 WAVE 63: Comentado - solo vibes importan
+          // if (pipelineAuditCounter % 150 === 0) {
+          //   const keys = decision ? Object.keys(decision) : []
+          //   console.log('[PIPELINE AUDIT] 🔬 GAMMA→Main keys:', keys.join(', ') || 'EMPTY')
+          // }
         })
         
         console.log('[Main] 📡 TRUTH CABLE CONNECTED - Trinity → Frontend')
@@ -551,7 +553,10 @@ function startMainLoop() {
       const color = state.colors?.primary || { r: 0, g: 0, b: 0 }
       const secondary = state.colors?.secondary || { r: 0, g: 0, b: 0 }
       const accent = state.colors?.accent || color // Para MOVING_LEFT
-      const ambient = state.colors?.ambient || accent // Para MOVING_RIGHT (espejo cromático)
+      // 🎛️ WAVE 63: MOVING_RIGHT ahora usa ACCENT (simetría con LEFT)
+      // Antes: ambient (color tenue) → Moving Head derecho se veía apagado
+      // Ahora: accent (color de impacto) → Simetría visual con el izquierdo
+      const movingRightColor = state.colors?.accent || color // WAVE 63: Mismo que LEFT para simetría
       
       // � WAVE 39.5: Silenciado DEBUG-RGB (log periódico)
       // if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
@@ -615,7 +620,9 @@ function startMainLoop() {
         }
           
         case 'MOVING_RIGHT': {
-          // 🪞 MOVING_RIGHT usa AMBIENT (side='right') - ESPEJO CON TREBLE
+          // 🎛️ WAVE 63: MOVING_RIGHT ahora usa ACCENT (simetría con LEFT)
+          // Antes: usaba AMBIENT (color tenue) → Moving Head derecho se veía apagado
+          // Ahora: usa ACCENT (color de impacto) → Simetría visual con el izquierdo
           // Gate: sin energía suficiente = NEGRO
           if (audioInput.energy < MOVING_HEAD_GATE) {
             intensity = 0
@@ -633,7 +640,7 @@ function startMainLoop() {
             }
             smoothedIntensities.set(fixture.dmxAddress, intensity)
           }
-          fixtureColor = ambient
+          fixtureColor = movingRightColor  // 🎛️ WAVE 63: Accent en lugar de ambient
           break
         }
           

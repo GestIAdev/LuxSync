@@ -173,7 +173,8 @@ export class EnergyStabilizer {
     this.energyBuffer = new Array(this.config.smoothingWindowFrames).fill(0);
     this.peakBuffer = new Array(this.PEAK_WINDOW).fill(0);
     
-    console.log(`[EnergyStabilizer] 🏎️ Initialized: smoothing=${this.config.smoothingWindowFrames} frames (~${(this.config.smoothingWindowFrames / 60).toFixed(1)}s), silence=${this.config.silenceResetFrames} frames`);
+    // 🧹 WAVE 63: Log init comentado - solo vibes importan
+    // console.log(`[EnergyStabilizer] 🏎️ Initialized: smoothing=${this.config.smoothingWindowFrames} frames (~${(this.config.smoothingWindowFrames / 60).toFixed(1)}s), silence=${this.config.silenceResetFrames} frames`);
   }
   
   /**
@@ -255,10 +256,11 @@ export class EnergyStabilizer {
     this.updateDropStateMachine(isRelativeDrop, isRelativeBreakdown, energy);
     
     // === PASO 6: Log periódico ===
-    if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f Drop=${isRelativeDrop} Breakdown=${isRelativeBreakdown} DropState=${this.dropState} Active=${this.isDropActive}`);
-      this.lastLogFrame = this.frameCount;
-    }
+    // 🧹 WAVE 63: Comentado - solo vibes importan
+    // if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
+    //   console.log(`[EnergyStabilizer] 🏎️ Instant=${energy.toFixed(2)} Smooth=${this.emaEnergy.toFixed(2)} Peak=${recentPeak.toFixed(2)} Silence=${this.silenceFrameCount}f Drop=${isRelativeDrop} Breakdown=${isRelativeBreakdown} DropState=${this.dropState} Active=${this.isDropActive}`);
+    //   this.lastLogFrame = this.frameCount;
+    // }
     
     return {
       smoothedEnergy: this.emaEnergy,
@@ -362,7 +364,8 @@ export class EnergyStabilizer {
         if (isRelativeDrop) {
           this.dropState = 'ATTACK';
           this.dropStateFrames = 0;
-          console.log('[EnergyStabilizer] 🎢 DROP: IDLE → ATTACK');
+          // 🧹 WAVE 63.5: Log comentado - spam de state machine
+          // console.log('[EnergyStabilizer] 🎢 DROP: IDLE → ATTACK');
         }
         this.isDropActive = false;
         break;
@@ -374,13 +377,15 @@ export class EnergyStabilizer {
         if (this.dropStateFrames >= this.dropConfig.attackFrames) {
           this.dropState = 'SUSTAIN';
           this.dropStateFrames = 0;
-          console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → SUSTAIN');
+          // 🧹 WAVE 63.5: Log comentado - spam de state machine
+          // console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → SUSTAIN');
         }
         // Si la energía cae durante attack, abortar
         else if (isRelativeBreakdown || energy < 0.3) {
           this.dropState = 'RELEASE';
           this.dropStateFrames = 0;
-          console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → RELEASE (aborted)');
+          // 🧹 WAVE 63.5: Log comentado - spam de state machine
+          // console.log('[EnergyStabilizer] 🎢 DROP: ATTACK → RELEASE (aborted)');
         }
         break;
         
@@ -401,7 +406,8 @@ export class EnergyStabilizer {
         if (shouldRelease && this.dropStateFrames >= this.dropConfig.minSustainFrames) {
           this.dropState = 'RELEASE';
           this.dropStateFrames = 0;
-          console.log(`[EnergyStabilizer] 🎢 DROP: SUSTAIN → RELEASE (after ${this.dropStateFrames} frames)`);
+          // 🧹 WAVE 63.5: Log comentado - spam de state machine
+          // console.log(`[EnergyStabilizer] 🎢 DROP: SUSTAIN → RELEASE (after ${this.dropStateFrames} frames)`);
         }
         break;
         
@@ -415,7 +421,8 @@ export class EnergyStabilizer {
           this.dropState = 'COOLDOWN';
           this.dropStateFrames = 0;
           this.isDropActive = false;
-          console.log('[EnergyStabilizer] 🎢 DROP: RELEASE → COOLDOWN');
+          // 🧹 WAVE 63.5: Log comentado - spam de state machine
+          // console.log('[EnergyStabilizer] 🎢 DROP: RELEASE → COOLDOWN');
         }
         break;
         
@@ -426,15 +433,17 @@ export class EnergyStabilizer {
         if (this.dropStateFrames >= this.dropConfig.cooldownFrames) {
           this.dropState = 'IDLE';
           this.dropStateFrames = 0;
-          console.log('[EnergyStabilizer] 🎢 DROP: COOLDOWN → IDLE (ready for next drop)');
+          // 🧹 WAVE 63.5: Log comentado
+          // console.log('[EnergyStabilizer] 🎢 DROP: COOLDOWN → IDLE (ready for next drop)');
         }
         break;
     }
     
     // Log de transiciones importantes
-    if (prevState !== this.dropState && this.dropState !== 'IDLE') {
-      console.log(`[EnergyStabilizer] 🎢 State: ${prevState} → ${this.dropState}, Active: ${this.isDropActive}`);
-    }
+    // 🧹 WAVE 63.5: Log comentado - spameaba cada transición
+    // if (prevState !== this.dropState && this.dropState !== 'IDLE') {
+    //   console.log(`[EnergyStabilizer] 🎢 State: ${prevState} → ${this.dropState}, Active: ${this.isDropActive}`);
+    // }
   }
   
   /**

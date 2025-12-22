@@ -265,34 +265,25 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
   
   // Start Trinity System
   const startTrinity = useCallback(async () => {
-    console.log('[Trinity] 🔺 Starting Trinity System...')
+    // 🧹 WAVE 63.7: Logs silenciados para arranque limpio
     
     try {
       // 1. Query backend state and start Selene only if not running.
-      // If getState() returns null, Selene is not initialized yet.
       if (window.lux) {
         const current = await window.lux.getState()
-        console.log('[Trinity] 🔎 Backend state:', current)
         if (!current) {
           // Selene not running → start it
           const result = await window.lux.start()
-          console.log('[Trinity] ✅ Selene LUX started:', result)
           
-          // 🔧 WAVE 15.1: Sync saved inputGain from config to audioStore
+          // Sync saved inputGain from config to audioStore
           if (result?.inputGain !== undefined) {
             useAudioStore.getState().setInputGain(result.inputGain)
-            console.log(`[Trinity] 🎚️ Synced inputGain from config: ${(result.inputGain * 100).toFixed(0)}%`)
           }
         } else {
-          // Selene already running → skip start, just subscribe
-          console.log('[Trinity] ℹ️ Backend already running, skipping start')
-          
-          // 🔧 WAVE 15.1: Still need to fetch inputGain from backend
-          // Re-call start to get current inputGain (it will return alreadyRunning: true)
+          // Selene already running → just sync inputGain
           const result = await window.lux.start()
           if (result?.inputGain !== undefined) {
             useAudioStore.getState().setInputGain(result.inputGain)
-            console.log(`[Trinity] 🎚️ Synced inputGain from running backend: ${(result.inputGain * 100).toFixed(0)}%`)
           }
         }
       }
@@ -300,13 +291,11 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
       // 2. Subscribe to state updates
       if (window.lux?.onStateUpdate) {
         unsubscribeRef.current = window.lux.onStateUpdate(handleStateUpdate)
-        console.log('[Trinity] 📡 Subscribed to state updates')
       }
       
-      // 🎯 WAVE 13.6: Subscribe to mode changes from Backend
+      // Subscribe to mode changes from Backend
       if (window.lux?.onModeChange) {
         const unsubMode = window.lux.onModeChange((data: { mode: string; brain: boolean }) => {
-          console.log('[Trinity] 🎚️ Mode confirmed by Backend:', data)
           const uiMode = data.mode as 'flow' | 'selene' | 'locked'
           useSeleneStore.getState().setMode(uiMode)
         })
@@ -336,7 +325,6 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
       
       // 3. Start audio capture
       await startCapture()
-      console.log('[Trinity] 🎤 Audio capture started')
       
       // Update state
       setState(prev => ({
@@ -353,7 +341,8 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
         data: { audioActive: true },
       })
       
-      console.log('[Trinity] ✅ Trinity System ONLINE!')
+      // 🧹 WAVE 63.7: Single clean log
+      console.log('[Selene UI] ✅ Trinity Online')
       
     } catch (error) {
       console.error('[Trinity] ❌ Error starting:', error)
@@ -366,7 +355,7 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
   
   // Stop Trinity System
   const stopTrinity = useCallback(() => {
-    console.log('[Trinity] 🛑 Stopping Trinity System...')
+    // 🧹 WAVE 63.7: Log silenciado
     
     // Unsubscribe from updates
     if (unsubscribeRef.current) {
@@ -408,25 +397,20 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     })
   }, [setSimulationMode, addLogEntry])
   
-  // 🎯 WAVE 13.6: INITIAL STATE HANDSHAKE - "Truth First"
-  // Al montar, pedir el estado COMPLETO del Backend y sincronizar TODOS los stores
-  // 🚨 WAVE 14.9: Usa FLAG GLOBAL para sobrevivir StrictMode
+  // Initial State Handshake - sincronizar con backend
   useEffect(() => {
     if (_hasInitializedHandshake) {
-      console.log('[Trinity] ⏭️ Handshake already done, skipping')
       return
     }
     _hasInitializedHandshake = true
     
     const syncInitialState = async () => {
       if (!window.lux?.getFullState) {
-        console.warn('[Trinity] ⚠️ getFullState not available, skipping initial sync')
         return
       }
       
       try {
         const fullState = await window.lux.getFullState()
-        console.log('[Trinity] 🎯 Initial State Handshake:', fullState)
         
         // Sync DMX Store
         if (fullState.dmx) {
@@ -438,8 +422,6 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
           } else {
             useDMXStore.getState().disconnect()
           }
-          
-          console.log(`[Trinity] 💡 DMX synced: ${fullState.dmx.status} (${fullState.dmx.driver || 'none'})`)
         }
         
         // Sync Selene Store
@@ -448,7 +430,6 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
             setConnected(true)
             setInitialized(true)
             
-            // 🎚️ WAVE 13.6: Sincronizar modo UI (flow, selene, locked)
             if (fullState.selene.mode) {
               useSeleneStore.getState().setMode(fullState.selene.mode as 'flow' | 'selene' | 'locked')
             }
@@ -459,47 +440,32 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
                 paletteSource: (fullState.selene.paletteSource || 'fallback') as 'memory' | 'procedural' | 'fallback'
               })
             }
-            
-            console.log(`[Trinity] 🧠 Selene synced: mode=${fullState.selene.mode}, brain=${fullState.selene.brainMode}`)
           }
         }
         
-        // 🚨 WAVE 14.9: FIXTURES ELIMINADOS DEL HANDSHAKE
-        // Ya NO se sincronizan aquí (causaba bucle infinito).
-        // Ahora vienen por canal dedicado 'lux:fixtures-loaded'
-        // if (fullState.fixtures && fullState.fixtures.length > 0) {
-        //   useDMXStore.getState().setFixtures(fullState.fixtures)
-        //   console.log(`[Trinity] 🎭 Fixtures synced: ${fullState.fixtures.length} fixtures loaded`)
-        // }
-        
-        console.log('[Trinity] ✅ Initial State Handshake complete')
+        // 🧹 WAVE 63.7: Logs silenciados
       } catch (error) {
         console.error('[Trinity] ❌ Initial State Handshake failed:', error)
       }
     }
     
     syncInitialState()
-  }, []) // 🎯 WAVE 13.6 FIX: Solo ejecutar una vez al montar (sin dependencias)
+  }, [])
   
-  // 🚨 WAVE 14.9: Listener Dedicado para Fixtures (Canal Separado)
-  // Usa FLAGS GLOBALES para sobrevivir React StrictMode
+  // Listener Dedicado para Fixtures (Canal Separado)
   useEffect(() => {
     if (!window.electron || _hasSubscribedToFixtures) return
     _hasSubscribedToFixtures = true
     
     _fixtureListener = (_event: any, fixtures: any[]) => {
-      console.log(`[Trinity] 🎭 Fixtures loaded via dedicated channel: ${fixtures.length} fixtures`)
       useDMXStore.getState().setFixtures(fixtures)
     }
     
     // Suscribirse al canal dedicado
     window.electron.ipcRenderer.on('lux:fixtures-loaded', _fixtureListener)
-    console.log('[Trinity] 📡 Listening for fixture updates on dedicated channel')
     
-    // 🚨 NO resetear _hasSubscribedToFixtures en cleanup (sobrevive StrictMode)
     return () => {
-      // Solo log, NO desuscribir (la suscripción persiste)
-      console.log('[Trinity] 📡 Component unmount (fixture subscription persists)')
+      // Solo cleanup, sin log
     }
   }, [])
   

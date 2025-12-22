@@ -122,7 +122,8 @@ export class KeyStabilizer {
     // Inicializar buffer vacío
     this.keyBuffer = new Array(this.config.bufferSize).fill({ key: null, weight: 0 });
     
-    console.log(`[KeyStabilizer] ⚓ Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(1)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(1)}s)`);
+    // 🧹 WAVE 63: Log init comentado - solo vibes importan
+    // console.log(`[KeyStabilizer] ⚓ Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(1)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(1)}s)`);
   }
   
   /**
@@ -212,16 +213,17 @@ export class KeyStabilizer {
     }
     
     // === PASO 6: Log periódico ===
-    if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-      const topKeys = Object.entries(votes)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3)
-        .map(([k, v]) => `${k}:${(v / totalVotes * 100).toFixed(0)}%`)
-        .join(', ');
-      
-      console.log(`[KeyStabilizer] ⚓ Stable=${this.stableKey ?? '?'} Candidate=${this.candidateKey ?? '-'} Progress=${(changeProgress * 100).toFixed(0)}% Votes=[${topKeys}]`);
-      this.lastLogFrame = this.frameCount;
-    }
+    // 🧹 WAVE 63: Comentado - solo vibes importan
+    // if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
+    //   const topKeys = Object.entries(votes)
+    //     .sort(([, a], [, b]) => b - a)
+    //     .slice(0, 3)
+    //     .map(([k, v]) => `${k}:${(v / totalVotes * 100).toFixed(0)}%`)
+    //     .join(', ');
+    //   
+    //   console.log(`[KeyStabilizer] ⚓ Stable=${this.stableKey ?? '?'} Candidate=${this.candidateKey ?? '-'} Progress=${(changeProgress * 100).toFixed(0)}% Votes=[${topKeys}]`);
+    //   this.lastLogFrame = this.frameCount;
+    // }
     
     return {
       stableKey: this.stableKey,

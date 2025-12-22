@@ -88,11 +88,10 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
   // Setup global listener
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
-    console.log('[KeyboardProvider] 🎹 Global keyboard shortcuts activated')
+    // 🧹 WAVE 63.7: Log silenciado
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
-      console.log('[KeyboardProvider] 🎹 Global keyboard shortcuts deactivated')
     }
   }, [handleKeyDown])
 

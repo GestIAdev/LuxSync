@@ -1,21 +1,29 @@
 /**
  * 🧬 MUSICAL DNA PANEL
  * WAVE 29: Cyberpunk Intelligence Display
- * * Muestra el análisis profundo de Selene:
+ * WAVE 63: Replaced GENRE with ACTIVE VIBE from VibeManager
+ * 
+ * Muestra el análisis profundo de Selene:
  * - Musical Key & Scale (El núcleo armónico)
  * - Energy Dynamics (Section detection)
  * - Semantic Analysis (Mood & Zodiac)
  * - Rhythm Analysis (Syncopation)
+ * - Active Vibe (WAVE 63: VibeManager context)
  */
 
 import React from 'react'
 import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
+import { useSeleneVibe } from '../../../hooks/useSeleneVibe'
 import './MusicalDNAPanel.css'
 
 const MusicalDNAPanel: React.FC = () => {
   const musicalDNA = useTruthMusicalDNA()
   const cognitive = useTruthCognitive()
   const connected = useTruthConnected()
+  
+  // 🎛️ WAVE 63: Get active Vibe from VibeManager
+  const { activeVibe, allVibes } = useSeleneVibe()
+  const currentVibeInfo = allVibes.find(v => v.id === activeVibe)
   
   // Data Extraction & Null Checks
   const zodiacElement = cognitive?.zodiac?.element ?? 'void'
@@ -67,7 +75,12 @@ const MusicalDNAPanel: React.FC = () => {
       syncopation: musicalDNA?.rhythm?.syncopation || 0
     },
     
-    genre: musicalDNA?.genre?.primary || 'Unknown'
+    // 🎛️ WAVE 63: Vibe en lugar de Genre
+    vibe: {
+      id: activeVibe || 'techno-club',
+      name: currentVibeInfo?.name || 'Unknown',
+      icon: currentVibeInfo?.icon || '🎛️'
+    }
   }
 
   // Icono de Sección
@@ -139,11 +152,11 @@ const MusicalDNAPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* CLASSIFICATION LAYER (GENRE & RHYTHM) */}
+      {/* CLASSIFICATION LAYER (VIBE & RHYTHM) - WAVE 63: Replaced Genre with Vibe */}
       <div className="dna-classification">
         <div className="class-pill genre">
-          <span className="pill-label">GENRE</span>
-          <span className="pill-val">{data.genre.replace(/_/g, ' ')}</span>
+          <span className="pill-label">VIBE</span>
+          <span className="pill-val">{data.vibe.icon} {data.vibe.name}</span>
         </div>
         
         <div className="class-pill rhythm">

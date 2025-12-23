@@ -161,6 +161,19 @@ export class StrategyArbiter {
   private currentOverride: 'none' | 'breakdown' | 'drop' = 'none';
   private overrideStartFrame = 0;
   
+  // 🏛️ WAVE 73: OVERRIDE LOCK - Previene parpadeo entre BREAKDOWN/DROP
+  // Cuando se activa un override, bloqueamos cambios por N frames
+  private overrideLockFrames = 0;
+  private readonly BREAKDOWN_LOCK_DURATION = 60;  // 1 segundo @ 60fps
+  private readonly DROP_LOCK_DURATION = 120;       // 2 segundos @ 60fps
+  
+  // 🔒 WAVE 74: STRATEGY COMMITMENT TIMER - Histéresis temporal fuerte
+  // Una vez elegida una estrategia, nos comprometemos por N frames
+  // Esto evita el "destino móvil" donde el interpolador siempre resetea
+  private strategyCommitmentFrames = 0;
+  private readonly STRATEGY_COMMITMENT_DURATION = 240;  // 4 segundos @ 60fps
+  private lastCommittedStrategy: ColorStrategy = 'analogous';
+  
   // Histéresis state
   private lastDecisionZone: 'low' | 'mid' | 'high' = 'mid';
   
@@ -213,6 +226,69 @@ export class StrategyArbiter {
       }
     }
     
+    // 🏛️ WAVE 73: Decrementar override lock
+    if (this.overrideLockFrames > 0) {
+      this.overrideLockFrames--;
+    }
+    
+    // 🔒 WAVE 74: Decrementar strategy commitment timer
+    if (this.strategyCommitmentFrames > 0) {
+      this.strategyCommitmentFrames--;
+    }
+    
+    // 🔒 WAVE 74: COMMITMENT GATE - Si estamos comprometidos con una estrategia, mantenerla
+    // EXCEPCIÓN: DROP puede romper el compromiso (es un evento de alto impacto)
+    if (this.strategyCommitmentFrames > 0) {
+      const isDrop = input.sectionType === 'drop' && input.isRelativeDrop;
+      
+      // Actualizar rolling average aunque estemos comprometidos
+      const sync = Math.max(0, Math.min(1, input.syncopation));
+      this.syncBuffer[this.bufferIndex] = sync;
+      this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
+      const avgSync = this.calculateWeightedAverage();
+      
+      // Si es DROP y no estamos ya en override de DROP, permitir cambio
+      if (isDrop && this.currentOverride !== 'drop') {
+        // Permitir que la lógica normal procese el DROP
+        console.log(`[StrategyArbiter] ⚡ DROP breaks commitment: ${this.strategyCommitmentFrames} frames remaining`);
+      } else {
+        // Mantener estrategia comprometida
+        return {
+          stableStrategy: this.lastCommittedStrategy,
+          instantStrategy: this.lastCommittedStrategy,
+          strategyChanged: false,
+          framesSinceChange: this.frameCount - this.lastChangeFrame,
+          isLocked: true,
+          sectionOverride: this.currentOverride !== 'none',
+          overrideType: this.currentOverride,
+          averagedSyncopation: avgSync,
+          contrastLevel: this.calculateContrastLevel(this.lastCommittedStrategy, avgSync),
+        };
+      }
+    }
+    
+    // 🏛️ WAVE 73: Si estamos en override lock, mantener la decisión anterior
+    if (this.overrideLockFrames > 0) {
+      // Actualizar rolling average aunque estemos bloqueados
+      const sync = Math.max(0, Math.min(1, input.syncopation));
+      this.syncBuffer[this.bufferIndex] = sync;
+      this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
+      const avgSync = this.calculateWeightedAverage();
+      
+      // Retornar la última decisión estable sin cambios
+      return {
+        stableStrategy: this.stableStrategy,
+        instantStrategy: this.stableStrategy,
+        strategyChanged: false,
+        framesSinceChange: this.frameCount - this.lastChangeFrame,
+        isLocked: true,
+        sectionOverride: this.currentOverride !== 'none',
+        overrideType: this.currentOverride,
+        averagedSyncopation: avgSync,
+        contrastLevel: this.calculateContrastLevel(this.stableStrategy, avgSync),
+      };
+    }
+    
     // === PASO 1: Actualizar rolling average ===
     const sync = Math.max(0, Math.min(1, input.syncopation));
     this.syncBuffer[this.bufferIndex] = sync;
@@ -239,6 +315,8 @@ export class StrategyArbiter {
         console.log(`[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation`);
         this.currentOverride = 'breakdown';
         this.overrideStartFrame = this.frameCount;
+        // 🏛️ WAVE 73: Activar lock para prevenir flicker
+        this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
       }
     }
     // � WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
@@ -251,6 +329,8 @@ export class StrategyArbiter {
         console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
         this.currentOverride = 'breakdown';
         this.overrideStartFrame = this.frameCount;
+        // 🏛️ WAVE 73: Activar lock para prevenir flicker
+        this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
       }
     }
     // 📉 WAVE 55: DROP RELATIVO (energía alta respecto al promedio)
@@ -269,12 +349,16 @@ export class StrategyArbiter {
         this.dropState = 'DROP_ACTIVE';
         this.currentOverride = 'drop';
         this.overrideStartFrame = this.frameCount;
+        // 🏛️ WAVE 73: Activar lock más largo para DROP (2 segundos)
+        this.overrideLockFrames = this.DROP_LOCK_DURATION;
       }
       // Si ya estamos en DROP_ACTIVE, mantener sin log (evita ametrallamiento)
       else if (this.dropState === 'DROP_COOLDOWN') {
         // Volvió DROP durante cooldown, reactivar
         this.dropState = 'DROP_ACTIVE';
         this.currentOverride = 'drop';
+        // 🏛️ WAVE 73: Reactivar lock
+        this.overrideLockFrames = this.DROP_LOCK_DURATION;
       }
     }
     else {
@@ -310,7 +394,12 @@ export class StrategyArbiter {
         strategyChanged = true;
         this.isLocked = true;
         
-        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} (avgSync=${avgSync.toFixed(2)}, section=${input.sectionType}, override=${overrideType})`);
+        // 🔒 WAVE 74: Iniciar commitment timer cuando cambia la estrategia
+        // Esto evita que el interpolador resetee constantemente su destino
+        this.strategyCommitmentFrames = this.STRATEGY_COMMITMENT_DURATION;
+        this.lastCommittedStrategy = effectiveStrategy;
+        
+        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} (avgSync=${avgSync.toFixed(2)}, section=${input.sectionType}, override=${overrideType}) [COMMITTED for ${this.STRATEGY_COMMITMENT_DURATION} frames]`);
       }
     }
     

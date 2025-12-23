@@ -1,31 +1,35 @@
 /**
- * 🎨 SELENE COLOR ENGINE (WAVE 17.2)
+ * 🎨 SELENE COLOR ENGINE (WAVE 68.5)
  * ===================================
  * Motor procedural determinista para generación de paletas cromáticas
- * basado en teoría musical, sinestesia y corrección por macro-género.
+ * basado EXCLUSIVAMENTE en teoría musical y física del sonido.
  * 
  * FILOSOFÍA:
- * "Selene NO pinta GÉNEROS. Selene pinta MATEMÁTICA MUSICAL.
- *  Pero puede GUIAR la paleta según macro-género SIN FORZARLA."
+ * "Selene pinta MATEMÁTICA MUSICAL PURA.
+ *  El VibeProfile es el único jefe que define restricciones."
  * 
  * FUNDAMENTOS:
  * - Círculo de Quintas → Círculo Cromático (KEY_TO_HUE)
  * - Modo → Temperatura emocional (MODE_MODIFIERS)
  * - Energía → Saturación y Brillo (NUNCA cambia el Hue)
- * - Syncopation → Estrategia de contraste
- * - Macro-Género → Bias de temperatura y saturación (subtle)
+ * - Syncopation → Estrategia de contraste (analogous/triadic/complementary)
  * - Rotación Fibonacci (φ × 360° ≈ 222.5°) → Color secundario
  * 
+ * WAVE 68.5 - PURGA DE GÉNERO:
+ * ✅ Eliminado: MACRO_GENRES, GENRE_MAP, GenreProfile, tempBias, satBoost, lightBoost
+ * ✅ El motor genera colores PUROS - sin bias de género
+ * ✅ El VibeManager aplica clamps DESPUÉS (temperatura/saturación min/max)
+ * 
  * REGLA DE ORO:
- *   finalHue = KEY_TO_HUE[key] + MODE_MODIFIERS[mode].hueDelta + GENRE.tempBias
+ *   finalHue = KEY_TO_HUE[key] + MODE_MODIFIERS[mode].hueDelta
  *   energía SOLO afecta saturación y brillo, NUNCA el hue base
  * 
  * @see docs/JSON-ANALYZER-PROTOCOL.md - Protocolo de entrada
- * @see docs/WAVE-17-SELENE-COLOR-MIND-AUDIT.md - Arquitectura completa
- * @see docs/WAVE-17.1-MACRO-GENRES-MASTER-PLAN.md - Sistema de géneros
+ * @see docs/WAVE-17-SELENE-COLOR-MIND-AUDIT.md - Arquitectura original
+ * @see docs/Wave60_70/WAVE-68-5-GENRE-PURGE.md - Eliminación de lógica de género
  * 
  * @module engines/visual/SeleneColorEngine
- * @version 17.2.0
+ * @version 68.5.0
  */
 
 // ============================================================
@@ -76,10 +80,9 @@ export interface SelenePalette {
 
 /**
  * Metadata de la paleta generada
+ * 🎨 WAVE 68.5: Sin macroGenre - solo matemática musical pura
  */
 export interface PaletteMeta {
-  /** Macro-género detectado */
-  macroGenre: string;
   /** Estrategia de contraste usada */
   strategy: 'analogous' | 'triadic' | 'complementary';
   /** Temperatura visual de la paleta */
@@ -358,115 +361,6 @@ const MODE_MODIFIERS: Record<string, ModeModifier> = {
 // 3. SISTEMA DE MACRO-GÉNEROS
 // ============================================================
 
-/**
- * Perfil de modificación por macro-género
- */
-interface GenreProfile {
-  /** Bias de temperatura (-30 a +30 grados de hue) */
-  tempBias: number;
-  /** Boost de saturación (-20 a +20%) */
-  satBoost: number;
-  /** Boost de luminosidad (-20 a +20%) */
-  lightBoost: number;
-  /** Estrategia de contraste */
-  contrast: 'analogous' | 'triadic' | 'complementary' | 'adaptive';
-  /** Brillo mínimo garantizado */
-  minLight: number;
-  /** Brillo máximo permitido */
-  maxLight: number;
-  /** Velocidad de transición base (ms) */
-  transitionSpeed: number;
-  /** Descripción del perfil */
-  description: string;
-}
-
-/**
- * ⚖️ WAVE 50: PERFILES BINARIOS DE MACRO-GÉNEROS
- * 
- * Solo 2 macro-géneros: ELECTRONIC_4X4 (Cool) vs LATINO_TRADICIONAL (Warm)
- * El género es responsable del 5-10% del color final.
- * No vale la pena mantener 5 perfiles para tan poca diferencia.
- * 
- * "El Arquitecto ha hablado: SIMPLIFICACIÓN BRUTAL"
- */
-const MACRO_GENRES: Record<string, GenreProfile> = {
-  /**
-   * ELECTRONIC_4X4: Techno, House, Trance, DnB, Dubstep...
-   * COOL BIAS: Azules, Cyans, Neones, Púrpuras
-   */
-  'ELECTRONIC_4X4': {
-    tempBias: -15,        // Shift hacia azules/violetas
-    satBoost: -10,        // Menos saturado (hipnótico)
-    lightBoost: -10,      // Oscuro, underground
-    contrast: 'analogous', // Colores vecinos (±30°)
-    minLight: 25,
-    maxLight: 65,
-    transitionSpeed: 1500, // Lento, fluido
-    description: 'Frío, hipnótico, minimalista',
-  },
-  
-  /**
-   * LATINO_TRADICIONAL: Cumbia, Reggaeton, Salsa, Pop, Rock...
-   * WARM BIAS: Ámbar, Magenta, Sunset, Cálido
-   * (Ahora es el perfil "catch-all" para todo lo no-4x4)
-   */
-  'LATINO_TRADICIONAL': {
-    tempBias: 25,          // MÁXIMO shift hacia cálidos
-    satBoost: 20,          // MUY saturado (festivo)
-    lightBoost: 15,        // Brillante, vibrante
-    contrast: 'complementary', // Colores opuestos (180°)
-    minLight: 45,
-    maxLight: 80,
-    transitionSpeed: 1000, // Moderado, rítmico
-    description: 'Cálido, festivo, explosivo',
-  },
-};
-
-/**
- * 🗺️ WAVE 50: MAPEO SIMPLIFICADO
- * Todo se reduce a 2 perfiles: ELECTRONIC_4X4 o LATINO_TRADICIONAL
- */
-const GENRE_MAP: Record<string, string> = {
-  // === ELECTRONIC_4X4 (Cool Bias) ===
-  'techno': 'ELECTRONIC_4X4',
-  'house': 'ELECTRONIC_4X4',
-  'trance': 'ELECTRONIC_4X4',
-  'minimal': 'ELECTRONIC_4X4',
-  'four_on_floor': 'ELECTRONIC_4X4',
-  'cyberpunk': 'ELECTRONIC_4X4',
-  'edm': 'ELECTRONIC_4X4',
-  'drum_and_bass': 'ELECTRONIC_4X4',  // Antes ELECTRONIC_BREAKS, ahora fusionado
-  'dnb': 'ELECTRONIC_4X4',
-  'dubstep': 'ELECTRONIC_4X4',
-  'jungle': 'ELECTRONIC_4X4',
-  'breakbeat': 'ELECTRONIC_4X4',
-  'breaks': 'ELECTRONIC_4X4',
-  
-  // === LATINO_TRADICIONAL (Warm Bias) - Default para todo lo demás ===
-  'cumbia': 'LATINO_TRADICIONAL',
-  'salsa': 'LATINO_TRADICIONAL',
-  'merengue': 'LATINO_TRADICIONAL',
-  'bachata': 'LATINO_TRADICIONAL',
-  'vallenato': 'LATINO_TRADICIONAL',
-  'reggaeton': 'LATINO_TRADICIONAL',  // Antes LATINO_URBANO, ahora fusionado
-  'trap': 'LATINO_TRADICIONAL',
-  'dembow': 'LATINO_TRADICIONAL',
-  'perreo': 'LATINO_TRADICIONAL',
-  'latin_pop': 'LATINO_TRADICIONAL',  // Antes ELECTROLATINO, ahora fusionado
-  'pop': 'LATINO_TRADICIONAL',
-  'rock': 'LATINO_TRADICIONAL',
-  'afro_house': 'LATINO_TRADICIONAL',
-  'tropical': 'LATINO_TRADICIONAL',
-  'moombahton': 'LATINO_TRADICIONAL',
-  'unknown': 'LATINO_TRADICIONAL',
-};
-
-/**
- * Perfil por defecto cuando no hay género detectado
- * WAVE 50: Ahora es LATINO_TRADICIONAL (warm fallback)
- */
-const DEFAULT_GENRE = 'LATINO_TRADICIONAL';
-
 // ============================================================
 // 4. UTILIDADES
 // ============================================================
@@ -723,29 +617,41 @@ export class SeleneColorEngine {
     const mode = wave8.harmony.mode || 'minor';
     const mood = wave8.harmony.mood || data.mood || 'universal';
     const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
-    // 🔧 WAVE 46.1: FIX - GenreClassifier devuelve .genre, pero este código buscaba .primary
-    // Ahora soporta ambos formatos para compatibilidad
-    const genrePrimary = (wave8.genre as any).genre || wave8.genre.primary || 'unknown';
     const energy = clamp(data.energy ?? 0.5, 0, 1);
-    const genreConfidence = wave8.genre.confidence ?? 0.5;
     
-    // === B. DETECTAR MACRO-GÉNERO ===
-    // 🔧 WAVE 46.2: El GenreClassifier YA devuelve macro-géneros (ELECTRONIC_4X4, etc.)
-    // Si genrePrimary ya es un macro-género válido, usarlo directamente
-    // Solo mapear si es un sub-género (techno, house, cumbia, etc.)
-    const upperGenre = genrePrimary.toUpperCase();
-    const isAlreadyMacro = MACRO_GENRES[upperGenre] !== undefined;
-    const macroId = isAlreadyMacro 
-      ? upperGenre 
-      : (GENRE_MAP[genrePrimary.toLowerCase()] || DEFAULT_GENRE);
-    const profile = MACRO_GENRES[macroId];
-    
-    // === C. DETERMINAR HUE BASE (Matemática Pura) ===
-    // Prioridad: KEY > MOOD > DEFAULT
+    // === B. DETERMINAR HUE BASE (Matemática Pura) ===
+    // 🎨 WAVE 68.5: PURE COLOR - Solo Key, Mode y Mood
+    // NO género, NO bias, solo matemática musical pura
+    // 🔥 WAVE 74: MOOD OVERRIDE - Si mood es 'bright', forzar Hue cálido
+    // Esto evita que Fiesta Latina muestre verdes/cyans por la Key detectada
     let baseHue = 120; // Default: Verde (neutro)
     let hueSource = 'default';
     
-    if (key && KEY_TO_HUE[key] !== undefined) {
+    // 🔥 WAVE 74: Mood 'bright' tiene PRIORIDAD sobre Key
+    // Fiesta Latina usa mood='bright' y SIEMPRE debe ser cálido
+    if (mood === 'bright') {
+      // Rango cálido: rojos, naranjas, amarillos (0-60°)
+      // Usamos Key para variar DENTRO del rango cálido
+      if (key && KEY_TO_HUE[key] !== undefined) {
+        const keyHue = KEY_TO_HUE[key];
+        // Mapear cualquier Key al rango cálido (0-60°)
+        // Usamos el módulo de la Key para crear variación
+        baseHue = (keyHue % 60);  // Siempre 0-59°
+      } else {
+        baseHue = 30; // Default cálido: naranja
+      }
+      hueSource = `mood:bright+warm`;
+    } else if (mood === 'dark') {
+      // 🔥 WAVE 74: Mood 'dark' = azules/violetas (200-280°)
+      if (key && KEY_TO_HUE[key] !== undefined) {
+        const keyHue = KEY_TO_HUE[key];
+        baseHue = 200 + (keyHue % 80);  // 200-280°
+      } else {
+        baseHue = 240; // Default frío: azul
+      }
+      hueSource = `mood:dark+cold`;
+    } else if (key && KEY_TO_HUE[key] !== undefined) {
+      // Comportamiento original: Key determina Hue
       baseHue = KEY_TO_HUE[key];
       hueSource = `key:${key}`;
     } else if (mood && MOOD_HUES[mood] !== undefined) {
@@ -753,43 +659,41 @@ export class SeleneColorEngine {
       hueSource = `mood:${mood}`;
     }
     
-    // === D. APLICAR MODIFICADORES ===
-    // Orden: Base + Mode + Genre
+    // === C. APLICAR MODIFICADORES DE MODO ===
+    // Solo aplicamos el modifier del modo musical (major/minor)
     const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
     
-    // El Hue final es la suma de: Base + Modo + Género (tempBias)
-    const finalHue = normalizeHue(
-      baseHue + modeMod.hue + profile.tempBias
-    );
+    // El Hue final es: Base + Modo (SIN GÉNERO)
+    const finalHue = normalizeHue(baseHue + modeMod.hue);
     
-    // === E. ENERGÍA → SATURACIÓN Y BRILLO ===
+    // === D. ENERGÍA → SATURACIÓN Y BRILLO ===
     // REGLA DE ORO: Energía NUNCA modifica el Hue, solo S y L
     // Energy 0.0 → Sat 40%, Light 25%
     // Energy 1.0 → Sat 100%, Light 95%
     const baseSat = 40 + (energy * 60);  // 40-100%
     const baseLight = 25 + (energy * 70); // 25-95% (WAVE 24.5.2: Rango más dinámico)
     
-    // Aplicar modifiers
+    // Aplicar solo modifiers de modo (SIN GÉNERO BOOST)
     const primarySat = clamp(
-      baseSat + modeMod.sat + profile.satBoost,
+      baseSat + modeMod.sat,
       20,
       100
     );
     
     const primaryLight = clamp(
-      baseLight + modeMod.light + profile.lightBoost,
-      profile.minLight,
-      profile.maxLight
+      baseLight + modeMod.light,
+      20,  // Mínimo absoluto
+      95   // Máximo absoluto
     );
     
-    // === F. COLOR PRIMARIO ===
+    // === E. COLOR PRIMARIO ===
     const primary: HSLColor = {
       h: finalHue,
       s: primarySat,
       l: primaryLight,
     };
     
-    // === G. COLOR SECUNDARIO (Rotación Fibonacci) ===
+    // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
     // φ × 360° ≈ 222.5° garantiza variedad infinita
     const secondaryHue = normalizeHue(finalHue + PHI_ROTATION);
     const secondary: HSLColor = {
@@ -798,33 +702,22 @@ export class SeleneColorEngine {
       l: clamp(primaryLight - 10, 20, 80), // Ligeramente más oscuro
     };
     
-    // === H. COLOR DE ACENTO (Estrategia de Contraste) ===
+    // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
+    // 🎨 WAVE 68.5: Estrategia PURA basada en syncopation
+    // SIN género, solo matemática rítmica
     let accentHue: number;
-    let strategy = profile.contrast;
+    let strategy: 'analogous' | 'triadic' | 'complementary';
     
-    // Adaptive: decidir según syncopation
-    if (strategy === 'adaptive') {
-      if (syncopation < 0.30) {
-        strategy = 'analogous';
-      } else if (syncopation < 0.50) {
-        strategy = 'triadic';
-      } else {
-        strategy = 'complementary';
-      }
-    }
-    
-    // Aplicar estrategia
-    switch (strategy) {
-      case 'complementary':
-        accentHue = finalHue + 180;  // Opuesto
-        break;
-      case 'triadic':
-        accentHue = finalHue + 120;  // Triángulo
-        break;
-      case 'analogous':
-      default:
-        accentHue = finalHue + 30;   // Vecino
-        break;
+    // Decisión basada solo en syncopation
+    if (syncopation < 0.30) {
+      strategy = 'analogous';
+      accentHue = finalHue + 30;   // Vecino
+    } else if (syncopation < 0.50) {
+      strategy = 'triadic';
+      accentHue = finalHue + 120;  // Triángulo
+    } else {
+      strategy = 'complementary';
+      accentHue = finalHue + 180;  // Opuesto
     }
     
     const accent: HSLColor = {
@@ -833,69 +726,55 @@ export class SeleneColorEngine {
       l: Math.max(70, primaryLight + 20), // Siempre brillante
     };
     
-    // === I. COLOR AMBIENTE (Fills, desaturado) ===
+    // === H. COLOR AMBIENTE (Fills, desaturado) ===
     const ambient: HSLColor = {
       h: finalHue,
       s: Math.max(15, primarySat * 0.4),  // 40% de saturación
       l: Math.max(15, primaryLight * 0.4), // 40% de brillo
     };
     
-    // === J. COLOR CONTRASTE (Siluetas, muy oscuro) ===
+    // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
     const contrast: HSLColor = {
       h: normalizeHue(finalHue + 180),
       s: 30,
       l: 10,
     };
     
-    // === K. DETERMINAR TEMPERATURA VISUAL ===
+    // === J. DETERMINAR TEMPERATURA VISUAL ===
+    // 🌡️ WAVE 68.5: Temperatura PURA basada solo en HUE
     // Hue 0-60 y 300-360 = warm (reds, oranges, magentas)
     // Hue 180-300 = cool (cyans, blues, purples)
-    // Hue 60-180 con tempBias > 0 = warm (hot oranges/yellows)
+    // Hue 60-180 = neutral/warm (yellows, greens)
     let temperature: 'warm' | 'cool' | 'neutral';
-    if ((finalHue >= 0 && finalHue <= 60) || (finalHue > 120 && finalHue < 180) || finalHue >= 300) {
+    if ((finalHue >= 0 && finalHue <= 60) || finalHue >= 300) {
       temperature = 'warm';
-    } else if ((finalHue > 60 && finalHue <= 120) && profile.tempBias > 0) {
-      temperature = 'warm'; // Naranja cálido (Latino)
     } else if (finalHue >= 180 && finalHue < 300) {
       temperature = 'cool';
     } else {
       temperature = 'neutral';
     }
     
-    // 🔥 WAVE 67.5: HARD CLAMP DE TEMPERATURA PARA LATINO
-    // Si el macro-género es Latino, FORZAR temperatura a 'warm' SIEMPRE
-    // Esto garantiza que el perfil FiestaLatina nunca vea azules/fríos
-    const isLatinMacro = macroId === 'LATIN_ORGANIC' || macroId.includes('LATIN');
-    if (isLatinMacro && temperature !== 'warm') {
-      temperature = 'warm';
-      // También ajustar el hue del primary hacia cálido si está en zona fría
-      // Zona fría: 180-300 (cyan/azul/púrpura)
-      // Clamp a zona cálida: rotar hacia 30 (naranja) o 0 (rojo)
-      if (primary.h >= 180 && primary.h < 300) {
-        // Mapear 180-300 → 30-60 (naranjas cálidos)
-        primary.h = 30 + ((primary.h - 180) / 120) * 30;
-      }
-    }
-    
-    // === L. CALCULAR VELOCIDAD DE TRANSICIÓN ===
+    // === K. CALCULAR VELOCIDAD DE TRANSICIÓN ===
     // Alta energía = transiciones rápidas
     // Baja energía = transiciones lentas
+    const baseTransitionSpeed = 1200; // ms (default moderado)
     const transitionSpeed = mapRange(
       energy,
       0, 1,
-      profile.transitionSpeed * 1.5,  // Lento
-      profile.transitionSpeed * 0.5   // Rápido
+      baseTransitionSpeed * 1.5,  // Lento (1800ms)
+      baseTransitionSpeed * 0.5   // Rápido (600ms)
     );
     
-    // === M. CONSTRUIR DESCRIPCIÓN ===
+    // === L. CONSTRUIR DESCRIPCIÓN ===
+    // 🎨 WAVE 68.5: Descripción PURA sin género
     const description = [
       key ? `${key} ${mode}` : mood,
-      `(${profile.description})`,
+      `${temperature}`,
       `E=${(energy * 100).toFixed(0)}%`,
       `S=${(syncopation * 100).toFixed(0)}%`,
     ].join(' ');
     
-    // === N. RETORNAR PALETA COMPLETA ===
+    // === M. RETORNAR PALETA COMPLETA ===
     return {
       primary,
       secondary,
@@ -903,11 +782,10 @@ export class SeleneColorEngine {
       ambient,
       contrast,
       meta: {
-        macroGenre: macroId,
         strategy: strategy as 'analogous' | 'triadic' | 'complementary',
         temperature,
         description,
-        confidence: genreConfidence,
+        confidence: 1.0,  // 🎨 WAVE 68.5: Confianza siempre 100% (matemática determinista)
         transitionSpeed: Math.round(transitionSpeed),
       },
     };
@@ -929,27 +807,6 @@ export class SeleneColorEngine {
       ...paletteToRgb(palette),
       meta: palette.meta,
     };
-  }
-  
-  /**
-   * Mapea un género detallado a su macro-género correspondiente
-   */
-  static mapToMacroGenre(genre: string): string {
-    return GENRE_MAP[genre.toLowerCase()] || DEFAULT_GENRE;
-  }
-  
-  /**
-   * Obtiene el perfil de un macro-género
-   */
-  static getGenreProfile(macroGenre: string): GenreProfile | undefined {
-    return MACRO_GENRES[macroGenre];
-  }
-  
-  /**
-   * Lista todos los macro-géneros disponibles
-   */
-  static getMacroGenres(): string[] {
-    return Object.keys(MACRO_GENRES);
   }
   
   /**
@@ -975,8 +832,6 @@ export {
   KEY_TO_HUE,
   MOOD_HUES,
   MODE_MODIFIERS,
-  MACRO_GENRES,
-  GENRE_MAP,
   PHI_ROTATION,
   normalizeHue,
   clamp,
@@ -991,7 +846,7 @@ export {
  * 🎨 WAVE 49: SELENE COLOR INTERPOLATOR
  * ====================================
  * Wrapper con estado para interpolación suave de colores.
- * Evita "epilepsia cromática" cuando cambia Key/Género.
+ * Evita "epilepsia cromática" cuando cambia Key o Mood.
  * 
  * REGLAS:
  * - Transición normal: 4 beats (~2 segundos a 120 BPM)
@@ -1028,6 +883,8 @@ export class SeleneColorInterpolator {
    * @param targetData - Datos de análisis de audio
    * @param isDrop - Si estamos en un DROP (transición rápida)
    * @returns Paleta interpolada para enviar a fixtures
+   * 
+   * 🌊 WAVE 70.5: Tolerancia de jitter - solo resetear transición si cambio > 15°
    */
   update(targetData: ExtendedAudioAnalysis, isDrop: boolean = false): SelenePalette {
     this.frameCount++;
@@ -1043,25 +900,28 @@ export class SeleneColorInterpolator {
       return newTarget;
     }
     
-    // Detectar si el target cambió significativamente (cambio de Key/Género)
-    const hueChanged = Math.abs(this.targetPalette!.primary.h - newTarget.primary.h) > 10;
-    const genreChanged = this.targetPalette?.meta.macroGenre !== newTarget.meta.macroGenre;
+    // � WAVE 70.5: Calcular diferencia de Hue con camino más corto en el círculo
+    const currentTargetHue = normalizeHue(this.targetPalette!.primary.h);
+    const newTargetHue = normalizeHue(newTarget.primary.h);
+    let hueDiff = Math.abs(currentTargetHue - newTargetHue);
+    if (hueDiff > 180) hueDiff = 360 - hueDiff; // Camino más corto
     
-    if (hueChanged || genreChanged) {
-      // Iniciar nueva transición
+    // 🌊 WAVE 70.5: Solo es cambio REAL si supera tolerancia de 15°
+    // Evita flicker por jitter/oscilación del análisis
+    const isRealChange = hueDiff > 15;
+    
+    if (isRealChange) {
+      // Cambio significativo de Key/Mood - iniciar nueva transición
       this.targetPalette = newTarget;
       this.transitionProgress = 0;
       
       // Velocidad según contexto
       const transitionFrames = isDrop ? this.DROP_TRANSITION_FRAMES : this.NORMAL_TRANSITION_FRAMES;
       this.transitionSpeed = 1.0 / Math.max(transitionFrames, this.MIN_TRANSITION_FRAMES);
-      
-      // 🧹 WAVE 63.5: Log comentado - solo vibes y errores importan
-      // Log solo cada segundo
-      // if (this.frameCount - this.lastLogFrame > 60) {
-      //   console.log(`[ColorInterpolator] 🎨 Nueva transición: ${this.currentPalette.meta.macroGenre} → ${newTarget.meta.macroGenre} (${isDrop ? 'DROP' : 'normal'})`);
-      //   this.lastLogFrame = this.frameCount;
-      // }
+    } else if (hueDiff > 0) {
+      // 🌊 WAVE 70.5: Jitter detectado - actualizar target silenciosamente
+      // NO reseteamos transitionProgress, permitiendo corrección suave del rumbo
+      this.targetPalette = newTarget;
     }
     
     // Avanzar transición

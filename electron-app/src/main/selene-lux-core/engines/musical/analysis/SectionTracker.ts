@@ -174,6 +174,12 @@ export interface SectionTrackerConfig {
   transitionConfidenceThreshold: number;
   /** WAVE 47.2: Frames consecutivos necesarios para confirmar transición */
   transitionConfirmationFrames: number;
+  /** 🌊 WAVE 70: Máxima duración de DROP en ms (evita DROPs eternos) */
+  maxDropDuration: number;
+  /** 🌊 WAVE 70: Tiempo de cooldown después de DROP en ms (evita re-entrada inmediata) */
+  dropCooldownTime: number;
+  /** 🌊 WAVE 70: Umbral de energía para kill switch de DROP (si baja de este valor, forzar salida) */
+  dropEnergyKillThreshold: number;
 }
 
 const DEFAULT_CONFIG: SectionTrackerConfig = {
@@ -184,6 +190,10 @@ const DEFAULT_CONFIG: SectionTrackerConfig = {
   energyBaselineSize: 120,              // WAVE 47.2: ~60 segundos de baseline (120 frames a 500ms)
   transitionConfidenceThreshold: 0.65,  // WAVE 47.2: Mínimo 65% confianza para transición
   transitionConfirmationFrames: 6,      // WAVE 47.2: 6 frames = 3 segundos de confirmación
+  // 🌊 WAVE 70: DROP timeout y cooldown para evitar DROPs eternos
+  maxDropDuration: 30000,               // 30 segundos máximo de DROP (fiesta-latina puede ser 12s)
+  dropCooldownTime: 5000,               // 5 segundos de cooldown después de DROP
+  dropEnergyKillThreshold: 0.6,         // Si energía < 0.6, forzar salida de DROP
 };
 
 // ============================================================
@@ -260,6 +270,14 @@ export class SectionTracker extends EventEmitter {
   
   // Contadores para estabilizar detección
   private consecutiveSection: number = 0;
+  
+  // 🌊 WAVE 70: DROP timeout y cooldown
+  private dropStartTime: number = 0;         // Cuando empezó el DROP actual
+  private lastDropEndTime: number = 0;       // Cuando terminó el último DROP
+  private isDropCooldown: boolean = false;   // Estamos en período de cooldown?
+  
+  // 🌊 WAVE 70.5: Nuclear Kill Switch - fuerza salida inmediata de DROP
+  private forceDropExit: boolean = false;    // Kill switch activado?
   
   constructor(config: Partial<SectionTrackerConfig> = {}) {
     super();
@@ -526,11 +544,54 @@ export class SectionTracker extends EventEmitter {
       ? (audio.bass - this.energyBaseline.p25) / bassRange 
       : audio.bass;
     
+    // 🌊 WAVE 70: DROP timeout y cooldown
+    const now = Date.now();
+    
+    // Verificar si estamos en cooldown después de un DROP
+    if (this.isDropCooldown) {
+      const cooldownElapsed = now - this.lastDropEndTime;
+      if (cooldownElapsed >= this.config.dropCooldownTime) {
+        this.isDropCooldown = false;
+        this.forceDropExit = false; // 🌊 WAVE 70.5: Reset nuclear flag al terminar cooldown
+        // console.log('[SectionTracker] 🌊 DROP cooldown terminado');
+      }
+    }
+    
+    // 🌊 WAVE 70.5: NUCLEAR KILL SWITCH - Forzar salida INMEDIATA de DROP si:
+    // 1. Duración excede maxDropDuration
+    // 2. Energía cae por debajo del umbral
+    if (this.currentSection === 'drop') {
+      const dropDuration = now - this.dropStartTime;
+      const shouldKillDrop = 
+        dropDuration >= this.config.maxDropDuration ||
+        intensity < this.config.dropEnergyKillThreshold;
+      
+      if (shouldKillDrop) {
+        // 🌊 WAVE 70.5: NUCLEAR - Activar flag inmediatamente
+        this.forceDropExit = true;
+        this.lastDropEndTime = now;
+        this.isDropCooldown = true;
+        
+        // 🌊 WAVE 70.5: LIMPIAR VOTOS DE DROP INMEDIATAMENTE
+        // Evita que el sistema de votación lo reactive al siguiente frame
+        this.sectionVotes.set('drop', 0);
+        
+        // Votar fuertemente por chorus/breakdown para forzar transición
+        this.addVote('chorus', 3.0);      // 🌊 WAVE 70.5: Aumentado de 2.0 a 3.0
+        this.addVote('breakdown', 2.0);   // 🌊 WAVE 70.5: Aumentado de 1.0 a 2.0
+        
+        // console.log(`[SectionTracker] 🌊 NUCLEAR DROP KILL: duration=${dropDuration}ms, intensity=${intensity.toFixed(2)}`);
+      }
+    }
+    
     // 🔥 DROP: Intensidad muy por encima de la media + bass pesado + kick
-    if (intensity > 0.85 && relativeBass > 0.7 && rhythm.drums.kickDetected) {
-      this.addVote('drop', 1.0);
-    } else if (intensity > 0.75 && rhythm.drums.kickDetected && rhythm.drums.kickIntensity > 0.6) {
-      this.addVote('drop', 0.6);
+    // 🌊 WAVE 70.5: BLOQUEADO si estamos en cooldown O si nuclear kill está activo
+    if (!this.isDropCooldown && !this.forceDropExit) {
+      if (intensity > 0.85 && relativeBass > 0.7 && rhythm.drums.kickDetected) {
+        this.addVote('drop', 1.0);
+      } else if (intensity > 0.75 && rhythm.drums.kickDetected && rhythm.drums.kickIntensity > 0.6) {
+        this.addVote('drop', 0.6);
+      }
     }
     
     // 📈 BUILDUP: Energía subiendo + zona media-alta
@@ -683,6 +744,18 @@ export class SectionTracker extends EventEmitter {
             this.currentSection = detected;
             this.sectionStartTime = now;
             this.consecutiveSection = 1;
+            
+            // 🌊 WAVE 70: Registrar tiempos de DROP
+            if (detected === 'drop') {
+              this.dropStartTime = now;
+              // console.log('[SectionTracker] 🌊 DROP iniciado');
+            }
+            if (oldSection === 'drop' && detected !== 'drop') {
+              this.lastDropEndTime = now;
+              this.isDropCooldown = true;
+              this.forceDropExit = false; // 🌊 WAVE 70.5: Reset nuclear flag al salir del DROP
+              // console.log('[SectionTracker] 🌊 DROP terminado, entrando en cooldown');
+            }
             
             // Reset pendiente
             this.pendingTransition = null;
@@ -911,6 +984,7 @@ export class SectionTracker extends EventEmitter {
   /**
    * Reset del tracker
    * WAVE 47.2: Incluye nuevos campos
+   * WAVE 70: Incluye campos de DROP timeout
    */
   reset(): void {
     this.currentSection = 'unknown';
@@ -927,6 +1001,12 @@ export class SectionTracker extends EventEmitter {
     this.pendingTransition = null;
     this.pendingTransitionFrames = 0;
     this.sectionHistory = [];
+    
+    // 🌊 WAVE 70: Reset campos de DROP timeout
+    this.dropStartTime = 0;
+    this.lastDropEndTime = 0;
+    this.isDropCooldown = false;
+    this.forceDropExit = false; // 🌊 WAVE 70.5: Reset nuclear flag
   }
 }
 

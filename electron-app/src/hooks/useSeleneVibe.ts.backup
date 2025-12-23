@@ -1,5 +1,5 @@
-﻿/**
- *  USE SELENE VIBE HOOK - WAVE 62 + WAVE 64 + WAVE 69.2
+/**
+ * 🎛️ USE SELENE VIBE HOOK - WAVE 62 + WAVE 64
  * 
  * React hook para controlar el Vibe Context activo.
  * Los Vibes definen bounded constraints para que SELENE
@@ -11,17 +11,12 @@
  * - pop-rock: Paletas brillantes, movimientos energéticos
  * - chill-lounge: Paletas pastel, movimientos suaves
  * 
- *  WAVE 64: 'idle' es un vibe interno que representa "esperando input"
+ * 🔌 WAVE 64: 'idle' es un vibe interno que representa "esperando input"
  * Cuando el backend tiene 'idle', activeVibe visual = null (ningún botón iluminado)
- * 
- *  WAVE 69.2 FIX: Migrado de useState a Zustand store global.
- * Soluciona pérdida de estado al cambiar de pestaña/componente (unmount/remount).
- * El store persiste el vibe actual incluso cuando DashboardView se desmonta.
  */
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useControlStore } from '../stores/controlStore'
-import { useVibeStore } from '../stores/vibeStore'
 
 // ============================================================================
 // TYPES
@@ -75,10 +70,10 @@ export const VIBE_PRESETS: Record<VibeId, VibeInfo> = {
 
 export interface UseSeleneVibeReturn {
   // State
-  activeVibe: VibeId | null  // null = 'idle' (ningún botón iluminado)
+  activeVibe: VibeId | null  // 🔄 WAVE 63.5: null mientras carga
   isTransitioning: boolean
-  vibeInfo: VibeInfo | null
-  isLoading: boolean
+  vibeInfo: VibeInfo | null  // 🔄 WAVE 63.5: null mientras carga
+  isLoading: boolean         // 🔄 WAVE 63.5: true mientras fetching inicial
   
   // Actions
   setVibe: (vibeId: VibeId) => Promise<void>
@@ -93,57 +88,51 @@ export interface UseSeleneVibeReturn {
 // ============================================================================
 
 export function useSeleneVibe(): UseSeleneVibeReturn {
-  //  WAVE 69.2: Use Zustand store instead of local useState
-  // This persists across component mount/unmount (tab changes)
-  const currentVibe = useVibeStore(state => state.currentVibe)
-  const hasFetchedInitial = useVibeStore(state => state.hasFetchedInitial)
-  const isTransitioning = useVibeStore(state => state.isTransitioning)
-  const getVisualVibe = useVibeStore(state => state.getVisualVibe)
-  const setCurrentVibe = useVibeStore(state => state.setCurrentVibe)
-  const setHasFetchedInitial = useVibeStore(state => state.setHasFetchedInitial)
-  const setTransitioning = useVibeStore(state => state.setTransitioning)
-  
+  // � WAVE 64: null = 'idle' (ningún vibe seleccionado, esperando input)
+  const [activeVibe, setActiveVibe] = useState<VibeId | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [hasFetched, setHasFetched] = useState(false)  // 🔌 WAVE 64: Track si ya fetch
   const unsubscribeRef = useRef<(() => void) | null>(null)
   
   // Check global mode for ghost mode (hide when not in Selene mode)
   const globalMode = useControlStore(state => state.globalMode)
   const isGhostMode = globalMode !== 'selene'
   
-  // Initialize: Get current vibe from backend (only once globally)
+  // Initialize: Get current vibe from backend
   useEffect(() => {
-    if (hasFetchedInitial) return  // Already fetched globally
-    
     const initVibe = async () => {
       if (!window.lux?.getVibe) {
-        setHasFetchedInitial(true)
+        setHasFetched(true)  // No hay API, marcar como fetched
         return
       }
       
       try {
         const result = await window.lux.getVibe()
         if (result.success && result.vibeId) {
-          // Backend returns 'idle' or VibeId
-          setCurrentVibe(result.vibeId as any)
-          console.log('[useSeleneVibe] Initial vibe fetched:', result.vibeId)
+          // 🔌 WAVE 64: 'idle' = null visual (ningún botón iluminado)
+          const vibeId = result.vibeId === 'idle' ? null : result.vibeId as VibeId
+          setActiveVibe(vibeId)
         }
       } catch (error) {
         console.warn('[useSeleneVibe] Failed to get initial vibe:', error)
       } finally {
-        setHasFetchedInitial(true)
+        setHasFetched(true)
       }
     }
     
     initVibe()
-  }, [hasFetchedInitial, setCurrentVibe, setHasFetchedInitial])
+  }, [])
   
   // Subscribe to vibe changes from backend
   useEffect(() => {
     if (!window.lux?.onVibeChange) return
     
     unsubscribeRef.current = window.lux.onVibeChange((data) => {
-      console.log('[useSeleneVibe] Backend vibe changed:', data.vibeId)
-      // Backend can send 'idle' or VibeId
-      setCurrentVibe(data.vibeId as any)
+      console.log('[useSeleneVibe] Vibe changed:', data.vibeId)
+      // 🔌 WAVE 64: 'idle' = null visual (ningún botón iluminado)
+      const vibeId = data.vibeId === 'idle' ? null : data.vibeId as VibeId
+      setActiveVibe(vibeId)
+      setIsTransitioning(false)
     })
     
     return () => {
@@ -152,7 +141,7 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
         unsubscribeRef.current = null
       }
     }
-  }, [setCurrentVibe])
+  }, [])
   
   // Set vibe action
   const setVibe = useCallback(async (vibeId: VibeId) => {
@@ -161,34 +150,29 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
       return
     }
     
-    const visualVibe = getVisualVibe()
-    if (vibeId === visualVibe) {
-      console.log('[useSeleneVibe] Vibe already active:', vibeId)
-      return  // Already active
-    }
+    if (vibeId === activeVibe) return // Already active
     
-    setTransitioning(true)
+    setIsTransitioning(true)
     
     try {
       const result = await window.lux.setVibe(vibeId)
       
       if (result.success) {
         // Optimistic update - backend confirmation will follow via onVibeChange
-        setCurrentVibe(vibeId)
-        console.log('[useSeleneVibe] Vibe set request sent:', vibeId)
+        setActiveVibe(vibeId)
       } else {
         console.error('[useSeleneVibe] Failed to set vibe:', result.error)
-        setTransitioning(false)
+        setIsTransitioning(false)
       }
     } catch (error) {
       console.error('[useSeleneVibe] Error setting vibe:', error)
-      setTransitioning(false)
+      setIsTransitioning(false)
     }
-  }, [getVisualVibe, setCurrentVibe, setTransitioning])
+  }, [activeVibe])
   
-  // Computed values
-  const activeVibe = getVisualVibe()  // null if currentVibe === 'idle'
-  const isLoading = !hasFetchedInitial
+  // � WAVE 64: isLoading = true mientras no hemos hecho fetch inicial
+  // activeVibe === null ahora es un estado válido ("idle/esperando input")
+  const isLoading = !hasFetched
   
   return {
     activeVibe,

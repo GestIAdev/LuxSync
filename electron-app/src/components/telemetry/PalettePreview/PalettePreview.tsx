@@ -3,6 +3,7 @@ import { useTruthPalette, useTruthMusicalDNA, useTruthCognitive, useTruthConnect
 import './PalettePreview.css'
 
 const PalettePreview: React.FC = () => {
+  // 🔥 WAVE 74: Throttle eliminado - volvemos a tiempo real para diagnosticar
   const palette = useTruthPalette()
   const dna = useTruthMusicalDNA()
   const cognitive = useTruthCognitive()

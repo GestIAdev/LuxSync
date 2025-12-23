@@ -20,7 +20,7 @@
  * @version 25.0.0
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTruthStore } from '../stores/truthStore'
 import type { SeleneBroadcast } from '../types/SeleneProtocol'
 
@@ -139,6 +139,28 @@ export function useTruthBeat() {
  */
 export function useTruthPalette() {
   return useTruthStore((state) => state.truth.visualDecision.palette)
+}
+
+/**
+ * 🔥 WAVE 74: Hook THROTTLEADO para paleta - Solo actualiza 1 vez por segundo
+ * Evita re-renders innecesarios del Chromatic Core
+ * @returns { primary, secondary, accent, ambient, contrast, strategy, temperature }
+ */
+export function useTruthPaletteThrottled() {
+  const palette = useTruthStore((state) => state.truth.visualDecision.palette)
+  const [throttledPalette, setThrottledPalette] = useState(palette)
+  const lastUpdateRef = useRef(0)
+  
+  useEffect(() => {
+    const now = Date.now()
+    // Solo actualizar si ha pasado más de 1 segundo
+    if (now - lastUpdateRef.current >= 1000) {
+      lastUpdateRef.current = now
+      setThrottledPalette(palette)
+    }
+  }, [palette])
+  
+  return throttledPalette
 }
 
 /**

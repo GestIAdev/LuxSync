@@ -283,11 +283,15 @@ export function createMusicalContextFromTrinity(
   genre: GenreOutput
 ): MusicalContext {
   // Calculate combined confidence (REGLA 2)
+  // 🔧 WAVE 74: CONFIDENCE CRASH FIX - GenreClassifier fue eliminado (zombie muerto)
+  // genre.confidence ahora siempre es 0, así que redistribuimos los pesos
+  // ANTES: rhythm=0.35, harmony=0.20, section=0.20, genre=0.25 (máximo=0.75 sin genre)
+  // AHORA: rhythm=0.45, harmony=0.30, section=0.25, genre=0 (máximo=1.0)
   const combinedConfidence = 
-    rhythm.confidence * 0.35 +
-    harmony.confidence * 0.20 +
-    section.confidence * 0.20 +
-    genre.confidence * 0.25;
+    rhythm.confidence * 0.45 +
+    harmony.confidence * 0.30 +
+    section.confidence * 0.25;
+    // genre.confidence ya no se usa - GenreClassifier eliminado en WAVE 70+
   
   // Determine operation mode (REGLA 2)
   const operationMode = combinedConfidence >= 0.5 ? 'intelligent' : 'reactive';

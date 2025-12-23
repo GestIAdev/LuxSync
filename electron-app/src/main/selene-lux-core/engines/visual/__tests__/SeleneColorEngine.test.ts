@@ -1,11 +1,22 @@
 /**
  * 🧪 SELENE COLOR ENGINE - Tests
  * 
- * Valida la generación procedural de paletas cromáticas
- * usando los ejemplos documentados en JSON-ANALYZER-PROTOCOL.md
+ * ⚠️ WAVE 68.5: TESTS OBSOLETOS - Basados en lógica de GÉNERO eliminada
  * 
+ * Estos tests validaban la generación con MACRO_GENRES, GENRE_MAP y macroGenre.
+ * WAVE 68.5 eliminó toda la lógica de género del motor de color.
+ * 
+ * TODO: Reescribir tests para validar matemática musical PURA:
+ * - Key → Hue (círculo de quintas)
+ * - Mode → Temperature bias
+ * - Energy → Saturation & Lightness
+ * - Syncopation → Contrast strategy
+ * 
+ * @deprecated WAVE 68.5
  * @version 17.2.0
  */
+
+/* TESTS COMENTADOS - OBSOLETOS TRAS WAVE 68.5
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { 
@@ -380,3 +391,13 @@ describe('SeleneColorEngine', () => {
   });
   
 });
+
+*/
+
+// 🎨 WAVE 68.5: Tests nuevos para matemática musical PURA
+// TODO: Implementar tests para validar:
+// - KEY_TO_HUE mapping correcto
+// - MODE_MODIFIERS aplicados correctamente
+// - Energy → Saturation/Lightness
+// - Syncopation → Strategy (analogous/triadic/complementary)
+// - Sin bias de género - solo matemática

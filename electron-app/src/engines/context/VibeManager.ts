@@ -127,6 +127,8 @@ export class VibeManager {
 
     // No hacer nada si ya es el vibe activo
     if (newVibe.id === this.currentVibe.id) {
+      // 🐛 WAVE 69.1: Log para debug - no es un error, solo idempotencia
+      console.log(`[VibeManager] Vibe already active: '${vibeId}' (no transition needed)`);
       return false;
     }
 

@@ -27,8 +27,9 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   // ═══════════════════════════════════════════════════════════════
   mood: {
     // ✅ PERMITIDOS: Solo estados festivos/alegres
-    allowed: ['festive', 'playful', 'euphoric', 'energetic', 'dramatic'],
-    // ❌ PROHIBIDOS implícitos: 'dark', 'tense', 'calm', 'peaceful', 'dreamy', 'aggressive'
+    // 🔥 WAVE 74: Eliminado 'dramatic' - era Caballo de Troya que permitía DARK
+    allowed: ['festive', 'playful', 'euphoric', 'energetic'],
+    // ❌ PROHIBIDOS implícitos: 'dark', 'tense', 'calm', 'peaceful', 'dreamy', 'aggressive', 'dramatic'
     fallback: 'festive',
     audioInfluence: 0.8,      // Muy reactivo al audio
   },

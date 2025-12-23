@@ -324,10 +324,10 @@ function initSelene() {
             mainWindow.webContents.send('trinity:lighting-decision', decision)
           }
           
-          // � WAVE 46.0: DATA BRIDGE - Enviar debugInfo a SeleneLux
-          // Esto conecta el Worker (género/key/syncopation correctos) con la UI
-          if (decision?.debugInfo && selene) {
-            selene.updateFromTrinity(decision.debugInfo)
+          // 🎨 WAVE 69.3: DATA BRIDGE COMPLETE - Enviar debugInfo Y palette a SeleneLux
+          // Esto conecta el Worker (colores RGB del ColorEngine) con la UI
+          if (decision && selene) {
+            selene.updateFromTrinity(decision.debugInfo, decision.palette)
           }
           
           // 💓 WAVE 44.0: PIPELINE AUDIT - Log keys every 5 seconds

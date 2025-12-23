@@ -30,4 +30,6 @@ export {
   useTruthSensory,
   useTruthMusicalDNA,
   useTruthHardware,
+  // 🔥 WAVE 74: Throttled hooks
+  useTruthPaletteThrottled,
 } from './useSeleneTruth'

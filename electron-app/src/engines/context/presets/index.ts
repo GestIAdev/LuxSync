@@ -22,6 +22,7 @@ export { VIBE_CHILL_LOUNGE } from './ChillLoungeProfile';
 /**
  * Registro central de todos los Vibes disponibles
  * 🔌 WAVE 64: idle incluido para getVibePreset()
+ * 🐛 WAVE 69.1: Debug logging para verificar carga
  */
 export const VIBE_REGISTRY: Map<VibeId, VibeProfile> = new Map([
   ['idle', VIBE_IDLE],
@@ -31,6 +32,9 @@ export const VIBE_REGISTRY: Map<VibeId, VibeProfile> = new Map([
   ['chill-lounge', VIBE_CHILL_LOUNGE],
 ]);
 
+// 🐛 WAVE 69.1: Log de verificación de carga
+console.log('[VIBE_REGISTRY] Loaded vibes:', Array.from(VIBE_REGISTRY.keys()));
+console.log('[VIBE_REGISTRY] fiesta-latina registered:', VIBE_REGISTRY.has('fiesta-latina'));
 /**
  * Array de Vibe IDs seleccionables por el usuario (excluye idle)
  */
@@ -57,7 +61,12 @@ export function getVibePreset(id: VibeId): VibeProfile | undefined {
 /**
  * Verifica si un ID de vibe es válido (incluye 'idle')
  * 🔌 WAVE 64: Ahora usa VIBE_REGISTRY para incluir idle
+ * 🐛 WAVE 69.1: Debug logging
  */
 export function isValidVibeId(id: string): id is VibeId {
-  return VIBE_REGISTRY.has(id as VibeId);
+  const isValid = VIBE_REGISTRY.has(id as VibeId);
+  if (!isValid) {
+    console.warn(`[isValidVibeId] FAILED for '${id}' | Available:`, Array.from(VIBE_REGISTRY.keys()));
+  }
+  return isValid;
 }

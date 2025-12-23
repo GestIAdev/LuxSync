@@ -179,6 +179,39 @@ export class SeleneLux extends EventEmitter {
   // 🎨 WAVE 49: COLOR INTERPOLATOR - Transiciones suaves (anti-epilepsia)
   private colorInterpolator: SeleneColorInterpolator = new SeleneColorInterpolator()
   
+  // 🎨 WAVE 69.5: RGB INTERPOLATOR for Worker data (anti-strobing)
+  // Interpolación simple RGB con morphing suave
+  private workerColorState = {
+    current: null as { r: number; g: number; b: number }[] | null,
+    target: null as { r: number; g: number; b: number }[] | null,
+    progress: 1.0,
+    speed: 0.02,  // ~50 frames = ~1.6s @ 30fps
+  }
+  
+  // 🏛️ WAVE 72: SINGLE SOURCE OF TRUTH - Worker está activo si recibimos datos recientes
+  // Si el Worker envía datos dentro de los últimos 2 segundos, consideramos que está activo
+  private isWorkerActive(): boolean {
+    if (!this.lastTrinityData?.timestamp) return false;
+    const age = Date.now() - this.lastTrinityData.timestamp;
+    return age < 2000; // 2 segundos de gracia
+  }
+  
+  // 🏛️ WAVE 72: Helper para fallback emocional basado en Vibe activo
+  // Evita que NEUTRAL permita moods incompatibles con el Vibe
+  private getSafeFallbackForVibe(vibeId: string): 'BRIGHT' | 'DARK' | 'NEUTRAL' {
+    const id = vibeId.toLowerCase();
+    // Vibes latinos/festivos → BRIGHT (prohibe DARK)
+    if (id.includes('latin') || id.includes('fiesta') || id.includes('pop') || id.includes('cumbia') || id.includes('reggaeton')) {
+      return 'BRIGHT';
+    }
+    // Vibes electrónicos oscuros → NEUTRAL (permite DARK pero no fuerza)
+    if (id.includes('techno') || id.includes('minimal') || id.includes('industrial')) {
+      return 'NEUTRAL'; // Techno puede ser DARK o NEUTRAL
+    }
+    // Default: NEUTRAL es seguro para la mayoría
+    return 'NEUTRAL';
+  }
+
   private lastMovement: MovementOutput | null = null
   private lastBeat: BeatState | null = null
   private lastBrainOutput: BrainOutput | null = null
@@ -726,155 +759,193 @@ export class SeleneLux extends EventEmitter {
       // LEGACY: Modo sin Brain (FLOW/reactive mode)
       // ─────────────────────────────────────────────────────────────────────
       
-      // 🛡️ WAVE 24.6: Validar métricas antes de generar colores
-      // Si energy/bass/mid/treble son NaN, usamos valores seguros (0)
-      const safeMetrics: typeof metrics = {
-        ...metrics,
-        energy: Number.isFinite(metrics.energy) ? metrics.energy : 0,
-        bass: Number.isFinite(metrics.bass) ? metrics.bass : 0,
-        mid: Number.isFinite(metrics.mid) ? metrics.mid : 0,
-        treble: Number.isFinite(metrics.treble) ? metrics.treble : 0,
-        peak: Number.isFinite(metrics.peak) ? metrics.peak : 0,
-      }
-      
-      const colors = this.colorEngine.generate(safeMetrics, beatState, this.currentPattern)
-      
       // ═══════════════════════════════════════════════════════════════════════
-      // 🛡️ WAVE 24.8: HARDENING - Sanitize helper para asegurar RGB válido
-      // Doble barrera: Primero sanitize, luego HOLD si aún hay problemas
+      // 🏛️ WAVE 79: THE FINAL EXORCISM - SSOT GUARD PRIMERO
+      // Si el Worker está activo y estamos en modo Selene, NO TOCAR lastColors.
+      // updateFromTrinity() ya los actualiza con interpolación suave.
+      // La generación local SOLO ocurre en modo FLOW o sin Worker.
       // ═══════════════════════════════════════════════════════════════════════
-      const sanitize = (c: { r: number; g: number; b: number }): { r: number; g: number; b: number } => ({
-        r: Number.isFinite(c.r) ? Math.round(Math.max(0, Math.min(255, c.r))) : 0,
-        g: Number.isFinite(c.g) ? Math.round(Math.max(0, Math.min(255, c.g))) : 0,
-        b: Number.isFinite(c.b) ? Math.round(Math.max(0, Math.min(255, c.b))) : 0,
-      })
-      
-      // Sanitize TODOS los colores antes de aplicar multiplicadores
-      const sanitizedPrimary = sanitize(colors.primary)
-      const sanitizedSecondary = sanitize(colors.secondary)
-      const sanitizedAccent = sanitize(colors.accent)
-      const sanitizedAmbient = sanitize(colors.ambient)
-      
-      // 🛡️ WAVE 24.6: Output Guard - Validar colores antes de asignar
-      // Si ColorEngine retorna NaN, mantenemos el último color válido (HOLD pattern)
-      const isValidColor = (c: { r: number; g: number; b: number }) => 
-        Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b)
-      
-      const validPrimary = isValidColor(sanitizedPrimary)
-      const validSecondary = isValidColor(sanitizedSecondary)
-      const validAccent = isValidColor(sanitizedAccent)
-      const validAmbient = isValidColor(sanitizedAmbient)
-      
-      // 🎨 WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturación)
-      // CRÍTICO: Los sliders del usuario deben afectar el modo FLOW
-      // 🛡️ WAVE 24.6: Solo asignar colores válidos, else HOLD anterior
-      // 🛡️ WAVE 24.8: Usar colores sanitizados (clamped 0-255, NaN→0)
-      // 🔥 WAVE 24.11: lastColors SIEMPRE tiene valores (inicializado con Fuego warm colors)
-      this.lastColors = {
-        primary: validPrimary 
-          ? this.applyGlobalMultipliers(sanitizedPrimary) 
-          : this.lastColors.primary,  // HOLD último color válido (NO fallback a negro)
-        secondary: validSecondary 
-          ? this.applyGlobalMultipliers(sanitizedSecondary) 
-          : this.lastColors.secondary,
-        accent: validAccent 
-          ? this.applyGlobalMultipliers(sanitizedAccent) 
-          : this.lastColors.accent,
-        ambient: validAmbient 
-          ? this.applyGlobalMultipliers(sanitizedAmbient) 
-          : this.lastColors.ambient,
-        intensity: Number.isFinite(colors.intensity) 
-          ? colors.intensity * this.globalIntensity 
-          : this.lastColors.intensity,
-        saturation: Number.isFinite(colors.saturation) 
-          ? colors.saturation * this.globalSaturation 
-          : this.lastColors.saturation,
-      }
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🎨 WAVE 46.5: CHROMATIC UNLOCK - Usar SeleneColorEngine cuando Trinity esté activo
-      // Si tenemos datos del Worker (género, key, etc.), generamos colores procedurales
-      // en lugar de usar Flow fallback. Esto desbloquea paletas reales (Techno = cian/magenta)
-      // ═══════════════════════════════════════════════════════════════════════
+      const workerIsActive = this.isWorkerActive()
+      const isSeleneMode = this.mode === 'selene' || this.mode === 'locked'
       
       let finalPalette: any
       let finalPaletteSource: 'procedural' | 'fallback' = 'fallback'
       
-      // 🔓 WAVE 46.5: Si Trinity tiene un género válido, generamos colores procedurales
-      const hasTrinityContext = this.lastTrinityData?.macroGenre && 
-                                 this.lastTrinityData.macroGenre !== 'UNKNOWN'
-      
-      if (hasTrinityContext) {
-        // Construir análisis seguro para SeleneColorEngine
-        const safeAnalysis = {
-          energy: metrics.energy,
-          wave8: {
-            rhythm: {
-              syncopation: this.lastTrinityData?.syncopation ?? 0,
-              confidence: 1,
-            },
-            harmony: {
-              key: this.lastTrinityData?.key ?? 'C',
-              mode: this.lastTrinityData?.mode ?? 'major',
-              confidence: 0.8,
-              mood: 'energetic' as const  // Forzar energetic para géneros electrónicos
-            },
-            section: {
-              type: 'drop' as const,  // Asumir drop para máxima energía
-              energy: metrics.energy,
-              confidence: 0.8
-            },
-            genre: {
-              primary: this.lastTrinityData?.macroGenre ?? 'ELECTRONIC_4X4',
-              confidence: 1
-            }
-          }
-        }
-        
-        // 🎨 WAVE 49: Generar paleta CON INTERPOLACIÓN
-        // WAVE 55: Usar DROP confirmado (override) en lugar de section bruta
-        const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
-        const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
-        const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
-        const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
-        const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
-        
-        // Convertir HSL → RGB para hardware
-        const rgbPalette = paletteToRgb(proceduralPalette)
-        
-        // Aplicar multiplicadores globales y asignar a lastColors
-        this.lastColors = {
-          primary: this.applyGlobalMultipliers(rgbPalette.primary),
-          secondary: this.applyGlobalMultipliers(rgbPalette.secondary),
-          accent: this.applyGlobalMultipliers(rgbPalette.accent),
-          ambient: this.applyGlobalMultipliers(rgbPalette.ambient),
-          intensity: this.lastColors.intensity,
-          saturation: this.globalSaturation
-        }
-        
-        finalPalette = proceduralPalette
-        finalPaletteSource = 'procedural'
-        
-      } else {
-        // 🔥 WAVE 24.9: FALLBACK - Modo Flow cuando no hay Trinity data
+      if (workerIsActive && isSeleneMode) {
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏛️ WAVE 79: Worker SSOT - NO GENERAR COLORES LOCALES
+        // lastColors fue actualizado por updateFromTrinity() con colores del Worker
+        // Aquí solo construimos metadata para debugging, NUNCA tocamos lastColors
+        // ═══════════════════════════════════════════════════════════════════
         finalPalette = {
           primary: rgbToHsl(this.lastColors.primary),
           secondary: rgbToHsl(this.lastColors.secondary),
           accent: rgbToHsl(this.lastColors.accent),
           ambient: rgbToHsl(this.lastColors.ambient),
           contrast: { h: 0, s: 0, l: 0, hex: '#000000' },
-          strategy: 'flow_preset' as const,
-          source: 'fallback' as const,
-          description: `Flow: ${this.currentPalette}`,
+          strategy: 'worker_passthrough' as const,
+          source: 'procedural' as const,
+          description: 'Worker-driven (SSOT - WAVE 79)',
         }
-        finalPaletteSource = 'fallback'
+        finalPaletteSource = 'procedural'
+        
+        // Log cada 5 segundos para confirmar SSOT
+        if (this.frameCount % 150 === 0) {
+          console.log('[SeleneLux] 🏛️ WAVE 79 SSOT: Worker active, skipping ALL local color generation')
+        }
+      } else {
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 79: FLOW MODE o Worker inactivo → Generación local permitida
+        // SOLO aquí podemos tocar lastColors porque el Worker NO está activo
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // 🛡️ WAVE 24.6: Validar métricas antes de generar colores
+        // Si energy/bass/mid/treble son NaN, usamos valores seguros (0)
+        const safeMetrics: typeof metrics = {
+          ...metrics,
+          energy: Number.isFinite(metrics.energy) ? metrics.energy : 0,
+          bass: Number.isFinite(metrics.bass) ? metrics.bass : 0,
+          mid: Number.isFinite(metrics.mid) ? metrics.mid : 0,
+          treble: Number.isFinite(metrics.treble) ? metrics.treble : 0,
+          peak: Number.isFinite(metrics.peak) ? metrics.peak : 0,
+        }
+        
+        const colors = this.colorEngine.generate(safeMetrics, beatState, this.currentPattern)
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 24.8: HARDENING - Sanitize helper para asegurar RGB válido
+        // Doble barrera: Primero sanitize, luego HOLD si aún hay problemas
+        // ═══════════════════════════════════════════════════════════════════════
+        const sanitize = (c: { r: number; g: number; b: number }): { r: number; g: number; b: number } => ({
+          r: Number.isFinite(c.r) ? Math.round(Math.max(0, Math.min(255, c.r))) : 0,
+          g: Number.isFinite(c.g) ? Math.round(Math.max(0, Math.min(255, c.g))) : 0,
+          b: Number.isFinite(c.b) ? Math.round(Math.max(0, Math.min(255, c.g))) : 0,
+        })
+        
+        // Sanitize TODOS los colores antes de aplicar multiplicadores
+        const sanitizedPrimary = sanitize(colors.primary)
+        const sanitizedSecondary = sanitize(colors.secondary)
+        const sanitizedAccent = sanitize(colors.accent)
+        const sanitizedAmbient = sanitize(colors.ambient)
+        
+        // 🛡️ WAVE 24.6: Output Guard - Validar colores antes de asignar
+        // Si ColorEngine retorna NaN, mantenemos el último color válido (HOLD pattern)
+        const isValidColor = (c: { r: number; g: number; b: number }) => 
+          Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b)
+        
+        const validPrimary = isValidColor(sanitizedPrimary)
+        const validSecondary = isValidColor(sanitizedSecondary)
+        const validAccent = isValidColor(sanitizedAccent)
+        const validAmbient = isValidColor(sanitizedAmbient)
+        
+        // 🎨 WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturación)
+        // CRÍTICO: Los sliders del usuario deben afectar el modo FLOW
+        // 🛡️ WAVE 24.6: Solo asignar colores válidos, else HOLD anterior
+        // 🛡️ WAVE 24.8: Usar colores sanitizados (clamped 0-255, NaN→0)
+        // 🔥 WAVE 24.11: lastColors SIEMPRE tiene valores (inicializado con Fuego warm colors)
+        // 🏛️ WAVE 79: Este bloque SOLO se ejecuta si Worker NO está activo
+        this.lastColors = {
+          primary: validPrimary 
+            ? this.applyGlobalMultipliers(sanitizedPrimary) 
+            : this.lastColors.primary,  // HOLD último color válido (NO fallback a negro)
+          secondary: validSecondary 
+            ? this.applyGlobalMultipliers(sanitizedSecondary) 
+            : this.lastColors.secondary,
+          accent: validAccent 
+            ? this.applyGlobalMultipliers(sanitizedAccent) 
+            : this.lastColors.accent,
+          ambient: validAmbient 
+            ? this.applyGlobalMultipliers(sanitizedAmbient) 
+            : this.lastColors.ambient,
+          intensity: Number.isFinite(colors.intensity) 
+            ? colors.intensity * this.globalIntensity 
+            : this.lastColors.intensity,
+          saturation: Number.isFinite(colors.saturation) 
+            ? colors.saturation * this.globalSaturation 
+            : this.lastColors.saturation,
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎨 WAVE 46.5: CHROMATIC UNLOCK - Usar SeleneColorEngine cuando Trinity esté activo
+        // Si tenemos datos del Worker (género, key, etc.), generamos colores procedurales
+        // en lugar de usar Flow fallback. Esto desbloquea paletas reales (Techno = cian/magenta)
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        // Verificar si tenemos datos de Trinity para generar colores procedurales
+        const hasTrinityContext = this.lastTrinityData?.macroGenre && 
+                                   this.lastTrinityData.macroGenre !== 'UNKNOWN'
+        
+        if (hasTrinityContext) {
+          // Construir análisis seguro para SeleneColorEngine
+          const safeAnalysis = {
+            energy: metrics.energy,
+            wave8: {
+              rhythm: {
+                syncopation: this.lastTrinityData?.syncopation ?? 0,
+                confidence: 1,
+              },
+              harmony: {
+                key: this.lastTrinityData?.key ?? 'C',
+                mode: this.lastTrinityData?.mode ?? 'major',
+                confidence: 0.8,
+                mood: 'energetic' as const
+              },
+              section: {
+                type: 'drop' as const,
+                energy: metrics.energy,
+                confidence: 0.8
+              },
+              genre: {
+                primary: this.lastTrinityData?.macroGenre ?? 'ELECTRONIC_4X4',
+                confidence: 1
+              }
+            }
+          }
+          
+          // 🎨 WAVE 49: Generar paleta CON INTERPOLACIÓN
+          const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
+          const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
+          const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
+          const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
+          const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
+          
+          // Convertir HSL → RGB para hardware
+          const rgbPalette = paletteToRgb(proceduralPalette)
+          
+          // Aplicar multiplicadores globales y asignar a lastColors
+          this.lastColors = {
+            primary: this.applyGlobalMultipliers(rgbPalette.primary),
+            secondary: this.applyGlobalMultipliers(rgbPalette.secondary),
+            accent: this.applyGlobalMultipliers(rgbPalette.accent),
+            ambient: this.applyGlobalMultipliers(rgbPalette.ambient),
+            intensity: this.lastColors.intensity,
+            saturation: this.globalSaturation
+          }
+          
+          finalPalette = proceduralPalette
+          finalPaletteSource = 'procedural'
+        } else {
+          // 🔥 WAVE 24.9: FALLBACK - Modo Flow cuando no hay Trinity data
+          finalPalette = {
+            primary: rgbToHsl(this.lastColors.primary),
+            secondary: rgbToHsl(this.lastColors.secondary),
+            accent: rgbToHsl(this.lastColors.accent),
+            ambient: rgbToHsl(this.lastColors.ambient),
+            contrast: { h: 0, s: 0, l: 0, hex: '#000000' },
+            strategy: 'flow_preset' as const,
+            source: 'fallback' as const,
+            description: `Flow: ${this.currentPalette}`,
+          }
+          finalPaletteSource = 'fallback'
+        }
       }
       
       // Construir Brain Output (Procedural o Flow según Trinity data)
       // 🌊 WAVE 41.0: Agregado context con rhythm.groove.syncopation para telemetría
+      // 🏛️ WAVE 72: Usar workerIsActive en lugar de hasTrinityContext
       this.lastBrainOutput = {
         timestamp: Date.now(),
-        sessionId: hasTrinityContext ? 'trinity-session' : 'flow-session',
+        sessionId: workerIsActive ? 'trinity-session' : 'flow-session',
         mode: 'reactive' as const,
         palette: finalPalette,  // Procedural (Selene) o Flow (Presets)
         paletteSource: finalPaletteSource as 'procedural' | 'fallback',
@@ -1338,7 +1409,12 @@ export class SeleneLux extends EventEmitter {
   }
 
   /**
-   * 📡 WAVE 46.0 → 47.2: DATA BRIDGE - Recibe datos de Trinity Worker
+   * 📡 WAVE 46.0 → 72: DATA BRIDGE - Recibe datos de Trinity Worker
+   * 
+   * 🏛️ WAVE 72: SINGLE SOURCE OF TRUTH
+   * Este método es el ÚNICO autorizado para escribir en `lastColors` cuando 
+   * estamos en modo Selene y el Worker está activo. processAudioFrame() 
+   * verifica `isWorkerActive()` y NO sobrescribe si el Worker tiene control.
    * 
    * Este método conecta el Worker (GAMMA/mind.ts) con getBroadcast() para la UI.
    * El Worker tiene la data correcta (género, key, syncopation) pero antes
@@ -1348,6 +1424,7 @@ export class SeleneLux extends EventEmitter {
    * 🎢 WAVE 57.5: Añadido drop (DROP STATE MACHINE)
    * 
    * @param debugInfo - debugInfo del LightingDecision que viene del Worker
+   * @param palette - 🎨 WAVE 69.3: Palette RGB del ColorEngine (Worker)
    */
   updateFromTrinity(debugInfo: {
     macroGenre?: string
@@ -1363,12 +1440,42 @@ export class SeleneLux extends EventEmitter {
       isDropActive?: boolean
       dropState?: any
     }
-  } | undefined): void {
+  } | undefined, palette?: {
+    primary: { r: number; g: number; b: number }
+    secondary: { r: number; g: number; b: number }
+    accent: { r: number; g: number; b: number }
+    intensity: number
+  }): void {
     if (!debugInfo) return
     
     this.lastTrinityData = {
       ...debugInfo,
       timestamp: Date.now()
+    }
+    
+    // 🔥 WAVE 74: SINGLE INTERPOLATOR - Confiar en el Worker
+    // El Worker (mind.ts) ya interpola con SeleneColorInterpolator (240 frames = 4s)
+    // NO re-interpolamos aquí - eso causaba conflicto y flickering
+    // Solo aplicamos intensity y asignamos directamente
+    if (palette) {
+      const intensityValue = palette.intensity ?? 1.0
+      
+      // Función helper para aplicar intensity a RGB
+      const applyIntensity = (c: {r: number, g: number, b: number}, mult: number) => ({
+        r: Math.round(c.r * mult),
+        g: Math.round(c.g * mult),
+        b: Math.round(c.b * mult),
+      })
+      
+      // Asignar colores del Worker directamente (ya vienen interpolados)
+      this.lastColors = {
+        primary: applyIntensity(palette.primary, intensityValue),
+        secondary: applyIntensity(palette.secondary, intensityValue * 0.8),
+        accent: applyIntensity(palette.accent, intensityValue * 0.6),
+        ambient: applyIntensity(palette.secondary, intensityValue * 0.8),
+        intensity: intensityValue,
+        saturation: this.globalSaturation
+      }
     }
     
     // 💫 WAVE 47.2: Log actualizado para verificar mood & section desde spread directo
@@ -1595,8 +1702,11 @@ export class SeleneLux extends EventEmitter {
         transitioning: trinityData?.vibeTransitioning ?? trinityData?.debugInfo?.vibeTransitioning ?? false
       },
       
-      // 🎭 WAVE 66: Stabilized Emotion from MoodArbiter
-      stableEmotion: (trinityData?.mood?.stableEmotion ?? 'NEUTRAL') as 'BRIGHT' | 'DARK' | 'NEUTRAL',
+      // 🎭 WAVE 66 + 72: Stabilized Emotion from MoodArbiter
+      // 🏛️ WAVE 72: Fallback consciente del Vibe activo - evita NEUTRAL genérico
+      stableEmotion: (trinityData?.mood?.stableEmotion ?? 
+                      this.getSafeFallbackForVibe(trinityData?.activeVibe ?? trinityData?.debugInfo?.activeVibe ?? 'idle')
+                     ) as 'BRIGHT' | 'DARK' | 'NEUTRAL',
       
       // 🌡️ WAVE 66: Thermal Temperature in Kelvin
       thermalTemperature: trinityData?.mood?.thermalTemperature ?? 4500,
@@ -1643,10 +1753,11 @@ export class SeleneLux extends EventEmitter {
         confidence: context?.harmony?.confidence ?? (trinityData ? 0.8 : 0),
       },
       genre: {
-        // 📡 WAVE 46.0: PRIORIZAR Trinity data para género - LA VERDAD DEL WORKER
-        primary: ((trinityData?.macroGenre ?? context?.genre?.primary ?? 'UNKNOWN') as 'ELECTRONIC_4X4' | 'ELECTRONIC_BREAK' | 'LATINO_TRADICIONAL' | 'LATINO_URBANO' | 'ROCK_POP' | 'JAZZ_SOUL' | 'AMBIENT_CHILL' | 'UNKNOWN'),
-        subGenre: context?.genre?.secondary ?? null,
-        confidence: trinityData?.macroGenre ? 0.9 : (context?.genre?.confidence ?? 0),
+        // 🧹 WAVE 69.3: Genre detection REMOVED - Now using VIBE-only system
+        // macroGenre is no longer calculated in backend
+        primary: 'UNKNOWN' as 'ELECTRONIC_4X4' | 'ELECTRONIC_BREAK' | 'LATINO_TRADICIONAL' | 'LATINO_URBANO' | 'ROCK_POP' | 'JAZZ_SOUL' | 'AMBIENT_CHILL' | 'UNKNOWN',
+        subGenre: null,
+        confidence: 0,
         distribution: {},
       },
       rhythm: {
@@ -1746,9 +1857,11 @@ export class SeleneLux extends EventEmitter {
         contrast: palette?.contrast ? toUnifiedColor(this.hslToRgb(palette.contrast)) : defaultColor,
         // 🔧 WAVE 57: Fix STRATEGY - Leer de StrategyArbiter (GAMMA Worker) en lugar de palette legacy
         strategy: (trinityData?.mood?.colorStrategy?.stable ?? 'analogous') as 'analogous' | 'triadic' | 'complementary',
-        temperature: (brain?.debugInfo?.temperature ?? 'neutral') as 'warm' | 'cool' | 'neutral',
-        description: brain?.debugInfo?.description ?? `Palette: ${this.currentPalette}`,
-        source: (brain?.paletteSource ?? 'fallback') as 'procedural' | 'memory' | 'fallback',
+        // 🎨 WAVE 69.3: Leer temperature y description desde trinityData (Worker)
+        temperature: (trinityData?.temperature ?? brain?.debugInfo?.temperature ?? 'neutral') as 'warm' | 'cool' | 'neutral',
+        description: trinityData?.description ?? brain?.debugInfo?.description ?? `Palette: ${this.currentPalette}`,
+        // 🎨 WAVE 69.3: Source = 'procedural' si tenemos palette del Worker (lastColors actualizado)
+        source: (trinityData?.strategy ? 'procedural' : brain?.paletteSource ?? 'fallback') as 'procedural' | 'memory' | 'fallback',
       },
       intensity: this.globalIntensity,
       saturation: this.globalSaturation,

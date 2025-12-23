@@ -33,14 +33,21 @@ export function calculateFixtureRenderValues(
   transitionProgress: number = 1
 ): FixtureRenderData {
   // Default to Truth Data (BASE - Selene AI)
+  // 🏛️ WAVE 78: SINGLE SOURCE OF TRUTH
+  // All colors and movement come from backend (truthData).
+  // Frontend no longer overrides with Flow/Fuego or Radar patterns.
   let color = truthData?.color || { r: 0, g: 0, b: 0 }
   let intensity = (truthData?.intensity ?? 0) * globalIntensity
   let pan = truthData?.pan ?? 0.5
   let tilt = truthData?.tilt ?? 0.5
   
   // ═══════════════════════════════════════════════════════════════════════
-  // PRIORITY 2: GLOBAL MODE 'MANUAL' or 'FLOW' (Color Override)
-  // Only apply if NOT overridden by individual fixture override
+  // 🔙 WAVE 80: RESTORED LOCAL LOGIC FOR FLOW MODE
+  // PRIORITY 2: GLOBAL MODE 'MANUAL' or 'FLOW' (Color & Movement Override)
+  // Only apply if NOT in Selene mode AND NOT overridden by fixture override
+  // 
+  // WAVE 79 ensures Worker controls lastColors in Selene mode.
+  // So it's now SAFE to have local color generation in Flow mode only.
   // ═══════════════════════════════════════════════════════════════════════
   
   if (globalMode !== 'selene') {
@@ -80,6 +87,7 @@ export function calculateFixtureRenderValues(
   
   // ═══════════════════════════════════════════════════════════════════════
   // PRIORITY 1: PER-FIXTURE OVERRIDE (TOP - Always wins)
+  // This is preserved because it's direct hardware control from the Inspector
   // ═══════════════════════════════════════════════════════════════════════
   
   if (fixtureOverride && overrideMask) {

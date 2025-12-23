@@ -7,7 +7,7 @@ export { ColorEngine } from './ColorEngine'
 export { MovementEngine } from './MovementEngine'
 export { EffectsEngine } from './EffectsEngine'
 
-// WAVE 17.2: Nuevo motor de color procedural
+// WAVE 68.5: Motor de color PURO (sin género)
 export { 
   SeleneColorEngine,
   // Tipos
@@ -23,11 +23,9 @@ export {
   normalizeHue,
   clamp,
   mapRange,
-  // Constantes
+  // Constantes (matemática musical pura)
   KEY_TO_HUE,
   MOOD_HUES,
   MODE_MODIFIERS,
-  MACRO_GENRES,
-  GENRE_MAP,
   PHI_ROTATION,
 } from './SeleneColorEngine'

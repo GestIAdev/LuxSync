@@ -49,8 +49,11 @@ import {
 } from './TrinityBridge';
 
 // 🎨 WAVE 17.2: Selene Color Engine - Motor procedural determinista
+// 🌊 WAVE 70: Añadido SeleneColorInterpolator para transiciones suaves en Worker
 import {
   SeleneColorEngine,
+  SeleneColorInterpolator,
+  paletteToRgb,
   type SelenePalette,
   type RGBColor as SeleneRGBColor,
   type ExtendedAudioAnalysis as SeleneExtendedAnalysis,
@@ -199,6 +202,14 @@ interface GammaState {
   // 🎨 WAVE 54: Strategy Arbiter instance
   strategyArbiter: StrategyArbiter;
   
+  // 🌊 WAVE 70: Color Interpolator para transiciones suaves en Worker
+  colorInterpolator: SeleneColorInterpolator;
+  lastFrameTime: number;
+  
+  // 🔬 WAVE 74: Diagnóstico de saltos de Hue
+  lastSentHue: number;
+  hueJumpCount: number;
+  
   // Memory (learned patterns)
   learnedPatterns: Map<string, LearnedPattern>;
   
@@ -242,11 +253,14 @@ const state: GammaState = {
   lastDecisionTime: Date.now(),
   
   // Wave 8 defaults
-  operationMode: 'reactive',
-  combinedConfidence: 0,
+  // 🔧 WAVE 74: CONFIDENCE CRASH FIX - Arrancar en intelligent por defecto
+  // El modo reactive es un fallback para cuando hay problemas, no el modo normal
+  operationMode: 'intelligent',
+  combinedConfidence: 0.7,  // Default razonable hasta que se calcule el real
   
-  // 🧠 WAVE 10: Brain activation flag (from main process)
-  brainForced: false,  // When true, ALWAYS use intelligent mode
+  // 🧠 WAVE 10 + WAVE 74: Brain activation flag (from main process)
+  // 🔧 WAVE 74: Ahora TRUE por defecto - Selene es el modo principal
+  brainForced: true,  // When true, ALWAYS use intelligent mode
   
   // 🌊 WAVE 23.4: Smoothed syncopation (inicializado en 0)
   smoothedSync: 0,
@@ -257,6 +271,7 @@ const state: GammaState = {
   
   // ⚓ WAVE 51: Key Stabilizer - Evita cambios frenéticos de color
   // 🔥 WAVE 66.8: lockingFrames aumentado a 600 (10 segundos) para máxima estabilidad
+  // ✅ WAVE 70.5 VALIDADO: lockingFrames=600 >> 180 mínimo requerido (3s)
   keyStabilizer: new KeyStabilizer({
     bufferSize: 720,        // 12 segundos de historia @ 60fps (WAVE 66.8: era 480)
     lockingFrames: 600,     // 10 segundos para confirmar cambio de key (WAVE 66.8: era 180)
@@ -291,6 +306,15 @@ const state: GammaState = {
     hysteresisBand: 0.05,
     dropOverrideEnergy: 0.85,
   }),
+  
+  // 🌊 WAVE 70: Color Interpolator para transiciones suaves en Worker
+  // Evita "epilepsia cromática" - transiciones suaves entre paletas
+  colorInterpolator: new SeleneColorInterpolator(),
+  lastFrameTime: Date.now(),
+  
+  // 🔬 WAVE 74: Diagnóstico de saltos de Hue
+  lastSentHue: -1,
+  hueJumpCount: 0,
   
   learnedPatterns: new Map(),
   
@@ -355,11 +379,15 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const wave8 = analysis.wave8;
   if (wave8) {
     // Calculate combined confidence (REGLA 2)
+    // 🔧 WAVE 74: CONFIDENCE CRASH FIX - GenreClassifier fue eliminado (zombie muerto)
+    // wave8.genre.confidence ahora siempre es 0, así que redistribuimos los pesos
+    // ANTES: rhythm=0.35, harmony=0.20, section=0.20, genre=0.25 (máximo=0.75 sin genre)
+    // AHORA: rhythm=0.45, harmony=0.30, section=0.25, genre=0 (máximo=1.0)
     state.combinedConfidence = 
-      wave8.rhythm.confidence * 0.35 +
-      wave8.harmony.confidence * 0.20 +
-      wave8.section.confidence * 0.20 +
-      wave8.genre.confidence * 0.25;
+      wave8.rhythm.confidence * 0.45 +
+      wave8.harmony.confidence * 0.30 +
+      wave8.section.confidence * 0.25;
+      // wave8.genre.confidence ya no se usa - GenreClassifier eliminado en WAVE 70+
     
     // 🧠 WAVE 10: brainForced ignora la confidence - SI EL USUARIO DIJO SELENE, SELENE ES
     if (state.brainForced) {
@@ -387,11 +415,12 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // === INTELLIGENT MODE (Wave 8 Full Analysis) ===
   const { rhythm, harmony, section, genre } = wave8!;
   
-  // 🌊 WAVE 23.4: SUAVIZADO DE SYNCOPATION (EMA Filter)
+  // 🌊 WAVE 23.4 + WAVE 74: SUAVIZADO DE SYNCOPATION (EMA Filter)
   // Evita parpadeo visual causado por cambios abruptos (0.90 → 0.10)
   // EMA: smoothed = (smoothed * alpha) + (new * (1 - alpha))
-  // alpha = 0.8 (80% histórico, 20% nuevo) → suavizado agresivo
-  state.smoothedSync = (state.smoothedSync * 0.8) + (rhythm.syncopation * 0.2);
+  // 🔒 WAVE 74: alpha = 0.95 (95% histórico, 5% nuevo) → suavizado EXTREMO
+  // Antes era 0.8/0.2 - ahora mucho más lento para evitar saltos de estrategia
+  state.smoothedSync = (state.smoothedSync * 0.95) + (rhythm.syncopation * 0.05);
   
   // � WAVE 17.2: SELENE COLOR ENGINE - Motor determinista procedural
   // Los colores emergen de la MATEMÁTICA MUSICAL:
@@ -447,14 +476,20 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     strategyArbiterOutput.stableStrategy as ColorStrategy
   );
   
-  // WAVE 52-54 + 60: Crear analisis FULL STABILIZED + VIBE CONSTRAINED
+  // WAVE 52-54 + 60 + 73: Crear analisis FULL STABILIZED + VIBE CONSTRAINED
   // - stableKey: evita cambio de color por acordes de paso
   // - smoothedEnergy: evita parpadeo por picos de kick
   // - constrainedEmotion: coherencia térmica según Vibe (WAVE 60)
   // - constrainedStrategy: coherencia de contraste según Vibe (WAVE 60)
+  // 🏛️ WAVE 73: MOOD INJECTION - Inyectar constrainedEmotion en wave8.harmony.mood
+  // Esto asegura que SeleneColorEngine use el mood validado por Vibe, no el raw
+  const constrainedMood = constrainedEmotion.toLowerCase() as 'bright' | 'dark' | 'neutral';
+  
   const stabilizedAnalysis = {
     ...analysis,
     energy: energyOutput.smoothedEnergy,
+    // 🏛️ WAVE 73: Top-level mood para fallback
+    mood: constrainedMood,
     wave8: {
       ...wave8,
       rhythm: {
@@ -464,24 +499,55 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       harmony: {
         ...harmony,
         key: keyStabilizerOutput.stableKey,
+        // 🏛️ WAVE 73: CRITICAL FIX - Sobrescribir mood RAW con mood VALIDADO
+        // SeleneColorEngine lee wave8.harmony.mood para determinar el Hue
+        // Antes: usaba el mood crudo del audio (podía ser 'dark' en Fiesta Latina)
+        // Ahora: usa constrainedMood que respeta el Vibe seleccionado
+        mood: constrainedMood,
         temperature: constrainedEmotion === 'BRIGHT' ? 'warm' :
                      constrainedEmotion === 'DARK' ? 'cold' : 'neutral',
       },
     },
   } as SeleneExtendedAnalysis;
   
-  // 🎨 Generar paleta con nuevo motor determinista (usando key estabilizada)
-  const selenePalette = SeleneColorEngine.generate(stabilizedAnalysis);
-  const rgbPalette = SeleneColorEngine.generateRgb(stabilizedAnalysis);
+  // � WAVE 70: Calcular dt para interpolación suave
+const frameTime = Date.now();
+  const isDrop = section.type === 'drop' || section.type === 'chorus';
+
+  // 🎨 WAVE 70: Generar paleta INTERPOLADA (no raw)
+  // El interpolador suaviza transiciones entre Keys y Moods
+  // isDrop = true → transición rápida (0.5s), false → transición suave (4s)
+  const selenePalette = state.colorInterpolator.update(stabilizedAnalysis, isDrop);
+
+  // 🔬 WAVE 74: DIAGNÓSTICO DE SALTOS DE HUE
+  // Solo loguea cuando hay un salto > 30° (epilepsia cromática)
+  const currentHue = selenePalette.primary.h;
+  if (state.lastSentHue >= 0) {
+    let hueDiff = Math.abs(currentHue - state.lastSentHue);
+    if (hueDiff > 180) hueDiff = 360 - hueDiff; // Camino más corto
+    
+    if (hueDiff > 30) {
+      state.hueJumpCount++;
+      console.warn(`[WAVE74] 🚨 HUE JUMP #${state.hueJumpCount}: ${state.lastSentHue.toFixed(0)}° → ${currentHue.toFixed(0)}° (Δ${hueDiff.toFixed(0)}°) | key=${keyStabilizerOutput.stableKey} mood=${constrainedMood} strategy=${constrainedStrategy} isDrop=${isDrop}`);
+    }
+  }
+  state.lastSentHue = currentHue;
+
+  // Generar RGB desde la paleta interpolada (no desde análisis directo)
+  const rgbPalette = paletteToRgb(selenePalette);
+
+  // Actualizar lastFrameTime para próximo frame
+  state.lastFrameTime = frameTime;  
   
-  // 🔬 WAVE 65: Chromatic Audit Log (Smart logging - solo cuando hay cambios)
+  // 🔬 WAVE 65 + 73: Chromatic Audit Log (Smart logging - solo cuando hay cambios)
+  // 🏛️ WAVE 73: Usar constrainedMood en lugar de stableEmotion para reflejar lo que realmente usa el motor
   const activeVibe = vibeManager.getActiveVibe();
   const overrideReason = strategyArbiterOutput.overrideType !== 'none' 
     ? strategyArbiterOutput.overrideType : null;
   SeleneColorEngine.logChromaticAudit(
     { 
       key: keyStabilizerOutput.stableKey, 
-      mood: moodArbiterOutput.stableEmotion, 
+      mood: constrainedMood,  // 🏛️ WAVE 73: El mood que REALMENTE usa el motor (no el raw)
       energy: energyOutput.smoothedEnergy 
     },
     selenePalette,
@@ -505,12 +571,14 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const movementPattern = sectionToMovement(section, analysis.energy, rhythm.syncopation);
   state.currentMovement = movementPattern;
   
-  // Build palette with intensity applied to RGB from SeleneColorEngine
+  // 🔥 WAVE 74: Build palette with RAW RGB (sin intensity aplicada)
+  // Intensity se envía separada para que Main Process interpole colores puros
+  // y aplique intensity al FINAL (evita flickering por beat boost)
   const palette = {
-    primary: adjustColorIntensity(rgbPalette.primary, intensity),
-    secondary: adjustColorIntensity(rgbPalette.secondary, intensity * 0.8),
-    accent: adjustColorIntensity(rgbPalette.accent, intensity * 0.6),
-    intensity
+    primary: rgbPalette.primary,      // 🔥 RAW - sin adjustColorIntensity
+    secondary: rgbPalette.secondary,  // 🔥 RAW
+    accent: rgbPalette.accent,        // 🔥 RAW
+    intensity                         // Se envía separada para aplicar después de interpolación
   };
   
   // Movement parameters (influenced by genre)
@@ -682,14 +750,13 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     movement,
     effects,
     
-    // 🎨 WAVE 17.2: Debug info from SeleneColorEngine
+    // 🎨 WAVE 68.5: Debug info from SeleneColorEngine (PURO - sin género)
     // 🔥 WAVE 23.1 OPERATION TRUTH: Exponer paletteSource real (sin histéresis)
     // 🌊 WAVE 23.4: Syncopation suavizado (EMA) para DNA derivation
     // 💫 WAVE 47.1.3: MOOD ARBITRATION - Enviar finalMood (arbitrado) no VAD raw
     // 🎭 WAVE 53: Mood Arbiter - Meta-emoción estabilizada
     // 🎛️ WAVE 60: Vibe activo
     debugInfo: {
-      macroGenre: selenePalette.meta.macroGenre,
       strategy: selenePalette.meta.strategy,
       temperature: selenePalette.meta.temperature,
       description: selenePalette.meta.description,
@@ -979,7 +1046,16 @@ function handleMessage(message: WorkerMessage): void {
         if (success) {
           console.log(`[GAMMA] 🎛️ VIBE CHANGED: ${vibePayload.vibeId}`);
         } else {
-          console.warn(`[GAMMA] ⚠️ Invalid vibe ID: ${vibePayload.vibeId}`);
+          // 🐛 WAVE 69.1: FIX - false puede significar "ya activo" o "inválido"
+          // Solo logueamos si realmente no existe en el registry
+          const currentVibe = vibeManager.getActiveVibe();
+          if (currentVibe.id === vibePayload.vibeId) {
+            // Ya está activo, no es un error
+            console.log(`[GAMMA] 🎛️ VIBE ALREADY ACTIVE: ${vibePayload.vibeId}`);
+          } else {
+            // Vibe inválido o no encontrado
+            console.warn(`[GAMMA] ⚠️ Invalid vibe ID: ${vibePayload.vibeId}`);
+          }
         }
         break;
       }

@@ -1,14 +1,16 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 35.3: Global TitleBar + Real Logs
+ * 🎛️ DASHBOARD VIEW - WAVE 63.8: Zero State & Power Control
  * 
  * NO SCROLL - 100% viewport
  * TitleBar is now GLOBAL (in MainLayout)
  * 
  * Layout: CSS Grid (auto | 1fr | auto)
  * ┌─────────────────────────────────────────────────────┐
- * │  COMMAND CENTER              MODE SWITCHER         │
+ * │ [POWER]  COMMAND CENTER              MODE SWITCHER  │
  * ├──────────────────────┬──────────────────────────────┤
- * │   AUDIO REACTOR      │      SELENE BRAIN            │
+ * │   AUDIO REACTOR      │      SELENE BRAIN (logs)     │
+ * │                      ├──────────────────────────────┤
+ * │                      │      VIBE SELECTOR           │
  * ├──────────────────────┴──────────────────────────────┤
  * │              DATA CARDS (deck)                      │
  * └─────────────────────────────────────────────────────┘
@@ -19,6 +21,8 @@ import AudioReactorRing from './components/AudioReactorRing'
 import SeleneBrain from './components/SeleneBrain'
 import DataCards from './components/DataCards'
 import ModeSwitcherSleek from './components/ModeSwitcherSleek'
+import PowerButton from './components/PowerButton'
+import { VibeSelector } from './components/VibeSelector'
 import { IconAudioWave, IconNeuralBrain } from './components/HudIcons'
 import './DashboardView.css'
 
@@ -27,11 +31,14 @@ const DashboardView: React.FC = () => {
     <div className="dashboard-cyberpunk">
       {/* Header Strip */}
       <header className="dashboard-header">
-        <div className="header-title">
-          <span className="title-icon">
-            <IconDmxBoltHeader />
-          </span>
-          <h1>COMMAND CENTER</h1>
+        <div className="header-left">
+          <PowerButton />
+          <div className="header-title">
+            <span className="title-icon">
+              <IconDmxBoltHeader />
+            </span>
+            <h1>COMMAND CENTER</h1>
+          </div>
         </div>
         <ModeSwitcherSleek />
       </header>
@@ -49,16 +56,28 @@ const DashboardView: React.FC = () => {
           <AudioReactorRing />
         </section>
 
-        {/* Right: Selene Brain */}
-        <section className="bento-cell cell-brain">
-          <div className="cell-header">
-            <span className="cell-icon">
-              <IconNeuralBrain size={18} />
-            </span>
-            <span className="cell-label">SELENE AI</span>
-          </div>
-          <SeleneBrain />
-        </section>
+        {/* Right Column: Brain + Context */}
+        <div className="bento-right-column">
+          {/* Top: Selene Brain (logs only) */}
+          <section className="bento-cell cell-brain">
+            <div className="cell-header">
+              <span className="cell-icon">
+                <IconNeuralBrain size={18} />
+              </span>
+              <span className="cell-label">SELENE AI</span>
+            </div>
+            <SeleneBrain />
+          </section>
+
+          {/* Bottom: Vibe Context Selector */}
+          <section className="bento-cell cell-context">
+            <div className="cell-header">
+              <span className="cell-icon">🎛️</span>
+              <span className="cell-label">VIBE CONTEXT</span>
+            </div>
+            <VibeSelector />
+          </section>
+        </div>
       </main>
 
       {/* Bottom Data Deck */}

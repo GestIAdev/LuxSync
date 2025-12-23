@@ -180,6 +180,42 @@ export interface CognitiveData {
    * @example ['GENRE', 'HARMONY', 'VAD', 'ZODIAC']
    */
   activeSources: string[];
+  
+  /**
+   * 🎛️ WAVE 66: Active Vibe Context from VibeManager
+   * This is the DJ-selected context that constrains Selene's decisions
+   */
+  vibe: {
+    /** Current active vibe ID ('techno-club', 'fiesta-latina', etc.) or 'idle' */
+    active: string;
+    /** Is transitioning between vibes */
+    transitioning: boolean;
+  };
+  
+  /**
+   * 🎭 WAVE 66: Stabilized Emotion from MoodArbiter
+   * Meta-emotion that influences color temperature and strategy
+   */
+  stableEmotion: 'BRIGHT' | 'DARK' | 'NEUTRAL';
+  
+  /**
+   * 🌡️ WAVE 66: Thermal Temperature in Kelvin
+   * Ranges from 2000K (very warm) to 10000K (very cool)
+   * Used for visual temperature indicator
+   */
+  thermalTemperature: number;
+  
+  /**
+   * 🎢 WAVE 68: Drop State Machine Status
+   * More granular than just isDropActive
+   * States from EnergyStabilizer: IDLE | ATTACK | SUSTAIN | RELEASE | COOLDOWN
+   */
+  dropState: {
+    /** Current state: IDLE, ATTACK, SUSTAIN, RELEASE, COOLDOWN */
+    state: 'IDLE' | 'ATTACK' | 'SUSTAIN' | 'RELEASE' | 'COOLDOWN';
+    /** Is drop currently active (only SUSTAIN = true drop) */
+    isActive: boolean;
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -623,7 +659,12 @@ export function createDefaultBroadcast(): SeleneBroadcast {
       zodiac: { element: 'water', sign: 'Pisces', affinity: 0.5, quality: 'mutable', description: 'The dreaming mystic' },
       beauty: { current: 0.5, average: 0.5, max: 0.5, components: { fibonacciAlignment: 0, zodiacResonance: 0, musicalHarmony: 0, patternResonance: 0, historicalBonus: 0 } },
       lastInsight: 'Selene Lux awakening...',
-      activeSources: []  // 🔍 WAVE 57.5: Empty until audio analysis begins
+      activeSources: [],  // 🔍 WAVE 57.5: Empty until audio analysis begins
+      // 🎛️ WAVE 66: New fields for UI sync
+      vibe: { active: 'idle', transitioning: false },
+      stableEmotion: 'NEUTRAL',
+      thermalTemperature: 4500,  // Neutral Kelvin
+      dropState: { state: 'IDLE', isActive: false }
     },
     musicalDNA: {
       key: null,

@@ -7,11 +7,14 @@
  * - Audio del Sistema (getDisplayMedia con audio)
  * - Simulación (para testing)
  * 
+ * WAVE 63.95: Power Guard - No inicia audio si sistema está OFFLINE
+ * 
  * Envía métricas (bass, mid, treble, energy) al Main Process via lux.audioFrame()
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAudioStore } from '../stores/audioStore'  // 🎯 WAVE 14
+import { usePowerStore } from './useSystemPower'  // 🔌 WAVE 63.95
 
 // ============================================================================
 // TYPES
@@ -369,8 +372,17 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   // ============================================================================
   // WAVE 9.6.3: Start System Audio (Electron desktopCapturer)
+  // 🔌 WAVE 63.95: Power Guard - Check system power before starting
   // ============================================================================
   const startSystemAudio = useCallback(async () => {
+    // 🔌 WAVE 63.95: POWER GUARD - Don't start if system is OFFLINE
+    const currentPowerState = usePowerStore.getState().powerState
+    if (currentPowerState === 'OFFLINE') {
+      console.log('[AudioCapture] ⛔ BLOCKED - System is OFFLINE. Audio will not start.')
+      setError('System is offline. Press power button first.')
+      return
+    }
+    
     try {
       setError(null)
       cleanup()
@@ -438,8 +450,17 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   // ============================================================================
   // WAVE 9.5: Start Microphone (getUserMedia)
+  // 🔌 WAVE 63.95: Power Guard - Check system power before starting
   // ============================================================================
   const startMicrophone = useCallback(async () => {
+    // 🔌 WAVE 63.95: POWER GUARD - Don't start if system is OFFLINE
+    const currentPowerState = usePowerStore.getState().powerState
+    if (currentPowerState === 'OFFLINE') {
+      console.log('[AudioCapture] ⛔ BLOCKED - System is OFFLINE. Audio will not start.')
+      setError('System is offline. Press power button first.')
+      return
+    }
+    
     try {
       setError(null)
       cleanup() // Limpiar captura anterior

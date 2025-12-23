@@ -1,15 +1,18 @@
 /**
- * 🎛️ USE SELENE VIBE HOOK - WAVE 62
+ * 🎛️ USE SELENE VIBE HOOK - WAVE 62 + WAVE 64
  * 
  * React hook para controlar el Vibe Context activo.
  * Los Vibes definen bounded constraints para que SELENE
  * se mantenga coherente con el estilo musical del DJ.
  * 
- * 4 Vibes disponibles:
+ * 4 Vibes seleccionables:
  * - techno-club: Paletas frías, movimientos amplios
  * - fiesta-latina: Paletas cálidas, movimientos fluidos
  * - pop-rock: Paletas brillantes, movimientos energéticos
  * - chill-lounge: Paletas pastel, movimientos suaves
+ * 
+ * 🔌 WAVE 64: 'idle' es un vibe interno que representa "esperando input"
+ * Cuando el backend tiene 'idle', activeVibe visual = null (ningún botón iluminado)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -85,9 +88,10 @@ export interface UseSeleneVibeReturn {
 // ============================================================================
 
 export function useSeleneVibe(): UseSeleneVibeReturn {
-  // 🔄 WAVE 63.5: null inicial hasta fetch desde backend (evita flash de Techno)
+  // � WAVE 64: null = 'idle' (ningún vibe seleccionado, esperando input)
   const [activeVibe, setActiveVibe] = useState<VibeId | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [hasFetched, setHasFetched] = useState(false)  // 🔌 WAVE 64: Track si ya fetch
   const unsubscribeRef = useRef<(() => void) | null>(null)
   
   // Check global mode for ghost mode (hide when not in Selene mode)
@@ -97,15 +101,22 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
   // Initialize: Get current vibe from backend
   useEffect(() => {
     const initVibe = async () => {
-      if (!window.lux?.getVibe) return
+      if (!window.lux?.getVibe) {
+        setHasFetched(true)  // No hay API, marcar como fetched
+        return
+      }
       
       try {
         const result = await window.lux.getVibe()
         if (result.success && result.vibeId) {
-          setActiveVibe(result.vibeId as VibeId)
+          // 🔌 WAVE 64: 'idle' = null visual (ningún botón iluminado)
+          const vibeId = result.vibeId === 'idle' ? null : result.vibeId as VibeId
+          setActiveVibe(vibeId)
         }
       } catch (error) {
         console.warn('[useSeleneVibe] Failed to get initial vibe:', error)
+      } finally {
+        setHasFetched(true)
       }
     }
     
@@ -118,7 +129,9 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
     
     unsubscribeRef.current = window.lux.onVibeChange((data) => {
       console.log('[useSeleneVibe] Vibe changed:', data.vibeId)
-      setActiveVibe(data.vibeId as VibeId)
+      // 🔌 WAVE 64: 'idle' = null visual (ningún botón iluminado)
+      const vibeId = data.vibeId === 'idle' ? null : data.vibeId as VibeId
+      setActiveVibe(vibeId)
       setIsTransitioning(false)
     })
     
@@ -157,8 +170,9 @@ export function useSeleneVibe(): UseSeleneVibeReturn {
     }
   }, [activeVibe])
   
-  // 🔄 WAVE 63.5: isLoading = true mientras no hemos recibido el vibe del backend
-  const isLoading = activeVibe === null
+  // � WAVE 64: isLoading = true mientras no hemos hecho fetch inicial
+  // activeVibe === null ahora es un estado válido ("idle/esperando input")
+  const isLoading = !hasFetched
   
   return {
     activeVibe,

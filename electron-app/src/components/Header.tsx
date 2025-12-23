@@ -6,12 +6,21 @@
  * 🚑 RESCUE DIRECTIVE: Now shows REAL BPM from telemetry with confidence indicator
  * 🧠 WAVE 25.6: Migrado a truthStore - BPM desde sensory.beat
  * 🎨 WAVE 33.2: Mode Switcher migrado aquí desde GlobalControls
+ * 🎭 WAVE 66: Mood now from cognitive.stableEmotion (BRIGHT/DARK/NEUTRAL)
  */
 
 import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
 import { useControlStore, GlobalMode } from '../stores/controlStore'
-import { useTruthSensory } from '../hooks'
+import { useTruthSensory, useTruthCognitive } from '../hooks'
 
+// 🎭 WAVE 66: StableEmotion labels (matches MoodArbiter output)
+const EMOTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  BRIGHT: { label: 'BRIGHT', icon: '☀️', color: '#FFD700' },
+  DARK: { label: 'DARK', icon: '🌙', color: '#7C4DFF' },
+  NEUTRAL: { label: 'NEUTRAL', icon: '⚖️', color: '#888888' },
+}
+
+// Legacy mood labels (kept for fallback)
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
   energetic: { label: 'ENERGY', icon: '⚡', color: '#FF6B6B' },
@@ -36,8 +45,8 @@ const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = 
 
 export default function Header() {
   const { 
-    activePalette, 
-    selene, 
+    activePalette,
+    selene,  // Keep for generation display
     masterDimmer, 
     setMasterDimmer 
   } = useLuxSyncStore()
@@ -48,9 +57,16 @@ export default function Header() {
 
   // 🧠 WAVE 25.6: Get REAL BPM from truthStore (sensory)
   const sensory = useTruthSensory()
+  
+  // 🎭 WAVE 66: Get stableEmotion from truthStore (cognitive)
+  const cognitive = useTruthCognitive()
 
   const palette = PALETTES[activePalette]
-  const mood = MOOD_LABELS[selene.mood] || MOOD_LABELS.harmonious
+  
+  // 🎭 WAVE 66: Use stableEmotion from MoodArbiter
+  const stableEmotion = cognitive?.stableEmotion ?? 'NEUTRAL'
+  const mood = EMOTION_LABELS[stableEmotion] ?? EMOTION_LABELS.NEUTRAL
+  
   const currentModeConfig = MODES.find(m => m.id === globalMode) || MODES[0]
 
   // 🧠 WAVE 25.6: Use truth sensory data

@@ -107,11 +107,13 @@ export class KeyStabilizer {
   private keyChanges = 0;
   
   // Default config
+  // 🔌 WAVE 65: Aumentados valores para mayor estabilidad (menos cambios de key)
+  // 🔌 WAVE 66.5: lockingFrames → 600 (10 segundos) para máxima estabilidad cromática
   private static readonly DEFAULT_CONFIG: KeyStabilizerConfig = {
-    bufferSize: 480,           // 8 segundos @ 60fps
-    lockingFrames: 180,        // 3 segundos para cambiar
-    dominanceThreshold: 0.35,  // 35% de votos para ser dominante
-    minConfidence: 0.3,        // Ignorar detecciones con confianza < 30%
+    bufferSize: 720,           // 12 segundos @ 60fps (era 480 = 8s)
+    lockingFrames: 600,        // 10 segundos para cambiar (WAVE 66.5: era 300 = 5s)
+    dominanceThreshold: 0.45,  // 45% de votos para ser dominante (era 35%)
+    minConfidence: 0.4,        // Ignorar detecciones con confianza < 40% (era 30%)
     useEnergyWeighting: true,  // Votos ponderados por energía
     energyPower: 1.5,          // energia^1.5
   };

@@ -367,13 +367,18 @@ export class MoodArbiter {
    * WAVE 55: Zodiac Affinity Easter Egg
    * - Si la Key es TIERRA (C/Tauro, F/Virgo, G/Capricornio): +10% brightness
    * - Sutil, pero se siente bien (dedicado al usuario Virgo ♍)
+   * 
+   * WAVE 66.5: Ahora retorna temperatura en KELVIN (2000-10000K)
+   * - 0 normalized → 2000K (muy cálido/oscuro)
+   * - 0.5 normalized → 6000K (neutral)
+   * - 1 normalized → 10000K (muy frío/brillante)
    */
   private calculateThermalTemperature(
     votes: { bright: number; dark: number; neutral: number },
     totalWeight: number,
     key?: string | null
   ): number {
-    if (totalWeight === 0) return 0.5;
+    if (totalWeight === 0) return 4500;  // 🔥 WAVE 66.5: Default neutral en Kelvin
     
     // BRIGHT contribuye +1, DARK contribuye -1, NEUTRAL contribuye 0
     // Resultado normalizado a 0-1
@@ -389,7 +394,14 @@ export class MoodArbiter {
       temperature = Math.min(1.0, temperature + 0.10);
     }
     
-    return temperature;
+    // 🔥 WAVE 66.5: Convertir a Kelvin (2000K-10000K)
+    // 0.0 → 2000K (cálido/dark), 0.5 → 6000K (neutral), 1.0 → 10000K (frío/bright)
+    // Invertido: BRIGHT es más frío (azul), DARK es más cálido (naranja)
+    // Para UX intuitivo: BRIGHT = cálido festivo = 3000K, DARK = frío = 7000K
+    // Así que invertimos: 0 (dark) → 7000K, 1 (bright) → 3000K
+    const kelvin = 7000 - (temperature * 4000);  // Rango: 3000K-7000K
+    
+    return Math.round(kelvin);
   }
   
   /**

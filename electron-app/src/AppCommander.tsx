@@ -38,7 +38,7 @@ function AppContent() {
 
 function App() {
   return (
-    <TrinityProvider autoStart={true}>
+    <TrinityProvider>
       <AppContent />
     </TrinityProvider>
   )

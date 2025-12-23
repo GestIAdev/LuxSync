@@ -2,28 +2,38 @@
  * 🧬 MUSICAL DNA PANEL
  * WAVE 29: Cyberpunk Intelligence Display
  * WAVE 63: Replaced GENRE with ACTIVE VIBE from VibeManager
+ * WAVE 66: Now uses cognitive.vibe from truthStore (no separate IPC)
  * 
  * Muestra el análisis profundo de Selene:
  * - Musical Key & Scale (El núcleo armónico)
  * - Energy Dynamics (Section detection)
  * - Semantic Analysis (Mood & Zodiac)
  * - Rhythm Analysis (Syncopation)
- * - Active Vibe (WAVE 63: VibeManager context)
+ * - Active Vibe (WAVE 66: From truthStore)
  */
 
 import React from 'react'
-import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
-import { useSeleneVibe } from '../../../hooks/useSeleneVibe'
+import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected, useTruthAudio } from '../../../hooks'
 import './MusicalDNAPanel.css'
+
+// 🎛️ WAVE 66: Vibe display names (local mapping)
+const VIBE_DISPLAY: Record<string, { name: string; icon: string }> = {
+  'techno-club': { name: 'Techno', icon: '⚡' },
+  'fiesta-latina': { name: 'Latino', icon: '🔥' },
+  'pop-rock': { name: 'Pop/Rock', icon: '🎤' },
+  'chill-lounge': { name: 'Chill', icon: '🛋️' },
+  'idle': { name: 'IDLE', icon: '⏸️' }
+}
 
 const MusicalDNAPanel: React.FC = () => {
   const musicalDNA = useTruthMusicalDNA()
   const cognitive = useTruthCognitive()
   const connected = useTruthConnected()
+  const audio = useTruthAudio()  // 🔥 WAVE 66.5: Para barra de energía
   
-  // 🎛️ WAVE 63: Get active Vibe from VibeManager
-  const { activeVibe, allVibes } = useSeleneVibe()
-  const currentVibeInfo = allVibes.find(v => v.id === activeVibe)
+  // 🎛️ WAVE 66: Get vibe from truthStore (no separate IPC!)
+  const activeVibeId = cognitive?.vibe?.active ?? 'idle'
+  const vibeDisplay = VIBE_DISPLAY[activeVibeId] ?? VIBE_DISPLAY['idle']
   
   // Data Extraction & Null Checks
   const zodiacElement = cognitive?.zodiac?.element ?? 'void'
@@ -56,7 +66,8 @@ const MusicalDNAPanel: React.FC = () => {
     // Si la clave es 'C Major', intentamos separar
     scale: musicalDNA?.key?.includes('m') ? 'Minor' : 'Major', 
     
-    mood: cognitive?.mood || 'calibrating...',
+    // 🎭 WAVE 66: Use stableEmotion from MoodArbiter (BRIGHT/DARK/NEUTRAL)
+    mood: cognitive?.stableEmotion || 'NEUTRAL',
     
     zodiac: {
       sign: zodiacSign,
@@ -68,18 +79,23 @@ const MusicalDNAPanel: React.FC = () => {
     section: {
       name: musicalDNA?.section?.current || 'Scanning...',
       confidence: musicalDNA?.section?.confidence || 0,
-      isDrop: musicalDNA?.section?.current === 'drop'
+      energy: audio?.energy || 0,  // 🔥 WAVE 66.5: Energía suavizada para barra
+      // 🎢 WAVE 68: DROP solo se muestra si:
+      // 1. Estado es SUSTAIN (único estado de drop real, PEAK no existe)
+      // 2. isActive = true
+      isDrop: cognitive?.dropState?.state === 'SUSTAIN' && 
+              cognitive?.dropState?.isActive === true
     },
     
     rhythm: {
       syncopation: musicalDNA?.rhythm?.syncopation || 0
     },
     
-    // 🎛️ WAVE 63: Vibe en lugar de Genre
+    // 🎛️ WAVE 66: Vibe from truthStore
     vibe: {
-      id: activeVibe || 'techno-club',
-      name: currentVibeInfo?.name || 'Unknown',
-      icon: currentVibeInfo?.icon || '🎛️'
+      id: activeVibeId,
+      name: vibeDisplay.name,
+      icon: vibeDisplay.icon
     }
   }
 
@@ -134,20 +150,21 @@ const MusicalDNAPanel: React.FC = () => {
 
       </div>
 
-      {/* STRUCTURAL LAYER (SECTION & ENERGY) */}
+      {/* 🔥 WAVE 66.5: STRUCTURAL LAYER - Energía + Sección (sin DROP parpadeante) */}
       <div className="dna-structure">
         <div className="structure-header">
           <span className="section-name">
-            {getSectionIcon(data.section.name)} {data.section.name.toUpperCase()}
+            {/* Solo mostrar DROP si isDrop es true, sino mostrar sección normal */}
+            {data.section.isDrop ? '💥 DROP' : `${getSectionIcon(data.section.name)} ${data.section.name.toUpperCase()}`}
           </span>
-          <span className="confidence-val">{Math.round(data.section.confidence * 100)}%</span>
+          <span className="energy-val">{Math.round(data.section.energy * 100)}%</span>
         </div>
         
-        {/* Barra de Progreso Neon */}
+        {/* 🔥 WAVE 66.5: Barra de ENERGÍA (no confianza) - más estable y útil */}
         <div className="structure-bar-track">
           <div 
             className={`structure-bar-fill ${data.section.isDrop ? 'drop-state' : ''}`}
-            style={{ width: `${data.section.confidence * 100}%` }}
+            style={{ width: `${data.section.energy * 100}%` }}
           />
         </div>
       </div>

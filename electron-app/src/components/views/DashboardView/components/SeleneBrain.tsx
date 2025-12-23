@@ -1,13 +1,11 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🧠 SELENE BRAIN - WAVE 35.3/35.4: Real Event Logging
+ * 🧠 SELENE BRAIN - WAVE 63.8: Logs Only (VibeSelector moved out)
  * Terminal-style display showing REAL AI logs from logStore
  * 
  * Filtered feed for DJ-facing dashboard:
  * ✅ MUSIC, MOOD, BRAIN, VISUAL, MODE, BEAT, GENRE
  * ❌ SYSTEM, DEBUG, NETWORK, ERROR (hidden unless critical)
- * 
- * 🎛️ WAVE 62: Added VibeSelector for context switching
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -20,7 +18,6 @@ import {
 } from '../../../../stores/truthStore'
 import { useLogStore, selectLogs, LogEntry } from '../../../../stores/logStore'
 import { useControlStore } from '../../../../stores/controlStore'
-import { VibeSelector } from './VibeSelector'
 import './SeleneBrain.css'
 
 // Categories to show in Dashboard (DJ-facing, narrative flow)
@@ -141,9 +138,6 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
           <span className="cursor">▊</span>
         </div>
       </div>
-      
-      {/* 🎛️ WAVE 62.5: Vibe Context Selector - FOOTER DOCK */}
-      <VibeSelector />
     </div>
   )
 }

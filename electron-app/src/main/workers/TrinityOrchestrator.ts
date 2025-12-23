@@ -688,6 +688,34 @@ export class TrinityOrchestrator extends EventEmitter {
     console.log(`[ALPHA] 🎛️ Setting VIBE to: ${vibeId}`);
     this.sendToWorker('gamma', MessageType.SET_VIBE, { vibeId }, MessagePriority.HIGH);
   }
+  
+  /**
+   * 🔌 WAVE 63.95: System Sleep - Pause all workers
+   * Sends SYSTEM_SLEEP to Mind worker to stop processing audio
+   */
+  systemSleep(): void {
+    const gamma = this.nodes.get('gamma');
+    if (!gamma?.worker) {
+      console.warn('[ALPHA] ⚠️ Cannot sleep: GAMMA worker not spawned');
+      return;
+    }
+    console.log('[ALPHA] 💤 Sending SYSTEM_SLEEP to workers');
+    this.sendToWorker('gamma', MessageType.SYSTEM_SLEEP, {}, MessagePriority.HIGH);
+  }
+  
+  /**
+   * 🔌 WAVE 63.95: System Wake - Resume all workers
+   * Sends SYSTEM_WAKE to Mind worker to resume processing
+   */
+  systemWake(): void {
+    const gamma = this.nodes.get('gamma');
+    if (!gamma?.worker) {
+      console.warn('[ALPHA] ⚠️ Cannot wake: GAMMA worker not spawned');
+      return;
+    }
+    console.log('[ALPHA] ☀️ Sending SYSTEM_WAKE to workers');
+    this.sendToWorker('gamma', MessageType.SYSTEM_WAKE, {}, MessagePriority.HIGH);
+  }
 }
 
 // ============================================

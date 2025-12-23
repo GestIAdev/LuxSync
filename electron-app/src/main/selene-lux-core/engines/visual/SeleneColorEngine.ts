@@ -616,6 +616,94 @@ export function paletteToRgb(palette: SelenePalette): {
  */
 export class SeleneColorEngine {
   
+  // 🔌 WAVE 65: Smart Logging - Tracking para evitar logs repetitivos
+  private static lastLoggedKey: string | null = null;
+  private static lastLoggedStrategy: string | null = null;
+  private static lastLoggedVibe: string | null = null;
+  private static logCooldownFrames = 0;
+  private static readonly LOG_COOLDOWN = 180;  // 3 segundos entre logs similares
+  
+  /**
+   * 🔬 WAVE 65: CHROMATIC AUDIT LOG
+   * 
+   * Log compacto en formato JSON que se dispara SOLO cuando:
+   * - Cambia la key musical
+   * - Cambia la estrategia de color
+   * - Cambia el vibe activo
+   * - O han pasado 3 segundos desde el último log
+   * 
+   * @param data - Datos del análisis actual
+   * @param palette - Paleta generada
+   * @param vibeId - ID del vibe activo
+   * @param overrideReason - Razón del override si aplica
+   */
+  static logChromaticAudit(
+    data: { key: string | null; mood: string | null; energy: number },
+    palette: SelenePalette,
+    vibeId: string = 'unknown',
+    overrideReason: string | null = null
+  ): void {
+    const currentKey = data.key || 'null';
+    const currentStrategy = palette.meta.strategy;
+    
+    // Decrementar cooldown
+    if (this.logCooldownFrames > 0) {
+      this.logCooldownFrames--;
+    }
+    
+    // Solo loguear si algo cambió O pasó el cooldown
+    const keyChanged = currentKey !== this.lastLoggedKey;
+    const strategyChanged = currentStrategy !== this.lastLoggedStrategy;
+    const vibeChanged = vibeId !== this.lastLoggedVibe;
+    const cooldownExpired = this.logCooldownFrames === 0;
+    
+    if (keyChanged || strategyChanged || vibeChanged || cooldownExpired) {
+      // Calcular temperatura en Kelvin aproximada
+      // Warm = 2700-3500K, Neutral = 4000-5000K, Cool = 5500-6500K
+      let tempKelvin = 4500;
+      
+      // 🔥 WAVE 68: HARD CLAMP FINAL - Si el vibe es Latino, forzar temperatura cálida
+      // Esto es un failsafe adicional al clamp en generate()
+      const isLatinoVibe = vibeId.toLowerCase().includes('latin') || vibeId.toLowerCase().includes('fiesta');
+      let effectiveTemp = palette.meta.temperature;
+      
+      if (isLatinoVibe && effectiveTemp !== 'warm') {
+        effectiveTemp = 'warm';  // Forzar cálido para vibes Latino
+      }
+      
+      if (effectiveTemp === 'warm') {
+        tempKelvin = 3000 + Math.floor(palette.primary.h / 360 * 500);
+      } else if (effectiveTemp === 'cool') {
+        tempKelvin = 5500 + Math.floor((360 - palette.primary.h) / 360 * 1000);
+      }
+      
+      // 🔥 WAVE 68: Clamp final de temperatura para Latino
+      if (isLatinoVibe) {
+        tempKelvin = Math.min(tempKelvin, 4500);  // Máximo 4500K para Latino
+      }
+      
+      const audit = {
+        vibe: vibeId,
+        key: currentKey,
+        strategy: currentStrategy,
+        reason: overrideReason || 'vibe_optimal',
+        temp: tempKelvin,
+        mood: data.mood || 'neutral',
+        hue: Math.round(palette.primary.h),
+        sat: Math.round(palette.primary.s),
+        energy: Math.round(data.energy * 100)
+      };
+      
+      console.log(`[COLOR_AUDIT] 🎨 ${JSON.stringify(audit)}`);
+      
+      // Actualizar tracking
+      this.lastLoggedKey = currentKey;
+      this.lastLoggedStrategy = currentStrategy;
+      this.lastLoggedVibe = vibeId;
+      this.logCooldownFrames = this.LOG_COOLDOWN;
+    }
+  }
+  
   /**
    * Genera una paleta cromática completa a partir del análisis de audio
    * 
@@ -772,6 +860,21 @@ export class SeleneColorEngine {
       temperature = 'cool';
     } else {
       temperature = 'neutral';
+    }
+    
+    // 🔥 WAVE 67.5: HARD CLAMP DE TEMPERATURA PARA LATINO
+    // Si el macro-género es Latino, FORZAR temperatura a 'warm' SIEMPRE
+    // Esto garantiza que el perfil FiestaLatina nunca vea azules/fríos
+    const isLatinMacro = macroId === 'LATIN_ORGANIC' || macroId.includes('LATIN');
+    if (isLatinMacro && temperature !== 'warm') {
+      temperature = 'warm';
+      // También ajustar el hue del primary hacia cálido si está en zona fría
+      // Zona fría: 180-300 (cyan/azul/púrpura)
+      // Clamp a zona cálida: rotar hacia 30 (naranja) o 0 (rojo)
+      if (primary.h >= 180 && primary.h < 300) {
+        // Mapear 180-300 → 30-60 (naranjas cálidos)
+        primary.h = 30 + ((primary.h - 180) / 120) * 30;
+      }
     }
     
     // === L. CALCULAR VELOCIDAD DE TRANSICIÓN ===
@@ -993,6 +1096,10 @@ export class SeleneColorInterpolator {
   /**
    * Interpola entre dos colores HSL
    * Usa el camino más corto en el círculo de hue (evita saltos de 350° a 10°)
+   * 
+   * 🔥 WAVE 67.5: DESATURATION DIP
+   * Si la diferencia de Hue es > 60°, desaturamos en el punto medio (t ≈ 0.5)
+   * Esto crea un efecto de 'lavado' (blanco/gris) en el cruce, evitando el efecto arcoíris sucio
    */
   private lerpHSL(from: HSLColor, to: HSLColor, t: number): HSLColor {
     // Hue: usar el camino más corto en el círculo
@@ -1002,8 +1109,31 @@ export class SeleneColorInterpolator {
     const h = normalizeHue(from.h + hueDiff * t);
     
     // S y L: interpolación lineal simple
-    const s = from.s + (to.s - from.s) * t;
+    let s = from.s + (to.s - from.s) * t;
     const l = from.l + (to.l - from.l) * t;
+    
+    // 🔥 WAVE 67.5: DESATURATION DIP
+    // Si el salto de hue es grande (> 60°), desaturar en el punto medio
+    // Esto evita ver "todos los colores intermedios" (arcoíris sucio)
+    const absHueDiff = Math.abs(hueDiff);
+    if (absHueDiff > 60) {
+      // Curva de desaturación: máximo en t=0.5, mínimo en t=0 y t=1
+      // Usamos una función gaussiana centrada en 0.5
+      const dipCenter = 0.5;
+      const dipWidth = 0.25;  // Ancho de la "zona de lavado"
+      const distanceFromCenter = Math.abs(t - dipCenter);
+      
+      // Si estamos cerca del centro, aplicar desaturación
+      if (distanceFromCenter < dipWidth) {
+        // Factor de desaturación: 1.0 (sin efecto) → 0.3 (máximo lavado) en el centro
+        // Curva suave: 1 - (1 - 0.3) * cos²(...)
+        const dipStrength = 0.3;  // Saturación mínima en el dip (30% de la original)
+        const normalizedDist = distanceFromCenter / dipWidth;  // 0 en centro, 1 en bordes
+        const dipFactor = dipStrength + (1 - dipStrength) * (normalizedDist * normalizedDist);
+        
+        s = s * dipFactor;
+      }
+    }
     
     return { h, s, l };
   }

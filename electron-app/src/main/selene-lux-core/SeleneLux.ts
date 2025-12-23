@@ -188,6 +188,7 @@ export class SeleneLux extends EventEmitter {
   // Este es el puente que conecta Worker → getBroadcast() → UI
   // WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
   // 🎢 WAVE 57.5: Añadido drop (DROP STATE MACHINE)
+  // 🎛️ WAVE 66: Añadido activeVibe y vibeTransitioning
   private lastTrinityData: {
     macroGenre?: string
     key?: string | null
@@ -203,10 +204,15 @@ export class SeleneLux extends EventEmitter {
       isDropActive?: boolean
       dropState?: any
     }
+    // 🎛️ WAVE 66: Vibe context
+    activeVibe?: string
+    vibeTransitioning?: boolean
     debugInfo?: {
       mood?: any
       sectionDetail?: any
       drop?: any
+      activeVibe?: string
+      vibeTransitioning?: boolean
     }
   } | null = null
   
@@ -1582,6 +1588,26 @@ export class SeleneLux extends EventEmitter {
         
         return sources;
       })(),
+      
+      // 🎛️ WAVE 66: Vibe Context from VibeManager
+      vibe: {
+        active: trinityData?.activeVibe ?? trinityData?.debugInfo?.activeVibe ?? 'idle',
+        transitioning: trinityData?.vibeTransitioning ?? trinityData?.debugInfo?.vibeTransitioning ?? false
+      },
+      
+      // 🎭 WAVE 66: Stabilized Emotion from MoodArbiter
+      stableEmotion: (trinityData?.mood?.stableEmotion ?? 'NEUTRAL') as 'BRIGHT' | 'DARK' | 'NEUTRAL',
+      
+      // 🌡️ WAVE 66: Thermal Temperature in Kelvin
+      thermalTemperature: trinityData?.mood?.thermalTemperature ?? 4500,
+      
+      // 🎢 WAVE 68: Drop State Machine Status - FIX: dropState es objeto {state, framesInState, isActive}
+      // EnergyStabilizer.getDropState() devuelve objeto, no string
+      dropState: {
+        state: (trinityData?.drop?.dropState?.state ?? 'IDLE') as 'IDLE' | 'ATTACK' | 'SUSTAIN' | 'RELEASE' | 'COOLDOWN',
+        isActive: trinityData?.drop?.isDropActive === true && 
+                  trinityData?.drop?.dropState?.state === 'SUSTAIN'
+      }
     }
     
     // ═══════════════════════════════════════════════════════════════════════

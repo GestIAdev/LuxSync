@@ -136,6 +136,10 @@ export class EnergyStabilizer {
   private peakBufferIndex = 0;
   private readonly PEAK_WINDOW = 30; // 0.5 segundos
   
+  // 🔌 WAVE 65: Histéresis para BREAKDOWN - evita falsas detecciones en pausas cortas
+  private lowEnergyFrameCount = 0;
+  private readonly BREAKDOWN_HYSTERESIS_FRAMES = 150;  // 2.5 segundos de baja energía sostenida
+  
   // Callbacks para reset
   private onSilenceReset: SilenceResetCallback[] = [];
   
@@ -162,8 +166,11 @@ export class EnergyStabilizer {
   private static readonly DEFAULT_CONFIG: EnergyStabilizerConfig = {
     smoothingWindowFrames: 120,  // 2 segundos @ 60fps
     silenceThreshold: 0.02,      // Prácticamente silencio
-    silenceResetFrames: 180,     // 3 segundos de silencio = reset
-    emaFactor: 0.95,             // 95% histórico, 5% nuevo
+    silenceResetFrames: 720,     // 🔌 WAVE 65: 12 segundos de silencio = reset (era 180 = 3s)
+    // 🔥 WAVE 67.5: 98% histórico = EMA más perezoso (era 0.95)
+    // Representa la energía de la SECCIÓN, no del compás
+    // Música latina tiene energía alta constante (0.5-0.6), esto evita falsos drops
+    emaFactor: 0.98,
   };
   
   constructor(config: Partial<EnergyStabilizerConfig> = {}) {
@@ -241,15 +248,33 @@ export class EnergyStabilizer {
     
     const isSilence = this.silenceFrameCount > 30; // >0.5s es "en silencio"
     
-    // === 📉 WAVE 55: DETECCIÓN RELATIVA DE DROP/BREAKDOWN ===
+    // === 📉 WAVE 55 + WAVE 65: DETECCIÓN RELATIVA DE DROP/BREAKDOWN ===
     // En lugar de umbral absoluto (>0.8), usamos RELATIVO al promedio
     // Si toda la canción está al 0.9, NADA será un Drop (correcto)
     // Solo los picos REALES por encima del promedio dispararán el efecto
-    const DROP_RELATIVE_THRESHOLD = 0.15;  // instant debe ser smoothed + 0.15
+    // 🔥 WAVE 67: Aumentado de 0.25 a 0.40 para DROP excepcional (40% de salto requerido)
+    const DROP_RELATIVE_THRESHOLD = 0.40;  // instant debe ser smoothed + 0.40 (era 0.25)
     const BREAKDOWN_RELATIVE_THRESHOLD = 0.12;  // instant debe ser smoothed - 0.12
     
-    const isRelativeDrop = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD) && energy > 0.5;
-    const isRelativeBreakdown = energy < (this.emaEnergy - BREAKDOWN_RELATIVE_THRESHOLD) && this.emaEnergy > 0.3;
+    // 🔥 WAVE 67.5: DROP ABSOLUTO requiere energía > 0.85 (era 0.6)
+    // Si la canción no rompe el techo (0.85+), no es un Drop, es un Chorus intenso
+    // Esto elimina falsos drops en música latina de alta energía constante
+    const DROP_ABSOLUTE_MINIMUM = 0.85;
+    const isRelativeDrop = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD) && energy > DROP_ABSOLUTE_MINIMUM;
+    
+    // 🔌 WAVE 65: HISTÉRESIS PARA BREAKDOWN
+    // La energía debe estar baja durante 2.5 segundos SOSTENIDOS antes de declarar breakdown
+    // Esto evita que pausas musicales cortas (0.5-1s) disparen falsamente el override
+    const instantBreakdownCondition = energy < (this.emaEnergy - BREAKDOWN_RELATIVE_THRESHOLD) && this.emaEnergy > 0.3;
+    
+    if (instantBreakdownCondition) {
+      this.lowEnergyFrameCount++;
+    } else {
+      this.lowEnergyFrameCount = 0;  // Reset si la energía sube
+    }
+    
+    // Solo es breakdown REAL si se sostiene por el tiempo requerido
+    const isRelativeBreakdown = this.lowEnergyFrameCount >= this.BREAKDOWN_HYSTERESIS_FRAMES;
     
     // === 🎢 WAVE 57.5: DROP STATE MACHINE ===
     // Evita el "ametralladora" de drops rápidos con ciclo de vida controlado
@@ -296,6 +321,7 @@ export class EnergyStabilizer {
     this.frameCount = 0;
     this.lastLogFrame = 0;
     this.lastResetFrame = 0;
+    this.lowEnergyFrameCount = 0;  // 🔌 WAVE 65: Reset histéresis de breakdown
     
     console.log('[EnergyStabilizer] 🧹 Manual RESET: All buffers cleared');
   }

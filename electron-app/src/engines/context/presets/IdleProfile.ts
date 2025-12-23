@@ -1,122 +1,119 @@
 /**
- * 🎉 FIESTA LATINA VIBE PROFILE
+ * 👻 IDLE VIBE PROFILE - WAVE 64
  * 
- * Organic warmth. Festive colors. High saturation celebration.
+ * Estado neutro de espera. Selene está activa pero aguarda órdenes.
+ * OSCURIDAD TOTAL - Sin output hasta que el usuario seleccione un Vibe.
  * 
  * Características:
- * - Moods festivos y alegres
- * - Temperaturas siempre cálidas (2500K-5500K)
- * - ❌ Blackout PROHIBIDO (mata la energía)
- * - Micro-drops permitidos para percusión
- * - Dimmer floor alto (25%)
+ * - Dimmer al 0% (blackout completo)
+ * - Sin movimiento (static)
+ * - Sin color (desaturado)
+ * - Energía cero
+ * 
+ * Este perfil es INVISIBLE en la UI - representa "esperando input".
  */
 
 import type { VibeProfile } from '../../../types/VibeProfile';
 
-export const VIBE_FIESTA_LATINA: VibeProfile = {
+export const VIBE_IDLE: VibeProfile = {
   // ═══════════════════════════════════════════════════════════════
   // IDENTITY
   // ═══════════════════════════════════════════════════════════════
-  id: 'fiesta-latina',
-  name: 'Fiesta Latina',
-  description: 'Organic warmth. Festive colors. High saturation celebration.',
-  icon: '🎉',
+  id: 'idle',
+  name: 'Idle',
+  description: 'Standby mode. Waiting for user input.',
+  icon: '👻',
 
   // ═══════════════════════════════════════════════════════════════
   // MOOD CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   mood: {
-    // ✅ PERMITIDOS: Solo estados festivos/alegres
-    allowed: ['festive', 'playful', 'euphoric', 'energetic', 'dramatic'],
-    // ❌ PROHIBIDOS implícitos: 'dark', 'tense', 'calm', 'peaceful', 'dreamy', 'aggressive'
-    fallback: 'festive',
-    audioInfluence: 0.8,      // Muy reactivo al audio
+    allowed: ['calm'],
+    fallback: 'calm',
+    audioInfluence: 0,  // 0% - ignora audio completamente
   },
 
   // ═══════════════════════════════════════════════════════════════
   // COLOR CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   color: {
-    // Todas las estrategias coloridas permitidas, triadic preferida
-    strategies: ['triadic', 'complementary', 'analogous'],
+    strategies: ['monochromatic'],
     temperature: {
-      min: 2000,   // 🔥 WAVE 67: Más cálido (era 2500K)
-      max: 4500,   // 🔥 WAVE 67: NUNCA frío - clamp a 4500K (era 5500K)
+      min: 5000,
+      max: 5000,   // Neutro
     },
     saturation: {
-      min: 0.80,   // 🔥 WAVE 66.5: Aumentado a 80% (era 65%) - Evita lavado a blanco en drops
-      max: 1.0,    // Full color permitido
+      min: 0,      // Sin saturación
+      max: 0,      // Sin saturación
     },
-    maxHueShiftPerSecond: 60,  // Cambios más rápidos OK
-    preferredPalettes: ['fiesta', 'tropical', 'sunset'],
+    maxHueShiftPerSecond: 0,  // Sin cambios
+    preferredPalettes: [],
   },
 
   // ═══════════════════════════════════════════════════════════════
   // DROP CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   drop: {
-    sensitivity: 0.8,         // Muy sensible
-    energyThreshold: 0.12,    // Trigger fácil (percusión latina)
+    sensitivity: 0,           // Ignora drops
+    energyThreshold: 1.0,     // Imposible de activar
     curves: {
-      attack: 'ease-in',      // Build orgánico
-      sustain: 'ease-in-out',
+      attack: 'linear',
+      sustain: 'linear',
       release: 'linear',
     },
     timing: {
-      minAttack: 20,          // Drops rápidos OK
-      maxSustain: 480,        // 8s máximo
-      releaseFrames: 45,      // Release corto
-      cooldownFrames: 120,    // 2s entre drops (permite más drops)
+      minAttack: 9999,
+      maxSustain: 0,
+      releaseFrames: 0,
+      cooldownFrames: 9999,
     },
-    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
+    allowMicroDrops: false,
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // DIMMER CONSTRAINTS
+  // DIMMER CONSTRAINTS - OSCURIDAD TOTAL
   // ═══════════════════════════════════════════════════════════════
   dimmer: {
-    floor: 0.25,              // ⚠️ NUNCA oscuro total (25% mínimo)
-    ceiling: 0.90,            // 🔥 WAVE 66.5: Máximo 90% (era 100%) - Drops son abrazos, no flashbangs
-    allowBlackout: false,     // ❌ PROHIBIDO (mata la energía de fiesta)
-    transitionSpeed: 'fast',  // Transiciones rápidas
-    breakdownCurve: 'ease-in-out',
+    floor: 0.0,               // 🔴 BLACKOUT
+    ceiling: 0.0,             // 🔴 BLACKOUT
+    allowBlackout: true,
+    transitionSpeed: 'fast',
+    breakdownCurve: 'linear',
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // MOVEMENT CONSTRAINTS
+  // MOVEMENT CONSTRAINTS - SIN MOVIMIENTO
   // ═══════════════════════════════════════════════════════════════
   movement: {
-    // Todo permitido excepto static prolongado
-    allowedPatterns: ['sweep', 'circle', 'figure8', 'chase', 'wave'],
+    allowedPatterns: ['static'],  // Solo estático
     speedRange: {
-      min: 0.4,   // Siempre en movimiento
-      max: 1.0,   // Full speed permitido
+      min: 0,
+      max: 0,
     },
-    allowAggressive: true,
-    preferredSync: 'beat',    // Sincronizado al ritmo
+    allowAggressive: false,
+    preferredSync: 'free',    // Sin sincronización (pero 'free' es válido)
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // EFFECTS CONSTRAINTS
+  // EFFECTS CONSTRAINTS - SIN EFECTOS
   // ═══════════════════════════════════════════════════════════════
   effects: {
-    // 🔥 WAVE 66.5: Sin strobe - el latino es calor, no epilepsia
-    allowed: ['fog', 'beam'],  // ❌ STROBE ELIMINADO de allowed
-    maxStrobeRate: 0,          // 🔥 WAVE 66.5: 0Hz = STROBE PROHIBIDO (era 8Hz)
-    autoFog: false,            // Fog manual (no siempre apropiado)
-    maxIntensity: 0.9,         // 🔥 WAVE 66.5: Tope 90% (era 100%)
+    allowed: [],              // Sin efectos
+    maxStrobeRate: 0,
+    autoFog: false,
+    maxIntensity: 0,
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // META CONSTRAINTS
+  // META CONSTRAINTS - CERO ENERGÍA
   // ═══════════════════════════════════════════════════════════════
   meta: {
-    baseEnergy: 0.75,
-    volatility: 0.6,          // ⚠️ Permite variación alta (música dinámica)
-    stabilityFirst: false,    // Reactividad > estabilidad
+    baseEnergy: 0,            // Sin energía
+    volatility: 0,            // Sin cambios
+    stabilityFirst: true,
     bpmHint: {
-      min: 85,
-      max: 130,               // Rango salsa/reggaeton/cumbia
+      min: 0,
+      max: 300,               // Acepta cualquier BPM (pero no reacciona)
     },
   },
 };

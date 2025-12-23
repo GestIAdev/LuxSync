@@ -995,7 +995,17 @@ ipcMain.handle('lux:start', () => {
     // still ensure main loop is running
     startMainLoop()
     
-    // 🔧 WAVE 15.1: Return saved inputGain even when already running
+    // � WAVE 63.95: Send SYSTEM_WAKE in case workers were sleeping
+    try {
+      const trinityRef = getTrinity()
+      if (trinityRef) {
+        trinityRef.systemWake()
+      }
+    } catch (e) {
+      console.warn('[Main] ⚠️ Could not send SYSTEM_WAKE:', e)
+    }
+    
+    // �🔧 WAVE 15.1: Return saved inputGain even when already running
     const savedConfig = configManager.getConfig()
     const savedGain = savedConfig.audio?.inputGain ?? 1.0
     return { success: true, alreadyRunning: true, inputGain: savedGain }
@@ -1003,6 +1013,16 @@ ipcMain.handle('lux:start', () => {
 
   initSelene()
   startMainLoop()
+  
+  // 🔌 WAVE 63.95: Send SYSTEM_WAKE to workers
+  try {
+    const trinityRef = getTrinity()
+    if (trinityRef) {
+      trinityRef.systemWake()
+    }
+  } catch (e) {
+    console.warn('[Main] ⚠️ Could not send SYSTEM_WAKE:', e)
+  }
   
   // 🔧 WAVE 15.1: Return saved inputGain on fresh start
   const savedConfig = configManager.getConfig()
@@ -1016,6 +1036,16 @@ ipcMain.handle('lux:start', () => {
 })
 
 ipcMain.handle('lux:stop', () => {
+  // 🔌 WAVE 63.95: Send SYSTEM_SLEEP to workers BEFORE stopping
+  try {
+    const trinityRef = getTrinity()
+    if (trinityRef) {
+      trinityRef.systemSleep()
+    }
+  } catch (e) {
+    console.warn('[Main] ⚠️ Could not send SYSTEM_SLEEP:', e)
+  }
+  
   stopMainLoop()
   if (selene) {
     try {
@@ -1027,6 +1057,7 @@ ipcMain.handle('lux:stop', () => {
   }
   selene = null
   globalThis.__lux_isSystemRunning = false
+  console.log('[Main] 🔌 WAVE 63.95: System stopped + SYSTEM_SLEEP sent')
   return { success: true }
 })
 
@@ -1322,22 +1353,27 @@ ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
 })
 
 // ============================================
-// 🎛️ WAVE 62: VIBE SELECTOR - Get Current Vibe
+// 🎛️ WAVE 62 + WAVE 64.5: VIBE SELECTOR - Get Current Vibe
+// AMNESIA: Siempre devuelve 'idle' al arranque hasta que se consulte al worker
 // ============================================
 ipcMain.handle('selene:getVibe', async () => {
   let trinity: ReturnType<typeof getTrinity> | null = null
   try {
     trinity = getTrinity()
   } catch {
-    return { success: false, vibeId: 'techno-club', error: 'Trinity not initialized' }
+    // 🔌 WAVE 64.5: Si no hay Trinity, devolver 'idle' (no techno)
+    return { success: true, vibeId: 'idle' }
   }
   
   if (trinity) {
-    // Default vibe until we have proper state query
-    return { success: true, vibeId: 'techno-club' }
+    // 🔌 WAVE 64.5: El VibeManager arranca en idle (DEFAULT_VIBE = 'idle')
+    // Cuando tengamos query real al worker, obtener el vibe actual
+    // Por ahora, confiar en que el backend arranca en idle
+    return { success: true, vibeId: 'idle' }
   }
   
-  return { success: false, vibeId: 'techno-club', error: 'Trinity not available' }
+  // 🔌 WAVE 64.5: Default es idle, no techno
+  return { success: true, vibeId: 'idle' }
 })
 
 ipcMain.handle('selene:reset-memory', () => {

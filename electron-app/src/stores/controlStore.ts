@@ -1,19 +1,19 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 CONTROL STORE - WAVE 33.2: Color Migration & Polish
+ * 🎮 CONTROL STORE - WAVE 63.9: Power Interlock & Idle State
  * Gestiona el modo global y parámetros de control de la UI
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Responsabilidades:
  * - viewMode: Alternar entre vista 2D (Tactical) y 3D (Visualizer)
- * - globalMode: Manual / Flow / Selene AI
+ * - globalMode: Manual / Flow / Selene AI / null (idle when system OFF)
  * - flowParams: Parámetros de patrones Flow
  * - aiEnabled: Override para habilitar/deshabilitar Selene
  * - activePalette: Paleta de colores vivos activa (WAVE 33.2)
  * - globalSaturation/globalIntensity: Controles globales (WAVE 33.2)
  * 
  * @module stores/controlStore
- * @version 33.2.0
+ * @version 63.9.0
  */
 
 import { create } from 'zustand'
@@ -26,8 +26,8 @@ import { persist } from 'zustand/middleware'
 /** Modo de visualización del Stage */
 export type ViewMode = '2D' | '3D'
 
-/** Modo global de control DMX */
-export type GlobalMode = 'manual' | 'flow' | 'selene'
+/** Modo global de control DMX (null = idle/system off) */
+export type GlobalMode = 'manual' | 'flow' | 'selene' | null
 
 /** Patrones disponibles para Flow mode */
 export type FlowPattern = 'static' | 'chase' | 'wave' | 'rainbow' | 'strobe' | 'circle' | 'eight'
@@ -157,7 +157,7 @@ const DEFAULT_FLOW_PARAMS: FlowParams = {
 
 const DEFAULT_STATE = {
   viewMode: '2D' as ViewMode,
-  globalMode: 'selene' as GlobalMode,
+  globalMode: null as GlobalMode,  // 🔌 WAVE 63.9: Start idle (system OFF)
   aiEnabled: true,
   flowParams: DEFAULT_FLOW_PARAMS,
   showDebugOverlay: false,

@@ -192,3 +192,66 @@
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; box-shadow: 0 0 15px #bf00ff; }
 }
+
+/* 🌡️ WAVE 66: THERMAL TEMPERATURE INDICATOR */
+.dna-thermal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.thermal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.thermal-label {
+  color: #666;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 0.65rem;
+}
+
+.thermal-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.thermal-state {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.thermal-bar-track {
+  position: relative;
+  height: 8px;
+  background: linear-gradient(to right, #ff8a00, #ffffff 50%, #9cdcfe);
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.thermal-bar-fill {
+  display: none; /* We use the track gradient directly */
+}
+
+.thermal-indicator {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 14px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 15px rgba(255, 255, 255, 0.4);
+  transform: translateX(-50%);
+  transition: left 0.3s ease-out;
+}

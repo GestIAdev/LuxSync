@@ -157,6 +157,7 @@ interface ExtendedAudioAnalysis extends AudioAnalysis {
 
 interface GammaState {
   isRunning: boolean;
+  isPaused: boolean;  // 🔌 WAVE 63.95: System sleep state (no audio processing)
   frameCount: number;
   decisionCount: number;
   startTime: number;
@@ -225,6 +226,7 @@ interface LearnedPattern {
 
 const state: GammaState = {
   isRunning: false,
+  isPaused: false,  // 🔌 WAVE 63.95: System sleep state
   frameCount: 0,
   decisionCount: 0,
   startTime: Date.now(),
@@ -254,10 +256,11 @@ const state: GammaState = {
   lastMoodChangeTime: Date.now(),   // Timestamp del último cambio
   
   // ⚓ WAVE 51: Key Stabilizer - Evita cambios frenéticos de color
+  // 🔥 WAVE 66.8: lockingFrames aumentado a 600 (10 segundos) para máxima estabilidad
   keyStabilizer: new KeyStabilizer({
-    bufferSize: 480,        // 8 segundos de historia @ 60fps
-    lockingFrames: 180,     // 3 segundos para confirmar cambio de key
-    dominanceThreshold: 0.35,  // Key debe tener >35% de votos
+    bufferSize: 720,        // 12 segundos de historia @ 60fps (WAVE 66.8: era 480)
+    lockingFrames: 600,     // 10 segundos para confirmar cambio de key (WAVE 66.8: era 180)
+    dominanceThreshold: 0.45,  // Key debe tener >45% de votos (WAVE 66.8: era 35%)
     useEnergyWeighting: true,  // Votos ponderados por energía
   }),
   
@@ -470,6 +473,21 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // 🎨 Generar paleta con nuevo motor determinista (usando key estabilizada)
   const selenePalette = SeleneColorEngine.generate(stabilizedAnalysis);
   const rgbPalette = SeleneColorEngine.generateRgb(stabilizedAnalysis);
+  
+  // 🔬 WAVE 65: Chromatic Audit Log (Smart logging - solo cuando hay cambios)
+  const activeVibe = vibeManager.getActiveVibe();
+  const overrideReason = strategyArbiterOutput.overrideType !== 'none' 
+    ? strategyArbiterOutput.overrideType : null;
+  SeleneColorEngine.logChromaticAudit(
+    { 
+      key: keyStabilizerOutput.stableKey, 
+      mood: moodArbiterOutput.stableEmotion, 
+      energy: energyOutput.smoothedEnergy 
+    },
+    selenePalette,
+    activeVibe.id,
+    overrideReason
+  );
   
   // Guardar en state
   state.currentPalette = selenePalette;
@@ -685,7 +703,34 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
       mood: {
         primary: finalMood,  // 💫 WAVE 47.1.3: Mood arbitrado (genre > harmony > VAD)
         stableEmotion: constrainedEmotion,  // 🎭 WAVE 53 + 60: Constrained by Vibe
-        thermalTemperature: moodArbiterOutput.thermalTemperature,  // 🎭 WAVE 53
+        // 🌡️ WAVE 68.1: Thermal Temperature - DIRECT FROM PALETTE (UNIFIED SOURCE)
+        // SeleneColorEngine calcula temperatura basada en HUE de la paleta real
+        // Esto garantiza que UI y logs muestren el MISMO valor
+        thermalTemperature: (() => {
+          const isLatinoVibe = activeVibe.id.toLowerCase().includes('latin') || 
+                              activeVibe.id.toLowerCase().includes('fiesta');
+          let effectiveTemp = selenePalette.meta.temperature;
+          
+          // Hard clamp para Latino (failsafe)
+          if (isLatinoVibe && effectiveTemp !== 'warm') {
+            effectiveTemp = 'warm';
+          }
+          
+          // Calcular Kelvin (mismo algoritmo que logChromaticAudit)
+          let tempKelvin = 4500;
+          if (effectiveTemp === 'warm') {
+            tempKelvin = 3000 + Math.floor(selenePalette.primary.h / 360 * 500);
+          } else if (effectiveTemp === 'cool') {
+            tempKelvin = 5500 + Math.floor((360 - selenePalette.primary.h) / 360 * 1000);
+          }
+          
+          // Clamp final para Latino (max 4500K)
+          if (isLatinoVibe) {
+            tempKelvin = Math.min(tempKelvin, 4500);
+          }
+          
+          return tempKelvin;
+        })(),
         // 🎨 WAVE 54: Strategy Arbiter output (dentro de mood porque debugInfo tiene tipos estrictos)
         colorStrategy: {
           stable: constrainedStrategy,  // 🎛️ WAVE 60: Constrained by Vibe
@@ -863,6 +908,13 @@ function handleMessage(message: WorkerMessage): void {
         
       case MessageType.AUDIO_ANALYSIS:
         if (!state.isRunning) break;
+        
+        // 🔌 WAVE 63.95: Skip processing when system is paused (sleeping)
+        if (state.isPaused) {
+          // Silently ignore audio frames when system is OFF
+          break;
+        }
+        
         const analysis = message.payload;
         
         // 🔍 WAVE 15.3 DIAGNOSTIC: Log audio reception cada 60 frames
@@ -929,6 +981,26 @@ function handleMessage(message: WorkerMessage): void {
         } else {
           console.warn(`[GAMMA] ⚠️ Invalid vibe ID: ${vibePayload.vibeId}`);
         }
+        break;
+      }
+      
+      // 🔌 WAVE 63.95: System Power Control
+      case MessageType.SYSTEM_SLEEP: {
+        console.log('[GAMMA] 💤 SYSTEM SLEEP - Pausing audio processing');
+        state.isPaused = true;
+        // Reset all stabilizers for clean restart
+        state.keyStabilizer.reset();
+        state.energyStabilizer.reset();
+        state.moodArbiter.reset();
+        state.strategyArbiter.reset();
+        // 🔌 WAVE 64.5: Reset vibe to IDLE (no pop-rock)
+        vibeManager.setActiveVibeImmediate('idle');
+        break;
+      }
+      
+      case MessageType.SYSTEM_WAKE: {
+        console.log('[GAMMA] ☀️ SYSTEM WAKE - Resuming audio processing');
+        state.isPaused = false;
         break;
       }
         

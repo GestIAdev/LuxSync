@@ -133,3 +133,63 @@
 .node-val.mood { font-size: 0.65rem; color: #aaa; text-transform: capitalize; }
 
 .chain-operator, .chain-arrow { color: #444; font-size: 0.8rem; font-weight: 700; }
+
+/* 🌡️ WAVE 66.5: THERMAL TEMPERATURE BAR */
+.thermal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.thermal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.thermal-label {
+  color: #666;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 0.6rem;
+}
+
+.thermal-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.thermal-state {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #888;
+}
+
+.thermal-bar-track {
+  position: relative;
+  height: 6px;
+  background: linear-gradient(to right, #ff8a00, #ffffff 50%, #9cdcfe);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.thermal-indicator {
+  position: absolute;
+  top: -2px;
+  width: 3px;
+  height: 10px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4);
+  transform: translateX(-50%);
+  transition: left 0.3s ease-out;
+}

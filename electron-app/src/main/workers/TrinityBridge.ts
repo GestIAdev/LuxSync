@@ -906,24 +906,28 @@ export class SimpleSectionTracker {
     const energyDelta = recentEnergy - olderEnergy;
     
     // === DECISIÓN DE SECCIÓN (3 ESTADOS EFECTIVOS) ===
+    // 🔥 WAVE 68: Umbrales más restrictivos para evitar falsos positivos en música latina
     let newSection = this.currentSection;
     
-    // 🔴 DROP: Explosión de bass + kick + energía alta
-    if (bassRatio > 1.20 && hasKick && currentEnergy > 0.6) {
+    // 🔴 DROP: Explosión de bass + kick + energía MUY alta
+    // 🔥 WAVE 68: Subido de 0.6 → 0.75, bassRatio 1.20 → 1.35
+    if (bassRatio > 1.35 && hasKick && currentEnergy > 0.75) {
       newSection = 'drop';
       this.beatsSinceChange = 0;
     }
     // 🟡 BUILDUP: Energía subiendo pero aún no explotan los bajos
-    else if (energyDelta > 0.12 && currentEnergy > 0.4 && bassRatio < 1.15) {
+    else if (energyDelta > 0.15 && currentEnergy > 0.5 && bassRatio < 1.15) {
       newSection = 'buildup';
     }
-    // 🔵 BREAKDOWN: Caída súbita de energía
-    else if (energyDelta < -0.25 && currentEnergy < 0.4) {
+    // 🔵 BREAKDOWN: Caída MUY súbita de energía
+    // 🔥 WAVE 68: Más restrictivo - energyDelta -0.25 → -0.35, currentEnergy 0.4 → 0.25
+    else if (energyDelta < -0.35 && currentEnergy < 0.25) {
       newSection = 'breakdown';
       this.beatsSinceChange = 0;
     }
     // 🟢 VERSE: Estado neutral (intro/outro/verse son lo mismo para iluminación)
-    else if (this.beatsSinceChange > 48) {  // ~8 beats sin cambio
+    // 🔥 WAVE 68: Aumentado de 48 → 90 frames (~1.5s) para más estabilidad
+    else if (this.beatsSinceChange > 90) {
       newSection = 'verse';
     }
     

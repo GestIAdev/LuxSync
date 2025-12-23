@@ -1,5 +1,5 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW CSS - WAVE 35.3: TitleBar now Global
+ * 🎛️ DASHBOARD VIEW CSS - WAVE 63.8: Zero State & Power Control
  * 
  * NO SCROLL - fills parent container completely
  * Grid: auto (header) | 1fr (main) | auto (deck)
@@ -44,6 +44,13 @@
   );
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
+}
+
+/* 🔌 WAVE 63.8: Header left section with power button */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .header-title {
@@ -151,6 +158,37 @@
 
 .cell-brain .cell-label {
   color: rgba(255, 0, 255, 0.7);
+}
+
+/* 🔌 WAVE 63.8: Right column split (Brain + Context) */
+.bento-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.bento-right-column .cell-brain {
+  flex: 1;
+  min-height: 0;
+}
+
+.bento-right-column .cell-context {
+  flex-shrink: 0;
+  min-height: 80px;
+}
+
+/* Context Cell (Vibe Selector) */
+.cell-context {
+  border-color: rgba(138, 43, 226, 0.2);
+}
+
+.cell-context .cell-label {
+  color: rgba(138, 43, 226, 0.8);
+}
+
+.cell-context .cell-icon {
+  font-size: 14px;
 }
 
 /* ═══════════════════════════════════════════════════════

@@ -1,12 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎛️ MODE SWITCHER SLEEK - WAVE 35: Cyberpunk Dashboard
- * Horizontal spaceship-style mode selector
+ * 🎛️ MODE SWITCHER SLEEK - WAVE 63.9: Power Interlock
+ * Horizontal spaceship-style mode selector with power state awareness
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import React from 'react'
 import { useControlStore, GlobalMode } from '../../../../stores/controlStore'
+import { useSystemPower } from '../../../../hooks/useSystemPower'
 import './ModeSwitcherSleek.css'
 
 interface ModeOption {
@@ -45,27 +46,42 @@ export const ModeSwitcherSleek: React.FC<{ className?: string }> = ({ className 
   const globalMode = useControlStore(state => state.globalMode)
   const setGlobalMode = useControlStore(state => state.setGlobalMode)
   
+  // 🔌 WAVE 63.9: Power state interlock
+  const { isOnline } = useSystemPower()
+  
+  // When system is OFF, no mode is visually active
+  const visualActiveMode = isOnline ? globalMode : null
+  
+  // Handle mode selection - only works when system is ON
+  const handleModeClick = (modeId: GlobalMode) => {
+    if (!isOnline) return
+    setGlobalMode(modeId)
+  }
+  
   return (
-    <div className={`mode-switcher-sleek ${className}`}>
+    <div className={`mode-switcher-sleek ${className} ${!isOnline ? 'system-offline' : ''}`}>
       <div className="switcher-label">CONTROL MODE</div>
       
       <div className="switcher-track">
-        {/* Sliding indicator */}
-        <div 
-          className="switcher-indicator"
-          style={{
-            '--indicator-color': MODES.find(m => m.id === globalMode)?.color || '#00ffff',
-            transform: `translateX(${MODES.findIndex(m => m.id === globalMode) * 100}%)`
-          } as React.CSSProperties}
-        />
+        {/* Sliding indicator - hidden when offline */}
+        {isOnline && visualActiveMode && (
+          <div 
+            className="switcher-indicator"
+            style={{
+              '--indicator-color': MODES.find(m => m.id === visualActiveMode)?.color || '#00ffff',
+              transform: `translateX(${MODES.findIndex(m => m.id === visualActiveMode) * 100}%)`
+            } as React.CSSProperties}
+          />
+        )}
         
         {/* Mode buttons */}
         {MODES.map((mode) => (
           <button
             key={mode.id}
-            className={`mode-button ${globalMode === mode.id ? 'active' : ''}`}
-            onClick={() => setGlobalMode(mode.id)}
-            style={{ '--mode-color': mode.color } as React.CSSProperties}
+            className={`mode-button ${visualActiveMode === mode.id ? 'active' : ''} ${!isOnline ? 'disabled' : ''}`}
+            onClick={() => handleModeClick(mode.id)}
+            disabled={!isOnline}
+            style={{ '--mode-color': isOnline ? mode.color : '#444' } as React.CSSProperties}
           >
             <span className="mode-icon">{mode.icon}</span>
             <span className="mode-label">{mode.label}</span>
@@ -74,12 +90,14 @@ export const ModeSwitcherSleek: React.FC<{ className?: string }> = ({ className 
         ))}
       </div>
       
-      {/* Active mode indicator line */}
+      {/* Active mode indicator line - dimmed when offline */}
       <div className="switcher-power-line">
         <div 
           className="power-fill"
           style={{ 
-            '--power-color': MODES.find(m => m.id === globalMode)?.color || '#00ffff'
+            '--power-color': isOnline && visualActiveMode 
+              ? (MODES.find(m => m.id === visualActiveMode)?.color || '#00ffff')
+              : '#222'
           } as React.CSSProperties}
         />
       </div>

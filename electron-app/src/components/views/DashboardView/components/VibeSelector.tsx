@@ -1,5 +1,5 @@
 /**
- * 🎛️ VIBE SELECTOR - WAVE 62.7 NUCLEAR DARK MODE
+ * 🎛️ VIBE SELECTOR - WAVE 63.9 POWER INTERLOCK
  * 
  * CSS NUCLEAR: Force dark mode with inline styles + !important.
  * Industrial-size buttons (h-20) at footer of SeleneBrain.
@@ -9,11 +9,13 @@
  * - appearance: none to kill browser defaults
  * - h-20 (80px) industrial size buttons
  * - Large icons (w-8 h-8)
+ * - 🔌 POWER INTERLOCK: Buttons disabled/dimmed when system is OFFLINE
  */
 
 import React from 'react'
 import { Zap, Flame, Mic2, Sofa, Loader2 } from 'lucide-react'
 import { useSeleneVibe, VibeId, VibeInfo } from '../../../../hooks/useSeleneVibe'
+import { useSystemPower } from '../../../../hooks/useSystemPower'
 
 // ============================================================================
 // ICON MAP
@@ -70,6 +72,7 @@ interface VibeButtonProps {
   vibe: VibeInfo
   isActive: boolean
   isTransitioning: boolean
+  isSystemOn: boolean  // 🔌 WAVE 63.9: Power interlock
   onClick: () => void
 }
 
@@ -77,10 +80,15 @@ const VibeButton: React.FC<VibeButtonProps> = ({
   vibe, 
   isActive, 
   isTransitioning,
+  isSystemOn,
   onClick 
 }) => {
   const Icon = ICON_MAP[vibe.icon] || Zap
   const colors = VIBE_STYLES[vibe.accentColor] || VIBE_STYLES.cyan
+  
+  // 🔌 WAVE 63.9: Only show active state if system is ON
+  const showActiveState = isActive && isSystemOn
+  const isDisabled = !isSystemOn || isTransitioning
   
   // NUCLEAR INLINE STYLES - Cannot be overridden
   const baseStyle: React.CSSProperties = {
@@ -90,12 +98,16 @@ const VibeButton: React.FC<VibeButtonProps> = ({
     MozAppearance: 'none',
     outline: 'none',
     
-    // FORCE DARK
-    backgroundColor: isActive ? colors.bgActive : 'rgba(0, 0, 0, 0.4)',
-    color: isActive ? colors.textActive : 'rgba(156, 163, 175, 0.8)', // gray-400
+    // FORCE DARK - dimmed when system is OFF
+    backgroundColor: showActiveState ? colors.bgActive : 'rgba(0, 0, 0, 0.4)',
+    color: showActiveState 
+      ? colors.textActive 
+      : isSystemOn 
+        ? 'rgba(156, 163, 175, 0.8)' // gray-400 (normal inactive)
+        : 'rgba(100, 100, 100, 0.4)', // very dim when system OFF
     
-    // BORDERS
-    border: `2px solid ${isActive ? colors.borderActive : 'rgba(255, 255, 255, 0.1)'}`,
+    // BORDERS - only colored if active AND system is ON
+    border: `2px solid ${showActiveState ? colors.borderActive : 'rgba(255, 255, 255, 0.1)'}`,
     borderRadius: '12px',
     
     // SIZE - INDUSTRIAL
@@ -110,14 +122,14 @@ const VibeButton: React.FC<VibeButtonProps> = ({
     justifyContent: 'center',
     gap: '6px',
     
-    // EFFECTS
-    boxShadow: isActive ? colors.shadow : 'none',
+    // EFFECTS - no glow when system is OFF
+    boxShadow: showActiveState ? colors.shadow : 'none',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
     
     // INTERACTION
-    cursor: isTransitioning ? 'wait' : 'pointer',
-    opacity: isTransitioning ? 0.5 : 1,
+    cursor: isDisabled ? 'not-allowed' : 'pointer',
+    opacity: isSystemOn ? (isTransitioning ? 0.5 : 1) : 0.4,
     transition: 'all 200ms ease-out',
   }
   
@@ -132,32 +144,32 @@ const VibeButton: React.FC<VibeButtonProps> = ({
     fontWeight: 700,
     letterSpacing: '0.1em',
     textTransform: 'uppercase' as const,
-    opacity: isActive ? 1 : 0.7,
+    opacity: showActiveState ? 1 : 0.7,
     color: 'inherit',
     fontFamily: 'ui-monospace, monospace',
   }
   
   return (
     <button
-      onClick={onClick}
-      disabled={isTransitioning}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
       style={baseStyle}
-      title={vibe.description}
+      title={isSystemOn ? vibe.description : 'System offline'}
       onMouseEnter={(e) => {
-        if (!isActive) {
+        if (!showActiveState && isSystemOn) {
           e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'
           e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
         }
       }}
       onMouseLeave={(e) => {
-        if (!isActive) {
+        if (!showActiveState && isSystemOn) {
           e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'
           e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
         }
       }}
     >
       {/* Icon - LARGE */}
-      {isTransitioning && isActive ? (
+      {isTransitioning && showActiveState ? (
         <Loader2 style={{ ...iconStyle, animation: 'spin 1s linear infinite' }} />
       ) : (
         <Icon style={iconStyle} />
@@ -184,6 +196,9 @@ export const VibeSelector: React.FC = () => {
     allVibes 
   } = useSeleneVibe()
   
+  // 🔌 WAVE 63.9: Power state interlock
+  const { isOnline } = useSystemPower()
+  
   // Hidden in Ghost Mode (not in Selene mode)
   if (isGhostMode) {
     return null
@@ -193,6 +208,8 @@ export const VibeSelector: React.FC = () => {
     marginTop: 'auto',
     paddingTop: '12px',
     borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+    opacity: isOnline ? 1 : 0.5,
+    transition: 'opacity 300ms ease',
   }
   
   const rowStyle: React.CSSProperties = {
@@ -210,6 +227,7 @@ export const VibeSelector: React.FC = () => {
             vibe={vibe}
             isActive={activeVibe === vibe.id}
             isTransitioning={isTransitioning}
+            isSystemOn={isOnline}
             onClick={() => setVibe(vibe.id)}
           />
         ))}

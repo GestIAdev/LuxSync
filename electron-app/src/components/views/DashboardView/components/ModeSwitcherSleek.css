@@ -1,5 +1,5 @@
 /**
- * 🎛️ MODE SWITCHER SLEEK - WAVE 35: Cyberpunk Styling
+ * 🎛️ MODE SWITCHER SLEEK - WAVE 63.9: Power Interlock Styling
  */
 
 .mode-switcher-sleek {
@@ -130,6 +130,29 @@
 @keyframes power-flow {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* 🔌 WAVE 63.9: Disabled/Offline state */
+.mode-switcher-sleek.system-offline {
+  opacity: 0.6;
+}
+
+.mode-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.mode-button.disabled:hover {
+  background: transparent;
+}
+
+.mode-button.disabled .mode-icon {
+  filter: grayscale(1);
+}
+
+.mode-button.disabled .mode-label,
+.mode-button.disabled .mode-desc {
+  color: rgba(255, 255, 255, 0.2);
 }
 
 /* Responsive */

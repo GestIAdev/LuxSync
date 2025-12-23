@@ -63,7 +63,11 @@ export enum MessageType {
   DISABLE_BRAIN = 'disable_brain', // Fallback to reactive
   
   // 🎛️ WAVE 60: Vibe Control
-  SET_VIBE = 'set_vibe'           // Change active Vibe profile
+  SET_VIBE = 'set_vibe',          // Change active Vibe profile
+  
+  // 🔌 WAVE 63.95: System Power Control
+  SYSTEM_SLEEP = 'system_sleep',  // Pause processing, reset state
+  SYSTEM_WAKE = 'system_wake'     // Resume processing
 }
 
 export enum MessagePriority {

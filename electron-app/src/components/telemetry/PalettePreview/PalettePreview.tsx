@@ -23,11 +23,22 @@ const PalettePreview: React.FC = () => {
   const strategy = palette?.strategy || 'analogous'
   const origin = palette?.source || 'procedural'
   
+  // 🔥 WAVE 66.8: Usar stableEmotion del MoodArbiter (BRIGHT/DARK/NEUTRAL)
+  const stableEmotion = cognitive?.stableEmotion || 'NEUTRAL'
+  
   const derivation = {
     key: dna?.key || '---',
-    mood: cognitive?.mood || 'Neutral',
+    mood: stableEmotion,  // 🔥 WAVE 66.8: Conectado a stableEmotion real
     finalHue: primaryH
   }
+  
+  // 🔥 WAVE 66.8: Calcular posición de temperatura correctamente
+  // Rango: 2000K (izquierda/warm) a 10000K (derecha/cool)
+  const thermalTemp = cognitive?.thermalTemperature
+  const hasThermal = typeof thermalTemp === 'number' && thermalTemp > 0
+  const thermalPercent = hasThermal 
+    ? Math.min(100, Math.max(0, ((thermalTemp - 2000) / 8000) * 100))
+    : 50  // Si no hay temperatura válida, mostrar neutral (50%)
 
   return (
     <div className={`palette-panel-container ${connected ? 'online' : 'offline'}`}>
@@ -121,6 +132,25 @@ const PalettePreview: React.FC = () => {
               {derivation.finalHue}°
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* 🌡️ WAVE 66.5 + 66.8: THERMAL TEMPERATURE BAR */}
+      <div className="thermal-section">
+        <div className="thermal-header">
+          <span className="thermal-label">THERMAL</span>
+          <span className="thermal-value">{hasThermal ? `${thermalTemp}K` : '---'}</span>
+          <span className="thermal-state">{
+            !hasThermal ? '⏳ LOADING' :
+            thermalTemp < 4000 ? '🔥 WARM' :
+            thermalTemp > 6000 ? '❄️ COOL' : '⚖️ NEUTRAL'
+          }</span>
+        </div>
+        <div className="thermal-bar-track">
+          <div 
+            className="thermal-indicator"
+            style={{ left: `${thermalPercent}%` }}
+          />
         </div>
       </div>
 

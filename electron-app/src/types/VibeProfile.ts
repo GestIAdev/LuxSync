@@ -13,8 +13,9 @@
 
 /**
  * Identificadores únicos de Vibes disponibles
+ * 🔌 WAVE 64: Añadido 'idle' como estado neutro de espera
  */
-export type VibeId = 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge';
+export type VibeId = 'idle' | 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge';
 
 /**
  * Estados emocionales que Selene puede expresar

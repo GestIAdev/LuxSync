@@ -16,6 +16,7 @@ import { useAudioStore } from '../stores/audioStore'
 import { useSeleneStore, LogEntryType } from '../stores/seleneStore'
 import { useDMXStore, FixtureValues } from '../stores/dmxStore'
 import { useLuxSyncStore, EffectId } from '../stores/luxsyncStore'  // 🔥 WAVE 10.7: Effects sync
+import { usePowerStore } from '../hooks/useSystemPower'  // 🔌 WAVE 63.8: Power control
 
 // ============================================================================
 // TYPES
@@ -127,10 +128,9 @@ export function useTrinity() {
 
 interface TrinityProviderProps {
   children: ReactNode
-  autoStart?: boolean
 }
 
-export function TrinityProvider({ children, autoStart = true }: TrinityProviderProps) {
+export function TrinityProvider({ children }: TrinityProviderProps) {
   // Audio capture hook
   const {
     metrics: audioMetrics,
@@ -482,25 +482,33 @@ export function TrinityProvider({ children, autoStart = true }: TrinityProviderP
     }
   }, [audioMetrics, isCapturing, updateAudioStore])
   
-  // Auto-start on mount (with ref to prevent double execution)
+  // 🔌 WAVE 63.95: TRUE GLOBAL KILL SWITCH
+  // Power-controlled startup - stops ALL audio processing when OFFLINE
+  const powerState = usePowerStore((s) => s.powerState)
   const hasStartedRef = useRef(false)
   
   useEffect(() => {
-    // 🎯 WAVE 13.6 FIX: StrictMode ejecuta efectos 2 veces
-    // Solo marcar como iniciado DESPUÉS de que startTrinity se ejecute realmente
-    if (autoStart && !hasStartedRef.current) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        hasStartedRef.current = true  // Marcar DESPUÉS del delay
-        startTrinity()
-      }, 500)
-      
-      return () => {
-        clearTimeout(timer)
-        // NO resetear hasStartedRef aquí - si ya se inició, no volver a iniciar
+    // Start when powerState becomes ONLINE (user pressed power button)
+    if (powerState === 'ONLINE' && !hasStartedRef.current) {
+      console.log('[Trinity] 🔌 POWER ON - Starting audio & workers')
+      hasStartedRef.current = true
+      startTrinity()
+    }
+    
+    // KILL SWITCH: Stop when powerState becomes OFFLINE
+    if (powerState === 'OFFLINE') {
+      if (hasStartedRef.current) {
+        console.log('[Trinity] 🔌 POWER OFF - Killing audio & workers')
+        hasStartedRef.current = false
+        stopTrinity()
+      }
+      // Extra safety: force stop capture even if somehow running
+      if (isCapturing) {
+        console.log('[Trinity] 🛑 FORCE STOP - Audio was still running!')
+        stopCapture()
       }
     }
-  }, [autoStart]) // 🎯 WAVE 13.6 FIX: Removido startTrinity de deps para evitar re-ejecución
+  }, [powerState, isCapturing]) // eslint-disable-line react-hooks/exhaustive-deps
   
   // Cleanup on unmount
   useEffect(() => {

@@ -585,6 +585,7 @@ export class SeleneColorEngine {
         mood: data.mood || 'neutral',
         hue: Math.round(palette.primary.h),
         sat: Math.round(palette.primary.s),
+        light: Math.round(palette.primary.l),  // 🛡️ WAVE 83: Añadido L para diagnóstico completo
         energy: Math.round(data.energy * 100)
       };
       
@@ -686,20 +687,70 @@ export class SeleneColorEngine {
       95   // Máximo absoluto
     );
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 81: ANTI-MUD PROTOCOL (VIBRANCY ENFORCEMENT)
+    // Evitar que la baja energía cree colores marrones/sucios en contextos festivos.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Variables mutables para permitir corrección Anti-Mud
+    let correctedSat = primarySat;
+    let correctedLight = primaryLight;
+    
+    // Detectar si el contexto requiere pureza de color (mood festivo)
+    const isFestiveContext = mood === 'bright' || 
+                             mood === 'energetic' ||
+                             mood === 'euphoric';
+    
+    // Detectar contexto oscuro (Techno, Dark, etc)
+    const isDarkContext = mood === 'dark';
+    
+    if (isFestiveContext) {
+      // 1. Detección de "Zona de Peligro Marrón" (Naranjas/Amarillos oscuros)
+      // Hue 20-55 es naranja/amarillo. Si L < 0.45, se ve marrón/sucio.
+      const isDangerZone = finalHue > 20 && finalHue < 55;
+      
+      if (isDangerZone) {
+        // 🎨 FORZAR LUMINOSIDAD MÍNIMA:
+        // Mantenemos el pigmento vivo. Si la energía baja, que baje el DIMMER,
+        // pero NO la luminosidad del color HSL.
+        correctedLight = Math.max(correctedLight, 45);
+        
+        // 🎨 BOOST DE SATURACIÓN:
+        // Los amarillos/naranjas necesitan mucha saturación para no parecer beige.
+        correctedSat = Math.max(correctedSat, 80);
+      } else {
+        // Suelo general para vibes festivas (evitar grises en cualquier hue)
+        correctedLight = Math.max(correctedLight, 30);
+        correctedSat = Math.max(correctedSat, 60);
+      }
+    }
+    
+    if (isDarkContext) {
+      // 2. TECHNO / DARK CONTEXT (Permitir oscuridad, pero evitar lavado)
+      // Permitir L bajo (deep colors), pero mantener S alta para colores "neón"
+      correctedSat = Math.max(correctedSat, 70);
+    }
+    
+    // Aplicar clamps finales
+    correctedSat = clamp(correctedSat, 20, 100);
+    correctedLight = clamp(correctedLight, 20, 95);
+    
     // === E. COLOR PRIMARIO ===
+    // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
     const primary: HSLColor = {
       h: finalHue,
-      s: primarySat,
-      l: primaryLight,
+      s: correctedSat,
+      l: correctedLight,
     };
     
     // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
     // φ × 360° ≈ 222.5° garantiza variedad infinita
+    // 🛡️ WAVE 81: Usar valores corregidos como base
     const secondaryHue = normalizeHue(finalHue + PHI_ROTATION);
     const secondary: HSLColor = {
       h: secondaryHue,
-      s: clamp(primarySat + 5, 20, 100),  // Ligeramente más saturado
-      l: clamp(primaryLight - 10, 20, 80), // Ligeramente más oscuro
+      s: clamp(correctedSat + 5, 20, 100),  // Ligeramente más saturado
+      l: clamp(correctedLight - 10, 20, 80), // Ligeramente más oscuro
     };
     
     // === G. COLOR DE ACENTO (Estrategia de Contraste) ===

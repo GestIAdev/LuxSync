@@ -279,6 +279,15 @@ export class SectionTracker extends EventEmitter {
   // 🌊 WAVE 70.5: Nuclear Kill Switch - fuerza salida inmediata de DROP
   private forceDropExit: boolean = false;    // Kill switch activado?
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 81: ENERGY DELTA MODEL
+  // Física de energía pura para detección macroscópica de secciones
+  // ═══════════════════════════════════════════════════════════════════════
+  private avgEnergy: number = 0.5;           // Media móvil lenta (~2s inercia)
+  private instantEnergy: number = 0.5;       // Media móvil rápida (~100ms inercia)
+  private timeInLowEnergy: number = 0;       // Tiempo acumulado en energía baja
+  private lastFrameTime: number = 0;         // Timestamp del último frame
+  
   constructor(config: Partial<SectionTrackerConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -511,9 +520,9 @@ export class SectionTracker extends EventEmitter {
    * - Validación de transición con matriz
    * 
    * Algoritmo:
-   * 1. Decay de votos existentes (memoria temporal)
-   * 2. Analizar nivel de intensidad RELATIVA
-   * 3. Analizar trend de energía
+   * 1. 🔥 WAVE 81: Energy Delta Model (prioridad)
+   * 2. Decay de votos existentes (memoria temporal)
+   * 3. Analizar nivel de intensidad RELATIVA
    * 4. Votar por sección más probable
    * 5. Validar transición con SECTION_TRANSITIONS
    */
@@ -523,6 +532,73 @@ export class SectionTracker extends EventEmitter {
     rhythm: RhythmAnalysis,
     audio: { energy: number; bass: number; mid: number; treble: number }
   ): SectionType {
+    const now = Date.now();
+    const e = audio.energy;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 81: ENERGY DELTA MODEL (FÍSICA PURA)
+    // Este modelo tiene PRIORIDAD sobre el sistema de votos.
+    // Si detecta un cambio macroscópico, retorna inmediatamente.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 1. CÁLCULO DE ENERGÍA (Física Simple)
+    // avgEnergy = Baseline lento (~2 seg inercia)
+    // instantEnergy = Pico instantáneo (~100ms inercia)
+    this.avgEnergy = this.avgEnergy * 0.98 + e * 0.02;
+    this.instantEnergy = this.instantEnergy * 0.8 + e * 0.2;
+    
+    const delta = this.instantEnergy - this.avgEnergy;
+    const ratio = this.instantEnergy / (this.avgEnergy + 0.01);
+    
+    // 2. REGLAS DE DETECCIÓN MACROSCÓPICA (PRIORIDAD ALTA)
+    
+    // 🚀 DETECCIÓN DE DROP (La Subida Explosiva)
+    // Si la energía instantánea supera en 40% al promedio Y es alta en absoluto (>0.75)
+    if (ratio > 1.4 && this.instantEnergy > 0.75) {
+      if (this.currentSection !== 'drop') {
+        // Check de Cooldown para no re-disparar
+        if (!this.isDropCooldown && !this.forceDropExit && now - this.lastDropEndTime > 5000) {
+          // 🔥 WAVE 81: Transición inmediata a DROP
+          this.timeInLowEnergy = 0;
+          this.lastFrameTime = now;
+          // Votar fuertemente por DROP para que el sistema de votos lo valide
+          this.addVote('drop', 2.5);
+        }
+      }
+    }
+    
+    // 🛡️ DETECCIÓN DE BREAKDOWN (El Silencio)
+    // Si la energía cae al suelo (< 0.4) y se queda ahí
+    else if (this.avgEnergy < 0.4 && this.instantEnergy < 0.3) {
+      const frameTime = this.lastFrameTime > 0 ? now - this.lastFrameTime : 16;
+      this.timeInLowEnergy += frameTime;
+      
+      // Histéresis: esperar 2 segundos de silencio real
+      if (this.timeInLowEnergy > 2000) {
+        this.addVote('breakdown', 1.5);
+      }
+    } else {
+      this.timeInLowEnergy = 0;
+    }
+    
+    // 📈 DETECCIÓN DE BUILDUP (La Escalada)
+    // Si la energía sube constantemente pero no ha explotado aún
+    if (this.avgEnergy > 0.4 && delta > 0.05 && this.currentSection !== 'drop') {
+      this.addVote('buildup', 0.8);
+    }
+    
+    // 🎵 ALTA ENERGÍA SOSTENIDA = CHORUS (no DROP)
+    if (this.avgEnergy > 0.6 && delta < 0.03 && delta > -0.03 && this.currentSection !== 'drop') {
+      this.addVote('chorus', 0.6);
+    }
+    
+    // Actualizar timestamp
+    this.lastFrameTime = now;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIN WAVE 81 - Continúa con sistema de votos legacy
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // WAVE 47.2: Decay de votos (memoria temporal, no reset total)
     const DECAY_FACTOR = 0.85;
     for (const [section, votes] of this.sectionVotes) {
@@ -545,7 +621,7 @@ export class SectionTracker extends EventEmitter {
       : audio.bass;
     
     // 🌊 WAVE 70: DROP timeout y cooldown
-    const now = Date.now();
+    // (now ya está declarado arriba en Energy Delta Model)
     
     // Verificar si estamos en cooldown después de un DROP
     if (this.isDropCooldown) {

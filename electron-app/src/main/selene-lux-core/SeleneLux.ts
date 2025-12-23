@@ -1456,23 +1456,28 @@ export class SeleneLux extends EventEmitter {
     // 🔥 WAVE 74: SINGLE INTERPOLATOR - Confiar en el Worker
     // El Worker (mind.ts) ya interpola con SeleneColorInterpolator (240 frames = 4s)
     // NO re-interpolamos aquí - eso causaba conflicto y flickering
-    // Solo aplicamos intensity y asignamos directamente
+    // 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 83: RAW RGB PRESERVATION (Anti-Barro Fix)
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: Multiplicar RGB por intensity oscurecía los colores.
+    // Cuando RGB oscurecido se reconvierte a HSL, la saturación/luminosidad baja.
+    // Esto causaba que colores vibrantes (S=94) aparecieran como barro (S=49, L=36).
+    //
+    // SOLUCIÓN: Pasar RGB PUROS a lastColors. La intensity debe controlar el 
+    // DIMMER del fixture, no el color HSL. Así el color permanece vibrante
+    // y solo cambia el brillo físico de la luz.
+    // ═══════════════════════════════════════════════════════════════════════
     if (palette) {
       const intensityValue = palette.intensity ?? 1.0
       
-      // Función helper para aplicar intensity a RGB
-      const applyIntensity = (c: {r: number, g: number, b: number}, mult: number) => ({
-        r: Math.round(c.r * mult),
-        g: Math.round(c.g * mult),
-        b: Math.round(c.b * mult),
-      })
-      
-      // Asignar colores del Worker directamente (ya vienen interpolados)
+      // 🛡️ WAVE 83: Asignar colores PUROS del Worker (sin multiplicar por intensity)
+      // La intensity se guarda por separado para uso del dimmer
       this.lastColors = {
-        primary: applyIntensity(palette.primary, intensityValue),
-        secondary: applyIntensity(palette.secondary, intensityValue * 0.8),
-        accent: applyIntensity(palette.accent, intensityValue * 0.6),
-        ambient: applyIntensity(palette.secondary, intensityValue * 0.8),
+        primary: { ...palette.primary },
+        secondary: { ...palette.secondary },
+        accent: { ...palette.accent },
+        ambient: { ...palette.secondary },  // TODO WAVE 84: Calcular ambient independiente
         intensity: intensityValue,
         saturation: this.globalSaturation
       }

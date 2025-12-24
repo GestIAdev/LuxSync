@@ -550,15 +550,38 @@ export class SectionTracker extends EventEmitter {
     const delta = this.instantEnergy - this.avgEnergy;
     const ratio = this.instantEnergy / (this.avgEnergy + 0.01);
     
+    // 🌴 WAVE 84: HIGH-ENERGY PHYSICS (Loudness War Tracks)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Problema: Tracks "comprimidos" (reggaetón, EDM mastered hot) tienen avgEnergy > 0.7
+    // permanente, haciendo imposible que ratio > 1.4 se cumpla (requiere salto de 0.7 → 0.98).
+    // Solución: Umbrales dinámicos según el nivel de compresión del track.
+    // ═══════════════════════════════════════════════════════════════════════
+    const isHighEnergyTrack = this.avgEnergy > 0.7;
+    
+    // 🔥 WAVE 84: Umbrales adaptativos
+    // - Track dinámico (avgEnergy ≤ 0.7): ratio 1.4, abs 0.75 (original)
+    // - Track comprimido (avgEnergy > 0.7): ratio 1.15, abs 0.90 (más sensible)
+    const dynamicRatio = isHighEnergyTrack ? 1.15 : 1.4;
+    const dynamicAbsThreshold = isHighEnergyTrack ? 0.90 : 0.75;
+    
     // 2. REGLAS DE DETECCIÓN MACROSCÓPICA (PRIORIDAD ALTA)
     
-    // 🚀 DETECCIÓN DE DROP (La Subida Explosiva)
-    // Si la energía instantánea supera en 40% al promedio Y es alta en absoluto (>0.75)
-    if (ratio > 1.4 && this.instantEnergy > 0.75) {
+    // �️ WAVE 84.5: HARD COOLDOWN - 10 segundos de paz garantizada
+    // Si hubo un drop hace menos de 10 segundos, PROHIBIDO detectar otro.
+    // Esto evita la fatiga visual en canciones muy intensas.
+    const timeSinceLastDrop = now - this.lastDropEndTime;
+    const HARD_COOLDOWN_MS = 10000;  // 10 segundos de paz
+    
+    // �🚀 DETECCIÓN DE DROP (La Subida Explosiva)
+    // 🌴 WAVE 84: Usar umbrales dinámicos en lugar de constantes
+    if (ratio > dynamicRatio && this.instantEnergy > dynamicAbsThreshold) {
       if (this.currentSection !== 'drop') {
-        // Check de Cooldown para no re-disparar
-        if (!this.isDropCooldown && !this.forceDropExit && now - this.lastDropEndTime > 5000) {
-          // 🔥 WAVE 81: Transición inmediata a DROP
+        // 🛡️ WAVE 84.5: Si estamos en cooldown, redirigir a CHORUS
+        if (timeSinceLastDrop < HARD_COOLDOWN_MS) {
+          // Energía de Drop pero en cooldown → marcar como CHORUS (energía alta estable)
+          this.addVote('chorus', 1.5);
+        } else if (!this.isDropCooldown && !this.forceDropExit) {
+          // 🔥 WAVE 81: Transición real a DROP (fuera de cooldown)
           this.timeInLowEnergy = 0;
           this.lastFrameTime = now;
           // Votar fuertemente por DROP para que el sistema de votos lo valide

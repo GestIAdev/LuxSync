@@ -2,6 +2,15 @@ import React from 'react'
 import { useTruthPalette, useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
 import './PalettePreview.css'
 
+// 🎨 WAVE 90: Strategy display names (localized)
+const STRATEGY_LABELS: Record<string, string> = {
+  'analogous': 'Análogo',
+  'triadic': 'Triádico',
+  'complementary': 'Complementario',
+  'split-complementary': 'Split-Comp',
+  'monochromatic': 'Monocromático'
+};
+
 const PalettePreview: React.FC = () => {
   // 🔥 WAVE 74: Throttle eliminado - volvemos a tiempo real para diagnosticar
   const palette = useTruthPalette()
@@ -60,7 +69,7 @@ const PalettePreview: React.FC = () => {
       <div className="strategy-display">
         <div className="strategy-info">
           <div className="strategy-label">COLOR STRATEGY</div>
-          <div className="strategy-value">{strategy.toUpperCase()}</div>
+          <div className="strategy-value">{STRATEGY_LABELS[strategy] || strategy.toUpperCase()}</div>
         </div>
         <div className="strategy-graph">
           <div className="color-wheel-mini" style={{borderColor: `${currentPalette.primary}40`}}>

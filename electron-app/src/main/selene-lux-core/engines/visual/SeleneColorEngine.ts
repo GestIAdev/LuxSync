@@ -201,6 +201,10 @@ export interface ExtendedAudioAnalysis {
   /** Energía normalizada (0-1) - CRÍTICO */
   energy: number;
   
+  // === 🌴 WAVE 84: VIBE CONTEXT ===
+  /** Vibe ID activo (para paletas contextuales) */
+  vibeId?: string;
+  
   // === WAVE 8 RICH DATA ===
   wave8?: {
     rhythm: RhythmOutput;
@@ -257,7 +261,17 @@ const KEY_TO_HUE: Record<string, number> = {
 };
 
 /**
- * 🎭 MAPEO DE MOOD → HUE BASE
+ * � WAVE 89: MAPEO DE KEY → ROOT (nota raíz numérica 0-11)
+ * Usado para cálculos de variación dentro de rangos de color
+ */
+const KEY_TO_ROOT: Record<string, number> = {
+  'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11,
+  'C#': 1, 'D#': 3, 'F#': 6, 'G#': 8, 'A#': 10,
+  'Db': 1, 'Eb': 3, 'Gb': 6, 'Ab': 8, 'Bb': 10,
+};
+
+/**
+ * �🎭 MAPEO DE MOOD → HUE BASE
  * Usado cuando la key no está disponible
  */
 const MOOD_HUES: Record<string, number> = {
@@ -620,6 +634,9 @@ export class SeleneColorEngine {
     const syncopation = wave8.rhythm.syncopation ?? data.syncopation ?? 0;
     const energy = clamp(data.energy ?? 0.5, 0, 1);
     
+    // 🎨 WAVE 90: Detectar vibeId temprano (necesario para Golden Reversal)
+    const vibeId = data.vibeId || 'idle';
+    
     // === B. DETERMINAR HUE BASE (Matemática Pura) ===
     // 🎨 WAVE 68.5: PURE COLOR - Solo Key, Mode y Mood
     // NO género, NO bias, solo matemática musical pura
@@ -668,23 +685,32 @@ export class SeleneColorEngine {
     const finalHue = normalizeHue(baseHue + modeMod.hue);
     
     // === D. ENERGÍA → SATURACIÓN Y BRILLO ===
-    // REGLA DE ORO: Energía NUNCA modifica el Hue, solo S y L
-    // Energy 0.0 → Sat 40%, Light 25%
-    // Energy 1.0 → Sat 100%, Light 95%
-    const baseSat = 40 + (energy * 60);  // 40-100%
-    const baseLight = 25 + (energy * 70); // 25-95% (WAVE 24.5.2: Rango más dinámico)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 87: SATURATION GUARD - Evitar "whitewashing"
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: baseLight llegaba a 95% con alta energía, lavando los colores.
+    // SOLUCIÓN: Mantener L cerca del 50% (color puro). La "fuerza" visual
+    // vendrá del canal DIMMER (Intensity), no de HSL Lightness.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🌴 WAVE 87: Nuevo cálculo de Lightness (más conservador)
+    // - Base: 50% (color puro)
+    // - Influencia de energía: máximo +10% (antes era +70%)
+    // - Rango final: 50-60% (antes 25-95%)
+    const baseSat = 85 + (energy * 15);   // 🛡️ WAVE 87: Siempre >85%, máx 100%
+    const baseLight = 50 + (energy * 10); // 🛡️ WAVE 87: 50-60% (antes 25-95%)
     
     // Aplicar solo modifiers de modo (SIN GÉNERO BOOST)
     const primarySat = clamp(
       baseSat + modeMod.sat,
-      20,
+      70,   // 🛡️ WAVE 87: Mínimo 70% (antes 20%)
       100
     );
     
     const primaryLight = clamp(
       baseLight + modeMod.light,
-      20,  // Mínimo absoluto
-      95   // Máximo absoluto
+      35,  // Mínimo absoluto
+      60   // 🛡️ WAVE 87: Máximo 60% (antes 95%) - ANTI-WHITEWASH
     );
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -732,8 +758,9 @@ export class SeleneColorEngine {
     }
     
     // Aplicar clamps finales
-    correctedSat = clamp(correctedSat, 20, 100);
-    correctedLight = clamp(correctedLight, 20, 95);
+    // 🛡️ WAVE 87: Límites más estrictos para evitar whitewashing
+    correctedSat = clamp(correctedSat, 70, 100);   // 🛡️ Mínimo 70% (antes 20%)
+    correctedLight = clamp(correctedLight, 35, 60); // 🛡️ Máximo 60% (antes 95%)
     
     // === E. COLOR PRIMARIO ===
     // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
@@ -744,26 +771,62 @@ export class SeleneColorEngine {
     };
     
     // === F. COLOR SECUNDARIO (Rotación Fibonacci) ===
-    // φ × 360° ≈ 222.5° garantiza variedad infinita
+    // 🎨 WAVE 90: GOLDEN REVERSAL - Rotación condicional para fiesta-latina
+    // - Default: φ × 360° ≈ 222.5° (Golden Angle B) → Azules/Morados
+    // - Fiesta Latina: 360° - 222.5° = 137.5° (Golden Angle A) → Verdes/Violetas
+    // Esto nos libera del lock artificial, la naturaleza matemática hace el trabajo.
+    const isLatinoVibe = vibeId === 'fiesta-latina';
+    const fibonacciRotation = isLatinoVibe ? 137.5 : PHI_ROTATION;  // 137.5° o 222.5°
+    
     // 🛡️ WAVE 81: Usar valores corregidos como base
-    const secondaryHue = normalizeHue(finalHue + PHI_ROTATION);
+    // 🧂 WAVE 94.2: SALT CROMÁTICO (Diferenciación de Gemelas)
+    // F Major y A Major naturalmente caen en zonas similares tras warm filter
+    // F Major (root 5): Empuja hacia LIMA/Verde (-35°)
+    // A Major (root 9): Empuja hacia ROSA MIAMI/Magenta (+35°)
+    let saltRotation = 0;
+    if (isLatinoVibe && key) {
+      const keyIndex = KEY_TO_ROOT[key]; // 0=C, 5=F, 9=A
+      if (keyIndex === 5) saltRotation = -35;       // F → Lima
+      else if (keyIndex === 9) saltRotation = +35;  // A → Miami Pink
+    }
+    
+    const secondaryHue = normalizeHue(finalHue + fibonacciRotation + saltRotation);
     const secondary: HSLColor = {
       h: secondaryHue,
       s: clamp(correctedSat + 5, 20, 100),  // Ligeramente más saturado
       l: clamp(correctedLight - 10, 20, 80), // Ligeramente más oscuro
     };
     
+    // 🏛️ WAVE 94.3: MINT & NAVY OVERRIDE (Luxury Signatures)
+    // F Major y A Major obtienen colores signature de lujo en lugar de rotación
+    // F Major -> MINT (160°) | A Major -> NAVY (230°)
+    // El TROPICAL MIRROR (WAVE 85) luego creará los complementarios automáticamente
+    if (isLatinoVibe && key) {
+      const keyIndex = KEY_TO_ROOT[key]; // 0=C, 5=F, 9=A
+      
+      if (keyIndex === 5) {
+        // F MAJOR -> MINT & BERRY
+        secondary.h = 160;  // Verde Menta / Espuma de mar
+        secondary.s = Math.min(secondary.s, 85);  // Saturación pastel/menta
+      } else if (keyIndex === 9) {
+        // A MAJOR -> NAVY & GOLD
+        secondary.h = 230;  // Azul Marino / Royal Blue
+        // Saturación alta mantenida para azul eléctrico
+      }
+      // Nota: ambient.h se recalcula en WAVE 85 TROPICAL MIRROR (secondary.h + 180)
+    }
+    
     // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
-    // 🎨 WAVE 68.5: Estrategia PURA basada en syncopation
-    // SIN género, solo matemática rítmica
+    // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
+    // Expandimos zona triadic para que sea más alcanzable en música latina
     let accentHue: number;
     let strategy: 'analogous' | 'triadic' | 'complementary';
     
     // Decisión basada solo en syncopation
-    if (syncopation < 0.30) {
+    if (syncopation < 0.40) {
       strategy = 'analogous';
       accentHue = finalHue + 30;   // Vecino
-    } else if (syncopation < 0.50) {
+    } else if (syncopation < 0.65) {
       strategy = 'triadic';
       accentHue = finalHue + 120;  // Triángulo
     } else {
@@ -777,11 +840,67 @@ export class SeleneColorEngine {
       l: Math.max(70, primaryLight + 20), // Siempre brillante
     };
     
-    // === H. COLOR AMBIENTE (Fills, desaturado) ===
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌴 WAVE 84: AMBIENT STEREO MODE + PALETA CARIBEÑA
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTES: Ambient era una copia desaturada del Primary (aburrido)
+    // AHORA: Ambient es un COLOR INDEPENDIENTE según la estrategia:
+    //   - Triadic: 3er punto del triángulo cromático
+    //   - Complementary: Split-Complementary (+30° del secondary)
+    //   - Analogous: -30° del primary
+    //
+    // PALETA CARIBEÑA: En vibes latinas, permitir Secondary/Ambient FRÍOS
+    // (Verde/Turquesa/Magenta) mientras Primary se mantiene cálido.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Detectar si es vibe tropical
+    const isTropicalVibe = vibeId.toLowerCase().includes('latin') || 
+                           vibeId.toLowerCase().includes('fiesta') ||
+                           vibeId.toLowerCase().includes('reggae') ||
+                           vibeId.toLowerCase().includes('cumbia') ||
+                           vibeId.toLowerCase().includes('salsa');
+    
+    // 🌴 WAVE 84: Calcular Ambient Hue según estrategia
+    let ambientHue: number;
+    switch (strategy) {
+      case 'triadic':
+        // 3er punto del triángulo: +240° (o -120°) del primary
+        ambientHue = normalizeHue(finalHue + 240);
+        break;
+      case 'complementary':
+        // Split-Complementary: Secondary +30°
+        ambientHue = normalizeHue(secondaryHue + 30);
+        break;
+      case 'analogous':
+      default:
+        // Vecino opuesto: -30° del primary
+        ambientHue = normalizeHue(finalHue - 30);
+        break;
+    }
+    
+    // 🌴 WAVE 84: Para vibes tropicales, empujar Ambient hacia gama fría
+    // si el Primary es cálido (para crear contraste Tierra/Selva)
+    if (isTropicalVibe) {
+      const isPrimaryWarm = (finalHue >= 0 && finalHue <= 60) || finalHue >= 300;
+      
+      if (isPrimaryWarm) {
+        // Primary es cálido (naranja/rojo) → Ambient va a VERDE/TURQUESA/MAGENTA
+        // Rotar hacia zona fría (150°-200° = verde/turquesa) o (280°-320° = magenta)
+        const tropicalOptions = [
+          normalizeHue(finalHue + 150),  // Hacia verde
+          normalizeHue(finalHue + 180),  // Hacia turquesa
+          normalizeHue(finalHue + 270),  // Hacia magenta
+        ];
+        // Elegir según energía (más energía = más magenta/contraste)
+        const optionIndex = energy > 0.7 ? 2 : (energy > 0.4 ? 1 : 0);
+        ambientHue = tropicalOptions[optionIndex];
+      }
+    }
+    
     const ambient: HSLColor = {
-      h: finalHue,
-      s: Math.max(15, primarySat * 0.4),  // 40% de saturación
-      l: Math.max(15, primaryLight * 0.4), // 40% de brillo
+      h: ambientHue,
+      s: clamp(correctedSat - 10, 40, 90),  // Saturación media-alta (no lavado)
+      l: clamp(correctedLight - 5, 30, 70), // Luminosidad media
     };
     
     // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
@@ -824,6 +943,118 @@ export class SeleneColorEngine {
       `E=${(energy * 100).toFixed(0)}%`,
       `S=${(syncopation * 100).toFixed(0)}%`,
     ].join(' ');
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌴 WAVE 85: LATINO PRO - Paleta "Fiesta Latina" de alta calidad
+    // vibeId ya declarado arriba (línea ~798)
+    // ═══════════════════════════════════════════════════════════════════════
+    const isLatinoVibeW85 = vibeId.toLowerCase().includes('latin') || 
+                            vibeId.toLowerCase().includes('fiesta') ||
+                            vibeId.toLowerCase().includes('reggaeton') ||
+                            vibeId.toLowerCase().includes('cumbia');
+    
+    if (isLatinoVibeW85) {
+      // 🛡️ 1. ANTI-CIENO PROTOCOL (Mud Guard)
+      // Detectar zona pantanosa (Hue 15-75: naranjas sucios, verdes oliva)
+      // y forzar brillo/saturación para convertir en Oro o Lima vibrante
+      const fixDirtyColor = (c: HSLColor): void => {
+        const isSwamp = c.h > 40 && c.h < 75;  // Zona Lima/Oliva
+        const isMud = c.h >= 15 && c.h <= 40;  // Zona Naranja/Marrón
+        
+        if (isSwamp || isMud) {
+          // "Si es pantano, hazlo neón o oro"
+          c.l = Math.max(c.l, 55);  // 🛡️ WAVE 87: Reducido de 65 a 55 (evitar whitewash)
+          c.s = Math.max(c.s, 85);  // Mucha saturación
+        }
+      };
+      fixDirtyColor(primary);
+      
+      fixDirtyColor(secondary);
+      fixDirtyColor(ambient);
+      
+      // 🪞 2. TROPICAL MIRROR (Stereo Contrast Máximo)
+      // Ambient = Complementario exacto del Secondary
+      // Esto garantiza Verde↔Magenta, Turquesa↔Coral, Azul↔Naranja
+      ambient.h = normalizeHue(secondary.h + 180);
+      // Variación en luz para profundidad (no plano)
+      // 🛡️ WAVE 87: Limitar luz máxima del ambient
+      ambient.l = clamp(secondary.l * 1.1, 40, 60);
+      ambient.s = Math.max(secondary.s, 70);  // Mantener saturado
+      
+      // ☀️ 3. SOLAR FLARE (Accent = Blanco Dorado)
+      // En Latino, el strobe no es color, es LUZ
+      accent.h = primary.h;   // Base cálida (hereda del primary)
+      accent.s = 10;          // Casi blanco (blanco dorado sutil)
+      accent.l = 95;          // Brillo máximo (único color que puede ser alto)
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🤖 WAVE 96: NEON DEMONS (AURORA EDITION) - TECHNO CLUB CYBERPUNK
+    // ═══════════════════════════════════════════════════════════════════════
+    // ESTÉTICA: Ultraviolet ambient, colores fríos neón, auroras boreales eléctricas
+    // PALETA: Cian/Azul base + Magenta/Rosa aurora + Verde ácido
+    // FILOSOFÍA: "La oscuridad es el lienzo, el neón es la pintura"
+    // ═══════════════════════════════════════════════════════════════════════
+    const isTechnoVibe = vibeId === 'techno-club';
+    
+    if (isTechnoVibe) {
+      // 1️⃣ ULTRAVIOLET BASE (El Suelo - Black Light UV)
+      // Violeta profundo, saturación tóxica, luz baja (simula atmósfera UV)
+      ambient.h = 275;   // Indigo/Violeta
+      ambient.s = 100;   // Saturación máxima (neón UV)
+      ambient.l = 25;    // Muy oscuro, solo mancha el aire
+      
+      // 2️⃣ PRIMARY (La Estructura - Vigas Neón)
+      // Usamos la Key pero la forzamos al espectro FRÍO (160-320°)
+      // Verde → Cian → Azul → Magenta (NO rojos, naranjas, amarillos)
+      const keyRoot = key ? (KEY_TO_ROOT[key] ?? 0) : 0;
+      const coldHue = 170 + (keyRoot * 12);  // Map 0-11 → 170-302°
+      
+      primary.h = normalizeHue(coldHue);
+      primary.s = 100;   // Neón puro
+      primary.l = 50;    // Color sólido
+      
+      // 3️⃣ SECONDARY (Aurora & Acid)
+      // 🌌 60% probabilidad de AURORA BOREALIS (Rosa/Magenta eléctrico)
+      // ☢️ 40% probabilidad de TOXIC WASTE (Verde ácido/Lima)
+      const useAurora = (keyRoot % 5) >= 2;  // Determinístico basado en key
+      
+      if (useAurora) {
+        // 🌌 AURORA BOREALIS: Rosa Eléctrico / Magenta
+        // Rango 300 (Magenta) a 330 (Rosa Chicle)
+        secondary.h = 300 + ((keyRoot * 5) % 30);
+      } else {
+        // ☢️ TOXIC WASTE: Verde Ácido / Lima
+        // Rango 110 (Verde) a 140 (Lima)
+        secondary.h = 110 + ((keyRoot * 5) % 30);
+      }
+      
+      secondary.s = 100;  // Saturación máxima (electricidad pura)
+      secondary.l = 65;   // Brillante, casi neón puro
+      
+      // 4️⃣ ACCENT (Strobes - White Ice)
+      // Blanco hielo con tinte cian (cegador)
+      accent.h = 190;   // Cyan tint
+      accent.s = 10;    // Casi blanco
+      accent.l = 100;   // Cegador total
+      
+      // 5️⃣ RED ALERT (Override en Disonancia Extrema)
+      // Si la música es caótica (dissonance > 0.8), todo se vuelve ROJO SANGRE
+      const dissonance = wave8?.harmony?.dissonance ?? 0;
+      if (dissonance > 0.8) {
+        primary.h = 0;     // Rojo sangre
+        primary.s = 100;
+        primary.l = 45;    // Rojo profundo
+        secondary.h = 0;   // Todo rojo
+        secondary.s = 100;
+        secondary.l = 60;  // Rojo brillante
+        ambient.h = 0;     // Rojo oscuro
+        ambient.s = 90;
+        ambient.l = 20;    // Rojo opresivo
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     
     // === M. RETORNAR PALETA COMPLETA ===
     return {

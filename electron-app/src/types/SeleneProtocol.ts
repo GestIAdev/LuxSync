@@ -380,7 +380,7 @@ export interface VisualDecisionData {
     contrast: UnifiedColor;
     
     /** Palette generation strategy */
-    strategy: 'analogous' | 'triadic' | 'complementary';
+    strategy: 'analogous' | 'triadic' | 'complementary' | 'split-complementary' | 'monochromatic';
     /** Temperature bias */
     temperature: 'warm' | 'cool' | 'neutral';
     /** Human-readable description */

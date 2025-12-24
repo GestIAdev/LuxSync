@@ -549,14 +549,75 @@ function startMainLoop() {
     // 🔇 FIX CRÍTICO 1: SILENCE GATE - Si no hay audio real, BLACKOUT TOTAL
     const isSilence = !useRealAudio || audioInput.energy < 0.05
     
+    // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates
+    // El Worker normaliza el audio y calcula avgNormEnergy (~3s rolling average)
+    const agcData = selene.getAgcData()
+    const normBass = agcData?.normalizedBass ?? audioInput.bass
+    const normMid = agcData?.normalizedMid ?? audioInput.mid
+    const normTreble = agcData?.normalizedTreble ?? audioInput.treble
+    const avgNormEnergy = agcData?.avgNormEnergy ?? 0.5  // Fallback: centro
+    
     const fixtureStates = patchedFixtures.map(fixture => {
       const color = state.colors?.primary || { r: 0, g: 0, b: 0 }
       const secondary = state.colors?.secondary || { r: 0, g: 0, b: 0 }
       const accent = state.colors?.accent || color // Para MOVING_LEFT
-      // 🎛️ WAVE 63: MOVING_RIGHT ahora usa ACCENT (simetría con LEFT)
-      // Antes: ambient (color tenue) → Moving Head derecho se veía apagado
-      // Ahora: accent (color de impacto) → Simetría visual con el izquierdo
-      const movingRightColor = state.colors?.accent || color // WAVE 63: Mismo que LEFT para simetría
+      // � WAVE 86: Ambient para MOVING_RIGHT (Stereo Mirror)
+      const ambient = state.colors?.ambient || secondary
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌴 WAVE 86: 5-COLOR STAGE MAPPING - BackPar Analogous Twist
+      // Crear variante del primary con +25° de hue para profundidad en BACK_PARS
+      // Esto evita la saturación monocromática Front/Back
+      // ═══════════════════════════════════════════════════════════════════════
+      const rgbToHsl = (r: number, g: number, b: number): { h: number; s: number; l: number } => {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0;
+        const l = (max + min) / 2;
+        if (max !== min) {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+          }
+        }
+        return { h: h * 360, s: s * 100, l: l * 100 };
+      };
+      
+      const hslToRgb = (h: number, s: number, l: number): { r: number; g: number; b: number } => {
+        h /= 360; s /= 100; l /= 100;
+        let r, g, b;
+        if (s === 0) {
+          r = g = b = l;
+        } else {
+          const hue2rgb = (p: number, q: number, t: number) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+          };
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          const p = 2 * l - q;
+          r = hue2rgb(p, q, h + 1/3);
+          g = hue2rgb(p, q, h);
+          b = hue2rgb(p, q, h - 1/3);
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+      };
+      
+      // Crear backParColor: Primary + 25° twist (Rojo→Naranja, Naranja→Amarillo)
+      const primaryHsl = rgbToHsl(color.r, color.g, color.b);
+      const backParHsl = { 
+        h: (primaryHsl.h + 25) % 360, 
+        s: primaryHsl.s, 
+        l: Math.max(primaryHsl.l, 40) // Boost si muy oscuro
+      };
+      const backParColor = hslToRgb(backParHsl.h, backParHsl.s, backParHsl.l);
+      // ═══════════════════════════════════════════════════════════════════════
       
       // � WAVE 39.5: Silenciado DEBUG-RGB (log periódico)
       // if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
@@ -584,70 +645,106 @@ function startMainLoop() {
       const zone = fixture.zone || 'UNASSIGNED'
       
       switch (zone) {
-        case 'FRONT_PARS':
-          // PARs react strongly to bass (bombo)
-          intensity = Math.min(1, audioInput.bass * 1.5)
-          fixtureColor = color
-          break
+        case 'FRONT_PARS': {
+          // ═══════════════════════════════════════════════════════════════════
+          // 💥 WAVE 94.2: EL LÁTIGO 2.0 - Relative Gate + Cúbica
+          // Gate dinámico basado en energía promedio de la canción
+          // ═══════════════════════════════════════════════════════════════════
           
-        case 'BACK_PARS':
-          // Back PARs react to mid frequencies
-          intensity = Math.min(1, audioInput.mid * 1.3)
-          fixtureColor = secondary
-          break
+          // Fuente: SOLO bass normalizado por AGC (ignorar mids/highs)
+          const bassEnergy = normBass;
+          
+          // Relative Gate: > (avgNormEnergy * 0.6)
+          // Canciones "muro de ladrillo" (avg 0.8): gate = 0.48
+          // Canciones dinámicas (avg 0.4): gate = 0.24
+          const relativeGate = avgNormEnergy * 0.6;
+          
+          if (bassEnergy < relativeGate) {
+            intensity = 0;
+          } else {
+            // Re-mapear [gate → 1.0] → [0.0 → 1.0] con CÚBICA
+            const normalized = (bassEnergy - relativeGate) / (1 - relativeGate);
+            intensity = Math.pow(Math.min(1, normalized), 3);  // LATIGAZOS picudos
+          }
+          fixtureColor = color;
+          break;
+        }
+          
+        case 'BACK_PARS': {
+          // 💥 WAVE 94.2: BACK_PARS también usan EL LÁTIGO 2.0 (Relative Gate)
+          // Unificación: Todos los PARS responden al bombo con gate dinámico
+          const bassEnergy = normBass;
+          const relativeGate = avgNormEnergy * 0.6;
+          
+          if (bassEnergy < relativeGate) {
+            intensity = 0;
+          } else {
+            const normalized = (bassEnergy - relativeGate) / (1 - relativeGate);
+            intensity = Math.pow(Math.min(1, normalized), 3);  // Cúbica
+          }
+          fixtureColor = backParColor;
+          break;
+        }
           
         case 'MOVING_LEFT': {
-          // 🎨 MOVING_LEFT usa ACCENT (side='left') - CON DRAMA
-          // Gate: sin energía suficiente = NEGRO
-          if (audioInput.energy < MOVING_HEAD_GATE) {
+          // 
+          //  WAVE 94.2: EL CORO 2.0 - Relative Gate + Cuadrática
+          // 
+          const melodyEnergy = (normMid + normTreble) / 2;
+          const relativeGate = avgNormEnergy * 0.3;
+          
+          if (melodyEnergy < relativeGate) {
             intensity = 0
             smoothedIntensities.set(fixture.dmxAddress, 0)
           } else {
-            // Base intensity + bass punch (variación dramática)
-            const bassPunch = audioInput.bass > 0.6 ? audioInput.bass * 0.4 : 0
-            const targetIntensity = Math.min(1, (audioInput.energy * 1.0) + bassPunch)
+            const normalized = (melodyEnergy - relativeGate) / (1 - relativeGate)
+            const targetIntensity = Math.pow(Math.min(1, normalized), 2)
             const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
-            // Subida rápida, bajada más lenta pero no infinita
             if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity // Subida INSTANTÁNEA
+              intensity = targetIntensity
             } else {
               intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
             }
             smoothedIntensities.set(fixture.dmxAddress, intensity)
           }
-          fixtureColor = accent
+          fixtureColor = secondary
           break
         }
-          
         case 'MOVING_RIGHT': {
-          // 🎛️ WAVE 63: MOVING_RIGHT ahora usa ACCENT (simetría con LEFT)
-          // Antes: usaba AMBIENT (color tenue) → Moving Head derecho se veía apagado
-          // Ahora: usa ACCENT (color de impacto) → Simetría visual con el izquierdo
-          // Gate: sin energía suficiente = NEGRO
-          if (audioInput.energy < MOVING_HEAD_GATE) {
+          //  WAVE 94.2: EL CORO 2.0 - UNIFICADO con MOVING_LEFT
+          // Mismo cálculo, solo difiere el color (STEREO visual)
+
+          // Fuente: mid+treble normalizados
+
+          const melodyEnergy = (normMid + normTreble) / 2;
+          const relativeGate = avgNormEnergy * 0.3;
+
+          if (melodyEnergy < relativeGate) {
             intensity = 0
             smoothedIntensities.set(fixture.dmxAddress, 0)
           } else {
-            // Treble punch (diferente al LEFT que usa bass)
-            const treblePunch = audioInput.treble > 0.5 ? audioInput.treble * 0.3 : 0
-            const targetIntensity = Math.min(1, (audioInput.energy * 0.9) + treblePunch)
+            // Re-mapear con CUADRÁTICA
+            const normalized = (melodyEnergy - relativeGate) / (1 - relativeGate)
+            const targetIntensity = Math.pow(Math.min(1, normalized), 2)
+            
             const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
-            // Subida rápida, bajada suave
+            // Subida rÃ¡pida, bajada suave
             if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity // Subida INSTANTÁNEA
+              intensity = targetIntensity
             } else {
               intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
             }
             smoothedIntensities.set(fixture.dmxAddress, intensity)
           }
-          fixtureColor = movingRightColor  // 🎛️ WAVE 63: Accent en lugar de ambient
+          // ðŸŒ´ WAVE 86: STEREO MIRROR - Right usa AMBIENT (complementario de Secondary)
+          fixtureColor = ambient
           break
         }
-          
+
         case 'STROBES':
-          // Strobes only on strong beats
+          // 🌴 WAVE 86: SOLAR FLARE - Strobes usan ACCENT (blanco dorado en Latino)
           intensity = audioInput.onBeat && audioInput.bass > 0.8 ? 1 : 0
-          fixtureColor = { r: 255, g: 255, b: 255 }
+          fixtureColor = accent
           break
           
         default:

@@ -172,6 +172,7 @@ export interface LightingDecision {
   // 🌊 WAVE 23.4: Syncopation suavizado para DNA
   // 💫 WAVE 47.1: MOOD & SECTION - Conectar MoodSynthesizer y SectionTracker
   // 🎢 WAVE 57.5: DROP STATE MACHINE
+  // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates
   debugInfo?: {
     macroGenre?: string;       // e.g., "ELECTRONIC_4X4"
     strategy?: string;         // e.g., "analogous", "complementary"
@@ -190,6 +191,15 @@ export interface LightingDecision {
     // 🎛️ WAVE 60: Vibe Engine output
     activeVibe?: string;
     vibeTransitioning?: boolean;
+    // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates en fixtures
+    agc?: {
+      normalizedBass: number;
+      normalizedMid: number;
+      normalizedTreble: number;
+      normalizedEnergy: number;
+      avgNormEnergy: number;
+      gainFactor: number;
+    };
   };
   
   // Per-fixture overrides (optional)

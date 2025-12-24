@@ -249,6 +249,25 @@ export class SeleneLux extends EventEmitter {
     }
   } | null = null
   
+  // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates
+  // Acceso público para que main.ts pueda usarlo en el loop de fixtures
+  private _agcData: {
+    normalizedBass: number
+    normalizedMid: number
+    normalizedTreble: number
+    normalizedEnergy: number
+    avgNormEnergy: number
+    gainFactor: number
+  } | null = null
+  
+  /**
+   * 🎚️ WAVE 94.2: Get AGC normalized audio data
+   * Usado por main.ts para Relative Gates en fixtures
+   */
+  getAgcData(): typeof this._agcData {
+    return this._agcData
+  }
+  
   // 💫 WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker
   private lastStableSection: { type: string; timestamp: number; confidence: number } = {
     type: 'unknown',
@@ -1440,10 +1459,20 @@ export class SeleneLux extends EventEmitter {
       isDropActive?: boolean
       dropState?: any
     }
+    // 🎚️ WAVE 94.2: AGC normalized audio
+    agc?: {
+      normalizedBass: number
+      normalizedMid: number
+      normalizedTreble: number
+      normalizedEnergy: number
+      avgNormEnergy: number
+      gainFactor: number
+    }
   } | undefined, palette?: {
     primary: { r: number; g: number; b: number }
     secondary: { r: number; g: number; b: number }
     accent: { r: number; g: number; b: number }
+    ambient?: { r: number; g: number; b: number }  // 🌴 WAVE 84.5: Ambient independiente
     intensity: number
   }): void {
     if (!debugInfo) return
@@ -1451,6 +1480,11 @@ export class SeleneLux extends EventEmitter {
     this.lastTrinityData = {
       ...debugInfo,
       timestamp: Date.now()
+    }
+    
+    // 🎚️ WAVE 94.2: Almacenar AGC data para Relative Gates
+    if (debugInfo.agc) {
+      this._agcData = debugInfo.agc
     }
     
     // 🔥 WAVE 74: SINGLE INTERPOLATOR - Confiar en el Worker
@@ -1469,16 +1503,44 @@ export class SeleneLux extends EventEmitter {
     // y solo cambia el brillo físico de la luz.
     // ═══════════════════════════════════════════════════════════════════════
     if (palette) {
-      const intensityValue = palette.intensity ?? 1.0
+      let rawIntensity = palette.intensity ?? 1.0
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎚️ WAVE 91: DYNAMIC NOISE GATE - Blackout real en cortes dramáticos
+      // ═══════════════════════════════════════════════════════════════════════
+      // PROBLEMA: En cumbia/reggaeton, los silencios dramáticos (breaks) mantenían
+      // luz tenue (15-20%), destruyendo el impacto visual del corte.
+      // 
+      // SOLUCIÓN: Gate agresivo + expansión exponencial
+      // - <15% energía → 0% luz (BLACKOUT TOTAL)
+      // - >15% energía → Re-mapeo 0.15-1.0 a 0.0-1.0 + pow(2) para punch
+      // 
+      // Resultado: "Mentirosa" de Reik ahora tiene blacks REALES en los cortes.
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      let processedIntensity: number;
+      
+      if (rawIntensity < 0.15) {
+        // GATE: Silencio dramático → Oscuridad total
+        processedIntensity = 0;
+      } else {
+        // EXPANSIÓN: Re-mapear 0.15-1.0 → 0.0-1.0
+        const normalized = (rawIntensity - 0.15) / 0.85;
+        
+        // PUNCH: Elevar al cuadrado (golpes fuertes brillan MÁS)
+        // 0.5 → 0.25, 1.0 → 1.0
+        processedIntensity = Math.pow(normalized, 2);
+      }
       
       // 🛡️ WAVE 83: Asignar colores PUROS del Worker (sin multiplicar por intensity)
       // La intensity se guarda por separado para uso del dimmer
+      // 🌴 WAVE 84.5: Usar palette.ambient en lugar de clonar secondary
       this.lastColors = {
         primary: { ...palette.primary },
         secondary: { ...palette.secondary },
         accent: { ...palette.accent },
-        ambient: { ...palette.secondary },  // TODO WAVE 84: Calcular ambient independiente
-        intensity: intensityValue,
+        ambient: palette.ambient ? { ...palette.ambient } : { ...palette.secondary },  // 🌴 WAVE 84.5: STEREO REAL
+        intensity: processedIntensity,  // 🎚️ WAVE 91: Usar intensity procesada con noise gate
         saturation: this.globalSaturation
       }
     }
@@ -1860,8 +1922,8 @@ export class SeleneLux extends EventEmitter {
         accent: colors?.accent ? toUnifiedColor(colors.accent) : defaultColor,
         ambient: colors?.ambient ? toUnifiedColor(colors.ambient) : defaultColor,
         contrast: palette?.contrast ? toUnifiedColor(this.hslToRgb(palette.contrast)) : defaultColor,
-        // 🔧 WAVE 57: Fix STRATEGY - Leer de StrategyArbiter (GAMMA Worker) en lugar de palette legacy
-        strategy: (trinityData?.mood?.colorStrategy?.stable ?? 'analogous') as 'analogous' | 'triadic' | 'complementary',
+        // 🔧 WAVE 89: Fix STRATEGY TYPE - Incluir todos los valores posibles de ColorStrategy
+        strategy: (trinityData?.mood?.colorStrategy?.stable ?? 'analogous') as 'analogous' | 'triadic' | 'complementary' | 'split-complementary' | 'monochromatic',
         // 🎨 WAVE 69.3: Leer temperature y description desde trinityData (Worker)
         temperature: (trinityData?.temperature ?? brain?.debugInfo?.temperature ?? 'neutral') as 'warm' | 'cool' | 'neutral',
         description: trinityData?.description ?? brain?.debugInfo?.description ?? `Palette: ${this.currentPalette}`,

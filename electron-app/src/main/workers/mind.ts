@@ -65,7 +65,10 @@ import { KeyStabilizer } from '../selene-lux-core/engines/visual/KeyStabilizer';
 // 🏎️ WAVE 52: Energy Stabilizer - Suavizado de energía y detección de silencio
 import { EnergyStabilizer } from '../selene-lux-core/engines/visual/EnergyStabilizer';
 
-// 🎭 WAVE 53: Mood Arbiter - Estabilización emocional para coherencia térmica
+// �️ WAVE 94: AGC - Automatic Gain Control (The Professional Ear)
+import { AutomaticGainControl } from '../selene-lux-core/engines/audio/AutomaticGainControl';
+
+// �🎭 WAVE 53: Mood Arbiter - Estabilización emocional para coherencia térmica
 import { MoodArbiter, type MetaEmotion } from '../selene-lux-core/engines/visual/MoodArbiter';
 
 // 🎨 WAVE 54: Strategy Arbiter - Estabilización de estrategia de color
@@ -196,7 +199,10 @@ interface GammaState {
   // 🏎️ WAVE 52: Energy Stabilizer instance
   energyStabilizer: EnergyStabilizer;
   
-  // 🎭 WAVE 53: Mood Arbiter instance
+  // �️ WAVE 94: AGC - Automatic Gain Control
+  agc: AutomaticGainControl;
+  
+  // �🎭 WAVE 53: Mood Arbiter instance
   moodArbiter: MoodArbiter;
   
   // 🎨 WAVE 54: Strategy Arbiter instance
@@ -288,7 +294,15 @@ const state: GammaState = {
     emaFactor: 0.95,             // 95% histórico, 5% nuevo
   }),
   
-  // 🎭 WAVE 53: Mood Arbiter - Estabilización emocional (temperatura térmica)
+  // �️ WAVE 94: AGC - Automatic Gain Control (The Professional Ear)
+  agc: new AutomaticGainControl({
+    peakDecay: 0.995,        // Decaimiento muy lento
+    minPeak: 0.10,           // No amplificar más de 10x
+    initialPeak: 0.50,       // Comenzar con peak moderado
+    warmupFrames: 120,       // 2 segundos de calibración
+  }),
+  
+  // �🎭 WAVE 53: Mood Arbiter - Estabilización emocional (temperatura térmica)
   moodArbiter: new MoodArbiter({
     bufferSize: 600,           // 10 segundos @ 60fps
     lockingFrames: 300,        // 5 segundos para confirmar cambio emocional
@@ -364,12 +378,40 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   state.frameCount++;
   state.decisionCount++;
   
-  // 🏎️ WAVE 52: Procesar energía a través del stabilizer
-  // Esto detecta silencio y suaviza la energía para evitar parpadeo
-  const energyOutput = state.energyStabilizer.update(analysis.energy);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎚️ WAVE 94: AGC - NORMALIZACIÓN DINÁMICA
+  // Aplicar antes de cualquier procesamiento para compensar volúmenes
+  // ═══════════════════════════════════════════════════════════════════════════
+  const rawEnergy = analysis.energy ?? 0;
+  const rawBass = analysis.bass ?? 0;
+  const rawMid = analysis.mid ?? 0;
+  const rawTreble = analysis.treble ?? 0;
   
-  // Add to history
-  state.audioHistory.push(analysis);
+  const agcOutput = state.agc.update(rawEnergy, rawBass, rawMid, rawTreble);
+  
+  // Sobrescribir análisis con valores normalizados
+  const normalizedAnalysis: ExtendedAudioAnalysis = {
+    ...analysis,
+    energy: agcOutput.normalizedEnergy,
+    bass: agcOutput.normalizedBass,
+    mid: agcOutput.normalizedMid,
+    treble: agcOutput.normalizedTreble,
+  };
+  
+  // Usar análisis normalizado de aquí en adelante
+  const effectiveAnalysis = normalizedAnalysis;
+  
+  // 🏎️ WAVE 52: Procesar energía a través del stabilizer (AHORA NORMALIZADA)
+  // Esto detecta silencio y suaviza la energía para evitar parpadeo
+  const energyOutput = state.energyStabilizer.update(effectiveAnalysis.energy);
+  
+  // 📊 WAVE 93+94: LOG DIAGNÓSTICO - Una vez por segundo (60 frames @ 60fps)
+  if (state.frameCount % 60 === 0) {
+    console.log(`[AUDIO_DEBUG] Raw:[E:${rawEnergy.toFixed(2)} B:${rawBass.toFixed(2)}] → AGC:[E:${agcOutput.normalizedEnergy.toFixed(2)} B:${agcOutput.normalizedBass.toFixed(2)}] Peak:${agcOutput.maxPeak.toFixed(2)} Gain:${agcOutput.gainFactor.toFixed(1)}x`);
+  }
+  
+  // Add to history (normalizado)
+  state.audioHistory.push(effectiveAnalysis);
   if (state.audioHistory.length > state.maxAudioHistory) {
     state.audioHistory.shift();
   }
@@ -440,25 +482,25 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   const keyStabilizerOutput = state.keyStabilizer.update({
     key: harmony.key,
     confidence: harmony.confidence,
-    energy: analysis.energy,
+    energy: effectiveAnalysis.energy,  // 🎚️ WAVE 94: Usar energía normalizada
   });
-  
-  // � WAVE 53: MOOD ARBITRATION - Estabilizar estado emocional
+
+  // 🎭 WAVE 53: MOOD ARBITRATION - Estabilizar estado emocional
   // Esto evita fluctuaciones térmicas (Cálido↔Frío) por acordes pasajeros
   const moodArbiterOutput = state.moodArbiter.update({
     mode: harmony.mode,
     mood: harmony.mood,
     confidence: harmony.confidence,
-    energy: analysis.energy,
+    energy: effectiveAnalysis.energy,  // 🎚️ WAVE 94: Usar energía normalizada
     key: keyStabilizerOutput.stableKey,  // 🌍 WAVE 55: Para Zodiac Affinity
   });
-  
-  // � WAVE 54: STRATEGY ARBITRATION - Estabilizar estrategia de color
+
+  // 🎨 WAVE 54: STRATEGY ARBITRATION - Estabilizar estrategia de color
   // Esto evita cambios de contraste por picos de sincopa momentaneos
   const strategyArbiterOutput = state.strategyArbiter.update({
     syncopation: rhythm.syncopation,
     sectionType: section.type as SectionType,
-    energy: analysis.energy,
+    energy: effectiveAnalysis.energy,  // 🎚️ WAVE 94: Usar energía normalizada
     confidence: rhythm.confidence,
     isRelativeDrop: energyOutput.isRelativeDrop, // WAVE 55: DROP relativo
   });
@@ -485,11 +527,16 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
   // Esto asegura que SeleneColorEngine use el mood validado por Vibe, no el raw
   const constrainedMood = constrainedEmotion.toLowerCase() as 'bright' | 'dark' | 'neutral';
   
+  // 🌴 WAVE 84: Mover activeVibe aquí para inyectar vibeId en stabilizedAnalysis
+  const activeVibe = vibeManager.getActiveVibe();
+  
   const stabilizedAnalysis = {
     ...analysis,
     energy: energyOutput.smoothedEnergy,
     // 🏛️ WAVE 73: Top-level mood para fallback
     mood: constrainedMood,
+    // 🌴 WAVE 84: Vibe ID para paleta Tropical (Caribeña, Latina)
+    vibeId: activeVibe.id,
     wave8: {
       ...wave8,
       rhythm: {
@@ -541,7 +588,7 @@ const frameTime = Date.now();
   
   // 🔬 WAVE 65 + 73: Chromatic Audit Log (Smart logging - solo cuando hay cambios)
   // 🏛️ WAVE 73: Usar constrainedMood en lugar de stableEmotion para reflejar lo que realmente usa el motor
-  const activeVibe = vibeManager.getActiveVibe();
+  // 🌴 WAVE 84: activeVibe ya declarado arriba para inyectar vibeId
   const overrideReason = strategyArbiterOutput.overrideType !== 'none' 
     ? strategyArbiterOutput.overrideType : null;
   SeleneColorEngine.logChromaticAudit(
@@ -568,16 +615,18 @@ const frameTime = Date.now();
   const intensity = vibeManager.constrainDimmer(rawIntensity);
   
   // Select movement based on section (from Wave 8)
-  const movementPattern = sectionToMovement(section, analysis.energy, rhythm.syncopation);
+  const movementPattern = sectionToMovement(section, effectiveAnalysis.energy, rhythm.syncopation);
   state.currentMovement = movementPattern;
   
   // 🔥 WAVE 74: Build palette with RAW RGB (sin intensity aplicada)
   // Intensity se envía separada para que Main Process interpole colores puros
   // y aplique intensity al FINAL (evita flickering por beat boost)
+  // 🌴 WAVE 84.5: Añadir ambient para STEREO REAL (4 colores distintos)
   const palette = {
     primary: rgbPalette.primary,      // 🔥 RAW - sin adjustColorIntensity
     secondary: rgbPalette.secondary,  // 🔥 RAW
     accent: rgbPalette.accent,        // 🔥 RAW
+    ambient: rgbPalette.ambient,      // 🌴 WAVE 84.5: STEREO - color independiente
     intensity                         // Se envía separada para aplicar después de interpolación
   };
   
@@ -599,7 +648,7 @@ const frameTime = Date.now();
   // Effects (section-aware) - 🎯 WAVE 16: Con Schmitt Triggers
   // Los triggers tienen histéresis para evitar flicker
   const effectTriggers = getEffectTriggers();
-  const triggerStates = effectTriggers.processAll(analysis.energy);
+  const triggerStates = effectTriggers.processAll(effectiveAnalysis.energy);
   
   // Lógica mejorada: combina triggers con contexto musical
   const shouldStrobe = triggerStates.strobe && 
@@ -819,6 +868,15 @@ const frameTime = Date.now();
         isDropActive: state.energyStabilizer.isDropActive,
         dropState: state.energyStabilizer.getDropState(),
       },
+      // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates en fixtures
+      agc: {
+        normalizedBass: agcOutput.normalizedBass,
+        normalizedMid: agcOutput.normalizedMid,
+        normalizedTreble: agcOutput.normalizedTreble,
+        normalizedEnergy: agcOutput.normalizedEnergy,
+        avgNormEnergy: agcOutput.avgNormEnergy,
+        gainFactor: agcOutput.gainFactor,
+      },
     }
   };
 }
@@ -837,7 +895,7 @@ function calculateBeautyScore(
     score += 0.15;
   }
   
-  // Energy matching
+  // Energy matching (usa analysis directo - scoring estético no afecta control)
   const energyMatch = 1 - Math.abs(analysis.energy - movement.range);
   score += energyMatch * 0.1;
   
@@ -849,7 +907,7 @@ function calculateBeautyScore(
     // Genre confidence bonus
     if (wave8.genre.confidence > 0.7) score += 0.1;
     
-    // Section-appropriate bonus
+    // Section-appropriate bonus (usa analysis directo - scoring estético no afecta control)
     if ((wave8.section.type === 'drop' || wave8.section.type === 'chorus') && analysis.energy > 0.7) {
       score += 0.1;
     }

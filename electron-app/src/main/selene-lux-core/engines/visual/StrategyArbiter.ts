@@ -191,11 +191,12 @@ export class StrategyArbiter {
   private onResetCallbacks: StrategyResetCallback[] = [];
   
   // Default config
+  // 🌴 WAVE 85: TROPICAL MIRROR - Expandir zona Triadic para baile latino
   private static readonly DEFAULT_CONFIG: StrategyArbiterConfig = {
     bufferSize: 900,           // 15 segundos @ 60fps
     lockingFrames: 900,        // 15 segundos de bloqueo
-    lowSyncThreshold: 0.35,    // < 0.35 = ANALOGOUS
-    highSyncThreshold: 0.55,   // > 0.55 = COMPLEMENTARY
+    lowSyncThreshold: 0.40,    // 🌴 WAVE 85: < 0.40 = ANALOGOUS (antes 0.35)
+    highSyncThreshold: 0.65,   // 🌴 WAVE 85: > 0.65 = COMPLEMENTARY (antes 0.55)
     hysteresisBand: 0.05,      // Banda de histéresis
     dropOverrideEnergy: 0.85,  // Energía para override de DROP
   };
@@ -456,15 +457,19 @@ export class StrategyArbiter {
   
   /**
    * Convierte síncopa promediada a estrategia
+   * 🌴 WAVE 85: Simplificado - Eliminado split-complementary
+   * - 0.00-0.40: Analogous (Orden/Intro/Breakdown)
+   * - 0.40-0.65: Triadic (Zona de baile principal)
+   * - 0.65-1.00: Complementary (Drops/Caos)
    */
   private syncToStrategy(avgSync: number): ColorStrategy {
     if (avgSync < this.config.lowSyncThreshold) {
       return 'analogous';
     } else if (avgSync > this.config.highSyncThreshold) {
       return 'complementary';
-    } else if (avgSync > 0.45) {
-      return 'split-complementary';
     } else {
+      // 🌴 WAVE 85: Toda la zona media es TRIADIC
+      // Eliminamos split-complementary para dar protagonismo al juego de 3-4 colores
       return 'triadic';
     }
   }

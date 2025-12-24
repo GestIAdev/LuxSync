@@ -990,69 +990,70 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🤖 WAVE 96: NEON DEMONS (AURORA EDITION) - TECHNO CLUB CYBERPUNK
+    // 🤖 WAVE 96.5: TECHNO DICTATORSHIP - FINAL PASS OVERRIDE
     // ═══════════════════════════════════════════════════════════════════════
-    // ESTÉTICA: Ultraviolet ambient, colores fríos neón, auroras boreales eléctricas
-    // PALETA: Cian/Azul base + Magenta/Rosa aurora + Verde ácido
-    // FILOSOFÍA: "La oscuridad es el lienzo, el neón es la pintura"
+    // Este bloque DEBE ir justo ANTES del return para sobrescribir cualquier
+    // decisión tomada por la lógica estándar (Key/Mood/Energy/Fiesta Latina).
+    // 
+    // PROBLEMA RESUELTO: Key=A producía Hue=357° (Rojo) en lugar de 278° (Violeta UV)
+    // porque la lógica de KEY_TO_HUE se ejecutaba DESPUÉS del bloque Techno.
+    // 
+    // SOLUCIÓN: Mover Techno al FINAL como "dictador" que tiene la última palabra.
     // ═══════════════════════════════════════════════════════════════════════
     const isTechnoVibe = vibeId === 'techno-club';
     
     if (isTechnoVibe) {
       // 1️⃣ ULTRAVIOLET BASE (El Suelo - Black Light UV)
-      // Violeta profundo, saturación tóxica, luz baja (simula atmósfera UV)
-      ambient.h = 275;   // Indigo/Violeta
+      ambient.h = 275;   // Indigo/Violeta (fijo, no varía con key)
       ambient.s = 100;   // Saturación máxima (neón UV)
-      ambient.l = 25;    // Muy oscuro, solo mancha el aire
+      ambient.l = 20;    // 20% para "Luz Negra" visible pero oscura
       
       // 2️⃣ PRIMARY (La Estructura - Vigas Neón)
-      // Usamos la Key pero la forzamos al espectro FRÍO (160-320°)
-      // Verde → Cian → Azul → Magenta (NO rojos, naranjas, amarillos)
+      // Mapeo FRÍO FORZADO: 170° (Verde/Cian) a 302° (Magenta)
       const keyRoot = key ? (KEY_TO_ROOT[key] ?? 0) : 0;
       const coldHue = 170 + (keyRoot * 12);  // Map 0-11 → 170-302°
       
       primary.h = normalizeHue(coldHue);
-      primary.s = 100;   // Neón puro
+      primary.s = 100;   // Neón tóxico puro
       primary.l = 50;    // Color sólido
       
-      // 3️⃣ SECONDARY (Aurora & Acid)
-      // 🌌 60% probabilidad de AURORA BOREALIS (Rosa/Magenta eléctrico)
-      // ☢️ 40% probabilidad de TOXIC WASTE (Verde ácido/Lima)
-      const useAurora = (keyRoot % 5) >= 2;  // Determinístico basado en key
+      // 3️⃣ SECONDARY (Aurora vs Acid)
+      // Determinismo por Key para consistencia (no random)
+      const useAurora = (keyRoot % 5) >= 2;
       
       if (useAurora) {
-        // 🌌 AURORA BOREALIS: Rosa Eléctrico / Magenta
+        // 🌌 AURORA BOREALIS: Rosas y Magentas Eléctricos
         // Rango 300 (Magenta) a 330 (Rosa Chicle)
         secondary.h = 300 + ((keyRoot * 5) % 30);
       } else {
-        // ☢️ TOXIC WASTE: Verde Ácido / Lima
+        // ☢️ TOXIC WASTE: Verdes Ácidos y Limas
         // Rango 110 (Verde) a 140 (Lima)
         secondary.h = 110 + ((keyRoot * 5) % 30);
       }
       
-      secondary.s = 100;  // Saturación máxima (electricidad pura)
-      secondary.l = 65;   // Brillante, casi neón puro
+      secondary.s = 100;  // Electricidad pura
+      secondary.l = 65;   // High brightness lasers
       
-      // 4️⃣ ACCENT (Strobes - White Ice)
-      // Blanco hielo con tinte cian (cegador)
+      // 4️⃣ ACCENT (Ice - Strobes)
       accent.h = 190;   // Cyan tint
-      accent.s = 10;    // Casi blanco
+      accent.s = 20;    // Casi blanco (antes era 10, aumentado para visibilidad)
       accent.l = 100;   // Cegador total
       
-      // 5️⃣ RED ALERT (Override en Disonancia Extrema)
-      // Si la música es caótica (dissonance > 0.8), todo se vuelve ROJO SANGRE
-      const dissonance = wave8?.harmony?.dissonance ?? 0;
-      if (dissonance > 0.8) {
-        primary.h = 0;     // Rojo sangre
-        primary.s = 100;
-        primary.l = 45;    // Rojo profundo
-        secondary.h = 0;   // Todo rojo
-        secondary.s = 100;
-        secondary.l = 60;  // Rojo brillante
-        ambient.h = 0;     // Rojo oscuro
-        ambient.s = 90;
-        ambient.l = 20;    // Rojo opresivo
-      }
+      // 5️⃣ METADATA OVERRIDE (Para que la UI sea honesta)
+      strategy = 'complementary';  // Forzamos label agresivo
+      temperature = 'cool';         // Siempre frío
+      
+      // 🗑️ WAVE 96.7: DISSONANCE PURGE - RED ALERT ELIMINADO
+      // ═══════════════════════════════════════════════════════════════════════
+      // RAZÓN: Techno marca consistentemente dissonance=1.0 (timbres industriales/ruidosos).
+      // Esto NO es un error - es estética del género (noise generators, FM synthesis, distorsión).
+      // 
+      // DECISIÓN: Red Alert DESACTIVADO permanentemente para techno-club.
+      // La paleta UV Violet + Cold Neón es INMUTABLE, sin importar la disonancia.
+      // 
+      // CÓDIGO ANTERIOR (PURGADO):
+      // ❌ if (dissonance > 0.92) { primary.h = 0; secondary.h = 0; ambient.h = 0; }
+      // ═══════════════════════════════════════════════════════════════════════
     }
     // ═══════════════════════════════════════════════════════════════════════
     

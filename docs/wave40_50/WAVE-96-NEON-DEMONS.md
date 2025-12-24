@@ -1,10 +1,31 @@
-# 🤖 WAVE 96: NEON DEMONS (AURORA EDITION)
+# 🤖 WAVE 96.5: NEON DEMONS (AURORA EDITION) - TECHNO DICTATORSHIP
 
 ## CONTEXTO: TECHNO CLUB CYBERPUNK
 
 Después de implementar la paleta cálida y tropical para **Fiesta Latina** (WAVE 85, 94.2, 94.3), ahora es momento de crear el opuesto absoluto: la estética **TECHNO CLUB** con colores fríos, neón y atmósfera UV.
 
 **Filosofía**: "La oscuridad es el lienzo, el neón es la pintura"
+
+### 🔥 WAVE 96.5: TECHNO DICTATORSHIP FIX
+
+**PROBLEMA DETECTADO (WAVE 96 original)**:
+La lógica de Techno se ejecutaba en medio de la función `generate()`, por lo que otras lógicas (Key/Mood overrides, WAVE 85 Fiesta Latina) la sobrescribían después.
+
+Ejemplo:
+- Key = A Minor → debería ser **Violeta UV (278°)**
+- Resultado: **Rojo (357°)** ← KEY_TO_HUE sobrescribió el Techno
+
+**SOLUCIÓN (WAVE 96.5)**:
+Mover el bloque Techno al **FINAL** de `generate()`, justo ANTES del `return`, para que actúe como un "**DICTADOR**" que tiene la última palabra y no puede ser sobrescrito por nada.
+
+```typescript
+// ANTES (WAVE 96): Línea ~991 (en medio de la función)
+if (isTechnoVibe) { ... }  // ❌ Sobrescrito por lógica posterior
+
+// AHORA (WAVE 96.5): Línea ~993 (justo ANTES del return)
+if (isTechnoVibe) { ... }  // ✅ ÚLTIMA PALABRA, inmutable
+return { ... };
+```
 
 ---
 
@@ -29,7 +50,7 @@ Después de implementar la paleta cálida y tropical para **Fiesta Latina** (WAV
 │  SECONDARY: 🌈 Aurora (300-330°) o ☢️ Acid (110-140°)   │
 │  ACCENT:    ⚪ White Ice (190° cyan tint) - Cegador     │
 │                                                          │
-│  DISONANCIA > 0.8 → 🔴 RED ALERT (todo rojo sangre)    │
+│  DISONANCIA > 0.85 → 🔴 RED ALERT (todo rojo sangre)   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -38,36 +59,79 @@ Después de implementar la paleta cálida y tropical para **Fiesta Latina** (WAV
 ## IMPLEMENTACIÓN
 
 ### Ubicación
+
+**WAVE 96.5 (FINAL)**:
 ```
-SeleneColorEngine.ts → generate() → Línea ~991
-Después del bloque WAVE 85 (Fiesta Latina)
-Antes del return final
+SeleneColorEngine.ts → generate() → Línea ~993
+Justo ANTES del return final (ÚLTIMA LÍNEA de lógica)
+Después de TODOS los overrides (Key, Mood, Fiesta Latina, etc.)
+```
+
+**WAVE 96 (obsoleto)**:
+```
+Línea ~991 (en medio de la función) ❌ SOBRESCRITO
 ```
 
 ### Código Completo
 
 ```typescript
 // ═══════════════════════════════════════════════════════════════════════
-// 🤖 WAVE 96: NEON DEMONS (AURORA EDITION) - TECHNO CLUB CYBERPUNK
+// 🤖 WAVE 96.5: TECHNO DICTATORSHIP - FINAL PASS OVERRIDE
 // ═══════════════════════════════════════════════════════════════════════
 const isTechnoVibe = vibeId === 'techno-club';
 
 if (isTechnoVibe) {
   // 1️⃣ ULTRAVIOLET BASE (El Suelo - Black Light UV)
-  ambient.h = 275;   // Indigo/Violeta
-  ambient.s = 100;   // Saturación máxima (neón UV)
-  ambient.l = 25;    // Muy oscuro, solo mancha el aire
+  ambient.h = 275;   // Indigo/Violeta (fijo)
+  ambient.s = 100;   // Saturación máxima
+  ambient.l = 20;    // 🔥 WAVE 96.5: Reducido de 25 a 20 (más oscuro)
   
   // 2️⃣ PRIMARY (La Estructura - Vigas Neón)
   const keyRoot = key ? (KEY_TO_ROOT[key] ?? 0) : 0;
   const coldHue = 170 + (keyRoot * 12);  // Map 0-11 → 170-302°
   
   primary.h = normalizeHue(coldHue);
-  primary.s = 100;   // Neón puro
+  primary.s = 100;   // Neón tóxico
   primary.l = 50;    // Color sólido
   
-  // 3️⃣ SECONDARY (Aurora & Acid)
+  // 3️⃣ SECONDARY (Aurora vs Acid)
   const useAurora = (keyRoot % 5) >= 2;  // Determinístico
+  
+  if (useAurora) {
+    // 🌌 AURORA BOREALIS: Rosa/Magenta (300-330°)
+    secondary.h = 300 + ((keyRoot * 5) % 30);
+  } else {
+    // ☢️ TOXIC WASTE: Verde Ácido (110-140°)
+    secondary.h = 110 + ((keyRoot * 5) % 30);
+  }
+  
+  secondary.s = 100;  // Electricidad pura
+  secondary.l = 65;   // High brightness lasers
+  
+  // 4️⃣ ACCENT (Strobes - White Ice)
+  accent.h = 190;   // Cyan tint
+  accent.s = 20;    // 🔥 WAVE 96.5: Aumentado de 10 a 20 (más visible)
+  accent.l = 100;   // Cegador total
+  
+  // 5️⃣ METADATA OVERRIDE
+  strategy = 'complementary';  // Forzamos label agresivo
+  temperature = 'cool';         // Siempre frío
+  
+  // 6️⃣ RED ALERT (Override Disonancia > 0.85)
+  const dissonance = wave8?.harmony?.dissonance ?? 0;
+  if (dissonance > 0.85) {  // 🔥 WAVE 96.5: Aumentado de 0.8 a 0.85
+    primary.h = 0;
+    secondary.h = 0;
+    ambient.h = 0;
+    primary.s = 100;
+    ambient.l = 30;  // 🔥 WAVE 96.5: Aumentado de 20 a 30
+    strategy = 'analogous';  // Todo rojo = análogo
+  }
+}
+
+// RETURN INMEDIATO (no más lógica después)
+return { primary, secondary, accent, ambient, ... };
+```
   
   if (useAurora) {
     // 🌌 AURORA BOREALIS: Rosa/Magenta (300-330°)
@@ -203,7 +267,7 @@ const useAurora = (keyRoot % 5) >= 2;
 ```typescript
 ambient.h = 275;   // Violeta fijo (no varía con key)
 ambient.s = 100;   // Saturación máxima
-ambient.l = 25;    // Muy oscuro (antes era 15, subido para visibilidad)
+ambient.l = 20;    // 🔥 WAVE 96.5: Reducido de 25 a 20 (más oscuro)
 ```
 
 **Propósito**: Simula la atmósfera de Black Light UV en un club techno. No es un color decorativo, es la **base atmosférica** sobre la que todo lo demás brilla.
@@ -213,17 +277,29 @@ ambient.l = 25;    // Muy oscuro (antes era 15, subido para visibilidad)
 ### 4. Red Alert (Panic Mode)
 
 ```typescript
-if (dissonance > 0.8) {
+if (dissonance > 0.85) {  // 🔥 WAVE 96.5: Aumentado de 0.8 a 0.85
   // Todo se vuelve ROJO SANGRE
   primary.h = 0;
   secondary.h = 0;
   ambient.h = 0;
+  ambient.l = 30;  // 🔥 WAVE 96.5: Aumentado de 20 a 30 (más visible)
+  strategy = 'analogous';  // 🔥 WAVE 96.5: Cambio de 'monochromatic'
 }
 ```
 
-**Trigger**: Disonancia armónica > 0.8  
+**Trigger**: Disonancia armónica > 0.85 (antes 0.8, más restrictivo)  
 **Efecto**: Override total, toda la paleta se convierte en rojo opresivo  
 **Uso**: Drops caóticos, glitches, buildups extremos
+
+---
+
+### 5. Accent Brightness
+
+```typescript
+accent.s = 20;  // 🔥 WAVE 96.5: Aumentado de 10 a 20 (más visible)
+```
+
+**Propósito**: Los strobes necesitan ser más visibles en ambiente oscuro UV.
 
 ---
 

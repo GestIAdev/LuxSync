@@ -671,74 +671,107 @@ function startMainLoop() {
         }
           
         case 'BACK_PARS': {
-          // 💥 WAVE 94.2: BACK_PARS también usan EL LÁTIGO 2.0 (Relative Gate)
-          // Unificación: Todos los PARS responden al bombo con gate dinámico
-          const bassEnergy = normBass;
-          const relativeGate = avgNormEnergy * 0.6;
+          // ═══════════════════════════════════════════════════════════════════
+          // 🥁 WAVE 97: RHYTHMIC CROSSOVER - Hats & Snare (Treble)
+          // ═══════════════════════════════════════════════════════════════════
+          // PROBLEMA: BACK_PARS usaban BASS (igual que FRONT), creando monotonía.
+          // SOLUCIÓN: BACK responde a TREBLE (hats, snare, hi-freq FX).
+          // 
+          // Resultado: Front=BOMBO (thump), Back=HATS (tss-tss)
+          // El escenario tiene RITMO CRUZADO, no masa uniforme.
+          // ═══════════════════════════════════════════════════════════════════
           
-          if (bassEnergy < relativeGate) {
+          // Fuente: TREBLE normalizado (hats, snare, crashes)
+          const trebleEnergy = normTreble;
+          
+          // Gate más bajo (0.3x) para captar golpes rápidos de hi-hats
+          const relativeGate = Math.max(0.15, avgNormEnergy * 0.3);
+          
+          if (trebleEnergy < relativeGate) {
             intensity = 0;
           } else {
-            const normalized = (bassEnergy - relativeGate) / (1 - relativeGate);
-            intensity = Math.pow(Math.min(1, normalized), 3);  // Cúbica
+            // Re-mapear con CUADRÁTICA (más rápida que cúbica, ideal para hats)
+            const normalized = (trebleEnergy - relativeGate) / (1 - relativeGate);
+            intensity = Math.pow(Math.min(1, normalized), 2);
           }
           fixtureColor = backParColor;
           break;
         }
           
         case 'MOVING_LEFT': {
+          // ═══════════════════════════════════════════════════════════════════
+          // 🌬️ WAVE 97: BREATHING AURORA - Melody & Pads (Mid)
+          // ═══════════════════════════════════════════════════════════════════
+          // PROBLEMA: Movers se apagaban en breakdowns (piano/pads low energy).
+          // SOLUCIÓN: SUELO 12% cuando hay sonido → nunca blackout total.
           // 
-          //  WAVE 94.2: EL CORO 2.0 - Relative Gate + Cuadrática
-          // 
-          const melodyEnergy = (normMid + normTreble) / 2;
-          const relativeGate = avgNormEnergy * 0.3;
+          // Mapeo: [silencio → 0%] | [pads suaves → 12%] | [drops → 100%]
+          // Resultado: Movers "respiran" con la melodía, nunca mueren.
+          // ═══════════════════════════════════════════════════════════════════
           
-          if (melodyEnergy < relativeGate) {
-            intensity = 0
-            smoothedIntensities.set(fixture.dmxAddress, 0)
+          const midSignal = normMid;
+          const silenceThreshold = 0.05;
+          
+          if (midSignal < silenceThreshold) {
+            // Silencio real → Oscuridad (respeta SILENCE GATE)
+            intensity = 0;
+            smoothedIntensities.set(fixture.dmxAddress, 0);
           } else {
-            const normalized = (melodyEnergy - relativeGate) / (1 - relativeGate)
-            const targetIntensity = Math.pow(Math.min(1, normalized), 2)
-            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
+            // BREATHING AURORA: Suelo 12%, techo 100%
+            // 1. Normalizar entrada [0.05 → 1.0] → [0 → 1]
+            const rawInput = (midSignal - silenceThreshold) / (1 - silenceThreshold);
+            
+            // 2. Curva orgánica (pow 1.5) - más suave que cuadrática
+            const curvedInput = Math.pow(rawInput, 1.5);
+            
+            // 3. Re-escalar a [0.12 → 1.0] (12% floor)
+            const minFloor = 0.12;
+            const targetIntensity = minFloor + (curvedInput * (1 - minFloor));
+            
+            // 4. Smoothing (subida rápida, bajada suave)
+            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0;
             if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity
+              intensity = targetIntensity;
             } else {
-              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
+              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity);
             }
-            smoothedIntensities.set(fixture.dmxAddress, intensity)
+            smoothedIntensities.set(fixture.dmxAddress, intensity);
           }
-          fixtureColor = secondary
-          break
+          fixtureColor = secondary;
+          break;
         }
         case 'MOVING_RIGHT': {
-          //  WAVE 94.2: EL CORO 2.0 - UNIFICADO con MOVING_LEFT
-          // Mismo cálculo, solo difiere el color (STEREO visual)
-
-          // Fuente: mid+treble normalizados
-
-          const melodyEnergy = (normMid + normTreble) / 2;
-          const relativeGate = avgNormEnergy * 0.3;
-
-          if (melodyEnergy < relativeGate) {
-            intensity = 0
-            smoothedIntensities.set(fixture.dmxAddress, 0)
+          // ═══════════════════════════════════════════════════════════════════
+          // 🌬️ WAVE 97: BREATHING AURORA - STEREO MIRROR (Right)
+          // ═══════════════════════════════════════════════════════════════════
+          // Mismo cálculo que MOVING_LEFT, solo cambia el color (STEREO visual)
+          // Color: AMBIENT (complementario de Secondary) para depth
+          // ═══════════════════════════════════════════════════════════════════
+          
+          const midSignal = normMid;
+          const silenceThreshold = 0.05;
+          
+          if (midSignal < silenceThreshold) {
+            intensity = 0;
+            smoothedIntensities.set(fixture.dmxAddress, 0);
           } else {
-            // Re-mapear con CUADRÁTICA
-            const normalized = (melodyEnergy - relativeGate) / (1 - relativeGate)
-            const targetIntensity = Math.pow(Math.min(1, normalized), 2)
+            // BREATHING AURORA: Suelo 12%, techo 100%
+            const rawInput = (midSignal - silenceThreshold) / (1 - silenceThreshold);
+            const curvedInput = Math.pow(rawInput, 1.5);
+            const minFloor = 0.12;
+            const targetIntensity = minFloor + (curvedInput * (1 - minFloor));
             
-            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0
-            // Subida rÃ¡pida, bajada suave
+            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0;
             if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity
+              intensity = targetIntensity;
             } else {
-              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity)
+              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity);
             }
-            smoothedIntensities.set(fixture.dmxAddress, intensity)
+            smoothedIntensities.set(fixture.dmxAddress, intensity);
           }
-          // ðŸŒ´ WAVE 86: STEREO MIRROR - Right usa AMBIENT (complementario de Secondary)
-          fixtureColor = ambient
-          break
+          // 🌴 WAVE 86: STEREO MIRROR - Right usa AMBIENT (complementario de Secondary)
+          fixtureColor = ambient;
+          break;
         }
 
         case 'STROBES':

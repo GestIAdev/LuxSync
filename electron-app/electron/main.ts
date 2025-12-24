@@ -440,6 +440,175 @@ const smoothedIntensities = new Map<number, number>()
 const SMOOTHING_DECAY = 0.75 // 25% decay por frame (caída rápida y dramática)
 const MOVING_HEAD_GATE = 0.15 // Threshold: si energy < 15%, NEGRO total
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 107: UNIFIED REACTIVITY PIPELINE
+// ═══════════════════════════════════════════════════════════════════════════
+// Arquitectura de 5 fases: Gatekeeper → Router → Physics → Constraints → Clipper
+// Motor global con Vibe Constraints para ajustes específicos por género
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 108: VIBE CONSTRAINTS SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════
+// CORRECCIÓN CRÍTICA: Los 4 Vibes reales son:
+// 1. TechnoClub - Industrial Standard (Default)
+// 2. FiestaLatina - La Metralleta 
+// 3. PopRock - Alto Contraste (física "Dubstep")
+// 4. ChillLounge - Fluidez Total
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VibeConstraints {
+  name: string;              // Nombre descriptivo del preset
+  // PARS (Rhythm Engine)
+  parGate: number;           // Gate para Front PARs
+  parGain: number;           // Ganancia para Front PARs
+  backParGate: number;       // Gate para Back PARs
+  backParGain: number;       // Ganancia para Back PARs (Latino incluye Snare Priority)
+  // MOVERS (Atmosphere Engine)
+  moverFloor: number;        // Floor base de móviles (0 = oscuridad total)
+  melodyThreshold: number;   // Umbral para detectar "melodía real"
+  // PHYSICS
+  decaySpeed: number;        // Velocidad de decay (1=instantáneo, 10=líquido)
+  hardClipThreshold: number; // Umbral del soft knee clipper
+}
+
+const VIBE_PRESETS: Record<string, VibeConstraints> = {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏭 TECHNO CLUB - Industrial Standard (DEFAULT)
+  // ═══════════════════════════════════════════════════════════════════════
+  // Limpio, oscuro, golpes fuertes. El estándar para electrónica pesada.
+  'techno-club': {
+    name: 'Techno/Default',
+    parGate: 0.15,           // Solo golpes claros
+    parGain: 4.0,            // Potencia estándar
+    backParGate: 0.20,
+    backParGain: 4.0,        // Equilibrado
+    moverFloor: 0.0,         // Sin suelo (oscuridad total en drops)
+    melodyThreshold: 0.25,   // Solo melodías claras
+    decaySpeed: 2,           // Rápido (Strobe feel)
+    hardClipThreshold: 0.15,
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 💃 FIESTA LATINA - La Metralleta
+  // ═══════════════════════════════════════════════════════════════════════
+  // Reggaetón, Cumbia, Salsa. Pulsos rápidos, snare/timbal prioritario.
+  'fiesta-latina': {
+    name: 'Latino',
+    parGate: 0.05,           // Gate bajísimo para pillar metralletas rápidas
+    parGain: 6.0,            // Ganancia extrema para compensar gate bajo
+    backParGate: 0.12,
+    backParGain: 5.5,        // (4.0 * 1.35) ¡PRIORIDAD SNARE/TIMBAL!
+    moverFloor: 0.0,         // Sin suelo en rhythm
+    melodyThreshold: 0.40,   // Estricto (evitar falsos positivos de melodía)
+    decaySpeed: 1,           // Instantáneo (corte seco)
+    hardClipThreshold: 0.12,
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎸 POP / ROCK - Alto Contraste (Física "Dubstep")
+  // ═══════════════════════════════════════════════════════════════════════
+  // Baterías acústicas con mucha dinámica. Desde toque suave hasta crash.
+  'pop-rock': {
+    name: 'Pop/Rock',
+    parGate: 0.10,           // Gate medio
+    parGain: 5.0,            // Alta ganancia para llenar escenario
+    backParGate: 0.18,
+    backParGain: 4.5,        // Platos brillantes
+    moverFloor: 0.05,        // Mínimo 5% luz ambiente para ver la banda
+    melodyThreshold: 0.30,   // Detectar melodías claras
+    decaySpeed: 3,           // Decay natural (resonancia platos/cuerdas)
+    hardClipThreshold: 0.15,
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🍹 CHILL / LOUNGE - Fluidez Total
+  // ═══════════════════════════════════════════════════════════════════════
+  // Ambient, Lo-Fi, Downtempo. Movimiento líquido, siempre presente.
+  'chill-lounge': {
+    name: 'Chill',
+    parGate: 0.0,            // Sin gate, todo pasa
+    parGain: 2.0,            // Ganancia suave, sin latigazos
+    backParGate: 0.10,
+    backParGain: 2.0,
+    moverFloor: 0.20,        // SIEMPRE presentes (20% suelo)
+    melodyThreshold: 0.0,    // Cualquier sonido mueve los focos
+    decaySpeed: 10,          // Muy lento (líquido)
+    hardClipThreshold: 0.08, // Clipper suave (brillos permitidos)
+  },
+};
+
+// 🎭 Vibe actual (se actualiza desde el frontend)
+let currentVibePreset: string = 'techno-club';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎛️ WAVE 108: SMART VIBE MATCHER
+// ═══════════════════════════════════════════════════════════════════════════
+// Busca coincidencias flexibles para mapear vibeId del frontend a presets
+function getVibePreset(vibeId?: string): VibeConstraints {
+  const id = (vibeId || currentVibePreset).toLowerCase();
+  
+  // 💃 FIESTA LATINA
+  if (id.includes('latin') || id.includes('reggaeton') || id.includes('cumbia') || id.includes('salsa')) {
+    return VIBE_PRESETS['fiesta-latina'];
+  }
+  
+  // 🎸 POP / ROCK
+  if (id.includes('pop') || id.includes('rock') || id.includes('concert') || id.includes('band')) {
+    return VIBE_PRESETS['pop-rock'];
+  }
+  
+  // 🍹 CHILL / LOUNGE
+  if (id.includes('chill') || id.includes('lounge') || id.includes('ambient') || id.includes('lofi')) {
+    return VIBE_PRESETS['chill-lounge'];
+  }
+  
+  // 🏭 TECHNO CLUB (Default)
+  return VIBE_PRESETS['techno-club'];
+}
+
+// 🔪 WAVE 107: Wrapper de Soft Knee Clipper con preset threshold
+function applySoftKneeClipper(val: number): number {
+  const preset = getVibePreset();
+  return softKneeClip(val, preset.hardClipThreshold);
+}
+
+// 🔧 WAVE 107: Soft Knee Clipper - Anti-parpadeo
+function softKneeClip(val: number, threshold: number): number {
+  if (val < threshold) return 0;
+  // Remapear [threshold, 1.0] → [0.0, 1.0] con entrada suave
+  return (val - threshold) / (1 - threshold);
+}
+
+// 🔧 WAVE 107: Context Router - RHYTHM vs ATMOS vs HYBRID
+type ContextMode = 'RHYTHM' | 'ATMOS' | 'HYBRID';
+function getContextMode(rawBass: number, melodySum: number): { mode: ContextMode; rhythmPriority: number } {
+  const isRhythm = rawBass > 0.50 && rawBass > melodySum;
+  const isAtmos = melodySum > (rawBass * 1.5) || rawBass < 0.30;
+  
+  if (isRhythm) return { mode: 'RHYTHM', rhythmPriority: 1.0 };
+  if (isAtmos) return { mode: 'ATMOS', rhythmPriority: 0.0 };
+  return { mode: 'HYBRID', rhythmPriority: 0.5 };
+}
+
+// 🔧 WAVE 107: Decay con inercia por tipo
+const decayBuffers = new Map<string, number>(); // key: `${fixtureId}-${type}`
+function applyDecay(key: string, targetValue: number, decayRate: number): number {
+  const prevValue = decayBuffers.get(key) ?? 0;
+  let newValue: number;
+  
+  if (targetValue > prevValue) {
+    // Attack: subida instantánea
+    newValue = targetValue;
+  } else {
+    // Decay: bajada con inercia
+    newValue = Math.max(prevValue * decayRate, targetValue);
+  }
+  
+  decayBuffers.set(key, newValue);
+  return newValue;
+}
+
 function startMainLoop() {
   if (mainLoopInterval) return
   
@@ -555,7 +724,51 @@ function startMainLoop() {
     const normBass = agcData?.normalizedBass ?? audioInput.bass
     const normMid = agcData?.normalizedMid ?? audioInput.mid
     const normTreble = agcData?.normalizedTreble ?? audioInput.treble
+    const normEnergy = agcData?.normalizedEnergy ?? 0.5  // Global energy (fallback)
     const avgNormEnergy = agcData?.avgNormEnergy ?? 0.5  // Fallback: centro
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏛️ WAVE 107: UNIFIED REACTIVITY PIPELINE
+    // ═══════════════════════════════════════════════════════════════════════
+    // Arquitectura de 5 fases: Gatekeeper → Router → Physics → Constraints → Clipper
+    // Este reemplaza W103-W106 con un sistema unificado y mantenible
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 📦 Obtener constraints del vibe actual
+    const constraints = VIBE_PRESETS[currentVibePreset] || VIBE_PRESETS['techno-club'];
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FASE 1: GATEKEEPER (Juez de Silencio)
+    // ═══════════════════════════════════════════════════════════════════════
+    const rawBass = audioInput.bass;
+    const rawMid = audioInput.mid;
+    const rawTreble = audioInput.treble;
+    const totalEnergy = rawBass + rawMid + rawTreble;
+    const isGlobalBlackout = totalEnergy < 0.15;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FASE 2: ROUTER (Clasificador de Contexto)
+    // ═══════════════════════════════════════════════════════════════════════
+    const melodySum = rawMid + rawTreble;
+    const { mode: contextMode, rhythmPriority } = getContextMode(rawBass, melodySum);
+    const isRealSilence = totalEnergy < 0.15;
+    // 🔧 W107: isMelodyDominant para compatibilidad con código existente
+    const isMelodyDominant = contextMode === 'ATMOS';
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FASE 3: PHYSICS ENGINE (Cálculo de señales base)
+    // ═══════════════════════════════════════════════════════════════════════
+    const bassFloor = avgNormEnergy || 0.5;
+    let bassPulse = rawBass - (bassFloor * 0.60);
+    if (bassPulse < 0) bassPulse = 0;
+    
+    const melodySignal = Math.max(normMid, normTreble);
+    
+    // Log periódico para debug (cada ~5 segundos)
+    if (Math.random() < 0.003) {
+      console.log(`[LUX_DEBUG] Mode:${contextMode} | RAW[B:${rawBass.toFixed(2)} M:${rawMid.toFixed(2)} T:${rawTreble.toFixed(2)}] | Pulse:${bassPulse.toFixed(2)} Floor:${bassFloor.toFixed(2)} | Vibe:${currentVibePreset}`)
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     
     const fixtureStates = patchedFixtures.map(fixture => {
       const color = state.colors?.primary || { r: 0, g: 0, b: 0 }
@@ -647,24 +860,27 @@ function startMainLoop() {
       switch (zone) {
         case 'FRONT_PARS': {
           // ═══════════════════════════════════════════════════════════════════
-          // 💥 WAVE 94.2: EL LÁTIGO 2.0 - Relative Gate + Cúbica
-          // Gate dinámico basado en energía promedio de la canción
+          // � WAVE 107: VIBE-AWARE PIPELINE - FRONT PARS
+          // ═══════════════════════════════════════════════════════════════════
+          // ARQUITECTURA: Motor Global + Vibe Constraints (GeminiPunk Design)
+          // 1. Gate/Gain dinámicos según Vibe Preset
+          // 2. Flash Physics: decay 2 frames (respuesta instantánea)
+          // 3. Soft Knee Clipper: elimina 12% basura (val < 0.15 → 0)
           // ═══════════════════════════════════════════════════════════════════
           
-          // Fuente: SOLO bass normalizado por AGC (ignorar mids/highs)
-          const bassEnergy = normBass;
-          
-          // Relative Gate: > (avgNormEnergy * 0.6)
-          // Canciones "muro de ladrillo" (avg 0.8): gate = 0.48
-          // Canciones dinámicas (avg 0.4): gate = 0.24
-          const relativeGate = avgNormEnergy * 0.6;
-          
-          if (bassEnergy < relativeGate) {
+          const preset = getVibePreset();
+
+          // 1. VOCAL LOCK: Si melodia domina, PARs apagados
+          if (isMelodyDominant || isRealSilence) {
             intensity = 0;
+          } else if (bassPulse > preset.parGate) {
+            // VIBE-AWARE: Gate y Gain del preset activo
+            const rawIntensity = Math.min(1, (bassPulse - preset.parGate) * preset.parGain);
+            // SOFT KNEE CLIPPER: Eliminar ruido <15%
+            intensity = applySoftKneeClipper(rawIntensity);
           } else {
-            // Re-mapear [gate → 1.0] → [0.0 → 1.0] con CÚBICA
-            const normalized = (bassEnergy - relativeGate) / (1 - relativeGate);
-            intensity = Math.pow(Math.min(1, normalized), 3);  // LATIGAZOS picudos
+            // No hay pulso suficiente
+            intensity = 0;
           }
           fixtureColor = color;
           break;
@@ -672,27 +888,26 @@ function startMainLoop() {
           
         case 'BACK_PARS': {
           // ═══════════════════════════════════════════════════════════════════
-          // 🥁 WAVE 97: RHYTHMIC CROSSOVER - Hats & Snare (Treble)
+          // 🌊 WAVE 107: VIBE-AWARE PIPELINE - BACK PARS
           // ═══════════════════════════════════════════════════════════════════
-          // PROBLEMA: BACK_PARS usaban BASS (igual que FRONT), creando monotonía.
-          // SOLUCIÓN: BACK responde a TREBLE (hats, snare, hi-freq FX).
-          // 
-          // Resultado: Front=BOMBO (thump), Back=HATS (tss-tss)
-          // El escenario tiene RITMO CRUZADO, no masa uniforme.
+          // ARQUITECTURA: Motor Global + Vibe Constraints (GeminiPunk Design)
+          // 1. Gate/Gain dinámicos según Vibe Preset
+          // 2. Shimmer Physics: decay 5-10 frames (hi-hats, platos)
+          // 3. Soft Knee Clipper: elimina basura
+          // 4. Latino Snare Trap: backParGain incluye x1.2 multiplicador
           // ═══════════════════════════════════════════════════════════════════
           
-          // Fuente: TREBLE normalizado (hats, snare, crashes)
-          const trebleEnergy = normTreble;
+          const preset = getVibePreset();
           
-          // Gate más bajo (0.3x) para captar golpes rápidos de hi-hats
-          const relativeGate = Math.max(0.15, avgNormEnergy * 0.3);
-          
-          if (trebleEnergy < relativeGate) {
+          if (isMelodyDominant || isRealSilence) {
             intensity = 0;
+          } else if (rawTreble > preset.backParGate) {
+            // VIBE-AWARE: Gate y Gain del preset (Latino ya incluye x1.2 boost)
+            const rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain);
+            // SOFT KNEE CLIPPER: Eliminar ruido
+            intensity = applySoftKneeClipper(rawIntensity);
           } else {
-            // Re-mapear con CUADRÁTICA (más rápida que cúbica, ideal para hats)
-            const normalized = (trebleEnergy - relativeGate) / (1 - relativeGate);
-            intensity = Math.pow(Math.min(1, normalized), 2);
+            intensity = 0;
           }
           fixtureColor = backParColor;
           break;
@@ -700,76 +915,71 @@ function startMainLoop() {
           
         case 'MOVING_LEFT': {
           // ═══════════════════════════════════════════════════════════════════
-          // 🌬️ WAVE 97: BREATHING AURORA - Melody & Pads (Mid)
+          // � WAVE 107: VIBE-AWARE PIPELINE - MOVING LEFT
           // ═══════════════════════════════════════════════════════════════════
-          // PROBLEMA: Movers se apagaban en breakdowns (piano/pads low energy).
-          // SOLUCIÓN: SUELO 12% cuando hay sonido → nunca blackout total.
-          // 
-          // Mapeo: [silencio → 0%] | [pads suaves → 12%] | [drops → 100%]
-          // Resultado: Movers "respiran" con la melodía, nunca mueren.
+          // ARQUITECTURA: Motor Global + Inertia Physics
+          // 1. Floor unificado desde preset (0=oscuro total, 0.20=siempre visible)
+          // 2. decaySpeed: 1=instantáneo, 10=líquido
+          // 3. Soft Knee Clipper: elimina parpadeos pequeños
           // ═══════════════════════════════════════════════════════════════════
-          
-          const midSignal = normMid;
-          const silenceThreshold = 0.05;
-          
-          if (midSignal < silenceThreshold) {
-            // Silencio real → Oscuridad (respeta SILENCE GATE)
-            intensity = 0;
-            smoothedIntensities.set(fixture.dmxAddress, 0);
-          } else {
-            // BREATHING AURORA: Suelo 12%, techo 100%
-            // 1. Normalizar entrada [0.05 → 1.0] → [0 → 1]
-            const rawInput = (midSignal - silenceThreshold) / (1 - silenceThreshold);
-            
-            // 2. Curva orgánica (pow 1.5) - más suave que cuadrática
-            const curvedInput = Math.pow(rawInput, 1.5);
-            
-            // 3. Re-escalar a [0.12 → 1.0] (12% floor)
-            const minFloor = 0.12;
-            const targetIntensity = minFloor + (curvedInput * (1 - minFloor));
-            
-            // 4. Smoothing (subida rápida, bajada suave)
-            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0;
-            if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity;
+
+          const preset = getVibePreset();
+          const moverKey = `${fixture.dmxAddress}-mover`;
+          const floor = preset.moverFloor;
+          const decayFactor = 1 - (0.01 / preset.decaySpeed);
+
+          if (isMelodyDominant || isRealSilence) {
+            // ATMOS/BREAKDOWN MODE: Floor + melodía
+            if (!isRealSilence) {
+              const targetIntensity = floor + (melodySignal * (1 - floor));
+              intensity = applyDecay(moverKey, targetIntensity, decayFactor);
             } else {
-              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity);
+              intensity = 0;
+              decayBuffers.set(moverKey, 0);
             }
-            smoothedIntensities.set(fixture.dmxAddress, intensity);
+          } else {
+            // RHYTHM/DROP MODE: Solo melodía fuerte enciende sobre floor
+            if (melodySignal > preset.melodyThreshold) {
+              const rawIntensity = Math.pow(melodySignal, 1.5);
+              const targetIntensity = Math.max(floor, rawIntensity);
+              intensity = applyDecay(moverKey, applySoftKneeClipper(targetIntensity), decayFactor);
+            } else {
+              intensity = applyDecay(moverKey, floor, decayFactor);
+            }
           }
           fixtureColor = secondary;
           break;
         }
         case 'MOVING_RIGHT': {
           // ═══════════════════════════════════════════════════════════════════
-          // 🌬️ WAVE 97: BREATHING AURORA - STEREO MIRROR (Right)
+          // � WAVE 107: VIBE-AWARE PIPELINE - MOVING RIGHT (Stereo)
           // ═══════════════════════════════════════════════════════════════════
-          // Mismo cálculo que MOVING_LEFT, solo cambia el color (STEREO visual)
-          // Color: AMBIENT (complementario de Secondary) para depth
+          // Mismo cálculo que MOVING_LEFT, color AMBIENT para depth estéreo
           // ═══════════════════════════════════════════════════════════════════
           
-          const midSignal = normMid;
-          const silenceThreshold = 0.05;
-          
-          if (midSignal < silenceThreshold) {
-            intensity = 0;
-            smoothedIntensities.set(fixture.dmxAddress, 0);
-          } else {
-            // BREATHING AURORA: Suelo 12%, techo 100%
-            const rawInput = (midSignal - silenceThreshold) / (1 - silenceThreshold);
-            const curvedInput = Math.pow(rawInput, 1.5);
-            const minFloor = 0.12;
-            const targetIntensity = minFloor + (curvedInput * (1 - minFloor));
-            
-            const prevIntensity = smoothedIntensities.get(fixture.dmxAddress) ?? 0;
-            if (targetIntensity > prevIntensity) {
-              intensity = targetIntensity;
+          const preset = getVibePreset();
+          const moverKey = `${fixture.dmxAddress}-mover`;
+          const floor = preset.moverFloor;
+          const decayFactor = 1 - (0.01 / preset.decaySpeed);
+
+          if (isMelodyDominant || isRealSilence) {
+            if (!isRealSilence) {
+              const targetIntensity = floor + (melodySignal * (1 - floor));
+              intensity = applyDecay(moverKey, targetIntensity, decayFactor);
             } else {
-              intensity = Math.max(prevIntensity * SMOOTHING_DECAY, targetIntensity);
+              intensity = 0;
+              decayBuffers.set(moverKey, 0);
             }
-            smoothedIntensities.set(fixture.dmxAddress, intensity);
+          } else {
+            if (melodySignal > preset.melodyThreshold) {
+              const rawIntensity = Math.pow(melodySignal, 1.5);
+              const targetIntensity = Math.max(floor, rawIntensity);
+              intensity = applyDecay(moverKey, applySoftKneeClipper(targetIntensity), decayFactor);
+            } else {
+              intensity = applyDecay(moverKey, floor, decayFactor);
+            }
           }
-          // 🌴 WAVE 86: STEREO MIRROR - Right usa AMBIENT (complementario de Secondary)
+          // 🌴 STEREO MIRROR - Right usa AMBIENT
           fixtureColor = ambient;
           break;
         }
@@ -781,8 +991,24 @@ function startMainLoop() {
           break
           
         default:
-          intensity = audioInput.energy
-          fixtureColor = color
+          // ═══════════════════════════════════════════════════════════════════
+          // 🏛️ WAVE 103: FALLBACK PARA MOVERS NO RECONOCIDOS
+          // ═══════════════════════════════════════════════════════════════════
+          if (zone.includes('MOVING')) {
+            // Aplicar lógica contextual de movers
+            if (isMelodyDominant && !isRealSilence) {
+              intensity = 0.15 + (melodySignal * 0.85);
+            } else if (!isRealSilence && melodySignal > 0.25) {
+              intensity = Math.pow(melodySignal, 2);
+            } else {
+              intensity = 0;
+            }
+            fixtureColor = secondary;
+          } else {
+            // Zona desconocida: usar energy por defecto
+            intensity = audioInput.energy;
+            fixtureColor = color;
+          }
       }
       
       // 🪞 FIX CRÍTICO 2: Espejo para MOVING_RIGHT
@@ -828,7 +1054,22 @@ function startMainLoop() {
       }
     })
     
-    // � WAVE 25.5: Guardar para broadcast de verdad
+    // 🏛️ WAVE 103: ENHANCED DIAGNOSTIC LOGGING (1 vez cada ~60 frames)
+    if (Math.random() < 0.016) {
+      const mode = isMelodyDominant ? 'MELODY' : (rawBass > 0.5 ? 'DROP' : 'TRANS')
+      
+      // Buscar fixtures para debug
+      const moverState = fixtureStates.find(f => f.zone.includes('MOVING'))
+      const parState = fixtureStates.find(f => f.zone.includes('PAR'))
+      
+      const moverOut = moverState ? (moverState.dimmer / 255).toFixed(2) : 'N/A'
+      const parOut = parState ? (parState.dimmer / 255).toFixed(2) : 'N/A'
+      
+      // W105: Mostrar PULSE + FLOOR + TREBLE para diagnóstico (LINEAR GAIN)
+      console.log(`[LUX_DEBUG] Mode:${mode} | RAW[B:${rawBass.toFixed(2)} M:${rawMid.toFixed(2)} T:${rawTreble.toFixed(2)}] | Pulse:${bassPulse.toFixed(2)} Floor:${bassFloor.toFixed(2)} | MelDom:${isMelodyDominant ? 'Y' : 'N'} | PAR:${parOut} MOV:${moverOut}`)
+    }
+    
+    // 🌈 WAVE 25.5: Guardar para broadcast de verdad
     lastFixtureStatesForBroadcast = fixtureStates
     
     // �🌪️ WAVE 11: Enviar valores DMX reales si el driver está conectado
@@ -1450,6 +1691,29 @@ ipcMain.handle('selene:force-mutate', () => {
 ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
   console.log(`[Main] 🎛️ VIBE CHANGE REQUEST: ${vibeId}`)
   
+  // 🏛️ WAVE 107: Actualizar preset de reactividad según vibe
+  // Mapeo de vibeId del frontend a presets del motor
+  const vibeToPreset: Record<string, string> = {
+    'techno-club': 'techno-club',
+    'techno': 'techno-club',
+    'minimal-techno': 'techno-club',
+    'latino-reggaeton': 'latino-reggaeton',
+    'reggaeton': 'latino-reggaeton',
+    'cumbia': 'latino-reggaeton',
+    'salsa': 'latino-reggaeton',
+    'latin': 'latino-reggaeton',
+    'dubstep-edm': 'dubstep-edm',
+    'dubstep': 'dubstep-edm',
+    'edm': 'dubstep-edm',
+    'bass-house': 'dubstep-edm',
+    'chill-lounge': 'chill-lounge',
+    'chill': 'chill-lounge',
+    'lounge': 'chill-lounge',
+    'ambient': 'chill-lounge',
+  };
+  currentVibePreset = vibeToPreset[vibeId] || 'techno-club';
+  console.log(`[Main] 🏛️ W107 PRESET: ${vibeId} → ${currentVibePreset}`)
+  
   // Get Trinity orchestrator for worker communication
   let trinity: ReturnType<typeof getTrinity> | null = null
   try {
@@ -1468,11 +1732,12 @@ ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
       if (mainWindow) {
         mainWindow.webContents.send('selene:vibe-changed', {
           vibeId,
+          preset: currentVibePreset,
           timestamp: Date.now()
         })
       }
       
-      return { success: true, vibeId }
+      return { success: true, vibeId, preset: currentVibePreset }
     } catch (error) {
       console.error('[Main] ❌ Error setting vibe:', error)
       return { success: false, error: String(error) }

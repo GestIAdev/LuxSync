@@ -21,6 +21,8 @@ import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/Effect
 import { showManager } from './ShowManager'
 // ⚡ WAVE 27: FixtureDefinition types for Fixture Forge
 import type { FixtureDefinition } from '../src/types/FixtureDefinition'
+// 🧪 WAVE 111: Selene Diagnostic Suite
+import { runSeleneDiagnostics } from './SeleneValidator'
 
 let mainWindow: BrowserWindow | null = null
 let selene: SeleneLux | null = null
@@ -160,6 +162,15 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // 🧪 WAVE 111: Ejecutar diagnósticos al inicio
+  console.log('[Main] 🧪 Running Selene Diagnostics...')
+  const diagnostics = runSeleneDiagnostics()
+  if (diagnostics.failed > 0) {
+    console.warn(`[Main] ⚠️ ${diagnostics.failed} diagnostic tests failed!`)
+  } else {
+    console.log('[Main] ✅ All diagnostic tests passed!')
+  }
+  
   // 🔧 WAVE 10: Cargar configuración guardada ANTES de crear la ventana
   const savedConfig = configManager.load()
   
@@ -462,8 +473,10 @@ interface VibeConstraints {
   // PARS (Rhythm Engine)
   parGate: number;           // Gate para Front PARs
   parGain: number;           // Ganancia para Front PARs
+  parMax: number;            // 🔥 W114: Techo máximo para Front PARs (Headroom)
   backParGate: number;       // Gate para Back PARs
   backParGain: number;       // Ganancia para Back PARs (Latino incluye Snare Priority)
+  backParMax: number;        // 🔥 W114: Techo máximo para Back PARs
   // MOVERS (Atmosphere Engine)
   moverFloor: number;        // Floor base de móviles (0 = oscuridad total)
   melodyThreshold: number;   // Umbral para detectar "melodía real"
@@ -474,19 +487,21 @@ interface VibeConstraints {
 
 const VIBE_PRESETS: Record<string, VibeConstraints> = {
   // ═══════════════════════════════════════════════════════════════════════
-  // 🏭 TECHNO CLUB - Industrial Standard (DEFAULT)
+  // 🏭 TECHNO CLUB - Industrial Standard (DEFAULT) - WAVE 113+114
   // ═══════════════════════════════════════════════════════════════════════
-  // Limpio, oscuro, golpes fuertes. El estándar para electrónica pesada.
+  // Hard Techno, Dubstep, música comprimida. Golpes potentes y oscuridad total.
   'techno-club': {
     name: 'Techno/Default',
-    parGate: 0.15,           // Solo golpes claros
-    parGain: 4.0,            // Potencia estándar
-    backParGate: 0.20,
-    backParGain: 4.0,        // Equilibrado
+    parGate: 0.05,           // W113: Sensibilidad máxima
+    parGain: 6.0,            // W113: Golpe visual fuerte
+    parMax: 0.78,            // 🔥 W114: HEADROOM - Techo 78% para dejar espacio al Snare
+    backParGate: 0.12,       // W113: Más reactivo
+    backParGain: 5.0,        // W113: Hi-hats potentes
+    backParMax: 1.0,         // W114: El Snare tiene permiso para cegar
     moverFloor: 0.0,         // Sin suelo (oscuridad total en drops)
-    melodyThreshold: 0.25,   // Solo melodías claras
-    decaySpeed: 2,           // Rápido (Strobe feel)
-    hardClipThreshold: 0.15,
+    melodyThreshold: 0.35,   // 🔥 W114: Subido de 0.25 → Gate más duro para móviles
+    decaySpeed: 2,           // Rápido (Cuchillo)
+    hardClipThreshold: 0.12, // W113: Menos recorte
   },
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -497,8 +512,10 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     name: 'Latino',
     parGate: 0.05,           // Gate bajísimo para pillar metralletas rápidas
     parGain: 6.0,            // Ganancia extrema para compensar gate bajo
+    parMax: 1.0,             // W114: Sin límites, todo a tope
     backParGate: 0.12,
     backParGain: 5.5,        // (4.0 * 1.35) ¡PRIORIDAD SNARE/TIMBAL!
+    backParMax: 1.0,         // W114: Sin límites
     moverFloor: 0.0,         // Sin suelo en rhythm
     melodyThreshold: 0.40,   // Estricto (evitar falsos positivos de melodía)
     decaySpeed: 1,           // Instantáneo (corte seco)
@@ -513,8 +530,10 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     name: 'Pop/Rock',
     parGate: 0.10,           // Gate medio
     parGain: 5.0,            // Alta ganancia para llenar escenario
+    parMax: 0.85,            // W114: Algo de headroom para platos
     backParGate: 0.18,
     backParGain: 4.5,        // Platos brillantes
+    backParMax: 1.0,         // W114: Platos sin límite
     moverFloor: 0.05,        // Mínimo 5% luz ambiente para ver la banda
     melodyThreshold: 0.30,   // Detectar melodías claras
     decaySpeed: 3,           // Decay natural (resonancia platos/cuerdas)
@@ -529,8 +548,10 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     name: 'Chill',
     parGate: 0.0,            // Sin gate, todo pasa
     parGain: 2.0,            // Ganancia suave, sin latigazos
+    parMax: 0.60,            // W114: Techo bajo para fluidez (nunca cegar)
     backParGate: 0.10,
     backParGain: 2.0,
+    backParMax: 0.60,        // W114: Techo bajo
     moverFloor: 0.20,        // SIEMPRE presentes (20% suelo)
     melodyThreshold: 0.0,    // Cualquier sonido mueve los focos
     decaySpeed: 10,          // Muy lento (líquido)
@@ -591,8 +612,75 @@ function getContextMode(rawBass: number, melodySum: number): { mode: ContextMode
   return { mode: 'HYBRID', rhythmPriority: 0.5 };
 }
 
-// 🔧 WAVE 107: Decay con inercia por tipo
-const decayBuffers = new Map<string, number>(); // key: `${fixtureId}-${type}`
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 109: ASYMMETRIC DECAY PHYSICS
+// ═══════════════════════════════════════════════════════════════════════════
+// Física diferenciada por zona: Flash (PARs) vs Inercia (Movers)
+// Attack: SIEMPRE instantáneo (sync con música)
+// Decay: Asimétrico según zoneType
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Estado persistente por zona (intensidades del frame anterior)
+interface ZoneState {
+  frontIntensity: number;
+  backIntensity: number;
+  moverIntensity: number;
+}
+const physicsState: ZoneState = { frontIntensity: 0, backIntensity: 0, moverIntensity: 0 };
+
+// Buffers de decay por fixture individual (para fixtures múltiples)
+const decayBuffers = new Map<string, number>();
+
+/**
+ * WAVE 109: Asymmetric Physics Engine
+ * @param target - Intensidad objetivo calculada por análisis de audio (0.0-1.0)
+ * @param current - Intensidad del frame anterior
+ * @param decaySpeed - Velocidad del preset (1=instantáneo, 10=líquido)
+ * @param zoneType - 'PAR' para Flash Physics, 'MOVER' para Inertia Physics
+ */
+function applyPhysics(target: number, current: number, decaySpeed: number, zoneType: 'PAR' | 'MOVER'): number {
+  // A. ATTACK (Subida): Siempre instantáneo para mantener sync musical
+  if (target >= current) {
+    return target;
+  }
+  
+  // B. DECAY (Bajada): Asimétrico según zoneType
+  let dropRate: number;
+  
+  if (zoneType === 'PAR') {
+    // FLASH PHYSICS: Caída rápida pero no instantánea (evita "glitch eléctrico")
+    // Rango: 0.10 a 0.40 por frame
+    // decaySpeed 1 → dropRate 0.40 (corte seco Latino)
+    // decaySpeed 10 → dropRate 0.04 (respiro Chill)
+    dropRate = 0.40 / decaySpeed;
+  } else {
+    // INERTIA PHYSICS: Caída suave como humo (sensación premium)
+    // Rango: 0.01 a 0.10 por frame
+    // decaySpeed 1 → dropRate 0.10 (respuesta rápida)
+    // decaySpeed 10 → dropRate 0.01 (líquido total)
+    dropRate = 0.10 / decaySpeed;
+  }
+  
+  // Aplicar Linear Decay (resta, no multiplicación)
+  const nextValue = current - dropRate;
+  return Math.max(0, nextValue);
+}
+
+/**
+ * WAVE 109: Apply decay with persistent buffer (para fixtures individuales)
+ * @param key - Clave única del fixture+zona
+ * @param targetValue - Intensidad objetivo
+ * @param decaySpeed - Velocidad del preset
+ * @param zoneType - Tipo de física a aplicar
+ */
+function applyDecayWithPhysics(key: string, targetValue: number, decaySpeed: number, zoneType: 'PAR' | 'MOVER'): number {
+  const prevValue = decayBuffers.get(key) ?? 0;
+  const newValue = applyPhysics(targetValue, prevValue, decaySpeed, zoneType);
+  decayBuffers.set(key, newValue);
+  return newValue;
+}
+
+// Mantener función legacy para compatibilidad
 function applyDecay(key: string, targetValue: number, decayRate: number): number {
   const prevValue = decayBuffers.get(key) ?? 0;
   let newValue: number;
@@ -869,46 +957,76 @@ function startMainLoop() {
           // ═══════════════════════════════════════════════════════════════════
           
           const preset = getVibePreset();
+          const parKey = `${fixture.dmxAddress}-front`;
+          let targetIntensity = 0;
 
           // 1. VOCAL LOCK: Si melodia domina, PARs apagados
           if (isMelodyDominant || isRealSilence) {
-            intensity = 0;
+            targetIntensity = 0;
           } else if (bassPulse > preset.parGate) {
             // VIBE-AWARE: Gate y Gain del preset activo
-            const rawIntensity = Math.min(1, (bassPulse - preset.parGate) * preset.parGain);
-            // SOFT KNEE CLIPPER: Eliminar ruido <15%
-            intensity = applySoftKneeClipper(rawIntensity);
-          } else {
-            // No hay pulso suficiente
-            intensity = 0;
+            let rawIntensity = Math.min(1, (bassPulse - preset.parGate) * preset.parGain);
+            
+            // WAVE 114: VISUAL HEADROOM - Techo de intensidad por vibe
+            // Techno: 78% max para dejar espacio al snare/hat
+            rawIntensity = Math.min(preset.parMax, rawIntensity);
+            
+            // WAVE 114: CROSS-INHIBITION - Si treble domina, reducir front
+            // Evita que front y back compitan cuando hay snare/hat fuerte
+            if (rawTreble > 0.6 && rawBass < 0.6) {
+              rawIntensity *= 0.2; // Reducir al 20%
+            }
+            
+            // SOFT KNEE CLIPPER: Eliminar ruido
+            targetIntensity = applySoftKneeClipper(rawIntensity);
           }
+          
+          // 🌊 WAVE 109: FLASH PHYSICS - Decay rápido tipo estroboscopio
+          intensity = applyDecayWithPhysics(parKey, targetIntensity, preset.decaySpeed, 'PAR');
+          
           fixtureColor = color;
           break;
         }
-          
+
         case 'BACK_PARS': {
           // ═══════════════════════════════════════════════════════════════════
-          // 🌊 WAVE 107: VIBE-AWARE PIPELINE - BACK PARS
+          // 🌊 WAVE 109: ASYMMETRIC DECAY - BACK PARS (Shimmer Physics)
           // ═══════════════════════════════════════════════════════════════════
-          // ARQUITECTURA: Motor Global + Vibe Constraints (GeminiPunk Design)
+          // ARQUITECTURA: Motor Global + Vibe Constraints + Asymmetric Physics
           // 1. Gate/Gain dinámicos según Vibe Preset
-          // 2. Shimmer Physics: decay 5-10 frames (hi-hats, platos)
+          // 2. Shimmer Physics: Decay intermedio (más cola para platos/hi-hats)
           // 3. Soft Knee Clipper: elimina basura
-          // 4. Latino Snare Trap: backParGain incluye x1.2 multiplicador
+          // 4. Latino Snare Trap: backParGain incluye x1.35 multiplicador
           // ═══════════════════════════════════════════════════════════════════
           
           const preset = getVibePreset();
+          const backKey = `${fixture.dmxAddress}-back`;
+          let targetIntensity = 0;
           
           if (isMelodyDominant || isRealSilence) {
-            intensity = 0;
+            targetIntensity = 0;
           } else if (rawTreble > preset.backParGate) {
-            // VIBE-AWARE: Gate y Gain del preset (Latino ya incluye x1.2 boost)
-            const rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain);
+            // VIBE-AWARE: Gate y Gain del preset (Latino ya incluye boost)
+            let rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain);
+            
+            // WAVE 114: VISUAL HEADROOM - Techo de intensidad por vibe
+            rawIntensity = Math.min(preset.backParMax, rawIntensity);
+            
+            // WAVE 114: CROSS-INHIBITION INVERSA - Si bass domina, reducir back
+            // Evita que back y front compitan cuando hay kick fuerte
+            if (rawBass > 0.6 && rawTreble < 0.6) {
+              rawIntensity *= 0.3; // Reducir al 30% (back aguanta más)
+            }
+            
             // SOFT KNEE CLIPPER: Eliminar ruido
-            intensity = applySoftKneeClipper(rawIntensity);
-          } else {
-            intensity = 0;
+            targetIntensity = applySoftKneeClipper(rawIntensity);
           }
+          
+          // 🌊 WAVE 109: SHIMMER PHYSICS - Decay intermedio (más cola para platos)
+          // Multiplicamos decaySpeed * 1.5 para obtener decay más lento que Front PARs
+          const shimmerDecaySpeed = Math.min(10, preset.decaySpeed * 1.5);
+          intensity = applyDecayWithPhysics(backKey, targetIntensity, shimmerDecaySpeed, 'PAR');
+          
           fixtureColor = backParColor;
           break;
         }
@@ -926,27 +1044,46 @@ function startMainLoop() {
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
           const floor = preset.moverFloor;
-          const decayFactor = 1 - (0.01 / preset.decaySpeed);
+          
+          // WAVE 110: DYNAMIC MASKING
+          // Si el bajo está golpeando fuerte, subimos el umbral de la melodía
+          // "Si hay mucho ruido, tienes que gritar más para que te vea"
+          // Rango de Masking: 0.0 (Breakdown) a 0.2 (Drop pesado)
+          const bassMasking = Math.min(0.2, rawBass * 0.25);
+          const effectiveThreshold = preset.melodyThreshold + bassMasking;
+          
+          let targetMover = 0;
 
-          if (isMelodyDominant || isRealSilence) {
-            // ATMOS/BREAKDOWN MODE: Floor + melodía
-            if (!isRealSilence) {
-              const targetIntensity = floor + (melodySignal * (1 - floor));
-              intensity = applyDecay(moverKey, targetIntensity, decayFactor);
-            } else {
-              intensity = 0;
-              decayBuffers.set(moverKey, 0);
-            }
+          if (isRealSilence) {
+            // SILENCIO TOTAL: Reset completo
+            targetMover = 0;
+            decayBuffers.set(moverKey, 0);
+          } else if (melodySignal > effectiveThreshold) {
+            // PASÓ EL GATE: Es una melodía real
+            // Normalizamos la entrada restando el umbral para que empiece suave
+            const cleanSignal = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
+            
+            // Aplicar curva (Cuadrática para drops, Lineal para breakdowns)
+            const curve = isMelodyDominant ? 1.0 : 2.0;
+            const curvedSignal = Math.pow(Math.max(0, cleanSignal), curve);
+            
+            // Aplicar Floor del Preset (Chill:0.20, Techno:0, Pop:0.05)
+            targetMover = floor + (curvedSignal * (1 - floor));
           } else {
-            // RHYTHM/DROP MODE: Solo melodía fuerte enciende sobre floor
-            if (melodySignal > preset.melodyThreshold) {
-              const rawIntensity = Math.pow(melodySignal, 1.5);
-              const targetIntensity = Math.max(floor, rawIntensity);
-              intensity = applyDecay(moverKey, applySoftKneeClipper(targetIntensity), decayFactor);
-            } else {
-              intensity = applyDecay(moverKey, floor, decayFactor);
-            }
+            // NO PASÓ EL GATE: Es ruido o reverb
+            // En breakdown mantenemos floor, en drop vamos a negro
+            targetMover = isMelodyDominant ? floor : 0;
           }
+          
+          // WAVE 114: HARDER MOVER GATE (Techno Only)
+          // Si la melodía no destaca un 10% sobre el bajo, apagar movers
+          // Techno es muy kick-heavy, solo queremos melodía REAL
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 1.1) {
+            targetMover = 0;
+          }
+          
+          // WAVE 109+110: INERTIA PHYSICS - Decay lento como humo flotante
+          intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
           fixtureColor = secondary;
           break;
         }
@@ -960,26 +1097,35 @@ function startMainLoop() {
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
           const floor = preset.moverFloor;
-          const decayFactor = 1 - (0.01 / preset.decaySpeed);
+          
+          // WAVE 110: DYNAMIC MASKING (Stereo Mirror)
+          const bassMasking = Math.min(0.2, rawBass * 0.25);
+          const effectiveThreshold = preset.melodyThreshold + bassMasking;
+          
+          let targetMover = 0;
 
-          if (isMelodyDominant || isRealSilence) {
-            if (!isRealSilence) {
-              const targetIntensity = floor + (melodySignal * (1 - floor));
-              intensity = applyDecay(moverKey, targetIntensity, decayFactor);
-            } else {
-              intensity = 0;
-              decayBuffers.set(moverKey, 0);
-            }
+          if (isRealSilence) {
+            targetMover = 0;
+            decayBuffers.set(moverKey, 0);
+          } else if (melodySignal > effectiveThreshold) {
+            const cleanSignal = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
+            const curve = isMelodyDominant ? 1.0 : 2.0;
+            const curvedSignal = Math.pow(Math.max(0, cleanSignal), curve);
+            targetMover = floor + (curvedSignal * (1 - floor));
           } else {
-            if (melodySignal > preset.melodyThreshold) {
-              const rawIntensity = Math.pow(melodySignal, 1.5);
-              const targetIntensity = Math.max(floor, rawIntensity);
-              intensity = applyDecay(moverKey, applySoftKneeClipper(targetIntensity), decayFactor);
-            } else {
-              intensity = applyDecay(moverKey, floor, decayFactor);
-            }
+            targetMover = isMelodyDominant ? floor : 0;
           }
-          // 🌴 STEREO MIRROR - Right usa AMBIENT
+          
+          // WAVE 114: HARDER MOVER GATE (Techno Only)
+          // Si la melodía no destaca un 10% sobre el bajo, apagar movers
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 1.1) {
+            targetMover = 0;
+          }
+          
+          // WAVE 109+110: INERTIA PHYSICS - Decay lento como humo flotante
+          intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+          
+          // STEREO MIRROR - Right usa AMBIENT
           fixtureColor = ambient;
           break;
         }
@@ -1691,28 +1837,38 @@ ipcMain.handle('selene:force-mutate', () => {
 ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
   console.log(`[Main] 🎛️ VIBE CHANGE REQUEST: ${vibeId}`)
   
-  // 🏛️ WAVE 107: Actualizar preset de reactividad según vibe
-  // Mapeo de vibeId del frontend a presets del motor
+  // 🏛️ WAVE 112: VIBE IDENTITY SYNC FIX - Mapeo corregido
+  // Alinear IDs del frontend con claves de VIBE_PRESETS
   const vibeToPreset: Record<string, string> = {
     'techno-club': 'techno-club',
     'techno': 'techno-club',
     'minimal-techno': 'techno-club',
-    'latino-reggaeton': 'latino-reggaeton',
-    'reggaeton': 'latino-reggaeton',
-    'cumbia': 'latino-reggaeton',
-    'salsa': 'latino-reggaeton',
-    'latin': 'latino-reggaeton',
-    'dubstep-edm': 'dubstep-edm',
-    'dubstep': 'dubstep-edm',
-    'edm': 'dubstep-edm',
-    'bass-house': 'dubstep-edm',
-    'chill-lounge': 'chill-lounge',
+    // 💃 LATINO → fiesta-latina
+    'fiesta-latina': 'fiesta-latina',      // ✅ Identidad directa
+    'latino-reggaeton': 'fiesta-latina',
+    'reggaeton': 'fiesta-latina',
+    'cumbia': 'fiesta-latina',
+    'salsa': 'fiesta-latina',
+    'latin': 'fiesta-latina',
+    // 🎸 DUBSTEP/EDM → pop-rock (Alto Contraste)
+    'pop-rock': 'pop-rock',               // ✅ Identidad directa
+    'dubstep-edm': 'pop-rock',
+    'dubstep': 'pop-rock',
+    'edm': 'pop-rock',
+    'bass-house': 'pop-rock',
+    // 🍹 CHILL → chill-lounge
+    'chill-lounge': 'chill-lounge',       // ✅ Ya estaba
     'chill': 'chill-lounge',
     'lounge': 'chill-lounge',
     'ambient': 'chill-lounge',
   };
   currentVibePreset = vibeToPreset[vibeId] || 'techno-club';
-  console.log(`[Main] 🏛️ W107 PRESET: ${vibeId} → ${currentVibePreset}`)
+  
+  // 🔍 WAVE 112: Debug log para confirmar sincronización
+  console.log(`[Main] �️ W112 VIBE SYNC: "${vibeId}" → Preset: "${currentVibePreset}"`)
+  const preset = getVibePreset(currentVibePreset);
+  console.log(`[Main] 🎯 PHYSICS ACTIVE: ${preset.name} | Gate:${preset.parGate} Gain:${preset.parGain}x`)
+
   
   // Get Trinity orchestrator for worker communication
   let trinity: ReturnType<typeof getTrinity> | null = null

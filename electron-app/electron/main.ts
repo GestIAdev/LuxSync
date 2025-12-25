@@ -487,19 +487,19 @@ interface VibeConstraints {
 
 const VIBE_PRESETS: Record<string, VibeConstraints> = {
   // ═══════════════════════════════════════════════════════════════════════
-  // 🏭 TECHNO CLUB - Industrial Standard (DEFAULT) - WAVE 113+114
+  // 🏭 TECHNO CLUB - Industrial Standard (DEFAULT) - WAVE 113→115
   // ═══════════════════════════════════════════════════════════════════════
-  // Hard Techno, Dubstep, música comprimida. Golpes potentes y oscuridad total.
+  // Hard Techno, Dubstep, Noise. Golpes potentes + sintes agresivos.
   'techno-club': {
     name: 'Techno/Default',
     parGate: 0.05,           // W113: Sensibilidad máxima
     parGain: 6.0,            // W113: Golpe visual fuerte
-    parMax: 0.78,            // 🔥 W114: HEADROOM - Techo 78% para dejar espacio al Snare
+    parMax: 0.78,            // W114: HEADROOM - Techo 78% para dejar espacio al Snare
     backParGate: 0.12,       // W113: Más reactivo
     backParGain: 5.0,        // W113: Hi-hats potentes
     backParMax: 1.0,         // W114: El Snare tiene permiso para cegar
     moverFloor: 0.0,         // Sin suelo (oscuridad total en drops)
-    melodyThreshold: 0.35,   // 🔥 W114: Subido de 0.25 → Gate más duro para móviles
+    melodyThreshold: 0.25,   // W115: Restaurado (0.35 mataba Dubstep)
     decaySpeed: 2,           // Rápido (Cuchillo)
     hardClipThreshold: 0.12, // W113: Menos recorte
   },
@@ -825,6 +825,11 @@ function startMainLoop() {
     // 📦 Obtener constraints del vibe actual
     const constraints = VIBE_PRESETS[currentVibePreset] || VIBE_PRESETS['techno-club'];
     
+    // 🔍 WAVE 116: VIBE AUDIT - Verificar mapping
+    if (Math.random() < 0.001) {
+      console.log(`[VIBE_AUDIT] currentVibePreset:'${currentVibePreset}' | parMax:${constraints.parMax} | backParMax:${constraints.backParMax} | melodyThreshold:${constraints.melodyThreshold}`);
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // FASE 1: GATEKEEPER (Juez de Silencio)
     // ═══════════════════════════════════════════════════════════════════════
@@ -966,23 +971,29 @@ function startMainLoop() {
           } else if (bassPulse > preset.parGate) {
             // VIBE-AWARE: Gate y Gain del preset activo
             let rawIntensity = Math.min(1, (bassPulse - preset.parGate) * preset.parGain);
+            const beforeParMax = rawIntensity; // 🔍 WAVE 116: DIAGNOSTIC
             
-            // WAVE 114: VISUAL HEADROOM - Techo de intensidad por vibe
+            // WAVE 114→115: VISUAL HEADROOM - Techo de intensidad por vibe
             // Techno: 78% max para dejar espacio al snare/hat
+            // WAVE 115: Se eliminó cross-inhibition (mataba tracks densos)
             rawIntensity = Math.min(preset.parMax, rawIntensity);
-            
-            // WAVE 114: CROSS-INHIBITION - Si treble domina, reducir front
-            // Evita que front y back compitan cuando hay snare/hat fuerte
-            if (rawTreble > 0.6 && rawBass < 0.6) {
-              rawIntensity *= 0.2; // Reducir al 20%
-            }
             
             // SOFT KNEE CLIPPER: Eliminar ruido
             targetIntensity = applySoftKneeClipper(rawIntensity);
+            
+            // 🔍 WAVE 116: ACOPLAMIENTO AUDIT - Log cada ~30 frames si hay diferencia significativa
+            if (Math.random() < 0.033 && beforeParMax > 0.8) {
+              console.log(`[PAR_AUDIT] Pulse:${bassPulse.toFixed(2)} | Before:${beforeParMax.toFixed(2)} | After parMax(${preset.parMax}):${rawIntensity.toFixed(2)} | After Clip:${targetIntensity.toFixed(2)} | Vibe:${currentVibePreset}`);
+            }
           }
           
           // 🌊 WAVE 109: FLASH PHYSICS - Decay rápido tipo estroboscopio
           intensity = applyDecayWithPhysics(parKey, targetIntensity, preset.decaySpeed, 'PAR');
+          
+          // 🔍 WAVE 116: Post-Physics Audit - Ver si decay respeta parMax
+          if (Math.random() < 0.033 && intensity > 0.79) {
+            console.log(`[PAR_PHYSICS] Target:${targetIntensity.toFixed(2)} → Final:${intensity.toFixed(2)} | DecaySpeed:${preset.decaySpeed} | Key:${parKey}`);
+          }
           
           fixtureColor = color;
           break;
@@ -1009,14 +1020,9 @@ function startMainLoop() {
             // VIBE-AWARE: Gate y Gain del preset (Latino ya incluye boost)
             let rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain);
             
-            // WAVE 114: VISUAL HEADROOM - Techo de intensidad por vibe
+            // WAVE 114→115: VISUAL HEADROOM - Techo de intensidad por vibe
+            // WAVE 115: Se eliminó cross-inhibition (mataba snares en Dubstep)
             rawIntensity = Math.min(preset.backParMax, rawIntensity);
-            
-            // WAVE 114: CROSS-INHIBITION INVERSA - Si bass domina, reducir back
-            // Evita que back y front compitan cuando hay kick fuerte
-            if (rawBass > 0.6 && rawTreble < 0.6) {
-              rawIntensity *= 0.3; // Reducir al 30% (back aguanta más)
-            }
             
             // SOFT KNEE CLIPPER: Eliminar ruido
             targetIntensity = applySoftKneeClipper(rawIntensity);
@@ -1075,10 +1081,10 @@ function startMainLoop() {
             targetMover = isMelodyDominant ? floor : 0;
           }
           
-          // WAVE 114: HARDER MOVER GATE (Techno Only)
-          // Si la melodía no destaca un 10% sobre el bajo, apagar movers
-          // Techno es muy kick-heavy, solo queremos melodía REAL
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 1.1) {
+          // WAVE 115: RELAXED MOVER GATE (Techno Only)
+          // Relajado de 1.1 a 0.7 - Solo matar si bajo es MUY dominante
+          // Permite que sintes agresivos de Dubstep/Noise pasen
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.7) {
             targetMover = 0;
           }
           
@@ -1116,9 +1122,9 @@ function startMainLoop() {
             targetMover = isMelodyDominant ? floor : 0;
           }
           
-          // WAVE 114: HARDER MOVER GATE (Techno Only)
-          // Si la melodía no destaca un 10% sobre el bajo, apagar movers
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 1.1) {
+          // WAVE 115: RELAXED MOVER GATE (Techno Only)
+          // Relajado de 1.1 a 0.7 - Solo matar si bajo es MUY dominante
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.7) {
             targetMover = 0;
           }
           

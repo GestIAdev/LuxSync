@@ -25,7 +25,7 @@ interface VibeConstraints {
 }
 
 const VIBE_PRESETS: Record<string, VibeConstraints> = {
-  // 🔥 WAVE 113: Techno con esteroides + WAVE 114: Visual Headroom
+  // 🔥 WAVE 113-115: Techno refinado (sin cross-inhibition, gate relajado)
   'techno-club': {
     name: 'TechnoClub',
     parGate: 0.05,           // W113: Bajado de 0.15
@@ -35,7 +35,7 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     backParGain: 5.0,        // W113: Subido de 4.0
     backParMax: 1.0,         // W114: Back sin límite
     moverFloor: 0.0,
-    melodyThreshold: 0.35,   // W114: Harder gate para Techno
+    melodyThreshold: 0.25,   // W115: Restaurado (0.35 era muy restrictivo)
     decaySpeed: 2,
     hardClipThreshold: 0.12, // W113: Bajado de 0.15
   },

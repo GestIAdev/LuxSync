@@ -501,7 +501,7 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     moverFloor: 0.0,         // Sin suelo (oscuridad total en drops)
     melodyThreshold: 0.25,   // W115: Restaurado (0.35 mataba Dubstep)
     decaySpeed: 2,           // Rápido (Cuchillo)
-    hardClipThreshold: 0.12, // W113: Menos recorte
+    hardClipThreshold: 0.15, // WAVE 118: Zero Tolerance - subido de 0.12 para eliminar 12% fantasma
   },
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -630,6 +630,17 @@ const physicsState: ZoneState = { frontIntensity: 0, backIntensity: 0, moverInte
 
 // Buffers de decay por fixture individual (para fixtures múltiples)
 const decayBuffers = new Map<string, number>();
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 119: MOVER HYSTERESIS STATE
+// ═══════════════════════════════════════════════════════════════════════
+// Estado persistente para histéresis de movers.
+// ON threshold: 0.35 (cuesta encender - evita ruido)
+// OFF threshold: 0.10 (cuesta apagar - mantiene beam)
+// ═══════════════════════════════════════════════════════════════════════
+const moverHysteresisState = new Map<string, boolean>();
+const MOVER_ON_THRESHOLD = 0.35;  // Necesita energía fuerte para encender
+const MOVER_OFF_THRESHOLD = 0.10; // Se mantiene hasta que la energía muera
 
 /**
  * WAVE 109: Asymmetric Physics Engine
@@ -840,6 +851,23 @@ function startMainLoop() {
     const isGlobalBlackout = totalEnergy < 0.15;
     
     // ═══════════════════════════════════════════════════════════════════════
+    // 🏛️ WAVE 119: VANTA BLACK - AGC TRAP (Noise Floor Killer)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Diagnóstico: El AGC amplifica el ruido de fondo (siseo) x6-10x en silencios.
+    // Esto genera señal "falsa" que mantiene fixtures encendidas.
+    // Solución: Si la señal CRUDA (pre-AGC) es baja, ignoramos todo.
+    // "Si tienes que gritar para que se te oiga... es que estás oyendo ruido. CÁLLATE."
+    // ═══════════════════════════════════════════════════════════════════════
+    const RAW_SILENCE_THRESHOLD = 0.15;
+    const isAGCTrap = rawBass < RAW_SILENCE_THRESHOLD && rawMid < RAW_SILENCE_THRESHOLD;
+    const vantaBlackDimmer = isAGCTrap ? 0.0 : 1.0;
+    
+    // Debug: Ver cuando el AGC Trap se activa
+    if (isAGCTrap && Math.random() < 0.01) {
+      console.log(`[VANTA_BLACK] ⬛ AGC TRAP ACTIVE | Raw[B:${rawBass.toFixed(2)} M:${rawMid.toFixed(2)}] < ${RAW_SILENCE_THRESHOLD}`);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // FASE 2: ROUTER (Clasificador de Contexto)
     // ═══════════════════════════════════════════════════════════════════════
     const melodySum = rawMid + rawTreble;
@@ -856,6 +884,21 @@ function startMainLoop() {
     if (bassPulse < 0) bassPulse = 0;
     
     const melodySignal = Math.max(normMid, normTreble);
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎛️ WAVE 117.1: VIRTUAL CROSSOVER - Treble Pulse Detection (FIXED)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Problema WAVE 117: trebleFloor usaba avgNormEnergy (~0.95) → treblePulse siempre 0
+    // Solución: Usar floor FIJO de 0.15 para agudos (snare típico: 0.20-0.35)
+    // ═══════════════════════════════════════════════════════════════════════
+    const trebleFloor = 0.15; // Floor fijo - snares típicos están en 0.20-0.35
+    let treblePulse = rawTreble - trebleFloor;
+    if (treblePulse < 0) treblePulse = 0;
+    
+    // 🔍 WAVE 117.1: CROSSOVER AUDIT - Log más frecuente para debug
+    if (Math.random() < 0.01 && rawTreble > 0.15) {
+      console.log(`[CROSSOVER] RawTreble:${rawTreble.toFixed(2)} | TreblePulse:${treblePulse.toFixed(2)} | Floor:${trebleFloor}`);
+    }
     
     // Log periódico para debug (cada ~5 segundos)
     if (Math.random() < 0.003) {
@@ -966,24 +1009,51 @@ function startMainLoop() {
           let targetIntensity = 0;
 
           // 1. VOCAL LOCK: Si melodia domina, PARs apagados
-          if (isMelodyDominant || isRealSilence) {
+          // 🎛️ WAVE 117: KICK GUARD - Sidechain Visual
+          // Problema: El cuerpo del Snare activa el Bass → Front Pars encienden juntos
+          // Solución: Si detectamos treblePulse fuerte, reducimos sensibilidad del bass
+          // Esto crea el "Hueco Negro" en el bombo cuando suena la caja
+          let isolationFactor = 1.0;
+          if (treblePulse > 0.2) {
+            // Hay un golpe de caja fuerte (Snare Snap)
+            // Suprimimos el bajo un 60% para aislar visualmente
+            isolationFactor = 0.4;
+          } else if (treblePulse > 0.1) {
+            // Hi-hat o transiente menor - supresión parcial
+            isolationFactor = 0.7;
+          }
+          
+          // 🎛️ WAVE 117.2: INDEPENDENCIA DE ZONAS
+          // FRONT_PARS responden SOLO al bass, no a melodía
+          // Antes: if (isMelodyDominant || isRealSilence) → apagaba pars cuando había melodía
+          // Ahora: Solo apagar en silencio real, NO por melodía
+          if (isRealSilence) {
             targetIntensity = 0;
           } else if (bassPulse > preset.parGate) {
             // VIBE-AWARE: Gate y Gain del preset activo
-            let rawIntensity = Math.min(1, (bassPulse - preset.parGate) * preset.parGain);
+            // 🎛️ WAVE 117: Aplicamos isolationFactor al pulso
+            const isolatedPulse = bassPulse * isolationFactor;
+            let rawIntensity = Math.min(1, (isolatedPulse - preset.parGate) * preset.parGain);
             const beforeParMax = rawIntensity; // 🔍 WAVE 116: DIAGNOSTIC
             
             // WAVE 114→115: VISUAL HEADROOM - Techo de intensidad por vibe
             // Techno: 78% max para dejar espacio al snare/hat
-            // WAVE 115: Se eliminó cross-inhibition (mataba tracks densos)
             rawIntensity = Math.min(preset.parMax, rawIntensity);
             
             // SOFT KNEE CLIPPER: Eliminar ruido
             targetIntensity = applySoftKneeClipper(rawIntensity);
             
-            // 🔍 WAVE 116: ACOPLAMIENTO AUDIT - Log cada ~30 frames si hay diferencia significativa
-            if (Math.random() < 0.033 && beforeParMax > 0.8) {
-              console.log(`[PAR_AUDIT] Pulse:${bassPulse.toFixed(2)} | Before:${beforeParMax.toFixed(2)} | After parMax(${preset.parMax}):${rawIntensity.toFixed(2)} | After Clip:${targetIntensity.toFixed(2)} | Vibe:${currentVibePreset}`);
+            // 🏛️ WAVE 119: VANTA BLACK - HARD FLOOR PARA FRONT PARS
+            // "Si es menos del 20%, es basura. A NEGRO."
+            // Esto elimina el residuo del 12% que quedaba con el clipper
+            if (targetIntensity < 0.20) targetIntensity = 0;
+            
+            // 🏛️ WAVE 119: AGC TRAP - Aplicar dimmer global si hay silencio real
+            targetIntensity *= vantaBlackDimmer;
+            
+            // 🔍 WAVE 116+117: ACOPLAMIENTO AUDIT - Log cada ~30 frames
+            if (Math.random() < 0.033 && beforeParMax > 0.5) {
+              console.log(`[PAR_AUDIT] Pulse:${bassPulse.toFixed(2)} | Iso:${isolationFactor.toFixed(1)} | IsoPulse:${isolatedPulse.toFixed(2)} | Before:${beforeParMax.toFixed(2)} | After:${rawIntensity.toFixed(2)} | Vibe:${currentVibePreset}`);
             }
           }
           
@@ -1001,31 +1071,51 @@ function startMainLoop() {
 
         case 'BACK_PARS': {
           // ═══════════════════════════════════════════════════════════════════
-          // 🌊 WAVE 109: ASYMMETRIC DECAY - BACK PARS (Shimmer Physics)
+          // �️ WAVE 117: VIRTUAL CROSSOVER - BACK PARS (SNARE SNAP)
           // ═══════════════════════════════════════════════════════════════════
-          // ARQUITECTURA: Motor Global + Vibe Constraints + Asymmetric Physics
+          // ARQUITECTURA: Motor Global + Vibe Constraints + Snare Snap Mode
+          // CAMBIO CLAVE: Responder a treblePulse (percusivo) NO rawTreble (ambiental)
           // 1. Gate/Gain dinámicos según Vibe Preset
-          // 2. Shimmer Physics: Decay intermedio (más cola para platos/hi-hats)
-          // 3. Soft Knee Clipper: elimina basura
-          // 4. Latino Snare Trap: backParGain incluye x1.35 multiplicador
+          // 2. SNARE SNAP: treblePulse captura transitorios, ignora rides/noise
+          // 3. Shimmer Physics: Decay intermedio (más cola para platos/hi-hats)
+          // 4. Soft Knee Clipper: elimina basura
           // ═══════════════════════════════════════════════════════════════════
           
           const preset = getVibePreset();
           const backKey = `${fixture.dmxAddress}-back`;
           let targetIntensity = 0;
           
-          if (isMelodyDominant || isRealSilence) {
+          // 🎛️ WAVE 117.2: INDEPENDENCIA DE ZONAS
+          // BACK_PARS responden SOLO al treble, no a melodía
+          if (isRealSilence) {
             targetIntensity = 0;
-          } else if (rawTreble > preset.backParGate) {
-            // VIBE-AWARE: Gate y Gain del preset (Latino ya incluye boost)
-            let rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain);
+          } else {
+            // 🎛️ WAVE 117.1: MODO HÍBRIDO - rawTreble + treblePulse boost
+            // Usar rawTreble como base (garantiza que encienden)
+            // Pero POTENCIAR con treblePulse cuando hay transitorios (snare)
+            const pulseBoost = treblePulse > 0.1 ? 1.3 : 1.0; // +30% en transitorios
             
-            // WAVE 114→115: VISUAL HEADROOM - Techo de intensidad por vibe
-            // WAVE 115: Se eliminó cross-inhibition (mataba snares en Dubstep)
-            rawIntensity = Math.min(preset.backParMax, rawIntensity);
-            
-            // SOFT KNEE CLIPPER: Eliminar ruido
-            targetIntensity = applySoftKneeClipper(rawIntensity);
+            if (rawTreble > preset.backParGate) {
+              let rawIntensity = Math.min(1, (rawTreble - preset.backParGate) * preset.backParGain * pulseBoost);
+              
+              // WAVE 114→115: VISUAL HEADROOM - Techo de intensidad por vibe
+              rawIntensity = Math.min(preset.backParMax, rawIntensity);
+              
+              // SOFT KNEE CLIPPER: Eliminar ruido
+              targetIntensity = applySoftKneeClipper(rawIntensity);
+              
+              // 🏛️ WAVE 119: VANTA BLACK - HARD FLOOR PARA BACK PARS
+              // "Si es menos del 20%, es basura. A NEGRO."
+              if (targetIntensity < 0.20) targetIntensity = 0;
+              
+              // 🏛️ WAVE 119: AGC TRAP - Aplicar dimmer global
+              targetIntensity *= vantaBlackDimmer;
+              
+              // 🔍 WAVE 117.1: BACK PAR AUDIT
+              if (Math.random() < 0.02 && targetIntensity > 0.2) {
+                console.log(`[BACK_PAR] RawT:${rawTreble.toFixed(2)} | Pulse:${treblePulse.toFixed(2)} | Boost:${pulseBoost} | Target:${targetIntensity.toFixed(2)}`);
+              }
+            }
           }
           
           // 🌊 WAVE 109: SHIMMER PHYSICS - Decay intermedio (más cola para platos)
@@ -1039,97 +1129,155 @@ function startMainLoop() {
           
         case 'MOVING_LEFT': {
           // ═══════════════════════════════════════════════════════════════════
-          // � WAVE 107: VIBE-AWARE PIPELINE - MOVING LEFT
+          // � WAVE 119: VANTA BLACK - MOVING LEFT (Hysteresis Engine)
           // ═══════════════════════════════════════════════════════════════════
-          // ARQUITECTURA: Motor Global + Inertia Physics
-          // 1. Floor unificado desde preset (0=oscuro total, 0.20=siempre visible)
+          // ARQUITECTURA: Histeresis + AGC Trap + Inertia Physics
+          // 1. AGC Trap: Si entrada cruda < 0.15, todo a negro
           // 2. decaySpeed: 1=instantáneo, 10=líquido
           // 3. Soft Knee Clipper: elimina parpadeos pequeños
           // ═══════════════════════════════════════════════════════════════════
 
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
-          const floor = preset.moverFloor;
+          const hystKey = `${fixture.dmxAddress}-hyst`;
           
-          // WAVE 110: DYNAMIC MASKING
-          // Si el bajo está golpeando fuerte, subimos el umbral de la melodía
-          // "Si hay mucho ruido, tienes que gritar más para que te vea"
-          // Rango de Masking: 0.0 (Breakdown) a 0.2 (Drop pesado)
-          const bassMasking = Math.min(0.2, rawBass * 0.25);
-          const effectiveThreshold = preset.melodyThreshold + bassMasking;
+          // WAVE 119: Obtener estado de histéresis (false = apagado)
+          const wasOn = moverHysteresisState.get(hystKey) ?? false;
+          
+          // WAVE 119: Calcular señal de melodía LIMPIA
+          // Solo cuenta como melodía si los mids son mayores que el 80% del bass
+          // Esto filtra el "wobble bass" que tiene mids altos pero correlacionados con bass
+          const isRealMelody = rawMid > rawBass * 0.8;
+          const melodyVal = isRealMelody ? melodySignal : 0;
           
           let targetMover = 0;
 
-          if (isRealSilence) {
-            // SILENCIO TOTAL: Reset completo
+          if (isRealSilence || isAGCTrap) {
+            // SILENCIO TOTAL o AGC TRAP: Reset completo
             targetMover = 0;
+            moverHysteresisState.set(hystKey, false);
             decayBuffers.set(moverKey, 0);
-          } else if (melodySignal > effectiveThreshold) {
-            // PASÓ EL GATE: Es una melodía real
-            // Normalizamos la entrada restando el umbral para que empiece suave
-            const cleanSignal = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
-            
-            // Aplicar curva (Cuadrática para drops, Lineal para breakdowns)
-            const curve = isMelodyDominant ? 1.0 : 2.0;
-            const curvedSignal = Math.pow(Math.max(0, cleanSignal), curve);
-            
-            // Aplicar Floor del Preset (Chill:0.20, Techno:0, Pop:0.05)
-            targetMover = floor + (curvedSignal * (1 - floor));
+          } else if (!wasOn) {
+            // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
+            if (melodyVal > MOVER_ON_THRESHOLD) {
+              moverHysteresisState.set(hystKey, true);
+              targetMover = melodyVal;
+            } else {
+              targetMover = 0; // SE QUEDA EN NEGRO - No hay suficiente melodía
+            }
           } else {
-            // NO PASÓ EL GATE: Es ruido o reverb
-            // En breakdown mantenemos floor, en drop vamos a negro
-            targetMover = isMelodyDominant ? floor : 0;
+            // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía MUERA
+            if (melodyVal > MOVER_OFF_THRESHOLD) {
+              targetMover = melodyVal; // Sigue encendido
+            } else {
+              moverHysteresisState.set(hystKey, false);
+              targetMover = 0; // APAGADO TOTAL - La melodía murió
+            }
           }
           
-          // WAVE 115: RELAXED MOVER GATE (Techno Only)
-          // Relajado de 1.1 a 0.7 - Solo matar si bajo es MUY dominante
-          // Permite que sintes agresivos de Dubstep/Noise pasen
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.7) {
+          // WAVE 115→117.1: BASS DOMINANCE GATE (Backup)
+          // Si el bajo domina CLARAMENTE, los movers se apagan
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.5) {
             targetMover = 0;
+            moverHysteresisState.set(hystKey, false);
           }
           
-          // WAVE 109+110: INERTIA PHYSICS - Decay lento como humo flotante
-          intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+          // 🎛️ WAVE 118: ZERO TOLERANCE CLIPPER PARA MOVERS
+          // HALLAZGO: Los movers NO tenían softKneeClipper → 12% fantasma pasaba
+          // Ahora aplicamos el mismo clipper que los pars
+          targetMover = applySoftKneeClipper(targetMover);
+          
+          // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO
+          // Problema: Decay de movers es 4x más lento que pars (1.3s vs 0.33s)
+          // Los movers "flotan" encendidos aunque deberían apagarse
+          // Solución: Si target=0, forzar apagado más agresivo
+          if (targetMover === 0) {
+            // Apagado acelerado: decay 3x más rápido cuando target es 0
+            const fastDecay = preset.decaySpeed / 3;
+            intensity = applyDecayWithPhysics(moverKey, 0, fastDecay, 'MOVER');
+            
+            // Si el decay ya está muy bajo, cortar a negro total
+            if (intensity < 0.08) {
+              intensity = 0;
+              decayBuffers.set(moverKey, 0); // Reset buffer
+            }
+          } else {
+            // WAVE 109+110: INERTIA PHYSICS normal cuando hay señal
+            intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+          }
+          
+          // 🏛️ WAVE 119: VANTA BLACK - AGC TRAP para Movers
+          intensity *= vantaBlackDimmer;
+          
           fixtureColor = secondary;
           break;
         }
         case 'MOVING_RIGHT': {
           // ═══════════════════════════════════════════════════════════════════
-          // � WAVE 107: VIBE-AWARE PIPELINE - MOVING RIGHT (Stereo)
+          // � WAVE 119: VANTA BLACK - MOVING RIGHT (Stereo Mirror)
           // ═══════════════════════════════════════════════════════════════════
           // Mismo cálculo que MOVING_LEFT, color AMBIENT para depth estéreo
           // ═══════════════════════════════════════════════════════════════════
           
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
-          const floor = preset.moverFloor;
+          const hystKey = `${fixture.dmxAddress}-hyst-R`;
           
-          // WAVE 110: DYNAMIC MASKING (Stereo Mirror)
-          const bassMasking = Math.min(0.2, rawBass * 0.25);
-          const effectiveThreshold = preset.melodyThreshold + bassMasking;
+          // WAVE 119: Obtener estado de histéresis (false = apagado)
+          const wasOn = moverHysteresisState.get(hystKey) ?? false;
+          
+          // WAVE 119: Calcular señal de melodía LIMPIA (Stereo Mirror)
+          const isRealMelody = rawMid > rawBass * 0.8;
+          const melodyVal = isRealMelody ? melodySignal : 0;
           
           let targetMover = 0;
 
-          if (isRealSilence) {
+          if (isRealSilence || isAGCTrap) {
+            // SILENCIO TOTAL o AGC TRAP: Reset completo
             targetMover = 0;
+            moverHysteresisState.set(hystKey, false);
             decayBuffers.set(moverKey, 0);
-          } else if (melodySignal > effectiveThreshold) {
-            const cleanSignal = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
-            const curve = isMelodyDominant ? 1.0 : 2.0;
-            const curvedSignal = Math.pow(Math.max(0, cleanSignal), curve);
-            targetMover = floor + (curvedSignal * (1 - floor));
+          } else if (!wasOn) {
+            // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
+            if (melodyVal > MOVER_ON_THRESHOLD) {
+              moverHysteresisState.set(hystKey, true);
+              targetMover = melodyVal;
+            } else {
+              targetMover = 0; // SE QUEDA EN NEGRO
+            }
           } else {
-            targetMover = isMelodyDominant ? floor : 0;
+            // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía MUERA
+            if (melodyVal > MOVER_OFF_THRESHOLD) {
+              targetMover = melodyVal; // Sigue encendido
+            } else {
+              moverHysteresisState.set(hystKey, false);
+              targetMover = 0; // APAGADO TOTAL
+            }
           }
           
-          // WAVE 115: RELAXED MOVER GATE (Techno Only)
-          // Relajado de 1.1 a 0.7 - Solo matar si bajo es MUY dominante
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.7) {
+          // WAVE 115→117.1: BASS DOMINANCE GATE (Stereo Mirror)
+          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.5) {
             targetMover = 0;
+            moverHysteresisState.set(hystKey, false);
           }
           
-          // WAVE 109+110: INERTIA PHYSICS - Decay lento como humo flotante
-          intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+          // 🎛️ WAVE 118: ZERO TOLERANCE CLIPPER PARA MOVERS (Stereo Mirror)
+          targetMover = applySoftKneeClipper(targetMover);
+          
+          // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO (Stereo Mirror)
+          if (targetMover === 0) {
+            const fastDecay = preset.decaySpeed / 3;
+            intensity = applyDecayWithPhysics(moverKey, 0, fastDecay, 'MOVER');
+            if (intensity < 0.08) {
+              intensity = 0;
+              decayBuffers.set(moverKey, 0);
+            }
+          } else {
+            intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+          }
+          
+          // 🏛️ WAVE 119: VANTA BLACK - AGC TRAP para Movers (Stereo Mirror)
+          intensity *= vantaBlackDimmer;
           
           // STEREO MIRROR - Right usa AMBIENT
           fixtureColor = ambient;
@@ -2720,3 +2868,6 @@ universalDMX.on('error', (error: string) => {
 })
 
 console.log('LuxSync Main Process Started')
+
+
+

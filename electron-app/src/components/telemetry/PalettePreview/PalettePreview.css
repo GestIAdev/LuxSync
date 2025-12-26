@@ -45,6 +45,13 @@
   font-size: 0.65rem; font-weight: 700; color: #ff0055; letter-spacing: 0px;
 }
 
+/* Override LuxCoreView.css global .core-title */
+.chromatic-core-panel .core-title {
+  font-size: 0.65rem !important;
+  letter-spacing: 0px !important;
+  gap: 8px !important;
+}
+
 .header-right {
   display: flex;
   align-items: center;

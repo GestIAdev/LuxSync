@@ -499,7 +499,7 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     backParGain: 5.0,        // W113: Hi-hats potentes
     backParMax: 1.0,         // W114: El Snare tiene permiso para cegar
     moverFloor: 0.0,         // Sin suelo (oscuridad total en drops)
-    melodyThreshold: 0.25,   // W115: Restaurado (0.35 mataba Dubstep)
+    melodyThreshold: 0.30,   // WAVE 120: Subido de 0.25 (ahora sin masking)
     decaySpeed: 2,           // Rápido (Cuchillo)
     hardClipThreshold: 0.15, // WAVE 118: Zero Tolerance - subido de 0.12 para eliminar 12% fantasma
   },
@@ -636,11 +636,110 @@ const decayBuffers = new Map<string, number>();
 // ═══════════════════════════════════════════════════════════════════════
 // Estado persistente para histéresis de movers.
 // ON threshold: 0.35 (cuesta encender - evita ruido)
-// OFF threshold: 0.10 (cuesta apagar - mantiene beam)
+// OFF threshold: 0.20 (WAVE 120.1: Subido para compensar Vocal Lift boost)
 // ═══════════════════════════════════════════════════════════════════════
 const moverHysteresisState = new Map<string, boolean>();
-const MOVER_ON_THRESHOLD = 0.35;  // Necesita energía fuerte para encender
-const MOVER_OFF_THRESHOLD = 0.10; // Se mantiene hasta que la energía muera
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 120.2: LOGIC UNIFICATION - calculateMoverTarget
+// ═══════════════════════════════════════════════════════════════════════
+// Función matemática PURA para calcular intensidad de movers.
+// UNIFICA la lógica de LEFT y RIGHT para evitar divergencias.
+// NO toca color ni movimiento - solo calcula intensidad y estado.
+// ═══════════════════════════════════════════════════════════════════════
+interface MoverCalcResult {
+  intensity: number;
+  newState: boolean;
+}
+
+function calculateMoverTarget(
+  preset: { name: string; melodyThreshold: number },
+  rawMid: number,
+  rawBass: number,
+  rawTreble: number,
+  moverState: boolean,
+  isRealSilence: boolean,
+  isAGCTrap: boolean
+): MoverCalcResult {
+  
+  // A. SILENCIO TOTAL o AGC TRAP: Reset completo
+  if (isRealSilence || isAGCTrap) {
+    return { intensity: 0, newState: false };
+  }
+  
+  // B. DETECTAR SI ES GÉNERO DENSO (Techno/Latino/Pop)
+  const isHighDensity = preset.name.includes('Techno') || 
+                        preset.name.includes('Latino') ||
+                        preset.name.includes('Pop');
+  
+  // C. MASKING (Solo para Dubstep/Chill)
+  let bassMasking = 0;
+  if (!isHighDensity) {
+    bassMasking = Math.min(0.2, rawBass * 0.25);
+  }
+  
+  // D. SEÑAL MELÓDICA (Sin Boost x1.2 - causaba bloqueo en Left)
+  const melodySignal = Math.max(rawMid, rawTreble * 0.8);
+  
+  // E. UMBRALES DINÁMICOS
+  const effectiveThreshold = preset.melodyThreshold + bassMasking;
+  const ON_THRESHOLD = effectiveThreshold + 0.10;  // Cuesta encender
+  const OFF_THRESHOLD = effectiveThreshold - 0.05; // Cuesta apagar
+  
+  // F. BASS DOMINANCE GATE (Solo para géneros con silencios)
+  if (!isHighDensity && rawMid < rawBass * 0.5) {
+    return { intensity: 0, newState: false };
+  }
+  
+  let target = 0;
+  let nextState = moverState;
+  
+  // G. LÓGICA DE HISTÉRESIS UNIFICADA
+  if (!moverState) {
+    // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
+    if (melodySignal > ON_THRESHOLD) {
+      nextState = true;
+      target = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
+    }
+  } else {
+    // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía muera
+    if (melodySignal > OFF_THRESHOLD) {
+      target = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold);
+    } else {
+      nextState = false;
+      target = 0;
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏛️ WAVE 121: THE FINAL POLISH - SOLIDITY ENHANCEMENT
+  // ═══════════════════════════════════════════════════════════════════════
+  // Objetivo: Beams sólidos y confiados (no difusos)
+  // 1. Si < 20%: Negro puro (matar basura)
+  // 2. Si >= 20%: Confidence Boost 15% + Solid Floor 35%
+  // ═══════════════════════════════════════════════════════════════════════
+  if (target > 0 && target < 0.20) {
+    target = 0; // Si es basura, mátalo (Mantiene negros puros)
+  }
+  
+  if (target >= 0.20) {
+    // 1. CONFIDENCE BOOST: Si decidió encenderse, dale un 15% extra de energía
+    target = target * 1.15;
+    
+    // 2. SOLID FLOOR: Asegurar que nunca brille menos del 35%
+    // Esto elimina el aspecto "difuminado" o "tímido"
+    target = Math.max(0.35, target);
+  }
+  
+  // I. CLIPPER FINAL
+  target = applySoftKneeClipper(target);
+  
+  // J. NAN PROTECTION Y CLAMP
+  return { 
+    intensity: Math.min(1, Math.max(0, target || 0)), 
+    newState: nextState 
+  };
+}
 
 /**
  * WAVE 109: Asymmetric Physics Engine
@@ -907,16 +1006,8 @@ function startMainLoop() {
     // ═══════════════════════════════════════════════════════════════════════
     
     const fixtureStates = patchedFixtures.map(fixture => {
-      const color = state.colors?.primary || { r: 0, g: 0, b: 0 }
-      const secondary = state.colors?.secondary || { r: 0, g: 0, b: 0 }
-      const accent = state.colors?.accent || color // Para MOVING_LEFT
-      // � WAVE 86: Ambient para MOVING_RIGHT (Stereo Mirror)
-      const ambient = state.colors?.ambient || secondary
-      
       // ═══════════════════════════════════════════════════════════════════════
-      // 🌴 WAVE 86: 5-COLOR STAGE MAPPING - BackPar Analogous Twist
-      // Crear variante del primary con +25° de hue para profundidad en BACK_PARS
-      // Esto evita la saturación monocromática Front/Back
+      // �️ WAVE 123: FUNCIONES DE CONVERSIÓN HSL ↔ RGB
       // ═══════════════════════════════════════════════════════════════════════
       const rgbToHsl = (r: number, g: number, b: number): { h: number; s: number; l: number } => {
         r /= 255; g /= 255; b /= 255;
@@ -958,17 +1049,105 @@ function startMainLoop() {
         return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
       };
       
-      // Crear backParColor: Primary + 25° twist (Rojo→Naranja, Naranja→Amarillo)
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🏛️ WAVE 123.2: TECHNO PRISM - Derivación Geométrica desde Primary (SSOT)
+      // ═══════════════════════════════════════════════════════════════════════
+      // Referencia: BLUEPRINT-SELENE-CHROMATIC-FORMULA.md
+      // El primaryColor del Engine es la Source of Truth (Key musical).
+      // Derivamos matemáticamente: TRIÁDICO (+120°) y COMPLEMENTARIO (+180°)
+      // ═══════════════════════════════════════════════════════════════════════
+      const preset = getVibePreset();
+      
+      // 1. VERDAD MUSICAL: Primary desde el Engine (state.colors)
+      let color: { r: number; g: number; b: number } = state.colors?.primary || { r: 0, g: 0, b: 0 };
+      let secondary: { r: number; g: number; b: number };
+      let ambient: { r: number; g: number; b: number };
+      let backParColor: { r: number; g: number; b: number };
+      
+      // 2. Obtener baseHue desde el Primary del Engine
       const primaryHsl = rgbToHsl(color.r, color.g, color.b);
-      const backParHsl = { 
-        h: (primaryHsl.h + 25) % 360, 
-        s: primaryHsl.s, 
-        l: Math.max(primaryHsl.l, 40) // Boost si muy oscuro
-      };
-      const backParColor = hslToRgb(backParHsl.h, backParHsl.s, backParHsl.l);
+      let baseHue = primaryHsl.h;
+      
+      if (preset.name.includes('Techno')) {
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔷 WAVE 125.1: TECHNO PRISM - FULL SPECTRUM (Cold Neon)
+        // ═══════════════════════════════════════════════════════════════════
+        // Objetivo: Paleta 100% procedural, 100% fría/neón para Techno.
+        // Corrección: Incluir Mover L en derivación matemática (no amarillos).
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // A. THE COLD DICTATOR: Enfriar baseHue si está en zona cálida
+        const normalizedHue = (baseHue + 360) % 360;
+        const isWarm = (normalizedHue > 330 || normalizedHue < 90);
+        
+        if (isWarm) {
+          // Invertir hacia espectro frío (Cyan/Azul/Morado)
+          baseHue = (normalizedHue + 180) % 360;
+        }
+        
+        // B. SANITIZE HELPER: Anti-Caca / Anti-Pollo
+        const sanitizeTechnoColor = (hue: number): number => {
+          // Si cae en Naranja/Amarillo/VerdePantano (30° a 100°) → Magenta Neón
+          if (hue > 30 && hue < 100) {
+            return 320; // Forzar a Magenta Neón
+          }
+          return hue;
+        };
+        
+        // C. DERIVACIÓN GEOMÉTRICA COMPLETA
+        
+        // FRONT_PARS (Base Fría) - Color ya enfriado
+        color = hslToRgb(baseHue, 100, 50);
+        
+        // MOVER L (Melodía) -> ANÁLOGO +60° (vecino frío)
+        let secondaryHue = (baseHue + 60) % 360;
+        secondaryHue = sanitizeTechnoColor(secondaryHue);
+        secondary = hslToRgb(secondaryHue, 100, 50);
+        
+        // MOVER R (Ambiente) -> TRIÁDICO +120° (diferencia máxima)
+        let ambientHue = (baseHue + 120) % 360;
+        ambientHue = sanitizeTechnoColor(ambientHue);
+        ambient = hslToRgb(ambientHue, 100, 50);
+        
+        // BACK_PARS (Acento) -> COMPLEMENTARIO +180°
+        const accentHue = (baseHue + 180) % 360;
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏛️ WAVE 124: STROBE TAMING - Flash solo en Snare explosivo
+        // ═══════════════════════════════════════════════════════════════════
+        const isSnareExplosion = treblePulse > 0.6;
+        
+        if (isSnareExplosion) {
+          // ⚪ WHITE FLASH: Solo en golpe fuerte de snare/clap
+          backParColor = { r: 255, g: 255, b: 255 };
+        } else {
+          // 🎨 COLOR DE ACENTO: Complementario el 95% del tiempo
+          backParColor = hslToRgb(accentHue, 100, 60);
+        }
+        
+        // Debug log cada ~10 segundos
+        if (Math.random() < 0.003) {
+          console.log(`[WAVE125.1] 🔷 COLD PRISM | Base:${baseHue.toFixed(0)}° | Secondary:${secondaryHue}° | Ambient:${ambientHue}° | Accent:${accentHue}° | Warm:${isWarm} | Strobe:${isSnareExplosion}`);
+        }
+      } else {
+        // Otros presets: Usar colores de la UI con fallbacks
+        secondary = state.colors?.secondary || color;
+        ambient = state.colors?.ambient || secondary;
+        
+        // WAVE 86 Legacy: BackPar = Primary + 25° hue twist
+        const backParHsl = { 
+          h: (primaryHsl.h + 25) % 360, 
+          s: primaryHsl.s, 
+          l: Math.max(primaryHsl.l, 40)
+        };
+        backParColor = hslToRgb(backParHsl.h, backParHsl.s, backParHsl.l);
+      }
+      
+      // Accent para strobes (fallback a color primario)
+      const accent = state.colors?.accent || color;
       // ═══════════════════════════════════════════════════════════════════════
       
-      // � WAVE 39.5: Silenciado DEBUG-RGB (log periódico)
+      // 🔇 WAVE 39.5: Silenciado DEBUG-RGB (log periódico)
       // if (Math.random() < 0.005 && fixture.zone?.includes('MOVING')) {
       //   console.log(`[DEBUG-RGB] ${fixture.zone}:`, 
       //     `Primary=[${color.r},${color.g},${color.b}]`,
@@ -1129,77 +1308,44 @@ function startMainLoop() {
           
         case 'MOVING_LEFT': {
           // ═══════════════════════════════════════════════════════════════════
-          // � WAVE 119: VANTA BLACK - MOVING LEFT (Hysteresis Engine)
+          // 🏛️ WAVE 120.2: LOGIC UNIFICATION - MOVING_LEFT
           // ═══════════════════════════════════════════════════════════════════
-          // ARQUITECTURA: Histeresis + AGC Trap + Inertia Physics
-          // 1. AGC Trap: Si entrada cruda < 0.15, todo a negro
-          // 2. decaySpeed: 1=instantáneo, 10=líquido
-          // 3. Soft Knee Clipper: elimina parpadeos pequeños
+          // Usa calculateMoverTarget para unificar lógica con MOVING_RIGHT
+          // Solo mantiene su identidad: Color SECONDARY, física propia
           // ═══════════════════════════════════════════════════════════════════
 
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
           const hystKey = `${fixture.dmxAddress}-hyst`;
           
-          // WAVE 119: Obtener estado de histéresis (false = apagado)
-          const wasOn = moverHysteresisState.get(hystKey) ?? false;
+          // WAVE 120.2: Obtener estado anterior
+          const wasOnL = moverHysteresisState.get(hystKey) ?? false;
           
-          // WAVE 119: Calcular señal de melodía LIMPIA
-          // Solo cuenta como melodía si los mids son mayores que el 80% del bass
-          // Esto filtra el "wobble bass" que tiene mids altos pero correlacionados con bass
-          const isRealMelody = rawMid > rawBass * 0.8;
-          const melodyVal = isRealMelody ? melodySignal : 0;
+          // WAVE 120.2: CÁLCULO UNIFICADO (misma matemática que RIGHT)
+          const calcL = calculateMoverTarget(
+            preset,
+            rawMid,
+            rawBass,
+            rawTreble,
+            wasOnL,
+            isRealSilence,
+            isAGCTrap
+          );
           
-          let targetMover = 0;
-
-          if (isRealSilence || isAGCTrap) {
-            // SILENCIO TOTAL o AGC TRAP: Reset completo
-            targetMover = 0;
-            moverHysteresisState.set(hystKey, false);
-            decayBuffers.set(moverKey, 0);
-          } else if (!wasOn) {
-            // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
-            if (melodyVal > MOVER_ON_THRESHOLD) {
-              moverHysteresisState.set(hystKey, true);
-              targetMover = melodyVal;
-            } else {
-              targetMover = 0; // SE QUEDA EN NEGRO - No hay suficiente melodía
-            }
-          } else {
-            // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía MUERA
-            if (melodyVal > MOVER_OFF_THRESHOLD) {
-              targetMover = melodyVal; // Sigue encendido
-            } else {
-              moverHysteresisState.set(hystKey, false);
-              targetMover = 0; // APAGADO TOTAL - La melodía murió
-            }
-          }
+          // WAVE 120.2: Actualizar estado de histéresis
+          moverHysteresisState.set(hystKey, calcL.newState);
+          let targetMover = calcL.intensity;
           
-          // WAVE 115→117.1: BASS DOMINANCE GATE (Backup)
-          // Si el bajo domina CLARAMENTE, los movers se apagan
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.5) {
-            targetMover = 0;
-            moverHysteresisState.set(hystKey, false);
-          }
-          
-          // 🎛️ WAVE 118: ZERO TOLERANCE CLIPPER PARA MOVERS
-          // HALLAZGO: Los movers NO tenían softKneeClipper → 12% fantasma pasaba
-          // Ahora aplicamos el mismo clipper que los pars
-          targetMover = applySoftKneeClipper(targetMover);
+          // WAVE 120.2: Aplicar Vanta Black dimmer
+          targetMover *= vantaBlackDimmer;
           
           // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO
-          // Problema: Decay de movers es 4x más lento que pars (1.3s vs 0.33s)
-          // Los movers "flotan" encendidos aunque deberían apagarse
-          // Solución: Si target=0, forzar apagado más agresivo
           if (targetMover === 0) {
-            // Apagado acelerado: decay 3x más rápido cuando target es 0
             const fastDecay = preset.decaySpeed / 3;
             intensity = applyDecayWithPhysics(moverKey, 0, fastDecay, 'MOVER');
-            
-            // Si el decay ya está muy bajo, cortar a negro total
             if (intensity < 0.08) {
               intensity = 0;
-              decayBuffers.set(moverKey, 0); // Reset buffer
+              decayBuffers.set(moverKey, 0);
             }
           } else {
             // WAVE 109+110: INERTIA PHYSICS normal cuando hay señal
@@ -1214,55 +1360,36 @@ function startMainLoop() {
         }
         case 'MOVING_RIGHT': {
           // ═══════════════════════════════════════════════════════════════════
-          // � WAVE 119: VANTA BLACK - MOVING RIGHT (Stereo Mirror)
+          // 🏛️ WAVE 120.2: LOGIC UNIFICATION - MOVING_RIGHT
           // ═══════════════════════════════════════════════════════════════════
-          // Mismo cálculo que MOVING_LEFT, color AMBIENT para depth estéreo
+          // Usa calculateMoverTarget para unificar lógica con MOVING_LEFT
+          // Solo mantiene su identidad: Color AMBIENT, física propia
           // ═══════════════════════════════════════════════════════════════════
-          
+
           const preset = getVibePreset();
           const moverKey = `${fixture.dmxAddress}-mover`;
           const hystKey = `${fixture.dmxAddress}-hyst-R`;
           
-          // WAVE 119: Obtener estado de histéresis (false = apagado)
-          const wasOn = moverHysteresisState.get(hystKey) ?? false;
+          // WAVE 120.2: Obtener estado anterior
+          const wasOnR = moverHysteresisState.get(hystKey) ?? false;
           
-          // WAVE 119: Calcular señal de melodía LIMPIA (Stereo Mirror)
-          const isRealMelody = rawMid > rawBass * 0.8;
-          const melodyVal = isRealMelody ? melodySignal : 0;
+          // WAVE 120.2: CÁLCULO UNIFICADO (misma matemática que LEFT)
+          const calcR = calculateMoverTarget(
+            preset,
+            rawMid,
+            rawBass,
+            rawTreble,
+            wasOnR,
+            isRealSilence,
+            isAGCTrap
+          );
           
-          let targetMover = 0;
-
-          if (isRealSilence || isAGCTrap) {
-            // SILENCIO TOTAL o AGC TRAP: Reset completo
-            targetMover = 0;
-            moverHysteresisState.set(hystKey, false);
-            decayBuffers.set(moverKey, 0);
-          } else if (!wasOn) {
-            // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
-            if (melodyVal > MOVER_ON_THRESHOLD) {
-              moverHysteresisState.set(hystKey, true);
-              targetMover = melodyVal;
-            } else {
-              targetMover = 0; // SE QUEDA EN NEGRO
-            }
-          } else {
-            // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía MUERA
-            if (melodyVal > MOVER_OFF_THRESHOLD) {
-              targetMover = melodyVal; // Sigue encendido
-            } else {
-              moverHysteresisState.set(hystKey, false);
-              targetMover = 0; // APAGADO TOTAL
-            }
-          }
+          // WAVE 120.2: Actualizar estado de histéresis
+          moverHysteresisState.set(hystKey, calcR.newState);
+          let targetMover = calcR.intensity;
           
-          // WAVE 115→117.1: BASS DOMINANCE GATE (Stereo Mirror)
-          if (currentVibePreset === 'techno-club' && rawMid < rawBass * 0.5) {
-            targetMover = 0;
-            moverHysteresisState.set(hystKey, false);
-          }
-          
-          // 🎛️ WAVE 118: ZERO TOLERANCE CLIPPER PARA MOVERS (Stereo Mirror)
-          targetMover = applySoftKneeClipper(targetMover);
+          // WAVE 120.2: Aplicar Vanta Black dimmer
+          targetMover *= vantaBlackDimmer;
           
           // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO (Stereo Mirror)
           if (targetMover === 0) {
@@ -1275,9 +1402,6 @@ function startMainLoop() {
           } else {
             intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
           }
-          
-          // 🏛️ WAVE 119: VANTA BLACK - AGC TRAP para Movers (Stereo Mirror)
-          intensity *= vantaBlackDimmer;
           
           // STEREO MIRROR - Right usa AMBIENT
           fixtureColor = ambient;

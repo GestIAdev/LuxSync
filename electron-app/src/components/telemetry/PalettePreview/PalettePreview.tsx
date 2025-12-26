@@ -40,10 +40,7 @@ const PalettePreview: React.FC = () => {
             <span className="status-dot"></span>
             <span>CHROMA CORE</span>
         </div>
-        <div className="header-right">
-            <span className="meta-tag">{dna?.key || '--'}</span>
-            <span className="meta-tag">{Math.round(dna?.rhythm?.bpm || 0)} BPM</span>
-        </div>
+        <span className="meta-tag">{dna?.key || '--'} {Math.round(dna?.rhythm?.bpm || 0)}</span>
       </div>
 
       {/* STRATEGY DISPLAY (RECUPERADO) */}

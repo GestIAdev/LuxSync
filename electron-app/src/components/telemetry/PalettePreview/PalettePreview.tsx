@@ -38,7 +38,7 @@ const PalettePreview: React.FC = () => {
       <div className="core-header">
         <div className="core-title">
             <span className="status-dot"></span>
-            <span>CHROMATIC CORE</span>
+            <span>CHROMA CORE</span>
         </div>
         <div className="header-right">
             <span className="meta-tag">{dna?.key || '--'}</span>

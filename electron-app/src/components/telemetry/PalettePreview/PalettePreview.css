@@ -42,13 +42,13 @@
 
 .core-title {
   display: flex; align-items: center; gap: 8px;
-  font-size: 0.65rem; font-weight: 700; color: #ff0055; letter-spacing: 0px;
+  font-size: 0.75rem; font-weight: 700; color: #ff0055; letter-spacing: 1px;
 }
 
 /* Override LuxCoreView.css global .core-title */
 .chromatic-core-panel .core-title {
-  font-size: 0.65rem !important;
-  letter-spacing: 0px !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 1px !important;
   gap: 8px !important;
 }
 

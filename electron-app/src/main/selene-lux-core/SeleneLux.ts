@@ -214,7 +214,7 @@ export class SeleneLux extends EventEmitter {
 
   // 🏷️ WAVE 134: Helper para generar label visual de la estrategia
   // Traduce la estrategia técnica a un nombre profesional para la UI
-  // 🎸 WAVE 135: Añadido ROCK DYNAMICS para Pop/Rock
+  // �️ WAVE 136: STADIUM SEPARATION para Pop/Rock (upgrade de ROCK DYNAMICS)
   private getStrategyLabel(activeVibe?: string, colorStrategy?: string): string {
     const vibe = (activeVibe ?? '').toLowerCase();
     const strategy = (colorStrategy ?? 'analogous').toLowerCase();
@@ -224,9 +224,9 @@ export class SeleneLux extends EventEmitter {
       return 'TETRADIC PRISM';
     }
     
-    // 🎸 WAVE 135: Pop/Rock Vibes → ROCK DYNAMICS branding
+    // �️ WAVE 136: Pop/Rock Vibes → STADIUM SEPARATION branding
     if (vibe.includes('pop') || vibe.includes('rock')) {
-      return 'ROCK DYNAMICS';
+      return 'STADIUM CONTRAST';
     }
     
     // Fiesta/Latin Vibes → TROPICAL branding
@@ -1743,11 +1743,12 @@ export class SeleneLux extends EventEmitter {
       // 🔺 FIN WAVE 133 🔺
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🎸 WAVE 135: THE ROCK STAGE - PORTNOY PROTOCOL
+      // �️ WAVE 136: THE STADIUM SEPARATION (FIXING ROCK)
       // ═══════════════════════════════════════════════════════════════════════
-      // Contexto: Pop/Rock requiere detección de ritmo basada en instrumentos
-      // acústicos (Caja en Mids, Bombo en Bass) y paleta de colores "Stage"
-      // (Cálidos/Sólidos) como PAR64 clásico.
+      // Diagnóstico: WAVE 135 tenía umbral demasiado bajo (0.20) causando strobe
+      // constante en mezclas densas (Dream Theater). Paleta era monótona (análoga).
+      // Fix 1: Umbrales duplicados (SNARE 0.45, KICK 0.40) para picos reales.
+      // Fix 2: Paleta de Alto Contraste: Complementario (+180°) + Triada (+120°).
       // AISLAMIENTO TOTAL: Este bloque es excluyente con Techno Prism.
       // ═══════════════════════════════════════════════════════════════════════
       
@@ -1772,53 +1773,61 @@ export class SeleneLux extends EventEmitter {
           baseHue = 40  // Morado raro → Ámbar/Oro
         }
         
-        // 2. DERIVACIÓN DE PALETA "STAGE"
-        // Primary: Color base filtrado
-        // Secondary: Análogo cercano (+30°) para dar profundidad
-        // Ambient: Igual que secondary para llenar el escenario
-        const primaryHue = baseHue
-        const secondaryHue = (baseHue + 30) % 360
-        const ambientHue = secondaryHue
+        // 2. PALETA DE ESTADIO DE ALTO CONTRASTE (WAVE 136)
+        // Antes WAVE 135: Análogo (+30°) - Monótono, aburrido.
+        // Ahora WAVE 136: Complementario + Triada para separación épica.
+        const primaryHue = baseHue  // FRONT: Base
         
-        // 3. DETECCIÓN RÍTMICA "PORTNOY" (Analógica)
-        // Usamos MIDS para la Caja (Snare) y BASS para el Bombo (Kick).
-        // NO usamos el 'treblePulse' del Techno.
+        // MOVER L: Complementario (+180°) para contraste máximo (ej: Rojo vs Cyan)
+        const secondaryHue = (baseHue + 180) % 360
+        
+        // MOVER R: Triada (+120°) para dar un tercer color distinto pero armónico
+        const ambientHue = (baseHue + 120) % 360
+        
+        // 3. DETECCIÓN RÍTMICA RECALIBRADA (WAVE 136)
+        // Diagnóstico WAVE 136: Guitarras de Dream Theater sostienen Mids 0.50-0.60.
+        // Necesitamos exigir un PICO real de caja por encima de ese muro de sonido.
         const agcRock = this._agcData
         const normalizedMid = agcRock?.normalizedMid ?? 0.0
         const normalizedBass = agcRock?.normalizedBass ?? 0.0
         
-        // Pulsos relativos al promedio (detectar golpes sobre el ruido base)
-        const avgMid = agcRock?.avgNormEnergy ? agcRock.avgNormEnergy * 0.8 : 0.4
-        const avgBass = agcRock?.avgNormEnergy ? agcRock.avgNormEnergy * 0.9 : 0.4
+        // Pulsos relativos usando avgNormEnergy como proxy (aproximación)
+        const avgEnergy = agcRock?.avgNormEnergy ?? 0.4
+        const avgMid = avgEnergy * 0.8   // Mids tienden a estar un poco más bajos
+        const avgBass = avgEnergy * 0.9  // Bass tiende a estar más alto
         
         const midsPulse = Math.max(0, normalizedMid - avgMid)
         const bassPulse = Math.max(0, normalizedBass - avgBass)
         
-        // Umbrales específicos para mezclas de rock (menos comprimidas que EDM)
-        const SNARE_THRESHOLD = 0.20
-        const KICK_THRESHOLD = 0.25
+        // NUEVOS UMBRALES EXIGENTES (WAVE 136)
+        // Antes WAVE 135: SNARE 0.20, KICK 0.25 (demasiado bajos para prog rock)
+        // Ahora: Exigimos picos reales bien por encima del ruido base
+        const SNARE_THRESHOLD = 0.45  // Era 0.20 - ahora duplicado+
+        const KICK_THRESHOLD = 0.40   // Era 0.25 - subido significativamente
         
         const isSnareHit = (midsPulse > SNARE_THRESHOLD)
         const isKickHit = (bassPulse > KICK_THRESHOLD)
         
-        // 4. LÓGICA DE ACENTO (Back Pars)
-        let accentHue = primaryHue
+        // 4. LÓGICA DE ACENTO (Back Pars) - WAVE 136
+        // Por defecto: Usamos el color COMPLEMENTARIO (secondaryHue) para contraste.
+        // Esto asegura que los Back Pars siempre tengan un color diferente al Front.
+        let accentHue = secondaryHue  // WAVE 136: Default a complementario, no primario
         let accentSat = 100
         let accentLight = 60
         
         if (isSnareHit) {
           // 🥁 CAJA: FLASH TUNGSTENO (Blanco Cálido)
+          // Solo se activa en golpes REALES ahora (threshold 0.45)
           // Hue 40 (Naranja/Amarillo), Sat 20 (Casi blanco), Light 100.
-          // Esto imita un cegador de estadio, no un estrobo LED frío.
           accentHue = 40
           accentSat = 20
           accentLight = 100
         } else if (isKickHit) {
-          // 🦶 BOMBO: GOLPE DE CONTRASTE
-          // El bombo se marca con el color complementario (+180°)
-          accentHue = (primaryHue + 180) % 360
+          // 🦶 BOMBO: REFUERZO AL PRIMARIO
+          // El bombo golpea con el color base para reforzar el ritmo principal.
+          accentHue = primaryHue
           accentSat = 100
-          accentLight = 60
+          accentLight = 70  // Un poco más brillante que el normal
         }
         
         // 5. COMMIT AL SSOT (HSL → RGB)
@@ -1849,10 +1858,10 @@ export class SeleneLux extends EventEmitter {
         
         // Debug log cada ~10 segundos
         if (Math.random() < 0.003) {
-          console.log(`[WAVE135] 🎸 ROCK STAGE | Base:${baseHue.toFixed(0)}° | Mid:${normalizedMid.toFixed(2)} | Bass:${normalizedBass.toFixed(2)} | Snare:${isSnareHit} | Kick:${isKickHit}`)
+          console.log(`[WAVE136] �️ STADIUM SEPARATION | Base:${baseHue.toFixed(0)}° | Secondary:${secondaryHue}° | Ambient:${ambientHue}° | MidPulse:${midsPulse.toFixed(2)} | BassPulse:${bassPulse.toFixed(2)} | Snare:${isSnareHit} | Kick:${isKickHit}`)
         }
       }
-      // 🔺 FIN WAVE 135 🔺
+      // 🔺 FIN WAVE 136 🔺
     }
     
     // 💫 WAVE 47.2: Log actualizado para verificar mood & section desde spread directo

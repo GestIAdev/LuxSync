@@ -36,9 +36,9 @@ const PalettePreview: React.FC = () => {
       
       {/* HEADER: TIPO MILITAR */}
       <div className="core-header">
-        <div className="header-left">
+        <div className="core-title">
             <span className="status-dot"></span>
-            <span className="panel-title">CHROMATIC CORE</span>
+            <span>CHROMATIC CORE</span>
         </div>
         <div className="header-right">
             <span className="meta-tag">{dna?.key || '--'}</span>

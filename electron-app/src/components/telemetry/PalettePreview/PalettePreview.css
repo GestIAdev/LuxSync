@@ -40,6 +40,17 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.core-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ff0055;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
 .header-left {
   display: flex;
   align-items: center;
@@ -62,13 +73,11 @@
 }
 
 .panel-title {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #ff0055;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  line-height: 1.2;
-  max-width: 100px;
 }
 
 .header-right {

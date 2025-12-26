@@ -1,10 +1,10 @@
 /**
  * ---------------------------------------------------------------------------
  * ?? SELENE LUX - CLASE MAESTRA
- * "La Consciencia Lumínica que Orquesta Todo"
+ * "La Consciencia Lumï¿½nica que Orquesta Todo"
  * ---------------------------------------------------------------------------
  * 
- * WAVE-8 FASE 8: Integración Nuclear
+ * WAVE-8 FASE 8: Integraciï¿½n Nuclear
  * 
  * El flujo ahora es:
  *   AUDIO ? BRAIN ? HARD      // ??? WAVE 24.5.1: ANTI-FLICKER OUTPUT GUARD
@@ -16,16 +16,16 @@
         if (this.frameCount % 120 === 0) {
           console.warn(`[SeleneLux] ?? NaN detected! Holding previous color. E=${metrics.energy.toFixed(4)}`)
         }
-        // ANTI-FLICKER: Mantener el último color válido en vez de apagar
+        // ANTI-FLICKER: Mantener el ï¿½ltimo color vï¿½lido en vez de apagar
         freshRgbValues.primary = this.lastColors.primary
         freshRgbValues.secondary = this.lastColors.secondary
         freshRgbValues.accent = this.lastColors.accent
         freshRgbValues.ambient = this.lastColors.ambient
       }l SeleneMusicalBrain unifica:
- * - Análisis musical contextual
+ * - Anï¿½lisis musical contextual
  * - Memoria de patrones exitosos
- * - Generación procedural de paletas
- * - Mapeo música ? luz
+ * - Generaciï¿½n procedural de paletas
+ * - Mapeo mï¿½sica ? luz
  * 
  * Ya no usamos engines separados de forma manual.
  * El Brain orquesta todo internamente.
@@ -54,8 +54,8 @@ import {
   type BrainConfig,
 } from './engines/musical'
 import type { AudioAnalysis } from './engines/musical/types'
-// ?? WAVE 24.4: Motor de Color Procedural + Helper de conversión HSL?RGB
-// ?? WAVE 24.9: Añadir rgbToHsl para sincronizar Flow Mode palette
+// ?? WAVE 24.4: Motor de Color Procedural + Helper de conversiï¿½n HSL?RGB
+// ?? WAVE 24.9: Aï¿½adir rgbToHsl para sincronizar Flow Mode palette
 // ?? WAVE 37.0: Import SelenePalette type para Brain Transplant
 // ?? WAVE 49: Import SeleneColorInterpolator para transiciones suaves
 import { SeleneColorEngine, SeleneColorInterpolator, paletteToRgb, rgbToHsl, type SelenePalette } from './engines/visual/SeleneColorEngine'
@@ -65,7 +65,7 @@ import {
   getTelemetryCollector,
   type SeleneTelemetryPacket,
 } from './engines/telemetry/SeleneTelemetryCollector'
-// ?? WAVE 37.0: Meta-Consciencia Avanzada (Resurrección de Motores)
+// ?? WAVE 37.0: Meta-Consciencia Avanzada (Resurrecciï¿½n de Motores)
 import { 
   SeleneLuxConscious,
   type SeleneLuxConsciousState,
@@ -106,7 +106,7 @@ export interface SeleneConfig {
     driver: string
     frameRate: number
   }
-  // ?? WAVE-8: Configuración del Brain
+  // ?? WAVE-8: Configuraciï¿½n del Brain
   brain?: Partial<BrainConfig>
 }
 
@@ -118,7 +118,7 @@ export interface SeleneState {
   beat: BeatState
   consciousness: ConsciousnessState
   stats: { frames: number; decisions: number; uptime: number }
-  // ?? WAVE-8: Información del Brain
+  // ?? WAVE-8: Informaciï¿½n del Brain
   brainOutput?: BrainOutput | null
   brainMode?: 'reactive' | 'intelligent'
   paletteSource?: 'memory' | 'procedural' | 'fallback' | 'legacy'
@@ -166,9 +166,9 @@ export class SeleneLux extends EventEmitter {
   private consciousness: ConsciousnessState
   
   // ?? WAVE 24.11: ARCHITECTURAL FIX - Initialize with VALID colors (not null/black)
-  // Previene blackout anómalo en primer frame cuando ColorEngine aún no generó output
+  // Previene blackout anï¿½malo en primer frame cuando ColorEngine aï¿½n no generï¿½ output
   private lastColors: ColorOutput = {
-    primary: { r: 150, g: 50, b: 50 },    // Rojo cálido (Fuego default)
+    primary: { r: 150, g: 50, b: 50 },    // Rojo cï¿½lido (Fuego default)
     secondary: { r: 200, g: 100, b: 50 }, // Naranja
     accent: { r: 255, g: 150, b: 0 },     // Amarillo
     ambient: { r: 255, g: 100, b: 50 },   // Naranja brillante
@@ -180,7 +180,7 @@ export class SeleneLux extends EventEmitter {
   private colorInterpolator: SeleneColorInterpolator = new SeleneColorInterpolator()
   
   // ?? WAVE 69.5: RGB INTERPOLATOR for Worker data (anti-strobing)
-  // Interpolación simple RGB con morphing suave
+  // Interpolaciï¿½n simple RGB con morphing suave
   private workerColorState = {
     current: null as { r: number; g: number; b: number }[] | null,
     target: null as { r: number; g: number; b: number }[] | null,
@@ -188,8 +188,8 @@ export class SeleneLux extends EventEmitter {
     speed: 0.02,  // ~50 frames = ~1.6s @ 30fps
   }
   
-  // ??? WAVE 72: SINGLE SOURCE OF TRUTH - Worker está activo si recibimos datos recientes
-  // Si el Worker envía datos dentro de los últimos 2 segundos, consideramos que está activo
+  // ??? WAVE 72: SINGLE SOURCE OF TRUTH - Worker estï¿½ activo si recibimos datos recientes
+  // Si el Worker envï¿½a datos dentro de los ï¿½ltimos 2 segundos, consideramos que estï¿½ activo
   private isWorkerActive(): boolean {
     if (!this.lastTrinityData?.timestamp) return false;
     const age = Date.now() - this.lastTrinityData.timestamp;
@@ -204,16 +204,16 @@ export class SeleneLux extends EventEmitter {
     if (id.includes('latin') || id.includes('fiesta') || id.includes('pop') || id.includes('cumbia') || id.includes('reggaeton')) {
       return 'BRIGHT';
     }
-    // Vibes electrónicos oscuros ? NEUTRAL (permite DARK pero no fuerza)
+    // Vibes electrï¿½nicos oscuros ? NEUTRAL (permite DARK pero no fuerza)
     if (id.includes('techno') || id.includes('minimal') || id.includes('industrial')) {
       return 'NEUTRAL'; // Techno puede ser DARK o NEUTRAL
     }
-    // Default: NEUTRAL es seguro para la mayoría
+    // Default: NEUTRAL es seguro para la mayorï¿½a
     return 'NEUTRAL';
   }
 
   // ??? WAVE 134: Helper para generar label visual de la estrategia
-  // Traduce la estrategia técnica a un nombre profesional para la UI
+  // Traduce la estrategia tï¿½cnica a un nombre profesional para la UI
   // ?? WAVE 136: STADIUM SEPARATION para Pop/Rock (upgrade de ROCK DYNAMICS)
   private getStrategyLabel(activeVibe?: string, colorStrategy?: string): string {
     const vibe = (activeVibe ?? '').toLowerCase();
@@ -255,11 +255,11 @@ export class SeleneLux extends EventEmitter {
   private lastBrainOutput: BrainOutput | null = null
   
   // ?? WAVE 46.0 ? 47.2: DATA BRIDGE - Recibe datos de Trinity Worker
-  // El Worker (GAMMA) tiene el género, key, syncopation real
+  // El Worker (GAMMA) tiene el gï¿½nero, key, syncopation real
   // Este es el puente que conecta Worker ? getBroadcast() ? UI
   // WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
-  // ?? WAVE 57.5: Añadido drop (DROP STATE MACHINE)
-  // ??? WAVE 66: Añadido activeVibe y vibeTransitioning
+  // ?? WAVE 57.5: Aï¿½adido drop (DROP STATE MACHINE)
+  // ??? WAVE 66: Aï¿½adido activeVibe y vibeTransitioning
   private lastTrinityData: {
     macroGenre?: string
     key?: string | null
@@ -288,7 +288,7 @@ export class SeleneLux extends EventEmitter {
   } | null = null
   
   // ??? WAVE 94.2: AGC normalized audio para Relative Gates
-  // Acceso público para que main.ts pueda usarlo en el loop de fixtures
+  // Acceso pï¿½blico para que main.ts pueda usarlo en el loop de fixtures
   private _agcData: {
     normalizedBass: number
     normalizedMid: number
@@ -306,7 +306,7 @@ export class SeleneLux extends EventEmitter {
     return this._agcData
   }
   
-  // ?? WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker
+  // ?? WAVE 47.3: SECTION STABILITY - Histï¿½resis para evitar flicker
   private lastStableSection: { type: string; timestamp: number; confidence: number } = {
     type: 'unknown',
     timestamp: Date.now(),
@@ -436,11 +436,11 @@ export class SeleneLux extends EventEmitter {
     
     this.brain.on('pattern-learned', (data) => {
       this.consciousness.totalPatternsDiscovered++
-      this.consciousness.lastInsight = `Aprendí un nuevo patrón: ${data.patternHash?.slice(0, 8)}`
+      this.consciousness.lastInsight = `Aprendï¿½ un nuevo patrï¿½n: ${data.patternHash?.slice(0, 8)}`
       this.emit('pattern-learned', data)
       
       // ? WAVE 25.7: Emit to dedicated log channel
-      this.emitLog('Brain', `Nuevo patrón aprendido: ${data.emotionalTone}`, { 
+      this.emitLog('Brain', `Nuevo patrï¿½n aprendido: ${data.emotionalTone}`, { 
         patternHash: data.patternHash, 
         beauty: data.avgBeautyScore 
       })
@@ -448,7 +448,7 @@ export class SeleneLux extends EventEmitter {
       // ??? WAVE-14.5: Log to telemetry
       this.telemetryCollector.addLog(
         'MEMORY',
-        `?? Nuevo patrón aprendido: ${data.emotionalTone} (Beauty: ${(data.avgBeautyScore * 100).toFixed(0)}%)`,
+        `?? Nuevo patrï¿½n aprendido: ${data.emotionalTone} (Beauty: ${(data.avgBeautyScore * 100).toFixed(0)}%)`,
         'success',
         { patternHash: data.patternHash, beauty: data.avgBeautyScore }
       )
@@ -474,7 +474,7 @@ export class SeleneLux extends EventEmitter {
       this.emit('section-change', data)
       
       // ? WAVE 25.7: Emit to dedicated log channel
-      this.emitLog('Music', `Nueva sección: ${data.to}`, { 
+      this.emitLog('Music', `Nueva secciï¿½n: ${data.to}`, { 
         from: data.from, 
         confidence: data.confidence 
       })
@@ -482,13 +482,13 @@ export class SeleneLux extends EventEmitter {
       // ??? WAVE-14.5: Log to telemetry
       this.telemetryCollector.addLog(
         'SECTION',
-        `?? Nueva sección: ${data.to} (Confianza: ${(data.confidence * 100).toFixed(0)}%)`,
+        `?? Nueva secciï¿½n: ${data.to} (Confianza: ${(data.confidence * 100).toFixed(0)}%)`,
         'info',
         data
       )
     })
     
-    // ?? WAVE-14.5: Capturar generación de paletas
+    // ?? WAVE-14.5: Capturar generaciï¿½n de paletas
     this.brain.on('palette-generated', (data: any) => {
       // ?? WAVE 25.7: Emit to dedicated log channel
       this.emitLog('Visual', `Paleta generada: ${data.source}`, { colors: data.colors?.length || 0 })
@@ -553,18 +553,18 @@ export class SeleneLux extends EventEmitter {
     // -------------------------------------------------------------------------
     // ?? WAVE-8: FLUJO PRINCIPAL - Audio ? Brain ? Hardware
     // ?? WAVE 39.9.3: Agregado guard `this.brain` para prevenir crash
-    // Desde WAVE 39.9.2 useBrain=false, así que este bloque NUNCA se ejecuta
+    // Desde WAVE 39.9.2 useBrain=false, asï¿½ que este bloque NUNCA se ejecuta
     // -------------------------------------------------------------------------
     if (this.useBrain && this.brainInitialized && this.brain) {
       // Convertir AudioMetrics a AudioAnalysis para el Brain
       const audioAnalysis = this.convertToAudioAnalysis(metrics, beatState)
       
-      // 1?? PRIMERO: EJECUTAR EL CEREBRO PARA SABER QUÉ SUENA
-      // Necesitamos el género real antes de calcular el color
+      // 1?? PRIMERO: EJECUTAR EL CEREBRO PARA SABER QUï¿½ SUENA
+      // Necesitamos el gï¿½nero real antes de calcular el color
       const brainOutput = this.brain.process(audioAnalysis)
       this.lastBrainOutput = brainOutput
       
-      // ?? WAVE 24.3: EXTRAER GÉNERO REAL (Desde el contexto del cerebro)
+      // ?? WAVE 24.3: EXTRAER Gï¿½NERO REAL (Desde el contexto del cerebro)
       // Usamos context.genre.primary que es donde vive realmente
       const realGenre = brainOutput.context?.genre?.primary || 
                         (brainOutput.debugInfo as any)?.macroGenre || 
@@ -578,11 +578,11 @@ export class SeleneLux extends EventEmitter {
       //   ? SeleneColorEngine intenta acceder a propiedades que no existen
       // PROBLEMA 2: SeleneColorEngine espera energy como NUMBER (top-level), no como objeto
       //   ? audioAnalysis.energy puede ser objeto {current, peak, ...}
-      //   ? Matemáticas usan energy directamente ? undefined ? NaN
+      //   ? Matemï¿½ticas usan energy directamente ? undefined ? NaN
       // PROBLEMA 3: SeleneColorEngine espera genre.primary, no genre.genre
-      //   ? Estructura incorrecta ? no encuentra género ? fallback
-      // SOLUCIÓN: Crear 'safeAnalysis' con estructura correcta + defaults
-      //   ? Inyectar mock data (Wave 8 mínimo)
+      //   ? Estructura incorrecta ? no encuentra gï¿½nero ? fallback
+      // SOLUCIï¿½N: Crear 'safeAnalysis' con estructura correcta + defaults
+      //   ? Inyectar mock data (Wave 8 mï¿½nimo)
       //   ? energy como NUMBER top-level
       //   ? genre.primary en lugar de genre.genre
       //   ? Verificar salida con isInvalid()
@@ -591,7 +591,7 @@ export class SeleneLux extends EventEmitter {
       const safeAnalysis = {
         ...audioAnalysis,
         
-        // ?? FIX CRÍTICO 1: ENERGY DEBE SER NÚMERO (TOP-LEVEL)
+        // ?? FIX CRï¿½TICO 1: ENERGY DEBE SER Nï¿½MERO (TOP-LEVEL)
         // El engine espera .energy como number, no como objeto.
         energy: metrics.energy,
         
@@ -599,7 +599,7 @@ export class SeleneLux extends EventEmitter {
           rhythm: {
             syncopation: 0,
             confidence: 1,
-            // activity no es crítico, syncopation sí
+            // activity no es crï¿½tico, syncopation sï¿½
           },
           harmony: {
             key: brainOutput.context?.harmony?.key || 'C',
@@ -613,7 +613,7 @@ export class SeleneLux extends EventEmitter {
             confidence: 0
           },
           genre: {
-            // ?? FIX CRÍTICO 2: USAR PROPIEDAD 'primary'
+            // ?? FIX CRï¿½TICO 2: USAR PROPIEDAD 'primary'
             primary: realGenre,  // ELECTRONIC_4X4, LATINO_TRADICIONAL, etc.
             confidence: 1
           }
@@ -621,7 +621,7 @@ export class SeleneLux extends EventEmitter {
       }
       
       // ?? WAVE 24.4: GENERAR HSL PRIMERO (Para la UI)
-      // ?? WAVE 37.0: RESPETAR DECISIONES DEL BRAIN - Detener Lobotomía
+      // ?? WAVE 37.0: RESPETAR DECISIONES DEL BRAIN - Detener Lobotomï¿½a
       // Si el Brain tiene una paleta desde memoria (experiencias exitosas),
       // la respetamos en lugar de sobrescribirla con ColorEngine procedural.
       
@@ -645,12 +645,12 @@ export class SeleneLux extends EventEmitter {
       } else {
         // ?? WAVE 49: COLOR INTERPOLATION - Transiciones suaves anti-epilepsia
         // WAVE 55: Usar DROP confirmado (override) en lugar de section bruta
-        // Solo transición rápida si StrategyArbiter confirmó DROP con energía relativa
+        // Solo transiciï¿½n rï¿½pida si StrategyArbiter confirmï¿½ DROP con energï¿½a relativa
         const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
         const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
         const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
         
-        // isDrop = true solo si el StrategyArbiter lo confirmó con energía relativa
+        // isDrop = true solo si el StrategyArbiter lo confirmï¿½ con energï¿½a relativa
         const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
         
         // Usar interpolador en lugar de generar directamente
@@ -659,11 +659,11 @@ export class SeleneLux extends EventEmitter {
       }
       
       // ?? WAVE 24.4: CONVERTIR A RGB (Para los Focos/DMX)
-      // Usamos el helper del motor para obtener los valores físicos
+      // Usamos el helper del motor para obtener los valores fï¿½sicos
       const freshRgbValues = paletteToRgb(finalHslPalette)
       
       // ???? WAVE 24.1: OUTPUT GUARD (Red de Seguridad Final)
-      // Verificamos matemáticamente que no haya NaN. Si hay, fallback a Negro.
+      // Verificamos matemï¿½ticamente que no haya NaN. Si hay, fallback a Negro.
       const isInvalid = (n: number) => !Number.isFinite(n) || isNaN(n)
       
       if (isInvalid(freshRgbValues.primary.r) || isInvalid(freshRgbValues.primary.g)) {
@@ -678,7 +678,7 @@ export class SeleneLux extends EventEmitter {
         freshRgbValues.ambient = safeColor
       }
       
-      // 2. Calcular intensidad (manteniendo lógica existente)
+      // 2. Calcular intensidad (manteniendo lï¿½gica existente)
       const baseIntensity = audioAnalysis.energy.current
       const intensity = Math.min(1, baseIntensity * this.globalIntensity)
       
@@ -701,7 +701,7 @@ export class SeleneLux extends EventEmitter {
         secondary: freshRgbValues.secondary,   // RGB Correcto
         accent: freshRgbValues.accent,         // RGB Correcto
         ambient: freshRgbValues.ambient,       // RGB Correcto
-        intensity: isInvalid(intensity) ? 0 : intensity,  // Protección extra
+        intensity: isInvalid(intensity) ? 0 : intensity,  // Protecciï¿½n extra
         saturation: this.globalSaturation       // State of Truth
       }
       
@@ -710,7 +710,7 @@ export class SeleneLux extends EventEmitter {
       // if (this.frameCount % 100 === 0) {
       //   const hsl = finalHslPalette.primary
       //   const rgb = this.lastColors.primary
-      //   console.log(`[SeleneLux] HSL=${Math.round(hsl.h)}°,${Math.round(hsl.s)}%,${Math.round(hsl.l)}% | RGB=${rgb.r},${rgb.g},${rgb.b}`)
+      //   console.log(`[SeleneLux] HSL=${Math.round(hsl.h)}ï¿½,${Math.round(hsl.s)}%,${Math.round(hsl.l)}% | RGB=${rgb.r},${rgb.g},${rgb.b}`)
       // }
       
       // El movimiento viene de la sugerencia del Brain
@@ -726,13 +726,13 @@ export class SeleneLux extends EventEmitter {
         try {
           this.lastAdvancedState = this.advancedConscious.processAudioFrame(metrics, deltaTime)
           
-          // Enriquecer consciencia básica con insights de la meta-consciencia
+          // Enriquecer consciencia bï¿½sica con insights de la meta-consciencia
           if (this.lastAdvancedState.consciousness.lastInsight) {
             this.consciousness.lastInsight = this.lastAdvancedState.consciousness.lastInsight
           }
           if (this.lastAdvancedState.consciousness.mood) {
             // Sincronizar mood (emotional tone) desde la meta-consciencia
-            // Cast seguro: EmotionalTone tiene más variantes en meta-consciencia
+            // Cast seguro: EmotionalTone tiene mï¿½s variantes en meta-consciencia
             const advMood = this.lastAdvancedState.consciousness.mood as string
             const validMoods = ['peaceful', 'energetic', 'dark', 'playful', 'calm', 'dramatic', 'euphoric', 'melancholic', 'aggressive']
             if (validMoods.includes(advMood)) {
@@ -805,11 +805,11 @@ export class SeleneLux extends EventEmitter {
         }
       }
       
-      // ??? WAVE 23.4: Esta condición nunca se cumple (paletteSource siempre 'procedural' tras lobotomía)
+      // ??? WAVE 23.4: Esta condiciï¿½n nunca se cumple (paletteSource siempre 'procedural' tras lobotomï¿½a)
       // ?? WAVE 24.11: Added 'as any' cast to silence TS warning
       // Mantenido para compatibilidad pero inactivo
       if (brainOutput.mode === 'intelligent' && (brainOutput.paletteSource as any) === 'memory') {
-        this.decisionCount++ // Usó su experiencia (NUNCA ocurre tras WAVE 23.4)
+        this.decisionCount++ // Usï¿½ su experiencia (NUNCA ocurre tras WAVE 23.4)
       }
     } else {
       // ---------------------------------------------------------------------
@@ -818,9 +818,9 @@ export class SeleneLux extends EventEmitter {
       
       // -----------------------------------------------------------------------
       // ??? WAVE 79: THE FINAL EXORCISM - SSOT GUARD PRIMERO
-      // Si el Worker está activo y estamos en modo Selene, NO TOCAR lastColors.
-      // updateFromTrinity() ya los actualiza con interpolación suave.
-      // La generación local SOLO ocurre en modo FLOW o sin Worker.
+      // Si el Worker estï¿½ activo y estamos en modo Selene, NO TOCAR lastColors.
+      // updateFromTrinity() ya los actualiza con interpolaciï¿½n suave.
+      // La generaciï¿½n local SOLO ocurre en modo FLOW o sin Worker.
       // -----------------------------------------------------------------------
       const workerIsActive = this.isWorkerActive()
       const isSeleneMode = this.mode === 'selene' || this.mode === 'locked'
@@ -832,7 +832,7 @@ export class SeleneLux extends EventEmitter {
         // -------------------------------------------------------------------
         // ??? WAVE 79: Worker SSOT - NO GENERAR COLORES LOCALES
         // lastColors fue actualizado por updateFromTrinity() con colores del Worker
-        // Aquí solo construimos metadata para debugging, NUNCA tocamos lastColors
+        // Aquï¿½ solo construimos metadata para debugging, NUNCA tocamos lastColors
         // -------------------------------------------------------------------
         finalPalette = {
           primary: rgbToHsl(this.lastColors.primary),
@@ -852,11 +852,11 @@ export class SeleneLux extends EventEmitter {
         }
       } else {
         // -------------------------------------------------------------------
-        // ?? WAVE 79: FLOW MODE o Worker inactivo ? Generación local permitida
-        // SOLO aquí podemos tocar lastColors porque el Worker NO está activo
+        // ?? WAVE 79: FLOW MODE o Worker inactivo ? Generaciï¿½n local permitida
+        // SOLO aquï¿½ podemos tocar lastColors porque el Worker NO estï¿½ activo
         // -------------------------------------------------------------------
         
-        // ??? WAVE 24.6: Validar métricas antes de generar colores
+        // ??? WAVE 24.6: Validar mï¿½tricas antes de generar colores
         // Si energy/bass/mid/treble son NaN, usamos valores seguros (0)
         const safeMetrics: typeof metrics = {
           ...metrics,
@@ -870,8 +870,8 @@ export class SeleneLux extends EventEmitter {
         const colors = this.colorEngine.generate(safeMetrics, beatState, this.currentPattern)
         
         // -----------------------------------------------------------------------
-        // ??? WAVE 24.8: HARDENING - Sanitize helper para asegurar RGB válido
-        // Doble barrera: Primero sanitize, luego HOLD si aún hay problemas
+        // ??? WAVE 24.8: HARDENING - Sanitize helper para asegurar RGB vï¿½lido
+        // Doble barrera: Primero sanitize, luego HOLD si aï¿½n hay problemas
         // -----------------------------------------------------------------------
         const sanitize = (c: { r: number; g: number; b: number }): { r: number; g: number; b: number } => ({
           r: Number.isFinite(c.r) ? Math.round(Math.max(0, Math.min(255, c.r))) : 0,
@@ -886,7 +886,7 @@ export class SeleneLux extends EventEmitter {
         const sanitizedAmbient = sanitize(colors.ambient)
         
         // ??? WAVE 24.6: Output Guard - Validar colores antes de asignar
-        // Si ColorEngine retorna NaN, mantenemos el último color válido (HOLD pattern)
+        // Si ColorEngine retorna NaN, mantenemos el ï¿½ltimo color vï¿½lido (HOLD pattern)
         const isValidColor = (c: { r: number; g: number; b: number }) => 
           Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b)
         
@@ -895,16 +895,16 @@ export class SeleneLux extends EventEmitter {
         const validAccent = isValidColor(sanitizedAccent)
         const validAmbient = isValidColor(sanitizedAmbient)
         
-        // ?? WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturación)
-        // CRÍTICO: Los sliders del usuario deben afectar el modo FLOW
-        // ??? WAVE 24.6: Solo asignar colores válidos, else HOLD anterior
+        // ?? WAVE 13.6: Aplicar multiplicadores globales (Intensidad y Saturaciï¿½n)
+        // CRï¿½TICO: Los sliders del usuario deben afectar el modo FLOW
+        // ??? WAVE 24.6: Solo asignar colores vï¿½lidos, else HOLD anterior
         // ??? WAVE 24.8: Usar colores sanitizados (clamped 0-255, NaN?0)
         // ?? WAVE 24.11: lastColors SIEMPRE tiene valores (inicializado con Fuego warm colors)
-        // ??? WAVE 79: Este bloque SOLO se ejecuta si Worker NO está activo
+        // ??? WAVE 79: Este bloque SOLO se ejecuta si Worker NO estï¿½ activo
         this.lastColors = {
           primary: validPrimary 
             ? this.applyGlobalMultipliers(sanitizedPrimary) 
-            : this.lastColors.primary,  // HOLD último color válido (NO fallback a negro)
+            : this.lastColors.primary,  // HOLD ï¿½ltimo color vï¿½lido (NO fallback a negro)
           secondary: validSecondary 
             ? this.applyGlobalMultipliers(sanitizedSecondary) 
             : this.lastColors.secondary,
@@ -923,8 +923,8 @@ export class SeleneLux extends EventEmitter {
         }
         
         // -----------------------------------------------------------------------
-        // ?? WAVE 46.5: CHROMATIC UNLOCK - Usar SeleneColorEngine cuando Trinity esté activo
-        // Si tenemos datos del Worker (género, key, etc.), generamos colores procedurales
+        // ?? WAVE 46.5: CHROMATIC UNLOCK - Usar SeleneColorEngine cuando Trinity estï¿½ activo
+        // Si tenemos datos del Worker (gï¿½nero, key, etc.), generamos colores procedurales
         // en lugar de usar Flow fallback. Esto desbloquea paletas reales (Techno = cian/magenta)
         // -----------------------------------------------------------------------
         
@@ -933,7 +933,7 @@ export class SeleneLux extends EventEmitter {
                                    this.lastTrinityData.macroGenre !== 'UNKNOWN'
         
         if (hasTrinityContext) {
-          // Construir análisis seguro para SeleneColorEngine
+          // Construir anï¿½lisis seguro para SeleneColorEngine
           const safeAnalysis = {
             energy: metrics.energy,
             wave8: {
@@ -959,7 +959,7 @@ export class SeleneLux extends EventEmitter {
             }
           }
           
-          // ?? WAVE 49: Generar paleta CON INTERPOLACIÓN
+          // ?? WAVE 49: Generar paleta CON INTERPOLACIï¿½N
           const currentSection = this.lastTrinityData?.sectionDetail?.type || 'unknown'
           const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
           const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
@@ -997,8 +997,8 @@ export class SeleneLux extends EventEmitter {
         }
       }
       
-      // Construir Brain Output (Procedural o Flow según Trinity data)
-      // ?? WAVE 41.0: Agregado context con rhythm.groove.syncopation para telemetría
+      // Construir Brain Output (Procedural o Flow segï¿½n Trinity data)
+      // ?? WAVE 41.0: Agregado context con rhythm.groove.syncopation para telemetrï¿½a
       // ??? WAVE 72: Usar workerIsActive en lugar de hasTrinityContext
       this.lastBrainOutput = {
         timestamp: Date.now(),
@@ -1016,7 +1016,7 @@ export class SeleneLux extends EventEmitter {
           paletteMs: 0,
           mappingMs: 0
         },
-        // ?? WAVE 41.0: Context mínimo para que telemetría no crashee
+        // ?? WAVE 41.0: Context mï¿½nimo para que telemetrï¿½a no crashee
         context: {
           rhythm: {
             bpm: beatState.bpm || 120,
@@ -1026,7 +1026,7 @@ export class SeleneLux extends EventEmitter {
             pattern: { type: 'unknown' as const, confidence: 0 },
             drums: { kick: false, snare: false, hihat: false, clap: false, tom: false },
             groove: {
-              syncopation: 0, // Modo FLOW no tiene sincopación avanzada
+              syncopation: 0, // Modo FLOW no tiene sincopaciï¿½n avanzada
               swingAmount: 0,
               complexity: 'low' as const,
               humanization: 0,
@@ -1074,7 +1074,7 @@ export class SeleneLux extends EventEmitter {
       ? this.convertToAudioAnalysis(metrics, beatState)
       : this.convertToAudioAnalysis(metrics, beatState)
     
-    // ?? WAVE 24: Pasar lastColors para generar FixtureValues en telemetría
+    // ?? WAVE 24: Pasar lastColors para generar FixtureValues en telemetrï¿½a
     const telemetryPacket = this.telemetryCollector.collect(
       audioAnalysis,
       this.lastBrainOutput,
@@ -1135,13 +1135,13 @@ export class SeleneLux extends EventEmitter {
     const secondaryRGB = this.hslToRgb(palette.secondary)
     const accentRGB = this.hslToRgb(palette.accent)
     
-    // ?? ESPEJO CROMÁTICO: Si hay ambient en la paleta, usarlo
-    // Si no, crear una variación cálida del accent para coherencia visual
+    // ?? ESPEJO CROMï¿½TICO: Si hay ambient en la paleta, usarlo
+    // Si no, crear una variaciï¿½n cï¿½lida del accent para coherencia visual
     let ambientRGB: { r: number; g: number; b: number }
     if (palette.ambient) {
       ambientRGB = this.hslToRgb(palette.ambient)
     } else {
-      // Crear espejo cromático: variación más cálida del accent
+      // Crear espejo cromï¿½tico: variaciï¿½n mï¿½s cï¿½lida del accent
       // Shift hacia magenta/rosa para complementar el accent
       ambientRGB = {
         r: Math.min(255, Math.round(accentRGB.r * 1.1)),
@@ -1206,8 +1206,8 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * ?? Convierte BrainOutput a MovementOutput
-   * WAVE 10: Ahora usa MovementEngine para posiciones dinámicas
-   * Respeta los parámetros configurados por el UI (speed, range, pattern)
+   * WAVE 10: Ahora usa MovementEngine para posiciones dinï¿½micas
+   * Respeta los parï¿½metros configurados por el UI (speed, range, pattern)
    */
   private brainOutputToMovement(output: BrainOutput, deltaTime: number): MovementOutput {
     // ?? WAVE 10 FIX: NO sobrescribir el pattern del UI
@@ -1264,7 +1264,7 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * ?? Obtiene estadísticas del Brain
+   * ?? Obtiene estadï¿½sticas del Brain
    */
   /**
    * ?? WAVE 39.9.2: getBrainStats retorna stats simulados
@@ -1287,7 +1287,7 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * ?? WAVE 39.1: Recibir FFT bins desde IPC para visualización
+   * ?? WAVE 39.1: Recibir FFT bins desde IPC para visualizaciï¿½n
    * @param bins Array de 64 valores normalizados (0-1)
    */
   setFftBins(bins: number[]): void {
@@ -1405,10 +1405,10 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * ?? WAVE 13.6: Aplica multiplicadores globales a un color RGB
-   * CRÍTICO: Atenúa la intensidad multiplicando cada canal por globalIntensity
+   * CRï¿½TICO: Atenï¿½a la intensidad multiplicando cada canal por globalIntensity
    * 
-   * ??? WAVE 24.6: Anti-NaN Guard añadido
-   * Si llega NaN, usamos 0 para evitar flicker y propagación
+   * ??? WAVE 24.6: Anti-NaN Guard aï¿½adido
+   * Si llega NaN, usamos 0 para evitar flicker y propagaciï¿½n
    */
   private applyGlobalMultipliers(rgb: { r: number; g: number; b: number }): { r: number; g: number; b: number } {
     // ??? WAVE 24.6: Validar entrada antes de multiplicar
@@ -1422,7 +1422,7 @@ export class SeleneLux extends EventEmitter {
     const dimmedG = safeG * this.globalIntensity
     const dimmedB = safeB * this.globalIntensity
     
-    // Aplicar saturación - desatura hacia el promedio de los canales
+    // Aplicar saturaciï¿½n - desatura hacia el promedio de los canales
     const avg = (dimmedR + dimmedG + dimmedB) / 3
     const finalR = avg + (dimmedR - avg) * this.globalSaturation
     const finalG = avg + (dimmedG - avg) * this.globalSaturation
@@ -1436,7 +1436,7 @@ export class SeleneLux extends EventEmitter {
   }
   
   /**
-   * ? WAVE-14: Input Gain para telemetría
+   * ? WAVE-14: Input Gain para telemetrï¿½a
    */
   setInputGain(value: number): void {
     this.inputGain = Math.max(0, Math.min(4, value))
@@ -1449,7 +1449,7 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * ?? WAVE 39.9.2: forceColorMutation es NO-OP
-   * Brain vive en Worker - esta función es para compatibilidad
+   * Brain vive en Worker - esta funciï¿½n es para compatibilidad
    */
   forceColorMutation(_reason: string = 'Manual trigger'): void {
     // ?? WAVE 39.9.2: Brain lives in Worker - log only
@@ -1458,7 +1458,7 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * ? WAVE 39.9.2: resetMemory es NO-OP
-   * Brain vive en Worker - esta función es para compatibilidad
+   * Brain vive en Worker - esta funciï¿½n es para compatibilidad
    */
   resetMemory(): void {
     // ?? WAVE 39.9.2: Brain lives in Worker - log only
@@ -1469,16 +1469,16 @@ export class SeleneLux extends EventEmitter {
    * ?? WAVE 46.0 ? 72: DATA BRIDGE - Recibe datos de Trinity Worker
    * 
    * ??? WAVE 72: SINGLE SOURCE OF TRUTH
-   * Este método es el ÚNICO autorizado para escribir en `lastColors` cuando 
-   * estamos en modo Selene y el Worker está activo. processAudioFrame() 
+   * Este mï¿½todo es el ï¿½NICO autorizado para escribir en `lastColors` cuando 
+   * estamos en modo Selene y el Worker estï¿½ activo. processAudioFrame() 
    * verifica `isWorkerActive()` y NO sobrescribe si el Worker tiene control.
    * 
-   * Este método conecta el Worker (GAMMA/mind.ts) con getBroadcast() para la UI.
-   * El Worker tiene la data correcta (género, key, syncopation) pero antes
-   * no llegaba a la UI porque lastBrainOutput estaba vacío (useBrain=false).
+   * Este mï¿½todo conecta el Worker (GAMMA/mind.ts) con getBroadcast() para la UI.
+   * El Worker tiene la data correcta (gï¿½nero, key, syncopation) pero antes
+   * no llegaba a la UI porque lastBrainOutput estaba vacï¿½o (useBrain=false).
    * 
    * WAVE 47.2: Ahora incluye mood (MoodSynthesizer) y sectionDetail (SectionTracker)
-   * ?? WAVE 57.5: Añadido drop (DROP STATE MACHINE)
+   * ?? WAVE 57.5: Aï¿½adido drop (DROP STATE MACHINE)
    * 
    * @param debugInfo - debugInfo del LightingDecision que viene del Worker
    * @param palette - ?? WAVE 69.3: Palette RGB del ColorEngine (Worker)
@@ -1527,31 +1527,31 @@ export class SeleneLux extends EventEmitter {
     
     // ?? WAVE 74: SINGLE INTERPOLATOR - Confiar en el Worker
     // El Worker (mind.ts) ya interpola con SeleneColorInterpolator (240 frames = 4s)
-    // NO re-interpolamos aquí - eso causaba conflicto y flickering
+    // NO re-interpolamos aquï¿½ - eso causaba conflicto y flickering
     // 
     // -----------------------------------------------------------------------
     // ??? WAVE 83: RAW RGB PRESERVATION (Anti-Barro Fix)
     // -----------------------------------------------------------------------
-    // PROBLEMA: Multiplicar RGB por intensity oscurecía los colores.
-    // Cuando RGB oscurecido se reconvierte a HSL, la saturación/luminosidad baja.
+    // PROBLEMA: Multiplicar RGB por intensity oscurecï¿½a los colores.
+    // Cuando RGB oscurecido se reconvierte a HSL, la saturaciï¿½n/luminosidad baja.
     // Esto causaba que colores vibrantes (S=94) aparecieran como barro (S=49, L=36).
     //
-    // SOLUCIÓN: Pasar RGB PUROS a lastColors. La intensity debe controlar el 
-    // DIMMER del fixture, no el color HSL. Así el color permanece vibrante
-    // y solo cambia el brillo físico de la luz.
+    // SOLUCIï¿½N: Pasar RGB PUROS a lastColors. La intensity debe controlar el 
+    // DIMMER del fixture, no el color HSL. Asï¿½ el color permanece vibrante
+    // y solo cambia el brillo fï¿½sico de la luz.
     // -----------------------------------------------------------------------
     if (palette) {
       let rawIntensity = palette.intensity ?? 1.0
       
       // -----------------------------------------------------------------------
-      // ??? WAVE 91: DYNAMIC NOISE GATE - Blackout real en cortes dramáticos
+      // ??? WAVE 91: DYNAMIC NOISE GATE - Blackout real en cortes dramï¿½ticos
       // -----------------------------------------------------------------------
-      // PROBLEMA: En cumbia/reggaeton, los silencios dramáticos (breaks) mantenían
+      // PROBLEMA: En cumbia/reggaeton, los silencios dramï¿½ticos (breaks) mantenï¿½an
       // luz tenue (15-20%), destruyendo el impacto visual del corte.
       // 
-      // SOLUCIÓN: Gate agresivo + expansión exponencial
-      // - <15% energía ? 0% luz (BLACKOUT TOTAL)
-      // - >15% energía ? Re-mapeo 0.15-1.0 a 0.0-1.0 + pow(2) para punch
+      // SOLUCIï¿½N: Gate agresivo + expansiï¿½n exponencial
+      // - <15% energï¿½a ? 0% luz (BLACKOUT TOTAL)
+      // - >15% energï¿½a ? Re-mapeo 0.15-1.0 a 0.0-1.0 + pow(2) para punch
       // 
       // Resultado: "Mentirosa" de Reik ahora tiene blacks REALES en los cortes.
       // -----------------------------------------------------------------------
@@ -1559,13 +1559,13 @@ export class SeleneLux extends EventEmitter {
       let processedIntensity: number;
       
       if (rawIntensity < 0.15) {
-        // GATE: Silencio dramático ? Oscuridad total
+        // GATE: Silencio dramï¿½tico ? Oscuridad total
         processedIntensity = 0;
       } else {
-        // EXPANSIÓN: Re-mapear 0.15-1.0 ? 0.0-1.0
+        // EXPANSIï¿½N: Re-mapear 0.15-1.0 ? 0.0-1.0
         const normalized = (rawIntensity - 0.15) / 0.85;
         
-        // PUNCH: Elevar al cuadrado (golpes fuertes brillan MÁS)
+        // PUNCH: Elevar al cuadrado (golpes fuertes brillan Mï¿½S)
         // 0.5 ? 0.25, 1.0 ? 1.0
         processedIntensity = Math.pow(normalized, 2);
       }
@@ -1586,9 +1586,9 @@ export class SeleneLux extends EventEmitter {
       // ?? WAVE 127: TECHNO PRISM INTEGRATION (SSOT)
       // ?? WAVE 128: ACID INJECTION & STROBE TAMING
       // -----------------------------------------------------------------------
-      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opción A)
-      // La lógica del "Cold Prism" ahora vive AQUÍ, en la Fuente Única de Verdad.
-      // WAVE 128: Liberamos el Verde Ácido (80°-120°) y calmamos el strobe.
+      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opciï¿½n A)
+      // La lï¿½gica del "Cold Prism" ahora vive AQUï¿½, en la Fuente ï¿½nica de Verdad.
+      // WAVE 128: Liberamos el Verde ï¿½cido (80ï¿½-120ï¿½) y calmamos el strobe.
       // -----------------------------------------------------------------------
       
       const activeVibe = this.lastTrinityData?.activeVibe ?? 
@@ -1598,51 +1598,51 @@ export class SeleneLux extends EventEmitter {
       const isTechnoVibe = activeVibe.toLowerCase().includes('techno')
       
       if (isTechnoVibe) {
-        // 1. CAPTURAR LA INTENCIÓN ORIGINAL DEL BRAIN
+        // 1. CAPTURAR LA INTENCIï¿½N ORIGINAL DEL BRAIN
         // Convertir RGB ? HSL para obtener baseHue
         const primaryRgb = this.lastColors.primary
-        const primaryHsl = rgbToHsl(primaryRgb)  // Función importada de SeleneColorEngine
+        const primaryHsl = rgbToHsl(primaryRgb)  // Funciï¿½n importada de SeleneColorEngine
         let baseHue = primaryHsl.h
         
-        // 2. ?? THE COLD DICTATOR (Filtro Anti-Cálido)
+        // 2. ?? THE COLD DICTATOR (Filtro Anti-Cï¿½lido)
         // -------------------------------------------------------------------
-        // ?? WAVE 128: ACID INJECTION - Bajamos límite de 90° a 75°
+        // ?? WAVE 128: ACID INJECTION - Bajamos lï¿½mite de 90ï¿½ a 75ï¿½
         // -------------------------------------------------------------------
         // Antes: (normalizedHue > 330 || normalizedHue < 90) ? Mataba el verde (80-90)
-        // Ahora: Rango Prohibido Real: 330° (Rosa palo) hasta 75° (Amarillo Limón)
-        // Esto PERMITE el paso del Verde Ácido (80°-120°) pero BLOQUEA el amarillo
+        // Ahora: Rango Prohibido Real: 330ï¿½ (Rosa palo) hasta 75ï¿½ (Amarillo Limï¿½n)
+        // Esto PERMITE el paso del Verde ï¿½cido (80ï¿½-120ï¿½) pero BLOQUEA el amarillo
         // -------------------------------------------------------------------
         const normalizedHue = (baseHue + 360) % 360
         const isWarm = (normalizedHue > 330 || normalizedHue < 75)  // ?? WAVE 128: 90?75
         
         if (isWarm) {
-          // Invertir fase hacia el espectro frío (+180°)
+          // Invertir fase hacia el espectro frï¿½o (+180ï¿½)
           baseHue = (normalizedHue + 180) % 360
         }
         
-        // 3. ?? THE PRISM (Derivación Geométrica Estricta)
-        // Generamos las 4 zonas matemáticamente para garantizar separación.
+        // 3. ?? THE PRISM (Derivaciï¿½n Geomï¿½trica Estricta)
+        // Generamos las 4 zonas matemï¿½ticamente para garantizar separaciï¿½n.
         
         // FRONT (Base)
         const primaryHue = baseHue
         
-        // MOVER L (Melodía - Análogo Frío +60°)
+        // MOVER L (Melodï¿½a - Anï¿½logo Frï¿½o +60ï¿½)
         let secondaryHue = (baseHue + 60) % 360
         
-        // MOVER R (Atmósfera - Triada +120°)
+        // MOVER R (Atmï¿½sfera - Triada +120ï¿½)
         let ambientHue = (baseHue + 120) % 360
         
-        // BACK PARS (Acento - Complementario +180°)
+        // BACK PARS (Acento - Complementario +180ï¿½)
         let accentHue = (baseHue + 180) % 360
         
-        // 4. ??? SANITIZADOR CROMÁTICO (Guardias de Seguridad)
+        // 4. ??? SANITIZADOR CROMï¿½TICO (Guardias de Seguridad)
         // -------------------------------------------------------------------
         // ?? WAVE 128: Refinamos el rango de 30-100 a 30-75
         // -------------------------------------------------------------------
-        // Antes: (h > 30 && h < 100) ? Mataba el verde ácido secundario
-        // Ahora: Solo matamos el amarillo puro/naranja (30° a 75°)
-        // Verde Ácido (75°-120°) ? PASA ?
-        // Amarillo Pollo (30°-75°) ? MAGENTA ??
+        // Antes: (h > 30 && h < 100) ? Mataba el verde ï¿½cido secundario
+        // Ahora: Solo matamos el amarillo puro/naranja (30ï¿½ a 75ï¿½)
+        // Verde ï¿½cido (75ï¿½-120ï¿½) ? PASA ?
+        // Amarillo Pollo (30ï¿½-75ï¿½) ? MAGENTA ??
         // -------------------------------------------------------------------
         const sanitize = (h: number) => (h > 30 && h < 75) ? 320 : h  // ?? WAVE 128: 100?75
         
@@ -1652,15 +1652,15 @@ export class SeleneLux extends EventEmitter {
         
         // 5. ? INDUSTRIAL STROBE LOGIC
         // -------------------------------------------------------------------
-        // ?? WAVE 129: THE WHITE-HOT THRESHOLD (Calibración basada en datos reales)
+        // ?? WAVE 129: THE WHITE-HOT THRESHOLD (Calibraciï¿½n basada en datos reales)
         // -------------------------------------------------------------------
-        // Diagnóstico del log logacentodrops.md:
+        // Diagnï¿½stico del log logacentodrops.md:
         //   - TreblePulse real en drops: 0.10-0.15 (NUNCA llega a 0.85)
         //   - El umbral anterior (0.85) era inalcanzable ? 0% strobes
         //
         // Nueva estrategia DUAL:
         //   1. Bajamos umbral de treble a 0.10 (dato real del log)
-        //   2. Añadimos condición de Bass > 0.80 (contexto energético)
+        //   2. Aï¿½adimos condiciï¿½n de Bass > 0.80 (contexto energï¿½tico)
         //
         // Resultado: Flash SOLO en drops calientes, NO en breaks suaves
         // -------------------------------------------------------------------
@@ -1668,14 +1668,14 @@ export class SeleneLux extends EventEmitter {
         
         // -------------------------------------------------------------------
         // ? WAVE 132: THE DYNAMIC NOISE FLOOR
-        // DIAGNÓSTICO: En Cyberpunk, RawTreble se mantiene en 0.85-1.00 CONSTANTEMENTE
+        // DIAGNï¿½STICO: En Cyberpunk, RawTreble se mantiene en 0.85-1.00 CONSTANTEMENTE
         //   (ruido blanco, risers, sintetizadores agudos). El piso fijo de 0.15 no limpia
         //   ese ruido, resultando en Pulse = 0.85 todo el tiempo ? Strobe constante.
-        // SOLUCIÓN: Piso dinámico vinculado a la energía del bajo.
-        //   Fórmula: DynamicFloor = 0.15 + (BassEnergy * 0.5)
+        // SOLUCIï¿½N: Piso dinï¿½mico vinculado a la energï¿½a del bajo.
+        //   Fï¿½rmula: DynamicFloor = 0.15 + (BassEnergy * 0.5)
         //   - En silencio (Bass 0): Floor = 0.15 ? Detecta cualquier chasquido
         //   - En drop brutal (Bass 1.0): Floor = 0.65 ? Solo picos REALES disparan
-        // MATEMÁTICA (datos del log):
+        // MATEMï¿½TICA (datos del log):
         //   - Ruido: RawT:0.85, Bass:1.00 ? Floor:0.65 ? Pulse:0.20 < 0.25 ? COLOR ?
         //   - Golpe: RawT:1.00, Bass:1.00 ? Floor:0.65 ? Pulse:0.35 > 0.25 ? FLASH ?
         // -------------------------------------------------------------------
@@ -1683,9 +1683,9 @@ export class SeleneLux extends EventEmitter {
         const rawTreble = agc?.normalizedTreble ?? 0.0
         const bassEnergy = agc?.normalizedBass ?? 0
         
-        // ??? PISO DINÁMICO (Factor 0.6)
-        // Si Bass = 1.0 ? Floor = 0.75 ? Ignoramos 75% de la señal aguda como "ruido"
-        // Esto hace IMPOSIBLE disparar strobe en saturación total
+        // ??? PISO DINï¿½MICO (Factor 0.6)
+        // Si Bass = 1.0 ? Floor = 0.75 ? Ignoramos 75% de la seï¿½al aguda como "ruido"
+        // Esto hace IMPOSIBLE disparar strobe en saturaciï¿½n total
         // ?? WAVE 133: THE SATURATION BREAKER - Subido de 0.5 ? 0.6
         const DYNAMIC_FLOOR_FACTOR = 0.6
         const dynamicTrebleFloor = 0.15 + (bassEnergy * DYNAMIC_FLOOR_FACTOR)
@@ -1694,10 +1694,10 @@ export class SeleneLux extends EventEmitter {
         const treblePulse = Math.max(0, rawTreble - dynamicTrebleFloor)
         
         // ?? UMBRAL DE DISPARO
-        // Ahora que el pulso está limpio, usamos umbral estándar de 0.25
+        // Ahora que el pulso estï¿½ limpio, usamos umbral estï¿½ndar de 0.25
         const TRIGGER_THRESHOLD = 0.25
         
-        // ?? GATILLO: Pulso limpio supera umbral + contexto de energía
+        // ?? GATILLO: Pulso limpio supera umbral + contexto de energï¿½a
         // Bajamos exigencia de Bass a 0.80 porque el DynamicFloor ya hace la limpieza
         const isSnareExplosion = (treblePulse > TRIGGER_THRESHOLD) && (bassEnergy > 0.80)
         
@@ -1731,13 +1731,13 @@ export class SeleneLux extends EventEmitter {
           // ? FLASH BLANCO (WAVE 129: Calibrado con datos reales)
           this.lastColors.accent = { r: 255, g: 255, b: 255 }
         } else {
-          // ?? Color Complementario (ahora visible la mayoría del tiempo)
+          // ?? Color Complementario (ahora visible la mayorï¿½a del tiempo)
           this.lastColors.accent = hslToRgb(accentHue, 100, 60)
         }
         
         // Debug log cada ~10 segundos
         if (Math.random() < 0.003) {
-          console.log(`[WAVE133]  SATURATION BREAKER | Base:${baseHue.toFixed(0)}° | RawT:${rawTreble.toFixed(2)} | Floor:${dynamicTrebleFloor.toFixed(2)} | Pulse:${treblePulse.toFixed(2)} | Bass:${bassEnergy.toFixed(2)} | Strobe:${isSnareExplosion}`)
+          console.log(`[WAVE133]  SATURATION BREAKER | Base:${baseHue.toFixed(0)}ï¿½ | RawT:${rawTreble.toFixed(2)} | Floor:${dynamicTrebleFloor.toFixed(2)} | Pulse:${treblePulse.toFixed(2)} | Bass:${bassEnergy.toFixed(2)} | Strobe:${isSnareExplosion}`)
         }
       }
       // ?? FIN WAVE 133 ??
@@ -1745,14 +1745,14 @@ export class SeleneLux extends EventEmitter {
       // -----------------------------------------------------------------------
       // ?? WAVE 137: THE ANALOG GAIN (BRIGHTNESS UNCHAINED)
       // -----------------------------------------------------------------------
-      // Diagnóstico WAVE 136: Umbrales excesivos (0.45/0.40) ? Back Pars muertos.
-      // Queen y pop clásico no disparaban porque nunca superaban el umbral.
+      // Diagnï¿½stico WAVE 136: Umbrales excesivos (0.45/0.40) ? Back Pars muertos.
+      // Queen y pop clï¿½sico no disparaban porque nunca superaban el umbral.
       // 
       // Fix 1: Sweet Spot Thresholds ? SNARE 0.32, KICK 0.35 (equilibrio)
       // Fix 2: Brightness Injection ? Snare L:95, Kick L:80 (forzar encendido)
       // Fix 3: Front Par Liberado ? L:60 (sin cap de Techno)
       // 
-      // Paleta Stadium Contrast de WAVE 136 se MANTIENE (+180°/+120°).
+      // Paleta Stadium Contrast de WAVE 136 se MANTIENE (+180ï¿½/+120ï¿½).
       // AISLAMIENTO TOTAL: Este bloque es excluyente con Techno Prism.
       // -----------------------------------------------------------------------
       
@@ -1765,40 +1765,40 @@ export class SeleneLux extends EventEmitter {
         const primaryHsl = rgbToHsl(primaryRgb)
         let baseHue = primaryHsl.h
         
-        // ?? FILTRO "STAGE LIGHTING" (Corrección de Paleta)
+        // ?? FILTRO "STAGE LIGHTING" (Correcciï¿½n de Paleta)
         // El Rock odia los colores intermedios raros (Verde Lima, Morado sucio).
-        // Forzamos a colores de PAR64 clásico: Rojo, Ámbar, Azul, Blanco.
-        // Rango 80-160 (Verde Lima ? Verde) ? Rojo Sangre (0°)
-        // Rango 260-300 (Morado Sucio) ? Ámbar/Oro (40°)
+        // Forzamos a colores de PAR64 clï¿½sico: Rojo, ï¿½mbar, Azul, Blanco.
+        // Rango 80-160 (Verde Lima ? Verde) ? Rojo Sangre (0ï¿½)
+        // Rango 260-300 (Morado Sucio) ? ï¿½mbar/Oro (40ï¿½)
         const normalizedHue = (baseHue + 360) % 360
         if (normalizedHue > 80 && normalizedHue < 160) {
           baseHue = 0  // Verde ? Rojo Sangre (Rock)
         } else if (normalizedHue > 260 && normalizedHue < 300) {
-          baseHue = 40  // Morado raro ? Ámbar/Oro
+          baseHue = 40  // Morado raro ? ï¿½mbar/Oro
         }
         
         // 2. PALETA DE ESTADIO DE ALTO CONTRASTE (WAVE 136)
-        // Antes WAVE 135: Análogo (+30°) - Monótono, aburrido.
-        // Ahora WAVE 136: Complementario + Triada para separación épica.
+        // Antes WAVE 135: Anï¿½logo (+30ï¿½) - Monï¿½tono, aburrido.
+        // Ahora WAVE 136: Complementario + Triada para separaciï¿½n ï¿½pica.
         const primaryHue = baseHue  // FRONT: Base
         
-        // MOVER L: Complementario (+180°) para contraste máximo (ej: Rojo vs Cyan)
+        // MOVER L: Complementario (+180ï¿½) para contraste mï¿½ximo (ej: Rojo vs Cyan)
         const secondaryHue = (baseHue + 180) % 360
         
-        // MOVER R: Triada (+120°) para dar un tercer color distinto pero armónico
+        // MOVER R: Triada (+120ï¿½) para dar un tercer color distinto pero armï¿½nico
         const ambientHue = (baseHue + 120) % 360
         
-        // 3. DETECCIÓN RÍTMICA REFINADA (WAVE 137 - THE ANALOG GAIN)
+        // 3. DETECCIï¿½N Rï¿½TMICA REFINADA (WAVE 137 - THE ANALOG GAIN)
         // WAVE 136: 0.45/0.40 era excesivo - Back Pars muertos con Queen.
-        // WAVE 137: Sweet spot 0.32/0.35 con cooldown implícito por frame rate.
+        // WAVE 137: Sweet spot 0.32/0.35 con cooldown implï¿½cito por frame rate.
         const agcRock = this._agcData
         const normalizedMid = agcRock?.normalizedMid ?? 0.0
         const normalizedBass = agcRock?.normalizedBass ?? 0.0
         
-        // Pulsos relativos usando avgNormEnergy como proxy (aproximación)
+        // Pulsos relativos usando avgNormEnergy como proxy (aproximaciï¿½n)
         const avgEnergy = agcRock?.avgNormEnergy ?? 0.4
-        const avgMid = avgEnergy * 0.8   // Mids tienden a estar un poco más bajos
-        const avgBass = avgEnergy * 0.9  // Bass tiende a estar más alto
+        const avgMid = avgEnergy * 0.8   // Mids tienden a estar un poco mï¿½s bajos
+        const avgBass = avgEnergy * 0.9  // Bass tiende a estar mï¿½s alto
         
         const midsPulse = Math.max(0, normalizedMid - avgMid)
         const bassPulse = Math.max(0, normalizedBass - avgBass)
@@ -1813,12 +1813,12 @@ export class SeleneLux extends EventEmitter {
         const isSnareHit = (midsPulse > SNARE_THRESHOLD)
         const isKickHit = (bassPulse > KICK_THRESHOLD)
         
-        // 4. LÓGICA DE ACENTO + BRIGHTNESS INJECTION (WAVE 137)
+        // 4. Lï¿½GICA DE ACENTO + BRIGHTNESS INJECTION (WAVE 137)
         // WAVE 136: L:60 default era demasiado oscuro para Back Pars.
         // WAVE 137: Inyectamos brillo forzado para asegurar reactividad visual.
         let accentHue = secondaryHue  // Default a complementario
         let accentSat = 100
-        let accentLight = 50  // WAVE 137: Base más neutral para contraste con hits
+        let accentLight = 50  // WAVE 137: Base mï¿½s neutral para contraste con hits
         
         if (isSnareHit) {
           // ?? CAJA: FLASH TUNGSTENO + BRIGHTNESS BOOST (WAVE 137)
@@ -1832,7 +1832,7 @@ export class SeleneLux extends EventEmitter {
           // Refuerza el primario con brillo elevado para que se note
           accentHue = primaryHue
           accentSat = 100
-          accentLight = 80  // WAVE 137: Era 70, ahora 80 para más punch
+          accentLight = 80  // WAVE 137: Era 70, ahora 80 para mï¿½s punch
         }
         
         // 5. COMMIT AL SSOT (HSL ? RGB) - WAVE 137: BRIGHTNESS UNCHAINED
@@ -1857,7 +1857,7 @@ export class SeleneLux extends EventEmitter {
         }
         
         // WAVE 137: Front Par liberado a L:60 (sin cap de Techno)
-        // Esto asegura que los Front Pars brillen a máxima potencia
+        // Esto asegura que los Front Pars brillen a mï¿½xima potencia
         this.lastColors.primary = hslToRgbRock(primaryHue, 100, 60)  // L:60 (era 50)
         this.lastColors.secondary = hslToRgbRock(secondaryHue, 100, 55)  // L:55 (boost)
         this.lastColors.ambient = hslToRgbRock(ambientHue, 100, 55)  // L:55 (boost)
@@ -1872,7 +1872,7 @@ export class SeleneLux extends EventEmitter {
     }
     
     // ?? WAVE 47.2: Log actualizado para verificar mood & section desde spread directo
-    // ?? WAVE 56: Añadido colorStrategy para debug
+    // ?? WAVE 56: Aï¿½adido colorStrategy para debug
     // ?? WAVE 63: Comentado - solo vibes importan
     // if (this.frameCount % 150 === 0) {
     //   const cs = this.lastTrinityData.mood?.colorStrategy
@@ -1900,7 +1900,7 @@ export class SeleneLux extends EventEmitter {
   
   /**
    * ?? WAVE 25: Obtiene el broadcast completo de Selene
-   * Este es el ÚNICO objeto que el Frontend necesita para renderizar todo.
+   * Este es el ï¿½NICO objeto que el Frontend necesita para renderizar todo.
    * 
    * FLUJO: Brain + ColorEngine + Movement + Consciousness ? SeleneBroadcast
    * 
@@ -1983,7 +1983,7 @@ export class SeleneLux extends EventEmitter {
         zeroCrossingRate: 0,
       },
       // ?? WAVE 39.1: FFT bins reales desde useAudioCapture (64 bins normalizados)
-      // Si tenemos menos de 256, pad con ceros; si tenemos más, truncar
+      // Si tenemos menos de 256, pad con ceros; si tenemos mï¿½s, truncar
       fft: this.lastFftBins.length >= 256 
         ? this.lastFftBins.slice(0, 256) 
         : [...this.lastFftBins, ...new Array(256 - this.lastFftBins.length).fill(0)],
@@ -2010,7 +2010,7 @@ export class SeleneLux extends EventEmitter {
     // 2. COGNITIVE DATA (Consciencia)
     // -----------------------------------------------------------------------
     // ?? WAVE 47.1.3: Mood arbitrado viene del GAMMA Worker (mind.ts)
-    // La arbitración ya se hizo en el Worker con prioridad: genre > harmony > VAD
+    // La arbitraciï¿½n ya se hizo en el Worker con prioridad: genre > harmony > VAD
     const calculatedMood = trinityData?.mood?.primary
     const moodFallback = this.consciousness.currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric'
     
@@ -2056,27 +2056,27 @@ export class SeleneLux extends EventEmitter {
         const sources: string[] = [];
         const moodSources = trinityData?.mood?.sources;
         
-        // GENRE: Si el clasificador de género tiene confianza
+        // GENRE: Si el clasificador de gï¿½nero tiene confianza
         if (moodSources?.genre?.confidence && moodSources.genre.confidence > 0.3) {
           sources.push('GENRE');
         }
         
-        // HARMONY: Si el analizador armónico tiene confianza
+        // HARMONY: Si el analizador armï¿½nico tiene confianza
         if (moodSources?.harmony?.confidence && moodSources.harmony.confidence > 0.3) {
           sources.push('HARMONY');
         }
         
-        // VAD: Siempre activo si hay audio (energía > umbral mínimo)
+        // VAD: Siempre activo si hay audio (energï¿½a > umbral mï¿½nimo)
         if ((metrics?.energy ?? 0) > 0.01) {
           sources.push('VAD');
         }
         
-        // ZODIAC: Si hay información de signo zodiacal activa
+        // ZODIAC: Si hay informaciï¿½n de signo zodiacal activa
         if (this.lastZodiacInfo?.sign) {
           sources.push('ZODIAC');
         }
         
-        // SECTION: Si el tracker de sección tiene confianza
+        // SECTION: Si el tracker de secciï¿½n tiene confianza
         if (trinityData?.sectionDetail?.confidence && trinityData.sectionDetail.confidence > 0.5) {
           sources.push('SECTION');
         }
@@ -2096,7 +2096,7 @@ export class SeleneLux extends EventEmitter {
       },
       
       // ?? WAVE 66 + 72: Stabilized Emotion from MoodArbiter
-      // ??? WAVE 72: Fallback consciente del Vibe activo - evita NEUTRAL genérico
+      // ??? WAVE 72: Fallback consciente del Vibe activo - evita NEUTRAL genï¿½rico
       stableEmotion: (trinityData?.mood?.stableEmotion ?? 
                       this.getSafeFallbackForVibe(trinityData?.activeVibe ?? trinityData?.debugInfo?.activeVibe ?? 'idle')
                      ) as 'BRIGHT' | 'DARK' | 'NEUTRAL',
@@ -2114,12 +2114,12 @@ export class SeleneLux extends EventEmitter {
     }
     
     // -----------------------------------------------------------------------
-    // 3. MUSICAL DNA (Análisis musical profundo)
+    // 3. MUSICAL DNA (Anï¿½lisis musical profundo)
     // -----------------------------------------------------------------------
     const context = brain?.context
     
-    // ?? WAVE 46.0: trinityData ya declarado arriba (línea 1446) para uso en cognitive
-    // El Worker (GAMMA) tiene género/key/syncopation correctos
+    // ?? WAVE 46.0: trinityData ya declarado arriba (lï¿½nea 1446) para uso en cognitive
+    // El Worker (GAMMA) tiene gï¿½nero/key/syncopation correctos
     
     // Extraer syncopation de la estructura real: context.rhythm.groove.syncopation
     // WAVE 46.0: Priorizar Trinity data
@@ -2163,9 +2163,9 @@ export class SeleneLux extends EventEmitter {
         pattern: patternType as 'four_on_floor' | 'breakbeat' | 'half_time' | 'reggaeton' | 'cumbia' | 'rock_standard' | 'jazz_swing' | 'latin' | 'minimal' | 'unknown',
       },
       section: {
-        // ?? WAVE 47.3: SECTION STABILITY - Histéresis para evitar flicker de 10 cambios/segundo
+        // ?? WAVE 47.3: SECTION STABILITY - Histï¿½resis para evitar flicker de 10 cambios/segundo
         // ?? WAVE 57.5: DROP STATE MACHINE OVERRIDE - Si isDropActive, FORZAR 'drop'
-        // Solo cambiar sección si: 1) confidence > 0.8, 2) distinta a actual, 3) han pasado >3 segundos
+        // Solo cambiar secciï¿½n si: 1) confidence > 0.8, 2) distinta a actual, 3) han pasado >3 segundos
         current: (() => {
           // ?? WAVE 57.5: DROP STATE MACHINE tiene PRIORIDAD ABSOLUTA
           const isDropActive = trinityData?.drop?.isDropActive === true;
@@ -2176,9 +2176,9 @@ export class SeleneLux extends EventEmitter {
           const rawSection = trinityData?.sectionDetail?.type ?? context?.section?.current?.type ?? 'unknown'
           const rawConfidence = trinityData?.sectionDetail?.confidence ?? context?.section?.current?.confidence ?? 0
           const timeSinceLastChange = now - this.lastStableSection.timestamp
-          const MIN_SECTION_DURATION = 3000 // 3 segundos mínimo por sección
+          const MIN_SECTION_DURATION = 3000 // 3 segundos mï¿½nimo por secciï¿½n
           
-          // Si la sección es diferente Y tiene alta confianza Y ha pasado suficiente tiempo ? cambiar
+          // Si la secciï¿½n es diferente Y tiene alta confianza Y ha pasado suficiente tiempo ? cambiar
           if (rawSection !== this.lastStableSection.type && rawConfidence > 0.8 && timeSinceLastChange > MIN_SECTION_DURATION) {
             this.lastStableSection = {
               type: rawSection,
@@ -2279,7 +2279,7 @@ export class SeleneLux extends EventEmitter {
     }
     
     // -----------------------------------------------------------------------
-    // 5. HARDWARE STATE (DMX - placeholder, se llenará en main.ts)
+    // 5. HARDWARE STATE (DMX - placeholder, se llenarï¿½ en main.ts)
     // -----------------------------------------------------------------------
     const hardwareState = {
       dmxOutput: new Array(512).fill(0),

@@ -214,6 +214,7 @@ export class SeleneLux extends EventEmitter {
 
   // 🏷️ WAVE 134: Helper para generar label visual de la estrategia
   // Traduce la estrategia técnica a un nombre profesional para la UI
+  // 🎸 WAVE 135: Añadido ROCK DYNAMICS para Pop/Rock
   private getStrategyLabel(activeVibe?: string, colorStrategy?: string): string {
     const vibe = (activeVibe ?? '').toLowerCase();
     const strategy = (colorStrategy ?? 'analogous').toLowerCase();
@@ -221,6 +222,11 @@ export class SeleneLux extends EventEmitter {
     // Techno Vibes → PRISM branding
     if (vibe.includes('techno') || vibe.includes('minimal') || vibe.includes('industrial')) {
       return 'TETRADIC PRISM';
+    }
+    
+    // 🎸 WAVE 135: Pop/Rock Vibes → ROCK DYNAMICS branding
+    if (vibe.includes('pop') || vibe.includes('rock')) {
+      return 'ROCK DYNAMICS';
     }
     
     // Fiesta/Latin Vibes → TROPICAL branding
@@ -1735,6 +1741,118 @@ export class SeleneLux extends EventEmitter {
         }
       }
       // 🔺 FIN WAVE 133 🔺
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎸 WAVE 135: THE ROCK STAGE - PORTNOY PROTOCOL
+      // ═══════════════════════════════════════════════════════════════════════
+      // Contexto: Pop/Rock requiere detección de ritmo basada en instrumentos
+      // acústicos (Caja en Mids, Bombo en Bass) y paleta de colores "Stage"
+      // (Cálidos/Sólidos) como PAR64 clásico.
+      // AISLAMIENTO TOTAL: Este bloque es excluyente con Techno Prism.
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      const isPopRockVibe = activeVibe.toLowerCase().includes('pop') || 
+                            activeVibe.toLowerCase().includes('rock')
+      
+      if (isPopRockVibe && !isTechnoVibe) {
+        // 1. CAPTURA DE COLOR BASE (Del Brain)
+        const primaryRgb = this.lastColors.primary
+        const primaryHsl = rgbToHsl(primaryRgb)
+        let baseHue = primaryHsl.h
+        
+        // 🎨 FILTRO "STAGE LIGHTING" (Corrección de Paleta)
+        // El Rock odia los colores intermedios raros (Verde Lima, Morado sucio).
+        // Forzamos a colores de PAR64 clásico: Rojo, Ámbar, Azul, Blanco.
+        // Rango 80-160 (Verde Lima → Verde) → Rojo Sangre (0°)
+        // Rango 260-300 (Morado Sucio) → Ámbar/Oro (40°)
+        const normalizedHue = (baseHue + 360) % 360
+        if (normalizedHue > 80 && normalizedHue < 160) {
+          baseHue = 0  // Verde → Rojo Sangre (Rock)
+        } else if (normalizedHue > 260 && normalizedHue < 300) {
+          baseHue = 40  // Morado raro → Ámbar/Oro
+        }
+        
+        // 2. DERIVACIÓN DE PALETA "STAGE"
+        // Primary: Color base filtrado
+        // Secondary: Análogo cercano (+30°) para dar profundidad
+        // Ambient: Igual que secondary para llenar el escenario
+        const primaryHue = baseHue
+        const secondaryHue = (baseHue + 30) % 360
+        const ambientHue = secondaryHue
+        
+        // 3. DETECCIÓN RÍTMICA "PORTNOY" (Analógica)
+        // Usamos MIDS para la Caja (Snare) y BASS para el Bombo (Kick).
+        // NO usamos el 'treblePulse' del Techno.
+        const agcRock = this._agcData
+        const normalizedMid = agcRock?.normalizedMid ?? 0.0
+        const normalizedBass = agcRock?.normalizedBass ?? 0.0
+        
+        // Pulsos relativos al promedio (detectar golpes sobre el ruido base)
+        const avgMid = agcRock?.avgNormEnergy ? agcRock.avgNormEnergy * 0.8 : 0.4
+        const avgBass = agcRock?.avgNormEnergy ? agcRock.avgNormEnergy * 0.9 : 0.4
+        
+        const midsPulse = Math.max(0, normalizedMid - avgMid)
+        const bassPulse = Math.max(0, normalizedBass - avgBass)
+        
+        // Umbrales específicos para mezclas de rock (menos comprimidas que EDM)
+        const SNARE_THRESHOLD = 0.20
+        const KICK_THRESHOLD = 0.25
+        
+        const isSnareHit = (midsPulse > SNARE_THRESHOLD)
+        const isKickHit = (bassPulse > KICK_THRESHOLD)
+        
+        // 4. LÓGICA DE ACENTO (Back Pars)
+        let accentHue = primaryHue
+        let accentSat = 100
+        let accentLight = 60
+        
+        if (isSnareHit) {
+          // 🥁 CAJA: FLASH TUNGSTENO (Blanco Cálido)
+          // Hue 40 (Naranja/Amarillo), Sat 20 (Casi blanco), Light 100.
+          // Esto imita un cegador de estadio, no un estrobo LED frío.
+          accentHue = 40
+          accentSat = 20
+          accentLight = 100
+        } else if (isKickHit) {
+          // 🦶 BOMBO: GOLPE DE CONTRASTE
+          // El bombo se marca con el color complementario (+180°)
+          accentHue = (primaryHue + 180) % 360
+          accentSat = 100
+          accentLight = 60
+        }
+        
+        // 5. COMMIT AL SSOT (HSL → RGB)
+        const hslToRgbRock = (h: number, s: number, l: number) => {
+          s /= 100
+          l /= 100
+          const c = (1 - Math.abs(2 * l - 1)) * s
+          const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+          const m = l - c / 2
+          let r = 0, g = 0, b = 0
+          if (h < 60) { r = c; g = x; b = 0 }
+          else if (h < 120) { r = x; g = c; b = 0 }
+          else if (h < 180) { r = 0; g = c; b = x }
+          else if (h < 240) { r = 0; g = x; b = c }
+          else if (h < 300) { r = x; g = 0; b = c }
+          else { r = c; g = 0; b = x }
+          return {
+            r: Math.round((r + m) * 255),
+            g: Math.round((g + m) * 255),
+            b: Math.round((b + m) * 255)
+          }
+        }
+        
+        this.lastColors.primary = hslToRgbRock(primaryHue, 100, 50)
+        this.lastColors.secondary = hslToRgbRock(secondaryHue, 100, 50)
+        this.lastColors.ambient = hslToRgbRock(ambientHue, 100, 50)
+        this.lastColors.accent = hslToRgbRock(accentHue, accentSat, accentLight)
+        
+        // Debug log cada ~10 segundos
+        if (Math.random() < 0.003) {
+          console.log(`[WAVE135] 🎸 ROCK STAGE | Base:${baseHue.toFixed(0)}° | Mid:${normalizedMid.toFixed(2)} | Bass:${normalizedBass.toFixed(2)} | Snare:${isSnareHit} | Kick:${isKickHit}`)
+        }
+      }
+      // 🔺 FIN WAVE 135 🔺
     }
     
     // 💫 WAVE 47.2: Log actualizado para verificar mood & section desde spread directo

@@ -1,188 +1,105 @@
+// ARCHIVO: PalettePreview.tsx
+// 🏷️ WAVE 134: THE VIBE CONSOLIDATION - Professional UI
 import React from 'react'
 import { useTruthPalette, useTruthMusicalDNA, useTruthCognitive, useTruthConnected } from '../../../hooks'
 import './PalettePreview.css'
 
-// 🎨 WAVE 90: Strategy display names (localized)
-const STRATEGY_LABELS: Record<string, string> = {
-  'analogous': 'Análogo',
-  'triadic': 'Triádico',
-  'complementary': 'Complementario',
-  'split-complementary': 'Split-Comp',
-  'monochromatic': 'Monocromático'
-};
-
 const PalettePreview: React.FC = () => {
-  // 🔥 WAVE 74: Throttle eliminado - volvemos a tiempo real para diagnosticar
   const palette = useTruthPalette()
   const dna = useTruthMusicalDNA()
   const cognitive = useTruthCognitive()
   const connected = useTruthConnected()
 
+  // 🛡️ SAFEGUARDS
   const currentPalette = {
-    primary: palette?.primary?.hex || '#ff0055',
-    secondary: palette?.secondary?.hex || '#ff5500',
-    accent: palette?.accent?.hex || '#00f3ff',
-    ambient: palette?.ambient?.hex || '#220033',
-    contrast: palette?.contrast?.hex || '#ffffff'
+    primary: palette?.primary?.hex || '#222',
+    secondary: palette?.secondary?.hex || '#222',
+    accent: palette?.accent?.hex || '#222',
+    ambient: palette?.ambient?.hex || '#222',
   }
-  
-  const primaryH = palette?.primary?.h ? Math.round(palette.primary.h) : 345
-  const primaryS = palette?.primary?.s ? Math.round(palette.primary.s) : 80
-  const primaryL = palette?.primary?.l ? Math.round(palette.primary.l) : 50
 
-  const strategy = palette?.strategy || 'analogous'
-  const origin = palette?.source || 'procedural'
+  // Datos Reales
+  const p_hue = palette?.primary?.h ? Math.round(palette.primary.h) : 0
+  const s_hue = palette?.secondary?.h ? Math.round(palette.secondary.h) : 0
+  const amb_hue = palette?.ambient?.h ? Math.round(palette.ambient.h) : 0
+  const acc_hue = palette?.accent?.h ? Math.round(palette.accent.h) : 0
   
-  // 🔥 WAVE 66.8: Usar stableEmotion del MoodArbiter (BRIGHT/DARK/NEUTRAL)
-  const stableEmotion = cognitive?.stableEmotion || 'NEUTRAL'
-  
-  const derivation = {
-    key: dna?.key || '---',
-    mood: stableEmotion,  // 🔥 WAVE 66.8: Conectado a stableEmotion real
-    finalHue: primaryH
-  }
-  
-  // 🔥 WAVE 66.8: Calcular posición de temperatura correctamente
-  // Rango: 2000K (izquierda/warm) a 10000K (derecha/cool)
-  const thermalTemp = cognitive?.thermalTemperature
-  const hasThermal = typeof thermalTemp === 'number' && thermalTemp > 0
-  const thermalPercent = hasThermal 
-    ? Math.min(100, Math.max(0, ((thermalTemp - 2000) / 8000) * 100))
-    : 50  // Si no hay temperatura válida, mostrar neutral (50%)
+  // Detectores
+  const isStrobe = (palette?.accent?.s === 0 && palette?.accent?.l === 100)
+  // �️ WAVE 134: Recuperamos la estrategia del payload (strategyLabel es el display name)
+  const strategyName = (palette as any)?.strategyLabel || palette?.strategy?.toUpperCase() || 'ADAPTIVE'
+
+  const statusClass = connected ? 'online' : 'offline'
 
   return (
-    <div className={`palette-panel-container ${connected ? 'online' : 'offline'}`}>
+    <div className={`chromatic-core-panel ${statusClass}`}>
       
-      {/* HEADER */}
-      <div className="palette-header">
-        <div className="palette-title">
-          <span className="icon">🎨</span>
-          <span>CHROMATIC CORE</span>
+      {/* HEADER: TIPO MILITAR */}
+      <div className="core-header">
+        <div className="header-left">
+            <span className="status-dot"></span>
+            <span className="panel-title">CHROMATIC CORE</span>
         </div>
-        <div className={`origin-badge ${origin}`}>
-          <span className="origin-dot" />
-          {origin.toUpperCase()}
+        <div className="header-right">
+            <span className="meta-tag">{dna?.key || '--'}</span>
+            <span className="meta-tag">{Math.round(dna?.rhythm?.bpm || 0)} BPM</span>
         </div>
       </div>
 
-      {/* STRATEGY */}
+      {/* STRATEGY DISPLAY (RECUPERADO) */}
       <div className="strategy-display">
-        <div className="strategy-info">
-          <div className="strategy-label">COLOR STRATEGY</div>
-          <div className="strategy-value">{STRATEGY_LABELS[strategy] || strategy.toUpperCase()}</div>
-        </div>
-        <div className="strategy-graph">
-          <div className="color-wheel-mini" style={{borderColor: `${currentPalette.primary}40`}}>
-            <div className="spoke primary" style={{background: currentPalette.primary, transform: 'rotate(0deg)'}} />
-            <div className="spoke secondary" style={{background: currentPalette.secondary, transform: 'rotate(30deg)'}} />
-            <div className="spoke accent" style={{background: currentPalette.accent, transform: 'rotate(180deg)'}} />
-          </div>
-        </div>
+        <span className="label">ALGORITHM:</span>
+        <span className="value">{strategyName}</span>
       </div>
 
-      {/* MAIN REACTOR (SWATCHES + DATA INTEGRATED) */}
-      <div className="swatch-rack">
-        
-        {/* 1. PRIMARY FUEL ROD */}
-        <SwatchSlot role="PRI" color={currentPalette.primary} label="PRIMARY" large />
-        
-        {/* 2. TECHNICAL READOUT (MOVED HERE TO FILL GAP) */}
-        <div className="tech-readout integrated">
-          <div className="readout-col main">
-            <span className="label">HEX CODE</span>
-            <span className="value hex" style={{color: currentPalette.primary}}>
-              {currentPalette.primary.toUpperCase()}
-            </span>
-          </div>
-          <div className="readout-divider" />
-          <div className="readout-col">
-            <span className="label">HUE</span>
-            <span className="value">{primaryH}°</span>
-          </div>
-          <div className="readout-col">
-            <span className="label">SAT</span>
-            <span className="value">{primaryS}%</span>
-          </div>
-          <div className="readout-col">
-            <span className="label">LUM</span>
-            <span className="value">{primaryL}%</span>
-          </div>
-        </div>
-
-        {/* 3. SECONDARY RODS */}
-        <div className="sub-swatches">
-          <div className="sub-row">
-            <SwatchSlot role="SEC" color={currentPalette.secondary} label="SECONDARY" />
-            <SwatchSlot role="ACC" color={currentPalette.accent} label="ACCENT" />
-          </div>
-          <div className="sub-row">
-            <SwatchSlot role="AMB" color={currentPalette.ambient} label="AMBIENT" />
-            <SwatchSlot role="CON" color={currentPalette.contrast} label="CONTRAST" />
-          </div>
-        </div>
+      {/* COLOR GRID */}
+      <div className="swatches-grid">
+        <SwatchSlot role="PRIMARY" label="FRONT" hue={p_hue} color={currentPalette.primary} />
+        <SwatchSlot role="SECONDARY" label="MOV L" hue={s_hue} color={currentPalette.secondary} />
+        <SwatchSlot role="AMBIENT" label="MOV R" hue={amb_hue} color={currentPalette.ambient} />
+        <SwatchSlot 
+            role="ACCENT" 
+            label="BACK" 
+            hue={acc_hue} 
+            color={currentPalette.accent} 
+            isStrobe={isStrobe}
+        />
       </div>
 
-      {/* DERIVATION LOGIC */}
-      <div className="derivation-logic">
-        <div className="logic-header">DERIVATION PATH</div>
-        <div className="logic-chain">
-          <div className="chain-node">
-            <span className="node-label">KEY</span>
-            <span className="node-val">{derivation.key.replace(/Major|Minor/, '').trim()}</span>
-          </div>
-          <div className="chain-operator">+</div>
-          <div className="chain-node">
-            <span className="node-label">MOOD</span>
-            <span className="node-val mood">{derivation.mood}</span>
-          </div>
-          <div className="chain-arrow">→</div>
-          <div className="chain-node final">
-            <span className="node-label">HUE</span>
-            <span className="node-val" style={{color: currentPalette.primary}}>
-              {derivation.finalHue}°
-            </span>
-          </div>
-        </div>
+      {/* THERMAL / MOOD FOOTER */}
+      <div className="core-footer">
+         <div className="footer-metric">
+            <span className="f-label">MOOD</span>
+            <span className="f-value">{dna?.mode?.mood?.toUpperCase() || '---'}</span>
+         </div>
+         <div className="footer-metric">
+            <span className="f-label">TEMP</span>
+            <span className="f-value">{cognitive?.thermalTemperature ? `${Math.round(cognitive.thermalTemperature)}K` : '---'}</span>
+         </div>
       </div>
-
-      {/* 🌡️ WAVE 66.5 + 66.8: THERMAL TEMPERATURE BAR */}
-      <div className="thermal-section">
-        <div className="thermal-header">
-          <span className="thermal-label">THERMAL</span>
-          <span className="thermal-value">{hasThermal ? `${thermalTemp}K` : '---'}</span>
-          <span className="thermal-state">{
-            !hasThermal ? '⏳ LOADING' :
-            thermalTemp < 4000 ? '🔥 WARM' :
-            thermalTemp > 6000 ? '❄️ COOL' : '⚖️ NEUTRAL'
-          }</span>
-        </div>
-        <div className="thermal-bar-track">
-          <div 
-            className="thermal-indicator"
-            style={{ left: `${thermalPercent}%` }}
-          />
-        </div>
-      </div>
-
     </div>
   )
 }
 
-interface SwatchProps { role: string, color: string, label: string, large?: boolean }
+interface SwatchSlotProps {
+  role: string
+  label: string
+  hue: number
+  color: string
+  isStrobe?: boolean
+}
 
-const SwatchSlot: React.FC<SwatchProps> = ({ role, color, label, large }) => (
-  <div className={`swatch-slot ${large ? 'large' : ''}`}>
-    <div 
-      className="swatch-color" 
-      style={{ 
-        background: color, 
-        boxShadow: `0 0 15px ${color}60`
-      }}
-    >
-      <span className="role-tag">{role}</span>
+const SwatchSlot: React.FC<SwatchSlotProps> = ({ role, label, hue, color, isStrobe }) => (
+  <div className="swatch-cell">
+    <div className="cell-header">
+        <span className="role-id">{role}</span>
+        <span className="fixture-id">{label}</span>
     </div>
-    <div className="swatch-meta">
-      <span className="swatch-label">{label}</span>
+    <div className="color-preview-box" style={{ background: color }}>
+        {isStrobe && <div className="strobe-overlay">⚡</div>}
+    </div>
+    <div className="cell-footer">
+        {isStrobe ? <span className="flash-txt">STROBE</span> : <span className="hue-txt">{hue}°</span>}
     </div>
   </div>
 )

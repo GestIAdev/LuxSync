@@ -1050,100 +1050,21 @@ function startMainLoop() {
       };
       
       // ═══════════════════════════════════════════════════════════════════════
-      // 🏛️ WAVE 123.2: TECHNO PRISM - Derivación Geométrica desde Primary (SSOT)
+      // 🏛️ WAVE 127: COLORES DESDE SSOT (SeleneLux es la Fuente Única de Verdad)
       // ═══════════════════════════════════════════════════════════════════════
-      // Referencia: BLUEPRINT-SELENE-CHROMATIC-FORMULA.md
-      // El primaryColor del Engine es la Source of Truth (Key musical).
-      // Derivamos matemáticamente: TRIÁDICO (+120°) y COMPLEMENTARIO (+180°)
+      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opción A implementada)
+      // Ya NO calculamos colores aquí. El Techno Prism vive en SeleneLux.ts.
+      // Solo leemos state.colors y los aplicamos ciegamente a los fixtures.
       // ═══════════════════════════════════════════════════════════════════════
       const preset = getVibePreset();
       
-      // 1. VERDAD MUSICAL: Primary desde el Engine (state.colors)
-      let color: { r: number; g: number; b: number } = state.colors?.primary || { r: 0, g: 0, b: 0 };
-      let secondary: { r: number; g: number; b: number };
-      let ambient: { r: number; g: number; b: number };
-      let backParColor: { r: number; g: number; b: number };
+      // Colores directamente del SSOT (ya procesados por SeleneLux)
+      const color: { r: number; g: number; b: number } = state.colors?.primary || { r: 0, g: 0, b: 0 };
+      const secondary: { r: number; g: number; b: number } = state.colors?.secondary || color;
+      const ambient: { r: number; g: number; b: number } = state.colors?.ambient || secondary;
+      const backParColor: { r: number; g: number; b: number } = state.colors?.accent || color;
       
-      // 2. Obtener baseHue desde el Primary del Engine
-      const primaryHsl = rgbToHsl(color.r, color.g, color.b);
-      let baseHue = primaryHsl.h;
-      
-      if (preset.name.includes('Techno')) {
-        // ═══════════════════════════════════════════════════════════════════
-        // 🔷 WAVE 125.1: TECHNO PRISM - FULL SPECTRUM (Cold Neon)
-        // ═══════════════════════════════════════════════════════════════════
-        // Objetivo: Paleta 100% procedural, 100% fría/neón para Techno.
-        // Corrección: Incluir Mover L en derivación matemática (no amarillos).
-        // ═══════════════════════════════════════════════════════════════════
-        
-        // A. THE COLD DICTATOR: Enfriar baseHue si está en zona cálida
-        const normalizedHue = (baseHue + 360) % 360;
-        const isWarm = (normalizedHue > 330 || normalizedHue < 90);
-        
-        if (isWarm) {
-          // Invertir hacia espectro frío (Cyan/Azul/Morado)
-          baseHue = (normalizedHue + 180) % 360;
-        }
-        
-        // B. SANITIZE HELPER: Anti-Caca / Anti-Pollo
-        const sanitizeTechnoColor = (hue: number): number => {
-          // Si cae en Naranja/Amarillo/VerdePantano (30° a 100°) → Magenta Neón
-          if (hue > 30 && hue < 100) {
-            return 320; // Forzar a Magenta Neón
-          }
-          return hue;
-        };
-        
-        // C. DERIVACIÓN GEOMÉTRICA COMPLETA
-        
-        // FRONT_PARS (Base Fría) - Color ya enfriado
-        color = hslToRgb(baseHue, 100, 50);
-        
-        // MOVER L (Melodía) -> ANÁLOGO +60° (vecino frío)
-        let secondaryHue = (baseHue + 60) % 360;
-        secondaryHue = sanitizeTechnoColor(secondaryHue);
-        secondary = hslToRgb(secondaryHue, 100, 50);
-        
-        // MOVER R (Ambiente) -> TRIÁDICO +120° (diferencia máxima)
-        let ambientHue = (baseHue + 120) % 360;
-        ambientHue = sanitizeTechnoColor(ambientHue);
-        ambient = hslToRgb(ambientHue, 100, 50);
-        
-        // BACK_PARS (Acento) -> COMPLEMENTARIO +180°
-        const accentHue = (baseHue + 180) % 360;
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🏛️ WAVE 124: STROBE TAMING - Flash solo en Snare explosivo
-        // ═══════════════════════════════════════════════════════════════════
-        const isSnareExplosion = treblePulse > 0.6;
-        
-        if (isSnareExplosion) {
-          // ⚪ WHITE FLASH: Solo en golpe fuerte de snare/clap
-          backParColor = { r: 255, g: 255, b: 255 };
-        } else {
-          // 🎨 COLOR DE ACENTO: Complementario el 95% del tiempo
-          backParColor = hslToRgb(accentHue, 100, 60);
-        }
-        
-        // Debug log cada ~10 segundos
-        if (Math.random() < 0.003) {
-          console.log(`[WAVE125.1] 🔷 COLD PRISM | Base:${baseHue.toFixed(0)}° | Secondary:${secondaryHue}° | Ambient:${ambientHue}° | Accent:${accentHue}° | Warm:${isWarm} | Strobe:${isSnareExplosion}`);
-        }
-      } else {
-        // Otros presets: Usar colores de la UI con fallbacks
-        secondary = state.colors?.secondary || color;
-        ambient = state.colors?.ambient || secondary;
-        
-        // WAVE 86 Legacy: BackPar = Primary + 25° hue twist
-        const backParHsl = { 
-          h: (primaryHsl.h + 25) % 360, 
-          s: primaryHsl.s, 
-          l: Math.max(primaryHsl.l, 40)
-        };
-        backParColor = hslToRgb(backParHsl.h, backParHsl.s, backParHsl.l);
-      }
-      
-      // Accent para strobes (fallback a color primario)
+      // Accent para strobes (ya viene procesado del SSOT)
       const accent = state.colors?.accent || color;
       // ═══════════════════════════════════════════════════════════════════════
       

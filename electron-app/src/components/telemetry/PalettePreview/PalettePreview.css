@@ -1,6 +1,10 @@
-/* PalettePreview.css - CHROMATIC REACTOR V2 (Gap Fixed) */
+/* PalettePreview.css - WAVE 134: CHROMATIC CORE - Military HUD Edition */
+/* Unified with MusicalDNAPanel & HuntMonitor style system */
 
-.palette-panel-container {
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* CONTAINER - Base panel matching telemetry family                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.chromatic-core-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -11,185 +15,226 @@
   backdrop-filter: blur(10px);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  gap: 16px;
+  gap: 12px;
   font-family: 'JetBrains Mono', monospace;
   transition: border-color 0.3s;
 }
 
-.palette-panel-container.online { border-color: rgba(255, 0, 85, 0.4); }
-.palette-panel-container.offline { opacity: 0.6; border-color: #333; }
-
-/* --- HEADER --- */
-.palette-header {
-  display: flex; justify-content: space-between; align-items: center;
-  border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;
+.chromatic-core-panel.online { 
+  border-color: rgba(255, 0, 85, 0.4); 
 }
 
-.palette-title {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 0.75rem; font-weight: 700; color: #ff0055; letter-spacing: 1px;
+.chromatic-core-panel.offline { 
+  opacity: 0.6; 
+  border-color: #333; 
 }
 
-.origin-badge {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 0.6rem; color: #888; background: #111;
-  padding: 2px 8px; border-radius: 4px; border: 1px solid #333;
-  text-transform: uppercase; font-weight: 700;
-}
-.origin-dot { width: 6px; height: 6px; background: #666; border-radius: 50%; }
-.origin-badge.procedural .origin-dot { background: #00f3ff; box-shadow: 0 0 5px #00f3ff; }
-.origin-badge.memory .origin-dot { background: #ff0055; box-shadow: 0 0 5px #ff0055; }
-
-/* --- STRATEGY --- */
-.strategy-display {
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255, 0, 85, 0.05);
-  border: 1px solid rgba(255, 0, 85, 0.1);
-  border-radius: 6px;
-  padding: 8px 16px;
-}
-
-.strategy-label { font-size: 0.55rem; color: #ff0055; opacity: 0.8; letter-spacing: 1px; }
-.strategy-value { font-size: 1.1rem; font-weight: 700; color: #fff; margin-top: 2px; }
-
-.strategy-graph { width: 40px; height: 40px; }
-.color-wheel-mini {
-  width: 100%; height: 100%; border-radius: 50%;
-  border: 2px solid; position: relative; opacity: 0.8;
-}
-.spoke {
-  position: absolute; top: 50%; left: 50%; width: 45%; height: 2px;
-  transform-origin: left center; border-radius: 1px;
-}
-
-/* --- SWATCH RACK --- */
-.swatch-rack {
-  display: flex; flex-direction: column; gap: 12px;
-  flex: 1; 
-  justify-content: center; /* Centra el bloque entero si sobra espacio arriba/abajo */
-}
-
-.swatch-slot { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.swatch-slot.large { flex: 0 0 auto; margin-bottom: 0; } /* El margen lo controla el tech-readout */
-
-.swatch-color {
-  height: 20px; border-radius: 3px; position: relative;
-  border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;
-}
-.swatch-slot.large .swatch-color { height: 36px; border-radius: 4px; }
-
-.role-tag {
-  position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
-  font-size: 0.55rem; font-weight: 700; color: rgba(0,0,0,0.8);
-  background: rgba(255,255,255,0.6); padding: 1px 3px; border-radius: 2px;
-}
-
-.swatch-meta { display: flex; justify-content: space-between; align-items: center; }
-.swatch-label { font-size: 0.55rem; color: #666; text-transform: uppercase; }
-
-.sub-swatches { display: flex; flex-direction: column; gap: 8px; }
-.sub-row { display: flex; gap: 8px; }
-
-/* --- TECH READOUT (INTEGRATED) --- */
-.tech-readout.integrated {
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* HEADER - Military tactical style                                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.core-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0,0,0,0.2); /* Fondo sutil para conectar visualmente */
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff0055;
+  box-shadow: 0 0 8px #ff0055;
+  animation: pulse-slow 3s infinite;
+}
+
+.chromatic-core-panel.offline .status-dot {
+  background: #666;
+  box-shadow: none;
+  animation: none;
+}
+
+.panel-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ff0055;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1.2;
+  max-width: 100px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-tag {
+  font-size: 0.65rem;
+  color: #888;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* STRATEGY DISPLAY - Algorithm indicator                                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.strategy-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 0, 85, 0.05);
+  border: 1px solid rgba(255, 0, 85, 0.15);
+  border-radius: 6px;
   padding: 8px 12px;
-  margin: 4px 0; /* Espaciado entre Primary y Secundarios */
 }
 
-.readout-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.readout-col.main { align-items: flex-start; min-width: 80px; }
-
-.readout-col .label { font-size: 0.5rem; color: #555; font-weight: 700; }
-.readout-col .value { font-size: 0.8rem; color: #ccc; font-weight: 600; }
-.readout-col .value.hex { font-size: 0.9rem; text-shadow: 0 0 10px currentColor; }
-
-.readout-divider {
-  width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 8px;
+.strategy-display .label {
+  font-size: 0.55rem;
+  color: #666;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-/* --- DERIVATION --- */
-.derivation-logic {
-  border-top: 1px solid rgba(255,255,255,0.05);
-  padding-top: 10px;
-  margin-top: auto;
+.strategy-display .value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
 }
 
-.logic-header { font-size: 0.55rem; color: #666; margin-bottom: 8px; text-transform: uppercase; }
-.logic-chain { display: flex; justify-content: space-between; align-items: center; }
-
-.chain-node {
-  background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: 4px;
-  display: flex; flex-direction: column; align-items: center; min-width: 50px;
-}
-
-.node-label { font-size: 0.5rem; color: #555; margin-bottom: 2px; }
-.node-val { font-size: 0.75rem; color: #ddd; font-weight: 700; white-space: nowrap; }
-.node-val.mood { font-size: 0.65rem; color: #aaa; text-transform: capitalize; }
-
-.chain-operator, .chain-arrow { color: #444; font-size: 0.8rem; font-weight: 700; }
-
-/* 🌡️ WAVE 66.5: THERMAL TEMPERATURE BAR */
-.thermal-section {
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SWATCHES GRID - Color output display                                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.swatches-grid {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  margin-top: 8px;
+  flex: 1;
+  justify-content: center;
 }
 
-.thermal-header {
+.swatch-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cell-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.55rem;
 }
 
-.thermal-label {
-  color: #666;
+.role-id {
+  color: #aaa;
   font-weight: 700;
-  letter-spacing: 1px;
-  font-size: 0.6rem;
+  letter-spacing: 0.5px;
 }
 
-.thermal-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #fff;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+.fixture-id {
+  color: #555;
+  font-weight: 500;
 }
 
-.thermal-state {
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: #888;
-}
-
-.thermal-bar-track {
+.color-preview-box {
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
-  height: 6px;
-  background: linear-gradient(to right, #ff8a00, #ffffff 50%, #9cdcfe);
-  border-radius: 3px;
-  overflow: visible;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
-.thermal-indicator {
+.color-preview-box:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.strobe-overlay {
   position: absolute;
-  top: -2px;
-  width: 3px;
-  height: 10px;
-  background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4);
-  transform: translateX(-50%);
-  transition: left 0.3s ease-out;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.9rem;
+  animation: strobe-pulse 0.3s infinite alternate;
+  text-shadow: 0 0 10px #fff;
+}
+
+.cell-footer {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.6rem;
+}
+
+.hue-txt {
+  color: #666;
+  font-weight: 600;
+}
+
+.flash-txt {
+  color: #fbbf24;
+  font-weight: 700;
+  animation: flash-blink 0.5s infinite alternate;
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* FOOTER - Mood & Thermal readout                                             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.core-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: auto;
+}
+
+.footer-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.f-label {
+  font-size: 0.5rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.f-value {
+  font-size: 0.75rem;
+  color: #ccc;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ANIMATIONS - Shared with other telemetry panels                             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes strobe-pulse {
+  from { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes flash-blink {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }

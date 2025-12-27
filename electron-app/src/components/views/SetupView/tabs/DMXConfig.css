@@ -340,18 +340,184 @@
 }
 
 /* ============================================
-   ARTNET PLACEHOLDER
+   🎨 WAVE 153: ARTNET CONFIGURATION
    ============================================ */
 
-.artnet-placeholder {
-  padding: 20px;
-  background: rgba(255, 200, 0, 0.1);
-  border: 1px solid rgba(255, 200, 0, 0.3);
-  border-radius: 8px;
+.artnet-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(138, 96, 255, 0.08);
+  border: 1px solid rgba(138, 96, 255, 0.25);
+  border-radius: 10px;
+}
+
+.artnet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.artnet-icon {
+  font-size: 20px;
+}
+
+.artnet-title {
+  flex: 1;
+  font-weight: 600;
+  color: white;
+}
+
+.artnet-status {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.artnet-status.connected {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+}
+
+.artnet-status.disconnected {
+  background: rgba(255, 100, 100, 0.15);
+  color: #ff6464;
+}
+
+.artnet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.artnet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.artnet-field label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.artnet-field input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(138, 96, 255, 0.3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: white;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.artnet-field input:focus {
+  outline: none;
+  border-color: #8a60ff;
+}
+
+.artnet-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.artnet-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.artnet-field.small {
+  flex: 1;
+}
+
+.artnet-field.small input {
   text-align: center;
 }
 
-.artnet-placeholder span {
-  color: #ffc800;
+.artnet-error {
+  padding: 10px;
+  background: rgba(255, 100, 100, 0.15);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 6px;
+  color: #ff6464;
   font-size: 12px;
+}
+
+.artnet-actions {
+  margin-top: 8px;
+}
+
+.artnet-connect-btn,
+.artnet-disconnect-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.artnet-connect-btn {
+  background: linear-gradient(135deg, #8a60ff, #6040cc);
+  color: white;
+}
+
+.artnet-connect-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(138, 96, 255, 0.4);
+}
+
+.artnet-connect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.artnet-disconnect-btn {
+  background: rgba(255, 100, 100, 0.2);
+  color: #ff6464;
+  border: 1px solid rgba(255, 100, 100, 0.3);
+}
+
+.artnet-disconnect-btn:hover {
+  background: rgba(255, 100, 100, 0.3);
+}
+
+.artnet-stats {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.artnet-stats .stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.artnet-stats .stat-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.artnet-stats .stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #00ff88;
+  font-family: 'JetBrains Mono', monospace;
 }

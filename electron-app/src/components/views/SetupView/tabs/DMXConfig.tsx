@@ -17,6 +17,8 @@ import './DMXConfig.css'
 
 // Helper to access dmx API (typed in preload.ts but accessed dynamically)
 const getDmxApi = () => (window as any).lux?.dmx
+// 🎨 WAVE 153: ArtNet API
+const getArtnetApi = () => (window as any).lux?.artnet
 
 // ============================================
 // TYPES
@@ -262,7 +264,19 @@ export const DMXConfig: React.FC = () => {
       }
       
     } else if (driver === 'artnet') {
-      setError('ArtNet not yet implemented')
+      // 🎨 WAVE 153: Start ArtNet with current config
+      const artnetApi = getArtnetApi()
+      if (artnetApi?.start) {
+        try {
+          const result = await artnetApi.start()
+          if (!result.success) {
+            setError(result.error || 'Failed to start ArtNet')
+          }
+        } catch (err) {
+          console.error('[DMXConfig] ArtNet start failed:', err)
+          setError('Failed to start ArtNet')
+        }
+      }
     }
   }, [setDmxDriver, autoConnect, handleRescan])
   
@@ -353,12 +367,178 @@ export const DMXConfig: React.FC = () => {
         />
       )}
       
-      {/* ArtNet placeholder */}
+      {/* 🎨 WAVE 153: ArtNet Configuration */}
       {currentDriver === 'artnet' && (
-        <div className="artnet-placeholder">
-          <span>🌐 ArtNet configuration coming in WAVE 28</span>
-        </div>
+        <ArtNetConfig />
       )}
+    </div>
+  )
+}
+
+// ============================================
+// 🎨 WAVE 153: ARTNET CONFIG COMPONENT
+// ============================================
+
+interface ArtNetStatus {
+  state: 'disconnected' | 'ready' | 'sending' | 'error'
+  ip: string
+  port: number
+  universe: number
+  framesSent: number
+  packetsDropped: number
+  avgLatency: number
+}
+
+const ArtNetConfig: React.FC = () => {
+  const [ip, setIp] = useState('255.255.255.255')
+  const [port, setPort] = useState(6454)
+  const [universe, setUniverse] = useState(0)
+  const [status, setStatus] = useState<ArtNetStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+
+  // Fetch status on mount and periodically
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const artnetApi = getArtnetApi()
+      if (artnetApi?.getStatus) {
+        try {
+          const result = await artnetApi.getStatus()
+          if (result.success) {
+            setStatus(result as ArtNetStatus)
+          }
+        } catch (err) {
+          console.warn('[ArtNet] Status fetch failed:', err)
+        }
+      }
+    }
+
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 2000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleConnect = async () => {
+    setIsConnecting(true)
+    setError(null)
+
+    const artnetApi = getArtnetApi()
+    if (artnetApi?.start) {
+      try {
+        // Configure and start
+        await artnetApi.configure({ ip, port, universe })
+        const result = await artnetApi.start()
+        
+        if (result.success) {
+          setStatus(result.status)
+        } else {
+          setError(result.error || 'Failed to start ArtNet')
+        }
+      } catch (err) {
+        setError('Failed to connect: ' + String(err))
+      }
+    }
+
+    setIsConnecting(false)
+  }
+
+  const handleDisconnect = async () => {
+    const artnetApi = getArtnetApi()
+    if (artnetApi?.stop) {
+      await artnetApi.stop()
+      setStatus(null)
+    }
+  }
+
+  const isConnected = status?.state === 'ready' || status?.state === 'sending'
+
+  return (
+    <div className="artnet-config">
+      <div className="artnet-header">
+        <span className="artnet-icon">🎨</span>
+        <span className="artnet-title">Art-Net Configuration</span>
+        <span className={`artnet-status ${isConnected ? 'connected' : 'disconnected'}`}>
+          {isConnected ? '● Connected' : '○ Disconnected'}
+        </span>
+      </div>
+
+      <div className="artnet-form">
+        <div className="artnet-field">
+          <label>IP Address</label>
+          <input
+            type="text"
+            value={ip}
+            onChange={(e) => setIp(e.target.value)}
+            placeholder="255.255.255.255"
+            disabled={isConnected}
+          />
+          <span className="field-hint">Use 255.255.255.255 for broadcast</span>
+        </div>
+
+        <div className="artnet-field-row">
+          <div className="artnet-field small">
+            <label>Port</label>
+            <input
+              type="number"
+              value={port}
+              onChange={(e) => setPort(Number(e.target.value))}
+              disabled={isConnected}
+            />
+          </div>
+
+          <div className="artnet-field small">
+            <label>Universe</label>
+            <input
+              type="number"
+              value={universe}
+              onChange={(e) => setUniverse(Number(e.target.value))}
+              min={0}
+              max={32767}
+              disabled={isConnected}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="artnet-error">⚠️ {error}</div>
+        )}
+
+        <div className="artnet-actions">
+          {!isConnected ? (
+            <button 
+              className="artnet-connect-btn"
+              onClick={handleConnect}
+              disabled={isConnecting}
+            >
+              {isConnecting ? '🔄 Connecting...' : '🚀 Start Art-Net'}
+            </button>
+          ) : (
+            <button 
+              className="artnet-disconnect-btn"
+              onClick={handleDisconnect}
+            >
+              🛑 Stop Art-Net
+            </button>
+          )}
+        </div>
+
+        {status && isConnected && (
+          <div className="artnet-stats">
+            <div className="stat">
+              <span className="stat-label">Frames Sent</span>
+              <span className="stat-value">{status.framesSent.toLocaleString()}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Dropped</span>
+              <span className="stat-value">{status.packetsDropped}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-label">Latency</span>
+              <span className="stat-value">{status.avgLatency.toFixed(2)}ms</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

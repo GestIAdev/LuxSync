@@ -15,6 +15,8 @@ import { FixturePhysicsDriver } from '../src/main/selene-lux-core/hardware'
 import { getTrinity } from '../src/main/workers/TrinityOrchestrator'
 // 🌪️ WAVE 11: UniversalDMXDriver - Soporte para CUALQUIER chip serial
 import { universalDMX, type DMXDevice } from './UniversalDMXDriver'
+// 🎨 WAVE 153: ArtNetDriver - DMX sobre red UDP
+import { artNetDriver } from './ArtNetDriver'
 // ⚡ WAVE 10.7: EffectsEngine para efectos de pánico
 import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/EffectsEngine'
 // 🎭 WAVE 26: ShowManager for save/load/delete shows
@@ -1477,6 +1479,21 @@ function startMainLoop() {
         universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
         universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
         universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+        
+        // 🎨 WAVE 153: También enviar por Art-Net si está conectado
+        if (artNetDriver.isConnected) {
+          artNetDriver.setChannel(addr, fixture.pan)
+          artNetDriver.setChannel(addr + 1, fixture.tilt)
+          artNetDriver.setChannel(addr + 2, finalDimmer)
+          artNetDriver.setChannel(addr + 3, finalR)
+          artNetDriver.setChannel(addr + 4, finalG)
+          artNetDriver.setChannel(addr + 5, finalB)
+        }
+      }
+      
+      // 🎨 WAVE 153: Enviar frame Art-Net (con rate limiting interno)
+      if (artNetDriver.isConnected) {
+        artNetDriver.send()
       }
     }
     
@@ -2910,6 +2927,73 @@ universalDMX.on('state', (state: string) => {
 universalDMX.on('error', (error: string) => {
   console.error('[DMX] ❌ Error:', error)
   mainWindow?.webContents.send('dmx:status', { state: 'error', error })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎨 WAVE 153: ART-NET DRIVER - DMX sobre red UDP
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Iniciar/detener Art-Net
+ipcMain.handle('artnet:start', async (_event, config?: { ip?: string; port?: number; universe?: number }) => {
+  try {
+    if (config) {
+      artNetDriver.configure(config)
+    }
+    const success = await artNetDriver.start()
+    return { 
+      success, 
+      status: artNetDriver.getStatus(),
+      error: success ? null : 'Failed to start Art-Net socket'
+    }
+  } catch (err) {
+    console.error('[ArtNet] Start error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+ipcMain.handle('artnet:stop', async () => {
+  try {
+    await artNetDriver.stop()
+    return { success: true, status: artNetDriver.getStatus() }
+  } catch (err) {
+    console.error('[ArtNet] Stop error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Configurar Art-Net (IP, Universe, etc.)
+ipcMain.handle('artnet:configure', (_event, config: { ip?: string; port?: number; universe?: number; refreshRate?: number }) => {
+  try {
+    artNetDriver.configure(config)
+    return { success: true, config: artNetDriver.currentConfig }
+  } catch (err) {
+    console.error('[ArtNet] Configure error:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// Obtener estado Art-Net
+ipcMain.handle('artnet:get-status', () => {
+  return {
+    success: true,
+    ...artNetDriver.getStatus()
+  }
+})
+
+// Eventos Art-Net al renderer
+artNetDriver.on('ready', () => {
+  console.log('[ArtNet] 🎨 Ready')
+  mainWindow?.webContents.send('artnet:ready', artNetDriver.getStatus())
+})
+
+artNetDriver.on('error', (error: Error) => {
+  console.error('[ArtNet] ❌ Error:', error.message)
+  mainWindow?.webContents.send('artnet:error', error.message)
+})
+
+artNetDriver.on('disconnected', () => {
+  console.log('[ArtNet] 🔌 Disconnected')
+  mainWindow?.webContents.send('artnet:disconnected')
 })
 
 console.log('LuxSync Main Process Started')

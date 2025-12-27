@@ -96,6 +96,34 @@ const api = {
   },
 
   // ============================================
+  // 🎨 WAVE 153: ART-NET (DMX sobre red UDP)
+  // ============================================
+  artnet: {
+    start: (config?: { ip?: string; port?: number; universe?: number }) => 
+      ipcRenderer.invoke('artnet:start', config),
+    stop: () => ipcRenderer.invoke('artnet:stop'),
+    configure: (config: { ip?: string; port?: number; universe?: number; refreshRate?: number }) => 
+      ipcRenderer.invoke('artnet:configure', config),
+    getStatus: () => ipcRenderer.invoke('artnet:get-status'),
+    // Eventos
+    onReady: (callback: (status: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
+      ipcRenderer.on('artnet:ready', handler)
+      return () => ipcRenderer.removeListener('artnet:ready', handler)
+    },
+    onError: (callback: (error: string) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, error: string) => callback(error)
+      ipcRenderer.on('artnet:error', handler)
+      return () => ipcRenderer.removeListener('artnet:error', handler)
+    },
+    onDisconnected: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on('artnet:disconnected', handler)
+      return () => ipcRenderer.removeListener('artnet:disconnected', handler)
+    },
+  },
+
+  // ============================================
   // AUDIO
   // ============================================
   audio: {

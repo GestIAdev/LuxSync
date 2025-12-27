@@ -747,6 +747,12 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
   // El hue se mueve un porcentaje igual a la fuerza hacia el polo
   const newHue = hue + (delta * force);
   
+  // 🔌 WAVE 150: DEBUG LOG (Chivato) - Ver si el aire acondicionado está encendido
+  // Si vemos "VibeTemp=9500", sabremos que la conexión térmica funciona
+  if (Math.random() < 0.01) {  // Solo 1% de frames para no saturar consola
+    console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${normalizeHue(newHue).toFixed(0)}°`);
+  }
+  
   return normalizeHue(newHue);
 }
 

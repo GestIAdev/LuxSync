@@ -667,8 +667,14 @@ export class SeleneLux extends EventEmitter {
         // isDrop = true solo si el StrategyArbiter lo confirm� con energ�a relativa
         const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
         
-        // Usar interpolador en lugar de generar directamente
-        finalHslPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
+        // 🔌 WAVE 150: THE THERMAL CONNECTION - Enchufar constitución del Vibe
+        const activeVibe = this.lastTrinityData?.activeVibe ?? 
+                          this.lastTrinityData?.debugInfo?.activeVibe ?? 
+                          'idle'
+        const constitution = getColorConstitution(activeVibe)
+        
+        // Usar interpolador CON la Constitución (incluye atmosphericTemp)
+        finalHslPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop, constitution)
         finalPaletteSource = 'procedural'
       }
       
@@ -978,7 +984,14 @@ export class SeleneLux extends EventEmitter {
           const colorStrategy = (this.lastTrinityData as any)?.mood?.colorStrategy
           const isConfirmedDrop = colorStrategy?.sectionOverride === 'drop'
           const isDrop = isConfirmedDrop || (currentSection === 'drop' && !colorStrategy)
-          const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop)
+          
+          // 🔌 WAVE 150: THE THERMAL CONNECTION - Enchufar constitución del Vibe
+          const activeVibe = this.lastTrinityData?.activeVibe ?? 
+                            this.lastTrinityData?.debugInfo?.activeVibe ?? 
+                            'idle'
+          const constitution = getColorConstitution(activeVibe)
+          
+          const proceduralPalette = this.colorInterpolator.update(safeAnalysis as any, isDrop, constitution)
           
           // Convertir HSL ? RGB para hardware
           const rgbPalette = paletteToRgb(proceduralPalette)

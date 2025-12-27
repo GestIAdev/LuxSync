@@ -1497,19 +1497,29 @@ function startMainLoop() {
         const isBeamProfile = fixture.name?.toLowerCase().includes('beam') || 
                                fixture.type?.toLowerCase() === 'moving_head'
         
+        // 🔧 WAVE 153.2: DISCHARGE LAMP SHUTTER
+        // Los beams de descarga (2R, 5R, 7R) no tienen dimmer gradual
+        // El Shutter funciona como ON/OFF:
+        // - 0-31: Cerrado (blackout)
+        // - 32-255: Abierto (full intensity)
+        // Convertimos intensidad a shutter binario
+        const beamShutter = finalDimmer > 10 ? 255 : 0
+        
         if (universalDMX.isConnected) {
           if (isBeamProfile) {
             // 📦 BEAM PROFILE (ej: beam led 2r 10ch)
             // Canal 1: Pan
             // Canal 2: Tilt
             // Canal 3: Speed Pan/Tilt (255 = velocidad máxima)
-            // Canal 4: Shutter (actúa como dimmer: 255 = abierto)
-            // Canal 5: Color Wheel (0 = blanco)
+            // Canal 4: Shutter (ON/OFF: 255=abierto, 0=cerrado)
+            // Canal 5: Strobe (0 = sin strobe)
+            // Canal 6: Color Wheel (0 = blanco/abierto)
             universalDMX.setChannel(addr, fixture.pan)           // Canal 1: Pan
             universalDMX.setChannel(addr + 1, fixture.tilt)      // Canal 2: Tilt
             universalDMX.setChannel(addr + 2, 255)               // Canal 3: Speed (máximo)
-            universalDMX.setChannel(addr + 3, finalDimmer)       // Canal 4: Shutter = Dimmer
-            universalDMX.setChannel(addr + 4, 0)                 // Canal 5: Color = Blanco
+            universalDMX.setChannel(addr + 3, beamShutter)       // Canal 4: Shutter ON/OFF
+            universalDMX.setChannel(addr + 4, 0)                 // Canal 5: Strobe = OFF
+            universalDMX.setChannel(addr + 5, 0)                 // Canal 6: Color = Blanco
           } else {
             // 📦 LED PROFILE (PAR, Wash, etc.)
             // Canal 1: Pan
@@ -1532,8 +1542,9 @@ function startMainLoop() {
             artNetDriver.setChannel(addr, fixture.pan)
             artNetDriver.setChannel(addr + 1, fixture.tilt)
             artNetDriver.setChannel(addr + 2, 255)               // Speed máximo
-            artNetDriver.setChannel(addr + 3, finalDimmer)       // Shutter = Dimmer
-            artNetDriver.setChannel(addr + 4, 0)                 // Color = Blanco
+            artNetDriver.setChannel(addr + 3, beamShutter)       // Shutter ON/OFF
+            artNetDriver.setChannel(addr + 4, 0)                 // Strobe = OFF
+            artNetDriver.setChannel(addr + 5, 0)                 // Color = Blanco
           } else {
             // 📦 LED PROFILE
             artNetDriver.setChannel(addr, fixture.pan)
@@ -1547,7 +1558,8 @@ function startMainLoop() {
           // 🔍 DEBUG: Log DMX values cada 100 frames
           if (frameIndex % 100 === 0) {
             const profile = isBeamProfile ? 'BEAM' : 'LED'
-            console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${fixture.pan} Tilt:${fixture.tilt} Dim:${finalDimmer}`)
+            const shutterState = beamShutter > 0 ? 'OPEN' : 'CLOSED'
+            console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${fixture.pan} Tilt:${fixture.tilt} Shutter:${shutterState}(${beamShutter})`)
           }
         }
       }

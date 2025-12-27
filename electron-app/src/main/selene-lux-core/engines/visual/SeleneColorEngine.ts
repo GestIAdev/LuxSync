@@ -1397,6 +1397,89 @@ export class SeleneColorEngine {
     //   ❌ if (isTechnoVibe) { ambient.h=275; primary.h=coldHue; accent.l=100; ... }
     // ═══════════════════════════════════════════════════════════════════════
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 149.5: CONSTITUTIONAL ENFORCEMENT - Policía Cromática
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: Tras eliminar Techno Dictatorship, el accent mostraba 65° (amarillo)
+    // violando forbiddenHueRanges: [[0, 75], [330, 360]].
+    // 
+    // CAUSA: La lógica de forbiddenHueRanges solo se aplicaba al PRIMARY en
+    // la sección C (líneas ~880-920), pero SECONDARY, AMBIENT y ACCENT se
+    // calculan DESPUÉS con rotaciones Fibonacci/Triadic sin re-validación.
+    //
+    // SOLUCIÓN: GUARDIÁN FINAL que inspecciona TODOS los colores de la paleta
+    // y expulsa cualquier hue que caiga en zona prohibida, usando rotación
+    // elástica hasta encontrar zona legal.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    if (options?.forbiddenHueRanges) {
+      const elasticStep = options.elasticRotation ?? 15;
+      const maxIterations = Math.ceil(360 / elasticStep);
+      
+      // 1️⃣ POLICÍA DE ZONAS PROHIBIDAS - Revisar CADA color
+      [primary, secondary, ambient, accent].forEach(color => {
+        let iterations = 0;
+        let isInForbidden = true;
+        
+        while (isInForbidden && iterations < maxIterations) {
+          isInForbidden = false;
+          
+          for (const [min, max] of options.forbiddenHueRanges!) {
+            const normalizedMin = normalizeHue(min);
+            const normalizedMax = normalizeHue(max);
+            
+            const isInRange = normalizedMin <= normalizedMax
+              ? (color.h >= normalizedMin && color.h <= normalizedMax)
+              : (color.h >= normalizedMin || color.h <= normalizedMax);
+            
+            if (isInRange) {
+              // 🚨 ILEGAL - Expulsar con rotación elástica
+              color.h = normalizeHue(color.h + elasticStep);
+              isInForbidden = true;
+              iterations++;
+              break;
+            }
+          }
+        }
+      });
+      
+      // 2️⃣ RESOLUCIÓN DE COLISIONES - Evitar "verde sobre verde"
+      // Si Ambient está demasiado cerca de Secondary (< 30°), separarlos
+      const minDistance = 30;
+      let ambientSecondaryDiff = Math.abs(ambient.h - secondary.h);
+      if (ambientSecondaryDiff > 180) ambientSecondaryDiff = 360 - ambientSecondaryDiff;
+      
+      if (ambientSecondaryDiff < minDistance) {
+        // Empujar Ambient +60° para crear contraste real
+        ambient.h = normalizeHue(ambient.h + 60);
+        
+        // Re-validar que no cayó en zona prohibida tras el empujón
+        let iterations = 0;
+        let isInForbidden = true;
+        
+        while (isInForbidden && iterations < maxIterations) {
+          isInForbidden = false;
+          
+          for (const [min, max] of options.forbiddenHueRanges) {
+            const normalizedMin = normalizeHue(min);
+            const normalizedMax = normalizeHue(max);
+            
+            const isInRange = normalizedMin <= normalizedMax
+              ? (ambient.h >= normalizedMin && ambient.h <= normalizedMax)
+              : (ambient.h >= normalizedMin || ambient.h <= normalizedMax);
+            
+            if (isInRange) {
+              ambient.h = normalizeHue(ambient.h + elasticStep);
+              isInForbidden = true;
+              iterations++;
+              break;
+            }
+          }
+        }
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // === M. RETORNAR PALETA COMPLETA ===
     return {
       primary,

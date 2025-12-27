@@ -33,8 +33,9 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Estrategia tetraédrica (Prism)
   forceStrategy: 'prism',
   
-  // Zonas prohibidas: naranjas, amarillos, rojos cálidos
-  forbiddenHueRanges: [[0, 75], [330, 360]],
+  // 🛡️ WAVE 149.5: Zonas prohibidas AMPLIADAS
+  // Subimos de [0, 75] a [0, 80] para matar el amarillo 65° con margen
+  forbiddenHueRanges: [[0, 80], [330, 360]],
   
   // Solo espectro frío permitido
   allowedHueRanges: [[110, 302]],

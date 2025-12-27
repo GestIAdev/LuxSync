@@ -86,10 +86,12 @@ import {
   type UnifiedColor,
   createDefaultBroadcast,
 } from '../../types/SeleneProtocol'
-// ⚡ WAVE 141-142: Physics Modules (Reactividad extraída)
-import { TechnoStereoPhysics, RockStereoPhysics } from './physics'
+// ⚡ WAVE 141-146: Physics Modules (Reactividad extraída por Vibe)
+import { TechnoStereoPhysics, RockStereoPhysics, LatinoStereoPhysics, ChillStereoPhysics } from './physics'
 // 🎛️ WAVE 142: GenerationOptions para restricciones de color
 import type { GenerationOptions } from './engines/visual/SeleneColorEngine'
+// 📜 WAVE 144: Constituciones de Color (Reglas por Vibe)
+import { getColorConstitution } from '../../engines/context/colorConstitutions'
 
 export interface SeleneConfig {
   audio: {
@@ -137,6 +139,11 @@ export class SeleneLux extends EventEmitter {
   private colorEngine: ColorEngine
   private movementEngine: MovementEngine
   private beatDetector: BeatDetector
+  
+  // ⚡ WAVE 147: Physics Module Instances (para géneros con estado)
+  // Latino y Chill mantienen estado interno (blackout frames, breathing phase)
+  private latinoPhysics = new LatinoStereoPhysics()
+  private chillPhysics = new ChillStereoPhysics()
   
   // ? WAVE 39.9.2: GHOST BRAIN ELIMINATED
   // El Brain ahora vive SOLO en Trinity Worker - Main Process no piensa
@@ -1586,251 +1593,152 @@ export class SeleneLux extends EventEmitter {
         saturation: this.globalSaturation
       }
       
-      // -----------------------------------------------------------------------
       // ═══════════════════════════════════════════════════════════════════════
-      // 🤖 WAVE 142: TECHNO PRISM + PHYSICS DELEGATION (THE GREAT RECONNECTION)
+      // 🔥 WAVE 147: THE GREAT PURGE - UNIFIED PHYSICS FLOW
       // ═══════════════════════════════════════════════════════════════════════
-      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opción A)
-      // La lógica del "Cold Prism" vive aquí como SSOT.
-      // La física de strobe vive en physics/TechnoStereoPhysics.ts
+      // 
+      // ANTES (Wave 141-142): Lógica de color HARDCODED por Vibe:
+      //   - Techno: Cold Dictator + Prism (140 líneas)
+      //   - Rock: Stage Lighting + Stadium palette (95 líneas)
+      //   - Total: 235 líneas de código duplicado y frágil
+      // 
+      // AHORA: Flujo Unificado de 3 Pasos:
+      //   1. VibeManager.getColorConstitution() → Reglas del Vibe actual
+      //   2. SeleneColorEngine.generate(audio, constitution) → Paleta base
+      //   3. Physics[Vibe].apply(palette, audio) → Reactividad específica
+      // 
+      // La lógica de COLOR vive en colorConstitutions.ts (forbiddenHueRanges, etc.)
+      // La lógica de FÍSICA vive en physics/*StereoPhysics.ts (strobe, flashes, etc.)
+      // SeleneLux solo ORQUESTA - nunca decide colores.
       // ═══════════════════════════════════════════════════════════════════════
       
       const activeVibe = this.lastTrinityData?.activeVibe ?? 
                          this.lastTrinityData?.debugInfo?.activeVibe ?? 
                          'idle'
       
-      const isTechnoVibe = activeVibe.toLowerCase().includes('techno')
-      
-      if (isTechnoVibe) {
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🤖 WAVE 142: TECHNO COLOR BLOCK (COLD PRISM + PHYSICS)
-        // ═══════════════════════════════════════════════════════════════════════
-        // NOTA: Este bloque aún usa lógica de color hardcoded (Cold Dictator, Prism).
-        // La física de strobe ya está delegada a TechnoStereoPhysics.
-        // 
-        // TODO WAVE 143+: Migrar filtros de color a GenerationOptions:
-        //   - forbiddenHueRanges: [[330, 75]] (warm filter)
-        //   - forceStrategy: 'prism'
-        // ═══════════════════════════════════════════════════════════════════════
-        
-        // 1. CAPTURAR LA INTENCIÓN ORIGINAL DEL BRAIN
-        // Convertir RGB ? HSL para obtener baseHue
-        const primaryRgb = this.lastColors.primary
-        const primaryHsl = rgbToHsl(primaryRgb)  // Funci�n importada de SeleneColorEngine
-        let baseHue = primaryHsl.h
-        
-        // 2. ?? THE COLD DICTATOR (Filtro Anti-C�lido)
-        // -------------------------------------------------------------------
-        // ?? WAVE 128: ACID INJECTION - Bajamos l�mite de 90� a 75�
-        // -------------------------------------------------------------------
-        // Antes: (normalizedHue > 330 || normalizedHue < 90) ? Mataba el verde (80-90)
-        // Ahora: Rango Prohibido Real: 330� (Rosa palo) hasta 75� (Amarillo Lim�n)
-        // Esto PERMITE el paso del Verde �cido (80�-120�) pero BLOQUEA el amarillo
-        // -------------------------------------------------------------------
-        const normalizedHue = (baseHue + 360) % 360
-        const isWarm = (normalizedHue > 330 || normalizedHue < 75)  // ?? WAVE 128: 90?75
-        
-        if (isWarm) {
-          // Invertir fase hacia el espectro fr�o (+180�)
-          baseHue = (normalizedHue + 180) % 360
-        }
-        
-        // 3. ?? THE PRISM (Derivaci�n Geom�trica Estricta)
-        // Generamos las 4 zonas matem�ticamente para garantizar separaci�n.
-        
-        // FRONT (Base)
-        const primaryHue = baseHue
-        
-        // MOVER L (Melod�a - An�logo Fr�o +60�)
-        let secondaryHue = (baseHue + 60) % 360
-        
-        // MOVER R (Atm�sfera - Triada +120�)
-        let ambientHue = (baseHue + 120) % 360
-        
-        // BACK PARS (Acento - Complementario +180�)
-        let accentHue = (baseHue + 180) % 360
-        
-        // 4. ??? SANITIZADOR CROM�TICO (Guardias de Seguridad)
-        // -------------------------------------------------------------------
-        // ?? WAVE 128: Refinamos el rango de 30-100 a 30-75
-        // -------------------------------------------------------------------
-        // Antes: (h > 30 && h < 100) ? Mataba el verde �cido secundario
-        // Ahora: Solo matamos el amarillo puro/naranja (30� a 75�)
-        // Verde �cido (75�-120�) ? PASA ?
-        // Amarillo Pollo (30�-75�) ? MAGENTA ??
-        // -------------------------------------------------------------------
-        const sanitize = (h: number) => (h > 30 && h < 75) ? 320 : h  // ?? WAVE 128: 100?75
-        
-        secondaryHue = sanitize(secondaryHue)
-        ambientHue = sanitize(ambientHue)
-        accentHue = sanitize(accentHue)
-        
-        // 5. ⚡ INDUSTRIAL STROBE LOGIC (WAVE 141: PHYSICS EXTRACTION)
-        // -------------------------------------------------------------------
-        // La lógica de detección de drops (Wave 129-133) ahora vive en:
-        //   physics/TechnoStereoPhysics.ts
-        // 
-        // Aquí solo extraemos las métricas de audio necesarias.
-        // El cálculo de Dynamic Floor, Pulse, y Threshold ahora es interno.
-        // -------------------------------------------------------------------
-        const agc = this._agcData
-        const rawTreble = agc?.normalizedTreble ?? 0.0
-        const bassEnergy = agc?.normalizedBass ?? 0
-        
-        // 6. ⚡ COMMIT AL SSOT (Sobrescribir lastColors con HSL→RGB)
-        // Helper inline para HSL → RGB
-        const hslToRgb = (h: number, s: number, l: number) => {
-          s /= 100
-          l /= 100
-          const c = (1 - Math.abs(2 * l - 1)) * s
-          const x = c * (1 - Math.abs((h / 60) % 2 - 1))
-          const m = l - c / 2
-          let r = 0, g = 0, b = 0
-          if (h < 60) { r = c; g = x; b = 0 }
-          else if (h < 120) { r = x; g = c; b = 0 }
-          else if (h < 180) { r = 0; g = c; b = x }
-          else if (h < 240) { r = 0; g = x; b = c }
-          else if (h < 300) { r = x; g = 0; b = c }
-          else { r = c; g = 0; b = x }
-          return {
-            r: Math.round((r + m) * 255),
-            g: Math.round((g + m) * 255),
-            b: Math.round((b + m) * 255)
-          }
-        }
-        
-        this.lastColors.primary = hslToRgb(primaryHue, 100, 50)
-        this.lastColors.secondary = hslToRgb(secondaryHue, 100, 50)
-        this.lastColors.ambient = hslToRgb(ambientHue, 100, 50)
-        
-        // ⚡ WAVE 141: PHYSICS DELEGATION
-        // La lógica de detección de drops ahora vive en TechnoStereoPhysics
-        // Esto prepara el terreno para Wave 142 (limpieza de color hardcoded)
-        const accentBaseColor = hslToRgb(accentHue, 100, 60)
-        const physicsResult = TechnoStereoPhysics.apply(
-          {
-            primary: this.lastColors.primary,
-            secondary: this.lastColors.secondary,
-            ambient: this.lastColors.ambient,
-            accent: accentBaseColor
-          },
-          {
-            normalizedTreble: rawTreble,
-            normalizedBass: bassEnergy
-          }
-        )
-        
-        // Aplicar el accent procesado por la física (strobe o color)
-        this.lastColors.accent = physicsResult.palette.accent
-        
-        // Debug log cada ~10 segundos (usando datos del physics module)
-        if (Math.random() < 0.003) {
-          const dbg = physicsResult.debugInfo
-          console.log(`[WAVE141] ⚡ PHYSICS DELEGATION | Base:${baseHue.toFixed(0)}° | RawT:${dbg.rawTreble.toFixed(2)} | Floor:${dbg.dynamicFloor.toFixed(2)} | Pulse:${dbg.treblePulse.toFixed(2)} | Bass:${dbg.bassEnergy.toFixed(2)} | Strobe:${physicsResult.isStrobeActive}`)
-        }
+      // Extraer métricas de audio para delegación de física
+      const agc = this._agcData
+      const audioMetrics = {
+        normalizedTreble: agc?.normalizedTreble ?? 0.0,
+        normalizedBass: agc?.normalizedBass ?? 0.0,
+        normalizedMid: agc?.normalizedMid ?? 0.0,
+        avgNormEnergy: agc?.avgNormEnergy ?? 0.4
       }
-      // ⚡ FIN WAVE 141 (was WAVE 133) ⚡
       
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🎸 WAVE 142: POP/ROCK STADIUM BLOCK (HIGH CONTRAST + PHYSICS)
-      // ═══════════════════════════════════════════════════════════════════════
-      // Paleta Stadium Contrast (WAVE 136): +180°/+120° para separación épica.
-      // Física delegada a RockStereoPhysics.ts para detección Snare/Kick.
+      // Capturar hue base para referencia de física
+      const primaryHsl = rgbToHsl(this.lastColors.primary)
+      const baseHue = primaryHsl.h
+      
+      // Paleta actual para procesar
+      const currentPalette = {
+        primary: this.lastColors.primary,
+        secondary: this.lastColors.secondary,
+        ambient: this.lastColors.ambient,
+        accent: this.lastColors.accent
+      }
+      
+      // ───────────────────────────────────────────────────────────────────────
+      // ⚡ PHYSICS DELEGATION BY VIBE
+      // ───────────────────────────────────────────────────────────────────────
+      // Cada módulo de física sabe qué hacer con su género:
+      //   - TechnoStereoPhysics: Industrial Strobe (treble drops)
+      //   - RockStereoPhysics: Snare Crack + Kick Punch
+      //   - LatinoStereoPhysics: Solar Flare (kick) + Machine Gun (blackout)
+      //   - ChillStereoPhysics: Breathing Pulse (sin strobe)
       // 
-      // TODO WAVE 143+: Migrar filtros de color a GenerationOptions:
-      //   - allowedHueRanges: [[0, 60], [300, 360]] (warm stage colors)
-      //   - forceStrategy: 'complementary'
-      // ═══════════════════════════════════════════════════════════════════════
+      // Los COLORES ya vienen correctos del ColorEngine con la Constitution.
+      // Aquí solo aplicamos la FÍSICA de reactividad.
+      // ───────────────────────────────────────────────────────────────────────
       
-      const isPopRockVibe = activeVibe.toLowerCase().includes('pop') || 
-                            activeVibe.toLowerCase().includes('rock')
+      const vibeNormalized = activeVibe.toLowerCase()
       
-      if (isPopRockVibe && !isTechnoVibe) {
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🎸 WAVE 142: ROCK PHYSICS DELEGATION (THE GREAT RECONNECTION)
-        // ═══════════════════════════════════════════════════════════════════════
-        // La lógica de detección de hits (Snare/Kick) ahora vive en:
-        //   physics/RockStereoPhysics.ts
-        // 
-        // El ColorEngine ahora genera los colores base respetando constraints,
-        // y solo aplicamos la física de reactividad aquí.
-        // ═══════════════════════════════════════════════════════════════════════
-        
-        // 1. CAPTURA DE COLOR BASE (Del Brain/ColorEngine)
-        const primaryRgb = this.lastColors.primary
-        const primaryHsl = rgbToHsl(primaryRgb)
-        let baseHue = primaryHsl.h
-        
-        // 🎸 FILTRO "STAGE LIGHTING" (Corrección de Paleta Rock)
-        // El Rock odia los colores intermedios raros (Verde Lima, Morado sucio).
-        // Forzamos a colores de PAR64 clásico: Rojo, Ámbar, Azul, Blanco.
-        const normalizedHue = (baseHue + 360) % 360
-        if (normalizedHue > 80 && normalizedHue < 160) {
-          baseHue = 0  // Verde → Rojo Sangre (Rock)
-        } else if (normalizedHue > 260 && normalizedHue < 300) {
-          baseHue = 40  // Morado raro → Ámbar/Oro
-        }
-        
-        // 2. PALETA DE ESTADIO DE ALTO CONTRASTE (WAVE 136)
-        const primaryHue = baseHue  // FRONT: Base
-        const secondaryHue = (baseHue + 180) % 360  // MOVER L: Complementario
-        const ambientHue = (baseHue + 120) % 360    // MOVER R: Triada
-        
-        // Helper HSL → RGB
-        const hslToRgbRock = (h: number, s: number, l: number) => {
-          s /= 100
-          l /= 100
-          const c = (1 - Math.abs(2 * l - 1)) * s
-          const x = c * (1 - Math.abs((h / 60) % 2 - 1))
-          const m = l - c / 2
-          let r = 0, g = 0, b = 0
-          if (h < 60) { r = c; g = x; b = 0 }
-          else if (h < 120) { r = x; g = c; b = 0 }
-          else if (h < 180) { r = 0; g = c; b = x }
-          else if (h < 240) { r = 0; g = x; b = c }
-          else if (h < 300) { r = x; g = 0; b = c }
-          else { r = c; g = 0; b = x }
-          return {
-            r: Math.round((r + m) * 255),
-            g: Math.round((g + m) * 255),
-            b: Math.round((b + m) * 255)
+      if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
+        // ⚡ TECHNO: Industrial Strobe Physics
+        const physicsResult = TechnoStereoPhysics.apply(
+          currentPalette,
+          {
+            normalizedTreble: audioMetrics.normalizedTreble,
+            normalizedBass: audioMetrics.normalizedBass
           }
-        }
-        
-        // 3. GENERAR COLORES BASE (WAVE 137: BRIGHTNESS UNCHAINED)
-        this.lastColors.primary = hslToRgbRock(primaryHue, 100, 60)
-        this.lastColors.secondary = hslToRgbRock(secondaryHue, 100, 55)
-        this.lastColors.ambient = hslToRgbRock(ambientHue, 100, 55)
-        const accentBaseColor = hslToRgbRock(secondaryHue, 100, 50)
-        
-        // 4. ⚡ WAVE 142: PHYSICS DELEGATION
-        // La lógica de Snare/Kick ahora vive en RockStereoPhysics
-        const agcRock = this._agcData
-        const physicsResult = RockStereoPhysics.apply(
-          {
-            primary: this.lastColors.primary,
-            secondary: this.lastColors.secondary,
-            ambient: this.lastColors.ambient,
-            accent: accentBaseColor
-          },
-          {
-            normalizedMid: agcRock?.normalizedMid ?? 0.0,
-            normalizedBass: agcRock?.normalizedBass ?? 0.0,
-            avgNormEnergy: agcRock?.avgNormEnergy ?? 0.4
-          },
-          primaryHue  // Para los Kick hits (refuerzo del primary)
         )
-        
-        // Aplicar el accent procesado por la física
         this.lastColors.accent = physicsResult.palette.accent
         
-        // Debug log cada ~10 segundos
+        // Debug log esporádico
         if (Math.random() < 0.003) {
           const dbg = physicsResult.debugInfo
-          console.log(`[WAVE142] 🎸 ROCK PHYSICS | Base:${baseHue.toFixed(0)}° | MidPulse:${dbg.midsPulse.toFixed(2)} | BassPulse:${dbg.bassPulse.toFixed(2)} | Snare:${physicsResult.isSnareHit} | Kick:${physicsResult.isKickHit}`)
+          console.log(`[WAVE147] ⚡ TECHNO PHYSICS | Base:${baseHue.toFixed(0)}° | RawT:${dbg.rawTreble.toFixed(2)} | Floor:${dbg.dynamicFloor.toFixed(2)} | Strobe:${physicsResult.isStrobeActive}`)
+        }
+      } else if (vibeNormalized.includes('pop') || vibeNormalized.includes('rock')) {
+        // 🎸 ROCK: Snare Crack + Kick Punch Physics
+        const physicsResult = RockStereoPhysics.apply(
+          currentPalette,
+          {
+            normalizedMid: audioMetrics.normalizedMid,
+            normalizedBass: audioMetrics.normalizedBass,
+            avgNormEnergy: audioMetrics.avgNormEnergy
+          },
+          baseHue
+        )
+        this.lastColors.accent = physicsResult.palette.accent
+        
+        if (Math.random() < 0.003) {
+          const dbg = physicsResult.debugInfo
+          console.log(`[WAVE147] 🎸 ROCK PHYSICS | Base:${baseHue.toFixed(0)}° | Snare:${physicsResult.isSnareHit} | Kick:${physicsResult.isKickHit}`)
+        }
+      } else if (vibeNormalized.includes('latin') || vibeNormalized.includes('fiesta') || 
+                 vibeNormalized.includes('reggae') || vibeNormalized.includes('cumbia') ||
+                 vibeNormalized.includes('salsa') || vibeNormalized.includes('bachata')) {
+        // ☀️ LATINO: Solar Flare + Machine Gun Blackout
+        const physicsResult = this.latinoPhysics.apply(
+          currentPalette,
+          {
+            normalizedBass: audioMetrics.normalizedBass,
+            normalizedEnergy: audioMetrics.avgNormEnergy
+          }
+        )
+        
+        // Latino modifica PRIMARY (Solar Flare) y controla INTENSITY
+        this.lastColors.primary = physicsResult.palette.primary
+        this.lastColors.accent = physicsResult.palette.accent
+        if (physicsResult.dimmerOverride !== null) {
+          this.lastColors.intensity = physicsResult.dimmerOverride
+        }
+        
+        if (Math.random() < 0.003) {
+          const dbg = physicsResult.debugInfo
+          console.log(`[WAVE147] ☀️ LATINO PHYSICS | Solar:${physicsResult.isSolarFlare} | Blackout:${physicsResult.isMachineGunBlackout} | Dimmer:${physicsResult.dimmerOverride ?? 'N/A'}`)
+        }
+      } else if (vibeNormalized.includes('chill') || vibeNormalized.includes('ambient') ||
+                 vibeNormalized.includes('lounge') || vibeNormalized.includes('jazz') ||
+                 vibeNormalized.includes('classical') || vibeNormalized.includes('acoustic')) {
+        // 🌊 CHILL: Breathing Pulse (Sin Strobe Jamás)
+        const physicsResult = this.chillPhysics.apply(
+          currentPalette,
+          {
+            normalizedEnergy: audioMetrics.avgNormEnergy
+          }
+        )
+        
+        // Chill modifica la INTENSIDAD con respiración suave
+        // Usamos getModulatedDimmer para obtener el dimmer final
+        const modulatedDimmer = this.chillPhysics.getModulatedDimmer(this.lastColors.intensity)
+        this.lastColors.intensity = modulatedDimmer
+        
+        // Aplicar colores modulados por la respiración
+        this.lastColors.primary = physicsResult.palette.primary
+        this.lastColors.secondary = physicsResult.palette.secondary
+        this.lastColors.ambient = physicsResult.palette.ambient
+        this.lastColors.accent = physicsResult.palette.accent
+        
+        if (Math.random() < 0.003) {
+          const dbg = physicsResult.debugInfo
+          console.log(`[WAVE147] 🌊 CHILL PHYSICS | Breathing Phase:${physicsResult.breathPhase.toFixed(2)} | Dimmer:${modulatedDimmer.toFixed(2)}`)
         }
       }
-      // ⚡ FIN WAVE 142 (was WAVE 137) ⚡
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔥 FIN WAVE 147: THE GREAT PURGE
+      // 235 líneas de código hardcoded → 120 líneas de delegación limpia
+      // ═══════════════════════════════════════════════════════════════════════
     }
     
     // ?? WAVE 47.2: Log actualizado para verificar mood & section desde spread directo

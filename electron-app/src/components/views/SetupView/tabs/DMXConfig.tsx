@@ -17,8 +17,8 @@ import './DMXConfig.css'
 
 // Helper to access dmx API (typed in preload.ts but accessed dynamically)
 const getDmxApi = () => (window as any).lux?.dmx
-// 🎨 WAVE 153: ArtNet API
-const getArtnetApi = () => (window as any).lux?.artnet
+// 🎨 WAVE 153: ArtNet API - está en window.luxsync (no window.lux)
+const getArtnetApi = () => (window as any).luxsync?.artnet
 
 // ============================================
 // TYPES

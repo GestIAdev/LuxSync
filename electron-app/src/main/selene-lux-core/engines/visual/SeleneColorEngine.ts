@@ -735,7 +735,7 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
   // ═══════════════════════════════════════════════════════════════════════
   
   // Constante: Máxima fuerza de arrastre (35% = tinte sutil pero perceptible)
-  const MAX_THERMAL_FORCE = 0.35;
+  const MAX_THERMAL_FORCE = 0.20;
   
   // Definir polo de atracción
   let pole: number;

@@ -1,22 +1,25 @@
 /**
- * ⚡ WAVE 141: TECHNO STEREO PHYSICS
+ * ⚡ WAVE 151: TECHNO NEON STROBE
  * ============================================================================
  * Módulo blindado para la lógica de reactividad del género Techno.
  * 
  * RESPONSABILIDAD ÚNICA:
  * - Detectar "drops" basándose en la relación Bass/Treble
- * - Aplicar STROBE BLANCO cuando se detecta un drop
- * - NO modifica HUE (color base) - solo brillo/strobe
+ * - Aplicar STROBE MAGENTA NEÓN cuando se detecta un drop
+ * - NO modifica HUE (color base) - solo aplica strobe en accent
  * 
  * ORIGEN DE LA CALIBRACIÓN:
  * - WAVE 129: White-Hot Threshold (primer intento)
  * - WAVE 132: Dynamic Noise Floor (piso dinámico)
  * - WAVE 133: Saturation Breaker (factor 0.6)
+ * - WAVE 151: Neon Strobe (Magenta 300° l:85 en lugar de Blanco)
  * 
  * PRINCIPIO: "EXTRAER, NO MODIFICAR"
  * Todos los valores numéricos son EXACTAMENTE los de Wave 133.
  * ============================================================================
  */
+
+import { hslToRgb } from '../engines/visual/SeleneColorEngine';
 
 /**
  * Tipo RGB para colores (definido localmente para evitar dependencias circulares)
@@ -106,7 +109,7 @@ export class TechnoStereoPhysics {
   /**
    * Aplica la física de Techno sobre la paleta actual.
    * 
-   * NO cambia el HUE (Color base), solo aplica STROBE (Blanco) en el accent
+   * NO cambia el HUE (Color base), solo aplica STROBE MAGENTA NEÓN en el accent
    * cuando detecta un drop válido.
    * 
    * @param palette - Paleta actual con primary, secondary, ambient, accent
@@ -120,7 +123,7 @@ export class TechnoStereoPhysics {
    *   { normalizedTreble: 0.85, normalizedBass: 0.92 }
    * );
    * if (result.isStrobeActive) {
-   *   // El accent ahora es blanco puro
+   *   // El accent ahora es Magenta Neón (300° l:85)
    * }
    * ```
    */
@@ -147,10 +150,15 @@ export class TechnoStereoPhysics {
     let processedPalette: TechnoPalette;
 
     if (isStrobeActive) {
-      // ⚡ FLASH BLANCO NUCLEAR
+      // ⚡ WAVE 151: MAGENTA NEÓN NUCLEAR
+      // Antes: Blanco aburrido { r: 255, g: 255, b: 255 }
+      // Ahora: Magenta Neón 300° con l:85 (ultra brillante pero con color)
+      // Contraste "Joker": Verde vs Magenta - quema la retina pero con estilo
+      const neonMagenta = hslToRgb({ h: 300, s: 100, l: 85 });
+      
       processedPalette = {
         ...palette,
-        accent: { r: 255, g: 255, b: 255 }  // Blanco puro
+        accent: neonMagenta
       };
     } else {
       // Paleta intacta

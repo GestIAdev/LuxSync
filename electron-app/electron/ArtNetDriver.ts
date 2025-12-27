@@ -93,7 +93,8 @@ export class ArtNetDriver extends EventEmitter {
     super()
     
     this.config = {
-      ip: config.ip ?? '255.255.255.255',  // Broadcast por defecto
+      // 🎯 WAVE 153.7: Default a IP del nodo IMC Pro H1 (no broadcast!)
+      ip: config.ip ?? '10.0.0.10',
       port: config.port ?? ARTNET_PORT,
       universe: config.universe ?? 0,
       refreshRate: config.refreshRate ?? 40,  // 40Hz = 25ms

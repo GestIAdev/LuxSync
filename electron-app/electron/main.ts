@@ -1503,7 +1503,9 @@ function startMainLoop() {
                           fixture.name?.toLowerCase().includes('16ch')
         
         // 🕹️ WAVE 153.6: MANUAL OVERRIDE - UI tiene prioridad sobre engine!
-        const override = manualOverrides.get(fixture.name || `fixture-${addr}`)
+        // 🔧 WAVE 153.9: Buscar por ID (fixture-1, fixture-14) que es lo que usa la UI
+        const fixtureId = `fixture-${addr}`
+        const override = manualOverrides.get(fixtureId) || manualOverrides.get(fixture.name || '')
         let finalPan = fixture.pan
         let finalTilt = fixture.tilt
         
@@ -1515,6 +1517,11 @@ function startMainLoop() {
           if (override.r !== undefined) finalR = override.r
           if (override.g !== undefined) finalG = override.g
           if (override.b !== undefined) finalB = override.b
+          
+          // 🔍 Log override aplicado
+          if (frameIndex % 100 === 0) {
+            console.log(`[Override] 🎮 Applied to ${fixtureId}: Pan=${finalPan} Tilt=${finalTilt} Dim=${finalDimmer}`)
+          }
         }
         
         // 🔧 WAVE 153.8: BEAM 10CH vs 13CH PROFILE

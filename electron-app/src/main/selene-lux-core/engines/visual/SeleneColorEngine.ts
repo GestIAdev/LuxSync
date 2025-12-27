@@ -1575,6 +1575,92 @@ export class SeleneColorEngine {
         }
       }
     }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔌 WAVE 150.5: ALLOW-LIST ENFORCEMENT - Solo lo permitido vive
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: forbiddenHueRanges bloquea [0,80] pero allowedHueRanges=[110,302]
+    // significa que 86° y 98° deberían ser ILEGALES (están fuera de allowed).
+    //
+    // SOLUCIÓN: Si hay allowedHueRanges, todo lo que esté FUERA es ilegal.
+    // Empujar hacia el borde más cercano del rango permitido.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+      const isInAllowedRange = (hue: number): boolean => {
+        for (const [min, max] of options.allowedHueRanges!) {
+          if (min <= max) {
+            if (hue >= min && hue <= max) return true;
+          } else {
+            // Rango que cruza 0° (ej: [330, 30])
+            if (hue >= min || hue <= max) return true;
+          }
+        }
+        return false;
+      };
+      
+      const findNearestAllowedHue = (hue: number): number => {
+        let nearestHue = hue;
+        let minDistance = Infinity;
+        
+        for (const [min, max] of options.allowedHueRanges!) {
+          // Distancia al borde inferior
+          let distToMin = Math.abs(hue - min);
+          if (distToMin > 180) distToMin = 360 - distToMin;
+          
+          // Distancia al borde superior
+          let distToMax = Math.abs(hue - max);
+          if (distToMax > 180) distToMax = 360 - distToMax;
+          
+          if (distToMin < minDistance) {
+            minDistance = distToMin;
+            nearestHue = min;
+          }
+          if (distToMax < minDistance) {
+            minDistance = distToMax;
+            nearestHue = max;
+          }
+        }
+        
+        return normalizeHue(nearestHue);
+      };
+      
+      [primary, secondary, ambient, accent].forEach(color => {
+        if (!isInAllowedRange(color.h)) {
+          color.h = findNearestAllowedHue(color.h);
+        }
+      });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🗺️ WAVE 150.5: HUE REMAPPING - Transformación de zonas
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: hueRemapping: [{ from: 90, to: 110, target: 130 }] no se aplicaba.
+    // Cualquier verde césped (90-110) debería transformarse en verde láser (130).
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.hueRemapping && options.hueRemapping.length > 0) {
+      [primary, secondary, ambient, accent].forEach(color => {
+        for (const mapping of options.hueRemapping!) {
+          if (color.h >= mapping.from && color.h <= mapping.to) {
+            color.h = mapping.target;
+            break;  // Solo aplicar el primer match
+          }
+        }
+      });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌡️ WAVE 150.5: THERMAL GRAVITY PARA TODOS
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: applyThermalGravity solo se aplicaba al PRIMARY (finalHue).
+    // Los colores derivados (secondary, ambient, accent) nunca sentían el frío.
+    //
+    // SOLUCIÓN: Aplicar Thermal Gravity a TODOS los colores de la paleta.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.atmosphericTemp) {
+      secondary.h = applyThermalGravity(secondary.h, options.atmosphericTemp);
+      ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp);
+      accent.h = applyThermalGravity(accent.h, options.atmosphericTemp);
+    }
     // ═══════════════════════════════════════════════════════════════════════
     
     // === M. RETORNAR PALETA COMPLETA ===

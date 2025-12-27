@@ -1417,6 +1417,18 @@ function startMainLoop() {
       console.log(`[LUX_DEBUG] Mode:${mode} | RAW[B:${rawBass.toFixed(2)} M:${rawMid.toFixed(2)} T:${rawTreble.toFixed(2)}] | Pulse:${bassPulse.toFixed(2)} Floor:${bassFloor.toFixed(2)} | MelDom:${isMelodyDominant ? 'Y' : 'N'} | PAR:${parOut} MOV:${moverOut}`)
     }
     
+    // 🔍 WAVE 153.1: DIAGNÓSTICO PARA DIM:0
+    if (frameIndex % 200 === 0) {
+      console.log(`[DIM_DEBUG] useRealAudio:${useRealAudio} isSilence:${isSilence} vantaBlackDimmer:${vantaBlackDimmer} isAGCTrap:${isAGCTrap}`)
+      console.log(`[DIM_DEBUG] Fixtures: ${patchedFixtures.map(f => `${f.name}@${f.dmxAddress}[${f.zone || 'NO_ZONE'}]`).join(', ')}`)
+      const movingFixture = fixtureStates.find(f => f.zone.includes('MOVING'))
+      if (movingFixture) {
+        console.log(`[DIM_DEBUG] Moving fixture: zone=${movingFixture.zone} dimmer=${movingFixture.dimmer} RGB=(${movingFixture.r},${movingFixture.g},${movingFixture.b})`)
+      } else {
+        console.log(`[DIM_DEBUG] ⚠️ NO MOVING fixtures found! Zones: ${fixtureStates.map(f => f.zone).join(', ')}`)
+      }
+    }
+    
     // 🌈 WAVE 25.5: Guardar para broadcast de verdad
     lastFixtureStatesForBroadcast = fixtureStates
     
@@ -1476,23 +1488,62 @@ function startMainLoop() {
         }
         
         // 🌪️ WAVE 11: USB DMX
+        // 🔧 WAVE 153.1: BEAM PROFILE - Detectar tipo de fixture para mapa de canales correcto
+        const isBeamProfile = fixture.name?.toLowerCase().includes('beam') || 
+                               fixture.type?.toLowerCase() === 'moving_head'
+        
         if (universalDMX.isConnected) {
-          universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
-          universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
-          universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
-          universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
-          universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
-          universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+          if (isBeamProfile) {
+            // 📦 BEAM PROFILE (ej: beam led 2r 10ch)
+            // Canal 1: Pan
+            // Canal 2: Tilt
+            // Canal 3: Speed Pan/Tilt (255 = velocidad máxima)
+            // Canal 4: Shutter (actúa como dimmer: 255 = abierto)
+            // Canal 5: Color Wheel (0 = blanco)
+            universalDMX.setChannel(addr, fixture.pan)           // Canal 1: Pan
+            universalDMX.setChannel(addr + 1, fixture.tilt)      // Canal 2: Tilt
+            universalDMX.setChannel(addr + 2, 255)               // Canal 3: Speed (máximo)
+            universalDMX.setChannel(addr + 3, finalDimmer)       // Canal 4: Shutter = Dimmer
+            universalDMX.setChannel(addr + 4, 0)                 // Canal 5: Color = Blanco
+          } else {
+            // 📦 LED PROFILE (PAR, Wash, etc.)
+            // Canal 1: Pan
+            // Canal 2: Tilt
+            // Canal 3: Dimmer
+            // Canal 4-6: RGB
+            universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
+            universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
+            universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
+            universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
+            universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
+            universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+          }
         }
         
         // 🎨 WAVE 153: Art-Net UDP
         if (artNetDriver.isConnected) {
-          artNetDriver.setChannel(addr, fixture.pan)
-          artNetDriver.setChannel(addr + 1, fixture.tilt)
-          artNetDriver.setChannel(addr + 2, finalDimmer)
-          artNetDriver.setChannel(addr + 3, finalR)
-          artNetDriver.setChannel(addr + 4, finalG)
-          artNetDriver.setChannel(addr + 5, finalB)
+          if (isBeamProfile) {
+            // 📦 BEAM PROFILE
+            artNetDriver.setChannel(addr, fixture.pan)
+            artNetDriver.setChannel(addr + 1, fixture.tilt)
+            artNetDriver.setChannel(addr + 2, 255)               // Speed máximo
+            artNetDriver.setChannel(addr + 3, finalDimmer)       // Shutter = Dimmer
+            artNetDriver.setChannel(addr + 4, 0)                 // Color = Blanco
+          } else {
+            // 📦 LED PROFILE
+            artNetDriver.setChannel(addr, fixture.pan)
+            artNetDriver.setChannel(addr + 1, fixture.tilt)
+            artNetDriver.setChannel(addr + 2, finalDimmer)
+            artNetDriver.setChannel(addr + 3, finalR)
+            artNetDriver.setChannel(addr + 4, finalG)
+            artNetDriver.setChannel(addr + 5, finalB)
+          }
+          
+          // 🔍 DEBUG: Log DMX values cada 100 frames
+          if (frameIndex % 100 === 0) {
+            const profile = isBeamProfile ? 'BEAM' : 'LED'
+            console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${fixture.pan} Tilt:${fixture.tilt} Dim:${finalDimmer}`)
+          }
         }
       }
       
@@ -2233,6 +2284,7 @@ ipcMain.handle('lux:audio-buffer', (_event, bufferData: ArrayBuffer) => {
 
 // Legacy handler - mantener para compatibilidad pero SIN bypass a Trinity
 // 🎯 WAVE 39.1: Ahora recibe fftBins (64 bins normalizados 0-1)
+let audioFrameCounter = 0  // 🔍 DEBUG
 ipcMain.handle('lux:audio-frame', (_event, audioData: {
   bass: number
   mid: number
@@ -2241,7 +2293,11 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
   bpm?: number
   fftBins?: number[]  // 🎯 WAVE 39.1: FFT bins para visualización
 }) => {
-  // Audio packet received - no spam logging
+  // 🔍 DEBUG: Log cada 100 frames para verificar que audio llega
+  audioFrameCounter++
+  if (audioFrameCounter % 100 === 0) {
+    console.log(`[Audio] 🎵 Frame #${audioFrameCounter} | B:${audioData.bass.toFixed(2)} M:${audioData.mid.toFixed(2)} T:${audioData.treble.toFixed(2)} E:${audioData.energy.toFixed(2)}`)
+  }
   
   // WAVE 3: Update current audio data for main loop (SeleneLux legacy)
   currentAudioData = {

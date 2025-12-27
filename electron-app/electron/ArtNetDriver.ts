@@ -339,9 +339,16 @@ export class ArtNetDriver extends EventEmitter {
   configure(config: Partial<ArtNetConfig>): void {
     if (config.ip !== undefined) {
       this.config.ip = config.ip
-      // Actualizar broadcast si cambió IP
-      if (this.socket && (config.ip === '255.255.255.255' || config.ip.endsWith('.255'))) {
-        this.socket.setBroadcast(true)
+      // Actualizar broadcast si cambió IP y el socket está activo
+      // Solo podemos llamar setBroadcast si el socket está bound (state === 'ready')
+      if (this.socket && this.state === 'ready') {
+        try {
+          if (config.ip === '255.255.255.255' || config.ip.endsWith('.255')) {
+            this.socket.setBroadcast(true)
+          }
+        } catch (err) {
+          this.log(`⚠️ Could not set broadcast: ${err}`)
+        }
       }
     }
     if (config.port !== undefined) {

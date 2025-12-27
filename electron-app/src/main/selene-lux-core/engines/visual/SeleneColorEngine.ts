@@ -718,23 +718,43 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
     return hue;
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌡️ WAVE 150.6: THERMAL MODERATION
+  // ═══════════════════════════════════════════════════════════════════════
+  // PROBLEMA: Force=83% convertía TODO a azul (~220-250°).
+  // Verde Láser 130° → 222° (¡Perdía su identidad!)
+  // Magenta 302° → 250° (¡Homogeneizado!)
+  //
+  // SOLUCIÓN: La gravedad térmica debe ser un "tinte atmosférico", no una
+  // "conversión total". Máximo 35% de arrastre para mantener diversidad.
+  //
+  // NUEVA FILOSOFÍA:
+  // - 9500K (Techno extremo): 35% de arrastre hacia azul
+  // - 3000K (Latino caliente): 35% de arrastre hacia oro
+  // - Los colores mantienen su identidad pero "respiran" la atmósfera
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Constante: Máxima fuerza de arrastre (35% = tinte sutil pero perceptible)
+  const MAX_THERMAL_FORCE = 0.35;
+  
   // Definir polo de atracción
   let pole: number;
-  let force: number;
+  let rawForce: number;
   
   if (atmosphericTemp > 7000) {
     // POLO FRÍO: Azul Rey (240°)
     pole = 240;
-    // Fuerza: 7000K → 0, 10000K → 1
-    // Mapeo: (temp - 7000) / 3000
-    force = Math.min((atmosphericTemp - 7000) / 3000, 1.0);
+    // Fuerza bruta: 7000K → 0, 10000K → 1
+    rawForce = Math.min((atmosphericTemp - 7000) / 3000, 1.0);
   } else {
     // POLO CÁLIDO: Oro (40°)
     pole = 40;
-    // Fuerza: 5000K → 0, 2000K → 1
-    // Mapeo: (5000 - temp) / 3000
-    force = Math.min((5000 - atmosphericTemp) / 3000, 1.0);
+    // Fuerza bruta: 5000K → 0, 2000K → 1
+    rawForce = Math.min((5000 - atmosphericTemp) / 3000, 1.0);
   }
+  
+  // Limitar la fuerza al máximo permitido
+  const force = rawForce * MAX_THERMAL_FORCE;
   
   // Calcular distancia más corta en el círculo cromático
   let delta = pole - hue;
@@ -743,12 +763,10 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
   if (delta > 180) delta -= 360;
   if (delta < -180) delta += 360;
   
-  // Aplicar vector de arrastre
-  // El hue se mueve un porcentaje igual a la fuerza hacia el polo
+  // Aplicar vector de arrastre (ahora moderado)
   const newHue = hue + (delta * force);
   
   // 🔌 WAVE 150: DEBUG LOG (Chivato) - Ver si el aire acondicionado está encendido
-  // Si vemos "VibeTemp=9500", sabremos que la conexión térmica funciona
   if (Math.random() < 0.01) {  // Solo 1% de frames para no saturar consola
     console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${normalizeHue(newHue).toFixed(0)}°`);
   }

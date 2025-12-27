@@ -86,10 +86,11 @@ export class TechnoStereoPhysics {
   
   /**
    * Umbral de disparo para el pulso limpio.
-   * Solo si (treble - floor) > 0.25 consideramos un "golpe real".
-   * @wave 129 - Calibrado con datos de logacentodrops.md
+   * Solo si (treble - floor) > umbral consideramos un "golpe real".
+   * @wave 129 - Calibrado original 0.25
+   * @wave 148 - Subido a 0.30 para evitar strobes permanentes con señales saturadas
    */
-  private static readonly TRIGGER_THRESHOLD = 0.25;
+  private static readonly TRIGGER_THRESHOLD = 0.30;
   
   /**
    * Mínimo de bass requerido para permitir strobe.

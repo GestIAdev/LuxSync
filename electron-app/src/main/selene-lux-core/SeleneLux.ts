@@ -172,6 +172,9 @@ export class SeleneLux extends EventEmitter {
   private globalSaturation = 1.0  // 0-1, default 100%
   private globalIntensity = 1.0   // 0-1, default 100%
   
+  // ⚡ WAVE 148: Estado del Strobe para UI
+  private lastStrobeActive = false
+  
   private currentPalette: LivingPaletteId = 'fuego'
   private currentPattern: MusicalPattern | null = null
   private consciousness: ConsciousnessState
@@ -1652,6 +1655,9 @@ export class SeleneLux extends EventEmitter {
       
       const vibeNormalized = activeVibe.toLowerCase()
       
+      // ⚡ WAVE 148: Reset strobe state (solo Techno lo activa)
+      this.lastStrobeActive = false
+      
       if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
         // ⚡ TECHNO: Industrial Strobe Physics
         const physicsResult = TechnoStereoPhysics.apply(
@@ -1663,10 +1669,13 @@ export class SeleneLux extends EventEmitter {
         )
         this.lastColors.accent = physicsResult.palette.accent
         
+        // ⚡ WAVE 148: Guardar estado del strobe para UI feedback
+        this.lastStrobeActive = physicsResult.isStrobeActive
+        
         // Debug log esporádico
         if (Math.random() < 0.003) {
           const dbg = physicsResult.debugInfo
-          console.log(`[WAVE147] ⚡ TECHNO PHYSICS | Base:${baseHue.toFixed(0)}° | RawT:${dbg.rawTreble.toFixed(2)} | Floor:${dbg.dynamicFloor.toFixed(2)} | Strobe:${physicsResult.isStrobeActive}`)
+          console.log(`[WAVE148] ⚡ TECHNO PHYSICS | Base:${baseHue.toFixed(0)}° | RawT:${dbg.rawTreble.toFixed(2)} | Floor:${dbg.dynamicFloor.toFixed(2)} | Strobe:${physicsResult.isStrobeActive}`)
         }
       } else if (vibeNormalized.includes('pop') || vibeNormalized.includes('rock')) {
         // 🎸 ROCK: Snare Crack + Kick Punch Physics
@@ -2139,7 +2148,8 @@ export class SeleneLux extends EventEmitter {
         physics: null,
       },
       effects: {
-        strobe: { active: false, rate: 0, intensity: 0 },
+        // ⚡ WAVE 148: Estado real del strobe desde Physics Module
+        strobe: { active: this.lastStrobeActive, rate: this.lastStrobeActive ? 20 : 0, intensity: this.lastStrobeActive ? 1.0 : 0 },
         fog: { active: false, density: 0 },
         laser: { active: false, pattern: '', color: null },
         beam: { active: false, width: 0 },

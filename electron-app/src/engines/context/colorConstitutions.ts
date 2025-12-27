@@ -51,12 +51,18 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Luminosidad sólida (evitar lavado)
   lightnessRange: [45, 55],
   
-  // UV Floor: Ambient fijo en Índigo UV
-  ambientLock: { h: 275, s: 100, l: 20 },
+  // 🔓 WAVE 148: AMBIENT UNLOCKED
+  // El ambient ahora fluye libremente en el espectro frío (170-302).
+  // Con allowedHueRanges restringido, caerá naturalmente en violetas/UV.
+  // Eliminado: ambientLock: { h: 275, s: 100, l: 20 }
   
-  // Comportamiento del strobe: blanco nuclear
+  // Comportamiento del strobe: blanco nuclear SOLO en drops reales
   accentBehavior: 'strobe',
   strobeColor: { r: 255, g: 255, b: 255 },
+  
+  // ⚡ WAVE 148: Strobe no es el estado por defecto
+  // El accent tiene color (Magenta/Cian) en reposo, blanco solo en drops
+  strobeProhibited: false,  // Permitido pero no permanente
   
   // Dimming agresivo permitido
   dimmingConfig: {

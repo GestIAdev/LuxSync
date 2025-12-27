@@ -1497,7 +1497,12 @@ function startMainLoop() {
         const isBeamProfile = fixture.name?.toLowerCase().includes('beam') || 
                                fixture.type?.toLowerCase() === 'moving_head'
         
-        // �️ WAVE 153.6: MANUAL OVERRIDE - UI tiene prioridad sobre engine!
+        // 🔧 WAVE 153.8: Detectar si es 10CH o 13CH por el nombre del fixture
+        const is10ChMode = fixture.name?.toLowerCase().includes('10ch')
+        const is13ChMode = fixture.name?.toLowerCase().includes('13ch') || 
+                          fixture.name?.toLowerCase().includes('16ch')
+        
+        // 🕹️ WAVE 153.6: MANUAL OVERRIDE - UI tiene prioridad sobre engine!
         const override = manualOverrides.get(fixture.name || `fixture-${addr}`)
         let finalPan = fixture.pan
         let finalTilt = fixture.tilt
@@ -1512,30 +1517,38 @@ function startMainLoop() {
           if (override.b !== undefined) finalB = override.b
         }
         
-        // �🔧 WAVE 153.5: BEAM 13CH PROFILE (Manual de usuario REAL - FIESTA EDITION!)
-        // ¡¡¡SEGÚN EL MANUAL DEL FIXTURE - MODO 13 CANALES!!!
-        // CH1: Pan (8-bit coarse)
-        // CH2: Tilt (8-bit coarse)
-        // CH3: Pan Fine (16-bit)
-        // CH4: Tilt Fine (16-bit)
-        // CH5: Pan/Tilt Speed (0=max, 255=slow)
-        // CH6: Dimmer (0-255)
-        // CH7: Strobe (0=open, 1-255=strobe speed)
-        // CH8: Color Wheel
-        // CH9: Gobo Wheel  
-        // CH10: Prism
-        // CH11: Focus
-        // CH12: Macro
-        // CH13: Reset
+        // 🔧 WAVE 153.8: BEAM 10CH vs 13CH PROFILE
+        // MODO 10CH (según manual):
+        // CH1: Pan, CH2: Pan Fine, CH3: Speed, CH4: Dimmer, CH5: Strobe
+        // CH6: Color, CH7: Gobo, CH8: Prism, CH9: Focus, CH10: Reset
+        //
+        // MODO 13CH (según manual):
+        // CH1: Pan, CH2: Tilt, CH3: Pan Fine, CH4: Tilt Fine, CH5: Speed
+        // CH6: Dimmer, CH7: Strobe, CH8: Color, CH9: Gobo, CH10: Prism
+        // CH11: Focus, CH12: Macro, CH13: Reset
         
         if (universalDMX.isConnected) {
-          if (isBeamProfile) {
+          if (isBeamProfile && is10ChMode) {
+            // 📦 BEAM 10CH PROFILE (según manual - SIN TILT!)
+            // CH1: Pan, CH2: Pan Fine, CH3: Speed, CH4: Dimmer, CH5: Strobe
+            // CH6: Color, CH7: Gobo, CH8: Prism, CH9: Focus, CH10: Reset
+            universalDMX.setChannel(addr, finalPan)              // CH1: Pan
+            universalDMX.setChannel(addr + 1, 0)                 // CH2: Pan Fine
+            universalDMX.setChannel(addr + 2, 0)                 // CH3: Speed = MAX
+            universalDMX.setChannel(addr + 3, finalDimmer)       // CH4: Dimmer ← AQUÍ!
+            universalDMX.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
+            universalDMX.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            universalDMX.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
+            universalDMX.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
+            universalDMX.setChannel(addr + 8, 128)               // CH9: Focus = medio
+            universalDMX.setChannel(addr + 9, 0)                 // CH10: Reset = OFF
+          } else if (isBeamProfile) {
             // 📦 BEAM 13CH PROFILE (según manual - ¡CON PAN Y TILT!)
-            universalDMX.setChannel(addr, finalPan)              // CH1: Pan (override o engine)
-            universalDMX.setChannel(addr + 1, finalTilt)         // CH2: Tilt (override o engine)
+            universalDMX.setChannel(addr, finalPan)              // CH1: Pan
+            universalDMX.setChannel(addr + 1, finalTilt)         // CH2: Tilt
             universalDMX.setChannel(addr + 2, 0)                 // CH3: Pan Fine
             universalDMX.setChannel(addr + 3, 0)                 // CH4: Tilt Fine
-            universalDMX.setChannel(addr + 4, 0)                 // CH5: Speed = MAX (0=fastest)
+            universalDMX.setChannel(addr + 4, 0)                 // CH5: Speed = MAX
             universalDMX.setChannel(addr + 5, finalDimmer)       // CH6: Dimmer
             universalDMX.setChannel(addr + 6, 0)                 // CH7: Strobe = OFF
             universalDMX.setChannel(addr + 7, 0)                 // CH8: Color = Open
@@ -1557,10 +1570,22 @@ function startMainLoop() {
         
         // 🎨 WAVE 153: Art-Net UDP
         if (artNetDriver.isConnected) {
-          if (isBeamProfile) {
+          if (isBeamProfile && is10ChMode) {
+            // 📦 BEAM 10CH PROFILE (según manual - SIN TILT!)
+            artNetDriver.setChannel(addr, finalPan)              // CH1: Pan
+            artNetDriver.setChannel(addr + 1, 0)                 // CH2: Pan Fine
+            artNetDriver.setChannel(addr + 2, 0)                 // CH3: Speed = MAX
+            artNetDriver.setChannel(addr + 3, finalDimmer)       // CH4: Dimmer ← AQUÍ!
+            artNetDriver.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
+            artNetDriver.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            artNetDriver.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
+            artNetDriver.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
+            artNetDriver.setChannel(addr + 8, 128)               // CH9: Focus = medio
+            artNetDriver.setChannel(addr + 9, 0)                 // CH10: Reset = OFF
+          } else if (isBeamProfile) {
             // 📦 BEAM 13CH PROFILE (según manual - ¡CON PAN Y TILT!)
-            artNetDriver.setChannel(addr, finalPan)              // CH1: Pan (override o engine)
-            artNetDriver.setChannel(addr + 1, finalTilt)         // CH2: Tilt (override o engine)
+            artNetDriver.setChannel(addr, finalPan)              // CH1: Pan
+            artNetDriver.setChannel(addr + 1, finalTilt)         // CH2: Tilt
             artNetDriver.setChannel(addr + 2, 0)                 // CH3: Pan Fine
             artNetDriver.setChannel(addr + 3, 0)                 // CH4: Tilt Fine
             artNetDriver.setChannel(addr + 4, 0)                 // CH5: Speed = MAX
@@ -1584,7 +1609,7 @@ function startMainLoop() {
           
           // 🔍 DEBUG: Log DMX values cada 100 frames
           if (frameIndex % 100 === 0) {
-            const profile = isBeamProfile ? 'BEAM-13CH' : 'LED'
+            const profile = isBeamProfile ? (is10ChMode ? 'BEAM-10CH' : 'BEAM-13CH') : 'LED'
             const hasOverride = manualOverrides.has(fixture.name || `fixture-${addr}`)
             console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${finalPan} Tilt:${finalTilt} Dim:${finalDimmer} ${hasOverride ? '🕹️OVERRIDE' : ''}`)
           }

@@ -1584,15 +1584,15 @@ export class SeleneLux extends EventEmitter {
         processedIntensity = Math.pow(normalized, 2);
       }
       
-      // ??? WAVE 83: Asignar colores PUROS del Worker (sin multiplicar por intensity)
+      // ⚗️ WAVE 83: Asignar colores PUROS del Worker (sin multiplicar por intensity)
       // La intensity se guarda por separado para uso del dimmer
-      // ?? WAVE 84.5: Usar palette.ambient en lugar de clonar secondary
+      // 🌴 WAVE 84.5: Usar palette.ambient en lugar de clonar secondary
       this.lastColors = {
         primary: { ...palette.primary },
         secondary: { ...palette.secondary },
         accent: { ...palette.accent },
-        ambient: palette.ambient ? { ...palette.ambient } : { ...palette.secondary },  // ?? WAVE 84.5: STEREO REAL
-        intensity: processedIntensity,  // ??? WAVE 91: Usar intensity procesada con noise gate
+        ambient: palette.ambient ? { ...palette.ambient } : { ...palette.secondary },  // 🌴 WAVE 84.5: STEREO REAL
+        intensity: processedIntensity,  // ⚗️ WAVE 91: Usar intensity procesada con noise gate
         saturation: this.globalSaturation
       }
       

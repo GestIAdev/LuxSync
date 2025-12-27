@@ -1365,71 +1365,36 @@ export class SeleneColorEngine {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🤖 WAVE 96.5: TECHNO DICTATORSHIP - FINAL PASS OVERRIDE
+    // 🗑️ WAVE 149: THE SECOND PURGE - TECHNO DICTATORSHIP REMOVED
     // ═══════════════════════════════════════════════════════════════════════
-    // Este bloque DEBE ir justo ANTES del return para sobrescribir cualquier
-    // decisión tomada por la lógica estándar (Key/Mood/Energy/Fiesta Latina).
-    // 
-    // PROBLEMA RESUELTO: Key=A producía Hue=357° (Rojo) en lugar de 278° (Violeta UV)
-    // porque la lógica de KEY_TO_HUE se ejecutaba DESPUÉS del bloque Techno.
-    // 
-    // SOLUCIÓN: Mover Techno al FINAL como "dictador" que tiene la última palabra.
-    // ═══════════════════════════════════════════════════════════════════════
-    const isTechnoVibe = vibeId === 'techno-club';
-    
-    if (isTechnoVibe) {
-      // 1️⃣ ULTRAVIOLET BASE (El Suelo - Black Light UV)
-      ambient.h = 275;   // Indigo/Violeta (fijo, no varía con key)
-      ambient.s = 100;   // Saturación máxima (neón UV)
-      ambient.l = 20;    // 20% para "Luz Negra" visible pero oscura
-      
-      // 2️⃣ PRIMARY (La Estructura - Vigas Neón)
-      // Mapeo FRÍO FORZADO: 170° (Verde/Cian) a 302° (Magenta)
-      const keyRoot = key ? (KEY_TO_ROOT[key] ?? 0) : 0;
-      const coldHue = 170 + (keyRoot * 12);  // Map 0-11 → 170-302°
-      
-      primary.h = normalizeHue(coldHue);
-      primary.s = 100;   // Neón tóxico puro
-      primary.l = 50;    // Color sólido
-      
-      // 3️⃣ SECONDARY (Aurora vs Acid)
-      // Determinismo por Key para consistencia (no random)
-      const useAurora = (keyRoot % 5) >= 2;
-      
-      if (useAurora) {
-        // 🌌 AURORA BOREALIS: Rosas y Magentas Eléctricos
-        // Rango 300 (Magenta) a 330 (Rosa Chicle)
-        secondary.h = 300 + ((keyRoot * 5) % 30);
-      } else {
-        // ☢️ TOXIC WASTE: Verdes Ácidos y Limas
-        // Rango 110 (Verde) a 140 (Lima)
-        secondary.h = 110 + ((keyRoot * 5) % 30);
-      }
-      
-      secondary.s = 100;  // Electricidad pura
-      secondary.l = 65;   // High brightness lasers
-      
-      // 4️⃣ ACCENT (Ice - Strobes)
-      accent.h = 190;   // Cyan tint
-      accent.s = 20;    // Casi blanco (antes era 10, aumentado para visibilidad)
-      accent.l = 100;   // Cegador total
-      
-      // 5️⃣ METADATA OVERRIDE (Para que la UI sea honesta)
-      strategy = 'complementary';  // Forzamos label agresivo
-      temperature = 'cool';         // Siempre frío
-      
-      // 🗑️ WAVE 96.7: DISSONANCE PURGE - RED ALERT ELIMINADO
-      // ═══════════════════════════════════════════════════════════════════════
-      // RAZÓN: Techno marca consistentemente dissonance=1.0 (timbres industriales/ruidosos).
-      // Esto NO es un error - es estética del género (noise generators, FM synthesis, distorsión).
-      // 
-      // DECISIÓN: Red Alert DESACTIVADO permanentemente para techno-club.
-      // La paleta UV Violet + Cold Neón es INMUTABLE, sin importar la disonancia.
-      // 
-      // CÓDIGO ANTERIOR (PURGADO):
-      // ❌ if (dissonance > 0.92) { primary.h = 0; secondary.h = 0; ambient.h = 0; }
-      // ═══════════════════════════════════════════════════════════════════════
-    }
+    // PROBLEMA: Bloque "TECHNO DICTATORSHIP" (Wave 96.5) sobrescribía TODA la paleta
+    // ignorando completamente la Constitution (TECHNO_CONSTITUTION) definida en
+    // colorConstitutions.ts.
+    //
+    // SÍNTOMAS:
+    //   - Ambient FIJO en 275° (Violeta UV) → No reaccionaba al beat
+    //   - Accent FIJO en h:190 s:20 l:100 → Blanco nuclear permanente
+    //   - Primary FORZADO a Cold Spectrum → Ignoraba Key detection
+    //
+    // RAZÓN DEL PURGE:
+    //   - Contradecía la arquitectura WAVE 147 (Great Purge): 
+    //     VibeManager → Constitution → ColorEngine → Physics
+    //   - El ColorEngine NO debe tomar decisiones por Vibe, debe RESPETAR
+    //     las GenerationOptions que recibe.
+    //   - La lógica de "Cold Spectrum" ya está en TECHNO_CONSTITUTION con:
+    //     * forbiddenHueRanges: [[0, 75], [330, 360]] (bloquea warm)
+    //     * allowedHueRanges: [[110, 302]] (permite cold)
+    //   - El strobe del accent debe venir de TechnoStereoPhysics.apply(),
+    //     no estar hardcoded.
+    //
+    // SOLUCIÓN:
+    //   - ELIMINAR todo el bloque if(isTechnoVibe)
+    //   - Dejar que la Constitution aplique las reglas (forbiddenHueRanges, etc.)
+    //   - Dejar que TechnoStereoPhysics controle el strobe del accent
+    //   - El ambient ahora fluye con la música dentro del cold spectrum
+    //
+    // CÓDIGO PURGADO (67 líneas):
+    //   ❌ if (isTechnoVibe) { ambient.h=275; primary.h=coldHue; accent.l=100; ... }
     // ═══════════════════════════════════════════════════════════════════════
     
     // === M. RETORNAR PALETA COMPLETA ===

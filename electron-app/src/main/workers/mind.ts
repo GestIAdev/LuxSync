@@ -77,6 +77,8 @@ import { StrategyArbiter, type ColorStrategy, type SectionType } from '../selene
 // 🎛️ WAVE 60: Vibe Manager - Bounded Context Provider (RESTRINGIR, NO FORZAR)
 import { VibeManager } from '../../engines/context/VibeManager';
 import type { VibeId } from '../../types/VibeProfile';
+// 📜 WAVE 148: Color Constitutions - Reglas cromáticas por Vibe
+import { getColorConstitution } from '../../engines/context/colorConstitutions';
 
 // 🎯 WAVE 16: Schmitt Triggers para efectos sin flicker
 import { getEffectTriggers } from './utils/HysteresisTrigger';
@@ -561,10 +563,15 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
 const frameTime = Date.now();
   const isDrop = section.type === 'drop' || section.type === 'chorus';
 
+  // 📜 WAVE 148: Obtener la Constitución de Color del Vibe activo
+  // Esto incluye forbiddenHueRanges, allowedHueRanges, ambientLock (si existe), etc.
+  const colorConstitution = getColorConstitution(activeVibe.id);
+
   // 🎨 WAVE 70: Generar paleta INTERPOLADA (no raw)
   // El interpolador suaviza transiciones entre Keys y Moods
   // isDrop = true → transición rápida (0.5s), false → transición suave (4s)
-  const selenePalette = state.colorInterpolator.update(stabilizedAnalysis, isDrop);
+  // ⚡ WAVE 148: Pasar la Constitución al interpolador para que aplique las reglas
+  const selenePalette = state.colorInterpolator.update(stabilizedAnalysis, isDrop, colorConstitution);
 
   // 🔬 WAVE 74: DIAGNÓSTICO DE SALTOS DE HUE
   // Solo loguea cuando hay un salto > 30° (epilepsia cromática)

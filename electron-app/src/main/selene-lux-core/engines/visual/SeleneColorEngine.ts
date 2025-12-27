@@ -1542,15 +1542,17 @@ export class SeleneColorInterpolator {
    * 
    * @param targetData - Datos de análisis de audio
    * @param isDrop - Si estamos en un DROP (transición rápida)
+   * @param options - GenerationOptions de la Constitución del Vibe activo (WAVE 148)
    * @returns Paleta interpolada para enviar a fixtures
    * 
    * 🌊 WAVE 70.5: Tolerancia de jitter - solo resetear transición si cambio > 15°
+   * ⚡ WAVE 148: Ahora acepta GenerationOptions para aplicar Constitution
    */
-  update(targetData: ExtendedAudioAnalysis, isDrop: boolean = false): SelenePalette {
+  update(targetData: ExtendedAudioAnalysis, isDrop: boolean = false, options?: GenerationOptions): SelenePalette {
     this.frameCount++;
     
-    // Generar la paleta objetivo
-    const newTarget = SeleneColorEngine.generate(targetData);
+    // ⚡ WAVE 148: Generar paleta CON las restricciones de la Constitution
+    const newTarget = SeleneColorEngine.generate(targetData, options);
     
     // Si no hay paleta actual, inicializar sin transición
     if (!this.currentPalette) {

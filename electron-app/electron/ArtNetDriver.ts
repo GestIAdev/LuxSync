@@ -128,14 +128,8 @@ export class ArtNetDriver extends EventEmitter {
 
     try {
       this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
-      
-      // Habilitar broadcast si es IP broadcast
-      if (this.config.ip === '255.255.255.255' || this.config.ip.endsWith('.255')) {
-        this.socket.setBroadcast(true)
-        this.log('📡 Broadcast mode enabled')
-      }
 
-      // Bind a puerto efímero (no necesitamos recibir)
+      // Bind a puerto efímero PRIMERO (necesario antes de setBroadcast en Windows)
       await new Promise<void>((resolve, reject) => {
         this.socket!.bind(undefined, () => {
           this.log(`✅ Socket bound to port ${this.socket!.address().port}`)
@@ -143,6 +137,12 @@ export class ArtNetDriver extends EventEmitter {
         })
         this.socket!.once('error', reject)
       })
+      
+      // Habilitar broadcast si es IP broadcast (DESPUÉS del bind)
+      if (this.config.ip === '255.255.255.255' || this.config.ip.endsWith('.255')) {
+        this.socket.setBroadcast(true)
+        this.log('📡 Broadcast mode enabled')
+      }
 
       // Event handlers
       this.socket.on('error', (err) => {

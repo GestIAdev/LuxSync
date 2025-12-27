@@ -86,6 +86,8 @@ import {
   type UnifiedColor,
   createDefaultBroadcast,
 } from '../../types/SeleneProtocol'
+// ⚡ WAVE 141: Physics Modules (Reactividad extraída)
+import { TechnoStereoPhysics } from './physics'
 
 export interface SeleneConfig {
   audio: {
@@ -1650,59 +1652,20 @@ export class SeleneLux extends EventEmitter {
         ambientHue = sanitize(ambientHue)
         accentHue = sanitize(accentHue)
         
-        // 5. ? INDUSTRIAL STROBE LOGIC
+        // 5. ⚡ INDUSTRIAL STROBE LOGIC (WAVE 141: PHYSICS EXTRACTION)
         // -------------------------------------------------------------------
-        // ?? WAVE 129: THE WHITE-HOT THRESHOLD (Calibraci�n basada en datos reales)
-        // -------------------------------------------------------------------
-        // Diagn�stico del log logacentodrops.md:
-        //   - TreblePulse real en drops: 0.10-0.15 (NUNCA llega a 0.85)
-        //   - El umbral anterior (0.85) era inalcanzable ? 0% strobes
-        //
-        // Nueva estrategia DUAL:
-        //   1. Bajamos umbral de treble a 0.10 (dato real del log)
-        //   2. A�adimos condici�n de Bass > 0.80 (contexto energ�tico)
-        //
-        // Resultado: Flash SOLO en drops calientes, NO en breaks suaves
+        // La lógica de detección de drops (Wave 129-133) ahora vive en:
+        //   physics/TechnoStereoPhysics.ts
+        // 
+        // Aquí solo extraemos las métricas de audio necesarias.
+        // El cálculo de Dynamic Floor, Pulse, y Threshold ahora es interno.
         // -------------------------------------------------------------------
         const agc = this._agcData
-        
-        // -------------------------------------------------------------------
-        // ? WAVE 132: THE DYNAMIC NOISE FLOOR
-        // DIAGN�STICO: En Cyberpunk, RawTreble se mantiene en 0.85-1.00 CONSTANTEMENTE
-        //   (ruido blanco, risers, sintetizadores agudos). El piso fijo de 0.15 no limpia
-        //   ese ruido, resultando en Pulse = 0.85 todo el tiempo ? Strobe constante.
-        // SOLUCI�N: Piso din�mico vinculado a la energ�a del bajo.
-        //   F�rmula: DynamicFloor = 0.15 + (BassEnergy * 0.5)
-        //   - En silencio (Bass 0): Floor = 0.15 ? Detecta cualquier chasquido
-        //   - En drop brutal (Bass 1.0): Floor = 0.65 ? Solo picos REALES disparan
-        // MATEM�TICA (datos del log):
-        //   - Ruido: RawT:0.85, Bass:1.00 ? Floor:0.65 ? Pulse:0.20 < 0.25 ? COLOR ?
-        //   - Golpe: RawT:1.00, Bass:1.00 ? Floor:0.65 ? Pulse:0.35 > 0.25 ? FLASH ?
-        // -------------------------------------------------------------------
-        
         const rawTreble = agc?.normalizedTreble ?? 0.0
         const bassEnergy = agc?.normalizedBass ?? 0
         
-        // ??? PISO DIN�MICO (Factor 0.6)
-        // Si Bass = 1.0 ? Floor = 0.75 ? Ignoramos 75% de la se�al aguda como "ruido"
-        // Esto hace IMPOSIBLE disparar strobe en saturaci�n total
-        // ?? WAVE 133: THE SATURATION BREAKER - Subido de 0.5 ? 0.6
-        const DYNAMIC_FLOOR_FACTOR = 0.6
-        const dynamicTrebleFloor = 0.15 + (bassEnergy * DYNAMIC_FLOOR_FACTOR)
-        
-        // Calculamos el pulso REAL por encima de ese piso elevado
-        const treblePulse = Math.max(0, rawTreble - dynamicTrebleFloor)
-        
-        // ?? UMBRAL DE DISPARO
-        // Ahora que el pulso est� limpio, usamos umbral est�ndar de 0.25
-        const TRIGGER_THRESHOLD = 0.25
-        
-        // ?? GATILLO: Pulso limpio supera umbral + contexto de energ�a
-        // Bajamos exigencia de Bass a 0.80 porque el DynamicFloor ya hace la limpieza
-        const isSnareExplosion = (treblePulse > TRIGGER_THRESHOLD) && (bassEnergy > 0.80)
-        
-        // 6. ?? COMMIT AL SSOT (Sobrescribir lastColors con HSL?RGB)
-        // Helper inline para HSL ? RGB
+        // 6. ⚡ COMMIT AL SSOT (Sobrescribir lastColors con HSL→RGB)
+        // Helper inline para HSL → RGB
         const hslToRgb = (h: number, s: number, l: number) => {
           s /= 100
           l /= 100
@@ -1727,20 +1690,33 @@ export class SeleneLux extends EventEmitter {
         this.lastColors.secondary = hslToRgb(secondaryHue, 100, 50)
         this.lastColors.ambient = hslToRgb(ambientHue, 100, 50)
         
-        if (isSnareExplosion) {
-          // ? FLASH BLANCO (WAVE 129: Calibrado con datos reales)
-          this.lastColors.accent = { r: 255, g: 255, b: 255 }
-        } else {
-          // ?? Color Complementario (ahora visible la mayor�a del tiempo)
-          this.lastColors.accent = hslToRgb(accentHue, 100, 60)
-        }
+        // ⚡ WAVE 141: PHYSICS DELEGATION
+        // La lógica de detección de drops ahora vive en TechnoStereoPhysics
+        // Esto prepara el terreno para Wave 142 (limpieza de color hardcoded)
+        const accentBaseColor = hslToRgb(accentHue, 100, 60)
+        const physicsResult = TechnoStereoPhysics.apply(
+          {
+            primary: this.lastColors.primary,
+            secondary: this.lastColors.secondary,
+            ambient: this.lastColors.ambient,
+            accent: accentBaseColor
+          },
+          {
+            normalizedTreble: rawTreble,
+            normalizedBass: bassEnergy
+          }
+        )
         
-        // Debug log cada ~10 segundos
+        // Aplicar el accent procesado por la física (strobe o color)
+        this.lastColors.accent = physicsResult.palette.accent
+        
+        // Debug log cada ~10 segundos (usando datos del physics module)
         if (Math.random() < 0.003) {
-          console.log(`[WAVE133]  SATURATION BREAKER | Base:${baseHue.toFixed(0)}� | RawT:${rawTreble.toFixed(2)} | Floor:${dynamicTrebleFloor.toFixed(2)} | Pulse:${treblePulse.toFixed(2)} | Bass:${bassEnergy.toFixed(2)} | Strobe:${isSnareExplosion}`)
+          const dbg = physicsResult.debugInfo
+          console.log(`[WAVE141] ⚡ PHYSICS DELEGATION | Base:${baseHue.toFixed(0)}° | RawT:${dbg.rawTreble.toFixed(2)} | Floor:${dbg.dynamicFloor.toFixed(2)} | Pulse:${dbg.treblePulse.toFixed(2)} | Bass:${dbg.bassEnergy.toFixed(2)} | Strobe:${physicsResult.isStrobeActive}`)
         }
       }
-      // ?? FIN WAVE 133 ??
+      // ⚡ FIN WAVE 141 (was WAVE 133) ⚡
       
       // -----------------------------------------------------------------------
       // ?? WAVE 137: THE ANALOG GAIN (BRIGHTNESS UNCHAINED)
@@ -2279,7 +2255,7 @@ export class SeleneLux extends EventEmitter {
     }
     
     // -----------------------------------------------------------------------
-    // 5. HARDWARE STATE (DMX - placeholder, se llenar� en main.ts)
+    // 5. HARDWARE STATE (DMX - placeholder, se llenará en main.ts)
     // -----------------------------------------------------------------------
     const hardwareState = {
       dmxOutput: new Array(512).fill(0),

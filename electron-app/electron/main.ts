@@ -1419,8 +1419,10 @@ function startMainLoop() {
     // 🌈 WAVE 25.5: Guardar para broadcast de verdad
     lastFixtureStatesForBroadcast = fixtureStates
     
-    // �🌪️ WAVE 11: Enviar valores DMX reales si el driver está conectado
-    if (universalDMX.isConnected) {
+    // � WAVE 153: Enviar DMX si hay algún driver conectado (USB o Art-Net)
+    const hasAnyDmxOutput = universalDMX.isConnected || artNetDriver.isConnected
+    
+    if (hasAnyDmxOutput) {
       for (const fixture of fixtureStates) {
         const addr = fixture.dmxAddress
         
@@ -1472,15 +1474,17 @@ function startMainLoop() {
           }
         }
         
-        // Formato típico de moving head: Pan, Tilt, Dimmer, R, G, B, ...
-        universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
-        universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
-        universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
-        universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
-        universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
-        universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+        // 🌪️ WAVE 11: USB DMX
+        if (universalDMX.isConnected) {
+          universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
+          universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
+          universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
+          universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
+          universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
+          universalDMX.setChannel(addr + 5, finalB)        // Canal 6: Blue
+        }
         
-        // 🎨 WAVE 153: También enviar por Art-Net si está conectado
+        // 🎨 WAVE 153: Art-Net UDP
         if (artNetDriver.isConnected) {
           artNetDriver.setChannel(addr, fixture.pan)
           artNetDriver.setChannel(addr + 1, fixture.tilt)

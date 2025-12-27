@@ -25,30 +25,47 @@ import type { VibeId } from '../../types/VibeProfile';
 /**
  * En el reino del Techno, la calidez es herejía. Solo el frío sobrevive.
  * 
- * ZONA SAGRADA: 170° - 302° (Cian → Violeta → Magenta)
- * ZONA PROHIBIDA: 0° - 75° y 330° - 360° (Toda Calidez)
- * ZONA LÁSER: 110° - 140° (Verde Ácido → Láser)
+ * 🌡️ WAVE 151.2: OPEN BORDERS - Tratado de Libre Comercio Cromático
+ * La Gravedad Térmica (9500K) hace el trabajo de "enfriar" a los inmigrantes.
+ * Ya no necesitamos una policía tan estricta en la puerta.
+ * 
+ * FILOSOFÍA: Bunker en Noruega viendo auroras boreales 🌌
+ * 
+ * ZONA LIBRE: 0° - 20° (Rojos) → La gravedad los convierte en Magentas
+ * ZONA LIBRE: 85° - 110° (Verde Lima) → La gravedad los convierte en Láser
+ * ZONA LIBRE: 280° - 360° (Magentas/Rosas) → Ya son fríos, bienvenidos
+ * 
+ * ZONA PROHIBIDA: 25° - 80° (Naranja/Amarillo/Mostaza)
+ * Este es el "núcleo duro" que incluso con gravedad queda feo.
  */
 export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Estrategia tetraédrica (Prism)
   forceStrategy: 'prism',
   
   // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Azul Masivo
-  // 9500K = Fuerza 0.83 hacia 240° (Azul Rey)
-  // Cualquier hue cálido será arrastrado hacia el espectro frío
+  // 9500K = Fuerza ~29% hacia 240° (Azul Rey) tras WAVE 150.6
+  // Los rojos (0-20°) serán arrastrados hacia magenta (300°)
+  // Los verdes (85-110°) serán arrastrados hacia cyan (180°)
   atmosphericTemp: 9500,
   
-  // 🛡️ WAVE 149.5: Zonas prohibidas AMPLIADAS
-  // Subimos de [0, 75] a [0, 80] para matar el amarillo 65° con margen
-  forbiddenHueRanges: [[0, 80], [330, 360]],
+  // � WAVE 151.2: OPEN BORDERS - Solo prohibir el núcleo mostaza/naranja
+  // ANTES: [[0, 80], [330, 360]] - Muy restrictivo, mataba magentas
+  // AHORA: [[25, 80]] - Solo el amarillo/naranja feo
+  // Los rojos (0-20°) PASAN → se enfrían a Magenta/Rosa
+  // Los rosas (330-360°) PASAN → ya son fríos
+  forbiddenHueRanges: [[25, 80]],
   
-  // Solo espectro frío permitido
-  allowedHueRanges: [[110, 302]],
+  // 🌈 WAVE 151.2: Espectro ampliado - confiar en Thermal Gravity
+  // ANTES: [[110, 302]] - Demasiado restrictivo
+  // AHORA: Permitir todo EXCEPTO el naranja/amarillo prohibido
+  // La Gravedad Térmica enfriará naturalmente los tonos cálidos
+  allowedHueRanges: [[0, 24], [81, 360]],
   
   // Elastic Rotation de 15° para escapar zonas prohibidas
   elasticRotation: 15,
   
-  // Mapeo forzado: Verde césped (90-110) → Verde Láser (130)
+  // 🗺️ Mapeo forzado: Verde césped (90-110) → Verde Láser (130)
+  // Nota: Con Open Borders, esto es un refinamiento adicional
   hueRemapping: [{ from: 90, to: 110, target: 130 }],
   
   // Saturación neón obligatoria
@@ -58,13 +75,12 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   lightnessRange: [45, 55],
   
   // 🔓 WAVE 148: AMBIENT UNLOCKED
-  // El ambient ahora fluye libremente en el espectro frío (170-302).
-  // Con allowedHueRanges restringido, caerá naturalmente en violetas/UV.
-  // Eliminado: ambientLock: { h: 275, s: 100, l: 20 }
+  // El ambient ahora fluye libremente. Con Thermal Gravity,
+  // caerá naturalmente hacia violetas/magentas/cyans.
   
-  // Comportamiento del strobe: blanco nuclear SOLO en drops reales
+  // Comportamiento del strobe: Magenta Neón (WAVE 151)
   accentBehavior: 'strobe',
-  strobeColor: { r: 255, g: 255, b: 255 },
+  strobeColor: { r: 255, g: 179, b: 255 },  // Magenta Neón (300° l:85)
   
   // ⚡ WAVE 148: Strobe no es el estado por defecto
   // El accent tiene color (Magenta/Cian) en reposo, blanco solo en drops

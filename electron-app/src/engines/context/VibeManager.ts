@@ -7,6 +7,8 @@
  * Patrón: Service Locator + Bounded Context Provider
  * 
  * FILOSOFÍA: RESTRINGIR, NO FORZAR
+ * 
+ * 🏛️ WAVE 144: Añadido getColorConstitution() para proveer GenerationOptions
  */
 
 import type {
@@ -21,12 +23,16 @@ import type {
   VibeDebugInfo,
 } from '../../types/VibeProfile';
 
+import type { GenerationOptions } from '../../main/selene-lux-core/engines/visual/SeleneColorEngine';
+
 import {
   VIBE_REGISTRY,
   DEFAULT_VIBE,
   getVibePreset,
   isValidVibeId,
 } from './presets';
+
+import { getColorConstitution as getConstitution } from './colorConstitutions';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOOD PROXIMITY MAP
@@ -206,6 +212,29 @@ export class VibeManager {
       startFrame: this.transitionStartFrame,
       durationFrames: this.transitionDurationFrames,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🏛️ WAVE 144: COLOR CONSTITUTION API
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * 🏛️ WAVE 144: GET COLOR CONSTITUTION
+   * 
+   * Obtiene las GenerationOptions (Constitución Cromática) del Vibe activo.
+   * Usado por SeleneLux para pasar restricciones al SeleneColorEngine.
+   * 
+   * @returns GenerationOptions con las restricciones cromáticas del Vibe activo
+   * 
+   * @example
+   * ```typescript
+   * const vibeManager = VibeManager.getInstance();
+   * const constitution = vibeManager.getColorConstitution();
+   * const palette = SeleneColorEngine.generate(audioData, constitution);
+   * ```
+   */
+  public getColorConstitution(): GenerationOptions {
+    return getConstitution(this.currentVibe.id);
   }
 
   // ═══════════════════════════════════════════════════════════════

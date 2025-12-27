@@ -215,56 +215,173 @@ export interface ExtendedAudioAnalysis {
 }
 
 /**
- * 🎛️ WAVE 142: GENERATION OPTIONS (Vibe Constraints)
- * =====================================================
- * Opciones para restringir la generación de paletas según el VibeProfile.
- * Esto permite que el VibeManager "guíe" al ColorEngine sin hardcodear.
+ * �️ WAVE 144: CONSTITUTIONAL GENERATION OPTIONS
+ * ================================================
+ * Estructura inmutable que define las restricciones cromáticas de un Vibe.
+ * El VibeManager provee estas opciones, el ColorEngine las OBEDECE.
  * 
  * FILOSOFÍA: "RESTRINGIR, NO PINTAR"
  * - El ColorEngine sigue usando Fibonacci y Teoría Musical
- * - Pero respeta los límites impuestos por el Vibe activo
+ * - Pero respeta las LEYES impuestas por cada Constitución
+ * 
+ * @see docs/audits/WAVE-143-COLOR-CONSTITUTION.md
  */
 export interface GenerationOptions {
-  /** 
-   * Estrategia de contraste forzada.
-   * Si se proporciona, ignora la decisión basada en syncopation.
-   * @example 'triadic', 'complementary', 'analogous', 'prism'
-   */
-  forceStrategy?: 'analogous' | 'triadic' | 'complementary' | 'prism';
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN A: RESTRICCIONES DE HUE (El Círculo Cromático)
+  // ═══════════════════════════════════════════════════════════════════
   
   /**
-   * Rango de temperatura de color permitido (Kelvin).
-   * Usado para filtrar colores fuera de la gama térmica del género.
-   * @example [4000, 9000] para Techno (frío), [2000, 4500] para Rock (cálido)
-   */
-  temperatureRange?: [number, number];
-  
-  /**
-   * Rangos de Hue permitidos (grados).
-   * Si el hue calculado cae fuera, se rota al rango más cercano.
-   * @example [[180, 300]] para solo azules/violetas (Techno)
-   * @example [[0, 60], [300, 360]] para rojos/naranjas (Rock)
-   */
-  allowedHueRanges?: [number, number][];
-  
-  /**
-   * Rangos de Hue prohibidos (grados).
-   * Si el hue calculado cae dentro, se invierte +180°.
-   * @example [[30, 75]] para prohibir amarillos (Techno Cold Dictator)
+   * Rangos de Hue PROHIBIDOS (grados 0-360).
+   * Si el color calculado cae aquí, aplicar Elastic Rotation.
+   * @example [[30, 80], [330, 360]] // Prohibir naranjas y rojos cálidos
    */
   forbiddenHueRanges?: [number, number][];
   
   /**
+   * Rangos de Hue PERMITIDOS (grados 0-360).
+   * Si el color calculado cae FUERA, rotar al punto más cercano.
+   * @example [[170, 302]] // Solo azules y violetas
+   */
+  allowedHueRanges?: [number, number][];
+  
+  /**
+   * Grados de rotación para escapar de zonas prohibidas.
+   * @default 15
+   */
+  elasticRotation?: number;
+  
+  /**
+   * Mapeos forzados de hue.
+   * Si el hue cae en [from, to], se reemplaza por 'target'.
+   * @example [{ from: 80, to: 160, target: 0 }] // Verde → Rojo (Rock)
+   */
+  hueRemapping?: Array<{ from: number; to: number; target: number }>;
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN B: RESTRICCIONES DE SATURACIÓN Y LUMINOSIDAD
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
    * Rango de saturación permitido (0-100).
-   * @example [70, 100] para vibes saturados
+   * @example [90, 100] para Techno neón
    */
   saturationRange?: [number, number];
   
   /**
    * Rango de luminosidad permitido (0-100).
-   * @example [40, 60] para evitar whitewashing
+   * @example [45, 60] para evitar whitewashing
    */
   lightnessRange?: [number, number];
+  
+  /**
+   * Configuración Anti-Barro para vibes tropicales.
+   * Evita que naranjas/amarillos se vean marrones.
+   */
+  mudGuard?: {
+    enabled: boolean;
+    swampZone: [number, number];  // Hue range peligroso
+    minLightness: number;         // L mínimo en esa zona
+    minSaturation: number;        // S mínimo en esa zona
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN C: ESTRATEGIA DE CONTRASTE
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
+   * Estrategia de contraste forzada.
+   * Si no se especifica, se calcula por syncopation.
+   * - 'prism': Estrategia tetraédrica de Techno
+   */
+  forceStrategy?: 'analogous' | 'triadic' | 'complementary' | 'prism';
+  
+  /**
+   * Activa el Tropical Mirror (Ambient = Secondary + 180°).
+   * Usado en Fiesta Latina para máximo contraste.
+   */
+  tropicalMirror?: boolean;
+  
+  /**
+   * Bloquea el Ambient en un color fijo.
+   * Usado en Techno para el "suelo UV".
+   */
+  ambientLock?: { h: number; s: number; l: number };
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN D: COMPORTAMIENTO DEL ACCENT
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
+   * Modo de reactividad del Accent.
+   * - 'strobe': Flash blanco instantáneo (Techno)
+   * - 'drum-reactive': Flash en Snare/Kick (Rock)
+   * - 'solar-flare': Flash dorado cálido (Latino)
+   * - 'breathing': Pulso lento (Chill)
+   * - 'quaternary': Color fijo derivado (Idle)
+   */
+  accentBehavior?: 'strobe' | 'drum-reactive' | 'solar-flare' | 'breathing' | 'quaternary';
+  
+  /**
+   * Color del strobe (si accentBehavior = 'strobe').
+   */
+  strobeColor?: { r: number; g: number; b: number };
+  
+  /**
+   * Configuración del Solar Flare (Latino).
+   */
+  solarFlareAccent?: { h: number; s: number; l: number };
+  
+  /**
+   * Configuración del Snare Flash (Rock).
+   */
+  snareFlash?: { h: number; s: number; l: number };
+  
+  /**
+   * Configuración del Kick Punch (Rock).
+   */
+  kickPunch?: { usesPrimary: boolean; l: number };
+  
+  /**
+   * Configuración del Breathing Pulse (Chill).
+   */
+  pulseConfig?: { duration: number; amplitude: number };
+  
+  /**
+   * Prohíbe strobes completamente (Chill).
+   */
+  strobeProhibited?: boolean;
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN E: TRANSICIONES Y TIMING
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
+   * Configuración de transiciones de color.
+   */
+  transitionConfig?: {
+    minDuration: number;           // Duración mínima en ms
+    maxDuration?: number;          // Duración máxima en ms
+    easing?: 'linear' | 'ease-in' | 'ease-out' | 'sine-inout';
+  };
+  
+  /**
+   * Configuración de dimming general.
+   */
+  dimmingConfig?: {
+    floor: number;    // Mínimo (0-1)
+    ceiling: number;  // Máximo (0-1)
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN F: LEGACY COMPATIBILITY (WAVE 142)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
+   * @deprecated Use saturationRange/lightnessRange instead
+   * Rango de temperatura de color permitido (Kelvin).
+   */
+  temperatureRange?: [number, number];
 }
 
 // ============================================================
@@ -739,32 +856,66 @@ export class SeleneColorEngine {
     let finalHue = normalizeHue(baseHue + modeMod.hue);
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎛️ WAVE 142: APPLY HUE CONSTRAINTS (GenerationOptions)
+    // �️ WAVE 144: CONSTITUTIONAL HUE ENFORCEMENT
     // ═══════════════════════════════════════════════════════════════════════
-    // Si se proporcionan restricciones de hue, las aplicamos aquí.
-    // Esto permite que el VibeManager guíe el color sin hardcodear.
+    // Aplicar las restricciones de hue según la Constitución del Vibe activo.
+    // Orden de aplicación:
+    //   1. hueRemapping (mapeos forzados)
+    //   2. forbiddenHueRanges (Elastic Rotation)
+    //   3. allowedHueRanges (snap to nearest)
     // ═══════════════════════════════════════════════════════════════════════
-    if (options?.forbiddenHueRanges) {
-      // Verificar si el hue cae en rangos prohibidos
-      for (const [min, max] of options.forbiddenHueRanges) {
-        const normalizedMin = normalizeHue(min);
-        const normalizedMax = normalizeHue(max);
-        
-        // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
-        const isInRange = normalizedMin <= normalizedMax
-          ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
-          : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+    
+    // 1️⃣ HUE REMAPPING: Mapeos forzados de zonas cromáticas
+    // Ejemplo: Rock mapea verde (80-160) → rojo (0)
+    if (options?.hueRemapping) {
+      for (const mapping of options.hueRemapping) {
+        const { from, to, target } = mapping;
+        const isInRange = from <= to
+          ? (finalHue >= from && finalHue <= to)
+          : (finalHue >= from || finalHue <= to);  // wrap-around
         
         if (isInRange) {
-          // Invertir fase +180° para escapar del rango prohibido
-          finalHue = normalizeHue(finalHue + 180);
-          break;
+          finalHue = normalizeHue(target);
+          break;  // Solo aplicar el primer match
         }
       }
     }
     
+    // 2️⃣ FORBIDDEN HUE RANGES: Elastic Rotation
+    // Si el hue cae en zona prohibida, rotar hasta escapar
+    const elasticStep = options?.elasticRotation ?? 15;  // grados por iteración
+    const maxIterations = Math.ceil(360 / elasticStep);  // prevenir loop infinito
+    
+    if (options?.forbiddenHueRanges) {
+      let iterations = 0;
+      let isInForbidden = true;
+      
+      while (isInForbidden && iterations < maxIterations) {
+        isInForbidden = false;
+        
+        for (const [min, max] of options.forbiddenHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
+          const isInRange = normalizedMin <= normalizedMax
+            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+          
+          if (isInRange) {
+            // Elastic Rotation: rotar +elasticStep grados
+            finalHue = normalizeHue(finalHue + elasticStep);
+            isInForbidden = true;
+            iterations++;
+            break;
+          }
+        }
+      }
+    }
+    
+    // 3️⃣ ALLOWED HUE RANGES: Snap to nearest
+    // Si el hue cae fuera de todos los rangos permitidos, ir al más cercano
     if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
-      // Verificar si el hue está dentro de algún rango permitido
       let isAllowed = false;
       let closestRange: [number, number] | null = null;
       let minDistance = Infinity;
@@ -1061,6 +1212,71 @@ export class SeleneColorEngine {
       s: clamp(correctedSat - 10, 40, 90),  // Saturación media-alta (no lavado)
       l: clamp(correctedLight - 5, 30, 70), // Luminosidad media
     };
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏛️ WAVE 144: SMART PRISM LOGIC (4th Color Algorithm)
+    // ═══════════════════════════════════════════════════════════════════════
+    // El Ambient debe ser DISTINTO del Secondary y respetar la Constitución.
+    // Si cae en zona prohibida, aplicar Elastic Rotation hasta encontrar hueco.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 1️⃣ PRISM MODE: Si strategy es 'prism', recalcular ambient como tetraédrico
+    if (options?.forceStrategy === 'prism') {
+      // Tetraedro cromático: Primary → +90° → +180° → +270°
+      ambient.h = normalizeHue(finalHue + 90);  // 90° del primary (no del secondary)
+      ambient.s = 100;  // Saturación máxima para prisma
+      ambient.l = 35;   // Oscuro para "suelo UV"
+    }
+    
+    // 2️⃣ AMBIENT LOCK: Bloquear ambient en color fijo (UV Floor de Techno)
+    if (options?.ambientLock) {
+      ambient.h = options.ambientLock.h;
+      ambient.s = options.ambientLock.s;
+      ambient.l = options.ambientLock.l;
+    }
+    
+    // 3️⃣ TROPICAL MIRROR: Ambient = Secondary + 180° (máximo contraste Latino)
+    if (options?.tropicalMirror) {
+      ambient.h = normalizeHue(secondary.h + 180);
+      ambient.s = Math.max(secondary.s, 70);  // Mantener saturado
+      ambient.l = clamp(secondary.l * 1.1, 40, 60);  // Variación sutil
+    }
+    
+    // 4️⃣ ELASTIC ROTATION para Ambient (si hay zonas prohibidas)
+    if (options?.forbiddenHueRanges && !options?.ambientLock) {
+      const elasticStep = options.elasticRotation ?? 15;
+      const maxIterations = Math.ceil(360 / elasticStep);
+      let iterations = 0;
+      let isInForbidden = true;
+      
+      while (isInForbidden && iterations < maxIterations) {
+        isInForbidden = false;
+        
+        for (const [min, max] of options.forbiddenHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          const isInRange = normalizedMin <= normalizedMax
+            ? (ambient.h >= normalizedMin && ambient.h <= normalizedMax)
+            : (ambient.h >= normalizedMin || ambient.h <= normalizedMax);
+          
+          if (isInRange) {
+            ambient.h = normalizeHue(ambient.h + elasticStep);
+            isInForbidden = true;
+            iterations++;
+            break;
+          }
+        }
+      }
+    }
+    
+    // 5️⃣ MINIMUM SEPARATION: Ambient debe estar a mínimo 30° del Secondary
+    const hueDistance = Math.abs(ambient.h - secondary.h);
+    const shortestDistance = Math.min(hueDistance, 360 - hueDistance);
+    if (shortestDistance < 30 && !options?.ambientLock && !options?.tropicalMirror) {
+      // Rotar ambient +45° para separarse
+      ambient.h = normalizeHue(ambient.h + 45);
+    }
     
     // === I. COLOR CONTRASTE (Siluetas, muy oscuro) ===
     const contrast: HSLColor = {

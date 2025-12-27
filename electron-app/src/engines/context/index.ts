@@ -2,6 +2,7 @@
  * 🎛️ CONTEXT ENGINE INDEX
  * 
  * Exporta el sistema de Vibes (Bounded Contexts).
+ * 🏛️ WAVE 144: Añadidas las Color Constitutions
  */
 
 // Manager
@@ -19,3 +20,16 @@ export {
   getVibePreset,
   isValidVibeId,
 } from './presets';
+
+// 🏛️ WAVE 144: Color Constitutions
+export {
+  COLOR_CONSTITUTIONS,
+  TECHNO_CONSTITUTION,
+  LATINO_CONSTITUTION,
+  ROCK_CONSTITUTION,
+  CHILL_CONSTITUTION,
+  IDLE_CONSTITUTION,
+  getColorConstitution,
+  isHueForbidden,
+  applyElasticRotation,
+} from './colorConstitutions';

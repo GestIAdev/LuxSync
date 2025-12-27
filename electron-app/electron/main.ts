@@ -421,7 +421,8 @@ function initSelene() {
         tilt: f.tilt / 255,
         active: f.dimmer > 0,
       }))
-      truth.hardwareState.dmx.connected = universalDMX.isConnected
+      // 🎨 WAVE 153: DMX connected si USB O ArtNet están activos
+      truth.hardwareState.dmx.connected = universalDMX.isConnected || artNetDriver.isConnected
       
       mainWindow.webContents.send('selene:truth', truth)
     }

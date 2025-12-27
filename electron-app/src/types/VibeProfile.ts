@@ -110,6 +110,21 @@ export interface VibeColorConstraints {
     max: number;  // 2000-10000
   };
   
+  /**
+   * 🌡️ WAVE 149.6: THERMAL GRAVITY - Temperatura Atmosférica
+   * 
+   * Define el "clima" del Vibe. Los hues generados serán arrastrados
+   * físicamente hacia el polo térmico correspondiente:
+   * 
+   * - > 7000K: Polo Frío (240° Azul Rey) - Techno, Chill
+   * - < 5000K: Polo Cálido (40° Oro) - Latino, Rock
+   * - 5000-7000K: Neutro (sin gravedad) - Idle
+   * 
+   * Cuanto más extrema la temperatura, más fuerte el arrastre.
+   * Ejemplo: Techno (9500K) arrastra 80% hacia azul.
+   */
+  atmosphericTemp?: number;  // 2000-10000K, opcional para compatibilidad
+  
   /** Rango de saturación permitido */
   saturation: {
     min: number;  // 0.0 - 1.0

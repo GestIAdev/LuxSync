@@ -42,6 +42,10 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
       min: 4000,   // Neutro-frío (no cálido)
       max: 9000,   // Muy frío permitido
     },
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Azul Masivo
+    // 9500K = Fuerza 0.8 hacia 240° (Azul Rey)
+    // Cualquier hue cálido será arrastrado hacia el espectro frío
+    atmosphericTemp: 9500,
     saturation: {
       min: 0.3,    // Puede ser desaturado (industrial)
       max: 0.85,   // Nunca híper-saturado

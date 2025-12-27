@@ -42,6 +42,10 @@ export const VIBE_IDLE: VibeProfile = {
       min: 5000,
       max: 5000,   // Neutro
     },
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Sin Gravedad
+    // 6500K = Fuerza 0 (zona neutra 5000-7000K)
+    // Los hues no se modifican, fluyen según la música pura
+    atmosphericTemp: 6500,
     saturation: {
       min: 0,      // Sin saturación
       max: 0,      // Sin saturación

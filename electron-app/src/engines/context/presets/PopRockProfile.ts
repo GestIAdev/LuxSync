@@ -42,6 +42,10 @@ export const VIBE_POP_ROCK: VibeProfile = {
       min: 3500,   // Ligeramente cálido
       max: 7000,   // Hasta neutro-frío
     },
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Ámbar Medio
+    // 3200K = Fuerza 0.6 hacia 40° (Oro/Ámbar)
+    // Colores fríos se calientan, pero mantienen identidad
+    atmosphericTemp: 3200,
     saturation: {
       min: 0.5,    // Siempre con color visible
       max: 0.95,

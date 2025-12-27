@@ -44,6 +44,10 @@ export const VIBE_CHILL_LOUNGE: VibeProfile = {
       min: 2800,   // Siempre cálido
       max: 5000,   // Máximo neutro (nunca frío)
     },
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Cian Suave
+    // 8000K = Fuerza 0.4 hacia 200° (Cian/Agua)
+    // Tirón suave hacia tonos acuáticos relajantes
+    atmosphericTemp: 8000,
     saturation: {
       min: 0.2,    // Desaturado OK (ambiente)
       max: 0.7,    // ⚠️ Nunca híper-saturado

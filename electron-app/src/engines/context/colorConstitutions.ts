@@ -33,6 +33,11 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Estrategia tetraédrica (Prism)
   forceStrategy: 'prism',
   
+  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Azul Masivo
+  // 9500K = Fuerza 0.83 hacia 240° (Azul Rey)
+  // Cualquier hue cálido será arrastrado hacia el espectro frío
+  atmosphericTemp: 9500,
+  
   // 🛡️ WAVE 149.5: Zonas prohibidas AMPLIADAS
   // Subimos de [0, 75] a [0, 80] para matar el amarillo 65° con margen
   forbiddenHueRanges: [[0, 80], [330, 360]],
@@ -86,6 +91,11 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   // Syncopation decide la estrategia (no forzada)
   forceStrategy: undefined,
   
+  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Oro Máximo
+  // 3000K = Fuerza 0.67 hacia 40° (Oro/Fuego)
+  // Los hues fríos serán arrastrados hacia el espectro solar
+  atmosphericTemp: 3000,
+  
   // Zona prohibida: azules metálicos corporativos
   forbiddenHueRanges: [[200, 240]],
   
@@ -137,6 +147,11 @@ export const ROCK_CONSTITUTION: GenerationOptions = {
   // Complementario para máximo drama
   forceStrategy: 'complementary',
   
+  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Ámbar Medio
+  // 3200K = Fuerza 0.6 hacia 40° (Oro/Ámbar)
+  // Colores fríos se calientan, pero mantienen identidad
+  atmosphericTemp: 3200,
+  
   // Prohibido: verdes neón y púrpuras sucios
   forbiddenHueRanges: [[80, 160], [260, 300]],
   
@@ -181,6 +196,11 @@ export const CHILL_CONSTITUTION: GenerationOptions = {
   // Analogous para armonía
   forceStrategy: 'analogous',
   
+  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Cian Suave
+  // 8000K = Fuerza 0.33 hacia 240° (Cian/Agua)
+  // Tirón suave hacia tonos acuáticos relajantes
+  atmosphericTemp: 8000,
+  
   // Prohibido: naranjas/amarillos (demasiado energéticos)
   forbiddenHueRanges: [[30, 80]],
   
@@ -222,6 +242,10 @@ export const CHILL_CONSTITUTION: GenerationOptions = {
 export const IDLE_CONSTITUTION: GenerationOptions = {
   // Sin restricciones de estrategia
   forceStrategy: undefined,
+  
+  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Neutro (sin gravedad)
+  // 6500K = Zona neutra (5000-7000K), sin arrastre cromático
+  atmosphericTemp: 6500,
   
   // Todo el espectro permitido
   allowedHueRanges: undefined,

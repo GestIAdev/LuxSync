@@ -357,6 +357,24 @@ export interface GenerationOptions {
   // ═══════════════════════════════════════════════════════════════════
   
   /**
+   * 🌡️ WAVE 149.6: THERMAL GRAVITY - Temperatura Atmosférica
+   * 
+   * Define el "clima" del Vibe. Los hues generados serán arrastrados
+   * físicamente hacia el polo térmico correspondiente:
+   * 
+   * - > 7000K: Polo Frío (240° Azul Rey) - Arrastra hacia azules
+   * - < 5000K: Polo Cálido (40° Oro) - Arrastra hacia naranjas/rojos
+   * - 5000-7000K: Neutro (sin gravedad) - Sin modificación
+   * 
+   * Cuanto más extrema la temperatura, más fuerte el arrastre.
+   * Ejemplos:
+   * - Techno (9500K) → Fuerza 0.83 hacia 240° (azul)
+   * - Latino (3000K) → Fuerza 0.67 hacia 40° (oro)
+   * - Idle (6500K) → Fuerza 0 (neutro)
+   */
+  atmosphericTemp?: number;  // 2000-10000K
+  
+  /**
    * Configuración de transiciones de color.
    */
   transitionConfig?: {
@@ -666,6 +684,72 @@ export function paletteToRgb(palette: SelenePalette): {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌡️ WAVE 149.6: THERMAL GRAVITY - Motor de Física Cromática
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Aplica gravedad térmica a un hue, arrastrándolo hacia el polo
+ * correspondiente a la temperatura atmosférica del Vibe.
+ * 
+ * FÍSICA:
+ * - > 7000K: Polo Frío (240° Azul Rey)
+ * - < 5000K: Polo Cálido (40° Oro)
+ * - 5000-7000K: Zona Neutra (sin gravedad)
+ * 
+ * La fuerza de arrastre es proporcional a la distancia del polo neutral (6000K).
+ * 
+ * @param hue - Hue original (0-360)
+ * @param atmosphericTemp - Temperatura atmosférica en Kelvin (2000-10000)
+ * @returns Hue modificado por la gravedad térmica
+ * 
+ * @example
+ * // Techno (9500K) arrastra amarillo 60° hacia verde/cian
+ * applyThermalGravity(60, 9500) → ~140° (Verde Cian)
+ * 
+ * // Latino (3000K) arrastra azul 240° hacia magenta/rojo
+ * applyThermalGravity(240, 3000) → ~160° (Cian/Turquesa, menos frío)
+ */
+export function applyThermalGravity(hue: number, atmosphericTemp?: number): number {
+  // Sin temperatura definida = sin gravedad
+  if (!atmosphericTemp) return hue;
+  
+  // Zona neutra: 5000K - 7000K (sin gravedad)
+  if (atmosphericTemp >= 5000 && atmosphericTemp <= 7000) {
+    return hue;
+  }
+  
+  // Definir polo de atracción
+  let pole: number;
+  let force: number;
+  
+  if (atmosphericTemp > 7000) {
+    // POLO FRÍO: Azul Rey (240°)
+    pole = 240;
+    // Fuerza: 7000K → 0, 10000K → 1
+    // Mapeo: (temp - 7000) / 3000
+    force = Math.min((atmosphericTemp - 7000) / 3000, 1.0);
+  } else {
+    // POLO CÁLIDO: Oro (40°)
+    pole = 40;
+    // Fuerza: 5000K → 0, 2000K → 1
+    // Mapeo: (5000 - temp) / 3000
+    force = Math.min((5000 - atmosphericTemp) / 3000, 1.0);
+  }
+  
+  // Calcular distancia más corta en el círculo cromático
+  let delta = pole - hue;
+  
+  // Normalizar a camino más corto (-180 a 180)
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  
+  // Aplicar vector de arrastre
+  // El hue se mueve un porcentaje igual a la fuerza hacia el polo
+  const newHue = hue + (delta * force);
+  
+  return normalizeHue(newHue);
+}
+
 // ============================================================
 // 5. LA CLASE PRINCIPAL - SELENE COLOR ENGINE
 // ============================================================
@@ -855,8 +939,15 @@ export class SeleneColorEngine {
     // El Hue final es: Base + Modo (SIN GÉNERO)
     let finalHue = normalizeHue(baseHue + modeMod.hue);
     
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Aplicar Gravedad Térmica
+    // Antes de restricciones constitucionales, el hue se aclimata al clima del Vibe.
+    // Techno (9500K) → arrastra hacia Azul Rey (240°)
+    // Latino (3000K) → arrastra hacia Oro (40°)
+    // Idle (6500K) → sin gravedad (neutro)
+    finalHue = applyThermalGravity(finalHue, options?.atmosphericTemp);
+    
     // ═══════════════════════════════════════════════════════════════════════
-    // �️ WAVE 144: CONSTITUTIONAL HUE ENFORCEMENT
+    // 🏛️ WAVE 144: CONSTITUTIONAL HUE ENFORCEMENT
     // ═══════════════════════════════════════════════════════════════════════
     // Aplicar las restricciones de hue según la Constitución del Vibe activo.
     // Orden de aplicación:

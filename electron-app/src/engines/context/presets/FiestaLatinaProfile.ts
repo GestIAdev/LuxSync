@@ -44,6 +44,10 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
       min: 2000,   // 🔥 WAVE 67: Más cálido (era 2500K)
       max: 4500,   // 🔥 WAVE 67: NUNCA frío - clamp a 4500K (era 5500K)
     },
+    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Oro Máximo
+    // 3000K = Fuerza 0.7 hacia 40° (Oro/Fuego)
+    // Los hues fríos serán arrastrados hacia el espectro solar
+    atmosphericTemp: 3000,
     saturation: {
       min: 0.80,   // 🔥 WAVE 66.5: Aumentado a 80% (era 65%) - Evita lavado a blanco en drops
       max: 1.0,    // Full color permitido

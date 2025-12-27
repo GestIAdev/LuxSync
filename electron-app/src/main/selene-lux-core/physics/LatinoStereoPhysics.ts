@@ -1,16 +1,22 @@
 /**
- * 🌴 WAVE 145: LATINO STEREO PHYSICS ("Solar Flare & Metralleta")
+ * 🌴 WAVE 152.5: LATINO STEREO PHYSICS ("Subgéneros & Anti-Palidez")
  * ============================================================================
  * Módulo blindado para la lógica de reactividad del género Latino/Tropical.
+ * 
+ * WAVE 152.5: SUBGÉNEROS DETECTADOS
+ * - CUMBIA: BPM > 135 + Bass moderado → Anti-palidez, Neon Injection
+ * - REGGAETON: BPM < 115 + Bass fuerte → MachineGun + Solar Flare
+ * - SALSA: High > Bass + BPM > 140 → Movimiento continuo
  * 
  * RESPONSABILIDAD ÚNICA:
  * - Detectar KICKS fuertes → Solar Flare (destello dorado)
  * - Detectar NEGATIVE DROPS → Machine Gun Blackout (corte dramático)
- * - Mantener la vitalidad tropical (nunca apagar la fiesta)
+ * - CUMBIA: Desactivar Solar Flare, inyectar neón, síncopa visual
  * 
  * FILOSOFÍA: "CALOR EXPLOSIVO Y CORTES DRAMÁTICOS"
  * El Latino es fuego: cuando explota, es ORO CEGADOR.
  * Cuando corta, es SILENCIO ABSOLUTO.
+ * Cuando es CUMBIA, es COLOR VIBRANTE sin lavado blanco.
  * 
  * CONSTITUCIÓN LATINA (Wave 143):
  * - Zona Solar: 0° - 60° (Rojo → Naranja → Oro)
@@ -55,9 +61,15 @@ export interface LatinoPalette {
 export interface LatinoAudioMetrics {
   normalizedBass: number;      // 0.0 - 1.0 (Kick/Bombo)
   normalizedEnergy: number;    // 0.0 - 1.0 (Energía total)
+  normalizedHigh?: number;     // 0.0 - 1.0 (Agudos/Güiro) - WAVE 152.5
   previousEnergy?: number;     // Energía del frame anterior (para detectar drops)
   deltaTime?: number;          // Tiempo desde último frame (ms)
 }
+
+/**
+ * 🎵 WAVE 152.5: Subgéneros latinos detectados
+ */
+export type LatinoSubGenre = 'cumbia' | 'reggaeton' | 'salsa' | 'generic';
 
 /**
  * Resultado de la aplicación de física Latino
@@ -67,11 +79,15 @@ export interface LatinoPhysicsResult {
   isSolarFlare: boolean;
   isMachineGunBlackout: boolean;
   dimmerOverride: number | null;  // null = sin override, 0-1 = override de dimmer
+  forceMovement: boolean;         // 🔧 WAVE 152.5: Forzar movimiento continuo
+  subGenre: LatinoSubGenre;       // 🔧 WAVE 152.5: Subgénero detectado
   debugInfo: {
     bassPulse: number;
     energyDelta: number;
     isNegativeDrop: boolean;
     flareIntensity: number;
+    detectedBpm: number;          // 🔧 WAVE 152.5
+    neonInjected: boolean;        // 🔧 WAVE 152.5
   };
 }
 
@@ -139,6 +155,28 @@ export class LatinoStereoPhysics {
   };
 
   // =========================================================================
+  // 🎵 WAVE 152.5: CONFIGURACIÓN DE SUBGÉNEROS
+  // =========================================================================
+  
+  /**
+   * BPM para detección de subgéneros.
+   * CUMBIA: > 90 BPM, síncopa característica
+   * REGGAETON: 85-100 BPM, dembow constante
+   * SALSA: 140-180 BPM, clave compleja
+   */
+  private static readonly BPM_CUMBIA_MIN = 85;
+  private static readonly BPM_REGGAETON_MAX = 100;
+  private static readonly BPM_SALSA_MIN = 130;
+  
+  /**
+   * 🌈 NEON INJECTION COLORS (Cumbia Anti-Palidez)
+   * Para romper monotonía en Cumbia cuando no hay Solar Flare
+   */
+  private static readonly NEON_MAGENTA: HSL = { h: 300, s: 100, l: 65 };
+  private static readonly NEON_CYAN: HSL = { h: 180, s: 100, l: 60 };
+  private static readonly NEON_LIME: HSL = { h: 120, s: 100, l: 55 };
+
+  // =========================================================================
   // 📊 ESTADO INTERNO
   // =========================================================================
   
@@ -151,6 +189,12 @@ export class LatinoStereoPhysics {
   /** Timestamp del último frame */
   private lastFrameTime = Date.now();
   
+  /** 🔧 WAVE 152.5: Contador de beats para Neon Injection */
+  private beatCounter = 0;
+  
+  /** 🔧 WAVE 152.5: Último BPM detectado */
+  private lastBpm = 0;
+  
   // =========================================================================
   // 🔧 MÉTODOS PÚBLICOS
   // =========================================================================
@@ -158,13 +202,17 @@ export class LatinoStereoPhysics {
   /**
    * Aplica la física Latino a una paleta de colores.
    * 
+   * 🔧 WAVE 152.5: Ahora acepta BPM para detección de subgénero
+   * 
    * @param palette - Paleta de colores actual (RGB)
    * @param metrics - Métricas de audio del frame actual
+   * @param bpm - BPM detectado (opcional, para subgénero)
    * @returns Paleta modificada con efectos aplicados
    */
   public apply(
     palette: LatinoPalette,
-    metrics: LatinoAudioMetrics
+    metrics: LatinoAudioMetrics,
+    bpm?: number
   ): LatinoPhysicsResult {
     const now = Date.now();
     const deltaTime = metrics.deltaTime ?? (now - this.lastFrameTime);
@@ -172,9 +220,15 @@ export class LatinoStereoPhysics {
     
     const previousEnergy = metrics.previousEnergy ?? this.lastEnergy;
     const currentEnergy = metrics.normalizedEnergy;
+    const detectedBpm = bpm ?? this.lastBpm;
+    
+    if (bpm) this.lastBpm = bpm;
     
     // Calcular delta de energía
     const energyDelta = previousEnergy - currentEnergy;
+    
+    // 🎵 WAVE 152.5: Detectar subgénero
+    const subGenre = this.detectSubGenre(detectedBpm, metrics);
     
     // Crear copia de la paleta para modificar
     const resultPalette: LatinoPalette = {
@@ -189,12 +243,15 @@ export class LatinoStereoPhysics {
     let isMachineGunBlackout = false;
     let dimmerOverride: number | null = null;
     let flareIntensity = 0;
+    let neonInjected = false;
+    let forceMovement = false;
     
     // =====================================================================
     // 1️⃣ MACHINE GUN DETECTION (Negative Drop → Blackout)
     // =====================================================================
     // Detectar caída brusca de energía (típico corte de reggaeton)
-    const isNegativeDrop = (
+    // 🔧 WAVE 152.5: En CUMBIA desactivamos Machine Gun (son más suaves)
+    const isNegativeDrop = subGenre !== 'cumbia' && (
       energyDelta >= LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD &&
       deltaTime <= LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS &&
       previousEnergy > 0.6  // Solo si veníamos de energía alta
@@ -213,10 +270,41 @@ export class LatinoStereoPhysics {
     }
     
     // =====================================================================
-    // 2️⃣ SOLAR FLARE DETECTION (Kick fuerte → Destello dorado)
+    // 2️⃣ SUBGÉNERO: CUMBIA MODE (Anti-palidez + Neon Injection)
     // =====================================================================
-    // Solo aplicar Solar Flare si NO estamos en blackout
-    if (!isMachineGunBlackout) {
+    if (subGenre === 'cumbia' && !isMachineGunBlackout) {
+      // Cumbia NO usa Solar Flare (demasiado agresivo para su ritmo)
+      // En cambio, inyectamos NEONES para romper monotonía
+      
+      const bassPulse = metrics.normalizedBass;
+      
+      // Cada beat fuerte (bass > 0.5) rotamos el color de accent
+      if (bassPulse > 0.5) {
+        this.beatCounter++;
+        neonInjected = true;
+        
+        // Rotar entre Magenta → Cyan → Lime → repeat
+        const neonColors = [
+          LatinoStereoPhysics.NEON_MAGENTA,
+          LatinoStereoPhysics.NEON_CYAN,
+          LatinoStereoPhysics.NEON_LIME,
+        ];
+        const colorIndex = this.beatCounter % 3;
+        resultPalette.accent = this.hslToRgb(neonColors[colorIndex]);
+        
+        // También boost suave al primary para mantener vida
+        resultPalette.primary = this.boostBrightness(resultPalette.primary, 8);
+      }
+      
+      // 🔧 Cumbia = movimiento continuo (baile constante)
+      forceMovement = true;
+    }
+    
+    // =====================================================================
+    // 3️⃣ SOLAR FLARE DETECTION (Kick fuerte → Destello dorado)
+    // =====================================================================
+    // Solo para REGGAETON y SALSA, no CUMBIA
+    if (subGenre !== 'cumbia' && !isMachineGunBlackout) {
       const bassPulse = metrics.normalizedBass;
       
       if (bassPulse > LatinoStereoPhysics.KICK_THRESHOLD) {
@@ -237,6 +325,13 @@ export class LatinoStereoPhysics {
       }
     }
     
+    // =====================================================================
+    // 4️⃣ SALSA MODE: Movimiento perpetuo
+    // =====================================================================
+    if (subGenre === 'salsa') {
+      forceMovement = true;  // Salsa NUNCA para de moverse
+    }
+    
     // Actualizar estado para el próximo frame
     this.lastEnergy = currentEnergy;
     
@@ -245,13 +340,46 @@ export class LatinoStereoPhysics {
       isSolarFlare,
       isMachineGunBlackout,
       dimmerOverride,
+      forceMovement,
+      subGenre,
       debugInfo: {
         bassPulse: metrics.normalizedBass,
         energyDelta,
         isNegativeDrop,
         flareIntensity,
+        detectedBpm,
+        neonInjected,
       },
     };
+  }
+  
+  /**
+   * 🎵 WAVE 152.5: Detecta el subgénero latino basándose en BPM y métricas
+   * 
+   * - CUMBIA: BPM medio-alto, bass moderado, síncopa
+   * - REGGAETON: BPM lento, bass muy fuerte, dembow
+   * - SALSA: BPM alto, agudos dominantes (timbales)
+   */
+  private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
+    const normalizedHigh = metrics.normalizedHigh ?? 0;
+    const normalizedBass = metrics.normalizedBass;
+    
+    // Salsa: BPM alto + agudos dominantes (timbales, campana)
+    if (bpm >= LatinoStereoPhysics.BPM_SALSA_MIN && normalizedHigh > normalizedBass) {
+      return 'salsa';
+    }
+    
+    // Reggaeton: BPM lento + bass muy marcado (dembow)
+    if (bpm <= LatinoStereoPhysics.BPM_REGGAETON_MAX && normalizedBass > 0.6) {
+      return 'reggaeton';
+    }
+    
+    // Cumbia: BPM medio-alto, bass moderado (más melódico)
+    if (bpm >= LatinoStereoPhysics.BPM_CUMBIA_MIN && normalizedBass < 0.7) {
+      return 'cumbia';
+    }
+    
+    return 'generic';
   }
   
   /**
@@ -261,6 +389,8 @@ export class LatinoStereoPhysics {
     this.blackoutFramesRemaining = 0;
     this.lastEnergy = 0;
     this.lastFrameTime = Date.now();
+    this.beatCounter = 0;
+    this.lastBpm = 0;
   }
   
   // =========================================================================

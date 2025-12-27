@@ -67,8 +67,8 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   // DROP CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   drop: {
-    sensitivity: 0.8,         // Muy sensible
-    energyThreshold: 0.12,    // Trigger fácil (percusión latina)
+    sensitivity: 0.55,        // 🔧 WAVE 152.5: Bajado de 0.8 - evita "Drop Eterno" en cumbia
+    energyThreshold: 0.25,    // 🔧 WAVE 152.5: Subido de 0.12 - requiere energía real, no güiro
     curves: {
       attack: 'ease-in',      // Build orgánico
       sustain: 'ease-in-out',
@@ -76,9 +76,9 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     },
     timing: {
       minAttack: 20,          // Drops rápidos OK
-      maxSustain: 480,        // 8s máximo
-      releaseFrames: 45,      // Release corto
-      cooldownFrames: 120,    // 2s entre drops (permite más drops)
+      maxSustain: 240,        // 🔧 WAVE 152.5: Bajado de 480 a 4s - drops más cortos
+      releaseFrames: 30,      // 🔧 WAVE 152.5: Release más corto
+      cooldownFrames: 180,    // 🔧 WAVE 152.5: 3s entre drops (más selectivo)
     },
     allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
   },
@@ -106,6 +106,7 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     },
     allowAggressive: true,
     preferredSync: 'beat',    // Sincronizado al ritmo
+    stopOnDrop: false,        // 🔧 WAVE 152.5: NUNCA parar en drop - movimiento continuo
   },
 
   // ═══════════════════════════════════════════════════════════════

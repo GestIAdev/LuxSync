@@ -223,6 +223,13 @@ export interface VibeMovementConstraints {
   
   /** Sincronización preferida */
   preferredSync: 'beat' | 'phrase' | 'free';
+  
+  /**
+   * 🔧 WAVE 152.5: ¿Detener movimiento durante drops?
+   * false = Movimiento continuo incluso en drops (ideal para cumbia/salsa)
+   * true = Parar y mantener posición en drops (default para otros vibes)
+   */
+  stopOnDrop?: boolean;
 }
 
 /**

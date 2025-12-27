@@ -919,6 +919,11 @@ function startMainLoop() {
     // 🔇 FIX CRÍTICO 1: SILENCE GATE - Si no hay audio real, BLACKOUT TOTAL
     const isSilence = !useRealAudio || audioInput.energy < 0.05
     
+    // 🔍 WAVE 153.1: DEBUG - Verificar estado de audio cada 200 frames
+    if (frameIndex % 200 === 0) {
+      console.log(`[AUDIO_STATE] useRealAudio:${useRealAudio} isSilence:${isSilence} | currentAudioData.energy:${currentAudioData.energy.toFixed(3)} | audioInput[B:${audioInput.bass.toFixed(2)} M:${audioInput.mid.toFixed(2)} T:${audioInput.treble.toFixed(2)}]`)
+    }
+    
     // 🎚️ WAVE 94.2: AGC normalized audio para Relative Gates
     // El Worker normaliza el audio y calcula avgNormEnergy (~3s rolling average)
     const agcData = selene.getAgcData()

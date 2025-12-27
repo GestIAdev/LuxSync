@@ -136,6 +136,18 @@ export interface VibeColorConstraints {
   
   /** Paletas preferidas (hint, no restricción dura) */
   preferredPalettes?: string[];
+  
+  /**
+   * 🛡️ WAVE 152: Zonas prohibidas de hue (rangos a evitar)
+   * Ejemplo: [[230, 260]] prohíbe azul rey/índigo
+   */
+  forbiddenHueRanges?: [number, number][];
+  
+  /**
+   * 🛡️ WAVE 152: Zonas permitidas de hue (solo estos rangos pasan)
+   * Ejemplo: [[0, 229], [261, 360]] permite todo excepto 230-260
+   */
+  allowedHueRanges?: [number, number][];
 }
 
 /**

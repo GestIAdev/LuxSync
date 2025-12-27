@@ -125,13 +125,17 @@ export class LatinoStereoPhysics {
   private static readonly BLACKOUT_FRAMES = 3;
   
   /**
-   * Color del Solar Flare (casi blanco dorado).
-   * HSL(40, 10%, 95%) → Blanco con tinte dorado
+   * 🌞 WAVE 152: SOL AZTECA - Oro Líquido Saturado
+   * 
+   * ANTES: HSL(40, 10%, 95%) → Blanco sucio sin personalidad
+   * AHORA: HSL(45, 100%, 80%) → Oro líquido que quema la retina
+   * 
+   * No es un "casi blanco", es un SOL ARDIENTE.
    */
   private static readonly SOLAR_FLARE_COLOR: HSL = {
-    h: 40,   // Dorado
-    s: 10,   // Casi blanco
-    l: 95,   // Cegador
+    h: 45,    // Oro Azteca
+    s: 100,   // Saturación TOTAL
+    l: 80,    // Ultra brillante pero con color
   };
 
   // =========================================================================

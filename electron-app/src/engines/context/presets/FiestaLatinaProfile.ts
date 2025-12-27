@@ -48,6 +48,13 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     // 3000K = Fuerza 0.7 hacia 40° (Oro/Fuego)
     // Los hues fríos serán arrastrados hacia el espectro solar
     atmosphericTemp: 3000,
+    
+    // 🛡️ WAVE 152: SOLAR CONSTITUTION - Prohibir solo Azul Rey/Índigo
+    // Permitir Turquesa (180°), Verde, Rojo, Magenta, etc.
+    // Solo el azul techno (230-260°) está prohibido
+    forbiddenHueRanges: [[230, 260]],
+    allowedHueRanges: [[0, 229], [261, 360]],
+    
     saturation: {
       min: 0.80,   // 🔥 WAVE 66.5: Aumentado a 80% (era 65%) - Evita lavado a blanco en drops
       max: 1.0,    // Full color permitido
@@ -80,9 +87,9 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   // DIMMER CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   dimmer: {
-    floor: 0.25,              // ⚠️ NUNCA oscuro total (25% mínimo)
+    floor: 0.10,              // 🔫 WAVE 152: 10% mínimo para dinámica (permite metralleta)
     ceiling: 0.90,            // 🔥 WAVE 66.5: Máximo 90% (era 100%) - Drops son abrazos, no flashbangs
-    allowBlackout: false,     // ❌ PROHIBIDO (mata la energía de fiesta)
+    allowBlackout: true,      // ✅ WAVE 152: PERMITIDO (esencial para efecto metralleta)
     transitionSpeed: 'fast',  // Transiciones rápidas
     breakdownCurve: 'ease-in-out',
   },

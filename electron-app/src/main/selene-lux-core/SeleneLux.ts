@@ -86,8 +86,10 @@ import {
   type UnifiedColor,
   createDefaultBroadcast,
 } from '../../types/SeleneProtocol'
-// ⚡ WAVE 141: Physics Modules (Reactividad extraída)
-import { TechnoStereoPhysics } from './physics'
+// ⚡ WAVE 141-142: Physics Modules (Reactividad extraída)
+import { TechnoStereoPhysics, RockStereoPhysics } from './physics'
+// 🎛️ WAVE 142: GenerationOptions para restricciones de color
+import type { GenerationOptions } from './engines/visual/SeleneColorEngine'
 
 export interface SeleneConfig {
   audio: {
@@ -1585,13 +1587,13 @@ export class SeleneLux extends EventEmitter {
       }
       
       // -----------------------------------------------------------------------
-      // ?? WAVE 127: TECHNO PRISM INTEGRATION (SSOT)
-      // ?? WAVE 128: ACID INJECTION & STROBE TAMING
-      // -----------------------------------------------------------------------
-      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opci�n A)
-      // La l�gica del "Cold Prism" ahora vive AQU�, en la Fuente �nica de Verdad.
-      // WAVE 128: Liberamos el Verde �cido (80�-120�) y calmamos el strobe.
-      // -----------------------------------------------------------------------
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🤖 WAVE 142: TECHNO PRISM + PHYSICS DELEGATION (THE GREAT RECONNECTION)
+      // ═══════════════════════════════════════════════════════════════════════
+      // Referencia: TECHNO-COLOR-PIPELINE-AUDIT.md (Opción A)
+      // La lógica del "Cold Prism" vive aquí como SSOT.
+      // La física de strobe vive en physics/TechnoStereoPhysics.ts
+      // ═══════════════════════════════════════════════════════════════════════
       
       const activeVibe = this.lastTrinityData?.activeVibe ?? 
                          this.lastTrinityData?.debugInfo?.activeVibe ?? 
@@ -1600,7 +1602,18 @@ export class SeleneLux extends EventEmitter {
       const isTechnoVibe = activeVibe.toLowerCase().includes('techno')
       
       if (isTechnoVibe) {
-        // 1. CAPTURAR LA INTENCI�N ORIGINAL DEL BRAIN
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🤖 WAVE 142: TECHNO COLOR BLOCK (COLD PRISM + PHYSICS)
+        // ═══════════════════════════════════════════════════════════════════════
+        // NOTA: Este bloque aún usa lógica de color hardcoded (Cold Dictator, Prism).
+        // La física de strobe ya está delegada a TechnoStereoPhysics.
+        // 
+        // TODO WAVE 143+: Migrar filtros de color a GenerationOptions:
+        //   - forbiddenHueRanges: [[330, 75]] (warm filter)
+        //   - forceStrategy: 'prism'
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        // 1. CAPTURAR LA INTENCIÓN ORIGINAL DEL BRAIN
         // Convertir RGB ? HSL para obtener baseHue
         const primaryRgb = this.lastColors.primary
         const primaryHsl = rgbToHsl(primaryRgb)  // Funci�n importada de SeleneColorEngine
@@ -1718,100 +1731,52 @@ export class SeleneLux extends EventEmitter {
       }
       // ⚡ FIN WAVE 141 (was WAVE 133) ⚡
       
-      // -----------------------------------------------------------------------
-      // ?? WAVE 137: THE ANALOG GAIN (BRIGHTNESS UNCHAINED)
-      // -----------------------------------------------------------------------
-      // Diagn�stico WAVE 136: Umbrales excesivos (0.45/0.40) ? Back Pars muertos.
-      // Queen y pop cl�sico no disparaban porque nunca superaban el umbral.
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎸 WAVE 142: POP/ROCK STADIUM BLOCK (HIGH CONTRAST + PHYSICS)
+      // ═══════════════════════════════════════════════════════════════════════
+      // Paleta Stadium Contrast (WAVE 136): +180°/+120° para separación épica.
+      // Física delegada a RockStereoPhysics.ts para detección Snare/Kick.
       // 
-      // Fix 1: Sweet Spot Thresholds ? SNARE 0.32, KICK 0.35 (equilibrio)
-      // Fix 2: Brightness Injection ? Snare L:95, Kick L:80 (forzar encendido)
-      // Fix 3: Front Par Liberado ? L:60 (sin cap de Techno)
-      // 
-      // Paleta Stadium Contrast de WAVE 136 se MANTIENE (+180�/+120�).
-      // AISLAMIENTO TOTAL: Este bloque es excluyente con Techno Prism.
-      // -----------------------------------------------------------------------
+      // TODO WAVE 143+: Migrar filtros de color a GenerationOptions:
+      //   - allowedHueRanges: [[0, 60], [300, 360]] (warm stage colors)
+      //   - forceStrategy: 'complementary'
+      // ═══════════════════════════════════════════════════════════════════════
       
       const isPopRockVibe = activeVibe.toLowerCase().includes('pop') || 
                             activeVibe.toLowerCase().includes('rock')
       
       if (isPopRockVibe && !isTechnoVibe) {
-        // 1. CAPTURA DE COLOR BASE (Del Brain)
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎸 WAVE 142: ROCK PHYSICS DELEGATION (THE GREAT RECONNECTION)
+        // ═══════════════════════════════════════════════════════════════════════
+        // La lógica de detección de hits (Snare/Kick) ahora vive en:
+        //   physics/RockStereoPhysics.ts
+        // 
+        // El ColorEngine ahora genera los colores base respetando constraints,
+        // y solo aplicamos la física de reactividad aquí.
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        // 1. CAPTURA DE COLOR BASE (Del Brain/ColorEngine)
         const primaryRgb = this.lastColors.primary
         const primaryHsl = rgbToHsl(primaryRgb)
         let baseHue = primaryHsl.h
         
-        // ?? FILTRO "STAGE LIGHTING" (Correcci�n de Paleta)
+        // 🎸 FILTRO "STAGE LIGHTING" (Corrección de Paleta Rock)
         // El Rock odia los colores intermedios raros (Verde Lima, Morado sucio).
-        // Forzamos a colores de PAR64 cl�sico: Rojo, �mbar, Azul, Blanco.
-        // Rango 80-160 (Verde Lima ? Verde) ? Rojo Sangre (0�)
-        // Rango 260-300 (Morado Sucio) ? �mbar/Oro (40�)
+        // Forzamos a colores de PAR64 clásico: Rojo, Ámbar, Azul, Blanco.
         const normalizedHue = (baseHue + 360) % 360
         if (normalizedHue > 80 && normalizedHue < 160) {
-          baseHue = 0  // Verde ? Rojo Sangre (Rock)
+          baseHue = 0  // Verde → Rojo Sangre (Rock)
         } else if (normalizedHue > 260 && normalizedHue < 300) {
-          baseHue = 40  // Morado raro ? �mbar/Oro
+          baseHue = 40  // Morado raro → Ámbar/Oro
         }
         
         // 2. PALETA DE ESTADIO DE ALTO CONTRASTE (WAVE 136)
-        // Antes WAVE 135: An�logo (+30�) - Mon�tono, aburrido.
-        // Ahora WAVE 136: Complementario + Triada para separaci�n �pica.
         const primaryHue = baseHue  // FRONT: Base
+        const secondaryHue = (baseHue + 180) % 360  // MOVER L: Complementario
+        const ambientHue = (baseHue + 120) % 360    // MOVER R: Triada
         
-        // MOVER L: Complementario (+180�) para contraste m�ximo (ej: Rojo vs Cyan)
-        const secondaryHue = (baseHue + 180) % 360
-        
-        // MOVER R: Triada (+120�) para dar un tercer color distinto pero arm�nico
-        const ambientHue = (baseHue + 120) % 360
-        
-        // 3. DETECCI�N R�TMICA REFINADA (WAVE 137 - THE ANALOG GAIN)
-        // WAVE 136: 0.45/0.40 era excesivo - Back Pars muertos con Queen.
-        // WAVE 137: Sweet spot 0.32/0.35 con cooldown impl�cito por frame rate.
-        const agcRock = this._agcData
-        const normalizedMid = agcRock?.normalizedMid ?? 0.0
-        const normalizedBass = agcRock?.normalizedBass ?? 0.0
-        
-        // Pulsos relativos usando avgNormEnergy como proxy (aproximaci�n)
-        const avgEnergy = agcRock?.avgNormEnergy ?? 0.4
-        const avgMid = avgEnergy * 0.8   // Mids tienden a estar un poco m�s bajos
-        const avgBass = avgEnergy * 0.9  // Bass tiende a estar m�s alto
-        
-        const midsPulse = Math.max(0, normalizedMid - avgMid)
-        const bassPulse = Math.max(0, normalizedBass - avgBass)
-        
-        // SWEET SPOT THRESHOLDS (WAVE 137)
-        // WAVE 135: 0.20/0.25 (demasiado bajo - epilepsia)
-        // WAVE 136: 0.45/0.40 (demasiado alto - muerto)
-        // WAVE 137: 0.32/0.35 (justo en el medio - balance)
-        const SNARE_THRESHOLD = 0.32
-        const KICK_THRESHOLD = 0.35
-        
-        const isSnareHit = (midsPulse > SNARE_THRESHOLD)
-        const isKickHit = (bassPulse > KICK_THRESHOLD)
-        
-        // 4. L�GICA DE ACENTO + BRIGHTNESS INJECTION (WAVE 137)
-        // WAVE 136: L:60 default era demasiado oscuro para Back Pars.
-        // WAVE 137: Inyectamos brillo forzado para asegurar reactividad visual.
-        let accentHue = secondaryHue  // Default a complementario
-        let accentSat = 100
-        let accentLight = 50  // WAVE 137: Base m�s neutral para contraste con hits
-        
-        if (isSnareHit) {
-          // ?? CAJA: FLASH TUNGSTENO + BRIGHTNESS BOOST (WAVE 137)
-          // Hue 40 (Naranja/Amarillo), Sat 20 (Casi blanco)
-          // L:95 para FORZAR encendido visual (era L:100, bajamos ligeramente)
-          accentHue = 40
-          accentSat = 20
-          accentLight = 95  // WAVE 137: Brightness Unchained
-        } else if (isKickHit) {
-          // ?? BOMBO: GOLPE DE COLOR + BRIGHTNESS BOOST (WAVE 137)
-          // Refuerza el primario con brillo elevado para que se note
-          accentHue = primaryHue
-          accentSat = 100
-          accentLight = 80  // WAVE 137: Era 70, ahora 80 para m�s punch
-        }
-        
-        // 5. COMMIT AL SSOT (HSL ? RGB) - WAVE 137: BRIGHTNESS UNCHAINED
+        // Helper HSL → RGB
         const hslToRgbRock = (h: number, s: number, l: number) => {
           s /= 100
           l /= 100
@@ -1832,19 +1797,40 @@ export class SeleneLux extends EventEmitter {
           }
         }
         
-        // WAVE 137: Front Par liberado a L:60 (sin cap de Techno)
-        // Esto asegura que los Front Pars brillen a m�xima potencia
-        this.lastColors.primary = hslToRgbRock(primaryHue, 100, 60)  // L:60 (era 50)
-        this.lastColors.secondary = hslToRgbRock(secondaryHue, 100, 55)  // L:55 (boost)
-        this.lastColors.ambient = hslToRgbRock(ambientHue, 100, 55)  // L:55 (boost)
-        this.lastColors.accent = hslToRgbRock(accentHue, accentSat, accentLight)
+        // 3. GENERAR COLORES BASE (WAVE 137: BRIGHTNESS UNCHAINED)
+        this.lastColors.primary = hslToRgbRock(primaryHue, 100, 60)
+        this.lastColors.secondary = hslToRgbRock(secondaryHue, 100, 55)
+        this.lastColors.ambient = hslToRgbRock(ambientHue, 100, 55)
+        const accentBaseColor = hslToRgbRock(secondaryHue, 100, 50)
+        
+        // 4. ⚡ WAVE 142: PHYSICS DELEGATION
+        // La lógica de Snare/Kick ahora vive en RockStereoPhysics
+        const agcRock = this._agcData
+        const physicsResult = RockStereoPhysics.apply(
+          {
+            primary: this.lastColors.primary,
+            secondary: this.lastColors.secondary,
+            ambient: this.lastColors.ambient,
+            accent: accentBaseColor
+          },
+          {
+            normalizedMid: agcRock?.normalizedMid ?? 0.0,
+            normalizedBass: agcRock?.normalizedBass ?? 0.0,
+            avgNormEnergy: agcRock?.avgNormEnergy ?? 0.4
+          },
+          primaryHue  // Para los Kick hits (refuerzo del primary)
+        )
+        
+        // Aplicar el accent procesado por la física
+        this.lastColors.accent = physicsResult.palette.accent
         
         // Debug log cada ~10 segundos
         if (Math.random() < 0.003) {
-          console.log(`[WAVE137] ANALOG GAIN | Base:${baseHue.toFixed(0)} | MidPulse:${midsPulse.toFixed(2)} | BassPulse:${bassPulse.toFixed(2)} | Snare:${isSnareHit} | Kick:${isKickHit} | AccentL:${accentLight}`)
+          const dbg = physicsResult.debugInfo
+          console.log(`[WAVE142] 🎸 ROCK PHYSICS | Base:${baseHue.toFixed(0)}° | MidPulse:${dbg.midsPulse.toFixed(2)} | BassPulse:${dbg.bassPulse.toFixed(2)} | Snare:${physicsResult.isSnareHit} | Kick:${physicsResult.isKickHit}`)
         }
       }
-      // ?? FIN WAVE 137 ??
+      // ⚡ FIN WAVE 142 (was WAVE 137) ⚡
     }
     
     // ?? WAVE 47.2: Log actualizado para verificar mood & section desde spread directo

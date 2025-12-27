@@ -1,5 +1,5 @@
 /**
- * 🔬 PHYSICS MODULE - WAVE 141
+ * 🔬 PHYSICS MODULE - WAVE 141-142
  * ============================================================================
  * Módulos de física reactiva extraídos de SeleneLux.
  * Cada módulo encapsula la lógica de reactividad específica de un género.
@@ -18,3 +18,10 @@ export type {
   TechnoPhysicsResult,
   RGB 
 } from './TechnoStereoPhysics';
+
+export { RockStereoPhysics } from './RockStereoPhysics';
+export type {
+  RockPalette,
+  RockAudioMetrics,
+  RockPhysicsResult
+} from './RockStereoPhysics';

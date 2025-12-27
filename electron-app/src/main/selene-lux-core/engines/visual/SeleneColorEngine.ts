@@ -214,6 +214,59 @@ export interface ExtendedAudioAnalysis {
   };
 }
 
+/**
+ * 🎛️ WAVE 142: GENERATION OPTIONS (Vibe Constraints)
+ * =====================================================
+ * Opciones para restringir la generación de paletas según el VibeProfile.
+ * Esto permite que el VibeManager "guíe" al ColorEngine sin hardcodear.
+ * 
+ * FILOSOFÍA: "RESTRINGIR, NO PINTAR"
+ * - El ColorEngine sigue usando Fibonacci y Teoría Musical
+ * - Pero respeta los límites impuestos por el Vibe activo
+ */
+export interface GenerationOptions {
+  /** 
+   * Estrategia de contraste forzada.
+   * Si se proporciona, ignora la decisión basada en syncopation.
+   * @example 'triadic', 'complementary', 'analogous', 'prism'
+   */
+  forceStrategy?: 'analogous' | 'triadic' | 'complementary' | 'prism';
+  
+  /**
+   * Rango de temperatura de color permitido (Kelvin).
+   * Usado para filtrar colores fuera de la gama térmica del género.
+   * @example [4000, 9000] para Techno (frío), [2000, 4500] para Rock (cálido)
+   */
+  temperatureRange?: [number, number];
+  
+  /**
+   * Rangos de Hue permitidos (grados).
+   * Si el hue calculado cae fuera, se rota al rango más cercano.
+   * @example [[180, 300]] para solo azules/violetas (Techno)
+   * @example [[0, 60], [300, 360]] para rojos/naranjas (Rock)
+   */
+  allowedHueRanges?: [number, number][];
+  
+  /**
+   * Rangos de Hue prohibidos (grados).
+   * Si el hue calculado cae dentro, se invierte +180°.
+   * @example [[30, 75]] para prohibir amarillos (Techno Cold Dictator)
+   */
+  forbiddenHueRanges?: [number, number][];
+  
+  /**
+   * Rango de saturación permitido (0-100).
+   * @example [70, 100] para vibes saturados
+   */
+  saturationRange?: [number, number];
+  
+  /**
+   * Rango de luminosidad permitido (0-100).
+   * @example [40, 60] para evitar whitewashing
+   */
+  lightnessRange?: [number, number];
+}
+
 // ============================================================
 // 2. CONSTANTES - EL CORAZÓN DE LA FÓRMULA CROMÁTICA
 // ============================================================
@@ -617,9 +670,10 @@ export class SeleneColorEngine {
    * Genera una paleta cromática completa a partir del análisis de audio
    * 
    * @param data - Análisis de audio extendido (ExtendedAudioAnalysis)
+   * @param options - Opciones de generación (WAVE 142: Vibe Constraints)
    * @returns Paleta de 5 colores HSL con metadata
    */
-  static generate(data: ExtendedAudioAnalysis): SelenePalette {
+  static generate(data: ExtendedAudioAnalysis, options?: GenerationOptions): SelenePalette {
     // === A. EXTRAER DATOS CON FALLBACKS ===
     const wave8 = data.wave8 || {
       harmony: { key: null, mode: 'minor', mood: 'universal' },
@@ -682,7 +736,84 @@ export class SeleneColorEngine {
     const modeMod = MODE_MODIFIERS[mode] || MODE_MODIFIERS['minor'];
     
     // El Hue final es: Base + Modo (SIN GÉNERO)
-    const finalHue = normalizeHue(baseHue + modeMod.hue);
+    let finalHue = normalizeHue(baseHue + modeMod.hue);
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎛️ WAVE 142: APPLY HUE CONSTRAINTS (GenerationOptions)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Si se proporcionan restricciones de hue, las aplicamos aquí.
+    // Esto permite que el VibeManager guíe el color sin hardcodear.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.forbiddenHueRanges) {
+      // Verificar si el hue cae en rangos prohibidos
+      for (const [min, max] of options.forbiddenHueRanges) {
+        const normalizedMin = normalizeHue(min);
+        const normalizedMax = normalizeHue(max);
+        
+        // Handle wrap-around (e.g., [330, 30] means 330-360 and 0-30)
+        const isInRange = normalizedMin <= normalizedMax
+          ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+          : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+        
+        if (isInRange) {
+          // Invertir fase +180° para escapar del rango prohibido
+          finalHue = normalizeHue(finalHue + 180);
+          break;
+        }
+      }
+    }
+    
+    if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
+      // Verificar si el hue está dentro de algún rango permitido
+      let isAllowed = false;
+      let closestRange: [number, number] | null = null;
+      let minDistance = Infinity;
+      
+      for (const [min, max] of options.allowedHueRanges) {
+        const normalizedMin = normalizeHue(min);
+        const normalizedMax = normalizeHue(max);
+        
+        const isInRange = normalizedMin <= normalizedMax
+          ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+          : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+        
+        if (isInRange) {
+          isAllowed = true;
+          break;
+        }
+        
+        // Calcular distancia al rango más cercano
+        const distToMin = Math.min(
+          Math.abs(finalHue - normalizedMin),
+          360 - Math.abs(finalHue - normalizedMin)
+        );
+        const distToMax = Math.min(
+          Math.abs(finalHue - normalizedMax),
+          360 - Math.abs(finalHue - normalizedMax)
+        );
+        const distance = Math.min(distToMin, distToMax);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestRange = [normalizedMin, normalizedMax];
+        }
+      }
+      
+      if (!isAllowed && closestRange) {
+        // Rotar al punto más cercano del rango permitido más cercano
+        const [rangeMin, rangeMax] = closestRange;
+        const distToMin = Math.min(
+          Math.abs(finalHue - rangeMin),
+          360 - Math.abs(finalHue - rangeMin)
+        );
+        const distToMax = Math.min(
+          Math.abs(finalHue - rangeMax),
+          360 - Math.abs(finalHue - rangeMax)
+        );
+        
+        finalHue = distToMin <= distToMax ? rangeMin : rangeMax;
+      }
+    }
     
     // === D. ENERGÍA → SATURACIÓN Y BRILLO ===
     // ═══════════════════════════════════════════════════════════════════════
@@ -759,8 +890,14 @@ export class SeleneColorEngine {
     
     // Aplicar clamps finales
     // 🛡️ WAVE 87: Límites más estrictos para evitar whitewashing
-    correctedSat = clamp(correctedSat, 70, 100);   // 🛡️ Mínimo 70% (antes 20%)
-    correctedLight = clamp(correctedLight, 35, 60); // 🛡️ Máximo 60% (antes 95%)
+    // 🎛️ WAVE 142: GenerationOptions pueden sobrescribir estos límites
+    const satMin = options?.saturationRange?.[0] ?? 70;
+    const satMax = options?.saturationRange?.[1] ?? 100;
+    const lightMin = options?.lightnessRange?.[0] ?? 35;
+    const lightMax = options?.lightnessRange?.[1] ?? 60;
+    
+    correctedSat = clamp(correctedSat, satMin, satMax);
+    correctedLight = clamp(correctedLight, lightMin, lightMax);
     
     // === E. COLOR PRIMARIO ===
     // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol
@@ -819,19 +956,41 @@ export class SeleneColorEngine {
     // === G. COLOR DE ACENTO (Estrategia de Contraste) ===
     // 🎨 WAVE 91: STRATEGY THRESHOLDS - Alineado con StrategyArbiter (0.40-0.65)
     // Expandimos zona triadic para que sea más alcanzable en música latina
+    // 🎛️ WAVE 142: forceStrategy puede sobrescribir la decisión
     let accentHue: number;
     let strategy: 'analogous' | 'triadic' | 'complementary';
     
-    // Decisión basada solo en syncopation
-    if (syncopation < 0.40) {
-      strategy = 'analogous';
-      accentHue = finalHue + 30;   // Vecino
-    } else if (syncopation < 0.65) {
-      strategy = 'triadic';
-      accentHue = finalHue + 120;  // Triángulo
+    // WAVE 142: Si hay estrategia forzada, usarla
+    if (options?.forceStrategy && options.forceStrategy !== 'prism') {
+      strategy = options.forceStrategy;
+      switch (strategy) {
+        case 'analogous':
+          accentHue = finalHue + 30;
+          break;
+        case 'triadic':
+          accentHue = finalHue + 120;
+          break;
+        case 'complementary':
+          accentHue = finalHue + 180;
+          break;
+      }
+    } else if (options?.forceStrategy === 'prism') {
+      // 🔮 PRISM: Estrategia especial de Techno (Tetraédrica)
+      // Primary → Secondary (+60°) → Ambient (+120°) → Accent (+180°)
+      strategy = 'complementary';  // Label para metadata
+      accentHue = finalHue + 180;
     } else {
-      strategy = 'complementary';
-      accentHue = finalHue + 180;  // Opuesto
+      // Decisión basada solo en syncopation
+      if (syncopation < 0.40) {
+        strategy = 'analogous';
+        accentHue = finalHue + 30;   // Vecino
+      } else if (syncopation < 0.65) {
+        strategy = 'triadic';
+        accentHue = finalHue + 120;  // Triángulo
+      } else {
+        strategy = 'complementary';
+        accentHue = finalHue + 180;  // Opuesto
+      }
     }
     
     const accent: HSLColor = {
@@ -1076,8 +1235,10 @@ export class SeleneColorEngine {
   
   /**
    * Genera paleta y convierte a RGB en un solo paso
+   * @param data - Análisis de audio extendido
+   * @param options - Opciones de generación (WAVE 142)
    */
-  static generateRgb(data: ExtendedAudioAnalysis): {
+  static generateRgb(data: ExtendedAudioAnalysis, options?: GenerationOptions): {
     primary: RGBColor;
     secondary: RGBColor;
     accent: RGBColor;
@@ -1085,7 +1246,7 @@ export class SeleneColorEngine {
     contrast: RGBColor;
     meta: PaletteMeta;
   } {
-    const palette = this.generate(data);
+    const palette = this.generate(data, options);
     return {
       ...paletteToRgb(palette),
       meta: palette.meta,

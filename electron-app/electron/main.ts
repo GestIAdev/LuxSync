@@ -1497,7 +1497,22 @@ function startMainLoop() {
         const isBeamProfile = fixture.name?.toLowerCase().includes('beam') || 
                                fixture.type?.toLowerCase() === 'moving_head'
         
-        // 🔧 WAVE 153.5: BEAM 13CH PROFILE (Manual de usuario REAL - FIESTA EDITION!)
+        // �️ WAVE 153.6: MANUAL OVERRIDE - UI tiene prioridad sobre engine!
+        const override = manualOverrides.get(fixture.name || `fixture-${addr}`)
+        let finalPan = fixture.pan
+        let finalTilt = fixture.tilt
+        
+        if (override) {
+          // Override manual tiene PRIORIDAD
+          if (override.pan !== undefined) finalPan = override.pan
+          if (override.tilt !== undefined) finalTilt = override.tilt
+          if (override.dimmer !== undefined) finalDimmer = override.dimmer
+          if (override.r !== undefined) finalR = override.r
+          if (override.g !== undefined) finalG = override.g
+          if (override.b !== undefined) finalB = override.b
+        }
+        
+        // �🔧 WAVE 153.5: BEAM 13CH PROFILE (Manual de usuario REAL - FIESTA EDITION!)
         // ¡¡¡SEGÚN EL MANUAL DEL FIXTURE - MODO 13 CANALES!!!
         // CH1: Pan (8-bit coarse)
         // CH2: Tilt (8-bit coarse)
@@ -1516,8 +1531,8 @@ function startMainLoop() {
         if (universalDMX.isConnected) {
           if (isBeamProfile) {
             // 📦 BEAM 13CH PROFILE (según manual - ¡CON PAN Y TILT!)
-            universalDMX.setChannel(addr, fixture.pan)           // CH1: Pan
-            universalDMX.setChannel(addr + 1, fixture.tilt)      // CH2: Tilt
+            universalDMX.setChannel(addr, finalPan)              // CH1: Pan (override o engine)
+            universalDMX.setChannel(addr + 1, finalTilt)         // CH2: Tilt (override o engine)
             universalDMX.setChannel(addr + 2, 0)                 // CH3: Pan Fine
             universalDMX.setChannel(addr + 3, 0)                 // CH4: Tilt Fine
             universalDMX.setChannel(addr + 4, 0)                 // CH5: Speed = MAX (0=fastest)
@@ -1531,8 +1546,8 @@ function startMainLoop() {
             universalDMX.setChannel(addr + 12, 0)                // CH13: Reset = OFF
           } else {
             // 📦 LED PROFILE (PAR, Wash, etc.)
-            universalDMX.setChannel(addr, fixture.pan)       // Canal 1: Pan
-            universalDMX.setChannel(addr + 1, fixture.tilt)  // Canal 2: Tilt
+            universalDMX.setChannel(addr, finalPan)          // Canal 1: Pan
+            universalDMX.setChannel(addr + 1, finalTilt)     // Canal 2: Tilt
             universalDMX.setChannel(addr + 2, finalDimmer)   // Canal 3: Dimmer
             universalDMX.setChannel(addr + 3, finalR)        // Canal 4: Red
             universalDMX.setChannel(addr + 4, finalG)        // Canal 5: Green
@@ -1544,8 +1559,8 @@ function startMainLoop() {
         if (artNetDriver.isConnected) {
           if (isBeamProfile) {
             // 📦 BEAM 13CH PROFILE (según manual - ¡CON PAN Y TILT!)
-            artNetDriver.setChannel(addr, fixture.pan)           // CH1: Pan
-            artNetDriver.setChannel(addr + 1, fixture.tilt)      // CH2: Tilt
+            artNetDriver.setChannel(addr, finalPan)              // CH1: Pan (override o engine)
+            artNetDriver.setChannel(addr + 1, finalTilt)         // CH2: Tilt (override o engine)
             artNetDriver.setChannel(addr + 2, 0)                 // CH3: Pan Fine
             artNetDriver.setChannel(addr + 3, 0)                 // CH4: Tilt Fine
             artNetDriver.setChannel(addr + 4, 0)                 // CH5: Speed = MAX
@@ -1559,8 +1574,8 @@ function startMainLoop() {
             artNetDriver.setChannel(addr + 12, 0)                // CH13: Reset = OFF
           } else {
             // 📦 LED PROFILE
-            artNetDriver.setChannel(addr, fixture.pan)
-            artNetDriver.setChannel(addr + 1, fixture.tilt)
+            artNetDriver.setChannel(addr, finalPan)
+            artNetDriver.setChannel(addr + 1, finalTilt)
             artNetDriver.setChannel(addr + 2, finalDimmer)
             artNetDriver.setChannel(addr + 3, finalR)
             artNetDriver.setChannel(addr + 4, finalG)
@@ -1570,7 +1585,8 @@ function startMainLoop() {
           // 🔍 DEBUG: Log DMX values cada 100 frames
           if (frameIndex % 100 === 0) {
             const profile = isBeamProfile ? 'BEAM-13CH' : 'LED'
-            console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${fixture.pan} Tilt:${fixture.tilt} Dim:${finalDimmer}`)
+            const hasOverride = manualOverrides.has(fixture.name || `fixture-${addr}`)
+            console.log(`[DMX] 📡 [${profile}] Fixture@${addr}: Pan:${finalPan} Tilt:${finalTilt} Dim:${finalDimmer} ${hasOverride ? '🕹️OVERRIDE' : ''}`)
           }
         }
       }
@@ -1749,6 +1765,65 @@ ipcMain.handle('lux:cancel-all-effects', () => {
 
 // Blackout state
 let blackoutActive = false
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🕹️ WAVE 153.6: MANUAL OVERRIDE SYSTEM
+// UI -> Backend -> DMX (¡LA UI AHORA CONTROLA LAS FIXTURES!)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ManualOverride {
+  pan?: number      // 0-255 (DMX value)
+  tilt?: number     // 0-255 (DMX value)
+  dimmer?: number   // 0-255
+  r?: number        // 0-255
+  g?: number        // 0-255
+  b?: number        // 0-255
+  timestamp: number
+}
+
+// Map de overrides manuales por fixture ID
+const manualOverrides = new Map<string, ManualOverride>()
+
+// 🕹️ IPC: Set override para un fixture
+ipcMain.handle('override:set', (_event, fixtureId: string, values: Partial<Omit<ManualOverride, 'timestamp'>>) => {
+  const existing = manualOverrides.get(fixtureId) || { timestamp: 0 }
+  manualOverrides.set(fixtureId, {
+    ...existing,
+    ...values,
+    timestamp: Date.now()
+  })
+  console.log(`[Override] 🕹️ ${fixtureId}: pan=${values.pan} tilt=${values.tilt} dimmer=${values.dimmer}`)
+  return { success: true }
+})
+
+// 🕹️ IPC: Set override para múltiples fixtures (selección)
+ipcMain.handle('override:set-multiple', (_event, fixtureIds: string[], values: Partial<Omit<ManualOverride, 'timestamp'>>) => {
+  const now = Date.now()
+  for (const id of fixtureIds) {
+    const existing = manualOverrides.get(id) || { timestamp: 0 }
+    manualOverrides.set(id, {
+      ...existing,
+      ...values,
+      timestamp: now
+    })
+  }
+  console.log(`[Override] 🕹️ ${fixtureIds.length} fixtures: pan=${values.pan} tilt=${values.tilt} dimmer=${values.dimmer}`)
+  return { success: true }
+})
+
+// 🕹️ IPC: Clear override de un fixture
+ipcMain.handle('override:clear', (_event, fixtureId: string) => {
+  manualOverrides.delete(fixtureId)
+  console.log(`[Override] 🔓 Released: ${fixtureId}`)
+  return { success: true }
+})
+
+// 🕹️ IPC: Clear ALL overrides
+ipcMain.handle('override:clear-all', () => {
+  manualOverrides.clear()
+  console.log('[Override] 🔓 Released ALL overrides')
+  return { success: true }
+})
 
 ipcMain.handle('lux:set-blackout', (_event, active: boolean) => {
   blackoutActive = active

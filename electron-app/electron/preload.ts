@@ -124,6 +124,27 @@ const api = {
   },
 
   // ============================================
+  // 🕹️ WAVE 153.6: MANUAL OVERRIDE (UI → DMX)
+  // ============================================
+  override: {
+    /** Set override para un fixture específico */
+    set: (fixtureId: string, values: { pan?: number; tilt?: number; dimmer?: number; r?: number; g?: number; b?: number }) =>
+      ipcRenderer.invoke('override:set', fixtureId, values),
+    
+    /** Set override para múltiples fixtures (selección) */
+    setMultiple: (fixtureIds: string[], values: { pan?: number; tilt?: number; dimmer?: number; r?: number; g?: number; b?: number }) =>
+      ipcRenderer.invoke('override:set-multiple', fixtureIds, values),
+    
+    /** Clear override de un fixture */
+    clear: (fixtureId: string) =>
+      ipcRenderer.invoke('override:clear', fixtureId),
+    
+    /** Clear ALL overrides (release all) */
+    clearAll: () =>
+      ipcRenderer.invoke('override:clear-all'),
+  },
+
+  // ============================================
   // AUDIO
   // ============================================
   audio: {

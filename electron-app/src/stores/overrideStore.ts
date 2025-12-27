@@ -221,6 +221,20 @@ export const useOverrideStore = create<OverrideState>()(
         if (inferredMask.optics) activeChannels.push('OPTICS')
         console.log(`🎯 [Override] ${fixtureId} → [${activeChannels.join(', ')}]`, values)
         
+        // 🕹️ WAVE 153.6: Sync con backend DMX
+        const api = (window as any).luxsync?.override
+        if (api?.set) {
+          // Convertir valores a DMX (0-255)
+          const dmxValues: Record<string, number> = {}
+          if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
+          if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
+          if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
+          if (values.r !== undefined) dmxValues.r = values.r
+          if (values.g !== undefined) dmxValues.g = values.g
+          if (values.b !== undefined) dmxValues.b = values.b
+          api.set(fixtureId, dmxValues)
+        }
+        
         const newOverride: Override = {
           values: {
             ...existing?.values,
@@ -268,6 +282,20 @@ export const useOverrideStore = create<OverrideState>()(
           ),
         }
         
+        // 🕹️ WAVE 153.6: Sync con backend DMX
+        const api = (window as any).luxsync?.override
+        if (api?.setMultiple) {
+          // Convertir valores a DMX (0-255)
+          const dmxValues: Record<string, number> = {}
+          if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
+          if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
+          if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
+          if (values.r !== undefined) dmxValues.r = values.r
+          if (values.g !== undefined) dmxValues.g = values.g
+          if (values.b !== undefined) dmxValues.b = values.b
+          api.setMultiple(fixtureIds, dmxValues)
+        }
+        
         fixtureIds.forEach(id => {
           const existing = newOverrides.get(id)
           
@@ -293,6 +321,12 @@ export const useOverrideStore = create<OverrideState>()(
     },
     
     clearOverride: (fixtureId, channels) => {
+      // 🕹️ WAVE 153.6: Sync con backend DMX
+      const api = (window as any).luxsync?.override
+      if (api?.clear && !channels) {
+        api.clear(fixtureId)
+      }
+      
       set((state) => {
         const newOverrides = new Map(state.overrides)
         
@@ -326,6 +360,12 @@ export const useOverrideStore = create<OverrideState>()(
     },
     
     clearAllOverrides: () => {
+      // 🕹️ WAVE 153.6: Sync con backend DMX
+      const api = (window as any).luxsync?.override
+      if (api?.clearAll) {
+        api.clearAll()
+      }
+      
       set({
         overrides: new Map(),
         globalOverride: null,

@@ -398,31 +398,32 @@ export class LatinoStereoPhysics {
   }
   
   /**
-   * 🎵 WAVE 156: Detecta el subgénero latino basándose en BPM y métricas
+   * 🎵 WAVE 157: LA DICTADURA DE LA CUMBIA
    * 
-   * AGRESIVO - Cumbia es el catch-all TOTAL:
-   * - SALSA: BPM > 130 + High > Bass + High > 0.5 (Timbales CLAROS)
-   * - REGGAETON: BPM < 100 + Bass > 0.7 (Dembow MUY lento y pesado)
-   * - CUMBIA: TODO LO DEMÁS en 85-165 BPM (RKT/Villera/Cumbia/Merengue/Todo)
+   * CATCH-ALL ULTRA AGRESIVO - Si tiene ritmo latino, ES CUMBIA:
+   * - SALSA: BPM > 145 + High > 0.6 (Timbales SUPER claros + rápido)
+   * - REGGAETON: BPM < 95 + Bass > 0.75 (Dembow lentísimo + pesadísimo)
+   * - CUMBIA: TODO LO DEMÁS 90-175 BPM (RKT/Villera/Cumbia/Merengue/Bachata)
+   * 
+   * IGNORAMOS EL NIVEL DE BAJO - Si tiene el ritmo, es Cumbia.
    */
   private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
     const normalizedHigh = metrics.normalizedHigh ?? 0;
     const normalizedBass = metrics.normalizedBass;
     
-    // 🎺 Salsa: BPM > 130 + agudos MUY dominantes (requiere timbales claros)
-    if (bpm > 130 && normalizedHigh > normalizedBass && normalizedHigh > 0.5) {
+    // 🎺 Salsa: Solo si es MUY rápido (>145) y timbales SUPER claros
+    if (bpm > 145 && normalizedHigh > 0.6) {
       return 'salsa';
     }
     
-    // 🔊 Reggaeton: BPM < 100 + bass MUY marcado (dembow lento y pesado)
-    // Más restrictivo para que no capture RKT
-    if (bpm < 100 && normalizedBass > 0.7) {
+    // 🔊 Reggaeton: Solo si es SÚPER lento (<95) y bass BRUTAL
+    if (bpm < 95 && normalizedBass > 0.75) {
       return 'reggaeton';
     }
     
-    // 🌴 WAVE 156: Cumbia = CATCH-ALL TOTAL para Fiesta Latina (85-165 BPM)
-    // Ante la duda, ES CUMBIA. Prefiero neón a blanco.
-    if (bpm >= 85 && bpm <= 165) {
+    // 🌴 WAVE 157: CUMBIA = DICTADURA TOTAL (90-175 BPM)
+    // Si está en rango latino → ES CUMBIA (no importa el bajo)
+    if (bpm >= 90 && bpm <= 175) {
       return 'cumbia';
     }
     

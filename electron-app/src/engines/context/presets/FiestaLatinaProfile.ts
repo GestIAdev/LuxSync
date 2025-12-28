@@ -1,7 +1,22 @@
 /**
  * 🎉 FIESTA LATINA VIBE PROFILE
  * 
- * Organic warmth. Festive colors. High saturation celebration.
+ * Organic warmth. Festiv  drop: {
+    sensitivity: 0.25,        // 🔥 WAVE 157: BAJADO A 0.25 - RESURRECCIÓN de móviles
+    energyThreshold: 0.40,    // 🔥 WAVE 157: Subido a 0.40 - requiere energía BRUTAL
+    curves: {
+      attack: 'ease-in',      // Build orgánico
+      sustain: 'ease-in-out',
+      release: 'linear',
+    },
+    timing: {
+      minAttack: 20,          // Drops rápidos OK
+      maxSustain: 150,        // 🔥 WAVE 157: Bajado a 2.5s - drops ULTRA cortos
+      releaseFrames: 15,      // 🔥 WAVE 157: Release aún más corto
+      cooldownFrames: 300,    // 🔥 WAVE 157: 5s entre drops (ULTRA selectivo)
+    },
+    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
+  },aturation celebration.
  * 
  * Características:
  * - Moods festivos y alegres

@@ -242,9 +242,22 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
           if (values.speed !== undefined) dmxValues.speed = values.speed // ⏱️ WAVE 153.12: Speed a DMX
+          
+          // 🎨 WAVE 153.14: Convertir HSL a RGB para DMX
+          if (values.h !== undefined || values.s !== undefined || values.l !== undefined) {
+            const h = values.h ?? 0
+            const s = values.s ?? 100
+            const l = values.l ?? 50
+            const rgb = hslToRgb(h, s, l)
+            dmxValues.r = rgb.r
+            dmxValues.g = rgb.g
+            dmxValues.b = rgb.b
+          }
+          // También aceptar RGB directo
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b
+          
           // 🔄 WAVE 153.13: Parámetros de patrón
           if (values.movementPattern !== undefined) dmxValues.movementPattern = values.movementPattern
           if (values.patternEnabled !== undefined) dmxValues.patternEnabled = values.patternEnabled
@@ -309,9 +322,22 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
           if (values.speed !== undefined) dmxValues.speed = values.speed // ⏱️ WAVE 153.12: Speed a DMX
+          
+          // 🎨 WAVE 153.14: Convertir HSL a RGB para DMX
+          if (values.h !== undefined || values.s !== undefined || values.l !== undefined) {
+            const h = values.h ?? 0
+            const s = values.s ?? 100
+            const l = values.l ?? 50
+            const rgb = hslToRgb(h, s, l)
+            dmxValues.r = rgb.r
+            dmxValues.g = rgb.g
+            dmxValues.b = rgb.b
+          }
+          // También aceptar RGB directo
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b
+          
           // 🔄 WAVE 153.13: Parámetros de patrón
           if (values.movementPattern !== undefined) dmxValues.movementPattern = values.movementPattern
           if (values.patternEnabled !== undefined) dmxValues.patternEnabled = values.patternEnabled

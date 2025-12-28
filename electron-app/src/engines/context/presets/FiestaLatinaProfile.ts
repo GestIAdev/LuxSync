@@ -49,11 +49,12 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     // Los hues fríos serán arrastrados hacia el espectro solar
     atmosphericTemp: 3000,
     
-    // 🛡️ WAVE 152: SOLAR CONSTITUTION - Prohibir solo Azul Rey/Índigo
-    // Permitir Turquesa (180°), Verde, Rojo, Magenta, etc.
-    // Solo el azul techno (230-260°) está prohibido
-    forbiddenHueRanges: [[230, 260]],
-    allowedHueRanges: [[0, 229], [261, 360]],
+    // 🛡️ WAVE 155: NARANJA DE SEGURIDAD PROHIBIDO + Azul Rey/Índigo
+    // El naranja puro (25-45°) es aburrido y corporativo
+    // La Gravedad Térmica arrastrará hacia Rojo (0-20°) o Oro (50-60°)
+    // Y la física Cumbia inyectará Magenta y Cian
+    forbiddenHueRanges: [[25, 45], [230, 260]],
+    allowedHueRanges: [[0, 24], [46, 229], [261, 360]],
     
     saturation: {
       min: 0.80,   // 🔥 WAVE 66.5: Aumentado a 80% (era 65%) - Evita lavado a blanco en drops

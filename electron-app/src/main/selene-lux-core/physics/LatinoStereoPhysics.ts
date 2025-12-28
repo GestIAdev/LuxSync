@@ -332,6 +332,32 @@ export class LatinoStereoPhysics {
       forceMovement = true;  // Salsa NUNCA para de moverse
     }
     
+    // =====================================================================
+    // 5️⃣ WAVE 155: GENERIC FALLBACK → NEON INJECTION
+    // =====================================================================
+    // Si caemos en generic, mejor neón que flash blanco aburrido
+    if (subGenre === 'generic' && !isMachineGunBlackout) {
+      const bassPulse = metrics.normalizedBass;
+      
+      // En generic, inyectamos neón igual que en Cumbia
+      if (bassPulse > 0.5) {
+        this.beatCounter++;
+        neonInjected = true;
+        
+        // Rotar entre Magenta → Cyan → Lime → repeat
+        const neonColors = [
+          LatinoStereoPhysics.NEON_MAGENTA,
+          LatinoStereoPhysics.NEON_CYAN,
+          LatinoStereoPhysics.NEON_LIME,
+        ];
+        const colorIndex = this.beatCounter % 3;
+        resultPalette.accent = this.hslToRgb(neonColors[colorIndex]);
+        resultPalette.primary = this.boostBrightness(resultPalette.primary, 8);
+      }
+      
+      forceMovement = true;  // Ante la duda, MUÉVETE!
+    }
+    
     // Actualizar estado para el próximo frame
     this.lastEnergy = currentEnergy;
     
@@ -354,28 +380,30 @@ export class LatinoStereoPhysics {
   }
   
   /**
-   * 🎵 WAVE 152.5: Detecta el subgénero latino basándose en BPM y métricas
+   * 🎵 WAVE 155: Detecta el subgénero latino basándose en BPM y métricas
    * 
-   * - CUMBIA: BPM medio-alto, bass moderado, síncopa
-   * - REGGAETON: BPM lento, bass muy fuerte, dembow
-   * - SALSA: BPM alto, agudos dominantes (timbales)
+   * NUEVA LÓGICA (sin prejuicios de bass):
+   * - SALSA: BPM > 130 + High > Bass (Manda el timbal)
+   * - REGGAETON: BPM < 108 + Bass > 0.6 (Lento y pesado)
+   * - CUMBIA: BPM 108-160 (Catch-all para RKT/Villera/Cumbia tradicional)
    */
   private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
     const normalizedHigh = metrics.normalizedHigh ?? 0;
     const normalizedBass = metrics.normalizedBass;
     
-    // Salsa: BPM alto + agudos dominantes (timbales, campana)
-    if (bpm >= LatinoStereoPhysics.BPM_SALSA_MIN && normalizedHigh > normalizedBass) {
+    // 🎺 Salsa: BPM > 130 + agudos dominantes (timbales, campana)
+    if (bpm > 130 && normalizedHigh > normalizedBass) {
       return 'salsa';
     }
     
-    // Reggaeton: BPM lento + bass muy marcado (dembow)
-    if (bpm <= LatinoStereoPhysics.BPM_REGGAETON_MAX && normalizedBass > 0.6) {
+    // 🔊 Reggaeton: BPM < 108 + bass muy marcado (dembow lento y pesado)
+    if (bpm < 108 && normalizedBass > 0.6) {
       return 'reggaeton';
     }
     
-    // Cumbia: BPM medio-alto, bass moderado (más melódico)
-    if (bpm >= LatinoStereoPhysics.BPM_CUMBIA_MIN && normalizedBass < 0.7) {
+    // 🌴 Cumbia (Catch-All): BPM 108-160 (RKT, Villera, Cumbia clásica)
+    // Ya NO filtramos por bass bajo - aceptamos bajos saturados!
+    if (bpm >= 108 && bpm <= 160) {
       return 'cumbia';
     }
     

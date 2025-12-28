@@ -1589,6 +1589,18 @@ function startMainLoop() {
         // CH6: Dimmer, CH7: Strobe, CH8: Color, CH9: Gobo, CH10: Prism
         // CH11: Focus, CH12: Macro, CH13: Reset
         
+        // 🎨 WAVE 153.14: Convertir RGB a índice de rueda de color para beams
+        // Típica rueda de color de beam: Open, Red, Orange, Yellow, Green, Cyan, Blue, Magenta, Pink
+        let colorWheelIndex = 0 // Default: Open (blanco)
+        if (finalR > 200 && finalG < 80 && finalB < 80) colorWheelIndex = 10      // Rojo
+        else if (finalR > 200 && finalG > 100 && finalB < 80) colorWheelIndex = 25  // Naranja/Amarillo
+        else if (finalR > 200 && finalG > 200 && finalB < 80) colorWheelIndex = 35  // Amarillo
+        else if (finalR < 80 && finalG > 200 && finalB < 80) colorWheelIndex = 50   // Verde
+        else if (finalR < 80 && finalG > 200 && finalB > 200) colorWheelIndex = 65  // Cian
+        else if (finalR < 80 && finalG < 80 && finalB > 200) colorWheelIndex = 80   // Azul
+        else if (finalR > 200 && finalG < 80 && finalB > 200) colorWheelIndex = 95  // Magenta
+        else if (finalR > 200 && finalG > 100 && finalB > 150) colorWheelIndex = 110 // Rosa
+        
         if (universalDMX.isConnected) {
           if (isBeamProfile && is10ChMode) {
             // 📦 BEAM 10CH PROFILE (según manual - SIN TILT!)
@@ -1599,7 +1611,7 @@ function startMainLoop() {
             universalDMX.setChannel(addr + 2, finalSpeed)        // CH3: Speed ⏱️
             universalDMX.setChannel(addr + 3, finalDimmer)       // CH4: Dimmer ← AQUÍ!
             universalDMX.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
-            universalDMX.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            universalDMX.setChannel(addr + 5, colorWheelIndex)   // CH6: 🎨 Color!
             universalDMX.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
             universalDMX.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
             universalDMX.setChannel(addr + 8, 128)               // CH9: Focus = medio
@@ -1613,7 +1625,7 @@ function startMainLoop() {
             universalDMX.setChannel(addr + 2, finalSpeed)        // CH3: Speed ⏱️
             universalDMX.setChannel(addr + 3, finalDimmer)       // CH4: DIMMER ← AQUÍ!
             universalDMX.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
-            universalDMX.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            universalDMX.setChannel(addr + 5, colorWheelIndex)   // CH6: 🎨 Color!
             universalDMX.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
             universalDMX.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
             universalDMX.setChannel(addr + 8, 128)               // CH9: Focus = medio
@@ -1641,7 +1653,7 @@ function startMainLoop() {
             artNetDriver.setChannel(addr + 2, finalSpeed)        // CH3: Speed ⏱️
             artNetDriver.setChannel(addr + 3, finalDimmer)       // CH4: Dimmer ← AQUÍ!
             artNetDriver.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
-            artNetDriver.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            artNetDriver.setChannel(addr + 5, colorWheelIndex)   // CH6: 🎨 Color!
             artNetDriver.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
             artNetDriver.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
             artNetDriver.setChannel(addr + 8, 128)               // CH9: Focus = medio
@@ -1654,7 +1666,7 @@ function startMainLoop() {
             artNetDriver.setChannel(addr + 2, finalSpeed)        // CH3: Speed ⏱️
             artNetDriver.setChannel(addr + 3, finalDimmer)       // CH4: DIMMER ← AQUÍ!
             artNetDriver.setChannel(addr + 4, 0)                 // CH5: Strobe = OFF
-            artNetDriver.setChannel(addr + 5, 0)                 // CH6: Color = Open
+            artNetDriver.setChannel(addr + 5, colorWheelIndex)   // CH6: 🎨 Color!
             artNetDriver.setChannel(addr + 6, 0)                 // CH7: Gobo = Open
             artNetDriver.setChannel(addr + 7, 0)                 // CH8: Prism = OFF
             artNetDriver.setChannel(addr + 8, 128)               // CH9: Focus = medio

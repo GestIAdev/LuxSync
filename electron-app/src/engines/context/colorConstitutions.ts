@@ -107,10 +107,10 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   // Syncopation decide la estrategia (no forzada)
   forceStrategy: undefined,
   
-  // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Oro Máximo
-  // 3000K = Fuerza 0.67 hacia 40° (Oro/Fuego)
-  // Los hues fríos serán arrastrados hacia el espectro solar
-  atmosphericTemp: 3000,
+  // � WAVE 159: ECOLOGICAL FIX - Clima Neutro
+  // 5000K = Gravedad CERO - El algoritmo elige colores libremente
+  // Antes: 3000K tiraba todo hacia el naranja (40°)
+  atmosphericTemp: 5000,
   
   // Zona prohibida: azules metálicos corporativos
   forbiddenHueRanges: [[200, 240]],

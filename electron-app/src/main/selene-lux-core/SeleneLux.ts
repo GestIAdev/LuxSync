@@ -1736,7 +1736,7 @@ export class SeleneLux extends EventEmitter {
         
         if (Math.random() < 0.003) {
           const dbg = physicsResult.debugInfo
-          console.log(`[WAVE155.5] ☀️ LATINO PHYSICS | SubGenre:${physicsResult.subGenre} | ForceMove:${physicsResult.forceMovement} | Solar:${physicsResult.isSolarFlare} | Blackout:${physicsResult.isMachineGunBlackout}`)
+          console.log(`[WAVE159-REAL] 🚨 LATINO PHYSICS | SubGenre:${physicsResult.subGenre} | ForceMove:${physicsResult.forceMovement} | Solar:${physicsResult.isSolarFlare} | Blackout:${physicsResult.isMachineGunBlackout}`)
         }
       } else if (vibeNormalized.includes('chill') || vibeNormalized.includes('ambient') ||
                  vibeNormalized.includes('lounge') || vibeNormalized.includes('jazz') ||

@@ -52,7 +52,18 @@ export interface FixtureOverride {
   
   // Timing
   fadeTime?: number    // ms para transición
+  
+  // 🔄 WAVE 153.13: Patrón de movimiento dinámico
+  movementPattern?: MovementPatternType  // Tipo de patrón
+  patternAmplitude?: number              // 0-100 (% del rango total)
+  patternSpeed?: number                  // 0-100 (velocidad del patrón)
+  patternEnabled?: boolean               // ¿Patrón activo?
 }
+
+/**
+ * 🔄 WAVE 153.13: Tipos de patrón de movimiento
+ */
+export type MovementPatternType = 'static' | 'circle' | 'figure8' | 'sweep' | 'random'
 
 /**
  * Máscara de canales - define qué canales están "bloqueados" por override
@@ -151,7 +162,7 @@ export interface OverrideState {
   hasOverride: (fixtureId: string) => boolean
   
   /** Obtener valor efectivo de un canal específico */
-  getEffectiveValue: (fixtureId: string, channel: keyof FixtureOverride) => number | boolean | undefined
+  getEffectiveValue: (fixtureId: string, channel: keyof FixtureOverride) => number | boolean | MovementPatternType | undefined
   
   /** Obtener máscara de un fixture */
   getMask: (fixtureId: string) => ChannelMask
@@ -226,7 +237,7 @@ export const useOverrideStore = create<OverrideState>()(
         const api = (window as any).luxsync?.override
         if (api?.set) {
           // Convertir valores a DMX (0-255)
-          const dmxValues: Record<string, number> = {}
+          const dmxValues: Record<string, number | string | boolean> = {}
           if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
@@ -234,6 +245,11 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b
+          // 🔄 WAVE 153.13: Parámetros de patrón
+          if (values.movementPattern !== undefined) dmxValues.movementPattern = values.movementPattern
+          if (values.patternEnabled !== undefined) dmxValues.patternEnabled = values.patternEnabled
+          if (values.patternAmplitude !== undefined) dmxValues.patternAmplitude = values.patternAmplitude
+          if (values.patternSpeed !== undefined) dmxValues.patternSpeed = values.patternSpeed
           api.set(fixtureId, dmxValues)
         }
         
@@ -288,7 +304,7 @@ export const useOverrideStore = create<OverrideState>()(
         const api = (window as any).luxsync?.override
         if (api?.setMultiple) {
           // Convertir valores a DMX (0-255)
-          const dmxValues: Record<string, number> = {}
+          const dmxValues: Record<string, number | string | boolean> = {}
           if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
@@ -296,6 +312,11 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b
+          // 🔄 WAVE 153.13: Parámetros de patrón
+          if (values.movementPattern !== undefined) dmxValues.movementPattern = values.movementPattern
+          if (values.patternEnabled !== undefined) dmxValues.patternEnabled = values.patternEnabled
+          if (values.patternAmplitude !== undefined) dmxValues.patternAmplitude = values.patternAmplitude
+          if (values.patternSpeed !== undefined) dmxValues.patternSpeed = values.patternSpeed
           api.setMultiple(fixtureIds, dmxValues)
         }
         

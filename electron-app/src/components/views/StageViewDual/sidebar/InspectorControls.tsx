@@ -17,7 +17,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react'
 import { useSelectionStore, selectSelectedIds } from '../../../../stores/selectionStore'
-import { useOverrideStore, hslToRgb, rgbToHsl } from '../../../../stores/overrideStore'
+import { useOverrideStore, hslToRgb, rgbToHsl, MovementPatternType } from '../../../../stores/overrideStore'
 import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
 import { ColorPicker } from './ColorPicker'
 import { DimmerSlider } from './DimmerSlider'
@@ -50,6 +50,11 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
   const [inspectorPan, setInspectorPan] = useState(270)
   const [inspectorTilt, setInspectorTilt] = useState(135)
   const [inspectorSpeed, setInspectorSpeed] = useState(128) // 128 = velocidad media (0=MAX, 255=LENTO)
+  
+  // 🔄 WAVE 153.13: Estado para patrón de movimiento
+  const [movementPattern, setMovementPattern] = useState<MovementPatternType>('static')
+  const [patternAmplitude, setPatternAmplitude] = useState(50) // 0-100%
+  const [patternSpeed, setPatternSpeed] = useState(50) // 0-100%
   
   // Determinar si hay moving heads en la selección
   const hasMovingHeads = useMemo(() => {
@@ -101,6 +106,34 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
     setInspectorSpeed(speed)
     setMultipleOverrides(selectedArray, { speed })
   }, [selectedArray, setMultipleOverrides])
+  
+  // 🔄 WAVE 153.13: Pattern change
+  const handlePatternChange = useCallback((pattern: MovementPatternType) => {
+    setMovementPattern(pattern)
+    const isEnabled = pattern !== 'static'
+    setMultipleOverrides(selectedArray, { 
+      movementPattern: pattern,
+      patternEnabled: isEnabled,
+      patternAmplitude,
+      patternSpeed
+    })
+  }, [selectedArray, setMultipleOverrides, patternAmplitude, patternSpeed])
+  
+  // 🔄 WAVE 153.13: Amplitude change
+  const handleAmplitudeChange = useCallback((amplitude: number) => {
+    setPatternAmplitude(amplitude)
+    if (movementPattern !== 'static') {
+      setMultipleOverrides(selectedArray, { patternAmplitude: amplitude })
+    }
+  }, [selectedArray, setMultipleOverrides, movementPattern])
+  
+  // 🔄 WAVE 153.13: Pattern speed change
+  const handlePatternSpeedChange = useCallback((speed: number) => {
+    setPatternSpeed(speed)
+    if (movementPattern !== 'static') {
+      setMultipleOverrides(selectedArray, { patternSpeed: speed })
+    }
+  }, [selectedArray, setMultipleOverrides, movementPattern])
   
   // Release (limpiar overrides de selección)
   const handleRelease = useCallback(() => {
@@ -205,6 +238,62 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
               <span className="speed-label slow">🐢 Lento</span>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* 🔄 PATRONES DE MOVIMIENTO (solo si hay moving heads) */}
+      {hasMovingHeads && (
+        <div className="control-section">
+          <h4 className="section-title">🔄 Patrón de Movimiento</h4>
+          
+          {/* Selector de patrón */}
+          <div className="pattern-selector">
+            {(['static', 'circle', 'figure8', 'sweep'] as MovementPatternType[]).map(p => (
+              <button
+                key={p}
+                className={`pattern-btn ${movementPattern === p ? 'active' : ''}`}
+                onClick={() => handlePatternChange(p)}
+                title={p}
+              >
+                {p === 'static' && '⏹️'}
+                {p === 'circle' && '○'}
+                {p === 'figure8' && '∞'}
+                {p === 'sweep' && '↔'}
+              </button>
+            ))}
+          </div>
+          
+          {/* Amplitud (solo si hay patrón activo) */}
+          {movementPattern !== 'static' && (
+            <div className="pattern-control">
+              <label>📐 Amplitud</label>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                value={patternAmplitude}
+                onChange={(e) => handleAmplitudeChange(parseInt(e.target.value))}
+                className="amplitude-slider"
+              />
+              <span className="control-value">{patternAmplitude}%</span>
+            </div>
+          )}
+          
+          {/* Velocidad del patrón (solo si hay patrón activo) */}
+          {movementPattern !== 'static' && (
+            <div className="pattern-control">
+              <label>🎵 Velocidad Patrón</label>
+              <input
+                type="range"
+                min={1}
+                max={100}
+                value={patternSpeed}
+                onChange={(e) => handlePatternSpeedChange(parseInt(e.target.value))}
+                className="pattern-speed-slider"
+              />
+              <span className="control-value">{patternSpeed}%</span>
+            </div>
+          )}
         </div>
       )}
       

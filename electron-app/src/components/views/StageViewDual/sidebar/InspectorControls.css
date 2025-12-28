@@ -213,3 +213,81 @@
   color: #00ffff;
   text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔄 PATTERN SELECTOR - Patrones de movimiento
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pattern-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pattern-btn {
+  flex: 1;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pattern-btn:hover {
+  background: rgba(0, 255, 255, 0.1);
+  border-color: rgba(0, 255, 255, 0.4);
+}
+
+.pattern-btn.active {
+  background: rgba(0, 255, 255, 0.2);
+  border-color: #00ffff;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+}
+
+.pattern-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pattern-control label {
+  font-size: 11px;
+  color: #888;
+  min-width: 100px;
+}
+
+.pattern-control input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, 
+    rgba(0, 255, 255, 0.2) 0%, 
+    rgba(0, 255, 255, 0.6) 100%
+  );
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.pattern-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #00ffff;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  cursor: grab;
+}
+
+.control-value {
+  font-size: 12px;
+  font-weight: bold;
+  color: #00ffff;
+  min-width: 40px;
+  text-align: right;
+}

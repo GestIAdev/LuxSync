@@ -1526,7 +1526,54 @@ function startMainLoop() {
           if (override.g !== undefined) finalG = override.g
           if (override.b !== undefined) finalB = override.b
           
-          // 🔍 Log override aplicado
+          // � WAVE 153.13: PATRÓN DE MOVIMIENTO DINÁMICO
+          if (override.patternEnabled && override.movementPattern && override.movementPattern !== 'static') {
+            // Actualizar fase del patrón
+            const patternSpeed = (override.patternSpeed || 50) / 100 // 0-1
+            const phase = ((override.patternPhase || 0) + patternSpeed * 0.1) % (Math.PI * 2)
+            override.patternPhase = phase
+            
+            // Amplitud como porcentaje del rango (0-127 = mitad del rango DMX)
+            const amplitude = ((override.patternAmplitude || 50) / 100) * 127
+            
+            // Centro: usar pan/tilt base si están definidos, sino centro (127)
+            const centerPan = override.pan !== undefined ? override.pan : 127
+            const centerTilt = override.tilt !== undefined ? override.tilt : 127
+            
+            // Calcular posición según patrón
+            switch (override.movementPattern) {
+              case 'circle':
+                finalPan = Math.round(centerPan + Math.cos(phase) * amplitude)
+                finalTilt = Math.round(centerTilt + Math.sin(phase) * amplitude)
+                break
+              case 'figure8':
+                // Lissajous con ratio 2:1 = figura de 8
+                finalPan = Math.round(centerPan + Math.sin(phase) * amplitude)
+                finalTilt = Math.round(centerTilt + Math.sin(phase * 2) * amplitude * 0.5)
+                break
+              case 'sweep':
+                // Solo horizontal
+                finalPan = Math.round(centerPan + Math.sin(phase) * amplitude)
+                finalTilt = centerTilt
+                break
+              case 'random':
+                // Pequeños movimientos aleatorios
+                finalPan = Math.round(centerPan + (Math.random() - 0.5) * amplitude * 0.3)
+                finalTilt = Math.round(centerTilt + (Math.random() - 0.5) * amplitude * 0.3)
+                break
+            }
+            
+            // Clamp a rango DMX válido
+            finalPan = Math.max(0, Math.min(255, finalPan))
+            finalTilt = Math.max(0, Math.min(255, finalTilt))
+            
+            // 🔍 Log patrón (cada 100 frames)
+            if (frameIndex % 100 === 0) {
+              console.log(`[Pattern] 🔄 ${fixtureId}: ${override.movementPattern} Phase=${phase.toFixed(2)} Pan=${finalPan} Tilt=${finalTilt}`)
+            }
+          }
+          
+          // �🔍 Log override aplicado
           if (frameIndex % 100 === 0) {
             console.log(`[Override] 🎮 Applied to ${fixtureId}: Pan=${finalPan} Tilt=${finalTilt} Dim=${finalDimmer} Speed=${finalSpeed}`)
           }
@@ -1814,6 +1861,9 @@ let blackoutActive = false
 // UI -> Backend -> DMX (¡LA UI AHORA CONTROLA LAS FIXTURES!)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🔄 WAVE 153.13: Tipos de patrón de movimiento
+type MovementPatternType = 'static' | 'circle' | 'figure8' | 'sweep' | 'random'
+
 interface ManualOverride {
   pan?: number      // 0-255 (DMX value)
   tilt?: number     // 0-255 (DMX value)
@@ -1822,6 +1872,12 @@ interface ManualOverride {
   r?: number        // 0-255
   g?: number        // 0-255
   b?: number        // 0-255
+  // 🔄 WAVE 153.13: Patrón de movimiento
+  movementPattern?: MovementPatternType
+  patternEnabled?: boolean
+  patternAmplitude?: number  // 0-100
+  patternSpeed?: number      // 0-100
+  patternPhase?: number      // Fase interna del patrón (se actualiza cada frame)
   timestamp: number
 }
 

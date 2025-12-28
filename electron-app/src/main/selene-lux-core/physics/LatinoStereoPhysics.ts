@@ -398,32 +398,30 @@ export class LatinoStereoPhysics {
   }
   
   /**
-   * 🎵 WAVE 157: LA DICTADURA DE LA CUMBIA
+   * 🎵 WAVE 157.1: LA DICTADURA SIMPLIFICADA
    * 
-   * CATCH-ALL ULTRA AGRESIVO - Si tiene ritmo latino, ES CUMBIA:
-   * - SALSA: BPM > 145 + High > 0.6 (Timbales SUPER claros + rápido)
-   * - REGGAETON: BPM < 95 + Bass > 0.75 (Dembow lentísimo + pesadísimo)
-   * - CUMBIA: TODO LO DEMÁS 90-175 BPM (RKT/Villera/Cumbia/Merengue/Bachata)
-   * 
-   * IGNORAMOS EL NIVEL DE BAJO - Si tiene el ritmo, es Cumbia.
+   * CATCH-ALL TOTAL - Ante la duda, ES CUMBIA:
+   * - SALSA: BPM > 130 + High > Bass (agudos dominan)
+   * - REGGAETON: BPM <= 90 (lento)
+   * - CUMBIA: TODO LO DEMÁS 90-170 BPM (ignoramos nivel de bajo)
    */
   private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
     const normalizedHigh = metrics.normalizedHigh ?? 0;
     const normalizedBass = metrics.normalizedBass;
     
-    // 🎺 Salsa: Solo si es MUY rápido (>145) y timbales SUPER claros
-    if (bpm > 145 && normalizedHigh > 0.6) {
+    // 🎺 Salsa: Rápido + agudos dominantes
+    if (bpm > 130 && normalizedHigh > normalizedBass) {
       return 'salsa';
     }
     
-    // 🔊 Reggaeton: Solo si es SÚPER lento (<95) y bass BRUTAL
-    if (bpm < 95 && normalizedBass > 0.75) {
+    // 🔊 Reggaeton: Lento (<=90 BPM)
+    if (bpm <= 90) {
       return 'reggaeton';
     }
     
-    // 🌴 WAVE 157: CUMBIA = DICTADURA TOTAL (90-175 BPM)
-    // Si está en rango latino → ES CUMBIA (no importa el bajo)
-    if (bpm >= 90 && bpm <= 175) {
+    // 🌴 WAVE 157: CUMBIA = CATCH-ALL (90-170 BPM)
+    // Si tiene ritmo latino → ES CUMBIA (ignoramos el bajo saturado)
+    if (bpm >= 90 && bpm <= 170) {
       return 'cumbia';
     }
     

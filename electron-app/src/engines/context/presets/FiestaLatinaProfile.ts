@@ -2,7 +2,22 @@
  * 🎉 FIESTA LATINA VIBE PROFILE
  * 
  * Organic warmth. Festiv  drop: {
-    sensitivity: 0.25,        // 🔥 WAVE 157: BAJADO A 0.25 - RESURRECCIÓN de móviles
+      drop: {
+    sensitivity: 0.25,        // 🔥 WAVE 157.1: BAJADO A 0.25 - escapar del DROP eterno
+    energyThreshold: 0.40,    // 🔥 WAVE 157.1: Subido a 0.40 - requiere energía BRUTAL
+    curves: {
+      attack: 'ease-in',      // Build orgánico
+      sustain: 'ease-in-out',
+      release: 'linear',
+    },
+    timing: {
+      minAttack: 20,          // Drops rápidos OK
+      maxSustain: 150,        // 🔥 WAVE 157: Bajado a 2.5s - drops ULTRA cortos
+      releaseFrames: 15,      // 🔥 WAVE 157: Release aún más corto
+      cooldownFrames: 300,    // 🔥 WAVE 157: 5s entre drops (ULTRA selectivo)
+    },
+    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
+  },5,        // 🔥 WAVE 157: BAJADO A 0.25 - RESURRECCIÓN de móviles
     energyThreshold: 0.40,    // 🔥 WAVE 157: Subido a 0.40 - requiere energía BRUTAL
     curves: {
       attack: 'ease-in',      // Build orgánico
@@ -59,10 +74,10 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
       min: 2000,   // 🔥 WAVE 67: Más cálido (era 2500K)
       max: 4500,   // 🔥 WAVE 67: NUNCA frío - clamp a 4500K (era 5500K)
     },
-    // 🌡️ WAVE 156: THERMAL GRAVITY RELAJADA
-    // 4000K = Neutro-Cálido (era 3000K = imán de naranjas demasiado fuerte)
-    // Permite más verdes y amarillos sin perder la calidez
-    atmosphericTemp: 4000,
+    // 🌡️ WAVE 157.1: THERMAL GRAVITY RELAJADA
+    // 4500K = Luz de atardecer amigable con verde/azul (era 3000K = lava naranja)
+    // Permite full espectro sin perder calidez
+    atmosphericTemp: 4500,
     
     // 🛡️ WAVE 155: NARANJA DE SEGURIDAD PROHIBIDO + Azul Rey/Índigo
     // El naranja puro (25-45°) es aburrido y corporativo
@@ -103,7 +118,7 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   // DIMMER CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   dimmer: {
-    floor: 0.10,              // 🔫 WAVE 152: 10% mínimo para dinámica (permite metralleta)
+    floor: 0.40,              // � WAVE 157.1: 40% mínimo para beams visibles (era 10%)
     ceiling: 0.90,            // 🔥 WAVE 66.5: Máximo 90% (era 100%) - Drops son abrazos, no flashbangs
     allowBlackout: true,      // ✅ WAVE 152: PERMITIDO (esencial para efecto metralleta)
     transitionSpeed: 'fast',  // Transiciones rápidas

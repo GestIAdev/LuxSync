@@ -230,6 +230,7 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
+          if (values.speed !== undefined) dmxValues.speed = values.speed // ⏱️ WAVE 153.12: Speed a DMX
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b
@@ -291,6 +292,7 @@ export const useOverrideStore = create<OverrideState>()(
           if (values.pan !== undefined) dmxValues.pan = Math.round((values.pan / 540) * 255)
           if (values.tilt !== undefined) dmxValues.tilt = Math.round((values.tilt / 270) * 255)
           if (values.dimmer !== undefined) dmxValues.dimmer = values.dimmer
+          if (values.speed !== undefined) dmxValues.speed = values.speed // ⏱️ WAVE 153.12: Speed a DMX
           if (values.r !== undefined) dmxValues.r = values.r
           if (values.g !== undefined) dmxValues.g = values.g
           if (values.b !== undefined) dmxValues.b = values.b

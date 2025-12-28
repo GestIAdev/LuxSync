@@ -108,7 +108,14 @@ export class LatinoStereoPhysics {
    * Cuando el bass supera este valor, disparamos destello dorado.
    * @calibration Reggaeton típico tiene kicks muy marcados
    */
-  private static readonly KICK_THRESHOLD = 0.35;
+  private static readonly KICK_THRESHOLD = 0.40;  // 🌿 WAVE 158: Subido de 0.35
+  
+  /**
+   * 🌿 WAVE 158: Delta Trigger - Requiere SUBIDA de bass, no presión constante
+   * Solo dispara Solar Flare si el bass SUBIÓ este porcentaje vs frame anterior
+   * Esto evita blancos constantes cuando hay bass alto sostenido
+   */
+  private static readonly BASS_DELTA_THRESHOLD = 0.05;
   
   /**
    * Incremento de luminosidad para Solar Flare.
@@ -198,6 +205,9 @@ export class LatinoStereoPhysics {
   
   /** 🔧 WAVE 152.5: Último BPM detectado */
   private lastBpm = 0;
+  
+  /** 🌿 WAVE 158: Último bass conocido (para Delta Trigger) */
+  private lastBass = 0;
   
   // =========================================================================
   // 🔧 MÉTODOS PÚBLICOS
@@ -320,12 +330,19 @@ export class LatinoStereoPhysics {
     
     // =====================================================================
     // 3️⃣ SOLAR FLARE DETECTION (Kick fuerte → Destello dorado)
+    // 🌿 WAVE 158: DELTA TRIGGER - Requiere SUBIDA de bass, no solo nivel alto
     // =====================================================================
     // Solo para REGGAETON y SALSA, no CUMBIA
     if (subGenre !== 'cumbia' && !isMachineGunBlackout) {
       const bassPulse = metrics.normalizedBass;
+      const bassDelta = bassPulse - this.lastBass;  // 🌿 WAVE 158: Delta vs frame anterior
       
-      if (bassPulse > LatinoStereoPhysics.KICK_THRESHOLD) {
+      // 🌿 WAVE 158: DOBLE CONDICIÓN - Bass alto + Delta positivo
+      // Esto evita blancos constantes cuando hay bass alto sostenido
+      const isKickMoment = bassPulse > LatinoStereoPhysics.KICK_THRESHOLD &&
+                           bassDelta > LatinoStereoPhysics.BASS_DELTA_THRESHOLD;
+      
+      if (isKickMoment) {
         isSolarFlare = true;
         flareIntensity = (bassPulse - LatinoStereoPhysics.KICK_THRESHOLD) / 
                          (1 - LatinoStereoPhysics.KICK_THRESHOLD);
@@ -341,6 +358,9 @@ export class LatinoStereoPhysics {
           Math.min(flareIntensity * 20, 15)  // Max +15% brillo
         );
       }
+      
+      // 🌿 WAVE 158: Guardar bass actual para próximo frame
+      this.lastBass = bassPulse;
     }
     
     // =====================================================================

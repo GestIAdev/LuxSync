@@ -1,166 +1,106 @@
-/**
- * 🎉 FIESTA LATINA VIBE PROFILE
+﻿/**
+ * FIESTA LATINA VIBE PROFILE
  * 
- * Organic warmth. Festiv  drop: {
-      drop: {
-    sensitivity: 0.25,        // 🔥 WAVE 157.1: BAJADO A 0.25 - escapar del DROP eterno
-    energyThreshold: 0.40,    // 🔥 WAVE 157.1: Subido a 0.40 - requiere energía BRUTAL
-    curves: {
-      attack: 'ease-in',      // Build orgánico
-      sustain: 'ease-in-out',
-      release: 'linear',
-    },
-    timing: {
-      minAttack: 20,          // Drops rápidos OK
-      maxSustain: 150,        // 🔥 WAVE 157: Bajado a 2.5s - drops ULTRA cortos
-      releaseFrames: 15,      // 🔥 WAVE 157: Release aún más corto
-      cooldownFrames: 300,    // 🔥 WAVE 157: 5s entre drops (ULTRA selectivo)
-    },
-    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
-  },5,        // 🔥 WAVE 157: BAJADO A 0.25 - RESURRECCIÓN de móviles
-    energyThreshold: 0.40,    // 🔥 WAVE 157: Subido a 0.40 - requiere energía BRUTAL
-    curves: {
-      attack: 'ease-in',      // Build orgánico
-      sustain: 'ease-in-out',
-      release: 'linear',
-    },
-    timing: {
-      minAttack: 20,          // Drops rápidos OK
-      maxSustain: 150,        // 🔥 WAVE 157: Bajado a 2.5s - drops ULTRA cortos
-      releaseFrames: 15,      // 🔥 WAVE 157: Release aún más corto
-      cooldownFrames: 300,    // 🔥 WAVE 157: 5s entre drops (ULTRA selectivo)
-    },
-    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
-  },aturation celebration.
+ * WAVE 158: ECOLOGICAL FIX - La Via Natural
+ * "Cambiemos las reglas del juego, no el marcador"
  * 
- * Características:
+ * Filosofia: Cambiar el ECOSISTEMA para que los colores nazcan naturalmente.
+ * NO forzamos colores - dejamos que el algoritmo Triadic/Complementary 
+ * elija libremente sin gravedad termica que lo tire hacia el naranja.
+ * 
+ * Caracteristicas:
  * - Moods festivos y alegres
- * - Temperaturas siempre cálidas (2500K-5500K)
- * - ❌ Blackout PROHIBIDO (mata la energía)
- * - Micro-drops permitidos para percusión
- * - Dimmer floor alto (25%)
+ * - atmosphericTemp = 5000K (neutro, sin gravedad de color)
+ * - Blackout PROHIBIDO en normal (excepto Machine Gun)
+ * - drop.sensitivity = 0.20 (Selene menos asustadiza)
+ * - dimmer.floor = 0.40 (beams siempre visibles)
+ * - Sin forbiddenHueRanges (libre eleccion de color)
  */
 
 import type { VibeProfile } from '../../../types/VibeProfile';
 
 export const VIBE_FIESTA_LATINA: VibeProfile = {
-  // ═══════════════════════════════════════════════════════════════
-  // IDENTITY
-  // ═══════════════════════════════════════════════════════════════
   id: 'fiesta-latina',
   name: 'Fiesta Latina',
   description: 'Organic warmth. Festive colors. High saturation celebration.',
-  icon: '🎉',
+  icon: '',
 
-  // ═══════════════════════════════════════════════════════════════
-  // MOOD CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   mood: {
-    // ✅ PERMITIDOS: Solo estados festivos/alegres
-    // 🔥 WAVE 74: Eliminado 'dramatic' - era Caballo de Troya que permitía DARK
     allowed: ['festive', 'playful', 'euphoric', 'energetic'],
-    // ❌ PROHIBIDOS implícitos: 'dark', 'tense', 'calm', 'peaceful', 'dreamy', 'aggressive', 'dramatic'
     fallback: 'festive',
-    audioInfluence: 0.8,      // Muy reactivo al audio
+    audioInfluence: 0.8,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // COLOR CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   color: {
-    // Todas las estrategias coloridas permitidas, triadic preferida
     strategies: ['triadic', 'complementary', 'analogous'],
     temperature: {
-      min: 2000,   // 🔥 WAVE 67: Más cálido (era 2500K)
-      max: 4500,   // 🔥 WAVE 67: NUNCA frío - clamp a 4500K (era 5500K)
+      min: 2000,
+      max: 4500,
     },
-    // 🌡️ WAVE 157.1: THERMAL GRAVITY RELAJADA
-    // 4500K = Luz de atardecer amigable con verde/azul (era 3000K = lava naranja)
-    // Permite full espectro sin perder calidez
-    atmosphericTemp: 4500,
-    
-    // 🛡️ WAVE 155: NARANJA DE SEGURIDAD PROHIBIDO + Azul Rey/Índigo
-    // El naranja puro (25-45°) es aburrido y corporativo
-    // La Gravedad Térmica arrastrará hacia Rojo (0-20°) o Oro (50-60°)
-    // Y la física Cumbia inyectará Magenta y Cian
-    forbiddenHueRanges: [[25, 45], [230, 260]],
-    allowedHueRanges: [[0, 24], [46, 229], [261, 360]],
+    // WAVE 158: ECOLOGICAL FIX - Clima Neutro/Solar
+    // 5000K = Luz Neutra - Gravedad CERO hacia ningun color
+    atmosphericTemp: 5000,
     
     saturation: {
-      min: 0.80,   // 🔥 WAVE 66.5: Aumentado a 80% (era 65%) - Evita lavado a blanco en drops
-      max: 1.0,    // Full color permitido
+      min: 0.80,
+      max: 1.0,
     },
-    maxHueShiftPerSecond: 60,  // Cambios más rápidos OK
+    maxHueShiftPerSecond: 60,
     preferredPalettes: ['fiesta', 'tropical', 'sunset'],
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // DROP CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   drop: {
-    sensitivity: 0.30,        // � WAVE 156: BAJADO A 0.30 - escapar del DROP eterno en RKT
-    energyThreshold: 0.35,    // � WAVE 156: Subido a 0.35 - requiere energía MUY REAL
+    // WAVE 158: ECOLOGICAL FIX - Selene menos asustadiza
+    sensitivity: 0.20,
+    energyThreshold: 0.45,
     curves: {
-      attack: 'ease-in',      // Build orgánico
+      attack: 'ease-in',
       sustain: 'ease-in-out',
       release: 'linear',
     },
     timing: {
-      minAttack: 20,          // Drops rápidos OK
-      maxSustain: 180,        // � WAVE 156: Bajado a 3s - drops MUY cortos
-      releaseFrames: 20,      // � WAVE 156: Release más corto
-      cooldownFrames: 240,    // � WAVE 156: 4s entre drops (MUY selectivo)
+      minAttack: 20,
+      maxSustain: 120,
+      releaseFrames: 15,
+      cooldownFrames: 360,
     },
-    allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
+    allowMicroDrops: true,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // DIMMER CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   dimmer: {
-    floor: 0.40,              // � WAVE 157.1: 40% mínimo para beams visibles (era 10%)
-    ceiling: 0.90,            // 🔥 WAVE 66.5: Máximo 90% (era 100%) - Drops son abrazos, no flashbangs
-    allowBlackout: true,      // ✅ WAVE 152: PERMITIDO (esencial para efecto metralleta)
-    transitionSpeed: 'fast',  // Transiciones rápidas
+    // WAVE 158: ECOLOGICAL FIX - Beams siempre visibles
+    floor: 0.40,
+    ceiling: 0.90,
+    allowBlackout: true,
+    transitionSpeed: 'fast',
     breakdownCurve: 'ease-in-out',
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // MOVEMENT CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   movement: {
-    // Todo permitido excepto static prolongado
     allowedPatterns: ['sweep', 'circle', 'figure8', 'chase', 'wave'],
     speedRange: {
-      min: 0.4,   // Siempre en movimiento
-      max: 1.0,   // Full speed permitido
+      min: 0.4,
+      max: 1.0,
     },
     allowAggressive: true,
-    preferredSync: 'beat',    // Sincronizado al ritmo
-    stopOnDrop: false,        // 🔧 WAVE 152.5: NUNCA parar en drop - movimiento continuo
+    preferredSync: 'beat',
+    stopOnDrop: false,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // EFFECTS CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   effects: {
-    // 🔥 WAVE 66.5: Sin strobe - el latino es calor, no epilepsia
-    allowed: ['fog', 'beam'],  // ❌ STROBE ELIMINADO de allowed
-    maxStrobeRate: 0,          // 🔥 WAVE 66.5: 0Hz = STROBE PROHIBIDO (era 8Hz)
-    autoFog: false,            // Fog manual (no siempre apropiado)
-    maxIntensity: 0.9,         // 🔥 WAVE 66.5: Tope 90% (era 100%)
+    allowed: ['fog', 'beam'],
+    maxStrobeRate: 0,
+    autoFog: false,
+    maxIntensity: 0.9,
   },
 
-  // ═══════════════════════════════════════════════════════════════
-  // META CONSTRAINTS
-  // ═══════════════════════════════════════════════════════════════
   meta: {
     baseEnergy: 0.75,
-    volatility: 0.6,          // ⚠️ Permite variación alta (música dinámica)
-    stabilityFirst: false,    // Reactividad > estabilidad
+    volatility: 0.6,
+    stabilityFirst: false,
     bpmHint: {
       min: 85,
-      max: 130,               // Rango salsa/reggaeton/cumbia
+      max: 175,
     },
   },
 };

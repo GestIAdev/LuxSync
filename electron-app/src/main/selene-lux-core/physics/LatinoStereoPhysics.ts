@@ -125,8 +125,9 @@ export class LatinoStereoPhysics {
   /**
    * Umbral de caída de energía para detectar "Negative Drop".
    * Si la energía cae más de este porcentaje, es un corte.
+   * 🔧 WAVE 155.5: Bajado de 0.6 a 0.4 para pillar silencios de cumbia
    */
-  private static readonly NEGATIVE_DROP_THRESHOLD = 0.6;  // 60% de caída
+  private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;  // 40% de caída
   
   /**
    * Ventana de tiempo máxima para detectar Negative Drop (ms).
@@ -380,12 +381,12 @@ export class LatinoStereoPhysics {
   }
   
   /**
-   * 🎵 WAVE 155: Detecta el subgénero latino basándose en BPM y métricas
+   * 🎵 WAVE 155.5: Detecta el subgénero latino basándose en BPM y métricas
    * 
-   * NUEVA LÓGICA (sin prejuicios de bass):
+   * NUEVA LÓGICA (Cumbia es el catch-all de Fiesta Latina):
    * - SALSA: BPM > 130 + High > Bass (Manda el timbal)
    * - REGGAETON: BPM < 108 + Bass > 0.6 (Lento y pesado)
-   * - CUMBIA: BPM 108-160 (Catch-all para RKT/Villera/Cumbia tradicional)
+   * - CUMBIA: TODO LO DEMÁS en 85-160 BPM (RKT/Villera/Cumbia/Merengue)
    */
   private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
     const normalizedHigh = metrics.normalizedHigh ?? 0;
@@ -401,9 +402,10 @@ export class LatinoStereoPhysics {
       return 'reggaeton';
     }
     
-    // 🌴 Cumbia (Catch-All): BPM 108-160 (RKT, Villera, Cumbia clásica)
-    // Ya NO filtramos por bass bajo - aceptamos bajos saturados!
-    if (bpm >= 108 && bpm <= 160) {
+    // 🌴 WAVE 155.5: Cumbia = CATCH-ALL para Fiesta Latina (85-160 BPM)
+    // Si estamos en rango latino y no es Salsa ni Reggaeton específico → CUMBIA
+    // Esto incluye: RKT, Villera, Cumbia clásica, Merengue, Bachata, etc.
+    if (bpm >= 85 && bpm <= 160) {
       return 'cumbia';
     }
     

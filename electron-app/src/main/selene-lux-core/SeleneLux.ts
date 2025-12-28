@@ -145,6 +145,10 @@ export class SeleneLux extends EventEmitter {
   private latinoPhysics = new LatinoStereoPhysics()
   private chillPhysics = new ChillStereoPhysics()
   
+  // 🌴 WAVE 155.5: Force Movement flag (para Cumbia/Latino ignorar DROP)
+  private lastForceMovement = false
+  private lastLatinoSubGenre: 'cumbia' | 'reggaeton' | 'salsa' | 'generic' = 'generic'
+  
   // ? WAVE 39.9.2: GHOST BRAIN ELIMINATED
   // El Brain ahora vive SOLO en Trinity Worker - Main Process no piensa
   // Mantenemos la propiedad para compatibilidad de API pero NUNCA se inicializa
@@ -1719,6 +1723,10 @@ export class SeleneLux extends EventEmitter {
           }
         )
         
+        // 🌴 WAVE 155.5: Guardar flags para movimiento forzado
+        this.lastForceMovement = physicsResult.forceMovement
+        this.lastLatinoSubGenre = physicsResult.subGenre
+        
         // Latino modifica PRIMARY (Solar Flare) y controla INTENSITY
         this.lastColors.primary = physicsResult.palette.primary
         this.lastColors.accent = physicsResult.palette.accent
@@ -1728,7 +1736,7 @@ export class SeleneLux extends EventEmitter {
         
         if (Math.random() < 0.003) {
           const dbg = physicsResult.debugInfo
-          console.log(`[WAVE147] ☀️ LATINO PHYSICS | Solar:${physicsResult.isSolarFlare} | Blackout:${physicsResult.isMachineGunBlackout} | Dimmer:${physicsResult.dimmerOverride ?? 'N/A'}`)
+          console.log(`[WAVE155.5] ☀️ LATINO PHYSICS | SubGenre:${physicsResult.subGenre} | ForceMove:${physicsResult.forceMovement} | Solar:${physicsResult.isSolarFlare} | Blackout:${physicsResult.isMachineGunBlackout}`)
         }
       } else if (vibeNormalized.includes('chill') || vibeNormalized.includes('ambient') ||
                  vibeNormalized.includes('lounge') || vibeNormalized.includes('jazz') ||
@@ -2057,9 +2065,18 @@ export class SeleneLux extends EventEmitter {
       section: {
         // ?? WAVE 47.3: SECTION STABILITY - Hist�resis para evitar flicker de 10 cambios/segundo
         // ?? WAVE 57.5: DROP STATE MACHINE OVERRIDE - Si isDropActive, FORZAR 'drop'
+        // 🌴 WAVE 155.5: PERO NO para Cumbia/Latino con forceMovement!
         // Solo cambiar secci�n si: 1) confidence > 0.8, 2) distinta a actual, 3) han pasado >3 segundos
         current: (() => {
-          // ?? WAVE 57.5: DROP STATE MACHINE tiene PRIORIDAD ABSOLUTA
+          // 🌴 WAVE 155.5: Si Latino/Cumbia tiene forceMovement, IGNORAR DROP
+          // La Cumbia tiene kicks constantes que confunden la Drop State Machine
+          if (this.lastForceMovement && this.lastLatinoSubGenre === 'cumbia') {
+            // En Cumbia, NO queremos modo DROP - queremos CHORUS/FESTIVE
+            const rawSection = trinityData?.sectionDetail?.type ?? context?.section?.current?.type ?? 'chorus'
+            return (rawSection === 'drop' ? 'chorus' : rawSection) as 'intro' | 'verse' | 'chorus' | 'bridge' | 'breakdown' | 'drop' | 'buildup' | 'outro' | 'transition' | 'unknown';
+          }
+          
+          // ?? WAVE 57.5: DROP STATE MACHINE tiene PRIORIDAD ABSOLUTA (para otros géneros)
           const isDropActive = trinityData?.drop?.isDropActive === true;
           if (isDropActive) {
             return 'drop' as const;

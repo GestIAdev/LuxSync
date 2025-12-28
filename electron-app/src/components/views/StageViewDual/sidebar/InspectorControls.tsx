@@ -111,13 +111,17 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
   const handlePatternChange = useCallback((pattern: MovementPatternType) => {
     setMovementPattern(pattern)
     const isEnabled = pattern !== 'static'
+    // Enviar también el centro actual (pan/tilt) para que el patrón gire alrededor de ese punto
     setMultipleOverrides(selectedArray, { 
       movementPattern: pattern,
       patternEnabled: isEnabled,
       patternAmplitude,
-      patternSpeed
+      patternSpeed,
+      // Usar inspectorPan/Tilt como centro del patrón
+      pan: inspectorPan,
+      tilt: inspectorTilt
     })
-  }, [selectedArray, setMultipleOverrides, patternAmplitude, patternSpeed])
+  }, [selectedArray, setMultipleOverrides, patternAmplitude, patternSpeed, inspectorPan, inspectorTilt])
   
   // 🔄 WAVE 153.13: Amplitude change
   const handleAmplitudeChange = useCallback((amplitude: number) => {

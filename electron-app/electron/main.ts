@@ -1383,6 +1383,12 @@ function startMainLoop() {
         tiltValue = 1 - tiltValue // Invertir para fixtures colgados
       }
       
+      // 🔧 WAVE 153.10: Detectar si es moving fixture (zona o tipo)
+      const isMovingFixture = zone.includes('MOVING') || 
+                              zone.toLowerCase().includes('left') || 
+                              zone.toLowerCase().includes('right') ||
+                              fixture.type?.toLowerCase().includes('moving')
+      
       return {
         dmxAddress: fixture.dmxAddress,
         universe: fixture.universe,
@@ -1398,10 +1404,10 @@ function startMainLoop() {
         g: fixtureColor.g,
         b: fixtureColor.b,
         // Movement for moving heads - Convert 0-1 to 0-255
-        pan: zone.includes('MOVING') 
+        pan: isMovingFixture 
           ? Math.round(panValue * 255) 
           : 0,
-        tilt: zone.includes('MOVING') 
+        tilt: isMovingFixture 
           ? Math.round(tiltValue * 255) 
           : 0,
       }

@@ -172,10 +172,13 @@ export class LatinoStereoPhysics {
   /**
    * 🌈 NEON INJECTION COLORS (Cumbia Anti-Palidez)
    * Para romper monotonía en Cumbia cuando no hay Solar Flare
+   * 🔥 WAVE 156: Añadido Naranja Neón para PRIMARY
    */
   private static readonly NEON_MAGENTA: HSL = { h: 300, s: 100, l: 65 };
   private static readonly NEON_CYAN: HSL = { h: 180, s: 100, l: 60 };
   private static readonly NEON_LIME: HSL = { h: 120, s: 100, l: 55 };
+  private static readonly NEON_ORANGE: HSL = { h: 30, s: 100, l: 55 };  // 🔥 Naranja Neón
+  private static readonly NEON_YELLOW: HSL = { h: 55, s: 100, l: 55 };  // 💛 Amarillo Neón
 
   // =========================================================================
   // 📊 ESTADO INTERNO
@@ -271,30 +274,44 @@ export class LatinoStereoPhysics {
     }
     
     // =====================================================================
-    // 2️⃣ SUBGÉNERO: CUMBIA MODE (Anti-palidez + Neon Injection)
+    // 2️⃣ WAVE 156: CUMBIA MODE AGRESIVO (Rainbow RKT)
     // =====================================================================
+    // 🚫 PROHIBIDO EL SOL EN LA CUMBIA - El bajo saturado activa el flare constantemente
+    // En cambio, inyectamos NEONES en ACCENT y PRIMARY para fiesta multicolor
     if (subGenre === 'cumbia' && !isMachineGunBlackout) {
-      // Cumbia NO usa Solar Flare (demasiado agresivo para su ritmo)
-      // En cambio, inyectamos NEONES para romper monotonía
+      // 🔥 KILL SWITCH: isSolarFlare SIEMPRE false en Cumbia
+      isSolarFlare = false;
       
       const bassPulse = metrics.normalizedBass;
       
-      // Cada beat fuerte (bass > 0.5) rotamos el color de accent
-      if (bassPulse > 0.5) {
+      // Cada beat fuerte (bass > 0.4 - más sensible) rotamos colores
+      if (bassPulse > 0.4) {
         this.beatCounter++;
         neonInjected = true;
         
-        // Rotar entre Magenta → Cyan → Lime → repeat
-        const neonColors = [
+        // 🎨 ACCENT: Rotar entre Magenta → Cyan → Lime (Back PARs)
+        const accentColors = [
           LatinoStereoPhysics.NEON_MAGENTA,
           LatinoStereoPhysics.NEON_CYAN,
           LatinoStereoPhysics.NEON_LIME,
         ];
-        const colorIndex = this.beatCounter % 3;
-        resultPalette.accent = this.hslToRgb(neonColors[colorIndex]);
+        const accentIndex = this.beatCounter % 3;
+        resultPalette.accent = this.hslToRgb(accentColors[accentIndex]);
         
-        // También boost suave al primary para mantener vida
-        resultPalette.primary = this.boostBrightness(resultPalette.primary, 8);
+        // 🔥 WAVE 156: PRIMARY también rota (Front PARs) - cada 4 beats
+        // Usamos colores complementarios para contraste
+        const primaryColors = [
+          LatinoStereoPhysics.NEON_CYAN,     // Complemento de Magenta
+          LatinoStereoPhysics.NEON_ORANGE,   // Cálido
+          LatinoStereoPhysics.NEON_MAGENTA,  // Complemento de Cyan
+          LatinoStereoPhysics.NEON_LIME,     // Fresco
+        ];
+        const primaryIndex = Math.floor(this.beatCounter / 4) % 4;
+        resultPalette.primary = this.hslToRgb(primaryColors[primaryIndex]);
+        
+        // Secondary también participa (más sutil)
+        const secondaryIndex = (this.beatCounter + 1) % 3;
+        resultPalette.secondary = this.hslToRgb(accentColors[secondaryIndex]);
       }
       
       // 🔧 Cumbia = movimiento continuo (baile constante)
@@ -381,31 +398,31 @@ export class LatinoStereoPhysics {
   }
   
   /**
-   * 🎵 WAVE 155.5: Detecta el subgénero latino basándose en BPM y métricas
+   * 🎵 WAVE 156: Detecta el subgénero latino basándose en BPM y métricas
    * 
-   * NUEVA LÓGICA (Cumbia es el catch-all de Fiesta Latina):
-   * - SALSA: BPM > 130 + High > Bass (Manda el timbal)
-   * - REGGAETON: BPM < 108 + Bass > 0.6 (Lento y pesado)
-   * - CUMBIA: TODO LO DEMÁS en 85-160 BPM (RKT/Villera/Cumbia/Merengue)
+   * AGRESIVO - Cumbia es el catch-all TOTAL:
+   * - SALSA: BPM > 130 + High > Bass + High > 0.5 (Timbales CLAROS)
+   * - REGGAETON: BPM < 100 + Bass > 0.7 (Dembow MUY lento y pesado)
+   * - CUMBIA: TODO LO DEMÁS en 85-165 BPM (RKT/Villera/Cumbia/Merengue/Todo)
    */
   private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
     const normalizedHigh = metrics.normalizedHigh ?? 0;
     const normalizedBass = metrics.normalizedBass;
     
-    // 🎺 Salsa: BPM > 130 + agudos dominantes (timbales, campana)
-    if (bpm > 130 && normalizedHigh > normalizedBass) {
+    // 🎺 Salsa: BPM > 130 + agudos MUY dominantes (requiere timbales claros)
+    if (bpm > 130 && normalizedHigh > normalizedBass && normalizedHigh > 0.5) {
       return 'salsa';
     }
     
-    // 🔊 Reggaeton: BPM < 108 + bass muy marcado (dembow lento y pesado)
-    if (bpm < 108 && normalizedBass > 0.6) {
+    // 🔊 Reggaeton: BPM < 100 + bass MUY marcado (dembow lento y pesado)
+    // Más restrictivo para que no capture RKT
+    if (bpm < 100 && normalizedBass > 0.7) {
       return 'reggaeton';
     }
     
-    // 🌴 WAVE 155.5: Cumbia = CATCH-ALL para Fiesta Latina (85-160 BPM)
-    // Si estamos en rango latino y no es Salsa ni Reggaeton específico → CUMBIA
-    // Esto incluye: RKT, Villera, Cumbia clásica, Merengue, Bachata, etc.
-    if (bpm >= 85 && bpm <= 160) {
+    // 🌴 WAVE 156: Cumbia = CATCH-ALL TOTAL para Fiesta Latina (85-165 BPM)
+    // Ante la duda, ES CUMBIA. Prefiero neón a blanco.
+    if (bpm >= 85 && bpm <= 165) {
       return 'cumbia';
     }
     

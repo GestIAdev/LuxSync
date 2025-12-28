@@ -44,10 +44,10 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
       min: 2000,   // 🔥 WAVE 67: Más cálido (era 2500K)
       max: 4500,   // 🔥 WAVE 67: NUNCA frío - clamp a 4500K (era 5500K)
     },
-    // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Oro Máximo
-    // 3000K = Fuerza 0.7 hacia 40° (Oro/Fuego)
-    // Los hues fríos serán arrastrados hacia el espectro solar
-    atmosphericTemp: 3000,
+    // 🌡️ WAVE 156: THERMAL GRAVITY RELAJADA
+    // 4000K = Neutro-Cálido (era 3000K = imán de naranjas demasiado fuerte)
+    // Permite más verdes y amarillos sin perder la calidez
+    atmosphericTemp: 4000,
     
     // 🛡️ WAVE 155: NARANJA DE SEGURIDAD PROHIBIDO + Azul Rey/Índigo
     // El naranja puro (25-45°) es aburrido y corporativo
@@ -68,8 +68,8 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   // DROP CONSTRAINTS
   // ═══════════════════════════════════════════════════════════════
   drop: {
-    sensitivity: 0.55,        // 🔧 WAVE 152.5: Bajado de 0.8 - evita "Drop Eterno" en cumbia
-    energyThreshold: 0.25,    // 🔧 WAVE 152.5: Subido de 0.12 - requiere energía real, no güiro
+    sensitivity: 0.30,        // � WAVE 156: BAJADO A 0.30 - escapar del DROP eterno en RKT
+    energyThreshold: 0.35,    // � WAVE 156: Subido a 0.35 - requiere energía MUY REAL
     curves: {
       attack: 'ease-in',      // Build orgánico
       sustain: 'ease-in-out',
@@ -77,9 +77,9 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     },
     timing: {
       minAttack: 20,          // Drops rápidos OK
-      maxSustain: 240,        // 🔧 WAVE 152.5: Bajado de 480 a 4s - drops más cortos
-      releaseFrames: 30,      // 🔧 WAVE 152.5: Release más corto
-      cooldownFrames: 180,    // 🔧 WAVE 152.5: 3s entre drops (más selectivo)
+      maxSustain: 180,        // � WAVE 156: Bajado a 3s - drops MUY cortos
+      releaseFrames: 20,      // � WAVE 156: Release más corto
+      cooldownFrames: 240,    // � WAVE 156: 4s entre drops (MUY selectivo)
     },
     allowMicroDrops: true,    // ✅ Micro-drops para timbales/congas
   },

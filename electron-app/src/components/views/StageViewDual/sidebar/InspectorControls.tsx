@@ -49,6 +49,7 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
   const [inspectorDimmer, setInspectorDimmer] = useState(255)
   const [inspectorPan, setInspectorPan] = useState(270)
   const [inspectorTilt, setInspectorTilt] = useState(135)
+  const [inspectorSpeed, setInspectorSpeed] = useState(128) // 128 = velocidad media (0=MAX, 255=LENTO)
   
   // Determinar si hay moving heads en la selección
   const hasMovingHeads = useMemo(() => {
@@ -93,6 +94,12 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
     setInspectorPan(pan)
     setInspectorTilt(tilt)
     setMultipleOverrides(selectedArray, { pan, tilt })
+  }, [selectedArray, setMultipleOverrides])
+  
+  // Speed change (velocidad motores: 0=MAX, 255=LENTO)
+  const handleSpeedChange = useCallback((speed: number) => {
+    setInspectorSpeed(speed)
+    setMultipleOverrides(selectedArray, { speed })
   }, [selectedArray, setMultipleOverrides])
   
   // Release (limpiar overrides de selección)
@@ -176,6 +183,28 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
             tilt={inspectorTilt}
             onChange={handlePanTiltChange}
           />
+        </div>
+      )}
+      
+      {/* SPEED (solo si hay moving heads - ¡para que no exploten los motores!) */}
+      {hasMovingHeads && (
+        <div className="control-section">
+          <h4 className="section-title">⏱️ Velocidad Motores</h4>
+          <div className="speed-control">
+            <input
+              type="range"
+              min={0}
+              max={255}
+              value={inspectorSpeed}
+              onChange={(e) => handleSpeedChange(parseInt(e.target.value))}
+              className="speed-slider"
+            />
+            <div className="speed-labels">
+              <span className="speed-label fast">🚀 Rápido</span>
+              <span className="speed-value">{inspectorSpeed}</span>
+              <span className="speed-label slow">🐢 Lento</span>
+            </div>
+          </div>
         </div>
       )}
       

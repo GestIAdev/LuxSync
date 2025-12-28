@@ -139,3 +139,77 @@
 .action-btn.release-all:hover {
   background: rgba(255, 100, 100, 0.2);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⏱️ SPEED CONTROL - Velocidad de motores
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.speed-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.speed-slider {
+  width: 100%;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, 
+    #ff4444 0%,      /* Rápido = peligroso */
+    #ffaa00 30%,     /* Medio-rápido */
+    #00ff88 60%,     /* Medio = seguro */
+    #00aaff 100%     /* Lento = muy seguro */
+  );
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  border-radius: 50%;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  cursor: grab;
+  transition: transform 0.1s ease;
+}
+
+.speed-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.speed-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.speed-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.speed-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.speed-label.fast {
+  color: #ff4444;
+}
+
+.speed-label.slow {
+  color: #00aaff;
+}
+
+.speed-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #00ffff;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}

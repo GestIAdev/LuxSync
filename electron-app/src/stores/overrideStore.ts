@@ -42,6 +42,7 @@ export interface FixtureOverride {
   // Movimiento (cabezas móviles)
   pan?: number         // 0-540 (degrees)
   tilt?: number        // 0-270 (degrees)
+  speed?: number       // 0-255 (velocidad motores: 0=MAX, 255=LENTO - ¡protege los motores!)
   
   // Ópticos
   gobo?: number        // Índice de gobo

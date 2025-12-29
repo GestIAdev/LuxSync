@@ -1,29 +1,19 @@
 /**
- * 🌊 WAVE 237-243: ORCHESTRATOR MODULE
+ * WAVE 243.5: ORCHESTRATOR MODULE
  * 
  * Exporta todos los componentes del orquestador TITAN 2.0
  * 
  * @module orchestrator
  */
 
-// WAVE 237: IPC Handlers
+// WAVE 243.5: IPC Handlers (Simplified V2)
 export {
   setupIPCHandlers,
-  setupVibeHandlers,
-  setupAudioFrameHandlers,
 } from './IPCHandlers'
 
 export type {
   IPCDependencies,
-  IPCState,
-  IPCCallbacks,
-  PatchedFixture,
-  ManualOverride,
-  FixtureState,
   FixtureZone,
-  SeleneLuxInterface,
-  EffectsEngineInterface,
-  TrinityInterface,
 } from './IPCHandlers'
 
 // WAVE 240: Event Router
@@ -42,11 +32,10 @@ export type {
   HALModule,
 } from './EventRouter'
 
-// WAVE 243: Titan Orchestrator
+// WAVE 243.5: Titan Orchestrator (Simplified V2)
 export {
   TitanOrchestrator,
   getTitanOrchestrator,
-  resetTitanOrchestrator,
 } from './TitanOrchestrator'
 
 export type {

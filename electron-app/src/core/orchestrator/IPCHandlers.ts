@@ -1,1036 +1,543 @@
 /**
- * 🌊 WAVE 237: IPC HANDLER EXTRACTION
+ * WAVE 243.5: IPC HANDLERS - SIMPLIFIED V2
  * 
- * Centraliza todos los handlers IPC en un solo lugar.
- * Los handlers delegan a módulos especializados, no contienen lógica de negocio.
+ * Centraliza todos los handlers IPC.
+ * Recibe dependencias directamente desde main.ts V2.
  * 
  * @module IPCHandlers
  */
 
-import { ipcMain, BrowserWindow, desktopCapturer, app } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyFunction = (...args: any[]) => any
+// Type for zone (matches main.ts)
+export type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
 
 /**
- * Dependencias inyectadas para los handlers IPC
- * Usamos tipos genéricos para evitar acoplamiento con implementaciones específicas
+ * WAVE 243.5: Dependencias inyectadas directamente desde main.ts V2
  */
 export interface IPCDependencies {
-  // Getters para instancias dinámicas
-  getMainWindow: () => BrowserWindow | null
-  getSelene: () => SeleneLuxInterface | null
-  getEffectsEngine: () => EffectsEngineInterface | null
-  getTrinity: () => TrinityInterface | null
+  // Core instances (can be null during init)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mainWindow: BrowserWindow | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  selene: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  effectsEngine: any
   
-  // Módulos estáticos (any para flexibilidad)
+  // External services
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  configManager: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   universalDMX: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   artNetDriver: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  configManager: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   showManager: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fixturePhysicsDriver: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fxtParser: any
   
-  // Estado mutable
-  state: IPCState
+  // State arrays (passed by reference from main)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  patchedFixtures: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  manualOverrides: Map<number, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fixtureLibrary: any[]
   
-  // Callbacks para operaciones del sistema
-  callbacks: IPCCallbacks
-}
-
-/**
- * Interfaces mínimas para los módulos principales
- */
-export interface SeleneLuxInterface {
-  getState: () => Record<string, unknown> | null
-  setMode?: (mode: string) => void
-  setUseBrain?: (enabled: boolean) => void
-  setInputGain?: (gain: number) => void
-  setVibe?: (vibeId: string) => void
-  setLivingPalette?: (palette: string) => void
-  setMovementPattern?: (pattern: string) => void
-  setMovementSpeed?: (speed: number) => void
-  setMovementIntensity?: (intensity: number) => void
-  setGlobalColorParams?: (params: { saturation?: number; intensity?: number }) => void
-  processAudioFrame?: (data: Record<string, unknown>) => void
-  forceMutation?: () => void
-  resetMemory?: () => void
-  triggerEffect?: (name: string, params?: Record<string, unknown>) => void
-}
-
-export interface EffectsEngineInterface {
-  triggerEffect: (name: string, params?: Record<string, unknown>, duration?: number) => number
-  cancelEffect: (id: number | string) => void
-  cancelAllEffects: () => void
-}
-
-export interface TrinityInterface {
-  systemWake: () => void
-  systemSleep: () => void
-  enableBrain: () => void
-  disableBrain: () => void
-  setInputGain?: (gain: number) => void
-  getWorkerHealth?: () => Promise<Record<string, unknown>>
-  sendAudioBuffer?: (buffer: ArrayBuffer) => void
-  processAudioFrame?: (data: Record<string, unknown>) => void
-}
-
-/**
- * Estado mutable compartido
- */
-export interface IPCState {
-  patchedFixtures: PatchedFixture[]
-  manualOverrides: Map<string, ManualOverride>
-  blackoutActive: boolean
-  lastFixtureStatesForBroadcast: FixtureState[]
-  zoneCounters: { front: number; back: number; left: number; right: number; ground: number }
-}
-
-export type FixtureZone = 'front' | 'back' | 'left' | 'right' | 'ground'
-
-export interface PatchedFixture {
-  id: string
-  name: string
-  type: string
-  manufacturer: string
-  channelCount: number
-  dmxAddress: number
-  universe: number
-  zone: FixtureZone
-  filePath?: string
-}
-
-export interface ManualOverride {
-  pan?: number
-  tilt?: number
-  dimmer?: number
-  r?: number
-  g?: number
-  b?: number
-  timestamp: number
-}
-
-export interface FixtureState {
-  dmxAddress: number
-  universe: number
-  name: string
-  zone: string
-  type: string
-  dimmer: number
-  r: number
-  g: number
-  b: number
-  pan: number
-  tilt: number
-}
-
-/**
- * Callbacks para operaciones del sistema
- */
-export interface IPCCallbacks {
-  startMainLoop: () => void
-  stopMainLoop: () => void
-  initSeleneLux: () => void
-  autoAssignZone: (type: string, name: string) => FixtureZone
+  // Zone functions
+  autoAssignZone: (type: string | undefined, name?: string) => FixtureZone
+  resetZoneCounters: () => void
   recalculateZoneCounters: () => void
-  runSeleneDiagnostics: () => void
+  
+  // Dynamic getters/setters for mutable state
+  getMainWindow: () => BrowserWindow | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getPatchedFixtures: () => any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setPatchedFixtures: (fixtures: any[]) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getFixtureLibrary: () => any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setFixtureLibrary: (library: any[]) => void
 }
 
 /**
  * Registra todos los handlers IPC
  */
 export function setupIPCHandlers(deps: IPCDependencies): void {
-  console.log('[IPC] 📡 Setting up IPC handlers (WAVE 237)')
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // APP & SYSTEM HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  setupAppHandlers(deps)
-  setupAudioHandlers(deps)
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SELENE LUX HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════════
+  console.log('[IPC] Setting up IPC handlers (WAVE 243.5 V2)')
   
   setupSeleneLuxHandlers(deps)
-  setupPaletteHandlers(deps)
-  setupMovementHandlers(deps)
-  setupEffectsHandlers(deps)
+  setupEffectHandlers(deps)
   setupOverrideHandlers(deps)
-  setupStateHandlers(deps)
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // FIXTURE & PATCH HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════════
-  
+  setupConfigHandlers(deps)
   setupFixtureHandlers(deps)
   setupShowHandlers(deps)
-  setupConfigHandlers(deps)
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // DMX & ARTNET HANDLERS
-  // ═══════════════════════════════════════════════════════════════════════════
-  
   setupDMXHandlers(deps)
   setupArtNetHandlers(deps)
   
-  console.log('[IPC] ✅ All IPC handlers registered')
+  console.log('[IPC] All IPC handlers registered')
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HANDLER GROUPS
-// ═══════════════════════════════════════════════════════════════════════════
-
-function setupAppHandlers(deps: IPCDependencies): void {
-  ipcMain.handle('app:getVersion', () => {
-    return app.getVersion()
-  })
-}
-
-function setupAudioHandlers(deps: IPCDependencies): void {
-  ipcMain.handle('audio:getDevices', async () => {
-    return []
-  })
-
-  ipcMain.handle('audio:getDesktopSources', async () => {
-    try {
-      const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
-        thumbnailSize: { width: 0, height: 0 }
-      })
-      console.log('[IPC] Desktop sources found:', sources.length)
-      return sources.map(s => ({
-        id: s.id,
-        name: s.name,
-        displayId: s.display_id
-      }))
-    } catch (err) {
-      console.error('[IPC] Failed to get desktop sources:', err)
-      return []
-    }
-  })
-}
+// =============================================================================
+// SELENE LUX HANDLERS
+// =============================================================================
 
 function setupSeleneLuxHandlers(deps: IPCDependencies): void {
-  const { getSelene, getTrinity, callbacks, configManager, state } = deps
+  const { selene, configManager } = deps
   
   ipcMain.handle('lux:start', () => {
-    const selene = getSelene()
-    
-    if ((globalThis as Record<string, unknown>).__lux_isSystemRunning) {
-      console.log('[IPC] ⚠️ lux:start called but system already running - ignoring')
-      callbacks.startMainLoop()
-      
-      try {
-        const trinityRef = getTrinity()
-        if (trinityRef) {
-          trinityRef.systemWake()
-        }
-      } catch (e) {
-        console.warn('[IPC] ⚠️ Could not send SYSTEM_WAKE:', e)
-      }
-      
-      const savedConfig = configManager.getConfig()
-      const savedGain = savedConfig.audio?.inputGain ?? 1.0
-      return { success: true, alreadyRunning: true, inputGain: savedGain }
-    }
-    
-    if (!selene) {
-      callbacks.initSeleneLux()
-    }
-    
-    callbacks.startMainLoop()
-    ;(globalThis as Record<string, unknown>).__lux_isSystemRunning = true
-    
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.systemWake()
-      }
-    } catch (e) {
-      console.warn('[IPC] ⚠️ Could not get Trinity for SYSTEM_WAKE:', e)
-    }
-    
+    console.log('[IPC] lux:start - SeleneLux active via TitanOrchestrator')
     const savedConfig = configManager.getConfig()
-    const savedGain = savedConfig.audio?.inputGain ?? 1.0
-    
+    const savedGain = savedConfig?.audio?.inputGain ?? 1.0
     return { success: true, inputGain: savedGain }
   })
-
+  
   ipcMain.handle('lux:stop', () => {
-    callbacks.stopMainLoop()
-    ;(globalThis as Record<string, unknown>).__lux_isSystemRunning = false
-    
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.systemSleep()
-      }
-    } catch (e) {
-      console.warn('[IPC] ⚠️ Could not get Trinity for SYSTEM_SLEEP:', e)
-    }
-    
+    console.log('[IPC] lux:stop - Handled by TitanOrchestrator')
     return { success: true }
   })
-
-  ipcMain.handle('lux:set-mode', async (_event, mode: 'reactive' | 'intelligent') => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    selene.setMode(mode === 'reactive' ? 'flow' : 'selene')
-    selene.setUseBrain(mode === 'intelligent')
-    
-    let trinity: ReturnType<typeof getTrinity> | null = null
-    try {
-      trinity = getTrinity()
-    } catch {
-      console.log('[IPC] Trinity not initialized yet')
-    }
-    
-    if (mode === 'intelligent') {
-      selene.setUseBrain(true)
-      if (trinity) {
-        trinity.enableBrain()
-      }
-    } else {
-      selene.setUseBrain(false)
-      if (trinity) {
-        trinity.disableBrain()
-      }
-    }
-    
-    console.log(`[IPC] 🧠 Mode changed to: ${mode}`)
-    return { success: true, mode }
-  })
-
-  ipcMain.handle('lux:set-input-gain', (_event, value: number) => {
-    const selene = getSelene()
-    const clampedGain = Math.max(0, Math.min(3.0, value))
-    
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.setInputGain(clampedGain)
-      }
-    } catch (e) {
-      console.warn('[IPC] ⚠️ Could not set Trinity input gain:', e)
-    }
-    
+  
+  ipcMain.handle('lux:getState', () => {
     if (selene) {
-      selene.setInputGain(clampedGain)
+      return selene.getState?.() ?? null
     }
-    
-    // Persist to config
-    configManager.setConfig({
-      audio: {
-        ...configManager.getConfig().audio,
-        inputGain: clampedGain
-      }
-    })
-    
-    console.log(`[IPC] 🎚️ Input gain set to: ${clampedGain.toFixed(2)}`)
-    return { success: true, gain: clampedGain }
+    return null
   })
-
-  ipcMain.handle('lux:set-global-color-params', async (_event, params: { saturation?: number; intensity?: number }) => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
+  
+  ipcMain.handle('lux:setMode', (_event, mode: string) => {
+    console.log('[IPC] lux:setMode:', mode)
+    if (selene?.setMode) {
+      selene.setMode(mode)
     }
-    
-    try {
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setUseBrain', (_event, enabled: boolean) => {
+    console.log('[IPC] lux:setUseBrain:', enabled)
+    if (selene?.setUseBrain) {
+      selene.setUseBrain(enabled)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setInputGain', (_event, gain: number) => {
+    console.log('[IPC] lux:setInputGain:', gain)
+    if (selene?.setInputGain) {
+      selene.setInputGain(gain)
+    }
+    configManager.updateConfig({ audio: { inputGain: gain } })
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setVibe', (_event, vibeId: string) => {
+    console.log('[IPC] lux:setVibe:', vibeId)
+    if (selene?.setVibe) {
+      selene.setVibe(vibeId)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setLivingPalette', (_event, palette: string) => {
+    console.log('[IPC] lux:setLivingPalette:', palette)
+    if (selene?.setLivingPalette) {
+      selene.setLivingPalette(palette)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setMovementPattern', (_event, pattern: string) => {
+    console.log('[IPC] lux:setMovementPattern:', pattern)
+    if (selene?.setMovementPattern) {
+      selene.setMovementPattern(pattern)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setMovementSpeed', (_event, speed: number) => {
+    if (selene?.setMovementSpeed) {
+      selene.setMovementSpeed(speed)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setMovementIntensity', (_event, intensity: number) => {
+    if (selene?.setMovementIntensity) {
+      selene.setMovementIntensity(intensity)
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:setGlobalColorParams', (_event, params: { saturation?: number; intensity?: number }) => {
+    if (selene?.setGlobalColorParams) {
       selene.setGlobalColorParams(params)
-      console.log(`[IPC] 🎨 Global color params:`, params)
-      return { success: true, params }
-    } catch (err) {
-      console.error('[IPC] Failed to set global color params:', err)
-      return { success: false, error: String(err) }
     }
+    return { success: true }
   })
+  
+  ipcMain.handle('lux:forceMutation', () => {
+    if (selene?.forceMutation) {
+      selene.forceMutation()
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:resetMemory', () => {
+    if (selene?.resetMemory) {
+      selene.resetMemory()
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:audioFrame', (_event, data: Record<string, unknown>) => {
+    if (selene?.processAudioFrame) {
+      selene.processAudioFrame(data)
+    }
+    return true
+  })
+}
 
-  ipcMain.handle('lux:initialize-system', async () => {
-    console.log('[IPC] 🚀 Initializing LuxSync system...')
-    
-    if ((globalThis as Record<string, unknown>).__lux_isSystemRunning) {
-      console.log('[IPC] ⚠️ System already running')
-      return { success: true, alreadyRunning: true }
+// =============================================================================
+// EFFECT HANDLERS
+// =============================================================================
+
+function setupEffectHandlers(deps: IPCDependencies): void {
+  const { effectsEngine } = deps
+  
+  ipcMain.handle('lux:triggerEffect', (_event, name: string, params?: Record<string, unknown>) => {
+    if (effectsEngine?.triggerEffect) {
+      const id = effectsEngine.triggerEffect(name, params)
+      return { success: true, id }
     }
-    
-    callbacks.initSeleneLux()
-    callbacks.startMainLoop()
-    ;(globalThis as Record<string, unknown>).__lux_isSystemRunning = true
-    
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.systemWake()
-      }
-    } catch (e) {
-      console.warn('[IPC] ⚠️ Could not get Trinity:', e)
+    return { success: false }
+  })
+  
+  ipcMain.handle('lux:cancelEffect', (_event, id: number | string) => {
+    if (effectsEngine?.cancelEffect) {
+      effectsEngine.cancelEffect(id)
     }
-    
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:cancelAllEffects', () => {
+    if (effectsEngine?.cancelAllEffects) {
+      effectsEngine.cancelAllEffects()
+    }
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:blackout', (_event, enabled: boolean) => {
+    console.log('[IPC] lux:blackout:', enabled)
+    // TODO: Implement blackout via TitanOrchestrator
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:strobe', (_event, enabled: boolean, speed?: number) => {
+    console.log('[IPC] lux:strobe:', enabled, speed)
+    // TODO: Implement strobe via TitanOrchestrator
     return { success: true }
   })
 }
 
-function setupPaletteHandlers(deps: IPCDependencies): void {
-  const { getSelene } = deps
-  
-  ipcMain.handle('lux:set-palette', (_event, palette: string) => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    selene.setLivingPalette?.(palette)
-    console.log(`[IPC] 🎨 Palette set to: ${palette}`)
-    return { success: true, palette }
-  })
-}
-
-function setupMovementHandlers(deps: IPCDependencies): void {
-  const { getSelene } = deps
-  
-  ipcMain.handle('lux:set-movement', (_event, config: { pattern?: string; speed?: number; intensity?: number }) => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    if (config.pattern !== undefined) {
-      selene.setMovementPattern(config.pattern)
-    }
-    if (config.speed !== undefined) {
-      selene.setMovementSpeed(config.speed)
-    }
-    if (config.intensity !== undefined) {
-      selene.setMovementIntensity(config.intensity)
-    }
-    
-    console.log(`[IPC] 🌀 Movement config:`, config)
-    return { success: true, config }
-  })
-}
-
-function setupEffectsHandlers(deps: IPCDependencies): void {
-  const { getSelene, getEffectsEngine } = deps
-  
-  ipcMain.handle('lux:trigger-effect', (_event, data: { effectName: string; params?: Record<string, unknown>; duration?: number }) => {
-    const selene = getSelene()
-    const effectsEngine = getEffectsEngine()
-    
-    if (!selene && !effectsEngine) {
-      return { success: false, error: 'Neither Selene nor EffectsEngine initialized' }
-    }
-    
-    console.log(`[IPC] ⚡ Effect triggered: ${data.effectName}`, data.params)
-    
-    try {
-      if (effectsEngine) {
-        const effectId = effectsEngine.triggerEffect(data.effectName, data.params, data.duration)
-        return { success: true, effectId }
-      } else if (selene) {
-        selene.triggerEffect?.(data.effectName, data.params)
-        return { success: true }
-      }
-    } catch (err) {
-      console.error(`[IPC] ❌ Effect error:`, err)
-      return { success: false, error: String(err) }
-    }
-    
-    return { success: false, error: 'No effect engine available' }
-  })
-
-  ipcMain.handle('lux:cancel-effect', (_event, effectIdOrName: number | string) => {
-    const effectsEngine = getEffectsEngine()
-    
-    if (!effectsEngine) {
-      return { success: false, error: 'Effects engine not initialized' }
-    }
-    
-    try {
-      effectsEngine.cancelEffect(effectIdOrName)
-      console.log(`[IPC] ❌ Effect cancelled: ${effectIdOrName}`)
-      return { success: true }
-    } catch (err) {
-      console.error(`[IPC] ❌ Cancel effect error:`, err)
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('lux:cancel-all-effects', () => {
-    const effectsEngine = getEffectsEngine()
-    
-    if (!effectsEngine) {
-      return { success: false, error: 'Effects engine not initialized' }
-    }
-    
-    try {
-      effectsEngine.cancelAllEffects()
-      console.log('[IPC] ❌ All effects cancelled')
-      return { success: true }
-    } catch (err) {
-      console.error('[IPC] ❌ Cancel all effects error:', err)
-      return { success: false, error: String(err) }
-    }
-  })
-}
+// =============================================================================
+// OVERRIDE HANDLERS
+// =============================================================================
 
 function setupOverrideHandlers(deps: IPCDependencies): void {
-  const { getMainWindow, state } = deps
+  const { manualOverrides, getMainWindow } = deps
   
-  ipcMain.handle('override:set', (_event, fixtureId: string, values: Partial<Omit<ManualOverride, 'timestamp'>>) => {
-    const existing = state.manualOverrides.get(fixtureId) || { timestamp: 0 }
-    state.manualOverrides.set(fixtureId, {
-      ...existing,
-      ...values,
-      timestamp: Date.now()
-    })
-    console.log(`[IPC] 🕹️ Override ${fixtureId}: pan=${values.pan} tilt=${values.tilt} dimmer=${values.dimmer}`)
+  ipcMain.handle('lux:setManualOverride', (_event, fixtureId: number, overrides: Record<string, number>) => {
+    manualOverrides.set(fixtureId, overrides)
     return { success: true }
   })
-
-  ipcMain.handle('override:set-multiple', (_event, fixtureIds: string[], values: Partial<Omit<ManualOverride, 'timestamp'>>) => {
-    const now = Date.now()
-    for (const id of fixtureIds) {
-      const existing = state.manualOverrides.get(id) || { timestamp: 0 }
-      state.manualOverrides.set(id, {
-        ...existing,
-        ...values,
-        timestamp: now
-      })
-    }
-    console.log(`[IPC] 🕹️ Override ${fixtureIds.length} fixtures: pan=${values.pan} tilt=${values.tilt} dimmer=${values.dimmer}`)
+  
+  ipcMain.handle('lux:clearManualOverride', (_event, fixtureId: number) => {
+    manualOverrides.delete(fixtureId)
     return { success: true }
   })
-
-  ipcMain.handle('override:clear', (_event, fixtureId: string) => {
-    state.manualOverrides.delete(fixtureId)
-    console.log(`[IPC] 🔓 Released: ${fixtureId}`)
+  
+  ipcMain.handle('lux:clearAllManualOverrides', () => {
+    manualOverrides.clear()
     return { success: true }
   })
-
-  ipcMain.handle('override:clear-all', () => {
-    state.manualOverrides.clear()
-    console.log('[IPC] 🔓 Released ALL overrides')
-    return { success: true }
-  })
-
-  ipcMain.handle('lux:set-blackout', (_event, active: boolean) => {
-    state.blackoutActive = active
-    console.log(`[IPC] 🔲 Blackout: ${active ? 'ON' : 'OFF'}`)
-    
-    const mainWindow = getMainWindow()
-    if (mainWindow) {
-      mainWindow.webContents.send('lux:blackout-changed', active)
-    }
-    
-    return { success: true, blackout: active }
+  
+  ipcMain.handle('lux:getManualOverrides', () => {
+    return Object.fromEntries(manualOverrides)
   })
 }
 
-function setupStateHandlers(deps: IPCDependencies): void {
-  const { getSelene, getTrinity, universalDMX, state } = deps
-  
-  ipcMain.handle('lux:get-state', () => {
-    const selene = getSelene()
-    if (!selene) return null
-    return selene.getState()
-  })
-
-  ipcMain.handle('lux:get-full-state', () => {
-    const selene = getSelene()
-    const seleneState = selene ? selene.getState() : null
-    
-    let trinity: ReturnType<typeof getTrinity> | null = null
-    try {
-      trinity = getTrinity()
-    } catch {
-      // Trinity not initialized
-    }
-    
-    return {
-      dmx: {
-        isConnected: universalDMX.isConnected,
-        status: universalDMX.isConnected ? 'connected' : 'disconnected',
-        driver: universalDMX.device?.friendlyName || null,
-        port: universalDMX.device?.path || null,
-      },
-      selene: {
-        isRunning: selene !== null,
-        mode: seleneState?.mode || null,
-        brainMode: seleneState?.brainMode || null,
-        paletteSource: seleneState?.paletteSource || null,
-        consciousness: seleneState?.consciousness || null,
-      },
-      audio: {
-        hasWorkers: trinity !== null,
-      },
-    }
-  })
-
-  ipcMain.handle('selene:getBrainStats', async () => {
-    try {
-      const trinityRef = getTrinity()
-      if (!trinityRef) {
-        return { success: false, error: 'Trinity not initialized' }
-      }
-      
-      const health = await trinityRef.getWorkerHealth()
-      return {
-        success: true,
-        stats: {
-          frameCount: health.frameCount || 0,
-          messagesProcessed: health.messagesProcessed || 0,
-          uptime: health.uptime || 0,
-          lastUpdate: health.lastUpdate || Date.now(),
-          errors: health.errors || [],
-        }
-      }
-    } catch (err) {
-      console.error('[IPC] Failed to get brain stats:', err)
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('selene:force-mutate', () => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    try {
-      selene.forceMutation?.()
-      console.log('[IPC] 🧬 Forced mutation triggered')
-      return { success: true }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('selene:reset-memory', () => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    try {
-      selene.resetMemory?.()
-      console.log('[IPC] 🧹 Memory reset')
-      return { success: true }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  })
-}
-
-function setupFixtureHandlers(deps: IPCDependencies): void {
-  const { getMainWindow, configManager, state, callbacks } = deps
-  
-  ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
-    // Delegate to fixture scanner logic
-    console.log('[IPC] 🔍 Scanning fixtures...', customPath ? `Custom path: ${customPath}` : '')
-    // Implementation delegated to fixture module
-    return { success: true, fixtures: [] }
-  })
-
-  ipcMain.handle('lux:get-fixture-library', () => {
-    return configManager.getFixtureLibrary?.() || []
-  })
-
-  ipcMain.handle('lux:get-patched-fixtures', () => {
-    return state.patchedFixtures
-  })
-
-  ipcMain.handle('lux:patch-fixture', (_event, data: { fixtureId: string; dmxAddress: number; universe?: number; zone?: FixtureZone }) => {
-    // Patching logic delegated
-    console.log(`[IPC] 📍 Patching fixture ${data.fixtureId} at DMX ${data.dmxAddress}`)
-    return { success: true }
-  })
-
-  ipcMain.handle('lux:unpatch-fixture', (_event, dmxAddress: number) => {
-    const idx = state.patchedFixtures.findIndex(f => f.dmxAddress === dmxAddress)
-    if (idx >= 0) {
-      state.patchedFixtures.splice(idx, 1)
-      callbacks.recalculateZoneCounters()
-      configManager.setConfig({ patchedFixtures: state.patchedFixtures })
-      console.log(`[IPC] 🗑️ Unpatched fixture at DMX ${dmxAddress}`)
-      return { success: true }
-    }
-    return { success: false, error: 'Fixture not found' }
-  })
-
-  ipcMain.handle('lux:force-fixture-type', (_event, dmxAddress: number, newType: string) => {
-    const fixture = state.patchedFixtures.find(f => f.dmxAddress === dmxAddress)
-    if (fixture) {
-      fixture.type = newType
-      fixture.zone = callbacks.autoAssignZone(newType, fixture.name)
-      callbacks.recalculateZoneCounters()
-      configManager.setConfig({ patchedFixtures: state.patchedFixtures })
-      console.log(`[IPC] 🔧 Forced fixture type at DMX ${dmxAddress} to: ${newType}`)
-      return { success: true, fixture }
-    }
-    return { success: false, error: 'Fixture not found' }
-  })
-
-  ipcMain.handle('lux:set-installation', (_event, installationType: 'ceiling' | 'floor') => {
-    configManager.setConfig({ installationType })
-    console.log(`[IPC] 🏗️ Installation type set to: ${installationType}`)
-    return { success: true, installationType }
-  })
-
-  ipcMain.handle('lux:clear-patch', () => {
-    state.patchedFixtures.length = 0
-    state.zoneCounters = { front: 0, back: 0, left: 0, right: 0, ground: 0 }
-    configManager.setConfig({ patchedFixtures: [] })
-    console.log('[IPC] 🗑️ Patch cleared')
-    return { success: true }
-  })
-
-  ipcMain.handle('lux:save-fixture-definition', async (_event, def: Record<string, unknown>) => {
-    console.log('[IPC] 💾 Saving fixture definition:', def.name)
-    return { success: true }
-  })
-}
-
-function setupShowHandlers(deps: IPCDependencies): void {
-  const { showManager, state, configManager, callbacks, getMainWindow } = deps
-  
-  ipcMain.handle('lux:new-show', () => {
-    state.patchedFixtures.length = 0
-    state.zoneCounters = { front: 0, back: 0, left: 0, right: 0, ground: 0 }
-    configManager.setConfig({ patchedFixtures: [] })
-    console.log('[IPC] 📄 New show created')
-    return { success: true }
-  })
-
-  ipcMain.handle('lux:list-shows', () => {
-    return showManager.listShows()
-  })
-
-  ipcMain.handle('lux:save-show', (_event, data: { name: string; description: string }) => {
-    return showManager.saveShow(data.name, data.description, state.patchedFixtures)
-  })
-
-  ipcMain.handle('lux:load-show', async (_event, filename: string) => {
-    try {
-      const result = showManager.loadShow(filename)
-      if (result.success && result.show) {
-        state.patchedFixtures.length = 0
-        state.patchedFixtures.push(...(result.show.fixtures || []))
-        callbacks.recalculateZoneCounters()
-        configManager.setConfig({ patchedFixtures: state.patchedFixtures })
-        
-        const mainWindow = getMainWindow()
-        if (mainWindow) {
-          mainWindow.webContents.send('lux:fixtures-updated', state.patchedFixtures)
-        }
-        
-        console.log(`[IPC] 📂 Loaded show: ${filename}`)
-      }
-      return result
-    } catch (err) {
-      console.error('[IPC] Failed to load show:', err)
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('lux:delete-show', (_event, filename: string) => {
-    return showManager.deleteShow(filename)
-  })
-
-  ipcMain.handle('lux:create-show', (_event, data: { name: string; description?: string }) => {
-    return showManager.saveShow(data.name, data.description || '', state.patchedFixtures)
-  })
-
-  ipcMain.handle('lux:get-shows-path', () => {
-    return showManager.getShowsPath()
-  })
-}
+// =============================================================================
+// CONFIG HANDLERS
+// =============================================================================
 
 function setupConfigHandlers(deps: IPCDependencies): void {
   const { configManager } = deps
   
-  ipcMain.handle('lux:get-config', () => {
+  ipcMain.handle('config:get', () => {
     return configManager.getConfig()
   })
-
-  ipcMain.handle('lux:save-config', (_event, config: Parameters<typeof configManager.setConfig>[0]) => {
-    configManager.setConfig(config)
+  
+  ipcMain.handle('config:set', (_event, config: Record<string, unknown>) => {
+    configManager.updateConfig(config)
     return { success: true }
   })
-
-  ipcMain.handle('lux:reset-config', () => {
-    configManager.resetConfig?.()
+  
+  ipcMain.handle('config:save', () => {
+    configManager.forceSave()
     return { success: true }
-  })
-
-  ipcMain.handle('lux:get-loaded-config', () => {
-    return configManager.getConfig()
   })
 }
 
+// =============================================================================
+// FIXTURE HANDLERS
+// =============================================================================
+
+function setupFixtureHandlers(deps: IPCDependencies): void {
+  const { 
+    fxtParser, 
+    getPatchedFixtures, 
+    setPatchedFixtures, 
+    getFixtureLibrary, 
+    setFixtureLibrary,
+    autoAssignZone,
+    resetZoneCounters,
+    recalculateZoneCounters,
+    configManager,
+    getMainWindow 
+  } = deps
+  
+  ipcMain.handle('fixtures:scanLibrary', async (_event, folderPath: string) => {
+    try {
+      const fixtures = await fxtParser.scanFolder(folderPath)
+      setFixtureLibrary(fixtures)
+      return { success: true, fixtures }
+    } catch (err) {
+      console.error('[IPC] fixtures:scanLibrary error:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+  
+  ipcMain.handle('fixtures:getLibrary', () => {
+    return getFixtureLibrary()
+  })
+  
+  ipcMain.handle('fixtures:getPatch', () => {
+    return getPatchedFixtures()
+  })
+  
+  ipcMain.handle('fixtures:addToPatch', (_event, fixture: Record<string, unknown>, dmxAddress: number, universe: number) => {
+    const patchedFixtures = getPatchedFixtures()
+    const zone = autoAssignZone(fixture.type as string, fixture.name as string)
+    
+    const patched = {
+      ...fixture,
+      dmxAddress,
+      universe,
+      zone
+    }
+    
+    patchedFixtures.push(patched)
+    configManager.updateConfig({ patchedFixtures })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+    }
+    
+    return { success: true, fixture: patched }
+  })
+  
+  ipcMain.handle('fixtures:removeFromPatch', (_event, fixtureId: string) => {
+    const patchedFixtures = getPatchedFixtures()
+    const index = patchedFixtures.findIndex((f: { id: string }) => f.id === fixtureId)
+    
+    if (index !== -1) {
+      patchedFixtures.splice(index, 1)
+      recalculateZoneCounters()
+      configManager.updateConfig({ patchedFixtures })
+      
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+      }
+      
+      return { success: true }
+    }
+    
+    return { success: false, error: 'Fixture not found' }
+  })
+  
+  ipcMain.handle('fixtures:clearPatch', () => {
+    setPatchedFixtures([])
+    resetZoneCounters()
+    configManager.updateConfig({ patchedFixtures: [] })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', [])
+    }
+    
+    return { success: true }
+  })
+  
+  ipcMain.handle('fixtures:updateAddress', (_event, fixtureId: string, dmxAddress: number, universe: number) => {
+    const patchedFixtures = getPatchedFixtures()
+    const fixture = patchedFixtures.find((f: { id: string }) => f.id === fixtureId)
+    
+    if (fixture) {
+      fixture.dmxAddress = dmxAddress
+      fixture.universe = universe
+      configManager.updateConfig({ patchedFixtures })
+      return { success: true }
+    }
+    
+    return { success: false, error: 'Fixture not found' }
+  })
+}
+
+// =============================================================================
+// SHOW HANDLERS
+// =============================================================================
+
+function setupShowHandlers(deps: IPCDependencies): void {
+  const { showManager, getPatchedFixtures, setPatchedFixtures, configManager, getMainWindow, resetZoneCounters, autoAssignZone, recalculateZoneCounters } = deps
+  
+  ipcMain.handle('shows:list', async () => {
+    return showManager.listShows()
+  })
+  
+  ipcMain.handle('shows:save', async (_event, name: string) => {
+    const patchedFixtures = getPatchedFixtures()
+    return showManager.saveShow(name, { fixtures: patchedFixtures })
+  })
+  
+  ipcMain.handle('shows:load', async (_event, name: string) => {
+    const show = await showManager.loadShow(name)
+    
+    if (show?.fixtures) {
+      resetZoneCounters()
+      const fixtures = show.fixtures.map((f: Record<string, unknown>) => ({
+        ...f,
+        zone: autoAssignZone(f.type as string, f.name as string)
+      }))
+      setPatchedFixtures(fixtures)
+      recalculateZoneCounters()
+      configManager.updateConfig({ patchedFixtures: fixtures })
+      
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('lux:fixtures-loaded', fixtures)
+      }
+    }
+    
+    return { success: true }
+  })
+  
+  ipcMain.handle('shows:delete', async (_event, name: string) => {
+    return showManager.deleteShow(name)
+  })
+}
+
+// =============================================================================
+// DMX HANDLERS
+// =============================================================================
+
 function setupDMXHandlers(deps: IPCDependencies): void {
-  const { universalDMX, getMainWindow, state } = deps
+  const { universalDMX, getMainWindow } = deps
   
   ipcMain.handle('dmx:getStatus', () => {
-    return { connected: universalDMX.isConnected, interface: universalDMX.device?.friendlyName || 'none' }
+    return {
+      connected: universalDMX.isConnected,
+      interface: universalDMX.currentDevice || 'none'
+    }
   })
-
-  ipcMain.handle('dmx:list-devices', async () => {
+  
+  ipcMain.handle('dmx:scan', async () => {
     try {
-      const devices = await universalDMX.listDevices()
+      const devices = await universalDMX.scanDevices()
       return { success: true, devices }
     } catch (err) {
-      console.error('[IPC] DMX list devices error:', err)
-      return { success: false, error: String(err), devices: [] }
+      return { success: false, error: String(err) }
     }
   })
-
-  ipcMain.handle('dmx:auto-connect', async () => {
+  
+  ipcMain.handle('dmx:connect', async (_event, devicePath: string) => {
     try {
-      const result = await universalDMX.autoConnect()
-      if (result) {
-        console.log('[IPC] 🔌 DMX auto-connected')
+      await universalDMX.connect(devicePath)
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('dmx:connected', universalDMX.currentDevice)
       }
-      return { success: result, connected: universalDMX.isConnected }
+      return { success: true }
     } catch (err) {
-      console.error('[IPC] DMX auto-connect error:', err)
       return { success: false, error: String(err) }
     }
   })
-
-  ipcMain.handle('dmx:connect', async (_event, portPath: string) => {
-    try {
-      const result = await universalDMX.connect(portPath)
-      return { success: result, connected: universalDMX.isConnected }
-    } catch (err) {
-      console.error('[IPC] DMX connect error:', err)
-      return { success: false, error: String(err) }
-    }
-  })
-
+  
   ipcMain.handle('dmx:disconnect', async () => {
     try {
       await universalDMX.disconnect()
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('dmx:disconnected')
+      }
       return { success: true }
     } catch (err) {
-      console.error('[IPC] DMX disconnect error:', err)
       return { success: false, error: String(err) }
     }
   })
-
-  ipcMain.handle('dmx:get-status', () => {
-    return {
-      isConnected: universalDMX.isConnected,
-      device: universalDMX.device,
-    }
-  })
-
-  ipcMain.handle('dmx:blackout', () => {
-    state.blackoutActive = true
-    console.log('[IPC] 🔲 DMX Blackout')
+  
+  ipcMain.handle('dmx:sendChannel', (_event, channel: number, value: number) => {
+    universalDMX.setChannel(channel, value)
     return { success: true }
   })
-
-  ipcMain.handle('dmx:highlight-fixture', async (_event, startChannel: number, channelCount: number, isMovingHead: boolean) => {
-    console.log(`[IPC] 💡 Highlight fixture at DMX ${startChannel}, ${channelCount} channels`)
-    // Highlight logic delegated to driver
+  
+  ipcMain.handle('dmx:sendFrame', (_event, frame: number[]) => {
+    universalDMX.sendFrame(frame)
     return { success: true }
   })
 }
 
+// =============================================================================
+// ARTNET HANDLERS
+// =============================================================================
+
 function setupArtNetHandlers(deps: IPCDependencies): void {
-  const { artNetDriver, getMainWindow } = deps
+  const { artNetDriver } = deps
+  
+  ipcMain.handle('artnet:getStatus', () => {
+    return artNetDriver.getStatus()
+  })
   
   ipcMain.handle('artnet:start', async (_event, config?: { ip?: string; port?: number; universe?: number }) => {
     try {
-      await artNetDriver.start(config)
-      return { success: true, ...artNetDriver.getStatus() }
+      if (config) {
+        artNetDriver.configure(config)
+      }
+      const success = await artNetDriver.start()
+      return { success, status: artNetDriver.getStatus() }
     } catch (err) {
-      console.error('[IPC] ArtNet start error:', err)
       return { success: false, error: String(err) }
     }
   })
-
+  
   ipcMain.handle('artnet:stop', async () => {
     try {
       await artNetDriver.stop()
-      return { success: true }
+      return { success: true, status: artNetDriver.getStatus() }
     } catch (err) {
-      console.error('[IPC] ArtNet stop error:', err)
       return { success: false, error: String(err) }
     }
   })
-
+  
   ipcMain.handle('artnet:configure', (_event, config: { ip?: string; port?: number; universe?: number; refreshRate?: number }) => {
     try {
       artNetDriver.configure(config)
       return { success: true, config: artNetDriver.currentConfig }
     } catch (err) {
-      console.error('[IPC] ArtNet configure error:', err)
       return { success: false, error: String(err) }
     }
-  })
-
-  ipcMain.handle('artnet:get-status', () => {
-    return {
-      success: true,
-      ...artNetDriver.getStatus()
-    }
-  })
-  
-  // ArtNet events to renderer
-  const mainWindow = getMainWindow()
-  
-  artNetDriver.on('ready', () => {
-    console.log('[IPC] 🎨 ArtNet Ready')
-    mainWindow?.webContents.send('artnet:ready', artNetDriver.getStatus())
-  })
-
-  artNetDriver.on('error', (error: Error) => {
-    console.error('[IPC] ❌ ArtNet Error:', error.message)
-    mainWindow?.webContents.send('artnet:error', error.message)
-  })
-
-  artNetDriver.on('disconnected', () => {
-    console.log('[IPC] 🔌 ArtNet Disconnected')
-    mainWindow?.webContents.send('artnet:disconnected')
-  })
-}
-
-// Additional handlers that need special setup
-export function setupVibeHandlers(deps: IPCDependencies): void {
-  const { getSelene, getTrinity } = deps
-  
-  ipcMain.handle('selene:setVibe', async (_event, vibeId: string) => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    try {
-      selene.setVibe?.(vibeId)
-      console.log(`[IPC] 🎭 Vibe set to: ${vibeId}`)
-      return { success: true, vibeId }
-    } catch (err) {
-      console.error('[IPC] Failed to set vibe:', err)
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('selene:getVibe', async () => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    try {
-      const state = selene.getState()
-      return { success: true, vibeId: state?.vibe || 'pop-rock' }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  })
-
-  ipcMain.handle('selene:setMode', async (_event, uiMode: 'flow' | 'selene' | 'locked') => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    console.log(`[IPC] 🎚️ BIG SWITCH: ${uiMode.toUpperCase()}`)
-    
-    let trinity: ReturnType<typeof getTrinity> | null = null
-    try {
-      trinity = getTrinity()
-    } catch {
-      console.log('[IPC] Trinity not initialized yet - worker commands skipped')
-    }
-    
-    let result: { success: boolean; mode?: string; brain?: boolean; error?: string }
-    
-    switch (uiMode) {
-      case 'flow':
-        selene.setMode('flow')
-        selene.setUseBrain(false)
-        if (trinity) {
-          trinity.disableBrain()
-        }
-        console.log('[IPC] 🔄 FLOW MODE - Reactive lighting, no AI')
-        result = { success: true, mode: 'flow', brain: false }
-        break
-        
-      case 'selene':
-        selene.setMode('selene')
-        selene.setUseBrain(true)
-        if (trinity) {
-          trinity.enableBrain()
-        }
-        console.log('[IPC] 🧠 SELENE MODE - AI-driven lighting')
-        result = { success: true, mode: 'selene', brain: true }
-        break
-        
-      case 'locked':
-        selene.setMode('locked')
-        selene.setUseBrain(false)
-        if (trinity) {
-          trinity.disableBrain()
-        }
-        console.log('[IPC] 🔒 LOCKED MODE - Manual control only')
-        result = { success: true, mode: 'locked', brain: false }
-        break
-        
-      default:
-        result = { success: false, error: `Unknown mode: ${uiMode}` }
-    }
-    
-    return result
-  })
-}
-
-export function setupAudioFrameHandlers(deps: IPCDependencies): void {
-  const { getTrinity, getSelene } = deps
-  
-  ipcMain.handle('lux:audio-buffer', (_event, bufferData: ArrayBuffer) => {
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.sendAudioBuffer(bufferData)
-      }
-    } catch (e) {
-      console.warn('[IPC] ⚠️ Could not send audio buffer:', e)
-    }
-    return { success: true }
-  })
-
-  ipcMain.handle('lux:audio-frame', (_event, audioData: {
-    bass: number
-    mid: number
-    high: number
-    energy: number
-    frequencyBands: number[]
-    waveform: number[]
-  }) => {
-    const selene = getSelene()
-    if (!selene) {
-      return { success: false, error: 'Selene not initialized' }
-    }
-    
-    try {
-      const trinityRef = getTrinity()
-      if (trinityRef) {
-        trinityRef.processAudioFrame(audioData)
-      }
-    } catch (e) {
-      // Trinity not available, use selene directly
-    }
-    
-    selene.processAudioFrame?.(audioData)
-    return { success: true }
   })
 }

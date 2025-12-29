@@ -113,10 +113,12 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   atmosphericTemp: 5000,
   
   // Zona prohibida: azules metálicos corporativos
-  forbiddenHueRanges: [[200, 240]],
+  // 🌿 WAVE 160: Eliminado - todo permitido
+  forbiddenHueRanges: undefined,
   
-  // Permitido: cálidos + selva + magenta
-  allowedHueRanges: [[0, 60], [120, 195], [280, 330]],
+  // 🌿 WAVE 160: SIN RESTRICCIONES DE HUE
+  // Antes: Favorecer 0-60° causaba monopolio naranja
+  allowedHueRanges: undefined,
   
   // Elastic Rotation estándar
   elasticRotation: 15,
@@ -127,20 +129,21 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   // Luminosidad brillante
   lightnessRange: [45, 65],
   
-  // Anti-Barro: proteger zona pantanosa
+  // 🌿 WAVE 160: MudGuard desactivado - restringía colores
   mudGuard: {
-    enabled: true,
-    swampZone: [40, 75],       // Naranja/oliva
-    minLightness: 55,          // L mínimo en pantano
-    minSaturation: 85,         // S mínimo en pantano
+    enabled: false,
+    swampZone: [40, 75],
+    minLightness: 55,
+    minSaturation: 85,
   },
   
   // Tropical Mirror: Ambient = Secondary + 180°
   tropicalMirror: true,
   
-  // Solar Flare: flash dorado cálido
-  accentBehavior: 'solar-flare',
-  solarFlareAccent: { h: 40, s: 10, l: 95 },
+  // 🌿 WAVE 160: Accent quaternary en vez de Solar Flare blanco
+  // Antes: Solar Flare con S=10, L=95 = blanco lavado
+  accentBehavior: 'quaternary',  // Colores variados en accent
+  solarFlareAccent: { h: 40, s: 80, l: 60 },  // Oro vibrante si se usa
   
   // Dimming suave
   dimmingConfig: {

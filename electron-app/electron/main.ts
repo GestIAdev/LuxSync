@@ -671,8 +671,9 @@ function calculateMoverTarget(
   }
   
   // B. DETECTAR SI ES GÉNERO DENSO (Techno/Latino/Pop)
+  // 🌿 WAVE 160: Arreglado - buscamos 'Latin' para matchear 'Fiesta Latina'
   const isHighDensity = preset.name.includes('Techno') || 
-                        preset.name.includes('Latino') ||
+                        preset.name.toLowerCase().includes('latin') ||
                         preset.name.includes('Pop');
   
   // C. MASKING (Solo para Dubstep/Chill)
@@ -1219,10 +1220,8 @@ function startMainLoop() {
               // 🏛️ WAVE 119: AGC TRAP - Aplicar dimmer global
               targetIntensity *= vantaBlackDimmer;
               
-              // 🔍 WAVE 117.1: BACK PAR AUDIT
-              if (Math.random() < 0.02 && targetIntensity > 0.2) {
-                console.log(`[BACK_PAR] RawT:${rawTreble.toFixed(2)} | Pulse:${treblePulse.toFixed(2)} | Boost:${pulseBoost} | Target:${targetIntensity.toFixed(2)}`);
-              }
+              // 🔍 WAVE 160: Log desactivado para reducir ruido
+              // El BACK_PAR log no ofrece información relevante
             }
           }
           
@@ -1281,8 +1280,7 @@ function startMainLoop() {
             intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
           }
           
-          // 🏛️ WAVE 119: VANTA BLACK - AGC TRAP para Movers
-          intensity *= vantaBlackDimmer;
+          // � WAVE 160: REMOVIDO vantaBlackDimmer duplicado (ya aplicado arriba en targetMover)
           
           fixtureColor = secondary;
           break;
@@ -1428,17 +1426,8 @@ function startMainLoop() {
       console.log(`[LUX_DEBUG] Mode:${mode} | RAW[B:${rawBass.toFixed(2)} M:${rawMid.toFixed(2)} T:${rawTreble.toFixed(2)}] | Pulse:${bassPulse.toFixed(2)} Floor:${bassFloor.toFixed(2)} | MelDom:${isMelodyDominant ? 'Y' : 'N'} | PAR:${parOut} MOV:${moverOut}`)
     }
     
-    // 🔍 WAVE 153.1: DIAGNÓSTICO PARA DIM:0
-    if (frameIndex % 200 === 0) {
-      console.log(`[DIM_DEBUG] useRealAudio:${useRealAudio} isSilence:${isSilence} vantaBlackDimmer:${vantaBlackDimmer} isAGCTrap:${isAGCTrap}`)
-      console.log(`[DIM_DEBUG] Fixtures: ${patchedFixtures.map(f => `${f.name}@${f.dmxAddress}[${f.zone || 'NO_ZONE'}]`).join(', ')}`)
-      const movingFixture = fixtureStates.find(f => f.zone.includes('MOVING'))
-      if (movingFixture) {
-        console.log(`[DIM_DEBUG] Moving fixture: zone=${movingFixture.zone} dimmer=${movingFixture.dimmer} RGB=(${movingFixture.r},${movingFixture.g},${movingFixture.b})`)
-      } else {
-        console.log(`[DIM_DEBUG] ⚠️ NO MOVING fixtures found! Zones: ${fixtureStates.map(f => f.zone).join(', ')}`)
-      }
-    }
+    // 🔍 WAVE 160: Logs desactivados para reducir ruido
+    // DIM_DEBUG fue útil para la fiesta pero ya no es necesario
     
     // 🌈 WAVE 25.5: Guardar para broadcast de verdad
     lastFixtureStatesForBroadcast = fixtureStates
@@ -2508,11 +2497,12 @@ ipcMain.handle('lux:audio-frame', (_event, audioData: {
   bpm?: number
   fftBins?: number[]  // 🎯 WAVE 39.1: FFT bins para visualización
 }) => {
-  // 🔍 DEBUG: Log cada 100 frames para verificar que audio llega
+  // 🔍 WAVE 160: Log desactivado para reducir ruido
   audioFrameCounter++
-  if (audioFrameCounter % 100 === 0) {
-    console.log(`[Audio] 🎵 Frame #${audioFrameCounter} | B:${audioData.bass.toFixed(2)} M:${audioData.mid.toFixed(2)} T:${audioData.treble.toFixed(2)} E:${audioData.energy.toFixed(2)}`)
-  }
+  // Log cada 500 frames (mucho menos frecuente)
+  // if (audioFrameCounter % 500 === 0) {
+  //   console.log(`[Audio] 🎵 Frame #${audioFrameCounter} | B:${audioData.bass.toFixed(2)} M:${audioData.mid.toFixed(2)} T:${audioData.treble.toFixed(2)} E:${audioData.energy.toFixed(2)}`)
+  // }
   
   // WAVE 3: Update current audio data for main loop (SeleneLux legacy)
   currentAudioData = {

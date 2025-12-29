@@ -16,6 +16,7 @@
 import { VIBE_FIESTA_LATINA } from './profiles/FiestaLatinaProfile'
 import { VIBE_TECHNO_CLUB } from './profiles/TechnoClubProfile'
 import { VIBE_CHILL_LOUNGE } from './profiles/ChillLoungeProfile'
+import { VIBE_POP_ROCK } from './profiles/PopRockProfile'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -23,8 +24,9 @@ import { VIBE_CHILL_LOUNGE } from './profiles/ChillLoungeProfile'
 
 /**
  * Identificadores de Vibe disponibles
+ * 🏛️ WAVE 222.5: Añadido 'pop-rock'
  */
-export type VibeId = 'fiesta-latina' | 'techno-club' | 'chill-lounge' | 'idle'
+export type VibeId = 'fiesta-latina' | 'techno-club' | 'chill-lounge' | 'pop-rock' | 'idle'
 
 /**
  * Perfil de Vibe completo (copiado de VibeProfile.ts pero simplificado)
@@ -119,6 +121,7 @@ const VIBE_IDLE: VibeProfile = {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REGISTRO DE VIBES
+// 🏛️ WAVE 222.5: Añadido PopRock
 // ═══════════════════════════════════════════════════════════════════════════
 
 const VIBE_REGISTRY: Map<VibeId, VibeProfile> = new Map([
@@ -126,6 +129,7 @@ const VIBE_REGISTRY: Map<VibeId, VibeProfile> = new Map([
   ['fiesta-latina', VIBE_FIESTA_LATINA],
   ['techno-club', VIBE_TECHNO_CLUB],
   ['chill-lounge', VIBE_CHILL_LOUNGE],
+  ['pop-rock', VIBE_POP_ROCK],
 ])
 
 // ═══════════════════════════════════════════════════════════════════════════

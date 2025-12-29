@@ -1,5 +1,5 @@
 /**
- * 🎭 WAVE 220: VIBE MODULE INDEX
+ * 🎭 WAVE 222.5: VIBE MODULE INDEX
  * @layer ENGINE/VIBE
  */
 
@@ -10,3 +10,4 @@ export type { VibeId, VibeProfile } from './VibeManager'
 export { VIBE_FIESTA_LATINA } from './profiles/FiestaLatinaProfile'
 export { VIBE_TECHNO_CLUB } from './profiles/TechnoClubProfile'
 export { VIBE_CHILL_LOUNGE } from './profiles/ChillLoungeProfile'
+export { VIBE_POP_ROCK } from './profiles/PopRockProfile'

@@ -9,7 +9,7 @@
  * 1. ELIMINADO 'analogous' de strategies - El Arbiter ya no puede forzar monotonía
  * 2. atmosphericTemp 4800K - "Ricitos de Oro" ni muy caliente ni muy frío
  * 3. melodyThreshold 0.35 - Ignora ruido de fondo, solo melodía real
- * 4. dimmer.floor 0.05 - Oscuridad 3D real entre notas
+ * 4. dimmer.floor 0.0 - SIN FLOOR, DELTA máximo para 3D real
  * 5. volatility 0.9 - Máxima volatilidad para cambios rápidos
  * 
  * FILOSOFÍA:
@@ -83,10 +83,10 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   },
 
   dimmer: {
-    // 🌑 WAVE 161: OSCURIDAD 3D
-    // Suelo en 5% para que cuando se apaguen, sea casi negro.
-    // Esto crea los "huecos" visuales que dan profundidad 3D.
-    floor: 0.05,
+    // 🌑 WAVE 162: SIN FLOOR - DELTA MÁXIMO
+    // El usuario quiere "música en 3D" = subidas y bajadas brutales.
+    // Floor 0.0 = oscuridad TOTAL cuando no hay señal = máximo impacto.
+    floor: 0.0,
     ceiling: 1.0,
     allowBlackout: true,
     transitionSpeed: 'fast',

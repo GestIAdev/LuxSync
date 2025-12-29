@@ -378,34 +378,38 @@ export class LatinoStereoPhysics {
       this.lastBass = bassPulse;
       
       // =====================================================================
-      // 🌈 WAVE 161 + 161.5: NEON PUMP (Cuando NO hay Solar Flare)
+      // 🌈 WAVE 162: NEON PUMP DESACTIVADO
       // =====================================================================
-      // Si no estamos cegando a la gente, les damos COLOR VIBRANTE
-      // 🎯 WAVE 161.5: Añadido cooldown para evitar epilepsia
-      this.framesSinceNeonChange++;  // Siempre incrementar
+      // El NEON PUMP era demasiado agresivo - inyectaba colores neón 
+      // directamente sin respetar la paleta de Selene.
+      // 
+      // NUEVO ENFOQUE: El ACCENT usa el color quaternary de la paleta
+      // (calculado por SeleneColorEngine con accentBehavior: 'quaternary')
+      // Esto da colores variados pero INTEGRADOS con el resto del escenario.
+      //
+      // NEON PUMP solo se reactiva en DROPS EXTREMOS (bassPulse > 0.9)
+      this.framesSinceNeonChange++;
       
-      if (!isSolarFlare && bassPulse > 0.4) {
+      if (!isSolarFlare && bassPulse > 0.9) {
+        // Solo en peaks extremos: inyectar neón para impacto
         neonInjected = true;
         
-        // Solo cambiar color si ha pasado suficiente tiempo (cooldown)
         if (this.framesSinceNeonChange >= LatinoStereoPhysics.NEON_PUMP_COOLDOWN_FRAMES) {
           this.beatCounter++;
           this.lastNeonColorIndex = this.beatCounter % 4;
-          this.framesSinceNeonChange = 0;  // Reset cooldown
+          this.framesSinceNeonChange = 0;
         }
         
-        // Rotar colores neón con cooldown - SIN PONER BLANCO
         const neonColors = [
           LatinoStereoPhysics.NEON_MAGENTA,
-          LatinoStereoPhysics.NEON_CYAN,
+          LatinoStereoPhysics.NEON_ORANGE,  // Más cálidos para Latino
+          LatinoStereoPhysics.NEON_YELLOW,
           LatinoStereoPhysics.NEON_LIME,
-          LatinoStereoPhysics.NEON_ORANGE,
         ];
         const neonColor = neonColors[this.lastNeonColorIndex];
-        
-        // Inyectar color en ACCENT (Back PARs) para asegurar variedad
         resultPalette.accent = this.hslToRgb(neonColor);
       }
+      // Si bassPulse <= 0.9, el accent mantiene el color de la paleta original
     }
     
     // =====================================================================

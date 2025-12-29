@@ -522,7 +522,7 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     backParGate: 0.12,
     backParGain: 5.5,        // (4.0 * 1.35) ¡PRIORIDAD SNARE/TIMBAL!
     backParMax: 1.0,         // W114: Sin límites
-    moverFloor: 0.02,        // WAVE 161: Bajado a 2% - casi negro cuando silencio
+    moverFloor: 0.0,         // 🎯 WAVE 162: SIN FLOOR - maximizar DELTA para 3D
     melodyThreshold: 0.35,   // WAVE 161: SUBIDO! Móviles requieren melodía fuerte
     decaySpeed: 1,           // PARs: Instantáneo (corte seco)
     moverDecaySpeed: 3,      // 🎯 WAVE 161.5: Movers: Decay suave (~500ms) para acompañar melodía

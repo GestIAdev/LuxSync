@@ -957,7 +957,23 @@ export class SeleneColorEngine {
       // Comportamiento original: Key determina Hue
       // 🎯 WAVE 161.5: Latino SIEMPRE usa este path (Key completa)
       baseHue = KEY_TO_HUE[key];
-      hueSource = isLatinoHueFree ? `key:${key}(latino-free)` : `key:${key}`;
+      
+      // 🌴 WAVE 162: TROPICAL BIAS - Latino rota keys frías hacia cálidos
+      // Problema: A=270°, E=120°, F=150° son fríos, pero Latino quiere fiesta
+      // Solución: Keys en zona fría (150-270°) rotan hacia zona cálida
+      if (isLatinoHueFree && baseHue >= 150 && baseHue <= 270) {
+        // Rotar hacia zona tropical: 0-60° (rojos/naranjas) o 300-360° (magentas)
+        // Alternar según paridad del root para variedad
+        const root = KEY_TO_ROOT[key] ?? 0;
+        if (root % 2 === 0) {
+          // Par: Rotar hacia naranjas (30-50°)
+          baseHue = 30 + (baseHue % 30);  // 30-59°
+        } else {
+          // Impar: Rotar hacia magentas (300-330°)
+          baseHue = 300 + (baseHue % 30); // 300-329°
+        }
+      }
+      hueSource = isLatinoHueFree ? `key:${key}(tropical-bias)` : `key:${key}`;
     } else if (mood && MOOD_HUES[mood] !== undefined) {
       baseHue = MOOD_HUES[mood];
       hueSource = `mood:${mood}`;

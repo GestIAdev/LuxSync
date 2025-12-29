@@ -2,7 +2,7 @@
  * FIESTA LATINA VIBE PROFILE
  * 
  * ═══════════════════════════════════════════════════════════════════════════
- * �️ WAVE 163: GOLDEN DISCIPLINE (Disciplina Dorada)
+ * �️ WAVE 163.5: HONEY DROP (Disciplina Dorada)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * CAMBIOS WAVE 163:
@@ -11,7 +11,7 @@
  * 
  * CAMBIOS WAVE 161-162 (histórico):
  * 1. ELIMINADO 'analogous' de strategies - El Arbiter ya no puede forzar monotonía
- * 2. atmosphericTemp 4800K - "Ricitos de Oro" ni muy caliente ni muy frío
+ * 2. atmosphericTemp 4200K (Atardecer) - "Ricitos de Oro" ni muy caliente ni muy frío
  * 3. melodyThreshold 0.35 - Ignora ruido de fondo, solo melodía real
  * 4. dimmer.floor 0.0 - SIN FLOOR, DELTA máximo para 3D real
  * 5. volatility 0.9 - Máxima volatilidad para cambios rápidos
@@ -49,7 +49,7 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     // 🌡️ WAVE 161: Temperatura "Ricitos de Oro"
     // 4800K = Ni muy caliente (naranja), ni muy fría (azul)
     // Gravedad casi neutra con ligero tinte cálido
-    atmosphericTemp: 4800,
+    atmosphericTemp: 4200,  // ðŸ¯ WAVE 163.5: Atardecer (antes 4800K)
     
     // Bloqueamos solo el azul triste corporativo
     forbiddenHueRanges: [[210, 240]],

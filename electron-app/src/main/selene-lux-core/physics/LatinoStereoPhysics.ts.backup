@@ -52,14 +52,14 @@ export class LatinoStereoPhysics {
    * @calibration Subido a 0.75 para que solo GOLPES MAESTROS activen el efecto
    * El "chunta-chunta" normal se queda en color, solo impactos épicos = oro
    */
-  private static readonly KICK_THRESHOLD = 0.80;  // �️ WAVE 163: Subido de 0.60
+  private static readonly KICK_THRESHOLD = 0.75;  // �️ WAVE 163: Subido de 0.60
   
   /**
    * 🌿 WAVE 161: Delta Trigger - Requiere SUBIDA brusca de bass
    * Solo dispara Solar Flare si el bass SUBIÓ este porcentaje vs frame anterior
    * Subido a 0.10 para requerir impactos más claros
    */
-  private static readonly BASS_DELTA_THRESHOLD = 0.15;  // 🌿 WAVE 161: Subido de 0.05
+  private static readonly BASS_DELTA_THRESHOLD = 0.10;  // 🌿 WAVE 161: Subido de 0.05
   
   /**
    * Incremento de luminosidad para Solar Flare.
@@ -105,9 +105,9 @@ export class LatinoStereoPhysics {
    * Es como la diferencia entre una bombilla halógena (blanca) y una vela (dorada).
    */
   private static readonly SOLAR_FLARE_COLOR: HSL = {
-    h: 38,    // Oro cálido (entre amarillo y naranja)
+    h: 42,    // Oro cálido (entre amarillo y naranja)
     s: 100,   // Saturación TOTAL
-    l: 45,    // 🏛️ WAVE 163: Bajado a 50% - Oro Puro, nunca blanco
+    l: 50,    // 🏛️ WAVE 163: Bajado a 50% - Oro Puro, nunca blanco
   };
 
   // =========================================================================

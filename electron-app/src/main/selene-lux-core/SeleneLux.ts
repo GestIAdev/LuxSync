@@ -206,12 +206,18 @@ export class SeleneLux extends EventEmitter {
     speed: 0.02,  // ~50 frames = ~1.6s @ 30fps
   }
   
-  // ??? WAVE 72: SINGLE SOURCE OF TRUTH - Worker est� activo si recibimos datos recientes
-  // Si el Worker env�a datos dentro de los �ltimos 2 segundos, consideramos que est� activo
+  // 🔫 WAVE 166: KILL THE WORKER - El Worker zombie está MUERTO
+  // Retornamos false SIEMPRE para forzar generación local.
+  // El Worker era código legacy de WAVE 79 que ignoraba los VibeProfiles.
   private isWorkerActive(): boolean {
-    if (!this.lastTrinityData?.timestamp) return false;
-    const age = Date.now() - this.lastTrinityData.timestamp;
-    return age < 2000; // 2 segundos de gracia
+    // 🔥 WAVE 166: TIERRA QUEMADA - Worker SIEMPRE inactivo
+    // Queremos que SeleneLux use la lógica local que respeta FiestaLatinaProfile
+    return false;
+    
+    // CÓDIGO ORIGINAL (MUERTO):
+    // if (!this.lastTrinityData?.timestamp) return false;
+    // const age = Date.now() - this.lastTrinityData.timestamp;
+    // return age < 2000; // 2 segundos de gracia
   }
   
   // ??? WAVE 72: Helper para fallback emocional basado en Vibe activo

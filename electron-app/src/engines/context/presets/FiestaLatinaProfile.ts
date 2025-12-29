@@ -49,13 +49,13 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     // 🌡️ WAVE 161: Temperatura "Ricitos de Oro"
     // 4800K = Ni muy caliente (naranja), ni muy fría (azul)
     // Gravedad casi neutra con ligero tinte cálido
-    atmosphericTemp: 4200,  // ðŸ¯ WAVE 163.5: Atardecer (antes 4800K)
+    atmosphericTemp: 3200,  // ðŸ¯ WAVE 163.5: Atardecer (antes 4800K)
     
     // Bloqueamos solo el azul triste corporativo
-    forbiddenHueRanges: [[210, 240]],
+    forbiddenHueRanges: [[60, 130], [210, 250]],
     
     // Abrimos el espectro: fuego, turquesas, magentas
-    allowedHueRanges: [[0, 60], [120, 200], [260, 360]],
+    allowedHueRanges: [[0, 60], [140, 190], [270, 360]],
     
     saturation: {
       min: 0.85,

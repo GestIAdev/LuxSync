@@ -151,17 +151,19 @@ export class LatinoStereoPhysics {
   private static readonly BLACKOUT_FRAMES = 3;
   
   /**
-   * 🌞 WAVE 152: SOL AZTECA - Oro Líquido Saturado
+   * 🌞 WAVE 162.5: SOL AZTECA - Oro REAL (no blanco disfrazado)
    * 
    * ANTES: HSL(40, 10%, 95%) → Blanco sucio sin personalidad
-   * AHORA: HSL(45, 100%, 80%) → Oro líquido que quema la retina
+   * WAVE 152: HSL(45, 100%, 80%) → Demasiado brillante, parece blanco en LEDs
+   * AHORA: HSL(40, 100%, 65%) → Oro que QUEMA con COLOR visible
    * 
-   * No es un "casi blanco", es un SOL ARDIENTE.
+   * El problema era que L=80% en LEDs baratos = BLANCO con tinte amarillo.
+   * Con L=65% tenemos un ORO ARDIENTE que mantiene su identidad cromática.
    */
   private static readonly SOLAR_FLARE_COLOR: HSL = {
-    h: 45,    // Oro Azteca
+    h: 40,    // Oro Azteca (más hacia naranja)
     s: 100,   // Saturación TOTAL
-    l: 80,    // Ultra brillante pero con color
+    l: 65,    // Brillante pero con COLOR visible
   };
 
   // =========================================================================

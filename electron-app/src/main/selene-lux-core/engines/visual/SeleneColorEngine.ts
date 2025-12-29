@@ -713,45 +713,45 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
   // Sin temperatura definida = sin gravedad
   if (!atmosphericTemp) return hue;
   
-  // Zona neutra: 5000K - 7000K (sin gravedad)
-  if (atmosphericTemp >= 5000 && atmosphericTemp <= 7000) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌡️ WAVE 162.5: THERMAL GRAVITY AMPLIFICADA
+  // ═══════════════════════════════════════════════════════════════════════
+  // PROBLEMA WAVE 162: Force=2% para 4800K era INVISIBLE.
+  // La zona neutral 5000K-7000K dejaba a Latino (4800K) sin gravedad útil.
+  //
+  // SOLUCIÓN: Zona neutral más ESTRECHA + punto de anclaje móvil
+  // - Zona neutral: 5800K-6200K (daylight puro)
+  // - 4800K ahora está 1000K por debajo → gravedad real
+  // - MAX_THERMAL_FORCE: 0.35 para que 20% sea alcanzable
+  //
+  // FÓRMULA NUEVA (zona neutral estrecha):
+  // - rawForce = distancia desde zona neutral / 2800K (escala más corta)
+  // - 4800K: (5800-4800)/2800 = 0.357 → 0.357 * 0.35 = 12.5% (antes era 2%)
+  // - 3000K: (5800-3000)/2800 = 1.0 → 35% máximo
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Zona neutral más estrecha: daylight verdadero (5800K-6200K)
+  if (atmosphericTemp >= 5800 && atmosphericTemp <= 6200) {
     return hue;
   }
   
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🌡️ WAVE 150.6: THERMAL MODERATION
-  // ═══════════════════════════════════════════════════════════════════════
-  // PROBLEMA: Force=83% convertía TODO a azul (~220-250°).
-  // Verde Láser 130° → 222° (¡Perdía su identidad!)
-  // Magenta 302° → 250° (¡Homogeneizado!)
-  //
-  // SOLUCIÓN: La gravedad térmica debe ser un "tinte atmosférico", no una
-  // "conversión total". Máximo 35% de arrastre para mantener diversidad.
-  //
-  // NUEVA FILOSOFÍA:
-  // - 9500K (Techno extremo): 35% de arrastre hacia azul
-  // - 3000K (Latino caliente): 35% de arrastre hacia oro
-  // - Los colores mantienen su identidad pero "respiran" la atmósfera
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  // Constante: Máxima fuerza de arrastre (35% = tinte sutil pero perceptible)
-  const MAX_THERMAL_FORCE = 0.25
-  ;
+  // Constante: Máxima fuerza de arrastre
+  const MAX_THERMAL_FORCE = 0.35;
   
   // Definir polo de atracción
   let pole: number;
   let rawForce: number;
   
-  if (atmosphericTemp > 7000) {
+  if (atmosphericTemp > 6200) {
     // POLO FRÍO: Azul Rey (240°)
     pole = 240;
-    // Fuerza bruta: 7000K → 0, 10000K → 1
-    rawForce = Math.min((atmosphericTemp - 7000) / 3000, 1.0);
+    // Fuerza bruta: 6200K → 0, 9000K → 1
+    rawForce = Math.min((atmosphericTemp - 6200) / 2800, 1.0);
   } else {
     // POLO CÁLIDO: Oro (40°)
     pole = 40;
-    // Fuerza bruta: 5000K → 0, 2000K → 1
-    rawForce = Math.min((5000 - atmosphericTemp) / 3000, 1.0);
+    // Fuerza bruta: 5800K → 0, 3000K → 1
+    rawForce = Math.min((5800 - atmosphericTemp) / 2800, 1.0);
   }
   
   // Limitar la fuerza al máximo permitido

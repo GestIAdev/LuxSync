@@ -15,6 +15,11 @@ import * as fsp from 'fs/promises'
 // 🏛️ WAVE 200: Feature Flags - El interruptor maestro TITAN/Legacy
 import { FLAGS } from '../src/core/config/FeatureFlags'
 
+// 🏛️ WAVE 202: TITAN Stubs - Los actores principales
+import { TrinityBrain } from '../src/brain'
+import { SeleneLux2 } from '../src/engine'
+import { HardwareAbstraction } from '../src/hal'
+
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
@@ -275,17 +280,46 @@ ipcMain.handle('audio:getDesktopSources', async () => {
 function initSystem(): void {
   if (FLAGS.TITAN_ENABLED) {
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚀 TITAN 2.0 PATH
+    // 🚀 TITAN 2.0 PATH - WAVE 203
     // ═══════════════════════════════════════════════════════════════════════
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
     console.log('[Main] 🏛️   BOOTING TITAN 2.0 ARCHITECTURE')
     console.log('[Main] 🏛️   Brain → Engine → HAL Pipeline')
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
     
-    // TODO: TitanOrchestrator.init() - Por implementar en WAVE 201+
-    // Por ahora, si alguien activa el flag prematuramente, caemos al legacy
-    console.warn('[Main] ⚠️ TITAN not yet implemented! Falling back to Legacy V1...')
-    initSelene()
+    // Instanciar los 3 actores principales
+    const brain = new TrinityBrain()
+    const engine = new SeleneLux2()
+    const hal = new HardwareAbstraction()
+    
+    console.log('[Main] 🏛️ All TITAN modules instantiated')
+    
+    // 🌊 WAVE 203: SIMULACIÓN DEL LOOP PRINCIPAL
+    // Este loop demuestra el flujo unidireccional: Brain → Engine → HAL
+    let titanLoopCount = 0
+    const titanLoopInterval = setInterval(() => {
+      titanLoopCount++
+      
+      console.log(`[Main] 🏛️ ─────────── TITAN Loop #${titanLoopCount} ───────────`)
+      
+      // 1. Brain analiza audio → produce MusicalContext
+      const context = brain.getCurrentContext()
+      
+      // 2. Engine procesa contexto → produce LightingIntent
+      const intent = engine.update(context)
+      
+      // 3. HAL renderiza intent → produce DMX
+      hal.render(intent)
+      
+      console.log(`[Main] 🏛️ ─────────── Loop complete ───────────\n`)
+      
+    }, 1000) // 1 segundo para testing (en producción sería ~33ms)
+    
+    // Guardar referencia para cleanup
+    globalThis.__titanLoopInterval = titanLoopInterval
+    globalThis.__lux_isSystemRunning = true
+    
+    console.log('[Main] 🏛️ TITAN main loop started (1Hz demo mode)')
     
   } else {
     // ═══════════════════════════════════════════════════════════════════════

@@ -38,6 +38,10 @@ import {
   isAudioAnalysis
 } from './WorkerProtocol';
 
+// 🧠 WAVE 230: THE LOBOTOMY - MusicalContext para TITAN 2.0
+// El Worker ahora emite contexto puro, sin decidir colores
+import { MusicalContext, createDefaultMusicalContext } from '../../core/protocol/MusicalContext';
+
 // Wave 8 Bridge imports
 import {
   sectionToMovement,
@@ -889,6 +893,119 @@ const frameTime = Date.now();
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 230: THE LOBOTOMY - Extract Pure Musical Context
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Extrae MusicalContext PURO desde el análisis de audio.
+ * 
+ * Esta función NO decide colores ni efectos. Solo describe:
+ * - QUÉ tonalidad se detecta (key, mode)
+ * - QUÉ ritmo hay (bpm, syncopation, beatPhase)
+ * - QUÉ sección es (verse, drop, chorus, etc.)
+ * - QUÉ género parece (electronic, latin, rock)
+ * - QUÉ mood emocional tiene (euphoric, melancholic, etc.)
+ * 
+ * TITAN 2.0 usará esto para que ColorLogic decida los colores.
+ * Legacy V1 ignora esto y usa LightingDecision como siempre.
+ */
+function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext {
+  const wave8 = analysis.wave8;
+  
+  // Sin wave8 data → contexto por defecto
+  if (!wave8) {
+    return createDefaultMusicalContext();
+  }
+  
+  const { rhythm, harmony, section, genre } = wave8;
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // MAPEO: wave8 → MusicalContext
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Key: harmony.key ya es string ('A', 'D#', etc.) o null
+  const key = harmony.key as MusicalContext['key'];
+  
+  // Mode: harmony.mode puede ser 'major', 'minor', o algo más
+  const mode: MusicalContext['mode'] = 
+    harmony.mode === 'major' ? 'major' :
+    harmony.mode === 'minor' ? 'minor' : 'unknown';
+  
+  // Section: section.type → SectionType
+  const sectionType = section.type as MusicalContext['section']['type'];
+  
+  // Mood: Mapear harmony.mood y genre mood a los moods de MusicalContext
+  // Prioridad: genre.mood > harmony.mood > 'neutral'
+  const genreMood = (genre as any).mood ?? null;
+  const harmonyMood = harmony.mood ?? null;
+  
+  // Mapear a los 7 moods permitidos por MusicalContext
+  let mood: MusicalContext['mood'] = 'neutral';
+  const rawMood = genreMood || harmonyMood || 'neutral';
+  
+  if (rawMood === 'happy' || rawMood === 'energetic' || rawMood === 'euphoric') {
+    mood = 'euphoric';
+  } else if (rawMood === 'sad' || rawMood === 'melancholic') {
+    mood = 'melancholic';
+  } else if (rawMood === 'tense' || rawMood === 'aggressive' || rawMood === 'dark') {
+    mood = 'aggressive';
+  } else if (rawMood === 'dreamy' || rawMood === 'chill' || rawMood === 'calm') {
+    mood = 'dreamy';
+  } else if (rawMood === 'mysterious' || rawMood === 'jazzy') {
+    mood = 'mysterious';
+  } else if (rawMood === 'triumphant' || rawMood === 'heroic') {
+    mood = 'triumphant';
+  }
+  
+  // Genre: Mapear a MacroGenre
+  const genreName = ((genre as any).genre ?? (genre as any).primary ?? 'unknown').toUpperCase();
+  let macro: MusicalContext['genre']['macro'] = 'UNKNOWN';
+  
+  if (genreName.includes('ELECTRONIC') || genreName.includes('TECHNO') || 
+      genreName.includes('HOUSE') || genreName.includes('EDM')) {
+    macro = 'ELECTRONIC';
+  } else if (genreName.includes('LATIN') || genreName.includes('REGGAETON') || 
+             genreName.includes('CUMBIA') || genreName.includes('SALSA')) {
+    macro = 'LATIN';
+  } else if (genreName.includes('ROCK') || genreName.includes('METAL')) {
+    macro = 'ROCK';
+  } else if (genreName.includes('POP')) {
+    macro = 'POP';
+  } else if (genreName.includes('CHILL') || genreName.includes('AMBIENT') || 
+             genreName.includes('LOUNGE')) {
+    macro = 'CHILL';
+  }
+  
+  // Calcular confianza combinada (misma fórmula que generateDecision)
+  const combinedConfidence = 
+    rhythm.confidence * 0.45 +
+    harmony.confidence * 0.30 +
+    section.confidence * 0.25;
+  
+  return {
+    key,
+    mode,
+    bpm: analysis.bpm,
+    beatPhase: analysis.beatPhase,
+    syncopation: rhythm.syncopation,
+    section: {
+      type: sectionType,
+      confidence: section.confidence,
+      duration: 0, // TODO: Implementar tracking de duración
+      isTransition: section.type === 'buildup' || section.type === 'breakdown',
+    },
+    energy: analysis.energy,
+    mood,
+    genre: {
+      macro,
+      subGenre: genreName !== macro ? genreName.toLowerCase() : null,
+      confidence: genre.confidence,
+    },
+    confidence: combinedConfidence,
+    timestamp: Date.now(),
+  };
+}
+
 function calculateBeautyScore(
   analysis: ExtendedAudioAnalysis,
   _palette: LightingDecision['palette'],
@@ -1064,6 +1181,17 @@ function handleMessage(message: WorkerMessage): void {
             'alpha',
             decision,
             analysis.onBeat ? MessagePriority.HIGH : MessagePriority.NORMAL
+          );
+          
+          // 🧠 WAVE 230: THE LOBOTOMY - Emit Pure Musical Context
+          // TITAN 2.0 usa esto para que ColorLogic decida los colores.
+          // Legacy V1 ignora esto y usa LightingDecision como siempre.
+          const musicalContext = extractMusicalContext(analysis);
+          sendMessage(
+            MessageType.MUSICAL_CONTEXT,
+            'alpha',
+            musicalContext,
+            MessagePriority.NORMAL
           );
         }
         break;

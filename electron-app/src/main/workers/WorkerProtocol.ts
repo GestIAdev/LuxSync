@@ -67,7 +67,11 @@ export enum MessageType {
   
   // 🔌 WAVE 63.95: System Power Control
   SYSTEM_SLEEP = 'system_sleep',  // Pause processing, reset state
-  SYSTEM_WAKE = 'system_wake'     // Resume processing
+  SYSTEM_WAKE = 'system_wake',    // Resume processing
+  
+  // 🧠 WAVE 230: Musical Context (Brain Lobotomy)
+  // El Worker ahora emite contexto puro, sin decidir colores
+  MUSICAL_CONTEXT = 'musical_context'
 }
 
 export enum MessagePriority {
@@ -372,5 +376,18 @@ export function isWorkerHealth(payload: unknown): payload is WorkerHealth {
     payload !== null &&
     'nodeId' in payload &&
     'status' in payload
+  );
+}
+
+// 🧠 WAVE 230: Type guard for MusicalContext
+export function isMusicalContext(payload: unknown): payload is import('../../core/protocol/MusicalContext').MusicalContext {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'bpm' in payload &&
+    'section' in payload &&
+    'mood' in payload &&
+    'genre' in payload &&
+    'confidence' in payload
   );
 }

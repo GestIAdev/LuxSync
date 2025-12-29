@@ -32,7 +32,8 @@ import {
   DEFAULT_CONFIG,
   createMessage,
   isLightingDecision,
-  isWorkerHealth
+  isWorkerHealth,
+  isMusicalContext  // 🧠 WAVE 230: THE LOBOTOMY
 } from './WorkerProtocol';
 
 // ============================================
@@ -361,6 +362,15 @@ export class TrinityOrchestrator extends EventEmitter {
           this.emit('lighting-decision', message.payload);
           // Here you would send to DMX driver
           this.processLightingDecision(message.payload);
+        }
+        break;
+        
+      // 🧠 WAVE 230: THE LOBOTOMY - Musical Context for TITAN 2.0
+      case MessageType.MUSICAL_CONTEXT:
+        // GAMMA → ALPHA: Pure musical context (no color decisions)
+        // TITAN 2.0's TrinityBrain receives this; Legacy V1 ignores it
+        if (isMusicalContext(message.payload)) {
+          this.emit('context-update', message.payload);
         }
         break;
         

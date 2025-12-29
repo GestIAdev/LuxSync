@@ -321,10 +321,19 @@ function initSystem(): void {
     const hal = new HardwareAbstraction({ debug: false })
     
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
-    console.log('[Main] 🏛️   ✅ TrinityBrain    → Stub (Phase 3)')
+    console.log('[Main] 🏛️   ✅ TrinityBrain    → REAL (WAVE 230.5)')
     console.log('[Main] 🏛️   ✅ TitanEngine     → REAL (Color Constitution)')
     console.log('[Main] 🏛️   ✅ HardwareAbstraction → REAL (Physics + DMX)')
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
+    
+    // 🔪 WAVE 230.5: Conectar Brain al Orchestrator para recibir MusicalContext
+    try {
+      const trinity = getTrinity()
+      brain.connectToOrchestrator(trinity)
+      console.log('[Main] 🔗 TrinityBrain connected to Orchestrator')
+    } catch {
+      console.log('[Main] ⚠️ Trinity not ready - Brain will use simulated context')
+    }
     
     // 🌊 WAVE 225: THE SYNAPSE - LOOP REAL
     // Flujo unidireccional: Brain → Engine → HAL → DMX

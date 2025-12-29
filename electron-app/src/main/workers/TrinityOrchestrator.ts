@@ -356,14 +356,14 @@ export class TrinityOrchestrator extends EventEmitter {
         this.sendToWorker('gamma', MessageType.AUDIO_ANALYSIS, message.payload);
         break;
         
-      case MessageType.LIGHTING_DECISION:
-        // GAMMA → ALPHA: Process for DMX output
-        if (isLightingDecision(message.payload)) {
-          this.emit('lighting-decision', message.payload);
-          // Here you would send to DMX driver
-          this.processLightingDecision(message.payload);
-        }
-        break;
+      // 🔪 WAVE 230.5: DEPRECATED - Worker ya NO emite LIGHTING_DECISION
+      // El color ahora lo decide TitanEngine (TITAN 2.0), no el Worker
+      // case MessageType.LIGHTING_DECISION:
+      //   if (isLightingDecision(message.payload)) {
+      //     this.emit('lighting-decision', message.payload);
+      //     this.processLightingDecision(message.payload);
+      //   }
+      //   break;
         
       // 🧠 WAVE 230: THE LOBOTOMY - Musical Context for TITAN 2.0
       case MessageType.MUSICAL_CONTEXT:
@@ -397,8 +397,8 @@ export class TrinityOrchestrator extends EventEmitter {
     // This is where we'd convert the decision to DMX values
     // and send to the USB DMX interface
     
-    // 🔇 WAVE 15.3: Comentado para evitar log spam - Ya hay logs en Beta/Gamma
-    // Los cambios de estado se logean en los handlers de AUDIO_ANALYSIS/LIGHTING_DECISION
+    // � WAVE 230.5: processLightingDecision ya no se usa
+    // Los cambios de estado ahora van por context-update → TitanEngine
     // if (decision.confidence > 0.8) {
     //   console.log(
     //     `[ALPHA] 💡 DMX: palette=${decision.palette.intensity.toFixed(2)}, ` +

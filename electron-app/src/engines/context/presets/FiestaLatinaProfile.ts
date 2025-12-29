@@ -2,10 +2,14 @@
  * FIESTA LATINA VIBE PROFILE
  * 
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎉 WAVE 161: STRATEGY ASSAULT & 3D LIGHT
+ * �️ WAVE 163: GOLDEN DISCIPLINE (Disciplina Dorada)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * CAMBIOS CLAVE:
+ * CAMBIOS WAVE 163:
+ * 1. drop.timing.cooldownFrames = 90 (1.5s de calma post-drop)
+ * 2. drop.timing.maxSustain = 180 (drops más largos permitidos)
+ * 
+ * CAMBIOS WAVE 161-162 (histórico):
  * 1. ELIMINADO 'analogous' de strategies - El Arbiter ya no puede forzar monotonía
  * 2. atmosphericTemp 4800K - "Ricitos de Oro" ni muy caliente ni muy frío
  * 3. melodyThreshold 0.35 - Ignora ruido de fondo, solo melodía real
@@ -13,9 +17,8 @@
  * 5. volatility 0.9 - Máxima volatilidad para cambios rápidos
  * 
  * FILOSOFÍA:
- * Queremos VER la música en 3D. Los huecos oscuros entre notas crean
- * contraste dramático. Las estrategias triadic/split-complementary/complementary
- * garantizan mínimo 2 colores opuestos, nunca monotonía.
+ * Solar Flare es CARO. Solo golpes maestros (bass > 0.75 + delta > 0.10)
+ * disparan oro. El resto del tiempo = colores puros, no blanco.
  */
 
 import type { VibeProfile } from '../../../types/VibeProfile';
@@ -75,9 +78,12 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     },
     timing: {
       minAttack: 20,
-      maxSustain: 120,
+      maxSustain: 180,      // 🏛️ WAVE 163: Subido de 120 para drops más largos
       releaseFrames: 30,
-      cooldownFrames: 60,
+      // 🏛️ WAVE 163: COOL DOWN EXTENDIDO
+      // Después de un drop, Selene espera 1.5s antes de permitir locuras.
+      // Esto evita el flashazo blanco inmediato al volver del drop.
+      cooldownFrames: 90,   // 1.5 segundos de "calma" post-drop
     },
     allowMicroDrops: true,
   },

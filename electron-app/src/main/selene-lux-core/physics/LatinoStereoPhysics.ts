@@ -1,13 +1,16 @@
 /**
- * 🌴 WAVE 161: LATINO STEREO PHYSICS ("Strategy Assault & 3D Light")
+ * 🌴 WAVE 163: GOLDEN DISCIPLINE (Disciplina Dorada)
  * ============================================================================
  * Módulo blindado para la lógica de reactividad del género Latino/Tropical.
  * 
- * WAVE 161 CHANGES:
- * - KICK_THRESHOLD subido a 0.60 (requiere golpes FUERTES para Solar Flare)
- * - BASS_DELTA_THRESHOLD subido a 0.10 (requiere IMPACTO, no presión)
- * - NEON PUMP: Cuando NO hay Solar Flare, inyectamos colores neón en Accent
- * - Esto mata el "blanco nuclear eterno" en Back PARs
+ * WAVE 163 CHANGES:
+ * - KICK_THRESHOLD subido a 0.75 (solo GOLPES MAESTROS activan Solar Flare)
+ * - SOLAR_FLARE_COLOR: L=50% (Oro Puro/Miel, IMPOSIBLE ver blanco)
+ * - El "chunta-chunta" normal se queda en color, solo impactos épicos = oro
+ * 
+ * WAVE 161 CHANGES (histórico):
+ * - BASS_DELTA_THRESHOLD = 0.10 (requiere IMPACTO, no presión)
+ * - NEON PUMP: Colores neón en Accent cuando NO hay Solar Flare
  * 
  * WAVE 152.5: SUBGÉNEROS DETECTADOS
  * - CUMBIA: BPM 90-170 → Anti-palidez, Neon Injection (NO Solar Flare)
@@ -15,7 +18,7 @@
  * - SALSA: High > Bass + BPM > 130 → Movimiento continuo
  * 
  * RESPONSABILIDAD ÚNICA:
- * - Detectar KICKS fuertes → Solar Flare (destello dorado) con Delta Trigger
+ * - Detectar KICKS fuertes → Solar Flare (destello ORO) con Delta Trigger
  * - Detectar NEGATIVE DROPS → Machine Gun Blackout (corte dramático)
  * - NEON PUMP → Colores vibrantes cuando no hay flare
  * 
@@ -105,12 +108,13 @@ export class LatinoStereoPhysics {
   // =========================================================================
   
   /**
-   * 🔧 WAVE 161: CALIBRACIÓN 3D
+   * 🔧 WAVE 163: GOLDEN DISCIPLINE - GATILLO CARO
    * Umbral de disparo para SOLAR FLARE (Bombo fuerte).
    * Cuando el bass supera este valor Y hay delta positivo, disparamos destello dorado.
-   * @calibration Subido a 0.60 para requerir golpes FUERTES
+   * @calibration Subido a 0.75 para que solo GOLPES MAESTROS activen el efecto
+   * El "chunta-chunta" normal se queda en color, solo impactos épicos = oro
    */
-  private static readonly KICK_THRESHOLD = 0.60;  // 🌿 WAVE 161: Subido de 0.40
+  private static readonly KICK_THRESHOLD = 0.75;  // �️ WAVE 163: Subido de 0.60
   
   /**
    * 🌿 WAVE 161: Delta Trigger - Requiere SUBIDA brusca de bass
@@ -151,19 +155,21 @@ export class LatinoStereoPhysics {
   private static readonly BLACKOUT_FRAMES = 3;
   
   /**
-   * 🌞 WAVE 162.5: SOL AZTECA - Oro REAL (no blanco disfrazado)
+   * 🌞 WAVE 163: ORO PROFUNDO - Miel Azteca
    * 
-   * ANTES: HSL(40, 10%, 95%) → Blanco sucio sin personalidad
-   * WAVE 152: HSL(45, 100%, 80%) → Demasiado brillante, parece blanco en LEDs
-   * AHORA: HSL(40, 100%, 65%) → Oro que QUEMA con COLOR visible
+   * HISTORIA DE EVOLUCIÓN:
+   * - ANTES: HSL(40, 10%, 95%) → Blanco sucio sin personalidad
+   * - WAVE 152: HSL(45, 100%, 80%) → Demasiado brillante, parece blanco
+   * - WAVE 162.5: HSL(40, 100%, 65%) → Mejor, pero aún blanquea
+   * - WAVE 163: HSL(42, 100%, 50%) → ORO PURO/MIEL, IMPOSIBLE ver blanco
    * 
-   * El problema era que L=80% en LEDs baratos = BLANCO con tinte amarillo.
-   * Con L=65% tenemos un ORO ARDIENTE que mantiene su identidad cromática.
+   * Con L=50% garantizamos color MIEL/ORO incluso con dimmer al 100%.
+   * Es como la diferencia entre una bombilla halógena (blanca) y una vela (dorada).
    */
   private static readonly SOLAR_FLARE_COLOR: HSL = {
-    h: 40,    // Oro Azteca (más hacia naranja)
+    h: 42,    // Oro cálido (entre amarillo y naranja)
     s: 100,   // Saturación TOTAL
-    l: 65,    // Brillante pero con COLOR visible
+    l: 50,    // 🏛️ WAVE 163: Bajado a 50% - Oro Puro, nunca blanco
   };
 
   // =========================================================================

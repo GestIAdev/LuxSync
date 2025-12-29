@@ -505,6 +505,7 @@ function generateDecision(analysis: ExtendedAudioAnalysis): LightingDecision {
     energy: effectiveAnalysis.energy,  // 🎚️ WAVE 94: Usar energía normalizada
     confidence: rhythm.confidence,
     isRelativeDrop: energyOutput.isRelativeDrop, // WAVE 55: DROP relativo
+    vibeId: vibeManager.getActiveVibe().id, // 🔫 WAVE 164: Para override de reglas
   });
   
   // 🎛️ WAVE 60: VIBE CONSTRAINTS - Aplicar restricciones del contexto

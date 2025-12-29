@@ -99,6 +99,9 @@ export interface StrategyArbiterInput {
   
   /** 📉 WAVE 55: ¿Es un BREAKDOWN RELATIVO? (del EnergyStabilizer) */
   isRelativeBreakdown?: boolean;
+  
+  /** 🔫 WAVE 164: Vibe activo (para override de reglas por género) */
+  vibeId?: string;
 }
 
 /**
@@ -306,32 +309,60 @@ export class StrategyArbiter {
     let overrideType: 'none' | 'breakdown' | 'drop' = 'none';
     let effectiveStrategy = instantStrategy;
     
-    // 🛡️ BREAKDOWN OVERRIDE: Forzar ANALOGOUS
+    // � WAVE 164: KILL THE DICTATOR
+    // En Fiesta Latina, los breakdowns son cortos y constantes. Si forzamos ANALOGOUS
+    // cada vez que baja la energía, convertimos la paleta tropical (Cyan/Magenta/Oro)
+    // en una sopa monocromática (Naranja/Rojo/Amarillo). ¡El Dictador debe caer!
+    const isFiestaLatina = input.vibeId === 'fiesta-latina';
+    
+    // �🛡️ BREAKDOWN OVERRIDE: Forzar ANALOGOUS (excepto en Fiesta Latina)
     if (input.sectionType === 'breakdown' || input.sectionType === 'bridge') {
       sectionOverride = true;
       overrideType = 'breakdown';
-      effectiveStrategy = 'analogous';
       
-      if (this.currentOverride !== 'breakdown') {
-        console.log(`[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation`);
-        this.currentOverride = 'breakdown';
-        this.overrideStartFrame = this.frameCount;
-        // 🏛️ WAVE 73: Activar lock para prevenir flicker
-        this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+      // 🔫 WAVE 164: En Fiesta Latina, NO forzar analogous, mantener la estrategia base
+      if (isFiestaLatina) {
+        effectiveStrategy = instantStrategy; // Mantener triadic/complementary
+        if (this.currentOverride !== 'breakdown') {
+          console.log(`[StrategyArbiter] 🎺 BREAKDOWN (Fiesta Latina): Keeping ${instantStrategy} strategy (NO analogous override)`);
+          this.currentOverride = 'breakdown';
+          this.overrideStartFrame = this.frameCount;
+          this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+        }
+      } else {
+        effectiveStrategy = 'analogous';
+        if (this.currentOverride !== 'breakdown') {
+          console.log(`[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation`);
+          this.currentOverride = 'breakdown';
+          this.overrideStartFrame = this.frameCount;
+          // 🏛️ WAVE 73: Activar lock para prevenir flicker
+          this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+        }
       }
     }
-    // � WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
+    // 📉 WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
     else if (input.isRelativeBreakdown) {
       sectionOverride = true;
       overrideType = 'breakdown';
-      effectiveStrategy = 'analogous';
       
-      if (this.currentOverride !== 'breakdown') {
-        console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
-        this.currentOverride = 'breakdown';
-        this.overrideStartFrame = this.frameCount;
-        // 🏛️ WAVE 73: Activar lock para prevenir flicker
-        this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+      // 🔫 WAVE 164: En Fiesta Latina, NO forzar analogous en breakdowns relativos
+      if (isFiestaLatina) {
+        effectiveStrategy = instantStrategy; // Mantener triadic/complementary
+        if (this.currentOverride !== 'breakdown') {
+          console.log(`[StrategyArbiter] 🎺 RELATIVE BREAKDOWN (Fiesta Latina): Keeping ${instantStrategy} strategy (NO analogous override)`);
+          this.currentOverride = 'breakdown';
+          this.overrideStartFrame = this.frameCount;
+          this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+        }
+      } else {
+        effectiveStrategy = 'analogous';
+        if (this.currentOverride !== 'breakdown') {
+          console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
+          this.currentOverride = 'breakdown';
+          this.overrideStartFrame = this.frameCount;
+          // 🏛️ WAVE 73: Activar lock para prevenir flicker
+          this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
+        }
       }
     }
     // 📉 WAVE 55: DROP RELATIVO (energía alta respecto al promedio)

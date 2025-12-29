@@ -1,29 +1,30 @@
 ﻿/**
  * FIESTA LATINA VIBE PROFILE
  * 
- * WAVE 158: ECOLOGICAL FIX - La Via Natural
- * "Cambiemos las reglas del juego, no el marcador"
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎉 WAVE 161: STRATEGY ASSAULT & 3D LIGHT
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Filosofia: Cambiar el ECOSISTEMA para que los colores nazcan naturalmente.
- * NO forzamos colores - dejamos que el algoritmo Triadic/Complementary 
- * elija libremente sin gravedad termica que lo tire hacia el naranja.
+ * CAMBIOS CLAVE:
+ * 1. ELIMINADO 'analogous' de strategies - El Arbiter ya no puede forzar monotonía
+ * 2. atmosphericTemp 4800K - "Ricitos de Oro" ni muy caliente ni muy frío
+ * 3. melodyThreshold 0.35 - Ignora ruido de fondo, solo melodía real
+ * 4. dimmer.floor 0.05 - Oscuridad 3D real entre notas
+ * 5. volatility 0.9 - Máxima volatilidad para cambios rápidos
  * 
- * Caracteristicas:
- * - Moods festivos y alegres
- * - atmosphericTemp = 5000K (neutro, sin gravedad de color)
- * - Blackout PROHIBIDO en normal (excepto Machine Gun)
- * - drop.sensitivity = 0.20 (Selene menos asustadiza)
- * - dimmer.floor = 0.40 (beams siempre visibles)
- * - Sin forbiddenHueRanges (libre eleccion de color)
+ * FILOSOFÍA:
+ * Queremos VER la música en 3D. Los huecos oscuros entre notas crean
+ * contraste dramático. Las estrategias triadic/split-complementary/complementary
+ * garantizan mínimo 2 colores opuestos, nunca monotonía.
  */
 
 import type { VibeProfile } from '../../../types/VibeProfile';
 
 export const VIBE_FIESTA_LATINA: VibeProfile = {
   id: 'fiesta-latina',
-  name: 'Fiesta Latina',
-  description: 'Organic warmth. Festive colors. High saturation celebration.',
-  icon: '',
+  name: 'Fiesta Latina 3D',
+  description: 'High contrast. Neon colors. Dynamic movement.',
+  icon: '🎉',
 
   mood: {
     allowed: ['festive', 'playful', 'euphoric', 'energetic'],
@@ -32,53 +33,68 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   },
 
   color: {
-    strategies: ['triadic', 'complementary', 'analogous'],
+    // ⚔️ WAVE 161: ATAQUE A LA ESTRATEGIA
+    // Eliminamos 'analogous'. Si el StrategyArbiter quiere relajar,
+    // tendrá que usar 'complementary', que al menos tiene dos colores opuestos.
+    strategies: ['triadic', 'split-complementary', 'complementary'],
+    
     temperature: {
       min: 2000,
-      max: 4500,
+      max: 7500,
     },
-    // WAVE 160.5: ARQUITECTURA TÉRMICA RESTAURADA
-    // 3500K = Gravedad SUAVE hacia cálidos (polo 40° oro)
-    // Corrige colores que escapen hacia marrones/verdes feos
-    atmosphericTemp: 3500,
+    
+    // 🌡️ WAVE 161: Temperatura "Ricitos de Oro"
+    // 4800K = Ni muy caliente (naranja), ni muy fría (azul)
+    // Gravedad casi neutra con ligero tinte cálido
+    atmosphericTemp: 4800,
+    
+    // Bloqueamos solo el azul triste corporativo
+    forbiddenHueRanges: [[210, 240]],
+    
+    // Abrimos el espectro: fuego, turquesas, magentas
+    allowedHueRanges: [[0, 60], [120, 200], [260, 360]],
     
     saturation: {
-      min: 0.80,
+      min: 0.85,
       max: 1.0,
     },
-    maxHueShiftPerSecond: 60,
-    preferredPalettes: ['fiesta', 'tropical', 'sunset'],
+    
+    // WAVE 161: Más velocidad de cambio de hue
+    maxHueShiftPerSecond: 120,
+    
+    preferredPalettes: ['fiesta', 'tropical', 'neon'],
   },
 
   drop: {
-    // WAVE 158: ECOLOGICAL FIX - Selene menos asustadiza
     sensitivity: 0.20,
-    energyThreshold: 0.45,
+    energyThreshold: 0.40,
     curves: {
       attack: 'ease-in',
-      sustain: 'ease-in-out',
-      release: 'linear',
+      sustain: 'linear',
+      release: 'ease-out',
     },
     timing: {
       minAttack: 20,
       maxSustain: 120,
-      releaseFrames: 15,
-      cooldownFrames: 360,
+      releaseFrames: 30,
+      cooldownFrames: 60,
     },
     allowMicroDrops: true,
   },
 
   dimmer: {
-    // WAVE 158: ECOLOGICAL FIX - Beams siempre visibles
-    floor: 0.40,
-    ceiling: 0.90,
+    // 🌑 WAVE 161: OSCURIDAD 3D
+    // Suelo en 5% para que cuando se apaguen, sea casi negro.
+    // Esto crea los "huecos" visuales que dan profundidad 3D.
+    floor: 0.05,
+    ceiling: 1.0,
     allowBlackout: true,
     transitionSpeed: 'fast',
-    breakdownCurve: 'ease-in-out',
+    breakdownCurve: 'exponential',
   },
 
   movement: {
-    allowedPatterns: ['sweep', 'circle', 'figure8', 'chase', 'wave'],
+    allowedPatterns: ['figure8', 'circle', 'wave', 'sweep'],
     speedRange: {
       min: 0.4,
       max: 1.0,
@@ -92,13 +108,21 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     allowed: ['fog', 'beam'],
     maxStrobeRate: 0,
     autoFog: false,
-    maxIntensity: 0.9,
+    maxIntensity: 1.0,
   },
 
   meta: {
-    baseEnergy: 0.75,
-    volatility: 0.6,
+    baseEnergy: 0.8,
+    
+    // 🔥 WAVE 161: MÁXIMA VOLATILIDAD
+    // Cambios rápidos para seguir la música
+    volatility: 0.9,
+    
     stabilityFirst: false,
+    
+    // 🔧 WAVE 161: melodyThreshold se maneja en main.ts VIBE_PRESETS
+    // (El tipo VibeMetaConstraints no lo soporta aquí)
+    
     bpmHint: {
       min: 85,
       max: 175,

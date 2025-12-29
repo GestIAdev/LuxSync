@@ -1,29 +1,30 @@
 /**
- * 🌴 WAVE 152.5: LATINO STEREO PHYSICS ("Subgéneros & Anti-Palidez")
+ * 🌴 WAVE 161: LATINO STEREO PHYSICS ("Strategy Assault & 3D Light")
  * ============================================================================
  * Módulo blindado para la lógica de reactividad del género Latino/Tropical.
  * 
+ * WAVE 161 CHANGES:
+ * - KICK_THRESHOLD subido a 0.60 (requiere golpes FUERTES para Solar Flare)
+ * - BASS_DELTA_THRESHOLD subido a 0.10 (requiere IMPACTO, no presión)
+ * - NEON PUMP: Cuando NO hay Solar Flare, inyectamos colores neón en Accent
+ * - Esto mata el "blanco nuclear eterno" en Back PARs
+ * 
  * WAVE 152.5: SUBGÉNEROS DETECTADOS
- * - CUMBIA: BPM > 135 + Bass moderado → Anti-palidez, Neon Injection
- * - REGGAETON: BPM < 115 + Bass fuerte → MachineGun + Solar Flare
- * - SALSA: High > Bass + BPM > 140 → Movimiento continuo
+ * - CUMBIA: BPM 90-170 → Anti-palidez, Neon Injection (NO Solar Flare)
+ * - REGGAETON: BPM < 90 → MachineGun + Solar Flare con Delta Trigger
+ * - SALSA: High > Bass + BPM > 130 → Movimiento continuo
  * 
  * RESPONSABILIDAD ÚNICA:
- * - Detectar KICKS fuertes → Solar Flare (destello dorado)
+ * - Detectar KICKS fuertes → Solar Flare (destello dorado) con Delta Trigger
  * - Detectar NEGATIVE DROPS → Machine Gun Blackout (corte dramático)
- * - CUMBIA: Desactivar Solar Flare, inyectar neón, síncopa visual
+ * - NEON PUMP → Colores vibrantes cuando no hay flare
  * 
- * FILOSOFÍA: "CALOR EXPLOSIVO Y CORTES DRAMÁTICOS"
+ * FILOSOFÍA: "CALOR EXPLOSIVO Y CORTES DRAMÁTICOS CON LUZ 3D"
  * El Latino es fuego: cuando explota, es ORO CEGADOR.
  * Cuando corta, es SILENCIO ABSOLUTO.
- * Cuando es CUMBIA, es COLOR VIBRANTE sin lavado blanco.
+ * Cuando respira, es COLOR VIBRANTE (no blanco eterno).
  * 
- * CONSTITUCIÓN LATINA (Wave 143):
- * - Zona Solar: 0° - 60° (Rojo → Naranja → Oro)
- * - Zona Selva: 120° - 180° (Verde Esmeralda → Turquesa)
- * - Zona Prohibida: 200° - 240° (Azul Metálico)
- * 
- * @see docs/audits/WAVE-143-COLOR-CONSTITUTION.md § 2.2
+ * @see docs/WAVE-161-STRATEGY-ASSAULT.md
  * ============================================================================
  */
 
@@ -104,18 +105,19 @@ export class LatinoStereoPhysics {
   // =========================================================================
   
   /**
+   * 🔧 WAVE 161: CALIBRACIÓN 3D
    * Umbral de disparo para SOLAR FLARE (Bombo fuerte).
-   * Cuando el bass supera este valor, disparamos destello dorado.
-   * @calibration Reggaeton típico tiene kicks muy marcados
+   * Cuando el bass supera este valor Y hay delta positivo, disparamos destello dorado.
+   * @calibration Subido a 0.60 para requerir golpes FUERTES
    */
-  private static readonly KICK_THRESHOLD = 0.40;  // 🌿 WAVE 158: Subido de 0.35
+  private static readonly KICK_THRESHOLD = 0.60;  // 🌿 WAVE 161: Subido de 0.40
   
   /**
-   * 🌿 WAVE 158: Delta Trigger - Requiere SUBIDA de bass, no presión constante
+   * 🌿 WAVE 161: Delta Trigger - Requiere SUBIDA brusca de bass
    * Solo dispara Solar Flare si el bass SUBIÓ este porcentaje vs frame anterior
-   * Esto evita blancos constantes cuando hay bass alto sostenido
+   * Subido a 0.10 para requerir impactos más claros
    */
-  private static readonly BASS_DELTA_THRESHOLD = 0.05;
+  private static readonly BASS_DELTA_THRESHOLD = 0.10;  // 🌿 WAVE 161: Subido de 0.05
   
   /**
    * Incremento de luminosidad para Solar Flare.
@@ -361,6 +363,29 @@ export class LatinoStereoPhysics {
       
       // 🌿 WAVE 158: Guardar bass actual para próximo frame
       this.lastBass = bassPulse;
+      
+      // =====================================================================
+      // 🌈 WAVE 161: NEON PUMP (Cuando NO hay Solar Flare)
+      // =====================================================================
+      // Si no estamos cegando a la gente, les damos COLOR VIBRANTE
+      // Esto garantiza que los Back PARs tengan colores variados, no blanco eterno
+      if (!isSolarFlare && bassPulse > 0.4) {
+        this.beatCounter++;
+        neonInjected = true;
+        
+        // Rotar colores neón en cada beat - SIN PONER BLANCO
+        const neonColors = [
+          LatinoStereoPhysics.NEON_MAGENTA,
+          LatinoStereoPhysics.NEON_CYAN,
+          LatinoStereoPhysics.NEON_LIME,
+          LatinoStereoPhysics.NEON_ORANGE,
+        ];
+        const colorIndex = this.beatCounter % neonColors.length;
+        const neonColor = neonColors[colorIndex];
+        
+        // Inyectar color en ACCENT (Back PARs) para asegurar variedad
+        resultPalette.accent = this.hslToRgb(neonColor);
+      }
     }
     
     // =====================================================================

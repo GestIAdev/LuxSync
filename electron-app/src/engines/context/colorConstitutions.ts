@@ -94,14 +94,17 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌴 CONSTITUCIÓN FIESTA-LATINA: "La Jungla Tropical"
+// 🌴 CONSTITUCIÓN FIESTA-LATINA: "3D LIGHT" (WAVE 161)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * En el reino Latino, la vida es exuberancia. Los muertos no bailan.
+ * WAVE 161: STRATEGY ASSAULT & 3D LIGHT
+ * 
+ * "Queremos música en 3D como en techno" - contraste dramático con oscuridad.
  * 
  * ZONA SOLAR: 0° - 60° (Rojo → Naranja → Amarillo Oro)
- * ZONA SELVA: 120° - 180° (Verde Esmeralda → Turquesa)
- * ZONA PROHIBIDA: 200° - 240° (Azul Metálico → Gris)
+ * ZONA SELVA: 120° - 200° (Verde → Turquesa → Cyan)
+ * ZONA NEON:  260° - 360° (Magenta → Rosa → Rojo)
+ * ZONA PROHIBIDA: 210° - 240° (Solo azul triste/metálico)
  */
 export const LATINO_CONSTITUTION: GenerationOptions = {
   // Syncopation decide la estrategia (no forzada)
@@ -110,17 +113,18 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   // � WAVE 159: ECOLOGICAL FIX - Clima Neutro
   // 5000K = Gravedad CERO - El algoritmo elige colores libremente
   // Antes: 3000K tiraba todo hacia el naranja (40°)
-  atmosphericTemp: 3500,  // WAVE 160.5: Gravedad suave hacia cálidos
+  atmosphericTemp: 4800,  // WAVE 161: Ricitos de Oro - Clima Neutro
   
   // Zona prohibida: azules metálicos corporativos
   // 🌿 WAVE 160: Eliminado - todo permitido
 // 🎨 WAVE 160.5: Paleta Tropical + Gravedad Térmica
   // Gravedad 3500K corrige colores que escapen hacia marrones
-  forbiddenHueRanges: [[200, 260]],  // Azules corporativos lavados
+  // 🚫 WAVE 161: Solo el azul triste está prohibido
+  forbiddenHueRanges: [[210, 240]],  // WAVE 161: Zona mínima prohibida
 
-  // WAVE 160.5: Paleta tropical restaurada
-  allowedHueRanges: [[0, 60], [120, 195], [280, 330]],  // Elastic Rotation estándar
-  elasticRotation: 15,
+  // 🌈 WAVE 161: Espectro ampliado para diversidad cromática
+  allowedHueRanges: [[0, 60], [120, 200], [260, 360]],  // WAVE 161: Más cyans y magentas
+  elasticRotation: 20,  // WAVE 161: Aumentado para escapar analogous
   
   // Saturación vibrante
   saturationRange: [75, 100],
@@ -145,9 +149,9 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   accentBehavior: 'quaternary',  // Colores variados en accent
   solarFlareAccent: { h: 40, s: 80, l: 60 },  // Oro vibrante si se usa
   
-  // Dimming suave
+  // 🌑 WAVE 161: 3D LIGHT - Dimming AGRESIVO para contraste
   dimmingConfig: {
-    floor: 0.15,   // Nunca muy oscuro
+    floor: 0.05,   // WAVE 161: Casi blackout OK (como Techno)
     ceiling: 1.0,
   },
 };

@@ -508,21 +508,21 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 💃 FIESTA LATINA - La Metralleta (WAVE 160.5: SENSIBILIDAD RESTAURADA)
+  // 💃 FIESTA LATINA - WAVE 161: STRATEGY ASSAULT & 3D LIGHT
   // ═══════════════════════════════════════════════════════════════════════
   // Reggaetón, Cumbia, Salsa. Pulsos rápidos, snare/timbal prioritario.
-  // WAVE 160.5: melodyThreshold bajado de 0.40 a 0.15 - los móviles estaban
-  // MUERTOS porque ON_THRESHOLD = 0.50 y rawMid típico es ~0.45
+  // WAVE 161: melodyThreshold SUBIDO a 0.35 para crear OSCURIDAD y CONTRASTE
+  // "Queremos música en 3D como en techno" - más negro = más impacto visual
   'fiesta-latina': {
-    name: 'Fiesta Latina',   // WAVE 160.5: Nombre completo para matcheos
+    name: 'Fiesta Latina 3D', // WAVE 161: Nombre nuevo con concepto 3D
     parGate: 0.05,           // Gate bajísimo para pillar metralletas rápidas
     parGain: 6.0,            // Ganancia extrema para compensar gate bajo
     parMax: 1.0,             // W114: Sin límites, todo a tope
     backParGate: 0.12,
     backParGain: 5.5,        // (4.0 * 1.35) ¡PRIORIDAD SNARE/TIMBAL!
     backParMax: 1.0,         // W114: Sin límites
-    moverFloor: 0.05,        // WAVE 160.5: Mínimo 5% suelo para ver algo
-    melodyThreshold: 0.15,   // WAVE 160.5: Bajado de 0.40! (ON_THRESHOLD = 0.25)
+    moverFloor: 0.02,        // WAVE 161: Bajado a 2% - casi negro cuando silencio
+    melodyThreshold: 0.35,   // WAVE 161: SUBIDO! Móviles requieren melodía fuerte
     decaySpeed: 1,           // Instantáneo (corte seco)
     hardClipThreshold: 0.12,
   },

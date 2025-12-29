@@ -15,9 +15,9 @@ import * as fsp from 'fs/promises'
 // 🏛️ WAVE 200: Feature Flags - El interruptor maestro TITAN/Legacy
 import { FLAGS } from '../src/core/config/FeatureFlags'
 
-// 🏛️ WAVE 202: TITAN Stubs - Los actores principales
+// 🏛️ WAVE 202-220: TITAN Modules - Los actores principales
 import { TrinityBrain } from '../src/brain'
-import { SeleneLux2 } from '../src/engine'
+import { TitanEngine } from '../src/engine/TitanEngine'  // WAVE 220: Motor real
 import { HardwareAbstraction } from '../src/hal'
 
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
@@ -280,46 +280,66 @@ ipcMain.handle('audio:getDesktopSources', async () => {
 function initSystem(): void {
   if (FLAGS.TITAN_ENABLED) {
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚀 TITAN 2.0 PATH - WAVE 203
+    // 🚀 TITAN 2.0 PATH - WAVE 217-220
     // ═══════════════════════════════════════════════════════════════════════
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
     console.log('[Main] 🏛️   BOOTING TITAN 2.0 ARCHITECTURE')
-    console.log('[Main] 🏛️   Brain → Engine → HAL Pipeline')
+    console.log('[Main] 🏛️   Brain → TitanEngine → HAL Pipeline')
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
     
     // Instanciar los 3 actores principales
     const brain = new TrinityBrain()
-    const engine = new SeleneLux2()
-    const hal = new HardwareAbstraction()
+    const engine = new TitanEngine({ debug: true, initialVibe: 'fiesta-latina' })
+    const hal = new HardwareAbstraction({ debug: true })
     
     console.log('[Main] 🏛️ All TITAN modules instantiated')
     
-    // 🌊 WAVE 203: SIMULACIÓN DEL LOOP PRINCIPAL
-    // Este loop demuestra el flujo unidireccional: Brain → Engine → HAL
+    // 🌊 WAVE 220: LOOP PRINCIPAL REAL
+    // Flujo unidireccional: Brain → Engine → HAL
     let titanLoopCount = 0
     const titanLoopInterval = setInterval(() => {
       titanLoopCount++
       
-      console.log(`[Main] 🏛️ ─────────── TITAN Loop #${titanLoopCount} ───────────`)
+      // Solo log cada 60 frames (~1 segundo a 60fps simulado)
+      const shouldLog = titanLoopCount % 60 === 0
+      
+      if (shouldLog) {
+        console.log(`[Main] 🏛️ ─────────── TITAN Loop #${titanLoopCount} ───────────`)
+      }
       
       // 1. Brain analiza audio → produce MusicalContext
       const context = brain.getCurrentContext()
       
-      // 2. Engine procesa contexto → produce LightingIntent
-      const intent = engine.update(context)
+      // 2. Construir métricas de audio para el motor
+      // (En producción esto vendría del worker de audio)
+      const audioMetrics = {
+        bass: 0.5 + Math.sin(titanLoopCount * 0.1) * 0.3,
+        mid: 0.4 + Math.sin(titanLoopCount * 0.15) * 0.2,
+        high: 0.3 + Math.sin(titanLoopCount * 0.2) * 0.2,
+        energy: 0.6 + Math.sin(titanLoopCount * 0.05) * 0.3,
+        beatPhase: (titanLoopCount % 30) / 30,
+        isBeat: titanLoopCount % 30 === 0,
+      }
       
-      // 3. HAL renderiza intent → produce DMX
-      hal.render(intent)
+      // 3. Engine procesa contexto + audio → produce LightingIntent
+      const intent = engine.update(context, audioMetrics)
       
-      console.log(`[Main] 🏛️ ─────────── Loop complete ───────────\n`)
+      // 4. HAL renderiza intent → produce DMX
+      // (Necesita fixtures, por ahora pasamos array vacío)
+      hal.render(intent, [], audioMetrics)
       
-    }, 1000) // 1 segundo para testing (en producción sería ~33ms)
+      if (shouldLog) {
+        console.log(`[Main] 🏛️   Intent: intensity=${intent.masterIntensity.toFixed(2)}`)
+        console.log(`[Main] 🏛️ ─────────── Loop complete ───────────\n`)
+      }
+      
+    }, 33) // ~30fps para demo (en producción sería sincronizado con audio)
     
     // Guardar referencia para cleanup
     globalThis.__titanLoopInterval = titanLoopInterval
     globalThis.__lux_isSystemRunning = true
     
-    console.log('[Main] 🏛️ TITAN main loop started (1Hz demo mode)')
+    console.log('[Main] 🏛️ TITAN main loop started (30Hz demo mode)')
     
   } else {
     // ═══════════════════════════════════════════════════════════════════════

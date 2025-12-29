@@ -1,11 +1,20 @@
 ﻿/**
  * LUXSYNC ELECTRON - MAIN PROCESS
+ * 
+ * 🏛️ WAVE 200: TITAN AIRLOCK
+ * Este archivo soporta dos modos de arranque:
+ * - TITAN_ENABLED=false → Legacy V1 (actual)
+ * - TITAN_ENABLED=true  → TITAN 2.0 (futuro)
  */
 
 import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
 import * as fs from 'fs'
 import * as fsp from 'fs/promises'
+
+// 🏛️ WAVE 200: Feature Flags - El interruptor maestro TITAN/Legacy
+import { FLAGS } from '../src/core/config/FeatureFlags'
+
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import type { LivingPaletteId } from '../src/main/selene-lux-core/engines/visual/ColorEngine'
 import type { MovementPattern } from '../src/main/selene-lux-core/types'
@@ -257,6 +266,41 @@ ipcMain.handle('audio:getDesktopSources', async () => {
 // ============================================
 // SELENE LUX CORE - Engine & Loop
 // ============================================
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏛️ WAVE 200: TITAN AIRLOCK
+// Este wrapper decide qué sistema arrancar basándose en el Feature Flag
+// ═══════════════════════════════════════════════════════════════════════════
+
+function initSystem(): void {
+  if (FLAGS.TITAN_ENABLED) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚀 TITAN 2.0 PATH
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
+    console.log('[Main] 🏛️   BOOTING TITAN 2.0 ARCHITECTURE')
+    console.log('[Main] 🏛️   Brain → Engine → HAL Pipeline')
+    console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
+    
+    // TODO: TitanOrchestrator.init() - Por implementar en WAVE 201+
+    // Por ahora, si alguien activa el flag prematuramente, caemos al legacy
+    console.warn('[Main] ⚠️ TITAN not yet implemented! Falling back to Legacy V1...')
+    initSelene()
+    
+  } else {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🐢 LEGACY V1 PATH (Actual)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (FLAGS.TITAN_DEBUG) {
+      console.log('[Main] 🐢 BOOTING LEGACY V1...')
+    }
+    initSelene()
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGACY V1: initSelene (Se mantendrá hasta completar migración TITAN)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function initSelene() {
   // Idempotent init: if selene already exists, do nothing
@@ -2019,13 +2063,14 @@ ipcMain.handle('lux:start', () => {
       console.warn('[Main] ⚠️ Could not send SYSTEM_WAKE:', e)
     }
     
-    // �🔧 WAVE 15.1: Return saved inputGain even when already running
+    // 🔧 WAVE 15.1: Return saved inputGain even when already running
     const savedConfig = configManager.getConfig()
     const savedGain = savedConfig.audio?.inputGain ?? 1.0
     return { success: true, alreadyRunning: true, inputGain: savedGain }
   }
 
-  initSelene()
+  // 🏛️ WAVE 200: Usar Airlock para decidir qué sistema arrancar
+  initSystem()
   startMainLoop()
   
   // 🔌 WAVE 63.95: Send SYSTEM_WAKE to workers
@@ -2459,7 +2504,8 @@ ipcMain.handle('lux:initialize-system', async () => {
   
   // 3. Inicializar Selene si no está
   if (!selene) {
-    initSelene()
+    // 🏛️ WAVE 200: Usar Airlock para decidir qué sistema arrancar
+    initSystem()
     globalThis.__lux_isSystemRunning = true
   }
   

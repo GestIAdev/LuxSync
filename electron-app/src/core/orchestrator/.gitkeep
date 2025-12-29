@@ -1,0 +1,2 @@
+# TITAN Architecture - Orchestrator Layer
+# Contiene: EventRouter.ts, ModuleLoader.ts, LifecycleManager.ts

@@ -508,19 +508,21 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 💃 FIESTA LATINA - La Metralleta
+  // 💃 FIESTA LATINA - La Metralleta (WAVE 160.5: SENSIBILIDAD RESTAURADA)
   // ═══════════════════════════════════════════════════════════════════════
   // Reggaetón, Cumbia, Salsa. Pulsos rápidos, snare/timbal prioritario.
+  // WAVE 160.5: melodyThreshold bajado de 0.40 a 0.15 - los móviles estaban
+  // MUERTOS porque ON_THRESHOLD = 0.50 y rawMid típico es ~0.45
   'fiesta-latina': {
-    name: 'Latino',
+    name: 'Fiesta Latina',   // WAVE 160.5: Nombre completo para matcheos
     parGate: 0.05,           // Gate bajísimo para pillar metralletas rápidas
     parGain: 6.0,            // Ganancia extrema para compensar gate bajo
     parMax: 1.0,             // W114: Sin límites, todo a tope
     backParGate: 0.12,
     backParGain: 5.5,        // (4.0 * 1.35) ¡PRIORIDAD SNARE/TIMBAL!
     backParMax: 1.0,         // W114: Sin límites
-    moverFloor: 0.0,         // Sin suelo en rhythm
-    melodyThreshold: 0.40,   // Estricto (evitar falsos positivos de melodía)
+    moverFloor: 0.05,        // WAVE 160.5: Mínimo 5% suelo para ver algo
+    melodyThreshold: 0.15,   // WAVE 160.5: Bajado de 0.40! (ON_THRESHOLD = 0.25)
     decaySpeed: 1,           // Instantáneo (corte seco)
     hardClipThreshold: 0.12,
   },
@@ -671,9 +673,10 @@ function calculateMoverTarget(
   }
   
   // B. DETECTAR SI ES GÉNERO DENSO (Techno/Latino/Pop)
-  // 🌿 WAVE 160: Arreglado - buscamos 'Latin' para matchear 'Fiesta Latina'
+  // 🌿 WAVE 160.5: Ahora el preset se llama 'Fiesta Latina', el check funciona
   const isHighDensity = preset.name.includes('Techno') || 
-                        preset.name.toLowerCase().includes('latin') ||
+                        preset.name.includes('Fiesta') ||
+                        preset.name.includes('Latino') ||
                         preset.name.includes('Pop');
   
   // C. MASKING (Solo para Dubstep/Chill)
@@ -716,17 +719,17 @@ function calculateMoverTarget(
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🏛️ WAVE 121: THE FINAL POLISH - SOLIDITY ENHANCEMENT
+  // 🏛️ WAVE 121 + 160.5: SOLIDITY ENHANCEMENT (MODERADO)
   // ═══════════════════════════════════════════════════════════════════════
-  // Objetivo: Beams sólidos y confiados (no difusos)
-  // 1. Si < 20%: Negro puro (matar basura)
-  // 2. Si >= 20%: Confidence Boost 15% + Solid Floor 35%
+  // Objetivo: Beams sólidos pero sensibles
+  // WAVE 160.5: Bajado umbral de 20% a 12% - el 0.20 mataba señales legítimas
+  // en Latino donde rawMid~0.45 y threshold~0.15 da targets de ~0.15-0.25
   // ═══════════════════════════════════════════════════════════════════════
-  if (target > 0 && target < 0.20) {
-    target = 0; // Si es basura, mátalo (Mantiene negros puros)
+  if (target > 0 && target < 0.12) {
+    target = 0; // Si es basura real, mátalo
   }
   
-  if (target >= 0.20) {
+  if (target >= 0.12) {
     // 1. CONFIDENCE BOOST: Si decidió encenderse, dale un 15% extra de energía
     target = target * 1.15;
     
@@ -737,6 +740,11 @@ function calculateMoverTarget(
   
   // I. CLIPPER FINAL
   target = applySoftKneeClipper(target);
+  
+  // 🔧 WAVE 160.5: MOVER DIAGNOSTIC LOG (1% frames)
+  if (Math.random() < 0.01 && (nextState || target > 0)) {
+    console.log(`[MOVER_CALC] 🎯 melodySignal:${melodySignal.toFixed(2)} | ON_THRESH:${(effectiveThreshold + 0.10).toFixed(2)} | target:${target.toFixed(2)} | isHigh:${isHighDensity} | preset:${preset.name}`);
+  }
   
   // J. NAN PROTECTION Y CLAMP
   return { 

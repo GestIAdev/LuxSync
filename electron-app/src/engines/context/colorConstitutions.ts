@@ -110,17 +110,16 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   // � WAVE 159: ECOLOGICAL FIX - Clima Neutro
   // 5000K = Gravedad CERO - El algoritmo elige colores libremente
   // Antes: 3000K tiraba todo hacia el naranja (40°)
-  atmosphericTemp: 5000,
+  atmosphericTemp: 3500,  // WAVE 160.5: Gravedad suave hacia cálidos
   
   // Zona prohibida: azules metálicos corporativos
   // 🌿 WAVE 160: Eliminado - todo permitido
-  forbiddenHueRanges: undefined,
-  
-  // 🌿 WAVE 160: SIN RESTRICCIONES DE HUE
-  // Antes: Favorecer 0-60° causaba monopolio naranja
-  allowedHueRanges: undefined,
-  
-  // Elastic Rotation estándar
+// 🎨 WAVE 160.5: Paleta Tropical + Gravedad Térmica
+  // Gravedad 3500K corrige colores que escapen hacia marrones
+  forbiddenHueRanges: [[200, 260]],  // Azules corporativos lavados
+
+  // WAVE 160.5: Paleta tropical restaurada
+  allowedHueRanges: [[0, 60], [120, 195], [280, 330]],  // Elastic Rotation estándar
   elasticRotation: 15,
   
   // Saturación vibrante
@@ -130,11 +129,12 @@ export const LATINO_CONSTITUTION: GenerationOptions = {
   lightnessRange: [45, 65],
   
   // 🌿 WAVE 160: MudGuard desactivado - restringía colores
+  // 🛡️ WAVE 160.5: MudGuard reactivado (relajado)
   mudGuard: {
-    enabled: false,
-    swampZone: [40, 75],
-    minLightness: 55,
-    minSaturation: 85,
+    enabled: true,
+    swampZone: [50, 90],
+    minLightness: 50,
+    minSaturation: 80,
   },
   
   // Tropical Mirror: Ambient = Secondary + 180°

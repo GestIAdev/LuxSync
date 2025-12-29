@@ -37,9 +37,10 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
       min: 2000,
       max: 4500,
     },
-    // WAVE 158: ECOLOGICAL FIX - Clima Neutro/Solar
-    // 5000K = Luz Neutra - Gravedad CERO hacia ningun color
-    atmosphericTemp: 5000,
+    // WAVE 160.5: ARQUITECTURA TÉRMICA RESTAURADA
+    // 3500K = Gravedad SUAVE hacia cálidos (polo 40° oro)
+    // Corrige colores que escapen hacia marrones/verdes feos
+    atmosphericTemp: 3500,
     
     saturation: {
       min: 0.80,

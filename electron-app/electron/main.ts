@@ -484,7 +484,8 @@ interface VibeConstraints {
   moverFloor: number;        // Floor base de móviles (0 = oscuridad total)
   melodyThreshold: number;   // Umbral para detectar "melodía real"
   // PHYSICS
-  decaySpeed: number;        // Velocidad de decay (1=instantáneo, 10=líquido)
+  decaySpeed: number;        // Velocidad de decay para PARs (1=instantáneo, 10=líquido)
+  moverDecaySpeed?: number;  // 🎯 WAVE 161.5: Decay separado para Movers (default = decaySpeed)
   hardClipThreshold: number; // Umbral del soft knee clipper
 }
 
@@ -523,7 +524,8 @@ const VIBE_PRESETS: Record<string, VibeConstraints> = {
     backParMax: 1.0,         // W114: Sin límites
     moverFloor: 0.02,        // WAVE 161: Bajado a 2% - casi negro cuando silencio
     melodyThreshold: 0.35,   // WAVE 161: SUBIDO! Móviles requieren melodía fuerte
-    decaySpeed: 1,           // Instantáneo (corte seco)
+    decaySpeed: 1,           // PARs: Instantáneo (corte seco)
+    moverDecaySpeed: 3,      // 🎯 WAVE 161.5: Movers: Decay suave (~500ms) para acompañar melodía
     hardClipThreshold: 0.12,
   },
   
@@ -689,9 +691,12 @@ function calculateMoverTarget(
   const melodySignal = Math.max(rawMid, rawTreble * 0.8);
   
   // E. UMBRALES DINÁMICOS
+  // 🎯 WAVE 161.5: Aumentar histéresis para Latino (evitar parpadeo)
   const effectiveThreshold = preset.melodyThreshold + bassMasking;
   const ON_THRESHOLD = effectiveThreshold + 0.10;  // Cuesta encender
-  const OFF_THRESHOLD = effectiveThreshold - 0.05; // Cuesta apagar
+  // 🎯 WAVE 161.5: OFF más bajo para Latino = móviles se mantienen más tiempo
+  const hystOffset = isHighDensity ? 0.15 : 0.05;  // Latino: 0.15 vs otros: 0.05
+  const OFF_THRESHOLD = effectiveThreshold - hystOffset;
   
   // F. BASS DOMINANCE GATE (Solo para géneros con silencios)
   if (!isHighDensity && rawMid < rawBass * 0.5) {
@@ -1275,9 +1280,12 @@ function startMainLoop() {
           // WAVE 120.2: Aplicar Vanta Black dimmer
           targetMover *= vantaBlackDimmer;
           
-          // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO
+          // � WAVE 161.5: Usar moverDecaySpeed si está definido
+          const effectiveMoverDecay = preset.moverDecaySpeed ?? preset.decaySpeed;
+          
+          // �🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO
           if (targetMover === 0) {
-            const fastDecay = preset.decaySpeed / 3;
+            const fastDecay = effectiveMoverDecay / 3;
             intensity = applyDecayWithPhysics(moverKey, 0, fastDecay, 'MOVER');
             if (intensity < 0.08) {
               intensity = 0;
@@ -1285,7 +1293,8 @@ function startMainLoop() {
             }
           } else {
             // WAVE 109+110: INERTIA PHYSICS normal cuando hay señal
-            intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+            // 🎯 WAVE 161.5: Usar effectiveMoverDecay para movers
+            intensity = applyDecayWithPhysics(moverKey, targetMover, effectiveMoverDecay, 'MOVER');
           }
           
           // � WAVE 160: REMOVIDO vantaBlackDimmer duplicado (ya aplicado arriba en targetMover)
@@ -1326,16 +1335,20 @@ function startMainLoop() {
           // WAVE 120.2: Aplicar Vanta Black dimmer
           targetMover *= vantaBlackDimmer;
           
-          // 🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO (Stereo Mirror)
+          // � WAVE 161.5: Usar moverDecaySpeed si está definido
+          const effectiveMoverDecayR = preset.moverDecaySpeed ?? preset.decaySpeed;
+          
+          // �🎛️ WAVE 117.2: MOVER BLACKOUT RÁPIDO (Stereo Mirror)
           if (targetMover === 0) {
-            const fastDecay = preset.decaySpeed / 3;
+            const fastDecay = effectiveMoverDecayR / 3;
             intensity = applyDecayWithPhysics(moverKey, 0, fastDecay, 'MOVER');
             if (intensity < 0.08) {
               intensity = 0;
               decayBuffers.set(moverKey, 0);
             }
           } else {
-            intensity = applyDecayWithPhysics(moverKey, targetMover, preset.decaySpeed, 'MOVER');
+            // 🎯 WAVE 161.5: Usar effectiveMoverDecay para movers
+            intensity = applyDecayWithPhysics(moverKey, targetMover, effectiveMoverDecayR, 'MOVER');
           }
           
           // STEREO MIRROR - Right usa AMBIENT

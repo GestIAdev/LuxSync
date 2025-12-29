@@ -921,13 +921,18 @@ export class SeleneColorEngine {
     // 🎨 WAVE 68.5: PURE COLOR - Solo Key, Mode y Mood
     // NO género, NO bias, solo matemática musical pura
     // 🔥 WAVE 74: MOOD OVERRIDE - Si mood es 'bright', forzar Hue cálido
-    // Esto evita que Fiesta Latina muestre verdes/cyans por la Key detectada
+    // 🎯 WAVE 161.5: LATINO EXCEPTION - No restringir hue para permitir triadic
     let baseHue = 120; // Default: Verde (neutro)
     let hueSource = 'default';
     
+    // 🎯 WAVE 161.5: Detectar si es Latino para NO restringir hue
+    const isLatinoHueFree = vibeId.includes('latin') || vibeId.includes('fiesta') ||
+                         vibeId.includes('cumbia') || vibeId.includes('salsa') ||
+                         vibeId.includes('reggae');
+    
     // 🔥 WAVE 74: Mood 'bright' tiene PRIORIDAD sobre Key
-    // Fiesta Latina usa mood='bright' y SIEMPRE debe ser cálido
-    if (mood === 'bright') {
+    // 🎯 WAVE 161.5: EXCEPTO en Latino - usa Key completa para triadic
+    if (mood === 'bright' && !isLatinoHueFree) {
       // Rango cálido: rojos, naranjas, amarillos (0-60°)
       // Usamos Key para variar DENTRO del rango cálido
       if (key && KEY_TO_HUE[key] !== undefined) {
@@ -950,8 +955,9 @@ export class SeleneColorEngine {
       hueSource = `mood:dark+cold`;
     } else if (key && KEY_TO_HUE[key] !== undefined) {
       // Comportamiento original: Key determina Hue
+      // 🎯 WAVE 161.5: Latino SIEMPRE usa este path (Key completa)
       baseHue = KEY_TO_HUE[key];
-      hueSource = `key:${key}`;
+      hueSource = isLatinoHueFree ? `key:${key}(latino-free)` : `key:${key}`;
     } else if (mood && MOOD_HUES[mood] !== undefined) {
       baseHue = MOOD_HUES[mood];
       hueSource = `mood:${mood}`;

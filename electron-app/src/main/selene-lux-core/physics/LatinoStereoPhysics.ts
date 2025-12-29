@@ -189,6 +189,13 @@ export class LatinoStereoPhysics {
   private static readonly NEON_ORANGE: HSL = { h: 30, s: 100, l: 55 };  // 🔥 Naranja Neón
   private static readonly NEON_YELLOW: HSL = { h: 55, s: 100, l: 55 };  // 💛 Amarillo Neón
 
+  /**
+   * 🎯 WAVE 161.5: NEON PUMP COOLDOWN
+   * Mínimo de frames entre cambios de color para evitar epilepsia.
+   * @ 60fps: 8 frames = ~133ms entre cambios
+   */
+  private static readonly NEON_PUMP_COOLDOWN_FRAMES = 8;
+
   // =========================================================================
   // 📊 ESTADO INTERNO
   // =========================================================================
@@ -210,6 +217,12 @@ export class LatinoStereoPhysics {
   
   /** 🌿 WAVE 158: Último bass conocido (para Delta Trigger) */
   private lastBass = 0;
+  
+  /** 🎯 WAVE 161.5: Frames desde el último cambio de NEON PUMP */
+  private framesSinceNeonChange = 0;
+  
+  /** 🎯 WAVE 161.5: Último índice de color usado en NEON PUMP */
+  private lastNeonColorIndex = 0;
   
   // =========================================================================
   // 🔧 MÉTODOS PÚBLICOS
@@ -365,23 +378,30 @@ export class LatinoStereoPhysics {
       this.lastBass = bassPulse;
       
       // =====================================================================
-      // 🌈 WAVE 161: NEON PUMP (Cuando NO hay Solar Flare)
+      // 🌈 WAVE 161 + 161.5: NEON PUMP (Cuando NO hay Solar Flare)
       // =====================================================================
       // Si no estamos cegando a la gente, les damos COLOR VIBRANTE
-      // Esto garantiza que los Back PARs tengan colores variados, no blanco eterno
+      // 🎯 WAVE 161.5: Añadido cooldown para evitar epilepsia
+      this.framesSinceNeonChange++;  // Siempre incrementar
+      
       if (!isSolarFlare && bassPulse > 0.4) {
-        this.beatCounter++;
         neonInjected = true;
         
-        // Rotar colores neón en cada beat - SIN PONER BLANCO
+        // Solo cambiar color si ha pasado suficiente tiempo (cooldown)
+        if (this.framesSinceNeonChange >= LatinoStereoPhysics.NEON_PUMP_COOLDOWN_FRAMES) {
+          this.beatCounter++;
+          this.lastNeonColorIndex = this.beatCounter % 4;
+          this.framesSinceNeonChange = 0;  // Reset cooldown
+        }
+        
+        // Rotar colores neón con cooldown - SIN PONER BLANCO
         const neonColors = [
           LatinoStereoPhysics.NEON_MAGENTA,
           LatinoStereoPhysics.NEON_CYAN,
           LatinoStereoPhysics.NEON_LIME,
           LatinoStereoPhysics.NEON_ORANGE,
         ];
-        const colorIndex = this.beatCounter % neonColors.length;
-        const neonColor = neonColors[colorIndex];
+        const neonColor = neonColors[this.lastNeonColorIndex];
         
         // Inyectar color en ACCENT (Back PARs) para asegurar variedad
         resultPalette.accent = this.hslToRgb(neonColor);

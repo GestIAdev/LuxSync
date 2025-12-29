@@ -280,37 +280,75 @@ ipcMain.handle('audio:getDesktopSources', async () => {
 function initSystem(): void {
   if (FLAGS.TITAN_ENABLED) {
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚀 TITAN 2.0 PATH - WAVE 217-220
+    // 🚀 TITAN 2.0 PATH - WAVE 225: THE SYNAPSE
     // ═══════════════════════════════════════════════════════════════════════
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
-    console.log('[Main] 🏛️   BOOTING TITAN 2.0 ARCHITECTURE')
-    console.log('[Main] 🏛️   Brain → TitanEngine → HAL Pipeline')
+    console.log('[Main] 🏛️   BOOTING TITAN 2.0 - THE SYNAPSE')
+    console.log('[Main] 🏛️   Brain → TitanEngine → HAL → DMX (REAL)')
     console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
     
-    // Instanciar los 3 actores principales
-    const brain = new TrinityBrain()
-    const engine = new TitanEngine({ debug: true, initialVibe: 'fiesta-latina' })
-    const hal = new HardwareAbstraction({ debug: true })
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 MOCK FIXTURES - Hasta que ConfigManager proporcione fixtures reales
+    // ═══════════════════════════════════════════════════════════════════════
+    const mockFixtures: Array<{
+      dmxAddress: number
+      universe: number
+      name: string
+      zone: string
+      type: string
+      channelCount: number
+    }> = [
+      { dmxAddress: 1, universe: 0, name: 'Front Par L', zone: 'front', type: 'par', channelCount: 8 },
+      { dmxAddress: 9, universe: 0, name: 'Front Par R', zone: 'front', type: 'par', channelCount: 8 },
+      { dmxAddress: 17, universe: 0, name: 'Back Wash L', zone: 'back', type: 'wash', channelCount: 8 },
+      { dmxAddress: 25, universe: 0, name: 'Back Wash R', zone: 'back', type: 'wash', channelCount: 8 },
+      { dmxAddress: 33, universe: 0, name: 'Mover 1', zone: 'front', type: 'mover', channelCount: 16 },
+      { dmxAddress: 49, universe: 0, name: 'Mover 2', zone: 'back', type: 'mover', channelCount: 16 },
+    ]
+    console.log(`[Main] 🔧 Mock fixtures loaded: ${mockFixtures.length} fixtures`)
     
-    console.log('[Main] 🏛️ All TITAN modules instantiated')
+    // ═══════════════════════════════════════════════════════════════════════
+    // � VIBE ROTATION - Para demostrar Color Constitution en acción
+    // ═══════════════════════════════════════════════════════════════════════
+    const vibeSequence: Array<'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge'> = [
+      'fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge'
+    ]
+    let currentVibeIndex = 0
     
-    // 🌊 WAVE 220: LOOP PRINCIPAL REAL
-    // Flujo unidireccional: Brain → Engine → HAL
+    // Instanciar los 3 actores principales (REALES)
+    const brain = new TrinityBrain()  // Aún stub - Phase 3
+    const engine = new TitanEngine({ debug: false, initialVibe: vibeSequence[0] })
+    const hal = new HardwareAbstraction({ debug: false })
+    
+    console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
+    console.log('[Main] 🏛️   ✅ TrinityBrain    → Stub (Phase 3)')
+    console.log('[Main] 🏛️   ✅ TitanEngine     → REAL (Color Constitution)')
+    console.log('[Main] 🏛️   ✅ HardwareAbstraction → REAL (Physics + DMX)')
+    console.log('[Main] 🏛️ ═══════════════════════════════════════════════════')
+    
+    // 🌊 WAVE 225: THE SYNAPSE - LOOP REAL
+    // Flujo unidireccional: Brain → Engine → HAL → DMX
     let titanLoopCount = 0
     const titanLoopInterval = setInterval(() => {
       titanLoopCount++
       
-      // Solo log cada 60 frames (~1 segundo a 60fps simulado)
-      const shouldLog = titanLoopCount % 60 === 0
-      
-      if (shouldLog) {
-        console.log(`[Main] 🏛️ ─────────── TITAN Loop #${titanLoopCount} ───────────`)
+      // Rotar vibe cada 5 segundos (150 frames @ 30fps) para demo
+      if (titanLoopCount % 150 === 0) {
+        currentVibeIndex = (currentVibeIndex + 1) % vibeSequence.length
+        const newVibe = vibeSequence[currentVibeIndex]
+        engine.setVibe(newVibe)
+        console.log(`[Main] 🎭 ═══════════════════════════════════════════════════`)
+        console.log(`[Main] �   VIBE CHANGE → ${newVibe.toUpperCase()}`)
+        console.log(`[Main] 🎭 ═══════════════════════════════════════════════════`)
       }
+      
+      // Log detallado cada 30 frames (~1 segundo)
+      const shouldLog = titanLoopCount % 30 === 0
       
       // 1. Brain analiza audio → produce MusicalContext
       const context = brain.getCurrentContext()
       
-      // 2. Construir métricas de audio para el motor
+      // 2. Construir métricas de audio simuladas
       // (En producción esto vendría del worker de audio)
       const audioMetrics = {
         bass: 0.5 + Math.sin(titanLoopCount * 0.1) * 0.3,
@@ -321,16 +359,45 @@ function initSystem(): void {
         isBeat: titanLoopCount % 30 === 0,
       }
       
-      // 3. Engine procesa contexto + audio → produce LightingIntent
+      // 3. Engine procesa contexto + audio → produce LightingIntent (REAL)
       const intent = engine.update(context, audioMetrics)
       
-      // 4. HAL renderiza intent → produce DMX
-      // (Necesita fixtures, por ahora pasamos array vacío)
-      hal.render(intent, [], audioMetrics)
+      // 4. HAL renderiza intent → produce DMX (REAL)
+      const fixtureStates = hal.render(intent, mockFixtures, audioMetrics)
       
+      // 🔍 VERIFICATION LOGS - Demostrar Color Constitution
       if (shouldLog) {
-        console.log(`[Main] 🏛️   Intent: intensity=${intent.masterIntensity.toFixed(2)}`)
-        console.log(`[Main] 🏛️ ─────────── Loop complete ───────────\n`)
+        const currentVibe = engine.getCurrentVibe()
+        const primary = intent.palette.primary
+        // HSL to Hex helper
+        const toHex = (n: number): string => Math.round(n).toString(16).padStart(2, '0')
+        const hue2rgb = (p: number, q: number, t: number): number => {
+          if (t < 0) t += 1
+          if (t > 1) t -= 1
+          if (t < 1/6) return p + (q - p) * 6 * t
+          if (t < 1/2) return q
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+          return p
+        }
+        const { h, s, l } = primary
+        let r: number, g: number, b: number
+        if (s === 0) {
+          r = g = b = l * 255
+        } else {
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+          const p = 2 * l - q
+          r = hue2rgb(p, q, h + 1/3) * 255
+          g = hue2rgb(p, q, h) * 255
+          b = hue2rgb(p, q, h - 1/3) * 255
+        }
+        const primaryHex = `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase()
+        
+        console.log(`[TitanLoop] ═══════════════════════════════════════════════════`)
+        console.log(`[TitanLoop] Context: Genre=${context.genre.macro} | BPM: ${context.bpm} | Energy: ${audioMetrics.energy.toFixed(2)}`)
+        console.log(`[TitanLoop] ⚡ Engine:  Vibe=${currentVibe} | Intensity=${intent.masterIntensity.toFixed(2)}`)
+        console.log(`[TitanLoop] � Color:   Primary=${primaryHex} | H:${primary.h.toFixed(0)}° S:${(primary.s*100).toFixed(0)}% L:${(primary.l*100).toFixed(0)}%`)
+        console.log(`[TitanLoop] 🔧 HAL:     ${fixtureStates.length} fixtures rendered → DMX sent`)
+        console.log(`[TitanLoop] ═══════════════════════════════════════════════════`)
       }
       
     }, 33) // ~30fps para demo (en producción sería sincronizado con audio)
@@ -340,6 +407,7 @@ function initSystem(): void {
     globalThis.__lux_isSystemRunning = true
     
     console.log('[Main] 🏛️ TITAN main loop started (30Hz demo mode)')
+    console.log('[Main] 🏛️ THE SYNAPSE: Motor → HAL → DMX pipeline ACTIVE')
     
   } else {
     // ═══════════════════════════════════════════════════════════════════════

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌙 useSeleneTruth - WAVE 25: UNIVERSAL TRUTH CONNECTOR
+ * 🌙 useSeleneTruth - WAVE 248: TITAN 2.0 TRUTH CONNECTOR
  * "El Cable de la Verdad"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -16,13 +16,15 @@
  * const genre = useTruthStore(selectGenre)
  * ```
  * 
+ * WAVE 248: Migrado de SeleneBroadcast a SeleneTruth (TITAN 2.0)
+ * 
  * @module hooks/useSeleneTruth
- * @version 25.0.0
+ * @version 248.0.0
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { useTruthStore } from '../stores/truthStore'
-import type { SeleneBroadcast } from '../types/SeleneProtocol'
+import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -32,7 +34,7 @@ interface UseSeleneTruthOptions {
   /** Log cada N frames (default: 0 = disabled) */
   debugInterval?: number
   /** Callback opcional cuando se recibe data */
-  onData?: (data: SeleneBroadcast) => void
+  onData?: (data: SeleneTruth) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -40,7 +42,7 @@ interface UseSeleneTruthOptions {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🌙 Hook que conecta el Frontend al Universal Truth Protocol
+ * 🌙 Hook que conecta el Frontend al Universal Truth Protocol (TITAN 2.0)
  * 
  * IMPORTANTE: Llamar SOLO UNA VEZ en App.tsx o Layout principal.
  * 
@@ -71,8 +73,8 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
       return
     }
     
-    // Suscribirse al canal de la verdad
-    const removeListener = window.lux.onTruthUpdate((data: SeleneBroadcast) => {
+    // Suscribirse al canal de la verdad (TITAN 2.0)
+    const removeListener = window.lux.onTruthUpdate((data: SeleneTruth) => {
       // Actualizar el store
       setTruth(data)
       
@@ -93,8 +95,8 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
           fps,
           mode: data.system.mode,
           energy: data.sensory.audio.energy.toFixed(3),
-          genre: data.musicalDNA.genre.primary,
-          palette: data.visualDecision.palette.source,
+          genre: data.context.genre?.macro ?? 'UNKNOWN',
+          mood: data.consciousness.mood,
         })
       }
     })
@@ -114,7 +116,7 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONVENIENCE HOOKS (Para uso directo en componentes)
+// CONVENIENCE HOOKS (Para uso directo en componentes) - WAVE 248 REMAPPED
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -134,20 +136,20 @@ export function useTruthBeat() {
 }
 
 /**
- * Hook para obtener paleta de colores (UnifiedColor con HSL+RGB+HEX)
- * @returns { primary, secondary, accent, ambient, contrast, strategy, temperature }
+ * Hook para obtener paleta de colores (from intent layer)
+ * @returns palette object
  */
 export function useTruthPalette() {
-  return useTruthStore((state) => state.truth.visualDecision.palette)
+  return useTruthStore((state) => state.truth.intent.palette)
 }
 
 /**
  * 🔥 WAVE 74: Hook THROTTLEADO para paleta - Solo actualiza 1 vez por segundo
  * Evita re-renders innecesarios del Chromatic Core
- * @returns { primary, secondary, accent, ambient, contrast, strategy, temperature }
+ * @returns palette object
  */
 export function useTruthPaletteThrottled() {
-  const palette = useTruthStore((state) => state.truth.visualDecision.palette)
+  const palette = useTruthStore((state) => state.truth.intent.palette)
   const [throttledPalette, setThrottledPalette] = useState(palette)
   const lastUpdateRef = useRef(0)
   
@@ -164,35 +166,32 @@ export function useTruthPaletteThrottled() {
 }
 
 /**
- * Hook para obtener género musical
- * @returns { primary, subGenre, confidence, distribution }
+ * Hook para obtener género musical (from context layer)
+ * @returns { macro, subGenre, confidence }
  */
 export function useTruthGenre() {
-  return useTruthStore((state) => state.truth.musicalDNA.genre)
+  return useTruthStore((state) => state.truth.context.genre)
 }
 
 /**
- * Hook para obtener sección musical actual
- * @returns { current, energy, barsInSection, confidence }
+ * Hook para obtener sección musical actual (from context layer)
+ * @returns { type, confidence, duration, isTransition }
  */
 export function useTruthSection() {
-  return useTruthStore((state) => state.truth.musicalDNA.section)
+  return useTruthStore((state) => state.truth.context.section)
 }
 
 /**
- * Hook para obtener datos de ritmo
- * @returns { bpm, syncopation, swing, complexity, pattern }
+ * Hook para obtener datos de ritmo (from context layer)
+ * @returns { bpm, syncopation, beatPhase }
  */
 export function useTruthRhythm() {
-  return useTruthStore((state) => state.truth.musicalDNA.rhythm)
-}
-
-/**
- * Hook para obtener predicciones
- * @returns { nextSection, dropPrediction, huntStatus }
- */
-export function useTruthPrediction() {
-  return useTruthStore((state) => state.truth.musicalDNA.prediction)
+  return useTruthStore((state) => ({
+    bpm: state.truth.context.bpm,
+    syncopation: state.truth.context.syncopation,
+    beatPhase: state.truth.context.beatPhase,
+    confidence: state.truth.context.confidence
+  }))
 }
 
 /**
@@ -200,7 +199,7 @@ export function useTruthPrediction() {
  * @returns { mood, consciousnessLevel, evolution, dream, zodiac, beauty }
  */
 export function useTruthCognitive() {
-  return useTruthStore((state) => state.truth.cognitive)
+  return useTruthStore((state) => state.truth.consciousness)
 }
 
 /**
@@ -212,19 +211,19 @@ export function useTruthSystem() {
 }
 
 /**
- * Hook para obtener movimiento
- * @returns { pan, tilt, speed, patternName, physicsActive }
+ * Hook para obtener movimiento (from intent layer)
+ * @returns { pattern, speed, amplitude, centerX, centerY, beatSync }
  */
 export function useTruthMovement() {
-  return useTruthStore((state) => state.truth.visualDecision.movement)
+  return useTruthStore((state) => state.truth.intent.movement)
 }
 
 /**
- * 🌙 WAVE 25.5: Hook para obtener efectos especiales
- * @returns { strobe, fog, laser, beam, prism, blackout }
+ * 🌙 WAVE 25.5: Hook para obtener efectos especiales (from intent layer)
+ * @returns effects array
  */
 export function useTruthEffects() {
-  return useTruthStore((state) => state.truth.visualDecision.effects)
+  return useTruthStore((state) => state.truth.intent.effects)
 }
 
 /**
@@ -233,8 +232,8 @@ export function useTruthEffects() {
  */
 export function useTruthColorParams() {
   return useTruthStore((state) => ({
-    intensity: state.truth.visualDecision.intensity,
-    saturation: state.truth.visualDecision.saturation,
+    intensity: state.truth.intent.masterIntensity,
+    saturation: 1, // WAVE 248: saturation is now part of palette
   }))
 }
 
@@ -255,31 +254,80 @@ export function useTruthFPS() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧠 WAVE 25.6: COGNITIVE HOOKS (The Awakened Mind)
+// 🧠 WAVE 248: TITAN 2.0 HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Hook para obtener datos sensoriales (Audio, BPM, Energy)
- * @returns { audio, beat }
+ * @returns { audio, beat, input, fft }
  */
 export function useTruthSensory() {
   return useTruthStore((state) => state.truth.sensory)
 }
 
 /**
- * Hook para obtener DNA musical (Género, Key, Sección)
- * @returns { genre, section, rhythm, key, prediction }
+ * Hook para obtener contexto musical (from context layer)
+ * @returns MusicalContext
  */
-export function useTruthMusicalDNA() {
-  return useTruthStore((state) => state.truth.musicalDNA)
+export function useTruthContext() {
+  return useTruthStore((state) => state.truth.context)
+}
+
+/**
+ * Hook para obtener consciencia de Selene
+ * @returns CognitiveData
+ */
+export function useTruthConsciousness() {
+  return useTruthStore((state) => state.truth.consciousness)
 }
 
 /**
  * Hook para obtener estado del hardware (DMX, Fixtures)
- * @returns { dmx, fixtures }
+ * @returns HardwareState
  */
 export function useTruthHardware() {
-  return useTruthStore((state) => state.truth.hardwareState)
+  return useTruthStore((state) => state.truth.hardware)
+}
+
+/**
+ * Hook para obtener intent de iluminación
+ * @returns LightingIntent
+ */
+export function useTruthIntent() {
+  return useTruthStore((state) => state.truth.intent)
+}
+
+/**
+ * Hook para obtener Musical DNA (genre predictions, hunt status, etc.)
+ * Combines context and consciousness for a complete "musical fingerprint"
+ * @returns { genre, section, bpm, key, rhythm, mode, prediction }
+ */
+export function useTruthMusicalDNA() {
+  return useTruthStore((state) => ({
+    // Musical context
+    genre: state.truth.context.genre,
+    section: state.truth.context.section,
+    bpm: state.truth.context.bpm,
+    energy: state.truth.context.energy,
+    mood: state.truth.context.mood,
+    // Additional context fields
+    key: state.truth.context.key,
+    mode: state.truth.context.mode,
+    rhythm: {
+      bpm: state.truth.context.bpm,
+      beatPhase: state.truth.context.beatPhase,
+      syncopation: state.truth.context.syncopation
+    },
+    // Prediction data from consciousness/beauty analysis
+    prediction: {
+      huntStatus: {
+        phase: state.truth.consciousness.mood,
+        targetType: state.truth.context.genre?.macro ?? 'UNKNOWN',
+        lockPercentage: state.truth.context.confidence * 100
+      },
+      confidence: state.truth.context.confidence
+    }
+  }))
 }
 
 // Default export para conveniencia

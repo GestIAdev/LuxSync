@@ -9,7 +9,7 @@ export type { SeleneState, UseSeleneReturn } from './useSelene'
 export { useAudioCapture } from './useAudioCapture'
 export type { AudioMetrics, UseAudioCaptureReturn } from './useAudioCapture'
 
-// 🌙 WAVE 25: Universal Truth Protocol
+// 🌙 WAVE 248: Universal Truth Protocol - TITAN 2.0 FUSION
 export { 
   useSeleneTruth,
   useTruthAudio,
@@ -18,18 +18,20 @@ export {
   useTruthGenre,
   useTruthSection,
   useTruthRhythm,
-  useTruthPrediction,
   useTruthCognitive,
   useTruthSystem,
   useTruthMovement,
-  useTruthEffects,      // 🌙 WAVE 25.5
-  useTruthColorParams,  // 🌙 WAVE 25.5
+  useTruthEffects,
+  useTruthColorParams,
   useTruthConnected,
   useTruthFPS,
-  // 🧠 WAVE 25.6: Cognitive Hooks
+  // 🧠 WAVE 248: TITAN 2.0 Hooks
   useTruthSensory,
-  useTruthMusicalDNA,
+  useTruthContext,
+  useTruthConsciousness,
   useTruthHardware,
+  useTruthIntent,
+  useTruthMusicalDNA,
   // 🔥 WAVE 74: Throttled hooks
   useTruthPaletteThrottled,
 } from './useSeleneTruth'

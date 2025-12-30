@@ -25,6 +25,8 @@ export interface HSLColor {
   s: number
   /** Lightness (0-1) */
   l: number
+  /** Pre-computed HEX string (for UI rendering) */
+  hex?: string
 }
 
 /**
@@ -39,6 +41,8 @@ export interface ColorPalette {
   accent: HSLColor
   /** Color ambiente - fondos y rellenos */
   ambient: HSLColor
+  /** Strategy used to generate this palette (for debug/display) */
+  strategy?: string
 }
 
 /**

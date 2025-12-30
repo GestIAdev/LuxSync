@@ -67,7 +67,7 @@ const PalettePreview: React.FC = () => {
       <div className="core-footer">
          <div className="footer-metric">
             <span className="f-label">MOOD</span>
-            <span className="f-value">{dna?.mode?.mood?.toUpperCase() || '---'}</span>
+            <span className="f-value">{dna?.mood?.toUpperCase() || '---'}</span>
          </div>
          <div className="footer-metric">
             <span className="f-label">TEMP</span>

@@ -38,7 +38,7 @@ export * from './overrideStore'
 // � WAVE 32: Scene Engine & Snapshots
 export * from './sceneStore'
 
-// �🌙 WAVE 25: Universal Truth Protocol - THE NEW HEART
+// 🌙 WAVE 248: Universal Truth Protocol - TITAN 2.0 FUSION
 export { 
   useTruthStore,
   selectAudio,
@@ -51,12 +51,19 @@ export {
   selectEffects,
   selectSystem,
   selectCognitive,
-  selectPrediction,
+  selectConsciousness,
+  selectContext,
   selectHardware,
   selectColorParams,
   selectFPS,
   selectMode,
   selectBrainStatus,
+  selectVibe,
+  selectDream,
+  selectZodiac,
+  selectBeauty,
+  selectEvolution,
+  selectDropState,
   debugTruth,
 } from './truthStore'
 

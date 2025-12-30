@@ -73,6 +73,8 @@ export type Mood =
 export interface SectionContext {
   /** Tipo de sección detectada */
   type: SectionType
+  /** Alias para type (legacy compatibility) */
+  current: SectionType
   /** Confianza en la detección (0-1) */
   confidence: number
   /** Tiempo en esta sección (ms) */
@@ -195,6 +197,7 @@ export function createDefaultMusicalContext(): MusicalContext {
     syncopation: 0,
     section: {
       type: 'unknown',
+      current: 'unknown',
       confidence: 0,
       duration: 0,
       isTransition: false,

@@ -91,10 +91,11 @@ interface DMXDevice {
 }
 
 // ============================================================================
-// WINDOW INTERFACES
+// WINDOW INTERFACES (Global Extension)
 // ============================================================================
-interface Window {
-  luxsync: {
+declare global {
+  interface Window {
+    luxsync: {
     // DMX (legacy)
     getDMXDevices: () => Promise<string[]>
     selectDMXDevice: (deviceId: string) => Promise<boolean>
@@ -217,8 +218,8 @@ interface Window {
     onAudioAnalysis: (callback: (analysis: unknown) => void) => () => void
     onLightingDecision: (callback: (decision: unknown) => void) => () => void
     
-    // 🌙 WAVE 25: UNIVERSAL TRUTH PROTOCOL - La Verdad Única a 30fps
-    onTruthUpdate: (callback: (data: import('./types/SeleneProtocol').SeleneBroadcast) => void) => () => void
+    // 🌙 WAVE 248: TITAN 2.0 TRUTH PROTOCOL - La Verdad Única
+    onTruthUpdate: (callback: (data: import('./core/protocol/SeleneProtocol').SeleneTruth) => void) => () => void
     
     // � WAVE 25.7: THE CHRONICLER - Log events via dedicated channel
     onLog: (callback: (logEntry: { id: string; timestamp: number; category: string; message: string; data?: any }) => void) => () => void
@@ -311,6 +312,7 @@ interface Window {
     resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
   }
 }
+} // End declare global
 
 // 🎭 WAVE 26: Show Types
 interface ShowMetadata {
@@ -395,3 +397,6 @@ interface AudioData {
   frequencies: number[]
   waveform: number[]
 }
+
+// Required to make this file a module for declare global to work
+export {}

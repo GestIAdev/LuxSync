@@ -80,12 +80,12 @@ import {
   ZodiacAffinityCalculator,
   type ZodiacInfo,
 } from './engines/consciousness/ZodiacAffinityCalculator'
-// ?? WAVE-25: Universal Truth Protocol
+// 🌙 WAVE-248: Universal Truth Protocol - TITAN 2.0
 import {
   type SeleneBroadcast,
   type UnifiedColor,
   createDefaultBroadcast,
-} from '../../types/SeleneProtocol'
+} from '../../core/protocol/SeleneProtocol'
 // ⚡ WAVE 141-146: Physics Modules (Reactividad extraída por Vibe)
 import { TechnoStereoPhysics, RockStereoPhysics, LatinoStereoPhysics, ChillStereoPhysics } from './physics'
 // 🎛️ WAVE 142: GenerationOptions para restricciones de color
@@ -2204,10 +2204,10 @@ export class SeleneLux extends EventEmitter {
       fixtures: [],
       dmx: {
         connected: false,
-        driver: 'universal',
+        driver: 'none' as const,
         universe: 1,
         frameRate: 40,
-        lastUpdate: now,
+        port: '',
       },
     }
     
@@ -2216,6 +2216,7 @@ export class SeleneLux extends EventEmitter {
     // -----------------------------------------------------------------------
     // ?? WAVE 39.9.2: brainStatus ahora muestra el MOOD actual (no el fantasma reactive/intelligent)
     const currentMood = this.consciousness.currentMood || 'peaceful'
+    const activeVibe = this.lastTrinityData?.activeVibe ?? this.lastTrinityData?.debugInfo?.activeVibe ?? 'techno-club'
     const system = {
       frameNumber: this.frameCount,
       timestamp: now,
@@ -2223,7 +2224,9 @@ export class SeleneLux extends EventEmitter {
       targetFPS: 30,
       actualFPS: this.fpsCounter.currentFPS,
       mode: this.mode as 'selene' | 'flow' | 'manual',
+      vibe: activeVibe as 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge' | 'idle' | 'custom',
       brainStatus: currentMood as 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric',
+      titanEnabled: true,
       uptime: Math.floor((now - this.startTime) / 1000),
       performance: {
         audioProcessingMs: 0,
@@ -2243,14 +2246,18 @@ export class SeleneLux extends EventEmitter {
     
     this.lastFrameTime = now
     
+    // 🌙 WAVE 249: Remapear a SeleneTruth (TITAN 2.0)
+    // NOTA: Hay incompatibilidades entre las estructuras internas y el protocolo.
+    // Se usa type assertion temporal hasta refactorizar las estructuras internas.
     return {
-      sensory,
-      cognitive,
-      musicalDNA,
-      visualDecision,
-      hardwareState,
       system,
-    }
+      sensory,
+      consciousness: cognitive,
+      context: musicalDNA,
+      intent: visualDecision,
+      hardware: hardwareState,
+      timestamp: now,
+    } as unknown as SeleneBroadcast
   }
   
   /**

@@ -197,6 +197,7 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
     syncopation: rhythm.syncopation,
     section: {
       type: sectionType,
+      current: sectionType,
       confidence: section.confidence,
       duration: 0,
       isTransition: section.type === 'buildup' || section.type === 'breakdown',

@@ -169,6 +169,7 @@ export class TrinityBrain extends EventEmitter {
       // Structural - construir desde analysis
       section: {
         type: this.inferSectionType(analysis),
+        current: this.inferSectionType(analysis),
         confidence: analysis.bpmConfidence,
         duration: this.frameCount * 33, // ~33ms por frame @ 30fps
         isTransition: analysis.beatStrength > 0.8 && analysis.onBeat,
@@ -239,6 +240,7 @@ export class TrinityBrain extends EventEmitter {
       syncopation: 0,
       section: {
         type: 'unknown',
+        current: 'unknown',
         confidence: 0,
         duration: 0,
         isTransition: false,

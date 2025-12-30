@@ -1,15 +1,20 @@
 /**
- * 🏛️ WAVE 201: SELENE PROTOCOL
+ * 🏛️ WAVE 248: SELENE PROTOCOL - THE FUSION
  * 
- * ARCHIVO ÍNDICE DEL PROTOCOLO TITAN.
+ * ARCHIVO ÍNDICE DEL PROTOCOLO TITAN 2.0 ENRIQUECIDO.
  * 
  * Este archivo define TODOS los tipos que cruzan límites de módulo.
  * Si un tipo no está aquí, NO PUEDE usarse para comunicación inter-módulo.
  * 
+ * WAVE 248: Incorpora toda la riqueza cognitiva y sensorial del V1.
+ * - SensoryData (audio crudo, FFT, beat)
+ * - CognitiveData (mood, evolution, dream, zodiac, beauty)
+ * - Estructura enriquecida de SeleneTruth
+ * 
  * "SELENEPROTOCOL ES LA BIBLIA" - Mandamiento #4
  * 
- * @version TITAN 2.0
- * @wave 201
+ * @version TITAN 2.0 ENRICHED
+ * @wave 248
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -26,7 +31,7 @@ export * from './LightingIntent'
 export * from './DMXPacket'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TIPOS COMUNES DEL SISTEMA
+// 1. TIPOS COMUNES DEL SISTEMA
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -35,18 +40,19 @@ export * from './DMXPacket'
 export type SeleneMode = 
   | 'off'             // Sistema apagado
   | 'manual'          // Control manual completo
-  | 'reactive'        // Reactivo a audio (Flow)
+  | 'flow'            // Reactivo a audio (Flow) - WAVE 248: renamed from 'reactive'
   | 'selene'          // Modo Selene completo (Brain activo)
+  | 'locked'          // Control bloqueado
 
 /**
  * IDs de Vibes predefinidos
  */
 export type VibeId = 
   | 'techno-club'
-  | 'latin-party'
-  | 'rock-concert'
-  | 'pop-show'
+  | 'fiesta-latina'   // WAVE 248: renamed from 'latin-party'
+  | 'pop-rock'        // WAVE 248: renamed from 'rock-concert'
   | 'chill-lounge'
+  | 'idle'            // WAVE 248: No vibe selected
   | 'custom'
 
 /**
@@ -66,7 +72,298 @@ export interface AudioLevels {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UI ↔ BACKEND (IPC)
+// 2. SENSORY LAYER - Raw Audio Input (from V1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Raw audio metrics from capture device
+ * @source src/hooks/useAudioCapture.ts
+ */
+export interface SensoryData {
+  /** Raw audio metrics */
+  audio: {
+    /** Current energy level (0-1), normalized */
+    energy: number
+    /** Peak energy in current window */
+    peak: number
+    /** Running average energy */
+    average: number
+    /** Low frequency energy (bass, 20-250Hz) */
+    bass: number
+    /** Mid frequency energy (250Hz-4kHz) */
+    mid: number
+    /** High frequency energy (4kHz-20kHz) */
+    high: number
+    /** Spectral centroid (brightness indicator) */
+    spectralCentroid: number
+    /** Spectral flux (change detection) */
+    spectralFlux: number
+    /** Zero crossing rate (texture) */
+    zeroCrossingRate: number
+  }
+  
+  /** FFT frequency bins (256 values, 0-1 normalized) */
+  fft: number[]
+  
+  /** Beat detection state */
+  beat: {
+    /** True on exact beat moment */
+    onBeat: boolean
+    /** Confidence of beat detection (0-1) */
+    confidence: number
+    /** Current BPM estimate */
+    bpm: number
+    /** Phase within current beat (0-1) */
+    beatPhase: number
+    /** Phase within current bar (0-1) */
+    barPhase: number
+    /** Time since last beat (ms) */
+    timeSinceLastBeat: number
+  }
+  
+  /** Input configuration */
+  input: {
+    /** User-set input gain multiplier */
+    gain: number
+    /** Active audio device name */
+    device: string
+    /** True if audio is being received */
+    active: boolean
+    /** Clipping detection */
+    isClipping: boolean
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. COGNITIVE LAYER - Consciousness & Personality (from V1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Mood types for Selene's emotional state
+ */
+export type SeleneMood = 'peaceful' | 'energetic' | 'dark' | 'playful' | 'calm' | 'dramatic' | 'euphoric'
+
+/**
+ * Evolution stage of Selene's consciousness
+ */
+export type EvolutionStage = 'awakening' | 'learning' | 'wise'
+
+/**
+ * Dream simulation types
+ */
+export type DreamType = 
+  | 'palette_change' 
+  | 'intensity_shift' 
+  | 'movement_change'
+  | 'effect_activation' 
+  | 'mood_transition' 
+  | 'strike_execution'
+  | 'full_scene_change'
+  | null
+
+/**
+ * Dream recommendation actions
+ */
+export type DreamRecommendation = 'execute' | 'modify' | 'abort' | null
+
+/**
+ * Zodiac elements
+ */
+export type ZodiacElement = 'fire' | 'earth' | 'air' | 'water'
+
+/**
+ * Zodiac quality
+ */
+export type ZodiacQuality = 'cardinal' | 'fixed' | 'mutable'
+
+/**
+ * Drop state machine status
+ */
+export type DropStateType = 'IDLE' | 'ATTACK' | 'SUSTAIN' | 'RELEASE' | 'COOLDOWN'
+
+/**
+ * Stable emotion from MoodArbiter
+ */
+export type StableEmotion = 'BRIGHT' | 'DARK' | 'NEUTRAL'
+
+/**
+ * Evolution state
+ */
+export interface EvolutionData {
+  /** Current stage: awakening → learning → wise */
+  stage: EvolutionStage
+  /** Total experiences processed */
+  totalExperiences: number
+  /** Patterns discovered */
+  patternsDiscovered: number
+  /** Current generation number */
+  generation: number
+  /** Lineage history */
+  lineage: string[]
+}
+
+/**
+ * Dream Forge - What Selene is "imagining"
+ */
+export interface DreamData {
+  /** True if currently simulating a scenario */
+  isActive: boolean
+  /** Current dream type being simulated */
+  currentType: DreamType
+  /** Human-readable description of current thought */
+  currentThought: string
+  /** Projected beauty score of current simulation (0-1) */
+  projectedBeauty: number
+  /** Last dream recommendation */
+  lastRecommendation: DreamRecommendation
+}
+
+/**
+ * Zodiac affinity calculated from audio frequencies
+ */
+export interface ZodiacData {
+  /** Current dominant element */
+  element: ZodiacElement
+  /** Current zodiac sign resonance */
+  sign: string
+  /** Affinity score (0-1) */
+  affinity: number
+  /** Quality resonance */
+  quality: ZodiacQuality
+  /** Poetic description */
+  description: string
+}
+
+/**
+ * Beauty evaluation metrics
+ */
+export interface BeautyData {
+  /** Current frame beauty score (0-1) */
+  current: number
+  /** Session average */
+  average: number
+  /** Session maximum */
+  max: number
+  /** Components breakdown */
+  components: {
+    fibonacciAlignment: number
+    zodiacResonance: number
+    musicalHarmony: number
+    patternResonance: number
+    historicalBonus: number
+  }
+}
+
+/**
+ * Vibe state
+ */
+export interface VibeState {
+  /** Current active vibe ID or 'idle' */
+  active: VibeId
+  /** Is transitioning between vibes */
+  transitioning: boolean
+}
+
+/**
+ * Drop state machine
+ */
+export interface DropState {
+  /** Current state: IDLE, ATTACK, SUSTAIN, RELEASE, COOLDOWN */
+  state: DropStateType
+  /** Is drop currently active (only SUSTAIN = true drop) */
+  isActive: boolean
+}
+
+/**
+ * 🧠 COGNITIVE DATA - Selene's Consciousness
+ * 
+ * Full personality and consciousness state.
+ * This is what makes Selene "alive".
+ */
+export interface CognitiveData {
+  /** Current emotional mood */
+  mood: SeleneMood
+  
+  /** Consciousness level (0-1, evolves over time) */
+  consciousnessLevel: number
+  
+  /** Evolution state */
+  evolution: EvolutionData
+  
+  /** Dream Forge - What Selene is "imagining" */
+  dream: DreamData
+  
+  /** Zodiac affinity calculated from audio frequencies */
+  zodiac: ZodiacData
+  
+  /** Beauty evaluation metrics */
+  beauty: BeautyData
+  
+  /** Last insight or thought as string */
+  lastInsight: string
+
+  /** Active data sources influencing current mood/behavior */
+  activeSources: string[]
+  
+  /** Active Vibe Context */
+  vibe: VibeState
+  
+  /** Stabilized Emotion from MoodArbiter */
+  stableEmotion: StableEmotion
+  
+  /** Thermal Temperature in Kelvin (2000K-10000K) */
+  thermalTemperature: number
+  
+  /** Drop State Machine Status */
+  dropState: DropState
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. VISUAL LAYER - Colors & Movement (from V1, simplified)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Unified color with all representations
+ * NO MORE HSL/RGB CONFUSION - Both are always available
+ */
+export interface UnifiedColor {
+  /** Hue (0-360) */
+  h: number
+  /** Saturation (0-100) */
+  s: number
+  /** Lightness (0-100) */
+  l: number
+  /** Red (0-255) */
+  r: number
+  /** Green (0-255) */
+  g: number
+  /** Blue (0-255) */
+  b: number
+  /** Hex string (#RRGGBB) */
+  hex: string
+}
+
+/**
+ * Visual effects state
+ */
+export interface EffectsState {
+  /** Strobe effect */
+  strobe: {
+    active: boolean
+    rate: number
+    intensity: number
+  }
+  /** Fog/haze machine */
+  fog: {
+    active: boolean
+    density: number
+  }
+  /** Blackout state */
+  blackout: boolean
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. UI ↔ BACKEND (IPC)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { MusicalContext } from './MusicalContext'
@@ -90,6 +387,8 @@ export interface FixtureState {
   universe: number
   /** Intensidad actual (0-255) */
   dimmer: number
+  /** Intensity alias (for legacy compatibility) */
+  intensity: number
   /** RGB actual */
   color: { r: number; g: number; b: number }
   /** Pan actual (0-255) */
@@ -98,73 +397,151 @@ export interface FixtureState {
   tilt: number
   /** ¿Está online/conectado? */
   online: boolean
+  /** ¿Está activo? */
+  active: boolean
 }
 
 /**
- * 📡 SELENE TRUTH
+ * Hardware and DMX state
+ */
+export interface HardwareState {
+  /** Estado DMX */
+  dmx: {
+    /** ¿Hay conexión DMX activa? */
+    connected: boolean
+    /** Driver DMX activo */
+    driver: 'usb' | 'artnet' | 'none'
+    /** Universo DMX */
+    universe: number
+    /** Frame rate DMX */
+    frameRate: number
+    /** Puerto/IP del dispositivo DMX */
+    port: string | null
+  }
+  /** Raw DMX output (512 channels) */
+  dmxOutput: number[]
+  /** Number of active fixtures */
+  fixturesActive: number
+  /** Total patched fixtures */
+  fixturesTotal: number
+  /** Estado de los fixtures */
+  fixtures: FixtureState[]
+}
+
+/**
+ * System performance and status
+ */
+export interface SystemState {
+  /** Frame number since start */
+  frameNumber: number
+  /** Timestamp of this truth (ms since epoch) */
+  timestamp: number
+  /** Delta time since last frame (ms) */
+  deltaTime: number
+  /** Target frames per second */
+  targetFPS: number
+  /** Actual frames per second */
+  actualFPS: number
+  /** Current operation mode */
+  mode: SeleneMode
+  /** Current vibe */
+  vibe: VibeId
+  /** Brain status (current mood) */
+  brainStatus: SeleneMood
+  /** Session uptime (seconds) */
+  uptime: number
+  /** TITAN enabled */
+  titanEnabled: boolean
+  /** Session ID */
+  sessionId: string
+  /** Version info */
+  version: string
+  /** Performance metrics */
+  performance: {
+    /** Processing time for audio analysis (ms) */
+    audioProcessingMs: number
+    /** Processing time for brain (ms) */
+    brainProcessingMs: number
+    /** Processing time for color engine (ms) */
+    colorEngineMs: number
+    /** DMX output time (ms) */
+    dmxOutputMs: number
+    /** Total frame time (ms) */
+    totalFrameMs: number
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. SELENE TRUTH - THE UNIVERSAL TRUTH (WAVE 248 ENRICHED)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 📡 SELENE TRUTH - THE FUSION
  * 
  * La "Verdad Única" del sistema que se envía al Frontend @ 30fps.
  * Contiene todo el estado necesario para renderizar la UI.
  * 
+ * WAVE 248: Ahora incluye toda la riqueza cognitiva y sensorial.
+ * 
  * Canal IPC: 'selene:truth'
+ * 
+ * @example
+ * ```typescript
+ * // Backend (main process)
+ * const truth: SeleneTruth = orchestrator.getTruth();
+ * mainWindow.webContents.send('selene:truth', truth);
+ * 
+ * // Frontend (renderer)
+ * useEffect(() => {
+ *   const unsubscribe = window.lux.onTruthUpdate((data: SeleneTruth) => {
+ *     setTruth(data); // That's it. Render this.
+ *   });
+ *   return unsubscribe;
+ * }, []);
+ * ```
  */
 export interface SeleneTruth {
   // ═══════════════════════════════════════════════════════════════════════
-  // ESTADO MUSICAL (del Brain)
+  // SISTEMA
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Contexto musical actual */
+  /** Estado del sistema (mode, fps, uptime, performance) */
+  system: SystemState
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SENSORIAL (Audio Crudo)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Raw sensory input from audio capture */
+  sensory: SensoryData
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONSCIENCIA (Personalidad de Selene)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Consciousness, personality, dreams, evolution */
+  consciousness: CognitiveData
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONTEXTO MUSICAL (del Brain)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Musical context (genre, section, rhythm) */
   context: MusicalContext
 
   // ═══════════════════════════════════════════════════════════════════════
-  // ESTADO DE ILUMINACIÓN (del Engine)
+  // INTENT DE ILUMINACIÓN (del Engine)
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Intent de iluminación actual */
+  /** Lighting intent (palette, zones, movement, effects) */
   intent: LightingIntent
 
   // ═══════════════════════════════════════════════════════════════════════
-  // ESTADO DE HARDWARE
+  // HARDWARE
   // ═══════════════════════════════════════════════════════════════════════
   
-  hardware: {
-    /** ¿Hay conexión DMX activa? */
-    dmxConnected: boolean
-    /** Driver DMX activo */
-    dmxDriver: 'usb' | 'artnet' | 'none'
-    /** Estado de los fixtures */
-    fixtures: FixtureState[]
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // ESTADO DE AUDIO
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  audio: {
-    /** Fuente de audio activa */
-    source: string
-    /** ¿Está recibiendo audio? */
-    isActive: boolean
-    /** Niveles de audio actuales */
-    levels: AudioLevels
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // ESTADO DEL SISTEMA
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  system: {
-    /** Modo actual */
-    mode: SeleneMode
-    /** Vibe activo */
-    vibe: VibeId
-    /** FPS actual del loop principal */
-    fps: number
-    /** Uptime en ms */
-    uptime: number
-    /** ¿TITAN activo? */
-    titanEnabled: boolean
-  }
+  /** Hardware state (DMX, fixtures) */
+  hardware: HardwareState
 
   // ═══════════════════════════════════════════════════════════════════════
   // META
@@ -260,3 +637,189 @@ export function isLightingIntent(obj: unknown): obj is LightingIntent {
     typeof intent.timestamp === 'number'
   )
 }
+
+/**
+ * Verifica si un objeto es un SeleneTruth válido
+ */
+export function isSeleneTruth(obj: unknown): obj is SeleneTruth {
+  if (!obj || typeof obj !== 'object') return false
+  const truth = obj as Record<string, unknown>
+  return (
+    'system' in truth &&
+    'sensory' in truth &&
+    'consciousness' in truth &&
+    'context' in truth &&
+    'intent' in truth &&
+    'hardware' in truth &&
+    'timestamp' in truth
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. DEFAULT FACTORIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create default UnifiedColor
+ */
+export function createDefaultColor(): UnifiedColor {
+  return { h: 0, s: 0, l: 50, r: 128, g: 128, b: 128, hex: '#808080' }
+}
+
+/**
+ * Create default SensoryData
+ */
+export function createDefaultSensory(): SensoryData {
+  return {
+    audio: {
+      energy: 0, peak: 0, average: 0, bass: 0, mid: 0, high: 0,
+      spectralCentroid: 0, spectralFlux: 0, zeroCrossingRate: 0
+    },
+    fft: new Array(256).fill(0),
+    beat: { onBeat: false, confidence: 0, bpm: 120, beatPhase: 0, barPhase: 0, timeSinceLastBeat: 0 },
+    input: { gain: 1, device: 'None', active: false, isClipping: false }
+  }
+}
+
+/**
+ * Create default CognitiveData
+ */
+export function createDefaultCognitive(): CognitiveData {
+  return {
+    mood: 'peaceful',
+    consciousnessLevel: 0,
+    evolution: { stage: 'awakening', totalExperiences: 0, patternsDiscovered: 0, generation: 1, lineage: ['Genesis'] },
+    dream: { isActive: false, currentType: null, currentThought: 'Selene awakening...', projectedBeauty: 0, lastRecommendation: null },
+    zodiac: { element: 'water', sign: 'Pisces', affinity: 0.5, quality: 'mutable', description: 'The dreaming mystic' },
+    beauty: { current: 0.5, average: 0.5, max: 0.5, components: { fibonacciAlignment: 0, zodiacResonance: 0, musicalHarmony: 0, patternResonance: 0, historicalBonus: 0 } },
+    lastInsight: 'Selene Lux awakening...',
+    activeSources: [],
+    vibe: { active: 'idle', transitioning: false },
+    stableEmotion: 'NEUTRAL',
+    thermalTemperature: 4500,
+    dropState: { state: 'IDLE', isActive: false }
+  }
+}
+
+/**
+ * Create default SystemState
+ */
+export function createDefaultSystem(): SystemState {
+  return {
+    frameNumber: 0,
+    timestamp: Date.now(),
+    deltaTime: 0,
+    targetFPS: 30,
+    actualFPS: 0,
+    mode: 'selene',
+    vibe: 'idle',
+    brainStatus: 'peaceful',
+    uptime: 0,
+    titanEnabled: true,
+    sessionId: '',
+    version: '2.0.0',
+    performance: {
+      audioProcessingMs: 0,
+      brainProcessingMs: 0,
+      colorEngineMs: 0,
+      dmxOutputMs: 0,
+      totalFrameMs: 0
+    }
+  }
+}
+
+/**
+ * Create default HardwareState
+ */
+export function createDefaultHardware(): HardwareState {
+  return {
+    dmx: {
+      connected: false,
+      driver: 'none',
+      universe: 1,
+      frameRate: 40,
+      port: null
+    },
+    dmxOutput: new Array(512).fill(0),
+    fixturesActive: 0,
+    fixturesTotal: 0,
+    fixtures: []
+  }
+}
+
+/**
+ * 🌙 Create default SeleneTruth
+ * 
+ * Creates a fully initialized SeleneTruth object with safe defaults.
+ * Use this for initialization before receiving real data from backend.
+ */
+export function createDefaultTruth(): SeleneTruth {
+  // Import default palette from LightingIntent if available, otherwise create inline
+  const defaultPalette = {
+    primary: { h: 0, s: 0, l: 0.5 },
+    secondary: { h: 0.5, s: 0, l: 0.5 },
+    accent: { h: 0.25, s: 0, l: 0.5 },
+    ambient: { h: 0.75, s: 0, l: 0.3 }
+  }
+
+  const defaultIntent = {
+    palette: defaultPalette,
+    masterIntensity: 1,
+    zones: {},
+    movement: {
+      pattern: 'static' as const,
+      speed: 0,
+      amplitude: 0,
+      centerX: 0.5,
+      centerY: 0.5,
+      beatSync: false
+    },
+    effects: [],
+    source: 'procedural' as const,
+    timestamp: Date.now()
+  }
+
+  const defaultContext = {
+    key: null,
+    mode: 'unknown' as const,
+    bpm: 120,
+    beatPhase: 0,
+    syncopation: 0,
+    section: { type: 'unknown' as const, current: 'unknown' as const, confidence: 0, duration: 0, isTransition: false },
+    energy: 0,
+    mood: 'neutral' as const,
+    genre: { macro: 'UNKNOWN' as const, subGenre: null, confidence: 0 },
+    confidence: 0,
+    timestamp: Date.now()
+  }
+
+  return {
+    system: createDefaultSystem(),
+    sensory: createDefaultSensory(),
+    consciousness: createDefaultCognitive(),
+    context: defaultContext,
+    intent: defaultIntent,
+    hardware: createDefaultHardware(),
+    timestamp: Date.now()
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGACY COMPATIBILITY (WAVE 248)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * @deprecated Use SeleneTruth instead
+ * Alias for backward compatibility during migration
+ */
+export type SeleneBroadcast = SeleneTruth
+
+/**
+ * @deprecated Use createDefaultTruth instead
+ */
+export const createDefaultBroadcast = createDefaultTruth
+
+/**
+ * @deprecated Use isSeleneTruth instead
+ */
+export const isSeleneBroadcast = isSeleneTruth

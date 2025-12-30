@@ -1,14 +1,14 @@
 /**
- * 🏛️ WAVE 212: MOCK DMX DRIVER
+ * 🏛️ WAVE 212 + WAVE 252: MOCK DMX DRIVER (SILENT MODE)
  * 
  * A fake DMX driver for development without physical hardware.
- * Logs all operations instead of sending actual DMX data.
+ * WAVE 252: Now silent by default - no console spam.
  * 
  * USE CASES:
  * - Development on machines without DMX interfaces
  * - Unit/integration testing
  * - Demo mode
- * - Debugging DMX output values
+ * - Debugging DMX output values (enable verbose mode)
  */
 
 import type { DMXPacket } from '../../core/protocol'
@@ -20,7 +20,7 @@ import type {
 } from './DMXDriver.interface'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MOCK DRIVER
+// MOCK DRIVER (WAVE 252: SILENT BY DEFAULT)
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class MockDMXDriver implements IDMXDriver {
@@ -29,44 +29,49 @@ export class MockDMXDriver implements IDMXDriver {
   private framesSent = 0
   private lastSendTime = 0
   private universeBuffers = new Map<number, Uint8Array>()
-  private logEnabled = true
-  private logSampleRate = 0.05  // Log 5% of frames to avoid spam
+  
+  // WAVE 252: Silent mode by default (no more console spam)
+  private verbose = false
   
   constructor(config: Partial<DriverConfig> = {}) {
     this.config = {
       refreshRate: config.refreshRate ?? 30,
       autoReconnect: config.autoReconnect ?? true,
       reconnectDelay: config.reconnectDelay ?? 2000,
-      debug: config.debug ?? true,
+      debug: config.debug ?? false,  // WAVE 252: Debug off by default
     }
+    
+    // WAVE 252: Only log in verbose mode
+    this.verbose = config.debug === true
     
     // Initialize with one universe
     this.universeBuffers.set(1, new Uint8Array(512))
     
-    console.log('[MockDMX] 🎭 Mock DMX Driver initialized (WAVE 212)')
+    // WAVE 252: Single silent init message
+    if (this.verbose) {
+      console.log('[MockDMX] 🎭 Mock DMX Driver initialized (WAVE 252 - Silent Mode)')
+    }
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // LIFECYCLE
+  // LIFECYCLE (WAVE 252: Silent by default)
   // ─────────────────────────────────────────────────────────────────────────
   
   async connect(): Promise<boolean> {
     this._state = 'connecting'
-    console.log('[MockDMX] 🔌 Connecting to virtual DMX device...')
     
     // Simulate connection delay
     await this.sleep(100)
     
     this._state = 'connected'
-    console.log('[MockDMX] ✅ Connected to virtual DMX universe')
+    // WAVE 252: Silent - no logs unless verbose
     return true
   }
   
   async close(): Promise<void> {
-    console.log('[MockDMX] 🛑 Closing virtual connection...')
     this._state = 'disconnected'
     this.universeBuffers.clear()
-    console.log('[MockDMX] ✅ Disconnected')
+    // WAVE 252: Silent
   }
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -98,15 +103,8 @@ export class MockDMXDriver implements IDMXDriver {
     this.framesSent++
     this.lastSendTime = Date.now()
     
-    // Sample logging (avoid spam)
-    if (this.logEnabled && Math.random() < this.logSampleRate) {
-      const activeChannels = packet.channels.filter(v => v > 0).length
-      console.log(
-        `[MockDMX] 📤 Packet #${this.framesSent} | ` +
-        `Univ:${universe} Addr:${packet.address} Ch:${packet.channels.length} ` +
-        `Active:${activeChannels} | Sample: [${packet.channels.slice(0, 6).join(',')}...]`
-      )
-    }
+    // WAVE 252: Only log in verbose mode
+    // (Removed sample logging spam)
     
     return true
   }
@@ -120,20 +118,15 @@ export class MockDMXDriver implements IDMXDriver {
     this.framesSent++
     this.lastSendTime = Date.now()
     
-    // Calculate active channels for logging
-    if (this.logEnabled && Math.random() < this.logSampleRate) {
-      const activeCount = Array.from(data).filter(v => v > 0).length
-      console.log(
-        `[MockDMX] 📤 Universe ${universe} | ` +
-        `Active:${activeCount}/512 | Frame:${this.framesSent}`
-      )
-    }
+    // WAVE 252: Silent - no logging unless verbose
     
     return true
   }
   
   blackout(): void {
-    console.log('[MockDMX] ⬛ BLACKOUT - All channels to 0')
+    if (this.verbose) {
+      console.log('[MockDMX] ⬛ BLACKOUT - All channels to 0')
+    }
     
     this.universeBuffers.forEach((buffer) => {
       buffer.fill(0)
@@ -185,13 +178,10 @@ export class MockDMXDriver implements IDMXDriver {
   }
   
   /**
-   * Enable/disable logging.
+   * WAVE 252: Enable/disable verbose logging.
    */
-  setLogging(enabled: boolean, sampleRate?: number): void {
-    this.logEnabled = enabled
-    if (sampleRate !== undefined) {
-      this.logSampleRate = Math.max(0, Math.min(1, sampleRate))
-    }
+  setLogging(enabled: boolean, _sampleRate?: number): void {
+    this.verbose = enabled
   }
   
   /**
@@ -199,7 +189,9 @@ export class MockDMXDriver implements IDMXDriver {
    */
   simulateError(): void {
     this._state = 'error'
-    console.error('[MockDMX] 🔥 Simulated connection error!')
+    if (this.verbose) {
+      console.error('[MockDMX] 🔥 Simulated connection error!')
+    }
   }
   
   /**

@@ -40,15 +40,9 @@ export class TitanOrchestrator {
   private mainLoopInterval: NodeJS.Timeout | null = null
   private frameCount = 0
   
-  // Mock fixtures for demo
-  private mockFixtures = [
-    { dmxAddress: 1, universe: 0, name: 'Front Par L', zone: 'front', type: 'par', channelCount: 8 },
-    { dmxAddress: 9, universe: 0, name: 'Front Par R', zone: 'front', type: 'par', channelCount: 8 },
-    { dmxAddress: 17, universe: 0, name: 'Back Wash L', zone: 'back', type: 'wash', channelCount: 8 },
-    { dmxAddress: 25, universe: 0, name: 'Back Wash R', zone: 'back', type: 'wash', channelCount: 8 },
-    { dmxAddress: 33, universe: 0, name: 'Mover 1', zone: 'front', type: 'mover', channelCount: 16 },
-    { dmxAddress: 49, universe: 0, name: 'Mover 2', zone: 'back', type: 'mover', channelCount: 16 },
-  ]
+  // WAVE 252: Real fixtures from ConfigManager (no more mocks)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private fixtures: any[] = []
   
   // Vibe rotation for demo
   private vibeSequence: VibeId[] = ['fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge']
@@ -197,8 +191,8 @@ export class TitanOrchestrator {
     // 3. Engine processes context -> produces LightingIntent
     const intent = this.engine.update(context, engineAudioMetrics)
     
-    // 4. HAL renders intent -> produces fixture states
-    const fixtureStates = this.hal.render(intent, this.mockFixtures, halAudioMetrics)
+    // 4. HAL renders intent -> produces fixture states (WAVE 252: uses real fixtures)
+    const fixtureStates = this.hal.render(intent, this.fixtures, halAudioMetrics)
     
     // Log every second
     if (shouldLog && this.config.debug) {
@@ -218,6 +212,22 @@ export class TitanOrchestrator {
   }
 
   /**
+   * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setFixtures(fixtures: any[]): void {
+    this.fixtures = fixtures
+    console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} real fixtures`)
+  }
+
+  /**
+   * WAVE 252: Get current fixtures count
+   */
+  getFixturesCount(): number {
+    return this.fixtures.length
+  }
+
+  /**
    * Get current state for diagnostics
    */
   getState(): {
@@ -225,12 +235,14 @@ export class TitanOrchestrator {
     isRunning: boolean
     frameCount: number
     currentVibe: string | null
+    fixturesCount: number
   } {
     return {
       isInitialized: this.isInitialized,
       isRunning: this.isRunning,
       frameCount: this.frameCount,
       currentVibe: this.engine?.getCurrentVibe() ?? null,
+      fixturesCount: this.fixtures.length,
     }
   }
 }

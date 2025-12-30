@@ -300,21 +300,21 @@ export class HardwareAbstraction {
   private createDriver(type: DriverType): IDMXDriver {
     switch (type) {
       case 'mock':
-        return new MockDMXDriver({ debug: this.config.debug })
+        // WAVE 252: Silent mock driver
+        return new MockDMXDriver({ debug: false })
       
       case 'usb':
-        // For now, fall back to mock
+        // For now, fall back to silent mock
         // Real USB driver would be: return new USBDMXDriverAdapter()
-        console.warn('[HAL] ⚠️ USB driver not yet adapted, using Mock')
-        return new MockDMXDriver({ debug: this.config.debug })
+        return new MockDMXDriver({ debug: false })
       
       case 'artnet':
-        // For now, fall back to mock
-        console.warn('[HAL] ⚠️ ArtNet driver not yet adapted, using Mock')
-        return new MockDMXDriver({ debug: this.config.debug })
+        // For now, fall back to silent mock
+        return new MockDMXDriver({ debug: false })
       
       default:
-        return new MockDMXDriver({ debug: this.config.debug })
+        // WAVE 252: Default to silent mock (no spam)
+        return new MockDMXDriver({ debug: false })
     }
   }
   

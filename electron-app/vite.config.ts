@@ -31,14 +31,14 @@ export default defineConfig({
           },
         },
       },
-      // 🧠 WAVE 10: Trinity Workers - BETA (Senses) and GAMMA (Mind)
+      // 🧠 WAVE 10/254: Trinity Workers - BETA (Senses) and GAMMA (Mind)
       {
-        entry: 'src/main/workers/senses.ts',
+        entry: 'src/workers/senses.ts',
         vite: {
           build: {
             outDir: 'dist-electron',
             lib: {
-              entry: 'src/main/workers/senses.ts',
+              entry: 'src/workers/senses.ts',
               formats: ['cjs'],
               fileName: () => 'senses.js',
             },
@@ -49,12 +49,12 @@ export default defineConfig({
         },
       },
       {
-        entry: 'src/main/workers/mind.ts',
+        entry: 'src/workers/mind.ts',
         vite: {
           build: {
             outDir: 'dist-electron',
             lib: {
-              entry: 'src/main/workers/mind.ts',
+              entry: 'src/workers/mind.ts',
               formats: ['cjs'],
               fileName: () => 'mind.js',
             },

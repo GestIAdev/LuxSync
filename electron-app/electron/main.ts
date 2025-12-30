@@ -19,7 +19,6 @@ import path from 'path'
 import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies } from '../src/core/orchestrator'
 
 // External Services
-import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
 import { configManager, type PatchedFixtureConfig } from '../src/core/config/ConfigManager'
 import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver'
 import { universalDMX, type DMXDevice } from '../src/hal/drivers/UniversalDMXDriver'
@@ -33,7 +32,6 @@ import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
 // =============================================================================
 
 let mainWindow: BrowserWindow | null = null
-let selene: SeleneLux | null = null
 let effectsEngine: EffectsEngine | null = null
 let titanOrchestrator: TitanOrchestrator | null = null
 
@@ -209,34 +207,14 @@ function createWindow(): void {
 
 async function initTitan(): Promise<void> {
   console.log('[Main] ===============================================')
-  console.log('[Main]   BOOTING TITAN 2.0 - WAVE 243.5: THE REBIRTH')
+  console.log('[Main]   BOOTING TITAN 2.0 - WAVE 254: THE SPARK')
   console.log('[Main]   LuxSync V2 - NO HAY VUELTA ATRAS')
   console.log('[Main] ===============================================')
 
-  // Initialize SeleneLux (transitional - will be phased out)
-  selene = new SeleneLux({
-    audio: {
-      device: 'default',
-      sensitivity: 0.7,
-      noiseGate: 0.05,
-      fftSize: 2048,
-      smoothing: 0.8,
-    },
-    visual: {
-      transitionTime: 300,
-      colorSmoothing: 0.85,
-      movementSmoothing: 0.8,
-      effectIntensity: 1.0,
-    },
-    dmx: {
-      universe: 1,
-      driver: 'virtual',
-      frameRate: 40,
-    },
-  })
+  // Initialize EffectsEngine
   effectsEngine = new EffectsEngine()
   
-  // Initialize TitanOrchestrator
+  // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
   titanOrchestrator = new TitanOrchestrator({ debug: isDev })
   await titanOrchestrator.init()
   titanOrchestrator.start()
@@ -244,7 +222,7 @@ async function initTitan(): Promise<void> {
   // Setup IPC handlers with all dependencies
   const ipcDeps: IPCDependencies = {
     mainWindow,
-    selene,
+    titanOrchestrator,
     effectsEngine,
     configManager,
     universalDMX,

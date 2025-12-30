@@ -48,6 +48,11 @@ export class TitanOrchestrator {
   private vibeSequence: VibeId[] = ['fiesta-latina', 'techno-club', 'pop-rock', 'chill-lounge']
   private currentVibeIndex = 0
 
+  // WAVE 254: Control state
+  private mode: 'auto' | 'manual' = 'auto'
+  private useBrain = true
+  private inputGain = 1.0
+
   constructor(config: TitanConfig = {}) {
     this.config = {
       debug: false,
@@ -208,6 +213,50 @@ export class TitanOrchestrator {
     if (this.engine) {
       this.engine.setVibe(vibeId)
       console.log(`[TitanOrchestrator] Vibe set to: ${vibeId}`)
+    }
+  }
+
+  /**
+   * WAVE 254: Set mode (auto/manual)
+   */
+  setMode(mode: string): void {
+    this.mode = mode as 'auto' | 'manual'
+    console.log(`[TitanOrchestrator] Mode set to: ${mode}`)
+  }
+
+  /**
+   * WAVE 254: Enable/disable brain processing
+   */
+  setUseBrain(enabled: boolean): void {
+    this.useBrain = enabled
+    console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'}`)
+  }
+
+  /**
+   * WAVE 254: Set input gain for audio
+   */
+  setInputGain(gain: number): void {
+    this.inputGain = Math.max(0, Math.min(2, gain))
+    console.log(`[TitanOrchestrator] Input gain set to: ${this.inputGain}`)
+  }
+
+  /**
+   * WAVE 254: Process incoming audio frame from frontend
+   * Note: Audio flows Frontend -> Worker (mind.ts) -> TrinityBrain -> Engine
+   * This method is for direct injection when workers aren't available
+   */
+  processAudioFrame(data: Record<string, unknown>): void {
+    if (!this.isRunning || !this.useBrain) return
+    
+    // Apply input gain
+    if (typeof data.volume === 'number') {
+      data.volume = (data.volume as number) * this.inputGain
+    }
+    
+    // The audio data will be processed by the Worker and arrive at Brain via events
+    // This is a placeholder for when we want to bypass Workers
+    if (this.config.debug) {
+      console.log('[TitanOrchestrator] Audio frame received (forwarding to worker pipeline)')
     }
   }
 

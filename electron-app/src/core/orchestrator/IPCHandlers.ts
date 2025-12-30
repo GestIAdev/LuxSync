@@ -8,19 +8,19 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
+import type { TitanOrchestrator } from './TitanOrchestrator'
 
 // Type for zone (matches main.ts)
 export type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
 
 /**
- * WAVE 243.5: Dependencias inyectadas directamente desde main.ts V2
+ * WAVE 254: Dependencias inyectadas desde main.ts
+ * SeleneLux eliminado - TitanOrchestrator es ahora el único orquestador
  */
 export interface IPCDependencies {
   // Core instances (can be null during init)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mainWindow: BrowserWindow | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  selene: any
+  titanOrchestrator: TitanOrchestrator | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   effectsEngine: any
   
@@ -82,51 +82,57 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
 }
 
 // =============================================================================
-// SELENE LUX HANDLERS
+// TITAN ORCHESTRATOR HANDLERS (WAVE 254: THE SPARK)
 // =============================================================================
 
 function setupSeleneLuxHandlers(deps: IPCDependencies): void {
-  const { selene, configManager } = deps
+  const { titanOrchestrator, configManager } = deps
   
   ipcMain.handle('lux:start', () => {
-    console.log('[IPC] lux:start - SeleneLux active via TitanOrchestrator')
+    console.log('[IPC] lux:start - TitanOrchestrator active')
+    if (titanOrchestrator && !titanOrchestrator.getState().isRunning) {
+      titanOrchestrator.start()
+    }
     const savedConfig = configManager.getConfig()
     const savedGain = savedConfig?.audio?.inputGain ?? 1.0
     return { success: true, inputGain: savedGain }
   })
   
   ipcMain.handle('lux:stop', () => {
-    console.log('[IPC] lux:stop - Handled by TitanOrchestrator')
+    console.log('[IPC] lux:stop - TitanOrchestrator stopping')
+    if (titanOrchestrator) {
+      titanOrchestrator.stop()
+    }
     return { success: true }
   })
   
   ipcMain.handle('lux:getState', () => {
-    if (selene) {
-      return selene.getState?.() ?? null
+    if (titanOrchestrator) {
+      return titanOrchestrator.getState()
     }
     return null
   })
   
   ipcMain.handle('lux:setMode', (_event, mode: string) => {
     console.log('[IPC] lux:setMode:', mode)
-    if (selene?.setMode) {
-      selene.setMode(mode)
+    if (titanOrchestrator) {
+      titanOrchestrator.setMode(mode)
     }
     return { success: true }
   })
   
   ipcMain.handle('lux:setUseBrain', (_event, enabled: boolean) => {
     console.log('[IPC] lux:setUseBrain:', enabled)
-    if (selene?.setUseBrain) {
-      selene.setUseBrain(enabled)
+    if (titanOrchestrator) {
+      titanOrchestrator.setUseBrain(enabled)
     }
     return { success: true }
   })
   
   ipcMain.handle('lux:setInputGain', (_event, gain: number) => {
     console.log('[IPC] lux:setInputGain:', gain)
-    if (selene?.setInputGain) {
-      selene.setInputGain(gain)
+    if (titanOrchestrator) {
+      titanOrchestrator.setInputGain(gain)
     }
     configManager.updateConfig({ audio: { inputGain: gain } })
     return { success: true }
@@ -134,67 +140,53 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   
   ipcMain.handle('lux:setVibe', (_event, vibeId: string) => {
     console.log('[IPC] lux:setVibe:', vibeId)
-    if (selene?.setVibe) {
-      selene.setVibe(vibeId)
+    if (titanOrchestrator) {
+      titanOrchestrator.setVibe(vibeId as any)
     }
     return { success: true }
   })
   
   ipcMain.handle('lux:setLivingPalette', (_event, palette: string) => {
     console.log('[IPC] lux:setLivingPalette:', palette)
-    if (selene?.setLivingPalette) {
-      selene.setLivingPalette(palette)
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:setMovementPattern', (_event, pattern: string) => {
     console.log('[IPC] lux:setMovementPattern:', pattern)
-    if (selene?.setMovementPattern) {
-      selene.setMovementPattern(pattern)
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:setMovementSpeed', (_event, speed: number) => {
-    if (selene?.setMovementSpeed) {
-      selene.setMovementSpeed(speed)
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:setMovementIntensity', (_event, intensity: number) => {
-    if (selene?.setMovementIntensity) {
-      selene.setMovementIntensity(intensity)
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:setGlobalColorParams', (_event, params: { saturation?: number; intensity?: number }) => {
-    if (selene?.setGlobalColorParams) {
-      selene.setGlobalColorParams(params)
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:forceMutation', () => {
-    if (selene?.forceMutation) {
-      selene.forceMutation()
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
   ipcMain.handle('lux:resetMemory', () => {
-    if (selene?.resetMemory) {
-      selene.resetMemory()
-    }
+    // TODO: Implement in TitanOrchestrator
     return { success: true }
   })
   
-  // WAVE 250: Audio handler (camelCase for backward compat)
+  // WAVE 254: Audio handler
   ipcMain.handle('lux:audioFrame', (_event, data: Record<string, unknown>) => {
-    if (selene?.processAudioFrame) {
-      selene.processAudioFrame(data)
+    if (titanOrchestrator) {
+      titanOrchestrator.processAudioFrame(data)
     }
     return true
   })
@@ -202,38 +194,49 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   // =========================================================================
   // WAVE 250: NERVE SPLICING - Canales kebab-case estándar
   // WAVE 252: SILENCE - Logs eliminados para reducir spam
+  // WAVE 254: Migrado a TitanOrchestrator
   // =========================================================================
   
   // Audio frame (kebab-case - lo que envía preload.ts)
   ipcMain.handle('lux:audio-frame', (_event, data: Record<string, unknown>) => {
-    if (selene?.processAudioFrame) {
-      selene.processAudioFrame(data)
+    if (titanOrchestrator) {
+      titanOrchestrator.processAudioFrame(data)
     }
     return { success: true }
   })
   
-  // Audio buffer (raw Float32Array)
-  ipcMain.handle('lux:audio-buffer', async (_event, buffer: ArrayBuffer) => {
-    if (selene?.handleAudioBuffer) {
-      await selene.handleAudioBuffer(buffer)
-    }
+  // Audio buffer (raw Float32Array) - WAVE 254: Deprecado, usar audio-frame
+  ipcMain.handle('lux:audio-buffer', async (_event, _buffer: ArrayBuffer) => {
+    // Audio buffers are now processed via the Worker pipeline
     return { success: true }
   })
   
   // Get current vibe
   ipcMain.handle('lux:get-vibe', async () => {
-    if (selene?.getCurrentVibe) {
-      const vibeId = selene.getCurrentVibe()
-      return { success: true, vibeId }
+    if (titanOrchestrator) {
+      const state = titanOrchestrator.getState()
+      return { success: true, vibeId: state.currentVibe ?? 'idle' }
     }
     return { success: true, vibeId: 'idle' }
   })
   
-  // Get full state (SeleneTruth)
+  // Get full state (SeleneTruth) - WAVE 254: Migrated to TitanOrchestrator state
   ipcMain.handle('lux:get-full-state', async () => {
-    if (selene?.getBroadcast) {
-      const truth = await selene.getBroadcast()
-      return truth
+    if (titanOrchestrator) {
+      const state = titanOrchestrator.getState()
+      return {
+        dmx: { isConnected: false, status: 'pending', driver: null, port: null },
+        selene: { 
+          isRunning: state.isRunning, 
+          mode: 'auto', 
+          brainMode: 'reactive', 
+          paletteSource: 'vibe', 
+          consciousness: null 
+        },
+        fixtures: [],
+        audio: { hasWorkers: true },
+        titan: state
+      }
     }
     // Fallback minimal state
     return {
@@ -244,11 +247,10 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     }
   })
   
-  // WAVE 252: Alias for get-full-state
+  // WAVE 252: Alias for get-full-state - WAVE 254: Use TitanOrchestrator
   ipcMain.handle('lux:get-state', async () => {
-    if (selene?.getBroadcast) {
-      const truth = await selene.getBroadcast()
-      return truth
+    if (titanOrchestrator) {
+      return titanOrchestrator.getState()
     }
     return null
   })

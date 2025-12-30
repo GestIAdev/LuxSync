@@ -30,7 +30,7 @@ import {
   DEFAULT_VIBE,
   getVibePreset,
   isValidVibeId,
-} from './profiles';
+} from './profiles/index';
 
 import { getColorConstitution as getConstitution } from '../color/colorConstitutions';
 

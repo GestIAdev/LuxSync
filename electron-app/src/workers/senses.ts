@@ -58,7 +58,8 @@ import {
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
 // 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
-import { MoodSynthesizer } from '../selene-lux-core/engines/consciousness/MoodSynthesizer';
+// WAVE 254: Migrado desde selene-lux-core a engine/consciousness
+import { MoodSynthesizer } from '../engine/consciousness/MoodSynthesizer';
 
 // ============================================
 // CONFIGURATION

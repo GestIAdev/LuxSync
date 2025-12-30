@@ -219,8 +219,8 @@ const luxApi = {
   setMovement: (config: { pattern?: string; speed?: number; intensity?: number }) => 
     ipcRenderer.invoke('lux:set-movement', config),
   
-  /** 🎚️ WAVE 13.6: Cambiar modo Selene (flow, selene, locked) */
-  setMode: (mode: 'flow' | 'selene' | 'locked') => ipcRenderer.invoke('selene:setMode', mode),
+  /** 🎚️ WAVE 13.6 + WAVE 250: Cambiar modo Selene (flow, selene, locked) - Standardized to lux: */
+  setMode: (mode: 'flow' | 'selene' | 'locked') => ipcRenderer.invoke('lux:setMode', mode),
   
   /** 🎨 WAVE 13.6: Multiplicadores Globales de Color (saturation, intensity) */
   setGlobalColorParams: (params: { saturation?: number; intensity?: number }) => 
@@ -339,30 +339,35 @@ const luxApi = {
   },
   
   /** �📡 WAVE-14: Establecer Input Gain */
-  setInputGain: (value: number) => ipcRenderer.invoke('lux:set-input-gain', value),
+  setInputGain: (value: number) => ipcRenderer.invoke('lux:setInputGain', value),
   
-  /** 🎨 WAVE-14.5: Forzar mutación de paleta */
-  forceMutate: () => ipcRenderer.invoke('selene:force-mutate'),
+  /** 🎨 WAVE-14.5 + WAVE 250: Forzar mutación de paleta - Standardized to lux: */
+  forceMutate: () => ipcRenderer.invoke('lux:forceMutation'),
   
   /** 🧠 WAVE-14.5: Resetear memoria de Selene */
-  resetMemory: () => ipcRenderer.invoke('selene:reset-memory'),
+  resetMemory: () => ipcRenderer.invoke('lux:resetMemory'),
 
   // ============================================
-  // 🎛️ WAVE 62: VIBE SELECTOR
+  // 🎛️ WAVE 62 + WAVE 250: VIBE SELECTOR (Standardized to lux:)
   // ============================================
   
   /** Set active Vibe profile (techno-club, fiesta-latina, pop-rock, chill-lounge) */
-  setVibe: (vibeId: string) => ipcRenderer.invoke('selene:setVibe', vibeId),
+  setVibe: (vibeId: string) => ipcRenderer.invoke('lux:setVibe', vibeId),
   
   /** Get current active Vibe */
-  getVibe: () => ipcRenderer.invoke('selene:getVibe'),
+  getVibe: () => ipcRenderer.invoke('lux:get-vibe'),
   
   /** Subscribe to Vibe changes */
   onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => {
     const handler = (_: Electron.IpcRendererEvent, data: { vibeId: string; timestamp: number }) => 
       callback(data)
+    // Listen to both for backward compat
+    ipcRenderer.on('lux:vibe-changed', handler)
     ipcRenderer.on('selene:vibe-changed', handler)
-    return () => ipcRenderer.removeListener('selene:vibe-changed', handler)
+    return () => {
+      ipcRenderer.removeListener('lux:vibe-changed', handler)
+      ipcRenderer.removeListener('selene:vibe-changed', handler)
+    }
   },
 
   // ============================================

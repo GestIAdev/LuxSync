@@ -191,11 +191,60 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
+  // WAVE 250: Audio handler (camelCase for backward compat)
   ipcMain.handle('lux:audioFrame', (_event, data: Record<string, unknown>) => {
     if (selene?.processAudioFrame) {
       selene.processAudioFrame(data)
     }
     return true
+  })
+  
+  // =========================================================================
+  // WAVE 250: NERVE SPLICING - Canales kebab-case estándar
+  // =========================================================================
+  
+  // Audio frame (kebab-case - lo que envía preload.ts)
+  ipcMain.handle('lux:audio-frame', (_event, data: Record<string, unknown>) => {
+    console.log('[IPC] lux:audio-frame received')
+    if (selene?.processAudioFrame) {
+      selene.processAudioFrame(data)
+    }
+    return { success: true }
+  })
+  
+  // Audio buffer (raw Float32Array)
+  ipcMain.handle('lux:audio-buffer', async (_event, buffer: ArrayBuffer) => {
+    console.log('[IPC] lux:audio-buffer received:', buffer.byteLength, 'bytes')
+    if (selene?.handleAudioBuffer) {
+      await selene.handleAudioBuffer(buffer)
+    }
+    return { success: true }
+  })
+  
+  // Get current vibe
+  ipcMain.handle('lux:get-vibe', async () => {
+    console.log('[IPC] lux:get-vibe')
+    if (selene?.getCurrentVibe) {
+      const vibeId = selene.getCurrentVibe()
+      return { success: true, vibeId }
+    }
+    return { success: true, vibeId: 'idle' }
+  })
+  
+  // Get full state (SeleneTruth)
+  ipcMain.handle('lux:get-full-state', async () => {
+    console.log('[IPC] lux:get-full-state - returning SeleneTruth')
+    if (selene?.getBroadcast) {
+      const truth = await selene.getBroadcast()
+      return truth
+    }
+    // Fallback minimal state
+    return {
+      dmx: { isConnected: false, status: 'disconnected', driver: null, port: null },
+      selene: { isRunning: false, mode: null, brainMode: null, paletteSource: null, consciousness: null },
+      fixtures: [],
+      audio: { hasWorkers: false }
+    }
   })
 }
 

@@ -53,10 +53,17 @@ export class TitanOrchestrator {
   private useBrain = true
   private inputGain = 1.0
 
+  // WAVE 255: Real audio buffer from frontend
+  private lastAudioData: { bass: number; mid: number; high: number; energy: number } = {
+    bass: 0, mid: 0, high: 0, energy: 0
+  }
+  private hasRealAudio = false
+
   constructor(config: TitanConfig = {}) {
     this.config = {
       debug: false,
-      initialVibe: 'pop-rock',
+      // WAVE 255: Force IDLE on startup - system starts in blackout
+      initialVibe: 'idle',
       ...config,
     }
     
@@ -154,24 +161,29 @@ export class TitanOrchestrator {
     
     this.frameCount++
     
-    // Rotate vibe every 5 seconds (150 frames @ 30fps) for demo
-    if (this.frameCount % 150 === 0) {
-      this.currentVibeIndex = (this.currentVibeIndex + 1) % this.vibeSequence.length
-      const newVibe = this.vibeSequence[this.currentVibeIndex]
-      this.engine.setVibe(newVibe)
-      console.log(`[TitanOrchestrator] VIBE CHANGE -> ${newVibe.toUpperCase()}`)
-    }
+    // WAVE 255: No more auto-rotation, system stays in selected vibe
+    // Vibe changes only via IPC lux:setVibe
     
     const shouldLog = this.frameCount % 30 === 0 // Log every ~1 second
     
     // 1. Brain produces MusicalContext
     const context = this.brain.getCurrentContext()
     
-    // 2. Simulated audio metrics (in production from worker)
-    const bass = 0.5 + Math.sin(this.frameCount * 0.1) * 0.3
-    const mid = 0.4 + Math.sin(this.frameCount * 0.15) * 0.2
-    const high = 0.3 + Math.sin(this.frameCount * 0.2) * 0.2
-    const energy = 0.6 + Math.sin(this.frameCount * 0.05) * 0.3
+    // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
+    let bass: number, mid: number, high: number, energy: number
+    
+    if (this.hasRealAudio) {
+      bass = this.lastAudioData.bass * this.inputGain
+      mid = this.lastAudioData.mid * this.inputGain
+      high = this.lastAudioData.high * this.inputGain
+      energy = this.lastAudioData.energy * this.inputGain
+    } else {
+      // Silence - system in standby
+      bass = 0
+      mid = 0
+      high = 0
+      energy = 0
+    }
     
     // For TitanEngine
     const engineAudioMetrics = {
@@ -180,7 +192,7 @@ export class TitanOrchestrator {
       high,
       energy,
       beatPhase: (this.frameCount % 30) / 30,
-      isBeat: this.frameCount % 30 === 0,
+      isBeat: this.frameCount % 30 === 0 && energy > 0.3,
     }
     
     // For HAL
@@ -241,22 +253,26 @@ export class TitanOrchestrator {
   }
 
   /**
-   * WAVE 254: Process incoming audio frame from frontend
-   * Note: Audio flows Frontend -> Worker (mind.ts) -> TrinityBrain -> Engine
-   * This method is for direct injection when workers aren't available
+   * WAVE 255: Process incoming audio frame from frontend
+   * This method receives audio data and stores it for the main loop
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return
     
-    // Apply input gain
-    if (typeof data.volume === 'number') {
-      data.volume = (data.volume as number) * this.inputGain
-    }
+    // Extract audio metrics from incoming data
+    const bass = typeof data.bass === 'number' ? data.bass : 0
+    const mid = typeof data.mid === 'number' ? data.mid : 0
+    const high = typeof data.high === 'number' ? (data.high as number) : 
+                 typeof data.treble === 'number' ? (data.treble as number) : 0
+    const energy = typeof data.energy === 'number' ? data.energy : 
+                   typeof data.volume === 'number' ? data.volume : 0
     
-    // The audio data will be processed by the Worker and arrive at Brain via events
-    // This is a placeholder for when we want to bypass Workers
-    if (this.config.debug) {
-      console.log('[TitanOrchestrator] Audio frame received (forwarding to worker pipeline)')
+    // Store for main loop
+    this.lastAudioData = { bass, mid, high, energy }
+    this.hasRealAudio = energy > 0.01 // Mark as having real audio if not silent
+    
+    if (this.config.debug && this.frameCount % 30 === 0) {
+      console.log(`[TitanOrchestrator] 👂 Audio: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
     }
   }
 

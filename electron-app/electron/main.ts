@@ -58,6 +58,7 @@ interface FixtureLibraryItem {
   hasColorMixing?: boolean
   hasColorWheel?: boolean
   manualOverride?: string
+  channels?: Array<{ index: number; name: string; type: string; is16bit: boolean }>
 }
 
 interface PatchedFixture extends FixtureLibraryItem {
@@ -278,6 +279,22 @@ app.whenReady().then(async () => {
   // Load saved configuration
   const savedConfig = configManager.load()
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias
+  // ═══════════════════════════════════════════════════════════════════════════
+  const libraryPath = isDev 
+    ? path.join(__dirname, '../../librerias')  // Dev: luxsync/librerias
+    : path.join(app.getPath('userData'), 'librerias')  // Prod: userData/librerias
+  
+  console.log('[Library] 📚 Scanning library path:', libraryPath)
+  const loadedDefinitions = fxtParser.scanFolder(libraryPath)
+  if (loadedDefinitions.length > 0) {
+    fixtureLibrary = loadedDefinitions
+    console.log(`[Library] ✅ Loaded ${loadedDefinitions.length} fixture definitions from luxsync/librerias`)
+  } else {
+    console.warn('[Library] ⚠️ No fixture definitions found in library')
+  }
+  
   // Restore patched fixtures
   if (savedConfig.patchedFixtures.length > 0) {
     resetZoneCounters()
@@ -298,6 +315,29 @@ app.whenReady().then(async () => {
   
   createWindow()
   await initTitan()
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 255: CONEXIÓN DEL CUERPO - Inject fixtures into TitanOrchestrator
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (titanOrchestrator && patchedFixtures.length > 0) {
+    // Hydrate fixtures with library definitions
+    const hydratedFixtures = patchedFixtures.map(patched => {
+      const definition = fixtureLibrary.find(def => 
+        def.name === patched.name || def.id === patched.id
+      )
+      return {
+        ...patched,
+        channels: definition?.channels || [],
+        hasMovementChannels: definition?.hasMovementChannels || false,
+        has16bitMovement: definition?.has16bitMovement || false,
+        hasColorMixing: definition?.hasColorMixing || false,
+        hasColorWheel: definition?.hasColorWheel || false,
+      }
+    })
+    
+    titanOrchestrator.setFixtures(hydratedFixtures)
+    console.log(`[Main] 💉 Injected ${hydratedFixtures.length} fixtures into Titan Engine`)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

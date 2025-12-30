@@ -110,7 +110,8 @@ export class TitanEngine extends EventEmitter {
     this.config = {
       targetFps: config.targetFps ?? 60,
       debug: config.debug ?? false,
-      initialVibe: config.initialVibe ?? 'fiesta-latina',
+      // WAVE 255: Force IDLE on startup - system starts in blackout
+      initialVibe: config.initialVibe ?? 'idle',
     }
     
     // Inicializar sub-módulos

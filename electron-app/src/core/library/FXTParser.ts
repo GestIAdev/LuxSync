@@ -515,7 +515,8 @@ export class FXTParser {
   }
 
   /**
-   * 📂 Escanea una carpeta y parsea todos los .fxt
+   * 📂 Escanea una carpeta y parsea todos los .fxt y .json
+   * WAVE 255: Added .json support for custom fixture definitions
    */
   scanFolder(folderPath: string): ParsedFixture[] {
     const fixtures: ParsedFixture[] = []
@@ -528,11 +529,55 @@ export class FXTParser {
     const files = fs.readdirSync(folderPath)
     
     for (const file of files) {
-      if (file.toLowerCase().endsWith('.fxt')) {
+      const lowerFile = file.toLowerCase()
+      if (lowerFile.endsWith('.fxt')) {
         const fullPath = path.join(folderPath, file)
         const fixture = this.parseFile(fullPath)
         if (fixture) {
           fixtures.push(fixture)
+        }
+      } else if (lowerFile.endsWith('.json')) {
+        // WAVE 255: Support JSON fixture definitions
+        const fullPath = path.join(folderPath, file)
+        try {
+          const jsonContent = fs.readFileSync(fullPath, 'utf-8')
+          const jsonFixture = JSON.parse(jsonContent)
+          
+          // Detect type from name or explicit type field
+          let fixtureType: FixtureType = 'generic'
+          if (jsonFixture.type) {
+            fixtureType = jsonFixture.type as FixtureType
+          } else {
+            const nameLower = (jsonFixture.name || file).toLowerCase()
+            for (const [model, type] of Object.entries(KNOWN_MODELS)) {
+              if (nameLower.includes(model)) {
+                fixtureType = type
+                break
+              }
+            }
+          }
+          
+          const fixture: ParsedFixture = {
+            id: jsonFixture.id || `json-${file.replace('.json', '')}`,
+            name: jsonFixture.name || file.replace('.json', ''),
+            manufacturer: jsonFixture.manufacturer || 'Unknown',
+            channelCount: jsonFixture.channelCount || jsonFixture.channels?.length || 1,
+            type: fixtureType,
+            filePath: fullPath,
+            channels: jsonFixture.channels || [],
+            confidence: 0.9,
+            detectionMethod: 'manual',
+            hasMovementChannels: jsonFixture.hasMovementChannels || false,
+            has16bitMovement: jsonFixture.has16bitMovement || false,
+            hasColorMixing: jsonFixture.hasColorMixing || true,
+            hasColorWheel: jsonFixture.hasColorWheel || false,
+          }
+          fixtures.push(fixture)
+          if (this.debug) {
+            console.log(`[FXTParser] 📄 Parsed JSON: ${fixture.name} (${fixture.channelCount} ch)`)
+          }
+        } catch (err) {
+          console.warn(`[FXTParser] ⚠️ Failed to parse JSON: ${file}`, err)
         }
       }
     }

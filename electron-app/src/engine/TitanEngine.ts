@@ -23,8 +23,9 @@ import {
   createDefaultLightingIntent,
 } from '../core/protocol/LightingIntent'
 import { MusicalContext } from '../core/protocol/MusicalContext'
-import { ColorLogic, ColorLogicInput } from './color/ColorLogic'
-import { VibeManager, VibeId } from './vibe/VibeManager'
+import { ColorLogic, ColorLogicInput, VibeColorConfig } from './color/ColorLogic'
+import { VibeManager } from './vibe/VibeManager'
+import type { VibeId, VibeProfile } from '../types/VibeProfile'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
@@ -114,10 +115,10 @@ export class TitanEngine extends EventEmitter {
     
     // Inicializar sub-módulos
     this.colorLogic = new ColorLogic()
-    this.vibeManager = new VibeManager()
+    this.vibeManager = VibeManager.getInstance()
     
     // Establecer vibe inicial
-    this.vibeManager.setVibe(this.config.initialVibe)
+    this.vibeManager.setActiveVibe(this.config.initialVibe)
     
     // Inicializar estado
     this.state = {
@@ -155,7 +156,8 @@ export class TitanEngine extends EventEmitter {
     this.state.frameCount++
     
     // Obtener perfil del vibe actual
-    const vibeProfile = this.vibeManager.getCurrentProfile()
+    const vibeProfile = this.vibeManager.getActiveVibe()
+    const vibeColorConfig = this.toColorConfig(vibeProfile)
     
     // ─────────────────────────────────────────────────────────────────────
     // 1. CALCULAR PALETA DE COLORES
@@ -170,7 +172,7 @@ export class TitanEngine extends EventEmitter {
         previousEnergy: this.state.previousEnergy,
         deltaTime,
       },
-      vibeProfile,
+      vibeProfile: vibeColorConfig,
       previousPalette: this.state.lastPalette,
     }
     
@@ -231,7 +233,7 @@ export class TitanEngine extends EventEmitter {
    * Cambia el vibe activo del motor.
    */
   public setVibe(vibeId: VibeId): void {
-    this.vibeManager.setVibe(vibeId)
+    this.vibeManager.setActiveVibe(vibeId)
     console.log(`[TitanEngine] 🎭 Vibe changed to: ${vibeId}`)
     this.emit('vibe-changed', vibeId)
   }
@@ -240,7 +242,7 @@ export class TitanEngine extends EventEmitter {
    * Obtiene el vibe actual.
    */
   public getCurrentVibe(): VibeId {
-    return this.vibeManager.getCurrentVibeId()
+    return this.vibeManager.getActiveVibe().id
   }
   
   /**
@@ -257,13 +259,35 @@ export class TitanEngine extends EventEmitter {
     return {
       frameCount: this.state.frameCount,
       fps: this.config.targetFps,
-      vibeId: this.vibeManager.getCurrentVibeId(),
+      vibeId: this.vibeManager.getActiveVibe().id,
     }
   }
   
   // ═══════════════════════════════════════════════════════════════════════
   // PRIVATE: CÁLCULOS INTERNOS
   // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Convierte VibeProfile a VibeColorConfig (subset para ColorLogic)
+   */
+  private toColorConfig(vibe: VibeProfile): VibeColorConfig {
+    return {
+      id: vibe.id,
+      color: {
+        strategies: vibe.color.strategies,
+        temperature: vibe.color.temperature,
+        atmosphericTemp: vibe.color.atmosphericTemp ?? 6500, // Default neutral
+        saturation: vibe.color.saturation,
+        forbiddenHueRanges: vibe.color.forbiddenHueRanges,
+        allowedHueRanges: vibe.color.allowedHueRanges,
+      },
+      dimmer: {
+        floor: vibe.dimmer.floor,
+        ceiling: vibe.dimmer.ceiling,
+        allowBlackout: vibe.dimmer.allowBlackout,
+      },
+    }
+  }
   
   /**
    * Calcula la intensidad global basada en audio y restricciones del vibe.

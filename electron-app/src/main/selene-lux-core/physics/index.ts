@@ -18,35 +18,35 @@
  */
 
 // WAVE 141: Techno Physics
-export { TechnoStereoPhysics } from './TechnoStereoPhysics';
+export { TechnoStereoPhysics } from '../../../hal/physics/TechnoStereoPhysics';
 export type { 
   TechnoPalette, 
   TechnoAudioMetrics, 
   TechnoPhysicsResult,
   RGB 
-} from './TechnoStereoPhysics';
+} from '../../../hal/physics/TechnoStereoPhysics';
 
 // WAVE 142: Rock Physics
-export { RockStereoPhysics } from './RockStereoPhysics';
+export { RockStereoPhysics } from '../../../hal/physics/RockStereoPhysics';
 export type {
   RockPalette,
   RockAudioMetrics,
   RockPhysicsResult
-} from './RockStereoPhysics';
+} from '../../../hal/physics/RockStereoPhysics';
 
 // WAVE 145: Latino Physics
-export { LatinoStereoPhysics } from './LatinoStereoPhysics';
+export { LatinoStereoPhysics } from '../../../hal/physics/LatinoStereoPhysics';
 export type {
   LatinoPalette,
   LatinoAudioMetrics,
   LatinoPhysicsResult,
   HSL
-} from './LatinoStereoPhysics';
+} from '../../../hal/physics/LatinoStereoPhysics';
 
 // WAVE 146: Chill Physics
-export { ChillStereoPhysics } from './ChillStereoPhysics';
+export { ChillStereoPhysics } from '../../../hal/physics/ChillStereoPhysics';
 export type {
   ChillPalette,
   ChillAudioMetrics,
   ChillPhysicsResult
-} from './ChillStereoPhysics';
+} from '../../../hal/physics/ChillStereoPhysics';

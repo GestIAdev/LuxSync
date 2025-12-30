@@ -18,13 +18,22 @@
  * @version TITAN 2.0
  */
 
-import type { VibeProfile } from '../VibeManager'
+import type { VibeProfile } from '../../../types/VibeProfile'
 
 export const VIBE_POP_ROCK: VibeProfile = {
   id: 'pop-rock',
   name: 'Pop Rock Stadium',
   description: 'Classic stadium lighting. Red, blue, white. Drum-reactive.',
   icon: '🎸',
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOOD CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  mood: {
+    allowed: ['energetic', 'dramatic', 'euphoric', 'playful'],
+    fallback: 'energetic',
+    audioInfluence: 0.75,
+  },
 
   color: {
     // 🏛️ CONSTITUCIÓN: Complementary para máximo drama (split-complementary en perfil)
@@ -44,6 +53,9 @@ export const VIBE_POP_ROCK: VibeProfile = {
       max: 1.0,
     },
     
+    // WAVE 253: Cambios moderados para rock
+    maxHueShiftPerSecond: 90,
+    
     // 🏛️ CONSTITUCIÓN: forbiddenHueRanges: [[80, 160], [260, 300]]
     // Prohibido: verdes neón y púrpuras sucios
     forbiddenHueRanges: [[80, 160], [260, 300]],
@@ -53,12 +65,33 @@ export const VIBE_POP_ROCK: VibeProfile = {
     allowedHueRanges: [[0, 60], [210, 260], [340, 360]],
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // DROP CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  drop: {
+    sensitivity: 0.8,
+    energyThreshold: 0.75,
+    curves: {
+      attack: 'ease-in',
+      sustain: 'linear',
+      release: 'ease-out',
+    },
+    timing: {
+      minAttack: 18,
+      maxSustain: 180,
+      releaseFrames: 60,
+      cooldownFrames: 120,
+    },
+    allowMicroDrops: true,
+  },
+
   dimmer: {
     // Floor con espacio para drama
     floor: 0.10,
     ceiling: 1.0,
     allowBlackout: true,
     transitionSpeed: 'fast',
+    breakdownCurve: 'ease-in-out',
   },
 
   movement: {
@@ -77,6 +110,7 @@ export const VIBE_POP_ROCK: VibeProfile = {
     allowed: ['strobe', 'beam', 'blinder'],
     maxStrobeRate: 10,  // 10 Hz para solos/climax
     maxIntensity: 1.0,
+    autoFog: true,
   },
 
   meta: {

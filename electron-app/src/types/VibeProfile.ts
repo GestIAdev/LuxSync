@@ -36,7 +36,7 @@ export type MoodType =
 /**
  * Estrategias de armonía cromática
  */
-export type ColorStrategy = 'analogous' | 'complementary' | 'triadic' | 'monochromatic' | 'split-complementary';
+export type ColorStrategy = 'analogous' | 'complementary' | 'triadic' | 'monochromatic' | 'split-complementary' | 'prism';
 
 /**
  * Tipos de curvas de transición
@@ -59,7 +59,7 @@ export type MovementPattern =
 /**
  * Tipos de efectos especiales
  */
-export type EffectType = 'strobe' | 'fog' | 'laser' | 'beam' | 'prism' | 'blinder';
+export type EffectType = 'strobe' | 'fog' | 'laser' | 'beam' | 'prism' | 'blinder' | 'uv';
 
 /**
  * Velocidad de transición del dimmer

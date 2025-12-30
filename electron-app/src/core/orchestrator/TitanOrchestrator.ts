@@ -11,7 +11,7 @@ import { TrinityBrain } from '../../brain/TrinityBrain'
 import { TitanEngine } from '../../engine/TitanEngine'
 import { HardwareAbstraction } from '../../hal/HardwareAbstraction'
 import { EventRouter, getEventRouter } from './EventRouter'
-import { getTrinity } from '../../main/workers/TrinityOrchestrator'
+import { getTrinity } from '../../workers/TrinityOrchestrator'
 import type { MusicalContext } from '../protocol/MusicalContext'
 
 // Use inline type to avoid import issues

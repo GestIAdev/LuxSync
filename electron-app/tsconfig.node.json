@@ -25,5 +25,5 @@
     "src/hal/**/*.ts",
     "src/stores/**/*.ts",
     "src/vite-env.d.ts"
-  ]
+, "src/workers/WorkerProtocol.ts", "src/workers/TrinityOrchestrator.ts", "src/workers/TrinityBridge.ts", "src/workers/senses.ts", "src/workers/mind.ts", "src/workers/index.ts", "src/workers/FFT.ts"  ]
 }

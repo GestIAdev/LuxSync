@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { VibeManager } from '../engines/context/VibeManager';
+import { VibeManager } from '../engine/vibe/VibeManager';
 import {
   VIBE_TECHNO_CLUB,
   VIBE_FIESTA_LATINA,

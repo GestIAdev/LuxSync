@@ -20,13 +20,13 @@ import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies } from '../sr
 
 // External Services
 import { SeleneLux } from '../src/main/selene-lux-core/SeleneLux'
-import { configManager, type PatchedFixtureConfig } from './ConfigManager'
-import { FixturePhysicsDriver } from '../src/main/selene-lux-core/hardware'
-import { universalDMX, type DMXDevice } from './UniversalDMXDriver'
-import { artNetDriver } from './ArtNetDriver'
-import { EffectsEngine } from '../src/main/selene-lux-core/engines/visual/EffectsEngine'
-import { showManager } from './ShowManager'
-import { FXTParser, fxtParser } from './FXTParser'
+import { configManager, type PatchedFixtureConfig } from '../src/core/config/ConfigManager'
+import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver'
+import { universalDMX, type DMXDevice } from '../src/hal/drivers/UniversalDMXDriver'
+import { artNetDriver } from '../src/hal/drivers/ArtNetDriver'
+import { EffectsEngine } from '../src/engine/color/EffectsEngine'
+import { showManager } from '../src/core/library/ShowManager'
+import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
 
 // =============================================================================
 // GLOBAL STATE

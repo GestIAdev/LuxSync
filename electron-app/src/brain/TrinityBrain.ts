@@ -20,8 +20,8 @@ import {
 } from '../core/protocol'
 
 // Importar TrinityOrchestrator para conexión con Workers
-import { TrinityOrchestrator } from '../main/workers/TrinityOrchestrator'
-import type { AudioAnalysis } from '../main/workers/WorkerProtocol'
+import { TrinityOrchestrator } from '../workers/TrinityOrchestrator'
+import type { AudioAnalysis } from '../workers/WorkerProtocol'
 
 /**
  * Eventos que emite TrinityBrain

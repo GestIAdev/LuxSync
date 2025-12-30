@@ -12,13 +12,22 @@
  * @version TITAN 2.0
  */
 
-import type { VibeProfile } from '../VibeManager'
+import type { VibeProfile } from '../../../types/VibeProfile'
 
 export const VIBE_FIESTA_LATINA: VibeProfile = {
   id: 'fiesta-latina',
   name: 'Fiesta Latina 3D',
   description: 'High contrast. Neon colors. Dynamic movement.',
   icon: '🎉',
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOOD CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  mood: {
+    allowed: ['festive', 'playful', 'euphoric', 'energetic'],
+    fallback: 'festive',
+    audioInfluence: 0.85,
+  },
 
   color: {
     // Estrategias de alta energía - sin analogous (muy aburrido)
@@ -37,11 +46,34 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
       max: 1.0,
     },
     
+    // WAVE 253: Límite de cambio de hue
+    maxHueShiftPerSecond: 120,  // Moderado-alto para fiesta
+    
     // Bloquear azul corporativo triste
     forbiddenHueRanges: [[60, 130], [210, 250]],
     
     // Permitir: fuegos, turquesas, magentas
     allowedHueRanges: [[0, 60], [140, 190], [270, 360]],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // DROP CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  drop: {
+    sensitivity: 0.7,
+    energyThreshold: 0.8,  // Alto - solo golpes maestros
+    curves: {
+      attack: 'ease-in',
+      sustain: 'linear',
+      release: 'ease-out',
+    },
+    timing: {
+      minAttack: 12,
+      maxSustain: 180,
+      releaseFrames: 45,
+      cooldownFrames: 90,
+    },
+    allowMicroDrops: false,
   },
 
   dimmer: {
@@ -50,6 +82,7 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     ceiling: 1.0,
     allowBlackout: true,
     transitionSpeed: 'fast',
+    breakdownCurve: 'ease-in-out',
   },
 
   movement: {
@@ -66,6 +99,7 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
     allowed: ['fog', 'beam'],
     maxStrobeRate: 0,  // Sin strobe para latino
     maxIntensity: 1.0,
+    autoFog: true,
   },
 
   meta: {

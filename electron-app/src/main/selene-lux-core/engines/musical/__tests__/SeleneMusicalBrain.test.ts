@@ -15,9 +15,9 @@ import {
   SeleneMusicalBrain,
   getMusicalBrain,
   resetMusicalBrain,
-} from '../SeleneMusicalBrain';
+} from '../../../../../engine/musical/SeleneMusicalBrain';
 
-import type { AudioAnalysis } from '../types';
+import type { AudioAnalysis } from '../../../../../engine/musical/types';
 
 // ============================================================
 // HELPERS

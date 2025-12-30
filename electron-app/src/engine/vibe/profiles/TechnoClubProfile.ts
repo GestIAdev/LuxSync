@@ -18,13 +18,22 @@
  * @version TITAN 2.0
  */
 
-import type { VibeProfile } from '../VibeManager'
+import type { VibeProfile } from '../../../types/VibeProfile'
 
 export const VIBE_TECHNO_CLUB: VibeProfile = {
   id: 'techno-club',
   name: 'Techno Deep Club',
   description: 'Deep cold tones. UV/Cyan/Magenta. Strobe-ready.',
   icon: '🎛️',
+
+  // ═══════════════════════════════════════════════════════════════
+  // MOOD CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  mood: {
+    allowed: ['dark', 'dramatic', 'aggressive', 'energetic', 'tense'],
+    fallback: 'energetic',
+    audioInfluence: 0.9,  // Alta influencia del audio
+  },
 
   color: {
     // 🏛️ CONSTITUCIÓN: forceStrategy: 'prism' (tetraédrica)
@@ -46,6 +55,9 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
       max: 1.0,
     },
     
+    // WAVE 253: Límite de cambio de hue para evitar epilepsia
+    maxHueShiftPerSecond: 180,  // 180°/s = máximo agresivo para techno
+    
     // 🏛️ CONSTITUCIÓN: forbiddenHueRanges: [[25, 80]]
     // Solo prohibir el núcleo mostaza/naranja feo
     forbiddenHueRanges: [[25, 80]],
@@ -55,6 +67,26 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
     allowedHueRanges: [[0, 24], [81, 360]],
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // DROP CONSTRAINTS - WAVE 253
+  // ═══════════════════════════════════════════════════════════════
+  drop: {
+    sensitivity: 0.9,           // Muy sensible a drops
+    energyThreshold: 0.7,       // Umbral moderado-alto
+    curves: {
+      attack: 'exponential',    // Ataque explosivo
+      sustain: 'linear',
+      release: 'ease-out',      // Release suave
+    },
+    timing: {
+      minAttack: 6,             // 0.1s @ 60fps
+      maxSustain: 240,          // 4s máximo de sustain
+      releaseFrames: 60,        // 1s release
+      cooldownFrames: 120,      // 2s entre drops
+    },
+    allowMicroDrops: true,      // Permite micro-drops techno
+  },
+
   dimmer: {
     // 🏛️ CONSTITUCIÓN: dimmingConfig.floor: 0.05 (casi blackout)
     // WAVE 222.5: 0.0 para oscuridad total entre golpes
@@ -62,6 +94,7 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
     ceiling: 1.0,
     allowBlackout: true,
     transitionSpeed: 'instant',
+    breakdownCurve: 'ease-out',
   },
 
   movement: {
@@ -79,6 +112,7 @@ export const VIBE_TECHNO_CLUB: VibeProfile = {
     allowed: ['strobe', 'beam', 'laser', 'uv'],
     maxStrobeRate: 15,  // 15 Hz máximo
     maxIntensity: 1.0,
+    autoFog: true,
   },
 
   meta: {

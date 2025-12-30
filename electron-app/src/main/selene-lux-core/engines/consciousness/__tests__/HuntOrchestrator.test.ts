@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { HuntOrchestrator, type HuntFrameResult } from '../HuntOrchestrator'
-import type { ElementType, EmotionalTone, MusicalNote } from '../../../types'
+import type { ElementType, EmotionalTone, MusicalNote } from '../../../../../engine/types'
 
 // ============================================
 // 🎭 HELPERS

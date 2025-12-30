@@ -41,45 +41,45 @@ import type {
   ConsciousnessState,
   SeleneMode,
   MovementPattern,
-} from './types'
+} from '../../engine/types'
 // Legacy engines (para compatibilidad)
-import { ColorEngine, type LivingPaletteId, type ColorOutput } from './engines/visual/ColorEngine'
-import { MovementEngine, type MovementOutput, type FixtureMovement } from './engines/visual/MovementEngine'
-import { BeatDetector, type BeatState } from './engines/audio/BeatDetector'
+import { ColorEngine, type LivingPaletteId, type ColorOutput } from '../../engine/color/ColorEngine'
+import { MovementEngine, type MovementOutput, type FixtureMovement } from '../../engine/color/MovementEngine'
+import { BeatDetector, type BeatState } from '../../engine/audio/BeatDetector'
 // ?? WAVE-8: El Cerebro Musical
 import { 
   SeleneMusicalBrain, 
   getMusicalBrain,
   type BrainOutput,
   type BrainConfig,
-} from './engines/musical'
-import type { AudioAnalysis } from './engines/musical/types'
+} from '../../engine/musical'
+import type { AudioAnalysis } from '../../engine/musical/types'
 // ?? WAVE 24.4: Motor de Color Procedural + Helper de conversi�n HSL?RGB
 // ?? WAVE 24.9: A�adir rgbToHsl para sincronizar Flow Mode palette
 // ?? WAVE 37.0: Import SelenePalette type para Brain Transplant
 // ?? WAVE 49: Import SeleneColorInterpolator para transiciones suaves
-import { SeleneColorEngine, SeleneColorInterpolator, paletteToRgb, rgbToHsl, type SelenePalette } from './engines/visual/SeleneColorEngine'
+import { SeleneColorEngine, SeleneColorInterpolator, paletteToRgb, rgbToHsl, type SelenePalette } from '../../engine/color/SeleneColorEngine'
 // ?? WAVE-14: Telemetry Collector
 import { 
   SeleneTelemetryCollector, 
   getTelemetryCollector,
   type SeleneTelemetryPacket,
-} from './engines/telemetry/SeleneTelemetryCollector'
+} from '../../engine/musical/telemetry/SeleneTelemetryCollector'
 // ?? WAVE 37.0: Meta-Consciencia Avanzada (Resurrecci�n de Motores)
 import { 
   SeleneLuxConscious,
   type SeleneLuxConsciousState,
-} from './engines/consciousness/SeleneLuxConscious'
+} from '../../engine/consciousness/SeleneLuxConscious'
 // ?? WAVE 39.0: HuntOrchestrator + ZodiacAffinity (Engine Wiring)
 import { 
   HuntOrchestrator,
   type HuntFrameResult,
   type HuntStatus,
-} from './engines/consciousness/HuntOrchestrator'
+} from '../../engine/consciousness/HuntOrchestrator'
 import { 
   ZodiacAffinityCalculator,
   type ZodiacInfo,
-} from './engines/consciousness/ZodiacAffinityCalculator'
+} from '../../engine/consciousness/ZodiacAffinityCalculator'
 // 🌙 WAVE-248: Universal Truth Protocol - TITAN 2.0
 import {
   type SeleneBroadcast,
@@ -87,11 +87,11 @@ import {
   createDefaultBroadcast,
 } from '../../core/protocol/SeleneProtocol'
 // ⚡ WAVE 141-146: Physics Modules (Reactividad extraída por Vibe)
-import { TechnoStereoPhysics, RockStereoPhysics, LatinoStereoPhysics, ChillStereoPhysics } from './physics'
+import { TechnoStereoPhysics, RockStereoPhysics, LatinoStereoPhysics, ChillStereoPhysics } from '../../hal/physics'
 // 🎛️ WAVE 142: GenerationOptions para restricciones de color
-import type { GenerationOptions } from './engines/visual/SeleneColorEngine'
+import type { GenerationOptions } from '../../engine/color/SeleneColorEngine'
 // 📜 WAVE 144: Constituciones de Color (Reglas por Vibe)
-import { getColorConstitution } from '../../engines/context/colorConstitutions'
+import { getColorConstitution } from '../../engine/color/colorConstitutions'
 
 export interface SeleneConfig {
   audio: {

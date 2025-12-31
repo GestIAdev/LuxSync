@@ -15,6 +15,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
 import { AddFixtureModal, type LibraryItem } from './AddFixtureModal'
 import { FixtureEditorModal } from '../../../modals/FixtureEditor/FixtureEditorModal'
+import { ArrowUp, ArrowDown, Move, RefreshCw, Settings } from 'lucide-react'
 import type { FixtureDefinition } from '../../../../types/FixtureDefinition'
 import './PatchTab.css'
 
@@ -23,6 +24,7 @@ import './PatchTab.css'
 // ═══════════════════════════════════════════════════════════════════════════
 
 type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
+type InstallationType = 'ceiling' | 'floor' | 'truss_front' | 'truss_back'
 
 interface PatchedFixture {
   id: string
@@ -34,6 +36,22 @@ interface PatchedFixture {
   universe: number
   zone: FixtureZone
   filePath: string
+  // WAVE 256: Physical installation config
+  orientation?: InstallationType
+  invertPan?: boolean
+  invertTilt?: boolean
+  swapXY?: boolean
+}
+
+// Edit form state with all editable fields
+interface EditFormState {
+  name: string
+  dmxAddress: number
+  zone: FixtureZone
+  orientation: InstallationType
+  invertPan: boolean
+  invertTilt: boolean
+  swapXY: boolean
 }
 
 // Zone display names
@@ -95,9 +113,17 @@ export const PatchTab: React.FC = () => {
   const [showForgeModal, setShowForgeModal] = useState(false)
   const [flashingFixture, setFlashingFixture] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // WAVE 256: Edit mode
+  // WAVE 256: Edit mode with full fields
   const [editingFixture, setEditingFixture] = useState<PatchedFixture | null>(null)
-  const [editForm, setEditForm] = useState({ dmxAddress: 0, name: '' })
+  const [editForm, setEditForm] = useState<EditFormState>({
+    name: '',
+    dmxAddress: 1,
+    zone: 'UNASSIGNED',
+    orientation: 'ceiling',
+    invertPan: false,
+    invertTilt: false,
+    swapXY: false
+  })
 
   // Get real-time hardware data from truthStore (includes DMX state)
   const hardwareState = useTruthStore(selectHardware)
@@ -297,18 +323,23 @@ export const PatchTab: React.FC = () => {
   }
 
   /**
-   * WAVE 256: Start editing a fixture
+   * WAVE 256: Start editing a fixture with all fields
    */
   const handleStartEdit = (fixture: PatchedFixture) => {
     setEditingFixture(fixture)
     setEditForm({ 
+      name: fixture.name,
       dmxAddress: fixture.dmxAddress, 
-      name: fixture.name 
+      zone: fixture.zone || 'UNASSIGNED',
+      orientation: fixture.orientation || 'ceiling',
+      invertPan: fixture.invertPan || false,
+      invertTilt: fixture.invertTilt || false,
+      swapXY: fixture.swapXY || false
     })
   }
 
   /**
-   * WAVE 256: Save fixture edits
+   * WAVE 256: Save fixture edits with ALL fields
    */
   const handleSaveEdit = async () => {
     if (!editingFixture) return
@@ -317,22 +348,50 @@ export const PatchTab: React.FC = () => {
     if (!api) return
 
     try {
-      // Call the edit handler with original DMX address, new DMX address, and universe
+      // Call the edit handler with full fixture update
+      const updateData = {
+        originalDmxAddress: editingFixture.dmxAddress,
+        universe: editingFixture.universe,
+        // Updated fields
+        name: editForm.name,
+        dmxAddress: editForm.dmxAddress,
+        zone: editForm.zone,
+        // Physical installation config
+        physics: {
+          installationType: editForm.orientation,
+          invert: {
+            pan: editForm.invertPan,
+            tilt: editForm.invertTilt
+          },
+          swapXY: editForm.swapXY
+        }
+      }
+      
       const result = await api.editFixture?.(
         editingFixture.dmxAddress,  // Original DMX address
         editForm.dmxAddress,         // New DMX address
-        editingFixture.universe      // Universe (optional)
+        editingFixture.universe,     // Universe
+        updateData                   // Full update data
       )
       
       if (result?.success) {
-        // Update local state
+        // Update local state with ALL changed fields
         setFixtures(prev => prev.map(f => 
           f.dmxAddress === editingFixture.dmxAddress 
-            ? { ...f, dmxAddress: editForm.dmxAddress, name: editForm.name }
+            ? { 
+                ...f, 
+                name: editForm.name,
+                dmxAddress: editForm.dmxAddress, 
+                zone: editForm.zone,
+                orientation: editForm.orientation,
+                invertPan: editForm.invertPan,
+                invertTilt: editForm.invertTilt,
+                swapXY: editForm.swapXY
+              }
             : f
         ))
         setEditingFixture(null)
-        console.log(`[PatchTab] Fixture edited: DMX ${editingFixture.dmxAddress} → ${editForm.dmxAddress}`)
+        console.log(`[PatchTab] Fixture edited: ${editForm.name} @ DMX ${editForm.dmxAddress}`)
       } else {
         setError(result?.error || 'Failed to edit fixture')
       }
@@ -565,36 +624,125 @@ export const PatchTab: React.FC = () => {
         onSave={handleSaveFixtureDefinition}
       />
 
-      {/* WAVE 256: EDIT FIXTURE MODAL */}
+      {/* WAVE 256: EDIT FIXTURE MODAL - COMPLETE */}
       {editingFixture && (
         <div className="edit-modal-overlay" onClick={handleCancelEdit}>
-          <div className="edit-modal" onClick={e => e.stopPropagation()}>
-            <h3>✏️ Edit Fixture</h3>
+          <div className="edit-modal edit-modal-large" onClick={e => e.stopPropagation()}>
+            <h3>✏️ Edit Fixture: {editingFixture.manufacturer} {editingFixture.name}</h3>
+            
             <div className="edit-form">
-              <label>
-                <span>Name:</span>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Fixture name"
-                />
-              </label>
-              <label>
-                <span>DMX Address:</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={512}
-                  value={editForm.dmxAddress}
-                  onChange={e => setEditForm(prev => ({ ...prev, dmxAddress: parseInt(e.target.value) || 1 }))}
-                />
-              </label>
+              {/* BASIC INFO */}
+              <div className="edit-section">
+                <div className="edit-row">
+                  <label>
+                    <span>Name:</span>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Fixture name"
+                    />
+                  </label>
+                  <label>
+                    <span>DMX Address:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={512}
+                      value={editForm.dmxAddress}
+                      onChange={e => setEditForm(prev => ({ ...prev, dmxAddress: parseInt(e.target.value) || 1 }))}
+                    />
+                  </label>
+                </div>
+              </div>
+              
+              {/* ZONE ASSIGNMENT */}
+              <div className="edit-section">
+                <label>
+                  <span>Zone:</span>
+                  <select
+                    value={editForm.zone}
+                    onChange={e => setEditForm(prev => ({ ...prev, zone: e.target.value as FixtureZone }))}
+                    className="edit-select"
+                  >
+                    {Object.entries(ZONE_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* PHYSICAL INSTALLATION */}
+              <div className="edit-section physics-section">
+                <div className="section-title">
+                  <Settings size={16} /> PHYSICAL INSTALLATION
+                </div>
+                
+                {/* ORIENTATION GRID */}
+                <div className="orientation-grid">
+                  <button 
+                    className={`orientation-btn ${editForm.orientation === 'ceiling' ? 'active' : ''}`}
+                    onClick={() => setEditForm(prev => ({ ...prev, orientation: 'ceiling' }))}
+                  >
+                    <ArrowDown size={14} /> Ceiling (Down)
+                  </button>
+                  <button 
+                    className={`orientation-btn ${editForm.orientation === 'floor' ? 'active' : ''}`}
+                    onClick={() => setEditForm(prev => ({ ...prev, orientation: 'floor' }))}
+                  >
+                    <ArrowUp size={14} /> Floor (Up)
+                  </button>
+                  <button 
+                    className={`orientation-btn ${editForm.orientation === 'truss_front' ? 'active' : ''}`}
+                    onClick={() => setEditForm(prev => ({ ...prev, orientation: 'truss_front' }))}
+                  >
+                    <Move size={14} /> Truss (Front)
+                  </button>
+                  <button 
+                    className={`orientation-btn ${editForm.orientation === 'truss_back' ? 'active' : ''}`}
+                    onClick={() => setEditForm(prev => ({ ...prev, orientation: 'truss_back' }))}
+                  >
+                    <RefreshCw size={14} /> Truss (Back)
+                  </button>
+                </div>
+
+                {/* INVERSION TOGGLES */}
+                <div className="switches-row">
+                  <label className="toggle-checkbox">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.invertPan} 
+                      onChange={e => setEditForm(prev => ({ ...prev, invertPan: e.target.checked }))}
+                    />
+                    Invert Pan
+                  </label>
+                  <label className="toggle-checkbox">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.invertTilt} 
+                      onChange={e => setEditForm(prev => ({ ...prev, invertTilt: e.target.checked }))}
+                    />
+                    Invert Tilt
+                  </label>
+                  <label className="toggle-checkbox">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.swapXY} 
+                      onChange={e => setEditForm(prev => ({ ...prev, swapXY: e.target.checked }))}
+                    />
+                    Swap X/Y
+                  </label>
+                </div>
+              </div>
+
+              {/* INFO FOOTER */}
               <div className="edit-info">
                 <span>Type: {editingFixture.type}</span>
                 <span>Channels: {editingFixture.channelCount}</span>
+                <span>Universe: {editingFixture.universe}</span>
               </div>
             </div>
+            
             <div className="edit-actions">
               <button className="cancel-btn" onClick={handleCancelEdit}>
                 Cancel

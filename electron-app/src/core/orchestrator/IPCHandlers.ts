@@ -548,8 +548,19 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
     return { success: false, error: 'Fixture not found at that address' }
   })
   
-  // ✏️ WAVE 255.5: Editar fixture patcheado (cambiar DMX address/universe)
-  ipcMain.handle('lux:edit-fixture', (_event, data: { originalDmxAddress: number, newDmxAddress: number, universe?: number }) => {
+  // ✏️ WAVE 256: Editar fixture patcheado - ALL fields
+  ipcMain.handle('lux:edit-fixture', (_event, data: { 
+    originalDmxAddress: number
+    newDmxAddress: number
+    universe?: number
+    name?: string
+    zone?: string
+    physics?: {
+      installationType?: string
+      invert?: { pan?: boolean; tilt?: boolean }
+      swapXY?: boolean
+    }
+  }) => {
     const patchedFixtures = getPatchedFixtures()
     const fixture = patchedFixtures.find((f: { dmxAddress: number }) => f.dmxAddress === data.originalDmxAddress)
     
@@ -565,10 +576,24 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       }
     }
     
-    // Update the fixture
+    // Update basic fields
     fixture.dmxAddress = data.newDmxAddress
     if (data.universe !== undefined) {
       fixture.universe = data.universe
+    }
+    if (data.name !== undefined) {
+      fixture.name = data.name
+    }
+    if (data.zone !== undefined) {
+      fixture.zone = data.zone
+    }
+    
+    // Update physical installation config
+    if (data.physics) {
+      fixture.orientation = data.physics.installationType || fixture.orientation
+      fixture.invertPan = data.physics.invert?.pan ?? fixture.invertPan
+      fixture.invertTilt = data.physics.invert?.tilt ?? fixture.invertTilt
+      fixture.swapXY = data.physics.swapXY ?? fixture.swapXY
     }
     
     // Recalculate and save
@@ -580,7 +605,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
     }
     
-    console.log(`✏️ [IPCHandlers] Fixture edited: DMX ${data.originalDmxAddress} → ${data.newDmxAddress}`)
+    console.log(`✏️ [IPCHandlers] Fixture edited: ${fixture.name} @ DMX ${data.newDmxAddress}`)
     return { success: true, fixture }
   })
   

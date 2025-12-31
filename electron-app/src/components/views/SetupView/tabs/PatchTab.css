@@ -435,3 +435,118 @@
   border-color: #00f3ff;
   background: rgba(0, 243, 255, 0.1);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 256: LARGE EDIT MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.edit-modal-large {
+  min-width: 500px;
+  max-width: 600px;
+}
+
+.edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-row {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 16px;
+}
+
+.edit-select {
+  background: #111;
+  border: 1px solid #333;
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 1rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.edit-select:focus {
+  outline: none;
+  border-color: #00f3ff;
+}
+
+/* Physical Installation Section */
+.edit-modal .physics-section {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #222;
+  margin-top: 8px;
+}
+
+.edit-modal .section-title {
+  color: #00f3ff;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Orientation Grid */
+.edit-modal .orientation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.edit-modal .orientation-btn {
+  background: #111;
+  border: 1px solid #333;
+  color: #888;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.edit-modal .orientation-btn:hover {
+  border-color: #555;
+  color: #ccc;
+}
+
+.edit-modal .orientation-btn.active {
+  background: rgba(0, 243, 255, 0.1);
+  border-color: #00f3ff;
+  color: #fff;
+}
+
+/* Toggle Checkboxes */
+.edit-modal .switches-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.edit-modal .toggle-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #ccc;
+  flex-direction: row;
+}
+
+.edit-modal .toggle-checkbox input[type="checkbox"] {
+  accent-color: #bf00ff;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}

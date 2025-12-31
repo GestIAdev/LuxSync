@@ -13,6 +13,12 @@ import { HardwareAbstraction } from '../../hal/HardwareAbstraction'
 import { EventRouter, getEventRouter } from './EventRouter'
 import { getTrinity } from '../../workers/TrinityOrchestrator'
 import type { MusicalContext } from '../protocol/MusicalContext'
+import { 
+  SeleneTruth, 
+  createDefaultTruth,
+  createDefaultCognitive,
+  createDefaultSensory 
+} from '../protocol/SeleneProtocol'
 
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
@@ -215,28 +221,115 @@ export class TitanOrchestrator {
     // 4. HAL renders intent -> produces fixture states (WAVE 252: uses real fixtures)
     const fixtureStates = this.hal.render(intent, this.fixtures, halAudioMetrics)
     
-    // 5. WAVE 255.5: Broadcast to frontend for StageSimulator
+    // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     if (this.onBroadcast) {
-      const truth = {
-        hardware: {
-          fixtures: fixtureStates,
-          dmxOutput: [],
-          activeZones: intent.zones,
+      const currentVibe = this.engine.getCurrentVibe()
+      
+      // Build a valid SeleneTruth structure
+      const truth: SeleneTruth = {
+        system: {
+          frameNumber: this.frameCount,
+          timestamp: Date.now(),
+          deltaTime: 33,
+          targetFPS: 30,
+          actualFPS: 30,
+          mode: this.mode === 'auto' ? 'selene' : 'manual',
+          vibe: currentVibe,
+          brainStatus: 'peaceful',
+          uptime: this.frameCount * 33,
+          titanEnabled: true,
+          sessionId: 'titan-2.0',
+          version: '2.0.0',
+          performance: {
+            audioProcessingMs: 0,
+            brainProcessingMs: 0,
+            colorEngineMs: 0,
+            dmxOutputMs: 0,
+            totalFrameMs: 0
+          }
         },
         sensory: {
-          bass,
-          mid,
-          high,
-          energy,
-          isBeat: engineAudioMetrics.isBeat,
+          audio: {
+            energy,
+            peak: energy,
+            average: energy * 0.8,
+            bass,
+            mid,
+            high,
+            spectralCentroid: 0,
+            spectralFlux: 0,
+            zeroCrossingRate: 0
+          },
+          fft: new Array(256).fill(0),
+          beat: {
+            onBeat: engineAudioMetrics.isBeat,
+            confidence: 0.8,
+            bpm: context.bpm || 120,
+            beatPhase: context.beatPhase || 0,
+            barPhase: 0,
+            timeSinceLastBeat: 0
+          },
+          input: {
+            gain: this.inputGain,
+            device: 'Microphone',
+            active: this.hasRealAudio,
+            isClipping: false
+          }
         },
-        intent,
-        system: {
-          mode: this.mode,
-          vibe: this.engine.getCurrentVibe(),
-          fps: 30,
-        }
+        consciousness: createDefaultCognitive(),
+        context: {
+          key: null,
+          mode: 'unknown',
+          bpm: context.bpm || 120,
+          beatPhase: context.beatPhase || 0,
+          syncopation: 0,
+          section: { type: 'unknown', current: 'unknown', confidence: 0, duration: 0, isTransition: false },
+          energy,
+          mood: 'neutral',
+          genre: { macro: 'UNKNOWN', subGenre: null, confidence: 0 },
+          confidence: 0.5,
+          timestamp: Date.now()
+        },
+        intent: {
+          palette: intent.palette,
+          masterIntensity: intent.masterIntensity,
+          zones: intent.zones,
+          movement: intent.movement,
+          effects: intent.effects,
+          source: 'procedural',
+          timestamp: Date.now()
+        },
+        hardware: {
+          dmx: {
+            connected: true,
+            driver: 'none',
+            universe: 1,
+            frameRate: 30,
+            port: null
+          },
+          dmxOutput: new Array(512).fill(0),
+          fixturesActive: fixtureStates.filter(f => f.dimmer > 0).length,
+          fixturesTotal: fixtureStates.length,
+          // Map HAL FixtureState to Protocol FixtureState
+          fixtures: fixtureStates.map((f, i) => ({
+            id: `fix_${i}`,
+            name: f.name,
+            type: f.type,
+            zone: f.zone,
+            dmxAddress: f.dmxAddress,
+            universe: f.universe,
+            dimmer: f.dimmer,
+            intensity: f.dimmer,
+            color: { r: f.r, g: f.g, b: f.b },
+            pan: f.pan,
+            tilt: f.tilt,
+            online: true,
+            active: f.dimmer > 0
+          }))
+        },
+        timestamp: Date.now()
       }
+      
       this.onBroadcast(truth)
     }
     

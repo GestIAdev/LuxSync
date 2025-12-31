@@ -134,8 +134,8 @@ export class ZoneRouter {
       // Soft knee clipper
       rawIntensity = this.applySoftKnee(rawIntensity)
       
-      // Vanta Black hard floor (WAVE 119)
-      if (rawIntensity < 0.20) rawIntensity = 0
+      // WAVE 256.5: Reduced Vanta Black hard floor (was 0.20 - too aggressive)
+      if (rawIntensity < 0.05) rawIntensity = 0
       
       // AGC Trap
       if (input.isAGCTrap) rawIntensity = 0
@@ -148,7 +148,7 @@ export class ZoneRouter {
   
   /**
    * Calculate target intensity for BACK_PARS zone.
-   * Based on main.ts WAVE 117.1 implementation.
+   * WAVE 256.6: Back PARs now respond to MID + TREBLE for better reactivity
    */
   public calculateBackParIntensity(
     input: ZoneIntensityInput,
@@ -158,12 +158,14 @@ export class ZoneRouter {
       return 0
     }
     
-    // Hybrid mode: rawTreble + treblePulse boost (WAVE 117.1)
-    const pulseBoost = input.treblePulse > 0.1 ? 1.3 : 1.0
+    // WAVE 256.6: Use BOTH mid and treble for back pars (melody response)
+    // This makes them react to vocals, synths, guitars - not just hi-hats
+    const melodySignal = Math.max(input.rawMid, input.rawTreble)
+    const pulseBoost = input.treblePulse > 0.1 ? 1.4 : 1.0
     
-    if (input.rawTreble > preset.backParGate) {
+    if (melodySignal > preset.backParGate) {
       let rawIntensity = Math.min(1, 
-        (input.rawTreble - preset.backParGate) * preset.backParGain * pulseBoost
+        (melodySignal - preset.backParGate) * preset.backParGain * pulseBoost
       )
       
       // Visual headroom ceiling
@@ -172,8 +174,8 @@ export class ZoneRouter {
       // Soft knee clipper
       rawIntensity = this.applySoftKnee(rawIntensity)
       
-      // Vanta Black hard floor
-      if (rawIntensity < 0.20) rawIntensity = 0
+      // WAVE 256.5: Reduced Vanta Black hard floor (was 0.20)
+      if (rawIntensity < 0.05) rawIntensity = 0
       
       // AGC Trap
       if (input.isAGCTrap) rawIntensity = 0

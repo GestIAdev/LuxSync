@@ -101,15 +101,51 @@ export class TrinityOrchestrator extends EventEmitter {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private startTime = Date.now();
   
-  // Worker script paths (relative to dist)
-  private readonly WORKER_PATHS = {
-    beta: path.join(__dirname, 'senses.js'),
-    gamma: path.join(__dirname, 'mind.js')
-  };
+  // 🧠 WAVE 258: Worker paths - detect dist-electron folder correctly
+  private readonly WORKER_PATHS: { beta: string; gamma: string };
+  
+  private static getWorkerDir(): string {
+    // In Electron bundled with Vite, we need to find dist-electron
+    // Try multiple strategies:
+    
+    // Strategy 1: Check if __dirname points to dist-electron
+    if (__dirname.includes('dist-electron')) {
+      return __dirname;
+    }
+    
+    // Strategy 2: Look relative to process.cwd() (electron app root)
+    const distElectron = path.join(process.cwd(), 'dist-electron');
+    
+    // Strategy 3: Try to use app.getAppPath() if available (Electron main process)
+    try {
+      // Dynamic import to avoid issues in non-Electron contexts
+      const { app } = require('electron');
+      if (app) {
+        const appPath = app.getAppPath();
+        const electronDist = path.join(appPath, 'dist-electron');
+        console.log('[ALPHA] Using Electron app path:', electronDist);
+        return electronDist;
+      }
+    } catch (e) {
+      // Not in Electron main process, continue with other strategies
+    }
+    
+    console.log('[ALPHA] Using dist-electron from cwd:', distElectron);
+    return distElectron;
+  }
   
   constructor(config: Partial<TrinityConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
+    
+    // Initialize worker paths
+    const workerDir = TrinityOrchestrator.getWorkerDir();
+    this.WORKER_PATHS = {
+      beta: path.join(workerDir, 'senses.js'),
+      gamma: path.join(workerDir, 'mind.js')
+    };
+    console.log('[ALPHA] Worker paths:', this.WORKER_PATHS);
+    
     this.initializeNodes();
   }
   
@@ -539,9 +575,54 @@ export class TrinityOrchestrator extends EventEmitter {
     }
   }
   
-  // �️ WAVE 15.3: feedAudioMetrics ELIMINADO
-  // El bypass de datos pre-procesados ha sido DESTRUIDO.
-  // El único camino válido es: RAW BUFFER → BETA (FFT) → GAMMA
+  // 🧠 WAVE 258: feedAudioMetrics RESURRECTED
+  // El frontend ya procesa el audio con FFT. No tiene sentido re-procesar.
+  // Este método envía métricas pre-procesadas directamente a GAMMA.
+  feedAudioMetrics(metrics: {
+    bass: number;
+    mid: number;
+    treble: number;
+    energy: number;
+    timestamp?: number;
+  }): void {
+    if (!this.isRunning) return;
+    
+    const gamma = this.nodes.get('gamma');
+    if (gamma?.worker && gamma.isReady && gamma.circuit.state !== CircuitState.OPEN) {
+      // Construir un AudioAnalysis mínimo para GAMMA
+      const analysis: AudioAnalysis = {
+        timestamp: metrics.timestamp || Date.now(),
+        frameId: Date.now() % 1000000,
+        
+        // Beat detection (estimated from energy changes)
+        bpm: 120, // Default, will be refined by GAMMA
+        bpmConfidence: 0.5,
+        onBeat: metrics.bass > 0.6,
+        beatPhase: (Date.now() % 500) / 500, // Rough estimate
+        beatStrength: metrics.bass,
+        
+        // Rhythm (estimated)
+        syncopation: 0.3,
+        groove: 0.5,
+        subdivision: 4,
+        
+        // Spectrum from frontend
+        bass: metrics.bass,
+        mid: metrics.mid,
+        treble: metrics.treble,
+        
+        // Energy
+        energy: metrics.energy,
+        
+        // Raw metrics (minimal)
+        spectralCentroid: (metrics.treble * 0.7 + metrics.mid * 0.3) * 4000,
+        spectralFlux: Math.abs(metrics.energy - 0.5) * 2,
+        zeroCrossingRate: metrics.treble * 0.5
+      };
+      
+      this.sendToWorker('gamma', MessageType.AUDIO_ANALYSIS, analysis, MessagePriority.HIGH);
+    }
+  }
   
   // ============================================
   // SEND TO WORKER

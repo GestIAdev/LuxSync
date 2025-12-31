@@ -36,7 +36,7 @@ export interface PhysicsConfig {
 
 /** Input for mover target calculation */
 export interface MoverTargetInput {
-  presetName: string
+  presetName?: string  // Optional, no longer used in WAVE 256.7
   melodyThreshold: number
   rawMid: number
   rawBass: number
@@ -109,11 +109,10 @@ export class PhysicsEngine {
   
   /**
    * Calculate mover target with hysteresis.
-   * Unified logic for all movers (WAVE 120.2).
+   * WAVE 256.8: DRASTICALLY simplified - movers should ALWAYS have some light with audio
    */
   public calculateMoverTarget(input: MoverTargetInput): MoverCalcResult {
     const {
-      presetName,
       melodyThreshold,
       rawMid,
       rawBass,
@@ -128,71 +127,37 @@ export class PhysicsEngine {
       return { intensity: 0, newState: false }
     }
     
-    // B. DETECTAR SI ES GÉNERO DENSO (Techno/Latino/Pop)
-    const isHighDensity = presetName.includes('Techno') || 
-                          presetName.includes('Fiesta') ||
-                          presetName.includes('Latino') ||
-                          presetName.includes('Pop')
+    // B. WAVE 256.8: Combined audio signal - movers respond to EVERYTHING
+    // Use the maximum of all bands with boosting
+    const audioSignal = Math.max(
+      rawMid * 1.5,           // Mid frequencies boosted (vocals, instruments)
+      rawTreble * 1.3,        // Treble boosted (hats, cymbals)
+      rawBass * 0.6           // Bass contributes too but less
+    )
     
-    // C. MASKING (Solo para Dubstep/Chill)
-    let bassMasking = 0
-    if (!isHighDensity) {
-      bassMasking = Math.min(0.2, rawBass * 0.25)
-    }
-    
-    // D. SEÑAL MELÓDICA
-    const melodySignal = Math.max(rawMid, rawTreble * 0.8)
-    
-    // E. UMBRALES DINÁMICOS
-    const effectiveThreshold = melodyThreshold + bassMasking
-    const ON_THRESHOLD = effectiveThreshold + 0.10  // Cuesta encender
-    const hystOffset = isHighDensity ? 0.15 : 0.05  // Latino: más histéresis
-    const OFF_THRESHOLD = effectiveThreshold - hystOffset
-    
-    // F. BASS DOMINANCE GATE (Solo para géneros con silencios)
-    if (!isHighDensity && rawMid < rawBass * 0.5) {
-      return { intensity: 0, newState: false }
-    }
+    // C. WAVE 256.8: VERY LOW threshold for movers - they should be alive
+    const ACTIVATION_THRESHOLD = 0.08  // Activates at 8% audio signal
     
     let target = 0
     let nextState = moverState
     
-    // G. LÓGICA DE HISTÉRESIS UNIFICADA
-    if (!moverState) {
-      // 🔒 ESTADO: APAGADO - Necesita MUCHA energía para encender
-      if (melodySignal > ON_THRESHOLD) {
-        nextState = true
-        target = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold)
-      }
+    // D. SIMPLE LOGIC: If there's audio, movers respond
+    if (audioSignal > ACTIVATION_THRESHOLD) {
+      nextState = true
+      // Map signal to intensity: 0.08 → 0.3 (minimum visible), 1.0 → 1.0 (max)
+      target = 0.3 + (audioSignal - ACTIVATION_THRESHOLD) * 0.7 / (1 - ACTIVATION_THRESHOLD)
     } else {
-      // 💡 ESTADO: ENCENDIDO - Se mantiene hasta que la energía muera
-      if (melodySignal > OFF_THRESHOLD) {
-        target = (melodySignal - effectiveThreshold) / (1 - effectiveThreshold)
-      } else {
-        nextState = false
-        target = 0
+      // Very low or no audio - decay
+      if (moverState) {
+        // Was on, give it some grace time with minimal intensity
+        target = 0.15
       }
+      nextState = audioSignal > 0.05  // Slightly lower off threshold for hysteresis
     }
     
-    // H. SOLIDITY ENHANCEMENT (WAVE 121 + 160.5)
-    if (target > 0 && target < 0.12) {
-      target = 0  // Si es basura real, mátalo
-    }
-    
-    if (target >= 0.12) {
-      // 1. CONFIDENCE BOOST: +15% extra
-      target = target * 1.15
-      
-      // 2. SOLID FLOOR: Nunca menos del 35%
-      target = Math.max(0.35, target)
-    }
-    
-    // I. CLIPPER FINAL
-    target = this.applySoftKneeClipper(target)
-    
-    // J. NAN PROTECTION Y CLAMP
+    // E. WAVE 256.8: Clamp and return - NO MORE GATES
     return {
-      intensity: Math.min(1, Math.max(0, target || 0)),
+      intensity: Math.min(1, Math.max(0, target)),
       newState: nextState
     }
   }

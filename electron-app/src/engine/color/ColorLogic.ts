@@ -13,7 +13,7 @@
  * @version TITAN 2.0
  */
 
-import { ColorPalette, HSLColor } from '../../core/protocol/LightingIntent'
+import { ColorPalette, HSLColor, withHex } from '../../core/protocol/LightingIntent'
 import { MusicalContext } from '../../core/protocol/MusicalContext'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -86,14 +86,14 @@ const NEGATIVE_DROP_WINDOW_MS = 100
 /** Frames de blackout */
 const BLACKOUT_FRAMES = 3
 
-// Colores neón predefinidos (HSL normalizado 0-1)
+// Colores neón predefinidos (HSL normalizado 0-1) - WAVE 256.7: Añadir .hex
 const NEON_COLORS = {
-  magenta: { h: 300/360, s: 1.0, l: 0.65 },
-  cyan: { h: 180/360, s: 1.0, l: 0.60 },
-  lime: { h: 120/360, s: 1.0, l: 0.55 },
-  orange: { h: 30/360, s: 1.0, l: 0.55 },
-  yellow: { h: 55/360, s: 1.0, l: 0.55 },
-  gold: { h: 38/360, s: 1.0, l: 0.45 },  // Solar Flare color
+  magenta: withHex({ h: 300/360, s: 1.0, l: 0.65 }),
+  cyan: withHex({ h: 180/360, s: 1.0, l: 0.60 }),
+  lime: withHex({ h: 120/360, s: 1.0, l: 0.55 }),
+  orange: withHex({ h: 30/360, s: 1.0, l: 0.55 }),
+  yellow: withHex({ h: 55/360, s: 1.0, l: 0.55 }),
+  gold: withHex({ h: 38/360, s: 1.0, l: 0.45 }),  // Solar Flare color
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -264,30 +264,30 @@ export class ColorLogic {
     // Ajustar saturación según energía
     const energySat = saturation.min + (context.energy * (saturation.max - saturation.min))
     
-    // Construir paleta con armonía triádica
-    const primary: HSLColor = {
+    // Construir paleta con armonía triádica - WAVE 256.7: Añadir .hex para UI
+    const primary: HSLColor = withHex({
       h: baseHue,
       s: energySat,
       l: 0.5,
-    }
+    })
     
-    const secondary: HSLColor = {
+    const secondary: HSLColor = withHex({
       h: (baseHue + 0.33) % 1,  // +120° (triádico)
       s: energySat * 0.9,
       l: 0.5,
-    }
+    })
     
-    const accent: HSLColor = {
+    const accent: HSLColor = withHex({
       h: (baseHue + 0.66) % 1,  // +240° (triádico)
       s: energySat,
       l: 0.6,
-    }
+    })
     
-    const ambient: HSLColor = {
+    const ambient: HSLColor = withHex({
       h: baseHue,
       s: energySat * 0.3,
       l: 0.2,
-    }
+    })
     
     return { primary, secondary, accent, ambient }
   }
@@ -299,10 +299,10 @@ export class ColorLogic {
     return {
       ...palette,
       accent: { ...NEON_COLORS.gold },
-      primary: {
+      primary: withHex({
         ...palette.primary,
         l: Math.min(0.85, palette.primary.l + 0.15), // +15% brillo
-      },
+      }),
     }
   }
   
@@ -340,7 +340,7 @@ export class ColorLogic {
    * Crea paleta de blackout.
    */
   private createBlackoutPalette(): ColorPalette {
-    const black: HSLColor = { h: 0, s: 0, l: 0 }
+    const black: HSLColor = withHex({ h: 0, s: 0, l: 0 })
     return {
       primary: black,
       secondary: black,
@@ -358,7 +358,7 @@ export class ColorLogic {
     factor: number
   ): ColorPalette {
     const lerp = (a: number, b: number): number => a + (b - a) * factor
-    const lerpColor = (a: HSLColor, b: HSLColor): HSLColor => ({
+    const lerpColor = (a: HSLColor, b: HSLColor): HSLColor => withHex({
       h: lerp(a.h, b.h),
       s: lerp(a.s, b.s),
       l: lerp(a.l, b.l),
@@ -376,11 +376,11 @@ export class ColorLogic {
    * Mezcla dos colores HSL.
    */
   private blendColors(a: HSLColor, b: HSLColor, factor: number): HSLColor {
-    return {
+    return withHex({
       h: a.h + (b.h - a.h) * factor,
       s: a.s + (b.s - a.s) * factor,
       l: a.l + (b.l - a.l) * factor,
-    }
+    })
   }
 }
 

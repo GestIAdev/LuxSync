@@ -225,10 +225,15 @@ async function initTitan(): Promise<void> {
       mainWindow.webContents.send('selene:truth', truth)
     }
   })
-  
-  titanOrchestrator.start()
 
-  // Setup IPC handlers with all dependencies
+  // WAVE 257: Connect log callback for Tactical Log
+  titanOrchestrator.setLogCallback((entry) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('lux:log', entry)
+    }
+  })
+
+  titanOrchestrator.start()  // Setup IPC handlers with all dependencies
   const ipcDeps: IPCDependencies = {
     mainWindow,
     titanOrchestrator,

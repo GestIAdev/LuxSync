@@ -305,3 +305,22 @@ export function hslToRgb(hsl: HSLColor): { r: number; g: number; b: number } {
     b: Math.round(b * 255),
   }
 }
+
+/**
+ * Convierte HSL a HEX string (#RRGGBB)
+ */
+export function hslToHex(hsl: HSLColor): string {
+  const { r, g, b } = hslToRgb(hsl)
+  const toHex = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+/**
+ * Añade el campo .hex a un HSLColor
+ */
+export function withHex(hsl: HSLColor): HSLColor {
+  return {
+    ...hsl,
+    hex: hslToHex(hsl)
+  }
+}

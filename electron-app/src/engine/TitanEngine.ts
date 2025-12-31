@@ -213,6 +213,13 @@ export class TitanEngine extends EventEmitter {
       timestamp: now,
     }
     
+    // ─────────────────────────────────────────────────────────────────────
+    // WAVE 257: Throttled debug log (every second = 30 frames)
+    // ─────────────────────────────────────────────────────────────────────
+    if (this.state.frameCount % 30 === 0 && audio.energy > 0.05) {
+      console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${audio.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`)
+    }
+    
     // Guardar estado para deltas
     this.state.previousEnergy = audio.energy
     this.state.previousBass = audio.bass
@@ -343,6 +350,8 @@ export class TitanEngine extends EventEmitter {
   
   /**
    * Calcula el movimiento de fixtures motorizados.
+   * NOTA: Solo genera intent de movimiento - el motor de físicas/ópticas
+   * maneja la ejecución real del movimiento.
    */
   private calculateMovement(
     audio: EngineAudioMetrics,
@@ -360,6 +369,7 @@ export class TitanEngine extends EventEmitter {
     patternIndex = Math.min(patternIndex, allowedPatterns.length - 1)
     const pattern = (allowedPatterns[patternIndex] || 'sweep') as MovementIntent['pattern']
     
+    // Movement position is handled by physics engine, not here
     return {
       pattern,
       speed: Math.max(0, Math.min(1, speed)),

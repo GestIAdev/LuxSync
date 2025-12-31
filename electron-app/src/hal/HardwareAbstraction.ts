@@ -83,16 +83,18 @@ export class HardwareAbstraction {
   private renderTimes: number[] = []
   private universeBuffers = new Map<number, Uint8Array>()
   private lastFixtureStates: FixtureState[] = []
+  private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
   
   // Current vibe preset (for physics)
+  // WAVE 256.5: Reduced gates/thresholds for better audio reactivity
   private currentPreset: VibeRouteConfig = {
-    parGate: 0.20,
-    parGain: 2.0,
-    parMax: 0.78,
-    backParGate: 0.15,
-    backParGain: 2.5,
-    backParMax: 0.85,
-    melodyThreshold: 0.25,
+    parGate: 0.08,           // Was 0.20 - now responds to lighter bass
+    parGain: 3.5,            // Was 2.0 - more amplification
+    parMax: 0.95,            // Was 0.78 - higher ceiling
+    backParGate: 0.05,       // Was 0.15 - very sensitive back pars
+    backParGain: 4.0,        // Was 2.5 - stronger response
+    backParMax: 0.95,        // Was 0.85 - higher ceiling
+    melodyThreshold: 0.10,   // Was 0.25 - movers activate easier
     decaySpeed: 2,
     moverDecaySpeed: 3,
   }
@@ -259,6 +261,12 @@ export class HardwareAbstraction {
           isAGCTrap: audio.isAGCTrap,
         })
         
+        // WAVE 256.7: Debug log for movers - every 2 seconds
+        if (Date.now() - this.lastDebugTime > 2000 && zone === 'MOVING_LEFT') {
+          console.log(`[HAL MOVER] ${zone}: mid=${audio.rawMid.toFixed(2)}, treble=${audio.rawTreble.toFixed(2)}, bass=${audio.rawBass.toFixed(2)} → intensity=${result.intensity.toFixed(2)}, state=${result.newState}`)
+          this.lastDebugTime = Date.now()
+        }
+        
         this.physics.setMoverHysteresisState(hystKey, result.newState)
         return result.intensity
       }
@@ -273,11 +281,12 @@ export class HardwareAbstraction {
   }
   
   private buildAudioInput(audio: AudioMetrics): ZoneIntensityInput {
-    // Calculate derived values
-    const bassFloor = 0.5
-    const bassPulse = Math.max(0, audio.rawBass - bassFloor * 0.6)
-    const treblePulse = Math.max(0, audio.rawTreble - 0.15)
-    const melodySignal = Math.max(audio.rawMid, audio.rawTreble * 0.8)
+    // WAVE 256.5: Calculate derived values with REDUCED thresholds for better reactivity
+    // Previous bassFloor=0.5 was killing most audio signal
+    const bassFloor = 0.15  // Was 0.5 - now much more sensitive
+    const bassPulse = Math.max(0, audio.rawBass - bassFloor)  // Was bassFloor * 0.6
+    const treblePulse = Math.max(0, audio.rawTreble - 0.05)   // Was 0.15
+    const melodySignal = Math.max(audio.rawMid * 1.2, audio.rawTreble)  // Boosted mid
     const isMelodyDominant = audio.rawMid + audio.rawTreble > audio.rawBass * 1.5
     
     return {

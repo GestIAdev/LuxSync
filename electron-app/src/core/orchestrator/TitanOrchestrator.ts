@@ -11,7 +11,7 @@ import { TrinityBrain } from '../../brain/TrinityBrain'
 import { TitanEngine } from '../../engine/TitanEngine'
 import { HardwareAbstraction } from '../../hal/HardwareAbstraction'
 import { EventRouter, getEventRouter } from './EventRouter'
-import { getTrinity } from '../../workers/TrinityOrchestrator'
+import { getTrinity, TrinityOrchestrator } from '../../workers/TrinityOrchestrator'
 import type { MusicalContext } from '../protocol/MusicalContext'
 import { 
   SeleneTruth, 
@@ -38,6 +38,7 @@ export class TitanOrchestrator {
   private brain: TrinityBrain | null = null
   private engine: TitanEngine | null = null
   private hal: HardwareAbstraction | null = null
+  private trinity: TrinityOrchestrator | null = null  // 🧠 WAVE 258: Trinity reference
   private eventRouter: EventRouter
   
   private config: TitanConfig
@@ -98,13 +99,20 @@ export class TitanOrchestrator {
     this.brain = new TrinityBrain()
     console.log('[TitanOrchestrator] TrinityBrain created')
     
-    // Connect Brain to Trinity Orchestrator
+    // Connect Brain to Trinity Orchestrator and START the neural network
     try {
       const trinity = getTrinity()
+      this.trinity = trinity  // 🧠 WAVE 258: Save reference for audio feeding
       this.brain.connectToOrchestrator(trinity)
       console.log('[TitanOrchestrator] Brain connected to Trinity')
+      
+      // 🧠 WAVE 258 CORTEX KICKSTART: Start the Workers!
+      console.log('[TitanOrchestrator] 🧠 Starting Trinity Neural Network...')
+      await trinity.start()
+      console.log('[TitanOrchestrator] ✅ Trinity Workers are LIVE!')
     } catch (e) {
-      console.log('[TitanOrchestrator] Trinity not ready - Brain will use simulated context')
+      console.error('[TitanOrchestrator] ❌ Trinity startup failed:', e)
+      console.log('[TitanOrchestrator] Brain will use simulated context as fallback')
     }
     
     // Initialize Engine with initial vibe
@@ -149,6 +157,12 @@ export class TitanOrchestrator {
     this.mainLoopInterval = setInterval(() => {
       this.processFrame()
     }, 33) // ~30fps
+    
+    // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
+    setTimeout(() => {
+      this.log('System', '🚀 TITAN 2.0 ONLINE - Main loop started @ 30fps')
+      this.log('Info', `📊 Fixtures loaded: ${this.fixtures.length}`)
+    }, 100)
   }
 
   /**
@@ -220,6 +234,26 @@ export class TitanOrchestrator {
     
     // 4. HAL renders intent -> produces fixture states (WAVE 252: uses real fixtures)
     const fixtureStates = this.hal.render(intent, this.fixtures, halAudioMetrics)
+    
+    // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
+    const shouldLogToTactical = this.frameCount % 30 === 0
+    
+    if (shouldLogToTactical && this.hasRealAudio) {
+      const avgDimmer = fixtureStates.length > 0 
+        ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length 
+        : 0
+      const movers = fixtureStates.filter(f => f.zone.includes('MOVING'))
+      const avgMover = movers.length > 0 ? movers.reduce((s, f) => s + f.dimmer, 0) / movers.length : 0
+      const frontPars = fixtureStates.filter(f => f.zone === 'FRONT_PARS')
+      const avgFront = frontPars.length > 0 ? frontPars.reduce((s, f) => s + f.dimmer, 0) / frontPars.length : 0
+      
+      // Send to Tactical Log
+      this.log('Visual', `🎨 P:${intent.palette.primary.hex || '#???'} | Front:${avgFront.toFixed(0)} Mover:${avgMover.toFixed(0)}`, {
+        bass, mid, high, energy,
+        avgDimmer: avgDimmer.toFixed(0),
+        paletteStrategy: intent.palette.strategy
+      })
+    }
     
     // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     if (this.onBroadcast) {
@@ -312,25 +346,41 @@ export class TitanOrchestrator {
           fixturesTotal: fixtureStates.length,
           // Map HAL FixtureState to Protocol FixtureState
           // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
-          fixtures: fixtureStates.map((f, i) => ({
-            id: `fix_${i}`,
-            name: f.name,
-            type: f.type,
-            zone: f.zone,
-            dmxAddress: f.dmxAddress,
-            universe: f.universe,
-            dimmer: f.dimmer / 255,           // Normalize 0-255 → 0-1
-            intensity: f.dimmer / 255,        // Normalize 0-255 → 0-1
-            color: { 
-              r: Math.round(f.r),             // Keep 0-255 for RGB
-              g: Math.round(f.g), 
-              b: Math.round(f.b) 
-            },
-            pan: f.pan / 255,                 // Normalize 0-255 → 0-1
-            tilt: f.tilt / 255,               // Normalize 0-255 → 0-1
-            online: true,
-            active: f.dimmer > 0
-          }))
+          // WAVE 256.7: Map zone names for StageSimulator2 compatibility
+          fixtures: fixtureStates.map((f, i) => {
+            // Map HAL zones to StageSimulator2 zones
+            const zoneMap: Record<string, string> = {
+              'FRONT_PARS': 'front',
+              'BACK_PARS': 'back', 
+              'MOVING_LEFT': 'left',
+              'MOVING_RIGHT': 'right',
+              'STROBES': 'center',
+              'AMBIENT': 'center',
+              'FLOOR': 'front',
+              'UNASSIGNED': 'center'
+            }
+            const mappedZone = zoneMap[f.zone] || 'center'
+            
+            return {
+              id: `fix_${i}`,
+              name: f.name,
+              type: f.type,
+              zone: mappedZone,
+              dmxAddress: f.dmxAddress,
+              universe: f.universe,
+              dimmer: f.dimmer / 255,           // Normalize 0-255 → 0-1
+              intensity: f.dimmer / 255,        // Normalize 0-255 → 0-1
+              color: { 
+                r: Math.round(f.r),             // Keep 0-255 for RGB
+                g: Math.round(f.g), 
+                b: Math.round(f.b) 
+              },
+              pan: f.pan / 255,                 // Normalize 0-255 → 0-1
+              tilt: f.tilt / 255,               // Normalize 0-255 → 0-1
+              online: true,
+              active: f.dimmer > 0
+            }
+          })
         },
         timestamp: Date.now()
       }
@@ -352,6 +402,8 @@ export class TitanOrchestrator {
     if (this.engine) {
       this.engine.setVibe(vibeId)
       console.log(`[TitanOrchestrator] Vibe set to: ${vibeId}`)
+      // WAVE 257: Log vibe change to Tactical Log
+      this.log('Mode', `🎭 Vibe changed to: ${vibeId.toUpperCase()}`)
     }
   }
 
@@ -361,6 +413,8 @@ export class TitanOrchestrator {
   setMode(mode: string): void {
     this.mode = mode as 'auto' | 'manual'
     console.log(`[TitanOrchestrator] Mode set to: ${mode}`)
+    // WAVE 257: Log mode change to Tactical Log
+    this.log('System', `⚙️ Mode: ${mode.toUpperCase()}`)
   }
 
   /**
@@ -390,6 +444,36 @@ export class TitanOrchestrator {
   }
 
   /**
+   * WAVE 257: Set callback for sending logs to frontend (Tactical Log)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private onLog: ((entry: any) => void) | null = null
+  
+  setLogCallback(callback: (entry: any) => void): void {
+    this.onLog = callback
+    console.log('[TitanOrchestrator] Log callback registered')
+  }
+
+  /**
+   * WAVE 257: Send a log entry to the frontend Tactical Log
+   * @param category - Log category (Brain, Mode, Hunt, Beat, Music, Genre, Visual, DMX, System, Error, Info)
+   * @param message - The log message
+   * @param data - Optional additional data
+   */
+  log(category: string, message: string, data?: Record<string, unknown>): void {
+    if (!this.onLog) return
+    
+    this.onLog({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: Date.now(),
+      category,
+      message,
+      data: data || null,
+      level: category === 'Error' ? 'error' : 'info'
+    })
+  }
+
+  /**
    * WAVE 255: Process incoming audio frame from frontend
    * This method receives audio data and stores it for the main loop
    */
@@ -407,6 +491,16 @@ export class TitanOrchestrator {
     // Store for main loop
     this.lastAudioData = { bass, mid, high, energy }
     this.hasRealAudio = energy > 0.01 // Mark as having real audio if not silent
+    
+    // 🧠 WAVE 258: Feed audio to Trinity Workers for real analysis!
+    if (this.trinity && this.hasRealAudio) {
+      this.trinity.feedAudioMetrics({
+        bass,
+        mid,
+        treble: high,
+        energy
+      })
+    }
     
     if (this.config.debug && this.frameCount % 30 === 0) {
       console.log(`[TitanOrchestrator] 👂 Audio: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)

@@ -461,6 +461,198 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
     
     return { success: false, error: 'Fixture not found' }
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 256: LUX ALIASES - Handlers con prefijo lux: para compatibilidad
+  // El preload.ts usa lux:* pero los handlers originales son fixtures:*
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // 🔍 WAVE 255.5: Scan fixtures - alias para fixtures:scanLibrary
+  // Si no se pasa path, retorna la librería ya cargada (desde main.ts WAVE 255)
+  ipcMain.handle('lux:scan-fixtures', async (_event, customPath?: string) => {
+    try {
+      // If no custom path, just return the already-loaded library
+      if (!customPath) {
+        const cached = getFixtureLibrary()
+        console.log(`[IPC] lux:scan-fixtures returning cached library: ${cached.length} fixtures`)
+        return { success: true, fixtures: cached }
+      }
+      
+      // Scan custom path
+      console.log('[IPC] lux:scan-fixtures scanning:', customPath)
+      const definitions = await fxtParser.scanFolder(customPath)
+      setFixtureLibrary(definitions)
+      
+      console.log(`[IPC] lux:scan-fixtures found ${definitions.length} fixtures`)
+      return { success: true, fixtures: definitions }
+    } catch (err) {
+      console.error('[IPC] lux:scan-fixtures error:', err)
+      return { success: true, fixtures: getFixtureLibrary() } // Return cached library on error
+    }
+  })
+  
+  ipcMain.handle('lux:get-patched-fixtures', () => {
+    return { success: true, fixtures: getPatchedFixtures() }
+  })
+  
+  ipcMain.handle('lux:get-fixture-library', () => {
+    return { success: true, fixtures: getFixtureLibrary() }
+  })
+  
+  ipcMain.handle('lux:patch-fixture', async (_event, data: { fixtureId: string; dmxAddress: number; universe?: number }) => {
+    const library = getFixtureLibrary()
+    const fixture = library.find((f: { id: string }) => f.id === data.fixtureId)
+    
+    if (!fixture) {
+      return { success: false, error: 'Fixture not found in library' }
+    }
+    
+    const patchedFixtures = getPatchedFixtures()
+    const zone = autoAssignZone(fixture.type as string, fixture.name as string)
+    
+    const patched = {
+      ...fixture,
+      dmxAddress: data.dmxAddress,
+      universe: data.universe || 0,
+      zone
+    }
+    
+    patchedFixtures.push(patched)
+    configManager.updateConfig({ patchedFixtures })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+    }
+    
+    return { success: true, fixture: patched }
+  })
+  
+  ipcMain.handle('lux:unpatch-fixture', (_event, dmxAddress: number) => {
+    const patchedFixtures = getPatchedFixtures()
+    const index = patchedFixtures.findIndex((f: { dmxAddress: number }) => f.dmxAddress === dmxAddress)
+    
+    if (index !== -1) {
+      patchedFixtures.splice(index, 1)
+      recalculateZoneCounters()
+      configManager.updateConfig({ patchedFixtures })
+      
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+      }
+      
+      return { success: true }
+    }
+    
+    return { success: false, error: 'Fixture not found at that address' }
+  })
+  
+  // ✏️ WAVE 255.5: Editar fixture patcheado (cambiar DMX address/universe)
+  ipcMain.handle('lux:edit-fixture', (_event, data: { originalDmxAddress: number, newDmxAddress: number, universe?: number }) => {
+    const patchedFixtures = getPatchedFixtures()
+    const fixture = patchedFixtures.find((f: { dmxAddress: number }) => f.dmxAddress === data.originalDmxAddress)
+    
+    if (!fixture) {
+      return { success: false, error: `Fixture not found at DMX ${data.originalDmxAddress}` }
+    }
+    
+    // Check for address collision (if address changed)
+    if (data.newDmxAddress !== data.originalDmxAddress) {
+      const collision = patchedFixtures.find((f: { dmxAddress: number }) => f.dmxAddress === data.newDmxAddress)
+      if (collision) {
+        return { success: false, error: `DMX address ${data.newDmxAddress} is already in use` }
+      }
+    }
+    
+    // Update the fixture
+    fixture.dmxAddress = data.newDmxAddress
+    if (data.universe !== undefined) {
+      fixture.universe = data.universe
+    }
+    
+    // Recalculate and save
+    recalculateZoneCounters()
+    configManager.updateConfig({ patchedFixtures })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', patchedFixtures)
+    }
+    
+    console.log(`✏️ [IPCHandlers] Fixture edited: DMX ${data.originalDmxAddress} → ${data.newDmxAddress}`)
+    return { success: true, fixture }
+  })
+  
+  ipcMain.handle('lux:clear-patch', () => {
+    setPatchedFixtures([])
+    resetZoneCounters()
+    configManager.updateConfig({ patchedFixtures: [] })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', [])
+    }
+    
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:force-fixture-type', (_event, dmxAddress: number, newType: string) => {
+    const patchedFixtures = getPatchedFixtures()
+    const fixture = patchedFixtures.find((f: { dmxAddress: number }) => f.dmxAddress === dmxAddress)
+    
+    if (fixture) {
+      fixture.type = newType
+      fixture.manualOverride = newType
+      configManager.updateConfig({ patchedFixtures })
+      return { success: true }
+    }
+    
+    return { success: false, error: 'Fixture not found' }
+  })
+  
+  ipcMain.handle('lux:set-installation', (_event, type: 'ceiling' | 'floor') => {
+    configManager.updateConfig({ installation: type })
+    console.log(`[IPC] Installation type set to: ${type}`)
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:new-show', () => {
+    setPatchedFixtures([])
+    resetZoneCounters()
+    configManager.updateConfig({ patchedFixtures: [] })
+    
+    const mainWindow = getMainWindow()
+    if (mainWindow) {
+      mainWindow.webContents.send('lux:fixtures-loaded', [])
+    }
+    
+    console.log('[IPC] New show created - patch cleared')
+    return { success: true }
+  })
+  
+  ipcMain.handle('lux:save-fixture-definition', async (_event, definition: Record<string, unknown>) => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : ''
+      
+      if (!libraryPath) {
+        return { success: false, error: 'Library path not configured' }
+      }
+      
+      const fileName = `${(definition.name as string || 'custom').replace(/[^a-z0-9]/gi, '_')}.json`
+      const filePath = path.join(libraryPath, fileName)
+      
+      fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8')
+      console.log(`[IPC] Saved fixture definition: ${fileName}`)
+      
+      return { success: true, filePath }
+    } catch (err) {
+      console.error('[IPC] Failed to save fixture definition:', err)
+      return { success: false, error: String(err) }
+    }
+  })
 }
 
 // =============================================================================

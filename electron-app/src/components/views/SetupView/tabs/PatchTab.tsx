@@ -95,6 +95,9 @@ export const PatchTab: React.FC = () => {
   const [showForgeModal, setShowForgeModal] = useState(false)
   const [flashingFixture, setFlashingFixture] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // WAVE 256: Edit mode
+  const [editingFixture, setEditingFixture] = useState<PatchedFixture | null>(null)
+  const [editForm, setEditForm] = useState({ dmxAddress: 0, name: '' })
 
   // Get real-time hardware data from truthStore (includes DMX state)
   const hardwareState = useTruthStore(selectHardware)
@@ -293,6 +296,59 @@ export const PatchTab: React.FC = () => {
     }
   }
 
+  /**
+   * WAVE 256: Start editing a fixture
+   */
+  const handleStartEdit = (fixture: PatchedFixture) => {
+    setEditingFixture(fixture)
+    setEditForm({ 
+      dmxAddress: fixture.dmxAddress, 
+      name: fixture.name 
+    })
+  }
+
+  /**
+   * WAVE 256: Save fixture edits
+   */
+  const handleSaveEdit = async () => {
+    if (!editingFixture) return
+    
+    const api = getLuxApi()
+    if (!api) return
+
+    try {
+      // Call the edit handler with original DMX address, new DMX address, and universe
+      const result = await api.editFixture?.(
+        editingFixture.dmxAddress,  // Original DMX address
+        editForm.dmxAddress,         // New DMX address
+        editingFixture.universe      // Universe (optional)
+      )
+      
+      if (result?.success) {
+        // Update local state
+        setFixtures(prev => prev.map(f => 
+          f.dmxAddress === editingFixture.dmxAddress 
+            ? { ...f, dmxAddress: editForm.dmxAddress, name: editForm.name }
+            : f
+        ))
+        setEditingFixture(null)
+        console.log(`[PatchTab] Fixture edited: DMX ${editingFixture.dmxAddress} → ${editForm.dmxAddress}`)
+      } else {
+        setError(result?.error || 'Failed to edit fixture')
+      }
+    } catch (err) {
+      console.error('[PatchTab] Edit error:', err)
+      setError('Error editing fixture')
+    }
+  }
+
+  /**
+   * WAVE 256: Cancel editing
+   */
+  const handleCancelEdit = () => {
+    setEditingFixture(null)
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER HELPERS
   // ─────────────────────────────────────────────────────────────────────────
@@ -464,6 +520,13 @@ export const PatchTab: React.FC = () => {
                   {/* ACTIONS */}
                   <td className="col-actions">
                     <button 
+                      className="action-btn edit-btn"
+                      onClick={() => handleStartEdit(fixture)}
+                      title="Edit fixture"
+                    >
+                      ✏️
+                    </button>
+                    <button 
                       className="action-btn flash-btn"
                       onClick={() => handleFlash(fixture)}
                       title="Flash test"
@@ -501,6 +564,48 @@ export const PatchTab: React.FC = () => {
         onClose={() => setShowForgeModal(false)}
         onSave={handleSaveFixtureDefinition}
       />
+
+      {/* WAVE 256: EDIT FIXTURE MODAL */}
+      {editingFixture && (
+        <div className="edit-modal-overlay" onClick={handleCancelEdit}>
+          <div className="edit-modal" onClick={e => e.stopPropagation()}>
+            <h3>✏️ Edit Fixture</h3>
+            <div className="edit-form">
+              <label>
+                <span>Name:</span>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Fixture name"
+                />
+              </label>
+              <label>
+                <span>DMX Address:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={512}
+                  value={editForm.dmxAddress}
+                  onChange={e => setEditForm(prev => ({ ...prev, dmxAddress: parseInt(e.target.value) || 1 }))}
+                />
+              </label>
+              <div className="edit-info">
+                <span>Type: {editingFixture.type}</span>
+                <span>Channels: {editingFixture.channelCount}</span>
+              </div>
+            </div>
+            <div className="edit-actions">
+              <button className="cancel-btn" onClick={handleCancelEdit}>
+                Cancel
+              </button>
+              <button className="save-btn" onClick={handleSaveEdit}>
+                💾 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

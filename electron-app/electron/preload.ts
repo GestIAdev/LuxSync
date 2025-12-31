@@ -394,6 +394,10 @@ const luxApi = {
   unpatchFixture: (dmxAddress: number) =>
     ipcRenderer.invoke('lux:unpatch-fixture', dmxAddress),
   
+  /** ✏️ WAVE 255.5: Editar fixture patcheado */
+  editFixture: (originalDmxAddress: number, newDmxAddress: number, universe?: number) =>
+    ipcRenderer.invoke('lux:edit-fixture', { originalDmxAddress, newDmxAddress, universe }),
+  
   /** 🔬 WAVE 10.5: Forzar tipo de fixture manualmente */
   forceFixtureType: (dmxAddress: number, newType: string) =>
     ipcRenderer.invoke('lux:force-fixture-type', dmxAddress, newType),

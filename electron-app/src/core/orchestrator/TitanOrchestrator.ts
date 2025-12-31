@@ -59,6 +59,10 @@ export class TitanOrchestrator {
   }
   private hasRealAudio = false
 
+  // WAVE 255.5: Callback to broadcast fixture states to frontend
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private onBroadcast: ((truth: any) => void) | null = null
+
   constructor(config: TitanConfig = {}) {
     this.config = {
       debug: false,
@@ -211,6 +215,31 @@ export class TitanOrchestrator {
     // 4. HAL renders intent -> produces fixture states (WAVE 252: uses real fixtures)
     const fixtureStates = this.hal.render(intent, this.fixtures, halAudioMetrics)
     
+    // 5. WAVE 255.5: Broadcast to frontend for StageSimulator
+    if (this.onBroadcast) {
+      const truth = {
+        hardware: {
+          fixtures: fixtureStates,
+          dmxOutput: [],
+          activeZones: intent.zones,
+        },
+        sensory: {
+          bass,
+          mid,
+          high,
+          energy,
+          isBeat: engineAudioMetrics.isBeat,
+        },
+        intent,
+        system: {
+          mode: this.mode,
+          vibe: this.engine.getCurrentVibe(),
+          fps: 30,
+        }
+      }
+      this.onBroadcast(truth)
+    }
+    
     // Log every second
     if (shouldLog && this.config.debug) {
       const currentVibe = this.engine.getCurrentVibe()
@@ -250,6 +279,16 @@ export class TitanOrchestrator {
   setInputGain(gain: number): void {
     this.inputGain = Math.max(0, Math.min(2, gain))
     console.log(`[TitanOrchestrator] Input gain set to: ${this.inputGain}`)
+  }
+
+  /**
+   * WAVE 255.5: Set callback for broadcasting truth to frontend
+   * This enables StageSimulator2 to receive fixture states
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setBroadcastCallback(callback: (truth: any) => void): void {
+    this.onBroadcast = callback
+    console.log('[TitanOrchestrator] Broadcast callback registered')
   }
 
   /**

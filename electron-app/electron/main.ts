@@ -218,6 +218,14 @@ async function initTitan(): Promise<void> {
   // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
   titanOrchestrator = new TitanOrchestrator({ debug: isDev })
   await titanOrchestrator.init()
+  
+  // WAVE 255.5: Connect broadcast callback to send fixture states to frontend
+  titanOrchestrator.setBroadcastCallback((truth) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('selene:truth', truth)
+    }
+  })
+  
   titanOrchestrator.start()
 
   // Setup IPC handlers with all dependencies

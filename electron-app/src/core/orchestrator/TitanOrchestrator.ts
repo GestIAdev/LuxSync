@@ -311,6 +311,7 @@ export class TitanOrchestrator {
           fixturesActive: fixtureStates.filter(f => f.dimmer > 0).length,
           fixturesTotal: fixtureStates.length,
           // Map HAL FixtureState to Protocol FixtureState
+          // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
           fixtures: fixtureStates.map((f, i) => ({
             id: `fix_${i}`,
             name: f.name,
@@ -318,11 +319,15 @@ export class TitanOrchestrator {
             zone: f.zone,
             dmxAddress: f.dmxAddress,
             universe: f.universe,
-            dimmer: f.dimmer,
-            intensity: f.dimmer,
-            color: { r: f.r, g: f.g, b: f.b },
-            pan: f.pan,
-            tilt: f.tilt,
+            dimmer: f.dimmer / 255,           // Normalize 0-255 → 0-1
+            intensity: f.dimmer / 255,        // Normalize 0-255 → 0-1
+            color: { 
+              r: Math.round(f.r),             // Keep 0-255 for RGB
+              g: Math.round(f.g), 
+              b: Math.round(f.b) 
+            },
+            pan: f.pan / 255,                 // Normalize 0-255 → 0-1
+            tilt: f.tilt / 255,               // Normalize 0-255 → 0-1
             online: true,
             active: f.dimmer > 0
           }))

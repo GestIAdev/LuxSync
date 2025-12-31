@@ -326,22 +326,22 @@ export const StageSimulator2: React.FC = () => {
       // ═══════════════════════════════════════════════════════════════════
       
       if (qualityMode === 'high') {
-        // WAVE 256.2: Use 'screen' instead of 'lighter' to prevent over-saturation
-        // 'lighter' adds RGB values (can go >255), 'screen' blends more naturally
-        ctx.globalCompositeOperation = 'screen';
+        // WAVE 256.4: Back to 'lighter' but with CONTROLLED opacities
+        // Now that intensity is normalized (0-1), lighter works correctly
+        ctx.globalCompositeOperation = 'lighter';
         
         // ═══════════════════════════════════════════════════════════════════
-        // WAVE 256: Fixed rendering order - OUTER to INNER
+        // WAVE 256.4: BALANCED rendering - visible but not blinding
         // ═══════════════════════════════════════════════════════════════════
         
-        // 1. HALO EXTERIOR (glow atmosférico) - Más sutil
+        // 1. HALO EXTERIOR (atmospheric glow)
         const haloRadius = type === 'moving' 
-          ? 25 + intensity * 20  // Moving: mucho más pequeño
-          : 30 + intensity * 20; // PARs
+          ? 40 + intensity * 35  // Moving: medium spread
+          : 50 + intensity * 40; // PARs: wider spread
         const haloGradient = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
-        // WAVE 256.2: Much lower opacity
-        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.15 * intensity})`);
-        haloGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.08 * intensity})`);
+        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.4 * intensity})`);
+        haloGradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${0.2 * intensity})`);
+        haloGradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${0.08 * intensity})`);
         haloGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -349,40 +349,40 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = haloGradient;
         ctx.fill();
         
-        // 2. BEAM para moving heads - Dibujado después del halo
+        // 2. BEAM para moving heads
         if (type === 'moving' && intensity > 0.1) {
           const beamAngle = (pan - 0.5) * Math.PI * 0.6; // ±54°
-          const beamLength = 100 + tilt * 200;
-          const beamWidth = 15 + intensity * 15;
+          const beamLength = 120 + tilt * 250;
+          const beamWidth = 20 + intensity * 20;
           
           const endX = x + Math.sin(beamAngle) * beamLength;
           const endY = y + Math.cos(beamAngle) * beamLength;
           
           // Beam cónico
           ctx.beginPath();
-          ctx.moveTo(x - 5, y);
+          ctx.moveTo(x - 6, y);
           ctx.lineTo(endX - beamWidth, endY);
           ctx.lineTo(endX + beamWidth, endY);
-          ctx.lineTo(x + 5, y);
+          ctx.lineTo(x + 6, y);
           ctx.closePath();
           
           const beamGradient = ctx.createLinearGradient(x, y, endX, endY);
-          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`);
-          beamGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.1 * intensity})`);
+          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.5 * intensity})`);
+          beamGradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`);
           beamGradient.addColorStop(1, 'transparent');
           
           ctx.fillStyle = beamGradient;
           ctx.fill();
         }
         
-        // 3. NÚCLEO DE COLOR - Compacto y definido
+        // 3. NÚCLEO DE COLOR - Visible and vibrant
         const coreRadius = type === 'moving'
-          ? 6 + intensity * 4  // Moving: más pequeño
-          : 10 + intensity * 6; // PARs: más pequeño
+          ? 10 + intensity * 8  // Moving
+          : 14 + intensity * 10; // PARs
         const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, coreRadius);
-        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.7 * intensity})`);
-        coreGradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${0.8 * intensity})`);
-        coreGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.3 * intensity})`);
+        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * intensity})`);
+        coreGradient.addColorStop(0.25, `rgba(${r}, ${g}, ${b}, ${0.95 * intensity})`);
+        coreGradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${0.5 * intensity})`);
         coreGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -390,11 +390,11 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = coreGradient;
         ctx.fill();
         
-        // 4. NÚCLEO BLANCO SÓLIDO - Punto brillante central
-        const whiteCoreRadius = type === 'moving' ? 2 : 3;
+        // 4. NÚCLEO BLANCO SÓLIDO - Hot center
+        const whiteCoreRadius = type === 'moving' ? 4 : 5;
         ctx.beginPath();
         ctx.arc(x, y, whiteCoreRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * intensity})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * intensity})`;
         ctx.fill();
         
         // STROBE FLASH

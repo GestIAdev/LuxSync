@@ -311,18 +311,21 @@ export class TitanOrchestrator {
           }
         },
         consciousness: createDefaultCognitive(),
+        // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
+        // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
+        // el contexto que ya obtuvimos de brain.getCurrentContext()
         context: {
-          key: null,
-          mode: 'unknown',
-          bpm: context.bpm || 120,
-          beatPhase: context.beatPhase || 0,
-          syncopation: 0,
-          section: { type: 'unknown', current: 'unknown', confidence: 0, duration: 0, isTransition: false },
-          energy,
-          mood: 'neutral',
-          genre: { macro: 'UNKNOWN', subGenre: null, confidence: 0 },
-          confidence: 0.5,
-          timestamp: Date.now()
+          key: context.key,
+          mode: context.mode,
+          bpm: context.bpm,
+          beatPhase: context.beatPhase,
+          syncopation: context.syncopation,
+          section: context.section,
+          energy: context.energy,
+          mood: context.mood,
+          genre: context.genre,
+          confidence: context.confidence,
+          timestamp: context.timestamp
         },
         intent: {
           palette: intent.palette,
@@ -386,6 +389,16 @@ export class TitanOrchestrator {
       }
       
       this.onBroadcast(truth)
+      
+      // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
+      // Log cada 2 segundos (60 frames @ 30fps)
+      if (this.frameCount % 60 === 0) {
+        console.log(
+          `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
+          `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
+          `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
+        )
+      }
     }
     
     // Log every second

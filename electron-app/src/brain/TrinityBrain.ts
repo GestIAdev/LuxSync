@@ -48,10 +48,17 @@ export class TrinityBrain extends EventEmitter {
   private lastAudioAnalysis: AudioAnalysis | null = null
   private frameCount: number = 0
   
+  // 🧠 WAVE 260: SHORT-TERM MEMORY
+  // El cerebro recuerda el último contexto VÁLIDO por 5 segundos.
+  // Esto evita el "flicker" cuando hay micro-silencios o drops de energía.
+  private lastValidContext: MusicalContext | null = null
+  private lastValidTimestamp: number = 0
+  private static readonly MEMORY_DURATION_MS = 5000 // 5 segundos de memoria
+  
   constructor() {
     super()
     this.lastContext = createDefaultMusicalContext()
-    console.log('[Brain] 🧠 TrinityBrain initialized (WAVE 227 - REAL RECEPTOR)')
+    console.log('[Brain] 🧠 TrinityBrain initialized (WAVE 227 - REAL RECEPTOR + WAVE 260 MEMORY)')
   }
 
   /**
@@ -122,10 +129,24 @@ export class TrinityBrain extends EventEmitter {
    * 
    * El Worker ahora hace el trabajo pesado de análisis y construcción.
    * TrinityBrain solo almacena y propaga el contexto.
+   * 
+   * 🧠 WAVE 260: SHORT-TERM MEMORY
+   * Si el contexto tiene Key válida, lo guardamos como referencia.
+   * Esto evita que micro-silencios borren la información musical.
    */
   private handleContextUpdate(context: MusicalContext): void {
     this.lastContext = context
     this.isConnected = true
+    
+    // 🧠 WAVE 260: Guardar en memoria si el contexto es VÁLIDO
+    // Un contexto es válido si tiene Key detectada o género conocido
+    const hasValidKey = context.key !== null
+    const hasValidGenre = context.genre.macro !== 'UNKNOWN'
+    
+    if (hasValidKey || hasValidGenre) {
+      this.lastValidContext = context
+      this.lastValidTimestamp = Date.now()
+    }
     
     // Emitir evento de actualización para que TitanEngine pueda escuchar
     this.emit('context-update', context)
@@ -133,9 +154,13 @@ export class TrinityBrain extends EventEmitter {
     // Log cada ~60 contextos (aproximadamente 1 segundo @ 60fps)
     this.frameCount++
     if (this.frameCount % 60 === 0) {
+      const memoryAge = this.lastValidContext 
+        ? ((Date.now() - this.lastValidTimestamp) / 1000).toFixed(1) 
+        : 'N/A'
       console.log(
         `[Brain] 🧠 LOBOTOMY Context: ${context.genre.macro}/${context.genre.subGenre || 'unknown'} @ ${context.bpm}bpm | ` +
-        `Section: ${context.section.type} | Energy: ${(context.energy * 100).toFixed(0)}% | Mood: ${context.mood}`
+        `Section: ${context.section.type} | Energy: ${(context.energy * 100).toFixed(0)}% | Mood: ${context.mood} | ` +
+        `Memory: ${memoryAge}s ago`
       )
     }
   }
@@ -218,14 +243,26 @@ export class TrinityBrain extends EventEmitter {
    * 
    * WAVE 227: Ahora devuelve datos REALES del Worker.
    * Si no hay datos, devuelve contexto de silencio/idle.
+   * 
+   * 🧠 WAVE 260: SHORT-TERM MEMORY
+   * Usa getLastContext() que implementa la memoria a corto plazo.
+   * Esto evita que micro-silencios borren la información musical.
    */
   public getCurrentContext(): MusicalContext {
     // Si no estamos conectados o no hay datos recientes, devolver idle
     if (!this.isConnected || !this.lastAudioAnalysis) {
+      // Pero primero, ¿tenemos memoria reciente?
+      if (this.lastValidContext) {
+        const age = Date.now() - this.lastValidTimestamp
+        if (age < TrinityBrain.MEMORY_DURATION_MS) {
+          return this.lastValidContext
+        }
+      }
       return this.createIdleContext()
     }
     
-    return this.lastContext
+    // Usar getLastContext() que incluye la lógica de memoria
+    return this.getLastContext()
   }
 
   /**
@@ -380,10 +417,45 @@ export class TrinityBrain extends EventEmitter {
   }
 
   /**
-   * Obtener el último contexto sin recalcular.
+   * 🧠 WAVE 260: SHORT-TERM MEMORY
+   * 
+   * Obtener el contexto actual con memoria a corto plazo.
+   * Si el contexto actual es "vacío" (UNKNOWN, sin Key), pero tenemos
+   * un contexto válido de hace menos de 5 segundos, devolvemos ese.
+   * 
+   * Esto evita el "flicker" en la UI cuando hay micro-silencios.
    */
   public getLastContext(): MusicalContext {
-    return this.lastContext
+    const current = this.lastContext
+    
+    // Si el contexto actual tiene información válida, devolverlo
+    const currentHasValidKey = current.key !== null
+    const currentHasValidGenre = current.genre.macro !== 'UNKNOWN'
+    
+    if (currentHasValidKey || currentHasValidGenre) {
+      return current
+    }
+    
+    // El contexto actual está vacío... ¿tenemos memoria?
+    if (this.lastValidContext) {
+      const age = Date.now() - this.lastValidTimestamp
+      
+      // Si la memoria tiene menos de 5 segundos, usarla
+      if (age < TrinityBrain.MEMORY_DURATION_MS) {
+        // Log cuando usamos memoria (pero no spammear)
+        if (this.frameCount % 120 === 0) {
+          console.log(
+            `[Brain] 🧠 Using SHORT-TERM MEMORY (${(age / 1000).toFixed(1)}s old): ` +
+            `Key=${this.lastValidContext.key ?? 'null'} ${this.lastValidContext.mode} | ` +
+            `Genre=${this.lastValidContext.genre.macro}`
+          )
+        }
+        return this.lastValidContext
+      }
+    }
+    
+    // No hay memoria válida, devolver el contexto vacío
+    return current
   }
 
   /**

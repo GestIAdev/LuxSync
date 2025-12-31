@@ -508,6 +508,19 @@ export class TitanOrchestrator {
   }
 
   /**
+   * 🩸 WAVE 259: RAW VEIN - Process raw audio buffer from frontend
+   * This sends the Float32Array directly to BETA Worker for real FFT analysis
+   */
+  processAudioBuffer(buffer: Float32Array): void {
+    if (!this.isRunning || !this.useBrain) return
+    
+    // 🩸 Send raw buffer to Trinity -> BETA Worker for FFT
+    if (this.trinity) {
+      this.trinity.feedAudioBuffer(buffer)
+    }
+  }
+
+  /**
    * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

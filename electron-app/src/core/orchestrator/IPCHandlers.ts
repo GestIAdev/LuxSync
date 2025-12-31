@@ -205,9 +205,12 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
-  // Audio buffer (raw Float32Array) - WAVE 254: Deprecado, usar audio-frame
-  ipcMain.handle('lux:audio-buffer', async (_event, _buffer: ArrayBuffer) => {
-    // Audio buffers are now processed via the Worker pipeline
+  // 🩸 WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT
+  ipcMain.handle('lux:audio-buffer', async (_event, buffer: ArrayBuffer) => {
+    if (titanOrchestrator && buffer) {
+      const float32 = new Float32Array(buffer)
+      titanOrchestrator.processAudioBuffer(float32)
+    }
     return { success: true }
   })
   

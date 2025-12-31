@@ -506,6 +506,11 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   state.totalProcessingTime += performance.now() - startTime;
   state.messagesProcessed++;
   
+  // 🩸 WAVE 259: Log Key detection cada 120 frames (~2 segundos)
+  if (state.frameCount % 120 === 0 && harmonyOutput.key) {
+    console.log(`[BETA 🎵] Key Detected: ${harmonyOutput.key} ${harmonyOutput.mode} (Confidence: ${harmonyOutput.confidence.toFixed(2)})`);
+  }
+  
   return {
     timestamp: Date.now(),
     frameId: state.frameCount,

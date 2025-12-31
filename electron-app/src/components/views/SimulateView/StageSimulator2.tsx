@@ -326,21 +326,22 @@ export const StageSimulator2: React.FC = () => {
       // ═══════════════════════════════════════════════════════════════════
       
       if (qualityMode === 'high') {
-        ctx.globalCompositeOperation = 'lighter';
+        // WAVE 256.2: Use 'screen' instead of 'lighter' to prevent over-saturation
+        // 'lighter' adds RGB values (can go >255), 'screen' blends more naturally
+        ctx.globalCompositeOperation = 'screen';
         
         // ═══════════════════════════════════════════════════════════════════
         // WAVE 256: Fixed rendering order - OUTER to INNER
         // ═══════════════════════════════════════════════════════════════════
         
-        // 1. HALO EXTERIOR (glow atmosférico) - Dibujado PRIMERO (más atrás)
+        // 1. HALO EXTERIOR (glow atmosférico) - Más sutil
         const haloRadius = type === 'moving' 
-          ? 40 + intensity * 30  // Moving: reducido
-          : 45 + intensity * 30; // PARs
+          ? 25 + intensity * 20  // Moving: mucho más pequeño
+          : 30 + intensity * 20; // PARs
         const haloGradient = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
-        // WAVE 256: Reduced opacity to prevent blinding
-        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.3 * intensity})`);
-        haloGradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${0.15 * intensity})`);
-        haloGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.05 * intensity})`);
+        // WAVE 256.2: Much lower opacity
+        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.15 * intensity})`);
+        haloGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.08 * intensity})`);
         haloGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -366,22 +367,22 @@ export const StageSimulator2: React.FC = () => {
           ctx.closePath();
           
           const beamGradient = ctx.createLinearGradient(x, y, endX, endY);
-          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.4 * intensity})`);
-          beamGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.2 * intensity})`);
+          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`);
+          beamGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.1 * intensity})`);
           beamGradient.addColorStop(1, 'transparent');
           
           ctx.fillStyle = beamGradient;
           ctx.fill();
         }
         
-        // 3. NÚCLEO DE COLOR - Tamaño reducido para no cegar
+        // 3. NÚCLEO DE COLOR - Compacto y definido
         const coreRadius = type === 'moving'
-          ? 8 + intensity * 6  // Moving: reducido
-          : 12 + intensity * 8; // PARs: reducido
+          ? 6 + intensity * 4  // Moving: más pequeño
+          : 10 + intensity * 6; // PARs: más pequeño
         const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, coreRadius);
-        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * intensity})`);
-        coreGradient.addColorStop(0.2, color);
-        coreGradient.addColorStop(0.6, colorAlpha);
+        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.7 * intensity})`);
+        coreGradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${0.8 * intensity})`);
+        coreGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.3 * intensity})`);
         coreGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -389,11 +390,11 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = coreGradient;
         ctx.fill();
         
-        // 4. NÚCLEO BLANCO SÓLIDO - Último (encima de todo)
-        const whiteCoreRadius = type === 'moving' ? 3 : 4;
+        // 4. NÚCLEO BLANCO SÓLIDO - Punto brillante central
+        const whiteCoreRadius = type === 'moving' ? 2 : 3;
         ctx.beginPath();
         ctx.arc(x, y, whiteCoreRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * intensity})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * intensity})`;
         ctx.fill();
         
         // STROBE FLASH

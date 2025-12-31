@@ -146,13 +146,17 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
   const genreMood = (genre as any).mood ?? null;
   const harmonyMood = harmony.mood ?? null;
   
-  // Mapear a los 7 moods permitidos por MusicalContext
+  // 🌉 WAVE 260.5: Mapear TODOS los moods posibles de HarmonyOutput
+  // HarmonyOutput moods: happy, sad, tense, dreamy, bluesy, jazzy, spanish_exotic, universal
+  // MusicalContext moods: euphoric, melancholic, aggressive, dreamy, neutral, mysterious, triumphant
   let mood: MusicalContext['mood'] = 'neutral';
   const rawMood = genreMood || harmonyMood || 'neutral';
+  const sectionEnergy = section.energy ?? 0;
   
   if (rawMood === 'happy' || rawMood === 'energetic' || rawMood === 'euphoric') {
     mood = 'euphoric';
-  } else if (rawMood === 'sad' || rawMood === 'melancholic') {
+  } else if (rawMood === 'sad' || rawMood === 'melancholic' || rawMood === 'bluesy') {
+    // 🎵 bluesy = melancolía con groove
     mood = 'melancholic';
   } else if (rawMood === 'tense' || rawMood === 'aggressive' || rawMood === 'dark') {
     mood = 'aggressive';
@@ -160,8 +164,19 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
     mood = 'dreamy';
   } else if (rawMood === 'mysterious' || rawMood === 'jazzy') {
     mood = 'mysterious';
-  } else if (rawMood === 'triumphant' || rawMood === 'heroic') {
+  } else if (rawMood === 'triumphant' || rawMood === 'heroic' || rawMood === 'spanish_exotic') {
+    // 🎵 spanish_exotic = pasión/triunfo
     mood = 'triumphant';
+  } else if (rawMood === 'universal' || rawMood === 'neutral') {
+    // 🌉 WAVE 260.5: 'universal' = el detector no está seguro
+    // Usar energía de sección para decidir
+    if (sectionEnergy > 0.7) {
+      mood = 'euphoric';
+    } else if (sectionEnergy > 0.4) {
+      mood = 'neutral';
+    } else {
+      mood = 'dreamy';
+    }
   }
   
   // Genre: Mapear a MacroGenre

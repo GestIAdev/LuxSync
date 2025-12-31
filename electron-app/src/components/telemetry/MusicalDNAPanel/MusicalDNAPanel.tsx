@@ -13,7 +13,7 @@
  */
 
 import React from 'react'
-import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected, useTruthAudio } from '../../../hooks'
+import { useTruthMusicalDNA, useTruthCognitive, useTruthConnected, useTruthAudio, useTruthSystem, useTruthContext } from '../../../hooks'
 import './MusicalDNAPanel.css'
 
 // 🎛️ WAVE 66: Vibe display names (local mapping)
@@ -30,9 +30,12 @@ const MusicalDNAPanel: React.FC = () => {
   const cognitive = useTruthCognitive()
   const connected = useTruthConnected()
   const audio = useTruthAudio()  // 🔥 WAVE 66.5: Para barra de energía
+  const system = useTruthSystem()  // 🌉 WAVE 260.5: Para vibe activo
+  const contextData = useTruthContext()  // � WAVE 260.5: Para mood real
   
-  // 🎛️ WAVE 66: Get vibe from truthStore (no separate IPC!)
-  const activeVibeId = cognitive?.vibe?.active ?? 'idle'
+  // 🌉 WAVE 260.5: Get vibe from SYSTEM (not cognitive)
+  // truth.system.vibe es donde TitanOrchestrator pone el vibe activo
+  const activeVibeId = system?.vibe ?? 'idle'
   const vibeDisplay = VIBE_DISPLAY[activeVibeId] ?? VIBE_DISPLAY['idle']
   
   // Data Extraction & Null Checks
@@ -66,8 +69,9 @@ const MusicalDNAPanel: React.FC = () => {
     // Si la clave es 'C Major', intentamos separar
     scale: musicalDNA?.key?.includes('m') ? 'Minor' : 'Major', 
     
-    // 🎭 WAVE 66: Use stableEmotion from MoodArbiter (BRIGHT/DARK/NEUTRAL)
-    mood: cognitive?.stableEmotion || 'NEUTRAL',
+    // � WAVE 260.5: Mood viene del CONTEXTO (truth.context.mood)
+    // Fallback a cognitive.stableEmotion si no hay mood en context
+    mood: contextData?.mood?.toUpperCase() || cognitive?.stableEmotion || 'NEUTRAL',
     
     zodiac: {
       sign: zodiacSign,

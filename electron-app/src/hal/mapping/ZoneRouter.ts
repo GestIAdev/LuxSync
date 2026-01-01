@@ -148,7 +148,8 @@ export class ZoneRouter {
   
   /**
    * Calculate target intensity for BACK_PARS zone.
-   * WAVE 256.6: Back PARs now respond to MID + TREBLE for better reactivity
+   * 🎚️ WAVE 275: Back PARs respond ONLY to MID (Snare/Clap, contratiempo)
+   * No mezclar con treble - eso va a los movers
    */
   public calculateBackParIntensity(
     input: ZoneIntensityInput,
@@ -158,14 +159,14 @@ export class ZoneRouter {
       return 0
     }
     
-    // WAVE 256.6: Use BOTH mid and treble for back pars (melody response)
-    // This makes them react to vocals, synths, guitars - not just hi-hats
-    const melodySignal = Math.max(input.rawMid, input.rawTreble)
-    const pulseBoost = input.treblePulse > 0.1 ? 1.4 : 1.0
+    // 🎚️ WAVE 275: SOLO MID - el contratiempo, snare, claps
+    // El treble ahora es exclusivo de los movers
+    const midSignal = input.rawMid
+    const pulseBoost = input.treblePulse > 0.3 ? 1.2 : 1.0 // Solo boost en transientes fuertes
     
-    if (melodySignal > preset.backParGate) {
+    if (midSignal > preset.backParGate) {
       let rawIntensity = Math.min(1, 
-        (melodySignal - preset.backParGate) * preset.backParGain * pulseBoost
+        (midSignal - preset.backParGate) * preset.backParGain * pulseBoost
       )
       
       // Visual headroom ceiling

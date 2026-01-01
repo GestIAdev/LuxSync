@@ -1,5 +1,6 @@
 /**
  * 🎸 WAVE 142: ROCK STEREO PHYSICS
+ * 🔮 WAVE 273: ELEMENTAL MODIFIERS INJECTION
  * ============================================================================
  * Módulo blindado para la lógica de reactividad del género Pop/Rock.
  * 
@@ -12,11 +13,15 @@
  * - WAVE 135: Portnoy Protocol (primera versión)
  * - WAVE 136: Stadium Separation (paleta de alto contraste)
  * - WAVE 137: Analog Gain (sweet spot thresholds: 0.32/0.35)
+ * - WAVE 273: Elemental modulation (Fire=all hits, Water=epic only)
  * 
  * PRINCIPIO: "EXTRAER, NO MODIFICAR"
- * Todos los valores numéricos son EXACTAMENTE los de Wave 137.
+ * Todos los valores numéricos base son EXACTAMENTE los de Wave 137.
+ * Los elementos ESCALAN estos valores, no los reemplazan.
  * ============================================================================
  */
+
+import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
 /**
  * Tipo RGB para colores (definido localmente para evitar dependencias circulares)
@@ -128,16 +133,25 @@ export class RockStereoPhysics {
    * - FLASH TUNGSTENO (Snare): Casi blanco cálido
    * - GOLPE DE COLOR (Kick): Primary amplificado
    * 
+   * WAVE 273: Inyección Elemental - Los modificadores zodiacales modulan
+   * thresholds (sensibilidad) y brightness (intensidad del flash)
+   * 
    * @param palette - Paleta actual con primary, secondary, ambient, accent
    * @param audio - Métricas de audio con mid, bass y energía normalizados
    * @param primaryHue - El hue del primary (para golpes de color en kick)
+   * @param mods - Modificadores elementales opcionales (Fuego/Tierra/Aire/Agua)
    * @returns Paleta procesada + metadata de debug
    */
   public static apply(
     palette: RockPalette,
     audio: RockAudioMetrics,
-    primaryHue: number = 0
+    primaryHue: number = 0,
+    mods?: ElementalModifiers
   ): RockPhysicsResult {
+    // WAVE 273: Multiplicadores elementales (default = 1.0 = sin modificación)
+    const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
+    const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
+
     const normalizedMid = audio.normalizedMid ?? 0.0;
     const normalizedBass = audio.normalizedBass ?? 0.0;
     const avgEnergy = audio.avgNormEnergy ?? 0.4;
@@ -150,27 +164,31 @@ export class RockStereoPhysics {
     const midsPulse = Math.max(0, normalizedMid - avgMid);
     const bassPulse = Math.max(0, normalizedBass - avgBass);
 
-    // Detectar hits
-    const isSnareHit = midsPulse > this.SNARE_THRESHOLD;
-    const isKickHit = bassPulse > this.KICK_THRESHOLD;
+    // Detectar hits - WAVE 273: thresholds modulados por elemento
+    const effectiveSnareThreshold = this.SNARE_THRESHOLD * thresholdMod;
+    const effectiveKickThreshold = this.KICK_THRESHOLD * thresholdMod;
+    const isSnareHit = midsPulse > effectiveSnareThreshold;
+    const isKickHit = bassPulse > effectiveKickThreshold;
 
     // Procesar accent según detección
     let processedPalette: RockPalette;
 
     if (isSnareHit) {
-      // ⚡ FLASH TUNGSTENO (Wave 137)
+      // ⚡ FLASH TUNGSTENO (Wave 137) - WAVE 273: brightness modulado
+      const modulatedLightness = Math.min(100, this.TUNGSTEN_FLASH.l * brightnessMod);
       const tungstenRgb = this.hslToRgb(
         this.TUNGSTEN_FLASH.h,
         this.TUNGSTEN_FLASH.s,
-        this.TUNGSTEN_FLASH.l
+        modulatedLightness
       );
       processedPalette = {
         ...palette,
         accent: tungstenRgb
       };
     } else if (isKickHit) {
-      // 🔴 GOLPE DE COLOR (Wave 137)
-      const kickRgb = this.hslToRgb(primaryHue, 100, this.KICK_BRIGHTNESS);
+      // 🔴 GOLPE DE COLOR (Wave 137) - WAVE 273: brightness modulado
+      const modulatedKickBrightness = Math.min(100, this.KICK_BRIGHTNESS * brightnessMod);
+      const kickRgb = this.hslToRgb(primaryHue, 100, modulatedKickBrightness);
       processedPalette = {
         ...palette,
         accent: kickRgb

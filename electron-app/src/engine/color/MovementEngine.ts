@@ -3,12 +3,22 @@
  * 
  * MIGRADO desde: demo/selene-movement-engine.js
  * 
+ * WAVE 273: ELEMENTAL INJECTION
+ * El elemento zodiacal modula:
+ * - Aire (jitterAmplitude > 0): Añade vibración orgánica al movimiento
+ * - Agua (decayMultiplier > 1): Movimiento más suave y lento
+ * - Fuego (decayMultiplier < 1): Movimiento más reactivo
+ * - Tierra (jitterAmplitude = 0): Movimiento sólido, sin vibración
+ * 
  * Patrones de movimiento para moving heads:
  * - circle, infinity, sweep, cloud, waves, static
  * - Sincronizacion con BPM
  * - Phase offset por fixture (movimiento organico)
  * - Entropia determinista (sin Math.random)
  */
+
+// WAVE 273: Elemental Modifiers
+import { ElementalModifiers } from '../physics/ElementalModifiers';
 
 import type {
   MovementState,
@@ -48,7 +58,7 @@ export class MovementEngine {
   
   // ---------------------------------------------------------------------------
   // ??? WAVE 24.6: HARDWARE SAFETY - Smoothed position tracking
-  // Previene latigazos mec�nicos en motores de moving heads
+  // Previene latigazos mec�nicos en motores de moving heads
   // ---------------------------------------------------------------------------
   private lastPan = 0.5   // Centro por defecto
   private lastTilt = 0.5  // Centro por defecto
@@ -85,12 +95,12 @@ export class MovementEngine {
   // Cuando el usuario selecciona una paleta manual, el movimiento debe coincidir
   private readonly palettePatternMap: Record<string, string> = {
     'fuego': 'infinity',   // ?? Latino caliente ? Figure 8 apasionado
-    'fire': 'infinity',    // Alias ingl�s
-    'hielo': 'cloud',      // ?? Arctic dreams ? Suave, et�reo
-    'ice': 'cloud',        // Alias ingl�s
-    'selva': 'waves',      // ?? Tropical storm ? Ondulante, org�nico
-    'jungle': 'waves',     // Alias ingl�s
-    'neon': 'sweep',       // ? Cyberpunk ? Barridos electr�nicos
+    'fire': 'infinity',    // Alias ingl�s
+    'hielo': 'cloud',      // ?? Arctic dreams ? Suave, et�reo
+    'ice': 'cloud',        // Alias ingl�s
+    'selva': 'waves',      // ?? Tropical storm ? Ondulante, org�nico
+    'jungle': 'waves',     // Alias ingl�s
+    'neon': 'sweep',       // ? Cyberpunk ? Barridos electr�nicos
   }
   
   private readonly smoothing: number
@@ -168,33 +178,54 @@ export class MovementEngine {
   }
   
   /**
-   * Calcula intensidad por fixture
+   * 🎚️ WAVE 275: Calcula intensidad por fixture basada en TREBLE
+   * 
+   * Los movers son el "alma melódica" - responden a melodías, voces y efectos.
+   * El treble se empuja x1.3 porque naturalmente tiene menos energía que bass.
    */
   private calculateIntensity(
     audioData: { energy: number; bass: number; treble: number },
     fixtureIndex: number,
     totalFixtures: number
   ): number {
-    const baseIntensity = audioData.energy * 0.7 + audioData.bass * 0.3
+    // WAVE 275: Movers = Treble (empujado 1.3x) + un poco de energy para suavidad
+    const treblePushed = audioData.treble * 1.3;
+    const baseIntensity = treblePushed * 0.8 + audioData.energy * 0.2;
+    
     const waveOffset = Math.sin(this.time * 2 + (fixtureIndex / totalFixtures) * Math.PI * 2)
     const waveIntensity = baseIntensity + waveOffset * 0.15
     
+    // Sin mínimo artificial - si no hay agudos, no hay luz
     return Math.max(0, Math.min(1, waveIntensity))
   }
   
   /**
    * Calcula posicion para un solo fixture
+   * 
+   * WAVE 273: Acepta modificadores elementales para modulación zodiacal:
+   * - jitterAmplitude: Añade vibración orgánica (Aire)
+   * - decayMultiplier: Modifica el smoothing (Agua = más suave)
+   * 
+   * @param metrics - Métricas de audio
+   * @param beatState - Estado del beat
+   * @param deltaTime - Delta time en ms
+   * @param mods - Modificadores elementales opcionales
    */
   calculate(
     metrics: AudioMetrics,
     beatState: BeatState,
-    deltaTime: number = 16
+    deltaTime: number = 16,
+    mods?: ElementalModifiers
   ): MovementOutput {
+    // WAVE 273: Extraer modificadores elementales
+    const jitter = mods?.jitterAmplitude ?? 0.0;
+    const decayMod = mods?.decayMultiplier ?? 1.0;
+    
     // ?? WAVE 10 FIX: Speed SIEMPRE afecta el movimiento
     // Multiplicador base: speed va de 0.01 (muy lento) a 1.0 (normal)
     const baseSpeedFactor = this.state.speed * 0.5  // Reducir velocidad general
     
-    // Si syncToBpm est� activo, el BPM modifica la velocidad
+    // Si syncToBpm est� activo, el BPM modifica la velocidad
     const bpmFactor = this.state.syncToBpm ? (beatState.bpm / 120) : 1.0
     
     // Incremento de tiempo respetando la velocidad configurada
@@ -226,19 +257,37 @@ export class MovementEngine {
       tilt = Math.max(0, Math.min(1, tilt + (entropy - 0.5) * beatBoost))
     }
     
+    // -----------------------------------------------------------------------
+    // WAVE 273: ELEMENTAL JITTER (Aire = vibración orgánica)
+    // Inyectamos micro-oscilaciones deterministas para dar "vida" al movimiento
+    // Fuego/Tierra/Agua tienen jitter = 0, Aire tiene jitter = 0.15
+    // -----------------------------------------------------------------------
+    if (jitter > 0) {
+      const jitterFreq = 7.3; // Frecuencia de vibración (Hz)
+      const now = Date.now() * 0.001;
+      const jitterX = Math.sin(now * jitterFreq * Math.PI * 2) * jitter;
+      const jitterY = Math.cos(now * jitterFreq * 1.3 * Math.PI * 2) * jitter;
+      pan += jitterX;
+      tilt += jitterY;
+    }
+    
     pan = Math.max(0, Math.min(1, pan))
     tilt = Math.max(0, Math.min(1, tilt))
     
     // -----------------------------------------------------------------------
-    // ??? WAVE 24.6: INTERPOLACI�N OBLIGATORIA (Hardware Safety)
+    // ??? WAVE 24.6: INTERPOLACIÓN OBLIGATORIA (Hardware Safety)
     // Los motores de moving heads NO pueden teletransportarse.
-    // Usamos lerp para suavizar la transici�n hacia el target.
-    // smoothFactor bajo = movimiento m�s suave pero con m�s latencia
-    // smoothFactor alto = respuesta r�pida pero m�s brusca
+    // Usamos lerp para suavizar la transición hacia el target.
+    // smoothFactor bajo = movimiento más suave pero con más latencia
+    // smoothFactor alto = respuesta rápida pero más brusca
+    // 
+    // WAVE 273: decayMod modifica el smoothing
+    // Agua (decayMod > 1) = más suave, Fuego (decayMod < 1) = más reactivo
     // -----------------------------------------------------------------------
-    const smoothFactor = this.smoothing * 0.15  // 0.8 * 0.15 = 0.12 ? suave
-    this.lastPan += (pan - this.lastPan) * smoothFactor
-    this.lastTilt += (tilt - this.lastTilt) * smoothFactor
+    const baseSmoothFactor = this.smoothing * 0.15  // 0.8 * 0.15 = 0.12 → suave
+    const effectiveSmoothFactor = baseSmoothFactor / decayMod; // Agua = más lento
+    this.lastPan += (pan - this.lastPan) * effectiveSmoothFactor
+    this.lastTilt += (tilt - this.lastTilt) * effectiveSmoothFactor
     
     // Clamp final por seguridad
     this.lastPan = Math.max(0, Math.min(1, this.lastPan))

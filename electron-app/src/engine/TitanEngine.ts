@@ -42,6 +42,10 @@ import { EnergyStabilizer, EnergyOutput } from './color/EnergyStabilizer'
 import { MoodArbiter, MoodArbiterInput, MoodArbiterOutput, MetaEmotion } from './color/MoodArbiter'
 import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStrategy } from './color/StrategyArbiter'
 
+// ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
+import { SeleneLux } from '../core/reactivity'
+import { getModifiersFromKey } from './physics/ElementalModifiers'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,11 +118,13 @@ export class TitanEngine extends EventEmitter {
   // Sub-módulos
   // 🔥 WAVE 269: SeleneColorEngine reemplaza a ColorLogic
   // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
+  // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
   private vibeManager: VibeManager
   private keyStabilizer: KeyStabilizer
   private energyStabilizer: EnergyStabilizer
   private moodArbiter: MoodArbiter
   private strategyArbiter: StrategyArbiter
+  private nervousSystem: SeleneLux
   
   // 🧠 WAVE 271: Cached stabilized state (for telemetry/debug)
   private lastStabilizedState: {
@@ -159,6 +165,9 @@ export class TitanEngine extends EventEmitter {
     this.moodArbiter = new MoodArbiter()
     this.strategyArbiter = new StrategyArbiter()
     
+    // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
+    this.nervousSystem = new SeleneLux({ debug: this.config.debug })
+    
     // Establecer vibe inicial
     this.vibeManager.setActiveVibe(this.config.initialVibe)
     
@@ -172,9 +181,10 @@ export class TitanEngine extends EventEmitter {
       previousBass: 0,
     }
     
-    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC RESURRECTION)`)
+    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST)`)
     console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`)
     console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`)
+    console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -324,6 +334,37 @@ export class TitanEngine extends EventEmitter {
         selenePalette,
         vibeProfile.id
       )
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // ⚡ WAVE 274: SISTEMA NERVIOSO - Procesar física reactiva por género
+    // ─────────────────────────────────────────────────────────────────────
+    const elementalMods = getModifiersFromKey(keyOutput.stableKey)
+    
+    // Extraer hue primario de la paleta Selene (HSL)
+    const primaryHue = selenePalette.primary.h
+    
+    // Actualizar sistema nervioso con datos de la trinidad + paleta + mods zodiacales
+    const nervousOutput = this.nervousSystem.updateFromTitan(
+      {
+        activeVibe: vibeProfile.id,
+        primaryHue: primaryHue,
+        stableKey: keyOutput.stableKey,
+        bpm: context.bpm,
+      },
+      palette,
+      {
+        normalizedBass: audio.bass,
+        normalizedMid: audio.mid,
+        normalizedTreble: audio.high,
+        avgNormEnergy: energyOutput.smoothedEnergy,
+      },
+      elementalMods
+    )
+    
+    // Log del sistema nervioso (cada 60 frames si hay energía)
+    if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
+      console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`)
     }
     
     // ─────────────────────────────────────────────────────────────────────

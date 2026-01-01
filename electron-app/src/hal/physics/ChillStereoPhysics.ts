@@ -8,6 +8,13 @@
  * - IGNORAR todos los eventos agresivos (strobes, picos)
  * - Mantener la paz absoluta (bioluminiscencia)
  * 
+ * WAVE 273: ELEMENTAL INJECTION
+ * El elemento zodiacal modula la frecuencia y amplitud de la respiración:
+ * - Fuego: Respiración más rápida (decayMod < 1)
+ * - Tierra: Respiración normal, amplitud reducida
+ * - Agua: Respiración ultra-lenta (decayMod > 1)
+ * - Aire: Respiración con variación sutil
+ * 
  * FILOSOFÍA: "NUNCA APAGAR, NUNCA GOLPEAR. FLUIR."
  * El Chill es agua: fluye, respira, ondula.
  * Nada puede romper la tranquilidad.
@@ -21,6 +28,9 @@
  * @see docs/audits/WAVE-143-COLOR-CONSTITUTION.md § 2.4
  * ============================================================================
  */
+
+// WAVE 273: Elemental Modifiers
+import { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
 /**
  * Tipo RGB para colores (definido localmente para evitar dependencias circulares)
@@ -142,32 +152,46 @@ export class ChillStereoPhysics {
   /**
    * Aplica la física Chill a una paleta de colores.
    * 
+   * WAVE 273: Acepta modificadores elementales para modular respiración:
+   * - decayMultiplier: Modula la frecuencia (>1 = más lento, <1 = más rápido)
+   * - brightnessMultiplier: Modula la amplitud de la respiración
+   * 
    * @param palette - Paleta de colores actual (RGB)
    * @param metrics - Métricas de audio (mayormente ignoradas)
+   * @param mods - Modificadores elementales (Fuego/Tierra/Aire/Agua)
    * @returns Paleta modificada con respiración aplicada
    */
   public apply(
     palette: ChillPalette,
-    _metrics: ChillAudioMetrics  // Prefijo _ porque mayormente ignoramos
+    _metrics: ChillAudioMetrics,  // Prefijo _ porque mayormente ignoramos
+    mods?: ElementalModifiers
   ): ChillPhysicsResult {
+    // WAVE 273: Extraer multiplicadores elementales
+    const decayMod = mods?.decayMultiplier ?? 1.0;
+    const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
+
     const now = Date.now();
     const elapsedSeconds = (now - this.startTime) / 1000;
     
     // =====================================================================
     // 1️⃣ BREATHING PULSE (Onda Senoidal Lenta)
+    // WAVE 273: Frecuencia modulada por elemento (decay alto = respiración lenta)
     // =====================================================================
+    const effectiveFrequency = ChillStereoPhysics.BREATH_FREQUENCY_HZ / decayMod;
+    
     // Generar valor de onda senoidal: oscila entre -1 y +1
     const breathingValue = Math.sin(
       ChillStereoPhysics.TWO_PI * 
-      ChillStereoPhysics.BREATH_FREQUENCY_HZ * 
+      effectiveFrequency * 
       elapsedSeconds
     );
     
     // Calcular fase del ciclo (0.0 - 1.0)
-    const breathPhase = ((elapsedSeconds * ChillStereoPhysics.BREATH_FREQUENCY_HZ) % 1);
+    const breathPhase = ((elapsedSeconds * effectiveFrequency) % 1);
     
     // =====================================================================
     // 2️⃣ MODULACIÓN DE COLORES
+    // WAVE 273: Amplitudes moduladas por elemento
     // =====================================================================
     // Convertir RGB a HSL, modular, y convertir de vuelta
     const primaryHsl = this.rgbToHsl(palette.primary);
@@ -175,10 +199,11 @@ export class ChillStereoPhysics {
     const ambientHsl = this.rgbToHsl(palette.ambient);
     const accentHsl = this.rgbToHsl(palette.accent);
     
-    // Calcular modulaciones
-    const lightnessModulation = breathingValue * ChillStereoPhysics.LIGHTNESS_AMPLITUDE;
+    // Calcular modulaciones - WAVE 273: amplitud modulada por brightness
+    const effectiveLightnessAmp = ChillStereoPhysics.LIGHTNESS_AMPLITUDE * brightnessMod;
+    const lightnessModulation = breathingValue * effectiveLightnessAmp;
     const saturationModulation = breathingValue * ChillStereoPhysics.SATURATION_AMPLITUDE;
-    const dimmerModulation = breathingValue * ChillStereoPhysics.DIMMER_AMPLITUDE;
+    const dimmerModulation = breathingValue * ChillStereoPhysics.DIMMER_AMPLITUDE * brightnessMod;
     
     // Aplicar modulación a cada color
     const modulatedPrimary = this.modulateHsl(primaryHsl, lightnessModulation, saturationModulation);

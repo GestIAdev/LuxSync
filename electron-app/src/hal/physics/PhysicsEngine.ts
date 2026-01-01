@@ -109,7 +109,7 @@ export class PhysicsEngine {
   
   /**
    * Calculate mover target with hysteresis.
-   * WAVE 256.8: DRASTICALLY simplified - movers should ALWAYS have some light with audio
+   * 🎚️ WAVE 275: Movers = ALMA MELÓDICA - solo responden a TREBLE (voces, melodías, efectos)
    */
   public calculateMoverTarget(input: MoverTargetInput): MoverCalcResult {
     const {
@@ -127,37 +127,31 @@ export class PhysicsEngine {
       return { intensity: 0, newState: false }
     }
     
-    // B. WAVE 256.8: Combined audio signal - movers respond to EVERYTHING
-    // Use the maximum of all bands with boosting
-    const audioSignal = Math.max(
-      rawMid * 1.5,           // Mid frequencies boosted (vocals, instruments)
-      rawTreble * 1.3,        // Treble boosted (hats, cymbals)
-      rawBass * 0.6           // Bass contributes too but less
-    )
+    // 🎚️ WAVE 275: Movers = SOLO TREBLE (empujado 1.4x porque agudos tienen menos energía natural)
+    // Sin bass, sin mid - esos van a los PARs
+    const audioSignal = rawTreble * 1.4
     
-    // C. WAVE 256.8: VERY LOW threshold for movers - they should be alive
-    const ACTIVATION_THRESHOLD = 0.08  // Activates at 8% audio signal
+    // 🎚️ WAVE 275: Threshold más bajo para activación (los agudos son más sutiles)
+    const ACTIVATION_THRESHOLD = 0.10  // Activates at 10% treble signal
     
     let target = 0
     let nextState = moverState
     
-    // D. SIMPLE LOGIC: If there's audio, movers respond
+    // D. SIMPLE LOGIC: If there's treble, movers respond
     if (audioSignal > ACTIVATION_THRESHOLD) {
       nextState = true
-      // Map signal to intensity: 0.08 → 0.3 (minimum visible), 1.0 → 1.0 (max)
-      target = 0.3 + (audioSignal - ACTIVATION_THRESHOLD) * 0.7 / (1 - ACTIVATION_THRESHOLD)
+      // Map signal to intensity: 0.10 → 0.2 (minimum visible), 1.0 → 1.0 (max)
+      target = 0.2 + (audioSignal - ACTIVATION_THRESHOLD) * 0.8 / (1 - ACTIVATION_THRESHOLD)
     } else {
-      // Very low or no audio - decay
-      if (moverState) {
-        // Was on, give it some grace time with minimal intensity
-        target = 0.15
-      }
+      // Very low or no treble - 🗡️ WAVE 277: ZERO FLOOR - No grace period, instant off
+      // Si no hay treble, los movers MUEREN instantáneamente
       nextState = audioSignal > 0.05  // Slightly lower off threshold for hysteresis
     }
     
-    // E. WAVE 256.8: Clamp and return - NO MORE GATES
+    // E. Clamp and return - 🗡️ WAVE 277: Noise gate at 0.05
+    const cleanedIntensity = target < 0.05 ? 0 : Math.min(1, target)
     return {
-      intensity: Math.min(1, Math.max(0, target)),
+      intensity: cleanedIntensity,
       newState: nextState
     }
   }
@@ -224,6 +218,9 @@ export class PhysicsEngine {
   /**
    * Core physics calculation (WAVE 109: Asymmetric Physics).
    * Attack is always instant, decay varies by zone type.
+   * 
+   * 🗡️ WAVE 277: EXPONENTIAL DECAY - Katana cuts, not broom sweeps
+   * Multiplicative decay for aggressive falloff + noise gate
    */
   private applyPhysics(
     target: number,
@@ -236,25 +233,32 @@ export class PhysicsEngine {
       return target
     }
     
-    // B. DECAY (Bajada): Asimétrico según zoneType
-    let dropRate: number
+    // B. DECAY (Bajada): 🗡️ WAVE 277 - EXPONENTIAL (multiplicativo)
+    // El usuario pidió: "decay 0.75 en vez de 0.9"
+    // Exponencial = cada frame mantiene un % del valor anterior
+    let decayFactor: number
     
     if (zoneType === 'PAR') {
-      // FLASH PHYSICS: Caída rápida pero no instantánea
-      // Rango: 0.10 a 0.40 por frame
-      // decaySpeed 1 → dropRate 0.40 (corte seco Latino)
-      // decaySpeed 10 → dropRate 0.04 (respiro Chill)
-      dropRate = 0.40 / decaySpeed
+      // FLASH PHYSICS: Corte agresivo para PARs
+      // decaySpeed 1 → factor 0.65 (corte brutal)
+      // decaySpeed 10 → factor 0.92 (respiro Chill)
+      decayFactor = 0.65 + (decaySpeed - 1) * 0.03  // Range: 0.65 → 0.92
     } else {
-      // INERTIA PHYSICS: Caída suave como humo
-      // Rango: 0.01 a 0.10 por frame
-      // decaySpeed 1 → dropRate 0.10 (respuesta rápida)
-      // decaySpeed 10 → dropRate 0.01 (líquido total)
-      dropRate = 0.10 / decaySpeed
+      // MOVER PHYSICS: 🗡️ WAVE 277 - Agresivo como el usuario pidió (0.75)
+      // decaySpeed 1 → factor 0.70 (katana)
+      // decaySpeed 10 → factor 0.88 (sable)
+      decayFactor = 0.70 + (decaySpeed - 1) * 0.02  // Range: 0.70 → 0.88
     }
     
-    // Aplicar Linear Decay (resta, no multiplicación)
-    const nextValue = current - dropRate
+    // Aplicar Exponential Decay (multiplicación, no resta)
+    let nextValue = current * decayFactor
+    
+    // 🗡️ WAVE 277: NOISE GATE - Si está muy bajo, cortar a CERO
+    // "Si la música calla, la luz muere"
+    if (nextValue < 0.02) {
+      nextValue = 0
+    }
+    
     return Math.max(0, nextValue)
   }
   

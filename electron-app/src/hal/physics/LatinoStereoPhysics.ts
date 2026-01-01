@@ -8,11 +8,17 @@
  * 2. 🍯 COLOR MIEL REAL: L=45% (antes 50%). H=38 (Ámbar).
  * 3. 🔫 HEAVY TRIGGER: Solo dispara Solar Flare si Bass > 0.80 y hay impacto.
  * 
+ * WAVE 273: ELEMENTAL INJECTION
+ * El elemento zodiacal (Fuego/Tierra/Aire/Agua) modula thresholds y brightness.
+ * 
  * FILOSOFÍA:
  * - Si es CUMBIA: Neón y Movimiento (Nunca blanco).
  * - Si es REGGAETON/SALSA: Golpes de Miel (Solar Flare) solo en impactos masivos.
  * ============================================================================
  */
+
+// WAVE 273: Elemental Modifiers
+import { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
 // Type definitions
 export interface RGB { r: number; g: number; b: number; }
@@ -178,17 +184,24 @@ export class LatinoStereoPhysics {
    * Aplica la física Latino a una paleta de colores.
    * 
    * 🔧 WAVE 152.5: Ahora acepta BPM para detección de subgénero
+   * 🌟 WAVE 273: Acepta modificadores elementales para modulación zodiacal
    * 
    * @param palette - Paleta de colores actual (RGB)
    * @param metrics - Métricas de audio del frame actual
    * @param bpm - BPM detectado (opcional, para subgénero)
+   * @param mods - Modificadores elementales (Fuego/Tierra/Aire/Agua)
    * @returns Paleta modificada con efectos aplicados
    */
   public apply(
     palette: LatinoPalette,
     metrics: LatinoAudioMetrics,
-    bpm?: number
+    bpm?: number,
+    mods?: ElementalModifiers
   ): LatinoPhysicsResult {
+    // WAVE 273: Extraer multiplicadores (default = 1.0)
+    const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
+    const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
+
     const now = Date.now();
     const deltaTime = metrics.deltaTime ?? (now - this.lastFrameTime);
     this.lastFrameTime = now;
@@ -292,31 +305,42 @@ export class LatinoStereoPhysics {
     // =====================================================================
     // 3️⃣ SOLAR FLARE DETECTION (Kick fuerte → Destello dorado)
     // 🌿 WAVE 158: DELTA TRIGGER - Requiere SUBIDA de bass, no solo nivel alto
+    // 🌟 WAVE 273: ELEMENTAL MODULATION - Thresholds modulados por elemento
     // =====================================================================
     // Solo para REGGAETON y SALSA, no CUMBIA
     if (subGenre !== 'cumbia' && !isMachineGunBlackout) {
       const bassPulse = metrics.normalizedBass;
       const bassDelta = bassPulse - this.lastBass;  // 🌿 WAVE 158: Delta vs frame anterior
       
+      // WAVE 273: Thresholds modulados por elemento zodiacal
+      const effectiveKickThreshold = LatinoStereoPhysics.KICK_THRESHOLD * thresholdMod;
+      const effectiveDeltaThreshold = LatinoStereoPhysics.BASS_DELTA_THRESHOLD * thresholdMod;
+      
       // 🌿 WAVE 158: DOBLE CONDICIÓN - Bass alto + Delta positivo
       // Esto evita blancos constantes cuando hay bass alto sostenido
-      const isKickMoment = bassPulse > LatinoStereoPhysics.KICK_THRESHOLD &&
-                           bassDelta > LatinoStereoPhysics.BASS_DELTA_THRESHOLD;
+      const isKickMoment = bassPulse > effectiveKickThreshold &&
+                           bassDelta > effectiveDeltaThreshold;
       
       if (isKickMoment) {
         isSolarFlare = true;
-        flareIntensity = (bassPulse - LatinoStereoPhysics.KICK_THRESHOLD) / 
-                         (1 - LatinoStereoPhysics.KICK_THRESHOLD);
+        flareIntensity = (bassPulse - effectiveKickThreshold) / 
+                         (1 - effectiveKickThreshold);
         
-        // Aplicar Solar Flare al accent (Back PARs)
-        // El accent se convierte en un destello blanco-dorado
-        resultPalette.accent = this.hslToRgb(LatinoStereoPhysics.SOLAR_FLARE_COLOR);
+        // WAVE 273: Solar Flare con brightness modulado
+        const modulatedFlareColor = {
+          h: LatinoStereoPhysics.SOLAR_FLARE_COLOR.h,
+          s: LatinoStereoPhysics.SOLAR_FLARE_COLOR.s,
+          l: Math.min(100, LatinoStereoPhysics.SOLAR_FLARE_COLOR.l * brightnessMod)
+        };
+        resultPalette.accent = this.hslToRgb(modulatedFlareColor);
         
         // También aumentar ligeramente el brillo del primary
         // (efecto de "iluminación general" del escenario)
+        // WAVE 273: boost también modulado por elemento
+        const modulatedBoost = Math.min(flareIntensity * 20, 15) * brightnessMod;
         resultPalette.primary = this.boostBrightness(
           resultPalette.primary,
-          Math.min(flareIntensity * 20, 15)  // Max +15% brillo
+          modulatedBoost
         );
       }
       

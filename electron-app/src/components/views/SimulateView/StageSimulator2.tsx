@@ -308,8 +308,9 @@ export const StageSimulator2: React.FC = () => {
       const isHovered = hoveredId === id;
       
       // Calcular radio del fixture
-      const baseRadius = type === 'moving' ? 12 : 16;
-      const fixtureRadius = baseRadius + intensity * (type === 'moving' ? 8 : 10);
+      // 🗡️ WAVE 277: Mover head x1.6 - Cabezas visibles para ver pulso
+      const baseRadius = type === 'moving' ? 19 : 16;  // Was 12 for moving
+      const fixtureRadius = baseRadius + intensity * (type === 'moving' ? 13 : 10);  // Was 8 for moving
       
       // Guardar posición para hit testing
       newPositions.push({ id, x, y, radius: Math.max(fixtureRadius, 20) });
@@ -331,17 +332,19 @@ export const StageSimulator2: React.FC = () => {
         ctx.globalCompositeOperation = 'lighter';
         
         // ═══════════════════════════════════════════════════════════════════
-        // WAVE 256.7: BALANCED halos - reactive to intensity, not fixed
+        // 👓 WAVE 276: BALANCED halos - reactive to intensity, más sólidos
         // ═══════════════════════════════════════════════════════════════════
         
         // 1. HALO EXTERIOR - Size scales with intensity for reactivity
+        // 🗡️ WAVE 277: Mover halo x1.6 para visibilidad
         const haloRadius = type === 'moving' 
-          ? 30 + intensity * 45   // Moving: 30-75px based on intensity
-          : 40 + intensity * 50;  // PARs: 40-90px based on intensity
+          ? 56 + intensity * 88   // Moving: 56-144px x1.6 (was 35-90)
+          : 50 + intensity * 60;  // PARs: 50-110px (unchanged)
         const haloGradient = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
-        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.5 * intensity})`);
-        haloGradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`);
-        haloGradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${0.1 * intensity})`);
+        // 👓 WAVE 276: Opacidad subida para más presencia visual
+        haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.7 * intensity})`);   // Was 0.5
+        haloGradient.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, ${0.4 * intensity})`); // Was 0.25
+        haloGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.15 * intensity})`); // Was 0.1
         haloGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -350,40 +353,44 @@ export const StageSimulator2: React.FC = () => {
         ctx.fill();
         
         // 2. BEAM para moving heads - size based on INTENSITY
+        // 👓 WAVE 276: OPTICAL CLARITY - Espadas láser, no linternas
         if (type === 'moving' && intensity > 0.05) {
           const beamAngle = (pan - 0.5) * Math.PI * 0.6; // ±54°
-          const beamLength = 80 + intensity * 150;  // Length scales with intensity
-          const beamWidth = 15 + intensity * 25;    // Width scales with intensity
+          // WAVE 276: beamLength y beamWidth x2.5 para volumen visual
+          const beamLength = 120 + intensity * 280;  // Was: 80 + 150 → Now: 120 + 280
+          const beamWidth = 25 + intensity * 50;     // Was: 15 + 25 → Now: 25 + 50
           
           const endX = x + Math.sin(beamAngle) * beamLength;
           const endY = y + Math.cos(beamAngle) * beamLength;
           
           // Beam cónico - size based on intensity
           ctx.beginPath();
-          ctx.moveTo(x - 6, y);
+          ctx.moveTo(x - 8, y);  // Wider base
           ctx.lineTo(endX - beamWidth, endY);
           ctx.lineTo(endX + beamWidth, endY);
-          ctx.lineTo(x + 6, y);
+          ctx.lineTo(x + 8, y);  // Wider base
           ctx.closePath();
           
+          // 👓 WAVE 276: Opacidad subida para solidez (0.3→0.7 base, menos difuminado)
           const beamGradient = ctx.createLinearGradient(x, y, endX, endY);
-          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.6 * intensity})`);
-          beamGradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${0.3 * intensity})`);
-          beamGradient.addColorStop(0.8, `rgba(${r}, ${g}, ${b}, ${0.1 * intensity})`);
+          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.85 * intensity})`);    // Was 0.6
+          beamGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`);  // Was 0.3 at 0.4
+          beamGradient.addColorStop(0.85, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`); // Was 0.1 at 0.8
           beamGradient.addColorStop(1, 'transparent');
           
           ctx.fillStyle = beamGradient;
           ctx.fill();
         }
         
-        // 3. NÚCLEO DE COLOR - WAVE 256.7: Size scales with intensity
+        // 3. NÚCLEO DE COLOR - 👓 WAVE 276: Más grande y sólido
+        // 🗡️ WAVE 277: Mover core x1.6 para ver pulso claramente
         const coreRadius = type === 'moving'
-          ? 8 + intensity * 12   // Moving: 8-20px based on intensity
-          : 12 + intensity * 16; // PARs: 12-28px based on intensity
+          ? 16 + intensity * 24  // Moving: 16-40px x1.6 (was 10-25)
+          : 16 + intensity * 20; // PARs: 16-36px (unchanged)
         const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, coreRadius);
-        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * intensity})`);
-        coreGradient.addColorStop(0.2, `rgba(${r}, ${g}, ${b}, ${0.95})`);  
-        coreGradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${0.5 * intensity})`);
+        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.95 * intensity})`);  // Was 0.9
+        coreGradient.addColorStop(0.25, `rgba(${r}, ${g}, ${b}, ${0.98})`);        // Was 0.95 at 0.2
+        coreGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.6 * intensity})`); // Was 0.5 at 0.6
         coreGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
@@ -392,12 +399,13 @@ export const StageSimulator2: React.FC = () => {
         ctx.fill();
         
         // 4. NÚCLEO BLANCO SÓLIDO - scales with intensity
+        // 🗡️ WAVE 277: Mover white core x1.6
         const whiteCoreRadius = type === 'moving' 
-          ? 3 + intensity * 4  // 3-7px
-          : 4 + intensity * 5; // 4-9px
+          ? 6 + intensity * 8  // 6-14px x1.6 (was 4-9)
+          : 5 + intensity * 6; // 5-11px (unchanged)
         ctx.beginPath();
         ctx.arc(x, y, whiteCoreRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * intensity})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * intensity})`; // Was 0.9
         ctx.fill();
         
         // STROBE FLASH
@@ -419,8 +427,9 @@ export const StageSimulator2: React.FC = () => {
       
       } else {
         // Círculo sólido simple - 🌟 WAVE 25.6: Tamaño aumentado
+        // 🗡️ WAVE 277: Mover x1.6 para visibilidad en modo low
         const radius = type === 'moving'
-          ? 12 + intensity * 10  // Moving: más grande
+          ? 19 + intensity * 16  // Moving: x1.6 (was 12+10)
           : 16 + intensity * 12; // PARs: más grande
         
         ctx.beginPath();

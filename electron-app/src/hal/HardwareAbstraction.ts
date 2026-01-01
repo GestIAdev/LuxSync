@@ -86,15 +86,17 @@ export class HardwareAbstraction {
   private lastDebugTime = 0  // WAVE 256.7: For throttled debug logging
   
   // Current vibe preset (for physics)
-  // WAVE 256.5: Reduced gates/thresholds for better audio reactivity
+  // 🔥 WAVE 279.5: HEART vs SLAP - Filosofía de zonas
+  // FRONT PARS (Bass/Heart): bom bom bom - presión en el pecho, no agresivo
+  // BACK PARS (Mid/Snare): PAF! - bofetada en la cara, explosivo
   private currentPreset: VibeRouteConfig = {
-    parGate: 0.08,           // Was 0.20 - now responds to lighter bass
-    parGain: 3.5,            // Was 2.0 - more amplification
-    parMax: 0.95,            // Was 0.78 - higher ceiling
-    backParGate: 0.05,       // Was 0.15 - very sensitive back pars
-    backParGain: 4.0,        // Was 2.5 - stronger response
-    backParMax: 0.95,        // Was 0.85 - higher ceiling
-    melodyThreshold: 0.10,   // Was 0.25 - movers activate easier
+    parGate: 0.08,           // Heart: responde a bass ligero
+    parGain: 3.5,            // Heart: amplificación moderada
+    parMax: 0.95,            // Heart: techo limitado (presión, no golpe)
+    backParGate: 0.15,       // Slap: ignora ruido de fondo
+    backParGain: 2.8,        // Slap: ganancia para rango dinámico
+    backParMax: 1.0,         // Slap: ¡BOFETADA COMPLETA! PAF!
+    melodyThreshold: 0.10,   // Movers: activan fácil con melodía
     decaySpeed: 2,
     moverDecaySpeed: 3,
   }

@@ -85,6 +85,7 @@ export interface ZoneIntensityInput {
 export class ZoneRouter {
   // Zone routing configuration (static, based on main.ts logic)
   private zoneConfig: Map<PhysicalZone, ZoneRouteResult>
+  private debugCounter = 0  // 🔥 WAVE 279.4: Debug counter
   
   constructor() {
     this.zoneConfig = this.buildZoneConfig()
@@ -164,7 +165,10 @@ export class ZoneRouter {
     const midSignal = input.rawMid
     const pulseBoost = input.treblePulse > 0.3 ? 1.2 : 1.0 // Solo boost en transientes fuertes
     
-    if (midSignal > preset.backParGate) {
+    // 🔥 WAVE 279.4: DEBUG - ver qué está pasando
+    const passesGate = midSignal > preset.backParGate;
+    
+    if (passesGate) {
       let rawIntensity = Math.min(1, 
         (midSignal - preset.backParGate) * preset.backParGain * pulseBoost
       )
@@ -180,6 +184,11 @@ export class ZoneRouter {
       
       // AGC Trap
       if (input.isAGCTrap) rawIntensity = 0
+      
+      // 🔥 WAVE 279.4: DEBUG log cada 60 frames
+      if (this.debugCounter++ % 60 === 0 && rawIntensity > 0) {
+        console.log(`[HAL BACK_PARS] mid=${midSignal.toFixed(2)} gate=${preset.backParGate} → intensity=${rawIntensity.toFixed(2)}`)
+      }
       
       return rawIntensity
     }

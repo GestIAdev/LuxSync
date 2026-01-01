@@ -322,12 +322,14 @@ export class SeleneLux {
     const frontIntensity = Math.min(frontCeiling, compressedBass * brightMod);
     
     // 2. BACK PARS (Mid/Snare - La Bofetada)
-    // 🎯 WAVE 278: THE SNIPER FORMULA - Eliminar ruido, solo dejar pasar Snares
-    // ANTES: mid^1.5 * 0.95 → IN 0.36 = OUT 0.20 (ruido visible constante)
-    // AHORA: mid^3.0 * 1.5  → IN 0.36 = OUT 0.07 (silencio) | IN 0.90 = OUT 1.09 → 0.95 (golpe)
-    // La curva cúbica APLASTA el ruido de fondo del Minimal Techno
-    const backRaw = Math.pow(mid, 3.0) * 1.5;
-    const backIntensity = Math.min(0.95, backRaw);
+    // 🔥 WAVE 279.4: ZOMBIE STEROIDS - mid^1.5 × 1.8 en lugar de mid^3 × 1.5
+    // La curva cúbica APLASTABA el audio normalizado (0.25^3 = 0.015 invisible)
+    // Curva 1.5: mid=0.25 → 0.125 × 1.8 = 0.225 (visible!)
+    //            mid=0.40 → 0.253 × 1.8 = 0.456 (ruge!)
+    const backRaw = Math.pow(mid, 1.5) * 1.8;
+    const backGateThreshold = isTechno ? 0.10 : 0.06;
+    const backGated = backRaw < backGateThreshold ? 0 : backRaw;
+    const backIntensity = Math.min(0.95, backGated);
     
     // 3. MOVERS (Treble - El Alma)
     // Curva ^2 para expandir rango dinámico + boost 1.8x porque agudos tienen menos energía

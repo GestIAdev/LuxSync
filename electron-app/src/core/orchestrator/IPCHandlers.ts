@@ -206,12 +206,33 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   })
   
   // 🩸 WAVE 259: RAW VEIN - Audio buffer crudo para Trinity FFT
-  ipcMain.handle('lux:audio-buffer', async (_event, buffer: ArrayBuffer) => {
+  // 🔥 WAVE 264.8: Cambiado de handle() a on() para FIRE-AND-FORGET
+  // handle() requiere devolver una Promise y crea backpressure a 60fps
+  // on() es unidireccional - procesa sin esperar respuesta
+  let audioBufferCallCount = 0;
+  let lastLogTime = Date.now();
+  ipcMain.on('lux:audio-buffer', (_event, buffer: ArrayBuffer) => {
+    audioBufferCallCount++;
+    
+    // 🔍 WAVE 264.7: Log AGRESIVO cada 2 segundos (basado en tiempo, no frames)
+    const now = Date.now();
+    if (now - lastLogTime >= 2000) {
+      const titanState = titanOrchestrator?.getState();
+      console.log(`[IPC 📡] audioBuffer #${audioBufferCallCount} | ` +
+        `titan.running=${titanState?.isRunning ?? 'null'} | ` +
+        `size=${buffer?.byteLength || 0}`);
+      lastLogTime = now;
+    }
+    
     if (titanOrchestrator && buffer) {
       const float32 = new Float32Array(buffer)
       titanOrchestrator.processAudioBuffer(float32)
+    } else if (!titanOrchestrator) {
+      console.warn('[IPC ⚠️] audioBuffer: titanOrchestrator is null!');
+    } else if (!buffer) {
+      console.warn('[IPC ⚠️] audioBuffer: buffer is null!');
     }
-    return { success: true }
+    // 🔥 WAVE 264.8: NO return - fire-and-forget
   })
   
   // Get current vibe

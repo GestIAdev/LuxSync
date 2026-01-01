@@ -1,5 +1,6 @@
 /**
  * ⚡ WAVE 217: TITAN ENGINE
+ * 🧠 WAVE 271: SYNAPTIC RESURRECTION
  * 
  * Motor de iluminación reactiva PURO. No conoce DMX ni hardware.
  * Recibe MusicalContext del Cerebro → Devuelve LightingIntent al HAL.
@@ -9,8 +10,14 @@
  * - Solo calcula QUÉ queremos expresar, no CÓMO se hace en hardware
  * - Los Vibes definen las restricciones, el motor las respeta
  * 
+ * 🧠 WAVE 271: STABILIZATION LAYER
+ * - KeyStabilizer: Buffer 12s, locking 10s - evita cambios frenéticos de Key
+ * - EnergyStabilizer: Rolling 2s, DROP FSM - suaviza energía, detecta drops
+ * - MoodArbiter: Buffer 10s, locking 5s - BRIGHT/DARK/NEUTRAL estables
+ * - StrategyArbiter: Rolling 15s, locking 15s - Analogous/Complementary estable
+ * 
  * @layer ENGINE (Motor)
- * @version TITAN 2.0
+ * @version TITAN 2.0 + WAVE 271
  */
 
 import { EventEmitter } from 'events'
@@ -21,11 +28,19 @@ import {
   ZoneIntentMap,
   EffectIntent,
   createDefaultLightingIntent,
+  withHex,
 } from '../core/protocol/LightingIntent'
 import { MusicalContext } from '../core/protocol/MusicalContext'
-import { ColorLogic, ColorLogicInput, VibeColorConfig } from './color/ColorLogic'
+import { SeleneColorEngine, ExtendedAudioAnalysis, SelenePalette } from './color/SeleneColorEngine'
+import { getColorConstitution } from './color/colorConstitutions'
 import { VibeManager } from './vibe/VibeManager'
 import type { VibeId, VibeProfile } from '../types/VibeProfile'
+
+// 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
+import { KeyStabilizer, KeyInput, KeyOutput } from './color/KeyStabilizer'
+import { EnergyStabilizer, EnergyOutput } from './color/EnergyStabilizer'
+import { MoodArbiter, MoodArbiterInput, MoodArbiterOutput, MetaEmotion } from './color/MoodArbiter'
+import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStrategy } from './color/StrategyArbiter'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
@@ -97,8 +112,28 @@ export class TitanEngine extends EventEmitter {
   private state: EngineState
   
   // Sub-módulos
-  private colorLogic: ColorLogic
+  // 🔥 WAVE 269: SeleneColorEngine reemplaza a ColorLogic
+  // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
   private vibeManager: VibeManager
+  private keyStabilizer: KeyStabilizer
+  private energyStabilizer: EnergyStabilizer
+  private moodArbiter: MoodArbiter
+  private strategyArbiter: StrategyArbiter
+  
+  // 🧠 WAVE 271: Cached stabilized state (for telemetry/debug)
+  private lastStabilizedState: {
+    stableKey: string | null
+    stableEmotion: MetaEmotion
+    stableStrategy: ColorStrategy
+    smoothedEnergy: number
+    isDropActive: boolean
+  } = {
+    stableKey: null,
+    stableEmotion: 'NEUTRAL',
+    stableStrategy: 'analogous',
+    smoothedEnergy: 0,
+    isDropActive: false,
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR
@@ -115,8 +150,14 @@ export class TitanEngine extends EventEmitter {
     }
     
     // Inicializar sub-módulos
-    this.colorLogic = new ColorLogic()
+    // 🔥 WAVE 269: SeleneColorEngine es estático, no necesita instanciarse
     this.vibeManager = VibeManager.getInstance()
+    
+    // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Instanciar Stabilizers
+    this.keyStabilizer = new KeyStabilizer()
+    this.energyStabilizer = new EnergyStabilizer()
+    this.moodArbiter = new MoodArbiter()
+    this.strategyArbiter = new StrategyArbiter()
     
     // Establecer vibe inicial
     this.vibeManager.setActiveVibe(this.config.initialVibe)
@@ -131,8 +172,9 @@ export class TitanEngine extends EventEmitter {
       previousBass: 0,
     }
     
-    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217)`)
+    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC RESURRECTION)`)
     console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`)
+    console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -158,27 +200,131 @@ export class TitanEngine extends EventEmitter {
     
     // Obtener perfil del vibe actual
     const vibeProfile = this.vibeManager.getActiveVibe()
-    const vibeColorConfig = this.toColorConfig(vibeProfile)
     
     // ─────────────────────────────────────────────────────────────────────
-    // 1. CALCULAR PALETA DE COLORES
+    // 🧠 WAVE 271: STABILIZATION LAYER
+    // Procesar datos crudos → datos estabilizados (anti-epilepsia)
     // ─────────────────────────────────────────────────────────────────────
-    const colorInput: ColorLogicInput = {
-      context,
-      audio: {
-        bass: audio.bass,
-        energy: audio.energy,
-        high: audio.high,
-        previousBass: this.state.previousBass,
-        previousEnergy: this.state.previousEnergy,
-        deltaTime,
-      },
-      vibeProfile: vibeColorConfig,
-      previousPalette: this.state.lastPalette,
+    
+    // 1. ENERGY STABILIZER: Rolling 2s + DROP State Machine
+    const energyOutput = this.energyStabilizer.update(context.energy)
+    
+    // 2. KEY STABILIZER: Buffer 12s, locking 10s
+    const keyInput: KeyInput = {
+      key: context.key,
+      confidence: context.confidence,
+      energy: energyOutput.smoothedEnergy, // Usar energía suavizada para ponderación
+    }
+    const keyOutput = this.keyStabilizer.update(keyInput)
+    
+    // 3. MOOD ARBITER: Buffer 10s, locking 5s → BRIGHT/DARK/NEUTRAL
+    const moodInput: MoodArbiterInput = {
+      mode: context.mode,
+      mood: context.mood,
+      confidence: context.confidence,
+      energy: energyOutput.smoothedEnergy,
+      key: keyOutput.stableKey, // Usar key estabilizada
+    }
+    const moodOutput = this.moodArbiter.update(moodInput)
+    
+    // 4. STRATEGY ARBITER: Rolling 15s → Analogous/Complementary/Triadic
+    const strategyInput: StrategyArbiterInput = {
+      syncopation: context.syncopation,
+      sectionType: context.section.type as any,
+      energy: energyOutput.instantEnergy, // Usar energía instantánea para drops
+      confidence: context.confidence,
+      isRelativeDrop: energyOutput.isRelativeDrop,
+      isRelativeBreakdown: energyOutput.isRelativeBreakdown,
+      vibeId: vibeProfile.id,
+    }
+    const strategyOutput = this.strategyArbiter.update(strategyInput)
+    
+    // 🧠 Cachear estado estabilizado (para telemetría y debug)
+    this.lastStabilizedState = {
+      stableKey: keyOutput.stableKey,
+      stableEmotion: moodOutput.stableEmotion,
+      stableStrategy: strategyOutput.stableStrategy,
+      smoothedEnergy: energyOutput.smoothedEnergy,
+      isDropActive: energyOutput.isRelativeDrop,
     }
     
-    const palette = this.colorLogic.calculate(colorInput)
+    // Log cambios importantes de estabilización (cada 60 frames si cambio relevante)
+    if (this.state.frameCount % 60 === 0 && context.energy > 0.05) {
+      if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
+        console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy}`)
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 1. 🔥 WAVE 269: CALCULAR PALETA CON SELENE COLOR ENGINE (EL FERRARI)
+    //    🧠 WAVE 271: Ahora usa datos ESTABILIZADOS
+    // ─────────────────────────────────────────────────────────────────────
+    
+    // Construir ExtendedAudioAnalysis desde MusicalContext + Audio + STABILIZED
+    const audioAnalysis: ExtendedAudioAnalysis = {
+      timestamp: now,
+      frameId: this.state.frameCount,
+      
+      // Trinity Core
+      bpm: context.bpm,
+      onBeat: audio.isBeat,
+      beatPhase: context.beatPhase,
+      beatStrength: audio.bass,
+      
+      // Spectrum
+      bass: audio.bass,
+      mid: audio.mid,
+      treble: audio.high,
+      
+      // 🧠 WAVE 271: Top-level usa datos ESTABILIZADOS (no crudos)
+      syncopation: context.syncopation,
+      // Mood estabilizado: BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
+      mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
+            moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',
+      // Key ESTABILIZADA (no la cruda que cambia cada frame)
+      key: keyOutput.stableKey ?? undefined,
+      // Energy SUAVIZADA (no la cruda que parpadea)
+      energy: energyOutput.smoothedEnergy,
+      vibeId: vibeProfile.id,
+      
+      // Wave8 rich data (reconstruido con datos estabilizados)
+      wave8: {
+        harmony: {
+          key: keyOutput.stableKey, // 🧠 KEY ESTABILIZADA
+          mode: context.mode === 'major' ? 'major' : 
+                context.mode === 'minor' ? 'minor' : 'minor',
+          mood: context.mood,
+        },
+        rhythm: {
+          syncopation: context.syncopation,
+        },
+        genre: {
+          primary: context.genre.subGenre || context.genre.macro || 'unknown',
+        },
+        section: {
+          type: context.section.current,
+        },
+      },
+    }
+    
+    // Obtener la Constitución del Vibe actual
+    const constitution = getColorConstitution(vibeProfile.id)
+    
+    // 🎨 GENERAR PALETA CON EL FERRARI
+    const selenePalette = SeleneColorEngine.generate(audioAnalysis, constitution)
+    
+    // Convertir SelenePalette → ColorPalette
+    const palette = this.selenePaletteToColorPalette(selenePalette)
     this.state.lastPalette = palette
+    
+    // Log cromático (cada 60 frames = 1 segundo)
+    if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
+      SeleneColorEngine.logChromaticAudit(
+        { key: context.key, mood: context.mood, energy: context.energy },
+        selenePalette,
+        vibeProfile.id
+      )
+    }
     
     // ─────────────────────────────────────────────────────────────────────
     // 2. CALCULAR INTENSIDAD GLOBAL
@@ -276,24 +422,26 @@ export class TitanEngine extends EventEmitter {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * Convierte VibeProfile a VibeColorConfig (subset para ColorLogic)
+   * 🔥 WAVE 269: Convierte SelenePalette a ColorPalette
+   * SelenePalette usa HSL en rango 0-360/0-100, ColorPalette usa 0-1
    */
-  private toColorConfig(vibe: VibeProfile): VibeColorConfig {
+  private selenePaletteToColorPalette(selene: SelenePalette): ColorPalette {
+    // Función para normalizar HSL de Selene (0-360, 0-100, 0-100) a LightingIntent (0-1)
+    const normalizeHSL = (color: { h: number; s: number; l: number }) => {
+      const normalized = {
+        h: color.h / 360,
+        s: color.s / 100,
+        l: color.l / 100,
+      }
+      return withHex(normalized)
+    }
+    
     return {
-      id: vibe.id,
-      color: {
-        strategies: vibe.color.strategies,
-        temperature: vibe.color.temperature,
-        atmosphericTemp: vibe.color.atmosphericTemp ?? 6500, // Default neutral
-        saturation: vibe.color.saturation,
-        forbiddenHueRanges: vibe.color.forbiddenHueRanges,
-        allowedHueRanges: vibe.color.allowedHueRanges,
-      },
-      dimmer: {
-        floor: vibe.dimmer.floor,
-        ceiling: vibe.dimmer.ceiling,
-        allowBlackout: vibe.dimmer.allowBlackout,
-      },
+      primary: normalizeHSL(selene.primary),
+      secondary: normalizeHSL(selene.secondary),
+      accent: normalizeHSL(selene.accent),
+      ambient: normalizeHSL(selene.ambient),
+      strategy: selene.meta.strategy,
     }
   }
   
@@ -415,5 +563,64 @@ export class TitanEngine extends EventEmitter {
       accent: { h: 0.55, s: 1.0, l: 0.5 },    // Cyan
       ambient: { h: 0.08, s: 0.3, l: 0.2 },   // Oro oscuro
     }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 271: STABILIZATION GETTERS (para telemetría/UI)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Obtener el estado estabilizado actual (para debug/telemetría)
+   */
+  public getStabilizedState() {
+    return { ...this.lastStabilizedState }
+  }
+  
+  /**
+   * Obtener la Key estabilizada (12s buffer, 10s locking)
+   */
+  public getStableKey(): string | null {
+    return this.lastStabilizedState.stableKey
+  }
+  
+  /**
+   * Obtener la emoción estabilizada (BRIGHT/DARK/NEUTRAL)
+   */
+  public getStableEmotion(): MetaEmotion {
+    return this.lastStabilizedState.stableEmotion
+  }
+  
+  /**
+   * Obtener la estrategia de color estabilizada
+   */
+  public getStableStrategy(): ColorStrategy {
+    return this.lastStabilizedState.stableStrategy
+  }
+  
+  /**
+   * ¿Está activo un DROP?
+   */
+  public isDropActive(): boolean {
+    return this.lastStabilizedState.isDropActive
+  }
+  
+  /**
+   * 🧹 WAVE 271: Reset de stabilizers (para cambio de canción o vibe)
+   */
+  public resetStabilizers(): void {
+    this.keyStabilizer = new KeyStabilizer()
+    this.energyStabilizer = new EnergyStabilizer()
+    this.moodArbiter = new MoodArbiter()
+    this.strategyArbiter = new StrategyArbiter()
+    
+    this.lastStabilizedState = {
+      stableKey: null,
+      stableEmotion: 'NEUTRAL',
+      stableStrategy: 'analogous',
+      smoothedEnergy: 0,
+      isDropActive: false,
+    }
+    
+    console.log(`[TitanEngine 🧠] Stabilizers RESET`)
   }
 }

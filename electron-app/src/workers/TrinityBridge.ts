@@ -535,12 +535,13 @@ export class SimpleHarmonyDetector {
   // 🎵 WAVE 15.5: Key detection
   // 🎵 WAVE 15.6: Aumentado historial para estabilidad
   // 🎯 WAVE 16: Ahora con votación ponderada
+  // 🔧 WAVE 272: AJUSTADO PARA 10FPS (era calibrado para 30-60fps)
   private noteWeightedVotes: Map<string, number> = new Map();
   private noteHistory: string[] = [];
-  private readonly noteHistorySize = 64; // WAVE 15.6: Era 32, ahora 64 (~4 segundos)
+  private readonly noteHistorySize = 32; // 🔧 WAVE 272: Era 64, ahora 32 (~3 seg @ 10fps)
   private lastDetectedKey: string | null = null;
   private keyStabilityCounter = 0; // WAVE 15.6: Contador de estabilidad
-  private readonly keyStabilityThreshold = 90; // 🔧 WAVE 45.1: Era 8, ahora 90 (~3 seg @ 30fps)
+  private readonly keyStabilityThreshold = 15; // 🔧 WAVE 272: Era 90, ahora 15 (~1.5 seg @ 10fps)
   
   // 🎯 WAVE 16: Tracking de energía para ponderación
   private totalWeightAccumulated = 0;
@@ -571,9 +572,12 @@ export class SimpleHarmonyDetector {
    * 🎵 Detectar Key basándose en votación ponderada por energía
    * WAVE 16 PRO: Votos ponderados - momentos de alta energía pesan más
    * WAVE 15.6: Lógica de estabilidad anti-epilepsia
+   * 🔧 WAVE 272: Ajustado para 10fps (antes era 30-60fps)
+   * 🔧 WAVE 272: CORREGIDO BUG - Primera Key nunca se detectaba
    */
   private detectKey(): string | null {
-    if (this.noteHistory.length < 16) return this.lastDetectedKey; // WAVE 15.6: Era 8, ahora 16
+    // 🔧 WAVE 272: Reducido de 16 a 5 frames (~0.5 seg @ 10fps) para empezar a detectar
+    if (this.noteHistory.length < 5) return this.lastDetectedKey;
     
     // 🎯 WAVE 16: Usar votos ponderados si hay suficiente peso acumulado
     if (this.totalWeightAccumulated > 1.0) {
@@ -590,16 +594,27 @@ export class SimpleHarmonyDetector {
         }
       }
       
-      // Threshold: nota dominante debe tener >30% del peso total
-      const threshold = 0.30;
-      if (totalWeight > 0 && maxWeight > totalWeight * threshold) {
+      // 🔧 WAVE 272: Threshold reducido de 0.30 a 0.20 para más sensibilidad
+      const threshold = 0.20;
+      const dominanceRatio = totalWeight > 0 ? maxWeight / totalWeight : 0;
+      
+      if (totalWeight > 0 && dominanceRatio >= threshold) {
+        // 🔧 WAVE 272: FIX CRÍTICO - Si no hay Key previa, aceptar la primera dominante
+        if (this.lastDetectedKey === null) {
+          this.lastDetectedKey = dominantNote;
+          console.log(`[Harmony 🎵] Initial Key: ${dominantNote} (${(dominanceRatio * 100).toFixed(0)}% dominance)`);
+          return this.lastDetectedKey;
+        }
+        
         if (dominantNote !== this.lastDetectedKey) {
           this.keyStabilityCounter++;
           
           // Solo cambiar si ha sido estable por suficientes frames
           if (this.keyStabilityCounter >= this.keyStabilityThreshold) {
+            const oldKey = this.lastDetectedKey;
             this.lastDetectedKey = dominantNote;
             this.keyStabilityCounter = 0;
+            console.log(`[Harmony 🎵] Key Change: ${oldKey} → ${dominantNote} (${(dominanceRatio * 100).toFixed(0)}% dominance)`);
           }
         } else {
           this.keyStabilityCounter = 0;
@@ -628,9 +643,17 @@ export class SimpleHarmonyDetector {
     
     // WAVE 15.6: Lógica de estabilidad anti-epilepsia
     // Solo cambiar Key si la nueva nota dominante es clara (>35%) Y estable
-    const threshold = 0.35; // WAVE 15.6: Era 0.25, ahora 0.35
+    // 🔧 WAVE 272: Reducido threshold de 0.35 a 0.25 para mejor detección
+    const threshold = 0.25;
     
     if (maxCount > this.noteHistory.length * threshold) {
+      // 🔧 WAVE 272: FIX CRÍTICO - Si no hay Key previa, aceptar la primera dominante
+      if (this.lastDetectedKey === null) {
+        this.lastDetectedKey = dominantNote;
+        console.log(`[Harmony 🎵] Initial Key (fallback): ${dominantNote} (${(maxCount / this.noteHistory.length * 100).toFixed(0)}%)`);
+        return this.lastDetectedKey;
+      }
+      
       if (dominantNote === this.lastDetectedKey) {
         // Misma nota, resetear contador
         this.keyStabilityCounter = 0;
@@ -640,8 +663,10 @@ export class SimpleHarmonyDetector {
         
         // Solo cambiar si ha sido estable por suficientes frames
         if (this.keyStabilityCounter >= this.keyStabilityThreshold) {
+          const oldKey = this.lastDetectedKey;
           this.lastDetectedKey = dominantNote;
           this.keyStabilityCounter = 0;
+          console.log(`[Harmony 🎵] Key Change (fallback): ${oldKey} → ${dominantNote}`);
         }
       }
     } else {
@@ -744,6 +769,7 @@ export class SimpleHarmonyDetector {
     }
     
     // 🎵 WAVE 15.5 + WAVE 16: Key detection con votación ponderada
+    // 🔧 WAVE 272: Debugging verboso para diagnóstico
     if (audio.dominantFrequency && audio.dominantFrequency > 0) {
       const note = this.frequencyToNote(audio.dominantFrequency);
       if (note) {
@@ -754,6 +780,12 @@ export class SimpleHarmonyDetector {
         this.noteHistory.push(note);
         if (this.noteHistory.length > this.noteHistorySize) {
           this.noteHistory.shift();
+        }
+      } else {
+        // 📝 WAVE 272: La frecuencia está fuera de rango (<65Hz o >4000Hz)
+        // Log cada ~60 frames para no spamear
+        if (Math.random() < 0.02) {
+          console.log(`[Harmony ⚠️] Freq ${audio.dominantFrequency.toFixed(0)}Hz fuera de rango musical`);
         }
       }
     }

@@ -174,10 +174,18 @@ class BeatDetector {
     
     // Calculate average and threshold
     const avgEnergy = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
-    const threshold = avgEnergy * 1.5;
+    // 🎯 WAVE 262: Reduced threshold from 1.5 to 1.2 for better beat detection
+    // Music with consistent energy (like EDM kicks) needs a lower threshold
+    const threshold = avgEnergy * 1.2;
     
     // Detect peak (beat) - use normalized energy
-    const onBeat = normalizedEnergy > threshold && (now - this.lastPeakTime) > 200; // Min 200ms between beats
+    const timeSinceLastBeat = now - this.lastPeakTime;
+    const onBeat = normalizedEnergy > threshold && timeSinceLastBeat > 200; // Min 200ms between beats
+    
+    // 🔍 WAVE 262 DEBUG: Log beat detection status every ~2 seconds
+    if (this.energyHistory.length % 86 === 0) {
+      console.log(`[BEAT 🥁] nE=${normalizedEnergy.toFixed(2)} avg=${avgEnergy.toFixed(2)} thresh=${threshold.toFixed(2)} | intervals=${this.beatIntervals.length} | conf=${(this.beatIntervals.length >= 4 ? 'calculating' : '0.000')}`);
+    }
     
     if (onBeat) {
       // Calculate interval since last beat
@@ -376,7 +384,9 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const beatResult = beatDetector.analyze(buffer, config.audioSampleRate);
   
   // Update BPM smoothing
-  if (beatResult.confidence > 0.5) {
+  // 🎯 WAVE 261.5: Bajamos umbral de 0.5 a 0.3 para que el BPM se actualice más fácilmente
+  // La confianza alta es difícil de alcanzar con audio de sistema (loopback)
+  if (beatResult.confidence > 0.3) {
     state.bpmHistory.push(beatResult.bpm);
     if (state.bpmHistory.length > 10) {
       state.bpmHistory.shift();
@@ -384,6 +394,14 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     state.currentBpm = Math.round(
       state.bpmHistory.reduce((a, b) => a + b, 0) / state.bpmHistory.length
     );
+    
+    // 🎯 WAVE 261.5: Log BPM updates para debug
+    if (state.frameCount % 120 === 0) {
+      console.log(`[BETA 🥁] BPM UPDATED: ${state.currentBpm} (raw=${beatResult.bpm}, conf=${beatResult.confidence.toFixed(2)})`);
+    }
+  } else if (state.frameCount % 300 === 0) {
+    // Log cada 5 segundos cuando NO se actualiza
+    console.log(`[BETA 🥁] BPM NOT UPDATED - conf=${beatResult.confidence.toFixed(3)} < 0.3 (raw=${beatResult.bpm}, current=${state.currentBpm})`);
   }
   
   // Update beat phase (0-1 within current beat)
@@ -506,9 +524,15 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   state.totalProcessingTime += performance.now() - startTime;
   state.messagesProcessed++;
   
-  // 🩸 WAVE 259: Log Key detection cada 120 frames (~2 segundos)
-  if (state.frameCount % 120 === 0 && harmonyOutput.key) {
-    console.log(`[BETA 🎵] Key Detected: ${harmonyOutput.key} ${harmonyOutput.mode} (Confidence: ${harmonyOutput.confidence.toFixed(2)})`);
+  // 🔧 WAVE 272: Logs de diagnóstico de Key detection
+  // Log cada 60 frames (~6 seg @ 10fps) para ver el estado del detector
+  if (state.frameCount % 60 === 0) {
+    if (harmonyOutput.key) {
+      console.log(`[BETA 🎵] Key Detected: ${harmonyOutput.key} ${harmonyOutput.mode} (Confidence: ${harmonyOutput.confidence.toFixed(2)})`);
+    } else {
+      // 📝 WAVE 272: Log de DESCARTE - ¿por qué no hay Key?
+      console.log(`[BETA ❌] Key NULL | DomFreq: ${spectrum.dominantFrequency?.toFixed(0) ?? 'N/A'}Hz | Energy: ${(energy * 100).toFixed(0)}% | Conf: ${harmonyOutput.confidence.toFixed(2)}`);
+    }
   }
   
   return {
@@ -672,8 +696,20 @@ function handleMessage(message: WorkerMessage): void {
         break;
         
       case MessageType.AUDIO_BUFFER:
-        if (!state.isRunning) break;
+        if (!state.isRunning) {
+          // 🔍 WAVE 263: Log si no está corriendo
+          if (state.frameCount % 300 === 0) {
+            console.warn('[BETA] ⚠️ AUDIO_BUFFER received but isRunning=false');
+          }
+          break;
+        }
         const buffer = message.payload as Float32Array;
+        
+        // 🔍 WAVE 263: Log cada ~5 segundos
+        if (state.frameCount % 300 === 0) {
+          console.log(`[BETA 📡] AUDIO_BUFFER #${state.frameCount} | size=${buffer?.length || 0}`);
+        }
+        
         const analysis = processAudioBuffer(buffer);
         sendMessage(
           MessageType.AUDIO_ANALYSIS, 

@@ -65,6 +65,12 @@ export class TitanOrchestrator {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
+  
+  // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
+  // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
+  // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
+  private lastAudioTimestamp = 0
+  private readonly AUDIO_STALENESS_THRESHOLD_MS = 500 // 500ms = medio segundo sin audio = stale
 
   // WAVE 255.5: Callback to broadcast fixture states to frontend
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,8 +196,27 @@ export class TitanOrchestrator {
     
     const shouldLog = this.frameCount % 30 === 0 // Log every ~1 second
     
+    // 🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
+    const shouldHeartbeat = this.frameCount % 150 === 0
+    if (shouldHeartbeat) {
+      const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
+      console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
+    }
+    
     // 1. Brain produces MusicalContext
     const context = this.brain.getCurrentContext()
+    
+    // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
+    // Si el último audio llegó hace más de AUDIO_STALENESS_THRESHOLD_MS, es stale
+    const now = Date.now()
+    if (this.hasRealAudio && (now - this.lastAudioTimestamp) > this.AUDIO_STALENESS_THRESHOLD_MS) {
+      if (shouldLog) {
+        console.warn(`[TitanOrchestrator] ⚠️ AUDIO STALE - no data for ${now - this.lastAudioTimestamp}ms, switching to silence`)
+      }
+      this.hasRealAudio = false
+      // Reset lastAudioData para no mentir con datos viejos
+      this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0 }
+    }
     
     // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
     let bass: number, mid: number, high: number, energy: number
@@ -501,22 +526,27 @@ export class TitanOrchestrator {
     const energy = typeof data.energy === 'number' ? data.energy : 
                    typeof data.volume === 'number' ? data.volume : 0
     
-    // Store for main loop
+    // Store for main loop (used by TitanEngine for immediate visual response)
     this.lastAudioData = { bass, mid, high, energy }
     this.hasRealAudio = energy > 0.01 // Mark as having real audio if not silent
     
-    // 🧠 WAVE 258: Feed audio to Trinity Workers for real analysis!
-    if (this.trinity && this.hasRealAudio) {
-      this.trinity.feedAudioMetrics({
-        bass,
-        mid,
-        treble: high,
-        energy
-      })
-    }
+    // 🗡️ WAVE 265: Update timestamp para staleness detection
+    this.lastAudioTimestamp = Date.now()
+    
+    // 🗡️ WAVE 261.5: PURGA DEL BYPASS
+    // ====================================================================
+    // ELIMINADO: feedAudioMetrics() - Este era un bypass que enviaba datos
+    // directamente a GAMMA sin pasar por BETA, violando WAVE 15.3.
+    // 
+    // El flujo correcto es:
+    //   Frontend → audioBuffer() → BETA (FFT real) → GAMMA (análisis) → Brain
+    // 
+    // audioFrame() ahora SOLO almacena métricas para el Engine,
+    // NO alimenta el análisis musical. Eso lo hace audioBuffer().
+    // ====================================================================
     
     if (this.config.debug && this.frameCount % 30 === 0) {
-      console.log(`[TitanOrchestrator] 👂 Audio: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
+      console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
     }
   }
 
@@ -524,12 +554,30 @@ export class TitanOrchestrator {
    * 🩸 WAVE 259: RAW VEIN - Process raw audio buffer from frontend
    * This sends the Float32Array directly to BETA Worker for real FFT analysis
    */
+  private audioBufferRejectCount = 0;
   processAudioBuffer(buffer: Float32Array): void {
-    if (!this.isRunning || !this.useBrain) return
+    // 🔍 WAVE 264.7: LOG CUANDO SE RECHAZA
+    if (!this.isRunning || !this.useBrain) {
+      this.audioBufferRejectCount++;
+      if (this.audioBufferRejectCount % 60 === 1) { // Log cada ~1 segundo
+        console.warn(`[TitanOrchestrator] ⛔ audioBuffer REJECTED #${this.audioBufferRejectCount} | isRunning=${this.isRunning} | useBrain=${this.useBrain}`);
+      }
+      return;
+    }
+    
+    // 🔍 WAVE 262 DEBUG: Verificar que el buffer llega
+    if (this.frameCount % 300 === 0) {
+      console.log(`[TitanOrchestrator] 📡 audioBuffer received: ${buffer.length} samples, rms=${Math.sqrt(buffer.reduce((sum, v) => sum + v*v, 0) / buffer.length).toFixed(4)}`)
+    }
+    
+    // 🗡️ WAVE 265: Update timestamp - el buffer llegando ES la señal de que el frontend vive
+    this.lastAudioTimestamp = Date.now()
     
     // 🩸 Send raw buffer to Trinity -> BETA Worker for FFT
     if (this.trinity) {
       this.trinity.feedAudioBuffer(buffer)
+    } else {
+      console.warn(`[TitanOrchestrator] ⚠️ trinity is null! Buffer discarded.`);
     }
   }
 

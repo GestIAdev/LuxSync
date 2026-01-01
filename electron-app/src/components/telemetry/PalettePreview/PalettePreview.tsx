@@ -18,11 +18,12 @@ const PalettePreview: React.FC = () => {
     ambient: palette?.ambient?.hex || '#222',
   }
 
-  // Datos Reales
-  const p_hue = palette?.primary?.h ? Math.round(palette.primary.h) : 0
-  const s_hue = palette?.secondary?.h ? Math.round(palette.secondary.h) : 0
-  const amb_hue = palette?.ambient?.h ? Math.round(palette.ambient.h) : 0
-  const acc_hue = palette?.accent?.h ? Math.round(palette.accent.h) : 0
+  // 🔥 WAVE 270: Los valores h vienen normalizados (0-1), convertir a grados (0-360)
+  // El motor envía h en rango 0-1 para cálculos internos, pero UI muestra grados
+  const p_hue = palette?.primary?.h ? Math.round(palette.primary.h * 360) : 0
+  const s_hue = palette?.secondary?.h ? Math.round(palette.secondary.h * 360) : 0
+  const amb_hue = palette?.ambient?.h ? Math.round(palette.ambient.h * 360) : 0
+  const acc_hue = palette?.accent?.h ? Math.round(palette.accent.h * 360) : 0
   
   // Detectores
   const isStrobe = (palette?.accent?.s === 0 && palette?.accent?.l === 100)

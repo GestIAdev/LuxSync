@@ -1,6 +1,11 @@
 /**
  * 🎨 WAVE 220: COLOR LOGIC
  * 
+ * @deprecated WAVE 269: Reemplazado por SeleneColorEngine.
+ * Este archivo fue el "andamio de madera" mientras se estabilizaba Titan V2.
+ * Ahora que el Ferrari (SeleneColorEngine) está conectado, este archivo
+ * queda como legacy y será eliminado en una futura limpieza.
+ * 
  * Lógica de colores PURA extraída de LatinoStereoPhysics.
  * Calcula paletas HSL basadas en contexto musical y perfil de vibe.
  * 
@@ -10,7 +15,7 @@
  * - Detecta momentos especiales (Solar Flare, Machine Gun, etc.)
  * 
  * @layer ENGINE/COLOR
- * @version TITAN 2.0
+ * @version TITAN 2.0 (DEPRECATED)
  */
 
 import { ColorPalette, HSLColor, withHex } from '../../core/protocol/LightingIntent'

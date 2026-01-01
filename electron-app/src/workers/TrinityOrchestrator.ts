@@ -566,62 +566,80 @@ export class TrinityOrchestrator extends EventEmitter {
    * 🗡️ WAVE 15.3 REAL: This is the ONLY way audio enters the system.
    * NO BYPASS. NO PRE-PROCESSED DATA. RAW BUFFER → BETA → FFT → GAMMA.
    */
+  private audioBufferCount = 0; // 🔍 WAVE 263: Contador para debug
+  private audioRejectCount = 0; // 🔍 WAVE 264.7: Contador de rechazos
+  
   feedAudioBuffer(buffer: Float32Array): void {
-    if (!this.isRunning) return;
+    if (!this.isRunning) {
+      // 🔍 WAVE 264.7: Log AGRESIVO cuando no está corriendo
+      this.audioRejectCount++;
+      if (this.audioRejectCount % 60 === 1) { // Cada ~1 segundo
+        console.warn(`[ALPHA] ⛔ feedAudioBuffer REJECTED #${this.audioRejectCount} | isRunning=false`);
+      }
+      this.audioBufferCount++;
+      return;
+    }
+    
+    this.audioBufferCount++;
     
     const beta = this.nodes.get('beta');
-    if (beta?.worker && beta.isReady && beta.circuit.state !== CircuitState.OPEN) {
-      this.sendToWorker('beta', MessageType.AUDIO_BUFFER, buffer, MessagePriority.HIGH);
+    
+    // 🔍 WAVE 264.7: Log cada 2 segundos (~120 frames a 60fps)
+    if (this.audioBufferCount % 120 === 0) {
+      console.log(`[ALPHA 📡] feedAudioBuffer #${this.audioBufferCount} | beta.ready=${beta?.isReady} | circuit=${beta?.circuit.state} | failures=${beta?.circuit.failures}`);
     }
+    
+    // 🔍 WAVE 262 DEBUG: ¿Por qué BETA no recibe audio?
+    if (!beta?.worker) {
+      console.warn('[ALPHA] ⚠️ BETA worker not available!');
+      return;
+    }
+    if (!beta.isReady) {
+      console.warn('[ALPHA] ⚠️ BETA worker not ready!');
+      return;
+    }
+    if (beta.circuit.state === CircuitState.OPEN) {
+      console.warn(`[ALPHA] ⛔ BETA circuit breaker OPEN! failures=${beta.circuit.failures}`);
+      return;
+    }
+    
+    this.sendToWorker('beta', MessageType.AUDIO_BUFFER, buffer, MessagePriority.HIGH);
   }
   
-  // 🧠 WAVE 258: feedAudioMetrics RESURRECTED
-  // El frontend ya procesa el audio con FFT. No tiene sentido re-procesar.
-  // Este método envía métricas pre-procesadas directamente a GAMMA.
-  feedAudioMetrics(metrics: {
+  // ============================================
+  // 🗡️ WAVE 261.5: DEPRECATED - feedAudioMetrics
+  // ============================================
+  // 
+  // ⚠️ DEPRECATED: Este método viola el principio de WAVE 15.3:
+  //    "This is the ONLY way audio enters the system. NO BYPASS."
+  //
+  // El problema: feedAudioMetrics enviaba datos directamente a GAMMA
+  // sin pasar por BETA, lo que causaba:
+  //   1. AudioAnalysis sin wave8 data → GAMMA no puede detectar género
+  //   2. BPM hardcodeado o simplificado
+  //   3. Contexto musical siempre UNKNOWN
+  //
+  // El flujo correcto es SOLO:
+  //   Frontend → audioBuffer() → feedAudioBuffer() → BETA (FFT) → GAMMA
+  //
+  // Este método se mantiene solo por compatibilidad temporal.
+  // NO LO USES. Será eliminado en una futura wave.
+  // ============================================
+  /**
+   * @deprecated Use feedAudioBuffer() instead. This method bypasses BETA worker
+   * and produces incomplete AudioAnalysis without wave8 data.
+   */
+  feedAudioMetrics(_metrics: {
     bass: number;
     mid: number;
     treble: number;
     energy: number;
+    bpm?: number;
     timestamp?: number;
   }): void {
-    if (!this.isRunning) return;
-    
-    const gamma = this.nodes.get('gamma');
-    if (gamma?.worker && gamma.isReady && gamma.circuit.state !== CircuitState.OPEN) {
-      // Construir un AudioAnalysis mínimo para GAMMA
-      const analysis: AudioAnalysis = {
-        timestamp: metrics.timestamp || Date.now(),
-        frameId: Date.now() % 1000000,
-        
-        // Beat detection (estimated from energy changes)
-        bpm: 120, // Default, will be refined by GAMMA
-        bpmConfidence: 0.5,
-        onBeat: metrics.bass > 0.6,
-        beatPhase: (Date.now() % 500) / 500, // Rough estimate
-        beatStrength: metrics.bass,
-        
-        // Rhythm (estimated)
-        syncopation: 0.3,
-        groove: 0.5,
-        subdivision: 4,
-        
-        // Spectrum from frontend
-        bass: metrics.bass,
-        mid: metrics.mid,
-        treble: metrics.treble,
-        
-        // Energy
-        energy: metrics.energy,
-        
-        // Raw metrics (minimal)
-        spectralCentroid: (metrics.treble * 0.7 + metrics.mid * 0.3) * 4000,
-        spectralFlux: Math.abs(metrics.energy - 0.5) * 2,
-        zeroCrossingRate: metrics.treble * 0.5
-      };
-      
-      this.sendToWorker('gamma', MessageType.AUDIO_ANALYSIS, analysis, MessagePriority.HIGH);
-    }
+    // 🗡️ WAVE 261.5: Method body intentionally disabled
+    // This was causing GAMMA to receive incomplete data
+    console.warn('[ALPHA] ⚠️ feedAudioMetrics() is DEPRECATED. Use feedAudioBuffer() instead.');
   }
   
   // ============================================

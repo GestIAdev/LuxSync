@@ -241,9 +241,17 @@ const luxApi = {
   
   /** 🗡️ WAVE 15.3 REAL: Enviar buffer de audio CRUDO a Trinity
    * Este es el ÚNICO camino válido. El buffer pasa por Beta (FFT) antes de llegar a Gamma.
+   * 
+   * 🔥 WAVE 264.8: Cambiado de invoke() a send() para FIRE-AND-FORGET
+   * invoke() crea una Promise que espera respuesta del main process.
+   * A 60fps = 60 Promises/segundo. Después de ~80 segundos = ~5000 Promises pendientes.
+   * Esto causa memory pressure y eventualmente bloquea el loop de requestAnimationFrame.
+   * 
+   * send() es unidireccional - no espera respuesta, no acumula Promises.
    */
-  audioBuffer: (buffer: Float32Array) => 
-    ipcRenderer.invoke('lux:audio-buffer', buffer.buffer),
+  audioBuffer: (buffer: Float32Array) => {
+    ipcRenderer.send('lux:audio-buffer', buffer.buffer)
+  },
   
   /** Legacy: Simular frame de audio (NO alimenta Trinity Workers) */
   // 🎯 WAVE 39.1: Ahora incluye fftBins (64 bins normalizados 0-1)

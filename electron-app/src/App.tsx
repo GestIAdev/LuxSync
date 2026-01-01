@@ -4,6 +4,7 @@
  * 
  * Wave 3: Conectado con Selene Lux Core via Audio Capture
  * Wave 33.3: Cleaned up legacy components (moved to StageViewDual)
+ * WAVE 264.6: Eliminado useAudioCapture duplicado - TrinityProvider maneja audio
  */
 
 import { useEffect } from 'react'
@@ -12,16 +13,19 @@ import BigSwitch from './components/BigSwitch'
 import EffectsBar from './components/EffectsBar'
 import Blackout from './components/Blackout'
 import { useLuxSyncStore } from './stores/luxsyncStore'
-import { useAudioCapture } from './hooks'
 import { useSelene } from './hooks'
+import { useAudioStore } from './stores/audioStore'
 import { initializeLogIPC } from './stores/logStore'
 
 function App() {
   const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore()
-  const { metrics, isCapturing, startCapture, setSimulationMode } = useAudioCapture()
+  // 🔧 WAVE 264.6: Leer de audioStore en lugar de useAudioCapture
+  // TrinityProvider es el ÚNICO que debe usar useAudioCapture
+  const audioMetrics = useAudioStore()
   const { start: startSelene, isRunning } = useSelene()
 
-  // Iniciar Selene y Audio al montar
+  // Iniciar Selene al montar
+  // 🔧 WAVE 264.6: Audio capture ahora es responsabilidad de TrinityProvider
   useEffect(() => {
     const initSystem = async () => {
       console.log('[App] 🚀 Initializing LuxSync System...')
@@ -35,10 +39,8 @@ function App() {
         console.log('[App] ✅ Selene started')
       }
       
-      // Iniciar captura de audio (con fallback a simulación)
-      setSimulationMode(true) // Empezar con simulación para demo
-      await startCapture()
-      console.log('[App] 🎵 Audio capture started')
+      // 🔧 WAVE 264.6: Audio capture se inicia en TrinityProvider, no aquí
+      console.log('[App] 📡 Waiting for TrinityProvider to start audio capture...')
       
       return cleanupLogs
     }
@@ -46,19 +48,20 @@ function App() {
     initSystem()
   }, []) // Solo al montar
 
-  // Sincronizar métricas de audio con el store de Zustand
+  // Sincronizar métricas de audio de audioStore → luxSyncStore
+  // 🔧 WAVE 264.6: Ahora lee de audioStore (single source of truth)
   useEffect(() => {
-    if (isCapturing && metrics) {
+    if (audioMetrics.isConnected) {
       updateAudio({
-        bass: metrics.bass,
-        mid: metrics.mid,
-        treble: metrics.treble,
-        energy: metrics.energy,
-        bpm: metrics.bpm,
-        beatSync: metrics.onBeat,
+        bass: audioMetrics.bass,
+        mid: audioMetrics.mid,
+        treble: audioMetrics.treble,
+        energy: (audioMetrics.bass + audioMetrics.mid + audioMetrics.treble) / 3,
+        bpm: audioMetrics.bpm,
+        beatSync: audioMetrics.onBeat,
       })
     }
-  }, [metrics, isCapturing, updateAudio])
+  }, [audioMetrics, updateAudio])
 
   return (
     <div className="app-container">
@@ -93,7 +96,7 @@ function App() {
         <span className="status-text">
           {isRunning ? 'SELENE ACTIVE' : 'OFFLINE'}
         </span>
-        {isCapturing && (
+        {audioMetrics.isConnected && (
           <span className="audio-indicator">🎵</span>
         )}
       </div>

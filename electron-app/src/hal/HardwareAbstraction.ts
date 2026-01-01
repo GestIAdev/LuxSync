@@ -253,6 +253,7 @@ export class HardwareAbstraction {
         const wasOn = this.physics.getMoverHysteresisState(hystKey)
         
         const result = this.physics.calculateMoverTarget({
+          moverKey: hystKey,  // 🔧 WAVE 280: Unique key for state buffer
           presetName: 'Default',  // Would come from VibeManager
           melodyThreshold: this.currentPreset.melodyThreshold,
           rawMid: audio.rawMid,

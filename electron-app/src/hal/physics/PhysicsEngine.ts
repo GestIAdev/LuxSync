@@ -36,7 +36,8 @@ export interface PhysicsConfig {
 
 /** Input for mover target calculation */
 export interface MoverTargetInput {
-  presetName?: string  // Optional, no longer used in WAVE 256.7
+  moverKey: string       // 🔧 WAVE 280: Unique key for this mover's state buffer
+  presetName?: string    // Optional, no longer used in WAVE 256.7
   melodyThreshold: number
   rawMid: number
   rawBass: number
@@ -54,10 +55,17 @@ export class PhysicsEngine {
   // Internal state
   private decayBuffers = new Map<string, number>()
   private moverHysteresisState = new Map<string, boolean>()
+  private moverIntensityBuffer = new Map<string, number>()  // 🔧 WAVE 280: Hysteresis buffer
   
   // Physics constants (from WAVE 109)
   private readonly SMOOTHING_DECAY = 0.75  // 25% decay per frame
   
+  // 🔧 WAVE 280: HYSTERESIS CONSTANTS - Anti-epilepsy
+  private readonly MOVER_HYSTERESIS_MARGIN = 0.12   // Must drop 12% below activation to turn off
+  private readonly MOVER_INTENSITY_SMOOTHING = 0.7  // 70% of previous + 30% new (liquid transitions)
+  private readonly MOVER_MIN_STABLE_FRAMES = 3      // Minimum frames before state change
+  private moverStabilityCounter = new Map<string, number>()  // Frame counter per mover
+
   constructor() {
     console.log('[PhysicsEngine] 🔧 Initialized (WAVE 205)')
   }
@@ -110,9 +118,11 @@ export class PhysicsEngine {
   /**
    * Calculate mover target with hysteresis.
    * 🎚️ WAVE 275: Movers = ALMA MELÓDICA - solo responden a TREBLE (voces, melodías, efectos)
+   * 🔧 WAVE 280: MOVER STABILIZATION - Anti-epilepsy hysteresis
    */
   public calculateMoverTarget(input: MoverTargetInput): MoverCalcResult {
     const {
+      moverKey,  // 🔧 WAVE 280: Use unique key from caller
       melodyThreshold,
       rawMid,
       rawBass,
@@ -124,35 +134,88 @@ export class PhysicsEngine {
     
     // A. SILENCIO TOTAL o AGC TRAP: Reset completo
     if (isRealSilence || isAGCTrap) {
+      this.moverIntensityBuffer.set(moverKey, 0)
+      this.moverStabilityCounter.set(moverKey, 0)
       return { intensity: 0, newState: false }
     }
     
     // 🎚️ WAVE 275: Movers = SOLO TREBLE (empujado 1.4x porque agudos tienen menos energía natural)
-    // Sin bass, sin mid - esos van a los PARs
     const audioSignal = rawTreble * 1.4
     
-    // 🎚️ WAVE 275: Threshold más bajo para activación (los agudos son más sutiles)
-    const ACTIVATION_THRESHOLD = 0.10  // Activates at 10% treble signal
+    // 🔧 WAVE 280: Get previous intensity for smoothing
+    const prevIntensity = this.moverIntensityBuffer.get(moverKey) ?? 0
+    const stabilityFrames = this.moverStabilityCounter.get(moverKey) ?? 0
     
-    let target = 0
-    let nextState = moverState
+    // Thresholds with HYSTERESIS MARGIN
+    const ACTIVATION_THRESHOLD = 0.10
+    const DEACTIVATION_THRESHOLD = ACTIVATION_THRESHOLD - this.MOVER_HYSTERESIS_MARGIN  // 0.10 - 0.12 = -0.02, clamp to 0.02
+    const effectiveDeactivation = Math.max(0.02, DEACTIVATION_THRESHOLD)  // Never go below 0.02
     
-    // D. SIMPLE LOGIC: If there's treble, movers respond
+    let rawTarget = 0
+    let shouldBeOn = moverState  // Start with previous state
+    
+    // B. ACTIVATION LOGIC with hysteresis
     if (audioSignal > ACTIVATION_THRESHOLD) {
-      nextState = true
+      // Above activation threshold - definitely ON
+      shouldBeOn = true
       // Map signal to intensity: 0.10 → 0.2 (minimum visible), 1.0 → 1.0 (max)
-      target = 0.2 + (audioSignal - ACTIVATION_THRESHOLD) * 0.8 / (1 - ACTIVATION_THRESHOLD)
+      rawTarget = 0.2 + (audioSignal - ACTIVATION_THRESHOLD) * 0.8 / (1 - ACTIVATION_THRESHOLD)
+    } else if (audioSignal > effectiveDeactivation && moverState) {
+      // 🔧 WAVE 280: IN THE HYSTERESIS ZONE - keep previous state, decay gently
+      shouldBeOn = true
+      // Gentle decay: use previous intensity * 0.85 (not instant drop)
+      rawTarget = prevIntensity * 0.85
     } else {
-      // Very low or no treble - 🗡️ WAVE 277: ZERO FLOOR - No grace period, instant off
-      // Si no hay treble, los movers MUEREN instantáneamente
-      nextState = audioSignal > 0.05  // Slightly lower off threshold for hysteresis
+      // Below deactivation threshold - should turn off
+      shouldBeOn = false
+      rawTarget = 0
     }
     
-    // E. Clamp and return - 🗡️ WAVE 277: Noise gate at 0.05
-    const cleanedIntensity = target < 0.05 ? 0 : Math.min(1, target)
+    // C. � WAVE 280: STABILITY COUNTER - Prevent rapid state flipping
+    let finalState = moverState
+    if (shouldBeOn !== moverState) {
+      // State wants to change - check stability
+      if (stabilityFrames >= this.MOVER_MIN_STABLE_FRAMES) {
+        // Enough stable frames - allow state change
+        finalState = shouldBeOn
+        this.moverStabilityCounter.set(moverKey, 0)
+      } else {
+        // Not enough stable frames - increment and keep old state
+        this.moverStabilityCounter.set(moverKey, stabilityFrames + 1)
+        finalState = moverState
+        // If keeping ON state, maintain some intensity
+        if (moverState && rawTarget === 0) {
+          rawTarget = prevIntensity * 0.7  // Decay while waiting
+        }
+      }
+    } else {
+      // State is stable - reset counter
+      this.moverStabilityCounter.set(moverKey, 0)
+    }
+    
+    // D. 🔧 WAVE 280: SMOOTH TRANSITIONS - No instant jumps
+    let smoothedIntensity: number
+    if (rawTarget > prevIntensity) {
+      // Attack: 70% instant response (fast but not jarring)
+      smoothedIntensity = prevIntensity + (rawTarget - prevIntensity) * 0.7
+    } else {
+      // Decay: Use smoothing constant (liquid falloff)
+      smoothedIntensity = prevIntensity * this.MOVER_INTENSITY_SMOOTHING + rawTarget * (1 - this.MOVER_INTENSITY_SMOOTHING)
+    }
+    
+    // E. Noise gate and clamp
+    const cleanedIntensity = smoothedIntensity < 0.05 ? 0 : Math.min(1, smoothedIntensity)
+    
+    // F. Update buffer for next frame
+    this.moverIntensityBuffer.set(moverKey, cleanedIntensity)
+    
+    // G. 🔧 WAVE 280 FIX: Ensure state and intensity are CONSISTENT
+    // If intensity is 0, state MUST be false
+    const consistentState = cleanedIntensity > 0 ? finalState : false
+    
     return {
       intensity: cleanedIntensity,
-      newState: nextState
+      newState: consistentState
     }
   }
   

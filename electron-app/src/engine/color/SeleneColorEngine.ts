@@ -778,12 +778,6 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
   const newHue = hue + (delta * force);
   const resultHue = normalizeHue(newHue);
   
-  // 🌬️ WAVE 284: DIVERSITY CHECK - Verificar que Verdes sobreviven
-  // Si el input es Verde (90-150) y el resultado también, la gravedad está relajada correctamente
-  if (hue > 90 && hue < 150) {
-    console.log(`[Gravity Check] 🟢 Green Input: ${hue.toFixed(0)}° → Result: ${resultHue.toFixed(0)}° | Force=${(force * 100).toFixed(0)}%`);
-  }
-  
   // 🔌 WAVE 150: DEBUG LOG (Chivato) - Ver si el aire acondicionado está encendido
   if (Math.random() < 0.01) {  // Solo 1% de frames para no saturar consola
     console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${resultHue.toFixed(0)}°`);

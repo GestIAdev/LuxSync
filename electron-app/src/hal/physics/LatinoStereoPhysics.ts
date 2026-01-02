@@ -197,15 +197,34 @@ export class LatinoStereoPhysics {
     };
   }
 
+  /**
+   * 🎵 WAVE 288.2: DETECCIÓN HEURÍSTICA CONSERVADORA
+   * 
+   * FILOSOFÍA: "Ante la duda, fiesta-standard (que siempre funciona)"
+   * 
+   * Solo detectamos reggaeton con ALTA confianza:
+   * - Bass MUY alto (>0.75) - el dembow tiene bass prominente
+   * - BPM específico (85-100 o doble 170-200) - el perreo tiene BPM fijo
+   * - Sin metadata/ML no podemos hacer más - mejor default que falsos positivos
+   */
   private detectFlavor(bpm: number, metrics: LatinoAudioMetrics): LatinoFlavor {
     const bass = metrics.normalizedBass;
     const treble = metrics.normalizedHigh ?? 0;
+    
+    // DEFAULT: fiesta-standard (funciona para TODO)
     let flavor: LatinoFlavor = 'fiesta-standard';
-    if (bass > 0.6 && (bpm < 105 || bpm > 155)) {
+    
+    // REGGAETON: Solo si estamos MUY seguros
+    // Bass > 0.75 (muy alto) + BPM típico de dembow (85-100 o doble)
+    const isReggaetonBpm = (bpm >= 85 && bpm <= 100) || (bpm >= 170 && bpm <= 200);
+    if (bass > 0.75 && isReggaetonBpm) {
       flavor = 'reggaeton';
-    } else if (treble > bass * 1.2) {
+    }
+    // TROPICAL: Cuando treble domina claramente (güiro, maracas, timbales)
+    else if (treble > bass * 1.5 && treble > 0.4) {
       flavor = 'tropical';
     }
+    
     return flavor;
   }
 

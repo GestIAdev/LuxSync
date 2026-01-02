@@ -735,6 +735,13 @@ function handleMessage(message: WorkerMessage): void {
           console.log('[BETA] Config updated');
         }
         break;
+      
+      // 🎯 WAVE 289.5: SET_VIBE - Propagate vibe to SectionTracker
+      case MessageType.SET_VIBE:
+        const vibePayload = message.payload as { vibeId: string };
+        sectionTracker.setVibe(vibePayload.vibeId);
+        console.log(`[BETA] 🎯 WAVE 289.5: Vibe set to "${vibePayload.vibeId}" for SectionTracker`);
+        break;
         
       default:
         console.warn(`[BETA] Unknown message type: ${message.type}`);

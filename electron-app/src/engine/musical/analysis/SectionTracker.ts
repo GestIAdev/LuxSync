@@ -288,6 +288,12 @@ export class SectionTracker extends EventEmitter {
   private forceDropExit: boolean = false;    // Kill switch activado?
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🩺 OPERATION OPEN HEART: Probe de telemetría (temporal)
+  // ═══════════════════════════════════════════════════════════════════════
+  private lastProbeTime: number = 0;
+  private readonly PROBE_THROTTLE_MS: number = 500;
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🎯 WAVE 289: VIBE-AWARE SECTION PROFILES
   // El tracker ya no es ciego al género - cada vibe tiene su física
   // ═══════════════════════════════════════════════════════════════════════
@@ -652,6 +658,43 @@ export class SectionTracker extends EventEmitter {
     const adjustedDropAbsThreshold = isHighEnergyTrack 
       ? Math.min(0.95, dropAbsThreshold + 0.10) 
       : dropAbsThreshold;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩺 OPERATION OPEN HEART: TELEMETRY PROBE
+    // 🗑️ WAVE 289.5: PROBE DESACTIVADO - Diagnóstico completado
+    // Dejar código comentado para referencia futura
+    // ═══════════════════════════════════════════════════════════════════════
+    /*
+    if (now - this.lastProbeTime >= this.PROBE_THROTTLE_MS) {
+      this.lastProbeTime = now;
+      
+      const votesSummary: string[] = [];
+      for (const [section, votes] of this.sectionVotes) {
+        if (votes > 0.1) {
+          votesSummary.push(`${section.charAt(0).toUpperCase() + section.slice(1)}(${votes.toFixed(1)})`);
+        }
+      }
+      const votesStr = votesSummary.length > 0 ? votesSummary.join(' ') : 'none';
+      
+      const passesRatio = ratio > adjustedDropRatio;
+      const passesAbsThreshold = this.instantEnergy > adjustedDropAbsThreshold;
+      const wouldTriggerDrop = passesRatio && passesAbsThreshold;
+      const resultEmoji = wouldTriggerDrop ? '🔥 DROP TRIGGER' : (this.currentSection === 'drop' ? '⚡ IN DROP' : '✅ OK');
+      
+      console.log(
+        `[TRACKER-PROBE] 🌊 Vibe:${this.activeVibeId.toUpperCase()} | ` +
+        `E(W): ${weightedEnergy.toFixed(2)} | ` +
+        `Avg: ${this.avgEnergy.toFixed(2)} | ` +
+        `Inst: ${this.instantEnergy.toFixed(2)} | ` +
+        `Ratio: ${ratio.toFixed(2)}/${adjustedDropRatio.toFixed(2)} | ` +
+        `AbsThr: ${adjustedDropAbsThreshold.toFixed(2)} | ` +
+        `Votes: [${votesStr}] | ` +
+        `Section: ${this.currentSection.toUpperCase()} | ` +
+        resultEmoji
+      );
+    }
+    */
+    // ═══════════════════════════════════════════════════════════════════════
     
     // 2. REGLAS DE DETECCIÓN MACROSCÓPICA (PRIORIDAD ALTA)
     

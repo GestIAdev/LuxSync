@@ -162,8 +162,25 @@ export class HardwareAbstraction {
     const fixtureStates = fixtures.map(fixture => {
       const zone = (fixture.zone || 'UNASSIGNED') as PhysicalZone
       
-      // 1. ROUTER: Calculate raw intensity for this zone
-      const rawIntensity = this.calculateZoneIntensity(zone, audioInput)
+      // 🔥 WAVE 290.1: Usar intent.zones como fuente de verdad
+      // Mapeo: BACK_PARS→back, MOVING_LEFT→left, MOVING_RIGHT→right, FRONT_PARS→front
+      const intentZoneMap: Record<string, keyof typeof intent.zones> = {
+        'BACK_PARS': 'back',
+        'FRONT_PARS': 'front',
+        'MOVING_LEFT': 'left',
+        'MOVING_RIGHT': 'right',
+        'AMBIENT': 'ambient',
+      };
+      const intentZoneKey = intentZoneMap[zone];
+      const intentZoneValue = intentZoneKey ? intent.zones[intentZoneKey] : null;
+      
+      // 1. ROUTER: Si el Intent tiene intensidad para esta zona, úsala. Si no, calcula.
+      let rawIntensity: number;
+      if (intentZoneValue && intentZoneValue.intensity !== undefined) {
+        rawIntensity = intentZoneValue.intensity;
+      } else {
+        rawIntensity = this.calculateZoneIntensity(zone, audioInput);
+      }
       
       // 2. PHYSICS: Apply decay/inertia
       const physicsKey = `${fixture.dmxAddress}-${zone}`

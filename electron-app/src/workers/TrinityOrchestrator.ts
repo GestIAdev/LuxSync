@@ -785,17 +785,36 @@ export class TrinityOrchestrator extends EventEmitter {
   }
   
   /**
-   * 🎛️ WAVE 62: Set active Vibe profile on GAMMA worker
-   * Routes UI vibe selection to the Mind worker
+   * 🎛️ WAVE 62: Set active Vibe profile on workers
+   * 🎯 WAVE 289.5: NOW PROPAGATES TO BETA TOO!
+   * 
+   * Routes UI vibe selection to:
+   * - GAMMA (Mind worker) for VibeManager
+   * - BETA (Senses worker) for VibeSectionTracker (NEW!)
+   * 
+   * The SimpleSectionTracker in BETA needs to know the vibe
+   * to use correct thresholds for DROP detection.
    */
   setVibe(vibeId: string): void {
-    const gamma = this.nodes.get('gamma');
-    if (!gamma?.worker) {
-      console.warn('[ALPHA] ⚠️ Cannot set vibe: GAMMA worker not spawned yet');
-      return;
-    }
     console.log(`[ALPHA] 🎛️ Setting VIBE to: ${vibeId}`);
-    this.sendToWorker('gamma', MessageType.SET_VIBE, { vibeId }, MessagePriority.HIGH);
+    
+    // 🎯 WAVE 289.5: Send to BOTH workers
+    const gamma = this.nodes.get('gamma');
+    const beta = this.nodes.get('beta');
+    
+    if (gamma?.worker) {
+      this.sendToWorker('gamma', MessageType.SET_VIBE, { vibeId }, MessagePriority.HIGH);
+    } else {
+      console.warn('[ALPHA] ⚠️ Cannot set vibe on GAMMA: worker not spawned yet');
+    }
+    
+    // � WAVE 289.5: NUEVO - También a BETA para el SectionTracker
+    if (beta?.worker) {
+      this.sendToWorker('beta', MessageType.SET_VIBE, { vibeId }, MessagePriority.HIGH);
+      console.log(`[ALPHA] 🎯 WAVE 289.5: Vibe propagated to BETA SectionTracker`);
+    } else {
+      console.warn('[ALPHA] ⚠️ Cannot set vibe on BETA: worker not spawned yet');
+    }
   }
   
   /**

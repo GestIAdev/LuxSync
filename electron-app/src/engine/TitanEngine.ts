@@ -357,6 +357,7 @@ export class TitanEngine extends EventEmitter {
         primaryHue: primaryHue,
         stableKey: keyOutput.stableKey,
         bpm: context.bpm,
+        section: context.section.type,  // 🆕 WAVE 290: Sección para White Puncture
       },
       palette,
       {
@@ -380,8 +381,21 @@ export class TitanEngine extends EventEmitter {
     
     // ─────────────────────────────────────────────────────────────────────
     // 3. CALCULAR INTENCIONES POR ZONA
+    // 🔥 WAVE 290.1: Si physics=latino, usar zoneIntensities del NervousSystem
     // ─────────────────────────────────────────────────────────────────────
-    const zones = this.calculateZoneIntents(audio, context, vibeProfile)
+    let zones = this.calculateZoneIntents(audio, context, vibeProfile)
+    
+    // 🔥 WAVE 290.1: Latino override - El NervousSystem manda
+    if (nervousOutput.physicsApplied === 'latino') {
+      const ni = nervousOutput.zoneIntensities;
+      zones = {
+        front: { intensity: ni.front, paletteRole: 'primary' },
+        back: { intensity: ni.back, paletteRole: 'accent' },
+        left: { intensity: ni.mover, paletteRole: 'secondary' },
+        right: { intensity: ni.mover, paletteRole: 'secondary' },
+        ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
+      };
+    }
     
     // ─────────────────────────────────────────────────────────────────────
     // 4. CALCULAR MOVIMIENTO

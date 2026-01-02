@@ -892,28 +892,138 @@ export class SimpleHarmonyDetector {
 }
 
 /**
- * Simplified section tracker for workers
- */
-/**
- * ⚡ WAVE 50: SimpleSectionTracker - DETECCIÓN DROP RELATIVA
- * ===========================================================
- * "IT'S THE KICK, STUPID" - El Arquitecto
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎯 WAVE 289.5: VibeSectionTracker - VIBE-AWARE SECTION DETECTION
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * LÓGICA SIMPLIFICADA:
- * - DROP: bassRatio > 1.2 && kick presente && energía alta
- * - BUILDUP: energía subiendo progresivamente  
- * - VERSE: todo lo demás (breakdown, intro, outro son "verse" para efectos)
+ * El SimpleSectionTracker era ciego al género. Usaba constantes mágicas
+ * que funcionaban bien para Techno (bassRatio > 1.35, energy > 0.75)
+ * pero causaban falsos DROPs eternos en Latino donde la percusión siempre está alta.
  * 
- * 3 estados efectivos en lugar de 9. El color reacciona al DROP, no al tipo de verso.
+ * SOLUCIÓN: Cada Vibe tiene su propio perfil de detección.
+ * - TECHNO: Drops largos (30s), bass es rey, buildups obligatorios
+ * - LATINO: Drops cortos (12s), mid-bass manda, transiciones libres, cooldowns
+ * - ROCK: Estructura verso-estribillo, mid frequencies dominan
+ * - CHILL: Casi sin drops, todo fluye suave
+ * 
+ * CAMBIOS CRÍTICOS vs SimpleSectionTracker:
+ * 1. DROP tiene cooldown (no puede re-entrar inmediatamente)
+ * 2. DROP tiene kill switch por energía (si baja, sale)
+ * 3. DROP tiene duración máxima (no eternos)
+ * 4. Umbrales adaptativos por vibe
+ * 
+ * "EL TRACKER DEBE SENTIR LA MÚSICA, NO MEDIRLA" - WAVE 289
+ * 
+ * @authors PunkOpus, Radwulf
  */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎛️ PERFILES VIBE-AWARE (copiados de VibeSectionProfiles.ts para Workers)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VibeSectionProfile {
+  dropEnergyRatio: number;
+  maxDropDuration: number;
+  dropAbsoluteThreshold: number;
+  dropCooldown: number;
+  dropEnergyKillThreshold: number;
+  buildupDeltaThreshold: number;
+  breakdownEnergyThreshold: number;
+  frequencyWeights: {
+    bass: number;
+    midBass: number;
+    mid: number;
+    treble: number;
+  };
+}
+
+const VIBE_PROFILES: Record<string, VibeSectionProfile> = {
+  'techno': {
+    dropEnergyRatio: 1.40,
+    maxDropDuration: 30000,
+    dropAbsoluteThreshold: 0.75,
+    dropCooldown: 15000,
+    dropEnergyKillThreshold: 0.55,
+    buildupDeltaThreshold: 0.03,
+    breakdownEnergyThreshold: 0.35,
+    frequencyWeights: { bass: 0.50, midBass: 0.25, mid: 0.15, treble: 0.10 },
+  },
+  'latino': {
+    dropEnergyRatio: 1.20,
+    maxDropDuration: 12000,
+    dropAbsoluteThreshold: 0.70,
+    dropCooldown: 6000,
+    dropEnergyKillThreshold: 0.50,
+    buildupDeltaThreshold: 0.05,
+    breakdownEnergyThreshold: 0.45,
+    frequencyWeights: { bass: 0.30, midBass: 0.40, mid: 0.20, treble: 0.10 },
+  },
+  'fiesta-latina': {
+    dropEnergyRatio: 1.20,
+    maxDropDuration: 12000,
+    dropAbsoluteThreshold: 0.70,
+    dropCooldown: 6000,
+    dropEnergyKillThreshold: 0.50,
+    buildupDeltaThreshold: 0.05,
+    breakdownEnergyThreshold: 0.45,
+    frequencyWeights: { bass: 0.30, midBass: 0.40, mid: 0.20, treble: 0.10 },
+  },
+  'rock': {
+    dropEnergyRatio: 1.50,
+    maxDropDuration: 8000,
+    dropAbsoluteThreshold: 0.80,
+    dropCooldown: 20000,
+    dropEnergyKillThreshold: 0.60,
+    buildupDeltaThreshold: 0.04,
+    breakdownEnergyThreshold: 0.40,
+    frequencyWeights: { bass: 0.20, midBass: 0.25, mid: 0.40, treble: 0.15 },
+  },
+  'chill': {
+    dropEnergyRatio: 2.00,
+    maxDropDuration: 5000,
+    dropAbsoluteThreshold: 0.85,
+    dropCooldown: 30000,
+    dropEnergyKillThreshold: 0.70,
+    buildupDeltaThreshold: 0.02,
+    breakdownEnergyThreshold: 0.50,
+    frequencyWeights: { bass: 0.25, midBass: 0.25, mid: 0.25, treble: 0.25 },
+  },
+};
+
+// Default profile (techno-compatible for backwards compatibility)
+const DEFAULT_PROFILE: VibeSectionProfile = VIBE_PROFILES['techno'];
+
 export class SimpleSectionTracker {
   private energyHistory: number[] = [];
   private bassHistory: number[] = [];
   private currentSection: SectionOutput['type'] = 'verse';
   private beatsSinceChange = 0;
-  private readonly historySize = 64;  // ~1 segundo a 60fps
+  private readonly historySize = 64;
+  
+  // 🎯 WAVE 289.5: Estado temporal para DROP management
+  private dropStartTime: number = 0;
+  private lastDropEndTime: number = 0;
+  private frameCount: number = 0;
+  
+  // 🎯 WAVE 289.5: Vibe profile
+  private activeVibeId: string = 'techno';
+  private profile: VibeSectionProfile = DEFAULT_PROFILE;
+  
+  /**
+   * 🎯 WAVE 289.5: Cambiar el vibe activo
+   * Llamado cuando TrinityOrchestrator propaga SET_VIBE a BETA
+   */
+  setVibe(vibeId: string): void {
+    this.activeVibeId = vibeId;
+    this.profile = VIBE_PROFILES[vibeId] || DEFAULT_PROFILE;
+    console.log(`[SimpleSectionTracker] 🎯 WAVE 289.5: Vibe → ${vibeId} | DropThreshold: ${this.profile.dropAbsoluteThreshold} | Cooldown: ${this.profile.dropCooldown}ms`);
+  }
   
   analyze(audio: AudioMetrics, rhythm: RhythmOutput): SectionOutput {
+    this.frameCount++;
+    const now = Date.now();
+    const p = this.profile;
+    
     // Acumular historial
     this.energyHistory.push(audio.volume);
     this.bassHistory.push(audio.bass);
@@ -927,53 +1037,72 @@ export class SimpleSectionTracker {
     }
     
     // === MÉTRICAS CLAVE ===
-    const currentEnergy = audio.volume;
-    const currentBass = audio.bass;
     const hasKick = rhythm.drums?.kick && rhythm.drums.kickIntensity > 0.5;
+    
+    // 🎯 WAVE 289.5: Calcular energía PONDERADA por perfil
+    const weightedEnergy = 
+      (audio.bass * p.frequencyWeights.bass) +
+      ((audio.bass + audio.mid) * 0.5 * p.frequencyWeights.midBass) +
+      (audio.mid * p.frequencyWeights.mid) +
+      (audio.treble * p.frequencyWeights.treble);
     
     // Promedios recientes vs históricos
     const recentEnergy = this.avg(this.energyHistory.slice(-16));
     const olderEnergy = this.avg(this.energyHistory.slice(0, 32));
     const recentBass = this.avg(this.bassHistory.slice(-16));
-    const olderBass = this.avg(this.bassHistory.slice(0, 32)) || 0.1;  // Evitar división por 0
+    const olderBass = this.avg(this.bassHistory.slice(0, 32)) || 0.1;
     
-    // Ratios relativos (WAVE 47.3: "It's the kick, stupid")
     const bassRatio = recentBass / olderBass;
     const energyDelta = recentEnergy - olderEnergy;
     
-    // === DECISIÓN DE SECCIÓN (3 ESTADOS EFECTIVOS) ===
-    // 🔥 WAVE 68: Umbrales más restrictivos para evitar falsos positivos en música latina
+    // === DECISIÓN DE SECCIÓN CON PERFILES VIBE-AWARE ===
     let newSection = this.currentSection;
     
-    // 🔴 DROP: Explosión de bass + kick + energía MUY alta
-    // 🔥 WAVE 68: Subido de 0.6 → 0.75, bassRatio 1.20 → 1.35
-    if (bassRatio > 1.35 && hasKick && currentEnergy > 0.75) {
-      newSection = 'drop';
-      this.beatsSinceChange = 0;
-    }
-    // 🟡 BUILDUP: Energía subiendo pero aún no explotan los bajos
-    else if (energyDelta > 0.15 && currentEnergy > 0.5 && bassRatio < 1.15) {
-      newSection = 'buildup';
-    }
-    // 🔵 BREAKDOWN: Caída MUY súbita de energía
-    // 🔥 WAVE 68: Más restrictivo - energyDelta -0.25 → -0.35, currentEnergy 0.4 → 0.25
-    else if (energyDelta < -0.35 && currentEnergy < 0.25) {
-      newSection = 'breakdown';
-      this.beatsSinceChange = 0;
-    }
-    // 🟢 VERSE: Estado neutral (intro/outro/verse son lo mismo para iluminación)
-    // 🔥 WAVE 68: Aumentado de 48 → 90 frames (~1.5s) para más estabilidad
-    else if (this.beatsSinceChange > 90) {
-      newSection = 'verse';
+    // 🎯 WAVE 289.5: DROP con cooldown, duración máxima y kill switch
+    const inCooldown = (now - this.lastDropEndTime) < p.dropCooldown;
+    const dropDuration = this.currentSection === 'drop' ? (now - this.dropStartTime) : 0;
+    const dropExpired = dropDuration > p.maxDropDuration;
+    const energyKillSwitch = weightedEnergy < p.dropEnergyKillThreshold;
+    
+    if (this.currentSection === 'drop') {
+      // ¿Deberíamos SALIR del drop?
+      if (dropExpired || energyKillSwitch) {
+        newSection = 'verse';
+        this.lastDropEndTime = now;
+        this.beatsSinceChange = 0;
+        if (this.frameCount % 60 === 0 || dropExpired || energyKillSwitch) {
+          console.log(`[SimpleSectionTracker] 🔴 DROP EXIT | expired=${dropExpired} | killSwitch=${energyKillSwitch} | duration=${dropDuration}ms | energy=${weightedEnergy.toFixed(2)}`);
+        }
+      }
+    } else {
+      // ¿Deberíamos ENTRAR en drop?
+      if (!inCooldown && bassRatio > p.dropEnergyRatio && hasKick && weightedEnergy > p.dropAbsoluteThreshold) {
+        newSection = 'drop';
+        this.dropStartTime = now;
+        this.beatsSinceChange = 0;
+        console.log(`[SimpleSectionTracker] 🔴 DROP ENTER | vibe=${this.activeVibeId} | bassRatio=${bassRatio.toFixed(2)} | energy=${weightedEnergy.toFixed(2)}`);
+      }
+      // BUILDUP: Energía subiendo
+      else if (energyDelta > p.buildupDeltaThreshold && weightedEnergy > 0.4 && bassRatio < 1.15) {
+        newSection = 'buildup';
+      }
+      // BREAKDOWN: Caída de energía
+      else if (energyDelta < -0.20 && weightedEnergy < p.breakdownEnergyThreshold) {
+        newSection = 'breakdown';
+        this.beatsSinceChange = 0;
+      }
+      // VERSE: Estado neutral después de 90 frames
+      else if (this.beatsSinceChange > 90) {
+        newSection = 'verse';
+      }
     }
     
     this.currentSection = newSection;
     
-    // Probabilidad de transición (para efectos anticipatorios)
     const transitionLikelihood = Math.min(1, 
       Math.abs(energyDelta) * 2 + 
       (rhythm.fillDetected ? 0.4 : 0) +
-      (bassRatio > 1.1 && !hasKick ? 0.3 : 0)  // Bass subiendo sin kick = buildup inminente
+      (bassRatio > 1.1 && !hasKick ? 0.3 : 0)
     );
     
     return {
@@ -985,7 +1114,6 @@ export class SimpleSectionTracker {
     };
   }
   
-  /** Promedio de array con protección de longitud 0 */
   private avg(arr: number[]): number {
     return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
   }
@@ -995,6 +1123,8 @@ export class SimpleSectionTracker {
     this.bassHistory = [];
     this.currentSection = 'verse';
     this.beatsSinceChange = 0;
+    this.dropStartTime = 0;
+    this.lastDropEndTime = 0;
   }
 }
 

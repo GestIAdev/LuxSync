@@ -68,6 +68,7 @@ export interface SeleneLuxVibeContext {
   primaryHue: number;         // 0-360 - Hue base para efectos de color
   stableKey: string | null;   // Key musical estabilizada (C, D, E...)
   bpm?: number;               // BPM para subgénero latino
+  section?: string;           // 🆕 WAVE 290: 'verse' | 'chorus' | 'drop' | 'break' - Para White Puncture
 }
 
 /**
@@ -255,7 +256,7 @@ export class SeleneLux {
       vibeNormalized.includes('salsa') || 
       vibeNormalized.includes('bachata')
     ) {
-      // ☀️ LATINO: Solar Flare + Machine Gun Blackout
+      // ☀️ LATINO: Solar Flare + Machine Gun Blackout + White Puncture
       const result = this.latinoPhysics.apply(
         inputPalette,
         {
@@ -263,6 +264,7 @@ export class SeleneLux {
           normalizedMid: audioMetrics.normalizedMid, // 🆕 WAVE 288.7: Añadir mid para movers
           normalizedEnergy: audioMetrics.avgNormEnergy,
           normalizedHigh: audioMetrics.normalizedTreble, // 🆕 WAVE 288.7: Añadir treble (aunque no se usa)
+          sectionType: vibeContext.section,  // 🆕 WAVE 290: Sección para White Puncture
         },
         vibeContext.bpm,
         elementalMods

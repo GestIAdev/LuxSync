@@ -50,6 +50,8 @@ export interface TechnoPalette {
 export interface TechnoAudioMetrics {
   normalizedTreble: number;  // 0.0 - 1.0
   normalizedBass: number;    // 0.0 - 1.0
+  normalizedMid?: number;    // 🆕 WAVE 290.3: Para movers
+  normalizedEnergy?: number; // 🆕 WAVE 290.3: Energía global
 }
 
 /**
@@ -58,6 +60,10 @@ export interface TechnoAudioMetrics {
 export interface TechnoPhysicsResult {
   palette: TechnoPalette;
   isStrobeActive: boolean;
+  // 🆕 WAVE 290.3: Intensidades por zona (como LatinoPhysics)
+  frontParIntensity: number;
+  backParIntensity: number;
+  moverIntensity: number;
   debugInfo: {
     rawTreble: number;
     dynamicFloor: number;

@@ -39,7 +39,8 @@ export interface LatinoAudioMetrics {
   normalizedEnergy: number; 
   normalizedHigh?: number; 
   previousEnergy?: number; 
-  deltaTime?: number; 
+  deltaTime?: number;
+  sectionType?: string;  // 🆕 WAVE 290: 'verse'|'chorus'|'drop'|'break' para White Puncture
 }
 // WAVE 288.5: Un solo tipo - fiesta-standard SIEMPRE
 export type LatinoFlavor = 'fiesta-standard';
@@ -54,25 +55,54 @@ export interface LatinoPhysicsResult {
   backParIntensity: number;
   moverIntensity: number;
   frontParIntensity: number;
+  // 🔥 WAVE 290: White Puncture - Flash blanco en entrada de DROP
+  isWhitePuncture: boolean;
+  whitePunctureColor: RGB | null;  // null = usar paleta normal, RGB = forzar blanco
   debugInfo: any;
 }
 
 /**
- * LatinoStereoPhysics - WAVE 288.7: "Color Liberation"
+ * LatinoStereoPhysics - WAVE 290: "Latino Tuning & Drop Impact"
  * FISICA UNIFICADA - Solar Flare respeta la paleta de Selene
+ * 
+ * WAVE 290 CAMBIOS:
+ * - MOVER_LERP: 0.08 → 0.04 ("Caderas de cumbia" - movimiento líquido)
+ * - Back PARs: Mid^1.5 → Bass Gated (solo golpes de bombo, no voces)
+ * - White Puncture: Dimmer Dip + Flash blanco en entrada de DROP
  */
 export class LatinoStereoPhysics {
-  // CONFIGURACIÓN - WAVE 288.7: Sin color hardcoded
-  // ❌ ELIMINADO: SOLAR_FLARE_COLOR (el asesino del color)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CONFIGURACIÓN - WAVE 290: Latino Tuning
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Solar Flare
   private static readonly KICK_THRESHOLD = 0.65;
   private static readonly BASS_DELTA_THRESHOLD = 0.12;
   private static readonly DECAY_RATE = 0.08;
-  private static readonly MOVER_LERP = 0.08; // 🔧 Más suave para cintura latina
-  private static readonly MOVER_GATE = 0.15; // 🔧 Gate: evita baile fantasma
-  private static readonly FRONT_PAR_BASE = 0.65;
+  
+  // 🔥 WAVE 290: MOVER_LERP reducido para "caderas de cumbia"
+  // 0.04 = alcanza 90% del target en ~57 frames (~950ms) → movimiento LÍQUIDO
+  private static readonly MOVER_LERP = 0.03; // 🔧 WAVE 290.2: Aún más suave
+  private static readonly MOVER_GATE = 0.20; // 🔧 WAVE 290.2: Gate más alto para evitar parpadeo
+  private static readonly MOVER_DECAY = 0.92; // 🔧 WAVE 290.2: Decay más agresivo
+  
+  // 🔥 WAVE 290: Back PARs ahora escuchan BASS (bombo), no MID (voces)
+  private static readonly BACK_PAR_GATE = 0.30;   // 🔧 WAVE 290.2: Bajado de 0.45 para más reactividad
+  private static readonly BACK_PAR_DECAY = 0.15;  // 🔧 WAVE 290.2: Un poco más lento
+  
+  // Front PARs - 🔧 WAVE 290.2: Reducido para que respire
+  private static readonly FRONT_PAR_BASE = 0.35;  // Era 0.65, ahora más dinámico
+  private static readonly FRONT_PAR_BASS_MULT = 0.50; // Más influencia del bass
+  
+  // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
   private static readonly NEGATIVE_DROP_WINDOW_MS = 100;
   private static readonly BLACKOUT_FRAMES = 3;
+  
+  // 🔥 WAVE 290: White Puncture (DROP Impact)
+  private static readonly WHITE_PUNCTURE_DIP_FRAMES = 2;    // Frames de oscuridad antes del flash
+  private static readonly WHITE_PUNCTURE_FLASH_FRAMES = 1;  // Frame de flash blanco
+  private static readonly WHITE_PUNCTURE_DIP_LEVEL = 0.30;  // Dimmer al 30% durante dip
 
   // ESTADO INTERNO
   private blackoutFramesRemaining = 0;
@@ -83,12 +113,18 @@ export class LatinoStereoPhysics {
   private currentFlareIntensity = 0;
   private currentMoverIntensity = 0;
   private currentBackParIntensity = 0;
+  
+  // 🔥 WAVE 290: Estado White Puncture
+  private lastSectionType: string = 'verse';
+  private whitePuncturePhase: 'idle' | 'dip' | 'flash' = 'idle';
+  private whitePunctureFramesRemaining = 0;
 
   public apply(
     palette: LatinoPalette,
     metrics: LatinoAudioMetrics,
     bpm?: number,
-    mods?: ElementalModifiers
+    mods?: ElementalModifiers,
+    sectionType?: string  // 🆕 WAVE 290: Sección musical para White Puncture
   ): LatinoPhysicsResult {
     const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
     const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
@@ -100,6 +136,18 @@ export class LatinoStereoPhysics {
     const currentEnergy = metrics.normalizedEnergy;
     const detectedBpm = bpm ?? this.lastBpm;
     if (bpm) this.lastBpm = bpm;
+    
+    // 🔥 WAVE 290: Detectar entrada en DROP para White Puncture
+    const currentSection = sectionType ?? 'verse';
+    const justEnteredDrop = currentSection === 'drop' && this.lastSectionType !== 'drop';
+    this.lastSectionType = currentSection;
+    
+    // Iniciar secuencia White Puncture si acabamos de entrar en DROP
+    if (justEnteredDrop) {
+      this.whitePuncturePhase = 'dip';
+      this.whitePunctureFramesRemaining = LatinoStereoPhysics.WHITE_PUNCTURE_DIP_FRAMES;
+      console.log('[LatinoPhysics] 💥 WAVE 290: WHITE PUNCTURE iniciado - DROP detected!');
+    }
 
     // DETECCION ELIMINADA - WAVE 288.5: Un solo flavor
     const flavor: LatinoFlavor = 'fiesta-standard';
@@ -179,30 +227,82 @@ export class LatinoStereoPhysics {
       }
     }
     
-    // BACK PARs: MID^1.5 con Decay
-    const targetBackPar = Math.pow(mid, 1.5);
-    if (targetBackPar > this.currentBackParIntensity) {
-      this.currentBackParIntensity = targetBackPar;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 290: BACK PARs - BASS GATED (Solo golpes de bombo, NO voces)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ANTES: Mid^1.5 (escuchaba voces → efecto karaoke)
+    // AHORA: Bass con Gate 0.45 (solo golpes fuertes de bombo/bajo)
+    const bassGated = bass > LatinoStereoPhysics.BACK_PAR_GATE 
+      ? Math.pow(bass - LatinoStereoPhysics.BACK_PAR_GATE, 1.3) * 2 
+      : 0;
+    
+    if (bassGated > this.currentBackParIntensity) {
+      // Ataque instantáneo
+      this.currentBackParIntensity = Math.min(1.0, bassGated);
     } else {
-      this.currentBackParIntensity = this.currentBackParIntensity * (1 - LatinoStereoPhysics.DECAY_RATE * 2);
+      // Decay rápido para "punch"
+      this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
     }
     
-    // 💃 MOVERS: WAVE 288.7 - MID (voces/melodía), no TREBLE (güiro/maracas)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 💃 MOVERS: WAVE 290.2 - MID con LERP 0.03 y Gate 0.20
+    // ═══════════════════════════════════════════════════════════════════════════
     // El treble en latino es ruido constante (tiki-tiki-tiki), causa epilepsia
     // Los mids son las voces, trompetas, piano - eso tiene "cintura"
     const moverTarget = mid;
     
-    // Gate: si la música está muy baja, movers quietos (evita baile fantasma)
-    if (currentEnergy > LatinoStereoPhysics.MOVER_GATE) {
+    // 🔧 WAVE 290.2: Gate más estricto + decay más agresivo
+    if (currentEnergy > LatinoStereoPhysics.MOVER_GATE && mid > 0.25) {
+      // Solo se mueve si hay energía Y mid significativo
       this.currentMoverIntensity += (moverTarget - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_LERP;
     } else {
-      // Decay suave hacia 0 cuando no hay suficiente energía
-      this.currentMoverIntensity *= 0.95;
+      // 🔧 WAVE 290.2: Decay más agresivo para que se apague
+      this.currentMoverIntensity *= LatinoStereoPhysics.MOVER_DECAY;
+      // Floor: evitar valores fantasma
+      if (this.currentMoverIntensity < 0.05) {
+        this.currentMoverIntensity = 0;
+      }
     }
     
-    // FRONT PARs: Ambar fijo + pulso bass
-    const bassPulse = bass * 0.15;
+    // 🔧 WAVE 290.2: FRONT PARs más dinámicos - respiran con el bass
+    // Base más baja + mayor influencia del bass = más contraste
+    const bassPulse = bass * LatinoStereoPhysics.FRONT_PAR_BASS_MULT;
     const frontParIntensity = LatinoStereoPhysics.FRONT_PAR_BASE + bassPulse;
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 290: WHITE PUNCTURE STATE MACHINE
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Fase DIP: Oscurecer (dimmer 30%) para generar vacío
+    // Fase FLASH: Blanco puro (255,255,255) + dimmer 100%
+    // Fase IDLE: Normal
+    let isWhitePuncture = false;
+    let whitePunctureColor: RGB | null = null;
+    
+    if (this.whitePuncturePhase !== 'idle') {
+      this.whitePunctureFramesRemaining--;
+      
+      if (this.whitePuncturePhase === 'dip') {
+        // Fase DIP: Oscurecer
+        dimmerOverride = LatinoStereoPhysics.WHITE_PUNCTURE_DIP_LEVEL;
+        
+        if (this.whitePunctureFramesRemaining <= 0) {
+          // Transición a FLASH
+          this.whitePuncturePhase = 'flash';
+          this.whitePunctureFramesRemaining = LatinoStereoPhysics.WHITE_PUNCTURE_FLASH_FRAMES;
+        }
+      } else if (this.whitePuncturePhase === 'flash') {
+        // Fase FLASH: Blanco puro
+        isWhitePuncture = true;
+        whitePunctureColor = { r: 255, g: 255, b: 255 };
+        dimmerOverride = 1.0;  // Dimmer al 100%
+        
+        if (this.whitePunctureFramesRemaining <= 0) {
+          // Fin de secuencia
+          this.whitePuncturePhase = 'idle';
+          console.log('[LatinoPhysics] 💥 WHITE PUNCTURE completado');
+        }
+      }
+    }
     
     this.lastEnergy = currentEnergy;
     this.lastBass = bass;
@@ -217,7 +317,15 @@ export class LatinoStereoPhysics {
       backParIntensity: this.currentBackParIntensity,
       moverIntensity: this.currentMoverIntensity,
       frontParIntensity,
-      debugInfo: { bass, mid, treble, bassDelta, flareIntensity: this.currentFlareIntensity, detectedBpm },
+      isWhitePuncture,
+      whitePunctureColor,
+      debugInfo: { 
+        bass, mid, treble, bassDelta, 
+        flareIntensity: this.currentFlareIntensity, 
+        detectedBpm,
+        whitePuncturePhase: this.whitePuncturePhase,
+        sectionType: currentSection,
+      },
     };
   }
 

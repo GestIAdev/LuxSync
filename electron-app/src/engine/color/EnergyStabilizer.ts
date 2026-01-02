@@ -262,6 +262,28 @@ export class EnergyStabilizer {
     const DROP_ABSOLUTE_MINIMUM = 0.85;
     const isRelativeDrop = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD) && energy > DROP_ABSOLUTE_MINIMUM;
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩺 OPERATION OPEN HEART: PROBE EnergyStabilizer
+    // 🗑️ WAVE 289.5: PROBE DESACTIVADO - Diagnóstico completado
+    // ═══════════════════════════════════════════════════════════════════════
+    /*
+    if (this.frameCount % 30 === 0) {
+      const passesRelative = energy > (this.emaEnergy + DROP_RELATIVE_THRESHOLD);
+      const passesAbsolute = energy > DROP_ABSOLUTE_MINIMUM;
+      console.log(
+        `[STABILIZER-PROBE] 🏎️ E: ${energy.toFixed(2)} | ` +
+        `EMA: ${this.emaEnergy.toFixed(2)} | ` +
+        `Delta: ${(energy - this.emaEnergy).toFixed(2)}/${DROP_RELATIVE_THRESHOLD.toFixed(2)} | ` +
+        `AbsMin: ${DROP_ABSOLUTE_MINIMUM} | ` +
+        `isRelDrop: ${isRelativeDrop} | ` +
+        `State: ${this.dropState} | ` +
+        `Active: ${this.isDropActive} | ` +
+        `[Rel:${passesRelative} Abs:${passesAbsolute}]`
+      );
+    }
+    */
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // 🔌 WAVE 65: HISTÉRESIS PARA BREAKDOWN
     // La energía debe estar baja durante 2.5 segundos SOSTENIDOS antes de declarar breakdown
     // Esto evita que pausas musicales cortas (0.5-1s) disparen falsamente el override

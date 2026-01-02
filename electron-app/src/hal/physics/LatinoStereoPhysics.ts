@@ -156,11 +156,24 @@ export class LatinoStereoPhysics {
       
       if (this.currentFlareIntensity > 0.1) {
         isSolarFlare = true;
-        // 🔥 WAVE 288.7: Solar Flare = BOOST, no TINT
-        // Respetamos el color de Selene, solo aumentamos brillo/saturación
-        const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
-        resultPalette.accent = this.boostBrightness(palette.accent, boostAmount);
-        resultPalette.primary = this.boostBrightness(palette.primary, boostAmount * 0.75);
+        
+        // 🆕 WAVE 288.8: GOLDEN RESCUE - Red de Seguridad Cromática
+        // Si StrategyArbiter envió "blanco hospitalario", pintamos el sol
+        const accentHsl = this.rgbToHsl(palette.accent);
+        
+        if (accentHsl.s < 30) {
+          // ⚠️ ALERTA: Blanco/Gris detectado (sat < 30)
+          // Inyectamos ORO (h:40, s:100) para no ser aburrido
+          const goldenRescue = { h: 40, s: 100, l: 60 };
+          const goldenRgb = this.hslToRgb(goldenRescue);
+          resultPalette.accent = this.boostBrightness(goldenRgb, this.currentFlareIntensity * 15);
+          resultPalette.primary = this.boostBrightness(goldenRgb, this.currentFlareIntensity * 10);
+        } else {
+          // ✅ Color bonito: Boost normal (respeta el color)
+          const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
+          resultPalette.accent = this.boostBrightness(palette.accent, boostAmount);
+          resultPalette.primary = this.boostBrightness(palette.primary, boostAmount * 0.75);
+        }
       }
     }
     
@@ -254,6 +267,38 @@ export class LatinoStereoPhysics {
       b = hue2rgb(p, q, h - 1/3);
     }
     return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+
+  // 🆕 WAVE 288.8: Convertir RGB a HSL para detectar "blanco hospitalario"
+  private rgbToHsl(rgb: RGB): HSL {
+    const r = rgb.r / 255;
+    const g = rgb.g / 255;
+    const b = rgb.b / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    
+    let h = 0;
+    let s = 0;
+    
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100),
+    };
   }
 
   private boostBrightness(rgb: RGB, percent: number): RGB {

@@ -89,10 +89,12 @@ export class HardwareAbstraction {
   // 🔥 WAVE 279.5: HEART vs SLAP - Filosofía de zonas
   // FRONT PARS (Bass/Heart): bom bom bom - presión en el pecho, no agresivo
   // BACK PARS (Mid/Snare): PAF! - bofetada en la cara, explosivo
+  // 🎚️ WAVE 287: TECHNO BASS GATE - Subir gate para ignorar bass constante
+  //    El techno tiene bass 24/7, necesitamos reaccionar solo a KICKS reales
   private currentPreset: VibeRouteConfig = {
-    parGate: 0.08,           // Heart: responde a bass ligero
-    parGain: 3.5,            // Heart: amplificación moderada
-    parMax: 0.95,            // Heart: techo limitado (presión, no golpe)
+    parGate: 0.15,           // 🎚️ WAVE 287: Subido (era 0.08) - ignora bass de fondo
+    parGain: 2.5,            // 🎚️ WAVE 287: Bajado (era 3.5) - menos saturación
+    parMax: 0.78,            // Heart: techo limitado (dejar espacio a backs)
     backParGate: 0.15,       // Slap: ignora ruido de fondo
     backParGain: 2.8,        // Slap: ganancia para rango dinámico
     backParMax: 1.0,         // Slap: ¡BOFETADA COMPLETA! PAF!

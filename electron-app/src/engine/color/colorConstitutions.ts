@@ -94,7 +94,27 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Luminosidad sólida (evitar lavado)
   lightnessRange: [45, 55],
   
-  // 🔓 WAVE 148: AMBIENT UNLOCKED
+  // � WAVE 287: NEON PROTOCOL - "Neon or Nothing"
+  // ═══════════════════════════════════════════════════════════════════════
+  // FILOSOFÍA: "Si vas a ser cálido, tienes que quemarme la retina.
+  //             Si no puedes brillar así, te vas al blanco hielo."
+  //
+  // Los colores derivados (Secondary, Ambient, Accent) que caigan en la
+  // danger zone serán transformados a versiones EXTREMAS:
+  //   - NEÓN: S>=90%, L>=75% (amarillo láser, naranja nuclear)
+  //   - BLANCO: Si no puede ser neón, colapsar a blanco hielo
+  //
+  // Esto aplica a TODA la paleta, no solo al Primary.
+  // ═══════════════════════════════════════════════════════════════════════
+  neonProtocol: {
+    enabled: true,
+    dangerZone: [15, 80],       // Naranjas (15°) hasta Amarillo-Verde (80°)
+    minSaturation: 90,          // Saturación mínima para neón
+    minLightness: 75,           // Luminosidad mínima para evitar barro
+    fallbackToWhite: true,      // Si no puede ser neón → blanco hielo
+  },
+  
+  // �🔓 WAVE 148: AMBIENT UNLOCKED
   // El ambient ahora fluye libremente. Con Thermal Gravity,
   // caerá naturalmente hacia violetas/magentas/cyans.
   

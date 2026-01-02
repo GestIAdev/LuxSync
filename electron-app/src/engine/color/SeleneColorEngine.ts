@@ -285,6 +285,30 @@ export interface GenerationOptions {
     minSaturation: number;        // S mínimo en esa zona
   };
   
+  /**
+   * 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"
+   * ═══════════════════════════════════════════════════════════════════
+   * En lugar de prohibir colores, los TRANSFORMA en versiones extremas.
+   * 
+   * FILOSOFÍA: "Si vas a ser cálido, tienes que quemarme la retina.
+   *             Si no puedes brillar así, te vas al blanco."
+   * 
+   * Si un color cae en dangerZone:
+   * - Forzar minSaturation (ej: 90%) para neón puro
+   * - Forzar minLightness (ej: 80%) para evitar marrones
+   * - Si no puede cumplirlo → Colapsar a blanco (S=0, L=100)
+   * 
+   * APLICACIÓN: Se aplica a TODA la paleta (Primary, Secondary, Ambient, Accent)
+   * para que ningún color escape.
+   */
+  neonProtocol?: {
+    enabled: boolean;
+    dangerZone: [number, number];  // Rango de hue peligroso (ej: [15, 80])
+    minSaturation: number;         // Saturación mínima para neón (ej: 90)
+    minLightness: number;          // Luminosidad mínima para evitar barro (ej: 75)
+    fallbackToWhite: boolean;      // Si no puede cumplir, colapsar a blanco
+  };
+
   // ═══════════════════════════════════════════════════════════════════
   // SECCIÓN C: ESTRATEGIA DE CONTRASTE
   // ═══════════════════════════════════════════════════════════════════
@@ -593,6 +617,67 @@ function normalizeHue(h: number): number {
  */
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Transforma colores en la "danger zone" a versiones EXTREMAS.
+ * 
+ * FILOSOFÍA: "Si vas a ser cálido, tienes que quemarme la retina.
+ *             Si no puedes brillar así, te vas al blanco hielo."
+ * 
+ * @param hsl - Color a sanitizar
+ * @param options - Configuración del Neon Protocol
+ * @returns Color transformado (neón extremo o blanco hielo)
+ */
+function applyNeonProtocol(
+  hsl: HSLColor,
+  options?: GenerationOptions
+): HSLColor {
+  const protocol = options?.neonProtocol;
+  
+  // Si no hay protocolo o está desactivado, devolver color original
+  if (!protocol || !protocol.enabled) {
+    return hsl;
+  }
+  
+  const [dangerMin, dangerMax] = protocol.dangerZone;
+  const hue = normalizeHue(hsl.h);
+  
+  // Verificar si el hue está en la danger zone
+  // Soportar wrap-around (ej: [350, 20] = 350-360 y 0-20)
+  const isInDanger = dangerMin <= dangerMax
+    ? (hue >= dangerMin && hue <= dangerMax)
+    : (hue >= dangerMin || hue <= dangerMax);
+  
+  if (!isInDanger) {
+    return hsl;  // Fuera de peligro, devolver original
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // DENTRO DE LA DANGER ZONE: Aplicar reglas de transformación
+  // ═══════════════════════════════════════════════════════════════════
+  // 
+  // WAVE 287.2: COLD ESCAPE ALWAYS - En Techno, SIEMPRE rotar a frío
+  // El Arquitecto decidió: "Amarillo neón sigue siendo amarillo feo".
+  // Para Techno, no hay excepciones: danger zone = zona fría.
+  //
+  // Filosofía: "En el bunker no hay sol. Solo neón frío."
+  // ═══════════════════════════════════════════════════════════════════
+  
+  // 🧊 COLD ESCAPE: Rotar a cyan/turquesa/verde-frío
+  // Distribuimos el rango [15-80] en el rango frío [170-210]
+  // para mantener variedad cromática
+  const dangerRange = dangerMax - dangerMin;  // 80 - 15 = 65
+  const positionInDanger = (hue - dangerMin) / dangerRange;  // 0.0 - 1.0
+  const coldHue = 170 + positionInDanger * 40;  // 170° - 210° (cyan-turquesa)
+  
+  return {
+    h: normalizeHue(coldHue),
+    s: Math.max(hsl.s, 85),  // Asegurar saturación neón
+    l: hsl.l,                 // Mantener luminosidad original (oscuridad)
+  };
 }
 
 /**
@@ -1739,12 +1824,26 @@ export class SeleneColorEngine {
     }
     // ═══════════════════════════════════════════════════════════════════════
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 287: NEON PROTOCOL - "Neon or Nothing"
+    // ═══════════════════════════════════════════════════════════════════════
+    // Aplicar el protocolo a TODA la paleta para eliminar marrones/mostazas.
+    // Los colores en la danger zone se transforman en:
+    //   1. NEÓN EXTREMO (alta saturación + luminosidad)
+    //   2. BLANCO HIELO (si no pueden ser neón)
+    // ═══════════════════════════════════════════════════════════════════════
+    const sanitizedPrimary = applyNeonProtocol(primary, options);
+    const sanitizedSecondary = applyNeonProtocol(secondary, options);
+    const sanitizedAmbient = applyNeonProtocol(ambient, options);
+    const sanitizedAccent = applyNeonProtocol(accent, options);
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // === M. RETORNAR PALETA COMPLETA ===
     return {
-      primary,
-      secondary,
-      accent,
-      ambient,
+      primary: sanitizedPrimary,
+      secondary: sanitizedSecondary,
+      accent: sanitizedAccent,
+      ambient: sanitizedAmbient,
       contrast,
       meta: {
         strategy: strategy as 'analogous' | 'triadic' | 'complementary',

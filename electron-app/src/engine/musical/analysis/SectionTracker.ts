@@ -26,6 +26,14 @@ import {
   HarmonyAnalysis,
 } from '../types.js';
 
+// 🎯 WAVE 289: Perfiles de sección por género
+import {
+  VibeSectionProfile,
+  VIBE_SECTION_PROFILES,
+  getVibeSectionProfile,
+  calculateWeightedEnergy,
+} from './VibeSectionProfiles.js';
+
 // ============================================================
 // 📊 CONSTANTES Y CONFIGURACIÓN
 // ============================================================
@@ -280,6 +288,13 @@ export class SectionTracker extends EventEmitter {
   private forceDropExit: boolean = false;    // Kill switch activado?
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 289: VIBE-AWARE SECTION PROFILES
+  // El tracker ya no es ciego al género - cada vibe tiene su física
+  // ═══════════════════════════════════════════════════════════════════════
+  private activeVibeId: string = 'techno';
+  private activeProfile: VibeSectionProfile = VIBE_SECTION_PROFILES['techno'];
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 81: ENERGY DELTA MODEL
   // Física de energía pura para detección macroscópica de secciones
   // ═══════════════════════════════════════════════════════════════════════
@@ -291,6 +306,58 @@ export class SectionTracker extends EventEmitter {
   constructor(config: Partial<SectionTrackerConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  // ============================================================
+  // 🎯 WAVE 289: VIBE PROFILE MANAGEMENT
+  // ============================================================
+
+  /**
+   * 🎯 WAVE 289: Establecer perfil de sección basado en Vibe
+   * 
+   * Llamado por MusicalContextEngine cuando cambia el vibe.
+   * Cada género tiene umbrales diferentes para drops, builds, etc.
+   * 
+   * @param vibeId - ID del vibe activo ('techno', 'latino', 'rock', 'chill', etc.)
+   */
+  public setVibeProfile(vibeId: string): void {
+    const normalizedId = vibeId.toLowerCase().replace(/[_\s]/g, '-');
+    
+    // Evitar cambio si es el mismo vibe
+    if (normalizedId === this.activeVibeId) {
+      return;
+    }
+    
+    const profile = getVibeSectionProfile(normalizedId);
+    
+    this.activeVibeId = normalizedId;
+    this.activeProfile = profile;
+    
+    // Log del cambio
+    console.log(`[SectionTracker] 🎯 WAVE 289: Profile changed → ${vibeId}`);
+    console.log(`[SectionTracker]    DROP: max=${profile.maxDropDuration}ms, ratio=${profile.dropEnergyRatio}, cooldown=${profile.dropCooldown}ms`);
+    console.log(`[SectionTracker]    WEIGHTS: bass=${profile.frequencyWeights.bass}, midBass=${profile.frequencyWeights.midBass}, mid=${profile.frequencyWeights.mid}`);
+    
+    // Emitir evento de cambio de perfil
+    this.emit('profile-change', {
+      vibeId: normalizedId,
+      profile,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * 🎯 WAVE 289: Obtener el vibeId activo
+   */
+  public getActiveVibeId(): string {
+    return this.activeVibeId;
+  }
+
+  /**
+   * 🎯 WAVE 289: Obtener el perfil activo
+   */
+  public getActiveProfile(): VibeSectionProfile {
+    return this.activeProfile;
   }
 
   // ============================================================
@@ -519,12 +586,17 @@ export class SectionTracker extends EventEmitter {
    * - Votos ACUMULATIVOS (no se resetean, solo decaen)
    * - Validación de transición con matriz
    * 
+   * 🎯 WAVE 289: VIBE-AWARE
+   * - Usa activeProfile en lugar de constantes mágicas
+   * - frequencyWeights determinan qué frecuencias importan
+   * - Cada género tiene sus propios umbrales de drop/buildup/breakdown
+   * 
    * Algoritmo:
-   * 1. 🔥 WAVE 81: Energy Delta Model (prioridad)
-   * 2. Decay de votos existentes (memoria temporal)
-   * 3. Analizar nivel de intensidad RELATIVA
+   * 1. 🎯 WAVE 289: Calcular energía ponderada por género
+   * 2. 🔥 WAVE 81: Energy Delta Model (prioridad)
+   * 3. Decay de votos existentes (memoria temporal)
    * 4. Votar por sección más probable
-   * 5. Validar transición con SECTION_TRANSITIONS
+   * 5. Validar transición con matriz (o transitionOverrides)
    */
   private detectSection(
     intensity: number,
@@ -533,7 +605,17 @@ export class SectionTracker extends EventEmitter {
     audio: { energy: number; bass: number; mid: number; treble: number }
   ): SectionType {
     const now = Date.now();
-    const e = audio.energy;
+    const profile = this.activeProfile; // 🎯 WAVE 289: Usar perfil activo
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 289: ENERGÍA PONDERADA POR GÉNERO
+    // Cada género tiene diferentes frecuencias dominantes:
+    // - Techno: Bass es rey (kick 4x4)
+    // - Latino: Mid-Bass manda (dembow, tumbao)
+    // - Rock: Mid domina (guitarras)
+    // ═══════════════════════════════════════════════════════════════════════
+    const weightedEnergy = calculateWeightedEnergy(profile, audio);
+    const e = weightedEnergy; // Usar energía ponderada en lugar de audio.energy
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 81: ENERGY DELTA MODEL (FÍSICA PURA)
@@ -550,38 +632,42 @@ export class SectionTracker extends EventEmitter {
     const delta = this.instantEnergy - this.avgEnergy;
     const ratio = this.instantEnergy / (this.avgEnergy + 0.01);
     
+    // 🎯 WAVE 289: Umbrales dinámicos DESDE EL PERFIL DEL GÉNERO
+    // Ya no usamos constantes mágicas hardcodeadas
+    const dropRatio = profile.dropEnergyRatio;
+    const dropAbsThreshold = profile.dropAbsoluteThreshold;
+    const dropCooldownMs = profile.dropCooldown;
+    
     // 🌴 WAVE 84: HIGH-ENERGY PHYSICS (Loudness War Tracks)
     // ═══════════════════════════════════════════════════════════════════════
     // Problema: Tracks "comprimidos" (reggaetón, EDM mastered hot) tienen avgEnergy > 0.7
-    // permanente, haciendo imposible que ratio > 1.4 se cumpla (requiere salto de 0.7 → 0.98).
-    // Solución: Umbrales dinámicos según el nivel de compresión del track.
+    // permanente, haciendo imposible que ratio se cumpla.
+    // Solución: Umbrales dinámicos adaptados al nivel de compresión.
+    // 🎯 WAVE 289: Los valores base ahora vienen del perfil del género
     // ═══════════════════════════════════════════════════════════════════════
     const isHighEnergyTrack = this.avgEnergy > 0.7;
     
-    // 🔥 WAVE 84: Umbrales adaptativos
-    // - Track dinámico (avgEnergy ≤ 0.7): ratio 1.4, abs 0.75 (original)
-    // - Track comprimido (avgEnergy > 0.7): ratio 1.15, abs 0.90 (más sensible)
-    const dynamicRatio = isHighEnergyTrack ? 1.15 : 1.4;
-    const dynamicAbsThreshold = isHighEnergyTrack ? 0.90 : 0.75;
+    // 🎯 WAVE 289: Umbrales adaptativos basados en perfil de género
+    const adjustedDropRatio = isHighEnergyTrack ? dropRatio * 0.85 : dropRatio;
+    const adjustedDropAbsThreshold = isHighEnergyTrack 
+      ? Math.min(0.95, dropAbsThreshold + 0.10) 
+      : dropAbsThreshold;
     
     // 2. REGLAS DE DETECCIÓN MACROSCÓPICA (PRIORIDAD ALTA)
     
-    // �️ WAVE 84.5: HARD COOLDOWN - 10 segundos de paz garantizada
-    // Si hubo un drop hace menos de 10 segundos, PROHIBIDO detectar otro.
-    // Esto evita la fatiga visual en canciones muy intensas.
+    // 🎯 WAVE 289: Cooldown específico del género (no hardcoded 10s)
     const timeSinceLastDrop = now - this.lastDropEndTime;
-    const HARD_COOLDOWN_MS = 10000;  // 10 segundos de paz
     
-    // �🚀 DETECCIÓN DE DROP (La Subida Explosiva)
-    // 🌴 WAVE 84: Usar umbrales dinámicos en lugar de constantes
-    if (ratio > dynamicRatio && this.instantEnergy > dynamicAbsThreshold) {
+    // 🚀 DETECCIÓN DE DROP (La Subida Explosiva)
+    // � WAVE 289: Usar umbrales del perfil del género
+    if (ratio > adjustedDropRatio && this.instantEnergy > adjustedDropAbsThreshold) {
       if (this.currentSection !== 'drop') {
-        // 🛡️ WAVE 84.5: Si estamos en cooldown, redirigir a CHORUS
-        if (timeSinceLastDrop < HARD_COOLDOWN_MS) {
+        // 🛡️ Si estamos en cooldown específico del género, redirigir a CHORUS
+        if (timeSinceLastDrop < dropCooldownMs) {
           // Energía de Drop pero en cooldown → marcar como CHORUS (energía alta estable)
           this.addVote('chorus', 1.5);
         } else if (!this.isDropCooldown && !this.forceDropExit) {
-          // 🔥 WAVE 81: Transición real a DROP (fuera de cooldown)
+          // 🔥 Transición real a DROP (fuera de cooldown)
           this.timeInLowEnergy = 0;
           this.lastFrameTime = now;
           // Votar fuertemente por DROP para que el sistema de votos lo valide
@@ -591,13 +677,14 @@ export class SectionTracker extends EventEmitter {
     }
     
     // 🛡️ DETECCIÓN DE BREAKDOWN (El Silencio)
-    // Si la energía cae al suelo (< 0.4) y se queda ahí
-    else if (this.avgEnergy < 0.4 && this.instantEnergy < 0.3) {
+    // 🎯 WAVE 289: Usar umbral del perfil del género
+    else if (this.avgEnergy < profile.breakdownEnergyThreshold && 
+             this.instantEnergy < profile.breakdownEnergyThreshold * 0.75) {
       const frameTime = this.lastFrameTime > 0 ? now - this.lastFrameTime : 16;
       this.timeInLowEnergy += frameTime;
       
-      // Histéresis: esperar 2 segundos de silencio real
-      if (this.timeInLowEnergy > 2000) {
+      // 🎯 WAVE 289: Histéresis del perfil
+      if (this.timeInLowEnergy > profile.minBreakdownDuration) {
         this.addVote('breakdown', 1.5);
       }
     } else {
@@ -605,8 +692,8 @@ export class SectionTracker extends EventEmitter {
     }
     
     // 📈 DETECCIÓN DE BUILDUP (La Escalada)
-    // Si la energía sube constantemente pero no ha explotado aún
-    if (this.avgEnergy > 0.4 && delta > 0.05 && this.currentSection !== 'drop') {
+    // 🎯 WAVE 289: Usar delta threshold del perfil
+    if (this.avgEnergy > 0.4 && delta > profile.buildupDeltaThreshold && this.currentSection !== 'drop') {
       this.addVote('buildup', 0.8);
     }
     
@@ -619,7 +706,7 @@ export class SectionTracker extends EventEmitter {
     this.lastFrameTime = now;
     
     // ═══════════════════════════════════════════════════════════════════════
-    // FIN WAVE 81 - Continúa con sistema de votos legacy
+    // FIN WAVE 81/289 - Continúa con sistema de votos legacy
     // ═══════════════════════════════════════════════════════════════════════
     
     // WAVE 47.2: Decay de votos (memoria temporal, no reset total)
@@ -646,10 +733,11 @@ export class SectionTracker extends EventEmitter {
     // 🌊 WAVE 70: DROP timeout y cooldown
     // (now ya está declarado arriba en Energy Delta Model)
     
+    // 🎯 WAVE 289: Usar cooldown del perfil del género
     // Verificar si estamos en cooldown después de un DROP
     if (this.isDropCooldown) {
       const cooldownElapsed = now - this.lastDropEndTime;
-      if (cooldownElapsed >= this.config.dropCooldownTime) {
+      if (cooldownElapsed >= profile.dropCooldown) {
         this.isDropCooldown = false;
         this.forceDropExit = false; // 🌊 WAVE 70.5: Reset nuclear flag al terminar cooldown
         // console.log('[SectionTracker] 🌊 DROP cooldown terminado');
@@ -657,13 +745,14 @@ export class SectionTracker extends EventEmitter {
     }
     
     // 🌊 WAVE 70.5: NUCLEAR KILL SWITCH - Forzar salida INMEDIATA de DROP si:
-    // 1. Duración excede maxDropDuration
-    // 2. Energía cae por debajo del umbral
+    // 1. Duración excede maxDropDuration (del perfil del género)
+    // 2. Energía cae por debajo del umbral (del perfil del género)
+    // 🎯 WAVE 289: Usar valores del perfil
     if (this.currentSection === 'drop') {
       const dropDuration = now - this.dropStartTime;
       const shouldKillDrop = 
-        dropDuration >= this.config.maxDropDuration ||
-        intensity < this.config.dropEnergyKillThreshold;
+        dropDuration >= profile.maxDropDuration ||
+        intensity < profile.dropEnergyKillThreshold;
       
       if (shouldKillDrop) {
         // 🌊 WAVE 70.5: NUCLEAR - Activar flag inmediatamente
@@ -679,7 +768,7 @@ export class SectionTracker extends EventEmitter {
         this.addVote('chorus', 3.0);      // 🌊 WAVE 70.5: Aumentado de 2.0 a 3.0
         this.addVote('breakdown', 2.0);   // 🌊 WAVE 70.5: Aumentado de 1.0 a 2.0
         
-        // console.log(`[SectionTracker] 🌊 NUCLEAR DROP KILL: duration=${dropDuration}ms, intensity=${intensity.toFixed(2)}`);
+        // console.log(`[SectionTracker] � VIBE-AWARE DROP KILL: vibe=${this.activeVibeId}, duration=${dropDuration}ms, max=${profile.maxDropDuration}ms`);
       }
     }
     
@@ -752,6 +841,9 @@ export class SectionTracker extends EventEmitter {
   /**
    * WAVE 47.2: Validar que la transición sea lógica usando la matriz
    * Solo permite transiciones definidas en SECTION_TRANSITIONS
+   * 
+   * 🎯 WAVE 289: Los transitionOverrides del perfil tienen PRIORIDAD
+   * Esto permite que Latino haga verse→drop (prohibido en Techno)
    */
   private validateTransition(candidate: SectionType): SectionType {
     // Si es la misma sección, siempre válido
@@ -759,7 +851,22 @@ export class SectionTracker extends EventEmitter {
       return candidate;
     }
     
-    // Obtener transiciones válidas desde la sección actual
+    const profile = this.activeProfile;
+    
+    // 🎯 WAVE 289: Verificar primero si hay override en el perfil del género
+    if (profile.transitionOverrides?.[this.currentSection]) {
+      const allowedByProfile = profile.transitionOverrides[this.currentSection]!;
+      if (allowedByProfile.includes(candidate)) {
+        // El perfil del género permite esta transición (ej: Latino verse→drop)
+        return candidate;
+      }
+      // El perfil define explícitamente las transiciones permitidas
+      // Si el candidato no está en la lista, está BLOQUEADO
+      // console.log(`[SectionTracker] 🎯 WAVE 289: Blocked by profile ${this.activeVibeId}: ${this.currentSection} → ${candidate}`);
+      return this.currentSection;
+    }
+    
+    // Sin override específico, usar matriz global
     const validTransitions = SECTION_TRANSITIONS[this.currentSection] || [];
     const isValidTransition = validTransitions.some(t => t.to === candidate);
     
@@ -768,11 +875,7 @@ export class SectionTracker extends EventEmitter {
       return candidate;
     }
     
-    // WAVE 47.2: Transición inválida - buscar camino alternativo
-    // Ejemplo: intro → drop es inválido, pero intro → buildup → drop es válido
-    // Por ahora, mantener sección actual si la transición no es válida
-    
-    // Log para debug (en producción se puede quitar)
+    // WAVE 47.2: Transición inválida - mantener sección actual
     // console.log(`[SectionTracker] Blocked invalid transition: ${this.currentSection} → ${candidate}`);
     
     return this.currentSection;
@@ -1084,6 +1187,7 @@ export class SectionTracker extends EventEmitter {
    * Reset del tracker
    * WAVE 47.2: Incluye nuevos campos
    * WAVE 70: Incluye campos de DROP timeout
+   * 🎯 WAVE 289: Incluye campos de vibe-aware
    */
   reset(): void {
     this.currentSection = 'unknown';
@@ -1106,6 +1210,15 @@ export class SectionTracker extends EventEmitter {
     this.lastDropEndTime = 0;
     this.isDropCooldown = false;
     this.forceDropExit = false; // 🌊 WAVE 70.5: Reset nuclear flag
+    
+    // 🎯 WAVE 289: Reset energy delta model
+    this.avgEnergy = 0.5;
+    this.instantEnergy = 0.5;
+    this.timeInLowEnergy = 0;
+    this.lastFrameTime = 0;
+    
+    // 🎯 WAVE 289: NO reseteamos el vibeProfile - se mantiene el género seleccionado
+    // El perfil solo cambia cuando el usuario cambia de vibe
   }
 }
 

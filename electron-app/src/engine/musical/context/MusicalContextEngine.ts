@@ -211,6 +211,36 @@ export class MusicalContextEngine extends EventEmitter {
   }
   
   // ============================================================
+  // 🎯 WAVE 289: VIBE CONTEXT PROPAGATION
+  // ============================================================
+  
+  /**
+   * 🎯 WAVE 289: Establecer contexto de vibe para el SectionTracker
+   * 
+   * Llamado por TitanEngine cuando el usuario cambia de vibe.
+   * Propaga el vibeId al SectionTracker para que use los umbrales correctos.
+   * 
+   * @param vibeId - ID del vibe activo ('techno', 'latino', 'rock', etc.)
+   */
+  public setVibeContext(vibeId: string): void {
+    console.log(`[MusicalContextEngine] 🎯 WAVE 289: setVibeContext → ${vibeId}`);
+    this.sectionTracker.setVibeProfile(vibeId);
+    
+    // Emitir evento para notificar el cambio
+    this.emit('vibe-context-change', {
+      vibeId,
+      timestamp: Date.now(),
+    });
+  }
+  
+  /**
+   * 🎯 WAVE 289: Obtener el vibeId activo del SectionTracker
+   */
+  public getActiveVibeId(): string {
+    return this.sectionTracker.getActiveVibeId();
+  }
+  
+  // ============================================================
   // 🎯 MÉTODO PRINCIPAL: PROCESS
   // ============================================================
   

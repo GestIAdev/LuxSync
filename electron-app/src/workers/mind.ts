@@ -88,6 +88,9 @@ interface GammaState {
   messagesProcessed: number;
   totalProcessingTime: number;
   errors: string[];
+  
+  // 🎯 WAVE 289: Vibe-Aware Section Tracking
+  activeVibeId: string;
 }
 
 const state: GammaState = {
@@ -99,7 +102,10 @@ const state: GammaState = {
   
   messagesProcessed: 0,
   totalProcessingTime: 0,
-  errors: []
+  errors: [],
+  
+  // 🎯 WAVE 289: Default vibe
+  activeVibeId: 'techno'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -343,9 +349,18 @@ function handleMessage(message: WorkerMessage): void {
         console.log('[GAMMA] ☀️ SYSTEM WAKE - Resuming analysis');
         state.isPaused = false;
         break;
+      
+      // 🎯 WAVE 289: Vibe-Aware Section Tracking
+      case MessageType.SET_VIBE:
+        const vibePayload = message.payload as { vibeId: string };
+        state.activeVibeId = vibePayload.vibeId;
+        console.log(`[GAMMA] 🎯 WAVE 289: Vibe set to ${vibePayload.vibeId}`);
+        // El vibeId se usará cuando los Workers tengan SectionTracker vibe-aware
+        // Por ahora solo almacenamos el estado
+        break;
         
       default:
-        // Ignorar mensajes legacy de color (SET_VIBE, SET_MODE, etc.)
+        // Ignorar mensajes legacy no manejados
         if (DEBUG_VERBOSE) {
           console.log(`[GAMMA] Ignoring legacy message: ${message.type}`);
         }

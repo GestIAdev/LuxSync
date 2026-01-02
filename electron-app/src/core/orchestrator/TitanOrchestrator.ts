@@ -440,6 +440,7 @@ export class TitanOrchestrator {
 
   /**
    * Set the current vibe
+   * 🎯 WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
    */
   setVibe(vibeId: VibeId): void {
     if (this.engine) {
@@ -447,6 +448,13 @@ export class TitanOrchestrator {
       console.log(`[TitanOrchestrator] Vibe set to: ${vibeId}`)
       // WAVE 257: Log vibe change to Tactical Log
       this.log('Mode', `🎭 Vibe changed to: ${vibeId.toUpperCase()}`)
+      
+      // 🎯 WAVE 289: Propagate vibe to Trinity Workers
+      // El SectionTracker en los Workers usará perfiles vibe-aware
+      if (this.trinity) {
+        this.trinity.setVibe(vibeId)
+        console.log(`[TitanOrchestrator] 🎯 WAVE 289: Vibe propagated to Workers`)
+      }
     }
   }
 

@@ -56,37 +56,35 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Los verdes (85-110°) serán arrastrados hacia cyan (180°)
   atmosphericTemp: 9500,
   
-  // 🌬️ WAVE 284: GRAVITATIONAL RELAXATION
-  // ANTES: 0.35 (35%) - Muy agresivo, colapsaba diversidad cromática
-  //        Verde 135° → Cyan 172° (¡37° de migración en un frame!)
-  // AHORA: 0.15 (15%) - Gravedad suave, preserva Verdes/Magentas/Violetas
-  //        Verde 135° → Verde-Cian 142° (solo 7° de enfriamiento)
-  thermalGravityStrength: 0.15,
+  // 🌬️ WAVE 285.5: GRAVITATIONAL BALANCE
+  // WAVE 284: 0.15 (15%) - Demasiado suave, naranja 45° escapaba a 20°
+  // WAVE 285.5: 0.22 (22%) - Balance: +10° seguridad, preserva diversidad
+  //
+  // Matemática: 45° con 22% gravedad → 45 - (165 × 0.22) = 45 - 36 = 9°
+  //             9° está cerca del polo cálido, pero forbiddenHueRanges no lo atrapa
+  //             PERO el hueRemapping [25-85] → frío con variación lo sanitiza
+  thermalGravityStrength: 0.22,
   
-  // 🌐 WAVE 285: Simplificado - El hueRemapping hace el trabajo pesado
-  // forbiddenHueRanges ya no es necesario tan amplio porque hueRemapping
-  // captura todo 0-110° y lo redirige a colores fríos
-  // Mantenemos [25, 80] como backup por si algo escapa
+  // 🌐 WAVE 285.5: Solo el núcleo naranja/amarillo es problemático
   forbiddenHueRanges: [[25, 80]],
   
-  // 🌈 WAVE 285: Ahora permitimos todo porque hueRemapping sanitiza los cálidos
-  // Si algo escapa del remapping, forbiddenHueRanges + elasticRotation lo atrapa
-  allowedHueRanges: [[0, 360]],  // Todo el espectro (remapping filtra los malos)
+  // 🌈 WAVE 285.5: Permitir todo, la gravedad + remapping hacen el trabajo
+  allowedHueRanges: [[0, 360]],
   
   // Elastic Rotation de 15° para escapar zonas prohibidas
   elasticRotation: 15,
   
-  // 🗺️ WAVE 285: ESCAPE VELOCITY - Redirigir TODOS los colores cálidos
-  // PROBLEMA WAVE 284: D major (60°) + gravity → 20° (fuera de forbiddenHueRanges)
-  //                    El naranja escapaba porque 20° < 25° (límite inferior)
-  // SOLUCIÓN: Mapear TODO el rango cálido (0-85°) hacia colores fríos aceptables
+  // 🗺️ WAVE 285.5: Solo remapear el núcleo problemático (25-85°)
+  // FILOSOFÍA: No destruir diversidad cromática por un puto naranja
   //
-  // 0-24° (Rojos/Naranjas-rojos) → 300° (Magenta) - Aurora boreal
-  // 25-85° (Naranjas/Amarillos) → 180° (Cyan) - Láser frío
-  // 90-110° (Verde césped) → 130° (Verde Láser) - Ya existía
+  // - Rojos (0-24°): LIBRES - La gravedad los empuja a Magenta naturalmente
+  // - Naranjas/Amarillos (25-85°): Remapear a rango frío CON VARIACIÓN
+  // - Verdes (86-110°): Remapear a Verde Láser (130°)
+  //
+  // VARIACIÓN: El target no es fijo, usa la posición dentro del rango
+  // para distribuir en el espectro frío (150-200° = Cyan/Turquesa)
   hueRemapping: [
-    { from: 0, to: 24, target: 300 },    // Rojos → Magenta (auroras boreales OK)
-    { from: 25, to: 85, target: 180 },   // Naranjas/Amarillos → Cyan
+    { from: 25, to: 85, target: 170 },   // Naranjas → Cyan-Turquesa (centro del rango frío)
     { from: 86, to: 110, target: 130 },  // Verde césped → Verde Láser
   ],
   

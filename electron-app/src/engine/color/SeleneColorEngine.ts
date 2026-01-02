@@ -958,30 +958,23 @@ export class SeleneColorEngine {
                          vibeId.includes('cumbia') || vibeId.includes('salsa') ||
                          vibeId.includes('reggae');
     
-    // 🔥 WAVE 74: Mood 'bright' tiene PRIORIDAD sobre Key
-    // 🎯 WAVE 161.5: EXCEPTO en Latino - usa Key completa para triadic
-    if (mood === 'bright' && !isLatinoHueFree) {
-      // Rango cálido: rojos, naranjas, amarillos (0-60°)
-      // Usamos Key para variar DENTRO del rango cálido
-      if (key && KEY_TO_HUE[key] !== undefined) {
-        const keyHue = KEY_TO_HUE[key];
-        // Mapear cualquier Key al rango cálido (0-60°)
-        // Usamos el módulo de la Key para crear variación
-        baseHue = (keyHue % 60);  // Siempre 0-59°
-      } else {
-        baseHue = 30; // Default cálido: naranja
-      }
-      hueSource = `mood:bright+warm`;
-    } else if (mood === 'dark') {
-      // 🔥 WAVE 74: Mood 'dark' = azules/violetas (200-280°)
-      if (key && KEY_TO_HUE[key] !== undefined) {
-        const keyHue = KEY_TO_HUE[key];
-        baseHue = 200 + (keyHue % 80);  // 200-280°
-      } else {
-        baseHue = 240; // Default frío: azul
-      }
-      hueSource = `mood:dark+cold`;
-    } else if (key && KEY_TO_HUE[key] !== undefined) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔓 WAVE 285.5: KEY IDENTITY LIBERATION
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTES (WAVE 74): mood 'bright' → keyHue % 60 → DESTRUÍA la identidad de Key
+    //   - D major (60°) → 0° (rojo)
+    //   - E major (120°) → 0° (rojo)
+    //   - A major (270°) → 30° (naranja)
+    //   ¡TODAS las keys major colapsaban a solo 2 valores!
+    //
+    // AHORA: La Key SIEMPRE determina el Hue base. El mood y la constitución
+    // (thermalGravity + hueRemapping + forbiddenHueRanges) ajustan el resultado
+    // SIN destruir la identidad cromática de la Key.
+    //
+    // La temperatura y la estrategia son FILTROS, no DICTADORES.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    if (key && KEY_TO_HUE[key] !== undefined) {
       // Comportamiento original: Key determina Hue
       // 🎯 WAVE 161.5: Latino SIEMPRE usa este path (Key completa)
       baseHue = KEY_TO_HUE[key];
@@ -1034,6 +1027,7 @@ export class SeleneColorEngine {
     
     // 1️⃣ HUE REMAPPING: Mapeos forzados de zonas cromáticas
     // Ejemplo: Rock mapea verde (80-160) → rojo (0)
+    let remapApplied = false;
     if (options?.hueRemapping) {
       for (const mapping of options.hueRemapping) {
         const { from, to, target } = mapping;
@@ -1043,6 +1037,7 @@ export class SeleneColorEngine {
         
         if (isInRange) {
           finalHue = normalizeHue(target);
+          remapApplied = true;
           break;  // Solo aplicar el primer match
         }
       }
@@ -1082,54 +1077,62 @@ export class SeleneColorEngine {
     
     // 3️⃣ ALLOWED HUE RANGES: Snap to nearest
     // Si el hue cae fuera de todos los rangos permitidos, ir al más cercano
+    // ⚠️ WAVE 286 BUG FIX: [0, 360] debe significar "todo permitido"
     if (options?.allowedHueRanges && options.allowedHueRanges.length > 0) {
-      let isAllowed = false;
-      let closestRange: [number, number] | null = null;
-      let minDistance = Infinity;
+      // 🛡️ CHECK: Si el rango es [0, 360] o similar (abarca todo), skip
+      const isFullCircle = options.allowedHueRanges.some(([min, max]) => {
+        return (max - min) >= 359 || (min === 0 && max >= 359);
+      });
       
-      for (const [min, max] of options.allowedHueRanges) {
-        const normalizedMin = normalizeHue(min);
-        const normalizedMax = normalizeHue(max);
+      if (!isFullCircle) {
+        let isAllowed = false;
+        let closestRange: [number, number] | null = null;
+        let minDistance = Infinity;
         
-        const isInRange = normalizedMin <= normalizedMax
-          ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
-          : (finalHue >= normalizedMin || finalHue <= normalizedMax);
-        
-        if (isInRange) {
-          isAllowed = true;
-          break;
+        for (const [min, max] of options.allowedHueRanges) {
+          const normalizedMin = normalizeHue(min);
+          const normalizedMax = normalizeHue(max);
+          
+          const isInRange = normalizedMin <= normalizedMax
+            ? (finalHue >= normalizedMin && finalHue <= normalizedMax)
+            : (finalHue >= normalizedMin || finalHue <= normalizedMax);
+          
+          if (isInRange) {
+            isAllowed = true;
+            break;
+          }
+          
+          // Calcular distancia al rango más cercano
+          const distToMin = Math.min(
+            Math.abs(finalHue - normalizedMin),
+            360 - Math.abs(finalHue - normalizedMin)
+          );
+          const distToMax = Math.min(
+            Math.abs(finalHue - normalizedMax),
+            360 - Math.abs(finalHue - normalizedMax)
+          );
+          const distance = Math.min(distToMin, distToMax);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRange = [normalizedMin, normalizedMax];
+          }
         }
         
-        // Calcular distancia al rango más cercano
-        const distToMin = Math.min(
-          Math.abs(finalHue - normalizedMin),
-          360 - Math.abs(finalHue - normalizedMin)
-        );
-        const distToMax = Math.min(
-          Math.abs(finalHue - normalizedMax),
-          360 - Math.abs(finalHue - normalizedMax)
-        );
-        const distance = Math.min(distToMin, distToMax);
-        
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestRange = [normalizedMin, normalizedMax];
+        if (!isAllowed && closestRange) {
+          // Rotar al punto más cercano del rango permitido más cercano
+          const [rangeMin, rangeMax] = closestRange;
+          const distToMin = Math.min(
+            Math.abs(finalHue - rangeMin),
+            360 - Math.abs(finalHue - rangeMin)
+          );
+          const distToMax = Math.min(
+            Math.abs(finalHue - rangeMax),
+            360 - Math.abs(finalHue - rangeMax)
+          );
+          
+          finalHue = distToMin <= distToMax ? rangeMin : rangeMax;
         }
-      }
-      
-      if (!isAllowed && closestRange) {
-        // Rotar al punto más cercano del rango permitido más cercano
-        const [rangeMin, rangeMax] = closestRange;
-        const distToMin = Math.min(
-          Math.abs(finalHue - rangeMin),
-          360 - Math.abs(finalHue - rangeMin)
-        );
-        const distToMax = Math.min(
-          Math.abs(finalHue - rangeMax),
-          360 - Math.abs(finalHue - rangeMax)
-        );
-        
-        finalHue = distToMin <= distToMax ? rangeMin : rangeMax;
       }
     }
     

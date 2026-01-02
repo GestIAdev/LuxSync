@@ -270,7 +270,7 @@ export class TitanEngine extends EventEmitter {
         console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`)
       }
     }
-    
+
     // ─────────────────────────────────────────────────────────────────────
     // 1. 🔥 WAVE 269: CALCULAR PALETA CON SELENE COLOR ENGINE (EL FERRARI)
     //    🧠 WAVE 271: Ahora usa datos ESTABILIZADOS

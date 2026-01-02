@@ -134,67 +134,67 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌴 CONSTITUCIÓN FIESTA-LATINA: "SANGRE LATINA" (WAVE 288.2)
+// 🌴 CONSTITUCIÓN FIESTA-LATINA: "CARIBE" (WAVE 288.3)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * WAVE 288.2: SANGRE LATINA - GRAVEDAD RELAJADA
+ * WAVE 288.3: CARIBE - Mar, Selva, Flores y Fuego
  * 
- * FILOSOFÍA: "La luz QUEMA y RESPIRA, pero también BAILA en colores."
+ * FILOSOFÍA: "La fiesta latina ES COLORIDA. El Caribe tiene TODO."
  * 
- * WAVE 288.2 FIX:
- * - Gravedad reducida 0.35 → 0.22 (como Techno)
- * - AllowedHueRanges ampliado para incluir verdes vibrantes
- * - Los verdes deben ser VERDES, no verdosos mostaza
+ * 🌊 MAR: Azules tropicales (190-230°) - El océano Caribe
+ * 🌴 SELVA: Verdes vibrantes (90-160°) - Palmeras y naturaleza
+ * 🌺 FLORES: Magentas y rosas (280-330°) - Flores tropicales
+ * 🔥 FUEGO: Rojos y naranjas (0-50°) - La pasión latina
  * 
- * ZONAS PERMITIDAS:
- * - SOLAR: 0° - 80° (Rojo → Naranja → Oro → Ámbar)
- * - SELVA: 90° - 150° (Verdes vibrantes - NUEVO)
- * - MAGENTA: 300° - 360° (Magentas cálidos → Rojo)
- * 
- * ZONAS PROHIBIDAS:
- * - CYAN/AZUL: 180° - 260° (Tecnología fría)
+ * ZONAS PROHIBIDAS (el infierno del color):
+ * - BARRO: 55° - 85° (Amarillos sucios, mostaza, caca)
+ * - VERDE BESUGO: 160° - 180° (Verde enfermizo, aguacate muerto)
+ * - UV INDUSTRIAL: 260° - 280° (Violeta de discoteca barata)
  */
 export const LATINO_CONSTITUTION: GenerationOptions = {
-  // Syncopation decide la estrategia (no forzada)
+  // Syncopation decide la estrategia
   forceStrategy: undefined,
   
-  // 🔥 WAVE 288: INVERSIÓN TÉRMICA
-  // 2500K = Luz de vela/fuego. El polo cálido es ~40° (oro)
-  atmosphericTemp: 2500,
+  // 🌅 WAVE 288.3: Gravedad CÁLIDA pero no agresiva
+  // 3500K = Atardecer caribeño (no vela de iglesia)
+  atmosphericTemp: 3500,
   
-  // 🌿 WAVE 288.2: GRAVEDAD RELAJADA
-  // 0.35 era demasiado fuerte - convertía verdes en verdosos mostaza
-  // 0.22 permite que los colores respiren mientras mantienen calidez
+  // 🌿 WAVE 288.2: Gravedad relajada
   thermalGravityStrength: 0.22,
   
-  // 🚫 WAVE 288: ZONA PROHIBIDA
-  // Solo prohibimos cyanes/azules tecnológicos fríos
-  forbiddenHueRanges: [[180, 260]],
+  // 🚫 WAVE 288.3: SOLO PROHIBIMOS LO FEO
+  // Barro (55-85°) + Verde Besugo (160-180°) + UV Industrial (260-280°)
+  forbiddenHueRanges: [
+    [55, 85],    // BARRO: Amarillos sucios, mostaza
+    [160, 180],  // VERDE BESUGO: Verde enfermizo
+    [260, 280],  // UV INDUSTRIAL: Violeta barato
+  ],
 
-  // 🌈 WAVE 288.2: Espectro AMPLIADO
-  // Añadimos zona SELVA (90-150°) para verdes vibrantes
-  // La cumbia y salsa necesitan verde lima, no solo naranja/rojo
-  allowedHueRanges: [[0, 80], [90, 150], [300, 360]],
-  elasticRotation: 15,
+  // 🌈 WAVE 288.3: CARIBE COMPLETO
+  // TODO permitido excepto las zonas prohibidas de arriba
+  // El sistema rotará automáticamente fuera de zonas prohibidas
+  allowedHueRanges: [[0, 360]],  // Full circle - forbiddenHueRanges hace el trabajo
+  elasticRotation: 20,  // Rotación generosa para escapar del barro
   
   // 💪 Saturación ALTA para colores vibrantes
-  saturationRange: [85, 100],
+  saturationRange: [80, 100],
   
-  // ☀️ Luminosidad elevada - La fiesta BRILLA
+  // ☀️ Luminosidad tropical - BRILLA
   lightnessRange: [50, 70],
   
-  // 🛡️ SAFETY RULES para amarillos
+  // 🛡️ MudGuard relajado (forbiddenHueRanges ya cubre el barro)
   mudGuard: {
     enabled: true,
-    swampZone: [40, 65],    // Zona de peligro: amarillos mostaza
+    swampZone: [55, 85],    // Misma zona que forbiddenHueRanges
     minLightness: 55,
-    minSaturation: 90,
+    minSaturation: 85,
   },
   
-  // Tropical Mirror DESACTIVADO (evita cyanes)
-  tropicalMirror: false,
+  // 🌴 WAVE 288.3: Tropical Mirror REACTIVADO
+  // Con forbiddenHueRanges cubriendo las zonas feas, el mirror es seguro
+  tropicalMirror: true,
   
-  // 💥 Accent = Solar Flare puro (oro/miel)
+  // 💥 Accent = Solar Flare (oro/miel)
   accentBehavior: 'solar-flare',
   solarFlareAccent: { h: 35, s: 100, l: 55 },
   

@@ -335,7 +335,12 @@ export class TitanOrchestrator {
             isClipping: false
           }
         },
-        consciousness: createDefaultCognitive(),
+        // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
+        consciousness: {
+          ...createDefaultCognitive(),
+          stableEmotion: this.engine.getStableEmotion(),
+          thermalTemperature: this.engine.getThermalTemperature(),
+        },
         // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
         // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
         // el contexto que ya obtuvimos de brain.getCurrentContext()

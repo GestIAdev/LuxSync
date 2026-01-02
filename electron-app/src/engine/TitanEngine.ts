@@ -127,18 +127,21 @@ export class TitanEngine extends EventEmitter {
   private nervousSystem: SeleneLux
   
   // 🧠 WAVE 271: Cached stabilized state (for telemetry/debug)
+  // 🌡️ WAVE 283: Added thermalTemperature for UI sync
   private lastStabilizedState: {
     stableKey: string | null
     stableEmotion: MetaEmotion
     stableStrategy: ColorStrategy
     smoothedEnergy: number
     isDropActive: boolean
+    thermalTemperature: number
   } = {
     stableKey: null,
     stableEmotion: 'NEUTRAL',
     stableStrategy: 'analogous',
     smoothedEnergy: 0,
     isDropActive: false,
+    thermalTemperature: 4500,
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -250,18 +253,21 @@ export class TitanEngine extends EventEmitter {
     const strategyOutput = this.strategyArbiter.update(strategyInput)
     
     // 🧠 Cachear estado estabilizado (para telemetría y debug)
+    // 🌡️ WAVE 283: Ahora incluye thermalTemperature del MoodArbiter
     this.lastStabilizedState = {
       stableKey: keyOutput.stableKey,
       stableEmotion: moodOutput.stableEmotion,
       stableStrategy: strategyOutput.stableStrategy,
       smoothedEnergy: energyOutput.smoothedEnergy,
       isDropActive: energyOutput.isRelativeDrop,
+      thermalTemperature: moodOutput.thermalTemperature,
     }
     
     // Log cambios importantes de estabilización (cada 60 frames si cambio relevante)
+    // 🌡️ WAVE 283: Añadido thermalTemperature al log
     if (this.state.frameCount % 60 === 0 && context.energy > 0.05) {
       if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
-        console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy}`)
+        console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`)
       }
     }
     
@@ -644,6 +650,13 @@ export class TitanEngine extends EventEmitter {
   public isDropActive(): boolean {
     return this.lastStabilizedState.isDropActive
   }
+
+  /**
+   * 🌡️ WAVE 283: Obtener la temperatura térmica calculada por MoodArbiter
+   */
+  public getThermalTemperature(): number {
+    return this.lastStabilizedState.thermalTemperature
+  }
   
   /**
    * 🧹 WAVE 271: Reset de stabilizers (para cambio de canción o vibe)
@@ -660,6 +673,7 @@ export class TitanEngine extends EventEmitter {
       stableStrategy: 'analogous',
       smoothedEnergy: 0,
       isDropActive: false,
+      thermalTemperature: 4500,
     }
     
     console.log(`[TitanEngine 🧠] Stabilizers RESET`)

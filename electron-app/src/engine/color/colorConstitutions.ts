@@ -39,8 +39,16 @@ import type { VibeId } from '../../types/VibeProfile';
  * Este es el "núcleo duro" que incluso con gravedad queda feo.
  */
 export const TECHNO_CONSTITUTION: GenerationOptions = {
-  // Estrategia tetraédrica (Prism)
-  forceStrategy: 'prism',
+  // 🔓 WAVE 283: PRISM BREAK - ¡LIBERTAD ABSOLUTA!
+  // Antes: forceStrategy: 'prism' - DICTADOR que ignoraba al StrategyArbiter
+  // Ahora: Sin forceStrategy - El StrategyArbiter decide dinámicamente
+  // 
+  // RED DE SEGURIDAD:
+  // - Gravedad Térmica (9500K) → Arrastra todo al frío
+  // - Rangos Prohibidos → Si sale naranja, la gravedad lo empuja al magenta/cian
+  // - SeleneColorEngine → Ya no genera basura aleatoria, usa armonía musical
+  //
+  // forceStrategy: 'prism',  // ← LIBERADO! El StrategyArbiter ahora gobierna
   
   // 🌡️ WAVE 149.6: THERMAL GRAVITY - Polo Azul Masivo
   // 9500K = Fuerza ~29% hacia 240° (Azul Rey) tras WAVE 150.6

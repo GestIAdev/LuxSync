@@ -1,20 +1,26 @@
 /**
- *  WAVE 288: SANGRE LATINA - "Unified Solar Physics"
+ *  WAVE 288.5: SANGRE LATINA - "One Flavor To Rule Them All"
  * ============================================================================
  * 
- * FILOSOFIA: "UN SISTEMA QUE SIEMPRE FUNCIONA, CON SABORES OPCIONALES"
+ * FILOSOFIA: "COMO TECHNO - UN COMPORTAMIENTO COJONUDO PARA TODO"
  * 
- * La fisica unificada se basa en SOLAR FLARE como efecto principal:
- * - Ataque rapido (respuesta inmediata al bass)
- * - Decay lento (la luz "quema" y "respira")
- * - Funciona PERFECTO para todo: reggaeton, cumbia, salsa
+ * Siguiendo el exito de Techno (que funciona igual de bien para 
+ * hard minimal, dubstep o neurofunk), Latino usa UN SOLO FLAVOR.
  * 
- * DETECCION SIMPLE (3 lineas):
- * - Reggaeton: Mucho bass + BPM lento (80-105) o doble (155-200)
- * - Tropical: Treble > Bass * 1.2 (Guiro/Maracas dominan)
- * - Default: Unified (siempre se ve bien)
+ * ¿POR QUE?
+ * - El BPM detector es INESTABLE (60-200 BPM para la misma cancion)
+ * - El 60% de "fiesta latina" es reggaeton anyway
+ * - Los DJs mezclan estilos y quieren consistencia
+ * - La paleta Caribe + Solar Flare ya se ve BRUTAL
  * 
- * SI LA DETECCION FALLA: El modo Unified sigue viendose increible.
+ * COMPORTAMIENTO UNICO (fiesta-standard):
+ * - Solar Flare: Ataque rapido, Decay lento (8%/frame)
+ * - Machine Gun Blackout: Solo con drops REALES (energyDelta > 0.4)
+ * - Movers: LERP suave en treble
+ * - Back Pars: mid^1.5 con decay
+ * - Front Pars: Ambar constante + pulso bass
+ * 
+ * VENTAJA: Los borrachos tienen su oscuridad para las caras 😂
  * ============================================================================
  */
 
@@ -35,7 +41,8 @@ export interface LatinoAudioMetrics {
   previousEnergy?: number; 
   deltaTime?: number; 
 }
-export type LatinoFlavor = 'reggaeton' | 'tropical' | 'fiesta-standard';
+// WAVE 288.5: Un solo tipo - fiesta-standard SIEMPRE
+export type LatinoFlavor = 'fiesta-standard';
 
 export interface LatinoPhysicsResult {
   palette: LatinoPalette;
@@ -93,8 +100,8 @@ export class LatinoStereoPhysics {
     const detectedBpm = bpm ?? this.lastBpm;
     if (bpm) this.lastBpm = bpm;
 
-    // DETECCION HEURISTICA SIMPLE
-    const flavor = this.detectFlavor(detectedBpm, metrics);
+    // DETECCION ELIMINADA - WAVE 288.5: Un solo flavor
+    const flavor: LatinoFlavor = 'fiesta-standard';
     
     const resultPalette: LatinoPalette = {
       primary: { ...palette.primary },
@@ -114,8 +121,9 @@ export class LatinoStereoPhysics {
     const bassDelta = bass - this.lastBass;
     const energyDelta = previousEnergy - currentEnergy;
     
-    // MACHINE GUN (Solo Reggaeton)
-    const isNegativeDrop = flavor === 'reggaeton' && (
+    // MACHINE GUN - WAVE 288.5: Solo con drops REALES (sin dependencia de flavor)
+    // Esto da los blackouts que crean contraste y "oscuridad para los borrachos"
+    const isNegativeDrop = (
       energyDelta >= LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD &&
       deltaTime <= LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS &&
       previousEnergy > 0.6
@@ -166,19 +174,12 @@ export class LatinoStereoPhysics {
       this.currentBackParIntensity = this.currentBackParIntensity * (1 - LatinoStereoPhysics.DECAY_RATE * 2);
     }
     
-    // MOVERS: LERP Suave
+    // MOVERS: LERP Suave (treble para melodias/voces)
     this.currentMoverIntensity += (treble - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_LERP;
-    if (flavor === 'tropical' && treble > 0.7) {
-      this.currentMoverIntensity += (Math.random() - 0.5) * 0.05;
-      this.currentMoverIntensity = Math.max(0, Math.min(1, this.currentMoverIntensity));
-    }
     
-    // FRONT PARs: Ambar fijo
+    // FRONT PARs: Ambar fijo + pulso bass
     const bassPulse = bass * 0.15;
-    let frontParIntensity = LatinoStereoPhysics.FRONT_PAR_BASE + bassPulse;
-    if (flavor === 'reggaeton' && isSolarFlare) {
-      frontParIntensity = Math.min(0.95, frontParIntensity + 0.1);
-    }
+    const frontParIntensity = LatinoStereoPhysics.FRONT_PAR_BASE + bassPulse;
     
     this.lastEnergy = currentEnergy;
     this.lastBass = bass;
@@ -198,34 +199,17 @@ export class LatinoStereoPhysics {
   }
 
   /**
-   * 🎵 WAVE 288.2: DETECCIÓN HEURÍSTICA CONSERVADORA
+   * 🎵 WAVE 288.5: DETECCIÓN ELIMINADA
    * 
-   * FILOSOFÍA: "Ante la duda, fiesta-standard (que siempre funciona)"
+   * La detección de subgénero no aporta valor:
+   * - BPM inestable (dobla/divide el tempo real)
+   * - La física unificada funciona para TODO
+   * - Como Techno: un comportamiento cojonudo para hard minimal, dubstep o neurofunk
    * 
-   * Solo detectamos reggaeton con ALTA confianza:
-   * - Bass MUY alto (>0.75) - el dembow tiene bass prominente
-   * - BPM específico (85-100 o doble 170-200) - el perreo tiene BPM fijo
-   * - Sin metadata/ML no podemos hacer más - mejor default que falsos positivos
+   * SIEMPRE retorna 'fiesta-standard'
    */
-  private detectFlavor(bpm: number, metrics: LatinoAudioMetrics): LatinoFlavor {
-    const bass = metrics.normalizedBass;
-    const treble = metrics.normalizedHigh ?? 0;
-    
-    // DEFAULT: fiesta-standard (funciona para TODO)
-    let flavor: LatinoFlavor = 'fiesta-standard';
-    
-    // REGGAETON: Solo si estamos MUY seguros
-    // Bass > 0.75 (muy alto) + BPM típico de dembow (85-100 o doble)
-    const isReggaetonBpm = (bpm >= 85 && bpm <= 100) || (bpm >= 170 && bpm <= 200);
-    if (bass > 0.75 && isReggaetonBpm) {
-      flavor = 'reggaeton';
-    }
-    // TROPICAL: Cuando treble domina claramente (güiro, maracas, timbales)
-    else if (treble > bass * 1.5 && treble > 0.4) {
-      flavor = 'tropical';
-    }
-    
-    return flavor;
+  private detectFlavor(_bpm: number, _metrics: LatinoAudioMetrics): LatinoFlavor {
+    return 'fiesta-standard';
   }
 
   public reset(): void {

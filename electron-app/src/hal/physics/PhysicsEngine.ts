@@ -140,8 +140,11 @@ export class PhysicsEngine {
       return { intensity: 0, newState: false }
     }
     
-    // 🎚️ WAVE 275: Movers = SOLO TREBLE (empujado 1.4x porque agudos tienen menos energía natural)
-    const audioSignal = rawTreble * 1.4
+    // 🔊 WAVE 282: VITAMINAS PARA MOVERS - Compensar compresión MP3/YouTube/Spotify
+    // El treble es la banda más afectada por la compresión de audio
+    // 1.4× era insuficiente, 2.2× da presencia real a voces y melodías
+    const TREBLE_VITAMIN = 2.2  // Was 1.4 - ahora compensamos compresión agresiva
+    const audioSignal = rawTreble * TREBLE_VITAMIN
     
     // 🔧 WAVE 280: Get previous intensity for smoothing
     const prevIntensity = this.moverIntensityBuffer.get(moverKey) ?? 0

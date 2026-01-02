@@ -373,6 +373,20 @@ export interface GenerationOptions {
    * - Idle (6500K) → Fuerza 0 (neutro)
    */
   atmosphericTemp?: number;  // 2000-10000K
+
+  /**
+   * 🌬️ WAVE 284: GRAVITATIONAL RELAXATION
+   * 
+   * Fuerza máxima de arrastre térmico (0.0 - 1.0).
+   * Controla cuánto la temperatura atmosférica arrastra los colores hacia el polo.
+   * 
+   * - 0.35: Gravedad agresiva (colapsa diversidad hacia Cyan/Azul)
+   * - 0.15: Gravedad suave (preserva Verdes, Magentas, Violetas)
+   * - 0.0: Sin gravedad (colores puros del algoritmo musical)
+   * 
+   * @default 0.35 (legacy)
+   */
+  thermalGravityStrength?: number;
   
   /**
    * Configuración de transiciones de color.
@@ -700,6 +714,7 @@ export function paletteToRgb(palette: SelenePalette): {
  * 
  * @param hue - Hue original (0-360)
  * @param atmosphericTemp - Temperatura atmosférica en Kelvin (2000-10000)
+ * @param maxForce - Fuerza máxima de arrastre (0.0-1.0). Default: 0.35
  * @returns Hue modificado por la gravedad térmica
  * 
  * @example
@@ -709,25 +724,20 @@ export function paletteToRgb(palette: SelenePalette): {
  * // Latino (3000K) arrastra azul 240° hacia magenta/rojo
  * applyThermalGravity(240, 3000) → ~160° (Cian/Turquesa, menos frío)
  */
-export function applyThermalGravity(hue: number, atmosphericTemp?: number): number {
+export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxForce?: number): number {
   // Sin temperatura definida = sin gravedad
   if (!atmosphericTemp) return hue;
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🌡️ WAVE 162.5: THERMAL GRAVITY AMPLIFICADA
+  // 🌬️ WAVE 284: GRAVITATIONAL RELAXATION - maxForce ahora es configurable
   // ═══════════════════════════════════════════════════════════════════════
-  // PROBLEMA WAVE 162: Force=2% para 4800K era INVISIBLE.
-  // La zona neutral 5000K-7000K dejaba a Latino (4800K) sin gravedad útil.
+  // WAVE 284: El problema era que 35% de gravedad colapsaba diversidad
+  // Verdes (135°) se convertían en Cyan (172°) - ¡37° de migración!
   //
-  // SOLUCIÓN: Zona neutral más ESTRECHA + punto de anclaje móvil
-  // - Zona neutral: 5800K-6200K (daylight puro)
-  // - 4800K ahora está 1000K por debajo → gravedad real
-  // - MAX_THERMAL_FORCE: 0.35 para que 20% sea alcanzable
-  //
-  // FÓRMULA NUEVA (zona neutral estrecha):
-  // - rawForce = distancia desde zona neutral / 2800K (escala más corta)
-  // - 4800K: (5800-4800)/2800 = 0.357 → 0.357 * 0.35 = 12.5% (antes era 2%)
-  // - 3000K: (5800-3000)/2800 = 1.0 → 35% máximo
+  // SOLUCIÓN: Cada Vibe puede definir su thermalGravityStrength
+  // - Techno: 0.15 (suave, preserva Verdes/Magentas/Violetas)
+  // - Latino: 0.35 (agresivo, arrastra hacia el Oro)
   // ═══════════════════════════════════════════════════════════════════════
   
   // Zona neutral más estrecha: daylight verdadero (5800K-6200K)
@@ -735,8 +745,8 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
     return hue;
   }
   
-  // Constante: Máxima fuerza de arrastre
-  const MAX_THERMAL_FORCE = 0.35;
+  // 🌬️ WAVE 284: Fuerza máxima configurable (default 0.35 para legacy)
+  const MAX_THERMAL_FORCE = maxForce ?? 0.35;
   
   // Definir polo de atracción
   let pole: number;
@@ -766,13 +776,20 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number): numb
   
   // Aplicar vector de arrastre (ahora moderado)
   const newHue = hue + (delta * force);
+  const resultHue = normalizeHue(newHue);
+  
+  // 🌬️ WAVE 284: DIVERSITY CHECK - Verificar que Verdes sobreviven
+  // Si el input es Verde (90-150) y el resultado también, la gravedad está relajada correctamente
+  if (hue > 90 && hue < 150) {
+    console.log(`[Gravity Check] 🟢 Green Input: ${hue.toFixed(0)}° → Result: ${resultHue.toFixed(0)}° | Force=${(force * 100).toFixed(0)}%`);
+  }
   
   // 🔌 WAVE 150: DEBUG LOG (Chivato) - Ver si el aire acondicionado está encendido
   if (Math.random() < 0.01) {  // Solo 1% de frames para no saturar consola
-    console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${normalizeHue(newHue).toFixed(0)}°`);
+    console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${resultHue.toFixed(0)}°`);
   }
   
-  return normalizeHue(newHue);
+  return resultHue;
 }
 
 // ============================================================
@@ -991,7 +1008,8 @@ export class SeleneColorEngine {
     // Techno (9500K) → arrastra hacia Azul Rey (240°)
     // Latino (3000K) → arrastra hacia Oro (40°)
     // Idle (6500K) → sin gravedad (neutro)
-    finalHue = applyThermalGravity(finalHue, options?.atmosphericTemp);
+    // 🌬️ WAVE 284: Ahora usa thermalGravityStrength configurable
+    finalHue = applyThermalGravity(finalHue, options?.atmosphericTemp, options?.thermalGravityStrength);
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🏛️ WAVE 144: CONSTITUTIONAL HUE ENFORCEMENT
@@ -1691,16 +1709,19 @@ export class SeleneColorEngine {
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🌡️ WAVE 150.5: THERMAL GRAVITY PARA TODOS
+    // 🌬️ WAVE 284: GRAVITATIONAL RELAXATION - Fuerza configurable
     // ═══════════════════════════════════════════════════════════════════════
     // PROBLEMA: applyThermalGravity solo se aplicaba al PRIMARY (finalHue).
     // Los colores derivados (secondary, ambient, accent) nunca sentían el frío.
     //
     // SOLUCIÓN: Aplicar Thermal Gravity a TODOS los colores de la paleta.
+    // WAVE 284: Ahora con thermalGravityStrength configurable por vibe.
     // ═══════════════════════════════════════════════════════════════════════
     if (options?.atmosphericTemp) {
-      secondary.h = applyThermalGravity(secondary.h, options.atmosphericTemp);
-      ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp);
-      accent.h = applyThermalGravity(accent.h, options.atmosphericTemp);
+      const gravityStrength = options.thermalGravityStrength;
+      secondary.h = applyThermalGravity(secondary.h, options.atmosphericTemp, gravityStrength);
+      ambient.h = applyThermalGravity(ambient.h, options.atmosphericTemp, gravityStrength);
+      accent.h = applyThermalGravity(accent.h, options.atmosphericTemp, gravityStrength);
     }
     // ═══════════════════════════════════════════════════════════════════════
     

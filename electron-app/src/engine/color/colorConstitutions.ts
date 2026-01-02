@@ -56,7 +56,14 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   // Los verdes (85-110°) serán arrastrados hacia cyan (180°)
   atmosphericTemp: 9500,
   
-  // � WAVE 151.2: OPEN BORDERS - Solo prohibir el núcleo mostaza/naranja
+  // 🌬️ WAVE 284: GRAVITATIONAL RELAXATION
+  // ANTES: 0.35 (35%) - Muy agresivo, colapsaba diversidad cromática
+  //        Verde 135° → Cyan 172° (¡37° de migración en un frame!)
+  // AHORA: 0.15 (15%) - Gravedad suave, preserva Verdes/Magentas/Violetas
+  //        Verde 135° → Verde-Cian 142° (solo 7° de enfriamiento)
+  thermalGravityStrength: 0.15,
+  
+  // 🌐 WAVE 151.2: OPEN BORDERS - Solo prohibir el núcleo mostaza/naranja
   // ANTES: [[0, 80], [330, 360]] - Muy restrictivo, mataba magentas
   // AHORA: [[25, 80]] - Solo el amarillo/naranja feo
   // Los rojos (0-20°) PASAN → se enfrían a Magenta/Rosa

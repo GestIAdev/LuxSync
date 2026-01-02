@@ -147,10 +147,10 @@ export class PhysicsEngine {
     const prevIntensity = this.moverIntensityBuffer.get(moverKey) ?? 0
     const stabilityFrames = this.moverStabilityCounter.get(moverKey) ?? 0
     
-    // Thresholds with HYSTERESIS MARGIN
-    const ACTIVATION_THRESHOLD = 0.10
-    const DEACTIVATION_THRESHOLD = ACTIVATION_THRESHOLD - this.MOVER_HYSTERESIS_MARGIN  // 0.10 - 0.12 = -0.02, clamp to 0.02
-    const effectiveDeactivation = Math.max(0.02, DEACTIVATION_THRESHOLD)  // Never go below 0.02
+    // 🗡️ WAVE 281: THRESHOLDS AGRESIVOS PARA TECHNO - Solo picos significativos
+    const ACTIVATION_THRESHOLD = 0.15   // Was 0.10 - ahora solo caja y picos fuertes
+    const DEACTIVATION_THRESHOLD = ACTIVATION_THRESHOLD - this.MOVER_HYSTERESIS_MARGIN
+    const effectiveDeactivation = Math.max(0.08, DEACTIVATION_THRESHOLD)  // Minimum 8% para apagar
     
     let rawTarget = 0
     let shouldBeOn = moverState  // Start with previous state
@@ -159,13 +159,12 @@ export class PhysicsEngine {
     if (audioSignal > ACTIVATION_THRESHOLD) {
       // Above activation threshold - definitely ON
       shouldBeOn = true
-      // Map signal to intensity: 0.10 → 0.2 (minimum visible), 1.0 → 1.0 (max)
-      rawTarget = 0.2 + (audioSignal - ACTIVATION_THRESHOLD) * 0.8 / (1 - ACTIVATION_THRESHOLD)
+      // 🗡️ WAVE 281: Map más agresivo - 0.15 → 0.25 (mínimo visible), 1.0 → 1.0
+      rawTarget = 0.25 + (audioSignal - ACTIVATION_THRESHOLD) * 0.75 / (1 - ACTIVATION_THRESHOLD)
     } else if (audioSignal > effectiveDeactivation && moverState) {
-      // 🔧 WAVE 280.5: IN THE HYSTERESIS ZONE - decay más agresivo para techno
+      // �️ WAVE 281: Decay BRUTAL - 0.4× para máximo contraste
       shouldBeOn = true
-      // Faster decay: 0.6× for punchy contrast (was 0.85)
-      rawTarget = prevIntensity * 0.6
+      rawTarget = prevIntensity * 0.4
     } else {
       // Below deactivation threshold - should turn off
       shouldBeOn = false
@@ -197,15 +196,17 @@ export class PhysicsEngine {
     // D. 🔧 WAVE 280: SMOOTH TRANSITIONS - No instant jumps
     let smoothedIntensity: number
     if (rawTarget > prevIntensity) {
-      // Attack: 70% instant response (fast but not jarring)
-      smoothedIntensity = prevIntensity + (rawTarget - prevIntensity) * 0.7
+      // 🗡️ WAVE 281: Attack más instantáneo - 85% respuesta (era 70%)
+      smoothedIntensity = prevIntensity + (rawTarget - prevIntensity) * 0.85
     } else {
-      // Decay: Use smoothing constant (liquid falloff)
+      // Decay: Use smoothing constant
       smoothedIntensity = prevIntensity * this.MOVER_INTENSITY_SMOOTHING + rawTarget * (1 - this.MOVER_INTENSITY_SMOOTHING)
     }
     
-    // E. Noise gate and clamp
-    const cleanedIntensity = smoothedIntensity < 0.05 ? 0 : Math.min(1, smoothedIntensity)
+    // E. 🗡️ WAVE 281: NOISE GATE ALTO - Si no es visible, mejor apagar
+    // Movers al 15% no se ven en la vida real, solo desperdician energía
+    const VISIBILITY_FLOOR = 0.18  // Was 0.05 - ahora 18% mínimo
+    const cleanedIntensity = smoothedIntensity < VISIBILITY_FLOOR ? 0 : Math.min(1, smoothedIntensity)
     
     // F. Update buffer for next frame
     this.moverIntensityBuffer.set(moverKey, cleanedIntensity)

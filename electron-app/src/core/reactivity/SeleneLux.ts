@@ -125,6 +125,11 @@ export class SeleneLux {
   private lastStrobeActive = false;
   private lastForceMovement = false;
   
+  // 🆕 WAVE 288.1: Throttling de logs para latino
+  private lastLatinoLogTime = 0;           // Timestamp último log
+  private lastLatinoFlavor: string | null = null;  // Último flavor loguado
+  private readonly LOG_THROTTLE_MS = 2000;  // 2 segundos mínimo entre logs
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
     
@@ -268,8 +273,17 @@ export class SeleneLux {
       physicsApplied = 'latino';
       debugInfo = { flavor: result.flavor, ...result.debugInfo };
       
+      // 🆕 WAVE 288.1: Log THROTTLED - Solo cuando cambia flavor O cada 2s
       if (this.debug && isSolarFlare) {
-        console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
+        const now = Date.now();
+        const timeSinceLastLog = now - this.lastLatinoLogTime;
+        const flavorChanged = result.flavor !== this.lastLatinoFlavor;
+        
+        if (flavorChanged || timeSinceLastLog >= this.LOG_THROTTLE_MS) {
+          console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
+          this.lastLatinoLogTime = now;
+          this.lastLatinoFlavor = result.flavor;
+        }
       }
       
     } else if (

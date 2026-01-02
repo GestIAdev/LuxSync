@@ -63,25 +63,32 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
   //        Verde 135° → Verde-Cian 142° (solo 7° de enfriamiento)
   thermalGravityStrength: 0.15,
   
-  // 🌐 WAVE 151.2: OPEN BORDERS - Solo prohibir el núcleo mostaza/naranja
-  // ANTES: [[0, 80], [330, 360]] - Muy restrictivo, mataba magentas
-  // AHORA: [[25, 80]] - Solo el amarillo/naranja feo
-  // Los rojos (0-20°) PASAN → se enfrían a Magenta/Rosa
-  // Los rosas (330-360°) PASAN → ya son fríos
+  // 🌐 WAVE 285: Simplificado - El hueRemapping hace el trabajo pesado
+  // forbiddenHueRanges ya no es necesario tan amplio porque hueRemapping
+  // captura todo 0-110° y lo redirige a colores fríos
+  // Mantenemos [25, 80] como backup por si algo escapa
   forbiddenHueRanges: [[25, 80]],
   
-  // 🌈 WAVE 151.2: Espectro ampliado - confiar en Thermal Gravity
-  // ANTES: [[110, 302]] - Demasiado restrictivo
-  // AHORA: Permitir todo EXCEPTO el naranja/amarillo prohibido
-  // La Gravedad Térmica enfriará naturalmente los tonos cálidos
-  allowedHueRanges: [[0, 24], [81, 360]],
+  // 🌈 WAVE 285: Ahora permitimos todo porque hueRemapping sanitiza los cálidos
+  // Si algo escapa del remapping, forbiddenHueRanges + elasticRotation lo atrapa
+  allowedHueRanges: [[0, 360]],  // Todo el espectro (remapping filtra los malos)
   
   // Elastic Rotation de 15° para escapar zonas prohibidas
   elasticRotation: 15,
   
-  // 🗺️ Mapeo forzado: Verde césped (90-110) → Verde Láser (130)
-  // Nota: Con Open Borders, esto es un refinamiento adicional
-  hueRemapping: [{ from: 90, to: 110, target: 130 }],
+  // 🗺️ WAVE 285: ESCAPE VELOCITY - Redirigir TODOS los colores cálidos
+  // PROBLEMA WAVE 284: D major (60°) + gravity → 20° (fuera de forbiddenHueRanges)
+  //                    El naranja escapaba porque 20° < 25° (límite inferior)
+  // SOLUCIÓN: Mapear TODO el rango cálido (0-85°) hacia colores fríos aceptables
+  //
+  // 0-24° (Rojos/Naranjas-rojos) → 300° (Magenta) - Aurora boreal
+  // 25-85° (Naranjas/Amarillos) → 180° (Cyan) - Láser frío
+  // 90-110° (Verde césped) → 130° (Verde Láser) - Ya existía
+  hueRemapping: [
+    { from: 0, to: 24, target: 300 },    // Rojos → Magenta (auroras boreales OK)
+    { from: 25, to: 85, target: 180 },   // Naranjas/Amarillos → Cyan
+    { from: 86, to: 110, target: 130 },  // Verde césped → Verde Láser
+  ],
   
   // Saturación neón obligatoria
   saturationRange: [90, 100],

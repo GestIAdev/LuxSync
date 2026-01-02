@@ -774,6 +774,23 @@ export function applyThermalGravity(hue: number, atmosphericTemp?: number, maxFo
   if (delta > 180) delta -= 360;
   if (delta < -180) delta += 360;
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 285: ESCAPE VELOCITY - Forzar dirección de escape para zona cálida
+  // ═══════════════════════════════════════════════════════════════════════
+  // PROBLEMA: Hue 45° con polo 240° tiene camino corto HACIA ATRÁS (45→0→360→240)
+  // Esto EMPUJA el color hacia más naranja (45° → 20°) en vez de hacia cyan.
+  //
+  // SOLUCIÓN: Si el hue está en zona naranja (0-85°) y el polo es frío (240°),
+  // forzar la dirección HACIA ADELANTE para escapar hacia cyan/verde.
+  // Esto significa usar delta positivo (ir por 45→90→180→240).
+  // ═══════════════════════════════════════════════════════════════════════
+  if (pole === 240 && hue >= 0 && hue <= 85) {
+    // Forzar escape hacia adelante: delta debe ser positivo
+    // Distancia "hacia adelante" = 240 - hue (siempre positivo)
+    delta = Math.abs(pole - hue);  // Ir hacia cyan/verde/azul
+    // Nota: Con hue=45, delta=195 → newHue = 45 + 195*0.15 = 74° (verde-amarillo, escapando)
+  }
+  
   // Aplicar vector de arrastre (ahora moderado)
   const newHue = hue + (delta * force);
   const resultHue = normalizeHue(newHue);

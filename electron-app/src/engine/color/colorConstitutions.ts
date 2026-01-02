@@ -134,64 +134,67 @@ export const TECHNO_CONSTITUTION: GenerationOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌴 CONSTITUCIÓN FIESTA-LATINA: "3D LIGHT" (WAVE 161)
+// 🌴 CONSTITUCIÓN FIESTA-LATINA: "SANGRE LATINA" (WAVE 288)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * WAVE 161: STRATEGY ASSAULT & 3D LIGHT
+ * WAVE 288: SANGRE LATINA - INVERSIÓN TÉRMICA
  * 
- * "Queremos música en 3D como en techno" - contraste dramático con oscuridad.
+ * FILOSOFÍA: "La luz QUEMA y RESPIRA, no corta."
  * 
- * ZONA SOLAR: 0° - 60° (Rojo → Naranja → Amarillo Oro)
- * ZONA SELVA: 120° - 200° (Verde → Turquesa → Cyan)
- * ZONA NEON:  260° - 360° (Magenta → Rosa → Rojo)
- * ZONA PROHIBIDA: 210° - 240° (Solo azul triste/metálico)
+ * INVERSIÓN TÉRMICA 2500K:
+ * - Gravedad MÁXIMA hacia naranja/oro (polo cálido ~40°)
+ * - Como un bar de salsa a las 3AM: velas, fuego, calor
+ * - PROHIBIDO: Cyanes y azules tecnológicos [180-260°]
+ * 
+ * ZONA SOLAR: 0° - 80° (Rojo → Naranja → Oro → Ámbar)
+ * ZONA MAGENTA: 300° - 360° (Magentas cálidos → Rojo)
+ * ZONA PROHIBIDA: 180° - 260° (Todo cyan/azul frío)
  */
 export const LATINO_CONSTITUTION: GenerationOptions = {
   // Syncopation decide la estrategia (no forzada)
   forceStrategy: undefined,
   
-  // � WAVE 159: ECOLOGICAL FIX - Clima Neutro
-  // 5000K = Gravedad CERO - El algoritmo elige colores libremente
-  // Antes: 3000K tiraba todo hacia el naranja (40°)
-  atmosphericTemp: 4800,  // WAVE 161: Ricitos de Oro - Clima Neutro
+  // 🔥 WAVE 288: INVERSIÓN TÉRMICA - Gravedad MÁXIMA al calor
+  // 2500K = Luz de vela/fuego. TODO se calienta hacia naranja/oro.
+  // El polo cálido es ~40° (oro) - la gravedad térmica arrastra ahí
+  atmosphericTemp: 2500,
   
-  // Zona prohibida: azules metálicos corporativos
-  // 🌿 WAVE 160: Eliminado - todo permitido
-// 🎨 WAVE 160.5: Paleta Tropical + Gravedad Térmica
-  // Gravedad 3500K corrige colores que escapen hacia marrones
-  // 🚫 WAVE 161: Solo el azul triste está prohibido
-  forbiddenHueRanges: [[210, 240]],  // WAVE 161: Zona mínima prohibida
+  // 🚫 WAVE 288: ZONA PROHIBIDA AMPLIADA
+  // En la fiesta latina NO hay lugar para azules tecnológicos fríos
+  forbiddenHueRanges: [[180, 260]],  // Cyanes + Azules = PROHIBIDO
 
-  // 🌈 WAVE 161: Espectro ampliado para diversidad cromática
-  allowedHueRanges: [[0, 60], [120, 200], [260, 360]],  // WAVE 161: Más cyans y magentas
-  elasticRotation: 20,  // WAVE 161: Aumentado para escapar analogous
+  // 🌈 WAVE 288: Solo colores CÁLIDOS permitidos
+  // Zona Solar (0-80°) + Zona Magenta (300-360°)
+  allowedHueRanges: [[0, 80], [300, 360]],
+  elasticRotation: 15,  // Rotación moderada
   
-  // Saturación vibrante
-  saturationRange: [75, 100],
+  // 💪 WAVE 288: Saturación ALTA para evitar mostazas/marrones
+  // Si un amarillo tiene baja saturación, se ve SUCIO
+  saturationRange: [85, 100],
   
-  // Luminosidad brillante
-  lightnessRange: [45, 65],
+  // ☀️ WAVE 288: Luminosidad elevada - La fiesta BRILLA
+  lightnessRange: [50, 70],
   
-  // 🌿 WAVE 160: MudGuard desactivado - restringía colores
-  // 🛡️ WAVE 160.5: MudGuard reactivado (relajado)
+  // 🛡️ WAVE 288: SAFETY RULES para amarillos
+  // Si el hue está en zona amarilla (40-65°), forzar alta saturación
   mudGuard: {
     enabled: true,
-    swampZone: [50, 90],
-    minLightness: 50,
-    minSaturation: 80,
+    swampZone: [40, 65],    // Zona de peligro: amarillos que pueden ser mostaza
+    minLightness: 55,       // Luminosidad mínima en esta zona
+    minSaturation: 90,      // Saturación AGRESIVA para evitar mostazas
   },
   
-  // Tropical Mirror: Ambient = Secondary + 180°
-  tropicalMirror: true,
+  // 🔥 WAVE 288: Tropical Mirror DESACTIVADO
+  // Con inversión térmica, el mirror podría generar cyanes prohibidos
+  tropicalMirror: false,
   
-  // 🌿 WAVE 160: Accent quaternary en vez de Solar Flare blanco
-  // Antes: Solar Flare con S=10, L=95 = blanco lavado
-  accentBehavior: 'quaternary',  // Colores variados en accent
-  solarFlareAccent: { h: 40, s: 80, l: 60 },  // Oro vibrante si se usa
+  // 💥 WAVE 288: Accent = Solar Flare puro (oro/miel)
+  accentBehavior: 'solar-flare',
+  solarFlareAccent: { h: 35, s: 100, l: 55 },  // ORO PURO
   
-  // 🌑 WAVE 161: 3D LIGHT - Dimming AGRESIVO para contraste
+  // 🌑 WAVE 288: Dimming con floor más alto para que "respire"
   dimmingConfig: {
-    floor: 0.05,   // WAVE 161: Casi blackout OK (como Techno)
+    floor: 0.08,   // Nunca blackout total - siempre algo de brasa
     ceiling: 1.0,
   },
 };

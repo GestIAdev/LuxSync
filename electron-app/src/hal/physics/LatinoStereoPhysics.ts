@@ -1,19 +1,20 @@
 /**
- * 🌴 WAVE 165: LATINO STEREO PHYSICS ("Clean Honey & Heavy Trigger")
+ *  WAVE 288: SANGRE LATINA - "Unified Solar Physics"
  * ============================================================================
- * Lógica afinada para Cumbia y Reggaeton.
  * 
- * CAMBIOS WAVE 165:
- * 1. 🧹 LIMPIEZA: Eliminado código muerto y comentarios legacy.
- * 2. 🍯 COLOR MIEL REAL: L=45% (antes 50%). H=38 (Ámbar).
- * 3. 🔫 HEAVY TRIGGER: Solo dispara Solar Flare si Bass > 0.80 y hay impacto.
+ * FILOSOFIA: "UN SISTEMA QUE SIEMPRE FUNCIONA, CON SABORES OPCIONALES"
  * 
- * WAVE 273: ELEMENTAL INJECTION
- * El elemento zodiacal (Fuego/Tierra/Aire/Agua) modula thresholds y brightness.
+ * La fisica unificada se basa en SOLAR FLARE como efecto principal:
+ * - Ataque rapido (respuesta inmediata al bass)
+ * - Decay lento (la luz "quema" y "respira")
+ * - Funciona PERFECTO para todo: reggaeton, cumbia, salsa
  * 
- * FILOSOFÍA:
- * - Si es CUMBIA: Neón y Movimiento (Nunca blanco).
- * - Si es REGGAETON/SALSA: Golpes de Miel (Solar Flare) solo en impactos masivos.
+ * DETECCION SIMPLE (3 lineas):
+ * - Reggaeton: Mucho bass + BPM lento (80-105) o doble (155-200)
+ * - Tropical: Treble > Bass * 1.2 (Guiro/Maracas dominan)
+ * - Default: Unified (siempre se ve bien)
+ * 
+ * SI LA DETECCION FALLA: El modo Unified sigue viendose increible.
  * ============================================================================
  */
 
@@ -26,8 +27,15 @@ export interface HSL { h: number; s: number; l: number; }
 
 // Interfaces
 export interface LatinoPalette { primary: RGB; secondary: RGB; ambient: RGB; accent: RGB; }
-export interface LatinoAudioMetrics { normalizedBass: number; normalizedEnergy: number; normalizedHigh?: number; previousEnergy?: number; deltaTime?: number; }
-export type LatinoSubGenre = 'cumbia' | 'reggaeton' | 'salsa' | 'generic';
+export interface LatinoAudioMetrics { 
+  normalizedBass: number; 
+  normalizedMid?: number;
+  normalizedEnergy: number; 
+  normalizedHigh?: number; 
+  previousEnergy?: number; 
+  deltaTime?: number; 
+}
+export type LatinoFlavor = 'reggaeton' | 'tropical' | 'fiesta-standard';
 
 export interface LatinoPhysicsResult {
   palette: LatinoPalette;
@@ -35,173 +43,47 @@ export interface LatinoPhysicsResult {
   isMachineGunBlackout: boolean;
   dimmerOverride: number | null;
   forceMovement: boolean;
-  subGenre: LatinoSubGenre;
+  flavor: LatinoFlavor;
+  backParIntensity: number;
+  moverIntensity: number;
+  frontParIntensity: number;
   debugInfo: any;
 }
 
 /**
- * LatinoStereoPhysics - Módulo de Reactividad para Fiesta Latina
- * 
- * Esta clase encapsula la lógica de detección de efectos tropicales:
- * - SOLAR FLARE: Destello dorado en kicks fuertes
- * - MACHINE GUN: Blackout instantáneo en cortes de reggaeton
+ * LatinoStereoPhysics - WAVE 288: "Sangre Latina"
+ * FISICA UNIFICADA con sabores opcionales.
  */
 export class LatinoStereoPhysics {
-  // =========================================================================
-  // 🔒 CONFIGURACIÓN INMUTABLE (Calibrada para Reggaeton/Cumbia/Salsa)
-  // =========================================================================
-  
-  /**
-   * 🔧 WAVE 163: GOLDEN DISCIPLINE - GATILLO CARO
-   * Umbral de disparo para SOLAR FLARE (Bombo fuerte).
-   * Cuando el bass supera este valor Y hay delta positivo, disparamos destello dorado.
-   * @calibration Subido a 0.75 para que solo GOLPES MAESTROS activen el efecto
-   * El "chunta-chunta" normal se queda en color, solo impactos épicos = oro
-   */
-  private static readonly KICK_THRESHOLD = 0.80;  // �️ WAVE 163: Subido de 0.60
-  
-  /**
-   * 🌿 WAVE 161: Delta Trigger - Requiere SUBIDA brusca de bass
-   * Solo dispara Solar Flare si el bass SUBIÓ este porcentaje vs frame anterior
-   * Subido a 0.10 para requerir impactos más claros
-   */
-  private static readonly BASS_DELTA_THRESHOLD = 0.15;  // 🌿 WAVE 161: Subido de 0.05
-  
-  /**
-   * Incremento de luminosidad para Solar Flare.
-   * El accent sube a 95% L en el flare.
-   */
-  private static readonly FLARE_LIGHTNESS = 95;
-  
-  /**
-   * Reducción de saturación para Solar Flare.
-   * Para que parezca "luz blanca-dorada" reducimos saturación.
-   */
-  private static readonly FLARE_SATURATION_REDUCTION = 10;
-  
-  /**
-   * Umbral de caída de energía para detectar "Negative Drop".
-   * Si la energía cae más de este porcentaje, es un corte.
-   * 🔧 WAVE 155.5: Bajado de 0.6 a 0.4 para pillar silencios de cumbia
-   */
-  private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;  // 40% de caída
-  
-  /**
-   * Ventana de tiempo máxima para detectar Negative Drop (ms).
-   * El corte debe ser RÁPIDO para ser dramático.
-   */
+  // CONFIGURACI�N INMUTABLE - WAVE 288
+  private static readonly SOLAR_FLARE_COLOR: HSL = { h: 35, s: 100, l: 50 };
+  private static readonly KICK_THRESHOLD = 0.65;
+  private static readonly BASS_DELTA_THRESHOLD = 0.12;
+  private static readonly DECAY_RATE = 0.08;
+  private static readonly MOVER_LERP = 0.05;
+  private static readonly FRONT_PAR_BASE = 0.65;
+  private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
   private static readonly NEGATIVE_DROP_WINDOW_MS = 100;
-  
-  /**
-   * Duración del blackout en frames (aproximado).
-   * El reggaeton usa cortes muy cortos (~2-4 frames @ 60fps).
-   */
   private static readonly BLACKOUT_FRAMES = 3;
-  
-  /**
-   * 🌞 WAVE 163: ORO PROFUNDO - Miel Azteca
-   * 
-   * HISTORIA DE EVOLUCIÓN:
-   * - ANTES: HSL(40, 10%, 95%) → Blanco sucio sin personalidad
-   * - WAVE 152: HSL(45, 100%, 80%) → Demasiado brillante, parece blanco
-   * - WAVE 162.5: HSL(40, 100%, 65%) → Mejor, pero aún blanquea
-   * - WAVE 163: HSL(42, 100%, 50%) → ORO PURO/MIEL, IMPOSIBLE ver blanco
-   * 
-   * Con L=50% garantizamos color MIEL/ORO incluso con dimmer al 100%.
-   * Es como la diferencia entre una bombilla halógena (blanca) y una vela (dorada).
-   */
-  private static readonly SOLAR_FLARE_COLOR: HSL = {
-    h: 38,    // Oro cálido (entre amarillo y naranja)
-    s: 100,   // Saturación TOTAL
-    l: 45,    // 🏛️ WAVE 163: Bajado a 50% - Oro Puro, nunca blanco
-  };
 
-  // =========================================================================
-  // 🎵 WAVE 152.5: CONFIGURACIÓN DE SUBGÉNEROS
-  // =========================================================================
-  
-  /**
-   * BPM para detección de subgéneros.
-   * CUMBIA: > 90 BPM, síncopa característica
-   * REGGAETON: 85-100 BPM, dembow constante
-   * SALSA: 140-180 BPM, clave compleja
-   */
-  private static readonly BPM_CUMBIA_MIN = 85;
-  private static readonly BPM_REGGAETON_MAX = 100;
-  private static readonly BPM_SALSA_MIN = 130;
-  
-  /**
-   * 🌈 NEON INJECTION COLORS (Cumbia Anti-Palidez)
-   * Para romper monotonía en Cumbia cuando no hay Solar Flare
-   * 🔥 WAVE 156: Añadido Naranja Neón para PRIMARY
-   */
-  private static readonly NEON_MAGENTA: HSL = { h: 300, s: 100, l: 65 };
-  private static readonly NEON_CYAN: HSL = { h: 180, s: 100, l: 60 };
-  private static readonly NEON_LIME: HSL = { h: 120, s: 100, l: 55 };
-  private static readonly NEON_ORANGE: HSL = { h: 30, s: 100, l: 55 };  // 🔥 Naranja Neón
-  private static readonly NEON_YELLOW: HSL = { h: 55, s: 100, l: 55 };  // 💛 Amarillo Neón
-
-  /**
-   * 🎯 WAVE 161.5: NEON PUMP COOLDOWN
-   * Mínimo de frames entre cambios de color para evitar epilepsia.
-   * @ 60fps: 8 frames = ~133ms entre cambios
-   */
-  private static readonly NEON_PUMP_COOLDOWN_FRAMES = 8;
-
-  // =========================================================================
-  // 📊 ESTADO INTERNO
-  // =========================================================================
-  
-  /** Contador de frames en blackout (para Machine Gun) */
+  // ESTADO INTERNO
   private blackoutFramesRemaining = 0;
-  
-  /** Última energía conocida (para detectar caídas) */
   private lastEnergy = 0;
-  
-  /** Timestamp del último frame */
-  private lastFrameTime = Date.now();
-  
-  /** 🔧 WAVE 152.5: Contador de beats para Neon Injection */
-  private beatCounter = 0;
-  
-  /** 🔧 WAVE 152.5: Último BPM detectado */
-  private lastBpm = 0;
-  
-  /** 🌿 WAVE 158: Último bass conocido (para Delta Trigger) */
   private lastBass = 0;
-  
-  /** 🎯 WAVE 161.5: Frames desde el último cambio de NEON PUMP */
-  private framesSinceNeonChange = 0;
-  
-  /** 🎯 WAVE 161.5: Último índice de color usado en NEON PUMP */
-  private lastNeonColorIndex = 0;
-  
-  // =========================================================================
-  // 🔧 MÉTODOS PÚBLICOS
-  // =========================================================================
-  
-  /**
-   * Aplica la física Latino a una paleta de colores.
-   * 
-   * 🔧 WAVE 152.5: Ahora acepta BPM para detección de subgénero
-   * 🌟 WAVE 273: Acepta modificadores elementales para modulación zodiacal
-   * 
-   * @param palette - Paleta de colores actual (RGB)
-   * @param metrics - Métricas de audio del frame actual
-   * @param bpm - BPM detectado (opcional, para subgénero)
-   * @param mods - Modificadores elementales (Fuego/Tierra/Aire/Agua)
-   * @returns Paleta modificada con efectos aplicados
-   */
+  private lastFrameTime = Date.now();
+  private lastBpm = 0;
+  private currentFlareIntensity = 0;
+  private currentMoverIntensity = 0;
+  private currentBackParIntensity = 0;
+
   public apply(
     palette: LatinoPalette,
     metrics: LatinoAudioMetrics,
     bpm?: number,
     mods?: ElementalModifiers
   ): LatinoPhysicsResult {
-    // WAVE 273: Extraer multiplicadores (default = 1.0)
     const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
     const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
-
     const now = Date.now();
     const deltaTime = metrics.deltaTime ?? (now - this.lastFrameTime);
     this.lastFrameTime = now;
@@ -209,16 +91,11 @@ export class LatinoStereoPhysics {
     const previousEnergy = metrics.previousEnergy ?? this.lastEnergy;
     const currentEnergy = metrics.normalizedEnergy;
     const detectedBpm = bpm ?? this.lastBpm;
-    
     if (bpm) this.lastBpm = bpm;
+
+    // DETECCION HEURISTICA SIMPLE
+    const flavor = this.detectFlavor(detectedBpm, metrics);
     
-    // Calcular delta de energía
-    const energyDelta = previousEnergy - currentEnergy;
-    
-    // 🎵 WAVE 152.5: Detectar subgénero
-    const subGenre = this.detectSubGenre(detectedBpm, metrics);
-    
-    // Crear copia de la paleta para modificar
     const resultPalette: LatinoPalette = {
       primary: { ...palette.primary },
       secondary: { ...palette.secondary },
@@ -226,197 +103,85 @@ export class LatinoStereoPhysics {
       accent: { ...palette.accent },
     };
     
-    // Inicializar flags
     let isSolarFlare = false;
     let isMachineGunBlackout = false;
     let dimmerOverride: number | null = null;
-    let flareIntensity = 0;
-    let neonInjected = false;
-    let forceMovement = false;
+    const forceMovement = true;
     
-    // =====================================================================
-    // 1️⃣ MACHINE GUN DETECTION (Negative Drop → Blackout)
-    // =====================================================================
-    // Detectar caída brusca de energía (típico corte de reggaeton)
-    // 🔧 WAVE 152.5: En CUMBIA desactivamos Machine Gun (son más suaves)
-    const isNegativeDrop = subGenre !== 'cumbia' && (
+    const bass = metrics.normalizedBass;
+    const mid = metrics.normalizedMid ?? metrics.normalizedEnergy;
+    const treble = metrics.normalizedHigh ?? 0;
+    const bassDelta = bass - this.lastBass;
+    const energyDelta = previousEnergy - currentEnergy;
+    
+    // MACHINE GUN (Solo Reggaeton)
+    const isNegativeDrop = flavor === 'reggaeton' && (
       energyDelta >= LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD &&
       deltaTime <= LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS &&
-      previousEnergy > 0.6  // Solo si veníamos de energía alta
+      previousEnergy > 0.6
     );
     
     if (isNegativeDrop) {
-      // ¡METRALLETA! Iniciar blackout
       this.blackoutFramesRemaining = LatinoStereoPhysics.BLACKOUT_FRAMES;
     }
     
-    // Si estamos en blackout, aplicar dimmer = 0
     if (this.blackoutFramesRemaining > 0) {
       isMachineGunBlackout = true;
-      dimmerOverride = 0;  // BLACKOUT TOTAL
+      dimmerOverride = 0;
       this.blackoutFramesRemaining--;
     }
     
-    // =====================================================================
-    // 2️⃣ WAVE 156: CUMBIA MODE AGRESIVO (Rainbow RKT)
-    // =====================================================================
-    // 🚫 PROHIBIDO EL SOL EN LA CUMBIA - El bajo saturado activa el flare constantemente
-    // En cambio, inyectamos NEONES en ACCENT y PRIMARY para fiesta multicolor
-    if (subGenre === 'cumbia' && !isMachineGunBlackout) {
-      // 🔥 KILL SWITCH: isSolarFlare SIEMPRE false en Cumbia
-      isSolarFlare = false;
+    // SOLAR FLARE (Ataque rapido, Decay lento)
+    if (!isMachineGunBlackout) {
+      const effectiveThreshold = LatinoStereoPhysics.KICK_THRESHOLD * thresholdMod;
+      const effectiveDelta = LatinoStereoPhysics.BASS_DELTA_THRESHOLD * thresholdMod;
+      const isKick = bass > effectiveThreshold && bassDelta > effectiveDelta;
       
-      const bassPulse = metrics.normalizedBass;
-      
-      // Cada beat fuerte (bass > 0.4 - más sensible) rotamos colores
-      if (bassPulse > 0.4) {
-        this.beatCounter++;
-        neonInjected = true;
-        
-        // 🎨 ACCENT: Rotar entre Magenta → Cyan → Lime (Back PARs)
-        const accentColors = [
-          LatinoStereoPhysics.NEON_MAGENTA,
-          LatinoStereoPhysics.NEON_CYAN,
-          LatinoStereoPhysics.NEON_LIME,
-        ];
-        const accentIndex = this.beatCounter % 3;
-        resultPalette.accent = this.hslToRgb(accentColors[accentIndex]);
-        
-        // 🔥 WAVE 156: PRIMARY también rota (Front PARs) - cada 4 beats
-        // Usamos colores complementarios para contraste
-        const primaryColors = [
-          LatinoStereoPhysics.NEON_CYAN,     // Complemento de Magenta
-          LatinoStereoPhysics.NEON_ORANGE,   // Cálido
-          LatinoStereoPhysics.NEON_MAGENTA,  // Complemento de Cyan
-          LatinoStereoPhysics.NEON_LIME,     // Fresco
-        ];
-        const primaryIndex = Math.floor(this.beatCounter / 4) % 4;
-        resultPalette.primary = this.hslToRgb(primaryColors[primaryIndex]);
-        
-        // Secondary también participa (más sutil)
-        const secondaryIndex = (this.beatCounter + 1) % 3;
-        resultPalette.secondary = this.hslToRgb(accentColors[secondaryIndex]);
+      if (isKick) {
+        const kickPower = (bass - effectiveThreshold) / (1 - effectiveThreshold);
+        this.currentFlareIntensity = Math.min(1.0, kickPower * 1.5);
+        isSolarFlare = true;
+      } else {
+        this.currentFlareIntensity = Math.max(0, this.currentFlareIntensity - LatinoStereoPhysics.DECAY_RATE);
       }
       
-      // 🔧 Cumbia = movimiento continuo (baile constante)
-      forceMovement = true;
-    }
-    
-    // =====================================================================
-    // 3️⃣ SOLAR FLARE DETECTION (Kick fuerte → Destello dorado)
-    // 🌿 WAVE 158: DELTA TRIGGER - Requiere SUBIDA de bass, no solo nivel alto
-    // 🌟 WAVE 273: ELEMENTAL MODULATION - Thresholds modulados por elemento
-    // =====================================================================
-    // Solo para REGGAETON y SALSA, no CUMBIA
-    if (subGenre !== 'cumbia' && !isMachineGunBlackout) {
-      const bassPulse = metrics.normalizedBass;
-      const bassDelta = bassPulse - this.lastBass;  // 🌿 WAVE 158: Delta vs frame anterior
-      
-      // WAVE 273: Thresholds modulados por elemento zodiacal
-      const effectiveKickThreshold = LatinoStereoPhysics.KICK_THRESHOLD * thresholdMod;
-      const effectiveDeltaThreshold = LatinoStereoPhysics.BASS_DELTA_THRESHOLD * thresholdMod;
-      
-      // 🌿 WAVE 158: DOBLE CONDICIÓN - Bass alto + Delta positivo
-      // Esto evita blancos constantes cuando hay bass alto sostenido
-      const isKickMoment = bassPulse > effectiveKickThreshold &&
-                           bassDelta > effectiveDeltaThreshold;
-      
-      if (isKickMoment) {
+      if (this.currentFlareIntensity > 0.1) {
         isSolarFlare = true;
-        flareIntensity = (bassPulse - effectiveKickThreshold) / 
-                         (1 - effectiveKickThreshold);
-        
-        // WAVE 273: Solar Flare con brightness modulado
-        const modulatedFlareColor = {
+        const flareColor = {
           h: LatinoStereoPhysics.SOLAR_FLARE_COLOR.h,
           s: LatinoStereoPhysics.SOLAR_FLARE_COLOR.s,
-          l: Math.min(100, LatinoStereoPhysics.SOLAR_FLARE_COLOR.l * brightnessMod)
+          l: Math.min(100, LatinoStereoPhysics.SOLAR_FLARE_COLOR.l * brightnessMod),
         };
-        resultPalette.accent = this.hslToRgb(modulatedFlareColor);
-        
-        // También aumentar ligeramente el brillo del primary
-        // (efecto de "iluminación general" del escenario)
-        // WAVE 273: boost también modulado por elemento
-        const modulatedBoost = Math.min(flareIntensity * 20, 15) * brightnessMod;
-        resultPalette.primary = this.boostBrightness(
-          resultPalette.primary,
-          modulatedBoost
-        );
+        const flareRgb = this.hslToRgb(flareColor);
+        resultPalette.accent = this.blendRgb(palette.accent, flareRgb, this.currentFlareIntensity);
+        resultPalette.primary = this.boostBrightness(resultPalette.primary, this.currentFlareIntensity * 15 * brightnessMod);
       }
-      
-      // 🌿 WAVE 158: Guardar bass actual para próximo frame
-      this.lastBass = bassPulse;
-      
-      // =====================================================================
-      // 🌈 WAVE 162: NEON PUMP DESACTIVADO
-      // =====================================================================
-      // El NEON PUMP era demasiado agresivo - inyectaba colores neón 
-      // directamente sin respetar la paleta de Selene.
-      // 
-      // NUEVO ENFOQUE: El ACCENT usa el color quaternary de la paleta
-      // (calculado por SeleneColorEngine con accentBehavior: 'quaternary')
-      // Esto da colores variados pero INTEGRADOS con el resto del escenario.
-      //
-      // NEON PUMP solo se reactiva en DROPS EXTREMOS (bassPulse > 0.9)
-      this.framesSinceNeonChange++;
-      
-      if (!isSolarFlare && bassPulse > 0.9) {
-        // Solo en peaks extremos: inyectar neón para impacto
-        neonInjected = true;
-        
-        if (this.framesSinceNeonChange >= LatinoStereoPhysics.NEON_PUMP_COOLDOWN_FRAMES) {
-          this.beatCounter++;
-          this.lastNeonColorIndex = this.beatCounter % 4;
-          this.framesSinceNeonChange = 0;
-        }
-        
-        const neonColors = [
-          LatinoStereoPhysics.NEON_MAGENTA,
-          LatinoStereoPhysics.NEON_ORANGE,  // Más cálidos para Latino
-          LatinoStereoPhysics.NEON_YELLOW,
-          LatinoStereoPhysics.NEON_LIME,
-        ];
-        const neonColor = neonColors[this.lastNeonColorIndex];
-        resultPalette.accent = this.hslToRgb(neonColor);
-      }
-      // Si bassPulse <= 0.9, el accent mantiene el color de la paleta original
     }
     
-    // =====================================================================
-    // 4️⃣ SALSA MODE: Movimiento perpetuo
-    // =====================================================================
-    if (subGenre === 'salsa') {
-      forceMovement = true;  // Salsa NUNCA para de moverse
+    // BACK PARs: MID^1.5 con Decay
+    const targetBackPar = Math.pow(mid, 1.5);
+    if (targetBackPar > this.currentBackParIntensity) {
+      this.currentBackParIntensity = targetBackPar;
+    } else {
+      this.currentBackParIntensity = this.currentBackParIntensity * (1 - LatinoStereoPhysics.DECAY_RATE * 2);
     }
     
-    // =====================================================================
-    // 5️⃣ WAVE 155: GENERIC FALLBACK → NEON INJECTION
-    // =====================================================================
-    // Si caemos en generic, mejor neón que flash blanco aburrido
-    if (subGenre === 'generic' && !isMachineGunBlackout) {
-      const bassPulse = metrics.normalizedBass;
-      
-      // En generic, inyectamos neón igual que en Cumbia
-      if (bassPulse > 0.5) {
-        this.beatCounter++;
-        neonInjected = true;
-        
-        // Rotar entre Magenta → Cyan → Lime → repeat
-        const neonColors = [
-          LatinoStereoPhysics.NEON_MAGENTA,
-          LatinoStereoPhysics.NEON_CYAN,
-          LatinoStereoPhysics.NEON_LIME,
-        ];
-        const colorIndex = this.beatCounter % 3;
-        resultPalette.accent = this.hslToRgb(neonColors[colorIndex]);
-        resultPalette.primary = this.boostBrightness(resultPalette.primary, 8);
-      }
-      
-      forceMovement = true;  // Ante la duda, MUÉVETE!
+    // MOVERS: LERP Suave
+    this.currentMoverIntensity += (treble - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_LERP;
+    if (flavor === 'tropical' && treble > 0.7) {
+      this.currentMoverIntensity += (Math.random() - 0.5) * 0.05;
+      this.currentMoverIntensity = Math.max(0, Math.min(1, this.currentMoverIntensity));
     }
     
-    // Actualizar estado para el próximo frame
+    // FRONT PARs: Ambar fijo
+    const bassPulse = bass * 0.15;
+    let frontParIntensity = LatinoStereoPhysics.FRONT_PAR_BASE + bassPulse;
+    if (flavor === 'reggaeton' && isSolarFlare) {
+      frontParIntensity = Math.min(0.95, frontParIntensity + 0.1);
+    }
+    
     this.lastEnergy = currentEnergy;
+    this.lastBass = bass;
     
     return {
       palette: resultPalette,
@@ -424,74 +189,42 @@ export class LatinoStereoPhysics {
       isMachineGunBlackout,
       dimmerOverride,
       forceMovement,
-      subGenre,
-      debugInfo: {
-        bassPulse: metrics.normalizedBass,
-        energyDelta,
-        isNegativeDrop,
-        flareIntensity,
-        detectedBpm,
-        neonInjected,
-      },
+      flavor,
+      backParIntensity: this.currentBackParIntensity,
+      moverIntensity: this.currentMoverIntensity,
+      frontParIntensity,
+      debugInfo: { bass, mid, treble, bassDelta, flareIntensity: this.currentFlareIntensity, detectedBpm },
     };
   }
-  
-  /**
-   * 🎵 WAVE 157.1: LA DICTADURA SIMPLIFICADA
-   * 
-   * CATCH-ALL TOTAL - Ante la duda, ES CUMBIA:
-   * - SALSA: BPM > 130 + High > Bass (agudos dominan)
-   * - REGGAETON: BPM <= 90 (lento)
-   * - CUMBIA: TODO LO DEMÁS 90-170 BPM (ignoramos nivel de bajo)
-   */
-  private detectSubGenre(bpm: number, metrics: LatinoAudioMetrics): LatinoSubGenre {
-    const normalizedHigh = metrics.normalizedHigh ?? 0;
-    const normalizedBass = metrics.normalizedBass;
-    
-    // 🎺 Salsa: Rápido + agudos dominantes
-    if (bpm > 130 && normalizedHigh > normalizedBass) {
-      return 'salsa';
+
+  private detectFlavor(bpm: number, metrics: LatinoAudioMetrics): LatinoFlavor {
+    const bass = metrics.normalizedBass;
+    const treble = metrics.normalizedHigh ?? 0;
+    let flavor: LatinoFlavor = 'fiesta-standard';
+    if (bass > 0.6 && (bpm < 105 || bpm > 155)) {
+      flavor = 'reggaeton';
+    } else if (treble > bass * 1.2) {
+      flavor = 'tropical';
     }
-    
-    // 🔊 Reggaeton: Lento (<=90 BPM)
-    if (bpm <= 90) {
-      return 'reggaeton';
-    }
-    
-    // 🌴 WAVE 157: CUMBIA = CATCH-ALL (90-170 BPM)
-    // Si tiene ritmo latino → ES CUMBIA (ignoramos el bajo saturado)
-    if (bpm >= 90 && bpm <= 170) {
-      return 'cumbia';
-    }
-    
-    return 'generic';
+    return flavor;
   }
-  
-  /**
-   * Reinicia el estado interno (para nueva canción/escena)
-   */
+
   public reset(): void {
     this.blackoutFramesRemaining = 0;
     this.lastEnergy = 0;
+    this.lastBass = 0;
     this.lastFrameTime = Date.now();
-    this.beatCounter = 0;
     this.lastBpm = 0;
+    this.currentFlareIntensity = 0;
+    this.currentMoverIntensity = 0;
+    this.currentBackParIntensity = 0;
   }
-  
-  // =========================================================================
-  // 🔧 MÉTODOS PRIVADOS (Utilidades de Color)
-  // =========================================================================
-  
-  /**
-   * Convierte HSL a RGB
-   */
+
   private hslToRgb(hsl: HSL): RGB {
     const h = hsl.h / 360;
     const s = hsl.s / 100;
     const l = hsl.l / 100;
-    
     let r: number, g: number, b: number;
-    
     if (s === 0) {
       r = g = b = l;
     } else {
@@ -503,27 +236,15 @@ export class LatinoStereoPhysics {
         if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
         return p;
       };
-      
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p = 2 * l - q;
-      
       r = hue2rgb(p, q, h + 1/3);
       g = hue2rgb(p, q, h);
       b = hue2rgb(p, q, h - 1/3);
     }
-    
-    return {
-      r: Math.round(r * 255),
-      g: Math.round(g * 255),
-      b: Math.round(b * 255),
-    };
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
   }
-  
-  /**
-   * Aumenta el brillo de un color RGB
-   * @param rgb - Color original
-   * @param percent - Porcentaje de aumento (0-100)
-   */
+
   private boostBrightness(rgb: RGB, percent: number): RGB {
     const factor = 1 + (percent / 100);
     return {
@@ -532,7 +253,15 @@ export class LatinoStereoPhysics {
       b: Math.min(255, Math.round(rgb.b * factor)),
     };
   }
+
+  private blendRgb(from: RGB, to: RGB, factor: number): RGB {
+    const f = Math.max(0, Math.min(1, factor));
+    return {
+      r: Math.round(from.r + (to.r - from.r) * f),
+      g: Math.round(from.g + (to.g - from.g) * f),
+      b: Math.round(from.b + (to.b - from.b) * f),
+    };
+  }
 }
 
-// Export default para compatibilidad
 export default LatinoStereoPhysics;

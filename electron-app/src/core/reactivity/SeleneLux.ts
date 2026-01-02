@@ -266,10 +266,10 @@ export class SeleneLux {
         dimmerOverride = result.dimmerOverride;
       }
       physicsApplied = 'latino';
-      debugInfo = { subGenre: result.subGenre, ...result.debugInfo };
+      debugInfo = { flavor: result.flavor, ...result.debugInfo };
       
       if (this.debug && isSolarFlare) {
-        console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | SubGenre:${result.subGenre}`);
+        console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
       }
       
     } else if (

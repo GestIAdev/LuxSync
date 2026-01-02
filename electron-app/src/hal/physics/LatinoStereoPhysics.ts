@@ -58,16 +58,17 @@ export interface LatinoPhysicsResult {
 }
 
 /**
- * LatinoStereoPhysics - WAVE 288: "Sangre Latina"
- * FISICA UNIFICADA con sabores opcionales.
+ * LatinoStereoPhysics - WAVE 288.7: "Color Liberation"
+ * FISICA UNIFICADA - Solar Flare respeta la paleta de Selene
  */
 export class LatinoStereoPhysics {
-  // CONFIGURACI�N INMUTABLE - WAVE 288
-  private static readonly SOLAR_FLARE_COLOR: HSL = { h: 35, s: 100, l: 50 };
+  // CONFIGURACIÓN - WAVE 288.7: Sin color hardcoded
+  // ❌ ELIMINADO: SOLAR_FLARE_COLOR (el asesino del color)
   private static readonly KICK_THRESHOLD = 0.65;
   private static readonly BASS_DELTA_THRESHOLD = 0.12;
   private static readonly DECAY_RATE = 0.08;
-  private static readonly MOVER_LERP = 0.05;
+  private static readonly MOVER_LERP = 0.08; // 🔧 Más suave para cintura latina
+  private static readonly MOVER_GATE = 0.15; // 🔧 Gate: evita baile fantasma
   private static readonly FRONT_PAR_BASE = 0.65;
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
   private static readonly NEGATIVE_DROP_WINDOW_MS = 100;
@@ -155,14 +156,11 @@ export class LatinoStereoPhysics {
       
       if (this.currentFlareIntensity > 0.1) {
         isSolarFlare = true;
-        const flareColor = {
-          h: LatinoStereoPhysics.SOLAR_FLARE_COLOR.h,
-          s: LatinoStereoPhysics.SOLAR_FLARE_COLOR.s,
-          l: Math.min(100, LatinoStereoPhysics.SOLAR_FLARE_COLOR.l * brightnessMod),
-        };
-        const flareRgb = this.hslToRgb(flareColor);
-        resultPalette.accent = this.blendRgb(palette.accent, flareRgb, this.currentFlareIntensity);
-        resultPalette.primary = this.boostBrightness(resultPalette.primary, this.currentFlareIntensity * 15 * brightnessMod);
+        // 🔥 WAVE 288.7: Solar Flare = BOOST, no TINT
+        // Respetamos el color de Selene, solo aumentamos brillo/saturación
+        const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
+        resultPalette.accent = this.boostBrightness(palette.accent, boostAmount);
+        resultPalette.primary = this.boostBrightness(palette.primary, boostAmount * 0.75);
       }
     }
     
@@ -174,8 +172,18 @@ export class LatinoStereoPhysics {
       this.currentBackParIntensity = this.currentBackParIntensity * (1 - LatinoStereoPhysics.DECAY_RATE * 2);
     }
     
-    // MOVERS: LERP Suave (treble para melodias/voces)
-    this.currentMoverIntensity += (treble - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_LERP;
+    // 💃 MOVERS: WAVE 288.7 - MID (voces/melodía), no TREBLE (güiro/maracas)
+    // El treble en latino es ruido constante (tiki-tiki-tiki), causa epilepsia
+    // Los mids son las voces, trompetas, piano - eso tiene "cintura"
+    const moverTarget = mid;
+    
+    // Gate: si la música está muy baja, movers quietos (evita baile fantasma)
+    if (currentEnergy > LatinoStereoPhysics.MOVER_GATE) {
+      this.currentMoverIntensity += (moverTarget - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_LERP;
+    } else {
+      // Decay suave hacia 0 cuando no hay suficiente energía
+      this.currentMoverIntensity *= 0.95;
+    }
     
     // FRONT PARs: Ambar fijo + pulso bass
     const bassPulse = bass * 0.15;

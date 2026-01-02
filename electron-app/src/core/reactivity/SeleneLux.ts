@@ -130,6 +130,9 @@ export class SeleneLux {
   private lastLatinoFlavor: string | null = null;  // Último flavor loguado
   private readonly LOG_THROTTLE_MS = 2000;  // 2 segundos mínimo entre logs
   
+  // 🆕 WAVE 288.7: Overrides de intensidad calculados por motor Latino
+  private latinoOverrides: { front: number; back: number; mover: number } | null = null;
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
     
@@ -257,7 +260,9 @@ export class SeleneLux {
         inputPalette,
         {
           normalizedBass: audioMetrics.normalizedBass,
+          normalizedMid: audioMetrics.normalizedMid, // 🆕 WAVE 288.7: Añadir mid para movers
           normalizedEnergy: audioMetrics.avgNormEnergy,
+          normalizedHigh: audioMetrics.normalizedTreble, // 🆕 WAVE 288.7: Añadir treble (aunque no se usa)
         },
         vibeContext.bpm,
         elementalMods
@@ -272,6 +277,13 @@ export class SeleneLux {
       }
       physicsApplied = 'latino';
       debugInfo = { flavor: result.flavor, ...result.debugInfo };
+      
+      // 🆕 WAVE 288.7: Guardar overrides del motor Latino para usar en AGC TRUST
+      this.latinoOverrides = {
+        front: result.frontParIntensity,
+        back: result.backParIntensity,
+        mover: result.moverIntensity,
+      };
       
       // 🆕 WAVE 288.1: Log THROTTLED - Solo cuando cambia flavor O cada 2s
       if (this.debug && isSolarFlare) {
@@ -315,11 +327,11 @@ export class SeleneLux {
     this.lastForceMovement = forceMovement;
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 👓 WAVE 276: AGC TRUST - El AGC ya hizo el trabajo duro. No lo rompas.
+    // 👓 WAVE 288.7: AGC TRUST DEMOCRÁTICO
     // ═══════════════════════════════════════════════════════════════════════
-    // FRONT PARs (El Empujón):   Bass con techo para dejar espacio a Backs
-    // BACK PARs (La Bofetada):   Mid con curva exponencial para limpiar ruido
-    // MOVERS (El Alma):          Treble expandido para ver los picos
+    // Si un motor físico (Latino) tiene overrides calculados, los respetamos.
+    // Si no hay overrides, usamos la lógica por defecto (Techno/Rock/Chill).
+    // ESTO EVITA QUE EL ROUTER SOBRESCRIBA LO QUE EL MOTOR CALCULÓ.
     // ═══════════════════════════════════════════════════════════════════════
     
     const brightMod = elementalMods?.brightnessMultiplier ?? 1.0;
@@ -327,28 +339,37 @@ export class SeleneLux {
     const mid = audioMetrics.normalizedMid;
     const treble = audioMetrics.normalizedTreble;
     
-    // 1. FRONT PARS (Bass - El Empujón)
-    // 🎯 WAVE 278: Compressor - curva suave para evitar saturación constante
-    // Techno: Techo en 0.8 para dejar espacio a los Back Pars
-    const isTechno = vibeContext.activeVibe.toLowerCase().includes('techno');
-    const frontCeiling = isTechno ? 0.80 : 0.95;
-    const compressedBass = Math.pow(bass, 1.2);  // Suaviza la entrada
-    const frontIntensity = Math.min(frontCeiling, compressedBass * brightMod);
+    let frontIntensity: number;
+    let backIntensity: number;
+    let moverIntensity: number;
     
-    // 2. BACK PARS (Mid/Snare - La Bofetada)
-    // 🔥 WAVE 279.4: ZOMBIE STEROIDS - mid^1.5 × 1.8 en lugar de mid^3 × 1.5
-    // La curva cúbica APLASTABA el audio normalizado (0.25^3 = 0.015 invisible)
-    // Curva 1.5: mid=0.25 → 0.125 × 1.8 = 0.225 (visible!)
-    //            mid=0.40 → 0.253 × 1.8 = 0.456 (ruge!)
-    const backRaw = Math.pow(mid, 1.5) * 1.8;
-    const backGateThreshold = isTechno ? 0.10 : 0.06;
-    const backGated = backRaw < backGateThreshold ? 0 : backRaw;
-    const backIntensity = Math.min(0.95, backGated);
-    
-    // 3. MOVERS (Treble - El Alma)
-    // Curva ^2 para expandir rango dinámico + boost 1.8x porque agudos tienen menos energía
-    // Esto da picos visuales claros cuando hay melodía/voz
-    const moverIntensity = Math.min(1.0, Math.pow(treble, 2) * 1.8);
+    // � WAVE 288.7: ¿Tenemos overrides de Latino?
+    if (this.latinoOverrides && physicsApplied === 'latino') {
+      // DEMOCRACIA: El motor Latino calculó sus intensidades. Respétalas.
+      frontIntensity = Math.min(0.95, this.latinoOverrides.front * brightMod);
+      backIntensity = Math.min(0.95, this.latinoOverrides.back);
+      moverIntensity = Math.min(1.0, this.latinoOverrides.mover);
+      
+      // Limpiar overrides para el próximo frame
+      this.latinoOverrides = null;
+    } else {
+      // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
+      
+      // 1. FRONT PARS (Bass - El Empujón)
+      const isTechno = vibeContext.activeVibe.toLowerCase().includes('techno');
+      const frontCeiling = isTechno ? 0.80 : 0.95;
+      const compressedBass = Math.pow(bass, 1.2);
+      frontIntensity = Math.min(frontCeiling, compressedBass * brightMod);
+      
+      // 2. BACK PARS (Mid/Snare - La Bofetada)
+      const backRaw = Math.pow(mid, 1.5) * 1.8;
+      const backGateThreshold = isTechno ? 0.10 : 0.06;
+      const backGated = backRaw < backGateThreshold ? 0 : backRaw;
+      backIntensity = Math.min(0.95, backGated);
+      
+      // 3. MOVERS (Treble - El Alma) - Solo para Techno/Rock
+      moverIntensity = Math.min(1.0, Math.pow(treble, 2) * 1.8);
+    }
     
     const zoneIntensities = {
       front: frontIntensity,
@@ -358,7 +379,8 @@ export class SeleneLux {
     
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
     if (this.frameCount % 30 === 0) {
-      console.log(`[AGC TRUST] � IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
+      const source = physicsApplied === 'latino' ? '🌴LATINO' : '📡DEFAULT';
+      console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
     }
     
     this.lastOutput = {

@@ -60,10 +60,11 @@ export class PhysicsEngine {
   // Physics constants (from WAVE 109)
   private readonly SMOOTHING_DECAY = 0.75  // 25% decay per frame
   
-  // 🔧 WAVE 280: HYSTERESIS CONSTANTS - Anti-epilepsy
-  private readonly MOVER_HYSTERESIS_MARGIN = 0.12   // Must drop 12% below activation to turn off
-  private readonly MOVER_INTENSITY_SMOOTHING = 0.7  // 70% of previous + 30% new (liquid transitions)
-  private readonly MOVER_MIN_STABLE_FRAMES = 3      // Minimum frames before state change
+  // 🔧 WAVE 280.5: HYSTERESIS CONSTANTS - TECHNO CLUB TUNING
+  // Más agresivo que WAVE 280 original, pero sin parpadeo
+  private readonly MOVER_HYSTERESIS_MARGIN = 0.06   // 6% gap (was 12%) - permite apagarse más fácil
+  private readonly MOVER_INTENSITY_SMOOTHING = 0.4  // 40% previous (was 70%) - más contraste
+  private readonly MOVER_MIN_STABLE_FRAMES = 2      // 2 frames (was 3) - respuesta más rápida
   private moverStabilityCounter = new Map<string, number>()  // Frame counter per mover
 
   constructor() {
@@ -161,10 +162,10 @@ export class PhysicsEngine {
       // Map signal to intensity: 0.10 → 0.2 (minimum visible), 1.0 → 1.0 (max)
       rawTarget = 0.2 + (audioSignal - ACTIVATION_THRESHOLD) * 0.8 / (1 - ACTIVATION_THRESHOLD)
     } else if (audioSignal > effectiveDeactivation && moverState) {
-      // 🔧 WAVE 280: IN THE HYSTERESIS ZONE - keep previous state, decay gently
+      // 🔧 WAVE 280.5: IN THE HYSTERESIS ZONE - decay más agresivo para techno
       shouldBeOn = true
-      // Gentle decay: use previous intensity * 0.85 (not instant drop)
-      rawTarget = prevIntensity * 0.85
+      // Faster decay: 0.6× for punchy contrast (was 0.85)
+      rawTarget = prevIntensity * 0.6
     } else {
       // Below deactivation threshold - should turn off
       shouldBeOn = false

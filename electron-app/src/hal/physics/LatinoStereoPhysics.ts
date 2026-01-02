@@ -111,6 +111,19 @@ export class LatinoStereoPhysics {
       accent: { ...palette.accent },
     };
     
+    // 🛡️ WAVE 288.9: GOLDEN RESCUE OMNIPRESENTE (Safety Net)
+    // Si por CUALQUIER razón nos llega accent blanco/gris (sat < 30),
+    // lo rescatamos a ORO ANTES de cualquier otro cálculo.
+    // Esto es el CINTURÓN - SeleneColorEngine ya no debería mandar blanco,
+    // pero por si acaso, aquí están los TIRANTES.
+    const accentHsl = this.rgbToHsl(palette.accent);
+    if (accentHsl.s < 30) {
+      // ⚠️ Blanco/Gris detectado - inyectar ORO vibrante
+      const goldenRescue = { h: 40, s: 100, l: 55 };
+      const goldenRgb = this.hslToRgb(goldenRescue);
+      resultPalette.accent = goldenRgb;
+    }
+    
     let isSolarFlare = false;
     let isMachineGunBlackout = false;
     let dimmerOverride: number | null = null;
@@ -157,23 +170,12 @@ export class LatinoStereoPhysics {
       if (this.currentFlareIntensity > 0.1) {
         isSolarFlare = true;
         
-        // 🆕 WAVE 288.8: GOLDEN RESCUE - Red de Seguridad Cromática
-        // Si StrategyArbiter envió "blanco hospitalario", pintamos el sol
-        const accentHsl = this.rgbToHsl(palette.accent);
-        
-        if (accentHsl.s < 30) {
-          // ⚠️ ALERTA: Blanco/Gris detectado (sat < 30)
-          // Inyectamos ORO (h:40, s:100) para no ser aburrido
-          const goldenRescue = { h: 40, s: 100, l: 60 };
-          const goldenRgb = this.hslToRgb(goldenRescue);
-          resultPalette.accent = this.boostBrightness(goldenRgb, this.currentFlareIntensity * 15);
-          resultPalette.primary = this.boostBrightness(goldenRgb, this.currentFlareIntensity * 10);
-        } else {
-          // ✅ Color bonito: Boost normal (respeta el color)
-          const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
-          resultPalette.accent = this.boostBrightness(palette.accent, boostAmount);
-          resultPalette.primary = this.boostBrightness(palette.primary, boostAmount * 0.75);
-        }
+        // 🔥 WAVE 288.9: Solar Flare SIMPLIFICADO
+        // El Golden Rescue omnipresente (arriba) ya garantiza que resultPalette.accent
+        // SIEMPRE tiene color vibrante. Solo hacemos boost aquí.
+        const boostAmount = this.currentFlareIntensity * 20 * brightnessMod;
+        resultPalette.accent = this.boostBrightness(resultPalette.accent, boostAmount);
+        resultPalette.primary = this.boostBrightness(resultPalette.primary, boostAmount * 0.75);
       }
     }
     

@@ -1611,11 +1611,13 @@ export class SeleneColorEngine {
       ambient.l = clamp(secondary.l * 1.1, 40, 60);
       ambient.s = Math.max(secondary.s, 70);  // Mantener saturado
       
-      // ☀️ 3. SOLAR FLARE (Accent = Blanco Dorado)
-      // En Latino, el strobe no es color, es LUZ
-      accent.h = primary.h;   // Base cálida (hereda del primary)
-      accent.s = 10;          // Casi blanco (blanco dorado sutil)
-      accent.l = 95;          // Brillo máximo (único color que puede ser alto)
+      // ☀️ 3. WAVE 288.9: ACCENT = COLOR VIBRANTE (no blanco)
+      // ANTES: accent.s = 10 (blanco hospitalario - ¡ELIMINADO!)
+      // AHORA: El accent hereda saturación de la Constitución (80-100%)
+      // Si queremos "flash blanco" en picos, lo hace LatinoStereoPhysics con brillo
+      accent.h = normalizeHue(primary.h + 30); // Hue shifted para contraste con primary
+      accent.s = Math.max(80, primary.s);      // ✅ Saturación vibrante (mínimo 80%)
+      accent.l = clamp(primary.l * 1.1, 55, 75); // Brillo moderado-alto
     }
     // ═══════════════════════════════════════════════════════════════════════
     

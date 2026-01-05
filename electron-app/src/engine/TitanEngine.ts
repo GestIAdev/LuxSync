@@ -382,11 +382,12 @@ export class TitanEngine extends EventEmitter {
     // ─────────────────────────────────────────────────────────────────────
     // 3. CALCULAR INTENCIONES POR ZONA
     // 🔥 WAVE 290.1: Si physics=latino, usar zoneIntensities del NervousSystem
+    // ⚡ WAVE 290.3: Si physics=techno, usar zoneIntensities del NervousSystem
     // ─────────────────────────────────────────────────────────────────────
     let zones = this.calculateZoneIntents(audio, context, vibeProfile)
     
-    // 🔥 WAVE 290.1: Latino override - El NervousSystem manda
-    if (nervousOutput.physicsApplied === 'latino') {
+    // 🔥 WAVE 290.1/290.3: Latino/Techno override - El NervousSystem manda
+    if (nervousOutput.physicsApplied === 'latino' || nervousOutput.physicsApplied === 'techno') {
       const ni = nervousOutput.zoneIntensities;
       zones = {
         front: { intensity: ni.front, paletteRole: 'primary' },

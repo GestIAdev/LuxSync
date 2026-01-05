@@ -1,247 +1,366 @@
-/**
- * ⚡ WAVE 151: TECHNO NEON STROBE
- * 🔮 WAVE 273: ELEMENTAL MODIFIERS INJECTION
- * ============================================================================
- * Módulo blindado para la lógica de reactividad del género Techno.
+﻿/**
+ * WAVE 290.3: TECHNO STEREO PHYSICS
  * 
- * RESPONSABILIDAD ÚNICA:
- * - Detectar "drops" basándose en la relación Bass/Treble
- * - Aplicar STROBE MAGENTA NEÓN cuando se detecta un drop
- * - NO modifica HUE (color base) - solo aplica strobe en accent
+ * Motor de fisicas EXCLUSIVO para el vibe TECHNO.
  * 
- * ORIGEN DE LA CALIBRACIÓN:
- * - WAVE 129: White-Hot Threshold (primer intento)
- * - WAVE 132: Dynamic Noise Floor (piso dinámico)
- * - WAVE 133: Saturation Breaker (factor 0.6)
- * - WAVE 151: Neon Strobe (Magenta 300° l:85 en lugar de Blanco)
- * - WAVE 273: Elemental modulation (Fire=frequent, Water=rare)
+ * DOBLE API:
+ * - apply() [STATIC] -> Procesa COLORES/STROBE (compatibilidad SeleneLux)
+ * - applyZones() [INSTANCE] -> Procesa ZONAS/INTENSIDADES (WAVE 290.3)
  * 
- * PRINCIPIO: "EXTRAER, NO MODIFICAR"
- * Todos los valores numéricos base son EXACTAMENTE los de Wave 133.
- * Los elementos ESCALAN estos valores, no los reemplazan.
- * ============================================================================
+ * ALMA DEL TECHNO:
+ * - Movers = TREBLE (voces, melodias, efectos) con VITAMINAS
+ * - Strobe = TREBLE peaks para techno puro
+ * - Decay agresivo estilo katana
+ * - Anti-epilepsy hysteresis (WAVE 280)
  */
 
 import { hslToRgb } from '../../engine/color/SeleneColorEngine';
 import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
-/**
- * Tipo RGB para colores (definido localmente para evitar dependencias circulares)
- */
-export interface RGB {
-  r: number;
-  g: number;
-  b: number;
+// ===========================================================================
+// TYPES - LEGACY API (Colores/Strobe)
+// ===========================================================================
+
+interface TechnoPalette {
+  primary: { r: number; g: number; b: number };
+  secondary: { r: number; g: number; b: number };
+  accent: { r: number; g: number; b: number };
 }
 
-/**
- * Interfaz para la paleta de colores que procesa esta física
- */
-export interface TechnoPalette {
-  primary: RGB;
-  secondary: RGB;
-  ambient: RGB;
-  accent: RGB;
+interface TechnoAudioMetrics {
+  normalizedTreble: number;
+  normalizedBass: number;
 }
 
-/**
- * Métricas de audio necesarias para el cálculo de física
- */
-export interface TechnoAudioMetrics {
-  normalizedTreble: number;  // 0.0 - 1.0
-  normalizedBass: number;    // 0.0 - 1.0
-  normalizedMid?: number;    // 🆕 WAVE 290.3: Para movers
-  normalizedEnergy?: number; // 🆕 WAVE 290.3: Energía global
-}
-
-/**
- * Resultado de la aplicación de física
- */
-export interface TechnoPhysicsResult {
+interface TechnoLegacyResult {
   palette: TechnoPalette;
   isStrobeActive: boolean;
-  // 🆕 WAVE 290.3: Intensidades por zona (como LatinoPhysics)
-  frontParIntensity: number;
-  backParIntensity: number;
-  moverIntensity: number;
-  debugInfo: {
-    rawTreble: number;
-    dynamicFloor: number;
-    treblePulse: number;
-    bassEnergy: number;
-  };
+  debugInfo: Record<string, unknown>;
 }
 
-/**
- * TechnoStereoPhysics - Módulo de Reactividad para Techno/Club
- * 
- * Esta clase encapsula la lógica de detección de drops y strobe
- * calibrada en las Waves 129-133.
- */
+// ===========================================================================
+// TYPES - NEW API (Zonas/Intensidades)
+// ===========================================================================
+
+export interface TechnoPhysicsInput {
+  bass: number
+  mid: number
+  treble: number
+  bpm: number
+  melodyThreshold: number
+  isRealSilence: boolean
+  isAGCTrap: boolean
+  sectionType?: string
+}
+
+export interface TechnoPhysicsResult {
+  strobeActive: boolean
+  strobeIntensity: number
+  frontParIntensity: number
+  backParIntensity: number
+  moverIntensity: number
+  moverActive: boolean
+  physicsApplied: 'techno'
+}
+
+// ===========================================================================
+// TECHNO STEREO PHYSICS ENGINE
+// ===========================================================================
+
 export class TechnoStereoPhysics {
   // =========================================================================
-  // 🔒 CONFIGURACIÓN INMUTABLE (Extraída de Wave 133 - NO TOCAR)
+  // LEGACY CONSTANTS (Colores/Strobe - WAVE 151)
+  // =========================================================================
+  
+  private static readonly STROBE_BASE_THRESHOLD = 0.6;
+  private static readonly STROBE_HUE = 300;           // Magenta neon
+  private static readonly STROBE_SATURATION = 100;
+  private static readonly STROBE_LIGHTNESS = 85;
+  
+  // =========================================================================
+  // ZONE CONSTANTS (WAVE 290.3)
+  // =========================================================================
+  
+  private readonly TREBLE_VITAMIN = 2.2
+  private readonly ACTIVATION_THRESHOLD = 0.15
+  private readonly VISIBILITY_FLOOR = 0.18
+  private readonly HYSTERESIS_MARGIN = 0.06
+  private readonly INTENSITY_SMOOTHING = 0.4
+  private readonly MIN_STABLE_FRAMES = 2
+  private readonly STROBE_THRESHOLD = 0.85
+  private readonly STROBE_DURATION = 40
+  
+  // 🔊 FRONT PARS = BASS (Bombo, el empujón)
+  private readonly FRONT_PAR_BASE = 0.08          // Base ambiente muy baja
+  private readonly FRONT_PAR_BASS_MULT = 0.85     // 85% respuesta a bass
+  
+  // 🥁 BACK PARS = MID (Caja/Snare, la bofetada)
+  // Gate ALTO para filtrar voces - solo transientes de percusión
+  private readonly BACK_PAR_GATE = 0.25           // Gate alto anti-karaoke
+  private readonly BACK_PAR_MID_MULT = 1.8        // Multiplicador agresivo para caja
+  
+  // =========================================================================
+  // INTERNAL STATE (Zonas)
+  // =========================================================================
+  
+  private moverIntensityBuffer = 0
+  private moverState = false
+  private stabilityCounter = 0
+  private strobeActive = false
+  private strobeStartTime = 0
+  private frontParSmoothed = 0
+  private backParSmoothed = 0
+  private frontParActive = false  // Estado para histéresis anti-parpadeo
+  
+  constructor() {
+    console.log('[TechnoStereoPhysics] Initialized (WAVE 290.3)')
+  }
+  
+  // =========================================================================
+  // LEGACY API - STATIC (Compatibilidad SeleneLux)
   // =========================================================================
   
   /**
-   * Factor de escalado del piso dinámico.
-   * A mayor bass, mayor piso (más difícil disparar strobe).
-   * @wave 133 - Subido de 0.5 → 0.6 para "Saturation Breaker"
-   */
-  private static readonly DYNAMIC_FLOOR_FACTOR = 0.6;
-  
-  /**
-   * Piso base mínimo de treble.
-   * Incluso en silencio total, ignoramos treble < 0.15.
-   * @wave 132 - Introducido como "base floor"
-   */
-  private static readonly BASE_FLOOR = 0.15;
-  
-  /**
-   * Umbral de disparo para el pulso limpio.
-   * Solo si (treble - floor) > umbral consideramos un "golpe real".
-   * @wave 129 - Calibrado original 0.25
-   * @wave 148 - Subido a 0.30 para evitar strobes permanentes con señales saturadas
-   */
-  private static readonly TRIGGER_THRESHOLD = 0.30;
-  
-  /**
-   * Mínimo de bass requerido para permitir strobe.
-   * Evita strobes en breaks suaves o silencios.
-   * @wave 129 - Contexto energético requerido
-   */
-  private static readonly MIN_BASS_FOR_STROBE = 0.80;
-
-  // =========================================================================
-  // 🎯 API PÚBLICA
-  // =========================================================================
-
-  /**
-   * Aplica la física de Techno sobre la paleta actual.
-   * 
-   * NO cambia el HUE (Color base), solo aplica STROBE MAGENTA NEÓN en el accent
-   * cuando detecta un drop válido.
-   * 
-   * 🔮 WAVE 273: Ahora acepta ElementalModifiers opcionales
-   * - Fire: Strobe más frecuente y brillante
-   * - Water: Strobe raro y suave
-   * - Air: Normal con micro-variaciones
-   * - Earth: Sensible a graves, ligeramente más oscuro
-   * 
-   * @param palette - Paleta actual con primary, secondary, ambient, accent
-   * @param audio - Métricas de audio con treble y bass normalizados
-   * @param mods - Modificadores elementales opcionales (WAVE 273)
-   * @returns Paleta procesada + metadata de debug
-   * 
-   * @example
-   * ```typescript
-   * const result = TechnoStereoPhysics.apply(
-   *   { primary, secondary, ambient, accent },
-   *   { normalizedTreble: 0.85, normalizedBass: 0.92 },
-   *   elementalMods // opcional
-   * );
-   * if (result.isStrobeActive) {
-   *   // El accent ahora es Magenta Neón (300° l:85 * brightnessMultiplier)
-   * }
-   * ```
+   * LEGACY: Apply Techno strobe physics to palette.
+   * Detecta drops y aplica strobe magenta neon.
    */
   public static apply(
     palette: TechnoPalette,
     audio: TechnoAudioMetrics,
-    mods?: ElementalModifiers  // 🔮 WAVE 273: Inyección elemental
-  ): TechnoPhysicsResult {
-    const rawTreble = audio.normalizedTreble ?? 0.0;
-    const bassEnergy = audio.normalizedBass ?? 0.0;
-
-    // 🔮 WAVE 273: Extraer multiplicadores (1.0 si no hay mods)
+    mods?: ElementalModifiers
+  ): TechnoLegacyResult {
     const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
     const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
-
-    // ⚡ WAVE 132: PISO DINÁMICO
-    // 🔮 WAVE 273: Fire (0.7) baja el piso = más sensible
-    //              Water (1.3) sube el piso = menos sensible
-    const dynamicFloorFactor = this.DYNAMIC_FLOOR_FACTOR * thresholdMod;
-    const dynamicFloor = this.BASE_FLOOR + (bassEnergy * dynamicFloorFactor);
-
-    // Calculamos el pulso REAL por encima del piso elevado
-    const treblePulse = Math.max(0, rawTreble - dynamicFloor);
-
-    // ⚡ WAVE 129: GATILLO DUAL
-    // 🔮 WAVE 273: Umbral de trigger también escalado por elemento
-    const triggerThreshold = this.TRIGGER_THRESHOLD * thresholdMod;
-    const isStrobeActive = (treblePulse > triggerThreshold) && 
-                           (bassEnergy > this.MIN_BASS_FOR_STROBE);
-
-    // Construir resultado
-    let processedPalette: TechnoPalette;
-
+    
+    const normalizedTreble = audio.normalizedTreble ?? 0;
+    const normalizedBass = audio.normalizedBass ?? 0;
+    
+    // Ratio Bass/Treble para detectar drops
+    const dropRatio = normalizedBass / Math.max(0.01, normalizedTreble);
+    const effectiveThreshold = this.STROBE_BASE_THRESHOLD * thresholdMod;
+    
+    // Detectar strobe
+    const isStrobeActive = normalizedTreble > effectiveThreshold && dropRatio < 2.0;
+    
+    let outputPalette = { ...palette };
+    
     if (isStrobeActive) {
-      // ⚡ WAVE 151: MAGENTA NEÓN NUCLEAR
-      // 🔮 WAVE 273: Brillo escalado por elemento
-      //              Fire (1.15) → L=97 (cegador)
-      //              Water (0.85) → L=72 (profundo)
-      const baseL = 85;
-      const modL = Math.min(100, Math.round(baseL * brightnessMod));
-      const neonMagenta = hslToRgb({ h: 300, s: 100, l: modL });
-      
-      processedPalette = {
-        ...palette,
-        accent: neonMagenta
-      };
-    } else {
-      // Paleta intacta
-      processedPalette = palette;
+      const modulatedLightness = Math.min(100, this.STROBE_LIGHTNESS * brightnessMod);
+      const strobeRgb = hslToRgb({ h: this.STROBE_HUE, s: this.STROBE_SATURATION, l: modulatedLightness });
+      outputPalette.accent = strobeRgb;
     }
-
+    
     return {
-      palette: processedPalette,
+      palette: outputPalette,
       isStrobeActive,
       debugInfo: {
-        rawTreble,
-        dynamicFloor,
-        treblePulse,
-        bassEnergy
+        normalizedTreble,
+        normalizedBass,
+        dropRatio,
+        effectiveThreshold,
+        strobeTriggered: isStrobeActive
       }
     };
   }
-
+  
   // =========================================================================
-  // 🔧 MÉTODOS AUXILIARES (Para diagnóstico)
+  // NEW API - INSTANCE (Zonas/Intensidades WAVE 290.3)
   // =========================================================================
-
+  
   /**
-   * Obtiene los umbrales actuales de configuración.
-   * Útil para logging y diagnóstico.
+   * Apply Techno zone physics.
+   * Returns zone intensities and strobe state.
    */
-  public static getThresholds(): {
-    dynamicFloorFactor: number;
-    baseFloor: number;
-    triggerThreshold: number;
-    minBassForStrobe: number;
-  } {
+  public applyZones(input: TechnoPhysicsInput): TechnoPhysicsResult {
+    const { bass, mid, treble, isRealSilence, isAGCTrap } = input
+    
+    if (isRealSilence || isAGCTrap) {
+      return this.handleSilence()
+    }
+    
+    // Front = BASS (bombo), Back = MID (caja)
+    const frontParIntensity = this.calculateFrontPar(bass)
+    const backParIntensity = this.calculateBackPar(mid)
+    const moverResult = this.calculateMover(treble)
+    const strobeResult = this.calculateStrobe(treble)
+    
     return {
-      dynamicFloorFactor: this.DYNAMIC_FLOOR_FACTOR,
-      baseFloor: this.BASE_FLOOR,
-      triggerThreshold: this.TRIGGER_THRESHOLD,
-      minBassForStrobe: this.MIN_BASS_FOR_STROBE
-    };
+      strobeActive: strobeResult.active,
+      strobeIntensity: strobeResult.intensity,
+      frontParIntensity,
+      backParIntensity,
+      moverIntensity: moverResult.intensity,
+      moverActive: moverResult.active,
+      physicsApplied: 'techno'
+    }
   }
-
-  /**
-   * Calcula el piso dinámico para un nivel de bass dado.
-   * Útil para visualización/debug.
-   */
-  public static calculateDynamicFloor(bassEnergy: number): number {
-    return this.BASE_FLOOR + (bassEnergy * this.DYNAMIC_FLOOR_FACTOR);
+  
+  public reset(): void {
+    this.moverIntensityBuffer = 0
+    this.moverState = false
+    this.stabilityCounter = 0
+    this.strobeActive = false
+    this.strobeStartTime = 0
+    this.frontParSmoothed = 0
+    this.backParSmoothed = 0
+    this.frontParActive = false
   }
-
+  
+  // =========================================================================
+  // PRIVATE - Zone Calculations
+  // =========================================================================
+  
+  private handleSilence(): TechnoPhysicsResult {
+    this.moverIntensityBuffer = 0
+    this.moverState = false
+    this.stabilityCounter = 0
+    this.strobeActive = false
+    this.frontParSmoothed *= 0.85
+    this.backParSmoothed *= 0.85
+    
+    return {
+      strobeActive: false,
+      strobeIntensity: 0,
+      frontParIntensity: this.frontParSmoothed,
+      backParIntensity: this.backParSmoothed,
+      moverIntensity: 0,
+      moverActive: false,
+      physicsApplied: 'techno'
+    }
+  }
+  
   /**
-   * Evalúa si un par de valores triggearía strobe (sin aplicar).
-   * Útil para tests y predicción.
+   * Front PAR = BASS (Bombo) - EL CORAZÓN
+   * Comportamiento BINARIO con HISTÉRESIS anti-parpadeo
+   * Gate alto + histéresis = sin rebote cerca del umbral
+   * Cap 0.80 (siempre por debajo de Back)
    */
-  public static wouldTriggerStrobe(treble: number, bass: number): boolean {
-    const dynamicFloor = this.calculateDynamicFloor(bass);
-    const treblePulse = Math.max(0, treble - dynamicFloor);
-    return (treblePulse > this.TRIGGER_THRESHOLD) && (bass > this.MIN_BASS_FOR_STROBE);
+  private calculateFrontPar(bass: number): number {
+    // HISTÉRESIS: Diferentes umbrales para encender vs apagar
+    // Encender: bass > 0.35 (gate alto)
+    // Apagar: bass < 0.28 (margen de 0.07 para evitar rebote)
+    const gateOn = 0.35
+    const gateOff = 0.28
+    
+    if (this.frontParActive) {
+      // Ya está encendido - solo apagar si baja MUCHO
+      if (bass < gateOff) {
+        this.frontParActive = false
+        return 0
+      }
+    } else {
+      // Está apagado - solo encender si sube lo suficiente
+      if (bass < gateOn) {
+        return 0
+      }
+      this.frontParActive = true
+    }
+    
+    // Normalizar desde gate de encendido
+    const gated = (bass - gateOn) / (1 - gateOn)
+    // Curva AGRESIVA sin multiplicador
+    const intensity = Math.pow(Math.max(0, gated), 0.6)
+    return Math.min(0.80, Math.max(0, intensity))
+  }
+  
+  /**
+   * Back PAR = MID (Caja/Snare) - LA BOFETADA DE MAMÁ
+   * Gate calibrado para Techno 4x4 (caja clara a ~0.35-0.50)
+   * Multiplicador AGRESIVO - tiene que DOLER
+   * Cap 0.95 - SIEMPRE por encima de Front
+   */
+  private calculateBackPar(mid: number): number {
+    // Gate para Techno 4x4: caja suele estar en 0.35-0.60
+    // Voces están en 0.25-0.40, así que gate en 0.32 es el sweet spot
+    if (mid < 0.32) {
+      return 0
+    }
+    // Normalizar desde gate
+    const gated = (mid - 0.32) / (1 - 0.32)
+    // Multiplicador MÁS AGRESIVO 2.0 + exponente 0.65 para expandir débiles
+    // mid 0.40 → gated 0.12 → 0.47 (caja suave pero visible)
+    // mid 0.55 → gated 0.34 → 0.91 (PEGA)
+    // mid 0.70 → gated 0.56 → 0.95 (HOSTIA, capeado)
+    const intensity = Math.pow(gated, 0.65) * 2.0
+    return Math.min(0.95, Math.max(0, intensity))
+  }
+  
+  private calculateMover(treble: number): { intensity: number; active: boolean } {
+    const audioSignal = treble * this.TREBLE_VITAMIN
+    const prevIntensity = this.moverIntensityBuffer
+    const deactivationThreshold = Math.max(0.08, this.ACTIVATION_THRESHOLD - this.HYSTERESIS_MARGIN)
+    
+    let rawTarget = 0
+    let shouldBeOn = this.moverState
+    
+    if (audioSignal > this.ACTIVATION_THRESHOLD) {
+      shouldBeOn = true
+      rawTarget = 0.25 + (audioSignal - this.ACTIVATION_THRESHOLD) * 0.75 / (1 - this.ACTIVATION_THRESHOLD)
+    } else if (audioSignal > deactivationThreshold && this.moverState) {
+      shouldBeOn = true
+      rawTarget = prevIntensity * 0.4
+    } else {
+      shouldBeOn = false
+      rawTarget = 0
+    }
+    
+    let finalState = this.moverState
+    if (shouldBeOn !== this.moverState) {
+      // RISING INSTANTÁNEO: Si quiere encender, enciende YA (0 frames de espera)
+      // APAGADO con estabilidad: Solo delay para apagar (evita parpadeo)
+      if (shouldBeOn) {
+        // ENCENDER = INMEDIATO (el rising que pedía Radwulf)
+        finalState = true
+        this.stabilityCounter = 0
+      } else if (this.stabilityCounter >= this.MIN_STABLE_FRAMES) {
+        // APAGAR = con delay (evita flicker)
+        finalState = false
+        this.stabilityCounter = 0
+      } else {
+        this.stabilityCounter++
+        finalState = this.moverState
+        if (this.moverState && rawTarget === 0) {
+          rawTarget = prevIntensity * 0.7
+        }
+      }
+    } else {
+      this.stabilityCounter = 0
+    }
+    
+    let smoothedIntensity: number
+    if (rawTarget > prevIntensity) {
+      // ATTACK INSTANTÁNEO - sin smooth en subida
+      // El Techno es golpe seco, no fade-in
+      smoothedIntensity = rawTarget
+    } else {
+      // DECAY BRUTAL - 10% retención = cae a negro en 2-3 frames
+      // Esto es lo que crea el DELTA que queremos
+      smoothedIntensity = prevIntensity * 0.10 + rawTarget * 0.90
+    }
+    
+    // Floor alto para cortar limpio y llegar a NEGRO real
+    const cleanedIntensity = smoothedIntensity < 0.20 ? 0 : Math.min(1, smoothedIntensity)
+    this.moverIntensityBuffer = cleanedIntensity
+    this.moverState = cleanedIntensity > 0 ? finalState : false
+    
+    return { intensity: cleanedIntensity, active: this.moverState }
+  }
+  
+  private calculateStrobe(treble: number): { active: boolean; intensity: number } {
+    const now = Date.now()
+    if (this.strobeActive && now - this.strobeStartTime > this.STROBE_DURATION) {
+      this.strobeActive = false
+    }
+    if (treble > this.STROBE_THRESHOLD && !this.strobeActive) {
+      this.strobeActive = true
+      this.strobeStartTime = now
+    }
+    return { active: this.strobeActive, intensity: this.strobeActive ? 1.0 : 0 }
   }
 }
+
+// ===========================================================================
+// SINGLETON EXPORT (para zonas)
+// ===========================================================================
+
+export const technoStereoPhysics = new TechnoStereoPhysics()

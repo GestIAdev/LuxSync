@@ -24,7 +24,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { 
-  TechnoStereoPhysics, 
+  TechnoStereoPhysics,
+  technoStereoPhysics,
   RockStereoPhysics, 
   LatinoStereoPhysics, 
   ChillStereoPhysics 
@@ -134,6 +135,9 @@ export class SeleneLux {
   // 🆕 WAVE 288.7: Overrides de intensidad calculados por motor Latino
   private latinoOverrides: { front: number; back: number; mover: number } | null = null;
   
+  // 🆕 WAVE 290.3: Overrides de intensidad calculados por motor Techno
+  private technoOverrides: { front: number; back: number; mover: number } | null = null;
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
     
@@ -208,6 +212,7 @@ export class SeleneLux {
     
     if (vibeNormalized.includes('techno') || vibeNormalized.includes('electro')) {
       // ⚡ TECHNO: Industrial Strobe Physics
+      // 1. API Legacy para colores/strobe
       const result = TechnoStereoPhysics.apply(
         inputPalette,
         {
@@ -221,6 +226,25 @@ export class SeleneLux {
       isStrobeActive = result.isStrobeActive;
       physicsApplied = 'techno';
       debugInfo = result.debugInfo;
+      
+      // 2. WAVE 290.3: Nueva API para zonas/intensidades
+      const zonesResult = technoStereoPhysics.applyZones({
+        bass: audioMetrics.normalizedBass,
+        mid: audioMetrics.normalizedMid,
+        treble: audioMetrics.normalizedTreble,
+        bpm: vibeContext.bpm ?? 120,
+        melodyThreshold: 0.4,
+        isRealSilence: audioMetrics.avgNormEnergy < 0.01,
+        isAGCTrap: false,
+        sectionType: vibeContext.section
+      });
+      
+      // Guardar overrides para usar después
+      this.technoOverrides = {
+        front: zonesResult.frontParIntensity,
+        back: zonesResult.backParIntensity,
+        mover: zonesResult.moverIntensity
+      };
       
       if (this.debug && isStrobeActive) {
         console.log('[SeleneLux] ⚡ TECHNO PHYSICS | Strobe ACTIVE');
@@ -354,6 +378,14 @@ export class SeleneLux {
       
       // Limpiar overrides para el próximo frame
       this.latinoOverrides = null;
+    } else if (this.technoOverrides && physicsApplied === 'techno') {
+      // ⚡ WAVE 290.3: El motor Techno calculó sus intensidades. Respétalas.
+      frontIntensity = Math.min(0.95, this.technoOverrides.front * brightMod);
+      backIntensity = Math.min(0.95, this.technoOverrides.back);
+      moverIntensity = Math.min(1.0, this.technoOverrides.mover);
+      
+      // Limpiar overrides para el próximo frame
+      this.technoOverrides = null;
     } else {
       // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
       
@@ -381,7 +413,8 @@ export class SeleneLux {
     
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
     if (this.frameCount % 30 === 0) {
-      const source = physicsApplied === 'latino' ? '🌴LATINO' : '📡DEFAULT';
+      const source = physicsApplied === 'latino' ? '🌴LATINO' : 
+                     physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
       console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
     }
     

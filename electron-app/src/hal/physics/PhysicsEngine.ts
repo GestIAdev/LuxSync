@@ -1,18 +1,26 @@
 /**
- * 🏛️ WAVE 205: PHYSICS ENGINE
+ * 🏛️ WAVE 205: PHYSICS ENGINE - GLOBAL PHYSICS ONLY
  * 
- * Extracted from main.ts (WAVE 109: Asymmetric Decay Physics)
+ * ⚠️ ADVERTENCIA WAVE 290.3: Este es un motor de FISICAS GLOBALES.
+ * NO debe contener logica especifica de ningun vibe (Techno, Latino, etc).
  * 
- * RESPONSIBILITIES:
+ * Cada vibe tiene su propio motor de fisicas:
+ * - TechnoStereoPhysics.ts → Fisicas especificas de Techno
+ * - LatinoStereoPhysics.ts → Fisicas especificas de Latino (Salsa, Cumbia, etc)
+ * 
+ * RESPONSABILIDADES GLOBALES:
  * - Decay buffers management (per-fixture state)
- * - Asymmetric attack/decay physics (PAR vs MOVER)
- * - Hysteresis state for movers
+ * - Asymmetric attack/decay physics genericas (PAR vs MOVER)
  * - Soft knee clipping to eliminate noise
+ * 
+ * DEPRECATED:
+ * - calculateMoverTarget() → Migrado a TechnoStereoPhysics (WAVE 290.3)
  * 
  * DOES NOT:
  * - Analyze audio (that's Brain's job)
  * - Know about specific fixtures (that's HAL's job)
  * - Calculate colors (that's Engine's job)
+ * - Apply vibe-specific physics (that's XxxStereoPhysics.ts job)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,10 +126,15 @@ export class PhysicsEngine {
   
   /**
    * Calculate mover target with hysteresis.
-   * 🎚️ WAVE 275: Movers = ALMA MELÓDICA - solo responden a TREBLE (voces, melodías, efectos)
-   * 🔧 WAVE 280: MOVER STABILIZATION - Anti-epilepsy hysteresis
+   * 
+   * @deprecated WAVE 290.3: Esta funcion ha sido migrada a TechnoStereoPhysics.
+   * Para Techno, usar TechnoStereoPhysics.apply() que retorna moverIntensity.
+   * Para Latino, usar LatinoStereoPhysics.apply() que maneja movers con MID.
+   * 
+   * Se mantiene por compatibilidad pero sera eliminada en futuras versiones.
    */
   public calculateMoverTarget(input: MoverTargetInput): MoverCalcResult {
+    console.warn('[PhysicsEngine] DEPRECATED: calculateMoverTarget() - Use TechnoStereoPhysics.apply() instead')
     const {
       moverKey,  // 🔧 WAVE 280: Use unique key from caller
       melodyThreshold,

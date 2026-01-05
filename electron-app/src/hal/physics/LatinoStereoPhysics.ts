@@ -1,20 +1,28 @@
 ﻿/**
- * WAVE 292.6: TRANSIENT DETECTION - "Anti-Karaoke Surgery"
+ * WAVE 295: AUTOTUNE RESCUE + LOGS ÉPICOS - "El Reggaetón paga la renta"
  * ============================================================================
  * 
- * FILOSOFIA: "COMO TECHNO - UN COMPORTAMIENTO COJONUDO PARA TODO"
+ * DIAGNÓSTICO WAVE 294.5 (Radwulf):
+ *   - Voces con autotune: No pasan o pasan débiles
+ *   - Teclados/melodías: Igual
+ *   - Algunas canciones: Dan "zambombazos" (el sistema funciona)
  * 
- * Siguiendo el exito de Techno (que funciona igual de bien para 
- * hard minimal, dubstep o neurofunk), Latino usa UN SOLO FLAVOR.
+ * PROBLEMA: TREBLE_REJECTION 0.5 era demasiado agresivo.
+ * Las voces con autotune tienen armónicos agudos que estábamos matando.
  * 
- * WAVE 292.6 BREAKTHROUGH:
- * - MOVERS: Siguen MID (voces) - PERFECTO (WAVE 291.9)
- * - FRONT PARs: Pulso bass LINEAL - PERFECTO (WAVE 292)
- * - BACK PARs: TRANSIENT DETECTION - Ya no karaoke!
- *   * Treble en Latino es MUY bajo (0.05-0.21) - NO SIRVE
- *   * MID = voces = karaoke = MAL
- *   * SOLUCION: Detectar PICOS de energia (transientes)
- *   * Las voces son SOSTENIDAS, la percusion son PICOS
+ * CIRUGÍA WAVE 295:
+ * 
+ * MOVERS (MID PURO recalibrado):
+ *   - TREBLE_REJECTION: 0.30 (era 0.50) → Menos agresivo con autotune
+ *   - GATE: 0.28 (era 0.30) → Más sensible a voces suaves
+ *   - GAIN: 1.40 (era 1.20) → Compensar pérdida por rejection
+ *   - DECAY: 0.70 (era 0.65) → Más lento = menos parpadeo
+ * 
+ * LOGS ÉPICOS activados para calibración fina:
+ *   [MOVER] mid:0.XX treb:0.XX → puro:0.XX ✅/❌ | OUT:0.XX
+ * 
+ * "La música clásica es ARTE. El reggaetón es CASH. 
+ *  Somos mercenarios del código pagando la fucking renta." - Radwulf
  * ============================================================================
  */
 
@@ -56,24 +64,28 @@ export class LatinoStereoPhysics {
   private static readonly BASS_DELTA_THRESHOLD = 0.08;
   private static readonly DECAY_RATE = 0.08;
   
-  // MOVERS (WAVE 291.9 - PERFECTO)
-  private static readonly MOVER_ATTACK = 0.65;
-  private static readonly MOVER_DECAY_FACTOR = 0.40;
-  private static readonly MOVER_GATE = 0.32;
-  private static readonly MOVER_GAIN = 1.20;
+  // MOVERS (WAVE 295 - MID PURO con calibración fina)
+  // HISTÉRESIS: Piso mínimo más alto para rellenar mejor los microhuecos
+  private static readonly MOVER_ATTACK = 0.65;             // Subida rápida
+  private static readonly MOVER_DECAY_FACTOR = 0.70;       // 🔧 Subido de 0.65 (decay más lento = menos parpadeo)
+  private static readonly MOVER_GATE = 0.28;               // 🔧 Bajado de 0.30 (más sensible a voces)
+  private static readonly MOVER_GAIN = 1.40;               // 🔧 Subido de 1.20 (compensar rejection)
+  private static readonly MOVER_HYSTERESIS = 0.25;         // Piso de relleno
+  private static readonly MOVER_TREBLE_REJECTION = 0.30;   // 🔧 Bajado de 0.5 (voces autotune tienen treble)
   
-  // BACK PARs - WAVE 292.6: TRANSIENT DETECTION
-  private static readonly BACK_PAR_ENERGY_GATE = 0.12;
-  private static readonly BACK_PAR_MID_MIN = 0.35;
-  private static readonly BACK_PAR_ATTACK = 0.80;
-  private static readonly BACK_PAR_DECAY = 0.25;
-  private static readonly BACK_PAR_GAIN = 2.0;
+  // BACK PARs - WAVE 294: BOFETADA PRECISA (snares, hi-hats)
+  // Treble típico: 0.13-0.22. Gate 0.10 dejaba pasar casi TODO = saturación
+  // Nueva math: (0.20 - 0.14) / 0.16 = 0.375 → * 2.0 = 0.75 ✓
+  private static readonly BACK_PAR_GATE = 0.16;            // 🔧 Subido de 0.10 (solo snares reales)
+  private static readonly BACK_PAR_ATTACK = 0.70;          // Attack rápido (sin cambio)
+  private static readonly BACK_PAR_DECAY = 0.25;           // 🔧 Subido de 0.10 (bofetada rápida!)
+  private static readonly BACK_PAR_GAIN = 1.9;             // 🔧 Bajado de 2.5 (evita saturación)
   
-  // FRONT PARs (WAVE 292 - PERFECTO)
-  private static readonly FRONT_PAR_GATE = 0.15;
-  private static readonly FRONT_PAR_ATTACK = 0.75;
-  private static readonly FRONT_PAR_DECAY_LINEAR = 0.10;
-  private static readonly FRONT_PAR_GAIN = 1.3;
+  // FRONT PARs (WAVE 294 - Bombo con más pegada)
+  private static readonly FRONT_PAR_GATE = 0.48;           // Sin cambio
+  private static readonly FRONT_PAR_ATTACK = 0.70;         // Sin cambio
+  private static readonly FRONT_PAR_DECAY_LINEAR = 0.05;   // Sin cambio
+  private static readonly FRONT_PAR_GAIN = 1.7;            // 🔧 Subido de 1.6 (más punch)
   
   // Machine Gun Blackout
   private static readonly NEGATIVE_DROP_THRESHOLD = 0.4;
@@ -191,32 +203,55 @@ export class LatinoStereoPhysics {
       }
     }
     
-    // BACK PARs - WAVE 292.6: TRANSIENT DETECTION
-    const energyNow = currentEnergy;
-    const isTransient = energyNow > LatinoStereoPhysics.BACK_PAR_ENERGY_GATE && 
-                        mid > LatinoStereoPhysics.BACK_PAR_MID_MIN;
-    
-    if (isTransient) {
-      const intensity = Math.min(1.0, energyNow * LatinoStereoPhysics.BACK_PAR_GAIN);
-      this.currentBackParIntensity += (intensity - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
+    // BACK PARs - WAVE 294: BOFETADA PRECISA = Snares, Hi-hats, Platos
+    // Filosofía reggaeton: TÚN-tacka-TÚN-tacka
+    //   - TÚN = bombo (BASS) → FRONT PARs
+    //   - tacka = snare/hi-hat (TREBLE) → BACK PARs
+    // Gate 0.14: Solo picos reales de treble (>0.14) activan
+    // Decay 0.25: Golpe corto = BOFETADA, no caricia de 1 segundo
+    if (treble > LatinoStereoPhysics.BACK_PAR_GATE) {
+      // TREBLE: Normalizar sobre rango efectivo (0.14-0.30)
+      const normalized = (treble - LatinoStereoPhysics.BACK_PAR_GATE) / (0.30 - LatinoStereoPhysics.BACK_PAR_GATE);
+      const boosted = Math.min(1.0, normalized * LatinoStereoPhysics.BACK_PAR_GAIN);
+      this.currentBackParIntensity += (boosted - this.currentBackParIntensity) * LatinoStereoPhysics.BACK_PAR_ATTACK;
     } else {
+      // Sin snare/hi-hat: Decay RÁPIDO para bofetada
       this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
     }
     
-    // MOVERS (WAVE 291.9 - PERFECTO)
-    const moverTarget = mid;
+    // MOVERS (WAVE 295 - MID PURO + LOGS ÉPICOS para calibración)
+    // TREBLE_REJECTION bajado a 0.3 (era 0.5) - las voces con autotune tienen armónicos agudos
+    // GAIN subido para compensar la pérdida de señal por el filtrado
+    const midPuro = Math.max(0, mid - treble * LatinoStereoPhysics.MOVER_TREBLE_REJECTION);
+    const moverTarget = midPuro;
+    
+    // 🔬 LOGS ÉPICOS - Cada 10 frames para no saturar consola
+    if (Math.random() < 0.1) {
+      const status = moverTarget > LatinoStereoPhysics.MOVER_GATE ? '✅' : '❌';
+      console.log(`[MOVER] mid:${mid.toFixed(2)} treb:${treble.toFixed(2)} → puro:${midPuro.toFixed(2)} ${status} | OUT:${this.currentMoverIntensity.toFixed(2)}`);
+    }
     
     if (moverTarget > LatinoStereoPhysics.MOVER_GATE) {
       const boostedTarget = Math.min(1.0, moverTarget * LatinoStereoPhysics.MOVER_GAIN);
       this.currentMoverIntensity += (boostedTarget - this.currentMoverIntensity) * LatinoStereoPhysics.MOVER_ATTACK;
     } else {
+      // Decay normal
       this.currentMoverIntensity *= LatinoStereoPhysics.MOVER_DECAY_FACTOR;
-      if (this.currentMoverIntensity < 0.03) {
+      
+    // 🆕 HISTÉRESIS 0.20: Piso más alto rellena microhuecos entre vocales
+      // Estamos en zona de transición - mantener el piso
+      if (this.currentMoverIntensity > LatinoStereoPhysics.MOVER_HYSTERESIS && 
+          this.currentMoverIntensity < LatinoStereoPhysics.MOVER_HYSTERESIS * 1.5) {
+        // Estamos en zona de transición - mantener el piso
+        this.currentMoverIntensity = LatinoStereoPhysics.MOVER_HYSTERESIS;
+      } else if (this.currentMoverIntensity < 0.05) {
+        // Silencio real - apagar completamente
         this.currentMoverIntensity = 0;
       }
     }
     
-    // FRONT PARs (WAVE 292 - PERFECTO)
+    // FRONT PARs (WAVE 294 - Bombo con más pegada)
+    // Gain 1.7 para ese extra punch cumbiero/reggaetonero
     const frontTarget = bass;
     
     if (frontTarget > LatinoStereoPhysics.FRONT_PAR_GATE) {
@@ -275,8 +310,6 @@ export class LatinoStereoPhysics {
         detectedBpm,
         whitePuncturePhase: this.whitePuncturePhase,
         sectionType: currentSection,
-        energyNow,
-        isTransient,
       },
     };
   }

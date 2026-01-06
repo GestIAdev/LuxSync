@@ -139,12 +139,17 @@ export class SeleneLux {
   // 🆕 WAVE 290.3: Overrides de intensidad calculados por motor Techno
   private technoOverrides: { front: number; back: number; mover: number } | null = null;
   
-  // 🆕 WAVE 298 + WAVE 300: Overrides de intensidad calculados por motor Rock (con debug de transientes)
+  // 🆕 WAVE 301: ANALOG ROCK - Overrides de voltaje analógico
   private rockOverrides: { 
     front: number; 
     back: number; 
     mover: number;
-    debug?: { bassTransient: number; midTransient: number };
+    debug?: { 
+      mode: 'ANALOG';
+      frontVoltage: number; 
+      backCharge: number;
+      moverForce: number;
+    };
   } | null = null;
   
   constructor(config: SeleneLuxConfig = {}) {
@@ -262,40 +267,21 @@ export class SeleneLux {
       
     } else if (vibeNormalized.includes('rock') || vibeNormalized.includes('pop')) {
       // 🎸 ROCK: Snare Crack + Kick Punch
-      const result = RockStereoPhysics.apply(
-        inputPalette,
-        {
-          normalizedMid: audioMetrics.normalizedMid,
-          normalizedBass: audioMetrics.normalizedBass,
-          avgNormEnergy: audioMetrics.avgNormEnergy,
-        },
-        vibeContext.primaryHue,
-        elementalMods
-      );
-      
-      outputPalette.accent = result.palette.accent;
-      isFlashActive = result.isSnareHit || result.isKickHit;
-      physicsApplied = 'rock';
-      debugInfo = { snare: result.isSnareHit, kick: result.isKickHit, ...result.debugInfo };
-      
-      // 🆕 WAVE 298: Calcular overrides de zona para AGC TRUST
-      // MOVERS escuchan MID (la guitarra vive aquí, no en treble)
+      // WAVE 304: Simple zone processing (nuevo sistema de ganancias analógicas)
       this.rockOverrides = this.rockPhysics.applyZones(
         {
           bass: audioMetrics.normalizedBass,
           mid: audioMetrics.normalizedMid,
           treble: audioMetrics.normalizedTreble,
         },
-        {
-          isSnareHit: result.isSnareHit,
-          isKickHit: result.isKickHit,
-        }
+        vibeContext.bpm ?? 120
       );
       
-      // WAVE 299: Log throttled - solo cada 30 frames para no spamear
-      if (this.debug && isFlashActive && this.frameCount % 30 === 0) {
-        console.log(`[SeleneLux] 🎸 ROCK PHYSICS | Snare:${result.isSnareHit} Kick:${result.isKickHit}`);
-      }
+      // No hay cambio de paleta en Rock (usamos la entrada)
+      // outputPalette permanece igual
+      isFlashActive = false;  // Rock no usa flash, usa voltajes analógicos
+      physicsApplied = 'rock';
+      debugInfo = { front: this.rockOverrides.front, back: this.rockOverrides.back, mover: this.rockOverrides.mover };
       
     } else if (
       vibeNormalized.includes('latin') || 
@@ -418,11 +404,12 @@ export class SeleneLux {
       backIntensity = Math.min(0.95, this.rockOverrides.back);
       moverIntensity = Math.min(1.0, this.rockOverrides.mover);
       
-      // WAVE 300: Log transientes cada 30 frames
+      // WAVE 301: Log ANALOG cada 30 frames - voltaje/carga/fuerza
       if (this.frameCount % 30 === 0 && this.rockOverrides.debug) {
-        const bt = this.rockOverrides.debug.bassTransient.toFixed(2);
-        const mt = this.rockOverrides.debug.midTransient.toFixed(2);
-        console.log(`[AGC TRUST 🎸ROCK] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] Δ[Bass:${bt}, Mid:${mt}] -> 💡 OUT[F:${frontIntensity.toFixed(2)}, B:${backIntensity.toFixed(2)}, M:${moverIntensity.toFixed(2)}]`);
+        const fv = this.rockOverrides.debug.frontVoltage.toFixed(2);
+        const bc = this.rockOverrides.debug.backCharge.toFixed(2);
+        const mf = this.rockOverrides.debug.moverForce.toFixed(2);
+        console.log(`[AGC TRUST 🎸ANALOG] IN[B:${bass.toFixed(2)}, M:${mid.toFixed(2)}, T:${treble.toFixed(2)}] -> ⚡ VOLTS[Filament:${fv}, Spark:${bc}, Force:${mf}] -> 💡 OUT[F:${frontIntensity.toFixed(2)}, B:${backIntensity.toFixed(2)}, M:${moverIntensity.toFixed(2)}]`);
       }
       
       // Limpiar overrides para el próximo frame

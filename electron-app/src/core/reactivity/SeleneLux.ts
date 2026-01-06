@@ -118,9 +118,10 @@ export class SeleneLux {
   private debug: boolean;
   private frameCount = 0;
   
-  // Instancias de física stateful (Latino y Chill necesitan estado)
+  // Instancias de física stateful (Latino, Chill y Rock necesitan estado)
   private latinoPhysics: LatinoStereoPhysics;
   private chillPhysics: ChillStereoPhysics;
+  private rockPhysics: RockStereoPhysics;  // 🆕 WAVE 298: Rock zone physics
   
   // Estado del último frame
   private lastOutput: SeleneLuxOutput;
@@ -138,12 +139,21 @@ export class SeleneLux {
   // 🆕 WAVE 290.3: Overrides de intensidad calculados por motor Techno
   private technoOverrides: { front: number; back: number; mover: number } | null = null;
   
+  // 🆕 WAVE 298 + WAVE 300: Overrides de intensidad calculados por motor Rock (con debug de transientes)
+  private rockOverrides: { 
+    front: number; 
+    back: number; 
+    mover: number;
+    debug?: { bassTransient: number; midTransient: number };
+  } | null = null;
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
     
     // Inicializar físicas stateful
     this.latinoPhysics = new LatinoStereoPhysics();
     this.chillPhysics = new ChillStereoPhysics();
+    this.rockPhysics = new RockStereoPhysics();  // 🆕 WAVE 298: Rock zone physics
     
     // Output por defecto
     this.lastOutput = {
@@ -268,7 +278,22 @@ export class SeleneLux {
       physicsApplied = 'rock';
       debugInfo = { snare: result.isSnareHit, kick: result.isKickHit, ...result.debugInfo };
       
-      if (this.debug && isFlashActive) {
+      // 🆕 WAVE 298: Calcular overrides de zona para AGC TRUST
+      // MOVERS escuchan MID (la guitarra vive aquí, no en treble)
+      this.rockOverrides = this.rockPhysics.applyZones(
+        {
+          bass: audioMetrics.normalizedBass,
+          mid: audioMetrics.normalizedMid,
+          treble: audioMetrics.normalizedTreble,
+        },
+        {
+          isSnareHit: result.isSnareHit,
+          isKickHit: result.isKickHit,
+        }
+      );
+      
+      // WAVE 299: Log throttled - solo cada 30 frames para no spamear
+      if (this.debug && isFlashActive && this.frameCount % 30 === 0) {
         console.log(`[SeleneLux] 🎸 ROCK PHYSICS | Snare:${result.isSnareHit} Kick:${result.isKickHit}`);
       }
       
@@ -386,6 +411,22 @@ export class SeleneLux {
       
       // Limpiar overrides para el próximo frame
       this.technoOverrides = null;
+    } else if (this.rockOverrides && physicsApplied === 'rock') {
+      // 🎸 WAVE 298: El motor Rock calculó sus intensidades. Respétalas.
+      // MOVERS escuchan MID (guitarra), no treble!
+      frontIntensity = Math.min(0.95, this.rockOverrides.front * brightMod);
+      backIntensity = Math.min(0.95, this.rockOverrides.back);
+      moverIntensity = Math.min(1.0, this.rockOverrides.mover);
+      
+      // WAVE 300: Log transientes cada 30 frames
+      if (this.frameCount % 30 === 0 && this.rockOverrides.debug) {
+        const bt = this.rockOverrides.debug.bassTransient.toFixed(2);
+        const mt = this.rockOverrides.debug.midTransient.toFixed(2);
+        console.log(`[AGC TRUST 🎸ROCK] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] Δ[Bass:${bt}, Mid:${mt}] -> 💡 OUT[F:${frontIntensity.toFixed(2)}, B:${backIntensity.toFixed(2)}, M:${moverIntensity.toFixed(2)}]`);
+      }
+      
+      // Limpiar overrides para el próximo frame
+      this.rockOverrides = null;
     } else {
       // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
       
@@ -412,7 +453,8 @@ export class SeleneLux {
     };
     
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
-    if (this.frameCount % 30 === 0) {
+    // WAVE 300: Rock tiene su propio log con transientes (arriba)
+    if (this.frameCount % 30 === 0 && physicsApplied !== 'rock') {
       const source = physicsApplied === 'latino' ? '🌴LATINO' : 
                      physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
       console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);

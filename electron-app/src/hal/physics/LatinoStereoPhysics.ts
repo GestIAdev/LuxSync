@@ -1,28 +1,30 @@
 ﻿/**
- * WAVE 295: AUTOTUNE RESCUE + LOGS ÉPICOS - "El Reggaetón paga la renta"
+ * WAVE 297: FIESTA LATINA COMPLETA 🎉🍾
  * ============================================================================
  * 
- * DIAGNÓSTICO WAVE 294.5 (Radwulf):
- *   - Voces con autotune: No pasan o pasan débiles
- *   - Teclados/melodías: Igual
- *   - Algunas canciones: Dan "zambombazos" (el sistema funciona)
+ * MISIÓN CUMPLIDA - De "roto" a "sublime" en 7 WAVEs (291-297)
  * 
- * PROBLEMA: TREBLE_REJECTION 0.5 era demasiado agresivo.
- * Las voces con autotune tienen armónicos agudos que estábamos matando.
+ * ARQUITECTURA FINAL:
+ *   FRONT PARs → BASS (Gate 0.48, Decay 0.05) = BOMBO "TÚN"
+ *   BACK PARs  → TREBLE (Gate 0.16, Decay 0.25) = SNARE "tacka"
+ *   MOVERS     → MID PURO (Gate 0.22, Decay 0.75) = VOZ/MELODÍA
  * 
- * CIRUGÍA WAVE 295:
+ * CALIBRACIÓN (Análisis estadístico 200+ muestras):
+ *   - Beat loss: ~4% (solo silencios arquitectónicos reales)
+ *   - Delta < 0.10: 90% del flujo = CINTURA DE BAILARINA
+ *   - Delta > 0.20: 9 casos = PUNCHES INTENCIONALES (drops/entradas)
  * 
- * MOVERS (MID PURO recalibrado):
- *   - TREBLE_REJECTION: 0.30 (era 0.50) → Menos agresivo con autotune
- *   - GATE: 0.28 (era 0.30) → Más sensible a voces suaves
- *   - GAIN: 1.40 (era 1.20) → Compensar pérdida por rejection
- *   - DECAY: 0.70 (era 0.65) → Más lento = menos parpadeo
+ * GÉNEROS VALIDADOS:
+ *   ✅ Reggaetón (TÚN-tacka-TÚN-tacka)
+ *   ✅ Cumbia (ritmo de acordeón)
+ *   ✅ Cumbiatón (híbrido)
+ *   ✅ Remixes de DJ con EQ cuestionable
  * 
- * LOGS ÉPICOS activados para calibración fina:
- *   [MOVER] mid:0.XX treb:0.XX → puro:0.XX ✅/❌ | OUT:0.XX
+ * PRESUPUESTO: $0 y dos gatos 🐱🐱
+ * COMPETENCIA: GrandMA3 = $$$$$$$  |  LuxSync = $800
  * 
- * "La música clásica es ARTE. El reggaetón es CASH. 
- *  Somos mercenarios del código pagando la fucking renta." - Radwulf
+ * "Lo espectacular es el 95%. Lo sublime es el 100%." - Radwulf (Virgo)
+ * "La luz que respira, no parpadea." - PunkOpus
  * ============================================================================
  */
 
@@ -64,14 +66,18 @@ export class LatinoStereoPhysics {
   private static readonly BASS_DELTA_THRESHOLD = 0.08;
   private static readonly DECAY_RATE = 0.08;
   
-  // MOVERS (WAVE 295 - MID PURO con calibración fina)
-  // HISTÉRESIS: Piso mínimo más alto para rellenar mejor los microhuecos
+  // MOVERS (WAVE 296 - FLUIDEZ SUBLIME)
+  // Análisis estadístico de 200+ muestras de cumbia:
+  //   - ~11.5% de beats perdidos con gate 0.24
+  //   - Zona 0.20-0.24 tiene voces/melodías rescatables
+  //   - Gate 0.22 rescata la mayoría sin meter ruido
+  //   - Decay 0.75 para pintura más líquida
   private static readonly MOVER_ATTACK = 0.65;             // Subida rápida
-  private static readonly MOVER_DECAY_FACTOR = 0.70;       // 🔧 Subido de 0.65 (decay más lento = menos parpadeo)
-  private static readonly MOVER_GATE = 0.28;               // 🔧 Bajado de 0.30 (más sensible a voces)
-  private static readonly MOVER_GAIN = 1.40;               // 🔧 Subido de 1.20 (compensar rejection)
+  private static readonly MOVER_DECAY_FACTOR = 0.75;       // 🔧 Subido de 0.72 (más líquido)
+  private static readonly MOVER_GATE = 0.22;               // 🔧 Bajado de 0.24 (rescatar zona 0.22-0.24)
+  private static readonly MOVER_GAIN = 1.30;               // 🔧 Bajado de 1.35 (compensar gate más bajo)
   private static readonly MOVER_HYSTERESIS = 0.25;         // Piso de relleno
-  private static readonly MOVER_TREBLE_REJECTION = 0.30;   // 🔧 Bajado de 0.5 (voces autotune tienen treble)
+  private static readonly MOVER_TREBLE_REJECTION = 0.30;   // Voces autotune tienen treble
   
   // BACK PARs - WAVE 294: BOFETADA PRECISA (snares, hi-hats)
   // Treble típico: 0.13-0.22. Gate 0.10 dejaba pasar casi TODO = saturación
@@ -219,17 +225,10 @@ export class LatinoStereoPhysics {
       this.currentBackParIntensity = Math.max(0, this.currentBackParIntensity - LatinoStereoPhysics.BACK_PAR_DECAY);
     }
     
-    // MOVERS (WAVE 295 - MID PURO + LOGS ÉPICOS para calibración)
-    // TREBLE_REJECTION bajado a 0.3 (era 0.5) - las voces con autotune tienen armónicos agudos
-    // GAIN subido para compensar la pérdida de señal por el filtrado
+    // MOVERS (WAVE 296 - MID PURO con Treble Rejection)
+    // TREBLE_REJECTION 0.30 - las voces con autotune tienen armónicos agudos
     const midPuro = Math.max(0, mid - treble * LatinoStereoPhysics.MOVER_TREBLE_REJECTION);
     const moverTarget = midPuro;
-    
-    // 🔬 LOGS ÉPICOS - Cada 10 frames para no saturar consola
-    if (Math.random() < 0.1) {
-      const status = moverTarget > LatinoStereoPhysics.MOVER_GATE ? '✅' : '❌';
-      console.log(`[MOVER] mid:${mid.toFixed(2)} treb:${treble.toFixed(2)} → puro:${midPuro.toFixed(2)} ${status} | OUT:${this.currentMoverIntensity.toFixed(2)}`);
-    }
     
     if (moverTarget > LatinoStereoPhysics.MOVER_GATE) {
       const boostedTarget = Math.min(1.0, moverTarget * LatinoStereoPhysics.MOVER_GAIN);

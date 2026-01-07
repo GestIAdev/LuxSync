@@ -255,14 +255,20 @@ export const ROCK_CONSTITUTION: GenerationOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "Bioluminiscencia"
+// 🌊 CONSTITUCIÓN CHILL-LOUNGE: "Bioluminiscencia" (WAVE 315)
 // ═══════════════════════════════════════════════════════════════════════════
 /**
+ * WAVE 315: EXPANDED SPECTRUM - El ecosistema submarino completo.
+ * 
  * En el reino del Chill, la profundidad es infinita. Flotamos en luz líquida.
  * 
- * ZONA ABISAL: 200° - 260° (Azul Profundo → Índigo)
- * ZONA MEDUSA: 270° - 310° (Violeta → Magenta Suave)
- * ZONA CORAL: 170° - 195° (Turquesa → Cian)
+ * 🌿 ZONA ALGA:   135° - 170° (Verde Esmeralda → Turquesa)  [NUEVO]
+ * 🌊 ZONA CORAL:  170° - 200° (Turquesa → Cian)
+ * 🐋 ZONA ABISAL: 200° - 260° (Azul Profundo → Índigo)
+ * 🪼 ZONA MEDUSA: 260° - 320° (Violeta → Magenta Suave)
+ * 🌺 ZONA ROSA:   320° - 340° (Magenta Profundo → Rosa)    [NUEVO]
+ * 
+ * FILOSOFÍA: "El océano tiene TODO. Algas, corales, abismos, medusas, flores."
  */
 export const CHILL_CONSTITUTION: GenerationOptions = {
   // Analogous para armonía
@@ -273,13 +279,16 @@ export const CHILL_CONSTITUTION: GenerationOptions = {
   // Tirón suave hacia tonos acuáticos relajantes
   atmosphericTemp: 8000,
   
-  // Prohibido: naranjas/amarillos (demasiado energéticos)
+  // Prohibido: naranjas/amarillos (demasiado energéticos para el fondo marino)
   forbiddenHueRanges: [[30, 80]],
   
-  // Solo espectro oceánico frío
-  allowedHueRanges: [[170, 320]],
+  // 🌊 WAVE 315: EXPANDED SPECTRUM
+  // Antes: [[170, 320]] = 150° de espectro
+  // Ahora: [[135, 340]] = 205° de espectro (+55°)
+  // Nuevas zonas: Verde Alga (135-170°) + Magenta Rosa (320-340°)
+  allowedHueRanges: [[135, 340]],
   
-  // Saturación respirable
+  // Saturación respirable (no neón)
   saturationRange: [50, 80],
   
   // Luminosidad profunda
@@ -298,9 +307,10 @@ export const CHILL_CONSTITUTION: GenerationOptions = {
     easing: 'sine-inout',     // Ondas suaves
   },
   
-  // Dimming suave, nunca negro total
+  // 🌟 WAVE 315: Dimmer floor subido - bioluminiscencia siempre visible
+  // La vida marina siempre brilla, nunca hay oscuridad total
   dimmingConfig: {
-    floor: 0.05,   // Siempre algo de luz
+    floor: 0.10,   // Antes 0.05 - Ahora 10% mínimo (brillo residual)
     ceiling: 0.85, // Nunca cegador
   },
 };

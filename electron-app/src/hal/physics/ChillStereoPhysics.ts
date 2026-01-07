@@ -1,367 +1,191 @@
-/**
- * 🌊 WAVE 146: CHILL STEREO PHYSICS ("The Jellyfish Breath")
+﻿/**
+ * WAVE 323: THE MORPHINE UPDATE (REFRITO MORFÍNICO) 💊🌊
  * ============================================================================
- * Módulo blindado para la lógica de reactividad del género Chill/Lounge.
- * 
- * RESPONSABILIDAD ÚNICA:
- * - Generar BREATHING PULSE (onda senoidal lenta)
- * - IGNORAR todos los eventos agresivos (strobes, picos)
- * - Mantener la paz absoluta (bioluminiscencia)
- * 
- * WAVE 273: ELEMENTAL INJECTION
- * El elemento zodiacal modula la frecuencia y amplitud de la respiración:
- * - Fuego: Respiración más rápida (decayMod < 1)
- * - Tierra: Respiración normal, amplitud reducida
- * - Agua: Respiración ultra-lenta (decayMod > 1)
- * - Aire: Respiración con variación sutil
- * 
- * FILOSOFÍA: "NUNCA APAGAR, NUNCA GOLPEAR. FLUIR."
- * El Chill es agua: fluye, respira, ondula.
- * Nada puede romper la tranquilidad.
- * 
- * CONSTITUCIÓN CHILL (Wave 143):
- * - Zona Abisal: 200° - 260° (Azul Profundo → Índigo)
- * - Zona Medusa: 270° - 310° (Violeta → Magenta Suave)
- * - Zona Coral: 170° - 195° (Turquesa → Cian)
- * - Strobe: PROHIBIDO CONSTITUCIONALMENTE
- * 
- * @see docs/audits/WAVE-143-COLOR-CONSTITUTION.md § 2.4
+ * AUTOR: Sonnet 4.5 (Forensic Analysis) + Gemini (Implementation)
+ * * FILOSOFÍA: "La naturaleza no es lineal, es logarítmica"
+ * * * EL ERROR ANTERIOR (Viscosity/Linear):
+ * - Restar un valor fijo (val -= 0.005) crea "escalones" visibles en valores bajos.
+ * - Causa parpadeo en monitores rápidos (120Hz).
+ * * * LA SOLUCIÓN (Latino/Techno Math):
+ * - Usar CONVERGENCIA PROPORCIONAL: `val += (target - val) * FACTOR`
+ * - Al acercarse al objetivo, el paso se vuelve microscópico.
+ * - Resultado: Suavidad infinita (Asíntota).
+ * * * CONFIGURACIÓN "OCÉANO":
+ * - ATTACK: Bajo (0.05) -> La luz tarda en subir (Inercia de agua).
+ * - DECAY: Minúsculo (0.02) -> La luz tarda una eternidad en bajar.
  * ============================================================================
  */
 
-// WAVE 273: Elemental Modifiers
-import { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
+import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
 
-/**
- * Tipo RGB para colores (definido localmente para evitar dependencias circulares)
- */
-export interface RGB {
-  r: number;
-  g: number;
-  b: number;
+export interface ChillPhysicsInput {
+  bass: number; mid: number; treble: number; energy: number;
+  isRealSilence: boolean; isAGCTrap: boolean;
 }
 
-/**
- * Tipo HSL para colores (usado internamente)
- */
-export interface HSL {
-  h: number;  // 0-360
-  s: number;  // 0-100
-  l: number;  // 0-100
-}
-
-/**
- * Interfaz para la paleta de colores que procesa esta física
- */
-export interface ChillPalette {
-  primary: RGB;
-  secondary: RGB;
-  ambient: RGB;
-  accent: RGB;
-}
-
-/**
- * Métricas de audio necesarias para el cálculo de física Chill
- * (Nota: La mayoría son IGNORADAS - Chill no reacciona al audio agresivamente)
- */
-export interface ChillAudioMetrics {
-  normalizedEnergy: number;    // 0.0 - 1.0 (Solo para modular sutilmente)
-  normalizedTreble?: number;   // IGNORADO - No queremos reactividad a agudos
-}
-
-/**
- * Resultado de la aplicación de física Chill
- */
 export interface ChillPhysicsResult {
-  palette: ChillPalette;
-  breathPhase: number;          // 0.0 - 1.0 (fase actual del ciclo de respiración)
-  isStrobe: false;              // SIEMPRE false - strobe prohibido
-  dimmerModulation: number;     // Modulación del dimmer por la respiración (-0.15 a +0.15)
-  debugInfo: {
-    breathingValue: number;     // Valor actual de la onda senoidal
-    cycleFrequency: number;     // Frecuencia en Hz
-    lightnessModulation: number;
-    saturationModulation: number;
-  };
+  frontParIntensity: number; backParIntensity: number;
+  moverIntensity: number; moverActive: boolean;
+  physicsApplied: 'chill';
 }
 
-/**
- * ChillStereoPhysics - Módulo de Reactividad para Chill/Lounge
- * 
- * Esta clase encapsula la lógica de respiración bioluminiscente:
- * - BREATHING PULSE: Onda senoidal lenta que modula brillo y saturación
- * - SAFETY CLAMP: Ignora TODOS los eventos agresivos
- */
 export class ChillStereoPhysics {
-  // =========================================================================
-  // 🔒 CONFIGURACIÓN INMUTABLE (Calibrada para paz absoluta)
-  // =========================================================================
-  
-  /**
-   * Frecuencia del ciclo de respiración en Hz.
-   * 0.2 Hz = 5 segundos por ciclo completo (lento y meditativo)
-   */
-  private static readonly BREATH_FREQUENCY_HZ = 0.2;
-  
-  /**
-   * Amplitud de modulación de luminosidad.
-   * ±8% de variación en L para efecto sutil pero visible.
-   */
-  private static readonly LIGHTNESS_AMPLITUDE = 8;
-  
-  /**
-   * Amplitud de modulación de saturación.
-   * ±5% de variación en S (más sutil que L)
-   */
-  private static readonly SATURATION_AMPLITUDE = 5;
-  
-  /**
-   * Amplitud de modulación del dimmer general.
-   * ±15% de variación en intensidad total.
-   */
-  private static readonly DIMMER_AMPLITUDE = 0.15;
-  
-  /**
-   * Dimmer mínimo constitucional.
-   * NUNCA apagar completamente (bioluminiscencia siempre visible)
-   */
-  private static readonly DIMMER_FLOOR = 0.05;
-  
-  /**
-   * Dimmer máximo constitucional.
-   * Evitar brillo cegador (suavidad obligatoria)
-   */
-  private static readonly DIMMER_CEILING = 0.85;
-  
-  /**
-   * Pi * 2 para cálculos de onda
-   */
-  private static readonly TWO_PI = Math.PI * 2;
 
-  // =========================================================================
-  // 📊 ESTADO INTERNO
-  // =========================================================================
-  
-  /** Tiempo de inicio para el ciclo de respiración */
-  private readonly startTime = Date.now();
-  
-  // =========================================================================
-  // 🔧 MÉTODOS PÚBLICOS
-  // =========================================================================
-  
-  /**
-   * Aplica la física Chill a una paleta de colores.
-   * 
-   * WAVE 273: Acepta modificadores elementales para modular respiración:
-   * - decayMultiplier: Modula la frecuencia (>1 = más lento, <1 = más rápido)
-   * - brightnessMultiplier: Modula la amplitud de la respiración
-   * 
-   * @param palette - Paleta de colores actual (RGB)
-   * @param metrics - Métricas de audio (mayormente ignoradas)
-   * @param mods - Modificadores elementales (Fuego/Tierra/Aire/Agua)
-   * @returns Paleta modificada con respiración aplicada
-   */
-  public apply(
-    palette: ChillPalette,
-    _metrics: ChillAudioMetrics,  // Prefijo _ porque mayormente ignoramos
-    mods?: ElementalModifiers
-  ): ChillPhysicsResult {
-    // WAVE 273: Extraer multiplicadores elementales
-    const decayMod = mods?.decayMultiplier ?? 1.0;
-    const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
+  // 1. PISO DE FLOTACIÓN (Bioluminiscencia residual)
+  private readonly FLOOR = 0.15; // Nunca bajamos de aquí. Oscuridad = Miedo.
 
-    const now = Date.now();
-    const elapsedSeconds = (now - this.startTime) / 1000;
-    
-    // =====================================================================
-    // 1️⃣ BREATHING PULSE (Onda Senoidal Lenta)
-    // WAVE 273: Frecuencia modulada por elemento (decay alto = respiración lenta)
-    // =====================================================================
-    const effectiveFrequency = ChillStereoPhysics.BREATH_FREQUENCY_HZ / decayMod;
-    
-    // Generar valor de onda senoidal: oscila entre -1 y +1
-    const breathingValue = Math.sin(
-      ChillStereoPhysics.TWO_PI * 
-      effectiveFrequency * 
-      elapsedSeconds
-    );
-    
-    // Calcular fase del ciclo (0.0 - 1.0)
-    const breathPhase = ((elapsedSeconds * effectiveFrequency) % 1);
-    
-    // =====================================================================
-    // 2️⃣ MODULACIÓN DE COLORES
-    // WAVE 273: Amplitudes moduladas por elemento
-    // =====================================================================
-    // Convertir RGB a HSL, modular, y convertir de vuelta
-    const primaryHsl = this.rgbToHsl(palette.primary);
-    const secondaryHsl = this.rgbToHsl(palette.secondary);
-    const ambientHsl = this.rgbToHsl(palette.ambient);
-    const accentHsl = this.rgbToHsl(palette.accent);
-    
-    // Calcular modulaciones - WAVE 273: amplitud modulada por brightness
-    const effectiveLightnessAmp = ChillStereoPhysics.LIGHTNESS_AMPLITUDE * brightnessMod;
-    const lightnessModulation = breathingValue * effectiveLightnessAmp;
-    const saturationModulation = breathingValue * ChillStereoPhysics.SATURATION_AMPLITUDE;
-    const dimmerModulation = breathingValue * ChillStereoPhysics.DIMMER_AMPLITUDE * brightnessMod;
-    
-    // Aplicar modulación a cada color
-    const modulatedPrimary = this.modulateHsl(primaryHsl, lightnessModulation, saturationModulation);
-    const modulatedSecondary = this.modulateHsl(secondaryHsl, lightnessModulation * 0.8, saturationModulation * 0.8);
-    const modulatedAmbient = this.modulateHsl(ambientHsl, lightnessModulation * 1.2, saturationModulation);
-    const modulatedAccent = this.modulateHsl(accentHsl, lightnessModulation * 0.5, saturationModulation * 0.5);
-    
-    // Crear paleta resultante
-    const resultPalette: ChillPalette = {
-      primary: this.hslToRgb(modulatedPrimary),
-      secondary: this.hslToRgb(modulatedSecondary),
-      ambient: this.hslToRgb(modulatedAmbient),
-      accent: this.hslToRgb(modulatedAccent),
-    };
-    
-    // =====================================================================
-    // 3️⃣ SAFETY CLAMP (Ignorar Eventos Agresivos)
-    // =====================================================================
-    // NO hay detección de picos
-    // NO hay strobes
-    // El Chill es PAZ ABSOLUTA
-    
-    return {
-      palette: resultPalette,
-      breathPhase,
-      isStrobe: false,  // SIEMPRE false - constitucional
-      dimmerModulation,
-      debugInfo: {
-        breathingValue,
-        cycleFrequency: ChillStereoPhysics.BREATH_FREQUENCY_HZ,
-        lightnessModulation,
-        saturationModulation,
-      },
-    };
-  }
+  // 2. FACTORES DE CONVERGENCIA (0.0 a 1.0)
+  // MATEMÁTICA: current += (target - current) * FACTOR
+  // Factor 0.70 = Converge en ~3 frames (50ms)
+  // Factor 0.40 = Converge en ~6 frames (100ms)
+  // Factor 0.85 = Converge en ~2 frames (33ms)
+
+  // FRONT (Corazón del Océano - Bass) - "Corazón que late"
+  private readonly FRONT_ATTACK = 0.75; // Subida rápida (marcar golpe de bombo)
+  private readonly FRONT_DECAY  = 0.35; // Bajada moderada (líquida pero visible)
+
+  // BACK (Estrellas/Plancton - Treble) - "Brillos ocasionales"
+  private readonly BACK_ATTACK  = 0.60; // Subida moderada (aparición suave)
+  private readonly BACK_DECAY   = 0.40; // Bajada moderada (estela visible)
+
+  // MOVER (Mantas/Melodía - Mid) - "Flotación constante"
+  private readonly MOVER_ATTACK = 0.50; // Subida lenta (ignorar transientes)
+  private readonly MOVER_DECAY  = 0.85; // Bajada ultra-líquida (océano)
+
+  // 3. GAINS & GATES (Sensibilidad)
+  // FILOSOFÍA CHILL: Sin strobe, sin bofetadas, todo fluido
+  // CALIBRADO CON: Deep House comercial (Café del Mar, Kygo, etc.)
   
-  /**
-   * Calcula el dimmer efectivo con la respiración aplicada
-   * @param baseDimmer - Dimmer base (0-1)
-   * @returns Dimmer modulado respetando floor y ceiling
-   */
-  public getModulatedDimmer(baseDimmer: number): number {
-    const now = Date.now();
-    const elapsedSeconds = (now - this.startTime) / 1000;
-    
-    const breathingValue = Math.sin(
-      ChillStereoPhysics.TWO_PI * 
-      ChillStereoPhysics.BREATH_FREQUENCY_HZ * 
-      elapsedSeconds
-    );
-    
-    const modulation = breathingValue * ChillStereoPhysics.DIMMER_AMPLITUDE;
-    const modulated = baseDimmer + modulation;
-    
-    // Clamp al rango constitucional
-    return Math.max(
-      ChillStereoPhysics.DIMMER_FLOOR,
-      Math.min(ChillStereoPhysics.DIMMER_CEILING, modulated)
-    );
-  }
+  private readonly BASS_GATE   = 0.32;  // ✅ PERFECTO - Solo bombos limpios
+  private readonly MID_GATE    = 0.12;  // 🔧 BAJADO de 0.18 (rescatar pads sutiles)
+  private readonly TREBLE_GATE = 0.08;  // 🔧 BAJADO BRUTAL de 0.15 (treble típico: 0.08-0.23)
   
-  /**
-   * Reinicia el tiempo de inicio (para sincronizar con nueva escena)
-   * Nota: No hay mucho que resetear en Chill, la respiración es continua
-   */
-  public reset(): void {
-    // El startTime es readonly, así que simplemente continuamos
-    // La respiración es eternal, como el océano
-  }
-  
-  // =========================================================================
-  // 🔧 MÉTODOS PRIVADOS (Utilidades de Color)
-  // =========================================================================
-  
-  /**
-   * Convierte RGB a HSL
-   */
-  private rgbToHsl(rgb: RGB): HSL {
-    const r = rgb.r / 255;
-    const g = rgb.g / 255;
-    const b = rgb.b / 255;
+  private readonly FRONT_GAIN  = 1.4;   // ✅ OK - Punch visible
+  private readonly BACK_GAIN   = 3.0;   // 🔧 SUBIDO de 2.8 (compensar gate bajo)
+  private readonly MOVER_GAIN  = 2.0;   // 🔧 SUBIDO de 1.9 (más presencia)
+
+  // Estado Interno
+  private frontVal = 0.15;
+  private backVal = 0.15;
+  private moverVal = 0.15;
+  private moverActive = false;
+  private static logCounter = 0;
+
+  constructor() { console.log('[ChillStereoPhysics] WAVE 323 - Morphine Engine Active'); }
+
+  public applyZones(input: ChillPhysicsInput): ChillPhysicsResult {
+    const { bass, mid, treble, isRealSilence, isAGCTrap } = input;
+
+    // TRAMPILLA DE SILENCIO (Modificada para Morphine)
+    // Si hay silencio real, forzamos un Decay más rápido (x10) para apagar elegante
+    const isSilence = isRealSilence || isAGCTrap;
+    const silenceMult = isSilence ? 10.0 : 1.0;
+
+    // 1. CALCULO DE TARGETS (A dónde quiere ir la luz)
     
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const l = (max + min) / 2;
+    // Front (Bass - Corazón)
+    const rawFront = (bass > this.BASS_GATE) ? (bass - this.BASS_GATE) / (1 - this.BASS_GATE) : 0;
+    const targetFront = Math.max(this.FLOOR, rawFront * this.FRONT_GAIN);
+
+    // Back (Treble - Estrellas brillantes ocasionales)
+    const rawBack = (treble > this.TREBLE_GATE) ? ((treble - this.TREBLE_GATE) / (1 - this.TREBLE_GATE)) : 0;
+    const targetBack = Math.max(this.FLOOR, rawBack * this.BACK_GAIN);
+
+    // Mover (Mid - Mantas flotantes)
+    // ANTI-SNARE: Rechazar mid si hay treble alto (snares = mid+treble)
+    const TREBLE_REJECTION_THRESHOLD = 0.25; // Si treble > 0.25, reducir influencia en movers
+    const trebleRejection = treble > TREBLE_REJECTION_THRESHOLD 
+      ? 1.0 - ((treble - TREBLE_REJECTION_THRESHOLD) * 2.0) // Reduce hasta 50%
+      : 1.0;
+    const trebleRejectionClamped = Math.max(0.3, Math.min(1.0, trebleRejection)); // Clamp 30%-100%
     
-    let h = 0;
-    let s = 0;
+    const rawMover = (mid > this.MID_GATE) ? ((mid - this.MID_GATE) / (1 - this.MID_GATE)) : 0;
+    const targetMover = Math.max(this.FLOOR, rawMover * this.MOVER_GAIN * trebleRejectionClamped);
+
+    // 2. APLICACIÓN DE FÍSICA PROPORCIONAL (The Morphine)
+    // current += (target - current) * factor
     
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
-      }
+    this.frontVal = this.morphineSmooth(this.frontVal, targetFront, this.FRONT_ATTACK, this.FRONT_DECAY * silenceMult);
+    this.backVal  = this.morphineSmooth(this.backVal, targetBack, this.BACK_ATTACK, this.BACK_DECAY * silenceMult);
+    this.moverVal = this.morphineSmooth(this.moverVal, targetMover, this.MOVER_ATTACK, this.MOVER_DECAY * silenceMult);
+
+    // Activación lógica
+    this.moverActive = this.moverVal > (this.FLOOR + 0.05);
+
+    // WAVE 324: DIAGNOSTIC LOGGING (Cada 30 frames = ~500ms)
+    ChillStereoPhysics.logCounter++;
+    if (ChillStereoPhysics.logCounter % 30 === 0) {
+      console.log(`[Morphine 💊] RAW[B:${bass.toFixed(2)} M:${mid.toFixed(2)} T:${treble.toFixed(2)}]`);
+      console.log(`[Morphine 🎯] TGT[F:${targetFront.toFixed(2)} B:${targetBack.toFixed(2)} M:${targetMover.toFixed(2)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);
+      console.log(`[Morphine 💡] OUT[F:${this.frontVal.toFixed(2)} B:${this.backVal.toFixed(2)} M:${this.moverVal.toFixed(2)}]`);
     }
-    
-    return {
-      h: Math.round(h * 360),
-      s: Math.round(s * 100),
-      l: Math.round(l * 100),
+
+    return { 
+      frontParIntensity: Math.min(1.0, this.frontVal), 
+      backParIntensity: Math.min(1.0, this.backVal), 
+      moverIntensity: Math.min(1.0, this.moverVal), 
+      moverActive: this.moverActive, 
+      physicsApplied: 'chill' 
     };
   }
-  
+
   /**
-   * Convierte HSL a RGB
+   * EL MOTOR DE MORFINA
+   * Suavizado proporcional asimétrico.
+   * Elimina el parpadeo porque los cambios son siempre un % de la distancia restante.
    */
-  private hslToRgb(hsl: HSL): RGB {
-    const h = hsl.h / 360;
-    const s = hsl.s / 100;
-    const l = hsl.l / 100;
-    
-    let r: number, g: number, b: number;
-    
-    if (s === 0) {
-      r = g = b = l;
+  private morphineSmooth(current: number, target: number, attackFactor: number, decayFactor: number): number {
+    if (target > current) {
+      // SUBIENDO (Attack)
+      // Si factor es 0.05, sube un 5% de la distancia restante en cada frame.
+      return current + (target - current) * attackFactor;
     } else {
-      const hue2rgb = (p: number, q: number, t: number): number => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1/6) return p + (q - p) * 6 * t;
-        if (t < 1/2) return q;
-        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-        return p;
-      };
-      
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      
-      r = hue2rgb(p, q, h + 1/3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
+      // BAJANDO (Decay)
+      // Si factor es 0.01, baja un 1% de la distancia restante.
+      // Cuanto más cerca del objetivo, más pequeño el paso. SUPER SUAVE.
+      return current + (target - current) * decayFactor;
     }
-    
+  }
+
+  // Legacy & Reset
+  public apply(palette: any, metrics: any, _mods?: any, _bpm?: number): any {
+    // Llamar a applyZones para obtener las intensidades
+    const result = this.applyZones({
+      bass: metrics.normalizedBass,
+      mid: metrics.normalizedMid,
+      treble: metrics.normalizedTreble,
+      energy: metrics.normalizedEnergy,
+      isRealSilence: false,
+      isAGCTrap: false
+    });
+
+    // Devolver estructura compatible con SeleneLux (legacy API)
     return {
-      r: Math.round(r * 255),
-      g: Math.round(g * 255),
-      b: Math.round(b * 255),
+      palette: palette, // Pasar paleta sin modificar
+      breathPhase: 0,
+      isStrobe: false,
+      dimmerModulation: 0,
+      zoneIntensities: {
+        front: result.frontParIntensity,
+        back: result.backParIntensity,
+        moverL: result.moverIntensity,  // Movers en estéreo (mismo valor)
+        moverR: result.moverIntensity   // Movers en estéreo (mismo valor)
+      },
+      debugInfo: {
+        bassHit: result.frontParIntensity > 0.30,
+        midHit: result.backParIntensity > 0.30,
+        padActive: result.moverActive,
+        twilightPhase: 0,
+        crossFadeRatio: 0
+      }
     };
   }
   
-  /**
-   * Modula un color HSL con valores de respiración
-   * @param hsl - Color original
-   * @param lModulation - Modulación de luminosidad
-   * @param sModulation - Modulación de saturación
-   */
-  private modulateHsl(hsl: HSL, lModulation: number, sModulation: number): HSL {
-    return {
-      h: hsl.h,  // Hue NUNCA cambia - estabilidad de color
-      s: Math.max(0, Math.min(100, hsl.s + sModulation)),
-      l: Math.max(35, Math.min(55, hsl.l + lModulation)),  // Clamp a rango constitucional
-    };
+  public reset(): void { 
+    this.frontVal = this.FLOOR; 
+    this.backVal = this.FLOOR; 
+    this.moverVal = this.FLOOR; 
   }
 }
 
-// Export default para compatibilidad
-export default ChillStereoPhysics;
+export const chillStereoPhysics = new ChillStereoPhysics();

@@ -152,6 +152,13 @@ export class SeleneLux {
     };
   } | null = null;
   
+  // 🆕 WAVE 315: CHILL BREATHING - Overrides de bioluminiscencia
+  private chillOverrides: { 
+    front: number; 
+    back: number; 
+    mover: number;
+  } | null = null;
+  
   constructor(config: SeleneLuxConfig = {}) {
     this.debug = config.debug ?? false;
     
@@ -342,24 +349,44 @@ export class SeleneLux {
       vibeNormalized.includes('jazz') ||
       vibeNormalized.includes('classical')
     ) {
-      // 🌊 CHILL: Breathing Pulse (Sin Strobe Jamás)
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊✨ WAVE 316: COSMIC TWILIGHT - Sunset Argentino con Cocktails
+      // ═══════════════════════════════════════════════════════════════════════
+      // FILOSOFÍA: "Techno que se fumó un porro"
+      // - Bass hits (djembes) → Front PARs pulse (+20%, 300ms decay)
+      // - Pads sustained (treble) → Back PARs cross-fade glow (8 sec)
+      // - Movers drift independientes (estrellas contrafase, 20 sec)
+      // - Twilight breathing (20 sec, ±5% lightness, floor 0.50 SIEMPRE)
+      // - Colores fríos/oceánicos: verde agua → violeta → índigo
+      // - CERO oscuridad (cocktail-friendly), CERO velocidad, TODO orgánico
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🕐 WAVE 318: Pasamos BPM para gravedad temporal
       const result = this.chillPhysics.apply(
         inputPalette,
-        { normalizedEnergy: audioMetrics.avgNormEnergy },
-        elementalMods
+        {
+          normalizedBass: audioMetrics.normalizedBass,
+          normalizedMid: audioMetrics.normalizedMid,
+          normalizedTreble: audioMetrics.normalizedTreble,
+          normalizedEnergy: audioMetrics.avgNormEnergy,
+        },
+        elementalMods,
+        vibeContext.bpm  // 🆕 BPM para Chronos physics
       );
       
       outputPalette = result.palette;
-      dimmerOverride = result.dimmerModulation + 0.5; // Centrar en 0.5
+      dimmerOverride = 0.70; // Chill siempre luminoso (cocktail party)
       physicsApplied = 'chill';
       debugInfo = result.debugInfo;
       
-      if (this.debug && this.frameCount % 60 === 0) {
-        console.log(`[SeleneLux] 🌊 CHILL PHYSICS | Breath Phase:${result.breathPhase.toFixed(2)}`);
-      }
-    }
-    
-    // Guardar estado
+      // Extraer intensidades por zona (4 zonas → 3 overrides)
+      const moverAvg = (result.zoneIntensities.moverL + result.zoneIntensities.moverR) / 2;
+      this.chillOverrides = {
+        front: result.zoneIntensities.front,
+        back: result.zoneIntensities.back,
+        mover: moverAvg,
+      };
+      // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
+    } // Guardar estado
     this.lastStrobeActive = isStrobeActive;
     this.lastForceMovement = forceMovement;
     
@@ -414,6 +441,28 @@ export class SeleneLux {
       
       // Limpiar overrides para el próximo frame
       this.rockOverrides = null;
+    } else if (this.chillOverrides && physicsApplied === 'chill') {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 315.3: CHILL - El Techno Pacífico (Olas Desfasadas)
+      // ═══════════════════════════════════════════════════════════════════════
+      // FILOSOFÍA: Movimiento LATERAL como el océano.
+      // Front/Back/Mover tienen fases diferentes (0°/120°/240°)
+      // Las intensidades YA vienen calculadas con floor de 0.35
+      // ═══════════════════════════════════════════════════════════════════════
+      frontIntensity = Math.min(0.85, this.chillOverrides.front * brightMod);
+      backIntensity = Math.min(0.85, this.chillOverrides.back);
+      moverIntensity = Math.min(0.85, this.chillOverrides.mover);
+      
+      // 🆕 WAVE 315.3: Log OLAS cada 15 frames (~250ms)
+      if (this.frameCount % 15 === 0) {
+        console.log(
+          `[AGC TRUST 🌊CHILL] IN[F:${this.chillOverrides.front.toFixed(2)}, B:${this.chillOverrides.back.toFixed(2)}, M:${this.chillOverrides.mover.toFixed(2)}] → ` +
+          `💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}] (×brightMod:${brightMod.toFixed(2)})`
+        );
+      }
+      
+      // Limpiar overrides para el próximo frame
+      this.chillOverrides = null;
     } else {
       // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
       
@@ -441,7 +490,8 @@ export class SeleneLux {
     
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
     // WAVE 300: Rock tiene su propio log con transientes (arriba)
-    if (this.frameCount % 30 === 0 && physicsApplied !== 'rock') {
+    // WAVE 315: Chill tiene su propio log con breathing (arriba)
+    if (this.frameCount % 30 === 0 && physicsApplied !== 'rock' && physicsApplied !== 'chill') {
       const source = physicsApplied === 'latino' ? '🌴LATINO' : 
                      physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
       console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);

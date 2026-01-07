@@ -384,11 +384,15 @@ export class TitanEngine extends EventEmitter {
     // 🔥 WAVE 290.1: Si physics=latino, usar zoneIntensities del NervousSystem
     // ⚡ WAVE 290.3: Si physics=techno, usar zoneIntensities del NervousSystem
     // 🎸 WAVE 298.5: Si physics=rock, usar zoneIntensities del NervousSystem
+    // 🌊 WAVE 315.3: Si physics=chill, usar zoneIntensities del NervousSystem
     // ─────────────────────────────────────────────────────────────────────
     let zones = this.calculateZoneIntents(audio, context, vibeProfile)
     
-    // 🔥 WAVE 290.1/290.3/298.5: Latino/Techno/Rock override - El NervousSystem manda
-    if (nervousOutput.physicsApplied === 'latino' || nervousOutput.physicsApplied === 'techno' || nervousOutput.physicsApplied === 'rock') {
+    // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
+    if (nervousOutput.physicsApplied === 'latino' || 
+        nervousOutput.physicsApplied === 'techno' || 
+        nervousOutput.physicsApplied === 'rock' ||
+        nervousOutput.physicsApplied === 'chill') {
       const ni = nervousOutput.zoneIntensities;
       zones = {
         front: { intensity: ni.front, paletteRole: 'primary' },

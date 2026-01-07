@@ -1,6 +1,21 @@
 /**
- * WAVE 306.2: ATOMIC FRONTS + LIQUID BACKS ⚛️�
- * ============================================================================
+ * WAVE 306.2: ATOMIC FRONTS + LIQU// FRONT = Bass puro (sin transient detection, solo volumen)
+const FRONT_GAIN = 1.5;              // Ganancia bass
+const FRONT_GATE = 0.15;             // Gate BAJO
+const FRONT_ATTACK = 0.50;           // Attack
+const FRONT_DECAY_LINEAR = 0.08;     // Decay lineal
+
+// BACK = MID agresivo (más sensible que Movers)
+const BACK_GAIN = 2.2;               // 🔧 MÁS ganancia (era 1.8)
+const BACK_GATE = 0.15;              // 🔧 Gate MÁS BAJO (era 0.18)
+const BACK_ATTACK = 0.70;            // 🔧 Attack MÁS RÁPIDO
+const BACK_DECAY_LINEAR = 0.12;      // Decay lineal
+
+// MOVERS = Mid suave (melodía de fondo)
+const MOVER_GAIN = 1.4;              // 🔧 Menos gain (era 1.5)
+const MOVER_GATE = 0.20;             // 🔧 Gate MÁS ALTO (era 0.18)
+const MOVER_ATTACK = 0.50;           // 🔧 Attack MÁS LENTO
+const MOVER_DECAY_LINEAR = 0.10;     // Decay lineal============================================================================
  * 
  * PROBLEMA 306.1: 
  *   - Front PARs aún anémicos (0.54-0.73 con bass 0.78)
@@ -35,40 +50,26 @@ export interface RockZonesResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FRANKENSTEIN CONSTANTS - WAVE 306: HYBRID DRIVE + DELTA FILTER
+// WAVE 311: MURO DE SONIDO - Filosofía Gemini + Decay Lineal
 // ═══════════════════════════════════════════════════════════════════════════
 
-// --- FRONT PARs: HYBRID DRIVE (Anti-Anemia) ---
-// WAVE 310: Decay más rápido
-const FRONT_TRANSIENT_WEIGHT = 0.35;  // Peso del golpe
-const FRONT_WALL_WEIGHT = 0.65;       // Peso de la presión absoluta
-const FRONT_TRANSIENT_MULT = 3.0;     // Multiplicador del golpe
-const FRONT_WALL_MULT = 1.6;          // Multiplicador del wall
-const FRONT_AVG_SMOOTHING = 0.03;     // Suavizado del promedio (necesario para transient)
-const FRONT_FLOOR = 0.25;             // Piso mínimo
-const FRONT_CAP = 0.95;               // Cap máximo
-const FRONT_ATTACK = 0.40;            // Attack para subidas
-const FRONT_DECAY_LINEAR = 0.09;      // 🔧 Decay más rápido (era 0.06)
+// FRONT = Bass puro (sin transient detection, solo volumen)
+const FRONT_GAIN = 1.5;              // Ganancia bass
+const FRONT_GATE = 0.15;             // Gate BAJO
+const FRONT_ATTACK = 0.50;           // Attack
+const FRONT_DECAY_LINEAR = 0.08;     // Decay lineal
 
-// --- BACK PARs: HÍBRIDO ROCK (Base + Boost) ---
-// WAVE 310: FLOOR cuando hay señal - anti-ahogamiento simple
-const BACK_GATE = 0.23;               // Gate
-const BACK_BASE_GAIN = 1.45;          // Ganancia base
-const BACK_BOOST_THRESHOLD = 0.04;    // Delta para boost
-const BACK_BOOST_INSTANT = 0.55;      // Boost instantáneo
-const BACK_ATTACK = 0.60;             // 🔧 Subida más rápida
-const BACK_DECAY_LINEAR = 0.10;       // 🔧 Decay más rápido
-const BACK_FLOOR = 0.25;              // 🆕 Floor cuando hay señal activa
-const BACK_CAP = 0.90;                // Cap
+// BACK = MID como los Movers (si funciona allí, funciona aquí)
+const BACK_GAIN = 1.8;               // Ganancia moderada
+const BACK_GATE = 0.23;              // Gate como Movers (0.18)
+const BACK_ATTACK = 0.65;            // Attack rápido
+const BACK_DECAY_LINEAR = 0.12;      // Decay lineal
 
-// --- MOVERS: LATINO COPY (melody following) ---
-// WAVE 310: Decay más rápido
-const MOVER_GATE = 0.22;              // Gate bajo para melodías
-const MOVER_ATTACK = 0.65;            // Subida rápida
-const MOVER_DECAY_LINEAR = 0.12;      // 🔧 Decay más rápido (era 0.08)
-const MOVER_GAIN = 1.30;              // Ganancia controlada
-const MOVER_HYSTERESIS = 0.25;        // Piso de relleno
-const MOVER_TREBLE_REJECTION = 0.30;  // Rechazar voces autotune
+// MOVERS = Mid puro (guitarra/voz)
+const MOVER_GAIN = 1.5;              // Ganancia mid
+const MOVER_GATE = 0.10;             // Gate bajo
+const MOVER_ATTACK = 0.60;           // Attack
+const MOVER_DECAY_LINEAR = 0.10;     // Decay lineal
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FRANKENSTEIN CLASS
@@ -77,13 +78,8 @@ const MOVER_TREBLE_REJECTION = 0.30;  // Rechazar voces autotune
 export class RockStereoPhysics {
   // --- Internal State ---
   private frontParIntensity = 0;
-  private frontParActive = false;     // Estado para histéresis
   private backParIntensity = 0;
   private moverIntensity = 0;
-  
-  // 🆕 WAVE 306: Estado para Hybrid Drive + Delta Filter
-  private previousTreble = 0;         // Para calcular trebleDelta (Anti-Sustain)
-  private avgBass = 0;                // Promedio de bass para Hybrid Drive
 
   // ─────────────────────────────────────────────────────────────────────────
   // MAIN PROCESSING: applyZones()
@@ -98,104 +94,52 @@ export class RockStereoPhysics {
     const { bass, mid, treble } = spectrum;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 308: HYBRID DRIVE (Front PARs) - DECAY LINEAL
+    // WAVE 311: MURO DE SONIDO - Front PARs (Bass puro)
     // ═══════════════════════════════════════════════════════════════════════
-    
-    // Actualizar promedio de bass (necesario para calcular transient)
-    this.avgBass = this.avgBass + (bass - this.avgBass) * FRONT_AVG_SMOOTHING;
-    
-    // Transient = Golpe (bass - promedio)
-    const transient = Math.max(0, (bass - this.avgBass) * FRONT_TRANSIENT_MULT);
-    
-    // Wall = Presión absoluta CON GANANCIA
-    const wall = bass * FRONT_WALL_MULT;
-    
-    // Hybrid = Mezcla ponderada
-    let frontTarget = (transient * FRONT_TRANSIENT_WEIGHT) + (wall * FRONT_WALL_WEIGHT);
-    
-    // SOPORTE VITAL: Si bass > 0.6, NUNCA debajo del floor
-    if (bass > 0.6) {
-      frontTarget = Math.max(FRONT_FLOOR, frontTarget);
-    }
-    frontTarget = Math.min(FRONT_CAP, frontTarget);
-    
-    // 🔧 DECAY LINEAL - Sin smoothing
-    let frontInternal = this.frontParIntensity;
-    if (frontTarget > frontInternal) {
-      // Subiendo → Attack
-      frontInternal += (frontTarget - frontInternal) * FRONT_ATTACK;
+    if (bass >= FRONT_GATE) {
+      const normalizedBass = (bass - FRONT_GATE) / (1 - FRONT_GATE);
+      const frontTarget = normalizedBass * FRONT_GAIN;
+      this.frontParIntensity += (frontTarget - this.frontParIntensity) * FRONT_ATTACK;
     } else {
-      // Bajando → DECAY LINEAL
-      frontInternal = Math.max(0, frontInternal - FRONT_DECAY_LINEAR);
+      this.frontParIntensity = Math.max(0, this.frontParIntensity - FRONT_DECAY_LINEAR);
     }
-    this.frontParIntensity = frontInternal;
-    const front = frontInternal;
+    const front = Math.min(1.0, this.frontParIntensity);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 308: BACK PARs HÍBRIDOS - DECAY LINEAL + VITAMINAS
+    // WAVE 312: Back = MID (como Movers - si funciona allí, funciona aquí)
     // ═══════════════════════════════════════════════════════════════════════
-    
-    // Calcular delta de treble (para detectar ataques)
-    const trebleDelta = treble - this.previousTreble;
-    this.previousTreble = treble;
-    
-    // 🔧 WAVE 310: LÓGICA SIMPLE - Floor cuando hay señal
     if (mid >= BACK_GATE) {
-      // Base: mid normalizado * ganancia
       const normalizedMid = (mid - BACK_GATE) / (1 - BACK_GATE);
-      let backTarget = normalizedMid * BACK_BASE_GAIN;
-      
-      // BOOST INSTANTÁNEO si hay ataque (snare/crash/hi-hat)
-      if (trebleDelta > BACK_BOOST_THRESHOLD) {
-        backTarget += BACK_BOOST_INSTANT;
-      }
-      
-      // Asegurar floor mínimo cuando hay señal
-      backTarget = Math.max(BACK_FLOOR, backTarget);
-      backTarget = Math.min(BACK_CAP, backTarget);
-      
-      // Attack hacia target
+      const backTarget = normalizedMid * BACK_GAIN;
       this.backParIntensity += (backTarget - this.backParIntensity) * BACK_ATTACK;
     } else {
-      // NO hay señal → DECAY LINEAL
       this.backParIntensity = Math.max(0, this.backParIntensity - BACK_DECAY_LINEAR);
     }
-    
-    const back = this.backParIntensity;
+    const back = Math.min(1.0, this.backParIntensity);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 308: MOVERS - DECAY LINEAL
-    // MID PURO con Treble Rejection para voces autotune
+    // WAVE 311: MURO DE SONIDO - Movers (Mid puro - guitarra/voz)
     // ═══════════════════════════════════════════════════════════════════════
-    const midPuro = Math.max(0, mid - treble * MOVER_TREBLE_REJECTION);
-    
-    if (midPuro > MOVER_GATE) {
-      const boostedTarget = Math.min(1.0, midPuro * MOVER_GAIN);
-      this.moverIntensity += (boostedTarget - this.moverIntensity) * MOVER_ATTACK;
+    if (mid >= MOVER_GATE) {
+      const normalizedMid = (mid - MOVER_GATE) / (1 - MOVER_GATE);
+      const moverTarget = normalizedMid * MOVER_GAIN;
+      this.moverIntensity += (moverTarget - this.moverIntensity) * MOVER_ATTACK;
     } else {
-      // 🔧 DECAY LINEAL (no más factor multiplicativo)
       this.moverIntensity = Math.max(0, this.moverIntensity - MOVER_DECAY_LINEAR);
-      
-      // Histéresis: piso de relleno para microhuecos
-      if (this.moverIntensity > MOVER_HYSTERESIS && 
-          this.moverIntensity < MOVER_HYSTERESIS * 1.5) {
-        this.moverIntensity = MOVER_HYSTERESIS;
-      } else if (this.moverIntensity < 0.05) {
-        this.moverIntensity = 0;
-      }
     }
+    const mover = Math.min(1.0, this.moverIntensity);
 
     const result: RockZonesResult = {
       front,
-      back,  // 🔧 306.7 FIX: Usar valor filtrado, NO el interno
-      mover: this.moverIntensity,
+      back,
+      mover,
     };
 
     // DEBUG (development only)
     if (process.env.NODE_ENV === 'development') {
       console.log(
-        `[ROCK-310] B=${bass.toFixed(2)} M=${mid.toFixed(2)} T=${treble.toFixed(2)} Δt=${trebleDelta.toFixed(2)} | ` +
-        `Front:${front.toFixed(2)} Back:${back.toFixed(2)} Mover:${this.moverIntensity.toFixed(2)}`
+        `[ROCK-313] B=${bass.toFixed(2)} M=${mid.toFixed(2)} T=${treble.toFixed(2)} | ` +
+        `Front:${front.toFixed(2)} Back:${back.toFixed(2)} Mover:${mover.toFixed(2)}`
       );
     }
 
@@ -203,23 +147,12 @@ export class RockStereoPhysics {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // LEGACY STATIC METHOD (Backward Compatibility)
-  // ─────────────────────────────────────────────────────────────────────────
-  static apply(spectrum: SpectrumData, bpm?: number): RockZonesResult {
-    const instance = new RockStereoPhysics();
-    return instance.applyZones(spectrum, bpm);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   // RESET STATE
   // ─────────────────────────────────────────────────────────────────────────
   reset(): void {
     this.frontParIntensity = 0;
-    this.frontParActive = false;
     this.backParIntensity = 0;
     this.moverIntensity = 0;
-    this.previousTreble = 0;
-    this.avgBass = 0;
   }
 }
 

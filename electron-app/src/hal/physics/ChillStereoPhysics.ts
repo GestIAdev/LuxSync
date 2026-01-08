@@ -41,28 +41,29 @@ export class ChillStereoPhysics {
   // Factor 0.85 = Converge en ~2 frames (33ms)
 
   // FRONT (Corazón del Océano - Bass) - "Corazón que late"
-  private readonly FRONT_ATTACK = 0.75; // Subida rápida (marcar golpe de bombo)
-  private readonly FRONT_DECAY  = 0.35; // Bajada moderada (líquida pero visible)
+  private readonly FRONT_ATTACK = 0.70; // 🔧 BAJADO de 0.75 (flotación glaciar)
+  private readonly FRONT_DECAY  = 0.32; // 🔧 BAJADO de 0.35 (relaja más lento)
 
   // BACK (Estrellas/Plancton - Treble) - "Brillos ocasionales"
-  private readonly BACK_ATTACK  = 0.60; // Subida moderada (aparición suave)
-  private readonly BACK_DECAY   = 0.40; // Bajada moderada (estela visible)
+  private readonly BACK_ATTACK  = 0.58; // 🔧 BAJADO de 0.60 (aparición glaciar)
+  private readonly BACK_DECAY   = 0.38; // 🔧 BAJADO de 0.40 (estela más larga)
 
   // MOVER (Mantas/Melodía - Mid) - "Flotación constante"
-  private readonly MOVER_ATTACK = 0.50; // Subida lenta (ignorar transientes)
-  private readonly MOVER_DECAY  = 0.85; // Bajada ultra-líquida (océano)
+  private readonly MOVER_ATTACK = 0.52; // 🔧 BAJADO de 0.55 (glaciar total)
+  private readonly MOVER_DECAY  = 0.90; // 🔧 SUBIDO de 0.88 (flotación eterna)
 
   // 3. GAINS & GATES (Sensibilidad)
   // FILOSOFÍA CHILL: Sin strobe, sin bofetadas, todo fluido
   // CALIBRADO CON: Deep House comercial (Café del Mar, Kygo, etc.)
+  // OBJETIVO: Luz total, rellenar hueco visual entre Front y Movers
   
   private readonly BASS_GATE   = 0.32;  // ✅ PERFECTO - Solo bombos limpios
-  private readonly MID_GATE    = 0.12;  // 🔧 BAJADO de 0.18 (rescatar pads sutiles)
-  private readonly TREBLE_GATE = 0.08;  // 🔧 BAJADO BRUTAL de 0.15 (treble típico: 0.08-0.23)
+  private readonly MID_GATE    = 0.12;  // ✅ OK - Rescata pads sutiles
+  private readonly TREBLE_GATE = 0.06;  // 🔧 BAJADO de 0.08 (más luz ambiente)
   
   private readonly FRONT_GAIN  = 1.4;   // ✅ OK - Punch visible
-  private readonly BACK_GAIN   = 3.0;   // 🔧 SUBIDO de 2.8 (compensar gate bajo)
-  private readonly MOVER_GAIN  = 2.0;   // 🔧 SUBIDO de 1.9 (más presencia)
+  private readonly BACK_GAIN   = 3.3;   // 🔧 SUBIDO de 3.0 (luz total)
+  private readonly MOVER_GAIN  = 2.0;   // ✅ OK - Presencia flotante
 
   // Estado Interno
   private frontVal = 0.15;
@@ -112,12 +113,17 @@ export class ChillStereoPhysics {
     // Activación lógica
     this.moverActive = this.moverVal > (this.FLOOR + 0.05);
 
-    // WAVE 324: DIAGNOSTIC LOGGING (Cada 30 frames = ~500ms)
+    // WAVE 324.6: MACROLOG - CADA FRAME (60fps full capture)
     ChillStereoPhysics.logCounter++;
-    if (ChillStereoPhysics.logCounter % 30 === 0) {
-      console.log(`[Morphine 💊] RAW[B:${bass.toFixed(2)} M:${mid.toFixed(2)} T:${treble.toFixed(2)}]`);
-      console.log(`[Morphine 🎯] TGT[F:${targetFront.toFixed(2)} B:${targetBack.toFixed(2)} M:${targetMover.toFixed(2)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);
-      console.log(`[Morphine 💡] OUT[F:${this.frontVal.toFixed(2)} B:${this.backVal.toFixed(2)} M:${this.moverVal.toFixed(2)}]`);
+    if (ChillStereoPhysics.logCounter % 1 === 0) {  // EVERY FRAME
+      const frontDelta = Math.abs(targetFront - this.frontVal);
+      const backDelta = Math.abs(targetBack - this.backVal);
+      const moverDelta = Math.abs(targetMover - this.moverVal);
+      
+      console.log(`[💊] RAW[B:${bass.toFixed(3)} M:${mid.toFixed(3)} T:${treble.toFixed(3)}]`);
+      console.log(`[🎯] TGT[F:${targetFront.toFixed(3)} B:${targetBack.toFixed(3)} M:${targetMover.toFixed(3)}]`);
+      console.log(`[💡] OUT[F:${this.frontVal.toFixed(3)} B:${this.backVal.toFixed(3)} M:${this.moverVal.toFixed(3)}]`);
+      console.log(`[�] DELTA[F:${frontDelta.toFixed(3)} B:${backDelta.toFixed(3)} M:${moverDelta.toFixed(3)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);
     }
 
     return { 

@@ -1,18 +1,23 @@
 ﻿/**
- * WAVE 323: THE MORPHINE UPDATE (REFRITO MORFÍNICO) 💊🌊
+ * WAVE 325.7: PRE-GATE SMOOTH ��🌊
  * ============================================================================
- * AUTOR: Sonnet 4.5 (Forensic Analysis) + Gemini (Implementation)
- * * FILOSOFÍA: "La naturaleza no es lineal, es logarítmica"
- * * * EL ERROR ANTERIOR (Viscosity/Linear):
- * - Restar un valor fijo (val -= 0.005) crea "escalones" visibles en valores bajos.
- * - Causa parpadeo en monitores rápidos (120Hz).
- * * * LA SOLUCIÓN (Latino/Techno Math):
- * - Usar CONVERGENCIA PROPORCIONAL: `val += (target - val) * FACTOR`
- * - Al acercarse al objetivo, el paso se vuelve microscópico.
- * - Resultado: Suavidad infinita (Asíntota).
- * * * CONFIGURACIÓN "OCÉANO":
- * - ATTACK: Bajo (0.05) -> La luz tarda en subir (Inercia de agua).
- * - DECAY: Minúsculo (0.02) -> La luz tarda una eternidad en bajar.
+ * EL CABALLO GANADOR - SMOOTH EN LA ENTRADA, NO EN LA SALIDA
+ * 
+ * PROBLEMA RAÍZ (WAVE 325.6):
+ * - RAW Bass salta: 0.512 → 0.700 → 0.735 (DELTA +0.188 en 2 frames!)
+ * - No es el Attack/Decay - Es el RUIDO del análisis de audio
+ * - Los micro-picos del RAW causan parpadeos visibles
+ * 
+ * SOLUCIÓN WAVE 325.7 - SMOOTH PRE-GATE:
+ * - BASS_SMOOTH: 0.00 → 0.25 (Filtro anti-ruido ANTES de gates)
+ * - MID_SMOOTH: NUEVO 0.20 (Filtro anti-ruido en movers)
+ * - Diferencia crítica: Smooth ANTES de procesar, no después
+ * - = Señal limpia entra al sistema physics, no lag artificial en salida
+ * 
+ * MATEMÁTICA CONVERGENCIA (de WAVE 325.6):
+ * - FRONT_ATTACK: 0.38 = 4 frames (67ms) - Subidas graduales
+ * - MOVER_ATTACK: 0.30 = 5 frames (83ms) - Flotación ultra-suave
+ * - MOVER_DECAY: 0.20 = 5 frames (83ms) - Glaciar profundo
  * ============================================================================
  */
 
@@ -41,38 +46,46 @@ export class ChillStereoPhysics {
   // Factor 0.85 = Converge en ~2 frames (33ms)
 
   // FRONT (Corazón del Océano - Bass) - "Corazón que late"
-  private readonly FRONT_ATTACK = 0.70; // 🔧 BAJADO de 0.75 (flotación glaciar)
-  private readonly FRONT_DECAY  = 0.32; // 🔧 BAJADO de 0.35 (relaja más lento)
+  private readonly FRONT_ATTACK = 0.65; // � WAVE 325.9: Golden (0.75 ajustado - marca bombos sin flicker)
+  private readonly FRONT_DECAY  = 0.35; // 🏆 WAVE 325.9: Golden (moderado - líquido visible)
 
   // BACK (Estrellas/Plancton - Treble) - "Brillos ocasionales"
-  private readonly BACK_ATTACK  = 0.58; // 🔧 BAJADO de 0.60 (aparición glaciar)
-  private readonly BACK_DECAY   = 0.38; // 🔧 BAJADO de 0.40 (estela más larga)
+  private readonly BACK_ATTACK  = 0.60; // 🏆 WAVE 325.9: Golden (aparición suave)
+  private readonly BACK_DECAY   = 0.40; // 🏆 WAVE 325.9: Golden (estela visible)
 
   // MOVER (Mantas/Melodía - Mid) - "Flotación constante"
-  private readonly MOVER_ATTACK = 0.52; // 🔧 BAJADO de 0.55 (glaciar total)
-  private readonly MOVER_DECAY  = 0.90; // 🔧 SUBIDO de 0.88 (flotación eterna)
+  private readonly MOVER_ATTACK = 0.50; // � WAVE 325.9: Golden (ignora transientes)
+  private readonly MOVER_DECAY  = 0.85; // � WAVE 325.9: Golden (ultra-líquido océano)
 
   // 3. GAINS & GATES (Sensibilidad)
   // FILOSOFÍA CHILL: Sin strobe, sin bofetadas, todo fluido
   // CALIBRADO CON: Deep House comercial (Café del Mar, Kygo, etc.)
   // OBJETIVO: Luz total, rellenar hueco visual entre Front y Movers
   
-  private readonly BASS_GATE   = 0.32;  // ✅ PERFECTO - Solo bombos limpios
-  private readonly MID_GATE    = 0.12;  // ✅ OK - Rescata pads sutiles
-  private readonly TREBLE_GATE = 0.06;  // 🔧 BAJADO de 0.08 (más luz ambiente)
+  private readonly BASS_GATE   = 0.32;  // 🏆 WAVE 325.9: Golden (solo bombos limpios)
+  private readonly MID_GATE    = 0.12;  // 🏆 WAVE 325.9: Golden (rescata pads sutiles)
+  private readonly TREBLE_GATE = 0.08;  // 🏆 WAVE 325.9: Golden (filtrar hi-hats)
   
   private readonly FRONT_GAIN  = 1.4;   // ✅ OK - Punch visible
-  private readonly BACK_GAIN   = 3.3;   // 🔧 SUBIDO de 3.0 (luz total)
+  private readonly BACK_GAIN   = 3.8;   // 🔧 WAVE 325.9: Subido de 3.0 (más luz back)
   private readonly MOVER_GAIN  = 2.0;   // ✅ OK - Presencia flotante
 
+  // 4. SMOOTHING PRE-GATE (WAVE 325.7 - Anti-flicker en la fuente)
+  // 🔥 WAVE 325.7: SMOOTH EN LA ENTRADA (filtro anti-ruido del análisis)
+  // NO es lag artificial - es limpieza de señal ANTES de procesar
+  private readonly BASS_SMOOTH_FACTOR = 0.25; // 🎯 Filtro suave anti-ruido bass
+  private readonly MID_SMOOTH_FACTOR = 0.20;  // 🎯 Filtro suave anti-ruido mid
+  
   // Estado Interno
   private frontVal = 0.15;
   private backVal = 0.15;
   private moverVal = 0.15;
   private moverActive = false;
+  private bassSmooth = 0.15; // 🔧 WAVE 325.7: Smoothing buffer bass
+  private midSmooth = 0.15;  // 🔧 WAVE 325.7: Smoothing buffer mid
   private static logCounter = 0;
 
-  constructor() { console.log('[ChillStereoPhysics] WAVE 323 - Morphine Engine Active'); }
+  constructor() { console.log('[ChillStereoPhysics] WAVE 325.9 - Golden Return �✨'); }
 
   public applyZones(input: ChillPhysicsInput): ChillPhysicsResult {
     const { bass, mid, treble, isRealSilence, isAGCTrap } = input;
@@ -82,26 +95,37 @@ export class ChillStereoPhysics {
     const isSilence = isRealSilence || isAGCTrap;
     const silenceMult = isSilence ? 10.0 : 1.0;
 
+    // 🎯 WAVE 325.7: PRE-GATE SMOOTHING (Filtro anti-ruido en la ENTRADA)
+    // Smooth ANTES de gates = señal limpia sin micro-picos
+    // NO es lag artificial - es limpieza de señal del análisis de audio
+    this.bassSmooth = this.bassSmooth * this.BASS_SMOOTH_FACTOR + bass * (1 - this.BASS_SMOOTH_FACTOR);
+    this.midSmooth = this.midSmooth * this.MID_SMOOTH_FACTOR + mid * (1 - this.MID_SMOOTH_FACTOR);
+    
+    // Usar valores suavizados para cálculos (en vez de RAW)
+    const bassClean = this.bassSmooth;
+    const midClean = this.midSmooth;
+    const trebleClean = treble; // Treble no necesita smooth (ya es suave por naturaleza)
+
     // 1. CALCULO DE TARGETS (A dónde quiere ir la luz)
     
-    // Front (Bass - Corazón)
-    const rawFront = (bass > this.BASS_GATE) ? (bass - this.BASS_GATE) / (1 - this.BASS_GATE) : 0;
-    const targetFront = Math.max(this.FLOOR, rawFront * this.FRONT_GAIN);
+    // Front (Bass - Corazón) - USANDO BASS SUAVIZADO
+    const rawFront = (bassClean > this.BASS_GATE) ? (bassClean - this.BASS_GATE) / (1 - this.BASS_GATE) : 0;
+    const targetFront = Math.min(1.0, Math.max(this.FLOOR, rawFront * this.FRONT_GAIN)); // 🔥 Clamp anti-overshoot
 
     // Back (Treble - Estrellas brillantes ocasionales)
-    const rawBack = (treble > this.TREBLE_GATE) ? ((treble - this.TREBLE_GATE) / (1 - this.TREBLE_GATE)) : 0;
-    const targetBack = Math.max(this.FLOOR, rawBack * this.BACK_GAIN);
+    const rawBack = (trebleClean > this.TREBLE_GATE) ? ((trebleClean - this.TREBLE_GATE) / (1 - this.TREBLE_GATE)) : 0;
+    const targetBack = Math.min(1.0, Math.max(this.FLOOR, rawBack * this.BACK_GAIN)); // 🔥 Clamp anti-overshoot
 
-    // Mover (Mid - Mantas flotantes)
+    // Mover (Mid - Mantas flotantes) - USANDO MID SUAVIZADO
     // ANTI-SNARE: Rechazar mid si hay treble alto (snares = mid+treble)
     const TREBLE_REJECTION_THRESHOLD = 0.25; // Si treble > 0.25, reducir influencia en movers
-    const trebleRejection = treble > TREBLE_REJECTION_THRESHOLD 
-      ? 1.0 - ((treble - TREBLE_REJECTION_THRESHOLD) * 2.0) // Reduce hasta 50%
+    const trebleRejection = trebleClean > TREBLE_REJECTION_THRESHOLD 
+      ? 1.0 - ((trebleClean - TREBLE_REJECTION_THRESHOLD) * 2.0) // Reduce hasta 50%
       : 1.0;
     const trebleRejectionClamped = Math.max(0.3, Math.min(1.0, trebleRejection)); // Clamp 30%-100%
     
-    const rawMover = (mid > this.MID_GATE) ? ((mid - this.MID_GATE) / (1 - this.MID_GATE)) : 0;
-    const targetMover = Math.max(this.FLOOR, rawMover * this.MOVER_GAIN * trebleRejectionClamped);
+    const rawMover = (midClean > this.MID_GATE) ? ((midClean - this.MID_GATE) / (1 - this.MID_GATE)) : 0;
+    const targetMover = Math.min(1.0, Math.max(this.FLOOR, rawMover * this.MOVER_GAIN * trebleRejectionClamped)); // 🔥 Clamp anti-overshoot
 
     // 2. APLICACIÓN DE FÍSICA PROPORCIONAL (The Morphine)
     // current += (target - current) * factor
@@ -114,6 +138,7 @@ export class ChillStereoPhysics {
     this.moverActive = this.moverVal > (this.FLOOR + 0.05);
 
     // WAVE 324.6: MACROLOG - CADA FRAME (60fps full capture)
+    // WAVE 325.7: Mostrar valores RAW y SMOOTH para debugging
     ChillStereoPhysics.logCounter++;
     if (ChillStereoPhysics.logCounter % 1 === 0) {  // EVERY FRAME
       const frontDelta = Math.abs(targetFront - this.frontVal);
@@ -121,6 +146,7 @@ export class ChillStereoPhysics {
       const moverDelta = Math.abs(targetMover - this.moverVal);
       
       console.log(`[💊] RAW[B:${bass.toFixed(3)} M:${mid.toFixed(3)} T:${treble.toFixed(3)}]`);
+      console.log(`[🌊] SMOOTH[B:${bassClean.toFixed(3)} M:${midClean.toFixed(3)}]`);
       console.log(`[🎯] TGT[F:${targetFront.toFixed(3)} B:${targetBack.toFixed(3)} M:${targetMover.toFixed(3)}]`);
       console.log(`[💡] OUT[F:${this.frontVal.toFixed(3)} B:${this.backVal.toFixed(3)} M:${this.moverVal.toFixed(3)}]`);
       console.log(`[�] DELTA[F:${frontDelta.toFixed(3)} B:${backDelta.toFixed(3)} M:${moverDelta.toFixed(3)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);

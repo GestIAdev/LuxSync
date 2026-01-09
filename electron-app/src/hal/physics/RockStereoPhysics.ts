@@ -136,12 +136,13 @@ export class RockStereoPhysics {
     };
 
     // DEBUG (development only)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(
-        `[ROCK-313] B=${bass.toFixed(2)} M=${mid.toFixed(2)} T=${treble.toFixed(2)} | ` +
-        `Front:${front.toFixed(2)} Back:${back.toFixed(2)} Mover:${mover.toFixed(2)}`
-      );
-    }
+    // 🔇 WAVE 337: Logs silenciados - production ready
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log(
+    //     `[ROCK-313] B=${bass.toFixed(2)} M=${mid.toFixed(2)} T=${treble.toFixed(2)} | ` +
+    //     `Front:${front.toFixed(2)} Back:${back.toFixed(2)} Mover:${mover.toFixed(2)}`
+    //   );
+    // }
 
     return result;
   }

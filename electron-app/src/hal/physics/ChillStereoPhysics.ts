@@ -233,18 +233,19 @@ export class ChillStereoPhysics {
 
     // WAVE 324.6: MACROLOG - CADA FRAME (60fps full capture)
     // WAVE 325.7: Mostrar valores RAW y SMOOTH para debugging
-    ChillStereoPhysics.logCounter++;
-    if (ChillStereoPhysics.logCounter % 1 === 0) {  // EVERY FRAME
-      const frontDelta = Math.abs(targetFront - this.frontVal);
-      const backDelta = Math.abs(targetBack - this.backVal);
-      const moverDelta = Math.abs(targetMover - this.moverVal);
-      
-      console.log(`[💊] RAW[B:${bass.toFixed(3)} M:${mid.toFixed(3)} T:${treble.toFixed(3)}]`);
-      console.log(`[🌊] SMOOTH[B:${bassClean.toFixed(3)} M:${midClean.toFixed(3)}]`);
-      console.log(`[🎯] TGT[F:${targetFront.toFixed(3)} B:${targetBack.toFixed(3)} M:${targetMover.toFixed(3)}]`);
-      console.log(`[💡] OUT[F:${this.frontVal.toFixed(3)} B:${this.backVal.toFixed(3)} M:${this.moverVal.toFixed(3)}]`);
-      console.log(`[�] DELTA[F:${frontDelta.toFixed(3)} B:${backDelta.toFixed(3)} M:${moverDelta.toFixed(3)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);
-    }
+    // 🔇 WAVE 337: Logs silenciados - LTS 2.0 production ready
+    // ChillStereoPhysics.logCounter++;
+    // if (ChillStereoPhysics.logCounter % 1 === 0) {  // EVERY FRAME
+    //   const frontDelta = Math.abs(targetFront - this.frontVal);
+    //   const backDelta = Math.abs(targetBack - this.backVal);
+    //   const moverDelta = Math.abs(targetMover - this.moverVal);
+    //   
+    //   console.log(`[💊] RAW[B:${bass.toFixed(3)} M:${mid.toFixed(3)} T:${treble.toFixed(3)}]`);
+    //   console.log(`[🌊] SMOOTH[B:${bassClean.toFixed(3)} M:${midClean.toFixed(3)}]`);
+    //   console.log(`[🎯] TGT[F:${targetFront.toFixed(3)} B:${targetBack.toFixed(3)} M:${targetMover.toFixed(3)}]`);
+    //   console.log(`[💡] OUT[F:${this.frontVal.toFixed(3)} B:${this.backVal.toFixed(3)} M:${this.moverVal.toFixed(3)}]`);
+    //   console.log(`[�] DELTA[F:${frontDelta.toFixed(3)} B:${backDelta.toFixed(3)} M:${moverDelta.toFixed(3)}] TrebleRej:${trebleRejectionClamped.toFixed(2)}`);
+    // }
 
     return { 
       frontParIntensity: Math.min(1.0, this.frontVal), 

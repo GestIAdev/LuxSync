@@ -6,18 +6,19 @@ import { calculateMovement } from '../utils/movementGenerator'
 
 /**
  * 🎬 WAVE 339: Extended with optics and physics for simulator
+ * 🔧 WAVE 342.5: pan/tilt and physicalPan/physicalTilt are NORMALIZED (0-1)
  */
 interface FixtureRenderData {
   color: { r: number, g: number, b: number }
   intensity: number
-  pan: number
-  tilt: number
+  pan: number         // 0-1: 0=left, 0.5=center, 1=right (NORMALIZED from DMX 0-255)
+  tilt: number        // 0-1: 0=down, 0.5=center, 1=up (NORMALIZED from DMX 0-255)
   // 🔍 WAVE 339: Optics
   zoom: number        // 0-255: 0=Beam, 255=Wash
   focus: number       // 0-255: 0=Sharp, 255=Soft
-  // 🎛️ WAVE 339: Physics (interpolated positions)
-  physicalPan: number   // Actual position after physics
-  physicalTilt: number  // Actual position after physics
+  // 🎛️ WAVE 339: Physics (interpolated positions) - NORMALIZED 0-1
+  physicalPan: number   // Actual position after physics (0-1)
+  physicalTilt: number  // Actual position after physics (0-1)
   panVelocity: number   // Current velocity (for debug)
   tiltVelocity: number  // Current velocity (for debug)
 }
@@ -49,8 +50,24 @@ export function calculateFixtureRenderValues(
   // Frontend no longer overrides with Flow/Fuego or Radar patterns.
   let color = truthData?.color || { r: 0, g: 0, b: 0 }
   let intensity = (truthData?.intensity ?? 0) * globalIntensity
-  let pan = truthData?.pan ?? 0.5
-  let tilt = truthData?.tilt ?? 0.5
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 342.6: PAN/TILT YA VIENEN NORMALIZADOS DEL BACKEND
+  // El HAL ya normaliza los valores antes de enviarlos.
+  // NO dividir por 255 - eso fue el bug anterior que destruía los valores.
+  // 
+  // rawPan viene como 0-1, donde:
+  //   0.0 = extremo izquierdo
+  //   0.5 = centro
+  //   1.0 = extremo derecho
+  // ═══════════════════════════════════════════════════════════════════════
+  let pan = truthData?.pan ?? 0.5  // Already normalized 0-1
+  let tilt = truthData?.tilt ?? 0.5  // Already normalized 0-1
+  
+  // 🔍 DEBUG: Log values every ~1 second
+  if (fixtureIndex === 0 && Math.random() < 0.016) {
+    console.log(`[🔬 useFixtureRender] pan=${pan.toFixed(3)} | tilt=${tilt.toFixed(3)}`)
+  }
   
   // 🔍 WAVE 339: Optics from backend (set by HAL based on vibe)
   const zoom = truthData?.zoom ?? 127        // Default to middle
@@ -59,8 +76,9 @@ export function calculateFixtureRenderValues(
   // 🎛️ WAVE 339: Physics - interpolated positions from FixturePhysicsDriver
   // These show ACTUAL position after physics simulation (inertia, slew rate)
   // If not available, fall back to target pan/tilt
-  const physicalPan = truthData?.physicalPan ?? pan
-  const physicalTilt = truthData?.physicalTilt ?? tilt
+  // 🔧 WAVE 342.6: Physics values also come normalized (0-1)
+  const physicalPan = truthData?.physicalPan ?? pan  // Already normalized
+  const physicalTilt = truthData?.physicalTilt ?? tilt  // Already normalized
   const panVelocity = truthData?.panVelocity ?? 0
   const tiltVelocity = truthData?.tiltVelocity ?? 0
   

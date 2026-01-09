@@ -153,10 +153,15 @@ export class FixtureMapper {
     const isMovingFixture = this.isMovingZone(zone) || 
                             fixture.type?.toLowerCase().includes('moving')
     
-    // Mirror effect for MOVING_RIGHT
-    if (zone === 'MOVING_RIGHT') {
-      panValue = 1 - panValue
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 343: ELIMINADO MIRROR DUPLICADO
+    // 
+    // El mirror para MOVING_RIGHT ahora se aplica en HAL.applyPhaseOffset()
+    // Mantenerlo aquí causaba DOBLE inversión (RIGHT volvía al original)
+    // 
+    // ANTES: if (zone === 'MOVING_RIGHT') { panValue = 1 - panValue } ← BUG!
+    // AHORA: HAL es el único responsable de la inversión mirror
+    // ═══════════════════════════════════════════════════════════════════════
     
     // Ceiling tilt inversion (WAVE 24.6)
     if (this.installationType === 'ceiling' && isMovingFixture) {

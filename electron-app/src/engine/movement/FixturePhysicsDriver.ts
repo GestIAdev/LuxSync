@@ -135,6 +135,21 @@ export class FixturePhysicsDriver {
     arrivalThreshold: 1.0,
     minTransitionTime: 50,
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔒 WAVE 343: SAFETY CAP - PROTECCIÓN ABSOLUTA DE HARDWARE
+  // 
+  // Este es el LÍMITE MÁXIMO FÍSICO que NUNCA se puede exceder.
+  // Los movers chinos baratos no soportan aceleraciones extremas.
+  // Sin importar lo que diga VibeMovementPresets, este cap protege el hardware.
+  // 
+  // 2500 = límite conservador para movers de $50-200
+  // Si tienes movers de $1000+, puedes subirlo a 4000
+  // ═══════════════════════════════════════════════════════════════════════
+  private readonly SAFETY_CAP = {
+    maxAcceleration: 2500,  // DMX units/s² - NUNCA exceder
+    maxVelocity: 800,       // DMX units/s - NUNCA exceder
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 338: VIBE-AWARE PHYSICS
@@ -147,13 +162,20 @@ export class FixturePhysicsDriver {
     this.currentVibeId = vibeId
     const vibePhysics: MovementPhysics = getMovementPhysics(vibeId)
     
-    // Actualizar configuración de física
-    this.physicsConfig.maxAcceleration = vibePhysics.maxAcceleration
-    this.physicsConfig.maxVelocity = vibePhysics.maxVelocity
+    // 🔒 WAVE 343: Aplicar SAFETY CAP a la configuración del vibe
+    // El vibe puede pedir lo que quiera, pero el hardware tiene límites
+    this.physicsConfig.maxAcceleration = Math.min(
+      vibePhysics.maxAcceleration,
+      this.SAFETY_CAP.maxAcceleration
+    )
+    this.physicsConfig.maxVelocity = Math.min(
+      vibePhysics.maxVelocity,
+      this.SAFETY_CAP.maxVelocity
+    )
     this.physicsConfig.friction = vibePhysics.friction
     this.physicsConfig.arrivalThreshold = vibePhysics.arrivalThreshold
     
-    console.log(`[PhysicsDriver] 🎛️ WAVE 338: Vibe "${vibeId}" - Acc:${vibePhysics.maxAcceleration} Vel:${vibePhysics.maxVelocity} Fric:${vibePhysics.friction}`)
+    console.log(`[PhysicsDriver] 🎛️ WAVE 343: Vibe "${vibeId}" - Acc:${this.physicsConfig.maxAcceleration} (cap:${this.SAFETY_CAP.maxAcceleration}) Vel:${this.physicsConfig.maxVelocity} Fric:${vibePhysics.friction}`)
     
     return this
   }
@@ -226,6 +248,54 @@ export class FixturePhysicsDriver {
   // 
   //  TRADUCCIÓN ABSTRACTO  FÍSICO
   // 
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 340.6: MÉTODO DIRECTO DMX
+  // Para cuando el caller YA tiene valores DMX (como HAL con TitanEngine)
+  // Evita la doble conversión abstract→DMX→abstract→DMX
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Interpola hacia una posición DMX objetivo (sin conversión de coordenadas) */
+  translateDMX(fixtureId: string, targetPanDMX: number, targetTiltDMX: number, deltaTime = 16): DMXPosition {
+    const config = this.configs.get(fixtureId)
+    if (!config) {
+      console.warn(`[PhysicsDriver] Fixture "${fixtureId}" no configurado`)
+      return { fixtureId, panDMX: 127, tiltDMX: 127, panFine: 0, tiltFine: 0 }
+    }
+    
+    // Aplicar límites de seguridad directamente
+    const safePan = Math.max(0, Math.min(255, targetPanDMX))
+    const safeTilt = Math.max(config.limits.tiltMin, Math.min(config.limits.tiltMax, targetTiltDMX))
+    
+    const targetDMX: Position2D = { pan: safePan, tilt: safeTilt }
+    
+    // Aplicar física de interpolación
+    const smoothedDMX = this.applyPhysicsEasing(fixtureId, targetDMX, deltaTime)
+    
+    // NaN guard
+    const finalPan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan
+    const finalTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt
+    
+    if (!Number.isFinite(smoothedDMX.pan) || !Number.isFinite(smoothedDMX.tilt)) {
+      console.error(`[PhysicsDriver] ⚠️ NaN/Infinity en "${fixtureId}"! Usando home position`)
+    }
+    
+    // Redondear a valores DMX válidos
+    const panDMX = Math.round(Math.max(0, Math.min(255, finalPan)))
+    const tiltDMX = Math.round(Math.max(0, Math.min(255, finalTilt)))
+    
+    // Calcular valores Fine (16-bit)
+    const panFine = Math.round((finalPan - panDMX) * 255)
+    const tiltFine = Math.round((finalTilt - tiltDMX) * 255)
+    
+    return {
+      fixtureId,
+      panDMX,
+      tiltDMX,
+      panFine: Math.max(0, Math.min(255, panFine)),
+      tiltFine: Math.max(0, Math.min(255, tiltFine)),
+    }
+  }
 
   /** Traduce posición abstracta a DMX físico */
   translate(abstractPos: AbstractPosition, deltaTime = 16): DMXPosition {
@@ -319,6 +389,97 @@ export class FixturePhysicsDriver {
     const newPos: Position2D = { pan: current.pan, tilt: current.tilt }
     const newVel: Position2D = { pan: velocity.pan, tilt: velocity.tilt }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏎️ WAVE 341 + 342: REV LIMITER PER-VIBE (Seguro de Vida para Correas)
+    // 
+    // Límite FÍSICO de cuánto puede moverse un motor paso a paso por frame.
+    // Cada vibe tiene su propio límite según sus necesidades de movimiento:
+    // 
+    // - TECHNO: Movimientos bruscos, saltos rápidos → Límite estricto
+    // - LATINO: Trayectorias suaves (circle, figure8) → MUY ALTA libertad
+    // - ROCK: Posiciones fijas, cambios dramáticos → Medio
+    // - CHILL: Glacial, usa física clásica → Sin límite (demasiado lento)
+    // 
+    // 🔧 WAVE 342: LATINO necesita seguir figure8 sin lag
+    // Figure8 @ 0.1Hz con amplitud 216° = pico de ~13.5°/frame @ 30fps
+    // Necesitamos REV_LIMIT ≥ 20 para seguirlo sin lag
+    // ═══════════════════════════════════════════════════════════════════════
+    const maxAccel = this.physicsConfig.maxAcceleration
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏎️ WAVE 342.5: REV LIMITER PER-VIBE (Seguro de Vida para Correas)
+    // 
+    // Ahora que TODOS los patrones usan frecuencias FIJAS (sin saltos por BPM),
+    // podemos ser más generosos con los límites. Los patrones son SUAVES.
+    // 
+    // El REV LIMITER protege contra:
+    // - Cambios bruscos de patrón (ej: cambio de vibe)
+    // - Errores de código que generen saltos
+    // - Valores extremos inesperados
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Determinar límites según aceleración del vibe
+    let REV_LIMIT_PAN: number
+    let REV_LIMIT_TILT: number
+    
+    if (maxAccel > 1400) {
+      // 🔧 WAVE 342.5: TECHNO - Ahora con mirror SUAVE (0.25 Hz fijo)
+      // Puede seguir el patrón sin problemas, pero mantenemos límite moderado
+      // para proteger contra cambios de vibe o errores
+      REV_LIMIT_PAN = 15   // ~630°/s - Suficiente para mirror suave
+      REV_LIMIT_TILT = 10  // ~420°/s
+    } else if (maxAccel > 1100) {
+      // LATINO - Alta libertad para seguir trayectorias curvas
+      REV_LIMIT_PAN = 25   // ~1050°/s - Sigue figure8 sin lag
+      REV_LIMIT_TILT = 18  // ~750°/s
+    } else if (maxAccel > 1000) {
+      // ROCK: Medio (dramático pero controlado)
+      REV_LIMIT_PAN = 15   // ~630°/s
+      REV_LIMIT_TILT = 10  // ~420°/s
+    } else {
+      // CHILL: Sin límite (usa física clásica, muy lento)
+      REV_LIMIT_PAN = 255  // Sin límite práctico
+      REV_LIMIT_TILT = 255
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 342.5: UNIFIED SNAP MODE
+    // Todos los vibes usan SNAP MODE ahora (excepto CHILL que usa física clásica)
+    // INSTANT MODE ya no existe - era problemático con patrones BPM-dependientes
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    if (maxAccel > 1000) {
+      // 🔥 SNAP MODE con REV LIMITER para todos los vibes rápidos
+      // snapFactor escala con maxAccel para dar más "punch" a techno
+      // Techno (1500): snapFactor ~0.85 - muy reactivo
+      // Latino (1200): snapFactor ~0.65 - fluido
+      // Rock (1050):   snapFactor ~0.46 - dramático
+      const snapFactor = Math.min(0.85, 0.4 + (maxAccel - 1000) / 800)
+      
+      let deltaPan = (targetDMX.pan - current.pan) * snapFactor
+      let deltaTilt = (targetDMX.tilt - current.tilt) * snapFactor
+      
+      // Aplicar REV LIMITER (seguridad para motores)
+      deltaPan = Math.max(-REV_LIMIT_PAN, Math.min(REV_LIMIT_PAN, deltaPan))
+      deltaTilt = Math.max(-REV_LIMIT_TILT, Math.min(REV_LIMIT_TILT, deltaTilt))
+      
+      newPos.pan = current.pan + deltaPan
+      newPos.tilt = current.tilt + deltaTilt
+      
+      // Calcular velocidad para stats
+      newVel.pan = deltaPan / dt
+      newVel.tilt = deltaTilt / dt
+      
+      this.currentPositions.set(fixtureId, newPos)
+      this.velocities.set(fixtureId, newVel)
+      
+      return newPos
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MODO CLÁSICO: Física con aceleración/frenado (para vibes lentos)
+    // Solo CHILL usa esto (maxAccel < 1000)
+    // ═══════════════════════════════════════════════════════════════════════
     const axes: (keyof Position2D)[] = ['pan', 'tilt']
 
     for (const axis of axes) {

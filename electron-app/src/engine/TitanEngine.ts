@@ -46,6 +46,9 @@ import { StrategyArbiter, StrategyArbiterInput, StrategyArbiterOutput, ColorStra
 import { SeleneLux } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
+// 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
+import { vibeMovementManager, type AudioContext as VMMContext } from './movement/VibeMovementManager'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -564,140 +567,57 @@ export class TitanEngine extends EventEmitter {
   }
   
   /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🎯 WAVE 343: OPERATION CLEAN SLATE
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 
    * Calcula el movimiento de fixtures motorizados.
-   * NOTA: Solo genera intent de movimiento - el motor de físicas/ópticas
-   * maneja la ejecución real del movimiento.
+   * 
+   * ANTES (WAVE 340-342): Matemática de patrones HARDCODED aquí 🚮
+   * AHORA: Delega TODO al VibeMovementManager ✅
+   * 
+   * TitanEngine ya no conoce:
+   * - Math.sin/cos para patrones
+   * - Frecuencias por vibe
+   * - Amplitudes por vibe
+   * - Lógica de figure8/mirror/circle/etc
+   * 
+   * Solo sabe: "Oye VMM, dame movimiento para este vibe y audio"
+   * ═══════════════════════════════════════════════════════════════════════════
    */
   private calculateMovement(
     audio: EngineAudioMetrics,
     context: MusicalContext,
-    vibeProfile: { movement: { allowedPatterns: string[]; speedRange: { min: number; max: number } } }
+    _vibeProfile: { movement: { allowedPatterns: string[]; speedRange: { min: number; max: number } } }
   ): MovementIntent {
-    const { speedRange, allowedPatterns } = vibeProfile.movement
+    // Obtener vibe actual
+    const currentVibeId = this.vibeManager.getActiveVibe().id
     
-    // Velocidad basada en BPM y energía
-    const bpmFactor = Math.min(1, context.bpm / 140)
-    const speed = speedRange.min + (audio.energy * bpmFactor * (speedRange.max - speedRange.min))
-    
-    // Seleccionar patrón basado en energía
-    let patternIndex = Math.floor(audio.energy * allowedPatterns.length)
-    patternIndex = Math.min(patternIndex, allowedPatterns.length - 1)
-    const pattern = (allowedPatterns[patternIndex] || 'sweep') as MovementIntent['pattern']
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 339.7: GENERAR POSICIONES REALES BASADAS EN TIEMPO
-    // El Physics Driver interpola hacia estas posiciones target
-    // Sin esto, los movers se quedan en (0.5, 0.5) para siempre
-    // ═══════════════════════════════════════════════════════════════════════
-    const now = Date.now()
-    const timeSeconds = now / 1000
-    const amplitude = 0.3 + audio.energy * 0.4  // 0.3 base, +0.4 con energía
-    
-    let centerX = 0.5
-    let centerY = 0.5
-    
-    // Solo generar movimiento si hay audio (evitar movimiento en silencio)
-    if (audio.energy > 0.05) {
-      switch (pattern) {
-        case 'sweep':
-          // Barrido horizontal sincronizado con BPM
-          // HAL aplicará phase offset para efecto snake
-          const sweepFreq = context.bpm / 60 / 4  // Un ciclo cada 4 beats
-          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * sweepFreq) * amplitude
-          centerY = 0.5 + audio.bass * 0.2 - 0.1  // Tilt sigue el bass
-          break
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 340.1: WAVE - Ondulación como Pink Floyd
-        // HAL aplicará phase offset para crear serpiente de luz
-        // ═══════════════════════════════════════════════════════════════════
-        case 'wave':
-          const waveFreq = context.bpm / 120  // Un ciclo cada ~2 compases (lento)
-          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * waveFreq) * amplitude * 0.6
-          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * waveFreq) * amplitude * 0.25
-          break
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 💃 WAVE 340.1: FIGURE8 - Lissajous (caderas de cumbia)
-        // Pan 1x freq, Tilt 2x freq = figura 8 perfecta
-        // ═══════════════════════════════════════════════════════════════════
-        case 'figure8':
-          const f8Freq = context.bpm / 60  // Un ciclo por beat
-          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * f8Freq) * amplitude
-          // ↓ DOBLE frecuencia en Y = curva de Lissajous = figura 8
-          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 4 * f8Freq) * amplitude * 0.5
-          break
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🏃 WAVE 340.1: CHASE - Persecución láser
-        // Base para efecto persecución, HAL añadirá phase offset grande
-        // ═══════════════════════════════════════════════════════════════════
-        case 'chase':
-          const chaseFreq = context.bpm / 30  // Rápido (2x por beat)
-          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * chaseFreq) * amplitude
-          centerY = 0.5 + audio.bass * 0.15 - 0.075  // Tilt sigue bass suavemente
-          break
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🪞 WAVE 340.1: MIRROR - Puertas del infierno techno
-        // Base simétrica, HAL invertirá para fixtures pares/impares
-        // ═══════════════════════════════════════════════════════════════════
-        case 'mirror':
-          const mirrorFreq = context.bpm / 60  // Un ciclo por beat
-          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * mirrorFreq) * amplitude
-          centerY = 0.5  // Tilt fijo para efecto puerta
-          break
-          
-        case 'circle':
-          // Movimiento circular (mejorado para Chill)
-          const circleFreq = context.bpm / 60 / 8  // Un ciclo cada 8 beats
-          centerX = 0.5 + Math.cos(timeSeconds * Math.PI * 2 * circleFreq) * amplitude
-          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * circleFreq) * amplitude * 0.5
-          break
-          
-        case 'pulse':
-          // Pulsar hacia el centro en cada beat
-          const beatPhase = (context.beatPhase ?? 0) % 1
-          const pulseIntensity = Math.pow(1 - beatPhase, 3)  // Decae rápido después del beat
-          centerX = 0.5
-          centerY = 0.5 - pulseIntensity * amplitude * 0.4  // Baja en el beat
-          break
-          
-        case 'random':
-          // Posición basada en hash del frame (determinista pero variada)
-          const frameHash = (this.state.frameCount * 7919) % 1000 / 1000
-          centerX = 0.3 + frameHash * 0.4  // 0.3-0.7 range
-          centerY = 0.4 + (1 - frameHash) * 0.2  // 0.4-0.6 range
-          break
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🧘 WAVE 340.1: STATIC MEJORADO - Respiración zen, no muerte
-        // Micro-movimiento casi imperceptible + bass inhale
-        // ═══════════════════════════════════════════════════════════════════
-        case 'static':
-          const breathFreq = 0.1  // Un ciclo cada 10 segundos
-          centerX = 0.5
-          centerY = 0.4 + Math.sin(timeSeconds * Math.PI * 2 * breathFreq) * 0.03
-                       + audio.bass * 0.06  // Bass = pequeño inhalar
-          break
-          
-        default:
-          // Fallback: centro con ligera reacción a energía
-          centerX = 0.5
-          centerY = 0.4 + audio.energy * 0.15
-      }
+    // Construir contexto de audio para VMM
+    const vmmContext: VMMContext = {
+      energy: audio.energy,
+      bass: audio.bass,
+      mids: audio.mid,
+      highs: audio.high,
+      bpm: context.bpm,
+      beatPhase: audio.beatPhase,
     }
     
-    // Clamp to safe range (0.1 - 0.9 para evitar límites mecánicos)
-    centerX = Math.max(0.1, Math.min(0.9, centerX))
-    centerY = Math.max(0.1, Math.min(0.9, centerY))
+    // 🎯 DELEGAR al VibeMovementManager
+    const intent = vibeMovementManager.generateIntent(currentVibeId, vmmContext)
+    
+    // Convertir de coordenadas normalizadas (-1 a +1) a rango 0-1 para HAL
+    // VMM: -1 = extremo izq/arriba, +1 = extremo der/abajo
+    // HAL espera: 0 = extremo, 0.5 = centro, 1 = extremo opuesto
+    const centerX = 0.5 + (intent.x * 0.4)  // Clamp implícito: 0.1 - 0.9
+    const centerY = 0.5 + (intent.y * 0.4)  // Clamp implícito: 0.1 - 0.9
     
     return {
-      pattern,
-      speed: Math.max(0, Math.min(1, speed)),
-      amplitude,
-      centerX,
-      centerY,
+      pattern: intent.pattern as MovementIntent['pattern'],
+      speed: Math.max(0, Math.min(1, intent.speed)),
+      amplitude: intent.amplitude,
+      centerX: Math.max(0.1, Math.min(0.9, centerX)),
+      centerY: Math.max(0.1, Math.min(0.9, centerY)),
       beatSync: true,
     }
   }

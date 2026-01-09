@@ -86,10 +86,13 @@ export const VIBE_FIESTA_LATINA: VibeProfile = {
   },
 
   movement: {
+    // 🔧 WAVE 340.1: ¡LA CUMBIA NUNCA PARA!
+    // 'figure8' primero = Lissajous de caderas
+    // Velocidad alta = fiesta de verdad
     allowedPatterns: ['figure8', 'circle', 'wave', 'sweep'],
     speedRange: {
-      min: 0.4,
-      max: 1.0,
+      min: 0.5,    // 🔧 Subido de 0.4 → 0.5 (siempre bailando)
+      max: 0.85,   // 🔧 Reducido de 1.0 → 0.85 (fluido, no epiléptico)
     },
     allowAggressive: true,
     preferredSync: 'beat',

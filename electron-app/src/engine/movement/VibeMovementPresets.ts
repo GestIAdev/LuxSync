@@ -81,12 +81,13 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   // 💃 LATINO: Fluido, Circular, Orgánico
   // "La cumbia tiene swing, los movers también"
+  // 🔧 WAVE 340.5: Aceleración alta para seguir caderas
   // ───────────────────────────────────────────────────────────────
   'fiesta-latina': {
     physics: {
-      maxAcceleration: 400,     // Arranques suaves
-      maxVelocity: 250,         // Velocidad media
-      friction: 0.25,           // Fricción moderada (fluido)
+      maxAcceleration: 1200,    // 🔧 Subido: Seguir caderas rápido
+      maxVelocity: 350,         // 🔧 Subido: Más swing
+      friction: 0.20,           // Algo de suavizado orgánico
       arrivalThreshold: 2.0,    // Permite overshoot elegante
     },
     optics: {
@@ -106,12 +107,13 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
   // ───────────────────────────────────────────────────────────────
   // 🎸 ROCK: Reactivo, Posiciones fijas, Wall of Light
   // "El muro de luz que golpea con la guitarra"
+  // 🔧 WAVE 340.5: Aceleración alta para punch
   // ───────────────────────────────────────────────────────────────
   'pop-rock': {
     physics: {
-      maxAcceleration: 800,     // Golpes reactivos
-      maxVelocity: 400,         // Rápido en golpes
-      friction: 0.40,           // Alta fricción (para estático)
+      maxAcceleration: 1100,    // 🔧 Subido: Golpes reactivos duros
+      maxVelocity: 450,         // 🔧 Subido: Rápido en golpes
+      friction: 0.30,           // Fricción para punch (no arrastrar)
       arrivalThreshold: 1.0,    // Precisión normal
     },
     optics: {

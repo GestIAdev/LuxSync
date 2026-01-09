@@ -84,13 +84,16 @@ export const VIBE_CHILL_LOUNGE: VibeProfile = {
   },
 
   movement: {
-    allowedPatterns: ['static', 'wave'],
+    // 🔧 WAVE 340.2: Chill se MUEVE amplio pero LENTO (ola de mar)
+    // 'circle' primero = deriva orbital zen
+    // Velocidad baja pero NO cero = siempre vivo, nunca muerto
+    allowedPatterns: ['circle', 'wave', 'static'],
     speedRange: {
-      min: 0.0,
-      max: 0.3,
+      min: 0.12,   // 🔧 Subido de 0.08 → 0.12 (menos saltos, más fluido)
+      max: 0.3,    // 🔧 Subido de 0.25 → 0.3 (permite algo de expresión)
     },
     allowAggressive: false,
-    preferredSync: 'free',  // Changed from 'none' to valid value
+    preferredSync: 'free',
   },
 
   effects: {

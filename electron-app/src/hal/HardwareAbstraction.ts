@@ -83,6 +83,10 @@ export class HardwareAbstraction {
   private currentVibeId: string = 'idle'
   private currentOptics: OpticsConfig
   
+  // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
+  private smoothedZoomMod: number = 0
+  private smoothedFocusMod: number = 0
+  
   // Configuration
   private config: HALConfig
   
@@ -143,6 +147,274 @@ export class HardwareAbstraction {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🐍 WAVE 340.1 PASO 2: PHASE OFFSET (SNAKE FORMULA)
+  // Convierte soldados sincronizados en bailarines desfasados
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Configuración de phase offset por vibe
+   * Cada vibe tiene su estilo de desfase
+   */
+  private readonly PHASE_CONFIGS: Record<string, { offset: number; type: 'sync' | 'snake' | 'mirror' }> = {
+    'techno-club':    { offset: Math.PI,     type: 'mirror' },   // Alternado par/impar
+    'fiesta-latina':  { offset: Math.PI / 4, type: 'snake' },    // 45° cadena de caderas
+    'pop-rock':       { offset: Math.PI / 3, type: 'snake' },    // 60° wall ondulante
+    'chill-lounge':   { offset: Math.PI / 2, type: 'snake' },    // 90° ola de mar lenta
+    'idle':           { offset: 0,           type: 'sync' },     // Sin movimiento
+  }
+  
+  /**
+   * 🐍 Aplica phase offset por fixture para crear efecto serpiente
+   * @param baseX - Posición X base del Engine (0-1)
+   * @param baseY - Posición Y base del Engine (0-1)
+   * @param pattern - Patrón de movimiento activo
+   * @param fixtureIndex - Índice del fixture (para calcular offset)
+   * @param zone - Zona del fixture (para mirror: MOVING_LEFT vs MOVING_RIGHT)
+   * @param timeSeconds - Tiempo actual en segundos
+   * @param bpm - BPM actual para frecuencia
+   * @returns Posición modificada con phase offset
+   */
+  private applyPhaseOffset(
+    baseX: number,
+    baseY: number,
+    pattern: string,
+    fixtureIndex: number,
+    zone: string,
+    timeSeconds: number,
+    bpm: number
+  ): { x: number; y: number } {
+    const config = this.PHASE_CONFIGS[this.currentVibeId] || { offset: 0, type: 'sync' }
+    
+    // Si es sync, devolver posición sin modificar
+    if (config.type === 'sync') {
+      return { x: baseX, y: baseY }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 341.4: PHASE OFFSET CORRECTO
+    // 
+    // ANTES: HAL recalculaba el pattern entero (duplicando trabajo de TitanEngine)
+    // AHORA: HAL solo aplica un desfase TEMPORAL al movimiento base
+    // 
+    // La idea es que TitanEngine calcula "dónde debería estar el mover AHORA"
+    // y HAL aplica un offset de tiempo para que cada mover esté en un punto
+    // DIFERENTE de la misma trayectoria (efecto snake)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Calcular phase offset basado en fixture index
+    const phaseOffset = fixtureIndex * config.offset
+    const freq = Math.max(60, bpm) / 120
+    
+    // Amplitud desde la posición base (distancia al centro) - SIN reducir!
+    const amplitudeX = baseX - 0.5  // -0.5 a +0.5 (lo que TitanEngine generó)
+    const amplitudeY = baseY - 0.5
+    
+    // Magnitud del movimiento (para preservar la amplitud original)
+    const magnitude = Math.sqrt(amplitudeX * amplitudeX + amplitudeY * amplitudeY)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔍 DEBUG WAVE 341.5: Log SÍNCRONO con TitanEngine (cada 30 frames)
+    // ═══════════════════════════════════════════════════════════════════════
+    const shouldLog = fixtureIndex === 0 && this.framesRendered % 30 === 0
+    if (shouldLog) {
+      const inPan = Math.round((baseX - 0.5) * 540)
+      const inTilt = Math.round((baseY - 0.5) * 270)
+      console.log(`[🔬 PHASE IN] Pan:${inPan}° Tilt:${inTilt}° | Pattern:${pattern} | Mag:${magnitude.toFixed(3)}`)
+    }
+    
+    // Si no hay movimiento, devolver centro
+    if (magnitude < 0.01) {
+      return { x: 0.5, y: 0.5 }
+    }
+    
+    // Para patterns sinusoidales (wave, figure8, circle, sweep)
+    // Solo aplicamos un offset TEMPORAL, no recalculamos la trayectoria
+    switch (pattern) {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🌊 WAVE, 💃 FIGURE8, 💫 CIRCLE, SWEEP: 
+      // Mismo principio: desfase temporal, preservar amplitud de TitanEngine
+      // ═══════════════════════════════════════════════════════════════════
+      case 'wave':
+      case 'figure8':
+      case 'circle':
+      case 'sweep':
+        // En vez de recalcular el sin/cos, aplicamos el offset como rotación
+        // de la posición alrededor del centro
+        const angle = Math.atan2(amplitudeY, amplitudeX)  // Ángulo actual
+        const phaseAngle = phaseOffset  // Offset en radianes
+        
+        // Rotar la posición por el phase offset
+        const newAngle = angle + phaseAngle
+        const resultX = 0.5 + Math.cos(newAngle) * magnitude
+        const resultY = 0.5 + Math.sin(newAngle) * magnitude
+        
+        // 🔍 DEBUG WAVE 341.5: Log salida SÍNCRONO
+        if (shouldLog) {
+          const outPan = Math.round((resultX - 0.5) * 540)
+          const outTilt = Math.round((resultY - 0.5) * 270)
+          console.log(`[🔬 PHASE OUT] Pan:${outPan}° Tilt:${outTilt}° | Δ=${Math.round((resultX - baseX) * 540)}° (fixture 0 should be 0)`)
+        }
+        
+        return { x: resultX, y: resultY }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🏃 CHASE: Persecución láser (offset grande)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'chase':
+        const chasePhase = fixtureIndex * (Math.PI / 2)  // 90° entre fixtures
+        // Para chase, sí recalculamos X pero preservamos el rango de TitanEngine
+        return {
+          x: 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq * 2 + chasePhase) * Math.abs(amplitudeX),
+          y: baseY  // Tilt sigue el valor base (bass)
+        }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🪞 MIRROR: Puertas del infierno techno
+      // MOVING_LEFT y MOVING_RIGHT se mueven en direcciones opuestas (SOLO PAN)
+      // TILT es el mismo para ambos (búsqueda + bass punch)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'mirror':
+        // Determinar si es izquierda o derecha basado en zona
+        const isLeftZone = zone.includes('LEFT') || zone.includes('left')
+        const isRightZone = zone.includes('RIGHT') || zone.includes('right')
+        
+        // Si no es zona de mover, usar par/impar
+        let mirrorSign = 1
+        if (isLeftZone) {
+          mirrorSign = 1   // LEFT mantiene dirección original
+        } else if (isRightZone) {
+          mirrorSign = -1  // RIGHT invierte PAN
+        } else {
+          // Fallback: par/impar
+          mirrorSign = fixtureIndex % 2 === 0 ? 1 : -1
+        }
+        
+        // 🔍 DEBUG: Log mirror logic (once per second)
+        if (fixtureIndex < 2 && this.framesRendered % 30 === 0) {
+          const finalX = 0.5 + amplitudeX * mirrorSign
+          console.log(`[🪞 MIRROR] Fixture ${fixtureIndex} | Zone: "${zone}" | Sign=${mirrorSign} | baseX=${baseX.toFixed(3)} baseY=${baseY.toFixed(3)} → x=${finalX.toFixed(3)} y=${baseY.toFixed(3)}`)
+        }
+        
+        // 🔥 WAVE 342.8: Solo invertir PAN (horizontal)
+        // TILT es compartido (ambos apuntan al mismo nivel vertical)
+        // Esto crea el efecto de puertas que se abren/cierran horizontalmente
+        return {
+          x: 0.5 + amplitudeX * mirrorSign,  // PAN invertido para espejo
+          y: baseY                            // TILT compartido
+        }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🧘 STATIC: Respiración con phase offset sutil
+      // ═══════════════════════════════════════════════════════════════════
+      case 'static':
+        const breathPhase = fixtureIndex * (Math.PI / 3)  // 60° offset
+        return {
+          x: baseX,
+          y: 0.5 + Math.sin(timeSeconds * Math.PI * 0.2 + breathPhase) * 0.02 + amplitudeY
+        }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // DEFAULT: Para cualquier otro pattern, aplicar rotación de phase
+      // ═══════════════════════════════════════════════════════════════════
+      default:
+        // Aplicar phase offset como rotación (igual que wave/figure8/circle)
+        const defaultAngle = Math.atan2(amplitudeY, amplitudeX)
+        const defaultPhaseAngle = phaseOffset
+        const defaultNewAngle = defaultAngle + defaultPhaseAngle
+        return {
+          x: 0.5 + Math.cos(defaultNewAngle) * magnitude,
+          y: 0.5 + Math.sin(defaultNewAngle) * magnitude
+        }
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 👁️ WAVE 340.2: DYNAMIC OPTICS CON SMOOTHING
+  // Las ópticas RESPIRAN con el movimiento - suave, sin saltos
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 👁️ Aplica óptica dinámica basada en vibe y movimiento
+   * 🔧 WAVE 340.2: Con SMOOTHING para evitar oscilaciones locas
+   * 
+   * @param movementIntensity - Qué tan lejos está del centro (0-1)
+   * @param beatPhase - Fase del beat (0-1, 0=inicio del beat)
+   * @param timeSeconds - Tiempo actual para breathing
+   * @returns Modificadores de zoom y focus SUAVIZADOS
+   */
+  private applyDynamicOptics(
+    movementIntensity: number,
+    beatPhase: number,
+    timeSeconds: number
+  ): { zoomMod: number; focusMod: number } {
+    
+    // Calcular target basado en vibe
+    let targetZoomMod = 0
+    let targetFocusMod = 0
+    
+    // Factor de smoothing por vibe (más bajo = más lento)
+    // 0.02 = muy suave (20+ frames para estabilizar)
+    // 0.1 = moderado (10 frames)
+    // 0.3 = rápido (3-4 frames)
+    let smoothFactor = 0.05  // Default: suave
+    
+    switch (this.currentVibeId) {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🍸 CHILL: Zoom RESPIRA muy lento (20s ciclo, smooth máximo)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'chill-lounge':
+        const breathCycle = Math.sin(timeSeconds * Math.PI * 0.1)  // 20s ciclo
+        targetZoomMod = breathCycle * 8 + movementIntensity * 10  // Reducido: 8+10 max
+        targetFocusMod = 15  // Siempre soft (nebuloso)
+        smoothFactor = 0.02  // Ultra suave para chill
+        break
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🎸 ROCK: Focus PUNCH en beat (más sutil, smooth rápido)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'pop-rock':
+        if (beatPhase < 0.15) {
+          targetZoomMod = -5      // Reducido de -10
+          targetFocusMod = -25    // Reducido de -50
+        }
+        smoothFactor = 0.15  // Rápido para el punch
+        break
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🎛️ TECHNO: Beam pulsa suave (no epiléptico)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'techno-club':
+        const technoPhase = Math.pow(1 - beatPhase, 2)
+        targetZoomMod = -10 * technoPhase  // Reducido de -20
+        targetFocusMod = -5                 // Reducido de -10
+        smoothFactor = 0.1  // Moderado
+        break
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 💃 LATINO: Zoom sigue baile (suave, orgánico)
+      // ═══════════════════════════════════════════════════════════════════
+      case 'fiesta-latina':
+        targetZoomMod = movementIntensity * 15  // Reducido de 30
+        targetFocusMod = 0
+        smoothFactor = 0.05  // Suave como caderas
+        break
+      
+      default:
+        break
+    }
+    
+    // 🔧 WAVE 340.2: Aplicar smoothing (exponential moving average)
+    // newValue = oldValue + (target - oldValue) * smoothFactor
+    this.smoothedZoomMod += (targetZoomMod - this.smoothedZoomMod) * smoothFactor
+    this.smoothedFocusMod += (targetFocusMod - this.smoothedFocusMod) * smoothFactor
+    
+    return {
+      zoomMod: Math.round(this.smoothedZoomMod),
+      focusMod: Math.round(this.smoothedFocusMod)
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // MAIN RENDER PIPELINE
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -172,7 +444,7 @@ export class HardwareAbstraction {
     const audioInput = this.buildAudioInput(audio)
     
     // Process each fixture through the pipeline
-    const fixtureStates = fixtures.map(fixture => {
+    const fixtureStates = fixtures.map((fixture, fixtureIndex) => {
       const zone = (fixture.zone || 'UNASSIGNED') as PhysicalZone
       
       // 🔥 WAVE 290.1: Usar intent.zones como fuente de verdad
@@ -212,9 +484,35 @@ export class HardwareAbstraction {
       
       // 3. MAPPER: Convert to fixture state
       // MovementIntent uses centerX/centerY (0-1), we map to pan/tilt
+      // 🐍 WAVE 340.1 PASO 2: Apply phase offset for snake effect
+      // Sin desfase = soldados marchando | Con desfase = bailarines
+      const baseX = intent.movement?.centerX ?? 0.5
+      const baseY = intent.movement?.centerY ?? 0.5
+      const pattern = intent.movement?.pattern || 'static'
+      
+      // Get time for phase offset calculation
+      const timeSeconds = Date.now() / 1000
+      // Use movement speed as BPM proxy (speed 0.5 = ~120 BPM)
+      // TitanEngine calculates speed from actual BPM, so we reverse-engineer it
+      const speedToBpm = (intent.movement?.speed || 0.5) * 240  // 0.5 → 120 BPM
+      const bpm = Math.max(60, Math.min(180, speedToBpm))  // Clamp to reasonable range
+      
+      // Apply phase offset based on fixture index
+      // Uses this.currentVibeId which is set by the main render loop
+      const phaseOffsetted = this.applyPhaseOffset(
+        baseX,
+        baseY,
+        pattern,
+        fixtureIndex,
+        zone,
+        timeSeconds,
+        bpm
+      )
+      
+      // Convert {x, y} to {pan, tilt} for MovementState
       const movement: MovementState = {
-        pan: intent.movement?.centerX ?? 0.5,
-        tilt: intent.movement?.centerY ?? 0.5,
+        pan: phaseOffsetted.x,
+        tilt: phaseOffsetted.y,
       }
       
       return this.mapper.mapFixture(fixture, intent, finalIntensity, movement)
@@ -228,7 +526,17 @@ export class HardwareAbstraction {
     // This adds the interpolated (physical) positions from the physics driver
     // So the frontend can visualize actual movement, not just targets
     // Uses REAL fixture IDs (from library) not synthetic ones
+    // 👁️ WAVE 340.1 PASO 3: Also apply dynamic optics here
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // Get timing info for dynamic optics
+    const opticsTimeSeconds = Date.now() / 1000
+    // Beat phase approximation from movement speed
+    const movementSpeed = intent.movement?.speed || 0.5
+    const approxBpm = movementSpeed * 240
+    const beatDuration = 60 / Math.max(60, approxBpm)  // seconds per beat
+    const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration  // 0-1
+    
     const statesWithPhysics = finalStates.map((state, index) => {
       // 🔥 WAVE 339.6: Use real fixture ID from the fixtures array
       // This matches the ID registered in setFixtures() → registerMover()
@@ -242,24 +550,38 @@ export class HardwareAbstraction {
                               state.type?.toLowerCase().includes('beam') ||
                               fixture?.hasMovementChannels
       
+      // 👁️ WAVE 340.1 PASO 3: Calculate movement intensity for dynamic optics
+      // How far from center (0.5, 0.5) is this fixture?
+      const panNorm = state.pan / 255  // 0-1
+      const tiltNorm = state.tilt / 255  // 0-1
+      const movementIntensity = Math.sqrt(
+        Math.pow(panNorm - 0.5, 2) + Math.pow(tiltNorm - 0.5, 2)
+      ) * 2  // 0-1 (max at corners)
+      
+      // Apply dynamic optics (breathing zoom, focus punch, etc.)
+      const opticsMod = this.applyDynamicOptics(movementIntensity, beatPhase, opticsTimeSeconds)
+      
+      // Calculate final zoom/focus with dynamic modifications
+      const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod))
+      const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod))
+      
       if (isMovingFixture) {
-        // Translate target position through physics engine
-        // This registers the fixture and updates its physics state
-        const abstractPos = {
-          fixtureId,
-          x: (state.pan / 255) * 2 - 1,  // 0-255 → -1 to +1
-          y: (state.tilt / 255) * 2 - 1, // 0-255 → -1 to +1
-          intensity: state.dimmer / 255,
-        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔧 WAVE 340.6: DIRECT DMX INTERPOLATION
+        // TitanEngine already generates target positions in DMX space (0-255)
+        // We pass them DIRECTLY to physics without double-conversion
+        // ═══════════════════════════════════════════════════════════════════════
         
-        // Run physics simulation for this frame (16ms = ~60fps)
-        this.movementPhysics.translate(abstractPos, 16)
+        // Run physics simulation with DMX target directly (no abstract conversion!)
+        this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, 16)
         
         // Get interpolated state
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
         
         return {
           ...state,
+          zoom: finalZoom,     // 👁️ Dynamic optics
+          focus: finalFocus,   // 👁️ Dynamic optics
           physicalPan: physicsState.physicalPan,
           physicalTilt: physicsState.physicalTilt,
           panVelocity: physicsState.panVelocity,
@@ -267,15 +589,38 @@ export class HardwareAbstraction {
         }
       }
       
-      // Non-moving fixtures: physical = target
+      // Non-moving fixtures: physical = target (but still apply optics)
       return {
         ...state,
+        zoom: finalZoom,     // 👁️ Dynamic optics
+        focus: finalFocus,   // 👁️ Dynamic optics
         physicalPan: state.pan,
         physicalTilt: state.tilt,
         panVelocity: 0,
         tiltVelocity: 0,
       }
     })
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔍 WAVE 340.4: HAL DEBUG LOGGING para calibración
+    // Log cada ~500ms (30 frames), compacto para ver movimiento real
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.framesRendered % 30 === 0) {
+      // Encontrar primer mover para debug
+      const movers = statesWithPhysics.filter(s => 
+        s.zone.includes('MOVING') || s.type?.toLowerCase().includes('moving')
+      )
+      
+      if (movers.length > 0) {
+        const m = movers[0]
+        const panDeg = Math.round(((m.pan / 255) - 0.5) * 540)
+        const tiltDeg = Math.round(((m.tilt / 255) - 0.5) * 270)
+        const physPanDeg = Math.round(((m.physicalPan / 255) - 0.5) * 540)
+        const physTiltDeg = Math.round(((m.physicalTilt / 255) - 0.5) * 270)
+        
+        console.log(`[👁️ HAL] ${this.currentVibeId} | Target:${panDeg}°/${tiltDeg}° → Phys:${physPanDeg}°/${physTiltDeg}° | Z:${m.zoom} F:${m.focus}`)
+      }
+    }
     
     // 5. DRIVER: Send to hardware
     this.sendToDriver(statesWithPhysics)

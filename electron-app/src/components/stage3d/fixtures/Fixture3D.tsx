@@ -223,28 +223,34 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   
   // ═════════════════════════════════════════════════════════════════════════
   // ANIMATIONS & PAN/TILT UPDATES
+  // 🔧 WAVE 342: Fast LERP (0.3) for smooth visual interpolation
+  // 3D shows TARGET position with visual smoothing
+  // 2D shows PHYSICAL position (what hardware is doing)
   // ═════════════════════════════════════════════════════════════════════════
   
   useFrame((state) => {
     // ─────────────────────────────────────────────────────────────────────
     // Moving Head: Aplicar PAN al Yoke, TILT al Head
+    // 🔧 WAVE 342: LERP 0.3 = seguir targets suavemente
+    // Para patrones lentos (figure8 @ 0.1Hz): se ve fluido
+    // Para patrones rápidos (mirror @ 0.5Hz): sigue bien, sin congelarse
     // ─────────────────────────────────────────────────────────────────────
     if (type === 'moving') {
-      // Yoke rota en Y (PAN) - suavizado
+      // Yoke rota en Y (PAN) - LERP rápido
       if (yokeRef.current) {
         yokeRef.current.rotation.y = THREE.MathUtils.lerp(
           yokeRef.current.rotation.y,
           panAngle,
-          0.15
+          0.3  // Rápido pero suave
         )
       }
       
-      // Head rota en X (TILT) - suavizado
+      // Head rota en X (TILT) - LERP rápido
       if (headRef.current) {
         headRef.current.rotation.x = THREE.MathUtils.lerp(
           headRef.current.rotation.x,
           tiltAngle,
-          0.15
+          0.3  // Rápido pero suave
         )
       }
     }
@@ -381,23 +387,31 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
           )}
           
           {/* CONO DE LUZ VOLUMÉTRICO */}
-          {isActive && intensity > 0.1 && (
-            <mesh
-              ref={coneRef}
-              position={[0, -4 - intensity * 2, 0]}
-              rotation={[Math.PI, 0, 0]}
-            >
-              <coneGeometry args={[2 + intensity * 1.5, 8 + intensity * 4, 24, 1, true]} />
-              <meshBasicMaterial
-                color={threeColor}
-                transparent
-                opacity={intensity * 0.12}
-                side={THREE.DoubleSide}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-              />
-            </mesh>
-          )}
+          {/* 🔧 WAVE 341.7: Cono corregido - punta en fixture, base al suelo */}
+          {/* ConeGeometry: punta en Y+ local, base en Y- local */}
+          {/* Para que la punta esté en el fixture (Y=0 del grupo), */}
+          {/* posicionamos el centro en Y = -height/2 */}
+          {isActive && intensity > 0.1 && (() => {
+            const coneHeight = 8 + intensity * 4
+            const coneRadius = 2 + intensity * 1.5
+            return (
+              <mesh
+                ref={coneRef}
+                position={[0, -coneHeight / 2, 0]}
+                // Sin rotación: punta arriba (fixture), base abajo (suelo)
+              >
+                <coneGeometry args={[coneRadius, coneHeight, 24, 1, true]} />
+                <meshBasicMaterial
+                  color={threeColor}
+                  transparent
+                  opacity={intensity * 0.12}
+                  side={THREE.DoubleSide}
+                  blending={THREE.AdditiveBlending}
+                  depthWrite={false}
+                />
+              </mesh>
+            )
+          })()}
         </group>
       </group>
     </>

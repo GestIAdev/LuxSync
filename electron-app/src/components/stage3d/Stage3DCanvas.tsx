@@ -39,10 +39,15 @@ interface Stage3DCanvasProps {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SMART FIXTURE WRAPPER - WAVE 34.1: Priority Logic with Living Colors
+// 🔧 WAVE 342: Use TARGET pan/tilt for 3D (smooth patterns)
+// 2D uses physicalPan (what hardware is doing NOW)
+// 3D uses pan (where hardware WANTS to go) - with fast LERP for smoothness
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SmartFixture3D: React.FC<any> = ({ layout, truthData, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
   // Use the Priority Hook to get final render values (with fixture index for pattern offset)
+  // 🔧 WAVE 342: Use TARGET pan/tilt - 3D shows "where mover wants to go"
+  // This displays smooth patterns (figure8, circle) without physics lag
   const { color, intensity, pan, tilt } = useFixtureRender(truthData, layout.id, fixtureIndex)
   
   return (

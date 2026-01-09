@@ -440,6 +440,12 @@ export class HardwareAbstraction {
     // Update optics defaults (zoom, focus)
     this.currentOptics = getOpticsConfig(vibeId)
     
+    // 🔍 WAVE 338.2: Pass optics to FixtureMapper
+    this.mapper.setCurrentOptics({
+      zoom: this.currentOptics.zoomDefault,
+      focus: this.currentOptics.focusDefault,
+    })
+    
     console.log(`[HAL] 🎛️ WAVE 338: Vibe "${vibeId}" - Zoom:${this.currentOptics.zoomDefault} Focus:${this.currentOptics.focusDefault}`)
   }
   

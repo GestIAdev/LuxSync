@@ -40,7 +40,7 @@ export type ChannelType =
   | 'dimmer' | 'red' | 'green' | 'blue' | 'white' | 'amber' | 'uv'
   | 'pan' | 'panFine' | 'tilt' | 'tiltFine'
   | 'gobo' | 'goboRotation' | 'color' | 'prism'
-  | 'strobe' | 'shutter' | 'focus' | 'zoom'
+  | 'strobe' | 'shutter' | 'focus' | 'zoom' | 'iris'  // 🔍 WAVE 338.2: Added iris
   | 'speed' | 'macro' | 'control'
 
 /**
@@ -55,6 +55,9 @@ interface FixtureCaps {
   hasStrobe: boolean
   hasPrism: boolean
   hasZoom: boolean
+  // 🔍 WAVE 338.2: Optics capabilities
+  hasFocus: boolean
+  hasIris: boolean
 }
 
 /**
@@ -68,6 +71,10 @@ interface InternalFixtureState {
   tilt: number          // 0-1
   gobo: number          // 0-255
   strobe: number        // 0-255
+  // 🔍 WAVE 338.2: Optics
+  zoom: number          // 0-255 (0=beam, 255=wash)
+  focus: number         // 0-255 (0=sharp, 255=soft)
+  iris: number          // 0-255 (0=closed, 255=open)
   caps: FixtureCaps
 }
 
@@ -197,6 +204,10 @@ export class FixtureManager {
         tilt: 0.5,
         gobo: 0,
         strobe: 0,
+        // 🔍 WAVE 338.2: Optics defaults (neutral)
+        zoom: 127,    // Medio
+        focus: 127,   // Medio
+        iris: 255,    // Full open
         caps,
       },
       group,
@@ -227,6 +238,9 @@ export class FixtureManager {
       hasStrobe: def.channels.some(c => c.type === 'strobe'),
       hasPrism: def.channels.some(c => c.type === 'prism'),
       hasZoom: def.channels.some(c => c.type === 'zoom'),
+      // 🔍 WAVE 338.2: Optics detection
+      hasFocus: def.channels.some(c => c.type === 'focus'),
+      hasIris: def.channels.some(c => c.type === 'iris'),
     }
   }
   
@@ -252,6 +266,43 @@ export class FixtureManager {
     fixture.state.tilt = movement.tilt
   }
   
+  /**
+   * 🔍 WAVE 338.2: Aplicar ópticas (zoom, focus, iris)
+   * @param fixtureId - ID del fixture
+   * @param optics - Configuración de ópticas { zoom: 0-255, focus: 0-255, iris?: 0-255 }
+   */
+  applyOptics(fixtureId: string, optics: { zoom: number; focus: number; iris?: number }): void {
+    const fixture = this.fixtures.get(fixtureId)
+    if (!fixture) return
+    
+    const { caps } = fixture.state
+    
+    if (caps.hasZoom) {
+      fixture.state.zoom = Math.round(Math.max(0, Math.min(255, optics.zoom)))
+    }
+    
+    if (caps.hasFocus) {
+      fixture.state.focus = Math.round(Math.max(0, Math.min(255, optics.focus)))
+    }
+    
+    if (caps.hasIris && optics.iris !== undefined) {
+      fixture.state.iris = Math.round(Math.max(0, Math.min(255, optics.iris)))
+    }
+  }
+  
+  /**
+   * 🔍 WAVE 338.2: Aplicar ópticas a todos los fixtures con capacidades ópticas
+   * @param optics - Configuración de ópticas global
+   */
+  applyOpticsToAll(optics: { zoom: number; focus: number; iris?: number }): void {
+    for (const [fixtureId, fixture] of this.fixtures) {
+      const { caps } = fixture.state
+      if (caps.hasZoom || caps.hasFocus || caps.hasIris) {
+        this.applyOptics(fixtureId, optics)
+      }
+    }
+  }
+
   /**
    * Aplicar efectos
    */
@@ -293,6 +344,10 @@ export class FixtureManager {
         case 'tiltFine': values.push(Math.round((s.tilt * 255 % 1) * 255)); break
         case 'strobe': values.push(s.strobe); break
         case 'gobo': values.push(s.gobo); break
+        // 🔍 WAVE 338.2: Optics DMX output
+        case 'zoom': values.push(s.zoom); break
+        case 'focus': values.push(s.focus); break
+        case 'iris': values.push(s.iris); break
         default: values.push(channel.defaultValue)
       }
     }

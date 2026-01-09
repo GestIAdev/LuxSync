@@ -47,6 +47,9 @@ export interface FixtureState {
   b: number         // 0-255
   pan: number       // 0-255
   tilt: number      // 0-255
+  // 🔍 WAVE 338.2: Optics
+  zoom: number      // 0-255 (0=beam, 255=wash)
+  focus: number     // 0-255 (0=sharp, 255=soft)
 }
 
 /** Color palette in RGB format */
@@ -99,8 +102,18 @@ export class FixtureMapper {
   // Blackout state
   private blackoutActive = false
   
+  // 🔍 WAVE 338.2: Current optics (set by HAL on vibe change)
+  private currentOptics = { zoom: 127, focus: 127 }
+  
   constructor() {
     console.log('[FixtureMapper] 🎛️ Initialized (WAVE 210)')
+  }
+  
+  /**
+   * 🔍 WAVE 338.2: Update optics from HAL
+   */
+  public setCurrentOptics(optics: { zoom: number; focus: number }): void {
+    this.currentOptics = optics
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -154,6 +167,9 @@ export class FixtureMapper {
       b: fixtureColor.b,
       pan: isMovingFixture ? Math.round(panValue * 255) : 0,
       tilt: isMovingFixture ? Math.round(tiltValue * 255) : 0,
+      // 🔍 WAVE 338.2: Optics (will be set by HAL via setCurrentOptics)
+      zoom: this.currentOptics.zoom,
+      focus: this.currentOptics.focus,
     }
   }
   
@@ -194,6 +210,7 @@ export class FixtureMapper {
   
   /**
    * Convert fixture states to DMX packets.
+   * 🔍 WAVE 338.2: Added zoom/focus to channel output
    */
   public statesToDMXPackets(states: FixtureState[]): DMXPacket[] {
     return states.map(state => ({
@@ -206,6 +223,8 @@ export class FixtureMapper {
         state.b,
         state.pan,
         state.tilt,
+        state.zoom,   // 🔍 WAVE 338.2
+        state.focus,  // 🔍 WAVE 338.2
       ],
       fixtureId: `fixture-${state.dmxAddress}`
     }))

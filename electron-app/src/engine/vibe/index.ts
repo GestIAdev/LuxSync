@@ -3,8 +3,9 @@
  * @layer ENGINE/VIBE
  */
 
-export { VibeManager, VIBE_REGISTRY, VIBE_IDLE } from './VibeManager'
-export type { VibeId, VibeProfile } from './VibeManager'
+export { VibeManager } from './VibeManager'
+export { VIBE_REGISTRY, DEFAULT_VIBE as VIBE_IDLE } from './profiles/index'
+export type { VibeId, VibeProfile } from '../../types/VibeProfile'
 
 // Re-export profiles
 export { VIBE_FIESTA_LATINA } from './profiles/FiestaLatinaProfile'

@@ -23,7 +23,7 @@
  * @date December 2025
  */
 
-import type { AudioMetrics } from '../../../types';
+import type { AudioMetrics } from '../../types';
 import type {
   RhythmAnalysis,
   DrumDetection,

@@ -455,6 +455,13 @@ export class TitanOrchestrator {
         this.trinity.setVibe(vibeId)
         console.log(`[TitanOrchestrator] 🎯 WAVE 289: Vibe propagated to Workers`)
       }
+      
+      // 🎯 WAVE 338: Propagate vibe to HAL for Movement Physics
+      // Los movers usarán física diferente según el vibe
+      if (this.hal) {
+        this.hal.setVibe(vibeId)
+        console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`)
+      }
     }
   }
 

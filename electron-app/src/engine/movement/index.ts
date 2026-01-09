@@ -11,14 +11,6 @@ export type {
   ManagedFixture 
 } from './FixtureManager'
 
-export { DMXDriver } from './DMXDriver'
-export type { 
-  DMXDriverType, 
-  DMXDriverConfig, 
-  DMXUniverse, 
-  OnDMXSendCallback 
-} from './DMXDriver'
-
 // V16.1 Physics Driver - Movimiento abstracto → DMX físico
 export { FixturePhysicsDriver } from './FixturePhysicsDriver'
 export type {
@@ -29,3 +21,19 @@ export type {
   FixtureConfig,
   PhysicsConfig,
 } from './FixturePhysicsDriver'
+
+// WAVE 338: Vibe Movement Presets - Física + Óptica por vibe
+export {
+  getMovementPreset,
+  getMovementPhysics,
+  getOpticsConfig,
+  getMovementBehavior,
+  getAvailableVibeIds,
+  MOVEMENT_PRESETS,
+} from './VibeMovementPresets'
+export type {
+  MovementPreset,
+  MovementPhysics,
+  OpticsConfig,
+  MovementBehavior,
+} from './VibeMovementPresets'

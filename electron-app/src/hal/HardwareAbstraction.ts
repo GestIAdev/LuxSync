@@ -32,6 +32,10 @@ import { ZoneRouter, type PhysicalZone, type VibeRouteConfig, type ZoneIntensity
 import { FixtureMapper, type PatchedFixture, type FixtureState, type MovementState } from './mapping/FixtureMapper'
 import { type IDMXDriver, type DriverType, MockDMXDriver } from './drivers'
 
+// 🔧 WAVE 338: Movement Physics Driver
+import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver'
+import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -74,6 +78,11 @@ export class HardwareAbstraction {
   private mapper: FixtureMapper
   private driver: IDMXDriver
   
+  // 🔧 WAVE 338: Movement Physics Driver for Pan/Tilt
+  private movementPhysics: FixturePhysicsDriver
+  private currentVibeId: string = 'idle'
+  private currentOptics: OpticsConfig
+  
   // Configuration
   private config: HALConfig
   
@@ -114,6 +123,10 @@ export class HardwareAbstraction {
     this.physics = new PhysicsEngine()
     this.router = new ZoneRouter()
     this.mapper = new FixtureMapper()
+    
+    // 🔧 WAVE 338: Movement Physics Driver
+    this.movementPhysics = new FixturePhysicsDriver()
+    this.currentOptics = getOpticsConfig('idle')
     
     // Create driver based on config
     this.driver = this.createDriver(this.config.driverType)
@@ -412,6 +425,57 @@ export class HardwareAbstraction {
     this.currentPreset = preset
   }
   
+  /**
+   * 🔧 WAVE 338: Set active vibe for movement physics + optics
+   * This updates both the intensity physics (router) and movement physics (driver)
+   */
+  public setVibe(vibeId: string): void {
+    if (this.currentVibeId === vibeId) return
+    
+    this.currentVibeId = vibeId
+    
+    // Update movement physics (pan/tilt acceleration, velocity, friction)
+    this.movementPhysics.setVibe(vibeId)
+    
+    // Update optics defaults (zoom, focus)
+    this.currentOptics = getOpticsConfig(vibeId)
+    
+    console.log(`[HAL] 🎛️ WAVE 338: Vibe "${vibeId}" - Zoom:${this.currentOptics.zoomDefault} Focus:${this.currentOptics.focusDefault}`)
+  }
+  
+  /**
+   * Get current vibe ID
+   */
+  public getCurrentVibe(): string {
+    return this.currentVibeId
+  }
+  
+  /**
+   * Get current optics configuration
+   */
+  public getCurrentOptics(): OpticsConfig {
+    return this.currentOptics
+  }
+  
+  /**
+   * 🔧 WAVE 338: Register a mover fixture with the physics driver
+   */
+  public registerMover(fixtureId: string, installationType: string = 'ceiling'): void {
+    this.movementPhysics.registerFixture(fixtureId, { installationType })
+    console.log(`[HAL] 🔧 Registered mover "${fixtureId}" (${installationType})`)
+  }
+  
+  /**
+   * 🔧 WAVE 338: Translate abstract position to DMX for a mover
+   * @param fixtureId - Fixture identifier
+   * @param x - Abstract X position (-1 to +1)
+   * @param y - Abstract Y position (-1 to +1)
+   * @param deltaTime - Time since last frame in ms
+   */
+  public translateMovement(fixtureId: string, x: number, y: number, deltaTime: number = 16) {
+    return this.movementPhysics.translate({ fixtureId, x, y }, deltaTime)
+  }
+
   /**
    * Set blackout mode.
    */

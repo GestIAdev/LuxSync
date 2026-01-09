@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RhythmAnalyzer } from '../RhythmAnalyzer';
-import type { AudioMetrics } from '../../../../types';
+import type { AudioMetrics } from '../../../types';
 
 // ============================================================
 // 🎭 MOCK DATA FACTORIES

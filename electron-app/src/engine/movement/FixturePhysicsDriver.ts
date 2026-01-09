@@ -1,7 +1,7 @@
 ﻿/**
  * 
- *                      FIXTURE PHYSICS DRIVER V16.1                             
- *                   "Abstract Motion  Physical DMX"                            
+ *                      FIXTURE PHYSICS DRIVER V16.2                             
+ *                   "Abstract Motion → Physical DMX"                            
  * 
  *   Traduce coordenadas abstractas (-1 a +1) a valores DMX físicos (0-255)     
  *   considerando: orientación, inversiones, límites mecánicos, inercia         
@@ -16,7 +16,10 @@
  * - Anti-Stuck Mechanism: Detecta fixtures pegados en límites
  * - NaN Guard: Nunca enviar basura al motor
  * - Anti-Jitter Filter: Evita micro-correcciones que calientan servos
+ * - 🔧 WAVE 338: Vibe-aware physics (dynamic physics config per vibe)
  */
+
+import { getMovementPhysics, type MovementPhysics } from './VibeMovementPresets'
 
 // ============================================================================
 // TYPES
@@ -73,7 +76,7 @@ export interface PhysicsConfig {
 }
 
 // ============================================================================
-// FIXTURE PHYSICS DRIVER V16.1
+// FIXTURE PHYSICS DRIVER V16.2
 // ============================================================================
 
 export class FixturePhysicsDriver {
@@ -81,6 +84,9 @@ export class FixturePhysicsDriver {
   private currentPositions: Map<string, Position2D> = new Map()
   private velocities: Map<string, Position2D> = new Map()
   private lastUpdate: number = Date.now()
+  
+  // 🔧 WAVE 338: Current vibe for physics adaptation
+  private currentVibeId: string = 'idle'
 
   // Presets de instalación
   private readonly INSTALLATION_PRESETS: Record<string, InstallationPreset> = {
@@ -121,13 +127,40 @@ export class FixturePhysicsDriver {
     },
   }
 
-  // Configuración de física (inercia)
+  // Configuración de física (inercia) - Actualizada por vibe
   private physicsConfig: PhysicsConfig = {
     maxAcceleration: 800,
     maxVelocity: 400,
     friction: 0.15,
     arrivalThreshold: 1.0,
     minTransitionTime: 50,
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 338: VIBE-AWARE PHYSICS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** Actualizar física según el vibe activo */
+  setVibe(vibeId: string): this {
+    if (this.currentVibeId === vibeId) return this
+    
+    this.currentVibeId = vibeId
+    const vibePhysics: MovementPhysics = getMovementPhysics(vibeId)
+    
+    // Actualizar configuración de física
+    this.physicsConfig.maxAcceleration = vibePhysics.maxAcceleration
+    this.physicsConfig.maxVelocity = vibePhysics.maxVelocity
+    this.physicsConfig.friction = vibePhysics.friction
+    this.physicsConfig.arrivalThreshold = vibePhysics.arrivalThreshold
+    
+    console.log(`[PhysicsDriver] 🎛️ WAVE 338: Vibe "${vibeId}" - Acc:${vibePhysics.maxAcceleration} Vel:${vibePhysics.maxVelocity} Fric:${vibePhysics.friction}`)
+    
+    return this
+  }
+
+  /** Obtener vibe actual */
+  getCurrentVibe(): string {
+    return this.currentVibeId
   }
 
   // 

@@ -18,8 +18,8 @@
  * @module engines/telemetry/SeleneTelemetryCollector
  */
 
-import type { BrainOutput } from '../musical';
-import type { AudioAnalysis, MusicalContext } from '../musical/types';
+import type { BrainOutput } from '../SeleneMusicalBrain';
+import type { AudioAnalysis, MusicalContext } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 📊 TELEMETRY INTERFACES

@@ -223,8 +223,58 @@ export class HardwareAbstraction {
     // 4. EFFECTS: Apply global effects and manual overrides
     const finalStates = this.mapper.applyEffectsAndOverrides(fixtureStates, Date.now())
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎛️ WAVE 339: INJECT PHYSICS STATE INTO FIXTURE STATES
+    // This adds the interpolated (physical) positions from the physics driver
+    // So the frontend can visualize actual movement, not just targets
+    // ═══════════════════════════════════════════════════════════════════════
+    const statesWithPhysics = finalStates.map((state, index) => {
+      // Use fixture ID or generate one from index
+      const fixtureId = `mover_${index}`
+      
+      // Only apply physics to moving fixtures
+      const isMovingFixture = state.zone.includes('MOVING') || 
+                              state.type?.toLowerCase().includes('moving') ||
+                              state.type?.toLowerCase().includes('spot') ||
+                              state.type?.toLowerCase().includes('beam')
+      
+      if (isMovingFixture) {
+        // Translate target position through physics engine
+        // This registers the fixture and updates its physics state
+        const abstractPos = {
+          fixtureId,
+          x: (state.pan / 255) * 2 - 1,  // 0-255 → -1 to +1
+          y: (state.tilt / 255) * 2 - 1, // 0-255 → -1 to +1
+          intensity: state.dimmer / 255,
+        }
+        
+        // Run physics simulation for this frame (16ms = ~60fps)
+        this.movementPhysics.translate(abstractPos, 16)
+        
+        // Get interpolated state
+        const physicsState = this.movementPhysics.getPhysicsState(fixtureId)
+        
+        return {
+          ...state,
+          physicalPan: physicsState.physicalPan,
+          physicalTilt: physicsState.physicalTilt,
+          panVelocity: physicsState.panVelocity,
+          tiltVelocity: physicsState.tiltVelocity,
+        }
+      }
+      
+      // Non-moving fixtures: physical = target
+      return {
+        ...state,
+        physicalPan: state.pan,
+        physicalTilt: state.tilt,
+        panVelocity: 0,
+        tiltVelocity: 0,
+      }
+    })
+    
     // 5. DRIVER: Send to hardware
-    this.sendToDriver(finalStates)
+    this.sendToDriver(statesWithPhysics)
     
     // Update stats
     this.framesRendered++
@@ -233,19 +283,19 @@ export class HardwareAbstraction {
     if (this.renderTimes.length > 100) this.renderTimes.shift()
     
     // Store for UI broadcast
-    this.lastFixtureStates = finalStates
+    this.lastFixtureStates = statesWithPhysics
     
     // Debug logging (1% sample rate)
     if (this.config.debug && Math.random() < 0.01) {
-      const activeCount = finalStates.filter(f => f.dimmer > 0).length
+      const activeCount = statesWithPhysics.filter(f => f.dimmer > 0).length
       console.log(
         `[HAL] 🔧 Render #${this.framesRendered} | ` +
-        `Active: ${activeCount}/${finalStates.length} | ` +
+        `Active: ${activeCount}/${statesWithPhysics.length} | ` +
         `Time: ${this.lastRenderTime.toFixed(2)}ms`
       )
     }
     
-    return finalStates
+    return statesWithPhysics
   }
   
   /**

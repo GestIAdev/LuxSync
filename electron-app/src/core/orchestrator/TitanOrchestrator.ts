@@ -410,6 +410,14 @@ export class TitanOrchestrator {
               },
               pan: f.pan / 255,                 // Normalize 0-255 → 0-1
               tilt: f.tilt / 255,               // Normalize 0-255 → 0-1
+              // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
+              zoom: f.zoom,                     // 0-255 DMX
+              focus: f.focus,                   // 0-255 DMX
+              // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
+              physicalPan: (f.physicalPan ?? f.pan) / 255,   // Normalize 0-255 → 0-1
+              physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
+              panVelocity: f.panVelocity ?? 0,  // DMX/s (raw)
+              tiltVelocity: f.tiltVelocity ?? 0, // DMX/s (raw)
               online: true,
               active: f.dimmer > 0
             }

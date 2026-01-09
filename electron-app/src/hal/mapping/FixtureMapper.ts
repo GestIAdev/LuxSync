@@ -45,11 +45,16 @@ export interface FixtureState {
   r: number         // 0-255
   g: number         // 0-255
   b: number         // 0-255
-  pan: number       // 0-255
-  tilt: number      // 0-255
+  pan: number       // 0-255 (TARGET position)
+  tilt: number      // 0-255 (TARGET position)
   // 🔍 WAVE 338.2: Optics
   zoom: number      // 0-255 (0=beam, 255=wash)
   focus: number     // 0-255 (0=sharp, 255=soft)
+  // 🎛️ WAVE 339: Physics (interpolated positions)
+  physicalPan?: number   // 0-255 (ACTUAL position after physics)
+  physicalTilt?: number  // 0-255 (ACTUAL position after physics)
+  panVelocity?: number   // DMX/s (current velocity)
+  tiltVelocity?: number  // DMX/s (current velocity)
 }
 
 /** Color palette in RGB format */

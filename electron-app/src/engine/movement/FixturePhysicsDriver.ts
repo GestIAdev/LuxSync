@@ -475,4 +475,56 @@ export class FixturePhysicsDriver {
   getRegisteredFixtures(): string[] {
     return Array.from(this.configs.keys())
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 339: PHYSICS STATE EXPORT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Get physical state for a fixture (interpolated position + velocity)
+   * Used for broadcasting to frontend simulator
+   * 
+   * @param fixtureId - Fixture identifier
+   * @returns Physics state or defaults if not found
+   */
+  getPhysicsState(fixtureId: string): {
+    physicalPan: number     // 0-255 DMX (current interpolated position)
+    physicalTilt: number    // 0-255 DMX (current interpolated position)
+    panVelocity: number     // DMX/s (current velocity)
+    tiltVelocity: number    // DMX/s (current velocity)
+  } {
+    const current = this.currentPositions.get(fixtureId)
+    const velocity = this.velocities.get(fixtureId)
+    
+    return {
+      physicalPan: current?.pan ?? 127,
+      physicalTilt: current?.tilt ?? 127,
+      panVelocity: velocity?.pan ?? 0,
+      tiltVelocity: velocity?.tilt ?? 0,
+    }
+  }
+  
+  /**
+   * Get physics states for all registered fixtures
+   * @returns Map of fixtureId → physics state
+   */
+  getAllPhysicsStates(): Map<string, {
+    physicalPan: number
+    physicalTilt: number
+    panVelocity: number
+    tiltVelocity: number
+  }> {
+    const states = new Map<string, {
+      physicalPan: number
+      physicalTilt: number
+      panVelocity: number
+      tiltVelocity: number
+    }>()
+    
+    this.configs.forEach((_, id) => {
+      states.set(id, this.getPhysicsState(id))
+    })
+    
+    return states
+  }
 }

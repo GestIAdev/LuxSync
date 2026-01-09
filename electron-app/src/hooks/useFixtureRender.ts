@@ -4,11 +4,22 @@ import { useOverrideStore, FixtureOverride, ChannelMask, hslToRgb } from '../sto
 import { getLivingColor, mapZoneToSide, Side } from '../utils/frontendColorEngine'
 import { calculateMovement } from '../utils/movementGenerator'
 
+/**
+ * 🎬 WAVE 339: Extended with optics and physics for simulator
+ */
 interface FixtureRenderData {
   color: { r: number, g: number, b: number }
   intensity: number
   pan: number
   tilt: number
+  // 🔍 WAVE 339: Optics
+  zoom: number        // 0-255: 0=Beam, 255=Wash
+  focus: number       // 0-255: 0=Sharp, 255=Soft
+  // 🎛️ WAVE 339: Physics (interpolated positions)
+  physicalPan: number   // Actual position after physics
+  physicalTilt: number  // Actual position after physics
+  panVelocity: number   // Current velocity (for debug)
+  tiltVelocity: number  // Current velocity (for debug)
 }
 
 /**
@@ -40,6 +51,18 @@ export function calculateFixtureRenderValues(
   let intensity = (truthData?.intensity ?? 0) * globalIntensity
   let pan = truthData?.pan ?? 0.5
   let tilt = truthData?.tilt ?? 0.5
+  
+  // 🔍 WAVE 339: Optics from backend (set by HAL based on vibe)
+  const zoom = truthData?.zoom ?? 127        // Default to middle
+  const focus = truthData?.focus ?? 127      // Default to middle
+  
+  // 🎛️ WAVE 339: Physics - interpolated positions from FixturePhysicsDriver
+  // These show ACTUAL position after physics simulation (inertia, slew rate)
+  // If not available, fall back to target pan/tilt
+  const physicalPan = truthData?.physicalPan ?? pan
+  const physicalTilt = truthData?.physicalTilt ?? tilt
+  const panVelocity = truthData?.panVelocity ?? 0
+  const tiltVelocity = truthData?.tiltVelocity ?? 0
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔙 WAVE 80: RESTORED LOCAL LOGIC FOR FLOW MODE
@@ -134,7 +157,21 @@ export function calculateFixtureRenderValues(
     }
   }
   
-  return { color, intensity, pan, tilt }
+  // 🎬 WAVE 339: Return full render data including optics and physics
+  return { 
+    color, 
+    intensity, 
+    pan, 
+    tilt,
+    // Optics
+    zoom,
+    focus,
+    // Physics (interpolated positions)
+    physicalPan,
+    physicalTilt,
+    panVelocity,
+    tiltVelocity,
+  }
 }
 
 /**

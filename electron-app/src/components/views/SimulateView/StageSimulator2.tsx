@@ -22,6 +22,9 @@ import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender';
 
 type QualityMode = 'low' | 'high';
 
+/**
+ * 🎬 WAVE 339: Extended with optics and physics
+ */
 interface FixtureVisual {
   id: string;
   x: number;
@@ -34,6 +37,14 @@ interface FixtureVisual {
   tilt: number;
   type: 'par' | 'moving' | 'strobe' | 'laser';
   zone: 'front' | 'back' | 'left' | 'right' | 'center';
+  // 🔍 WAVE 339: Optics
+  zoom: number;         // 0-255: 0=Beam(tight), 255=Wash(wide)
+  focus: number;        // 0-255: 0=Sharp, 255=Soft/Blur
+  // 🎛️ WAVE 339: Physics (interpolated positions)
+  physicalPan: number;  // Actual position after physics
+  physicalTilt: number; // Actual position after physics
+  panVelocity: number;  // For velocity-based effects
+  tiltVelocity: number;
 }
 
 /** Posición calculada de un fixture para hit testing */
@@ -90,6 +101,9 @@ export const StageSimulator2: React.FC = () => {
   const [showFPS, setShowFPS] = useState(false);
   const [fps, setFps] = useState(0);
   
+  // 🎬 WAVE 339: Debug overlay shows vibe, zoom%, speed on each fixture
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  
   // TRUTH - la única fuente
   const hardware = useTruthStore(selectHardware);
   const palette = useTruthStore(selectPalette);
@@ -113,6 +127,9 @@ export const StageSimulator2: React.FC = () => {
   
   // OVERRIDE STORE - WAVE 34.2: Per-fixture manual overrides (TOP PRIORITY)
   const overrides = useOverrideStore(state => state.overrides);
+  
+  // 🎬 WAVE 339: Get current vibe for debug overlay
+  const currentVibe = useTruthStore(state => state.truth.system.vibe) || 'idle';
   
   // ═════════════════════════════════════════════════════════════════════════
   // FIXTURE PROCESSING - Transformar fixtures del backend a visuales
@@ -165,8 +182,21 @@ export const StageSimulator2: React.FC = () => {
       const fixtureIndex = index; // Use loop index for wave phase offset
       const fixtureOverride = overrides.get(fixtureId);
       
-      // 🔄 WAVE 34.5: Pass transition params for smooth palette blending
-      const { color: finalColor, intensity: finalIntensity, pan: finalPan, tilt: finalTilt } = calculateFixtureRenderValues(
+      // 🎬 WAVE 339: Extract full render data including optics and physics
+      const { 
+        color: finalColor, 
+        intensity: finalIntensity, 
+        pan: finalPan, 
+        tilt: finalTilt,
+        // 🔍 Optics
+        zoom: finalZoom,
+        focus: finalFocus,
+        // 🎛️ Physics (interpolated)
+        physicalPan: finalPhysicalPan,
+        physicalTilt: finalPhysicalTilt,
+        panVelocity: finalPanVelocity,
+        tiltVelocity: finalTiltVelocity,
+      } = calculateFixtureRenderValues(
         fixture,
         globalMode,
         flowParams,
@@ -192,6 +222,14 @@ export const StageSimulator2: React.FC = () => {
         tilt: finalTilt,
         type,
         zone,
+        // 🔍 WAVE 339: Optics
+        zoom: finalZoom,
+        focus: finalFocus,
+        // 🎛️ WAVE 339: Physics (use interpolated positions for visual)
+        physicalPan: finalPhysicalPan,
+        physicalTilt: finalPhysicalTilt,
+        panVelocity: finalPanVelocity,
+        tiltVelocity: finalTiltVelocity,
       };
     }).filter(Boolean) as FixtureVisual[];
   }, [hardware?.fixtures, globalMode, flowParams, activePaletteId, globalIntensity, globalSaturation, overrides, targetPalette, transitionProgress]);
@@ -300,12 +338,38 @@ export const StageSimulator2: React.FC = () => {
     
     // ─────────────────────────────────────────────────────────────────────────
     // RENDER FIXTURE FUNCTION - WAVE 30.1: Con selección visual
+    // 🎬 WAVE 339: Uses PHYSICS positions and OPTICS for realistic visualization
     // ─────────────────────────────────────────────────────────────────────────
     
     const renderFixture = (fixture: FixtureVisual, x: number, y: number) => {
-      const { id, r, g, b, intensity, pan, tilt, type } = fixture;
+      const { 
+        id, r, g, b, intensity, pan, tilt, type,
+        // 🔍 WAVE 339: Optics
+        zoom, focus,
+        // 🎛️ WAVE 339: Physics - USE THESE for visual position
+        physicalPan, physicalTilt, panVelocity, tiltVelocity,
+      } = fixture;
       const isSelected = selectedIds.has(id);
       const isHovered = hoveredId === id;
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔍 WAVE 339: ZOOM → BEAM WIDTH CALCULATION
+      // 0 DMX (Beam) = Cono de 2-4 grados (Rayo láser) → width 5-10px
+      // 255 DMX (Wash) = Cono de 45-60 grados (Baño de luz) → width 80-120px
+      // ═══════════════════════════════════════════════════════════════════
+      const zoomNormalized = (zoom ?? 127) / 255; // 0=Beam, 1=Wash
+      const baseBeamWidth = 5 + zoomNormalized * 75;  // 5-80px base width
+      const endBeamWidth = 10 + zoomNormalized * 110; // 10-120px end width
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔍 WAVE 339: FOCUS → EDGE BLUR (via gradient sharpness)
+      // 0 DMX = Sharp edges (tight gradient stops)
+      // 255 DMX = Soft/Nebula (wide gradient, smooth falloff)
+      // ═══════════════════════════════════════════════════════════════════
+      const focusNormalized = (focus ?? 127) / 255; // 0=Sharp, 1=Soft
+      // Sharp: gradient stops at 0.6, 0.85, 1.0 → Nebula: 0.3, 0.6, 1.0
+      const gradientMid = 0.6 - focusNormalized * 0.3;   // 0.6 → 0.3
+      const gradientEdge = 0.85 - focusNormalized * 0.25; // 0.85 → 0.6
       
       // Calcular radio del fixture
       // 🗡️ WAVE 277: Mover head x1.6 - Cabezas visibles para ver pulso
@@ -352,30 +416,40 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = haloGradient;
         ctx.fill();
         
-        // 2. BEAM para moving heads - size based on INTENSITY
-        // 👓 WAVE 276: OPTICAL CLARITY - Espadas láser, no linternas
+        // 2. BEAM para moving heads - 🎬 WAVE 339: PHYSICS + OPTICS
+        // Uses physicalPan (interpolated) for realistic motion visualization
+        // Uses zoom for beam width (Beam→Wash)
+        // Uses focus for edge sharpness (Sharp→Nebula)
         if (type === 'moving' && intensity > 0.05) {
-          const beamAngle = (pan - 0.5) * Math.PI * 0.6; // ±54°
-          // WAVE 276: beamLength y beamWidth x2.5 para volumen visual
-          const beamLength = 120 + intensity * 280;  // Was: 80 + 150 → Now: 120 + 280
-          const beamWidth = 25 + intensity * 50;     // Was: 15 + 25 → Now: 25 + 50
+          // 🎛️ WAVE 339: Use PHYSICAL position (interpolated by physics engine)
+          // This shows the ACTUAL fixture position, not the target
+          const beamAngle = (physicalPan - 0.5) * Math.PI * 0.6; // ±54°
+          
+          // Beam length scales with intensity
+          const beamLength = 120 + intensity * 280;
+          
+          // 🔍 WAVE 339: Beam width controlled by ZOOM
+          // baseBeamWidth and endBeamWidth calculated above from zoom value
+          const beamWidthStart = baseBeamWidth * 0.3;  // Narrow at fixture
+          const beamWidthEnd = endBeamWidth * (0.5 + intensity * 0.5); // Wide at end
           
           const endX = x + Math.sin(beamAngle) * beamLength;
           const endY = y + Math.cos(beamAngle) * beamLength;
           
-          // Beam cónico - size based on intensity
+          // Beam cónico - width based on ZOOM
           ctx.beginPath();
-          ctx.moveTo(x - 8, y);  // Wider base
-          ctx.lineTo(endX - beamWidth, endY);
-          ctx.lineTo(endX + beamWidth, endY);
-          ctx.lineTo(x + 8, y);  // Wider base
+          ctx.moveTo(x - beamWidthStart, y);
+          ctx.lineTo(endX - beamWidthEnd, endY);
+          ctx.lineTo(endX + beamWidthEnd, endY);
+          ctx.lineTo(x + beamWidthStart, y);
           ctx.closePath();
           
-          // 👓 WAVE 276: Opacidad subida para solidez (0.3→0.7 base, menos difuminado)
+          // � WAVE 339: Gradient sharpness controlled by FOCUS
+          // gradientMid and gradientEdge calculated above from focus value
           const beamGradient = ctx.createLinearGradient(x, y, endX, endY);
-          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.85 * intensity})`);    // Was 0.6
-          beamGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`);  // Was 0.3 at 0.4
-          beamGradient.addColorStop(0.85, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`); // Was 0.1 at 0.8
+          beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.85 * intensity})`);
+          beamGradient.addColorStop(gradientMid, `rgba(${r}, ${g}, ${b}, ${0.55 * intensity})`);
+          beamGradient.addColorStop(gradientEdge, `rgba(${r}, ${g}, ${b}, ${0.25 * intensity})`);
           beamGradient.addColorStop(1, 'transparent');
           
           ctx.fillStyle = beamGradient;
@@ -423,6 +497,7 @@ export const StageSimulator2: React.FC = () => {
         
       // ═══════════════════════════════════════════════════════════════════
       // LOW QUALITY MODE - Retro, máximo FPS
+      // 🎬 WAVE 339: Also uses physicalPan for physics visualization
       // ═══════════════════════════════════════════════════════════════════
       
       } else {
@@ -443,9 +518,10 @@ export const StageSimulator2: React.FC = () => {
         ctx.stroke();
         
         // Beam simple para moving heads (solo línea)
+        // 🎛️ WAVE 339: Use physicalPan for realistic motion
         if (type === 'moving' && intensity > 0.2) {
-          const angle = (pan - 0.5) * Math.PI * 0.6;
-          const length = 80 + tilt * 120;
+          const angle = (physicalPan - 0.5) * Math.PI * 0.6;
+          const length = 80 + physicalTilt * 120;
           
           ctx.beginPath();
           ctx.moveTo(x, y);
@@ -453,8 +529,9 @@ export const StageSimulator2: React.FC = () => {
             x + Math.sin(angle) * length,
             y + Math.cos(angle) * length
           );
+          // 🔍 WAVE 339: Line width based on zoom
           ctx.strokeStyle = colorAlpha;
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 2 + zoomNormalized * 6; // 2-8px based on zoom
           ctx.stroke();
         }
       }
@@ -489,6 +566,37 @@ export const StageSimulator2: React.FC = () => {
         ctx.strokeStyle = `rgba(0, 255, 255, ${pulse * 0.5})`;
         ctx.lineWidth = 1;
         ctx.stroke();
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🎬 WAVE 339: DEBUG OVERLAY - Show vibe/zoom/velocity on fixture
+      // ═══════════════════════════════════════════════════════════════════
+      if (showDebugOverlay && type === 'moving') {
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        
+        // Calculate speed % from velocity (assuming max 600 DMX/s)
+        const speed = Math.abs(panVelocity) + Math.abs(tiltVelocity);
+        const speedPercent = Math.min(100, Math.round((speed / 600) * 100));
+        
+        // Zoom % (0=Beam→100%, 255=Wash→0%)
+        const zoomPercent = Math.round((1 - zoomNormalized) * 100);
+        
+        // Draw debug text with background
+        const debugText = `${currentVibe.substring(0, 6)} | Z:${zoomPercent}% | S:${speedPercent}%`;
+        const textY = y - fixtureRadius - 20;
+        
+        // Background pill
+        const textWidth = ctx.measureText(debugText).width + 8;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.beginPath();
+        ctx.roundRect(x - textWidth/2, textY - 8, textWidth, 14, 3);
+        ctx.fill();
+        
+        // Text
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.95)';
+        ctx.fillText(debugText, x, textY);
       }
     };
     
@@ -806,6 +914,23 @@ export const StageSimulator2: React.FC = () => {
           }}
         >
           FPS
+        </button>
+        
+        {/* 🎬 WAVE 339: Debug overlay toggle */}
+        <button
+          onClick={() => setShowDebugOverlay(d => !d)}
+          style={{
+            padding: '6px 12px',
+            background: showDebugOverlay ? '#00ffff33' : 'transparent',
+            border: `1px solid ${showDebugOverlay ? '#00ffff' : '#444'}`,
+            borderRadius: '4px',
+            color: showDebugOverlay ? '#00ffff' : '#888',
+            cursor: 'pointer',
+            fontSize: '11px',
+            fontFamily: 'monospace',
+          }}
+        >
+          🔍 DBG
         </button>
       </div>
     </div>

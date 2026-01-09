@@ -371,6 +371,8 @@ import type { LightingIntent } from './LightingIntent'
 
 /**
  * Estado de un fixture para el frontend
+ * 
+ * WAVE 339: Extended with optics (zoom/focus) and physics (interpolated positions)
  */
 export interface FixtureState {
   /** ID único del fixture */
@@ -391,10 +393,33 @@ export interface FixtureState {
   intensity: number
   /** RGB actual */
   color: { r: number; g: number; b: number }
-  /** Pan actual (0-255) */
+  /** Pan actual (0-255) - TARGET position */
   pan: number
-  /** Tilt actual (0-255) */
+  /** Tilt actual (0-255) - TARGET position */
   tilt: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔍 WAVE 339: OPTICS (Zoom/Focus)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Zoom DMX value (0-255): 0=Beam (tight), 255=Wash (wide) */
+  zoom?: number
+  /** Focus DMX value (0-255): 0=Sharp, 255=Soft/Nebula */
+  focus?: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎛️ WAVE 339: PHYSICS (Interpolated positions from FixturePhysicsDriver)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Physical Pan (0-255) - INTERPOLATED by physics engine (shows actual position) */
+  physicalPan?: number
+  /** Physical Tilt (0-255) - INTERPOLATED by physics engine (shows actual position) */
+  physicalTilt?: number
+  /** Current velocity for pan axis (DMX/s) */
+  panVelocity?: number
+  /** Current velocity for tilt axis (DMX/s) */
+  tiltVelocity?: number
+  
   /** ¿Está online/conectado? */
   online: boolean
   /** ¿Está activo? */

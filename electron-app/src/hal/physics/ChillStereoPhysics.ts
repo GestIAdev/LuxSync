@@ -1,6 +1,82 @@
 ﻿/**
- * WAVE 325.7: PRE-GATE SMOOTH ��🌊
- * ============================================================================
+ * WAVE 325.7: PRE-GATE SMOOTH 🌊
+ * ====================================  // NO e  // 🎯🐻 WAVE 336  // Factor 0.40 = Converge en ~6 frames (100ms)
+  // Factor 0.85 = Converge en ~2 frames (33ms)
+
+  // 🎯🐻🍸 WAVE 337: TRIPLE FIX - Decay + Cap + Gain (Cierre Definitivo Chill)
+  // DIAGNÓSTICO 336: BACK strobe brutal (delta 0.25) cuando treble desaparece
+  // DIAGNÓSTICO 336: FRONT picos 0.09+ por GAIN excesivo (target >0.85)
+  // FILOSOFÍA: Cocktail bar = CERO bofetadas visuales, solo flow hipnótico
+  // SOLUCIÓN TRIPLE:
+  //   1. BACK_DECAY 0.25→0.45: Converge rápido al FLOOR cuando treble cae
+  //   2. BACK_CAP 0.85: Limita bofetadas (range 0.25-0.85 = perfecto)
+  //   3. FRONT_GAIN 1.4→1.2: Target máximo ~0.83 (sin sobrepasar 0.85)
+
+  // FRONT (Corazón del Océano - Bass) - "Perfección matemática"
+  private readonly FRONT_ATTACK = 0.72; // 🐻 WAVE 336: Sweet spot
+  private readonly FRONT_DECAY  = 0.60; // ✅ OK - Sigue caídas bruscas
+
+  // BACK (Estrellas/Plancton - Treble) - "Perfección bilateral + anti-bofetadas"
+  private readonly BACK_ATTACK  = 0.67; // 🐻 WAVE 336: Sweet spot
+  private readonly BACK_DECAY   = 0.45; // 🍸 WAVE 337: Converge rápido al FLOOR (era 0.25)NE - Ni   // 4. SMOOTHING PRE-GATE  constructor() { console.log('[ChillStereoPhysics] WAVE 336 - Goldilocks Zone 🐻🎯✨'); }(WAVE 336 - Triple Filtro Calibrado)
+  // 🎯🐻 WAVE 336: GOLDILOCKS FILTERS - Balance perfecto suavidad/reactividad
+  // MATEMÁTICA: smooth = smooth * FACTOR + raw * (1 - FACTOR)
+  // Bass 0.38 = 95% suavidad + sin lag acumulativo en kicks rápidos
+  // Treble 0.28 = 95% anti-strobe + converge correctamente en hi-hats
+  private readonly BASS_SMOOTH_FACTOR = 0.38;   // 🐻 WAVE 336: Goldilocks (era 0.40)
+  private readonly MID_SMOOTH_FACTOR = 0.20;    // ✅ OK - Filtro suave anti-ruido mid
+  private readonly TREBLE_SMOOTH_FACTOR = 0.28; // 🐻 WAVE 336: Goldilocks (era 0.30)do, ni muy lento, PERFECTO
+  // DIAGNÓSTICO 335: Ambos zonas sufren LAG ACUMULATIVO en patrones rápidos
+  // CAUSA: Smoothing 0.40/0.30 + Attack 0.75/0.70 = TOO SLOW para house kicks
+  // PATRÓN: Beat rápidos (kick-kick-kick) no convergen, acumulan lag, explotan
+  // SOLUCIÓN: Reducir 2-3% ambos factores = 95% suavidad + 0% lag acumulativo
+
+  // FRONT (Corazón del Océano - Bass) - "Perfección matemática"
+  private readonly FRONT_ATTACK = 0.72; // 🐻 WAVE 336: Sweet spot (era 0.75)
+  private readonly FRONT_DECAY  = 0.60; // ✅ OK - Sigue caídas bruscas
+
+  // BACK (Estrellas/Plancton - Treble) - "Perfección bilateral"
+  private readonly BACK_ATTACK  = 0.67; // 🐻 WAVE 336: Sweet spot (era 0.70)
+  private readonly BACK_DECAY   = 0.25; // ✅ OK - Baja lento pri  // Estado   // Estado Interno
+  private frontVal = 0.15;
+  private backVal = 0.25;  // 🌟 Inicializa con BACK_FLOOR
+  private moverVal = 0.15;
+  private moverActive = false;
+  private bassSmooth = 0.15;   // 🔧 WAVE 325.7: Smoothing buffer bass
+  private midSmooth = 0.15;    // 🔧 WAVE 325.7: Smoothing buffer mid
+  private trebleSmooth = 0.05; // 🔫 WAVE 335: Smoothing buffer treble (anti-strobe BACK)
+  private static logCounter = 0;
+
+  constructor() { console.log('[ChillStereoPhysics] WAVE 335 - Double Barrel Shotgun 🔫🔫💀'); }onstructor() { console.log('[ChillStereoPhysics] WAVE 334 - Front Tamers 🎯🌊'); }
+  private frontVal = 0.15;
+  private backVal = 0.25;  // 🌟 Inicializa con BACK_FLOOR
+  private moverVal = 0.15;
+  private moverActive = false;
+  private bassSmooth = 0.15;
+  private midSmooth = 0.15;
+  private static logCounter = 0;
+
+  constructor() { console.log('[ChillStereoPhysics] WAVE 333 - Gate Tuning Final 🎯✨'); }al = 0.15;
+  private moverVal = 0.15;
+  private moverActive = false;
+  private bassSmooth = 0.15;
+  private midSmooth = 0.15;
+  private static logCounter = 0;
+
+  constructor() { console.log('[ChillStereoPhysics] WAVE 332.5 - Decay Flow + Back Presence 🌊🌟'); }es limpieza de señal ANTES de procesar
+  private readonly BASS_SMOOTH_FACTOR = 0.25; // 🎯 Filtro suave anti-ruido bass
+  private readonly MID_SMOOTH_FACTOR = 0.20;  // 🎯 Filtro suave anti-ruido mid
+  
+  // Estado Interno
+  private frontVal = 0.15;
+  private backVal = 0.25;  // 🌟 WAVE 332: Inicializa con BACK_FLOOR
+  private moverVal = 0.15;
+  private moverActive = false;
+  private bassSmooth = 0.15;
+  private midSmooth = 0.15;
+  private static logCounter = 0;
+
+  constructor() { console.log('[ChillStereoPhysics] WAVE 337 - Triple Fix 🍸🎯✨ (Decay+Cap+Gain)'); }==========================
  * EL CABALLO GANADOR - SMOOTH EN LA ENTRADA, NO EN LA SALIDA
  * 
  * PROBLEMA RAÍZ (WAVE 325.6):
@@ -36,8 +112,12 @@ export interface ChillPhysicsResult {
 
 export class ChillStereoPhysics {
 
-  // 1. PISO DE FLOTACIÓN (Bioluminiscencia residual)
-  private readonly FLOOR = 0.15; // Nunca bajamos de aquí. Oscuridad = Miedo.
+  // 1. PISOS & CAPS (Rango dinámico controlado)
+  // 🔧 WAVE 332: BACK tiene su propio piso más alto (ambiente constante)
+  // 🍸 WAVE 337: CAP a 0.85 para evitar bofetadas visuales (filosofía cocktail bar)
+  private readonly FLOOR = 0.15;      // Piso general (Front, Movers)
+  private readonly BACK_FLOOR = 0.25; // 🌟 WAVE 332: Back siempre presente
+  private readonly BACK_CAP = 0.85;   // 🍸 WAVE 337: Sin bofetadas, solo flow chill
 
   // 2. FACTORES DE CONVERGENCIA (0.0 a 1.0)
   // MATEMÁTICA: current += (target - current) * FACTOR
@@ -45,47 +125,55 @@ export class ChillStereoPhysics {
   // Factor 0.40 = Converge en ~6 frames (100ms)
   // Factor 0.85 = Converge en ~2 frames (33ms)
 
-  // FRONT (Corazón del Océano - Bass) - "Corazón que late"
-  private readonly FRONT_ATTACK = 0.65; // � WAVE 325.9: Golden (0.75 ajustado - marca bombos sin flicker)
-  private readonly FRONT_DECAY  = 0.35; // 🏆 WAVE 325.9: Golden (moderado - líquido visible)
+  // 🔥🔫 WAVE 335: DOUBLE BARREL SHOTGUN - Lock, Stock & Two Smoking Barrels
+  // DIAGNÓSTICO 334: FRONT 90% resuelto, pero drops brutales (0.80→0.55) generan delta 0.09
+  // DIAGNÓSTICO 334: BACK tiene DOBLE strobe que FRONT (delta 0.25+ en treble spikes)
+  // SOLUCIÓN DOBLE: Ultra-smooth FRONT (0.40/0.75) + Homogeneizar BACK (0.70 como FRONT)
 
-  // BACK (Estrellas/Plancton - Treble) - "Brillos ocasionales"
-  private readonly BACK_ATTACK  = 0.60; // 🏆 WAVE 325.9: Golden (aparición suave)
-  private readonly BACK_DECAY   = 0.40; // 🏆 WAVE 325.9: Golden (estela visible)
+  // FRONT (Corazón del Océano - Bass) - "Ultra-smooth, drops incluidos"
+  private readonly FRONT_ATTACK = 0.75; // � WAVE 335: CAÑÓN 1 - Ultra lento (era 0.70)
+  private readonly FRONT_DECAY  = 0.60; // ✅ OK - Sigue caídas bruscas
 
-  // MOVER (Mantas/Melodía - Mid) - "Flotación constante"
-  private readonly MOVER_ATTACK = 0.50; // � WAVE 325.9: Golden (ignora transientes)
-  private readonly MOVER_DECAY  = 0.85; // � WAVE 325.9: Golden (ultra-líquido océano)
+  // BACK (Estrellas/Plancton - Treble) - "Homogéneo con FRONT, sin strobe"
+  private readonly BACK_ATTACK  = 0.70; // � WAVE 335: CAÑÓN 2 - Mismo que FRONT (era 0.35)
+  private readonly BACK_DECAY   = 0.25; // ✅ OK - Baja lento
+
+  // MOVER (Mantas/Melodía - Mid) - "Reacciona a melodías medias"
+  private readonly MOVER_ATTACK = 0.28; // ✅ OK - Suaviza entradas
+  private readonly MOVER_DECAY  = 0.92; // ✅ OK - Balance flotación
 
   // 3. GAINS & GATES (Sensibilidad)
-  // FILOSOFÍA CHILL: Sin strobe, sin bofetadas, todo fluido
-  // CALIBRADO CON: Deep House comercial (Café del Mar, Kygo, etc.)
-  // OBJETIVO: Luz total, rellenar hueco visual entre Front y Movers
+  // 🍸 WAVE 337: FILOSOFÍA COCKTAIL BAR - Cero bofetadas, solo flow
+  // CALIBRADO CON: Etnochill, Psydub, Deep House
   
-  private readonly BASS_GATE   = 0.32;  // 🏆 WAVE 325.9: Golden (solo bombos limpios)
-  private readonly MID_GATE    = 0.12;  // 🏆 WAVE 325.9: Golden (rescata pads sutiles)
-  private readonly TREBLE_GATE = 0.08;  // 🏆 WAVE 325.9: Golden (filtrar hi-hats)
+  private readonly BASS_GATE   = 0.42;  // 🔧 WAVE 333: Filtrar fugas
+  private readonly MID_GATE    = 0.15;  // 🔧 WAVE 333: Melodías medias
+  private readonly TREBLE_GATE = 0.05;  // ✅ OK - BACK presente
   
-  private readonly FRONT_GAIN  = 1.4;   // ✅ OK - Punch visible
-  private readonly BACK_GAIN   = 3.8;   // 🔧 WAVE 325.9: Subido de 3.0 (más luz back)
-  private readonly MOVER_GAIN  = 2.0;   // ✅ OK - Presencia flotante
+  private readonly FRONT_GAIN  = 1.2;   // 🍸 WAVE 337: Target máx ~0.83 (era 1.4)
+  private readonly BACK_GAIN   = 3.8;   // 🔧 WAVE 332.5: Presencia BACK (con CAP 0.85)
+  private readonly MOVER_GAIN  = 2.2;   // ✅ OK - Presencia melodía
 
-  // 4. SMOOTHING PRE-GATE (WAVE 325.7 - Anti-flicker en la fuente)
-  // 🔥 WAVE 325.7: SMOOTH EN LA ENTRADA (filtro anti-ruido del análisis)
-  // NO es lag artificial - es limpieza de señal ANTES de procesar
-  private readonly BASS_SMOOTH_FACTOR = 0.25; // 🎯 Filtro suave anti-ruido bass
-  private readonly MID_SMOOTH_FACTOR = 0.20;  // 🎯 Filtro suave anti-ruido mid
+  // 4. SMOOTHING PRE-GATE (WAVE 335 - Triple Filtro Anti-Flicker)
+  // 🔥🔫 WAVE 335: FILTROS INICIALES - Cortan ruido ANTES de procesar physics
+  // MATEMÁTICA: smooth = smooth * FACTOR + raw * (1 - FACTOR)
+  // Bass 0.40 = Drops brutales suavizados (0.80→0.55 = delta 0.05 max)
+  // Treble 0.30 = Spikes strobe eliminados (0.10→0.23 = converge gradual)
+  private readonly BASS_SMOOTH_FACTOR = 0.40;   // � WAVE 335: Ultra-smooth (era 0.35)
+  private readonly MID_SMOOTH_FACTOR = 0.20;    // ✅ OK - Filtro suave anti-ruido mid
+  private readonly TREBLE_SMOOTH_FACTOR = 0.30; // 🔫 WAVE 335: NUEVO - Anti-strobe BACK
   
   // Estado Interno
   private frontVal = 0.15;
-  private backVal = 0.15;
+  private backVal = 0.25;  // 🌟 Inicializa con BACK_FLOOR
   private moverVal = 0.15;
   private moverActive = false;
-  private bassSmooth = 0.15; // 🔧 WAVE 325.7: Smoothing buffer bass
-  private midSmooth = 0.15;  // 🔧 WAVE 325.7: Smoothing buffer mid
+  private bassSmooth = 0.15;   // 🔧 WAVE 325.7: Smoothing buffer bass
+  private midSmooth = 0.15;    // 🔧 WAVE 325.7: Smoothing buffer mid
+  private trebleSmooth = 0.05; // 🔫 WAVE 335: Smoothing buffer treble (anti-strobe BACK)
   private static logCounter = 0;
 
-  constructor() { console.log('[ChillStereoPhysics] WAVE 325.9 - Golden Return �✨'); }
+  constructor() { console.log('[ChillStereoPhysics] WAVE 331.5 - Anti-Snare Activado �✨'); }
 
   public applyZones(input: ChillPhysicsInput): ChillPhysicsResult {
     const { bass, mid, treble, isRealSilence, isAGCTrap } = input;
@@ -95,34 +183,40 @@ export class ChillStereoPhysics {
     const isSilence = isRealSilence || isAGCTrap;
     const silenceMult = isSilence ? 10.0 : 1.0;
 
-    // 🎯 WAVE 325.7: PRE-GATE SMOOTHING (Filtro anti-ruido en la ENTRADA)
-    // Smooth ANTES de gates = señal limpia sin micro-picos
-    // NO es lag artificial - es limpieza de señal del análisis de audio
+    // 🎯🔫 WAVE 335: TRIPLE PRE-GATE SMOOTHING (Filtros anti-ruido en la ENTRADA)
+    // Smooth ANTES de gates = señal limpia sin micro-picos ni spikes
+    // Bass 0.40 = Drops brutales suavizados
+    // Mid 0.20 = Melodías limpias
+    // Treble 0.30 = NUEVO - Elimina strobe en BACK
     this.bassSmooth = this.bassSmooth * this.BASS_SMOOTH_FACTOR + bass * (1 - this.BASS_SMOOTH_FACTOR);
     this.midSmooth = this.midSmooth * this.MID_SMOOTH_FACTOR + mid * (1 - this.MID_SMOOTH_FACTOR);
+    this.trebleSmooth = this.trebleSmooth * this.TREBLE_SMOOTH_FACTOR + treble * (1 - this.TREBLE_SMOOTH_FACTOR);
     
     // Usar valores suavizados para cálculos (en vez de RAW)
     const bassClean = this.bassSmooth;
     const midClean = this.midSmooth;
-    const trebleClean = treble; // Treble no necesita smooth (ya es suave por naturaleza)
+    const trebleClean = this.trebleSmooth; // 🔫 WAVE 335: Ahora TAMBIÉN suavizado (anti-strobe)
 
     // 1. CALCULO DE TARGETS (A dónde quiere ir la luz)
     
     // Front (Bass - Corazón) - USANDO BASS SUAVIZADO
     const rawFront = (bassClean > this.BASS_GATE) ? (bassClean - this.BASS_GATE) / (1 - this.BASS_GATE) : 0;
-    const targetFront = Math.min(1.0, Math.max(this.FLOOR, rawFront * this.FRONT_GAIN)); // 🔥 Clamp anti-overshoot
+    const targetFront = Math.min(1.0, Math.max(this.FLOOR, rawFront * this.FRONT_GAIN));
 
-    // Back (Treble - Estrellas brillantes ocasionales)
+    // Back (Treble - Ambiente + Brillos) - USANDO BACK_FLOOR PROPIO
+    // 🍸 WAVE 337: Back oscila entre 0.25-0.85 (cocktail bar - cero bofetadas)
     const rawBack = (trebleClean > this.TREBLE_GATE) ? ((trebleClean - this.TREBLE_GATE) / (1 - this.TREBLE_GATE)) : 0;
-    const targetBack = Math.min(1.0, Math.max(this.FLOOR, rawBack * this.BACK_GAIN)); // 🔥 Clamp anti-overshoot
+    const targetBack = Math.min(this.BACK_CAP, Math.max(this.BACK_FLOOR, rawBack * this.BACK_GAIN)); // � Cap at 0.85
 
     // Mover (Mid - Mantas flotantes) - USANDO MID SUAVIZADO
-    // ANTI-SNARE: Rechazar mid si hay treble alto (snares = mid+treble)
-    const TREBLE_REJECTION_THRESHOLD = 0.25; // Si treble > 0.25, reducir influencia en movers
+    // 🔥 WAVE 331.5: ANTI-SNARE AGRESIVO
+    // Snares/Hi-hats = Mid+Treble simultáneo. Si treble sube, reducir movers.
+    // DIAGNÓSTICO: threshold 0.25 NUNCA se activaba (treble rara vez > 0.22)
+    const TREBLE_REJECTION_THRESHOLD = 0.10; // 🔧 Activar con cualquier treble notable
     const trebleRejection = trebleClean > TREBLE_REJECTION_THRESHOLD 
-      ? 1.0 - ((trebleClean - TREBLE_REJECTION_THRESHOLD) * 2.0) // Reduce hasta 50%
+      ? 1.0 - ((trebleClean - TREBLE_REJECTION_THRESHOLD) * 3.0) // 🔧 Factor 3x más agresivo
       : 1.0;
-    const trebleRejectionClamped = Math.max(0.3, Math.min(1.0, trebleRejection)); // Clamp 30%-100%
+    const trebleRejectionClamped = Math.max(0.2, Math.min(1.0, trebleRejection)); // 🔧 Puede reducir hasta 80%
     
     const rawMover = (midClean > this.MID_GATE) ? ((midClean - this.MID_GATE) / (1 - this.MID_GATE)) : 0;
     const targetMover = Math.min(1.0, Math.max(this.FLOOR, rawMover * this.MOVER_GAIN * trebleRejectionClamped)); // 🔥 Clamp anti-overshoot

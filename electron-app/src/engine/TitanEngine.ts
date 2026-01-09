@@ -584,13 +584,67 @@ export class TitanEngine extends EventEmitter {
     patternIndex = Math.min(patternIndex, allowedPatterns.length - 1)
     const pattern = (allowedPatterns[patternIndex] || 'sweep') as MovementIntent['pattern']
     
-    // Movement position is handled by physics engine, not here
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 339.7: GENERAR POSICIONES REALES BASADAS EN TIEMPO
+    // El Physics Driver interpola hacia estas posiciones target
+    // Sin esto, los movers se quedan en (0.5, 0.5) para siempre
+    // ═══════════════════════════════════════════════════════════════════════
+    const now = Date.now()
+    const timeSeconds = now / 1000
+    const amplitude = 0.3 + audio.energy * 0.4  // 0.3 base, +0.4 con energía
+    
+    let centerX = 0.5
+    let centerY = 0.5
+    
+    // Solo generar movimiento si hay audio (evitar movimiento en silencio)
+    if (audio.energy > 0.05) {
+      switch (pattern) {
+        case 'sweep':
+          // Barrido horizontal sincronizado con BPM
+          const sweepFreq = context.bpm / 60 / 4  // Un ciclo cada 4 beats
+          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * sweepFreq) * amplitude
+          centerY = 0.5 + audio.bass * 0.2 - 0.1  // Tilt sigue el bass
+          break
+          
+        case 'circle':
+          // Movimiento circular
+          const circleFreq = context.bpm / 60 / 8  // Un ciclo cada 8 beats
+          centerX = 0.5 + Math.cos(timeSeconds * Math.PI * 2 * circleFreq) * amplitude
+          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * circleFreq) * amplitude * 0.5
+          break
+          
+        case 'pulse':
+          // Pulsar hacia el centro en cada beat
+          const beatPhase = (context.beatPhase ?? 0) % 1
+          const pulseIntensity = Math.pow(1 - beatPhase, 2)  // Decae después del beat
+          centerX = 0.5
+          centerY = 0.5 - pulseIntensity * amplitude * 0.5  // Baja en el beat
+          break
+          
+        case 'random':
+          // Posición basada en hash del frame (determinista pero variada)
+          const frameHash = (this.state.frameCount * 7919) % 1000 / 1000
+          centerX = 0.3 + frameHash * 0.4  // 0.3-0.7 range
+          centerY = 0.4 + (1 - frameHash) * 0.2  // 0.4-0.6 range
+          break
+          
+        default:
+          // Static: sin movimiento pero no en centro exacto
+          centerX = 0.5
+          centerY = 0.4 + audio.energy * 0.2
+      }
+    }
+    
+    // Clamp to safe range (0.1 - 0.9 para evitar límites mecánicos)
+    centerX = Math.max(0.1, Math.min(0.9, centerX))
+    centerY = Math.max(0.1, Math.min(0.9, centerY))
+    
     return {
       pattern,
       speed: Math.max(0, Math.min(1, speed)),
-      amplitude: 0.5 + audio.energy * 0.5,
-      centerX: 0.5,
-      centerY: 0.5,
+      amplitude,
+      centerX,
+      centerY,
       beatSync: true,
     }
   }

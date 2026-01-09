@@ -235,6 +235,11 @@ export class HardwareAbstraction {
       const fixture = fixtures[index]
       const fixtureId = fixture?.id || `fallback_mover_${index}`
       
+      // 🔍 DEBUG: Log once per session to trace ID source
+      if (this.framesRendered < 3 && index < 4) {
+        console.log(`[HAL] 🔍 Fixture[${index}] id="${fixtureId}" hasMovement=${fixture?.hasMovementChannels}`)
+      }
+      
       // Only apply physics to moving fixtures
       const isMovingFixture = state.zone.includes('MOVING') || 
                               state.type?.toLowerCase().includes('moving') ||

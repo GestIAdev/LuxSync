@@ -474,14 +474,16 @@ const applyDynamicOptics = (
 
 ## 📋 CHECKLIST DE IMPLEMENTACIÓN
 
-### PASO 1: TitanEngine - Patrones Base ✅ (parcial)
+### PASO 1: TitanEngine - Patrones Base ✅ COMPLETADO
 - [x] `sweep` - Barrido horizontal (ya funciona)
 - [x] `circle` - Rotación básica (ya existe)
 - [x] `pulse` - Beat sync (ya existe)
-- [ ] `wave` - Añadir al switch
-- [ ] `figure8` - Lissajous (Tilt 2x freq)
-- [ ] `chase` - Base para persecución
-- [ ] `mirror` - Base para espejo
+- [x] `wave` - Ondulación Pink Floyd ✅ WAVE 340.1
+- [x] `figure8` - Lissajous caderas (Tilt 2x freq) ✅ WAVE 340.1
+- [x] `chase` - Base para persecución ✅ WAVE 340.1
+- [x] `mirror` - Base para espejo ✅ WAVE 340.1
+- [x] `static` - Mejorado con micro-respiración ✅ WAVE 340.1
+- [x] Tipos actualizados en LightingIntent.ts y types.ts ✅
 
 ### PASO 2: HAL - Phase Offset (🐍 SNAKE)
 - [ ] Crear función `applyPhaseOffset()`

@@ -601,13 +601,55 @@ export class TitanEngine extends EventEmitter {
       switch (pattern) {
         case 'sweep':
           // Barrido horizontal sincronizado con BPM
+          // HAL aplicará phase offset para efecto snake
           const sweepFreq = context.bpm / 60 / 4  // Un ciclo cada 4 beats
           centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * sweepFreq) * amplitude
           centerY = 0.5 + audio.bass * 0.2 - 0.1  // Tilt sigue el bass
           break
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🌊 WAVE 340.1: WAVE - Ondulación como Pink Floyd
+        // HAL aplicará phase offset para crear serpiente de luz
+        // ═══════════════════════════════════════════════════════════════════
+        case 'wave':
+          const waveFreq = context.bpm / 120  // Un ciclo cada ~2 compases (lento)
+          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * waveFreq) * amplitude * 0.6
+          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * waveFreq) * amplitude * 0.25
+          break
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 💃 WAVE 340.1: FIGURE8 - Lissajous (caderas de cumbia)
+        // Pan 1x freq, Tilt 2x freq = figura 8 perfecta
+        // ═══════════════════════════════════════════════════════════════════
+        case 'figure8':
+          const f8Freq = context.bpm / 60  // Un ciclo por beat
+          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * f8Freq) * amplitude
+          // ↓ DOBLE frecuencia en Y = curva de Lissajous = figura 8
+          centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 4 * f8Freq) * amplitude * 0.5
+          break
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏃 WAVE 340.1: CHASE - Persecución láser
+        // Base para efecto persecución, HAL añadirá phase offset grande
+        // ═══════════════════════════════════════════════════════════════════
+        case 'chase':
+          const chaseFreq = context.bpm / 30  // Rápido (2x por beat)
+          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * chaseFreq) * amplitude
+          centerY = 0.5 + audio.bass * 0.15 - 0.075  // Tilt sigue bass suavemente
+          break
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🪞 WAVE 340.1: MIRROR - Puertas del infierno techno
+        // Base simétrica, HAL invertirá para fixtures pares/impares
+        // ═══════════════════════════════════════════════════════════════════
+        case 'mirror':
+          const mirrorFreq = context.bpm / 60  // Un ciclo por beat
+          centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * mirrorFreq) * amplitude
+          centerY = 0.5  // Tilt fijo para efecto puerta
+          break
           
         case 'circle':
-          // Movimiento circular
+          // Movimiento circular (mejorado para Chill)
           const circleFreq = context.bpm / 60 / 8  // Un ciclo cada 8 beats
           centerX = 0.5 + Math.cos(timeSeconds * Math.PI * 2 * circleFreq) * amplitude
           centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * circleFreq) * amplitude * 0.5
@@ -616,9 +658,9 @@ export class TitanEngine extends EventEmitter {
         case 'pulse':
           // Pulsar hacia el centro en cada beat
           const beatPhase = (context.beatPhase ?? 0) % 1
-          const pulseIntensity = Math.pow(1 - beatPhase, 2)  // Decae después del beat
+          const pulseIntensity = Math.pow(1 - beatPhase, 3)  // Decae rápido después del beat
           centerX = 0.5
-          centerY = 0.5 - pulseIntensity * amplitude * 0.5  // Baja en el beat
+          centerY = 0.5 - pulseIntensity * amplitude * 0.4  // Baja en el beat
           break
           
         case 'random':
@@ -627,11 +669,22 @@ export class TitanEngine extends EventEmitter {
           centerX = 0.3 + frameHash * 0.4  // 0.3-0.7 range
           centerY = 0.4 + (1 - frameHash) * 0.2  // 0.4-0.6 range
           break
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🧘 WAVE 340.1: STATIC MEJORADO - Respiración zen, no muerte
+        // Micro-movimiento casi imperceptible + bass inhale
+        // ═══════════════════════════════════════════════════════════════════
+        case 'static':
+          const breathFreq = 0.1  // Un ciclo cada 10 segundos
+          centerX = 0.5
+          centerY = 0.4 + Math.sin(timeSeconds * Math.PI * 2 * breathFreq) * 0.03
+                       + audio.bass * 0.06  // Bass = pequeño inhalar
+          break
           
         default:
-          // Static: sin movimiento pero no en centro exacto
+          // Fallback: centro con ligera reacción a energía
           centerX = 0.5
-          centerY = 0.4 + audio.energy * 0.2
+          centerY = 0.4 + audio.energy * 0.15
       }
     }
     

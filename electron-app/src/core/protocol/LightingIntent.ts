@@ -91,17 +91,19 @@ export type ZoneIntentMap = Partial<Record<AbstractZone, ZoneIntent>>
 
 /**
  * Patrones de movimiento abstractos
+ * WAVE 340.1: Añadido 'mirror' para efecto puertas techno
  */
 export type MovementPattern = 
-  | 'static'          // Sin movimiento
+  | 'static'          // Sin movimiento (con micro-respiración)
   | 'sweep'           // Barrido horizontal
   | 'circle'          // Movimiento circular
-  | 'figure8'         // Figura de 8
+  | 'figure8'         // Figura de 8 (Lissajous)
   | 'random'          // Movimiento aleatorio suave
   | 'chase'           // Persecución secuencial
   | 'pulse'           // Pulsación rítmica
-  | 'wave'            // Onda
+  | 'wave'            // Onda (serpiente de luz)
   | 'focus'           // Enfoque en un punto
+  | 'mirror'          // WAVE 340.1: Espejo (pares/impares invertidos)
 
 /**
  * Intención de movimiento abstracta

@@ -151,9 +151,19 @@ export interface MovementState {
   mirrorMode: boolean
 }
 
+// WAVE 340.1: Patrones de movimiento unificados
 export type MovementPattern = 
-  | 'lissajous' | 'circle' | 'wave' 
-  | 'figure8' | 'scan' | 'random' | 'static'
+  | 'static'          // Sin movimiento (con micro-respiración)
+  | 'sweep'           // Barrido horizontal
+  | 'circle'          // Movimiento circular
+  | 'figure8'         // Figura de 8 (Lissajous)
+  | 'lissajous'       // Alias de figure8
+  | 'random'          // Movimiento aleatorio suave
+  | 'chase'           // Persecución secuencial
+  | 'scan'            // Alias de sweep
+  | 'pulse'           // Pulsación rítmica
+  | 'wave'            // Onda (serpiente de luz)
+  | 'mirror'          // Espejo (pares/impares invertidos)
 
 export interface EffectState {
   id: EffectId

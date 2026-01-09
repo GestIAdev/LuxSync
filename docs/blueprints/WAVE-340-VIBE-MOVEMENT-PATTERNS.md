@@ -4,6 +4,48 @@
 
 ---
 
+## 🔥 ADICIONES CRÍTICAS DE RADWULF (v1.1)
+
+> *"Si implementamos el blueprint tal cual, los movers se moverán... pero parecerán soldados sincronizados. Para que parezca un show de $1M, necesitamos DESFASE y DINÁMICA ÓPTICA."*
+
+### 1. 🐍 EL SECRETO DEL "SNAKE" (Phase Offset)
+Si usas `Math.sin(time)` para todos los focos, todos subirán y bajarán a la vez. **Eso es aburrido.**
+
+**La Fórmula del Amor:**
+```typescript
+Position = Math.sin(Time + (FixtureIndex * PhaseOffset))
+```
+
+| Vibe | Phase Offset | Efecto |
+|------|--------------|--------|
+| **Latino** | `π/4` (45°) | Caderas en cadena, ola de salsa |
+| **Chill** | `π/2` (90°) | Ola de mar que recorre el escenario |
+| **Techno** | `0` o `π` | Sincronizado o alternado par/impar |
+| **Rock** | `π/3` (60°) | Wall of light ondulante |
+
+### 2. 💃 LA CADERA MATEMÁTICA (Curva de Lissajous)
+Para `figure8`, no basta con mover Pan y Tilt a la vez. Necesitas una **Curva de Lissajous**.
+
+**La Fórmula:**
+```typescript
+Pan  = sin(Time)        // Frecuencia 1x
+Tilt = sin(Time * 2)    // Frecuencia 2x (¡el doble!)
+```
+
+**Resultado:** Un "8" perfecto en el aire. Es el movimiento más sexy que puede hacer un robot.
+
+### 3. 👁️ ÓPTICA QUE RESPIRA (Dynamic Zoom/Focus)
+Las ópticas NO deberían ser estáticas por Vibe. Deben **reaccionar al movimiento**.
+
+| Vibe | Comportamiento Óptico |
+|------|----------------------|
+| **Chill** | Tilt Up → Zoom abre (inhalar). Tilt Down → Zoom cierra (exhalar) |
+| **Rock** | Snare hit → Focus nítido 50ms (punch), luego vuelve a soft |
+| **Techno** | Beat → Zoom pulsa cerrado (beam láser), entre beats abre |
+| **Latino** | Zoom sigue la amplitud del movimiento (más amplio = más abierto) |
+
+---
+
 ## 📋 ESTADO ACTUAL
 
 ### ✅ Lo que funciona
@@ -61,53 +103,58 @@ Cada vibe es un **estilo de baile diferente**:
 **Para**: Rock, Chill, Latino
 **Descripción**: Ondulación suave, como respiración del mar
 
-```
-Posición X: Base + sin(time * freq) * amplitude
-Posición Y: Base + sin(time * freq * 0.5) * amplitude * 0.3
+```typescript
+// 🐍 SNAKE FORMULA: Phase offset por fixture
+const phaseOffset = fixtureIndex * (Math.PI / 4)  // 45° entre fixtures
+const freq = context.bpm / 120  // Un ciclo cada ~2 compases
 
-Características:
-- Frecuencia: BPM / 120 (un ciclo cada ~2 compases)
-- Amplitud X: 0.2 - 0.4 (sutil)
-- Amplitud Y: 0.1 - 0.2 (muy sutil)
-- Fase: Offset por fixture para efecto cascada
+centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * amplitude
+centerY = 0.5 + Math.sin(timeSeconds * Math.PI * freq + phaseOffset) * amplitude * 0.3
+
+// 👁️ ÓPTICA DINÁMICA: Zoom respira con el movimiento
+zoom = zoomDefault + Math.sin(timeSeconds * Math.PI * freq + phaseOffset) * 20
 ```
 
-**Sensación**: Como las luces de un concierto de Pink Floyd
+**Sensación**: Como las luces de un concierto de Pink Floyd - una serpiente de luz
 
 ---
 
-### 2. ∞ FIGURE8 (Figura 8)
+### 2. ∞ FIGURE8 (Figura 8 - Lissajous)
 **Para**: Latino (EXCLUSIVO)
-**Descripción**: El movimiento de caderas de la cumbia
+**Descripción**: El movimiento de caderas de la cumbia - Curva de Lissajous real
 
+```typescript
+// 💃 LISSAJOUS: Pan 1x freq, Tilt 2x freq = figura 8 perfecta
+const freq = context.bpm / 60  // Un ciclo por beat
+const phaseOffset = fixtureIndex * (Math.PI / 4)
+
+centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * amplitude
+centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 4 * freq + phaseOffset) * amplitude * 0.5
+//                                    ↑ DOBLE frecuencia = figura 8
+
+// 👁️ ÓPTICA: Zoom sigue amplitud (más movimiento = más abierto)
+const movementIntensity = Math.abs(Math.sin(timeSeconds * Math.PI * 2 * freq))
+zoom = zoomDefault + movementIntensity * 30
 ```
-Posición X: Base + sin(time * freq) * amplitude
-Posición Y: Base + sin(time * freq * 2) * amplitude * 0.5
 
-Características:
-- Frecuencia: BPM / 60 (un ciclo por beat)
-- Amplitud X: 0.3 - 0.5 (amplio)
-- Amplitud Y: 0.2 - 0.3 (mitad del X)
-- La relación 2:1 crea la figura 8
-```
-
-**Sensación**: Las caderas de una bailarina de salsa
+**Sensación**: Las caderas de una bailarina de salsa dibujando un 8 en el aire
 
 ---
 
 ### 3. 🏃 CHASE (Persecución)
 **Para**: Techno, Rock
-**Descripción**: Un fixture persigue al otro
+**Descripción**: Un fixture persigue al otro - ola mexicana robótica
 
-```
-Posición X: Sin(time * freq + fixtureIndex * phaseOffset)
-Posición Y: Constante o siguiendo bass
+```typescript
+// 🐍 CHASE: Phase offset grande para efecto persecución
+const phaseOffset = fixtureIndex * (Math.PI / 2)  // 90° entre fixtures
+const freq = context.bpm / 30  // Rápido
 
-Características:
-- Phase offset: 90° entre fixtures (un fixture adelante del otro)
-- Crea efecto de "ola mexicana" pero robótico
-- En Techno: Muy rápido, preciso
-- En Rock: Más dramático, con pausas
+centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * amplitude
+centerY = 0.5 + audio.bass * 0.2 - 0.1  // Tilt sigue el bass
+
+// Techno: Movimiento seco, sin transición
+// Rock: Más dramático, con pausas en los extremos
 ```
 
 **Sensación**: Búsqueda láser en un bunker o persecución épica
@@ -118,51 +165,89 @@ Características:
 **Para**: Techno
 **Descripción**: Fixtures opuestos hacen movimiento simétrico
 
-```
-Fixture izquierdo: X = 0.5 + offset
-Fixture derecho:   X = 0.5 - offset
+```typescript
+// 🪞 MIRROR: Izquierda y derecha son opuestos
+const freq = context.bpm / 60
+const baseOffset = Math.sin(timeSeconds * Math.PI * 2 * freq) * amplitude
 
-Características:
-- Los movers izquierdo/derecho son simétricos
-- Cuando uno va a la izquierda, el otro va a la derecha
-- Crea sensación de puerta abriéndose/cerrándose
+// Fixture izquierdo (índice par): positivo
+// Fixture derecho (índice impar): negativo
+const mirrorSign = fixtureIndex % 2 === 0 ? 1 : -1
+centerX = 0.5 + baseOffset * mirrorSign
+centerY = 0.5
+
+// 👁️ ÓPTICA: Beam cerrado sincronizado
+zoom = 30  // Láser puro
 ```
 
-**Sensación**: Las puertas del infierno techno abriéndose
+**Sensación**: Las puertas del infierno techno abriéndose y cerrándose
 
 ---
 
-### 5. 💫 CIRCLE (Círculo) - MEJORADO
+### 5. 💫 CIRCLE (Círculo) - CON SNAKE
 **Para**: Latino, Chill
-**Descripción**: Rotación circular suave
+**Descripción**: Rotación circular suave con desfase
 
-```
-Posición X: Base + cos(time * freq) * amplitude
-Posición Y: Base + sin(time * freq) * amplitude * aspectRatio
+```typescript
+// 🐍 CIRCLE con phase offset = espiral de luz
+const freq = context.bpm / 240  // Muy lento para Chill
+const phaseOffset = fixtureIndex * (Math.PI / 2)  // 90° offset
 
-Características:
-- Latino: aspectRatio = 0.7 (elipse horizontal, más "bailarín")
-- Chill: aspectRatio = 1.0 (círculo perfecto, más "zen")
-- Frecuencia mucho más lenta que sweep
+centerX = 0.5 + Math.cos(timeSeconds * Math.PI * 2 * freq + phaseOffset) * amplitude
+centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * amplitude * aspectRatio
+
+// Latino: aspectRatio = 0.7 (elipse horizontal, más "bailarín")
+// Chill: aspectRatio = 1.0 (círculo perfecto, más "zen")
+
+// 👁️ ÓPTICA CHILL: Inhalar/Exhalar
+zoom = zoomDefault + Math.sin(timeSeconds * Math.PI * freq) * 15  // Respira
 ```
 
 ---
 
-### 6. 📍 STATIC - MEJORADO
+### 6. 📍 STATIC - MEJORADO (Respiración Zen)
 **Para**: Chill, Idle
 **Descripción**: No es "quieto" - es "respirando"
 
-```
-Posición X: 0.5 (centro)
-Posición Y: 0.4 + sin(time * 0.1) * 0.05 + bass * 0.1
+```typescript
+// 🧘 BREATHING: Micro-movimiento casi imperceptible
+const breathFreq = 0.1  // Un ciclo cada 10 segundos
+const phaseOffset = fixtureIndex * (Math.PI / 3)
 
-Características:
-- Micro-movimiento casi imperceptible
-- Como una vela que apenas se mueve con la brisa
-- El bass crea un pequeño "inhalar"
+centerX = 0.5  // Centro
+centerY = 0.4 + Math.sin(timeSeconds * Math.PI * 2 * breathFreq + phaseOffset) * 0.05
+            + audio.bass * 0.08  // El bass crea un pequeño "inhalar"
+
+// 👁️ ÓPTICA: Zoom respira con el movimiento
+zoom = zoomDefault + Math.sin(timeSeconds * Math.PI * 2 * breathFreq) * 10
+focus = focusDefault + 20  // Siempre soft (nebuloso)
 ```
 
-**Sensación**: Meditación, no muerte
+**Sensación**: Meditación, no muerte. Una vela que apenas se mueve con la brisa.
+
+---
+
+### 7. 💥 PULSE (Beat Sync)
+**Para**: Techno, Rock
+**Descripción**: Reacción explosiva al beat
+
+```typescript
+// 💥 PULSE: Reacción al beat phase
+const beatPhase = context.beatPhase  // 0-1, 0 = inicio del beat
+const pulseIntensity = Math.pow(1 - beatPhase, 3)  // Decae rápido después del beat
+
+centerX = 0.5
+centerY = 0.5 - pulseIntensity * amplitude * 0.3  // Baja en el beat
+
+// 👁️ ÓPTICA ROCK: Focus punch en el beat
+if (beatPhase < 0.1) {
+  focus = 0  // NÍTIDO (punch)
+} else {
+  focus = focusDefault  // Vuelve a soft
+}
+```
+
+**Sensación**: El headbang del rock, el kick del techno
 
 ---
 
@@ -247,70 +332,183 @@ Características:
 
 ## 🔧 IMPLEMENTACIÓN
 
-### Archivo: `TitanEngine.ts` → `calculateMovement()`
+### Problema: calculateMovement() no conoce el fixtureIndex
+
+Actualmente `TitanEngine.calculateMovement()` genera UNA posición para TODOS los fixtures.
+Para el Snake/Phase Offset, necesitamos que **HAL aplique el desfase por fixture**.
+
+### Solución: Engine genera BASE + HAL aplica OFFSET
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  TitanEngine    │     │      HAL        │     │  PhysicsDriver  │
+│                 │     │                 │     │                 │
+│ centerX = 0.5   │────▶│ + phaseOffset   │────▶│ + interpolación │
+│ centerY = 0.5   │     │ por fixture     │     │ con inercia     │
+│ pattern = wave  │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+### Archivo: `HardwareAbstraction.ts` - Aplicar Phase Offset
 
 ```typescript
-// Añadir estos patrones al switch:
+// En el loop de fixtures, después de obtener centerX/centerY del intent:
 
-case 'wave':
-  // Ondulación como respiración del mar
-  const waveFreq = context.bpm / 120  // Un ciclo cada ~2 compases
-  centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * waveFreq) * amplitude * 0.4
-  centerY = 0.5 + Math.sin(timeSeconds * Math.PI * waveFreq) * amplitude * 0.15
-  break
+const applyPhaseOffset = (
+  centerX: number,
+  centerY: number,
+  pattern: string,
+  fixtureIndex: number,
+  vibeId: string,
+  timeSeconds: number,
+  bpm: number
+): { x: number, y: number } => {
+  
+  // Configuración de offset por vibe
+  const PHASE_CONFIGS = {
+    'techno-club':    { offset: 0,           type: 'sync' },      // Sincronizado
+    'fiesta-latina':  { offset: Math.PI / 4, type: 'snake' },     // 45° cadena
+    'pop-rock':       { offset: Math.PI / 3, type: 'snake' },     // 60° ondulante
+    'chill-lounge':   { offset: Math.PI / 2, type: 'snake' },     // 90° ola lenta
+  }
+  
+  const config = PHASE_CONFIGS[vibeId] || { offset: 0, type: 'sync' }
+  
+  if (config.type === 'sync') {
+    return { x: centerX, y: centerY }
+  }
+  
+  // Aplicar phase offset basado en el patrón
+  const phaseOffset = fixtureIndex * config.offset
+  const freq = bpm / 120
+  
+  switch (pattern) {
+    case 'wave':
+      return {
+        x: 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * (centerX - 0.5) * 2,
+        y: 0.5 + Math.sin(timeSeconds * Math.PI * freq + phaseOffset) * (centerY - 0.5) * 2
+      }
+      
+    case 'figure8':
+      // Lissajous: Tilt a 2x frecuencia
+      return {
+        x: 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * (centerX - 0.5) * 2,
+        y: 0.5 + Math.sin(timeSeconds * Math.PI * 4 * freq + phaseOffset) * (centerY - 0.5) * 2
+      }
+      
+    case 'circle':
+      return {
+        x: 0.5 + Math.cos(timeSeconds * Math.PI * 2 * freq + phaseOffset) * (centerX - 0.5) * 2,
+        y: 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq + phaseOffset) * (centerY - 0.5) * 2
+      }
+      
+    case 'chase':
+      // Chase tiene offset más grande
+      const chasePhase = fixtureIndex * (Math.PI / 2)
+      return {
+        x: 0.5 + Math.sin(timeSeconds * Math.PI * 2 * freq * 2 + chasePhase) * (centerX - 0.5) * 2,
+        y: centerY
+      }
+      
+    case 'mirror':
+      // Par/Impar invertidos
+      const mirrorSign = fixtureIndex % 2 === 0 ? 1 : -1
+      return {
+        x: 0.5 + (centerX - 0.5) * mirrorSign,
+        y: centerY
+      }
+      
+    default:
+      return { x: centerX, y: centerY }
+  }
+}
+```
 
-case 'figure8':
-  // Caderas de cumbia - figura 8
-  const f8Freq = context.bpm / 60  // Un ciclo por beat
-  centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * f8Freq) * amplitude
-  centerY = 0.5 + Math.sin(timeSeconds * Math.PI * 4 * f8Freq) * amplitude * 0.5  // 2x frecuencia
-  break
+### Archivo: `HardwareAbstraction.ts` - Óptica Dinámica
 
-case 'chase':
-  // Persecución - offset por fixture
-  const chaseFreq = context.bpm / 30  // Rápido
-  const fixturePhase = (this.state.frameCount % 4) * (Math.PI / 2)  // 90° offset
-  centerX = 0.5 + Math.sin(timeSeconds * Math.PI * 2 * chaseFreq + fixturePhase) * amplitude
-  centerY = 0.5 + audio.bass * 0.2 - 0.1
-  break
-
-case 'mirror':
-  // Espejo - simétrico respecto al centro
-  const mirrorFreq = context.bpm / 60
-  const mirrorOffset = Math.sin(timeSeconds * Math.PI * 2 * mirrorFreq) * amplitude
-  // TODO: Necesita saber si es fixture izquierdo o derecho
-  centerX = 0.5 + mirrorOffset  // El otro fixture usará -mirrorOffset
-  centerY = 0.5
-  break
+```typescript
+const applyDynamicOptics = (
+  fixture: FixtureState,
+  vibeId: string,
+  beatPhase: number,
+  movementIntensity: number
+): { zoom: number, focus: number } => {
+  
+  const baseZoom = fixture.zoom
+  const baseFocus = fixture.focus
+  
+  switch (vibeId) {
+    case 'chill-lounge':
+      // Respiración: Zoom sigue el movimiento
+      return {
+        zoom: baseZoom + movementIntensity * 30,
+        focus: baseFocus + 20  // Siempre soft
+      }
+      
+    case 'pop-rock':
+      // Punch en el beat
+      if (beatPhase < 0.1) {
+        return { zoom: baseZoom, focus: 0 }  // Nítido en el beat
+      }
+      return { zoom: baseZoom, focus: baseFocus }
+      
+    case 'techno-club':
+      // Beam pulsante
+      const beamPulse = beatPhase < 0.2 ? -20 : 0
+      return { zoom: baseZoom + beamPulse, focus: 20 }  // Siempre nítido
+      
+    case 'fiesta-latina':
+      // Zoom sigue amplitud
+      return {
+        zoom: baseZoom + movementIntensity * 25,
+        focus: baseFocus
+      }
+      
+    default:
+      return { zoom: baseZoom, focus: baseFocus }
+  }
+}
 ```
 
 ---
 
 ## 📋 CHECKLIST DE IMPLEMENTACIÓN
 
-### PASO 1: Implementar Patrones Básicos
-- [ ] `wave` - Ondulación suave
-- [ ] `figure8` - Figura 8 para Latino
-- [ ] `chase` - Persecución con phase offset
-- [ ] `mirror` - Movimiento simétrico
-- [ ] Mejorar `static` con micro-respiración
-- [ ] Mejorar `circle` con aspect ratio por vibe
+### PASO 1: TitanEngine - Patrones Base ✅ (parcial)
+- [x] `sweep` - Barrido horizontal (ya funciona)
+- [x] `circle` - Rotación básica (ya existe)
+- [x] `pulse` - Beat sync (ya existe)
+- [ ] `wave` - Añadir al switch
+- [ ] `figure8` - Lissajous (Tilt 2x freq)
+- [ ] `chase` - Base para persecución
+- [ ] `mirror` - Base para espejo
 
-### PASO 2: Actualizar Perfiles de Vibe
+### PASO 2: HAL - Phase Offset (🐍 SNAKE)
+- [ ] Crear función `applyPhaseOffset()`
+- [ ] Configurar offset por vibe:
+  - Techno: 0 (sync) o π (alternado)
+  - Latino: π/4 (45° cadena)
+  - Rock: π/3 (60° ondulante)
+  - Chill: π/2 (90° ola lenta)
+- [ ] Aplicar offset en el loop de fixtures antes de physics
+
+### PASO 3: HAL - Óptica Dinámica (👁️ BREATHING)
+- [ ] Crear función `applyDynamicOptics()`
+- [ ] Chill: Zoom respira con movimiento
+- [ ] Rock: Focus punch en beat (nítido 50ms)
+- [ ] Techno: Beam pulsa con kick
+- [ ] Latino: Zoom sigue amplitud
+
+### PASO 4: Actualizar Perfiles de Vibe
 - [ ] Verificar `allowedPatterns` en cada perfil
-- [ ] Ajustar `speedRange` según filosofía
-- [ ] Añadir parámetros de `beatMultiplier`
+- [ ] Añadir parámetros de `phaseOffset` por vibe
+- [ ] Añadir parámetros de `opticsMode` por vibe
 
-### PASO 3: Conectar con Physics
-- [ ] Los presets de VibeMovementPresets.ts deben afectar la interpolación
-- [ ] Techno = friction baja (movimiento seco)
-- [ ] Latino = friction alta (movimiento fluido)
-
-### PASO 4: Testing Visual
+### PASO 5: Testing Visual
 - [ ] Techno: Sables láser scanning ✓ (ya funciona)
-- [ ] Latino: Caderas bailando figura 8
-- [ ] Rock: Wall of light ondulante
-- [ ] Chill: Nebulosa respirando
+- [ ] Latino: Caderas bailando figura 8 (Lissajous)
+- [ ] Rock: Wall of light ondulante con punch en snare
+- [ ] Chill: Nebulosa respirando, ola de mar
 
 ---
 
@@ -330,16 +528,53 @@ Después de WAVE 340:
 
 ## 📝 NOTAS ADICIONALES
 
-### Sobre el fixture_index para Chase/Mirror
-Actualmente `calculateMovement()` no sabe qué fixture está calculando. Para `chase` y `mirror` necesitaremos:
-1. O pasar el fixture index como parámetro
-2. O calcular múltiples posiciones en una sola llamada
-3. O hacer que HAL modifique las posiciones por fixture después
+### Arquitectura Final: Engine → HAL → Physics
 
-**Recomendación**: Opción 3 es la más limpia - el Engine genera el "centro" y HAL aplica offsets por zona (MOVING_LEFT vs MOVING_RIGHT).
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        FLUJO DE DATOS                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  TitanEngine.calculateMovement()                                    │
+│  ├─ Genera: pattern, centerX, centerY, amplitude, speed            │
+│  └─ NO conoce fixtureIndex (genera posición BASE)                  │
+│                         │                                           │
+│                         ▼                                           │
+│  HAL.render()                                                       │
+│  ├─ Recibe: intent.movement + fixtures[]                           │
+│  ├─ Aplica: applyPhaseOffset() por cada fixture                    │
+│  ├─ Aplica: applyDynamicOptics() (zoom/focus reactivos)           │
+│  └─ Envía: posición FINAL + óptica a PhysicsDriver                 │
+│                         │                                           │
+│                         ▼                                           │
+│  FixturePhysicsDriver.translate()                                   │
+│  ├─ Interpola: target → physical (con inercia/slew rate)          │
+│  └─ Respeta: VibeMovementPresets (friction por vibe)               │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Por qué HAL aplica el Phase Offset (no Engine)
+
+1. **Engine es abstracto** - No conoce fixtures físicos
+2. **HAL conoce la topología** - Sabe cuántos fixtures hay y su orden
+3. **Physics es por fixture** - Cada fixture tiene su estado independiente
+4. **Separación de responsabilidades** - Engine = QUÉ, HAL = CÓMO
+
+### Sobre el Mirror para Techno
+
+Para que `mirror` funcione bien, HAL necesita saber si un fixture es "izquierdo" o "derecho". Opciones:
+
+1. **Por zona**: MOVING_LEFT vs MOVING_RIGHT
+2. **Por índice par/impar**: fixture[0,2,4] = izquierda, fixture[1,3,5] = derecha
+3. **Por posición física**: Usar coordenadas X del setup
+
+**Recomendación**: Opción 1 (por zona) es la más semántica y ya existe en el sistema.
 
 ---
 
-*Blueprint creado: 2026-01-09*
-*Autor: PunkOpus + Radwulf*
-*Versión: 1.0*
+*Blueprint v1.1 - Actualizado con las adiciones de Radwulf*
+*Fecha: 2026-01-09*
+*Autores: PunkOpus + Radwulf*
+
+> *"Los soldados marchan. Los bailarines danzan. La diferencia es el DESFASE."*

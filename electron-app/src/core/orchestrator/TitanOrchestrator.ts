@@ -611,11 +611,26 @@ export class TitanOrchestrator {
 
   /**
    * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
+   * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setFixtures(fixtures: any[]): void {
     this.fixtures = fixtures
-    console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} real fixtures`)
+    
+    // 🔥 WAVE 339.6: Register movers in PhysicsDriver
+    // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
+    let moverCount = 0
+    for (const fixture of fixtures) {
+      if (fixture.hasMovementChannels) {
+        // Register in HAL's physics driver
+        if (this.hal) {
+          this.hal.registerMover(fixture.id, fixture.installationType || 'ceiling')
+          moverCount++
+        }
+      }
+    }
+    
+    console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} total, ${moverCount} movers registered in PhysicsDriver`)
   }
 
   /**

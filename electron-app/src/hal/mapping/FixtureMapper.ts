@@ -26,12 +26,15 @@ import type { PhysicalZone } from './ZoneRouter'
 
 /** Fixture definition (from patch) */
 export interface PatchedFixture {
+  id?: string               // WAVE 339.6: Library ID for physics registration
   dmxAddress: number
   universe: number
   name: string
   zone?: string
   type?: string
   channelCount?: number
+  hasMovementChannels?: boolean  // WAVE 339.6: From library definition
+  has16bitMovement?: boolean     // WAVE 339.6: From library definition
 }
 
 /** Calculated fixture state (output of mapper) */

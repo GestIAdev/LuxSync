@@ -224,19 +224,23 @@ export class HardwareAbstraction {
     const finalStates = this.mapper.applyEffectsAndOverrides(fixtureStates, Date.now())
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎛️ WAVE 339: INJECT PHYSICS STATE INTO FIXTURE STATES
+    // 🎛️ WAVE 339.6: INJECT PHYSICS STATE INTO FIXTURE STATES
     // This adds the interpolated (physical) positions from the physics driver
     // So the frontend can visualize actual movement, not just targets
+    // Uses REAL fixture IDs (from library) not synthetic ones
     // ═══════════════════════════════════════════════════════════════════════
     const statesWithPhysics = finalStates.map((state, index) => {
-      // Use fixture ID or generate one from index
-      const fixtureId = `mover_${index}`
+      // 🔥 WAVE 339.6: Use real fixture ID from the fixtures array
+      // This matches the ID registered in setFixtures() → registerMover()
+      const fixture = fixtures[index]
+      const fixtureId = fixture?.id || `fallback_mover_${index}`
       
       // Only apply physics to moving fixtures
       const isMovingFixture = state.zone.includes('MOVING') || 
                               state.type?.toLowerCase().includes('moving') ||
                               state.type?.toLowerCase().includes('spot') ||
-                              state.type?.toLowerCase().includes('beam')
+                              state.type?.toLowerCase().includes('beam') ||
+                              fixture?.hasMovementChannels
       
       if (isMovingFixture) {
         // Translate target position through physics engine

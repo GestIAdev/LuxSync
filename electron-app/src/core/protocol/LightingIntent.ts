@@ -121,6 +121,8 @@ export interface MovementIntent {
   centerY: number
   /** Sincronizar con el beat */
   beatSync: boolean
+  /** 🔧 WAVE 350: Tipo de desfase (linear = sin rotación polar, polar = con rotación) */
+  phaseType?: 'linear' | 'polar'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

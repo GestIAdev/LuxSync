@@ -106,9 +106,20 @@ export class HardwareAbstraction {
      * @param zone - Zona del fixture (para mirror: MOVING_LEFT vs MOVING_RIGHT)
      * @param timeSeconds - Tiempo actual en segundos
      * @param bpm - BPM actual para frecuencia
+     * @param phaseType - 🔧 WAVE 350: 'linear' = bypass, 'polar' = rotar (default)
      * @returns Posición modificada con phase offset
      */
-    applyPhaseOffset(baseX, baseY, pattern, fixtureIndex, zone, timeSeconds, bpm) {
+    applyPhaseOffset(baseX, baseY, pattern, fixtureIndex, zone, timeSeconds, bpm, phaseType = 'polar') {
+        // 🔧 WAVE 350: LINEAR BYPASS
+        // Si phaseType === 'linear', el patrón ya aplicó desfase internamente
+        if (phaseType === 'linear') {
+            if (fixtureIndex === 0 && this.framesRendered % 30 === 0) {
+                const inPan = Math.round((baseX - 0.5) * 540);
+                const inTilt = Math.round((baseY - 0.5) * 270);
+                console.log(`[🔬 LINEAR BYPASS] Pan:${inPan}° Tilt:${inTilt}° | Pattern:${pattern}`);
+            }
+            return { x: baseX, y: baseY };
+        }
         const config = this.PHASE_CONFIGS[this.currentVibeId] || { offset: 0, type: 'sync' };
         // Si es sync, devolver posición sin modificar
         if (config.type === 'sync') {
@@ -381,7 +392,9 @@ export class HardwareAbstraction {
             }
             // Apply phase offset based on fixture index
             // Uses this.currentVibeId which is set by the main render loop
-            const phaseOffsetted = this.applyPhaseOffset(baseX, baseY, pattern, fixtureIndex, zone, timeSeconds, bpm);
+            // 🔧 WAVE 350: Pass phaseType from intent
+            const phaseOffsetted = this.applyPhaseOffset(baseX, baseY, pattern, fixtureIndex, zone, timeSeconds, bpm, intent.movement?.phaseType || 'polar' // WAVE 350: Default 'polar' si no especificado
+            );
             // Convert {x, y} to {pan, tilt} for MovementState
             const movement = {
                 pan: phaseOffsetted.x,

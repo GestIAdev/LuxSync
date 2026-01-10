@@ -641,6 +641,7 @@ export class TitanEngine extends EventEmitter {
       centerX: Math.max(0, Math.min(1, centerX)),  // WAVE 345: Full range 0-1
       centerY: Math.max(0, Math.min(1, centerY)),  // WAVE 345: Full range 0-1
       beatSync: true,
+      phaseType: vmmIntent.phaseType,  // 🔧 WAVE 350: Pasar phaseType del VMM a HAL
     }
     
     return protocolIntent

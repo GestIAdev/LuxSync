@@ -21,10 +21,11 @@ export const MOVEMENT_PRESETS = {
     // ───────────────────────────────────────────────────────────────
     // 🎛️ TECHNO: Velocidad máxima, Aceleración agresiva, Beam cerrado
     // "Los demonios de neón en el bunker noruego"
+    // 🔧 WAVE 350.5: maxAcceleration 1500 → 2000 (safety bump para botStabs)
     // ───────────────────────────────────────────────────────────────
     'techno-club': {
         physics: {
-            maxAcceleration: 1500, // Arranques explosivos
+            maxAcceleration: 2000, // 🔧 Arranques agresivos pero seguros (era 1500)
             maxVelocity: 600, // Muy rápido
             friction: 0.05, // Casi sin fricción (libre)
             arrivalThreshold: 0.5, // Precisión alta

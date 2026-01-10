@@ -74,33 +74,82 @@ const VIBE_CONFIG = {
         homeOnSilence: true,
     },
 };
+/**
+ * 🚗 WAVE 349: PATTERN PERIOD METADATA
+ *
+ * Le dice al GEARBOX cuántos beats toma cada patrón en completar un ciclo.
+ * - 1 = Normal (1 beat = 1 ciclo)
+ * - 2 = HALF-TIME (2 beats = 1 ciclo) ← Los patrones de Techno
+ * - 4 = QUARTER-TIME (4 beats = 1 ciclo)
+ *
+ * El Gearbox multiplica su presupuesto de viaje por este factor.
+ */
+const PATTERN_PERIOD = {
+    // 🎛️ TECHNO: HALF-TIME para sweeps dramáticos
+    sweep: 2, // 2 beats por ciclo
+    skySearch: 4, // 4 beats por ciclo (muy lento pero GRANDIOSO)
+    botStabs: 2, // 🔧 WAVE 349.7: STABS mantienen posición ~1s (2-3 beats @ 120-180 BPM)
+    mirror: 2, // 2 beats por ciclo
+    // 💃 LATINO: Normal timing (caderas rápidas)
+    figure8: 1,
+    circle: 1,
+    snake: 1,
+    // 🎸 ROCK: Mezcla
+    blinder: 1, // Punch es instantáneo
+    vShape: 1,
+    wave: 1,
+    chaos: 1,
+    // 🍸 CHILL: Muy lento
+    ocean: 4, // Ultra slow
+    drift: 4,
+    nebula: 4,
+    aurora: 4,
+    // Fallback
+    static: 1,
+};
 const PATTERNS = {
     // ═══════════════════════════════════════════════════════════════════════
     // 🎛️ TECHNO PATTERNS (Robótico / Lineal)
+    // 🔧 WAVE 349: HALF-TIME FEEL - Sweeps en 2 beats, stabs en 1 beat
+    // Esto duplica el "presupuesto de movimiento" del Gearbox
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * SWEEP: Barrido horizontal completo
-     * Pan oscila full range, Tilt fijo (mínimo movimiento con bass)
+     * SWEEP: Barrido horizontal lineal (EL COCHE FANTÁSTICO)
+     * 🔧 WAVE 350: LINEAR SCAN - Desfase aplicado DENTRO del seno
+     * 🔧 WAVE 350.6: Tilt al HORIZONTE (0°) en vez de al suelo (-15°)
+     *
+     * Cada fixture tiene un desfase de fase, creando una "ola"
+     * que recorre el rig de izquierda a derecha.
+     *
+     * phaseType: 'linear' → HAL NO rota este patrón
      */
-    sweep: (t, phase, audio) => ({
-        x: Math.sin(phase), // FULL RANGE -1 a +1
-        y: -0.2 + audio.bass * 0.15, // Ligero movimiento con bass
-    }),
+    sweep: (t, phase, audio, index = 0, total = 1) => {
+        // Desfase lineal entre fixtures (crea efecto "ola")
+        const fixturePhase = (index / Math.max(total, 1)) * Math.PI * 0.5; // 0 a 90° de desfase
+        // Aplicar desfase DENTRO del seno (no después)
+        // HALF-TIME: phase * 0.5 (2 beats por ciclo completo)
+        const x = Math.sin(phase * 0.5 + fixturePhase);
+        // 🔧 WAVE 350.6: Tilt HORIZONTAL (0° ± bass)
+        // Range: -0.10 a +0.10 (aprox -14° a +14° en hardware)
+        const y = audio.bass * 0.10; // Sutil movimiento vertical con bass
+        return { x, y };
+    },
     /**
      * SKY SEARCH: Pan gira lento, Tilt barre arriba (busca el cielo)
-     * Como si buscara aviones
+     * 🔧 WAVE 349: Half-time para movimientos amplios
      */
     skySearch: (t, phase, audio) => ({
-        x: Math.sin(phase * 0.5), // Pan lento
-        y: -Math.abs(Math.sin(phase)), // Tilt hacia ARRIBA (negativo)
+        x: Math.sin(phase * 0.25), // QUARTER-TIME: 4 beats por ciclo
+        y: -Math.abs(Math.sin(phase * 0.5)), // HALF-TIME para tilt
     }),
     /**
-     * BOT STABS: Posiciones cuantizadas, cambia cada 4 beats
-     * Usa números primos para parecer random pero ser determinista
+     * BOT STABS: Posiciones cuantizadas, cambia cada 2-4 beats
+     * 🔧 WAVE 349: Mantiene agresividad (stabs son instantáneos, no sweeps)
      */
     botStabs: (t, phase, audio) => {
-        // Cuantizar el tiempo a grupos de ~1 segundo (simula 4 beats @ 120bpm)
-        const quantizedT = Math.floor(t * 0.5) * 2;
+        // Cuantizar el tiempo a grupos de ~0.5 segundos (simula 2 beats @ 120bpm)
+        // Más rápido que antes para mantener la agresividad robótica
+        const quantizedT = Math.floor(t * 1.0) * 1; // Cada ~1 segundo
         // Posiciones pseudo-random deterministas
         const x = Math.sin(quantizedT * 1.618); // Golden ratio
         const y = Math.cos(quantizedT * 2.236) * 0.6; // √5
@@ -108,11 +157,11 @@ const PATTERNS = {
     },
     /**
      * MIRROR: Base para efecto puertas del infierno
-     * HAL invierte L/R, aquí solo generamos la oscilación base
+     * 🔧 WAVE 349: Half-time para el sweep base
      */
     mirror: (t, phase, audio) => ({
-        x: Math.sin(phase), // FULL RANGE
-        y: Math.sin(phase * 2) * 0.4 - Math.pow(audio.bass, 2) * 0.3,
+        x: Math.sin(phase * 0.5), // HALF-TIME
+        y: Math.sin(phase) * 0.4 - Math.pow(audio.bass, 2) * 0.3,
     }),
     // ═══════════════════════════════════════════════════════════════════════
     // 💃 LATINO PATTERNS (Curvas / Caderas)
@@ -298,10 +347,21 @@ export class VibeMovementManager {
             }
             this.lastBeatCount = beatCount;
         }
+        // 🔧 WAVE 349: FALLBACK - Si beatCount no llega, usar tiempo para forzar rotación
+        // Cada 8 segundos (~2 compases a 120 BPM) forzamos incremento de bar
+        if (beatCount === 0 && this.frameCount % (30 * 8) === 0) {
+            this.barCount++;
+            console.log(`[🎭 CHOREO] ⚠️ FALLBACK: barCount forced to ${this.barCount} (beatCount not available)`);
+        }
         // Obtener configuración del vibe
         const config = VIBE_CONFIG[vibeId] || VIBE_CONFIG['idle'];
         // === FASE 3: CEREBRO DE DECISIÓN ===
         const patternName = this.selectPattern(vibeId, config, audio, this.barCount);
+        // 🔬 WAVE 349: DEBUG - Pattern rotation logging
+        if (this.frameCount % 120 === 0) { // Cada ~4 segundos
+            const phrase = Math.floor(this.barCount / 8);
+            console.log(`[🎭 CHOREO] Bar:${this.barCount} | Phrase:${phrase} | Pattern:${patternName} | Energy:${audio.energy.toFixed(2)} | BeatCount:${audio.beatCount ?? 'N/A'}`);
+        }
         // Si hay muy poca energía, home position
         if (audio.energy < 0.05 && config.homeOnSilence) {
             return {
@@ -362,19 +422,27 @@ export class VibeMovementManager {
             return emptyIntent;
         }
         // Distancia máxima que el motor puede recorrer en un beat
-        const maxTravelPerBeat = HARDWARE_MAX_SPEED * secondsPerBeat;
+        // 🚗 WAVE 349: Multiplicamos por el período del patrón
+        // Si el patrón toma 2 beats (HALF-TIME), tenemos el DOBLE de presupuesto
+        const patternPeriod = PATTERN_PERIOD[patternName] || 1;
+        const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod;
         // Distancia que el patrón quiere recorrer (full DMX range * scale)
         // Un sweep completo = 255 DMX (0 a 255), pero ida y vuelta = 255 * 2 = 510
         // Sin embargo, para un HALF cycle (solo ida O vuelta), usamos 255
         const requestedTravel = 255 * vibeScale;
         // THE GEARBOX: Factor de reducción automática
-        // Si requestedTravel > maxTravelPerBeat, reducimos la amplitud
-        const gearboxFactor = Math.min(1.0, maxTravelPerBeat / requestedTravel);
+        // Si requestedTravel > maxTravelPerCycle, reducimos la amplitud
+        const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel);
         // Escala final = vibeScale * gearbox
-        const finalScale = vibeScale * gearboxFactor;
+        // 🔧 WAVE 349.5: Clamp a 1.0 para evitar que energyBoost rompa el rango
+        const finalScale = Math.min(1.0, vibeScale * gearboxFactor);
         // Log del gearbox cada ~2 segundos (solo si está reduciendo)
         if (this.frameCount % 60 === 0 && gearboxFactor < 0.95) {
-            console.log(`[🚗 GEARBOX] BPM:${safeBPM} | Requested:${requestedTravel.toFixed(0)} DMX | Budget:${maxTravelPerBeat.toFixed(0)} DMX | Factor:${gearboxFactor.toFixed(2)} (${(gearboxFactor * 100).toFixed(0)}% amplitude)`);
+            console.log(`[🚗 GEARBOX] BPM:${safeBPM} | Pattern:${patternName}(${patternPeriod}x) | Requested:${requestedTravel.toFixed(0)} DMX | Budget:${maxTravelPerCycle.toFixed(0)} DMX | Factor:${gearboxFactor.toFixed(2)} (${(gearboxFactor * 100).toFixed(0)}% amplitude)`);
+        }
+        // Log cuando el Gearbox está en verde (100%)
+        if (this.frameCount % 120 === 0 && gearboxFactor >= 0.95) {
+            console.log(`[🚗 GEARBOX] ✅ FULL THROTTLE | BPM:${safeBPM} | Pattern:${patternName}(${patternPeriod}x) | ${(gearboxFactor * 100).toFixed(0)}% amplitude`);
         }
         const position = {
             x: rawPosition.x * finalScale,
@@ -391,12 +459,16 @@ export class VibeMovementManager {
             const threshold = Math.max(0.05, this.averageEnergy * 0.5);
             console.log(`[🎯 VMM] ${vibeId} | ${patternName} | phrase:${Math.floor(this.barCount / 8)} | E:${audio.energy.toFixed(2)} (avg:${this.averageEnergy.toFixed(2)} thr:${threshold.toFixed(2)}) | Pan:${panDeg}° Tilt:${tiltDeg}°`);
         }
+        // 🔧 WAVE 350: Determinar phaseType según patrón
+        // sweep = linear (HAL no debe rotar), otros = polar (HAL aplica rotación)
+        const phaseType = (patternName === 'sweep') ? 'linear' : 'polar';
         return {
             x: position.x,
             y: position.y,
             pattern: patternName,
             speed: config.baseFrequency,
             amplitude: finalScale,
+            phaseType: phaseType,
             _frequency: config.baseFrequency,
             _phrase: Math.floor(this.barCount / 8),
         };
@@ -407,6 +479,8 @@ export class VibeMovementManager {
      * Lógica híbrida:
      * 1. VETO por energía baja → patrón calmado (WAVE 346: umbral dinámico)
      * 2. SELECCIÓN por phrase (cada 8 compases)
+     *
+     * 🔧 WAVE 349: Umbral reducido para que patrones roten más activamente
      */
     selectPattern(vibeId, config, audio, barCount) {
         const phrase = Math.floor(barCount / 8); // Cambia cada 8 compases
@@ -415,12 +489,13 @@ export class VibeMovementManager {
         if (patterns.length === 0)
             return 'static';
         // ═══════════════════════════════════════════════════════════════════════
-        // WAVE 346: DYNAMIC ENERGY THRESHOLD (AGC-style)
-        // En lugar de 0.3 fijo, usamos 50% del promedio histórico
+        // WAVE 349: REDUCED VETO THRESHOLD
+        // El umbral de veto era demasiado agresivo. Lo bajamos para que
+        // incluso con energía baja (pero > 0.05), los patrones roten.
         // ═══════════════════════════════════════════════════════════════════════
-        const dynamicThreshold = this.averageEnergy * 0.5;
-        const effectiveThreshold = Math.max(0.05, dynamicThreshold); // Nunca menos de 5%
-        // === VETO POR ENERGÍA BAJA (con umbral adaptativo) ===
+        const dynamicThreshold = this.averageEnergy * 0.3; // Bajado de 0.5 a 0.3
+        const effectiveThreshold = Math.max(0.05, dynamicThreshold);
+        // === VETO POR ENERGÍA BAJA (con umbral reducido) ===
         if (audio.energy < effectiveThreshold) {
             // Forzar patrón más calmado (último del array por convención)
             switch (vibeId) {

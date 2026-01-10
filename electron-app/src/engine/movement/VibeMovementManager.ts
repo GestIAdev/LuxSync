@@ -171,22 +171,25 @@ const PATTERN_PERIOD: Record<string, number> = {
   botStabs: 2,     // 🔧 WAVE 349.7: STABS mantienen posición ~1s (2-3 beats @ 120-180 BPM)
   mirror: 2,       // 2 beats por ciclo
   
-  // 💃 LATINO: Normal timing (caderas rápidas)
-  figure8: 1,
-  circle: 1,
-  snake: 1,
+  // 💃 LATINO: HALF-TIME para curvas sensuales (caderas fluidas, no spasmos)
+  // 🔧 WAVE 350.9: Patterns curvos necesitan period 2x como sweep
+  figure8: 2,      // Lissajous suave (era 1x = 35% amplitud RIDÍCULO)
+  circle: 2,       // Rotación elegante
+  snake: 2,        // Onda progresiva
   
-  // 🎸 ROCK: Mezcla
-  blinder: 1,      // Punch es instantáneo
-  vShape: 1,
-  wave: 1,
-  chaos: 1,
+  // 🎸 ROCK: HALF-TIME para impacto dramático
+  // 🔧 WAVE 350.9: Patterns de impacto necesitan amplitud completa
+  blinder: 2,      // Punch al público (era 1x = 46% amplitud PATÉTICO)
+  vShape: 2,       // Formación dinámica necesita period 2x para no aplastarse (197→98 DMX)
+  wave: 2,         // Pink Floyd ondulación lenta
+  chaos: 1,        // Caos DEBE ser rápido (noise extremo)
   
-  // 🍸 CHILL: Muy lento
-  ocean: 4,        // Ultra slow
-  drift: 4,
-  nebula: 4,
-  aurora: 4,
+  // 🍸 CHILL: HALF-TIME como los demás (4x era GLACIAL)
+  // 🔧 WAVE 350.9: Chill debe ser relajado pero NO congelado
+  ocean: 2,        // Olas lentas pero visibles (era 4x = Océano Pacífico TOTAL)
+  drift: 2,        // Deriva suave
+  nebula: 2,       // Nebulosa flotante
+  aurora: 2,       // Aurora boreal
   
   // Fallback
   static: 1,
@@ -311,10 +314,13 @@ const PATTERNS: Record<string, PatternFunction> = {
   /**
    * V-SHAPE: Fixtures forman V apuntando al centro
    * Pares izquierda, impares derecha
+   * 🔧 WAVE 350.9: Spread MEDIO (0.35-0.85) para balance amplitud/velocidad
    */
   vShape: (t, phase, audio, index = 0, total = 1) => {
     const isLeft = index % 2 === 0
-    const spread = Math.sin(phase * 0.2) * 0.3 + 0.6 // 0.3 a 0.9
+    // Spread MEDIO: 0.6 ± 0.25 = [0.35, 0.85] (50% range)
+    // Más amplio que 0.15 (muy lento) pero menos que 0.3 (aplastado)
+    const spread = Math.sin(phase) * 0.25 + 0.6
     return {
       x: isLeft ? -spread : spread,        // Separación L/R
       y: -0.3 + audio.bass * 0.2,          // Miran al frente
@@ -349,29 +355,30 @@ const PATTERNS: Record<string, PatternFunction> = {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * OCEAN: Olas de mar ultra lentas
+   * OCEAN: Olas de mar lentas pero visibles
+   * 🔧 WAVE 350.9: Frecuencia aumentada (0.3 → 0.5) para más vida
    */
   ocean: (t, phase, audio) => ({
-    x: Math.sin(phase * 0.3) * 0.4,        // Pan casi estático
-    y: Math.sin(phase),                     // Tilt como olas
+    x: Math.sin(phase * 0.5) * 0.5,        // Pan lento pero visible
+    y: Math.sin(phase) * 0.6,              // Tilt como olas (amplitud aumentada)
   }),
   
   /**
-   * DRIFT: Movimiento browniano muy lento (polvo flotando)
+   * DRIFT: Deriva browniana suave
+   * 🔧 WAVE 350.9: SIMPLIFICADO - Un solo seno como ocean (múltiples se cancelaban)
    */
-  drift: (t, phase, audio) => {
-    // Múltiples frecuencias muy bajas para parecer random
-    const x = Math.sin(t * 0.1) * 0.4 + Math.sin(t * 0.17) * 0.3
-    const y = Math.cos(t * 0.13) * 0.3 + Math.cos(t * 0.19) * 0.2
-    return { x, y }
-  },
+  drift: (t, phase, audio) => ({
+    x: Math.sin(phase * 0.7) * 0.5,        // Deriva horizontal visible
+    y: Math.cos(phase * 0.6) * 0.4,        // Deriva vertical suave
+  }),
   
   /**
-   * NEBULA: Respiración zen, movimiento mínimo
+   * NEBULA: Nebulosa flotante
+   * 🔧 WAVE 350.9: SIMPLIFICADO - Un solo seno, amplitudes aumentadas
    */
   nebula: (t, phase, audio) => ({
-    x: Math.sin(phase * 0.5) * 0.2,
-    y: Math.sin(phase) * 0.3,
+    x: Math.sin(phase * 0.6) * 0.5,        // Flotación horizontal
+    y: Math.sin(phase * 0.8) * 0.6,        // Flotación vertical
   }),
   
   // ═══════════════════════════════════════════════════════════════════════

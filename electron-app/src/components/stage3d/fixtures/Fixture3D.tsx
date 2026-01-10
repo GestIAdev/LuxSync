@@ -146,6 +146,8 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   const spotLightRef = useRef<THREE.SpotLight>(null)
   const coneRef = useRef<THREE.Mesh>(null)
   const selectionRingRef = useRef<THREE.Mesh>(null)
+  // 🔧 WAVE 350.8: Target dummy para spotlight (hereda rotación del head)
+  const spotLightTargetRef = useRef<THREE.Object3D>(null)
   
   // Local hover state para animación
   const [localHover, setLocalHover] = useState(false)
@@ -275,7 +277,10 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
     
     // 🔥 WAVE 348.5: AMPLIFY rotation for debugging (±180° instead of ±72°)
     const livePanAngle = (livePan - 0.5) * Math.PI * 2.0   // ±180° (was 0.8 = ±72°)
-    const liveTiltAngle = (liveTilt - 0.5) * Math.PI * 1.0  // ±90° (was 0.5 = ±45°)
+    // 🔧 WAVE 350.8: NEGATE tilt - Three.js rotation.x is inverted
+    // liveTilt > 0.5 (above horizon) should rotate UP (negative X)
+    // liveTilt < 0.5 (below horizon) should rotate DOWN (positive X)
+    const liveTiltAngle = -(liveTilt - 0.5) * Math.PI * 1.0  // ±90° INVERTED
     
     // ─────────────────────────────────────────────────────────────────────
     // Moving Head: Aplicar PAN al Yoke, TILT al Head
@@ -310,6 +315,12 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
           liveTiltAngle,
           0.3  // Rápido pero suave
         )
+      }
+      
+      // 🔧 WAVE 350.8: Conectar spotlight al target dummy
+      // El target hereda la rotación del head, apunta donde el head mira
+      if (spotLightRef.current && spotLightTargetRef.current) {
+        spotLightRef.current.target = spotLightTargetRef.current
       }
     }
     
@@ -408,6 +419,9 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
               LIGHT EFFECTS - Nacen del centro del Head
               ═══════════════════════════════════════════════════════════════ */}
           
+          {/* 🔧 WAVE 350.8: Target dummy - hereda rotación del head */}
+          <object3D ref={spotLightTargetRef} position={[0, -10, 0]} />
+          
           {/* SpotLight - Luz dirigida real */}
           {isActive && (
             <spotLight
@@ -422,8 +436,6 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
               castShadow
               shadow-mapSize-width={512}
               shadow-mapSize-height={512}
-              // Apunta hacia abajo (relativo al head)
-              target-position={[0, -10, 0]}
             />
           )}
           
@@ -445,10 +457,10 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
           )}
           
           {/* CONO DE LUZ VOLUMÉTRICO */}
-          {/* 🔧 WAVE 341.7: Cono corregido - punta en fixture, base al suelo */}
+          {/* 🔧 WAVE 350.8: El cono HEREDA la rotación del head (está dentro del group) */}
           {/* ConeGeometry: punta en Y+ local, base en Y- local */}
-          {/* Para que la punta esté en el fixture (Y=0 del grupo), */}
-          {/* posicionamos el centro en Y = -height/2 */}
+          {/* El cono apunta naturalmente hacia -Y (abajo), que es correcto cuando head.rotation.x=0 */}
+          {/* Cuando el head rota en X, el cono lo sigue automáticamente */}
           {isActive && intensity > 0.1 && (() => {
             const coneHeight = 8 + intensity * 4
             const coneRadius = 2 + intensity * 1.5
@@ -456,7 +468,7 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
               <mesh
                 ref={coneRef}
                 position={[0, -coneHeight / 2, 0]}
-                // Sin rotación: punta arriba (fixture), base abajo (suelo)
+                // No rotation - hereda del parent (headRef group)
               >
                 <coneGeometry args={[coneRadius, coneHeight, 24, 1, true]} />
                 <meshBasicMaterial

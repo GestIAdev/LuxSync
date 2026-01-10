@@ -497,6 +497,13 @@ export class HardwareAbstraction {
       const speedToBpm = (intent.movement?.speed || 0.5) * 240  // 0.5 → 120 BPM
       const bpm = Math.max(60, Math.min(180, speedToBpm))  // Clamp to reasonable range
       
+      // 🔍 WAVE 347: Debug movement input
+      if (fixtureIndex === 0 && this.framesRendered % 30 === 0) {
+        const inputPan = Math.round((baseX - 0.5) * 540)
+        const inputTilt = Math.round((baseY - 0.5) * 270)
+        console.log(`[🔍 HAL INPUT] baseX:${baseX.toFixed(3)} baseY:${baseY.toFixed(3)} | Pan:${inputPan}° Tilt:${inputTilt}° | Amp:${intent.movement?.amplitude?.toFixed(2)}`)
+      }
+      
       // Apply phase offset based on fixture index
       // Uses this.currentVibeId which is set by the main render loop
       const phaseOffsetted = this.applyPhaseOffset(

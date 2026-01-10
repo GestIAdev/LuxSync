@@ -47,7 +47,11 @@ import { SeleneLux } from '../core/reactivity'
 import { getModifiersFromKey } from './physics/ElementalModifiers'
 
 // 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
-import { vibeMovementManager, type AudioContext as VMMContext } from './movement/VibeMovementManager'
+import { 
+  vibeMovementManager, 
+  type AudioContext as VMMContext,
+  type MovementIntent as VMMMovementIntent  // WAVE 347: VMM usa su propio tipo (x, y)
+} from './movement/VibeMovementManager'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
@@ -63,6 +67,7 @@ export interface EngineAudioMetrics {
   energy: number      // 0-1 energía global
   beatPhase: number   // 0-1 fase del beat actual
   isBeat: boolean     // true si estamos en un beat
+  beatCount?: number  // WAVE 345: Contador de beats para phrase detection
 }
 
 /**
@@ -594,6 +599,7 @@ export class TitanEngine extends EventEmitter {
     const currentVibeId = this.vibeManager.getActiveVibe().id
     
     // Construir contexto de audio para VMM
+    // WAVE 345: Incluir beatCount para phrase detection
     const vmmContext: VMMContext = {
       energy: audio.energy,
       bass: audio.bass,
@@ -601,25 +607,43 @@ export class TitanEngine extends EventEmitter {
       highs: audio.high,
       bpm: context.bpm,
       beatPhase: audio.beatPhase,
+      beatCount: audio.beatCount || 0,
     }
     
     // 🎯 DELEGAR al VibeMovementManager
-    const intent = vibeMovementManager.generateIntent(currentVibeId, vmmContext)
+    // WAVE 347: VMM devuelve VMMMovementIntent (x, y), debemos convertir a MovementIntent del protocolo (centerX, centerY)
+    const vmmIntent: VMMMovementIntent = vibeMovementManager.generateIntent(currentVibeId, vmmContext)
     
-    // Convertir de coordenadas normalizadas (-1 a +1) a rango 0-1 para HAL
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 345: Convertir coordenadas con FULL RANGE
+    // ═══════════════════════════════════════════════════════════════════════
     // VMM: -1 = extremo izq/arriba, +1 = extremo der/abajo
     // HAL espera: 0 = extremo, 0.5 = centro, 1 = extremo opuesto
-    const centerX = 0.5 + (intent.x * 0.4)  // Clamp implícito: 0.1 - 0.9
-    const centerY = 0.5 + (intent.y * 0.4)  // Clamp implícito: 0.1 - 0.9
+    // 
+    // ANTES (BUG): * 0.4 limitaba a 80% del rango (¡causa de los 15°!)
+    // AHORA: * 0.5 usa 100% del rango
+    // ═══════════════════════════════════════════════════════════════════════
+    const centerX = 0.5 + (vmmIntent.x * 0.5)  // FULL RANGE: 0.0 - 1.0
+    const centerY = 0.5 + (vmmIntent.y * 0.5)  // FULL RANGE: 0.0 - 1.0
     
-    return {
-      pattern: intent.pattern as MovementIntent['pattern'],
-      speed: Math.max(0, Math.min(1, intent.speed)),
-      amplitude: intent.amplitude,
-      centerX: Math.max(0.1, Math.min(0.9, centerX)),
-      centerY: Math.max(0.1, Math.min(0.9, centerY)),
+    // 🔍 WAVE 347: Debug TitanEngine output (sample 3%)
+    if (Math.random() < 0.03) {
+      const outPan = Math.round((centerX - 0.5) * 540)
+      const outTilt = Math.round((centerY - 0.5) * 270)
+      console.log(`[🔍 TITAN OUT] VMM.x:${vmmIntent.x.toFixed(3)} VMM.y:${vmmIntent.y.toFixed(3)} → centerX:${centerX.toFixed(3)} centerY:${centerY.toFixed(3)} | Pan:${outPan}° Tilt:${outTilt}°`)
+    }
+    
+    // Convertir VMMMovementIntent → MovementIntent del protocolo
+    const protocolIntent: MovementIntent = {
+      pattern: vmmIntent.pattern as MovementIntent['pattern'],
+      speed: Math.max(0, Math.min(1, vmmIntent.speed)),
+      amplitude: vmmIntent.amplitude,
+      centerX: Math.max(0, Math.min(1, centerX)),  // WAVE 345: Full range 0-1
+      centerY: Math.max(0, Math.min(1, centerY)),  // WAVE 345: Full range 0-1
       beatSync: true,
     }
+    
+    return protocolIntent
   }
   
   /**

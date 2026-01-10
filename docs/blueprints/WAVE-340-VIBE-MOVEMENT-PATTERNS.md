@@ -485,26 +485,26 @@ const applyDynamicOptics = (
 - [x] `static` - Mejorado con micro-respiración ✅ WAVE 340.1
 - [x] Tipos actualizados en LightingIntent.ts y types.ts ✅
 
-### PASO 2: HAL - Phase Offset (🐍 SNAKE)
-- [ ] Crear función `applyPhaseOffset()`
-- [ ] Configurar offset por vibe:
-  - Techno: 0 (sync) o π (alternado)
-  - Latino: π/4 (45° cadena)
-  - Rock: π/3 (60° ondulante)
-  - Chill: π/2 (90° ola lenta)
-- [ ] Aplicar offset en el loop de fixtures antes de physics
+### PASO 2: HAL - Phase Offset (🐍 SNAKE) ✅ COMPLETADO
+- [x] Crear función `applyPhaseOffset()` ✅ WAVE 340.1
+- [x] Configurar offset por vibe: ✅
+  - Techno: π (alternado par/impar - puertas del infierno)
+  - Latino: π/4 (45° cadena de caderas)
+  - Rock: π/3 (60° ondulante wall of light)
+  - Chill: π/2 (90° ola de mar lenta)
+- [x] Aplicar offset en el loop de fixtures antes de physics ✅
 
-### PASO 3: HAL - Óptica Dinámica (👁️ BREATHING)
-- [ ] Crear función `applyDynamicOptics()`
-- [ ] Chill: Zoom respira con movimiento
-- [ ] Rock: Focus punch en beat (nítido 50ms)
-- [ ] Techno: Beam pulsa con kick
-- [ ] Latino: Zoom sigue amplitud
+### PASO 3: HAL - Óptica Dinámica (👁️ BREATHING) ✅ COMPLETADO
+- [x] Crear función `applyDynamicOptics()` ✅ WAVE 340.1
+- [x] Chill: Zoom respira con movimiento (20s ciclo) ✅
+- [x] Rock: Focus punch en beat (nítido primeros 10% del beat) ✅
+- [x] Techno: Beam pulsa con kick (decay cuadrático) ✅
+- [x] Latino: Zoom sigue amplitud de movimiento ✅
 
-### PASO 4: Actualizar Perfiles de Vibe
-- [ ] Verificar `allowedPatterns` en cada perfil
-- [ ] Añadir parámetros de `phaseOffset` por vibe
-- [ ] Añadir parámetros de `opticsMode` por vibe
+### PASO 4: Actualizar Perfiles de Vibe ✅ YA EXISTÍA
+- [x] Verificar `allowedPatterns` en cada perfil → VibeMovementPresets.ts
+- [x] Parámetros de física por vibe → MOVEMENT_PRESETS
+- [x] Parámetros de óptica base por vibe → OpticsConfig
 
 ### PASO 5: Testing Visual
 - [ ] Techno: Sables láser scanning ✓ (ya funciona)

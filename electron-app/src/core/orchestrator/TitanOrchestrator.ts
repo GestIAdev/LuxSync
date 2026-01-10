@@ -426,6 +426,12 @@ export class TitanOrchestrator {
         timestamp: Date.now()
       }
       
+      // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
+      if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
+        const f0 = truth.hardware.fixtures[0]
+        console.log(`[📡 BROADCAST] fix_0 | pan=${f0.pan.toFixed(3)} tilt=${f0.tilt.toFixed(3)} | physPan=${f0.physicalPan.toFixed(3)}`)
+      }
+      
       this.onBroadcast(truth)
       
       // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI

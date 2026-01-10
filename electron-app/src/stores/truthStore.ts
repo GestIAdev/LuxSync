@@ -128,8 +128,17 @@ export const selectCognitive = selectConsciousness
 /** Selector: Musical Context */
 export const selectContext = (state: TruthState) => state.truth.context
 
-/** Selector: Hardware state */
-export const selectHardware = (state: TruthState) => state.truth.hardware
+/** 
+ * Selector: Hardware state
+ * 🔧 WAVE 347.8: Returns a SHALLOW COPY to force React re-renders
+ * The backend mutates fixture properties (pan, tilt) but keeps same array reference
+ * By returning { ...hardware, fixtures: [...fixtures] }, we ensure React detects changes
+ */
+export const selectHardware = (state: TruthState) => {
+  const hardware = state.truth.hardware
+  // Force new reference for fixtures array so React re-renders
+  return hardware ? { ...hardware, fixtures: [...(hardware.fixtures || [])] } : hardware
+}
 
 /** Selector: Intensity & Saturation (from intent) */
 export const selectColorParams = (state: TruthState) => ({

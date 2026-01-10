@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTruthStore } from '../stores/truthStore'
+import { injectTransientTruth } from '../stores/transientStore'
 import type { SeleneTruth } from '../core/protocol/SeleneProtocol'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,8 +76,12 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
     
     // Suscribirse al canal de la verdad (TITAN 2.0)
     const removeListener = window.lux.onTruthUpdate((data: SeleneTruth) => {
-      // Actualizar el store
+      // 🔥 WAVE 348: DUAL UPDATE
+      // 1. Zustand store (para layout changes, vibe changes - cosas LENTAS)
       setTruth(data)
+      
+      // 2. Transient store (para physics - 60fps directo a Three.js)
+      injectTransientTruth(data)
       
       // Callback opcional
       if (onData) {

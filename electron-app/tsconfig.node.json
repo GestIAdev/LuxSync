@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
-    "composite": true,
+    "composite": false,
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "./dist-electron",
+    "declaration": false,
+    "outDir": "./dist-electron-backend",
     "target": "ES2020",
     "downlevelIteration": true,
     "jsx": "react-jsx",
@@ -23,8 +22,13 @@
     "src/engine/**/*.ts",
     "src/engines/**/*.ts",
     "src/hal/**/*.ts",
-    "src/stores/**/*.ts",
     "src/workers/**/*.ts",
     "src/vite-env.d.ts"
+  ],
+  "exclude": [
+    "src/stores/**/*.ts",
+    "src/components/**/*.tsx",
+    "src/hooks/**/*.ts",
+    "**/__tests__/**"
   ]
 }

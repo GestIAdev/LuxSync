@@ -421,9 +421,17 @@ export const StageSimulator2: React.FC = () => {
         // Uses zoom for beam width (Beam→Wash)
         // Uses focus for edge sharpness (Sharp→Nebula)
         if (type === 'moving' && intensity > 0.05) {
+          // ═══════════════════════════════════════════════════════════════════
+          // 🎛️ WAVE 346: 2D PROJECTION FIX
+          // Normalizar physicalPan al rango 0-1 para evitar conos fuera de canvas
+          // physicalPan puede venir en cualquier rango (ej: -270 a +270 grados)
+          // Lo normalizamos a 0-1 asumiendo rango físico de 540° (DMX 0-255)
+          // ═══════════════════════════════════════════════════════════════════
+          const normalizedPan = Math.max(0, Math.min(1, physicalPan ?? 0.5))
+          
           // 🎛️ WAVE 339: Use PHYSICAL position (interpolated by physics engine)
           // This shows the ACTUAL fixture position, not the target
-          const beamAngle = (physicalPan - 0.5) * Math.PI * 0.6; // ±54°
+          const beamAngle = (normalizedPan - 0.5) * Math.PI * 0.6; // ±54°
           
           // Beam length scales with intensity
           const beamLength = 120 + intensity * 280;

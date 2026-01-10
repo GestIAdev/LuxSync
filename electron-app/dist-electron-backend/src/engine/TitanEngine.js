@@ -1,0 +1,564 @@
+/**
+ * ⚡ WAVE 217: TITAN ENGINE
+ * 🧠 WAVE 271: SYNAPTIC RESURRECTION
+ *
+ * Motor de iluminación reactiva PURO. No conoce DMX ni hardware.
+ * Recibe MusicalContext del Cerebro → Devuelve LightingIntent al HAL.
+ *
+ * FILOSOFÍA:
+ * - Este motor es AUTÓNOMO: no depende de Workers, lastColors, ni trinityData
+ * - Solo calcula QUÉ queremos expresar, no CÓMO se hace en hardware
+ * - Los Vibes definen las restricciones, el motor las respeta
+ *
+ * 🧠 WAVE 271: STABILIZATION LAYER
+ * - KeyStabilizer: Buffer 12s, locking 10s - evita cambios frenéticos de Key
+ * - EnergyStabilizer: Rolling 2s, DROP FSM - suaviza energía, detecta drops
+ * - MoodArbiter: Buffer 10s, locking 5s - BRIGHT/DARK/NEUTRAL estables
+ * - StrategyArbiter: Rolling 15s, locking 15s - Analogous/Complementary estable
+ *
+ * @layer ENGINE (Motor)
+ * @version TITAN 2.0 + WAVE 271
+ */
+import { EventEmitter } from 'events';
+import { createDefaultLightingIntent, withHex, } from '../core/protocol/LightingIntent';
+import { SeleneColorEngine } from './color/SeleneColorEngine';
+import { getColorConstitution } from './color/colorConstitutions';
+import { VibeManager } from './vibe/VibeManager';
+// 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
+import { KeyStabilizer } from './color/KeyStabilizer';
+import { EnergyStabilizer } from './color/EnergyStabilizer';
+import { MoodArbiter } from './color/MoodArbiter';
+import { StrategyArbiter } from './color/StrategyArbiter';
+// ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
+import { SeleneLux } from '../core/reactivity';
+import { getModifiersFromKey } from './physics/ElementalModifiers';
+// 🎯 WAVE 343: OPERATION CLEAN SLATE - Movement Manager
+import { vibeMovementManager } from './movement/VibeMovementManager';
+// ═══════════════════════════════════════════════════════════════════════════
+// TITAN ENGINE CLASS
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * ⚡ TITAN ENGINE
+ *
+ * El corazón del sistema de iluminación reactiva.
+ *
+ * @example
+ * ```typescript
+ * const engine = new TitanEngine()
+ * engine.setVibe('fiesta-latina')
+ *
+ * // En el loop:
+ * const intent = engine.update(context, audioMetrics)
+ * hal.render(intent, fixtures)
+ * ```
+ */
+export class TitanEngine extends EventEmitter {
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSTRUCTOR
+    // ═══════════════════════════════════════════════════════════════════════
+    constructor(config = {}) {
+        super();
+        // 🧠 WAVE 271: Cached stabilized state (for telemetry/debug)
+        // 🌡️ WAVE 283: Added thermalTemperature for UI sync
+        this.lastStabilizedState = {
+            stableKey: null,
+            stableEmotion: 'NEUTRAL',
+            stableStrategy: 'analogous',
+            smoothedEnergy: 0,
+            isDropActive: false,
+            thermalTemperature: 4500,
+        };
+        this.config = {
+            targetFps: config.targetFps ?? 60,
+            debug: config.debug ?? false,
+            // WAVE 255: Force IDLE on startup - system starts in blackout
+            initialVibe: config.initialVibe ?? 'idle',
+        };
+        // Inicializar sub-módulos
+        // 🔥 WAVE 269: SeleneColorEngine es estático, no necesita instanciarse
+        this.vibeManager = VibeManager.getInstance();
+        // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Instanciar Stabilizers
+        this.keyStabilizer = new KeyStabilizer();
+        this.energyStabilizer = new EnergyStabilizer();
+        this.moodArbiter = new MoodArbiter();
+        this.strategyArbiter = new StrategyArbiter();
+        // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
+        this.nervousSystem = new SeleneLux({ debug: this.config.debug });
+        // Establecer vibe inicial
+        this.vibeManager.setActiveVibe(this.config.initialVibe);
+        // Inicializar estado
+        this.state = {
+            currentIntent: createDefaultLightingIntent(),
+            lastPalette: this.createDefaultPalette(),
+            frameCount: 0,
+            lastFrameTime: Date.now(),
+            previousEnergy: 0,
+            previousBass: 0,
+        };
+        console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST)`);
+        console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`);
+        console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`);
+        console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`);
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // PUBLIC API
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎯 MÉTODO PRINCIPAL: Actualiza el motor con el contexto musical actual.
+     *
+     * Este es el punto de entrada del loop de renderizado.
+     * Recibe el análisis musical del Cerebro y produce un LightingIntent
+     * que describe QUÉ queremos expresar visualmente.
+     *
+     * @param context - Contexto musical del Cerebro (TrinityBrain)
+     * @param audio - Métricas de audio en tiempo real
+     * @returns LightingIntent para el HAL
+     */
+    update(context, audio) {
+        const now = Date.now();
+        const deltaTime = now - this.state.lastFrameTime;
+        this.state.lastFrameTime = now;
+        this.state.frameCount++;
+        // Obtener perfil del vibe actual
+        const vibeProfile = this.vibeManager.getActiveVibe();
+        // ─────────────────────────────────────────────────────────────────────
+        // 🧠 WAVE 271: STABILIZATION LAYER
+        // Procesar datos crudos → datos estabilizados (anti-epilepsia)
+        // ─────────────────────────────────────────────────────────────────────
+        // 1. ENERGY STABILIZER: Rolling 2s + DROP State Machine
+        const energyOutput = this.energyStabilizer.update(context.energy);
+        // 2. KEY STABILIZER: Buffer 12s, locking 10s
+        const keyInput = {
+            key: context.key,
+            confidence: context.confidence,
+            energy: energyOutput.smoothedEnergy, // Usar energía suavizada para ponderación
+        };
+        const keyOutput = this.keyStabilizer.update(keyInput);
+        // 3. MOOD ARBITER: Buffer 10s, locking 5s → BRIGHT/DARK/NEUTRAL
+        const moodInput = {
+            mode: context.mode,
+            mood: context.mood,
+            confidence: context.confidence,
+            energy: energyOutput.smoothedEnergy,
+            key: keyOutput.stableKey, // Usar key estabilizada
+        };
+        const moodOutput = this.moodArbiter.update(moodInput);
+        // 4. STRATEGY ARBITER: Rolling 15s → Analogous/Complementary/Triadic
+        const strategyInput = {
+            syncopation: context.syncopation,
+            sectionType: context.section.type,
+            energy: energyOutput.instantEnergy, // Usar energía instantánea para drops
+            confidence: context.confidence,
+            isRelativeDrop: energyOutput.isRelativeDrop,
+            isRelativeBreakdown: energyOutput.isRelativeBreakdown,
+            vibeId: vibeProfile.id,
+        };
+        const strategyOutput = this.strategyArbiter.update(strategyInput);
+        // 🧠 Cachear estado estabilizado (para telemetría y debug)
+        // 🌡️ WAVE 283: Ahora incluye thermalTemperature del MoodArbiter
+        this.lastStabilizedState = {
+            stableKey: keyOutput.stableKey,
+            stableEmotion: moodOutput.stableEmotion,
+            stableStrategy: strategyOutput.stableStrategy,
+            smoothedEnergy: energyOutput.smoothedEnergy,
+            isDropActive: energyOutput.isRelativeDrop,
+            thermalTemperature: moodOutput.thermalTemperature,
+        };
+        // Log cambios importantes de estabilización (cada 60 frames si cambio relevante)
+        // 🌡️ WAVE 283: Añadido thermalTemperature al log
+        if (this.state.frameCount % 60 === 0 && context.energy > 0.05) {
+            if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
+                console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`);
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+        // 1. 🔥 WAVE 269: CALCULAR PALETA CON SELENE COLOR ENGINE (EL FERRARI)
+        //    🧠 WAVE 271: Ahora usa datos ESTABILIZADOS
+        // ─────────────────────────────────────────────────────────────────────
+        // Construir ExtendedAudioAnalysis desde MusicalContext + Audio + STABILIZED
+        const audioAnalysis = {
+            timestamp: now,
+            frameId: this.state.frameCount,
+            // Trinity Core
+            bpm: context.bpm,
+            onBeat: audio.isBeat,
+            beatPhase: context.beatPhase,
+            beatStrength: audio.bass,
+            // Spectrum
+            bass: audio.bass,
+            mid: audio.mid,
+            treble: audio.high,
+            // 🧠 WAVE 271: Top-level usa datos ESTABILIZADOS (no crudos)
+            syncopation: context.syncopation,
+            // Mood estabilizado: BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
+            mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
+                moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',
+            // Key ESTABILIZADA (no la cruda que cambia cada frame)
+            key: keyOutput.stableKey ?? undefined,
+            // Energy SUAVIZADA (no la cruda que parpadea)
+            energy: energyOutput.smoothedEnergy,
+            vibeId: vibeProfile.id,
+            // Wave8 rich data (reconstruido con datos estabilizados)
+            wave8: {
+                harmony: {
+                    key: keyOutput.stableKey, // 🧠 KEY ESTABILIZADA
+                    mode: context.mode === 'major' ? 'major' :
+                        context.mode === 'minor' ? 'minor' : 'minor',
+                    mood: context.mood,
+                },
+                rhythm: {
+                    syncopation: context.syncopation,
+                },
+                genre: {
+                    primary: context.genre.subGenre || context.genre.macro || 'unknown',
+                },
+                section: {
+                    type: context.section.current,
+                },
+            },
+        };
+        // Obtener la Constitución del Vibe actual
+        const constitution = getColorConstitution(vibeProfile.id);
+        // 🎨 GENERAR PALETA CON EL FERRARI
+        const selenePalette = SeleneColorEngine.generate(audioAnalysis, constitution);
+        // Convertir SelenePalette → ColorPalette
+        const palette = this.selenePaletteToColorPalette(selenePalette);
+        this.state.lastPalette = palette;
+        // Log cromático (cada 60 frames = 1 segundo)
+        if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
+            SeleneColorEngine.logChromaticAudit({ key: context.key, mood: context.mood, energy: context.energy }, selenePalette, vibeProfile.id);
+        }
+        // ─────────────────────────────────────────────────────────────────────
+        // ⚡ WAVE 274: SISTEMA NERVIOSO - Procesar física reactiva por género
+        // ─────────────────────────────────────────────────────────────────────
+        const elementalMods = getModifiersFromKey(keyOutput.stableKey);
+        // Extraer hue primario de la paleta Selene (HSL)
+        const primaryHue = selenePalette.primary.h;
+        // Actualizar sistema nervioso con datos de la trinidad + paleta + mods zodiacales
+        const nervousOutput = this.nervousSystem.updateFromTitan({
+            activeVibe: vibeProfile.id,
+            primaryHue: primaryHue,
+            stableKey: keyOutput.stableKey,
+            bpm: context.bpm,
+            section: context.section.type, // 🆕 WAVE 290: Sección para White Puncture
+        }, palette, {
+            normalizedBass: audio.bass,
+            normalizedMid: audio.mid,
+            normalizedTreble: audio.high,
+            avgNormEnergy: energyOutput.smoothedEnergy,
+        }, elementalMods);
+        // Log del sistema nervioso (cada 60 frames si hay energía)
+        if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
+            console.log(`[TitanEngine ⚡] NervousSystem: Physics=${nervousOutput.physicsApplied} Strobe=${nervousOutput.isStrobeActive} Element=${elementalMods.elementName}`);
+        }
+        // ─────────────────────────────────────────────────────────────────────
+        // 2. CALCULAR INTENSIDAD GLOBAL
+        // ─────────────────────────────────────────────────────────────────────
+        const masterIntensity = this.calculateMasterIntensity(audio, vibeProfile);
+        // ─────────────────────────────────────────────────────────────────────
+        // 3. CALCULAR INTENCIONES POR ZONA
+        // 🔥 WAVE 290.1: Si physics=latino, usar zoneIntensities del NervousSystem
+        // ⚡ WAVE 290.3: Si physics=techno, usar zoneIntensities del NervousSystem
+        // 🎸 WAVE 298.5: Si physics=rock, usar zoneIntensities del NervousSystem
+        // 🌊 WAVE 315.3: Si physics=chill, usar zoneIntensities del NervousSystem
+        // ─────────────────────────────────────────────────────────────────────
+        let zones = this.calculateZoneIntents(audio, context, vibeProfile);
+        // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
+        if (nervousOutput.physicsApplied === 'latino' ||
+            nervousOutput.physicsApplied === 'techno' ||
+            nervousOutput.physicsApplied === 'rock' ||
+            nervousOutput.physicsApplied === 'chill') {
+            const ni = nervousOutput.zoneIntensities;
+            zones = {
+                front: { intensity: ni.front, paletteRole: 'primary' },
+                back: { intensity: ni.back, paletteRole: 'accent' },
+                left: { intensity: ni.mover, paletteRole: 'secondary' },
+                right: { intensity: ni.mover, paletteRole: 'secondary' },
+                ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
+            };
+        }
+        // ─────────────────────────────────────────────────────────────────────
+        // 4. CALCULAR MOVIMIENTO
+        // ─────────────────────────────────────────────────────────────────────
+        const movement = this.calculateMovement(audio, context, vibeProfile);
+        // ─────────────────────────────────────────────────────────────────────
+        // 5. CALCULAR EFECTOS ACTIVOS
+        // ─────────────────────────────────────────────────────────────────────
+        const effects = this.calculateEffects(audio, context, vibeProfile);
+        // ─────────────────────────────────────────────────────────────────────
+        // 6. CONSTRUIR LIGHTING INTENT
+        // ─────────────────────────────────────────────────────────────────────
+        const intent = {
+            palette,
+            masterIntensity,
+            zones,
+            movement,
+            effects,
+            source: 'procedural',
+            timestamp: now,
+        };
+        // ─────────────────────────────────────────────────────────────────────
+        // WAVE 257: Throttled debug log (every second = 30 frames)
+        // ─────────────────────────────────────────────────────────────────────
+        if (this.state.frameCount % 30 === 0 && audio.energy > 0.05) {
+            console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${audio.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`);
+        }
+        // Guardar estado para deltas
+        this.state.previousEnergy = audio.energy;
+        this.state.previousBass = audio.bass;
+        this.state.currentIntent = intent;
+        // Debug logging
+        if (this.config.debug && this.state.frameCount % 60 === 0) {
+            console.log(`[TitanEngine] Frame ${this.state.frameCount}:`, {
+                vibe: vibeProfile.id,
+                energy: audio.energy.toFixed(2),
+                intensity: masterIntensity.toFixed(2),
+            });
+        }
+        return intent;
+    }
+    /**
+     * Cambia el vibe activo del motor.
+     */
+    setVibe(vibeId) {
+        this.vibeManager.setActiveVibe(vibeId);
+        console.log(`[TitanEngine] 🎭 Vibe changed to: ${vibeId}`);
+        this.emit('vibe-changed', vibeId);
+    }
+    /**
+     * Obtiene el vibe actual.
+     */
+    getCurrentVibe() {
+        return this.vibeManager.getActiveVibe().id;
+    }
+    /**
+     * Obtiene el intent actual (para UI/debug).
+     */
+    getCurrentIntent() {
+        return this.state.currentIntent;
+    }
+    /**
+     * Obtiene estadísticas del motor.
+     */
+    getStats() {
+        return {
+            frameCount: this.state.frameCount,
+            fps: this.config.targetFps,
+            vibeId: this.vibeManager.getActiveVibe().id,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIVATE: CÁLCULOS INTERNOS
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🔥 WAVE 269: Convierte SelenePalette a ColorPalette
+     * SelenePalette usa HSL en rango 0-360/0-100, ColorPalette usa 0-1
+     */
+    selenePaletteToColorPalette(selene) {
+        // Función para normalizar HSL de Selene (0-360, 0-100, 0-100) a LightingIntent (0-1)
+        const normalizeHSL = (color) => {
+            const normalized = {
+                h: color.h / 360,
+                s: color.s / 100,
+                l: color.l / 100,
+            };
+            return withHex(normalized);
+        };
+        return {
+            primary: normalizeHSL(selene.primary),
+            secondary: normalizeHSL(selene.secondary),
+            accent: normalizeHSL(selene.accent),
+            ambient: normalizeHSL(selene.ambient),
+            strategy: selene.meta.strategy,
+        };
+    }
+    /**
+     * Calcula la intensidad global basada en audio y restricciones del vibe.
+     */
+    calculateMasterIntensity(audio, vibeProfile) {
+        const { floor, ceiling } = vibeProfile.dimmer;
+        // Mapear energía al rango permitido
+        const rawIntensity = audio.energy;
+        const mappedIntensity = floor + (rawIntensity * (ceiling - floor));
+        return Math.max(0, Math.min(1, mappedIntensity));
+    }
+    /**
+     * Calcula las intenciones de color/intensidad por zona.
+     */
+    calculateZoneIntents(audio, _context, _vibeProfile) {
+        // Distribución básica por zona basada en frecuencias
+        const zones = {
+            front: {
+                intensity: audio.mid * 0.8 + audio.bass * 0.2,
+                paletteRole: 'primary',
+            },
+            back: {
+                intensity: audio.bass * 0.6 + audio.energy * 0.4,
+                paletteRole: 'accent',
+            },
+            left: {
+                intensity: audio.high * 0.5 + audio.energy * 0.5,
+                paletteRole: 'secondary',
+            },
+            right: {
+                intensity: audio.high * 0.5 + audio.energy * 0.5,
+                paletteRole: 'secondary',
+            },
+            ambient: {
+                intensity: audio.energy * 0.3,
+                paletteRole: 'ambient',
+            },
+        };
+        return zones;
+    }
+    /**
+     * ═══════════════════════════════════════════════════════════════════════════
+     * 🎯 WAVE 343: OPERATION CLEAN SLATE
+     * ═══════════════════════════════════════════════════════════════════════════
+     *
+     * Calcula el movimiento de fixtures motorizados.
+     *
+     * ANTES (WAVE 340-342): Matemática de patrones HARDCODED aquí 🚮
+     * AHORA: Delega TODO al VibeMovementManager ✅
+     *
+     * TitanEngine ya no conoce:
+     * - Math.sin/cos para patrones
+     * - Frecuencias por vibe
+     * - Amplitudes por vibe
+     * - Lógica de figure8/mirror/circle/etc
+     *
+     * Solo sabe: "Oye VMM, dame movimiento para este vibe y audio"
+     * ═══════════════════════════════════════════════════════════════════════════
+     */
+    calculateMovement(audio, context, _vibeProfile) {
+        // Obtener vibe actual
+        const currentVibeId = this.vibeManager.getActiveVibe().id;
+        // Construir contexto de audio para VMM
+        // WAVE 345: Incluir beatCount para phrase detection
+        const vmmContext = {
+            energy: audio.energy,
+            bass: audio.bass,
+            mids: audio.mid,
+            highs: audio.high,
+            bpm: context.bpm,
+            beatPhase: audio.beatPhase,
+            beatCount: audio.beatCount || 0,
+        };
+        // 🎯 DELEGAR al VibeMovementManager
+        // WAVE 347: VMM devuelve VMMMovementIntent (x, y), debemos convertir a MovementIntent del protocolo (centerX, centerY)
+        const vmmIntent = vibeMovementManager.generateIntent(currentVibeId, vmmContext);
+        // ═══════════════════════════════════════════════════════════════════════
+        // WAVE 345: Convertir coordenadas con FULL RANGE
+        // ═══════════════════════════════════════════════════════════════════════
+        // VMM: -1 = extremo izq/arriba, +1 = extremo der/abajo
+        // HAL espera: 0 = extremo, 0.5 = centro, 1 = extremo opuesto
+        // 
+        // ANTES (BUG): * 0.4 limitaba a 80% del rango (¡causa de los 15°!)
+        // AHORA: * 0.5 usa 100% del rango
+        // ═══════════════════════════════════════════════════════════════════════
+        const centerX = 0.5 + (vmmIntent.x * 0.5); // FULL RANGE: 0.0 - 1.0
+        const centerY = 0.5 + (vmmIntent.y * 0.5); // FULL RANGE: 0.0 - 1.0
+        // 🔍 WAVE 347: Debug TitanEngine output (sample 3%)
+        if (Math.random() < 0.03) {
+            const outPan = Math.round((centerX - 0.5) * 540);
+            const outTilt = Math.round((centerY - 0.5) * 270);
+            console.log(`[🔍 TITAN OUT] VMM.x:${vmmIntent.x.toFixed(3)} VMM.y:${vmmIntent.y.toFixed(3)} → centerX:${centerX.toFixed(3)} centerY:${centerY.toFixed(3)} | Pan:${outPan}° Tilt:${outTilt}°`);
+        }
+        // Convertir VMMMovementIntent → MovementIntent del protocolo
+        const protocolIntent = {
+            pattern: vmmIntent.pattern,
+            speed: Math.max(0, Math.min(1, vmmIntent.speed)),
+            amplitude: vmmIntent.amplitude,
+            centerX: Math.max(0, Math.min(1, centerX)), // WAVE 345: Full range 0-1
+            centerY: Math.max(0, Math.min(1, centerY)), // WAVE 345: Full range 0-1
+            beatSync: true,
+        };
+        return protocolIntent;
+    }
+    /**
+     * Calcula los efectos activos.
+     */
+    calculateEffects(audio, _context, vibeProfile) {
+        const effects = [];
+        const { allowed, maxStrobeRate } = vibeProfile.effects;
+        // Strobe en peaks extremos (si está permitido)
+        if (allowed.includes('strobe') && maxStrobeRate > 0 && audio.energy > 0.95) {
+            effects.push({
+                type: 'strobe',
+                intensity: audio.energy,
+                speed: maxStrobeRate / 20, // Normalizar a 0-1
+                duration: 0,
+                zones: [],
+            });
+        }
+        return effects;
+    }
+    /**
+     * Crea una paleta por defecto (para inicialización).
+     */
+    createDefaultPalette() {
+        return {
+            primary: { h: 0.08, s: 1.0, l: 0.5 }, // Oro
+            secondary: { h: 0.95, s: 0.9, l: 0.5 }, // Magenta
+            accent: { h: 0.55, s: 1.0, l: 0.5 }, // Cyan
+            ambient: { h: 0.08, s: 0.3, l: 0.2 }, // Oro oscuro
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 271: STABILIZATION GETTERS (para telemetría/UI)
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Obtener el estado estabilizado actual (para debug/telemetría)
+     */
+    getStabilizedState() {
+        return { ...this.lastStabilizedState };
+    }
+    /**
+     * Obtener la Key estabilizada (12s buffer, 10s locking)
+     */
+    getStableKey() {
+        return this.lastStabilizedState.stableKey;
+    }
+    /**
+     * Obtener la emoción estabilizada (BRIGHT/DARK/NEUTRAL)
+     */
+    getStableEmotion() {
+        return this.lastStabilizedState.stableEmotion;
+    }
+    /**
+     * Obtener la estrategia de color estabilizada
+     */
+    getStableStrategy() {
+        return this.lastStabilizedState.stableStrategy;
+    }
+    /**
+     * ¿Está activo un DROP?
+     */
+    isDropActive() {
+        return this.lastStabilizedState.isDropActive;
+    }
+    /**
+     * 🌡️ WAVE 283: Obtener la temperatura térmica calculada por MoodArbiter
+     */
+    getThermalTemperature() {
+        return this.lastStabilizedState.thermalTemperature;
+    }
+    /**
+     * 🧹 WAVE 271: Reset de stabilizers (para cambio de canción o vibe)
+     */
+    resetStabilizers() {
+        this.keyStabilizer = new KeyStabilizer();
+        this.energyStabilizer = new EnergyStabilizer();
+        this.moodArbiter = new MoodArbiter();
+        this.strategyArbiter = new StrategyArbiter();
+        this.lastStabilizedState = {
+            stableKey: null,
+            stableEmotion: 'NEUTRAL',
+            stableStrategy: 'analogous',
+            smoothedEnergy: 0,
+            isDropActive: false,
+            thermalTemperature: 4500,
+        };
+        console.log(`[TitanEngine 🧠] Stabilizers RESET`);
+    }
+}

@@ -423,11 +423,17 @@ export class FixturePhysicsDriver {
     let REV_LIMIT_TILT: number
     
     if (maxAccel > 1400) {
-      // 🔧 WAVE 342.5: TECHNO - Ahora con mirror SUAVE (0.25 Hz fijo)
-      // Puede seguir el patrón sin problemas, pero mantenemos límite moderado
-      // para proteger contra cambios de vibe o errores
-      REV_LIMIT_PAN = 15   // ~630°/s - Suficiente para mirror suave
-      REV_LIMIT_TILT = 10  // ~420°/s
+      // 🔧 WAVE 347.5: TECHNO - VELOCITY LIBERATION
+      // Los patterns como SWEEP se mueven CONTINUAMENTE, el target cambia cada frame.
+      // Con REV_LIMIT bajo, el mover persigue un blanco que se mueve más rápido.
+      // 
+      // SOLUCIÓN: REV_LIMIT MUY ALTO + snapFactor alto = sigue el target sin lag
+      // Riesgo: Motores baratos pueden sufrir, pero es la única forma de ver el rango completo
+      // 
+      // Si tus movers son de $50-200 y se rompen, baja esto a 60
+      // Si tus movers son de $500+, puedes subir a 150
+      REV_LIMIT_PAN = 120  // ~5040°/s - BRUTAL pero necesario para sweeps continuos
+      REV_LIMIT_TILT = 60  // ~2520°/s - Suficiente para movimientos verticales
     } else if (maxAccel > 1100) {
       // LATINO - Alta libertad para seguir trayectorias curvas
       REV_LIMIT_PAN = 25   // ~1050°/s - Sigue figure8 sin lag
@@ -450,11 +456,19 @@ export class FixturePhysicsDriver {
     
     if (maxAccel > 1000) {
       // 🔥 SNAP MODE con REV LIMITER para todos los vibes rápidos
-      // snapFactor escala con maxAccel para dar más "punch" a techno
-      // Techno (1500): snapFactor ~0.85 - muy reactivo
-      // Latino (1200): snapFactor ~0.65 - fluido
-      // Rock (1050):   snapFactor ~0.46 - dramático
-      const snapFactor = Math.min(0.85, 0.4 + (maxAccel - 1000) / 800)
+      // 
+      // WAVE 347.7: TECHNO NEEDS INSTANT RESPONSE
+      // Con patterns que se mueven continuamente (sweep), el snapFactor < 1.0
+      // causa que el mover siempre quede atrás persiguiendo el target.
+      // 
+      // snapFactor = 1.0 significa respuesta instantánea (sin damping)
+      // snapFactor < 1.0 significa "smooth" pero con lag
+      // 
+      // Para Techno: Necesitamos snapFactor = 1.0 (instant)
+      // Para Latino/Rock: Podemos usar < 1.0 para suavidad
+      const snapFactor = maxAccel > 1400 
+        ? 1.0  // TECHNO: Respuesta instantánea, sin lag
+        : Math.min(0.85, 0.4 + (maxAccel - 1000) / 800)  // OTROS: Suavizado
       
       let deltaPan = (targetDMX.pan - current.pan) * snapFactor
       let deltaTilt = (targetDMX.tilt - current.tilt) * snapFactor

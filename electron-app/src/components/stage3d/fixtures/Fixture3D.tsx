@@ -24,6 +24,8 @@ import React, { useRef, useMemo, useState, useCallback } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { getTransientFixture } from '../../../stores/transientStore'
+import { useFixtureRender } from '../../../hooks/useFixtureRender'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -222,6 +224,39 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   }, [setHovered, onPointerOut])
   
   // ═════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 348: TRANSIENT UPDATES - Direct Physics Injection
+  // ═════════════════════════════════════════════════════════════════════════
+  // Bypass React/Zustand: Lee directamente del transient store @ 60fps
+  // useFrame ejecuta cada frame ANTES del render de Three.js
+  // ═════════════════════════════════════════════════════════════════════════
+  
+  // Refs para almacenar targets actualizados por transient
+  const transientPanRef = useRef(pan)
+  const transientTiltRef = useRef(tilt)
+  
+  useFrame(() => {
+    // 🎯 LECTURA DIRECTA: Bypass React, lectura del "Ghost Store"
+    const transientFixture = getTransientFixture(id)
+    
+    if (transientFixture) {
+      // Actualizar refs sin causar re-render
+      // Estos valores los usa el segundo useFrame para LERP
+      transientPanRef.current = transientFixture.pan ?? 0.5
+      transientTiltRef.current = transientFixture.tilt ?? 0.5
+      
+      // 🔬 DEBUG: Log every ~1 second
+      if (Math.random() < 0.016) {
+        console.log(`[🔬 Fixture3D TRANSIENT] id=${id} | pan=${transientFixture.pan?.toFixed(3)} → ref=${transientPanRef.current.toFixed(3)}`)
+      }
+    } else {
+      // 🔬 DEBUG: Si no hay datos
+      if (Math.random() < 0.016) {
+        console.log(`[🔬 Fixture3D TRANSIENT] id=${id} | NO DATA from getTransientFixture()`)
+      }
+    }
+  })
+  
+  // ═════════════════════════════════════════════════════════════════════════
   // ANIMATIONS & PAN/TILT UPDATES
   // 🔧 WAVE 342: Fast LERP (0.3) for smooth visual interpolation
   // 3D shows TARGET position with visual smoothing
@@ -229,6 +264,19 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   // ═════════════════════════════════════════════════════════════════════════
   
   useFrame((state) => {
+    // 🔥 WAVE 348: Usar targets del transient store (NO de props)
+    const livePan = transientPanRef.current
+    const liveTilt = transientTiltRef.current
+    
+    // 🔬 DEBUG: Log targets every ~1 second
+    if (Math.random() < 0.016) {
+      console.log(`[🔬 Fixture3D LERP] id=${id} | livePan=${livePan.toFixed(3)} | liveTilt=${liveTilt.toFixed(3)}`)
+    }
+    
+    // 🔥 WAVE 348.5: AMPLIFY rotation for debugging (±180° instead of ±72°)
+    const livePanAngle = (livePan - 0.5) * Math.PI * 2.0   // ±180° (was 0.8 = ±72°)
+    const liveTiltAngle = (liveTilt - 0.5) * Math.PI * 1.0  // ±90° (was 0.5 = ±45°)
+    
     // ─────────────────────────────────────────────────────────────────────
     // Moving Head: Aplicar PAN al Yoke, TILT al Head
     // 🔧 WAVE 342: LERP 0.3 = seguir targets suavemente
@@ -238,18 +286,28 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
     if (type === 'moving') {
       // Yoke rota en Y (PAN) - LERP rápido
       if (yokeRef.current) {
-        yokeRef.current.rotation.y = THREE.MathUtils.lerp(
+        const newRotation = THREE.MathUtils.lerp(
           yokeRef.current.rotation.y,
-          panAngle,
+          livePanAngle,
           0.3  // Rápido pero suave
         )
+        yokeRef.current.rotation.y = newRotation
+        
+        // 🔬 DEBUG: Log rotation aplicada
+        if (Math.random() < 0.016) {
+          console.log(`[🔬 Fixture3D YOKE] id=${id} | target=${livePanAngle.toFixed(3)} | current=${newRotation.toFixed(3)}`)
+        }
+      } else {
+        if (Math.random() < 0.016) {
+          console.log(`[🔬 Fixture3D YOKE] id=${id} | yokeRef.current is NULL!`)
+        }
       }
       
       // Head rota en X (TILT) - LERP rápido
       if (headRef.current) {
         headRef.current.rotation.x = THREE.MathUtils.lerp(
           headRef.current.rotation.x,
-          tiltAngle,
+          liveTiltAngle,
           0.3  // Rápido pero suave
         )
       }

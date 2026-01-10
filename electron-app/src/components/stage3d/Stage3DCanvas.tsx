@@ -50,6 +50,11 @@ const SmartFixture3D: React.FC<any> = ({ layout, truthData, isSelected, isHovere
   // This displays smooth patterns (figure8, circle) without physics lag
   const { color, intensity, pan, tilt } = useFixtureRender(truthData, layout.id, fixtureIndex)
   
+  // 🔍 WAVE 347.8 DEBUG: Log truthData reception
+  if (fixtureIndex === 0 && Math.random() < 0.02) {
+    console.log(`[🔬 Stage3D] layout.id=${layout.id} | truthData=${truthData ? 'EXISTS' : 'UNDEFINED'} | truthId=${truthData?.id ?? 'N/A'} | pan=${truthData?.pan?.toFixed(3) ?? 'N/A'} → ${pan.toFixed(3)}`)
+  }
+  
   return (
     <Fixture3D
       id={layout.id}
@@ -75,6 +80,10 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
   // TRUTH - la única fuente
   const hardware = useTruthStore(selectHardware)
   const palette = useTruthStore(selectPalette)
+  
+  // 🔧 WAVE 347.8: Get fixtures array directly for real-time updates
+  // useMemo with object reference doesn't detect internal property changes
+  const fixtureArray = hardware?.fixtures || []
   
   // SELECTION STORE
   const selectedIds = useSelectionStore(selectSelectedIds)
@@ -103,21 +112,9 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
     return fixtureLayouts.map(l => l.id)
   }, [fixtureLayouts])
   
-  // Crear mapa de valores de fixtures para lookup rápido
-  const fixtureValues = useMemo(() => {
-    const fixtureArray = hardware?.fixtures || []
-    const map = new Map<string, typeof fixtureArray[0]>()
-    
-    fixtureArray.forEach(f => {
-      if (f?.id) {
-        map.set(f.id, f)
-      } else if (f?.dmxAddress) {
-        map.set(`fixture-${f.dmxAddress}`, f)
-      }
-    })
-    
-    return map
-  }, [hardware?.fixtures])
+  // 🔧 WAVE 347.8: REMOVED fixtureValues Map - was causing stale data
+  // The Map lookup with useMemo didn't detect internal property changes (pan, tilt)
+  // Now we use direct array index access in the render loop
   
   // Click en el fondo para deseleccionar todo
   const handleBackgroundClick = useCallback(() => {
@@ -155,8 +152,13 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
       <StageTruss />
       
       {/* FIXTURES */}
+      {/* 🔧 WAVE 348: MATCH BY ID - not by index! */}
+      {/* Index matching was causing data crossover: layout[0]=Front got data from fixture[0]=Mover */}
+      {/* This broke both visual layout AND movement data */}
       {fixtureLayouts.map((layout, index) => {
-        const fixtureData = fixtureValues.get(layout.id)
+        // 🎯 CRITICAL: Match by ID, not by array index!
+        // fixtureLayouts is sorted by zone, fixtureArray comes from backend in different order
+        const fixtureData = fixtureArray.find(f => f?.id === layout.id)
         const isSelected = selectedIds.has(layout.id)
         const isHovered = hoveredId === layout.id
         

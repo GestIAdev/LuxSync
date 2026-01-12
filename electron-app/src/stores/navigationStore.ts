@@ -1,6 +1,7 @@
 /**
  * 🧭 NAVIGATION STORE - Commander Layout Navigation
  * WAVE 9: Gestión de tabs y navegación global
+ * WAVE 361: Added 'constructor' tab for Stage Constructor
  */
 
 import { create } from 'zustand'
@@ -9,7 +10,7 @@ import { create } from 'zustand'
 // TYPES
 // ============================================
 
-export type TabId = 'live' | 'simulate' | 'core' | 'setup'
+export type TabId = 'live' | 'simulate' | 'constructor' | 'core' | 'setup'
 
 export interface TabConfig {
   id: TabId
@@ -33,6 +34,7 @@ export interface NavigationState {
 
 // ============================================
 // TAB CONFIGURATION - WAVE 10.6: Pro Icons
+// WAVE 361: Added CONSTRUCT tab between STAGE and CORE
 // ============================================
 
 export const TABS: TabConfig[] = [
@@ -51,22 +53,29 @@ export const TABS: TabConfig[] = [
     description: 'Visualización del escenario - Canvas 2.0',
   },
   {
+    id: 'constructor',
+    label: 'CONSTRUCT',  // 🆕 WAVE 361: Stage Constructor
+    icon: 'pencil-ruler',  // Lucide: PencilRuler (design/architecture)
+    shortcut: 'Alt+3',
+    description: 'Stage Constructor - Posiciona y configura fixtures',
+  },
+  {
     id: 'core',
     label: 'LUX CORE',
     icon: 'brain',     // Lucide: Brain (AI core)
-    shortcut: 'Alt+3',
+    shortcut: 'Alt+4',
     description: 'Centro de monitorización y diagnóstico de Selene',
   },
   {
     id: 'setup',
     label: 'SETUP',
     icon: 'settings',  // Lucide: Settings (gear)
-    shortcut: 'Alt+4',
+    shortcut: 'Alt+5',
     description: 'Configuración de audio, DMX y fixtures',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['live', 'simulate', 'core', 'setup']
+const TAB_ORDER: TabId[] = ['live', 'simulate', 'constructor', 'core', 'setup']
 
 // ============================================
 // STORE

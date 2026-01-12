@@ -1,0 +1,570 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🏗️ STAGE CONSTRUCTOR VIEW - CSS
+ * WAVE 361: Dark Neon aesthetic matching LuxSync theme
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.stage-constructor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0a0a0f;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOOLBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.constructor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #12121a 0%, #0d0d12 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #22d3ee;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.show-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.dirty-indicator {
+  color: #fbbf24;
+  margin-left: 4px;
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-group {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.tool-btn.active {
+  background: rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn.primary {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
+}
+
+.toolbar-btn.primary:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.25);
+  border-color: #22d3ee;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENT - 3 COLUMNS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.constructor-content {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBARS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.constructor-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #0d0d12;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.library-sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.properties-sidebar {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.sidebar-header svg {
+  color: #22d3ee;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIBRARY SIDEBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.library-section {
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+}
+
+.fixture-list,
+.group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fixture-item,
+.group-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fixture-item:hover,
+.group-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.fixture-type-icon {
+  font-size: 14px;
+}
+
+.fixture-name,
+.group-name {
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fixture-address {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: monospace;
+}
+
+.group-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.group-count {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROPERTIES SIDEBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fixture-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.property-header h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #22d3ee;
+}
+
+.fixture-model {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.property-group {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.property-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.position-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axis-label {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+}
+
+.axis-label.x {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.axis-label.y {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.axis-label.z {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.input-row input:focus {
+  outline: none;
+  border-color: #22d3ee;
+}
+
+.zone-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 4px;
+  color: #22d3ee;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.physics-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.physics-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.physics-row span:first-child {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.physics-value {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: monospace;
+}
+
+.physics-value.on {
+  color: #4ade80;
+}
+
+.physics-value.off {
+  color: #ef4444;
+}
+
+.dmx-info {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.empty-state.small {
+  padding: 20px;
+}
+
+.empty-icon {
+  color: rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.empty-state span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.multi-select-info {
+  padding: 20px;
+  text-align: center;
+}
+
+.multi-select-info p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #22d3ee;
+}
+
+.multi-select-info span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIEWPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.constructor-viewport {
+  position: relative;
+  background: #000000;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.constructor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #000000;
+}
+
+.loading-grid {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.grid-line {
+  width: 4px;
+  height: 40px;
+  background: linear-gradient(180deg, #22d3ee 0%, transparent 100%);
+  animation: gridPulse 1s ease-in-out infinite;
+}
+
+.grid-line:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.grid-line:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    transform: scaleY(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1.5);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #22d3ee;
+  margin-bottom: 4px;
+}
+
+.loading-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

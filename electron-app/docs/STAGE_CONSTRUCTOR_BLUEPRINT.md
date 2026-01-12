@@ -640,12 +640,35 @@ src/core/stage/index.ts           (barrel export)
 src/stores/stageStore.ts          (550+ líneas) - Zustand unificado
 ```
 
-### Fase 2: UI - Stage Grid ⏳ **PENDING**
-- [ ] Crear `StageGrid3D.tsx` con drag & drop
-- [ ] Implementar snap-to-grid
-- [ ] Visualización de zonas como regiones
-- [ ] Multi-selección con box select
-- [ ] Conectar a `stageStore.updateFixturePosition()`
+### Fase 2: UI - Stage Grid ✅ **COMPLETE - WAVE 361**
+- [x] Crear `StageGrid3D.tsx` con React Three Fiber + Drei
+- [x] Implementar Grid infinito estilo Tron (color gris oscuro sutil)
+- [x] OrbitControls (right-click rotate, scroll zoom)
+- [x] Renderizar fixtures desde stageStore (posiciones REALES del JSON)
+- [x] Click to select (integrado con selectionStore)
+- [x] TransformControls (Gizmo) para mover fixtures
+- [x] Persist position on drag end → stageStore.updateFixturePosition()
+- [x] Crear `StageConstructorView.tsx` con layout 3 columnas
+- [x] Sidebar izq: Fixture Library (lista de fixtures + grupos)
+- [x] Sidebar der: Properties Panel (position, zone, physics, DMX)
+- [x] Toolbar superior con Save/Open buttons
+- [x] Añadir tab "CONSTRUCT" en Sidebar (PencilRuler icon)
+- [x] Routing en ContentArea.tsx
+- [x] CSS Dark Neon aesthetic
+
+**Archivos creados en WAVE 361:**
+```
+src/components/views/StageConstructorView.tsx    (290+ líneas)
+src/components/views/StageConstructorView.css    (470+ líneas)
+src/components/views/StageConstructor/StageGrid3D.tsx (320+ líneas)
+```
+
+**Archivos modificados:**
+```
+src/stores/navigationStore.ts       - Added 'constructor' TabId
+src/components/layout/Sidebar.tsx   - Added PencilRuler icon
+src/components/layout/ContentArea.tsx - Added constructor case
+```
 
 ### Fase 3: Grupos & Zonas ⏳ **PENDING**
 - [ ] UI para crear/editar grupos (grupos ya en stageStore)

@@ -2,6 +2,7 @@
  * 📺 CONTENT AREA - Dynamic View Container
  * WAVE 9: Renders active view based on navigation state
  * WAVE 25.5: SimulateView now uses StageSimulator2 (Canvas 2.0)
+ * WAVE 361: Added StageConstructorView for CONSTRUCT tab
  */
 
 import React, { Suspense, lazy } from 'react'
@@ -14,6 +15,8 @@ const LiveView = lazy(() => import('../views/LiveView'))
 const SimulateView = lazy(() => import('../views/StageView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 const SetupView = lazy(() => import('../views/SetupView'))
+// 🏗️ WAVE 361: Stage Constructor
+const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 
 // Loading fallback
 const ViewLoader: React.FC = () => (
@@ -32,6 +35,8 @@ const ContentArea: React.FC = () => {
         return <LiveView />
       case 'simulate':
         return <SimulateView />
+      case 'constructor':
+        return <StageConstructorView />
       case 'core':
         return <LuxCoreView />
       case 'setup':

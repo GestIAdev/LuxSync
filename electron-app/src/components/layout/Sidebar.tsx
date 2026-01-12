@@ -1,27 +1,31 @@
 /**
  * 📱 SIDEBAR - Commander Navigation Panel
  * WAVE 35: Cleaned up - Status moved to Dashboard
+ * WAVE 361: Added CONSTRUCT tab with PencilRuler icon
  */
 
 import React from 'react'
 import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
-import { Activity, Monitor, Settings, LucideIcon, Brain } from 'lucide-react'
+import { Activity, Monitor, Settings, LucideIcon, Brain, PencilRuler } from 'lucide-react'
 import './Sidebar.css'
 
-// Colores por tab
+// Colores por tab - WAVE 361: Added constructor
 const TAB_COLORS: Record<TabId, string> = {
-  'live': '#00fff0',     // Cian
-  'setup': '#a855f7',    // Violeta  
-  'simulate': '#ff00ff', // Magenta
-  'core': '#f59e0b'      // Naranja (Orange-Amber) - LUX CORE
+  'live': '#00fff0',        // Cian
+  'simulate': '#ff00ff',    // Magenta
+  'constructor': '#22d3ee', // Cyan-400 (arquitectónico)
+  'core': '#f59e0b',        // Naranja (Orange-Amber)
+  'setup': '#a855f7',       // Violeta  
 }
 
 // 🎨 WAVE 10.6: Pro Icons (Lucide React)
+// WAVE 361: Added PencilRuler
 const TAB_ICONS: Record<string, LucideIcon> = {
   'activity': Activity,
   'monitor': Monitor,
   'settings': Settings,
   'brain': Brain,
+  'pencil-ruler': PencilRuler,
 }
 
 const Sidebar: React.FC = () => {

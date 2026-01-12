@@ -448,6 +448,35 @@
   color: #ef4444;
 }
 
+/* WAVE 364: Edit Profile Button */
+.edit-profile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 6px;
+  color: #a855f7;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-profile-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #a855f7;
+  transform: translateY(-1px);
+}
+
+.edit-profile-btn:active {
+  transform: translateY(0);
+}
+
 .dmx-info {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
@@ -501,6 +530,99 @@
 .multi-select-info span {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR TABS - WAVE 363
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sidebar-tab.active {
+  background: rgba(34, 211, 238, 0.05);
+  color: #22d3ee;
+  border-bottom: 2px solid #22d3ee;
+}
+
+.sidebar-tab.active svg {
+  color: #22d3ee;
+}
+
+.sidebar-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.loading-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+
+/* Zone Select Dropdown - WAVE 363 */
+.zone-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.zone-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.zone-select:focus {
+  border-color: #22d3ee;
+}
+
+.zone-select option {
+  background: #1a1a24;
+  color: #ffffff;
+  padding: 8px;
+}
+
+/* Zone Toggle Button - WAVE 363 */
+.tool-btn.zone-btn.active {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.3) 0%, rgba(34, 211, 238, 0.2) 100%);
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+  color: #4ade80;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -573,19 +695,23 @@
    SCROLLBAR STYLING
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.sidebar-content::-webkit-scrollbar {
+.sidebar-content::-webkit-scrollbar,
+.sidebar-tab-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar-content::-webkit-scrollbar-track {
+.sidebar-content::-webkit-scrollbar-track,
+.sidebar-tab-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.sidebar-content::-webkit-scrollbar-thumb {
+.sidebar-content::-webkit-scrollbar-thumb,
+.sidebar-tab-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
-.sidebar-content::-webkit-scrollbar-thumb:hover {
+.sidebar-content::-webkit-scrollbar-thumb:hover,
+.sidebar-tab-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }

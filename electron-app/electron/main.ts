@@ -2,12 +2,14 @@
  * LUXSYNC ELECTRON - MAIN PROCESS V2
  * 
  * WAVE 243.5: THE REBIRTH
+ * WAVE 365: SYSTEM INTEGRATION
  * 
  * Este archivo ha sido reducido de 3467 lineas a ~300 lineas.
  * Toda la logica ha sido delegada a:
  * - TitanOrchestrator: Orquestacion Brain -> Engine -> HAL
  * - IPCHandlers: 61+ handlers IPC centralizados
  * - EventRouter: Routing de eventos interno
+ * - StagePersistence: Persistencia V2 (WAVE 365)
  * 
  * LuxSync V2 - NO HAY VUELTA ATRAS
  */
@@ -17,6 +19,9 @@ import path from 'path'
 
 // TITAN 2.0 Core Modules
 import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies } from '../src/core/orchestrator'
+
+// Stage Persistence (WAVE 365)
+import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage'
 
 // External Services
 import { configManager, type PatchedFixtureConfig } from '../src/core/config/ConfigManager'
@@ -209,8 +214,16 @@ function createWindow(): void {
 async function initTitan(): Promise<void> {
   console.log('[Main] ===============================================')
   console.log('[Main]   BOOTING TITAN 2.0 - WAVE 254: THE SPARK')
+  console.log('[Main]   WAVE 365: SYSTEM INTEGRATION')
   console.log('[Main]   LuxSync V2 - NO HAY VUELTA ATRAS')
   console.log('[Main] ===============================================')
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 365: Initialize Stage Persistence (BEFORE other systems)
+  // ═══════════════════════════════════════════════════════════════════════════
+  await stagePersistence.init()
+  setupStageIPCHandlers(() => mainWindow)
+  console.log('[Main] 💾 Stage Persistence V2 initialized')
 
   // Initialize EffectsEngine
   effectsEngine = new EffectsEngine()

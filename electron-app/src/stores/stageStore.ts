@@ -212,28 +212,36 @@ function generateId(prefix: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PERSISTENCE HELPERS (will be connected to Electron IPC)
+// PERSISTENCE HELPERS (WAVE 365: Connected to Electron IPC)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// These will be injected by the Electron main process
-let persistenceAPI: {
-  loadFile: (path: string) => Promise<string>
-  saveFile: (path: string, content: string) => Promise<boolean>
-  getDefaultShowPath: () => Promise<string>
-} | null = null
+// Check if we're in Electron environment
+const isElectron = typeof window !== 'undefined' && 'lux' in window
 
 /**
- * Set the persistence API (called from Electron init)
+ * Get the persistence API from the preload bridge
  */
-export function setPersistenceAPI(api: typeof persistenceAPI) {
-  persistenceAPI = api
+function getStageAPI(): {
+  load: (path?: string) => Promise<{ success: boolean; showFile?: ShowFileV2; error?: string }>
+  save: (showFile: ShowFileV2, path?: string) => Promise<{ success: boolean; error?: string }>
+} | null {
+  if (!isElectron) return null
+  
+  const lux = (window as any).lux
+  if (!lux?.stage) return null
+  
+  return {
+    load: lux.stage.load,
+    save: lux.stage.save
+  }
 }
 
 /**
- * Debounced save - waits for 1 second of inactivity before saving
+ * Debounced save - waits for 2 seconds of inactivity before saving
+ * WAVE 365: Increased debounce to 2s to avoid thrashing disk
  */
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
-const SAVE_DEBOUNCE = 1000
+const SAVE_DEBOUNCE = 2000
 
 function debouncedSave(save: () => Promise<boolean>) {
   if (saveTimeout) {
@@ -241,6 +249,7 @@ function debouncedSave(save: () => Promise<boolean>) {
   }
   saveTimeout = setTimeout(async () => {
     await save()
+    saveTimeout = null
   }, SAVE_DEBOUNCE)
 }
 
@@ -304,35 +313,48 @@ export const useStageStore = create<StageStore>()(
     },
     
     // ═══════════════════════════════════════════════════════════════════════
-    // SHOW FILE ACTIONS
+    // SHOW FILE ACTIONS (WAVE 365: Connected to Electron IPC)
     // ═══════════════════════════════════════════════════════════════════════
     
-    loadShowFile: async (path) => {
+    loadShowFile: async (filePath) => {
       set({ isLoading: true, lastError: null })
       
       try {
-        if (!persistenceAPI) {
+        const stageAPI = getStageAPI()
+        
+        if (stageAPI) {
+          // WAVE 365: Use Electron IPC
+          const result = await stageAPI.load(filePath)
+          
+          if (result.success && result.showFile) {
+            set({
+              showFile: result.showFile,
+              showFilePath: filePath || 'active',
+              isLoading: false,
+              isDirty: false
+            })
+            get()._syncDerivedState()
+            console.log('[stageStore] ✅ Loaded show via IPC:', result.showFile.name)
+            return true
+          } else {
+            throw new Error(result.error || 'Load failed')
+          }
+        } else {
           // Fallback: try localStorage in development
-          const cached = localStorage.getItem(`showfile:${path}`)
+          const cached = localStorage.getItem(`showfile:${filePath}`)
           if (cached) {
             const data = JSON.parse(cached)
             get().loadFromData(data)
-            set({ showFilePath: path, isLoading: false })
+            set({ showFilePath: filePath, isLoading: false })
             return true
           }
-          throw new Error('Persistence API not initialized')
+          throw new Error('Persistence API not available')
         }
-        
-        const content = await persistenceAPI.loadFile(path)
-        const data = JSON.parse(content)
-        
-        get().loadFromData(data)
-        set({ showFilePath: path, isLoading: false })
-        return true
         
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error loading show'
         set({ lastError: msg, isLoading: false })
+        console.error('[stageStore] ❌ Load failed:', msg)
         return false
       }
     },
@@ -356,30 +378,36 @@ export const useStageStore = create<StageStore>()(
         return false
       }
       
-      if (!showFilePath) {
-        set({ lastError: 'No file path set, use saveShowAs' })
-        return false
-      }
-      
       try {
         // Update modification timestamp
         showFile.modifiedAt = new Date().toISOString()
         
-        const content = JSON.stringify(showFile, null, 2)
+        const stageAPI = getStageAPI()
         
-        if (persistenceAPI) {
-          await persistenceAPI.saveFile(showFilePath, content)
+        if (stageAPI) {
+          // WAVE 365: Use Electron IPC
+          const result = await stageAPI.save(showFile, showFilePath || undefined)
+          
+          if (result.success) {
+            set({ isDirty: false })
+            console.log('[stageStore] 💾 Saved show via IPC:', showFile.name)
+            return true
+          } else {
+            throw new Error(result.error || 'Save failed')
+          }
         } else {
           // Fallback: localStorage in development
-          localStorage.setItem(`showfile:${showFilePath}`, content)
+          const key = showFilePath || 'current-show'
+          localStorage.setItem(`showfile:${key}`, JSON.stringify(showFile, null, 2))
+          set({ isDirty: false, showFilePath: key })
+          console.log('[stageStore] 💾 Saved show to localStorage:', showFile.name)
+          return true
         }
-        
-        set({ isDirty: false })
-        return true
         
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error saving show'
         set({ lastError: msg })
+        console.error('[stageStore] ❌ Save failed:', msg)
         return false
       }
     },
@@ -690,3 +718,90 @@ export function useGroupFixtures(groupId: string): FixtureV2[] {
 export function useMovingHeads(): FixtureV2[] {
   return useStageStore(selectMovingHeads)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION (WAVE 365: Auto-load on startup)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let initialized = false
+
+/**
+ * Initialize the stage store by loading the active show
+ * Call this once at app startup
+ */
+export async function initializeStageStore(): Promise<boolean> {
+  if (initialized) {
+    console.log('[stageStore] Already initialized')
+    return true
+  }
+  
+  console.log('[stageStore] 🚀 Initializing Stage Store...')
+  
+  const stageAPI = getStageAPI()
+  
+  if (stageAPI) {
+    // WAVE 365: Load active show via IPC
+    try {
+      const result = await stageAPI.load() // No path = load active show
+      
+      if (result.success && result.showFile) {
+        useStageStore.setState({
+          showFile: result.showFile,
+          showFilePath: 'active',
+          isLoading: false,
+          isDirty: false
+        })
+        useStageStore.getState()._syncDerivedState()
+        console.log('[stageStore] ✅ Loaded active show:', result.showFile.name)
+        initialized = true
+        return true
+      }
+    } catch (error) {
+      console.warn('[stageStore] ⚠️ Failed to load active show:', error)
+    }
+  }
+  
+  // Fallback: Create new empty show
+  console.log('[stageStore] 🆕 Creating new empty show')
+  useStageStore.getState().newShow('New Show')
+  initialized = true
+  return true
+}
+
+/**
+ * Subscribe to stage:loaded events from the main process
+ * This allows the main process to push shows to the renderer
+ */
+export function setupStageStoreListeners(): () => void {
+  if (!isElectron) return () => {}
+  
+  const lux = (window as any).lux
+  if (!lux?.stage?.onLoaded) return () => {}
+  
+  const unsubscribe = lux.stage.onLoaded((data: { 
+    showFile: ShowFileV2
+    migrated?: boolean
+    warnings?: string[] 
+  }) => {
+    console.log('[stageStore] 📨 Received show from main process:', data.showFile.name)
+    
+    if (data.migrated) {
+      console.log('[stageStore] 🔄 Show was migrated from legacy format')
+    }
+    
+    if (data.warnings?.length) {
+      console.warn('[stageStore] ⚠️ Migration warnings:', data.warnings)
+    }
+    
+    useStageStore.setState({
+      showFile: data.showFile,
+      showFilePath: 'active',
+      isLoading: false,
+      isDirty: false
+    })
+    useStageStore.getState()._syncDerivedState()
+  })
+  
+  return unsubscribe
+}
+

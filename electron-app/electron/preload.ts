@@ -495,6 +495,54 @@ const luxApi = {
   /** Resetear configuración */
   resetConfig: () =>
     ipcRenderer.invoke('lux:reset-config'),
+  
+  // ============================================
+  // 🔌 WAVE 365: STAGE PERSISTENCE V2
+  // ============================================
+  stage: {
+    /** Load a show file (V2 format) */
+    load: (filePath?: string) => 
+      ipcRenderer.invoke('lux:stage:load', filePath),
+    
+    /** Load the active show (on startup) */
+    loadActive: () => 
+      ipcRenderer.invoke('lux:stage:loadActive'),
+    
+    /** Save show to disk */
+    save: (showFile: any, filePath?: string) => 
+      ipcRenderer.invoke('lux:stage:save', showFile, filePath),
+    
+    /** Save show with new name */
+    saveAs: (showFile: any, name: string) => 
+      ipcRenderer.invoke('lux:stage:saveAs', showFile, name),
+    
+    /** List all shows */
+    list: () => 
+      ipcRenderer.invoke('lux:stage:list'),
+    
+    /** Get recent shows */
+    recent: () => 
+      ipcRenderer.invoke('lux:stage:recent'),
+    
+    /** Delete a show */
+    delete: (filePath: string) => 
+      ipcRenderer.invoke('lux:stage:delete', filePath),
+    
+    /** Get shows folder path */
+    getPath: () => 
+      ipcRenderer.invoke('lux:stage:getPath'),
+    
+    /** Check if show exists */
+    exists: (name: string) => 
+      ipcRenderer.invoke('lux:stage:exists', name),
+    
+    /** Subscribe to show loaded event */
+    onLoaded: (callback: (data: { showFile: any; migrated?: boolean; warnings?: string[] }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: any) => callback(data)
+      ipcRenderer.on('lux:stage:loaded', handler)
+      return () => ipcRenderer.removeListener('lux:stage:loaded', handler)
+    },
+  },
 }
 
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos

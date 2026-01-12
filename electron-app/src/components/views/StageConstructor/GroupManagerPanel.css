@@ -1,0 +1,377 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎭 GROUP MANAGER PANEL - CSS
+ * WAVE 363: Dark Neon aesthetic
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.group-manager-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-icon {
+  color: #a855f7;
+}
+
+.header-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CREATE GROUP SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.create-group-section {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.create-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  background: rgba(168, 85, 247, 0.05);
+  color: #a855f7;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-group-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.2);
+}
+
+.create-group-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dotted;
+}
+
+.selection-count {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(168, 85, 247, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Create Modal */
+.create-group-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+}
+
+.create-group-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.create-group-input:focus {
+  border-color: #a855f7;
+}
+
+.create-group-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.create-group-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.create-confirm-btn,
+.create-cancel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.create-confirm-btn {
+  flex: 1;
+  background: #a855f7;
+  color: #ffffff;
+}
+
+.create-confirm-btn:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.create-confirm-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.create-cancel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.create-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.create-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GROUPS LIST
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.groups-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.empty-groups {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.empty-groups .empty-icon {
+  color: rgba(255, 255, 255, 0.15);
+  margin-bottom: 8px;
+}
+
+.empty-groups p {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-groups span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GROUP ITEM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.group-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-item-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.group-item-row.active {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.group-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.group-item-row .group-name {
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-fixture-count {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.group-hotkey-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Group Actions */
+.group-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.group-item-row:hover .group-actions {
+  opacity: 1;
+}
+
+.group-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.group-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Group Edit Mode */
+.group-edit-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-edit-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #a855f7;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  font-size: 12px;
+  outline: none;
+}
+
+.group-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-edit-btn.confirm {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.group-edit-btn.confirm:hover {
+  background: rgba(74, 222, 128, 0.3);
+}
+
+.group-edit-btn.cancel {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.group-edit-btn.cancel:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHORTCUTS HINT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.shortcuts-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.shortcuts-hint svg {
+  color: rgba(255, 255, 255, 0.2);
+}

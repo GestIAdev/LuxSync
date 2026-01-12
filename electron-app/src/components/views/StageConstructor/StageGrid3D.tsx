@@ -34,7 +34,8 @@ import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useConstructorContext } from '../StageConstructorView'
 import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
-import type { FixtureV2, Position3D } from '../../../core/stage/ShowFileV2'
+import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
+import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -211,13 +212,19 @@ interface StageSceneProps {
   snapDistance: number
   snapRotation: number
   onFixtureDrop: (type: string, position: Position3D) => void
+  showZones: boolean
+  highlightedZone: FixtureZone | null
+  onZoneClick: (zoneId: FixtureZone) => void
 }
 
 const StageScene: React.FC<StageSceneProps> = ({ 
   snapEnabled, 
   snapDistance, 
   snapRotation,
-  onFixtureDrop 
+  onFixtureDrop,
+  showZones,
+  highlightedZone,
+  onZoneClick
 }) => {
   const fixtures = useStageStore(selectFixtures)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
@@ -304,6 +311,13 @@ const StageScene: React.FC<StageSceneProps> = ({
         </lineSegments>
       </group>
       
+      {/* Zone Overlay - WAVE 363 */}
+      <ZoneOverlay
+        visible={showZones}
+        highlightedZone={highlightedZone}
+        onZoneClick={onZoneClick}
+      />
+      
       {/* Fixtures */}
       {fixtures.map(fixture => (
         <Fixture3D
@@ -343,15 +357,30 @@ interface BoxSelectionRect {
 
 const StageGrid3D: React.FC = () => {
   // Get snap settings from parent context
-  const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode } = useConstructorContext()
+  const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode, showZones } = useConstructorContext()
   const addFixture = useStageStore(state => state.addFixture)
+  const setFixtureZone = useStageStore(state => state.setFixtureZone)
   const fixtures = useStageStore(state => state.fixtures)
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
+  const selectedIds = useSelectionStore(state => state.selectedIds)
   const canvasRef = useRef<HTMLDivElement>(null)
   
   // Box selection state
   const [boxSelection, setBoxSelection] = useState<BoxSelectionRect | null>(null)
   const isBoxSelecting = useRef(false)
+  
+  // Zone highlight state - WAVE 363
+  const [highlightedZone, setHighlightedZone] = useState<FixtureZone | null>(null)
+  
+  // Handle zone click - assign zone to selected fixtures
+  const handleZoneClick = useCallback((zoneId: FixtureZone) => {
+    if (selectedIds.size === 0) return
+    
+    // Assign zone to all selected fixtures
+    for (const fixtureId of selectedIds) {
+      setFixtureZone(fixtureId, zoneId)
+    }
+  }, [selectedIds, setFixtureZone])
   
   // Box selection handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -507,6 +536,9 @@ const StageGrid3D: React.FC = () => {
           snapDistance={snapDistance}
           snapRotation={snapRotation}
           onFixtureDrop={handleFixtureDrop}
+          showZones={showZones}
+          highlightedZone={highlightedZone}
+          onZoneClick={handleZoneClick}
         />
       </Canvas>
       

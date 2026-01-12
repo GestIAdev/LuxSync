@@ -617,7 +617,7 @@ El patcheo pasa a ser parte del Stage Constructor:
 
 ---
 
-## 🚀 ROADMAP - ACTUALIZADO WAVE 360
+## 🚀 ROADMAP - ACTUALIZADO WAVE 363
 
 ### Fase 1: Fundación (Persistencia) ✅ **COMPLETE - WAVE 360.1**
 - [x] Crear nuevo `stageStore.ts` (Zustand unificado para Stage)
@@ -670,25 +670,115 @@ src/components/layout/Sidebar.tsx   - Added PencilRuler icon
 src/components/layout/ContentArea.tsx - Added constructor case
 ```
 
-### Fase 3: Grupos & Zonas ⏳ **PENDING**
-- [ ] UI para crear/editar grupos (grupos ya en stageStore)
-- [ ] UI para zonas editables (zonas ya en stageStore)
-- [ ] Shortcuts de teclado (1-9 = grupos)
-- [ ] Selector rápido de grupo en toolbar
+### Fase 3: Grupos & Zonas ✅ **COMPLETE - WAVE 363**
+- [x] GroupManagerPanel.tsx - Panel de gestión de grupos
+- [x] Create group from selection (Ctrl+G)
+- [x] Rename grupos con doble-click
+- [x] Delete grupos
+- [x] Asignar hotkeys 1-9 a grupos
+- [x] Quick-select con teclas 1-9
+- [x] ZoneOverlay.tsx - Visualización 3D de zonas
+- [x] 9 zonas predefinidas con color-coding
+- [x] Click en zona para asignar a fixtures seleccionados
+- [x] Toggle zonas en toolbar (icono Map)
+- [x] KeyboardShortcuts.ts - Sistema de atajos profesional
+- [x] Tabs en sidebar derecho (Properties / Groups)
+- [x] Dropdown de zona en Properties
+- [x] Multi-select permite asignar zona a todos
 
-### Fase 4: Fixture Forge ⏳ **PENDING**
-- [ ] Expandir FixtureEditorModal
-- [ ] Vista previa 3D en tiempo real
-- [ ] Exportación a .fxt
-- [ ] Importación desde QLC+, GrandMA
-- [ ] Physics editor con safety preview
+**Archivos creados en WAVE 363:**
+```
+src/components/views/StageConstructor/GroupManagerPanel.tsx  (340+ líneas)
+src/components/views/StageConstructor/GroupManagerPanel.css  (280+ líneas)
+src/components/views/StageConstructor/ZoneOverlay.tsx        (230+ líneas)
+src/components/views/StageConstructor/KeyboardShortcuts.ts   (220+ líneas)
+```
 
-### Fase 5: Integración ⏳ **PENDING**
-- [ ] Conectar stageStore a Electron IPC (persistenceAPI)
-- [ ] Eliminar ShowManager (redundante)
-- [ ] Migrar ConfigManager a usar ShowFileV2
-- [ ] Auto-migración transparente al cargar v1
+**Archivos modificados:**
+```
+src/components/views/StageConstructorView.tsx  - Tabs, showZones, shortcuts
+src/components/views/StageConstructorView.css  - Tabs styling, zone select
+src/components/views/StageConstructor/StageGrid3D.tsx - ZoneOverlay integration
+```
+
+**Shortcuts implementados:**
+| Shortcut | Acción |
+|----------|--------|
+| `1-9` | Seleccionar Grupo con hotkey |
+| `Ctrl+G` | Crear grupo desde selección |
+| `Escape` | Deseleccionar todo |
+| `Delete` | Eliminar fixtures seleccionados |
+| `Ctrl+A` | Seleccionar todos |
+| `V` | Tool: Select |
+| `B` | Tool: Box Selection |
+
+### Fase 4: Fixture Forge ✅ **COMPLETE - WAVE 364**
+- [x] FixtureForge.tsx - Modal principal con tabs
+- [x] Channel Mapper UI - Drag & Drop con categorías
+- [x] FixturePreview3D.tsx - Canvas 3D aislado con Pan/Tilt/Dimmer/RGB/Strobe
+- [x] PhysicsTuner.tsx - Editor de física con motor types
+- [x] Risk Level indicator (safe/moderate/high/extreme)
+- [x] TEST DE ESTRÉS button - 3 segundos de stress test visual
+- [x] Export a .fxt (FreeStyler format)
+- [x] Import desde JSON
+- [x] Integración con StageConstructorView ("Edit Profile" button)
+
+**Archivos creados en WAVE 364:**
+```
+src/components/modals/FixtureEditor/FixtureForge.tsx      (540+ líneas)
+src/components/modals/FixtureEditor/FixtureForge.css      (800+ líneas)
+src/components/modals/FixtureEditor/FixturePreview3D.tsx  (300+ líneas)
+src/components/modals/FixtureEditor/PhysicsTuner.tsx      (420+ líneas)
+src/components/modals/FixtureEditor/index.ts              (barrel exports)
+```
+
+**Archivos modificados:**
+```
+src/components/views/StageConstructorView.tsx  - Forge modal, context, button
+src/components/views/StageConstructorView.css  - Edit profile button styling
+```
+
+**Acceso al Forge:**
+- Seleccionar fixture → Click "Edit Profile" en Properties panel
+
+### Fase 5: Integración ✅ **IN PROGRESS - WAVE 365**
+- [x] Crear `StagePersistence.ts` - API backend de persistencia
+- [x] Crear `StageIPCHandlers.ts` - Handlers IPC para Stage
+- [x] Canales IPC: load, save, saveAs, list, delete, recent
+- [x] Escritura atómica (temp → rename)
+- [x] Conectar stageStore a Electron IPC (preload API)
+- [x] Auto-Save con debounce 2s
+- [x] Recent shows tracking (últimos 10)
+- [x] Flujo de migración al arranque
+- [ ] Eliminar ShowManager (redundante) - Fase B
+- [ ] Migrar ConfigManager a solo preferencias - Fase B
+- [ ] Auto-migración transparente al cargar v1 - Fase B
 - [ ] Tests E2E
+- [ ] Importación desde QLC+, GrandMA
+
+**Archivos creados en WAVE 365:**
+```
+src/core/stage/StagePersistence.ts    (420+ líneas) - API backend
+src/core/stage/StageIPCHandlers.ts    (160+ líneas) - IPC handlers
+```
+
+**Archivos modificados:**
+```
+src/stores/stageStore.ts             - Conexión a IPC real (+80 líneas)
+electron/preload.ts                  - API lux.stage.* (+50 líneas)
+electron/main.ts                     - Init de StagePersistence
+src/core/stage/index.ts              - Barrel exports
+```
+
+**IPC Channels:**
+| Canal | Descripción |
+|-------|-------------|
+| `lux:stage:load` | Cargar show |
+| `lux:stage:save` | Guardar show |
+| `lux:stage:saveAs` | Save As... |
+| `lux:stage:list` | Listar shows |
+| `lux:stage:recent` | Shows recientes |
+| `lux:stage:delete` | Eliminar show |
 
 ---
 

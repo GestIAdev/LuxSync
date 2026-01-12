@@ -165,8 +165,6 @@ export const useSelectionStore = create<SelectionState>()(
     },
     
     selectMultiple: (ids, mode = 'replace') => {
-      console.log('[selectionStore] 📦 selectMultiple called:', { ids, mode, count: ids.length })
-      
       set((state) => {
         let newSet: Set<string>
         
@@ -193,8 +191,6 @@ export const useSelectionStore = create<SelectionState>()(
           default:
             newSet = new Set(ids)
         }
-        
-        console.log('[selectionStore] ✅ Updated selectedIds:', Array.from(newSet))
         
         return {
           selectedIds: newSet,

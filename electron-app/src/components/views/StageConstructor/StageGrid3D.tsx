@@ -269,7 +269,7 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════
 // STAGE GRID SCENE - Receives snap config as props
 // WAVE 369: Now with interaction lock for camera control isolation
-// WAVE 369.6: Receives selectedIds as prop to fix R3F context issue
+// WAVE 369.6: Receives selectedIds as ARRAY prop to fix R3F context issue
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface StageSceneProps {
@@ -282,7 +282,7 @@ interface StageSceneProps {
   onZoneClick: (zoneId: FixtureZone) => void
   isBoxSelectMode: boolean  // WAVE 369: Disable camera during box select
   onInteractionChange: (isInteracting: boolean) => void  // WAVE 369
-  selectedIdsSet: Set<string>  // WAVE 369.6: Fix - pass from parent to avoid R3F context issue
+  selectedIdsArray: string[]  // WAVE 369.6: Array instead of Set to fix R3F reactivity
 }
 
 const StageScene: React.FC<StageSceneProps> = ({ 
@@ -295,24 +295,19 @@ const StageScene: React.FC<StageSceneProps> = ({
   onZoneClick,
   isBoxSelectMode,
   onInteractionChange,
-  selectedIdsSet  // WAVE 369.6
+  selectedIdsArray  // WAVE 369.6
 }) => {
   const fixtures = useStageStore(selectFixtures)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   
-  // WAVE 369.6 FIX: Use prop instead of hook to avoid R3F context issue
-  const selectedIds = selectedIdsSet
+  // WAVE 369.6 FIX: Use array prop, create Set locally only for .has() convenience
+  const selectedIds = useMemo(() => new Set(selectedIdsArray), [selectedIdsArray.join(',')])
   
   const hoveredId = useSelectionStore(state => state.hoveredId)
   const select = useSelectionStore(state => state.select)
   const setHovered = useSelectionStore(state => state.setHovered)
   const deselectAll = useSelectionStore(state => state.deselectAll)
-  
-  // DEBUG: Log when selectedIds changes in StageScene
-  useEffect(() => {
-    console.log('[StageScene] 🎯 selectedIds changed:', Array.from(selectedIds), 'size:', selectedIds.size)
-  }, [selectedIds])
   
   // WAVE 369: Gizmo interaction state
   const [isGizmoActive, setIsGizmoActive] = useState(false)
@@ -321,9 +316,8 @@ const StageScene: React.FC<StageSceneProps> = ({
   const cameraEnabled = !isGizmoActive && !isBoxSelectMode
   
   // Get the single selected fixture for transform controls
-  const selectedArray = Array.from(selectedIds)
-  const selectedFixture = selectedArray.length === 1 
-    ? fixtures.find(f => f.id === selectedArray[0])
+  const selectedFixture = selectedIdsArray.length === 1 
+    ? fixtures.find(f => f.id === selectedIdsArray[0])
     : null
   
   // WAVE 369: Handle gizmo dragging change
@@ -354,10 +348,11 @@ const StageScene: React.FC<StageSceneProps> = ({
     setHovered(id)
   }, [setHovered])
   
-  // Handle click on empty space
+  // Handle click on empty space - WAVE 369.6: Don't deselect during BoxSelect
   const handleBackgroundClick = useCallback(() => {
+    if (isBoxSelectMode) return  // Don't deselect when using box select tool
     deselectAll()
-  }, [deselectAll])
+  }, [deselectAll, isBoxSelectMode])
   
   return (
     <>
@@ -471,7 +466,19 @@ const StageGrid3D: React.FC = () => {
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   const fixtures = useStageStore(state => state.fixtures)
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
-  const selectedIds = useSelectionStore(state => state.selectedIds)
+  
+  // WAVE 369.6 FIX: Subscribe to selection changes with a simple primitive selector
+  const selectionVersion = useSelectionStore(state => state.selectedIds.size)
+  const selectedIdsArray = useSelectionStore(state => [...state.selectedIds])
+  
+  // Log when selection changes (debug)
+  useEffect(() => {
+    console.log('[StageGrid3D] Selection changed:', selectedIdsArray, 'version:', selectionVersion)
+  }, [selectionVersion])
+  
+  // Keep Set for local operations that need .has()
+  const selectedIds = useMemo(() => new Set(selectedIdsArray), [selectionVersion])
+  
   const canvasRef = useRef<HTMLDivElement>(null)
   
   // WAVE 368.5: Camera reference for raycasting
@@ -745,7 +752,7 @@ const StageGrid3D: React.FC = () => {
           onZoneClick={handleZoneClick}
           isBoxSelectMode={isBoxSelectMode}
           onInteractionChange={handleInteractionChange}
-          selectedIdsSet={selectedIds}
+          selectedIdsArray={selectedIdsArray}
         />
       </Canvas>
       

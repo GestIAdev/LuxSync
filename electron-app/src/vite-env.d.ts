@@ -276,68 +276,123 @@ declare global {
       }>
     }
     
-    // 🎭 WAVE 26: Show Management (Save/Load/Delete)
-    listShows: () => Promise<{
-      success: boolean
-      shows: ShowMetadata[]
-      showsPath: string
-      error?: string
-    }>
-    saveShow: (name: string, description: string) => Promise<{
-      success: boolean
-      filename?: string
-      path?: string
-      error?: string
-    }>
-    loadShow: (filename: string) => Promise<{
-      success: boolean
-      data?: ShowData
-      error?: string
-    }>
-    deleteShow: (filename: string) => Promise<{
-      success: boolean
-      error?: string
-    }>
-    createShow: (name: string, description?: string) => Promise<{
-      success: boolean
-      filename?: string
-      path?: string
-      error?: string
-    }>
-    getShowsPath: () => Promise<{ success: boolean; path: string }>
+    // 🎭 WAVE 26: Show Management - PURGED WAVE 365
+    // Legacy methods removed. Use lux.stage.* API instead
     
     // WAVE 9.5: Config
     getConfig: () => Promise<{ success: boolean; config: LuxSyncConfig }>
     saveConfig: (config: Partial<LuxSyncConfig>) => Promise<{ success: boolean }>
     resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
+    
+    // ============================================
+    // 🔌 WAVE 365: Stage Persistence V2 API
+    // 🎯 WAVE 369.5: Native File Dialogs
+    // ============================================
+    stage: {
+      /** Load a show file (V2 format) */
+      load: (filePath?: string) => Promise<{
+        success: boolean
+        showFile?: import('./core/stage/ShowFileV2').ShowFileV2
+        filePath?: string
+        migrated?: boolean
+        warnings?: string[]
+        error?: string
+      }>
+      
+      /** Load the active show (on startup) */
+      loadActive: () => Promise<{
+        success: boolean
+        showFile?: import('./core/stage/ShowFileV2').ShowFileV2
+        filePath?: string
+        migrated?: boolean
+        warnings?: string[]
+        error?: string
+      }>
+      
+      /** Save show to disk */
+      save: (showFile: import('./core/stage/ShowFileV2').ShowFileV2, filePath?: string) => Promise<{
+        success: boolean
+        filePath?: string
+        error?: string
+      }>
+      
+      /** Save show with new name */
+      saveAs: (showFile: import('./core/stage/ShowFileV2').ShowFileV2, name: string) => Promise<{
+        success: boolean
+        filePath?: string
+        error?: string
+      }>
+      
+      /** List all shows */
+      list: () => Promise<{
+        success: boolean
+        shows?: Array<{ name: string; path: string; modified: number }>
+        error?: string
+      }>
+      
+      /** Get recent shows */
+      recent: () => Promise<{
+        success: boolean
+        recent?: Array<{ name: string; path: string; opened: number }>
+        error?: string
+      }>
+      
+      /** Delete a show */
+      delete: (filePath: string) => Promise<{
+        success: boolean
+        error?: string
+      }>
+      
+      /** Get shows folder path */
+      getPath: () => Promise<{
+        success: boolean
+        path?: string
+        error?: string
+      }>
+      
+      /** Check if show exists */
+      exists: (name: string) => Promise<{
+        success: boolean
+        exists?: boolean
+        path?: string
+        error?: string
+      }>
+      
+      // WAVE 369.5: Native File Dialogs
+      /** Open file dialog - returns selected path and loads the file */
+      openDialog: () => Promise<{
+        success: boolean
+        cancelled?: boolean
+        filePath?: string
+        showFile?: import('./core/stage/ShowFileV2').ShowFileV2
+        error?: string
+      }>
+      
+      /** Save As dialog - let user choose name/location */
+      saveAsDialog: (showFile: import('./core/stage/ShowFileV2').ShowFileV2, suggestedName?: string) => Promise<{
+        success: boolean
+        cancelled?: boolean
+        filePath?: string
+        error?: string
+      }>
+      
+      /** Confirm unsaved changes dialog */
+      confirmUnsaved: (showName: string) => Promise<'save' | 'discard' | 'cancel'>
+      
+      /** Subscribe to show loaded event */
+      onLoaded: (callback: (data: {
+        showFile: import('./core/stage/ShowFileV2').ShowFileV2
+        filePath?: string
+        migrated?: boolean
+        warnings?: string[]
+      }) => void) => () => void
+    }
   }
 }
 } // End declare global
 
-// 🎭 WAVE 26: Show Types
-interface ShowMetadata {
-  filename: string
-  name: string
-  description: string
-  createdAt: string
-  modifiedAt: string
-  sizeBytes: number
-  fixtureCount: number
-  version: string
-}
-
-interface ShowData {
-  name: string
-  description: string
-  createdAt: string
-  modifiedAt: string
-  version: string
-  audio: AudioConfig
-  dmx: DMXConfig
-  patchedFixtures: PatchedFixture[]
-  seleneMode: string
-  installationType: 'ceiling' | 'floor'
-}
+// 🎭 WAVE 26: Show Types - PURGED WAVE 365
+// Legacy types removed. Use ShowFileV2 from src/core/stage/ShowFileV2.ts instead
 
 interface AudioConfig {
   source: 'microphone' | 'system' | 'simulation'

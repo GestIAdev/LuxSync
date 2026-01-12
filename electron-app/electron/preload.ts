@@ -453,32 +453,9 @@ const luxApi = {
   },
   
   // ============================================
-  // 🎭 WAVE 26: SHOW MANAGEMENT (Save/Load/Delete)
+  // 🎭 WAVE 26: SHOW MANAGEMENT - PURGED WAVE 365
+  // Legacy methods removed. Use lux.stage.* API instead
   // ============================================
-  
-  /** List all shows in the shows folder */
-  listShows: () =>
-    ipcRenderer.invoke('lux:list-shows'),
-  
-  /** Save current config as a show */
-  saveShow: (name: string, description: string) =>
-    ipcRenderer.invoke('lux:save-show', { name, description }),
-  
-  /** Load a show from file */
-  loadShow: (filename: string) =>
-    ipcRenderer.invoke('lux:load-show', filename),
-  
-  /** Delete a show file */
-  deleteShow: (filename: string) =>
-    ipcRenderer.invoke('lux:delete-show', filename),
-  
-  /** Create a new empty show */
-  createShow: (name: string, description?: string) =>
-    ipcRenderer.invoke('lux:create-show', { name, description }),
-  
-  /** Get shows folder path */
-  getShowsPath: () =>
-    ipcRenderer.invoke('lux:get-shows-path'),
   
   // ============================================
   // WAVE 9.5: CONFIG
@@ -497,7 +474,7 @@ const luxApi = {
     ipcRenderer.invoke('lux:reset-config'),
   
   // ============================================
-  // 🔌 WAVE 365: STAGE PERSISTENCE V2
+  // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS
   // ============================================
   stage: {
     /** Load a show file (V2 format) */
@@ -536,8 +513,21 @@ const luxApi = {
     exists: (name: string) => 
       ipcRenderer.invoke('lux:stage:exists', name),
     
+    // WAVE 369.5: Native File Dialogs
+    /** Open file dialog - returns selected path and loads the file */
+    openDialog: () =>
+      ipcRenderer.invoke('lux:stage:openDialog'),
+    
+    /** Save As dialog - let user choose name/location */
+    saveAsDialog: (showFile: any, suggestedName?: string) =>
+      ipcRenderer.invoke('lux:stage:saveAsDialog', showFile, suggestedName),
+    
+    /** Confirm unsaved changes dialog */
+    confirmUnsaved: (showName: string) =>
+      ipcRenderer.invoke('lux:stage:confirmUnsaved', showName),
+    
     /** Subscribe to show loaded event */
-    onLoaded: (callback: (data: { showFile: any; migrated?: boolean; warnings?: string[] }) => void) => {
+    onLoaded: (callback: (data: { showFile: any; filePath?: string; migrated?: boolean; warnings?: string[] }) => void) => {
       const handler = (_: Electron.IpcRendererEvent, data: any) => callback(data)
       ipcRenderer.on('lux:stage:loaded', handler)
       return () => ipcRenderer.removeListener('lux:stage:loaded', handler)

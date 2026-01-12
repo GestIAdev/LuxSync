@@ -308,20 +308,9 @@ const luxApi = {
         saveDefinition: (definition) => ipcRenderer.invoke('lux:save-fixture-definition', definition),
     },
     // ============================================
-    // 🎭 WAVE 26: SHOW MANAGEMENT (Save/Load/Delete)
+    // 🎭 WAVE 26: SHOW MANAGEMENT - PURGED WAVE 365
+    // Legacy methods removed. Use lux.stage.* API instead
     // ============================================
-    /** List all shows in the shows folder */
-    listShows: () => ipcRenderer.invoke('lux:list-shows'),
-    /** Save current config as a show */
-    saveShow: (name, description) => ipcRenderer.invoke('lux:save-show', { name, description }),
-    /** Load a show from file */
-    loadShow: (filename) => ipcRenderer.invoke('lux:load-show', filename),
-    /** Delete a show file */
-    deleteShow: (filename) => ipcRenderer.invoke('lux:delete-show', filename),
-    /** Create a new empty show */
-    createShow: (name, description) => ipcRenderer.invoke('lux:create-show', { name, description }),
-    /** Get shows folder path */
-    getShowsPath: () => ipcRenderer.invoke('lux:get-shows-path'),
     // ============================================
     // WAVE 9.5: CONFIG
     // ============================================
@@ -332,7 +321,7 @@ const luxApi = {
     /** Resetear configuración */
     resetConfig: () => ipcRenderer.invoke('lux:reset-config'),
     // ============================================
-    // 🔌 WAVE 365: STAGE PERSISTENCE V2
+    // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS
     // ============================================
     stage: {
         /** Load a show file (V2 format) */
@@ -353,6 +342,13 @@ const luxApi = {
         getPath: () => ipcRenderer.invoke('lux:stage:getPath'),
         /** Check if show exists */
         exists: (name) => ipcRenderer.invoke('lux:stage:exists', name),
+        // WAVE 369.5: Native File Dialogs
+        /** Open file dialog - returns selected path and loads the file */
+        openDialog: () => ipcRenderer.invoke('lux:stage:openDialog'),
+        /** Save As dialog - let user choose name/location */
+        saveAsDialog: (showFile, suggestedName) => ipcRenderer.invoke('lux:stage:saveAsDialog', showFile, suggestedName),
+        /** Confirm unsaved changes dialog */
+        confirmUnsaved: (showName) => ipcRenderer.invoke('lux:stage:confirmUnsaved', showName),
         /** Subscribe to show loaded event */
         onLoaded: (callback) => {
             const handler = (_, data) => callback(data);

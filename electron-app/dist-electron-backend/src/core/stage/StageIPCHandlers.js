@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔌 STAGE IPC HANDLERS - WAVE 365 Phase 5
+ * 🔌 STAGE IPC HANDLERS - WAVE 369.5
  * "El Sistema Nervioso - Conectando Frontend y Backend"
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -14,12 +14,15 @@
  * - lux:stage:delete    - Delete a show
  * - lux:stage:recent    - Get recent shows
  * - lux:stage:getPath   - Get shows folder path
+ * - lux:stage:openDialog    - WAVE 369.5: Native Open dialog
+ * - lux:stage:saveAsDialog  - WAVE 369.5: Native Save As dialog
  *
  * @module core/stage/StageIPCHandlers
- * @version 365.0.0
+ * @version 369.5.0
  */
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
 import { stagePersistence } from './StagePersistence';
+import path from 'path';
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -117,5 +120,100 @@ export function setupStageIPCHandlers(getMainWindow) {
     ipcMain.handle('lux:stage:exists', async (_event, name) => {
         return stagePersistence.showExists(name);
     });
-    console.log('[StageIPC] ✅ All Stage IPC handlers registered');
+    // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 369.5: NATIVE FILE DIALOGS
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Open file dialog - Let user select a .luxshow file
+     * @returns Selected file path or null if cancelled
+     */
+    ipcMain.handle('lux:stage:openDialog', async () => {
+        console.log('[StageIPC] 📂 Opening file dialog...');
+        const mainWindow = getMainWindow();
+        const showsPath = stagePersistence.getShowsPath();
+        const result = await dialog.showOpenDialog(mainWindow, {
+            title: 'Open Stage Show',
+            defaultPath: showsPath,
+            filters: [
+                { name: 'LuxSync Shows', extensions: ['luxshow', 'v2.luxshow'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['openFile']
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+            console.log('[StageIPC] 📂 Dialog cancelled');
+            return { success: false, cancelled: true };
+        }
+        const filePath = result.filePaths[0];
+        console.log('[StageIPC] 📂 Selected file:', filePath);
+        // Load the selected file
+        const loadResult = await stagePersistence.loadShow(filePath);
+        if (loadResult.success && loadResult.showFile) {
+            // Broadcast to renderer
+            if (mainWindow) {
+                mainWindow.webContents.send('lux:stage:loaded', {
+                    showFile: loadResult.showFile,
+                    filePath: filePath,
+                    migrated: loadResult.migrated,
+                    warnings: loadResult.warnings
+                });
+            }
+        }
+        return { ...loadResult, filePath };
+    });
+    /**
+     * Save As dialog - Let user choose name/location for new file
+     * @param showFile - The show data to save
+     * @param suggestedName - Suggested filename
+     * @returns Save result with chosen path
+     */
+    ipcMain.handle('lux:stage:saveAsDialog', async (_event, showFile, suggestedName) => {
+        console.log('[StageIPC] 💾 Opening Save As dialog...');
+        const mainWindow = getMainWindow();
+        const showsPath = stagePersistence.getShowsPath();
+        const defaultName = suggestedName || showFile.name || 'Untitled Stage';
+        const result = await dialog.showSaveDialog(mainWindow, {
+            title: 'Save Stage Show As',
+            defaultPath: path.join(showsPath, `${defaultName}.v2.luxshow`),
+            filters: [
+                { name: 'LuxSync Shows', extensions: ['v2.luxshow'] }
+            ]
+        });
+        if (result.canceled || !result.filePath) {
+            console.log('[StageIPC] 💾 Save As cancelled');
+            return { success: false, cancelled: true };
+        }
+        const filePath = result.filePath;
+        console.log('[StageIPC] 💾 Saving to:', filePath);
+        // Extract name from path for the show
+        const fileName = path.basename(filePath, '.v2.luxshow');
+        showFile.name = fileName;
+        // Save to the chosen path
+        const saveResult = await stagePersistence.saveShow(showFile, filePath);
+        return { ...saveResult, filePath, name: fileName };
+    });
+    /**
+     * Confirm dialog for unsaved changes
+     * @param showName - Name of the show with unsaved changes
+     * @returns 'save' | 'discard' | 'cancel'
+     */
+    ipcMain.handle('lux:stage:confirmUnsaved', async (_event, showName) => {
+        const mainWindow = getMainWindow();
+        const result = await dialog.showMessageBox(mainWindow, {
+            type: 'warning',
+            title: 'Unsaved Changes',
+            message: `"${showName}" has unsaved changes.`,
+            detail: 'Do you want to save your changes before continuing?',
+            buttons: ['Save', 'Don\'t Save', 'Cancel'],
+            defaultId: 0,
+            cancelId: 2,
+            noLink: true
+        });
+        switch (result.response) {
+            case 0: return 'save';
+            case 1: return 'discard';
+            default: return 'cancel';
+        }
+    });
+    console.log('[StageIPC] ✅ All Stage IPC handlers registered (WAVE 369.5)');
 }

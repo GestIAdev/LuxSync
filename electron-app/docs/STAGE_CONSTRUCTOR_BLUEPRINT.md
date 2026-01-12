@@ -741,7 +741,7 @@ src/components/views/StageConstructorView.css  - Edit profile button styling
 **Acceso al Forge:**
 - Seleccionar fixture → Click "Edit Profile" en Properties panel
 
-### Fase 5: Integración ✅ **IN PROGRESS - WAVE 365**
+### Fase 5: Integración ✅ **COMPLETE - WAVE 365 + 366**
 - [x] Crear `StagePersistence.ts` - API backend de persistencia
 - [x] Crear `StageIPCHandlers.ts` - Handlers IPC para Stage
 - [x] Canales IPC: load, save, saveAs, list, delete, recent
@@ -750,11 +750,10 @@ src/components/views/StageConstructorView.css  - Edit profile button styling
 - [x] Auto-Save con debounce 2s
 - [x] Recent shows tracking (últimos 10)
 - [x] Flujo de migración al arranque
-- [ ] Eliminar ShowManager (redundante) - Fase B
-- [ ] Migrar ConfigManager a solo preferencias - Fase B
-- [ ] Auto-migración transparente al cargar v1 - Fase B
-- [ ] Tests E2E
-- [ ] Importación desde QLC+, GrandMA
+- [x] **Eliminar ShowManager** (PURGED - WAVE 365)
+- [x] **Tests E2E** (WAVE 366 - 29/29 PASSED)
+- [ ] Migrar ConfigManager a solo preferencias - Future
+- [ ] Importación desde QLC+, GrandMA - Future
 
 **Archivos creados en WAVE 365:**
 ```
@@ -762,12 +761,26 @@ src/core/stage/StagePersistence.ts    (420+ líneas) - API backend
 src/core/stage/StageIPCHandlers.ts    (160+ líneas) - IPC handlers
 ```
 
+**Archivos creados en WAVE 366:**
+```
+src/__tests__/e2e/stage_persistence.test.ts  (550+ líneas) - E2E Test Suite
+```
+
+**Archivos eliminados en WAVE 365 (THE PURGE):**
+```
+src/core/library/ShowManager.ts       (374 líneas) - DESTROYED
+IPCHandlers.ts > setupShowHandlers()  (~40 líneas) - PURGED
+preload.ts > legacy show API          (~30 líneas) - PURGED
+vite-env.d.ts > legacy types          (~50 líneas) - PURGED
+```
+
 **Archivos modificados:**
 ```
 src/stores/stageStore.ts             - Conexión a IPC real (+80 líneas)
 electron/preload.ts                  - API lux.stage.* (+50 líneas)
-electron/main.ts                     - Init de StagePersistence
+electron/main.ts                     - Init de StagePersistence, -ShowManager
 src/core/stage/index.ts              - Barrel exports
+src/core/orchestrator/IPCHandlers.ts - Removed setupShowHandlers
 ```
 
 **IPC Channels:**
@@ -780,6 +793,102 @@ src/core/stage/index.ts              - Barrel exports
 | `lux:stage:recent` | Shows recientes |
 | `lux:stage:delete` | Eliminar show |
 
+**E2E Test Results (WAVE 366):**
+```
+✅ TEST 1: THE GENESIS    - New Show Creation          (3 tests)
+✅ TEST 2: THE MIGRATION  - Legacy V1 → V2             (8 tests)
+✅ TEST 3: PERSISTENCE    - Save/Load Round-Trip       (5 tests)
+✅ TEST 4: THE PURGE      - Zero Legacy Zombies        (5 tests)
+✅ TEST 5: EDGE CASES     - Validation & Error Handling (8 tests)
+───────────────────────────────────────────────────────────────────
+   TOTAL: 29 tests passed / 0 failed
+```
+
+### Fase 6: Spring Cleaning ✅ **COMPLETE - WAVE 367**
+- [x] Crear `ConfigManagerV2.ts` - Solo preferencias de app
+- [x] Eliminar `patchedFixtures[]` de ConfigManager
+- [x] Crear `LocalStorageSceneMigrator.ts` - Migración de escenas
+- [x] Auto-migración V1 → V2 en ConfigManagerV2.load()
+- [x] Eliminar `ConfigManager.ts` original
+- [x] Actualizar imports en main.ts
+- [x] Shim de compatibilidad para IPCHandlers legacy
+- [ ] Trigger de migración localStorage en renderer - Future
+- [ ] Actualizar PatchTab para usar stageStore - Future
+
+**Archivos creados en WAVE 367:**
+```
+src/core/config/ConfigManagerV2.ts         (400+ líneas) - Preferencias V2
+src/core/stage/LocalStorageSceneMigrator.ts (200+ líneas) - Migración escenas
+```
+
+**Archivos eliminados en WAVE 367:**
+```
+src/core/config/ConfigManager.ts           (314 líneas) - DESTROYED
+```
+
+**Archivos modificados:**
+```
+electron/main.ts              - Import ConfigManagerV2, flujo simplificado
+src/core/config/index.ts      - Exports de ConfigManagerV2
+src/core/stage/index.ts       - Exports de LocalStorageSceneMigrator
+```
+
+**Separación de datos:**
+| Archivo | Contiene |
+|---------|----------|
+| `luxsync-config.json` | Preferencias (audio, dmx, ui, seleneMode) |
+| `*.luxshow` | Fixtures, grupos, escenas, stage config |
+
+---
+
+## 🏁 FIN DEL CICLO CONSTRUCTOR
+
+### WAVES COMPLETADAS:
+| Wave | Nombre | Estado |
+|------|--------|--------|
+| 360.1 | Fundación Schema V2 | ✅ COMPLETE |
+| 361 | Stage Grid 3D | ✅ COMPLETE |
+| 363 | Grupos & Zonas | ✅ COMPLETE |
+| 364 | Fixture Forge | ✅ COMPLETE |
+| 365 | System Integration | ✅ COMPLETE |
+| 366 | Proving Grounds (Tests) | ✅ COMPLETE |
+| 367 | Spring Cleaning | ✅ COMPLETE |
+| 368 | Emergency Hotfix | ✅ COMPLETE |
+| 368.5 | UI Polish & D&D Raycaster | ✅ COMPLETE |
+| 369 | Camera Lock & Geofencing | ✅ COMPLETE |
+
+### Fase 7: Library Scanner Fix ✅ **COMPLETE - WAVE 368**
+- [x] Conectar `FixtureLibrarySidebar` a `window.lux.getFixtureLibrary()`
+- [x] Nueva sección "Your Library" - Fixtures .fxt reales desde disco
+- [x] Botón [+] en header para crear nueva definición (abre Fixture Forge)
+- [x] Empty state con call-to-action para Fixture Forge
+- [x] Botón refresh para re-escanear biblioteca
+- [x] Estilos CSS para nueva UI
+
+### Fase 7.5: UI Polish & D&D Raycaster ✅ **COMPLETE - WAVE 368.5**
+- [x] **CameraBridge Pattern** - Exponer cámara R3F a componente padre
+- [x] **Mathematical Raycaster** - Intersección Ray-Plane para drops exactos
+- [x] Raycaster usa `THREE.Plane(0,1,0)` - ignora meshes, HTML overlays
+- [x] **CollapsibleSection Component** - Secciones acordeón reutilizables
+- [x] Secciones con ChevronRight/Down, badge count, animación slideIn
+- [x] **Big "FORGE NEW FIXTURE" Button** - Botón prominente con glow cyan
+- [x] Default: Your Library + On Stage abiertos, Templates + Groups cerrados
+- [x] Bounds clamping: fixtures no salen del stage (±6m X, ±4m Z)
+
+**Archivos modificados en WAVE 368.5:**
+```
+src/components/views/StageConstructor/StageGrid3D.tsx  +80 líneas (CameraBridge + Raycaster)
+src/components/views/StageConstructorView.tsx          +50 líneas (CollapsibleSection + Big Button)
+src/components/views/StageConstructorView.css          +150 líneas (Accordion + Button styles)
+```
+
+**Documentación:** `docs/WAVE-368.5-UNBLOCKABLE-DROP.md`
+
+### LÍNEAS DE CÓDIGO:
+- **Creadas**: ~4200+ líneas
+- **Eliminadas**: ~850+ líneas (legacy cleanup)
+- **Tests**: 29 E2E tests passing
+
 ---
 
 ## 📝 CONCLUSIONES
@@ -791,21 +900,19 @@ src/core/stage/index.ts              - Barrel exports
 - TitanOrchestrator - core engine
 
 ### Lo que Necesita Refactor (Ampliar)
-- ConfigManager → StageManager
+- ~~ConfigManager → StageManager~~ ✅ DONE (ConfigManagerV2 + StagePersistence)
 - PatchTab → Stage Constructor UI
 - AddFixtureModal → Fixture Forge
 
-### Lo que Debe Morir (Eliminar)
-- ShowManager (duplicación innecesaria)
-- Escenas en localStorage
-- Auto-assign forzado (debe ser override-able)
-- layoutGenerator3D como única fuente (debe ser backup, no principal)
+### Lo que Murió (Eliminado)
+- ~~ShowManager~~ ☠️ WAVE 365
+- ~~ConfigManager.ts~~ ☠️ WAVE 367
+- ~~Escenas solo en localStorage~~ ☠️ WAVE 367 (migrador creado)
+- ~~Auto-assign forzado~~ ☠️ WAVE 360 (zonas persistidas)
 
 ---
 
-**Próximo Paso**: Esperar directiva para comenzar diseño detallado del Stage Constructor.
-
----
+**CICLO STAGE CONSTRUCTOR: COMPLETADO**
 
 *"GrandMA3 cobra $10,000 por licencia. Nosotros vamos a darles una UX que los haga llorar... GRATIS."*  
 — PunkOpus, 2026

@@ -318,6 +318,267 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 368: USER LIBRARY STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sidebar-header .header-action {
+  margin-left: auto;
+}
+
+.user-library .empty-state {
+  padding: 16px;
+  text-align: center;
+}
+
+.create-fixture-btn,
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 6px;
+  background: rgba(34, 211, 238, 0.1);
+  color: #22d3ee;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-fixture-btn:hover,
+.retry-btn:hover {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.library-fixture-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.library-fixture-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.05);
+  border: 1px solid transparent;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.library-fixture-item:hover {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+.library-fixture-item:active {
+  cursor: grabbing;
+}
+
+.library-fixture-item .fixture-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.library-fixture-item .fixture-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-fixture-item .fixture-meta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  font-size: 24px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.empty-state.error {
+  color: #ef4444;
+}
+
+.empty-state.compact {
+  padding: 12px;
+}
+
+.empty-state.compact p {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+}
+
+.empty-state.compact span {
+  font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 368.5: THE IMPOSING FORGE BUTTON 🔨
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forge-big-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 2px solid #22d3ee;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.15) 0%, rgba(34, 211, 238, 0.05) 100%);
+  color: #22d3ee;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.forge-big-button:hover {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.25) 0%, rgba(34, 211, 238, 0.1) 100%);
+  border-color: #67e8f9;
+  box-shadow: 
+    0 0 30px rgba(34, 211, 238, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.forge-big-button:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 0 15px rgba(34, 211, 238, 0.2),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.forge-big-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 368.5: COLLAPSIBLE SECTIONS (ACCORDION)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.collapsible-section {
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.collapsible-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.collapse-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.collapsible-section.open .collapse-icon {
+  color: #22d3ee;
+}
+
+.section-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.collapsible-section.open .section-title {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.section-badge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.collapsible-section.open .section-badge {
+  background: rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+}
+
+.section-action {
+  margin-left: auto;
+}
+
+.collapsible-content {
+  padding: 0 12px 12px 12px;
+  max-height: 500px;
+  overflow-y: auto;
+  animation: slideDown 0.2s ease;
+}
+
+.collapsible-section.closed .collapsible-content {
+  display: none;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PROPERTIES SIDEBAR
    ═══════════════════════════════════════════════════════════════════════════ */
 

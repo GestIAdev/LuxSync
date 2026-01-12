@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 STAGE GRID 3D - WAVE 361.5
+ * 🎮 STAGE GRID 3D - WAVE 369
  * "El Lienzo Infinito del Arquitecto"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -15,9 +15,11 @@
  * - Persist position on drag end
  * - Ghost Drag & Drop desde library
  * - Box Selection (RTS-style)
+ * - WAVE 368.5: Mathematical Raycaster D&D (bulletproof)
+ * - WAVE 369: Camera Lock (input isolation) + Auto-Zoning (geofencing)
  * 
  * @module components/views/StageConstructor/StageGrid3D
- * @version 361.5.0
+ * @version 369.0.0
  */
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
@@ -37,6 +39,24 @@ import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
 import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
 import * as THREE from 'three'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 368.5: CAMERA BRIDGE - Expose camera to parent for D&D raycasting
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface CameraBridgeProps {
+  onCameraReady: (camera: THREE.Camera) => void
+}
+
+const CameraBridge: React.FC<CameraBridgeProps> = ({ onCameraReady }) => {
+  const { camera } = useThree()
+  
+  useEffect(() => {
+    onCameraReady(camera)
+  }, [camera, onCameraReady])
+  
+  return null
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE 3D MESH
@@ -148,15 +168,16 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TRANSFORM GIZMO WRAPPER - With Snap Support
+// TRANSFORM GIZMO WRAPPER - With Snap Support + WAVE 369 Interaction Lock
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface TransformGizmoProps {
   fixture: FixtureV2
-  onPositionChange: (id: string, position: Position3D) => void
+  onPositionChange: (id: string, position: Position3D, newZone: FixtureZone | null) => void
   snapEnabled: boolean
   snapDistance: number
   snapRotation: number
+  onDraggingChanged: (isDragging: boolean) => void
 }
 
 const TransformGizmo: React.FC<TransformGizmoProps> = ({ 
@@ -164,23 +185,48 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
   onPositionChange,
   snapEnabled,
   snapDistance,
-  snapRotation
+  snapRotation,
+  onDraggingChanged
 }) => {
   const transformRef = useRef<any>(null)
   const objectRef = useRef<THREE.Group>(null!)
-  const { camera } = useThree()
+  const [currentZone, setCurrentZone] = useState<FixtureZone | null>(null)
   
-  // Handle drag end - persist position
-  const handleDragEnd = useCallback(() => {
-    if (objectRef.current) {
+  // Track zone while dragging for visual feedback
+  useFrame(() => {
+    if (objectRef.current && transformRef.current?.dragging) {
       const pos = objectRef.current.position
-      onPositionChange(fixture.id, {
-        x: Math.round(pos.x * 100) / 100, // Round to 2 decimals
-        y: Math.round(pos.y * 100) / 100,
-        z: Math.round(pos.z * 100) / 100
-      })
+      const zone = getZoneAtPosition(pos.x, pos.z)
+      if (zone !== currentZone) {
+        setCurrentZone(zone)
+        console.log(`[Gizmo] 📍 Entering zone: ${zone || 'unassigned'}`)
+      }
     }
-  }, [fixture.id, onPositionChange])
+  })
+  
+  // Handle dragging state change - WAVE 369
+  useEffect(() => {
+    const controls = transformRef.current
+    if (!controls) return
+    
+    const handleDraggingChanged = (event: { value: boolean }) => {
+      onDraggingChanged(event.value)
+      
+      // On drag end, report final position with zone
+      if (!event.value && objectRef.current) {
+        const pos = objectRef.current.position
+        const zone = getZoneAtPosition(pos.x, pos.z)
+        onPositionChange(fixture.id, {
+          x: Math.round(pos.x * 100) / 100,
+          y: Math.round(pos.y * 100) / 100,
+          z: Math.round(pos.z * 100) / 100
+        }, zone)
+      }
+    }
+    
+    controls.addEventListener('dragging-changed', handleDraggingChanged)
+    return () => controls.removeEventListener('dragging-changed', handleDraggingChanged)
+  }, [fixture.id, onPositionChange, onDraggingChanged])
   
   return (
     <group>
@@ -197,14 +243,33 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
         size={0.8}
         translationSnap={snapEnabled ? snapDistance : null}
         rotationSnap={snapEnabled ? snapRotation : null}
-        onMouseUp={handleDragEnd}
       />
+      
+      {/* WAVE 369: Floating zone indicator while dragging */}
+      {currentZone && transformRef.current?.dragging && (
+        <Html position={[objectRef.current?.position.x || 0, (objectRef.current?.position.y || 3) + 1, objectRef.current?.position.z || 0]}>
+          <div style={{
+            background: 'rgba(0,0,0,0.8)',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            border: '1px solid #22d3ee',
+            color: '#22d3ee',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap'
+          }}>
+            📍 {currentZone}
+          </div>
+        </Html>
+      )}
     </group>
   )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STAGE GRID SCENE - Receives snap config as props
+// WAVE 369: Now with interaction lock for camera control isolation
+// WAVE 369.6: Receives selectedIds as prop to fix R3F context issue
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface StageSceneProps {
@@ -215,6 +280,9 @@ interface StageSceneProps {
   showZones: boolean
   highlightedZone: FixtureZone | null
   onZoneClick: (zoneId: FixtureZone) => void
+  isBoxSelectMode: boolean  // WAVE 369: Disable camera during box select
+  onInteractionChange: (isInteracting: boolean) => void  // WAVE 369
+  selectedIdsSet: Set<string>  // WAVE 369.6: Fix - pass from parent to avoid R3F context issue
 }
 
 const StageScene: React.FC<StageSceneProps> = ({ 
@@ -224,21 +292,54 @@ const StageScene: React.FC<StageSceneProps> = ({
   onFixtureDrop,
   showZones,
   highlightedZone,
-  onZoneClick
+  onZoneClick,
+  isBoxSelectMode,
+  onInteractionChange,
+  selectedIdsSet  // WAVE 369.6
 }) => {
   const fixtures = useStageStore(selectFixtures)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
-  const selectedIds = useSelectionStore(state => state.selectedIds)
+  const setFixtureZone = useStageStore(state => state.setFixtureZone)
+  
+  // WAVE 369.6 FIX: Use prop instead of hook to avoid R3F context issue
+  const selectedIds = selectedIdsSet
+  
   const hoveredId = useSelectionStore(state => state.hoveredId)
   const select = useSelectionStore(state => state.select)
   const setHovered = useSelectionStore(state => state.setHovered)
   const deselectAll = useSelectionStore(state => state.deselectAll)
+  
+  // DEBUG: Log when selectedIds changes in StageScene
+  useEffect(() => {
+    console.log('[StageScene] 🎯 selectedIds changed:', Array.from(selectedIds), 'size:', selectedIds.size)
+  }, [selectedIds])
+  
+  // WAVE 369: Gizmo interaction state
+  const [isGizmoActive, setIsGizmoActive] = useState(false)
+  
+  // WAVE 369: Camera disabled when gizmo active OR box select mode
+  const cameraEnabled = !isGizmoActive && !isBoxSelectMode
   
   // Get the single selected fixture for transform controls
   const selectedArray = Array.from(selectedIds)
   const selectedFixture = selectedArray.length === 1 
     ? fixtures.find(f => f.id === selectedArray[0])
     : null
+  
+  // WAVE 369: Handle gizmo dragging change
+  const handleGizmoDraggingChanged = useCallback((isDragging: boolean) => {
+    setIsGizmoActive(isDragging)
+    onInteractionChange(isDragging)
+  }, [onInteractionChange])
+  
+  // WAVE 369: Handle position change with auto-zoning
+  const handlePositionChangeWithZone = useCallback((id: string, position: Position3D, newZone: FixtureZone | null) => {
+    updateFixturePosition(id, position)
+    if (newZone) {
+      setFixtureZone(id, newZone)
+      console.log(`[StageScene] 🗺️ Auto-assigned zone: ${newZone}`)
+    }
+  }, [updateFixturePosition, setFixtureZone])
   
   // Handle fixture selection
   const handleSelect = useCallback((id: string, event: ThreeEvent<MouseEvent>) => {
@@ -263,8 +364,9 @@ const StageScene: React.FC<StageSceneProps> = ({
       {/* Camera */}
       <PerspectiveCamera makeDefault position={[8, 6, 8]} fov={50} />
       
-      {/* Controls */}
+      {/* WAVE 369: Controls - DISABLED when gizmo active or box selecting */}
       <OrbitControls
+        enabled={cameraEnabled}
         enableDamping
         dampingFactor={0.05}
         minDistance={2}
@@ -330,14 +432,15 @@ const StageScene: React.FC<StageSceneProps> = ({
         />
       ))}
       
-      {/* Transform Gizmo for selected fixture - WITH SNAP */}
+      {/* WAVE 369: Transform Gizmo - WITH SNAP + INTERACTION LOCK + AUTO-ZONE */}
       {selectedFixture && (
         <TransformGizmo
           fixture={selectedFixture}
-          onPositionChange={updateFixturePosition}
+          onPositionChange={handlePositionChangeWithZone}
           snapEnabled={snapEnabled}
           snapDistance={snapDistance}
           snapRotation={snapRotation}
+          onDraggingChanged={handleGizmoDraggingChanged}
         />
       )}
     </>
@@ -346,6 +449,7 @@ const StageScene: React.FC<StageSceneProps> = ({
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT - Bridge between React Context and R3F
+// WAVE 369: Camera Lock + Auto-Zoning complete
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface BoxSelectionRect {
@@ -354,6 +458,11 @@ interface BoxSelectionRect {
   currentX: number
   currentY: number
 }
+
+// WAVE 368.5: Reusable raycaster and ground plane (created once)
+const dropRaycaster = new THREE.Raycaster()
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // Y-up plane at y=0
+const intersectionPoint = new THREE.Vector3()
 
 const StageGrid3D: React.FC = () => {
   // Get snap settings from parent context
@@ -365,12 +474,37 @@ const StageGrid3D: React.FC = () => {
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const canvasRef = useRef<HTMLDivElement>(null)
   
+  // WAVE 368.5: Camera reference for raycasting
+  const cameraRef = useRef<THREE.Camera | null>(null)
+  
+  // WAVE 369: Gizmo interaction state (passed to StageScene for camera lock)
+  const [isGizmoInteracting, setIsGizmoInteracting] = useState(false)
+  
+  // Is box select tool active
+  const isBoxSelectMode = toolMode === 'boxSelect'
+  
   // Box selection state
   const [boxSelection, setBoxSelection] = useState<BoxSelectionRect | null>(null)
   const isBoxSelecting = useRef(false)
   
   // Zone highlight state - WAVE 363
   const [highlightedZone, setHighlightedZone] = useState<FixtureZone | null>(null)
+  
+  // WAVE 368.5: Camera ready callback
+  const handleCameraReady = useCallback((camera: THREE.Camera) => {
+    cameraRef.current = camera
+    console.log('[StageGrid3D] Camera ready for raycasting')
+  }, [])
+  
+  // WAVE 369: Handle gizmo interaction change
+  const handleInteractionChange = useCallback((isInteracting: boolean) => {
+    setIsGizmoInteracting(isInteracting)
+    if (isInteracting) {
+      console.log('[StageGrid3D] 🔒 Camera LOCKED - Gizmo active')
+    } else {
+      console.log('[StageGrid3D] 🔓 Camera UNLOCKED')
+    }
+  }, [])
   
   // Handle zone click - assign zone to selected fixtures
   const handleZoneClick = useCallback((zoneId: FixtureZone) => {
@@ -431,28 +565,43 @@ const StageGrid3D: React.FC = () => {
     // Only select if box is at least 10px
     if (maxX - minX > 10 && maxY - minY > 10) {
       const rect = canvasRef.current.getBoundingClientRect()
+      const camera = cameraRef.current
       
-      // Convert screen box to normalized device coordinates
-      const ndcMinX = ((minX) / rect.width) * 2 - 1
-      const ndcMaxX = ((maxX) / rect.width) * 2 - 1
-      const ndcMinY = -((maxY) / rect.height) * 2 + 1 // Y is inverted
-      const ndcMaxY = -((minY) / rect.height) * 2 + 1
+      if (!camera) {
+        console.warn('[BoxSelect] No camera reference!')
+        isBoxSelecting.current = false
+        setBoxSelection(null)
+        return
+      }
       
-      // Simple screen-space selection based on fixture positions
-      // For proper 3D, this should project each fixture to screen space
-      // Simplified: map world X/Z to approximate screen position
+      // WAVE 369.6: PROPER 3D→2D PROJECTION
+      // Project each fixture's 3D position to screen space using the actual camera
       const selectedFixtureIds = fixtures.filter(fixture => {
-        // Approximate NDC from world position (assuming default camera)
-        const approxNdcX = fixture.position.x / 8  // Rough scale
-        const approxNdcZ = -fixture.position.z / 6
+        // Create a Vector3 from fixture position
+        const worldPos = new THREE.Vector3(
+          fixture.position.x,
+          fixture.position.y,
+          fixture.position.z
+        )
         
+        // Project to NDC (-1 to +1) using camera's view-projection matrix
+        const projected = worldPos.clone().project(camera)
+        
+        // Convert NDC to screen pixels
+        const screenX = (projected.x + 1) / 2 * rect.width
+        const screenY = (-projected.y + 1) / 2 * rect.height
+        
+        // Check if fixture's screen position is inside selection box
         return (
-          approxNdcX >= ndcMinX && 
-          approxNdcX <= ndcMaxX &&
-          approxNdcZ >= ndcMinY &&
-          approxNdcZ <= ndcMaxY
+          screenX >= minX && 
+          screenX <= maxX &&
+          screenY >= minY &&
+          screenY <= maxY &&
+          projected.z < 1 // Only select fixtures in front of camera
         )
       }).map(f => f.id)
+      
+      console.log(`[BoxSelect] Selected ${selectedFixtureIds.length} fixtures:`, selectedFixtureIds)
       
       if (selectedFixtureIds.length > 0) {
         selectMultiple(selectedFixtureIds)
@@ -463,36 +612,86 @@ const StageGrid3D: React.FC = () => {
     setBoxSelection(null)
   }, [boxSelection, fixtures, selectMultiple])
   
-  // Handle drop - Raycast to ground plane
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 368.5: BULLETPROOF DROP - Mathematical Raycaster
+  // "La Maldición del HTML Invisible" ENDS HERE
+  // ═══════════════════════════════════════════════════════════════════════════
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+    
     const fixtureType = e.dataTransfer.getData('fixture-type')
-    if (!fixtureType || !canvasRef.current) return
+    const libraryId = e.dataTransfer.getData('library-fixture-id')
     
-    // Calculate normalized device coordinates
+    if (!fixtureType || !canvasRef.current) {
+      console.warn('[StageGrid3D] Drop failed: no fixture type or canvas ref')
+      return
+    }
+    
+    // Step 1: Get mouse position relative to canvas
     const rect = canvasRef.current.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
     
-    // For now, simple mapping to world coordinates
-    // TODO: Proper raycast when we have camera reference
-    const worldX = x * 6  // Scale to stage size
-    const worldZ = y * 4
+    // Step 2: Convert to Normalized Device Coordinates (-1 to +1)
+    const ndcX = (mouseX / rect.width) * 2 - 1
+    const ndcY = -(mouseY / rect.height) * 2 + 1
     
-    // Create fixture at drop position
+    let worldX = 0
+    let worldZ = 0
+    
+    // Step 3: Raycast to ground plane (if camera is available)
+    if (cameraRef.current) {
+      // Set ray from camera through mouse position
+      dropRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), cameraRef.current)
+      
+      // Intersect with ground plane (y=0)
+      const ray = dropRaycaster.ray
+      const didIntersect = ray.intersectPlane(groundPlane, intersectionPoint)
+      
+      if (didIntersect) {
+        worldX = intersectionPoint.x
+        worldZ = intersectionPoint.z
+        console.log(`[StageGrid3D] Raycast hit: (${worldX.toFixed(2)}, ${worldZ.toFixed(2)})`)
+      } else {
+        // Fallback: If ray doesn't hit plane (looking up), use projection
+        console.warn('[StageGrid3D] Raycast missed ground plane, using fallback')
+        worldX = ndcX * 8
+        worldZ = ndcY * 6
+      }
+    } else {
+      // Fallback: No camera yet (shouldn't happen, but safety first)
+      console.warn('[StageGrid3D] No camera ref, using fallback projection')
+      worldX = ndcX * 8
+      worldZ = ndcY * 6
+    }
+    
+    // Clamp to stage bounds (-6 to 6 for X, -4 to 4 for Z)
+    worldX = Math.max(-6, Math.min(6, worldX))
+    worldZ = Math.max(-4, Math.min(4, worldZ))
+    
+    // WAVE 369: Auto-detect zone from drop position
+    const autoZone = getZoneAtPosition(worldX, worldZ) || 'unassigned'
+    
+    // Step 4: Create the fixture with auto-assigned zone!
     const fixtureId = `fixture-${Date.now()}`
-    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1  // Auto-assign address
+    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
+    
     const newFixture = createDefaultFixture(fixtureId, nextAddress, {
       type: fixtureType as FixtureV2['type'],
-      position: { x: worldX, y: 3, z: worldZ }  // Default height 3m
+      position: { x: worldX, y: 3, z: worldZ },  // Default height 3m above ground
+      zone: autoZone  // WAVE 369: Auto-zone assignment
     })
     
     addFixture(newFixture)
     setDraggedFixtureType(null)
+    
+    console.log(`[StageGrid3D] 🎯 Fixture dropped at (${worldX.toFixed(2)}, 3, ${worldZ.toFixed(2)}) → Zone: ${autoZone}`)
   }, [addFixture, setDraggedFixtureType])
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
   }, [])
   
@@ -500,9 +699,11 @@ const StageGrid3D: React.FC = () => {
   const handleFixtureDrop = useCallback((type: string, position: Position3D) => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
+    const autoZone = getZoneAtPosition(position.x, position.z) || 'unassigned'
     const newFixture = createDefaultFixture(fixtureId, nextAddress, {
       type: type as FixtureV2['type'],
-      position
+      position,
+      zone: autoZone
     })
     addFixture(newFixture)
   }, [addFixture])
@@ -510,7 +711,7 @@ const StageGrid3D: React.FC = () => {
   return (
     <div 
       ref={canvasRef}
-      className="stage-grid-3d"
+      className="stage-grid-3d viewport-container"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onMouseDown={handleMouseDown}
@@ -526,8 +727,11 @@ const StageGrid3D: React.FC = () => {
           powerPreference: 'high-performance'
         }}
         dpr={[1, 2]}
-        style={{ background: '#000000' }}
+        style={{ background: '#000000', pointerEvents: 'auto' }}
       >
+        {/* WAVE 368.5: Camera Bridge - exposes camera for D&D raycasting */}
+        <CameraBridge onCameraReady={handleCameraReady} />
+        
         <color attach="background" args={['#000000']} />
         <fog attach="fog" args={['#000000', 30, 60]} />
         
@@ -539,6 +743,9 @@ const StageGrid3D: React.FC = () => {
           showZones={showZones}
           highlightedZone={highlightedZone}
           onZoneClick={handleZoneClick}
+          isBoxSelectMode={isBoxSelectMode}
+          onInteractionChange={handleInteractionChange}
+          selectedIdsSet={selectedIds}
         />
       </Canvas>
       
@@ -569,6 +776,13 @@ const StageGrid3D: React.FC = () => {
         />
       )}
       
+      {/* WAVE 369: Camera Lock Indicator */}
+      {(isGizmoInteracting || isBoxSelectMode) && (
+        <div className="camera-lock-indicator">
+          <span>🔒 Camera Locked</span>
+        </div>
+      )}
+      
       {/* Canvas overlay UI */}
       <div className="grid-overlay">
         <div className="grid-hint">
@@ -583,6 +797,28 @@ const StageGrid3D: React.FC = () => {
           width: 100%;
           height: 100%;
           position: relative;
+        }
+        
+        .camera-lock-indicator {
+          position: absolute;
+          top: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 6px 12px;
+          background: rgba(239, 68, 68, 0.9);
+          border: 1px solid #ef4444;
+          border-radius: 4px;
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          pointer-events: none;
+          z-index: 100;
+          animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
         }
         
         .grid-overlay {

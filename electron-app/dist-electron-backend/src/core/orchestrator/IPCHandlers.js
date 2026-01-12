@@ -17,7 +17,7 @@ export function setupIPCHandlers(deps) {
     setupOverrideHandlers(deps);
     setupConfigHandlers(deps);
     setupFixtureHandlers(deps);
-    setupShowHandlers(deps);
+    // setupShowHandlers PURGED - WAVE 365: Use StageIPCHandlers instead
     setupDMXHandlers(deps);
     setupArtNetHandlers(deps);
     console.log('[IPC] All IPC handlers registered');
@@ -523,39 +523,10 @@ function setupFixtureHandlers(deps) {
     });
 }
 // =============================================================================
-// SHOW HANDLERS
+// SHOW HANDLERS - WAVE 365: PURGED
+// Legacy ShowManager eliminated. All persistence now via StagePersistence + StageIPCHandlers
+// Channels 'shows:*' removed. Use 'lux:stage:*' channels instead.
 // =============================================================================
-function setupShowHandlers(deps) {
-    const { showManager, getPatchedFixtures, setPatchedFixtures, configManager, getMainWindow, resetZoneCounters, autoAssignZone, recalculateZoneCounters } = deps;
-    ipcMain.handle('shows:list', async () => {
-        return showManager.listShows();
-    });
-    ipcMain.handle('shows:save', async (_event, name) => {
-        const patchedFixtures = getPatchedFixtures();
-        return showManager.saveShow(name, { fixtures: patchedFixtures });
-    });
-    ipcMain.handle('shows:load', async (_event, name) => {
-        const show = await showManager.loadShow(name);
-        if (show?.fixtures) {
-            resetZoneCounters();
-            const fixtures = show.fixtures.map((f) => ({
-                ...f,
-                zone: autoAssignZone(f.type, f.name)
-            }));
-            setPatchedFixtures(fixtures);
-            recalculateZoneCounters();
-            configManager.updateConfig({ patchedFixtures: fixtures });
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-                mainWindow.webContents.send('lux:fixtures-loaded', fixtures);
-            }
-        }
-        return { success: true };
-    });
-    ipcMain.handle('shows:delete', async (_event, name) => {
-        return showManager.deleteShow(name);
-    });
-}
 // =============================================================================
 // DMX HANDLERS
 // =============================================================================

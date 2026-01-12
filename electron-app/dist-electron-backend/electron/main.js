@@ -3,6 +3,7 @@
  *
  * WAVE 243.5: THE REBIRTH
  * WAVE 365: SYSTEM INTEGRATION
+ * WAVE 367: SPRING CLEANING
  *
  * Este archivo ha sido reducido de 3467 lineas a ~300 lineas.
  * Toda la logica ha sido delegada a:
@@ -10,6 +11,7 @@
  * - IPCHandlers: 61+ handlers IPC centralizados
  * - EventRouter: Routing de eventos interno
  * - StagePersistence: Persistencia V2 (WAVE 365)
+ * - ConfigManagerV2: Solo preferencias (WAVE 367)
  *
  * LuxSync V2 - NO HAY VUELTA ATRAS
  */
@@ -19,13 +21,14 @@ import path from 'path';
 import { TitanOrchestrator, setupIPCHandlers } from '../src/core/orchestrator';
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
+// Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
+import { configManager } from '../src/core/config/ConfigManagerV2';
 // External Services
-import { configManager } from '../src/core/config/ConfigManager';
 import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver';
 import { universalDMX } from '../src/hal/drivers/UniversalDMXDriver';
 import { artNetDriver } from '../src/hal/drivers/ArtNetDriver';
 import { EffectsEngine } from '../src/engine/color/EffectsEngine';
-import { showManager } from '../src/core/library/ShowManager';
+// ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { fxtParser } from '../src/core/library/FXTParser';
 // =============================================================================
 // GLOBAL STATE
@@ -191,7 +194,7 @@ async function initTitan() {
         configManager,
         universalDMX,
         artNetDriver,
-        showManager,
+        // showManager PURGED - WAVE 365: StagePersistence handles persistence now
         patchedFixtures,
         manualOverrides,
         fixturePhysicsDriver,
@@ -233,8 +236,23 @@ async function initTitan() {
 // =============================================================================
 app.whenReady().then(async () => {
     console.log('[Main] LuxSync V2 starting...');
-    // Load saved configuration
-    const savedConfig = configManager.load();
+    console.log('[Main] ═══════════════════════════════════════════════════════');
+    console.log('[Main]   WAVE 367: SPRING CLEANING ARCHITECTURE');
+    console.log('[Main]   ConfigManagerV2 → Preferences Only');
+    console.log('[Main]   StagePersistence → ShowFileV2 (fixtures, scenes)');
+    console.log('[Main] ═══════════════════════════════════════════════════════');
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WAVE 367: Load preferences (ConfigManagerV2 - NO FIXTURES)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const { config: preferences, legacyFixtures } = configManager.load();
+    console.log(`[Main] 📦 Preferences loaded: v${preferences.version}`);
+    // If legacy fixtures were found (V1 → V2 migration), they need to be saved to ShowFileV2
+    if (legacyFixtures.length > 0) {
+        console.log(`[Main] 🔄 MIGRATION: ${legacyFixtures.length} legacy fixtures detected`);
+        console.log('[Main] 🔄 These will be migrated to ShowFileV2 when stageStore loads');
+        // Legacy fixtures are now extracted - ConfigManagerV2 has already saved without them
+        // The renderer will handle migration via stageStore.loadFromDisk() → autoMigrate()
+    }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias
     // ═══════════════════════════════════════════════════════════════════════════
@@ -250,44 +268,20 @@ app.whenReady().then(async () => {
     else {
         console.warn('[Library] ⚠️ No fixture definitions found in library');
     }
-    // Restore patched fixtures
-    if (savedConfig.patchedFixtures.length > 0) {
-        resetZoneCounters();
-        patchedFixtures = savedConfig.patchedFixtures.map(f => ({
-            id: f.id,
-            name: f.name,
-            type: f.type,
-            manufacturer: f.manufacturer,
-            channelCount: f.channelCount,
-            dmxAddress: f.dmxAddress,
-            universe: f.universe,
-            zone: autoAssignZone(f.type, f.name),
-            filePath: f.filePath,
-        }));
-        recalculateZoneCounters();
-        console.log('[Main] Restored ' + patchedFixtures.length + ' fixtures from config');
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WAVE 367: patchedFixtures now loaded via StagePersistence (ShowFileV2)
+    // The renderer calls stageStore.loadFromDisk() which triggers IPC lux:stage:load
+    // For now, patchedFixtures[] starts empty - renderer will hydrate it
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NOTE: Legacy startup that loaded from ConfigManager is REMOVED
+    // Fixtures now come from ShowFileV2 via stageStore + StagePersistence
+    console.log('[Main] 📭 patchedFixtures starts empty (will be loaded from ShowFileV2)');
     createWindow();
     await initTitan();
     // ═══════════════════════════════════════════════════════════════════════════
-    // WAVE 255: CONEXIÓN DEL CUERPO - Inject fixtures into TitanOrchestrator
+    // WAVE 367: TitanOrchestrator fixture injection happens from renderer
+    // When stageStore loads ShowFileV2, it syncs to main process via IPC
     // ═══════════════════════════════════════════════════════════════════════════
-    if (titanOrchestrator && patchedFixtures.length > 0) {
-        // Hydrate fixtures with library definitions
-        const hydratedFixtures = patchedFixtures.map(patched => {
-            const definition = fixtureLibrary.find(def => def.name === patched.name || def.id === patched.id);
-            return {
-                ...patched,
-                channels: definition?.channels || [],
-                hasMovementChannels: definition?.hasMovementChannels || false,
-                has16bitMovement: definition?.has16bitMovement || false,
-                hasColorMixing: definition?.hasColorMixing || false,
-                hasColorWheel: definition?.hasColorWheel || false,
-            };
-        });
-        titanOrchestrator.setFixtures(hydratedFixtures);
-        console.log(`[Main] 💉 Injected ${hydratedFixtures.length} fixtures into Titan Engine`);
-    }
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();

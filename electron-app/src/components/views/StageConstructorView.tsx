@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🏗️ STAGE CONSTRUCTOR VIEW - WAVE 364
+ * 🏗️ STAGE CONSTRUCTOR VIEW - WAVE 369.5
  * "El Taller del Arquitecto de Luces"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -12,15 +12,18 @@
  * WAVE 361.5: Added snap system, ghost drag, and box selection
  * WAVE 363: Added Groups & Zones management, Keyboard shortcuts
  * WAVE 364: Added Fixture Forge integration
+ * WAVE 368: Library scanner integration
+ * WAVE 368.5: Accordion UI + Big Forge Button + D&D Raycaster Fix
+ * WAVE 369.5: File System Dialogs (Open/Save/New) + Title Sync
  * 
  * @module components/views/StageConstructorView
- * @version 364.0.0
+ * @version 369.5.0
  */
 
-import React, { Suspense, lazy, useState, useCallback, createContext, useContext } from 'react'
+import React, { Suspense, lazy, useState, useCallback, useEffect, createContext, useContext, useRef } from 'react'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
@@ -31,6 +34,51 @@ import './StageConstructorView.css'
 const StageGrid3D = lazy(() => import('./StageConstructor/StageGrid3D'))
 const GroupManagerPanel = lazy(() => import('./StageConstructor/GroupManagerPanel'))
 const FixtureForge = lazy(() => import('../modals/FixtureEditor/FixtureForge'))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 368.5: COLLAPSIBLE SECTION COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface CollapsibleSectionProps {
+  title: string
+  defaultOpen?: boolean
+  badge?: number | string
+  children: React.ReactNode
+  action?: React.ReactNode
+}
+
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
+  title, 
+  defaultOpen = true, 
+  badge,
+  children,
+  action
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  
+  return (
+    <div className={`collapsible-section ${isOpen ? 'open' : 'closed'}`}>
+      <div 
+        className="collapsible-header"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="collapse-icon">
+          {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+        <span className="section-title">{title}</span>
+        {badge !== undefined && <span className="section-badge">{badge}</span>}
+        {action && (
+          <div className="section-action" onClick={e => e.stopPropagation()}>
+            {action}
+          </div>
+        )}
+      </div>
+      <div className="collapsible-content">
+        {isOpen && children}
+      </div>
+    </div>
+  )
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTRUCTOR CONTEXT - Shared state between components
@@ -106,22 +154,77 @@ const FIXTURE_TEMPLATES: FixtureTemplate[] = [
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE LIBRARY SIDEBAR (LEFT) - With Drag Source
+// WAVE 368: Now reads real .fxt files from library!
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Library fixture loaded from .fxt file
+interface LibraryFixture {
+  id: string
+  name: string
+  manufacturer: string
+  type: FixtureV2['type']
+  channelCount: number
+  filePath: string
+}
 
 const FixtureLibrarySidebar: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
-  const { setDraggedFixtureType } = useConstructorContext()
+  const { setDraggedFixtureType, openFixtureForge } = useConstructorContext()
   
-  const handleDragStart = useCallback((e: React.DragEvent, type: string) => {
+  // WAVE 368: Real library state
+  const [libraryFixtures, setLibraryFixtures] = useState<LibraryFixture[]>([])
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+  const [libraryError, setLibraryError] = useState<string | null>(null)
+  
+  // WAVE 368: Load library on mount
+  useEffect(() => {
+    loadFixtureLibrary()
+  }, [])
+  
+  const loadFixtureLibrary = useCallback(async () => {
+    setIsLoadingLibrary(true)
+    setLibraryError(null)
+    
+    try {
+      if (!window.lux?.getFixtureLibrary) {
+        console.warn('[FixtureLibrarySidebar] window.lux.getFixtureLibrary not available')
+        return
+      }
+      
+      const result = await window.lux.getFixtureLibrary()
+      console.log('[FixtureLibrarySidebar] Loaded library:', result?.fixtures?.length || 0, 'fixtures')
+      
+      if (result?.success && Array.isArray(result.fixtures)) {
+        setLibraryFixtures(result.fixtures.map((def) => ({
+          id: def.id || def.name,
+          name: def.name || 'Unknown',
+          manufacturer: def.manufacturer || 'Unknown',
+          type: mapDefinitionTypeToFixtureType(def.type),
+          channelCount: def.channelCount || 0,
+          filePath: def.filePath || ''
+        })))
+      }
+    } catch (error) {
+      console.error('[FixtureLibrarySidebar] Failed to load library:', error)
+      setLibraryError('Failed to load fixture library')
+    } finally {
+      setIsLoadingLibrary(false)
+    }
+  }, [])
+  
+  const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
     e.dataTransfer.setData('fixture-type', type)
+    if (libraryId) {
+      e.dataTransfer.setData('library-fixture-id', libraryId)
+    }
     e.dataTransfer.effectAllowed = 'copy'
     setDraggedFixtureType(type)
     
     // Create ghost image
     const ghost = document.createElement('div')
     ghost.className = 'drag-ghost'
-    ghost.innerHTML = FIXTURE_TEMPLATES.find(t => t.type === type)?.icon || '💡'
+    ghost.innerHTML = getFixtureIcon(type)
     ghost.style.cssText = `
       position: absolute;
       top: -1000px;
@@ -148,11 +251,19 @@ const FixtureLibrarySidebar: React.FC = () => {
       </div>
       
       <div className="sidebar-content">
-        {/* Fixture Templates - Draggable */}
-        <div className="library-section">
-          <div className="section-header">
-            <span>Templates (Drag to Stage)</span>
-          </div>
+        {/* WAVE 368.5: THE IMPOSING BUTTON */}
+        <button 
+          className="forge-big-button"
+          onClick={() => openFixtureForge()}
+        >
+          <Hammer size={20} />
+          <span>FORGE NEW FIXTURE</span>
+        </button>
+        
+        {/* WAVE 368.5: Collapsible Sections */}
+        
+        {/* Quick Templates - Collapsed by default */}
+        <CollapsibleSection title="Quick Templates" defaultOpen={false} badge={FIXTURE_TEMPLATES.length}>
           <div className="template-grid">
             {FIXTURE_TEMPLATES.map(template => (
               <div
@@ -168,51 +279,94 @@ const FixtureLibrarySidebar: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
         
-        {/* Existing Fixtures List */}
-        <div className="library-section">
-          <div className="section-header">
-            <span>On Stage ({fixtures.length})</span>
-            <button className="icon-btn" title="Add Fixture">
-              <Plus size={14} />
+        {/* User Library - Open by default, most important */}
+        <CollapsibleSection 
+          title="Your Library" 
+          defaultOpen={true} 
+          badge={libraryFixtures.length}
+          action={
+            <button 
+              className="icon-btn" 
+              title="Refresh Library"
+              onClick={loadFixtureLibrary}
+              disabled={isLoadingLibrary}
+            >
+              <RefreshCcw size={14} className={isLoadingLibrary ? 'spinning' : ''} />
             </button>
-          </div>
-          
+          }
+        >
+          {isLoadingLibrary ? (
+            <div className="empty-state small">
+              <span className="loading-spinner">⏳</span>
+              <p>Scanning library...</p>
+            </div>
+          ) : libraryError ? (
+            <div className="empty-state small error">
+              <p>{libraryError}</p>
+              <button className="retry-btn" onClick={loadFixtureLibrary}>Retry</button>
+            </div>
+          ) : libraryFixtures.length === 0 ? (
+            <div className="empty-state compact">
+              <p>No fixture definitions yet</p>
+              <span>Use the button above to create one</span>
+            </div>
+          ) : (
+            <ul className="library-fixture-list">
+              {libraryFixtures.map(libFix => (
+                <li 
+                  key={libFix.id} 
+                  className="library-fixture-item"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, libFix.type, libFix.id)}
+                  onDragEnd={handleDragEnd}
+                  title={`${libFix.manufacturer} - ${libFix.channelCount}ch\nDrag to stage`}
+                >
+                  <span className="fixture-type-icon">{getFixtureIcon(libFix.type)}</span>
+                  <div className="fixture-info">
+                    <span className="fixture-name">{libFix.name}</span>
+                    <span className="fixture-meta">{libFix.manufacturer} · {libFix.channelCount}ch</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CollapsibleSection>
+        
+        {/* On Stage - Open by default */}
+        <CollapsibleSection title="On Stage" defaultOpen={true} badge={fixtures.length}>
           {fixtures.length === 0 ? (
-            <div className="empty-state">
-              <Box size={32} className="empty-icon" />
-              <p>No hay fixtures en el stage</p>
-              <span>Arrastra templates arriba ↑</span>
+            <div className="empty-state compact">
+              <p>Stage vacío</p>
+              <span>Arrastra fixtures aquí ↓</span>
             </div>
           ) : (
             <ul className="fixture-list">
               {fixtures.map(fix => (
                 <li key={fix.id} className="fixture-item">
-                  <span className="fixture-type-icon">
-                    {fix.type === 'moving-head' ? '🎯' : 
-                     fix.type === 'par' ? '💡' : 
-                     fix.type === 'wash' ? '🌊' : '⚡'}
-                  </span>
+                  <span className="fixture-type-icon">{getFixtureIcon(fix.type)}</span>
                   <span className="fixture-name">{fix.name}</span>
                   <span className="fixture-address">#{fix.address}</span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleSection>
         
-        {/* Groups List */}
-        <div className="library-section">
-          <div className="section-header">
-            <span>Groups ({groups.length})</span>
+        {/* Groups - Collapsed by default */}
+        <CollapsibleSection 
+          title="Groups" 
+          defaultOpen={false} 
+          badge={groups.length}
+          action={
             <button className="icon-btn" title="Create Group">
               <Plus size={14} />
             </button>
-          </div>
-          
+          }
+        >
           {groups.length === 0 ? (
-            <div className="empty-state small">
+            <div className="empty-state compact">
               <p>No hay grupos</p>
             </div>
           ) : (
@@ -229,35 +383,218 @@ const FixtureLibrarySidebar: React.FC = () => {
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleSection>
       </div>
     </aside>
   )
 }
 
+// Helper: Map definition type to FixtureV2 type
+function mapDefinitionTypeToFixtureType(defType: string): FixtureV2['type'] {
+  const typeMap: Record<string, FixtureV2['type']> = {
+    'moving-head': 'moving-head',
+    'movinghead': 'moving-head',
+    'par': 'par',
+    'wash': 'wash',
+    'spot': 'moving-head',
+    'strobe': 'strobe',
+    'laser': 'laser',
+    'blinder': 'blinder',
+    'led-bar': 'par',
+    'ledbar': 'par'
+  }
+  return typeMap[defType?.toLowerCase()] || 'par'
+}
+
+// Helper: Get icon for fixture type
+function getFixtureIcon(type: string): string {
+  const icons: Record<string, string> = {
+    'moving-head': '🎯',
+    'par': '💡',
+    'wash': '🌊',
+    'strobe': '⚡',
+    'laser': '🔺',
+    'blinder': '☀️'
+  }
+  return icons[type] || '💡'
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// TOOLBAR
+// TOOLBAR - WAVE 369.5: Full File System Integration
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ConstructorToolbar: React.FC = () => {
   const isDirty = useStageStore(state => state.isDirty)
   const saveShow = useStageStore(state => state.saveShow)
   const showFile = useStageStore(state => state.showFile)
+  const showFilePath = useStageStore(state => state.showFilePath)
+  const newShow = useStageStore(state => state.newShow)
+  const loadShowFile = useStageStore(state => state.loadShowFile)
   
   const { snapEnabled, setSnapEnabled, toolMode, setToolMode, showZones, setShowZones } = useConstructorContext()
   
+  // WAVE 369.5: Editable title state
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  
+  // WAVE 369.5: Toast notification
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  
+  // Show toast notification
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }, [])
+  
+  // WAVE 369.5: Handle Save (smart: Save As if untitled, Save if has path)
+  const handleSave = useCallback(async () => {
+    if (!showFile) return
+    
+    // If untitled or no path, trigger Save As dialog
+    const isUntitled = showFile.name === 'Untitled Stage' || !showFilePath
+    
+    if (isUntitled && window.lux?.stage?.saveAsDialog) {
+      const result = await window.lux.stage.saveAsDialog(showFile, showFile.name)
+      if (result.success && result.filePath) {
+        // Extract name from file path
+        const savedName = result.filePath.split(/[/\\]/).pop()?.replace(/\.luxshow$/, '') || showFile.name
+        showToast(`💾 Saved as "${savedName}"`)
+        // Update store with new path and name
+        showFile.name = savedName
+        useStageStore.setState({ 
+          showFilePath: result.filePath,
+          isDirty: false
+        })
+      } else if (!result.cancelled) {
+        showToast('Failed to save show', 'error')
+      }
+    } else {
+      // Regular save
+      const success = await saveShow()
+      if (success) {
+        showToast('💾 Show saved')
+      } else {
+        showToast('Failed to save show', 'error')
+      }
+    }
+  }, [showFile, showFilePath, saveShow, showToast])
+  
+  // WAVE 369.5: Handle Open
+  const handleOpen = useCallback(async () => {
+    if (!window.lux?.stage?.openDialog) {
+      console.warn('[Toolbar] openDialog not available')
+      return
+    }
+    
+    // Check for unsaved changes
+    if (isDirty && showFile && window.lux?.stage?.confirmUnsaved) {
+      const action = await window.lux.stage.confirmUnsaved(showFile.name)
+      if (action === 'cancel') return
+      if (action === 'save') {
+        await handleSave()
+      }
+    }
+    
+    const result = await window.lux.stage.openDialog()
+    if (result.success && result.showFile && result.filePath) {
+      // WAVE 369.6 FIX: Actually load the file into the store!
+      useStageStore.setState({
+        showFile: result.showFile,
+        showFilePath: result.filePath,
+        isDirty: false,
+        lastError: null
+      })
+      // Sync derived state (fixtures array, etc)
+      useStageStore.getState()._syncDerivedState()
+      showToast(`📂 Opened "${result.showFile.name}"`)
+      console.log('[Toolbar] ✅ Loaded show into store:', result.showFile.name, 'with', result.showFile.fixtures.length, 'fixtures')
+    } else if (!result.cancelled) {
+      showToast('Failed to open file', 'error')
+    }
+  }, [isDirty, showFile, handleSave, showToast])
+  
+  // WAVE 369.5: Handle New
+  const handleNew = useCallback(async () => {
+    if (!window.lux?.stage?.confirmUnsaved) {
+      newShow('Untitled Stage')
+      return
+    }
+    
+    // Check for unsaved changes
+    if (isDirty && showFile) {
+      const action = await window.lux.stage.confirmUnsaved(showFile.name)
+      if (action === 'cancel') return
+      if (action === 'save') {
+        await handleSave()
+      }
+    }
+    
+    newShow('Untitled Stage')
+    showToast('🆕 New stage created')
+  }, [isDirty, showFile, newShow, handleSave, showToast])
+  
+  // WAVE 369.5: Handle title edit
+  const startEditingTitle = useCallback(() => {
+    if (showFile) {
+      setEditedTitle(showFile.name)
+      setIsEditingTitle(true)
+      setTimeout(() => titleInputRef.current?.select(), 0)
+    }
+  }, [showFile])
+  
+  const finishEditingTitle = useCallback(() => {
+    if (showFile && editedTitle.trim() && editedTitle !== showFile.name) {
+      showFile.name = editedTitle.trim()
+      useStageStore.getState()._setDirty()
+    }
+    setIsEditingTitle(false)
+  }, [showFile, editedTitle])
+  
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      finishEditingTitle()
+    } else if (e.key === 'Escape') {
+      setIsEditingTitle(false)
+    }
+  }, [finishEditingTitle])
+  
   return (
     <div className="constructor-toolbar">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toolbar-toast ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+      
       <div className="toolbar-left">
         <h2 className="toolbar-title">
           <Move3D size={20} />
           Stage Constructor
         </h2>
         {showFile && (
-          <span className="show-name">
-            {showFile.name}
-            {isDirty && <span className="dirty-indicator">●</span>}
-          </span>
+          isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              type="text"
+              className="show-name-input"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onBlur={finishEditingTitle}
+              onKeyDown={handleTitleKeyDown}
+              autoFocus
+            />
+          ) : (
+            <span 
+              className="show-name"
+              onDoubleClick={startEditingTitle}
+              title="Double-click to rename"
+            >
+              {showFile.name}
+              {isDirty && <span className="dirty-indicator">●</span>}
+            </span>
+          )
         )}
       </div>
       
@@ -305,18 +642,32 @@ const ConstructorToolbar: React.FC = () => {
       </div>
       
       <div className="toolbar-right">
-        <button className="toolbar-btn" title="Open Show">
+        {/* WAVE 369.5: New Stage button */}
+        <button 
+          className="toolbar-btn"
+          title="New Stage"
+          onClick={handleNew}
+        >
+          <Plus size={16} />
+          <span>New</span>
+        </button>
+        
+        <button 
+          className="toolbar-btn" 
+          title="Open Show"
+          onClick={handleOpen}
+        >
           <FolderOpen size={16} />
           <span>Open</span>
         </button>
+        
         <button 
           className="toolbar-btn primary" 
-          title="Save Show"
-          onClick={() => saveShow()}
-          disabled={!isDirty}
+          title={showFilePath ? "Save Show" : "Save Show As..."}
+          onClick={handleSave}
         >
           <Save size={16} />
-          <span>Save</span>
+          <span>{showFilePath ? 'Save' : 'Save As...'}</span>
         </button>
       </div>
     </div>
@@ -331,6 +682,17 @@ const ConstructorToolbar: React.FC = () => {
 type RightSidebarTab = 'properties' | 'groups'
 
 const StageConstructorView: React.FC = () => {
+  // WAVE 368.5: Auto-create show if none exists
+  const showFile = useStageStore(state => state.showFile)
+  const newShow = useStageStore(state => state.newShow)
+  
+  useEffect(() => {
+    if (!showFile) {
+      console.log('[StageConstructorView] 🆕 No show loaded, creating empty show')
+      newShow('Untitled Stage')
+    }
+  }, [showFile, newShow])
+  
   // WAVE 361.5 - Snap system state
   const [snapEnabled, setSnapEnabled] = useState(true) // Default ON
   const [draggedFixtureType, setDraggedFixtureType] = useState<string | null>(null)

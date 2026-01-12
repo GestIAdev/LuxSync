@@ -31,8 +31,7 @@ export interface IPCDependencies {
   universalDMX: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   artNetDriver: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  showManager: any
+  // showManager PURGED - WAVE 365: Replaced by StagePersistence
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fixturePhysicsDriver: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +73,7 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
   setupOverrideHandlers(deps)
   setupConfigHandlers(deps)
   setupFixtureHandlers(deps)
-  setupShowHandlers(deps)
+  // setupShowHandlers PURGED - WAVE 365: Use StageIPCHandlers instead
   setupDMXHandlers(deps)
   setupArtNetHandlers(deps)
   
@@ -705,47 +704,10 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
 }
 
 // =============================================================================
-// SHOW HANDLERS
+// SHOW HANDLERS - WAVE 365: PURGED
+// Legacy ShowManager eliminated. All persistence now via StagePersistence + StageIPCHandlers
+// Channels 'shows:*' removed. Use 'lux:stage:*' channels instead.
 // =============================================================================
-
-function setupShowHandlers(deps: IPCDependencies): void {
-  const { showManager, getPatchedFixtures, setPatchedFixtures, configManager, getMainWindow, resetZoneCounters, autoAssignZone, recalculateZoneCounters } = deps
-  
-  ipcMain.handle('shows:list', async () => {
-    return showManager.listShows()
-  })
-  
-  ipcMain.handle('shows:save', async (_event, name: string) => {
-    const patchedFixtures = getPatchedFixtures()
-    return showManager.saveShow(name, { fixtures: patchedFixtures })
-  })
-  
-  ipcMain.handle('shows:load', async (_event, name: string) => {
-    const show = await showManager.loadShow(name)
-    
-    if (show?.fixtures) {
-      resetZoneCounters()
-      const fixtures = show.fixtures.map((f: Record<string, unknown>) => ({
-        ...f,
-        zone: autoAssignZone(f.type as string, f.name as string)
-      }))
-      setPatchedFixtures(fixtures)
-      recalculateZoneCounters()
-      configManager.updateConfig({ patchedFixtures: fixtures })
-      
-      const mainWindow = getMainWindow()
-      if (mainWindow) {
-        mainWindow.webContents.send('lux:fixtures-loaded', fixtures)
-      }
-    }
-    
-    return { success: true }
-  })
-  
-  ipcMain.handle('shows:delete', async (_event, name: string) => {
-    return showManager.deleteShow(name)
-  })
-}
 
 // =============================================================================
 // DMX HANDLERS

@@ -446,8 +446,12 @@ export const useStageStore = create<StageStore>()(
     
     addFixture: (fixture) => {
       const { showFile } = get()
-      if (!showFile) return
+      if (!showFile) {
+        console.error('[stageStore] ❌ Cannot add fixture - no showFile loaded!')
+        return
+      }
       
+      console.log('[stageStore] ➕ Adding fixture:', fixture.id, 'at', fixture.position)
       showFile.fixtures.push(fixture)
       get()._syncDerivedState()
       get()._setDirty()

@@ -237,10 +237,22 @@ const stageAPI = {
 
 ## 🎯 PRÓXIMOS PASOS (Fase B)
 
-### La Purga (Legacy Kill List) 💀
+### La Purga (Legacy Kill List) 💀 - ✅ EJECUTADA
 
-- [ ] **Refactorizar ShowManager.ts**: Mantener solo para backwards compat
-- [ ] **Limpiar ConfigManager.ts**: Solo preferencias de usuario
+**CÓDIGO ELIMINADO:**
+- [x] **ShowManager.ts** - DESTRUIDO (~374 líneas)
+- [x] **setupShowHandlers()** - PURGADO de IPCHandlers.ts (~40 líneas)
+- [x] **shows:* IPC channels** - ELIMINADOS (4 handlers)
+- [x] **lux:*-show API** - REMOVIDA de preload.ts (~30 líneas)
+- [x] **ShowMetadata/ShowData types** - ELIMINADOS de vite-env.d.ts (~50 líneas)
+- [x] **showManager** dependency - REMOVIDA de IPCDependencies
+- [x] **showManager import** - ELIMINADO de main.ts
+
+**TOTAL PURGADO**: ~550 líneas de código legacy muerto
+
+### Pendiente
+
+- [ ] **Limpiar ConfigManager.ts**: Solo preferencias de usuario (fixtures fuera)
 - [ ] **Migrar escenas de localStorage**: Al JSON del show
 - [ ] **Eliminar zonas auto-asignadas**: En runtime load
 
@@ -258,23 +270,70 @@ const stageAPI = {
 
 ---
 
-## 📊 MÉTRICAS
+## 💀 PURGA - EXECUTION LOG
+
+```
+🔪 WAVE 365 - THE PURGE (11 Enero 2026)
+
+[12:45:00] Análisis de dependencias
+           - grep ShowManager → 20+ matches
+           - grep shows:* → 4 handlers
+           - grep lux:*-show → 6 métodos en preload
+
+[12:46:00] Ejecutando purga...
+
+[12:46:05] ✗ src/core/library/ShowManager.ts
+           Estado: DESTRUIDO (Remove-Item)
+           Líneas eliminadas: 374
+
+[12:46:10] ✗ main.ts - import showManager
+           Estado: COMENTARIO MEMORIAL
+
+[12:46:15] ✗ main.ts - showManager en IPCDependencies
+           Estado: REMOVIDO
+
+[12:46:20] ✗ IPCDependencies.showManager
+           Estado: COMENTARIO MEMORIAL
+
+[12:46:25] ✗ setupShowHandlers()
+           Estado: REEMPLAZADO CON EPITAFIO
+
+[12:46:30] ✗ preload.ts - API legacy show
+           Estado: REEMPLAZADO CON EPITAFIO
+
+[12:46:35] ✗ vite-env.d.ts - tipos legacy
+           Estado: REEMPLAZADO CON EPITAFIO
+
+[12:47:00] npm run build → ✅ SUCCESS
+           Zero errores de compilación
+
+[12:47:30] grep ShowManager → 0 matches
+           PURGA COMPLETA
+```
+
+---
+
+## 📊 MÉTRICAS ACTUALIZADAS
 
 | Métrica | Valor |
 |---------|-------|
-| Líneas nuevas | ~700 |
+| Líneas nuevas (Fase A) | ~700 |
+| Líneas purgadas (Fase B) | ~550 |
+| Balance neto | +150 (más features, menos bloat) |
 | Archivos nuevos | 2 |
-| Archivos modificados | 4 |
-| Canales IPC | 9 |
+| Archivos modificados | 6 |
+| Archivos eliminados | 1 (ShowManager.ts) |
+| Canales IPC nuevos | 9 (lux:stage:*) |
+| Canales IPC eliminados | 4 (shows:*) |
 | Build time impact | Ninguno |
 
 ---
 
-*"El viejo sistema no murió, fue jubilado con honores. El nuevo sistema nació para humillar a GrandMA3."*  
-— PunkOpus, Wave 365
+*"ShowManager no murió en vano. Su espíritu vive en StagePersistence, pero mejor diseñado."*  
+— PunkOpus, Wave 365 - The Purge
 
 ---
 
-**STATUS: ✅ FASE A COMPLETA - INFRAESTRUCTURA LISTA**
+**STATUS: ✅ FASE A+B COMPLETAS - PURGA EJECUTADA**
 
-La cirugía a corazón abierto fue un éxito. El cerebro (stageStore) ahora está conectado al disco duro (StagePersistence). El paciente respira normalmente.
+La cirugía a corazón abierto fue un éxito total. El código legacy fue incinerado sin piedad. El nuevo sistema reina supremo.

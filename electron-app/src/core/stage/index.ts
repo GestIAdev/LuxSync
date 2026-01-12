@@ -88,3 +88,16 @@ export {
   setupStageIPCHandlers,
   type StagePreloadAPI
 } from './StageIPCHandlers'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOCALSTORAGE MIGRATION - WAVE 367
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  extractLegacyScenesFromLocalStorage,
+  convertLegacySceneToV2,
+  migrateLegacyScenesToV2,
+  purgeLegacyLocalStorageScenes,
+  runLocalStorageMigration,
+  needsLocalStorageMigration
+} from './LocalStorageSceneMigrator'

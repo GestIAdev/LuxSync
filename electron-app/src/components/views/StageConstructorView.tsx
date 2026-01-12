@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🏗️ STAGE CONSTRUCTOR VIEW - WAVE 361
+ * 🏗️ STAGE CONSTRUCTOR VIEW - WAVE 361.5
  * "El Taller del Arquitecto de Luces"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -9,18 +9,50 @@
  * - Centro (flex): Canvas 3D con fixtures
  * - Sidebar Derecha (300px): Properties Panel
  * 
+ * WAVE 361.5: Added snap system, ghost drag, and box selection
+ * 
  * @module components/views/StageConstructorView
- * @version 361.1.0
+ * @version 361.5.0
  */
 
-import React, { Suspense, lazy, useState } from 'react'
+import React, { Suspense, lazy, useState, useCallback, createContext, useContext } from 'react'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2 } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect } from 'lucide-react'
+import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES } from '../../core/stage/ShowFileV2'
+import type { FixtureV2 } from '../../core/stage/ShowFileV2'
 import './StageConstructorView.css'
 
 // Lazy load the heavy 3D canvas
 const StageGrid3D = lazy(() => import('./StageConstructor/StageGrid3D'))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTRUCTOR CONTEXT - Shared state between components
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ConstructorContextType {
+  // Snap settings
+  snapEnabled: boolean
+  setSnapEnabled: (enabled: boolean) => void
+  snapDistance: number  // meters
+  snapRotation: number  // radians
+  
+  // Drag state
+  draggedFixtureType: string | null
+  setDraggedFixtureType: (type: string | null) => void
+  
+  // Tool mode
+  toolMode: 'select' | 'boxSelect'
+  setToolMode: (mode: 'select' | 'boxSelect') => void
+}
+
+const ConstructorContext = createContext<ConstructorContextType | null>(null)
+
+export const useConstructorContext = () => {
+  const ctx = useContext(ConstructorContext)
+  if (!ctx) throw new Error('useConstructorContext must be used within StageConstructorView')
+  return ctx
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LOADING FALLBACK
@@ -39,12 +71,60 @@ const Loading3DFallback: React.FC = () => (
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FIXTURE LIBRARY SIDEBAR (LEFT)
+// FIXTURE TEMPLATES FOR DRAG & DROP
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FixtureTemplate {
+  type: FixtureV2['type']
+  name: string
+  icon: string
+  channelCount: number
+}
+
+const FIXTURE_TEMPLATES: FixtureTemplate[] = [
+  { type: 'moving-head', name: 'Moving Head', icon: '🎯', channelCount: 16 },
+  { type: 'par', name: 'LED Par', icon: '💡', channelCount: 8 },
+  { type: 'wash', name: 'Wash Light', icon: '🌊', channelCount: 12 },
+  { type: 'strobe', name: 'Strobe', icon: '⚡', channelCount: 4 },
+  { type: 'laser', name: 'Laser', icon: '🔺', channelCount: 8 },
+  { type: 'blinder', name: 'Blinder', icon: '☀️', channelCount: 2 },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXTURE LIBRARY SIDEBAR (LEFT) - With Drag Source
 // ═══════════════════════════════════════════════════════════════════════════
 
 const FixtureLibrarySidebar: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
+  const { setDraggedFixtureType } = useConstructorContext()
+  
+  const handleDragStart = useCallback((e: React.DragEvent, type: string) => {
+    e.dataTransfer.setData('fixture-type', type)
+    e.dataTransfer.effectAllowed = 'copy'
+    setDraggedFixtureType(type)
+    
+    // Create ghost image
+    const ghost = document.createElement('div')
+    ghost.className = 'drag-ghost'
+    ghost.innerHTML = FIXTURE_TEMPLATES.find(t => t.type === type)?.icon || '💡'
+    ghost.style.cssText = `
+      position: absolute;
+      top: -1000px;
+      font-size: 32px;
+      padding: 8px;
+      background: rgba(34, 211, 238, 0.2);
+      border: 2px solid #22d3ee;
+      border-radius: 8px;
+    `
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, 28, 28)
+    setTimeout(() => document.body.removeChild(ghost), 0)
+  }, [setDraggedFixtureType])
+  
+  const handleDragEnd = useCallback(() => {
+    setDraggedFixtureType(null)
+  }, [setDraggedFixtureType])
   
   return (
     <aside className="constructor-sidebar library-sidebar">
@@ -54,10 +134,32 @@ const FixtureLibrarySidebar: React.FC = () => {
       </div>
       
       <div className="sidebar-content">
-        {/* Fixtures List */}
+        {/* Fixture Templates - Draggable */}
         <div className="library-section">
           <div className="section-header">
-            <span>Fixtures ({fixtures.length})</span>
+            <span>Templates (Drag to Stage)</span>
+          </div>
+          <div className="template-grid">
+            {FIXTURE_TEMPLATES.map(template => (
+              <div
+                key={template.type}
+                className="fixture-template"
+                draggable
+                onDragStart={(e) => handleDragStart(e, template.type)}
+                onDragEnd={handleDragEnd}
+                title={`Drag ${template.name} to stage`}
+              >
+                <span className="template-icon">{template.icon}</span>
+                <span className="template-name">{template.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Existing Fixtures List */}
+        <div className="library-section">
+          <div className="section-header">
+            <span>On Stage ({fixtures.length})</span>
             <button className="icon-btn" title="Add Fixture">
               <Plus size={14} />
             </button>
@@ -66,8 +168,8 @@ const FixtureLibrarySidebar: React.FC = () => {
           {fixtures.length === 0 ? (
             <div className="empty-state">
               <Box size={32} className="empty-icon" />
-              <p>No hay fixtures patcheados</p>
-              <span>Usa SETUP → Patch para añadir</span>
+              <p>No hay fixtures en el stage</p>
+              <span>Arrastra templates arriba ↑</span>
             </div>
           ) : (
             <ul className="fixture-list">
@@ -257,6 +359,8 @@ const ConstructorToolbar: React.FC = () => {
   const saveShow = useStageStore(state => state.saveShow)
   const showFile = useStageStore(state => state.showFile)
   
+  const { snapEnabled, setSnapEnabled, toolMode, setToolMode } = useConstructorContext()
+  
   return (
     <div className="constructor-toolbar">
       <div className="toolbar-left">
@@ -273,9 +377,33 @@ const ConstructorToolbar: React.FC = () => {
       </div>
       
       <div className="toolbar-center">
+        {/* Selection Tools */}
         <div className="tool-group">
-          <button className="tool-btn active" title="Select Tool (V)">
-            <Move3D size={16} />
+          <button 
+            className={`tool-btn ${toolMode === 'select' ? 'active' : ''}`}
+            title="Select Tool (V)"
+            onClick={() => setToolMode('select')}
+          >
+            <MousePointer2 size={16} />
+          </button>
+          <button 
+            className={`tool-btn ${toolMode === 'boxSelect' ? 'active' : ''}`}
+            title="Box Selection (B)"
+            onClick={() => setToolMode('boxSelect')}
+          >
+            <BoxSelect size={16} />
+          </button>
+        </div>
+        
+        {/* Snap Toggle */}
+        <div className="tool-group">
+          <button 
+            className={`tool-btn snap-btn ${snapEnabled ? 'active' : ''}`}
+            title={snapEnabled ? 'Snap ON (0.5m / 15°)' : 'Snap OFF'}
+            onClick={() => setSnapEnabled(!snapEnabled)}
+          >
+            <Magnet size={16} />
+            {snapEnabled && <span className="snap-indicator">0.5m</span>}
           </button>
         </div>
       </div>
@@ -304,27 +432,49 @@ const ConstructorToolbar: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const StageConstructorView: React.FC = () => {
+  // WAVE 361.5 - Snap system state
+  const [snapEnabled, setSnapEnabled] = useState(true) // Default ON
+  const [draggedFixtureType, setDraggedFixtureType] = useState<string | null>(null)
+  const [toolMode, setToolMode] = useState<'select' | 'boxSelect'>('select')
+  
+  // Snap values per spec
+  const snapDistance = 0.5    // 0.5 metros
+  const snapRotation = Math.PI / 12  // 15 grados
+  
+  const contextValue: ConstructorContextType = {
+    snapEnabled,
+    setSnapEnabled,
+    snapDistance,
+    snapRotation,
+    draggedFixtureType,
+    setDraggedFixtureType,
+    toolMode,
+    setToolMode
+  }
+  
   return (
-    <div className="stage-constructor-view">
-      {/* Toolbar */}
-      <ConstructorToolbar />
-      
-      {/* Main Content */}
-      <div className="constructor-content">
-        {/* Left Sidebar - Fixture Library */}
-        <FixtureLibrarySidebar />
+    <ConstructorContext.Provider value={contextValue}>
+      <div className="stage-constructor-view">
+        {/* Toolbar */}
+        <ConstructorToolbar />
         
-        {/* Center - 3D Viewport */}
-        <div className="constructor-viewport">
-          <Suspense fallback={<Loading3DFallback />}>
-            <StageGrid3D />
-          </Suspense>
+        {/* Main Content */}
+        <div className="constructor-content">
+          {/* Left Sidebar - Fixture Library */}
+          <FixtureLibrarySidebar />
+          
+          {/* Center - 3D Viewport */}
+          <div className="constructor-viewport">
+            <Suspense fallback={<Loading3DFallback />}>
+              <StageGrid3D />
+            </Suspense>
+          </div>
+          
+          {/* Right Sidebar - Properties */}
+          <PropertiesSidebar />
         </div>
-        
-        {/* Right Sidebar - Properties */}
-        <PropertiesSidebar />
       </div>
-    </div>
+    </ConstructorContext.Provider>
   )
 }
 

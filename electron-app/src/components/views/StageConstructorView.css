@@ -100,6 +100,27 @@
   color: #22d3ee;
 }
 
+/* Snap Button - Magnet Style */
+.tool-btn.snap-btn {
+  position: relative;
+  gap: 4px;
+  width: auto;
+  padding: 0 8px;
+}
+
+.tool-btn.snap-btn.active {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.3) 0%, rgba(168, 85, 247, 0.2) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
+}
+
+.snap-indicator {
+  font-size: 9px;
+  font-weight: 600;
+  color: #22d3ee;
+  letter-spacing: 0.5px;
+}
+
 .toolbar-right {
   display: flex;
   align-items: center;

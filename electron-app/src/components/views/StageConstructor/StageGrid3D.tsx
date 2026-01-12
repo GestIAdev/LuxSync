@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 STAGE GRID 3D - WAVE 361
+ * 🎮 STAGE GRID 3D - WAVE 361.5
  * "El Lienzo Infinito del Arquitecto"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -10,16 +10,18 @@
  * - Renderiza fixtures desde stageStore (posiciones REALES, no algorítmicas)
  * - OrbitControls para navegación
  * - Click to select
- * - TransformControls (Gizmo) para mover fixtures
+ * - TransformControls (Gizmo) con SNAP system
  * - Grid infinito estilo Tron
  * - Persist position on drag end
+ * - Ghost Drag & Drop desde library
+ * - Box Selection (RTS-style)
  * 
  * @module components/views/StageConstructor/StageGrid3D
- * @version 361.1.0
+ * @version 361.5.0
  */
 
-import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Canvas, useThree, ThreeEvent } from '@react-three/fiber'
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { Canvas, useThree, ThreeEvent, useFrame } from '@react-three/fiber'
 import { 
   OrbitControls, 
   TransformControls, 
@@ -30,6 +32,8 @@ import {
 } from '@react-three/drei'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { useConstructorContext } from '../StageConstructorView'
+import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D } from '../../../core/stage/ShowFileV2'
 import * as THREE from 'three'
 
@@ -143,15 +147,24 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TRANSFORM GIZMO WRAPPER
+// TRANSFORM GIZMO WRAPPER - With Snap Support
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface TransformGizmoProps {
   fixture: FixtureV2
   onPositionChange: (id: string, position: Position3D) => void
+  snapEnabled: boolean
+  snapDistance: number
+  snapRotation: number
 }
 
-const TransformGizmo: React.FC<TransformGizmoProps> = ({ fixture, onPositionChange }) => {
+const TransformGizmo: React.FC<TransformGizmoProps> = ({ 
+  fixture, 
+  onPositionChange,
+  snapEnabled,
+  snapDistance,
+  snapRotation
+}) => {
   const transformRef = useRef<any>(null)
   const objectRef = useRef<THREE.Group>(null!)
   const { camera } = useThree()
@@ -181,6 +194,8 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({ fixture, onPositionChan
         object={objectRef.current || undefined}
         mode="translate"
         size={0.8}
+        translationSnap={snapEnabled ? snapDistance : null}
+        rotationSnap={snapEnabled ? snapRotation : null}
         onMouseUp={handleDragEnd}
       />
     </group>
@@ -188,10 +203,22 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({ fixture, onPositionChan
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// STAGE GRID SCENE
+// STAGE GRID SCENE - Receives snap config as props
 // ═══════════════════════════════════════════════════════════════════════════
 
-const StageScene: React.FC = () => {
+interface StageSceneProps {
+  snapEnabled: boolean
+  snapDistance: number
+  snapRotation: number
+  onFixtureDrop: (type: string, position: Position3D) => void
+}
+
+const StageScene: React.FC<StageSceneProps> = ({ 
+  snapEnabled, 
+  snapDistance, 
+  snapRotation,
+  onFixtureDrop 
+}) => {
   const fixtures = useStageStore(selectFixtures)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
   const selectedIds = useSelectionStore(state => state.selectedIds)
@@ -289,11 +316,14 @@ const StageScene: React.FC = () => {
         />
       ))}
       
-      {/* Transform Gizmo for selected fixture */}
+      {/* Transform Gizmo for selected fixture - WITH SNAP */}
       {selectedFixture && (
         <TransformGizmo
           fixture={selectedFixture}
           onPositionChange={updateFixturePosition}
+          snapEnabled={snapEnabled}
+          snapDistance={snapDistance}
+          snapRotation={snapRotation}
         />
       )}
     </>
@@ -301,12 +331,165 @@ const StageScene: React.FC = () => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
+// MAIN COMPONENT - Bridge between React Context and R3F
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface BoxSelectionRect {
+  startX: number
+  startY: number
+  currentX: number
+  currentY: number
+}
+
 const StageGrid3D: React.FC = () => {
+  // Get snap settings from parent context
+  const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode } = useConstructorContext()
+  const addFixture = useStageStore(state => state.addFixture)
+  const fixtures = useStageStore(state => state.fixtures)
+  const selectMultiple = useSelectionStore(state => state.selectMultiple)
+  const canvasRef = useRef<HTMLDivElement>(null)
+  
+  // Box selection state
+  const [boxSelection, setBoxSelection] = useState<BoxSelectionRect | null>(null)
+  const isBoxSelecting = useRef(false)
+  
+  // Box selection handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (toolMode !== 'boxSelect') return
+    if (e.button !== 0) return // Only left click
+    if (!canvasRef.current) return
+    
+    const rect = canvasRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    
+    isBoxSelecting.current = true
+    setBoxSelection({
+      startX: x,
+      startY: y,
+      currentX: x,
+      currentY: y
+    })
+  }, [toolMode])
+  
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isBoxSelecting.current || !boxSelection || !canvasRef.current) return
+    
+    const rect = canvasRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    
+    setBoxSelection(prev => prev ? {
+      ...prev,
+      currentX: x,
+      currentY: y
+    } : null)
+  }, [boxSelection])
+  
+  const handleMouseUp = useCallback(() => {
+    if (!isBoxSelecting.current || !boxSelection || !canvasRef.current) {
+      isBoxSelecting.current = false
+      setBoxSelection(null)
+      return
+    }
+    
+    // Calculate selection bounds (screen space)
+    const minX = Math.min(boxSelection.startX, boxSelection.currentX)
+    const maxX = Math.max(boxSelection.startX, boxSelection.currentX)
+    const minY = Math.min(boxSelection.startY, boxSelection.currentY)
+    const maxY = Math.max(boxSelection.startY, boxSelection.currentY)
+    
+    // Only select if box is at least 10px
+    if (maxX - minX > 10 && maxY - minY > 10) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      
+      // Convert screen box to normalized device coordinates
+      const ndcMinX = ((minX) / rect.width) * 2 - 1
+      const ndcMaxX = ((maxX) / rect.width) * 2 - 1
+      const ndcMinY = -((maxY) / rect.height) * 2 + 1 // Y is inverted
+      const ndcMaxY = -((minY) / rect.height) * 2 + 1
+      
+      // Simple screen-space selection based on fixture positions
+      // For proper 3D, this should project each fixture to screen space
+      // Simplified: map world X/Z to approximate screen position
+      const selectedFixtureIds = fixtures.filter(fixture => {
+        // Approximate NDC from world position (assuming default camera)
+        const approxNdcX = fixture.position.x / 8  // Rough scale
+        const approxNdcZ = -fixture.position.z / 6
+        
+        return (
+          approxNdcX >= ndcMinX && 
+          approxNdcX <= ndcMaxX &&
+          approxNdcZ >= ndcMinY &&
+          approxNdcZ <= ndcMaxY
+        )
+      }).map(f => f.id)
+      
+      if (selectedFixtureIds.length > 0) {
+        selectMultiple(selectedFixtureIds)
+      }
+    }
+    
+    isBoxSelecting.current = false
+    setBoxSelection(null)
+  }, [boxSelection, fixtures, selectMultiple])
+  
+  // Handle drop - Raycast to ground plane
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const fixtureType = e.dataTransfer.getData('fixture-type')
+    if (!fixtureType || !canvasRef.current) return
+    
+    // Calculate normalized device coordinates
+    const rect = canvasRef.current.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+    
+    // For now, simple mapping to world coordinates
+    // TODO: Proper raycast when we have camera reference
+    const worldX = x * 6  // Scale to stage size
+    const worldZ = y * 4
+    
+    // Create fixture at drop position
+    const fixtureId = `fixture-${Date.now()}`
+    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1  // Auto-assign address
+    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
+      type: fixtureType as FixtureV2['type'],
+      position: { x: worldX, y: 3, z: worldZ }  // Default height 3m
+    })
+    
+    addFixture(newFixture)
+    setDraggedFixtureType(null)
+  }, [addFixture, setDraggedFixtureType])
+  
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }, [])
+  
+  // Handler for drops from inside R3F (proper raycast)
+  const handleFixtureDrop = useCallback((type: string, position: Position3D) => {
+    const fixtureId = `fixture-${Date.now()}`
+    const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
+    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
+      type: type as FixtureV2['type'],
+      position
+    })
+    addFixture(newFixture)
+  }, [addFixture])
+  
   return (
-    <div className="stage-grid-3d">
+    <div 
+      ref={canvasRef}
+      className="stage-grid-3d"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      style={{ cursor: toolMode === 'boxSelect' ? 'crosshair' : 'default' }}
+    >
       <Canvas
         gl={{ 
           antialias: true,
@@ -319,8 +502,40 @@ const StageGrid3D: React.FC = () => {
         <color attach="background" args={['#000000']} />
         <fog attach="fog" args={['#000000', 30, 60]} />
         
-        <StageScene />
+        <StageScene 
+          snapEnabled={snapEnabled}
+          snapDistance={snapDistance}
+          snapRotation={snapRotation}
+          onFixtureDrop={handleFixtureDrop}
+        />
       </Canvas>
+      
+      {/* Drag indicator overlay */}
+      {draggedFixtureType && (
+        <div className="drop-zone-indicator">
+          <span>Soltar para añadir {draggedFixtureType}</span>
+        </div>
+      )}
+      
+      {/* Snap indicator when active */}
+      {snapEnabled && (
+        <div className="snap-indicator-overlay">
+          <span>🧲 Snap: 0.5m / 15°</span>
+        </div>
+      )}
+      
+      {/* Box Selection Rectangle */}
+      {boxSelection && (
+        <div 
+          className="box-selection-rect"
+          style={{
+            left: Math.min(boxSelection.startX, boxSelection.currentX),
+            top: Math.min(boxSelection.startY, boxSelection.currentY),
+            width: Math.abs(boxSelection.currentX - boxSelection.startX),
+            height: Math.abs(boxSelection.currentY - boxSelection.startY)
+          }}
+        />
+      )}
       
       {/* Canvas overlay UI */}
       <div className="grid-overlay">
@@ -355,6 +570,50 @@ const StageGrid3D: React.FC = () => {
           border-radius: 8px;
           font-size: 11px;
           color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .drop-zone-indicator {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(34, 211, 238, 0.1);
+          border: 2px dashed rgba(34, 211, 238, 0.5);
+          pointer-events: none;
+          z-index: 10;
+        }
+        
+        .drop-zone-indicator span {
+          padding: 12px 24px;
+          background: rgba(0, 0, 0, 0.9);
+          border: 1px solid rgba(34, 211, 238, 0.5);
+          border-radius: 8px;
+          color: #22d3ee;
+          font-size: 14px;
+          font-weight: 500;
+        }
+        
+        .snap-indicator-overlay {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          padding: 6px 12px;
+          background: rgba(0, 0, 0, 0.8);
+          border: 1px solid rgba(168, 85, 247, 0.5);
+          border-radius: 6px;
+          color: #a855f7;
+          font-size: 11px;
+          font-weight: 500;
+          pointer-events: none;
+        }
+        
+        .box-selection-rect {
+          position: absolute;
+          background: rgba(34, 211, 238, 0.15);
+          border: 1px solid rgba(34, 211, 238, 0.8);
+          pointer-events: none;
+          z-index: 100;
         }
         
         .fixture-label-3d {

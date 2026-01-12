@@ -1,0 +1,689 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎭 MASTER ARBITER - CENTRAL CONTROL HIERARCHY
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * WAVE 373: The single source of truth for all lighting control.
+ *
+ * THE PROBLEM IT SOLVES:
+ * Before MasterArbiter, we had:
+ * - TitanEngine generating LightingIntent
+ * - SeleneLuxConscious existing but disconnected
+ * - Manual controls not integrated
+ * - No clear priority system
+ *
+ * NOW:
+ * Every layer submits to MasterArbiter → MasterArbiter arbitrates → Single output to HAL
+ *
+ * LAYER PRIORITY (highest wins):
+ * - Layer 4: BLACKOUT (emergency, always wins)
+ * - Layer 3: EFFECTS (strobe, flash, etc.)
+ * - Layer 2: MANUAL (user overrides)
+ * - Layer 1: CONSCIOUSNESS (CORE 3 - SeleneLuxConscious)
+ * - Layer 0: TITAN_AI (base from TitanEngine)
+ *
+ * MERGE STRATEGY:
+ * - Dimmer: HTP (Highest Takes Precedence)
+ * - Position/Color: LTP (Latest Takes Precedence)
+ * - Transitions: Smooth crossfade on release
+ *
+ * @module core/arbiter/MasterArbiter
+ * @version WAVE 373
+ */
+import { EventEmitter } from 'events';
+import { ControlLayer, DEFAULT_ARBITER_CONFIG, } from './types';
+import { mergeChannel, clampDMX } from './merge/MergeStrategies';
+import { CrossfadeEngine } from './CrossfadeEngine';
+// ═══════════════════════════════════════════════════════════════════════════
+// MASTER ARBITER CLASS
+// ═══════════════════════════════════════════════════════════════════════════
+export class MasterArbiter extends EventEmitter {
+    constructor(config = {}) {
+        super();
+        // Layer state
+        this.layer0_titan = null;
+        this.layer1_consciousness = null;
+        this.layer2_manualOverrides = new Map();
+        this.layer3_effects = [];
+        this.layer4_blackout = false;
+        // Fixtures (populated from HAL or StageStore)
+        this.fixtures = new Map();
+        // State tracking
+        this.frameNumber = 0;
+        this.lastOutputTimestamp = 0;
+        this.config = { ...DEFAULT_ARBITER_CONFIG, ...config };
+        this.crossfadeEngine = new CrossfadeEngine(this.config.defaultCrossfadeMs);
+        if (this.config.debug) {
+            console.log('[MasterArbiter] Initialized with config:', this.config);
+        }
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIXTURE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Register fixtures for arbitration
+     * Call this when patch changes or on init.
+     */
+    setFixtures(fixtures) {
+        this.fixtures.clear();
+        for (const fixture of fixtures) {
+            const id = fixture.id ?? fixture.name;
+            this.fixtures.set(id, { ...fixture, id });
+        }
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] Registered ${this.fixtures.size} fixtures`);
+        }
+    }
+    /**
+     * Get fixture by ID
+     */
+    getFixture(id) {
+        return this.fixtures.get(id);
+    }
+    /**
+     * Get all fixture IDs
+     */
+    getFixtureIds() {
+        return Array.from(this.fixtures.keys());
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER 0: TITAN AI INPUT
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set Layer 0 input from TitanEngine
+     * Called every frame by TitanOrchestrator.
+     */
+    setTitanIntent(intent) {
+        this.layer0_titan = intent;
+    }
+    /**
+     * Get current Titan intent (for debugging)
+     */
+    getTitanIntent() {
+        return this.layer0_titan;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER 1: CONSCIOUSNESS INPUT (CORE 3 - PLACEHOLDER)
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set Layer 1 input from SeleneLuxConscious
+     * CORE 3: This will be connected when consciousness is integrated.
+     */
+    setConsciousnessModifier(modifier) {
+        if (!this.config.consciousnessEnabled) {
+            return; // Silently ignore if consciousness is disabled
+        }
+        this.layer1_consciousness = modifier;
+    }
+    /**
+     * Clear consciousness modifier
+     */
+    clearConsciousnessModifier() {
+        this.layer1_consciousness = null;
+    }
+    /**
+     * Get current consciousness state (for debugging)
+     */
+    getConsciousnessState() {
+        return this.layer1_consciousness;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER 2: MANUAL OVERRIDE
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set manual override for a fixture
+     * Overwrites existing override for same fixture.
+     */
+    setManualOverride(override) {
+        // Check limit
+        if (this.layer2_manualOverrides.size >= this.config.maxManualOverrides &&
+            !this.layer2_manualOverrides.has(override.fixtureId)) {
+            console.warn(`[MasterArbiter] Max manual overrides reached (${this.config.maxManualOverrides})`);
+            return;
+        }
+        // Check if fixture exists
+        if (!this.fixtures.has(override.fixtureId)) {
+            console.warn(`[MasterArbiter] Unknown fixture: ${override.fixtureId}`);
+            return;
+        }
+        // Store override
+        this.layer2_manualOverrides.set(override.fixtureId, {
+            ...override,
+            timestamp: performance.now()
+        });
+        // Emit event
+        this.emit('manualOverride', override.fixtureId, override.overrideChannels);
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] Manual override: ${override.fixtureId}`, override.overrideChannels);
+        }
+    }
+    /**
+     * Release manual override for a fixture
+     * Starts crossfade transition back to AI control.
+     */
+    releaseManualOverride(fixtureId, channels) {
+        const override = this.layer2_manualOverrides.get(fixtureId);
+        if (!override)
+            return;
+        const channelsToRelease = channels ?? override.overrideChannels;
+        // For each channel being released, start a crossfade
+        const titanValues = this.getTitanValuesForFixture(fixtureId);
+        for (const channel of channelsToRelease) {
+            const currentValue = this.getManualChannelValue(override, channel);
+            const targetValue = titanValues[channel] ?? 0;
+            this.crossfadeEngine.startTransition(fixtureId, channel, currentValue, targetValue, override.releaseTransitionMs || this.config.defaultCrossfadeMs);
+        }
+        // Update or remove override
+        if (channels) {
+            // Partial release - remove only specified channels
+            const remainingChannels = override.overrideChannels.filter(c => !channels.includes(c));
+            if (remainingChannels.length === 0) {
+                this.layer2_manualOverrides.delete(fixtureId);
+            }
+            else {
+                override.overrideChannels = remainingChannels;
+            }
+        }
+        else {
+            // Full release
+            this.layer2_manualOverrides.delete(fixtureId);
+        }
+        // Emit event
+        this.emit('manualRelease', fixtureId, channelsToRelease);
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] Manual released: ${fixtureId}`, channelsToRelease);
+        }
+    }
+    /**
+     * Release all manual overrides
+     */
+    releaseAllManualOverrides() {
+        for (const fixtureId of this.layer2_manualOverrides.keys()) {
+            this.releaseManualOverride(fixtureId);
+        }
+    }
+    /**
+     * Get manual override for a fixture
+     */
+    getManualOverride(fixtureId) {
+        return this.layer2_manualOverrides.get(fixtureId);
+    }
+    /**
+     * Check if fixture has manual override
+     */
+    hasManualOverride(fixtureId, channel) {
+        const override = this.layer2_manualOverrides.get(fixtureId);
+        if (!override)
+            return false;
+        if (channel)
+            return override.overrideChannels.includes(channel);
+        return true;
+    }
+    /**
+     * Get all fixtures with manual overrides
+     */
+    getManualOverrideFixtures() {
+        return Array.from(this.layer2_manualOverrides.keys());
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER 3: EFFECTS
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Add an effect
+     */
+    addEffect(effect) {
+        if (this.layer3_effects.length >= this.config.maxActiveEffects) {
+            // Remove oldest effect
+            this.layer3_effects.shift();
+        }
+        effect.startTime = performance.now();
+        this.layer3_effects.push(effect);
+        this.emit('effectStart', effect);
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] Effect started: ${effect.type}`);
+        }
+    }
+    /**
+     * Remove an effect
+     */
+    removeEffect(type) {
+        const index = this.layer3_effects.findIndex(e => e.type === type);
+        if (index !== -1) {
+            this.layer3_effects.splice(index, 1);
+            this.emit('effectEnd', type);
+        }
+    }
+    /**
+     * Clear all effects
+     */
+    clearEffects() {
+        this.layer3_effects = [];
+    }
+    /**
+     * Clean up expired effects
+     */
+    cleanupExpiredEffects() {
+        const now = performance.now();
+        this.layer3_effects = this.layer3_effects.filter(effect => {
+            const elapsed = now - effect.startTime;
+            if (elapsed >= effect.durationMs) {
+                this.emit('effectEnd', effect.type);
+                return false;
+            }
+            return true;
+        });
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // LAYER 4: BLACKOUT
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set blackout state
+     * When true, all fixtures go to 0 regardless of other layers.
+     */
+    setBlackout(active) {
+        const changed = this.layer4_blackout !== active;
+        this.layer4_blackout = active;
+        if (changed) {
+            this.emit('blackout', active);
+            if (this.config.debug) {
+                console.log(`[MasterArbiter] Blackout: ${active}`);
+            }
+        }
+    }
+    /**
+     * Toggle blackout
+     */
+    toggleBlackout() {
+        this.setBlackout(!this.layer4_blackout);
+        return this.layer4_blackout;
+    }
+    /**
+     * Get blackout state
+     */
+    isBlackoutActive() {
+        return this.layer4_blackout;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // MAIN ARBITRATION
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎭 MAIN ARBITRATION FUNCTION
+     *
+     * Merges all layers and produces final lighting target.
+     * Call this every frame to get the output for HAL.
+     *
+     * @returns Final lighting target ready for HAL
+     */
+    arbitrate() {
+        const now = performance.now();
+        this.frameNumber++;
+        // Clean up expired effects
+        this.cleanupExpiredEffects();
+        // Arbitrate each fixture
+        const fixtureTargets = [];
+        for (const [fixtureId] of this.fixtures) {
+            const target = this.arbitrateFixture(fixtureId, now);
+            fixtureTargets.push(target);
+        }
+        // Build global effects state
+        const globalEffects = this.buildGlobalEffectsState();
+        // Build final output
+        const output = {
+            fixtures: fixtureTargets,
+            globalEffects,
+            timestamp: now,
+            frameNumber: this.frameNumber,
+            _layerActivity: {
+                titanActive: this.layer0_titan !== null,
+                titanVibeId: this.layer0_titan?.vibeId ?? '',
+                consciousnessActive: this.layer1_consciousness?.active ?? false,
+                consciousnessStatus: this.layer1_consciousness?.status,
+                manualOverrideCount: this.layer2_manualOverrides.size,
+                manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
+                activeEffects: this.layer3_effects.map(e => e.type),
+            }
+        };
+        this.lastOutputTimestamp = now;
+        this.emit('output', output);
+        return output;
+    }
+    /**
+     * Arbitrate a single fixture
+     */
+    arbitrateFixture(fixtureId, now) {
+        const controlSources = {};
+        // LAYER 4: Check blackout first (highest priority)
+        if (this.layer4_blackout) {
+            return this.createBlackoutTarget(fixtureId, controlSources);
+        }
+        // Get values from each layer
+        const titanValues = this.getTitanValuesForFixture(fixtureId);
+        const manualOverride = this.layer2_manualOverrides.get(fixtureId);
+        // Merge each channel
+        const dimmer = this.mergeChannelForFixture(fixtureId, 'dimmer', titanValues, manualOverride, now, controlSources);
+        const red = this.mergeChannelForFixture(fixtureId, 'red', titanValues, manualOverride, now, controlSources);
+        const green = this.mergeChannelForFixture(fixtureId, 'green', titanValues, manualOverride, now, controlSources);
+        const blue = this.mergeChannelForFixture(fixtureId, 'blue', titanValues, manualOverride, now, controlSources);
+        const pan = this.mergeChannelForFixture(fixtureId, 'pan', titanValues, manualOverride, now, controlSources);
+        const tilt = this.mergeChannelForFixture(fixtureId, 'tilt', titanValues, manualOverride, now, controlSources);
+        const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources);
+        const focus = this.mergeChannelForFixture(fixtureId, 'focus', titanValues, manualOverride, now, controlSources);
+        // Check if any crossfade is active
+        const crossfadeActive = this.isAnyCrossfadeActive(fixtureId);
+        const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0;
+        return {
+            fixtureId,
+            dimmer: clampDMX(dimmer),
+            color: {
+                r: clampDMX(red),
+                g: clampDMX(green),
+                b: clampDMX(blue),
+            },
+            pan: clampDMX(pan),
+            tilt: clampDMX(tilt),
+            zoom: clampDMX(zoom),
+            focus: clampDMX(focus),
+            _controlSources: controlSources,
+            _crossfadeActive: crossfadeActive,
+            _crossfadeProgress: crossfadeProgress,
+        };
+    }
+    /**
+     * Merge a single channel for a fixture
+     */
+    mergeChannelForFixture(fixtureId, channel, titanValues, manualOverride, now, controlSources) {
+        const values = [];
+        // Layer 0: Titan AI
+        const titanValue = titanValues[channel] ?? 0;
+        values.push({
+            layer: ControlLayer.TITAN_AI,
+            value: titanValue,
+            timestamp: this.layer0_titan?.timestamp ?? now,
+        });
+        // Layer 1: Consciousness (CORE 3 - placeholder)
+        // Will be implemented when consciousness is connected
+        // Layer 2: Manual override
+        if (manualOverride && manualOverride.overrideChannels.includes(channel)) {
+            const manualValue = this.getManualChannelValue(manualOverride, channel);
+            values.push({
+                layer: ControlLayer.MANUAL,
+                value: manualValue,
+                timestamp: manualOverride.timestamp,
+            });
+        }
+        // Layer 3: Effects
+        const effectValue = this.getEffectValueForChannel(fixtureId, channel, now);
+        if (effectValue !== null) {
+            values.push({
+                layer: ControlLayer.EFFECTS,
+                value: effectValue,
+                timestamp: now,
+            });
+        }
+        // Check if crossfade is active for this channel
+        if (this.crossfadeEngine.isTransitioning(fixtureId, channel)) {
+            // Get interpolated value from crossfade
+            const crossfadedValue = this.crossfadeEngine.getCurrentValue(fixtureId, channel, titanValue, titanValue);
+            controlSources[channel] = ControlLayer.TITAN_AI; // Transitioning back to AI
+            return crossfadedValue;
+        }
+        // Merge values using channel's strategy
+        const result = mergeChannel(channel, values);
+        controlSources[channel] = result.source;
+        return result.value;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Get Titan values for a specific fixture
+     * Extracts values from LightingIntent which uses zones + palette model
+     */
+    getTitanValuesForFixture(fixtureId) {
+        const defaults = {
+            dimmer: 0,
+            red: 0,
+            green: 0,
+            blue: 0,
+            white: 0,
+            pan: 128,
+            tilt: 128,
+            zoom: 128,
+            focus: 128,
+            gobo: 0,
+            prism: 0,
+        };
+        if (!this.layer0_titan?.intent)
+            return defaults;
+        const intent = this.layer0_titan.intent;
+        // Global dimmer from masterIntensity
+        defaults.dimmer = intent.masterIntensity * 255;
+        // Get primary color from palette (converted to RGB)
+        if (intent.palette?.primary) {
+            const rgb = this.hslToRgb(intent.palette.primary);
+            defaults.red = rgb.r;
+            defaults.green = rgb.g;
+            defaults.blue = rgb.b;
+        }
+        // Get movement center as pan/tilt
+        if (intent.movement) {
+            // centerX/Y are 0-1 where 0.5 = center
+            // Convert to DMX 0-255 where 128 = center
+            defaults.pan = intent.movement.centerX * 255;
+            defaults.tilt = intent.movement.centerY * 255;
+        }
+        // TODO: Zone-based fixture mapping could go here
+        // For now, all fixtures get the global values
+        // Future: Look up fixture's zone and apply zone-specific intent
+        return defaults;
+    }
+    /**
+     * Get manual value for a specific channel
+     */
+    getManualChannelValue(override, channel) {
+        const controls = override.controls;
+        switch (channel) {
+            case 'dimmer': return controls.dimmer ?? 0;
+            case 'red': return controls.red ?? 0;
+            case 'green': return controls.green ?? 0;
+            case 'blue': return controls.blue ?? 0;
+            case 'white': return controls.white ?? 0;
+            case 'pan': return controls.pan ?? 128;
+            case 'tilt': return controls.tilt ?? 128;
+            case 'zoom': return controls.zoom ?? 128;
+            case 'focus': return controls.focus ?? 128;
+            default: return 0;
+        }
+    }
+    /**
+     * Get effect value for a channel (if any effect affects it)
+     */
+    getEffectValueForChannel(fixtureId, channel, now) {
+        for (const effect of this.layer3_effects) {
+            // Check if effect applies to this fixture
+            if (effect.fixtureIds.length > 0 && !effect.fixtureIds.includes(fixtureId)) {
+                continue;
+            }
+            // Apply effect based on type
+            switch (effect.type) {
+                case 'strobe':
+                    if (channel === 'dimmer') {
+                        const strobeHz = effect.params.speed ?? 10;
+                        const period = 1000 / strobeHz;
+                        const phase = (now - effect.startTime) % period;
+                        return phase < period / 2 ? 255 * effect.intensity : 0;
+                    }
+                    break;
+                case 'blinder':
+                    if (channel === 'dimmer')
+                        return 255 * effect.intensity;
+                    if (channel === 'red')
+                        return 255;
+                    if (channel === 'green')
+                        return 255;
+                    if (channel === 'blue')
+                        return 255;
+                    break;
+                case 'flash':
+                    if (channel === 'dimmer') {
+                        const elapsed = now - effect.startTime;
+                        const progress = elapsed / effect.durationMs;
+                        return 255 * effect.intensity * (1 - progress); // Decay
+                    }
+                    break;
+                case 'freeze':
+                    // Freeze returns null to indicate "keep current value"
+                    // This is handled by not including it in merge
+                    return null;
+            }
+        }
+        return null;
+    }
+    /**
+     * Create blackout target
+     */
+    createBlackoutTarget(fixtureId, controlSources) {
+        // All channels sourced from BLACKOUT layer
+        const channels = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus'];
+        for (const ch of channels) {
+            controlSources[ch] = ControlLayer.BLACKOUT;
+        }
+        return {
+            fixtureId,
+            dimmer: 0,
+            color: { r: 0, g: 0, b: 0 },
+            pan: 128,
+            tilt: 128,
+            zoom: 128,
+            focus: 128,
+            _controlSources: controlSources,
+            _crossfadeActive: false,
+            _crossfadeProgress: 0,
+        };
+    }
+    /**
+     * Build global effects state
+     */
+    buildGlobalEffectsState() {
+        return {
+            strobeActive: this.layer3_effects.some(e => e.type === 'strobe'),
+            strobeSpeed: this.layer3_effects.find(e => e.type === 'strobe')?.params.speed ?? 0,
+            blinderActive: this.layer3_effects.some(e => e.type === 'blinder'),
+            blinderIntensity: this.layer3_effects.find(e => e.type === 'blinder')?.intensity ?? 0,
+            blackoutActive: this.layer4_blackout,
+            freezeActive: this.layer3_effects.some(e => e.type === 'freeze'),
+        };
+    }
+    /**
+     * Check if any crossfade is active for a fixture
+     */
+    isAnyCrossfadeActive(fixtureId) {
+        const channels = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus'];
+        return channels.some(ch => this.crossfadeEngine.isTransitioning(fixtureId, ch));
+    }
+    /**
+     * Get average crossfade progress for a fixture
+     */
+    getAverageCrossfadeProgress(fixtureId) {
+        const channels = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus'];
+        let total = 0;
+        let count = 0;
+        for (const ch of channels) {
+            const state = this.crossfadeEngine.getTransitionState(fixtureId, ch);
+            if (state) {
+                total += state.progress;
+                count++;
+            }
+        }
+        return count > 0 ? total / count : 0;
+    }
+    /**
+     * HSL to RGB conversion
+     */
+    hslToRgb(hsl) {
+        const { h, s, l } = hsl;
+        const hNorm = h / 360;
+        const sNorm = s;
+        const lNorm = l;
+        let r, g, b;
+        if (sNorm === 0) {
+            r = g = b = lNorm;
+        }
+        else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0)
+                    t += 1;
+                if (t > 1)
+                    t -= 1;
+                if (t < 1 / 6)
+                    return p + (q - p) * 6 * t;
+                if (t < 1 / 2)
+                    return q;
+                if (t < 2 / 3)
+                    return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            const q = lNorm < 0.5 ? lNorm * (1 + sNorm) : lNorm + sNorm - lNorm * sNorm;
+            const p = 2 * lNorm - q;
+            r = hue2rgb(p, q, hNorm + 1 / 3);
+            g = hue2rgb(p, q, hNorm);
+            b = hue2rgb(p, q, hNorm - 1 / 3);
+        }
+        return {
+            r: Math.round(r * 255),
+            g: Math.round(g * 255),
+            b: Math.round(b * 255),
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // STATUS & DEBUG
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Get arbiter status for debugging/UI
+     */
+    getStatus() {
+        return {
+            fixtureCount: this.fixtures.size,
+            frameNumber: this.frameNumber,
+            blackoutActive: this.layer4_blackout,
+            titanActive: this.layer0_titan !== null,
+            titanVibeId: this.layer0_titan?.vibeId ?? null,
+            consciousnessActive: this.layer1_consciousness?.active ?? false,
+            consciousnessStatus: this.layer1_consciousness?.status ?? null,
+            manualOverrideCount: this.layer2_manualOverrides.size,
+            manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
+            activeEffects: this.layer3_effects.map(e => e.type),
+            activeCrossfades: this.crossfadeEngine.getActiveCount(),
+        };
+    }
+    /**
+     * Reset arbiter state
+     */
+    reset() {
+        this.layer0_titan = null;
+        this.layer1_consciousness = null;
+        this.layer2_manualOverrides.clear();
+        this.layer3_effects = [];
+        this.layer4_blackout = false;
+        this.crossfadeEngine.clearAll();
+        this.frameNumber = 0;
+        if (this.config.debug) {
+            console.log('[MasterArbiter] Reset complete');
+        }
+    }
+    /**
+     * Update configuration
+     */
+    updateConfig(config) {
+        this.config = { ...this.config, ...config };
+        this.crossfadeEngine.setDefaultDuration(this.config.defaultCrossfadeMs);
+    }
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// SINGLETON EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Global MasterArbiter instance
+ * Use this for production - single source of truth.
+ */
+export const masterArbiter = new MasterArbiter();

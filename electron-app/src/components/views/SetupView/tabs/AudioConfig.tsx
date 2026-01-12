@@ -1,18 +1,18 @@
 /**
  * 🎵 AUDIO CONFIG - Audio Input Configuration Panel
- * WAVE 26 Phase 2: DevicesTab Component
+ * WAVE 370: UI LEGACY PURGE - No manual gain (AGC handles it)
  * 
  * Features:
  * - Source selector (Simulation/System/Microphone)
- * - Large horizontal VU meter
- * - Gain slider with dB display
+ * - Large horizontal VU meter with band visualization
  * - Device persistence via setupStore
+ * 
+ * NOTE: Manual gain slider REMOVED - backend AGC (Auto Gain Control) handles it
  */
 
 import React, { useCallback, useState } from 'react'
 import { useTrinity } from '../../../../providers/TrinityProvider'
 import { useTruthStore, selectAudio } from '../../../../stores/truthStore'
-import { useAudioStore } from '../../../../stores/audioStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import './AudioConfig.css'
 
@@ -34,19 +34,19 @@ const AUDIO_SOURCES: SourceOption[] = [
     id: 'simulation', 
     icon: '🎵', 
     label: 'Simulation', 
-    description: 'Demo sin hardware' 
+    description: 'Demo without hardware' 
   },
   { 
     id: 'system', 
     icon: '🖥️', 
     label: 'System Audio', 
-    description: 'Loopback del sistema' 
+    description: 'System loopback' 
   },
   { 
     id: 'microphone', 
     icon: '🎤', 
     label: 'Microphone', 
-    description: 'Entrada de mic' 
+    description: 'Mic input' 
   },
 ]
 
@@ -133,58 +133,12 @@ const VuMeter: React.FC<VuMeterProps> = ({ energy, bass, mid, treble }) => {
 }
 
 // ============================================
-// GAIN SLIDER
-// ============================================
-
-interface GainSliderProps {
-  value: number      // 0.1 - 4.0
-  onChange: (value: number) => void
-}
-
-const GainSlider: React.FC<GainSliderProps> = ({ value, onChange }) => {
-  // Convert to percentage for display
-  const percentage = Math.round(value * 100)
-  
-  // Convert to dB for pro display
-  const dB = value === 0 ? -Infinity : 20 * Math.log10(value)
-  const dBDisplay = dB === -Infinity ? '-∞' : `${dB >= 0 ? '+' : ''}${dB.toFixed(1)}`
-  
-  return (
-    <div className="gain-slider-container">
-      <label className="gain-label">
-        <span className="gain-title">INPUT GAIN</span>
-        <span className="gain-value">{percentage}%</span>
-        <span className="gain-db">{dBDisplay} dB</span>
-      </label>
-      
-      <input
-        type="range"
-        className="gain-slider"
-        min="10"
-        max="400"
-        step="10"
-        value={percentage}
-        onChange={(e) => onChange(Number(e.target.value) / 100)}
-      />
-      
-      <div className="gain-marks">
-        <span>10%</span>
-        <span>100%</span>
-        <span>200%</span>
-        <span>400%</span>
-      </div>
-    </div>
-  )
-}
-
-// ============================================
 // MAIN COMPONENT
 // ============================================
 
 export const AudioConfig: React.FC = () => {
   const trinity = useTrinity()
   const audio = useTruthStore(selectAudio)
-  const { inputGain, setInputGain } = useAudioStore()
   const { setAudioSource: setStoreSource, audioSource } = useSetupStore()
   
   const [isConnecting, setIsConnecting] = useState(false)
@@ -229,7 +183,7 @@ export const AudioConfig: React.FC = () => {
       
     } catch (err) {
       console.warn('[AudioConfig] Source selection failed:', err)
-      setError('Permiso denegado. Usando simulación.')
+      setError('Permission denied. Using simulation.')
       trinity.setSimulating(true)
       setStoreSource('simulation')
       
@@ -237,16 +191,6 @@ export const AudioConfig: React.FC = () => {
       setIsConnecting(false)
     }
   }, [trinity, setStoreSource])
-  
-  // Handle gain change
-  const handleGainChange = useCallback((gain: number) => {
-    setInputGain(gain)
-    
-    // Persist
-    if (window.lux?.saveConfig) {
-      window.lux.saveConfig({ audio: { inputGain: gain } } as any)
-    }
-  }, [setInputGain])
   
   return (
     <div className="audio-config-panel">
@@ -285,7 +229,7 @@ export const AudioConfig: React.FC = () => {
         </div>
       )}
       
-      {/* VU Meter */}
+      {/* VU Meter - AGC handles gain automatically */}
       <VuMeter 
         energy={audio.energy}
         bass={audio.bass}
@@ -293,11 +237,11 @@ export const AudioConfig: React.FC = () => {
         treble={audio.high}
       />
       
-      {/* Gain Slider */}
-      <GainSlider 
-        value={inputGain}
-        onChange={handleGainChange}
-      />
+      {/* Note about AGC */}
+      <div className="agc-note">
+        <span className="agc-icon">🎚️</span>
+        <span className="agc-text">Auto Gain Control active</span>
+      </div>
     </div>
   )
 }

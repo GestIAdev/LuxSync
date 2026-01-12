@@ -1,17 +1,16 @@
 /**
  * 🏛️ SETUP STATUS BAR - The Immutable Header
- * WAVE 26 Phase 1: Dashboard Híbrido
+ * WAVE 370: UI LEGACY PURGE - Connected to stageStore
  * 
- * Barra de estado fija (40-50px) siempre visible:
- * - Izquierda: Mini VU Meter + "AUDIO INPUT"
- * - Centro: "SHOW: Default.json"
- * - Derecha: DMX Status (ONLINE/OFFLINE)
+ * Fixed status bar (40-50px) always visible:
+ * - Left: Mini VU Meter + "AUDIO INPUT"
+ * - Center: "SHOW: [actual .luxshow file name]"
+ * - Right: DMX Status (ONLINE/OFFLINE)
  */
 
 import React from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../stores/truthStore'
-// IMPORTANTE: Importamos el store de Setup donde guardaste el nombre
-import { useSetupStore } from '../../../stores/setupStore'
+import { useStageStore } from '../../../stores/stageStore'
 import './SetupStatusBar.css'
 
 // ============================================
@@ -77,8 +76,8 @@ const DmxStatus: React.FC<DmxStatusProps> = ({ connected, fps }) => {
 export const SetupStatusBar: React.FC = () => {
   const audio = useTruthStore(selectAudio)
   const hardware = useTruthStore(selectHardware)
-  // CONEXIÓN AL STORE REAL:
-  const currentShowName = useSetupStore((s) => s.currentShowName)
+  // WAVE 370: Connected to REAL showFile from stageStore
+  const showFileName = useStageStore((s) => s.showFile?.name)
   
   return (
     <div className="setup-status-bar">
@@ -88,10 +87,10 @@ export const SetupStatusBar: React.FC = () => {
         <span className="status-label">AUDIO INPUT</span>
       </div>
       
-      {/* CENTER: Show Name (AHORA ES DINÁMICO) */}
+      {/* CENTER: Show Name (REAL from Stage Constructor) */}
       <div className="status-section status-center">
         <span className="show-name">
-          SHOW: <span style={{color: '#fff', fontWeight: 'bold'}}>{currentShowName || 'Default.json'}</span>
+          SHOW: <span style={{color: '#fff', fontWeight: 'bold'}}>{showFileName || 'No Show Loaded'}</span>
         </span>
       </div>
       

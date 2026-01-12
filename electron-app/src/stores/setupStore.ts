@@ -1,11 +1,11 @@
 /**
- * 🧠 SETUP STORE - The Command Center Brain
- * WAVE 26 Phase 1: Dashboard Híbrido Navigation & Config State
+ * 🧠 SETUP STORE - Device Configuration State
+ * WAVE 370: UI LEGACY PURGE - Tabs eliminated, Devices only
  * 
- * Gestiona:
- * - Navegación entre tabs (devices/patch/library)
- * - Estado temporal de configuración (no persiste hasta "Save")
- * - Cache visual para evitar parpadeos al cambiar tabs
+ * Manages:
+ * - Audio configuration (source selection)
+ * - DMX configuration (driver, port)
+ * - Device detection cache
  */
 
 import { create } from 'zustand'
@@ -13,8 +13,6 @@ import { create } from 'zustand'
 // ============================================
 // TYPES
 // ============================================
-
-export type SetupTab = 'devices' | 'patch' | 'library'
 
 export interface DetectedPort {
   path: string
@@ -32,10 +30,6 @@ export interface AudioDeviceInfo {
 }
 
 export interface SetupState {
-  // === TAB NAVIGATION ===
-  activeTab: SetupTab
-  setActiveTab: (tab: SetupTab) => void
-  
   // === AUDIO CONFIG (Visual Cache) ===
   audioDeviceId: string | null
   audioDeviceName: string | null
@@ -67,10 +61,6 @@ export interface SetupState {
   markDirty: () => void
   markClean: () => void
   
-  // === CURRENT SHOW ===
-  currentShowName: string
-  setCurrentShowName: (name: string) => void
-  
   // === RESET ===
   reset: () => void
 }
@@ -80,8 +70,6 @@ export interface SetupState {
 // ============================================
 
 const initialState = {
-  activeTab: 'devices' as SetupTab,
-  
   audioDeviceId: null,
   audioDeviceName: null,
   audioSource: null,
@@ -97,8 +85,6 @@ const initialState = {
   isAudioScanning: false,
   
   hasUnsavedChanges: false,
-  
-  currentShowName: 'Default',
 }
 
 // ============================================
@@ -107,9 +93,6 @@ const initialState = {
 
 export const useSetupStore = create<SetupState>((set) => ({
   ...initialState,
-  
-  // === TAB NAVIGATION ===
-  setActiveTab: (tab) => set({ activeTab: tab }),
   
   // === AUDIO ===
   setAudioDevice: (id, name) => set({ 
@@ -147,9 +130,6 @@ export const useSetupStore = create<SetupState>((set) => ({
   markDirty: () => set({ hasUnsavedChanges: true }),
   markClean: () => set({ hasUnsavedChanges: false }),
   
-  // === CURRENT SHOW ===
-  setCurrentShowName: (name) => set({ currentShowName: name }),
-  
   // === RESET ===
   reset: () => set(initialState),
 }))
@@ -158,7 +138,6 @@ export const useSetupStore = create<SetupState>((set) => ({
 // SELECTORS (for optimized re-renders)
 // ============================================
 
-export const selectActiveTab = (state: SetupState) => state.activeTab
 export const selectDmxConfig = (state: SetupState) => ({
   driver: state.dmxDriver,
   comPort: state.dmxComPort,

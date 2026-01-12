@@ -18,7 +18,7 @@
 import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron';
 import path from 'path';
 // TITAN 2.0 Core Modules
-import { TitanOrchestrator, setupIPCHandlers } from '../src/core/orchestrator';
+import { TitanOrchestrator, setupIPCHandlers, setupArbiterHandlers } from '../src/core/orchestrator';
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
 // Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
@@ -213,6 +213,9 @@ async function initTitan() {
     };
     setupIPCHandlers(ipcDeps);
     console.log('[Main] IPC Handlers registered via IPCHandlers module');
+    // 🎭 WAVE 374: Arbiter IPC Handlers
+    setupArbiterHandlers();
+    console.log('[Main] 🎭 Arbiter handlers registered (WAVE 374)');
     // ArtNet event forwarding
     artNetDriver.on('ready', () => {
         console.log('[ArtNet] Ready');

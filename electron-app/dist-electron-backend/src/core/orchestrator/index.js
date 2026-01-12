@@ -11,3 +11,5 @@ export { setupIPCHandlers, } from './IPCHandlers';
 export { EventRouter, getEventRouter, resetEventRouter, } from './EventRouter';
 // WAVE 243.5: Titan Orchestrator (Simplified V2)
 export { TitanOrchestrator, getTitanOrchestrator, } from './TitanOrchestrator';
+// 🎭 WAVE 374: Arbiter Handlers
+export { setupArbiterHandlers, } from './ArbiterHandlers';

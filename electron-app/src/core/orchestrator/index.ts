@@ -41,3 +41,8 @@ export {
 export type {
   TitanConfig,
 } from './TitanOrchestrator'
+
+// 🎭 WAVE 374: Arbiter Handlers
+export {
+  setupArbiterHandlers,
+} from './ArbiterHandlers'

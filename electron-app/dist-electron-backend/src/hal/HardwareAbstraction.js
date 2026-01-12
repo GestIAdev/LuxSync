@@ -519,6 +519,164 @@ export class HardwareAbstraction {
             `Zones: ${zoneCount}`);
     }
     // ═══════════════════════════════════════════════════════════════════════
+    // 🎭 WAVE 374: RENDER FROM ARBITRATED TARGET
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🎭 WAVE 374: Render from MasterArbiter's FinalLightingTarget
+     *
+     * This method accepts pre-arbitrated lighting values from MasterArbiter.
+     * The arbiter has already merged:
+     * - Layer 0: AI intent from TitanEngine
+     * - Layer 1: Consciousness (CORE 3)
+     * - Layer 2: Manual overrides
+     * - Layer 3: Effects (strobe, flash)
+     * - Layer 4: Blackout
+     *
+     * HAL's responsibility now is ONLY:
+     * - Apply physics (movement interpolation)
+     * - Apply dynamic optics
+     * - Send to DMX driver
+     *
+     * @param target - Pre-arbitrated lighting target from MasterArbiter
+     * @param fixtures - Patched fixture configuration
+     * @param audio - Current audio metrics for physics
+     * @returns Array of final fixture states (for UI broadcast)
+     */
+    renderFromTarget(target, fixtures, audio) {
+        const startTime = performance.now();
+        // 🚫 BLACKOUT CHECK (arbiter already handled dimmer=0, but we can short-circuit)
+        if (target.globalEffects.blackoutActive) {
+            const blackoutStates = fixtures.map(fixture => ({
+                name: fixture.name,
+                type: fixture.type || 'generic',
+                zone: (fixture.zone || 'UNASSIGNED'),
+                dmxAddress: fixture.dmxAddress,
+                universe: fixture.universe || 1,
+                dimmer: 0,
+                r: 0,
+                g: 0,
+                b: 0,
+                pan: 128,
+                tilt: 128,
+                zoom: 128,
+                focus: 128,
+                physicalPan: 128,
+                physicalTilt: 128,
+                panVelocity: 0,
+                tiltVelocity: 0,
+            }));
+            this.sendToDriver(blackoutStates);
+            this.framesRendered++;
+            this.lastFixtureStates = blackoutStates;
+            return blackoutStates;
+        }
+        // Map arbitrated targets to fixture states
+        const fixtureStates = fixtures.map((fixture, index) => {
+            const fixtureId = fixture.id || fixture.name;
+            const zone = (fixture.zone || 'UNASSIGNED');
+            // Find this fixture's target from arbiter output
+            const fixtureTarget = target.fixtures.find(t => t.fixtureId === fixtureId);
+            if (fixtureTarget) {
+                // Use arbitrated values directly
+                return {
+                    name: fixture.name,
+                    type: fixture.type || 'generic',
+                    zone,
+                    dmxAddress: fixture.dmxAddress,
+                    universe: fixture.universe || 1,
+                    dimmer: fixtureTarget.dimmer,
+                    r: fixtureTarget.color.r,
+                    g: fixtureTarget.color.g,
+                    b: fixtureTarget.color.b,
+                    pan: fixtureTarget.pan,
+                    tilt: fixtureTarget.tilt,
+                    zoom: fixtureTarget.zoom,
+                    focus: fixtureTarget.focus,
+                };
+            }
+            // Fallback: fixture not in arbiter output (shouldn't happen)
+            return {
+                name: fixture.name,
+                type: fixture.type || 'generic',
+                zone,
+                dmxAddress: fixture.dmxAddress,
+                universe: fixture.universe || 1,
+                dimmer: 0,
+                r: 0,
+                g: 0,
+                b: 0,
+                pan: 128,
+                tilt: 128,
+                zoom: 128,
+                focus: 128,
+            };
+        });
+        // Apply physics and dynamic optics (same as render())
+        const opticsTimeSeconds = Date.now() / 1000;
+        const beatDuration = 0.5; // Default 120 BPM
+        const beatPhase = (opticsTimeSeconds % beatDuration) / beatDuration;
+        const statesWithPhysics = fixtureStates.map((state, index) => {
+            const fixture = fixtures[index];
+            const fixtureId = fixture?.id || `fallback_mover_${index}`;
+            const isMovingFixture = state.zone.includes('MOVING') ||
+                state.type?.toLowerCase().includes('moving') ||
+                state.type?.toLowerCase().includes('spot') ||
+                state.type?.toLowerCase().includes('beam') ||
+                fixture?.hasMovementChannels;
+            // Calculate movement intensity for optics
+            const panNorm = state.pan / 255;
+            const tiltNorm = state.tilt / 255;
+            const movementIntensity = Math.sqrt(Math.pow(panNorm - 0.5, 2) + Math.pow(tiltNorm - 0.5, 2)) * 2;
+            // Apply dynamic optics
+            const opticsMod = this.applyDynamicOptics(movementIntensity, beatPhase, opticsTimeSeconds);
+            const finalZoom = Math.max(0, Math.min(255, state.zoom + opticsMod.zoomMod));
+            const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod));
+            if (isMovingFixture) {
+                // Apply physics interpolation
+                this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, 16);
+                const physicsState = this.movementPhysics.getPhysicsState(fixtureId);
+                return {
+                    ...state,
+                    zoom: finalZoom,
+                    focus: finalFocus,
+                    physicalPan: physicsState.physicalPan,
+                    physicalTilt: physicsState.physicalTilt,
+                    panVelocity: physicsState.panVelocity,
+                    tiltVelocity: physicsState.tiltVelocity,
+                };
+            }
+            return {
+                ...state,
+                zoom: finalZoom,
+                focus: finalFocus,
+                physicalPan: state.pan,
+                physicalTilt: state.tilt,
+                panVelocity: 0,
+                tiltVelocity: 0,
+            };
+        });
+        // Send to hardware
+        this.sendToDriver(statesWithPhysics);
+        // Update stats
+        this.framesRendered++;
+        this.lastRenderTime = performance.now() - startTime;
+        this.renderTimes.push(this.lastRenderTime);
+        if (this.renderTimes.length > 100)
+            this.renderTimes.shift();
+        this.lastFixtureStates = statesWithPhysics;
+        // Debug logging (every ~1 second)
+        if (this.framesRendered % 30 === 0) {
+            const movers = statesWithPhysics.filter(s => s.zone.includes('MOVING'));
+            if (movers.length > 0) {
+                const m = movers[0];
+                const panDeg = Math.round(((m.pan / 255) - 0.5) * 540);
+                const tiltDeg = Math.round(((m.tilt / 255) - 0.5) * 270);
+                console.log(`[🎭 HAL ARBITER] ${this.currentVibeId} | Pan:${panDeg}° Tilt:${tiltDeg}° | Blackout:${target.globalEffects.blackoutActive}`);
+            }
+        }
+        return statesWithPhysics;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     // ZONE INTENSITY CALCULATION
     // ═══════════════════════════════════════════════════════════════════════
     calculateZoneIntensity(zone, audio) {

@@ -1,7 +1,8 @@
 /**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
+ * WAVE 374: MASTER ARBITER INTEGRATION
  *
- * Orquesta Brain -> Engine -> HAL pipeline.
+ * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este módulo solo orquesta el flujo de datos.
  *
  * @module TitanOrchestrator
@@ -12,6 +13,8 @@ import { HardwareAbstraction } from '../../hal/HardwareAbstraction';
 import { getEventRouter } from './EventRouter';
 import { getTrinity } from '../../workers/TrinityOrchestrator';
 import { createDefaultCognitive } from '../protocol/SeleneProtocol';
+// 🎭 WAVE 374: Import MasterArbiter
+import { masterArbiter } from '../arbiter';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -105,6 +108,8 @@ export class TitanOrchestrator {
         // Initialize HAL
         this.hal = new HardwareAbstraction({ debug: this.config.debug });
         console.log('[TitanOrchestrator] HardwareAbstraction created');
+        // 🎭 WAVE 374: Initialize MasterArbiter
+        console.log('[TitanOrchestrator] 🎭 MasterArbiter ready (Layer 0-4 arbitration)');
         // TODO: EventRouter connection needs interface alignment
         // this.eventRouter.connect(this.brain, this.engine, this.hal)
         console.log('[TitanOrchestrator] EventRouter ready (direct mode)');
@@ -211,8 +216,26 @@ export class TitanOrchestrator {
         };
         // 3. Engine processes context -> produces LightingIntent
         const intent = this.engine.update(context, engineAudioMetrics);
-        // 4. HAL renders intent -> produces fixture states (WAVE 252: uses real fixtures)
-        const fixtureStates = this.hal.render(intent, this.fixtures, halAudioMetrics);
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
+        // Instead of sending intent directly to HAL, we now:
+        // 1. Feed the intent to Layer 0 (TITAN_AI) of the Arbiter
+        // 2. Arbiter merges all layers (manual overrides, effects, blackout)
+        // 3. Send arbitrated result to HAL
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Feed Layer 0: AI Intent
+        const titanLayer = {
+            intent,
+            timestamp: Date.now(),
+            vibeId: this.engine.getCurrentVibe(),
+            frameNumber: this.frameCount,
+        };
+        masterArbiter.setTitanIntent(titanLayer);
+        // Arbitrate all layers (this merges manual overrides, effects, blackout)
+        const arbitratedTarget = masterArbiter.arbitrate();
+        // 4. HAL renders arbitrated target -> produces fixture states
+        // Now using the new renderFromTarget method that accepts FinalLightingTarget
+        const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
         // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
         const shouldLogToTactical = this.frameCount % 30 === 0;
         if (shouldLogToTactical && this.hasRealAudio) {
@@ -531,10 +554,20 @@ export class TitanOrchestrator {
     /**
      * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
      * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
+     * WAVE 374: Register fixtures in MasterArbiter
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setFixtures(fixtures) {
         this.fixtures = fixtures;
+        // 🎭 WAVE 374: Register fixtures in MasterArbiter
+        masterArbiter.setFixtures(fixtures.map(f => ({
+            id: f.id,
+            name: f.name,
+            zone: f.zone,
+            type: f.type,
+            dmxAddress: f.dmxAddress,
+            universe: f.universe || 1,
+        })));
         // 🔥 WAVE 339.6: Register movers in PhysicsDriver
         // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
         let moverCount = 0;
@@ -547,7 +580,7 @@ export class TitanOrchestrator {
                 }
             }
         }
-        console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} total, ${moverCount} movers registered in PhysicsDriver`);
+        console.log(`[TitanOrchestrator] Fixtures loaded: ${fixtures.length} total, ${moverCount} movers registered in PhysicsDriver + Arbiter`);
     }
     /**
      * WAVE 252: Get current fixtures count

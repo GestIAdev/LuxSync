@@ -20,7 +20,7 @@ import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
 
 // TITAN 2.0 Core Modules
-import { TitanOrchestrator, setupIPCHandlers, setupArbiterHandlers, type IPCDependencies } from '../src/core/orchestrator'
+import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies } from '../src/core/orchestrator'
 
 // Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
 import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter'
@@ -282,13 +282,11 @@ async function initTitan(): Promise<void> {
   setupIPCHandlers(ipcDeps)
   console.log('[Main] IPC Handlers registered via IPCHandlers module')
   
-  // 🎭 WAVE 374: Arbiter IPC Handlers
-  setupArbiterHandlers()
-  console.log('[Main] 🎭 Arbiter handlers registered (WAVE 374)')
-  
-  // 🌉 WAVE 377: Extended Arbiter Handlers (setFixtures, calibration, etc.)
+  // 🎭 WAVE 374 + 377: Arbiter IPC Handlers (unified)
+  // Note: Using registerArbiterHandlers from arbiter module (more complete)
+  // setupArbiterHandlers from orchestrator is deprecated (duplicate handlers)
   registerArbiterHandlers(masterArbiter)
-  console.log('[Main] 🌉 Extended Arbiter handlers registered (WAVE 377)')
+  console.log('[Main] � Arbiter handlers registered (WAVE 374 + 377)')
 
   // ArtNet event forwarding
   artNetDriver.on('ready', () => {

@@ -704,24 +704,37 @@ export class MasterArbiter extends EventEmitter {
         defaults.dimmer = intent.masterIntensity * 255;
         // ═══════════════════════════════════════════════════════════════════════
         // 🎨 WAVE 382: ZONE-BASED COLOR MAPPING (No more monochrome!)
+        // Supports multiple zone naming conventions:
+        // - Legacy: FRONT_PARS, BACK_PARS, MOVING_LEFT, etc.
+        // - Stage Constructor: ceiling-front, ceiling-left, floor-back, etc.
         // ═══════════════════════════════════════════════════════════════════════
         const zone = (fixture?.zone || 'UNASSIGNED').toUpperCase();
         const fixtureType = (fixture?.type || 'generic').toLowerCase();
         // Determine which palette color to use based on zone
         let selectedColor = intent.palette?.primary; // Default fallback
-        if (zone.includes('FRONT') || zone === 'FLOOR') {
-            // 🟡 FRONT/FLOOR: Warm wash - PRIMARY color
+        if (zone.includes('FRONT')) {
+            // 🟡 FRONT (ceiling-front, FRONT_PARS): Warm wash - PRIMARY color
             selectedColor = intent.palette?.primary;
         }
         else if (zone.includes('BACK')) {
-            // 🔵 BACK: Cool contrast - SECONDARY color
+            // 🔵 BACK (floor-back, BACK_PARS): Cool contrast - SECONDARY color
             selectedColor = intent.palette?.secondary || intent.palette?.primary;
+        }
+        else if (zone.includes('LEFT') || zone.includes('RIGHT')) {
+            // 🟢 SIDES (ceiling-left, ceiling-right): Alternate between primary/secondary
+            // LEFT gets secondary, RIGHT gets accent/blend for visual interest
+            if (zone.includes('LEFT')) {
+                selectedColor = intent.palette?.secondary || intent.palette?.primary;
+            }
+            else {
+                selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary;
+            }
         }
         else if (zone.includes('MOVING') || this.isMovingFixture(fixture)) {
             // 🟣 MOVERS: Dramatic accent - ACCENT color
             selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary;
         }
-        else if (zone === 'STROBES' || zone === 'CENTER') {
+        else if (zone.includes('STROBE') || zone === 'CENTER') {
             // ⚪ CENTER/STROBES: Mix of primary and secondary
             if (intent.palette?.primary && intent.palette?.secondary) {
                 // Blend between primary and secondary for center fixtures
@@ -733,6 +746,16 @@ export class MasterArbiter extends EventEmitter {
             }
             else {
                 selectedColor = intent.palette?.primary;
+            }
+        }
+        else if (zone.includes('FLOOR')) {
+            // 🔶 FLOOR (general): Darker primary for ground effect
+            if (intent.palette?.primary) {
+                selectedColor = {
+                    h: intent.palette.primary.h,
+                    s: intent.palette.primary.s,
+                    l: intent.palette.primary.l * 0.7, // Darker for floor
+                };
             }
         }
         // Convert selected HSL to RGB

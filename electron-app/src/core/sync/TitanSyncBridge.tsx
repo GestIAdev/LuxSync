@@ -11,7 +11,7 @@
  * ARQUITECTURA:
  * - Escucha cambios en stageStore.fixtures
  * - Debounce de 500ms para no saturar IPC
- * - Envía lux:stage:updateFixtures cuando hay cambios
+ * - Envía lux:arbiter:setFixtures cuando hay cambios
  * 
  * INTEGRACIÓN:
  * - Montar en App.tsx (componente invisible, sin render visual)
@@ -23,7 +23,7 @@
  * - Reactividad pura vía Zustand subscriptions
  * 
  * @module core/sync/TitanSyncBridge
- * @version WAVE 377
+ * @version WAVE 377.1
  */
 
 import { useEffect, useRef, useCallback } from 'react'
@@ -36,9 +36,6 @@ import { useStageStore } from '../../stores/stageStore'
 /** Debounce time in ms - prevents IPC flooding when dragging fixtures */
 const SYNC_DEBOUNCE_MS = 500
 
-/** Debug logging */
-const DEBUG = false
-
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -50,19 +47,21 @@ const DEBUG = false
  * It watches for fixture changes and syncs them to the backend automatically.
  */
 export const TitanSyncBridge: React.FC = () => {
+  // Get fixtures directly from store
+  const fixtures = useStageStore((state) => state.fixtures)
+  
   // Refs for debounce
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSyncedHashRef = useRef<string>('')
+  const mountedRef = useRef(false)
   
   /**
    * Generate a hash from fixtures array to detect actual changes
-   * This avoids unnecessary syncs when the array reference changes but content doesn't
    */
-  const generateFixturesHash = useCallback((fixtures: any[]): string => {
-    if (!fixtures || fixtures.length === 0) return 'empty'
+  const generateFixturesHash = useCallback((fixtureList: any[]): string => {
+    if (!fixtureList || fixtureList.length === 0) return 'empty'
     
-    // Create a deterministic hash from fixture properties that affect backend
-    return fixtures
+    return fixtureList
       .map(f => `${f.id}:${f.dmxAddress}:${f.universe}:${f.zone}:${f.type}`)
       .sort()
       .join('|')
@@ -71,17 +70,17 @@ export const TitanSyncBridge: React.FC = () => {
   /**
    * Sync fixtures to backend via IPC
    */
-  const syncToBackend = useCallback(async (fixtures: any[]) => {
+  const syncToBackend = useCallback(async (fixtureList: any[]) => {
     // Check if window.lux exists (Electron environment)
-    if (typeof window === 'undefined' || !('lux' in window)) {
-      if (DEBUG) console.log('[TitanSyncBridge] ⚠️ Not in Electron environment')
+    const lux = (window as any).lux
+    
+    if (!lux) {
+      console.warn('[TitanSyncBridge] ⚠️ window.lux not available')
       return
     }
     
-    const lux = window.lux as any
-    
     // Convert stageStore fixtures to ArbiterFixture format
-    const arbiterFixtures = fixtures.map(f => ({
+    const arbiterFixtures = fixtureList.map(f => ({
       id: f.id,
       name: f.name || f.id,
       dmxAddress: f.dmxAddress,
@@ -90,13 +89,11 @@ export const TitanSyncBridge: React.FC = () => {
       type: f.type,
       channels: f.channels || [],
       capabilities: f.capabilities || {},
-      // Position data for 3D sync
       position: f.position,
       rotation: f.rotation,
     }))
     
     try {
-      // WAVE 377: Use the proper exposed API
       if (lux.arbiter?.setFixtures) {
         await lux.arbiter.setFixtures(arbiterFixtures)
         console.log(`[TitanSyncBridge] ✅ Synced ${arbiterFixtures.length} fixtures to Arbiter`)
@@ -104,21 +101,26 @@ export const TitanSyncBridge: React.FC = () => {
         console.warn('[TitanSyncBridge] ⚠️ lux.arbiter.setFixtures not available')
       }
     } catch (err) {
-      // Silently fail if channel doesn't exist yet
       console.warn('[TitanSyncBridge] ⚠️ Backend sync failed:', err)
     }
   }, [])
   
-  /**
-   * Handle fixture changes with debounce
-   */
-  const handleFixturesChange = useCallback((fixtures: any[]) => {
+  // ═══════════════════════════════════════════════════════════════════════
+  // EFFECT: Watch fixtures and sync
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    // Log on first mount only
+    if (!mountedRef.current) {
+      console.log('[TitanSyncBridge] 🌉 Bridge ONLINE - watching fixtures')
+      mountedRef.current = true
+    }
+    
     // Generate hash to detect actual content changes
     const currentHash = generateFixturesHash(fixtures)
     
     // Skip if no actual change
     if (currentHash === lastSyncedHashRef.current) {
-      if (DEBUG) console.log('[TitanSyncBridge] 📋 No change detected, skipping')
       return
     }
     
@@ -130,38 +132,17 @@ export const TitanSyncBridge: React.FC = () => {
     // Debounce the sync
     debounceTimeoutRef.current = setTimeout(() => {
       lastSyncedHashRef.current = currentHash
+      console.log(`[TitanSyncBridge] 🌉 Fixtures changed (${fixtures.length}) → syncing...`)
       syncToBackend(fixtures)
-      
-      console.log(`[TitanSyncBridge] 🌉 Synced ${fixtures.length} fixtures → Backend`)
     }, SYNC_DEBOUNCE_MS)
-  }, [generateFixturesHash, syncToBackend])
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // SUBSCRIPTION
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  useEffect(() => {
-    console.log('[TitanSyncBridge] 🌉 Bridge online - watching stageStore.fixtures')
     
-    // Subscribe to fixtures changes
-    const unsubscribe = useStageStore.subscribe(
-      (state) => state.fixtures,
-      (fixtures) => {
-        handleFixturesChange(fixtures)
-      },
-      { fireImmediately: true }
-    )
-    
-    // Cleanup
+    // Cleanup timeout on unmount or before next effect
     return () => {
-      console.log('[TitanSyncBridge] 🌉 Bridge offline')
-      unsubscribe()
-      
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current)
       }
     }
-  }, [handleFixturesChange])
+  }, [fixtures, generateFixturesHash, syncToBackend])
   
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER - Invisible component

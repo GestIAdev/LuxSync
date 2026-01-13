@@ -774,7 +774,11 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                         name: fixture.name,
                         manufacturer: fixture.manufacturer,
                         type: fixture.type,
-                        channels: fixture.channels.filter(ch => ch.type !== 'unknown').length
+                        // WAVE 385: Show ALL channels, including unknown
+                        // Trust the data - unknown channels are REAL, just unmapped
+                        totalChannels: fixture.channels.length,
+                        mappedChannels: fixture.channels.filter(ch => ch.type !== 'unknown').length,
+                        unmappedChannels: fixture.channels.filter(ch => ch.type === 'unknown').length
                       },
                       physics: {
                         motorType: physics.motorType,

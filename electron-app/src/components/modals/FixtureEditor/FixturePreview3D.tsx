@@ -180,7 +180,7 @@ const MovingHeadModel: React.FC<{
       
       {/* Stress test indicator */}
       {isStressTesting && (
-        <Html position={[0, 0.5, 0]} center>
+        <Html position={[0, 0.5, 0]} center zIndexRange={[0, 10]}>
           <div style={{
             background: '#ff4444',
             color: 'white',

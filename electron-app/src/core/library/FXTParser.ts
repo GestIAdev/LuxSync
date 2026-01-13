@@ -318,11 +318,15 @@ export class FXTParser {
     // Generar ID único
     const id = fileBaseName.replace(/\s+/g, '_').toLowerCase()
 
+    // WAVE 385: Trust empirical data over header metadata
+    // Math.max ensures we report actual channel count found, not just header value
+    const actualChannelCount = Math.max(channelCount, channels.length) || 1
+
     const result: ParsedFixture = {
       id,
       name,
       manufacturer,
-      channelCount: channelCount || channels.length || 1,
+      channelCount: actualChannelCount,
       type: detection.type,
       filePath,
       channels,

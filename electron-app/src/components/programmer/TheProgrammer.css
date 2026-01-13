@@ -222,6 +222,95 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 377: CALIBRATION MODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 🎯 CALIBRATING STATE */
+.programmer-section.calibrating {
+  border-color: rgba(255, 50, 50, 0.6);
+  box-shadow: 
+    0 0 20px rgba(255, 50, 50, 0.15),
+    inset 0 0 25px rgba(255, 50, 50, 0.05);
+  animation: calibration-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes calibration-pulse {
+  0%, 100% { 
+    border-color: rgba(255, 50, 50, 0.6);
+    box-shadow: 
+      0 0 20px rgba(255, 50, 50, 0.15),
+      inset 0 0 25px rgba(255, 50, 50, 0.05);
+  }
+  50% { 
+    border-color: rgba(255, 100, 100, 0.8);
+    box-shadow: 
+      0 0 30px rgba(255, 50, 50, 0.25),
+      inset 0 0 35px rgba(255, 50, 50, 0.1);
+  }
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calibrate-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calibrate-btn:hover {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: rgba(255, 100, 100, 0.4);
+  color: #ff6464;
+}
+
+.calibrate-btn.active {
+  background: rgba(255, 50, 50, 0.25);
+  border-color: rgba(255, 50, 50, 0.6);
+  color: #ff4444;
+  animation: calibrate-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes calibrate-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.calibration-indicator {
+  color: #ff4444;
+  font-size: 10px;
+  margin-left: 6px;
+  animation: calibrate-blink 0.8s ease-in-out infinite;
+}
+
+.calibration-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  background: rgba(255, 50, 50, 0.25);
+  border: 1px solid rgba(255, 50, 50, 0.5);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ff4444;
+  letter-spacing: 0.5px;
+  animation: calibrate-blink 0.8s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    INTENSITY SECTION
    ═══════════════════════════════════════════════════════════════════════════ */
 

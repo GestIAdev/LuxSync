@@ -5,6 +5,7 @@
  * Wave 3: Conectado con Selene Lux Core via Audio Capture
  * Wave 33.3: Cleaned up legacy components (moved to StageViewDual)
  * WAVE 264.6: Eliminado useAudioCapture duplicado - TrinityProvider maneja audio
+ * WAVE 377: Added TitanSyncBridge for auto-sync stageStore → Backend
  */
 
 import { useEffect } from 'react'
@@ -15,6 +16,7 @@ import { useLuxSyncStore } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
 import { useAudioStore } from './stores/audioStore'
 import { initializeLogIPC } from './stores/logStore'
+import { TitanSyncBridge } from './core/sync'
 
 function App() {
   const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore()
@@ -64,6 +66,9 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
+      <TitanSyncBridge />
+      
       {/* Header - Status Bar (FIJO) */}
       <Header />
 

@@ -372,6 +372,23 @@ const luxApi = {
             ipcRenderer.on('lux:arbiter:status-change', handler);
             return () => ipcRenderer.removeListener('lux:arbiter:status-change', handler);
         },
+        // ============================================
+        // 🎯 WAVE 377: CALIBRATION MODE
+        // ============================================
+        /**
+         * Enter calibration mode for a fixture
+         * Sets manual override for pan/tilt with special 'calibration' source
+         */
+        enterCalibrationMode: (fixtureId) => ipcRenderer.invoke('lux:arbiter:enterCalibrationMode', { fixtureId }),
+        /**
+         * Exit calibration mode for a fixture
+         * Smoothly transitions back to AI control
+         */
+        exitCalibrationMode: (fixtureId) => ipcRenderer.invoke('lux:arbiter:exitCalibrationMode', { fixtureId }),
+        /**
+         * Check if a fixture is currently in calibration mode
+         */
+        isCalibrating: (fixtureId) => ipcRenderer.invoke('lux:arbiter:isCalibrating', { fixtureId }),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

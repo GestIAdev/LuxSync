@@ -252,6 +252,97 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
   })
   
   // ═══════════════════════════════════════════════════════════════════════
+  // CALIBRATION MODE - WAVE 377
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Enter calibration mode for a fixture
+   * This sets a special manual override that only affects pan/tilt
+   * and marks the fixture as being calibrated (UI indicator)
+   */
+  ipcMain.handle('lux:arbiter:enterCalibrationMode', (
+    _event,
+    { fixtureId }: { fixtureId: string }
+  ) => {
+    console.log(`[Arbiter] 🎯 Entering calibration mode for ${fixtureId}`)
+    
+    // Set manual override for position channels only
+    const override: Layer2_Manual = {
+      fixtureId,
+      controls: {}, // Values will be set by user via setManual
+      overrideChannels: ['pan', 'tilt'],
+      mode: 'absolute',
+      source: 'calibration', // Special source for calibration
+      priority: 200, // Higher than normal manual (100)
+      autoReleaseMs: 0, // Never auto-release during calibration
+      releaseTransitionMs: 1000, // 1s smooth return on exit
+      timestamp: performance.now(),
+    }
+    
+    masterArbiter.setManualOverride(override)
+    
+    return { 
+      success: true, 
+      fixtureId, 
+      mode: 'calibration',
+      message: 'Calibration mode active - pan/tilt under manual control'
+    }
+  })
+  
+  /**
+   * Exit calibration mode for a fixture
+   * Smoothly transitions back to AI control
+   */
+  ipcMain.handle('lux:arbiter:exitCalibrationMode', (
+    _event,
+    { fixtureId }: { fixtureId: string }
+  ) => {
+    console.log(`[Arbiter] 🎯 Exiting calibration mode for ${fixtureId}`)
+    
+    masterArbiter.releaseManualOverride(fixtureId, ['pan', 'tilt'])
+    
+    return { 
+      success: true, 
+      fixtureId,
+      message: 'Calibration complete - returning to AI control'
+    }
+  })
+  
+  /**
+   * Check if fixture is in calibration mode
+   */
+  ipcMain.handle('lux:arbiter:isCalibrating', (
+    _event,
+    { fixtureId }: { fixtureId: string }
+  ) => {
+    const override = masterArbiter.getManualOverride(fixtureId)
+    return {
+      isCalibrating: override?.source === 'calibration',
+      channels: override?.overrideChannels || []
+    }
+  })
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // FIXTURE SYNC - WAVE 377 (TitanSyncBridge)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Update fixtures from frontend stageStore
+   * Called by TitanSyncBridge when patch changes
+   */
+  ipcMain.handle('lux:arbiter:setFixtures', (
+    _event,
+    { fixtures }: { fixtures: any[] }
+  ) => {
+    masterArbiter.setFixtures(fixtures)
+    return { 
+      success: true, 
+      fixtureCount: fixtures.length,
+      message: `Arbiter synced with ${fixtures.length} fixtures`
+    }
+  })
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // STATUS & DEBUG
   // ═══════════════════════════════════════════════════════════════════════
   

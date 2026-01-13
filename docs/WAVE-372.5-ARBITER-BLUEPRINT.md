@@ -1102,24 +1102,25 @@ describe('Crossfade', () => {
 ## 8. 📋 IMPLEMENTATION PHASES
 
 ### Phase 1: Core Arbiter (WAVE 373)
-- [ ] Create `/src/core/arbiter/` directory structure
-- [ ] Implement type definitions
-- [ ] Implement MergeStrategies
-- [ ] Implement CrossfadeEngine
-- [ ] Implement MasterArbiter (without consciousness)
+- [x] Create `/src/core/arbiter/` directory structure
+- [x] Implement type definitions
+- [x] Implement MergeStrategies
+- [x] Implement CrossfadeEngine
+- [x] Implement MasterArbiter (without consciousness)
 - [ ] Unit tests
 
 ### Phase 2: Integration (WAVE 374)
-- [ ] Modify TitanOrchestrator to use MasterArbiter
-- [ ] Add IPC handlers
-- [ ] Modify HAL to accept FinalLightingTarget
+- [x] Modify TitanOrchestrator to use MasterArbiter
+- [x] Add IPC handlers
+- [x] Modify HAL to accept FinalLightingTarget
 - [ ] Integration tests
 
-### Phase 3: UI Integration (WAVE 375)
-- [ ] Add manual override controls to fixture inspector
-- [ ] Add calibration mode button
-- [ ] Add blackout button to BigSwitch
-- [ ] Add layer activity indicator
+### Phase 3: UI Integration (WAVE 375 + 377)
+- [x] Add manual override controls to fixture inspector
+- [x] Add calibration mode button ← WAVE 377
+- [x] Add blackout button to BigSwitch
+- [x] Add layer activity indicator
+- [x] Add TitanSyncBridge (stageStore → Backend) ← WAVE 377
 
 ### Phase 4: Consciousness Channel (CORE 3)
 - [ ] Enable consciousnessEnabled config

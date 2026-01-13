@@ -1,5 +1,5 @@
 /**
- * 🕹️ POSITION SECTION - WAVE 375.4
+ * 🕹️ POSITION SECTION - WAVE 375.4 + WAVE 377 (Calibration)
  * Movement control for selected fixtures (moving heads)
  * 
  * Architecture:
@@ -7,6 +7,7 @@
  * - Patterns: Circle, Eight, Sweep (procedural movement)
  * - Group Radar: Center of gravity + fan (group formations)
  * - Precision: Numeric inputs for exact values
+ * - Calibrate: Enter calibration mode for offset adjustment
  * 
  * Connected to MasterArbiter via window.lux.arbiter.setManual()
  */
@@ -37,6 +38,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   const [activePattern, setActivePattern] = useState<PatternType>('static')
   const [patternSpeed, setPatternSpeed] = useState(50)  // 0-100
   const [patternSize, setPatternSize] = useState(50)    // 0-100
+  
+  // WAVE 377: Calibration mode state
+  const [isCalibrating, setIsCalibrating] = useState(false)
   
   // Check if selected fixtures are moving heads
   const hasMovingHeads = useMemo(() => {
@@ -150,6 +154,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   const handleRelease = useCallback(async () => {
     onOverrideChange(false)
     setActivePattern('static')
+    setIsCalibrating(false)
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -162,22 +167,70 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     }
   }, [selectedIds, onOverrideChange])
   
+  /**
+   * WAVE 377: Toggle calibration mode
+   * In calibration mode, the XY pad controls the fixture directly
+   * for adjusting mounting offsets.
+   */
+  const handleCalibrationToggle = useCallback(async () => {
+    const electron = (window as any).electron
+    const firstFixtureId = selectedIds[0]
+    
+    if (!firstFixtureId) return
+    
+    try {
+      if (isCalibrating) {
+        // Exit calibration mode
+        await electron?.ipcRenderer?.invoke?.('lux:arbiter:exitCalibrationMode', {
+          fixtureId: firstFixtureId
+        })
+        setIsCalibrating(false)
+        onOverrideChange(false)
+        console.log(`[Position] 🎯 Exited calibration mode for ${firstFixtureId}`)
+      } else {
+        // Enter calibration mode
+        await electron?.ipcRenderer?.invoke?.('lux:arbiter:enterCalibrationMode', {
+          fixtureId: firstFixtureId
+        })
+        setIsCalibrating(true)
+        onOverrideChange(true)
+        // Center the position when entering calibration
+        setPan(270)
+        setTilt(135)
+        console.log(`[Position] 🎯 Entered calibration mode for ${firstFixtureId}`)
+      }
+    } catch (err) {
+      console.error('[Position] Calibration error:', err)
+    }
+  }, [selectedIds, isCalibrating, onOverrideChange])
+  
   return (
-    <div className={`programmer-section position-section ${hasOverride ? 'has-override' : ''}`}>
+    <div className={`programmer-section position-section ${hasOverride ? 'has-override' : ''} ${isCalibrating ? 'calibrating' : ''}`}>
       <div className="section-header">
         <h4 className="section-title">
           <span className="section-icon">🕹️</span>
           POSITION
+          {isCalibrating && <span className="calibration-indicator"> 🎯 CALIBRATING</span>}
         </h4>
-        {hasOverride && (
-          <button 
-            className="release-btn"
-            onClick={handleRelease}
-            title="Release to AI control"
+        <div className="section-actions">
+          {/* WAVE 377: Calibration Button */}
+          <button
+            className={`calibrate-btn ${isCalibrating ? 'active' : ''}`}
+            onClick={handleCalibrationToggle}
+            title={isCalibrating ? 'Exit calibration mode' : 'Enter calibration mode'}
           >
-            ↺
+            🎯
           </button>
-        )}
+          {hasOverride && (
+            <button 
+              className="release-btn"
+              onClick={handleRelease}
+              title="Release to AI control"
+            >
+              ↺
+            </button>
+          )}
+        </div>
       </div>
       
       {/* XY PAD - The Sniper */}
@@ -188,14 +241,16 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         onCenter={handleCenter}
       />
       
-      {/* PATTERNS - Procedural Movement */}
-      <PatternSelector
-        activePattern={activePattern}
-        speed={patternSpeed}
-        size={patternSize}
-        onPatternChange={handlePatternChange}
-        onParamsChange={handlePatternParamsChange}
-      />
+      {/* PATTERNS - Procedural Movement (disabled in calibration mode) */}
+      {!isCalibrating && (
+        <PatternSelector
+          activePattern={activePattern}
+          speed={patternSpeed}
+          size={patternSize}
+          onPatternChange={handlePatternChange}
+          onParamsChange={handlePatternParamsChange}
+        />
+      )}
       
       {/* PRECISION INPUTS - The Surgeon */}
       <PrecisionInputs
@@ -205,8 +260,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       />
       
       {/* Override indicator */}
-      {hasOverride && (
+      {hasOverride && !isCalibrating && (
         <div className="override-badge">MANUAL</div>
+      )}
+      
+      {/* Calibration badge */}
+      {isCalibrating && (
+        <div className="calibration-badge">🎯 CALIBRATION MODE</div>
       )}
     </div>
   )

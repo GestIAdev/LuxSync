@@ -287,12 +287,14 @@ export class FXTParser {
             }
             // Buscar nombres de canales conocidos
             const channelType = this.identifyChannel(line);
-            if (channelType !== 'unknown' && !seenChannelNames.has(line.toLowerCase())) {
+            // WAVE 385.5: NO descartar canales unknown - son datos REALES
+            // Si parece un nombre de canal (no es path, no es número), lo guardamos
+            if (!seenChannelNames.has(line.toLowerCase())) {
                 seenChannelNames.add(line.toLowerCase());
                 channels.push({
                     index: channels.length,
-                    name: line,
-                    type: channelType,
+                    name: line, // Guardamos el nombre original siempre
+                    type: channelType, // Puede ser 'unknown', no importa - datos > filtro
                     is16bit: channelType.includes('fine') || line.toLowerCase().includes('16bit'),
                 });
             }

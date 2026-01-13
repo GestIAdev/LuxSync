@@ -222,6 +222,7 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
         <Html
           position={[0, 0.5, 0]}
           center
+          zIndexRange={[0, 10]} // WAVE 385.5: No bloquear modales
           style={{
             pointerEvents: 'none',
             userSelect: 'none'

@@ -669,7 +669,9 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                   </h3>
                   <div className="rack-grid">
                     {fixture.channels.map((channel, index) => {
-                      const isEmpty = channel.type === 'unknown'
+                      // WAVE 385.5: Solo está vacío si NO tiene nombre Y es unknown
+                      // Canales unknown CON nombre son datos reales, no slots vacíos
+                      const isEmpty = channel.type === 'unknown' && !channel.name
                       const color = getCategoryColor(channel.type)
                       const isDragOver = dragOverSlot === index
                       
@@ -696,7 +698,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                           </div>
                           
                           <div className={`slot-dropzone ${!isEmpty ? 'has-function' : ''}`}>
-                            {isEmpty ? 'DROP' : channel.type?.toUpperCase()}
+                            {/* WAVE 385.5: Mostrar ? para unknown con nombre */}
+                            {isEmpty ? 'DROP' : (channel.type === 'unknown' ? '?' : channel.type?.toUpperCase())}
                           </div>
                           
                           <input

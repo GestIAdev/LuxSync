@@ -705,8 +705,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                           <input
                             className="slot-name-input"
                             value={channel.name}
-                            placeholder={isEmpty ? '—' : 'Nombre...'}
-                            disabled={isEmpty}
+                            placeholder={isEmpty ? 'Raw name...' : 'Nombre...'}
+                            disabled={false} // WAVE 386: Always editable for debugging
                             onChange={(e) => {
                               const newChannels = [...fixture.channels]
                               newChannels[index].name = e.target.value

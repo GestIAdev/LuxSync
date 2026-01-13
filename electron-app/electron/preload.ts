@@ -571,6 +571,17 @@ const luxApi = {
      */
     isCalibrating: (fixtureId: string) =>
       ipcRenderer.invoke('lux:arbiter:isCalibrating', { fixtureId }),
+    
+    // ============================================
+    // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
+    // ============================================
+    
+    /**
+     * Sync fixtures from stageStore to backend MasterArbiter
+     * Called by TitanSyncBridge when patch changes
+     */
+    setFixtures: (fixtures: any[]) =>
+      ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures }),
   },
 
   // ============================================

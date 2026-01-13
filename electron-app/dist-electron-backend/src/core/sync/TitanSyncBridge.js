@@ -86,24 +86,18 @@ export const TitanSyncBridge = () => {
             rotation: f.rotation,
         }));
         try {
-            // Use arbiter's setFixtures or a dedicated sync channel
-            // First try the arbiter status to verify connection
-            if (lux.arbiter?.status) {
-                // The backend MasterArbiter has setFixtures() method
-                // We need an IPC channel for this - using custom invoke
-                await window.electron?.ipcRenderer?.invoke?.('lux:arbiter:setFixtures', {
-                    fixtures: arbiterFixtures
-                });
-                if (DEBUG) {
-                    console.log(`[TitanSyncBridge] ✅ Synced ${arbiterFixtures.length} fixtures to backend`);
-                }
+            // WAVE 377: Use the proper exposed API
+            if (lux.arbiter?.setFixtures) {
+                await lux.arbiter.setFixtures(arbiterFixtures);
+                console.log(`[TitanSyncBridge] ✅ Synced ${arbiterFixtures.length} fixtures to Arbiter`);
+            }
+            else {
+                console.warn('[TitanSyncBridge] ⚠️ lux.arbiter.setFixtures not available');
             }
         }
         catch (err) {
             // Silently fail if channel doesn't exist yet
-            if (DEBUG) {
-                console.warn('[TitanSyncBridge] ⚠️ Backend sync failed:', err);
-            }
+            console.warn('[TitanSyncBridge] ⚠️ Backend sync failed:', err);
         }
     }, []);
     /**

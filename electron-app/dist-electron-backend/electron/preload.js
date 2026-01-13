@@ -389,6 +389,14 @@ const luxApi = {
          * Check if a fixture is currently in calibration mode
          */
         isCalibrating: (fixtureId) => ipcRenderer.invoke('lux:arbiter:isCalibrating', { fixtureId }),
+        // ============================================
+        // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
+        // ============================================
+        /**
+         * Sync fixtures from stageStore to backend MasterArbiter
+         * Called by TitanSyncBridge when patch changes
+         */
+        setFixtures: (fixtures) => ipcRenderer.invoke('lux:arbiter:setFixtures', { fixtures }),
     },
     // ============================================
     // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS

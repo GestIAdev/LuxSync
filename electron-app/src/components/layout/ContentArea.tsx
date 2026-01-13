@@ -1,12 +1,12 @@
 /**
- * 📺 CONTENT AREA - Dynamic View Container
+ * CONTENT AREA - Dynamic View Container
  * WAVE 9: Renders active view based on navigation state
  * WAVE 25.5: SimulateView now uses StageSimulator2 (Canvas 2.0)
  * WAVE 361: Added StageConstructorView for CONSTRUCT tab
- * WAVE 379.3: Exclusive rendering - unmount 3D views properly
+ * WAVE 379.4: ATOMIC HANDOFF - Air gap between WebGL view transitions
  */
 
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import './ContentArea.css'
 
@@ -27,18 +27,67 @@ const ViewLoader: React.FC = () => (
   </div>
 )
 
-// 🔥 WAVE 379.3: Vistas que tienen WebGL Canvas y necesitan unmount exclusivo
+// WAVE 379.4: Transition loader (brief flash during GPU handoff)
+const TransitionLoader: React.FC = () => (
+  <div className="view-loader transition-loader">
+    <div className="loader-spinner fast" />
+  </div>
+)
+
+// WAVE 379.4: Vistas que tienen WebGL Canvas pesado
 const WEBGL_VIEWS = ['constructor', 'simulate']
+
+// WAVE 379.4: Tiempo de "aire" para que la GPU respire (ms)
+const GPU_HANDOFF_DELAY = 150
 
 const ContentArea: React.FC = () => {
   const { activeTab } = useNavigationStore()
   
-  // 🔥 WAVE 379.3: Key para forzar unmount de vistas WebGL
-  // Solo aplicamos key cuando la vista tiene Canvas 3D para garantizar limpieza
-  const viewKey = WEBGL_VIEWS.includes(activeTab) ? activeTab : 'standard'
+  // WAVE 379.4: ATOMIC HANDOFF STATE
+  const [renderedTab, setRenderedTab] = useState<string | null>(activeTab)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const previousTabRef = useRef<string>(activeTab)
+  
+  // WAVE 379.4: Detectar si es transicion entre vistas WebGL pesadas
+  useEffect(() => {
+    const previousTab = previousTabRef.current
+    const isHeavyTransition = 
+      WEBGL_VIEWS.includes(previousTab) && 
+      WEBGL_VIEWS.includes(activeTab) && 
+      previousTab !== activeTab
+    
+    if (isHeavyTransition) {
+      // ATOMIC HANDOFF: Transicion entre dos vistas WebGL
+      console.log(`[ContentArea] ATOMIC HANDOFF: ${previousTab} -> ${activeTab}`)
+      
+      // Paso 1: Matar el componente actual (PUNTO MUERTO)
+      setIsTransitioning(true)
+      setRenderedTab(null)
+      
+      // Paso 2: Esperar a que la GPU respire
+      const timer = setTimeout(() => {
+        // Paso 3: Montar el nuevo componente en contexto limpio
+        setRenderedTab(activeTab)
+        setIsTransitioning(false)
+        console.log(`[ContentArea] HANDOFF COMPLETE: ${activeTab} mounted`)
+      }, GPU_HANDOFF_DELAY)
+      
+      previousTabRef.current = activeTab
+      return () => clearTimeout(timer)
+    } else {
+      // Transicion normal (no WebGL -> WebGL)
+      setRenderedTab(activeTab)
+      previousTabRef.current = activeTab
+    }
+  }, [activeTab])
 
   const renderView = () => {
-    switch (activeTab) {
+    // WAVE 379.4: Si estamos en transicion, no renderizar nada
+    if (isTransitioning || renderedTab === null) {
+      return <TransitionLoader />
+    }
+    
+    switch (renderedTab) {
       case 'live':
         return <LiveView />
       case 'simulate':
@@ -57,9 +106,8 @@ const ContentArea: React.FC = () => {
   return (
     <main className="content-area">
       <Suspense fallback={<ViewLoader />}>
-        {/* � WAVE 379.3: key={viewKey} fuerza unmount real al cambiar entre vistas WebGL */}
-        {/* Esto garantiza que R3F limpie el Canvas antes de montar uno nuevo */}
-        <div className="view-container" key={viewKey}>
+        {/* WAVE 379.4: key fuerza unmount cuando renderedTab cambia */}
+        <div className="view-container" key={renderedTab || 'transitioning'}>
           {renderView()}
         </div>
       </Suspense>

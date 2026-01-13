@@ -73,8 +73,8 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 379.1: WebGL Context Manager - SURGICAL DISPOSAL (Fixed)
-// Garantiza liberación del contexto WebGL al desmontar
+// WAVE 379.2: WebGL Context Manager - CAPTURE EARLY, RELEASE LATE
+// Captura el contexto al montar, lo libera al desmontar
 // ═══════════════════════════════════════════════════════════════════════════
 
 const WebGLContextHandler: React.FC = () => {
@@ -83,8 +83,10 @@ const WebGLContextHandler: React.FC = () => {
   useEffect(() => {
     const canvas = gl.domElement
     
-    // 🔥 WAVE 379.1: Obtener contexto WebGL NATIVO del canvas
-    const context = canvas.getContext('webgl2') || canvas.getContext('webgl')
+    // 🔥 WAVE 379.2: Capturar extensión AHORA mientras el contexto está vivo
+    // R3F ya creó el contexto WebGL, podemos obtener la extensión del renderer
+    const glContext = gl.getContext() as WebGLRenderingContext | WebGL2RenderingContext
+    const loseContextExt = glContext?.getExtension('WEBGL_lose_context')
     
     const handleContextLost = (event: Event) => {
       event.preventDefault()
@@ -98,8 +100,7 @@ const WebGLContextHandler: React.FC = () => {
     canvas.addEventListener('webglcontextlost', handleContextLost)
     canvas.addEventListener('webglcontextrestored', handleContextRestored)
     
-    // 🔥 WAVE 379: CRITICAL - Forzar liberación del contexto al desmontar
-    // Esto previene "Context Lost" cuando se monta otro Canvas durante transición
+    // 🔥 CLEANUP: Liberar contexto al desmontar
     return () => {
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
@@ -107,16 +108,16 @@ const WebGLContextHandler: React.FC = () => {
       // Dispose renderer resources first
       gl.dispose()
       
-      // Force context loss to free GPU resources IMMEDIATELY
-      // Usar contexto nativo del canvas, no el de R3F
-      if (context) {
-        const loseContextExt = context.getExtension('WEBGL_lose_context')
-        if (loseContextExt) {
+      // Force context loss usando la extensión capturada ANTES del dispose
+      if (loseContextExt) {
+        try {
           loseContextExt.loseContext()
           console.log('[StageGrid3D] 🗑️ WebGL Context forcefully released')
-        } else {
-          console.log('[StageGrid3D] 🗑️ gl.dispose() executed (loseContext not available)')
+        } catch (e) {
+          console.log('[StageGrid3D] 🗑️ gl.dispose() executed (loseContext failed)')
         }
+      } else {
+        console.log('[StageGrid3D] 🗑️ gl.dispose() executed (no loseContext extension)')
       }
     }
   }, [gl])

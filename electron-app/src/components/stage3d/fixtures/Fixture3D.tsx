@@ -228,6 +228,8 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   // ═════════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 348: TRANSIENT UPDATES - Direct Physics Injection
   // ═════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 378: TRANSIENT UPDATES - Direct Physics Injection (NO LOGS)
+  // ═════════════════════════════════════════════════════════════════════════
   // Bypass React/Zustand: Lee directamente del transient store @ 60fps
   // useFrame ejecuta cada frame ANTES del render de Three.js
   // ═════════════════════════════════════════════════════════════════════════
@@ -242,20 +244,10 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
     
     if (transientFixture) {
       // Actualizar refs sin causar re-render
-      // Estos valores los usa el segundo useFrame para LERP
       transientPanRef.current = transientFixture.pan ?? 0.5
       transientTiltRef.current = transientFixture.tilt ?? 0.5
-      
-      // 🔬 DEBUG: Log every ~1 second
-      if (Math.random() < 0.016) {
-        console.log(`[🔬 Fixture3D TRANSIENT] id=${id} | pan=${transientFixture.pan?.toFixed(3)} → ref=${transientPanRef.current.toFixed(3)}`)
-      }
-    } else {
-      // 🔬 DEBUG: Si no hay datos
-      if (Math.random() < 0.016) {
-        console.log(`[🔬 Fixture3D TRANSIENT] id=${id} | NO DATA from getTransientFixture()`)
-      }
     }
+    // � WAVE 378: Logs removidos - 0 logs por frame en producción
   })
   
   // ═════════════════════════════════════════════════════════════════════════
@@ -270,10 +262,7 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
     const livePan = transientPanRef.current
     const liveTilt = transientTiltRef.current
     
-    // 🔬 DEBUG: Log targets every ~1 second
-    if (Math.random() < 0.016) {
-      console.log(`[🔬 Fixture3D LERP] id=${id} | livePan=${livePan.toFixed(3)} | liveTilt=${liveTilt.toFixed(3)}`)
-    }
+    // � WAVE 378: Logs removidos - 0 logs por frame
     
     // 🔥 WAVE 348.5: AMPLIFY rotation for debugging (±180° instead of ±72°)
     const livePanAngle = (livePan - 0.5) * Math.PI * 2.0   // ±180° (was 0.8 = ±72°)
@@ -291,21 +280,12 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
     if (type === 'moving') {
       // Yoke rota en Y (PAN) - LERP rápido
       if (yokeRef.current) {
-        const newRotation = THREE.MathUtils.lerp(
+        yokeRef.current.rotation.y = THREE.MathUtils.lerp(
           yokeRef.current.rotation.y,
           livePanAngle,
           0.3  // Rápido pero suave
         )
-        yokeRef.current.rotation.y = newRotation
-        
-        // 🔬 DEBUG: Log rotation aplicada
-        if (Math.random() < 0.016) {
-          console.log(`[🔬 Fixture3D YOKE] id=${id} | target=${livePanAngle.toFixed(3)} | current=${newRotation.toFixed(3)}`)
-        }
-      } else {
-        if (Math.random() < 0.016) {
-          console.log(`[🔬 Fixture3D YOKE] id=${id} | yokeRef.current is NULL!`)
-        }
+        // � WAVE 378: Logs removidos
       }
       
       // Head rota en X (TILT) - LERP rápido

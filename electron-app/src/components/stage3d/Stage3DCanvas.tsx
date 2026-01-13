@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 30.1: Stage Command & Dashboard
+ * 🎬 STAGE 3D CANVAS - WAVE 378: WEBGL STABILIZATION
  * Canvas principal de React Three Fiber para visualización 3D
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -9,17 +9,21 @@
  * - Fixtures 3D posicionados según layoutGenerator3D
  * - Efectos de luz volumétricos
  * - Controles de cámara orbital
- * - WAVE 30.1: Integración con selectionStore (click, hover)
+ * 
+ * WAVE 378: CRITICAL FIX - Selector granular para evitar re-render cascade
+ * - SceneContent ahora usa selector de IDs (no objeto hardware completo)
+ * - Layout solo se regenera cuando cambian IDs, no cuando cambia pan/tilt
+ * - Fixture3D usa transient store para datos en tiempo real (bypass React)
  * 
  * @module components/stage3d/Stage3DCanvas
- * @version 30.1.0
+ * @version 378.0.0
  */
 
-import React, { Suspense, useMemo, useCallback } from 'react'
+import React, { Suspense, useMemo, useCallback, memo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei'
-import { useTruthStore, selectHardware, selectPalette } from '../../stores/truthStore'
-import { useControlStore, selectViewMode } from '../../stores/controlStore'
+import { useTruthStore } from '../../stores/truthStore'
+import { useControlStore } from '../../stores/controlStore'
 import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../stores/selectionStore'
 import { generateLayout3D, DEFAULT_STAGE_CONFIG } from '../../utils/layoutGenerator3D'
 import { useFixtureRender } from '../../hooks/useFixtureRender'
@@ -38,22 +42,46 @@ interface Stage3DCanvasProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SMART FIXTURE WRAPPER - WAVE 34.1: Priority Logic with Living Colors
-// 🔧 WAVE 342: Use TARGET pan/tilt for 3D (smooth patterns)
-// 2D uses physicalPan (what hardware is doing NOW)
-// 3D uses pan (where hardware WANTS to go) - with fast LERP for smoothness
+// WAVE 378: GRANULAR SELECTOR - Solo IDs, ignorar cambios de pan/tilt/color
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SmartFixture3D: React.FC<any> = ({ layout, truthData, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
-  // Use the Priority Hook to get final render values (with fixture index for pattern offset)
-  // 🔧 WAVE 342: Use TARGET pan/tilt - 3D shows "where mover wants to go"
-  // This displays smooth patterns (figure8, circle) without physics lag
-  const { color, intensity, pan, tilt } = useFixtureRender(truthData, layout.id, fixtureIndex)
+/**
+ * Selector que extrae solo la estructura de fixtures (ID, tipo, zona)
+ * NO incluye datos en tiempo real (pan, tilt, color, intensity)
+ * Esto previene re-renders cuando solo cambian valores de animación
+ */
+const selectFixtureStructure = (state: any) => {
+  const fixtures = state.truth?.hardware?.fixtures || []
+  return fixtures.map((f: any) => ({
+    id: f?.id || `fixture-${f?.dmxAddress}`,
+    name: f?.name || '',
+    type: f?.type || '',
+    zone: f?.zone || '',
+    dmxAddress: f?.dmxAddress,
+  }))
+}
+
+/**
+ * Función de igualdad personalizada para el selector
+ * Solo retorna false (nuevo estado) si cambian los IDs o la cantidad
+ */
+const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
+  if (a.length !== b.length) return false
+  return a.every((fixture, i) => fixture.id === b[i]?.id)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SMART FIXTURE WRAPPER - WAVE 378: Memoized, no debug logs
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SmartFixture3D = memo<any>(({ layout, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
+  // 🔥 WAVE 378: truthData ya NO se pasa como prop
+  // Fixture3D lee directamente del transient store via getTransientFixture(id)
+  // Esto elimina el re-render cascade completamente
   
-  // 🔍 WAVE 347.8 DEBUG: Log truthData reception
-  if (fixtureIndex === 0 && Math.random() < 0.02) {
-    console.log(`[🔬 Stage3D] layout.id=${layout.id} | truthData=${truthData ? 'EXISTS' : 'UNDEFINED'} | truthId=${truthData?.id ?? 'N/A'} | pan=${truthData?.pan?.toFixed(3) ?? 'N/A'} → ${pan.toFixed(3)}`)
-  }
+  // Use the Priority Hook to get initial render values
+  // Real-time updates come from transient store inside Fixture3D
+  const { color, intensity, pan, tilt } = useFixtureRender(null, layout.id, fixtureIndex)
   
   return (
     <Fixture3D
@@ -70,51 +98,35 @@ const SmartFixture3D: React.FC<any> = ({ layout, truthData, isSelected, isHovere
       allFixtureIds={allFixtureIds}
     />
   )
-}
+})
+
+SmartFixture3D.displayName = 'SmartFixture3D'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SCENE CONTENT - Separado para poder usar hooks de R3F
+// SCENE CONTENT - WAVE 378: Memoized + Granular Selector
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
-  // TRUTH - la única fuente
-  const hardware = useTruthStore(selectHardware)
-  const palette = useTruthStore(selectPalette)
-  
-  // 🔧 WAVE 347.8: Get fixtures array directly for real-time updates
-  // useMemo with object reference doesn't detect internal property changes
-  const fixtureArray = hardware?.fixtures || []
+const SceneContent = memo<{ showStats: boolean }>(({ showStats }) => {
+  // 🔥 WAVE 378: GRANULAR SELECTOR - Solo estructura, no datos RT
+  // Esto previene re-render a 60fps cuando cambia pan/tilt/color
+  const fixtureStructure = useTruthStore(selectFixtureStructure, fixtureStructureEquals)
   
   // SELECTION STORE
   const selectedIds = useSelectionStore(selectSelectedIds)
   const hoveredId = useSelectionStore(selectHoveredId)
   const deselectAll = useSelectionStore(state => state.deselectAll)
   
-  // Generar layouts 3D a partir de fixtures
+  // 🔥 WAVE 378: Layout generation - Solo depende de estructura (IDs)
+  // NO se regenera cuando cambian valores en tiempo real
   const fixtureLayouts = useMemo(() => {
-    const fixtureArray = hardware?.fixtures || []
-    if (!Array.isArray(fixtureArray)) return []
-    
-    // Preparar datos para el generador
-    const fixtureInputs = fixtureArray.map(f => ({
-      id: f?.id || `fixture-${f?.dmxAddress}`,
-      name: f?.name || '',
-      type: f?.type || '',
-      zone: f?.zone || '',
-      dmxAddress: f?.dmxAddress,
-    }))
-    
-    return generateLayout3D(fixtureInputs, DEFAULT_STAGE_CONFIG)
-  }, [hardware?.fixtures])
+    if (!Array.isArray(fixtureStructure) || fixtureStructure.length === 0) return []
+    return generateLayout3D(fixtureStructure, DEFAULT_STAGE_CONFIG)
+  }, [fixtureStructure])
   
   // Lista de todos los IDs para Shift+Click
   const allFixtureIds = useMemo(() => {
     return fixtureLayouts.map(l => l.id)
   }, [fixtureLayouts])
-  
-  // 🔧 WAVE 347.8: REMOVED fixtureValues Map - was causing stale data
-  // The Map lookup with useMemo didn't detect internal property changes (pan, tilt)
-  // Now we use direct array index access in the render loop
   
   // Click en el fondo para deseleccionar todo
   const handleBackgroundClick = useCallback(() => {
@@ -152,13 +164,9 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
       <StageTruss />
       
       {/* FIXTURES */}
-      {/* 🔧 WAVE 348: MATCH BY ID - not by index! */}
-      {/* Index matching was causing data crossover: layout[0]=Front got data from fixture[0]=Mover */}
-      {/* This broke both visual layout AND movement data */}
+      {/* � WAVE 378: Ya no pasamos truthData - Fixture3D lee del transient store */}
+      {/* Esto elimina completamente el re-render cascade */}
       {fixtureLayouts.map((layout, index) => {
-        // 🎯 CRITICAL: Match by ID, not by array index!
-        // fixtureLayouts is sorted by zone, fixtureArray comes from backend in different order
-        const fixtureData = fixtureArray.find(f => f?.id === layout.id)
         const isSelected = selectedIds.has(layout.id)
         const isHovered = hoveredId === layout.id
         
@@ -166,7 +174,6 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
           <SmartFixture3D
             key={layout.id}
             layout={layout}
-            truthData={fixtureData}
             isSelected={isSelected}
             isHovered={isHovered}
             allFixtureIds={allFixtureIds}
@@ -179,7 +186,9 @@ const SceneContent: React.FC<{ showStats: boolean }> = ({ showStats }) => {
       {showStats && <Stats />}
     </>
   )
-}
+})
+
+SceneContent.displayName = 'SceneContent'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FALLBACK LOADER

@@ -1,8 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 379.3: TRUST THE FRAMEWORK
+ * 🎬 STAGE 3D CANVAS - WAVE 379.5: HYBRID RENDERING
  * Canvas principal de React Three Fiber para visualización 3D
  * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * WAVE 379.5: HYBRID RENDERING SOURCE
+ * - GEOMETRÍA: stageStore (local, inmediato, siempre disponible)
+ * - ESTADO (color/intensity): truthStore via useFixtureRender hook
+ * - Si el backend no responde, los fixtures se ven (apagados) pero VISIBLES
  * 
  * Este es el canvas principal que renderiza:
  * - Escenario con suelo y truss
@@ -10,24 +15,15 @@
  * - Efectos de luz volumétricos
  * - Controles de cámara orbital
  * 
- * WAVE 378: CRITICAL FIX - Selector granular para evitar re-render cascade
- * - SceneContent ahora usa selector de IDs (no objeto hardware completo)
- * - Layout solo se regenera cuando cambian IDs, no cuando cambia pan/tilt
- * - Fixture3D usa transient store para datos en tiempo real (bypass React)
- * 
- * WAVE 379.3: Trust the Framework
- * - NO forzar limpieza manual de WebGL context
- * - R3F maneja el dispose automáticamente al desmontar
- * - ContentArea usa key={viewKey} para garantizar unmount exclusivo
- * 
  * @module components/stage3d/Stage3DCanvas
- * @version 379.3.0
+ * @version 379.5.0
  */
 
 import React, { Suspense, useMemo, useCallback, memo, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei'
 import { useTruthStore } from '../../stores/truthStore'
+import { useStageStore } from '../../stores/stageStore'
 import { useControlStore } from '../../stores/controlStore'
 import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../stores/selectionStore'
 import { generateLayout3D, DEFAULT_STAGE_CONFIG } from '../../utils/layoutGenerator3D'
@@ -47,22 +43,23 @@ interface Stage3DCanvasProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 378: GRANULAR SELECTOR - Solo IDs, ignorar cambios de pan/tilt/color
+// WAVE 379.5: HYBRID RENDERING - Geometría desde stageStore (local)
+// Estado (color/intensity) desde truthStore via useFixtureRender hook
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Selector que extrae solo la estructura de fixtures (ID, tipo, zona)
- * NO incluye datos en tiempo real (pan, tilt, color, intensity)
- * Esto previene re-renders cuando solo cambian valores de animación
+ * Selector que extrae solo la estructura de fixtures desde STAGESTORE (LOCAL)
+ * Esto garantiza que los fixtures siempre se rendericen aunque el backend no responda
+ * El color/intensity viene del hook useFixtureRender que lee truthStore
  */
-const selectFixtureStructure = (state: any) => {
-  const fixtures = state.truth?.hardware?.fixtures || []
+const selectFixtureStructure = (state: ReturnType<typeof useStageStore.getState>) => {
+  const fixtures = state.fixtures || []
   return fixtures.map((f: any) => ({
-    id: f?.id || `fixture-${f?.dmxAddress}`,
+    id: f?.id || `fixture-${f?.address}`,
     name: f?.name || '',
     type: f?.type || '',
     zone: f?.zone || '',
-    dmxAddress: f?.dmxAddress,
+    address: f?.address,
   }))
 }
 
@@ -150,9 +147,9 @@ SmartFixture3D.displayName = 'SmartFixture3D'
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SceneContent = memo<{ showStats: boolean }>(({ showStats }) => {
-  // 🔥 WAVE 378: GRANULAR SELECTOR - Solo estructura, no datos RT
-  // Esto previene re-render a 60fps cuando cambia pan/tilt/color
-  const fixtureStructure = useTruthStore(selectFixtureStructure, fixtureStructureEquals)
+  // 🔥 WAVE 379.5: HYBRID - Geometría desde stageStore (LOCAL, siempre disponible)
+  // El color/intensity viene del hook useFixtureRender que lee truthStore
+  const fixtureStructure = useStageStore(selectFixtureStructure, fixtureStructureEquals)
   
   // SELECTION STORE
   const selectedIds = useSelectionStore(selectSelectedIds)

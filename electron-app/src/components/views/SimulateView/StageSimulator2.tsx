@@ -1,16 +1,18 @@
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║  StageSimulator2.tsx - WAVE 30.1 Canvas 2.0                               ║
- * ║  "THE NEON STAGE" - La Verdad Visualizada + Interactividad                ║
+ * ║  StageSimulator2.tsx - WAVE 379.5 HYBRID RENDERING                        ║
+ * ║  "THE NEON STAGE" - Canvas 2D con fuente hibrida de datos                 ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  Este canvas consume SOLO truthStore - la única fuente de verdad          ║
- * ║  Motor híbrido: LOW (retro) vs HIGH (neon volumétrico)                    ║
- * ║  WAVE 30.1: Integración con selectionStore (click para seleccionar)       ║
+ * ║  WAVE 379.5: HYBRID RENDERING SOURCE                                      ║
+ * ║  - GEOMETRIA: stageStore (local, inmediato, siempre disponible)           ║
+ * ║  - ESTADO (color/intensity): truthStore via calculateFixtureRenderValues  ║
+ * ║  - Si el backend no responde, los fixtures se ven APAGADOS pero VISIBLES  ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../stores/truthStore';
+import { useStageStore } from '../../../stores/stageStore';
 import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../../stores/selectionStore';
 import { useControlStore } from '../../../stores/controlStore';
 import { useOverrideStore } from '../../../stores/overrideStore';
@@ -135,15 +137,36 @@ export const StageSimulator2: React.FC = () => {
   // FIXTURE PROCESSING - Transformar fixtures del backend a visuales
   // ═════════════════════════════════════════════════════════════════════════
   
+  // WAVE 379.5: HYBRID RENDERING SOURCE
+  // GEOMETRY (position, type, zone) -> stageStore (local, siempre disponible)
+  // STATE (color, intensity, pan, tilt) -> hardware/truthStore (cuando backend sincroniza)
+  const stageFixtures = useStageStore(state => state.fixtures);
+  
+  // Build a lookup map for runtime state from backend
+  const runtimeStateMap = useMemo(() => {
+    const map = new Map<string, any>();
+    const backendFixtures = hardware?.fixtures || [];
+    if (Array.isArray(backendFixtures)) {
+      backendFixtures.forEach(f => {
+        if (f?.id) map.set(f.id, f);
+      });
+    }
+    return map;
+  }, [hardware?.fixtures]);
+  
   const fixtures = useMemo((): FixtureVisual[] => {
-    // 🌙 WAVE 25.5: fixtures ahora viene como array desde el backend
-    const fixtureArray = hardware?.fixtures || [];
+    // WAVE 379.5: Geometria desde stageStore, estado desde truthStore
+    // Esto permite renderizar fixtures ANTES de que el backend sincronice
+    const fixtureArray = stageFixtures || [];
     if (!Array.isArray(fixtureArray)) return [];
     
     return fixtureArray.map((fixture, index) => {
       if (!fixture) return null;
       
-      // 🔗 Usar zona del backend directamente (viene de auto-zoning)
+      // WAVE 379.5: Get runtime state from backend (if available)
+      const runtimeState = runtimeStateMap.get(fixture.id);
+      
+      // Use backend zone directly (comes from auto-zoning)
       const backendZone = (fixture.zone || '').toUpperCase();
       let zone: FixtureVisual['zone'] = 'center';
       let type: FixtureVisual['type'] = 'par';
@@ -176,28 +199,30 @@ export const StageSimulator2: React.FC = () => {
         type = 'laser';
       }
       
-      // Extraer valores RGB e intensidad
-      // WAVE 34.2: Apply Priority Logic with Override Support
-      const fixtureId = fixture.id || `fixture-${fixture.dmxAddress}`;
+      // Extract RGB values and intensity
+      // WAVE 379.5: Use fixture.id from stageStore (FixtureV2 uses 'address' not 'dmxAddress')
+      const fixtureId = fixture.id || `fixture-${fixture.address}`;
       const fixtureIndex = index; // Use loop index for wave phase offset
       const fixtureOverride = overrides.get(fixtureId);
       
-      // 🎬 WAVE 339: Extract full render data including optics and physics
+      // WAVE 379.5: Extract full render data including optics and physics
+      // Pass runtimeState (from backend) for color/intensity values
+      // If backend hasn't synced yet, runtimeState is undefined -> fixture shows as "dark"
       const { 
         color: finalColor, 
         intensity: finalIntensity, 
         pan: finalPan, 
         tilt: finalTilt,
-        // 🔍 Optics
+        // Optics
         zoom: finalZoom,
         focus: finalFocus,
-        // 🎛️ Physics (interpolated)
+        // Physics (interpolated)
         physicalPan: finalPhysicalPan,
         physicalTilt: finalPhysicalTilt,
         panVelocity: finalPanVelocity,
         tiltVelocity: finalTiltVelocity,
       } = calculateFixtureRenderValues(
-        fixture,
+        runtimeState || fixture,  // WAVE 379.5: Prefer runtime state, fallback to structure
         globalMode,
         flowParams,
         activePaletteId,
@@ -232,7 +257,7 @@ export const StageSimulator2: React.FC = () => {
         tiltVelocity: finalTiltVelocity,
       };
     }).filter(Boolean) as FixtureVisual[];
-  }, [hardware?.fixtures, globalMode, flowParams, activePaletteId, globalIntensity, globalSaturation, overrides, targetPalette, transitionProgress]);
+  }, [stageFixtures, runtimeStateMap, globalMode, flowParams, activePaletteId, globalIntensity, globalSaturation, overrides, targetPalette, transitionProgress]);
   
   // ═════════════════════════════════════════════════════════════════════════
   // RENDER ENGINE

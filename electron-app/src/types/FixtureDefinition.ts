@@ -36,4 +36,20 @@ export interface FixtureDefinition {
   manufacturer: string;
   type: string;
   channels: FixtureChannel[];
+  // WAVE 388: Extended metadata for persistence
+  physics?: {
+    motorType: 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro';
+    maxAcceleration: number;
+    safetyCap: number | boolean; // Can be boolean (on/off) or number (percentage)
+  };
+  capabilities?: {
+    hasPan?: boolean;
+    hasTilt?: boolean;
+    hasColorMixing?: boolean;
+    hasColorWheel?: boolean;
+    hasGobo?: boolean;
+    hasPrism?: boolean;
+    hasStrobe?: boolean;
+    hasDimmer?: boolean;
+  };
 }

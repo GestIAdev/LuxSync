@@ -163,6 +163,7 @@ function detect16bit(type: ChannelType, prevChannel?: FixtureChannel): boolean {
 
 /**
  * Export fixture definition to .fxt format (FreeStyler compatible)
+ * WAVE 388 STEP 3: Fixed channel mapping - uses name if available, fallback to type
  */
 function exportToFXT(fixture: FixtureDefinition): string {
   const lines: string[] = [
@@ -178,16 +179,23 @@ function exportToFXT(fixture: FixtureDefinition): string {
     `[Channels]`
   ]
   
+  // WAVE 388: Use name first, fallback to type label
   fixture.channels.forEach((ch, i) => {
-    lines.push(`Channel${i + 1}=${ch.name || ch.type}`)
+    // If channel has a custom name, use it; otherwise use type label
+    const channelName = ch.name || (ch.type !== 'unknown' ? 
+      ch.type.charAt(0).toUpperCase() + ch.type.slice(1).replace('_', ' ') : 
+      'Unknown')
+    lines.push(`Channel${i + 1}=${channelName}`)
   })
   
   lines.push('')
   lines.push(`[Functions]`)
   
+  // WAVE 388: Enhanced type mapping
   fixture.channels.forEach((ch, i) => {
     const typeMap: Record<string, string> = {
       'dimmer': 'Dimmer',
+      'dimmer_fine': 'Dimmer Fine',
       'pan': 'Pan',
       'pan_fine': 'Pan Fine',
       'tilt': 'Tilt',
@@ -197,13 +205,17 @@ function exportToFXT(fixture: FixtureDefinition): string {
       'blue': 'Blue',
       'white': 'White',
       'amber': 'Amber',
+      'uv': 'UV',
       'strobe': 'Strobe',
+      'shutter': 'Shutter',
       'gobo': 'Gobo',
+      'gobo_rotation': 'Gobo Rotation',
       'prism': 'Prism',
+      'prism_rotation': 'Prism Rotation',
       'color_wheel': 'Color',
       'zoom': 'Zoom',
       'focus': 'Focus',
-      'shutter': 'Shutter',
+      'iris': 'Iris',
       'speed': 'Speed',
       'control': 'Control',
       'macro': 'Macro'
@@ -384,12 +396,41 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
+    // WAVE 388 STEP 1: Type Normalization (UI -> System)
+    const typeMap: Record<string, string> = {
+      'Moving Head': 'moving',
+      'Par': 'par',
+      'Strobe': 'strobe',
+      'Wash': 'moving', // Wash uses moving geometry
+      'Laser': 'laser',
+      'Generic': 'generic'
+    }
+    const normalizedType = typeMap[fixture.type] || 'generic'
+    
+    // WAVE 388 STEP 2: Full Persistence with Physics
     const finalFixture: FixtureDefinition = {
       id: fixture.id || generateFixtureId(fixture.name),
       name: fixture.name,
       manufacturer: fixture.manufacturer || 'Generic',
-      type: fixture.type,
-      channels: fixture.channels
+      type: normalizedType, // Use normalized type
+      channels: fixture.channels,
+      // WAVE 388: Add physics profile
+      physics: {
+        motorType: physics.motorType,
+        maxAcceleration: physics.maxAcceleration,
+        safetyCap: physics.safetyCap
+      },
+      // WAVE 388: Add capabilities for Arbiter
+      capabilities: {
+        hasPan: fixture.channels.some(ch => ch.type === 'pan'),
+        hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
+        hasColorMixing: fixture.channels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
+        hasColorWheel: fixture.channels.some(ch => ch.type === 'color_wheel'),
+        hasGobo: fixture.channels.some(ch => ch.type === 'gobo'),
+        hasPrism: fixture.channels.some(ch => ch.type === 'prism'),
+        hasStrobe: fixture.channels.some(ch => ch.type === 'strobe'),
+        hasDimmer: fixture.channels.some(ch => ch.type === 'dimmer')
+      }
     }
     
     // 🔥 WAVE 384.5: Also persist to library

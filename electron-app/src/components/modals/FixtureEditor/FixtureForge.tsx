@@ -454,18 +454,31 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       }
     }
     
+    // WAVE 388 EXT: Log what we're about to save
+    console.log('[FixtureForge] 📦 Saving fixture:', {
+      id: finalFixture.id,
+      name: finalFixture.name,
+      type: finalFixture.type,
+      channelCount: finalFixture.channels.length,
+      physics: finalFixture.physics
+    })
+    
     // 🔥 WAVE 384.5: Also persist to library
     if (window.lux?.saveDefinition) {
       try {
         const result = await window.lux.saveDefinition(finalFixture)
+        // WAVE 388 EXT: Enhanced logging
+        console.log('[FixtureForge] 💾 Save Result:', result)
         if (result.success) {
-          console.log(`[FixtureForge] 🔥 Saved definition to library: ${result.path}`)
+          console.log(`[FixtureForge] ✅ Saved to: ${result.path || result.filePath}`)
         } else {
-          console.warn(`[FixtureForge] ⚠️ Failed to save to library:`, result.error)
+          console.warn(`[FixtureForge] ⚠️ Failed to save:`, result.error)
         }
       } catch (err) {
-        console.warn(`[FixtureForge] ⚠️ Library save error:`, err)
+        console.warn(`[FixtureForge] ❌ Library save error:`, err)
       }
+    } else {
+      console.warn('[FixtureForge] ⚠️ window.lux.saveDefinition not available!')
     }
     
     onSave(finalFixture, physics)

@@ -729,18 +729,74 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : ''
       
       if (!libraryPath) {
+        console.error('[IPC] Library path not configured!')
         return { success: false, error: 'Library path not configured' }
       }
       
-      const fileName = `${(definition.name as string || 'custom').replace(/[^a-z0-9]/gi, '_')}.json`
+      // WAVE 388 EXT: Sanitize filename
+      const safeName = (definition.name as string || 'custom')
+        .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50)
+      
+      const fileName = `${safeName}.json`
       const filePath = path.join(libraryPath, fileName)
       
+      // WAVE 388 EXT: Pretty print with 2 spaces
       fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8')
-      console.log(`[IPC] Saved fixture definition: ${fileName}`)
+      console.log(`[IPC] ✅ Saved fixture definition: ${filePath}`)
       
-      return { success: true, filePath }
+      // WAVE 388 EXT: Return BOTH path and filePath for compatibility
+      return { success: true, path: filePath, filePath }
     } catch (err) {
-      console.error('[IPC] Failed to save fixture definition:', err)
+      console.error('[IPC] ❌ Failed to save fixture definition:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+  
+  // WAVE 388 EXT: Delete fixture definition from library
+  ipcMain.handle('lux:delete-fixture-definition', async (_event, fixtureId: string) => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const libraryPath = fxtParser.getLibraryPath ? fxtParser.getLibraryPath() : ''
+      
+      if (!libraryPath) {
+        return { success: false, error: 'Library path not configured' }
+      }
+      
+      // Find the file by scanning the library
+      const files = fs.readdirSync(libraryPath)
+      let deleted = false
+      
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue
+        
+        const filePath = path.join(libraryPath, file)
+        try {
+          const content = fs.readFileSync(filePath, 'utf-8')
+          const fixture = JSON.parse(content)
+          
+          // Match by id OR by name (for flexibility)
+          if (fixture.id === fixtureId || fixture.name === fixtureId) {
+            fs.unlinkSync(filePath)
+            console.log(`[IPC] 🗑️ Deleted fixture: ${filePath}`)
+            deleted = true
+            break
+          }
+        } catch (parseErr) {
+          // Skip files that can't be parsed
+          continue
+        }
+      }
+      
+      if (!deleted) {
+        return { success: false, error: `Fixture "${fixtureId}" not found in library` }
+      }
+      
+      return { success: true, deletedId: fixtureId }
+    } catch (err) {
+      console.error('[IPC] ❌ Failed to delete fixture:', err)
       return { success: false, error: String(err) }
     }
   })

@@ -284,7 +284,15 @@ declare global {
     saveDefinition: (definition: FixtureDefinition) => Promise<{
       success: boolean
       path?: string
+      filePath?: string
       filename?: string
+      error?: string
+    }>
+    
+    // WAVE 388 EXT: Delete Definition
+    deleteDefinition: (fixtureId: string) => Promise<{
+      success: boolean
+      deletedId?: string
       error?: string
     }>
     
@@ -293,7 +301,14 @@ declare global {
       saveDefinition: (definition: FixtureDefinition) => Promise<{
         success: boolean
         path?: string
+        filePath?: string
         filename?: string
+        error?: string
+      }>
+      // WAVE 388 EXT: Delete Definition
+      deleteDefinition: (fixtureId: string) => Promise<{
+        success: boolean
+        deletedId?: string
         error?: string
       }>
     }

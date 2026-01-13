@@ -311,7 +311,11 @@ const luxApi = {
     // ============================================
     fixtures: {
         saveDefinition: (definition) => ipcRenderer.invoke('lux:save-fixture-definition', definition),
+        // WAVE 388 EXT: Delete fixture from library
+        deleteDefinition: (fixtureId) => ipcRenderer.invoke('lux:delete-fixture-definition', fixtureId),
     },
+    // WAVE 388 EXT: Shortcut for delete
+    deleteDefinition: (fixtureId) => ipcRenderer.invoke('lux:delete-fixture-definition', fixtureId),
     // ============================================
     // 🎭 WAVE 26: SHOW MANAGEMENT - PURGED WAVE 365
     // Legacy methods removed. Use lux.stage.* API instead

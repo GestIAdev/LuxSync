@@ -23,7 +23,7 @@
 import React, { Suspense, lazy, useState, useCallback, useEffect, createContext, useContext, useRef } from 'react'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus, Pencil } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
@@ -213,6 +213,33 @@ const FixtureLibrarySidebar: React.FC = () => {
     }
   }, [])
   
+  // WAVE 388 EXT: Delete fixture from library
+  const handleDeleteFixture = useCallback(async (fixtureId: string, fixtureName: string) => {
+    if (!window.confirm(`¿Eliminar "${fixtureName}" de la librería?`)) {
+      return
+    }
+    
+    try {
+      const result = await window.lux?.deleteDefinition?.(fixtureId)
+      console.log('[Library] Delete result:', result)
+      
+      if (result?.success) {
+        // Reload library
+        loadFixtureLibrary()
+      } else {
+        alert(`Error: ${result?.error || 'No se pudo eliminar'}`)
+      }
+    } catch (err) {
+      console.error('[Library] Delete error:', err)
+      alert('Error al eliminar fixture')
+    }
+  }, [loadFixtureLibrary])
+  
+  // WAVE 388 EXT: Edit fixture (open in Forge)
+  const handleEditFixture = useCallback((fixtureId: string) => {
+    openFixtureForge(fixtureId)
+  }, [openFixtureForge])
+  
   const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
     e.dataTransfer.setData('fixture-type', type)
     if (libraryId) {
@@ -327,6 +354,23 @@ const FixtureLibrarySidebar: React.FC = () => {
                   <div className="fixture-info">
                     <span className="fixture-name">{libFix.name}</span>
                     <span className="fixture-meta">{libFix.manufacturer} · {libFix.channelCount}ch</span>
+                  </div>
+                  {/* WAVE 388 EXT: Edit & Delete buttons */}
+                  <div className="fixture-actions">
+                    <button 
+                      className="action-btn edit" 
+                      title="Editar en Forge"
+                      onClick={(e) => { e.stopPropagation(); handleEditFixture(libFix.id); }}
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button 
+                      className="action-btn delete" 
+                      title="Eliminar de librería"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFixture(libFix.id, libFix.name); }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 </li>
               ))}

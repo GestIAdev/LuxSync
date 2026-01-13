@@ -167,7 +167,18 @@ const CHANNEL_SYNONYMS = {
 // ─────────────────────────────────────────────────────────────────────────────
 export class FXTParser {
     constructor(debug = false) {
+        this.libraryPath = ''; // WAVE 387: Configurable library path
         this.debug = debug;
+    }
+    // WAVE 387: Library path management
+    setLibraryPath(path) {
+        this.libraryPath = path;
+        if (this.debug) {
+            console.log(`[FXTParser] 📁 Library path set to: ${path}`);
+        }
+    }
+    getLibraryPath() {
+        return this.libraryPath;
     }
     /**
      * 📂 Parsea un archivo .fxt completo

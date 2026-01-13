@@ -242,9 +242,22 @@ const CHANNEL_SYNONYMS: Record<string, ChannelType> = {
 
 export class FXTParser {
   private debug: boolean
+  private libraryPath: string = '' // WAVE 387: Configurable library path
 
   constructor(debug = false) {
     this.debug = debug
+  }
+
+  // WAVE 387: Library path management
+  setLibraryPath(path: string): void {
+    this.libraryPath = path
+    if (this.debug) {
+      console.log(`[FXTParser] 📁 Library path set to: ${path}`)
+    }
+  }
+
+  getLibraryPath(): string {
+    return this.libraryPath
   }
 
   /**

@@ -264,18 +264,59 @@ app.whenReady().then(async () => {
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias
+    // WAVE 387: THE LIBRARY PATHFINDER - Setup custom library path in userData
     // ═══════════════════════════════════════════════════════════════════════════
-    const libraryPath = isDev
+    // Factory library path (read-only, bundled with app)
+    const factoryLibraryPath = isDev
         ? path.join(__dirname, '../../librerias') // Dev: luxsync/librerias
-        : path.join(app.getPath('userData'), 'librerias'); // Prod: userData/librerias
-    console.log('[Library] 📚 Scanning library path:', libraryPath);
-    const loadedDefinitions = fxtParser.scanFolder(libraryPath);
-    if (loadedDefinitions.length > 0) {
-        fixtureLibrary = loadedDefinitions;
-        console.log(`[Library] ✅ Loaded ${loadedDefinitions.length} fixture definitions from luxsync/librerias`);
+        : path.join(app.getPath('userData'), 'librerias'); // Prod: userData/librerias (copied on first run)
+    // Custom library path (user's custom fixtures and edited definitions)
+    const customLibraryPath = path.join(app.getPath('userData'), 'fixtures');
+    // WAVE 387 STEP 2: Auto-create custom library folder
+    const fs = await import('fs');
+    if (!fs.existsSync(customLibraryPath)) {
+        fs.mkdirSync(customLibraryPath, { recursive: true });
+        console.log('[Library] � Created custom library folder:', customLibraryPath);
+        // WAVE 387 STEP 2 BONUS: Copy factory fixtures to custom library if empty
+        if (fs.existsSync(factoryLibraryPath)) {
+            const factoryFiles = fs.readdirSync(factoryLibraryPath);
+            let copiedCount = 0;
+            for (const file of factoryFiles) {
+                if (file.endsWith('.fxt') || file.endsWith('.json')) {
+                    fs.copyFileSync(path.join(factoryLibraryPath, file), path.join(customLibraryPath, file));
+                    copiedCount++;
+                }
+            }
+            console.log(`[Library] 📋 Copied ${copiedCount} factory fixtures to custom library`);
+        }
     }
     else {
-        console.warn('[Library] ⚠️ No fixture definitions found in library');
+        console.log('[Library] 📁 Custom library folder exists:', customLibraryPath);
+    }
+    // WAVE 387 STEP 3: Configure FXTParser with custom library path
+    fxtParser.setLibraryPath(customLibraryPath);
+    console.log('[Library] 📚 Scanning factory library:', factoryLibraryPath);
+    const loadedDefinitions = fxtParser.scanFolder(factoryLibraryPath);
+    // Also scan custom library for user-edited fixtures
+    console.log('[Library] 📚 Scanning custom library:', customLibraryPath);
+    const customDefinitions = fxtParser.scanFolder(customLibraryPath);
+    if (loadedDefinitions.length > 0 || customDefinitions.length > 0) {
+        // Merge both libraries (custom overrides factory if same ID)
+        const mergedLibrary = [...loadedDefinitions];
+        for (const customFix of customDefinitions) {
+            const existingIndex = mergedLibrary.findIndex(f => f.id === customFix.id);
+            if (existingIndex >= 0) {
+                mergedLibrary[existingIndex] = customFix; // Custom overrides factory
+            }
+            else {
+                mergedLibrary.push(customFix); // New custom fixture
+            }
+        }
+        fixtureLibrary = mergedLibrary;
+        console.log(`[Library] ✅ Loaded ${loadedDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} total fixtures`);
+    }
+    else {
+        console.warn('[Library] ⚠️ No fixture definitions found in any library');
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 367: patchedFixtures now loaded via StagePersistence (ShowFileV2)

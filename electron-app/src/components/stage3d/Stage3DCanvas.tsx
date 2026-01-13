@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 378.7: WEBGL STABILIZATION + CONTEXT PROTECTION
+ * 🎬 STAGE 3D CANVAS - WAVE 379: SURGICAL CONTEXT DISPOSAL
  * Canvas principal de React Three Fiber para visualización 3D
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -15,13 +15,13 @@
  * - Layout solo se regenera cuando cambian IDs, no cuando cambia pan/tilt
  * - Fixture3D usa transient store para datos en tiempo real (bypass React)
  * 
- * WAVE 378.7: WebGL Context Protection
- * - frameloop="demand" - only render when needed
- * - preserveDrawingBuffer - prevent context loss
- * - WebGLContextHandler - handle context loss/restore events
+ * WAVE 379: WebGL Context Surgical Disposal
+ * - Fuerza gl.dispose() + loseContext() en unmount
+ * - Previene "Context Lost" durante view transitions
+ * - Libera recursos GPU ANTES de que monte el siguiente Canvas
  * 
  * @module components/stage3d/Stage3DCanvas
- * @version 378.7.0
+ * @version 379.0.0
  */
 
 import React, { Suspense, useMemo, useCallback, memo, useEffect } from 'react'
@@ -76,7 +76,8 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 378.7: WebGL Context Loss Handler
+// WAVE 379: WebGL Context Manager - SURGICAL DISPOSAL
+// Garantiza liberación del contexto WebGL al desmontar
 // ═══════════════════════════════════════════════════════════════════════════
 
 const WebGLContextHandler: React.FC = () => {
@@ -84,6 +85,7 @@ const WebGLContextHandler: React.FC = () => {
   
   useEffect(() => {
     const canvas = gl.domElement
+    const context = gl.getContext()
     
     const handleContextLost = (event: Event) => {
       event.preventDefault()
@@ -97,9 +99,22 @@ const WebGLContextHandler: React.FC = () => {
     canvas.addEventListener('webglcontextlost', handleContextLost)
     canvas.addEventListener('webglcontextrestored', handleContextRestored)
     
+    // 🔥 WAVE 379: CRITICAL - Forzar liberación del contexto al desmontar
+    // Esto previene "Context Lost" cuando se monta otro Canvas durante transición
     return () => {
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+      
+      // Dispose renderer resources
+      gl.dispose()
+      
+      // Force context loss to free GPU resources IMMEDIATELY
+      // Esto es crítico para evitar colisión de contextos durante view transitions
+      const loseContextExt = context.getExtension('WEBGL_lose_context')
+      if (loseContextExt) {
+        loseContextExt.loseContext()
+        console.log('[Stage3DCanvas] 🗑️ WebGL Context forcefully released')
+      }
     }
   }, [gl])
   
@@ -260,7 +275,7 @@ export const Stage3DCanvas: React.FC<Stage3DCanvasProps> = ({
           preserveDrawingBuffer: true,
           failIfMajorPerformanceCaveat: false
         }}
-        frameloop="demand"  // WAVE 378.7: Only render when needed
+        // WAVE 378.8: Revert to default 'always' - 'demand' caused issues
         style={{
           background: '#0a0a0f',
         }}

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 STAGE GRID 3D - WAVE 369
+ * 🎮 STAGE GRID 3D - WAVE 379: SURGICAL CONTEXT DISPOSAL
  * "El Lienzo Infinito del Arquitecto"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -17,9 +17,10 @@
  * - Box Selection (RTS-style)
  * - WAVE 368.5: Mathematical Raycaster D&D (bulletproof)
  * - WAVE 369: Camera Lock (input isolation) + Auto-Zoning (geofencing)
+ * - WAVE 379: WebGL Context Surgical Disposal (previene Context Lost en transiciones)
  * 
  * @module components/views/StageConstructor/StageGrid3D
- * @version 369.0.0
+ * @version 379.0.0
  */
 
 import React, { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
@@ -72,7 +73,8 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 378.7: WebGL Context Loss Handler
+// WAVE 379: WebGL Context Manager - SURGICAL DISPOSAL
+// Garantiza liberación del contexto WebGL al desmontar
 // ═══════════════════════════════════════════════════════════════════════════
 
 const WebGLContextHandler: React.FC = () => {
@@ -80,6 +82,7 @@ const WebGLContextHandler: React.FC = () => {
   
   useEffect(() => {
     const canvas = gl.domElement
+    const context = gl.getContext()
     
     const handleContextLost = (event: Event) => {
       event.preventDefault()
@@ -93,9 +96,22 @@ const WebGLContextHandler: React.FC = () => {
     canvas.addEventListener('webglcontextlost', handleContextLost)
     canvas.addEventListener('webglcontextrestored', handleContextRestored)
     
+    // 🔥 WAVE 379: CRITICAL - Forzar liberación del contexto al desmontar
+    // Esto previene "Context Lost" cuando se monta otro Canvas durante transición
     return () => {
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+      
+      // Dispose renderer resources
+      gl.dispose()
+      
+      // Force context loss to free GPU resources IMMEDIATELY
+      // Esto es crítico para evitar colisión de contextos durante view transitions
+      const loseContextExt = context.getExtension('WEBGL_lose_context')
+      if (loseContextExt) {
+        loseContextExt.loseContext()
+        console.log('[StageGrid3D] 🗑️ WebGL Context forcefully released')
+      }
     }
   }, [gl])
   
@@ -806,7 +822,7 @@ const StageGrid3D: React.FC = () => {
         }}
         dpr={[1, 1.5]}  // WAVE 378.7: Reduce max DPR to prevent GPU overload
         style={{ background: '#000000', pointerEvents: 'auto' }}
-        frameloop="demand"  // WAVE 378.7: Only render when needed, not continuously
+        // WAVE 378.8: Revert to 'always' - 'demand' caused context loss on fixture load
       >
         {/* WAVE 378.7: WebGL Context Loss Handler */}
         <WebGLContextHandler />

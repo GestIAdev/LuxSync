@@ -22,9 +22,6 @@ export type { PanTiltControlProps } from './PanTiltControl'
 export { InspectorControls } from './InspectorControls'
 export type { InspectorControlsProps } from './InspectorControls'
 
-export { GlobalControls } from './GlobalControls'
-export type { GlobalControlsProps } from './GlobalControls'
-
 // WAVE 32: Scene Browser
 export { SceneBrowser } from './SceneBrowser'
 export type { SceneBrowserProps } from './SceneBrowser'

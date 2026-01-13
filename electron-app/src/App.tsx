@@ -11,7 +11,6 @@ import { useEffect } from 'react'
 import Header from './components/Header'
 import BigSwitch from './components/BigSwitch'
 import EffectsBar from './components/EffectsBar'
-import Blackout from './components/Blackout'
 import { useLuxSyncStore } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
 import { useAudioStore } from './stores/audioStore'
@@ -87,7 +86,6 @@ function App() {
       {/* Footer - Effects & Blackout (FIJO GENEROSO) */}
       <footer className="footer-bar">
         <EffectsBar />
-        <Blackout />
       </footer>
 
       {/* System Status Indicator */}

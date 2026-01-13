@@ -1,18 +1,18 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🎛️ STAGE SIDEBAR - WAVE 32: Stage Command & Dashboard + Scene Engine
- * WAVE 375.3: Integration with TheProgrammer (Arbiter-connected)
+ * WAVE 375: Integration with TheProgrammer (Arbiter-connected, Universal)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Panel lateral contextual que muestra:
- * - Tab CONTROLS: TheProgrammer (selection) o GlobalControls (no selection)
+ * - Tab CONTROLS: TheProgrammer (UNIVERSAL - all fixtures or selection)
  * - Tab SCENES: SceneBrowser con REC/PLAY
  * 
  * Features:
  * - Transición suave entre modos
  * - Animación de entrada/salida
  * - Responsive a cambios de selección
- * - 🆕 WAVE 375.3: TheProgrammer conecta al MasterArbiter
+ * - 🆕 WAVE 375: TheProgrammer conecta al MasterArbiter
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -21,7 +21,6 @@ import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
 import { useDMXStore } from '../../../../stores'
 import { TheProgrammer } from '../../../programmer'
-import { GlobalControls } from './GlobalControls'
 import { SceneBrowser } from './SceneBrowser'
 import './StageSidebar.css'
 
@@ -141,12 +140,8 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
           {/* Content - Based on active tab */}
           <div className="sidebar-content">
             {activeTab === 'controls' ? (
-              /* Controls Tab - WAVE 375.3: TheProgrammer with Arbiter */
-              hasSelection ? (
-                <TheProgrammer />
-              ) : (
-                <GlobalControls />
-              )
+              /* Controls Tab - WAVE 375: TheProgrammer is universal (all fixtures or none) */
+              <TheProgrammer />
             ) : (
               /* Scenes Tab */
               <SceneBrowser />

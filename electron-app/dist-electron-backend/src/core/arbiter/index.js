@@ -26,3 +26,7 @@ export { mergeHTP, mergeLTP, mergeBLEND, mergeOVERRIDE, mergeChannel, getDefault
 // CROSSFADE ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
 export { CrossfadeEngine, globalCrossfadeEngine, easeInOutCubic, easeOutCubic, easeInCubic, linear, } from './CrossfadeEngine';
+// ═══════════════════════════════════════════════════════════════════════════
+// IPC HANDLERS (WAVE 376)
+// ═══════════════════════════════════════════════════════════════════════════
+export { registerArbiterHandlers, } from './ArbiterIPCHandlers';

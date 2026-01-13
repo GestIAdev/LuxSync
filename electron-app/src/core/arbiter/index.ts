@@ -92,3 +92,11 @@ export {
   easeInCubic,
   linear,
 } from './CrossfadeEngine'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IPC HANDLERS (WAVE 376)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  registerArbiterHandlers,
+} from './ArbiterIPCHandlers'

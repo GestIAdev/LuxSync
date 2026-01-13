@@ -70,6 +70,28 @@ interface ArbiterEvents {
 // MASTER ARBITER CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Pattern configuration for movement generation
+ */
+interface PatternConfig {
+  type: 'circle' | 'eight' | 'sweep'
+  speed: number      // 0-1 (cycles per second)
+  size: number       // 0-1 (amplitude as fraction of full range)
+  center: { pan: number; tilt: number }  // 0-65535
+  startTime: number
+}
+
+/**
+ * Group formation with relative positioning
+ */
+interface GroupFormation {
+  fixtureIds: string[]
+  center: { pan: number; tilt: number }
+  offsets: Map<string, { panOffset: number; tiltOffset: number }>
+  fan: number  // 0-1 multiplier for spacing
+  timestamp: number
+}
+
 export class MasterArbiter extends EventEmitter {
   private config: MasterArbiterConfig
   private crossfadeEngine: CrossfadeEngine
@@ -83,6 +105,15 @@ export class MasterArbiter extends EventEmitter {
   
   // Fixtures (populated from HAL or StageStore)
   private fixtures: Map<string, ArbiterFixture> = new Map()
+  
+  // Grand Master (WAVE 376)
+  private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
+  
+  // Pattern Engine (WAVE 376)
+  private activePatterns: Map<string, PatternConfig> = new Map()
+  
+  // Group Formations (WAVE 376)
+  private activeFormations: Map<string, GroupFormation> = new Map()
   
   // State tracking
   private frameNumber: number = 0
@@ -389,6 +420,148 @@ export class MasterArbiter extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
+  // GRAND MASTER (WAVE 376)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Set Grand Master level (0-1)
+   * Multiplies dimmer for ALL fixtures globally.
+   * If set to 0.5, no fixture can be brighter than 50%.
+   */
+  setGrandMaster(value: number): void {
+    this.grandMaster = Math.max(0, Math.min(1, value))
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] Grand Master: ${Math.round(this.grandMaster * 100)}%`)
+    }
+  }
+  
+  /**
+   * Get current Grand Master level
+   */
+  getGrandMaster(): number {
+    return this.grandMaster
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // PATTERN ENGINE (WAVE 376)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Set pattern for a fixture or group
+   * Pattern generates procedural movement (Circle, Eight, Sweep).
+   */
+  setPattern(fixtureIds: string[], pattern: Omit<PatternConfig, 'startTime'>): void {
+    const config: PatternConfig = {
+      ...pattern,
+      startTime: performance.now(),
+    }
+    
+    for (const fixtureId of fixtureIds) {
+      if (!this.fixtures.has(fixtureId)) {
+        console.warn(`[MasterArbiter] Unknown fixture for pattern: ${fixtureId}`)
+        continue
+      }
+      
+      this.activePatterns.set(fixtureId, config)
+    }
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] Pattern set (${pattern.type}): ${fixtureIds.length} fixtures`)
+    }
+  }
+  
+  /**
+   * Clear pattern for fixtures
+   */
+  clearPattern(fixtureIds: string[]): void {
+    for (const fixtureId of fixtureIds) {
+      this.activePatterns.delete(fixtureId)
+    }
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] Pattern cleared: ${fixtureIds.length} fixtures`)
+    }
+  }
+  
+  /**
+   * Get pattern for a fixture
+   */
+  getPattern(fixtureId: string): PatternConfig | undefined {
+    return this.activePatterns.get(fixtureId)
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // GROUP FORMATION (WAVE 376)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Set group formation (Radar control)
+   * Moves group center while maintaining relative spacing.
+   * Calculates offsets from group center on first call.
+   */
+  setGroupFormation(groupId: string, fixtureIds: string[], center: { pan: number; tilt: number }, fan: number): void {
+    // Get or create formation
+    let formation = this.activeFormations.get(groupId)
+    
+    if (!formation) {
+      // First time: calculate offsets from current positions
+      const offsets = new Map<string, { panOffset: number; tiltOffset: number }>()
+      
+      for (const fixtureId of fixtureIds) {
+        // Get current position from manual override or AI
+        const manualOverride = this.layer2_manualOverrides.get(fixtureId)
+        const titanValues = this.getTitanValuesForFixture(fixtureId)
+        
+        const currentPan = manualOverride?.controls.pan ?? titanValues.pan
+        const currentTilt = manualOverride?.controls.tilt ?? titanValues.tilt
+        
+        const panOffset = currentPan - center.pan
+        const tiltOffset = currentTilt - center.tilt
+        
+        offsets.set(fixtureId, { panOffset, tiltOffset })
+      }
+      
+      formation = {
+        fixtureIds,
+        center,
+        offsets,
+        fan,
+        timestamp: performance.now(),
+      }
+      
+      this.activeFormations.set(groupId, formation)
+    } else {
+      // Update center and fan
+      formation.center = center
+      formation.fan = fan
+      formation.timestamp = performance.now()
+    }
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] Group formation: ${groupId} center=(${center.pan},${center.tilt}) fan=${fan}`)
+    }
+  }
+  
+  /**
+   * Clear group formation
+   */
+  clearGroupFormation(groupId: string): void {
+    this.activeFormations.delete(groupId)
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] Group formation cleared: ${groupId}`)
+    }
+  }
+  
+  /**
+   * Get group formation
+   */
+  getGroupFormation(groupId: string): GroupFormation | undefined {
+    return this.activeFormations.get(groupId)
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // MAIN ARBITRATION
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -461,8 +634,10 @@ export class MasterArbiter extends EventEmitter {
     const red = this.mergeChannelForFixture(fixtureId, 'red', titanValues, manualOverride, now, controlSources)
     const green = this.mergeChannelForFixture(fixtureId, 'green', titanValues, manualOverride, now, controlSources)
     const blue = this.mergeChannelForFixture(fixtureId, 'blue', titanValues, manualOverride, now, controlSources)
-    const pan = this.mergeChannelForFixture(fixtureId, 'pan', titanValues, manualOverride, now, controlSources)
-    const tilt = this.mergeChannelForFixture(fixtureId, 'tilt', titanValues, manualOverride, now, controlSources)
+    
+    // Get position (with pattern/formation applied)
+    const { pan, tilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
+    
     const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources)
     const focus = this.mergeChannelForFixture(fixtureId, 'focus', titanValues, manualOverride, now, controlSources)
     
@@ -470,9 +645,12 @@ export class MasterArbiter extends EventEmitter {
     const crossfadeActive = this.isAnyCrossfadeActive(fixtureId)
     const crossfadeProgress = crossfadeActive ? this.getAverageCrossfadeProgress(fixtureId) : 0
     
+    // Apply Grand Master to dimmer (final step before clamping)
+    const dimmerfinal = clampDMX(dimmer * this.grandMaster)
+    
     return {
       fixtureId,
-      dimmer: clampDMX(dimmer),
+      dimmer: dimmerfinal,
       color: {
         r: clampDMX(red),
         g: clampDMX(green),
@@ -555,6 +733,83 @@ export class MasterArbiter extends EventEmitter {
   // ═══════════════════════════════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Calculate pattern offset (Circle, Eight, Sweep)
+   * Returns pan/tilt offset as fractions (-1 to +1)
+   */
+  private calculatePatternOffset(pattern: PatternConfig, now: number): { panOffset: number; tiltOffset: number } {
+    const elapsedMs = now - pattern.startTime
+    const cycleDurationMs = (1000 / pattern.speed)  // speed = cycles per second
+    const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs
+    const t = phase * 2 * Math.PI  // 0 to 2π
+    
+    const amplitude = pattern.size * 0.3  // 30% max swing of range
+    let panOffset = 0
+    let tiltOffset = 0
+    
+    switch (pattern.type) {
+      case 'circle':
+        // Circle: x = cos(t), y = sin(t)
+        panOffset = Math.cos(t) * amplitude
+        tiltOffset = Math.sin(t) * amplitude
+        break
+        
+      case 'eight':
+        // Eight: x = sin(t), y = sin(2t) / 2
+        panOffset = Math.sin(t) * amplitude
+        tiltOffset = (Math.sin(t * 2) / 2) * amplitude
+        break
+        
+      case 'sweep':
+        // Sweep: x = sin(t), y = 0
+        panOffset = Math.sin(t) * amplitude
+        tiltOffset = 0
+        break
+    }
+    
+    return { panOffset, tiltOffset }
+  }
+  
+  /**
+   * Get adjusted position with patterns and formations applied
+   */
+  private getAdjustedPosition(
+    fixtureId: string,
+    titanValues: Record<ChannelType, number>,
+    manualOverride: Layer2_Manual | undefined,
+    now: number
+  ): { pan: number; tilt: number } {
+    // Get base position
+    const basePan = manualOverride?.controls.pan ?? titanValues.pan
+    const baseTilt = manualOverride?.controls.tilt ?? titanValues.tilt
+    
+    // Apply pattern if active
+    const pattern = this.activePatterns.get(fixtureId)
+    if (pattern) {
+      const offset = this.calculatePatternOffset(pattern, now)
+      const adjustedPan = basePan + (offset.panOffset * 65535)
+      const adjustedTilt = baseTilt + (offset.tiltOffset * 65535)
+      return { pan: adjustedPan, tilt: adjustedTilt }
+    }
+    
+    // Apply group formation if active
+    for (const [groupId, formation] of this.activeFormations) {
+      if (!formation.fixtureIds.includes(fixtureId)) continue
+      
+      const offset = formation.offsets.get(fixtureId)
+      if (!offset) continue
+      
+      // Apply fan multiplier to offsets
+      const fanAdjustedPan = formation.center.pan + (offset.panOffset * formation.fan)
+      const fanAdjustedTilt = formation.center.tilt + (offset.tiltOffset * formation.fan)
+      
+      return { pan: fanAdjustedPan, tilt: fanAdjustedTilt }
+    }
+    
+    // No pattern or formation: return base position
+    return { pan: basePan, tilt: baseTilt }
+  }
   
   /**
    * Get Titan values for a specific fixture

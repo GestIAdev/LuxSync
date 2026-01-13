@@ -190,6 +190,7 @@ export type ManualControlSource =
   | 'ui_fader'      // On-screen fader
   | 'ui_picker'     // Color picker
   | 'ui_joystick'   // Virtual joystick
+  | 'ui_programmer' // The Programmer panel (WAVE 375+)
   | 'midi_fader'    // Physical MIDI fader
   | 'midi_encoder'  // MIDI encoder
   | 'osc'           // OSC input

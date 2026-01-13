@@ -10,4 +10,3 @@ export { default as BigSwitch } from './BigSwitch'
 // TODO: MovementControl pendiente de implementar
 // export { default as MovementControl } from './MovementControl'
 export { default as EffectsBar } from './EffectsBar'
-export { default as Blackout } from './Blackout'

@@ -239,6 +239,28 @@ declare global {
     // WAVE 9.5: Fixtures
     scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>
     getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>
+    
+    // 🔥 WAVE 384: Get FULL fixture definition with channels
+    getFixtureDefinition: (profileId: string) => Promise<{ 
+      success: boolean
+      definition?: {
+        id: string
+        name: string
+        manufacturer: string
+        type: string
+        channelCount: number
+        channels: Array<{ index: number; name: string; type: string; is16bit: boolean }>
+        filePath: string
+        hasMovementChannels: boolean
+        has16bitMovement: boolean
+        hasColorMixing: boolean
+        hasColorWheel: boolean
+        confidence?: number
+        detectionMethod?: string
+      }
+      error?: string 
+    }>
+    
     getPatchedFixtures: () => Promise<{ success: boolean; fixtures: PatchedFixture[] }>
     patchFixture: (fixtureId: string, dmxAddress: number, universe?: number) => Promise<{ success: boolean; fixture?: PatchedFixture; totalPatched?: number }>
     unpatchFixture: (dmxAddress: number) => Promise<{ success: boolean; removed?: PatchedFixture }>
@@ -510,6 +532,27 @@ interface AudioData {
   treble: number
   frequencies: number[]
   waveform: number[]
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 384: LUXDEBUG API - Testing utilities
+// ═══════════════════════════════════════════════════════════════════════════
+interface LuxDebugAPI {
+  testConstructor: () => Promise<{
+    success: boolean
+    profile?: any
+    definition?: any
+    assertions?: Record<string, boolean>
+    error?: string
+  }>
+  inspectFixture: (fixtureId: string) => { fixtureId: string; note: string }
+  help: () => void
+}
+
+declare global {
+  interface Window {
+    luxDebug: LuxDebugAPI
+  }
 }
 
 // Required to make this file a module for declare global to work

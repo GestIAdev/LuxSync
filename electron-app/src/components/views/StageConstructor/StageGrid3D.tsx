@@ -37,7 +37,7 @@ import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { shallow } from 'zustand/shallow'
 import { useConstructorContext } from '../StageConstructorView'
-import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
+import { createDefaultFixture, mapLibraryTypeToFixtureType } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
 import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
 import * as THREE from 'three'
@@ -696,10 +696,10 @@ const StageGrid3D: React.FC = () => {
   }, [boxSelection, selectMultiple])
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 368.5: BULLETPROOF DROP - Mathematical Raycaster
-  // "La Maldición del HTML Invisible" ENDS HERE
+  // 🔥 WAVE 384: CONSTRUCTOR RESURRECTION - REAL DROP WITH FULL DATA
+  // "Cuando arrastres un foco, el objeto en memoria debe ser IDÉNTICO al de la librería"
   // ═══════════════════════════════════════════════════════════════════════════
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -756,20 +756,65 @@ const StageGrid3D: React.FC = () => {
     // WAVE 369: Auto-detect zone from drop position
     const autoZone = getZoneAtPosition(worldX, worldZ) || 'unassigned'
     
-    // Step 4: Create the fixture with auto-assigned zone!
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 384: LOAD FULL FIXTURE DEFINITION FROM LIBRARY
+    // "Ni un byte menos" - Esta es la resurrección del Constructor
+    // ═══════════════════════════════════════════════════════════════════════
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
     
-    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
+    // Try to load the FULL definition from library
+    let fixtureData: Partial<FixtureV2> = {
       type: fixtureType as FixtureV2['type'],
-      position: { x: worldX, y: 3, z: worldZ },  // Default height 3m above ground
-      zone: autoZone  // WAVE 369: Auto-zone assignment
-    })
+      position: { x: worldX, y: 3, z: worldZ },
+      zone: autoZone
+    }
+    
+    if (libraryId && window.lux?.getFixtureDefinition) {
+      try {
+        console.log(`[StageGrid3D] 🔥 Loading definition for "${libraryId}"...`)
+        const result = await window.lux.getFixtureDefinition(libraryId)
+        
+        if (result.success && result.definition) {
+          const def = result.definition
+          console.log(`[StageGrid3D] ✅ Got definition: ${def.name} (${def.channelCount}ch, ${def.channels?.length || 0} channel defs)`)
+          
+          // INJECT ALL THE DATA! This is the key fix.
+          fixtureData = {
+            ...fixtureData,
+            name: def.name,
+            model: def.name,
+            manufacturer: def.manufacturer,
+            type: mapLibraryTypeToFixtureType(def.type),
+            channelCount: def.channelCount,
+            profileId: libraryId,
+            definitionPath: def.filePath,
+            // 🔥 WAVE 384: Store channels inline for persistence
+            channels: def.channels,
+            // Store capabilities for rendering decisions
+            capabilities: {
+              hasMovementChannels: def.hasMovementChannels,
+              has16bitMovement: def.has16bitMovement,
+              hasColorMixing: def.hasColorMixing,
+              hasColorWheel: def.hasColorWheel
+            }
+          }
+        } else {
+          console.warn(`[StageGrid3D] ⚠️ Definition not found for "${libraryId}", using generic`)
+        }
+      } catch (err) {
+        console.error(`[StageGrid3D] ❌ Error loading definition:`, err)
+      }
+    } else if (libraryId) {
+      console.warn(`[StageGrid3D] ⚠️ No getFixtureDefinition API, falling back to generic`)
+    }
+    
+    const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
     
     addFixture(newFixture)
     setDraggedFixtureType(null)
     
-    console.log(`[StageGrid3D] 🎯 Fixture dropped at (${worldX.toFixed(2)}, 3, ${worldZ.toFixed(2)}) → Zone: ${autoZone}`)
+    console.log(`[StageGrid3D] 🎯 Fixture created: "${newFixture.name}" at (${worldX.toFixed(2)}, 3, ${worldZ.toFixed(2)}) → Zone: ${autoZone}, Channels: ${newFixture.channelCount}`)
   }, [addFixture, setDraggedFixtureType])
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -779,15 +824,48 @@ const StageGrid3D: React.FC = () => {
   }, [])
   
   // Handler for drops from inside R3F (proper raycast)
-  const handleFixtureDrop = useCallback((type: string, position: Position3D) => {
+  // 🔥 WAVE 384: Also make this async and load definition
+  const handleFixtureDrop = useCallback(async (type: string, position: Position3D, libraryId?: string) => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
     const autoZone = getZoneAtPosition(position.x, position.z) || 'unassigned'
-    const newFixture = createDefaultFixture(fixtureId, nextAddress, {
+    
+    let fixtureData: Partial<FixtureV2> = {
       type: type as FixtureV2['type'],
       position,
       zone: autoZone
-    })
+    }
+    
+    // Load full definition if we have libraryId
+    if (libraryId && window.lux?.getFixtureDefinition) {
+      try {
+        const result = await window.lux.getFixtureDefinition(libraryId)
+        if (result.success && result.definition) {
+          const def = result.definition
+          fixtureData = {
+            ...fixtureData,
+            name: def.name,
+            model: def.name,
+            manufacturer: def.manufacturer,
+            type: mapLibraryTypeToFixtureType(def.type),
+            channelCount: def.channelCount,
+            profileId: libraryId,
+            definitionPath: def.filePath,
+            channels: def.channels,
+            capabilities: {
+              hasMovementChannels: def.hasMovementChannels,
+              has16bitMovement: def.has16bitMovement,
+              hasColorMixing: def.hasColorMixing,
+              hasColorWheel: def.hasColorWheel
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[StageGrid3D] Error loading definition for R3F drop:', err)
+      }
+    }
+    
+    const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
     addFixture(newFixture)
   }, [addFixture])
   

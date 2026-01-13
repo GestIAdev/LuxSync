@@ -521,6 +521,49 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
   ipcMain.handle('lux:get-fixture-library', () => {
     return { success: true, fixtures: getFixtureLibrary() }
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 384: GET FIXTURE DEFINITION - Returns FULL fixture data with channels
+  // This is the missing link that caused "fixtures nacen genéricos"
+  // ═══════════════════════════════════════════════════════════════════════════
+  ipcMain.handle('lux:getFixtureDefinition', (_event, profileId: string) => {
+    try {
+      const library = getFixtureLibrary()
+      const definition = library.find((f: { id: string }) => f.id === profileId)
+      
+      if (!definition) {
+        console.warn(`[IPC] lux:getFixtureDefinition: Profile "${profileId}" not found in library`)
+        return { success: false, error: `Profile "${profileId}" not found` }
+      }
+      
+      // Return the COMPLETE fixture definition from library
+      // This includes channels[], capabilities, hasMovementChannels, etc.
+      console.log(`[IPC] 🔥 lux:getFixtureDefinition: Returning "${definition.name}" (${definition.channelCount}ch, type: ${definition.type})`)
+      
+      return { 
+        success: true, 
+        definition: {
+          id: definition.id,
+          name: definition.name,
+          manufacturer: definition.manufacturer,
+          type: definition.type,
+          channelCount: definition.channelCount,
+          channels: definition.channels || [],
+          filePath: definition.filePath,
+          // Capabilities from FXTParser
+          hasMovementChannels: definition.hasMovementChannels || false,
+          has16bitMovement: definition.has16bitMovement || false,
+          hasColorMixing: definition.hasColorMixing || false,
+          hasColorWheel: definition.hasColorWheel || false,
+          confidence: definition.confidence,
+          detectionMethod: definition.detectionMethod
+        }
+      }
+    } catch (err) {
+      console.error('[IPC] lux:getFixtureDefinition error:', err)
+      return { success: false, error: String(err) }
+    }
+  })
   
   ipcMain.handle('lux:patch-fixture', async (_event, data: { fixtureId: string; dmxAddress: number; universe?: number }) => {
     const library = getFixtureLibrary()

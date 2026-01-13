@@ -72,6 +72,26 @@ export const DEFAULT_PHYSICS_PROFILES = {
     }
 };
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 384: TYPE MAPPING HELPER
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Map library fixture type (FXTParser format) to FixtureV2 type
+ */
+export function mapLibraryTypeToFixtureType(libraryType) {
+    const typeMap = {
+        'moving_head': 'moving-head',
+        'movinghead': 'moving-head',
+        'moving-head': 'moving-head',
+        'par': 'par',
+        'wash': 'wash',
+        'strobe': 'strobe',
+        'laser': 'laser',
+        'blinder': 'blinder',
+        'generic': 'generic'
+    };
+    return typeMap[libraryType?.toLowerCase()] || 'generic';
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 /**

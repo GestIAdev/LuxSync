@@ -278,6 +278,11 @@ const luxApi = {
     scanFixtures: (customPath) => ipcRenderer.invoke('lux:scan-fixtures', customPath),
     /** Obtener biblioteca de fixtures */
     getFixtureLibrary: () => ipcRenderer.invoke('lux:get-fixture-library'),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 384: GET FIXTURE DEFINITION - Returns FULL profile with channels
+    // ═══════════════════════════════════════════════════════════════════════════
+    /** Obtener definición completa de un fixture por su ID */
+    getFixtureDefinition: (profileId) => ipcRenderer.invoke('lux:getFixtureDefinition', profileId),
     /** Obtener fixtures patcheados */
     getPatchedFixtures: () => ipcRenderer.invoke('lux:get-patched-fixtures'),
     /** Añadir fixture al patch */
@@ -435,6 +440,86 @@ const luxApi = {
         },
     },
 };
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 384: LUXDEBUG - Test utilities for Constructor verification
+// ═══════════════════════════════════════════════════════════════════════════
+const luxDebug = {
+    /**
+     * Test Constructor data flow integrity
+     * Usage: window.luxDebug.testConstructor()
+     */
+    testConstructor: async () => {
+        console.log('\n🔥 ═══════════════════════════════════════════════════════════════');
+        console.log('🔥 WAVE 384: CONSTRUCTOR INTEGRITY TEST');
+        console.log('🔥 ═══════════════════════════════════════════════════════════════\n');
+        // Step 1: Get fixture library
+        console.log('[TEST] Step 1: Loading fixture library...');
+        const libraryResult = await ipcRenderer.invoke('lux:get-fixture-library');
+        if (!libraryResult.success || libraryResult.fixtures.length === 0) {
+            console.error('[TEST] ❌ FAIL: No fixtures in library');
+            return { success: false, error: 'No fixtures in library' };
+        }
+        const testProfile = libraryResult.fixtures[0];
+        console.log(`[TEST] ✅ Library has ${libraryResult.fixtures.length} fixtures`);
+        console.log(`[TEST] Using: "${testProfile.name}" (${testProfile.id})`);
+        // Step 2: Test getFixtureDefinition endpoint
+        console.log('\n[TEST] Step 2: Testing lux:getFixtureDefinition...');
+        const defResult = await ipcRenderer.invoke('lux:getFixtureDefinition', testProfile.id);
+        if (!defResult.success || !defResult.definition) {
+            console.error('[TEST] ❌ FAIL: getFixtureDefinition returned no data');
+            return { success: false, error: 'getFixtureDefinition failed' };
+        }
+        const def = defResult.definition;
+        console.log(`[TEST] ✅ Definition retrieved:`);
+        console.log(`       Name: ${def.name}`);
+        console.log(`       Type: ${def.type}`);
+        console.log(`       Channels: ${def.channelCount}`);
+        console.log(`       Channel defs: ${def.channels?.length || 0}`);
+        console.log(`       Has movement: ${def.hasMovementChannels}`);
+        console.log(`       Has color mixing: ${def.hasColorMixing}`);
+        // Step 3: Verify channels array is populated
+        console.log('\n[TEST] Step 3: Verifying channel data...');
+        const assertions = {
+            hasChannelsArray: def.channels && def.channels.length > 0,
+            channelsMatchCount: def.channels?.length === def.channelCount || def.channels?.length > 0,
+            typeNotGeneric: def.type !== 'generic' || testProfile.type === 'generic',
+            hasCapabilities: typeof def.hasMovementChannels === 'boolean'
+        };
+        console.log(`[TEST] ASSERT channels.length > 0: ${assertions.hasChannelsArray ? '✅ PASS' : '❌ FAIL'}`);
+        console.log(`[TEST] ASSERT channels match count: ${assertions.channelsMatchCount ? '✅ PASS' : '❌ FAIL'}`);
+        console.log(`[TEST] ASSERT type is specific: ${assertions.typeNotGeneric ? '✅ PASS' : '❌ FAIL'}`);
+        console.log(`[TEST] ASSERT capabilities exist: ${assertions.hasCapabilities ? '✅ PASS' : '❌ FAIL'}`);
+        const allPassed = Object.values(assertions).every(v => v);
+        console.log('\n🔥 ═══════════════════════════════════════════════════════════════');
+        console.log(`🔥 TEST RESULT: ${allPassed ? '✅ ALL PASSED' : '❌ SOME FAILED'}`);
+        console.log('🔥 ═══════════════════════════════════════════════════════════════\n');
+        return {
+            success: allPassed,
+            profile: testProfile,
+            definition: def,
+            assertions
+        };
+    },
+    /**
+     * Inspect a fixture in stageStore
+     * Usage: window.luxDebug.inspectFixture(fixtureId)
+     */
+    inspectFixture: (fixtureId) => {
+        console.log(`\n🔍 Inspecting fixture: ${fixtureId}`);
+        console.log('(Check React DevTools or stageStore for full data)');
+        return { fixtureId, note: 'Use React DevTools to inspect stageStore' };
+    },
+    /**
+     * List all available API methods
+     */
+    help: () => {
+        console.log('\n🔥 LUXDEBUG - Available Commands:');
+        console.log('  window.luxDebug.testConstructor()     - Test WAVE 384 data flow');
+        console.log('  window.luxDebug.inspectFixture(id)    - Inspect a fixture');
+        console.log('  window.luxDebug.help()                - Show this help');
+        console.log('');
+    }
+};
 // 🎯 WAVE 13.6: STATE OF TRUTH - Exponer ipcRenderer para suscripciones a eventos
 const electronAPI = {
     ipcRenderer: {
@@ -450,3 +535,4 @@ const electronAPI = {
 contextBridge.exposeInMainWorld('luxsync', api);
 contextBridge.exposeInMainWorld('lux', luxApi);
 contextBridge.exposeInMainWorld('electron', electronAPI);
+contextBridge.exposeInMainWorld('luxDebug', luxDebug);

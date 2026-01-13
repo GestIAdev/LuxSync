@@ -24,7 +24,7 @@ import React, { Suspense, lazy, useState, useCallback, useEffect, createContext,
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus } from 'lucide-react'
-import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES } from '../../core/stage/ShowFileV2'
+import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
 import useKeyboardShortcuts from './StageConstructor/KeyboardShortcuts'
@@ -723,17 +723,49 @@ const StageConstructorView: React.FC = () => {
   }, [])
   
   // WAVE 364 - Handle Forge Save
+  // 🔥 WAVE 384: Save ALL fixture data, not just 3 fields
   const handleForgeSave = useCallback((definition: FixtureDefinition, physics: PhysicsProfile) => {
     if (forgeEditingFixtureId) {
-      // Update existing fixture
+      // Update existing fixture with COMPLETE data
       const existingFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
       if (existingFixture) {
+        // Map the definition type to FixtureV2 type
+        const fixtureType = mapLibraryTypeToFixtureType(definition.type)
+        
         updateFixture(forgeEditingFixtureId, {
+          // Basic info
           model: definition.name,
           manufacturer: definition.manufacturer,
-          channelCount: definition.channels.length
+          channelCount: definition.channels.length,
+          // 🔥 WAVE 384: Type, channels and capabilities
+          type: fixtureType,
+          profileId: definition.id || existingFixture.profileId,
+          // Inline channels for persistence
+          channels: definition.channels.map((ch, idx) => ({
+            index: idx,
+            name: ch.name,
+            type: ch.type,
+            is16bit: ch.name?.toLowerCase().includes('fine') || false
+          })),
+          // Capabilities derived from channel analysis
+          capabilities: {
+            hasMovementChannels: definition.channels.some(ch => 
+              ch.type === 'pan' || ch.type === 'tilt'
+            ),
+            has16bitMovement: definition.channels.some(ch => 
+              ch.type === 'pan_fine' || ch.type === 'tilt_fine'
+            ),
+            hasColorMixing: definition.channels.some(ch => 
+              ['red', 'green', 'blue'].includes(ch.type)
+            ),
+            hasColorWheel: definition.channels.some(ch => 
+              ch.type === 'color_wheel' || ch.name?.toLowerCase().includes('color')
+            )
+          }
         })
         updateFixturePhysics(forgeEditingFixtureId, physics)
+        
+        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
       }
     }
     // TODO: Save definition to library for new fixtures

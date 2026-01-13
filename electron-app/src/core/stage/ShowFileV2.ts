@@ -268,6 +268,58 @@ export interface FixtureV2 {
   
   /** Color for visualization (hex) */
   displayColor?: string
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 384: INLINE CHANNEL & CAPABILITY DATA
+  // These are persisted to ensure fixture data survives library changes
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * Channel definitions from library (persisted inline)
+   * This ensures the fixture knows its channels even if library changes
+   */
+  channels?: Array<{
+    index: number
+    name: string
+    type: string
+    is16bit: boolean
+  }>
+  
+  /**
+   * Fixture capabilities flags (persisted inline)
+   * Used by MasterArbiter for intelligent color/movement routing
+   */
+  capabilities?: {
+    hasMovementChannels?: boolean
+    has16bitMovement?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 384: TYPE MAPPING HELPER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Map library fixture type (FXTParser format) to FixtureV2 type
+ */
+export function mapLibraryTypeToFixtureType(
+  libraryType: string
+): FixtureV2['type'] {
+  const typeMap: Record<string, FixtureV2['type']> = {
+    'moving_head': 'moving-head',
+    'movinghead': 'moving-head',
+    'moving-head': 'moving-head',
+    'par': 'par',
+    'wash': 'wash',
+    'strobe': 'strobe',
+    'laser': 'laser',
+    'blinder': 'blinder',
+    'generic': 'generic'
+  }
+  
+  return typeMap[libraryType?.toLowerCase()] || 'generic'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 STAGE GRID 3D - WAVE 379: SURGICAL CONTEXT DISPOSAL
+ * 🎮 STAGE GRID 3D - WAVE 379.3: TRUST THE FRAMEWORK
  * "El Lienzo Infinito del Arquitecto"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -17,10 +17,10 @@
  * - Box Selection (RTS-style)
  * - WAVE 368.5: Mathematical Raycaster D&D (bulletproof)
  * - WAVE 369: Camera Lock (input isolation) + Auto-Zoning (geofencing)
- * - WAVE 379: WebGL Context Surgical Disposal (previene Context Lost en transiciones)
+ * - WAVE 379.3: Trust R3F cleanup - NO forzar loseContext()
  * 
  * @module components/views/StageConstructor/StageGrid3D
- * @version 379.0.0
+ * @version 379.3.0
  */
 
 import React, { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
@@ -73,8 +73,8 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 379.2: WebGL Context Manager - CAPTURE EARLY, RELEASE LATE
-// Captura el contexto al montar, lo libera al desmontar
+// WAVE 379.3: WebGL Context - TRUST THE FRAMEWORK
+// R3F maneja el dispose automáticamente. NO forzar limpieza manual.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const WebGLContextHandler: React.FC = () => {
@@ -83,14 +83,9 @@ const WebGLContextHandler: React.FC = () => {
   useEffect(() => {
     const canvas = gl.domElement
     
-    // 🔥 WAVE 379.2: Capturar extensión AHORA mientras el contexto está vivo
-    // R3F ya creó el contexto WebGL, podemos obtener la extensión del renderer
-    const glContext = gl.getContext() as WebGLRenderingContext | WebGL2RenderingContext
-    const loseContextExt = glContext?.getExtension('WEBGL_lose_context')
-    
     const handleContextLost = (event: Event) => {
       event.preventDefault()
-      console.warn('[StageGrid3D] ⚠️ WebGL Context Lost - preventing default')
+      console.warn('[StageGrid3D] ⚠️ WebGL Context Lost')
     }
     
     const handleContextRestored = () => {
@@ -100,25 +95,15 @@ const WebGLContextHandler: React.FC = () => {
     canvas.addEventListener('webglcontextlost', handleContextLost)
     canvas.addEventListener('webglcontextrestored', handleContextRestored)
     
-    // 🔥 CLEANUP: Liberar contexto al desmontar
+    console.log('[StageGrid3D] 🎮 WebGL Context Handler mounted')
+    
+    // 🔥 WAVE 379.3: NO hacer nada en cleanup
+    // React + R3F manejan el dispose automáticamente cuando el componente se desmonta
+    // Forzar loseContext() causa "Zombie Renderer" crash
     return () => {
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
-      
-      // Dispose renderer resources first
-      gl.dispose()
-      
-      // Force context loss usando la extensión capturada ANTES del dispose
-      if (loseContextExt) {
-        try {
-          loseContextExt.loseContext()
-          console.log('[StageGrid3D] 🗑️ WebGL Context forcefully released')
-        } catch (e) {
-          console.log('[StageGrid3D] 🗑️ gl.dispose() executed (loseContext failed)')
-        }
-      } else {
-        console.log('[StageGrid3D] 🗑️ gl.dispose() executed (no loseContext extension)')
-      }
+      console.log('[StageGrid3D] 🎮 WebGL Context Handler unmounted - R3F will handle cleanup')
     }
   }, [gl])
   

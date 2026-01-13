@@ -3,6 +3,7 @@
  * WAVE 9: Renders active view based on navigation state
  * WAVE 25.5: SimulateView now uses StageSimulator2 (Canvas 2.0)
  * WAVE 361: Added StageConstructorView for CONSTRUCT tab
+ * WAVE 379.3: Exclusive rendering - unmount 3D views properly
  */
 
 import React, { Suspense, lazy } from 'react'
@@ -26,8 +27,15 @@ const ViewLoader: React.FC = () => (
   </div>
 )
 
+// 🔥 WAVE 379.3: Vistas que tienen WebGL Canvas y necesitan unmount exclusivo
+const WEBGL_VIEWS = ['constructor', 'simulate']
+
 const ContentArea: React.FC = () => {
   const { activeTab } = useNavigationStore()
+  
+  // 🔥 WAVE 379.3: Key para forzar unmount de vistas WebGL
+  // Solo aplicamos key cuando la vista tiene Canvas 3D para garantizar limpieza
+  const viewKey = WEBGL_VIEWS.includes(activeTab) ? activeTab : 'standard'
 
   const renderView = () => {
     switch (activeTab) {
@@ -49,8 +57,9 @@ const ContentArea: React.FC = () => {
   return (
     <main className="content-area">
       <Suspense fallback={<ViewLoader />}>
-        {/* 🚨 WAVE 14.9: REMOVIDO key={activeTab} que causaba re-mount en cada cambio de tab */}
-        <div className="view-container">
+        {/* � WAVE 379.3: key={viewKey} fuerza unmount real al cambiar entre vistas WebGL */}
+        {/* Esto garantiza que R3F limpie el Canvas antes de montar uno nuevo */}
+        <div className="view-container" key={viewKey}>
           {renderView()}
         </div>
       </Suspense>

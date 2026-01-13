@@ -72,6 +72,37 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 378.7: WebGL Context Loss Handler
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WebGLContextHandler: React.FC = () => {
+  const { gl } = useThree()
+  
+  useEffect(() => {
+    const canvas = gl.domElement
+    
+    const handleContextLost = (event: Event) => {
+      event.preventDefault()
+      console.warn('[StageGrid3D] ⚠️ WebGL Context Lost - preventing default')
+    }
+    
+    const handleContextRestored = () => {
+      console.log('[StageGrid3D] ✅ WebGL Context Restored')
+    }
+    
+    canvas.addEventListener('webglcontextlost', handleContextLost)
+    canvas.addEventListener('webglcontextrestored', handleContextRestored)
+    
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+    }
+  }, [gl])
+  
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // WAVE 368.5: CAMERA BRIDGE - Expose camera to parent for D&D raycasting
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -768,11 +799,18 @@ const StageGrid3D: React.FC = () => {
         gl={{ 
           antialias: true,
           alpha: false,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
+          // WAVE 378.7: Prevent context loss
+          preserveDrawingBuffer: true,
+          failIfMajorPerformanceCaveat: false
         }}
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}  // WAVE 378.7: Reduce max DPR to prevent GPU overload
         style={{ background: '#000000', pointerEvents: 'auto' }}
+        frameloop="demand"  // WAVE 378.7: Only render when needed, not continuously
       >
+        {/* WAVE 378.7: WebGL Context Loss Handler */}
+        <WebGLContextHandler />
+        
         {/* WAVE 368.5: Camera Bridge - exposes camera for D&D raycasting */}
         <CameraBridge onCameraReady={handleCameraReady} />
         

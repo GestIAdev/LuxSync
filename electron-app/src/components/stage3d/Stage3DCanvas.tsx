@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 378: WEBGL STABILIZATION
+ * 🎬 STAGE 3D CANVAS - WAVE 378.7: WEBGL STABILIZATION + CONTEXT PROTECTION
  * Canvas principal de React Three Fiber para visualización 3D
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -15,12 +15,17 @@
  * - Layout solo se regenera cuando cambian IDs, no cuando cambia pan/tilt
  * - Fixture3D usa transient store para datos en tiempo real (bypass React)
  * 
+ * WAVE 378.7: WebGL Context Protection
+ * - frameloop="demand" - only render when needed
+ * - preserveDrawingBuffer - prevent context loss
+ * - WebGLContextHandler - handle context loss/restore events
+ * 
  * @module components/stage3d/Stage3DCanvas
- * @version 378.0.0
+ * @version 378.7.0
  */
 
-import React, { Suspense, useMemo, useCallback, memo } from 'react'
-import { Canvas } from '@react-three/fiber'
+import React, { Suspense, useMemo, useCallback, memo, useEffect } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei'
 import { useTruthStore } from '../../stores/truthStore'
 import { useControlStore } from '../../stores/controlStore'
@@ -68,6 +73,37 @@ const selectFixtureStructure = (state: any) => {
 const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
   if (a.length !== b.length) return false
   return a.every((fixture, i) => fixture.id === b[i]?.id)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 378.7: WebGL Context Loss Handler
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WebGLContextHandler: React.FC = () => {
+  const { gl } = useThree()
+  
+  useEffect(() => {
+    const canvas = gl.domElement
+    
+    const handleContextLost = (event: Event) => {
+      event.preventDefault()
+      console.warn('[Stage3DCanvas] ⚠️ WebGL Context Lost - preventing default')
+    }
+    
+    const handleContextRestored = () => {
+      console.log('[Stage3DCanvas] ✅ WebGL Context Restored')
+    }
+    
+    canvas.addEventListener('webglcontextlost', handleContextLost)
+    canvas.addEventListener('webglcontextrestored', handleContextRestored)
+    
+    return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+    }
+  }, [gl])
+  
+  return null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -215,16 +251,23 @@ export const Stage3DCanvas: React.FC<Stage3DCanvasProps> = ({
     <div className={`stage-3d-canvas ${className}`}>
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}  // WAVE 378.7: Reduce max DPR to prevent GPU overload
         gl={{
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
+          // WAVE 378.7: Prevent context loss
+          preserveDrawingBuffer: true,
+          failIfMajorPerformanceCaveat: false
         }}
+        frameloop="demand"  // WAVE 378.7: Only render when needed
         style={{
           background: '#0a0a0f',
         }}
       >
+        {/* WAVE 378.7: WebGL Context Loss Handler */}
+        <WebGLContextHandler />
+        
         <Suspense fallback={<Loader />}>
           <SceneContent showStats={showStats || showDebugOverlay} />
         </Suspense>

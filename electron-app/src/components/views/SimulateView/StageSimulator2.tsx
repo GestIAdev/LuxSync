@@ -159,6 +159,7 @@ export const StageSimulator2: React.FC = () => {
     // Esto permite renderizar fixtures ANTES de que el backend sincronice
     const fixtureArray = stageFixtures || [];
     if (!Array.isArray(fixtureArray)) return [];
+    if (fixtureArray.length === 0) return [];
     
     return fixtureArray.map((fixture, index) => {
       if (!fixture) return null;
@@ -404,9 +405,20 @@ export const StageSimulator2: React.FC = () => {
       // Guardar posición para hit testing
       newPositions.push({ id, x, y, radius: Math.max(fixtureRadius, 20) });
       
-      // Skip si está apagado (pero mantener hit area)
-      const shouldRenderLight = r + g + b >= 10 || intensity >= 0.05;
-      if (r + g + b < 10 && intensity < 0.05) return;
+      // WAVE 379.6: Si está completamente apagado, dibujar fixture "idle" (gris oscuro)
+      // Esto permite ver la posición del fixture aunque no haya data del backend
+      const isCompletelyOff = r + g + b < 10 && intensity < 0.05;
+      if (isCompletelyOff) {
+        // Dibujar fixture inactivo como círculo gris oscuro
+        ctx.beginPath();
+        ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? 'rgba(0, 255, 255, 0.4)' : 'rgba(80, 80, 80, 0.6)';
+        ctx.fill();
+        ctx.strokeStyle = isSelected ? '#00ffff' : '#444';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.stroke();
+        return;
+      }
       
       const color = `rgb(${r}, ${g}, ${b})`;
       const colorAlpha = `rgba(${r}, ${g}, ${b}, ${intensity * 0.8})`;

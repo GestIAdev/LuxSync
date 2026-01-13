@@ -69,15 +69,20 @@ export class MasterArbiter extends EventEmitter {
      * 🩸 WAVE 382: Register fixtures for arbitration
      * NOW PRESERVES: capabilities, hasMovementChannels, channels, type
      * Call this when patch changes or on init.
+     *
+     * 🔥 WAVE 384.5: Enhanced logging to verify channel propagation
      */
     setFixtures(fixtures) {
         this.fixtures.clear();
         // 🩸 Track movers for individual movement calculation
         let moverCount = 0;
+        let totalChannels = 0;
         for (const fixture of fixtures) {
             const id = fixture.id ?? fixture.name;
             // 🩸 WAVE 382: Preserve ALL metadata, don't strip
             const isMover = this.isMovingFixture(fixture);
+            const channelCount = fixture.channels?.length || 0;
+            totalChannels += channelCount;
             this.fixtures.set(id, {
                 ...fixture,
                 id,
@@ -95,12 +100,15 @@ export class MasterArbiter extends EventEmitter {
             });
             if (isMover)
                 moverCount++;
+            // 🔥 WAVE 384.5: Log each fixture's channel info
+            if (this.config.debug && channelCount > 0) {
+                console.log(`[MasterArbiter] 📦 Fixture "${fixture.name}": ${channelCount} channels, movement=${fixture.hasMovementChannels}`);
+            }
         }
         // Store mover count for spread calculations
         this.moverCount = moverCount;
-        if (this.config.debug) {
-            console.log(`[MasterArbiter] 🩸 Registered ${this.fixtures.size} fixtures (${moverCount} movers)`);
-        }
+        // 🔥 WAVE 384.5: Summary log for verification
+        console.log(`[MasterArbiter] 🩸 Registered ${this.fixtures.size} fixtures (${moverCount} movers, ${totalChannels} total channels)`);
     }
     /**
      * 🩸 WAVE 382: Helper to detect moving fixtures

@@ -258,18 +258,30 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (existingDefinition) {
-        // Edit mode - load existing
+        // Edit mode - load existing definition (from library)
         setFixture(existingDefinition)
         setTotalChannels(existingDefinition.channels.length)
       } else if (editingFixture) {
-        // Create from stage fixture
+        // 🔥 WAVE 384.5: Create from stage fixture - NOW USES INLINE CHANNELS!
+        // editingFixture.channels now contains the channel definitions thanks to WAVE 384
+        const fixtureChannels: FixtureChannel[] = editingFixture.channels?.map((ch, idx) => ({
+          index: ch.index ?? idx,
+          name: ch.name || '',
+          type: (ch.type || 'unknown') as ChannelType,
+          defaultValue: 0,
+          is16bit: ch.is16bit || ch.name?.toLowerCase().includes('fine') || false
+        })) || []
+        
+        console.log(`[FixtureForge] 🔥 Loaded ${fixtureChannels.length} channels from editingFixture`)
+        
         setFixture({
-          id: editingFixture.id,
+          id: editingFixture.profileId || editingFixture.id,
           name: editingFixture.model,
           manufacturer: editingFixture.manufacturer,
           type: editingFixture.type,
-          channels: [] // Will need to load from library
+          channels: fixtureChannels
         })
+        setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)
         setPhysics(editingFixture.physics)
       } else {
         // New fixture
@@ -369,7 +381,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
     setFixture(prev => ({ ...prev, channels: newChannels }))
   }, [fixture.channels])
   
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
     const finalFixture: FixtureDefinition = {
@@ -378,6 +390,20 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       manufacturer: fixture.manufacturer || 'Generic',
       type: fixture.type,
       channels: fixture.channels
+    }
+    
+    // 🔥 WAVE 384.5: Also persist to library
+    if (window.lux?.saveDefinition) {
+      try {
+        const result = await window.lux.saveDefinition(finalFixture)
+        if (result.success) {
+          console.log(`[FixtureForge] 🔥 Saved definition to library: ${result.path}`)
+        } else {
+          console.warn(`[FixtureForge] ⚠️ Failed to save to library:`, result.error)
+        }
+      } catch (err) {
+        console.warn(`[FixtureForge] ⚠️ Library save error:`, err)
+      }
     }
     
     onSave(finalFixture, physics)

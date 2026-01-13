@@ -22,7 +22,7 @@
  * @version 369.0.0
  */
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Canvas, useThree, ThreeEvent, useFrame } from '@react-three/fiber'
 import { 
   OrbitControls, 
@@ -34,11 +34,42 @@ import {
 } from '@react-three/drei'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { shallow } from 'zustand/shallow'
 import { useConstructorContext } from '../StageConstructorView'
 import { createDefaultFixture } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
 import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
 import * as THREE from 'three'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 378.5: GRANULAR SELECTORS - Prevent re-render cascade during sync
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extrae SOLO la estructura estática de fixtures (para layout, no RT data)
+ * NO incluye: pan, tilt, color, intensity - esos cambian cada frame
+ */
+const selectFixtureStructure = (state: ReturnType<typeof useStageStore.getState>) => 
+  state.fixtures.map(f => ({
+    id: f?.id,
+    name: f?.name,
+    type: f?.type,
+    address: f?.address,
+    zone: f?.zone,
+    position: f?.position,
+    rotation: f?.rotation
+  }))
+
+/**
+ * Igualdad por IDs - si los IDs no cambian, no re-renderizar
+ * Ignora cambios en posición/rotación durante sync masivo inicial
+ */
+const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
+  if (a.length !== b.length) return false
+  const aIds = a.map(f => f?.id).sort().join(',')
+  const bIds = b.map(f => f?.id).sort().join(',')
+  return aIds === bIds
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 368.5: CAMERA BRIDGE - Expose camera to parent for D&D raycasting
@@ -199,7 +230,7 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
       const zone = getZoneAtPosition(pos.x, pos.z)
       if (zone !== currentZone) {
         setCurrentZone(zone)
-        console.log(`[Gizmo] 📍 Entering zone: ${zone || 'unassigned'}`)
+        // WAVE 378.5: Log removed - was running every frame
       }
     }
   })
@@ -270,6 +301,7 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
 // STAGE GRID SCENE - Receives snap config as props
 // WAVE 369: Now with interaction lock for camera control isolation
 // WAVE 369.6: Receives selectedIds as ARRAY prop to fix R3F context issue
+// WAVE 378.5: MEMOIZED + Granular selectors to prevent Context Lost
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface StageSceneProps {
@@ -283,9 +315,10 @@ interface StageSceneProps {
   isBoxSelectMode: boolean  // WAVE 369: Disable camera during box select
   onInteractionChange: (isInteracting: boolean) => void  // WAVE 369
   selectedIdsArray: string[]  // WAVE 369.6: Array instead of Set to fix R3F reactivity
+  fixtureStructure: any[]  // WAVE 378.5: Pre-extracted fixture structure (from parent)
 }
 
-const StageScene: React.FC<StageSceneProps> = ({ 
+const StageScene = memo<StageSceneProps>(({ 
   snapEnabled, 
   snapDistance, 
   snapRotation,
@@ -295,9 +328,13 @@ const StageScene: React.FC<StageSceneProps> = ({
   onZoneClick,
   isBoxSelectMode,
   onInteractionChange,
-  selectedIdsArray  // WAVE 369.6
+  selectedIdsArray,
+  fixtureStructure  // WAVE 378.5
 }) => {
-  const fixtures = useStageStore(selectFixtures)
+  // WAVE 378.5: Use fixtureStructure prop instead of subscribing directly
+  // This prevents re-renders during TitanSyncBridge sync operations
+  const fixtures = fixtureStructure
+  
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   
@@ -317,7 +354,7 @@ const StageScene: React.FC<StageSceneProps> = ({
   
   // Get the single selected fixture for transform controls
   const selectedFixture = selectedIdsArray.length === 1 
-    ? fixtures.find(f => f.id === selectedIdsArray[0])
+    ? fixtures.find((f: any) => f.id === selectedIdsArray[0])
     : null
   
   // WAVE 369: Handle gizmo dragging change
@@ -440,7 +477,9 @@ const StageScene: React.FC<StageSceneProps> = ({
       )}
     </>
   )
-}
+})
+
+StageScene.displayName = 'StageScene'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT - Bridge between React Context and R3F
@@ -464,17 +503,22 @@ const StageGrid3D: React.FC = () => {
   const { snapEnabled, snapDistance, snapRotation, draggedFixtureType, setDraggedFixtureType, toolMode, showZones } = useConstructorContext()
   const addFixture = useStageStore(state => state.addFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
-  const fixtures = useStageStore(state => state.fixtures)
+  
+  // WAVE 378.5: GRANULAR selector - only re-render when fixture IDs change, not on every sync
+  const fixtureStructure = useStageStore(selectFixtureStructure, fixtureStructureEquals)
+  
+  // Keep a reference to full fixtures for box selection raycasting (read once, not reactive)
+  const fixturesRef = useRef(useStageStore.getState().fixtures)
+  useEffect(() => {
+    // Update ref when structure changes (new fixtures added/removed)
+    fixturesRef.current = useStageStore.getState().fixtures
+  }, [fixtureStructure])
+  
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
   
   // WAVE 369.6 FIX: Subscribe to selection changes with a simple primitive selector
   const selectionVersion = useSelectionStore(state => state.selectedIds.size)
   const selectedIdsArray = useSelectionStore(state => [...state.selectedIds])
-  
-  // Log when selection changes (debug)
-  useEffect(() => {
-    console.log('[StageGrid3D] Selection changed:', selectedIdsArray, 'version:', selectionVersion)
-  }, [selectionVersion])
   
   // Keep Set for local operations that need .has()
   const selectedIds = useMemo(() => new Set(selectedIdsArray), [selectionVersion])
@@ -497,20 +541,14 @@ const StageGrid3D: React.FC = () => {
   // Zone highlight state - WAVE 363
   const [highlightedZone, setHighlightedZone] = useState<FixtureZone | null>(null)
   
-  // WAVE 368.5: Camera ready callback
+  // WAVE 368.5: Camera ready callback - WAVE 378.5: Log removed (one-time but noisy)
   const handleCameraReady = useCallback((camera: THREE.Camera) => {
     cameraRef.current = camera
-    console.log('[StageGrid3D] Camera ready for raycasting')
   }, [])
   
-  // WAVE 369: Handle gizmo interaction change
+  // WAVE 369: Handle gizmo interaction change - WAVE 378.5: Logs removed
   const handleInteractionChange = useCallback((isInteracting: boolean) => {
     setIsGizmoInteracting(isInteracting)
-    if (isInteracting) {
-      console.log('[StageGrid3D] 🔒 Camera LOCKED - Gizmo active')
-    } else {
-      console.log('[StageGrid3D] 🔓 Camera UNLOCKED')
-    }
   }, [])
   
   // Handle zone click - assign zone to selected fixtures
@@ -582,8 +620,9 @@ const StageGrid3D: React.FC = () => {
       }
       
       // WAVE 369.6: PROPER 3D→2D PROJECTION
+      // WAVE 378.5: Use fixturesRef instead of reactive fixtures
       // Project each fixture's 3D position to screen space using the actual camera
-      const selectedFixtureIds = fixtures.filter(fixture => {
+      const selectedFixtureIds = fixturesRef.current.filter((fixture: any) => {
         // Create a Vector3 from fixture position
         const worldPos = new THREE.Vector3(
           fixture.position.x,
@@ -606,9 +645,7 @@ const StageGrid3D: React.FC = () => {
           screenY <= maxY &&
           projected.z < 1 // Only select fixtures in front of camera
         )
-      }).map(f => f.id)
-      
-      console.log(`[BoxSelect] Selected ${selectedFixtureIds.length} fixtures:`, selectedFixtureIds)
+      }).map((f: any) => f.id)
       
       if (selectedFixtureIds.length > 0) {
         selectMultiple(selectedFixtureIds)
@@ -617,7 +654,7 @@ const StageGrid3D: React.FC = () => {
     
     isBoxSelecting.current = false
     setBoxSelection(null)
-  }, [boxSelection, fixtures, selectMultiple])
+  }, [boxSelection, selectMultiple])
   
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 368.5: BULLETPROOF DROP - Mathematical Raycaster
@@ -753,6 +790,7 @@ const StageGrid3D: React.FC = () => {
           isBoxSelectMode={isBoxSelectMode}
           onInteractionChange={handleInteractionChange}
           selectedIdsArray={selectedIdsArray}
+          fixtureStructure={fixtureStructure}
         />
       </Canvas>
       

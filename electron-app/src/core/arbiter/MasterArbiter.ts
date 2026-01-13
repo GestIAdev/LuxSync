@@ -705,16 +705,12 @@ export class MasterArbiter extends EventEmitter {
     // Layer 0: Titan AI
     const titanValue = titanValues[channel] ?? 0
     
-    // WAVE 380: KICKSTART - Force minimum dimmer for visibility testing
-    // If Titan is active but dimmer is 0, boost to 5% to confirm data flow
-    let effectiveTitanValue = titanValue
-    if (titanActive && channel === 'dimmer' && titanValue === 0) {
-      effectiveTitanValue = 13 // ~5% DMX (13/255 = 0.05)
-    }
+    // 🩸 WAVE 380.5: Kickstart REMOVED - data flow confirmed working
+    // The system now properly shows colors from vibes
     
     values.push({
       layer: ControlLayer.TITAN_AI,
-      value: effectiveTitanValue,
+      value: titanValue,
       timestamp: this.layer0_titan?.timestamp ?? now,
     })
     
@@ -1030,10 +1026,13 @@ export class MasterArbiter extends EventEmitter {
   
   /**
    * HSL to RGB conversion
+   * 🩸 WAVE 380 FIX: HSL values are already normalized (0-1), don't divide by 360!
    */
   private hslToRgb(hsl: { h: number; s: number; l: number }): RGBOutput {
     const { h, s, l } = hsl
-    const hNorm = h / 360
+    // 🩸 WAVE 380: h is already 0-1 from ColorPalette (HSLColor interface)
+    // Don't divide by 360 - that was destroying all colors to red!
+    const hNorm = h
     const sNorm = s
     const lNorm = l
     

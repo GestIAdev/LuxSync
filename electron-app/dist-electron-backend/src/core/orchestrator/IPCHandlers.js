@@ -570,7 +570,8 @@ function setupFixtureHandlers(deps) {
         }
     });
     // WAVE 388 EXT: Delete fixture definition from library
-    ipcMain.handle('lux:delete-fixture-definition', async (_event, fixtureId) => {
+    // Accepts either full filePath or fixture name to search
+    ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier) => {
         try {
             const fs = await import('fs');
             const path = await import('path');
@@ -578,33 +579,49 @@ function setupFixtureHandlers(deps) {
             if (!libraryPath) {
                 return { success: false, error: 'Library path not configured' };
             }
-            // Find the file by scanning the library
-            const files = fs.readdirSync(libraryPath);
-            let deleted = false;
-            for (const file of files) {
-                if (!file.endsWith('.json'))
-                    continue;
-                const filePath = path.join(libraryPath, file);
-                try {
-                    const content = fs.readFileSync(filePath, 'utf-8');
-                    const fixture = JSON.parse(content);
-                    // Match by id OR by name (for flexibility)
-                    if (fixture.id === fixtureId || fixture.name === fixtureId) {
-                        fs.unlinkSync(filePath);
-                        console.log(`[IPC] 🗑️ Deleted fixture: ${filePath}`);
-                        deleted = true;
-                        break;
+            let fileToDelete = null;
+            // WAVE 388.7: Check if identifier is already a full path
+            if (identifier.includes(path.sep) && fs.existsSync(identifier)) {
+                // It's a full path - verify it's inside library folder
+                if (identifier.startsWith(libraryPath)) {
+                    fileToDelete = identifier;
+                }
+                else {
+                    return { success: false, error: 'File path outside library folder' };
+                }
+            }
+            else {
+                // Search by scanning the library
+                const files = fs.readdirSync(libraryPath);
+                for (const file of files) {
+                    if (!file.endsWith('.json'))
+                        continue;
+                    const filePath = path.join(libraryPath, file);
+                    try {
+                        const content = fs.readFileSync(filePath, 'utf-8');
+                        const fixture = JSON.parse(content);
+                        // Match by id OR by name OR by filename
+                        if (fixture.id === identifier ||
+                            fixture.name === identifier ||
+                            file === identifier ||
+                            file === `${identifier}.json`) {
+                            fileToDelete = filePath;
+                            break;
+                        }
+                    }
+                    catch (parseErr) {
+                        // Skip files that can't be parsed
+                        continue;
                     }
                 }
-                catch (parseErr) {
-                    // Skip files that can't be parsed
-                    continue;
-                }
             }
-            if (!deleted) {
-                return { success: false, error: `Fixture "${fixtureId}" not found in library` };
+            if (!fileToDelete) {
+                return { success: false, error: `Fixture "${identifier}" not found in library` };
             }
-            return { success: true, deletedId: fixtureId };
+            // Delete the file
+            fs.unlinkSync(fileToDelete);
+            console.log(`[IPC] 🗑️ Deleted fixture: ${fileToDelete}`);
+            return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
             console.error('[IPC] ❌ Failed to delete fixture:', err);

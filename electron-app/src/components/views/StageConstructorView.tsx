@@ -214,16 +214,18 @@ const FixtureLibrarySidebar: React.FC = () => {
   }, [])
   
   // WAVE 388 EXT: Delete fixture from library
-  const handleDeleteFixture = useCallback(async (fixtureId: string, fixtureName: string) => {
+  const handleDeleteFixture = useCallback(async (filePath: string, fixtureName: string) => {
     if (!window.confirm(`¿Eliminar "${fixtureName}" de la librería?`)) {
       return
     }
     
     try {
-      const result = await window.lux?.deleteDefinition?.(fixtureId)
+      // WAVE 388.7: Pass filePath directly for precise deletion
+      const result = await window.lux?.deleteDefinition?.(filePath)
       console.log('[Library] Delete result:', result)
       
       if (result?.success) {
+        console.log(`[Library] ✅ Deleted: ${result.deletedPath}`)
         // Reload library
         loadFixtureLibrary()
       } else {
@@ -367,7 +369,11 @@ const FixtureLibrarySidebar: React.FC = () => {
                     <button 
                       className="action-btn delete" 
                       title="Eliminar de librería"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteFixture(libFix.id, libFix.name); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        // WAVE 388.7: Pass filePath for precise deletion
+                        handleDeleteFixture(libFix.filePath, libFix.name); 
+                      }}
                     >
                       <Trash2 size={12} />
                     </button>

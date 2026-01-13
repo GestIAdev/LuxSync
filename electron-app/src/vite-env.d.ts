@@ -293,6 +293,7 @@ declare global {
     deleteDefinition: (fixtureId: string) => Promise<{
       success: boolean
       deletedId?: string
+      deletedPath?: string
       error?: string
     }>
     
@@ -309,6 +310,7 @@ declare global {
       deleteDefinition: (fixtureId: string) => Promise<{
         success: boolean
         deletedId?: string
+        deletedPath?: string
         error?: string
       }>
     }

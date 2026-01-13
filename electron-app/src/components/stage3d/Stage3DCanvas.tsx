@@ -159,7 +159,11 @@ const SceneContent = memo<{ showStats: boolean }>(({ showStats }) => {
   // 🔥 WAVE 378: Layout generation - Solo depende de estructura (IDs)
   // NO se regenera cuando cambian valores en tiempo real
   const fixtureLayouts = useMemo(() => {
-    if (!Array.isArray(fixtureStructure) || fixtureStructure.length === 0) return []
+    if (!Array.isArray(fixtureStructure) || fixtureStructure.length === 0) {
+      console.log('[Stage3DCanvas] ⚠️ No fixture structure available')
+      return []
+    }
+    console.log(`[Stage3DCanvas] 🎯 Generating layout for ${fixtureStructure.length} fixtures`)
     return generateLayout3D(fixtureStructure, DEFAULT_STAGE_CONFIG)
   }, [fixtureStructure])
   

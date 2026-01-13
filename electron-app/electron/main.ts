@@ -20,7 +20,7 @@ import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron'
 import path from 'path'
 
 // TITAN 2.0 Core Modules
-import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies } from '../src/core/orchestrator'
+import { TitanOrchestrator, setupIPCHandlers, type IPCDependencies, registerTitanOrchestrator } from '../src/core/orchestrator'
 
 // Arbiter IPC Handlers (WAVE 377 - TitanSyncBridge support)
 import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter'
@@ -237,6 +237,10 @@ async function initTitan(): Promise<void> {
   
   // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
   titanOrchestrator = new TitanOrchestrator({ debug: isDev })
+  
+  // WAVE 380: Register as singleton so IPC handlers can access the same instance
+  registerTitanOrchestrator(titanOrchestrator)
+  
   await titanOrchestrator.init()
   
   // WAVE 255.5: Connect broadcast callback to send fixture states to frontend

@@ -580,6 +580,12 @@ export class MasterArbiter extends EventEmitter {
     // Clean up expired effects
     this.cleanupExpiredEffects()
     
+    // WAVE 380: Debug fixture IDs being processed
+    if (this.frameNumber % 300 === 0) { // Every ~5s at 60fps
+      console.log(`[MasterArbiter] 🩸 Processing ${this.fixtures.size} fixtures:`, 
+        Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...')
+    }
+    
     // Arbitrate each fixture
     const fixtureTargets: FixtureLightingTarget[] = []
     
@@ -679,11 +685,36 @@ export class MasterArbiter extends EventEmitter {
   ): number {
     const values: ChannelValue[] = []
     
+    // WAVE 380: TEST MODE - Heartbeat artificial cuando no hay Titan
+    // Si no hay Titan activo (silencio de Selene), generar pulso suave
+    const titanActive = this.layer0_titan !== null
+    if (!titanActive && channel === 'dimmer') {
+      // Pulso sinusoidal: 20% base + 10% oscilación = rango 10-30%
+      const phase = (now / 3000) * Math.PI * 2 // 3 segundos por ciclo
+      const pulse = 51 + Math.sin(phase) * 25 // DMX 26-76 (~10-30%)
+      values.push({
+        layer: ControlLayer.TITAN_AI,
+        value: pulse,
+        timestamp: now,
+      })
+      controlSources[channel] = ControlLayer.TITAN_AI
+      // No agregar otros layers cuando test mode está activo
+      return pulse
+    }
+    
     // Layer 0: Titan AI
     const titanValue = titanValues[channel] ?? 0
+    
+    // WAVE 380: KICKSTART - Force minimum dimmer for visibility testing
+    // If Titan is active but dimmer is 0, boost to 5% to confirm data flow
+    let effectiveTitanValue = titanValue
+    if (titanActive && channel === 'dimmer' && titanValue === 0) {
+      effectiveTitanValue = 13 // ~5% DMX (13/255 = 0.05)
+    }
+    
     values.push({
       layer: ControlLayer.TITAN_AI,
-      value: titanValue,
+      value: effectiveTitanValue,
       timestamp: this.layer0_titan?.timestamp ?? now,
     })
     

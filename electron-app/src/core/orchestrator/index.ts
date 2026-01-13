@@ -36,6 +36,7 @@ export type {
 export {
   TitanOrchestrator,
   getTitanOrchestrator,
+  registerTitanOrchestrator,  // WAVE 380: Register singleton from main.ts
 } from './TitanOrchestrator'
 
 export type {

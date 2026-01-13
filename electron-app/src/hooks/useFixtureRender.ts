@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useControlStore, FlowParams, GlobalMode, LivingPaletteId } from '../stores/controlStore'
 import { useOverrideStore, FixtureOverride, ChannelMask, hslToRgb } from '../stores/overrideStore'
+import { useTruthStore } from '../stores/truthStore'
 import { getLivingColor, mapZoneToSide, Side } from '../utils/frontendColorEngine'
 import { calculateMovement } from '../utils/movementGenerator'
 
@@ -195,6 +196,7 @@ export function calculateFixtureRenderValues(
 
 /**
  * 🔌 useFixtureRender - WAVE 34.2 + 34.5: FULL PRIORITY HIERARCHY + SMOOTH TRANSITIONS
+ * 🩸 WAVE 380: Now fetches from truthStore when truthData is null
  * 
  * Checks:
  * 1. overrideStore for per-fixture manual values
@@ -206,6 +208,16 @@ export function useFixtureRender(
   fixtureId: string,
   fixtureIndex: number = 0
 ): FixtureRenderData {
+  // 🩸 WAVE 380: If truthData not passed, fetch from truthStore by fixtureId
+  // This enables Stage3DCanvas to get real-time data without cascade re-renders
+  const hardwareFixtures = useTruthStore(state => state.truth?.hardware?.fixtures)
+  const resolvedTruthData = useMemo(() => {
+    if (truthData !== null) return truthData
+    // Find fixture in truthStore by ID
+    const fixtures = hardwareFixtures || []
+    return fixtures.find((f: any) => f?.id === fixtureId) || null
+  }, [truthData, hardwareFixtures, fixtureId])
+  
   // 1. Read Control Store
   const globalMode = useControlStore(state => state.globalMode)
   const flowParams = useControlStore(state => state.flowParams)
@@ -222,7 +234,7 @@ export function useFixtureRender(
   
   // 3. Calculate with full hierarchy + transition support
   return calculateFixtureRenderValues(
-    truthData,
+    resolvedTruthData,
     globalMode,
     flowParams,
     activePaletteId,

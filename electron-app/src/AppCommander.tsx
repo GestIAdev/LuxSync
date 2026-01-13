@@ -3,12 +3,14 @@
  * La Nave Espacial de Iluminación
  * 
  * Arquitectura: Sidebar + Tabs + Global Effects
+ * WAVE 377: Added TitanSyncBridge for stageStore → Backend sync
  */
 
 import { useEffect } from 'react'
 import MainLayout from './components/layout/MainLayout'
 import KeyboardProvider from './providers/KeyboardProvider'
 import { TrinityProvider } from './providers/TrinityProvider'
+import { TitanSyncBridge } from './core/sync'
 import { useSeleneStore } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import './styles/globals.css'
@@ -31,6 +33,8 @@ function AppContent() {
 
   return (
     <KeyboardProvider>
+      {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
+      <TitanSyncBridge />
       <MainLayout />
     </KeyboardProvider>
   )

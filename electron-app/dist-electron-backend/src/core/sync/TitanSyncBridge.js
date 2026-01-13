@@ -42,6 +42,8 @@ const SYNC_DEBOUNCE_MS = 500;
  * It watches for fixture changes and syncs them to the backend automatically.
  */
 export const TitanSyncBridge = () => {
+    // 🔍 DEBUG: Log on every render to verify component is mounting
+    console.log('[TitanSyncBridge] 🔄 Render - component alive');
     // Get fixtures directly from store
     const fixtures = useStageStore((state) => state.fixtures);
     // Refs for debounce

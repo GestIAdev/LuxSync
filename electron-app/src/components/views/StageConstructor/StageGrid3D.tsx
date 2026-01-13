@@ -73,7 +73,7 @@ const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 379: WebGL Context Manager - SURGICAL DISPOSAL
+// WAVE 379.1: WebGL Context Manager - SURGICAL DISPOSAL (Fixed)
 // Garantiza liberación del contexto WebGL al desmontar
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -82,7 +82,9 @@ const WebGLContextHandler: React.FC = () => {
   
   useEffect(() => {
     const canvas = gl.domElement
-    const context = gl.getContext()
+    
+    // 🔥 WAVE 379.1: Obtener contexto WebGL NATIVO del canvas
+    const context = canvas.getContext('webgl2') || canvas.getContext('webgl')
     
     const handleContextLost = (event: Event) => {
       event.preventDefault()
@@ -102,15 +104,19 @@ const WebGLContextHandler: React.FC = () => {
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
       
-      // Dispose renderer resources
+      // Dispose renderer resources first
       gl.dispose()
       
       // Force context loss to free GPU resources IMMEDIATELY
-      // Esto es crítico para evitar colisión de contextos durante view transitions
-      const loseContextExt = context.getExtension('WEBGL_lose_context')
-      if (loseContextExt) {
-        loseContextExt.loseContext()
-        console.log('[StageGrid3D] 🗑️ WebGL Context forcefully released')
+      // Usar contexto nativo del canvas, no el de R3F
+      if (context) {
+        const loseContextExt = context.getExtension('WEBGL_lose_context')
+        if (loseContextExt) {
+          loseContextExt.loseContext()
+          console.log('[StageGrid3D] 🗑️ WebGL Context forcefully released')
+        } else {
+          console.log('[StageGrid3D] 🗑️ gl.dispose() executed (loseContext not available)')
+        }
       }
     }
   }, [gl])

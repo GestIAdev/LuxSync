@@ -466,14 +466,28 @@ export interface TransitionState {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Minimal fixture interface for arbiter
- * The full PatchedFixture comes from HAL, but arbiter only needs these fields.
+ * 🩸 WAVE 382: Extended fixture interface for arbiter
+ * Now includes capabilities and type for proper UI control rendering.
+ * The full PatchedFixture comes from HAL, but arbiter needs these fields.
  */
 export interface ArbiterFixture {
   id?: string
   name: string
   zone?: string
-  type?: string
+  type: string                                  // 🔴 REQUIRED - Para UI Pan/Tilt detection
   dmxAddress: number
   universe: number
+  
+  // 🩸 WAVE 382: Restored metadata for UI control visibility
+  capabilities?: {
+    hasColor?: boolean
+    hasDimmer?: boolean
+    hasMovement?: boolean
+    hasZoom?: boolean
+    hasFocus?: boolean
+    hasGobo?: boolean
+    hasPrism?: boolean
+  }
+  hasMovementChannels?: boolean                 // 🔴 Para detectar movers sin parsear type
+  channels?: string[]                           // Lista de canales disponibles
 }

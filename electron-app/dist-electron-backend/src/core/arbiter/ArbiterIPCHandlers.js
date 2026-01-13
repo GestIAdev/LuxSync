@@ -13,6 +13,7 @@
  * @version WAVE 376
  */
 import { ipcMain } from 'electron';
+import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 /**
  * Register all Arbiter IPC handlers
  * Call this from main.ts during initialization
@@ -213,13 +214,20 @@ export function registerArbiterHandlers(masterArbiter) {
     /**
      * Update fixtures from frontend stageStore
      * Called by TitanSyncBridge when patch changes
+     * WAVE 380: Now also updates TitanOrchestrator.fixtures for the render loop
      */
     ipcMain.handle('lux:arbiter:setFixtures', (_event, { fixtures }) => {
+        // Update MasterArbiter (for arbitration)
         masterArbiter.setFixtures(fixtures);
+        // WAVE 380 FIX: ALSO update TitanOrchestrator (for the render loop)
+        // Without this, the orchestrator loop runs with 0 fixtures!
+        const orchestrator = getTitanOrchestrator();
+        orchestrator.setFixtures(fixtures);
+        console.log(`[ArbiterIPC] 🩸 WAVE 380: Synced ${fixtures.length} fixtures to Arbiter + Orchestrator`);
         return {
             success: true,
             fixtureCount: fixtures.length,
-            message: `Arbiter synced with ${fixtures.length} fixtures`
+            message: `Arbiter + Orchestrator synced with ${fixtures.length} fixtures`
         };
     });
     // ═══════════════════════════════════════════════════════════════════════

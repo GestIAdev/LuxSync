@@ -54,6 +54,8 @@ export class MasterArbiter extends EventEmitter {
         // State tracking
         this.frameNumber = 0;
         this.lastOutputTimestamp = 0;
+        // 🩸 WAVE 382: Track mover count for spread calculation
+        this.moverCount = 0;
         this.config = { ...DEFAULT_ARBITER_CONFIG, ...config };
         this.crossfadeEngine = new CrossfadeEngine(this.config.defaultCrossfadeMs);
         if (this.config.debug) {
@@ -64,18 +66,53 @@ export class MasterArbiter extends EventEmitter {
     // FIXTURE MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * Register fixtures for arbitration
+     * 🩸 WAVE 382: Register fixtures for arbitration
+     * NOW PRESERVES: capabilities, hasMovementChannels, channels, type
      * Call this when patch changes or on init.
      */
     setFixtures(fixtures) {
         this.fixtures.clear();
+        // 🩸 Track movers for individual movement calculation
+        let moverCount = 0;
         for (const fixture of fixtures) {
             const id = fixture.id ?? fixture.name;
-            this.fixtures.set(id, { ...fixture, id });
+            // 🩸 WAVE 382: Preserve ALL metadata, don't strip
+            const isMover = this.isMovingFixture(fixture);
+            this.fixtures.set(id, {
+                ...fixture,
+                id,
+                type: fixture.type || 'generic',
+                // Preserve capabilities if sent, or infer from type
+                capabilities: fixture.capabilities || {
+                    hasColor: true,
+                    hasDimmer: true,
+                    hasMovement: isMover,
+                    hasZoom: isMover,
+                    hasFocus: isMover,
+                },
+                hasMovementChannels: fixture.hasMovementChannels ?? isMover,
+                channels: fixture.channels || [],
+            });
+            if (isMover)
+                moverCount++;
         }
+        // Store mover count for spread calculations
+        this.moverCount = moverCount;
         if (this.config.debug) {
-            console.log(`[MasterArbiter] Registered ${this.fixtures.size} fixtures`);
+            console.log(`[MasterArbiter] 🩸 Registered ${this.fixtures.size} fixtures (${moverCount} movers)`);
         }
+    }
+    /**
+     * 🩸 WAVE 382: Helper to detect moving fixtures
+     */
+    isMovingFixture(fixture) {
+        const type = (fixture.type || '').toLowerCase();
+        const zone = (fixture.zone || '').toUpperCase();
+        return type.includes('moving') ||
+            type.includes('spot') ||
+            type.includes('beam') ||
+            zone.includes('MOVING') ||
+            fixture.hasMovementChannels === true;
     }
     /**
      * Get fixture by ID
@@ -440,6 +477,10 @@ export class MasterArbiter extends EventEmitter {
         this.frameNumber++;
         // Clean up expired effects
         this.cleanupExpiredEffects();
+        // WAVE 380: Debug fixture IDs being processed
+        if (this.frameNumber % 300 === 0) { // Every ~5s at 60fps
+            console.log(`[MasterArbiter] 🩸 Processing ${this.fixtures.size} fixtures:`, Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...');
+        }
         // Arbitrate each fixture
         const fixtureTargets = [];
         for (const [fixtureId] of this.fixtures) {
@@ -516,8 +557,26 @@ export class MasterArbiter extends EventEmitter {
      */
     mergeChannelForFixture(fixtureId, channel, titanValues, manualOverride, now, controlSources) {
         const values = [];
+        // WAVE 380: TEST MODE - Heartbeat artificial cuando no hay Titan
+        // Si no hay Titan activo (silencio de Selene), generar pulso suave
+        const titanActive = this.layer0_titan !== null;
+        if (!titanActive && channel === 'dimmer') {
+            // Pulso sinusoidal: 20% base + 10% oscilación = rango 10-30%
+            const phase = (now / 3000) * Math.PI * 2; // 3 segundos por ciclo
+            const pulse = 51 + Math.sin(phase) * 25; // DMX 26-76 (~10-30%)
+            values.push({
+                layer: ControlLayer.TITAN_AI,
+                value: pulse,
+                timestamp: now,
+            });
+            controlSources[channel] = ControlLayer.TITAN_AI;
+            // No agregar otros layers cuando test mode está activo
+            return pulse;
+        }
         // Layer 0: Titan AI
         const titanValue = titanValues[channel] ?? 0;
+        // 🩸 WAVE 380.5: Kickstart REMOVED - data flow confirmed working
+        // The system now properly shows colors from vibes
         values.push({
             layer: ControlLayer.TITAN_AI,
             value: titanValue,
@@ -620,8 +679,8 @@ export class MasterArbiter extends EventEmitter {
         return { pan: basePan, tilt: baseTilt };
     }
     /**
-     * Get Titan values for a specific fixture
-     * Extracts values from LightingIntent which uses zones + palette model
+     * 🩸 WAVE 382: Get Titan values for a specific fixture
+     * NOW WITH: Zone-based color mapping + Individual mover movement
      */
     getTitanValuesForFixture(fixtureId) {
         const defaults = {
@@ -640,26 +699,92 @@ export class MasterArbiter extends EventEmitter {
         if (!this.layer0_titan?.intent)
             return defaults;
         const intent = this.layer0_titan.intent;
+        const fixture = this.fixtures.get(fixtureId);
         // Global dimmer from masterIntensity
         defaults.dimmer = intent.masterIntensity * 255;
-        // Get primary color from palette (converted to RGB)
-        if (intent.palette?.primary) {
-            const rgb = this.hslToRgb(intent.palette.primary);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎨 WAVE 382: ZONE-BASED COLOR MAPPING (No more monochrome!)
+        // ═══════════════════════════════════════════════════════════════════════
+        const zone = (fixture?.zone || 'UNASSIGNED').toUpperCase();
+        const fixtureType = (fixture?.type || 'generic').toLowerCase();
+        // Determine which palette color to use based on zone
+        let selectedColor = intent.palette?.primary; // Default fallback
+        if (zone.includes('FRONT') || zone === 'FLOOR') {
+            // 🟡 FRONT/FLOOR: Warm wash - PRIMARY color
+            selectedColor = intent.palette?.primary;
+        }
+        else if (zone.includes('BACK')) {
+            // 🔵 BACK: Cool contrast - SECONDARY color
+            selectedColor = intent.palette?.secondary || intent.palette?.primary;
+        }
+        else if (zone.includes('MOVING') || this.isMovingFixture(fixture)) {
+            // 🟣 MOVERS: Dramatic accent - ACCENT color
+            selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary;
+        }
+        else if (zone === 'STROBES' || zone === 'CENTER') {
+            // ⚪ CENTER/STROBES: Mix of primary and secondary
+            if (intent.palette?.primary && intent.palette?.secondary) {
+                // Blend between primary and secondary for center fixtures
+                selectedColor = {
+                    h: (intent.palette.primary.h + intent.palette.secondary.h) / 2,
+                    s: (intent.palette.primary.s + intent.palette.secondary.s) / 2,
+                    l: (intent.palette.primary.l + intent.palette.secondary.l) / 2,
+                };
+            }
+            else {
+                selectedColor = intent.palette?.primary;
+            }
+        }
+        // Convert selected HSL to RGB
+        if (selectedColor) {
+            const rgb = this.hslToRgb(selectedColor);
             defaults.red = rgb.r;
             defaults.green = rgb.g;
             defaults.blue = rgb.b;
         }
-        // Get movement center as pan/tilt
-        if (intent.movement) {
-            // centerX/Y are 0-1 where 0.5 = center
-            // Convert to DMX 0-255 where 128 = center
-            defaults.pan = intent.movement.centerX * 255;
-            defaults.tilt = intent.movement.centerY * 255;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 382: INDIVIDUAL MOVER MOVEMENT (No more Borg convergence!)
+        // ═══════════════════════════════════════════════════════════════════════
+        if (intent.movement && fixture) {
+            const isMover = this.isMovingFixture(fixture);
+            if (isMover && this.moverCount > 1) {
+                // Calculate this mover's index among all movers
+                const moverIndex = this.getMoverIndex(fixtureId);
+                // Calculate spread offset based on mover index
+                // Formula: Creates a fan pattern centered around the base position
+                const spreadFactor = 0.15; // How much to spread (0.15 = 15% of full range per mover)
+                const totalSpread = spreadFactor * (this.moverCount - 1);
+                const offset = (moverIndex * spreadFactor) - (totalSpread / 2);
+                // Apply offset to base position, clamped to 0-1 range
+                const basePan = intent.movement.centerX;
+                const baseTilt = intent.movement.centerY;
+                // Pan spreads horizontally, Tilt stays mostly centered with slight variation
+                const finalPan = Math.max(0, Math.min(1, basePan + offset));
+                const finalTilt = Math.max(0, Math.min(1, baseTilt + (offset * 0.3))); // Less vertical spread
+                defaults.pan = finalPan * 255;
+                defaults.tilt = finalTilt * 255;
+            }
+            else {
+                // Single mover or non-mover: use base position
+                defaults.pan = intent.movement.centerX * 255;
+                defaults.tilt = intent.movement.centerY * 255;
+            }
         }
-        // TODO: Zone-based fixture mapping could go here
-        // For now, all fixtures get the global values
-        // Future: Look up fixture's zone and apply zone-specific intent
         return defaults;
+    }
+    /**
+     * 🩸 WAVE 382: Get mover index for spread calculation
+     */
+    getMoverIndex(fixtureId) {
+        let moverIndex = 0;
+        for (const [id, fixture] of this.fixtures) {
+            if (this.isMovingFixture(fixture)) {
+                if (id === fixtureId)
+                    return moverIndex;
+                moverIndex++;
+            }
+        }
+        return 0; // Fallback
     }
     /**
      * Get manual value for a specific channel
@@ -783,10 +908,13 @@ export class MasterArbiter extends EventEmitter {
     }
     /**
      * HSL to RGB conversion
+     * 🩸 WAVE 380 FIX: HSL values are already normalized (0-1), don't divide by 360!
      */
     hslToRgb(hsl) {
         const { h, s, l } = hsl;
-        const hNorm = h / 360;
+        // 🩸 WAVE 380: h is already 0-1 from ColorPalette (HSLColor interface)
+        // Don't divide by 360 - that was destroying all colors to red!
+        const hNorm = h;
         const sNorm = s;
         const lNorm = l;
         let r, g, b;

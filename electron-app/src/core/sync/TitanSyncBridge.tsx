@@ -58,7 +58,8 @@ const generateFixturesHash = (fixtureList: any[]): string => {
 }
 
 /**
- * Sync fixtures to backend via IPC
+ * 🩸 WAVE 382: Sync fixtures to backend via IPC
+ * Now includes hasMovementChannels for proper mover detection
  */
 const syncToBackend = async (fixtureList: any[]) => {
   // Check if window.lux exists (Electron environment)
@@ -70,18 +71,28 @@ const syncToBackend = async (fixtureList: any[]) => {
   }
   
   // Convert stageStore fixtures to ArbiterFixture format
-  const arbiterFixtures = fixtureList.map(f => ({
-    id: f.id,
-    name: f.name || f.id,
-    dmxAddress: f.dmxAddress,
-    universe: f.universe || 0,
-    zone: f.zone || 'UNASSIGNED',
-    type: f.type,
-    channels: f.channels || [],
-    capabilities: f.capabilities || {},
-    position: f.position,
-    rotation: f.rotation,
-  }))
+  const arbiterFixtures = fixtureList.map(f => {
+    // 🩸 WAVE 382: Detect movers from type string
+    const type = (f.type || '').toLowerCase()
+    const hasMovementChannels = type.includes('moving') || 
+                                type.includes('spot') || 
+                                type.includes('beam') ||
+                                Boolean(f.capabilities?.hasMovement)
+    
+    return {
+      id: f.id,
+      name: f.name || f.id,
+      dmxAddress: f.dmxAddress,
+      universe: f.universe || 0,
+      zone: f.zone || 'UNASSIGNED',
+      type: f.type || 'generic',
+      channels: f.channels || [],
+      capabilities: f.capabilities || {},
+      hasMovementChannels,  // 🩸 WAVE 382: Explicit flag
+      position: f.position,
+      rotation: f.rotation,
+    }
+  })
   
   try {
     if (lux.arbiter?.setFixtures) {

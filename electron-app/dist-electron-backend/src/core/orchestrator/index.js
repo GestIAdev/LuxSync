@@ -10,6 +10,7 @@ export { setupIPCHandlers, } from './IPCHandlers';
 // WAVE 240: Event Router
 export { EventRouter, getEventRouter, resetEventRouter, } from './EventRouter';
 // WAVE 243.5: Titan Orchestrator (Simplified V2)
-export { TitanOrchestrator, getTitanOrchestrator, } from './TitanOrchestrator';
+export { TitanOrchestrator, getTitanOrchestrator, registerTitanOrchestrator, // WAVE 380: Register singleton from main.ts
+ } from './TitanOrchestrator';
 // 🎭 WAVE 374: Arbiter Handlers
 export { setupArbiterHandlers, } from './ArbiterHandlers';

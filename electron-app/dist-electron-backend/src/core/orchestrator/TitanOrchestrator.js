@@ -233,6 +233,10 @@ export class TitanOrchestrator {
         masterArbiter.setTitanIntent(titanLayer);
         // Arbitrate all layers (this merges manual overrides, effects, blackout)
         const arbitratedTarget = masterArbiter.arbitrate();
+        // WAVE 380: Debug - verify fixtures are present in loop
+        if (this.frameCount === 1 || this.frameCount % 300 === 0) {
+            console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`);
+        }
         // 4. HAL renders arbitrated target -> produces fixture states
         // Now using the new renderFromTarget method that accepts FinalLightingTarget
         const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
@@ -365,8 +369,12 @@ export class TitanOrchestrator {
                             'UNASSIGNED': 'center'
                         };
                         const mappedZone = zoneMap[f.zone] || 'center';
+                        // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
+                        // This is critical for runtimeStateMap matching in StageSimulator2
+                        const originalFixture = this.fixtures[i];
+                        const realId = originalFixture?.id || `fix_${i}`;
                         return {
-                            id: `fix_${i}`,
+                            id: realId,
                             name: f.name,
                             type: f.type,
                             zone: mappedZone,
@@ -397,9 +405,12 @@ export class TitanOrchestrator {
                 timestamp: Date.now()
             };
             // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
+            // 🩸 WAVE 380: Updated to show REAL fixture IDs
             if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
                 const f0 = truth.hardware.fixtures[0];
-                console.log(`[📡 BROADCAST] fix_0 | pan=${f0.pan.toFixed(3)} tilt=${f0.tilt.toFixed(3)} | physPan=${f0.physicalPan.toFixed(3)}`);
+                const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ');
+                console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`);
+                console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`);
             }
             this.onBroadcast(truth);
             // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
@@ -555,18 +566,26 @@ export class TitanOrchestrator {
      * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
      * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
      * WAVE 374: Register fixtures in MasterArbiter
+     * WAVE 382: Pass FULL fixture data including capabilities and hasMovementChannels
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setFixtures(fixtures) {
         this.fixtures = fixtures;
-        // 🎭 WAVE 374: Register fixtures in MasterArbiter
+        // WAVE 380: Log fixture ingestion
+        console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`);
+        console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...');
+        // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
+        // Pass all relevant data - arbiter needs type, capabilities, hasMovementChannels
         masterArbiter.setFixtures(fixtures.map(f => ({
             id: f.id,
             name: f.name,
             zone: f.zone,
-            type: f.type,
+            type: f.type || 'generic',
             dmxAddress: f.dmxAddress,
             universe: f.universe || 1,
+            capabilities: f.capabilities,
+            hasMovementChannels: f.hasMovementChannels,
+            channels: f.channels,
         })));
         // 🔥 WAVE 339.6: Register movers in PhysicsDriver
         // Without this, PhysicsDriver doesn't know about the fixtures and returns fallback values
@@ -603,9 +622,25 @@ export class TitanOrchestrator {
 }
 // Singleton instance
 let orchestratorInstance = null;
+/**
+ * Get the TitanOrchestrator singleton
+ * WAVE 380: Returns the registered instance (from main.ts) or creates a new one
+ */
 export function getTitanOrchestrator() {
     if (!orchestratorInstance) {
+        console.warn('[TitanOrchestrator] ⚠️ No instance registered, creating new one');
         orchestratorInstance = new TitanOrchestrator();
     }
     return orchestratorInstance;
+}
+/**
+ * WAVE 380: Register an existing instance as the singleton
+ * Call this from main.ts after creating the orchestrator
+ */
+export function registerTitanOrchestrator(instance) {
+    if (orchestratorInstance && orchestratorInstance !== instance) {
+        console.warn('[TitanOrchestrator] ⚠️ Replacing existing singleton instance');
+    }
+    orchestratorInstance = instance;
+    console.log('[TitanOrchestrator] ✅ Instance registered as singleton');
 }

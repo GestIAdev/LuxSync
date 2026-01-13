@@ -665,6 +665,7 @@ export class TitanOrchestrator {
    * WAVE 252: Set fixtures from ConfigManager (real data, no mocks)
    * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
    * WAVE 374: Register fixtures in MasterArbiter
+   * WAVE 382: Pass FULL fixture data including capabilities and hasMovementChannels
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setFixtures(fixtures: any[]): void {
@@ -674,14 +675,18 @@ export class TitanOrchestrator {
     console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`)
     console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...')
     
-    // 🎭 WAVE 374: Register fixtures in MasterArbiter
+    // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
+    // Pass all relevant data - arbiter needs type, capabilities, hasMovementChannels
     masterArbiter.setFixtures(fixtures.map(f => ({
       id: f.id,
       name: f.name,
       zone: f.zone,
-      type: f.type,
+      type: f.type || 'generic',
       dmxAddress: f.dmxAddress,
       universe: f.universe || 1,
+      capabilities: f.capabilities,
+      hasMovementChannels: f.hasMovementChannels,
+      channels: f.channels,
     })))
     
     // 🔥 WAVE 339.6: Register movers in PhysicsDriver

@@ -1,6 +1,7 @@
 /**
  * 🪟 TITLE BAR - WAVE 35.3: Global Window Drag Region
  * WAVE 39.9: FLEXBOX STRUCTURAL - No more position:fixed
+ * WAVE 375: Zen Mode Toggle Button
  * Always visible, physically occupies space in DOM
  */
 
@@ -22,11 +23,69 @@
   -webkit-app-region: drag;
 }
 
+/* 🧘 WAVE 375: Zen Mode Toggle Button */
+.zen-mode-toggle {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(0, 255, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+.zen-mode-toggle:hover {
+  background: rgba(0, 255, 255, 0.1);
+  color: rgba(0, 255, 255, 0.8);
+}
+
+.zen-mode-toggle.active {
+  color: var(--accent-primary, #00ffff);
+  background: rgba(0, 255, 255, 0.15);
+}
+
+.zen-mode-toggle.active:hover {
+  background: rgba(0, 255, 255, 0.25);
+}
+
+.zen-icon {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zen-mode-toggle.active .zen-icon {
+  transform: rotate(180deg);
+}
+
+/* Zen Mode Indicator */
+.zen-mode-indicator {
+  margin-left: 12px;
+  padding: 2px 8px;
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent-primary, #00ffff);
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 3px;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  animation: zen-pulse 2s ease-in-out infinite;
+}
+
+@keyframes zen-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
 .title-bar-drag {
   flex: 1;
   display: flex;
   align-items: center;
-  padding-left: 16px;
+  padding-left: 8px;
   height: 100%;
 }
 
@@ -62,5 +121,9 @@
     padding-left: 0;
     padding-right: 16px;
     justify-content: flex-end;
+  }
+  
+  .zen-mode-toggle {
+    order: 1;
   }
 }

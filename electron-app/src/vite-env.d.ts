@@ -285,6 +285,65 @@ declare global {
     resetConfig: () => Promise<{ success: boolean; config?: LuxSyncConfig }>
     
     // ============================================
+    // 🎛️ WAVE 375: MASTER ARBITER API
+    // ============================================
+    arbiter: {
+      /** Get Arbiter status */
+      status: () => Promise<{
+        success: boolean
+        status: {
+          layer: 'ai' | 'manual'
+          hasManualOverrides: boolean
+          grandMaster: number
+          blackout: boolean
+          activeOverrides?: Record<string, unknown>
+        }
+      }>
+      
+      /** Set Grand Master intensity (0-1) */
+      setGrandMaster: (value: number) => Promise<void>
+      
+      /** 
+       * 🎛️ WAVE 375.3: Set manual override for fixtures
+       */
+      setManual: (args: {
+        fixtureIds: string[]
+        controls: Record<string, number>
+        channels?: string[]
+        source?: string
+        autoReleaseMs?: number
+      }) => Promise<Array<{ success: boolean; fixtureId: string; channels: string[] }>>
+      
+      /**
+       * 🎛️ WAVE 375.3: Clear manual override for specific fixtures/channels
+       */
+      clearManual: (args: {
+        fixtureIds: string[]
+        channels?: string[]
+      }) => Promise<Array<{ success: boolean; fixtureId: string }>>
+      
+      /** Clear ALL manual overrides - return to AI control */
+      clearAllManual: () => Promise<{ success: boolean }>
+      
+      /** Toggle blackout state */
+      toggleBlackout: () => Promise<{ success: boolean; active: boolean }>
+      
+      /** Set blackout state */
+      setBlackout: (active: boolean) => Promise<{ success: boolean; active: boolean }>
+      
+      /** Check if fixture has manual override */
+      hasManual: (fixtureId: string, channel?: string) => Promise<{ success: boolean; hasOverride: boolean }>
+      
+      /** Subscribe to Arbiter status changes */
+      onStatusChange: (callback: (status: {
+        layer: 'ai' | 'manual'
+        hasManualOverrides: boolean
+        grandMaster: number
+        blackout: boolean
+      }) => void) => () => void
+    }
+    
+    // ============================================
     // 🔌 WAVE 365: Stage Persistence V2 API
     // 🎯 WAVE 369.5: Native File Dialogs
     // ============================================

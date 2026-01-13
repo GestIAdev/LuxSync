@@ -161,15 +161,40 @@ export function setupArbiterHandlers() {
         return { success: true };
     });
     // ═══════════════════════════════════════════════════════════════════════
+    // GRAND MASTER
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 375.3: Grand Master placeholder
+    // Full implementation deferred - for now just log
+    let grandMasterValue = 1.0;
+    /**
+     * Set Grand Master intensity (0-1)
+     */
+    ipcMain.handle('lux:arbiter:setGrandMaster', (_event, value) => {
+        grandMasterValue = Math.max(0, Math.min(1, value));
+        console.log(`[Arbiter] 🎚️ Grand Master → ${Math.round(grandMasterValue * 100)}%`);
+        // TODO WAVE 376: Actually apply grand master to output
+        return { success: true, value: grandMasterValue };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
     // STATUS & DEBUG
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * Get arbiter status
+     * Get arbiter status (WAVE 375.3: Extended format for frontend)
      */
     ipcMain.handle('lux:arbiter:status', () => {
+        const rawStatus = masterArbiter.getStatus();
+        // Transform to frontend-expected format
         return {
             success: true,
-            status: masterArbiter.getStatus(),
+            status: {
+                // Original fields
+                ...rawStatus,
+                // WAVE 375.3: Extended fields for UI
+                layer: rawStatus.manualOverrideCount > 0 ? 'manual' : 'ai',
+                hasManualOverrides: rawStatus.manualOverrideCount > 0,
+                grandMaster: grandMasterValue,
+                blackout: rawStatus.blackoutActive,
+            },
         };
     });
     /**
@@ -177,7 +202,8 @@ export function setupArbiterHandlers() {
      */
     ipcMain.handle('lux:arbiter:reset', () => {
         masterArbiter.reset();
+        grandMasterValue = 1.0;
         return { success: true };
     });
-    console.log('[IPC] 🎭 Arbiter handlers registered (10 channels)');
+    console.log('[IPC] 🎭 Arbiter handlers registered (11 channels)');
 }

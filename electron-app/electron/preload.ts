@@ -474,6 +474,82 @@ const luxApi = {
     ipcRenderer.invoke('lux:reset-config'),
   
   // ============================================
+  // 🎛️ WAVE 375: MASTER ARBITER API
+  // ============================================
+  arbiter: {
+    /** Get Arbiter status (layer, hasManualOverrides, grandMaster, blackout) */
+    status: () => ipcRenderer.invoke('lux:arbiter:status'),
+    
+    /** Set Grand Master intensity (0-1) */
+    setGrandMaster: (value: number) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', value),
+    
+    /** 
+     * 🎛️ WAVE 375.3: Set manual override for fixtures
+     * @param fixtureIds - Array of fixture IDs to override
+     * @param controls - Control values { dimmer?, r?, g?, b?, pan?, tilt? }
+     * @param channels - Which channels to override (optional)
+     * @param source - Source identifier (default: 'ui_programmer')
+     */
+    setManual: (args: {
+      fixtureIds: string[]
+      controls: Record<string, number>
+      channels?: string[]
+      source?: string
+      autoReleaseMs?: number
+    }) => {
+      // Set override for each fixture
+      const promises = args.fixtureIds.map(fixtureId => 
+        ipcRenderer.invoke('lux:arbiter:setManual', {
+          fixtureId,
+          controls: args.controls,
+          channels: args.channels,
+          source: args.source || 'ui_programmer',
+          autoReleaseMs: args.autoReleaseMs,
+        })
+      )
+      return Promise.all(promises)
+    },
+    
+    /**
+     * 🎛️ WAVE 375.3: Clear manual override for specific fixtures/channels
+     * @param fixtureIds - Array of fixture IDs to release
+     * @param channels - Optional specific channels to release
+     */
+    clearManual: (args: {
+      fixtureIds: string[]
+      channels?: string[]
+    }) => {
+      const promises = args.fixtureIds.map(fixtureId =>
+        ipcRenderer.invoke('lux:arbiter:clearManual', {
+          fixtureId,
+          channels: args.channels,
+        })
+      )
+      return Promise.all(promises)
+    },
+    
+    /** Clear ALL manual overrides - return to AI control */
+    clearAllManual: () => ipcRenderer.invoke('lux:arbiter:clearAllManual'),
+    
+    /** Toggle blackout state */
+    toggleBlackout: () => ipcRenderer.invoke('lux:arbiter:toggleBlackout'),
+    
+    /** Set blackout state */
+    setBlackout: (active: boolean) => ipcRenderer.invoke('lux:arbiter:blackout', active),
+    
+    /** Check if fixture has manual override */
+    hasManual: (fixtureId: string, channel?: string) => 
+      ipcRenderer.invoke('lux:arbiter:hasManual', { fixtureId, channel }),
+    
+    /** Subscribe to Arbiter status changes */
+    onStatusChange: (callback: (status: { layer: 'ai' | 'manual'; hasManualOverrides: boolean; grandMaster: number; blackout: boolean }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
+      ipcRenderer.on('lux:arbiter:status-change', handler)
+      return () => ipcRenderer.removeListener('lux:arbiter:status-change', handler)
+    },
+  },
+
+  // ============================================
   // 🔌 WAVE 369.5: STAGE PERSISTENCE V2 + FILE DIALOGS
   // ============================================
   stage: {

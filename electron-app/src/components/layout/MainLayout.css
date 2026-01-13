@@ -3,6 +3,7 @@
  * WAVE 9: Commander Layout Styles
  * WAVE 35.3: Padding for global TitleBar (32px)
  * WAVE 39.9: FLEXBOX STRUCTURAL LAYOUT - No more position:fixed overlap bugs
+ * WAVE 375: ZEN MODE - Sidebar collapse with smooth transitions
  */
 
 /* 🏗️ OUTER SHELL: Flex column to stack TitleBar + content vertically */
@@ -24,10 +25,44 @@
   background: var(--bg-primary, #0a0a0f);
 }
 
+/* 🧘 WAVE 375: Sidebar Container with Zen Mode collapse */
+.sidebar-container {
+  width: 280px;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+.sidebar-container.collapsed {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ensure Sidebar inside container fills it */
+.sidebar-container > * {
+  width: 280px;
+  min-width: 280px;
+}
+
 .layout-content {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;   /* Allow shrinking */
   min-height: 0;  /* Allow shrinking for overflow */
+  /* 🧘 WAVE 375: Smooth expansion when sidebar collapses */
+  transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 🧘 WAVE 375: Zen Mode active - subtle visual cue */
+.app-layout.zen-mode .layout-content {
+  /* Canvas/Viewport gets all the space - flex handles this automatically */
+  border-left: 1px solid rgba(0, 255, 255, 0.05);
+}
+
+.app-layout.zen-mode .main-layout {
+  /* Optional: slight border glow when maximized */
+  box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.03);
 }

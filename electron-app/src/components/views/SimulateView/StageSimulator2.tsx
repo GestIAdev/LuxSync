@@ -236,12 +236,16 @@ export const StageSimulator2: React.FC = () => {
         transitionProgress
       );
       
-      // 🛡️ WAVE 420: ANTI-NUKE NORMALIZATION
+      // 🛡️ WAVE 420: ANTI-NUKE NORMALIZATION (BULLETPROOF VERSION)
       // Backend sends DMX (0-255), Frontend expects normalized (0-1)
-      // If intensity > 1.0 → normalize by dividing by 255, clamp to [0,1]
-      const safeIntensity = finalIntensity > 1.0
-        ? Math.max(0, Math.min(1, finalIntensity / 255))
-        : finalIntensity;
+      // Also protect against NaN, undefined, Infinity
+      const rawIntensity = finalIntensity ?? 0
+      const normalizedIntensity = !Number.isFinite(rawIntensity) 
+        ? 0  // NaN or Infinity → 0
+        : rawIntensity > 1.0 
+          ? rawIntensity / 255  // DMX 0-255 → normalize
+          : rawIntensity
+      const safeIntensity = Math.max(0, Math.min(1, normalizedIntensity))
       
       return {
         id: fixtureId,
@@ -374,14 +378,21 @@ export const StageSimulator2: React.FC = () => {
     // 🎬 WAVE 339: Uses PHYSICS positions and OPTICS for realistic visualization
     // ─────────────────────────────────────────────────────────────────────────
     
-    const renderFixture = (fixture: FixtureVisual, x: number, y: number) => {
+    const renderFixture = (fixture: FixtureVisual, inputX: number, inputY: number) => {
       const { 
-        id, r, g, b, intensity, pan, tilt, type,
+        id, r, g, b, intensity: rawIntensity, pan, tilt, type,
         // 🔍 WAVE 339: Optics
         zoom, focus,
         // 🎛️ WAVE 339: Physics - USE THESE for visual position
         physicalPan, physicalTilt, panVelocity, tiltVelocity,
       } = fixture;
+      
+      // 🛡️ WAVE 420: BULLETPROOF - Protect against NaN/Infinity/undefined
+      // Canvas crashes with "non-finite" values in createRadialGradient
+      const intensity = Number.isFinite(rawIntensity) ? Math.max(0, Math.min(1, rawIntensity)) : 0
+      const x = Number.isFinite(inputX) ? inputX : 100
+      const y = Number.isFinite(inputY) ? inputY : 100
+      
       const isSelected = selectedIds.has(id);
       const isHovered = hoveredId === id;
       

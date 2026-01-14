@@ -496,7 +496,7 @@ const luxApi = {
     status: () => ipcRenderer.invoke('lux:arbiter:status'),
     
     /** Set Grand Master intensity (0-1) */
-    setGrandMaster: (value: number) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', value),
+    setGrandMaster: (value: number) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', { value }),
     
     /** 
      * 🎛️ WAVE 375.3: Set manual override for fixtures

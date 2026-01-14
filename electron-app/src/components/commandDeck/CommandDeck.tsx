@@ -37,10 +37,15 @@ export const CommandDeck: React.FC = () => {
     const fetchStatus = async () => {
       try {
         const response = await window.lux?.arbiter?.status()
-        if (response?.success && response.status) {
+        if (response) {
+          // 🛡️ WAVE 420: Anti-nuke protection
+          // grandMaster should be 0-1, but if DMX (0-255) leaks through, normalize it
+          const rawGM = (response as any).grandMaster ?? response.status?.grandMaster ?? 1.0
+          const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
+          
           setArbiterStatus({
-            hasManualOverrides: response.status.hasManualOverrides ?? false,
-            grandMaster: response.status.grandMaster ?? 1.0
+            hasManualOverrides: response.status?.hasManualOverrides ?? false,
+            grandMaster: Math.max(0, Math.min(1, safeGM))
           })
         }
       } catch (err) {
@@ -52,9 +57,13 @@ export const CommandDeck: React.FC = () => {
     
     // Subscribe to changes
     const unsubscribe = window.lux?.arbiter?.onStatusChange?.((status) => {
+      // 🛡️ WAVE 420: Anti-nuke protection on status updates
+      const rawGM = status.grandMaster ?? 1.0
+      const safeGM = rawGM > 1 ? rawGM / 255 : rawGM
+      
       setArbiterStatus({
         hasManualOverrides: status.hasManualOverrides ?? false,
-        grandMaster: status.grandMaster ?? 1.0
+        grandMaster: Math.max(0, Math.min(1, safeGM))
       })
     })
     

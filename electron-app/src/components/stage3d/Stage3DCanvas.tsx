@@ -114,7 +114,20 @@ const WebGLContextHandler: React.FC = () => {
 // SMART FIXTURE WRAPPER - WAVE 378: Memoized, no debug logs
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SmartFixture3D = memo<any>(({ layout, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
+interface SmartFixture3DProps {
+  layout: {
+    id: string
+    position: { x: number; y: number; z: number }
+    rotation: { x: number; y: number; z: number }
+    type: 'par' | 'moving' | 'strobe' | 'laser'
+  }
+  isSelected: boolean
+  isHovered: boolean
+  allFixtureIds: string[]
+  fixtureIndex: number
+}
+
+const SmartFixture3D = memo<SmartFixture3DProps>(({ layout, isSelected, isHovered, allFixtureIds, fixtureIndex }) => {
   // 🔥 WAVE 378: truthData ya NO se pasa como prop
   // Fixture3D lee directamente del transient store via getTransientFixture(id)
   // Esto elimina el re-render cascade completamente

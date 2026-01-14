@@ -239,7 +239,8 @@ export interface EngineConfig {
   hardware: HardwareConfig
 }
 
-export type SeleneMode = 'flow' | 'selene' | 'locked'
+// WAVE 422: 'flow' mode ELIMINATED - system is Auto-Override
+export type SeleneMode = 'selene' | 'locked'
 
 export interface AudioConfig {
   sampleRate: number        // 44100 default

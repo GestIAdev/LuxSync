@@ -295,18 +295,18 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
       }
       
       // Subscribe to mode changes from Backend
-      // 🔥 WAVE 74: Sync BOTH seleneStore AND controlStore
-      // This ensures StageSimulator2 uses Selene colors when backend is in 'selene' mode
+      // 🔥 WAVE 74 + WAVE 427: Sync controlStore (flow ELIMINATED)
       if (window.lux?.onModeChange) {
         const unsubMode = window.lux.onModeChange((data: { mode: string; brain: boolean }) => {
-          const uiMode = data.mode as 'flow' | 'selene' | 'locked'
+          // WAVE 427: Backend may still send 'flow' - map it to 'selene'
+          const backendMode = data.mode as 'selene' | 'locked' | string
+          const uiMode: 'selene' | 'locked' = (backendMode === 'locked') ? 'locked' : 'selene'
           useSeleneStore.getState().setMode(uiMode)
           
-          // 🔥 WAVE 74: CRITICAL FIX - Sync controlStore.globalMode
-          // Without this, StageSimulator2 uses Flow/Fuego colors instead of Selene
-          const globalMode: GlobalMode = uiMode === 'locked' ? 'selene' : uiMode
+          // 🔥 WAVE 427: 'flow' eliminated - always use 'selene' for AI control
+          const globalMode: GlobalMode = 'selene'
           useControlStore.getState().setGlobalMode(globalMode)
-          console.log(`[TrinityProvider] 🔥 WAVE 74: Backend mode sync → controlStore.globalMode = '${globalMode}'`)
+          console.log(`[TrinityProvider] 🔥 WAVE 427: Backend mode → '${globalMode}' (from ${backendMode})`)
         })
         // Store cleanup function (combined with state update unsub)
         const originalUnsub = unsubscribeRef.current
@@ -440,24 +440,23 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
             setInitialized(true)
             
             if (fullState.selene.mode) {
-              // 🔥 WAVE 78: FORCED SELENE MODE - Frontend overrides backend startup mode
-              // Detect if backend started in wrong mode (Flow) and force Selene
-              let initialMode = fullState.selene.mode as 'flow' | 'selene' | 'locked'
+              // 🔥 WAVE 427: FORCED SELENE MODE - 'flow' no longer exists
+              // Backend may still send 'flow' at startup - always map to 'selene'
+              const backendMode = fullState.selene.mode as string
+              const initialMode: 'selene' | 'locked' = (backendMode === 'locked') ? 'locked' : 'selene'
               
-              if (initialMode === 'flow') {
-                console.log('[TrinityProvider] ⚠️ Backend in Flow mode at startup - Forcing SELENE...')
-                window.lux.setMode('selene')  // ← THE COMMAND - Force backend to Selene
-                initialMode = 'selene'
+              if (backendMode === 'flow') {
+                console.log('[TrinityProvider] ⚠️ Backend in legacy Flow mode at startup - Forcing SELENE...')
+                window.lux.setMode('selene')  // ← Force backend to Selene
               }
               
               // 1. Update brain state with forced mode
               useSeleneStore.getState().setMode(initialMode)
               
-              // 2. 🔥 WAVE 77 FIX: Update UI Global Mode (now with forced mode)
-              // This ensures StageSimulator shows Selene colors even if backend started in Flow
-              const globalMode = initialMode === 'locked' ? 'selene' : initialMode
+              // 2. 🔥 WAVE 427: Always use 'selene' for GlobalMode (AI control)
+              const globalMode: GlobalMode = 'selene'
               useControlStore.getState().setGlobalMode(globalMode)
-              console.log(`[TrinityProvider] � WAVE 78: Startup Complete → System locked to '${globalMode}'`)
+              console.log(`[TrinityProvider] 🔥 WAVE 427: Startup Complete → System locked to '${globalMode}'`)
             }
             
             if (fullState.selene.brainMode) {

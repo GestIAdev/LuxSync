@@ -36,10 +36,9 @@ const MODE_COLORS: Record<string, string> = {
   locked: '#FF4444',
 }
 
-// 🎨 WAVE 33.2: Mode config for switcher
+// 🎨 WAVE 33.2 + WAVE 427: Mode config (flow ELIMINATED - Auto-Override system)
 const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = [
   { id: 'manual', label: 'MAN', icon: '🎚️', color: '#FF6B6B' },
-  { id: 'flow', label: 'FLOW', icon: '🌊', color: '#4ADE80' },
   { id: 'selene', label: 'AI', icon: '🌙', color: '#7C4DFF' },
 ]
 

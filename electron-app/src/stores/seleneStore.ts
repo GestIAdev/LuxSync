@@ -10,7 +10,8 @@ import { create } from 'zustand'
 // ============================================
 
 export type BrainMode = 'reactive' | 'intelligent'
-export type SeleneMode = 'flow' | 'selene' | 'locked'
+// WAVE 422: 'flow' mode ELIMINATED - system is Auto-Override
+export type SeleneMode = 'selene' | 'locked'
 export type PaletteSource = 'memory' | 'procedural' | 'fallback'
 export type LogEntryType = 'LEARN' | 'MEMORY' | 'SECTION' | 'GENRE' | 'MODE' | 'INIT' | 'ERROR' | 'PALETTE' | 'ENERGY'
 
@@ -288,7 +289,7 @@ export function initializeSeleneStoreIPC(): () => void {
       const unsub = seleneApi.onBrainMetrics((metrics: any) => {
         useSeleneStore.setState({
           brainConnected: metrics.hasMemory ?? false,
-          currentMode: metrics.mode ?? 'flow',
+          currentMode: metrics.mode ?? 'selene', // WAVE 422: Default to AI control
           energy: metrics.energy ?? 0,
           confidence: metrics.confidence ?? 0.5,
           beautyScore: metrics.beautyScore ?? 0.75,

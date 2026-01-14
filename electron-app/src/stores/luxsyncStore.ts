@@ -9,7 +9,8 @@ import { create } from 'zustand'
 // TYPES
 // ============================================
 
-export type SeleneMode = 'flow' | 'selene' | 'locked'
+// WAVE 422: 'flow' mode ELIMINATED - system is Auto-Override
+export type SeleneMode = 'selene' | 'locked'
 export type PaletteId = 'fire' | 'ice' | 'jungle' | 'neon'
 export type MoodType = 'peaceful' | 'energetic' | 'chaotic' | 'harmonious' | 'building' | 'dropping'
 export type EffectId = 'strobe' | 'blinder' | 'smoke' | 'laser' | 'rainbow' | 'police' | 'beam' | 'prism'
@@ -198,7 +199,7 @@ export const useLuxSyncStore = create<LuxSyncStore>((set) => ({
   // SELENE STATE
   // ============================================
   selene: {
-    mode: 'flow' as SeleneMode,
+    mode: 'selene' as SeleneMode, // WAVE 422: Default to AI control
     mood: 'harmonious' as MoodType,
     generation: 1,
     health: 1,

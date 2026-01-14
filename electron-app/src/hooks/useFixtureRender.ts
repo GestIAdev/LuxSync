@@ -84,16 +84,17 @@ export function calculateFixtureRenderValues(
   const tiltVelocity = truthData?.tiltVelocity ?? 0
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔙 WAVE 80: RESTORED LOCAL LOGIC FOR FLOW MODE
-  // 🔧 WAVE 350.8: ONLY apply Flow when globalMode === 'flow' (not when null)
-  // PRIORITY 2: GLOBAL MODE 'FLOW' (Color & Movement Override)
-  // Only apply if EXPLICITLY in Flow mode AND NOT overridden by fixture override
+  // � WAVE 427: FLOW MODE ELIMINATED
+  // The old "flow" mode logic is now REMOVED.
+  // System uses Auto-Override: when user touches a control, that fixture 
+  // gets a manual override. Otherwise, Selene AI controls everything.
   // 
-  // When globalMode is null or 'selene', respect backend (Selene AI) values.
-  // This fixes Canvas 3D showing circles instead of linear sweep pattern.
+  // Colors and movement now come from:
+  // - Selene AI (default)
+  // - Manual override (when user explicitly controls a fixture)
   // ═══════════════════════════════════════════════════════════════════════
   
-  if (globalMode === 'flow') {
+  if (globalMode === 'manual') {
     // 🎨 Color: Apply Living Palette unless fixture has color override
     const hasColorOverride = overrideMask?.color === true
     

@@ -236,6 +236,13 @@ export const StageSimulator2: React.FC = () => {
         transitionProgress
       );
       
+      // 🛡️ WAVE 420: ANTI-NUKE NORMALIZATION
+      // Backend sends DMX (0-255), Frontend expects normalized (0-1)
+      // If intensity > 1.0 → normalize by dividing by 255, clamp to [0,1]
+      const safeIntensity = finalIntensity > 1.0
+        ? Math.max(0, Math.min(1, finalIntensity / 255))
+        : finalIntensity;
+      
       return {
         id: fixtureId,
         x: 0,
@@ -243,7 +250,7 @@ export const StageSimulator2: React.FC = () => {
         r: finalColor.r,
         g: finalColor.g,
         b: finalColor.b,
-        intensity: finalIntensity,
+        intensity: safeIntensity,
         pan: finalPan,
         tilt: finalTilt,
         type,

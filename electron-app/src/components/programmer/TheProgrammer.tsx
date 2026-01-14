@@ -192,11 +192,21 @@ export const TheProgrammer: React.FC = () => {
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // RENDER - Solo si hay selección
+  // RENDER - WAVE 420: Empty state AFTER all hooks (React Rules of Hooks)
   // ═══════════════════════════════════════════════════════════════════════
   
   if (selectedIds.length === 0) {
-    return null
+    return (
+      <div className="the-programmer empty-state">
+        <div className="empty-state-content">
+          <span className="empty-state-icon">🎛️</span>
+          <h3 className="empty-state-title">No fixtures selected</h3>
+          <p className="empty-state-hint">
+            Click fixtures in the stage view to start programming
+          </p>
+        </div>
+      </div>
+    )
   }
   
   return (

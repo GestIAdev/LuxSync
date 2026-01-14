@@ -80,9 +80,8 @@ interface TabConfig {
 ```
 
 **TAB_ICONS actualizado:**
-- Removidos: Activity, Settings, PencilRuler
-- Añadidos: Zap, Crosshair
-- TODO: Custom SVGs (IconDmxBolt, etc.)
+- Removidos: Lucide genéricos (Zap, Monitor, Crosshair, Brain)
+- Añadidos: Custom SVGs (IconDashboard, IconLiveStage, IconCalibration, IconLuxCore)
 
 ### 3. `ContentArea.tsx`
 
@@ -103,6 +102,20 @@ switch (renderedTab) {
 const WEBGL_VIEWS = ['live', 'calibration']  // Era ['constructor', 'simulate']
 ```
 
+### 4. `NavigationIcons.tsx` ✨ NUEVO
+
+**Custom SVG Icons - Cyberpunk HUD Aesthetic:**
+- `IconDashboard` - Lightning bolt con frame militar
+- `IconLiveStage` - Stage con spotlights + targeting reticle
+- `IconCalibration` - Crosshair de precisión + corner brackets
+- `IconLuxCore` - Neural network con data flow
+
+Todos con:
+- Stroke weight 1.8 (consistente con HudIcons.tsx)
+- Corner brackets / HUD frames
+- Opacity variations para depth
+- currentColor para theming dinámico
+
 ---
 
 ## 🔀 MAPEO DE VISTAS
@@ -119,11 +132,13 @@ const WEBGL_VIEWS = ['live', 'calibration']  // Era ['constructor', 'simulate']
 
 ## ⚠️ DEUDA TÉCNICA
 
-### Para Phase 3+ 
+### ~~Para Phase 3+~~ ✅ ELIMINADO
 
-1. **Custom SVG Icons** - Actualmente usando Lucide temporales:
-   - `dashboard`: Zap → IconDmxBolt (custom)
-   - `calibration`: Crosshair → Custom target SVG
+1. ~~**Custom SVG Icons**~~ ✅ COMPLETE
+   - ✅ `dashboard`: IconDashboard (custom lightning + HUD frame)
+   - ✅ `live`: IconLiveStage (custom stage + spotlights)
+   - ✅ `calibration`: IconCalibration (custom crosshair + precision grid)
+   - ✅ `core`: IconLuxCore (custom neural network)
    
 2. **CalibrationView** - Actualmente reusa StageConstructorView
    - Necesita RadarXY widget (Phase 4)
@@ -164,7 +179,7 @@ const WEBGL_VIEWS = ['live', 'calibration']  // Era ['constructor', 'simulate']
 ## 📝 COMMIT INFO
 
 ```
-WAVE 423: STAGE SYSTEM - 3 Stages + 1 Tool Architecture
+WAVE 423: STAGE SYSTEM + Custom Navigation Icons
 
 NAVIGATION:
 - MODIFY: navigationStore.ts (5 tabs → 4 tabs)
@@ -174,15 +189,23 @@ NAVIGATION:
 
 ROUTING:
 - MODIFY: ContentArea.tsx (new view mapping)
-- MODIFY: Sidebar.tsx (new colors, icons)
+- MODIFY: Sidebar.tsx (custom icons, new colors)
+
+ICONS:
+- CREATE: NavigationIcons.tsx (4 custom SVG icons)
+- IconDashboard: Lightning bolt + military HUD frame
+- IconLiveStage: Stage spotlights + targeting reticle
+- IconCalibration: Precision crosshair + corner brackets
+- IconLuxCore: Neural network + data flow nodes
 
 Tab mapping:
   live → dashboard (DashboardView)
-  simulate → live (StageViewDual)  
+  simulate → live (StageViewDual)
   constructor → calibration (StageConstructorView)
   core → core (LuxCoreView)
   setup → absorbed into calibration
 
+Style: Cyberpunk HUD aesthetic - angular, military, high-tech
 Phase 2 COMPLETE | Next: Phase 3 (Dashboard Simplify)
 ```
 

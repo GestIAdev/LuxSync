@@ -1,11 +1,17 @@
 /**
  * 📱 SIDEBAR - WAVE 423: Stage System Navigation
  * 3 Stages + 1 Tool Architecture
+ * WAVE 423.1: Custom SVG icons - cyberpunk HUD aesthetic
  */
 
 import React from 'react'
 import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
-import { Monitor, Brain, LucideIcon, Crosshair, Zap } from 'lucide-react'
+import { 
+  IconDashboard, 
+  IconLiveStage, 
+  IconCalibration, 
+  IconLuxCore 
+} from './NavigationIcons'
 import './Sidebar.css'
 
 // WAVE 423: Colores por tab - 3 Stages + 1 Tool
@@ -16,12 +22,12 @@ const TAB_COLORS: Record<TabId, string> = {
   'core': '#f59e0b',         // Naranja (AI Monitor)
 }
 
-// WAVE 423: Icons - Lucide temporales (TODO: custom SVGs)
-const TAB_ICONS: Record<string, LucideIcon> = {
-  'bolt': Zap,           // Dashboard (TODO: IconDmxBolt)
-  'monitor': Monitor,    // Live Stage
-  'target': Crosshair,   // Calibration (TODO: custom SVG)
-  'brain': Brain,        // LUX CORE
+// WAVE 423.1: Custom SVG Icons - NO Lucide genéricos
+const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
+  'bolt': IconDashboard,      // Dashboard (Command lightning)
+  'monitor': IconLiveStage,   // Live Stage (spotlights)
+  'target': IconCalibration,  // Calibration (crosshair)
+  'brain': IconLuxCore,       // LUX CORE (neural network)
 }
 
 const Sidebar: React.FC = () => {

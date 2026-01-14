@@ -52,7 +52,7 @@ export const TABS: TabConfig[] = [
   {
     id: 'dashboard',
     label: 'COMMAND',
-    icon: 'bolt',           // TODO: Usar IconDmxBolt (custom SVG)
+    icon: 'bolt',           // IconDashboard (custom SVG)
     customIcon: true,
     type: 'stage',
     shortcut: 'Alt+1',
@@ -61,8 +61,8 @@ export const TABS: TabConfig[] = [
   {
     id: 'live',
     label: 'LIVE',
-    icon: 'monitor',        // Lucide: Monitor (mantener por ahora)
-    customIcon: false,
+    icon: 'monitor',        // IconLiveStage (custom SVG)
+    customIcon: true,
     type: 'stage',
     shortcut: 'Alt+2',
     description: 'Live Performance - Stage Simulator',
@@ -70,7 +70,7 @@ export const TABS: TabConfig[] = [
   {
     id: 'calibration',
     label: 'CALIBRATE',
-    icon: 'target',         // TODO: Crear SVG custom
+    icon: 'target',         // IconCalibration (custom SVG)
     customIcon: true,
     type: 'stage',
     shortcut: 'Alt+3',
@@ -81,8 +81,8 @@ export const TABS: TabConfig[] = [
   {
     id: 'core',
     label: 'LUX CORE',
-    icon: 'brain',          // Lucide: Brain (mantener)
-    customIcon: false,
+    icon: 'brain',          // IconLuxCore (custom SVG)
+    customIcon: true,
     type: 'tool',
     shortcut: 'Alt+4',
     description: 'Selene AI Monitoring & Telemetry',

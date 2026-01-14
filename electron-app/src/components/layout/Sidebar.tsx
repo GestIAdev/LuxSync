@@ -83,9 +83,9 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* WAVE 428.5: INLINE CSS - Scanner fulminado, isla anclada */}
+      {/* WAVE 428.6: INLINE CSS - Zen Mode compatible */}
       <style>{`
-/* ═══ WAVE 428.5: ANCLAJE FORZADO - Sobreescribir MainLayout.css ═══ */
+/* ═══ WAVE 428.6: ANCLAJE FORZADO + ZEN MODE FIX ═══ */
 .sidebar-container {
   width: 240px !important;
   min-width: 240px !important;
@@ -93,6 +93,16 @@ const Sidebar: React.FC = () => {
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease !important;
+}
+
+/* WAVE 428.6: Zen Mode - Colapsar sidebar */
+.sidebar-container.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .sidebar-container > * {
@@ -105,6 +115,19 @@ const Sidebar: React.FC = () => {
   gap: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
+  display: flex !important;
+}
+
+/* WAVE 428.6: Layout content debe expandirse en Zen Mode */
+.layout-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Zen Mode active - contenido full width */
+.app-layout.zen-mode .layout-content {
+  width: 100% !important;
 }
 
 /* ═══ SIDEBAR - CYBERPUNK INDUSTRIAL (WAVE 428.5: NO SCANNER) ═══ */

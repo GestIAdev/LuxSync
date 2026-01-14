@@ -84,16 +84,13 @@ export const VibeSelectorCompact: React.FC = () => {
     activeVibe, 
     isTransitioning, 
     setVibe, 
-    isGhostMode,
     allVibes 
   } = useSeleneVibe()
   
   const { isOnline } = useSystemPower()
   
-  // Hidden in Ghost Mode
-  if (isGhostMode) {
-    return null
-  }
+  // WAVE 428: Vibes are ALWAYS visible - they're show constraints, not mode-dependent
+  // Removed isGhostMode check - vibes apply regardless of manual/selene mode
   
   return (
     <div className={`vibe-selector-compact ${!isOnline ? 'offline' : ''}`}>

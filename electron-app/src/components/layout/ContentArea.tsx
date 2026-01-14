@@ -1,10 +1,12 @@
 /**
- * CONTENT AREA - WAVE 423: Stage System View Router
+ * CONTENT AREA - WAVE 428: Full System Restore
  * 
- * 3 Stages + 1 Tool Architecture:
- *   - dashboard: DashboardView (Command Center)
+ * 4 Stages + 2 Tools Architecture:
+ *   - dashboard: DashboardView (Command Center + Show Load)
+ *   - constructor: StageConstructorView (Fixture Creation)
  *   - live: StageViewDual (Performance - 2D/3D)
  *   - calibration: CalibrationView (Hardware Setup)
+ *   - setup: SetupView (Audio + DMX Config)
  *   - core: LuxCoreView (AI Monitoring)
  * 
  * WAVE 379.4: Atomic Handoff for WebGL transitions
@@ -15,11 +17,12 @@ import { useNavigationStore } from '../../stores/navigationStore'
 import './ContentArea.css'
 
 // Lazy load views for better performance
-// WAVE 423: New routing structure
-// WAVE 425: CalibrationView is now a proper standalone view
+// WAVE 428: Full routing structure
 const DashboardView = lazy(() => import('../views/DashboardView'))
+const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 const LiveStageView = lazy(() => import('../views/StageViewDual'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
+const SetupView = lazy(() => import('../views/SetupView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 
 // Loading fallback
@@ -37,8 +40,8 @@ const TransitionLoader: React.FC = () => (
   </div>
 )
 
-// WAVE 423: Vistas que tienen WebGL Canvas pesado
-const WEBGL_VIEWS = ['live', 'calibration']
+// WAVE 428: Vistas que tienen WebGL Canvas pesado
+const WEBGL_VIEWS = ['live', 'calibration', 'constructor']
 
 // WAVE 379.4: Tiempo de "aire" para que la GPU respire (ms)
 const GPU_HANDOFF_DELAY = 150
@@ -90,14 +93,18 @@ const ContentArea: React.FC = () => {
       return <TransitionLoader />
     }
     
-    // WAVE 423: 3 Stages + 1 Tool routing
+    // WAVE 428: 4 Stages + 2 Tools routing
     switch (renderedTab) {
       case 'dashboard':
         return <DashboardView />
+      case 'constructor':
+        return <StageConstructorView />
       case 'live':
         return <LiveStageView />
       case 'calibration':
         return <CalibrationView />
+      case 'setup':
+        return <SetupView />
       case 'core':
         return <LuxCoreView />
       default:

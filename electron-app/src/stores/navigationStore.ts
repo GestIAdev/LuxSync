@@ -1,24 +1,26 @@
 /**
- * 🧭 NAVIGATION STORE - WAVE 423: Stage System
- * 3 Stages + 1 Tool Architecture
+ * 🧭 NAVIGATION STORE - WAVE 428: Full System Restore
+ * 6 Tabs Architecture
  * 
  * STAGES:
- *   - dashboard: Session management, power control
+ *   - dashboard: Session management, show load, power control
+ *   - constructor: Fixture creation/editing
  *   - live: Performance hub with simulator
- *   - calibration: Hardware setup (absorbs constructor + setup)
+ *   - calibration: Hardware setup (pan/tilt offsets)
  * 
  * TOOLS:
+ *   - setup: Audio Input + DMX configuration
  *   - core: LUX CORE monitoring (visible, not hidden)
  */
 
 import { create } from 'zustand'
 
 // ============================================
-// TYPES - WAVE 423: 3 Stages + 1 Tool
+// TYPES - WAVE 428: 4 Stages + 2 Tools
 // ============================================
 
-export type StageId = 'dashboard' | 'live' | 'calibration'
-export type ToolId = 'core'
+export type StageId = 'dashboard' | 'constructor' | 'live' | 'calibration'
+export type ToolId = 'setup' | 'core'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -44,11 +46,11 @@ export interface NavigationState {
 }
 
 // ============================================
-// TAB CONFIGURATION - WAVE 423: 3 Stages + 1 Tool
+// TAB CONFIGURATION - WAVE 428: 4 Stages + 2 Tools
 // ============================================
 
 export const TABS: TabConfig[] = [
-  // === STAGES (3 principales) ===
+  // === STAGES (4 principales) ===
   {
     id: 'dashboard',
     label: 'COMMAND',
@@ -56,7 +58,16 @@ export const TABS: TabConfig[] = [
     customIcon: true,
     type: 'stage',
     shortcut: 'Alt+1',
-    description: 'Command Center - Session & Power Control',
+    description: 'Command Center - Session & Show Load',
+  },
+  {
+    id: 'constructor',
+    label: 'BUILD',
+    icon: 'construct',      // IconConstruct (custom SVG)
+    customIcon: true,
+    type: 'stage',
+    shortcut: 'Alt+2',
+    description: 'Fixture Constructor - Create & Edit Fixtures',
   },
   {
     id: 'live',
@@ -64,7 +75,7 @@ export const TABS: TabConfig[] = [
     icon: 'monitor',        // IconLiveStage (custom SVG)
     customIcon: true,
     type: 'stage',
-    shortcut: 'Alt+2',
+    shortcut: 'Alt+3',
     description: 'Live Performance - Stage Simulator',
   },
   {
@@ -73,23 +84,32 @@ export const TABS: TabConfig[] = [
     icon: 'target',         // IconCalibration (custom SVG)
     customIcon: true,
     type: 'stage',
-    shortcut: 'Alt+3',
-    description: 'Hardware Setup - Fixture Calibration',
+    shortcut: 'Alt+4',
+    description: 'Hardware Setup - Pan/Tilt Offsets',
   },
   
-  // === TOOL (auxiliar visible - "es bonita") ===
+  // === TOOLS (auxiliares) ===
+  {
+    id: 'setup',
+    label: 'SETUP',
+    icon: 'settings',       // IconSetup (custom SVG)
+    customIcon: true,
+    type: 'tool',
+    shortcut: 'Alt+5',
+    description: 'Audio Input & DMX Configuration',
+  },
   {
     id: 'core',
     label: 'LUX CORE',
     icon: 'brain',          // IconLuxCore (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+4',
+    shortcut: 'Alt+6',
     description: 'Selene AI Monitoring & Telemetry',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'constructor', 'live', 'calibration', 'setup', 'core']
 
 // ============================================
 // STORE - WAVE 423

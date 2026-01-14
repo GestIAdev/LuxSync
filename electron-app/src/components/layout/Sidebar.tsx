@@ -1,32 +1,38 @@
 /**
- * 📱 SIDEBAR - WAVE 423: Stage System Navigation
- * 3 Stages + 1 Tool Architecture
- * WAVE 423.1: Custom SVG icons - cyberpunk HUD aesthetic
+ * 📱 SIDEBAR - WAVE 428: Full System Navigation
+ * 4 Stages + 2 Tools Architecture
+ * Custom SVG icons - cyberpunk HUD aesthetic
  */
 
 import React from 'react'
 import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
 import { 
   IconDashboard, 
+  IconConstruct,
   IconLiveStage, 
-  IconCalibration, 
+  IconCalibration,
+  IconSetup,
   IconLuxCore 
 } from './NavigationIcons'
 import './Sidebar.css'
 
-// WAVE 423: Colores por tab - 3 Stages + 1 Tool
+// WAVE 428: Colores por tab - 4 Stages + 2 Tools
 const TAB_COLORS: Record<TabId, string> = {
   'dashboard': '#00fff0',    // Cian (Command Center)
+  'constructor': '#a855f7',  // Purple (Build)
   'live': '#ff00ff',         // Magenta (Performance)
   'calibration': '#22d3ee',  // Cyan-400 (Hardware)
+  'setup': '#84cc16',        // Lime (Config)
   'core': '#f59e0b',         // Naranja (AI Monitor)
 }
 
-// WAVE 423.1: Custom SVG Icons - NO Lucide genéricos
+// WAVE 428: Custom SVG Icons - 6 tabs
 const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
   'bolt': IconDashboard,      // Dashboard (Command lightning)
+  'construct': IconConstruct, // Constructor (wrench + fixture)
   'monitor': IconLiveStage,   // Live Stage (spotlights)
   'target': IconCalibration,  // Calibration (crosshair)
+  'settings': IconSetup,      // Setup (gear + audio)
   'brain': IconLuxCore,       // LUX CORE (neural network)
 }
 

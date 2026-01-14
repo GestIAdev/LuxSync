@@ -1,12 +1,12 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW CSS - WAVE 424: Dashboard Simplify
+ * 🎛️ DASHBOARD VIEW CSS - WAVE 428: Redesigned Layout
  * 
  * STAGE 1: Command Center - Session Management
  * 
- * Layout:
- *   - Header: Power + Title
- *   - Main: Audio Reactor | Quick Links (2 columns)
- *   - Footer: Data Cards (status)
+ * Layout: 3-Column Bento Grid
+ *   - Left: Show Selector (narrow)
+ *   - Center: Audio Reactor (medium)
+ *   - Right: Quick Links (wide)
  */
 
 .dashboard-cyberpunk {
@@ -91,12 +91,12 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   BENTO GRID - Fit to remaining space
+   BENTO GRID - WAVE 428: 3 columns proportional
    ═══════════════════════════════════════════════════════ */
 
 .dashboard-bento {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 220px 1fr 1fr;
   gap: 12px;
   padding: 12px 20px;
   min-height: 0;
@@ -152,6 +152,26 @@
 
 .cell-reactor .cell-label {
   color: rgba(0, 255, 255, 0.7);
+}
+
+/* WAVE 428: Reactor container - constrains the size */
+.reactor-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  min-height: 0;
+  max-height: 280px;
+}
+
+/* WAVE 428: Shows Cell */
+.cell-shows {
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.cell-shows .cell-label {
+  color: rgba(168, 85, 247, 0.8);
 }
 
 /* WAVE 424: QuickLinks Cell */

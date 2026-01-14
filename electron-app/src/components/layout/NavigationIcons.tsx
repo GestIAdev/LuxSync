@@ -1,8 +1,10 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎯 LUXSYNC NAVIGATION ICONS - WAVE 423
+ * 🎯 LUXSYNC NAVIGATION ICONS - WAVE 428
  * Custom SVG icons for Sidebar navigation
  * Style: Cyberpunk/HUD aesthetic - angular, military, high-tech
+ * 
+ * WAVE 428: Added IconConstruct + IconSetup for full 6-tab system
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -171,9 +173,81 @@ export const IconLuxCore: React.FC<IconProps> = ({ size = 20, className = '' }) 
   </svg>
 )
 
+/**
+ * 🔧 CONSTRUCTOR / Build Icon
+ * Fixture creation - wrench + fixture light
+ */
+export const IconConstruct: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Fixture body */}
+    <rect x="8" y="4" width="8" height="6" rx="1" stroke="currentColor" />
+    <path d="M10 10V14" stroke="currentColor" />
+    <path d="M14 10V14" stroke="currentColor" />
+    
+    {/* Light beam */}
+    <path d="M8 14L5 20" stroke="currentColor" opacity="0.4" />
+    <path d="M12 14V20" stroke="currentColor" opacity="0.5" />
+    <path d="M16 14L19 20" stroke="currentColor" opacity="0.4" />
+    
+    {/* Wrench overlay - small */}
+    <circle cx="18" cy="8" r="2" stroke="currentColor" />
+    <path d="M16.5 9.5L14 12" stroke="currentColor" />
+    
+    {/* Plus sign - add new */}
+    <path d="M4 4V7" stroke="currentColor" opacity="0.6" />
+    <path d="M2.5 5.5H5.5" stroke="currentColor" opacity="0.6" />
+  </svg>
+)
+
+/**
+ * ⚙️ SETUP / Configuration Icon
+ * Audio + DMX config - gear with signals
+ */
+export const IconSetup: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Central gear */}
+    <circle cx="12" cy="12" r="3" stroke="currentColor" />
+    <circle cx="12" cy="12" r="1" stroke="currentColor" fill="currentColor" opacity="0.5" />
+    
+    {/* Gear teeth */}
+    <path d="M12 2V5" stroke="currentColor" />
+    <path d="M12 19V22" stroke="currentColor" />
+    <path d="M2 12H5" stroke="currentColor" />
+    <path d="M19 12H22" stroke="currentColor" />
+    <path d="M4.93 4.93L7.05 7.05" stroke="currentColor" opacity="0.6" />
+    <path d="M16.95 16.95L19.07 19.07" stroke="currentColor" opacity="0.6" />
+    <path d="M4.93 19.07L7.05 16.95" stroke="currentColor" opacity="0.6" />
+    <path d="M16.95 7.05L19.07 4.93" stroke="currentColor" opacity="0.6" />
+    
+    {/* Audio wave hints */}
+    <path d="M7 9C6 10 6 14 7 15" stroke="currentColor" opacity="0.4" />
+    <path d="M17 9C18 10 18 14 17 15" stroke="currentColor" opacity="0.4" />
+  </svg>
+)
+
 export default {
   IconDashboard,
   IconLiveStage,
   IconCalibration,
-  IconLuxCore
+  IconLuxCore,
+  IconConstruct,
+  IconSetup
 }

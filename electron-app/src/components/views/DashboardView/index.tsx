@@ -1,25 +1,23 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 424: Dashboard Simplify
+ * 🎛️ DASHBOARD VIEW - WAVE 428: Redesigned Layout
  * 
  * STAGE 1: Command Center - Session Management
  * 
- * NO SCROLL - 100% viewport
- * TitleBar is now GLOBAL (in MainLayout)
+ * Layout: 3-Column Bento Grid
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ [POWER]  COMMAND CENTER                                             │
+ * ├───────────────┬────────────────────────────┬────────────────────────┤
+ * │  SHOW SELECT  │     AUDIO REACTOR          │    QUICK LINKS         │
+ * │  (compact)    │     (medium, centered)     │    [LIVE][BUILD][...]  │
+ * ├───────────────┴────────────────────────────┴────────────────────────┤
+ * │                     DATA CARDS (status)                             │
+ * └─────────────────────────────────────────────────────────────────────┘
  * 
- * Layout: CSS Grid
- * ┌─────────────────────────────────────────────────────┐
- * │ [POWER]  COMMAND CENTER                             │
- * ├────────────────────┬────────────────────────────────┤
- * │   AUDIO REACTOR    │      QUICK LINKS               │
- * │                    │  [LIVE] [CALIBRATE] [CORE]     │
- * ├────────────────────┴────────────────────────────────┤
- * │              DATA CARDS (status)                    │
- * └─────────────────────────────────────────────────────┘
- * 
- * WAVE 424 Changes:
- * - REMOVED: VibeSelector (→ moved to CommandDeck in Phase 5)
- * - REMOVED: SeleneBrain (→ available in LUX CORE)
- * - ADDED: QuickLinks navigation cards
+ * WAVE 428 Changes:
+ * - NEW: ShowSelector panel (left)
+ * - RESIZE: AudioReactor now medium size (center)
+ * - MOVE: QuickLinks to right column
+ * - FIX: Proportional 3-column layout
  */
 
 import React from 'react'
@@ -27,6 +25,7 @@ import AudioReactorRing from './components/AudioReactorRing'
 import DataCards from './components/DataCards'
 import PowerButton from './components/PowerButton'
 import QuickLinks from './components/QuickLinks'
+import { ShowSelector } from './components/ShowSelector'
 import { IconAudioWave } from './components/HudIcons'
 import './DashboardView.css'
 
@@ -47,9 +46,18 @@ const DashboardView: React.FC = () => {
         {/* WAVE 422: ModeSwitcher ELIMINADO - Sistema Auto-Override */}
       </header>
 
-      {/* Bento Grid Main Area - WAVE 424: Simplified */}
+      {/* Bento Grid Main Area - WAVE 428: 3-Column Layout */}
       <main className="dashboard-bento">
-        {/* Left: Audio Reactor Ring */}
+        {/* Left: Show Selector */}
+        <section className="bento-cell cell-shows">
+          <div className="cell-header">
+            <span className="cell-icon">📁</span>
+            <span className="cell-label">SHOWS</span>
+          </div>
+          <ShowSelector />
+        </section>
+
+        {/* Center: Audio Reactor Ring (smaller) */}
         <section className="bento-cell cell-reactor">
           <div className="cell-header">
             <span className="cell-icon">
@@ -57,7 +65,9 @@ const DashboardView: React.FC = () => {
             </span>
             <span className="cell-label">AUDIO CORE</span>
           </div>
-          <AudioReactorRing />
+          <div className="reactor-container">
+            <AudioReactorRing />
+          </div>
         </section>
 
         {/* Right: Quick Links Navigation */}

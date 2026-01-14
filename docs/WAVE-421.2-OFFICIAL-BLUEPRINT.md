@@ -1,7 +1,7 @@
 # WAVE 421.2: BLUEPRINT OFICIAL - UI ARCHITECTURE REDESIGN
 
 **Date:** 2026-01-14  
-**Status:** 🚀 PHASE 0-2 COMPLETE | Phase 3 PENDING  
+**Status:** 🚀 PHASE 0-3 COMPLETE | Phase 4 PENDING  
 **Prerequisite:** WAVE-421.1 (Audit) ✅  
 **Reference:** WAVE-375-COMMAND-DECK-BLUEPRINT-v2.md  
 **Approved by:** El Arquitecto & Dirección General
@@ -9,9 +9,9 @@
 **Progress:**
 - ✅ Phase 0: Preparation (SVG audit, widget location)
 - ✅ Phase 1: WAVE 422 - Mode Termination (5 files deleted, 4 files modified)
-- ✅ Phase 2: WAVE 423 - Stage System (3 files modified, 4→3+1 tabs)
-- ⏳ Phase 3: WAVE 424 - Dashboard Simplify (NEXT)
-- ⏳ Phase 4: WAVE 425 - Calibration Mode
+- ✅ Phase 2: WAVE 423 - Stage System + Custom Icons (5 files)
+- ✅ Phase 3: WAVE 424 - Dashboard Simplify (4 files, QuickLinks added)
+- ⏳ Phase 4: WAVE 425 - Calibration Mode (NEXT)
 - ⏳ Phase 5: WAVE 426 - Vibe Migration
 - ⏳ Phase 6: WAVE 427 - Integration Test
 
@@ -723,32 +723,41 @@ WAVE 423: STAGE SYSTEM ✅ EJECUTADO
 
 **Ver:** docs/WAVE-423-STAGE-SYSTEM-REPORT.md
 
-### FASE 3: Dashboard Simplificado - WAVE 424 (2 horas)
+### FASE 3: Dashboard Simplificado - WAVE 424 (2 horas) ✅ COMPLETE
 
 **Objetivo:** Dashboard = Gestión de Sesión / Show Load
 
 ```
-WAVE 424: DASHBOARD SIMPLIFY
+WAVE 424: DASHBOARD SIMPLIFY ✅ EJECUTADO
 
-□ EDIT: DashboardView/index.tsx
-  - ELIMINAR: ModeSwitcherSleek import/render
-  - ELIMINAR: VibeSelector (→ mover a CommandDeck)
-  - MANTENER: PowerButton (es necesario)
-  - MANTENER: AudioReactorRing (es bonito, mantener pequeño)
-  - MANTENER: SeleneBrain (info útil)
-  - MANTENER: DataCards (status del sistema)
+✅ EDIT: DashboardView/index.tsx
+  - ELIMINADO: VibeSelector import/render (→ Phase 5: CommandDeck)
+  - ELIMINADO: SeleneBrain import/render (→ disponible en LUX CORE)
+  - ELIMINADO: IconNeuralBrain import
+  - AÑADIDO: QuickLinks import/render
+  - SIMPLIFICADO: Layout de 2-row right column a single cell
 
-□ CREATE: DashboardView/components/QuickLinks.tsx
-  - Card: 🎭 GO TO LIVE
-  - Card: 🎯 CALIBRATE HARDWARE
-  - Card: 🧠 LUX CORE (link)
-  - Usar SVGs existentes para iconos
+✅ CREATE: DashboardView/components/QuickLinks.tsx
+  - Card: 🎭 LIVE SHOW (magenta) → setActiveTab('live')
+  - Card: 🎯 CALIBRATE (cyan) → setActiveTab('calibration')
+  - Card: 🧠 LUX CORE (naranja) → setActiveTab('core')
+  - Custom SVG icons (IconLiveStage, IconCalibration, IconLuxCore)
+  - Hover effects con glow del color del card
 
-□ SIMPLIFICAR layout:
-  - Power prominente
-  - Quick links claros
-  - Status resumido
+✅ CREATE: DashboardView/components/QuickLinks.css
+  - Estilos cyberpunk para cards
+  - Responsive grid: 3 cols → 1 col
+  - Icon circles con background tintado
+  - Arrow reveal on hover
+
+✅ EDIT: DashboardView.css
+  - AÑADIDO: .cell-quicklinks styles
+  - DEPRECADO: .cell-brain, .bento-right-column (commented)
+
+✅ TEST: Sin errores TypeScript
 ```
+
+**Ver:** docs/WAVE-424-DASHBOARD-SIMPLIFY-REPORT.md
 
 ### FASE 4: Calibration Mode - WAVE 425 (4 horas)
 

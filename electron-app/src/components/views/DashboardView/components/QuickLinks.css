@@ -1,0 +1,183 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🚀 QUICK LINKS CSS - WAVE 424: Cyberpunk Navigation Cards
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+.quick-links-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  height: 100%;
+}
+
+.quick-links-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.quick-links-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.quick-links-divider {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-subtle) 0%, transparent 100%);
+}
+
+.quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUICK LINK CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.quick-link-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.quick-link-card:hover {
+  border-color: var(--card-color);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 30px color-mix(in srgb, var(--card-color) 20%, transparent);
+}
+
+.quick-link-card:active {
+  transform: translateY(0);
+}
+
+/* Icon */
+.quick-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-color) 30%, transparent);
+  color: var(--card-color);
+  transition: all 0.3s ease;
+}
+
+.quick-link-card:hover .quick-link-icon {
+  background: color-mix(in srgb, var(--card-color) 20%, transparent);
+  border-color: var(--card-color);
+  transform: scale(1.1);
+}
+
+/* Content */
+.quick-link-content {
+  text-align: center;
+}
+
+.quick-link-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.quick-link-card:hover .quick-link-title {
+  color: var(--card-color);
+}
+
+.quick-link-desc {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Arrow */
+.quick-link-arrow {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  opacity: 0;
+  transform: translateX(-8px);
+  color: var(--card-color);
+  transition: all 0.3s ease;
+}
+
+.quick-link-card:hover .quick-link-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Glow effect */
+.quick-link-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 2px;
+  background: var(--card-color);
+  opacity: 0;
+  filter: blur(4px);
+  transition: opacity 0.3s ease;
+}
+
+.quick-link-card:hover .quick-link-glow {
+  opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1200px) {
+  .quick-links-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .quick-links-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .quick-link-card {
+    flex-direction: row;
+    padding: var(--space-md);
+  }
+  
+  .quick-link-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .quick-link-content {
+    text-align: left;
+    flex: 1;
+  }
+}

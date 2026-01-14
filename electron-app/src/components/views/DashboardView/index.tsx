@@ -1,28 +1,33 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 63.8: Zero State & Power Control
+ * 🎛️ DASHBOARD VIEW - WAVE 424: Dashboard Simplify
+ * 
+ * STAGE 1: Command Center - Session Management
  * 
  * NO SCROLL - 100% viewport
  * TitleBar is now GLOBAL (in MainLayout)
  * 
- * Layout: CSS Grid (auto | 1fr | auto)
+ * Layout: CSS Grid
  * ┌─────────────────────────────────────────────────────┐
- * │ [POWER]  COMMAND CENTER              MODE SWITCHER  │
- * ├──────────────────────┬──────────────────────────────┤
- * │   AUDIO REACTOR      │      SELENE BRAIN (logs)     │
- * │                      ├──────────────────────────────┤
- * │                      │      VIBE SELECTOR           │
- * ├──────────────────────┴──────────────────────────────┤
- * │              DATA CARDS (deck)                      │
+ * │ [POWER]  COMMAND CENTER                             │
+ * ├────────────────────┬────────────────────────────────┤
+ * │   AUDIO REACTOR    │      QUICK LINKS               │
+ * │                    │  [LIVE] [CALIBRATE] [CORE]     │
+ * ├────────────────────┴────────────────────────────────┤
+ * │              DATA CARDS (status)                    │
  * └─────────────────────────────────────────────────────┘
+ * 
+ * WAVE 424 Changes:
+ * - REMOVED: VibeSelector (→ moved to CommandDeck in Phase 5)
+ * - REMOVED: SeleneBrain (→ available in LUX CORE)
+ * - ADDED: QuickLinks navigation cards
  */
 
 import React from 'react'
 import AudioReactorRing from './components/AudioReactorRing'
-import SeleneBrain from './components/SeleneBrain'
 import DataCards from './components/DataCards'
 import PowerButton from './components/PowerButton'
-import { VibeSelector } from './components/VibeSelector'
-import { IconAudioWave, IconNeuralBrain } from './components/HudIcons'
+import QuickLinks from './components/QuickLinks'
+import { IconAudioWave } from './components/HudIcons'
 import './DashboardView.css'
 
 const DashboardView: React.FC = () => {
@@ -42,7 +47,7 @@ const DashboardView: React.FC = () => {
         {/* WAVE 422: ModeSwitcher ELIMINADO - Sistema Auto-Override */}
       </header>
 
-      {/* Bento Grid Main Area */}
+      {/* Bento Grid Main Area - WAVE 424: Simplified */}
       <main className="dashboard-bento">
         {/* Left: Audio Reactor Ring */}
         <section className="bento-cell cell-reactor">
@@ -55,28 +60,10 @@ const DashboardView: React.FC = () => {
           <AudioReactorRing />
         </section>
 
-        {/* Right Column: Brain + Context */}
-        <div className="bento-right-column">
-          {/* Top: Selene Brain (logs only) */}
-          <section className="bento-cell cell-brain">
-            <div className="cell-header">
-              <span className="cell-icon">
-                <IconNeuralBrain size={18} />
-              </span>
-              <span className="cell-label">SELENE AI</span>
-            </div>
-            <SeleneBrain />
-          </section>
-
-          {/* Bottom: Vibe Context Selector */}
-          <section className="bento-cell cell-context">
-            <div className="cell-header">
-              <span className="cell-icon">🎛️</span>
-              <span className="cell-label">VIBE CONTEXT</span>
-            </div>
-            <VibeSelector />
-          </section>
-        </div>
+        {/* Right: Quick Links Navigation */}
+        <section className="bento-cell cell-quicklinks">
+          <QuickLinks />
+        </section>
       </main>
 
       {/* Bottom Data Deck */}

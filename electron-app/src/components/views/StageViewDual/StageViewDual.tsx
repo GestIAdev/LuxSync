@@ -98,6 +98,10 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
     setShowInspector(false)
   }, [])
   
+  const handleOpenSidebar = useCallback(() => {
+    setShowInspector(true)
+  }, [])
+  
   // Reopen sidebar when selection changes
   React.useEffect(() => {
     // Si hay algo seleccionado y el sidebar está cerrado, abrirlo
@@ -193,6 +197,17 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
           <div className="stage-view-mode-indicator">
             {is3D ? '🎬 VISUALIZER 3D' : '📐 TACTICAL 2D'}
           </div>
+          
+          {/* WAVE 429: Floating button to reopen sidebar */}
+          {showSidebar && !showInspector && (
+            <button
+              className="sidebar-reopen-btn"
+              onClick={handleOpenSidebar}
+              title="Open Inspector (I)"
+            >
+              ⚙️
+            </button>
+          )}
         </div>
         
         {/* SIDEBAR - WAVE 429: Show/Hide (no collapse) */}

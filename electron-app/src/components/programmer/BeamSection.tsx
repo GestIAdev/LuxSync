@@ -61,10 +61,8 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
     })
   }, [selectedIds, hardware?.fixtures])
   
-  // If no beam fixtures or no selection, don't render
-  if (!hasBeamFixtures || selectedIds.length === 0) {
-    return null
-  }
+  // WAVE 428.5: Condición movida - NO hacer return temprano (rompe hooks)
+  const shouldRender = hasBeamFixtures && selectedIds.length > 0
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - Connect to Arbiter
@@ -174,6 +172,11 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   const currentGoboStep = GOBO_STEPS.reduce((prev, curr) => 
     Math.abs(curr.value - gobo) < Math.abs(prev.value - gobo) ? curr : prev
   )
+  
+  // WAVE 428.5: Condición de render al final (después de todos los hooks)
+  if (!shouldRender) {
+    return null
+  }
   
   return (
     <div className={`programmer-section beam-section ${hasOverride ? 'has-override' : ''}`}>

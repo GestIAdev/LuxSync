@@ -52,10 +52,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     })
   }, [selectedIds, hardware?.fixtures])
   
-  // If no moving heads, don't render
-  if (!hasMovingHeads || selectedIds.length === 0) {
-    return null
-  }
+  // WAVE 428.5: Condición movida - NO hacer return temprano (rompe hooks)
+  const shouldRender = hasMovingHeads && selectedIds.length > 0
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - Connect to Arbiter
@@ -203,6 +201,11 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       console.error('[Position] Calibration error:', err)
     }
   }, [selectedIds, isCalibrating, onOverrideChange])
+  
+  // WAVE 428.5: Condición de render al final (después de todos los hooks)
+  if (!shouldRender) {
+    return null
+  }
   
   return (
     <div className={`programmer-section position-section ${hasOverride ? 'has-override' : ''} ${isCalibrating ? 'calibrating' : ''}`}>

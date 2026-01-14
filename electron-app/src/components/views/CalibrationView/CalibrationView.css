@@ -1,0 +1,218 @@
+/**
+ * 🎯 CALIBRATION VIEW - WAVE 425 STYLES
+ * Layout de 3 columnas para calibración de hardware
+ */
+
+.calibration-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+}
+
+.calibration-view.calibrating {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(30, 20, 10, 0.95) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.calibration-header .header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calibration-header .title-icon {
+  font-size: 24px;
+}
+
+.calibration-header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #22d3ee;
+}
+
+.calibration-header .title-badge {
+  padding: 4px 10px;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(34, 211, 238, 0.8);
+}
+
+.calibration-header .header-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calibration-header .active-fixture {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #22d3ee;
+}
+
+.calibration-header .fixture-icon {
+  font-size: 14px;
+}
+
+.calibration-header .no-fixture {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT - 3 Column Layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-content {
+  display: grid;
+  grid-template-columns: 280px 1fr 260px;
+  gap: 1rem;
+  flex: 1;
+  padding: 1rem;
+  min-height: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBARS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.calibration-sidebar.left {
+  gap: 0;
+}
+
+.calibration-sidebar.right {
+  gap: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CENTER - RADAR AREA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CALIBRATION TOGGLE BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibration-toggle-bar {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.calibration-toggle-btn {
+  width: 100%;
+  padding: 1rem 2rem;
+  background: rgba(34, 211, 238, 0.1);
+  border: 2px solid rgba(34, 211, 238, 0.3);
+  border-radius: 8px;
+  color: #22d3ee;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calibration-toggle-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.5);
+  transform: translateY(-1px);
+}
+
+.calibration-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calibration-toggle-btn.active {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.3);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1200px) {
+  .calibration-content {
+    grid-template-columns: 240px 1fr 220px;
+  }
+}
+
+@media (max-width: 900px) {
+  .calibration-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  
+  .calibration-sidebar.left {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  
+  .calibration-sidebar.left > * {
+    flex: 1;
+  }
+}

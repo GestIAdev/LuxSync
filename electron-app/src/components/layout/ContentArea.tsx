@@ -16,9 +16,10 @@ import './ContentArea.css'
 
 // Lazy load views for better performance
 // WAVE 423: New routing structure
+// WAVE 425: CalibrationView is now a proper standalone view
 const DashboardView = lazy(() => import('../views/DashboardView'))
 const LiveStageView = lazy(() => import('../views/StageViewDual'))
-const CalibrationView = lazy(() => import('../views/StageConstructorView')) // Reusing for now
+const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 
 // Loading fallback

@@ -1,7 +1,7 @@
 # WAVE 421.2: BLUEPRINT OFICIAL - UI ARCHITECTURE REDESIGN
 
 **Date:** 2026-01-14  
-**Status:** 🚀 PHASE 0-3 COMPLETE | Phase 4 PENDING  
+**Status:** 🚀 PHASE 0-4 COMPLETE | Phase 5 PENDING  
 **Prerequisite:** WAVE-421.1 (Audit) ✅  
 **Reference:** WAVE-375-COMMAND-DECK-BLUEPRINT-v2.md  
 **Approved by:** El Arquitecto & Dirección General
@@ -11,8 +11,8 @@
 - ✅ Phase 1: WAVE 422 - Mode Termination (5 files deleted, 4 files modified)
 - ✅ Phase 2: WAVE 423 - Stage System + Custom Icons (5 files)
 - ✅ Phase 3: WAVE 424 - Dashboard Simplify (4 files, QuickLinks added)
-- ⏳ Phase 4: WAVE 425 - Calibration Mode (NEXT)
-- ⏳ Phase 5: WAVE 426 - Vibe Migration
+- ✅ Phase 4: WAVE 425 - Calibration Mode (10 files created, RadarXY + TestPanel + OffsetPanel)
+- ⏳ Phase 5: WAVE 426 - Vibe Migration (NEXT)
 - ⏳ Phase 6: WAVE 427 - Integration Test
 
 ---
@@ -759,49 +759,45 @@ WAVE 424: DASHBOARD SIMPLIFY ✅ EJECUTADO
 
 **Ver:** docs/WAVE-424-DASHBOARD-SIMPLIFY-REPORT.md
 
-### FASE 4: Calibration Mode - WAVE 425 (4 horas)
+### FASE 4: Calibration Mode - WAVE 425 (4 horas) ✅ COMPLETE
 
-**Objetivo:** Vista completa con RadarXY y TargetingSystem
+**Objetivo:** Vista completa con RadarXY y TestPanel  
+**Ver:** docs/WAVE-425-CALIBRATION-VIEW-REPORT.md
 
 ```
-WAVE 425: CALIBRATION MODE
+WAVE 425: CALIBRATION MODE - ✅ COMPLETE
 
-□ CREATE: src/components/calibration/CalibrationView.tsx
-  - Layout: Stage + Widgets + Panel
-  - Header: Back to Dashboard + Save & Go Live
-  - Footer: Fixture selector list
+✅ CREATE: CalibrationView/index.tsx
+  - Layout 3 columnas: FixtureList | RadarXY | TestPanel
+  - Header: Calibration + Active Fixture display
+  - Calibration mode toggle
 
-□ CREATE: src/components/calibration/CalibrationPanel.tsx
-  - Pan/Tilt offset sliders
-  - Test buttons (Home, Sweep Pan, Sweep Tilt)
-  - Color test (Red, Green, Blue, White)
-  - Invert checkboxes
-  - Save button
+✅ CREATE: components/RadarXY.tsx + RadarXY.css
+  - Control Pan/Tilt estilo radar militar
+  - Anillos concéntricos, crosshair, cursor animado
+  - Display coordenadas: grados + normalizado
+  - Scanning line animation en calibration mode
 
-□ RECUPERAR: RadarXY widget
-  - Importar del código existente
-  - Conectar a fixture seleccionado
-  - Props: fixtureId, onChange
+✅ CREATE: components/FixtureList.tsx + FixtureList.css
+  - Lista de fixtures calibrables (moving heads)
+  - Filtro automático por tipo
+  - Estados selected/hover
 
-□ RECUPERAR: TargetingSystem widget
-  - Importar del código existente
-  - Conectar a fixture seleccionado
-  - Props: fixtureId, onPositionChange
+✅ CREATE: components/TestPanel.tsx + TestPanel.css
+  - Botones: Color, Strobe, Gobo, Blackout
+  - Estados animados cuando activo
+  - Reset to AI button
 
-□ EDIT: MasterArbiter.ts
-  - enterCalibrationMode(): void
-  - exitCalibrationMode(): void
-  - isCalibrating: boolean getter
-  
-□ EDIT: ShowFileV2.ts
-  - Añadir calibration field a FixtureDefinition
-  
-□ EDIT: preload.ts
-  - IPC handlers para calibration mode
+✅ CREATE: components/OffsetPanel.tsx + OffsetPanel.css
+  - Pan/Tilt offset sliders (-180° to +180°)
+  - Invert toggles por eje
+  - Reset rápido
 
-□ CREATE: CalibrationView.css
-  - Layout grid: stage | widgets | panel
-  - Estilo cyberpunk consistente
+✅ CREATE: components/index.ts - Barrel export
+✅ CREATE: CalibrationView.css - Layout grid responsivo
+
+✅ EDIT: ContentArea.tsx
+  - Import actualizado a CalibrationView real (no StageConstructorView)
 ```
 
 ### FASE 5: Vibes en CommandDeck - WAVE 426 (2 horas)

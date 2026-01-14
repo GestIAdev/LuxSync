@@ -60,6 +60,10 @@ export interface IPCDependencies {
   getFixtureLibrary: () => any[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setFixtureLibrary: (library: any[]) => void
+  
+  // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rescanAllLibraries: () => Promise<any[]>
 }
 
 /**
@@ -394,7 +398,8 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
     resetZoneCounters,
     recalculateZoneCounters,
     configManager,
-    getMainWindow 
+    getMainWindow,
+    rescanAllLibraries  // WAVE 390.5: Full library rescan
   } = deps
   
   ipcMain.handle('fixtures:scanLibrary', async (_event, folderPath: string) => {
@@ -746,13 +751,12 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8')
       console.log(`[IPC] ✅ Saved fixture definition: ${filePath}`)
       
-      // WAVE 389: Rescan library to update cache
+      // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
       try {
-        const updatedLibrary = await fxtParser.scanFolder(libraryPath)
-        setFixtureLibrary(updatedLibrary)
-        console.log(`[IPC] 🔄 Library rescanned: ${updatedLibrary.length} fixtures`)
+        const updatedLibrary = await rescanAllLibraries()
+        console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures (factory + custom merged)`)
       } catch (rescanErr) {
-        console.warn('[IPC] ⚠️ Failed to rescan library after save:', rescanErr)
+        console.warn('[IPC] ⚠️ Failed to rescan libraries after save:', rescanErr)
       }
       
       // WAVE 388 EXT: Return BOTH path and filePath for compatibility
@@ -821,13 +825,12 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       fs.unlinkSync(fileToDelete)
       console.log(`[IPC] 🗑️ Deleted fixture: ${fileToDelete}`)
       
-      // WAVE 389: Rescan library to update cache
+      // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
       try {
-        const updatedLibrary = await fxtParser.scanFolder(libraryPath)
-        setFixtureLibrary(updatedLibrary)
-        console.log(`[IPC] 🔄 Library rescanned: ${updatedLibrary.length} fixtures remain`)
+        const updatedLibrary = await rescanAllLibraries()
+        console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures remain (factory + custom merged)`)
       } catch (rescanErr) {
-        console.warn('[IPC] ⚠️ Failed to rescan library after delete:', rescanErr)
+        console.warn('[IPC] ⚠️ Failed to rescan libraries after delete:', rescanErr)
       }
       
       return { success: true, deletedPath: fileToDelete }

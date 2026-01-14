@@ -41,7 +41,8 @@ import {
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
   FixtureV2,
-  MotorType
+  MotorType,
+  InstallationOrientation
 } from '../../../core/stage/ShowFileV2'
 import { FixtureDefinition, ChannelType, FixtureChannel } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
@@ -135,8 +136,99 @@ const FIXTURE_TYPES = [
  */
 function generateFixtureId(name: string): string {
   const timestamp = Date.now()
-  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const hash = (name || 'fixture').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   return `fxt-${hash}-${timestamp}`
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 390: SINGLE SOURCE OF TRUTH - buildFinalFixture
+// LA ÚNICA FUNCIÓN AUTORIZADA PARA GENERAR EL JSON FINAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TYPE_NORMALIZATION_MAP: Record<string, string> = {
+  'Moving Head': 'moving',
+  'moving': 'moving',
+  'Par': 'par', 
+  'par': 'par',
+  'Strobe': 'strobe',
+  'strobe': 'strobe',
+  'Wash': 'moving',
+  'wash': 'moving',
+  'Laser': 'laser',
+  'laser': 'laser',
+  'Bar': 'bar',
+  'bar': 'bar',
+  'Spot': 'spot',
+  'spot': 'spot',
+  'Blinder': 'blinder',
+  'blinder': 'blinder',
+  'Scanner': 'scanner',
+  'scanner': 'scanner',
+  'Generic': 'generic',
+  'generic': 'generic',
+  'Other': 'generic'
+}
+
+/**
+ * 🔥 WAVE 390: SINGLE SOURCE OF TRUTH
+ * Esta función es la ÚNICA autorizada para construir el JSON final.
+ * Llamada por handleSave Y por la vista previa JSON.
+ */
+function buildFinalFixture(fixture: FixtureDefinition, physics: PhysicsProfile): FixtureDefinition {
+  // 1. Normalizar tipo
+  const normalizedType = TYPE_NORMALIZATION_MAP[fixture.type] || 'generic'
+  
+  // 2. Normalizar motorType - 'unknown' -> 'stepper' como default seguro
+  const normalizedMotorType = (!physics.motorType || physics.motorType === 'unknown') 
+    ? 'stepper' 
+    : physics.motorType
+  
+  // 3. Construir canales limpios
+  const cleanChannels = fixture.channels.map((ch, i) => ({
+    index: i,
+    type: ch.type || 'unknown',
+    name: ch.name || undefined, // undefined se omite en JSON
+    defaultValue: ch.defaultValue || 0,
+    is16bit: ch.is16bit || false
+  }))
+  
+  // 4. Generar capabilities basado en canales
+  const capabilities = {
+    hasPan: cleanChannels.some(ch => ch.type === 'pan'),
+    hasTilt: cleanChannels.some(ch => ch.type === 'tilt'),
+    hasColorMixing: cleanChannels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
+    hasColorWheel: cleanChannels.some(ch => ch.type === 'color_wheel'),
+    hasGobo: cleanChannels.some(ch => ch.type === 'gobo'),
+    hasPrism: cleanChannels.some(ch => ch.type === 'prism'),
+    hasStrobe: cleanChannels.some(ch => ch.type === 'strobe'),
+    hasDimmer: cleanChannels.some(ch => ch.type === 'dimmer')
+  }
+  
+  // 5. WAVE 390.5: Build complete physics object with ALL configurable fields
+  const completePhysics = {
+    motorType: normalizedMotorType as 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro',
+    maxAcceleration: physics.maxAcceleration || 8.0,
+    maxVelocity: physics.maxVelocity || 120,
+    safetyCap: typeof physics.safetyCap === 'boolean' ? physics.safetyCap : true,
+    // Installation-specific settings (also saved for fixture templates)
+    orientation: physics.orientation || 'floor',
+    invertPan: physics.invertPan || false,
+    invertTilt: physics.invertTilt || false,
+    swapPanTilt: physics.swapPanTilt || false,
+    homePosition: physics.homePosition || { pan: 127, tilt: 127 },
+    tiltLimits: physics.tiltLimits || { min: 0, max: 255 }
+  }
+  
+  // 6. Retornar objeto final INMUTABLE
+  return {
+    id: fixture.id || generateFixtureId(fixture.name || 'Untitled'),
+    name: fixture.name || 'Untitled',
+    manufacturer: fixture.manufacturer || 'Generic',
+    type: normalizedType,
+    channels: cleanChannels as FixtureChannel[],
+    physics: completePhysics,
+    capabilities
+  }
 }
 
 /**
@@ -280,17 +372,72 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   const [isFormValid, setIsFormValid] = useState(false)
   const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
   
+  // WAVE 390.5: Flag to prevent channel regeneration on edit load
+  const isLoadingExistingRef = React.useRef(false)
+  
   // ═══════════════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════════════
   
+  // WAVE 390.5: Track if we already initialized to prevent re-init while open
+  const hasInitializedRef = React.useRef(false)
+  
   // Initialize on open
   useEffect(() => {
-    if (isOpen) {
+    // WAVE 390.5: Only initialize when modal OPENS, not when props change while open
+    if (isOpen && !hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      
       if (existingDefinition) {
         // Edit mode - load existing definition (from library)
+        // WAVE 390.5: Set flag BEFORE updating state to prevent regeneration
+        isLoadingExistingRef.current = true
         setFixture(existingDefinition)
         setTotalChannels(existingDefinition.channels.length)
+        
+        // WAVE 390.5 FIX: Load physics from existing definition!
+        // Merge with defaults because FixtureDefinition.physics has fewer fields than PhysicsProfile
+        if (existingDefinition.physics) {
+          console.log('[FixtureForge] 📝 Loading physics:', existingDefinition.physics)
+          
+          // Map motorType to find best matching default profile
+          const baseMotorType = existingDefinition.physics.motorType?.includes('servo') 
+            ? 'servo-pro' 
+            : existingDefinition.physics.motorType?.includes('stepper') 
+              ? 'stepper-quality' 
+              : 'stepper-quality'
+          const baseProfile = DEFAULT_PHYSICS_PROFILES[baseMotorType] || DEFAULT_PHYSICS_PROFILES['stepper-quality']
+          
+          // Merge: existing values override defaults
+          // WAVE 390.5 FIX: Cargar TODOS los campos extendidos del JSON, no solo 3
+          const mergedPhysics: PhysicsProfile = {
+            ...baseProfile,
+            motorType: (existingDefinition.physics.motorType as MotorType) || baseProfile.motorType,
+            maxAcceleration: existingDefinition.physics.maxAcceleration ?? baseProfile.maxAcceleration,
+            maxVelocity: existingDefinition.physics.maxVelocity ?? baseProfile.maxVelocity,
+            safetyCap: typeof existingDefinition.physics.safetyCap === 'boolean' 
+              ? existingDefinition.physics.safetyCap 
+              : true,
+            // Installation-specific settings (pueden venir del JSON o null)
+            orientation: (existingDefinition.physics.orientation as InstallationOrientation) || baseProfile.orientation,
+            invertPan: existingDefinition.physics.invertPan ?? baseProfile.invertPan,
+            invertTilt: existingDefinition.physics.invertTilt ?? baseProfile.invertTilt,
+            swapPanTilt: existingDefinition.physics.swapPanTilt ?? baseProfile.swapPanTilt,
+            homePosition: existingDefinition.physics.homePosition 
+              ? { ...existingDefinition.physics.homePosition } 
+              : { ...baseProfile.homePosition },
+            tiltLimits: existingDefinition.physics.tiltLimits 
+              ? { ...existingDefinition.physics.tiltLimits } 
+              : { ...baseProfile.tiltLimits }
+          }
+          console.log('[FixtureForge] ✅ Merged physics loaded:', mergedPhysics)
+          setPhysics(mergedPhysics)
+        } else {
+          console.log('[FixtureForge] ⚠️ No physics in definition, using default')
+          setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+        }
+        
+        console.log('[FixtureForge] 📝 Loaded existing definition:', existingDefinition.name, 'with', existingDefinition.channels.length, 'channels')
       } else if (editingFixture) {
         // 🔥 WAVE 384.5: Create from stage fixture - NOW USES INLINE CHANNELS!
         // editingFixture.channels now contains the channel definitions thanks to WAVE 384
@@ -326,18 +473,50 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       setPreviewDimmer(200)
       setActiveTab('channels')
     }
+    
+    // Reset flag when modal closes
+    if (!isOpen) {
+      hasInitializedRef.current = false
+      isLoadingExistingRef.current = false
+      // WAVE 390.5: Reset state when modal closes to prevent stale data
+      setFixture(FixtureFactory.createEmpty())
+      setTotalChannels(8)
+      setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+      console.log('[FixtureForge] 🧹 Modal closed, state reset')
+    }
   }, [isOpen, existingDefinition, editingFixture])
   
   // Update channels when totalChannels changes
+  // WAVE 390.5: This effect ONLY runs for NEW fixtures or when user changes channel count
+  // For existing definitions, channels are loaded directly in the init effect above
   useEffect(() => {
+    // WAVE 390.5: Skip regeneration if we just loaded an existing definition
+    if (isLoadingExistingRef.current) {
+      console.log('[FixtureForge] 🛡️ WAVE 390.5: Skipping channel regeneration (loading existing)')
+      // Keep the flag true until the next render cycle completes
+      // This prevents race conditions with React's batched updates
+      return
+    }
+    
+    // Only regenerate if we have a valid count AND we're not in edit mode
     if (totalChannels > 0 && totalChannels <= 64) {
+      // Check if fixture already has the right number of channels with real data
+      const hasRealChannels = fixture.channels.length === totalChannels && 
+        fixture.channels.some(ch => ch.type !== 'unknown' || ch.name)
+      
+      if (hasRealChannels) {
+        console.log('[FixtureForge] 🛡️ Channels already loaded, skipping regeneration')
+        return
+      }
+      
+      console.log('[FixtureForge] 🔄 Regenerating channels:', totalChannels)
       const newChannels = FixtureFactory.generateChannels(totalChannels, fixture.channels)
       const sanitizedChannels = newChannels.map(ch =>
         ch.type ? ch : { ...ch, type: 'unknown' as ChannelType, name: '' }
       )
       setFixture(prev => ({ ...prev, channels: sanitizedChannels }))
     }
-  }, [totalChannels])
+  }, [totalChannels, fixture.channels.length])
   
   // Validation
   useEffect(() => {
@@ -411,51 +590,17 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
     setFixture(prev => ({ ...prev, channels: newChannels }))
   }, [fixture.channels])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 390: DUMB SAVE HANDLER - USES SINGLE SOURCE OF TRUTH
+  // ═══════════════════════════════════════════════════════════════════════
+  
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
-    // WAVE 388 STEP 1: Type Normalization (UI -> System)
-    const typeMap: Record<string, string> = {
-      'Moving Head': 'moving',
-      'Par': 'par',
-      'Strobe': 'strobe',
-      'Wash': 'moving', // Wash uses moving geometry
-      'Laser': 'laser',
-      'Generic': 'generic'
-    }
-    const normalizedType = typeMap[fixture.type] || 'generic'
+    // 🔥 WAVE 390: Usar la función pura buildFinalFixture
+    const finalFixture = buildFinalFixture(fixture, physics)
     
-    // WAVE 388.5: Normalize motorType - 'unknown' -> 'stepper' as safe default
-    const normalizedMotorType = physics.motorType === 'unknown' ? 'stepper' : physics.motorType
-    
-    // WAVE 388 STEP 2: Full Persistence with Physics
-    const finalFixture: FixtureDefinition = {
-      id: fixture.id || generateFixtureId(fixture.name),
-      name: fixture.name,
-      manufacturer: fixture.manufacturer || 'Generic',
-      type: normalizedType, // Use normalized type
-      channels: fixture.channels,
-      // WAVE 388: Add physics profile (with normalized motorType)
-      physics: {
-        motorType: normalizedMotorType as 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro',
-        maxAcceleration: physics.maxAcceleration,
-        safetyCap: physics.safetyCap
-      },
-      // WAVE 388: Add capabilities for Arbiter
-      capabilities: {
-        hasPan: fixture.channels.some(ch => ch.type === 'pan'),
-        hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
-        hasColorMixing: fixture.channels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
-        hasColorWheel: fixture.channels.some(ch => ch.type === 'color_wheel'),
-        hasGobo: fixture.channels.some(ch => ch.type === 'gobo'),
-        hasPrism: fixture.channels.some(ch => ch.type === 'prism'),
-        hasStrobe: fixture.channels.some(ch => ch.type === 'strobe'),
-        hasDimmer: fixture.channels.some(ch => ch.type === 'dimmer')
-      }
-    }
-    
-    // WAVE 388 EXT: Log what we're about to save
-    console.log('[FixtureForge] 📦 Saving fixture:', {
+    console.log('[FixtureForge] � WAVE 390 DUMB SAVE:', {
       id: finalFixture.id,
       name: finalFixture.name,
       type: finalFixture.type,
@@ -463,26 +608,30 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       physics: finalFixture.physics
     })
     
-    // 🔥 WAVE 384.5: Also persist to library
+    // Guardar en disco
     if (window.lux?.saveDefinition) {
       try {
         const result = await window.lux.saveDefinition(finalFixture)
-        // WAVE 388 EXT: Enhanced logging
         console.log('[FixtureForge] 💾 Save Result:', result)
+        
         if (result.success) {
           console.log(`[FixtureForge] ✅ Saved to: ${result.path || result.filePath}`)
+          // Notificar al padre y cerrar
+          onSave(finalFixture, physics)
+          onClose()
         } else {
-          console.warn(`[FixtureForge] ⚠️ Failed to save:`, result.error)
+          console.error(`[FixtureForge] ❌ Save failed:`, result.error)
+          alert('Error saving: ' + result.error)
         }
       } catch (err) {
-        console.warn(`[FixtureForge] ❌ Library save error:`, err)
+        console.error(`[FixtureForge] ❌ Save exception:`, err)
+        alert('Error saving: ' + String(err))
       }
     } else {
-      console.warn('[FixtureForge] ⚠️ window.lux.saveDefinition not available!')
+      console.error('[FixtureForge] ❌ window.lux.saveDefinition not available!')
+      alert('Save function not available')
     }
-    
-    onSave(finalFixture, physics)
-  }, [fixture, physics, isFormValid, onSave])
+  }, [fixture, physics, isFormValid, onSave, onClose])
   
   const handleExport = useCallback(() => {
     const fxtContent = exportToFXT(fixture)
@@ -550,7 +699,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
               <input
                 type="text"
                 placeholder="ADJ, Chauvet..."
-                value={fixture.manufacturer}
+                value={fixture.manufacturer || ''}
                 onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
                 autoFocus
               />
@@ -561,7 +710,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
               <input
                 type="text"
                 placeholder="Vizi Beam 5RX"
-                value={fixture.name}
+                value={fixture.name || ''}
                 onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
               />
             </div>
@@ -580,7 +729,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
             <div className="forge-input-group">
               <label>Tipo</label>
               <select
-                value={fixture.type}
+                value={fixture.type || 'Other'}
                 onChange={(e) => setFixture(prev => ({ ...prev, type: e.target.value }))}
               >
                 {FIXTURE_TYPES.map(type => (
@@ -761,7 +910,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                           style={{ '--slot-color': color } as React.CSSProperties}
                         >
                           <div className="slot-header">
-                            <span className="slot-number">CH {channel.index}</span>
+                            <span className="slot-number">CH {index + 1}</span>
                             {!isEmpty && (
                               <button
                                 className="slot-clear-btn"
@@ -780,7 +929,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                           
                           <input
                             className="slot-name-input"
-                            value={channel.name}
+                            value={channel.name || ''}
                             placeholder={isEmpty ? 'Raw name...' : 'Nombre...'}
                             disabled={false} // WAVE 386: Always editable for debugging
                             onChange={(e) => {
@@ -848,41 +997,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                 <div className="preview-json">
                   <h3>Vista previa JSON (Lo que se guarda)</h3>
                   <pre>
-                    {/* WAVE 388.5: Preview shows EXACTLY what gets saved */}
-                    {JSON.stringify({
-                      id: fixture.id || `${fixture.manufacturer?.toLowerCase() || 'generic'}-${fixture.name?.toLowerCase().replace(/\s+/g, '-')}`,
-                      name: fixture.name,
-                      manufacturer: fixture.manufacturer,
-                      // NORMALIZED TYPE - same logic as handleSave
-                      type: (() => {
-                        const typeMap: Record<string, string> = {
-                          'Moving Head': 'moving',
-                          'Par': 'par',
-                          'Strobe': 'strobe',
-                          'Wash': 'moving',
-                          'Laser': 'laser',
-                          'Generic': 'generic'
-                        }
-                        return typeMap[fixture.type] || 'generic'
-                      })(),
-                      // FULL CHANNELS - what we actually save
-                      channels: fixture.channels.map((ch, i) => ({
-                        slot: i + 1,
-                        type: ch.type,
-                        name: ch.name || undefined
-                      })),
-                      physics: {
-                        motorType: physics.motorType,
-                        maxAcceleration: physics.maxAcceleration,
-                        safetyCap: physics.safetyCap
-                      },
-                      capabilities: {
-                        hasPan: fixture.channels.some(ch => ch.type === 'pan'),
-                        hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
-                        hasColor: fixture.channels.some(ch => ['red', 'green', 'blue', 'color_wheel'].includes(ch.type)),
-                        hasGobo: fixture.channels.some(ch => ch.type === 'gobo')
-                      }
-                    }, null, 2)}
+                    {/* 🔥 WAVE 390: Preview uses SAME function as save - SINGLE SOURCE OF TRUTH */}
+                    {JSON.stringify(buildFinalFixture(fixture, physics), null, 2)}
                   </pre>
                 </div>
               </div>

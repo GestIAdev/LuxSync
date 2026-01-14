@@ -506,7 +506,7 @@ interface DMXConfig {
   frameRate: number
 }
 
-// WAVE 9.5: Fixture Types
+// WAVE 9.5: Fixture Types - WAVE 390.5: Complete interface for Edit support
 interface FixtureLibraryItem {
   id: string
   name: string
@@ -514,6 +514,36 @@ interface FixtureLibraryItem {
   channelCount: number
   type: string
   filePath: string
+  confidence?: number
+  detectionMethod?: string
+  hasMovementChannels?: boolean
+  has16bitMovement?: boolean
+  hasColorMixing?: boolean
+  hasColorWheel?: boolean
+  // WAVE 390.5: Full fixture data for Edit
+  channels?: Array<{ index: number; name?: string; type: string; is16bit: boolean; defaultValue?: number }>
+  physics?: {
+    motorType?: string
+    maxAcceleration?: number
+    maxVelocity?: number
+    safetyCap?: number | boolean
+    orientation?: string
+    invertPan?: boolean
+    invertTilt?: boolean
+    swapPanTilt?: boolean
+    homePosition?: { pan: number; tilt: number }
+    tiltLimits?: { min: number; max: number }
+  }
+  capabilities?: {
+    hasPan?: boolean
+    hasTilt?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+    hasGobo?: boolean
+    hasPrism?: boolean
+    hasStrobe?: boolean
+    hasDimmer?: boolean
+  }
 }
 
 interface PatchedFixture extends FixtureLibraryItem {

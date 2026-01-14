@@ -260,6 +260,8 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
         )
         if (definition) {
           console.log('[Library] 📝 Editing fixture:', definition.name)
+          console.log('[Library] 📝 Definition channels:', definition.channels?.length, definition.channels)
+          console.log('[Library] 📝 Definition physics:', definition.physics)
           // Cast to FixtureDefinition - library items have all required fields
           openFixtureForge(undefined, definition as unknown as FixtureDefinition)
         } else {
@@ -374,7 +376,7 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
             <ul className="library-fixture-list">
               {libraryFixtures.map(libFix => (
                 <li 
-                  key={libFix.id} 
+                  key={libFix.filePath || libFix.id || libFix.name}
                   className="library-fixture-item"
                   draggable
                   onDragStart={(e) => handleDragStart(e, libFix.type, libFix.id)}

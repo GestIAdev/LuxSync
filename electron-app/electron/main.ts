@@ -70,7 +70,30 @@ interface FixtureLibraryItem {
   hasColorMixing?: boolean
   hasColorWheel?: boolean
   manualOverride?: string
-  channels?: Array<{ index: number; name: string; type: string; is16bit: boolean }>
+  // WAVE 390.5: Datos completos para Edit
+  channels?: Array<{ index: number; name?: string; type: string; is16bit: boolean; defaultValue?: number }>
+  physics?: {
+    motorType?: string
+    maxAcceleration?: number
+    maxVelocity?: number
+    safetyCap?: number | boolean
+    orientation?: string
+    invertPan?: boolean
+    invertTilt?: boolean
+    swapPanTilt?: boolean
+    homePosition?: { pan: number; tilt: number }
+    tiltLimits?: { min: number; max: number }
+  }
+  capabilities?: {
+    hasPan?: boolean
+    hasTilt?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+    hasGobo?: boolean
+    hasPrism?: boolean
+    hasStrobe?: boolean
+    hasDimmer?: boolean
+  }
 }
 
 interface PatchedFixture extends FixtureLibraryItem {
@@ -92,6 +115,57 @@ let manualOverrides: Map<number, {
 
 // Zone counters for auto-assignment
 let zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 }
+
+// WAVE 390.5: Factory library path (stored after initialization)
+let factoryLibPath: string = ''
+let customLibPath: string = ''
+
+/**
+ * WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
+ * This is the ONLY function that should update fixtureLibrary after save/delete
+ */
+async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
+  console.log('[Library] 🔄 WAVE 390.5: Rescanning ALL libraries...')
+  
+  // Scan both libraries
+  const factoryDefinitions = fxtParser.scanFolder(factoryLibPath)
+  const customDefinitions = fxtParser.scanFolder(customLibPath)
+  
+  // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
+  const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
+  if (testBeam) {
+    console.log('[Library] 🔬 test_beam fixture data:', {
+      name: testBeam.name,
+      channelCount: testBeam.channelCount,
+      hasChannels: !!testBeam.channels,
+      channelsLength: testBeam.channels?.length,
+      firstChannel: testBeam.channels?.[0],
+      hasPhysics: !!testBeam.physics,
+      physics: testBeam.physics
+    })
+  } else {
+    console.log('[Library] ℹ️ test_beam not found in custom folder')
+  }
+  
+  // Merge: custom overrides factory by name (not ID, IDs are unreliable for .fxt files)
+  const mergedLibrary: FixtureLibraryItem[] = [...factoryDefinitions]
+  for (const customFix of customDefinitions) {
+    // Match by name (case-insensitive) since IDs are generated
+    const existingIndex = mergedLibrary.findIndex(
+      f => f.name.toLowerCase() === customFix.name.toLowerCase()
+    )
+    if (existingIndex >= 0) {
+      mergedLibrary[existingIndex] = customFix // Custom overrides factory
+    } else {
+      mergedLibrary.push(customFix) // New custom fixture
+    }
+  }
+  
+  fixtureLibrary = mergedLibrary
+  console.log(`[Library] ✅ Rescanned: ${factoryDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} merged fixtures`)
+  
+  return fixtureLibrary
+}
 
 function resetZoneCounters(): void {
   zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 }
@@ -281,6 +355,8 @@ async function initTitan(): Promise<void> {
     setPatchedFixtures: (fixtures: PatchedFixture[]) => { patchedFixtures = fixtures },
     getFixtureLibrary: () => fixtureLibrary,
     setFixtureLibrary: (library: FixtureLibraryItem[]) => { fixtureLibrary = library },
+    // WAVE 390.5: Rescan ALL libraries (factory + custom)
+    rescanAllLibraries,
   }
   
   setupIPCHandlers(ipcDeps)
@@ -351,6 +427,10 @@ app.whenReady().then(async () => {
   // Custom library path (user's custom fixtures and edited definitions)
   const customLibraryPath = path.join(app.getPath('userData'), 'fixtures')
   
+  // WAVE 390.5: Store paths globally for rescanAllLibraries()
+  factoryLibPath = factoryLibraryPath
+  customLibPath = customLibraryPath
+  
   // WAVE 387 STEP 2: Auto-create custom library folder
   const fs = await import('fs')
   if (!fs.existsSync(customLibraryPath)) {
@@ -379,27 +459,12 @@ app.whenReady().then(async () => {
   // WAVE 387 STEP 3: Configure FXTParser with custom library path
   fxtParser.setLibraryPath(customLibraryPath)
   
-  console.log('[Library] 📚 Scanning factory library:', factoryLibraryPath)
-  const loadedDefinitions = fxtParser.scanFolder(factoryLibraryPath)
+  // WAVE 390.5: Use unified rescanAllLibraries() for initial load
+  // This ensures consistent merge logic and debug logging
+  console.log('[Library] 📚 Initial library scan using rescanAllLibraries()...')
+  await rescanAllLibraries()
   
-  // Also scan custom library for user-edited fixtures
-  console.log('[Library] 📚 Scanning custom library:', customLibraryPath)
-  const customDefinitions = fxtParser.scanFolder(customLibraryPath)
-  
-  if (loadedDefinitions.length > 0 || customDefinitions.length > 0) {
-    // Merge both libraries (custom overrides factory if same ID)
-    const mergedLibrary = [...loadedDefinitions]
-    for (const customFix of customDefinitions) {
-      const existingIndex = mergedLibrary.findIndex(f => f.id === customFix.id)
-      if (existingIndex >= 0) {
-        mergedLibrary[existingIndex] = customFix // Custom overrides factory
-      } else {
-        mergedLibrary.push(customFix) // New custom fixture
-      }
-    }
-    fixtureLibrary = mergedLibrary
-    console.log(`[Library] ✅ Loaded ${loadedDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} total fixtures`)
-  } else {
+  if (fixtureLibrary.length === 0) {
     console.warn('[Library] ⚠️ No fixture definitions found in any library')
   }
   

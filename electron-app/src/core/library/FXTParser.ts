@@ -55,6 +55,30 @@ export interface ParsedFixture {
   has16bitMovement: boolean
   hasColorMixing: boolean   // RGB/RGBW
   hasColorWheel: boolean
+  // WAVE 389.6: Include physics and capabilities from JSON
+  physics?: {
+    motorType?: string
+    maxSpeed?: number
+    maxAcceleration?: number
+    inertia?: number
+    dampingFactor?: number
+    safetyCap?: number
+  }
+  capabilities?: {
+    hasPan?: boolean
+    hasTilt?: boolean
+    hasColorMixing?: boolean
+    hasColorWheel?: boolean
+    hasGobo?: boolean
+    hasPrism?: boolean
+    hasFrost?: boolean
+    hasZoom?: boolean
+    hasFocus?: boolean
+    hasIris?: boolean
+    hasShutter?: boolean
+    hasStrobe?: boolean
+    hasDimmer?: boolean
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -591,6 +615,9 @@ export class FXTParser {
             has16bitMovement: jsonFixture.has16bitMovement || false,
             hasColorMixing: jsonFixture.hasColorMixing || true,
             hasColorWheel: jsonFixture.hasColorWheel || false,
+            // WAVE 389.6: Include physics and capabilities
+            physics: jsonFixture.physics,
+            capabilities: jsonFixture.capabilities,
           }
           fixtures.push(fixture)
           if (this.debug) {

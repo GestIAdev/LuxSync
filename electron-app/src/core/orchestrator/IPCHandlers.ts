@@ -746,6 +746,15 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8')
       console.log(`[IPC] ✅ Saved fixture definition: ${filePath}`)
       
+      // WAVE 389: Rescan library to update cache
+      try {
+        const updatedLibrary = await fxtParser.scanFolder(libraryPath)
+        setFixtureLibrary(updatedLibrary)
+        console.log(`[IPC] 🔄 Library rescanned: ${updatedLibrary.length} fixtures`)
+      } catch (rescanErr) {
+        console.warn('[IPC] ⚠️ Failed to rescan library after save:', rescanErr)
+      }
+      
       // WAVE 388 EXT: Return BOTH path and filePath for compatibility
       return { success: true, path: filePath, filePath }
     } catch (err) {
@@ -755,6 +764,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
   })
   
   // WAVE 388 EXT: Delete fixture definition from library
+  // WAVE 389: Rescan library after delete to invalidate cache
   // Accepts either full filePath or fixture name to search
   ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier: string) => {
     try {
@@ -810,6 +820,15 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       // Delete the file
       fs.unlinkSync(fileToDelete)
       console.log(`[IPC] 🗑️ Deleted fixture: ${fileToDelete}`)
+      
+      // WAVE 389: Rescan library to update cache
+      try {
+        const updatedLibrary = await fxtParser.scanFolder(libraryPath)
+        setFixtureLibrary(updatedLibrary)
+        console.log(`[IPC] 🔄 Library rescanned: ${updatedLibrary.length} fixtures remain`)
+      } catch (rescanErr) {
+        console.warn('[IPC] ⚠️ Failed to rescan library after delete:', rescanErr)
+      }
       
       return { success: true, deletedPath: fileToDelete }
     } catch (err) {

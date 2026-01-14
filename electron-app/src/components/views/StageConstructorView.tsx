@@ -104,7 +104,7 @@ interface ConstructorContextType {
   setShowZones: (show: boolean) => void
   
   // Fixture Forge - WAVE 364
-  openFixtureForge: (fixtureId?: string) => void
+  openFixtureForge: (fixtureId?: string, existingDefinition?: FixtureDefinition) => void
 }
 
 const ConstructorContext = createContext<ConstructorContextType | null>(null)
@@ -167,7 +167,12 @@ interface LibraryFixture {
   filePath: string
 }
 
-const FixtureLibrarySidebar: React.FC = () => {
+// WAVE 389: Props for exposing reload function
+interface FixtureLibrarySidebarProps {
+  onLoadLibraryRef?: React.MutableRefObject<(() => Promise<void>) | null>
+}
+
+const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLibraryRef }) => {
   const fixtures = useStageStore(state => state.fixtures)
   const groups = useStageStore(state => state.groups)
   const { setDraggedFixtureType, openFixtureForge } = useConstructorContext()
@@ -213,6 +218,13 @@ const FixtureLibrarySidebar: React.FC = () => {
     }
   }, [])
   
+  // WAVE 389: Expose loadFixtureLibrary to parent via ref
+  useEffect(() => {
+    if (onLoadLibraryRef) {
+      onLoadLibraryRef.current = loadFixtureLibrary
+    }
+  }, [loadFixtureLibrary, onLoadLibraryRef])
+  
   // WAVE 388 EXT: Delete fixture from library
   const handleDeleteFixture = useCallback(async (filePath: string, fixtureName: string) => {
     if (!window.confirm(`¿Eliminar "${fixtureName}" de la librería?`)) {
@@ -238,8 +250,25 @@ const FixtureLibrarySidebar: React.FC = () => {
   }, [loadFixtureLibrary])
   
   // WAVE 388 EXT: Edit fixture (open in Forge)
-  const handleEditFixture = useCallback((fixtureId: string) => {
-    openFixtureForge(fixtureId)
+  const handleEditFixture = useCallback(async (fixtureId: string, fixtureName: string) => {
+    // WAVE 389: Load full definition from library to edit
+    try {
+      const result = await window.lux?.getFixtureLibrary?.()
+      if (result?.success && result.fixtures) {
+        const definition = result.fixtures.find((f: any) => 
+          f.id === fixtureId || f.name === fixtureName
+        )
+        if (definition) {
+          console.log('[Library] 📝 Editing fixture:', definition.name)
+          // Cast to FixtureDefinition - library items have all required fields
+          openFixtureForge(undefined, definition as unknown as FixtureDefinition)
+        } else {
+          console.warn('[Library] Fixture not found in library:', fixtureId)
+        }
+      }
+    } catch (err) {
+      console.error('[Library] Failed to load fixture for edit:', err)
+    }
   }, [openFixtureForge])
   
   const handleDragStart = useCallback((e: React.DragEvent, type: string, libraryId?: string) => {
@@ -362,7 +391,11 @@ const FixtureLibrarySidebar: React.FC = () => {
                     <button 
                       className="action-btn edit" 
                       title="Editar en Forge"
-                      onClick={(e) => { e.stopPropagation(); handleEditFixture(libFix.id); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        // WAVE 389: Pass both id and name for reliable lookup
+                        handleEditFixture(libFix.id, libFix.name); 
+                      }}
                     >
                       <Pencil size={12} />
                     </button>
@@ -756,6 +789,11 @@ const StageConstructorView: React.FC = () => {
   // WAVE 364 - Fixture Forge
   const [isForgeOpen, setIsForgeOpen] = useState(false)
   const [forgeEditingFixtureId, setForgeEditingFixtureId] = useState<string | null>(null)
+  // WAVE 389: State for editing library definitions
+  const [forgeExistingDefinition, setForgeExistingDefinition] = useState<FixtureDefinition | null>(null)
+  
+  // WAVE 389: Ref to call library reload from child component
+  const reloadLibraryRef = useRef<(() => Promise<void>) | null>(null)
   
   // Store actions
   const updateFixture = useStageStore(state => state.updateFixture)
@@ -767,14 +805,17 @@ const StageConstructorView: React.FC = () => {
   const snapRotation = Math.PI / 12  // 15 grados
   
   // WAVE 364 - Open Fixture Forge
-  const openFixtureForge = useCallback((fixtureId?: string) => {
+  // WAVE 389: Now accepts existingDefinition for library editing
+  const openFixtureForge = useCallback((fixtureId?: string, existingDefinition?: FixtureDefinition) => {
     setForgeEditingFixtureId(fixtureId || null)
+    setForgeExistingDefinition(existingDefinition || null)
     setIsForgeOpen(true)
   }, [])
   
   // WAVE 364 - Handle Forge Save
   // 🔥 WAVE 384: Save ALL fixture data, not just 3 fields
-  const handleForgeSave = useCallback((definition: FixtureDefinition, physics: PhysicsProfile) => {
+  // 🔥 WAVE 389: Add hot reload after save
+  const handleForgeSave = useCallback(async (definition: FixtureDefinition, physics: PhysicsProfile) => {
     if (forgeEditingFixtureId) {
       // Update existing fixture with COMPLETE data
       const existingFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
@@ -818,10 +859,18 @@ const StageConstructorView: React.FC = () => {
         console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
       }
     }
+    
+    // 🔥 WAVE 389: Reload library to reflect changes immediately (hot reload)
+    if (reloadLibraryRef.current) {
+      await reloadLibraryRef.current()
+    }
+    
     // TODO: Save definition to library for new fixtures
     setIsForgeOpen(false)
     setForgeEditingFixtureId(null)
+    setForgeExistingDefinition(null)
   }, [forgeEditingFixtureId, fixtures, updateFixture, updateFixturePhysics])
+
   
   const contextValue: ConstructorContextType = {
     snapEnabled,
@@ -855,7 +904,7 @@ const StageConstructorView: React.FC = () => {
         {/* Main Content */}
         <div className="constructor-content">
           {/* Left Sidebar - Fixture Library */}
-          <FixtureLibrarySidebar />
+          <FixtureLibrarySidebar onLoadLibraryRef={reloadLibraryRef} />
           
           {/* Center - 3D Viewport */}
           <div className="constructor-viewport">
@@ -904,11 +953,13 @@ const StageConstructorView: React.FC = () => {
               onClose={() => {
                 setIsForgeOpen(false)
                 setForgeEditingFixtureId(null)
+                setForgeExistingDefinition(null)
               }}
               onSave={handleForgeSave}
               editingFixture={forgeEditingFixtureId 
                 ? fixtures.find(f => f.id === forgeEditingFixtureId) 
                 : null}
+              existingDefinition={forgeExistingDefinition}
             />
           </Suspense>
         )}

@@ -552,6 +552,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                 placeholder="ADJ, Chauvet..."
                 value={fixture.manufacturer}
                 onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
+                autoFocus
               />
             </div>
             

@@ -46,11 +46,11 @@ export interface NavigationState {
 }
 
 // ============================================
-// TAB CONFIGURATION - WAVE 428: 4 Stages + 2 Tools
+// TAB CONFIGURATION - WAVE 428.1: 3 Stages + 3 Tools
 // ============================================
 
 export const TABS: TabConfig[] = [
-  // === STAGES (4 principales) ===
+  // === STAGES (3 principales - flujo de trabajo) ===
   {
     id: 'dashboard',
     label: 'COMMAND',
@@ -61,21 +61,12 @@ export const TABS: TabConfig[] = [
     description: 'Command Center - Session & Show Load',
   },
   {
-    id: 'constructor',
-    label: 'BUILD',
-    icon: 'construct',      // IconConstruct (custom SVG)
-    customIcon: true,
-    type: 'stage',
-    shortcut: 'Alt+2',
-    description: 'Fixture Constructor - Create & Edit Fixtures',
-  },
-  {
     id: 'live',
     label: 'LIVE',
     icon: 'monitor',        // IconLiveStage (custom SVG)
     customIcon: true,
     type: 'stage',
-    shortcut: 'Alt+3',
+    shortcut: 'Alt+2',
     description: 'Live Performance - Stage Simulator',
   },
   {
@@ -84,11 +75,20 @@ export const TABS: TabConfig[] = [
     icon: 'target',         // IconCalibration (custom SVG)
     customIcon: true,
     type: 'stage',
-    shortcut: 'Alt+4',
+    shortcut: 'Alt+3',
     description: 'Hardware Setup - Pan/Tilt Offsets',
   },
   
-  // === TOOLS (auxiliares) ===
+  // === TOOLS (3 utilidades) ===
+  {
+    id: 'constructor',
+    label: 'BUILD',
+    icon: 'construct',      // IconConstruct (custom SVG)
+    customIcon: true,
+    type: 'tool',           // WAVE 428.1: BUILD es TOOL, no stage
+    shortcut: 'Alt+4',
+    description: 'Fixture Constructor - Create & Edit Fixtures',
+  },
   {
     id: 'setup',
     label: 'SETUP',

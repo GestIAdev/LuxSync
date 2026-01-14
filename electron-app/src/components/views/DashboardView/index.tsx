@@ -20,7 +20,6 @@ import React from 'react'
 import AudioReactorRing from './components/AudioReactorRing'
 import SeleneBrain from './components/SeleneBrain'
 import DataCards from './components/DataCards'
-import ModeSwitcherSleek from './components/ModeSwitcherSleek'
 import PowerButton from './components/PowerButton'
 import { VibeSelector } from './components/VibeSelector'
 import { IconAudioWave, IconNeuralBrain } from './components/HudIcons'
@@ -40,7 +39,7 @@ const DashboardView: React.FC = () => {
             <h1>COMMAND CENTER</h1>
           </div>
         </div>
-        <ModeSwitcherSleek />
+        {/* WAVE 422: ModeSwitcher ELIMINADO - Sistema Auto-Override */}
       </header>
 
       {/* Bento Grid Main Area */}

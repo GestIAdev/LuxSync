@@ -6,10 +6,10 @@
 import { useLuxSyncStore, SeleneMode } from '../stores/luxsyncStore'
 import { useState } from 'react'
 
+// WAVE 422: MODES simplificados - 'flow' eliminado (Auto-Override System)
 const MODES: { mode: SeleneMode; label: string; color: string; desc: string; icon: string }[] = [
-  { mode: 'flow', label: 'FLOW', color: '#00ff88', desc: 'Auto-reactivo', icon: '🌊' },
   { mode: 'selene', label: 'SELENE', color: '#8b5cf6', desc: 'IA Consciente', icon: '🧠' },
-  { mode: 'locked', label: 'LOCKED', color: '#ef4444', desc: 'Manual', icon: '🔒' },
+  { mode: 'locked', label: 'OVERRIDE', color: '#ef4444', desc: 'Control Manual', icon: '🔒' },
 ]
 
 export default function BigSwitch() {

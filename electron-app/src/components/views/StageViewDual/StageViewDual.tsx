@@ -30,10 +30,10 @@ const Stage3DCanvas = lazy(() => import('../../stage3d/Stage3DCanvas'))
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// WAVE 422: MODES simplificados - 'flow' eliminado (Auto-Override System)
 const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = [
-  { id: 'manual', label: 'MAN', icon: '🎚️', color: '#FF6B6B' },
-  { id: 'flow', label: 'FLOW', icon: '🌊', color: '#4ADE80' },
-  { id: 'selene', label: 'AI', icon: '🌙', color: '#7C4DFF' },
+  { id: 'manual', label: 'OVERRIDE', icon: '🎚️', color: '#FF6B6B' },
+  { id: 'selene', label: 'SELENE', icon: '🌙', color: '#7C4DFF' },
 ]
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {

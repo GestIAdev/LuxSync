@@ -1,19 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎮 CONTROL STORE - WAVE 63.9: Power Interlock & Idle State
+ * 🎮 CONTROL STORE - WAVE 422: Mode Termination
  * Gestiona el modo global y parámetros de control de la UI
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Responsabilidades:
  * - viewMode: Alternar entre vista 2D (Tactical) y 3D (Visualizer)
- * - globalMode: Manual / Flow / Selene AI / null (idle when system OFF)
- * - flowParams: Parámetros de patrones Flow
+ * - globalMode: Manual / Selene AI / null (idle when system OFF)
  * - aiEnabled: Override para habilitar/deshabilitar Selene
  * - activePalette: Paleta de colores vivos activa (WAVE 33.2)
  * - globalSaturation/globalIntensity: Controles globales (WAVE 33.2)
  * 
+ * WAVE 422: Eliminado 'flow' mode - sistema Auto-Override
+ * 
  * @module stores/controlStore
- * @version 63.9.0
+ * @version 422.0.0
  */
 
 import { create } from 'zustand'
@@ -26,8 +27,10 @@ import { persist } from 'zustand/middleware'
 /** Modo de visualización del Stage */
 export type ViewMode = '2D' | '3D'
 
-/** Modo global de control DMX (null = idle/system off) */
-export type GlobalMode = 'manual' | 'flow' | 'selene' | null
+/** Modo global de control DMX (null = idle/system off) 
+ * WAVE 422: 'flow' eliminado - sistema Auto-Override 
+ */
+export type GlobalMode = 'manual' | 'selene' | null
 
 /** Patrones disponibles para Flow mode */
 export type FlowPattern = 'static' | 'chase' | 'wave' | 'rainbow' | 'strobe' | 'circle' | 'eight'

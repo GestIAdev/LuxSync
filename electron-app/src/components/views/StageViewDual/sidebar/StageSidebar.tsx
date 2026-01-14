@@ -1,22 +1,18 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎛️ STAGE SIDEBAR - WAVE 32: Stage Command & Dashboard + Scene Engine
- * WAVE 375: Integration with TheProgrammer (Arbiter-connected, Universal)
+ * 🎛️ STAGE SIDEBAR - WAVE 429: THE WIDE INSPECTOR
+ * Panel lateral contextual con control de fixtures + escenas
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Panel lateral contextual que muestra:
- * - Tab CONTROLS: TheProgrammer (UNIVERSAL - all fixtures or selection)
- * - Tab SCENES: SceneBrowser con REC/PLAY
- * 
- * Features:
- * - Transición suave entre modos
- * - Animación de entrada/salida
- * - Responsive a cambios de selección
- * - 🆕 WAVE 375: TheProgrammer conecta al MasterArbiter
+ * WAVE 429 Changes:
+ * - Ancho aumentado a 380px para maximizar área de control
+ * - Header limpio: nombre real del fixture, sin redundancias
+ * - X cierra el sidebar, no solo deselecciona
+ * - Tabs CONTROLS/SCENES en header compacto
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
 import { useDMXStore } from '../../../../stores'
@@ -31,18 +27,15 @@ import './StageSidebar.css'
 type SidebarTab = 'controls' | 'scenes'
 
 export interface StageSidebarProps {
-  /** Ancho del sidebar en píxeles */
-  width?: number
-  /** Si el sidebar está colapsado */
-  collapsed?: boolean
-  /** Callback para colapsar/expandir */
-  onToggleCollapse?: () => void
+  /** Si el sidebar está visible */
+  isVisible?: boolean
+  /** Callback para cerrar el sidebar */
+  onClose?: () => void
 }
 
 export const StageSidebar: React.FC<StageSidebarProps> = ({
-  width = 320,
-  collapsed = false,
-  onToggleCollapse
+  isVisible = true,
+  onClose
 }) => {
   // ─────────────────────────────────────────────────────────────────────────
   // 📊 Store State
@@ -59,7 +52,6 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
   // ─────────────────────────────────────────────────────────────────────────
   // 🧮 Computed Values
   // ─────────────────────────────────────────────────────────────────────────
-  // selectedIds es un Set<string>, convertir a array para operaciones
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds])
   const hasSelection = selectedArray.length > 0
   
@@ -69,120 +61,85 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
       .filter(Boolean)
   }, [selectedArray, fixtures])
   
-  const selectionSummary = useMemo(() => {
-    if (selectedArray.length === 0) return 'No selection'
+  // WAVE 429: Título limpio - nombre real del fixture
+  const headerTitle = useMemo(() => {
+    if (selectedArray.length === 0) return 'No fixtures selected'
     if (selectedArray.length === 1) {
       const fixture = selectedFixtures[0]
       return fixture?.name || `Fixture ${selectedArray[0]}`
     }
-    return `${selectedArray.length} fixtures selected`
+    const firstName = selectedFixtures[0]?.name || 'Fixture'
+    return `${firstName} (+${selectedArray.length - 1} more)`
   }, [selectedArray, selectedFixtures])
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // � Handlers
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  // WAVE 429: Cerrar el sidebar (no solo deseleccionar)
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose()
+    }
+  }, [onClose])
+  
+  // Si no es visible, no renderizar nada
+  if (!isVisible) {
+    return null
+  }
   
   // ─────────────────────────────────────────────────────────────────────────
   // 🎨 Render
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div 
-      className={`stage-sidebar ${collapsed ? 'collapsed' : ''}`}
-      style={{ width: collapsed ? 40 : width }}
-    >
-      {/* Toggle Button */}
-      <button 
-        className="sidebar-toggle"
-        onClick={onToggleCollapse}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        <span className="toggle-icon">
-          {collapsed ? '◀' : '▶'}
-        </span>
-      </button>
+    <div className="stage-sidebar">
+      {/* ═══ HEADER COMPACTO ═══ */}
+      <div className="sidebar-header">
+        {/* Tab Switcher integrado en header */}
+        <div className="header-tabs">
+          <button
+            className={`header-tab ${activeTab === 'controls' ? 'active' : ''}`}
+            onClick={() => setActiveTab('controls')}
+          >
+            <span className="tab-icon">⚡</span>
+            CONTROLS
+          </button>
+          <button
+            className={`header-tab ${activeTab === 'scenes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('scenes')}
+          >
+            <span className="tab-icon">◈</span>
+            SCENES
+            {sceneCount > 0 && <span className="tab-count">{sceneCount}</span>}
+          </button>
+        </div>
+        
+        {/* Close button */}
+        <button 
+          className="close-btn"
+          onClick={handleClose}
+          title="Close Inspector"
+        >
+          ✕
+        </button>
+      </div>
       
-      {!collapsed && (
-        <>
-          {/* Tab Switcher */}
-          <div className="sidebar-tabs">
-            <button
-              className={`sidebar-tab ${activeTab === 'controls' ? 'active' : ''}`}
-              onClick={() => setActiveTab('controls')}
-            >
-              <span className="tab-icon">{hasSelection ? '🎯' : '🎛️'}</span>
-              <span className="tab-label">CONTROLS</span>
-            </button>
-            <button
-              className={`sidebar-tab ${activeTab === 'scenes' ? 'active' : ''}`}
-              onClick={() => setActiveTab('scenes')}
-            >
-              <span className="tab-icon">🎬</span>
-              <span className="tab-label">SCENES</span>
-              {sceneCount > 0 && (
-                <span className="tab-badge">{sceneCount}</span>
-              )}
-            </button>
-          </div>
-          
-          {/* Header - Only for Controls tab */}
-          {activeTab === 'controls' && (
-            <div className="sidebar-header">
-              <div className="header-icon">
-                {hasSelection ? '🎯' : '🎛️'}
-              </div>
-              <div className="header-content">
-                <h3 className="header-title">
-                  {hasSelection ? 'Inspector' : 'Control Panel'}
-                </h3>
-                <span className="header-subtitle">
-                  {selectionSummary}
-                </span>
-              </div>
-            </div>
-          )}
-          
-          {/* Content - Based on active tab */}
-          <div className="sidebar-content">
-            {activeTab === 'controls' ? (
-              /* Controls Tab - WAVE 375: TheProgrammer is universal (all fixtures or none) */
-              <TheProgrammer />
-            ) : (
-              /* Scenes Tab */
-              <SceneBrowser />
-            )}
-          </div>
-          
-          {/* Footer */}
-          <div className="sidebar-footer">
-            <div className="footer-stats">
-              <span className="stat">
-                <span className="stat-value">{fixtures.length}</span>
-                <span className="stat-label">Fixtures</span>
-              </span>
-              <span className="stat">
-                <span className="stat-value">{selectedArray.length}</span>
-                <span className="stat-label">Selected</span>
-              </span>
-            </div>
-            <div className="footer-hint">
-              {hasSelection 
-                ? 'Ctrl+Click for multi-select • Esc to deselect'
-                : 'Click fixtures to select • Drag to select area'
-              }
-            </div>
-          </div>
-        </>
-      )}
-      
-      {/* Collapsed Mini View */}
-      {collapsed && (
-        <div className="sidebar-collapsed-content">
-          <div className="collapsed-icon" title={selectionSummary}>
-            {hasSelection ? '🎯' : '🎛️'}
-          </div>
-          {hasSelection && (
-            <div className="collapsed-count" title={`${selectedArray.length} selected`}>
-              {selectedArray.length}
-            </div>
-          )}
+      {/* ═══ SELECTION TITLE (solo en Controls) ═══ */}
+      {activeTab === 'controls' && hasSelection && (
+        <div className="selection-bar">
+          <span className="selection-count">{selectedArray.length}</span>
+          <span className="selection-title">{headerTitle}</span>
         </div>
       )}
+      
+      {/* ═══ CONTENT ═══ */}
+      <div className="sidebar-content">
+        {activeTab === 'controls' ? (
+          <TheProgrammer />
+        ) : (
+          <SceneBrowser />
+        )}
+      </div>
     </div>
   )
 }

@@ -92,10 +92,17 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   const moodConfig = MOOD_LABELS[currentMood] || MOOD_LABELS.harmonious
   const bpmColor = bpmConfidence > 0.7 ? '#4ADE80' : bpmConfidence > 0.4 ? '#FBBF24' : '#EF4444'
   
-  // Sidebar collapse state
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const handleToggleSidebar = useCallback(() => {
-    setSidebarCollapsed(prev => !prev)
+  // WAVE 429: Sidebar visibility state (no collapse, just show/hide)
+  const [showInspector, setShowInspector] = useState(true)
+  const handleCloseSidebar = useCallback(() => {
+    setShowInspector(false)
+  }, [])
+  
+  // Reopen sidebar when selection changes
+  React.useEffect(() => {
+    // Si hay algo seleccionado y el sidebar está cerrado, abrirlo
+    // (comentado para no forzar - el usuario puede abrirlo manualmente)
+    // if (selectedIds?.size > 0 && !showInspector) setShowInspector(true)
   }, [])
   
   return (
@@ -188,11 +195,11 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
           </div>
         </div>
         
-        {/* SIDEBAR - WAVE 30.1: Contextual Controls */}
-        {showSidebar && (
+        {/* SIDEBAR - WAVE 429: Show/Hide (no collapse) */}
+        {showSidebar && showInspector && (
           <StageSidebar 
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={handleToggleSidebar}
+            isVisible={showInspector}
+            onClose={handleCloseSidebar}
           />
         )}
       </div>

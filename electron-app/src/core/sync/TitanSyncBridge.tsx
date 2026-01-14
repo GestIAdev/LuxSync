@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌉 TITAN SYNC BRIDGE - WAVE 377 + WAVE 378.6 FIX
+ * 🌉 TITAN SYNC BRIDGE - WAVE 377 + WAVE 378.6 + WAVE 406 FIX
  * "El Sistema Nervioso - Conectando Frontend y Backend"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -10,7 +10,7 @@
  * 
  * ARQUITECTURA:
  * - Escucha cambios en stageStore.fixtures VIA ZUSTAND SUBSCRIBE (no React)
- * - Debounce de 500ms para no saturar IPC
+ * - Debounce de 200ms para no saturar IPC (reducido de 500ms para mejor UX)
  * - Envía lux:arbiter:setFixtures cuando hay cambios
  * 
  * WAVE 378.6 FIX:
@@ -18,17 +18,23 @@
  * - ADDED: Direct Zustand subscribe() - NO React re-renders
  * - This prevents WebGL Context Lost during fixture sync
  * 
+ * WAVE 406 FIX:
+ * - ADDED: Backend Ready Check - waits for window.lux.arbiter.setFixtures
+ * - ADDED: Retry logic with hash invalidation on IPC failure
+ * - FIXED: Race condition eliminated - polling hasta 5 segundos
+ * - FIXED: Silent failures replaced with loud error logs
+ * 
  * INTEGRACIÓN:
  * - Montar en App.tsx (componente invisible, sin render visual)
  * - El backend recibe fixtures actualizados automáticamente
  * 
  * AXIOMA PUNK:
  * - CERO Math.random()
- * - CERO polling
+ * - CERO polling infinito (max 5 seg, luego error)
  * - Reactividad pura vía Zustand subscriptions (NOT React hooks)
  * 
  * @module core/sync/TitanSyncBridge
- * @version WAVE 378.6
+ * @version WAVE 406
  */
 
 import { useEffect, useRef } from 'react'
@@ -38,8 +44,11 @@ import { useStageStore } from '../../stores/stageStore'
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Debounce time in ms - prevents IPC flooding when dragging fixtures */
-const SYNC_DEBOUNCE_MS = 500
+/** 🔧 WAVE 406: Debounce reducido a 200ms (era 500ms) - mejor responsiveness */
+const SYNC_DEBOUNCE_MS = 200
+
+/** 🔧 WAVE 406: Timeout para IPC ready check - 5 segundos max */
+const IPC_READY_TIMEOUT_MS = 5000
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS (outside component to prevent recreation)
@@ -59,14 +68,14 @@ const generateFixturesHash = (fixtureList: any[]): string => {
 
 /**
  * 🩸 WAVE 382: Sync fixtures to backend via IPC
+ * 🔧 WAVE 406: Blindado contra fallos - retry logic + invalidación de hash
  * Now includes hasMovementChannels for proper mover detection
  */
-const syncToBackend = async (fixtureList: any[]) => {
-  // Check if window.lux exists (Electron environment)
+const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.MutableRefObject<string>) => {
   const lux = (window as any).lux
   
-  if (!lux) {
-    console.warn('[TitanSyncBridge] ⚠️ window.lux not available')
+  if (!lux?.arbiter?.setFixtures) {
+    console.warn('[TitanSyncBridge] ⚠️ Lost connection to Backend during sync!')
     return
   }
   
@@ -95,14 +104,13 @@ const syncToBackend = async (fixtureList: any[]) => {
   })
   
   try {
-    if (lux.arbiter?.setFixtures) {
-      await lux.arbiter.setFixtures(arbiterFixtures)
-      console.log(`[TitanSyncBridge] ✅ Synced ${arbiterFixtures.length} fixtures to Arbiter`)
-    } else {
-      console.warn('[TitanSyncBridge] ⚠️ lux.arbiter.setFixtures not available')
-    }
+    const result = await lux.arbiter.setFixtures(arbiterFixtures)
+    // 🔧 WAVE 406: Log de éxito visual
+    console.log(`[TitanSyncBridge] ✅ SYNC OK: ${result?.fixtureCount || arbiterFixtures.length} fixtures active.`)
   } catch (err) {
-    console.warn('[TitanSyncBridge] ⚠️ Backend sync failed:', err)
+    console.error('[TitanSyncBridge] ❌ SYNC FAILED:', err)
+    // 🔧 WAVE 406: Invalidar hash para reintentar en siguiente cambio
+    lastSyncedHashRef.current = ''
   }
 }
 
@@ -124,47 +132,79 @@ export const TitanSyncBridge: React.FC = () => {
   const lastSyncedHashRef = useRef<string>('')
   
   // ═══════════════════════════════════════════════════════════════════════
-  // EFFECT: Subscribe to store DIRECTLY (not via React hook)
-  // This prevents re-renders and WebGL Context Lost
+  // EFFECT: WAVE 406 - Backend Ready Check (The Waiting Game)
+  // Wait for IPC to be ready BEFORE subscribing to prevent race condition
   // ═══════════════════════════════════════════════════════════════════════
   
   useEffect(() => {
-    console.log('[TitanSyncBridge] 🌉 Bridge ONLINE - subscribing to fixtures (WAVE 378.6)')
+    let isMounted = true
+    let unsubscribeStore: (() => void) | undefined
     
-    // Subscribe to store changes OUTSIDE of React's render cycle
-    const unsubscribe = useStageStore.subscribe(
-      (state) => state.fixtures,
-      (fixtures, prevFixtures) => {
-        // Generate hash to detect actual content changes
-        const currentHash = generateFixturesHash(fixtures)
-        
-        // Skip if no actual change
-        if (currentHash === lastSyncedHashRef.current) {
-          return
+    const initBridge = async () => {
+      console.log('[TitanSyncBridge] 🌉 Bridge STARTING - Waiting for IPC...')
+      
+      // 🔧 WAVE 406: Polling para esperar a window.lux (Max 5 seg)
+      let attempts = 0
+      const maxAttempts = Math.ceil(IPC_READY_TIMEOUT_MS / 100) // 5000ms / 100ms = 50 attempts
+      while (attempts < maxAttempts) {
+        const lux = (window as any).lux
+        if (lux && lux.arbiter && lux.arbiter.setFixtures) {
+          console.log(`[TitanSyncBridge] ✅ IPC Ready after ${attempts * 100}ms`)
+          break
         }
-        
-        // Clear existing debounce
-        if (debounceTimeoutRef.current) {
-          clearTimeout(debounceTimeoutRef.current)
-        }
-        
-        // Debounce the sync
-        debounceTimeoutRef.current = setTimeout(() => {
-          lastSyncedHashRef.current = currentHash
-          console.log(`[TitanSyncBridge] 🌉 Fixtures changed (${fixtures.length}) → syncing...`)
-          syncToBackend(fixtures)
-        }, SYNC_DEBOUNCE_MS)
-      },
-      { fireImmediately: true } // Sync on mount if fixtures already exist
-    )
+        await new Promise(r => setTimeout(r, 100))
+        attempts++
+        if (!isMounted) return // Si desmontamos mientras esperamos
+      }
+      
+      if (!(window as any).lux?.arbiter?.setFixtures) {
+        console.error('[TitanSyncBridge] ❌ CRITICAL: IPC TIMEOUT. Backend unreachable.')
+        return // TODO: Notificación UI
+      }
+      
+      // 🔧 WAVE 406: Suscribirse SOLO cuando el backend está listo
+      console.log('[TitanSyncBridge] 🔗 Subscribing to StageStore...')
+      
+      unsubscribeStore = useStageStore.subscribe(
+        (state) => state.fixtures,
+        (fixtures) => {
+          // Generate hash to detect actual content changes
+          const currentHash = generateFixturesHash(fixtures)
+          
+          // Skip if no actual change
+          if (currentHash === lastSyncedHashRef.current) {
+            return
+          }
+          
+          // Clear existing debounce
+          if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current)
+          }
+          
+          // 🔧 WAVE 406: Debounce reducido (mejor respuesta)
+          debounceTimeoutRef.current = setTimeout(() => {
+            if (!isMounted) return
+            lastSyncedHashRef.current = currentHash
+            console.log(`[TitanSyncBridge] 🔄 Syncing ${fixtures.length} fixtures...`)
+            syncToBackend(fixtures, lastSyncedHashRef)
+          }, SYNC_DEBOUNCE_MS) // WAVE 406: 200ms (era 500ms)
+        },
+        { fireImmediately: true } // Sync on mount if fixtures already exist
+      )
+    }
+    
+    initBridge()
     
     // Cleanup on unmount
     return () => {
-      console.log('[TitanSyncBridge] 🌉 Bridge OFFLINE')
-      unsubscribe()
+      isMounted = false
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current)
       }
+      if (unsubscribeStore) {
+        unsubscribeStore()
+      }
+      console.log('[TitanSyncBridge] 🌉 Bridge STOPPED')
     }
   }, []) // Empty deps - only run once on mount
   

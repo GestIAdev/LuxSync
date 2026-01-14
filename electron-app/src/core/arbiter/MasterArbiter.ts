@@ -915,59 +915,91 @@ export class MasterArbiter extends EventEmitter {
     const intent = this.layer0_titan.intent
     const fixture = this.fixtures.get(fixtureId)
     
-    // Global dimmer from masterIntensity
-    defaults.dimmer = intent.masterIntensity * 255
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔦 WAVE 411 FIX: OPTICS HANDOFF
+    // Si Titan envía óptica, úsala. Si no, usa el default (128).
+    // ═══════════════════════════════════════════════════════════════════════
+    if (intent.optics) {
+      defaults.zoom = intent.optics.zoom ?? 128
+      defaults.focus = intent.optics.focus ?? 128
+      // Si tuvieras iris, también aquí:
+      // defaults.iris = intent.optics.iris ?? 0
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧱 WAVE 410: DEMOLICIÓN DEL "MURO DE LUZ"
+    // Use zone-specific intensity instead of flat masterIntensity
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    const zone = (fixture?.zone || 'UNASSIGNED').toLowerCase()
+    const fixtureType = (fixture?.type || 'generic').toLowerCase()
+    
+    // Map fixture zone to intent zone (handle legacy and new naming)
+    let intentZone: 'front' | 'back' | 'left' | 'right' | 'ambient' = 'front' // default
+    
+    if (zone.includes('front')) {
+      intentZone = 'front'
+    } else if (zone.includes('back')) {
+      intentZone = 'back'
+    } else if (zone.includes('left')) {
+      intentZone = 'left'
+    } else if (zone.includes('right')) {
+      intentZone = 'right'
+    } else if (zone.includes('ambient') || zone === 'unassigned') {
+      intentZone = 'ambient'
+    }
+    
+    // � FIX: Get zone-specific intensity, fallback to masterIntensity
+    const zoneIntent = intent.zones?.[intentZone]
+    const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity
+    defaults.dimmer = zoneIntensity * 255
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎨 WAVE 382: ZONE-BASED COLOR MAPPING (No more monochrome!)
-    // Supports multiple zone naming conventions:
-    // - Legacy: FRONT_PARS, BACK_PARS, MOVING_LEFT, etc.
-    // - Stage Constructor: ceiling-front, ceiling-left, floor-back, etc.
+    // NOW WITH: Zone-based paletteRole mapping
     // ═══════════════════════════════════════════════════════════════════════
     
-    const zone = (fixture?.zone || 'UNASSIGNED').toUpperCase()
-    const fixtureType = (fixture?.type || 'generic').toLowerCase()
+    const zoneUpper = zone.toUpperCase()
     
-    // Determine which palette color to use based on zone
+    // 🎨 WAVE 410: Determine which palette color to use based on zone + paletteRole
     let selectedColor = intent.palette?.primary  // Default fallback
+    const paletteRole = zoneIntent?.paletteRole || 'primary'  // Get role from intent
     
-    if (zone.includes('FRONT')) {
-      // 🟡 FRONT (ceiling-front, FRONT_PARS): Warm wash - PRIMARY color
-      selectedColor = intent.palette?.primary
-    } else if (zone.includes('BACK')) {
-      // 🔵 BACK (floor-back, BACK_PARS): Cool contrast - SECONDARY color
-      selectedColor = intent.palette?.secondary || intent.palette?.primary
-    } else if (zone.includes('LEFT') || zone.includes('RIGHT')) {
-      // 🟢 SIDES (ceiling-left, ceiling-right): Alternate between primary/secondary
-      // LEFT gets secondary, RIGHT gets accent/blend for visual interest
-      if (zone.includes('LEFT')) {
-        selectedColor = intent.palette?.secondary || intent.palette?.primary
-      } else {
-        selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary
-      }
-    } else if (zone.includes('MOVING') || this.isMovingFixture(fixture!)) {
-      // 🟣 MOVERS: Dramatic accent - ACCENT color
-      selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary
-    } else if (zone.includes('STROBE') || zone === 'CENTER') {
-      // ⚪ CENTER/STROBES: Mix of primary and secondary
-      if (intent.palette?.primary && intent.palette?.secondary) {
-        // Blend between primary and secondary for center fixtures
-        selectedColor = {
-          h: (intent.palette.primary.h + intent.palette.secondary.h) / 2,
-          s: (intent.palette.primary.s + intent.palette.secondary.s) / 2,
-          l: (intent.palette.primary.l + intent.palette.secondary.l) / 2,
-        }
-      } else {
+    // Map paletteRole to actual palette color
+    switch (paletteRole) {
+      case 'primary':
         selectedColor = intent.palette?.primary
-      }
-    } else if (zone.includes('FLOOR')) {
-      // 🔶 FLOOR (general): Darker primary for ground effect
-      if (intent.palette?.primary) {
-        selectedColor = {
-          h: intent.palette.primary.h,
-          s: intent.palette.primary.s,
-          l: intent.palette.primary.l * 0.7,  // Darker for floor
-        }
+        break
+      case 'secondary':
+        selectedColor = intent.palette?.secondary || intent.palette?.primary
+        break
+      case 'accent':
+        selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary
+        break
+      case 'ambient':
+        // 🎨 WAVE 412 FIX: Use palette.ambient directly (SeleneLux provides 4-color palette)
+        // ANTES: Darkened primary (legacy assumption: ambient = dark version of primary)
+        // AHORA: Use ambient color from palette (e.g., Cyan in Complementary scheme)
+        selectedColor = intent.palette?.ambient || intent.palette?.primary
+        break
+      default:
+        selectedColor = intent.palette?.primary
+    }
+    
+    // Legacy zone-based fallback (if paletteRole not set)
+    if (!zoneIntent?.paletteRole) {
+      if (zoneUpper.includes('FRONT')) {
+        // 🟡 FRONT: Warm wash - PRIMARY color
+        selectedColor = intent.palette?.primary
+      } else if (zoneUpper.includes('BACK')) {
+        // � BACK: Cool contrast - ACCENT color (NOT secondary!)
+        selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary
+      } else if (zoneUpper.includes('LEFT') || zoneUpper.includes('RIGHT')) {
+        // 🟢 SIDES: Secondary
+        selectedColor = intent.palette?.secondary || intent.palette?.primary
+      } else if (zoneUpper.includes('MOVING') || this.isMovingFixture(fixture!)) {
+        // 🟣 MOVERS: Dramatic accent - ACCENT or SECONDARY
+        selectedColor = intent.palette?.accent || intent.palette?.secondary || intent.palette?.primary
       }
     }
     

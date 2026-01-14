@@ -53,6 +53,9 @@ import {
   type MovementIntent as VMMMovementIntent  // WAVE 347: VMM usa su propio tipo (x, y)
 } from './movement/VibeMovementManager'
 
+// 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
+import { getOpticsConfig } from './movement/VibeMovementPresets'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -406,7 +409,7 @@ export class TitanEngine extends EventEmitter {
         front: { intensity: ni.front, paletteRole: 'primary' },
         back: { intensity: ni.back, paletteRole: 'accent' },
         left: { intensity: ni.mover, paletteRole: 'secondary' },
-        right: { intensity: ni.mover, paletteRole: 'secondary' },
+        right: { intensity: ni.mover, paletteRole: 'ambient' },  // 🎨 WAVE 412: Stereo split (no secondary!)
         ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
       };
     }
@@ -417,9 +420,20 @@ export class TitanEngine extends EventEmitter {
     const movement = this.calculateMovement(audio, context, vibeProfile)
     
     // ─────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
     // 5. CALCULAR EFECTOS ACTIVOS
     // ─────────────────────────────────────────────────────────────────────
     const effects = this.calculateEffects(audio, context, vibeProfile)
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🔦 WAVE 410: RECONEXIÓN ÓPTICA - Recuperar configuración de Zoom/Focus
+    // ─────────────────────────────────────────────────────────────────────
+    const opticsConfig = getOpticsConfig(vibeProfile.id)
+    const optics = {
+      zoom: opticsConfig.zoomDefault,
+      focus: opticsConfig.focusDefault,
+      iris: opticsConfig.irisDefault,
+    }
     
     // ─────────────────────────────────────────────────────────────────────
     // 6. CONSTRUIR LIGHTING INTENT
@@ -429,6 +443,7 @@ export class TitanEngine extends EventEmitter {
       masterIntensity,
       zones,
       movement,
+      optics,  // 🔦 WAVE 410: Inyectar configuración óptica
       effects,
       source: 'procedural',
       timestamp: now,
@@ -556,11 +571,11 @@ export class TitanEngine extends EventEmitter {
       },
       left: {
         intensity: audio.high * 0.5 + audio.energy * 0.5,
-        paletteRole: 'secondary',
+        paletteRole: 'secondary', // 🎨 Mov L → Secondary (Blue)
       },
       right: {
         intensity: audio.high * 0.5 + audio.energy * 0.5,
-        paletteRole: 'secondary',
+        paletteRole: 'ambient',   // 🎨 WAVE 412: Mov R → Ambient (Cyan)
       },
       ambient: {
         intensity: audio.energy * 0.3,

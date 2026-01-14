@@ -16,9 +16,9 @@
 .stage-sidebar {
   display: flex;
   flex-direction: column;
-  width: 380px !important;
-  min-width: 380px !important;
-  max-width: 380px !important;
+  width: 420px !important;
+  min-width: 420px !important;
+  max-width: 420px !important;
   height: 100%;
   background: linear-gradient(180deg, #0d0d12 0%, #0a0a0f 100%);
   border-left: 1px solid rgba(124, 77, 255, 0.2);
@@ -211,3 +211,4 @@
   max-width: 200px;
   line-height: 1.5;
 }
+

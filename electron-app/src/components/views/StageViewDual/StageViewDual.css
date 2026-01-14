@@ -207,7 +207,7 @@
  * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .stage-view-viewport {
-  flex: 1; /* Take remaining space after 380px sidebar */
+  flex: 1; /* Take remaining space after 420px sidebar */
   min-width: 0;
   position: relative;
   min-height: 400px;
@@ -286,9 +286,9 @@
  * â• */
 
 .stage-view-dual .stage-sidebar {
-  width: 380px !important;
-  min-width: 380px !important;
-  max-width: 380px !important;
+  width: 420px !important;
+  min-width: 420px !important;
+  max-width: 420px !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
 }
@@ -335,3 +335,4 @@
 .sidebar-reopen-btn:active {
   transform: scale(0.95);
 }
+

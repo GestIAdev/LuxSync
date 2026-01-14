@@ -1,9 +1,11 @@
 /**
- * 🎛️ THE COMMAND DECK - WAVE 375
+ * 🎛️ THE COMMAND DECK - WAVE 375 + WAVE 426
  * Bottom control bar for live performance
  * 
- * Layout:
- * [LAYER INDICATOR] | [QUICK ACTIONS + GRAND MASTER] | [STATUS] | [BLACKOUT]
+ * Layout (WAVE 426 - Updated priority):
+ * [LAYER INDICATOR] | [GRAND MASTER] | [VIBES] | [QUICK ACTIONS] | [STATUS] | [BLACKOUT]
+ * 
+ * Priority: GrandMaster > Vibes > QuickActions > Status
  * 
  * Height: 140px
  */
@@ -14,6 +16,7 @@ import { useTruthSensory } from '../../hooks'
 import { LayerIndicator } from './LayerIndicator'
 import { QuickActions } from './QuickActions'
 import { GrandMasterSlider } from './GrandMasterSlider'
+import { VibeSelectorCompact } from './VibeSelectorCompact'
 import { StatusBar } from './StatusBar'
 import { BlackoutButton } from './BlackoutButton'
 import './CommandDeck.css'
@@ -111,17 +114,25 @@ export const CommandDeck: React.FC = () => {
         />
       </div>
       
-      {/* Section 2: Quick Actions + Grand Master */}
-      <div className="deck-section deck-actions">
-        <QuickActions disabled={blackout} />
-        <div className="deck-divider" />
+      {/* Section 2: Grand Master (Priority #1) */}
+      <div className="deck-section deck-grandmaster">
         <GrandMasterSlider 
           value={arbiterStatus.grandMaster}
           onChange={handleGrandMasterChange}
         />
       </div>
       
-      {/* Section 3: Status Bar */}
+      {/* Section 3: VIBES (Priority #2) - WAVE 426 */}
+      <div className="deck-section deck-vibes">
+        <VibeSelectorCompact />
+      </div>
+      
+      {/* Section 4: Quick Actions */}
+      <div className="deck-section deck-actions">
+        <QuickActions disabled={blackout} />
+      </div>
+      
+      {/* Section 5: Status Bar */}
       <div className="deck-section deck-status">
         <StatusBar 
           bpm={bpm}
@@ -130,7 +141,7 @@ export const CommandDeck: React.FC = () => {
         />
       </div>
       
-      {/* Section 4: Blackout (Isolated) */}
+      {/* Section 6: Blackout (Isolated - Emergency) */}
       <div className="deck-section deck-emergency">
         <BlackoutButton />
       </div>

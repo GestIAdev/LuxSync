@@ -528,3 +528,17 @@
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WAVE 426: VIBES SECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+.deck-vibes {
+  flex-direction: row;
+  align-items: center;
+}
+
+.deck-grandmaster {
+  flex-direction: row;
+  align-items: center;
+}

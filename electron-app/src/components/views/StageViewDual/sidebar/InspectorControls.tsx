@@ -1,32 +1,77 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔍 INSPECTOR CONTROLS - WAVE 30.1: Stage Command & Dashboard
- * Panel de control para fixtures seleccionados
+ * 🔍 INSPECTOR CONTROLS - WAVE 428: NEON POLISH
+ * Panel de control ACCORDION para fixtures seleccionados
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Muestra cuando hay selección activa:
- * - Información de fixtures seleccionados
- * - Color Picker (HSL)
- * - Dimmer Slider
- * - Pan/Tilt Control (si hay moving heads)
- * - Botón Release (limpiar overrides)
+ * Arquitectura:
+ * - Accordion exclusivo (solo una sección abierta)
+ * - Altura fija, sin scroll del panel completo
+ * - Estética "Placa Militar" / Reactor Nuclear
+ * 
+ * Secciones:
+ * - INTENSITY (Dimmer)
+ * - COLOR (HSL Picker)
+ * - POSITION (Pan/Tilt - solo Moving Heads)
+ * - BEAM (Speed/Patterns)
  * 
  * @module components/views/StageViewDual/sidebar/InspectorControls
- * @version 30.1.0
+ * @version 428.0
  */
 
 import React, { useCallback, useMemo, useState } from 'react'
 import { useSelectionStore, selectSelectedIds } from '../../../../stores/selectionStore'
-import { useOverrideStore, hslToRgb, rgbToHsl, MovementPatternType } from '../../../../stores/overrideStore'
+import { useOverrideStore, MovementPatternType } from '../../../../stores/overrideStore'
 import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
 import { ColorPicker } from './ColorPicker'
 import { DimmerSlider } from './DimmerSlider'
 import { PanTiltControl } from './PanTiltControl'
 import './InspectorControls.css'
 
+// ═════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═════════════════════════════════════════════════════════════════════════
+
+type AccordionSection = 'intensity' | 'color' | 'position' | 'beam' | null
+
 export interface InspectorControlsProps {
   className?: string
 }
+
+// ═════════════════════════════════════════════════════════════════════════
+// ACCORDION SECTION COMPONENT
+// ═════════════════════════════════════════════════════════════════════════
+
+interface SectionProps {
+  id: AccordionSection
+  title: string
+  icon: string
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+  disabled?: boolean
+}
+
+const AccordionSection: React.FC<SectionProps> = ({ 
+  id, title, icon, isOpen, onToggle, children, disabled 
+}) => (
+  <div className={`accordion-section ${isOpen ? 'open' : ''} ${disabled ? 'disabled' : ''}`}>
+    <button 
+      className="section-header" 
+      onClick={onToggle}
+      disabled={disabled}
+    >
+      <span className="section-icon">{icon}</span>
+      <span className="section-title">{title}</span>
+      <span className="section-chevron">{isOpen ? '▼' : '▶'}</span>
+    </button>
+    {isOpen && (
+      <div className="section-content">
+        {children}
+      </div>
+    )}
+  </div>
+)
 
 export const InspectorControls: React.FC<InspectorControlsProps> = ({
   className = '',
@@ -37,10 +82,18 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
   const selectedArray = useMemo(() => [...selectedIds], [selectedIds])
   
   // Overrides
-  const { setMultipleOverrides, clearAllOverrides, getOverride } = useOverrideStore()
+  const { setMultipleOverrides, clearAllOverrides } = useOverrideStore()
   
   // Truth (para obtener datos de fixtures)
   const hardware = useTruthStore(selectHardware)
+  
+  // WAVE 428: Accordion state - solo una sección abierta
+  const [openSection, setOpenSection] = useState<AccordionSection>('intensity')
+  
+  // Toggle accordion section
+  const toggleSection = useCallback((section: AccordionSection) => {
+    setOpenSection(prev => prev === section ? null : section)
+  }, [])
   
   // Estado local para valores del inspector
   const [inspectorH, setInspectorH] = useState(0)
@@ -152,171 +205,192 @@ export const InspectorControls: React.FC<InspectorControlsProps> = ({
   }, [clearAllOverrides])
   
   // ═════════════════════════════════════════════════════════════════════════
-  // RENDER
+  // RENDER - WAVE 428: ACCORDION LAYOUT
   // ═════════════════════════════════════════════════════════════════════════
   
   return (
     <div className={`inspector-controls ${className}`}>
-      {/* HEADER */}
+      {/* ═══ HEADER ═══ */}
       <div className="inspector-header">
-        <div className="selection-info">
-          <span className="selection-count">{selectedArray.length}</span>
-          <span className="selection-label">
-            {selectedArray.length === 1 ? 'Fixture' : 'Fixtures'}
+        <div className="header-badge">
+          <span className="badge-count">{selectedArray.length}</span>
+          <span className="badge-label">
+            {selectedArray.length === 1 ? 'FIXTURE' : 'FIXTURES'}
           </span>
         </div>
         <button 
           className="close-btn"
           onClick={deselectAll}
-          title="Deselect All"
+          title="Deselect All (ESC)"
         >
           ✕
         </button>
       </div>
       
-      {/* FIXTURE LIST (collapsed) */}
-      <div className="fixture-list">
-        {selectedFixtures.slice(0, 4).map((fixture) => fixture && (
-          <div key={fixture.id} className="fixture-chip">
+      {/* ═══ FIXTURE CHIPS ═══ */}
+      <div className="fixture-chips">
+        {selectedFixtures.slice(0, 3).map((fixture) => fixture && (
+          <span key={fixture.id} className="chip">
             {fixture.name || fixture.id}
-          </div>
+          </span>
         ))}
-        {selectedFixtures.length > 4 && (
-          <div className="fixture-chip more">
-            +{selectedFixtures.length - 4} más
-          </div>
+        {selectedFixtures.length > 3 && (
+          <span className="chip overflow">+{selectedFixtures.length - 3}</span>
         )}
       </div>
       
-      {/* DIVIDER */}
-      <div className="divider" />
-      
-      {/* COLOR */}
-      <div className="control-section">
-        <h4 className="section-title">🎨 Color</h4>
-        <ColorPicker
-          h={inspectorH}
-          s={inspectorS}
-          l={inspectorL}
-          onChange={handleColorChange}
-        />
-      </div>
-      
-      {/* DIMMER */}
-      <div className="control-section">
-        <h4 className="section-title">💡 Intensidad</h4>
-        <DimmerSlider
-          value={inspectorDimmer}
-          onChange={handleDimmerChange}
-        />
-      </div>
-      
-      {/* PAN/TILT (solo si hay moving heads) */}
-      {hasMovingHeads && (
-        <div className="control-section">
-          <h4 className="section-title">🕹️ Movimiento</h4>
+      {/* ═══ ACCORDION SECTIONS ═══ */}
+      <div className="accordion-container">
+        
+        {/* INTENSITY */}
+        <AccordionSection
+          id="intensity"
+          title="INTENSITY"
+          icon="◐"
+          isOpen={openSection === 'intensity'}
+          onToggle={() => toggleSection('intensity')}
+        >
+          <DimmerSlider
+            value={inspectorDimmer}
+            onChange={handleDimmerChange}
+          />
+        </AccordionSection>
+        
+        {/* COLOR */}
+        <AccordionSection
+          id="color"
+          title="COLOR"
+          icon="◉"
+          isOpen={openSection === 'color'}
+          onToggle={() => toggleSection('color')}
+        >
+          <ColorPicker
+            h={inspectorH}
+            s={inspectorS}
+            l={inspectorL}
+            onChange={handleColorChange}
+          />
+        </AccordionSection>
+        
+        {/* POSITION - Solo Moving Heads */}
+        <AccordionSection
+          id="position"
+          title="POSITION"
+          icon="◎"
+          isOpen={openSection === 'position'}
+          onToggle={() => toggleSection('position')}
+          disabled={!hasMovingHeads}
+        >
           <PanTiltControl
             pan={inspectorPan}
             tilt={inspectorTilt}
             onChange={handlePanTiltChange}
           />
-        </div>
-      )}
-      
-      {/* SPEED (solo si hay moving heads - ¡para que no exploten los motores!) */}
-      {hasMovingHeads && (
-        <div className="control-section">
-          <h4 className="section-title">⏱️ Velocidad Motores</h4>
+          {/* Speed slider */}
           <div className="speed-control">
-            <input
-              type="range"
-              min={0}
-              max={255}
-              value={inspectorSpeed}
-              onChange={(e) => handleSpeedChange(parseInt(e.target.value))}
-              className="speed-slider"
-            />
+            <label className="control-label">MOTOR SPEED</label>
+            <div className="energy-bar">
+              <div 
+                className="energy-fill speed" 
+                style={{ width: `${(255 - inspectorSpeed) / 255 * 100}%` }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={255}
+                value={inspectorSpeed}
+                onChange={(e) => handleSpeedChange(parseInt(e.target.value))}
+                className="energy-input"
+              />
+            </div>
             <div className="speed-labels">
-              <span className="speed-label fast">🚀 Rápido</span>
+              <span>FAST</span>
               <span className="speed-value">{inspectorSpeed}</span>
-              <span className="speed-label slow">🐢 Lento</span>
+              <span>SLOW</span>
             </div>
           </div>
-        </div>
-      )}
-      
-      {/* 🔄 PATRONES DE MOVIMIENTO (solo si hay moving heads) */}
-      {hasMovingHeads && (
-        <div className="control-section">
-          <h4 className="section-title">🔄 Patrón de Movimiento</h4>
-          
-          {/* Selector de patrón */}
-          <div className="pattern-selector">
+        </AccordionSection>
+        
+        {/* BEAM - Patterns (Solo Moving Heads) */}
+        <AccordionSection
+          id="beam"
+          title="BEAM"
+          icon="⌬"
+          isOpen={openSection === 'beam'}
+          onToggle={() => toggleSection('beam')}
+          disabled={!hasMovingHeads}
+        >
+          {/* Pattern Selector */}
+          <div className="pattern-grid">
             {(['static', 'circle', 'figure8', 'sweep'] as MovementPatternType[]).map(p => (
               <button
                 key={p}
                 className={`pattern-btn ${movementPattern === p ? 'active' : ''}`}
                 onClick={() => handlePatternChange(p)}
-                title={p}
               >
-                {p === 'static' && '⏹️'}
-                {p === 'circle' && '○'}
-                {p === 'figure8' && '∞'}
-                {p === 'sweep' && '↔'}
+                <span className="pattern-icon">
+                  {p === 'static' && '■'}
+                  {p === 'circle' && '○'}
+                  {p === 'figure8' && '∞'}
+                  {p === 'sweep' && '↔'}
+                </span>
+                <span className="pattern-name">{p.toUpperCase()}</span>
               </button>
             ))}
           </div>
           
-          {/* Amplitud (solo si hay patrón activo) */}
+          {/* Amplitude & Speed (solo si patrón activo) */}
           {movementPattern !== 'static' && (
-            <div className="pattern-control">
-              <label>📐 Amplitud</label>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                value={patternAmplitude}
-                onChange={(e) => handleAmplitudeChange(parseInt(e.target.value))}
-                className="amplitude-slider"
-              />
-              <span className="control-value">{patternAmplitude}%</span>
+            <div className="pattern-params">
+              <div className="param-row">
+                <label>AMPLITUDE</label>
+                <div className="energy-bar small">
+                  <div 
+                    className="energy-fill" 
+                    style={{ width: `${patternAmplitude}%` }}
+                  />
+                  <input
+                    type="range"
+                    min={10}
+                    max={100}
+                    value={patternAmplitude}
+                    onChange={(e) => handleAmplitudeChange(parseInt(e.target.value))}
+                    className="energy-input"
+                  />
+                </div>
+                <span className="param-value">{patternAmplitude}%</span>
+              </div>
+              <div className="param-row">
+                <label>SPEED</label>
+                <div className="energy-bar small">
+                  <div 
+                    className="energy-fill" 
+                    style={{ width: `${patternSpeed}%` }}
+                  />
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    value={patternSpeed}
+                    onChange={(e) => handlePatternSpeedChange(parseInt(e.target.value))}
+                    className="energy-input"
+                  />
+                </div>
+                <span className="param-value">{patternSpeed}%</span>
+              </div>
             </div>
           )}
-          
-          {/* Velocidad del patrón (solo si hay patrón activo) */}
-          {movementPattern !== 'static' && (
-            <div className="pattern-control">
-              <label>🎵 Velocidad Patrón</label>
-              <input
-                type="range"
-                min={1}
-                max={100}
-                value={patternSpeed}
-                onChange={(e) => handlePatternSpeedChange(parseInt(e.target.value))}
-                className="pattern-speed-slider"
-              />
-              <span className="control-value">{patternSpeed}%</span>
-            </div>
-          )}
-        </div>
-      )}
+        </AccordionSection>
+        
+      </div>
       
-      {/* DIVIDER */}
-      <div className="divider" />
-      
-      {/* ACTIONS */}
+      {/* ═══ ACTIONS ═══ */}
       <div className="inspector-actions">
-        <button 
-          className="action-btn release"
-          onClick={handleRelease}
-        >
-          🔓 Release Selected
+        <button className="action-btn release" onClick={handleRelease}>
+          RELEASE SELECTED
         </button>
-        <button 
-          className="action-btn release-all"
-          onClick={handleReleaseAll}
-        >
-          🔓 Release All
+        <button className="action-btn release-all" onClick={handleReleaseAll}>
+          RELEASE ALL
         </button>
       </div>
     </div>

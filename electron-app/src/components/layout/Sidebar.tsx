@@ -1,31 +1,27 @@
 /**
- * 📱 SIDEBAR - Commander Navigation Panel
- * WAVE 35: Cleaned up - Status moved to Dashboard
- * WAVE 361: Added CONSTRUCT tab with PencilRuler icon
+ * 📱 SIDEBAR - WAVE 423: Stage System Navigation
+ * 3 Stages + 1 Tool Architecture
  */
 
 import React from 'react'
 import { useNavigationStore, TABS, TabId } from '../../stores/navigationStore'
-import { Activity, Monitor, Settings, LucideIcon, Brain, PencilRuler } from 'lucide-react'
+import { Monitor, Brain, LucideIcon, Crosshair, Zap } from 'lucide-react'
 import './Sidebar.css'
 
-// Colores por tab - WAVE 361: Added constructor
+// WAVE 423: Colores por tab - 3 Stages + 1 Tool
 const TAB_COLORS: Record<TabId, string> = {
-  'live': '#00fff0',        // Cian
-  'simulate': '#ff00ff',    // Magenta
-  'constructor': '#22d3ee', // Cyan-400 (arquitectónico)
-  'core': '#f59e0b',        // Naranja (Orange-Amber)
-  'setup': '#a855f7',       // Violeta  
+  'dashboard': '#00fff0',    // Cian (Command Center)
+  'live': '#ff00ff',         // Magenta (Performance)
+  'calibration': '#22d3ee',  // Cyan-400 (Hardware)
+  'core': '#f59e0b',         // Naranja (AI Monitor)
 }
 
-// 🎨 WAVE 10.6: Pro Icons (Lucide React)
-// WAVE 361: Added PencilRuler
+// WAVE 423: Icons - Lucide temporales (TODO: custom SVGs)
 const TAB_ICONS: Record<string, LucideIcon> = {
-  'activity': Activity,
-  'monitor': Monitor,
-  'settings': Settings,
-  'brain': Brain,
-  'pencil-ruler': PencilRuler,
+  'bolt': Zap,           // Dashboard (TODO: IconDmxBolt)
+  'monitor': Monitor,    // Live Stage
+  'target': Crosshair,   // Calibration (TODO: custom SVG)
+  'brain': Brain,        // LUX CORE
 }
 
 const Sidebar: React.FC = () => {

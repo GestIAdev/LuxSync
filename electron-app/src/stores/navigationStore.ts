@@ -1,21 +1,32 @@
 /**
- * 🧭 NAVIGATION STORE - Commander Layout Navigation
- * WAVE 9: Gestión de tabs y navegación global
- * WAVE 361: Added 'constructor' tab for Stage Constructor
+ * 🧭 NAVIGATION STORE - WAVE 423: Stage System
+ * 3 Stages + 1 Tool Architecture
+ * 
+ * STAGES:
+ *   - dashboard: Session management, power control
+ *   - live: Performance hub with simulator
+ *   - calibration: Hardware setup (absorbs constructor + setup)
+ * 
+ * TOOLS:
+ *   - core: LUX CORE monitoring (visible, not hidden)
  */
 
 import { create } from 'zustand'
 
 // ============================================
-// TYPES
+// TYPES - WAVE 423: 3 Stages + 1 Tool
 // ============================================
 
-export type TabId = 'live' | 'simulate' | 'constructor' | 'core' | 'setup'
+export type StageId = 'dashboard' | 'live' | 'calibration'
+export type ToolId = 'core'
+export type TabId = StageId | ToolId
 
 export interface TabConfig {
   id: TabId
   label: string
   icon: string
+  customIcon?: boolean  // true = usar SVG custom (no Lucide)
+  type: 'stage' | 'tool'
   shortcut: string
   description: string
 }
@@ -33,58 +44,61 @@ export interface NavigationState {
 }
 
 // ============================================
-// TAB CONFIGURATION - WAVE 10.6: Pro Icons
-// WAVE 361: Added CONSTRUCT tab between STAGE and CORE
+// TAB CONFIGURATION - WAVE 423: 3 Stages + 1 Tool
 // ============================================
 
 export const TABS: TabConfig[] = [
+  // === STAGES (3 principales) ===
+  {
+    id: 'dashboard',
+    label: 'COMMAND',
+    icon: 'bolt',           // TODO: Usar IconDmxBolt (custom SVG)
+    customIcon: true,
+    type: 'stage',
+    shortcut: 'Alt+1',
+    description: 'Command Center - Session & Power Control',
+  },
   {
     id: 'live',
-    label: 'COMMAND',  // 🔄 WAVE 35.2: Rebranded from LIVE
-    icon: 'activity',  // Lucide: Activity (pulse wave)
-    shortcut: 'Alt+1',
-    description: 'Centro de comando y monitorización',
-  },
-  {
-    id: 'simulate',
-    label: 'LUX STAGE',  // 🔄 WAVE 34.5: Rebranded from SIMULATE
-    icon: 'monitor',   // Lucide: Monitor (screen)
+    label: 'LIVE',
+    icon: 'monitor',        // Lucide: Monitor (mantener por ahora)
+    customIcon: false,
+    type: 'stage',
     shortcut: 'Alt+2',
-    description: 'Visualización del escenario - Canvas 2.0',
+    description: 'Live Performance - Stage Simulator',
   },
   {
-    id: 'constructor',
-    label: 'CONSTRUCT',  // 🆕 WAVE 361: Stage Constructor
-    icon: 'pencil-ruler',  // Lucide: PencilRuler (design/architecture)
+    id: 'calibration',
+    label: 'CALIBRATE',
+    icon: 'target',         // TODO: Crear SVG custom
+    customIcon: true,
+    type: 'stage',
     shortcut: 'Alt+3',
-    description: 'Stage Constructor - Posiciona y configura fixtures',
+    description: 'Hardware Setup - Fixture Calibration',
   },
+  
+  // === TOOL (auxiliar visible - "es bonita") ===
   {
     id: 'core',
     label: 'LUX CORE',
-    icon: 'brain',     // Lucide: Brain (AI core)
+    icon: 'brain',          // Lucide: Brain (mantener)
+    customIcon: false,
+    type: 'tool',
     shortcut: 'Alt+4',
-    description: 'Centro de monitorización y diagnóstico de Selene',
-  },
-  {
-    id: 'setup',
-    label: 'SETUP',
-    icon: 'settings',  // Lucide: Settings (gear)
-    shortcut: 'Alt+5',
-    description: 'Configuración de audio, DMX y fixtures',
+    description: 'Selene AI Monitoring & Telemetry',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['live', 'simulate', 'constructor', 'core', 'setup']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'core']
 
 // ============================================
-// STORE
+// STORE - WAVE 423
 // ============================================
 
 export const useNavigationStore = create<NavigationState>((set, get) => ({
-  activeTab: 'live',
+  activeTab: 'dashboard',  // WAVE 423: Start at Command Center
   previousTab: null,
-  tabHistory: ['live'],
+  tabHistory: ['dashboard'],
   
   setActiveTab: (tab: TabId) => {
     const { activeTab, tabHistory } = get()

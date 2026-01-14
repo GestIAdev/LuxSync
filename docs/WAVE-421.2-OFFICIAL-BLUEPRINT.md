@@ -1,7 +1,7 @@
 # WAVE 421.2: BLUEPRINT OFICIAL - UI ARCHITECTURE REDESIGN
 
 **Date:** 2026-01-14  
-**Status:** 🚀 PHASE 0-1 COMPLETE | Phase 2 PENDING  
+**Status:** 🚀 PHASE 0-2 COMPLETE | Phase 3 PENDING  
 **Prerequisite:** WAVE-421.1 (Audit) ✅  
 **Reference:** WAVE-375-COMMAND-DECK-BLUEPRINT-v2.md  
 **Approved by:** El Arquitecto & Dirección General
@@ -9,8 +9,8 @@
 **Progress:**
 - ✅ Phase 0: Preparation (SVG audit, widget location)
 - ✅ Phase 1: WAVE 422 - Mode Termination (5 files deleted, 4 files modified)
-- ⏳ Phase 2: WAVE 423 - Stage System (NEXT)
-- ⏳ Phase 3: WAVE 424 - Dashboard Simplify
+- ✅ Phase 2: WAVE 423 - Stage System (3 files modified, 4→3+1 tabs)
+- ⏳ Phase 3: WAVE 424 - Dashboard Simplify (NEXT)
 - ⏳ Phase 4: WAVE 425 - Calibration Mode
 - ⏳ Phase 5: WAVE 426 - Vibe Migration
 - ⏳ Phase 6: WAVE 427 - Integration Test
@@ -692,39 +692,36 @@ WAVE 422: MODE TERMINATION ✅ EJECUTADO
 
 **Ver:** docs/WAVE-422-MODE-TERMINATION-REPORT.md
 
-### FASE 2: Estructura 3 Stages - WAVE 423 (3 horas)
+### FASE 2: Estructura 3 Stages - WAVE 423 (3 horas) ✅ COMPLETE
 
 **Objetivo:** Implementar Dashboard → Live → Calibration + LUX CORE
 
 ```
-WAVE 423: STAGE SYSTEM
+WAVE 423: STAGE SYSTEM ✅ EJECUTADO
 
-□ EDIT: navigationStore.ts
+✅ EDIT: navigationStore.ts
   - Nuevo TabId: 'dashboard' | 'live' | 'calibration' | 'core'
-  - Eliminar: 'simulate' | 'constructor' | 'setup'
-  - Añadir: customIcon: boolean para SVGs
+  - Eliminados: 'simulate' | 'constructor' | 'setup'
+  - Añadido: customIcon: boolean para SVGs
+  - Añadido: type: 'stage' | 'tool'
+  - Initial state: 'dashboard' (antes 'live')
   
-□ AUDITAR: SVGs existentes
-  - DashboardView/components/HudIcons.tsx
-  - Extraer: IconDmxBolt, IconNeuralBrain, etc.
-  - Crear archivo centralizado: src/components/icons/LuxIcons.tsx
+⚠️ TODO: SVGs custom (usando Lucide temporales)
+  - dashboard: Zap → IconDmxBolt
+  - calibration: Crosshair → Custom target
 
-□ EDIT: Sidebar.tsx
-  - Visual dividers entre STAGES y TOOL
-  - Usar SVGs existentes (NO Lucide genéricos)
-  - Orden: Dashboard → Live → Calibration | LUX CORE
+✅ EDIT: Sidebar.tsx
+  - TAB_COLORS actualizado (4 colores)
+  - TAB_ICONS actualizado (Zap, Monitor, Crosshair, Brain)
 
-□ BUSCAR: RadarXY widget
-  grep -r "RadarXY" --include="*.tsx"
-  - Localizar y documentar ubicación
+✅ EDIT: ContentArea.tsx
+  - Routing actualizado (4 vistas)
+  - WEBGL_VIEWS: ['live', 'calibration']
   
-□ BUSCAR: TargetingSystem widget
-  grep -r "Targeting" --include="*.tsx"
-  - Localizar y documentar ubicación
-
-□ EDIT: MainLayout.tsx
-  - Routing para 4 tabs (3 stages + 1 tool)
+✅ TEST: Sin errores TypeScript
 ```
+
+**Ver:** docs/WAVE-423-STAGE-SYSTEM-REPORT.md
 
 ### FASE 3: Dashboard Simplificado - WAVE 424 (2 horas)
 

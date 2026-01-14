@@ -1,9 +1,13 @@
 /**
- * CONTENT AREA - Dynamic View Container
- * WAVE 9: Renders active view based on navigation state
- * WAVE 25.5: SimulateView now uses StageSimulator2 (Canvas 2.0)
- * WAVE 361: Added StageConstructorView for CONSTRUCT tab
- * WAVE 379.4: ATOMIC HANDOFF - Air gap between WebGL view transitions
+ * CONTENT AREA - WAVE 423: Stage System View Router
+ * 
+ * 3 Stages + 1 Tool Architecture:
+ *   - dashboard: DashboardView (Command Center)
+ *   - live: StageViewDual (Performance - 2D/3D)
+ *   - calibration: CalibrationView (Hardware Setup)
+ *   - core: LuxCoreView (AI Monitoring)
+ * 
+ * WAVE 379.4: Atomic Handoff for WebGL transitions
  */
 
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react'
@@ -11,13 +15,11 @@ import { useNavigationStore } from '../../stores/navigationStore'
 import './ContentArea.css'
 
 // Lazy load views for better performance
-const LiveView = lazy(() => import('../views/LiveView'))
-// 🌙 WAVE 25.5: El Cambiazo - SimulateView ahora es StageSimulator2
-const SimulateView = lazy(() => import('../views/StageView'))
+// WAVE 423: New routing structure
+const DashboardView = lazy(() => import('../views/DashboardView'))
+const LiveStageView = lazy(() => import('../views/StageViewDual'))
+const CalibrationView = lazy(() => import('../views/StageConstructorView')) // Reusing for now
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
-const SetupView = lazy(() => import('../views/SetupView'))
-// 🏗️ WAVE 361: Stage Constructor
-const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 
 // Loading fallback
 const ViewLoader: React.FC = () => (
@@ -34,8 +36,8 @@ const TransitionLoader: React.FC = () => (
   </div>
 )
 
-// WAVE 379.4: Vistas que tienen WebGL Canvas pesado
-const WEBGL_VIEWS = ['constructor', 'simulate']
+// WAVE 423: Vistas que tienen WebGL Canvas pesado
+const WEBGL_VIEWS = ['live', 'calibration']
 
 // WAVE 379.4: Tiempo de "aire" para que la GPU respire (ms)
 const GPU_HANDOFF_DELAY = 150
@@ -87,19 +89,18 @@ const ContentArea: React.FC = () => {
       return <TransitionLoader />
     }
     
+    // WAVE 423: 3 Stages + 1 Tool routing
     switch (renderedTab) {
+      case 'dashboard':
+        return <DashboardView />
       case 'live':
-        return <LiveView />
-      case 'simulate':
-        return <SimulateView />
-      case 'constructor':
-        return <StageConstructorView />
+        return <LiveStageView />
+      case 'calibration':
+        return <CalibrationView />
       case 'core':
         return <LuxCoreView />
-      case 'setup':
-        return <SetupView />
       default:
-        return <LiveView />
+        return <DashboardView />
     }
   }
 

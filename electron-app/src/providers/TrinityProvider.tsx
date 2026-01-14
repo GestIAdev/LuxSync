@@ -123,6 +123,15 @@ export function useTrinity() {
   return context
 }
 
+/**
+ * WAVE 429: Safe version that returns null if context not ready
+ * Use this in components that might render before TrinityProvider is stable
+ * (e.g., during React StrictMode double-mount or lazy loading)
+ */
+export function useTrinityOptional() {
+  return useContext(TrinityContext)
+}
+
 // ============================================================================
 // PROVIDER
 // ============================================================================
@@ -132,6 +141,12 @@ interface TrinityProviderProps {
 }
 
 export function TrinityProvider({ children }: TrinityProviderProps) {
+  // WAVE 429: Debug - track mount/unmount
+  useEffect(() => {
+    console.log('[TrinityProvider] 🟢 MOUNTED')
+    return () => console.log('[TrinityProvider] 🔴 UNMOUNTED')
+  }, [])
+  
   // Audio capture hook
   const {
     metrics: audioMetrics,

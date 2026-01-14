@@ -41,6 +41,7 @@ const TransitionLoader: React.FC = () => (
 )
 
 // WAVE 428: Vistas que tienen WebGL Canvas pesado
+// WAVE 429: SETUP no es WebGL, solo audio inputs + DMX config
 const WEBGL_VIEWS = ['live', 'calibration', 'constructor']
 
 // WAVE 379.4: Tiempo de "aire" para que la GPU respire (ms)

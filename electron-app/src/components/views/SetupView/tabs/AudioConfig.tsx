@@ -1,6 +1,7 @@
 /**
  * 🎵 AUDIO CONFIG - Audio Input Configuration Panel
  * WAVE 370: UI LEGACY PURGE - No manual gain (AGC handles it)
+ * WAVE 429: Using useTrinityOptional for StrictMode safety
  * 
  * Features:
  * - Source selector (Simulation/System/Microphone)
@@ -11,7 +12,7 @@
  */
 
 import React, { useCallback, useState } from 'react'
-import { useTrinity } from '../../../../providers/TrinityProvider'
+import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { useTruthStore, selectAudio } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import './AudioConfig.css'
@@ -137,7 +138,8 @@ const VuMeter: React.FC<VuMeterProps> = ({ energy, bass, mid, treble }) => {
 // ============================================
 
 export const AudioConfig: React.FC = () => {
-  const trinity = useTrinity()
+  // WAVE 429: Use optional Trinity hook - graceful null if context not ready
+  const trinity = useTrinityOptional()
   const audio = useTruthStore(selectAudio)
   const { setAudioSource: setStoreSource, audioSource } = useSetupStore()
   
@@ -147,8 +149,14 @@ export const AudioConfig: React.FC = () => {
   // Current active source from store or detect from trinity
   const currentSource: AudioSource | null = audioSource as AudioSource | null
   
-  // Handle source selection
+  // Handle source selection - MUST be declared before any conditional returns!
   const handleSourceSelect = useCallback(async (source: AudioSource) => {
+    // WAVE 429: Guard against null trinity
+    if (!trinity) {
+      console.warn('[AudioConfig] Trinity not ready, cannot change source')
+      return
+    }
+    
     setError(null)
     setIsConnecting(true)
     
@@ -191,6 +199,17 @@ export const AudioConfig: React.FC = () => {
       setIsConnecting(false)
     }
   }, [trinity, setStoreSource])
+  
+  // WAVE 429: Bailout if TrinityProvider not ready (StrictMode double-mount)
+  if (!trinity) {
+    return (
+      <div className="audio-config-panel">
+        <div className="loading-state">
+          <span>Initializing audio...</span>
+        </div>
+      </div>
+    )
+  }
   
   return (
     <div className="audio-config-panel">

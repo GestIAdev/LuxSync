@@ -17,7 +17,6 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useTruthStore, selectHardware } from '../../stores/truthStore'
 import { XYPad } from './controls'
 import { PatternSelector, type PatternType } from './controls'
-import { PrecisionInputs } from './controls'
 
 export interface PositionSectionProps {
   hasOverride: boolean
@@ -269,12 +268,38 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             />
           )}
           
-          {/* PRECISION INPUTS - The Surgeon */}
-          <PrecisionInputs
-            pan={pan}
-            tilt={tilt}
-            onChange={handlePositionChange}
-          />
+          {/* POSITION SLIDERS - Real-time control */}
+          <div className="position-sliders">
+            <div className="position-slider-row">
+              <label className="slider-label">PAN</label>
+              <input
+                type="range"
+                className="position-slider pan-slider"
+                min="0"
+                max="540"
+                step="1"
+                value={pan}
+                onChange={(e) => handlePositionChange(Number(e.target.value), tilt)}
+                disabled={isCalibrating}
+              />
+              <span className="slider-value">{pan}°</span>
+            </div>
+            
+            <div className="position-slider-row">
+              <label className="slider-label">TILT</label>
+              <input
+                type="range"
+                className="position-slider tilt-slider"
+                min="0"
+                max="270"
+                step="1"
+                value={tilt}
+                onChange={(e) => handlePositionChange(pan, Number(e.target.value))}
+                disabled={isCalibrating}
+              />
+              <span className="slider-value">{tilt}°</span>
+            </div>
+          </div>
           
           {/* Override indicator */}
           {hasOverride && !isCalibrating && (

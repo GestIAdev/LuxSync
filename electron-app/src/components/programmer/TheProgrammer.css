@@ -988,3 +988,163 @@
 .xy-pad.disabled .xy-cursor {
   opacity: 0.5;
 }
+
+/* 
+   POSITION SLIDERS - WAVE 430.9
+   Real-time pan/tilt control for live shows
+   Sliders instead of numeric inputs with +/- buttons
+    */
+
+.position-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.position-slider-row {
+  display: grid;
+  grid-template-columns: 45px 1fr 60px;
+  gap: 10px;
+  align-items: center;
+}
+
+.slider-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  letter-spacing: 0.5px;
+}
+
+.position-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  transition: background 0.2s;
+}
+
+.position-slider:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.position-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Webkit (Chrome/Safari) */
+.position-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #00FFFF;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.position-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+}
+
+.position-slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(0, 255, 255, 0.9);
+}
+
+/* Firefox */
+.position-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #00FFFF;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.position-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+}
+
+.position-slider::-moz-range-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(0, 255, 255, 0.9);
+}
+
+/* Track highlight for Webkit */
+.position-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 255, 0.3) 0%,
+    rgba(0, 255, 255, 0.1) 100%
+  );
+  border-radius: 3px;
+}
+
+.slider-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #00FFFF;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+}
+
+/* 
+   CENTER BUTTON OVERLAY - WAVE 430.9
+   Moved to top-right corner of XY Pad to save vertical space
+    */
+
+.center-btn-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #00FFFF;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.center-btn-overlay:hover {
+  background: rgba(0, 255, 255, 0.15);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}
+
+.center-btn-overlay:active {
+  background: rgba(0, 255, 255, 0.25);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
+}
+
+.center-btn-overlay:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Remove old xy-pad-actions container (now using overlay) */
+.xy-pad-actions {
+  display: none;
+}
+

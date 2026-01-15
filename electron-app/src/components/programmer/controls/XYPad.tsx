@@ -158,13 +158,14 @@ export const XYPad: React.FC<XYPadProps> = ({
         {/* Axis labels */}
         <span className="axis-label pan-label">PAN</span>
         <span className="axis-label tilt-label">TILT</span>
-      </div>
-      
-      {/* Quick actions */}
-      <div className="xy-pad-actions">
+        
+        {/* Center button - Overlay in corner */}
         <button 
-          className="center-btn"
-          onClick={onCenter}
+          className="center-btn-overlay"
+          onClick={(e) => {
+            e.stopPropagation()
+            onCenter?.()
+          }}
           disabled={disabled}
           title="Center position (double-click pad)"
         >

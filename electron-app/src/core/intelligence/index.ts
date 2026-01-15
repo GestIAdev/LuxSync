@@ -44,10 +44,29 @@ export {
 } from './validate'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SENSORES (TODO: PHASE 2)
+// SENSORES - Los Ojos de Selene (PHASE 2 COMPLETE)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// export * from './sense'
+export {
+  // Musical Pattern Sensor
+  senseMusicalPattern,
+  detectSectionChange,
+  calculateMomentUrgency,
+  resetPatternHistory,
+  // Beauty Sensor
+  senseBeauty,
+  getAverageBeauty,
+  getBeautyTrend,
+  evaluateGoldenDistribution,
+  resetBeautyHistory,
+  type BeautyAnalysis,
+  // Consonance Sensor
+  senseConsonance,
+  evaluateHueChange,
+  suggestConsonantHues,
+  resetConsonanceState,
+  type ConsonanceAnalysis,
+} from './sense'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COGNICIÓN (TODO: PHASE 3)

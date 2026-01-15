@@ -134,36 +134,111 @@ export {
 } from '../../engine/consciousness/ConsciousnessOutput'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TIPOS INTERNOS DE SELENE
+// TIPOS INTERNOS DE SELENE - NATIVE TO TITAN
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Patrón musical percibido por Selene
- * (Versión simplificada del legacy MusicalPattern)
+ * Clasificación de secciones musicales (normalizada)
+ */
+export type SectionClassification = 
+  | 'intro' 
+  | 'verse' 
+  | 'buildup' 
+  | 'chorus' 
+  | 'drop' 
+  | 'breakdown' 
+  | 'outro'
+
+/**
+ * Fase de energía detectada
+ */
+export type EnergyPhase = 'valley' | 'building' | 'peak' | 'drop'
+
+/**
+ * Patrón musical percibido por Selene - NATIVE TITAN VERSION
+ * 
+ * NO usa notas musicales ni zodiaco legacy.
+ * Trabaja directamente con métricas de TitanStabilizedState.
  */
 export interface SeleneMusicalPattern {
-  /** Nota musical (DO, RE, MI...) */
-  note: MusicalNote
+  // ═══════════════════════════════════════════════════════════════════════
+  // CLASIFICACIONES
+  // ═══════════════════════════════════════════════════════════════════════
   
-  /** Elemento zodiacal */
-  element: ElementType
+  /** Sección musical clasificada */
+  section: SectionClassification
   
-  /** Tono emocional percibido */
-  emotionalTone: EmotionalTone
+  /** Fase de energía actual */
+  energyPhase: EnergyPhase
   
-  /** Puntuación de belleza (0-1) */
-  beauty: number
+  // ═══════════════════════════════════════════════════════════════════════
+  // MÉTRICAS DE RITMO
+  // ═══════════════════════════════════════════════════════════════════════
   
-  /** Tendencia de belleza */
-  beautyTrend: BeautyTrend
+  /** BPM detectado */
+  bpm: number
   
-  /** Consonancia con estado anterior (0-1) */
-  consonance: number
+  /** Fase del beat (0-1) */
+  beatPhase: number
   
-  /** Confianza en este patrón (0-1) */
-  confidence: number
+  /** Nivel de sincopación (0-1) */
+  syncopation: number
+  
+  /** Intensidad rítmica combinada (0-1) */
+  rhythmicIntensity: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // MÉTRICAS DE EMOCIÓN/TENSIÓN
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Tensión emocional acumulada (0-1) */
+  emotionalTension: number
+  
+  /** ¿Energía subiendo? */
+  isBuilding: boolean
+  
+  /** ¿Energía bajando? */
+  isReleasing: boolean
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // MÉTRICAS DE ARMONÍA/DENSIDAD
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Densidad armónica del espectro (0-1) */
+  harmonicDensity: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // BANDAS DE FRECUENCIA
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Presencia de bass (0-1) */
+  bassPresence: number
+  
+  /** Presencia de mids (0-1) */
+  midPresence: number
+  
+  /** Presencia de highs (0-1) */
+  highPresence: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // DROP STATE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** ¿Drop activo? (physics veto) */
+  isDropActive: boolean
+  
+  /** Distancia normalizada al umbral de drop (0 = en drop, 1 = muy lejos) */
+  distanceFromDrop: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // TIMING
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Timestamp */
+  timestamp: number
 }
 
+// Legacy types (deprecated but kept for compatibility during transition)
 export type MusicalNote = 'DO' | 'RE' | 'MI' | 'FA' | 'SOL' | 'LA' | 'SI'
 export type ElementType = 'fire' | 'earth' | 'air' | 'water'
 export type EmotionalTone = 'peaceful' | 'energetic' | 'chaotic' | 'harmonious' | 'building' | 'dropping'

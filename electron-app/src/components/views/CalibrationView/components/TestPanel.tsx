@@ -46,25 +46,25 @@ export const TestPanel: React.FC<TestPanelProps> = ({
       switch (testType) {
         case 'color':
           // Full white
-          controls.dimmer = 65535
-          controls.red = 65535
-          controls.green = 65535
-          controls.blue = 65535
-          controls.white = 65535
+          controls.dimmer = 255
+          controls.red = 255
+          controls.green = 255
+          controls.blue = 255
+          controls.white = 255
           break
           
         case 'strobe':
           // Strobe effect
-          controls.dimmer = 65535
-          controls.strobe = 50000
-          controls.white = 65535
+          controls.dimmer = 255
+          controls.strobe = 195
+          controls.white = 255
           break
           
         case 'gobo':
           // Test gobo (usually gobo 1)
-          controls.dimmer = 65535
-          controls.gobo = 10000
-          controls.white = 65535
+          controls.dimmer = 255
+          controls.gobo = 39
+          controls.white = 255
           break
       }
       
@@ -72,7 +72,6 @@ export const TestPanel: React.FC<TestPanelProps> = ({
         fixtureIds: [fixtureId],
         controls,
         channels: Object.keys(controls),
-        source: 'calibration_test',
       })
       
       console.log(`[TestPanel] 🧪 ${testType?.toUpperCase()} test on ${fixtureId}`)

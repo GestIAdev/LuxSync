@@ -270,7 +270,7 @@ export class MasterArbiter extends EventEmitter {
   
   /**
    * Set manual override for a fixture
-   * Overwrites existing override for same fixture.
+   * WAVE 440: Now MERGES with existing override instead of replacing.
    */
   setManualOverride(override: Layer2_Manual): void {
     // Check limit
@@ -282,22 +282,56 @@ export class MasterArbiter extends EventEmitter {
     
     // Check if fixture exists
     if (!this.fixtures.has(override.fixtureId)) {
-      console.warn(`[MasterArbiter] Unknown fixture: ${override.fixtureId}`)
+      console.warn(`[MasterArbiter] ❌ Unknown fixture: ${override.fixtureId}`)
+      console.warn(`[MasterArbiter] 📋 Known fixtures: ${Array.from(this.fixtures.keys()).join(', ')}`)
       return
     }
     
-    // Store override
-    this.layer2_manualOverrides.set(override.fixtureId, {
-      ...override,
-      timestamp: performance.now()
-    })
+    // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
+    const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
+    
+    if (existingOverride) {
+      // Merge controls: new values override existing, but keep non-conflicting ones
+      const mergedControls = {
+        ...existingOverride.controls,
+        ...override.controls,
+      }
+      
+      // Merge channels: union of both sets (no duplicates)
+      const mergedChannels = [...new Set([
+        ...existingOverride.overrideChannels,
+        ...override.overrideChannels,
+      ])]
+      
+      // Store merged override
+      this.layer2_manualOverrides.set(override.fixtureId, {
+        ...existingOverride,
+        ...override,
+        controls: mergedControls,
+        overrideChannels: mergedChannels as ChannelType[],
+        timestamp: performance.now()
+      })
+      
+      if (this.config.debug) {
+        console.log(`[MasterArbiter] 🔀 Merged override: ${override.fixtureId}`, {
+          newChannels: override.overrideChannels,
+          totalChannels: mergedChannels
+        })
+      }
+    } else {
+      // No existing override, store as new
+      this.layer2_manualOverrides.set(override.fixtureId, {
+        ...override,
+        timestamp: performance.now()
+      })
+      
+      if (this.config.debug) {
+        console.log(`[MasterArbiter] ➕ New override: ${override.fixtureId}`, override.overrideChannels)
+      }
+    }
     
     // Emit event
     this.emit('manualOverride', override.fixtureId, override.overrideChannels)
-    
-    if (this.config.debug) {
-      console.log(`[MasterArbiter] Manual override: ${override.fixtureId}`, override.overrideChannels)
-    }
   }
   
   /**
@@ -707,7 +741,7 @@ export class MasterArbiter extends EventEmitter {
     // Apply Grand Master to dimmer (final step before clamping)
     const dimmerfinal = clampDMX(dimmer * this.grandMaster)
     
-    return {
+    const target = {
       fixtureId,
       dimmer: dimmerfinal,
       color: {
@@ -723,6 +757,8 @@ export class MasterArbiter extends EventEmitter {
       _crossfadeActive: crossfadeActive,
       _crossfadeProgress: crossfadeProgress,
     }
+    
+    return target
   }
   
   /**
@@ -770,14 +806,21 @@ export class MasterArbiter extends EventEmitter {
     // Layer 1: Consciousness (CORE 3 - placeholder)
     // Will be implemented when consciousness is connected
     
-    // Layer 2: Manual override
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 440.5: MANUAL OVERRIDE = ABSOLUTE PRIORITY
+    // 
+    // The previous LTP (Latest Takes Precedence) strategy was WRONG for manual.
+    // Titan updates every frame with a new timestamp, so it always won.
+    // 
+    // FIX: Manual overrides WIN unconditionally. No timestamp comparison.
+    // When user grabs control, they KEEP it until they release.
+    // ═══════════════════════════════════════════════════════════════════════
     if (manualOverride && manualOverride.overrideChannels.includes(channel)) {
       const manualValue = this.getManualChannelValue(manualOverride, channel)
-      values.push({
-        layer: ControlLayer.MANUAL,
-        value: manualValue,
-        timestamp: manualOverride.timestamp,
-      })
+      controlSources[channel] = ControlLayer.MANUAL
+      
+      // DIRECT RETURN - Manual wins, skip merge entirely
+      return manualValue
     }
     
     // Layer 3: Effects

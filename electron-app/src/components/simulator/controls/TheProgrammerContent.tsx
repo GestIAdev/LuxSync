@@ -54,7 +54,9 @@ export const TheProgrammerContent: React.FC = () => {
   }, [])
   
   // Current values (for display)
-  const [currentDimmer, setCurrentDimmer] = useState(100)
+  // WAVE 440.5: Initial state is null/undefined = no preset button active
+  // until user touches a control
+  const [currentDimmer, setCurrentDimmer] = useState<number | null>(null)
   const [currentColor, setCurrentColor] = useState({ r: 255, g: 255, b: 255 })
   
   // Get fixture info
@@ -89,13 +91,16 @@ export const TheProgrammerContent: React.FC = () => {
     setCurrentDimmer(value)
     setOverrideState(prev => ({ ...prev, dimmer: true }))
     
+    const payload = {
+      fixtureIds: selectedIds,
+      controls: { dimmer: Math.round(value * 2.55) },
+      channels: ['dimmer'],
+    }
+    
+    console.log('[Programmer] Dimmer payload:', payload)
+    
     try {
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: { dimmer: Math.round(value * 2.55) },
-        channels: ['dimmer'],
-        source: 'ui_programmer',
-      })
+      await window.lux?.arbiter?.setManual(payload)
     } catch (err) {
       console.error('[Programmer] Dimmer error:', err)
     }
@@ -105,6 +110,8 @@ export const TheProgrammerContent: React.FC = () => {
     if (selectedIds.length === 0) return
     
     setOverrideState(prev => ({ ...prev, dimmer: false }))
+    // WAVE 440.5: Reset dimmer to null so no preset button appears active
+    setCurrentDimmer(null)
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -125,9 +132,8 @@ export const TheProgrammerContent: React.FC = () => {
     try {
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
-        controls: { r, g, b },
+        controls: { red: r, green: g, blue: b },
         channels: ['red', 'green', 'blue'],
-        source: 'ui_programmer',
       })
     } catch (err) {
       console.error('[Programmer] Color error:', err)
@@ -138,6 +144,8 @@ export const TheProgrammerContent: React.FC = () => {
     if (selectedIds.length === 0) return
     
     setOverrideState(prev => ({ ...prev, color: false }))
+    // WAVE 440.5: Reset color to neutral gray so no quick button appears active
+    setCurrentColor({ r: 128, g: 128, b: 128 })
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -153,6 +161,9 @@ export const TheProgrammerContent: React.FC = () => {
     if (selectedIds.length === 0) return
     
     setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+    // WAVE 440.5: Reset UI values to neutral state
+    setCurrentDimmer(null)
+    setCurrentColor({ r: 128, g: 128, b: 128 })
     
     try {
       await window.lux?.arbiter?.clearManual({
@@ -166,6 +177,9 @@ export const TheProgrammerContent: React.FC = () => {
   // Reset override state when selection changes
   useEffect(() => {
     setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+    // WAVE 440.5: Also reset UI values when selection changes
+    setCurrentDimmer(null)
+    setCurrentColor({ r: 128, g: 128, b: 128 })
   }, [selectedIds.length])
   
   const handlePositionOverrideChange = useCallback((hasOverride: boolean) => {
@@ -224,8 +238,9 @@ export const TheProgrammerContent: React.FC = () => {
       </div>
       
       {/* INTENSITY SECTION */}
+      {/* WAVE 440.5: Pass -1 when null to prevent any preset button from being active */}
       <IntensitySection
-        value={currentDimmer}
+        value={currentDimmer ?? -1}
         hasOverride={overrideState.dimmer}
         isExpanded={activeSection === 'intensity'}
         onToggle={() => toggleSection('intensity')}

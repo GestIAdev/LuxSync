@@ -512,17 +512,12 @@ const luxApi = {
       source?: string
       autoReleaseMs?: number
     }) => {
-      // Set override for each fixture
-      const promises = args.fixtureIds.map(fixtureId => 
-        ipcRenderer.invoke('lux:arbiter:setManual', {
-          fixtureId,
-          controls: args.controls,
-          channels: args.channels,
-          source: args.source || 'ui_programmer',
-          autoReleaseMs: args.autoReleaseMs,
-        })
-      )
-      return Promise.all(promises)
+      // Send all fixtures in a single call to backend (WAVE 439.6 fix)
+      return ipcRenderer.invoke('lux:arbiter:setManual', {
+        fixtureIds: args.fixtureIds,
+        controls: args.controls,
+        channels: args.channels || Object.keys(args.controls),
+      })
     },
     
     /**
@@ -534,13 +529,11 @@ const luxApi = {
       fixtureIds: string[]
       channels?: string[]
     }) => {
-      const promises = args.fixtureIds.map(fixtureId =>
-        ipcRenderer.invoke('lux:arbiter:clearManual', {
-          fixtureId,
-          channels: args.channels,
-        })
-      )
-      return Promise.all(promises)
+      // Send all fixtures in a single call to backend (WAVE 439.6 fix)
+      return ipcRenderer.invoke('lux:arbiter:clearManual', {
+        fixtureIds: args.fixtureIds,
+        channels: args.channels,
+      })
     },
     
     /** Clear ALL manual overrides - return to AI control */

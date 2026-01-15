@@ -85,7 +85,6 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
         fixtureIds: selectedIds,
         controls: values,
         channels,
-        source: 'ui_programmer',
       })
     } catch (err) {
       console.error('[Beam] Error:', err)

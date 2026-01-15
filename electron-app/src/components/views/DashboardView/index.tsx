@@ -1,107 +1,88 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 428: Redesigned Layout
+ * 🎛️ DASHBOARD VIEW - WAVE 437: MISSION CONTROL
  * 
- * STAGE 1: Command Center - Session Management
+ * Transformed from "Command Center" to "Mission Control"
+ * Pre-flight check + Quick navigation
  * 
- * Layout: 3-Column Bento Grid
+ * Layout: Mission Control Grid
  * ┌─────────────────────────────────────────────────────────────────────┐
- * │ [POWER]  COMMAND CENTER                                             │
- * ├───────────────┬────────────────────────────┬────────────────────────┤
- * │  SHOW SELECT  │     AUDIO REACTOR          │    QUICK LINKS         │
- * │  (compact)    │     (medium, centered)     │    [LIVE][BUILD][...]  │
- * ├───────────────┴────────────────────────────┴────────────────────────┤
- * │                     DATA CARDS (status)                             │
+ * │ [POWER]  MISSION CONTROL                                            │
+ * ├──────────────────┬──────────────────────────────────────────────────┤
+ * │                  │        ACTIVE SESSION (horizontal card)          │
+ * │   SYSTEMS CHECK  ├──────────────────────────────────────────────────┤
+ * │   (Audio + DMX)  │        LAUNCHPAD (3 big cards)                   │
+ * │                  │        [LIVE]    [CALIBRATE]    [CONSTRUCT]      │
+ * ├──────────────────┴──────────────────────────────────────────────────┤
+ * │                     DATA CARDS (BPM, FPS, Uptime)                   │
  * └─────────────────────────────────────────────────────────────────────┘
  * 
- * WAVE 428 Changes:
- * - NEW: ShowSelector panel (left)
- * - RESIZE: AudioReactor now medium size (center)
- * - MOVE: QuickLinks to right column
- * - FIX: Proportional 3-column layout
+ * WAVE 437 Changes:
+ * - NEW: SystemsCheck widget (Audio + DMX selectors)
+ * - NEW: ActiveSession widget (horizontal show card)
+ * - NEW: Launchpad widget (big navigation cards)
+ * - KEEP: DataCards in footer
+ * - REMOVE: Old AudioReactorRing, ShowSelector, QuickLinks
  */
 
 import React from 'react'
-import AudioReactorRing from './components/AudioReactorRing'
+import { SystemsCheck } from './components/SystemsCheck'
+import { ActiveSession } from './components/ActiveSession'
+import { Launchpad } from './components/Launchpad'
 import DataCards from './components/DataCards'
 import PowerButton from './components/PowerButton'
-import QuickLinks from './components/QuickLinks'
-import { ShowSelector } from './components/ShowSelector'
-import { IconAudioWave } from './components/HudIcons'
+import { BoltIcon } from '../../icons/LuxIcons'
 import './DashboardView.css'
 
 const DashboardView: React.FC = () => {
   return (
-    <div className="dashboard-cyberpunk">
+    <div className="dashboard-mission-control">
       {/* Header Strip */}
-      <header className="dashboard-header">
+      <header className="mission-header">
         <div className="header-left">
           <PowerButton />
           <div className="header-title">
             <span className="title-icon">
-              <IconDmxBoltHeader />
+              <BoltIcon size={22} color="#00ffff" />
             </span>
-            <h1>COMMAND CENTER</h1>
+            <h1>MISSION CONTROL</h1>
           </div>
         </div>
-        {/* WAVE 422: ModeSwitcher ELIMINADO - Sistema Auto-Override */}
+        <div className="header-status">
+          <span className="status-badge online">● SYSTEMS READY</span>
+        </div>
       </header>
 
-      {/* Bento Grid Main Area - WAVE 428: 3-Column Layout */}
-      <main className="dashboard-bento">
-        {/* Left: Show Selector */}
-        <section className="bento-cell cell-shows">
-          <div className="cell-header">
-            <span className="cell-icon">📁</span>
-            <span className="cell-label">SHOWS</span>
-          </div>
-          <ShowSelector />
+      {/* Mission Control Grid */}
+      <main className="mission-grid">
+        {/* Left Column: Systems Check */}
+        <section className="grid-cell cell-systems">
+          <SystemsCheck />
         </section>
 
-        {/* Center: Audio Reactor Ring (smaller) */}
-        <section className="bento-cell cell-reactor">
-          <div className="cell-header">
-            <span className="cell-icon">
-              <IconAudioWave size={18} />
-            </span>
-            <span className="cell-label">AUDIO CORE</span>
-          </div>
-          <div className="reactor-container">
-            <AudioReactorRing />
-          </div>
-        </section>
+        {/* Right Column: Session + Launchpad */}
+        <div className="grid-column-right">
+          {/* Top: Active Session */}
+          <section className="grid-cell cell-session">
+            <ActiveSession />
+          </section>
 
-        {/* Right: Quick Links Navigation */}
-        <section className="bento-cell cell-quicklinks">
-          <QuickLinks />
-        </section>
+          {/* Bottom: Launchpad */}
+          <section className="grid-cell cell-launchpad">
+            <Launchpad />
+          </section>
+        </div>
       </main>
 
       {/* Bottom Data Deck */}
-      <footer className="dashboard-deck">
+      <footer className="mission-deck">
         <DataCards />
       </footer>
 
       {/* Ambient Effects */}
-      <div className="dashboard-glow-overlay" />
-      <div className="dashboard-scanlines" />
+      <div className="mission-glow-overlay" />
+      <div className="mission-scanlines" />
     </div>
   )
 }
-
-/** Inline lightning bolt for header */
-const IconDmxBoltHeader: React.FC = () => (
-  <svg 
-    width={22} 
-    height={22} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="#00ffff"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M13 2L4 14H11L10 22L20 10H13L13 2Z" />
-  </svg>
-)
 
 export default DashboardView

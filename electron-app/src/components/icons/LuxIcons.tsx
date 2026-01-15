@@ -489,6 +489,185 @@ export const ControlsIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 437: DASHBOARD LAUNCHPAD ICONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎬 PLAY CIRCLE - Launch Live Show
+ */
+export const PlayCircleIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
+    <path d="M10 8L16 12L10 16V8Z" fill={color} />
+  </svg>
+)
+
+/**
+ * 🎯 TARGET - Calibration Crosshair
+ */
+export const TargetIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" />
+    <circle cx="12" cy="12" r="5" stroke={color} strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="1.5" fill={color} />
+    <path d="M12 2V6M12 18V22M2 12H6M18 12H22" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 🔨 HAMMER - Build/Construct
+ */
+export const HammerIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M6 10L3 21L14 18L6 10Z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M14 18L21 11L13 3L6 10L14 18Z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M10 6L18 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🌊 AUDIO WAVE - Sound Visualizer
+ */
+export const AudioWaveIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M4 12V10M8 12V6M12 12V4M16 12V8M20 12V11" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M4 12V14M8 12V18M12 12V20M16 12V16M20 12V13" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 🔌 NETWORK - DMX/Network Connection
+ */
+export const NetworkIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <circle cx="12" cy="5" r="3" stroke={color} strokeWidth="2" />
+    <circle cx="5" cy="19" r="3" stroke={color} strokeWidth="2" />
+    <circle cx="19" cy="19" r="3" stroke={color} strokeWidth="2" />
+    <path d="M12 8V11M12 11L5 16M12 11L19 16" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 💾 FILE - Show/Session File
+ */
+export const FileIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M6 2H14L20 8V20C20 21.1 19.1 22 18 22H6C4.9 22 4 21.1 4 20V4C4 2.9 4.9 2 6 2Z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <path d="M14 2V8H20" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8 13H16M8 17H13" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+  </svg>
+)
+
+/**
+ * ⚡ BOLT - Power/Status Indicator
+ */
+export const BoltIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M13 2L4 14H11L10 22L20 10H13L13 2Z" fill={color} />
+  </svg>
+)
+
+/**
+ * 🎛️ MIXER - Control/Settings
+ */
+export const MixerIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M4 21V14M4 10V3M12 21V12M12 8V3M20 21V16M20 12V3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <circle cx="4" cy="12" r="2" fill={color} />
+    <circle cx="12" cy="10" r="2" fill={color} />
+    <circle cx="20" cy="14" r="2" fill={color} />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -509,4 +688,13 @@ export default {
   Group: GroupIcon,
   Scenes: ScenesIcon,
   Controls: ControlsIcon,
+  // WAVE 437: Dashboard icons
+  PlayCircle: PlayCircleIcon,
+  Target: TargetIcon,
+  Hammer: HammerIcon,
+  AudioWave: AudioWaveIcon,
+  Network: NetworkIcon,
+  File: FileIcon,
+  Bolt: BoltIcon,
+  Mixer: MixerIcon,
 }

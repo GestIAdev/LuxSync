@@ -77,11 +77,10 @@ const CalibrationView: React.FC = () => {
       await window.lux?.arbiter?.setManual({
         fixtureIds: [activeFixtureId],
         controls: {
-          pan: Math.round((newPan / 540) * 65535),
-          tilt: Math.round((newTilt / 270) * 65535),
+          pan: Math.round((newPan / 540) * 255),
+          tilt: Math.round((newTilt / 270) * 255),
         },
         channels: ['pan', 'tilt'],
-        source: 'calibration_view',
       })
       console.log(`[Calibration] 🎯 Pan: ${newPan}° Tilt: ${newTilt}°`)
     } catch (err) {

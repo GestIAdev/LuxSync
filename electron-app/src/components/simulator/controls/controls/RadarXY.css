@@ -1,0 +1,530 @@
+/**
+ * 📡 RADAR XY - WAVE 430.5 STYLES
+ * Estética de radar militar / cyberpunk HUD
+ * 
+ * Diseñado para controlar formaciones de fixtures.
+ * max-height controlado para encajar en TheProgrammer.
+ */
+
+.radar-xy-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.radar-xy-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.radar-xy-container.calibrating {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.1);
+}
+
+.radar-xy-container.group-mode {
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODE HEADER (Group Mode)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-mode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 4px;
+}
+
+.mode-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.mode-badge.formation {
+  color: #a855f7;
+}
+
+.mode-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RADAR DISPLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-xy {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  max-height: 180px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(34, 211, 238, 0.03) 0%,
+    rgba(0, 0, 0, 0.3) 70%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  border: 2px solid rgba(34, 211, 238, 0.3);
+  border-radius: 8px;
+  cursor: crosshair;
+  overflow: hidden;
+  user-select: none;
+}
+
+.group-mode .radar-xy {
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.radar-xy.dragging {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+}
+
+.group-mode .radar-xy.dragging {
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RADAR GRID - Concentric Rings (adapted for rectangular)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ring {
+  position: absolute;
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 4px;
+}
+
+.group-mode .ring {
+  border-color: rgba(168, 85, 247, 0.1);
+}
+
+.ring-outer {
+  inset: 5%;
+}
+
+.ring-mid {
+  inset: 20%;
+}
+
+.ring-inner {
+  inset: 35%;
+}
+
+.ring-center {
+  inset: 45%;
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+.group-mode .ring-center {
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CROSSHAIR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-crosshair {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crosshair-h,
+.crosshair-v {
+  position: absolute;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.15) 20%,
+    rgba(34, 211, 238, 0.3) 50%,
+    rgba(34, 211, 238, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+.group-mode .crosshair-h,
+.group-mode .crosshair-v {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.15) 20%,
+    rgba(168, 85, 247, 0.3) 50%,
+    rgba(168, 85, 247, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+.crosshair-h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.crosshair-v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.15) 20%,
+    rgba(34, 211, 238, 0.3) 50%,
+    rgba(34, 211, 238, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+.group-mode .crosshair-v {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.15) 20%,
+    rgba(168, 85, 247, 0.3) 50%,
+    rgba(168, 85, 247, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIAGONALS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-diagonals {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.diagonal {
+  position: absolute;
+  inset: 0;
+  border: none;
+}
+
+.diagonal-1::before,
+.diagonal-2::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 141.4%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.08) 30%,
+    rgba(34, 211, 238, 0.08) 70%,
+    transparent 100%
+  );
+}
+
+.group-mode .diagonal-1::before,
+.group-mode .diagonal-2::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(168, 85, 247, 0.08) 30%,
+    rgba(168, 85, 247, 0.08) 70%,
+    transparent 100%
+  );
+}
+
+.diagonal-1::before {
+  transform: translate(-50%, -50%) rotate(25deg);
+}
+
+.diagonal-2::before {
+  transform: translate(-50%, -50%) rotate(-25deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GHOST POINTS - Individual fixture positions
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ghost-point {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ghost-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.4);
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POSITION CURSOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-cursor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.cursor-core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 
+    0 0 10px rgba(34, 211, 238, 0.8),
+    0 0 20px rgba(34, 211, 238, 0.4);
+}
+
+.gravity-center .cursor-core {
+  background: #a855f7;
+  box-shadow: 
+    0 0 10px rgba(168, 85, 247, 0.8),
+    0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+.cursor-pulse {
+  position: absolute;
+  inset: -8px;
+  border: 2px solid rgba(34, 211, 238, 0.4);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-out infinite;
+}
+
+.gravity-center .cursor-pulse {
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.cursor-brackets {
+  position: absolute;
+  inset: -16px;
+  font-family: monospace;
+  font-size: 10px;
+  color: rgba(34, 211, 238, 0.6);
+}
+
+.gravity-center .cursor-brackets {
+  color: rgba(168, 85, 247, 0.6);
+}
+
+.bracket {
+  position: absolute;
+}
+
+.bracket.tl { top: 0; left: 0; }
+.bracket.tr { top: 0; right: 0; }
+.bracket.bl { bottom: 0; left: 0; }
+.bracket.br { bottom: 0; right: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LABELS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(34, 211, 238, 0.4);
+}
+
+.group-mode .radar-labels {
+  color: rgba(168, 85, 247, 0.4);
+}
+
+.label {
+  position: absolute;
+}
+
+.label-pan-min { left: 4px; top: 50%; transform: translateY(-50%); }
+.label-pan-max { right: 4px; top: 50%; transform: translateY(-50%); }
+.label-tilt-min { top: 4px; left: 50%; transform: translateX(-50%); }
+.label-tilt-max { bottom: 4px; left: 50%; transform: translateX(-50%); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CENTER BUTTON - Overlay integrado
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-center-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 4px;
+  color: #22d3ee;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.group-mode .radar-center-btn {
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #a855f7;
+}
+
+.radar-center-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: rgba(34, 211, 238, 0.6);
+  transform: scale(1.05);
+}
+
+.group-mode .radar-center-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.6);
+}
+
+.radar-center-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CALIBRATION OVERLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.calibrating-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.scanning-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0) 0%,
+    rgba(245, 158, 11, 0.8) 100%
+  );
+  transform-origin: left center;
+  animation: scan 3s linear infinite;
+}
+
+@keyframes scan {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.calibrating-text {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COORDINATE DISPLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.radar-coords {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.group-mode .radar-coords {
+  border-color: rgba(168, 85, 247, 0.15);
+}
+
+.coord-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.coord-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.coord-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.group-mode .coord-value {
+  color: #a855f7;
+}
+
+.coord-normalized {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.coord-separator {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}

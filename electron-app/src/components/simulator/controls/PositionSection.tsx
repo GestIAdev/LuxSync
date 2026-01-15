@@ -1,12 +1,13 @@
 /**
- * 🕹️ POSITION SECTION - WAVE 430
+ * 🕹️ POSITION SECTION - WAVE 430.5
  * Movement control for selected fixtures (moving heads)
  * 
  * Architecture:
  * - COLLAPSIBLE section header
- * - XY Pad: Direct position control (the sniper)
+ * - SWITCH INTELIGENTE:
+ *   - 1 fixture → XYPad (Sniper Mode)
+ *   - 2+ fixtures → RadarXY (Formation Mode) + Fan Control
  * - Patterns: Circle, Eight, Sweep (procedural movement)
- * - Group Radar: Center of gravity + fan (group formations)
  * - Precision: Numeric inputs for exact values
  * 
  * Connected to MasterArbiter via window.lux.arbiter.setManual()
@@ -15,7 +16,7 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useTruthStore, selectHardware } from '../../../stores/truthStore'
-import { XYPad } from './controls'
+import { XYPad, RadarXY, type GhostPoint } from './controls'
 import { PatternSelector, type PatternType } from './controls'
 import { PositionIcon } from '../../icons/LuxIcons'
 
@@ -46,6 +47,12 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   // WAVE 377: Calibration mode state
   const [isCalibrating, setIsCalibrating] = useState(false)
   
+  // WAVE 430.5: Fan control for group mode
+  const [fanValue, setFanValue] = useState(0)  // -100 to 100
+  
+  // WAVE 430.5: Detect multi-selection mode
+  const isMultiSelection = selectedIds.length > 1
+  
   // Check if selected fixtures are moving heads
   const hasMovingHeads = useMemo(() => {
     const fixtures = hardware?.fixtures || []
@@ -58,6 +65,42 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   // WAVE 428.5: Condición movida - NO hacer return temprano (rompe hooks)
   const shouldRender = hasMovingHeads && selectedIds.length > 0
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 430.5: GHOST POINTS CALCULATION (Formation Mode)
+  // Distributes fixtures in a "fan" pattern around the center of gravity
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const ghostPoints = useMemo((): GhostPoint[] => {
+    if (!isMultiSelection) return []
+    
+    // Base position (center of gravity)
+    const basePanNorm = pan / 540
+    const baseTiltNorm = tilt / 270
+    
+    // Fan spread: -100 to 100 → -0.3 to 0.3 (normalized spread)
+    const spread = (fanValue / 100) * 0.3
+    
+    return selectedIds.map((id, index) => {
+      // Position offset based on index (centered distribution)
+      const fixtureCount = selectedIds.length
+      const offsetIndex = index - (fixtureCount - 1) / 2
+      
+      // Apply fan spread to pan (horizontal fan)
+      const offsetX = offsetIndex * spread / Math.max(1, fixtureCount - 1)
+      
+      // Clamp to valid range
+      const x = Math.max(0, Math.min(1, basePanNorm + offsetX))
+      const y = baseTiltNorm
+      
+      return {
+        id,
+        x,
+        y,
+        label: `Fixture ${index + 1}`,
+      }
+    })
+  }, [selectedIds, pan, tilt, fanValue, isMultiSelection])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - Connect to Arbiter
@@ -80,11 +123,10 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
         controls: {
-          pan: Math.round((newPan / 540) * 65535),   // Convert to 16-bit
-          tilt: Math.round((newTilt / 270) * 65535), // Convert to 16-bit
+          pan: Math.round((newPan / 540) * 255),
+          tilt: Math.round((newTilt / 270) * 255),
         },
         channels: ['pan', 'tilt'],
-        source: 'ui_programmer',
       })
       console.log(`[Position] 🕹️ Pan: ${newPan}° Tilt: ${newTilt}°`)
     } catch (err) {
@@ -114,15 +156,14 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
         controls: {
-          pan: Math.round((pan / 540) * 65535),
-          tilt: Math.round((tilt / 270) * 65535),
+          pan: Math.round((pan / 540) * 255),
+          tilt: Math.round((tilt / 270) * 255),
           // Pattern params encoded as special controls
           _patternType: pattern === 'circle' ? 1 : pattern === 'eight' ? 2 : 3,
           _patternSpeed: patternSpeed,
           _patternSize: patternSize,
         },
         channels: ['pan', 'tilt'],
-        source: 'ui_programmer',
       })
       console.log(`[Position] 🔄 Pattern: ${pattern} Speed: ${patternSpeed}% Size: ${patternSize}%`)
     } catch (err) {
@@ -149,6 +190,48 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   const handleCenter = useCallback(() => {
     handlePositionChange(270, 135) // Center of range
   }, [handlePositionChange])
+  
+  /**
+   * WAVE 430.5: Fan control change
+   * Spreads fixtures in a fan pattern around the center of gravity
+   */
+  const handleFanChange = useCallback(async (newFanValue: number) => {
+    setFanValue(newFanValue)
+    onOverrideChange(true)
+    
+    // Calculate individual positions with fan spread
+    const basePanNorm = pan / 540
+    const baseTiltNorm = tilt / 270
+    const spread = (newFanValue / 100) * 0.3
+    
+    // Send individual positions to each fixture
+    for (let i = 0; i < selectedIds.length; i++) {
+      const fixtureId = selectedIds[i]
+      const offsetIndex = i - (selectedIds.length - 1) / 2
+      const offsetX = selectedIds.length > 1 
+        ? offsetIndex * spread / (selectedIds.length - 1)
+        : 0
+      
+      const fixturePanNorm = Math.max(0, Math.min(1, basePanNorm + offsetX))
+      const fixturePan = Math.round(fixturePanNorm * 540)
+      const fixtureTilt = Math.round(baseTiltNorm * 270)
+      
+      try {
+        await window.lux?.arbiter?.setManual({
+          fixtureIds: [fixtureId],
+          controls: {
+            pan: Math.round((fixturePan / 540) * 255),
+            tilt: Math.round((fixtureTilt / 270) * 255),
+          },
+          channels: ['pan', 'tilt'],
+        })
+      } catch (err) {
+        console.error(`[Position] Fan error for ${fixtureId}:`, err)
+      }
+    }
+    
+    console.log(`[Position] 🌀 Fan spread: ${newFanValue}% for ${selectedIds.length} fixtures`)
+  }, [pan, tilt, selectedIds, onOverrideChange])
   
   /**
    * Release position back to AI
@@ -251,13 +334,62 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       
       {isExpanded && (
         <>
-          {/* XY PAD - The Sniper */}
-          <XYPad
-            pan={pan}
-            tilt={tilt}
-            onChange={handlePositionChange}
-            onCenter={handleCenter}
-          />
+          {/* ═══════════════════════════════════════════════════════════════════════
+              SWITCH INTELIGENTE: Radar (Multi) vs XYPad (Single)
+              ═══════════════════════════════════════════════════════════════════════ */}
+          
+          {isMultiSelection ? (
+            /* 📡 FORMATION MODE - Multiple fixtures selected */
+            <div className="position-mode formation-mode">
+              <RadarXY
+                pan={pan}
+                tilt={tilt}
+                onChange={handlePositionChange}
+                onCenter={handleCenter}
+                isCalibrating={isCalibrating}
+                isGroupMode={true}
+                ghostPoints={ghostPoints}
+                fixtureCount={selectedIds.length}
+              />
+              
+              {/* FAN CONTROL - Exclusivo para grupos */}
+              {!isCalibrating && (
+                <div className="fan-control">
+                  <div className="fan-header">
+                    <label className="fan-label">🌀 FAN SPREAD</label>
+                    <span className="fan-value">{fanValue}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    className="fan-slider"
+                    min="-100"
+                    max="100"
+                    step="1"
+                    value={fanValue}
+                    onChange={(e) => handleFanChange(Number(e.target.value))}
+                  />
+                  <div className="fan-hints">
+                    <span>← Converge</span>
+                    <span>Diverge →</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 🎯 SNIPER MODE - Single fixture selected */
+            <div className="position-mode sniper-mode">
+              <div className="mode-indicator">
+                <span className="mode-badge sniper">🎯 SINGLE TARGET</span>
+              </div>
+              <XYPad
+                pan={pan}
+                tilt={tilt}
+                onChange={handlePositionChange}
+                onCenter={handleCenter}
+                disabled={isCalibrating}
+              />
+            </div>
+          )}
           
           {/* PATTERNS - Procedural Movement (disabled in calibration mode) */}
           {!isCalibrating && (
@@ -270,38 +402,40 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             />
           )}
           
-          {/* POSITION SLIDERS - Real-time control */}
-          <div className="position-sliders">
-            <div className="position-slider-row">
-              <label className="slider-label">PAN</label>
-              <input
-                type="range"
-                className="position-slider pan-slider"
-                min="0"
-                max="540"
-                step="1"
-                value={pan}
-                onChange={(e) => handlePositionChange(Number(e.target.value), tilt)}
-                disabled={isCalibrating}
-              />
-              <span className="slider-value">{pan}°</span>
+          {/* POSITION SLIDERS - Solo para modo single (Radar tiene su propio display) */}
+          {!isMultiSelection && (
+            <div className="position-sliders">
+              <div className="position-slider-row">
+                <label className="slider-label">PAN</label>
+                <input
+                  type="range"
+                  className="position-slider pan-slider"
+                  min="0"
+                  max="540"
+                  step="1"
+                  value={pan}
+                  onChange={(e) => handlePositionChange(Number(e.target.value), tilt)}
+                  disabled={isCalibrating}
+                />
+                <span className="slider-value">{pan}°</span>
+              </div>
+              
+              <div className="position-slider-row">
+                <label className="slider-label">TILT</label>
+                <input
+                  type="range"
+                  className="position-slider tilt-slider"
+                  min="0"
+                  max="270"
+                  step="1"
+                  value={tilt}
+                  onChange={(e) => handlePositionChange(pan, Number(e.target.value))}
+                  disabled={isCalibrating}
+                />
+                <span className="slider-value">{tilt}°</span>
+              </div>
             </div>
-            
-            <div className="position-slider-row">
-              <label className="slider-label">TILT</label>
-              <input
-                type="range"
-                className="position-slider tilt-slider"
-                min="0"
-                max="270"
-                step="1"
-                value={tilt}
-                onChange={(e) => handlePositionChange(pan, Number(e.target.value))}
-                disabled={isCalibrating}
-              />
-              <span className="slider-value">{tilt}°</span>
-            </div>
-          </div>
+          )}
           
           {/* Override indicator */}
           {hasOverride && !isCalibrating && (

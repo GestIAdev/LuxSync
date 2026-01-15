@@ -84,50 +84,17 @@ export function calculateFixtureRenderValues(
   const tiltVelocity = truthData?.tiltVelocity ?? 0
   
   // ═══════════════════════════════════════════════════════════════════════
-  // � WAVE 427: FLOW MODE ELIMINATED
-  // The old "flow" mode logic is now REMOVED.
-  // System uses Auto-Override: when user touches a control, that fixture 
-  // gets a manual override. Otherwise, Selene AI controls everything.
+  // 🔧 WAVE 440: TRUST THE BACKEND - FLOW MODE FULLY ELIMINATED
+  // All control logic is now in MasterArbiter. Frontend just renders what
+  // the backend sends. No more frontend-side palette or movement overrides.
   // 
-  // Colors and movement now come from:
-  // - Selene AI (default)
-  // - Manual override (when user explicitly controls a fixture)
+  // Colors and movement come from truthData (MasterArbiter output).
+  // The backend handles ALL layer merging (AI, Manual, Effects, Blackout).
   // ═══════════════════════════════════════════════════════════════════════
   
-  if (globalMode === 'manual') {
-    // 🎨 Color: Apply Living Palette unless fixture has color override
-    const hasColorOverride = overrideMask?.color === true
-    
-    if (!hasColorOverride) {
-      const fixtureZone = truthData?.zone || 'front'
-      const side: Side = mapZoneToSide(fixtureZone)
-      // 🎨 WAVE 34.5: Pass transition params for smooth palette blending
-      color = getLivingColor(
-        activePaletteId,
-        intensity > 0 ? intensity : 0.7,
-        side,
-        globalSaturation,
-        targetPalette,
-        transitionProgress
-      )
-    }
-    
-    // 🌀 Movement: Apply Radar patterns unless fixture has position override
-    const hasPositionOverride = overrideMask?.position === true
-    
-    if (!hasPositionOverride) {
-      const movement = calculateMovement({
-        pattern: flowParams.pattern,
-        speed: flowParams.speed,
-        size: flowParams.size,
-        basePan: flowParams.basePan,
-        baseTilt: flowParams.baseTilt,
-        fixtureIndex: fixtureIndex,
-      })
-      pan = movement.pan
-      tilt = movement.tilt
-    }
-  }
+  // WAVE 440: Removed globalMode === 'manual' block entirely
+  // The old logic applied Living Palette on frontend, which conflicted
+  // with backend overrides. Now we trust the backend completely.
   
   // ═══════════════════════════════════════════════════════════════════════
   // PRIORITY 1: PER-FIXTURE OVERRIDE (TOP - Always wins)

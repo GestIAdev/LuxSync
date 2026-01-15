@@ -1,0 +1,240 @@
+/**
+ * 🚀 LAUNCHPAD CSS - WAVE 437.2
+ * "Stage Access Panel" - TAMED HEIGHT
+ * 
+ * Big, beautiful, clickable cards
+ * Glassmorphism + neon accents
+ * MAX HEIGHT CONSTRAINT for balance
+ */
+
+.launchpad {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  height: 100%;
+  max-height: 320px;
+}
+
+.launchpad-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.launchpad-icon {
+  font-size: 16px;
+}
+
+.launchpad-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAUNCHPAD GRID - WAVE 437.2: Horizontal layout, balanced cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.launchpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  max-height: 240px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAUNCH CARD - WAVE 437.2: Square-ish aspect ratio
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.launch-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 16px;
+  background: linear-gradient(
+    145deg,
+    rgba(20, 15, 35, 0.9) 0%,
+    rgba(10, 8, 20, 0.95) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  min-height: 120px;
+  max-height: 200px;
+}
+
+.launch-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--card-color);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 40px var(--card-glow);
+}
+
+/* Primary card (LIVE SHOW) - Same size as others now */
+.launch-card.primary {
+  background: linear-gradient(
+    145deg,
+    rgba(40, 15, 40, 0.9) 0%,
+    rgba(20, 8, 25, 0.95) 100%
+  );
+  border-color: rgba(255, 0, 255, 0.2);
+}
+
+.launch-card.primary .launch-title {
+  font-size: 16px;
+}
+
+.launch-card.primary .launch-icon {
+  width: 44px;
+  height: 44px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.launch-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--card-color);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.launch-card:hover .launch-icon {
+  background: var(--card-glow);
+  border-color: var(--card-color);
+  transform: scale(1.1);
+  box-shadow: 0 0 25px var(--card-glow);
+}
+
+.launch-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.launch-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.launch-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.launch-arrow {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--card-color);
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease;
+}
+
+.launch-card:hover .launch-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOW EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.launch-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(
+    180deg,
+    var(--card-glow) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.launch-card:hover .launch-glow {
+  opacity: 0.3;
+}
+
+.launch-border-glow {
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    var(--card-color) 0%,
+    transparent 50%,
+    var(--card-color) 100%
+  );
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+  filter: blur(8px);
+}
+
+.launch-card:hover .launch-border-glow {
+  opacity: 0.2;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .launchpad-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .launch-card.primary {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .launchpad-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .launch-card.primary {
+    grid-column: span 1;
+  }
+}

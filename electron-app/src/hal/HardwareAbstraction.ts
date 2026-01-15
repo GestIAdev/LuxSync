@@ -756,7 +756,7 @@ export class HardwareAbstraction {
       
       if (fixtureTarget) {
         // Use arbitrated values directly
-        return {
+        const state = {
           name: fixture.name,
           type: fixture.type || 'generic',
           zone,
@@ -771,6 +771,8 @@ export class HardwareAbstraction {
           zoom: fixtureTarget.zoom,
           focus: fixtureTarget.focus,
         }
+        
+        return state
       }
       
       // Fallback: fixture not in arbiter output (shouldn't happen)

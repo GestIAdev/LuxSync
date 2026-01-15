@@ -4,6 +4,7 @@
  * 
  * Arquitectura: Sidebar + Tabs + Global Effects
  * WAVE 377: Added TitanSyncBridge for stageStore → Backend sync
+ * WAVE 438: Setup stageStore IPC listeners for show loading
  */
 
 import { useEffect } from 'react'
@@ -13,6 +14,7 @@ import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
 import { useSeleneStore } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
+import { setupStageStoreListeners } from './stores/stageStore'
 import './styles/globals.css'
 
 function AppContent() {
@@ -27,8 +29,16 @@ function AppContent() {
     startSession()
     addLogEntry({ type: 'INIT', message: 'LuxSync Commander started' })
     
+    // 🔌 WAVE 438: Setup stageStore IPC listeners
+    const unsubscribeStageListeners = setupStageStoreListeners()
+    
     // 🧹 WAVE 63.7: Single clean log
     console.log('[Selene UI] 🚀 System Ready')
+    
+    // Cleanup on unmount
+    return () => {
+      unsubscribeStageListeners()
+    }
   }, [startSession, addLogEntry])
 
   return (

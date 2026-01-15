@@ -13,11 +13,11 @@
  */
 
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
-import { useSelectionStore } from '../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../stores/truthStore'
+import { useSelectionStore } from '../../../stores/selectionStore'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
 import { XYPad } from './controls'
 import { PatternSelector, type PatternType } from './controls'
-import { PositionIcon } from '../icons/LuxIcons'
+import { PositionIcon } from '../../icons/LuxIcons'
 
 export interface PositionSectionProps {
   hasOverride: boolean

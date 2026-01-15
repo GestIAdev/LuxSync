@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback } from 'react'
-import { IntensityIcon } from '../icons/LuxIcons'
+import { IntensityIcon } from '../../icons/LuxIcons'
 
 export interface IntensitySectionProps {
   value: number          // 0-100

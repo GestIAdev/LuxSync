@@ -11,14 +11,14 @@
  */
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
-import { useSelectionStore } from '../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../stores/truthStore'
+import { useSelectionStore } from '../../../stores/selectionStore'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
 import { GroupsPanel } from './GroupsPanel'
-import { IntensityIcon, GroupIcon } from '../icons/LuxIcons'
+import { IntensityIcon, GroupIcon } from '../../icons/LuxIcons'
 import './TheProgrammer.css'
 import './accordion-styles.css'
 import './GroupsPanel.css'

@@ -23,9 +23,9 @@
 import React, { useRef, useMemo, useState, useCallback } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useSelectionStore } from '../../../stores/selectionStore'
-import { getTransientFixture } from '../../../stores/transientStore'
-import { useFixtureRender } from '../../../hooks/useFixtureRender'
+import { useSelectionStore } from '../../../../../stores/selectionStore'
+import { getTransientFixture } from '../../../../../stores/transientStore'
+import { useFixtureRender } from '../../../../../hooks/useFixtureRender'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

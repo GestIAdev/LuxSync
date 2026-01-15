@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useState } from 'react'
-import { ColorIcon } from '../icons/LuxIcons'
+import { ColorIcon } from '../../icons/LuxIcons'
 
 export interface ColorSectionProps {
   color: { r: number; g: number; b: number }

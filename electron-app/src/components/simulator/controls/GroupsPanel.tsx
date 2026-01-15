@@ -13,9 +13,9 @@
  */
 
 import React, { useMemo, useCallback, useState } from 'react'
-import { useSelectionStore } from '../../stores/selectionStore'
-import { useStageStore } from '../../stores/stageStore'
-import { useTruthStore, selectHardware } from '../../stores/truthStore'
+import { useSelectionStore } from '../../../stores/selectionStore'
+import { useStageStore } from '../../../stores/stageStore'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
 import './GroupsPanel.css'
 
 interface GroupsPanelProps {

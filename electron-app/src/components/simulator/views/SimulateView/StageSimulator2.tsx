@@ -11,12 +11,12 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../stores/truthStore';
-import { useStageStore } from '../../../stores/stageStore';
-import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../../stores/selectionStore';
-import { useControlStore } from '../../../stores/controlStore';
-import { useOverrideStore } from '../../../stores/overrideStore';
-import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender';
+import { useTruthStore, selectHardware, selectPalette, selectBeat } from '../../../../stores/truthStore';
+import { useStageStore } from '../../../../stores/stageStore';
+import { useSelectionStore, selectSelectedIds, selectHoveredId } from '../../../../stores/selectionStore';
+import { useControlStore } from '../../../../stores/controlStore';
+import { useOverrideStore } from '../../../../stores/overrideStore';
+import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

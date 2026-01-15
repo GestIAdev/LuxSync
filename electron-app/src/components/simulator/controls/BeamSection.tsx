@@ -14,9 +14,9 @@
  */
 
 import React, { useCallback, useState, useMemo } from 'react'
-import { useSelectionStore } from '../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../stores/truthStore'
-import { BeamIcon } from '../icons/LuxIcons'
+import { useSelectionStore } from '../../../stores/selectionStore'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { BeamIcon } from '../../icons/LuxIcons'
 
 export interface BeamSectionProps {
   hasOverride: boolean

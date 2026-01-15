@@ -15,8 +15,13 @@
  * - NO genera colores (los recibe ya calculados)
  * - SOLO aplica física de reactividad según el género
  * 
+ * 📜 WAVE 450 ENMIENDA: ENERGY OVERRIDE
+ * Si energy > 0.85, los modificadores de consciencia son IGNORADOS.
+ * La física tiene VETO TOTAL en los drops/clímax.
+ * "En los drops, la física manda. En los valles, Selene piensa."
+ * 
  * @layer CORE (Sistema Nervioso)
- * @version WAVE 274 - Organ Harvest
+ * @version WAVE 450 - Consciousness Integration
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -37,6 +42,13 @@ import {
 } from '../../engine/physics/ElementalModifiers';
 
 import type { ColorPalette } from '../protocol/LightingIntent';
+
+import {
+  type ConsciousnessPhysicsModifier,
+  ENERGY_OVERRIDE_THRESHOLD,
+  isEnergyOverrideActive,
+  applyEnergyOverride,
+} from '../../engine/consciousness/ConsciousnessOutput';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -94,6 +106,8 @@ export interface SeleneLuxOutput {
   dimmerOverride: number | null;
   forceMovement: boolean;
   physicsApplied: string;     // 'techno' | 'rock' | 'latino' | 'chill' | 'none'
+  /** 🧠 WAVE 450: Indica si Energy Override está activo */
+  energyOverrideActive: boolean;
   debugInfo?: Record<string, unknown>;
 }
 
@@ -187,9 +201,10 @@ export class SeleneLux {
       dimmerOverride: null,
       forceMovement: false,
       physicsApplied: 'none',
+      energyOverrideActive: false,  // 🧠 WAVE 450
     };
     
-    console.log('[SeleneLux] 🌙 Nervous System initialized (WAVE 274 + WAVE 275 FREQ MAPPING)');
+    console.log('[SeleneLux] 🌙 Nervous System initialized (WAVE 450 + Consciousness Integration)');
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -497,6 +512,9 @@ export class SeleneLux {
       console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
     }
     
+    // 🧠 WAVE 450: Detectar si Energy Override está activo
+    const energyOverrideActive = isEnergyOverrideActive(audioMetrics.avgNormEnergy);
+    
     this.lastOutput = {
       palette: outputPalette,
       zoneIntensities,
@@ -506,6 +524,7 @@ export class SeleneLux {
       dimmerOverride,
       forceMovement,
       physicsApplied,
+      energyOverrideActive,
       debugInfo,
     };
     

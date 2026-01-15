@@ -102,3 +102,12 @@ export {
 // ========================================
 export * from './EvolutionEngine'
 export * from './MoodSynthesizer'
+
+// ========================================
+// WAVE 450: CORE 3 - Interfaces de Comunicación
+// ========================================
+export * from './ConsciousnessOutput'
+export * from './VibeBridge'
+
+// 🧠 WAVE 500: PROJECT GENESIS - Nueva IA en src/core/intelligence/
+// ConsciousnessAdapter ELIMINADO - Replaced by SeleneTitanConscious

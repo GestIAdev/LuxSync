@@ -1,35 +1,34 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * 🎛️ STAGE SIDEBAR - WAVE 429: THE WIDE INSPECTOR
- * Panel lateral contextual con control de fixtures + escenas
- * ═══════════════════════════════════════════════════════════════════════════
+﻿/**
  * 
- * WAVE 429 Changes:
- * - Ancho aumentado a 380px para maximizar área de control
- * - Header limpio: nombre real del fixture, sin redundancias
- * - X cierra el sidebar, no solo deselecciona
- * - Tabs CONTROLS/SCENES en header compacto
- * ═══════════════════════════════════════════════════════════════════════════
+ *  STAGE SIDEBAR - WAVE 432.5: UNIFIED SIDEBAR
+ * Panel lateral con 3 tabs: CONTROLS | GROUPS | SCENES
+ * 
+ * 
+ * WAVE 432.5 Changes:
+ * - 3 tabs unificadas (eliminada duplicación)
+ * - CONTROLS: TheProgrammerContent SIN tabs internas
+ * - GROUPS: GroupsPanel con auto-switch
+ * - SCENES: SceneBrowser
+ * - Iconos custom LuxIcons
+ * 
  */
 
 import React, { useMemo, useState, useCallback } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
-import { useDMXStore } from '../../../../stores'
-import { TheProgrammer } from '../../../programmer'
+import { TheProgrammerContent, GroupsPanel } from '../../../programmer'
 import { SceneBrowser } from './SceneBrowser'
+import { ControlsIcon, GroupIcon, ScenesIcon } from '../../../icons/LuxIcons'
 import './StageSidebar.css'
 
-// ═══════════════════════════════════════════════════════════════════════════
+// 
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// 
 
-type SidebarTab = 'controls' | 'scenes'
+type SidebarTab = 'controls' | 'groups' | 'scenes'
 
 export interface StageSidebarProps {
-  /** Si el sidebar está visible */
   isVisible?: boolean
-  /** Callback para cerrar el sidebar */
   onClose?: () => void
 }
 
@@ -37,100 +36,69 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
   isVisible = true,
   onClose
 }) => {
-  // ─────────────────────────────────────────────────────────────────────────
-  // 📊 Store State
-  // ─────────────────────────────────────────────────────────────────────────
+  // Store State
   const selectedIds = useSelectionStore(state => state.selectedIds)
-  const fixtures = useDMXStore(state => state.fixtures)
   const sceneCount = useSceneStore(selectSceneCount)
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 🎛️ Local State
-  // ─────────────────────────────────────────────────────────────────────────
+  // Local State
   const [activeTab, setActiveTab] = useState<SidebarTab>('controls')
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 🧮 Computed Values
-  // ─────────────────────────────────────────────────────────────────────────
-  const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds])
-  const hasSelection = selectedArray.length > 0
+  // Computed
+  const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
   
-  const selectedFixtures = useMemo(() => {
-    return selectedArray
-      .map(id => fixtures.find(f => f.id === id))
-      .filter(Boolean)
-  }, [selectedArray, fixtures])
-  
-  // WAVE 429: Título limpio - nombre real del fixture
-  const headerTitle = useMemo(() => {
-    if (selectedArray.length === 0) return 'No fixtures selected'
-    if (selectedArray.length === 1) {
-      const fixture = selectedFixtures[0]
-      return fixture?.name || `Fixture ${selectedArray[0]}`
-    }
-    const firstName = selectedFixtures[0]?.name || 'Fixture'
-    return `${firstName} (+${selectedArray.length - 1} more)`
-  }, [selectedArray, selectedFixtures])
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // � Handlers
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  // WAVE 429: Cerrar el sidebar (no solo deseleccionar)
+  // Handlers
   const handleClose = useCallback(() => {
-    if (onClose) {
-      onClose()
-    }
+    if (onClose) onClose()
   }, [onClose])
   
-  // Si no es visible, no renderizar nada
-  if (!isVisible) {
-    return null
-  }
+  const handleSwitchToControls = useCallback(() => {
+    setActiveTab('controls')
+  }, [])
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 🎨 Render
-  // ─────────────────────────────────────────────────────────────────────────
+  if (!isVisible) return null
+  
   return (
     <div className="stage-sidebar">
-      {/* ═══ HEADER COMPACTO ═══ */}
+      {/* HEADER WITH TABS */}
       <div className="sidebar-header">
-        {/* Tab Switcher integrado en header */}
         <div className="header-tabs">
           <button
             className={`header-tab ${activeTab === 'controls' ? 'active' : ''}`}
             onClick={() => setActiveTab('controls')}
           >
-            <span className="tab-icon">⚡</span>
-            CONTROLS
+            <ControlsIcon size={14} />
+            <span>CONTROLS</span>
+            {selectedCount > 0 && <span className="tab-badge">{selectedCount}</span>}
           </button>
+          
+          <button
+            className={`header-tab ${activeTab === 'groups' ? 'active' : ''}`}
+            onClick={() => setActiveTab('groups')}
+          >
+            <GroupIcon size={14} />
+            <span>GROUPS</span>
+          </button>
+          
           <button
             className={`header-tab ${activeTab === 'scenes' ? 'active' : ''}`}
             onClick={() => setActiveTab('scenes')}
           >
-            <span className="tab-icon">◈</span>
-            SCENES
-            {sceneCount > 0 && <span className="tab-count">{sceneCount}</span>}
+            <ScenesIcon size={14} />
+            <span>SCENES</span>
+            {sceneCount > 0 && <span className="tab-badge">{sceneCount}</span>}
           </button>
         </div>
         
-        {/* Close button */}
-        <button 
-          className="close-btn"
-          onClick={handleClose}
-          title="Close Inspector"
-        >
-          ✕
+        <button className="close-btn" onClick={handleClose} title="Close Sidebar">
+          
         </button>
       </div>
       
-      {/* ═══ CONTENT ═══ */}
+      {/* CONTENT */}
       <div className="sidebar-content">
-        {activeTab === 'controls' ? (
-          <TheProgrammer />
-        ) : (
-          <SceneBrowser />
-        )}
+        {activeTab === 'controls' && <TheProgrammerContent />}
+        {activeTab === 'groups' && <GroupsPanel onSwitchToControls={handleSwitchToControls} />}
+        {activeTab === 'scenes' && <SceneBrowser />}
       </div>
     </div>
   )

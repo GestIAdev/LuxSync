@@ -429,6 +429,66 @@ export const GroupIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * 🎬 SCENES - Claqueta de cine / fotogramas
+ * Para la pestaña de escenas
+ */
+export const ScenesIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Film frame */}
+    <rect x="3" y="5" width="18" height="14" rx="2" stroke={color} strokeWidth="2" />
+    {/* Perforations top */}
+    <rect x="5" y="2" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    <rect x="11" y="2" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    <rect x="17" y="2" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    {/* Perforations bottom */}
+    <rect x="5" y="19" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    <rect x="11" y="19" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    <rect x="17" y="19" width="2" height="3" rx="0.5" fill={color} opacity="0.6" />
+    {/* Play triangle */}
+    <path d="M10 9L10 15L15 12L10 9Z" fill={color} />
+  </svg>
+)
+
+/**
+ * 🎚️ CONTROLS - Sliders/Faders
+ * Para la pestaña de controles
+ */
+export const ControlsIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Fader tracks */}
+    <rect x="4" y="3" width="3" height="18" rx="1.5" stroke={color} strokeWidth="1.5" opacity="0.4" />
+    <rect x="10.5" y="3" width="3" height="18" rx="1.5" stroke={color} strokeWidth="1.5" opacity="0.4" />
+    <rect x="17" y="3" width="3" height="18" rx="1.5" stroke={color} strokeWidth="1.5" opacity="0.4" />
+    {/* Fader knobs at different positions */}
+    <rect x="3" y="7" width="5" height="4" rx="1" fill={color} />
+    <rect x="9.5" y="13" width="5" height="4" rx="1" fill={color} />
+    <rect x="16" y="10" width="5" height="4" rx="1" fill={color} />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -447,4 +507,6 @@ export default {
   Iris: IrisIcon,
   MasterIntensity: MasterIntensityIcon,
   Group: GroupIcon,
+  Scenes: ScenesIcon,
+  Controls: ControlsIcon,
 }

@@ -16,7 +16,6 @@ import React, { useMemo, useCallback, useState } from 'react'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useStageStore } from '../../stores/stageStore'
 import { useTruthStore, selectHardware } from '../../stores/truthStore'
-import { GroupIcon } from '../icons/LuxIcons'
 import './GroupsPanel.css'
 
 interface GroupsPanelProps {
@@ -187,12 +186,6 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({ onSwitchToControls }) 
   
   return (
     <div className="groups-panel">
-      {/* HEADER */}
-      <div className="groups-header">
-        <GroupIcon size={20} color="#00FFFF" />
-        <span className="groups-title">GROUPS</span>
-      </div>
-      
       {/* SYSTEM GROUPS */}
       <div className="groups-section">
         <div className="section-label">SYSTEM GROUPS</div>

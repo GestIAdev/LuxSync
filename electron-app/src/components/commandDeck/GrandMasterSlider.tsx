@@ -1,14 +1,16 @@
 /**
- * 🎚️ GRAND MASTER SLIDER - WAVE 431: FAT FADER
+ * 🎚️ GRAND MASTER SLIDER - WAVE 431.5: POLISH
  * Controls overall light intensity (0-100%)
  * Affects ALL fixtures - AI and Manual
  * 
- * Layout: [LABEL] [====FAT SLIDER====] [100%]
+ * Layout: [ICON] [====FAT SLIDER====] [100%]
+ * - Custom MasterIntensity icon
  * - Metallic rectangular thumb (22x44px)
  * - Digital value display on right
  */
 
 import React, { useCallback } from 'react'
+import { MasterIntensityIcon } from '../icons/LuxIcons'
 import './CommandDeck.css'
 
 interface GrandMasterSliderProps {
@@ -28,7 +30,9 @@ export const GrandMasterSlider: React.FC<GrandMasterSliderProps> = ({
   
   return (
     <div className="grand-master">
-      <span className="gm-label-left">GM</span>
+      <div className="gm-icon-wrapper">
+        <MasterIntensityIcon size={32} color="#00ffff" />
+      </div>
       
       <div className="gm-slider-container">
         <input

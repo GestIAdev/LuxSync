@@ -370,6 +370,65 @@ export const IrisIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * 🎚️ MASTER INTENSITY - Fader grande con corona
+ * Para el Grand Master del CommandDeck
+ */
+export const MasterIntensityIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Corona/Crown - representing master */}
+    <path 
+      d="M4 8L7 5L12 8L17 5L20 8V10H4V8Z" 
+      fill={color}
+      opacity="0.4"
+    />
+    {/* Fader track */}
+    <rect x="10" y="10" width="4" height="12" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Fader knob */}
+    <rect x="9" y="12" width="6" height="4" rx="1" fill={color} />
+    {/* Side intensity bars */}
+    <path d="M5 22V16M19 22V16" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <path d="M5 14V12M19 14V12" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.3" />
+  </svg>
+)
+
+/**
+ * 👥 GROUP - Fixtures agrupados
+ * Para la pestaña GROUPS de TheProgrammer
+ */
+export const GroupIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Three fixtures grouped */}
+    <rect x="3" y="4" width="6" height="6" rx="1" stroke={color} strokeWidth="2" />
+    <rect x="15" y="4" width="6" height="6" rx="1" stroke={color} strokeWidth="2" />
+    <rect x="9" y="14" width="6" height="6" rx="1" stroke={color} strokeWidth="2" />
+    {/* Connection lines */}
+    <path d="M6 10V12L12 14M18 10V12L12 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -386,4 +445,6 @@ export default {
   Focus: FocusIcon,
   Zoom: ZoomIcon,
   Iris: IrisIcon,
+  MasterIntensity: MasterIntensityIcon,
+  Group: GroupIcon,
 }

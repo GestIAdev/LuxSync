@@ -34,6 +34,7 @@
 
 /* 
    DECK SECTIONS - Module Encapsulation
+   WAVE 431.5: Perfect Vertical Alignment
     */
 
 .deck-section {
@@ -41,11 +42,13 @@
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  height: 100%;
+  height: calc(100% - 16px);  /* Account for padding */
+  min-height: 108px;
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.04);
+  align-self: stretch;
 }
 
 .deck-section:first-child {
@@ -160,16 +163,26 @@
 .deck-grandmaster {
   flex-direction: row !important;
   align-items: center !important;
-  gap: 16px;
+  gap: 12px;
   padding: 8px 16px;
+  height: 100%;
 }
 
 .grand-master {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
+  height: 100%;
+}
+
+.gm-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.4));
 }
 
 .gm-label-left {
@@ -279,6 +292,8 @@
   flex-direction: column !important;
   padding: 6px 12px;
   gap: 4px;
+  height: calc(100% - 16px);
+  min-height: 108px;
 }
 
 .vibe-selector-compact {
@@ -286,6 +301,7 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
+  height: 100%;
 }
 
 .vibe-label-header {
@@ -295,12 +311,15 @@
   letter-spacing: 2px;
   color: rgba(255, 255, 255, 0.4);
   text-align: center;
+  flex-shrink: 0;
 }
 
 .vibe-buttons-row {
   display: flex;
   gap: 8px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .vibe-btn-compact {
@@ -310,7 +329,8 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 80px;
+  height: 100%;
+  min-height: 70px;
   min-width: 0;
   padding: 8px 4px;
   background: linear-gradient(180deg, 
@@ -404,13 +424,15 @@
 }
 
 /* 
-   QUICK ACTIONS - PANIC GRID (2x2)
+   QUICK ACTIONS - PANIC GRID (1x4 row)
     */
 
 .deck-actions {
   flex-direction: row !important;
-  align-items: center !important;
+  align-items: stretch !important;
   padding: 6px 10px;
+  height: calc(100% - 16px);
+  min-height: 108px;
 }
 
 .quick-actions {
@@ -418,6 +440,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   width: 100%;
+  height: 100%;
 }
 
 .quick-btn {
@@ -426,7 +449,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 80px;
+  height: 100%;
+  min-height: 80px;
   padding: 8px 4px;
   background: linear-gradient(180deg, 
     rgba(30, 30, 45, 0.8) 0%, 

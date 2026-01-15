@@ -447,3 +447,422 @@
   letter-spacing: 0.5px;
   margin: 0 16px 8px 16px;
 }
+
+/* 
+   POSITION SECTION - XY Pad, Patterns, Precision
+   ═ */
+
+/* XY Pad Container */
+.xy-pad-container {
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  margin: 0 16px 12px 16px;
+}
+
+.xy-pad {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+  margin-bottom: 12px;
+}
+
+/* Grid lines */
+.xy-pad::before,
+.xy-pad::after {
+  content: '';
+  position: absolute;
+  background: rgba(0, 255, 255, 0.1);
+}
+
+.xy-pad::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.xy-pad::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* Cursor dot */
+.xy-cursor {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--accent-cyan, #00ffff);
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 
+    0 0 12px rgba(0, 255, 255, 0.6),
+    inset 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+/* Axis Labels */
+.xy-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pattern Selector */
+.pattern-selector {
+  padding: 0 16px 12px 16px;
+}
+
+.pattern-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pattern-btn {
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.pattern-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pattern-btn.active {
+  background: rgba(138, 43, 226, 0.2);
+  border-color: rgba(138, 43, 226, 0.5);
+  color: #8a2be2;
+  box-shadow: 0 0 12px rgba(138, 43, 226, 0.3);
+}
+
+/* Pattern params (speed, size) */
+.pattern-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pattern-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.param-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.param-slider {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.param-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #8a2be2;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(138, 43, 226, 0.5);
+}
+
+/* Precision Inputs */
+.precision-inputs {
+  padding: 0 16px 12px 16px;
+}
+
+.precision-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.precision-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.precision-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.precision-input-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+.precision-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--accent-cyan, #00ffff);
+  font-size: 12px;
+  font-family: monospace;
+  text-align: center;
+}
+
+.precision-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan, #00ffff);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+}
+
+/* Calibration Mode */
+.calibration-indicator {
+  color: var(--accent-cyan, #00ffff);
+  font-size: 10px;
+  margin-left: 8px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.calibration-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: rgba(0, 255, 255, 0.2);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  border-radius: 12px;
+  color: #00ffff;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 16px 8px 16px;
+}
+
+/* 
+   BEAM/OPTICS SECTION - Gobo, Prism, Focus, Zoom, Iris
+    */
+
+.beam-control {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.beam-control:last-child {
+  border-bottom: none;
+}
+
+.control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.control-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+
+.control-value {
+  font-size: 12px;
+  color: var(--accent-cyan, #00ffff);
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* Gobo Steps */
+.gobo-steps {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.gobo-step {
+  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.gobo-step:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.gobo-step.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Beam Sliders */
+.beam-slider {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.beam-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ffd700;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+/* Prism Toggle */
+.prism-toggle {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.prism-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.prism-toggle.active {
+  background: rgba(138, 43, 226, 0.2);
+  border-color: rgba(138, 43, 226, 0.5);
+  color: #8a2be2;
+  box-shadow: 0 0 8px rgba(138, 43, 226, 0.3);
+}
+
+/* Prism Rotation */
+.prism-rotation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.prism-rotation.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.rotation-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 60px;
+}
+
+.rotation-slider {
+  flex: 1;
+}
+
+.rotation-value {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+  min-width: 35px;
+  text-align: right;
+}
+
+/* Optics Controls (Focus/Zoom/Iris) */
+.optics-control {
+  padding: 12px 16px;
+}
+
+.optic-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.optic-row:last-child {
+  margin-bottom: 0;
+}
+
+.optic-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  min-width: 45px;
+}
+
+.optic-range-label {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 35px;
+  text-align: center;
+}
+
+.optic-range-label.near,
+.optic-range-label.spot,
+.optic-range-label.closed {
+  text-align: left;
+}
+
+.optic-range-label.far,
+.optic-range-label.flood,
+.optic-range-label.open {
+  text-align: right;
+}
+
+.optic-value {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+  min-width: 40px;
+  text-align: right;
+}
+
+.focus-slider::-webkit-slider-thumb { background: #00ffff; box-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
+.zoom-slider::-webkit-slider-thumb { background: #ff00ff; box-shadow: 0 0 8px rgba(255, 0, 255, 0.5); }
+.iris-slider::-webkit-slider-thumb { background: #ffff00; box-shadow: 0 0 8px rgba(255, 255, 0, 0.5); }

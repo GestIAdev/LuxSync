@@ -1,16 +1,13 @@
 /**
- * 🎨 COLOR SECTION - WAVE 375.3
+ * 🎨 COLOR SECTION - WAVE 430
  * Color control for selected fixtures with LIVING PALETTES
  * 
  * Features:
+ * - COLLAPSIBLE section header
  * - RGB Slider controls
  * - Living Palettes: 🔥 FUEGO, ❄️ HIELO, 🌴 SELVA, ⚡ NEON
  * - Release button (↺) to return control to AI
  * - Orange glow when manual override active
- * 
- * TACTICAL DECISION (WAVE 375.3):
- * Living Palettes use STATIC representative colors for stability.
- * Full procedural engine connection deferred to WAVE 376.
  */
 
 import React, { useCallback, useState } from 'react'
@@ -18,6 +15,8 @@ import React, { useCallback, useState } from 'react'
 export interface ColorSectionProps {
   color: { r: number; g: number; b: number }
   hasOverride: boolean
+  isExpanded: boolean
+  onToggle: () => void
   onChange: (r: number, g: number, b: number) => void
   onRelease: () => void
 }
@@ -69,6 +68,8 @@ const QUICK_COLORS = [
 export const ColorSection: React.FC<ColorSectionProps> = ({
   color,
   hasOverride,
+  isExpanded,
+  onToggle,
   onChange,
   onRelease,
 }) => {
@@ -94,7 +95,8 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
   }, [onChange])
   
   // Release handler
-  const handleRelease = useCallback(() => {
+  const handleRelease = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
     setActivePalette(null)
     onRelease()
   }, [onRelease])
@@ -103,121 +105,127 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
   const previewColor = `rgb(${color.r}, ${color.g}, ${color.b})`
   
   return (
-    <div className={`programmer-section color-section ${hasOverride ? 'has-override' : ''}`}>
-      <div className="section-header">
+    <div className={`programmer-section color-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+      <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
-          <span className="section-icon">🎨</span>
-          COLOR
+          <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
+          🎨 COLOR
         </h4>
-        {hasOverride && (
-          <button 
-            className="release-btn"
-            onClick={handleRelease}
-            title="Release to AI control"
-          >
-            ↺
-          </button>
-        )}
-      </div>
-      
-      {/* Color Preview */}
-      <div className="color-preview-container">
-        <div 
-          className="color-preview"
-          style={{ backgroundColor: previewColor }}
-        />
-        <div className="color-values">
-          <span>R: {color.r}</span>
-          <span>G: {color.g}</span>
-          <span>B: {color.b}</span>
-        </div>
-      </div>
-      
-      {/* LIVING PALETTES */}
-      <div className="palettes-section">
-        <div className="palettes-label">LIVING PALETTES</div>
-        <div className="palettes-grid">
-          {LIVING_PALETTES.map(palette => (
-            <button
-              key={palette.id}
-              className={`palette-btn ${activePalette === palette.id ? 'active' : ''}`}
-              onClick={() => handlePaletteClick(palette)}
-              style={{
-                '--palette-color': `rgb(${palette.color.r}, ${palette.color.g}, ${palette.color.b})`,
-              } as React.CSSProperties}
-              title={palette.description}
+        <div className="header-right">
+          {hasOverride && (
+            <button 
+              className="release-btn"
+              onClick={handleRelease}
+              title="Release to AI control"
             >
-              <span className="palette-label">{palette.label}</span>
+              ↺
             </button>
-          ))}
+          )}
         </div>
       </div>
       
-      {/* RGB Sliders */}
-      <div className="rgb-sliders">
-        {/* Red */}
-        <div className="rgb-slider-row">
-          <label className="rgb-label red">R</label>
-          <input
-            type="range"
-            min={0}
-            max={255}
-            value={color.r}
-            onChange={(e) => handleRGBChange('r', Number(e.target.value))}
-            className="rgb-slider red"
-          />
-          <span className="rgb-value">{color.r}</span>
-        </div>
-        
-        {/* Green */}
-        <div className="rgb-slider-row">
-          <label className="rgb-label green">G</label>
-          <input
-            type="range"
-            min={0}
-            max={255}
-            value={color.g}
-            onChange={(e) => handleRGBChange('g', Number(e.target.value))}
-            className="rgb-slider green"
-          />
-          <span className="rgb-value">{color.g}</span>
-        </div>
-        
-        {/* Blue */}
-        <div className="rgb-slider-row">
-          <label className="rgb-label blue">B</label>
-          <input
-            type="range"
-            min={0}
-            max={255}
-            value={color.b}
-            onChange={(e) => handleRGBChange('b', Number(e.target.value))}
-            className="rgb-slider blue"
-          />
-          <span className="rgb-value">{color.b}</span>
-        </div>
-      </div>
-      
-      {/* Quick Colors */}
-      <div className="quick-colors">
-        {QUICK_COLORS.map((qc, i) => (
-          <button
-            key={i}
-            className="quick-color-btn"
-            onClick={() => handleQuickColorClick(qc)}
-            style={{
-              backgroundColor: `rgb(${qc.color.r}, ${qc.color.g}, ${qc.color.b})`,
-            }}
-            title={qc.label}
-          >
-            {qc.label}
-          </button>
-        ))}
-      </div>
-      
-      {/* Override indicator */}
-      {hasOverride && (
-        <div className="override-badge">MANUAL</div>
+      {isExpanded && (
+        <>
+          {/* Color Preview */}
+          <div className="color-preview-container">
+            <div 
+              className="color-preview"
+              style={{ backgroundColor: previewColor }}
+            />
+            <div className="color-values">
+              <span>R: {color.r}</span>
+              <span>G: {color.g}</span>
+              <span>B: {color.b}</span>
+            </div>
+          </div>
+          
+          {/* LIVING PALETTES */}
+          <div className="palettes-section">
+            <div className="palettes-label">LIVING PALETTES</div>
+            <div className="palettes-grid">
+              {LIVING_PALETTES.map(palette => (
+                <button
+                  key={palette.id}
+                  className={`palette-btn ${activePalette === palette.id ? 'active' : ''}`}
+                  onClick={() => handlePaletteClick(palette)}
+                  style={{
+                    '--palette-color': `rgb(${palette.color.r}, ${palette.color.g}, ${palette.color.b})`,
+                  } as React.CSSProperties}
+                  title={palette.description}
+                >
+                  <span className="palette-label">{palette.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* RGB Sliders */}
+          <div className="rgb-sliders">
+            {/* Red */}
+            <div className="rgb-slider-row">
+              <label className="rgb-label red">R</label>
+              <input
+                type="range"
+                min={0}
+                max={255}
+                value={color.r}
+                onChange={(e) => handleRGBChange('r', Number(e.target.value))}
+                className="rgb-slider red"
+              />
+              <span className="rgb-value">{color.r}</span>
+            </div>
+            
+            {/* Green */}
+            <div className="rgb-slider-row">
+              <label className="rgb-label green">G</label>
+              <input
+                type="range"
+                min={0}
+                max={255}
+                value={color.g}
+                onChange={(e) => handleRGBChange('g', Number(e.target.value))}
+                className="rgb-slider green"
+              />
+              <span className="rgb-value">{color.g}</span>
+            </div>
+            
+            {/* Blue */}
+            <div className="rgb-slider-row">
+              <label className="rgb-label blue">B</label>
+              <input
+                type="range"
+                min={0}
+                max={255}
+                value={color.b}
+                onChange={(e) => handleRGBChange('b', Number(e.target.value))}
+                className="rgb-slider blue"
+              />
+              <span className="rgb-value">{color.b}</span>
+            </div>
+          </div>
+          
+          {/* Quick Colors */}
+          <div className="quick-colors">
+            {QUICK_COLORS.map((qc, i) => (
+              <button
+                key={i}
+                className="quick-color-btn"
+                onClick={() => handleQuickColorClick(qc)}
+                style={{
+                  backgroundColor: `rgb(${qc.color.r}, ${qc.color.g}, ${qc.color.b})`,
+                }}
+                title={qc.label}
+              >
+                {qc.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Override indicator */}
+          {hasOverride && (
+            <div className="override-badge">MANUAL</div>
+          )}
+        </>
       )}
     </div>
   )

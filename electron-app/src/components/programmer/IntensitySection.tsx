@@ -1,8 +1,9 @@
 /**
- * 💡 INTENSITY SECTION - WAVE 375.3
+ * 💡 INTENSITY SECTION - WAVE 430
  * Dimmer control for selected fixtures
  * 
  * Features:
+ * - COLLAPSIBLE section header
  * - Slider 0-100%
  * - Quick buttons: 0%, 25%, 50%, 75%, 100%
  * - Release button (↺) to return control to AI
@@ -14,6 +15,8 @@ import React, { useCallback } from 'react'
 export interface IntensitySectionProps {
   value: number          // 0-100
   hasOverride: boolean   // Is dimmer under manual control?
+  isExpanded: boolean    // Is section expanded?
+  onToggle: () => void   // Toggle expansion
   onChange: (value: number) => void
   onRelease: () => void
 }
@@ -30,6 +33,8 @@ const PRESETS = [
 export const IntensitySection: React.FC<IntensitySectionProps> = ({
   value,
   hasOverride,
+  isExpanded,
+  onToggle,
   onChange,
   onRelease,
 }) => {
@@ -43,60 +48,69 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
   }, [onChange])
   
   return (
-    <div className={`programmer-section intensity-section ${hasOverride ? 'has-override' : ''}`}>
-      <div className="section-header">
+    <div className={`programmer-section intensity-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+      <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
-          <span className="section-icon">💡</span>
-          INTENSITY
+          <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
+          💡 INTENSITY
         </h4>
-        {hasOverride && (
-          <button 
-            className="release-btn"
-            onClick={onRelease}
-            title="Release to AI control"
-          >
-            ↺
-          </button>
-        )}
+        <div className="header-right">
+          {hasOverride && (
+            <button 
+              className="release-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRelease()
+              }}
+              title="Release to AI control"
+            >
+              ↺
+            </button>
+          )}
+        </div>
       </div>
       
-      {/* Main Slider */}
-      <div className="intensity-slider-container">
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={value}
-          onChange={handleSliderChange}
-          className="intensity-slider"
-        />
-        <div className="intensity-value">{Math.round(value)}%</div>
-      </div>
-      
-      {/* Fill indicator */}
-      <div className="intensity-bar">
-        <div 
-          className="intensity-fill"
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      
-      {/* Quick Presets */}
-      <div className="intensity-presets">
-        {PRESETS.map(preset => (
-          <button
-            key={preset.value}
-            className={`preset-btn ${value === preset.value ? 'active' : ''}`}
-            onClick={() => handlePresetClick(preset.value)}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-      
-      {/* Override indicator */}
-      {hasOverride && (
-        <div className="override-badge">MANUAL</div>
+      {isExpanded && (
+        <>
+          {/* Main Slider */}
+          <div className="intensity-slider-container">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={value}
+              onChange={handleSliderChange}
+              className="intensity-slider"
+            />
+            <div className="intensity-value">{Math.round(value)}%</div>
+          </div>
+          
+          {/* Fill indicator */}
+          <div className="intensity-bar">
+            <div 
+              className="intensity-fill"
+              style={{ width: `${value}%` }}
+            />
+          </div>
+          
+          {/* Quick Presets */}
+          <div className="intensity-presets">
+            {PRESETS.map(preset => (
+              <button
+                key={preset.value}
+                className={`preset-btn ${value === preset.value ? 'active' : ''}`}
+                onClick={() => handlePresetClick(preset.value)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Override indicator */}
+          {hasOverride && (
+            <div className="override-badge">MANUAL</div>
+          )}
+        </>
       )}
     </div>
   )

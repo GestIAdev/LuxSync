@@ -1,8 +1,9 @@
 /**
- * 🔦 BEAM SECTION - WAVE 375.5
+ * 🔦 BEAM SECTION - WAVE 430
  * Optical control for moving heads: Gobos, Prism, Focus, Zoom
  * 
- * The surgical instruments of light:
+ * Features:
+ * - COLLAPSIBLE section header
  * - Gobo: Pattern wheel (steps 0-7)
  * - Prism: Split the beam, spin it
  * - Focus: Near to far
@@ -18,6 +19,8 @@ import { useTruthStore, selectHardware } from '../../stores/truthStore'
 
 export interface BeamSectionProps {
   hasOverride: boolean
+  isExpanded: boolean
+  onToggle: () => void
   onOverrideChange: (hasOverride: boolean) => void
 }
 
@@ -35,6 +38,8 @@ const GOBO_STEPS = [
 
 export const BeamSection: React.FC<BeamSectionProps> = ({
   hasOverride,
+  isExpanded,
+  onToggle,
   onOverrideChange,
 }) => {
   // Selection
@@ -179,143 +184,152 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   }
   
   return (
-    <div className={`programmer-section beam-section ${hasOverride ? 'has-override' : ''}`}>
-      <div className="section-header">
+    <div className={`programmer-section beam-section ${hasOverride ? 'has-override' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+      <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
-          <span className="section-icon">🔦</span>
-          BEAM / OPTICS
+          <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
+          🔦 BEAM / OPTICS
         </h4>
-        {hasOverride && (
-          <button 
-            className="release-btn"
-            onClick={handleRelease}
-            title="Release to AI control"
-          >
-            ↺
-          </button>
-        )}
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-          GOBO WHEEL
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="beam-control gobo-control">
-        <div className="control-header">
-          <label className="control-label">GOBO</label>
-          <span className="control-value">{currentGoboStep.label}</span>
-        </div>
-        
-        {/* Gobo step buttons */}
-        <div className="gobo-steps">
-          {GOBO_STEPS.map(step => (
-            <button
-              key={step.value}
-              className={`gobo-step ${gobo === step.value ? 'active' : ''}`}
-              onClick={() => handleGoboStep(step.value)}
-              title={`Gobo ${step.label}`}
+        <div className="header-right">
+          {hasOverride && (
+            <button 
+              className="release-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRelease()
+              }}
+              title="Release to AI control"
             >
-              {step.label}
+              ↺
             </button>
-          ))}
-        </div>
-        
-        {/* Gobo slider for fine control */}
-        <input
-          type="range"
-          className="beam-slider gobo-slider"
-          min={0}
-          max={255}
-          value={gobo}
-          onChange={handleGoboChange}
-        />
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-          PRISM CONTROL
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="beam-control prism-control">
-        <div className="control-header">
-          <label className="control-label">PRISM</label>
-          <button
-            className={`prism-toggle ${prismActive ? 'active' : ''}`}
-            onClick={handlePrismToggle}
-          >
-            {prismActive ? 'ON' : 'OFF'}
-          </button>
-        </div>
-        
-        {/* Rotation slider - only active when prism is on */}
-        <div className={`prism-rotation ${!prismActive ? 'disabled' : ''}`}>
-          <span className="rotation-label">ROTATION</span>
-          <input
-            type="range"
-            className="beam-slider rotation-slider"
-            min={0}
-            max={255}
-            value={prismRotation}
-            onChange={handlePrismRotationChange}
-            disabled={!prismActive}
-          />
-          <span className="rotation-value">{Math.round((prismRotation / 255) * 100)}%</span>
+          )}
         </div>
       </div>
       
-      {/* ═══════════════════════════════════════════════════════════════════
-          FOCUS & ZOOM
-          ═══════════════════════════════════════════════════════════════════ */}
-      <div className="beam-control optics-control">
-        {/* Focus */}
-        <div className="optic-row">
-          <label className="optic-label">FOCUS</label>
-          <span className="optic-range-label near">Near</span>
-          <input
-            type="range"
-            className="beam-slider focus-slider"
-            min={0}
-            max={255}
-            value={focus}
-            onChange={handleFocusChange}
-          />
-          <span className="optic-range-label far">Far</span>
-          <span className="optic-value">{Math.round((focus / 255) * 100)}%</span>
-        </div>
-        
-        {/* Zoom */}
-        <div className="optic-row">
-          <label className="optic-label">ZOOM</label>
-          <span className="optic-range-label spot">Spot</span>
-          <input
-            type="range"
-            className="beam-slider zoom-slider"
-            min={0}
-            max={255}
-            value={zoom}
-            onChange={handleZoomChange}
-          />
-          <span className="optic-range-label flood">Flood</span>
-          <span className="optic-value">{Math.round((zoom / 255) * 100)}%</span>
-        </div>
-        
-        {/* Iris */}
-        <div className="optic-row">
-          <label className="optic-label">IRIS</label>
-          <span className="optic-range-label closed">Closed</span>
-          <input
-            type="range"
-            className="beam-slider iris-slider"
-            min={0}
-            max={255}
-            value={iris}
-            onChange={handleIrisChange}
-          />
-          <span className="optic-range-label open">Open</span>
-          <span className="optic-value">{Math.round((iris / 255) * 100)}%</span>
-        </div>
-      </div>
-      
-      {/* Override indicator */}
-      {hasOverride && (
-        <div className="override-badge">MANUAL</div>
+      {isExpanded && (
+        <>
+          {/* ═══════════════════════════════════════════════════════════════════
+              GOBO WHEEL
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="beam-control gobo-control">
+            <div className="control-header">
+              <label className="control-label">GOBO</label>
+              <span className="control-value">{currentGoboStep.label}</span>
+            </div>
+            
+            {/* Gobo step buttons */}
+            <div className="gobo-steps">
+              {GOBO_STEPS.map(step => (
+                <button
+                  key={step.value}
+                  className={`gobo-step ${gobo === step.value ? 'active' : ''}`}
+                  onClick={() => handleGoboStep(step.value)}
+                  title={`Gobo ${step.label}`}
+                >
+                  {step.label}
+                </button>
+              ))}
+            </div>
+            
+            {/* Gobo slider for fine control */}
+            <input
+              type="range"
+              className="beam-slider gobo-slider"
+              min={0}
+              max={255}
+              value={gobo}
+              onChange={handleGoboChange}
+            />
+          </div>
+          
+          {/* ═══════════════════════════════════════════════════════════════════
+              PRISM CONTROL
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="beam-control prism-control">
+            <div className="control-header">
+              <label className="control-label">PRISM</label>
+              <button
+                className={`prism-toggle ${prismActive ? 'active' : ''}`}
+                onClick={handlePrismToggle}
+              >
+                {prismActive ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            
+            {/* Rotation slider - only active when prism is on */}
+            <div className={`prism-rotation ${!prismActive ? 'disabled' : ''}`}>
+              <span className="rotation-label">ROTATION</span>
+              <input
+                type="range"
+                className="beam-slider rotation-slider"
+                min={0}
+                max={255}
+                value={prismRotation}
+                onChange={handlePrismRotationChange}
+                disabled={!prismActive}
+              />
+              <span className="rotation-value">{Math.round((prismRotation / 255) * 100)}%</span>
+            </div>
+          </div>
+          
+          {/* ═══════════════════════════════════════════════════════════════════
+              FOCUS & ZOOM
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="beam-control optics-control">
+            {/* Focus */}
+            <div className="optic-row">
+              <label className="optic-label">FOCUS</label>
+              <span className="optic-range-label near">Near</span>
+              <input
+                type="range"
+                className="beam-slider focus-slider"
+                min={0}
+                max={255}
+                value={focus}
+                onChange={handleFocusChange}
+              />
+              <span className="optic-range-label far">Far</span>
+              <span className="optic-value">{Math.round((focus / 255) * 100)}%</span>
+            </div>
+            
+            {/* Zoom */}
+            <div className="optic-row">
+              <label className="optic-label">ZOOM</label>
+              <span className="optic-range-label spot">Spot</span>
+              <input
+                type="range"
+                className="beam-slider zoom-slider"
+                min={0}
+                max={255}
+                value={zoom}
+                onChange={handleZoomChange}
+              />
+              <span className="optic-range-label flood">Flood</span>
+              <span className="optic-value">{Math.round((zoom / 255) * 100)}%</span>
+            </div>
+            
+            {/* Iris */}
+            <div className="optic-row">
+              <label className="optic-label">IRIS</label>
+              <span className="optic-range-label closed">Closed</span>
+              <input
+                type="range"
+                className="beam-slider iris-slider"
+                min={0}
+                max={255}
+                value={iris}
+                onChange={handleIrisChange}
+              />
+              <span className="optic-range-label open">Open</span>
+              <span className="optic-value">{Math.round((iris / 255) * 100)}%</span>
+            </div>
+          </div>
+          
+          {/* Override indicator */}
+          {hasOverride && (
+            <div className="override-badge">MANUAL</div>
+          )}
+        </>
       )}
     </div>
   )

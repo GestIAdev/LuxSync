@@ -1,15 +1,14 @@
 /**
- * 🎹 THE PROGRAMMER - WAVE 375.5
+ * 🎹 THE PROGRAMMER - WAVE 430
  * Panel derecho de control para fixtures seleccionados
  * 
  * Arquitectura:
  * - Solo visible si selection.length > 0
- * - Header: "X Fixtures Selected" + [UNLOCK ALL]
- * - IntensitySection: Dimmer slider + quick buttons
- * - ColorSection: RGB sliders + Living Palettes
- * - PositionSection: XY Pad + Patterns + Precision (moving heads)
- * - BeamSection: Gobo, Prism, Focus, Zoom (optics)
- * - ScenesPlaceholder: Coming soon (WAVE 380+)
+ * - Header limpio: "X Fixtures Selected" + [UNLOCK ALL]
+ * - IntensitySection: Dimmer slider + quick buttons (COLLAPSIBLE)
+ * - ColorSection: RGB sliders + Living Palettes (COLLAPSIBLE)
+ * - PositionSection: XY Pad + Patterns + Precision (COLLAPSIBLE)
+ * - BeamSection: Gobo, Prism, Focus, Zoom (COLLAPSIBLE)
  * 
  * Conecta directamente al MasterArbiter via window.lux.arbiter
  */
@@ -21,12 +20,20 @@ import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
-import { ScenesPlaceholder } from './ScenesPlaceholder'
 import './TheProgrammer.css'
+import './accordion-styles.css'
 
 // Track which channels have manual overrides
 interface OverrideState {
   dimmer: boolean
+  color: boolean
+  position: boolean
+  beam: boolean
+}
+
+// Track which sections are expanded
+interface ExpansionState {
+  intensity: boolean
   color: boolean
   position: boolean
   beam: boolean
@@ -47,6 +54,19 @@ export const TheProgrammer: React.FC = () => {
     position: false,
     beam: false,
   })
+  
+  // Track which sections are expanded (Intensity open by default)
+  const [expanded, setExpanded] = useState<ExpansionState>({
+    intensity: true,
+    color: false,
+    position: false,
+    beam: false,
+  })
+  
+  // Toggle section expansion
+  const toggleSection = useCallback((section: keyof ExpansionState) => {
+    setExpanded(prev => ({ ...prev, [section]: !prev[section] }))
+  }, [])
   
   // Current values (for display)
   const [currentDimmer, setCurrentDimmer] = useState(100)
@@ -211,7 +231,7 @@ export const TheProgrammer: React.FC = () => {
   
   return (
     <div className="the-programmer">
-      {/* HEADER */}
+      {/* HEADER - Clean & simple */}
       <div className="programmer-header">
         <div className="selection-info">
           <span className="fixture-count">{selectedIds.length}</span>
@@ -228,71 +248,46 @@ export const TheProgrammer: React.FC = () => {
           >
             🔓 UNLOCK ALL
           </button>
-          <button 
-            className="close-btn"
-            onClick={deselectAll}
-            title="Deselect all"
-          >
-            ✕
-          </button>
         </div>
       </div>
-      
-      {/* FIXTURE CHIPS */}
-      <div className="fixture-chips">
-        {selectedFixtures.slice(0, 4).map((fixture: any) => (
-          <div key={fixture.id} className="fixture-chip">
-            {fixture.name || fixture.id}
-          </div>
-        ))}
-        {selectedFixtures.length > 4 && (
-          <div className="fixture-chip more">
-            +{selectedFixtures.length - 4}
-          </div>
-        )}
-      </div>
-      
-      <div className="programmer-divider" />
       
       {/* INTENSITY SECTION */}
       <IntensitySection
         value={currentDimmer}
         hasOverride={overrideState.dimmer}
+        isExpanded={expanded.intensity}
+        onToggle={() => toggleSection('intensity')}
         onChange={handleDimmerChange}
         onRelease={handleDimmerRelease}
       />
       
-      <div className="programmer-divider" />
-      
       {/* COLOR SECTION (solo si hay fixtures con color) */}
       {hasColorFixtures && (
-        <>
-          <ColorSection
-            color={currentColor}
-            hasOverride={overrideState.color}
-            onChange={handleColorChange}
-            onRelease={handleColorRelease}
-          />
-          <div className="programmer-divider" />
-        </>
+        <ColorSection
+          color={currentColor}
+          hasOverride={overrideState.color}
+          isExpanded={expanded.color}
+          onToggle={() => toggleSection('color')}
+          onChange={handleColorChange}
+          onRelease={handleColorRelease}
+        />
       )}
       
       {/* POSITION SECTION (solo para moving heads) */}
       <PositionSection
         hasOverride={overrideState.position}
+        isExpanded={expanded.position}
+        onToggle={() => toggleSection('position')}
         onOverrideChange={handlePositionOverrideChange}
       />
       
       {/* BEAM SECTION (solo para fixtures con óptica) */}
       <BeamSection
         hasOverride={overrideState.beam}
+        isExpanded={expanded.beam}
+        onToggle={() => toggleSection('beam')}
         onOverrideChange={handleBeamOverrideChange}
       />
-      
-      <div className="programmer-divider" />
-      
-      {/* SCENES PLACEHOLDER */}
-      <ScenesPlaceholder />
       
       {/* OVERRIDE INDICATOR */}
       {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam) && (

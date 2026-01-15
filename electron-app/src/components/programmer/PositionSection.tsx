@@ -1,13 +1,13 @@
 /**
- * 🕹️ POSITION SECTION - WAVE 375.4 + WAVE 377 (Calibration)
+ * 🕹️ POSITION SECTION - WAVE 430
  * Movement control for selected fixtures (moving heads)
  * 
  * Architecture:
+ * - COLLAPSIBLE section header
  * - XY Pad: Direct position control (the sniper)
  * - Patterns: Circle, Eight, Sweep (procedural movement)
  * - Group Radar: Center of gravity + fan (group formations)
  * - Precision: Numeric inputs for exact values
- * - Calibrate: Enter calibration mode for offset adjustment
  * 
  * Connected to MasterArbiter via window.lux.arbiter.setManual()
  */
@@ -21,11 +21,15 @@ import { PrecisionInputs } from './controls'
 
 export interface PositionSectionProps {
   hasOverride: boolean
+  isExpanded: boolean
+  onToggle: () => void
   onOverrideChange: (hasOverride: boolean) => void
 }
 
 export const PositionSection: React.FC<PositionSectionProps> = ({
   hasOverride,
+  isExpanded,
+  onToggle,
   onOverrideChange,
 }) => {
   // Selection
@@ -208,26 +212,34 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   }
   
   return (
-    <div className={`programmer-section position-section ${hasOverride ? 'has-override' : ''} ${isCalibrating ? 'calibrating' : ''}`}>
-      <div className="section-header">
+    <div className={`programmer-section position-section ${hasOverride ? 'has-override' : ''} ${isCalibrating ? 'calibrating' : ''} ${isExpanded ? 'expanded' : 'collapsed'}`}>
+      <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
-          <span className="section-icon">🕹️</span>
-          POSITION
+          <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
+          🕹️ POSITION
           {isCalibrating && <span className="calibration-indicator"> 🎯 CALIBRATING</span>}
         </h4>
         <div className="section-actions">
-          {/* WAVE 377: Calibration Button */}
-          <button
-            className={`calibrate-btn ${isCalibrating ? 'active' : ''}`}
-            onClick={handleCalibrationToggle}
-            title={isCalibrating ? 'Exit calibration mode' : 'Enter calibration mode'}
-          >
-            🎯
-          </button>
+          {/* Calibration Button */}
+          {isExpanded && (
+            <button
+              className={`calibrate-btn ${isCalibrating ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleCalibrationToggle()
+              }}
+              title={isCalibrating ? 'Exit calibration mode' : 'Enter calibration mode'}
+            >
+              🎯
+            </button>
+          )}
           {hasOverride && (
             <button 
               className="release-btn"
-              onClick={handleRelease}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRelease()
+              }}
               title="Release to AI control"
             >
               ↺
@@ -236,40 +248,44 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         </div>
       </div>
       
-      {/* XY PAD - The Sniper */}
-      <XYPad
-        pan={pan}
-        tilt={tilt}
-        onChange={handlePositionChange}
-        onCenter={handleCenter}
-      />
-      
-      {/* PATTERNS - Procedural Movement (disabled in calibration mode) */}
-      {!isCalibrating && (
-        <PatternSelector
-          activePattern={activePattern}
-          speed={patternSpeed}
-          size={patternSize}
-          onPatternChange={handlePatternChange}
-          onParamsChange={handlePatternParamsChange}
-        />
-      )}
-      
-      {/* PRECISION INPUTS - The Surgeon */}
-      <PrecisionInputs
-        pan={pan}
-        tilt={tilt}
-        onChange={handlePositionChange}
-      />
-      
-      {/* Override indicator */}
-      {hasOverride && !isCalibrating && (
-        <div className="override-badge">MANUAL</div>
-      )}
-      
-      {/* Calibration badge */}
-      {isCalibrating && (
-        <div className="calibration-badge">🎯 CALIBRATION MODE</div>
+      {isExpanded && (
+        <>
+          {/* XY PAD - The Sniper */}
+          <XYPad
+            pan={pan}
+            tilt={tilt}
+            onChange={handlePositionChange}
+            onCenter={handleCenter}
+          />
+          
+          {/* PATTERNS - Procedural Movement (disabled in calibration mode) */}
+          {!isCalibrating && (
+            <PatternSelector
+              activePattern={activePattern}
+              speed={patternSpeed}
+              size={patternSize}
+              onPatternChange={handlePatternChange}
+              onParamsChange={handlePatternParamsChange}
+            />
+          )}
+          
+          {/* PRECISION INPUTS - The Surgeon */}
+          <PrecisionInputs
+            pan={pan}
+            tilt={tilt}
+            onChange={handlePositionChange}
+          />
+          
+          {/* Override indicator */}
+          {hasOverride && !isCalibrating && (
+            <div className="override-badge">MANUAL</div>
+          )}
+          
+          {/* Calibration badge */}
+          {isCalibrating && (
+            <div className="calibration-badge">🎯 CALIBRATION MODE</div>
+          )}
+        </>
       )}
     </div>
   )

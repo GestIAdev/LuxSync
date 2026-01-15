@@ -1,10 +1,10 @@
 /**
- * CONTENT AREA - WAVE 428: Full System Restore
+ * CONTENT AREA - WAVE 434: THE GREAT CONSOLIDATION
  * 
  * 4 Stages + 2 Tools Architecture:
  *   - dashboard: DashboardView (Command Center + Show Load)
  *   - constructor: StageConstructorView (Fixture Creation)
- *   - live: StageViewDual (Performance - 2D/3D)
+ *   - live: StageViewDual (Performance - 2D/3D) → MOVED to simulator/
  *   - calibration: CalibrationView (Hardware Setup)
  *   - setup: SetupView (Audio + DMX Config)
  *   - core: LuxCoreView (AI Monitoring)
@@ -17,10 +17,10 @@ import { useNavigationStore } from '../../stores/navigationStore'
 import './ContentArea.css'
 
 // Lazy load views for better performance
-// WAVE 428: Full routing structure
+// WAVE 434: StageViewDual moved to simulator/
 const DashboardView = lazy(() => import('../views/DashboardView'))
 const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
-const LiveStageView = lazy(() => import('../views/StageViewDual'))
+const LiveStageView = lazy(() => import('../simulator'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const SetupView = lazy(() => import('../views/SetupView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))

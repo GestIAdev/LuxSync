@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 STAGE VIEW DUAL - WAVE 33.3: Header Fix & Kinetic Radar
+ * 🎭 STAGE VIEW DUAL - WAVE 434: THE GREAT CONSOLIDATION
  * Vista dual que alterna entre Canvas 2D (Tactical) y R3F 3D (Visualizer)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -8,23 +8,22 @@
  * 1. Lee el viewMode del controlStore
  * 2. Renderiza condicionalmente StageSimulator2 (2D) o Stage3DCanvas (3D)
  * 3. Incluye el ViewModeSwitcher para alternar
- * 4. WAVE 30.1: Sidebar contextual con InspectorControls/GlobalControls
- * 5. WAVE 33.3: Mode Switcher, BPM, Mood en toolbar superior
+ * 4. WAVE 434: Migrado a /simulator - imports actualizados
  * 
- * @module components/views/StageViewDual
- * @version 33.3.0
+ * @module components/simulator/views/StageViewDual
+ * @version 434.0
  */
 
 import React, { Suspense, lazy, useState, useCallback } from 'react'
 import { useControlStore, selectViewMode, selectIs3DMode, GlobalMode } from '../../../stores/controlStore'
 import { useTruthSensory } from '../../../hooks'
 import { ViewModeSwitcher } from '../../shared/ViewModeSwitcher'
-import { StageSimulator2 } from '../SimulateView/StageSimulator2'
-import { StageSidebar } from './sidebar'
+import { StageSimulator2 } from './SimulateView/StageSimulator2'
+import { StageSidebar } from '../controls/sidebar'
 import './StageViewDual.css'
 
 // Lazy load del componente 3D (es pesado con Three.js)
-const Stage3DCanvas = lazy(() => import('../../stage3d/Stage3DCanvas'))
+const Stage3DCanvas = lazy(() => import('./stage3d/Stage3DCanvas'))
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS

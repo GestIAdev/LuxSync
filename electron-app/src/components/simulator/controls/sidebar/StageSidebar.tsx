@@ -16,7 +16,7 @@
 import React, { useMemo, useState, useCallback } from 'react'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useSceneStore, selectSceneCount } from '../../../../stores/sceneStore'
-import { TheProgrammerContent, GroupsPanel } from '../../../programmer'
+import { TheProgrammerContent, GroupsPanel } from '../index'
 import { SceneBrowser } from './SceneBrowser'
 import { ControlsIcon, GroupIcon, ScenesIcon } from '../../../icons/LuxIcons'
 import './StageSidebar.css'

@@ -1,8 +1,32 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔍 INSPECTOR CONTROLS - WAVE 428: NEON POLISH
- * Panel de control ACCORDION para fixtures seleccionados
+ * ⚠️ DEPRECATED IN WAVE 435 - USE TheProgrammer INSTEAD
  * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * @deprecated This component has been replaced by TheProgrammer (WAVE 425-432)
+ * Use `TheProgrammerContent` for the same functionality with better architecture.
+ * 
+ * Reason for deprecation:
+ * - Duplicate functionality with TheProgrammer
+ * - TheProgrammer has Groups + Scenes integration
+ * - Better state management with MasterArbiter
+ * 
+ * Migration path:
+ * ```tsx
+ * // OLD (deprecated):
+ * import { InspectorControls } from './sidebar/InspectorControls'
+ * 
+ * // NEW (recommended):
+ * import { TheProgrammerContent } from '../controls'
+ * ```
+ * 
+ * This file will be removed in WAVE 436.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ORIGINAL DOCS (for reference):
+ * 
+ * Panel de control ACCORDION para fixtures seleccionados
  * 
  * Arquitectura:
  * - Accordion exclusivo (solo una sección abierta)
@@ -15,14 +39,19 @@
  * - POSITION (Pan/Tilt - solo Moving Heads)
  * - BEAM (Speed/Patterns)
  * 
- * @module components/views/StageViewDual/sidebar/InspectorControls
- * @version 428.0
+ * @module components/simulator/controls/sidebar/InspectorControls
+ * @version 428.0 (DEPRECATED)
  */
 
 import React, { useCallback, useMemo, useState } from 'react'
 import { useSelectionStore, selectSelectedIds } from '../../../../stores/selectionStore'
 import { useOverrideStore, MovementPatternType } from '../../../../stores/overrideStore'
 import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
+
+// DEPRECATION WARNING
+console.warn(
+  '⚠️ [WAVE 435 DEPRECATION] InspectorControls is deprecated. Use TheProgrammerContent instead.'
+)
 import { ColorPicker } from './ColorPicker'
 import { DimmerSlider } from './DimmerSlider'
 import { PanTiltControl } from './PanTiltControl'

@@ -1,6 +1,6 @@
 /**
- * 🎹 PROGRAMMER COMPONENTS - WAVE 432.5
- * Export all Programmer panel components
+ * �️ SIMULATOR CONTROLS - WAVE 434: THE GREAT CONSOLIDATION
+ * Control panels for fixture manipulation
  */
 
 export { TheProgrammer, default } from './TheProgrammer'
@@ -15,3 +15,10 @@ export { ScenesPlaceholder } from './ScenesPlaceholder'
 // Sub-components
 export { XYPad, PatternSelector, PrecisionInputs } from './controls'
 export type { PatternType } from './controls'
+
+// Sidebar exports
+export { StageSidebar } from './sidebar/StageSidebar'
+export { SceneBrowser } from './sidebar/SceneBrowser'
+
+// Legacy (deprecated in WAVE 435)
+// export { InspectorControls } from './sidebar/InspectorControls'

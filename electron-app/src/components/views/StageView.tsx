@@ -1,11 +1,11 @@
 /**
- * 🎭 STAGE VIEW - WAVE 32: Hybrid 2D/3D Stage Command
- * Now exports StageViewDual with interactive controls and sidebar
+ * 🎭 STAGE VIEW - WAVE 434: THE GREAT CONSOLIDATION
  * 
- * This is the main stage visualization with:
- * - 2D/3D view switching
- * - Interactive fixture selection
- * - Contextual sidebar with Inspector/Global controls
- * - Scene management (REC/PLAY)
+ * ⚠️ LEGACY RE-EXPORT - Use ../simulator directly
+ * 
+ * This file exists only for backwards compatibility.
+ * All simulator components have been moved to /components/simulator
+ * 
+ * @deprecated Use `import { StageViewDual } from '../simulator'` instead
  */
-export { StageViewDual as default } from './StageViewDual/StageViewDual'
+export { StageViewDual as default } from '../simulator/views/StageViewDual'

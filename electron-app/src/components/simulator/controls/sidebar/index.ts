@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📋 SIDEBAR INDEX - WAVE 429: CSS INJECTION FIX
+ * 📋 SIDEBAR INDEX - WAVE 434: THE GREAT CONSOLIDATION
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * ARQUITECTURA:
@@ -17,10 +17,12 @@
 // CSS IMPORTS - CRITICAL: Must be imported here for lazy-loaded modules
 // ═══════════════════════════════════════════════════════════════════════════
 import './StageSidebar.css'
-import './InspectorControls.css'
 import './SceneBrowser.css'
-import './PaletteControlMini.css'
 import './controls.css'
+
+// Legacy CSS (deprecated in WAVE 435)
+import './InspectorControls.css'
+import './PaletteControlMini.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT EXPORTS

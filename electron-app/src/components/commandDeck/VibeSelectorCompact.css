@@ -1,158 +1,108 @@
-/**
- * 🎛️ VIBE SELECTOR COMPACT - WAVE 426 STYLES
- * Compact vibe buttons for CommandDeck footer
+﻿/**
+ *  VIBE SELECTOR COMPACT - WAVE 431 OVERHAUL
+ * BIG TACTILE VIBE BUTTONS
+ * Inherits base styles from CommandDeck.css
+ * This file only contains color variants
  */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CONTAINER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.vibe-selector-compact {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  transition: opacity 0.3s ease;
-}
-
-.vibe-selector-compact.offline {
-  opacity: 0.5;
-}
-
-.vibe-label-header {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
-  text-transform: uppercase;
-  text-align: center;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BUTTONS ROW
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.vibe-buttons-row {
-  display: flex;
-  gap: 4px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   VIBE BUTTON COMPACT
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.vibe-btn-compact {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 0.4rem 0.5rem;
-  min-width: 52px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.vibe-btn-compact:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.vibe-btn-compact.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.vibe-btn-compact .vibe-icon {
-  width: 18px;
-  height: 18px;
-  color: rgba(255, 255, 255, 0.6);
-  transition: all 0.15s ease;
-}
-
-.vibe-btn-compact .vibe-label {
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-  transition: all 0.15s ease;
-}
-
-.vibe-btn-compact .spinning {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ═
    COLOR VARIANTS - ACTIVE STATES
-   ═══════════════════════════════════════════════════════════════════════════ */
+    */
 
 /* CYAN - Techno */
 .vibe-btn-compact.vibe-cyan.active {
-  background: rgba(8, 51, 68, 0.6);
+  background: linear-gradient(180deg, 
+    rgba(8, 51, 68, 0.7) 0%, 
+    rgba(4, 35, 50, 0.8) 100%
+  );
   border-color: #06b6d4;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+  color: #22d3ee;
+  box-shadow: 
+    0 0 20px rgba(6, 182, 212, 0.4),
+    inset 0 0 15px rgba(6, 182, 212, 0.1);
 }
 
-.vibe-btn-compact.vibe-cyan.active .vibe-icon {
-  color: #22d3ee;
-}
-
-.vibe-btn-compact.vibe-cyan.active .vibe-label {
-  color: #22d3ee;
+.vibe-btn-compact.vibe-cyan:hover:not(.disabled):not(.active) {
+  border-color: rgba(6, 182, 212, 0.4);
 }
 
 /* ORANGE - Latino */
 .vibe-btn-compact.vibe-orange.active {
-  background: rgba(67, 20, 7, 0.6);
+  background: linear-gradient(180deg, 
+    rgba(67, 30, 7, 0.7) 0%, 
+    rgba(50, 20, 5, 0.8) 100%
+  );
   border-color: #f97316;
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
-}
-
-.vibe-btn-compact.vibe-orange.active .vibe-icon {
   color: #fb923c;
+  box-shadow: 
+    0 0 20px rgba(249, 115, 22, 0.4),
+    inset 0 0 15px rgba(249, 115, 22, 0.1);
 }
 
-.vibe-btn-compact.vibe-orange.active .vibe-label {
-  color: #fb923c;
+.vibe-btn-compact.vibe-orange:hover:not(.disabled):not(.active) {
+  border-color: rgba(249, 115, 22, 0.4);
 }
 
-/* FUCHSIA - Pop/Rock */
+/* PURPLE - Pop/Rock */
+.vibe-btn-compact.vibe-purple.active {
+  background: linear-gradient(180deg, 
+    rgba(74, 20, 78, 0.7) 0%, 
+    rgba(50, 10, 55, 0.8) 100%
+  );
+  border-color: #a855f7;
+  color: #c084fc;
+  box-shadow: 
+    0 0 20px rgba(168, 85, 247, 0.4),
+    inset 0 0 15px rgba(168, 85, 247, 0.1);
+}
+
+.vibe-btn-compact.vibe-purple:hover:not(.disabled):not(.active) {
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+/* FUCHSIA - Alternative Rock variant */
 .vibe-btn-compact.vibe-fuchsia.active {
-  background: rgba(74, 4, 78, 0.6);
+  background: linear-gradient(180deg, 
+    rgba(74, 4, 78, 0.7) 0%, 
+    rgba(55, 2, 60, 0.8) 100%
+  );
   border-color: #d946ef;
-  box-shadow: 0 0 15px rgba(217, 70, 239, 0.3);
-}
-
-.vibe-btn-compact.vibe-fuchsia.active .vibe-icon {
   color: #e879f9;
+  box-shadow: 
+    0 0 20px rgba(217, 70, 239, 0.4),
+    inset 0 0 15px rgba(217, 70, 239, 0.1);
 }
 
-.vibe-btn-compact.vibe-fuchsia.active .vibe-label {
-  color: #e879f9;
+/* GREEN - Chill/Lounge */
+.vibe-btn-compact.vibe-green.active {
+  background: linear-gradient(180deg, 
+    rgba(4, 47, 30, 0.7) 0%, 
+    rgba(2, 35, 22, 0.8) 100%
+  );
+  border-color: #4ade80;
+  color: #86efac;
+  box-shadow: 
+    0 0 20px rgba(74, 222, 128, 0.4),
+    inset 0 0 15px rgba(74, 222, 128, 0.1);
 }
 
-/* TEAL - Chill */
+.vibe-btn-compact.vibe-green:hover:not(.disabled):not(.active) {
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+/* TEAL - Alternative Chill variant */
 .vibe-btn-compact.vibe-teal.active {
-  background: rgba(4, 47, 46, 0.6);
+  background: linear-gradient(180deg, 
+    rgba(4, 47, 46, 0.7) 0%, 
+    rgba(2, 35, 34, 0.8) 100%
+  );
   border-color: #14b8a6;
-  box-shadow: 0 0 15px rgba(45, 212, 191, 0.3);
+  color: #2dd4bf;
+  box-shadow: 
+    0 0 20px rgba(45, 212, 191, 0.4),
+    inset 0 0 15px rgba(45, 212, 191, 0.1);
 }
 
-.vibe-btn-compact.vibe-teal.active .vibe-icon {
-  color: #2dd4bf;
-}
-
-.vibe-btn-compact.vibe-teal.active .vibe-label {
-  color: #2dd4bf;
+.vibe-btn-compact.vibe-teal:hover:not(.disabled):not(.active) {
+  border-color: rgba(45, 212, 191, 0.4);
 }

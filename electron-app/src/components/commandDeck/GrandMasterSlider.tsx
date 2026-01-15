@@ -1,7 +1,11 @@
 /**
- * 🎚️ GRAND MASTER SLIDER - WAVE 375
+ * 🎚️ GRAND MASTER SLIDER - WAVE 431: FAT FADER
  * Controls overall light intensity (0-100%)
  * Affects ALL fixtures - AI and Manual
+ * 
+ * Layout: [LABEL] [====FAT SLIDER====] [100%]
+ * - Metallic rectangular thumb (22x44px)
+ * - Digital value display on right
  */
 
 import React, { useCallback } from 'react'
@@ -24,10 +28,7 @@ export const GrandMasterSlider: React.FC<GrandMasterSliderProps> = ({
   
   return (
     <div className="grand-master">
-      <div className="gm-header">
-        <span className="gm-label">GRAND MASTER</span>
-        <span className="gm-value">{percentage}%</span>
-      </div>
+      <span className="gm-label-left">GM</span>
       
       <div className="gm-slider-container">
         <input
@@ -44,13 +45,7 @@ export const GrandMasterSlider: React.FC<GrandMasterSliderProps> = ({
         />
       </div>
       
-      {/* Visual bar underneath */}
-      <div className="gm-bar">
-        <div 
-          className="gm-bar-fill" 
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
+      <span className="gm-value-display">{percentage}%</span>
     </div>
   )
 }

@@ -1,19 +1,21 @@
 /**
- * ⚡ QUICK ACTIONS - WAVE 375
- * Global effects: Strobe, Blinder, Smoke
- * Only GLOBAL effects that affect the whole venue
+ * ⚡ QUICK ACTIONS - WAVE 431: PANIC GRID
+ * Global effects: Strobe, Blinder, Smoke + MORE FX placeholder
+ * 4-column grid layout for dense, tactile feel
  */
 
 import React, { useCallback } from 'react'
 import { StrobeIcon, BlinderIcon, SmokeIcon } from '../icons/LuxIcons'
+import { Sparkles } from 'lucide-react'
 import { useEffectsStore, EffectId } from '../../stores/effectsStore'
 import './CommandDeck.css'
 
-// Only global effects in the deck
-const QUICK_EFFECTS: { id: EffectId; label: string; icon: React.ReactNode; color: string; shortcut: string }[] = [
-  { id: 'strobe', label: 'STROBE', icon: <StrobeIcon size={24} />, color: '#FFFF00', shortcut: '1' },
-  { id: 'blinder', label: 'BLINDER', icon: <BlinderIcon size={24} />, color: '#FFFFFF', shortcut: '2' },
-  { id: 'smoke', label: 'SMOKE', icon: <SmokeIcon size={24} />, color: '#8B9DC3', shortcut: '3' },
+// Panic effects + placeholder for future FX drawer
+const QUICK_EFFECTS: { id: EffectId | 'more_fx'; label: string; icon: React.ReactNode; color: string; shortcut: string; isPlaceholder?: boolean }[] = [
+  { id: 'strobe', label: 'STROBE', icon: <StrobeIcon size={28} />, color: '#FFFF00', shortcut: '1' },
+  { id: 'blinder', label: 'BLINDER', icon: <BlinderIcon size={28} />, color: '#FFFFFF', shortcut: '2' },
+  { id: 'smoke', label: 'SMOKE', icon: <SmokeIcon size={28} />, color: '#8B9DC3', shortcut: '3' },
+  { id: 'more_fx', label: 'MORE FX', icon: <Sparkles size={28} />, color: '#A855F7', shortcut: '...', isPlaceholder: true },
 ]
 
 interface QuickActionsProps {
@@ -23,7 +25,13 @@ interface QuickActionsProps {
 export const QuickActions: React.FC<QuickActionsProps> = ({ disabled }) => {
   const { activeEffects, toggleEffect } = useEffectsStore()
   
-  const handleEffectClick = useCallback(async (effectId: EffectId) => {
+  const handleEffectClick = useCallback(async (effectId: EffectId | 'more_fx') => {
+    // Placeholder button - do nothing for now
+    if (effectId === 'more_fx') {
+      console.log('[QuickActions] 🎨 MORE FX drawer coming soon...')
+      return
+    }
+    
     const isActive = activeEffects.has(effectId)
     
     // Toggle local state
@@ -53,15 +61,17 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ disabled }) => {
   return (
     <div className="quick-actions">
       {QUICK_EFFECTS.map(effect => {
-        const isActive = activeEffects.has(effect.id)
+        const isActive = effect.id !== 'more_fx' && activeEffects.has(effect.id as EffectId)
+        const isPlaceholder = effect.isPlaceholder
+        
         return (
           <button
             key={effect.id}
-            className={`quick-btn ${isActive ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+            className={`quick-btn ${isActive ? 'active' : ''} ${disabled ? 'disabled' : ''} ${isPlaceholder ? 'placeholder' : ''}`}
             onClick={() => handleEffectClick(effect.id)}
             disabled={disabled}
             style={{ '--effect-color': effect.color } as React.CSSProperties}
-            title={`${effect.label} [${effect.shortcut}]`}
+            title={isPlaceholder ? 'More effects coming soon' : `${effect.label} [${effect.shortcut}]`}
           >
             <span className="quick-icon">{effect.icon}</span>
             <span className="quick-label">{effect.label}</span>

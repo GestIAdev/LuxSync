@@ -866,3 +866,125 @@
 .focus-slider::-webkit-slider-thumb { background: #00ffff; box-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
 .zoom-slider::-webkit-slider-thumb { background: #ff00ff; box-shadow: 0 0 8px rgba(255, 0, 255, 0.5); }
 .iris-slider::-webkit-slider-thumb { background: #ffff00; box-shadow: 0 0 8px rgba(255, 255, 0, 0.5); }
+
+/* XY Pad - Grid lines */
+.xy-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.grid-line {
+  position: absolute;
+  background: rgba(0, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+.grid-line.vertical {
+  width: 1px;
+  height: 100%;
+}
+
+.grid-line.horizontal {
+  width: 100%;
+  height: 1px;
+}
+
+/* Center mark */
+.center-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Cursor components */
+.cursor-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-cyan, #00ffff);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cursor-ring {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--accent-cyan, #00ffff);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.6;
+}
+
+.xy-pad.dragging .cursor-ring {
+  width: 24px;
+  height: 24px;
+  opacity: 1;
+}
+
+/* Axis labels */
+.axis-label {
+  position: absolute;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+.pan-label {
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tilt-label {
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+}
+
+/* XY Pad Actions */
+.xy-pad-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.center-btn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.center-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.xy-pad.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.xy-pad.disabled .xy-cursor {
+  opacity: 0.5;
+}

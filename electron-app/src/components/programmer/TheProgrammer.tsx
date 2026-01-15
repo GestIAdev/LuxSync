@@ -71,7 +71,15 @@ export const TheProgrammer: React.FC = () => {
   const hasColorFixtures = useMemo(() => {
     return selectedFixtures.some((f: any) => {
       const type = f?.type?.toLowerCase() || ''
-      return type.includes('rgb') || type.includes('wash') || type.includes('par') || type.includes('led')
+      // PARs, Washes, LEDs have color
+      // Moving heads, Spots, Beams also have color (CMY or RGB)
+      return type.includes('rgb') || 
+             type.includes('wash') || 
+             type.includes('par') || 
+             type.includes('led') ||
+             type.includes('moving') ||
+             type.includes('spot') ||
+             type.includes('beam')
     })
   }, [selectedFixtures])
   

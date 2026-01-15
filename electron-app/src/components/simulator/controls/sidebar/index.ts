@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📋 SIDEBAR INDEX - WAVE 434: THE GREAT CONSOLIDATION
+ * 📋 SIDEBAR INDEX - WAVE 435: LEGACY PURGE
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * ARQUITECTURA:
@@ -20,36 +20,23 @@ import './StageSidebar.css'
 import './SceneBrowser.css'
 import './controls.css'
 
-// Legacy CSS (deprecated in WAVE 435)
-import './InspectorControls.css'
-import './PaletteControlMini.css'
-
 // ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT EXPORTS
+// COMPONENT EXPORTS - WAVE 435: LEGACY PURGE COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Main Container
 export { StageSidebar } from './StageSidebar'
-export type { StageSidebarProps } from './StageSidebar'
 
-// Individual Controls
-export { ColorPicker } from './ColorPicker'
-export type { ColorPickerProps } from './ColorPicker'
-
-export { DimmerSlider } from './DimmerSlider'
-export type { DimmerSliderProps } from './DimmerSlider'
-
-export { PanTiltControl } from './PanTiltControl'
-export type { PanTiltControlProps } from './PanTiltControl'
-
-// Control Panels
-export { InspectorControls } from './InspectorControls'
-export type { InspectorControlsProps } from './InspectorControls'
-
-// WAVE 32: Scene Browser
+// Scene Management
 export { SceneBrowser } from './SceneBrowser'
 export type { SceneBrowserProps } from './SceneBrowser'
 
-// WAVE 33.2: Palette Control
-export { PaletteControlMini } from './PaletteControlMini'
-export type { PaletteControlMiniProps } from './PaletteControlMini'
+// 🗑️ WAVE 435: LEGACY REMOVED
+// The following components were deprecated and deleted:
+// - InspectorControls.tsx (replaced by TheProgrammerContent)
+// - ColorPicker.tsx (replaced by ColorSection)
+// - DimmerSlider.tsx (replaced by IntensitySection)
+// - PanTiltControl.tsx (replaced by PositionSection)
+// - PaletteControlMini.tsx (functionality in ColorSection)
+
+export type { StageSidebarProps } from './StageSidebar'

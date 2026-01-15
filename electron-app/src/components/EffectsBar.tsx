@@ -8,7 +8,7 @@
 
 import { useState, useCallback } from 'react'
 import { useLuxSyncStore, EffectId, EFFECTS } from '../stores/luxsyncStore'
-import { Flashlight, Triangle, Zap, Sun, Wind, Siren } from 'lucide-react'
+import { BeamIcon, PrismIcon, StrobeIcon, BlinderIcon, SmokeIcon, RainbowIcon, PoliceIcon, LaserIcon } from './icons/LuxIcons'
 // 🌙 WAVE 25.5: Truth hook para lectura de estado real
 import { useTruthEffects } from '../hooks'
 
@@ -26,16 +26,16 @@ interface EffectButton {
 
 const EFFECT_BUTTONS: EffectButton[] = [
   // 🔦 OPTICAL CONTROLS (Hold for momentary)
-  { id: 'beam', icon: <Flashlight size={28} />, label: 'BEAM', color: '#00FFFF', mode: 'hold', shortcut: 'B' },
-  { id: 'prism', icon: <Triangle size={28} />, label: 'PRISM', color: '#FF00FF', mode: 'hold', shortcut: 'P' },
+  { id: 'beam', icon: <BeamIcon size={28} />, label: 'BEAM', color: '#00FFFF', mode: 'hold', shortcut: 'B' },
+  { id: 'prism', icon: <PrismIcon size={28} />, label: 'PRISM', color: '#FF00FF', mode: 'hold', shortcut: 'P' },
   
   // ⚡ PANIC BUTTONS (Toggle)
-  { id: 'strobe', icon: <Zap size={28} />, label: 'STROBE', color: '#FBBF24', mode: 'toggle', shortcut: 'S' },
-  { id: 'blinder', icon: <Sun size={28} />, label: 'BLINDER', color: '#FFFFFF', mode: 'toggle', shortcut: 'L' },
+  { id: 'strobe', icon: <StrobeIcon size={28} />, label: 'STROBE', color: '#FBBF24', mode: 'toggle', shortcut: 'S' },
+  { id: 'blinder', icon: <BlinderIcon size={28} />, label: 'BLINDER', color: '#FFFFFF', mode: 'toggle', shortcut: 'L' },
   
   // 🌈 EFFECTS (Toggle)
-  { id: 'smoke', icon: <Wind size={28} />, label: 'SMOKE', color: '#94A3B8', mode: 'toggle' },
-  { id: 'rainbow', icon: '🌈', label: 'RAINBOW', color: '#A855F7', mode: 'toggle' },
+  { id: 'smoke', icon: <SmokeIcon size={28} />, label: 'SMOKE', color: '#94A3B8', mode: 'toggle' },
+  { id: 'rainbow', icon: <RainbowIcon size={28} />, label: 'RAINBOW', color: '#A855F7', mode: 'toggle' },
 ]
 
 export default function EffectsBar() {

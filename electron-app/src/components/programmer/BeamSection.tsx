@@ -16,6 +16,7 @@
 import React, { useCallback, useState, useMemo } from 'react'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useTruthStore, selectHardware } from '../../stores/truthStore'
+import { BeamIcon } from '../icons/LuxIcons'
 
 export interface BeamSectionProps {
   hasOverride: boolean
@@ -188,7 +189,8 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
-          🔦 BEAM / OPTICS
+          <BeamIcon size={18} className="title-icon" />
+          BEAM / OPTICS
         </h4>
         <div className="header-right">
           {hasOverride && (

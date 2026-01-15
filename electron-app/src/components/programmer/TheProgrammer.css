@@ -1148,3 +1148,39 @@
   display: none;
 }
 
+
+/* 
+   CUSTOM SVG ICONS IN TITLES - WAVE 430.10
+   LuxSync custom icons replacing emojis
+    */
+
+.section-title .title-icon {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  color: inherit;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.section-header.clickable:hover .title-icon {
+  opacity: 1;
+}
+
+/* Icon colors per section */
+.intensity-section .title-icon {
+  color: #FFA500;
+}
+
+.color-section .title-icon {
+  color: #00FFFF;
+}
+
+.position-section .title-icon {
+  color: #00FF80;
+}
+
+.beam-section .title-icon {
+  color: #FFFF00;
+}
+

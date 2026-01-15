@@ -5,15 +5,15 @@
  */
 
 import React, { useCallback } from 'react'
-import { Zap, Sun, Wind } from 'lucide-react'
+import { StrobeIcon, BlinderIcon, SmokeIcon } from '../icons/LuxIcons'
 import { useEffectsStore, EffectId } from '../../stores/effectsStore'
 import './CommandDeck.css'
 
 // Only global effects in the deck
 const QUICK_EFFECTS: { id: EffectId; label: string; icon: React.ReactNode; color: string; shortcut: string }[] = [
-  { id: 'strobe', label: 'STROBE', icon: <Zap size={24} />, color: '#FFFF00', shortcut: '1' },
-  { id: 'blinder', label: 'BLINDER', icon: <Sun size={24} />, color: '#FFFFFF', shortcut: '2' },
-  { id: 'smoke', label: 'SMOKE', icon: <Wind size={24} />, color: '#8B9DC3', shortcut: '3' },
+  { id: 'strobe', label: 'STROBE', icon: <StrobeIcon size={24} />, color: '#FFFF00', shortcut: '1' },
+  { id: 'blinder', label: 'BLINDER', icon: <BlinderIcon size={24} />, color: '#FFFFFF', shortcut: '2' },
+  { id: 'smoke', label: 'SMOKE', icon: <SmokeIcon size={24} />, color: '#8B9DC3', shortcut: '3' },
 ]
 
 interface QuickActionsProps {

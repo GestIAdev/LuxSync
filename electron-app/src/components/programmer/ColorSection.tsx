@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useState } from 'react'
+import { ColorIcon } from '../icons/LuxIcons'
 
 export interface ColorSectionProps {
   color: { r: number; g: number; b: number }
@@ -109,7 +110,8 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
-          🎨 COLOR
+          <ColorIcon size={18} className="title-icon" />
+          COLOR
         </h4>
         <div className="header-right">
           {hasOverride && (

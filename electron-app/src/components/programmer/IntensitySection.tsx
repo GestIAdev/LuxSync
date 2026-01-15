@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback } from 'react'
+import { IntensityIcon } from '../icons/LuxIcons'
 
 export interface IntensitySectionProps {
   value: number          // 0-100
@@ -52,7 +53,8 @@ export const IntensitySection: React.FC<IntensitySectionProps> = ({
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
-          💡 INTENSITY
+          <IntensityIcon size={18} className="title-icon" />
+          INTENSITY
         </h4>
         <div className="header-right">
           {hasOverride && (

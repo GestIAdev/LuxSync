@@ -17,6 +17,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { useTruthStore, selectHardware } from '../../stores/truthStore'
 import { XYPad } from './controls'
 import { PatternSelector, type PatternType } from './controls'
+import { PositionIcon } from '../icons/LuxIcons'
 
 export interface PositionSectionProps {
   hasOverride: boolean
@@ -215,7 +216,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       <div className="section-header clickable" onClick={onToggle}>
         <h4 className="section-title">
           <span className="section-icon">{isExpanded ? '▼' : '▶'}</span>
-          🕹️ POSITION
+          <PositionIcon size={18} className="title-icon" />
+          POSITION
           {isCalibrating && <span className="calibration-indicator"> 🎯 CALIBRATING</span>}
         </h4>
         <div className="section-actions">

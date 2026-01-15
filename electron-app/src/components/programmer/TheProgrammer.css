@@ -1,9 +1,10 @@
 ﻿/**
- *  THE PROGRAMMER - WAVE 430.5 - POLISH & ANTI-JITTER
+ *  THE PROGRAMMER - WAVE 432 - HIVE MIND (TABS)
  * Styles for the fixture control panel
  * 
  * Design System:
  * - 450px width (more control space)
+ * - TAB NAVIGATION: CONTROLS | GROUPS
  * - Zero lateral padding (edge-to-edge widgets)
  * - Minimal headers (list style, not page titles)
  * - NO dimension changes on hover (anti-jitter)
@@ -20,10 +21,98 @@
   background: linear-gradient(180deg, #0d0d12 0%, #08080c 100%);
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 450px;
   max-width: 450px;
+}
+
+/* 
+   TAB NAVIGATION - WAVE 432
+    */
+
+.programmer-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.programmer-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  border-radius: 8px 8px 0 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.programmer-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.programmer-tab.active {
+  background: linear-gradient(180deg, 
+    rgba(0, 255, 255, 0.1) 0%, 
+    rgba(0, 255, 255, 0.03) 100%
+  );
+  color: #00FFFF;
+  border-bottom: 2px solid #00FFFF;
+  margin-bottom: -1px;
+}
+
+.programmer-tab svg {
+  opacity: 0.8;
+}
+
+.programmer-tab.active svg {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 255, 0.5));
+}
+
+.tab-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: rgba(0, 255, 255, 0.2);
+  border-radius: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #00FFFF;
+}
+
+/* 
+   TAB CONTENT
+    */
+
+.programmer-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.programmer-content.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 

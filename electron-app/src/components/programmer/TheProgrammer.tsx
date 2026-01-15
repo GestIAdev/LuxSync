@@ -1,14 +1,11 @@
 /**
- * 🎹 THE PROGRAMMER - WAVE 430
+ * 🎹 THE PROGRAMMER - WAVE 432: HIVE MIND
  * Panel derecho de control para fixtures seleccionados
  * 
  * Arquitectura:
- * - Solo visible si selection.length > 0
- * - Header limpio: "X Fixtures Selected" + [UNLOCK ALL]
- * - IntensitySection: Dimmer slider + quick buttons (COLLAPSIBLE)
- * - ColorSection: RGB sliders + Living Palettes (COLLAPSIBLE)
- * - PositionSection: XY Pad + Patterns + Precision (COLLAPSIBLE)
- * - BeamSection: Gobo, Prism, Focus, Zoom (COLLAPSIBLE)
+ * - TABS: CONTROLS | GROUPS
+ * - CONTROLS: Intensity, Color, Position, Beam (Accordion)
+ * - GROUPS: System + User groups con auto-switch
  * 
  * Conecta directamente al MasterArbiter via window.lux.arbiter
  */
@@ -20,8 +17,14 @@ import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
 import { BeamSection } from './BeamSection'
+import { GroupsPanel } from './GroupsPanel'
+import { IntensityIcon, GroupIcon } from '../icons/LuxIcons'
 import './TheProgrammer.css'
 import './accordion-styles.css'
+import './GroupsPanel.css'
+
+// Tab types
+type ProgrammerTab = 'controls' | 'groups'
 
 // Track which channels have manual overrides
 interface OverrideState {
@@ -39,6 +42,9 @@ export const TheProgrammer: React.FC = () => {
   // Hardware info
   const hardware = useTruthStore(selectHardware)
   
+  // WAVE 432: TAB NAVIGATION
+  const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')
+  
   // Track which channels have manual overrides
   const [overrideState, setOverrideState] = useState<OverrideState>({
     dimmer: false,
@@ -53,6 +59,11 @@ export const TheProgrammer: React.FC = () => {
   // Toggle section - exclusive mode (only one open)
   const toggleSection = useCallback((section: string) => {
     setActiveSection(prev => prev === section ? '' : section)
+  }, [])
+  
+  // Callback for GroupsPanel to switch to controls
+  const handleSwitchToControls = useCallback(() => {
+    setActiveTab('controls')
   }, [])
   
   // Current values (for display)
@@ -207,95 +218,126 @@ export const TheProgrammer: React.FC = () => {
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // RENDER - WAVE 420: Empty state AFTER all hooks (React Rules of Hooks)
+  // RENDER - WAVE 432: Always show tabs, empty state only for CONTROLS
   // ═══════════════════════════════════════════════════════════════════════
   
-  if (selectedIds.length === 0) {
-    return (
-      <div className="the-programmer empty-state">
-        <div className="empty-state-content">
-          <span className="empty-state-icon">🎛️</span>
-          <h3 className="empty-state-title">No fixtures selected</h3>
-          <p className="empty-state-hint">
-            Click fixtures in the stage view to start programming
-          </p>
-        </div>
-      </div>
-    )
-  }
+  // Empty state content for CONTROLS tab when nothing selected
+  const renderEmptyState = () => (
+    <div className="empty-state-content">
+      <span className="empty-state-icon">🎛️</span>
+      <h3 className="empty-state-title">No fixtures selected</h3>
+      <p className="empty-state-hint">
+        Click fixtures in the stage view or use <strong>GROUPS</strong> tab
+      </p>
+    </div>
+  )
   
   return (
     <div className="the-programmer">
-      {/* HEADER - WAVE 430.5: Clean title (no fixture IDs) */}
-      <div className="programmer-header">
-        <div className="selection-info">
-          <span className="fixture-count">{selectedIds.length}</span>
-          <span className="fixture-label">
-            {selectedIds.length === 1 
-              ? (selectedFixtures[0]?.name || selectedFixtures[0]?.type || 'Fixture')
-              : `Fixtures Selected`
-            }
-          </span>
-          {selectedIds.length === 1 && selectedFixtures[0]?.type && (
-            <span className="fixture-subtitle">{selectedFixtures[0].type}</span>
+      {/* TAB NAVIGATION - WAVE 432 */}
+      <div className="programmer-tabs">
+        <button 
+          className={`programmer-tab ${activeTab === 'controls' ? 'active' : ''}`}
+          onClick={() => setActiveTab('controls')}
+        >
+          <IntensityIcon size={16} />
+          <span>CONTROLS</span>
+          {selectedIds.length > 0 && (
+            <span className="tab-badge">{selectedIds.length}</span>
           )}
-        </div>
-        
-        <div className="header-actions">
-          <button 
-            className="unlock-all-btn"
-            onClick={handleUnlockAll}
-            title="Release all manual overrides"
-          >
-            🔓 UNLOCK ALL
-          </button>
-        </div>
+        </button>
+        <button 
+          className={`programmer-tab ${activeTab === 'groups' ? 'active' : ''}`}
+          onClick={() => setActiveTab('groups')}
+        >
+          <GroupIcon size={16} />
+          <span>GROUPS</span>
+        </button>
       </div>
       
-      {/* INTENSITY SECTION */}
-      <IntensitySection
-        value={currentDimmer}
-        hasOverride={overrideState.dimmer}
-        isExpanded={activeSection === 'intensity'}
-        onToggle={() => toggleSection('intensity')}
-        onChange={handleDimmerChange}
-        onRelease={handleDimmerRelease}
-      />
-      
-      {/* COLOR SECTION (solo si hay fixtures con color) */}
-      {hasColorFixtures && (
-        <ColorSection
-          color={currentColor}
-          hasOverride={overrideState.color}
-          isExpanded={activeSection === 'color'}
-          onToggle={() => toggleSection('color')}
-          onChange={handleColorChange}
-          onRelease={handleColorRelease}
-        />
-      )}
-      
-      {/* POSITION SECTION (solo para moving heads) */}
-      <PositionSection
-        hasOverride={overrideState.position}
-        isExpanded={activeSection === 'position'}
-        onToggle={() => toggleSection('position')}
-        onOverrideChange={handlePositionOverrideChange}
-      />
-      
-      {/* BEAM SECTION (solo para fixtures con óptica) */}
-      <BeamSection
-        hasOverride={overrideState.beam}
-        isExpanded={activeSection === 'beam'}
-        onToggle={() => toggleSection('beam')}
-        onOverrideChange={handleBeamOverrideChange}
-      />
-      
-      {/* OVERRIDE INDICATOR */}
-      {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam) && (
-        <div className="override-indicator">
-          <span className="override-dot" />
-          MANUAL CONTROL ACTIVE
+      {/* TAB CONTENT */}
+      {activeTab === 'controls' ? (
+        selectedIds.length === 0 ? (
+          <div className="programmer-content empty-state">
+            {renderEmptyState()}
+          </div>
+        ) : (
+        <div className="programmer-content">
+          {/* HEADER - Selection Info */}
+          <div className="programmer-header">
+            <div className="selection-info">
+              <span className="fixture-count">{selectedIds.length}</span>
+              <span className="fixture-label">
+                {selectedIds.length === 1 
+                  ? (selectedFixtures[0]?.name || selectedFixtures[0]?.type || 'Fixture')
+                  : `Fixtures Selected`
+                }
+              </span>
+              {selectedIds.length === 1 && selectedFixtures[0]?.type && (
+                <span className="fixture-subtitle">{selectedFixtures[0].type}</span>
+              )}
+            </div>
+            
+            <div className="header-actions">
+              <button 
+                className="unlock-all-btn"
+                onClick={handleUnlockAll}
+                title="Release all manual overrides"
+              >
+                🔓 UNLOCK ALL
+              </button>
+            </div>
+          </div>
+          
+          {/* INTENSITY SECTION */}
+          <IntensitySection
+            value={currentDimmer}
+            hasOverride={overrideState.dimmer}
+            isExpanded={activeSection === 'intensity'}
+            onToggle={() => toggleSection('intensity')}
+            onChange={handleDimmerChange}
+            onRelease={handleDimmerRelease}
+          />
+          
+          {/* COLOR SECTION (solo si hay fixtures con color) */}
+          {hasColorFixtures && (
+            <ColorSection
+              color={currentColor}
+              hasOverride={overrideState.color}
+              isExpanded={activeSection === 'color'}
+              onToggle={() => toggleSection('color')}
+              onChange={handleColorChange}
+              onRelease={handleColorRelease}
+            />
+          )}
+          
+          {/* POSITION SECTION (solo para moving heads) */}
+          <PositionSection
+            hasOverride={overrideState.position}
+            isExpanded={activeSection === 'position'}
+            onToggle={() => toggleSection('position')}
+            onOverrideChange={handlePositionOverrideChange}
+          />
+          
+          {/* BEAM SECTION (solo para fixtures con óptica) */}
+          <BeamSection
+            hasOverride={overrideState.beam}
+            isExpanded={activeSection === 'beam'}
+            onToggle={() => toggleSection('beam')}
+            onOverrideChange={handleBeamOverrideChange}
+          />
+          
+          {/* OVERRIDE INDICATOR */}
+          {(overrideState.dimmer || overrideState.color || overrideState.position || overrideState.beam) && (
+            <div className="override-indicator">
+              <span className="override-dot" />
+              MANUAL CONTROL ACTIVE
+            </div>
+          )}
         </div>
+        )
+      ) : (
+        <GroupsPanel onSwitchToControls={handleSwitchToControls} />
       )}
     </div>
   )

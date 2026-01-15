@@ -1,0 +1,311 @@
+/**
+ * 🐝 GROUPS PANEL CSS - WAVE 432: HIVE MIND
+ * Estética cyberpunk para gestión de grupos
+ */
+
+.groups-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.groups-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.groups-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #00FFFF;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTIONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.groups-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.no-groups-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GROUPS GRID
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GROUP BUTTON - BIG & TACTILE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.group-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 60px;
+  padding: 10px 8px;
+  background: linear-gradient(180deg, 
+    rgba(30, 30, 45, 0.8) 0%, 
+    rgba(20, 20, 30, 0.9) 100%
+  );
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.group-btn::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--group-color, #00FFFF);
+  opacity: 0.3;
+  transition: opacity 0.2s ease, height 0.2s ease;
+}
+
+.group-btn:hover {
+  border-color: var(--group-color, #00FFFF);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.group-btn:hover::before {
+  opacity: 0.6;
+}
+
+/* Active state - all group members selected */
+.group-btn.active {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--group-color, #00FFFF) 15%, rgba(30, 30, 45, 1)) 0%,
+    color-mix(in srgb, var(--group-color, #00FFFF) 8%, rgba(20, 20, 30, 1)) 100%
+  );
+  border-color: var(--group-color, #00FFFF);
+  color: var(--group-color, #00FFFF);
+  box-shadow: 
+    0 0 20px color-mix(in srgb, var(--group-color, #00FFFF) 30%, transparent),
+    inset 0 0 15px color-mix(in srgb, var(--group-color, #00FFFF) 10%, transparent);
+}
+
+.group-btn.active::before {
+  height: 4px;
+  opacity: 1;
+  box-shadow: 0 0 10px var(--group-color, #00FFFF);
+}
+
+.group-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.group-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+/* User group - delete button */
+.group-btn.user-group {
+  padding-right: 24px;
+}
+
+.group-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 50, 50, 0.1);
+  border: 1px solid rgba(255, 50, 50, 0.3);
+  border-radius: 4px;
+  color: rgba(255, 100, 100, 0.6);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.group-btn.user-group:hover .group-delete-btn {
+  opacity: 1;
+}
+
+.group-delete-btn:hover {
+  background: rgba(255, 50, 50, 0.3);
+  border-color: rgba(255, 50, 50, 0.6);
+  color: #FF4444;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CREATE GROUP SECTION
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.create-group-section {
+  margin-top: 8px;
+}
+
+.create-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(180deg,
+    rgba(0, 255, 255, 0.08) 0%,
+    rgba(0, 255, 255, 0.04) 100%
+  );
+  border: 2px dashed rgba(0, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #00FFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-group-btn:hover {
+  background: linear-gradient(180deg,
+    rgba(0, 255, 255, 0.15) 0%,
+    rgba(0, 255, 255, 0.08) 100%
+  );
+  border-color: rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+}
+
+.create-icon {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Create group form */
+.create-group-form {
+  display: flex;
+  gap: 6px;
+}
+
+.group-name-input {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(20, 20, 30, 0.9);
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  border-radius: 6px;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.group-name-input:focus {
+  border-color: #00FFFF;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+.group-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.save-group-btn,
+.cancel-group-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.save-group-btn {
+  background: rgba(74, 222, 128, 0.2);
+  border: 2px solid rgba(74, 222, 128, 0.4);
+  color: #4ADE80;
+}
+
+.save-group-btn:hover {
+  background: rgba(74, 222, 128, 0.3);
+  border-color: #4ADE80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+}
+
+.cancel-group-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  color: #EF4444;
+}
+
+.cancel-group-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #EF4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 500px) {
+  .groups-grid {
+    grid-template-columns: 1fr;
+  }
+}

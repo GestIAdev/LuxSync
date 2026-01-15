@@ -31,14 +31,6 @@ interface OverrideState {
   beam: boolean
 }
 
-// Track which sections are expanded
-interface ExpansionState {
-  intensity: boolean
-  color: boolean
-  position: boolean
-  beam: boolean
-}
-
 export const TheProgrammer: React.FC = () => {
   // Selection store
   const selectedIds = useSelectionStore(state => [...state.selectedIds])
@@ -55,17 +47,12 @@ export const TheProgrammer: React.FC = () => {
     beam: false,
   })
   
-  // Track which sections are expanded (Intensity open by default)
-  const [expanded, setExpanded] = useState<ExpansionState>({
-    intensity: true,
-    color: false,
-    position: false,
-    beam: false,
-  })
+  // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
+  const [activeSection, setActiveSection] = useState<string>('intensity')
   
-  // Toggle section expansion
-  const toggleSection = useCallback((section: keyof ExpansionState) => {
-    setExpanded(prev => ({ ...prev, [section]: !prev[section] }))
+  // Toggle section - exclusive mode (only one open)
+  const toggleSection = useCallback((section: string) => {
+    setActiveSection(prev => prev === section ? '' : section)
   }, [])
   
   // Current values (for display)
@@ -231,13 +218,19 @@ export const TheProgrammer: React.FC = () => {
   
   return (
     <div className="the-programmer">
-      {/* HEADER - Clean & simple */}
+      {/* HEADER - WAVE 430.5: Clean title (no fixture IDs) */}
       <div className="programmer-header">
         <div className="selection-info">
           <span className="fixture-count">{selectedIds.length}</span>
           <span className="fixture-label">
-            {selectedIds.length === 1 ? 'Fixture' : 'Fixtures'} Selected
+            {selectedIds.length === 1 
+              ? (selectedFixtures[0]?.name || selectedFixtures[0]?.type || 'Fixture')
+              : `Fixtures Selected`
+            }
           </span>
+          {selectedIds.length === 1 && selectedFixtures[0]?.type && (
+            <span className="fixture-subtitle">{selectedFixtures[0].type}</span>
+          )}
         </div>
         
         <div className="header-actions">
@@ -255,7 +248,7 @@ export const TheProgrammer: React.FC = () => {
       <IntensitySection
         value={currentDimmer}
         hasOverride={overrideState.dimmer}
-        isExpanded={expanded.intensity}
+        isExpanded={activeSection === 'intensity'}
         onToggle={() => toggleSection('intensity')}
         onChange={handleDimmerChange}
         onRelease={handleDimmerRelease}
@@ -266,7 +259,7 @@ export const TheProgrammer: React.FC = () => {
         <ColorSection
           color={currentColor}
           hasOverride={overrideState.color}
-          isExpanded={expanded.color}
+          isExpanded={activeSection === 'color'}
           onToggle={() => toggleSection('color')}
           onChange={handleColorChange}
           onRelease={handleColorRelease}
@@ -276,7 +269,7 @@ export const TheProgrammer: React.FC = () => {
       {/* POSITION SECTION (solo para moving heads) */}
       <PositionSection
         hasOverride={overrideState.position}
-        isExpanded={expanded.position}
+        isExpanded={activeSection === 'position'}
         onToggle={() => toggleSection('position')}
         onOverrideChange={handlePositionOverrideChange}
       />
@@ -284,7 +277,7 @@ export const TheProgrammer: React.FC = () => {
       {/* BEAM SECTION (solo para fixtures con óptica) */}
       <BeamSection
         hasOverride={overrideState.beam}
-        isExpanded={expanded.beam}
+        isExpanded={activeSection === 'beam'}
         onToggle={() => toggleSection('beam')}
         onOverrideChange={handleBeamOverrideChange}
       />

@@ -207,7 +207,7 @@
  * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .stage-view-viewport {
-  flex: 1; /* Take remaining space after 420px sidebar */
+  flex: 1; /* Take remaining space after 450px sidebar */
   min-width: 0;
   position: relative;
   min-height: 400px;
@@ -286,9 +286,9 @@
  * â• */
 
 .stage-view-dual .stage-sidebar {
-  width: 420px !important;
-  min-width: 420px !important;
-  max-width: 420px !important;
+  width: 450px !important;
+  min-width: 450px !important;
+  max-width: 450px !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
 }

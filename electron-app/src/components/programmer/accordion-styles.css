@@ -1,14 +1,15 @@
 ﻿/* 
-   PROGRAMMER SECTION - ACCORDION STYLES (WAVE 430)
-    */
+   PROGRAMMER SECTION - ACCORDION STYLES (WAVE 430.5 - ANTI-JITTER)
+   ═ */
 
 .programmer-section {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.3);
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  /* ANTI-JITTER: NO cambiar dimensiones */
 }
 
 /* Clickable header for accordion toggle */
@@ -18,8 +19,10 @@
   transition: background 0.15s ease;
 }
 
+/* ANTI-JITTER: Solo cambiar background, NO dimensiones */
 .programmer-section .section-header.clickable:hover {
   background: rgba(255, 255, 255, 0.05);
+  /* NO cambiar padding, border, margin */
 }
 
 /* Section title with chevron */
@@ -27,16 +30,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 /* Chevron icon (/) */
 .programmer-section .section-icon {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--accent-cyan, #00ffff);
   transition: transform 0.2s ease;
   display: inline-block;
@@ -60,12 +63,12 @@
   align-items: center;
 }
 
-/* Section header */
+/* Section header - MINIMAL SPACING */
 .programmer-section .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -87,7 +90,7 @@
 @keyframes expandSection {
   from {
     opacity: 0.8;
-    transform: translateY(-4px);
+    transform: translateY(-2px);
   }
   to {
     opacity: 1;
@@ -101,7 +104,7 @@
   box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
 }
 
-/* Release button */
+/* Release button - ANTI-JITTER */
 .programmer-section .release-btn {
   padding: 4px 8px;
   background: rgba(255, 140, 0, 0.15);
@@ -111,10 +114,37 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  /* NO cambiar dimensiones */
 }
 
 .programmer-section .release-btn:hover {
   background: rgba(255, 140, 0, 0.25);
   box-shadow: 0 0 8px rgba(255, 140, 0, 0.3);
+  /* NO cambiar padding, border-width, margin */
+}
+
+/* Section actions (calibration button, etc) */
+.programmer-section .section-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.programmer-section .calibrate-btn {
+  padding: 4px 8px;
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #00ffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.programmer-section .calibrate-btn:hover,
+.programmer-section .calibrate-btn.active {
+  background: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+  /* NO cambiar dimensiones */
 }

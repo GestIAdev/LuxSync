@@ -1,18 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 STAGE 3D CANVAS - WAVE 379.5: HYBRID RENDERING
- * Canvas principal de React Three Fiber para visualización 3D
+ * 🎬 STAGE 3D CANVAS - WAVE 436: 3D RENDERING ENGINE
+ * React Three Fiber canvas for 3D stage visualization
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * WAVE 379.5: HYBRID RENDERING SOURCE
- * - GEOMETRÍA: stageStore (local, inmediato, siempre disponible)
- * - ESTADO (color/intensity): truthStore via useFixtureRender hook
- * - Si el backend no responde, los fixtures se ven (apagados) pero VISIBLES
+ * HYBRID RENDERING ARCHITECTURE (WAVE 379.5):
+ * - GEOMETRY: stageStore (local, immediate, always available)
+ * - STATE (color/intensity): truthStore via useFixtureRender hook
+ * - Backend offline: fixtures visible but OFF (graceful degradation)
  * 
- * Este es el canvas principal que renderiza:
- * - Escenario con suelo y truss
- * - Fixtures 3D posicionados según layoutGenerator3D
- * - Efectos de luz volumétricos
+ * Module path: @/components/simulator/views/stage3d/Stage3DCanvas
+ * 
+ * Renders:
+ * - Stage with floor and truss
+ * - 3D fixtures positioned via layoutGenerator3D
+ * - Volumetric light effects
  * - Controles de cámara orbital
  * 
  * @module components/stage3d/Stage3DCanvas

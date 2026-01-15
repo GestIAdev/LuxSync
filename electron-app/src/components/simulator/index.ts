@@ -1,12 +1,14 @@
 /**
- * 🎭 SIMULATOR - WAVE 434: THE GREAT CONSOLIDATION
+ * 🎭 SIMULATOR - WAVE 436: POST-CONSOLIDATION EXPORTS
  * Unified export point for all simulator components
  * 
- * Architecture:
+ * Architecture Post-WAVE 434/435:
  * - views/: Main views (StageViewDual, 2D/3D renderers)
  * - controls/: Control panels (TheProgrammer, GroupsPanel, SceneBrowser, StageSidebar)
- * - widgets/: Reusable UI components
- * - engine/: Simulation hooks and utilities
+ * - widgets/: Reusable UI components (future)
+ * - engine/: Simulation hooks and utilities (future)
+ * 
+ * WAVE 435 Purge: Removed InspectorControls + legacy sub-widgets (8 files)
  */
 
 // Main Views

@@ -1,12 +1,14 @@
 /**
  * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║  StageSimulator2.tsx - WAVE 379.5 HYBRID RENDERING                        ║
- * ║  "THE NEON STAGE" - Canvas 2D con fuente hibrida de datos                 ║
+ * ║  StageSimulator2.tsx - WAVE 436: 2D NEON STAGE                            ║
+ * ║  "THE NEON STAGE" - Canvas 2D rendering with hybrid data sources          ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  WAVE 379.5: HYBRID RENDERING SOURCE                                      ║
- * ║  - GEOMETRIA: stageStore (local, inmediato, siempre disponible)           ║
- * ║  - ESTADO (color/intensity): truthStore via calculateFixtureRenderValues  ║
- * ║  - Si el backend no responde, los fixtures se ven APAGADOS pero VISIBLES  ║
+ * ║  HYBRID RENDERING ARCHITECTURE (WAVE 379.5):                              ║
+ * ║  - GEOMETRY: stageStore (local, immediate, always available)              ║
+ * ║  - STATE (color/intensity): truthStore via calculateFixtureRenderValues   ║
+ * ║  - Backend offline: fixtures visible but OFF (graceful degradation)       ║
+ * ║                                                                            ║
+ * ║  Module path: @/components/simulator/views/SimulateView/StageSimulator2   ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  */
 

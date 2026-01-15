@@ -1,20 +1,22 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💡 FIXTURE 3D - WAVE 33.1: Visual Polish & Moving Head Geometry
- * Componente genérico de fixture 3D con efectos de luz realistas
+ * 💡 FIXTURE 3D - WAVE 436: 3D FIXTURE RENDERING
+ * Generic 3D fixture component with realistic light effects
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * WAVE 33.1 MEJORAS:
- * ✅ Circular Glow Sprites con alphaMap radial (fix square halos)
+ * Historical Features (WAVE 33.1):
+ * ✅ Circular Glow Sprites with radial alphaMap (fixed square halos)
  * ✅ Moving Head = Base + Yoke (PAN) + Head (TILT)
- * ✅ Haz de luz nace del centro del Head
- * ✅ SpotLight con sombras correctas
+ * ✅ Light beam originates from Head center
+ * ✅ SpotLight with correct shadows
+ * 
+ * Module path: @/components/simulator/views/stage3d/fixtures/Fixture3D
  * 
  * Features:
- * - Modelo 3D realista de cabeza móvil
- * - Glow suave con degradado radial
- * - Cono volumétrico desde el Head
- * - Selection/Hover Rings interactivos
+ * - Realistic moving head 3D model
+ * - Soft glow with radial gradient
+ * - Volumetric cone from Head
+ * - Interactive Selection/Hover Rings
  * 
  * @module components/stage3d/fixtures/Fixture3D
  * @version 33.1.0

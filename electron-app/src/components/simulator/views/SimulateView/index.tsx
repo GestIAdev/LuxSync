@@ -1,7 +1,13 @@
 /**
- * 🔭 SIMULATE VIEW - 3D Stage Visualization
- * WAVE 10: CYBERPUNK CANVAS - Ported from Demo V2
- * WAVE 10.7: Effect Overlays (Strobe, Beam, Prism)
+ * 🔭 SIMULATE VIEW - 2D Stage Visualization
+ * WAVE 436: POST-CONSOLIDATION MAINTENANCE
+ * 
+ * Historical Architecture (preserved comments for context):
+ * - WAVE 10: CYBERPUNK CANVAS - Initial port from Demo V2
+ * - WAVE 10.7: Effect Overlays (Strobe, Beam, Prism)
+ * - WAVE 24.10: Truth restoration (DMX Store = Single Source of Truth)
+ * 
+ * Current module path: @/components/simulator/views/SimulateView
  * 
  * Features:
  * - Professional disco layout (PARs bottom, Moving Heads top/sides)

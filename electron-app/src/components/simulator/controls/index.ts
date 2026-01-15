@@ -1,6 +1,11 @@
-/**
- * �️ SIMULATOR CONTROLS - WAVE 434: THE GREAT CONSOLIDATION
+﻿/**
+ * SIMULATOR CONTROLS - WAVE 436: POST-PURGE EXPORTS
  * Control panels for fixture manipulation
+ * 
+ * Post-WAVE 435 Architecture:
+ * - TheProgrammer: Main hub (replaced InspectorControls)
+ * - Sections: Intensity, Color, Position, Beam
+ * - Sidebar: SceneBrowser (replaced ScenesPlaceholder)
  */
 
 export { TheProgrammer, default } from './TheProgrammer'
@@ -10,7 +15,6 @@ export { IntensitySection } from './IntensitySection'
 export { ColorSection } from './ColorSection'
 export { PositionSection } from './PositionSection'
 export { BeamSection } from './BeamSection'
-export { ScenesPlaceholder } from './ScenesPlaceholder'
 
 // Sub-components
 export { XYPad, PatternSelector, PrecisionInputs } from './controls'
@@ -19,6 +23,3 @@ export type { PatternType } from './controls'
 // Sidebar exports
 export { StageSidebar } from './sidebar/StageSidebar'
 export { SceneBrowser } from './sidebar/SceneBrowser'
-
-// Legacy (deprecated in WAVE 435)
-// export { InspectorControls } from './sidebar/InspectorControls'

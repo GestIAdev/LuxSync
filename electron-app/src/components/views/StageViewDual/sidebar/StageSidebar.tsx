@@ -124,14 +124,6 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
         </button>
       </div>
       
-      {/* ═══ SELECTION TITLE (solo en Controls) ═══ */}
-      {activeTab === 'controls' && hasSelection && (
-        <div className="selection-bar">
-          <span className="selection-count">{selectedArray.length}</span>
-          <span className="selection-title">{headerTitle}</span>
-        </div>
-      )}
-      
       {/* ═══ CONTENT ═══ */}
       <div className="sidebar-content">
         {activeTab === 'controls' ? (

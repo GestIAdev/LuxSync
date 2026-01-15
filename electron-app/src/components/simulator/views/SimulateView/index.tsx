@@ -13,8 +13,8 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { useDMXStore } from '../../../stores/dmxStore'
-import { useLuxSyncStore } from '../../../stores/luxsyncStore'
+import { useDMXStore } from '../../../../stores/dmxStore'
+import { useLuxSyncStore } from '../../../../stores/luxsyncStore'
 // 🔥 WAVE 24.10: REMOVED telemetryStore import - SINGLE SOURCE OF TRUTH (DMX Store only)
 import './SimulateView.css'
 

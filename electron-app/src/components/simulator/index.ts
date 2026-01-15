@@ -11,7 +11,8 @@
 
 // Main Views
 export { StageViewDual } from './views/StageViewDual'
-export { default as StageSimulator2 } from './views/SimulateView'
+export { default as SimulateView } from './views/SimulateView'
+export { StageSimulator2 } from './views/SimulateView/StageSimulator2'
 
 // Default export for lazy loading
 export { StageViewDual as default } from './views/StageViewDual'

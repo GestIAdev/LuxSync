@@ -26,8 +26,21 @@ export type HuntState = 'sleeping' | 'stalking' | 'evaluating' | 'striking' | 'l
 
 /**
  * Fuente de la decisión
+ * 
+ * WAVE 500 - PROJECT GENESIS: Añadidos nuevos sources nativos:
+ * - 'prediction': Decisión basada en predicción musical anticipada
+ * - 'beauty': Decisión tomada por búsqueda de belleza estética
+ * - 'consonance': Decisión para mantener coherencia con estado anterior
  */
-export type DecisionSource = 'hunt' | 'dream' | 'evolution' | 'bias-correction' | 'memory'
+export type DecisionSource = 
+  | 'hunt' 
+  | 'dream' 
+  | 'evolution' 
+  | 'bias-correction' 
+  | 'memory'
+  | 'prediction'    // WAVE 500: Anticipación musical
+  | 'beauty'        // WAVE 500: Maximización estética
+  | 'consonance'    // WAVE 500: Coherencia temporal
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DECISIÓN DE COLOR
@@ -155,6 +168,8 @@ export interface ConsciousnessOutput {
 
 /**
  * Información de debug de la consciencia
+ * 
+ * WAVE 500 - PROJECT GENESIS: Añadido 'reasoning' para trazabilidad completa
  */
 export interface ConsciousnessDebugInfo {
   /** Estado actual de caza */
@@ -171,6 +186,12 @@ export interface ConsciousnessDebugInfo {
   
   /** Sesgos detectados (si hay) */
   biasesDetected: string[]
+  
+  /**
+   * WAVE 500: Razonamiento humano-legible de la decisión
+   * Explica POR QUÉ se tomó esta decisión
+   */
+  reasoning?: string
   
   /** Predicción activa (si hay) */
   activePrediction?: {

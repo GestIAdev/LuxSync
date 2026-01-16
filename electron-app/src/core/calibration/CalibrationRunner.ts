@@ -417,5 +417,3 @@ export class CalibrationRunner {
     }
   }
 }
-
-export default CalibrationRunner

@@ -103,14 +103,28 @@ export interface DropBridgeConfig {
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Configuración por defecto del Drop Bridge */
+/**
+ * Configuración por defecto del Drop Bridge
+ * 
+ * 🔬 WAVE 671: CALIBRADO CON DATOS EMPÍRICOS DEL LABORATORIO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Basado en CALIBRATION-REPORT.md:
+ * - THE_DROP alcanza Z=4.2σ (supera threshold 3.0 por 40%)
+ * - Energía pico del drop: E=0.63 (promedio)
+ * - Techno agresivo: Z=2.4-2.6σ (no debe disparar)
+ * 
+ * DECISIONES:
+ * - zScoreThreshold: 3.0 (conservador - separa drops épicos de techno agresivo)
+ * - minEnergy: 0.60 (bajado desde 0.75 - THE_DROP alcanza 0.63 de media pico)
+ *   → Tolerante con masterización menos agresiva sin comprometer detección
+ */
 const DEFAULT_CONFIG: DropBridgeConfig = {
-  zScoreThreshold: 3.0,        // 3 sigma = 99.85 percentil
+  zScoreThreshold: 3.0,        // 3 sigma = 99.85 percentil (THE_DROP=4.2σ, Techno=2.6σ máx)
   peakSections: ['drop', 'chorus'],
-  minEnergy: 0.75,
+  minEnergy: 0.60,             // THE_DROP alcanza 0.63 pico - margen de seguridad para mal mastering
   requireKick: false,          // Kick es bonus, no requerido
   watchingThreshold: 2.0,      // Empezamos a prestar atención
-  imminentThreshold: 2.5,      // Algo gordo viene
+  imminentThreshold: 2.5,      // Algo gordo viene (techno agresivo ya dispara aquí)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,39 +1,21 @@
-#!/usr/bin/env ts-node
 /**
- * ╔═══════════════════════════════════════════════════════════════╗
- * ║           SELENE LAB - CALIBRATION CLI                        ║
- * ║                                                               ║
- * ║  WAVE 670.5 - RUN THE TRUTH EXTRACTOR                         ║
- * ║                                                               ║
- * ║  Usage:                                                       ║
- * ║    npx ts-node scripts/run-calibration.ts                     ║
- * ║    npx ts-node scripts/run-calibration.ts --output report.md  ║
- * ║    npx ts-node scripts/run-calibration.ts --json              ║
- * ╚═══════════════════════════════════════════════════════════════╝
+ * 🔬 SELENE LAB - Full Calibration Suite Runner
+ * 
+ * Runs all synthetic signals through the brain pipeline
  */
 
+import { SignalGenerator } from './src/core/calibration/SignalGenerator'
+import { CalibrationRunner } from './src/core/calibration/CalibrationRunner'
+import { SeleneBrainAdapter } from './src/core/calibration/SeleneBrainAdapter'
+import {
+  formatReportAsSummary,
+  formatReportAsMarkdown
+} from './src/core/calibration/CalibrationReport'
 import * as fs from 'fs'
 import * as path from 'path'
 
-import { SignalGenerator } from '../electron-app/src/core/calibration/SignalGenerator.js'
-import { CalibrationRunner } from '../electron-app/src/core/calibration/CalibrationRunner.js'
-import { SeleneBrainAdapter } from '../electron-app/src/core/calibration/SeleneBrainAdapter.js'
-import {
-  formatReportAsMarkdown,
-  formatReportAsJSON,
-  formatReportAsSummary,
-} from '../electron-app/src/core/calibration/CalibrationReport.js'
-
-// Parse CLI arguments
-const args = process.argv.slice(2)
-const outputPath = args.includes('--output') 
-  ? args[args.indexOf('--output') + 1]
-  : null
-const jsonOutput = args.includes('--json')
-const verbose = args.includes('--verbose') || args.includes('-v')
-
 console.log('╔══════════════════════════════════════════════════════════════╗')
-console.log('║            🔬 SELENE LAB - CALIBRATION SUITE                ║')
+console.log('║            🔬 SELENE LAB - FULL CALIBRATION SUITE           ║')
 console.log('║                                                              ║')
 console.log('║  "Feed synthetic signals. Extract mathematical truth."      ║')
 console.log('╠══════════════════════════════════════════════════════════════╣')
@@ -41,11 +23,11 @@ console.log('║  WAVE 670.5 - THE TRUTH EXTRACTOR                           ║
 console.log('╚══════════════════════════════════════════════════════════════╝')
 console.log('')
 
-// Configuration
+// Configuration - shorter duration for faster testing
 const config = {
   sampleRate: 44100,
-  duration: 30,      // 30 seconds per signal
-  bufferSize: 2048,  // FFT window size
+  duration: 10,      // 10 seconds per signal (was 30)
+  bufferSize: 2048,
 }
 
 console.log(`[Config] Sample Rate: ${config.sampleRate} Hz`)
@@ -54,17 +36,11 @@ console.log(`[Config] Buffer Size: ${config.bufferSize}`)
 console.log('')
 
 // Create components
-console.log('[Init] Creating Signal Generator...')
-const signalGenerator = new SignalGenerator(config)
+console.log('[Init] Creating Brain Adapter (REAL PIPELINE)...')
+const brain = new SeleneBrainAdapter(config)
 
 console.log('[Init] Creating Calibration Runner...')
-const runner = new CalibrationRunner(config, 10) // Snapshot every 10 buffers
-
-console.log('[Init] Creating Brain Adapter (REAL PIPELINE)...')
-const brain = new SeleneBrainAdapter({
-  sampleRate: config.sampleRate,
-  bufferSize: config.bufferSize,
-})
+const runner = new CalibrationRunner(config, 5) // Snapshot every 5 buffers
 
 console.log('')
 console.log('═══════════════════════════════════════════════════════════════')
@@ -81,28 +57,16 @@ console.log('')
 console.log(`[Done] Calibration completed in ${(elapsed / 1000).toFixed(1)}s`)
 console.log('')
 
-// Output results
-if (jsonOutput) {
-  const json = formatReportAsJSON(report)
-  if (outputPath) {
-    fs.writeFileSync(outputPath, json)
-    console.log(`[Output] JSON report saved to: ${outputPath}`)
-  } else {
-    console.log(json)
-  }
-} else {
-  // Summary to console
-  console.log(formatReportAsSummary(report))
-  console.log('')
-  
-  // Full markdown to file
-  const markdown = formatReportAsMarkdown(report)
-  const defaultPath = path.join(__dirname, '..', 'docs', 'CALIBRATION-REPORT.md')
-  const finalPath = outputPath || defaultPath
-  
-  fs.writeFileSync(finalPath, markdown)
-  console.log(`[Output] Full report saved to: ${finalPath}`)
-}
+// Summary to console
+console.log(formatReportAsSummary(report))
+console.log('')
+
+// Full markdown to file
+const markdown = formatReportAsMarkdown(report)
+const reportPath = path.join(__dirname, '..', 'docs', 'CALIBRATION-REPORT.md')
+
+fs.writeFileSync(reportPath, markdown)
+console.log(`[Output] Full report saved to: ${reportPath}`)
 
 // Print recommendations
 if (report.analysis.recommendations.length > 0) {
@@ -117,6 +81,9 @@ if (report.analysis.recommendations.length > 0) {
     console.log(`      Reason: ${rec.reasoning}`)
     console.log('')
   }
+} else {
+  console.log('')
+  console.log('✅ All thresholds within expected ranges!')
 }
 
 console.log('')
@@ -124,3 +91,4 @@ console.log('╔═════════════════════�
 console.log('║  Calibration complete. Review the report for threshold       ║')
 console.log('║  adjustments to make Selene\'s perception match reality.      ║')
 console.log('╚══════════════════════════════════════════════════════════════╝')
+

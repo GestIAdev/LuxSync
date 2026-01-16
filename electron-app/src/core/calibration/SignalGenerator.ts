@@ -511,5 +511,3 @@ export class SignalGenerator {
     ]
   }
 }
-
-export default SignalGenerator

@@ -174,6 +174,15 @@ interface FuzzyRule {
 /**
  * Parámetros para las funciones de membresía
  * Estos definen los "bordes" de cada categoría fuzzy
+ * 
+ * 🔬 WAVE 671: CALIBRADO CON DATOS EMPÍRICOS DEL LABORATORIO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Basado en CALIBRATION-REPORT.md:
+ * - Podcast/Silencio: Z ≤ 1.2σ (Normal)
+ * - Techno Kicks/Buildup: Z = 2.4-2.6σ (Notable)
+ * - THE_DROP: Z = 4.2σ (Epic)
+ * - White Noise: H = 0.14 (Dirty threshold)
+ * - Sine/Techno: H ≤ 0.05 (Clean)
  */
 const MEMBERSHIP_PARAMS = {
   // Energy (0-1 input)
@@ -183,18 +192,18 @@ const MEMBERSHIP_PARAMS = {
     high: { center: 1.0, spread: 0.35 },     // Pico en 1, desde 0.65
   },
   
-  // Z-Score (típicamente -4 a +4)
+  // Z-Score (calibrado con datos reales)
   zScore: {
-    normal: { threshold: 1.5 },              // |z| < 1.5
-    notable: { low: 1.5, high: 2.5 },        // 1.5 <= |z| < 2.5
-    epic: { threshold: 2.5 },                // |z| >= 2.5
+    normal: { threshold: 1.5 },              // |z| < 1.5 (Podcast=1.2, Silencio=0.0)
+    notable: { low: 1.5, high: 2.8 },        // 1.5 <= |z| < 2.8 (Techno Kicks 2.4-2.6, Buildup 2.3)
+    epic: { threshold: 2.8 },                // |z| >= 2.8 (THE_DROP alcanza 4.2σ - sobrepasa por 50%)
   },
   
-  // Harshness (0-1 input)
+  // Harshness (calibrado con datos reales)
   harshness: {
-    low: { center: 0.0, spread: 0.35 },
-    medium: { center: 0.5, spread: 0.30 },
-    high: { center: 1.0, spread: 0.35 },
+    low: { center: 0.0, spread: 0.05 },      // Clean: H ≤ 0.05 (Sine/Techno H=0.00)
+    medium: { center: 0.075, spread: 0.05 }, // Zona intermedia
+    high: { center: 0.15, spread: 0.10 },    // Dirty: H ≥ 0.10 (White Noise H=0.14, Podcast H=0.22)
   },
 } as const
 

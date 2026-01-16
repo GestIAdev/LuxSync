@@ -459,5 +459,3 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     }
   }
 }
-
-export default SeleneBrainAdapter

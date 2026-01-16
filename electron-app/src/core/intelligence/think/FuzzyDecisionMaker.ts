@@ -32,7 +32,7 @@
  * @wave 667
  */
 
-import type { SectionType } from '@/engine/types'
+import type { SectionType } from '../../../engine/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS: CONJUNTOS DIFUSOS

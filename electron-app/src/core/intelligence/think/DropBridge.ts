@@ -35,7 +35,7 @@
  * @wave 668
  */
 
-import type { SectionType } from '@/engine/types'
+import type { SectionType } from '../../../engine/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS

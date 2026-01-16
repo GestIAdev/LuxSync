@@ -667,11 +667,12 @@ export class MasterArbiter extends EventEmitter {
     // Clean up expired effects
     this.cleanupExpiredEffects()
     
+    // 🧹 WAVE 671.5: Silenced fixture processing spam (every 5s)
     // WAVE 380: Debug fixture IDs being processed
-    if (this.frameNumber % 300 === 0) { // Every ~5s at 60fps
-      console.log(`[MasterArbiter] 🩸 Processing ${this.fixtures.size} fixtures:`, 
-        Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...')
-    }
+    // if (this.frameNumber % 300 === 0) { // Every ~5s at 60fps
+    //   console.log(`[MasterArbiter] 🩸 Processing ${this.fixtures.size} fixtures:`, 
+    //     Array.from(this.fixtures.keys()).slice(0, 3).join(', '), '...')
+    // }
     
     // Arbitrate each fixture
     const fixtureTargets: FixtureLightingTarget[] = []

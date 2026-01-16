@@ -231,12 +231,13 @@ export class TitanOrchestrator {
     
     const shouldLog = this.frameCount % 30 === 0 // Log every ~1 second
     
-    // 🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
-    const shouldHeartbeat = this.frameCount % 150 === 0
-    if (shouldHeartbeat) {
-      const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
-      console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
-    }
+    // � WAVE 671.5: Silenced heartbeat spam (every 5s)
+    // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
+    // const shouldHeartbeat = this.frameCount % 150 === 0
+    // if (shouldHeartbeat) {
+    //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
+    //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
+    // }
     
     // 1. Brain produces MusicalContext
     const context = this.brain.getCurrentContext()
@@ -526,19 +527,20 @@ export class TitanOrchestrator {
         timestamp: Date.now()
       }
       
+      // 🧹 WAVE 671.5: Silenced BROADCAST debug spam (every 2s)
       // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
       // 🩸 WAVE 380: Updated to show REAL fixture IDs
-      if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
-        const f0 = truth.hardware.fixtures[0]
-        const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ')
-        console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`)
-        console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`)
-      }
+      // if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
+      //   const f0 = truth.hardware.fixtures[0]
+      //   const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ')
+      //   console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`)
+      //   console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`)
+      // }
       
       this.onBroadcast(truth)
       
-      // � WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
-      // �🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
+      // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
+      // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
       // Log cada 2 segundos (60 frames @ 30fps)
       // if (this.frameCount % 60 === 0) {
       //   console.log(
@@ -549,11 +551,12 @@ export class TitanOrchestrator {
       // }
     }
     
+    // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
     // Log every second
-    if (shouldLog && this.config.debug) {
-      const currentVibe = this.engine.getCurrentVibe()
-      console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
-    }
+    // if (shouldLog && this.config.debug) {
+    //   const currentVibe = this.engine.getCurrentVibe()
+    //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
+    // }
   }
 
   /**
@@ -747,9 +750,10 @@ export class TitanOrchestrator {
     // NO alimenta el análisis musical. Eso lo hace audioBuffer().
     // ====================================================================
     
-    if (this.config.debug && this.frameCount % 30 === 0) {
-      console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
-    }
+    // 🧹 WAVE 671.5: Silenced audio metrics spam (every 1s)
+    // if (this.config.debug && this.frameCount % 30 === 0) {
+    //   console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
+    // }
   }
 
   /**

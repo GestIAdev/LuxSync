@@ -350,11 +350,12 @@ export class SeleneLux {
         const timeSinceLastLog = now - this.lastLatinoLogTime;
         const flavorChanged = result.flavor !== this.lastLatinoFlavor;
         
-        if (flavorChanged || timeSinceLastLog >= this.LOG_THROTTLE_MS) {
-          console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
-          this.lastLatinoLogTime = now;
-          this.lastLatinoFlavor = result.flavor;
-        }
+        // 🧹 WAVE 671.5: Silenced legacy Latino physics spam
+        // if (flavorChanged || timeSinceLastLog >= this.LOG_THROTTLE_MS) {
+        //   console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
+        //   this.lastLatinoLogTime = now;
+        //   this.lastLatinoFlavor = result.flavor;
+        // }
       }
       
     } else if (
@@ -503,14 +504,15 @@ export class SeleneLux {
       mover: moverIntensity,
     };
     
+    // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
     // WAVE 300: Rock tiene su propio log con transientes (arriba)
     // WAVE 315: Chill tiene su propio log con breathing (arriba)
-    if (this.frameCount % 30 === 0 && physicsApplied !== 'rock' && physicsApplied !== 'chill') {
-      const source = physicsApplied === 'latino' ? '🌴LATINO' : 
-                     physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
-      console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
-    }
+    // if (this.frameCount % 30 === 0 && physicsApplied !== 'rock' && physicsApplied !== 'chill') {
+    //   const source = physicsApplied === 'latino' ? '🌴LATINO' : 
+    //                  physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
+    //   console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
+    // }
     
     // 🧠 WAVE 450: Detectar si Energy Override está activo
     const energyOverrideActive = isEnergyOverrideActive(audioMetrics.avgNormEnergy);

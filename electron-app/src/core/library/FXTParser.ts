@@ -646,5 +646,6 @@ export class FXTParser {
   }
 }
 
+// 🧹 WAVE 671.5: Debug OFF - silences startup spam (easily re-enable if needed)
 // Exportar instancia singleton para uso directo
-export const fxtParser = new FXTParser(true)  // Debug ON
+export const fxtParser = new FXTParser(false)  // Debug OFF

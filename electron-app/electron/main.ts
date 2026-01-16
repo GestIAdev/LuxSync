@@ -131,21 +131,22 @@ async function rescanAllLibraries(): Promise<FixtureLibraryItem[]> {
   const factoryDefinitions = fxtParser.scanFolder(factoryLibPath)
   const customDefinitions = fxtParser.scanFolder(customLibPath)
   
+  // 🧹 WAVE 671.5: Removed obsolete test_beam debug log (no longer needed)
   // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
-  const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
-  if (testBeam) {
-    console.log('[Library] 🔬 test_beam fixture data:', {
-      name: testBeam.name,
-      channelCount: testBeam.channelCount,
-      hasChannels: !!testBeam.channels,
-      channelsLength: testBeam.channels?.length,
-      firstChannel: testBeam.channels?.[0],
-      hasPhysics: !!testBeam.physics,
-      physics: testBeam.physics
-    })
-  } else {
-    console.log('[Library] ℹ️ test_beam not found in custom folder')
-  }
+  // const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
+  // if (testBeam) {
+  //   console.log('[Library] 🔬 test_beam fixture data:', {
+  //     name: testBeam.name,
+  //     channelCount: testBeam.channelCount,
+  //     hasChannels: !!testBeam.channels,
+  //     channelsLength: testBeam.channels?.length,
+  //     firstChannel: testBeam.channels?.[0],
+  //     hasPhysics: !!testBeam.physics,
+  //     physics: testBeam.physics
+  //   })
+  // } else {
+  //   console.log('[Library] ℹ️ test_beam not found in custom folder')
+  // }
   
   // Merge: custom overrides factory by name (not ID, IDs are unreliable for .fxt files)
   const mergedLibrary: FixtureLibraryItem[] = [...factoryDefinitions]

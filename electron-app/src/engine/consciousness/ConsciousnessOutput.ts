@@ -202,6 +202,7 @@ export interface ConsciousnessOutput {
  * Información de debug de la consciencia
  * 
  * WAVE 500 - PROJECT GENESIS: Añadido 'reasoning' para trazabilidad completa
+ * WAVE 667-669: Añadidos campos fuzzy para debug del sistema de decisión difusa
  */
 export interface ConsciousnessDebugInfo {
   /** Estado actual de caza */
@@ -241,6 +242,19 @@ export interface ConsciousnessDebugInfo {
     beautyDelta: number
     recommendation: 'execute' | 'modify' | 'abort'
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎲 WAVE 667-669: FUZZY DECISION DEBUG INFO
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Acción decidida por el sistema fuzzy */
+  fuzzyAction?: 'force_strike' | 'strike' | 'prepare' | 'hold'
+  
+  /** Z-Score actual de energía */
+  zScore?: number
+  
+  /** Nivel de alerta del Drop Bridge */
+  dropBridgeAlert?: 'none' | 'watching' | 'imminent' | 'activated'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

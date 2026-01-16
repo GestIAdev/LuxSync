@@ -136,6 +136,17 @@ import {
 } from './memory'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  FuzzyDecisionMaker,
+  DropBridge,
+  type FuzzyDecision,
+  type DropBridgeResult,
+} from './think'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -209,6 +220,12 @@ export class SeleneTitanConscious extends EventEmitter {
   private contextualMemory: ContextualMemory
   private lastMemoryOutput: ContextualMemoryOutput | null = null
   
+  // 🎲 WAVE 667-669: Fuzzy Decision System
+  private fuzzyDecisionMaker: FuzzyDecisionMaker
+  private dropBridge: DropBridge
+  private lastFuzzyDecision: FuzzyDecision | null = null
+  private lastDropBridgeResult: DropBridgeResult | null = null
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
@@ -220,6 +237,14 @@ export class SeleneTitanConscious extends EventEmitter {
       zScoreNotable: 1.5,
       zScoreSignificant: 2.0,
       zScoreEpic: 2.5,       // Threshold para anomalía
+    })
+    
+    // 🎲 WAVE 667-669: Inicializar sistema de decisión fuzzy
+    this.fuzzyDecisionMaker = new FuzzyDecisionMaker()
+    this.dropBridge = new DropBridge({
+      zScoreThreshold: 3.0,       // 3 sigma = condición divina
+      peakSections: ['drop', 'chorus'],
+      minEnergy: 0.75,
     })
     
     // Inicializar estado interno
@@ -414,7 +439,37 @@ export class SeleneTitanConscious extends EventEmitter {
     // 3. PREDICTION ENGINE: Anticipar próximos eventos
     const prediction = predict(pattern)
     
-    // 4. DECISION MAKER: Síntesis final
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 3.5a. DROP BRIDGE: ¿Es un momento divino?
+    const zScore = pattern.energyZScore ?? 0
+    // Normalizar sectionType (algunos vienen como 'build' en vez de 'buildup')
+    const normalizedSection = state.sectionType === 'build' ? 'buildup' : state.sectionType
+    
+    this.lastDropBridgeResult = this.dropBridge.check({
+      energyZScore: zScore,
+      sectionType: normalizedSection as 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro',
+      rawEnergy: state.rawEnergy,
+      hasKick: false, // TODO: Integrar detección de transientes
+      harshness: state.harshness,
+    })
+    
+    // 3.5b. FUZZY DECISION: Evaluar lógica difusa
+    this.lastFuzzyDecision = this.fuzzyDecisionMaker.evaluate({
+      energy: state.rawEnergy,
+      zScore: zScore,
+      sectionType: normalizedSection as 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro',
+      harshness: state.harshness ?? 0,
+      huntScore: huntDecision.confidence,
+      beauty: beautyAnalysis.totalBeauty,
+    })
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 4. DECISION MAKER: Síntesis final (ahora con contexto fuzzy)
+    // ═══════════════════════════════════════════════════════════════════════
+    
     const inputs: DecisionInputs = {
       pattern,
       beauty: beautyAnalysis,
@@ -424,7 +479,58 @@ export class SeleneTitanConscious extends EventEmitter {
       timestamp: state.timestamp,
     }
     
-    const output = makeDecision(inputs)
+    let output = makeDecision(inputs)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌩️ DROP BRIDGE OVERRIDE: La condición divina tiene prioridad absoluta
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.lastDropBridgeResult.shouldForceStrike) {
+      // Override total - disparamos solar flare
+      output = {
+        ...output,
+        confidence: Math.max(output.confidence, 0.95),
+        effectDecision: {
+          effectType: 'solar_flare',
+          intensity: this.lastDropBridgeResult.intensity,
+          zones: ['all'],
+          reason: this.lastDropBridgeResult.reason,
+          confidence: 0.99,
+        },
+        debugInfo: {
+          ...output.debugInfo,
+          reasoning: `🌩️ DROP BRIDGE: ${this.lastDropBridgeResult.reason}`,
+          fuzzyAction: 'force_strike',
+          zScore: zScore,
+        }
+      }
+      
+      this.emit('dropBridgeActivated', {
+        zScore,
+        intensity: this.lastDropBridgeResult.intensity,
+        section: state.sectionType,
+      })
+      
+      if (this.config.debug) {
+        console.log(`[SeleneTitanConscious] 🌩️ DROP BRIDGE OVERRIDE! z=${zScore.toFixed(2)}σ I=${this.lastDropBridgeResult.intensity.toFixed(2)}`)
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎲 FUZZY ENHANCEMENT: Mejorar decisión con lógica difusa
+    // ═══════════════════════════════════════════════════════════════════════
+    else if (this.lastFuzzyDecision.action === 'strike' && 
+             this.lastFuzzyDecision.confidence > 0.6 &&
+             !huntDecision.shouldStrike) {
+      // Fuzzy dice strike, pero el Hunt no. Confiamos en Fuzzy si la confianza es alta.
+      output = {
+        ...output,
+        confidence: Math.max(output.confidence, this.lastFuzzyDecision.confidence),
+        debugInfo: {
+          ...output.debugInfo,
+          reasoning: `🎲 FUZZY OVERRIDE: ${this.lastFuzzyDecision.reasoning}`,
+          fuzzyAction: this.lastFuzzyDecision.action,
+        }
+      }
+    }
     
     // 5. Actualizar estado interno
     const huntState = getHuntState()
@@ -438,9 +544,21 @@ export class SeleneTitanConscious extends EventEmitter {
       this.state.activePrediction = null
     }
     
-    // Log periódico
+    // Log periódico con información fuzzy
     if (this.config.debug && this.stats.framesProcessed % 30 === 0) {
-      console.log(`[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} Strike=${huntDecision.shouldStrike} Pred=${prediction.type}(${(prediction.probability * 100).toFixed(0)}%)`)
+      const fuzzyEmoji = {
+        force_strike: '⚡',
+        strike: '🎯',
+        prepare: '🔮',
+        hold: '😴',
+      }[this.lastFuzzyDecision.action]
+      
+      console.log(
+        `[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} ` +
+        `Fuzzy=${fuzzyEmoji}${this.lastFuzzyDecision.action} ` +
+        `Z=${zScore.toFixed(1)}σ ` +
+        `Alert=${this.lastDropBridgeResult.alertLevel}`
+      )
     }
     
     return output
@@ -676,8 +794,14 @@ export class SeleneTitanConscious extends EventEmitter {
     this.contextualMemory.reset()
     this.lastMemoryOutput = null
     
+    // 🎲 WAVE 667-669: Resetear sistema fuzzy
+    this.fuzzyDecisionMaker.reset()
+    this.dropBridge.reset()
+    this.lastFuzzyDecision = null
+    this.lastDropBridgeResult = null
+    
     if (this.config.debug) {
-      console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory)')
+      console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory + Fuzzy)')
     }
   }
   
@@ -719,6 +843,38 @@ export class SeleneTitanConscious extends EventEmitter {
    */
   isMemoryWarmedUp(): boolean {
     return this.contextualMemory.isWarmedUp
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎲 WAVE 667-669: API DE FUZZY DECISION SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Obtiene la última decisión fuzzy tomada.
+   */
+  getFuzzyDecision(): FuzzyDecision | null {
+    return this.lastFuzzyDecision
+  }
+  
+  /**
+   * Obtiene el último resultado del Drop Bridge.
+   */
+  getDropBridgeResult(): DropBridgeResult | null {
+    return this.lastDropBridgeResult
+  }
+  
+  /**
+   * ¿Está el Drop Bridge en alerta alta? (múltiples frames con z alto)
+   */
+  isDropBridgeOnHighAlert(): boolean {
+    return this.dropBridge.isHighAlert()
+  }
+  
+  /**
+   * Obtiene el nivel de alerta actual del Drop Bridge.
+   */
+  getDropBridgeAlertLevel(): 'none' | 'watching' | 'imminent' | 'activated' {
+    return this.lastDropBridgeResult?.alertLevel ?? 'none'
   }
 }
 

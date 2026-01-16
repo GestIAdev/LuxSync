@@ -104,6 +104,11 @@ export interface AudioAnalysis {
   timestamp: number;
   frameId: number;
   
+  // 🎚️ WAVE 670: AGC Gain Factor
+  // Factor de ganancia aplicado al buffer ANTES del análisis
+  // Permite ver si el audio fue amplificado (>1) o atenuado (<1)
+  agcGainFactor?: number;
+  
   // Beat Detection
   bpm: number;
   bpmConfidence: number;      // 0-1

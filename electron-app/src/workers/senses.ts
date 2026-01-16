@@ -57,7 +57,11 @@ import {
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
-// 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
+// �️ WAVE 670: AGC - Normalización de buffer ANTES del FFT
+// CRITICAL: Sin esto, los Z-Scores del WAVE 660 son ficción matemática
+import { getAGC, type AGCOutput } from './utils/AutomaticGainControl';
+
+// �🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
 // WAVE 254: Migrado desde selene-lux-core a engine/consciousness
 import { MoodSynthesizer } from '../engine/consciousness/MoodSynthesizer';
 
@@ -336,6 +340,9 @@ console.log('[BETA] 🌈 MoodSynthesizer initialized (VAD Model)');
  * This gets sent to GAMMA for intelligent decisions
  */
 interface ExtendedAudioAnalysis extends AudioAnalysis {
+  // 🎚️ WAVE 670: AGC Gain Factor for debug visibility
+  agcGainFactor?: number;
+  
   // Wave 8 Rich Analysis (attached as metadata)
   wave8?: {
     rhythm: RhythmOutput;
@@ -359,20 +366,21 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   const startTime = performance.now();
   state.frameCount++;
   
-  // 🎯 WAVE 14/15: Apply Input Gain (CRITICAL FIX)
-  // Si la señal es débil, los analizadores (Spectrum, Rhythm) ven "silencio".
-  // El BeatDetector tiene su propio AGC, pero el resto NO.
-  // Aplicamos el gain AQUÍ para que afecte a TODO el pipeline.
-  const gain = config.inputGain ?? 1.0;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // �️ WAVE 670: AUTOMATIC GAIN CONTROL - NORMALIZACIÓN DE ENTRADA
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CRÍTICO: Sin esto, los Z-Scores del WAVE 660 son FICCIÓN MATEMÁTICA.
+  // AGC normaliza el buffer ANTES de cualquier análisis para que:
+  // - MP3 silencioso → señal normalizada (~0.25 RMS)
+  // - WAV saturado → señal normalizada (~0.25 RMS)
+  // - Resultado: El FFT y los analizadores ven niveles CONSISTENTES
+  // ═══════════════════════════════════════════════════════════════════════════
+  const agc = getAGC();
+  const agcResult = agc.processBuffer(buffer);
   
-  // � WAVE 39.5: DIAGNOSTIC logs silenciados (spam)
-  // Solo activar para debugging con DEBUG_VERBOSE
-  // if (state.frameCount % 60 === 0) {
-  //   let rawRms = 0;
-  //   for (let i = 0; i < buffer.length; i++) { rawRms += buffer[i] * buffer[i]; }
-  //   rawRms = Math.sqrt(rawRms / buffer.length);
-  //   console.log(`[BETA 🎚️] Frame ${state.frameCount}: RawRMS=${rawRms.toFixed(4)}`);
-  // }
+  // 🎯 WAVE 14/15: Apply Input Gain DESPUÉS del AGC (si el usuario quiere boost extra)
+  // Normalmente inputGain debería ser 1.0 ahora que tenemos AGC
+  const gain = config.inputGain ?? 1.0;
   
   if (gain !== 1.0) {
     for (let i = 0; i < buffer.length; i++) {
@@ -538,6 +546,10 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
   return {
     timestamp: Date.now(),
     frameId: state.frameCount,
+    
+    // 🎚️ WAVE 670: AGC Gain Factor (para debug)
+    // Valores típicos: 1.0 = sin cambio, >1 = amplificando (audio suave), <1 = atenuando (audio fuerte)
+    agcGainFactor: agcResult.gainFactor,
     
     // Core beat info
     bpm: state.currentBpm,

@@ -20,6 +20,10 @@ import type { GenerationOptions, SelenePalette } from '../../engine/color/Selene
 import type { MetaEmotion } from '../../engine/color/MoodArbiter'
 import type { ColorStrategy } from '../../engine/color/StrategyArbiter'
 
+// WAVE 500 PHASE 5: Import de tipos reales de los módulos nuevos
+import type { MusicalPrediction as PredictionEnginePrediction } from './think/PredictionEngine'
+import type { DreamResult as ScenarioSimulatorDream } from './dream/ScenarioSimulator'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUT: Estado Estabilizado de Titan
 // ═══════════════════════════════════════════════════════════════════════════
@@ -29,6 +33,10 @@ import type { ColorStrategy } from '../../engine/color/StrategyArbiter'
  * 
  * Este es el INPUT nativo para SeleneTitanConscious.
  * Todos los datos ya pasaron por los stabilizers (anti-epilepsia).
+ * 
+ * 🔥 WAVE 642: ENERGY UNIFICATION
+ * - rawEnergy: GAMMA sin tocar → para strikes/reacción inmediata
+ * - smoothedEnergy: Smart Smooth → para visual base sin flicker
  */
 export interface TitanStabilizedState {
   // ═══════════════════════════════════════════════════════════════════════
@@ -54,7 +62,10 @@ export interface TitanStabilizedState {
   /** Estrategia de color estabilizada (15s rolling, 15s lock) */
   stableStrategy: ColorStrategy
   
-  /** Energía suavizada (rolling 2s) */
+  /** 🔥 WAVE 642: Energía RAW de GAMMA - La fuente de verdad para REACCIÓN */
+  rawEnergy: number
+  
+  /** Energía suavizada (Smart Smooth EMA 0.70) - para visual base sin flicker */
   smoothedEnergy: number
   
   /** ¿Estamos en un DROP? (FSM detectó drop relativo) */
@@ -162,6 +173,13 @@ export type EnergyPhase = 'valley' | 'building' | 'peak' | 'drop'
  */
 export interface SeleneMusicalPattern {
   // ═══════════════════════════════════════════════════════════════════════
+  // CONTEXTO VIBE (WAVE 625)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** ID del Vibe activo - necesario para Strike Matrix dinámica */
+  vibeId: VibeId
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // CLASIFICACIONES
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -221,6 +239,16 @@ export interface SeleneMusicalPattern {
   highPresence: number
   
   // ═══════════════════════════════════════════════════════════════════════
+  // ENERGÍA FÍSICA (WAVE 635 + WAVE 642)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 🔥 WAVE 642: Energía RAW de GAMMA - La fuente de verdad para REACCIÓN */
+  rawEnergy: number
+  
+  /** Energía Smart Smooth (EMA 0.70) - Para visual base sin flicker */
+  smoothedEnergy: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // DROP STATE
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -246,6 +274,7 @@ export type BeautyTrend = 'rising' | 'falling' | 'stable'
 
 /**
  * Estado interno de la consciencia
+ * WAVE 500 PHASE 5: Usa tipos reales de los módulos nuevos
  */
 export interface SeleneInternalState {
   /** Estado de caza actual */
@@ -266,11 +295,11 @@ export interface SeleneInternalState {
   /** Candidatos actuales para strike */
   strikeCandidates: StrikeCandidate[]
   
-  /** Predicción activa (si hay) */
-  activePrediction: MusicalPrediction | null
+  /** Predicción activa (si hay) - WAVE 500: Tipo real de PredictionEngine */
+  activePrediction: PredictionEnginePrediction | null
   
-  /** Último sueño simulado (si hay) */
-  lastDream: DreamResult | null
+  /** Último sueño simulado (si hay) - WAVE 500: Tipo real de ScenarioSimulator */
+  lastDream: ScenarioSimulatorDream | null
   
   /** Sesgos detectados */
   detectedBiases: string[]

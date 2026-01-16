@@ -48,6 +48,7 @@ const OVERRIDE_OUTPUT: ConsciousnessOutput = {
     confidence: 1.0,          // Máxima confianza en override
   },
   movementDecision: null,  // No modular movimiento
+  effectDecision: null,    // 🧨 WAVE 600: No forzar efectos en override
   confidence: 1.0,
   timestamp: 0,  // Se actualiza en cada llamada
   source: 'hunt',

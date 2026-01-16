@@ -15,7 +15,7 @@
  */
 
 import React, { Suspense, lazy, useState, useCallback } from 'react'
-import { useControlStore, selectViewMode, selectIs3DMode, GlobalMode } from '../../../stores/controlStore'
+import { useControlStore, selectViewMode, selectIs3DMode, GlobalMode, selectAIEnabled } from '../../../stores/controlStore'
 import { useTruthSensory } from '../../../hooks'
 import { ViewModeSwitcher } from '../../shared/ViewModeSwitcher'
 import { StageSimulator2 } from './SimulateView/StageSimulator2'
@@ -29,11 +29,8 @@ const Stage3DCanvas = lazy(() => import('./stage3d/Stage3DCanvas'))
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// WAVE 422: MODES simplificados - 'flow' eliminado (Auto-Override System)
-const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = [
-  { id: 'manual', label: 'OVERRIDE', icon: '🎚️', color: '#FF6B6B' },
-  { id: 'selene', label: 'SELENE', icon: '🌙', color: '#7C4DFF' },
-]
+// WAVE 610: No modes - Solo botón FORCE STRIKE
+// Override eliminado - no sirve para nada
 
 const MOOD_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   peaceful: { label: 'CHILL', icon: '😌', color: '#4ECDC4' },
@@ -80,6 +77,10 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   const globalMode = useControlStore(state => state.globalMode)
   const setGlobalMode = useControlStore(state => state.setGlobalMode)
   
+  // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
+  const aiEnabled = useControlStore(selectAIEnabled)
+  const toggleAI = useControlStore(state => state.toggleAI)
+  
   // 🎵 WAVE 33.3: BPM & Mood from truthStore
   const sensory = useTruthSensory()
   const displayBpm = sensory?.beat?.bpm ?? 0
@@ -121,26 +122,69 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
           {/* DIVIDER */}
           <div className="toolbar-divider" />
           
-          {/* 🎨 MODE SWITCHER: Manual | Flow | Selene */}
-          <div className="mode-switcher">
-            {MODES.map(mode => (
-              <button
-                key={mode.id}
-                className={`mode-btn ${globalMode === mode.id ? 'active' : ''}`}
-                onClick={() => {
-                  console.log(`[StageViewDual] 🎛️ Mode switched: ${globalMode} → ${mode.id}`)
-                  setGlobalMode(mode.id)
-                }}
-                style={{ 
-                  '--mode-color': mode.color,
-                  borderColor: globalMode === mode.id ? mode.color : 'transparent'
-                } as React.CSSProperties}
-              >
-                <span className="mode-icon">{mode.icon}</span>
-                <span className="mode-label">{mode.label}</span>
-              </button>
-            ))}
-          </div>
+          {/* 🧨 WAVE 610: FORCE STRIKE - Manual Detonator */}
+          <button
+            className="force-strike-btn"
+            onClick={async () => {
+              try {
+                // 🧨 Disparar efecto Solar Flare manualmente
+                await window.lux?.forceStrike?.({ effect: 'solar_flare', intensity: 1.0 })
+                console.log('[StageViewDual] 🧨 FORCE STRIKE TRIGGERED!')
+                
+                // Feedback visual - pulso breve
+                const btn = document.querySelector('.force-strike-btn')
+                btn?.classList.add('strike-pulse')
+                setTimeout(() => btn?.classList.remove('strike-pulse'), 500)
+              } catch (err) {
+                console.error('[StageViewDual] Force Strike error:', err)
+              }
+            }}
+            title="⚡ FORCE STRIKE - Dispara Solar Flare inmediatamente"
+            style={{
+              backgroundColor: 'rgba(255, 87, 34, 0.2)',
+              borderColor: '#FF5722',
+              color: '#FF5722',
+              fontWeight: 700,
+              textShadow: '0 0 4px rgba(255, 87, 34, 0.5)',
+            }}
+          >
+            <span className="strike-icon">⚡</span>
+            <span className="strike-label">STRIKE</span>
+          </button>
+          
+          {/* DIVIDER */}
+          <div className="toolbar-divider" />
+          
+          {/* 🧬 WAVE 500: CONSCIOUSNESS KILL SWITCH */}
+          <button
+            className={`consciousness-toggle ${aiEnabled ? 'active' : 'inactive'}`}
+            onClick={async () => {
+              const newState = !aiEnabled
+              toggleAI()
+              
+              // 🧬 Propagar al backend (TitanEngine → Selene V2)
+              try {
+                await window.lux?.setConsciousnessEnabled?.(newState)
+                console.log(`[StageViewDual] 🧬 Consciousness ${newState ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
+              } catch (err) {
+                console.error('[StageViewDual] Failed to sync consciousness state:', err)
+              }
+            }}
+            title={aiEnabled ? 'Desactivar Consciencia (Solo Física Reactiva)' : 'Activar Consciencia (Selene V2)'}
+            style={{
+              backgroundColor: aiEnabled ? 'rgba(124, 77, 255, 0.2)' : 'rgba(100, 100, 100, 0.2)',
+              borderColor: aiEnabled ? '#7C4DFF' : '#666',
+              color: aiEnabled ? '#7C4DFF' : '#888',
+            }}
+          >
+            <span className="consciousness-dot" style={{
+              backgroundColor: aiEnabled ? '#4ADE80' : '#EF4444',
+              boxShadow: aiEnabled ? '0 0 8px #4ADE80' : '0 0 4px #EF4444',
+            }} />
+            <span className="consciousness-label">
+              {aiEnabled ? '🧠 CONSCIOUS' : '⚙️ REACTIVE'}
+            </span>
+          </button>
           
           {/* DIVIDER */}
           <div className="toolbar-divider" />

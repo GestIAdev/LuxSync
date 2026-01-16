@@ -231,6 +231,12 @@ declare global {
     forceMutate: () => Promise<{ success: boolean; error?: string }>
     resetMemory: () => Promise<{ success: boolean; error?: string }>
     
+    // 🧬 WAVE 500: Consciousness Kill Switch
+    setConsciousnessEnabled: (enabled: boolean) => Promise<{ success: boolean; error?: string }>
+    
+    // 🧨 WAVE 610: Force Strike - Manual Effect Detonator
+    forceStrike: (config: { effect: string; intensity: number }) => Promise<{ success: boolean }>
+    
     // 🎛️ WAVE 62: Vibe Selector
     setVibe: (vibeId: string) => Promise<{ success: boolean; vibeId?: string; error?: string }>
     getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>

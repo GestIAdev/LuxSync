@@ -132,6 +132,24 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
+  // 🧬 WAVE 560: Separated consciousness toggle (Layer 1 only - NO BLACKOUT!)
+  ipcMain.handle('lux:setConsciousness', (_event, enabled: boolean) => {
+    console.log('[IPC] lux:setConsciousness:', enabled)
+    if (titanOrchestrator) {
+      titanOrchestrator.setConsciousnessEnabled(enabled)
+    }
+    return { success: true }
+  })
+  
+  // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+  ipcMain.handle('lux:forceStrike', (_event, config: { effect: string; intensity: number }) => {
+    console.log('[IPC] 🧨 lux:forceStrike:', config)
+    if (titanOrchestrator) {
+      titanOrchestrator.forceStrikeNextFrame(config)
+    }
+    return { success: true }
+  })
+  
   ipcMain.handle('lux:setInputGain', (_event, gain: number) => {
     console.log('[IPC] lux:setInputGain:', gain)
     if (titanOrchestrator) {

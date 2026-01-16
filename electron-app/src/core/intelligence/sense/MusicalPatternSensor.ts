@@ -87,6 +87,9 @@ export function senseMusicalPattern(state: TitanStabilizedState): SeleneMusicalP
   const harmonicDensity = calculateHarmonicDensity(state)
   
   return {
+    // WAVE 625: Pasar vibeId desde TitanStabilizedState
+    vibeId: state.vibeId,
+    
     // Clasificaciones
     section,
     energyPhase,
@@ -109,6 +112,10 @@ export function senseMusicalPattern(state: TitanStabilizedState): SeleneMusicalP
     bassPresence: state.bass,
     midPresence: state.mid,
     highPresence: state.high,
+    
+    // 🔥 WAVE 642: Energía CANONICAL (rawEnergy para reacción, smoothed para visual)
+    rawEnergy: state.rawEnergy,
+    smoothedEnergy: state.smoothedEnergy,
     
     // Estado del drop
     isDropActive: state.isDropActive,

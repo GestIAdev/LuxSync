@@ -34,4 +34,6 @@ export {
   useTruthMusicalDNA,
   // 🔥 WAVE 74: Throttled hooks
   useTruthPaletteThrottled,
+  // 🧠 WAVE 550: AI Telemetry Hook
+  useTruthAI,
 } from './useSeleneTruth'

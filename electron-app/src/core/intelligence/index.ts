@@ -69,13 +69,60 @@ export {
 } from './sense'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COGNICIÓN (TODO: PHASE 3)
+// COGNICIÓN - El Cazador (PHASE 3 COMPLETE)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// export * from './think'
+export {
+  // Hunt Engine
+  processHunt,
+  forcePhaseTransition,
+  getHuntState,
+  resetHuntEngine,
+  getHuntStats,
+  type HuntCandidate,
+  type StrikeConditions,
+  type HuntDecision,
+  // Prediction Engine
+  predict,
+  getLastPrediction,
+  getSectionHistory,
+  validatePrediction,
+  resetPredictionEngine,
+  type PredictionType,
+  type MusicalPrediction,
+  type PredictionAction,
+  // Decision Maker
+  makeDecision,
+  mergeDecisions,
+  isSignificantDecision,
+  type DecisionInputs,
+  type DecisionMakerConfig,
+} from './think'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// META-CONSCIENCIA (TODO: PHASE 4)
+// META-CONSCIENCIA - El Soñador (PHASE 4 COMPLETE)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// export * from './dream'
+export {
+  // Scenario Simulator
+  dream,
+  getLastDream,
+  getDreamStats,
+  resetDreamEngine,
+  type ScenarioType,
+  type SimulatedScenario,
+  type DreamResult,
+  type SimulatorConfig,
+  // Bias Detector
+  recordDecision,
+  analyzeBiases,
+  getBiasStrings,
+  getLastAnalysis,
+  getBiasStats,
+  resetBiasDetector,
+  type BiasType,
+  type BiasSeverity,
+  type DetectedBias,
+  type BiasAnalysis,
+  type BiasDetectorConfig,
+} from './dream'

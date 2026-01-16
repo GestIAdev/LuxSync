@@ -29,6 +29,9 @@ import {
   ControlLayer 
 } from '../arbiter'
 
+// 🧨 WAVE 635: Import EffectManager para color override global
+import { getEffectManager } from '../effects/EffectManager'
+
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
@@ -68,6 +71,11 @@ export class TitanOrchestrator {
   private mode: 'auto' | 'manual' = 'auto'
   private useBrain = true
   private inputGain = 1.0
+  
+  // 🧬 WAVE 560: Separated consciousness toggle (Layer 1 only)
+  // useBrain = Layer 0 (reactiva) + Layer 1 (consciousness)
+  // consciousnessEnabled = ONLY Layer 1 (consciousness)
+  private consciousnessEnabled = true
 
   // WAVE 255: Real audio buffer from frontend
   private lastAudioData: { bass: number; mid: number; high: number; energy: number } = {
@@ -136,6 +144,12 @@ export class TitanOrchestrator {
       initialVibe: this.config.initialVibe 
     })
     console.log('[TitanOrchestrator] TitanEngine created')
+    
+    // 📜 WAVE 560: Subscribe to TitanEngine log events for Tactical Log
+    this.engine.on('log', (logEntry: { category: string; message: string; data?: Record<string, unknown> }) => {
+      this.log(logEntry.category, logEntry.message, logEntry.data)
+    })
+    console.log('[TitanOrchestrator] 📜 Tactical Log connected to TitanEngine')
     
     // Initialize HAL
     this.hal = new HardwareAbstraction({ debug: this.config.debug })
@@ -296,7 +310,34 @@ export class TitanOrchestrator {
     
     // 4. HAL renders arbitrated target -> produces fixture states
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
-    const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
+    let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
+    
+    // 🧨 WAVE 635: NUCLEAR COLOR OVERRIDE
+    // Si hay un efecto activo con globalOverride, forzar color dorado en TODAS las fixtures
+    const effectManager = getEffectManager()
+    const effectOutput = effectManager.getCombinedOutput()
+    
+    if (effectOutput.hasActiveEffects && effectOutput.globalOverride && effectOutput.dimmerOverride !== undefined) {
+      // Color DORADO INTENSO: R:255, G:200, B:80
+      const flareR = 255
+      const flareG = 200
+      const flareB = 80
+      const flareIntensity = effectOutput.dimmerOverride  // 0-1
+      
+      // Override color y dimmer de TODAS las fixtures
+      fixtureStates = fixtureStates.map(f => ({
+        ...f,
+        r: flareR,
+        g: flareG,
+        b: flareB,
+        dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP dimmer
+      }))
+      
+      // Log throttled
+      if (this.frameCount % 10 === 0) {
+        console.log(`[TitanOrchestrator 🌟] SOLAR COLOR OVERRIDE: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+      }
+    }
     
     // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
     const shouldLogToTactical = this.frameCount % 30 === 0
@@ -374,10 +415,12 @@ export class TitanOrchestrator {
           }
         },
         // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
+        // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
         consciousness: {
           ...createDefaultCognitive(),
           stableEmotion: this.engine.getStableEmotion(),
           thermalTemperature: this.engine.getThermalTemperature(),
+          ai: this.engine.getConsciousnessTelemetry(),
         },
         // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
         // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
@@ -536,11 +579,69 @@ export class TitanOrchestrator {
   }
 
   /**
-   * WAVE 254: Enable/disable brain processing
+   * WAVE 254: Enable/disable brain processing (Layer 0 + Layer 1)
+   * 🔴 DEPRECATED for consciousness control - use setConsciousnessEnabled instead
+   * This kills EVERYTHING (blackout) - only use for full system stop
    */
   setUseBrain(enabled: boolean): void {
     this.useBrain = enabled
-    console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'}`)
+    console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'} (FULL SYSTEM)`)
+    this.log('System', `🧠 Brain: ${enabled ? 'ONLINE' : 'OFFLINE'}`)
+  }
+  
+  /**
+   * 🧬 WAVE 560: Enable/disable consciousness ONLY (Layer 1)
+   * 
+   * This is the CORRECT toggle for the AI switch:
+   * - When OFF: Layer 0 (física reactiva) keeps running
+   * - When ON: Layer 1 (consciousness) provides recommendations
+   * 
+   * NO MORE BLACKOUT!
+   */
+  setConsciousnessEnabled(enabled: boolean): void {
+    this.consciousnessEnabled = enabled
+    
+    // Propagar al TitanEngine (Selene V2)
+    if (this.engine) {
+      this.engine.setConsciousnessEnabled(enabled)
+    }
+    
+    console.log(`[TitanOrchestrator] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
+    this.log('Brain', `🧬 Consciousness: ${enabled ? 'ACTIVE' : 'STANDBY'}`)
+  }
+  
+  /**
+   * 🧬 WAVE 560: Get consciousness state
+   */
+  isConsciousnessEnabled(): boolean {
+    return this.consciousnessEnabled
+  }
+  
+  /**
+   * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+   * 
+   * Dispara un efecto manualmente sin esperar decisión de HuntEngine.
+   * Útil para testear efectos visuales sin alterar umbrales de los algoritmos.
+   * 
+   * FLOW:
+   * 1. Frontend llama window.lux.forceStrike({ effect: 'solar_flare', intensity: 1.0 })
+   * 2. IPC handler llama titanOrchestrator.forceStrikeNextFrame(config)
+   * 3. Este método llama engine's forceStrikeNextFrame(config)
+   * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
+   * 
+   * @param config - { effect: string, intensity: number }
+   */
+  forceStrikeNextFrame(config: { effect: string; intensity: number }): void {
+    if (!this.engine) {
+      console.warn('[TitanOrchestrator] 🧨 Cannot force strike - Engine not initialized')
+      return
+    }
+    
+    console.log(`[TitanOrchestrator] 🧨 FORCE STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`)
+    this.log('Effect', `🧨 Manual Strike: ${config.effect}`, { intensity: config.intensity })
+    
+    // Delegar al TitanEngine
+    this.engine.forceStrikeNextFrame(config)
   }
 
   /**

@@ -56,6 +56,22 @@ import {
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
 import { getOpticsConfig } from './movement/VibeMovementPresets'
 
+// 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
+import { 
+  SeleneTitanConscious, 
+  type TitanStabilizedState,
+  type ConsciousnessOutput,
+  type ConsciousnessColorDecision,
+  type ConsciousnessPhysicsModifier,
+} from '../core/intelligence'
+
+// 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos
+import { 
+  getEffectManager,
+  type EffectManager,
+  type CombinedEffectOutput,
+} from '../core/effects'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -130,19 +146,25 @@ export class TitanEngine extends EventEmitter {
   // 🔥 WAVE 269: SeleneColorEngine reemplaza a ColorLogic
   // 🧠 WAVE 271: SYNAPTIC RESURRECTION - Stabilization Layer
   // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
+  // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa V2
+  // 🧨 WAVE 600: EFFECT ARSENAL
   private vibeManager: VibeManager
   private keyStabilizer: KeyStabilizer
   private energyStabilizer: EnergyStabilizer
   private moodArbiter: MoodArbiter
   private strategyArbiter: StrategyArbiter
   private nervousSystem: SeleneLux
+  private selene: SeleneTitanConscious
+  private effectManager: EffectManager  // 🧨 WAVE 600: Effect Arsenal
   
   // 🧠 WAVE 271: Cached stabilized state (for telemetry/debug)
   // 🌡️ WAVE 283: Added thermalTemperature for UI sync
+  // 🔥 WAVE 642: Added rawEnergy (GAMMA sin tocar)
   private lastStabilizedState: {
     stableKey: string | null
     stableEmotion: MetaEmotion
     stableStrategy: ColorStrategy
+    rawEnergy: number  // 🔥 WAVE 642: GAMMA RAW
     smoothedEnergy: number
     isDropActive: boolean
     thermalTemperature: number
@@ -150,10 +172,17 @@ export class TitanEngine extends EventEmitter {
     stableKey: null,
     stableEmotion: 'NEUTRAL',
     stableStrategy: 'analogous',
+    rawEnergy: 0,  // 🔥 WAVE 642
     smoothedEnergy: 0,
     isDropActive: false,
     thermalTemperature: 4500,
   }
+  
+  // 🧬 WAVE 550: Cached consciousness output for telemetry HUD
+  private lastConsciousnessOutput: ConsciousnessOutput | null = null
+  
+  // 🧨 WAVE 610: Manual strike trigger (force effect without HuntEngine decision)
+  private manualStrikePending: { effect: string; intensity: number } | null = null
   
   // ═══════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR
@@ -182,6 +211,12 @@ export class TitanEngine extends EventEmitter {
     // ⚡ WAVE 274: ORGAN HARVEST - Sistema Nervioso (Reactivo a Género)
     this.nervousSystem = new SeleneLux({ debug: this.config.debug })
     
+    // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa V2
+    this.selene = new SeleneTitanConscious({ debug: this.config.debug })
+    
+    // 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos Singleton
+    this.effectManager = getEffectManager()
+    
     // Establecer vibe inicial
     this.vibeManager.setActiveVibe(this.config.initialVibe)
     
@@ -195,10 +230,12 @@ export class TitanEngine extends EventEmitter {
       previousBass: 0,
     }
     
-    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST)`)
+    console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`)
     console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`)
     console.log(`[TitanEngine]    🧠 Stabilizers: Key✓ Energy✓ Mood✓ Strategy✓`)
     console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`)
+    console.log(`[TitanEngine]    🧬 Consciousness: SeleneTitanConscious V2✓ (Native Intelligence)`)
+    console.log(`[TitanEngine]    🧨 EffectManager: ${this.effectManager.getState().activeEffects} effects ready`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -265,10 +302,12 @@ export class TitanEngine extends EventEmitter {
     
     // 🧠 Cachear estado estabilizado (para telemetría y debug)
     // 🌡️ WAVE 283: Ahora incluye thermalTemperature del MoodArbiter
+    // 🔥 WAVE 642: Ahora incluye rawEnergy (GAMMA sin tocar)
     this.lastStabilizedState = {
       stableKey: keyOutput.stableKey,
       stableEmotion: moodOutput.stableEmotion,
       stableStrategy: strategyOutput.stableStrategy,
+      rawEnergy: energyOutput.rawEnergy,  // 🔥 WAVE 642: GAMMA RAW para strikes
       smoothedEnergy: energyOutput.smoothedEnergy,
       isDropActive: energyOutput.isRelativeDrop,
       thermalTemperature: moodOutput.thermalTemperature,
@@ -436,15 +475,161 @@ export class TitanEngine extends EventEmitter {
     }
     
     // ─────────────────────────────────────────────────────────────────────
-    // 6. CONSTRUIR LIGHTING INTENT
+    // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa V2
+    // El cerebro de Selene procesa el estado estabilizado y genera decisiones
+    // 🔥 WAVE 642: Ahora incluye rawEnergy (GAMMA sin tocar)
     // ─────────────────────────────────────────────────────────────────────
+    const titanStabilizedState: TitanStabilizedState = {
+      // Contexto del Vibe
+      vibeId: vibeProfile.id,
+      constitution: constitution,
+      
+      // Datos estabilizados (anti-epilepsia)
+      stableKey: keyOutput.stableKey,
+      stableEmotion: moodOutput.stableEmotion,
+      stableStrategy: strategyOutput.stableStrategy,
+      rawEnergy: energyOutput.rawEnergy,  // 🔥 WAVE 642: GAMMA RAW para strikes
+      smoothedEnergy: energyOutput.smoothedEnergy,
+      isDropActive: energyOutput.isRelativeDrop,
+      thermalTemperature: moodOutput.thermalTemperature,
+      
+      // Audio en tiempo real
+      bass: audio.bass,
+      mid: audio.mid,
+      high: audio.high,
+      
+      // Contexto musical
+      bpm: context.bpm,
+      beatPhase: context.beatPhase,
+      syncopation: context.syncopation,
+      sectionType: this.normalizeSectionType(context.section.type),
+      
+      // Paleta actual
+      currentPalette: selenePalette,
+      
+      // Timing
+      frameId: this.state.frameCount,
+      timestamp: now,
+    }
+    
+    // 🧬 Ejecutar la consciencia (sense → think → dream → validate)
+    const consciousnessOutput: ConsciousnessOutput = this.selene.process(titanStabilizedState)
+    
+    // 🧬 WAVE 550: Cachear output para telemetría HUD
+    this.lastConsciousnessOutput = consciousnessOutput
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 📜 WAVE 560: TACTICAL LOG - Emitir eventos de consciencia
+    // ─────────────────────────────────────────────────────────────────────
+    this.emitConsciousnessLogs(consciousnessOutput, audio.energy)
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🧨 WAVE 600: EFFECT ARSENAL - Procesar Effects
+    // ─────────────────────────────────────────────────────────────────────
+    
+    // 🧨 WAVE 610: Procesar manual strike si está pendiente (prioridad sobre AI)
+    if (this.manualStrikePending) {
+      const { effect, intensity } = this.manualStrikePending
+      
+      this.effectManager.trigger({
+        effectType: effect,
+        intensity,
+        source: 'manual',
+        reason: 'Manual strike from FORCE STRIKE button',
+      })
+      
+      console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}`)
+      this.manualStrikePending = null  // Consumir la flag
+    }
+    // Si la consciencia decidió disparar un efecto, hacerlo (solo si no hay manual strike)
+    else if (consciousnessOutput.effectDecision) {
+      const { effectType, intensity, reason, confidence } = consciousnessOutput.effectDecision
+      
+      // Solo disparar si confianza > 0.6
+      if (confidence > 0.6) {
+        this.effectManager.trigger({
+          effectType,
+          intensity,
+          source: 'hunt_strike',  // Disparado por decisión de consciencia/HuntEngine
+          reason,
+        })
+        
+        // Log throttled (solo 1 cada 30 frames)
+        if (this.state.frameCount % 30 === 0) {
+          console.log(`[TitanEngine] 🧨 Effect triggered: ${effectType} (intensity=${intensity.toFixed(2)}, reason=${reason})`)
+        }
+      }
+    }
+    
+    // Update all active effects (EffectManager maneja su propio deltaTime)
+    this.effectManager.update()
+    
+    // Get aggregated effect output (HTP blending)
+    const effectOutput: CombinedEffectOutput = this.effectManager.getCombinedOutput()
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 6. CONSTRUIR LIGHTING INTENT
+    // 🧬 WAVE 500: Aplicar decisiones de consciencia
+    // ─────────────────────────────────────────────────────────────────────
+    
+    // 🧬 Aplicar modificaciones de consciencia a la paleta (si hay decisión)
+    let finalPalette = palette
+    if (consciousnessOutput.colorDecision && consciousnessOutput.confidence > 0.5) {
+      finalPalette = this.applyConsciousnessColorDecision(palette, consciousnessOutput.colorDecision)
+    }
+    
+    // 🧬 Aplicar modificaciones de consciencia a los efectos (respetando Energy Override)
+    let finalEffects = effects
+    if (consciousnessOutput.physicsModifier && consciousnessOutput.confidence > 0.5) {
+      // ⚠️ ENERGY OVERRIDE: Si energía > 0.85, física tiene VETO TOTAL
+      if (energyOutput.smoothedEnergy < 0.85) {
+        finalEffects = this.applyConsciousnessPhysicsModifier(effects, consciousnessOutput.physicsModifier)
+      }
+    }
+    
+    // 🧨 WAVE 600: Aplicar Effect Arsenal overrides (HTP - Highest Takes Precedence)
+    let finalMasterIntensity = masterIntensity
+    if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+      // HTP: Solo aplicar si el efecto es más brillante
+      finalMasterIntensity = Math.max(masterIntensity, effectOutput.dimmerOverride)
+    }
+    
+    // 🧨 WAVE 630: GLOBAL OVERRIDE - Si el efecto tiene flag, bypasear zonas
+    if (effectOutput.hasActiveEffects && effectOutput.globalOverride) {
+      // Override TODAS las zonas al máximo (el efecto manda)
+      const overrideIntensity = effectOutput.dimmerOverride ?? 1.0
+      zones = {
+        front: { intensity: overrideIntensity, paletteRole: 'primary' },
+        back: { intensity: overrideIntensity, paletteRole: 'primary' },
+        left: { intensity: overrideIntensity, paletteRole: 'primary' },
+        right: { intensity: overrideIntensity, paletteRole: 'primary' },
+        ambient: { intensity: overrideIntensity, paletteRole: 'primary' },
+      }
+      console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ACTIVE - All zones at ${(overrideIntensity * 100).toFixed(0)}%`)
+    }
+    
+    // Aplicar color override del efecto (si existe)
+    if (effectOutput.hasActiveEffects && effectOutput.colorOverride) {
+      // Override completo del color primario con el flare
+      const flareColor = effectOutput.colorOverride
+      finalPalette = {
+        ...finalPalette,
+        primary: {
+          ...finalPalette.primary,
+          h: flareColor.h,
+          s: flareColor.s,
+          l: Math.min(100, flareColor.l * 1.2),  // Más brillo
+        },
+      }
+    }
+    
     const intent: LightingIntent = {
-      palette,
-      masterIntensity,
+      palette: finalPalette,
+      masterIntensity: finalMasterIntensity,  // 🧨 WAVE 600: Puede ser boosteado por efectos
       zones,
       movement,
       optics,  // 🔦 WAVE 410: Inyectar configuración óptica
-      effects,
+      effects: finalEffects,
       source: 'procedural',
       timestamp: now,
     }
@@ -483,10 +668,130 @@ export class TitanEngine extends EventEmitter {
   }
   
   /**
+   * 🧬 WAVE 500: Kill Switch para la Consciencia
+   * 
+   * Cuando enabled = false, Selene V2 se apaga y el sistema vuelve
+   * a física reactiva pura (Layer 0 solamente).
+   * 
+   * @param enabled - true = Consciencia ON, false = Solo Física Reactiva
+   */
+  public setConsciousnessEnabled(enabled: boolean): void {
+    this.selene.setEnabled(enabled)
+    console.log(`[TitanEngine] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
+    this.emit('consciousness-toggled', enabled)
+  }
+  
+  /**
+   * 🧬 WAVE 500: Obtiene estado de la consciencia
+   */
+  public isConsciousnessEnabled(): boolean {
+    return this.selene.isEnabled()
+  }
+  
+  /**
+   * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
+   * 
+   * Devuelve datos del cerebro de Selene en formato listo para UI.
+   */
+  public getConsciousnessTelemetry(): {
+    enabled: boolean
+    huntState: 'sleeping' | 'stalking' | 'evaluating' | 'striking' | 'learning'
+    confidence: number
+    prediction: string | null
+    predictionProbability: number
+    predictionTimeMs: number
+    beautyScore: number
+    beautyTrend: 'rising' | 'falling' | 'stable'
+    consonance: number
+    lastDecision: string | null
+    decisionSource: string | null
+    reasoning: string | null
+    biasesDetected: string[]
+    energyOverrideActive: boolean
+  } {
+    const output = this.lastConsciousnessOutput
+    const isEnabled = this.selene.isEnabled()
+    
+    // Si no hay output o la consciencia está deshabilitada, devolver valores por defecto
+    if (!output || !isEnabled) {
+      return {
+        enabled: isEnabled,
+        huntState: 'sleeping',
+        confidence: 0,
+        prediction: null,
+        predictionProbability: 0,
+        predictionTimeMs: 0,
+        beautyScore: 0.5,
+        beautyTrend: 'stable',
+        consonance: 1,
+        lastDecision: null,
+        decisionSource: null,
+        reasoning: null,
+        biasesDetected: [],
+        energyOverrideActive: false
+      }
+    }
+    
+    const debugInfo = output.debugInfo
+    const activePred = debugInfo.activePrediction
+    
+    // Construir texto de predicción
+    let predictionText: string | null = null
+    if (activePred) {
+      const pct = Math.round(activePred.probability * 100)
+      predictionText = `${activePred.type.toUpperCase()} - ${pct}%`
+    }
+    
+    // Determinar última decisión
+    let lastDecision: string | null = null
+    if (output.colorDecision) {
+      lastDecision = 'Palette Adjustment'
+    } else if (output.physicsModifier) {
+      lastDecision = 'Effects Modifier'
+    } else if (output.movementDecision) {
+      lastDecision = 'Movement Change'
+    }
+    
+    // Determinar si Energy Override está activo
+    const energyOverrideActive = this.lastStabilizedState.smoothedEnergy >= 0.85
+    
+    return {
+      enabled: true,
+      huntState: debugInfo.huntState,
+      confidence: output.confidence,
+      prediction: predictionText,
+      predictionProbability: activePred?.probability ?? 0,
+      predictionTimeMs: activePred?.timeUntilMs ?? 0,
+      beautyScore: debugInfo.beautyScore,
+      beautyTrend: debugInfo.beautyTrend,
+      consonance: debugInfo.consonance,
+      lastDecision,
+      decisionSource: output.source,
+      reasoning: debugInfo.reasoning ?? null,
+      biasesDetected: debugInfo.biasesDetected,
+      energyOverrideActive
+    }
+  }
+  
+  /**
    * Obtiene el vibe actual.
    */
   public getCurrentVibe(): VibeId {
     return this.vibeManager.getActiveVibe().id
+  }
+  
+  /**
+   * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+   * 
+   * Fuerza un disparo de efecto en el próximo frame, sin esperar decisión del HuntEngine.
+   * Útil para testeo manual de efectos sin alterar umbrales de algoritmos.
+   * 
+   * @param config - { effect: string, intensity: number }
+   * @example engine.forceStrikeNextFrame({ effect: 'solar_flare', intensity: 1.0 })
+   */
+  public forceStrikeNextFrame(config: { effect: string; intensity: number }): void {
+    this.manualStrikePending = config
+    console.log(`[TitanEngine] 🧨 Manual strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`)
   }
   
   /**
@@ -504,6 +809,128 @@ export class TitanEngine extends EventEmitter {
       frameCount: this.state.frameCount,
       fps: this.config.targetFps,
       vibeId: this.vibeManager.getActiveVibe().id,
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📜 WAVE 560: TACTICAL LOG EMISSION
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * Estado anterior para detectar cambios en Hunt/Prediction 
+   */
+  private lastHuntState: string = 'sleeping'
+  private lastPredictionType: string | null = null
+  private lastStrikeCount = 0
+  
+  /**
+   * 📜 WAVE 560: Emite logs de consciencia para el Tactical Log
+   * 
+   * Solo emite cuando hay cambios de estado significativos, no cada frame.
+   */
+  private emitConsciousnessLogs(output: ConsciousnessOutput, energy: number): void {
+    // No emitir si no hay energía o consciencia deshabilitada
+    if (energy < 0.05 || !this.selene.isEnabled()) return
+    
+    const debug = output.debugInfo
+    const huntState = debug.huntState
+    const activePred = debug.activePrediction
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🎯 HUNT STATE CHANGES
+    // ─────────────────────────────────────────────────────────────────────
+    if (huntState !== this.lastHuntState) {
+      const huntMessages: Record<string, string> = {
+        'sleeping': '💤 Hunt: Sleeping...',
+        'stalking': '🐆 Hunt: Stalking target...',
+        'evaluating': '🎯 Hunt: Evaluating worthiness...',
+        'striking': '⚡ Hunt: STRIKING!',
+        'learning': '📚 Hunt: Learning from strike...',
+      }
+      
+      this.emit('log', {
+        category: 'Hunt',
+        message: huntMessages[huntState] || `Hunt: ${huntState}`,
+        data: { 
+          confidence: Math.round(output.confidence * 100),
+          beauty: Math.round(debug.beautyScore * 100),
+        }
+      })
+      
+      this.lastHuntState = huntState
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🔮 PREDICTION CHANGES
+    // ─────────────────────────────────────────────────────────────────────
+    const predType = activePred?.type ?? null
+    if (predType !== this.lastPredictionType && predType !== null) {
+      const pct = Math.round((activePred?.probability ?? 0) * 100)
+      const timeMs = activePred?.timeUntilMs ?? 0
+      
+      this.emit('log', {
+        category: 'Brain',
+        message: `🔮 Prediction: ${predType.toUpperCase()} (${pct}%) in ${timeMs}ms`,
+        data: { 
+          type: predType, 
+          probability: pct, 
+          timeUntilMs: timeMs,
+        }
+      })
+      
+      this.lastPredictionType = predType
+    } else if (predType === null && this.lastPredictionType !== null) {
+      // Predicción terminó
+      this.emit('log', {
+        category: 'Brain',
+        message: '🔮 Prediction: Cleared',
+      })
+      this.lastPredictionType = null
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // ⚡ STRIKE EXECUTED (detectado por transición a 'striking')
+    // ─────────────────────────────────────────────────────────────────────
+    if (huntState === 'striking' && this.lastHuntState !== 'striking') {
+      const colorDecision = output.colorDecision
+      
+      this.emit('log', {
+        category: 'Hunt',
+        message: `⚡ STRIKE EXECUTED: ${colorDecision?.suggestedStrategy ?? 'palette change'}`,
+        data: {
+          confidence: Math.round(output.confidence * 100),
+          satMod: colorDecision?.saturationMod?.toFixed(2) ?? 'N/A',
+          brightMod: colorDecision?.brightnessMod?.toFixed(2) ?? 'N/A',
+        }
+      })
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // ⚡ ENERGY OVERRIDE (detectado por alta energía + confidence bajo)
+    // ─────────────────────────────────────────────────────────────────────
+    const isEnergyOverride = this.lastStabilizedState.smoothedEnergy >= 0.85
+    if (isEnergyOverride && this.state.frameCount % 30 === 0) {
+      this.emit('log', {
+        category: 'Mode',
+        message: `⚡ ENERGY OVERRIDE: Physics rules! (${Math.round(this.lastStabilizedState.smoothedEnergy * 100)}%)`,
+      })
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 💭 DREAM SIMULATION (throttled)
+    // ─────────────────────────────────────────────────────────────────────
+    if (debug.lastDream && this.state.frameCount % 60 === 0) {
+      const dream = debug.lastDream
+      
+      if (dream.recommendation === 'execute') {
+        this.emit('log', {
+          category: 'Brain',
+          message: `💭 Dream: Recommending ${dream.scenario.replace(/_/g, ' ')}`,
+          data: {
+            beautyDelta: dream.beautyDelta.toFixed(2),
+          }
+        })
+      }
     }
   }
   
@@ -533,6 +960,105 @@ export class TitanEngine extends EventEmitter {
       ambient: normalizeHSL(selene.ambient),
       strategy: selene.meta.strategy,
     }
+  }
+  
+  /**
+   * 🧬 WAVE 500: Normaliza el tipo de sección al formato esperado por TitanStabilizedState
+   */
+  private normalizeSectionType(
+    sectionType: string
+  ): 'intro' | 'verse' | 'chorus' | 'drop' | 'bridge' | 'outro' | 'build' | 'breakdown' | 'unknown' {
+    const normalized = sectionType?.toLowerCase() ?? 'unknown'
+    
+    // Mapeo de secciones comunes
+    const sectionMap: Record<string, 'intro' | 'verse' | 'chorus' | 'drop' | 'bridge' | 'outro' | 'build' | 'breakdown' | 'unknown'> = {
+      intro: 'intro',
+      verse: 'verse',
+      chorus: 'chorus',
+      drop: 'drop',
+      bridge: 'bridge',
+      outro: 'outro',
+      build: 'build',
+      buildup: 'build',
+      breakdown: 'breakdown',
+      hook: 'chorus',
+      prechorus: 'build',
+      postchorus: 'verse',
+    }
+    
+    return sectionMap[normalized] ?? 'unknown'
+  }
+  
+  /**
+   * 🧬 WAVE 500: Aplica decisiones de color de la consciencia a la paleta
+   * 
+   * La consciencia puede modificar saturación y brillo de los colores,
+   * pero RESPETA la paleta base generada por SeleneColorEngine.
+   */
+  private applyConsciousnessColorDecision(
+    palette: ColorPalette,
+    decision: ConsciousnessColorDecision
+  ): ColorPalette {
+    // Clonar paleta para no mutar
+    const newPalette: ColorPalette = {
+      primary: { ...palette.primary },
+      secondary: { ...palette.secondary },
+      accent: { ...palette.accent },
+      ambient: { ...palette.ambient },
+      strategy: palette.strategy,
+    }
+    
+    // Aplicar modificadores de saturación (0.8-1.2)
+    const satMod = decision.saturationMod ?? 1
+    const clampedSatMod = Math.max(0.8, Math.min(1.2, satMod))
+    
+    // Aplicar modificadores de brillo (0.8-1.2)
+    const brightMod = decision.brightnessMod ?? 1
+    const clampedBrightMod = Math.max(0.8, Math.min(1.2, brightMod))
+    
+    // Modificar cada color de la paleta
+    for (const role of ['primary', 'secondary', 'accent', 'ambient'] as const) {
+      const color = newPalette[role]
+      
+      // Aplicar saturación (clamped 0-1)
+      color.s = Math.max(0, Math.min(1, color.s * clampedSatMod))
+      
+      // Aplicar brillo (clamped 0-1)
+      color.l = Math.max(0, Math.min(1, color.l * clampedBrightMod))
+    }
+    
+    return newPalette
+  }
+  
+  /**
+   * 🧬 WAVE 500: Aplica modificadores de física de la consciencia a los efectos
+   * 
+   * ⚠️ ESTE MÉTODO SOLO SE LLAMA SI energy < 0.85
+   * En drops (energy >= 0.85), la física tiene VETO TOTAL.
+   */
+  private applyConsciousnessPhysicsModifier(
+    effects: EffectIntent[],
+    modifier: ConsciousnessPhysicsModifier
+  ): EffectIntent[] {
+    if (!modifier) return effects
+    
+    return effects.map(effect => {
+      const newEffect = { ...effect }
+      
+      // Modificar intensidad de strobe/flash
+      if (effect.type === 'strobe' && modifier.strobeIntensity !== undefined) {
+        newEffect.intensity *= modifier.strobeIntensity
+      }
+      
+      if (effect.type === 'flash' && modifier.flashIntensity !== undefined) {
+        newEffect.intensity *= modifier.flashIntensity
+      }
+      
+      // Clamp final
+      newEffect.intensity = Math.max(0, Math.min(1, newEffect.intensity))
+      
+      return newEffect
+    })
   }
   
   /**
@@ -754,10 +1280,12 @@ export class TitanEngine extends EventEmitter {
     this.moodArbiter = new MoodArbiter()
     this.strategyArbiter = new StrategyArbiter()
     
+    // 🔥 WAVE 642: Añadido rawEnergy al reset
     this.lastStabilizedState = {
       stableKey: null,
       stableEmotion: 'NEUTRAL',
       stableStrategy: 'analogous',
+      rawEnergy: 0,  // 🔥 WAVE 642
       smoothedEnergy: 0,
       isDropActive: false,
       thermalTemperature: 4500,

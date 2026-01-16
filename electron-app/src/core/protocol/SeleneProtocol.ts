@@ -274,6 +274,85 @@ export interface DropState {
   isActive: boolean
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 550: AI TELEMETRY - SeleneTitanConscious Brain Feed
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Estado de caza de la gata
+ */
+export type AIHuntState = 'sleeping' | 'stalking' | 'evaluating' | 'striking' | 'learning'
+
+/**
+ * 🎯 AI TELEMETRY - Tactical HUD Data
+ * 
+ * WAVE 550: Datos del cerebro de Selene para el HUD táctico.
+ * Esto es lo que piensa la IA en tiempo real.
+ */
+export interface AITelemetry {
+  /** ¿Está la consciencia activa? */
+  enabled: boolean
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // HUNT STATE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Estado de caza actual */
+  huntState: AIHuntState
+  
+  /** Confianza general (0-1) - Para la barra de carga */
+  confidence: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // PREDICTION
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Predicción activa (ej: "DROP INCOMING - 71%") */
+  prediction: string | null
+  
+  /** Probabilidad de la predicción (0-1) */
+  predictionProbability: number
+  
+  /** Tiempo hasta el evento predicho (ms) */
+  predictionTimeMs: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // BEAUTY METRICS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Puntuación de belleza actual (0-1) */
+  beautyScore: number
+  
+  /** Tendencia de belleza */
+  beautyTrend: 'rising' | 'falling' | 'stable'
+  
+  /** Consonancia con estado anterior (0-1) */
+  consonance: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // DECISION
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Última decisión tomada (ej: "Palette Change") */
+  lastDecision: string | null
+  
+  /** Fuente de la decisión */
+  decisionSource: string | null
+  
+  /** Razonamiento de la decisión (human-readable) */
+  reasoning: string | null
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // DIAGNOSTICS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Sesgos detectados */
+  biasesDetected: string[]
+  
+  /** ¿Energy Override activo? (physics veto) */
+  energyOverrideActive: boolean
+}
+
 /**
  * 🧠 COGNITIVE DATA - Selene's Consciousness
  * 
@@ -316,6 +395,9 @@ export interface CognitiveData {
   
   /** Drop State Machine Status */
   dropState: DropState
+  
+  /** 🧠 WAVE 550: AI Telemetry from SeleneTitanConscious */
+  ai?: AITelemetry
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -722,7 +804,24 @@ export function createDefaultCognitive(): CognitiveData {
     vibe: { active: 'idle', transitioning: false },
     stableEmotion: 'NEUTRAL',
     thermalTemperature: 4500,
-    dropState: { state: 'IDLE', isActive: false }
+    dropState: { state: 'IDLE', isActive: false },
+    // 🧠 WAVE 550: AI Telemetry defaults
+    ai: {
+      enabled: false,
+      huntState: 'sleeping',
+      confidence: 0,
+      prediction: null,
+      predictionProbability: 0,
+      predictionTimeMs: 0,
+      beautyScore: 0.5,
+      beautyTrend: 'stable',
+      consonance: 1,
+      lastDecision: null,
+      decisionSource: null,
+      reasoning: null,
+      biasesDetected: [],
+      energyOverrideActive: false
+    }
   }
 }
 

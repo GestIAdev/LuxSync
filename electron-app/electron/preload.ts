@@ -354,6 +354,26 @@ const luxApi = {
   
   /** 🧠 WAVE-14.5: Resetear memoria de Selene */
   resetMemory: () => ipcRenderer.invoke('lux:resetMemory'),
+  
+  /** 
+   * 🧬 WAVE 560: Kill Switch - Enable/Disable Consciousness (Layer 1 ONLY)
+   * 
+   * FIXED: Now uses dedicated lux:setConsciousness handler instead of lux:setUseBrain
+   * - When OFF: Physics/Vibes (Layer 0) keep running - NO BLACKOUT!
+   * - When ON: Consciousness (Layer 1) provides AI recommendations
+   */
+  setConsciousnessEnabled: (enabled: boolean) => ipcRenderer.invoke('lux:setConsciousness', enabled),
+  
+  /**
+   * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+   * 
+   * Dispara un efecto (Solar Flare) manualmente sin esperar decisión de HuntEngine.
+   * Útil para testear efectos sin alterar umbrales de algoritmos.
+   * 
+   * @param config - { effect: 'solar_flare', intensity: 0-1 }
+   */
+  forceStrike: (config: { effect: string; intensity: number }) => 
+    ipcRenderer.invoke('lux:forceStrike', config),
 
   // ============================================
   // 🎛️ WAVE 62 + WAVE 250: VIBE SELECTOR (Standardized to lux:)

@@ -11,11 +11,12 @@ import { Filter, Download, Trash2, Search, Pause, Play, Terminal } from 'lucide-
 import './TacticalLog.css'
 
 // Configuration for Log Types (Cyberpunk Palette)
+// 🧬 WAVE 560: Added consciousness categories
 const LOG_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-  // Core Logic
-  Brain: { icon: '🧠', color: '#fbbf24', label: 'BRAIN' },
-  Mode: { icon: '🎭', color: '#a855f7', label: 'MODE' },
-  Hunt: { icon: '🎯', color: '#f97316', label: 'HUNT' },
+  // 🧬 CONSCIOUSNESS (WAVE 560)
+  Hunt: { icon: '🎯', color: '#f97316', label: 'HUNT' },      // Orange - Stalking/Strike
+  Brain: { icon: '🧠', color: '#fbbf24', label: 'BRAIN' },    // Amber - Predictions/Dreams
+  Mode: { icon: '🎭', color: '#a855f7', label: 'MODE' },      // Purple - State changes
   
   // Audio Analysis
   Beat: { icon: '🥁', color: '#22c55e', label: 'BEAT' },

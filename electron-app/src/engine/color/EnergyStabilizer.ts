@@ -70,9 +70,17 @@ export interface EnergyStabilizerConfig {
 
 /**
  * Salida del estabilizador de energía
+ * 
+ * 🔥 WAVE 642: ENERGY UNIFICATION
+ * - rawEnergy: Energía GAMMA sin tocar (para strikes/reacción inmediata)
+ * - smoothedEnergy: Smart Smooth para evitar flicker (EMA 0.70 + window 30)
+ * - instantEnergy: Energía del frame actual
  */
 export interface EnergyOutput {
-  /** Energía suavizada (rolling average 2s) - para Sat/Light base */
+  /** 🔥 WAVE 642: Energía RAW de GAMMA - La fuente de verdad para REACCIÓN */
+  rawEnergy: number;
+  
+  /** Energía suavizada (Smart Smooth EMA 0.70) - para visual base sin flicker */
   smoothedEnergy: number;
   
   /** Energía instantánea (frame actual) - para efectos/strobes */
@@ -162,15 +170,16 @@ export class EnergyStabilizer {
   /** 🎢 WAVE 57.5: PUBLIC - ¿Está el DROP activo para la UI? */
   public isDropActive = false;
   
-  // Default config
+  // 🔥 WAVE 642: SMART SMOOTH CONFIG - Preserva picos, evita flicker
+  // ANTES: smoothingWindowFrames=120 (2s), emaFactor=0.98 → demasiado lento, pierde picos
+  // AHORA: smoothingWindowFrames=30 (0.5s), emaFactor=0.70 → reactivo, anti-flicker
   private static readonly DEFAULT_CONFIG: EnergyStabilizerConfig = {
-    smoothingWindowFrames: 120,  // 2 segundos @ 60fps
+    smoothingWindowFrames: 30,   // 🔥 WAVE 642: 0.5 segundos @ 60fps (era 120 = 2s)
     silenceThreshold: 0.02,      // Prácticamente silencio
-    silenceResetFrames: 720,     // 🔌 WAVE 65: 12 segundos de silencio = reset (era 180 = 3s)
-    // 🔥 WAVE 67.5: 98% histórico = EMA más perezoso (era 0.95)
-    // Representa la energía de la SECCIÓN, no del compás
-    // Música latina tiene energía alta constante (0.5-0.6), esto evita falsos drops
-    emaFactor: 0.98,
+    silenceResetFrames: 720,     // 🔌 WAVE 65: 12 segundos de silencio = reset
+    // 🔥 WAVE 642: SMART SMOOTH - 70% histórico, 30% nuevo → reactivo pero sin flicker
+    // (era 0.98 que perdía TODOS los picos)
+    emaFactor: 0.70,
   };
   
   constructor(config: Partial<EnergyStabilizerConfig> = {}) {
@@ -309,7 +318,9 @@ export class EnergyStabilizer {
     //   this.lastLogFrame = this.frameCount;
     // }
     
+    // 🔥 WAVE 642: rawEnergy = energía GAMMA sin tocar (instantEnergy ya está clamped)
     return {
+      rawEnergy: energy,  // 🔥 WAVE 642: GAMMA RAW para strikes/reacción
       smoothedEnergy: this.emaEnergy,
       instantEnergy: energy,
       isSilence,

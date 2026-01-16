@@ -123,7 +123,7 @@ const DEFAULT_CONFIG: HuntConfig = {
   consonanceThreshold: 0.60,
   urgencyForceThreshold: 0.90,
   maxEvaluatingFrames: 15,
-  learningCooldownFrames: 10,
+  learningCooldownFrames: 120,  // 🔥 WAVE 635: 2 segundos de cooldown (era 10 = 166ms)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -340,9 +340,13 @@ function processEvaluating(
   // Evaluar condiciones de strike
   const conditions = evaluateStrikeConditions(pattern, beauty, consonance, cfg)
   
-  // ¿Strike perfecto?
+  // ¿Strike perfecto? (WAVE 625: Weighted score >= threshold)
   if (conditions.allMet) {
     transitionTo('striking')
+    
+    // 🧨 WAVE 630: THE WHY LOG - Log explícito con breakdown
+    const weights = getVibeWeights(pattern.vibeId)
+    console.log(`[SOLAR FLARE] 🚀 FIRED! Score: ${conditions.strikeScore.toFixed(2)} (Threshold: ${weights.threshold.toFixed(2)}) | Breakdown: Urgency(${conditions.urgencyScore.toFixed(2)})*${weights.urgencyWeight} + Beauty(${conditions.beautyScore.toFixed(2)})*${weights.beautyWeight} + Consonance(${conditions.consonanceScore.toFixed(2)})*${weights.consonanceWeight} | Vibe: ${pattern.vibeId}`)
     
     return {
       suggestedPhase: 'striking',
@@ -350,13 +354,16 @@ function processEvaluating(
       confidence: conditions.strikeScore,
       conditions,
       activeCandidate: state.activeCandidate,
-      reasoning: `STRIKE! Score=${conditions.strikeScore.toFixed(2)}`,
+      reasoning: conditions.reasoning,  // WAVE 625: Usar reasoning detallado
     }
   }
   
   // ¿Urgencia fuerza strike?
   if (conditions.urgencyScore > cfg.urgencyForceThreshold && conditions.beautyMet) {
     transitionTo('striking')
+    
+    // 🧨 WAVE 630: THE WHY LOG para FORCED STRIKE
+    console.log(`[SOLAR FLARE] 🚀 FORCED FIRE! Urgency=${conditions.urgencyScore.toFixed(2)} (Threshold: ${cfg.urgencyForceThreshold}) | Beauty=${conditions.beautyScore.toFixed(2)} | Vibe: ${pattern.vibeId}`)
     
     return {
       suggestedPhase: 'striking',
@@ -394,6 +401,17 @@ function processEvaluating(
       conditions,
       activeCandidate: state.activeCandidate,
       reasoning: 'Condiciones empeorando - abortar evaluación',
+    }
+  }
+  
+  // 🕵️ WAVE 610: NEAR MISS LOGGING - El Chivato
+  // 🎯 WAVE 625: Updated para mostrar weighted score vs threshold
+  if (conditions.strikeScore > 0.4) {
+    const weights = getVibeWeights(pattern.vibeId)
+    
+    if (!conditions.allMet) {
+      const delta = (weights.threshold - conditions.strikeScore).toFixed(2)
+      console.log(`[HUNT 🕵️] NEAR MISS: ${conditions.reasoning}`)
     }
   }
   
@@ -545,45 +563,163 @@ function calculateTrend(): 'rising' | 'stable' | 'falling' {
   return 'stable'
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 625: DYNAMIC STRIKE MATRIX - Matriz por Vibe
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VibeStrikeWeights {
+  /** Peso de belleza armónica (0-1) */
+  beautyWeight: number
+  
+  /** Peso de urgencia rítmica (0-1) */
+  urgencyWeight: number
+  
+  /** Peso de consonancia (0-1) */
+  consonanceWeight: number
+  
+  /** Umbral de strikeScore necesario (0-1) */
+  threshold: number
+  
+  /** Boost de urgencia base para géneros rhythm-driven */
+  urgencyBoost: number
+}
+
+/**
+ * WAVE 625: MATRIZ DINÁMICA DE STRIKES POR VIBE
+ * WAVE 635: SNIPER CALIBRATION - Rebalance de pesos y thresholds
+ * WAVE 640: SWEET SPOT UNLOCK - Thresholds más accesibles para música real
+ * 
+ * LOS 4 VIBES REALES DE LUXSYNC:
+ * - FIESTA-LATINA: Reggaeton/Cumbia → Ritmo es rey, armonía simple
+ * - TECHNO-CLUB: Techno/House → Urgencia hipnótica, poca variación armónica
+ * - POP-ROCK: Pop/Rock → Balance armonía + energía
+ * - CHILL-LOUNGE: Ambient/Lounge → Belleza armónica > Urgencia
+ * 
+ * WAVE 635 CHANGES:
+ * - Consonance: 20% → 10% (dejó de regalar puntos)
+ * - Beauty: Variable según vibe (20-70%)
+ * - Urgency: Variable según vibe (10-60%)
+ * - Thresholds: Subidos para evitar falsos positivos (podcasts)
+ * 
+ * WAVE 640 CHANGES:
+ * - fiesta-latina threshold: 0.70 → 0.65 (aceptar near-miss drops)
+ * - techno-club threshold: 0.70 → 0.65 (loops repetitivos necesitan umbral bajo)
+ * - Pesos: Sin cambios (funcionan bien)
+ */
+const VIBE_STRIKE_MATRIX: Record<string, VibeStrikeWeights> = {
+  // 🎉 FIESTA-LATINA: Rhythm-driven, armonía simple
+  'fiesta-latina': {
+    beautyWeight: 0.3,      // WAVE 635: Subido de 0.2 a 0.3
+    urgencyWeight: 0.6,     // Ritmo sigue siendo rey
+    consonanceWeight: 0.1,  // WAVE 635: Bajado de 0.2 a 0.1
+    threshold: 0.65,        // WAVE 640: Bajado de 0.70 a 0.65 (sweet spot para cumbia)
+    urgencyBoost: 0.1       // WAVE 635: Bajado de 0.2 a 0.1 (más sutil)
+  },
+  
+  // 🔊 TECHNO-CLUB: Hypnotic urgency, minimal harmony
+  'techno-club': {
+    beautyWeight: 0.2,      // WAVE 635: Subido de 0.1 a 0.2
+    urgencyWeight: 0.7,     // WAVE 635: Bajado de 0.8 a 0.7
+    consonanceWeight: 0.1,  // WAVE 635: Mantenido en 0.1
+    threshold: 0.65,        // WAVE 640: Bajado de 0.70 a 0.65 (loops necesitan umbral bajo)
+    urgencyBoost: 0.1       // WAVE 635: Bajado de 0.2 a 0.1
+  },
+  
+  // 🎸 POP-ROCK: Balanced, el estándar
+  'pop-rock': {
+    beautyWeight: 0.4,      // Balance armonía + energía
+    urgencyWeight: 0.5,     // WAVE 635: Subido de 0.4 a 0.5
+    consonanceWeight: 0.1,  // WAVE 635: Bajado de 0.2 a 0.1
+    threshold: 0.70,        // WAVE 635: Subido de 0.65 a 0.70
+    urgencyBoost: 0.0       // No boost, mediciones naturales
+  },
+  
+  // 🌙 CHILL-LOUNGE: Harmony-driven, belleza es arte
+  'chill-lounge': {
+    beautyWeight: 0.7,      // Belleza armónica es prioridad
+    urgencyWeight: 0.2,     // WAVE 635: Subido de 0.1 a 0.2
+    consonanceWeight: 0.1,  // WAVE 635: Bajado de 0.2 a 0.1
+    threshold: 0.75,        // WAVE 635: Subido de 0.70 a 0.75 (muy selectivo)
+    urgencyBoost: 0.0
+  },
+  
+  // 💤 IDLE: Neutro (cuando no hay vibe activo)
+  'idle': {
+    beautyWeight: 0.4,
+    urgencyWeight: 0.5,     // WAVE 635: Subido de 0.4 a 0.5
+    consonanceWeight: 0.1,  // WAVE 635: Bajado de 0.2 a 0.1
+    threshold: 0.75,        // WAVE 635: Subido de 0.70 a 0.75 (casi nunca dispara)
+    urgencyBoost: 0.0
+  },
+}
+
+/**
+ * Obtiene los pesos de strike para el vibe actual
+ * Si el vibe no existe en la matriz, usa pop-rock como default
+ */
+function getVibeWeights(vibeId: string): VibeStrikeWeights {
+  return VIBE_STRIKE_MATRIX[vibeId] ?? VIBE_STRIKE_MATRIX['pop-rock']
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EVALUACIÓN DE CONDICIONES - WAVE 625 DYNAMIC MATRIX
+// ═══════════════════════════════════════════════════════════════════════════
+
 function evaluateStrikeConditions(
   pattern: SeleneMusicalPattern,
   beauty: BeautyAnalysis,
   consonance: ConsonanceAnalysis,
   cfg: HuntConfig
 ): StrikeConditions {
+  // Métricas base
   const beautyScore = beauty.totalBeauty
   const consonanceScore = consonance.totalConsonance
   const trend = beauty.trend
-  const urgency = pattern.rhythmicIntensity * 0.5 + pattern.emotionalTension * 0.5
   
+  // WAVE 625: Calcular urgencia base (rhythmic + emotional)
+  let urgency = pattern.rhythmicIntensity * 0.5 + pattern.emotionalTension * 0.5
+  
+  // WAVE 625: Obtener matriz de pesos del vibe actual
+  const weights = getVibeWeights(pattern.vibeId)
+  
+  // WAVE 625: Aplicar urgency boost para géneros rhythm-driven
+  if (weights.urgencyBoost > 0) {
+    urgency = Math.min(1.0, urgency + weights.urgencyBoost)
+  }
+  
+  // WAVE 625: Calcular strikeScore PONDERADO en lugar de checks booleanos
+  const strikeScore = 
+    (beautyScore * weights.beautyWeight) +
+    (urgency * weights.urgencyWeight) +
+    (consonanceScore * weights.consonanceWeight)
+  
+  // Condiciones individuales (para logging y reasoning)
   const beautyMet = beautyScore >= cfg.beautyThreshold
   const consonanceMet = consonanceScore >= cfg.consonanceThreshold
   const trendMet = trend !== 'falling'
   const urgencyMet = urgency > 0.5 || pattern.section === 'chorus' || pattern.section === 'buildup'
   
-  const allMet = beautyMet && consonanceMet && trendMet
+  // WAVE 625: allMet ahora se basa en strikeScore >= threshold
+  const allMet = strikeScore >= weights.threshold
   
-  // Strike score: ponderación de condiciones
-  let strikeScore = 0
-  if (beautyMet) strikeScore += beautyScore * 0.40
-  if (consonanceMet) strikeScore += consonanceScore * 0.30
-  if (trendMet) strikeScore += 0.15
-  if (urgencyMet) strikeScore += 0.15
-  
-  // Bonus por condiciones perfectas
-  if (allMet && trend === 'rising') {
-    strikeScore = Math.min(1, strikeScore + 0.10)
+  // Bonus por sección musical (chorus/buildup = momento crítico)
+  let finalScore = strikeScore
+  if (pattern.section === 'chorus' || pattern.section === 'buildup') {
+    finalScore = Math.min(1.0, strikeScore + 0.05)
   }
   
+  // Bonus por trend rising (momentum ascendente)
+  if (trend === 'rising') {
+    finalScore = Math.min(1.0, finalScore + 0.05)
+  }
+  
+  // Reasoning para debug
   let reasoning = ''
   if (allMet) {
-    reasoning = `Condiciones perfectas: beauty=${beautyScore.toFixed(2)}, cons=${consonanceScore.toFixed(2)}`
+    reasoning = `[${pattern.vibeId}] STRIKE! Score=${finalScore.toFixed(2)} (threshold=${weights.threshold.toFixed(2)}) | Beauty=${beautyScore.toFixed(2)}×${weights.beautyWeight} Urgency=${urgency.toFixed(2)}×${weights.urgencyWeight} Cons=${consonanceScore.toFixed(2)}×${weights.consonanceWeight}`
   } else {
-    const missing: string[] = []
-    if (!beautyMet) missing.push(`beauty<${cfg.beautyThreshold}`)
-    if (!consonanceMet) missing.push(`consonance<${cfg.consonanceThreshold}`)
-    if (!trendMet) missing.push('trend=falling')
-    reasoning = `Falta: ${missing.join(', ')}`
+    const delta = (weights.threshold - finalScore).toFixed(2)
+    reasoning = `[${pattern.vibeId}] Score=${finalScore.toFixed(2)} < ${weights.threshold.toFixed(2)} (need +${delta}) | Beauty=${beautyScore.toFixed(2)} Urgency=${urgency.toFixed(2)} Cons=${consonanceScore.toFixed(2)}`
   }
   
   return {
@@ -596,7 +732,8 @@ function evaluateStrikeConditions(
     urgencyMet,
     urgencyScore: urgency,
     allMet,
-    strikeScore,
+    strikeScore: finalScore,
     reasoning,
   }
 }
+

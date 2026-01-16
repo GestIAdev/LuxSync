@@ -343,5 +343,13 @@ export function useTruthMusicalDNA() {
   }))
 }
 
+/**
+ * 🧠 WAVE 550: Hook para obtener telemetría de IA (para HuntMonitor HUD)
+ * @returns AI telemetry data from SeleneTitanConscious
+ */
+export function useTruthAI() {
+  return useTruthStore((state) => state.truth.consciousness.ai)
+}
+
 // Default export para conveniencia
 export default useSeleneTruth

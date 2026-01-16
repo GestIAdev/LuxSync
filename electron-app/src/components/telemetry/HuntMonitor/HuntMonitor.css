@@ -157,6 +157,152 @@
 .setting-row { display: flex; justify-content: space-between; }
 .setting-row .val { color: #f97316; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 550: NEW V2 STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* --- AI TOGGLE BADGE --- */
+.ai-toggle-badge {
+  font-size: 0.65rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.ai-toggle-badge.on {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.ai-toggle-badge.off {
+  background: rgba(100, 116, 139, 0.2);
+  border: 1px solid rgba(100, 116, 139, 0.5);
+  color: #64748b;
+}
+
+/* --- STATUS ICON --- */
+.status-icon {
+  font-size: 1rem;
+  margin-right: 2px;
+}
+
+/* --- PULSE ANIMATION FOR STATUS LED --- */
+.status-led.pulse {
+  animation: led-pulse 1s infinite;
+}
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+/* --- INTEL SECTION --- */
+.intel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.intel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+
+.intel-label {
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.intel-value {
+  color: #ccc;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Prediction row active state */
+.intel-row.prediction.active {
+  background: rgba(139, 92, 246, 0.1);
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 4px;
+}
+
+.intel-row.prediction.active .intel-value {
+  color: #a855f7;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+  animation: prediction-pulse 1.5s infinite;
+}
+
+@keyframes prediction-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* --- REASONING BAR --- */
+.reasoning-bar {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-top: 4px;
+}
+
+.reasoning-text {
+  font-size: 0.65rem;
+  color: #a855f7;
+  font-style: italic;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- DIAGNOSTICS GRID V2 --- */
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.diag-item.warning .diag-box {
+  background: #f97316;
+  border-color: #f97316;
+  box-shadow: 0 0 5px #f97316;
+}
+
+/* --- DISABLED STATE --- */
+.hunt-panel-container.disabled {
+  opacity: 0.7;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.hunt-panel-container.disabled .gauge-fill {
+  background: linear-gradient(90deg, #475569, #64748b) !important;
+}
+
+/* --- GAUGE THRESHOLD CRITICAL --- */
+.gauge-threshold.critical {
+  background: #ef4444;
+  opacity: 0.7;
+}
+
+/* --- WARM GAUGE STATE --- */
+.gauge-fill.warm {
+  animation: none;
+}
+
 /* --- ANIMATIONS --- */
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes rotate-lock { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

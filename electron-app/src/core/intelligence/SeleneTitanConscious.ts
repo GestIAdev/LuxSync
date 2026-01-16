@@ -87,6 +87,44 @@ import {
 } from './sense/ConsonanceSensor'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// IMPORTAR COGNICIÓN - PHASE 3 COMPLETE
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  processHunt,
+  resetHuntEngine,
+  getHuntState,
+  type HuntDecision,
+} from './think/HuntEngine'
+
+import {
+  predict,
+  resetPredictionEngine,
+  type MusicalPrediction,
+} from './think/PredictionEngine'
+
+import {
+  makeDecision,
+  type DecisionInputs,
+} from './think/DecisionMaker'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  dream as simulateDream,
+  resetDreamEngine,
+} from './dream/ScenarioSimulator'
+
+import {
+  recordDecision,
+  analyzeBiases,
+  getBiasStrings,
+  resetBiasDetector,
+} from './dream/BiasDetector'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -296,100 +334,162 @@ export class SeleneTitanConscious extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // THINK: Cognición - MODERNIZADO PARA TITAN
+  // THINK: Cognición - PHASE 3 COMPLETE - USANDO MÓDULOS REALES
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
    * 🧠 Decidir qué hacer basado en el patrón percibido
-   * AHORA USA MÉTRICAS NATIVAS DE TITAN
+   * PHASE 3: USA HuntEngine + PredictionEngine + DecisionMaker
    */
   private think(
     state: TitanStabilizedState,
     pattern: SeleneMusicalPattern
   ): ConsciousnessOutput {
-    // TODO: Implementar HuntEngine + PredictionEngine + DecisionMaker (PHASE 3)
-    // Por ahora, decisión basada en hunt phase + métricas de sensores
     
-    // Actualizar hunt phase
-    this.updateHuntPhase(pattern)
+    // 1. Obtener análisis de sensores (con fallback robusto)
+    const beautyAnalysis = this.currentBeauty ?? {
+      totalBeauty: 0.5,
+      phiAlignment: 0.5,
+      fibonacciDistribution: 0.5,
+      chromaticHarmony: 0.5,
+      contrastBalance: 0.5,
+      trend: 'stable' as const,
+      timestamp: Date.now()
+    }
     
-    // Obtener métricas de sensores
-    const beauty = this.currentBeauty?.totalBeauty ?? 0.5
-    const beautyTrend = this.currentBeauty?.trend ?? 'stable'
-    const consonance = this.currentConsonance?.totalConsonance ?? 0.7
-    const urgency = calculateMomentUrgency(pattern)
+    const consonanceAnalysis = this.currentConsonance ?? {
+      totalConsonance: 0.7,
+      chromaticConsonance: 0.7,
+      rhythmicConsonance: 0.7,
+      emotionalConsonance: 0.7,
+      dominantInterval: 'unison',
+      transitionType: 'smooth' as const,
+      suggestedTransitionMs: 500,
+      timestamp: Date.now()
+    }
     
-    // Crear output base
-    const output = createEmptyOutput()
-    output.timestamp = state.timestamp
-    output.source = 'hunt'
-    output.debugInfo.huntState = this.state.huntPhase
-    output.debugInfo.beautyScore = beauty
-    output.debugInfo.consonance = consonance
-    output.debugInfo.beautyTrend = beautyTrend
-    output.debugInfo.cyclesInCurrentState = this.state.cyclesInPhase
+    // 2. HUNT ENGINE: Procesar FSM del depredador
+    const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis)
     
-    // Decisiones basadas en fase
-    if (this.state.huntPhase === 'striking') {
-      // STRIKE MODE: Sugerir cambios más agresivos
-      output.colorDecision = {
-        suggestedStrategy: 'complementary',
-        saturationMod: 1.1,
-        brightnessMod: 1.05,
-        confidence: beauty,
-        reasoning: `Strike ejecutado (beauty=${beauty.toFixed(2)}, urgency=${urgency.toFixed(2)})`,
-      }
-      output.physicsModifier = {
-        strobeIntensity: 0.8 + beauty * 0.2,
-        flashIntensity: 0.85,
-        confidence: beauty,
-      }
-      output.confidence = beauty
-      this.stats.strikesExecuted++
-      
-    } else if (this.state.huntPhase === 'stalking') {
-      // STALKING MODE: Observar sin cambios agresivos
-      output.colorDecision = {
-        saturationMod: 1.0,
-        brightnessMod: 1.0,
-        confidence: 0.5,
-        reasoning: `Stalking (cycles=${this.state.cyclesInPhase}, urgency=${urgency.toFixed(2)})`,
-      }
-      output.confidence = 0.4
-      
-    } else if (this.state.huntPhase === 'evaluating') {
-      // EVALUATING MODE: Preparando strike
-      output.colorDecision = {
-        saturationMod: 1.02, // Sutil aumento
-        brightnessMod: 1.0,
-        confidence: 0.6,
-        reasoning: `Evaluating target (beauty=${beauty.toFixed(2)}, consonance=${consonance.toFixed(2)})`,
-      }
-      output.confidence = 0.5
-      
+    // 3. PREDICTION ENGINE: Anticipar próximos eventos
+    const prediction = predict(pattern)
+    
+    // 4. DECISION MAKER: Síntesis final
+    const inputs: DecisionInputs = {
+      pattern,
+      beauty: beautyAnalysis,
+      consonance: consonanceAnalysis,
+      huntDecision,
+      prediction,
+      timestamp: state.timestamp,
+    }
+    
+    const output = makeDecision(inputs)
+    
+    // 5. Actualizar estado interno
+    const huntState = getHuntState()
+    this.state.huntPhase = huntState.phase
+    this.state.cyclesInPhase = huntState.framesInPhase
+    
+    // 6. Almacenar predicción completa (WAVE 500: tipo real)
+    if (prediction.probability > 0.5) {
+      this.state.activePrediction = prediction
     } else {
-      // OTROS (sleeping, learning): Mínima intervención
-      output.confidence = 0.2
+      this.state.activePrediction = null
+    }
+    
+    // Log periódico
+    if (this.config.debug && this.stats.framesProcessed % 30 === 0) {
+      console.log(`[SeleneTitanConscious] 🧠 Hunt=${this.state.huntPhase} Strike=${huntDecision.shouldStrike} Pred=${prediction.type}(${(prediction.probability * 100).toFixed(0)}%)`)
     }
     
     return output
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // DREAM: Simulación
+  // DREAM: Simulación - PHASE 4 COMPLETE - USANDO MÓDULOS REALES
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
    * 💭 Simular si la decisión mejorará la belleza
+   * PHASE 4: USA ScenarioSimulator + BiasDetector
    */
   private dream(
     state: TitanStabilizedState,
     decision: ConsciousnessOutput
   ): ConsciousnessOutput {
-    // TODO: Implementar ScenarioSimulator + BiasDetector
-    // Por ahora, pass-through
-    
     this.stats.dreamsSimulated++
+    
+    // Obtener pattern y beauty actuales
+    const pattern = this.state.lastPattern ?? senseMusicalPattern(state)
+    const currentBeauty = this.currentBeauty?.totalBeauty ?? 0.5
+    
+    // Solo soñar en estados de baja energía (cuando hay tiempo)
+    // En momentos de alta actividad, pasamos directo
+    if (state.smoothedEnergy > 0.6 || decision.confidence < 0.4) {
+      // Registrar decisión para análisis de sesgos
+      recordDecision(decision)
+      return decision
+    }
+    
+    // SCENARIO SIMULATOR: ¿Hay un mejor camino?
+    const dreamResult = simulateDream(state, pattern, currentBeauty)
+    
+    // Guardar resultado del sueño
+    this.state.lastDream = dreamResult
+    
+    // Si el sueño recomienda abortar, reducir confianza
+    if (dreamResult.recommendation === 'abort') {
+      return {
+        ...decision,
+        confidence: decision.confidence * 0.6,
+        debugInfo: {
+          ...decision.debugInfo,
+          reasoning: `Dream abort: ${dreamResult.reason}`,
+          lastDream: {
+            scenario: dreamResult.bestScenario?.type ?? 'none',
+            beautyDelta: dreamResult.bestScenario?.beautyDelta ?? 0,
+            recommendation: 'abort'
+          }
+        }
+      }
+    }
+    
+    // Si el sueño recomienda ejecutar con mejor escenario
+    if (dreamResult.recommendation === 'execute' && dreamResult.bestScenario) {
+      const best = dreamResult.bestScenario
+      
+      // Usar la decisión del mejor escenario soñado
+      return {
+        ...decision,
+        colorDecision: best.decision,
+        confidence: Math.min(1, decision.confidence * 1.2), // Boost de confianza
+        source: 'dream',
+        debugInfo: {
+          ...decision.debugInfo,
+          reasoning: `Dream execute: ${best.description}`,
+          lastDream: {
+            scenario: best.type,
+            beautyDelta: best.beautyDelta,
+            recommendation: 'execute'
+          }
+        }
+      }
+    }
+    
+    // BIAS DETECTOR: Analizar sesgos periódicamente
+    recordDecision(decision)
+    
+    if (this.stats.framesProcessed % 100 === 0) {
+      const biasAnalysis = analyzeBiases()
+      this.state.detectedBiases = getBiasStrings()
+      this.stats.biasesDetected += biasAnalysis.biases.length
+      
+      if (this.config.debug && biasAnalysis.biases.length > 0) {
+        console.log(`[SeleneTitanConscious] 🧠 Biases detected: ${this.state.detectedBiases.join(', ')}`)
+      }
+    }
+    
     return decision
   }
   
@@ -468,72 +568,7 @@ export class SeleneTitanConscious extends EventEmitter {
     }
   }
   
-  /**
-   * Actualiza fase de caza usando métricas nativas de Titan
-   * MODERNIZADO: Usa pattern.rhythmicIntensity, emotionalTension, etc.
-   */
-  private updateHuntPhase(pattern: SeleneMusicalPattern): void {
-    this.state.cyclesInPhase++
-    
-    // Obtener métricas de sensores (beauty/consonance vienen de sensores, no del pattern)
-    const beauty = this.currentBeauty?.totalBeauty ?? 0.5
-    const beautyTrend = this.currentBeauty?.trend ?? 'stable'
-    const consonance = this.currentConsonance?.totalConsonance ?? 0.7
-    
-    // Métricas nativas del pattern
-    const urgency = pattern.rhythmicIntensity * 0.6 + pattern.emotionalTension * 0.4
-    
-    // Estado machine simplificada
-    switch (this.state.huntPhase) {
-      case 'sleeping':
-        // Despertar si hay suficiente actividad o belleza
-        if (beauty > 0.4 || urgency > 0.5) {
-          this.state.huntPhase = 'stalking'
-          this.state.cyclesInPhase = 0
-        }
-        break
-        
-      case 'stalking':
-        // Evaluar si hay candidato bueno
-        if (beauty > 0.7 && this.state.cyclesInPhase >= 5) {
-          this.state.huntPhase = 'evaluating'
-          this.state.cyclesInPhase = 0
-        }
-        // Dormir si belleza cae mucho y no hay urgencia
-        if (beauty < 0.3 && urgency < 0.3 && this.state.cyclesInPhase > 30) {
-          this.state.huntPhase = 'sleeping'
-          this.state.cyclesInPhase = 0
-        }
-        break
-        
-      case 'evaluating':
-        // Strike si condiciones perfectas
-        if (beauty > 0.75 && consonance > 0.65 && beautyTrend !== 'falling') {
-          this.state.huntPhase = 'striking'
-          this.state.cyclesInPhase = 0
-        }
-        // Volver a stalking si condiciones empeoran
-        if (beauty < 0.6 || this.state.cyclesInPhase > 10) {
-          this.state.huntPhase = 'stalking'
-          this.state.cyclesInPhase = 0
-        }
-        break
-        
-      case 'striking':
-        // Después de strike, aprender
-        this.state.huntPhase = 'learning'
-        this.state.cyclesInPhase = 0
-        break
-        
-      case 'learning':
-        // Volver a stalking después de aprender
-        if (this.state.cyclesInPhase > 5) {
-          this.state.huntPhase = 'stalking'
-          this.state.cyclesInPhase = 0
-        }
-        break
-    }
-  }
+  // WAVE 500 PHASE 5: updateHuntPhase eliminado - ahora HuntEngine lo maneja
   
   // ═══════════════════════════════════════════════════════════════════════
   // API PÚBLICA
@@ -562,6 +597,11 @@ export class SeleneTitanConscious extends EventEmitter {
     }
   }
   
+  /** Obtiene estado habilitado/deshabilitado */
+  isEnabled(): boolean {
+    return this.config.enabled
+  }
+  
   /** Resetea estado */
   reset(): void {
     this.state = this.createInitialState()
@@ -577,15 +617,23 @@ export class SeleneTitanConscious extends EventEmitter {
     }
     this.lastOutput = createEmptyOutput()
     
-    // Resetear sensores
+    // Resetear sensores (PHASE 2)
     this.currentBeauty = null
     this.currentConsonance = null
     resetPatternHistory()
     resetBeautyHistory()
     resetConsonanceState()
     
+    // Resetear cognición (PHASE 3)
+    resetHuntEngine()
+    resetPredictionEngine()
+    
+    // Resetear meta-consciencia (PHASE 4)
+    resetDreamEngine()
+    resetBiasDetector()
+    
     if (this.config.debug) {
-      console.log('[SeleneTitanConscious] 🔄 Reset complete (+ sensors)')
+      console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4)')
     }
   }
 }

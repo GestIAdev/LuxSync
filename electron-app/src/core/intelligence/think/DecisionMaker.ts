@@ -146,7 +146,8 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   const { huntDecision, prediction, pattern, beauty } = inputs
   
   // Prioridad 1: Strike del hunt engine
-  if (huntDecision.shouldStrike && huntDecision.confidence > 0.7) {
+  // 🔥 WAVE 635: Bajado de 0.7 a 0.50 para que coincida con el threshold del Hunt
+  if (huntDecision.shouldStrike && huntDecision.confidence > 0.50) {
     return 'strike'
   }
   
@@ -232,6 +233,41 @@ function generateStrikeDecision(
     strobeIntensity: 0.7 + pattern.rhythmicIntensity * 0.3,
     flashIntensity: 0.8 + beauty.totalBeauty * 0.2,
     confidence: confidence,
+  }
+  
+  // 🧨 WAVE 600: SOLAR FLARE TRIGGER
+  // 🔥 WAVE 635: SNIPER CALIBRATION - Energy Veto + Weighted Scoring
+  // 🔥 WAVE 642: ENERGY UNIFICATION - Ahora usa rawEnergy (GAMMA directo)
+  const urgency = huntDecision.conditions?.urgencyScore ?? 0
+  const tension = pattern.emotionalTension
+  
+  // 🛡️ WAVE 635.1 → WAVE 640 → WAVE 642: THE ENERGY VETO (Anti-Silence)
+  // 🔥 WAVE 642: Ahora usa rawEnergy (GAMMA sin tocar) en lugar de smoothedEnergy
+  // - rawEnergy refleja el momento REAL (0.97 en un drop)
+  // - smoothedEnergy solo para visual base (evita flicker)
+  const hasPhysicalEnergy = pattern.rawEnergy >= 0.20
+  
+  if (!hasPhysicalEnergy) {
+    output.debugInfo.reasoning = `ENERGY VETO: rawEnergy=${pattern.rawEnergy.toFixed(2)} < 0.20 (silence/noise detected)`
+    console.log(`[DecisionMaker 🛡️] ${output.debugInfo.reasoning}`)
+    return output
+  }
+  
+  // 🔥 WAVE 635.2: SNIPER GATE - Solo strikes de alta confianza
+  // El Hunt ya evalúa urgency/beauty/consonance con matriz dinámica
+  if (confidence > 0.50) {
+    // Intensidad proporcional a la urgencia/tensión
+    const flareIntensity = Math.max(urgency, tension, 0.7)  // Mínimo 70%
+    
+    output.effectDecision = {
+      effectType: 'solar_flare',
+      intensity: Math.min(1.0, 0.8 + flareIntensity * 0.2),  // 80-100%
+      zones: ['all'],
+      reason: `HUNT STRIKE! urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} score=${huntDecision.confidence.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
+      confidence: confidence,
+    }
+    
+    console.log(`[DecisionMaker 🎯] SOLAR FLARE QUEUED: intensity=${output.effectDecision.intensity.toFixed(2)} | urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`)
   }
   
   return output

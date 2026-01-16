@@ -134,6 +134,33 @@ export interface ConsciousnessMovementDecision {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧨 WAVE 600: DECISIÓN DE EFECTO
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Decisión de efecto desde la consciencia
+ * 
+ * WAVE 600: Cuando la consciencia quiere disparar un efecto especial
+ * (Solar Flare, Strobe Burst, etc.)
+ */
+export interface ConsciousnessEffectDecision {
+  /** Tipo de efecto a disparar (e.g., 'solar_flare', 'strobe_burst') */
+  effectType: string
+  
+  /** Intensidad del efecto (0-1) */
+  intensity: number
+  
+  /** Zonas objetivo (default: 'all') */
+  zones?: ('all' | 'front' | 'back' | 'movers' | 'pars')[]
+  
+  /** Razón del disparo */
+  reason?: string
+  
+  /** Confianza en esta decisión */
+  confidence: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // OUTPUT PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -142,6 +169,8 @@ export interface ConsciousnessMovementDecision {
  * 
  * Estructura principal que SeleneLuxConscious emite cada frame.
  * TitanEngine y SeleneLux consumen este output para modular su comportamiento.
+ * 
+ * WAVE 600: Añadido effectDecision para disparar efectos del arsenal.
  */
 export interface ConsciousnessOutput {
   /** Decisión de color (opcional) */
@@ -152,6 +181,9 @@ export interface ConsciousnessOutput {
   
   /** Decisión de movimiento (opcional) */
   movementDecision: ConsciousnessMovementDecision | null
+  
+  /** 🧨 WAVE 600: Decisión de efecto (opcional) */
+  effectDecision: ConsciousnessEffectDecision | null
   
   /** Confianza general del output (0-1) */
   confidence: number
@@ -223,6 +255,7 @@ export function createEmptyOutput(): ConsciousnessOutput {
     colorDecision: null,
     physicsModifier: null,
     movementDecision: null,
+    effectDecision: null,  // 🧨 WAVE 600
     confidence: 0,
     timestamp: Date.now(),
     source: 'hunt',

@@ -87,6 +87,10 @@ export interface EngineAudioMetrics {
   beatPhase: number   // 0-1 fase del beat actual
   isBeat: boolean     // true si estamos en un beat
   beatCount?: number  // WAVE 345: Contador de beats para phrase detection
+  // 🎛️ WAVE 661: Textura espectral
+  harshness?: number        // 0-1 (ratio 2-5kHz vs total)
+  spectralFlatness?: number // 0-1 (0=tonal, 1=noise)
+  spectralCentroid?: number // Hz (brillo tonal)
 }
 
 /**
@@ -497,6 +501,11 @@ export class TitanEngine extends EventEmitter {
       bass: audio.bass,
       mid: audio.mid,
       high: audio.high,
+      
+      // 🎛️ WAVE 661: Textura espectral (defaults a neutro si no hay datos)
+      harshness: audio.harshness ?? 0,
+      spectralFlatness: audio.spectralFlatness ?? 0,
+      spectralCentroid: audio.spectralCentroid ?? 1000,
       
       // Contexto musical
       bpm: context.bpm,

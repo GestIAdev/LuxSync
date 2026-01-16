@@ -1188,28 +1188,27 @@ FASE 4: Testing & Tuning (WAVE 671-675)
 │  Objetivo: Exponer harshness/flatness/transients hasta TitanStabilizedState │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  WAVE 661: FFT → GAMMA                                                      │
+│  ✅ WAVE 661: Spectral Pipeline COMPLETE                                    │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Modificar mind.ts para extraer spectral metrics del FFTAnalyzer  │     │
-│  │ □ Añadir campos a MusicalAnalysis: harshness, flatness, transients │     │
-│  │ □ Propagar vía postMessage a TrinityBrain                          │     │
-│  │ □ Test: Verificar que los valores llegan al Main Thread            │     │
+│  │ ✓ FFT.ts ya calcula harshness, spectralFlatness, spectralCentroid  │     │
+│  │ ✓ TitanOrchestrator extrae métricas en processAudioFrame()         │     │
+│  │ ✓ EngineAudioMetrics ampliado con campos espectrales               │     │
+│  │ ✓ TitanStabilizedState incluye harshness/flatness/centroid         │     │
+│  │ ✓ SeleneMusicalPattern incluye métricas espectrales                │     │
+│  │ ✓ MusicalPatternSensor mapea y loguea textura espectral            │     │
+│  │ → COMMIT: WAVE-661-EXECUTION-CHECKLIST.md                          │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
-│  WAVE 662: TrinityBrain → TitanEngine                                       │
+│  WAVE 662: TrinityBrain → TitanEngine (MERGED into 661)                     │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Extender MusicalContext con campos espectrales                   │     │
-│  │ □ TrinityBrain.receiveFromGamma() procesa nuevos campos            │     │
-│  │ □ TitanEngine.update() pasa spectral a stabilizers                 │     │
-│  │ □ Test: TitanStabilizedState tiene spectralHarshness/Flatness      │     │
+│  │ ✓ Flujo completo: FFT → senses → Orchestrator → Engine → Pattern   │     │
+│  │ ✓ Métricas disponibles para HuntEngine, DecisionMaker, etc.        │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
-│  WAVE 663: TitanStabilizedState → SeleneMusicalPattern                      │
+│  WAVE 663: TitanStabilizedState → SeleneMusicalPattern (MERGED into 661)    │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Extender TitanStabilizedState interface                          │     │
-│  │ □ Extender SeleneMusicalPattern interface                          │     │
-│  │ □ MusicalPatternSensor mapea los nuevos campos                     │     │
-│  │ □ Test: DecisionMaker puede leer spectralHarshness                 │     │
+│  │ ✓ Interfaces extendidas con harshness/spectralFlatness/centroid    │     │
+│  │ ✓ Debug log: "[SENSE 🎛️] Texture: HARSH | Harsh=0.78 | Flat=0.20" │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘

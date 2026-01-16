@@ -78,7 +78,16 @@ export class TitanOrchestrator {
   private consciousnessEnabled = true
 
   // WAVE 255: Real audio buffer from frontend
-  private lastAudioData: { bass: number; mid: number; high: number; energy: number } = {
+  // 🎛️ WAVE 661: Ampliado para incluir textura espectral
+  private lastAudioData: { 
+    bass: number; 
+    mid: number; 
+    high: number; 
+    energy: number;
+    harshness?: number;
+    spectralFlatness?: number;
+    spectralCentroid?: number;
+  } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
@@ -241,7 +250,8 @@ export class TitanOrchestrator {
       }
       this.hasRealAudio = false
       // Reset lastAudioData para no mentir con datos viejos
-      this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0 }
+      // 🎛️ WAVE 661: Incluir reset de textura espectral
+      this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0, harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined }
     }
     
     // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
@@ -261,6 +271,7 @@ export class TitanOrchestrator {
     }
     
     // For TitanEngine
+    // 🎛️ WAVE 661: Incluir textura espectral
     const engineAudioMetrics = {
       bass,
       mid,
@@ -268,6 +279,9 @@ export class TitanOrchestrator {
       energy,
       beatPhase: (this.frameCount % 30) / 30,
       isBeat: this.frameCount % 30 === 0 && energy > 0.3,
+      harshness: this.lastAudioData.harshness,
+      spectralFlatness: this.lastAudioData.spectralFlatness,
+      spectralCentroid: this.lastAudioData.spectralCentroid,
     }
     
     // For HAL
@@ -695,6 +709,7 @@ export class TitanOrchestrator {
   /**
    * WAVE 255: Process incoming audio frame from frontend
    * This method receives audio data and stores it for the main loop
+   * 🎛️ WAVE 661: Ahora incluye textura espectral (harshness, spectralFlatness, spectralCentroid)
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return
@@ -707,8 +722,13 @@ export class TitanOrchestrator {
     const energy = typeof data.energy === 'number' ? data.energy : 
                    typeof data.volume === 'number' ? data.volume : 0
     
+    // 🎛️ WAVE 661: Extraer textura espectral
+    const harshness = typeof data.harshness === 'number' ? data.harshness : undefined
+    const spectralFlatness = typeof data.spectralFlatness === 'number' ? data.spectralFlatness : undefined
+    const spectralCentroid = typeof data.spectralCentroid === 'number' ? data.spectralCentroid : undefined
+    
     // Store for main loop (used by TitanEngine for immediate visual response)
-    this.lastAudioData = { bass, mid, high, energy }
+    this.lastAudioData = { bass, mid, high, energy, harshness, spectralFlatness, spectralCentroid }
     this.hasRealAudio = energy > 0.01 // Mark as having real audio if not silent
     
     // 🗡️ WAVE 265: Update timestamp para staleness detection

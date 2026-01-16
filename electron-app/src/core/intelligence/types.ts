@@ -88,6 +88,28 @@ export interface TitanStabilizedState {
   high: number
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🎛️ WAVE 661: TEXTURA ESPECTRAL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * Harshness: Ratio de energía en 2-5kHz (synths sucios, distorsión)
+   * 0 = limpio/suave, 1 = agresivo/harsh (Skrillex territory)
+   */
+  harshness: number
+  
+  /**
+   * Spectral Flatness: Distribución del espectro
+   * 0 = tonal (nota clara), 1 = ruido/noise (hi-hats, crashes)
+   */
+  spectralFlatness: number
+  
+  /**
+   * Spectral Centroid: Centro de masa frecuencial en Hz
+   * Bajo = sonido oscuro/grave, Alto = brillante/agudo
+   */
+  spectralCentroid: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // CONTEXTO MUSICAL
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -237,6 +259,19 @@ export interface SeleneMusicalPattern {
   
   /** Presencia de highs (0-1) */
   highPresence: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎛️ WAVE 661: TEXTURA ESPECTRAL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Harshness: 0=limpio, 1=agresivo/harsh (Skrillex synths) */
+  harshness: number
+  
+  /** Spectral Flatness: 0=tonal, 1=ruido/noise */
+  spectralFlatness: number
+  
+  /** Spectral Centroid en Hz: brillo tonal */
+  spectralCentroid: number
   
   // ═══════════════════════════════════════════════════════════════════════
   // ENERGÍA FÍSICA (WAVE 635 + WAVE 642)

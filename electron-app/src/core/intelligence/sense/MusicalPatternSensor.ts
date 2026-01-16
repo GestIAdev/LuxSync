@@ -2,6 +2,7 @@
 //  🎵 MUSICAL PATTERN SENSOR - Los Ojos que Ven la Música
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAVE 500 - PROJECT GENESIS - PHASE 2
+//  🎛️ WAVE 661 - SPECTRAL PIPELINE - Textura espectral añadida
 //  "Convierte el caos del audio en patrones que Selene puede cazar"
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -22,6 +23,9 @@ const ENERGY_THRESHOLDS = {
   /** Umbral para DROP absoluto (física total) */
   DROP: 0.85,
 } as const
+
+// 🎛️ WAVE 661: Frame counter para logging de textura espectral
+let spectralLogFrameCount = 0
 
 /** Clasificación de secciones musicales */
 type SectionClassification = 'intro' | 'verse' | 'buildup' | 'chorus' | 'drop' | 'breakdown' | 'outro'
@@ -70,6 +74,19 @@ export function senseMusicalPattern(state: TitanStabilizedState): SeleneMusicalP
   const section = classifySection(state.sectionType)
   const energyPhase = classifyEnergyPhase(state.smoothedEnergy)
   
+  // 🎛️ WAVE 661: Debug log de textura espectral cada ~1 segundo
+  spectralLogFrameCount++
+  if (spectralLogFrameCount % 60 === 0 && state.harshness > 0) {
+    const textureLabel = state.harshness > 0.5 ? 'HARSH/Dirty' : 
+                         state.spectralFlatness > 0.6 ? 'NOISE/Percussive' : 'CLEAN/Tonal'
+    console.log(
+      `[SENSE 🎛️] Texture: ${textureLabel} | ` +
+      `Harsh=${state.harshness.toFixed(2)} | ` +
+      `Flat=${state.spectralFlatness.toFixed(2)} | ` +
+      `Centroid=${state.spectralCentroid.toFixed(0)}Hz`
+    )
+  }
+  
   // Actualizar historial
   updateHistory({
     timestamp: state.timestamp,
@@ -112,6 +129,11 @@ export function senseMusicalPattern(state: TitanStabilizedState): SeleneMusicalP
     bassPresence: state.bass,
     midPresence: state.mid,
     highPresence: state.high,
+    
+    // 🎛️ WAVE 661: Textura espectral (mapeo directo desde TitanStabilizedState)
+    harshness: state.harshness,
+    spectralFlatness: state.spectralFlatness,
+    spectralCentroid: state.spectralCentroid,
     
     // 🔥 WAVE 642: Energía CANONICAL (rawEnergy para reacción, smoothed para visual)
     rawEnergy: state.rawEnergy,

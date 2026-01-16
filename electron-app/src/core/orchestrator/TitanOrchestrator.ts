@@ -537,15 +537,16 @@ export class TitanOrchestrator {
       
       this.onBroadcast(truth)
       
-      // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
+      // � WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
+      // �🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
       // Log cada 2 segundos (60 frames @ 30fps)
-      if (this.frameCount % 60 === 0) {
-        console.log(
-          `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
-          `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
-          `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
-        )
-      }
+      // if (this.frameCount % 60 === 0) {
+      //   console.log(
+      //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
+      //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
+      //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
+      //   )
+      // }
     }
     
     // Log every second

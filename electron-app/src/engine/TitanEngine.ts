@@ -1176,12 +1176,13 @@ export class TitanEngine extends EventEmitter {
     const centerX = 0.5 + (vmmIntent.x * 0.5)  // FULL RANGE: 0.0 - 1.0
     const centerY = 0.5 + (vmmIntent.y * 0.5)  // FULL RANGE: 0.0 - 1.0
     
+    // 🧹 WAVE 671.5: Silenced TITAN OUT spam (kept for future debug if needed)
     // 🔍 WAVE 347: Debug TitanEngine output (sample 3%)
-    if (Math.random() < 0.03) {
-      const outPan = Math.round((centerX - 0.5) * 540)
-      const outTilt = Math.round((centerY - 0.5) * 270)
-      console.log(`[🔍 TITAN OUT] VMM.x:${vmmIntent.x.toFixed(3)} VMM.y:${vmmIntent.y.toFixed(3)} → centerX:${centerX.toFixed(3)} centerY:${centerY.toFixed(3)} | Pan:${outPan}° Tilt:${outTilt}°`)
-    }
+    // if (Math.random() < 0.03) {
+    //   const outPan = Math.round((centerX - 0.5) * 540)
+    //   const outTilt = Math.round((centerY - 0.5) * 270)
+    //   console.log(`[🔍 TITAN OUT] VMM.x:${vmmIntent.x.toFixed(3)} VMM.y:${vmmIntent.y.toFixed(3)} → centerX:${centerX.toFixed(3)} centerY:${centerY.toFixed(3)} | Pan:${outPan}° Tilt:${outTilt}°`)
+    // }
     
     // Convertir VMMMovementIntent → MovementIntent del protocolo
     const protocolIntent: MovementIntent = {

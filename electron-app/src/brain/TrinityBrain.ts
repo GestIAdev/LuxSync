@@ -153,21 +153,22 @@ export class TrinityBrain extends EventEmitter {
     
     // Log cada ~60 contextos (aproximadamente 1 segundo @ 60fps)
     this.frameCount++
-    if (this.frameCount % 60 === 0) {
-      const memoryAge = this.lastValidContext 
-        ? ((Date.now() - this.lastValidTimestamp) / 1000).toFixed(1) 
-        : 'N/A'
-      console.log(
-        `[Brain] 🧠 LOBOTOMY Context: ${context.genre.macro}/${context.genre.subGenre || 'unknown'} @ ${context.bpm}bpm | ` +
-        `Section: ${context.section.type} | Energy: ${(context.energy * 100).toFixed(0)}% | Mood: ${context.mood} | ` +
-        `Memory: ${memoryAge}s ago`
-      )
-    }
+    // 🧹 WAVE 671.5: Silenced LOBOTOMY spam (kept for future debug if needed)
+    // if (this.frameCount % 60 === 0) {
+    //   const memoryAge = this.lastValidContext 
+    //     ? ((Date.now() - this.lastValidTimestamp) / 1000).toFixed(1) 
+    //     : 'N/A'
+    //   console.log(
+    //     `[Brain] 🧠 LOBOTOMY Context: ${context.genre.macro}/${context.genre.subGenre || 'unknown'} @ ${context.bpm}bpm | ` +
+    //     `Section: ${context.section.type} | Energy: ${(context.energy * 100).toFixed(0)}% | Mood: ${context.mood} | ` +
+    //     `Memory: ${memoryAge}s ago`
+    //   )
+    // }
   }
 
   /**
    * Procesa análisis de audio del Worker y construye MusicalContext.
-   * 
+   *
    * WAVE 227: Esta es LA CONVERSIÓN CLAVE.
    * El Worker envía AudioAnalysis, nosotros lo convertimos a MusicalContext.
    * 

@@ -409,10 +409,11 @@ function processEvaluating(
   if (conditions.strikeScore > 0.4) {
     const weights = getVibeWeights(pattern.vibeId)
     
-    if (!conditions.allMet) {
-      const delta = (weights.threshold - conditions.strikeScore).toFixed(2)
-      console.log(`[HUNT 🕵️] NEAR MISS: ${conditions.reasoning}`)
-    }
+    // 🧹 WAVE 671.5: Silenced NEAR MISS spam (kept for future debug if needed)
+    // if (!conditions.allMet) {
+    //   const delta = (weights.threshold - conditions.strikeScore).toFixed(2)
+    //   console.log(`[HUNT 🕵️] NEAR MISS: ${conditions.reasoning}`)
+    // }
   }
   
   return {

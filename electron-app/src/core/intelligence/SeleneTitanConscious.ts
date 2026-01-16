@@ -125,6 +125,17 @@ import {
 } from './dream/BiasDetector'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 666: IMPORTAR CONTEXTUAL MEMORY
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  ContextualMemory,
+  type ContextualMemoryOutput,
+  type AnomalyReport,
+  type NarrativeContext,
+} from './memory'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -194,10 +205,22 @@ export class SeleneTitanConscious extends EventEmitter {
   private stats: SeleneStats
   private lastOutput: ConsciousnessOutput
   
+  // 🧠 WAVE 666: Contextual Memory
+  private contextualMemory: ContextualMemory
+  private lastMemoryOutput: ContextualMemoryOutput | null = null
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
     this.config = { ...DEFAULT_CONFIG, ...config }
+    
+    // 🧠 WAVE 666: Inicializar memoria contextual
+    this.contextualMemory = new ContextualMemory({
+      bufferSize: 300,       // ~5 segundos @ 60fps
+      zScoreNotable: 1.5,
+      zScoreSignificant: 2.0,
+      zScoreEpic: 2.5,       // Threshold para anomalía
+    })
     
     // Inicializar estado interno
     this.state = this.createInitialState()
@@ -321,16 +344,33 @@ export class SeleneTitanConscious extends EventEmitter {
   /**
    * 👁️ Percibir el estado actual como patrón musical
    * AHORA USA LOS SENSORES REALES DE PHASE 2
+   * 🧠 WAVE 666: + CONTEXTUAL MEMORY con Z-Scores
    */
   private sense(state: TitanStabilizedState): SeleneMusicalPattern {
     // Usar el sensor de patrones musicales
     const pattern = senseMusicalPattern(state)
     
-    // Capturar belleza y consonancia para decisiones posteriores
-    this.currentBeauty = senseBeauty(state.currentPalette, pattern)
-    this.currentConsonance = senseConsonance(state.currentPalette, pattern)
+    // 🧠 WAVE 666: Actualizar memoria contextual
+    this.lastMemoryOutput = this.contextualMemory.update({
+      energy: state.rawEnergy,
+      bass: state.bass,
+      harshness: state.harshness,
+      sectionType: state.sectionType as any, // Compatibilidad de tipos
+      timestamp: state.timestamp,
+      hasTransient: false, // TODO: Integrar detección de transientes
+    })
     
-    return pattern
+    // 🧠 WAVE 666: Enriquecer el patrón con Z-Score de energía
+    const enrichedPattern: SeleneMusicalPattern = {
+      ...pattern,
+      energyZScore: this.lastMemoryOutput.stats.energy.zScore,
+    }
+    
+    // Capturar belleza y consonancia para decisiones posteriores
+    this.currentBeauty = senseBeauty(state.currentPalette, enrichedPattern)
+    this.currentConsonance = senseConsonance(state.currentPalette, enrichedPattern)
+    
+    return enrichedPattern
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -632,9 +672,53 @@ export class SeleneTitanConscious extends EventEmitter {
     resetDreamEngine()
     resetBiasDetector()
     
+    // 🧠 WAVE 666: Resetear memoria contextual
+    this.contextualMemory.reset()
+    this.lastMemoryOutput = null
+    
     if (this.config.debug) {
-      console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4)')
+      console.log('[SeleneTitanConscious] 🔄 Reset complete (PHASES 2-4 + Memory)')
     }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 666: API DE MEMORIA CONTEXTUAL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Obtiene el Z-Score actual de energía.
+   * Z > 2.5 = anomalía, Z > 3.0 = momento épico
+   */
+  getEnergyZScore(): number {
+    return this.contextualMemory.getEnergyZScore()
+  }
+  
+  /**
+   * Obtiene el último output de la memoria contextual.
+   */
+  getMemoryOutput(): ContextualMemoryOutput | null {
+    return this.lastMemoryOutput
+  }
+  
+  /**
+   * Obtiene el reporte de anomalía actual.
+   */
+  getAnomalyReport(): AnomalyReport | null {
+    return this.lastMemoryOutput?.anomaly ?? null
+  }
+  
+  /**
+   * Obtiene el contexto narrativo actual.
+   */
+  getNarrativeContext(): NarrativeContext | null {
+    return this.lastMemoryOutput?.narrative ?? null
+  }
+  
+  /**
+   * ¿Está la memoria suficientemente calentada para Z-Scores confiables?
+   */
+  isMemoryWarmedUp(): boolean {
+    return this.contextualMemory.isWarmedUp
   }
 }
 

@@ -1219,28 +1219,35 @@ FASE 4: Testing & Tuning (WAVE 671-675)
 │  Objetivo: Implementar memoria contextual con Z-Score                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  WAVE 664: CircularBuffer + RollingStats                                    │
+│  ✅ WAVE 664: CircularBuffer + RollingStats COMPLETE                        │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Crear src/core/intelligence/memory/CircularBuffer.ts             │     │
-│  │ □ Crear src/core/intelligence/memory/RollingStats.ts               │     │
-│  │ □ Implementar cálculo de Z-Score eficiente                         │     │
-│  │ □ Test: Z-Score correcto con datos sintéticos                      │     │
+│  │ ✓ Crear src/core/intelligence/memory/CircularBuffer.ts             │     │
+│  │   → Buffer circular O(1) con tamaño configurable (default 1800)    │     │
+│  │ ✓ Crear src/core/intelligence/memory/RollingStats.ts               │     │
+│  │   → Algoritmo Welford para mean/variance online sin almacenar todo │     │
+│  │ ✓ Implementar cálculo de Z-Score eficiente                         │     │
+│  │   → getZScore(value) = (value - mean) / stdDev                     │     │
+│  │ ✓ Test: Z-Score correcto con datos sintéticos                      │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
-│  WAVE 665: ContextualMemory Class                                           │
+│  ✅ WAVE 665: ContextualMemory Class COMPLETE                               │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Crear src/core/intelligence/memory/ContextualMemory.ts           │     │
-│  │ □ Implementar update(), getStats(), detectAnomaly()                │     │
-│  │ □ Integrar con SectionTracker para narrativa                       │     │
-│  │ □ Test: Detecta anomalías con música real                          │     │
+│  │ ✓ Crear src/core/intelligence/memory/ContextualMemory.ts           │     │
+│  │ ✓ Implementar update(), getEnergyZScore(), reset()                 │     │
+│  │ ✓ Constantes: ANOMALY_THRESHOLD=2.5, EPIC_THRESHOLD=3.0            │     │
+│  │ ✓ Output: energyZScore, bassZScore, isAnomaly, isEpicMoment        │     │
+│  │ ✓ Integración con SectionTracker para narrativa (sectionHistory)   │     │
+│  │ ✓ isWarmedUp flag para ignorar primeros 30 frames                  │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
-│  WAVE 666: Integración con SeleneTitanConscious                             │
+│  ✅ WAVE 666: Integración con SeleneTitanConscious COMPLETE                 │
 │  ┌────────────────────────────────────────────────────────────────────┐     │
-│  │ □ Instanciar ContextualMemory en SeleneTitanConscious              │     │
-│  │ □ Llamar update() en cada process()                                │     │
-│  │ □ Pasar energyZScore a SeleneMusicalPattern                        │     │
-│  │ □ Test: Pattern incluye zScore, HuntEngine lo puede usar           │     │
+│  │ ✓ Instanciar ContextualMemory en SeleneTitanConscious              │     │
+│  │ ✓ Llamar update() en cada sense()                                  │     │
+│  │ ✓ Pasar energyZScore a SeleneMusicalPattern                        │     │
+│  │ ✓ Métodos públicos: getEnergyZScore(), getMemoryOutput()           │     │
+│  │ ✓ types.ts: energyZScore añadido a SeleneMusicalPattern            │     │
+│  │ → COMMIT: WAVE-664-666-EXECUTION-CHECKLIST.md                      │     │
 │  └────────────────────────────────────────────────────────────────────┘     │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘

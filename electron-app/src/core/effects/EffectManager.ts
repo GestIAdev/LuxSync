@@ -4,22 +4,28 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * WAVE 600: EFFECT ARSENAL
+ * WAVE 680: THE ARSENAL & THE SHIELD
  * 
  * El EffectManager es el orquestador central de todos los efectos.
  * Mantiene la lista de efectos activos, los actualiza cada frame,
  * y combina sus outputs para el MasterArbiter.
  * 
+ * 🛡️ WAVE 680: THE SHIELD - Sistema de permisos por Vibe
+ * Antes de disparar cualquier efecto, consulta las restricciones del Vibe activo.
+ * Si el efecto está prohibido, se bloquea. Si está degradado, se ajusta.
+ * 
  * RESPONSABILIDADES:
  * 1. Registry de tipos de efectos disponibles
  * 2. Instanciar y disparar efectos bajo demanda
- * 3. Actualizar efectos activos cada frame
- * 4. Combinar outputs (HTP para dimmer, LTP para color)
- * 5. Limpiar efectos terminados
+ * 3. 🛡️ Validar permisos de Vibe antes de disparar (THE SHIELD)
+ * 4. Actualizar efectos activos cada frame
+ * 5. Combinar outputs (HTP para dimmer, LTP para color)
+ * 6. Limpiar efectos terminados
  * 
  * SINGLETON: Solo hay un EffectManager global
  * 
  * @module core/effects/EffectManager
- * @version WAVE 600
+ * @version WAVE 680
  */
 
 import { EventEmitter } from 'events'
@@ -30,10 +36,62 @@ import {
   CombinedEffectOutput,
   EffectManagerState,
   EffectCategory,
+  MusicalContext,
 } from './types'
 
 // Import effect library
 import { SolarFlare } from './library/SolarFlare'
+import { StrobeStorm } from './library/StrobeStorm'
+import { TidalWave } from './library/TidalWave'
+import { GhostBreath } from './library/GhostBreath'
+
+// 🛡️ WAVE 680: Import VibeManager for THE SHIELD
+import { VibeManager } from '../../engine/vibe/VibeManager'
+import type { VibeProfile, VibeId } from '../../types/VibeProfile'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ THE SHIELD - VIBE EFFECT RULES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resultado de validación de THE SHIELD
+ */
+interface ShieldValidation {
+  /** ¿Está permitido el efecto? */
+  allowed: boolean
+  
+  /** ¿Está degradado? (ej: strobe → pulsos simples) */
+  degraded: boolean
+  
+  /** Mensaje para logging */
+  message: string
+  
+  /** Restricciones específicas a aplicar */
+  constraints?: {
+    maxStrobeRate?: number
+    maxIntensity?: number
+  }
+}
+
+/**
+ * 🛡️ EFFECT TYPE → VIBE RULES
+ * 
+ * Define qué efectos son bloqueados/degradados en cada Vibe.
+ * Las reglas se consultan en runtime contra el VibeProfile activo.
+ */
+const EFFECT_VIBE_RULES: Record<string, {
+  /** ¿Requiere strobe? (para validar contra maxStrobeRate) */
+  requiresStrobe?: boolean
+  /** ¿Es efecto dinámico? (bloqueado en chill-lounge) */
+  isDynamic?: boolean
+  /** ¿Requiere permiso específico? */
+  requiresEffectType?: string
+}> = {
+  'solar_flare': { isDynamic: true },
+  'strobe_storm': { requiresStrobe: true, isDynamic: true },
+  'tidal_wave': { isDynamic: true },
+  'ghost_breath': { isDynamic: true },
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY TYPE
@@ -86,8 +144,11 @@ export class EffectManager extends EventEmitter {
   /**
    * 🧨 TRIGGER - Dispara un efecto
    * 
+   * 🛡️ WAVE 680: THE SHIELD integrado
+   * Antes de disparar, valida permisos del Vibe activo.
+   * 
    * @param config Configuración del disparo
-   * @returns ID de la instancia del efecto, o null si falla
+   * @returns ID de la instancia del efecto, o null si bloqueado/falla
    */
   trigger(config: EffectTriggerConfig): string | null {
     const factory = this.effectFactories.get(config.effectType)
@@ -97,8 +158,28 @@ export class EffectManager extends EventEmitter {
       return null
     }
     
+    // 🛡️ THE SHIELD - Validar permisos del Vibe
+    const vibeId = config.musicalContext?.vibeId || this.getCurrentVibeId()
+    const shieldResult = this.validateWithShield(config.effectType, vibeId)
+    
+    if (!shieldResult.allowed) {
+      console.log(`[EffectManager ⛔] ${config.effectType} BLOCKED in ${vibeId}. ${shieldResult.message}`)
+      this.emit('effectBlocked', {
+        effectType: config.effectType,
+        vibeId,
+        reason: shieldResult.message,
+      })
+      return null
+    }
+    
     // Crear nueva instancia
     const effect = factory()
+    
+    // 🛡️ Si está degradado, aplicar constraints
+    if (shieldResult.degraded && shieldResult.constraints) {
+      this.applyShieldConstraints(effect, shieldResult.constraints)
+      console.log(`[EffectManager ⚠️] ${config.effectType} DEGRADED in ${vibeId}. ${shieldResult.message}`)
+    }
     
     // Disparar
     effect.trigger(config)
@@ -117,9 +198,16 @@ export class EffectManager extends EventEmitter {
       effectType: config.effectType,
       intensity: config.intensity,
       source: config.source,
+      vibeId,
+      degraded: shieldResult.degraded,
     })
     
-    console.log(`[EffectManager 🧨] Triggered: ${config.effectType} (ID: ${effect.id})`)
+    // 🛡️ Log con estado de shield
+    const shieldStatus = shieldResult.degraded ? '(DEGRADED)' : ''
+    const zInfo = config.musicalContext?.zScore 
+      ? `Z: ${config.musicalContext.zScore.toFixed(1)}` 
+      : ''
+    console.log(`[EffectManager ✅] ${config.effectType} FIRED in ${vibeId} ${shieldStatus} (Intensity: ${config.intensity.toFixed(2)} ${zInfo})`)
     
     return effect.id
   }
@@ -292,15 +380,157 @@ export class EffectManager extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
   
   private registerBuiltinEffects(): void {
-    // ☀️ Solar Flare
+    // ☀️ Solar Flare - WAVE 600
     this.effectFactories.set('solar_flare', () => new SolarFlare())
     
-    // TODO WAVE 600+: Añadir más efectos
-    // - 'strobe_burst' - Ráfaga de strobe
-    // - 'color_wash' - Lavado de color
-    // - 'rainbow_sweep' - Arcoíris
-    // - 'blackout_flash' - Blackout + flash
-    // - 'mover_snap' - Snap de movers
+    // ⚡ Strobe Storm - WAVE 680
+    this.effectFactories.set('strobe_storm', () => new StrobeStorm())
+    
+    // 🌊 Tidal Wave - WAVE 680
+    this.effectFactories.set('tidal_wave', () => new TidalWave())
+    
+    // 👻 Ghost Breath - WAVE 680
+    this.effectFactories.set('ghost_breath', () => new GhostBreath())
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🛡️ THE SHIELD - Vibe Permission System (WAVE 680)
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 🛡️ GET CURRENT VIBE ID
+   * 
+   * Obtiene el Vibe activo del VibeManager singleton.
+   */
+  private getCurrentVibeId(): string {
+    try {
+      return VibeManager.getInstance().getActiveVibe().id
+    } catch {
+      return 'idle'  // Fallback si VibeManager no está inicializado
+    }
+  }
+  
+  /**
+   * 🛡️ VALIDATE WITH SHIELD
+   * 
+   * Valida si un efecto está permitido en el Vibe actual.
+   * 
+   * REGLAS:
+   * - chill-lounge: BLOQUEO TOTAL de efectos dinámicos
+   * - fiesta-latina: strobe PROHIBIDO (degradado a pulsos)
+   * - techno-club: SIN RESTRICCIONES
+   * - pop-rock: strobe con límite de 10Hz
+   * - idle: BLOQUEO TOTAL (no hay show)
+   */
+  private validateWithShield(effectType: string, vibeId: string): ShieldValidation {
+    const rules = EFFECT_VIBE_RULES[effectType]
+    
+    // Si no hay reglas para este efecto, permitir
+    if (!rules) {
+      return { allowed: true, degraded: false, message: 'No rules defined' }
+    }
+    
+    // Obtener restricciones del Vibe
+    let vibeEffects: { allowed: string[]; maxStrobeRate: number; maxIntensity: number }
+    
+    try {
+      const vibe = VibeManager.getInstance().getActiveVibe()
+      vibeEffects = {
+        allowed: vibe.effects.allowed,
+        maxStrobeRate: vibe.effects.maxStrobeRate,
+        maxIntensity: vibe.effects.maxIntensity,
+      }
+    } catch {
+      // Fallback restrictivo si VibeManager falla
+      vibeEffects = { allowed: [], maxStrobeRate: 0, maxIntensity: 0 }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // REGLA 1: chill-lounge e idle = BLOQUEO TOTAL de dinámicos
+    // ═══════════════════════════════════════════════════════════════
+    if ((vibeId === 'chill-lounge' || vibeId === 'idle') && rules.isDynamic) {
+      return {
+        allowed: false,
+        degraded: false,
+        message: `Dynamic effects blocked in ${vibeId}`,
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // REGLA 2: Strobe check - si maxStrobeRate = 0, degradar o bloquear
+    // ═══════════════════════════════════════════════════════════════
+    if (rules.requiresStrobe) {
+      if (vibeEffects.maxStrobeRate === 0) {
+        // fiesta-latina: degradar a pulsos simples (no strobe real)
+        if (vibeId === 'fiesta-latina') {
+          return {
+            allowed: true,
+            degraded: true,
+            message: `Strobe degraded to pulses (no real strobe in ${vibeId})`,
+            constraints: {
+              maxStrobeRate: 0,
+              maxIntensity: vibeEffects.maxIntensity,
+            },
+          }
+        }
+        // Otros vibes con maxStrobeRate=0: bloquear
+        return {
+          allowed: false,
+          degraded: false,
+          message: `Strobe effects blocked (maxStrobeRate=0)`,
+        }
+      }
+      
+      // Strobe permitido pero con límite de frecuencia
+      return {
+        allowed: true,
+        degraded: vibeEffects.maxStrobeRate < 8,  // Degradado si <8Hz
+        message: `Strobe allowed (max ${vibeEffects.maxStrobeRate}Hz)`,
+        constraints: {
+          maxStrobeRate: vibeEffects.maxStrobeRate,
+          maxIntensity: vibeEffects.maxIntensity,
+        },
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // REGLA 3: Efectos dinámicos con maxIntensity < 0.5 = degradados
+    // ═══════════════════════════════════════════════════════════════
+    if (rules.isDynamic && vibeEffects.maxIntensity < 0.5) {
+      return {
+        allowed: true,
+        degraded: true,
+        message: `Effect intensity capped at ${vibeEffects.maxIntensity}`,
+        constraints: {
+          maxIntensity: vibeEffects.maxIntensity,
+        },
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // DEFAULT: Permitido sin restricciones
+    // ═══════════════════════════════════════════════════════════════
+    return {
+      allowed: true,
+      degraded: false,
+      message: 'No restrictions',
+    }
+  }
+  
+  /**
+   * 🛡️ APPLY SHIELD CONSTRAINTS
+   * 
+   * Aplica constraints del Shield a un efecto antes de dispararlo.
+   */
+  private applyShieldConstraints(
+    effect: ILightEffect, 
+    constraints: { maxStrobeRate?: number; maxIntensity?: number }
+  ): void {
+    // Si el efecto tiene método setVibeConstraints, usarlo
+    if ('setVibeConstraints' in effect && typeof (effect as any).setVibeConstraints === 'function') {
+      const degraded = constraints.maxStrobeRate === 0
+      ;(effect as any).setVibeConstraints(constraints.maxStrobeRate ?? 15, degraded)
+    }
   }
 }
 

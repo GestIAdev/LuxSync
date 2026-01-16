@@ -113,6 +113,32 @@ export interface EffectFrameOutput {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * 🧨 WAVE 680: MUSICAL CONTEXT - El alma que respira
+ * 
+ * Datos musicales en tiempo real inyectados en cada efecto.
+ * Los efectos "respiran" con estos datos.
+ */
+export interface MusicalContext {
+  /** Z-Score actual (desviación del audio - 0=silencio, 1.5=normal, >2.8=DROP) */
+  zScore: number
+  
+  /** BPM detectado */
+  bpm: number
+  
+  /** Energía del audio (0-1) */
+  energy: number
+  
+  /** ID del vibe activo */
+  vibeId: string
+  
+  /** Fase de beat (0-1, donde 0=downbeat) */
+  beatPhase?: number
+  
+  /** ¿Estamos en un drop? */
+  inDrop?: boolean
+}
+
+/**
  * Configuración base para disparar cualquier efecto
  */
 export interface EffectTriggerConfig {
@@ -130,6 +156,11 @@ export interface EffectTriggerConfig {
   
   /** Razón del disparo (para debug) */
   reason?: string
+  
+  /**
+   * 🧨 WAVE 680: Musical context para efectos que respiran
+   */
+  musicalContext?: MusicalContext
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

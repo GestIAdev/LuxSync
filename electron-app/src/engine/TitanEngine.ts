@@ -614,7 +614,12 @@ export class TitanEngine extends EventEmitter {
         right: { intensity: overrideIntensity, paletteRole: 'primary' },
         ambient: { intensity: overrideIntensity, paletteRole: 'primary' },
       }
-      console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ACTIVE - All zones at ${(overrideIntensity * 100).toFixed(0)}%`)
+      
+      // 🧹 WAVE 671.5: Only log at START (100%) and END (0%) to avoid decay spam
+      const intensityPercent = Math.round(overrideIntensity * 100)
+      if (intensityPercent >= 94 || intensityPercent === 0) {
+        console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ${intensityPercent >= 94 ? 'ACTIVATED' : 'RELEASED'} - All zones at ${intensityPercent}%`)
+      }
     }
     
     // Aplicar color override del efecto (si existe)

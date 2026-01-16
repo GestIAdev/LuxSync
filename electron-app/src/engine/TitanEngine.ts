@@ -556,11 +556,20 @@ export class TitanEngine extends EventEmitter {
       
       // Solo disparar si confianza > 0.6
       if (confidence > 0.6) {
+        // 🎯 WAVE 685: Inyectar contexto musical para efectos que respiran
         this.effectManager.trigger({
           effectType,
           intensity,
           source: 'hunt_strike',  // Disparado por decisión de consciencia/HuntEngine
           reason,
+          musicalContext: {
+            zScore: this.selene.getEnergyZScore(),  // 🧠 Desde SeleneTitanConscious
+            bpm: context.bpm,
+            energy: energyOutput.rawEnergy,
+            vibeId: vibeProfile.id,
+            beatPhase: context.beatPhase,
+            inDrop: titanStabilizedState.sectionType === 'drop',
+          },
         })
         
         // Log throttled (solo 1 cada 30 frames)

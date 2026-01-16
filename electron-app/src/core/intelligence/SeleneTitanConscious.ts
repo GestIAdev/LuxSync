@@ -147,6 +147,17 @@ import {
 } from './think'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎯 WAVE 685: CONTEXTUAL EFFECT SELECTOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  ContextualEffectSelector,
+  getContextualEffectSelector,
+  type ContextualEffectSelection,
+  type ContextualSelectorInput,
+} from '../effects/ContextualEffectSelector'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -226,6 +237,13 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastFuzzyDecision: FuzzyDecision | null = null
   private lastDropBridgeResult: DropBridgeResult | null = null
   
+  // 🎯 WAVE 685: Contextual Effect Selector
+  private effectSelector: ContextualEffectSelector
+  private lastEffectTimestamp: number = 0
+  private lastEffectType: string | null = null
+  private energyTrend: 'rising' | 'stable' | 'falling' = 'stable'
+  private energyHistory: number[] = []
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
@@ -246,6 +264,9 @@ export class SeleneTitanConscious extends EventEmitter {
       peakSections: ['drop', 'chorus'],
       minEnergy: 0.75,
     })
+    
+    // 🎯 WAVE 685: Inicializar selector de efectos contextual
+    this.effectSelector = new ContextualEffectSelector()
     
     // Inicializar estado interno
     this.state = this.createInitialState()
@@ -482,53 +503,78 @@ export class SeleneTitanConscious extends EventEmitter {
     let output = makeDecision(inputs)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌩️ DROP BRIDGE OVERRIDE: La condición divina tiene prioridad absoluta
+    // � WAVE 685: CONTEXTUAL EFFECT SELECTION
+    // "MG Music: Sonido e Iluminación Contextual IA"
     // ═══════════════════════════════════════════════════════════════════════
-    if (this.lastDropBridgeResult.shouldForceStrike) {
-      // Override total - disparamos solar flare
+    
+    // Actualizar trend de energía
+    this.updateEnergyTrend(state.rawEnergy)
+    
+    // Normalizar sección para el selector
+    const selectorSection = this.normalizeSectionType(state.sectionType)
+    
+    // Construir input para el selector
+    const selectorInput: ContextualSelectorInput = {
+      musicalContext: {
+        zScore: zScore,
+        bpm: pattern.bpm,
+        energy: state.rawEnergy,
+        vibeId: pattern.vibeId,
+        beatPhase: pattern.beatPhase,
+        inDrop: selectorSection === 'drop',
+      },
+      huntDecision,
+      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
+      sectionType: selectorSection,
+      energyTrend: this.energyTrend,
+      lastEffectTimestamp: this.lastEffectTimestamp,
+      lastEffectType: this.lastEffectType,
+    }
+    
+    // 🎯 SELECCIÓN CONTEXTUAL DE EFECTO
+    const effectSelection = this.effectSelector.select(selectorInput)
+    
+    // Si hay un efecto que disparar, añadirlo al output
+    if (effectSelection.effectType) {
       output = {
         ...output,
-        confidence: Math.max(output.confidence, 0.95),
+        confidence: Math.max(output.confidence, effectSelection.confidence),
         effectDecision: {
-          effectType: 'solar_flare',
-          intensity: this.lastDropBridgeResult.intensity,
-          zones: ['all'],
-          reason: this.lastDropBridgeResult.reason,
-          confidence: 0.99,
+          effectType: effectSelection.effectType,
+          intensity: effectSelection.intensity,
+          zones: ['all'],  // El EffectManager decidirá las zonas según el efecto
+          reason: effectSelection.reason,
+          confidence: effectSelection.confidence,
         },
         debugInfo: {
           ...output.debugInfo,
-          reasoning: `🌩️ DROP BRIDGE: ${this.lastDropBridgeResult.reason}`,
-          fuzzyAction: 'force_strike',
+          reasoning: `� CONTEXTUAL: ${effectSelection.reason}`,
+          fuzzyAction: this.lastFuzzyDecision?.action ?? 'hold',
           zScore: zScore,
         }
       }
       
-      this.emit('dropBridgeActivated', {
+      // Track para cooldown y anti-repetición
+      this.lastEffectTimestamp = Date.now()
+      this.lastEffectType = effectSelection.effectType
+      
+      // Emit event para telemetría
+      this.emit('contextualEffectSelected', {
+        effectType: effectSelection.effectType,
+        intensity: effectSelection.intensity,
         zScore,
-        intensity: this.lastDropBridgeResult.intensity,
-        section: state.sectionType,
+        section: selectorSection,
+        vibeId: pattern.vibeId,
+        reason: effectSelection.reason,
       })
       
       if (this.config.debug) {
-        console.log(`[SeleneTitanConscious] 🌩️ DROP BRIDGE OVERRIDE! z=${zScore.toFixed(2)}σ I=${this.lastDropBridgeResult.intensity.toFixed(2)}`)
-      }
-    }
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎲 FUZZY ENHANCEMENT: Mejorar decisión con lógica difusa
-    // ═══════════════════════════════════════════════════════════════════════
-    else if (this.lastFuzzyDecision.action === 'strike' && 
-             this.lastFuzzyDecision.confidence > 0.6 &&
-             !huntDecision.shouldStrike) {
-      // Fuzzy dice strike, pero el Hunt no. Confiamos en Fuzzy si la confianza es alta.
-      output = {
-        ...output,
-        confidence: Math.max(output.confidence, this.lastFuzzyDecision.confidence),
-        debugInfo: {
-          ...output.debugInfo,
-          reasoning: `🎲 FUZZY OVERRIDE: ${this.lastFuzzyDecision.reasoning}`,
-          fuzzyAction: this.lastFuzzyDecision.action,
-        }
+        console.log(
+          `[SeleneTitanConscious] 🎯 CONTEXTUAL EFFECT: ` +
+          `${effectSelection.effectType} @ ${effectSelection.intensity.toFixed(2)} | ` +
+          `Z=${zScore.toFixed(2)}σ | Section=${selectorSection} | ` +
+          `Reason: ${effectSelection.reason}`
+        )
       }
     }
     
@@ -875,6 +921,78 @@ export class SeleneTitanConscious extends EventEmitter {
    */
   getDropBridgeAlertLevel(): 'none' | 'watching' | 'imminent' | 'activated' {
     return this.lastDropBridgeResult?.alertLevel ?? 'none'
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 685: HELPERS PARA CONTEXTUAL EFFECT SELECTOR
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Actualiza la tendencia de energía basada en historial reciente.
+   */
+  private updateEnergyTrend(energy: number): void {
+    // Mantener historial de 15 frames (~250ms @ 60fps)
+    this.energyHistory.push(energy)
+    if (this.energyHistory.length > 15) {
+      this.energyHistory.shift()
+    }
+    
+    if (this.energyHistory.length < 5) {
+      this.energyTrend = 'stable'
+      return
+    }
+    
+    // Calcular tendencia comparando promedio de primera mitad vs segunda mitad
+    const half = Math.floor(this.energyHistory.length / 2)
+    const firstHalf = this.energyHistory.slice(0, half)
+    const secondHalf = this.energyHistory.slice(half)
+    
+    const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length
+    const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length
+    
+    const delta = avgSecond - avgFirst
+    
+    if (delta > 0.05) {
+      this.energyTrend = 'rising'
+    } else if (delta < -0.05) {
+      this.energyTrend = 'falling'
+    } else {
+      this.energyTrend = 'stable'
+    }
+  }
+  
+  /**
+   * Normaliza el tipo de sección para el selector.
+   */
+  private normalizeSectionType(sectionType: string): 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro' {
+    // Normalizar 'build' → 'buildup'
+    if (sectionType === 'build') return 'buildup'
+    
+    // Validar que sea un tipo conocido
+    const validTypes = ['intro', 'verse', 'chorus', 'bridge', 'buildup', 'drop', 'breakdown', 'outro']
+    if (validTypes.includes(sectionType)) {
+      return sectionType as any
+    }
+    
+    // Default para secciones desconocidas
+    return 'verse'
+  }
+  
+  /**
+   * 🎯 WAVE 685: Obtiene la última selección contextual de efecto.
+   */
+  getLastEffectSelection(): { effectType: string | null; timestamp: number } {
+    return {
+      effectType: this.lastEffectType,
+      timestamp: this.lastEffectTimestamp,
+    }
+  }
+  
+  /**
+   * 🎯 WAVE 685: Obtiene la tendencia de energía actual.
+   */
+  getEnergyTrend(): 'rising' | 'stable' | 'falling' {
+    return this.energyTrend
   }
 }
 

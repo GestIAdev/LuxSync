@@ -6,6 +6,10 @@
  * Porque el universo no es binario, coño.
  * Un drop no es "drop" o "no-drop". Es 0.87 drop, 0.12 buildup, 0.01 verse.
  *
+ * WAVE 700.1: Integración con MoodController
+ * - El Mood modifica los UMBRALES de decisión
+ * - CALM eleva el listón, PUNK lo baja
+ *
  * ARQUITECTURA:
  *
  *   Crisp Inputs (números)
@@ -26,11 +30,17 @@
  *   └──────────────┘
  *          │
  *          ▼
+ *   ┌──────────────┐
+ *   │ 🎭 MOOD MOD  │ ← WAVE 700.1: Apply threshold/intensity multipliers
+ *   └──────────────┘
+ *          │
+ *          ▼
  *   FuzzyDecision
  *
  * @module core/intelligence/think/FuzzyDecisionMaker
- * @wave 667
+ * @wave 667, 700.1
  */
+import { MoodController } from '../../mood';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES: PARÁMETROS DE MEMBERSHIP FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -491,18 +501,31 @@ export function getFuzzyRules() {
 /**
  * 🧬 FuzzyDecisionMaker Class
  * Wrapper OOP sobre las funciones puras
+ *
+ * WAVE 700.1: Integrado con MoodController
+ * - El mood modifica los umbrales de decisión
+ * - CALM necesita scores MÁS ALTOS para disparar
+ * - PUNK dispara con scores MÁS BAJOS
  */
 export class FuzzyDecisionMaker {
     constructor() {
         this.lastDecision = null;
         this.frameCount = 0;
         this.LOG_INTERVAL = 60; // Log cada 60 frames (~1 segundo)
+        this.moodController = MoodController.getInstance();
     }
     /**
      * Evalúa el estado actual y retorna una decisión fuzzy
+     *
+     * WAVE 700.1: La decisión ahora pasa por el MoodController que:
+     * 1. Aplica threshold multiplier al score efectivo
+     * 2. Aplica intensity limits (min/max)
      */
     evaluate(input) {
-        const decision = fuzzyEvaluate(input);
+        // STEP 1-3: Fuzzy evaluation (sin cambios)
+        const rawDecision = fuzzyEvaluate(input);
+        // STEP 4: 🎭 WAVE 700.1 - MOOD MODIFICATION
+        const decision = this.applyMoodModifiers(rawDecision);
         this.lastDecision = decision;
         this.frameCount++;
         // Debug log periódico
@@ -510,6 +533,103 @@ export class FuzzyDecisionMaker {
             this.logDecision(input, decision);
         }
         return decision;
+    }
+    /**
+     * 🎭 WAVE 700.1: Aplica los modificadores del mood a la decisión
+     *
+     * El mood modifica:
+     * 1. El "score efectivo" - decide si la acción realmente se ejecuta
+     * 2. La intensidad - clamp a min/max del mood
+     *
+     * JERARQUÍA: El Mood NO puede hacer legal lo ilegal (Vibe Shield es supremo)
+     * Pero SÍ puede hacer que decisiones "strike" se conviertan en "hold"
+     */
+    applyMoodModifiers(decision) {
+        const profile = this.moodController.getCurrentProfile();
+        // El score que determina si realmente actuamos
+        // Usamos la confianza como proxy del "score" de la decisión
+        const rawScore = decision.confidence;
+        const effectiveScore = this.moodController.applyThreshold(rawScore);
+        // ═══════════════════════════════════════════════════════════════════════
+        // LÓGICA DE DOWNGRADE POR MOOD
+        // ═══════════════════════════════════════════════════════════════════════
+        // 
+        // Si el effectiveScore cae por debajo de ciertos umbrales,
+        // la acción se "degrada" a una menos intensa.
+        //
+        // CALM mode puede convertir:
+        //   - strike → prepare (si el score no es suficiente)
+        //   - prepare → hold (si el score no es suficiente)
+        //
+        // PUNK mode casi nunca degrada (threshold 0.6 amplifica los scores)
+        // ═══════════════════════════════════════════════════════════════════════
+        let finalAction = decision.action;
+        let wasDowngraded = false;
+        // Umbrales para cada acción (estos son los "listones")
+        const THRESHOLDS = {
+            force_strike: 0.7, // Necesitas score alto para force_strike
+            strike: 0.5, // Strike requiere score moderado
+            prepare: 0.3, // Prepare requiere poco
+            hold: 0.0, // Hold siempre pasa
+        };
+        // Verificar si el effectiveScore pasa el umbral para la acción actual
+        if (decision.action !== 'hold') {
+            const requiredThreshold = THRESHOLDS[decision.action];
+            if (effectiveScore < requiredThreshold) {
+                wasDowngraded = true;
+                // Degradar a la siguiente acción más baja
+                if (decision.action === 'force_strike') {
+                    // ¿Pasa para strike?
+                    if (effectiveScore >= THRESHOLDS.strike) {
+                        finalAction = 'strike';
+                    }
+                    else if (effectiveScore >= THRESHOLDS.prepare) {
+                        finalAction = 'prepare';
+                    }
+                    else {
+                        finalAction = 'hold';
+                    }
+                }
+                else if (decision.action === 'strike') {
+                    // ¿Pasa para prepare?
+                    if (effectiveScore >= THRESHOLDS.prepare) {
+                        finalAction = 'prepare';
+                    }
+                    else {
+                        finalAction = 'hold';
+                    }
+                }
+                else if (decision.action === 'prepare') {
+                    finalAction = 'hold';
+                }
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // MODIFICAR INTENSIDAD
+        // ═══════════════════════════════════════════════════════════════════════
+        const finalIntensity = this.moodController.applyIntensity(decision.intensity);
+        // ═══════════════════════════════════════════════════════════════════════
+        // CONSTRUIR DECISIÓN MODIFICADA
+        // ═══════════════════════════════════════════════════════════════════════
+        // Si hubo degradación, actualizar el reasoning
+        let finalReasoning = decision.reasoning;
+        if (wasDowngraded) {
+            const moodEmoji = profile.emoji;
+            finalReasoning = `${moodEmoji} [MOOD:${profile.name.toUpperCase()}] ` +
+                `Downgraded ${decision.action} → ${finalAction} ` +
+                `(effectiveScore=${effectiveScore.toFixed(2)} < threshold=${THRESHOLDS[decision.action]}) | ` +
+                `Original: ${decision.reasoning}`;
+        }
+        return {
+            ...decision,
+            action: finalAction,
+            intensity: finalIntensity,
+            reasoning: finalReasoning,
+            // Añadir metadata del mood para debugging
+            _moodModified: wasDowngraded,
+            _moodProfile: profile.name,
+            _effectiveScore: effectiveScore,
+        };
     }
     /**
      * Obtiene la última decisión tomada
@@ -527,10 +647,12 @@ export class FuzzyDecisionMaker {
             prepare: '🔮',
             hold: '😴',
         }[decision.action];
+        const mood = this.moodController.getCurrentProfile();
         console.log(`[FUZZY ${emoji}] ${decision.action.toUpperCase()} ` +
             `| E=${input.energy.toFixed(2)} Z=${input.zScore.toFixed(1)}σ ` +
             `| Conf=${decision.confidence.toFixed(2)} Int=${decision.intensity.toFixed(2)} ` +
-            `| ${decision.dominantRule}`);
+            `| ${decision.dominantRule} ` +
+            `| ${mood.emoji} MOOD:${mood.name.toUpperCase()}`);
     }
     /**
      * Reset del estado (para cambio de canción)

@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 685: CONTEXTUAL INTELLIGENCE
+ * WAVE 700.1: MOOD INTEGRATION
  *
  * "MG Music: Sonido e Iluminación Contextual IA"
  *
@@ -15,6 +16,7 @@
  * - Vibe: ¿Qué restricciones tenemos?
  * - Hunt Decision: ¿El cazador dice que es momento de atacar?
  * - Energy Trend: ¿Subiendo o bajando?
+ * - 🎭 Mood: ¿Estamos en CALM, BALANCED o PUNK mode?
  *
  * FILOSOFÍA:
  * - NO es aleatorio - es contextual
@@ -23,8 +25,9 @@
  * - SÍ es musical - respiramos con la canción
  *
  * @module core/effects/ContextualEffectSelector
- * @version WAVE 685
+ * @version WAVE 685, 700.1
  */
+import { MoodController } from '../mood';
 const DEFAULT_CONFIG = {
     minCooldownMs: 800, // 0.8 segundos mínimo entre efectos
     sameEffectCooldownMs: 3000, // 3 segundos si es el mismo efecto
@@ -122,6 +125,7 @@ const SECTION_EFFECT_PALETTE = {
  * El cerebro artístico que decide qué efecto pintar en cada momento.
  *
  * 🌊 WAVE 691: Ahora con cooldowns por tipo y protección anti-ghost
+ * 🎭 WAVE 700.1: Integración con MoodController para cooldowns y blockList
  */
 export class ContextualEffectSelector {
     constructor(config) {
@@ -129,6 +133,7 @@ export class ContextualEffectSelector {
         // 🌊 WAVE 691: Tracking de cooldowns por tipo de efecto
         this.effectTypeLastFired = new Map();
         this.config = { ...DEFAULT_CONFIG, ...config };
+        this.moodController = MoodController.getInstance();
     }
     /**
      * 🌊 WAVE 691: Registra que un efecto fue disparado
@@ -138,13 +143,33 @@ export class ContextualEffectSelector {
     }
     /**
      * 🌊 WAVE 691: Verifica si un efecto específico está en cooldown
+     * 🎭 WAVE 700.1: Ahora respeta MoodController
+     *    - PUNK forceUnlock = ignora cooldown
+     *    - Cooldowns modificados por cooldownMultiplier
      */
     isEffectInCooldown(effectType) {
+        // 🎭 WAVE 700.1: Si el mood tiene forceUnlock para este efecto, NUNCA está en cooldown
+        if (this.moodController.isEffectForceUnlocked(effectType)) {
+            return false;
+        }
         const lastFired = this.effectTypeLastFired.get(effectType);
         if (!lastFired)
             return false;
-        const cooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs;
-        return (Date.now() - lastFired) < cooldown;
+        // Cooldown base del config
+        const baseCooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs;
+        // 🎭 WAVE 700.1: Aplicar multiplicador del mood
+        const effectiveCooldown = this.moodController.applyCooldown(baseCooldown);
+        return (Date.now() - lastFired) < effectiveCooldown;
+    }
+    /**
+     * 🎭 WAVE 700.1: Verifica si un efecto está bloqueado por el mood actual
+     *
+     * IMPORTANTE: Esto es ADICIONAL al Vibe Shield.
+     * El Vibe Shield es la autoridad suprema. El Mood solo puede AÑADIR restricciones,
+     * nunca puede desbloquear algo que el Vibe tiene prohibido.
+     */
+    isEffectBlockedByMood(effectType) {
+        return this.moodController.isEffectBlocked(effectType);
     }
     /**
      * 🎯 SELECT EFFECT
@@ -283,44 +308,63 @@ export class ContextualEffectSelector {
     // ─────────────────────────────────────────────────────────────────────────
     // PRIVATE: Effect selection logic
     // 🌊 WAVE 691: Refactorizado con cooldowns por tipo y protección anti-ghost
+    // 🎭 WAVE 700.1: Integración con MoodController
     // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * 🎭 WAVE 700.1: Verifica si un efecto está disponible
+     * Combina check de cooldown Y check de blockList del mood
+     */
+    isEffectAvailable(effectType) {
+        // Primero: ¿está bloqueado por el mood?
+        if (this.isEffectBlockedByMood(effectType)) {
+            console.log(`[EffectSelector 🎭] ${effectType} BLOCKED by mood ${this.moodController.getCurrentMood().toUpperCase()}`);
+            return false;
+        }
+        // Segundo: ¿está en cooldown? (ya considera forceUnlock del mood)
+        if (this.isEffectInCooldown(effectType)) {
+            return false;
+        }
+        return true;
+    }
     selectEffectForContext(sectionType, zLevel, energyTrend, lastEffectType, musicalContext, vibe) {
         const palette = SECTION_EFFECT_PALETTE[sectionType] || SECTION_EFFECT_PALETTE['verse'];
         const energy = musicalContext?.energy ?? 0.5;
-        // 🔍 WAVE 692: Debug logging para diagnóstico
-        console.log(`[EffectSelector 🎯] Section=${sectionType} Z=${zLevel} Vibe=${vibe} Energy=${energy.toFixed(2)} Trend=${energyTrend}`);
+        const moodProfile = this.moodController.getCurrentProfile();
+        // 🔍 WAVE 692/700.1: Debug logging con mood
+        console.log(`[EffectSelector 🎯] Section=${sectionType} Z=${zLevel} Vibe=${vibe} Energy=${energy.toFixed(2)} Trend=${energyTrend} ${moodProfile.emoji}Mood=${moodProfile.name.toUpperCase()}`);
         // ═══════════════════════════════════════════════════════════════
         // 🎺 WAVE 692: FIESTA LATINA - ARSENAL COMPLETO
         // Ahora con TropicalPulse, SalsaFire y CumbiaMoon
         // El bypass dictatorial ha sido ELIMINADO
+        // 🎭 WAVE 700.1: Ahora usa isEffectAvailable que considera mood
         // ═══════════════════════════════════════════════════════════════
         if (vibe === 'fiesta-latina') {
             // 🔥 EPIC/DIVINE: Strobe o Solar (efectos de impacto)
             if (zLevel === 'divine' || zLevel === 'epic') {
-                if (!this.isEffectInCooldown('strobe_burst')) {
+                if (this.isEffectAvailable('strobe_burst')) {
                     console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`);
                     return 'strobe_burst';
                 }
-                // Fallback a tropical pulse si strobe en cooldown
-                if (!this.isEffectInCooldown('tropical_pulse')) {
+                // Fallback a tropical pulse si strobe en cooldown o bloqueado
+                if (this.isEffectAvailable('tropical_pulse')) {
                     console.log(`[EffectSelector 🌴] LATINA EPIC FALLBACK: tropical_pulse`);
                     return 'tropical_pulse';
                 }
             }
             // 🌴 ELEVATED: TropicalPulse o SalsaFire (efectos de relleno medio)
             if (zLevel === 'elevated') {
-                if (energyTrend === 'rising' && !this.isEffectInCooldown('tropical_pulse')) {
+                if (energyTrend === 'rising' && this.isEffectAvailable('tropical_pulse')) {
                     console.log(`[EffectSelector 🌴] LATINA ELEVATED RISING: tropical_pulse`);
                     return 'tropical_pulse';
                 }
-                if (!this.isEffectInCooldown('salsa_fire')) {
+                if (this.isEffectAvailable('salsa_fire')) {
                     console.log(`[EffectSelector �] LATINA ELEVATED: salsa_fire`);
                     return 'salsa_fire';
                 }
             }
             // 🌙 NORMAL/LOW + BREAKDOWN: CumbiaMoon (respiro suave)
             if (sectionType === 'breakdown' || energyTrend === 'falling') {
-                if (!this.isEffectInCooldown('cumbia_moon')) {
+                if (this.isEffectAvailable('cumbia_moon')) {
                     console.log(`[EffectSelector 🌙] LATINA BREAKDOWN: cumbia_moon`);
                     return 'cumbia_moon';
                 }
@@ -330,7 +374,7 @@ export class ContextualEffectSelector {
                 // Priorizar efectos que NO se hayan disparado recientemente
                 const candidates = ['tropical_pulse', 'salsa_fire', 'cumbia_moon'];
                 for (const effect of candidates) {
-                    if (!this.isEffectInCooldown(effect) && effect !== lastEffectType) {
+                    if (this.isEffectAvailable(effect) && effect !== lastEffectType) {
                         console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`);
                         return effect;
                     }
@@ -347,21 +391,22 @@ export class ContextualEffectSelector {
             // Evitar repetir el mismo efecto
             const primary = palette.primary;
             if (primary === lastEffectType && this.consecutiveSameEffect >= 2) {
-                if (!this.isEffectInCooldown(palette.secondary)) {
+                if (this.isEffectAvailable(palette.secondary)) {
                     return palette.secondary;
                 }
             }
-            if (!this.isEffectInCooldown(primary)) {
+            if (this.isEffectAvailable(primary)) {
                 return primary;
             }
             return palette.secondary;
         }
         // ═══════════════════════════════════════════════════════════════
         // 🌊 WAVE 691: ANTI-GHOST - Bloquear ghost_breath si hay ritmo
+        // 🎭 WAVE 700.1: También considerar blockList del mood
         // (Solo para vibes que NO son fiesta-latina)
         // ═══════════════════════════════════════════════════════════════
         const ghostBlocked = energy > this.config.ambientBlockEnergyThreshold ||
-            this.isEffectInCooldown('ghost_breath');
+            !this.isEffectAvailable('ghost_breath');
         // ═══════════════════════════════════════════════════════════════
         // REGLA 2: ELEVATED + RISING = Build tension
         // ═══════════════════════════════════════════════════════════════
@@ -371,7 +416,7 @@ export class ContextualEffectSelector {
                 return 'ghost_breath';
             }
             // Default: Tidal Wave para momentum
-            if (!this.isEffectInCooldown('tidal_wave')) {
+            if (this.isEffectAvailable('tidal_wave')) {
                 return 'tidal_wave';
             }
         }
@@ -379,7 +424,7 @@ export class ContextualEffectSelector {
         // REGLA 3: ELEVATED + FALLING = Release suave
         // ═══════════════════════════════════════════════════════════════
         if (zLevel === 'elevated' && energyTrend === 'falling') {
-            if (!this.isEffectInCooldown('tidal_wave')) {
+            if (this.isEffectAvailable('tidal_wave')) {
                 return 'tidal_wave'; // Ola que baja
             }
         }
@@ -390,7 +435,7 @@ export class ContextualEffectSelector {
             // En drop/chorus/breakdown: strobe para mantener energía
             if (sectionType === 'drop' || sectionType === 'chorus' || sectionType === 'breakdown') {
                 const strobeType = 'strobe_storm';
-                if (lastEffectType !== strobeType && !this.isEffectInCooldown(strobeType)) {
+                if (lastEffectType !== strobeType && this.isEffectAvailable(strobeType)) {
                     return strobeType;
                 }
                 return 'tidal_wave';
@@ -399,7 +444,7 @@ export class ContextualEffectSelector {
             if (palette.secondary === 'ghost_breath' && ghostBlocked) {
                 return 'tidal_wave';
             }
-            if (!this.isEffectInCooldown(palette.secondary)) {
+            if (this.isEffectAvailable(palette.secondary)) {
                 return palette.secondary;
             }
         }
@@ -409,7 +454,7 @@ export class ContextualEffectSelector {
         if (palette.ambient === 'ghost_breath' && ghostBlocked) {
             return 'tidal_wave';
         }
-        if (!this.isEffectInCooldown(palette.ambient)) {
+        if (this.isEffectAvailable(palette.ambient)) {
             return palette.ambient;
         }
         // Fallback final: tidal_wave siempre disponible

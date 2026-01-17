@@ -336,6 +336,21 @@ export class MoodController {
   }
   
   /**
+   * Suscribirse a cambios de mood (simplified callback)
+   * Para uso en componentes React que solo necesitan el mood ID
+   * 
+   * @param callback - Función a llamar con el nuevo MoodId
+   * @returns Función para desuscribirse
+   */
+  subscribe(callback: (mood: MoodId) => void): () => void {
+    const listener: MoodChangeListener = (event) => {
+      callback(event.newMood);
+    };
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+  
+  /**
    * Eliminar un listener específico
    */
   offMoodChange(listener: MoodChangeListener): void {

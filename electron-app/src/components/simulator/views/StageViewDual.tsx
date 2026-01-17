@@ -1,21 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎭 STAGE VIEW DUAL - WAVE 434: THE GREAT CONSOLIDATION
+ * 🎭 STAGE VIEW DUAL - WAVE 700.4: THE COCKPIT REDESIGN
  * Vista dual que alterna entre Canvas 2D (Tactical) y R3F 3D (Visualizer)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Este componente:
- * 1. Lee el viewMode del controlStore
- * 2. Renderiza condicionalmente StageSimulator2 (2D) o Stage3DCanvas (3D)
- * 3. Incluye el ViewModeSwitcher para alternar
- * 4. WAVE 434: Migrado a /simulator - imports actualizados
+ * WAVE 700.4: THE DASHBOARD (Top StatusBar)
+ * - Solo monitoreo: BPM, Energy, Mood (auto), View Mode
+ * - Strike y Debug movidos aquí (utility cluster)
+ * - Consciousness movido al CommandDeck (bottom)
  * 
  * @module components/simulator/views/StageViewDual
- * @version 434.0
+ * @version 700.4
  */
 
 import React, { Suspense, lazy, useState, useCallback } from 'react'
-import { useControlStore, selectViewMode, selectIs3DMode, GlobalMode, selectAIEnabled } from '../../../stores/controlStore'
+import { useControlStore, selectViewMode, selectIs3DMode } from '../../../stores/controlStore'
 import { useTruthSensory } from '../../../hooks'
 import { ViewModeSwitcher } from '../../shared/ViewModeSwitcher'
 import { StageSimulator2 } from './SimulateView/StageSimulator2'
@@ -73,20 +72,12 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   const showDebugOverlay = useControlStore(state => state.showDebugOverlay)
   const toggleDebugOverlay = useControlStore(state => state.toggleDebugOverlay)
   
-  // 🎨 WAVE 33.3: Mode Switcher state
-  const globalMode = useControlStore(state => state.globalMode)
-  const setGlobalMode = useControlStore(state => state.setGlobalMode)
-  
-  // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
-  const aiEnabled = useControlStore(selectAIEnabled)
-  const toggleAI = useControlStore(state => state.toggleAI)
-  
-  // 🎵 WAVE 33.3: BPM & Mood from truthStore
+  // � WAVE 700.4: BPM & Mood from truthStore (MONITORING ONLY)
   const sensory = useTruthSensory()
   const displayBpm = sensory?.beat?.bpm ?? 0
   const bpmConfidence = sensory?.beat?.confidence ?? 0
   const isBeatSync = sensory?.beat?.onBeat ?? false
-  // Mood inferred from audio energy
+  // Mood inferred from audio energy (AUTOMATIC - different from MoodController)
   const energy = sensory?.audio?.energy ?? 0.5
   const currentMood = energy > 0.7 ? 'energetic' : energy > 0.4 ? 'harmonious' : 'peaceful'
   const moodConfig = MOOD_LABELS[currentMood] || MOOD_LABELS.harmonious
@@ -112,79 +103,13 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
   return (
     <div className={`stage-view-dual ${className}`}>
       {/* ═══════════════════════════════════════════════════════════════════
-       * TOOLBAR - WAVE 33.3: Command Center
+       * STATUS BAR (TOP) - WAVE 700.4: THE DASHBOARD
+       * Only monitoring: View Mode, BPM, Energy/Mood, Strike, Debug
        * ═══════════════════════════════════════════════════════════════════ */}
       {showSwitcher && (
         <div className="stage-view-toolbar">
           {/* View Mode Switcher (2D/3D) */}
           <ViewModeSwitcher />
-          
-          {/* DIVIDER */}
-          <div className="toolbar-divider" />
-          
-          {/* 🧨 WAVE 610: FORCE STRIKE - Manual Detonator */}
-          <button
-            className="force-strike-btn"
-            onClick={async () => {
-              try {
-                // 🧨 Disparar efecto Solar Flare manualmente
-                await window.lux?.forceStrike?.({ effect: 'solar_flare', intensity: 1.0 })
-                console.log('[StageViewDual] 🧨 FORCE STRIKE TRIGGERED!')
-                
-                // Feedback visual - pulso breve
-                const btn = document.querySelector('.force-strike-btn')
-                btn?.classList.add('strike-pulse')
-                setTimeout(() => btn?.classList.remove('strike-pulse'), 500)
-              } catch (err) {
-                console.error('[StageViewDual] Force Strike error:', err)
-              }
-            }}
-            title="⚡ FORCE STRIKE - Dispara Solar Flare inmediatamente"
-            style={{
-              backgroundColor: 'rgba(255, 87, 34, 0.2)',
-              borderColor: '#FF5722',
-              color: '#FF5722',
-              fontWeight: 700,
-              textShadow: '0 0 4px rgba(255, 87, 34, 0.5)',
-            }}
-          >
-            <span className="strike-icon">⚡</span>
-            <span className="strike-label">STRIKE</span>
-          </button>
-          
-          {/* DIVIDER */}
-          <div className="toolbar-divider" />
-          
-          {/* 🧬 WAVE 500: CONSCIOUSNESS KILL SWITCH */}
-          <button
-            className={`consciousness-toggle ${aiEnabled ? 'active' : 'inactive'}`}
-            onClick={async () => {
-              const newState = !aiEnabled
-              toggleAI()
-              
-              // 🧬 Propagar al backend (TitanEngine → Selene V2)
-              try {
-                await window.lux?.setConsciousnessEnabled?.(newState)
-                console.log(`[StageViewDual] 🧬 Consciousness ${newState ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
-              } catch (err) {
-                console.error('[StageViewDual] Failed to sync consciousness state:', err)
-              }
-            }}
-            title={aiEnabled ? 'Desactivar Consciencia (Solo Física Reactiva)' : 'Activar Consciencia (Selene V2)'}
-            style={{
-              backgroundColor: aiEnabled ? 'rgba(124, 77, 255, 0.2)' : 'rgba(100, 100, 100, 0.2)',
-              borderColor: aiEnabled ? '#7C4DFF' : '#666',
-              color: aiEnabled ? '#7C4DFF' : '#888',
-            }}
-          >
-            <span className="consciousness-dot" style={{
-              backgroundColor: aiEnabled ? '#4ADE80' : '#EF4444',
-              boxShadow: aiEnabled ? '0 0 8px #4ADE80' : '0 0 4px #EF4444',
-            }} />
-            <span className="consciousness-label">
-              {aiEnabled ? '🧠 CONSCIOUS' : '⚙️ REACTIVE'}
-            </span>
-          </button>
           
           {/* DIVIDER */}
           <div className="toolbar-divider" />
@@ -199,7 +124,24 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
             <div className={`beat-dot ${isBeatSync ? 'pulse' : ''}`} />
           </div>
           
-          {/* 🎭 MOOD INDICATOR */}
+          {/* 📊 ENERGY BAR (mini) */}
+          <div className="toolbar-indicator energy-indicator">
+            <span className="indicator-icon">⚡</span>
+            <div className="energy-bar-mini">
+              <div 
+                className="energy-bar-fill"
+                style={{ 
+                  width: `${Math.round(energy * 100)}%`,
+                  backgroundColor: moodConfig.color,
+                }}
+              />
+            </div>
+            <span className="indicator-value" style={{ color: moodConfig.color }}>
+              {Math.round(energy * 100)}%
+            </span>
+          </div>
+          
+          {/* � MOOD INDICATOR (Auto - from audio) */}
           <div className="toolbar-indicator mood-indicator">
             <span className="indicator-icon">{moodConfig.icon}</span>
             <span className="indicator-label" style={{ color: moodConfig.color }}>
@@ -209,13 +151,32 @@ export const StageViewDual: React.FC<StageViewDualProps> = ({
           
           <div className="toolbar-spacer" />
           
+          {/* 🧨 FORCE STRIKE - Panic Button (smaller, tactical) */}
+          <button
+            className="force-strike-btn toolbar-btn-small"
+            onClick={async () => {
+              try {
+                await window.lux?.forceStrike?.({ effect: 'solar_flare', intensity: 1.0 })
+                console.log('[StageViewDual] 🧨 FORCE STRIKE TRIGGERED!')
+                const btn = document.querySelector('.force-strike-btn')
+                btn?.classList.add('strike-pulse')
+                setTimeout(() => btn?.classList.remove('strike-pulse'), 500)
+              } catch (err) {
+                console.error('[StageViewDual] Force Strike error:', err)
+              }
+            }}
+            title="⚡ FORCE STRIKE - Dispara Solar Flare"
+          >
+            <span className="strike-icon">⚡</span>
+          </button>
+          
           {/* DEBUG TOGGLE */}
           <button
             className={`toolbar-btn ${showDebugOverlay ? 'active' : ''}`}
             onClick={toggleDebugOverlay}
             title="Toggle Debug Overlay"
           >
-            🔧 Debug
+            🔧
           </button>
         </div>
       )}

@@ -427,6 +427,19 @@
   letter-spacing: 1.5px;
 }
 
+/* WAVE 700.4: Small tactical button variant */
+.force-strike-btn.toolbar-btn-small {
+  padding: 6px 10px;
+  min-width: auto;
+  background: rgba(255, 87, 34, 0.15);
+  border-color: rgba(255, 87, 34, 0.5);
+  color: #FF5722;
+}
+
+.force-strike-btn.toolbar-btn-small .strike-icon {
+  font-size: 14px;
+}
+
 /* Feedback visual al clickear */
 .force-strike-btn.strike-pulse {
   animation: strike-explosion 0.5s ease-out;
@@ -450,4 +463,27 @@
     box-shadow: 0 0 0 0 rgba(255, 87, 34, 0);
     border-color: #FF5722;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 700.4: ENERGY BAR (Mini version for StatusBar)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.energy-indicator {
+  min-width: 100px;
+}
+
+.energy-bar-mini {
+  width: 40px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.energy-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s ease, background-color 0.3s ease;
+  box-shadow: 0 0 6px currentColor;
 }

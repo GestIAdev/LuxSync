@@ -1,29 +1,30 @@
 /**
- * 🎛️ THE COMMAND DECK - WAVE 375 + WAVE 426
- * Bottom control bar for live performance
+ * 🎛️ THE COMMAND DECK - WAVE 700.4: THE COCKPIT REDESIGN
+ * Bottom control bar for live performance - "THE FLIGHT STICK"
  * 
- * Layout (WAVE 426 - Updated priority):
- * [LAYER INDICATOR] | [GRAND MASTER] | [VIBES] | [QUICK ACTIONS] | [STATUS] | [BLACKOUT]
+ * Layout (WAVE 700.4 - Cockpit Redesign):
+ * [CONSCIOUSNESS] | [VIBES] | [MOOD TOGGLE] | [BLACKOUT] | [GRAND MASTER]
  * 
- * Priority: GrandMaster > Vibes > QuickActions > Status
+ * Moved to StatusBar (top): BPM, Energy, Strike, Debug
  * 
  * Height: 140px
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { useEffectsStore } from '../../stores/effectsStore'
-import { useTruthSensory } from '../../hooks'
-import { LayerIndicator } from './LayerIndicator'
-import { QuickActions } from './QuickActions'
+import { useControlStore, selectAIEnabled } from '../../stores/controlStore'
 import { GrandMasterSlider } from './GrandMasterSlider'
 import { VibeSelectorCompact } from './VibeSelectorCompact'
-import { StatusBar } from './StatusBar'
+import { MoodToggle } from './MoodToggle'
 import { BlackoutButton } from './BlackoutButton'
 import './CommandDeck.css'
 
 export const CommandDeck: React.FC = () => {
   const { blackout } = useEffectsStore()
-  const sensory = useTruthSensory()
+  
+  // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
+  const aiEnabled = useControlStore(selectAIEnabled)
+  const toggleAI = useControlStore(state => state.toggleAI)
   
   // Arbiter status state
   const [arbiterStatus, setArbiterStatus] = useState<{
@@ -89,61 +90,73 @@ export const CommandDeck: React.FC = () => {
     }
   }, [])
   
-  // Kill All handler (ESC)
-  const handleKillAll = useCallback(async () => {
+  // 🧬 Consciousness toggle handler
+  const handleConsciousnessToggle = useCallback(async () => {
+    const newState = !aiEnabled
+    toggleAI()
+    
+    // Propagar al backend (TitanEngine → Selene V2)
     try {
-      await window.lux?.arbiter?.clearAllManual()
-      console.log('[CommandDeck] 🔓 All manual overrides released')
+      await window.lux?.setConsciousnessEnabled?.(newState)
+      console.log(`[CommandDeck] 🧬 Consciousness ${newState ? 'ENABLED ✅' : 'DISABLED ⏸️'}`)
     } catch (err) {
-      console.error('[CommandDeck] Kill All error:', err)
+      console.error('[CommandDeck] Failed to sync consciousness state:', err)
     }
-  }, [])
-  
-  // Extract sensory data
-  const bpm = sensory?.beat?.bpm ?? 0
-  const energy = sensory?.audio?.energy ?? 0
-  const onBeat = sensory?.beat?.onBeat ?? false
+  }, [aiEnabled, toggleAI])
 
   return (
-    <footer className={`command-deck ${blackout ? 'blackout-active' : ''}`}>
-      {/* Section 1: Layer Indicator */}
-      <div className="deck-section deck-layer">
-        <LayerIndicator 
-          hasManualOverrides={arbiterStatus.hasManualOverrides}
-          onKillAll={handleKillAll}
-        />
+    <footer className={`command-deck command-deck-v2 ${blackout ? 'blackout-active' : ''}`}>
+      {/* ═══════════════════════════════════════════════════════════════════
+       * BLOCK 1: EL CEREBRO - Consciousness Toggle
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="deck-section deck-consciousness">
+        <button
+          className={`consciousness-btn ${aiEnabled ? 'active' : 'inactive'}`}
+          onClick={handleConsciousnessToggle}
+          title={aiEnabled ? 'Desactivar Consciencia (Solo Física Reactiva)' : 'Activar Consciencia (Selene V2)'}
+        >
+          <span 
+            className="consciousness-dot" 
+            style={{
+              backgroundColor: aiEnabled ? '#4ADE80' : '#EF4444',
+              boxShadow: aiEnabled ? '0 0 12px #4ADE80' : '0 0 8px #EF4444',
+            }} 
+          />
+          <span className="consciousness-label">
+            {aiEnabled ? '🧠 CONSCIOUS' : '⚙️ REACTIVE'}
+          </span>
+        </button>
       </div>
       
-      {/* Section 2: Grand Master (Priority #1) */}
+      {/* ═══════════════════════════════════════════════════════════════════
+       * BLOCK 2: EL CONTEXTO - Vibe Selector (Compact)
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="deck-section deck-vibes">
+        <VibeSelectorCompact />
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * BLOCK 3: LA ACTITUD - Mood Toggle [NUEVO WAVE 700.4]
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="deck-section deck-mood">
+        <MoodToggle />
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * BLOCK 4: EMERGENCIA - Blackout
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="deck-section deck-emergency">
+        <BlackoutButton />
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * BLOCK 5: MASTER - Grand Master Slider
+       * ═══════════════════════════════════════════════════════════════════ */}
       <div className="deck-section deck-grandmaster">
         <GrandMasterSlider 
           value={arbiterStatus.grandMaster}
           onChange={handleGrandMasterChange}
         />
-      </div>
-      
-      {/* Section 3: VIBES (Priority #2) - WAVE 426 */}
-      <div className="deck-section deck-vibes">
-        <VibeSelectorCompact />
-      </div>
-      
-      {/* Section 4: Quick Actions */}
-      <div className="deck-section deck-actions">
-        <QuickActions disabled={blackout} />
-      </div>
-      
-      {/* Section 5: Status Bar */}
-      <div className="deck-section deck-status">
-        <StatusBar 
-          bpm={bpm}
-          energy={energy}
-          onBeat={onBeat}
-        />
-      </div>
-      
-      {/* Section 6: Blackout (Isolated - Emergency) */}
-      <div className="deck-section deck-emergency">
-        <BlackoutButton />
       </div>
     </footer>
   )

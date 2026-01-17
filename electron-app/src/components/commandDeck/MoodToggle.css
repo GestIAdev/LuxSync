@@ -1,0 +1,191 @@
+/**
+ * 🎭 MOOD TOGGLE STYLES - WAVE 700.4
+ * Cyberpunk glassmorphism aesthetic
+ */
+
+.mood-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  height: 100%;
+  justify-content: center;
+}
+
+.mood-toggle-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * BUTTON CONTAINER
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.mood-toggle-buttons {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * INDIVIDUAL MOOD BUTTON
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  min-width: 60px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mood-btn:hover {
+  background: rgba(var(--mood-color-rgb), 0.1);
+  border-color: rgba(var(--mood-color-rgb), 0.3);
+  color: var(--mood-color);
+}
+
+.mood-btn.active {
+  background: rgba(var(--mood-color-rgb), 0.2);
+  border-color: var(--mood-color);
+  color: var(--mood-color);
+  box-shadow: 
+    0 0 12px rgba(var(--mood-color-rgb), 0.3),
+    inset 0 0 20px rgba(var(--mood-color-rgb), 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ICON & LABEL
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.mood-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease;
+}
+
+.mood-btn:hover .mood-icon {
+  transform: scale(1.1);
+}
+
+.mood-btn.active .mood-icon {
+  filter: drop-shadow(0 0 4px var(--mood-color));
+}
+
+.mood-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ACTIVE INDICATOR BAR
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.mood-active-bar {
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COMPACT MODE (For smaller spaces)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.mood-toggle.compact {
+  padding: 4px;
+}
+
+.mood-toggle.compact .mood-toggle-label {
+  display: none;
+}
+
+.mood-toggle.compact .mood-toggle-buttons {
+  padding: 3px;
+}
+
+.mood-toggle.compact .mood-btn {
+  padding: 6px 10px;
+  min-width: 44px;
+}
+
+.mood-toggle.compact .mood-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.mood-toggle.compact .mood-active-bar {
+  height: 2px;
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ANIMATIONS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes mood-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 12px rgba(var(--mood-color-rgb), 0.3),
+      inset 0 0 20px rgba(var(--mood-color-rgb), 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 20px rgba(var(--mood-color-rgb), 0.5),
+      inset 0 0 30px rgba(var(--mood-color-rgb), 0.2);
+  }
+}
+
+.mood-btn.active {
+  animation: mood-pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RESPONSIVE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1600px) {
+  .mood-btn {
+    min-width: 50px;
+    padding: 6px 8px;
+  }
+  
+  .mood-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .mood-label {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 1400px) {
+  .mood-toggle .mood-label {
+    display: none;
+  }
+  
+  .mood-btn {
+    min-width: 40px;
+  }
+}

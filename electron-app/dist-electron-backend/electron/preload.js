@@ -53,7 +53,7 @@ const api = {
         start: (config) => ipcRenderer.invoke('artnet:start', config),
         stop: () => ipcRenderer.invoke('artnet:stop'),
         configure: (config) => ipcRenderer.invoke('artnet:configure', config),
-        getStatus: () => ipcRenderer.invoke('artnet:get-status'),
+        getStatus: () => ipcRenderer.invoke('artnet:getStatus'), // 🔧 FIX: camelCase para match con backend
         // Eventos
         onReady: (callback) => {
             const handler = (_, status) => callback(status);
@@ -253,6 +253,23 @@ const luxApi = {
     forceMutate: () => ipcRenderer.invoke('lux:forceMutation'),
     /** 🧠 WAVE-14.5: Resetear memoria de Selene */
     resetMemory: () => ipcRenderer.invoke('lux:resetMemory'),
+    /**
+     * 🧬 WAVE 560: Kill Switch - Enable/Disable Consciousness (Layer 1 ONLY)
+     *
+     * FIXED: Now uses dedicated lux:setConsciousness handler instead of lux:setUseBrain
+     * - When OFF: Physics/Vibes (Layer 0) keep running - NO BLACKOUT!
+     * - When ON: Consciousness (Layer 1) provides AI recommendations
+     */
+    setConsciousnessEnabled: (enabled) => ipcRenderer.invoke('lux:setConsciousness', enabled),
+    /**
+     * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+     *
+     * Dispara un efecto (Solar Flare) manualmente sin esperar decisión de HuntEngine.
+     * Útil para testear efectos sin alterar umbrales de algoritmos.
+     *
+     * @param config - { effect: 'solar_flare', intensity: 0-1 }
+     */
+    forceStrike: (config) => ipcRenderer.invoke('lux:forceStrike', config),
     // ============================================
     // 🎛️ WAVE 62 + WAVE 250: VIBE SELECTOR (Standardized to lux:)
     // ============================================
@@ -336,7 +353,7 @@ const luxApi = {
         /** Get Arbiter status (layer, hasManualOverrides, grandMaster, blackout) */
         status: () => ipcRenderer.invoke('lux:arbiter:status'),
         /** Set Grand Master intensity (0-1) */
-        setGrandMaster: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', value),
+        setGrandMaster: (value) => ipcRenderer.invoke('lux:arbiter:setGrandMaster', { value }),
         /**
          * 🎛️ WAVE 375.3: Set manual override for fixtures
          * @param fixtureIds - Array of fixture IDs to override
@@ -345,15 +362,12 @@ const luxApi = {
          * @param source - Source identifier (default: 'ui_programmer')
          */
         setManual: (args) => {
-            // Set override for each fixture
-            const promises = args.fixtureIds.map(fixtureId => ipcRenderer.invoke('lux:arbiter:setManual', {
-                fixtureId,
+            // Send all fixtures in a single call to backend (WAVE 439.6 fix)
+            return ipcRenderer.invoke('lux:arbiter:setManual', {
+                fixtureIds: args.fixtureIds,
                 controls: args.controls,
-                channels: args.channels,
-                source: args.source || 'ui_programmer',
-                autoReleaseMs: args.autoReleaseMs,
-            }));
-            return Promise.all(promises);
+                channels: args.channels || Object.keys(args.controls),
+            });
         },
         /**
          * 🎛️ WAVE 375.3: Clear manual override for specific fixtures/channels
@@ -361,11 +375,11 @@ const luxApi = {
          * @param channels - Optional specific channels to release
          */
         clearManual: (args) => {
-            const promises = args.fixtureIds.map(fixtureId => ipcRenderer.invoke('lux:arbiter:clearManual', {
-                fixtureId,
+            // Send all fixtures in a single call to backend (WAVE 439.6 fix)
+            return ipcRenderer.invoke('lux:arbiter:clearManual', {
+                fixtureIds: args.fixtureIds,
                 channels: args.channels,
-            }));
-            return Promise.all(promises);
+            });
         },
         /** Clear ALL manual overrides - return to AI control */
         clearAllManual: () => ipcRenderer.invoke('lux:arbiter:clearAllManual'),

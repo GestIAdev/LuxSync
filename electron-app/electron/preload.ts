@@ -104,7 +104,7 @@ const api = {
     stop: () => ipcRenderer.invoke('artnet:stop'),
     configure: (config: { ip?: string; port?: number; universe?: number; refreshRate?: number }) => 
       ipcRenderer.invoke('artnet:configure', config),
-    getStatus: () => ipcRenderer.invoke('artnet:get-status'),
+    getStatus: () => ipcRenderer.invoke('artnet:getStatus'),  // 🔧 FIX: camelCase para match con backend
     // Eventos
     onReady: (callback: (status: any) => void) => {
       const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)

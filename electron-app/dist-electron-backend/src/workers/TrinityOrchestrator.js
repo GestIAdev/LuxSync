@@ -447,10 +447,11 @@ export class TrinityOrchestrator extends EventEmitter {
         }
         this.audioBufferCount++;
         const beta = this.nodes.get('beta');
+        // 🧹 WAVE 671.5: Silenced audio buffer spam (every 2s)
         // 🔍 WAVE 264.7: Log cada 2 segundos (~120 frames a 60fps)
-        if (this.audioBufferCount % 120 === 0) {
-            console.log(`[ALPHA 📡] feedAudioBuffer #${this.audioBufferCount} | beta.ready=${beta?.isReady} | circuit=${beta?.circuit.state} | failures=${beta?.circuit.failures}`);
-        }
+        // if (this.audioBufferCount % 120 === 0) {
+        //   console.log(`[ALPHA 📡] feedAudioBuffer #${this.audioBufferCount} | beta.ready=${beta?.isReady} | circuit=${beta?.circuit.state} | failures=${beta?.circuit.failures}`);
+        // }
         // 🔍 WAVE 262 DEBUG: ¿Por qué BETA no recibe audio?
         if (!beta?.worker) {
             console.warn('[ALPHA] ⚠️ BETA worker not available!');

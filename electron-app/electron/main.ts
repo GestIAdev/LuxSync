@@ -35,6 +35,8 @@ import { configManager } from '../src/core/config/ConfigManagerV2'
 import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver'
 import { universalDMX, type DMXDevice } from '../src/hal/drivers/UniversalDMXDriver'
 import { artNetDriver } from '../src/hal/drivers/ArtNetDriver'
+// 🎨 WAVE 686.10: Import ArtNetDriverAdapter to bridge ArtNet to HAL
+import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter'
 import { EffectsEngine } from '../src/engine/color/EffectsEngine'
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
@@ -310,8 +312,16 @@ async function initTitan(): Promise<void> {
   // Initialize EffectsEngine
   effectsEngine = new EffectsEngine()
   
+  // 🎨 WAVE 686.10: Create ArtNet adapter for HAL integration
+  const artNetAdapter = createArtNetAdapter(artNetDriver)
+  console.log('[Main] 🎨 ArtNetDriverAdapter created (WAVE 686.10)')
+  
   // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
-  titanOrchestrator = new TitanOrchestrator({ debug: isDev })
+  // Pass ArtNet adapter so HAL can output to real hardware
+  titanOrchestrator = new TitanOrchestrator({ 
+    debug: isDev,
+    dmxDriver: artNetAdapter
+  })
   
   // WAVE 380: Register as singleton so IPC handlers can access the same instance
   registerTitanOrchestrator(titanOrchestrator)

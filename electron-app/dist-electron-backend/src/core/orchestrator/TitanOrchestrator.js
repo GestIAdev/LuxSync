@@ -15,6 +15,8 @@ import { getTrinity } from '../../workers/TrinityOrchestrator';
 import { createDefaultCognitive } from '../protocol/SeleneProtocol';
 // 🎭 WAVE 374: Import MasterArbiter
 import { masterArbiter } from '../arbiter';
+// 🧨 WAVE 635: Import EffectManager para color override global
+import { getEffectManager } from '../effects/EffectManager';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -38,7 +40,12 @@ export class TitanOrchestrator {
         this.mode = 'auto';
         this.useBrain = true;
         this.inputGain = 1.0;
+        // 🧬 WAVE 560: Separated consciousness toggle (Layer 1 only)
+        // useBrain = Layer 0 (reactiva) + Layer 1 (consciousness)
+        // consciousnessEnabled = ONLY Layer 1 (consciousness)
+        this.consciousnessEnabled = true;
         // WAVE 255: Real audio buffer from frontend
+        // 🎛️ WAVE 661: Ampliado para incluir textura espectral
         this.lastAudioData = {
             bass: 0, mid: 0, high: 0, energy: 0
         };
@@ -105,9 +112,21 @@ export class TitanOrchestrator {
             initialVibe: this.config.initialVibe
         });
         console.log('[TitanOrchestrator] TitanEngine created');
+        // 📜 WAVE 560: Subscribe to TitanEngine log events for Tactical Log
+        this.engine.on('log', (logEntry) => {
+            this.log(logEntry.category, logEntry.message, logEntry.data);
+        });
+        console.log('[TitanOrchestrator] 📜 Tactical Log connected to TitanEngine');
         // Initialize HAL
-        this.hal = new HardwareAbstraction({ debug: this.config.debug });
+        // 🎨 WAVE 686.10: Pass external driver if provided
+        this.hal = new HardwareAbstraction({
+            debug: this.config.debug,
+            externalDriver: this.config.dmxDriver
+        });
         console.log('[TitanOrchestrator] HardwareAbstraction created');
+        if (this.config.dmxDriver) {
+            console.log('[TitanOrchestrator] 🎨 Using external DMX driver (WAVE 686.10)');
+        }
         // 🎭 WAVE 374: Initialize MasterArbiter
         console.log('[TitanOrchestrator] 🎭 MasterArbiter ready (Layer 0-4 arbitration)');
         // TODO: EventRouter connection needs interface alignment
@@ -162,12 +181,13 @@ export class TitanOrchestrator {
         // WAVE 255: No more auto-rotation, system stays in selected vibe
         // Vibe changes only via IPC lux:setVibe
         const shouldLog = this.frameCount % 30 === 0; // Log every ~1 second
-        // 🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
-        const shouldHeartbeat = this.frameCount % 150 === 0;
-        if (shouldHeartbeat) {
-            const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp;
-            console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`);
-        }
+        // � WAVE 671.5: Silenced heartbeat spam (every 5s)
+        // �🫁 WAVE 266: IRON LUNG - Heartbeat cada 5 segundos (150 frames @ 30fps)
+        // const shouldHeartbeat = this.frameCount % 150 === 0
+        // if (shouldHeartbeat) {
+        //   const timeSinceLastAudio = Date.now() - this.lastAudioTimestamp
+        //   console.log(`[Titan] 🫁 Heartbeat #${this.frameCount}: Audio flowing? ${this.hasRealAudio} | Last Packet: ${timeSinceLastAudio}ms ago`)
+        // }
         // 1. Brain produces MusicalContext
         const context = this.brain.getCurrentContext();
         // 🗡️ WAVE 265: STALENESS DETECTION - Verificar frescura del audio
@@ -179,7 +199,8 @@ export class TitanOrchestrator {
             }
             this.hasRealAudio = false;
             // Reset lastAudioData para no mentir con datos viejos
-            this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0 };
+            // 🎛️ WAVE 661: Incluir reset de textura espectral
+            this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0, harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined };
         }
         // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
         let bass, mid, high, energy;
@@ -197,6 +218,7 @@ export class TitanOrchestrator {
             energy = 0;
         }
         // For TitanEngine
+        // 🎛️ WAVE 661: Incluir textura espectral
         const engineAudioMetrics = {
             bass,
             mid,
@@ -204,6 +226,9 @@ export class TitanOrchestrator {
             energy,
             beatPhase: (this.frameCount % 30) / 30,
             isBeat: this.frameCount % 30 === 0 && energy > 0.3,
+            harshness: this.lastAudioData.harshness,
+            spectralFlatness: this.lastAudioData.spectralFlatness,
+            spectralCentroid: this.lastAudioData.spectralCentroid,
         };
         // For HAL
         const halAudioMetrics = {
@@ -236,10 +261,40 @@ export class TitanOrchestrator {
         // WAVE 380: Debug - verify fixtures are present in loop
         if (this.frameCount === 1 || this.frameCount % 300 === 0) {
             console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`);
+            console.log(`[TitanOrchestrator] 🎭 Arbitrated fixtures: ${arbitratedTarget.fixtures.length}`);
         }
         // 4. HAL renders arbitrated target -> produces fixture states
         // Now using the new renderFromTarget method that accepts FinalLightingTarget
-        const fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
+        let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics);
+        // 🧨 WAVE 635 → WAVE 692.2: EFFECT COLOR OVERRIDE
+        // Si hay un efecto activo con globalOverride, usar SU color (no hardcoded dorado)
+        const effectManager = getEffectManager();
+        const effectOutput = effectManager.getCombinedOutput();
+        if (effectOutput.hasActiveEffects && effectOutput.globalOverride && effectOutput.dimmerOverride !== undefined) {
+            const flareIntensity = effectOutput.dimmerOverride; // 0-1
+            // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
+            let flareR = 255, flareG = 200, flareB = 80; // Default: dorado (SolarFlare legacy)
+            if (effectOutput.colorOverride) {
+                // Convertir HSL a RGB
+                const { h, s, l } = effectOutput.colorOverride;
+                const rgb = this.hslToRgb(h, s, l);
+                flareR = rgb.r;
+                flareG = rgb.g;
+                flareB = rgb.b;
+            }
+            // Override color y dimmer de TODAS las fixtures
+            fixtureStates = fixtureStates.map(f => ({
+                ...f,
+                r: flareR,
+                g: flareG,
+                b: flareB,
+                dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)), // HTP dimmer
+            }));
+            // Log throttled
+            if (this.frameCount % 10 === 0) {
+                console.log(`[TitanOrchestrator �] EFFECT COLOR: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
+            }
+        }
         // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
         const shouldLogToTactical = this.frameCount % 30 === 0;
         if (shouldLogToTactical && this.hasRealAudio) {
@@ -312,10 +367,12 @@ export class TitanOrchestrator {
                     }
                 },
                 // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
+                // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
                 consciousness: {
                     ...createDefaultCognitive(),
                     stableEmotion: this.engine.getStableEmotion(),
                     thermalTemperature: this.engine.getThermalTemperature(),
+                    ai: this.engine.getConsciousnessTelemetry(),
                 },
                 // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
                 // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos
@@ -404,28 +461,33 @@ export class TitanOrchestrator {
                 },
                 timestamp: Date.now()
             };
+            // 🧹 WAVE 671.5: Silenced BROADCAST debug spam (every 2s)
             // 🔍 WAVE 347.8: Debug broadcast pan/tilt values
             // 🩸 WAVE 380: Updated to show REAL fixture IDs
-            if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
-                const f0 = truth.hardware.fixtures[0];
-                const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ');
-                console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`);
-                console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`);
-            }
+            // if (this.frameCount % 60 === 0 && truth.hardware.fixtures.length > 0) {
+            //   const f0 = truth.hardware.fixtures[0]
+            //   const fixtureIds = truth.hardware.fixtures.map(f => f.id).slice(0, 3).join(', ')
+            //   console.log(`[📡 BROADCAST] ${truth.hardware.fixtures.length} fixtures | IDs: ${fixtureIds}...`)
+            //   console.log(`[📡 BROADCAST] f0.id=${f0.id} | dimmer=${f0.dimmer.toFixed(2)} | R=${f0.color.r} G=${f0.color.g} B=${f0.color.b}`)
+            // }
             this.onBroadcast(truth);
+            // 🧹 WAVE 671.5: Silenced SYNAPTIC BRIDGE spam (kept for future debug if needed)
             // 🧠 WAVE 260: Debug log para verificar que el contexto fluye a la UI
             // Log cada 2 segundos (60 frames @ 30fps)
-            if (this.frameCount % 60 === 0) {
-                console.log(`[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
-                    `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
-                    `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`);
-            }
+            // if (this.frameCount % 60 === 0) {
+            //   console.log(
+            //     `[Titan] 🌉 SYNAPTIC BRIDGE: Key=${context.key ?? '---'} ${context.mode} | ` +
+            //     `Genre=${context.genre.macro}/${context.genre.subGenre ?? 'none'} | ` +
+            //     `BPM=${context.bpm} | Energy=${(context.energy * 100).toFixed(0)}%`
+            //   )
+            // }
         }
+        // 🧹 WAVE 671.5: Silenced frame count spam (7-8 logs/sec)
         // Log every second
-        if (shouldLog && this.config.debug) {
-            const currentVibe = this.engine.getCurrentVibe();
-            console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`);
-        }
+        // if (shouldLog && this.config.debug) {
+        //   const currentVibe = this.engine.getCurrentVibe()
+        //   console.log(`[TitanOrchestrator] Frame ${this.frameCount}: Vibe=${currentVibe}, Fixtures=${fixtureStates.length}`)
+        // }
     }
     /**
      * Set the current vibe
@@ -461,11 +523,62 @@ export class TitanOrchestrator {
         this.log('System', `⚙️ Mode: ${mode.toUpperCase()}`);
     }
     /**
-     * WAVE 254: Enable/disable brain processing
+     * WAVE 254: Enable/disable brain processing (Layer 0 + Layer 1)
+     * 🔴 DEPRECATED for consciousness control - use setConsciousnessEnabled instead
+     * This kills EVERYTHING (blackout) - only use for full system stop
      */
     setUseBrain(enabled) {
         this.useBrain = enabled;
-        console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'}`);
+        console.log(`[TitanOrchestrator] Brain ${enabled ? 'enabled' : 'disabled'} (FULL SYSTEM)`);
+        this.log('System', `🧠 Brain: ${enabled ? 'ONLINE' : 'OFFLINE'}`);
+    }
+    /**
+     * 🧬 WAVE 560: Enable/disable consciousness ONLY (Layer 1)
+     *
+     * This is the CORRECT toggle for the AI switch:
+     * - When OFF: Layer 0 (física reactiva) keeps running
+     * - When ON: Layer 1 (consciousness) provides recommendations
+     *
+     * NO MORE BLACKOUT!
+     */
+    setConsciousnessEnabled(enabled) {
+        this.consciousnessEnabled = enabled;
+        // Propagar al TitanEngine (Selene V2)
+        if (this.engine) {
+            this.engine.setConsciousnessEnabled(enabled);
+        }
+        console.log(`[TitanOrchestrator] 🧬 Consciousness ${enabled ? 'ENABLED ✅' : 'DISABLED ⏸️'}`);
+        this.log('Brain', `🧬 Consciousness: ${enabled ? 'ACTIVE' : 'STANDBY'}`);
+    }
+    /**
+     * 🧬 WAVE 560: Get consciousness state
+     */
+    isConsciousnessEnabled() {
+        return this.consciousnessEnabled;
+    }
+    /**
+     * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+     *
+     * Dispara un efecto manualmente sin esperar decisión de HuntEngine.
+     * Útil para testear efectos visuales sin alterar umbrales de los algoritmos.
+     *
+     * FLOW:
+     * 1. Frontend llama window.lux.forceStrike({ effect: 'solar_flare', intensity: 1.0 })
+     * 2. IPC handler llama titanOrchestrator.forceStrikeNextFrame(config)
+     * 3. Este método llama engine's forceStrikeNextFrame(config)
+     * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
+     *
+     * @param config - { effect: string, intensity: number }
+     */
+    forceStrikeNextFrame(config) {
+        if (!this.engine) {
+            console.warn('[TitanOrchestrator] 🧨 Cannot force strike - Engine not initialized');
+            return;
+        }
+        console.log(`[TitanOrchestrator] 🧨 FORCE STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`);
+        this.log('Effect', `🧨 Manual Strike: ${config.effect}`, { intensity: config.intensity });
+        // Delegar al TitanEngine
+        this.engine.forceStrikeNextFrame(config);
     }
     /**
      * WAVE 254: Set input gain for audio
@@ -508,6 +621,7 @@ export class TitanOrchestrator {
     /**
      * WAVE 255: Process incoming audio frame from frontend
      * This method receives audio data and stores it for the main loop
+     * 🎛️ WAVE 661: Ahora incluye textura espectral (harshness, spectralFlatness, spectralCentroid)
      */
     processAudioFrame(data) {
         if (!this.isRunning || !this.useBrain)
@@ -519,8 +633,12 @@ export class TitanOrchestrator {
             typeof data.treble === 'number' ? data.treble : 0;
         const energy = typeof data.energy === 'number' ? data.energy :
             typeof data.volume === 'number' ? data.volume : 0;
+        // 🎛️ WAVE 661: Extraer textura espectral
+        const harshness = typeof data.harshness === 'number' ? data.harshness : undefined;
+        const spectralFlatness = typeof data.spectralFlatness === 'number' ? data.spectralFlatness : undefined;
+        const spectralCentroid = typeof data.spectralCentroid === 'number' ? data.spectralCentroid : undefined;
         // Store for main loop (used by TitanEngine for immediate visual response)
-        this.lastAudioData = { bass, mid, high, energy };
+        this.lastAudioData = { bass, mid, high, energy, harshness, spectralFlatness, spectralCentroid };
         this.hasRealAudio = energy > 0.01; // Mark as having real audio if not silent
         // 🗡️ WAVE 265: Update timestamp para staleness detection
         this.lastAudioTimestamp = Date.now();
@@ -535,9 +653,10 @@ export class TitanOrchestrator {
         // audioFrame() ahora SOLO almacena métricas para el Engine,
         // NO alimenta el análisis musical. Eso lo hace audioBuffer().
         // ====================================================================
-        if (this.config.debug && this.frameCount % 30 === 0) {
-            console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`);
-        }
+        // 🧹 WAVE 671.5: Silenced audio metrics spam (every 1s)
+        // if (this.config.debug && this.frameCount % 30 === 0) {
+        //   console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
+        // }
     }
     processAudioBuffer(buffer) {
         // 🔍 WAVE 264.7: LOG CUANDO SE RECHAZA
@@ -567,21 +686,26 @@ export class TitanOrchestrator {
      * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
      * WAVE 374: Register fixtures in MasterArbiter
      * WAVE 382: Pass FULL fixture data including capabilities and hasMovementChannels
+     * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setFixtures(fixtures) {
-        this.fixtures = fixtures;
+        // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
+        this.fixtures = fixtures.map(f => ({
+            ...f,
+            dmxAddress: f.dmxAddress || f.address // Ensure dmxAddress exists regardless of format
+        }));
         // WAVE 380: Log fixture ingestion
         console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`);
         console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...');
         // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
-        // Pass all relevant data - arbiter needs type, capabilities, hasMovementChannels
-        masterArbiter.setFixtures(fixtures.map(f => ({
+        // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
+        masterArbiter.setFixtures(this.fixtures.map(f => ({
             id: f.id,
             name: f.name,
             zone: f.zone,
             type: f.type || 'generic',
-            dmxAddress: f.dmxAddress,
+            dmxAddress: f.dmxAddress, // 🎨 WAVE 686.11: Already normalized above
             universe: f.universe || 1,
             capabilities: f.capabilities,
             hasMovementChannels: f.hasMovementChannels,
@@ -617,6 +741,46 @@ export class TitanOrchestrator {
             frameCount: this.frameCount,
             currentVibe: this.engine?.getCurrentVibe() ?? null,
             fixturesCount: this.fixtures.length,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎨 WAVE 692.2: HSL to RGB conversion for effect colors
+    // ═══════════════════════════════════════════════════════════════════════════
+    hslToRgb(h, s, l) {
+        // h: 0-360, s: 0-100, l: 0-100
+        const hNorm = h / 360;
+        const sNorm = s / 100;
+        const lNorm = l / 100;
+        let r, g, b;
+        if (sNorm === 0) {
+            r = g = b = lNorm;
+        }
+        else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0)
+                    t += 1;
+                if (t > 1)
+                    t -= 1;
+                if (t < 1 / 6)
+                    return p + (q - p) * 6 * t;
+                if (t < 1 / 2)
+                    return q;
+                if (t < 2 / 3)
+                    return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            const q = lNorm < 0.5
+                ? lNorm * (1 + sNorm)
+                : lNorm + sNorm - lNorm * sNorm;
+            const p = 2 * lNorm - q;
+            r = hue2rgb(p, q, hNorm + 1 / 3);
+            g = hue2rgb(p, q, hNorm);
+            b = hue2rgb(p, q, hNorm - 1 / 3);
+        }
+        return {
+            r: Math.round(r * 255),
+            g: Math.round(g * 255),
+            b: Math.round(b * 255),
         };
     }
 }

@@ -73,12 +73,13 @@ const DEFAULT_CONFIG: TidalWaveConfig = {
   bpmSync: true,
   beatsPerWave: 2,       // 2 beats = 1 ola
   forwardDirection: true,
-  waveColor: { h: 200, s: 80, l: 60 },  // Azul marino
+  // 🌊 WAVE 691.5: Color CÁLIDO para Latina - no más azul frío
+  waveColor: { h: 280, s: 70, l: 55 },  // Violeta cálido
   whiteOnPeak: false,
   intensityFloor: 0.1,
 }
 
-// Orden espacial de zonas (front → back)
+// 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
 const ZONE_ORDER: EffectZone[] = ['front', 'pars', 'back', 'movers']
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -131,7 +132,13 @@ export class TidalWave extends BaseEffect {
     this.wavesCompleted = 0
     this.calculateWavePeriod()
     
-    console.log(`[TidalWave 🌊] TRIGGERED! Period=${this.actualWavePeriodMs}ms Waves=${this.config.waveCount}`)
+    // 🌊 WAVE 691.5: Adaptar color según vibe
+    if (config.musicalContext?.vibeId === 'fiesta-latina') {
+      // Colores cálidos para latina
+      this.config.waveColor = { h: 30, s: 85, l: 55 }  // Naranja dorado
+    }
+    
+    console.log(`[TidalWave 🌊] TRIGGERED! Period=${this.actualWavePeriodMs}ms Waves=${this.config.waveCount} Color=hsl(${this.config.waveColor.h},${this.config.waveColor.s}%,${this.config.waveColor.l}%)`)
   }
   
   update(deltaMs: number): void {
@@ -178,14 +185,20 @@ export class TidalWave extends BaseEffect {
     
     const scaledIntensity = this.getIntensityFromZScore(maxIntensity * this.triggerIntensity, 0.25)
     
-    // Color shift basado en la fase de la ola
+    // 🌊 WAVE 691.5: Color con saturación alta, NO desaturar a blanco
+    // El problema era que L subía demasiado → gris/blanco
     const colorShift = this.wavePhase * 30  // ±30° de hue durante la ola
     const color = {
       h: (this.config.waveColor.h + colorShift) % 360,
-      s: this.config.waveColor.s,
-      l: this.config.waveColor.l + scaledIntensity * 20,  // Más brillo en el pico
+      s: this.config.waveColor.s,  // Mantener saturación ALTA
+      l: Math.min(75, this.config.waveColor.l + scaledIntensity * 10),  // 🔧 FIX: Cap L at 75%
     }
     
+    // 🔍 WAVE 691.5: Debug del color para diagnóstico
+    if (Math.random() < 0.05) {  // 5% de los frames
+      console.log(`[TidalWave 🎨] Color=hsl(${color.h.toFixed(0)},${color.s}%,${color.l.toFixed(0)}%) Intensity=${scaledIntensity.toFixed(2)} Zones=${this.getActiveZones().join(',')}`)
+    }
+
     return {
       effectId: this.id,
       category: this.category,

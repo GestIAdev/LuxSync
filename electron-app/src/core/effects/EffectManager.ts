@@ -42,8 +42,13 @@ import {
 // Import effect library
 import { SolarFlare } from './library/SolarFlare'
 import { StrobeStorm } from './library/StrobeStorm'
+import { StrobeBurst } from './library/StrobeBurst'
 import { TidalWave } from './library/TidalWave'
 import { GhostBreath } from './library/GhostBreath'
+// 🎺 WAVE 692: FIESTA LATINA ARSENAL
+import { TropicalPulse } from './library/TropicalPulse'
+import { SalsaFire } from './library/SalsaFire'
+import { CumbiaMoon } from './library/CumbiaMoon'
 
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
@@ -89,8 +94,13 @@ const EFFECT_VIBE_RULES: Record<string, {
 }> = {
   'solar_flare': { isDynamic: true },
   'strobe_storm': { requiresStrobe: true, isDynamic: true },
+  'strobe_burst': { isDynamic: true }, // 🔥 WAVE 691: Rhythmic strobe for Latina
   'tidal_wave': { isDynamic: true },
   'ghost_breath': { isDynamic: true },
+  // 🎺 WAVE 692: FIESTA LATINA ARSENAL
+  'tropical_pulse': { isDynamic: true },   // 🌴 Crescendo bursts
+  'salsa_fire': { isDynamic: true },       // 🔥 Fire flicker
+  'cumbia_moon': { isDynamic: false },     // 🌙 Ambient - allowed even in chill
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -383,14 +393,30 @@ export class EffectManager extends EventEmitter {
     // ☀️ Solar Flare - WAVE 600
     this.effectFactories.set('solar_flare', () => new SolarFlare())
     
-    // ⚡ Strobe Storm - WAVE 680
+    // ⚡ Strobe Storm - WAVE 680 (harsh, for rock/techno)
     this.effectFactories.set('strobe_storm', () => new StrobeStorm())
+    
+    // 🔥 Strobe Burst - WAVE 691 (rhythmic, for latina/festive)
+    this.effectFactories.set('strobe_burst', () => new StrobeBurst())
     
     // 🌊 Tidal Wave - WAVE 680
     this.effectFactories.set('tidal_wave', () => new TidalWave())
     
     // 👻 Ghost Breath - WAVE 680
     this.effectFactories.set('ghost_breath', () => new GhostBreath())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎺 WAVE 692: FIESTA LATINA ARSENAL
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🌴 Tropical Pulse - Crescendo bursts like conga rhythm
+    this.effectFactories.set('tropical_pulse', () => new TropicalPulse())
+    
+    // 🔥 Salsa Fire - Organic fire flicker effect  
+    this.effectFactories.set('salsa_fire', () => new SalsaFire())
+    
+    // 🌙 Cumbia Moon - Soft breathing glow for breakdowns
+    this.effectFactories.set('cumbia_moon', () => new CumbiaMoon())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

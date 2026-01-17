@@ -79,6 +79,19 @@ export function registerArbiterHandlers(masterArbiter) {
      * Example from UI Programmer panel
      */
     ipcMain.handle('lux:arbiter:setManual', (_event, { fixtureIds, controls, channels, }) => {
+        // Validate required parameters
+        if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
+            console.error('[Arbiter] setManual: Invalid or empty fixtureIds', { fixtureIds, controls, channels });
+            return { success: false, error: 'Invalid or empty fixtureIds' };
+        }
+        if (!controls || typeof controls !== 'object') {
+            console.error('[Arbiter] setManual: Invalid controls', { fixtureIds, controls, channels });
+            return { success: false, error: 'Invalid controls' };
+        }
+        if (!channels || !Array.isArray(channels) || channels.length === 0) {
+            console.error('[Arbiter] setManual: Invalid or empty channels', { fixtureIds, controls, channels });
+            return { success: false, error: 'Invalid or empty channels' };
+        }
         const overrideCount = fixtureIds.length;
         for (const fixtureId of fixtureIds) {
             const override = {

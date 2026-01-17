@@ -1,23 +1,28 @@
 /**
- * 🎛️ SYSTEMS CHECK - WAVE 437.2
+ * 🎛️ SYSTEMS CHECK - WAVE 686
  * "Mission Control Pre-Flight Check"
  * 
  * Quick status verification of Audio Input + DMX Output
- * NOW WITH RESURRECTED AUDIO REACTOR CORE!
+ * NOW WITH INTEGRATED ARTNET CONFIG!
  * 
  * Features:
  * - Audio device dropdown
- * - AUDIO REACTOR RING (The Heart!)
  * - DMX driver dropdown with connection status
+ * - INLINE ArtNet configuration (no more SetupView trips!)
  * - High z-index dropdowns (overlay friendly)
+ * 
+ * WAVE 686: Removed AudioReactorRing, added ArtNet config panel
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import { AudioWaveIcon, NetworkIcon } from '../../../icons/LuxIcons'
-import AudioReactorRing from './AudioReactorRing'
 import './SystemsCheck.css'
+
+// 🎨 WAVE 686: ArtNet API access
+const getArtnetApi = () => (window as any).luxsync?.artnet
+const getDmxApi = () => (window as any).lux?.dmx
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -29,6 +34,16 @@ type DMXDriver = 'virtual' | 'usb-serial' | 'artnet'
 interface SystemStatus {
   audio: 'online' | 'offline' | 'error'
   dmx: 'online' | 'offline' | 'error'
+}
+
+interface ArtNetStatus {
+  state: 'disconnected' | 'ready' | 'sending' | 'error'
+  ip: string
+  port: number
+  universe: number
+  framesSent: number
+  packetsDropped: number
+  avgLatency: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,6 +79,268 @@ const MiniVisualizer: React.FC = () => {
           }}
         />
       ))}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎨 WAVE 686: COMPACT ARTNET CONFIG PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ArtNetPanel: React.FC = () => {
+  const [ip, setIp] = useState<string>('255.255.255.255')
+  const [port, setPort] = useState<number>(6454)
+  const [universe, setUniverse] = useState<number>(1)
+  const [status, setStatus] = useState<ArtNetStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+
+  // 🎯 WAVE 686.9: FIXED - Backend returns status directly, not wrapped in {success:...}
+  useEffect(() => {
+    const pollStatus = async () => {
+      const artnetApi = getArtnetApi()
+      if (artnetApi?.getStatus) {
+        try {
+          const result = await artnetApi.getStatus()
+          // Backend returns status directly: {state, ip, port, universe, ...}
+          // NOT wrapped in {success: true, ...}
+          if (result && result.state) {
+            const artnetStatus = result as ArtNetStatus
+            setStatus(artnetStatus)
+            
+            // 🔥 Sync fields when backend is connected
+            if (artnetStatus.state === 'ready' || artnetStatus.state === 'sending') {
+              setIp(artnetStatus.ip)
+              setPort(artnetStatus.port)
+              setUniverse(artnetStatus.universe)
+            }
+          }
+        } catch (err) {
+          // Silent - polling error
+        }
+      }
+    }
+    
+    // Poll immediately and then every 2s
+    pollStatus()
+    const interval = setInterval(pollStatus, 2000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleConnect = async () => {
+    setIsConnecting(true)
+    setError(null)
+
+    const artnetApi = getArtnetApi()
+    if (artnetApi?.start) {
+      try {
+        await artnetApi.configure({ ip, port, universe })
+        const result = await artnetApi.start()
+        
+        if (result.success) {
+          setStatus(result.status)
+        } else {
+          setError(result.error || 'Failed to start ArtNet')
+        }
+      } catch (err) {
+        setError('Failed: ' + String(err))
+      }
+    }
+
+    setIsConnecting(false)
+  }
+
+  const handleDisconnect = async () => {
+    const artnetApi = getArtnetApi()
+    if (artnetApi?.stop) {
+      await artnetApi.stop()
+      setStatus(null)
+    }
+  }
+
+  const isConnected = status?.state === 'ready' || status?.state === 'sending'
+
+  return (
+    <div className="artnet-panel">
+      <div className="artnet-panel-row">
+        <div className="artnet-field">
+          <label>IP</label>
+          <input
+            type="text"
+            value={ip}
+            onChange={(e) => setIp(e.target.value)}
+            placeholder="255.255.255.255"
+            disabled={isConnected}
+          />
+        </div>
+        <div className="artnet-field small">
+          <label>Port</label>
+          <input
+            type="number"
+            value={port}
+            onChange={(e) => setPort(Number(e.target.value))}
+            disabled={isConnected}
+          />
+        </div>
+        <div className="artnet-field small">
+          <label>Universe</label>
+          <input
+            type="number"
+            value={universe}
+            onChange={(e) => setUniverse(Number(e.target.value))}
+            min={0}
+            max={32767}
+            disabled={isConnected}
+          />
+        </div>
+      </div>
+
+      {error && <div className="artnet-error">⚠️ {error}</div>}
+
+      <div className="artnet-panel-footer">
+        {!isConnected ? (
+          <button 
+            className="artnet-btn connect"
+            onClick={handleConnect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? '🔄' : '🚀'} {isConnecting ? 'Connecting...' : 'Start'}
+          </button>
+        ) : (
+          <button 
+            className="artnet-btn disconnect"
+            onClick={handleDisconnect}
+          >
+            🛑 Stop
+          </button>
+        )}
+        
+        {status && isConnected && (
+          <div className="artnet-stats">
+            <span className="stat">📡 {status.framesSent.toLocaleString()}</span>
+            <span className="stat">⚡ {status.avgLatency.toFixed(1)}ms</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔌 WAVE 686: COMPACT USB DMX PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface DetectedPort {
+  path: string
+  manufacturer?: string
+  vendorId?: string
+  productId?: string
+  confidence: number
+  chipType?: string
+}
+
+const UsbDmxPanel: React.FC = () => {
+  const { dmxComPort, detectedDmxPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore()
+  const [autoConnect, setAutoConnect] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleRescan = useCallback(async () => {
+    setDmxScanning(true)
+    setError(null)
+    
+    try {
+      const dmxApi = getDmxApi()
+      if (dmxApi?.listDevices) {
+        const devices = await dmxApi.listDevices()
+        setDetectedDmxPorts(devices || [])
+      }
+    } catch (err) {
+      setError('Scan failed')
+    } finally {
+      setDmxScanning(false)
+    }
+  }, [setDmxScanning, setDetectedDmxPorts])
+
+  const handlePortSelect = useCallback(async (portPath: string) => {
+    if (!portPath) return
+    
+    setDmxPort(portPath)
+    setError(null)
+    
+    const dmxApi = getDmxApi()
+    try {
+      if (dmxApi?.connect) {
+        await dmxApi.connect(portPath)
+      }
+    } catch (err) {
+      setError(`Connect failed`)
+    }
+  }, [setDmxPort])
+
+  const handleAutoConnectChange = useCallback(async (auto: boolean) => {
+    setAutoConnect(auto)
+    
+    const dmxApi = getDmxApi()
+    if (auto && dmxApi?.autoConnect) {
+      try {
+        await dmxApi.autoConnect()
+      } catch (err) {
+        console.warn('[UsbDmxPanel] Auto-connect failed:', err)
+      }
+    }
+  }, [])
+
+  // Auto-scan on mount
+  useEffect(() => {
+    if (detectedDmxPorts.length === 0) {
+      handleRescan()
+    }
+  }, [])
+
+  return (
+    <div className="usb-panel">
+      <div className="usb-panel-header">
+        <label>COM PORT</label>
+        <button 
+          className={`usb-rescan-btn ${isDmxScanning ? 'scanning' : ''}`}
+          onClick={handleRescan}
+          disabled={isDmxScanning}
+        >
+          {isDmxScanning ? '🔄' : '🔍'}
+        </button>
+      </div>
+      
+      <label className="usb-auto-toggle">
+        <input
+          type="checkbox"
+          checked={autoConnect}
+          onChange={(e) => handleAutoConnectChange(e.target.checked)}
+        />
+        <span className="usb-toggle-slider" />
+        <span className="usb-toggle-label">Auto-connect</span>
+      </label>
+      
+      <select 
+        className="usb-port-dropdown"
+        value={dmxComPort || ''}
+        onChange={(e) => handlePortSelect(e.target.value)}
+        disabled={autoConnect || detectedDmxPorts.length === 0}
+      >
+        <option value="">-- Select Port --</option>
+        {detectedDmxPorts.map((port) => (
+          <option key={port.path} value={port.path}>
+            {port.path} - {port.chipType || port.manufacturer || 'Unknown'}
+          </option>
+        ))}
+      </select>
+      
+      {error && <div className="usb-error">⚠️ {error}</div>}
+      
+      {detectedDmxPorts.length === 0 && !isDmxScanning && (
+        <div className="usb-no-ports">
+          No DMX devices found
+        </div>
+      )}
     </div>
   )
 }
@@ -114,11 +391,26 @@ export const SystemsCheck: React.FC = () => {
     console.log(`[SystemsCheck] Audio source: ${source}`)
   }, [setAudioSource])
   
-  const handleDmxChange = useCallback((driver: DMXDriver) => {
+  const handleDmxChange = useCallback(async (driver: DMXDriver) => {
     setDmxDriver(driver)
     setDmxDropdownOpen(false)
-    // TODO: Connect to actual DMX system via IPC
     console.log(`[SystemsCheck] DMX driver: ${driver}`)
+    
+    const dmxApi = getDmxApi()
+    
+    if (driver === 'virtual') {
+      // Virtual = instant connect
+      try {
+        if (dmxApi?.connect) {
+          await dmxApi.connect('virtual')
+          console.log('[SystemsCheck] Virtual DMX connected')
+        }
+      } catch (err) {
+        console.error('[SystemsCheck] Virtual connect failed:', err)
+      }
+    }
+    // ArtNet: user configures in ArtNetPanel and clicks Start
+    // USB-Serial: would need port selection (not implemented in dashboard)
   }, [setDmxDriver])
   
   const currentAudio = audioOptions.find(o => o.id === audioSource) || audioOptions[0]
@@ -224,10 +516,9 @@ export const SystemsCheck: React.FC = () => {
         </div>
       </div>
       
-      {/* ☢️ REACTOR CORE - BOTTOM (fills remaining space) - WAVE 437.5 */}
-      <div className="reactor-core">
-        <AudioReactorRing size={150} />
-      </div>
+      {/* 🎨 WAVE 686: Config Panels - Show based on selected driver */}
+      {dmxDriver === 'artnet' && <ArtNetPanel />}
+      {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
     </div>
   )
 }

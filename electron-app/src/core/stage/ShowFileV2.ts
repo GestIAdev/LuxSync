@@ -311,11 +311,17 @@ export function mapLibraryTypeToFixtureType(
     'moving_head': 'moving-head',
     'movinghead': 'moving-head',
     'moving-head': 'moving-head',
+    'moving head': 'moving-head', // 🎯 WAVE 685.6: From Forge dropdown
+    'moving': 'moving-head', // 🎯 WAVE 685.6: Saved as "moving" from Forge
     'par': 'par',
     'wash': 'wash',
     'strobe': 'strobe',
     'laser': 'laser',
     'blinder': 'blinder',
+    'bar': 'generic', // Bar → generic for now
+    'spot': 'generic',
+    'scanner': 'generic',
+    'other': 'generic',
     'generic': 'generic'
   }
   

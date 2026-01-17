@@ -468,6 +468,9 @@ export class FXTParser {
                         has16bitMovement: jsonFixture.has16bitMovement || false,
                         hasColorMixing: jsonFixture.hasColorMixing || true,
                         hasColorWheel: jsonFixture.hasColorWheel || false,
+                        // WAVE 389.6: Include physics and capabilities
+                        physics: jsonFixture.physics,
+                        capabilities: jsonFixture.capabilities,
                     };
                     fixtures.push(fixture);
                     if (this.debug) {
@@ -493,5 +496,6 @@ export class FXTParser {
         return fixtures;
     }
 }
+// 🧹 WAVE 671.5: Debug OFF - silences startup spam (easily re-enable if needed)
 // Exportar instancia singleton para uso directo
-export const fxtParser = new FXTParser(true); // Debug ON
+export const fxtParser = new FXTParser(false); // Debug OFF

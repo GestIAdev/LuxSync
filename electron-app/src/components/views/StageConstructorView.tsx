@@ -839,8 +839,8 @@ const StageConstructorView: React.FC = () => {
           type: fixtureType,
           profileId: definition.id || existingFixture.profileId,
           // 🎯 WAVE 685.6: Update DMX address if provided
-          ...(patchData?.dmxAddress && { address: patchData.dmxAddress }),
-          ...(patchData?.universe && { universe: patchData.universe }),
+          ...(patchData?.dmxAddress !== undefined && { address: patchData.dmxAddress }),
+          ...(patchData?.universe !== undefined && { universe: patchData.universe }),
           // Inline channels for persistence
           channels: definition.channels.map((ch, idx) => ({
             index: idx,
@@ -866,7 +866,15 @@ const StageConstructorView: React.FC = () => {
         })
         updateFixturePhysics(forgeEditingFixtureId, physics)
         
-        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}${patchData?.dmxAddress ? `, DMX: ${patchData.dmxAddress}` : ''}`)
+        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
+        if (patchData) {
+          console.log(`[StageConstructor] 📍 DMX Patch updated:`, {
+            dmxAddress: patchData.dmxAddress,
+            universe: patchData.universe,
+            savedAddress: patchData.dmxAddress,
+            savedUniverse: patchData.universe
+          })
+        }
       }
     }
     

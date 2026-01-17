@@ -29,6 +29,8 @@ import { configManager } from '../src/core/config/ConfigManagerV2';
 import { FixturePhysicsDriver } from '../src/engine/movement/FixturePhysicsDriver';
 import { universalDMX } from '../src/hal/drivers/UniversalDMXDriver';
 import { artNetDriver } from '../src/hal/drivers/ArtNetDriver';
+// 🎨 WAVE 686.10: Import ArtNetDriverAdapter to bridge ArtNet to HAL
+import { createArtNetAdapter } from '../src/hal/drivers/ArtNetDriverAdapter';
 import { EffectsEngine } from '../src/engine/color/EffectsEngine';
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { fxtParser } from '../src/core/library/FXTParser';
@@ -45,6 +47,50 @@ let patchedFixtures = [];
 let manualOverrides = new Map();
 // Zone counters for auto-assignment
 let zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 };
+// WAVE 390.5: Factory library path (stored after initialization)
+let factoryLibPath = '';
+let customLibPath = '';
+/**
+ * WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
+ * This is the ONLY function that should update fixtureLibrary after save/delete
+ */
+async function rescanAllLibraries() {
+    console.log('[Library] 🔄 WAVE 390.5: Rescanning ALL libraries...');
+    // Scan both libraries
+    const factoryDefinitions = fxtParser.scanFolder(factoryLibPath);
+    const customDefinitions = fxtParser.scanFolder(customLibPath);
+    // 🧹 WAVE 671.5: Removed obsolete test_beam debug log (no longer needed)
+    // WAVE 390.5 DEBUG: Log test_beam specifically (it has physics)
+    // const testBeam = customDefinitions.find(f => f.name.toLowerCase().includes('test'))
+    // if (testBeam) {
+    //   console.log('[Library] 🔬 test_beam fixture data:', {
+    //     name: testBeam.name,
+    //     channelCount: testBeam.channelCount,
+    //     hasChannels: !!testBeam.channels,
+    //     channelsLength: testBeam.channels?.length,
+    //     firstChannel: testBeam.channels?.[0],
+    //     hasPhysics: !!testBeam.physics,
+    //     physics: testBeam.physics
+    //   })
+    // } else {
+    //   console.log('[Library] ℹ️ test_beam not found in custom folder')
+    // }
+    // Merge: custom overrides factory by name (not ID, IDs are unreliable for .fxt files)
+    const mergedLibrary = [...factoryDefinitions];
+    for (const customFix of customDefinitions) {
+        // Match by name (case-insensitive) since IDs are generated
+        const existingIndex = mergedLibrary.findIndex(f => f.name.toLowerCase() === customFix.name.toLowerCase());
+        if (existingIndex >= 0) {
+            mergedLibrary[existingIndex] = customFix; // Custom overrides factory
+        }
+        else {
+            mergedLibrary.push(customFix); // New custom fixture
+        }
+    }
+    fixtureLibrary = mergedLibrary;
+    console.log(`[Library] ✅ Rescanned: ${factoryDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} merged fixtures`);
+    return fixtureLibrary;
+}
 function resetZoneCounters() {
     zoneCounters = { par: 0, moving: 0, strobe: 0, laser: 0 };
     console.log('[Zoning] Zone counters reset');
@@ -173,8 +219,15 @@ async function initTitan() {
     console.log('[Main] 💾 Stage Persistence V2 initialized');
     // Initialize EffectsEngine
     effectsEngine = new EffectsEngine();
+    // 🎨 WAVE 686.10: Create ArtNet adapter for HAL integration
+    const artNetAdapter = createArtNetAdapter(artNetDriver);
+    console.log('[Main] 🎨 ArtNetDriverAdapter created (WAVE 686.10)');
     // Initialize TitanOrchestrator (WAVE 254: Now the ONLY orchestrator)
-    titanOrchestrator = new TitanOrchestrator({ debug: isDev });
+    // Pass ArtNet adapter so HAL can output to real hardware
+    titanOrchestrator = new TitanOrchestrator({
+        debug: isDev,
+        dmxDriver: artNetAdapter
+    });
     // WAVE 380: Register as singleton so IPC handlers can access the same instance
     registerTitanOrchestrator(titanOrchestrator);
     await titanOrchestrator.init();
@@ -214,6 +267,8 @@ async function initTitan() {
         setPatchedFixtures: (fixtures) => { patchedFixtures = fixtures; },
         getFixtureLibrary: () => fixtureLibrary,
         setFixtureLibrary: (library) => { fixtureLibrary = library; },
+        // WAVE 390.5: Rescan ALL libraries (factory + custom)
+        rescanAllLibraries,
     };
     setupIPCHandlers(ipcDeps);
     console.log('[Main] IPC Handlers registered via IPCHandlers module');
@@ -272,6 +327,9 @@ app.whenReady().then(async () => {
         : path.join(app.getPath('userData'), 'librerias'); // Prod: userData/librerias (copied on first run)
     // Custom library path (user's custom fixtures and edited definitions)
     const customLibraryPath = path.join(app.getPath('userData'), 'fixtures');
+    // WAVE 390.5: Store paths globally for rescanAllLibraries()
+    factoryLibPath = factoryLibraryPath;
+    customLibPath = customLibraryPath;
     // WAVE 387 STEP 2: Auto-create custom library folder
     const fs = await import('fs');
     if (!fs.existsSync(customLibraryPath)) {
@@ -295,27 +353,11 @@ app.whenReady().then(async () => {
     }
     // WAVE 387 STEP 3: Configure FXTParser with custom library path
     fxtParser.setLibraryPath(customLibraryPath);
-    console.log('[Library] 📚 Scanning factory library:', factoryLibraryPath);
-    const loadedDefinitions = fxtParser.scanFolder(factoryLibraryPath);
-    // Also scan custom library for user-edited fixtures
-    console.log('[Library] 📚 Scanning custom library:', customLibraryPath);
-    const customDefinitions = fxtParser.scanFolder(customLibraryPath);
-    if (loadedDefinitions.length > 0 || customDefinitions.length > 0) {
-        // Merge both libraries (custom overrides factory if same ID)
-        const mergedLibrary = [...loadedDefinitions];
-        for (const customFix of customDefinitions) {
-            const existingIndex = mergedLibrary.findIndex(f => f.id === customFix.id);
-            if (existingIndex >= 0) {
-                mergedLibrary[existingIndex] = customFix; // Custom overrides factory
-            }
-            else {
-                mergedLibrary.push(customFix); // New custom fixture
-            }
-        }
-        fixtureLibrary = mergedLibrary;
-        console.log(`[Library] ✅ Loaded ${loadedDefinitions.length} factory + ${customDefinitions.length} custom = ${fixtureLibrary.length} total fixtures`);
-    }
-    else {
+    // WAVE 390.5: Use unified rescanAllLibraries() for initial load
+    // This ensures consistent merge logic and debug logging
+    console.log('[Library] 📚 Initial library scan using rescanAllLibraries()...');
+    await rescanAllLibraries();
+    if (fixtureLibrary.length === 0) {
         console.warn('[Library] ⚠️ No fixture definitions found in any library');
     }
     // ═══════════════════════════════════════════════════════════════════════════

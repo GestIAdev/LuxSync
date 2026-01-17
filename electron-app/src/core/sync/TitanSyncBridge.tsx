@@ -91,7 +91,7 @@ const syncToBackend = async (fixtureList: any[], lastSyncedHashRef: React.Mutabl
     return {
       id: f.id,
       name: f.name || f.id,
-      dmxAddress: f.dmxAddress,
+      dmxAddress: f.dmxAddress || (f as any).address,  // 🎨 WAVE 686.11.5: Normalize address (ShowFileV2 uses "address")
       universe: f.universe || 0,
       zone: f.zone || 'UNASSIGNED',
       type: f.type || 'generic',

@@ -77,7 +77,7 @@ interface GhostBreathConfig {
 
 const DEFAULT_CONFIG: GhostBreathConfig = {
   breathPeriodMs: 4000,   // 4 segundos por respiración
-  breathCount: 4,          // 4 respiraciones (~16 segundos total)
+  breathCount: 2,          // 🌊 WAVE 691: SOLO 2 respiraciones (~8 segundos max)
   inhaleRatio: 0.35,       // Inhale más rápido que exhale
   intensityFloor: 0.05,    // 5% mínimo (no blackout)
   intensityCeiling: 0.7,   // 70% máximo (no cegador)
@@ -129,8 +129,9 @@ export class GhostBreath extends BaseEffect {
   trigger(config: EffectTriggerConfig): void {
     super.trigger(config)
     
-    // Override zones - Ghost Breath siempre en back+movers
-    this.zones = ['back', 'movers']
+    // 🌊 WAVE 691: Ghost Breath llena TODAS las zonas para no dejar huecos
+    // El fantasma respira en todo el espacio, no solo atrás
+    this.zones = ['front', 'back', 'movers']
     
     this.breathPhase = 0
     this.breathsCompleted = 0

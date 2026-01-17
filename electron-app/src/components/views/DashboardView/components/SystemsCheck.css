@@ -1,7 +1,7 @@
 /**
- * 🎛️ SYSTEMS CHECK CSS - WAVE 437.2
+ * 🎛️ SYSTEMS CHECK CSS - WAVE 686
  * Cyberpunk Industrial aesthetic
- * RESURRECTED REACTOR as the heart
+ * NOW WITH ARTNET CONFIG PANEL!
  */
 
 .systems-check {
@@ -77,6 +77,11 @@
 
 .system-row:hover {
   border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* When dropdown is open, boost z-index to overlay next rows */
+.system-row:has(.dropdown-menu) {
+  z-index: 100;
 }
 
 .system-row.audio-system {
@@ -294,4 +299,342 @@
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎨 WAVE 686: ARTNET CONFIG PANEL
+   Compact inline ArtNet configuration
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.artnet-panel {
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 100, 100, 0.15) 0%,
+    rgba(0, 40, 60, 0.2) 100%
+  );
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-left: 3px solid #00ffff;
+  border-radius: 8px;
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.artnet-panel-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.artnet-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0; /* Prevent overflow */
+}
+
+.artnet-field.small {
+  flex: 0 0 90px; /* Increased from 80px */
+  min-width: 90px;
+}
+
+.artnet-field label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(0, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+
+.artnet-field input {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.artnet-field input:focus {
+  outline: none;
+  border-color: #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.artnet-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.artnet-field input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.artnet-field input[type="number"]::-webkit-outer-spin-button,
+.artnet-field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.artnet-error {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.4);
+  border-radius: 4px;
+  color: #ff6666;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.artnet-panel-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.artnet-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.artnet-btn.connect {
+  background: linear-gradient(135deg, #00aaaa 0%, #008888 100%);
+  color: #ffffff;
+}
+
+.artnet-btn.connect:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00cccc 0%, #00aaaa 100%);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+.artnet-btn.connect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.artnet-btn.disconnect {
+  background: linear-gradient(135deg, #aa4444 0%, #883333 100%);
+  color: #ffffff;
+}
+
+.artnet-btn.disconnect:hover {
+  background: linear-gradient(135deg, #cc4444 0%, #aa3333 100%);
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
+}
+
+.artnet-stats {
+  display: flex;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.artnet-stats .stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(0, 255, 255, 0.8);
+}
+
+.artnet-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+}
+
+.loading-spinner {
+  font-size: 16px;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(0, 255, 255, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔌 WAVE 686: USB DMX PANEL
+   Compact inline USB DMX configuration
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.usb-panel {
+  padding: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(100, 60, 0, 0.15) 0%,
+    rgba(60, 40, 20, 0.2) 100%
+  );
+  border: 1px solid rgba(255, 165, 0, 0.2);
+  border-left: 3px solid #ffaa00;
+  border-radius: 8px;
+  animation: slideIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usb-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.usb-panel-header label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 165, 0, 0.7);
+  text-transform: uppercase;
+}
+
+.usb-rescan-btn {
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 4px;
+  color: #ffaa00;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.usb-rescan-btn:hover:not(:disabled) {
+  border-color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+}
+
+.usb-rescan-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.usb-rescan-btn.scanning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.usb-auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.usb-auto-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.usb-toggle-slider {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 9px;
+  transition: all 0.2s ease;
+}
+
+.usb-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  top: 2px;
+  left: 2px;
+  background: rgba(255, 165, 0, 0.5);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.usb-auto-toggle input:checked + .usb-toggle-slider {
+  background: rgba(255, 165, 0, 0.2);
+  border-color: #ffaa00;
+}
+
+.usb-auto-toggle input:checked + .usb-toggle-slider::before {
+  transform: translateX(18px);
+  background: #ffaa00;
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+}
+
+.usb-toggle-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.usb-port-dropdown {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.usb-port-dropdown:focus {
+  outline: none;
+  border-color: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+}
+
+.usb-port-dropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.usb-error {
+  padding: 6px 10px;
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.4);
+  border-radius: 4px;
+  color: #ff6666;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+}
+
+.usb-no-ports {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-align: center;
 }

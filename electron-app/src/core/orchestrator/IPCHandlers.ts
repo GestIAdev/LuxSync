@@ -923,6 +923,42 @@ function setupDMXHandlers(deps: IPCDependencies): void {
     universalDMX.sendFrame(frame)
     return { success: true }
   })
+
+  // 🌪️ WAVE 688: Auto-connect to best available device
+  ipcMain.handle('dmx:autoConnect', async () => {
+    try {
+      const success = await universalDMX.autoConnect()
+      if (success) {
+        const mainWindow = getMainWindow()
+        if (mainWindow) {
+          mainWindow.webContents.send('dmx:connected', universalDMX.currentDevice)
+        }
+      }
+      return { success, device: universalDMX.currentDevice }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
+
+  // 🌪️ WAVE 688: Blackout - all channels to 0
+  ipcMain.handle('dmx:blackout', () => {
+    try {
+      universalDMX.blackout()
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
+
+  // 🌪️ WAVE 688: Highlight fixture for testing
+  ipcMain.handle('dmx:highlightFixture', (_event, startChannel: number, channelCount: number, isMovingHead: boolean) => {
+    try {
+      universalDMX.highlightFixture(startChannel, channelCount, isMovingHead)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
 }
 
 // =============================================================================

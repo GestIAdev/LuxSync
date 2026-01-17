@@ -392,7 +392,7 @@ interface ArtNetStatus {
 const ArtNetConfig: React.FC = () => {
   const [ip, setIp] = useState('255.255.255.255')
   const [port, setPort] = useState(6454)
-  const [universe, setUniverse] = useState(0)
+  const [universe, setUniverse] = useState(1) // 🎯 WAVE 685.6: Default universe 1 (not 0)
   const [status, setStatus] = useState<ArtNetStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)

@@ -439,6 +439,22 @@ export class UniversalDMXDriver extends EventEmitter {
             console.log(`[UniversalDMX] ${message}`);
         }
     }
+    // ─────────────────────────────────────────────────────────────────────────
+    // WAVE 688: ALIASES PARA COMPATIBILIDAD IPC
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * 🔍 Alias for listDevices() - used by IPC handlers
+     */
+    async scanDevices() {
+        return this.listDevices();
+    }
+    /**
+     * 📤 Alias for setUniverse() - used by IPC handlers
+     * Sends a complete DMX frame
+     */
+    sendFrame(frame) {
+        this.setUniverse(frame);
+    }
     // Getters públicos
     get isConnected() {
         return this.state === 'connected';

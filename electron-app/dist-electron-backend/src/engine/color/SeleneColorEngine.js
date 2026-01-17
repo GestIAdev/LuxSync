@@ -407,10 +407,11 @@ export function applyThermalGravity(hue, atmosphericTemp, maxForce) {
     // Aplicar vector de arrastre (ahora moderado)
     const newHue = hue + (delta * force);
     const resultHue = normalizeHue(newHue);
+    // 🧹 WAVE 671.5: Commented ThermalGravity log (useful for future debug - Radwulf request)
     // 🔌 WAVE 150: DEBUG LOG (Chivato) - Ver si el aire acondicionado está encendido
-    if (Math.random() < 0.01) { // Solo 1% de frames para no saturar consola
-        console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${resultHue.toFixed(0)}°`);
-    }
+    // if (Math.random() < 0.01) {  // Solo 1% de frames para no saturar consola
+    //   console.log(`[ThermalGravity] 🌡️ VibeTemp=${atmosphericTemp}K | Pole=${pole}° | Force=${(force * 100).toFixed(0)}% | Hue: ${hue.toFixed(0)}° → ${resultHue.toFixed(0)}°`);
+    // }
     return resultHue;
 }
 // ============================================================

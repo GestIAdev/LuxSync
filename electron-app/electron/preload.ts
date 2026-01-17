@@ -61,22 +61,23 @@ const api = {
 
   // ============================================
   // DMX - WAVE 11: Universal Driver
+  // WAVE 688: Synchronized IPC channel names
   // ============================================
   dmx: {
-    getStatus: () => ipcRenderer.invoke('dmx:get-status'),
-    sendValues: (values: number[]) => ipcRenderer.invoke('dmx:send', values),
+    getStatus: () => ipcRenderer.invoke('dmx:getStatus'),
+    sendValues: (values: number[]) => ipcRenderer.invoke('dmx:sendFrame', values),
     onUpdate: (callback: (values: number[]) => void) => {
       ipcRenderer.on('dmx:update', (_, values) => callback(values))
     },
-    // 🌪️ WAVE 11: Nuevas funciones
-    listDevices: () => ipcRenderer.invoke('dmx:list-devices'),
-    autoConnect: () => ipcRenderer.invoke('dmx:auto-connect'),
+    // 🌪️ WAVE 11: Device management
+    listDevices: () => ipcRenderer.invoke('dmx:scan'),
+    autoConnect: () => ipcRenderer.invoke('dmx:autoConnect'),
     connect: (portPath: string) => ipcRenderer.invoke('dmx:connect', portPath),
     disconnect: () => ipcRenderer.invoke('dmx:disconnect'),
     blackout: () => ipcRenderer.invoke('dmx:blackout'),
     // 🔦 Highlight fixture para testing
     highlightFixture: (startChannel: number, channelCount: number, isMovingHead: boolean) =>
-      ipcRenderer.invoke('dmx:highlight-fixture', startChannel, channelCount, isMovingHead),
+      ipcRenderer.invoke('dmx:highlightFixture', startChannel, channelCount, isMovingHead),
     // 📡 Status events (connected/disconnected/reconnecting)
     onStatus: (callback: (status: { state: string; device?: any; error?: string }) => void) => {
       const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)

@@ -63,6 +63,22 @@ function setupSeleneLuxHandlers(deps) {
         }
         return { success: true };
     });
+    // 🧬 WAVE 560: Separated consciousness toggle (Layer 1 only - NO BLACKOUT!)
+    ipcMain.handle('lux:setConsciousness', (_event, enabled) => {
+        console.log('[IPC] lux:setConsciousness:', enabled);
+        if (titanOrchestrator) {
+            titanOrchestrator.setConsciousnessEnabled(enabled);
+        }
+        return { success: true };
+    });
+    // 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+    ipcMain.handle('lux:forceStrike', (_event, config) => {
+        console.log('[IPC] 🧨 lux:forceStrike:', config);
+        if (titanOrchestrator) {
+            titanOrchestrator.forceStrikeNextFrame(config);
+        }
+        return { success: true };
+    });
     ipcMain.handle('lux:setInputGain', (_event, gain) => {
         console.log('[IPC] lux:setInputGain:', gain);
         if (titanOrchestrator) {
@@ -283,7 +299,8 @@ function setupConfigHandlers(deps) {
 // FIXTURE HANDLERS
 // =============================================================================
 function setupFixtureHandlers(deps) {
-    const { fxtParser, getPatchedFixtures, setPatchedFixtures, getFixtureLibrary, setFixtureLibrary, autoAssignZone, resetZoneCounters, recalculateZoneCounters, configManager, getMainWindow } = deps;
+    const { fxtParser, getPatchedFixtures, setPatchedFixtures, getFixtureLibrary, setFixtureLibrary, autoAssignZone, resetZoneCounters, recalculateZoneCounters, configManager, getMainWindow, rescanAllLibraries // WAVE 390.5: Full library rescan
+     } = deps;
     ipcMain.handle('fixtures:scanLibrary', async (_event, folderPath) => {
         try {
             const fixtures = await fxtParser.scanFolder(folderPath);
@@ -561,6 +578,14 @@ function setupFixtureHandlers(deps) {
             // WAVE 388 EXT: Pretty print with 2 spaces
             fs.writeFileSync(filePath, JSON.stringify(definition, null, 2), 'utf-8');
             console.log(`[IPC] ✅ Saved fixture definition: ${filePath}`);
+            // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
+            try {
+                const updatedLibrary = await rescanAllLibraries();
+                console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures (factory + custom merged)`);
+            }
+            catch (rescanErr) {
+                console.warn('[IPC] ⚠️ Failed to rescan libraries after save:', rescanErr);
+            }
             // WAVE 388 EXT: Return BOTH path and filePath for compatibility
             return { success: true, path: filePath, filePath };
         }
@@ -570,6 +595,7 @@ function setupFixtureHandlers(deps) {
         }
     });
     // WAVE 388 EXT: Delete fixture definition from library
+    // WAVE 389: Rescan library after delete to invalidate cache
     // Accepts either full filePath or fixture name to search
     ipcMain.handle('lux:delete-fixture-definition', async (_event, identifier) => {
         try {
@@ -621,6 +647,14 @@ function setupFixtureHandlers(deps) {
             // Delete the file
             fs.unlinkSync(fileToDelete);
             console.log(`[IPC] 🗑️ Deleted fixture: ${fileToDelete}`);
+            // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
+            try {
+                const updatedLibrary = await rescanAllLibraries();
+                console.log(`[IPC] 🔄 WAVE 390.5 Library rescanned: ${updatedLibrary.length} fixtures remain (factory + custom merged)`);
+            }
+            catch (rescanErr) {
+                console.warn('[IPC] ⚠️ Failed to rescan libraries after delete:', rescanErr);
+            }
             return { success: true, deletedPath: fileToDelete };
         }
         catch (err) {
@@ -687,6 +721,42 @@ function setupDMXHandlers(deps) {
     ipcMain.handle('dmx:sendFrame', (_event, frame) => {
         universalDMX.sendFrame(frame);
         return { success: true };
+    });
+    // 🌪️ WAVE 688: Auto-connect to best available device
+    ipcMain.handle('dmx:autoConnect', async () => {
+        try {
+            const success = await universalDMX.autoConnect();
+            if (success) {
+                const mainWindow = getMainWindow();
+                if (mainWindow) {
+                    mainWindow.webContents.send('dmx:connected', universalDMX.currentDevice);
+                }
+            }
+            return { success, device: universalDMX.currentDevice };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
+    // 🌪️ WAVE 688: Blackout - all channels to 0
+    ipcMain.handle('dmx:blackout', () => {
+        try {
+            universalDMX.blackout();
+            return { success: true };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
+    // 🌪️ WAVE 688: Highlight fixture for testing
+    ipcMain.handle('dmx:highlightFixture', (_event, startChannel, channelCount, isMovingHead) => {
+        try {
+            universalDMX.highlightFixture(startChannel, channelCount, isMovingHead);
+            return { success: true };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
     });
 }
 // =============================================================================

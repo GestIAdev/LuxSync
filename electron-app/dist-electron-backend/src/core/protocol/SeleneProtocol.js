@@ -123,7 +123,24 @@ export function createDefaultCognitive() {
         vibe: { active: 'idle', transitioning: false },
         stableEmotion: 'NEUTRAL',
         thermalTemperature: 4500,
-        dropState: { state: 'IDLE', isActive: false }
+        dropState: { state: 'IDLE', isActive: false },
+        // 🧠 WAVE 550: AI Telemetry defaults
+        ai: {
+            enabled: false,
+            huntState: 'sleeping',
+            confidence: 0,
+            prediction: null,
+            predictionProbability: 0,
+            predictionTimeMs: 0,
+            beautyScore: 0.5,
+            beautyTrend: 'stable',
+            consonance: 1,
+            lastDecision: null,
+            decisionSource: null,
+            reasoning: null,
+            biasesDetected: [],
+            energyOverrideActive: false
+        }
     };
 }
 /**

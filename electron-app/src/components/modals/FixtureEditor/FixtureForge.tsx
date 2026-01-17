@@ -136,6 +136,66 @@ const FIXTURE_TYPES = [
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * 🎨 WAVE 687.1: Smart default values for channel types
+ * 
+ * Returns sensible DMX default values based on channel type:
+ * - Intensity channels: default to max (255) for visibility
+ * - Position channels: default to center (127)
+ * - Effect channels: default to off (0)
+ */
+function getSmartDefaultValue(type: ChannelType): number {
+  switch (type) {
+    // Intensity - default ON for visibility
+    case 'dimmer':
+      return 255  // Max brightness
+    case 'shutter':
+      return 255  // Open (visible)
+    
+    // Position - default to center
+    case 'pan':
+    case 'tilt':
+      return 127  // Center position
+    
+    // Fine channels - default to 0 (no offset)
+    case 'pan_fine':
+    case 'tilt_fine':
+      return 0
+    
+    // Color channels - default off (no color mixing)
+    case 'red':
+    case 'green':
+    case 'blue':
+    case 'white':
+    case 'amber':
+    case 'uv':
+      return 0
+    
+    // Effects - default off
+    case 'color_wheel':
+    case 'gobo':
+    case 'prism':
+    case 'strobe':
+    case 'macro':
+      return 0
+    
+    // Optics - default to middle
+    case 'focus':
+    case 'zoom':
+      return 128
+    
+    // Speed/Control - varies by fixture, default middle
+    case 'speed':
+    case 'control':
+      return 128
+    
+    // Unknown - safe default
+    case 'unknown':
+    default:
+      return 0
+  }
+}
+
+/**
  * Generate deterministic ID (NO Math.random - Axioma Anti-Simulación)
  */
 function generateFixtureId(name: string): string {
@@ -192,7 +252,7 @@ function buildFinalFixture(fixture: FixtureDefinition, physics: PhysicsProfile):
     index: i,
     type: ch.type || 'unknown',
     name: ch.name || undefined, // undefined se omite en JSON
-    defaultValue: ch.defaultValue || 0,
+    defaultValue: typeof ch.defaultValue === 'number' ? ch.defaultValue : 0,
     is16bit: ch.is16bit || false
   }))
   
@@ -390,11 +450,23 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   // WAVE 390.5: Track if we already initialized to prevent re-init while open
   const hasInitializedRef = React.useRef(false)
   
+  // 🎯 WAVE 685.6: Capture props ONLY when modal opens to prevent re-init on prop changes
+  const initialPropsRef = React.useRef<{
+    existingDefinition: FixtureDefinition | null
+    editingFixture: FixtureV2 | null
+  }>({ existingDefinition: null, editingFixture: null })
+  
   // Initialize on open
   useEffect(() => {
     // WAVE 390.5: Only initialize when modal OPENS, not when props change while open
     if (isOpen && !hasInitializedRef.current) {
       hasInitializedRef.current = true
+      // 🎯 WAVE 685.6: Capture current props
+      initialPropsRef.current = { 
+        existingDefinition: existingDefinition || null, 
+        editingFixture: editingFixture || null 
+      }
+      console.log('[FixtureForge] 🔓 Modal opened, initializing...')
       
       if (existingDefinition) {
         // Edit mode - load existing definition (from library)
@@ -446,6 +518,16 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         }
         
         console.log('[FixtureForge] 📝 Loaded existing definition:', existingDefinition.name, 'with', existingDefinition.channels.length, 'channels')
+        
+        // 🎯 WAVE 685.6: If we also have editingFixture, load DMX from it
+        if (editingFixture) {
+          setDmxAddress(editingFixture.address ?? 1)
+          setUniverse(editingFixture.universe ?? 1)
+          console.log('[FixtureForge] 📍 Loaded DMX from stage fixture:', {
+            address: editingFixture.address ?? 1,
+            universe: editingFixture.universe ?? 1
+          })
+        }
       } else if (editingFixture) {
         // 🔥 WAVE 384.5: Create from stage fixture - NOW USES INLINE CHANNELS!
         // editingFixture.channels now contains the channel definitions thanks to WAVE 384
@@ -469,14 +551,13 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)
         setPhysics(editingFixture.physics)
         
-        // 🎯 WAVE 685.6: Load DMX address from stage fixture
-        if (editingFixture.address !== undefined) {
-          setDmxAddress(editingFixture.address)
-          console.log('[FixtureForge] 📍 Loaded DMX address:', editingFixture.address)
-        }
-        if (editingFixture.universe !== undefined) {
-          setUniverse(editingFixture.universe)
-        }
+        // 🎯 WAVE 685.6: Load DMX address from stage fixture (default to 1 if missing)
+        setDmxAddress(editingFixture.address ?? 1)
+        setUniverse(editingFixture.universe ?? 1)
+        console.log('[FixtureForge] 📍 Loaded DMX:', {
+          address: editingFixture.address ?? 1,
+          universe: editingFixture.universe ?? 1
+        })
       } else {
         // New fixture
         setFixture(FixtureFactory.createEmpty())
@@ -499,9 +580,12 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       setFixture(FixtureFactory.createEmpty())
       setTotalChannels(8)
       setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+      // 🎯 WAVE 685.6: Reset DMX fields
+      setDmxAddress(null)
+      setUniverse(1)
       console.log('[FixtureForge] 🧹 Modal closed, state reset')
     }
-  }, [isOpen, existingDefinition, editingFixture])
+  }, [isOpen]) // 🎯 WAVE 685.6: ONLY depend on isOpen to prevent re-init while modal is open
   
   // Update channels when totalChannels changes
   // WAVE 390.5: This effect ONLY runs for NEW fixtures or when user changes channel count
@@ -584,8 +668,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         ...newChannels[slotIndex],
         type: func.type,
         name: func.label,
-        defaultValue: func.type === 'dimmer' ? 255 : 
-                     (func.type === 'pan' || func.type === 'tilt' ? 127 : 0),
+        // 🎨 WAVE 687.1: Smart defaults for common channel types
+        defaultValue: getSmartDefaultValue(func.type),
         is16bit: detect16bit(func.type, prevChannel)
       }
       
@@ -635,7 +719,9 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
           console.log(`[FixtureForge] ✅ Saved to: ${result.path || result.filePath}`)
           
           // 🎯 WAVE 685.6: Include patch data if available
+          console.log('[FixtureForge] 📍 Preparing patchData:', { dmxAddress, universe, isNull: dmxAddress === null })
           const patchData = dmxAddress !== null ? { dmxAddress, universe } : undefined
+          console.log('[FixtureForge] 📍 Final patchData:', patchData)
           
           // Notificar al padre y cerrar
           onSave(finalFixture, physics, patchData)
@@ -652,7 +738,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       console.error('[FixtureForge] ❌ window.lux.saveDefinition not available!')
       alert('Save function not available')
     }
-  }, [fixture, physics, isFormValid, onSave, onClose])
+  }, [fixture, physics, isFormValid, onSave, onClose, dmxAddress, universe]) // 🎯 WAVE 685.6: Add DMX deps
   
   const handleExport = useCallback(() => {
     const fxtContent = exportToFXT(fixture)
@@ -760,7 +846,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
             </div>
             
             {/* 🎯 WAVE 685.6: DMX Address (only shown when editing stage fixture) */}
-            {dmxAddress !== null && (
+            {editingFixture && (
               <>
                 <div className="forge-input-group small">
                   <label>DMX Canal</label>
@@ -768,8 +854,16 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                     type="number"
                     min={1}
                     max={512}
-                    value={dmxAddress}
-                    onChange={(e) => setDmxAddress(Math.max(1, Math.min(512, parseInt(e.target.value) || 1)))}
+                    value={dmxAddress ?? 1}
+                    onChange={(e) => {
+                      const newValue = Math.max(1, Math.min(512, parseInt(e.target.value) || 1))
+                      console.log('[FixtureForge] 📍 DMX Canal changed:', newValue, '| Current state BEFORE update:', dmxAddress)
+                      setDmxAddress(newValue)
+                      // Force log the state in next tick to verify update
+                      setTimeout(() => {
+                        console.log('[FixtureForge] 📍 DMX state AFTER setDmxAddress:', newValue, '| Actual state should be:', newValue)
+                      }, 0)
+                    }}
                     title="Canal DMX inicial"
                   />
                 </div>
@@ -988,10 +1082,24 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                             }}
                           />
                           
+                          {/* 🎨 WAVE 687.1: Editable default value */}
                           <div className="slot-footer">
-                            <span className="slot-default">
-                              DEF: {channel.defaultValue}
-                            </span>
+                            <label className="slot-default-label">
+                              <span className="default-label-text">DEF:</span>
+                              <input
+                                type="number"
+                                className="slot-default-input"
+                                value={channel.defaultValue ?? 0}
+                                min={0}
+                                max={255}
+                                onChange={(e) => {
+                                  const newChannels = [...fixture.channels]
+                                  newChannels[index].defaultValue = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
+                                  setFixture(prev => ({ ...prev, channels: newChannels }))
+                                }}
+                                title="Default DMX value (0-255)"
+                              />
+                            </label>
                             {channel.is16bit && (
                               <span className="slot-16bit">16bit</span>
                             )}

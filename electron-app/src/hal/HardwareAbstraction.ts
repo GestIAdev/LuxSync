@@ -55,6 +55,8 @@ export interface HALConfig {
   driverType: DriverType
   installationType: 'floor' | 'ceiling'
   debug: boolean
+  /** 🎨 WAVE 686.10: Optional external driver (e.g., ArtNetDriverAdapter) */
+  externalDriver?: IDMXDriver
 }
 
 /** HAL status for monitoring */
@@ -121,6 +123,7 @@ export class HardwareAbstraction {
       driverType: config.driverType ?? 'mock',
       installationType: config.installationType ?? 'floor',
       debug: config.debug ?? true,
+      externalDriver: config.externalDriver,
     }
     
     // Instantiate composed modules
@@ -132,8 +135,8 @@ export class HardwareAbstraction {
     this.movementPhysics = new FixturePhysicsDriver()
     this.currentOptics = getOpticsConfig('idle')
     
-    // Create driver based on config
-    this.driver = this.createDriver(this.config.driverType)
+    // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
+    this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType)
     
     // Configure mapper
     this.mapper.setInstallationType(this.config.installationType)
@@ -751,16 +754,22 @@ export class HardwareAbstraction {
       const fixtureId = fixture.id || fixture.name
       const zone = (fixture.zone || 'UNASSIGNED') as PhysicalZone
       
+      // 🎨 WAVE 686.11: Normalize DMX address (ShowFileV2 uses "address", legacy uses "dmxAddress")
+      const dmxAddress = fixture.dmxAddress || (fixture as any).address
+      
+      // 🎨 WAVE 687: Get channel definitions for dynamic mapping
+      const channels = fixture.channels || []
+      
       // Find this fixture's target from arbiter output
       const fixtureTarget = target.fixtures.find(t => t.fixtureId === fixtureId)
       
       if (fixtureTarget) {
         // Use arbitrated values directly
-        const state = {
+        const state: FixtureState = {
           name: fixture.name,
           type: fixture.type || 'generic',
           zone,
-          dmxAddress: fixture.dmxAddress,
+          dmxAddress,  // 🎨 WAVE 686.11: Use normalized address
           universe: fixture.universe || 1,
           dimmer: fixtureTarget.dimmer,
           r: fixtureTarget.color.r,
@@ -770,6 +779,14 @@ export class HardwareAbstraction {
           tilt: fixtureTarget.tilt,
           zoom: fixtureTarget.zoom,
           focus: fixtureTarget.focus,
+          // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
+          channels,
+          // 🎨 WAVE 687: Default values for additional controls
+          shutter: 255,  // Open by default
+          colorWheel: 0,
+          gobo: 0,
+          prism: 0,
+          strobe: 0,
         }
         
         return state
@@ -780,7 +797,7 @@ export class HardwareAbstraction {
         name: fixture.name,
         type: fixture.type || 'generic',
         zone,
-        dmxAddress: fixture.dmxAddress,
+        dmxAddress,  // 🎨 WAVE 686.11: Use normalized address
         universe: fixture.universe || 1,
         dimmer: 0,
         r: 0,
@@ -790,7 +807,14 @@ export class HardwareAbstraction {
         tilt: 128,
         zoom: 128,
         focus: 128,
-      }
+        // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
+        channels,
+        shutter: 255,
+        colorWheel: 0,
+        gobo: 0,
+        prism: 0,
+        strobe: 0,
+      } as FixtureState
     })
     
     // Apply physics and dynamic optics (same as render())
@@ -970,6 +994,7 @@ export class HardwareAbstraction {
   
   private sendToDriver(states: FixtureState[]): void {
     if (!this.driver.isConnected) {
+      console.warn('[HAL] ⚠️ sendToDriver() - Driver not connected, attempting connection...')
       // Try to connect
       this.driver.connect().catch(err => {
         if (this.config.debug) {

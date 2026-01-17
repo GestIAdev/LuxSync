@@ -79,6 +79,7 @@ export class HardwareAbstraction {
             driverType: config.driverType ?? 'mock',
             installationType: config.installationType ?? 'floor',
             debug: config.debug ?? true,
+            externalDriver: config.externalDriver,
         };
         // Instantiate composed modules
         this.physics = new PhysicsEngine();
@@ -87,8 +88,8 @@ export class HardwareAbstraction {
         // 🔧 WAVE 338: Movement Physics Driver
         this.movementPhysics = new FixturePhysicsDriver();
         this.currentOptics = getOpticsConfig('idle');
-        // Create driver based on config
-        this.driver = this.createDriver(this.config.driverType);
+        // 🎨 WAVE 686.10: Use external driver if provided, otherwise create one
+        this.driver = this.config.externalDriver ?? this.createDriver(this.config.driverType);
         // Configure mapper
         this.mapper.setInstallationType(this.config.installationType);
         // Initialize universe 1 (extract Uint8Array from DMXUniverse)
@@ -574,15 +575,19 @@ export class HardwareAbstraction {
         const fixtureStates = fixtures.map((fixture, index) => {
             const fixtureId = fixture.id || fixture.name;
             const zone = (fixture.zone || 'UNASSIGNED');
+            // 🎨 WAVE 686.11: Normalize DMX address (ShowFileV2 uses "address", legacy uses "dmxAddress")
+            const dmxAddress = fixture.dmxAddress || fixture.address;
+            // 🎨 WAVE 687: Get channel definitions for dynamic mapping
+            const channels = fixture.channels || [];
             // Find this fixture's target from arbiter output
             const fixtureTarget = target.fixtures.find(t => t.fixtureId === fixtureId);
             if (fixtureTarget) {
                 // Use arbitrated values directly
-                return {
+                const state = {
                     name: fixture.name,
                     type: fixture.type || 'generic',
                     zone,
-                    dmxAddress: fixture.dmxAddress,
+                    dmxAddress, // 🎨 WAVE 686.11: Use normalized address
                     universe: fixture.universe || 1,
                     dimmer: fixtureTarget.dimmer,
                     r: fixtureTarget.color.r,
@@ -592,14 +597,23 @@ export class HardwareAbstraction {
                     tilt: fixtureTarget.tilt,
                     zoom: fixtureTarget.zoom,
                     focus: fixtureTarget.focus,
+                    // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
+                    channels,
+                    // 🎨 WAVE 687: Default values for additional controls
+                    shutter: 255, // Open by default
+                    colorWheel: 0,
+                    gobo: 0,
+                    prism: 0,
+                    strobe: 0,
                 };
+                return state;
             }
             // Fallback: fixture not in arbiter output (shouldn't happen)
             return {
                 name: fixture.name,
                 type: fixture.type || 'generic',
                 zone,
-                dmxAddress: fixture.dmxAddress,
+                dmxAddress, // 🎨 WAVE 686.11: Use normalized address
                 universe: fixture.universe || 1,
                 dimmer: 0,
                 r: 0,
@@ -609,6 +623,13 @@ export class HardwareAbstraction {
                 tilt: 128,
                 zoom: 128,
                 focus: 128,
+                // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
+                channels,
+                shutter: 255,
+                colorWheel: 0,
+                gobo: 0,
+                prism: 0,
+                strobe: 0,
             };
         });
         // Apply physics and dynamic optics (same as render())
@@ -758,6 +779,7 @@ export class HardwareAbstraction {
     }
     sendToDriver(states) {
         if (!this.driver.isConnected) {
+            console.warn('[HAL] ⚠️ sendToDriver() - Driver not connected, attempting connection...');
             // Try to connect
             this.driver.connect().catch(err => {
                 if (this.config.debug) {

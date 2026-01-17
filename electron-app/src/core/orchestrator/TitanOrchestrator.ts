@@ -35,12 +35,17 @@ import { getEffectManager } from '../effects/EffectManager'
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
+// 🎨 WAVE 686.10: Import IDMXDriver for external driver injection
+import type { IDMXDriver } from '../../hal/drivers'
+
 /**
  * Configuración del orquestador
  */
 export interface TitanConfig {
   debug?: boolean
   initialVibe?: VibeId
+  /** 🎨 WAVE 686.10: Optional external DMX driver (e.g., ArtNetDriverAdapter) */
+  dmxDriver?: IDMXDriver
 }
 
 /**
@@ -161,8 +166,15 @@ export class TitanOrchestrator {
     console.log('[TitanOrchestrator] 📜 Tactical Log connected to TitanEngine')
     
     // Initialize HAL
-    this.hal = new HardwareAbstraction({ debug: this.config.debug })
+    // 🎨 WAVE 686.10: Pass external driver if provided
+    this.hal = new HardwareAbstraction({ 
+      debug: this.config.debug,
+      externalDriver: this.config.dmxDriver
+    })
     console.log('[TitanOrchestrator] HardwareAbstraction created')
+    if (this.config.dmxDriver) {
+      console.log('[TitanOrchestrator] 🎨 Using external DMX driver (WAVE 686.10)')
+    }
     
     // 🎭 WAVE 374: Initialize MasterArbiter
     console.log('[TitanOrchestrator] 🎭 MasterArbiter ready (Layer 0-4 arbitration)')
@@ -321,23 +333,32 @@ export class TitanOrchestrator {
     // WAVE 380: Debug - verify fixtures are present in loop
     if (this.frameCount === 1 || this.frameCount % 300 === 0) {
       console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`)
+      console.log(`[TitanOrchestrator] 🎭 Arbitrated fixtures: ${arbitratedTarget.fixtures.length}`)
     }
     
     // 4. HAL renders arbitrated target -> produces fixture states
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
-    // 🧨 WAVE 635: NUCLEAR COLOR OVERRIDE
-    // Si hay un efecto activo con globalOverride, forzar color dorado en TODAS las fixtures
+    // 🧨 WAVE 635 → WAVE 692.2: EFFECT COLOR OVERRIDE
+    // Si hay un efecto activo con globalOverride, usar SU color (no hardcoded dorado)
     const effectManager = getEffectManager()
     const effectOutput = effectManager.getCombinedOutput()
     
     if (effectOutput.hasActiveEffects && effectOutput.globalOverride && effectOutput.dimmerOverride !== undefined) {
-      // Color DORADO INTENSO: R:255, G:200, B:80
-      const flareR = 255
-      const flareG = 200
-      const flareB = 80
       const flareIntensity = effectOutput.dimmerOverride  // 0-1
+      
+      // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
+      let flareR = 255, flareG = 200, flareB = 80  // Default: dorado (SolarFlare legacy)
+      
+      if (effectOutput.colorOverride) {
+        // Convertir HSL a RGB
+        const { h, s, l } = effectOutput.colorOverride
+        const rgb = this.hslToRgb(h, s, l)
+        flareR = rgb.r
+        flareG = rgb.g
+        flareB = rgb.b
+      }
       
       // Override color y dimmer de TODAS las fixtures
       fixtureStates = fixtureStates.map(f => ({
@@ -350,7 +371,7 @@ export class TitanOrchestrator {
       
       // Log throttled
       if (this.frameCount % 10 === 0) {
-        console.log(`[TitanOrchestrator 🌟] SOLAR COLOR OVERRIDE: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+        console.log(`[TitanOrchestrator �] EFFECT COLOR: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
       }
     }
     
@@ -792,23 +813,28 @@ export class TitanOrchestrator {
    * WAVE 339.6: Register movers in PhysicsDriver for real interpolated movement
    * WAVE 374: Register fixtures in MasterArbiter
    * WAVE 382: Pass FULL fixture data including capabilities and hasMovementChannels
+   * WAVE 686.11: Normalize address field (ShowFileV2 uses "address", legacy uses "dmxAddress")
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setFixtures(fixtures: any[]): void {
-    this.fixtures = fixtures
+    // 🎨 WAVE 686.11: Normalize address field for ALL downstream consumers (Arbiter + HAL)
+    this.fixtures = fixtures.map(f => ({
+      ...f,
+      dmxAddress: f.dmxAddress || f.address  // Ensure dmxAddress exists regardless of format
+    }))
     
     // WAVE 380: Log fixture ingestion
     console.log(`[TitanOrchestrator] 📥 Ingesting ${fixtures.length} fixtures into Engine loop`)
     console.log(`[TitanOrchestrator] 📥 Fixture IDs:`, fixtures.map(f => f.id).slice(0, 5).join(', '), '...')
     
     // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
-    // Pass all relevant data - arbiter needs type, capabilities, hasMovementChannels
-    masterArbiter.setFixtures(fixtures.map(f => ({
+    // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
+    masterArbiter.setFixtures(this.fixtures.map(f => ({
       id: f.id,
       name: f.name,
       zone: f.zone,
       type: f.type || 'generic',
-      dmxAddress: f.dmxAddress,
+      dmxAddress: f.dmxAddress,  // 🎨 WAVE 686.11: Already normalized above
       universe: f.universe || 1,
       capabilities: f.capabilities,
       hasMovementChannels: f.hasMovementChannels,
@@ -854,6 +880,46 @@ export class TitanOrchestrator {
       frameCount: this.frameCount,
       currentVibe: this.engine?.getCurrentVibe() ?? null,
       fixturesCount: this.fixtures.length,
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎨 WAVE 692.2: HSL to RGB conversion for effect colors
+  // ═══════════════════════════════════════════════════════════════════════════
+  private hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+    // h: 0-360, s: 0-100, l: 0-100
+    const hNorm = h / 360
+    const sNorm = s / 100
+    const lNorm = l / 100
+    
+    let r: number, g: number, b: number
+    
+    if (sNorm === 0) {
+      r = g = b = lNorm
+    } else {
+      const hue2rgb = (p: number, q: number, t: number): number => {
+        if (t < 0) t += 1
+        if (t > 1) t -= 1
+        if (t < 1/6) return p + (q - p) * 6 * t
+        if (t < 1/2) return q
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+        return p
+      }
+      
+      const q = lNorm < 0.5 
+        ? lNorm * (1 + sNorm) 
+        : lNorm + sNorm - lNorm * sNorm
+      const p = 2 * lNorm - q
+      
+      r = hue2rgb(p, q, hNorm + 1/3)
+      g = hue2rgb(p, q, hNorm)
+      b = hue2rgb(p, q, hNorm - 1/3)
+    }
+    
+    return {
+      r: Math.round(r * 255),
+      g: Math.round(g * 255),
+      b: Math.round(b * 255),
     }
   }
 }

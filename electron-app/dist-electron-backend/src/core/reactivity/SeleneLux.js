@@ -15,13 +15,19 @@
  * - NO genera colores (los recibe ya calculados)
  * - SOLO aplica física de reactividad según el género
  *
+ * 📜 WAVE 450 ENMIENDA: ENERGY OVERRIDE
+ * Si energy > 0.85, los modificadores de consciencia son IGNORADOS.
+ * La física tiene VETO TOTAL en los drops/clímax.
+ * "En los drops, la física manda. En los valles, Selene piensa."
+ *
  * @layer CORE (Sistema Nervioso)
- * @version WAVE 274 - Organ Harvest
+ * @version WAVE 450 - Consciousness Integration
  */
 // ═══════════════════════════════════════════════════════════════════════════
 // IMPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 import { TechnoStereoPhysics, technoStereoPhysics, RockStereoPhysics, LatinoStereoPhysics, ChillStereoPhysics } from '../../hal/physics';
+import { isEnergyOverrideActive, } from '../../engine/consciousness/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE LUX CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -73,8 +79,9 @@ export class SeleneLux {
             dimmerOverride: null,
             forceMovement: false,
             physicsApplied: 'none',
+            energyOverrideActive: false, // 🧠 WAVE 450
         };
-        console.log('[SeleneLux] 🌙 Nervous System initialized (WAVE 274 + WAVE 275 FREQ MAPPING)');
+        console.log('[SeleneLux] 🌙 Nervous System initialized (WAVE 450 + Consciousness Integration)');
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // API PÚBLICA
@@ -185,11 +192,12 @@ export class SeleneLux {
                 const now = Date.now();
                 const timeSinceLastLog = now - this.lastLatinoLogTime;
                 const flavorChanged = result.flavor !== this.lastLatinoFlavor;
-                if (flavorChanged || timeSinceLastLog >= this.LOG_THROTTLE_MS) {
-                    console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
-                    this.lastLatinoLogTime = now;
-                    this.lastLatinoFlavor = result.flavor;
-                }
+                // 🧹 WAVE 671.5: Silenced legacy Latino physics spam
+                // if (flavorChanged || timeSinceLastLog >= this.LOG_THROTTLE_MS) {
+                //   console.log(`[SeleneLux] ☀️ LATINO PHYSICS | Solar Flare ACTIVE | Flavor:${result.flavor}`);
+                //   this.lastLatinoLogTime = now;
+                //   this.lastLatinoFlavor = result.flavor;
+                // }
             }
         }
         else if (vibeNormalized.includes('chill') ||
@@ -317,14 +325,17 @@ export class SeleneLux {
             back: backIntensity,
             mover: moverIntensity,
         };
+        // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
         // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
         // WAVE 300: Rock tiene su propio log con transientes (arriba)
         // WAVE 315: Chill tiene su propio log con breathing (arriba)
-        if (this.frameCount % 30 === 0 && physicsApplied !== 'rock' && physicsApplied !== 'chill') {
-            const source = physicsApplied === 'latino' ? '🌴LATINO' :
-                physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
-            console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
-        }
+        // if (this.frameCount % 30 === 0 && physicsApplied !== 'rock' && physicsApplied !== 'chill') {
+        //   const source = physicsApplied === 'latino' ? '🌴LATINO' : 
+        //                  physicsApplied === 'techno' ? '⚡TECHNO' : '📡DEFAULT';
+        //   console.log(`[AGC TRUST ${source}] IN[${bass.toFixed(2)}, ${mid.toFixed(2)}, ${treble.toFixed(2)}] -> 💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}]`);
+        // }
+        // 🧠 WAVE 450: Detectar si Energy Override está activo
+        const energyOverrideActive = isEnergyOverrideActive(audioMetrics.avgNormEnergy);
         this.lastOutput = {
             palette: outputPalette,
             zoneIntensities,
@@ -334,6 +345,7 @@ export class SeleneLux {
             dimmerOverride,
             forceMovement,
             physicsApplied,
+            energyOverrideActive,
             debugInfo,
         };
         return this.lastOutput;

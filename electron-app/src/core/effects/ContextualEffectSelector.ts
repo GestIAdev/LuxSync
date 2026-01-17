@@ -94,6 +94,12 @@ interface EffectSelectionConfig {
   /** Cooldown extra si es el mismo efecto */
   sameEffectCooldownMs: number
   
+  /** 🌊 WAVE 691: Cooldowns específicos por tipo de efecto */
+  effectTypeCooldowns: Record<string, number>
+  
+  /** 🌊 WAVE 691: Umbral de energía mínima para bloquear efectos ambientales */
+  ambientBlockEnergyThreshold: number
+  
   /** Umbrales de Z-Score para cada nivel */
   zScoreThresholds: {
     normal: number      // < este = normal
@@ -109,6 +115,25 @@ interface EffectSelectionConfig {
 const DEFAULT_CONFIG: EffectSelectionConfig = {
   minCooldownMs: 800,          // 0.8 segundos mínimo entre efectos
   sameEffectCooldownMs: 3000,  // 3 segundos si es el mismo efecto
+  
+  // 🌊 WAVE 691: Cooldowns por tipo - evita monopolio del fantasma
+  // 🎺 WAVE 692: Cooldowns para nuevos efectos Fiesta Latina
+  // NOTA: Strobes/Flares = largos (épicos), Nuevos = más cortos (relleno)
+  effectTypeCooldowns: {
+    'ghost_breath': 30000,     // 30 segundos entre ghost breaths
+    'tidal_wave': 15000,       // 15 segundos entre olas
+    'solar_flare': 25000,      // 25 segundos entre flares (AUMENTADO - menos sol)
+    'strobe_storm': 15000,     // 15 segundos entre strobes grandes
+    'strobe_burst': 12000,     // 12 segundos entre bursts (AUMENTADO)
+    // 🎺 WAVE 692: FIESTA LATINA ARSENAL - cooldowns más cortos = más rotación
+    'tropical_pulse': 8000,    // 8 segundos - efecto de relleno principal
+    'salsa_fire': 6000,        // 6 segundos - fuego frecuente
+    'cumbia_moon': 15000,      // 15 segundos - respiro largo pero no tanto
+  },
+  
+  // 🌊 WAVE 691: Si energy > 0.3, bloquear efectos ambientales (ghost_breath)
+  ambientBlockEnergyThreshold: 0.3,
+  
   zScoreThresholds: {
     normal: 1.5,
     elevated: 2.0,
@@ -127,51 +152,62 @@ const DEFAULT_CONFIG: EffectSelectionConfig = {
  * 
  * Define qué efectos son apropiados para cada sección de la canción.
  * El selector elige de esta paleta basándose en intensidad y contexto.
+ * 
+ * � WAVE 692: FIESTA LATINA ARSENAL - Paleta expandida con nuevos efectos
+ * - tropical_pulse: Crescendo bursts como ritmo de conga
+ * - salsa_fire: Parpadeo orgánico de fuego  
+ * - cumbia_moon: Respiro suave para breakdowns
+ * 
+ * �🌊 WAVE 691.5: PURGA - TidalWave y GhostBreath ELIMINADOS para Fiesta Latina
+ * Estos efectos espaciales no funcionan con la arquitectura actual.
  */
 const SECTION_EFFECT_PALETTE: Record<string, {
   primary: string      // Efecto principal para esta sección
   secondary: string    // Alternativa
   ambient: string      // Para momentos suaves dentro de la sección
+  latinaOverride?: string  // Override para fiesta-latina
 }> = {
   'intro': {
-    primary: 'ghost_breath',    // Respiración misteriosa
-    secondary: 'tidal_wave',    // Ola suave de bienvenida
-    ambient: 'ghost_breath',
+    primary: 'solar_flare',     
+    secondary: 'tropical_pulse',  // 🌴 WAVE 692
+    ambient: 'cumbia_moon',       // 🌙 WAVE 692
   },
   'verse': {
-    primary: 'tidal_wave',      // Olas suaves
-    secondary: 'ghost_breath',
-    ambient: 'ghost_breath',
+    primary: 'tropical_pulse',    // 🌴 WAVE 692: Pulsos como conga
+    secondary: 'salsa_fire',      // 🔥 WAVE 692: Fuego orgánico
+    ambient: 'cumbia_moon',       // 🌙 WAVE 692
   },
   'chorus': {
-    primary: 'solar_flare',     // Momento épico
-    secondary: 'strobe_storm',  // Si ya hubo flare
-    ambient: 'tidal_wave',
+    primary: 'solar_flare',       // Momento épico
+    secondary: 'strobe_burst',
+    ambient: 'tropical_pulse',
+    latinaOverride: 'tropical_pulse',  // 🌴 WAVE 692
   },
   'bridge': {
-    primary: 'ghost_breath',    // Tensión
-    secondary: 'tidal_wave',
-    ambient: 'ghost_breath',
+    primary: 'salsa_fire',        // 🔥 WAVE 692: Transición ardiente
+    secondary: 'tropical_pulse',
+    ambient: 'cumbia_moon',       // 🌙 WAVE 692
   },
   'buildup': {
-    primary: 'ghost_breath',    // Tensión creciente
-    secondary: 'tidal_wave',    // Ola que sube
-    ambient: 'ghost_breath',
+    primary: 'tropical_pulse',    // 🌴 WAVE 692: Tensión creciente
+    secondary: 'salsa_fire',
+    ambient: 'strobe_burst',
   },
   'drop': {
-    primary: 'solar_flare',     // BOOM
-    secondary: 'strobe_storm',  // Caos
-    ambient: 'tidal_wave',      // Post-drop
+    primary: 'solar_flare',       // BOOM
+    secondary: 'strobe_burst',
+    ambient: 'tropical_pulse',
+    latinaOverride: 'strobe_burst',
   },
   'breakdown': {
-    primary: 'ghost_breath',    // Calma tensa
-    secondary: 'tidal_wave',    // Ola lenta
-    ambient: 'ghost_breath',
+    primary: 'cumbia_moon',       // 🌙 WAVE 692: Respiro suave
+    secondary: 'salsa_fire',      // 🔥 WAVE 692
+    ambient: 'cumbia_moon',
   },
   'outro': {
-    primary: 'ghost_breath',    // Despedida suave
-    secondary: 'tidal_wave',
-    ambient: 'ghost_breath',
+    primary: 'solar_flare',       
+    secondary: 'cumbia_moon',     // 🌙 WAVE 692: Cierre suave
+    ambient: 'cumbia_moon',
   },
 }
 
@@ -183,13 +219,36 @@ const SECTION_EFFECT_PALETTE: Record<string, {
  * 🎯 CONTEXTUAL EFFECT SELECTOR
  * 
  * El cerebro artístico que decide qué efecto pintar en cada momento.
+ * 
+ * 🌊 WAVE 691: Ahora con cooldowns por tipo y protección anti-ghost
  */
 export class ContextualEffectSelector {
   private config: EffectSelectionConfig
   private consecutiveSameEffect = 0
   
+  // 🌊 WAVE 691: Tracking de cooldowns por tipo de efecto
+  private effectTypeLastFired: Map<string, number> = new Map()
+  
   constructor(config?: Partial<EffectSelectionConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+  }
+  
+  /**
+   * 🌊 WAVE 691: Registra que un efecto fue disparado
+   */
+  public registerEffectFired(effectType: string): void {
+    this.effectTypeLastFired.set(effectType, Date.now())
+  }
+  
+  /**
+   * 🌊 WAVE 691: Verifica si un efecto específico está en cooldown
+   */
+  private isEffectInCooldown(effectType: string): boolean {
+    const lastFired = this.effectTypeLastFired.get(effectType)
+    if (!lastFired) return false
+    
+    const cooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs
+    return (Date.now() - lastFired) < cooldown
   }
   
   /**
@@ -237,14 +296,25 @@ export class ContextualEffectSelector {
     
     // ═══════════════════════════════════════════════════════════════
     // PASO 4: CONTEXT-BASED EFFECT SELECTION
+    // 🌊 WAVE 691: Ahora con vibe y musicalContext para anti-ghost
     // ═══════════════════════════════════════════════════════════════
     
     const effectType = this.selectEffectForContext(
       sectionType, 
       zLevel, 
       input.energyTrend,
-      lastEffectType
+      lastEffectType,
+      musicalContext,
+      musicalContext.vibeId
     )
+    
+    // 🔥 WAVE 691.5: Si el selector devuelve 'none', no disparar nada
+    if (effectType === 'none') {
+      return this.noEffectDecision(musicalContext, 'LATINA breathing - strobe in cooldown')
+    }
+    
+    // 🌊 WAVE 691: Registrar que este efecto fue disparado
+    this.registerEffectFired(effectType)
     
     // ═══════════════════════════════════════════════════════════════
     // PASO 5: INTENSITY CALCULATION
@@ -353,61 +423,160 @@ export class ContextualEffectSelector {
   
   // ─────────────────────────────────────────────────────────────────────────
   // PRIVATE: Effect selection logic
+  // 🌊 WAVE 691: Refactorizado con cooldowns por tipo y protección anti-ghost
   // ─────────────────────────────────────────────────────────────────────────
   
   private selectEffectForContext(
     sectionType: string,
     zLevel: 'normal' | 'elevated' | 'epic' | 'divine',
     energyTrend: 'rising' | 'stable' | 'falling',
-    lastEffectType: string | null
+    lastEffectType: string | null,
+    musicalContext?: MusicalContext,
+    vibe?: string
   ): string {
     const palette = SECTION_EFFECT_PALETTE[sectionType] || SECTION_EFFECT_PALETTE['verse']
+    const energy = musicalContext?.energy ?? 0.5
+    
+    // 🔍 WAVE 692: Debug logging para diagnóstico
+    console.log(`[EffectSelector 🎯] Section=${sectionType} Z=${zLevel} Vibe=${vibe} Energy=${energy.toFixed(2)} Trend=${energyTrend}`)
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🎺 WAVE 692: FIESTA LATINA - ARSENAL COMPLETO
+    // Ahora con TropicalPulse, SalsaFire y CumbiaMoon
+    // El bypass dictatorial ha sido ELIMINADO
+    // ═══════════════════════════════════════════════════════════════
+    if (vibe === 'fiesta-latina') {
+      // 🔥 EPIC/DIVINE: Strobe o Solar (efectos de impacto)
+      if (zLevel === 'divine' || zLevel === 'epic') {
+        if (!this.isEffectInCooldown('strobe_burst')) {
+          console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`)
+          return 'strobe_burst'
+        }
+        // Fallback a tropical pulse si strobe en cooldown
+        if (!this.isEffectInCooldown('tropical_pulse')) {
+          console.log(`[EffectSelector 🌴] LATINA EPIC FALLBACK: tropical_pulse`)
+          return 'tropical_pulse'
+        }
+      }
+      
+      // 🌴 ELEVATED: TropicalPulse o SalsaFire (efectos de relleno medio)
+      if (zLevel === 'elevated') {
+        if (energyTrend === 'rising' && !this.isEffectInCooldown('tropical_pulse')) {
+          console.log(`[EffectSelector 🌴] LATINA ELEVATED RISING: tropical_pulse`)
+          return 'tropical_pulse'
+        }
+        if (!this.isEffectInCooldown('salsa_fire')) {
+          console.log(`[EffectSelector �] LATINA ELEVATED: salsa_fire`)
+          return 'salsa_fire'
+        }
+      }
+      
+      // 🌙 NORMAL/LOW + BREAKDOWN: CumbiaMoon (respiro suave)
+      if (sectionType === 'breakdown' || energyTrend === 'falling') {
+        if (!this.isEffectInCooldown('cumbia_moon')) {
+          console.log(`[EffectSelector 🌙] LATINA BREAKDOWN: cumbia_moon`)
+          return 'cumbia_moon'
+        }
+      }
+      
+      // 🎲 NORMAL: Rotación de efectos medios (evita monotonía)
+      if (zLevel === 'normal') {
+        // Priorizar efectos que NO se hayan disparado recientemente
+        const candidates = ['tropical_pulse', 'salsa_fire', 'cumbia_moon']
+        for (const effect of candidates) {
+          if (!this.isEffectInCooldown(effect) && effect !== lastEffectType) {
+            console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`)
+            return effect
+          }
+        }
+      }
+      
+      // 😴 Si todo está en cooldown, dejar respirar
+      console.log(`[EffectSelector 😴] LATINA: all effects in cooldown, breathing`)
+      return 'none'
+    }
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 1: DIVINE/EPIC = Primary effect (lo más potente)
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'divine' || zLevel === 'epic') {
       // Evitar repetir el mismo efecto
-      if (palette.primary === lastEffectType && this.consecutiveSameEffect >= 2) {
-        return palette.secondary
+      const primary = palette.primary
+      if (primary === lastEffectType && this.consecutiveSameEffect >= 2) {
+        if (!this.isEffectInCooldown(palette.secondary)) {
+          return palette.secondary
+        }
       }
-      return palette.primary
+      if (!this.isEffectInCooldown(primary)) {
+        return primary
+      }
+      return palette.secondary
     }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🌊 WAVE 691: ANTI-GHOST - Bloquear ghost_breath si hay ritmo
+    // (Solo para vibes que NO son fiesta-latina)
+    // ═══════════════════════════════════════════════════════════════
+    const ghostBlocked = energy > this.config.ambientBlockEnergyThreshold || 
+                         this.isEffectInCooldown('ghost_breath')
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 2: ELEVATED + RISING = Build tension
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'elevated' && energyTrend === 'rising') {
-      // Buildup/Bridge: Ghost Breath para tensión
-      if (sectionType === 'buildup' || sectionType === 'bridge') {
+      // Buildup/Bridge: Ghost Breath solo si NO bloqueado
+      if ((sectionType === 'buildup' || sectionType === 'bridge') && !ghostBlocked) {
         return 'ghost_breath'
       }
-      // Otros: Tidal Wave para momentum
-      return 'tidal_wave'
+      // Default: Tidal Wave para momentum
+      if (!this.isEffectInCooldown('tidal_wave')) {
+        return 'tidal_wave'
+      }
     }
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 3: ELEVATED + FALLING = Release suave
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'elevated' && energyTrend === 'falling') {
-      return 'tidal_wave'  // Ola que baja
+      if (!this.isEffectInCooldown('tidal_wave')) {
+        return 'tidal_wave'  // Ola que baja
+      }
     }
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 4: ELEVATED + STABLE = Mantener momentum
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'elevated') {
-      // En drop/chorus: strobe para mantener energía
-      if (sectionType === 'drop' || sectionType === 'chorus') {
-        return lastEffectType === 'strobe_storm' ? 'tidal_wave' : 'strobe_storm'
+      // En drop/chorus/breakdown: strobe para mantener energía
+      if (sectionType === 'drop' || sectionType === 'chorus' || sectionType === 'breakdown') {
+        const strobeType = 'strobe_storm'
+        if (lastEffectType !== strobeType && !this.isEffectInCooldown(strobeType)) {
+          return strobeType
+        }
+        return 'tidal_wave'
       }
-      return palette.secondary
+      // Evitar ghost si está bloqueado
+      if (palette.secondary === 'ghost_breath' && ghostBlocked) {
+        return 'tidal_wave'
+      }
+      if (!this.isEffectInCooldown(palette.secondary)) {
+        return palette.secondary
+      }
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // DEFAULT: Ambient effect (suave)
+    // DEFAULT: Ambient effect (pero NO ghost si hay ritmo)
     // ═══════════════════════════════════════════════════════════════
-    return palette.ambient
+    if (palette.ambient === 'ghost_breath' && ghostBlocked) {
+      return 'tidal_wave'
+    }
+    
+    if (!this.isEffectInCooldown(palette.ambient)) {
+      return palette.ambient
+    }
+    
+    // Fallback final: tidal_wave siempre disponible
+    return 'tidal_wave'
   }
   
   // ─────────────────────────────────────────────────────────────────────────

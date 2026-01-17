@@ -19,6 +19,7 @@
 import type { LightingIntent, HSLColor, DMXPacket } from '../../core/protocol'
 import { hslToRgb } from '../../core/protocol/LightingIntent'
 import type { PhysicalZone } from './ZoneRouter'
+import type { FixtureChannel, ChannelType } from '../../types/FixtureDefinition'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -35,6 +36,8 @@ export interface PatchedFixture {
   channelCount?: number
   hasMovementChannels?: boolean  // WAVE 339.6: From library definition
   has16bitMovement?: boolean     // WAVE 339.6: From library definition
+  // 🎨 WAVE 687: Dynamic channel mapping
+  channels?: FixtureChannel[]    // Channel definitions from fixture JSON
 }
 
 /** Calculated fixture state (output of mapper) */
@@ -58,6 +61,17 @@ export interface FixtureState {
   physicalTilt?: number  // 0-255 (ACTUAL position after physics)
   panVelocity?: number   // DMX/s (current velocity)
   tiltVelocity?: number  // DMX/s (current velocity)
+  // 🎨 WAVE 687: Dynamic channel mapping
+  channels?: FixtureChannel[]    // Channel definitions for DMX packet construction
+  // 🎨 WAVE 687: Additional control values
+  shutter?: number       // 0-255 (255 = open)
+  colorWheel?: number    // 0-255 (color wheel position)
+  gobo?: number          // 0-255 (gobo wheel position)
+  prism?: number         // 0-255 (prism rotation)
+  strobe?: number        // 0-255 (strobe speed)
+  white?: number         // 0-255 (white LED)
+  amber?: number         // 0-255 (amber LED)
+  uv?: number            // 0-255 (UV LED)
 }
 
 /** Color palette in RGB format */
@@ -222,25 +236,183 @@ export class FixtureMapper {
   }
   
   /**
-   * Convert fixture states to DMX packets.
-   * 🔍 WAVE 338.2: Added zoom/focus to channel output
+   * 🎨 WAVE 687: DYNAMIC CHANNEL MAPPER
+   * 
+   * Convert fixture states to DMX packets using the fixture's channel definition.
+   * This is the ARCHITECTURALLY CORRECT solution - no more hardcoded 8 channels.
+   * 
+   * Each fixture's JSON defines its channels (pan, tilt, dimmer, color_wheel, etc.)
+   * and this method constructs the DMX packet dynamically based on that definition.
+   * 
+   * @param states - Array of fixture states with control values
+   * @returns DMX packets ready to send to driver
    */
   public statesToDMXPackets(states: FixtureState[]): DMXPacket[] {
-    return states.map(state => ({
-      universe: state.universe,
-      address: state.dmxAddress,
-      channels: [
-        state.dimmer,
-        state.r,
-        state.g,
-        state.b,
-        state.pan,
-        state.tilt,
-        state.zoom,   // 🔍 WAVE 338.2
-        state.focus,  // 🔍 WAVE 338.2
-      ],
-      fixtureId: `fixture-${state.dmxAddress}`
-    }))
+    return states.map(state => {
+      // 🎨 WAVE 687: Build channel array dynamically from fixture definition
+      const channels = this.buildDynamicChannels(state)
+      
+      return {
+        universe: state.universe,
+        address: state.dmxAddress,
+        channels,
+        fixtureId: `fixture-${state.dmxAddress}`
+      }
+    })
+  }
+  
+  /**
+   * 🎨 WAVE 687: Build DMX channel array from fixture definition
+   * 
+   * Maps logical control values (dimmer, pan, tilt, etc.) to physical DMX channels
+   * based on the fixture's channel definition JSON.
+   * 
+   * Supports ALL channel types defined in ChannelType:
+   * - Movement: pan, pan_fine, tilt, tilt_fine
+   * - Intensity: dimmer, strobe, shutter
+   * - Color: red, green, blue, white, amber, uv, color_wheel
+   * - Effects: gobo, prism, focus, zoom, speed, macro, control
+   * 
+   * @param state - Fixture state with control values and channel definitions
+   * @returns Array of DMX values (0-255) in channel order
+   */
+  private buildDynamicChannels(state: FixtureState): number[] {
+    // If no channel definition, fall back to legacy 8-channel format
+    if (!state.channels || state.channels.length === 0) {
+      return this.buildLegacyChannels(state)
+    }
+    
+    // Sort channels by index to ensure correct DMX order
+    const sortedChannels = [...state.channels].sort((a, b) => a.index - b.index)
+    
+    // Map each channel to its DMX value based on type
+    return sortedChannels.map(channel => {
+      return this.getChannelValue(state, channel)
+    })
+  }
+  
+  /**
+   * 🎨 WAVE 687: Get DMX value for a specific channel based on its type
+   */
+  private getChannelValue(state: FixtureState, channel: FixtureChannel): number {
+    const type = channel.type as ChannelType
+    
+    switch (type) {
+      // ═══════════════════════════════════════════════════════════════════
+      // MOVEMENT CHANNELS
+      // ═══════════════════════════════════════════════════════════════════
+      case 'pan':
+        // Use physics-interpolated position if available, otherwise target
+        return Math.round(state.physicalPan ?? state.pan)
+      
+      case 'pan_fine':
+        // Fine control: fractional part of 16-bit pan (future implementation)
+        return 0
+      
+      case 'tilt':
+        // Use physics-interpolated position if available, otherwise target
+        return Math.round(state.physicalTilt ?? state.tilt)
+      
+      case 'tilt_fine':
+        // Fine control: fractional part of 16-bit tilt (future implementation)
+        return 0
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // INTENSITY CHANNELS
+      // ═══════════════════════════════════════════════════════════════════
+      case 'dimmer':
+        return Math.round(state.dimmer)
+      
+      case 'shutter':
+        // Shutter: use state value if available, otherwise use defaultValue from definition
+        // 0 = closed, 255 = open, intermediate = strobe speed on some fixtures
+        return state.shutter ?? (channel.defaultValue ?? 255)
+      
+      case 'strobe':
+        // Strobe speed: 0 = no strobe, higher = faster
+        return state.strobe ?? (channel.defaultValue ?? 0)
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // COLOR CHANNELS
+      // ═══════════════════════════════════════════════════════════════════
+      case 'red':
+        return Math.round(state.r)
+      
+      case 'green':
+        return Math.round(state.g)
+      
+      case 'blue':
+        return Math.round(state.b)
+      
+      case 'white':
+        return state.white ?? (channel.defaultValue ?? 0)
+      
+      case 'amber':
+        return state.amber ?? (channel.defaultValue ?? 0)
+      
+      case 'uv':
+        return state.uv ?? (channel.defaultValue ?? 0)
+      
+      case 'color_wheel':
+        // Color wheel position: 0 = white/open, then colors by position
+        return state.colorWheel ?? (channel.defaultValue ?? 0)
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // EFFECT CHANNELS
+      // ═══════════════════════════════════════════════════════════════════
+      case 'gobo':
+        // Gobo wheel: 0 = open (no gobo)
+        return state.gobo ?? (channel.defaultValue ?? 0)
+      
+      case 'prism':
+        // Prism: 0 = out/off
+        return state.prism ?? (channel.defaultValue ?? 0)
+      
+      case 'focus':
+        return Math.round(state.focus)
+      
+      case 'zoom':
+        return Math.round(state.zoom)
+      
+      case 'speed':
+        // Movement speed/motor speed
+        return channel.defaultValue ?? 128
+      
+      case 'macro':
+        // Macro/program channel
+        return channel.defaultValue ?? 0
+      
+      case 'control':
+        // Control/reset channel - use default (usually 0 or specific value for normal operation)
+        return channel.defaultValue ?? 0
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // UNKNOWN/CUSTOM CHANNELS
+      // ═══════════════════════════════════════════════════════════════════
+      case 'unknown':
+      default:
+        // For unknown channels, use the default value from fixture definition
+        return channel.defaultValue ?? 0
+    }
+  }
+  
+  /**
+   * 🎨 WAVE 687: Legacy fallback for fixtures without channel definition
+   * 
+   * This is the original hardcoded 8-channel format for backwards compatibility
+   * with fixtures that don't have a JSON definition.
+   */
+  private buildLegacyChannels(state: FixtureState): number[] {
+    return [
+      Math.round(state.dimmer),
+      Math.round(state.r),
+      Math.round(state.g),
+      Math.round(state.b),
+      Math.round(state.pan),
+      Math.round(state.tilt),
+      Math.round(state.zoom),
+      Math.round(state.focus),
+    ]
   }
   
   // ═══════════════════════════════════════════════════════════════════════

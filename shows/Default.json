@@ -1,0 +1,232 @@
+{
+  "name": "Default",
+  "description": "Empty default show - Add fixtures and configure your setup",
+  "createdAt": "2025-12-15T20:05:48.029Z",
+  "modifiedAt": "2025-12-28T16:26:13.008Z",
+  "version": "1.0.0",
+  "audio": {
+    "source": "system",
+    "sensitivity": 0.7,
+    "inputGain": 1
+  },
+  "dmx": {
+    "driver": "virtual",
+    "port": "",
+    "universe": 1,
+    "frameRate": 40
+  },
+  "patchedFixtures": [
+    {
+      "id": "beam_led_2r_10ch",
+      "name": "beam led 2r 10ch",
+      "type": "moving_head",
+      "manufacturer": "american pro",
+      "channelCount": 10,
+      "dmxAddress": 1,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "MOVING_LEFT",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\beam led 2r 10ch.fxt"
+    },
+    {
+      "id": "beam_led_2r_10ch",
+      "name": "beam led 2r 10ch",
+      "type": "moving_head",
+      "manufacturer": "american pro",
+      "channelCount": 10,
+      "dmxAddress": 11,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "MOVING_RIGHT",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\beam led 2r 10ch.fxt"
+    },
+    {
+      "id": "beam_led_2r",
+      "name": "beam led 2r",
+      "type": "moving_head",
+      "manufacturer": "American pro",
+      "channelCount": 13,
+      "dmxAddress": 21,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "MOVING_LEFT",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\beam led 2r.fxt"
+    },
+    {
+      "id": "beam_led_2r",
+      "name": "beam led 2r",
+      "type": "moving_head",
+      "manufacturer": "American pro",
+      "channelCount": 13,
+      "dmxAddress": 34,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "MOVING_RIGHT",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\beam led 2r.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 47,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "BACK_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 57,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "FRONT_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 67,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "BACK_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 77,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "FRONT_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 87,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "BACK_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    },
+    {
+      "id": "par_tec_flat_10_ch_grande",
+      "name": "par tec flat  10 ch grande",
+      "type": "par",
+      "manufacturer": "American pro",
+      "channelCount": 10,
+      "dmxAddress": 97,
+      "universe": {
+        "universe": 1,
+        "physics": {
+          "installationType": "ceiling",
+          "invert": {
+            "pan": false,
+            "tilt": false
+          },
+          "swapXY": false
+        }
+      },
+      "zone": "FRONT_PARS",
+      "filePath": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\librerias\\par tec flat  10 ch grande.fxt"
+    }
+  ],
+  "seleneMode": "idle",
+  "installationType": "ceiling"
+}

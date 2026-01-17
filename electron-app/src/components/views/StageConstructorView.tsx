@@ -817,7 +817,12 @@ const StageConstructorView: React.FC = () => {
   // WAVE 364 - Handle Forge Save
   // 🔥 WAVE 384: Save ALL fixture data, not just 3 fields
   // 🔥 WAVE 389: Add hot reload after save
-  const handleForgeSave = useCallback(async (definition: FixtureDefinition, physics: PhysicsProfile) => {
+  // 🎯 WAVE 685.6: Handle patch data (dmxAddress, universe)
+  const handleForgeSave = useCallback(async (
+    definition: FixtureDefinition, 
+    physics: PhysicsProfile,
+    patchData?: { dmxAddress?: number; universe?: number }
+  ) => {
     if (forgeEditingFixtureId) {
       // Update existing fixture with COMPLETE data
       const existingFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
@@ -833,6 +838,9 @@ const StageConstructorView: React.FC = () => {
           // 🔥 WAVE 384: Type, channels and capabilities
           type: fixtureType,
           profileId: definition.id || existingFixture.profileId,
+          // 🎯 WAVE 685.6: Update DMX address if provided
+          ...(patchData?.dmxAddress && { address: patchData.dmxAddress }),
+          ...(patchData?.universe && { universe: patchData.universe }),
           // Inline channels for persistence
           channels: definition.channels.map((ch, idx) => ({
             index: idx,
@@ -858,7 +866,7 @@ const StageConstructorView: React.FC = () => {
         })
         updateFixturePhysics(forgeEditingFixtureId, physics)
         
-        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
+        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}${patchData?.dmxAddress ? `, DMX: ${patchData.dmxAddress}` : ''}`)
       }
     }
     
@@ -1117,9 +1125,33 @@ const PropertiesContent: React.FC = () => {
           </div>
         </div>
         {/* WAVE 364: Edit Profile Button */}
+        {/* 🔥 WAVE 685.6: FIX - Load definition from library to preserve channels */}
         <button 
           className="edit-profile-btn"
-          onClick={() => openFixtureForge(selectedFixture.id)}
+          onClick={async () => {
+            // Load full definition from library
+            try {
+              const result = await window.lux?.getFixtureLibrary?.()
+              if (result?.success && result.fixtures) {
+                // Find definition by profileId or name
+                const definition = result.fixtures.find((f: any) => 
+                  f.id === selectedFixture.profileId || 
+                  f.name === selectedFixture.model
+                )
+                if (definition) {
+                  console.log('[Properties] 📝 Loading definition for edit:', definition.name, 'with', definition.channels?.length || 0, 'channels')
+                  openFixtureForge(selectedFixture.id, definition as FixtureDefinition)
+                } else {
+                  console.warn('[Properties] ⚠️ Definition not found in library, falling back to stage fixture')
+                  // Fallback: open with stage fixture (will lose some data)
+                  openFixtureForge(selectedFixture.id)
+                }
+              }
+            } catch (err) {
+              console.error('[Properties] Failed to load definition:', err)
+              openFixtureForge(selectedFixture.id)
+            }
+          }}
         >
           <Wrench size={14} />
           <span>Edit Profile</span>

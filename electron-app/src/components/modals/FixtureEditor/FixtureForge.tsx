@@ -59,7 +59,11 @@ export interface FixtureForgeProps {
   /** Close handler */
   onClose: () => void
   /** Save handler - returns the complete fixture profile */
-  onSave: (fixture: FixtureDefinition, physics: PhysicsProfile) => void
+  onSave: (
+    fixture: FixtureDefinition, 
+    physics: PhysicsProfile,
+    patchData?: { dmxAddress?: number; universe?: number } // 🎯 WAVE 685.6: Optional patch data
+  ) => void
   /** Optional existing fixture to edit */
   editingFixture?: FixtureV2 | null
   /** Optional existing definition to load */
@@ -356,6 +360,10 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   const [totalChannels, setTotalChannels] = useState<number>(8)
   const [activeTab, setActiveTab] = useState<TabId>('channels')
   
+  // 🎯 WAVE 685.6: DMX Address (only for stage fixtures, not library definitions)
+  const [dmxAddress, setDmxAddress] = useState<number | null>(null)
+  const [universe, setUniverse] = useState<number>(1)
+  
   // Preview controls
   const [showPreview, setShowPreview] = useState(true)
   const [previewPan, setPreviewPan] = useState(127)
@@ -460,6 +468,15 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         })
         setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)
         setPhysics(editingFixture.physics)
+        
+        // 🎯 WAVE 685.6: Load DMX address from stage fixture
+        if (editingFixture.address !== undefined) {
+          setDmxAddress(editingFixture.address)
+          console.log('[FixtureForge] 📍 Loaded DMX address:', editingFixture.address)
+        }
+        if (editingFixture.universe !== undefined) {
+          setUniverse(editingFixture.universe)
+        }
       } else {
         // New fixture
         setFixture(FixtureFactory.createEmpty())
@@ -616,8 +633,12 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         
         if (result.success) {
           console.log(`[FixtureForge] ✅ Saved to: ${result.path || result.filePath}`)
+          
+          // 🎯 WAVE 685.6: Include patch data if available
+          const patchData = dmxAddress !== null ? { dmxAddress, universe } : undefined
+          
           // Notificar al padre y cerrar
-          onSave(finalFixture, physics)
+          onSave(finalFixture, physics, patchData)
           onClose()
         } else {
           console.error(`[FixtureForge] ❌ Save failed:`, result.error)
@@ -737,6 +758,34 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                 ))}
               </select>
             </div>
+            
+            {/* 🎯 WAVE 685.6: DMX Address (only shown when editing stage fixture) */}
+            {dmxAddress !== null && (
+              <>
+                <div className="forge-input-group small">
+                  <label>DMX Canal</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={512}
+                    value={dmxAddress}
+                    onChange={(e) => setDmxAddress(Math.max(1, Math.min(512, parseInt(e.target.value) || 1)))}
+                    title="Canal DMX inicial"
+                  />
+                </div>
+                <div className="forge-input-group small">
+                  <label>Universo</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={16}
+                    value={universe}
+                    onChange={(e) => setUniverse(Math.max(1, Math.min(16, parseInt(e.target.value) || 1)))}
+                    title="Universo DMX"
+                  />
+                </div>
+              </>
+            )}
           </div>
           
           <button className="forge-close-btn" onClick={onClose}>

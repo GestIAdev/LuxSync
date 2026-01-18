@@ -121,17 +121,24 @@ const DEFAULT_CONFIG: EffectSelectionConfig = {
   
   // 🌊 WAVE 691: Cooldowns por tipo - evita monopolio del fantasma
   // 🎺 WAVE 692: Cooldowns para nuevos efectos Fiesta Latina
-  // NOTA: Strobes/Flares = largos (épicos), Nuevos = más cortos (relleno)
+  // 🎭 WAVE 700.5.2: CONSENSO DEL CÓNCLAVE - "Solomillo vs Patatas Fritas"
+  //    Los efectos híbridos (que mueven color + movers) son SOLOMILLO = cooldown largo
+  //    El mood multiplica estos valores (CALM 3.0x, BALANCED 1.5x, PUNK 0.7x)
+  //    Target EPM: CALM 1-3, BALANCED 4-6, PUNK 8-10
   effectTypeCooldowns: {
-    'ghost_breath': 30000,     // 30 segundos entre ghost breaths
-    'tidal_wave': 15000,       // 15 segundos entre olas
-    'solar_flare': 25000,      // 25 segundos entre flares (AUMENTADO - menos sol)
-    'strobe_storm': 15000,     // 15 segundos entre strobes grandes
-    'strobe_burst': 12000,     // 12 segundos entre bursts (AUMENTADO)
-    // 🎺 WAVE 692: FIESTA LATINA ARSENAL - cooldowns más cortos = más rotación
-    'tropical_pulse': 8000,    // 8 segundos - efecto de relleno principal
-    'salsa_fire': 6000,        // 6 segundos - fuego frecuente
-    'cumbia_moon': 15000,      // 15 segundos - respiro largo pero no tanto
+    // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
+    'cumbia_moon': 25000,      // 25s base → CALM:75s, BALANCED:37s, PUNK:17s
+    'tropical_pulse': 20000,   // 20s base → CALM:60s, BALANCED:30s, PUNK:14s
+    'salsa_fire': 18000,       // 18s base → CALM:54s, BALANCED:27s, PUNK:12s
+    
+    // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
+    'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
+    'strobe_burst': 25000,     // 25s base → Bloqueado en CALM
+    'strobe_storm': 40000,     // 40s base → Bloqueado en CALM
+    
+    // === EFECTOS AMBIENTE (Relleno sutil) ===
+    'ghost_breath': 35000,     // 35s base - fantasma raro
+    'tidal_wave': 20000,       // 20s base - ola ocasional
   },
   
   // 🌊 WAVE 691: Si energy > 0.3, bloquear efectos ambientales (ghost_breath)
@@ -552,6 +559,7 @@ export class ContextualEffectSelector {
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 1: DIVINE/EPIC = Primary effect (lo más potente)
+    // 🎭 WAVE 700.5.2: TODOS los returns deben pasar por isEffectAvailable
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'divine' || zLevel === 'epic') {
       // Evitar repetir el mismo efecto
@@ -564,7 +572,15 @@ export class ContextualEffectSelector {
       if (this.isEffectAvailable(primary)) {
         return primary
       }
-      return palette.secondary
+      // 🎭 WAVE 700.5.2: Fallback también debe verificar blockList
+      if (this.isEffectAvailable(palette.secondary)) {
+        return palette.secondary
+      }
+      // Si secondary también bloqueado, usar tidal_wave como fallback seguro
+      if (this.isEffectAvailable('tidal_wave')) {
+        return 'tidal_wave'
+      }
+      return 'none'
     }
     
     // ═══════════════════════════════════════════════════════════════

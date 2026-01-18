@@ -294,7 +294,60 @@ export class TitanOrchestrator {
             }));
             // Log throttled
             if (this.frameCount % 10 === 0) {
-                console.log(`[TitanOrchestrator �] EFFECT COLOR: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
+                console.log(`[TitanOrchestrator 🧨] EFFECT COLOR: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
+            }
+        }
+        // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
+        if (effectOutput.hasActiveEffects && effectOutput.movementOverride) {
+            const mov = effectOutput.movementOverride;
+            // Solo aplicar a fixtures que son movers (tienen pan/tilt)
+            fixtureStates = fixtureStates.map(f => {
+                // Detectar si es un mover (zone contiene MOVING o tiene pan/tilt definido)
+                const isMover = f.zone?.includes('MOVING') || (f.pan !== undefined && f.tilt !== undefined);
+                if (!isMover)
+                    return f;
+                let newPan = f.pan;
+                let newTilt = f.tilt;
+                let newPhysicalPan = f.physicalPan ?? f.pan;
+                let newPhysicalTilt = f.physicalTilt ?? f.tilt;
+                if (mov.isAbsolute) {
+                    // ABSOLUTE MODE: Reemplaza completamente las físicas
+                    // Convertir -1.0..1.0 → 0..255
+                    if (mov.pan !== undefined) {
+                        newPan = Math.round(((mov.pan + 1) / 2) * 255);
+                        newPhysicalPan = newPan;
+                    }
+                    if (mov.tilt !== undefined) {
+                        newTilt = Math.round(((mov.tilt + 1) / 2) * 255);
+                        newPhysicalTilt = newTilt;
+                    }
+                }
+                else {
+                    // OFFSET MODE: Suma a las físicas existentes
+                    // Convertir offset -1.0..1.0 → -127..127 y sumar
+                    if (mov.pan !== undefined) {
+                        const panOffset = Math.round(mov.pan * 127);
+                        newPan = Math.max(0, Math.min(255, f.pan + panOffset));
+                        newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset));
+                    }
+                    if (mov.tilt !== undefined) {
+                        const tiltOffset = Math.round(mov.tilt * 127);
+                        newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
+                        newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset));
+                    }
+                }
+                return {
+                    ...f,
+                    pan: newPan,
+                    tilt: newTilt,
+                    physicalPan: newPhysicalPan,
+                    physicalTilt: newPhysicalTilt,
+                };
+            });
+            // Log throttled
+            if (this.frameCount % 15 === 0) {
+                const mode = mov.isAbsolute ? 'ABSOLUTE' : 'OFFSET';
+                console.log(`[TitanOrchestrator 🥁] MOVEMENT OVERRIDE [${mode}]: Pan=${mov.pan?.toFixed(2) ?? 'N/A'} Tilt=${mov.tilt?.toFixed(2) ?? 'N/A'}`);
             }
         }
         // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)

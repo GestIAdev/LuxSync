@@ -159,7 +159,12 @@ export class EffectManager extends EventEmitter {
    * 🧨 TRIGGER - Dispara un efecto
    * 
    * 🛡️ WAVE 680: THE SHIELD integrado
-   * Antes de disparar, valida permisos del Vibe activo.
+   * 🚦 WAVE 700.7: TRAFFIC CONTROL integrado
+   * 
+   * Antes de disparar:
+   * 1. Valida permisos del Vibe activo (THE SHIELD)
+   * 2. Verifica si hay efectos críticos activos (TRAFFIC LIGHT)
+   * 3. Evita duplicados del mismo tipo
    * 
    * @param config Configuración del disparo
    * @returns ID de la instancia del efecto, o null si bloqueado/falla
@@ -169,6 +174,18 @@ export class EffectManager extends EventEmitter {
     
     if (!factory) {
       console.warn(`[EffectManager ⚠️] Unknown effect type: ${config.effectType}`)
+      return null
+    }
+    
+    // 🚦 WAVE 700.7: TRAFFIC CONTROL - Check if busy with critical effect
+    const trafficResult = this.checkTraffic(config.effectType)
+    if (!trafficResult.allowed) {
+      console.log(`[EffectManager 🚦] ${config.effectType} BLOCKED: ${trafficResult.reason}`)
+      this.emit('effectBlocked', {
+        effectType: config.effectType,
+        vibeId: config.musicalContext?.vibeId || 'unknown',
+        reason: trafficResult.reason,
+      })
       return null
     }
     
@@ -261,6 +278,7 @@ export class EffectManager extends EventEmitter {
    * - HTP (Highest Takes Precedence) para dimmer
    * - Mayor prioridad para color
    * - 🧨 WAVE 630: globalOverride bypasea zonas
+   * - 🥁 WAVE 700.7: Mayor prioridad para movement
    */
   getCombinedOutput(): CombinedEffectOutput {
     if (this.activeEffects.size === 0) {
@@ -279,6 +297,9 @@ export class EffectManager extends EventEmitter {
     let globalOverride = false  // 🧨 WAVE 630
     let highestPriorityColor: { h: number; s: number; l: number } | undefined
     let highestPriority = -1
+    // 🥁 WAVE 700.7: Movement tracking
+    let highestPriorityMovement: { pan?: number; tilt?: number; isAbsolute?: boolean; speed?: number } | undefined
+    let movementPriority = -1
     const contributing: string[] = []
     
     for (const [id, effect] of this.activeEffects) {
@@ -322,6 +343,12 @@ export class EffectManager extends EventEmitter {
         highestPriority = effect.priority
         highestPriorityColor = output.colorOverride
       }
+      
+      // 🥁 WAVE 700.7: Highest priority takes movement
+      if (output.movement && effect.priority > movementPriority) {
+        movementPriority = effect.priority
+        highestPriorityMovement = output.movement
+      }
     }
     
     return {
@@ -334,6 +361,7 @@ export class EffectManager extends EventEmitter {
       intensity: maxIntensity,
       contributingEffects: contributing,
       globalOverride: globalOverride,  // 🧨 WAVE 630
+      movementOverride: highestPriorityMovement,  // 🥁 WAVE 700.7
     }
   }
   
@@ -431,7 +459,94 @@ export class EffectManager extends EventEmitter {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // 🛡️ THE SHIELD - Vibe Permission System (WAVE 680)
+  // � WAVE 700.7: TRAFFIC CONTROL - The Traffic Light
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 🚦 CRITICAL EFFECT TYPES
+   * Efectos que bloquean el tráfico mientras están activos.
+   * Ningún otro efecto puede dispararse mientras hay uno crítico.
+   */
+  private static readonly CRITICAL_EFFECTS = new Set([
+    'solar_flare',    // Takeover total - nada más puede competir
+    'strobe_storm',   // Strobe intenso - no mezclar
+    'blackout',       // Blackout manual
+  ])
+  
+  /**
+   * 🚦 AMBIENT EFFECT TYPES
+   * Efectos que son bloqueados por efectos críticos Y no pueden duplicarse.
+   */
+  private static readonly AMBIENT_EFFECTS = new Set([
+    'tropical_pulse',
+    'clave_rhythm',
+    'cumbia_moon',
+    'salsa_fire',
+    'ghost_breath',
+    'tidal_wave',
+    'strobe_burst',
+  ])
+  
+  /**
+   * 🚦 IS BUSY - Check if a critical effect is hogging the stage
+   * 
+   * @returns true if a critical effect is currently active
+   */
+  isBusy(): boolean {
+    for (const effect of this.activeEffects.values()) {
+      if (EffectManager.CRITICAL_EFFECTS.has(effect.effectType)) {
+        return true
+      }
+    }
+    return false
+  }
+  
+  /**
+   * 🚦 CHECK TRAFFIC - Full traffic control validation
+   * 
+   * Rules:
+   * 1. If a CRITICAL effect is active → block AMBIENT effects
+   * 2. If same effectType is already active → block (no duplicates)
+   * 3. Otherwise → allow
+   * 
+   * @param effectType Effect type to check
+   * @returns { allowed: boolean, reason: string }
+   */
+  private checkTraffic(effectType: string): { allowed: boolean; reason: string } {
+    // Rule 1: Critical effects block ambient
+    if (this.isBusy() && EffectManager.AMBIENT_EFFECTS.has(effectType)) {
+      const criticalEffect = Array.from(this.activeEffects.values())
+        .find(e => EffectManager.CRITICAL_EFFECTS.has(e.effectType))
+      return {
+        allowed: false,
+        reason: `Blocked by critical effect: ${criticalEffect?.effectType || 'unknown'}`,
+      }
+    }
+    
+    // Rule 2: No duplicates
+    const isDuplicate = Array.from(this.activeEffects.values())
+      .some(e => e.effectType === effectType)
+    if (isDuplicate) {
+      return {
+        allowed: false,
+        reason: `Duplicate blocked: ${effectType} already active`,
+      }
+    }
+    
+    // All clear
+    return { allowed: true, reason: 'OK' }
+  }
+  
+  /**
+   * 🚦 GET ACTIVE EFFECT TYPES
+   * Returns list of currently active effect type names.
+   */
+  getActiveEffectTypes(): string[] {
+    return Array.from(this.activeEffects.values()).map(e => e.effectType)
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // �🛡️ THE SHIELD - Vibe Permission System (WAVE 680)
   // ─────────────────────────────────────────────────────────────────────────
   
   /**

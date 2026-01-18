@@ -114,6 +114,13 @@ export class ClaveRhythm extends BaseEffect {
   private hitTimingsMs: number[] = []
   private nextHitTimeMs = 0
   
+  // 🥁 WAVE 700.7: Movement state - The Hips are back!
+  private currentPanOffset = 0     // -1.0 to 1.0
+  private currentTiltOffset = 0    // -1.0 to 1.0
+  private targetPanOffset = 0
+  private targetTiltOffset = 0
+  private movementProgress = 0     // 0 to 1 for smooth interpolation
+  
   constructor(config?: Partial<ClaveRhythmConfig>) {
     super('clave_rhythm')
     this.config = { ...DEFAULT_CONFIG, ...config }
@@ -127,6 +134,13 @@ export class ClaveRhythm extends BaseEffect {
     this.hitPhase = 'wait'
     this.phaseTimer = 0
     this.currentIntensity = 0
+    
+    // 🥁 WAVE 700.7: Reset movement state
+    this.currentPanOffset = 0
+    this.currentTiltOffset = 0
+    this.targetPanOffset = 0
+    this.targetTiltOffset = 0
+    this.movementProgress = 1  // Start stable
     
     // Calcular timings basados en BPM
     this.calculateHitTimings()
@@ -171,11 +185,30 @@ export class ClaveRhythm extends BaseEffect {
         break
     }
     
+    // 🥁 WAVE 700.7: Update movement interpolation
+    this.updateMovement(deltaMs)
+    
     // Check si terminamos
     if (this.elapsedMs >= this.totalDurationMs) {
       this.phase = 'finished'
       console.log(`[ClaveRhythm 🥁] Completed (${this.config.clavePattern.length} hits, ${this.elapsedMs}ms)`)
     }
+  }
+  
+  // 🥁 WAVE 700.7: Smooth movement interpolation
+  private updateMovement(deltaMs: number): void {
+    if (this.movementProgress >= 1) return
+    
+    // Velocidad de snap: llega al target en ~80ms (latina snappy)
+    const snapSpeed = deltaMs / 80
+    this.movementProgress = Math.min(1, this.movementProgress + snapSpeed)
+    
+    // Ease-out cúbico para el snap (rápido al inicio, suave al final)
+    const eased = 1 - Math.pow(1 - this.movementProgress, 3)
+    
+    // Interpolar hacia el target
+    this.currentPanOffset = this.currentPanOffset + (this.targetPanOffset - this.currentPanOffset) * eased
+    this.currentTiltOffset = this.currentTiltOffset + (this.targetTiltOffset - this.currentTiltOffset) * eased
   }
   
   private startHit(): void {
@@ -185,6 +218,27 @@ export class ClaveRhythm extends BaseEffect {
     // Color del hit actual
     const colorIndex = this.currentHit % this.config.hitColors.length
     this.currentColor = this.config.hitColors[colorIndex]
+    
+    // 🥁 WAVE 700.7: Calculate movement snap for this hit
+    // El patrón 3-2 genera movimientos alternados como caderas latinas
+    // Hits 0,1,2 (grupo 3): Alternan izquierda-derecha-centro
+    // Hits 3,4 (grupo 2): Alternan derecha-izquierda
+    const panAmplitude = this.config.panSnapAmplitude / 180  // Convert degrees to -1..1 range
+    const tiltAmplitude = this.config.tiltSnapAmplitude / 90
+    
+    // Patrón de movimiento según hit (simulando cadera latina)
+    const movementPatterns = [
+      { pan: -panAmplitude, tilt: tiltAmplitude * 0.5 },   // Hit 0: Izquierda-arriba
+      { pan: panAmplitude, tilt: -tiltAmplitude * 0.3 },   // Hit 1: Derecha-abajo
+      { pan: 0, tilt: tiltAmplitude * 0.8 },               // Hit 2: Centro-arriba (climax grupo 3)
+      { pan: panAmplitude * 0.7, tilt: 0 },                // Hit 3: Derecha-centro
+      { pan: -panAmplitude * 0.5, tilt: tiltAmplitude },   // Hit 4: Izquierda-arriba (climax final)
+    ]
+    
+    const pattern = movementPatterns[this.currentHit % movementPatterns.length]
+    this.targetPanOffset = pattern.pan
+    this.targetTiltOffset = pattern.tilt
+    this.movementProgress = 0  // Start interpolation
   }
   
   private updateAttack(): void {
@@ -230,8 +284,8 @@ export class ClaveRhythm extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🎯 WAVE 700.6: ClaveRhythm outputs color hits
-    // Movimiento lo manejará el choreographer, aquí solo color
+    // 🥁 WAVE 700.7: ClaveRhythm outputs color + movement hits
+    // THE HIPS ARE BACK! Los movers bailan el patrón 3-2
     return {
       effectId: this.id,
       category: this.category,
@@ -244,6 +298,15 @@ export class ClaveRhythm extends BaseEffect {
       colorOverride: this.currentColor,
       
       globalOverride: true,
+      
+      // 🥁 WAVE 700.7: Movement override - offset mode (suma a las físicas)
+      // Esto hace que los movers "bailen" el ritmo de clave junto con los colores
+      movement: {
+        pan: this.currentPanOffset,
+        tilt: this.currentTiltOffset,
+        isAbsolute: false,  // Offset mode - suma al movimiento existente
+        speed: 0.8,         // Velocidad alta para snaps rápidos
+      },
     }
   }
 }

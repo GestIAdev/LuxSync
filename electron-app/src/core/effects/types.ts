@@ -106,6 +106,29 @@ export interface EffectFrameOutput {
    * Override del canal Amber (0-1) para fixtures RGBWA
    */
   amberOverride?: number
+  
+  /**
+   * 🥁 WAVE 700.7: MOVEMENT OVERRIDE
+   * Permite a los efectos controlar directamente el Pan/Tilt de los movers.
+   * 
+   * USAGE:
+   * - isAbsolute=true: IGNORA las físicas, usa estos valores directamente (0-1 range)
+   * - isAbsolute=false: SUMA a las físicas (offset mode, -1.0 to 1.0)
+   * 
+   * Los valores -1.0 a 1.0 se mapean al rango completo de pan/tilt:
+   * - Pan: -1.0 = 0°, 0.0 = 180°, 1.0 = 360°
+   * - Tilt: -1.0 = -90°, 0.0 = 0°, 1.0 = 90°
+   */
+  movement?: {
+    /** Override de Pan (-1.0 a 1.0) */
+    pan?: number
+    /** Override de Tilt (-1.0 a 1.0) */
+    tilt?: number
+    /** true = override total, false = offset sumado a físicas */
+    isAbsolute?: boolean
+    /** Velocidad de transición (0-1, opcional) */
+    speed?: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -288,6 +311,18 @@ export interface CombinedEffectOutput {
    * El efecto se aplica a TODAS las fixtures con dimmer.
    */
   globalOverride?: boolean
+  
+  /**
+   * 🥁 WAVE 700.7: COMBINED MOVEMENT OVERRIDE
+   * Movimiento combinado de todos los efectos activos.
+   * Prioridad: El efecto con mayor priority toma el control del movimiento.
+   */
+  movementOverride?: {
+    pan?: number
+    tilt?: number
+    isAbsolute?: boolean
+    speed?: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

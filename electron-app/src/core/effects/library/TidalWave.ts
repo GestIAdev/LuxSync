@@ -206,6 +206,7 @@ export class TidalWave extends BaseEffect {
         zoneOverrides[zone] = {
           color: zoneColor,
           dimmer: scaledIntensity,
+          blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La ola manda, crea valles oscuros
         }
       }
     }

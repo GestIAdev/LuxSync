@@ -295,18 +295,21 @@ export class TropicalPulse extends BaseEffect {
     const visualDimmer = Math.pow(this.currentIntensity, 0.6)
     
     // 🎨 WAVE 775: ZONE OVERRIDES - SOLO PARS (Movers EXCLUIDOS)
+    // 🎚️ WAVE 780: blendMode 'max' - Nunca bajamos, solo subimos (energía)
     const zoneOverrides = {
       'front': {
         color: frontColor,
         dimmer: visualDimmer, 
         white: flashWhite,    // 🔥 WAVE 775: Destello en pico
         amber: flashAmber,    // 🔥 WAVE 775: Calor dorado en pico
+        blendMode: 'max' as const,  // 🎚️ WAVE 780: HTP - Nunca apaga la fiesta
       },
       'back': {
         color: backColor,
         dimmer: visualDimmer,
         white: flashWhite,    // 🔥 WAVE 775: Sincronizado
         amber: flashAmber,    // 🔥 WAVE 775: Sincronizado
+        blendMode: 'max' as const,  // 🎚️ WAVE 780: HTP - Nunca apaga la fiesta
       }
       // 🤖 MOVERS: NO TOCAR - Respetan su física/coreografía
     }

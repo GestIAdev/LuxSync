@@ -396,19 +396,34 @@ export class TitanOrchestrator {
             }
             
             // ═══════════════════════════════════════════════════════════════════════
-            // 🎚️ WAVE 765: PHYSICS DUCKING - LTP (Latest Takes Precedence)
-            // ANTES: Math.max() → La física (0.8-1.0) SIEMPRE ganaba, matando valles
-            // AHORA: effectDimmer → Si el efecto dice 0.1, la luz BAJA a 0.1
+            // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
             // 
-            // FILOSOFÍA: Si un efecto se toma la molestia de especificar un dimmer
-            // para una zona, ESE EFECTO MANDA. La física queda silenciada.
-            // Esto permite que TidalWave cree valles oscuros aunque haya bombo.
+            // ANTES (WAVE 765): LTP puro - El efecto siempre manda
+            // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
+            // 
+            // AHORA: Cada efecto declara su intención via blendMode:
+            // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
+            // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
+            // 
+            // DEFAULT: 'max' - Más seguro para energía general
             // ═══════════════════════════════════════════════════════════════════════
             if (zoneData.dimmer !== undefined) {
               const effectDimmer = Math.round(zoneData.dimmer * 255)
+              const blendMode = zoneData.blendMode || 'max'  // Default: HTP (energía)
+              const physicsDimmer = fixtureStates[index].dimmer
+              
+              let finalDimmer: number
+              if (blendMode === 'replace') {
+                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                finalDimmer = effectDimmer
+              } else {
+                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
+                finalDimmer = Math.max(physicsDimmer, effectDimmer)
+              }
+              
               fixtureStates[index] = {
                 ...fixtureStates[index],
-                dimmer: effectDimmer,  // LTP: El efecto tiene la última palabra
+                dimmer: finalDimmer,
               }
             }
           }

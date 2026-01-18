@@ -202,10 +202,12 @@ export class GhostBreath extends BaseEffect {
       'back': {
         color: ghostColor,
         dimmer: scaledIntensity,
+        blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La respiración manda
       },
       'movers': {
         color: ghostColor,
         dimmer: scaledIntensity * 0.7,  // Movers más sutiles
+        blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La respiración manda
       }
       // NOTA: NO incluimos 'front' - esto deja los Front PARs INTACTOS
       // El fantasma está DETRÁS del escenario

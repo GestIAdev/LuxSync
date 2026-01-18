@@ -140,11 +140,15 @@ export interface EffectFrameOutput {
    * PRIORIDAD (cuando presente):
    * zoneOverrides > colorOverride/dimmerOverride globales
    * 
+   * 🎚️ WAVE 780: BLEND MODES
+   * - 'replace' (LTP): El efecto manda, aunque sea más oscuro (TidalWave, GhostBreath)
+   * - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
+   * 
    * EJEMPLO DE USO:
    * ```ts
    * zoneOverrides: {
-   *   'front': { color: { h: 0, s: 100, l: 50 }, dimmer: 0.9 },   // ROJO
-   *   'back':  { color: { h: 240, s: 100, l: 50 }, dimmer: 0.8 }, // AZUL
+   *   'front': { color: { h: 0, s: 100, l: 50 }, dimmer: 0.9, blendMode: 'max' },
+   *   'back':  { color: { h: 240, s: 100, l: 50 }, dimmer: 0.8, blendMode: 'replace' },
    *   'movers': { movement: { pan: 0.5, tilt: 0.2, isAbsolute: true } }
    * }
    * ```
@@ -166,6 +170,13 @@ export interface EffectFrameOutput {
       white?: number
       /** Amber override específico (0-1) */
       amber?: number
+      /**
+       * 🎚️ WAVE 780: BLEND MODE
+       * - 'replace': LTP - El efecto manda (ducking para efectos espaciales)
+       * - 'max': HTP - El más brillante gana (energía para efectos aditivos)
+       * DEFAULT: 'max' (más seguro para energía)
+       */
+      blendMode?: 'replace' | 'max'
       /** Movement específico para movers */
       movement?: {
         pan?: number
@@ -383,10 +394,14 @@ export interface CombinedEffectOutput {
    * Mapa de zone → overrides específicos, combinados de todos los efectos activos.
    * Permite que diferentes zonas reciban diferentes colores en el mismo frame.
    * 
+   * 🎚️ WAVE 780: BLEND MODES
+   * - 'replace' (LTP): El efecto manda (ducking para efectos espaciales)
+   * - 'max' (HTP): El más brillante gana (energía para efectos aditivos)
+   * 
    * PRIORIDAD DE MERGE:
-   * - HTP para dimmer/white/amber (el más alto gana)
-   * - LTP para color (el efecto de mayor prioridad gana)
-   * - LTP para movement (el efecto de mayor prioridad gana)
+   * - Dimmer: Depende de blendMode ('max' = HTP, 'replace' = LTP)
+   * - Color: LTP (el efecto de mayor prioridad gana)
+   * - Movement: LTP (el efecto de mayor prioridad gana)
    */
   zoneOverrides?: {
     [zoneId: string]: {
@@ -398,6 +413,10 @@ export interface CombinedEffectOutput {
       white?: number
       /** Amber para esta zona (0-1) */
       amber?: number
+      /**
+       * 🎚️ WAVE 780: BLEND MODE (heredado del efecto de mayor prioridad)
+       */
+      blendMode?: 'replace' | 'max'
       /** Movement para esta zona */
       movement?: {
         pan?: number

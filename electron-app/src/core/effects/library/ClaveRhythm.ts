@@ -306,11 +306,13 @@ export class ClaveRhythm extends BaseEffect {
     }
     
     // 🥁 WAVE 755: SOLO MOVERS - No tocar front/back (WAVE 740: Si no está en keys, no se toca)
+    // 🎚️ WAVE 780: blendMode 'max' - El clave SUMA energía, no la resta
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
       'movers': {
         color: hitColor,
         dimmer: this.currentIntensity,
         ...goldenFlash,  // 🥁 WAVE 755: Flash dorado en cada golpe
+        blendMode: 'max',  // 🎚️ WAVE 780: HTP - El ritmo suma, nunca resta
         movement: {
           pan: this.currentPanOffset,
           tilt: this.currentTiltOffset,

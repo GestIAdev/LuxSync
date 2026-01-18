@@ -39,6 +39,7 @@ import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
+  EffectZone,  // 🎚️ WAVE 780: Para zoneOverrides
 } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -209,18 +210,40 @@ export class CumbiaMoon extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    // 🎚️ WAVE 780: Migrar a zoneOverrides con blendMode 'replace'
+    // CumbiaMoon es un efecto de respiro (ola que sube y baja)
+    // Necesita 'replace' para crear los valles oscuros
+    const zoneOverrides = {
+      'front': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity,
+        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
+      },
+      'back': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity,
+        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
+      },
+      'movers': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity * 0.8,  // Movers ligeramente más tenues
+        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
+      }
+    }
+    
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.actualCycleDurationMs,
-      zones: ['all'],
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
-      
-      globalOverride: true,  // 🌙 CLAVE: Funciona con arquitectura actual
+      // 🎚️ WAVE 780: Usar zoneOverrides en lugar de legacy
+      dimmerOverride: undefined,
+      colorOverride: undefined,
+      globalOverride: false,
+      zoneOverrides,
     }
   }
 }

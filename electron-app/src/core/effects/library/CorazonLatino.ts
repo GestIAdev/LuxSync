@@ -363,11 +363,11 @@ export class CorazonLatino extends BaseEffect {
       amber: isBlinding ? this.blinderIntensity * 0.4 : undefined,  // Amber para calidez
     }
     
-    // 🎨 WAVE 750: zoneOverrides - ARQUITECTURA PURA
+    // 🎨 WAVE 750/780: zoneOverrides - ARQUITECTURA PURA + SMART BLEND
     const zoneOverrides = {
-      'back': backOverride,
-      'movers': moverOverride,
-      'front': frontOverride,
+      'back': { ...backOverride, blendMode: 'max' as const },
+      'movers': { ...moverOverride, blendMode: 'max' as const },
+      'front': { ...frontOverride, blendMode: 'max' as const },
     }
     
     return {

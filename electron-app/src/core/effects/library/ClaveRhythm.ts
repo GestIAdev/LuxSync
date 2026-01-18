@@ -285,40 +285,35 @@ export class ClaveRhythm extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🥁 WAVE 750: ClaveRhythm - FLASH EN CADA GOLPE + MOVIMIENTO SECO
-    // Front + Back → Flash de color en cada hit
-    // Movers → Movimiento ABSOLUTO (snap seco, no suave)
+    // 🥁 WAVE 755: ClaveRhythm - EXCLUSIVO PARA MOVERS
+    // Solo movers con movimiento ABSOLUTO (snap seco)
+    // Flash Dorado: amber + white en cada hit
     
-    // 🥁 WAVE 750: FLASH BLANCO en el pico del attack
+    // 🥁 WAVE 755: FLASH DORADO (latón de trompeta)
     const isInHit = this.hitPhase === 'attack' && this.currentIntensity > 0.7
-    const whiteFlash = isInHit ? 0.8 : undefined
+    const goldenFlash = isInHit ? {
+      white: 0.8,   // Flash blanco
+      amber: 1.0,   // Dorado a tope (como latón de trompeta)
+    } : {}
     
-    // 🥁 WAVE 750: Color BRILLANTE que fade a negro rápido
+    // 🥁 WAVE 755: Color BRILLANTE que fade a negro rápido
     const hitColor = {
       h: this.currentColor.h,
       s: this.currentColor.s,
-      l: Math.min(75, this.currentColor.l + (this.currentIntensity * 15))  // Más luminoso en hit
+      l: Math.min(75, this.currentColor.l + (this.currentIntensity * 15))
     }
     
+    // 🥁 WAVE 755: SOLO MOVERS - No tocar front/back (WAVE 740: Si no está en keys, no se toca)
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
-      'front': {
-        color: hitColor,
-        dimmer: this.currentIntensity,
-        white: whiteFlash,  // 🥁 WAVE 750: Flash blanco en cada golpe
-      },
-      'back': {
-        color: hitColor,
-        dimmer: this.currentIntensity,
-        white: whiteFlash,  // 🥁 WAVE 750: Flash blanco en cada golpe
-      },
       'movers': {
         color: hitColor,
         dimmer: this.currentIntensity,
+        ...goldenFlash,  // 🥁 WAVE 755: Flash dorado en cada golpe
         movement: {
           pan: this.currentPanOffset,
           tilt: this.currentTiltOffset,
-          isAbsolute: true,   // 🥁 WAVE 750: ABSOLUTO - snap SECO, no suave
-          speed: 1.0,         // 🥁 WAVE 750: Velocidad MÁXIMA para snaps instantáneos
+          isAbsolute: true,   // 🥁 WAVE 750: ABSOLUTO - snap SECO
+          speed: 1.0,         // Velocidad MÁXIMA
         },
       }
     }
@@ -336,9 +331,9 @@ export class ClaveRhythm extends BaseEffect {
       dimmerOverride: undefined,
       colorOverride: undefined,
       
-      globalOverride: false,  // No global
+      globalOverride: false,
       
-      // 🥁 WAVE 750: Movement override - ABSOLUTO para snaps secos
+      // 🥁 WAVE 755: Movement override - ABSOLUTO para snaps secos
       movement: {
         pan: this.currentPanOffset,
         tilt: this.currentTiltOffset,

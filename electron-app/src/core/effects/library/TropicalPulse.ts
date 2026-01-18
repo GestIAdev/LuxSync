@@ -282,22 +282,22 @@ export class TropicalPulse extends BaseEffect {
       l: this.currentColor.l + (this.currentIntensity * 5)
     }
     
-    // 🌴 WAVE 750: STROBE BLANCO EN EL PICO (solo ~50ms en el attack máximo)
-    // El pico es cuando intensity > 0.9 y estamos en attack phase
-    const isAtPeak = this.currentIntensity > 0.9 && this.pulsePhase === 'attack'
-    const whiteFlash = isAtPeak ? 1.0 : undefined
+    // 🌴 WAVE 755: MICRO-STROBE - Rasgando la vista en el pico
+    // Cuando intensity > 0.85, forzar white: 1.0 (chispa que rasga)
+    const isAtPeak = this.currentIntensity > 0.85 && this.pulsePhase === 'attack'
+    const microStrobe = isAtPeak ? 1.0 : undefined
     
     // 🎨 WAVE 740: zoneOverrides es la ÚNICA fuente de verdad
     const zoneOverrides = {
       'front': {
         color: frontColor,
         dimmer: this.currentIntensity,
-        white: whiteFlash,  // 🌴 WAVE 750: Blinder en pico
+        white: microStrobe,  // 🌴 WAVE 755: Micro-strobe que "rasga" la vista
       },
       'back': {
         color: backColor,
         dimmer: this.currentIntensity,
-        white: whiteFlash,  // 🌴 WAVE 750: Blinder en pico
+        white: microStrobe,  // 🌴 WAVE 755: Micro-strobe sincronizado
       }
     }
     

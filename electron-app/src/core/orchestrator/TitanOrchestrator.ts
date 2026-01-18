@@ -395,12 +395,20 @@ export class TitanOrchestrator {
               }
             }
             
-            // Aplicar dimmer (HTP - el más alto gana)
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🎚️ WAVE 765: PHYSICS DUCKING - LTP (Latest Takes Precedence)
+            // ANTES: Math.max() → La física (0.8-1.0) SIEMPRE ganaba, matando valles
+            // AHORA: effectDimmer → Si el efecto dice 0.1, la luz BAJA a 0.1
+            // 
+            // FILOSOFÍA: Si un efecto se toma la molestia de especificar un dimmer
+            // para una zona, ESE EFECTO MANDA. La física queda silenciada.
+            // Esto permite que TidalWave cree valles oscuros aunque haya bombo.
+            // ═══════════════════════════════════════════════════════════════════════
             if (zoneData.dimmer !== undefined) {
               const effectDimmer = Math.round(zoneData.dimmer * 255)
               fixtureStates[index] = {
                 ...fixtureStates[index],
-                dimmer: Math.max(fixtureStates[index].dimmer, effectDimmer),
+                dimmer: effectDimmer,  // LTP: El efecto tiene la última palabra
               }
             }
           }
@@ -492,18 +500,28 @@ export class TitanOrchestrator {
         if (!shouldApply) return f  // No afectar esta fixture
         
         if (effectOutput.globalOverride) {
-          // MODO SOLAR FLARE: Override completo
+          // ═══════════════════════════════════════════════════════════════════════
+          // 🎚️ WAVE 765: MODO SOLAR FLARE - Override completo
+          // NOTA: Aquí MANTENEMOS HTP porque SolarFlare quiere SUMARSE al pico.
+          // globalOverride=true indica "quiero ser más brillante que todo".
+          // Si en el futuro un efecto global quiere hacer valles, deberá usar
+          // zoneOverrides en lugar de globalOverride.
+          // ═══════════════════════════════════════════════════════════════════════
           return {
             ...f,
             r: flareR,
             g: flareG,
             b: flareB,
-            dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP dimmer
+            dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP: SolarFlare suma
           }
         } else {
-          // MODO ZONAL: Aplicar color y dimmer a las zonas afectadas
+          // ═══════════════════════════════════════════════════════════════════════
+          // 🎚️ WAVE 765: PHYSICS DUCKING - MODO ZONAL (Legacy)
+          // LTP: Si el efecto especifica intensidad, la física se calla.
+          // El blend de color sigue siendo proporcional a la intensidad.
+          // ═══════════════════════════════════════════════════════════════════════
           const effectDimmer = Math.round(flareIntensity * 255)
-          const finalDimmer = Math.max(f.dimmer, effectDimmer)
+          const finalDimmer = effectDimmer  // LTP: El efecto manda
           
           // Blend proporcional a la intensidad del efecto
           const blend = flareIntensity  // 0.0→0%, 1.0→100% del color del efecto

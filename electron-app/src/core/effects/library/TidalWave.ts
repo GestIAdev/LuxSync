@@ -183,8 +183,15 @@ export class TidalWave extends BaseEffect {
     // 🎨 WAVE 725: Construir zone overrides con intensidad específica por zona
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {}
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎚️ WAVE 765: PHYSICS DUCKING - Incluir TODAS las zonas, incluso valles
+    // ANTES: Solo incluíamos zonas con intensity > 0.1, dejando valles a la física
+    // AHORA: Incluimos TODAS las zonas con ANY intensity - si la ola dice 0.05,
+    // la luz baja a 0.05 aunque haya bombo. El efecto tiene CONTROL TOTAL.
+    // ═══════════════════════════════════════════════════════════════════════
     for (const [zone, zoneIntensity] of this.zoneIntensities) {
-      if (zoneIntensity > 0.1) {  // Solo zonas con intensidad significativa
+      // Threshold mínimo: 0.02 (prácticamente apagado pero presente en override)
+      if (zoneIntensity > 0.02) {
         const scaledIntensity = this.getIntensityFromZScore(
           zoneIntensity * this.triggerIntensity, 
           0.25

@@ -34,6 +34,7 @@ import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
+  EffectZone,
 } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -262,18 +263,52 @@ export class TropicalPulse extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    // 🎨 WAVE 725: ZONE OVERRIDES - PINCELES FINOS
+    // Front PARs → ROJO TROPICAL (coral vibrante)
+    // Back PARs → AZUL CARIBEÑO (océano profundo)
+    // Esto demuestra la nueva arquitectura de colores por zona
+    
+    const frontColor = {
+      h: 0,    // ROJO
+      s: 100,
+      l: 50 + (this.currentIntensity * 10)  // Más brillo con más intensidad
+    }
+    
+    const backColor = {
+      h: 240,  // AZUL
+      s: 100,
+      l: 50 + (this.currentIntensity * 10)
+    }
+    
+    // 🎨 WAVE 740: zoneOverrides es la ÚNICA fuente de verdad
+    const zoneOverrides = {
+      'front': {
+        color: frontColor,
+        dimmer: this.currentIntensity,
+      },
+      'back': {
+        color: backColor,
+        dimmer: this.currentIntensity,
+      }
+    }
+    
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.totalDurationMs,
-      zones: ['all'],
+      // 🔥 WAVE 740: zones derivado de zoneOverrides
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
+      // 🔥 WAVE 740: Legacy fallback ELIMINADO cuando hay zoneOverrides
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
-      globalOverride: true,  // 🔥 CLAVE: Esto hace que funcione con la arquitectura actual
+      globalOverride: false,  // No global - solo zonas específicas
+      
+      // 🎨 WAVE 740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD
+      zoneOverrides,
     }
   }
 }

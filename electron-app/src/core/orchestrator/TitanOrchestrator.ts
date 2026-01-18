@@ -343,12 +343,92 @@ export class TitanOrchestrator {
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
-    // 🧨 WAVE 635 → WAVE 692.2: EFFECT COLOR OVERRIDE
+    // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
     // Si hay un efecto activo con globalOverride, usar SU color (no hardcoded dorado)
+    // Si globalOverride=false, MEZCLAR con lo que ya renderizó el HAL (no machacar)
     const effectManager = getEffectManager()
     const effectOutput = effectManager.getCombinedOutput()
     
-    if (effectOutput.hasActiveEffects && effectOutput.globalOverride && effectOutput.dimmerOverride !== undefined) {
+    // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
+    // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
+    // Si no, usar la lógica legacy con colorOverride global
+    
+    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎨 WAVE 740: STRICT ZONAL ISOLATION
+      // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
+      // Las fixtures que NO están en esas zonas NO SE TOCAN - permanecen
+      // con su estado base (del HAL/Vibe) sin modificación alguna.
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      // 1. Obtener las zonas activas del efecto (SOLO estas se procesan)
+      const activeZones = Object.keys(effectOutput.zoneOverrides)
+      
+      // 2. Crear un Set de índices de fixtures afectadas para tracking
+      const affectedFixtureIndices = new Set<number>()
+      
+      // 3. Para cada zona activa, encontrar y modificar SOLO sus fixtures
+      for (const zoneId of activeZones) {
+        const zoneData = effectOutput.zoneOverrides[zoneId]
+        
+        // Encontrar fixtures que pertenecen a esta zona
+        fixtureStates.forEach((f, index) => {
+          const fixtureZone = (f.zone || '').toLowerCase()
+          
+          if (this.fixtureMatchesZone(fixtureZone, zoneId)) {
+            // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
+            affectedFixtureIndices.add(index)
+            
+            // Aplicar color si existe
+            if (zoneData.color) {
+              const rgb = this.hslToRgb(
+                zoneData.color.h,
+                zoneData.color.s,
+                zoneData.color.l
+              )
+              // REEMPLAZO DIRECTO - El efecto toma control total del color
+              fixtureStates[index] = {
+                ...f,
+                r: rgb.r,
+                g: rgb.g,
+                b: rgb.b,
+              }
+            }
+            
+            // Aplicar dimmer (HTP - el más alto gana)
+            if (zoneData.dimmer !== undefined) {
+              const effectDimmer = Math.round(zoneData.dimmer * 255)
+              fixtureStates[index] = {
+                ...fixtureStates[index],
+                dimmer: Math.max(fixtureStates[index].dimmer, effectDimmer),
+              }
+            }
+          }
+          // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
+        })
+      }
+      
+      // Log throttled para debug
+      if (this.frameCount % 60 === 0) {
+        const zoneList = activeZones.join(', ')
+        const unaffectedCount = fixtureStates.length - affectedFixtureIndices.size
+        console.log(`[TitanOrchestrator 740] � STRICT ZONAL: [${zoneList}] | Affected: ${affectedFixtureIndices.size}/${fixtureStates.length} | UNTOUCHED: ${unaffectedCount}`)
+        for (const zoneId of activeZones) {
+          const zoneData = effectOutput.zoneOverrides[zoneId]
+          if (zoneData.color) {
+            const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l)
+            console.log(`  🖌️ [${zoneId}] → RGB(${rgb.r},${rgb.g},${rgb.b}) dimmer=${(zoneData.dimmer ?? 1).toFixed(2)}`)
+          }
+        }
+      }
+      
+      // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
+      // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
+      
+    } else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
+      // ═══════════════════════════════════════════════════════════════════════
       const flareIntensity = effectOutput.dimmerOverride  // 0-1
       
       // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
@@ -363,18 +443,88 @@ export class TitanOrchestrator {
         flareB = rgb.b
       }
       
-      // Override color y dimmer de TODAS las fixtures
-      fixtureStates = fixtureStates.map(f => ({
-        ...f,
-        r: flareR,
-        g: flareG,
-        b: flareB,
-        dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP dimmer
-      }))
+      // 🌴 WAVE 700.8.5 → 700.9: Filtrado inteligente por zona
+      // Soporta AMBOS sistemas de zonas:
+      //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
+      //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
+      const shouldApplyToFixture = (f: typeof fixtureStates[0]): boolean => {
+        if (effectOutput.globalOverride) return true  // Global afecta todo
+        
+        // Sin globalOverride, verificar zones
+        const zones = effectOutput.zones || []
+        if (zones.length === 0) return false
+        
+        const fixtureZone = (f.zone || '').toLowerCase()
+        
+        for (const zone of zones) {
+          if (zone === 'all') return true
+          
+          // FRONT: floor-front, FRONT_PARS, o cualquier cosa con 'front'
+          if (zone === 'front') {
+            if (fixtureZone.includes('front') || fixtureZone.includes('floor-front')) return true
+          }
+          
+          // BACK: floor-back, BACK_PARS, o cualquier cosa con 'back'
+          if (zone === 'back') {
+            if (fixtureZone.includes('back') || fixtureZone.includes('floor-back')) return true
+          }
+          
+          // MOVERS: ceiling-*, MOVING_* (NO usar pan/tilt porque HAL asigna a todos)
+          if (zone === 'movers') {
+            if (fixtureZone.includes('ceiling') || 
+                fixtureZone.includes('moving')) return true
+          }
+          
+          // PARS: floor-*, *_PARS, pero NO movers
+          if (zone === 'pars') {
+            const isMover = fixtureZone.includes('ceiling') || fixtureZone.includes('moving')
+            if (!isMover && (fixtureZone.includes('floor') || fixtureZone.includes('par'))) return true
+          }
+        }
+        return false
+      }
+      
+      // 🔥 WAVE 700.8.5: CRITICAL FIX
+      // globalOverride=true → REEMPLAZA todo (modo SolarFlare)
+      // globalOverride=false → MEZCLA con HTP/LTP (respeta lo que ya renderizó el HAL)
+      fixtureStates = fixtureStates.map(f => {
+        const shouldApply = shouldApplyToFixture(f)
+        if (!shouldApply) return f  // No afectar esta fixture
+        
+        if (effectOutput.globalOverride) {
+          // MODO SOLAR FLARE: Override completo
+          return {
+            ...f,
+            r: flareR,
+            g: flareG,
+            b: flareB,
+            dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP dimmer
+          }
+        } else {
+          // MODO ZONAL: Aplicar color y dimmer a las zonas afectadas
+          const effectDimmer = Math.round(flareIntensity * 255)
+          const finalDimmer = Math.max(f.dimmer, effectDimmer)
+          
+          // Blend proporcional a la intensidad del efecto
+          const blend = flareIntensity  // 0.0→0%, 1.0→100% del color del efecto
+          return {
+            ...f,
+            r: Math.round(f.r * (1 - blend) + flareR * blend),
+            g: Math.round(f.g * (1 - blend) + flareG * blend),
+            b: Math.round(f.b * (1 - blend) + flareB * blend),
+            dimmer: finalDimmer,
+          }
+        }
+      })
       
       // Log throttled
-      if (this.frameCount % 10 === 0) {
-        console.log(`[TitanOrchestrator 🧨] EFFECT COLOR: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+      if (this.frameCount % 60 === 0) {
+        const affectedFixtures = fixtureStates.filter(shouldApplyToFixture)
+        const mode = effectOutput.globalOverride ? 'GLOBAL' : 'ZONAL'
+        // WAVE 715 DEBUG: Show fixture zones and which are affected
+        const fixtureZoneList = fixtureStates.map(f => `${f.zone}:${shouldApplyToFixture(f) ? 'Y' : 'N'}`).join(', ')
+        console.log(`[TitanOrchestrator 715] EFFECT [${mode}] zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+        console.log(`[TitanOrchestrator 715] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`)
       }
     }
     
@@ -558,8 +708,12 @@ export class TitanOrchestrator {
           // WAVE 256.3: Normalize DMX values (0-255) to frontend values (0-1)
           // WAVE 256.7: Map zone names for StageSimulator2 compatibility
           fixtures: fixtureStates.map((f, i) => {
-            // Map HAL zones to StageSimulator2 zones
+            // 🔧 WAVE 700.9.4: Map HAL zones to StageSimulator2 zones
+            // Soporta AMBOS sistemas de zonas:
+            //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
+            //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
             const zoneMap: Record<string, string> = {
+              // Legacy canvas zones
               'FRONT_PARS': 'front',
               'BACK_PARS': 'back', 
               'MOVING_LEFT': 'left',
@@ -567,9 +721,14 @@ export class TitanOrchestrator {
               'STROBES': 'center',
               'AMBIENT': 'center',
               'FLOOR': 'front',
-              'UNASSIGNED': 'center'
+              'UNASSIGNED': 'center',
+              // Constructor 3D zones
+              'ceiling-left': 'left',
+              'ceiling-right': 'right',
+              'floor-front': 'front',
+              'floor-back': 'back'
             }
-            const mappedZone = zoneMap[f.zone] || 'center'
+            const mappedZone = zoneMap[f.zone] || f.zone || 'center'
             
             // 🩸 WAVE 380: Use REAL fixture ID from this.fixtures, not generated index
             // This is critical for runtimeStateMap matching in StageSimulator2
@@ -1005,6 +1164,68 @@ export class TitanOrchestrator {
       r: Math.round(r * 255),
       g: Math.round(g * 255),
       b: Math.round(b * 255),
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎨 WAVE 725: ZONE MATCHING HELPER - Pinceles Finos
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Determina si una fixture pertenece a una zona específica
+   * Soporta AMBOS sistemas de zonas:
+   *   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
+   *   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
+   * 
+   * @param fixtureZone Zona de la fixture (lowercase)
+   * @param targetZone Zona objetivo del efecto
+   * @returns true si la fixture pertenece a la zona
+   */
+  private fixtureMatchesZone(fixtureZone: string, targetZone: string): boolean {
+    const fz = fixtureZone.toLowerCase()
+    const tz = targetZone.toLowerCase()
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 730: MAPEO ESTRICTO DE ZONAS
+    // No más includes() vagos que causan matches falsos
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    switch (tz) {
+      case 'all':
+        return true
+        
+      case 'front':
+        // SOLO front pars, NO movers aunque estén "en frente"
+        return fz === 'front_pars' || fz === 'floor-front'
+        
+      case 'back':
+        // SOLO back pars, NO movers aunque estén "atrás"
+        return fz === 'back_pars' || fz === 'floor-back'
+        
+      case 'movers':
+        // SOLO cabezas móviles - CRITICAL: NO incluir pars
+        return fz === 'moving_left' || fz === 'moving_right' || 
+               fz === 'ceiling-left' || fz === 'ceiling-right' ||
+               fz.startsWith('moving') || fz.startsWith('ceiling')
+        
+      case 'pars':
+        // Todos los PARs (front + back) pero NUNCA movers
+        return fz === 'front_pars' || fz === 'back_pars' ||
+               fz === 'floor-front' || fz === 'floor-back'
+        
+      case 'left':
+        // Solo fixtures del lado izquierdo
+        return fz === 'moving_left' || fz === 'ceiling-left'
+        
+      case 'right':
+        // Solo fixtures del lado derecho
+        return fz === 'moving_right' || fz === 'ceiling-right'
+        
+      default:
+        // 🔥 WAVE 730: Sin fallback permisivo
+        // Si no reconocemos la zona, NO ENTREGAMOS NADA
+        console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`)
+        return false
     }
   }
 }

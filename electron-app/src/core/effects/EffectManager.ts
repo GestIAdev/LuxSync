@@ -37,6 +37,7 @@ import {
   EffectManagerState,
   EffectCategory,
   MusicalContext,
+  EffectZone,  // 🌴 WAVE 700.8: Zone filtering
 } from './types'
 
 // Import effect library
@@ -279,6 +280,7 @@ export class EffectManager extends EventEmitter {
    * - Mayor prioridad para color
    * - 🧨 WAVE 630: globalOverride bypasea zonas
    * - 🥁 WAVE 700.7: Mayor prioridad para movement
+   * - 🎨 WAVE 725: zoneOverrides para pinceles finos
    */
   getCombinedOutput(): CombinedEffectOutput {
     if (this.activeEffects.size === 0) {
@@ -300,7 +302,13 @@ export class EffectManager extends EventEmitter {
     // 🥁 WAVE 700.7: Movement tracking
     let highestPriorityMovement: { pan?: number; tilt?: number; isAbsolute?: boolean; speed?: number } | undefined
     let movementPriority = -1
+    // 🌴 WAVE 700.8: Zone tracking
+    const allZones = new Set<EffectZone>()
     const contributing: string[] = []
+    
+    // 🎨 WAVE 725: Zone overrides acumulados de todos los efectos
+    // Estructura: { [zoneId]: { color?, dimmer?, white?, amber?, movement?, priority } }
+    const combinedZoneOverrides: CombinedEffectOutput['zoneOverrides'] = {}
     
     for (const [id, effect] of this.activeEffects) {
       const output = effect.getOutput()
@@ -338,7 +346,7 @@ export class EffectManager extends EventEmitter {
         globalOverride = true
       }
       
-      // Highest priority takes color
+      // Highest priority takes color (legacy fallback)
       if (output.colorOverride && effect.priority > highestPriority) {
         highestPriority = effect.priority
         highestPriorityColor = output.colorOverride
@@ -349,19 +357,91 @@ export class EffectManager extends EventEmitter {
         movementPriority = effect.priority
         highestPriorityMovement = output.movement
       }
+      
+      // 🌴 WAVE 700.8: Collect zones
+      if (output.zones && output.zones.length > 0) {
+        output.zones.forEach(z => allZones.add(z))
+      }
+      
+      // 🎨 WAVE 725: ZONE OVERRIDES - "PINCELES FINOS"
+      // Procesar zoneOverrides del efecto y mezclarlos con HTP/LTP
+      if (output.zoneOverrides) {
+        // Tipar explícitamente para evitar errores de TypeScript
+        type ZoneOverrideData = {
+          color?: { h: number; s: number; l: number }
+          dimmer?: number
+          white?: number
+          amber?: number
+          movement?: { pan?: number; tilt?: number; isAbsolute?: boolean; speed?: number }
+        }
+        
+        const zoneEntries = Object.entries(output.zoneOverrides) as [string, ZoneOverrideData][]
+        
+        for (const [zoneId, zoneData] of zoneEntries) {
+          if (!combinedZoneOverrides[zoneId]) {
+            // Primera vez que vemos esta zona - inicializar
+            combinedZoneOverrides[zoneId] = {
+              priority: effect.priority,
+            }
+          }
+          
+          const existing = combinedZoneOverrides[zoneId]
+          const existingPriority = existing.priority ?? -1
+          
+          // HTP para dimmer (el más alto gana)
+          if (zoneData.dimmer !== undefined) {
+            if (existing.dimmer === undefined || zoneData.dimmer > existing.dimmer) {
+              existing.dimmer = zoneData.dimmer
+            }
+          }
+          
+          // HTP para white (el más alto gana)
+          if (zoneData.white !== undefined) {
+            if (existing.white === undefined || zoneData.white > existing.white) {
+              existing.white = zoneData.white
+            }
+          }
+          
+          // HTP para amber (el más alto gana)
+          if (zoneData.amber !== undefined) {
+            if (existing.amber === undefined || zoneData.amber > existing.amber) {
+              existing.amber = zoneData.amber
+            }
+          }
+          
+          // LTP para color (mayor prioridad gana)
+          if (zoneData.color && effect.priority >= existingPriority) {
+            existing.color = zoneData.color
+            existing.priority = effect.priority
+          }
+          
+          // LTP para movement (mayor prioridad gana)
+          if (zoneData.movement && effect.priority >= existingPriority) {
+            existing.movement = zoneData.movement
+          }
+          
+          // Agregar zona al set
+          allZones.add(zoneId as EffectZone)
+        }
+      }
     }
+    
+    // 🎨 WAVE 725: Determinar si hay zone overrides activos
+    const hasZoneOverrides = Object.keys(combinedZoneOverrides).length > 0
     
     return {
       hasActiveEffects: true,
       dimmerOverride: maxDimmer > 0 ? maxDimmer : undefined,
       whiteOverride: maxWhite > 0 ? maxWhite : undefined,
       amberOverride: maxAmber > 0 ? maxAmber : undefined,  // 🧨 WAVE 630
-      colorOverride: highestPriorityColor,
+      colorOverride: highestPriorityColor,  // Legacy fallback
       strobeRate: maxStrobeRate > 0 ? maxStrobeRate : undefined,
       intensity: maxIntensity,
       contributingEffects: contributing,
       globalOverride: globalOverride,  // 🧨 WAVE 630
+      zones: allZones.size > 0 ? Array.from(allZones) : undefined,  // 🌴 WAVE 700.8
       movementOverride: highestPriorityMovement,  // 🥁 WAVE 700.7
+      zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined,  // 🎨 WAVE 725
     }
   }
   

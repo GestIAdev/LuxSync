@@ -169,34 +169,54 @@ export class TidalWave extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // TidalWave produce output para cada zona afectada
-    // El MasterArbiter debe manejar múltiples zonas
-    // Por ahora, retornamos el output de la zona con mayor intensidad
+    // 🎨 WAVE 725: ZONE OVERRIDES - TidalWave es el efecto ESPACIAL por excelencia
+    // Cada zona tiene su propia intensidad basada en la fase de la ola
     
-    let maxIntensity = 0
-    let peakZone: EffectZone = 'all'
+    // 🌊 WAVE 691.5: Color con saturación alta, NO desaturar a blanco
+    const colorShift = this.wavePhase * 30  // ±30° de hue durante la ola
+    const baseColor = {
+      h: (this.config.waveColor.h + colorShift) % 360,
+      s: this.config.waveColor.s,  // Mantener saturación ALTA
+      l: this.config.waveColor.l,
+    }
     
-    for (const [zone, intensity] of this.zoneIntensities) {
-      if (intensity > maxIntensity) {
-        maxIntensity = intensity
-        peakZone = zone
+    // 🎨 WAVE 725: Construir zone overrides con intensidad específica por zona
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {}
+    
+    for (const [zone, zoneIntensity] of this.zoneIntensities) {
+      if (zoneIntensity > 0.1) {  // Solo zonas con intensidad significativa
+        const scaledIntensity = this.getIntensityFromZScore(
+          zoneIntensity * this.triggerIntensity, 
+          0.25
+        )
+        
+        // Color con luminosidad ajustada a la intensidad de la zona
+        const zoneColor = {
+          ...baseColor,
+          l: Math.min(75, baseColor.l + scaledIntensity * 10)
+        }
+        
+        zoneOverrides[zone] = {
+          color: zoneColor,
+          dimmer: scaledIntensity,
+        }
       }
     }
     
-    const scaledIntensity = this.getIntensityFromZScore(maxIntensity * this.triggerIntensity, 0.25)
-    
-    // 🌊 WAVE 691.5: Color con saturación alta, NO desaturar a blanco
-    // El problema era que L subía demasiado → gris/blanco
-    const colorShift = this.wavePhase * 30  // ±30° de hue durante la ola
-    const color = {
-      h: (this.config.waveColor.h + colorShift) % 360,
-      s: this.config.waveColor.s,  // Mantener saturación ALTA
-      l: Math.min(75, this.config.waveColor.l + scaledIntensity * 10),  // 🔧 FIX: Cap L at 75%
+    // Calcular intensidad máxima para el output legacy
+    let maxIntensity = 0
+    for (const intensity of this.zoneIntensities.values()) {
+      if (intensity > maxIntensity) maxIntensity = intensity
     }
+    const scaledMaxIntensity = this.getIntensityFromZScore(
+      maxIntensity * this.triggerIntensity, 
+      0.25
+    )
     
-    // 🔍 WAVE 691.5: Debug del color para diagnóstico
-    if (Math.random() < 0.05) {  // 5% de los frames
-      console.log(`[TidalWave 🎨] Color=hsl(${color.h.toFixed(0)},${color.s}%,${color.l.toFixed(0)}%) Intensity=${scaledIntensity.toFixed(2)} Zones=${this.getActiveZones().join(',')}`)
+    // Legacy fallback color
+    const legacyColor = {
+      ...baseColor,
+      l: Math.min(75, baseColor.l + scaledMaxIntensity * 10)
     }
 
     return {
@@ -204,21 +224,23 @@ export class TidalWave extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress: this.calculateProgress(),
-      zones: this.getActiveZones(),
-      intensity: scaledIntensity,
+      // 🎨 WAVE 740: zones derivado de zoneOverrides
+      zones: Object.keys(zoneOverrides) as EffectZone[],
+      intensity: scaledMaxIntensity,
       
-      dimmerOverride: scaledIntensity,
-      colorOverride: color,
+      // Legacy fallback (DEPRECATED - use zoneOverrides)
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
       // White solo en el pico de la ola
-      whiteOverride: this.config.whiteOnPeak && scaledIntensity > 0.8 
-        ? (scaledIntensity - 0.8) * 5  // Ramp de 0.8→1 = white 0→1
+      whiteOverride: this.config.whiteOnPeak && scaledMaxIntensity > 0.8 
+        ? (scaledMaxIntensity - 0.8) * 5  // Ramp de 0.8→1 = white 0→1
         : undefined,
       
       globalOverride: false,  // TidalWave es espacial, no global
       
-      // 🌊 WAVE 680: Metadata extra para MasterArbiter (zona actual)
-      // El arbiter puede usar esto para aplicar diferente intensidad por zona
+      // � WAVE 725: ZONE OVERRIDES - El corazón de la ola espacial
+      zoneOverrides,
     }
   }
   

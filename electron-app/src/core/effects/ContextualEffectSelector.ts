@@ -503,8 +503,7 @@ export class ContextualEffectSelector {
     
     // ═══════════════════════════════════════════════════════════════
     // 🎺 WAVE 692: FIESTA LATINA - ARSENAL COMPLETO
-    // Ahora con TropicalPulse, SalsaFire y CumbiaMoon
-    // El bypass dictatorial ha sido ELIMINADO
+    // 🔥 WAVE 730: Resucitados ghost_breath y tidal_wave con zone overrides
     // 🎭 WAVE 700.1: Ahora usa isEffectAvailable que considera mood
     // ═══════════════════════════════════════════════════════════════
     if (vibe === 'fiesta-latina') {
@@ -521,6 +520,14 @@ export class ContextualEffectSelector {
         }
       }
       
+      // 🌊 WAVE 730: TIDAL WAVE para buildups y alta energía
+      if ((sectionType === 'buildup' || energyTrend === 'rising') && zLevel === 'elevated') {
+        if (this.isEffectAvailable('tidal_wave')) {
+          console.log(`[EffectSelector 🌊] LATINA BUILDUP: tidal_wave`)
+          return 'tidal_wave'
+        }
+      }
+      
       // 🌴 ELEVATED: TropicalPulse o SalsaFire (efectos de relleno medio)
       if (zLevel === 'elevated') {
         if (energyTrend === 'rising' && this.isEffectAvailable('tropical_pulse')) {
@@ -528,8 +535,16 @@ export class ContextualEffectSelector {
           return 'tropical_pulse'
         }
         if (this.isEffectAvailable('salsa_fire')) {
-          console.log(`[EffectSelector �] LATINA ELEVATED: salsa_fire`)
+          console.log(`[EffectSelector 🔥] LATINA ELEVATED: salsa_fire`)
           return 'salsa_fire'
+        }
+      }
+      
+      // 👻 WAVE 730: GHOST BREATH solo en intro/breakdown (respiro profundo)
+      if (sectionType === 'intro' || sectionType === 'breakdown') {
+        if (this.isEffectAvailable('ghost_breath')) {
+          console.log(`[EffectSelector 👻] LATINA BREAKDOWN: ghost_breath (back+movers only)`)
+          return 'ghost_breath'
         }
       }
       
@@ -543,8 +558,8 @@ export class ContextualEffectSelector {
       
       // 🎲 NORMAL: Rotación de efectos medios (evita monotonía)
       if (zLevel === 'normal') {
-        // Priorizar efectos que NO se hayan disparado recientemente
-        const candidates = ['clave_rhythm', 'tropical_pulse', 'salsa_fire', 'cumbia_moon']
+        // 🔥 WAVE 730: Añadido tidal_wave a la rotación
+        const candidates = ['clave_rhythm', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'tidal_wave']
         for (const effect of candidates) {
           if (this.isEffectAvailable(effect) && effect !== lastEffectType) {
             console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`)
@@ -587,9 +602,9 @@ export class ContextualEffectSelector {
     // ═══════════════════════════════════════════════════════════════
     // 🌊 WAVE 691: ANTI-GHOST - Bloquear ghost_breath si hay ritmo
     // 🎭 WAVE 700.1: También considerar blockList del mood
-    // (Solo para vibes que NO son fiesta-latina)
+    // 🔥 WAVE 725: Desbloquear ghost_breath para fiesta-latina con zona overrides
     // ═══════════════════════════════════════════════════════════════
-    const ghostBlocked = energy > this.config.ambientBlockEnergyThreshold || 
+    const ghostBlocked = (vibe !== 'fiesta-latina' && energy > this.config.ambientBlockEnergyThreshold) || 
                          !this.isEffectAvailable('ghost_breath')
     
     // ═══════════════════════════════════════════════════════════════

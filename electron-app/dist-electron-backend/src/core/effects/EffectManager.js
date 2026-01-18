@@ -217,6 +217,8 @@ export class EffectManager extends EventEmitter {
         // 🥁 WAVE 700.7: Movement tracking
         let highestPriorityMovement;
         let movementPriority = -1;
+        // 🌴 WAVE 700.8: Zone tracking
+        const allZones = new Set();
         const contributing = [];
         for (const [id, effect] of this.activeEffects) {
             const output = effect.getOutput();
@@ -257,6 +259,10 @@ export class EffectManager extends EventEmitter {
                 movementPriority = effect.priority;
                 highestPriorityMovement = output.movement;
             }
+            // 🌴 WAVE 700.8: Collect zones
+            if (output.zones && output.zones.length > 0) {
+                output.zones.forEach(z => allZones.add(z));
+            }
         }
         return {
             hasActiveEffects: true,
@@ -268,6 +274,7 @@ export class EffectManager extends EventEmitter {
             intensity: maxIntensity,
             contributingEffects: contributing,
             globalOverride: globalOverride, // 🧨 WAVE 630
+            zones: allZones.size > 0 ? Array.from(allZones) : undefined, // 🌴 WAVE 700.8
             movementOverride: highestPriorityMovement, // 🥁 WAVE 700.7
         };
     }

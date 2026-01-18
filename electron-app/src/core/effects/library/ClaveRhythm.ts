@@ -42,6 +42,7 @@ import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
+  EffectZone,  // 🎨 WAVE 740: Para typing de zones
 } from '../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,7 +89,7 @@ const DEFAULT_CONFIG: ClaveRhythmConfig = {
   ],
   
   // Patrón de intensidades: fuerte-medio-fuerte / medio-fuerte
-  hitIntensities: [0.85, 0.65, 0.90, 0.70, 0.95],
+  hitIntensities: [0.85, 0.65, 0.65, 0.65, 0.80],
   
   panSnapAmplitude: 35,   // ±35° de movimiento
   tiltSnapAmplitude: 20,  // ±20° de movimiento
@@ -284,20 +285,36 @@ export class ClaveRhythm extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🥁 WAVE 700.7: ClaveRhythm outputs color + movement hits
-    // THE HIPS ARE BACK! Los movers bailan el patrón 3-2
+    // 🥁 WAVE 700.8: ClaveRhythm solo afecta movers (movimiento + color en movers solamente)
+    // 🎨 WAVE 725: Usar zone overrides para control explícito
+    
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      'movers': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity,
+        movement: {
+          pan: this.currentPanOffset,
+          tilt: this.currentTiltOffset,
+          isAbsolute: false,  // Offset mode - suma al movimiento existente
+          speed: 0.8,         // Velocidad alta para snaps rápidos
+        },
+      }
+    }
+    
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.totalDurationMs,
-      zones: ['all'],
+      // 🔥 WAVE 740: zones derivado de zoneOverrides
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
+      // 🔥 WAVE 740: Legacy fallback ELIMINADO
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
-      globalOverride: true,
+      globalOverride: false,  // No global - solo zona movers
       
       // 🥁 WAVE 700.7: Movement override - offset mode (suma a las físicas)
       // Esto hace que los movers "bailen" el ritmo de clave junto con los colores
@@ -307,6 +324,9 @@ export class ClaveRhythm extends BaseEffect {
         isAbsolute: false,  // Offset mode - suma al movimiento existente
         speed: 0.8,         // Velocidad alta para snaps rápidos
       },
+      
+      // 🎨 WAVE 740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD
+      zoneOverrides,
     }
   }
 }

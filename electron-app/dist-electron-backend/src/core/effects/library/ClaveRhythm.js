@@ -51,7 +51,7 @@ const DEFAULT_CONFIG = {
         { h: 320, s: 90, l: 60 }, // Magenta vibrante
     ],
     // Patrón de intensidades: fuerte-medio-fuerte / medio-fuerte
-    hitIntensities: [0.85, 0.65, 0.90, 0.70, 0.95],
+    hitIntensities: [0.85, 0.65, 0.65, 0.65, 0.80],
     panSnapAmplitude: 35, // ±35° de movimiento
     tiltSnapAmplitude: 20, // ±20° de movimiento
 };
@@ -208,18 +208,18 @@ export class ClaveRhythm extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
-        // 🥁 WAVE 700.7: ClaveRhythm outputs color + movement hits
-        // THE HIPS ARE BACK! Los movers bailan el patrón 3-2
+        // 🥁 WAVE 700.8: ClaveRhythm solo afecta movers (movimiento + color en movers solamente)
+        // Reducimos epilepsia - no flashean todos los PARs
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.elapsedMs / this.totalDurationMs,
-            zones: ['all'],
+            zones: ['movers'], // 🥁 WAVE 700.8: Solo movers (LEFT + RIGHT)
             intensity: this.currentIntensity,
             dimmerOverride: this.currentIntensity,
             colorOverride: this.currentColor,
-            globalOverride: true,
+            globalOverride: false, // No global - solo zona movers
             // 🥁 WAVE 700.7: Movement override - offset mode (suma a las físicas)
             // Esto hace que los movers "bailen" el ritmo de clave junto con los colores
             movement: {

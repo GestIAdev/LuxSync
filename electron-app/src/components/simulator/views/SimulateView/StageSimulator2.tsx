@@ -1,15 +1,15 @@
-/**
- * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║  StageSimulator2.tsx - WAVE 436: 2D NEON STAGE                            ║
- * ║  "THE NEON STAGE" - Canvas 2D rendering with hybrid data sources          ║
- * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  HYBRID RENDERING ARCHITECTURE (WAVE 379.5):                              ║
- * ║  - GEOMETRY: stageStore (local, immediate, always available)              ║
- * ║  - STATE (color/intensity): truthStore via calculateFixtureRenderValues   ║
- * ║  - Backend offline: fixtures visible but OFF (graceful degradation)       ║
- * ║                                                                            ║
- * ║  Module path: @/components/simulator/views/SimulateView/StageSimulator2   ║
- * ╚═══════════════════════════════════════════════════════════════════════════╝
+﻿/**
+ * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+ * â•‘  StageSimulator2.tsx - WAVE 436: 2D NEON STAGE                            â•‘
+ * â•‘  "THE NEON STAGE" - Canvas 2D rendering with hybrid data sources          â•‘
+ * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
+ * â•‘  HYBRID RENDERING ARCHITECTURE (WAVE 379.5):                              â•‘
+ * â•‘  - GEOMETRY: stageStore (local, immediate, always available)              â•‘
+ * â•‘  - STATE (color/intensity): truthStore via calculateFixtureRenderValues   â•‘
+ * â•‘  - Backend offline: fixtures visible but OFF (graceful degradation)       â•‘
+ * â•‘                                                                            â•‘
+ * â•‘  Module path: @/components/simulator/views/SimulateView/StageSimulator2   â•‘
+ * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
@@ -20,14 +20,14 @@ import { useControlStore } from '../../../../stores/controlStore';
 import { useOverrideStore } from '../../../../stores/overrideStore';
 import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 type QualityMode = 'low' | 'high';
 
 /**
- * 🎬 WAVE 339: Extended with optics and physics
+ * ðŸŽ¬ WAVE 339: Extended with optics and physics
  */
 interface FixtureVisual {
   id: string;
@@ -41,17 +41,17 @@ interface FixtureVisual {
   tilt: number;
   type: 'par' | 'moving' | 'strobe' | 'laser';
   zone: 'front' | 'back' | 'left' | 'right' | 'center';
-  // 🔍 WAVE 339: Optics
+  // ðŸ” WAVE 339: Optics
   zoom: number;         // 0-255: 0=Beam(tight), 255=Wash(wide)
   focus: number;        // 0-255: 0=Sharp, 255=Soft/Blur
-  // 🎛️ WAVE 339: Physics (interpolated positions)
+  // ðŸŽ›ï¸ WAVE 339: Physics (interpolated positions)
   physicalPan: number;  // Actual position after physics
   physicalTilt: number; // Actual position after physics
   panVelocity: number;  // For velocity-based effects
   tiltVelocity: number;
 }
 
-/** Posición calculada de un fixture para hit testing */
+/** PosiciÃ³n calculada de un fixture para hit testing */
 interface FixturePosition {
   id: string;
   x: number;
@@ -65,9 +65,9 @@ interface ZoneLayout {
   fixtures: FixtureVisual[];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const STAGE_COLORS = {
   background: '#0a0a0f',
@@ -81,14 +81,14 @@ const STAGE_COLORS = {
 const ZONE_CONFIG = {
   FRONT_PARS: { y: 0.85, label: 'FRONT PARS' },
   BACK_PARS: { y: 0.55, label: 'BACK PARS' },
-  MOVING_LEFT: { y: 0.28, label: 'MOVING L' },   // 🌟 WAVE 25.6: 0.25→0.28 (más cerca)
-  MOVING_RIGHT: { y: 0.28, label: 'MOVING R' },  // 🌟 WAVE 25.6: 0.25→0.28 (más cerca)
+  MOVING_LEFT: { y: 0.28, label: 'MOVING L' },   // ðŸŒŸ WAVE 25.6: 0.25â†’0.28 (mÃ¡s cerca)
+  MOVING_RIGHT: { y: 0.28, label: 'MOVING R' },  // ðŸŒŸ WAVE 25.6: 0.25â†’0.28 (mÃ¡s cerca)
   STROBES: { y: 0.40, label: 'STROBES' },
 } as const;
 
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export const StageSimulator2: React.FC = () => {
   // Canvas refs
@@ -105,10 +105,10 @@ export const StageSimulator2: React.FC = () => {
   const [showFPS, setShowFPS] = useState(false);
   const [fps, setFps] = useState(0);
   
-  // 🎬 WAVE 339: Debug overlay shows vibe, zoom%, speed on each fixture
+  // ðŸŽ¬ WAVE 339: Debug overlay shows vibe, zoom%, speed on each fixture
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
-  // TRUTH - la única fuente
+  // TRUTH - la Ãºnica fuente
   const hardware = useTruthStore(selectHardware);
   const palette = useTruthStore(selectPalette);
   const beat = useTruthStore(selectBeat);
@@ -125,20 +125,19 @@ export const StageSimulator2: React.FC = () => {
   const globalIntensity = useControlStore(state => state.globalIntensity);
   const globalSaturation = useControlStore(state => state.globalSaturation);
   
-  // 🔄 WAVE 34.5: Smooth palette transitions
+  // WAVE 34.5: Smooth palette transitions
   const targetPalette = useControlStore(state => state.targetPalette);
   const transitionProgress = useControlStore(state => state.transitionProgress);
   
   // OVERRIDE STORE - WAVE 34.2: Per-fixture manual overrides (TOP PRIORITY)
   const overrides = useOverrideStore(state => state.overrides);
   
-  // 🎬 WAVE 339: Get current vibe for debug overlay
+  // ðŸŽ¬ WAVE 339: Get current vibe for debug overlay
   const currentVibe = useTruthStore(state => state.truth.system.vibe) || 'idle';
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // 
   // FIXTURE PROCESSING - Transformar fixtures del backend a visuales
-  // ═════════════════════════════════════════════════════════════════════════
-  
+  // 
   // WAVE 379.5: HYBRID RENDERING SOURCE
   // GEOMETRY (position, type, zone) -> stageStore (local, siempre disponible)
   // STATE (color, intensity, pan, tilt) -> hardware/truthStore (cuando backend sincroniza)
@@ -153,8 +152,19 @@ export const StageSimulator2: React.FC = () => {
         if (f?.id) map.set(f.id, f);
       });
     }
+    
+    // ðŸ› WAVE 700.9.6 DEBUG: Log ID matching
+    if (backendFixtures.length > 0) {
+      const backendIds = backendFixtures.map((f: any) => f?.id).slice(0, 5);
+      const stageIds = (stageFixtures || []).map((f: any) => f?.id).slice(0, 5);
+      console.log(`[ ID DEBUG] Backend IDs: ${backendIds.join(', ')}`)
+      console.log(`[ ID DEBUG] Stage IDs: ${stageIds.join(', ')}`)
+      const matchCount = (stageFixtures || []).filter((f: any) => map.has(f?.id)).length;
+      console.log(`[ ID DEBUG] Matches: ${matchCount}/${(stageFixtures || []).length}`)
+    }
+    
     return map;
-  }, [hardware?.fixtures]);
+  }, [hardware?.fixtures, stageFixtures]);
   
   const fixtures = useMemo((): FixtureVisual[] => {
     // WAVE 379.5: Geometria desde stageStore, estado desde truthStore
@@ -169,22 +179,39 @@ export const StageSimulator2: React.FC = () => {
       // WAVE 379.5: Get runtime state from backend (if available)
       const runtimeState = runtimeStateMap.get(fixture.id);
       
-      // Use backend zone directly (comes from auto-zoning)
-      const backendZone = (fixture.zone || '').toUpperCase();
+      // WAVE 700.9.8 DEBUG: Log ALL fixtures once WITH INTENSITY
+      if (index === 0 && Date.now() % 5000 < 50) {
+        const summary = fixtureArray.map((f, i) => {
+          const rs = runtimeStateMap.get(f?.id);
+          const z = rs?.zone || f?.zone || '?';
+          const c = rs?.color;
+          const int = rs?.intensity ?? 0;
+          const intPct = Math.round((typeof int === 'number' ? int : 0) * 100);
+          return `[${i}]${z}:${c ? `${c.r},${c.g},${c.b}` : 'X'}@${intPct}%`;
+        }).join(' | ');
+        console.log(`[FULL ZONE DEBUG] ${summary}`);
+      }
+
+      
+      // WAVE 700.9.5: ZONE MAPPING FIX
+      // Preferir zona del runtimeState (backend, ya normalizada) sobre fixture.zone (stageStore)
+      // El backend ya normaliza ceiling-leftâ†’'left', floor-frontâ†’'front', etc.
+      const backendZone = (runtimeState?.zone || fixture.zone || '').toUpperCase();
       let zone: FixtureVisual['zone'] = 'center';
       let type: FixtureVisual['type'] = 'par';
       
       // Mapear zonas del backend a zonas del canvas
-      if (backendZone.includes('MOVING_LEFT') || backendZone.includes('LEFT')) {
+      // Soporta: MOVING_LEFT, LEFT, CEILING-LEFT, ceiling-left â†’ 'left'
+      if (backendZone.includes('MOVING_LEFT') || backendZone === 'LEFT' || backendZone.includes('CEILING-LEFT')) {
         zone = 'left';
         type = 'moving';
-      } else if (backendZone.includes('MOVING_RIGHT') || backendZone.includes('RIGHT')) {
+      } else if (backendZone.includes('MOVING_RIGHT') || backendZone === 'RIGHT' || backendZone.includes('CEILING-RIGHT')) {
         zone = 'right';
         type = 'moving';
-      } else if (backendZone.includes('FRONT')) {
+      } else if (backendZone.includes('FRONT') || backendZone.includes('FLOOR-FRONT')) {
         zone = 'front';
         type = 'par';
-      } else if (backendZone.includes('BACK')) {
+      } else if (backendZone.includes('BACK') || backendZone.includes('FLOOR-BACK')) {
         zone = 'back';
         type = 'par';
       } else if (backendZone.includes('STROBE')) {
@@ -192,7 +219,7 @@ export const StageSimulator2: React.FC = () => {
         type = 'strobe';
       }
       
-      // Override tipo por el tipo del fixture si está disponible
+      // Override tipo por el tipo del fixture si estÃ¡ disponible
       const fixtureType = (fixture.type || '').toLowerCase();
       if (fixtureType.includes('moving') || fixtureType.includes('spot') || fixtureType.includes('beam')) {
         type = 'moving';
@@ -238,14 +265,14 @@ export const StageSimulator2: React.FC = () => {
         transitionProgress
       );
       
-      // 🛡️ WAVE 420: ANTI-NUKE NORMALIZATION (BULLETPROOF VERSION)
+      //  WAVE 420: ANTI-NUKE NORMALIZATION (BULLETPROOF VERSION)
       // Backend sends DMX (0-255), Frontend expects normalized (0-1)
       // Also protect against NaN, undefined, Infinity
       const rawIntensity = finalIntensity ?? 0
       const normalizedIntensity = !Number.isFinite(rawIntensity) 
-        ? 0  // NaN or Infinity → 0
+        ? 0  // NaN or Infinity â†’ 0
         : rawIntensity > 1.0 
-          ? rawIntensity / 255  // DMX 0-255 → normalize
+          ? rawIntensity / 255  // DMX 0-255 â†’ normalize
           : rawIntensity
       const safeIntensity = Math.max(0, Math.min(1, normalizedIntensity))
       
@@ -261,10 +288,10 @@ export const StageSimulator2: React.FC = () => {
         tilt: finalTilt,
         type,
         zone,
-        // 🔍 WAVE 339: Optics
+        // ðŸ” WAVE 339: Optics
         zoom: finalZoom,
         focus: finalFocus,
-        // 🎛️ WAVE 339: Physics (use interpolated positions for visual)
+        // ðŸŽ›ï¸ WAVE 339: Physics (use interpolated positions for visual)
         physicalPan: finalPhysicalPan,
         physicalTilt: finalPhysicalTilt,
         panVelocity: finalPanVelocity,
@@ -273,9 +300,9 @@ export const StageSimulator2: React.FC = () => {
     }).filter(Boolean) as FixtureVisual[];
   }, [stageFixtures, runtimeStateMap, globalMode, flowParams, activePaletteId, globalIntensity, globalSaturation, overrides, targetPalette, transitionProgress]);
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER ENGINE
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   const render = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
@@ -290,16 +317,16 @@ export const StageSimulator2: React.FC = () => {
     const W = canvas.width;
     const H = canvas.height;
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // CLEAR & BACKGROUND
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     ctx.fillStyle = STAGE_COLORS.background;
     ctx.fillRect(0, 0, W, H);
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // GRID (solo HIGH mode)
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     if (qualityMode === 'high') {
       ctx.strokeStyle = STAGE_COLORS.grid;
@@ -320,9 +347,9 @@ export const StageSimulator2: React.FC = () => {
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // STAGE LINE
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     const stageY = H * 0.92;
     ctx.strokeStyle = STAGE_COLORS.stageLine;
@@ -340,9 +367,9 @@ export const StageSimulator2: React.FC = () => {
       ctx.shadowBlur = 0;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // TRUSS
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     const trussY = H * 0.15;
     ctx.strokeStyle = STAGE_COLORS.truss;
@@ -352,9 +379,9 @@ export const StageSimulator2: React.FC = () => {
     ctx.lineTo(W * 0.95, trussY);
     ctx.stroke();
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // FIXTURES - El corazón del render
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // FIXTURES - El corazÃ³n del render
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     // Reset posiciones para hit testing
     const newPositions: FixturePosition[] = [];
@@ -369,27 +396,27 @@ export const StageSimulator2: React.FC = () => {
     // Lista de todos los IDs para Shift+Click
     const allFixtureIds = fixtures.map(f => f.id);
     
-    // Función para distribuir X en una zona
+    // FunciÃ³n para distribuir X en una zona
     const distributeX = (count: number, index: number, startX: number, endX: number): number => {
       if (count <= 1) return (startX + endX) / 2;
       return startX + ((endX - startX) * index) / (count - 1);
     };
     
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER FIXTURE FUNCTION - WAVE 30.1: Con selección visual
-    // 🎬 WAVE 339: Uses PHYSICS positions and OPTICS for realistic visualization
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // RENDER FIXTURE FUNCTION - WAVE 30.1: Con selecciÃ³n visual
+    // ðŸŽ¬ WAVE 339: Uses PHYSICS positions and OPTICS for realistic visualization
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     const renderFixture = (fixture: FixtureVisual, inputX: number, inputY: number) => {
       const { 
         id, r, g, b, intensity: rawIntensity, pan, tilt, type,
-        // 🔍 WAVE 339: Optics
+        // ðŸ” WAVE 339: Optics
         zoom, focus,
-        // 🎛️ WAVE 339: Physics - USE THESE for visual position
+        // ðŸŽ›ï¸ WAVE 339: Physics - USE THESE for visual position
         physicalPan, physicalTilt, panVelocity, tiltVelocity,
       } = fixture;
       
-      // 🛡️ WAVE 420: BULLETPROOF - Protect against NaN/Infinity/undefined
+      // ðŸ›¡ï¸ WAVE 420: BULLETPROOF - Protect against NaN/Infinity/undefined
       // Canvas crashes with "non-finite" values in createRadialGradient
       const intensity = Number.isFinite(rawIntensity) ? Math.max(0, Math.min(1, rawIntensity)) : 0
       const x = Number.isFinite(inputX) ? inputX : 100
@@ -398,38 +425,38 @@ export const StageSimulator2: React.FC = () => {
       const isSelected = selectedIds.has(id);
       const isHovered = hoveredId === id;
       
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔍 WAVE 339: ZOOM → BEAM WIDTH CALCULATION
-      // 0 DMX (Beam) = Cono de 2-4 grados (Rayo láser) → width 5-10px
-      // 255 DMX (Wash) = Cono de 45-60 grados (Baño de luz) → width 80-120px
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      // ðŸ” WAVE 339: ZOOM â†’ BEAM WIDTH CALCULATION
+      // 0 DMX (Beam) = Cono de 2-4 grados (Rayo lÃ¡ser) â†’ width 5-10px
+      // 255 DMX (Wash) = Cono de 45-60 grados (BaÃ±o de luz) â†’ width 80-120px
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       const zoomNormalized = (zoom ?? 127) / 255; // 0=Beam, 1=Wash
       const baseBeamWidth = 5 + zoomNormalized * 75;  // 5-80px base width
       const endBeamWidth = 10 + zoomNormalized * 110; // 10-120px end width
       
-      // ═══════════════════════════════════════════════════════════════════
-      // 🔍 WAVE 339: FOCUS → EDGE BLUR (via gradient sharpness)
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      // ðŸ” WAVE 339: FOCUS â†’ EDGE BLUR (via gradient sharpness)
       // 0 DMX = Sharp edges (tight gradient stops)
       // 255 DMX = Soft/Nebula (wide gradient, smooth falloff)
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       const focusNormalized = (focus ?? 127) / 255; // 0=Sharp, 1=Soft
-      // Sharp: gradient stops at 0.6, 0.85, 1.0 → Nebula: 0.3, 0.6, 1.0
-      const gradientMid = 0.6 - focusNormalized * 0.3;   // 0.6 → 0.3
-      const gradientEdge = 0.85 - focusNormalized * 0.25; // 0.85 → 0.6
+      // Sharp: gradient stops at 0.6, 0.85, 1.0 â†’ Nebula: 0.3, 0.6, 1.0
+      const gradientMid = 0.6 - focusNormalized * 0.3;   // 0.6 â†’ 0.3
+      const gradientEdge = 0.85 - focusNormalized * 0.25; // 0.85 â†’ 0.6
       
       // Calcular radio del fixture
-      // 🗡️ WAVE 277: Mover head x1.6 - Cabezas visibles para ver pulso
+      // ðŸ—¡ï¸ WAVE 277: Mover head x1.6 - Cabezas visibles para ver pulso
       const baseRadius = type === 'moving' ? 19 : 16;  // Was 12 for moving
       const fixtureRadius = baseRadius + intensity * (type === 'moving' ? 13 : 10);  // Was 8 for moving
       
-      // Guardar posición para hit testing
+      // Guardar posiciÃ³n para hit testing
       newPositions.push({ id, x, y, radius: Math.max(fixtureRadius, 20) });
       
-      // WAVE 379.6: Si está completamente apagado, dibujar fixture "idle" (gris oscuro)
-      // Esto permite ver la posición del fixture aunque no haya data del backend
+      // WAVE 379.6: Si estÃ¡ completamente apagado, dibujar fixture "idle" (gris oscuro)
+      // Esto permite ver la posiciÃ³n del fixture aunque no haya data del backend
       const isCompletelyOff = r + g + b < 10 && intensity < 0.05;
       if (isCompletelyOff) {
-        // Dibujar fixture inactivo como círculo gris oscuro
+        // Dibujar fixture inactivo como cÃ­rculo gris oscuro
         ctx.beginPath();
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = isSelected ? 'rgba(0, 255, 255, 0.4)' : 'rgba(80, 80, 80, 0.6)';
@@ -443,26 +470,26 @@ export const StageSimulator2: React.FC = () => {
       const color = `rgb(${r}, ${g}, ${b})`;
       const colorAlpha = `rgba(${r}, ${g}, ${b}, ${intensity * 0.8})`;
       
-      // ═══════════════════════════════════════════════════════════════════
-      // HIGH QUALITY MODE - Volumétrico con gradientes
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      // HIGH QUALITY MODE - VolumÃ©trico con gradientes
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       
       if (qualityMode === 'high') {
         // WAVE 256.4: Back to 'lighter' but with CONTROLLED opacities
         // Now that intensity is normalized (0-1), lighter works correctly
         ctx.globalCompositeOperation = 'lighter';
         
-        // ═══════════════════════════════════════════════════════════════════
-        // 👓 WAVE 276: BALANCED halos - reactive to intensity, más sólidos
-        // ═══════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ðŸ‘“ WAVE 276: BALANCED halos - reactive to intensity, mÃ¡s sÃ³lidos
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         
         // 1. HALO EXTERIOR - Size scales with intensity for reactivity
-        // 🗡️ WAVE 277: Mover halo x1.6 para visibilidad
+        // ðŸ—¡ï¸ WAVE 277: Mover halo x1.6 para visibilidad
         const haloRadius = type === 'moving' 
           ? 56 + intensity * 88   // Moving: 56-144px x1.6 (was 35-90)
           : 50 + intensity * 60;  // PARs: 50-110px (unchanged)
         const haloGradient = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
-        // 👓 WAVE 276: Opacidad subida para más presencia visual
+        // ðŸ‘“ WAVE 276: Opacidad subida para mÃ¡s presencia visual
         haloGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.7 * intensity})`);   // Was 0.5
         haloGradient.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, ${0.4 * intensity})`); // Was 0.25
         haloGradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${0.15 * intensity})`); // Was 0.1
@@ -473,27 +500,27 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = haloGradient;
         ctx.fill();
         
-        // 2. BEAM para moving heads - 🎬 WAVE 339: PHYSICS + OPTICS
+        // 2. BEAM para moving heads - ðŸŽ¬ WAVE 339: PHYSICS + OPTICS
         // Uses physicalPan (interpolated) for realistic motion visualization
-        // Uses zoom for beam width (Beam→Wash)
-        // Uses focus for edge sharpness (Sharp→Nebula)
+        // Uses zoom for beam width (Beamâ†’Wash)
+        // Uses focus for edge sharpness (Sharpâ†’Nebula)
         if (type === 'moving' && intensity > 0.05) {
-          // ═══════════════════════════════════════════════════════════════════
-          // 🎛️ WAVE 346: 2D PROJECTION FIX
+          // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          // ðŸŽ›ï¸ WAVE 346: 2D PROJECTION FIX
           // Normalizar physicalPan al rango 0-1 para evitar conos fuera de canvas
           // physicalPan puede venir en cualquier rango (ej: -270 a +270 grados)
-          // Lo normalizamos a 0-1 asumiendo rango físico de 540° (DMX 0-255)
-          // ═══════════════════════════════════════════════════════════════════
+          // Lo normalizamos a 0-1 asumiendo rango fÃ­sico de 540Â° (DMX 0-255)
+          // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
           const normalizedPan = Math.max(0, Math.min(1, physicalPan ?? 0.5))
           
-          // 🎛️ WAVE 339: Use PHYSICAL position (interpolated by physics engine)
+          // ðŸŽ›ï¸ WAVE 339: Use PHYSICAL position (interpolated by physics engine)
           // This shows the ACTUAL fixture position, not the target
-          const beamAngle = (normalizedPan - 0.5) * Math.PI * 0.6; // ±54°
+          const beamAngle = (normalizedPan - 0.5) * Math.PI * 0.6; // Â±54Â°
           
           // Beam length scales with intensity
           const beamLength = 120 + intensity * 280;
           
-          // 🔍 WAVE 339: Beam width controlled by ZOOM
+          // ðŸ” WAVE 339: Beam width controlled by ZOOM
           // baseBeamWidth and endBeamWidth calculated above from zoom value
           const beamWidthStart = baseBeamWidth * 0.3;  // Narrow at fixture
           const beamWidthEnd = endBeamWidth * (0.5 + intensity * 0.5); // Wide at end
@@ -501,7 +528,7 @@ export const StageSimulator2: React.FC = () => {
           const endX = x + Math.sin(beamAngle) * beamLength;
           const endY = y + Math.cos(beamAngle) * beamLength;
           
-          // Beam cónico - width based on ZOOM
+          // Beam cÃ³nico - width based on ZOOM
           ctx.beginPath();
           ctx.moveTo(x - beamWidthStart, y);
           ctx.lineTo(endX - beamWidthEnd, endY);
@@ -509,7 +536,7 @@ export const StageSimulator2: React.FC = () => {
           ctx.lineTo(x + beamWidthStart, y);
           ctx.closePath();
           
-          // � WAVE 339: Gradient sharpness controlled by FOCUS
+          // ï¿½ WAVE 339: Gradient sharpness controlled by FOCUS
           // gradientMid and gradientEdge calculated above from focus value
           const beamGradient = ctx.createLinearGradient(x, y, endX, endY);
           beamGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.85 * intensity})`);
@@ -521,8 +548,8 @@ export const StageSimulator2: React.FC = () => {
           ctx.fill();
         }
         
-        // 3. NÚCLEO DE COLOR - 👓 WAVE 276: Más grande y sólido
-        // 🗡️ WAVE 277: Mover core x1.6 para ver pulso claramente
+        // 3. NÃšCLEO DE COLOR - ðŸ‘“ WAVE 276: MÃ¡s grande y sÃ³lido
+        // ðŸ—¡ï¸ WAVE 277: Mover core x1.6 para ver pulso claramente
         const coreRadius = type === 'moving'
           ? 16 + intensity * 24  // Moving: 16-40px x1.6 (was 10-25)
           : 16 + intensity * 20; // PARs: 16-36px (unchanged)
@@ -537,8 +564,8 @@ export const StageSimulator2: React.FC = () => {
         ctx.fillStyle = coreGradient;
         ctx.fill();
         
-        // 4. NÚCLEO BLANCO SÓLIDO - scales with intensity
-        // 🗡️ WAVE 277: Mover white core x1.6
+        // 4. NÃšCLEO BLANCO SÃ“LIDO - scales with intensity
+        // ðŸ—¡ï¸ WAVE 277: Mover white core x1.6
         const whiteCoreRadius = type === 'moving' 
           ? 6 + intensity * 8  // 6-14px x1.6 (was 4-9)
           : 5 + intensity * 6; // 5-11px (unchanged)
@@ -560,17 +587,17 @@ export const StageSimulator2: React.FC = () => {
         
         ctx.globalCompositeOperation = 'source-over';
         
-      // ═══════════════════════════════════════════════════════════════════
-      // LOW QUALITY MODE - Retro, máximo FPS
-      // 🎬 WAVE 339: Also uses physicalPan for physics visualization
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      // LOW QUALITY MODE - Retro, mÃ¡ximo FPS
+      // ðŸŽ¬ WAVE 339: Also uses physicalPan for physics visualization
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       
       } else {
-        // Círculo sólido simple - 🌟 WAVE 25.6: Tamaño aumentado
-        // 🗡️ WAVE 277: Mover x1.6 para visibilidad en modo low
+        // CÃ­rculo sÃ³lido simple - ðŸŒŸ WAVE 25.6: TamaÃ±o aumentado
+        // ðŸ—¡ï¸ WAVE 277: Mover x1.6 para visibilidad en modo low
         const radius = type === 'moving'
           ? 19 + intensity * 16  // Moving: x1.6 (was 12+10)
-          : 16 + intensity * 12; // PARs: más grande
+          : 16 + intensity * 12; // PARs: mÃ¡s grande
         
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -582,8 +609,8 @@ export const StageSimulator2: React.FC = () => {
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Beam simple para moving heads (solo línea)
-        // 🎛️ WAVE 339: Use physicalPan for realistic motion
+        // Beam simple para moving heads (solo lÃ­nea)
+        // ðŸŽ›ï¸ WAVE 339: Use physicalPan for realistic motion
         if (type === 'moving' && intensity > 0.2) {
           const angle = (physicalPan - 0.5) * Math.PI * 0.6;
           const length = 80 + physicalTilt * 120;
@@ -594,16 +621,16 @@ export const StageSimulator2: React.FC = () => {
             x + Math.sin(angle) * length,
             y + Math.cos(angle) * length
           );
-          // 🔍 WAVE 339: Line width based on zoom
+          // ðŸ” WAVE 339: Line width based on zoom
           ctx.strokeStyle = colorAlpha;
           ctx.lineWidth = 2 + zoomNormalized * 6; // 2-8px based on zoom
           ctx.stroke();
         }
       }
       
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       // WAVE 30.1: SELECTION & HOVER RINGS
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       
       // HOVER RING - Magenta feedback
       if (isHovered && !isSelected) {
@@ -633,9 +660,9 @@ export const StageSimulator2: React.FC = () => {
         ctx.stroke();
       }
       
-      // ═══════════════════════════════════════════════════════════════════
-      // 🎬 WAVE 339: DEBUG OVERLAY - Show vibe/zoom/velocity on fixture
-      // ═══════════════════════════════════════════════════════════════════
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      // ðŸŽ¬ WAVE 339: DEBUG OVERLAY - Show vibe/zoom/velocity on fixture
+      // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       if (showDebugOverlay && type === 'moving') {
         ctx.font = '9px monospace';
         ctx.textAlign = 'center';
@@ -645,7 +672,7 @@ export const StageSimulator2: React.FC = () => {
         const speed = Math.abs(panVelocity) + Math.abs(tiltVelocity);
         const speedPercent = Math.min(100, Math.round((speed / 600) * 100));
         
-        // Zoom % (0=Beam→100%, 255=Wash→0%)
+        // Zoom % (0=Beamâ†’100%, 255=Washâ†’0%)
         const zoomPercent = Math.round((1 - zoomNormalized) * 100);
         
         // Draw debug text with background
@@ -665,9 +692,9 @@ export const StageSimulator2: React.FC = () => {
       }
     };
     
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // RENDER EACH ZONE
-    // ─────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     
     // FRONT PARS
     frontPars.forEach((f, i) => {
@@ -704,9 +731,9 @@ export const StageSimulator2: React.FC = () => {
       renderFixture(f, x, y);
     });
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // ZONE LABELS - 🌟 WAVE 25.6: Ajustadas para no tapar fixtures grandes
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ZONE LABELS - ðŸŒŸ WAVE 25.6: Ajustadas para no tapar fixtures grandes
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     if (qualityMode === 'high') {
       ctx.fillStyle = STAGE_COLORS.labelText;
@@ -721,9 +748,9 @@ export const StageSimulator2: React.FC = () => {
       ctx.fillText('FRONT PARS', W * 0.5, H * ZONE_CONFIG.FRONT_PARS.y + 30); // +5px abajo
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // BEAT PULSE (visual feedback del beat)
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     if (beat?.confidence && qualityMode === 'high') {
       const pulse = beat.confidence;
@@ -734,9 +761,9 @@ export const StageSimulator2: React.FC = () => {
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // HUD OVERLAY
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     // Quality badge
     ctx.fillStyle = qualityMode === 'high' ? '#00ff88' : '#ffaa00';
@@ -776,9 +803,9 @@ export const StageSimulator2: React.FC = () => {
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // LOOP - Guardar posiciones y continuar
-    // ═══════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     
     // Guardar posiciones calculadas para hit testing
     fixturePositionsRef.current = newPositions;
@@ -786,9 +813,9 @@ export const StageSimulator2: React.FC = () => {
     animationRef.current = requestAnimationFrame(render);
   }, [qualityMode, fixtures, showFPS, palette, beat, selectedIds, hoveredId]);
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RESIZE HANDLER
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   useEffect(() => {
     const handleResize = () => {
@@ -813,18 +840,18 @@ export const StageSimulator2: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // ANIMATION LOOP
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   useEffect(() => {
     animationRef.current = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationRef.current);
   }, [render]);
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // WAVE 30.1: CLICK & HOVER HANDLERS
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   // Convertir coordenadas de mouse a coordenadas de canvas
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -845,7 +872,7 @@ export const StageSimulator2: React.FC = () => {
     const positions = fixturePositionsRef.current;
     const dpr = window.devicePixelRatio || 1;
     
-    // Buscar de adelante hacia atrás (últimos dibujados primero)
+    // Buscar de adelante hacia atrÃ¡s (Ãºltimos dibujados primero)
     for (let i = positions.length - 1; i >= 0; i--) {
       const pos = positions[i];
       const dx = x - pos.x * dpr;
@@ -871,17 +898,17 @@ export const StageSimulator2: React.FC = () => {
     
     if (fixtureId) {
       if (e.shiftKey && lastSelectedId) {
-        // Shift+Click: Selección de rango
+        // Shift+Click: SelecciÃ³n de rango
         selectRange(lastSelectedId, fixtureId, allFixtureIds);
       } else if (e.ctrlKey || e.metaKey) {
         // Ctrl+Click: Toggle individual
         toggleSelection(fixtureId);
       } else {
-        // Click normal: Reemplazar selección
+        // Click normal: Reemplazar selecciÃ³n
         select(fixtureId, 'replace');
       }
     } else {
-      // Click en vacío: Deseleccionar todo
+      // Click en vacÃ­o: Deseleccionar todo
       deselectAll();
     }
   }, [getCanvasCoords, findFixtureAt, select, toggleSelection, selectRange, deselectAll, lastSelectedId, allFixtureIds]);
@@ -906,9 +933,9 @@ export const StageSimulator2: React.FC = () => {
     setHovered(null);
   }, [setHovered]);
   
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // RENDER
-  // ═════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   
   return (
     <div 
@@ -962,7 +989,7 @@ export const StageSimulator2: React.FC = () => {
             fontFamily: 'monospace',
           }}
         >
-          {qualityMode === 'high' ? '✨ HIGH' : '⚡ LOW'}
+          {qualityMode === 'high' ? 'âœ¨ HIGH' : 'âš¡ LOW'}
         </button>
         
         <button
@@ -981,7 +1008,7 @@ export const StageSimulator2: React.FC = () => {
           FPS
         </button>
         
-        {/* 🎬 WAVE 339: Debug overlay toggle */}
+        {/* ðŸŽ¬ WAVE 339: Debug overlay toggle */}
         <button
           onClick={() => setShowDebugOverlay(d => !d)}
           style={{
@@ -995,7 +1022,7 @@ export const StageSimulator2: React.FC = () => {
             fontFamily: 'monospace',
           }}
         >
-          🔍 DBG
+          ðŸ” DBG
         </button>
       </div>
     </div>
@@ -1003,3 +1030,4 @@ export const StageSimulator2: React.FC = () => {
 };
 
 export default StageSimulator2;
+

@@ -176,16 +176,18 @@ export class TropicalPulse extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
+        // 🚨 WAVE 720 DEBUG: FORZAR ROJO PURO para ver si el efecto llega
+        const debugColor = { h: 0, s: 100, l: 50 }; // ROJO PURO
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.elapsedMs / this.totalDurationMs,
-            zones: ['all'],
+            zones: ['front', 'back'], // 🌴 WAVE 700.8: Solo PARs (front + back), NO movers
             intensity: this.currentIntensity,
             dimmerOverride: this.currentIntensity,
-            colorOverride: this.currentColor,
-            globalOverride: true, // 🔥 CLAVE: Esto hace que funcione con la arquitectura actual
+            colorOverride: debugColor, // WAVE 720: ROJO FORZADO
+            globalOverride: false, // No global - solo zonas específicas
         };
     }
 }

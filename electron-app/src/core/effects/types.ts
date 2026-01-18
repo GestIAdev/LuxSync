@@ -129,6 +129,52 @@ export interface EffectFrameOutput {
     /** Velocidad de transición (0-1, opcional) */
     speed?: number
   }
+  
+  /**
+   * 🎨 WAVE 725: ZONE OVERRIDES - "PINCELES FINOS"
+   * 
+   * Permite control granular por zona en un solo frame.
+   * REEMPLAZA la "brocha gorda" del colorOverride global cuando se necesita
+   * pintar diferentes zonas con diferentes colores.
+   * 
+   * PRIORIDAD (cuando presente):
+   * zoneOverrides > colorOverride/dimmerOverride globales
+   * 
+   * EJEMPLO DE USO:
+   * ```ts
+   * zoneOverrides: {
+   *   'front': { color: { h: 0, s: 100, l: 50 }, dimmer: 0.9 },   // ROJO
+   *   'back':  { color: { h: 240, s: 100, l: 50 }, dimmer: 0.8 }, // AZUL
+   *   'movers': { movement: { pan: 0.5, tilt: 0.2, isAbsolute: true } }
+   * }
+   * ```
+   * 
+   * ZONAS SOPORTADAS:
+   * - 'front': Front PARs (floor-front, FRONT_PARS)
+   * - 'back': Back PARs (floor-back, BACK_PARS)  
+   * - 'movers': Moving heads (ceiling-*, MOVING_*)
+   * - 'pars': Todos los PARs (front + back)
+   * - 'all': Todas las fixtures (equivalente a globalOverride)
+   */
+  zoneOverrides?: {
+    [zoneId: string]: {
+      /** Color específico para esta zona (HSL) */
+      color?: { h: number; s: number; l: number }
+      /** Dimmer específico para esta zona (0-1) */
+      dimmer?: number
+      /** White override específico (0-1) */
+      white?: number
+      /** Amber override específico (0-1) */
+      amber?: number
+      /** Movement específico para movers */
+      movement?: {
+        pan?: number
+        tilt?: number
+        isAbsolute?: boolean
+        speed?: number
+      }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -313,6 +359,13 @@ export interface CombinedEffectOutput {
   globalOverride?: boolean
   
   /**
+   * 🌴 WAVE 700.8: ZONE FILTERING
+   * Zonas afectadas por los efectos combinados.
+   * Solo se usa cuando globalOverride=false.
+   */
+  zones?: EffectZone[]
+  
+  /**
    * 🥁 WAVE 700.7: COMBINED MOVEMENT OVERRIDE
    * Movimiento combinado de todos los efectos activos.
    * Prioridad: El efecto con mayor priority toma el control del movimiento.
@@ -322,6 +375,39 @@ export interface CombinedEffectOutput {
     tilt?: number
     isAbsolute?: boolean
     speed?: number
+  }
+  
+  /**
+   * 🎨 WAVE 725: COMBINED ZONE OVERRIDES - "PINCELES FINOS"
+   * 
+   * Mapa de zone → overrides específicos, combinados de todos los efectos activos.
+   * Permite que diferentes zonas reciban diferentes colores en el mismo frame.
+   * 
+   * PRIORIDAD DE MERGE:
+   * - HTP para dimmer/white/amber (el más alto gana)
+   * - LTP para color (el efecto de mayor prioridad gana)
+   * - LTP para movement (el efecto de mayor prioridad gana)
+   */
+  zoneOverrides?: {
+    [zoneId: string]: {
+      /** Color para esta zona (HSL) */
+      color?: { h: number; s: number; l: number }
+      /** Dimmer para esta zona (0-1) */
+      dimmer?: number
+      /** White para esta zona (0-1) */
+      white?: number
+      /** Amber para esta zona (0-1) */
+      amber?: number
+      /** Movement para esta zona */
+      movement?: {
+        pan?: number
+        tilt?: number
+        isAbsolute?: boolean
+        speed?: number
+      }
+      /** Prioridad del efecto que contribuyó este override */
+      priority?: number
+    }
   }
 }
 

@@ -129,9 +129,9 @@ export class GhostBreath extends BaseEffect {
   trigger(config: EffectTriggerConfig): void {
     super.trigger(config)
     
-    // 🌊 WAVE 691: Ghost Breath llena TODAS las zonas para no dejar huecos
-    // El fantasma respira en todo el espacio, no solo atrás
-    this.zones = ['front', 'back', 'movers']
+    // � WAVE 725: Ghost Breath solo afecta BACK y MOVERS
+    // El fantasma está DETRÁS del escenario - Front queda intacto
+    this.zones = ['back', 'movers']
     
     this.breathPhase = 0
     this.breathsCompleted = 0
@@ -140,7 +140,7 @@ export class GhostBreath extends BaseEffect {
     
     this.calculateBreathPeriod()
     
-    console.log(`[GhostBreath 👻] TRIGGERED! Period=${this.actualBreathPeriodMs}ms Breaths=${this.config.breathCount}`)
+    console.log(`[GhostBreath 👻] TRIGGERED! Period=${this.actualBreathPeriodMs}ms Breaths=${this.config.breathCount} Zones=[back, movers]`)
   }
   
   update(deltaMs: number): void {
@@ -179,10 +179,25 @@ export class GhostBreath extends BaseEffect {
     
     // Interpolar entre base color y UV color según fase
     const uvBlend = this.config.useUV ? this.breathPhase : 0
-    const color = {
+    const ghostColor = {
       h: this.lerp(this.config.baseColor.h, this.config.uvColor.h, uvBlend * 0.5),
       s: this.lerp(this.config.baseColor.s, this.config.uvColor.s, uvBlend * 0.3),
       l: this.lerp(this.config.baseColor.l, this.config.uvColor.l, scaledIntensity * 0.5),
+    }
+    
+    // 🎨 WAVE 725: Zone Overrides - El fantasma solo respira en BACK y MOVERS
+    // FRONT queda INTACTO (sin override = mantiene la paleta base)
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      'back': {
+        color: ghostColor,
+        dimmer: scaledIntensity,
+      },
+      'movers': {
+        color: ghostColor,
+        dimmer: scaledIntensity * 0.7,  // Movers más sutiles
+      }
+      // NOTA: NO incluimos 'front' - esto deja los Front PARs INTACTOS
+      // El fantasma está DETRÁS del escenario
     }
     
     return {
@@ -190,11 +205,14 @@ export class GhostBreath extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress: this.calculateProgress(),
-      zones: this.zones,  // back + movers
+      // 🔥 WAVE 740: zones derivado de zoneOverrides (fuente de verdad única)
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: scaledIntensity,
       
-      dimmerOverride: scaledIntensity,
-      colorOverride: color,
+      // 🔥 WAVE 740: Legacy fallback ELIMINADO cuando hay zoneOverrides
+      // dimmerOverride y colorOverride podrían causar conflictos
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
       // Sin white - el fantasma no brilla, solo respira
       whiteOverride: undefined,
@@ -203,6 +221,9 @@ export class GhostBreath extends BaseEffect {
       strobeRate: undefined,
       
       globalOverride: false,  // Nunca global - solo zonas específicas
+      
+      // 🎨 WAVE 725/740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD
+      zoneOverrides,
     }
   }
   

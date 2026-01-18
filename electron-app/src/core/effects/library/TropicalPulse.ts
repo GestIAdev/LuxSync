@@ -77,14 +77,14 @@ const DEFAULT_CONFIG: TropicalPulseConfig = {
   pulseGapMs: 200,     // 🌴 WAVE 750: 200ms gap
   bpmSync: true,
   colorProgression: [
-    // 🔥 WAVE 770: PALETA NEÓN - Saturación y luminosidad a tope
-    { h: 16, s: 100, l: 60 },   // CORAL NEÓN - explota
-    { h: 174, s: 100, l: 55 },  // TURQUOISE ELÉCTRICO - caribeño
-    { h: 45, s: 100, l: 60 },   // GOLD BRILLANTE - dorado tropical
-    { h: 300, s: 100, l: 60 },  // MAGENTA NEÓN - explosión final
+    // 🌴 WAVE 750: PALETA VIBRANTE DEL ARQUITECTO
+    { h: 16, s: 100, l: 65 },   // CORAL - cálido y acogedor
+    { h: 174, s: 90, l: 50 },   // TURQUOISE - caribeño
+    { h: 45, s: 100, l: 55 },   // GOLD - dorado tropical
+    { h: 300, s: 95, l: 55 },   // MAGENTA - explosión final
   ],
-  startIntensity: 0.80,  // 🔥 WAVE 770: Empezar CON FUERZA (antes 0.65)
-  endIntensity: 1.0,     // 🔥 WAVE 770: Final a tope
+  startIntensity: 0.65,  // 🌴 WAVE 750: Empezar con punch
+  endIntensity: 1.0,     // 🌴 WAVE 750: Final a tope
   swingFactor: 0.15,     // Groove latino sutil
 }
 
@@ -275,30 +275,40 @@ export class TropicalPulse extends BaseEffect {
       l: this.currentColor.l + (this.currentIntensity * 10)
     }
     
-    // Complementario: +180° en el círculo cromático
     const backColor = {
       h: (this.currentColor.h + 180) % 360,
       s: this.currentColor.s,
       l: this.currentColor.l + (this.currentIntensity * 5)
     }
     
-    // 🌴 WAVE 755: MICRO-STROBE - Rasgando la vista en el pico
-    // 🔥 WAVE 770: Threshold bajado a 0.75 - dispara en pulsos 2, 3, 4
-    const isAtPeak = this.currentIntensity > 0.75 && this.pulsePhase === 'attack'
-    const microStrobe = isAtPeak ? 1.0 : undefined
+    // 2. DETECCIÓN DE PICO (El Cañonazo)
+    // Solo en la fase de ataque y cuando está bien alto
+    const isAtPeak = this.currentIntensity > 0.85 && this.pulsePhase === 'attack'
     
-    // 🎨 WAVE 740: zoneOverrides es la ÚNICA fuente de verdad
+    // 3. INYECCIÓN DE VITAMINAS (Flash Dorado Tropical)
+    // Inyectamos Ámbar y Blanco SOLO en el pico para rasgar
+    const flashWhite = isAtPeak ? 1.0 : undefined
+    const flashAmber = isAtPeak ? 1.0 : undefined
+    
+    // 4. CURVA DE BRILLO (Gamma Correction)
+    // Hacemos que los medios brillen más (0.5 -> 0.7) para que se vea lleno
+    const visualDimmer = Math.pow(this.currentIntensity, 0.6)
+    
+    // 🎨 WAVE 775: ZONE OVERRIDES - SOLO PARS (Movers EXCLUIDOS)
     const zoneOverrides = {
       'front': {
         color: frontColor,
-        dimmer: this.currentIntensity,
-        white: microStrobe,  // 🌴 WAVE 755: Micro-strobe que "rasga" la vista
+        dimmer: visualDimmer, 
+        white: flashWhite,    // 🔥 WAVE 775: Destello en pico
+        amber: flashAmber,    // 🔥 WAVE 775: Calor dorado en pico
       },
       'back': {
         color: backColor,
-        dimmer: this.currentIntensity,
-        white: microStrobe,  // 🌴 WAVE 755: Micro-strobe sincronizado
+        dimmer: visualDimmer,
+        white: flashWhite,    // 🔥 WAVE 775: Sincronizado
+        amber: flashAmber,    // 🔥 WAVE 775: Sincronizado
       }
+      // 🤖 MOVERS: NO TOCAR - Respetan su física/coreografía
     }
     
     return {

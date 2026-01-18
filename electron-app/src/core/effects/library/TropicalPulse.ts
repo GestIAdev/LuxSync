@@ -71,19 +71,21 @@ interface TropicalPulseConfig {
 }
 
 const DEFAULT_CONFIG: TropicalPulseConfig = {
-  pulseCount: 3,  // 4→3 pulsos (más rápido)
-  pulseAttackMs: 120,  // 150→120ms (más snappy)
-  pulseDecayMs: 180,  // 250→180ms (decay más rápido)
-  pulseGapMs: 250,  // 300→250ms (menos gap)
+  pulseCount: 4,  // 🌴 WAVE 750: 4 pulsos para más crescendo
+  pulseAttackMs: 80,   // 🌴 WAVE 750: 80ms (SUPER snappy)
+  pulseDecayMs: 150,   // 🌴 WAVE 750: 150ms (decay rápido)
+  pulseGapMs: 200,     // 🌴 WAVE 750: 200ms gap
   bpmSync: true,
   colorProgression: [
-    { h: 15, s: 90, l: 65 },   // Coral cálido (más saturado, más luminoso)
-    { h: 330, s: 95, l: 60 },  // Magenta vibrante
-    { h: 45, s: 95, l: 70 },   // Amarillo tropical brillante (clímax)
+    // 🌴 WAVE 750: PALETA VIBRANTE DEL ARQUITECTO
+    { h: 16, s: 100, l: 65 },   // CORAL - cálido y acogedor
+    { h: 174, s: 90, l: 50 },   // TURQUOISE - caribeño
+    { h: 45, s: 100, l: 55 },   // GOLD - dorado tropical
+    { h: 300, s: 95, l: 55 },   // MAGENTA - explosión final
   ],
-  startIntensity: 0.6,  // 0.5→0.6 (empezar con más punch)
-  endIntensity: 0.95,  // 1.0→0.95 (menos blanco puro)
-  swingFactor: 0.15,  // Groove latino sutil
+  startIntensity: 0.65,  // 🌴 WAVE 750: Empezar con punch
+  endIntensity: 1.0,     // 🌴 WAVE 750: Final a tope
+  swingFactor: 0.15,     // Groove latino sutil
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -263,32 +265,39 @@ export class TropicalPulse extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🎨 WAVE 725: ZONE OVERRIDES - PINCELES FINOS
-    // Front PARs → ROJO TROPICAL (coral vibrante)
-    // Back PARs → AZUL CARIBEÑO (océano profundo)
-    // Esto demuestra la nueva arquitectura de colores por zona
+    // � WAVE 750: COLORES COMPLEMENTARIOS POR ZONA
+    // Front → Color actual de la progresión
+    // Back → Color complementario (180° opuesto en el círculo cromático)
     
     const frontColor = {
-      h: 0,    // ROJO
-      s: 100,
-      l: 50 + (this.currentIntensity * 10)  // Más brillo con más intensidad
+      h: this.currentColor.h,
+      s: this.currentColor.s,
+      l: this.currentColor.l + (this.currentIntensity * 10)
     }
     
+    // Complementario: +180° en el círculo cromático
     const backColor = {
-      h: 240,  // AZUL
-      s: 100,
-      l: 50 + (this.currentIntensity * 10)
+      h: (this.currentColor.h + 180) % 360,
+      s: this.currentColor.s,
+      l: this.currentColor.l + (this.currentIntensity * 5)
     }
+    
+    // 🌴 WAVE 750: STROBE BLANCO EN EL PICO (solo ~50ms en el attack máximo)
+    // El pico es cuando intensity > 0.9 y estamos en attack phase
+    const isAtPeak = this.currentIntensity > 0.9 && this.pulsePhase === 'attack'
+    const whiteFlash = isAtPeak ? 1.0 : undefined
     
     // 🎨 WAVE 740: zoneOverrides es la ÚNICA fuente de verdad
     const zoneOverrides = {
       'front': {
         color: frontColor,
         dimmer: this.currentIntensity,
+        white: whiteFlash,  // 🌴 WAVE 750: Blinder en pico
       },
       'back': {
         color: backColor,
         dimmer: this.currentIntensity,
+        white: whiteFlash,  // 🌴 WAVE 750: Blinder en pico
       }
     }
     

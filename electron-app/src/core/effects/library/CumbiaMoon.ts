@@ -69,17 +69,17 @@ interface CumbiaMoonConfig {
 }
 
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
-  cycleDurationMs: 5000,  // 5 segundos - respiro lento
-  peakIntensity: 0.55,    // No demasiado brillante
-  floorIntensity: 0.08,   // Casi apagado pero no negro
-  peakSustainMs: 800,     // Sostener el pico brevemente
+  cycleDurationMs: 3000,  // 🌙 WAVE 750: 3 segundos - más corto
+  peakIntensity: 0.5,     // 🌙 WAVE 750: 50% máximo - SUTIL
+  floorIntensity: 0.05,   // 🌙 WAVE 750: Casi apagado
+  peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
   colorCycle: [
-    { h: 280, s: 70, l: 50 },   // Violeta tropical (inicio)
-    { h: 200, s: 80, l: 55 },   // Cyan (pico)
-    { h: 240, s: 60, l: 45 },   // Azul profundo (final)
+    { h: 280, s: 60, l: 40 },   // Violeta suave (inicio)
+    { h: 200, s: 70, l: 45 },   // Cyan suave (pico)
+    { h: 240, s: 50, l: 35 },   // Azul profundo (final)
   ],
   bpmSync: true,
-  beatsPerCycle: 8,  // Un ciclo cada 8 beats
+  beatsPerCycle: 4,  // 🌙 WAVE 750: 4 beats = más rápido
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

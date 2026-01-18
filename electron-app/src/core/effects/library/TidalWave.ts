@@ -68,15 +68,15 @@ interface TidalWaveConfig {
 }
 
 const DEFAULT_CONFIG: TidalWaveConfig = {
-  wavePeriodMs: 1000,   // 1 segundo por ola
-  waveCount: 3,          // 3 olas
+  wavePeriodMs: 2000,    // 🌊 WAVE 750: 2 segundos por ola (majestuosa)
+  waveCount: 2,          // 🌊 WAVE 750: 2 olas = ida + vuelta (ping-pong)
   bpmSync: true,
-  beatsPerWave: 2,       // 2 beats = 1 ola
+  beatsPerWave: 4,       // 🌊 WAVE 750: 4 beats = 2 compases total
   forwardDirection: true,
-  // 🌊 WAVE 691.5: Color CÁLIDO para Latina - no más azul frío
-  waveColor: { h: 280, s: 70, l: 55 },  // Violeta cálido
-  whiteOnPeak: false,
-  intensityFloor: 0.1,
+  // 🌊 WAVE 750: Color CÁLIDO vibrante
+  waveColor: { h: 30, s: 90, l: 55 },  // Naranja dorado brillante
+  whiteOnPeak: true,     // 🌊 WAVE 750: Destello en el pico
+  intensityFloor: 0.1,   // 🌊 WAVE 750: Mínimo 10% (contraste)
 }
 
 // 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
@@ -271,26 +271,35 @@ export class TidalWave extends BaseEffect {
   private updateZoneIntensities(): void {
     const numZones = ZONE_ORDER.length
     
+    // 🌊 WAVE 750: PING-PONG - La ola va y vuelve
+    // En ola par (0, 2, 4...): forward
+    // En ola impar (1, 3, 5...): reverse
+    const isReverse = this.wavesCompleted % 2 === 1
+    
     for (let i = 0; i < numZones; i++) {
       const zone = ZONE_ORDER[i]
       
       // Calcular offset de fase para esta zona
-      // En forward direction: front=0, pars=0.25, back=0.5, movers=0.75
-      const phaseOffset = this.config.forwardDirection 
-        ? i / numZones 
-        : (numZones - 1 - i) / numZones
+      // Forward: front=0, pars=0.25, back=0.5, movers=0.75
+      // Reverse: front=0.75, pars=0.5, back=0.25, movers=0
+      let phaseOffset: number
+      if (isReverse) {
+        phaseOffset = (numZones - 1 - i) / numZones
+      } else {
+        phaseOffset = i / numZones
+      }
       
       // Fase local de esta zona
       const localPhase = (this.wavePhase + phaseOffset) % 1
       
-      // Intensidad sinusoidal (pico en phase=0.5)
-      // Sin: -1 → +1, normalizado a floor → 1
+      // 🌊 WAVE 750: Curva más pronunciada - pico más definido
+      // Usando sin^2 para pico más agudo
       const sineValue = Math.sin(localPhase * Math.PI * 2)
-      const normalizedSine = (sineValue + 1) / 2  // 0-1
+      const shapedSine = sineValue > 0 ? Math.pow(sineValue, 1.5) : 0  // Solo positivos, más agudo
       
-      // Aplicar floor
+      // 🌊 WAVE 750: CONTRASTE ALTO - active=1.0, inactive=0.1
       const intensity = this.config.intensityFloor + 
-        normalizedSine * (1 - this.config.intensityFloor)
+        shapedSine * (1.0 - this.config.intensityFloor)
       
       this.zoneIntensities.set(zone, intensity)
     }

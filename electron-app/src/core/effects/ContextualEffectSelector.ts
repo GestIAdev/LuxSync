@@ -504,14 +504,29 @@ export class ContextualEffectSelector {
     // ═══════════════════════════════════════════════════════════════
     // 🎺 WAVE 692: FIESTA LATINA - ARSENAL COMPLETO
     // 🔥 WAVE 730: Resucitados ghost_breath y tidal_wave con zone overrides
+    // ❤️ WAVE 750: CORAZÓN LATINO - El alma del arquitecto
     // 🎭 WAVE 700.1: Ahora usa isEffectAvailable que considera mood
     // ═══════════════════════════════════════════════════════════════
     if (vibe === 'fiesta-latina') {
+      // ❤️ WAVE 750: CORAZÓN LATINO - Para coros épicos y finales
+      // El efecto más emocional - solo en momentos TRULY EPIC
+      if (zLevel === 'divine' && sectionType === 'chorus') {
+        if (this.isEffectAvailable('corazon_latino')) {
+          console.log(`[EffectSelector ❤️] LATINA DIVINE CHORUS: corazon_latino (THE ARCHITECT'S SOUL)`)
+          return 'corazon_latino'
+        }
+      }
+      
       // 🔥 EPIC/DIVINE: Strobe o Solar (efectos de impacto)
       if (zLevel === 'divine' || zLevel === 'epic') {
         if (this.isEffectAvailable('strobe_burst')) {
           console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`)
           return 'strobe_burst'
+        }
+        // ❤️ WAVE 750: Corazón Latino como alternativa épica al strobe
+        if (this.isEffectAvailable('corazon_latino')) {
+          console.log(`[EffectSelector ❤️] LATINA EPIC FALLBACK: corazon_latino`)
+          return 'corazon_latino'
         }
         // Fallback a tropical pulse si strobe en cooldown o bloqueado
         if (this.isEffectAvailable('tropical_pulse')) {

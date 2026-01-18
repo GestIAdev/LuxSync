@@ -285,18 +285,40 @@ export class ClaveRhythm extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🥁 WAVE 700.8: ClaveRhythm solo afecta movers (movimiento + color en movers solamente)
-    // 🎨 WAVE 725: Usar zone overrides para control explícito
+    // 🥁 WAVE 750: ClaveRhythm - FLASH EN CADA GOLPE + MOVIMIENTO SECO
+    // Front + Back → Flash de color en cada hit
+    // Movers → Movimiento ABSOLUTO (snap seco, no suave)
+    
+    // 🥁 WAVE 750: FLASH BLANCO en el pico del attack
+    const isInHit = this.hitPhase === 'attack' && this.currentIntensity > 0.7
+    const whiteFlash = isInHit ? 0.8 : undefined
+    
+    // 🥁 WAVE 750: Color BRILLANTE que fade a negro rápido
+    const hitColor = {
+      h: this.currentColor.h,
+      s: this.currentColor.s,
+      l: Math.min(75, this.currentColor.l + (this.currentIntensity * 15))  // Más luminoso en hit
+    }
     
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      'front': {
+        color: hitColor,
+        dimmer: this.currentIntensity,
+        white: whiteFlash,  // 🥁 WAVE 750: Flash blanco en cada golpe
+      },
+      'back': {
+        color: hitColor,
+        dimmer: this.currentIntensity,
+        white: whiteFlash,  // 🥁 WAVE 750: Flash blanco en cada golpe
+      },
       'movers': {
-        color: this.currentColor,
+        color: hitColor,
         dimmer: this.currentIntensity,
         movement: {
           pan: this.currentPanOffset,
           tilt: this.currentTiltOffset,
-          isAbsolute: false,  // Offset mode - suma al movimiento existente
-          speed: 0.8,         // Velocidad alta para snaps rápidos
+          isAbsolute: true,   // 🥁 WAVE 750: ABSOLUTO - snap SECO, no suave
+          speed: 1.0,         // 🥁 WAVE 750: Velocidad MÁXIMA para snaps instantáneos
         },
       }
     }
@@ -314,15 +336,14 @@ export class ClaveRhythm extends BaseEffect {
       dimmerOverride: undefined,
       colorOverride: undefined,
       
-      globalOverride: false,  // No global - solo zona movers
+      globalOverride: false,  // No global
       
-      // 🥁 WAVE 700.7: Movement override - offset mode (suma a las físicas)
-      // Esto hace que los movers "bailen" el ritmo de clave junto con los colores
+      // 🥁 WAVE 750: Movement override - ABSOLUTO para snaps secos
       movement: {
         pan: this.currentPanOffset,
         tilt: this.currentTiltOffset,
-        isAbsolute: false,  // Offset mode - suma al movimiento existente
-        speed: 0.8,         // Velocidad alta para snaps rápidos
+        isAbsolute: true,   // 🥁 WAVE 750: ABSOLUTO - el mover VA A ESTA POSICIÓN, no suavemente
+        speed: 1.0,         // Velocidad máxima
       },
       
       // 🎨 WAVE 740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD

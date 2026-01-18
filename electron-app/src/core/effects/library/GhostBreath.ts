@@ -77,7 +77,7 @@ interface GhostBreathConfig {
 
 const DEFAULT_CONFIG: GhostBreathConfig = {
   breathPeriodMs: 4000,   // 4 segundos por respiración
-  breathCount: 2,          // 🌊 WAVE 691: SOLO 2 respiraciones (~8 segundos max)
+  breathCount: 1,          // � WAVE 750: SOLO 1 respiración = 4s total (silencio dramático)
   inhaleRatio: 0.35,       // Inhale más rápido que exhale
   intensityFloor: 0.05,    // 5% mínimo (no blackout)
   intensityCeiling: 0.7,   // 70% máximo (no cegador)
@@ -85,7 +85,7 @@ const DEFAULT_CONFIG: GhostBreathConfig = {
   baseColor: { h: 220, s: 90, l: 30 },   // Deep Blue oscuro
   uvColor: { h: 270, s: 100, l: 40 },    // Violeta UV
   bpmSync: false,          // Por defecto NO sync (orgánico)
-  beatsPerBreath: 8,       // 8 beats = 1 respiración si sync
+  beatsPerBreath: 4,       // 🌙 WAVE 750: 4 beats = 1 respiración si sync
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

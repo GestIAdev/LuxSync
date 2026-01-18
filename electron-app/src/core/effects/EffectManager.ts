@@ -52,6 +52,8 @@ import { SalsaFire } from './library/SalsaFire'
 // 🥁 WAVE 700.6: NEW LATINA EFFECT
 import { ClaveRhythm } from './library/ClaveRhythm'
 import { CumbiaMoon } from './library/CumbiaMoon'
+// ❤️ WAVE 750: THE ARCHITECT'S SOUL
+import { CorazonLatino } from './library/CorazonLatino'
 
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
@@ -106,6 +108,8 @@ const EFFECT_VIBE_RULES: Record<string, {
   'cumbia_moon': { isDynamic: false },     // 🌙 Ambient - allowed even in chill
   // 🥁 WAVE 700.6: NEW LATINA EFFECT
   'clave_rhythm': { isDynamic: true },     // 🥁 3-2 Clave pattern with movement
+  // ❤️ WAVE 750: THE ARCHITECT'S SOUL
+  'corazon_latino': { isDynamic: true },   // ❤️ Heartbeat passion effect
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -536,6 +540,13 @@ export class EffectManager extends EventEmitter {
     
     // 🥁 Clave Rhythm - 3-2 pattern with color + movement
     this.effectFactories.set('clave_rhythm', () => new ClaveRhythm())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ❤️ WAVE 750: THE ARCHITECT'S SOUL
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ❤️ Corazón Latino - Heartbeat passion effect for epic moments
+    this.effectFactories.set('corazon_latino', () => new CorazonLatino())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

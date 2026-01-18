@@ -128,8 +128,9 @@ const DEFAULT_CONFIG: EffectSelectionConfig = {
   effectTypeCooldowns: {
     // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
     'cumbia_moon': 25000,      // 25s base → CALM:75s, BALANCED:37s, PUNK:17s
-    'tropical_pulse': 20000,   // 20s base → CALM:60s, BALANCED:30s, PUNK:14s
+    'tropical_pulse': 28000,   // 28s base → CALM:84s, BALANCED:42s, PUNK:19s (↑ de 20s)
     'salsa_fire': 18000,       // 18s base → CALM:54s, BALANCED:27s, PUNK:12s
+    'clave_rhythm': 22000,     // 22s base → CALM:66s, BALANCED:33s, PUNK:15s
     
     // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
     'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
@@ -543,7 +544,7 @@ export class ContextualEffectSelector {
       // 🎲 NORMAL: Rotación de efectos medios (evita monotonía)
       if (zLevel === 'normal') {
         // Priorizar efectos que NO se hayan disparado recientemente
-        const candidates = ['tropical_pulse', 'salsa_fire', 'cumbia_moon']
+        const candidates = ['clave_rhythm', 'tropical_pulse', 'salsa_fire', 'cumbia_moon']
         for (const effect of candidates) {
           if (this.isEffectAvailable(effect) && effect !== lastEffectType) {
             console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`)

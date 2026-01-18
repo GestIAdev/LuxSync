@@ -48,6 +48,8 @@ import { GhostBreath } from './library/GhostBreath'
 // 🎺 WAVE 692: FIESTA LATINA ARSENAL
 import { TropicalPulse } from './library/TropicalPulse'
 import { SalsaFire } from './library/SalsaFire'
+// 🥁 WAVE 700.6: NEW LATINA EFFECT
+import { ClaveRhythm } from './library/ClaveRhythm'
 import { CumbiaMoon } from './library/CumbiaMoon'
 
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
@@ -101,6 +103,8 @@ const EFFECT_VIBE_RULES: Record<string, {
   'tropical_pulse': { isDynamic: true },   // 🌴 Crescendo bursts
   'salsa_fire': { isDynamic: true },       // 🔥 Fire flicker
   'cumbia_moon': { isDynamic: false },     // 🌙 Ambient - allowed even in chill
+  // 🥁 WAVE 700.6: NEW LATINA EFFECT
+  'clave_rhythm': { isDynamic: true },     // 🥁 3-2 Clave pattern with movement
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -417,6 +421,13 @@ export class EffectManager extends EventEmitter {
     
     // 🌙 Cumbia Moon - Soft breathing glow for breakdowns
     this.effectFactories.set('cumbia_moon', () => new CumbiaMoon())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🥁 WAVE 700.6: NEW LATINA EFFECT
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🥁 Clave Rhythm - 3-2 pattern with color + movement
+    this.effectFactories.set('clave_rhythm', () => new ClaveRhythm())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

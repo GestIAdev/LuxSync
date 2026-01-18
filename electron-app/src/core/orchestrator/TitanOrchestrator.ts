@@ -32,6 +32,9 @@ import {
 // 🧨 WAVE 635: Import EffectManager para color override global
 import { getEffectManager } from '../effects/EffectManager'
 
+// 🎭 WAVE 700.5.4: Import MoodController for backend mood control
+import { MoodController } from '../mood/MoodController'
+
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
@@ -605,6 +608,31 @@ export class TitanOrchestrator {
         console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`)
       }
     }
+  }
+
+  /**
+   * 🎭 WAVE 700.5.4: Set the current mood (calm/balanced/punk)
+   * 
+   * Mood controls effect frequency and intensity:
+   * - CALM: 1-3 EPM (effects minimal, paleta respira)
+   * - BALANCED: 4-6 EPM (narrativa visual)
+   * - PUNK: 8-10 EPM (caos controlado)
+   */
+  setMood(moodId: 'calm' | 'balanced' | 'punk'): void {
+    if (this.engine) {
+      // Access backend MoodController singleton (already imported at top)
+      MoodController.getInstance().setMood(moodId)
+      
+      console.log(`[TitanOrchestrator] 🎭 Mood set to: ${moodId.toUpperCase()}`)
+      this.log('Mode', `🎭 Mood changed to: ${moodId.toUpperCase()}`)
+    }
+  }
+
+  /**
+   * 🎭 WAVE 700.5.4: Get the current mood
+   */
+  getMood(): 'calm' | 'balanced' | 'punk' {
+    return MoodController.getInstance().getCurrentMood()
   }
 
   /**

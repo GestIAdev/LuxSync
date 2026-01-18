@@ -400,6 +400,27 @@ const luxApi = {
   },
 
   // ============================================
+  // 🎭 WAVE 700.5.4: MOOD CONTROL
+  // ============================================
+  
+  mood: {
+    /** Set active Mood (calm, balanced, punk) */
+    setMood: (moodId: 'calm' | 'balanced' | 'punk') => 
+      ipcRenderer.invoke('lux:setMood', moodId),
+    
+    /** Get current active Mood */
+    getMood: () => ipcRenderer.invoke('lux:getMood'),
+    
+    /** Subscribe to Mood changes */
+    onMoodChange: (callback: (data: { moodId: string; timestamp: number }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: { moodId: string; timestamp: number }) => 
+        callback(data)
+      ipcRenderer.on('lux:mood-changed', handler)
+      return () => ipcRenderer.removeListener('lux:mood-changed', handler)
+    },
+  },
+
+  // ============================================
   // WAVE 9.5: FIXTURES
   // ============================================
   

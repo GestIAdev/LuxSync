@@ -242,6 +242,13 @@ declare global {
     getVibe: () => Promise<{ success: boolean; vibeId: string; error?: string }>
     onVibeChange: (callback: (data: { vibeId: string; timestamp: number }) => void) => () => void
     
+    // 🎭 WAVE 700.5.4: Mood Control
+    mood: {
+      setMood: (moodId: 'calm' | 'balanced' | 'punk') => Promise<{ success: boolean; moodId?: string; error?: string }>
+      getMood: () => Promise<{ success: boolean; moodId: string; error?: string }>
+      onMoodChange: (callback: (data: { moodId: string; timestamp: number }) => void) => () => void
+    }
+    
     // WAVE 9.5: Fixtures
     scanFixtures: (customPath?: string) => Promise<{ success: boolean; fixtures: FixtureLibraryItem[]; searchPaths?: string[] }>
     getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>

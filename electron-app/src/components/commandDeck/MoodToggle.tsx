@@ -170,6 +170,17 @@ export const MoodToggle: React.FC<MoodToggleProps> = ({
     controller.setMood(moodId)
     setCurrentMood(moodId)
     
+    // 🎭 WAVE 700.5.4: Notify backend via IPC
+    console.log('[MoodToggle] 🔌 Checking IPC availability:', !!window.lux?.mood?.setMood)
+    if (window.lux?.mood?.setMood) {
+      console.log('[MoodToggle] 🔌 Calling IPC lux:setMood:', moodId)
+      window.lux.mood.setMood(moodId)
+        .then((result) => console.log('[MoodToggle] 🔌 IPC Response:', result))
+        .catch((err: Error) => console.error('[MoodToggle] ❌ IPC Failed:', err))
+    } else {
+      console.warn('[MoodToggle] ⚠️ window.lux.mood.setMood NOT AVAILABLE!')
+    }
+    
     // Visual feedback
     console.log(`[MoodToggle] 🎭 Mood changed to: ${moodId.toUpperCase()}`)
   }, [])

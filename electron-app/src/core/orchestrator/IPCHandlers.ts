@@ -89,7 +89,7 @@ export function setupIPCHandlers(deps: IPCDependencies): void {
 // =============================================================================
 
 function setupSeleneLuxHandlers(deps: IPCDependencies): void {
-  const { titanOrchestrator, configManager } = deps
+  const { titanOrchestrator, configManager, getMainWindow } = deps
   
   ipcMain.handle('lux:start', () => {
     console.log('[IPC] lux:start - TitanOrchestrator active')
@@ -165,6 +165,32 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
       titanOrchestrator.setVibe(vibeId as any)
     }
     return { success: true }
+  })
+  
+  // 🎭 WAVE 700.5.4: MOOD CONTROL
+  ipcMain.handle('lux:setMood', (_event, moodId: 'calm' | 'balanced' | 'punk') => {
+    console.log('[IPC] 🎭 lux:setMood:', moodId)
+    if (titanOrchestrator) {
+      titanOrchestrator.setMood(moodId)
+      
+      // Notify all frontends
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send('lux:mood-changed', {
+          moodId,
+          timestamp: Date.now()
+        })
+      }
+    }
+    return { success: true, moodId }
+  })
+  
+  ipcMain.handle('lux:getMood', () => {
+    if (titanOrchestrator) {
+      const currentMood = titanOrchestrator.getMood()
+      return { success: true, moodId: currentMood }
+    }
+    return { success: false, moodId: 'balanced', error: 'Orchestrator not initialized' }
   })
   
   ipcMain.handle('lux:setLivingPalette', (_event, palette: string) => {

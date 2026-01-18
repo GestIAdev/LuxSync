@@ -26,7 +26,7 @@ export function setupIPCHandlers(deps) {
 // TITAN ORCHESTRATOR HANDLERS (WAVE 254: THE SPARK)
 // =============================================================================
 function setupSeleneLuxHandlers(deps) {
-    const { titanOrchestrator, configManager } = deps;
+    const { titanOrchestrator, configManager, getMainWindow } = deps;
     ipcMain.handle('lux:start', () => {
         console.log('[IPC] lux:start - TitanOrchestrator active');
         if (titanOrchestrator && !titanOrchestrator.getState().isRunning) {
@@ -93,6 +93,29 @@ function setupSeleneLuxHandlers(deps) {
             titanOrchestrator.setVibe(vibeId);
         }
         return { success: true };
+    });
+    // 🎭 WAVE 700.5.4: MOOD CONTROL
+    ipcMain.handle('lux:setMood', (_event, moodId) => {
+        console.log('[IPC] 🎭 lux:setMood:', moodId);
+        if (titanOrchestrator) {
+            titanOrchestrator.setMood(moodId);
+            // Notify all frontends
+            const mainWindow = getMainWindow();
+            if (mainWindow) {
+                mainWindow.webContents.send('lux:mood-changed', {
+                    moodId,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        return { success: true, moodId };
+    });
+    ipcMain.handle('lux:getMood', () => {
+        if (titanOrchestrator) {
+            const currentMood = titanOrchestrator.getMood();
+            return { success: true, moodId: currentMood };
+        }
+        return { success: false, moodId: 'balanced', error: 'Orchestrator not initialized' };
     });
     ipcMain.handle('lux:setLivingPalette', (_event, palette) => {
         console.log('[IPC] lux:setLivingPalette:', palette);

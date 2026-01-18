@@ -30,19 +30,18 @@
  */
 import { BaseEffect } from '../BaseEffect';
 const DEFAULT_CONFIG = {
-    pulseCount: 4,
-    pulseAttackMs: 150,
-    pulseDecayMs: 250,
-    pulseGapMs: 300,
+    pulseCount: 3, // 4→3 pulsos (más rápido)
+    pulseAttackMs: 120, // 150→120ms (más snappy)
+    pulseDecayMs: 180, // 250→180ms (decay más rápido)
+    pulseGapMs: 250, // 300→250ms (menos gap)
     bpmSync: true,
     colorProgression: [
-        { h: 15, s: 100, l: 60 }, // Coral cálido
-        { h: 330, s: 100, l: 55 }, // Magenta
-        { h: 45, s: 100, l: 65 }, // Amarillo tropical
-        { h: 30, s: 100, l: 70 }, // Dorado brillante (clímax)
+        { h: 15, s: 90, l: 65 }, // Coral cálido (más saturado, más luminoso)
+        { h: 330, s: 95, l: 60 }, // Magenta vibrante
+        { h: 45, s: 95, l: 70 }, // Amarillo tropical brillante (clímax)
     ],
-    startIntensity: 0.5,
-    endIntensity: 1.0,
+    startIntensity: 0.6, // 0.5→0.6 (empezar con más punch)
+    endIntensity: 0.95, // 1.0→0.95 (menos blanco puro)
     swingFactor: 0.15, // Groove latino sutil
 };
 // ═══════════════════════════════════════════════════════════════════════════

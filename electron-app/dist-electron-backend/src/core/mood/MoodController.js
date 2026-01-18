@@ -26,12 +26,14 @@ export const MOOD_PROFILES = {
     // ═══════════════════════════════════════════════════════════════════════
     // 😌 CALM - "Tráeme un drop de nivel DIOS o me lo guardo"
     // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
+    // Target EPM: 1-3 (1 efecto cada 20-60 segundos)
     calm: {
         name: 'calm',
         description: 'Filtro de calidad. Solo dispara en momentos ÉPICOS.',
         emoji: '😌',
-        thresholdMultiplier: 1.5, // 50% más difícil disparar
-        cooldownMultiplier: 2.0, // Doble espera entre efectos
+        thresholdMultiplier: 1.8, // 80% más difícil disparar (era 1.5)
+        cooldownMultiplier: 3.0, // Triple espera entre efectos (era 2.0)
         maxIntensity: 0.6, // Max 60% intensidad
         minIntensity: undefined, // Sin mínimo
         blockList: [
@@ -43,12 +45,14 @@ export const MOOD_PROFILES = {
     // ═══════════════════════════════════════════════════════════════════════
     // ⚖️ BALANCED - "Disparo cuando la música lo pide"
     // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 700.5.2 - Consenso del Cónclave: Narrativa visual, no spam
+    // Target EPM: 4-6 (1 efecto cada 10-15 segundos)
     balanced: {
         name: 'balanced',
         description: 'El profesional. Dispara cuando la música lo pide.',
         emoji: '⚖️',
-        thresholdMultiplier: 1.0, // Sin modificación
-        cooldownMultiplier: 1.0, // Cooldowns normales
+        thresholdMultiplier: 1.2, // 20% más selectivo (era 1.0)
+        cooldownMultiplier: 1.5, // 50% más espera (era 1.0)
         maxIntensity: 1.0, // Sin límite
         minIntensity: undefined, // Sin mínimo
         blockList: [], // Nada bloqueado
@@ -57,12 +61,14 @@ export const MOOD_PROFILES = {
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 PUNK - "¿Ha estornudado el DJ? ¡SOLAR FLARE!"
     // ═══════════════════════════════════════════════════════════════════════
+    // WAVE 700.5.2 - Consenso del Cónclave: Caos controlado, no epilepsia
+    // Target EPM: 8-10 (1 efecto cada 6-8 segundos)
     punk: {
         name: 'punk',
         description: 'El anarquista. Cualquier excusa es buena para disparar.',
         emoji: '🔥',
-        thresholdMultiplier: 0.6, // 40% más fácil disparar
-        cooldownMultiplier: 0.3, // Cooldowns x0.3 (3x más rápido)
+        thresholdMultiplier: 0.8, // 20% más fácil (era 0.6)
+        cooldownMultiplier: 0.7, // Cooldowns x0.7 (era 0.3)
         maxIntensity: 1.0, // Sin límite
         minIntensity: 0.5, // MÍNIMO 50% intensidad siempre
         blockList: [], // Nada bloqueado

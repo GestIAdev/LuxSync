@@ -1,6 +1,17 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * 👻 GHOST BREATH - SLOW SINUSOIDAL MODULATION
+ * ═════════════════════════════════════════════════════════════════════const DEFAULT_CONFIG: GhostBreathConfig = {
+  breathPeriodMs: 4000,   // 4 segundos por respiración
+  breathCount: 1,          // 👻 WAVE 750: SOLO 1 respiración = 4s total (silencio dramático)
+  inhaleRatio: 0.35,       // Inhale más rápido que exhale
+  intensityFloor: 0.05,    // 5% mínimo (no blackout)
+  intensityCeiling: 1.0,   // 🔥 WAVE 770: 100% máximo - UV necesita potencia para notarse
+  useUV: true,
+  // � WAVE 770: UV PROFUNDO - no azul, ULTRAVIOLETA real
+  baseColor: { h: 275, s: 100, l: 40 },   // UV Profundo (antes Deep Blue 220)
+  uvColor: { h: 285, s: 100, l: 45 },     // Violeta UV intenso
+  bpmSync: false,          // Por defecto NO sync (orgánico)
+  beatsPerBreath: 4,       // 🌙 WAVE 750: 4 beats = 1 respiración si sync
+}👻 GHOST BREATH - SLOW SINUSOIDAL MODULATION
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * WAVE 680: THE ARSENAL - El susurro en la oscuridad

@@ -70,13 +70,14 @@ interface CumbiaMoonConfig {
 
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
   cycleDurationMs: 3000,  // 🌙 WAVE 750: 3 segundos - más corto
-  peakIntensity: 0.5,     // 🌙 WAVE 750: 50% máximo - SUTIL
+  peakIntensity: 0.7,     // 🔥 WAVE 770: 70% máximo - más visible
   floorIntensity: 0.05,   // 🌙 WAVE 750: Casi apagado
   peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
+  // 🔥 WAVE 770: BLANCO PURO como estrellas o luna llena
   colorCycle: [
-    { h: 280, s: 60, l: 40 },   // Violeta suave (inicio)
-    { h: 200, s: 70, l: 45 },   // Cyan suave (pico)
-    { h: 240, s: 50, l: 35 },   // Azul profundo (final)
+    { h: 0, s: 0, l: 80 },    // Blanco suave (inicio)
+    { h: 0, s: 0, l: 100 },   // Blanco PURO (pico) - LUNA LLENA
+    { h: 0, s: 0, l: 70 },    // Blanco tenue (final)
   ],
   bpmSync: true,
   beatsPerCycle: 4,  // 🌙 WAVE 750: 4 beats = más rápido

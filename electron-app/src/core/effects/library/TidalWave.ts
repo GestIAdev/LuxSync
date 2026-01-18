@@ -68,10 +68,10 @@ interface TidalWaveConfig {
 }
 
 const DEFAULT_CONFIG: TidalWaveConfig = {
-  wavePeriodMs: 2000,    // 🌊 WAVE 750: 2 segundos por ola (majestuosa)
+  wavePeriodMs: 1200,    // 🔥 WAVE 770: 1.2 segundos por ola (ELÉCTRICA, no majestuosa)
   waveCount: 2,          // 🌊 WAVE 750: 2 olas = ida + vuelta (ping-pong)
   bpmSync: true,
-  beatsPerWave: 4,       // 🌊 WAVE 750: 4 beats = 2 compases total
+  beatsPerWave: 2,       // 🔥 WAVE 770: 2 beats = ola rápida y eléctrica
   forwardDirection: true,
   // 🌊 WAVE 750: Color CÁLIDO vibrante
   waveColor: { h: 30, s: 90, l: 55 },  // Naranja dorado brillante

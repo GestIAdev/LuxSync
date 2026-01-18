@@ -88,7 +88,7 @@ interface CorazonLatinoConfig {
 
 const DEFAULT_CONFIG: CorazonLatinoConfig = {
   heartbeatDurationMs: 1500,   // 1.5 segundos por DUM-dum
-  heartbeatCount: 4,            // 4 latidos = 2 compases de 4/4
+  heartbeatCount: 2,            // 🔥 WAVE 770: 2 latidos = ~3-4 segundos (doble intenso DUM-dum DUM-dum ¡FUERA!)
   strongBeatRatio: 0.65,        // 65% del tiempo en el golpe fuerte
   
   // ❤️ Rojo Sangre Profundo (base)
@@ -175,6 +175,16 @@ export class CorazonLatino extends BaseEffect {
     
     // Calcular duración total
     this.totalDurationMs = this.actualHeartbeatDurationMs * this.config.heartbeatCount
+    
+    // 🔥 WAVE 770: MAX DURATION de seguridad - 4 segundos máximo
+    // Evita que BPMs bajos (60bpm) creen duraciones extremas (16s)
+    const MAX_DURATION_MS = 4000
+    if (this.totalDurationMs > MAX_DURATION_MS) {
+      const scaleFactor = MAX_DURATION_MS / this.totalDurationMs
+      this.actualHeartbeatDurationMs *= scaleFactor
+      this.totalDurationMs = MAX_DURATION_MS
+      console.log(`[CorazonLatino ❤️] WAVE 770: Duration capped to ${MAX_DURATION_MS}ms (BPM too slow)`)
+    }
   }
   
   update(deltaMs: number): void {

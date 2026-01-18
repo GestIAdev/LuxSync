@@ -88,8 +88,9 @@ const DEFAULT_CONFIG: ClaveRhythmConfig = {
     { h: 320, s: 90, l: 60 },  // Magenta vibrante
   ],
   
-  // Patrón de intensidades: fuerte-medio-fuerte / medio-fuerte
-  hitIntensities: [0.85, 0.65, 0.65, 0.65, 0.80],
+  // 🔥 WAVE 770: INTENSIDADES A TOPE - El clave tiene que DESLUMBRAR
+  // Patrón: FUERTE-medio-FUERTE / medio-FUERTE
+  hitIntensities: [1.0, 0.85, 0.90, 0.85, 1.0],
   
   panSnapAmplitude: 35,   // ±35° de movimiento
   tiltSnapAmplitude: 20,  // ±20° de movimiento
@@ -290,9 +291,10 @@ export class ClaveRhythm extends BaseEffect {
     // Flash Dorado: amber + white en cada hit
     
     // 🥁 WAVE 755: FLASH DORADO (latón de trompeta)
+    // 🔥 WAVE 770: Subido white a 1.0 - ¡DESLUMBRA!
     const isInHit = this.hitPhase === 'attack' && this.currentIntensity > 0.7
     const goldenFlash = isInHit ? {
-      white: 0.8,   // Flash blanco
+      white: 1.0,   // 🔥 WAVE 770: Flash blanco A TOPE
       amber: 1.0,   // Dorado a tope (como latón de trompeta)
     } : {}
     

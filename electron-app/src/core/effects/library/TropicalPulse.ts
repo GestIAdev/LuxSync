@@ -77,14 +77,14 @@ const DEFAULT_CONFIG: TropicalPulseConfig = {
   pulseGapMs: 200,     // 🌴 WAVE 750: 200ms gap
   bpmSync: true,
   colorProgression: [
-    // 🌴 WAVE 750: PALETA VIBRANTE DEL ARQUITECTO
-    { h: 16, s: 100, l: 65 },   // CORAL - cálido y acogedor
-    { h: 174, s: 90, l: 50 },   // TURQUOISE - caribeño
-    { h: 45, s: 100, l: 55 },   // GOLD - dorado tropical
-    { h: 300, s: 95, l: 55 },   // MAGENTA - explosión final
+    // 🔥 WAVE 770: PALETA NEÓN - Saturación y luminosidad a tope
+    { h: 16, s: 100, l: 60 },   // CORAL NEÓN - explota
+    { h: 174, s: 100, l: 55 },  // TURQUOISE ELÉCTRICO - caribeño
+    { h: 45, s: 100, l: 60 },   // GOLD BRILLANTE - dorado tropical
+    { h: 300, s: 100, l: 60 },  // MAGENTA NEÓN - explosión final
   ],
-  startIntensity: 0.65,  // 🌴 WAVE 750: Empezar con punch
-  endIntensity: 1.0,     // 🌴 WAVE 750: Final a tope
+  startIntensity: 0.80,  // 🔥 WAVE 770: Empezar CON FUERZA (antes 0.65)
+  endIntensity: 1.0,     // 🔥 WAVE 770: Final a tope
   swingFactor: 0.15,     // Groove latino sutil
 }
 
@@ -283,8 +283,8 @@ export class TropicalPulse extends BaseEffect {
     }
     
     // 🌴 WAVE 755: MICRO-STROBE - Rasgando la vista en el pico
-    // Cuando intensity > 0.85, forzar white: 1.0 (chispa que rasga)
-    const isAtPeak = this.currentIntensity > 0.85 && this.pulsePhase === 'attack'
+    // 🔥 WAVE 770: Threshold bajado a 0.75 - dispara en pulsos 2, 3, 4
+    const isAtPeak = this.currentIntensity > 0.75 && this.pulsePhase === 'attack'
     const microStrobe = isAtPeak ? 1.0 : undefined
     
     // 🎨 WAVE 740: zoneOverrides es la ÚNICA fuente de verdad

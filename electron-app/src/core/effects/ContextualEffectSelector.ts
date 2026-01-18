@@ -508,11 +508,29 @@ export class ContextualEffectSelector {
     // 🎭 WAVE 700.1: Ahora usa isEffectAvailable que considera mood
     // ═══════════════════════════════════════════════════════════════
     if (vibe === 'fiesta-latina') {
-      // ❤️ WAVE 750: CORAZÓN LATINO - Para coros épicos y finales
-      // El efecto más emocional - solo en momentos TRULY EPIC
+      // ❤️ WAVE 750: CORAZÓN LATINO - Para coros épicos y finales emocionales
+      // Triggers: DIVINE+CHORUS, ELEVATED+ENDING, EPIC+CHORUS
+      
+      // ❤️ DIVINE + CHORUS = El momento más épico
       if (zLevel === 'divine' && sectionType === 'chorus') {
         if (this.isEffectAvailable('corazon_latino')) {
           console.log(`[EffectSelector ❤️] LATINA DIVINE CHORUS: corazon_latino (THE ARCHITECT'S SOUL)`)
+          return 'corazon_latino'
+        }
+      }
+      
+      // ❤️ ELEVATED + ENDING = Final emocional de la canción
+      if (zLevel === 'elevated' && sectionType === 'ending') {
+        if (this.isEffectAvailable('corazon_latino')) {
+          console.log(`[EffectSelector ❤️] LATINA ELEVATED ENDING: corazon_latino (PASSION FINALE)`)
+          return 'corazon_latino'
+        }
+      }
+      
+      // ❤️ EPIC + CHORUS = Coro con mucha energía
+      if (zLevel === 'epic' && sectionType === 'chorus') {
+        if (this.isEffectAvailable('corazon_latino')) {
+          console.log(`[EffectSelector ❤️] LATINA EPIC CHORUS: corazon_latino (EPIC PASSION)`)
           return 'corazon_latino'
         }
       }
@@ -523,8 +541,8 @@ export class ContextualEffectSelector {
           console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`)
           return 'strobe_burst'
         }
-        // ❤️ WAVE 750: Corazón Latino como alternativa épica al strobe
-        if (this.isEffectAvailable('corazon_latino')) {
+        // ❤️ WAVE 750: Corazón Latino como alternativa épica al strobe (si no es chorus/ending)
+        if (this.isEffectAvailable('corazon_latino') && sectionType !== 'chorus' && sectionType !== 'ending') {
           console.log(`[EffectSelector ❤️] LATINA EPIC FALLBACK: corazon_latino`)
           return 'corazon_latino'
         }

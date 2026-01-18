@@ -379,51 +379,100 @@ export class TitanOrchestrator {
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
             
-            // Aplicar color si existe
-            if (zoneData.color) {
-              const rgb = this.hslToRgb(
-                zoneData.color.h,
-                zoneData.color.s,
-                zoneData.color.l
-              )
-              // REEMPLAZO DIRECTO - El efecto toma control total del color
-              fixtureStates[index] = {
-                ...f,
-                r: rgb.r,
-                g: rgb.g,
-                b: rgb.b,
-              }
-            }
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🔧 WAVE 790: ATOMIC BLENDING - Mezcla por CANAL, no solo dimmer
+            // 
+            // PROBLEMA WAVE 780: Solo el dimmer respetaba blendMode
+            // - Color se aplicaba SIEMPRE (ignorando física)
+            // - White/Amber NO se tocaban (por eso no había oro)
+            // 
+            // SOLUCIÓN: Mezcla ATÓMICA por cada canal individual
+            // ═══════════════════════════════════════════════════════════════════════
+            const blendMode = zoneData.blendMode || 'max'  // Default: HTP (seguro)
             
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
-            // 
-            // ANTES (WAVE 765): LTP puro - El efecto siempre manda
-            // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
-            // 
-            // AHORA: Cada efecto declara su intención via blendMode:
-            // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
-            // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
-            // 
-            // DEFAULT: 'max' - Más seguro para energía general
-            // ═══════════════════════════════════════════════════════════════════════
-            if (zoneData.dimmer !== undefined) {
-              const effectDimmer = Math.round(zoneData.dimmer * 255)
-              const blendMode = zoneData.blendMode || 'max'  // Default: HTP (energía)
-              const physicsDimmer = fixtureStates[index].dimmer
+            if (blendMode === 'replace') {
+              // ═══════════════════════════════════════════════════════════════════
+              // 🛡️ MODO ESCUDO (REPLACE) - Para CumbiaMoon / TidalWave
+              // IGNORAR COMPLETAMENTE LA FÍSICA.
+              // Si el override dice dimmer 0.1, ES 0.1, aunque el bombo explote.
+              // ═══════════════════════════════════════════════════════════════════
               
-              let finalDimmer: number
-              if (blendMode === 'replace') {
-                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
-                finalDimmer = effectDimmer
-              } else {
-                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
-                finalDimmer = Math.max(physicsDimmer, effectDimmer)
+              // 1. Dimmer: El efecto MANDA
+              if (zoneData.dimmer !== undefined) {
+                fixtureStates[index].dimmer = Math.round(zoneData.dimmer * 255)
               }
               
-              fixtureStates[index] = {
-                ...fixtureStates[index],
-                dimmer: finalDimmer,
+              // 2. Color: FORZAR color del efecto (no mezclar con física)
+              if (zoneData.color) {
+                const rgb = this.hslToRgb(
+                  zoneData.color.h,
+                  zoneData.color.s,
+                  zoneData.color.l
+                )
+                fixtureStates[index].r = rgb.r
+                fixtureStates[index].g = rgb.g
+                fixtureStates[index].b = rgb.b
+              }
+              
+              // 3. White/Amber: FORZAR valores del efecto
+              // NOTA: undefined = limpiar cualquier residuo de física
+              if (zoneData.white !== undefined) {
+                fixtureStates[index].white = Math.round(zoneData.white * 255)
+              } else {
+                fixtureStates[index].white = 0  // Limpiar residuos
+              }
+              
+              if (zoneData.amber !== undefined) {
+                fixtureStates[index].amber = Math.round(zoneData.amber * 255)
+              } else {
+                fixtureStates[index].amber = 0  // Limpiar residuos
+              }
+              
+            } else {
+              // ═══════════════════════════════════════════════════════════════════
+              // 🔥 MODO ENERGÍA (MAX) - Para TropicalPulse / ClaveRhythm
+              // HTP (Highest Takes Precedence) POR CANAL
+              // ═══════════════════════════════════════════════════════════════════
+              
+              // 1. Dimmer: Gana el más alto
+              if (zoneData.dimmer !== undefined) {
+                const effectDimmer = Math.round(zoneData.dimmer * 255)
+                const physicsDimmer = fixtureStates[index].dimmer || 0
+                fixtureStates[index].dimmer = Math.max(physicsDimmer, effectDimmer)
+              }
+              
+              // 2. Color: "Winner Takes All"
+              // Si el efecto brilla más que la física, el efecto gana el color
+              // (Esto evita colores sucios/mezclados)
+              if (zoneData.color && zoneData.dimmer !== undefined) {
+                const effectDimmer = Math.round(zoneData.dimmer * 255)
+                const physicsDimmer = fixtureStates[index].dimmer || 0
+                
+                if (effectDimmer >= physicsDimmer * 0.8) {  // 80% threshold para evitar flickering
+                  const rgb = this.hslToRgb(
+                    zoneData.color.h,
+                    zoneData.color.s,
+                    zoneData.color.l
+                  )
+                  fixtureStates[index].r = rgb.r
+                  fixtureStates[index].g = rgb.g
+                  fixtureStates[index].b = rgb.b
+                }
+              }
+              
+              // 3. White/Amber: HTP - EL FIX DEL ORO 🔥
+              // La física suele tener W/A en 0. El efecto trae W/A > 0.
+              // Math.max garantiza que el oro se vea.
+              if (zoneData.white !== undefined) {
+                const effectWhite = Math.round(zoneData.white * 255)
+                const physicsWhite = fixtureStates[index].white || 0
+                fixtureStates[index].white = Math.max(physicsWhite, effectWhite)
+              }
+              
+              if (zoneData.amber !== undefined) {
+                const effectAmber = Math.round(zoneData.amber * 255)
+                const physicsAmber = fixtureStates[index].amber || 0
+                fixtureStates[index].amber = Math.max(physicsAmber, effectAmber)
               }
             }
           }

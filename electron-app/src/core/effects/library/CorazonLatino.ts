@@ -97,11 +97,11 @@ const DEFAULT_CONFIG: CorazonLatinoConfig = {
   // ❤️ Rojo Vivo (pico)
   heartColorPeak: { h: 0, s: 100, l: 55 },
   
-  // 🌟 Ámbar/Oro (expansión)
-  heatColor: { h: 40, s: 95, l: 55 },
+  // 🌟 SUPER DORADO (expansión) - WAVE 805.6
+  heatColor: { h: 45, s: 90, l: 60 },
   
-  // ✨ Ámbar cálido (blinder)
-  blinderColor: { h: 35, s: 90, l: 60 },
+  // ✨ SUPER DORADO (blinder) - WAVE 805.6
+  blinderColor: { h: 45, s: 90, l: 60 },
   
   bpmSync: true,
   beatsPerHeartbeat: 4,         // 4 beats = 1 DUM-dum

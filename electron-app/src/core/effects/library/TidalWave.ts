@@ -68,15 +68,15 @@ interface TidalWaveConfig {
 }
 
 const DEFAULT_CONFIG: TidalWaveConfig = {
-  wavePeriodMs: 2500,    // 🌊 WAVE 800: 2.5 segundos - tiempo justo para ver el desplazamiento
+  wavePeriodMs: 1500,    // 🌊 WAVE 805.2: 1.5s por ola = 3s para ida+vuelta
   waveCount: 2,          // 🌊 WAVE 750: 2 olas = ida + vuelta (ping-pong)
   bpmSync: true,
-  beatsPerWave: 4,       // 🌊 WAVE 800: 4 beats = más tiempo para apreciar la ola
+  beatsPerWave: 2,       // 🌊 WAVE 805.2: 2 beats por ola = más rápido, más visible
   forwardDirection: true,
-  // 🌊 WAVE 750: Color CÁLIDO vibrante
-  waveColor: { h: 30, s: 90, l: 55 },  // Naranja dorado brillante
+  // 🌊 WAVE 805.2: Azul océano PURO (no amarillo)
+  waveColor: { h: 200, s: 85, l: 50 },  // Azul océano profundo
   whiteOnPeak: true,     // 🌊 WAVE 750: Destello en el pico
-  intensityFloor: 0.1,   // 🌊 WAVE 750: Mínimo 10% (contraste)
+  intensityFloor: 0.0,   // 🌊 WAVE 805.2: NEGRO TOTAL en valles (era 0.1)
 }
 
 // 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
@@ -173,35 +173,30 @@ export class TidalWave extends BaseEffect {
     // 🎨 WAVE 725: ZONE OVERRIDES - TidalWave es el efecto ESPACIAL por excelencia
     // Cada zona tiene su propia intensidad basada en la fase de la ola
     
-    // 🌊 WAVE 691.5: Color con saturación alta, NO desaturar a blanco
-    const colorShift = this.wavePhase * 30  // ±30° de hue durante la ola
+    // 🌊 WAVE 805.2: Color FIJO (no shift) - la identidad del azul es sagrada
     const baseColor = {
-      h: (this.config.waveColor.h + colorShift) % 360,
-      s: this.config.waveColor.s,  // Mantener saturación ALTA
+      h: this.config.waveColor.h,
+      s: this.config.waveColor.s,
       l: this.config.waveColor.l,
     }
     
     // 🎨 WAVE 725: Construir zone overrides con intensidad específica por zona
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {}
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🎚️ WAVE 765: PHYSICS DUCKING - Incluir TODAS las zonas, incluso valles
-    // ANTES: Solo incluíamos zonas con intensity > 0.1, dejando valles a la física
-    // AHORA: Incluimos TODAS las zonas con ANY intensity - si la ola dice 0.05,
-    // la luz baja a 0.05 aunque haya bombo. El efecto tiene CONTROL TOTAL.
-    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 805.2: THRESHOLD más bajo para incluir valles oscuros
     for (const [zone, zoneIntensity] of this.zoneIntensities) {
-      // Threshold mínimo: 0.02 (prácticamente apagado pero presente en override)
-      if (zoneIntensity > 0.02) {
+      // Threshold 0.0 → TODAS las zonas incluidas, incluso valles negros
+      if (zoneIntensity >= 0.0) {
         const scaledIntensity = this.getIntensityFromZScore(
           zoneIntensity * this.triggerIntensity, 
           0.25
         )
         
-        // Color con luminosidad ajustada a la intensidad de la zona
+        // 🌊 WAVE 805.2: Color con luminosidad REDUCIDA en valles para contraste brutal
+        const zoneLuminosity = baseColor.l * (0.3 + scaledIntensity * 0.7)  // 30-100% luminosidad
         const zoneColor = {
           ...baseColor,
-          l: Math.min(75, baseColor.l + scaledIntensity * 10)
+          l: Math.min(70, zoneLuminosity)
         }
         
         zoneOverrides[zone] = {
@@ -301,12 +296,12 @@ export class TidalWave extends BaseEffect {
       // Fase local de esta zona
       const localPhase = (this.wavePhase + phaseOffset) % 1
       
-      // 🌊 WAVE 750: Curva más pronunciada - pico más definido
-      // Usando sin^2 para pico más agudo
+      // 🌊 WAVE 805.2: Curva BRUTAL - pico ultra-definido, valles negros
+      // Usando sin^4 para pico muy estrecho (solo 1 zona lit a la vez)
       const sineValue = Math.sin(localPhase * Math.PI * 2)
-      const shapedSine = sineValue > 0 ? Math.pow(sineValue, 1.5) : 0  // Solo positivos, más agudo
+      const shapedSine = sineValue > 0 ? Math.pow(sineValue, 4) : 0  // Solo positivos, pico ultraagudo
       
-      // 🌊 WAVE 750: CONTRASTE ALTO - active=1.0, inactive=0.1
+      // 🌊 WAVE 805.2: CONTRASTE BRUTAL - floor=0.0 (negro total en valles)
       const intensity = this.config.intensityFloor + 
         shapedSine * (1.0 - this.config.intensityFloor)
       

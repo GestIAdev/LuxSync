@@ -121,6 +121,24 @@ export class TropicalPulse extends BaseEffect {
   
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
+    
+    // 🌪️ WAVE 805.1: Durante preDucking, silenciar TODO (incluye movers)
+    if (this.currentPhase === 'preDucking') {
+      return {
+        effectId: this.id,
+        category: this.category,
+        phase: this.phase,
+        progress: this.elapsedMs / this.totalDurationMs,
+        zones: [],
+        intensity: 0,
+        dimmerOverride: 0,
+        colorOverride: undefined,
+        globalOverride: true,
+        zoneOverrides: undefined,
+      }
+    }
+    
+    // 🌪️ WAVE 805.1: SOLO PARs (front + back), NO movers
     const zoneOverrides = {
       'front': {
         color: this.currentColor,
@@ -135,6 +153,7 @@ export class TropicalPulse extends BaseEffect {
         amber: this.currentPhase === 'finale' ? 1.0 : undefined,
       }
     }
+    
     return {
       effectId: this.id,
       category: this.category,
@@ -142,10 +161,10 @@ export class TropicalPulse extends BaseEffect {
       progress: this.elapsedMs / this.totalDurationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
-      globalOverride: true,
-      zoneOverrides: undefined,
+      dimmerOverride: undefined,
+      colorOverride: undefined,
+      globalOverride: false,
+      zoneOverrides,
     }
   }
 }

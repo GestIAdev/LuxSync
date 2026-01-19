@@ -192,11 +192,12 @@ export class TidalWave extends BaseEffect {
           0.25
         )
         
-        // 🌊 WAVE 805.2: Color con luminosidad REDUCIDA en valles para contraste brutal
-        const zoneLuminosity = baseColor.l * (0.3 + scaledIntensity * 0.7)  // 30-100% luminosidad
+        // 🌊 WAVE 805.5: VITAMINAS - Luminosidad más agresiva en el pico
+        // Pico: 100% lum, Valles: 20% lum (antes era 30%)
+        const zoneLuminosity = baseColor.l * (0.2 + scaledIntensity * 0.8)
         const zoneColor = {
           ...baseColor,
-          l: Math.min(70, zoneLuminosity)
+          l: Math.min(75, zoneLuminosity)  // Cap a 75 para no quemar
         }
         
         zoneOverrides[zone] = {
@@ -296,14 +297,18 @@ export class TidalWave extends BaseEffect {
       // Fase local de esta zona
       const localPhase = (this.wavePhase + phaseOffset) % 1
       
-      // 🌊 WAVE 805.2: Curva BRUTAL - pico ultra-definido, valles negros
-      // Usando sin^4 para pico muy estrecho (solo 1 zona lit a la vez)
+      // 🌊 WAVE 805.5: Curva ULTRA-BRUTAL con vitaminas de intensidad
+      // Usando sin^6 para pico ULTRAAGUDO (solo 1 zona visible, resto negro)
       const sineValue = Math.sin(localPhase * Math.PI * 2)
-      const shapedSine = sineValue > 0 ? Math.pow(sineValue, 4) : 0  // Solo positivos, pico ultraagudo
+      const shapedSine = sineValue > 0 ? Math.pow(sineValue, 6) : 0  // Pico ultra-estrecho
+      
+      // 🌊 WAVE 805.5: VITAMINA BOOST - Multiplicador de intensidad en el pico
+      const intensityBoost = 1.3  // 30% más intenso en el pico
+      const boostedIntensity = Math.min(1.0, shapedSine * intensityBoost)
       
       // 🌊 WAVE 805.2: CONTRASTE BRUTAL - floor=0.0 (negro total en valles)
       const intensity = this.config.intensityFloor + 
-        shapedSine * (1.0 - this.config.intensityFloor)
+        boostedIntensity * (1.0 - this.config.intensityFloor)
       
       this.zoneIntensities.set(zone, intensity)
     }

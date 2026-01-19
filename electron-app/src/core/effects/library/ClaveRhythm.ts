@@ -307,18 +307,30 @@ export class ClaveRhythm extends BaseEffect {
     const isPreDucking = this.hitPhase === 'preDucking'
     
     if (isPreDucking) {
-      // Durante pre-ducking: silencio total, esperar al flash
+      // 🌪️ WAVE 805.3: Durante pre-ducking, apagar SOLO movers (no PARs)
+      // PARs siguen con física reactiva, movers se silencian para contraste
       return {
         effectId: this.id,
         category: this.category,
         phase: this.phase,
         progress: this.elapsedMs / this.totalDurationMs,
-        zones: [],
+        zones: ['movers'],
         intensity: 0,
-        dimmerOverride: 0,
+        dimmerOverride: undefined,
         colorOverride: undefined,
-        globalOverride: true,  // 🌪️ WAVE 805: Apagar física durante silencio
-        zoneOverrides: undefined,
+        globalOverride: false,  // NO apagar física global
+        zoneOverrides: {
+          'movers': {
+            color: { h: 0, s: 0, l: 0 },
+            dimmer: 0,  // Movers apagados durante silencio
+            movement: {
+              pan: this.targetPanOffset,  // Pre-posicionar para el snap
+              tilt: this.targetTiltOffset,
+              isAbsolute: true,
+              speed: 1.0,
+            },
+          }
+        },
       }
     }
     

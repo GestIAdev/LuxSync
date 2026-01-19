@@ -139,11 +139,11 @@ export class StrobeBurst extends BaseEffect {
     if (this.config.flashColor) {
       this.calculatedColor = this.config.flashColor
     } else {
-      // Para Fiesta Latina: usar colores vibrantes (magenta/cyan/amarillo)
+      // Para Fiesta Latina: usar colores vibrantes (magenta/cyan/amarillo dorado)
       const latinaColors = [
         { h: 330, s: 100, l: 60 },  // Magenta vibrante
         { h: 180, s: 100, l: 50 },  // Cyan
-        { h: 45, s: 100, l: 60 },   // Amarillo cálido
+        { h: 45, s: 90, l: 60 },    // 🌊 WAVE 805.6: SUPER DORADO unificado
         { h: 0, s: 0, l: 100 },     // Blanco puro
       ]
       // Elegir según intensidad del trigger

@@ -68,13 +68,13 @@ interface TidalWaveConfig {
 }
 
 const DEFAULT_CONFIG: TidalWaveConfig = {
-  wavePeriodMs: 1500,    // 🌊 WAVE 805.2: 1.5s por ola = 3s para ida+vuelta
+  wavePeriodMs: 2250,    // 🌊 WAVE 805.4: 2.25s por ola = 4.5s para ida+vuelta
   waveCount: 2,          // 🌊 WAVE 750: 2 olas = ida + vuelta (ping-pong)
   bpmSync: true,
-  beatsPerWave: 2,       // 🌊 WAVE 805.2: 2 beats por ola = más rápido, más visible
+  beatsPerWave: 3,       // 🌊 WAVE 805.4: 3 beats por ola = timing perfecto
   forwardDirection: true,
-  // 🌊 WAVE 805.2: Azul océano PURO (no amarillo)
-  waveColor: { h: 200, s: 85, l: 50 },  // Azul océano profundo
+  // 🌊 WAVE 805.4: DORADO hermoso (no azul) - perfecto para movers con rueda
+  waveColor: { h: 45, s: 90, l: 60 },  // Dorado brillante (amarillo cálido)
   whiteOnPeak: true,     // 🌊 WAVE 750: Destello en el pico
   intensityFloor: 0.0,   // 🌊 WAVE 805.2: NEGRO TOTAL en valles (era 0.1)
 }

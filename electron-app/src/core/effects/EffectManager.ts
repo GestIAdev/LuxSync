@@ -303,6 +303,8 @@ export class EffectManager extends EventEmitter {
     let globalOverride = false  // 🧨 WAVE 630
     let highestPriorityColor: { h: number; s: number; l: number } | undefined
     let highestPriority = -1
+    // 🚂 WAVE 800: Mix Bus del efecto dominante
+    let dominantMixBus: 'htp' | 'global' = 'htp'
     // 🥁 WAVE 700.7: Movement tracking
     let highestPriorityMovement: { pan?: number; tilt?: number; isAbsolute?: boolean; speed?: number } | undefined
     let movementPriority = -1
@@ -354,6 +356,12 @@ export class EffectManager extends EventEmitter {
       if (output.colorOverride && effect.priority > highestPriority) {
         highestPriority = effect.priority
         highestPriorityColor = output.colorOverride
+      }
+      
+      // 🚂 WAVE 800: El efecto de mayor prioridad determina el mixBus
+      if (effect.priority > highestPriority || (effect.priority === highestPriority && effect.mixBus === 'global')) {
+        // Global tiene precedencia en caso de empate de prioridad
+        dominantMixBus = effect.mixBus
       }
       
       // 🥁 WAVE 700.7: Highest priority takes movement
@@ -435,6 +443,7 @@ export class EffectManager extends EventEmitter {
     
     return {
       hasActiveEffects: true,
+      mixBus: dominantMixBus,  // 🚂 WAVE 800: Railway Switch
       dimmerOverride: maxDimmer > 0 ? maxDimmer : undefined,
       whiteOverride: maxWhite > 0 ? maxWhite : undefined,
       amberOverride: maxAmber > 0 ? maxAmber : undefined,  // 🧨 WAVE 630

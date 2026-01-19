@@ -53,6 +53,9 @@ interface ClaveRhythmConfig {
   /** Timing del patrón 3-2 en beats (relativo al BPM) */
   clavePattern: number[]  // [0, 2, 3.5, 6, 7] = posición de cada hit en beats
   
+  /** Duración del pre-ducking antes de cada hit (ms) - WAVE 805 */
+  preDuckingMs: number
+  
   /** Duración de attack de cada hit (ms) */
   hitAttackMs: number
   
@@ -76,6 +79,7 @@ const DEFAULT_CONFIG: ClaveRhythmConfig = {
   // Patrón 3-2 clave (en beats de 1/8)
   clavePattern: [0, 2, 3.5, 6, 7],  // Hits en beats 0, 2, 3.5, 6, 7
   
+  preDuckingMs: 50,  // 🌪️ WAVE 805: 50ms silencio antes de cada hit para visibility
   hitAttackMs: 120,
   hitDecayMs: 180,
   
@@ -105,10 +109,11 @@ export class ClaveRhythm extends BaseEffect {
   readonly name = 'Clave Rhythm'
   readonly category: EffectCategory = 'physical'
   readonly priority = 72
+  readonly mixBus = 'global' as const  // 🌪️ WAVE 805: Global para pre-ducking - STROBO LATINO
   
   private config: ClaveRhythmConfig
   private currentHit = 0
-  private hitPhase: 'attack' | 'decay' | 'wait' = 'wait'
+  private hitPhase: 'preDucking' | 'attack' | 'decay' | 'wait' = 'wait'  // 🌪️ WAVE 805: Pre-ducking añadido
   private phaseTimer = 0
   private currentColor: { h: number; s: number; l: number }
   private currentIntensity = 0
@@ -176,6 +181,17 @@ export class ClaveRhythm extends BaseEffect {
     
     // Actualizar fase actual
     switch (this.hitPhase) {
+      case 'preDucking':
+        // 🌪️ WAVE 805: Silencio pre-ducking para crear contraste
+        this.currentIntensity = 0
+        
+        if (this.phaseTimer >= this.config.preDuckingMs) {
+          // Pasar a attack después del silencio
+          this.hitPhase = 'attack'
+          this.phaseTimer = 0
+        }
+        break
+        
       case 'attack':
         this.updateAttack()
         break
@@ -214,7 +230,8 @@ export class ClaveRhythm extends BaseEffect {
   }
   
   private startHit(): void {
-    this.hitPhase = 'attack'
+    // 🌪️ WAVE 805: Empezar con pre-ducking para crear silencio
+    this.hitPhase = 'preDucking'
     this.phaseTimer = 0
     
     // Color del hit actual
@@ -286,6 +303,25 @@ export class ClaveRhythm extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    // 🌪️ WAVE 805: Durante pre-ducking, silenciar física completamente
+    const isPreDucking = this.hitPhase === 'preDucking'
+    
+    if (isPreDucking) {
+      // Durante pre-ducking: silencio total, esperar al flash
+      return {
+        effectId: this.id,
+        category: this.category,
+        phase: this.phase,
+        progress: this.elapsedMs / this.totalDurationMs,
+        zones: [],
+        intensity: 0,
+        dimmerOverride: 0,
+        colorOverride: undefined,
+        globalOverride: true,  // 🌪️ WAVE 805: Apagar física durante silencio
+        zoneOverrides: undefined,
+      }
+    }
+    
     // 🥁 WAVE 755: ClaveRhythm - EXCLUSIVO PARA MOVERS
     // Solo movers con movimiento ABSOLUTO (snap seco)
     // Flash Dorado: amber + white en cada hit
@@ -335,7 +371,7 @@ export class ClaveRhythm extends BaseEffect {
       dimmerOverride: undefined,
       colorOverride: undefined,
       
-      globalOverride: false,
+      globalOverride: false,  // 🌪️ WAVE 805: Durante flash, NO silenciar física (deja que se sume)
       
       // 🥁 WAVE 755: Movement override - ABSOLUTO para snaps secos
       movement: {

@@ -68,10 +68,10 @@ interface TidalWaveConfig {
 }
 
 const DEFAULT_CONFIG: TidalWaveConfig = {
-  wavePeriodMs: 1200,    // 🔥 WAVE 770: 1.2 segundos por ola (ELÉCTRICA, no majestuosa)
+  wavePeriodMs: 2500,    // 🌊 WAVE 800: 2.5 segundos - tiempo justo para ver el desplazamiento
   waveCount: 2,          // 🌊 WAVE 750: 2 olas = ida + vuelta (ping-pong)
   bpmSync: true,
-  beatsPerWave: 2,       // 🔥 WAVE 770: 2 beats = ola rápida y eléctrica
+  beatsPerWave: 4,       // 🌊 WAVE 800: 4 beats = más tiempo para apreciar la ola
   forwardDirection: true,
   // 🌊 WAVE 750: Color CÁLIDO vibrante
   waveColor: { h: 30, s: 90, l: 55 },  // Naranja dorado brillante
@@ -95,6 +95,7 @@ export class TidalWave extends BaseEffect {
   readonly name = 'Tidal Wave'
   readonly category: EffectCategory = 'physical'
   readonly priority = 70  // Menor que strobe, mayor que ambient
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - ola espacial con valles
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

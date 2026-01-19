@@ -379,101 +379,72 @@ export class TitanOrchestrator {
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
             
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔧 WAVE 790: ATOMIC BLENDING - Mezcla por CANAL, no solo dimmer
-            // 
-            // PROBLEMA WAVE 780: Solo el dimmer respetaba blendMode
-            // - Color se aplicaba SIEMPRE (ignorando física)
-            // - White/Amber NO se tocaban (por eso no había oro)
-            // 
-            // SOLUCIÓN: Mezcla ATÓMICA por cada canal individual
-            // ═══════════════════════════════════════════════════════════════════════
-            const blendMode = zoneData.blendMode || 'max'  // Default: HTP (seguro)
+            // Aplicar color si existe
+            if (zoneData.color) {
+              const rgb = this.hslToRgb(
+                zoneData.color.h,
+                zoneData.color.s,
+                zoneData.color.l
+              )
+              // REEMPLAZO DIRECTO - El efecto toma control total del color
+              fixtureStates[index] = {
+                ...f,
+                r: rgb.r,
+                g: rgb.g,
+                b: rgb.b,
+              }
+            }
             
-            if (blendMode === 'replace') {
-              // ═══════════════════════════════════════════════════════════════════
-              // 🛡️ MODO ESCUDO (REPLACE) - Para CumbiaMoon / TidalWave
-              // IGNORAR COMPLETAMENTE LA FÍSICA.
-              // Si el override dice dimmer 0.1, ES 0.1, aunque el bombo explote.
-              // ═══════════════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
+            // 
+            // ANTES (WAVE 765): LTP puro - El efecto siempre manda
+            // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
+            // 
+            // AHORA: Cada efecto declara su intención via blendMode:
+            // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
+            // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
+            // 
+            // DEFAULT: 'max' - Más seguro para energía general
+            // ═══════════════════════════════════════════════════════════════════════
+            if (zoneData.dimmer !== undefined) {
+              const effectDimmer = Math.round(zoneData.dimmer * 255)
+              const blendMode = zoneData.blendMode || 'max'  // Default: HTP (energía)
+              const physicsDimmer = fixtureStates[index].dimmer
               
-              // 1. Dimmer: El efecto MANDA
-              if (zoneData.dimmer !== undefined) {
-                fixtureStates[index].dimmer = Math.round(zoneData.dimmer * 255)
-              }
-              
-              // 2. Color: FORZAR color del efecto (no mezclar con física)
-              if (zoneData.color) {
-                const rgb = this.hslToRgb(
-                  zoneData.color.h,
-                  zoneData.color.s,
-                  zoneData.color.l
-                )
-                fixtureStates[index].r = rgb.r
-                fixtureStates[index].g = rgb.g
-                fixtureStates[index].b = rgb.b
-              }
-              
-              // 3. White/Amber: FORZAR valores del efecto
-              // NOTA: undefined = limpiar cualquier residuo de física
-              if (zoneData.white !== undefined) {
-                fixtureStates[index].white = Math.round(zoneData.white * 255)
+              let finalDimmer: number
+              if (blendMode === 'replace') {
+                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                finalDimmer = effectDimmer
               } else {
-                fixtureStates[index].white = 0  // Limpiar residuos
+                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
+                finalDimmer = Math.max(physicsDimmer, effectDimmer)
               }
               
-              if (zoneData.amber !== undefined) {
-                fixtureStates[index].amber = Math.round(zoneData.amber * 255)
-              } else {
-                fixtureStates[index].amber = 0  // Limpiar residuos
+              fixtureStates[index] = {
+                ...fixtureStates[index],
+                dimmer: finalDimmer,
               }
-              
-            } else {
-              // ═══════════════════════════════════════════════════════════════════
-              // 🔥 MODO ENERGÍA (MAX) - Para TropicalPulse / ClaveRhythm
-              // HTP (Highest Takes Precedence) POR CANAL
-              // ═══════════════════════════════════════════════════════════════════
-              
-              // 1. Dimmer: Gana el más alto
-              if (zoneData.dimmer !== undefined) {
-                const effectDimmer = Math.round(zoneData.dimmer * 255)
-                const physicsDimmer = fixtureStates[index].dimmer || 0
-                fixtureStates[index].dimmer = Math.max(physicsDimmer, effectDimmer)
-              }
-              
-              // 2. Color: "Winner Takes All"
-              // Si el efecto brilla más que la física, el efecto gana el color
-              // (Esto evita colores sucios/mezclados)
-              if (zoneData.color && zoneData.dimmer !== undefined) {
-                const effectDimmer = Math.round(zoneData.dimmer * 255)
-                const physicsDimmer = fixtureStates[index].dimmer || 0
-                
-                if (effectDimmer >= physicsDimmer * 0.8) {  // 80% threshold para evitar flickering
-                  const rgb = this.hslToRgb(
-                    zoneData.color.h,
-                    zoneData.color.s,
-                    zoneData.color.l
-                  )
-                  fixtureStates[index].r = rgb.r
-                  fixtureStates[index].g = rgb.g
-                  fixtureStates[index].b = rgb.b
-                }
-              }
-              
-              // 3. White/Amber: HTP - EL FIX DEL ORO 🔥
-              // La física suele tener W/A en 0. El efecto trae W/A > 0.
-              // Math.max garantiza que el oro se vea.
-              if (zoneData.white !== undefined) {
-                const effectWhite = Math.round(zoneData.white * 255)
-                const physicsWhite = fixtureStates[index].white || 0
-                fixtureStates[index].white = Math.max(physicsWhite, effectWhite)
-              }
-              
-              if (zoneData.amber !== undefined) {
-                const effectAmber = Math.round(zoneData.amber * 255)
-                const physicsAmber = fixtureStates[index].amber || 0
-                fixtureStates[index].amber = Math.max(physicsAmber, effectAmber)
-              }
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
+            // 
+            // PROBLEMA: TropicalPulse/ClaveRhythm enviaban white/amber pero el
+            // Orchestrator los ignoraba completamente.
+            // 
+            // SOLUCIÓN: HTP (Math.max) para white/amber - siempre SUMA, nunca resta
+            // ═══════════════════════════════════════════════════════════════════════
+            if (zoneData.white !== undefined) {
+              const effectWhite = Math.round(zoneData.white * 255)
+              const physicsWhite = fixtureStates[index].white || 0
+              fixtureStates[index].white = Math.max(physicsWhite, effectWhite)
+            }
+            
+            if (zoneData.amber !== undefined) {
+              const effectAmber = Math.round(zoneData.amber * 255)
+              const physicsAmber = fixtureStates[index].amber || 0
+              fixtureStates[index].amber = Math.max(physicsAmber, effectAmber)
             }
           }
           // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
@@ -556,45 +527,52 @@ export class TitanOrchestrator {
         return false
       }
       
-      // 🔥 WAVE 700.8.5: CRITICAL FIX
-      // globalOverride=true → REEMPLAZA todo (modo SolarFlare)
-      // globalOverride=false → MEZCLA con HTP/LTP (respeta lo que ya renderizó el HAL)
+      // � WAVE 800: RAILWAY SWITCH
+      // mixBus='global' → REEMPLAZA todo (modo dictador)
+      // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
+      const isGlobalMode = effectOutput.mixBus === 'global' || effectOutput.globalOverride
+      
       fixtureStates = fixtureStates.map(f => {
         const shouldApply = shouldApplyToFixture(f)
         if (!shouldApply) return f  // No afectar esta fixture
         
-        if (effectOutput.globalOverride) {
+        if (isGlobalMode) {
           // ═══════════════════════════════════════════════════════════════════════
-          // 🎚️ WAVE 765: MODO SOLAR FLARE - Override completo
-          // NOTA: Aquí MANTENEMOS HTP porque SolarFlare quiere SUMARSE al pico.
-          // globalOverride=true indica "quiero ser más brillante que todo".
-          // Si en el futuro un efecto global quiere hacer valles, deberá usar
-          // zoneOverrides en lugar de globalOverride.
+          // 🚂 WAVE 800: VÍA GLOBAL - El efecto manda, ignora física
+          // El efecto REEMPLAZA completamente lo que había.
+          // Perfecto para: SolarFlare, CumbiaMoon, TidalWave, etc.
           // ═══════════════════════════════════════════════════════════════════════
           return {
             ...f,
             r: flareR,
             g: flareG,
             b: flareB,
-            dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)),  // HTP: SolarFlare suma
+            dimmer: Math.round(flareIntensity * 255),  // LTP: El efecto dicta
           }
         } else {
           // ═══════════════════════════════════════════════════════════════════════
-          // 🎚️ WAVE 765: PHYSICS DUCKING - MODO ZONAL (Legacy)
-          // LTP: Si el efecto especifica intensidad, la física se calla.
-          // El blend de color sigue siendo proporcional a la intensidad.
+          // 🚂 WAVE 800: VÍA HTP - El efecto suma, respeta física
+          // HTP: El más brillante gana. El efecto complementa, no reemplaza.
+          // Perfecto para: TropicalPulse, ClaveRhythm, etc.
           // ═══════════════════════════════════════════════════════════════════════
           const effectDimmer = Math.round(flareIntensity * 255)
-          const finalDimmer = effectDimmer  // LTP: El efecto manda
+          const finalDimmer = Math.max(f.dimmer, effectDimmer)  // HTP: El más alto gana
           
-          // Blend proporcional a la intensidad del efecto
-          const blend = flareIntensity  // 0.0→0%, 1.0→100% del color del efecto
-          return {
-            ...f,
-            r: Math.round(f.r * (1 - blend) + flareR * blend),
-            g: Math.round(f.g * (1 - blend) + flareG * blend),
-            b: Math.round(f.b * (1 - blend) + flareB * blend),
-            dimmer: finalDimmer,
+          // Color: Winner Takes All - si el efecto brilla más, gana el color
+          if (effectDimmer >= f.dimmer * 0.8) {
+            return {
+              ...f,
+              r: flareR,
+              g: flareG,
+              b: flareB,
+              dimmer: finalDimmer,
+            }
+          } else {
+            // La física gana, mantener su color
+            return {
+              ...f,
+              dimmer: finalDimmer,
+            }
           }
         }
       })
@@ -602,11 +580,11 @@ export class TitanOrchestrator {
       // Log throttled
       if (this.frameCount % 60 === 0) {
         const affectedFixtures = fixtureStates.filter(shouldApplyToFixture)
-        const mode = effectOutput.globalOverride ? 'GLOBAL' : 'ZONAL'
-        // WAVE 715 DEBUG: Show fixture zones and which are affected
+        const mode = isGlobalMode ? 'GLOBAL' : 'HTP'
+        // WAVE 800 DEBUG: Show mixBus mode
         const fixtureZoneList = fixtureStates.map(f => `${f.zone}:${shouldApplyToFixture(f) ? 'Y' : 'N'}`).join(', ')
-        console.log(`[TitanOrchestrator 715] EFFECT [${mode}] zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
-        console.log(`[TitanOrchestrator 715] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`)
+        console.log(`[TitanOrchestrator 800] 🚂 EFFECT [${mode}] mixBus=${effectOutput.mixBus} zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+        console.log(`[TitanOrchestrator 800] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`)
       }
     }
     

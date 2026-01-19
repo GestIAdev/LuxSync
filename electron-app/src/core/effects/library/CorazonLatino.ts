@@ -117,6 +117,7 @@ export class CorazonLatino extends BaseEffect {
   readonly name = 'Corazón Latino'
   readonly category: EffectCategory = 'physical'
   readonly priority = 85  // Alta prioridad - es épico
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - corazón necesita sus colores
   
   private config: CorazonLatinoConfig
   private currentHeartbeat = 0

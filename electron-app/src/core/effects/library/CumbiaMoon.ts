@@ -70,18 +70,18 @@ interface CumbiaMoonConfig {
 }
 
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
-  cycleDurationMs: 8000,  // 🌙 WAVE 790: 8 segundos - respiración LENTA
-  peakIntensity: 0.15,     // 🌙 WAVE 785: 15% máximo - lunitas sutiles
+  cycleDurationMs: 3000,  // 🌙 WAVE 750: 3 segundos - más corto
+  peakIntensity: 0.30,     // 🌙 WAVE 785: 30% máximo - lunitas sutiles
   floorIntensity: 0.05,   // 🌙 WAVE 750: Casi apagado
-  peakSustainMs: 2000,    // 🌙 WAVE 790: Sustain LARGO (2 segundos en pico)
+  peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
   // 🌙 WAVE 785: PLATA LUNAR - azul pálido que insinúa, no grita
   colorCycle: [
     { h: 210, s: 10, l: 60 },   // Plata tenue (inicio)
     { h: 210, s: 10, l: 70 },   // Plata lunar (pico) - INSINUACIÓN
     { h: 210, s: 10, l: 55 },   // Plata oscura (final)
   ],
-  bpmSync: false,  // 🌙 WAVE 790: NO sync con BPM - respiración independiente
-  beatsPerCycle: 4,  // 🌙 WAVE 750: Ignorado si bpmSync=false
+  bpmSync: true,
+  beatsPerCycle: 4,  // 🌙 WAVE 750: 4 beats = más rápido
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -93,6 +93,7 @@ export class CumbiaMoon extends BaseEffect {
   readonly name = 'Cumbia Moon'
   readonly category: EffectCategory = 'physical'
   readonly priority = 65  // Baja prioridad - es ambient
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - necesita silencio para brillar
   
   private config: CumbiaMoonConfig
   private currentIntensity = 0
@@ -210,40 +211,26 @@ export class CumbiaMoon extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🎚️ WAVE 780: Migrar a zoneOverrides con blendMode 'replace'
-    // CumbiaMoon es un efecto de respiro (ola que sube y baja)
-    // Necesita 'replace' para crear los valles oscuros
-    const zoneOverrides = {
-      'front': {
-        color: this.currentColor,
-        dimmer: this.currentIntensity,
-        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
-      },
-      'back': {
-        color: this.currentColor,
-        dimmer: this.currentIntensity,
-        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
-      },
-      'movers': {
-        color: this.currentColor,
-        dimmer: this.currentIntensity * 0.8,  // Movers ligeramente más tenues
-        blendMode: 'replace' as const,  // 🌙 WAVE 780: LTP - El respiro manda
-      }
-    }
+    // � WAVE 800: CumbiaMoon usa globalOverride para IMPONERSE a las físicas
+    // El sistema zoneOverrides + blendMode no funciona bien para este caso
+    // globalOverride es el camino probado y confiable
     
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.actualCycleDurationMs,
-      zones: Object.keys(zoneOverrides) as EffectZone[],
+      zones: ['front', 'back', 'movers'] as EffectZone[],
       intensity: this.currentIntensity,
       
-      // 🎚️ WAVE 780: Usar zoneOverrides en lugar de legacy
-      dimmerOverride: undefined,
-      colorOverride: undefined,
-      globalOverride: false,
-      zoneOverrides,
+      // � WAVE 800: Sistema LEGACY que funciona
+      dimmerOverride: this.currentIntensity,
+      colorOverride: this.currentColor,
+      
+      // 🌙 WAVE 800: globalOverride = TRUE - La luna manda sobre las físicas
+      globalOverride: true,
+      
+      zoneOverrides: undefined,
     }
   }
 }

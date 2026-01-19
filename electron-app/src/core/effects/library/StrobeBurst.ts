@@ -83,6 +83,7 @@ export class StrobeBurst extends BaseEffect {
   readonly name = 'Strobe Burst'
   readonly category: EffectCategory = 'physical'
   readonly priority = 85  // Alta pero menor que SolarFlare y StrobeStorm
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - strobo manda
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

@@ -112,6 +112,7 @@ export class GhostBreath extends BaseEffect {
   readonly name = 'Ghost Breath'
   readonly category: EffectCategory = 'physical'
   readonly priority = 50  // Baja - efecto ambiental de fondo
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - UV tenue necesita silencio
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

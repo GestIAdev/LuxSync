@@ -87,6 +87,7 @@ export class SalsaFire extends BaseEffect {
   readonly name = 'Salsa Fire'
   readonly category: EffectCategory = 'physical'
   readonly priority = 72  // Entre strobe y ambient
+  readonly mixBus = 'htp' as const  // 🌪️ WAVE 805: HTP - Fuego que suma energía
   
   private config: SalsaFireConfig
   private currentIntensity = 0

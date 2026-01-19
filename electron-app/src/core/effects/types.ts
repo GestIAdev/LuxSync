@@ -276,6 +276,14 @@ export interface ILightEffect {
   readonly priority: number
   
   /**
+   * 🚂 WAVE 800: RAILWAY SWITCH - Mix Bus
+   * 
+   * 'htp' = High Takes Precedence - Se mezcla con física (aditivo)
+   * 'global' = Global Override - Ignora física completamente (dictador)
+   */
+  readonly mixBus: 'htp' | 'global'
+  
+  /**
    * Dispara el efecto con la configuración dada
    * @param config Configuración del disparo
    */
@@ -340,6 +348,16 @@ export interface EffectManagerState {
 export interface CombinedEffectOutput {
   /** ¿Hay algún efecto activo? */
   hasActiveEffects: boolean
+  
+  /**
+   * 🚂 WAVE 800: RAILWAY SWITCH - Mix Bus del efecto dominante
+   * 
+   * 'htp' = High Takes Precedence - Se mezcla con física (aditivo)
+   * 'global' = Global Override - Ignora física completamente (dictador)
+   * 
+   * Determinado por el efecto de mayor prioridad activo.
+   */
+  mixBus?: 'htp' | 'global'
   
   /** Override de dimmer combinado (HTP de todos los efectos) */
   dimmerOverride?: number

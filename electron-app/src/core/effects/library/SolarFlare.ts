@@ -125,6 +125,7 @@ export class SolarFlare implements ILightEffect {
   readonly name = 'Solar Flare'
   readonly category: EffectCategory = 'physical'
   readonly priority = 100  // Alta prioridad - brilla sobre todo
+  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - emergencia visual
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

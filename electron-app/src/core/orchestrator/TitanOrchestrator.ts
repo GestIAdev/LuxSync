@@ -354,6 +354,16 @@ export class TitanOrchestrator {
     // Si no, usar la lógica legacy con colorOverride global
     
     if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+      // 🔥 WAVE 810.5: DEBUG - Log zoneOverrides para CyberDualism
+      const zones = Object.keys(effectOutput.zoneOverrides)
+      if (zones.some(z => z.includes('movers_'))) {
+        const firstZone = zones[0]
+        console.log(`[TitanOrchestrator 🤖] CYBER DUALISM detected! Zones:`, 
+          zones,
+          `dimmer=${effectOutput.zoneOverrides[firstZone]?.dimmer?.toFixed(2)}`
+        )
+      }
+      
       // ═══════════════════════════════════════════════════════════════════════
       // 🎨 WAVE 740: STRICT ZONAL ISOLATION
       // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
@@ -376,6 +386,11 @@ export class TitanOrchestrator {
           const fixtureZone = (f.zone || '').toLowerCase()
           
           if (this.fixtureMatchesZone(fixtureZone, zoneId)) {
+            // 🔥 WAVE 810.5: DEBUG - Log cuando encuentra match
+            if (zoneId.includes('movers_')) {
+              console.log(`[TitanOrchestrator 🎯] Match! Fixture[${index}] zone="${f.zone}" matches zone="${zoneId}"`)
+            }
+            
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
             
@@ -1265,8 +1280,18 @@ export class TitanOrchestrator {
       case 'movers':
         // SOLO cabezas móviles - CRITICAL: NO incluir pars
         return fz === 'moving_left' || fz === 'moving_right' || 
+               fz === 'MOVING_LEFT' || fz === 'MOVING_RIGHT' ||  // 🔥 WAVE 810.5: Legacy uppercase
                fz === 'ceiling-left' || fz === 'ceiling-right' ||
                fz.startsWith('moving') || fz.startsWith('ceiling')
+      
+      // 🔥 WAVE 810: UNLOCK THE TWINS - Targeting L/R específico
+      case 'movers_left':
+        // SOLO movers del lado izquierdo
+        return fz === 'moving_left' || fz === 'ceiling-left' || fz === 'MOVING_LEFT'  // 🔥 WAVE 810.5: uppercase
+      
+      case 'movers_right':
+        // SOLO movers del lado derecho
+        return fz === 'moving_right' || fz === 'ceiling-right' || fz === 'MOVING_RIGHT'  // 🔥 WAVE 810.5: uppercase
         
       case 'pars':
         // Todos los PARs (front + back) pero NUNCA movers

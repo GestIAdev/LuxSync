@@ -41,14 +41,14 @@
  * @version WAVE 680
  */
 
-import { BaseEffect } from '../BaseEffect'
+import { BaseEffect } from '../../BaseEffect'
 import { 
   EffectTriggerConfig, 
   EffectFrameOutput, 
   EffectPhase,
   EffectCategory,
   EffectZone
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -88,12 +88,12 @@ interface GhostBreathConfig {
 
 const DEFAULT_CONFIG: GhostBreathConfig = {
   breathPeriodMs: 4000,   // 4 segundos por respiración
-  breathCount: 1,          // � WAVE 750: SOLO 1 respiración = 4s total (silencio dramático)
+  breathCount: 1,          //  WAVE 750: SOLO 1 respiración = 4s total (silencio dramático)
   inhaleRatio: 0.35,       // Inhale más rápido que exhale
   intensityFloor: 0.05,    // 5% mínimo (no blackout)
   intensityCeiling: 0.7,   // 70% máximo (no cegador)
   useUV: true,
-  baseColor: { h: 220, s: 90, l: 30 },   // Deep Blue oscuro
+  baseColor: { h: 270, s: 100, l: 40 },   // Deep Blue oscuro
   uvColor: { h: 270, s: 100, l: 40 },    // Violeta UV
   bpmSync: false,          // Por defecto NO sync (orgánico)
   beatsPerBreath: 4,       // 🌙 WAVE 750: 4 beats = 1 respiración si sync

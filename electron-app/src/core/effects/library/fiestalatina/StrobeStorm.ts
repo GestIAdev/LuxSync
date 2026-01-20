@@ -25,14 +25,14 @@
  * @version WAVE 680
  */
 
-import { BaseEffect } from '../BaseEffect'
+import { BaseEffect } from '../../BaseEffect'
 import { 
   EffectTriggerConfig, 
   EffectFrameOutput, 
   EffectPhase,
   EffectCategory,
   EffectZone
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION

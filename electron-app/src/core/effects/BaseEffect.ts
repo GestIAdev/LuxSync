@@ -206,6 +206,8 @@ export abstract class BaseEffect implements ILightEffect {
       'pars': 1,
       'back': 2,
       'movers': 3,
+      'movers_left': 3,   // 🤖 WAVE 810: L/R tienen mismo orden que movers
+      'movers_right': 3,
       'all': 0,
     }
     return (zoneOrder[zone] || 0) / totalZones

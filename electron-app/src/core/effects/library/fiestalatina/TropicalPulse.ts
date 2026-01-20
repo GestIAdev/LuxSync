@@ -1,5 +1,5 @@
-﻿import { BaseEffect } from '../BaseEffect'
-import { EffectTriggerConfig, EffectFrameOutput, EffectCategory, EffectZone } from '../types'
+﻿import { BaseEffect } from '../../BaseEffect'
+import { EffectTriggerConfig, EffectFrameOutput, EffectCategory, EffectZone } from '../../types'
 
 interface TropicalPulseConfig {
   preDuckingMs: number

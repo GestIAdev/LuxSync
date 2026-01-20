@@ -37,13 +37,13 @@
  * @version WAVE 700.6
  */
 
-import { BaseEffect } from '../BaseEffect'
+import { BaseEffect } from '../../BaseEffect'
 import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
   EffectZone,  // 🎨 WAVE 740: Para typing de zones
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION

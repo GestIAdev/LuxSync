@@ -73,6 +73,116 @@ const DEFAULT_CONFIG: DecisionMakerConfig = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 811: VIBE-SPECIFIC EFFECT SELECTION
+// El lóbulo frontal decide QUÉ efecto usar según el contexto musical
+// ═══════════════════════════════════════════════════════════════════════════
+
+import type { StrikeConditions } from './HuntEngine'
+
+interface EffectSelection {
+  effect: string
+  intensity: number
+  zones: ('all' | 'front' | 'back' | 'movers' | 'movers_left' | 'movers_right' | 'pars')[]
+  reasoning: string
+}
+
+/**
+ * 🎯 WAVE 811: UNIFIED EFFECT SELECTOR
+ * DecisionMaker es el lóbulo frontal - elige efecto según vibe y contexto
+ */
+function selectEffectByVibe(
+  vibeId: string,
+  strikeIntensity: number,
+  conditions: StrikeConditions | null | undefined
+): EffectSelection {
+  const normalizedIntensity = Math.min(1.0, 0.8 + strikeIntensity * 0.2)
+  const urgency = conditions?.urgencyScore ?? 0.5
+  const tensionBuild = conditions?.beautyScore ?? 0  // Usamos beautyScore como proxy de tensión
+  const energyDelta = conditions?.strikeScore ?? 0
+  
+  // 🔊 TECHNO FAMILY: Efectos industriales, mecánicos, agresivos
+  if (vibeId === 'techno-club' || vibeId === 'techno' || vibeId === 'industrial') {
+    // Alta urgencia + alta energía → IndustrialStrobe (golpe masivo)
+    if (urgency > 0.7 && strikeIntensity > 0.8) {
+      return {
+        effect: 'industrial_strobe',
+        intensity: normalizedIntensity,
+        zones: ['all'],
+        reasoning: `TECHNO HIGH IMPACT: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
+      }
+    }
+    
+    // Buildup con tensión creciente → AcidSweep (barrido dramático)
+    if (tensionBuild > 0.5) {
+      return {
+        effect: 'acid_sweep',
+        intensity: Math.min(1.0, 0.7 + tensionBuild * 0.3),
+        zones: ['all'],
+        reasoning: `TECHNO SWEEP: tensionBuild=${tensionBuild.toFixed(2)}`
+      }
+    }
+    
+    // Cambio de energía significativo → CyberDualism (L/R ping-pong)
+    if (Math.abs(energyDelta) > 0.3) {
+      return {
+        effect: 'cyber_dualism',
+        intensity: normalizedIntensity * 0.9,
+        zones: ['movers_left', 'movers_right'],
+        reasoning: `TECHNO DUAL: energyDelta=${energyDelta.toFixed(2)}`
+      }
+    }
+    
+    // Default techno → IndustrialStrobe
+    return {
+      effect: 'industrial_strobe',
+      intensity: normalizedIntensity * 0.85,
+      zones: ['all'],
+      reasoning: `TECHNO DEFAULT: standard strike`
+    }
+  }
+  
+  // 💃 LATINO FAMILY: Efectos cálidos, dorados, explosivos
+  if (vibeId === 'fiesta-latina' || vibeId === 'latino' || vibeId === 'tropical') {
+    // Alta urgencia → SolarFlare (explosión dorada)
+    if (urgency > 0.6 || strikeIntensity > 0.75) {
+      return {
+        effect: 'solar_flare',
+        intensity: normalizedIntensity,
+        zones: ['all'],
+        reasoning: `LATINO FLARE: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
+      }
+    }
+    
+    // Tensión moderada → StrobeBurst (destello rítmico)
+    if (tensionBuild > 0.3) {
+      return {
+        effect: 'strobe_burst',
+        intensity: Math.min(1.0, 0.75 + tensionBuild * 0.25),
+        zones: ['movers'],
+        reasoning: `LATINO BURST: tensionBuild=${tensionBuild.toFixed(2)}`
+      }
+    }
+    
+    // Default latino → SolarFlare (es el signature del vibe)
+    return {
+      effect: 'solar_flare',
+      intensity: normalizedIntensity * 0.9,
+      zones: ['all'],
+      reasoning: `LATINO DEFAULT: golden signature`
+    }
+  }
+  
+  // 🎵 FALLBACK: Si no reconocemos el vibe, usar SolarFlare como safe default
+  console.warn(`[DecisionMaker 🧠] Unknown vibe: ${vibeId}, defaulting to solar_flare`)
+  return {
+    effect: 'solar_flare',
+    intensity: normalizedIntensity * 0.8,
+    zones: ['all'],
+    reasoning: `UNKNOWN VIBE: ${vibeId} → safe fallback`
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // FUNCIÓN PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -142,12 +252,19 @@ type DecisionType =
   | 'subtle_shift'      // Cambio sutil basado en belleza
   | 'hold'              // Mantener sin cambios
 
+/**
+ * 🔥 WAVE 811: DecisionMaker es el ÚNICO decisor de efectos
+ * 
+ * HuntEngine solo reporta worthiness (0-1)
+ * Aquí decidimos SI disparar y QUÉ efecto usar
+ */
 function determineDecisionType(inputs: DecisionInputs): DecisionType {
   const { huntDecision, prediction, pattern, beauty } = inputs
   
-  // Prioridad 1: Strike del hunt engine
-  // 🔥 WAVE 635: Bajado de 0.7 a 0.50 para que coincida con el threshold del Hunt
-  if (huntDecision.shouldStrike && huntDecision.confidence > 0.50) {
+  // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)
+  // Prioridad 1: Momento digno detectado por HuntEngine
+  const WORTHINESS_THRESHOLD = 0.65  // Umbral para considerar "digno de efecto"
+  if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && huntDecision.confidence > 0.50) {
     return 'strike'
   }
   
@@ -185,8 +302,9 @@ function calculateCombinedConfidence(
     predConf * cfg.predictionWeight +
     beautyConf * cfg.beautyWeight
   
+  // 🔥 WAVE 811: Usar worthiness en lugar de shouldStrike
   // Bonus si múltiples fuentes coinciden
-  if (inputs.huntDecision.shouldStrike && 
+  if (inputs.huntDecision.worthiness > 0.65 && 
       inputs.prediction.type !== 'none' &&
       inputs.beauty.trend === 'rising') {
     combined = Math.min(1, combined + 0.1)
@@ -253,21 +371,22 @@ function generateStrikeDecision(
     return output
   }
   
-  // 🔥 WAVE 635.2: SNIPER GATE - Solo strikes de alta confianza
-  // El Hunt ya evalúa urgency/beauty/consonance con matriz dinámica
+  // 🔥 WAVE 811: UNIFIED BRAIN PROTOCOL - El lóbulo frontal decide QUÉ efecto
+  // Ya no hardcodeamos solar_flare. DecisionMaker es EL JUEZ que elige por vibe.
   if (confidence > 0.50) {
-    // Intensidad proporcional a la urgencia/tensión
-    const flareIntensity = Math.max(urgency, tension, 0.7)  // Mínimo 70%
+    const strikeIntensity = Math.max(urgency, tension, 0.7)  // Mínimo 70%
+    const effectSelection = selectEffectByVibe(pattern.vibeId, strikeIntensity, huntDecision.conditions ?? undefined)
     
     output.effectDecision = {
-      effectType: 'solar_flare',
-      intensity: Math.min(1.0, 0.8 + flareIntensity * 0.2),  // 80-100%
-      zones: ['all'],
-      reason: `HUNT STRIKE! urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} score=${huntDecision.confidence.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
+      effectType: effectSelection.effect,
+      intensity: effectSelection.intensity,
+      zones: effectSelection.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
+      reason: `HUNT STRIKE [${pattern.vibeId}]! effect=${effectSelection.effect} urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} worthiness=${huntDecision.worthiness.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
       confidence: confidence,
     }
     
-    console.log(`[DecisionMaker 🎯] SOLAR FLARE QUEUED: intensity=${output.effectDecision.intensity.toFixed(2)} | urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`)
+    // 🔥 WAVE 811: Log de INTENCIÓN - NO de ejecución. El FIRED solo viene de EffectManager
+    console.log(`[DecisionMaker 🧠] INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
   }
   
   return output

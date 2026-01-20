@@ -31,7 +31,7 @@ import {
   EffectPhase,
   EffectCategory,
   EffectZone
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -125,7 +125,7 @@ export class SolarFlare implements ILightEffect {
   readonly name = 'Solar Flare'
   readonly category: EffectCategory = 'physical'
   readonly priority = 100  // Alta prioridad - brilla sobre todo
-  readonly mixBus = 'global' as const  // 🚂 WAVE 800: Dictador - emergencia visual
+  readonly mixBus = 'htp' as const  // � WAVE 790: HTP - Let physics breathe during decay
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state
@@ -251,13 +251,10 @@ export class SolarFlare implements ILightEffect {
       zones: this.zones,
       intensity: intensityScaled,
       
-      // 🔥 HTP - Dimmer override (100% en peak, decay gradual)
+      // 🔥 WAVE 790.1: CRITICAL OVERRIDES para preservar el ORO
+      // HTP + overrides raíz = Dominancia total en white/amber (ORO GARANTIZADO)
       dimmerOverride: intensityScaled,
-      
-      // 🌟 White override (blanco puro en peak)
       whiteOverride: (rgbwa.white / 255) * intensityScaled,
-      
-      // 🧨 WAVE 630: Amber override (ámbar al 100%)
       amberOverride: (rgbwa.amber / 255) * intensityScaled,
       
       // 🎨 Color override (HSL para compatibilidad)
@@ -267,8 +264,24 @@ export class SolarFlare implements ILightEffect {
         l: l * 100,    // 0-100
       },
       
-      // 🧨 WAVE 630: GLOBAL OVERRIDE - Bypasea zonas, brilla en TODAS las fixtures
-      globalOverride: true,
+      // 🧨 WAVE 790: HTP CONVERSION - Zone overrides with MAX blend
+      // No global override = physics can breathe during decay
+      zoneOverrides: Object.fromEntries(
+        this.zones.map((zone) => [
+          zone,
+          {
+            color: {
+              h: h * 360,    // 0-360
+              s: s * 100,    // 0-100
+              l: l * 100,    // 0-100
+            },
+            dimmer: intensityScaled,
+            white: (rgbwa.white / 255) * intensityScaled,
+            amber: (rgbwa.amber / 255) * intensityScaled,
+            blendMode: 'max' as const,  // HTP = Maximum wins
+          },
+        ])
+      ),
     }
     
     return output

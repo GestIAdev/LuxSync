@@ -34,13 +34,13 @@
  * @version WAVE 692
  */
 
-import { BaseEffect } from '../BaseEffect'
+import { BaseEffect } from '../../BaseEffect'
 import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
   EffectZone,  // 🎚️ WAVE 780: Para zoneOverrides
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION

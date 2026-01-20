@@ -158,6 +158,12 @@ import {
 } from '../effects/ContextualEffectSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 810.5: EFFECT MANAGER IMPORT (for cooldown surgery)
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { getEffectManager } from '../effects/EffectManager'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -267,6 +273,15 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // 🎯 WAVE 685: Inicializar selector de efectos contextual
     this.effectSelector = new ContextualEffectSelector()
+    
+    // 🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
+    // Solo registrar cooldown cuando EffectManager REALMENTE dispara el efecto
+    // (no bloqueado por Shield/Traffic)
+    const effectManager = getEffectManager()
+    effectManager.on('effectTriggered', (event: any) => {
+      this.effectSelector.registerEffectFired(event.effectType)
+      console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${event.effectType}`)
+    })
     
     // Inicializar estado interno
     this.state = this.createInitialState()
@@ -531,51 +546,97 @@ export class SeleneTitanConscious extends EventEmitter {
       lastEffectType: this.lastEffectType,
     }
     
-    // 🎯 SELECCIÓN CONTEXTUAL DE EFECTO
-    const effectSelection = this.effectSelector.select(selectorInput)
+    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 812: THE GATEKEEPER - Unified Availability Check
+    // DecisionMaker PROPONE, el Gatekeeper DISPONE
+    // ═══════════════════════════════════════════════════════════════════════
     
-    // Si hay un efecto que disparar, añadirlo al output
-    if (effectSelection.effectType) {
-      output = {
-        ...output,
-        confidence: Math.max(output.confidence, effectSelection.confidence),
-        effectDecision: {
-          effectType: effectSelection.effectType,
-          intensity: effectSelection.intensity,
-          zones: ['all'],  // El EffectManager decidirá las zonas según el efecto
-          reason: effectSelection.reason,
-          confidence: effectSelection.confidence,
-        },
-        debugInfo: {
-          ...output.debugInfo,
-          reasoning: `� CONTEXTUAL: ${effectSelection.reason}`,
-          fuzzyAction: this.lastFuzzyDecision?.action ?? 'hold',
-          zScore: zScore,
+    let finalEffectDecision = null
+    
+    // 1. Ver qué quiere el Rey (DecisionMaker)
+    if (output.effectDecision) {
+      const intent = output.effectDecision.effectType
+      const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
+      
+      if (availability.available) {
+        // ✅ PASE VIP CONCEDIDO - El efecto puede disparar
+        finalEffectDecision = output.effectDecision
+        
+        if (this.config.debug) {
+          console.log(
+            `[SeleneTitanConscious] 🚪 GATEKEEPER APPROVED: ${intent} | ${availability.reason}`
+          )
+        }
+      } else {
+        // ❌ REBOTADO - Intent bloqueado por cooldown/mood
+        console.log(
+          `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
+        )
+        
+        // Limpiar la effectDecision del output (el intent fue rechazado)
+        output = {
+          ...output,
+          effectDecision: null,
+          debugInfo: {
+            ...output.debugInfo,
+            reasoning: `🚪 BLOCKED: ${intent} - ${availability.reason}`,
+          }
         }
       }
-      
-      // Track para cooldown y anti-repetición
+    }
+    
+    // 2. Si el Rey calla (o fue bloqueado), preguntar al DJ (Selector Fallback)
+    if (!finalEffectDecision) {
+      // 🎯 FALLBACK: SELECCIÓN CONTEXTUAL DE EFECTO
+      const effectSelection = this.effectSelector.select(selectorInput)
+    
+      // Si hay un efecto que disparar, añadirlo al output
+      // NOTA: El Selector YA hace su propio checkAvailability internamente
+      if (effectSelection.effectType) {
+        finalEffectDecision = {
+          effectType: effectSelection.effectType,
+          intensity: effectSelection.intensity,
+          zones: ['all'] as ('all' | 'front' | 'back' | 'movers' | 'pars')[],
+          reason: effectSelection.reason,
+          confidence: effectSelection.confidence,
+        }
+        
+        output = {
+          ...output,
+          confidence: Math.max(output.confidence, effectSelection.confidence),
+          effectDecision: finalEffectDecision,
+          debugInfo: {
+            ...output.debugInfo,
+            reasoning: `🎯 CONTEXTUAL FALLBACK: ${effectSelection.reason}`,
+            fuzzyAction: this.lastFuzzyDecision?.action ?? 'hold',
+            zScore: zScore,
+          }
+        }
+        
+        if (this.config.debug) {
+          console.log(
+            `[SeleneTitanConscious] 🎯 CONTEXTUAL FALLBACK: ` +
+            `${effectSelection.effectType} @ ${effectSelection.intensity.toFixed(2)} | ` +
+            `Z=${zScore.toFixed(2)}σ | Section=${selectorSection}`
+          )
+        }
+      }
+    }
+    
+    // Track para cooldown y anti-repetición (solo si hay efecto final)
+    if (finalEffectDecision) {
       this.lastEffectTimestamp = Date.now()
-      this.lastEffectType = effectSelection.effectType
+      this.lastEffectType = finalEffectDecision.effectType
       
       // Emit event para telemetría
       this.emit('contextualEffectSelected', {
-        effectType: effectSelection.effectType,
-        intensity: effectSelection.intensity,
+        effectType: finalEffectDecision.effectType,
+        intensity: finalEffectDecision.intensity,
         zScore,
         section: selectorSection,
         vibeId: pattern.vibeId,
-        reason: effectSelection.reason,
+        reason: finalEffectDecision.reason || 'unknown',
       })
-      
-      if (this.config.debug) {
-        console.log(
-          `[SeleneTitanConscious] 🎯 CONTEXTUAL EFFECT: ` +
-          `${effectSelection.effectType} @ ${effectSelection.intensity.toFixed(2)} | ` +
-          `Z=${zScore.toFixed(2)}σ | Section=${selectorSection} | ` +
-          `Reason: ${effectSelection.reason}`
-        )
-      }
     }
     
     // 5. Actualizar estado interno

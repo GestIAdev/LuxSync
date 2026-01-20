@@ -115,32 +115,45 @@ interface EffectSelectionConfig {
   minHuntConfidence: number
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚪 WAVE 812: THE TIMEKEEPER - FUENTE DE VERDAD DEL TIEMPO
+// ═══════════════════════════════════════════════════════════════════════════
+// Exportada para que cualquier módulo pueda consultar los cooldowns oficiales
+// NOTA: El MoodController MULTIPLICA estos valores según el mood actual
+//       - CALM: 3.0x (muy conservador)
+//       - BALANCED: 1.5x (equilibrado)
+//       - PUNK: 0.7x (agresivo)
+
+export const EFFECT_COOLDOWNS: Record<string, number> = {
+  // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
+  'cumbia_moon': 25000,      // 25s base → CALM:75s, BALANCED:37s, PUNK:17s
+  'tropical_pulse': 28000,   // 28s base → CALM:84s, BALANCED:42s, PUNK:19s
+  'salsa_fire': 18000,       // 18s base → CALM:54s, BALANCED:27s, PUNK:12s
+  'clave_rhythm': 22000,     // 22s base → CALM:66s, BALANCED:33s, PUNK:15s
+  
+  // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
+  'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
+  'strobe_burst': 25000,     // 25s base → Bloqueado en CALM
+  'strobe_storm': 40000,     // 40s base → Bloqueado en CALM
+  
+  // === EFECTOS AMBIENTE (Relleno sutil) ===
+  'ghost_breath': 35000,     // 35s base - fantasma raro
+  'tidal_wave': 20000,       // 20s base - ola ocasional
+  
+  // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+  'industrial_strobe': 2000,   // 2s base → PUNK:1.4s (rapid-fire strobe)
+  'acid_sweep': 15000,         // 15s base → PUNK:10.5s (ambiente volumétrico)
+  
+  // 🤖 WAVE 810: UNLOCK THE TWINS
+  'cyber_dualism': 20000,      // 20s base → PUNK:14s (ping-pong espacial)
+}
+
 const DEFAULT_CONFIG: EffectSelectionConfig = {
   minCooldownMs: 800,          // 0.8 segundos mínimo entre efectos
   sameEffectCooldownMs: 3000,  // 3 segundos si es el mismo efecto
   
-  // 🌊 WAVE 691: Cooldowns por tipo - evita monopolio del fantasma
-  // 🎺 WAVE 692: Cooldowns para nuevos efectos Fiesta Latina
-  // 🎭 WAVE 700.5.2: CONSENSO DEL CÓNCLAVE - "Solomillo vs Patatas Fritas"
-  //    Los efectos híbridos (que mueven color + movers) son SOLOMILLO = cooldown largo
-  //    El mood multiplica estos valores (CALM 3.0x, BALANCED 1.5x, PUNK 0.7x)
-  //    Target EPM: CALM 1-3, BALANCED 4-6, PUNK 8-10
-  effectTypeCooldowns: {
-    // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
-    'cumbia_moon': 25000,      // 25s base → CALM:75s, BALANCED:37s, PUNK:17s
-    'tropical_pulse': 28000,   // 28s base → CALM:84s, BALANCED:42s, PUNK:19s (↑ de 20s)
-    'salsa_fire': 18000,       // 18s base → CALM:54s, BALANCED:27s, PUNK:12s
-    'clave_rhythm': 22000,     // 22s base → CALM:66s, BALANCED:33s, PUNK:15s
-    
-    // === EFECTOS IMPACTO (Plato fuerte ocasional) ===
-    'solar_flare': 30000,      // 30s base → CALM:90s, BALANCED:45s, PUNK:21s
-    'strobe_burst': 25000,     // 25s base → Bloqueado en CALM
-    'strobe_storm': 40000,     // 40s base → Bloqueado en CALM
-    
-    // === EFECTOS AMBIENTE (Relleno sutil) ===
-    'ghost_breath': 35000,     // 35s base - fantasma raro
-    'tidal_wave': 20000,       // 20s base - ola ocasional
-  },
+  // 🚪 WAVE 812: Ahora usa la constante exportada
+  effectTypeCooldowns: EFFECT_COOLDOWNS,
   
   // 🌊 WAVE 691: Si energy > 0.3, bloquear efectos ambientales (ghost_breath)
   ambientBlockEnergyThreshold: 0.3,
@@ -256,13 +269,85 @@ export class ContextualEffectSelector {
     this.effectTypeLastFired.set(effectType, Date.now())
   }
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚪 WAVE 812: THE GATEKEEPER - Unified Availability Check
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🚪 WAVE 812: THE GATEKEEPER - Verifica si un efecto está disponible
+   * 
+   * Este es el ÚNICO punto de verdad para saber si un efecto puede disparar.
+   * Combina TODAS las verificaciones:
+   * - MoodController blockList
+   * - Cooldowns unificados (con multiplicadores de mood)
+   * - MoodController forceUnlock (bypass para PUNK)
+   * 
+   * @param effectType - Tipo de efecto a verificar
+   * @param vibeId - Vibe actual para ajustar cooldowns
+   * @returns Objeto con disponibilidad y razón si está bloqueado
+   */
+  public checkAvailability(effectType: string, vibeId: string): { 
+    available: boolean
+    reason: string
+    cooldownRemaining?: number  // ms hasta que esté disponible
+  } {
+    // 1. 🎭 MOOD FORCE UNLOCK - PUNK puede bypasear todo
+    if (this.moodController.isEffectForceUnlocked(effectType)) {
+      return { 
+        available: true, 
+        reason: 'FORCE_UNLOCK: Mood override active' 
+      }
+    }
+    
+    // 2. 🚫 MOOD BLOCKLIST - Algunos efectos bloqueados por mood
+    if (this.moodController.isEffectBlocked(effectType)) {
+      return { 
+        available: false, 
+        reason: `MOOD_BLOCKED: Effect "${effectType}" blocked by current mood` 
+      }
+    }
+    
+    // 3. ⏱️ COOLDOWN CHECK - El reloj manda
+    const lastFired = this.effectTypeLastFired.get(effectType)
+    if (lastFired) {
+      // Calcular cooldown efectivo
+      let baseCooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs
+      baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibeId)
+      const effectiveCooldown = this.moodController.applyCooldown(baseCooldown)
+      
+      const elapsed = Date.now() - lastFired
+      const remaining = effectiveCooldown - elapsed
+      
+      if (remaining > 0) {
+        return { 
+          available: false, 
+          reason: `COOLDOWN: ${effectType} ready in ${Math.ceil(remaining / 1000)}s`,
+          cooldownRemaining: remaining
+        }
+      }
+    }
+    
+    // 4. ✅ AVAILABLE - Pase VIP concedido
+    return { 
+      available: true, 
+      reason: 'AVAILABLE: Effect ready to fire' 
+    }
+  }
+  
+  /**
+   * 🚪 WAVE 812: Versión simplificada para checks rápidos
+   */
+  public isAvailable(effectType: string, vibeId: string): boolean {
+    return this.checkAvailability(effectType, vibeId).available
+  }
+
   /**
    * 🌊 WAVE 691: Verifica si un efecto específico está en cooldown
    * 🎭 WAVE 700.1: Ahora respeta MoodController
    *    - PUNK forceUnlock = ignora cooldown
    *    - Cooldowns modificados por cooldownMultiplier
    */
-  private isEffectInCooldown(effectType: string): boolean {
+  private isEffectInCooldown(effectType: string, vibe?: string): boolean {
     // 🎭 WAVE 700.1: Si el mood tiene forceUnlock para este efecto, NUNCA está en cooldown
     if (this.moodController.isEffectForceUnlocked(effectType)) {
       return false
@@ -272,12 +357,44 @@ export class ContextualEffectSelector {
     if (!lastFired) return false
     
     // Cooldown base del config
-    const baseCooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs
+    let baseCooldown = this.config.effectTypeCooldowns[effectType] || this.config.minCooldownMs
+    
+    // 🔥 WAVE 790.2: VIBE-SPECIFIC COOLDOWNS
+    // Techno necesita cooldowns más agresivos que Fiesta Latina
+    baseCooldown = this.applyVibeCooldownAdjustment(effectType, baseCooldown, vibe || 'unknown')
     
     // 🎭 WAVE 700.1: Aplicar multiplicador del mood
     const effectiveCooldown = this.moodController.applyCooldown(baseCooldown)
     
     return (Date.now() - lastFired) < effectiveCooldown
+  }
+  
+  /**
+   * 🔥 WAVE 790.2: VIBE-SPECIFIC COOLDOWN ADJUSTMENT
+   * 
+   * Ajusta el cooldown base según el vibe activo.
+   * Techno necesita cooldowns más agresivos que Fiesta Latina.
+   * 
+   * @param effectType - Tipo de efecto
+   * @param baseCooldown - Cooldown base en ms
+   * @param vibe - Vibe actual ('fiesta-latina', 'techno-club', etc.)
+   * @returns Cooldown ajustado en ms
+   */
+  private applyVibeCooldownAdjustment(effectType: string, baseCooldown: number, vibe: string): number {
+    // Solo ajustar SolarFlare (otros efectos mantienen su cooldown base)
+    if (effectType !== 'solar_flare') {
+      return baseCooldown
+    }
+    
+    // SolarFlare: Cooldown más agresivo en Techno
+    if (vibe === 'techno-club') {
+      return 12000  // 12s base para Techno → PUNK:8.4s, BALANCED:18s, CALM:36s
+    } else if (vibe === 'fiesta-latina') {
+      return 30000  // 30s base para Fiesta Latina → PUNK:21s, BALANCED:45s, CALM:90s
+    }
+    
+    // Fallback: mantener baseCooldown
+    return baseCooldown
   }
   
   /**
@@ -330,6 +447,23 @@ export class ContextualEffectSelector {
     
     const shouldStrike = this.evaluateHuntFuzzy(input)
     
+    // 🔥 WAVE 811: UNIFIED BRAIN - Hunt usa worthiness, no shouldStrike
+    // Si HuntEngine detecta momento digno (worthiness >= 0.65), considerar strike
+    const WORTHINESS_THRESHOLD = 0.65
+    if (input.huntDecision && input.huntDecision.worthiness >= WORTHINESS_THRESHOLD && shouldStrike.should) {
+      console.log(`[EffectSelector 🚀] HUNT HIGH WORTHINESS: solar_flare (worthiness=${input.huntDecision.worthiness.toFixed(2)})`)
+      
+      // NO revisar cooldown - Hunt tiene prioridad absoluta
+      return {
+        effectType: 'solar_flare',
+        intensity: Math.max(0.85, input.huntDecision.confidence),  // Mínimo 0.85
+        reason: shouldStrike.reason,
+        confidence: shouldStrike.confidence,
+        isOverride: true,  // Marca como override
+        musicalContext,    // Inyectar contexto
+      }
+    }
+    
     if (!shouldStrike.should) {
       return this.noEffectDecision(musicalContext, shouldStrike.reason)
     }
@@ -353,8 +487,9 @@ export class ContextualEffectSelector {
       return this.noEffectDecision(musicalContext, 'LATINA breathing - strobe in cooldown')
     }
     
-    // 🌊 WAVE 691: Registrar que este efecto fue disparado
-    this.registerEffectFired(effectType)
+    // 🔥 WAVE 810.5: NO registrar aquí - esperar a que EffectManager confirme el disparo
+    // El cooldown se registrará solo si el efecto REALMENTE se dispara (no bloqueado por Shield/Traffic)
+    // this.registerEffectFired(effectType)  // ❌ REMOVED
     
     // ═══════════════════════════════════════════════════════════════
     // PASO 5: INTENSITY CALCULATION
@@ -417,11 +552,13 @@ export class ContextualEffectSelector {
   } {
     const { huntDecision, fuzzyDecision, musicalContext } = input
     
-    // Si el Hunt dice strike con alta confianza, go
-    if (huntDecision?.shouldStrike && huntDecision.confidence >= this.config.minHuntConfidence) {
+    // Si el Hunt tiene worthiness alta con confianza alta, go
+    // 🔥 WAVE 811: UNIFIED BRAIN - Usa worthiness en vez de shouldStrike
+    const WORTHINESS_THRESHOLD = 0.65
+    if (huntDecision && huntDecision.worthiness >= WORTHINESS_THRESHOLD && huntDecision.confidence >= this.config.minHuntConfidence) {
       return {
         should: true,
-        reason: `Hunt STRIKE (confidence=${huntDecision.confidence.toFixed(2)})`,
+        reason: `Hunt WORTHY (worthiness=${huntDecision.worthiness.toFixed(2)} confidence=${huntDecision.confidence.toFixed(2)})`,
         confidence: huntDecision.confidence,
       }
     }
@@ -470,8 +607,9 @@ export class ContextualEffectSelector {
   /**
    * 🎭 WAVE 700.1: Verifica si un efecto está disponible
    * Combina check de cooldown Y check de blockList del mood
+   * 🔥 WAVE 790.2: Ahora acepta vibe para cooldowns específicos por vibe
    */
-  private isEffectAvailable(effectType: string): boolean {
+  private isEffectAvailable(effectType: string, vibe?: string): boolean {
     // Primero: ¿está bloqueado por el mood?
     if (this.isEffectBlockedByMood(effectType)) {
       console.log(`[EffectSelector 🎭] ${effectType} BLOCKED by mood ${this.moodController.getCurrentMood().toUpperCase()}`)
@@ -479,7 +617,7 @@ export class ContextualEffectSelector {
     }
     
     // Segundo: ¿está en cooldown? (ya considera forceUnlock del mood)
-    if (this.isEffectInCooldown(effectType)) {
+    if (this.isEffectInCooldown(effectType, vibe)) {
       return false
     }
     
@@ -513,7 +651,7 @@ export class ContextualEffectSelector {
       
       // ❤️ DIVINE + CHORUS = El momento más épico
       if (zLevel === 'divine' && sectionType === 'chorus') {
-        if (this.isEffectAvailable('corazon_latino')) {
+        if (this.isEffectAvailable('corazon_latino', vibe)) {
           console.log(`[EffectSelector ❤️] LATINA DIVINE CHORUS: corazon_latino (THE ARCHITECT'S SOUL)`)
           return 'corazon_latino'
         }
@@ -521,7 +659,7 @@ export class ContextualEffectSelector {
       
       // ❤️ ELEVATED + ENDING = Final emocional de la canción
       if (zLevel === 'elevated' && sectionType === 'ending') {
-        if (this.isEffectAvailable('corazon_latino')) {
+        if (this.isEffectAvailable('corazon_latino', vibe)) {
           console.log(`[EffectSelector ❤️] LATINA ELEVATED ENDING: corazon_latino (PASSION FINALE)`)
           return 'corazon_latino'
         }
@@ -529,7 +667,7 @@ export class ContextualEffectSelector {
       
       // ❤️ EPIC + CHORUS = Coro con mucha energía
       if (zLevel === 'epic' && sectionType === 'chorus') {
-        if (this.isEffectAvailable('corazon_latino')) {
+        if (this.isEffectAvailable('corazon_latino', vibe)) {
           console.log(`[EffectSelector ❤️] LATINA EPIC CHORUS: corazon_latino (EPIC PASSION)`)
           return 'corazon_latino'
         }
@@ -537,17 +675,17 @@ export class ContextualEffectSelector {
       
       // 🔥 EPIC/DIVINE: Strobe o Solar (efectos de impacto)
       if (zLevel === 'divine' || zLevel === 'epic') {
-        if (this.isEffectAvailable('strobe_burst')) {
+        if (this.isEffectAvailable('strobe_burst', vibe)) {
           console.log(`[EffectSelector 🔥] LATINA EPIC: strobe_burst`)
           return 'strobe_burst'
         }
         // ❤️ WAVE 750: Corazón Latino como alternativa épica al strobe (si no es chorus/ending)
-        if (this.isEffectAvailable('corazon_latino') && sectionType !== 'chorus' && sectionType !== 'ending') {
+        if (this.isEffectAvailable('corazon_latino', vibe) && sectionType !== 'chorus' && sectionType !== 'ending') {
           console.log(`[EffectSelector ❤️] LATINA EPIC FALLBACK: corazon_latino`)
           return 'corazon_latino'
         }
         // Fallback a tropical pulse si strobe en cooldown o bloqueado
-        if (this.isEffectAvailable('tropical_pulse')) {
+        if (this.isEffectAvailable('tropical_pulse', vibe)) {
           console.log(`[EffectSelector 🌴] LATINA EPIC FALLBACK: tropical_pulse`)
           return 'tropical_pulse'
         }
@@ -555,7 +693,7 @@ export class ContextualEffectSelector {
       
       // 🌊 WAVE 730: TIDAL WAVE para buildups y alta energía
       if ((sectionType === 'buildup' || energyTrend === 'rising') && zLevel === 'elevated') {
-        if (this.isEffectAvailable('tidal_wave')) {
+        if (this.isEffectAvailable('tidal_wave', vibe)) {
           console.log(`[EffectSelector 🌊] LATINA BUILDUP: tidal_wave`)
           return 'tidal_wave'
         }
@@ -563,11 +701,11 @@ export class ContextualEffectSelector {
       
       // 🌴 ELEVATED: TropicalPulse o SalsaFire (efectos de relleno medio)
       if (zLevel === 'elevated') {
-        if (energyTrend === 'rising' && this.isEffectAvailable('tropical_pulse')) {
+        if (energyTrend === 'rising' && this.isEffectAvailable('tropical_pulse', vibe)) {
           console.log(`[EffectSelector 🌴] LATINA ELEVATED RISING: tropical_pulse`)
           return 'tropical_pulse'
         }
-        if (this.isEffectAvailable('salsa_fire')) {
+        if (this.isEffectAvailable('salsa_fire', vibe)) {
           console.log(`[EffectSelector 🔥] LATINA ELEVATED: salsa_fire`)
           return 'salsa_fire'
         }
@@ -575,7 +713,7 @@ export class ContextualEffectSelector {
       
       // 👻 WAVE 730: GHOST BREATH solo en intro/breakdown (respiro profundo)
       if (sectionType === 'intro' || sectionType === 'breakdown') {
-        if (this.isEffectAvailable('ghost_breath')) {
+        if (this.isEffectAvailable('ghost_breath', vibe)) {
           console.log(`[EffectSelector 👻] LATINA BREAKDOWN: ghost_breath (back+movers only)`)
           return 'ghost_breath'
         }
@@ -583,7 +721,7 @@ export class ContextualEffectSelector {
       
       // 🌙 NORMAL/LOW + BREAKDOWN: CumbiaMoon (respiro suave)
       if (sectionType === 'breakdown' || energyTrend === 'falling') {
-        if (this.isEffectAvailable('cumbia_moon')) {
+        if (this.isEffectAvailable('cumbia_moon', vibe)) {
           console.log(`[EffectSelector 🌙] LATINA BREAKDOWN: cumbia_moon`)
           return 'cumbia_moon'
         }
@@ -594,7 +732,7 @@ export class ContextualEffectSelector {
         // 🔥 WAVE 730: Añadido tidal_wave a la rotación
         const candidates = ['clave_rhythm', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'tidal_wave']
         for (const effect of candidates) {
-          if (this.isEffectAvailable(effect) && effect !== lastEffectType) {
+          if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
             console.log(`[EffectSelector 🎺] LATINA NORMAL: ${effect}`)
             return effect
           }
@@ -607,6 +745,88 @@ export class ContextualEffectSelector {
     }
     
     // ═══════════════════════════════════════════════════════════════
+    // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+    // ═══════════════════════════════════════════════════════════════
+    if (vibe === 'techno-club') {
+      // 🔪 DIVINE/EPIC (DROP/PEAK): IndustrialStrobe = MARTILLO
+      if (zLevel === 'divine' || (zLevel === 'epic' && (sectionType === 'drop' || sectionType === 'chorus'))) {
+        if (this.isEffectAvailable('industrial_strobe', vibe)) {
+          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} ${sectionType.toUpperCase()}: industrial_strobe (THE HAMMER)`)
+          return 'industrial_strobe'
+        }
+        // Fallback a strobe_burst si industrial en cooldown
+        if (this.isEffectAvailable('strobe_burst', vibe)) {
+          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} FALLBACK: strobe_burst`)
+          return 'strobe_burst'
+        }
+      }
+      
+      // 🔪 BUILDUP: AcidSweep + StrobeBurst (Tensión creciente)
+      if (sectionType === 'buildup') {
+        if (energyTrend === 'rising') {
+          // Primera mitad del buildup: acid sweep
+          if (this.isEffectAvailable('acid_sweep', vibe)) {
+            console.log(`[EffectSelector 🧪] TECHNO BUILDUP RISING: acid_sweep`)
+            return 'acid_sweep'
+          }
+        } else {
+          // Segunda mitad: strobe burst
+          if (this.isEffectAvailable('strobe_burst', vibe)) {
+            console.log(`[EffectSelector ⚡] TECHNO BUILDUP PEAK: strobe_burst`)
+            return 'strobe_burst'
+          }
+        }
+      }
+      
+      // 🔪 BREAKDOWN/INTRO: AcidSweep (Ambiente volumétrico)
+      if (sectionType === 'breakdown' || sectionType === 'intro') {
+        if (this.isEffectAvailable('acid_sweep', vibe)) {
+          console.log(`[EffectSelector 🧪] TECHNO ${sectionType.toUpperCase()}: acid_sweep (VOLUMETRIC)`)
+          return 'acid_sweep'
+        }
+      }
+      
+      // 🔪 ELEVATED + RISING: AcidSweep para tensión
+      if (zLevel === 'elevated' && energyTrend === 'rising') {
+        if (this.isEffectAvailable('acid_sweep', vibe)) {
+          console.log(`[EffectSelector 🧪] TECHNO ELEVATED RISING: acid_sweep`)
+          return 'acid_sweep'
+        }
+      }
+      
+      // 🤖 WAVE 810: ELEVATED + VERSE/CHORUS: CyberDualism (ping-pong L/R)
+      if (zLevel === 'elevated' && (sectionType === 'verse' || sectionType === 'chorus')) {
+        if (this.isEffectAvailable('cyber_dualism', vibe)) {
+          console.log(`[EffectSelector 🤖] TECHNO ELEVATED ${sectionType.toUpperCase()}: cyber_dualism (L/R PING-PONG)`)
+          return 'cyber_dualism'
+        }
+      }
+      
+      // 🔪 ELEVATED + STABLE/FALLING: IndustrialStrobe ocasional
+      if (zLevel === 'elevated') {
+        if (this.isEffectAvailable('industrial_strobe', vibe)) {
+          console.log(`[EffectSelector ⚡] TECHNO ELEVATED: industrial_strobe`)
+          return 'industrial_strobe'
+        }
+      }
+      
+      // 🔪 NORMAL: Rotación de efectos medios (evita monotonía)
+      if (zLevel === 'normal') {
+        const candidates = ['acid_sweep']
+        for (const effect of candidates) {
+          if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
+            console.log(`[EffectSelector 🔪] TECHNO NORMAL: ${effect}`)
+            return effect
+          }
+        }
+      }
+      
+      // 😴 Si todo está en cooldown, dejar respirar
+      console.log(`[EffectSelector 😴] TECHNO: all effects in cooldown, breathing`)
+      return 'none'
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
     // REGLA 1: DIVINE/EPIC = Primary effect (lo más potente)
     // 🎭 WAVE 700.5.2: TODOS los returns deben pasar por isEffectAvailable
     // ═══════════════════════════════════════════════════════════════
@@ -614,19 +834,19 @@ export class ContextualEffectSelector {
       // Evitar repetir el mismo efecto
       const primary = palette.primary
       if (primary === lastEffectType && this.consecutiveSameEffect >= 2) {
-        if (this.isEffectAvailable(palette.secondary)) {
+        if (this.isEffectAvailable(palette.secondary, vibe)) {
           return palette.secondary
         }
       }
-      if (this.isEffectAvailable(primary)) {
+      if (this.isEffectAvailable(primary, vibe)) {
         return primary
       }
       // 🎭 WAVE 700.5.2: Fallback también debe verificar blockList
-      if (this.isEffectAvailable(palette.secondary)) {
+      if (this.isEffectAvailable(palette.secondary, vibe)) {
         return palette.secondary
       }
       // Si secondary también bloqueado, usar tidal_wave como fallback seguro
-      if (this.isEffectAvailable('tidal_wave')) {
+      if (this.isEffectAvailable('tidal_wave', vibe)) {
         return 'tidal_wave'
       }
       return 'none'
@@ -638,7 +858,7 @@ export class ContextualEffectSelector {
     // 🔥 WAVE 725: Desbloquear ghost_breath para fiesta-latina con zona overrides
     // ═══════════════════════════════════════════════════════════════
     const ghostBlocked = (vibe !== 'fiesta-latina' && energy > this.config.ambientBlockEnergyThreshold) || 
-                         !this.isEffectAvailable('ghost_breath')
+                         !this.isEffectAvailable('ghost_breath', vibe)
     
     // ═══════════════════════════════════════════════════════════════
     // REGLA 2: ELEVATED + RISING = Build tension
@@ -649,7 +869,7 @@ export class ContextualEffectSelector {
         return 'ghost_breath'
       }
       // Default: Tidal Wave para momentum
-      if (this.isEffectAvailable('tidal_wave')) {
+      if (this.isEffectAvailable('tidal_wave', vibe)) {
         return 'tidal_wave'
       }
     }
@@ -658,7 +878,7 @@ export class ContextualEffectSelector {
     // REGLA 3: ELEVATED + FALLING = Release suave
     // ═══════════════════════════════════════════════════════════════
     if (zLevel === 'elevated' && energyTrend === 'falling') {
-      if (this.isEffectAvailable('tidal_wave')) {
+      if (this.isEffectAvailable('tidal_wave', vibe)) {
         return 'tidal_wave'  // Ola que baja
       }
     }
@@ -670,7 +890,7 @@ export class ContextualEffectSelector {
       // En drop/chorus/breakdown: strobe para mantener energía
       if (sectionType === 'drop' || sectionType === 'chorus' || sectionType === 'breakdown') {
         const strobeType = 'strobe_storm'
-        if (lastEffectType !== strobeType && this.isEffectAvailable(strobeType)) {
+        if (lastEffectType !== strobeType && this.isEffectAvailable(strobeType, vibe)) {
           return strobeType
         }
         return 'tidal_wave'
@@ -679,7 +899,7 @@ export class ContextualEffectSelector {
       if (palette.secondary === 'ghost_breath' && ghostBlocked) {
         return 'tidal_wave'
       }
-      if (this.isEffectAvailable(palette.secondary)) {
+      if (this.isEffectAvailable(palette.secondary, vibe)) {
         return palette.secondary
       }
     }

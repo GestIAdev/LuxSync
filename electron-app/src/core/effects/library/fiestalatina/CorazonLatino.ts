@@ -42,13 +42,13 @@
  * @author The Architect (via Radwulf) - El Alma del Sistema
  */
 
-import { BaseEffect } from '../BaseEffect'
+import { BaseEffect } from '../../BaseEffect'
 import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
   EffectZone,
-} from '../types'
+} from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION

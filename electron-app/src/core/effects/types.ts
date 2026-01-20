@@ -43,12 +43,15 @@ export type EffectPhase =
 
 /**
  * Zonas que puede afectar un efecto
+ * 🔥 WAVE 810: UNLOCK THE TWINS - Movers con targeting L/R
  */
 export type EffectZone = 
   | 'all'
   | 'front'
   | 'back'
   | 'movers'
+  | 'movers_left'   // 🔥 WAVE 810: Solo movers left (índice par o side='left')
+  | 'movers_right'  // 🔥 WAVE 810: Solo movers right (índice impar o side='right')
   | 'pars'
 
 // ═══════════════════════════════════════════════════════════════════════════

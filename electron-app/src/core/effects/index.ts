@@ -36,4 +36,4 @@ export {
   SolarFlare, 
   createSolarFlare,
   SOLAR_FLARE_DEFAULT_CONFIG 
-} from './library/SolarFlare'
+} from './library/fiestalatina/SolarFlare'

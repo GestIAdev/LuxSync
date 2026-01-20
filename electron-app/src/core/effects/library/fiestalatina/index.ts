@@ -17,11 +17,11 @@
 
 export { SolarFlare, createSolarFlare, SOLAR_FLARE_DEFAULT_CONFIG } from './SolarFlare'
 export { StrobeStorm, createStrobeStorm } from './StrobeStorm'
-export { TidalWave, createTidalWave } from './TidalWave'
+export { TidalWave, createTidalWave } from '../TidalWave'
 export { GhostBreath, createGhostBreath } from './GhostBreath'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPE RE-EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type { ILightEffect, EffectTriggerConfig, MusicalContext } from '../types'
+export type { ILightEffect, EffectTriggerConfig, MusicalContext } from '../../types'

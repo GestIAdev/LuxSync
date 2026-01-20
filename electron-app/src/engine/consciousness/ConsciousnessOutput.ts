@@ -142,6 +142,7 @@ export interface ConsciousnessMovementDecision {
  * 
  * WAVE 600: Cuando la consciencia quiere disparar un efecto especial
  * (Solar Flare, Strobe Burst, etc.)
+ * WAVE 810: Añadidas zonas movers_left/movers_right para targeting L/R
  */
 export interface ConsciousnessEffectDecision {
   /** Tipo de efecto a disparar (e.g., 'solar_flare', 'strobe_burst') */
@@ -150,8 +151,9 @@ export interface ConsciousnessEffectDecision {
   /** Intensidad del efecto (0-1) */
   intensity: number
   
-  /** Zonas objetivo (default: 'all') */
-  zones?: ('all' | 'front' | 'back' | 'movers' | 'pars')[]
+  /** Zonas objetivo (default: 'all') 
+   * WAVE 810: movers_left/movers_right para efectos L/R como CyberDualism */
+  zones?: ('all' | 'front' | 'back' | 'movers' | 'movers_left' | 'movers_right' | 'pars')[]
   
   /** Razón del disparo */
   reason?: string

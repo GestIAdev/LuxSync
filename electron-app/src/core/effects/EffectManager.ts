@@ -41,19 +41,26 @@ import {
 } from './types'
 
 // Import effect library
-import { SolarFlare } from './library/SolarFlare'
-import { StrobeStorm } from './library/StrobeStorm'
-import { StrobeBurst } from './library/StrobeBurst'
-import { TidalWave } from './library/TidalWave'
-import { GhostBreath } from './library/GhostBreath'
+import { SolarFlare } from './library/fiestalatina/SolarFlare'
+import { StrobeStorm } from './library/fiestalatina/StrobeStorm'
+import { StrobeBurst } from './library/fiestalatina/StrobeBurst'
+import { TidalWave } from './library/fiestalatina/TidalWave'
+import { GhostBreath } from './library/fiestalatina/GhostBreath'
 // 🎺 WAVE 692: FIESTA LATINA ARSENAL
-import { TropicalPulse } from './library/TropicalPulse'
-import { SalsaFire } from './library/SalsaFire'
+import { TropicalPulse } from './library/fiestalatina/TropicalPulse'
+import { SalsaFire } from './library/fiestalatina/SalsaFire'
 // 🥁 WAVE 700.6: NEW LATINA EFFECT
-import { ClaveRhythm } from './library/ClaveRhythm'
-import { CumbiaMoon } from './library/CumbiaMoon'
+import { ClaveRhythm } from './library/fiestalatina/ClaveRhythm'
+import { CumbiaMoon } from './library/fiestalatina/CumbiaMoon'
 // ❤️ WAVE 750: THE ARCHITECT'S SOUL
-import { CorazonLatino } from './library/CorazonLatino'
+import { CorazonLatino } from './library/fiestalatina/CorazonLatino'
+
+// 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+import { IndustrialStrobe } from './library/techno/IndustrialStrobe'
+import { AcidSweep } from './library/techno/AcidSweep'
+
+// 🤖 WAVE 810: UNLOCK THE TWINS
+import { CyberDualism } from './library/techno/CyberDualism'
 
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
@@ -110,6 +117,11 @@ const EFFECT_VIBE_RULES: Record<string, {
   'clave_rhythm': { isDynamic: true },     // 🥁 3-2 Clave pattern with movement
   // ❤️ WAVE 750: THE ARCHITECT'S SOUL
   'corazon_latino': { isDynamic: true },   // ❤️ Heartbeat passion effect
+  // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+  'industrial_strobe': { requiresStrobe: true, isDynamic: true },  // ⚡ Industrial hammer
+  'acid_sweep': { isDynamic: true },       // 🧪 Volumetric blade of light
+  // 🤖 WAVE 810: UNLOCK THE TWINS
+  'cyber_dualism': { isDynamic: true },    // 🤖 Ping-pong L/R spatial targeting
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -238,12 +250,14 @@ export class EffectManager extends EventEmitter {
       degraded: shieldResult.degraded,
     })
     
-    // 🛡️ Log con estado de shield
-    const shieldStatus = shieldResult.degraded ? '(DEGRADED)' : ''
+    // 🛡️ WAVE 811: Log ÚNICO de ejecución - LA VOZ DEL EJECUTOR
+    // Incluye: efecto, vibe, source, degraded, intensidad, z-score
+    const shieldStatus = shieldResult.degraded ? '⚠️DEGRADED' : ''
     const zInfo = config.musicalContext?.zScore 
-      ? `Z: ${config.musicalContext.zScore.toFixed(1)}` 
+      ? `Z:${config.musicalContext.zScore.toFixed(1)}` 
       : ''
-    console.log(`[EffectManager ✅] ${config.effectType} FIRED in ${vibeId} ${shieldStatus} (Intensity: ${config.intensity.toFixed(2)} ${zInfo})`)
+    const sourceTag = config.source ? `[${config.source}]` : ''
+    console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} | I:${config.intensity.toFixed(2)} ${zInfo}`)
     
     return effect.id
   }
@@ -556,6 +570,20 @@ export class EffectManager extends EventEmitter {
     
     // ❤️ Corazón Latino - Heartbeat passion effect for epic moments
     this.effectFactories.set('corazon_latino', () => new CorazonLatino())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+    // 🤖 WAVE 810: UNLOCK THE TWINS
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ⚡ Industrial Strobe - The hammer that strikes steel
+    this.effectFactories.set('industrial_strobe', () => new IndustrialStrobe())
+    
+    // 🧪 Acid Sweep - Volumetric blade of light
+    this.effectFactories.set('acid_sweep', () => new AcidSweep())
+    
+    // 🤖 Cyber Dualism - The ping-pong twins (L/R spatial targeting)
+    this.effectFactories.set('cyber_dualism', () => new CyberDualism())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

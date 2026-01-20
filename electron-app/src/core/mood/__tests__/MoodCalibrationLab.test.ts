@@ -79,14 +79,16 @@ function generateHuntDecision(
   const huntCooldownFrames = 45 // ~1.5 segundos a 30fps
   
   // Condiciones para que Hunt considere strike:
+  // 🔥 WAVE 811: UNIFIED BRAIN - Ahora usamos worthiness (0-1) en vez de shouldStrike
   const isGoodSection = !['intro', 'outro'].includes(section)
   const isEpicMoment = zScore >= 2.5 && energy >= 0.5
   const isCooldownReady = framesSinceLastStrike >= huntCooldownFrames
   
   if (isGoodSection && isEpicMoment && isCooldownReady) {
+    const worthiness = Math.min(1.0, 0.5 + (zScore - 2.5) * 0.2 + energy * 0.15)
     return {
       suggestedPhase: 'striking',
-      shouldStrike: true,
+      worthiness,  // 🔥 WAVE 811: worthiness en vez de shouldStrike
       confidence: Math.min(0.95, 0.6 + (zScore - 2.5) * 0.15 + energy * 0.2),
       conditions: null,
       activeCandidate: null,
@@ -96,7 +98,7 @@ function generateHuntDecision(
   
   return {
     suggestedPhase: zScore >= 1.5 ? 'stalking' : 'learning',
-    shouldStrike: false,
+    worthiness: 0.0,  // 🔥 WAVE 811: worthiness en vez de shouldStrike
     confidence: 0.3,
     conditions: null,
     activeCandidate: null,
@@ -250,8 +252,9 @@ function generateFiestaLatinaFrames(durationSeconds: number): SyntheticFrame[] {
       section === 'breakdown' || section === 'outro' ? 'falling' : 'stable'
     
     // Generar Hunt decision
+    // 🔥 WAVE 811: Usa worthiness >= 0.65 como threshold para considerar "strike"
     const huntDecision = generateHuntDecision(zScore, section, energy, i, lastHuntStrikeFrame)
-    if (huntDecision.shouldStrike) {
+    if (huntDecision.worthiness >= 0.65) {
       lastHuntStrikeFrame = i
     }
     
@@ -309,12 +312,13 @@ function generateTechnoAggressiveFrames(durationSeconds: number): SyntheticFrame
     const beatPhase = (timestampMs % msPerBeat) / msPerBeat
     
     const huntDecision = generateHuntDecision(zScore, section, energy, i, lastHuntStrikeFrame)
-    if (huntDecision.shouldStrike) {
+    // 🔥 WAVE 811: Usa worthiness >= 0.65 como threshold para considerar "strike"
+    if (huntDecision.worthiness >= 0.65) {
       lastHuntStrikeFrame = i
     }
-    
+
     const fuzzyDecision = generateFuzzyDecision(zScore, section, energy, 'stable')
-    
+
     frames.push({
       timestamp: timestampMs,
       bpm,
@@ -368,7 +372,8 @@ function generateChillLoungeFrames(durationSeconds: number): SyntheticFrame[] {
     const beatPhase = (timestampMs % msPerBeat) / msPerBeat
     
     const huntDecision = generateHuntDecision(zScore, section, energy, i, lastHuntStrikeFrame)
-    if (huntDecision.shouldStrike) {
+    // 🔥 WAVE 811: Usa worthiness >= 0.65 como threshold para considerar "strike"
+    if (huntDecision.worthiness >= 0.65) {
       lastHuntStrikeFrame = i
     }
     
@@ -440,8 +445,9 @@ class MoodStressTester {
     let strobesInCalm = 0
     
     // Contar strikes de Hunt/Fuzzy en los frames
+    // 🔥 WAVE 811: Usa worthiness >= 0.65 para contar "strikes"
     for (const frame of frames) {
-      if (frame.huntDecision?.shouldStrike) huntStrikes++
+      if (frame.huntDecision && frame.huntDecision.worthiness >= 0.65) huntStrikes++
       if (frame.fuzzyDecision?.action === 'strike' || frame.fuzzyDecision?.action === 'force_strike') {
         fuzzyStrikes++
       }

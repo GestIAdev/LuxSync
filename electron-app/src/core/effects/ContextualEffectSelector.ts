@@ -915,8 +915,41 @@ export class ContextualEffectSelector {
       return palette.ambient
     }
     
-    // Fallback final: tidal_wave siempre disponible
-    return 'tidal_wave'
+    // ═══════════════════════════════════════════════════════════════
+    // 🔪 WAVE 814: VIBE-AWARE FALLBACK - La Red de Seguridad Inteligente
+    // ═══════════════════════════════════════════════════════════════
+    // Si llegamos aquí, ningún efecto específico ni la paleta funcionaron.
+    // Aplicamos un fallback que RESPETA LA IDENTIDAD DEL VIBE.
+    
+    let ultimateFallback = 'tidal_wave' // Default mundial
+    
+    if (vibe === 'techno-club') {
+      // 🔪 EN TECHNO, EL SOL NO EXISTE
+      // Si es sección de alta energía (drop/chorus/peak) → Martillo
+      if (['drop', 'chorus', 'peak'].includes(sectionType)) {
+        ultimateFallback = 'industrial_strobe' // El Martillo (backup)
+        console.log(`[EffectSelector 🔪] TECHNO HIGH-ENERGY FALLBACK: industrial_strobe`)
+      } 
+      // Si es sección de baja energía (verse/intro/breakdown) → Cuchilla
+      else {
+        ultimateFallback = 'acid_sweep' // La Cuchilla (default)
+        console.log(`[EffectSelector 🔪] TECHNO LOW-ENERGY FALLBACK: acid_sweep`)
+      }
+    } 
+    else if (vibe === 'chill-lounge') {
+      // En Chill, efecto espacial suave
+      ultimateFallback = 'borealis_wave'
+      console.log(`[EffectSelector 🌌] CHILL FALLBACK: borealis_wave`)
+    }
+    // else: otros vibes usan tidal_wave (default universal)
+    
+    // 🛡️ WAVE 814: ESCUDO FINAL - Si por algún motivo sacamos solar_flare en Techno, matarlo
+    if (vibe === 'techno-club' && ultimateFallback === 'solar_flare') {
+      ultimateFallback = 'acid_sweep'
+      console.log(`[EffectSelector 🔪⚠️] TECHNO ANTI-SUN SHIELD ACTIVATED: Replaced solar_flare → acid_sweep`)
+    }
+    
+    return ultimateFallback
   }
   
   // ─────────────────────────────────────────────────────────────────────────

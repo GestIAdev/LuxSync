@@ -89,15 +89,18 @@ interface EffectSelection {
 /**
  * 🎯 WAVE 811: UNIFIED EFFECT SELECTOR
  * 🔪 WAVE 813: TECHNO PALETTE REBALANCE
+ * 🛡️ WAVE 814: NULL RETURNS - Permite devolver null para decisiones débiles
  * 
  * DecisionMaker es el lóbulo frontal - elige efecto según vibe y contexto.
  * Cada familia de vibes tiene su propia personalidad y arsenal.
+ * 
+ * Si devuelve null, significa "no tengo decisión fuerte, que el Selector use su fallback".
  */
 function selectEffectByVibe(
   vibeId: string,
   strikeIntensity: number,
   conditions: StrikeConditions | null | undefined
-): EffectSelection {
+): EffectSelection | null {
   const normalizedIntensity = Math.min(1.0, 0.8 + strikeIntensity * 0.2)
   const urgency = conditions?.urgencyScore ?? 0.5
   const trend = conditions?.trend ?? 'stable'
@@ -383,21 +386,29 @@ function generateStrikeDecision(
   }
   
   // 🔥 WAVE 811: UNIFIED BRAIN PROTOCOL - El lóbulo frontal decide QUÉ efecto
+  // 🛡️ WAVE 814: NULL HANDLING - Si DecisionMaker no tiene decisión fuerte, devuelve null
   // Ya no hardcodeamos solar_flare. DecisionMaker es EL JUEZ que elige por vibe.
   if (confidence > 0.50) {
     const strikeIntensity = Math.max(urgency, tension, 0.7)  // Mínimo 70%
     const effectSelection = selectEffectByVibe(pattern.vibeId, strikeIntensity, huntDecision.conditions ?? undefined)
     
-    output.effectDecision = {
-      effectType: effectSelection.effect,
-      intensity: effectSelection.intensity,
-      zones: effectSelection.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
-      reason: `HUNT STRIKE [${pattern.vibeId}]! effect=${effectSelection.effect} urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} worthiness=${huntDecision.worthiness.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
-      confidence: confidence,
+    // 🛡️ WAVE 814: Si DecisionMaker devolvió null, significa "no tengo decisión fuerte"
+    // El ContextualEffectSelector aplicará su fallback vibe-aware
+    if (effectSelection !== null) {
+      output.effectDecision = {
+        effectType: effectSelection.effect,
+        intensity: effectSelection.intensity,
+        zones: effectSelection.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
+        reason: `HUNT STRIKE [${pattern.vibeId}]! effect=${effectSelection.effect} urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} worthiness=${huntDecision.worthiness.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
+        confidence: confidence,
+      }
+      
+      // 🔥 WAVE 811: Log de INTENCIÓN - NO de ejecución. El FIRED solo viene de EffectManager
+      console.log(`[DecisionMaker 🧠] INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
+    } else {
+      // 🛡️ WAVE 814: DecisionMaker no tiene decisión → delegar a ContextualEffectSelector
+      console.log(`[DecisionMaker 🛡️] NO STRONG DECISION [${pattern.vibeId}] → ContextualEffectSelector will apply vibe-aware fallback`)
     }
-    
-    // 🔥 WAVE 811: Log de INTENCIÓN - NO de ejecución. El FIRED solo viene de EffectManager
-    console.log(`[DecisionMaker 🧠] INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
   }
   
   return output

@@ -103,9 +103,9 @@ export class TechnoStereoPhysics {
   // =========================================================================
   
   // 🎯 MOVERS = TREBLE (Acid leads, synth stabs)
-  // 🌀 WAVE 905: Threshold SUBIDO - Blackout logic
-  private readonly TREBLE_VITAMIN = 2.5              // 🔪 Mantener agresividad
-  private readonly ACTIVATION_THRESHOLD = 0.40       // 🔪 SUBIDO de 0.12 (blackout logic)
+  // 🌀 WAVE 905.2: SWEET SPOT - Que se vean los leads
+  private readonly TREBLE_VITAMIN = 3.5              // 🎯 SUBIDO de 2.5 (amplificar señal)
+  private readonly ACTIVATION_THRESHOLD = 0.20       // 🎯 SWEET SPOT (0.12=todo, 0.40=nada)
   private readonly VISIBILITY_FLOOR = 0.15           // 🔪 Floor limpio
   private readonly HYSTERESIS_MARGIN = 0.04          // 🔪 Histéresis estrecha
   // ❌ INTENSITY_SMOOTHING ERRADICADO - El techno no suaviza
@@ -114,14 +114,14 @@ export class TechnoStereoPhysics {
   private readonly STROBE_DURATION = 30              // 🔪 Flash corto
   
   // 🔊 FRONT PARS = BASS (Bombo 4x4, el corazón)
-  // 🌀 WAVE 905: Gate SUBIDO - Solo el kick REAL pasa
-  private readonly FRONT_PAR_GATE_ON = 0.45          // 🔪 SUBIDO de 0.30 (romper ladrillo)
-  private readonly FRONT_PAR_GATE_OFF = 0.35         // 🔪 Histéresis más alta
+  // 🌀 WAVE 905.2: SWEET SPOT - Devolver el latido
+  private readonly FRONT_PAR_GATE_ON = 0.35          // 🎯 SWEET SPOT (0.30=ladrillo, 0.45=muerte)
+  private readonly FRONT_PAR_GATE_OFF = 0.27         // 🎯 Histéresis equilibrada
   
   // 🥁 BACK PARS = MID ("The Slap" - la bofetada de mamá)
-  // 🌀 WAVE 905: Gate BRUTAL - Matar voces, solo transientes
-  private readonly BACK_PAR_GATE = 0.55              // 🔪 SUBIDO de 0.28 (matar voces)
-  private readonly BACK_PAR_SLAP_MULT = 2.0          // 🔪 "The Slap" SUBIDO de 1.8
+  // 🌀 WAVE 905.2: Gate CALIBRADO - Recuperar la bofetada
+  private readonly BACK_PAR_GATE = 0.32              // 🎯 SWEET SPOT (snares @ 0.35-0.40)
+  private readonly BACK_PAR_SLAP_MULT = 2.0          // 🔪 Mantener "The Slap" brutal
   
   // 🧪 SPECTRAL THRESHOLDS
   private readonly HARSHNESS_ACID_THRESHOLD = 0.60   // Umbral para modo ácido
@@ -280,10 +280,10 @@ export class TechnoStereoPhysics {
   /**
    * 🔊 Front PAR = BASS (Bombo 4x4) - EL CORAZÓN DEL TECHNO
    * 
-   * 🌀 WAVE 905: THE VOID & THE STRIKE
-   * - Gate 0.45 (SUBIDO) - Solo el kick REAL pasa
-   * - Curva AGRESIVA: exponente 2.0 (romper ladrillo)
-   * - Subgraves sostenidos desaparecen, solo golpes
+   * 🌀 WAVE 905.2: SWEET SPOT CALIBRATION
+   * - Gate 0.35 (CALIBRADO) - Deja pasar el bombo estándar
+   * - Curva EXPONENCIAL: exponente 1.5 (compromiso perfecto)
+   * - Mantiene contraste pero NO mata todo
    */
   private calculateFrontPar(bass: number): number {
     if (this.frontParActive) {
@@ -300,10 +300,10 @@ export class TechnoStereoPhysics {
       this.frontParActive = true
     }
     
-    // 🌀 WAVE 905: Normalizar desde gate de encendido
+    // 🌀 WAVE 905.2: Normalizar desde gate de encendido
     const gated = (bass - this.FRONT_PAR_GATE_ON) / (1 - this.FRONT_PAR_GATE_ON)
-    // 🌀 Curva BRUTAL: exponente 2.0 = solo picos extremos (era 0.5)
-    const intensity = Math.pow(Math.max(0, gated), 2.0)
+    // � Curva EXPONENCIAL: exponente 1.5 = contraste SIN muerte (era 2.0)
+    const intensity = Math.pow(Math.max(0, gated), 1.5)
     return Math.min(0.85, Math.max(0, intensity))  // Cap 0.85
   }
   
@@ -335,13 +335,13 @@ export class TechnoStereoPhysics {
   /**
    * 🎯 Movers = TREBLE (Acid leads, synth stabs)
    * 
-   * 🌀 WAVE 905: BLACKOUT LOGIC
-   * - Threshold 0.40 (SUBIDO) - Pads y Hi-Hats a negro
-   * - Decay INSTANTÁNEO: target puro, sin media ponderada
-   * - Solo Leads ácidos o Stabs fuertes encienden motores
+   * 🌀 WAVE 905.2: SWEET SPOT CALIBRATION
+   * - Threshold 0.20 (CALIBRADO) - Filtra ruido, deja melodías
+   * - Vitamina 3.5x (SUBIDA) - Amplifica señal que pasa
+   * - Decay INSTANTÁNEO: target puro (mantiene agresividad)
    */
   private calculateMover(treble: number, acidMode: boolean = false): { intensity: number; active: boolean } {
-    // 🔪 Vitamina extra en modo ácido
+    // 🎯 WAVE 905.2: Vitamina más alta + extra en modo ácido
     const vitamin = acidMode ? this.TREBLE_VITAMIN * 1.2 : this.TREBLE_VITAMIN
     const audioSignal = treble * vitamin
     const prevIntensity = this.moverIntensityBuffer

@@ -448,14 +448,16 @@ export class ContextualEffectSelector {
     const shouldStrike = this.evaluateHuntFuzzy(input)
     
     // 🔥 WAVE 811: UNIFIED BRAIN - Hunt usa worthiness, no shouldStrike
+    // 🔪 WAVE 814.2: Ahora usa getHighImpactEffect() - Vibe-aware impact
     // Si HuntEngine detecta momento digno (worthiness >= 0.65), considerar strike
     const WORTHINESS_THRESHOLD = 0.65
     if (input.huntDecision && input.huntDecision.worthiness >= WORTHINESS_THRESHOLD && shouldStrike.should) {
-      console.log(`[EffectSelector 🚀] HUNT HIGH WORTHINESS: solar_flare (worthiness=${input.huntDecision.worthiness.toFixed(2)})`)
+      const impactEffect = this.getHighImpactEffect(musicalContext.vibeId)
+      console.log(`[EffectSelector 🚀] HUNT HIGH WORTHINESS: ${impactEffect} [${musicalContext.vibeId}] (worthiness=${input.huntDecision.worthiness.toFixed(2)})`)
       
       // NO revisar cooldown - Hunt tiene prioridad absoluta
       return {
-        effectType: 'solar_flare',
+        effectType: impactEffect, // ✅ Dinámico según vibe
         intensity: Math.max(0.85, input.huntDecision.confidence),  // Mínimo 0.85
         reason: shouldStrike.reason,
         confidence: shouldStrike.confidence,
@@ -603,6 +605,22 @@ export class ContextualEffectSelector {
   // 🌊 WAVE 691: Refactorizado con cooldowns por tipo y protección anti-ghost
   // 🎭 WAVE 700.1: Integración con MoodController
   // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 🔪 WAVE 814.2: HIGH IMPACT EFFECT - Vibe-Aware
+   * Devuelve el efecto de máximo impacto según el vibe actual.
+   * Usado en: DIVINE moments y HUNT HIGH WORTHINESS.
+   * 
+   * Filosofía:
+   * - Techno: industrial_strobe (El Martillo) - Impacto mecánico
+   * - Latino/Default: solar_flare (El Sol) - Explosión dorada
+   */
+  private getHighImpactEffect(vibe: string): string {
+    if (vibe === 'techno-club') {
+      return 'industrial_strobe' // 🔨 El Martillo Techno
+    }
+    return 'solar_flare' // ☀️ Default Latino/Global
+  }
   
   /**
    * 🎭 WAVE 700.1: Verifica si un efecto está disponible
@@ -981,11 +999,16 @@ export class ContextualEffectSelector {
   // PRIVATE: Decision builders
   // ─────────────────────────────────────────────────────────────────────────
   
+  /**
+   * 🔪 WAVE 814.2: DIVINE DECISION - Vibe-Aware Impact
+   * Ahora usa getHighImpactEffect() para respetar la identidad del vibe
+   */
   private divineDecision(musicalContext: MusicalContext): ContextualEffectSelection {
+    const impactEffect = this.getHighImpactEffect(musicalContext.vibeId)
     return {
-      effectType: 'solar_flare',
+      effectType: impactEffect, // ✅ Dinámico: industrial_strobe (Techno) o solar_flare (Latino)
       intensity: 1.0,
-      reason: `🌩️ DIVINE MOMENT! Z=${musicalContext.zScore.toFixed(2)}σ - SOLAR FLARE MANDATORY`,
+      reason: `🌩️ DIVINE MOMENT! [${musicalContext.vibeId}] effect=${impactEffect} Z=${musicalContext.zScore.toFixed(2)}σ - IMPACT MANDATORY`,
       confidence: 0.99,
       isOverride: true,
       musicalContext,

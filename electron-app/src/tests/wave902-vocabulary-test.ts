@@ -13,25 +13,25 @@
 
 import { EffectManager } from '../core/effects/EffectManager'
 
-// Importar las constantes del DreamSimulator (líneas 122-137)
+// Importar las constantes del DreamSimulator (WAVE 902.1: TRUTH)
+// 🎯 Only 2 genres implemented: Latina (10) + Techno (3)
 const DREAM_EFFECT_CATEGORIES = {
   'techno-industrial': [
     'industrial_strobe',
     'acid_sweep',
-    'cyber_dualism',
-    'strobe_storm'
+    'cyber_dualism'
   ],
   'latino-organic': [
     'solar_flare',
+    'strobe_storm',
+    'strobe_burst',
+    'tidal_wave',
+    'ghost_breath',
     'tropical_pulse',
     'salsa_fire',
+    'cumbia_moon',
     'clave_rhythm',
     'corazon_latino'
-  ],
-  'chill-ambient': [
-    'ghost_breath',
-    'tidal_wave',
-    'cumbia_moon'
   ]
 }
 
@@ -63,8 +63,8 @@ async function runVocabularyTests() {
   let test1Pass = true
   const allDreamEffects = [
     ...DREAM_EFFECT_CATEGORIES['techno-industrial'],
-    ...DREAM_EFFECT_CATEGORIES['latino-organic'],
-    ...DREAM_EFFECT_CATEGORIES['chill-ambient']
+    ...DREAM_EFFECT_CATEGORIES['latino-organic']
+    // No chill-ambient - not implemented yet
   ]
   
   for (const effect of allDreamEffects) {

@@ -208,9 +208,9 @@ const VIBE_COHERENCE: EthicalValue = {
       check: (context, effect) => {
         // Boost efectos que matchen perfectamente con vibe
         
-        // Techno + industrial effects (WAVE 902: SYNCED)
+        // Techno + industrial effects (WAVE 902.1: TRUTH - 3 effects)
         if (context.vibe.includes('techno')) {
-          const technoEffects = ['industrial_strobe', 'acid_sweep', 'cyber_dualism', 'strobe_storm']
+          const technoEffects = ['industrial_strobe', 'acid_sweep', 'cyber_dualism']
           if (technoEffects.includes(effect.effect)) {
             return {
               passed: true,
@@ -220,26 +220,15 @@ const VIBE_COHERENCE: EthicalValue = {
           }
         }
         
-        // Latino + organic effects (WAVE 902: SYNCED)
+        // Latino + organic effects (WAVE 902.1: TRUTH - 10 effects)
         if (context.vibe.includes('latino')) {
-          const latinoEffects = ['solar_flare', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'corazon_latino']
+          const latinoEffects = ['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath',
+                                  'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino']
           if (latinoEffects.includes(effect.effect)) {
             return {
               passed: true,
               boost: 0.15,
               reason: 'Perfect Latino match'
-            }
-          }
-        }
-        
-        // Chill + ambient effects (WAVE 902: SYNCED)
-        if (context.vibe.includes('chill')) {
-          const chillEffects = ['ghost_breath', 'tidal_wave', 'cumbia_moon']
-          if (chillEffects.includes(effect.effect)) {
-            return {
-              passed: true,
-              boost: 0.15,
-              reason: 'Perfect Chill match'
             }
           }
         }

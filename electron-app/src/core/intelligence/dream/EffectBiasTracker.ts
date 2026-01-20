@@ -91,25 +91,24 @@ const ABUSE_THRESHOLD = 0.5         // >50% = abuso
 const NEGLECT_THRESHOLD = 0.05      // <5% = neglect
 const FORGOTTEN_THRESHOLD = 50      // No usado en últimos 50 = olvidado
 
-// Efectos conocidos (ALL_EFFECTS del sistema - WAVE 902: SYNCED)
+// Efectos conocidos (ALL_EFFECTS del sistema - WAVE 902.1: TRUTH)
+// 🎯 Only 2 genres: Latina (10) + Techno (3)
 const KNOWN_EFFECTS = [
-  // 🌴 LATINO-ORGANIC
+  // 🌴 LATINO-ORGANIC (10 effects)
   'solar_flare',
-  'tropical_pulse',
-  'salsa_fire',
-  'clave_rhythm',
-  'corazon_latino',
-  // 🔪 TECHNO-INDUSTRIAL
-  'industrial_strobe',
-  'acid_sweep',
-  'cyber_dualism',
   'strobe_storm',
-  // 🌙 CHILL-AMBIENT
+  'strobe_burst',
   'tidal_wave',
   'ghost_breath',
+  'tropical_pulse',
+  'salsa_fire',
   'cumbia_moon',
-  // 🔥 WAVE 680/691
-  'strobe_burst'
+  'clave_rhythm',
+  'corazon_latino',
+  // 🔪 TECHNO-INDUSTRIAL (3 effects)
+  'industrial_strobe',
+  'acid_sweep',
+  'cyber_dualism'
 ] as const
 
 // ═══════════════════════════════════════════════════════════════

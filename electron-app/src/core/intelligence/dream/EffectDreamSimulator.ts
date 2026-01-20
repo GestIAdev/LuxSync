@@ -123,82 +123,84 @@ export interface EffectDreamResult {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Efectos conocidos agrupados por categoría (SYNCED with EffectManager registry)
+// 🎯 WAVE 902.1: TRUTH - Only 2 genres implemented (Latina + Techno)
 const EFFECT_CATEGORIES = {
   'techno-industrial': [
     'industrial_strobe',  // ✅ WAVE 780: The hammer
     'acid_sweep',         // ✅ WAVE 780: The blade
-    'cyber_dualism',      // ✅ WAVE 810: The twins
-    'strobe_storm'        // ✅ WAVE 680: Harsh techno strobe
+    'cyber_dualism'       // ✅ WAVE 810: The twins
   ],
   'latino-organic': [
     'solar_flare',        // ✅ WAVE 600: Takeover
+    'strobe_storm',       // ✅ WAVE 680: Harsh (multi-genre, latina compatible)
+    'strobe_burst',       // ✅ WAVE 691: Rhythmic latina strobe
+    'tidal_wave',         // ✅ WAVE 680: Wave flow
+    'ghost_breath',       // ✅ WAVE 680: Soft breathing
     'tropical_pulse',     // ✅ WAVE 692: Conga bursts
     'salsa_fire',         // ✅ WAVE 692: Fire flicker
+    'cumbia_moon',        // ✅ WAVE 692: Moon glow
     'clave_rhythm',       // ✅ WAVE 700.6: 3-2 pattern
     'corazon_latino'      // ✅ WAVE 750: Heartbeat passion
-  ],
-  'chill-ambient': [
-    'ghost_breath',       // ✅ WAVE 680: Soft breathing
-    'tidal_wave',         // ✅ WAVE 680: Wave flow
-    'cumbia_moon'         // ✅ WAVE 692: Moon glow
   ]
+  // 🚧 chill-ambient: NOT IMPLEMENTED YET
+  // 🚧 pop-rock: NOT IMPLEMENTED YET
 }
 
-// Pesos de belleza por tipo de efecto (WAVE 902: SYNCED with real effects)
+// Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
 const EFFECT_BEAUTY_WEIGHTS = {
-  // 🔪 TECHNO-INDUSTRIAL
+  // 🔪 TECHNO-INDUSTRIAL (3 effects)
   'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
-  'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },  // 🌀 Fixed from laser_sweep
+  'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
   'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
-  'strobe_storm': { base: 0.80, energyMultiplier: 1.25, technoBonus: 0.18 },
-  // 🌴 LATINO-ORGANIC
+  // 🌴 LATINO-ORGANIC (10 effects)
   'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
-  'tropical_pulse': { base: 0.80, energyMultiplier: 1.2, latinoBonus: 0.15 },
-  'salsa_fire': { base: 0.75, energyMultiplier: 1.1, latinoBonus: 0.12 },
-  'clave_rhythm': { base: 0.70, energyMultiplier: 1.0, latinoBonus: 0.10 },
-  'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 },
-  // 🌙 CHILL-AMBIENT
-  'ghost_breath': { base: 0.70, energyMultiplier: 0.8, chillBonus: 0.15 },
-  'tidal_wave': { base: 0.65, energyMultiplier: 0.9, chillBonus: 0.12 },
-  'cumbia_moon': { base: 0.60, energyMultiplier: 0.7, chillBonus: 0.10 }
+  'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
+  'strobe_burst': { base: 0.78, energyMultiplier: 1.22, latinoBonus: 0.16 },
+  'tidal_wave': { base: 0.72, energyMultiplier: 1.05, latinoBonus: 0.12 },
+  'ghost_breath': { base: 0.68, energyMultiplier: 0.95, latinoBonus: 0.10 },
+  'tropical_pulse': { base: 0.82, energyMultiplier: 1.25, latinoBonus: 0.17 },
+  'salsa_fire': { base: 0.76, energyMultiplier: 1.15, latinoBonus: 0.14 },
+  'cumbia_moon': { base: 0.70, energyMultiplier: 1.00, latinoBonus: 0.11 },
+  'clave_rhythm': { base: 0.74, energyMultiplier: 1.10, latinoBonus: 0.13 },
+  'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 }
 } as const
 
-// GPU cost por efecto (WAVE 902: SYNCED)
+// GPU cost por efecto (WAVE 902.1: TRUTH)
 const EFFECT_GPU_COST = {
   // 🔪 TECHNO-INDUSTRIAL (Alta intensidad)
   'industrial_strobe': 0.25,
-  'acid_sweep': 0.30,        // 🌀 Fixed from laser_sweep
+  'acid_sweep': 0.30,
   'cyber_dualism': 0.28,
-  'strobe_storm': 0.32,
-  // 🌴 LATINO-ORGANIC (Media intensidad)
+  // 🌴 LATINO-ORGANIC (Media-Alta intensidad)
   'solar_flare': 0.22,
+  'strobe_storm': 0.32,
+  'strobe_burst': 0.28,
+  'tidal_wave': 0.10,
+  'ghost_breath': 0.12,
   'tropical_pulse': 0.20,
   'salsa_fire': 0.18,
+  'cumbia_moon': 0.08,
   'clave_rhythm': 0.15,
-  'corazon_latino': 0.24,
-  // 🌙 CHILL-AMBIENT (Baja intensidad)
-  'ghost_breath': 0.12,
-  'tidal_wave': 0.10,
-  'cumbia_moon': 0.08
+  'corazon_latino': 0.24
 } as const
 
-// Fatigue impact por efecto (WAVE 902: SYNCED)
+// Fatigue impact por efecto (WAVE 902.1: TRUTH)
 const EFFECT_FATIGUE_IMPACT = {
   // 🔪 TECHNO-INDUSTRIAL (Aumenta fatiga)
   'industrial_strobe': 0.08,
-  'acid_sweep': 0.07,        // 🌀 Fixed from laser_sweep
-  'strobe_storm': 0.09,
+  'acid_sweep': 0.07,
   'cyber_dualism': 0.06,
-  // 🌴 LATINO-ORGANIC (Neutral-Positivo)
-  'solar_flare': 0.05,
+  // 🌴 LATINO-ORGANIC (Mixto: strobes aumentan, suaves reducen)
+  'solar_flare': 0.06,
+  'strobe_storm': 0.09,
+  'strobe_burst': 0.07,
+  'tidal_wave': -0.01,     // Suave, reduce fatiga
+  'ghost_breath': -0.02,   // Breathing, reduce fatiga
   'tropical_pulse': 0.04,
   'salsa_fire': 0.03,
+  'cumbia_moon': -0.03,    // Moon glow, reduce fatiga
   'clave_rhythm': 0.02,
-  'corazon_latino': 0.06,
-  // 🌙 CHILL-AMBIENT (Reduce fatiga - REST)
-  'ghost_breath': -0.02,
-  'tidal_wave': -0.01,
-  'cumbia_moon': -0.03
+  'corazon_latino': 0.05
 } as const
 
 // ═══════════════════════════════════════════════════════════════
@@ -452,14 +454,13 @@ export class EffectDreamSimulator {
     // Energy multiplier
     beauty *= (1 + (context.energy - 0.5) * (weights.energyMultiplier - 1))
     
-    // Vibe bonus
+    // Vibe bonus (WAVE 902.1: Only Techno + Latino implemented)
     if (context.vibe.includes('techno') && 'technoBonus' in weights) {
       beauty += weights.technoBonus
     } else if (context.vibe.includes('latino') && 'latinoBonus' in weights) {
       beauty += weights.latinoBonus
-    } else if (context.vibe.includes('chill') && 'chillBonus' in weights) {
-      beauty += weights.chillBonus
     }
+    // Note: chillBonus removed - chill genre not implemented yet
     
     // Intensity factor
     beauty *= (0.7 + 0.3 * effect.intensity)
@@ -582,30 +583,23 @@ export class EffectDreamSimulator {
   }
   
   private calculateVibeCoherence(effect: EffectCandidate, context: AudienceSafetyContext): number {
-    // WAVE 902: SYNCED Vibe coherence with real effects
+    // WAVE 902.1: TRUTH - Only Techno + Latino implemented
     if (context.vibe.includes('techno')) {
-      if (['industrial_strobe', 'acid_sweep', 'cyber_dualism', 'strobe_storm'].includes(effect.effect)) {
+      if (['industrial_strobe', 'acid_sweep', 'cyber_dualism'].includes(effect.effect)) {
         return 1.0
-      } else if (effect.effect === 'solar_flare') {
-        return 0.0 // HEREJÍA
+      } else if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
+        return 0.0 // HEREJÍA - Latino en sesión Techno
       }
       return 0.5
     }
     
-    // WAVE 902: SYNCED with real Latino effects
+    // WAVE 902.1: TRUTH - Latino effects (all 10)
     if (context.vibe.includes('latino')) {
-      if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
+      if (['solar_flare', 'strobe_storm', 'strobe_burst', 'tidal_wave', 'ghost_breath', 
+           'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm', 'corazon_latino'].includes(effect.effect)) {
         return 1.0
       }
       return 0.6
-    }
-    
-    // WAVE 902: SYNCED with real Chill effects
-    if (context.vibe.includes('chill')) {
-      if (['ghost_breath', 'tidal_wave', 'cumbia_moon'].includes(effect.effect)) {
-        return 1.0
-      }
-      return 0.5
     }
     
     return 0.7 // Neutral para vibes desconocidos

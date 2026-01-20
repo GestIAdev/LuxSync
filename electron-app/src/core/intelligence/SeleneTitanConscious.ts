@@ -158,6 +158,16 @@ import {
 } from '../effects/ContextualEffectSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌀 WAVE 900.4: DREAM ENGINE INTEGRATOR - Cerebro Unificado
+// ═══════════════════════════════════════════════════════════════════════════
+
+import {
+  dreamEngineIntegrator,
+  type PipelineContext,
+  type IntegrationDecision,
+} from './integration/DreamEngineIntegrator'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 810.5: EFFECT MANAGER IMPORT (for cooldown surgery)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -249,6 +259,11 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastEffectType: string | null = null
   private energyTrend: 'rising' | 'stable' | 'falling' = 'stable'
   private energyHistory: number[] = []
+  
+  // 🌀 WAVE 900.4: Dream Engine Integration
+  private lastDreamDecision: IntegrationDecision | null = null
+  private lastDreamTimestamp: number = 0
+  private effectHistory: Array<{ type: string; timestamp: number }> = []
   
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
@@ -441,6 +456,7 @@ export class SeleneTitanConscious extends EventEmitter {
   /**
    * 🧠 Decidir qué hacer basado en el patrón percibido
    * PHASE 3: USA HuntEngine + PredictionEngine + DecisionMaker
+   * 🌀 WAVE 900.4: Integra DreamEngine (non-blocking via cache)
    */
   private think(
     state: TitanStabilizedState,
@@ -518,7 +534,7 @@ export class SeleneTitanConscious extends EventEmitter {
     let output = makeDecision(inputs)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // � WAVE 685: CONTEXTUAL EFFECT SELECTION
+    //  WAVE 685: CONTEXTUAL EFFECT SELECTION
     // "MG Music: Sonido e Iluminación Contextual IA"
     // ═══════════════════════════════════════════════════════════════════════
     
@@ -547,19 +563,114 @@ export class SeleneTitanConscious extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // � WAVE 812: THE GATEKEEPER - Unified Availability Check
-    // DecisionMaker PROPONE, el Gatekeeper DISPONE
+    // 🌀 WAVE 900.4: DREAM ENGINE INTEGRATION
+    // Hunt → Dream → Conscience → Gatekeeper → Execute
     // ═══════════════════════════════════════════════════════════════════════
     
     let finalEffectDecision = null
+    let dreamIntegrationUsed = false
     
-    // 1. Ver qué quiere el Rey (DecisionMaker)
-    if (output.effectDecision) {
+    // 1. Si Hunt detectó momento digno, ACTIVAR CEREBRO COMPLETO
+    const WORTHINESS_THRESHOLD = 0.65
+    if (huntDecision.worthiness >= WORTHINESS_THRESHOLD) {
+      // Construir contexto para el pipeline integrado
+      const pipelineContext: PipelineContext = {
+        pattern: {
+          vibe: pattern.vibeId,
+          energy: state.rawEnergy,
+          tempo: pattern.bpm,
+        },
+        huntDecision: {
+          worthiness: huntDecision.worthiness,
+          confidence: huntDecision.confidence,
+        },
+        crowdSize: 500,  // TODO: Hacer configurable desde UI
+        epilepsyMode: false,  // TODO: Conectar con config de safety
+        estimatedFatigue: this.lastEffectTimestamp ? 
+          Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
+        gpuLoad: 0.5,  // TODO: Conectar con métricas reales
+        maxLuminosity: 100,
+        recentEffects: this.effectHistory.slice(-10).map(e => ({ 
+          effect: e.type, 
+          timestamp: e.timestamp 
+        })),
+      }
+      
+      // EJECUTAR PIPELINE: Fire-and-forget con resultado cacheado
+      // El pipeline es async pero muy rápido (<10ms). Usamos .then() para no bloquear
+      // y aplicamos el resultado si está listo antes de que termine el frame.
+      dreamEngineIntegrator.executeFullPipeline(pipelineContext)
+        .then(integrationDecision => {
+          // Guardar resultado para uso inmediato si llegó a tiempo
+          this.lastDreamDecision = integrationDecision
+          this.lastDreamTimestamp = Date.now()
+        })
+        .catch(err => {
+          console.warn('[SeleneTitanConscious] 🌀 Dream pipeline error:', err)
+        })
+      
+      // Usar último resultado del dream si es reciente (<100ms)
+      if (this.lastDreamDecision && 
+          this.lastDreamTimestamp && 
+          Date.now() - this.lastDreamTimestamp < 100) {
+        const integrationDecision = this.lastDreamDecision
+        
+        if (integrationDecision.approved && integrationDecision.effect) {
+          // ✅ DREAM + CONSCIENCE APROBARON
+          const intent = integrationDecision.effect.effect
+          const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
+          
+          if (availability.available) {
+            finalEffectDecision = {
+              effectType: intent,
+              intensity: integrationDecision.effect.intensity,
+              zones: integrationDecision.effect.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
+              reason: `🌀 DREAM: ${integrationDecision.dreamRecommendation} | Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`,
+              confidence: integrationDecision.ethicalVerdict?.ethicalScore ?? 0.7,
+            }
+            dreamIntegrationUsed = true
+            
+            console.log(
+              `[SeleneTitanConscious] 🌀 DREAM APPROVED: ${intent} | ` +
+              `Dream: ${integrationDecision.dreamTime}ms | Filter: ${integrationDecision.filterTime}ms | ` +
+              `Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`
+            )
+            
+            // Limpiar cache usado
+            this.lastDreamDecision = null
+          } else {
+            // Dream aprobó pero Gatekeeper bloqueó (cooldown)
+            console.log(
+              `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED DREAM: ${intent} | ${availability.reason}`
+            )
+            
+            // Intentar con alternativas del dream
+            for (const alt of integrationDecision.alternatives) {
+              const altAvail = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
+              if (altAvail.available) {
+                finalEffectDecision = {
+                  effectType: alt.effect,
+                  intensity: alt.intensity,
+                  zones: alt.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
+                  reason: `🌀 DREAM ALT: ${alt.effect} (primary blocked by cooldown)`,
+                  confidence: 0.6,
+                }
+                dreamIntegrationUsed = true
+                console.log(`[SeleneTitanConscious] 🌀 DREAM ALTERNATIVE: ${alt.effect}`)
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 2. Si DecisionMaker tiene INTENT y Dream no intervino
+    if (!finalEffectDecision && output.effectDecision && !dreamIntegrationUsed) {
       const intent = output.effectDecision.effectType
       const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
       
       if (availability.available) {
-        // ✅ PASE VIP CONCEDIDO - El efecto puede disparar
         finalEffectDecision = output.effectDecision
         
         if (this.config.debug) {
@@ -568,12 +679,10 @@ export class SeleneTitanConscious extends EventEmitter {
           )
         }
       } else {
-        // ❌ REBOTADO - Intent bloqueado por cooldown/mood
         console.log(
           `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
         )
         
-        // Limpiar la effectDecision del output (el intent fue rechazado)
         output = {
           ...output,
           effectDecision: null,
@@ -585,13 +694,10 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // 2. Si el Rey calla (o fue bloqueado), preguntar al DJ (Selector Fallback)
+    // 3. FALLBACK: Si nadie decidió, preguntar al Selector Contextual
     if (!finalEffectDecision) {
-      // 🎯 FALLBACK: SELECCIÓN CONTEXTUAL DE EFECTO
       const effectSelection = this.effectSelector.select(selectorInput)
     
-      // Si hay un efecto que disparar, añadirlo al output
-      // NOTA: El Selector YA hace su propio checkAvailability internamente
       if (effectSelection.effectType) {
         finalEffectDecision = {
           effectType: effectSelection.effectType,
@@ -623,12 +729,23 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // Track para cooldown y anti-repetición (solo si hay efecto final)
+    // 4. Track para cooldown y anti-repetición
     if (finalEffectDecision) {
       this.lastEffectTimestamp = Date.now()
       this.lastEffectType = finalEffectDecision.effectType
       
-      // Emit event para telemetría
+      // 🌀 WAVE 900.4: Track para Dream Engine
+      this.effectHistory.push({
+        type: finalEffectDecision.effectType,
+        timestamp: Date.now(),
+      })
+      // Mantener solo últimos 20 efectos
+      if (this.effectHistory.length > 20) {
+        this.effectHistory.shift()
+      }
+      
+      output = { ...output, effectDecision: finalEffectDecision }
+      
       this.emit('contextualEffectSelected', {
         effectType: finalEffectDecision.effectType,
         intensity: finalEffectDecision.intensity,
@@ -636,6 +753,7 @@ export class SeleneTitanConscious extends EventEmitter {
         section: selectorSection,
         vibeId: pattern.vibeId,
         reason: finalEffectDecision.reason || 'unknown',
+        dreamIntegrated: dreamIntegrationUsed,
       })
     }
     

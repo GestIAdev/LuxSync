@@ -447,24 +447,23 @@ export class ContextualEffectSelector {
     
     const shouldStrike = this.evaluateHuntFuzzy(input)
     
-    // 🔥 WAVE 811: UNIFIED BRAIN - Hunt usa worthiness, no shouldStrike
-    // 🔪 WAVE 814.2: Ahora usa getHighImpactEffect() - Vibe-aware impact
-    // Si HuntEngine detecta momento digno (worthiness >= 0.65), considerar strike
-    const WORTHINESS_THRESHOLD = 0.65
-    if (input.huntDecision && input.huntDecision.worthiness >= WORTHINESS_THRESHOLD && shouldStrike.should) {
-      const impactEffect = this.getHighImpactEffect(musicalContext.vibeId)
-      console.log(`[EffectSelector 🚀] HUNT HIGH WORTHINESS: ${impactEffect} [${musicalContext.vibeId}] (worthiness=${input.huntDecision.worthiness.toFixed(2)})`)
-      
-      // NO revisar cooldown - Hunt tiene prioridad absoluta
-      return {
-        effectType: impactEffect, // ✅ Dinámico según vibe
-        intensity: Math.max(0.85, input.huntDecision.confidence),  // Mínimo 0.85
-        reason: shouldStrike.reason,
-        confidence: shouldStrike.confidence,
-        isOverride: true,  // Marca como override
-        musicalContext,    // Inyectar contexto
-      }
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // 🌀 WAVE 900.4: CEREBRO UNIFICADO
+    // ───────────────────────────────────────────────────────────────
+    // El camino HUNT HIGH WORTHINESS fue ELIMINADO de aquí.
+    // 
+    // ANTES (WAVE 814.2): Dos cerebros competían por disparar:
+    //   - DecisionMaker → INTENT
+    //   - ContextualEffectSelector → HUNT HIGH WORTHINESS
+    //   RESULTADO: Doble disparo, esquizofrenia
+    //
+    // AHORA (WAVE 900): Un solo cerebro decide:
+    //   DecisionMaker → DreamEngineIntegrator → VisualConscienceEngine
+    //   ContextualEffectSelector es SOLO FALLBACK cuando DecisionMaker calla
+    //
+    // El flujo Hunt ahora pasa por SeleneTitanConscious:
+    //   Hunt → Dream → Conscience → Gatekeeper → Execute
+    // ═══════════════════════════════════════════════════════════════
     
     if (!shouldStrike.should) {
       return this.noEffectDecision(musicalContext, shouldStrike.reason)

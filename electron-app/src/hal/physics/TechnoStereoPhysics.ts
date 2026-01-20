@@ -103,24 +103,25 @@ export class TechnoStereoPhysics {
   // =========================================================================
   
   // 🎯 MOVERS = TREBLE (Acid leads, synth stabs)
-  private readonly TREBLE_VITAMIN = 2.5              // 🔪 SUBIDO de 2.2 (más agresivo)
-  private readonly ACTIVATION_THRESHOLD = 0.12       // 🔪 BAJADO de 0.15 (más sensible)
-  private readonly VISIBILITY_FLOOR = 0.15           // 🔪 BAJADO de 0.18 (menos floor)
-  private readonly HYSTERESIS_MARGIN = 0.04          // 🔪 BAJADO de 0.06 (menos histéresis)
+  // 🌀 WAVE 905: Threshold SUBIDO - Blackout logic
+  private readonly TREBLE_VITAMIN = 2.5              // 🔪 Mantener agresividad
+  private readonly ACTIVATION_THRESHOLD = 0.40       // 🔪 SUBIDO de 0.12 (blackout logic)
+  private readonly VISIBILITY_FLOOR = 0.15           // 🔪 Floor limpio
+  private readonly HYSTERESIS_MARGIN = 0.04          // 🔪 Histéresis estrecha
   // ❌ INTENSITY_SMOOTHING ERRADICADO - El techno no suaviza
-  private readonly MIN_STABLE_FRAMES = 1             // 🔪 BAJADO de 2 (reacción más rápida)
-  private readonly STROBE_THRESHOLD = 0.80           // 🔪 BAJADO de 0.85 (más strobo)
-  private readonly STROBE_DURATION = 30              // 🔪 BAJADO de 40ms (flash más corto)
+  private readonly MIN_STABLE_FRAMES = 1             // 🔪 Reacción rápida
+  private readonly STROBE_THRESHOLD = 0.80           // 🔪 Strobo agresivo
+  private readonly STROBE_DURATION = 30              // 🔪 Flash corto
   
   // 🔊 FRONT PARS = BASS (Bombo 4x4, el corazón)
-  // Gate BAJO para techno - el bombo es constante
-  private readonly FRONT_PAR_GATE_ON = 0.30          // 🔪 BAJADO de 0.35 (más bombo)
-  private readonly FRONT_PAR_GATE_OFF = 0.22         // 🔪 Histéresis estrecha
+  // 🌀 WAVE 905: Gate SUBIDO - Solo el kick REAL pasa
+  private readonly FRONT_PAR_GATE_ON = 0.45          // 🔪 SUBIDO de 0.30 (romper ladrillo)
+  private readonly FRONT_PAR_GATE_OFF = 0.35         // 🔪 Histéresis más alta
   
   // 🥁 BACK PARS = MID ("The Slap" - la bofetada de mamá)
-  // Gate ALTO + Multiplicador BRUTAL = solo transientes
-  private readonly BACK_PAR_GATE = 0.28              // 🔪 SUBIDO de 0.25 (solo picos)
-  private readonly BACK_PAR_SLAP_MULT = 1.8          // 🔪 "The Slap" multiplicador
+  // 🌀 WAVE 905: Gate BRUTAL - Matar voces, solo transientes
+  private readonly BACK_PAR_GATE = 0.55              // 🔪 SUBIDO de 0.28 (matar voces)
+  private readonly BACK_PAR_SLAP_MULT = 2.0          // 🔪 "The Slap" SUBIDO de 1.8
   
   // 🧪 SPECTRAL THRESHOLDS
   private readonly HARSHNESS_ACID_THRESHOLD = 0.60   // Umbral para modo ácido
@@ -279,10 +280,10 @@ export class TechnoStereoPhysics {
   /**
    * 🔊 Front PAR = BASS (Bombo 4x4) - EL CORAZÓN DEL TECHNO
    * 
-   * WAVE 770 UPGRADES:
-   * - Gate más bajo (0.30) para capturar más bombo
-   * - Histéresis estrecha (0.08) para respuesta rápida
-   * - Cap 0.85 (más headroom que antes)
+   * 🌀 WAVE 905: THE VOID & THE STRIKE
+   * - Gate 0.45 (SUBIDO) - Solo el kick REAL pasa
+   * - Curva AGRESIVA: exponente 2.0 (romper ladrillo)
+   * - Subgraves sostenidos desaparecen, solo golpes
    */
   private calculateFrontPar(bass: number): number {
     if (this.frontParActive) {
@@ -299,10 +300,10 @@ export class TechnoStereoPhysics {
       this.frontParActive = true
     }
     
-    // 🔪 WAVE 770: Normalizar desde gate de encendido
+    // 🌀 WAVE 905: Normalizar desde gate de encendido
     const gated = (bass - this.FRONT_PAR_GATE_ON) / (1 - this.FRONT_PAR_GATE_ON)
-    // Curva agresiva: exponente 0.5 = más sensible a valores bajos
-    const intensity = Math.pow(Math.max(0, gated), 0.5)
+    // 🌀 Curva BRUTAL: exponente 2.0 = solo picos extremos (era 0.5)
+    const intensity = Math.pow(Math.max(0, gated), 2.0)
     return Math.min(0.85, Math.max(0, intensity))  // Cap 0.85
   }
   
@@ -334,10 +335,10 @@ export class TechnoStereoPhysics {
   /**
    * 🎯 Movers = TREBLE (Acid leads, synth stabs)
    * 
-   * WAVE 770 UPGRADES:
-   * - Sin suavizado (INTENSITY_SMOOTHING erradicado)
-   * - Decay brutal: 5% retención = 0 en 1-2 frames
-   * - acidMode: +20% vitamina cuando harshness alto
+   * 🌀 WAVE 905: BLACKOUT LOGIC
+   * - Threshold 0.40 (SUBIDO) - Pads y Hi-Hats a negro
+   * - Decay INSTANTÁNEO: target puro, sin media ponderada
+   * - Solo Leads ácidos o Stabs fuertes encienden motores
    */
   private calculateMover(treble: number, acidMode: boolean = false): { intensity: number; active: boolean } {
     // 🔪 Vitamina extra en modo ácido
@@ -355,7 +356,7 @@ export class TechnoStereoPhysics {
       rawTarget = 0.20 + (audioSignal - this.ACTIVATION_THRESHOLD) * 0.80 / (1 - this.ACTIVATION_THRESHOLD)
     } else if (audioSignal > deactivationThreshold && this.moverState) {
       shouldBeOn = true
-      // 🔪 Retención mínima: 30% (antes era 40%)
+      // 🔪 Retención mínima: 30%
       rawTarget = prevIntensity * 0.30
     } else {
       shouldBeOn = false
@@ -365,18 +366,18 @@ export class TechnoStereoPhysics {
     let finalState = this.moverState
     if (shouldBeOn !== this.moverState) {
       if (shouldBeOn) {
-        // 🔪 ENCENDER = INSTANTÁNEO (0 frames de espera)
+        // 🔪 ENCENDER = INSTANTÁNEO
         finalState = true
         this.stabilityCounter = 0
       } else if (this.stabilityCounter >= this.MIN_STABLE_FRAMES) {
-        // 🔪 APAGAR = 1 frame de estabilidad (era 2)
+        // 🔪 APAGAR = 1 frame de estabilidad
         finalState = false
         this.stabilityCounter = 0
       } else {
         this.stabilityCounter++
         finalState = this.moverState
         if (this.moverState && rawTarget === 0) {
-          // 🔪 Decay más brutal: 50% (era 70%)
+          // 🔪 Decay brutal: 50%
           rawTarget = prevIntensity * 0.50
         }
       }
@@ -384,18 +385,17 @@ export class TechnoStereoPhysics {
       this.stabilityCounter = 0
     }
     
-    // 🔪 WAVE 770: SIN SMOOTHING - Respuesta directa
+    // 🌀 WAVE 905: DECAY INSTANTÁNEO - Si música para, luz muere en 0ms
     let finalIntensity: number
     if (rawTarget > prevIntensity) {
-      // ATTACK = INSTANTÁNEO (igual que antes, el techno no espera)
+      // ATTACK = INSTANTÁNEO
       finalIntensity = rawTarget
     } else {
-      // 🔪 DECAY BRUTAL - 5% retención = cae a 0 en 1-2 frames
-      // Antes era 10%. Ahora es KATANA.
-      finalIntensity = prevIntensity * 0.05 + rawTarget * 0.95
+      // 🌀 DECAY INSTANTÁNEO: target puro (era: prev * 0.05 + target * 0.95)
+      finalIntensity = rawTarget
     }
     
-    // 🔪 Floor más bajo para cortes más limpios
+    // 🔪 Floor para cortes limpios
     const cleanedIntensity = finalIntensity < this.VISIBILITY_FLOOR ? 0 : Math.min(1, finalIntensity)
     this.moverIntensityBuffer = cleanedIntensity
     this.moverState = cleanedIntensity > 0 ? finalState : false

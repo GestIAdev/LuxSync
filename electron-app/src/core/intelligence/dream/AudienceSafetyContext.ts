@@ -334,11 +334,12 @@ export function estimateGpuLoad(
   // Últimos 5 efectos
   const recent = recentEffects.slice(-5)
   
-  // Efectos "pesados" conocidos
+  // Efectos "pesados" conocidos (WAVE 902: SYNCED)
   const HEAVY_EFFECTS = new Set([
     'industrial_strobe',
-    'laser_sweep',
-    'rainbow_spiral'
+    'acid_sweep',          // 🌀 Fixed from laser_sweep
+    'strobe_storm',
+    'cyber_dualism'
   ])
   
   let load = 0.0

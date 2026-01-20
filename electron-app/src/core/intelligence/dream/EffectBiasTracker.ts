@@ -91,18 +91,25 @@ const ABUSE_THRESHOLD = 0.5         // >50% = abuso
 const NEGLECT_THRESHOLD = 0.05      // <5% = neglect
 const FORGOTTEN_THRESHOLD = 50      // No usado en últimos 50 = olvidado
 
-// Efectos conocidos (ALL_EFFECTS del sistema)
+// Efectos conocidos (ALL_EFFECTS del sistema - WAVE 902: SYNCED)
 const KNOWN_EFFECTS = [
+  // 🌴 LATINO-ORGANIC
   'solar_flare',
-  'tidal_wave',
+  'tropical_pulse',
+  'salsa_fire',
+  'clave_rhythm',
+  'corazon_latino',
+  // 🔪 TECHNO-INDUSTRIAL
   'industrial_strobe',
   'acid_sweep',
   'cyber_dualism',
-  'borealis_wave',
-  'laser_sweep',
-  'rainbow_spiral',
-  'fire_burst',
-  'ice_cascade'
+  'strobe_storm',
+  // 🌙 CHILL-AMBIENT
+  'tidal_wave',
+  'ghost_breath',
+  'cumbia_moon',
+  // 🔥 WAVE 680/691
+  'strobe_burst'
 ] as const
 
 // ═══════════════════════════════════════════════════════════════

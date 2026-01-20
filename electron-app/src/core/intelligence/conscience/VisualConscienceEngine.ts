@@ -266,8 +266,9 @@ export class VisualConscienceEngine {
         confidence: 0.7
       })
     } else if (context.vibe.includes('latino')) {
+      // WAVE 902: SYNCED with real effect
       alternatives.push({
-        effect: 'fire_burst',
+        effect: 'tropical_pulse',
         intensity: 0.6,
         zones: ['all'],
         reasoning: 'Safe Latino fallback',

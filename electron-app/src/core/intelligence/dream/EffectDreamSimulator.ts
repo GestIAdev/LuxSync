@@ -118,66 +118,87 @@ export interface EffectDreamResult {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 
-// Efectos conocidos agrupados por categoría
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌀 WAVE 902: VOCABULARY SYNC - Real effect names only
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Efectos conocidos agrupados por categoría (SYNCED with EffectManager registry)
 const EFFECT_CATEGORIES = {
   'techno-industrial': [
-    'industrial_strobe',
-    'acid_sweep',
-    'cyber_dualism',
-    'laser_sweep'
+    'industrial_strobe',  // ✅ WAVE 780: The hammer
+    'acid_sweep',         // ✅ WAVE 780: The blade
+    'cyber_dualism',      // ✅ WAVE 810: The twins
+    'strobe_storm'        // ✅ WAVE 680: Harsh techno strobe
   ],
   'latino-organic': [
-    'solar_flare',
-    'fire_burst',
-    'rainbow_spiral'
+    'solar_flare',        // ✅ WAVE 600: Takeover
+    'tropical_pulse',     // ✅ WAVE 692: Conga bursts
+    'salsa_fire',         // ✅ WAVE 692: Fire flicker
+    'clave_rhythm',       // ✅ WAVE 700.6: 3-2 pattern
+    'corazon_latino'      // ✅ WAVE 750: Heartbeat passion
   ],
   'chill-ambient': [
-    'borealis_wave',
-    'tidal_wave',
-    'ice_cascade'
+    'ghost_breath',       // ✅ WAVE 680: Soft breathing
+    'tidal_wave',         // ✅ WAVE 680: Wave flow
+    'cumbia_moon'         // ✅ WAVE 692: Moon glow
   ]
 }
 
-// Pesos de belleza por tipo de efecto (simplificado para Phase 1)
+// Pesos de belleza por tipo de efecto (WAVE 902: SYNCED with real effects)
 const EFFECT_BEAUTY_WEIGHTS = {
+  // 🔪 TECHNO-INDUSTRIAL
   'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
-  'acid_sweep': { base: 0.70, energyMultiplier: 1.1, technoBonus: 0.12 },
+  'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },  // 🌀 Fixed from laser_sweep
   'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
+  'strobe_storm': { base: 0.80, energyMultiplier: 1.25, technoBonus: 0.18 },
+  // 🌴 LATINO-ORGANIC
   'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
-  'fire_burst': { base: 0.80, energyMultiplier: 1.2, latinoBonus: 0.15 },
-  'rainbow_spiral': { base: 0.75, energyMultiplier: 1.1, latinoBonus: 0.10 },
-  'borealis_wave': { base: 0.70, energyMultiplier: 0.8, chillBonus: 0.15 },
+  'tropical_pulse': { base: 0.80, energyMultiplier: 1.2, latinoBonus: 0.15 },
+  'salsa_fire': { base: 0.75, energyMultiplier: 1.1, latinoBonus: 0.12 },
+  'clave_rhythm': { base: 0.70, energyMultiplier: 1.0, latinoBonus: 0.10 },
+  'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 },
+  // 🌙 CHILL-AMBIENT
+  'ghost_breath': { base: 0.70, energyMultiplier: 0.8, chillBonus: 0.15 },
   'tidal_wave': { base: 0.65, energyMultiplier: 0.9, chillBonus: 0.12 },
-  'ice_cascade': { base: 0.60, energyMultiplier: 0.7, chillBonus: 0.10 },
-  'laser_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 }
+  'cumbia_moon': { base: 0.60, energyMultiplier: 0.7, chillBonus: 0.10 }
 } as const
 
-// GPU cost por efecto (simplificado)
+// GPU cost por efecto (WAVE 902: SYNCED)
 const EFFECT_GPU_COST = {
+  // 🔪 TECHNO-INDUSTRIAL (Alta intensidad)
   'industrial_strobe': 0.25,
-  'laser_sweep': 0.30,
-  'rainbow_spiral': 0.28,
+  'acid_sweep': 0.30,        // 🌀 Fixed from laser_sweep
+  'cyber_dualism': 0.28,
+  'strobe_storm': 0.32,
+  // 🌴 LATINO-ORGANIC (Media intensidad)
   'solar_flare': 0.22,
-  'fire_burst': 0.20,
-  'acid_sweep': 0.18,
-  'cyber_dualism': 0.15,
-  'borealis_wave': 0.12,
+  'tropical_pulse': 0.20,
+  'salsa_fire': 0.18,
+  'clave_rhythm': 0.15,
+  'corazon_latino': 0.24,
+  // 🌙 CHILL-AMBIENT (Baja intensidad)
+  'ghost_breath': 0.12,
   'tidal_wave': 0.10,
-  'ice_cascade': 0.08
+  'cumbia_moon': 0.08
 } as const
 
-// Fatigue impact por efecto
+// Fatigue impact por efecto (WAVE 902: SYNCED)
 const EFFECT_FATIGUE_IMPACT = {
+  // 🔪 TECHNO-INDUSTRIAL (Aumenta fatiga)
   'industrial_strobe': 0.08,
-  'laser_sweep': 0.07,
-  'solar_flare': 0.06,
-  'fire_burst': 0.05,
-  'rainbow_spiral': 0.05,
-  'acid_sweep': 0.04,
-  'cyber_dualism': 0.03,
-  'borealis_wave': -0.02, // Reduce fatiga
+  'acid_sweep': 0.07,        // 🌀 Fixed from laser_sweep
+  'strobe_storm': 0.09,
+  'cyber_dualism': 0.06,
+  // 🌴 LATINO-ORGANIC (Neutral-Positivo)
+  'solar_flare': 0.05,
+  'tropical_pulse': 0.04,
+  'salsa_fire': 0.03,
+  'clave_rhythm': 0.02,
+  'corazon_latino': 0.06,
+  // 🌙 CHILL-AMBIENT (Reduce fatiga - REST)
+  'ghost_breath': -0.02,
   'tidal_wave': -0.01,
-  'ice_cascade': -0.03
+  'cumbia_moon': -0.03
 } as const
 
 // ═══════════════════════════════════════════════════════════════
@@ -561,9 +582,9 @@ export class EffectDreamSimulator {
   }
   
   private calculateVibeCoherence(effect: EffectCandidate, context: AudienceSafetyContext): number {
-    // Vibe coherence simplificado
+    // WAVE 902: SYNCED Vibe coherence with real effects
     if (context.vibe.includes('techno')) {
-      if (['industrial_strobe', 'acid_sweep', 'cyber_dualism', 'laser_sweep'].includes(effect.effect)) {
+      if (['industrial_strobe', 'acid_sweep', 'cyber_dualism', 'strobe_storm'].includes(effect.effect)) {
         return 1.0
       } else if (effect.effect === 'solar_flare') {
         return 0.0 // HEREJÍA
@@ -571,15 +592,17 @@ export class EffectDreamSimulator {
       return 0.5
     }
     
+    // WAVE 902: SYNCED with real Latino effects
     if (context.vibe.includes('latino')) {
-      if (['solar_flare', 'fire_burst', 'rainbow_spiral'].includes(effect.effect)) {
+      if (['solar_flare', 'tropical_pulse', 'salsa_fire', 'corazon_latino'].includes(effect.effect)) {
         return 1.0
       }
       return 0.6
     }
     
+    // WAVE 902: SYNCED with real Chill effects
     if (context.vibe.includes('chill')) {
-      if (['borealis_wave', 'tidal_wave', 'ice_cascade'].includes(effect.effect)) {
+      if (['ghost_breath', 'tidal_wave', 'cumbia_moon'].includes(effect.effect)) {
         return 1.0
       }
       return 0.5

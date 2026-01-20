@@ -98,18 +98,25 @@ export class TechnoStereoPhysics {
   private static readonly STROBE_LIGHTNESS = 85;
 
   // =========================================================================
-  // � WAVE 911: THE CLEANER - Dry, Clean, Military Precision
+  // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
   // =========================================================================
 
   // 🔊 FRONT (BASS) - Dry & Punchy (Corte militar)
   private readonly FRONT_PAR_GATE_ON = 0.48   // ⬆️ Más estricto (evita Sidechain accidental)
   private readonly FRONT_PAR_GATE_OFF = 0.35  // ⬆️ Corte alto (Secar el bajo)
-  private readonly BASS_VITAMIN_BOOST = 1.5
+  private readonly BASS_VITAMIN_BOOST = 1.8
+
+  // 🛡️ PARANOIA GATE (Para el rebote del AGC)
+  // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
+  // Esto filtra el ruido de fondo inflado, pero deja pasar el Drop (100%)
+  private readonly RECOVERY_GATE_ON = 0.80    // 🚨 Gate paranoico post-silencio
+  private readonly RECOVERY_GATE_OFF = 0.60   // 🚨 Gate off proporcionalmente alto
+  private readonly RECOVERY_DURATION = 2000   // 2 segundos de desconfianza
 
   // 🥁 BACK (SNARE SNIPER - GEOMETRIC MEAN + NOISE GATE)
   // Media geométrica + Curva supresora de ruido
   private readonly BACK_PAR_GATE = 0.30
-  private readonly BACK_PAR_SLAP_MULT = 6.0   // ⬆️ Compensar curva supresora (4.0→6.0)
+  private readonly BACK_PAR_SLAP_MULT = 5.0   // ⬆️ Compensar curva supresora (4.0→6.0)
 
   // 👯 MOVERS (STEREO SPLIT)
   
@@ -133,11 +140,14 @@ export class TechnoStereoPhysics {
 
   private strobeActive = false
   private strobeStartTime = 0
-  // Decays (aunque buscamos instantaneidad, mantenemos vars por si acaso)
   private frontParActive = false
 
+  // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
+  private lastSilenceTime = 0
+  private inSilence = false
+
   constructor() {
-    console.log('[TechnoStereoPhysics] � WAVE 911: THE CLEANER - Dry, Clean, Military - Initialized')
+    console.log('[TechnoStereoPhysics] 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection - Initialized')
   }
 
   // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...
@@ -169,17 +179,37 @@ export class TechnoStereoPhysics {
 
   public applyZones(input: TechnoPhysicsInput): TechnoPhysicsResult {
     const { bass, mid, treble, isRealSilence, isAGCTrap, harshness = 0, flatness = 0 } = input
+    const now = Date.now()
 
     // ?? Modos
     const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD
     const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD
 
+    // 🕵️‍♂️ WAVE 913: DETECCIÓN DE TRANSICIÓN DE SILENCIO
     if (isRealSilence || isAGCTrap) {
+      this.inSilence = true
+      this.lastSilenceTime = now // Actualizamos mientras dure el silencio
       return this.handleSilence(acidMode, noiseMode)
+    } else {
+      // Si acabamos de salir del silencio, this.inSilence será true
+      if (this.inSilence) {
+        this.inSilence = false
+        // Aquí empieza el contador de "Recovery" (lastSilenceTime se queda fijo)
+      }
     }
 
-    // 🔊 FRONT: Bass Puro (Heartbeat sólido)
-    const frontParIntensity = this.calculateFrontPar(bass)
+    // 🛡️ WAVE 913: CÁLCULO DE PARANOIA
+    // ¿Cuánto tiempo ha pasado desde que volvió la música?
+    const timeSinceSilence = now - this.lastSilenceTime
+    const isRecovering = timeSinceSilence < this.RECOVERY_DURATION
+
+    // 🔊 FRONT PAR: LÓGICA DINÁMICA
+    // Si estamos recuperando, usamos el Gate Paranoico (0.80). Si no, el normal (0.48).
+    const effectiveGateOn = isRecovering ? this.RECOVERY_GATE_ON : this.FRONT_PAR_GATE_ON
+    // También subimos el Gate Off proporcionalmente para evitar colas largas sucias
+    const effectiveGateOff = isRecovering ? this.RECOVERY_GATE_OFF : this.FRONT_PAR_GATE_OFF
+
+    const frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff)
 
     // 🥁 BACK: THE SNARE SNIPER (Geometric Mean)
     // 🎯 WAVE 910: Multiplicamos Mid * Treble
@@ -263,24 +293,30 @@ export class TechnoStereoPhysics {
   }
 
   /**
-   * ?? FRONT PAR (BASS) - CON VITAMINAS
-   * Gate + Normalización + MULTIPLICADOR MASIVO
+   * 🔊 FRONT PAR (BASS) - AHORA ACEPTA GATES DINÁMICOS
+   * 🛡️ WAVE 913: Soporta Recovery Gates para AGC Rebound Protection
+   * 
+   * @param bass - Señal de bajo normalizada
+   * @param gateOn - Umbral de activación (dinámico: 0.48 normal / 0.80 paranoia)
+   * @param gateOff - Umbral de desactivación (dinámico: 0.35 normal / 0.60 paranoia)
    */
-  private calculateFrontPar(bass: number): number {
+  private calculateFrontPar(bass: number, gateOn: number, gateOff: number): number {
     if (this.frontParActive) {
-      if (bass < this.FRONT_PAR_GATE_OFF) {
+      // Usamos el gateOff dinámico
+      if (bass < gateOff) {
         this.frontParActive = false
         return 0
       }
     } else {
-      if (bass < this.FRONT_PAR_GATE_ON) return 0
+      // Usamos el gateOn dinámico
+      if (bass < gateOn) return 0
       this.frontParActive = true
     }
 
-    // 1. Normalizar rango útil (0.0 a 1.0 sobre el gate)
-    const gated = (bass - this.FRONT_PAR_GATE_ON) / (1 - this.FRONT_PAR_GATE_ON)
+    // Normalizamos usando el gate actual para mantener la curva correcta
+    const gated = (bass - gateOn) / (1 - gateOn)
 
-    // 2. ?? INYECCIÓN DE VITAMINAS (Gain post-gate)
+    // ?? INYECCIÓN DE VITAMINAS (Gain post-gate)
     // Multiplicamos para saturar rápido. Si bass es decente, llegamos al 100%.
     const boosted = gated * this.BASS_VITAMIN_BOOST
 
@@ -313,7 +349,7 @@ export class TechnoStereoPhysics {
     // 📉 CAMBIO DE CURVA: De 0.5 (inflar) a 1.5 (suprimir)
     // Esto actúa como un "Noise Gate" suave. Lo débil se hace invisible.
     // Lo fuerte (Snare) se mantiene fuerte.
-    const intensity = Math.pow(gated, 1.5) * this.BACK_PAR_SLAP_MULT
+    const intensity = Math.pow(gated, 0.9) * this.BACK_PAR_SLAP_MULT
 
     return Math.min(1.0, Math.max(0, intensity))
   }

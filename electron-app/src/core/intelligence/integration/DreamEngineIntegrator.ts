@@ -1,0 +1,372 @@
+/**
+ * 🌀 DREAM ENGINE INTEGRATOR
+ * "El Tejedor que conecta Oráculo + Juez + Decisor"
+ * 
+ * WAVE 900.3 - Phase 3: Integration
+ * 
+ * FLUJO COMPLETO:
+ * 1. Hunt genera candidatos (worthiness > threshold)
+ * 2. Dream simula futuros (proyecta belleza)
+ * 3. Decide selecciona top 3 candidatos
+ * 4. Filter (Conscience) evalúa ética
+ * 5. Execute dispara efecto aprobado
+ * 6. Learn audita outcome
+ * 
+ * @author PunkOpus (Opus 4.5)
+ * @date 2026-01-20
+ * @revision WAVE 900.3.1 - Fixed type casting, cache key, execution tracking
+ */
+
+import type { EffectCandidate, EffectDreamResult, SystemState, MusicalPrediction } from '../dream/EffectDreamSimulator'
+import { effectDreamSimulator } from '../dream/EffectDreamSimulator'
+import type { EthicalVerdict, EffectOutcome } from '../conscience/VisualConscienceEngine'
+import { visualConscienceEngine } from '../conscience/VisualConscienceEngine'
+import { effectBiasTracker } from '../dream/EffectBiasTracker'
+import type { AudienceSafetyContext } from '../dream/AudienceSafetyContext'
+import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES - Interfaces de datos para el pipeline
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface PipelineContext {
+  pattern: {
+    vibe: string
+    energy?: number
+    tempo?: number
+  }
+  huntDecision: {
+    worthiness: number
+    confidence?: number
+  }
+  crowdSize: number
+  epilepsyMode: boolean
+  estimatedFatigue: number
+  gpuLoad: number
+  maxLuminosity: number
+  recentEffects: Array<{ effect: string; timestamp: number }>
+}
+
+export interface IntegrationDecision {
+  approved: boolean
+  effect: EffectCandidate | null
+  dreamTime: number
+  filterTime: number
+  totalTime: number
+  dreamRecommendation: string
+  ethicalVerdict: EthicalVerdict | null
+  circuitHealthy: boolean
+  fallbackUsed: boolean
+  alternatives: EffectCandidate[]
+}
+
+export interface ExecutionResult {
+  effectId: string | null
+  success: boolean
+  executionTime: number
+  decision: IntegrationDecision
+  outcome?: EffectOutcome
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DREAM ENGINE INTEGRATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class DreamEngineIntegrator {
+  private dreamCache: Map<string, { result: EffectDreamResult; timestamp: number }> = new Map()
+  private dreamCacheTTL: number = 5000
+  
+  private executionHistory: IntegrationDecision[] = []
+  private maxHistorySize: number = 100
+  
+  // Timeout para dream simulation (evita hangs)
+  private dreamTimeoutMs: number = 3000
+  
+  constructor() {
+    console.log('[INTEGRATOR] 🌀 Dream Engine Integrator initialized')
+  }
+  
+  /**
+   * Ejecuta pipeline COMPLETO: Hunt → Dream → Decide → Filter → Execute
+   */
+  public async executeFullPipeline(context: PipelineContext): Promise<IntegrationDecision> {
+    const pipelineStartTime = Date.now()
+    
+    // 🚫 Guard: Si hunt no recomendó disparo
+    if (context.huntDecision.worthiness < 0.65) {
+      console.log('[INTEGRATOR] 🚫 Hunt worthiness too low, skipping pipeline')
+      return {
+        approved: false,
+        effect: null,
+        dreamTime: 0,
+        filterTime: 0,
+        totalTime: Date.now() - pipelineStartTime,
+        dreamRecommendation: 'Hunt worthiness insufficient',
+        ethicalVerdict: null,
+        circuitHealthy: true,
+        fallbackUsed: false,
+        alternatives: []
+      }
+    }
+    
+    // ═════════════════════════════════════════════════════════════════════
+    // STEP 2: DREAM (simula futuros)
+    // ═════════════════════════════════════════════════════════════════════
+    const dreamStartTime = Date.now()
+    const dreamResult = await this.dreamEffects(context)
+    const dreamTime = Date.now() - dreamStartTime
+    
+    // Generate candidates
+    const candidates = this.generateCandidates(dreamResult)
+    
+    if (candidates.length === 0) {
+      console.warn('[INTEGRATOR] ⚠️ Dream produced no candidates')
+      return {
+        approved: false,
+        effect: null,
+        dreamTime,
+        filterTime: 0,
+        totalTime: Date.now() - pipelineStartTime,
+        dreamRecommendation: 'No candidates generated',
+        ethicalVerdict: null,
+        circuitHealthy: true,
+        fallbackUsed: true,
+        alternatives: []
+      }
+    }
+    
+    // ═════════════════════════════════════════════════════════════════════
+    // STEP 3: FILTER (Conscience evalúa ética)
+    // ═════════════════════════════════════════════════════════════════════
+    const filterStartTime = Date.now()
+    const safetyContext = this.buildAudienceSafetyContext(context)
+    const ethicalVerdict = await visualConscienceEngine.evaluate(
+      candidates,
+      safetyContext
+    )
+    const filterTime = Date.now() - filterStartTime
+    
+    // ═════════════════════════════════════════════════════════════════════
+    // STEP 4: DECIDE (APPROVED/REJECTED/DEFERRED)
+    // ═════════════════════════════════════════════════════════════════════
+    const decision: IntegrationDecision = {
+      approved: ethicalVerdict.verdict === 'APPROVED',
+      effect: ethicalVerdict.approvedEffect,
+      dreamTime,
+      filterTime,
+      totalTime: Date.now() - pipelineStartTime,
+      dreamRecommendation: dreamResult.recommendation,
+      ethicalVerdict,
+      circuitHealthy: ethicalVerdict.circuitBreakerStatus !== 'OPEN',
+      fallbackUsed: ethicalVerdict.verdict !== 'APPROVED' || ethicalVerdict.approvedEffect === null,
+      alternatives: ethicalVerdict.alternatives.slice(0, 2)
+    }
+    
+    console.log(
+      `[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
+      `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms`
+    )
+    
+    // Record for learning
+    if (decision.approved && decision.effect) {
+      effectBiasTracker.recordEffect({
+        effect: decision.effect.effect,
+        timestamp: Date.now(),
+        intensity: decision.effect.intensity,
+        zones: decision.effect.zones ?? ['all'],
+        success: true,
+        vibe: context.pattern.vibe
+      })
+    }
+    
+    // Track decision in history
+    this.recordDecision(decision)
+    
+    return decision
+  }
+  
+  /**
+   * Post-execution audit
+   */
+  public async auditExecution(
+    decision: IntegrationDecision,
+    outcome: EffectOutcome
+  ): Promise<void> {
+    if (!decision.ethicalVerdict || !decision.effect) return
+    
+    const audit = visualConscienceEngine.audit(
+      {
+        effect: decision.effect,
+        timestamp: Date.now(),
+        verdict: decision.approved ? 'APPROVED' : 'REJECTED',
+        ethicalScore: decision.ethicalVerdict.ethicalScore
+      },
+      outcome
+    )
+    
+    if (!audit.passes) {
+      console.warn('[INTEGRATOR] 🔍 Audit failed:', audit.violations.map(v => v.description))
+    }
+    
+    // Evolve maturity
+    const maturityUpdate = visualConscienceEngine.evolveMaturity(
+      {
+        effect: decision.effect,
+        timestamp: Date.now(),
+        verdict: decision.approved ? 'APPROVED' : 'REJECTED',
+        ethicalScore: decision.ethicalVerdict.ethicalScore
+      },
+      outcome
+    )
+    
+    if (maturityUpdate.unlockedFeatures.length > 0) {
+      console.log(`[INTEGRATOR] 🧠 Maturity evolved: ${maturityUpdate.evolutionReason}`)
+      console.log(`[INTEGRATOR] 🔓 Unlocked: ${maturityUpdate.unlockedFeatures.join(', ')}`)
+    }
+  }
+  
+  /**
+   * Get health status
+   */
+  public getHealthStatus() {
+    const circuitStatus = visualConscienceEngine.checkCircuitHealth()
+    const maturityMetrics = visualConscienceEngine.getMaturityMetrics()
+    
+    return {
+      circuitBreakerState: circuitStatus.state,
+      circuitHealthy: circuitStatus.isHealthy,
+      maturityLevel: maturityMetrics.level,
+      maturityExperience: maturityMetrics.experience,
+      unlockedFeatures: maturityMetrics.unlockedFeatures,
+      pipelineDecisions: this.executionHistory.length,
+      cacheSize: this.dreamCache.size
+    }
+  }
+  
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRIVATE: DREAM EXECUTION
+  // ═════════════════════════════════════════════════════════════════════════
+  
+  private async dreamEffects(context: PipelineContext): Promise<EffectDreamResult> {
+    const cacheKey = this.getDreamCacheKey(context)
+    
+    // Check cache
+    const cached = this.dreamCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < this.dreamCacheTTL) {
+      console.log('[INTEGRATOR] 💾 Using cached dream result')
+      return cached.result
+    }
+    
+    // Run dream simulation with timeout protection
+    try {
+      // Build proper SystemState
+      const systemState: SystemState = {
+        currentPalette: { primary: 0, secondary: 0.33, accent: 0.66 }, // Default neutral
+        currentBeauty: context.huntDecision.confidence ?? 0.5,
+        lastEffect: null,
+        lastEffectTime: 0,
+        activeCooldowns: new Map(),
+        energy: context.pattern.energy ?? 0.5,
+        tempo: context.pattern.tempo ?? 120,
+        vibe: context.pattern.vibe
+      }
+      
+      // Build proper MusicalPrediction
+      const musicalPrediction: MusicalPrediction = {
+        predictedEnergy: context.pattern.energy ?? 0.5,
+        predictedSection: 'stable',  // Default - not prediction based
+        predictedTempo: context.pattern.tempo ?? 120,
+        confidence: 0.6,  // Medium confidence for non-prediction input
+        isDropComing: (context.pattern.energy ?? 0.5) > 0.8,
+        isBreakdownComing: (context.pattern.energy ?? 0.5) < 0.3,
+        energyTrend: 'stable'
+      }
+      
+      // Execute with timeout
+      const dreamPromise = effectDreamSimulator.dreamEffects(
+        systemState,
+        musicalPrediction,
+        this.buildAudienceSafetyContext(context)
+      )
+      
+      // Timeout wrapper
+      const result = await Promise.race([
+        dreamPromise,
+        new Promise<EffectDreamResult>((_, reject) => 
+          setTimeout(() => reject(new Error('Dream timeout')), this.dreamTimeoutMs)
+        )
+      ])
+      
+      // Cache result
+      this.dreamCache.set(cacheKey, { result, timestamp: Date.now() })
+      
+      return result
+    } catch (error) {
+      console.error('[INTEGRATOR] ❌ Dream simulation error:', error)
+      
+      // Fallback: empty but valid result
+      return {
+        scenarios: [],
+        bestScenario: null,
+        recommendation: 'abort',
+        reason: `Dream simulation failed: ${error}`,
+        warnings: ['Dream engine error - using fallback'],
+        simulationTimeMs: 0
+      }
+    }
+  }
+  
+  private generateCandidates(dreamResult: EffectDreamResult): EffectCandidate[] {
+    const candidates: EffectCandidate[] = []
+    
+    if (dreamResult.bestScenario) {
+      candidates.push(dreamResult.bestScenario.effect)
+    }
+    
+    for (const scenario of dreamResult.scenarios.slice(0, 3)) {
+      if (scenario.effect !== dreamResult.bestScenario?.effect) {
+        candidates.push(scenario.effect)
+      }
+    }
+    
+    return candidates.slice(0, 5)
+  }
+  
+  private buildAudienceSafetyContext(context: PipelineContext): AudienceSafetyContext {
+    const builder = new AudienceSafetyContextBuilder()
+      .withVibe(context.pattern.vibe)
+      .withEnergy(context.pattern.energy ?? 0.5)
+      .withCrowdSize(context.crowdSize)
+      .withGpuLoad(context.gpuLoad)
+    
+    // Add epilepsy mode if enabled
+    if (context.epilepsyMode) {
+      builder.withEpilepsyMode(true)
+    }
+    
+    return builder.build()
+  }
+  
+  private getDreamCacheKey(context: PipelineContext): string {
+    // Cache key incluye factores que afectan decisión ética
+    // NO cachear si epilepsyMode diferente (cambia completamente los resultados)
+    const energy = Math.round((context.pattern.energy ?? 0.5) * 10)
+    const worthiness = context.huntDecision.worthiness.toFixed(1)
+    const gpuBucket = Math.round(context.gpuLoad * 5) // 0, 0.2, 0.4, 0.6, 0.8, 1.0
+    const epilepsy = context.epilepsyMode ? '1' : '0'
+    return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}`
+  }
+  
+  private recordDecision(decision: IntegrationDecision): void {
+    this.executionHistory.push(decision)
+    if (this.executionHistory.length > this.maxHistorySize) {
+      this.executionHistory.shift()
+    }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// SINGLETON
+// ═════════════════════════════════════════════════════════════════════════
+
+export const dreamEngineIntegrator = new DreamEngineIntegrator()

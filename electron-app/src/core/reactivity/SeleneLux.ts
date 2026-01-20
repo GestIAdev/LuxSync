@@ -96,9 +96,11 @@ export interface SeleneLuxOutput {
   };
   /** 🎚️ WAVE 275: Intensidades por zona basadas en frecuencias */
   zoneIntensities: {
-    front: number;  // 0-1: Bass → Front PARs (Kick/Graves)
-    back: number;   // 0-1: Mid → Back PARs (Snare/Clap)
-    mover: number;  // 0-1: Treble → Movers (Melodía/Voz)
+    front: number;   // 0-1: Bass → Front PARs (Kick/Graves)
+    back: number;    // 0-1: Mid → Back PARs (Snare/Clap)
+    mover: number;   // 0-1: Treble → Movers (Melodía/Voz) - LEGACY mono
+    moverL?: number; // 🧪 WAVE 908: LEFT mover (Mid-dominant) - TECHNO only
+    moverR?: number; // 🧪 WAVE 908: RIGHT mover (Treble-dominant) - TECHNO only
   };
   isStrobeActive: boolean;
   isFlashActive: boolean;
@@ -151,7 +153,13 @@ export class SeleneLux {
   private latinoOverrides: { front: number; back: number; mover: number } | null = null;
   
   // 🆕 WAVE 290.3: Overrides de intensidad calculados por motor Techno
-  private technoOverrides: { front: number; back: number; mover: number } | null = null;
+  private technoOverrides: { 
+    front: number; 
+    back: number; 
+    mover: number;
+    moverL?: number;  // 🧪 WAVE 908: Split L channel
+    moverR?: number;  // 🧪 WAVE 908: Split R channel
+  } | null = null;
   
   // 🆕 WAVE 301: ANALOG ROCK - Overrides de voltaje analógico
   private rockOverrides: { 
@@ -277,10 +285,13 @@ export class SeleneLux {
       });
       
       // Guardar overrides para usar después
+      // 🧪 WAVE 908: Guardar L/R separados para THE DUEL
       this.technoOverrides = {
         front: zonesResult.frontParIntensity,
         back: zonesResult.backParIntensity,
-        mover: zonesResult.moverIntensity
+        mover: zonesResult.moverIntensity,  // Legacy fallback
+        moverL: zonesResult.moverIntensityL, // Split L (Mid-dominant)
+        moverR: zonesResult.moverIntensityR  // Split R (Treble-dominant)
       };
       
       if (this.debug && isStrobeActive) {
@@ -433,10 +444,18 @@ export class SeleneLux {
       // Limpiar overrides para el próximo frame
       this.latinoOverrides = null;
     } else if (this.technoOverrides && physicsApplied === 'techno') {
-      // ⚡ WAVE 290.3: El motor Techno calculó sus intensidades. Respétalas.
+      // ⚡ WAVE 290.3 + WAVE 908: El motor Techno calculó sus intensidades. Respétalas.
+      // 🧪 WAVE 908: THE DUEL - Guardar L/R separados
       frontIntensity = Math.min(0.95, this.technoOverrides.front * brightMod);
       backIntensity = Math.min(0.95, this.technoOverrides.back);
-      moverIntensity = Math.min(1.0, this.technoOverrides.mover);
+      moverIntensity = Math.min(1.0, this.technoOverrides.mover);  // Legacy fallback
+      
+      // 🧪 WAVE 908: Si tenemos L/R separados, preparar para el output
+      const technoL = this.technoOverrides.moverL ?? moverIntensity;
+      const technoR = this.technoOverrides.moverR ?? moverIntensity;
+      
+      // Temporal: guardar en una variable para pasar al output
+      (this as any).technoMoverSplit = { moverL: technoL, moverR: technoR };
       
       // Limpiar overrides para el próximo frame
       this.technoOverrides = null;
@@ -502,7 +521,15 @@ export class SeleneLux {
       front: frontIntensity,
       back: backIntensity,
       mover: moverIntensity,
+      // 🧪 WAVE 908: THE DUEL - Incluir L/R si vienen de Techno
+      ...(((this as any).technoMoverSplit) && {
+        moverL: (this as any).technoMoverSplit.moverL,
+        moverR: (this as any).technoMoverSplit.moverR
+      })
     };
+    
+    // Limpiar split temporal
+    delete (this as any).technoMoverSplit;
     
     // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)

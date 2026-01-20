@@ -443,16 +443,22 @@ export class TitanEngine extends EventEmitter {
     let zones = this.calculateZoneIntents(audio, context, vibeProfile)
     
     // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
+    // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
     if (nervousOutput.physicsApplied === 'latino' || 
         nervousOutput.physicsApplied === 'techno' || 
         nervousOutput.physicsApplied === 'rock' ||
         nervousOutput.physicsApplied === 'chill') {
       const ni = nervousOutput.zoneIntensities;
+      
+      // 🧪 WAVE 908: THE DUEL - Si tenemos L/R separados (Techno), usarlos
+      const moverL = ni.moverL ?? ni.mover;  // Si no hay L, fallback a mono
+      const moverR = ni.moverR ?? ni.mover;  // Si no hay R, fallback a mono
+      
       zones = {
         front: { intensity: ni.front, paletteRole: 'primary' },
         back: { intensity: ni.back, paletteRole: 'accent' },
-        left: { intensity: ni.mover, paletteRole: 'secondary' },
-        right: { intensity: ni.mover, paletteRole: 'ambient' },  // 🎨 WAVE 412: Stereo split (no secondary!)
+        left: { intensity: moverL, paletteRole: 'secondary' },      // 🧪 WAVE 908: LEFT = Mid-dominant
+        right: { intensity: moverR, paletteRole: 'ambient' },       // 🧪 WAVE 908: RIGHT = Treble-dominant
         ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
       };
     }

@@ -88,7 +88,10 @@ interface EffectSelection {
 
 /**
  * 🎯 WAVE 811: UNIFIED EFFECT SELECTOR
- * DecisionMaker es el lóbulo frontal - elige efecto según vibe y contexto
+ * 🔪 WAVE 813: TECHNO PALETTE REBALANCE
+ * 
+ * DecisionMaker es el lóbulo frontal - elige efecto según vibe y contexto.
+ * Cada familia de vibes tiene su propia personalidad y arsenal.
  */
 function selectEffectByVibe(
   vibeId: string,
@@ -97,47 +100,55 @@ function selectEffectByVibe(
 ): EffectSelection {
   const normalizedIntensity = Math.min(1.0, 0.8 + strikeIntensity * 0.2)
   const urgency = conditions?.urgencyScore ?? 0.5
-  const tensionBuild = conditions?.beautyScore ?? 0  // Usamos beautyScore como proxy de tensión
-  const energyDelta = conditions?.strikeScore ?? 0
+  const trend = conditions?.trend ?? 'stable'
+  const beautyScore = conditions?.beautyScore ?? 0.5
   
-  // 🔊 TECHNO FAMILY: Efectos industriales, mecánicos, agresivos
+  // � WAVE 813: TECHNO FAMILY - La Máquina No Perdona
+  // Arsenal: IndustrialStrobe (martillo), AcidSweep (cuchilla), CyberDualism (cambio)
+  // Filosofía: Agresivo, industrial, mecánico. SolarFlare DESTERRADO.
   if (vibeId === 'techno-club' || vibeId === 'techno' || vibeId === 'industrial') {
-    // Alta urgencia + alta energía → IndustrialStrobe (golpe masivo)
-    if (urgency > 0.7 && strikeIntensity > 0.8) {
+    
+    // 🔨 EL MARTILLO (IndustrialStrobe) - Drop/Peak Time/Alta Energía
+    // Condición: urgency > 0.7 (climax) O strikeIntensity > 0.8 (peak)
+    if (urgency > 0.7 || strikeIntensity > 0.8) {
       return {
         effect: 'industrial_strobe',
         intensity: normalizedIntensity,
         zones: ['all'],
-        reasoning: `TECHNO HIGH IMPACT: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
+        reasoning: `TECHNO HAMMER: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
       }
     }
     
-    // Buildup con tensión creciente → AcidSweep (barrido dramático)
-    if (tensionBuild > 0.5) {
+    // ⚡ LA CUCHILLA (AcidSweep) - Buildup/Rising Tension
+    // Condición: beautyScore > 0.4 (tensión) O trend === 'rising'
+    if (beautyScore > 0.4 || trend === 'rising') {
       return {
         effect: 'acid_sweep',
-        intensity: Math.min(1.0, 0.7 + tensionBuild * 0.3),
+        intensity: Math.min(1.0, 0.7 + beautyScore * 0.3),
         zones: ['all'],
-        reasoning: `TECHNO SWEEP: tensionBuild=${tensionBuild.toFixed(2)}`
+        reasoning: `TECHNO BLADE: beauty=${beautyScore.toFixed(2)} trend=${trend}`
       }
     }
     
-    // Cambio de energía significativo → CyberDualism (L/R ping-pong)
-    if (Math.abs(energyDelta) > 0.3) {
+    // 🤖 EL CAMBIO (CyberDualism) - Transición/Bridge
+    // Condición: strikeScore alto (momento único) O trend === 'stable' (plateau)
+    const strikeScore = conditions?.strikeScore ?? 0
+    if (strikeScore > 0.7 || trend === 'stable') {
       return {
         effect: 'cyber_dualism',
         intensity: normalizedIntensity * 0.9,
         zones: ['movers_left', 'movers_right'],
-        reasoning: `TECHNO DUAL: energyDelta=${energyDelta.toFixed(2)}`
+        reasoning: `TECHNO SHIFT: strikeScore=${strikeScore.toFixed(2)} trend=${trend}`
       }
     }
     
-    // Default techno → IndustrialStrobe
+    // 🔪 DEFAULT TECHNO: AcidSweep (ambiente agresivo, no explosión)
+    // Filosofía: Fallar hacia ambiente volumétrico, no hacia impacto dorado
     return {
-      effect: 'industrial_strobe',
-      intensity: normalizedIntensity * 0.85,
+      effect: 'acid_sweep',
+      intensity: normalizedIntensity * 0.75,
       zones: ['all'],
-      reasoning: `TECHNO DEFAULT: standard strike`
+      reasoning: `TECHNO DEFAULT: ambient fallback`
     }
   }
   
@@ -154,12 +165,12 @@ function selectEffectByVibe(
     }
     
     // Tensión moderada → StrobeBurst (destello rítmico)
-    if (tensionBuild > 0.3) {
+    if (beautyScore > 0.3) {
       return {
         effect: 'strobe_burst',
-        intensity: Math.min(1.0, 0.75 + tensionBuild * 0.25),
+        intensity: Math.min(1.0, 0.75 + beautyScore * 0.25),
         zones: ['movers'],
-        reasoning: `LATINO BURST: tensionBuild=${tensionBuild.toFixed(2)}`
+        reasoning: `LATINO BURST: beauty=${beautyScore.toFixed(2)}`
       }
     }
     

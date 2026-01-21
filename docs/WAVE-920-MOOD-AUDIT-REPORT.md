@@ -537,12 +537,13 @@ test('PUNK mode should enforce minimum intensity', () => {
 
 ## 📝 CONCLUSIONES
 
-### Estado Actual (Post WAVE 920.1):
+### Estado Actual (Post WAVE 920.2):
 - **MoodController:** ✅ Implementado y funcional
 - **FuzzyDecisionMaker:** ✅ Integrado correctamente
+- **ContextualEffectSelector:** ✅ Integrado (WAVE 700.1, WAVE 812)
 - **DreamEngineIntegrator:** ✅ **INTEGRADO** (WAVE 920.1)
-- **EffectDreamSimulator:** ⚠️ NO integrado (opcional, WAVE 920.2)
-- **VisualConscienceEngine:** ⚠️ NO integrado (opcional, WAVE 920.2)
+- **EffectDreamSimulator:** ✅ **INTEGRADO** (WAVE 920.2 - pre-filtering)
+- **VisualConscienceEngine:** ✅ **INTEGRADO** (WAVE 920.2 - mood compliance)
 
 ### ✅ WAVE 920.1 COMPLETADO:
 1. ✅ Import `MoodController` 
@@ -550,32 +551,45 @@ test('PUNK mode should enforce minimum intensity', () => {
 3. ✅ `isEffectBlocked()` en generateCandidates - CALM bloquea strobes
 4. ✅ `applyIntensity()` post-approval - CALM max 60%, PUNK min 50%
 
-### Pendiente (Opcional - WAVE 920.2):
-- ⏳ Pre-filtering en EffectDreamSimulator
-- ⏳ Mood compliance en VisualConscienceEngine
-- ⏳ Cooldown modification post-execution
+### ✅ WAVE 920.2 COMPLETADO:
+1. ✅ Pre-filtering en EffectDreamSimulator - No gastar CPU simulando bloqueados
+2. ✅ Mood compliance en VisualConscienceEngine - Violación crítica si bloqueado
+
+### ✅ YA EXISTÍA (descubierto en auditoría):
+- ✅ ContextualEffectSelector usa MoodController (WAVE 700.1, WAVE 812)
+- ✅ `applyCooldown()` ya implementado
+- ✅ `isEffectBlocked()` ya implementado
+- ✅ `isEffectForceUnlocked()` ya implementado
 
 ### Impacto Inmediato:
 - ✅ Usuario puede cambiar mood y ver efecto inmediato
 - ✅ CALM es realmente selectivo
 - ✅ PUNK es realmente agresivo
 - ✅ Logs coherentes con comportamiento real
+- ✅ Dream no pierde CPU simulando efectos bloqueados
+- ✅ Conscience rechaza categóricamente efectos bloqueados
 
 ---
 
 ## 🎭 RECOMENDACIÓN FINAL
 
-### ✅ WAVE 920.1 - COMPLETADO
+### ✅ WAVE 920 - COMPLETADO (920.1 + 920.2)
 
-El MoodController está ahora **CONECTADO** al pipeline Dream+Ethic:
+El MoodController está ahora **100% CONECTADO** al pipeline Dream+Ethic:
 
 **CAMBIOS IMPLEMENTADOS:**
-1. ✅ `applyThreshold()` en guard check
-2. ✅ `isEffectBlocked()` en candidate generation  
-3. ✅ `applyIntensity()` post-approval
-4. ⏳ `applyCooldown()` post-execution (pendiente para WAVE 920.2)
+1. ✅ `applyThreshold()` en guard check (WAVE 920.1)
+2. ✅ `isEffectBlocked()` en candidate generation (WAVE 920.1)
+3. ✅ `applyIntensity()` post-approval (WAVE 920.1)
+4. ✅ Pre-filtering en Dream (WAVE 920.2)
+5. ✅ Mood compliance en Conscience (WAVE 920.2)
 
-**Beneficio inmediato:** El usuario recupera control sobre la agresividad del sistema.
+**ContextualEffectSelector YA TENÍA (descubierto en auditoría):**
+6. ✅ `applyCooldown()` post-execution
+7. ✅ `isEffectBlocked()` check
+8. ✅ `isEffectForceUnlocked()` bypass para PUNK
+
+**Beneficio total:** El sistema es ahora 100% mood-aware en todos los niveles.
 
 **Logs de ejemplo (CALM mode):**
 ```

@@ -3,6 +3,7 @@
  * "El Juez Estético que protege belleza y seguridad"
  * 
  * WAVE 900.2 - Phase 2: Ethical Core
+ * WAVE 920.2 - Mood compliance integration
  * 
  * @module VisualConscienceEngine
  * @description Sistema de evaluación ética para decisiones de efectos visuales.
@@ -15,6 +16,7 @@
  * - Sugerir alternativas cuando candidato rechazado
  * - Evolucionar madurez ética basado en experiencia
  * - Proteger sistema con CircuitBreaker
+ * - 🎭 WAVE 920.2: Verificar mood compliance
  * 
  * FILOSOFÍA:
  * "La belleza sin ética es vanidad. La ética sin belleza es dogma.
@@ -33,6 +35,9 @@ import {
   type RuleResult
 } from './VisualEthicalValues'
 import { CircuitBreaker, TimeoutWrapper } from './CircuitBreaker'
+
+// 🎭 WAVE 920.2: MOOD COMPLIANCE
+import { MoodController } from '../../mood/MoodController'
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -466,6 +471,27 @@ export class VisualConscienceEngine {
     const valueScores: Record<string, number> = {}
     const violations: EthicalViolation[] = []
     const warnings: string[] = []
+    
+    // 🎭 WAVE 920.2: MOOD COMPLIANCE CHECK (before ethical values)
+    const moodController = MoodController.getInstance()
+    const currentProfile = moodController.getCurrentProfile()
+    
+    if (moodController.isEffectBlocked(candidate.effect)) {
+      violations.push({
+        value: 'mood_compliance',
+        severity: 'critical',
+        description: `Effect "${candidate.effect}" blocked by ${currentProfile.name} mood`,
+        evidence: { 
+          effect: candidate.effect, 
+          mood: currentProfile.name, 
+          blockList: currentProfile.blockList 
+        },
+        recommendation: `Choose an effect not in ${currentProfile.name} blockList`
+      })
+      // Penalizar severamente
+      totalScore *= 0.1
+      warnings.push(`🎭 MOOD BLOCKED: ${candidate.effect} not allowed in ${currentProfile.emoji} mode`)
+    }
     
     // Evaluar cada valor ético
     for (const value of VISUAL_ETHICAL_VALUES) {

@@ -3,6 +3,7 @@
  * "El Oráculo que ve el futuro de los efectos"
  * 
  * WAVE 900.1 - Phase 1: Foundation
+ * WAVE 920.2 - Mood integration (pre-filtering blocked effects)
  * 
  * @module EffectDreamSimulator
  * @description Sistema de simulación predictiva para efectos visuales.
@@ -16,6 +17,7 @@
  * - Detectar conflictos de cooldown
  * - Mirar 4 compases adelante (musical prediction)
  * - Rankear escenarios por belleza esperada
+ * - 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
  * 
  * FILOSOFÍA:
  * "Soñar antes de actuar. Ver el futuro antes de decidir."
@@ -25,6 +27,9 @@
  */
 
 import type { AudienceSafetyContext } from './AudienceSafetyContext'
+
+// 🎭 WAVE 920.2: MOOD INTEGRATION
+import { MoodController } from '../../mood/MoodController'
 
 // SelenePalette type (minimal definition for Phase 1)
 interface SelenePalette {
@@ -396,10 +401,21 @@ export class EffectDreamSimulator {
     }
     
     // Generar candidatos de cada categoría
+    // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
+    const moodController = MoodController.getInstance()
+    const currentProfile = moodController.getCurrentProfile()
+    let blockedCount = 0
+    
     for (const category of categoriesToExplore) {
       const effects = EFFECT_CATEGORIES[category as keyof typeof EFFECT_CATEGORIES]
       
       for (const effect of effects) {
+        // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
+        if (moodController.isEffectBlocked(effect)) {
+          blockedCount++
+          continue
+        }
+        
         // Calcular intensidad basada en energía predicha
         const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
         
@@ -411,6 +427,10 @@ export class EffectDreamSimulator {
           confidence: prediction.confidence * 0.9 // Ligeramente menor que prediction
         })
       }
+    }
+    
+    if (blockedCount > 0) {
+      console.log(`[DREAM_SIMULATOR] 🎭 Pre-filtered ${blockedCount} effects (blocked by ${currentProfile.emoji} mood)`)
     }
     
     return candidates

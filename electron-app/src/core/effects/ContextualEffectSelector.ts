@@ -814,7 +814,8 @@ export class ContextualEffectSelector {
         if (fuzzyDecision.reasoning.includes('Silence') || 
             fuzzyDecision.reasoning.includes('Suppress') ||
             fuzzyDecision.reasoning.includes('silence')) {
-          console.log(`[EffectSelector 🛡️] FUZZY HOLD RESPECTED: ${fuzzyDecision.reasoning}`)
+          // 🎯 WAVE 937.1: Silenciar spam de logs (solo log en cambios de estado)
+          // NO loggear cada frame → deja solo en DreamEngineIntegrator
           return {
             should: false,
             reason: `Fuzzy HOLD (confidence=${fuzzyDecision.confidence.toFixed(2)}): ${fuzzyDecision.reasoning}`,

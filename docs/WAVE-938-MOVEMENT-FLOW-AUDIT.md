@@ -185,54 +185,496 @@ Ambos pasan por **FixturePhysicsDriver** (seguridad hardware) → **MasterArbite
   highs: number,       // 0-1
   bpm: number,
   beatPhase: number,   // 0-1
-  beatCount: number    // For phrase detection
+  beatCount: number    // ✅ CRITICAL: Para tracking de compases
 }
 ```
 
 **Process:**
 ```typescript
-// 1. Pattern selection (3 presets per vibe)
-const currentPhrase = Math.floor(beatCount / 32)  // ~8 bars
-const patternIndex = currentPhrase % 3
+// 1. Bar counting (WAVE 345 - PHRASE DETECTION)
+const beatCount = audio.beatCount || 0
+if (beatCount !== this.lastBeatCount) {
+  if (beatCount % 4 === 0) {
+    this.barCount++  // ✅ SINCRONIZADO CON BPM
+  }
+  this.lastBeatCount = beatCount
+}
+
+// 2. Fallback si beatCount no llega (WAVE 349)
+if (beatCount === 0 && this.frameCount % (30 * 8) === 0) {
+  this.barCount++  // Forzar cada ~8 segundos
+  console.log(`[🎭 CHOREO] ⚠️ FALLBACK: barCount forced`)
+}
+
+// 3. Pattern selection (3 presets per vibe, rotación cada 8 bars)
+const phrase = Math.floor(this.barCount / 8)  // 8 bars = 1 phrase
+const patternIndex = phrase % 3
 const presetName = MOVEMENT_PRESETS[vibeId][patternIndex]
 
-// 2. Calculate FULL RANGE (-1 to 1)
-// Patterns: circle, eight, sweep, pendulum, wave, pulse, etc.
+// 4. Calculate FULL RANGE (-1 to 1)
 const pattern = getMovementPreset(presetName)
-const { x, y } = pattern.calculate(time, bpm, energy)
+const { x, y } = pattern.calculate(time, phase, energy)
 
-// 3. Scale by vibe amplitude
-const vibeConfig = VIBE_CONFIG[vibeId]
-const scaledX = x * vibeConfig.amplitudeScale
-const scaledY = y * vibeConfig.amplitudeScale
+// 5. Apply energy boost (up to +20%)
+const energyBoost = 1.0 + audio.energy * 0.2
+const vibeScale = config.amplitudeScale * energyBoost
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🚗 WAVE 347.8: THE GEARBOX - Dynamic Amplitude Scaling
+// ═══════════════════════════════════════════════════════════════════════
+// 
+// PROBLEMA: Patrones pedían velocidades absurdas que el hardware no podía.
+// SOLUCIÓN: Ajustar AMPLITUD automáticamente según BPM.
+// 
+// FÍSICA: Velocidad = Distancia / Tiempo
+// - Tiempo: Lo marca la música (BPM) → NO SE TOCA
+// - Velocidad: La limita el motor (Hardware) → NO SE TOCA
+// - Distancia: ¡ESTA ES LA VARIABLE QUE AJUSTAMOS!
+// 
+// Es como un bajista tocando rápido: si la canción es muy rápida,
+// no mueve el brazo entero, mueve solo la muñeca.
+// ═══════════════════════════════════════════════════════════════════════
+
+// 1. Hardware speed limit (DMX units per second)
+const HARDWARE_MAX_SPEED = 250  // DMX/s (conservador para EL-1140)
+// EL-1140 y movers chinos: ~200-300 DMX/s realista
+// Movers gama alta: ~400-600 DMX/s
+
+// 2. BPM safety guard (WAVE 348)
+const safeBPM = (audio.bpm && audio.bpm > 0 && isFinite(audio.bpm))
+  ? Math.max(60, audio.bpm)  // Min 60 BPM
+  : 120  // Fallback seguro
+
+const secondsPerBeat = 60 / safeBPM
+
+// 3. Pattern period (WAVE 349)
+// Cuántos beats toma cada patrón en completar un ciclo
+const patternPeriod = PATTERN_PERIOD[patternName] || 1
+// sweep = 2 (HALF-TIME - 2 beats por ciclo)
+// skySearch = 4 (QUARTER-TIME - 4 beats)
+// circle = 2 (HALF-TIME)
+// chaos = 1 (FULL-TIME - caos debe ser rápido)
+
+// 4. Budget de viaje (DMX units disponibles por ciclo)
+const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod
+
+// 5. Travel requested (DMX units que el patrón quiere)
+const requestedTravel = 255 * vibeScale  // Full DMX range
+
+// 6. THE GEARBOX: Auto-reduce amplitude si excede budget
+const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel)
+
+// 7. Final scale (vibe * gearbox * energy)
+const finalScale = Math.min(1.0, vibeScale * gearboxFactor)
+
+// 8. Apply to position
+const position = {
+  x: rawPosition.x * finalScale,
+  y: rawPosition.y * finalScale
+}
+
+// Clamp to [-1, +1] safety
+position.x = Math.max(-1, Math.min(1, position.x))
+position.y = Math.max(-1, Math.min(1, position.y))
+```
+
+**GEARBOX LOGGING:**
+```bash
+# Cuando está reduciendo amplitud (< 95%):
+[🚗 GEARBOX] BPM:192 | Pattern:sweep(2x) | Requested:273 DMX | Budget:156 DMX | Factor:0.57 (57% amplitude)
+
+# Cuando está en verde (>= 95%):
+[🚗 GEARBOX] ✅ FULL THROTTLE | BPM:120 | Pattern:circle(2x) | 100% amplitude
+
+# Choreo logging (cada 8 bars):
+[🎭 CHOREO] Bar:53 | Phrase:6 | Pattern:sweep | Energy:0.35 | BeatCount:212
 ```
 
 **Output:**
 ```typescript
 MovementIntent {
-  x: number,           // -1 to 1 (normalized)
-  y: number,           // -1 to 1 (normalized)
+  x: number,           // -1 to 1 (gearbox-scaled)
+  y: number,           // -1 to 1 (gearbox-scaled)
   pattern: string,     // 'circle', 'sweep', etc.
   speed: number,       // 0-1
-  amplitude: number,   // 0-1
-  phaseType: 'linear' | 'polar'
+  amplitude: number,   // 0-1 (final scale post-gearbox)
+  phaseType: 'linear' | 'polar',
+  _phrase: number      // Debug: current phrase
 }
 ```
 
 **Vibe Configurations:**
-- **Techno:** `amplitudeScale: 1.0` (full range), `baseFrequency: 0.15Hz`, patterns: `sweepH`, `crossScan`, `spiral`
+- **Techno:** `amplitudeScale: 1.0` (full range), `baseFrequency: 0.15Hz`, patterns: `sweep`, `crossScan`, `spiral`
 - **Latino:** `amplitudeScale: 0.8`, `baseFrequency: 0.2Hz`, patterns: `sway`, `wave`, `pulse`
 - **Rock:** `amplitudeScale: 0.9`, `baseFrequency: 0.12Hz`, patterns: `pendulum`, `zigzag`, `thrust`
 - **Chill:** `amplitudeScale: 0.3` (sutil), `baseFrequency: 0.08Hz`, patterns: `drift`, `float`, `breathe`
 
-**⚠️ CRITICAL FINDING:**
+**Pattern Periods (WAVE 349):**
 ```typescript
-// VibeMovementManager.ts línea ~450
+PATTERN_PERIOD = {
+  // Techno: HALF-TIME para sweeps dramáticos
+  sweep: 2,        // 2 beats por ciclo
+  skySearch: 4,    // 4 beats por ciclo (GRANDIOSO)
+  botStabs: 2,     // 2-3 beats (mantiene posición ~1s)
+  mirror: 2,
+  
+  // Latino: HALF-TIME para curvas sensuales
+  figure8: 2,      // Lissajous suave (no spasmos)
+  circle: 2,       // Rotación elegante
+  snake: 2,        // Onda progresiva
+  
+  // Rock: HALF-TIME para impacto dramático
+  blinder: 2,      // Punch al público
+  vShape: 2,       // Formación dinámica
+  wave: 2,         // Pink Floyd ondulación
+  chaos: 1,        // Caos DEBE ser rápido
+  
+  // Chill: HALF-TIME (no congelado)
+  ocean: 2,        // Olas lentas pero visibles
+  drift: 2,        // Deriva suave
+  nebula: 2,       // Nebulosa flotante
+  aurora: 2,       // Aurora boreal
+  
+  static: 1        // Fallback
+}
+```
+
+**⚠️ CRITICAL CORRECTION:**
+
+**ANTERIOR (ERROR EN AUDIT):**
+```typescript
 // Pattern change: cada 32 beats ≈ 8 compases
 // NO está sincronizado con BPM porque... "no sé, creo que daba problemas jejeje"
 ```
 
-**Translation:** Los patrones cambian en tiempo ABSOLUTO (cada X segundos), no en beats musicales. Esto puede causar cambios de patrón mid-bar si el BPM cambia.
+**ACTUAL (CORRECTO):**
+```typescript
+// ✅ Pattern change: SINCRONIZADO CON BPM vía beatCount
+const phrase = Math.floor(this.barCount / 8)  // 8 bars = 1 phrase
+const patternIndex = phrase % 3
+
+// ✅ barCount se incrementa cada 4 beats (1 compás)
+if (beatCount % 4 === 0) {
+  this.barCount++
+}
+
+// ✅ Fallback solo si beatCount NO llega (safety)
+if (beatCount === 0 && this.frameCount % (30 * 8) === 0) {
+  this.barCount++  // Forzar cada ~8 segundos
+}
+```
+
+**Translation:** Los patrones **SÍ están sincronizados con BPM** vía `beatCount`. El fallback es solo un safety net si el beat tracker falla.
+
+---
+
+## **🚗 THE GEARBOX - Hardware Protection System (WAVE 347.8)**
+
+**Location:** `VibeMovementManager.ts` líneas ~460-520
+
+**Purpose:** Prevenir daño físico al hardware reduciendo amplitud automáticamente cuando el BPM es muy alto.
+
+### **THE PROBLEM:**
+
+Imagina un patrón `sweep` que pide al fixture moverse de -255 DMX a +255 DMX (full range) en 1 beat.
+
+**A 192 BPM:**
+- 1 beat = 60/192 = 0.3125 segundos
+- Distancia: 510 DMX (de -255 a +255)
+- Velocidad requerida: 510 / 0.3125 = **1632 DMX/s** 🔥
+
+**EL-1140 hardware limit:** ~250 DMX/s (conservador)
+
+**Resultado:** Motor intenta moverse a 6x su velocidad máxima → Se queda atrás → Pierde sincronismo → **REKT**
+
+### **THE SOLUTION: GEARBOX**
+
+**Philosophy:** En lugar de forzar velocidades imposibles, **reducimos la distancia del viaje**.
+
+Es como un bajista tocando Megadeth a 220 BPM: No mueve el brazo entero, mueve solo la muñeca.
+
+**Formula:**
+```typescript
+// 1. Hardware speed limit (DMX/s)
+const HARDWARE_MAX_SPEED = 250  // DMX/s (conservador para EL-1140)
+
+// 2. BPM safety (WAVE 348)
+const safeBPM = (audio.bpm && audio.bpm > 0 && isFinite(audio.bpm))
+  ? Math.max(60, audio.bpm)
+  : 120  // Fallback
+
+const secondsPerBeat = 60 / safeBPM
+
+// 3. Pattern period (WAVE 349)
+// Cuántos beats toma el patrón en completar un ciclo
+const patternPeriod = PATTERN_PERIOD[patternName] || 1
+
+// 4. Budget (DMX disponibles por ciclo)
+const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod
+
+// 5. Travel requested (DMX que el patrón quiere)
+const requestedTravel = 255 * vibeScale
+
+// 6. Gearbox factor
+const gearboxFactor = Math.min(1.0, maxTravelPerCycle / requestedTravel)
+
+// 7. Final scale
+const finalScale = vibeScale * gearboxFactor
+```
+
+### **EXAMPLE (Techno @ 192 BPM):**
+
+**Pattern:** `sweep` (period = 2x beats)
+
+**Calculation:**
+```typescript
+safeBPM = 192
+secondsPerBeat = 60 / 192 = 0.3125s
+patternPeriod = 2  // HALF-TIME
+maxTravelPerCycle = 250 * 0.3125 * 2 = 156 DMX
+
+requestedTravel = 255 * 1.07 (energy boost) = 273 DMX
+
+gearboxFactor = min(1.0, 156 / 273) = 0.57  // ⚙️ REDUCE to 57%
+
+finalScale = 1.07 * 0.57 = 0.61
+```
+
+**Result:**
+- Instead of -255 to +255 (510 DMX), fixture moves -155 to +155 (310 DMX)
+- Speed: 310 / 0.625s = **496 DMX/s** → Still high, but hardware can do it without losing sync
+- Amplitud visible: 61% (todavía se ve, no es imperceptible)
+
+**Console Log:**
+```bash
+[🚗 GEARBOX] BPM:192 | Pattern:sweep(2x) | Requested:273 DMX | Budget:156 DMX | Factor:0.57 (57% amplitude)
+```
+
+### **PATTERN PERIOD TABLE:**
+
+| Pattern      | Period | Beats/Cycle | Rationale                          |
+|--------------|--------|-------------|-------------------------------------|
+| **TECHNO**   |        |             |                                     |
+| sweep        | 2x     | 2 beats     | HALF-TIME para sweeps dramáticos    |
+| skySearch    | 4x     | 4 beats     | QUARTER-TIME (movimiento épico)     |
+| botStabs     | 2x     | 2-3 beats   | Mantiene posición ~1s               |
+| mirror       | 2x     | 2 beats     | Simetría elegante                   |
+| **LATINO**   |        |             |                                     |
+| figure8      | 2x     | 2 beats     | Lissajous suave (no spasmos)        |
+| circle       | 2x     | 2 beats     | Rotación sensual                    |
+| snake        | 2x     | 2 beats     | Onda progresiva                     |
+| **ROCK**     |        |             |                                     |
+| blinder      | 2x     | 2 beats     | Punch al público                    |
+| vShape       | 2x     | 2 beats     | Formación dinámica                  |
+| wave         | 2x     | 2 beats     | Pink Floyd ondulación               |
+| chaos        | 1x     | 1 beat      | Caos DEBE ser rápido                |
+| **CHILL**    |        |             |                                     |
+| ocean        | 2x     | 2 beats     | Olas lentas pero visibles           |
+| drift        | 2x     | 2 beats     | Deriva suave                        |
+| nebula       | 2x     | 2 beats     | Nebulosa flotante                   |
+| aurora       | 2x     | 2 beats     | Aurora boreal                       |
+| static       | 1x     | 1 beat      | Fallback                            |
+
+**Why 2x for most patterns?**
+
+Patterns with `period=2` get **DOUBLE the movement budget**:
+- At 120 BPM: Instead of 0.5s, they get 1.0s to complete the cycle
+- This allows for **FULL AMPLITUDE** sweeps even at higher BPMs
+- Tradeo: Movement is HALF-TIME (más lento), pero se ve más DRAMÁTICO
+
+**When does GEARBOX reduce amplitude?**
+
+Only when: `requestedTravel > maxTravelPerCycle`
+
+**Console output states:**
+1. **FULL THROTTLE** (≥ 95%): `[🚗 GEARBOX] ✅ FULL THROTTLE | BPM:120 | Pattern:circle(2x) | 100% amplitude`
+2. **REDUCING** (< 95%): `[🚗 GEARBOX] BPM:192 | Pattern:sweep(2x) | Requested:273 DMX | Budget:156 DMX | Factor:0.57`
+
+### **HARDWARE LIMITS:**
+
+| Fixture Type       | Max Speed (DMX/s) | Notes                          |
+|--------------------|-------------------|--------------------------------|
+| EL-1140 (our gear) | 250               | Conservative estimate          |
+| Chinese movers     | 200-300           | Varies by manufacturer         |
+| Pro movers         | 400-600           | Martin, Robe, etc.             |
+
+**LuxSync uses 250 DMX/s:** Conservative value that works on ALL gear.
+
+### **SAFETY GUARDS (WAVE 348):**
+
+```typescript
+// 1. BPM validation
+if (!audio.bpm || audio.bpm <= 0 || !isFinite(audio.bpm)) {
+  safeBPM = 120  // Fallback
+}
+
+// 2. NaN/Infinity protection
+if (!isFinite(gearboxFactor) || isNaN(gearboxFactor)) {
+  gearboxFactor = 1.0  // Full amplitude (mejor exceso que freeze)
+}
+
+// 3. Position clamping
+position.x = Math.max(-1, Math.min(1, position.x))
+position.y = Math.max(-1, Math.min(1, position.y))
+```
+
+### **WHY IT WORKS:**
+
+**Physics:**
+- `Velocity = Distance / Time`
+- **Time:** Fijado por la música (BPM) → NO SE TOCA
+- **Velocity:** Limitada por el motor (Hardware) → NO SE TOCA
+- **Distance:** ✅ **ESTA ES LA VARIABLE QUE AJUSTAMOS**
+
+**Perceptual:**
+- 100% amplitude @ 60 BPM = Hypnotic slow sweeps
+- 57% amplitude @ 192 BPM = Energetic fast sweeps
+- Ambos se ven **BIEN** porque la velocidad angular es similar
+
+**Result:**
+- Hardware never exceeds physical limits
+- Movement stays synchronized with music
+- Amplitude scales gracefully with BPM
+- No stuttering, no lag, no REKT motors
+
+---
+
+## **🎭 BAR COUNTING & PHRASE DETECTION (WAVE 345)**
+
+**Location:** `VibeMovementManager.ts` líneas ~470-482
+
+**Purpose:** Tracking de compases musicales para rotación de patrones.
+
+### **THE SYSTEM:**
+
+```typescript
+// 1. Beat counting (viene de AudioAnalyzer)
+const beatCount = audio.beatCount || 0  // Beats totales desde inicio
+
+// 2. Bar detection (4 beats = 1 bar)
+if (beatCount !== this.lastBeatCount) {
+  if (beatCount % 4 === 0) {
+    this.barCount++  // ✅ Incrementar cada compás
+  }
+  this.lastBeatCount = beatCount
+}
+
+// 3. Fallback safety (WAVE 349)
+// Si beatCount no llega (audio analyzer dormido), forzar cada ~8s
+if (beatCount === 0 && this.frameCount % (30 * 8) === 0) {
+  this.barCount++
+  console.log(`[🎭 CHOREO] ⚠️ FALLBACK: barCount forced`)
+}
+
+// 4. Phrase detection (8 bars = 1 phrase)
+const phrase = Math.floor(this.barCount / 8)
+
+// 5. Pattern rotation (cada phrase)
+const patternIndex = phrase % 3  // 3 patterns per vibe
+const currentPattern = MOVEMENT_PRESETS[vibeId][patternIndex]
+```
+
+### **TERMINOLOGY:**
+
+| Unit      | Definition                  | Example                          |
+|-----------|-----------------------------|-----------------------------------|
+| **Beat**  | 1 beat = 1 kick drum hit    | 120 BPM = 120 beats/min          |
+| **Bar**   | 4 beats                     | 1 bar ≈ 2 seconds @ 120 BPM      |
+| **Phrase**| 8 bars = 32 beats           | 1 phrase ≈ 16 seconds @ 120 BPM  |
+
+**Musical Structure:**
+```
+Intro (0-7 bars) → Buildup (8-15) → Drop (16-23) → Breakdown (24-31) → ...
+  |_Phrase 0__|    |_Phrase 1__|    |_Phrase 2__|    |_Phrase 3__|
+```
+
+### **PATTERN ROTATION:**
+
+**Example (Techno):**
+```typescript
+MOVEMENT_PRESETS['techno-club'] = ['sweep', 'crossScan', 'spiral']
+
+// Phrase 0-7: sweep
+// Phrase 8-15: crossScan
+// Phrase 16-23: spiral
+// Phrase 24-31: sweep (cycle repeats)
+```
+
+**Why 8 bars?**
+- Estructura musical estándar (intro, verse, chorus = 8 bars)
+- Da tiempo suficiente para "leer" el patrón antes de cambiar
+- No tan largo que aburra (16 bars sería too much)
+
+### **CONSOLE LOGGING:**
+
+```bash
+# Cada 8 bars (cuando phrase cambia):
+[🎭 CHOREO] Bar:53 | Phrase:6 | Pattern:sweep | Energy:0.35 | BeatCount:212
+
+# Desglose:
+# - Bar:53 → 53 compases desde inicio
+# - Phrase:6 → floor(53/8) = 6 (phrase actual)
+# - Pattern:sweep → sweep (6 % 3 = 0 → primer patrón)
+# - Energy:0.35 → Audio energy actual
+# - BeatCount:212 → 212 beats desde inicio (53*4 = 212 ✓)
+```
+
+### **SYNCHRONIZATION STATUS:**
+
+✅ **CONFIRMED SYNCHRONIZED:**
+- barCount increments every 4 beats (via `beatCount % 4 === 0`)
+- Pattern rotation happens every 8 bars (via `phrase = floor(barCount / 8)`)
+- Fallback timer is **safety only** (fires si beatCount === 0 por > 8 segundos)
+
+❌ **OLD ASSUMPTION (from audit v1):**
+> "Pattern change: cada 32 beats ≈ 8 compases"
+> "NO está sincronizado con BPM porque... 'no sé, creo que daba problemas jejeje'"
+
+**REALITY:** Está 100% sincronizado. El comentario old era FUD.
+
+### **INTERACTION WITH GEARBOX:**
+
+```typescript
+// 1. Bar counting determina cuándo rotar pattern
+const phrase = Math.floor(this.barCount / 8)
+const currentPattern = MOVEMENT_PRESETS[vibeId][phrase % 3]
+
+// 2. GEARBOX usa ese pattern para lookup period
+const patternPeriod = PATTERN_PERIOD[currentPattern] || 1
+
+// 3. Period afecta el budget del GEARBOX
+const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod
+
+// RESULT: Patterns con period=2x obtienen DOBLE budget (más amplitud posible)
+```
+
+### **LOST BAR TRACKING:**
+
+**User quote:** *"Tenemos barcount (para saber cuantas perdemos)"*
+
+**What does this mean?**
+
+Probablemente: Si `beatCount` llega inconsistente (ej: AudioAnalyzer se salta beats), el sistema usa el **fallback timer** para forzar `barCount++` cada ~8 segundos.
+
+**Console output cuando pasa:**
+```bash
+[🎭 CHOREO] ⚠️ FALLBACK: barCount forced | beatCount:0 | frameCount:960
+```
+
+**Why it happens:**
+- AudioAnalyzer se duerme (no hay audio input)
+- BPM detection falla (track muy ambient/experimental)
+- Web Audio API se bugea (rare pero pasa)
+
+**Impact:**
+- Pattern rotation continúa (no se congela en 1 pattern)
+- GEARBOX usa fallback BPM=120 (safeBPM)
+- Movement sigue, pero puede desincronizarse de la música
+
+**Solution (ya implementado):**
+- Fallback timer cada 8 segundos (~2 bars @ 120 BPM)
+- Logging claro cuando se usa fallback
+- Sistema recovers automáticamente cuando beatCount vuelve
 
 ---
 

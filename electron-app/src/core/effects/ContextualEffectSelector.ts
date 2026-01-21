@@ -158,11 +158,13 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'sky_saw': 10000,            // 10s base → Aggressive cuts espaciados
   'abyssal_rise': 45000,       // 45s base → Epic transition - muy raro
   
-  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (cooldowns largos - no spam)
-  'void_mist': 40000,          // 40s base → Neblina rara y especial
-  'static_pulse': 25000,       // 25s base → Glitches ocasionales
-  'digital_rain': 35000,       // 35s base → Matrix moment especial
-  'deep_breath': 45000,        // 45s base → Respiración zen profunda
+  // 🌫️ WAVE 938 + 963: ATMOSPHERIC ARSENAL (cooldowns REDUCIDOS para rotation)
+  // WAVE 963: Cooldowns reducidos para que compitan con acid_sweep/sky_saw
+  // Objetivo: Que aparezcan en la rotación NORMAL de techno
+  'void_mist': 15000,          // 15s base (was 40s) → Neblina más frecuente
+  'static_pulse': 12000,       // 12s base (was 25s) → Glitches industriales
+  'digital_rain': 18000,       // 18s base (was 35s) → Matrix flicker regular
+  'deep_breath': 20000,        // 20s base (was 45s) → Respiración zen frecuente
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -1245,20 +1247,39 @@ export class ContextualEffectSelector {
         }
       }
       
-      // 🔪 WAVE 961: NORMAL - ATMOSPHERIC INJECTION
-      // Ahora incluye los 4 efectos atmosféricos para low-energy zones
+      // 🔪 WAVE 961 + 963: NORMAL - ATMOSPHERIC INJECTION with ZONE PRIORITY
+      // WAVE 963: Priorizar atmosféricos en zonas bajas (valley, silence)
+      // Priorizar sweeps/saws en zonas medias (ambient, gentle, active)
       if (zLevel === 'normal') {
-        const candidates = [
-          'acid_sweep',     // Sweeps volumétricos
-          'sky_saw',        // Cortes agresivos
-          'void_mist',      // 🌫️ Neblina púrpura
-          'static_pulse',   // ⚡ Glitch industrial
-          'digital_rain',   // 💚 Matrix flicker
-          'deep_breath',    // 🫁 Respiración orgánica
-        ]
+        const energyContext = musicalContext?.energyContext
+        const zone = energyContext?.zone
+        
+        // 🌫️ ZONE PRIORITY: Si estamos en zonas bajas, atmosféricos primero
+        let candidates: string[]
+        if (zone === 'silence' || zone === 'valley') {
+          candidates = [
+            'void_mist',      // 🌫️ Neblina púrpura
+            'deep_breath',    // 🫁 Respiración orgánica
+            'static_pulse',   // ⚡ Glitch industrial
+            'digital_rain',   // 💚 Matrix flicker
+            'acid_sweep',     // Sweeps volumétricos (fallback)
+            'sky_saw',        // Cortes agresivos (fallback)
+          ]
+        } else {
+          // Zonas medias/altas: sweeps y saws tienen prioridad
+          candidates = [
+            'acid_sweep',     // Sweeps volumétricos
+            'sky_saw',        // Cortes agresivos
+            'static_pulse',   // ⚡ Glitch industrial
+            'digital_rain',   // 💚 Matrix flicker
+            'void_mist',      // 🌫️ Neblina púrpura (fallback)
+            'deep_breath',    // 🫁 Respiración orgánica (fallback)
+          ]
+        }
+        
         for (const effect of candidates) {
           if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
-            console.log(`[EffectSelector 🔪] TECHNO NORMAL: ${effect}`)
+            console.log(`[EffectSelector 🔪] TECHNO NORMAL (zone=${zone}): ${effect}`)
             return effect
           }
         }

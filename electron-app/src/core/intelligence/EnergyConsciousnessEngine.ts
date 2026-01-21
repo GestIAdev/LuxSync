@@ -73,14 +73,27 @@ export interface EnergyConsciousnessConfig {
 }
 
 const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌋 WAVE 960: THE FLOOR IS LAVA - AGC Adaptation
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 
+  // PROBLEMA: El AGC amplifica el ruido de fondo hasta ~0.40
+  // ANTES: Silencio = 0.05, Ambient = 0.15, Valley = 0.20
+  // AHORA: El "silencio" del AGC = 0.40 → Los umbrales viejos detectaban
+  //        "actividad" en lo que es solo ruido amplificado.
+  // 
+  // SOLUCIÓN: ZONE SHIFT - Mover TODOS los umbrales hacia arriba
+  // El suelo ha subido → La portería también sube.
+  // 
+  // ═══════════════════════════════════════════════════════════════════════════
   zoneThresholds: {
-    silence: 0.10,   // E < 0.10 = SILENCE
-    valley: 0.20,    // E < 0.20 = VALLEY
-    ambient: 0.35,   // E < 0.35 = AMBIENT
-    gentle: 0.50,    // E < 0.50 = GENTLE
-    active: 0.70,    // E < 0.70 = ACTIVE
-    intense: 0.85,   // E < 0.85 = INTENSE
-                     // E >= 0.85 = PEAK
+    silence: 0.35,   // E < 0.35 = SILENCE (absorbe ruido AGC ~0.40)
+    valley: 0.55,    // E < 0.55 = VALLEY (breakdowns reales)
+    ambient: 0.70,   // E < 0.70 = AMBIENT (pads, voces suaves)
+    gentle: 0.80,    // E < 0.80 = GENTLE (ritmos ligeros)
+    active: 0.90,    // E < 0.90 = ACTIVE (techno normal)
+    intense: 0.95,   // E < 0.95 = INTENSE (bombos reales)
+                     // E >= 0.95 = PEAK (SOLO drops verdaderos)
   },
   
   // ASIMETRÍA TEMPORAL: Lento para bajar, rápido para subir
@@ -173,6 +186,12 @@ export class EnergyConsciousnessEngine {
     const { sustainedLow, sustainedHigh } = this.updateSustainedTracking(rawEnergy, now)
     
     // ═══════════════════════════════════════════════════════════════════
+    // 🌋 WAVE 960: FLASHBANG PROTOCOL
+    // ═══════════════════════════════════════════════════════════════════
+    // Detectar salto instantáneo de zona baja (silence/valley/ambient) a alta (intense/peak)
+    const isFlashbang = this.detectFlashbang(this.previousZone, this.currentZone, now)
+    
+    // ═══════════════════════════════════════════════════════════════════
     // 6. CONSTRUIR CONTEXTO
     // ═══════════════════════════════════════════════════════════════════
     return {
@@ -185,6 +204,7 @@ export class EnergyConsciousnessEngine {
       sustainedHigh,
       trend,
       lastZoneChange: this.lastZoneChange,
+      isFlashbang,  // 🌋 WAVE 960
     }
   }
   
@@ -356,6 +376,52 @@ export class EnergyConsciousnessEngine {
       (now - this.lastHighEnergyTime) < this.config.sustainedHighThresholdMs
     
     return { sustainedLow, sustainedHigh }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌋 WAVE 960: FLASHBANG PROTOCOL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Detecta si hay un salto instantáneo de zona baja a zona alta (FLASHBANG).
+   * 
+   * FLASHBANG = Salto de Fe (puede ser Drop o Grito):
+   * - Zona anterior: silence, valley, ambient (baja energía)
+   * - Zona actual: intense, peak (alta energía)
+   * - Tiempo desde cambio: < 100ms (prácticamente instantáneo)
+   * 
+   * OBJETIVO:
+   * Si TRUE → Disparar SOLO efectos cortos (StrobeBurst) en el primer frame.
+   * NO disparar efectos largos (Gatling, CyberDualism) hasta confirmar que
+   * la energía se sostiene (no es un grito aislado).
+   * 
+   * @returns true si detecta Flashbang, false si es transición normal
+   */
+  private detectFlashbang(
+    previousZone: EnergyZone,
+    currentZone: EnergyZone,
+    now: number
+  ): boolean {
+    // 1. ¿Es un cambio de zona reciente? (< 100ms)
+    const timeSinceChange = now - this.lastZoneChange
+    if (timeSinceChange > 100) return false  // Transición ya estabilizada
+    
+    // 2. ¿Venimos de zona BAJA?
+    const isFromLow = previousZone === 'silence' || 
+                      previousZone === 'valley' || 
+                      previousZone === 'ambient'
+    
+    if (!isFromLow) return false
+    
+    // 3. ¿Vamos a zona ALTA?
+    const isToHigh = currentZone === 'intense' || 
+                     currentZone === 'peak'
+    
+    if (!isToHigh) return false
+    
+    // ✅ FLASHBANG DETECTED: Salto instantáneo de LOW → HIGH
+    console.log(`[🌋 FLASHBANG] Detected: ${previousZone} → ${currentZone} (${timeSinceChange}ms)`)
+    return true
   }
   
   // ═══════════════════════════════════════════════════════════════════════

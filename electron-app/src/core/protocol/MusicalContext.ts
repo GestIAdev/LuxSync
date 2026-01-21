@@ -156,6 +156,20 @@ export interface EnergyContext {
   
   /** Timestamp de último cambio de zona */
   lastZoneChange: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌋 WAVE 960: FLASHBANG PROTOCOL
+  // ═══════════════════════════════════════════════════════════════════════
+  /**
+   * ¿Es un salto instantáneo de zona baja (silence/valley) a alta (intense/peak)?
+   * 
+   * TRUE = Salto de Fe detectado (puede ser Drop o Grito)
+   * → Disparar SOLO efectos cortos (StrobeBurst) en el primer frame
+   * → NO disparar efectos largos (Gatling, CyberDualism) hasta confirmar sustain
+   * 
+   * Esto previene que un grito aislado deje una Gatling disparando 4s al aire.
+   */
+  isFlashbang: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -275,6 +289,7 @@ export function createDefaultEnergyContext(): EnergyContext {
     sustainedHigh: false,
     trend: 0,
     lastZoneChange: Date.now(),
+    isFlashbang: false,  // 🌋 WAVE 960
   }
 }
 

@@ -550,6 +550,45 @@ export class ContextualEffectSelector {
     // this.registerEffectFired(effectType)  // ❌ REMOVED
     
     // ═══════════════════════════════════════════════════════════════
+    // 🌋 WAVE 960: FLASHBANG PROTOCOL
+    // Filtrar efectos largos si detectamos salto instantáneo LOW → HIGH
+    // ═══════════════════════════════════════════════════════════════
+    
+    if (energyContext?.isFlashbang) {
+      // Lista de efectos de LARGA DURACIÓN (> 2 segundos)
+      // Estos NO deben dispararse en el primer frame de un Flashbang
+      const LONG_DURATION_EFFECTS = [
+        'gatling_raid',      // 4s - Metralladora
+        'cyber_dualism',     // 3s - Ping-pong
+        'acid_sweep',        // 3s - Sweep volumétrico
+        'sky_saw',           // 3s - Cortes agresivos
+        'abyssal_rise',      // 16s - Épica transición
+        'corazon_latino',    // 4s - Corazón latino
+        'tropical_pulse',    // 3s - Pulso de conga
+        'salsa_fire',        // 3s - Fuego salsero
+        'clave_rhythm',      // 3s - Ritmo de clave
+      ]
+      
+      if (LONG_DURATION_EFFECTS.includes(finalEffectType)) {
+        // ⚡ Buscar alternativa CORTA (StrobeBurst, strobe_burst)
+        const shortAlternatives = ['strobe_burst']
+        const shortEffect = shortAlternatives.find(e => this.isEffectAvailable(e, musicalContext.vibeId))
+        
+        if (shortEffect) {
+          console.log(`[🌋 FLASHBANG] Swapping LONG ${finalEffectType} → SHORT ${shortEffect} (wait for sustain confirmation)`)
+          finalEffectType = shortEffect
+        } else {
+          // No hay alternativa corta - suprimir efecto (mejor silencio que ametralladora post-grito)
+          console.log(`[🌋 FLASHBANG] BLOCKING LONG ${finalEffectType} (no short alternatives - wait for sustain)`)
+          return this.noEffectDecision(musicalContext, `Flashbang detected - blocked long effect ${finalEffectType}`)
+        }
+      } else {
+        // El efecto ya es corto - OK para disparar
+        console.log(`[🌋 FLASHBANG] Allowing SHORT ${finalEffectType} (< 2s duration)`)
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
     // PASO 5: INTENSITY CALCULATION
     // ═══════════════════════════════════════════════════════════════
     

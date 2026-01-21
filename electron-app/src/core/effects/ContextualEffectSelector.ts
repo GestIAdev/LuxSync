@@ -157,6 +157,12 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'gatling_raid': 8000,        // 8s base → Machine gun controlado
   'sky_saw': 10000,            // 10s base → Aggressive cuts espaciados
   'abyssal_rise': 45000,       // 45s base → Epic transition - muy raro
+  
+  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (cooldowns largos - no spam)
+  'void_mist': 40000,          // 40s base → Neblina rara y especial
+  'static_pulse': 25000,       // 25s base → Glitches ocasionales
+  'digital_rain': 35000,       // 35s base → Matrix moment especial
+  'deep_breath': 45000,        // 45s base → Respiración zen profunda
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -662,6 +668,11 @@ export class ContextualEffectSelector {
       'strobe_burst',       // Impacto puntual
       'abyssal_rise',       // Transición épica
       'tidal_wave',         // Ola industrial
+      // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+      'void_mist',          // Neblina púrpura con respiración
+      'static_pulse',       // Glitch industrial blanco
+      'digital_rain',       // Matrix flicker cyan/lime
+      'deep_breath',        // Respiración orgánica azul/púrpura
     ],
     
     // 🎺 FIESTA LATINA: El Arsenal Tropical
@@ -691,22 +702,28 @@ export class ContextualEffectSelector {
    */
   private getEffectsAllowedForZone(zone: EnergyZone, vibe?: string): string[] {
     // 🔋 Efectos permitidos por intensidad energética (base)
+    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL añadido a zonas bajas (silence, valley, ambient, gentle)
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
-      // SILENCE: Solo efectos fantasmales
-      silence: ['ghost_breath'],
+      // SILENCE: Efectos fantasmales + atmosféricos profundos
+      // 🌫️ WAVE 938: void_mist + deep_breath para momentos vacíos
+      silence: ['ghost_breath', 'void_mist', 'deep_breath'],
       
-      // VALLEY: Pre-drop, efectos suaves
-      valley: ['ghost_breath', 'tidal_wave', 'cumbia_moon', 'clave_rhythm'],
+      // VALLEY: Pre-drop, efectos suaves + atmosféricos
+      // 🌫️ WAVE 938: Todos los atmosféricos (bajo ruido visual)
+      valley: ['ghost_breath', 'tidal_wave', 'cumbia_moon', 'clave_rhythm', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath'],
       
-      // AMBIENT: Sweeps y ondas permitidos
-      ambient: ['acid_sweep', 'tidal_wave', 'cumbia_moon', 'tropical_pulse', 'salsa_fire'],
+      // AMBIENT: Sweeps y ondas + atmosféricos activos
+      // 🌫️ WAVE 938: digital_rain, static_pulse (más activos)
+      ambient: ['acid_sweep', 'tidal_wave', 'cumbia_moon', 'tropical_pulse', 'salsa_fire', 'digital_rain', 'static_pulse', 'deep_breath'],
       
-      // GENTLE: Añadir dualismo
-      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'ghost_breath'],
+      // GENTLE: Añadir dualismo + algunos atmosféricos
+      // 🌫️ WAVE 938: static_pulse, digital_rain (transición a energía)
+      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'ghost_breath', 'static_pulse', 'digital_rain'],
       
       // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
       // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
-      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm'],
+      // 🌫️ WAVE 938: static_pulse para glitches rítmicos
+      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'static_pulse'],
       
       // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
       intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino'],

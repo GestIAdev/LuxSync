@@ -67,7 +67,13 @@ import { GatlingRaid } from './library/techno/GatlingRaid'
 import { SkySaw } from './library/techno/SkySaw'
 import { AbyssalRise } from './library/techno/AbyssalRise'
 
-// �🛡️ WAVE 680: Import VibeManager for THE SHIELD
+// 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+import { VoidMist } from './library/techno/VoidMist'
+import { StaticPulse } from './library/techno/StaticPulse'
+import { DigitalRain } from './library/techno/DigitalRain'
+import { DeepBreath } from './library/techno/DeepBreath'
+
+// 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
@@ -599,6 +605,22 @@ export class EffectManager extends EventEmitter {
     
     // 🌪️ Abyssal Rise - Epic 8-bar transition
     this.effectFactories.set('abyssal_rise', () => new AbyssalRise())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🌫️ Void Mist - Purple fog with breathing
+    this.effectFactories.set('void_mist', () => new VoidMist())
+    
+    // ⚡ Static Pulse - Industrial glitch flashes
+    this.effectFactories.set('static_pulse', () => new StaticPulse())
+    
+    // 💧 Digital Rain - Matrix flicker (cyan/lime)
+    this.effectFactories.set('digital_rain', () => new DigitalRain())
+    
+    // 🫁 Deep Breath - Organic 4-bar breathing (blue/purple)
+    this.effectFactories.set('deep_breath', () => new DeepBreath())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

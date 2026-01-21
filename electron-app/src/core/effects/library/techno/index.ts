@@ -37,6 +37,12 @@ export { GatlingRaid } from './GatlingRaid'
 export { SkySaw } from './SkySaw'
 export { AbyssalRise } from './AbyssalRise'
 
+// WAVE 938: Atmospheric Arsenal (zonas bajas de energía)
+export { VoidMist } from './VoidMist'
+export { StaticPulse } from './StaticPulse'
+export { DigitalRain } from './DigitalRain'
+export { DeepBreath } from './DeepBreath'
+
 // Default exports map
 export { default as IndustrialStrobeDefault } from './IndustrialStrobe'
 export { default as AcidSweepDefault } from './AcidSweep'

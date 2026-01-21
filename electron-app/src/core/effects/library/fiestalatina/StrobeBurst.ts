@@ -4,26 +4,30 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🌊 WAVE 691: DESATASCAR A LA DIOSA
+ * 🎨 WAVE 962: CONTEXTUAL COLOR - UV techno, dorado latina
  * 
- * Variante de StrobeStorm diseñada para FIESTA LATINA:
+ * Variante de StrobeStorm diseñada para DROPS CROSS-VIBE:
  * - Ráfagas cortas y rítmicas (no caos continuo)
  * - Sincronizado al BPM del track
  * - Respeta límites de Hz para no ser invasivo
- * - Colores vibrantes (no solo blanco)
+ * - 🎨 Color contextual según vibe:
+ *   * TECHNO: UV (H=270°) - Ultravioleta industrial
+ *   * LATINA: Dorado/Magenta/Cyan/Blanco (según intensidad)
  * 
  * COMPORTAMIENTO:
  * - 3-5 flashes rápidos en cada ráfaga
  * - Sincronizado al beat (downbeat = flash)
  * - Duración total: 500-800ms
- * - Color: Hereda del vibe o blanco cálido
+ * - Color: Contextual según vibe o config override
  * 
  * PERFECT FOR:
- * - Drops en reggaetón/cumbia
+ * - Drops en techno (UV industrial)
+ * - Drops en reggaetón/cumbia (dorado latino)
  * - Chorus energéticos
  * - Transiciones rítmicas
  * 
  * @module core/effects/library/StrobeBurst
- * @version WAVE 691
+ * @version WAVE 691, 962
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -132,23 +136,34 @@ export class StrobeBurst extends BaseEffect {
     // Ajustar timing si hay BPM
     this.adjustTimingToBPM()
     
-    console.log(`[StrobeBurst 💥] TRIGGERED! Flashes=${this.config.flashCount} Duration=${this.totalDurationMs}ms`)
+    // 🎨 WAVE 962: Log con color contextual
+    const vibeId = this.musicalContext?.vibeId || 'unknown'
+    const colorName = vibeId === 'techno-club' ? '🟣 UV' : '🌟 Dorado/Vibrante'
+    console.log(`[StrobeBurst 💥] TRIGGERED! Flashes=${this.config.flashCount} Duration=${this.totalDurationMs}ms Color=${colorName}`)
   }
   
   private calculateFlashColor(): void {
     if (this.config.flashColor) {
       this.calculatedColor = this.config.flashColor
     } else {
-      // Para Fiesta Latina: usar colores vibrantes (magenta/cyan/amarillo dorado)
-      const latinaColors = [
-        { h: 330, s: 100, l: 60 },  // Magenta vibrante
-        { h: 180, s: 100, l: 50 },  // Cyan
-        { h: 45, s: 90, l: 60 },    // 🌊 WAVE 805.6: SUPER DORADO unificado
-        { h: 0, s: 0, l: 100 },     // Blanco puro
-      ]
-      // Elegir según intensidad del trigger
-      const colorIndex = Math.floor(this.triggerIntensity * (latinaColors.length - 1))
-      this.calculatedColor = latinaColors[colorIndex]
+      // 🎨 WAVE 962: CONTEXTUAL COLOR - UV para techno, dorado para latina
+      const vibeId = this.musicalContext?.vibeId
+      
+      if (vibeId === 'techno-club') {
+        // TECHNO: UV industrial (ultravioleta puro)
+        this.calculatedColor = { h: 270, s: 100, l: 50 }  // 🟣 UV strobe
+      } else {
+        // FIESTA LATINA: usar colores vibrantes (magenta/cyan/amarillo dorado)
+        const latinaColors = [
+          { h: 330, s: 100, l: 60 },  // Magenta vibrante
+          { h: 180, s: 100, l: 50 },  // Cyan
+          { h: 45, s: 90, l: 60 },    // 🌊 WAVE 805.6: SUPER DORADO unificado
+          { h: 0, s: 0, l: 100 },     // Blanco puro
+        ]
+        // Elegir según intensidad del trigger
+        const colorIndex = Math.floor(this.triggerIntensity * (latinaColors.length - 1))
+        this.calculatedColor = latinaColors[colorIndex]
+      }
     }
   }
   

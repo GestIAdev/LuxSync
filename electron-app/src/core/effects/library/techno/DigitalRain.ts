@@ -1,0 +1,195 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🌧️ DIGITAL RAIN - MATRIX VIBES
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * 🔬 WAVE 938: ATMOSPHERIC ARSENAL (Radwulf)
+ * 
+ * FILOSOFÍA:
+ * Inspirado en Matrix - visualiza bits cayendo como lluvia de datos.
+ * Comportamiento asíncrono y caótico pero suave, perfecto para zonas tranquilas.
+ * 
+ * COMPORTAMIENTO:
+ * - MixBus: 'htp' (ADITIVO - flota sobre la física)
+ * - Pars: Flicker aleatorio rápido, intensidad baja (0.1-0.3)
+ * - Movers: Tilt hacia abajo (mirando al público), Pan escaneando lento
+ * - NO usa beatCount: Math.random() cada frame para decidir encendido/apagado
+ * 
+ * COLORES:
+ * - CYAN (#00ffff) y LIME (#00ff00) - Terminal retro
+ * - Transiciones suaves entre ambos colores
+ * 
+ * ZONAS:
+ * - Perfecto para ambient, gentle, valley
+ * - Ideal para intros y momentos de transición
+ * 
+ * @module core/effects/library/techno/DigitalRain
+ * @version WAVE 938 - ATMOSPHERIC ARSENAL (Radwulf)
+ */
+
+import { BaseEffect } from '../../BaseEffect'
+import { 
+  EffectTriggerConfig, 
+  EffectFrameOutput, 
+  EffectCategory
+} from '../../types'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface DigitalRainConfig {
+  /** Duración total del efecto (ms) */
+  durationMs: number
+  
+  /** Probabilidad de flicker por fixture por frame (0-1) */
+  flickerProbability: number
+  
+  /** Intensidad mínima de pars durante flicker */
+  minIntensity: number
+  
+  /** Intensidad máxima de pars durante flicker */
+  maxIntensity: number
+  
+  /** Velocidad de escaneo de movers (grados por segundo) */
+  scanSpeed: number
+  
+  /** Tilt angle de movers (negativo = hacia abajo) */
+  tiltAngle: number
+}
+
+const DEFAULT_CONFIG: DigitalRainConfig = {
+  durationMs: 8000,          // 8 segundos - ambiente largo
+  flickerProbability: 0.15,  // 15% chance por frame (~9 FPS flickering)
+  minIntensity: 0.1,
+  maxIntensity: 0.3,
+  scanSpeed: 15,             // 15°/s - muy lento
+  tiltAngle: -45,            // Mirando hacia abajo
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DIGITAL RAIN EFFECT
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class DigitalRain extends BaseEffect {
+  // ─────────────────────────────────────────────────────────────────────────
+  // ILightEffect properties
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  readonly effectType = 'digital_rain'
+  readonly name = 'Digital Rain'
+  readonly category: EffectCategory = 'physical'
+  readonly priority = 40  // Baja - efecto atmosférico
+  readonly mixBus = 'htp' as const  // ADITIVO - flota sobre física
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // Internal state
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  private config: DigitalRainConfig
+  private panOffset: number = -180
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // Constructor
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  constructor(config?: Partial<DigitalRainConfig>) {
+    super('digital_rain')
+    this.config = { ...DEFAULT_CONFIG, ...config }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // ILightEffect implementation
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  trigger(triggerConfig: EffectTriggerConfig): void {
+    super.trigger(triggerConfig)
+    this.panOffset = -180 // Empieza desde la izquierda
+    console.log(`[DigitalRain 💾] TRIGGERED! Duration=${this.config.durationMs}ms FlickerProb=${this.config.flickerProbability}`)
+  }
+
+  update(deltaMs: number): void {
+    if (this.phase === 'idle' || this.phase === 'finished') return
+    
+    this.elapsedMs += deltaMs
+    
+    // Pan de movers: escaneo lento de izquierda a derecha
+    this.panOffset += (this.config.scanSpeed * deltaMs) / 1000
+    if (this.panOffset > 180) this.panOffset = -180 // Wrap around
+    
+    // Check si terminó
+    if (this.elapsedMs >= this.config.durationMs) {
+      this.phase = 'finished'
+      console.log(`[DigitalRain 💾] FINISHED (${this.config.durationMs}ms)`)
+    }
+  }
+  
+  /**
+   * 📤 GET OUTPUT - Devuelve el output del frame actual
+   * 💾 WAVE 938: MATRIX VIBES - Flicker aleatorio con escaneo lento
+   */
+  getOutput(): EffectFrameOutput | null {
+    if (this.phase === 'idle' || this.phase === 'finished') return null
+
+    const progress = this.elapsedMs / this.config.durationMs
+
+    const output: EffectFrameOutput = {
+      effectId: this.id,
+      category: this.category,
+      phase: this.phase,
+      progress,
+      zones: ['front', 'pars', 'back', 'movers'],
+      intensity: this.triggerIntensity,
+      zoneOverrides: {},
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // PARS: Flicker aleatorio con colores CYAN/LIME
+    // ═════════════════════════════════════════════════════════════════════
+    const parZones = ['front', 'pars', 'back'] as const
+    
+    parZones.forEach(zone => {
+      const dimmerValue = Math.random() < this.config.flickerProbability
+        ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
+        : 0
+      
+      if (dimmerValue > 0) {
+        // Color: alternar entre CYAN y LIME
+        const useCyan = Math.random() > 0.5
+        const color = useCyan 
+          ? { h: 180, s: 100, l: 50 } // CYAN
+          : { h: 120, s: 100, l: 50 } // LIME
+        
+        output.zoneOverrides![zone] = {
+          dimmer: dimmerValue,
+          color: color,
+          blendMode: 'max' as const,
+        }
+      }
+    })
+
+    // ═════════════════════════════════════════════════════════════════════
+    // MOVERS: Tilt fijo hacia abajo, Pan escaneo lento
+    // ═════════════════════════════════════════════════════════════════════
+    output.zoneOverrides!['movers'] = {
+      dimmer: 0.15,
+      color: { h: 180, s: 100, l: 50 }, // CYAN
+      blendMode: 'max' as const,
+      movement: {
+        pan: this.panOffset,
+        tilt: this.config.tiltAngle,
+      },
+    }
+
+    return output
+  }
+  
+  isFinished(): boolean {
+    return this.phase === 'finished'
+  }
+  
+  abort(): void {
+    this.phase = 'finished'
+    console.log(`[DigitalRain 🌧️] Aborted`)
+  }
+}

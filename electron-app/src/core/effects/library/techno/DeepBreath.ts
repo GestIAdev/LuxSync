@@ -60,8 +60,8 @@ interface DeepBreathConfig {
 }
 
 const DEFAULT_CONFIG: DeepBreathConfig = {
-  breathCycleMs: 8000,       // 8 segundos por ciclo (4 compases a 120 BPM)
-  breathCount: 2,            // 2 respiraciones completas
+  breathCycleMs: 3000,       // 3 segundos por ciclo (was 8s) - WAVE 964
+  breathCount: 2,            // 2 respiraciones completas → 6s total
   peakIntensity: 0.6,        // 60% máximo
   bpmSync: true,
   beatsPerCycle: 16,         // 4 compases = 16 beats
@@ -80,8 +80,8 @@ export class DeepBreath extends BaseEffect {
   readonly effectType = 'deep_breath'
   readonly name = 'Deep Breath'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 45  // Media-baja - efecto atmosférico intenso
-  readonly mixBus = 'htp' as const  // ADITIVO - respira con física
+  readonly priority = 65  // Media - WAVE 964: Subida de 45 a 65
+  readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

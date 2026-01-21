@@ -71,7 +71,7 @@ interface StaticPulseConfig {
 }
 
 const DEFAULT_CONFIG: StaticPulseConfig = {
-  durationMs: 6000,          // 6 segundos
+  durationMs: 5000,          // 5 segundos (was 6s) - WAVE 964
   flashDurationMs: 50,       // Flash muy corto (50ms)
   minIntervalMs: 500,        // Mínimo 0.5s entre flashes
   maxIntervalMs: 1200,       // Máximo 1.2s entre flashes
@@ -94,8 +94,8 @@ export class StaticPulse extends BaseEffect {
   readonly effectType = 'static_pulse'
   readonly name = 'Static Pulse'
   readonly category: EffectCategory = 'physical'  // Afecta dimmer
-  readonly priority = 50  // Media - efecto de tensión
-  readonly mixBus = 'htp' as const  // ADITIVO - suma con física
+  readonly priority = 70  // Media-alta - WAVE 964: Subida de 50 a 70
+  readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

@@ -59,7 +59,7 @@ interface DigitalRainConfig {
 }
 
 const DEFAULT_CONFIG: DigitalRainConfig = {
-  durationMs: 8000,          // 8 segundos - ambiente largo
+  durationMs: 6000,          // 6 segundos (was 8s) - WAVE 964
   flickerProbability: 0.15,  // 15% chance por frame (~9 FPS flickering)
   minIntensity: 0.1,
   maxIntensity: 0.3,
@@ -79,8 +79,8 @@ export class DigitalRain extends BaseEffect {
   readonly effectType = 'digital_rain'
   readonly name = 'Digital Rain'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 40  // Baja - efecto atmosférico
-  readonly mixBus = 'htp' as const  // ADITIVO - flota sobre física
+  readonly priority = 70  // Media-alta - WAVE 964: Subida de 40 a 70
+  readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

@@ -60,7 +60,7 @@ interface VoidMistConfig {
 }
 
 const DEFAULT_CONFIG: VoidMistConfig = {
-  durationMs: 12000,         // 12 segundos - neblina larga
+  durationMs: 5000,          // 5 segundos (was 12s) - WAVE 964
   minIntensity: 0.05,
   maxIntensity: 0.15,
   breathPeriodMs: 5000,      // 5s por ciclo de respiración
@@ -80,8 +80,8 @@ export class VoidMist extends BaseEffect {
   readonly effectType = 'void_mist'
   readonly name = 'Void Mist'
   readonly category: EffectCategory = 'physical'  // Afecta dimmer
-  readonly priority = 35  // Muy baja - efecto de fondo
-  readonly mixBus = 'htp' as const  // ADITIVO - flota sobre física
+  readonly priority = 60  // Media - WAVE 964: Subida de 35 a 60
+  readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

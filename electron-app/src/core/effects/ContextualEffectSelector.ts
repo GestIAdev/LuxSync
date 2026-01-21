@@ -5,6 +5,8 @@
  * 
  * WAVE 685: CONTEXTUAL INTELLIGENCE
  * WAVE 700.1: MOOD INTEGRATION
+ * WAVE 931: ENERGY CONSCIOUSNESS Z-SCORE CAPPING
+ * WAVE 933: EFFECT INTENSITY MAPPING - Zone-appropriate effect selection
  * 
  * "MG Music: Sonido e Iluminación Contextual IA"
  * 
@@ -17,6 +19,7 @@
  * - Hunt Decision: ¿El cazador dice que es momento de atacar?
  * - Energy Trend: ¿Subiendo o bajando?
  * - 🎭 Mood: ¿Estamos en CALM, BALANCED o PUNK mode?
+ * - 🔋 Energy Zone: ¿Silencio, valle, ambiente, activo, pico? (WAVE 933)
  * 
  * FILOSOFÍA:
  * - NO es aleatorio - es contextual
@@ -499,6 +502,40 @@ export class ContextualEffectSelector {
       return this.noEffectDecision(musicalContext, 'LATINA breathing - strobe in cooldown')
     }
     
+    // ═══════════════════════════════════════════════════════════════
+    // PASO 4.5: 🔋 WAVE 933 - VERIFICACIÓN DE ZONA ENERGÉTICA
+    // Si el efecto seleccionado NO es apropiado para la zona, buscar alternativa
+    // ═══════════════════════════════════════════════════════════════
+    
+    let finalEffectType = effectType
+    
+    if (!this.isEffectAppropriateForZone(effectType, energyContext)) {
+      // Buscar alternativa en la lista permitida para esta zona
+      const allowedEffects = energyContext ? this.getEffectsAllowedForZone(energyContext.zone) : []
+      
+      // Encontrar un efecto permitido que NO sea el último (anti-repetición)
+      const alternative = allowedEffects.find(e => e !== lastEffectType && this.isEffectAvailable(e, musicalContext.vibeId))
+      
+      if (alternative) {
+        console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} → ${alternative} (zone-appropriate swap)`)
+        finalEffectType = alternative
+      } else if (allowedEffects.length > 0) {
+        // Fallback: cualquier efecto permitido
+        const fallback = allowedEffects.find(e => this.isEffectAvailable(e, musicalContext.vibeId))
+        if (fallback) {
+          console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} → ${fallback} (zone fallback)`)
+          finalEffectType = fallback
+        } else {
+          // No hay alternativa válida - suprimir disparo
+          console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} BLOCKED - no alternatives`)
+          return this.noEffectDecision(musicalContext, `Zone ${energyContext?.zone} blocked ${effectType} - no alternatives available`)
+        }
+      } else {
+        // Zona desconocida sin restricciones - mantener selección original
+        console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: keeping ${effectType} (no restrictions)`)
+      }
+    }
+    
     // 🔥 WAVE 810.5: NO registrar aquí - esperar a que EffectManager confirme el disparo
     // El cooldown se registrará solo si el efecto REALMENTE se dispara (no bloqueado por Shield/Traffic)
     // this.registerEffectFired(effectType)  // ❌ REMOVED
@@ -511,19 +548,23 @@ export class ContextualEffectSelector {
     
     // ═══════════════════════════════════════════════════════════════
     // PASO 6: BUILD DECISION
+    // 🔋 WAVE 933: Usar finalEffectType (post zone-swap)
     // ═══════════════════════════════════════════════════════════════
     
     // Anti-repetición tracking
-    if (effectType === lastEffectType) {
+    if (finalEffectType === lastEffectType) {
       this.consecutiveSameEffect++
     } else {
       this.consecutiveSameEffect = 0
     }
     
+    // 🔋 WAVE 933: Añadir zona energética al reason
+    const zoneInfo = energyContext ? ` [Zone:${energyContext.zone}]` : ''
+    
     return {
-      effectType,
+      effectType: finalEffectType,
       intensity,
-      reason: `${zLevel.toUpperCase()} moment in ${sectionType} | Z=${musicalContext.zScore.toFixed(2)}σ`,
+      reason: `${zLevel.toUpperCase()} moment in ${sectionType}${zoneInfo} | Z=${musicalContext.zScore.toFixed(2)}σ`,
       confidence: shouldStrike.confidence,
       isOverride: false,
       musicalContext,

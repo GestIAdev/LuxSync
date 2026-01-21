@@ -398,6 +398,67 @@ export class EnergyConsciousnessEngine {
   }
   
   /**
+   * 🎤 WAVE 936: VOCAL FILTER - Confianza de transición
+   * 
+   * Distingue entre drops reales y voces que saltan de golpe.
+   * 
+   * COMPORTAMIENTO:
+   * - Drop real: Energía sube y se MANTIENE alta (>200ms) → confianza ALTA
+   * - Voz: Energía sube y fluctúa/baja rápido (<200ms) → confianza BAJA
+   * 
+   * USO: Los consumidores pueden usar esta confianza para decidir
+   * qué tan "pesado" debe ser el efecto que disparan.
+   * 
+   * @param context - El EnergyContext actual
+   * @returns 0-1, donde 1 = muy confiable, 0 = probablemente ruido/voz
+   */
+  getTransitionConfidence(context: EnergyContext): number {
+    const now = Date.now()
+    const timeSinceChange = now - context.lastZoneChange
+    
+    // Si la transición es muy reciente (<100ms), baja confianza
+    if (timeSinceChange < 100) {
+      return 0.2 // Probablemente ruido transitorio
+    }
+    
+    // Si la transición tiene 100-300ms, confianza media (podría ser voz)
+    if (timeSinceChange < 300) {
+      // Considerar también la tendencia: si está subiendo, más confianza
+      const trendBonus = context.trend > 0.3 ? 0.2 : 0
+      return 0.4 + trendBonus
+    }
+    
+    // Si la transición tiene 300-500ms, confianza alta
+    if (timeSinceChange < 500) {
+      return 0.75
+    }
+    
+    // Más de 500ms en la misma zona = muy confiable
+    return 1.0
+  }
+  
+  /**
+   * 🎤 WAVE 936: ¿Es esta transición probablemente una voz?
+   * 
+   * Heurística simple: transición muy rápida + no sostenida + fluctuante
+   */
+  isProbablyVocalTransition(context: EnergyContext): boolean {
+    const now = Date.now()
+    const timeSinceChange = now - context.lastZoneChange
+    
+    // Si saltamos de silence/valley a una zona alta muy rápido
+    const wasLow = context.previousZone === 'silence' || context.previousZone === 'valley'
+    const isHighNow = context.zone === 'active' || context.zone === 'intense' || context.zone === 'peak'
+    
+    if (wasLow && isHighNow && timeSinceChange < 150) {
+      // Transición muy rápida desde silencio → probablemente voz/grito
+      return true
+    }
+    
+    return false
+  }
+  
+  /**
    * Obtiene estadísticas para debug
    */
   getStats(): {

@@ -672,21 +672,23 @@ export class TitanEngine extends EventEmitter {
     
     // ─────────────────────────────────────────────────────────────────────
     // WAVE 257: Throttled debug log (every second = 30 frames)
+    // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy (antiguo)
     // ─────────────────────────────────────────────────────────────────────
-    if (this.state.frameCount % 30 === 0 && audio.energy > 0.05) {
-      console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${audio.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`)
+    if (this.state.frameCount % 30 === 0 && context.energy > 0.05) {
+      console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${context.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`)
     }
     
     // Guardar estado para deltas
-    this.state.previousEnergy = audio.energy
+    this.state.previousEnergy = context.energy
     this.state.previousBass = audio.bass
     this.state.currentIntent = intent
     
     // Debug logging
+    // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
     if (this.config.debug && this.state.frameCount % 60 === 0) {
       console.log(`[TitanEngine] Frame ${this.state.frameCount}:`, {
         vibe: vibeProfile.id,
-        energy: audio.energy.toFixed(2),
+        energy: context.energy.toFixed(2),
         intensity: masterIntensity.toFixed(2),
       })
     }
@@ -1177,8 +1179,9 @@ export class TitanEngine extends EventEmitter {
     
     // Construir contexto de audio para VMM
     // WAVE 345: Incluir beatCount para phrase detection
+    // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
     const vmmContext: VMMContext = {
-      energy: audio.energy,
+      energy: context.energy,  // 🔋 WAVE 935: Normalizado con AGC
       bass: audio.bass,
       mids: audio.mid,
       highs: audio.high,

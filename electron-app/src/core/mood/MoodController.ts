@@ -51,14 +51,16 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // ═══════════════════════════════════════════════════════════════════════
   // ⚖️ BALANCED - "Disparo cuando la música lo pide"
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 930.2 - UNCLOG: Balanced = NEUTRAL, no penaliza
-  // Si el Hunt dice que es bueno, es bueno. Punto.
+  // WAVE 937: BALANCED = PROFESIONAL → Solo momentos BUENOS, no "apenas dignos"
+  // Problema: worthiness 0.66-0.71 dispara cada 6s → 8-10 EPM (demasiado)
+  // Solución: Threshold 1.15x → worthiness efectivo debe ser ~0.75+ (mejor calidad)
+  // Target EPM: 5-6 (1 efecto cada 10-12 segundos)
   balanced: {
     name: 'balanced',
-    description: 'El profesional. Dispara cuando la música lo pide.',
+    description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
     emoji: '⚖️',
-    thresholdMultiplier: 1.0,      // ✅ NEUTRAL: Sin penalización
-    cooldownMultiplier: 1.0,       // ✅ NEUTRAL: Cooldowns normales
+    thresholdMultiplier: 1.15,     // 🎯 WAVE 937: 15% más exigente (era 1.0)
+    cooldownMultiplier: 1.0,       // Cooldowns normales
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Sin mínimo
     blockList: [],                 // Nada bloqueado

@@ -503,15 +503,18 @@ export class ContextualEffectSelector {
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // PASO 4.5: 🔋 WAVE 933 - VERIFICACIÓN DE ZONA ENERGÉTICA
+    // PASO 4.5: 🔋 WAVE 933 + 936 - VERIFICACIÓN DE ZONA ENERGÉTICA + VIBE
     // Si el efecto seleccionado NO es apropiado para la zona, buscar alternativa
+    // 🛡️ WAVE 936: Ahora con filtro de VIBE para evitar cumbia en techno
     // ═══════════════════════════════════════════════════════════════
     
     let finalEffectType = effectType
     
-    if (!this.isEffectAppropriateForZone(effectType, energyContext)) {
-      // Buscar alternativa en la lista permitida para esta zona
-      const allowedEffects = energyContext ? this.getEffectsAllowedForZone(energyContext.zone) : []
+    if (!this.isEffectAppropriateForZone(effectType, energyContext, musicalContext.vibeId)) {
+      // 🛡️ WAVE 936: Buscar alternativa CON filtro de vibe
+      const allowedEffects = energyContext 
+        ? this.getEffectsAllowedForZone(energyContext.zone, musicalContext.vibeId) 
+        : []
       
       // Encontrar un efecto permitido que NO sea el último (anti-repetición)
       const alternative = allowedEffects.find(e => e !== lastEffectType && this.isEffectAvailable(e, musicalContext.vibeId))
@@ -642,45 +645,110 @@ export class ContextualEffectSelector {
   }
   
   /**
-   * 🔋 WAVE 931: Helper para obtener efectos permitidos por zona energética
+   * 🔋 WAVE 936: EFECTOS PERMITIDOS POR VIBE
    * 
-   * Esto permite que Selene elija efectos SUAVES cuando está en zona baja,
-   * en lugar de simplemente NO disparar nada.
+   * ¡ADIÓS CUMBIA EN TECHNO! Cada vibe tiene su propio arsenal.
+   * El VibeLeakShield garantiza que los efectos latinos no contaminen techno.
    */
-  private getEffectsAllowedForZone(zone: EnergyZone): string[] {
+  private static readonly EFFECTS_BY_VIBE: Record<string, string[]> = {
+    // 🔪 TECHNO CLUB: El Arsenal Industrial
+    'techno-club': [
+      'ghost_breath',       // Respiro oscuro
+      'acid_sweep',         // Sweeps volumétricos
+      'cyber_dualism',      // Ping-pong L/R
+      'gatling_raid',       // Machine gun
+      'sky_saw',            // Cortes agresivos
+      'industrial_strobe',  // El martillo
+      'strobe_burst',       // Impacto puntual
+      'abyssal_rise',       // Transición épica
+      'tidal_wave',         // Ola industrial
+    ],
+    
+    // 🎺 FIESTA LATINA: El Arsenal Tropical
+    'fiesta-latina': [
+      'ghost_breath',       // Respiro suave
+      'tidal_wave',         // Ola oceánica
+      'cumbia_moon',        // Luna cumbianchera
+      'clave_rhythm',       // Ritmo de clave
+      'tropical_pulse',     // Pulso de conga
+      'salsa_fire',         // Fuego salsero
+      'strobe_burst',       // Para drops latinos
+      'solar_flare',        // Explosión solar
+      'corazon_latino',     // El alma del arquitecto
+    ],
+  }
+  
+  /**
+   * 🔋 WAVE 936: EFECTOS PERMITIDOS POR ZONA + VIBE (INTERSECCIÓN)
+   * 
+   * Esta es la corrección arquitectónica al VibeLeakProblem:
+   * Un efecto SOLO puede disparar si está en AMBAS listas:
+   * - Permitido para esta ZONA energética
+   * - Permitido para este VIBE musical
+   * 
+   * Esto elimina cumbia_moon en techno-club porque aunque esté
+   * en la lista de VALLEY, NO está en la lista de techno-club.
+   */
+  private getEffectsAllowedForZone(zone: EnergyZone, vibe?: string): string[] {
+    // 🔋 Efectos permitidos por intensidad energética (base)
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
-      // SILENCE: Solo efectos fantasmales, cambios de color
-      silence: ['ghost_breath', 'cumbia_moon'],
+      // SILENCE: Solo efectos fantasmales
+      silence: ['ghost_breath'],
       
-      // VALLEY: Pre-drop preparación, efectos suaves
+      // VALLEY: Pre-drop, efectos suaves
       valley: ['ghost_breath', 'tidal_wave', 'cumbia_moon', 'clave_rhythm'],
       
       // AMBIENT: Sweeps y ondas permitidos
       ambient: ['acid_sweep', 'tidal_wave', 'cumbia_moon', 'tropical_pulse', 'salsa_fire'],
       
-      // GENTLE: Añadir dualismo y bursts
-      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm'],
+      // GENTLE: Añadir dualismo
+      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'ghost_breath'],
       
-      // ACTIVE: Arsenal casi completo
-      active: ['cyber_dualism', 'gatling_raid', 'sky_saw', 'industrial_strobe', 'acid_sweep', 'strobe_burst'],
+      // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
+      // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
+      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm'],
       
-      // INTENSE: Todo menos el nuclear
-      intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep'],
+      // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
+      intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino'],
       
       // PEAK: Libertad total - DROP territory
-      peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise'],
+      peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise', 'strobe_burst', 'corazon_latino'],
     }
     
-    return EFFECTS_BY_INTENSITY[zone] || []
+    const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []
+    
+    // 🛡️ WAVE 936: VIBE LEAK SHIELD
+    // Si no hay vibe o es desconocido, usar lista base (legacy)
+    if (!vibe || !ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]) {
+      return intensityAllowed
+    }
+    
+    // INTERSECCIÓN: Solo efectos que están en AMBAS listas
+    const vibeAllowed = ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]
+    const validEffects = intensityAllowed.filter(fx => vibeAllowed.includes(fx))
+    
+    // Debug: si la intersección eliminó algo, loggear
+    if (validEffects.length < intensityAllowed.length) {
+      const blocked = intensityAllowed.filter(fx => !vibeAllowed.includes(fx))
+      if (blocked.length > 0) {
+        console.log(`[EffectSelector 🛡️] VIBE LEAK BLOCKED: ${blocked.join(', ')} (zone=${zone}, vibe=${vibe})`)
+      }
+    }
+    
+    return validEffects
   }
   
   /**
-   * 🔋 WAVE 931: Verificar si un efecto es apropiado para la zona energética
+   * 🔋 WAVE 931 + 936: Verificar si un efecto es apropiado para zona + vibe
+   * 
+   * 🛡️ WAVE 936: Ahora también considera el VIBE para la intersección.
+   * Un efecto solo es apropiado si está en la lista filtrada por zona Y vibe.
    */
-  private isEffectAppropriateForZone(effectType: string, energyContext?: EnergyContext): boolean {
+  private isEffectAppropriateForZone(effectType: string, energyContext?: EnergyContext, vibe?: string): boolean {
     if (!energyContext) return true // Sin contexto = permitir todo
     
-    const allowedEffects = this.getEffectsAllowedForZone(energyContext.zone)
+    // 🛡️ WAVE 936: Usar la lista filtrada por zona + vibe
+    const allowedEffects = this.getEffectsAllowedForZone(energyContext.zone, vibe)
     
     // Si la lista está vacía, permitir cualquier cosa (zona desconocida)
     if (allowedEffects.length === 0) return true
@@ -737,10 +805,55 @@ export class ContextualEffectSelector {
           confidence: fuzzyDecision.confidence,
         }
       }
+      
+      // 🛡️ WAVE 936: FUZZY HOLD SUPREMACY
+      // Si el Fuzzy explícitamente dice HOLD con alta confianza, RESPETAR.
+      // Esto evita que el "Epic Z-Score bypass" dispare en momentos silenciosos.
+      if (fuzzyDecision.action === 'hold' && fuzzyDecision.confidence >= 0.7) {
+        // Pero solo si hay justificación de energía baja
+        if (fuzzyDecision.reasoning.includes('Silence') || 
+            fuzzyDecision.reasoning.includes('Suppress') ||
+            fuzzyDecision.reasoning.includes('silence')) {
+          console.log(`[EffectSelector 🛡️] FUZZY HOLD RESPECTED: ${fuzzyDecision.reasoning}`)
+          return {
+            should: false,
+            reason: `Fuzzy HOLD (confidence=${fuzzyDecision.confidence.toFixed(2)}): ${fuzzyDecision.reasoning}`,
+            confidence: 0,
+          }
+        }
+      }
     }
     
-    // Si Z-Score es epic (>2.8) aunque Hunt/Fuzzy no lo digan, dispararemos algo suave
+    // 🛡️ WAVE 936: ENERGY-AWARE EPIC BYPASS
+    // El bypass de Z-Score alto ya NO dispara en zonas de baja energía.
+    // Antes: Z >= 2.8 → siempre disparar
+    // Ahora: Z >= 2.8 + zona >= ambient → disparar (respeta consciencia energética)
     if (musicalContext.zScore >= this.config.zScoreThresholds.epic) {
+      const energyContext = musicalContext.energyContext
+      const zone = energyContext?.zone ?? 'gentle'
+      
+      // Zonas donde el bypass NO debe funcionar
+      const suppressedZones: string[] = ['silence', 'valley']
+      
+      if (suppressedZones.includes(zone)) {
+        console.log(`[EffectSelector 🛡️] EPIC BYPASS BLOCKED: Z=${musicalContext.zScore.toFixed(2)}σ but zone=${zone}`)
+        return {
+          should: false,
+          reason: `Epic Z but low energy zone (Z=${musicalContext.zScore.toFixed(2)}σ, zone=${zone})`,
+          confidence: 0,
+        }
+      }
+      
+      // Zona ambient: permitir pero con baja confianza (efecto suave)
+      if (zone === 'ambient') {
+        return {
+          should: true,
+          reason: `Epic Z-Score in ambient (Z=${musicalContext.zScore.toFixed(2)}σ) - SOFT effect only`,
+          confidence: 0.5, // Baja confianza → efecto menos intenso
+        }
+      }
+      
+      // Zonas altas: bypass normal
       return {
         should: true,
         reason: `Epic Z-Score bypass (Z=${musicalContext.zScore.toFixed(2)}σ)`,
@@ -922,6 +1035,7 @@ export class ContextualEffectSelector {
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
     // 🔫 WAVE 930: ARSENAL PESADO - GatlingRaid, SkySaw, AbyssalRise
     // 🔫 WAVE 930.1 FIX: GatlingRaid más accesible (EPIC drop también)
+    // 🎤 WAVE 936: VOCAL FILTER - Protección contra voces que disparan artillería
     // ═══════════════════════════════════════════════════════════════
     if (vibe === 'techno-club') {
       
@@ -938,50 +1052,73 @@ export class ContextualEffectSelector {
       // 🔫 WAVE 930.4: DIVERSITY ENFORCEMENT - Relajar triggers para todos los efectos
       if (zLevel === 'divine' || zLevel === 'epic') {
         const currentZ = musicalContext?.zScore ?? 0
+        const energyContext = musicalContext?.energyContext
         
-        // 🔫 GatlingRaid: EPIC+ con alta energía (Z>1.5σ) - no requiere drop exacto
-        if (currentZ >= 1.5 && this.isEffectAvailable('gatling_raid', vibe)) {
+        // 🎤 WAVE 936: VOCAL FILTER
+        // Si la transición de zona es MUY reciente (<150ms), reducir intensidad del efecto
+        // Esto evita que una voz de golpe dispare gatling_raid
+        let isRecentTransition = false
+        if (energyContext) {
+          const timeSinceZoneChange = Date.now() - energyContext.lastZoneChange
+          const wasLowZone = energyContext.previousZone === 'silence' || energyContext.previousZone === 'valley'
+          isRecentTransition = wasLowZone && timeSinceZoneChange < 200
+          
+          if (isRecentTransition) {
+            console.log(`[EffectSelector 🎤] VOCAL FILTER: Recent transition (${timeSinceZoneChange}ms from ${energyContext.previousZone}) - soft effect only`)
+          }
+        }
+        
+        // 🔫 GatlingRaid: EPIC+ con alta energía (Z>1.5σ) - PERO no en transiciones recientes
+        if (!isRecentTransition && currentZ >= 1.5 && this.isEffectAvailable('gatling_raid', vibe)) {
           console.log(`[EffectSelector 🔫] TECHNO ${zLevel.toUpperCase()}: gatling_raid (MACHINE GUN)`)
           return 'gatling_raid'
         }
         
-        // 🤖 CyberDualism: Alternativa dinámica en EPIC
+        // 🤖 CyberDualism: Alternativa dinámica - OK en transiciones recientes (más suave)
         if (this.isEffectAvailable('cyber_dualism', vibe)) {
           console.log(`[EffectSelector 🤖] TECHNO ${zLevel.toUpperCase()}: cyber_dualism (L/R ASSAULT)`)
           return 'cyber_dualism'
         }
         
-        // ⚡ IndustrialStrobe: SOLO si otros en cooldown
-        if (this.isEffectAvailable('industrial_strobe', vibe)) {
+        // ⚡ IndustrialStrobe: SOLO si otros en cooldown Y no es transición reciente
+        if (!isRecentTransition && this.isEffectAvailable('industrial_strobe', vibe)) {
           console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()}: industrial_strobe (THE HAMMER)`)
           return 'industrial_strobe'
         }
         
-        // Fallback a strobe_burst
+        // Fallback a strobe_burst (suave, ok en cualquier caso)
         if (this.isEffectAvailable('strobe_burst', vibe)) {
           console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} FALLBACK: strobe_burst`)
           return 'strobe_burst'
         }
       }
       
-      // 🔪 BUILDUP: AcidSweep + SkySaw (Tensión agresiva)
-      // 🔫 WAVE 930.4: SkySaw más accesible - no requiere rising específico
+      // 🎯 WAVE 937: PROTOCOLO EDGING - BUILDUP NO DISPARA ARTILLERÍA PESADA
+      // ═════════════════════════════════════════════════════════════════
+      // Buildup = Tensión, NO clímax → Prohibir gatling_raid, industrial_strobe, solar_flare
+      // Solo permitir: sky_saw, acid_sweep, strobe_burst (efectos de tensión)
+      // Razón: Si disparamos munición pesada en el upswing, cuando llegue el drop
+      //        estará en cooldown → Selene desnuda en el momento crítico
       if (sectionType === 'buildup') {
-        // 🗡️ SkySaw en ANY buildup - cortes agresivos
+        // 🗡️ SkySaw en ANY buildup - cortes agresivos de TENSIÓN
         if (this.isEffectAvailable('sky_saw', vibe)) {
-          console.log(`[EffectSelector 🗡️] TECHNO BUILDUP: sky_saw (AGGRESSIVE CUTS)`)
+          console.log(`[EffectSelector 🗡️] BUILDUP EDGING: sky_saw (TENSION)`)
           return 'sky_saw'
         }
         // AcidSweep como alternativa
         if (this.isEffectAvailable('acid_sweep', vibe)) {
-          console.log(`[EffectSelector 🧪] TECHNO BUILDUP: acid_sweep`)
+          console.log(`[EffectSelector 🧪] BUILDUP EDGING: acid_sweep (TENSION)`)
           return 'acid_sweep'
         }
-        // Fallback: strobe burst
+        // Fallback: strobe burst (mini-strobe, no pesado)
         if (this.isEffectAvailable('strobe_burst', vibe)) {
-          console.log(`[EffectSelector ⚡] TECHNO BUILDUP PEAK: strobe_burst`)
+          console.log(`[EffectSelector ⚡] BUILDUP EDGING: strobe_burst (TENSION)`)
           return 'strobe_burst'
         }
+        
+        // 🛡️ Si ninguno está disponible, cyber_dualism como último recurso
+        console.log(`[EffectSelector 🛡️] BUILDUP EDGING: Holding fire - cyber_dualism fallback`)
+        return 'cyber_dualism'
       }
       
       // 🔪 BREAKDOWN/INTRO: AcidSweep (Ambiente volumétrico)

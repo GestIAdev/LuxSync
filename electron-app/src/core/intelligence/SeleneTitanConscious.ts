@@ -274,6 +274,11 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastDreamTimestamp: number = 0
   private effectHistory: Array<{ type: string; timestamp: number }> = []
   
+  // 🔋 WAVE 934+: Zone transition throttling (prevent spam logging)
+  private lastLoggedZone: string | null = null
+  private framesInLastLoggedZone: number = 0
+  private readonly ZONE_LOG_THRESHOLD = 5  // Log only after 5 frames in new zone (100ms @ 50fps)
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
@@ -517,9 +522,18 @@ export class SeleneTitanConscious extends EventEmitter {
     // (Lo movemos aquí para que FuzzyDecisionMaker tenga consciencia de zona)
     const energyContext = this.energyConsciousness.process(state.rawEnergy)
     
-    // Log cambios de zona significativos
-    if (energyContext.zone !== energyContext.previousZone) {
-      console.log(`[SeleneTitanConscious 🔋] Zone transition: ${energyContext.previousZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
+    // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
+    // Track frames in current zone
+    if (energyContext.zone === this.lastLoggedZone) {
+      this.framesInLastLoggedZone++
+    } else {
+      // Zone changed
+      if (this.framesInLastLoggedZone >= this.ZONE_LOG_THRESHOLD && this.lastLoggedZone !== null) {
+        // Log the LAST zone transition after it was stable
+        console.log(`[SeleneTitanConscious 🔋] Zone transition: ${this.lastLoggedZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
+      }
+      this.lastLoggedZone = energyContext.zone
+      this.framesInLastLoggedZone = 0
     }
     
     this.lastDropBridgeResult = this.dropBridge.check({

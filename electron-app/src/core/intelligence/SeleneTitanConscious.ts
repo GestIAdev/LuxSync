@@ -513,6 +513,15 @@ export class SeleneTitanConscious extends EventEmitter {
     // Normalizar sectionType (algunos vienen como 'build' en vez de 'buildup')
     const normalizedSection = state.sectionType === 'build' ? 'buildup' : state.sectionType
     
+    // 🔋 WAVE 932: Calcular energyContext ANTES del fuzzy para supresión
+    // (Lo movemos aquí para que FuzzyDecisionMaker tenga consciencia de zona)
+    const energyContext = this.energyConsciousness.process(state.rawEnergy)
+    
+    // Log cambios de zona significativos
+    if (energyContext.zone !== energyContext.previousZone) {
+      console.log(`[SeleneTitanConscious 🔋] Zone transition: ${energyContext.previousZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
+    }
+    
     this.lastDropBridgeResult = this.dropBridge.check({
       energyZScore: zScore,
       sectionType: normalizedSection as 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro',
@@ -522,6 +531,7 @@ export class SeleneTitanConscious extends EventEmitter {
     })
     
     // 3.5b. FUZZY DECISION: Evaluar lógica difusa
+    // 🔋 WAVE 932: Ahora con consciencia de zona energética
     this.lastFuzzyDecision = this.fuzzyDecisionMaker.evaluate({
       energy: state.rawEnergy,
       zScore: zScore,
@@ -529,6 +539,7 @@ export class SeleneTitanConscious extends EventEmitter {
       harshness: state.harshness ?? 0,
       huntScore: huntDecision.confidence,
       beauty: beautyAnalysis.totalBeauty,
+      energyContext: energyContext,  // 🔋 WAVE 932: Inyectar contexto energético
     })
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -557,14 +568,8 @@ export class SeleneTitanConscious extends EventEmitter {
     // Normalizar sección para el selector
     const selectorSection = this.normalizeSectionType(state.sectionType)
     
-    // 🔋 WAVE 931: Procesar consciencia energética
-    // Diseño asimétrico: Lento para entrar en silencio, INSTANTÁNEO para salir
-    const energyContext = this.energyConsciousness.process(state.rawEnergy)
-    
-    // Log cambios de zona significativos
-    if (energyContext.zone !== energyContext.previousZone) {
-      console.log(`[SeleneTitanConscious 🔋] Zone transition: ${energyContext.previousZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
-    }
+    // 🔋 WAVE 932: energyContext ya se calculó arriba para FuzzyDecisionMaker
+    // (No duplicar - se reutiliza la misma instancia)
     
     // Construir input para el selector
     const selectorInput: ContextualSelectorInput = {

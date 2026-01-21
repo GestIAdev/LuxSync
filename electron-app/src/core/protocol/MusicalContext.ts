@@ -233,8 +233,11 @@ export interface MusicalContext {
   /** 
    * Contexto energético detallado para decisiones inteligentes
    * Evita el "Síndrome del Grito en la Biblioteca"
+   * 
+   * 🔋 WAVE 932: Marcado como opcional para compatibilidad retroactiva
+   * Los módulos que no lo provean obtendrán createDefaultEnergyContext()
    */
-  energyContext: EnergyContext
+  energyContext?: EnergyContext
 
   // ═══════════════════════════════════════════════════════════════════════
   // CLASSIFICATION

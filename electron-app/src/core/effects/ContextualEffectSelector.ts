@@ -729,19 +729,21 @@ export class ContextualEffectSelector {
   }
   
   /**
-   * 🔋 WAVE 936: EFECTOS PERMITIDOS POR ZONA + VIBE (INTERSECCIÓN)
+   * 🔋 WAVE 936 + 961: EFECTOS PERMITIDOS POR ZONA + VIBE (INTERSECCIÓN)
    * 
    * Esta es la corrección arquitectónica al VibeLeakProblem:
    * Un efecto SOLO puede disparar si está en AMBAS listas:
    * - Permitido para esta ZONA energética
    * - Permitido para este VIBE musical
    * 
-   * Esto elimina cumbia_moon en techno-club porque aunque esté
-   * en la lista de VALLEY, NO está en la lista de techno-club.
+   * 🔪 WAVE 961: VIBE LEAK SURGERY
+   * Efectos latinos REMOVIDOS de zonas compartidas (valley, ambient, gentle).
+   * Solo aparecen en fiesta-latina. Techno tiene sus propios atmosféricos.
    */
   private getEffectsAllowedForZone(zone: EnergyZone, vibe?: string): string[] {
     // 🔋 Efectos permitidos por intensidad energética (base)
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL añadido a zonas bajas (silence, valley, ambient, gentle)
+    // 🔪 WAVE 961: VIBE LEAK SURGERY - Latinos removidos, techno tiene sus atmosféricos
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
       // SILENCE: Efectos fantasmales + atmosféricos profundos
       // 🌫️ WAVE 938: void_mist + deep_breath para momentos vacíos
@@ -749,20 +751,24 @@ export class ContextualEffectSelector {
       
       // VALLEY: Pre-drop, efectos suaves + atmosféricos
       // 🌫️ WAVE 938: Todos los atmosféricos (bajo ruido visual)
-      valley: ['ghost_breath', 'tidal_wave', 'cumbia_moon', 'clave_rhythm', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath'],
+      // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, clave_rhythm)
+      valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath'],
       
       // AMBIENT: Sweeps y ondas + atmosféricos activos
       // 🌫️ WAVE 938: digital_rain, static_pulse (más activos)
-      ambient: ['acid_sweep', 'tidal_wave', 'cumbia_moon', 'tropical_pulse', 'salsa_fire', 'digital_rain', 'static_pulse', 'deep_breath'],
+      // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, tropical_pulse, salsa_fire)
+      ambient: ['acid_sweep', 'tidal_wave', 'digital_rain', 'static_pulse', 'deep_breath'],
       
       // GENTLE: Añadir dualismo + algunos atmosféricos
       // 🌫️ WAVE 938: static_pulse, digital_rain (transición a energía)
-      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'ghost_breath', 'static_pulse', 'digital_rain'],
+      // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
+      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'static_pulse', 'digital_rain'],
       
       // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
       // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
       // 🌫️ WAVE 938: static_pulse para glitches rítmicos
-      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm', 'static_pulse'],
+      // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
+      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'static_pulse'],
       
       // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
       intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino'],
@@ -773,19 +779,37 @@ export class ContextualEffectSelector {
     
     const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []
     
-    // 🛡️ WAVE 936: VIBE LEAK SHIELD
+    // 🛡️ WAVE 936 + 961: VIBE LEAK SHIELD + LATINA ZONE OVERRIDES
     // Si no hay vibe o es desconocido, usar lista base (legacy)
     if (!vibe || !ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]) {
       return intensityAllowed
     }
     
+    // 🎺 WAVE 961: FIESTA LATINA - Zone Overrides
+    // Los efectos latinos SÍ pueden aparecer en zonas bajas cuando vibe=fiesta-latina
+    let zoneAdjusted = [...intensityAllowed]
+    if (vibe === 'fiesta-latina') {
+      if (zone === 'valley') {
+        zoneAdjusted.push('cumbia_moon', 'clave_rhythm')
+      }
+      if (zone === 'ambient') {
+        zoneAdjusted.push('cumbia_moon', 'tropical_pulse', 'salsa_fire')
+      }
+      if (zone === 'gentle') {
+        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm')
+      }
+      if (zone === 'active') {
+        zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm')
+      }
+    }
+    
     // INTERSECCIÓN: Solo efectos que están en AMBAS listas
     const vibeAllowed = ContextualEffectSelector.EFFECTS_BY_VIBE[vibe]
-    const validEffects = intensityAllowed.filter(fx => vibeAllowed.includes(fx))
+    const validEffects = zoneAdjusted.filter(fx => vibeAllowed.includes(fx))
     
     // Debug: si la intersección eliminó algo, loggear
-    if (validEffects.length < intensityAllowed.length) {
-      const blocked = intensityAllowed.filter(fx => !vibeAllowed.includes(fx))
+    if (validEffects.length < zoneAdjusted.length) {
+      const blocked = zoneAdjusted.filter(fx => !vibeAllowed.includes(fx))
       if (blocked.length > 0) {
         console.log(`[EffectSelector 🛡️] VIBE LEAK BLOCKED: ${blocked.join(', ')} (zone=${zone}, vibe=${vibe})`)
       }
@@ -1221,9 +1245,17 @@ export class ContextualEffectSelector {
         }
       }
       
-      // 🔪 NORMAL: Rotación de efectos medios (evita monotonía)
+      // 🔪 WAVE 961: NORMAL - ATMOSPHERIC INJECTION
+      // Ahora incluye los 4 efectos atmosféricos para low-energy zones
       if (zLevel === 'normal') {
-        const candidates = ['acid_sweep', 'sky_saw']
+        const candidates = [
+          'acid_sweep',     // Sweeps volumétricos
+          'sky_saw',        // Cortes agresivos
+          'void_mist',      // 🌫️ Neblina púrpura
+          'static_pulse',   // ⚡ Glitch industrial
+          'digital_rain',   // 💚 Matrix flicker
+          'deep_breath',    // 🫁 Respiración orgánica
+        ]
         for (const effect of candidates) {
           if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
             console.log(`[EffectSelector 🔪] TECHNO NORMAL: ${effect}`)

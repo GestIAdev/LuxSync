@@ -25,6 +25,9 @@ import { effectBiasTracker } from '../dream/EffectBiasTracker'
 import type { AudienceSafetyContext } from '../dream/AudienceSafetyContext'
 import { AudienceSafetyContextBuilder } from '../dream/AudienceSafetyContext'
 
+// 🎭 WAVE 920: MOOD INTEGRATION
+import { MoodController } from '../../mood/MoodController'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES - Interfaces de datos para el pipeline
 // ═══════════════════════════════════════════════════════════════════════════
@@ -92,16 +95,27 @@ export class DreamEngineIntegrator {
   public async executeFullPipeline(context: PipelineContext): Promise<IntegrationDecision> {
     const pipelineStartTime = Date.now()
     
-    // 🚫 Guard: Si hunt no recomendó disparo
-    if (context.huntDecision.worthiness < 0.65) {
-      console.log('[INTEGRATOR] 🚫 Hunt worthiness too low, skipping pipeline')
+    // 🎭 WAVE 920: MOOD-AWARE THRESHOLD
+    const moodController = MoodController.getInstance()
+    const currentProfile = moodController.getCurrentProfile()
+    const rawWorthiness = context.huntDecision.worthiness
+    const effectiveWorthiness = moodController.applyThreshold(rawWorthiness)
+    
+    console.log(
+      `[INTEGRATOR] 🎭 Mood: ${currentProfile.emoji} | ` +
+      `Raw worthiness: ${rawWorthiness.toFixed(2)} → Effective: ${effectiveWorthiness.toFixed(2)}`
+    )
+    
+    // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
+    if (effectiveWorthiness < 0.65) {
+      console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
         approved: false,
         effect: null,
         dreamTime: 0,
         filterTime: 0,
         totalTime: Date.now() - pipelineStartTime,
-        dreamRecommendation: 'Hunt worthiness insufficient',
+        dreamRecommendation: `Hunt worthiness insufficient (${currentProfile.name} mode: ${rawWorthiness.toFixed(2)} → ${effectiveWorthiness.toFixed(2)})`,
         ethicalVerdict: null,
         circuitHealthy: true,
         fallbackUsed: false,
@@ -149,9 +163,28 @@ export class DreamEngineIntegrator {
     // ═════════════════════════════════════════════════════════════════════
     // STEP 4: DECIDE (APPROVED/REJECTED/DEFERRED)
     // ═════════════════════════════════════════════════════════════════════
+    
+    // 🎭 WAVE 920: Apply mood intensity modifier to approved effect
+    let moodAdjustedEffect = ethicalVerdict.approvedEffect
+    if (moodAdjustedEffect) {
+      const rawIntensity = moodAdjustedEffect.intensity
+      const adjustedIntensity = moodController.applyIntensity(rawIntensity)
+      
+      if (rawIntensity !== adjustedIntensity) {
+        console.log(
+          `[INTEGRATOR] 🎭 Intensity adjusted: ${rawIntensity.toFixed(2)} → ${adjustedIntensity.toFixed(2)} (${currentProfile.emoji})`
+        )
+        // Clone effect with adjusted intensity
+        moodAdjustedEffect = {
+          ...moodAdjustedEffect,
+          intensity: adjustedIntensity
+        }
+      }
+    }
+    
     const decision: IntegrationDecision = {
       approved: ethicalVerdict.verdict === 'APPROVED',
-      effect: ethicalVerdict.approvedEffect,
+      effect: moodAdjustedEffect,
       dreamTime,
       filterTime,
       totalTime: Date.now() - pipelineStartTime,
@@ -318,15 +351,28 @@ export class DreamEngineIntegrator {
   
   private generateCandidates(dreamResult: EffectDreamResult): EffectCandidate[] {
     const candidates: EffectCandidate[] = []
+    const moodController = MoodController.getInstance()
+    const profile = moodController.getCurrentProfile()
     
-    if (dreamResult.bestScenario) {
+    // 🎭 WAVE 920: Helper para filtrar por blockList
+    const isBlocked = (effectId: string): boolean => {
+      if (moodController.isEffectBlocked(effectId)) {
+        console.log(`[INTEGRATOR] 🚫 Effect "${effectId}" blocked by ${profile.emoji} mood`)
+        return true
+      }
+      return false
+    }
+    
+    if (dreamResult.bestScenario && !isBlocked(dreamResult.bestScenario.effect.effect)) {
       candidates.push(dreamResult.bestScenario.effect)
     }
     
     for (const scenario of dreamResult.scenarios.slice(0, 3)) {
-      if (scenario.effect !== dreamResult.bestScenario?.effect) {
-        candidates.push(scenario.effect)
-      }
+      // Skip si es el best scenario ya añadido O si está bloqueado
+      if (scenario.effect === dreamResult.bestScenario?.effect) continue
+      if (isBlocked(scenario.effect.effect)) continue
+      
+      candidates.push(scenario.effect)
     }
     
     return candidates.slice(0, 5)

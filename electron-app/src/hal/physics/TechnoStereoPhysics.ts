@@ -209,7 +209,7 @@ export class TechnoStereoPhysics {
     // También subimos el Gate Off proporcionalmente para evitar colas largas sucias
     const effectiveGateOff = isRecovering ? this.RECOVERY_GATE_OFF : this.FRONT_PAR_GATE_OFF
 
-    const frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff)
+    let frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff)
 
     // 🥁 BACK: THE SNARE SNIPER (Geometric Mean)
     // 🎯 WAVE 910: Multiplicamos Mid * Treble
@@ -220,7 +220,13 @@ export class TechnoStereoPhysics {
     const snareSignal = Math.sqrt(mid * treble)
     let backParIntensity = this.calculateBackPar(snareSignal)
 
-    // 👯 STEREO ALCHEMY (Sin cambios, funciona perfecto)
+    // ☁️ WAVE 914: THE ATMOSPHERIC FLOOR (Trance Fix)
+    // Si la música es muy densa (Pads/Trance), flatness será alto (ej: 0.6).
+    // Usamos eso para crear un "Glow" base en los Movers.
+    // Factor 0.3 significa: Si flatness es 1.0 (ruido puro), el brillo mínimo es 30%.
+    const atmosphericFloor = flatness * 0.3
+
+    // 👯 STEREO ALCHEMY
     
     // LEFT: Mid Dominante - "The Body"
     const rawLeft = Math.max(0, mid - (treble * 0.3))
@@ -230,22 +236,54 @@ export class TechnoStereoPhysics {
     const rawRight = Math.max(0, treble - (mid * 0.2))
     let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST)
 
-    // � WAVE 910: GHOST KICK (Logic Sidechain)
-    // Si hay mucho ruido (Trance/DnB) O el bajo es brutal,
-    // usamos el BOMBO para empujar hacia abajo el resto
-    // Esto crea dinámica artificial en muros de sonido
-    
-    // Detectamos "Muro de Sonido" si flatness es alto o si todo está alto
-    const wallOfSound = flatness > 0.6 || (bass > 0.6 && mid > 0.6 && treble > 0.6)
+    // ☁️ APLICAR SUELO ATMOSFÉRICO
+    // Si moverL es 0 (silencio rítmico) pero hay Pad (flatness), se queda en el floor.
+    // Math.max asegura que el ritmo siempre gane al floor.
+    moverL = Math.max(moverL, atmosphericFloor)
+    moverR = Math.max(moverR, atmosphericFloor)
 
-    if (wallOfSound && frontParIntensity > 0.5) {
-      // Ducking Factor: Cuanto más fuerte el bombo, más agachamos lo demás
-      // Invertimos el bombo: 1.0 (golpe) -> 0.4 (ducking del 60%)
-      const ducking = 1.0 - (frontParIntensity * 0.6)
+    // 🔥 WAVE 916: APOCALYPSE DETECTION
+    // Si hay mucha distorsión (harshness) Y mucho ruido blanco (flatness),
+    // asumimos que es un Riser/Upswing aunque no haya bajos.
+    const isApocalypse = harshness > 0.5 && flatness > 0.5
+
+    // 🚑 WAVE 916: APOCALYPSE OVERRIDE
+    // Si estamos en el apocalipsis, NO nos importa si no hay bajo.
+    // Usamos la energía del ruido (treble/mid) para encender TODAS LAS LUCES.
+    if (isApocalypse) {
+      // Calculamos la "Energía del Caos"
+      const chaosEnergy = Math.max(mid, treble)
       
-      backParIntensity *= ducking
-      moverL *= ducking
-      moverR *= ducking
+      // FORZAMOS EL ENCENDIDO (Override)
+      // Si el Front estaba apagado por falta de bajos, lo encendemos con el ruido.
+      // Math.max asegura que usamos lo que sea más alto: el bajo real o el caos.
+      frontParIntensity = Math.max(frontParIntensity, chaosEnergy)
+      
+      // Lo mismo para los demás. ¡QUE TODO BRILLE!
+      backParIntensity = Math.max(backParIntensity, chaosEnergy)
+      moverL = Math.max(moverL, chaosEnergy)
+      moverR = Math.max(moverR, chaosEnergy)
+      
+      // NOTA: Al forzar esto, el "Ghost Kick" (sidechain) queda anulado implícitamente
+      // porque estamos sobrescribiendo los valores al final.
+    } else {
+      // LÓGICA NORMAL: GHOST KICK (Logic Sidechain)
+      // Solo aplicamos ducking si NO es el apocalipsis.
+      // Si hay mucho ruido (Trance/DnB) O el bajo es brutal,
+      // usamos el BOMBO para empujar hacia abajo el resto
+      
+      // Detectamos "Muro de Sonido" si flatness es alto o si todo está alto
+      const wallOfSound = flatness > 0.6 || (bass > 0.6 && mid > 0.6 && treble > 0.6)
+
+      if (wallOfSound && frontParIntensity > 0.5) {
+        // Ducking Factor: Cuanto más fuerte el bombo, más agachamos lo demás
+        // Invertimos el bombo: 1.0 (golpe) -> 0.4 (ducking del 60%)
+        const ducking = 1.0 - (frontParIntensity * 0.6)
+        
+        backParIntensity *= ducking
+        moverL *= ducking
+        moverR *= ducking
+      }
     }
 
     // Strobe (Treble peaks + Noise)

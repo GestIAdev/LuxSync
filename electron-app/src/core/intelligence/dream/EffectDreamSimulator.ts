@@ -3,7 +3,12 @@
  * "El Oráculo que ve el futuro de los efectos"
  * 
  * WAVE 900.1 - Phase 1: Foundation
- * WAVE 920.2 - Mood integration (pre-filtering blocked effects)
+ * WAVE 920.2 - Mood integration (pre-filterin  // 🌫️ WAVE 938 + 965: ATMOSPHERIC ARSENAL (low-energy zones)
+  // WAVE 965: Beauty boost para competir con acid_sweep/industrial_strobe
+  'void_mist': { base: 0.70, energyMultiplier: 0.85, technoBonus: 0.12 },      // 🌫️ Fog (was 0.55/0.6)
+  'static_pulse': { base: 0.73, energyMultiplier: 1.0, technoBonus: 0.14 },    // ⚡ Glitch (was 0.58/0.8)
+  'digital_rain': { base: 0.75, energyMultiplier: 1.05, technoBonus: 0.15 },   // 💧 Matrix (was 0.60/0.75)
+  'deep_breath': { base: 0.68, energyMultiplier: 0.75, technoBonus: 0.10 },    // 🫁 Breathing (was 0.52/0.5)cked effects)
  * 
  * @module EffectDreamSimulator
  * @description Sistema de simulación predictiva para efectos visuales.

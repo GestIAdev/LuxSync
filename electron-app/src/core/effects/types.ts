@@ -197,6 +197,7 @@ export interface EffectFrameOutput {
 
 /**
  * 🧨 WAVE 680: MUSICAL CONTEXT - El alma que respira
+ * 🔋 WAVE 931: ENERGY CONTEXT - Consciencia energética absoluta
  * 
  * Datos musicales en tiempo real inyectados en cada efecto.
  * Los efectos "respiran" con estos datos.
@@ -219,6 +220,12 @@ export interface MusicalContext {
   
   /** ¿Estamos en un drop? */
   inDrop?: boolean
+  
+  /** 
+   * 🔋 WAVE 931: Contexto energético para consciencia absoluta
+   * Evita el "Síndrome del Grito en la Biblioteca"
+   */
+  energyContext?: import('../protocol/MusicalContext.js').EnergyContext
 }
 
 /**

@@ -401,6 +401,12 @@ export interface MusicalContext {
   /** Energía general (0-1) */
   energy: number;
   
+  /** 
+   * 🔋 WAVE 931: Contexto energético para consciencia absoluta
+   * Evita el "Síndrome del Grito en la Biblioteca"
+   */
+  energyContext?: import('../../core/protocol/MusicalContext.js').EnergyContext;
+  
   /**
    * 🎯 CONFIANZA GENERAL
    * 

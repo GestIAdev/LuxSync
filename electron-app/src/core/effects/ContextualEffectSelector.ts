@@ -32,6 +32,8 @@ import type { MusicalContext } from './types'
 import type { HuntDecision } from '../intelligence/think/HuntEngine'
 import type { FuzzyDecision } from '../intelligence/think/FuzzyDecisionMaker'
 import { MoodController } from '../mood'
+// 🔋 WAVE 931: Import EnergyZone para consciencia energética
+import type { EnergyZone, EnergyContext } from '../protocol/MusicalContext'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -141,11 +143,17 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'tidal_wave': 20000,       // 20s base - ola ocasional
   
   // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
-  'industrial_strobe': 2000,   // 2s base → PUNK:1.4s (rapid-fire strobe)
-  'acid_sweep': 15000,         // 15s base → PUNK:10.5s (ambiente volumétrico)
+  // 🔫 WAVE 930.3: ANTI-STROBE-SPAM - Aumentado de 2s a 10s
+  'industrial_strobe': 10000,  // 10s base → Strobe es IMPACTO, no spam
+  'acid_sweep': 12000,         // 12s base → Dar espacio para sweeps (was 15s)
   
   // 🤖 WAVE 810: UNLOCK THE TWINS
-  'cyber_dualism': 20000,      // 20s base → PUNK:14s (ping-pong espacial)
+  'cyber_dualism': 15000,      // 15s base (was 20s) → Más gemelos
+  
+  // 🔫 WAVE 930: ARSENAL PESADO
+  'gatling_raid': 8000,        // 8s base → Machine gun controlado
+  'sky_saw': 10000,            // 10s base → Aggressive cuts espaciados
+  'abyssal_rise': 45000,       // 45s base → Epic transition - muy raro
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -431,12 +439,15 @@ export class ContextualEffectSelector {
     }
     
     // ═══════════════════════════════════════════════════════════════
-    // PASO 2: Z-SCORE CLASSIFICATION
+    // PASO 2: Z-SCORE CLASSIFICATION (🔋 WAVE 931: CON CONSCIENCIA ENERGÉTICA)
     // ═══════════════════════════════════════════════════════════════
     
-    const zLevel = this.classifyZScore(musicalContext.zScore)
+    // 🔋 Obtener contexto energético si está disponible
+    const energyContext = musicalContext.energyContext
+    const zLevel = this.classifyZScore(musicalContext.zScore, energyContext)
     
     // 🌩️ DIVINE MOMENT: Z > 3.5 = SOLAR FLARE OBLIGATORIO
+    // 🔋 WAVE 931: Pero solo si el zLevel NO fue capeado por consciencia energética
     if (zLevel === 'divine') {
       return this.divineDecision(musicalContext)
     }
@@ -523,12 +534,117 @@ export class ContextualEffectSelector {
   // PRIVATE: Classification helpers
   // ─────────────────────────────────────────────────────────────────────────
   
-  private classifyZScore(z: number): 'normal' | 'elevated' | 'epic' | 'divine' {
+  /**
+   * 🔋 WAVE 931: Clasificación Z-Score con CONSCIENCIA ENERGÉTICA
+   * 
+   * ANTES: Solo miraba Z-Score (relativo) → "Grito en biblioteca"
+   * AHORA: Considera también energía absoluta → "Contexto inteligente"
+   * 
+   * MATRIZ DE CAPPING:
+   * ┌────────────┬─────────────────────────────────────────┐
+   * │ EnergyZone │ Máximo Z-Level Permitido                │
+   * ├────────────┼─────────────────────────────────────────┤
+   * │ silence    │ normal (sin importar Z real)            │
+   * │ valley     │ elevated (aunque Z=4.0)                 │
+   * │ ambient    │ epic (bloquea divine)                   │
+   * │ gentle+    │ Sin restricción                         │
+   * └────────────┴─────────────────────────────────────────┘
+   */
+  private classifyZScore(
+    z: number, 
+    energyContext?: EnergyContext
+  ): 'normal' | 'elevated' | 'epic' | 'divine' {
     const { zScoreThresholds: t } = this.config
-    if (z >= t.divine) return 'divine'
-    if (z >= t.epic) return 'epic'
-    if (z >= t.elevated) return 'elevated'
-    return 'normal'
+    
+    // Clasificación base sin restricciones
+    let baseLevel: 'normal' | 'elevated' | 'epic' | 'divine' = 'normal'
+    if (z >= t.divine) baseLevel = 'divine'
+    else if (z >= t.epic) baseLevel = 'epic'
+    else if (z >= t.elevated) baseLevel = 'elevated'
+    
+    // 🔋 WAVE 931: Si no hay contexto energético, usar clasificación legacy
+    if (!energyContext) {
+      return baseLevel
+    }
+    
+    // 🛡️ CONSCIENCIA ENERGÉTICA: Cap basado en zona de energía absoluta
+    const zone = energyContext.zone
+    
+    // SILENCE (E < 0.10): Máximo NORMAL - No dispares machinegun en un funeral
+    if (zone === 'silence') {
+      if (baseLevel !== 'normal') {
+        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→${baseLevel} CAPPED to NORMAL (zone=SILENCE)`)
+      }
+      return 'normal'
+    }
+    
+    // VALLEY (E 0.10-0.20): Máximo ELEVATED - Preparando para el drop
+    if (zone === 'valley') {
+      if (baseLevel === 'divine' || baseLevel === 'epic') {
+        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→${baseLevel} CAPPED to ELEVATED (zone=VALLEY)`)
+        return 'elevated'
+      }
+      return baseLevel
+    }
+    
+    // AMBIENT (E 0.20-0.35): Máximo EPIC - Bloquea solar flares en ambiente suave
+    if (zone === 'ambient') {
+      if (baseLevel === 'divine') {
+        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→DIVINE CAPPED to EPIC (zone=AMBIENT)`)
+        return 'epic'
+      }
+      return baseLevel
+    }
+    
+    // GENTLE+ (E > 0.35): Sin restricciones - Selene tiene libertad total
+    return baseLevel
+  }
+  
+  /**
+   * 🔋 WAVE 931: Helper para obtener efectos permitidos por zona energética
+   * 
+   * Esto permite que Selene elija efectos SUAVES cuando está en zona baja,
+   * en lugar de simplemente NO disparar nada.
+   */
+  private getEffectsAllowedForZone(zone: EnergyZone): string[] {
+    const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
+      // SILENCE: Solo efectos fantasmales, cambios de color
+      silence: ['ghost_breath', 'cumbia_moon'],
+      
+      // VALLEY: Pre-drop preparación, efectos suaves
+      valley: ['ghost_breath', 'tidal_wave', 'cumbia_moon', 'clave_rhythm'],
+      
+      // AMBIENT: Sweeps y ondas permitidos
+      ambient: ['acid_sweep', 'tidal_wave', 'cumbia_moon', 'tropical_pulse', 'salsa_fire'],
+      
+      // GENTLE: Añadir dualismo y bursts
+      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'tropical_pulse', 'salsa_fire', 'clave_rhythm'],
+      
+      // ACTIVE: Arsenal casi completo
+      active: ['cyber_dualism', 'gatling_raid', 'sky_saw', 'industrial_strobe', 'acid_sweep', 'strobe_burst'],
+      
+      // INTENSE: Todo menos el nuclear
+      intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep'],
+      
+      // PEAK: Libertad total - DROP territory
+      peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise'],
+    }
+    
+    return EFFECTS_BY_INTENSITY[zone] || []
+  }
+  
+  /**
+   * 🔋 WAVE 931: Verificar si un efecto es apropiado para la zona energética
+   */
+  private isEffectAppropriateForZone(effectType: string, energyContext?: EnergyContext): boolean {
+    if (!energyContext) return true // Sin contexto = permitir todo
+    
+    const allowedEffects = this.getEffectsAllowedForZone(energyContext.zone)
+    
+    // Si la lista está vacía, permitir cualquier cosa (zona desconocida)
+    if (allowedEffects.length === 0) return true
+    
+    return allowedEffects.includes(effectType)
   }
   
   private calculateCooldown(lastEffectType: string | null): number {
@@ -763,35 +879,67 @@ export class ContextualEffectSelector {
     
     // ═══════════════════════════════════════════════════════════════
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+    // 🔫 WAVE 930: ARSENAL PESADO - GatlingRaid, SkySaw, AbyssalRise
+    // 🔫 WAVE 930.1 FIX: GatlingRaid más accesible (EPIC drop también)
     // ═══════════════════════════════════════════════════════════════
     if (vibe === 'techno-club') {
-      // 🔪 DIVINE/EPIC (DROP/PEAK): IndustrialStrobe = MARTILLO
-      if (zLevel === 'divine' || (zLevel === 'epic' && (sectionType === 'drop' || sectionType === 'chorus'))) {
+      
+      // 🌪️ ABYSSAL RISE: Transición épica en breakdown→buildup
+      // Solo se dispara en puntos de transición dramática
+      if (sectionType === 'breakdown' && energyTrend === 'falling') {
+        if (this.isEffectAvailable('abyssal_rise', vibe)) {
+          console.log(`[EffectSelector 🌪️] TECHNO BREAKDOWN→RISE: abyssal_rise (8-BAR JOURNEY)`)
+          return 'abyssal_rise'
+        }
+      }
+      
+      // 🔪 DIVINE/EPIC (DROP/PEAK): GatlingRaid, IndustrialStrobe, CyberDualism
+      // 🔫 WAVE 930.4: DIVERSITY ENFORCEMENT - Relajar triggers para todos los efectos
+      if (zLevel === 'divine' || zLevel === 'epic') {
+        const currentZ = musicalContext?.zScore ?? 0
+        
+        // 🔫 GatlingRaid: EPIC+ con alta energía (Z>1.5σ) - no requiere drop exacto
+        if (currentZ >= 1.5 && this.isEffectAvailable('gatling_raid', vibe)) {
+          console.log(`[EffectSelector 🔫] TECHNO ${zLevel.toUpperCase()}: gatling_raid (MACHINE GUN)`)
+          return 'gatling_raid'
+        }
+        
+        // 🤖 CyberDualism: Alternativa dinámica en EPIC
+        if (this.isEffectAvailable('cyber_dualism', vibe)) {
+          console.log(`[EffectSelector 🤖] TECHNO ${zLevel.toUpperCase()}: cyber_dualism (L/R ASSAULT)`)
+          return 'cyber_dualism'
+        }
+        
+        // ⚡ IndustrialStrobe: SOLO si otros en cooldown
         if (this.isEffectAvailable('industrial_strobe', vibe)) {
-          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} ${sectionType.toUpperCase()}: industrial_strobe (THE HAMMER)`)
+          console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()}: industrial_strobe (THE HAMMER)`)
           return 'industrial_strobe'
         }
-        // Fallback a strobe_burst si industrial en cooldown
+        
+        // Fallback a strobe_burst
         if (this.isEffectAvailable('strobe_burst', vibe)) {
           console.log(`[EffectSelector ⚡] TECHNO ${zLevel.toUpperCase()} FALLBACK: strobe_burst`)
           return 'strobe_burst'
         }
       }
       
-      // 🔪 BUILDUP: AcidSweep + StrobeBurst (Tensión creciente)
+      // 🔪 BUILDUP: AcidSweep + SkySaw (Tensión agresiva)
+      // 🔫 WAVE 930.4: SkySaw más accesible - no requiere rising específico
       if (sectionType === 'buildup') {
-        if (energyTrend === 'rising') {
-          // Primera mitad del buildup: acid sweep
-          if (this.isEffectAvailable('acid_sweep', vibe)) {
-            console.log(`[EffectSelector 🧪] TECHNO BUILDUP RISING: acid_sweep`)
-            return 'acid_sweep'
-          }
-        } else {
-          // Segunda mitad: strobe burst
-          if (this.isEffectAvailable('strobe_burst', vibe)) {
-            console.log(`[EffectSelector ⚡] TECHNO BUILDUP PEAK: strobe_burst`)
-            return 'strobe_burst'
-          }
+        // 🗡️ SkySaw en ANY buildup - cortes agresivos
+        if (this.isEffectAvailable('sky_saw', vibe)) {
+          console.log(`[EffectSelector 🗡️] TECHNO BUILDUP: sky_saw (AGGRESSIVE CUTS)`)
+          return 'sky_saw'
+        }
+        // AcidSweep como alternativa
+        if (this.isEffectAvailable('acid_sweep', vibe)) {
+          console.log(`[EffectSelector 🧪] TECHNO BUILDUP: acid_sweep`)
+          return 'acid_sweep'
+        }
+        // Fallback: strobe burst
+        if (this.isEffectAvailable('strobe_burst', vibe)) {
+          console.log(`[EffectSelector ⚡] TECHNO BUILDUP PEAK: strobe_burst`)
+          return 'strobe_burst'
         }
       }
       
@@ -803,24 +951,35 @@ export class ContextualEffectSelector {
         }
       }
       
-      // 🔪 ELEVATED + RISING: AcidSweep para tensión
+      // 🔪 ELEVATED + RISING: SkySaw/AcidSweep para tensión agresiva
+      // 🔫 WAVE 930.4: SkySaw prioridad sobre AcidSweep para más movimiento
       if (zLevel === 'elevated' && energyTrend === 'rising') {
+        if (this.isEffectAvailable('sky_saw', vibe)) {
+          console.log(`[EffectSelector 🗡️] TECHNO ELEVATED RISING: sky_saw`)
+          return 'sky_saw'
+        }
         if (this.isEffectAvailable('acid_sweep', vibe)) {
           console.log(`[EffectSelector 🧪] TECHNO ELEVATED RISING: acid_sweep`)
           return 'acid_sweep'
         }
       }
       
-      // 🤖 WAVE 810: ELEVATED + VERSE/CHORUS: CyberDualism (ping-pong L/R)
-      if (zLevel === 'elevated' && (sectionType === 'verse' || sectionType === 'chorus')) {
+      // 🤖 WAVE 810 + WAVE 930.4: ELEVATED: CyberDualism más accesible (no requiere verse/chorus)
+      if (zLevel === 'elevated') {
         if (this.isEffectAvailable('cyber_dualism', vibe)) {
-          console.log(`[EffectSelector 🤖] TECHNO ELEVATED ${sectionType.toUpperCase()}: cyber_dualism (L/R PING-PONG)`)
+          console.log(`[EffectSelector 🤖] TECHNO ELEVATED: cyber_dualism (L/R PING-PONG)`)
           return 'cyber_dualism'
         }
       }
       
-      // 🔪 ELEVATED + STABLE/FALLING: IndustrialStrobe ocasional
+      // 🔪 ELEVATED + STABLE/FALLING: AcidSweep antes que Strobe
+      // 🔫 WAVE 930.4: Reducir presencia de industrial_strobe
       if (zLevel === 'elevated') {
+        if (this.isEffectAvailable('acid_sweep', vibe)) {
+          console.log(`[EffectSelector 🧪] TECHNO ELEVATED: acid_sweep`)
+          return 'acid_sweep'
+        }
+        // IndustrialStrobe como último recurso
         if (this.isEffectAvailable('industrial_strobe', vibe)) {
           console.log(`[EffectSelector ⚡] TECHNO ELEVATED: industrial_strobe`)
           return 'industrial_strobe'
@@ -829,7 +988,7 @@ export class ContextualEffectSelector {
       
       // 🔪 NORMAL: Rotación de efectos medios (evita monotonía)
       if (zLevel === 'normal') {
-        const candidates = ['acid_sweep']
+        const candidates = ['acid_sweep', 'sky_saw']
         for (const effect of candidates) {
           if (this.isEffectAvailable(effect, vibe) && effect !== lastEffectType) {
             console.log(`[EffectSelector 🔪] TECHNO NORMAL: ${effect}`)

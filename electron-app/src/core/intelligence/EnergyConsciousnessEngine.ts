@@ -1,0 +1,433 @@
+/**
+ * 🔋 WAVE 931: ENERGY CONSCIOUSNESS ENGINE
+ * ================================================================
+ * 
+ * Motor de Consciencia Energética para Selene.
+ * 
+ * PROPÓSITO:
+ * Proporcionar contexto de energía ABSOLUTA a Selene, no solo Z-Scores.
+ * Esto evita el "Síndrome del Grito en la Biblioteca" donde un pico
+ * relativo en silencio (Z=4.0, E=0.15) dispara efectos épicos.
+ * 
+ * DISEÑO ASIMÉTRICO (Edge Case del "Fake Drop"):
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  ENTRAR en zona baja (silence/valley): LENTO (500ms avg)    │
+ * │  SALIR de zona baja:                   INSTANTÁNEO (0ms)    │
+ * └─────────────────────────────────────────────────────────────┘
+ * 
+ * Esto permite que cuando un DJ corta todo súbitamente antes de un drop,
+ * Selene detecte INSTANTÁNEAMENTE el drop sin quedarse bloqueada en
+ * "modo silencio" durante los primeros 200ms críticos.
+ * 
+ * @module core/intelligence/EnergyConsciousnessEngine
+ * @version 1.0.0 - WAVE 931
+ */
+
+import { EnergyContext, EnergyZone } from '../protocol/MusicalContext.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface EnergyConsciousnessConfig {
+  /** Umbrales para cada zona energética */
+  zoneThresholds: {
+    silence: number    // < este valor = SILENCE
+    valley: number     // < este valor = VALLEY
+    ambient: number    // < este valor = AMBIENT
+    gentle: number     // < este valor = GENTLE
+    active: number     // < este valor = ACTIVE
+    intense: number    // < este valor = INTENSE
+    // >= intense = PEAK
+  }
+  
+  /** 
+   * Factor de suavizado para ENTRAR en zonas bajas (0-1)
+   * Más alto = más lento para entrar en silencio
+   */
+  smoothingFactorDown: number
+  
+  /**
+   * Factor de suavizado para SALIR de zonas bajas (0-1)
+   * Más bajo = más rápido para detectar el drop
+   */
+  smoothingFactorUp: number
+  
+  /** Tiempo (ms) para considerar "energía sostenida baja" */
+  sustainedLowThresholdMs: number
+  
+  /** Tiempo (ms) para considerar "energía sostenida alta" */
+  sustainedHighThresholdMs: number
+  
+  /** Umbral para sustained low */
+  sustainedLowEnergyThreshold: number
+  
+  /** Umbral para sustained high */
+  sustainedHighEnergyThreshold: number
+  
+  /** Tamaño del historial para cálculo de percentil */
+  historySize: number
+  
+  /** Tamaño de ventana para cálculo de tendencia */
+  trendWindowSize: number
+}
+
+const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
+  zoneThresholds: {
+    silence: 0.10,   // E < 0.10 = SILENCE
+    valley: 0.20,    // E < 0.20 = VALLEY
+    ambient: 0.35,   // E < 0.35 = AMBIENT
+    gentle: 0.50,    // E < 0.50 = GENTLE
+    active: 0.70,    // E < 0.70 = ACTIVE
+    intense: 0.85,   // E < 0.85 = INTENSE
+                     // E >= 0.85 = PEAK
+  },
+  
+  // ASIMETRÍA TEMPORAL: Lento para bajar, rápido para subir
+  smoothingFactorDown: 0.92,  // ~500ms para estabilizar en silencio
+  smoothingFactorUp: 0.3,     // ~50ms para detectar spike (INSTANTÁNEO)
+  
+  sustainedLowThresholdMs: 5000,   // 5 segundos para "valle sostenido"
+  sustainedHighThresholdMs: 3000,  // 3 segundos para "pico sostenido"
+  
+  sustainedLowEnergyThreshold: 0.4,
+  sustainedHighEnergyThreshold: 0.7,
+  
+  historySize: 300,    // ~5 segundos @ 60fps
+  trendWindowSize: 10, // ~160ms para calcular tendencia
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔋 ENERGY CONSCIOUSNESS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export class EnergyConsciousnessEngine {
+  private config: EnergyConsciousnessConfig
+  
+  // Estado interno
+  private smoothedEnergy: number = 0
+  private currentZone: EnergyZone = 'silence'
+  private previousZone: EnergyZone = 'silence'
+  private lastZoneChange: number = Date.now()
+  
+  // Historial para percentil
+  private energyHistory: number[] = []
+  
+  // Ventana para tendencia
+  private trendWindow: number[] = []
+  
+  // Tracking de sostenibilidad
+  private lastHighEnergyTime: number = 0
+  private lastLowEnergyTime: number = Date.now()
+  
+  constructor(config: Partial<EnergyConsciousnessConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 MÉTODO PRINCIPAL: PROCESS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Procesa la energía actual y retorna el contexto energético completo.
+   * 
+   * @param rawEnergy - Energía absoluta del audio (0-1)
+   * @returns EnergyContext con toda la información para decisiones
+   */
+  process(rawEnergy: number): EnergyContext {
+    const now = Date.now()
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 1. SUAVIZADO ASIMÉTRICO - La magia del "Fake Drop"
+    // ═══════════════════════════════════════════════════════════════════
+    const smoothed = this.calculateAsymmetricSmoothing(rawEnergy)
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 2. DETERMINAR ZONA
+    // ═══════════════════════════════════════════════════════════════════
+    // CRITICAL: Para SALIR de zonas bajas, usamos energía RAW (instantánea)
+    // Para ENTRAR en zonas bajas, usamos energía SMOOTHED (suavizada)
+    const newZone = this.determineZone(rawEnergy, smoothed)
+    
+    // Detectar cambio de zona
+    if (newZone !== this.currentZone) {
+      this.previousZone = this.currentZone
+      this.currentZone = newZone
+      this.lastZoneChange = now
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 3. ACTUALIZAR HISTORIAL Y CALCULAR PERCENTIL
+    // ═══════════════════════════════════════════════════════════════════
+    this.updateHistory(rawEnergy)
+    const percentile = this.calculatePercentile(rawEnergy)
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 4. CALCULAR TENDENCIA
+    // ═══════════════════════════════════════════════════════════════════
+    const trend = this.calculateTrend(rawEnergy)
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 5. TRACKING DE SOSTENIBILIDAD
+    // ═══════════════════════════════════════════════════════════════════
+    const { sustainedLow, sustainedHigh } = this.updateSustainedTracking(rawEnergy, now)
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 6. CONSTRUIR CONTEXTO
+    // ═══════════════════════════════════════════════════════════════════
+    return {
+      absolute: rawEnergy,
+      smoothed: smoothed,
+      percentile,
+      zone: this.currentZone,
+      previousZone: this.previousZone,
+      sustainedLow,
+      sustainedHigh,
+      trend,
+      lastZoneChange: this.lastZoneChange,
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔄 SUAVIZADO ASIMÉTRICO
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Calcula el suavizado con asimetría temporal.
+   * 
+   * DISEÑO:
+   * - Cuando la energía BAJA: Suavizado LENTO (500ms para estabilizar)
+   *   → Evita que ruido/silencio momentáneo active modo silencio
+   * 
+   * - Cuando la energía SUBE: Suavizado RÁPIDO (casi instantáneo)
+   *   → Detecta el DROP inmediatamente, no se queda "dormido"
+   */
+  private calculateAsymmetricSmoothing(rawEnergy: number): number {
+    const isRising = rawEnergy > this.smoothedEnergy
+    
+    // ASIMETRÍA: Diferente velocidad según dirección
+    const factor = isRising 
+      ? this.config.smoothingFactorUp     // Subiendo: RÁPIDO
+      : this.config.smoothingFactorDown   // Bajando: LENTO
+    
+    // Exponential Moving Average con factor asimétrico
+    this.smoothedEnergy = this.smoothedEnergy * factor + rawEnergy * (1 - factor)
+    
+    return this.smoothedEnergy
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 DETERMINACIÓN DE ZONA
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Determina la zona energética actual.
+   * 
+   * REGLA CRÍTICA:
+   * - Para ENTRAR en silence/valley: Usar smoothed (lento)
+   * - Para SALIR de silence/valley: Usar raw (instantáneo)
+   */
+  private determineZone(raw: number, smoothed: number): EnergyZone {
+    const t = this.config.zoneThresholds
+    const currentIsLow = this.isLowZone(this.currentZone)
+    
+    // Si estamos en zona baja, usamos RAW para detectar subida INSTANTÁNEA
+    if (currentIsLow) {
+      // ¿La energía RAW indica que debemos subir?
+      if (raw >= t.active) return 'active'
+      if (raw >= t.gentle) return 'gentle'
+      if (raw >= t.ambient) return 'ambient'
+      if (raw >= t.valley) return 'valley'
+      
+      // Si no subimos, mantenemos zona actual (basado en smoothed)
+      if (smoothed < t.silence) return 'silence'
+      if (smoothed < t.valley) return 'valley'
+      return this.currentZone
+    }
+    
+    // Si estamos en zona alta, usamos SMOOTHED para bajar LENTAMENTE
+    if (smoothed >= t.intense) return 'peak'
+    if (smoothed >= t.active) return 'intense'
+    if (smoothed >= t.gentle) return 'active'
+    if (smoothed >= t.ambient) return 'gentle'
+    if (smoothed >= t.valley) return 'ambient'
+    if (smoothed >= t.silence) return 'valley'
+    return 'silence'
+  }
+  
+  /**
+   * ¿Es esta una zona de baja energía?
+   */
+  private isLowZone(zone: EnergyZone): boolean {
+    return zone === 'silence' || zone === 'valley' || zone === 'ambient'
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📊 PERCENTIL HISTÓRICO
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Actualiza el historial de energía
+   */
+  private updateHistory(energy: number): void {
+    this.energyHistory.push(energy)
+    
+    // Mantener tamaño máximo
+    if (this.energyHistory.length > this.config.historySize) {
+      this.energyHistory.shift()
+    }
+  }
+  
+  /**
+   * Calcula en qué percentil está la energía actual.
+   * 
+   * Esto permite saber: "Estás en el 15% más bajo de la pista"
+   */
+  private calculatePercentile(energy: number): number {
+    if (this.energyHistory.length < 10) return 50 // Warmup
+    
+    // Contar cuántos valores son menores que el actual
+    const lowerCount = this.energyHistory.filter(e => e < energy).length
+    
+    return Math.round((lowerCount / this.energyHistory.length) * 100)
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📈 CÁLCULO DE TENDENCIA
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Calcula la tendencia de cambio de energía.
+   * 
+   * @returns -1 a 1, donde positivo = subiendo
+   */
+  private calculateTrend(energy: number): number {
+    this.trendWindow.push(energy)
+    
+    if (this.trendWindow.length > this.config.trendWindowSize) {
+      this.trendWindow.shift()
+    }
+    
+    if (this.trendWindow.length < 3) return 0
+    
+    // Calcular pendiente simple
+    const first = this.trendWindow.slice(0, Math.floor(this.trendWindow.length / 2))
+    const second = this.trendWindow.slice(Math.floor(this.trendWindow.length / 2))
+    
+    const firstAvg = first.reduce((a, b) => a + b, 0) / first.length
+    const secondAvg = second.reduce((a, b) => a + b, 0) / second.length
+    
+    // Normalizar a -1, 1
+    const rawTrend = (secondAvg - firstAvg) * 5 // Amplificar
+    return Math.max(-1, Math.min(1, rawTrend))
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // ⏱️ TRACKING DE SOSTENIBILIDAD
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Actualiza el tracking de energía sostenida alta/baja
+   */
+  private updateSustainedTracking(energy: number, now: number): {
+    sustainedLow: boolean
+    sustainedHigh: boolean
+  } {
+    // Tracking de energía alta
+    if (energy >= this.config.sustainedHighEnergyThreshold) {
+      this.lastHighEnergyTime = now
+    }
+    
+    // Tracking de energía baja
+    if (energy < this.config.sustainedLowEnergyThreshold) {
+      // Si es la primera vez que baja, registrar
+      if (this.lastLowEnergyTime === 0) {
+        this.lastLowEnergyTime = now
+      }
+    } else {
+      this.lastLowEnergyTime = now // Reset cuando sube
+    }
+    
+    // Calcular si es sostenido
+    const sustainedLow = energy < this.config.sustainedLowEnergyThreshold &&
+      (now - this.lastLowEnergyTime) >= this.config.sustainedLowThresholdMs
+    
+    const sustainedHigh = energy >= this.config.sustainedHighEnergyThreshold &&
+      (now - this.lastHighEnergyTime) < this.config.sustainedHighThresholdMs
+    
+    return { sustainedLow, sustainedHigh }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 UTILIDADES
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Obtiene la zona actual
+   */
+  getCurrentZone(): EnergyZone {
+    return this.currentZone
+  }
+  
+  /**
+   * Obtiene la energía suavizada actual
+   */
+  getSmoothedEnergy(): number {
+    return this.smoothedEnergy
+  }
+  
+  /**
+   * Reset del motor (para nueva canción)
+   */
+  reset(): void {
+    this.smoothedEnergy = 0
+    this.currentZone = 'silence'
+    this.previousZone = 'silence'
+    this.lastZoneChange = Date.now()
+    this.energyHistory = []
+    this.trendWindow = []
+    this.lastHighEnergyTime = 0
+    this.lastLowEnergyTime = Date.now()
+  }
+  
+  /**
+   * Actualiza configuración en runtime
+   */
+  updateConfig(config: Partial<EnergyConsciousnessConfig>): void {
+    this.config = { ...this.config, ...config }
+  }
+  
+  /**
+   * Obtiene estadísticas para debug
+   */
+  getStats(): {
+    currentZone: EnergyZone
+    smoothedEnergy: number
+    historySize: number
+    avgEnergy: number
+  } {
+    const avgEnergy = this.energyHistory.length > 0
+      ? this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length
+      : 0
+    
+    return {
+      currentZone: this.currentZone,
+      smoothedEnergy: this.smoothedEnergy,
+      historySize: this.energyHistory.length,
+      avgEnergy,
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FACTORY
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Crea una instancia de EnergyConsciousnessEngine
+ */
+export function createEnergyConsciousnessEngine(
+  config?: Partial<EnergyConsciousnessConfig>
+): EnergyConsciousnessEngine {
+  return new EnergyConsciousnessEngine(config)
+}

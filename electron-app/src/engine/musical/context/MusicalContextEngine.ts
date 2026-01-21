@@ -47,6 +47,12 @@ import { SectionTracker, createSectionTracker } from '../analysis/SectionTracker
 // 🗑️ WAVE 61: GenreClassifier ELIMINADO - VibeManager en GAMMA es el nuevo dueño del contexto
 import { PredictionMatrix, createPredictionMatrix, ExtendedPrediction } from './PredictionMatrix.js';
 
+// 🔋 WAVE 931: Motor de Consciencia Energética
+import { 
+  EnergyConsciousnessEngine, 
+  createEnergyConsciousnessEngine 
+} from '../../../core/intelligence/EnergyConsciousnessEngine.js';
+
 // ============================================================
 // 📊 TIPOS Y CONSTANTES
 // ============================================================
@@ -166,6 +172,7 @@ const MOOD_TO_MOVEMENT: Record<SynthesizedMood, string> = {
 /**
  * Motor de Contexto Musical - El Cerebro de Wave 8
  * 🗑️ WAVE 61: GenreClassifier ELIMINADO - VibeManager controla el contexto
+ * 🔋 WAVE 931: EnergyConsciousnessEngine AÑADIDO - Consciencia energética absoluta
  */
 export class MusicalContextEngine extends EventEmitter {
   // Analizadores
@@ -174,6 +181,8 @@ export class MusicalContextEngine extends EventEmitter {
   private sectionTracker: SectionTracker;
   // 🗑️ WAVE 61: genreClassifier eliminado
   private predictionMatrix: PredictionMatrix;
+  // 🔋 WAVE 931: Motor de consciencia energética
+  private energyConsciousness: EnergyConsciousnessEngine;
   
   // Estado
   private config: MusicalContextEngineConfig;
@@ -205,6 +214,8 @@ export class MusicalContextEngine extends EventEmitter {
     this.sectionTracker = createSectionTracker();
     // 🗑️ WAVE 61: genreClassifier eliminado - contexto controlado por VibeManager
     this.predictionMatrix = createPredictionMatrix();
+    // 🔋 WAVE 931: Consciencia energética para evitar "grito en biblioteca"
+    this.energyConsciousness = createEnergyConsciousnessEngine();
     
     // Escuchar eventos de los analizadores
     this.setupEventListeners();
@@ -425,6 +436,7 @@ export class MusicalContextEngine extends EventEmitter {
    * - Mood sintetizado → Patrón de movimiento
    * - Sección → Intensidad base
    * - Predicciones → Anticipación de cambios
+   * - 🔋 WAVE 931: Consciencia energética → Evita "grito en biblioteca"
    * 
    * @returns IntelligentResult con contexto completo
    */
@@ -443,6 +455,11 @@ export class MusicalContextEngine extends EventEmitter {
     // Calcular energía global
     const energy = this.calculateEnergy(rhythm, section, audio);
     
+    // 🔋 WAVE 931: Procesar consciencia energética
+    // Usa la energía RAW del audio para detectar zonas con asimetría temporal
+    const rawEnergy = audio.energy?.current ?? energy;
+    const energyContext = this.energyConsciousness.process(rawEnergy);
+    
     // Construir contexto musical completo
     const context: MusicalContext = {
       rhythm,
@@ -451,6 +468,7 @@ export class MusicalContextEngine extends EventEmitter {
       genre,
       mood,
       energy,
+      energyContext, // 🔋 WAVE 931: Contexto energético para decisiones inteligentes
       confidence: this.overallConfidence,
       timestamp: now,
     };

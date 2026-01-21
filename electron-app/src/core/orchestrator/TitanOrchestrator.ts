@@ -354,15 +354,8 @@ export class TitanOrchestrator {
     // Si no, usar la lógica legacy con colorOverride global
     
     if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
-      // 🔥 WAVE 810.5: DEBUG - Log zoneOverrides para CyberDualism
-      const zones = Object.keys(effectOutput.zoneOverrides)
-      if (zones.some(z => z.includes('movers_'))) {
-        const firstZone = zones[0]
-        console.log(`[TitanOrchestrator 🤖] CYBER DUALISM detected! Zones:`, 
-          zones,
-          `dimmer=${effectOutput.zoneOverrides[firstZone]?.dimmer?.toFixed(2)}`
-        )
-      }
+      // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
+      // Los logs de zoneOverrides están en el EffectManager, no aquí
       
       // ═══════════════════════════════════════════════════════════════════════
       // 🎨 WAVE 740: STRICT ZONAL ISOLATION
@@ -386,10 +379,7 @@ export class TitanOrchestrator {
           const fixtureZone = (f.zone || '').toLowerCase()
           
           if (this.fixtureMatchesZone(fixtureZone, zoneId)) {
-            // 🔥 WAVE 810.5: DEBUG - Log cuando encuentra match
-            if (zoneId.includes('movers_')) {
-              console.log(`[TitanOrchestrator 🎯] Match! Fixture[${index}] zone="${f.zone}" matches zone="${zoneId}"`)
-            }
+            // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
             
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
@@ -603,8 +593,89 @@ export class TitanOrchestrator {
       }
     }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // ✂️ WAVE 930.2: STEREO MOVEMENT - Movimiento L/R independiente
+    // Para efectos como SkySaw que necesitan scissors pan/tilt
+    // ═══════════════════════════════════════════════════════════════════════
+    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+      const leftMovement = effectOutput.zoneOverrides['movers_left']?.movement
+      const rightMovement = effectOutput.zoneOverrides['movers_right']?.movement
+      
+      if (leftMovement || rightMovement) {
+        fixtureStates = fixtureStates.map(f => {
+          const fixtureZone = (f.zone || '').toLowerCase()
+          const isMover = f.zone?.includes('MOVING') || fixtureZone.includes('ceiling') || (f.pan !== undefined && f.tilt !== undefined)
+          if (!isMover) return f
+          
+          // Determinar si es izquierda o derecha
+          const isLeft = fixtureZone.includes('left') || f.zone?.includes('LEFT')
+          const isRight = fixtureZone.includes('right') || f.zone?.includes('RIGHT')
+          
+          // Seleccionar el movement correcto según lado
+          let mov: typeof leftMovement | undefined
+          if (isLeft && leftMovement) {
+            mov = leftMovement
+          } else if (isRight && rightMovement) {
+            mov = rightMovement
+          } else {
+            // Si no es claramente L/R, usar el promedio o el que exista
+            mov = leftMovement || rightMovement
+          }
+          
+          if (!mov) return f
+          
+          let newPan = f.pan
+          let newTilt = f.tilt
+          let newPhysicalPan = f.physicalPan ?? f.pan
+          let newPhysicalTilt = f.physicalTilt ?? f.tilt
+          
+          if (mov.isAbsolute) {
+            // ABSOLUTE MODE: Reemplaza completamente
+            if (mov.pan !== undefined) {
+              // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
+              newPan = Math.round(mov.pan * 255)
+              newPhysicalPan = newPan
+            }
+            if (mov.tilt !== undefined) {
+              newTilt = Math.round(mov.tilt * 255)
+              newPhysicalTilt = newTilt
+            }
+          } else {
+            // OFFSET MODE: Suma
+            if (mov.pan !== undefined) {
+              const panOffset = Math.round((mov.pan - 0.5) * 255)
+              newPan = Math.max(0, Math.min(255, f.pan + panOffset))
+              newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset))
+            }
+            if (mov.tilt !== undefined) {
+              const tiltOffset = Math.round((mov.tilt - 0.5) * 255)
+              newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset))
+              newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset))
+            }
+          }
+          
+          return {
+            ...f,
+            pan: newPan,
+            tilt: newTilt,
+            physicalPan: newPhysicalPan,
+            physicalTilt: newPhysicalTilt,
+          }
+        })
+        
+        // Log throttled
+        if (this.frameCount % 30 === 0) {
+          console.log(`[TitanOrchestrator ✂️] STEREO MOVEMENT: L=${leftMovement ? `P${leftMovement.pan?.toFixed(2)}/T${leftMovement.tilt?.toFixed(2)}` : 'N/A'} R=${rightMovement ? `P${rightMovement.pan?.toFixed(2)}/T${rightMovement.tilt?.toFixed(2)}` : 'N/A'}`)
+        }
+      }
+    }
+    
     // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
-    if (effectOutput.hasActiveEffects && effectOutput.movementOverride) {
+    // Solo se aplica si NO hay zoneOverrides con movement (fallback global)
+    const hasZoneMovement = effectOutput.zoneOverrides && 
+      (effectOutput.zoneOverrides['movers_left']?.movement || effectOutput.zoneOverrides['movers_right']?.movement)
+    
+    if (effectOutput.hasActiveEffects && effectOutput.movementOverride && !hasZoneMovement) {
       const mov = effectOutput.movementOverride
       
       // Solo aplicar a fixtures que son movers (tienen pan/tilt)

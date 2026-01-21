@@ -125,6 +125,7 @@ export interface EffectDreamResult {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌀 WAVE 902: VOCABULARY SYNC - Real effect names only
+// 🔫 WAVE 930.2: ARSENAL PESADO - GatlingRaid, SkySaw added
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Efectos conocidos agrupados por categoría (SYNCED with EffectManager registry)
@@ -133,7 +134,10 @@ const EFFECT_CATEGORIES = {
   'techno-industrial': [
     'industrial_strobe',  // ✅ WAVE 780: The hammer
     'acid_sweep',         // ✅ WAVE 780: The blade
-    'cyber_dualism'       // ✅ WAVE 810: The twins
+    'cyber_dualism',      // ✅ WAVE 810: The twins
+    'gatling_raid',       // ✅ WAVE 930: Machine gun PAR barrage
+    'sky_saw'             // ✅ WAVE 930: Aggressive mover cuts
+    // ⚠️ 'abyssal_rise' excluido - Demasiado largo para IA automática
   ],
   'latino-organic': [
     'solar_flare',        // ✅ WAVE 600: Takeover
@@ -153,10 +157,12 @@ const EFFECT_CATEGORIES = {
 
 // Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
 const EFFECT_BEAUTY_WEIGHTS = {
-  // 🔪 TECHNO-INDUSTRIAL (3 effects)
+  // 🔪 TECHNO-INDUSTRIAL (5 effects - WAVE 930.2)
   'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
   'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
   'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
+  'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 },  // 🔫 WAVE 930
+  'sky_saw': { base: 0.76, energyMultiplier: 1.25, technoBonus: 0.16 },       // 🗡️ WAVE 930
   // 🌴 LATINO-ORGANIC (10 effects)
   'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
   'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
@@ -170,12 +176,14 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 }
 } as const
 
-// GPU cost por efecto (WAVE 902.1: TRUTH)
+// GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_GPU_COST = {
   // 🔪 TECHNO-INDUSTRIAL (Alta intensidad)
   'industrial_strobe': 0.25,
   'acid_sweep': 0.30,
   'cyber_dualism': 0.28,
+  'gatling_raid': 0.35,     // 🔫 Alto costo - muchos PARs disparando
+  'sky_saw': 0.32,          // 🗡️ Alto costo - movimiento agresivo
   // 🌴 LATINO-ORGANIC (Media-Alta intensidad)
   'solar_flare': 0.22,
   'strobe_storm': 0.32,
@@ -189,12 +197,14 @@ const EFFECT_GPU_COST = {
   'corazon_latino': 0.24
 } as const
 
-// Fatigue impact por efecto (WAVE 902.1: TRUTH)
+// Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_FATIGUE_IMPACT = {
   // 🔪 TECHNO-INDUSTRIAL (Aumenta fatiga)
   'industrial_strobe': 0.08,
   'acid_sweep': 0.07,
   'cyber_dualism': 0.06,
+  'gatling_raid': 0.10,     // 🔫 Alta fatiga - muy intenso
+  'sky_saw': 0.08,          // 🗡️ Alta fatiga - movimiento agresivo
   // 🌴 LATINO-ORGANIC (Mixto: strobes aumentan, suaves reducen)
   'solar_flare': 0.06,
   'strobe_storm': 0.09,
@@ -626,6 +636,8 @@ export class EffectDreamSimulator {
   }
   
   private calculateDiversityScore(effect: EffectCandidate, context: AudienceSafetyContext): number {
+    // 🔫 WAVE 930.3: ANTI-MONOTONY - Penaliza DURAMENTE la repetición
+    
     // Contar uso reciente
     const recentUsage = context.recentEffects
       .filter(e => e.effect === effect.effect)
@@ -637,8 +649,15 @@ export class EffectDreamSimulator {
     
     const usageRate = recentUsage / totalRecent
     
-    // Invertir: menos uso = más diversidad
-    return Math.max(0, 1 - usageRate * 2) // *2 para penalizar más
+    // 🔥 WAVE 930.3: Si el efecto fue usado más de 3 veces en los últimos 10, MATAR
+    if (recentUsage >= 3) {
+      return 0.0  // CERO diversidad = no elegir este
+    }
+    
+    // Penalización exponencial: *3 para castigar MUY fuerte la repetición
+    const diversityScore = Math.max(0, 1 - usageRate * 3)
+    
+    return diversityScore
   }
   
   private calculateSimulationConfidence(
@@ -683,17 +702,18 @@ export class EffectDreamSimulator {
   
   private calculateScenarioScore(scenario: EffectScenario, prediction: MusicalPrediction): number {
     // Weighted score
+    // 🔫 WAVE 930.3: ANTI-MONOTONY - Rebalanced weights
     let score = 0
     
-    score += scenario.projectedBeauty * 0.35      // Belleza es factor principal
-    score += scenario.vibeCoherence * 0.25        // Coherencia de vibe crítica
-    score += scenario.diversityScore * 0.15       // Diversidad importante
+    score += scenario.projectedBeauty * 0.30      // Belleza importante pero no dominante
+    score += scenario.vibeCoherence * 0.20        // Coherencia de vibe 
+    score += scenario.diversityScore * 0.25       // 🔥 Diversidad CRÍTICA (was 0.15)
     score += (1 - scenario.riskLevel) * 0.15      // Bajo riesgo preferido
     score += scenario.simulationConfidence * 0.10 // Confianza en predicción
     
-    // Penalizar conflictos
-    score -= scenario.cooldownConflicts.length * 0.1
-    score -= scenario.hardwareConflicts.length * 0.15
+    // Penalizar conflictos (aumentado)
+    score -= scenario.cooldownConflicts.length * 0.15   // was 0.1
+    score -= scenario.hardwareConflicts.length * 0.20   // was 0.15
     
     // Boost si viene drop
     if (prediction.isDropComing && scenario.effect.intensity > 0.7) {

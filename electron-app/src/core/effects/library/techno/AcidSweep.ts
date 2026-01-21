@@ -69,12 +69,12 @@ interface AcidSweepConfig {
 }
 
 const DEFAULT_CONFIG: AcidSweepConfig = {
-  sweepDurationMs: 1500,     // 1.5s por sweep
-  sweepCount: 2,             // 2 sweeps (ida + vuelta si pingPong)
+  sweepDurationMs: 2000,     // 🔫 WAVE 930.4: 2s por sweep (was 1.5s) - más apreciable
+  sweepCount: 3,             // 🔫 WAVE 930.4: 3 sweeps (was 2) - más presencia
   bpmSync: true,
-  beatsPerSweep: 2,          // 2 beats por sweep
+  beatsPerSweep: 3,          // 🔫 WAVE 930.4: 3 beats por sweep (was 2) - más lento y visible
   forwardDirection: true,    // front → back
-  bladeWidth: 0.40,          // 🔥 WAVE 790: 40% del escenario (was 25%)
+  bladeWidth: 0.45,          // � WAVE 930.4: 45% del escenario (was 40%) - más ancho
   pingPong: true,            // Ida y vuelta
   harshnessThreshold: 0.6,   // Umbral para verde tóxico
 }

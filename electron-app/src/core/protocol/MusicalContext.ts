@@ -96,6 +96,69 @@ export interface GenreContext {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔋 WAVE 931: ENERGY CONTEXT - CONSCIENCIA ENERGÉTICA
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Zona de intensidad energética
+ * 
+ * Permite a Selene entender el nivel ABSOLUTO de energía,
+ * no solo las desviaciones estadísticas (Z-Score).
+ * 
+ * CRITICAL: Esto evita el "Síndrome del Grito en la Biblioteca"
+ * donde un Z-Score alto en silencio dispara efectos épicos.
+ */
+export type EnergyZone = 
+  | 'silence'   // E < 0.10 - Silencio total, pad, viento
+  | 'valley'    // E 0.10-0.20 - Pre-drop silence, transición
+  | 'ambient'   // E 0.20-0.35 - Ambiente suave, coro lejano
+  | 'gentle'    // E 0.35-0.50 - Verso, melodía suave
+  | 'active'    // E 0.50-0.70 - Pre-chorus, buildup
+  | 'intense'   // E 0.70-0.85 - Chorus, clímax
+  | 'peak'      // E > 0.85 - Drop, explosión
+
+/**
+ * 🔋 ENERGY CONTEXT
+ * 
+ * Contexto energético absoluto para decisiones inteligentes.
+ * 
+ * DISEÑO ASIMÉTRICO (Edge Case del "Fake Drop"):
+ * - Para ENTRAR en silence/valley: Usa promedio lento (500ms)
+ * - Para SALIR de silence/valley: Usa valor instantáneo (0ms)
+ * 
+ * Esto previene que Selene bloquee el disparo inicial de un drop
+ * cuando el DJ corta todo súbitamente antes de la explosión.
+ */
+export interface EnergyContext {
+  /** Energía absoluta instantánea (0-1) - Sin suavizado */
+  absolute: number
+  
+  /** Energía suavizada para detección de zonas bajas (0-1) */
+  smoothed: number
+  
+  /** Percentil histórico (0-100) - "Estás en el X% más bajo de la pista" */
+  percentile: number
+  
+  /** Zona energética actual - El "termómetro" de Selene */
+  zone: EnergyZone
+  
+  /** Zona anterior (para detectar transiciones) */
+  previousZone: EnergyZone
+  
+  /** ¿Llevamos mucho tiempo en energía baja? (E<0.4 por >5s) */
+  sustainedLow: boolean
+  
+  /** ¿Llevamos tiempo en energía alta? (E>0.7 por >3s) */
+  sustainedHigh: boolean
+  
+  /** Velocidad de cambio de energía (-1 a 1, positivo=subiendo) */
+  trend: number
+  
+  /** Timestamp de último cambio de zona */
+  lastZoneChange: number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // INTERFAZ PRINCIPAL: MUSICAL CONTEXT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -164,6 +227,16 @@ export interface MusicalContext {
   mood: Mood
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔋 WAVE 931: CONSCIENCIA ENERGÉTICA
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * Contexto energético detallado para decisiones inteligentes
+   * Evita el "Síndrome del Grito en la Biblioteca"
+   */
+  energyContext: EnergyContext
+
+  // ═══════════════════════════════════════════════════════════════════════
   // CLASSIFICATION
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -186,6 +259,23 @@ export interface MusicalContext {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Crea un EnergyContext por defecto (silencio)
+ */
+export function createDefaultEnergyContext(): EnergyContext {
+  return {
+    absolute: 0,
+    smoothed: 0,
+    percentile: 0,
+    zone: 'silence',
+    previousZone: 'silence',
+    sustainedLow: true,
+    sustainedHigh: false,
+    trend: 0,
+    lastZoneChange: Date.now(),
+  }
+}
+
+/**
  * Crea un MusicalContext por defecto (silencio/unknown)
  */
 export function createDefaultMusicalContext(): MusicalContext {
@@ -204,6 +294,7 @@ export function createDefaultMusicalContext(): MusicalContext {
     },
     energy: 0,
     mood: 'neutral',
+    energyContext: createDefaultEnergyContext(),
     genre: {
       macro: 'UNKNOWN',
       subGenre: null,

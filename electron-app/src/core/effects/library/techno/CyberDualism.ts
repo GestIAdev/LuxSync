@@ -65,13 +65,13 @@ interface CyberDualismConfig {
 }
 
 const DEFAULT_CONFIG: CyberDualismConfig = {
-  durationMs: 2000,           // 2s total (4 beats @ 120 BPM)
-  cycles: 4,                  // 4 alternaciones L→R→L→R
+  durationMs: 3000,           // 🔫 WAVE 930.4: 3s total (was 2s) - más presencia
+  cycles: 6,                  // 🔫 WAVE 930.4: 6 alternaciones (was 4) - más impacto L→R→L→R→L→R
   bpmSync: true,
   beatsPerCycle: 0.5,         // Media beat por lado (rápido)
   chromaticMode: false,       // Default: strobe blanco/negro
   strobeIntensity: 1.0,       // 100% brightness
-  flashDurationMs: 100,       // 100ms de flash (resto es dark)
+  flashDurationMs: 120,       // 🔫 WAVE 930.4: 120ms de flash (was 100ms) - más visible
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

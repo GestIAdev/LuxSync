@@ -62,7 +62,12 @@ import { AcidSweep } from './library/techno/AcidSweep'
 // 🤖 WAVE 810: UNLOCK THE TWINS
 import { CyberDualism } from './library/techno/CyberDualism'
 
-// 🛡️ WAVE 680: Import VibeManager for THE SHIELD
+// � WAVE 930: ARSENAL PESADO
+import { GatlingRaid } from './library/techno/GatlingRaid'
+import { SkySaw } from './library/techno/SkySaw'
+import { AbyssalRise } from './library/techno/AbyssalRise'
+
+// �🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
@@ -574,6 +579,7 @@ export class EffectManager extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
     // 🤖 WAVE 810: UNLOCK THE TWINS
+    // 🔫 WAVE 930: ARSENAL PESADO
     // ═══════════════════════════════════════════════════════════════════════
     
     // ⚡ Industrial Strobe - The hammer that strikes steel
@@ -584,6 +590,15 @@ export class EffectManager extends EventEmitter {
     
     // 🤖 Cyber Dualism - The ping-pong twins (L/R spatial targeting)
     this.effectFactories.set('cyber_dualism', () => new CyberDualism())
+    
+    // 🔫 Gatling Raid - Machine gun PAR barrage
+    this.effectFactories.set('gatling_raid', () => new GatlingRaid())
+    
+    // 🗡️ Sky Saw - Aggressive mover cuts
+    this.effectFactories.set('sky_saw', () => new SkySaw())
+    
+    // 🌪️ Abyssal Rise - Epic 8-bar transition
+    this.effectFactories.set('abyssal_rise', () => new AbyssalRise())
   }
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -594,11 +609,17 @@ export class EffectManager extends EventEmitter {
    * 🚦 CRITICAL EFFECT TYPES
    * Efectos que bloquean el tráfico mientras están activos.
    * Ningún otro efecto puede dispararse mientras hay uno crítico.
+   * 
+   * 🔥 WAVE 930.1 FIX: AbyssalRise REMOVIDO de CRITICAL
+   * Razón: Es un efecto largo (~16s) que bloqueaba todo el sistema.
+   * AbyssalRise usa mixBus='global' que ya garantiza control total del output,
+   * no necesita además bloquear el traffic de otros efectos.
    */
   private static readonly CRITICAL_EFFECTS = new Set([
     'solar_flare',    // Takeover total - nada más puede competir
     'strobe_storm',   // Strobe intenso - no mezclar
     'blackout',       // Blackout manual
+    // 'abyssal_rise' - REMOVIDO WAVE 930.1: mixBus='global' es suficiente
   ])
   
   /**

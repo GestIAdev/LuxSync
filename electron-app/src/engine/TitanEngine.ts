@@ -121,6 +121,8 @@ interface EngineState {
   previousEnergy: number
   /** Bass del frame anterior (para deltas) */
   previousBass: number
+  /** 🧹 WAVE 930.2: Tracker para evitar spam de GLOBAL OVERRIDE logs */
+  lastGlobalOverrideState: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,6 +234,7 @@ export class TitanEngine extends EventEmitter {
       lastFrameTime: Date.now(),
       previousEnergy: 0,
       previousBass: 0,
+      lastGlobalOverrideState: false,  // 🧹 WAVE 930.2: Para evitar spam de logs
     }
     
     console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`)
@@ -630,11 +633,15 @@ export class TitanEngine extends EventEmitter {
         ambient: { intensity: overrideIntensity, paletteRole: 'primary' },
       }
       
-      // 🧹 WAVE 671.5: Only log at START (100%) and END (0%) to avoid decay spam
-      const intensityPercent = Math.round(overrideIntensity * 100)
-      if (intensityPercent >= 94 || intensityPercent === 0) {
-        console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ${intensityPercent >= 94 ? 'ACTIVATED' : 'RELEASED'} - All zones at ${intensityPercent}%`)
+      // 🧹 WAVE 930.2: Only log on STATE TRANSITIONS (not every frame)
+      if (!this.state.lastGlobalOverrideState) {
+        console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ACTIVATED`)
+        this.state.lastGlobalOverrideState = true
       }
+    } else if (this.state.lastGlobalOverrideState) {
+      // 🧹 WAVE 930.2: Log release only once
+      console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE RELEASED`)
+      this.state.lastGlobalOverrideState = false
     }
     
     // Aplicar color override del efecto (si existe)

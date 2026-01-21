@@ -157,6 +157,12 @@ import {
   type ContextualSelectorInput,
 } from '../effects/ContextualEffectSelector'
 
+// 🔋 WAVE 931: Motor de Consciencia Energética
+import { 
+  EnergyConsciousnessEngine, 
+  createEnergyConsciousnessEngine 
+} from './EnergyConsciousnessEngine'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌀 WAVE 900.4: DREAM ENGINE INTEGRATOR - Cerebro Unificado
 // ═══════════════════════════════════════════════════════════════════════════
@@ -260,6 +266,9 @@ export class SeleneTitanConscious extends EventEmitter {
   private energyTrend: 'rising' | 'stable' | 'falling' = 'stable'
   private energyHistory: number[] = []
   
+  // 🔋 WAVE 931: Motor de Consciencia Energética
+  private energyConsciousness: EnergyConsciousnessEngine
+  
   // 🌀 WAVE 900.4: Dream Engine Integration
   private lastDreamDecision: IntegrationDecision | null = null
   private lastDreamTimestamp: number = 0
@@ -289,7 +298,11 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🎯 WAVE 685: Inicializar selector de efectos contextual
     this.effectSelector = new ContextualEffectSelector()
     
-    // 🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
+    // � WAVE 931: Inicializar motor de consciencia energética
+    // Diseño asimétrico: Lento para entrar en silencio, rápido para detectar drops
+    this.energyConsciousness = createEnergyConsciousnessEngine()
+    
+    // �🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
     // Solo registrar cooldown cuando EffectManager REALMENTE dispara el efecto
     // (no bloqueado por Shield/Traffic)
     const effectManager = getEffectManager()
@@ -544,6 +557,15 @@ export class SeleneTitanConscious extends EventEmitter {
     // Normalizar sección para el selector
     const selectorSection = this.normalizeSectionType(state.sectionType)
     
+    // 🔋 WAVE 931: Procesar consciencia energética
+    // Diseño asimétrico: Lento para entrar en silencio, INSTANTÁNEO para salir
+    const energyContext = this.energyConsciousness.process(state.rawEnergy)
+    
+    // Log cambios de zona significativos
+    if (energyContext.zone !== energyContext.previousZone) {
+      console.log(`[SeleneTitanConscious 🔋] Zone transition: ${energyContext.previousZone} → ${energyContext.zone} (E=${state.rawEnergy.toFixed(2)})`)
+    }
+    
     // Construir input para el selector
     const selectorInput: ContextualSelectorInput = {
       musicalContext: {
@@ -553,6 +575,8 @@ export class SeleneTitanConscious extends EventEmitter {
         vibeId: pattern.vibeId,
         beatPhase: pattern.beatPhase,
         inDrop: selectorSection === 'drop',
+        // 🔋 WAVE 931: Contexto energético para evitar "grito en biblioteca"
+        energyContext: energyContext,
       },
       huntDecision,
       fuzzyDecision: this.lastFuzzyDecision ?? undefined,

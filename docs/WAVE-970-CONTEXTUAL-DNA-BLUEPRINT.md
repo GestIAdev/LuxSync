@@ -59,10 +59,11 @@ const EFFECT_DNA: Record<string, EffectDNA> = {
     organicity: 0.25,   // Algo de "vida" en el movimiento
   },
   'cyber_dualism': {
-    aggression: 0.65,   // Los gemelos son tensos, no brutales
-    chaos: 0.50,        // Dualidad = cierto caos
-    organicity: 0.30,   // Pan/tilt dan sensación de vida
+    aggression: 0.55,   // 🎯 WAVE 970.1: Ajustado al centro (was 0.65)
+    chaos: 0.50,        // Centro perfecto ✓
+    organicity: 0.45,   // 🎯 WAVE 970.1: Ajustado al centro (was 0.30)
   },
+  // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
   'gatling_raid': {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
     chaos: 0.70,        // MUY caótico (random burst)
@@ -270,6 +271,168 @@ function getSectionOrganicity(section: SectionType): number {
 
 ---
 
+## ⚠️ TRAMPAS DEL ADN (Edge Cases Críticos)
+
+### 🚨 TRAMPA #1: Parkinson Digital (Jitter en el Target)
+
+**PROBLEMA:**
+El audio cambia cada 16ms. Si calculas Target DNA directamente desde `AudioMetrics`:
+
+```
+Frame 1: { Aggression: 0.81 } → industrial_strobe gana
+Frame 2: { Aggression: 0.79 } → sky_saw gana
+Frame 3: { Aggression: 0.82 } → industrial_strobe gana
+```
+
+**RESULTADO:** Las luces parpadean entre efectos cada frame = EPILEPSIA DIGITAL.
+
+**SOLUCIÓN: Exponential Moving Average (EMA)**
+
+El Target DNA NO debe usar valores crudos del frame. Debe tener **INERCIA**.
+
+```typescript
+class DNAAnalyzer {
+  // Estado persistente: Target DNA suavizado
+  private smoothedTarget: TargetDNA = { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 }
+  
+  // Alpha para EMA (0.15 = cambio lento, 0.5 = cambio rápido)
+  private readonly SMOOTHING_ALPHA = 0.20  // 20% frame actual, 80% histórico
+  
+  deriveTargetDNA(context: MusicalContext, audioMetrics: AudioMetrics): TargetDNA {
+    // 1. Calcular Target "crudo" del frame actual
+    const rawTarget = this.calculateRawTarget(context, audioMetrics)
+    
+    // 2. Aplicar EMA para suavizar
+    this.smoothedTarget.aggression = 
+      this.SMOOTHING_ALPHA * rawTarget.aggression + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.aggression
+    
+    this.smoothedTarget.chaos = 
+      this.SMOOTHING_ALPHA * rawTarget.chaos + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.chaos
+    
+    this.smoothedTarget.organicity = 
+      this.SMOOTHING_ALPHA * rawTarget.organicity + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.organicity
+    
+    this.smoothedTarget.confidence = 
+      this.SMOOTHING_ALPHA * rawTarget.confidence + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.confidence
+    
+    // 3. EXCEPCIÓN: Drops y Breakdowns resetean inercia
+    if (context.section.type === 'drop' && context.section.confidence > 0.7) {
+      // Drop detectado con confianza → SNAP inmediato a alta agresión
+      this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
+    }
+    if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
+      // Breakdown detectado → SNAP inmediato a baja agresión
+      this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
+    }
+    
+    return { ...this.smoothedTarget }
+  }
+}
+```
+
+**EFECTO:**
+```
+Frame 1: Raw=0.81, Smoothed=0.5  → Smoothed=0.56  (↑ lento)
+Frame 2: Raw=0.79, Smoothed=0.56 → Smoothed=0.61  (↑ lento)
+Frame 3: Raw=0.82, Smoothed=0.61 → Smoothed=0.65  (↑ lento)
+...
+Frame 15: Raw=0.80, Smoothed=0.78 → Smoothed=0.78 (ESTABLE)
+
+✅ industrial_strobe SE MANTIENE, no hay jitter
+```
+
+---
+
+### 🚨 TRAMPA #2: El Vacío del Medio (The Middle Void)
+
+**PROBLEMA:**
+Todos los efectos tienen ADN extremo:
+- `industrial_strobe`: A=0.95 (EXTREMO)
+- `void_mist`: A=0.05 (EXTREMO)
+
+¿Qué pasa si Target DNA es **MODERADO**?
+```
+Target: { Aggression: 0.50, Chaos: 0.50, Organicity: 0.50 }
+```
+
+**RESULTADO:** Todos los efectos están "igual de lejos". Selene elige casi al azar.
+
+**SOLUCIÓN 1: Efecto Comodín Central**
+
+Añadir/ajustar efectos para cubrir el espacio central del cubo DNA:
+
+```typescript
+// ANTES (WAVE 970.0 - problema):
+'cyber_dualism': {
+  aggression: 0.65,   // Cerca del centro pero no suficiente
+  chaos: 0.50,        // Centro ✓
+  organicity: 0.30,   // Lejos del centro
+}
+
+// DESPUÉS (WAVE 970.1 - solución):
+'cyber_dualism': {
+  aggression: 0.55,   // ← AJUSTE: Más central (was 0.65)
+  chaos: 0.50,        // Centro ✓
+  organicity: 0.45,   // ← AJUSTE: Más central (was 0.30)
+}
+// Cyber Dualism ahora es el "COMODÍN" para zonas 'active' moderadas
+```
+
+**SOLUCIÓN 2: Fallback Threshold**
+
+Si la **mejor** relevancia es muy baja, usar un efecto "seguro":
+
+```typescript
+calculateRelevance(effectId: string, targetDNA: TargetDNA): number {
+  // ... cálculo normal de relevancia ...
+  
+  return relevance
+}
+
+rankEffects(targetDNA: TargetDNA): Array<{ effectId: string; relevance: number }> {
+  const ranked = Object.keys(EFFECT_DNA_REGISTRY)
+    .map(effectId => ({
+      effectId,
+      relevance: this.calculateRelevance(effectId, targetDNA)
+    }))
+    .sort((a, b) => b.relevance - a.relevance)
+  
+  // 🚨 TRAMPA DEL VACÍO: Si el mejor match es mediocre, forzar comodín
+  const bestRelevance = ranked[0]?.relevance ?? 0
+  
+  if (bestRelevance < 0.60) {
+    console.warn(`[DNA_ANALYZER] ⚠️ Middle Void detected! Best relevance=${bestRelevance.toFixed(2)} < 0.60`)
+    console.warn(`[DNA_ANALYZER] 🎯 Forcing WILDCARD effect: cyber_dualism`)
+    
+    // Forzar cyber_dualism al top si existe
+    const wildcardIndex = ranked.findIndex(r => r.effectId === 'cyber_dualism')
+    if (wildcardIndex > 0) {
+      const wildcard = ranked.splice(wildcardIndex, 1)[0]
+      ranked.unshift(wildcard)
+    }
+  }
+  
+  return ranked
+}
+```
+
+**CONFIGURACIÓN DE WILDCARDS:**
+
+```typescript
+// Lista de efectos "comodín" por categoría
+const WILDCARD_EFFECTS: Record<string, string> = {
+  'techno-industrial': 'cyber_dualism',   // Moderado: A=0.55, C=0.50, O=0.45
+  'techno-atmospheric': 'digital_rain',   // Moderado: A=0.20, C=0.65, O=0.40
+  'latino-organic': 'clave_rhythm',       // Moderado: A=0.50, C=0.35, O=0.70
+}
+```
+
+---
+
 ## 🔮 PARTE 3: EL MATCHING ALGORITHM (Distancia DNA)
 
 ### Concepto: Distancia Euclidiana 3D
@@ -411,10 +574,77 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class DNAAnalyzer {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧬 WAVE 970.1: PERSISTENT STATE (anti-jitter)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Target DNA suavizado (EMA) para prevenir Parkinson Digital */
+  private smoothedTarget: TargetDNA = { 
+    aggression: 0.5, 
+    chaos: 0.5, 
+    organicity: 0.5, 
+    confidence: 0.5 
+  }
+  
+  /** Alpha para EMA (0.15=lento, 0.5=rápido) */
+  private readonly SMOOTHING_ALPHA = 0.20  // 20% frame actual, 80% histórico
+  
+  /** Threshold para detectar "Middle Void" */
+  private readonly MIDDLE_VOID_THRESHOLD = 0.60
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════════════
+  
   /**
    * Deriva el ADN objetivo desde el contexto musical actual
+   * 
+   * 🚨 TRAMPA #1: Usa EMA para suavizar y evitar jitter frame-a-frame
    */
   deriveTargetDNA(
+    context: MusicalContext,
+    audioMetrics: AudioMetrics
+  ): TargetDNA {
+    // 1. Calcular Target "crudo" del frame actual
+    const rawTarget = this.calculateRawTarget(context, audioMetrics)
+    
+    // 2. Aplicar EMA para suavizar (anti-Parkinson)
+    this.smoothedTarget.aggression = 
+      this.SMOOTHING_ALPHA * rawTarget.aggression + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.aggression
+    
+    this.smoothedTarget.chaos = 
+      this.SMOOTHING_ALPHA * rawTarget.chaos + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.chaos
+    
+    this.smoothedTarget.organicity = 
+      this.SMOOTHING_ALPHA * rawTarget.organicity + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.organicity
+    
+    this.smoothedTarget.confidence = 
+      this.SMOOTHING_ALPHA * rawTarget.confidence + 
+      (1 - this.SMOOTHING_ALPHA) * this.smoothedTarget.confidence
+    
+    // 3. EXCEPCIÓN: Drops y Breakdowns resetean inercia (snap instantáneo)
+    if (context.section.type === 'drop' && context.section.confidence > 0.7) {
+      // Drop detectado → SNAP a alta agresión
+      this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
+      console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: Aggression forced to ${this.smoothedTarget.aggression.toFixed(2)}`)
+    }
+    if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
+      // Breakdown detectado → SNAP a baja agresión
+      this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
+      console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: Aggression forced to ${this.smoothedTarget.aggression.toFixed(2)}`)
+    }
+    
+    return { ...this.smoothedTarget }
+  }
+  
+  /**
+   * Calcula el Target DNA "crudo" del frame (sin suavizar)
+   * PRIVADO - Solo usado internamente por deriveTargetDNA()
+   */
+  private calculateRawTarget(
     context: MusicalContext,
     audioMetrics: AudioMetrics
   ): TargetDNA {
@@ -445,14 +675,35 @@ export class DNAAnalyzer {
   
   /**
    * Rankea todos los efectos por relevancia
+   * 
+   * 🚨 TRAMPA #2: Detecta "Middle Void" y fuerza wildcard si necesario
    */
   rankEffects(targetDNA: TargetDNA): Array<{ effectId: string; relevance: number }> {
-    return Object.keys(EFFECT_DNA_REGISTRY)
+    // Calcular relevancia de todos los efectos
+    const ranked = Object.keys(EFFECT_DNA_REGISTRY)
       .map(effectId => ({
         effectId,
         relevance: this.calculateRelevance(effectId, targetDNA)
       }))
       .sort((a, b) => b.relevance - a.relevance)
+    
+    // 🚨 TRAMPA #2: Middle Void detection
+    const bestRelevance = ranked[0]?.relevance ?? 0
+    
+    if (bestRelevance < this.MIDDLE_VOID_THRESHOLD) {
+      console.warn(`[DNA_ANALYZER] ⚠️ MIDDLE VOID: Best relevance=${bestRelevance.toFixed(2)} < ${this.MIDDLE_VOID_THRESHOLD}`)
+      console.warn(`[DNA_ANALYZER] 🎯 Target: A=${targetDNA.aggression.toFixed(2)}, C=${targetDNA.chaos.toFixed(2)}, O=${targetDNA.organicity.toFixed(2)}`)
+      console.warn(`[DNA_ANALYZER] 🃏 Forcing WILDCARD: cyber_dualism`)
+      
+      // Forzar cyber_dualism (wildcard) al top
+      const wildcardIndex = ranked.findIndex(r => r.effectId === 'cyber_dualism')
+      if (wildcardIndex > 0) {
+        const wildcard = ranked.splice(wildcardIndex, 1)[0]
+        ranked.unshift(wildcard)
+      }
+    }
+    
+    return ranked
   }
 }
 ```
@@ -573,6 +824,9 @@ export class EffectDreamSimulator {
 - ✅ `EFFECT_DNA_REGISTRY` (propiedades inmutables de cada efecto)
 - ✅ `deriveTargetDNA()` (deriva el "ADN ideal" desde el audio REAL)
 - ✅ `calculateRelevance()` (distancia matemática, NO opinión)
+- ✅ **🚨 EMA Smoothing** (anti-Parkinson Digital, previene jitter frame-a-frame)
+- ✅ **🚨 Middle Void Detection** (wildcard fallback cuando todos los efectos están lejos)
+- ✅ **🚨 Snap Conditions** (drops/breakdowns resetean inercia para respuesta inmediata)
 - ✅ Logging con DNA para debugging
 
 ### Beneficios:
@@ -580,6 +834,14 @@ export class EffectDreamSimulator {
 2. **Predictibilidad**: Mismo input → mismo output (determinista)
 3. **Extensibilidad**: Añadir un nuevo efecto = añadir 3 números (su ADN)
 4. **Sin Bias**: No hay "efectos favoritos" hardcodeados
+5. **🔥 Estabilidad**: EMA previene epilepsia digital (WAVE 970.1)
+6. **🔥 Robustez**: Middle Void detection previene indecisión random (WAVE 970.1)
+
+### Edge Cases Resueltos:
+| Trampa | Síntoma | Solución |
+|--------|---------|----------|
+| **Parkinson Digital** | Luces cambian de efecto cada frame (16ms) | EMA con α=0.20 + Snap conditions |
+| **Middle Void** | Target moderado = todos los efectos igual de lejos | Wildcard fallback (cyber_dualism) + Threshold 0.60 |
 
 ---
 
@@ -588,12 +850,13 @@ export class EffectDreamSimulator {
 | Fase | Descripción | Estimación |
 |------|-------------|------------|
 | 970.1 | Crear `EffectDNA.ts` + Registry | 1-2h |
-| 970.2 | Implementar `deriveTargetDNA()` | 2-3h |
+| 970.2 | Implementar `deriveTargetDNA()` + EMA | 2-3h |
 | 970.3 | Refactorizar `EffectDreamSimulator` | 2-3h |
-| 970.4 | Tests unitarios de DNA matching | 1-2h |
-| 970.5 | Runtime testing + ajustes | 2-4h |
+| 970.4 | Implementar Middle Void detection | 1h |
+| 970.5 | Tests unitarios de DNA matching | 1-2h |
+| 970.6 | Runtime testing + ajustes | 2-4h |
 
-**Total: ~10-14h de desarrollo**
+**Total: ~10-15h de desarrollo**
 
 ---
 

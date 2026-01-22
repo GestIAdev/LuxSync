@@ -1033,7 +1033,7 @@ export class EffectDreamSimulator {
     // Si un efecto fue disparado recientemente, su relevancia SE CASTIGA
     // Esto evita que cyber_dualism con 0.90 relevance gane SIEMPRE
     const diversityPenalty = 1 - scenario.diversityScore  // 0.0 = sin penalty, 1.0 = penalty máximo
-    const adjustedRelevance = scenario.projectedRelevance * (1 - diversityPenalty * 0.60)
+    const adjustedRelevance = scenario.projectedRelevance * (1 - diversityPenalty * 0.80)
     // Con penalty 0.60: Si diversityScore = 0 (usado 3+ veces), relevance se reduce 60%
     // cyber_dualism (0.90) con penalty máximo → 0.90 * 0.40 = 0.36
     // Otro efecto (0.75) sin penalty → 0.75 * 1.00 = 0.75 ¡GANA!

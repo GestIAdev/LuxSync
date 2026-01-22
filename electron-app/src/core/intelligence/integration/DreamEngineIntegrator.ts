@@ -111,12 +111,13 @@ export class DreamEngineIntegrator {
     
     // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
     // 🔧 WAVE 973.2: Threshold bajado de 0.65 → 0.60
+    // 🔧 WAVE 976.5: Threshold bajado de 0.60 → 0.55
     // Permite que más DNA decisions lleguen al DecisionMaker
-    // Matemática:
-    //   Raw 0.66 / 1.15 (balanced) = 0.574 → FALLA (< 0.60)
-    //   Raw 0.70 / 1.15 (balanced) = 0.609 → PASA ✅
-    //   Raw 0.75 / 1.15 (balanced) = 0.652 → PASA ✅
-    if (effectiveWorthiness < 0.60) {  // ← WAVE 973.2: era 0.65
+    // Matemática con balanced (1.15x):
+    //   Raw 0.64 / 1.15 = 0.557 → PASA ✅ (antes fallaba)
+    //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
+    //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
+    if (effectiveWorthiness < 0.55) {  // ← WAVE 976.5: era 0.60
       console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
         approved: false,

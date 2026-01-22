@@ -742,10 +742,13 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🔪 WAVE 976: THE EXORCISM - Fallback eliminado
     // Si DecisionMaker no decidió, SILENCIO. No hay plan B.
     if (!finalEffectDecision) {
-      console.log(
-        `[SeleneTitanConscious] 🧘 SILENCE CONFIRMED: No DNA proposal, no fallback | ` +
-        `vibe=${pattern.vibeId} | E=${state.rawEnergy.toFixed(2)} | Z=${zScore.toFixed(2)}σ`
-      )
+      // 🔇 El silencio NO grita - solo log en debug mode
+      if (this.config.debug) {
+        console.log(
+          `[SeleneTitanConscious] 🧘 SILENCE: No DNA proposal | ` +
+          `vibe=${pattern.vibeId} | E=${state.rawEnergy.toFixed(2)} | Z=${zScore.toFixed(2)}σ`
+        )
+      }
     }
     
     // 3. Track para cooldown y anti-repetición

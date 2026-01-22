@@ -107,7 +107,13 @@ export class DreamEngineIntegrator {
     )
     
     // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
-    if (effectiveWorthiness < 0.65) {
+    // 🔧 WAVE 973.2: Threshold bajado de 0.65 → 0.60
+    // Permite que más DNA decisions lleguen al DecisionMaker
+    // Matemática:
+    //   Raw 0.66 / 1.15 (balanced) = 0.574 → FALLA (< 0.60)
+    //   Raw 0.70 / 1.15 (balanced) = 0.609 → PASA ✅
+    //   Raw 0.75 / 1.15 (balanced) = 0.652 → PASA ✅
+    if (effectiveWorthiness < 0.60) {  // ← WAVE 973.2: era 0.65
       console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
         approved: false,

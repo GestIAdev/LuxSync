@@ -557,63 +557,13 @@ export class SeleneTitanConscious extends EventEmitter {
     })
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 4. DECISION MAKER: Síntesis final (ahora con contexto fuzzy)
+    // 🧬 WAVE 972.2: DNA BRAIN SIMULATION (ANTES DE DECISIONMAKER)
+    // El simulador genera DATA, DecisionMaker toma la DECISIÓN
     // ═══════════════════════════════════════════════════════════════════════
     
-    const inputs: DecisionInputs = {
-      pattern,
-      beauty: beautyAnalysis,
-      consonance: consonanceAnalysis,
-      huntDecision,
-      prediction,
-      timestamp: state.timestamp,
-    }
+    let dreamIntegrationData: any = null
     
-    let output = makeDecision(inputs)
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    //  WAVE 685: CONTEXTUAL EFFECT SELECTION
-    // "MG Music: Sonido e Iluminación Contextual IA"
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // Actualizar trend de energía
-    this.updateEnergyTrend(state.rawEnergy)
-    
-    // Normalizar sección para el selector
-    const selectorSection = this.normalizeSectionType(state.sectionType)
-    
-    // 🔋 WAVE 932: energyContext ya se calculó arriba para FuzzyDecisionMaker
-    // (No duplicar - se reutiliza la misma instancia)
-    
-    // Construir input para el selector
-    const selectorInput: ContextualSelectorInput = {
-      musicalContext: {
-        zScore: zScore,
-        bpm: pattern.bpm,
-        energy: state.rawEnergy,
-        vibeId: pattern.vibeId,
-        beatPhase: pattern.beatPhase,
-        inDrop: selectorSection === 'drop',
-        // 🔋 WAVE 931: Contexto energético para evitar "grito en biblioteca"
-        energyContext: energyContext,
-      },
-      huntDecision,
-      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
-      sectionType: selectorSection,
-      energyTrend: this.energyTrend,
-      lastEffectTimestamp: this.lastEffectTimestamp,
-      lastEffectType: this.lastEffectType,
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🌀 WAVE 900.4: DREAM ENGINE INTEGRATION
-    // Hunt → Dream → Conscience → Gatekeeper → Execute
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    let finalEffectDecision = null
-    let dreamIntegrationUsed = false
-    
-    // 1. Si Hunt detectó momento digno, ACTIVAR CEREBRO COMPLETO
+    // Si Hunt detectó momento digno, ejecutar simulador DNA
     const WORTHINESS_THRESHOLD = 0.65
     if (huntDecision.worthiness >= WORTHINESS_THRESHOLD) {
       // Construir contexto para el pipeline integrado
@@ -627,11 +577,11 @@ export class SeleneTitanConscious extends EventEmitter {
           worthiness: huntDecision.worthiness,
           confidence: huntDecision.confidence,
         },
-        crowdSize: 500,  // TODO: Hacer configurable desde UI
-        epilepsyMode: false,  // TODO: Conectar con config de safety
+        crowdSize: 500,
+        epilepsyMode: false,
         estimatedFatigue: this.lastEffectTimestamp ? 
           Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
-        gpuLoad: 0.5,  // TODO: Conectar con métricas reales
+        gpuLoad: 0.5,
         maxLuminosity: 100,
         recentEffects: this.effectHistory.slice(-10).map(e => ({ 
           effect: e.type, 
@@ -639,84 +589,91 @@ export class SeleneTitanConscious extends EventEmitter {
         })),
       }
       
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🧬 CEREBRO SINCRÓNICO: DNA TIENE LA ÚLTIMA PALABRA
-      // ═══════════════════════════════════════════════════════════════════════
-      // El pipeline DEBE completar antes de tomar decisión. NO fire-and-forget.
-      // DNA System (WAVE 970-971) con 35% weight en scoring EXIGE ejecución.
-      // Timeout 15ms = balance entre DNA precision y performance realtime.
-      
+      // 🧬 DNA Brain simula - NO decide
       try {
-        const integrationDecision = await Promise.race([
+        dreamIntegrationData = await Promise.race([
           dreamEngineIntegrator.executeFullPipeline(pipelineContext),
           new Promise<any>((_, reject) => 
             setTimeout(() => reject(new Error('Dream timeout')), 15)
           )
         ])
         
-        if (integrationDecision && integrationDecision.approved && integrationDecision.effect) {
-          // ✅ DREAM + CONSCIENCE APROBARON
-          const intent = integrationDecision.effect.effect
-          const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
-          
-          if (availability.available) {
-            finalEffectDecision = {
-              effectType: intent,
-              intensity: integrationDecision.effect.intensity,
-              zones: integrationDecision.effect.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
-              reason: `🧬 DNA BRAIN: ${integrationDecision.dreamRecommendation} | Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`,
-              confidence: integrationDecision.ethicalVerdict?.ethicalScore ?? 0.7,
-            }
-            dreamIntegrationUsed = true
-            
-            console.log(
-              `[SeleneTitanConscious] 🧬 DNA BRAIN APPROVED: ${intent} | ` +
-              `Dream: ${integrationDecision.dreamTime}ms | Filter: ${integrationDecision.filterTime}ms | ` +
-              `Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`
-            )
-          } else {
-            // Dream aprobó pero Gatekeeper bloqueó (cooldown)
-            console.log(
-              `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED DNA: ${intent} | ${availability.reason}`
-            )
-            
-            // Intentar con alternativas del dream
-            for (const alt of integrationDecision.alternatives) {
-              const altAvail = this.effectSelector.checkAvailability(alt.effect, pattern.vibeId)
-              if (altAvail.available) {
-                finalEffectDecision = {
-                  effectType: alt.effect,
-                  intensity: alt.intensity,
-                  zones: alt.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
-                  reason: `🧬 DNA ALT: ${alt.effect} (primary blocked by cooldown)`,
-                  confidence: 0.6,
-                }
-                dreamIntegrationUsed = true
-                console.log(`[SeleneTitanConscious] 🧬 DNA ALTERNATIVE: ${alt.effect}`)
-                break
-              }
-            }
-          }
+        if (dreamIntegrationData) {
+          console.log(
+            `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
+            `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
+          )
         }
       } catch (err: any) {
-        // Timeout o error en pipeline - fallback a DecisionMaker legacy
-        console.warn('[SeleneTitanConscious] 🌀 DNA Brain timeout/error, fallback to legacy:', err?.message || err)
+        console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
       }
     }
     
-    // 2. Si DecisionMaker tiene INTENT y Dream no intervino
-    if (!finalEffectDecision && output.effectDecision && !dreamIntegrationUsed) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 4. DECISION MAKER: EL LÓBULO FRONTAL - TIENE TODO EL CONTEXTO
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    const inputs: DecisionInputs = {
+      pattern,
+      beauty: beautyAnalysis,
+      consonance: consonanceAnalysis,
+      huntDecision,
+      prediction,
+      timestamp: state.timestamp,
+      // 🧬 WAVE 972.2: DNA DATA para el cerebro
+      dreamIntegration: dreamIntegrationData ?? undefined,
+    }
+    
+    let output = makeDecision(inputs)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    //  WAVE 685: CONTEXTUAL EFFECT SELECTION (FALLBACK SI DECISIONMAKER NO DECIDE)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Actualizar trend de energía
+    this.updateEnergyTrend(state.rawEnergy)
+    
+    // Normalizar sección para el selector
+    const selectorSection = this.normalizeSectionType(state.sectionType)
+    
+    // Construir input para el selector (fallback)
+    const selectorInput: ContextualSelectorInput = {
+      musicalContext: {
+        zScore: zScore,
+        bpm: pattern.bpm,
+        energy: state.rawEnergy,
+        vibeId: pattern.vibeId,
+        beatPhase: pattern.beatPhase,
+        inDrop: selectorSection === 'drop',
+        energyContext: energyContext,
+      },
+      huntDecision,
+      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
+      sectionType: selectorSection,
+      energyTrend: this.energyTrend,
+      lastEffectTimestamp: this.lastEffectTimestamp,
+      lastEffectType: this.lastEffectType,
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧬 WAVE 972.2: DECISION FLOW SIMPLIFICADO
+    // DecisionMaker YA decidió (tiene DNA). Solo verificar Gatekeeper.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    let finalEffectDecision = null
+    
+    // 1. Si DecisionMaker tiene decisión (ya procesó DNA internamente)
+    if (output.effectDecision) {
       const intent = output.effectDecision.effectType
       const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
       
       if (availability.available) {
         finalEffectDecision = output.effectDecision
         
-        if (this.config.debug) {
-          console.log(
-            `[SeleneTitanConscious] 🚪 GATEKEEPER APPROVED: ${intent} | ${availability.reason}`
-          )
-        }
+        console.log(
+          `[SeleneTitanConscious] 🧠 DECISION MAKER APPROVED: ${intent} | ` +
+          `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`
+        )
       } else {
         console.log(
           `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
@@ -733,7 +690,7 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // 3. FALLBACK: Si nadie decidió, preguntar al Selector Contextual
+    // 2. FALLBACK: Si DecisionMaker no decidió, usar Selector Contextual
     if (!finalEffectDecision) {
       const effectSelection = this.effectSelector.select(selectorInput)
     
@@ -768,12 +725,12 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // 4. Track para cooldown y anti-repetición
+    // 3. Track para cooldown y anti-repetición
     if (finalEffectDecision) {
       this.lastEffectTimestamp = Date.now()
       this.lastEffectType = finalEffectDecision.effectType
       
-      // 🌀 WAVE 900.4: Track para Dream Engine
+      // 🧬 WAVE 972.2: Track para Dream Engine
       this.effectHistory.push({
         type: finalEffectDecision.effectType,
         timestamp: Date.now(),
@@ -792,7 +749,7 @@ export class SeleneTitanConscious extends EventEmitter {
         section: selectorSection,
         vibeId: pattern.vibeId,
         reason: finalEffectDecision.reason || 'unknown',
-        dreamIntegrated: dreamIntegrationUsed,
+        dreamIntegrated: !!dreamIntegrationData?.approved,
       })
     }
     

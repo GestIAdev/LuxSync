@@ -16,6 +16,8 @@ import type { HuntDecision } from './HuntEngine'
 import type { MusicalPrediction } from './PredictionEngine'
 import type { BeautyAnalysis } from '../sense/BeautySensor'
 import type { ConsonanceAnalysis } from '../sense/ConsonanceSensor'
+// 🧬 WAVE 972.2: DNA Brain Integration
+import type { IntegrationDecision } from '../integration/DreamEngineIntegrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -23,6 +25,7 @@ import type { ConsonanceAnalysis } from '../sense/ConsonanceSensor'
 
 /**
  * Todos los inputs para tomar una decisión
+ * 🧬 WAVE 972.2: Ahora incluye DNA Brain integration
  */
 export interface DecisionInputs {
   /** Patrón musical actual */
@@ -42,6 +45,9 @@ export interface DecisionInputs {
   
   /** Timestamp */
   timestamp: number
+  
+  /** 🧬 WAVE 972.2: DNA Brain integration decision (opcional) */
+  dreamIntegration?: IntegrationDecision
 }
 
 /**
@@ -267,13 +273,22 @@ type DecisionType =
   | 'hold'              // Mantener sin cambios
 
 /**
- * 🔥 WAVE 811: DecisionMaker es el ÚNICO decisor de efectos
+ * 🔥 WAVE 811 → 🧬 WAVE 972.2: DNA BRAIN FIRST
  * 
- * HuntEngine solo reporta worthiness (0-1)
- * Aquí decidimos SI disparar y QUÉ efecto usar
+ * NUEVA JERARQUÍA:
+ * 1. DNA Brain Integration (si disponible y aprobado)
+ * 2. HuntEngine worthiness
+ * 3. Drop predicho
+ * 4. Buildup/Beauty
+ * 5. Hold
  */
 function determineDecisionType(inputs: DecisionInputs): DecisionType {
-  const { huntDecision, prediction, pattern, beauty } = inputs
+  const { huntDecision, prediction, pattern, beauty, dreamIntegration } = inputs
+  
+  // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
+  if (dreamIntegration && dreamIntegration.approved && dreamIntegration.effect) {
+    return 'strike'  // DNA aprobó → strike con efecto de DNA
+  }
   
   // 🔥 WAVE 811: Usar worthiness (0-1) en lugar de shouldStrike (boolean)
   // Prioridad 1: Momento digno detectado por HuntEngine
@@ -342,13 +357,48 @@ function generateStrikeDecision(
   output: ConsciousnessOutput,
   confidence: number
 ): ConsciousnessOutput {
-  const { huntDecision, beauty, consonance, pattern } = inputs
+  const { huntDecision, beauty, consonance, pattern, dreamIntegration } = inputs
   
   output.confidence = confidence
   output.source = 'hunt'
   output.debugInfo.huntState = 'striking'
   output.debugInfo.beautyScore = beauty.totalBeauty
   output.debugInfo.consonance = consonance.totalConsonance
+  
+  // 🧬 WAVE 972.2: SI DNA DECIDIÓ, USAR SU EFECTO DIRECTAMENTE
+  if (dreamIntegration && dreamIntegration.approved && dreamIntegration.effect) {
+    const dnaEffect = dreamIntegration.effect
+    
+    output.debugInfo.reasoning = `🧬 DNA BRAIN: ${dreamIntegration.dreamRecommendation}`
+    output.effectDecision = {
+      effectType: dnaEffect.effect,
+      intensity: dnaEffect.intensity,
+      zones: dnaEffect.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
+      reason: `🧬 DNA: ${dreamIntegration.dreamRecommendation} | Ethics: ${dreamIntegration.ethicalVerdict?.ethicalScore.toFixed(2)}`,
+      confidence: dreamIntegration.ethicalVerdict?.ethicalScore ?? 0.85,
+    }
+    
+    // Color decision: Cambio agresivo (DNA aprobó)
+    output.colorDecision = {
+      suggestedStrategy: pattern.emotionalTension > 0.6 ? 'complementary' : 'triadic',
+      saturationMod: 1.0 + beauty.totalBeauty * 0.15,
+      brightnessMod: 1.0 + pattern.rhythmicIntensity * 0.10,
+      confidence: confidence,
+      reasoning: `DNA Strike (beauty=${beauty.totalBeauty.toFixed(2)})`,
+    }
+    
+    // Physics modifier: Intensidad según contexto
+    output.physicsModifier = {
+      strobeIntensity: 0.7 + pattern.rhythmicIntensity * 0.3,
+      flashIntensity: 0.8 + beauty.totalBeauty * 0.2,
+      confidence: confidence,
+    }
+    
+    console.log(`[DecisionMaker 🧬] DNA BRAIN DECISION: ${dnaEffect.effect} @ ${dnaEffect.intensity.toFixed(2)} | ethics=${dreamIntegration.ethicalVerdict?.ethicalScore.toFixed(2)}`)
+    return output
+  }
+  
+  // Si NO hay DNA, continuar con lógica legacy...
   output.debugInfo.reasoning = `STRIKE: ${huntDecision.reasoning}`
   
   // Color decision: Cambio más agresivo
@@ -404,7 +454,7 @@ function generateStrikeDecision(
       }
       
       // 🔥 WAVE 811: Log de INTENCIÓN - NO de ejecución. El FIRED solo viene de EffectManager
-      console.log(`[DecisionMaker 🧠] INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
+      console.log(`[DecisionMaker 🧠] LEGACY INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
     } else {
       // 🛡️ WAVE 814: DecisionMaker no tiene decisión → delegar a ContextualEffectSelector
       console.log(`[DecisionMaker 🛡️] NO STRONG DECISION [${pattern.vibeId}] → ContextualEffectSelector will apply vibe-aware fallback`)

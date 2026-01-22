@@ -257,7 +257,8 @@ function generateStrikeDecision(
   output.debugInfo.consonance = consonance.totalConsonance
   
   // 🧬 WAVE 972.2: SI DNA DECIDIÓ, USAR SU EFECTO DIRECTAMENTE
-  if (dreamIntegration && dreamIntegration.approved && dreamIntegration.effect) {
+  // 🔌 WAVE 976.2: FIX - Chequear que effect.effect exista (no solo el objeto)
+  if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
     const dnaEffect = dreamIntegration.effect
     
     output.debugInfo.reasoning = `🧬 DNA BRAIN: ${dreamIntegration.dreamRecommendation}`

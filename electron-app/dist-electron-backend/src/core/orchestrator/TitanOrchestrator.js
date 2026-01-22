@@ -176,7 +176,11 @@ export class TitanOrchestrator {
     /**
      * Process a single frame of the Brain -> Engine -> HAL pipeline
      */
-    processFrame() {
+    /**
+     * 🎬 PROCESAR FRAME: El latido del universo
+     * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
+     */
+    async processFrame() {
         if (!this.brain || !this.engine || !this.hal)
             return;
         this.frameCount++;
@@ -241,8 +245,8 @@ export class TitanOrchestrator {
             isRealSilence: false,
             isAGCTrap: false,
         };
-        // 3. Engine processes context -> produces LightingIntent
-        const intent = this.engine.update(context, engineAudioMetrics);
+        // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
+        const intent = await this.engine.update(context, engineAudioMetrics);
         // ═══════════════════════════════════════════════════════════════════════════
         // 🎭 WAVE 374: MASTER ARBITER INTEGRATION
         // Instead of sending intent directly to HAL, we now:
@@ -273,7 +277,115 @@ export class TitanOrchestrator {
         // Si globalOverride=false, MEZCLAR con lo que ya renderizó el HAL (no machacar)
         const effectManager = getEffectManager();
         const effectOutput = effectManager.getCombinedOutput();
-        if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+        // 🎨 WAVE 725: ZONE OVERRIDES SUPPORT - "PINCELES FINOS"
+        // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
+        // Si no, usar la lógica legacy con colorOverride global
+        if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+            // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
+            // Los logs de zoneOverrides están en el EffectManager, no aquí
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🎨 WAVE 740: STRICT ZONAL ISOLATION
+            // PARADIGMA NUEVO: Iterar SOLO sobre las zonas explícitas del efecto.
+            // Las fixtures que NO están en esas zonas NO SE TOCAN - permanecen
+            // con su estado base (del HAL/Vibe) sin modificación alguna.
+            // ═══════════════════════════════════════════════════════════════════════
+            // 1. Obtener las zonas activas del efecto (SOLO estas se procesan)
+            const activeZones = Object.keys(effectOutput.zoneOverrides);
+            // 2. Crear un Set de índices de fixtures afectadas para tracking
+            const affectedFixtureIndices = new Set();
+            // 3. Para cada zona activa, encontrar y modificar SOLO sus fixtures
+            for (const zoneId of activeZones) {
+                const zoneData = effectOutput.zoneOverrides[zoneId];
+                // Encontrar fixtures que pertenecen a esta zona
+                fixtureStates.forEach((f, index) => {
+                    const fixtureZone = (f.zone || '').toLowerCase();
+                    if (this.fixtureMatchesZone(fixtureZone, zoneId)) {
+                        // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
+                        // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
+                        affectedFixtureIndices.add(index);
+                        // Aplicar color si existe
+                        if (zoneData.color) {
+                            const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
+                            // REEMPLAZO DIRECTO - El efecto toma control total del color
+                            fixtureStates[index] = {
+                                ...f,
+                                r: rgb.r,
+                                g: rgb.g,
+                                b: rgb.b,
+                            };
+                        }
+                        // ═══════════════════════════════════════════════════════════════════════
+                        // 🎚️ WAVE 780: SMART BLEND MODES - El mejor de dos mundos
+                        // 
+                        // ANTES (WAVE 765): LTP puro - El efecto siempre manda
+                        // PROBLEMA: TropicalPulse empezaba tenue y "apagaba" la fiesta
+                        // 
+                        // AHORA: Cada efecto declara su intención via blendMode:
+                        // - 'replace' (LTP): El efecto manda aunque sea más oscuro (TidalWave, GhostBreath)
+                        // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
+                        // 
+                        // DEFAULT: 'max' - Más seguro para energía general
+                        // ═══════════════════════════════════════════════════════════════════════
+                        if (zoneData.dimmer !== undefined) {
+                            const effectDimmer = Math.round(zoneData.dimmer * 255);
+                            const blendMode = zoneData.blendMode || 'max'; // Default: HTP (energía)
+                            const physicsDimmer = fixtureStates[index].dimmer;
+                            let finalDimmer;
+                            if (blendMode === 'replace') {
+                                // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                                finalDimmer = effectDimmer;
+                            }
+                            else {
+                                // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
+                                finalDimmer = Math.max(physicsDimmer, effectDimmer);
+                            }
+                            fixtureStates[index] = {
+                                ...fixtureStates[index],
+                                dimmer: finalDimmer,
+                            };
+                        }
+                        // ═══════════════════════════════════════════════════════════════════════
+                        // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
+                        // 
+                        // PROBLEMA: TropicalPulse/ClaveRhythm enviaban white/amber pero el
+                        // Orchestrator los ignoraba completamente.
+                        // 
+                        // SOLUCIÓN: HTP (Math.max) para white/amber - siempre SUMA, nunca resta
+                        // ═══════════════════════════════════════════════════════════════════════
+                        if (zoneData.white !== undefined) {
+                            const effectWhite = Math.round(zoneData.white * 255);
+                            const physicsWhite = fixtureStates[index].white || 0;
+                            fixtureStates[index].white = Math.max(physicsWhite, effectWhite);
+                        }
+                        if (zoneData.amber !== undefined) {
+                            const effectAmber = Math.round(zoneData.amber * 255);
+                            const physicsAmber = fixtureStates[index].amber || 0;
+                            fixtureStates[index].amber = Math.max(physicsAmber, effectAmber);
+                        }
+                    }
+                    // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)
+                });
+            }
+            // Log throttled para debug
+            if (this.frameCount % 60 === 0) {
+                const zoneList = activeZones.join(', ');
+                const unaffectedCount = fixtureStates.length - affectedFixtureIndices.size;
+                console.log(`[TitanOrchestrator 740] � STRICT ZONAL: [${zoneList}] | Affected: ${affectedFixtureIndices.size}/${fixtureStates.length} | UNTOUCHED: ${unaffectedCount}`);
+                for (const zoneId of activeZones) {
+                    const zoneData = effectOutput.zoneOverrides[zoneId];
+                    if (zoneData.color) {
+                        const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
+                        console.log(`  🖌️ [${zoneId}] → RGB(${rgb.r},${rgb.g},${rgb.b}) dimmer=${(zoneData.dimmer ?? 1).toFixed(2)}`);
+                    }
+                }
+            }
+            // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
+            // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
+        }
+        else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+            // ═══════════════════════════════════════════════════════════════════════
+            // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
+            // ═══════════════════════════════════════════════════════════════════════
             const flareIntensity = effectOutput.dimmerOverride; // 0-1
             // 🎨 WAVE 692.2: Usar el colorOverride del efecto, fallback a dorado solo para SolarFlare
             let flareR = 255, flareG = 200, flareB = 80; // Default: dorado (SolarFlare legacy)
@@ -325,57 +437,143 @@ export class TitanOrchestrator {
                 }
                 return false;
             };
-            // 🔥 WAVE 700.8.5: CRITICAL FIX
-            // globalOverride=true → REEMPLAZA todo (modo SolarFlare)
-            // globalOverride=false → MEZCLA con HTP/LTP (respeta lo que ya renderizó el HAL)
-            fixtureStates = fixtureStates.map((f, idx) => {
+            // � WAVE 800: RAILWAY SWITCH
+            // mixBus='global' → REEMPLAZA todo (modo dictador)
+            // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
+            const isGlobalMode = effectOutput.mixBus === 'global' || effectOutput.globalOverride;
+            fixtureStates = fixtureStates.map(f => {
                 const shouldApply = shouldApplyToFixture(f);
                 if (!shouldApply)
                     return f; // No afectar esta fixture
-                if (effectOutput.globalOverride) {
-                    // MODO SOLAR FLARE: Override completo
+                if (isGlobalMode) {
+                    // ═══════════════════════════════════════════════════════════════════════
+                    // 🚂 WAVE 800: VÍA GLOBAL - El efecto manda, ignora física
+                    // El efecto REEMPLAZA completamente lo que había.
+                    // Perfecto para: SolarFlare, CumbiaMoon, TidalWave, etc.
+                    // ═══════════════════════════════════════════════════════════════════════
                     return {
                         ...f,
                         r: flareR,
                         g: flareG,
                         b: flareB,
-                        dimmer: Math.max(f.dimmer, Math.round(flareIntensity * 255)), // HTP dimmer
+                        dimmer: Math.round(flareIntensity * 255), // LTP: El efecto dicta
                     };
                 }
                 else {
-                    // MODO ZONAL: Aplicar color y dimmer a las zonas afectadas
+                    // ═══════════════════════════════════════════════════════════════════════
+                    // 🚂 WAVE 800: VÍA HTP - El efecto suma, respeta física
+                    // HTP: El más brillante gana. El efecto complementa, no reemplaza.
+                    // Perfecto para: TropicalPulse, ClaveRhythm, etc.
+                    // ═══════════════════════════════════════════════════════════════════════
                     const effectDimmer = Math.round(flareIntensity * 255);
-                    const finalDimmer = Math.max(f.dimmer, effectDimmer);
-                    // Blend proporcional a la intensidad del efecto
-                    const blend = flareIntensity; // 0.0→0%, 1.0→100% del color del efecto
-                    const finalR = Math.round(f.r * (1 - blend) + flareR * blend);
-                    const finalG = Math.round(f.g * (1 - blend) + flareG * blend);
-                    const finalB = Math.round(f.b * (1 - blend) + flareB * blend);
-                    // 🚨 WAVE 720 DEBUG: Log RGB final para cada fixture afectada
-                    if (this.frameCount % 60 === 0 && idx < 3) {
-                        console.log(`[WAVE 720 RGB] Fixture#${idx} (${f.zone}): BEFORE=${f.r},${f.g},${f.b} | EFFECT=${flareR},${flareG},${flareB} | BLEND=${blend.toFixed(2)} | AFTER=${finalR},${finalG},${finalB}`);
+                    const finalDimmer = Math.max(f.dimmer, effectDimmer); // HTP: El más alto gana
+                    // Color: Winner Takes All - si el efecto brilla más, gana el color
+                    if (effectDimmer >= f.dimmer * 0.8) {
+                        return {
+                            ...f,
+                            r: flareR,
+                            g: flareG,
+                            b: flareB,
+                            dimmer: finalDimmer,
+                        };
                     }
-                    return {
-                        ...f,
-                        r: finalR,
-                        g: finalG,
-                        b: finalB,
-                        dimmer: finalDimmer,
-                    };
+                    else {
+                        // La física gana, mantener su color
+                        return {
+                            ...f,
+                            dimmer: finalDimmer,
+                        };
+                    }
                 }
             });
             // Log throttled
             if (this.frameCount % 60 === 0) {
                 const affectedFixtures = fixtureStates.filter(shouldApplyToFixture);
-                const mode = effectOutput.globalOverride ? 'GLOBAL' : 'ZONAL';
-                // WAVE 715 DEBUG: Show fixture zones and which are affected
+                const mode = isGlobalMode ? 'GLOBAL' : 'HTP';
+                // WAVE 800 DEBUG: Show mixBus mode
                 const fixtureZoneList = fixtureStates.map(f => `${f.zone}:${shouldApplyToFixture(f) ? 'Y' : 'N'}`).join(', ');
-                console.log(`[TitanOrchestrator 715] EFFECT [${mode}] zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
-                console.log(`[TitanOrchestrator 715] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`);
+                console.log(`[TitanOrchestrator 800] 🚂 EFFECT [${mode}] mixBus=${effectOutput.mixBus} zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`);
+                console.log(`[TitanOrchestrator 800] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`);
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // ✂️ WAVE 930.2: STEREO MOVEMENT - Movimiento L/R independiente
+        // Para efectos como SkySaw que necesitan scissors pan/tilt
+        // ═══════════════════════════════════════════════════════════════════════
+        if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+            const leftMovement = effectOutput.zoneOverrides['movers_left']?.movement;
+            const rightMovement = effectOutput.zoneOverrides['movers_right']?.movement;
+            if (leftMovement || rightMovement) {
+                fixtureStates = fixtureStates.map(f => {
+                    const fixtureZone = (f.zone || '').toLowerCase();
+                    const isMover = f.zone?.includes('MOVING') || fixtureZone.includes('ceiling') || (f.pan !== undefined && f.tilt !== undefined);
+                    if (!isMover)
+                        return f;
+                    // Determinar si es izquierda o derecha
+                    const isLeft = fixtureZone.includes('left') || f.zone?.includes('LEFT');
+                    const isRight = fixtureZone.includes('right') || f.zone?.includes('RIGHT');
+                    // Seleccionar el movement correcto según lado
+                    let mov;
+                    if (isLeft && leftMovement) {
+                        mov = leftMovement;
+                    }
+                    else if (isRight && rightMovement) {
+                        mov = rightMovement;
+                    }
+                    else {
+                        // Si no es claramente L/R, usar el promedio o el que exista
+                        mov = leftMovement || rightMovement;
+                    }
+                    if (!mov)
+                        return f;
+                    let newPan = f.pan;
+                    let newTilt = f.tilt;
+                    let newPhysicalPan = f.physicalPan ?? f.pan;
+                    let newPhysicalTilt = f.physicalTilt ?? f.tilt;
+                    if (mov.isAbsolute) {
+                        // ABSOLUTE MODE: Reemplaza completamente
+                        if (mov.pan !== undefined) {
+                            // Convertir 0..1 → 0..255 (zoneOverrides usa 0-1 no -1..1)
+                            newPan = Math.round(mov.pan * 255);
+                            newPhysicalPan = newPan;
+                        }
+                        if (mov.tilt !== undefined) {
+                            newTilt = Math.round(mov.tilt * 255);
+                            newPhysicalTilt = newTilt;
+                        }
+                    }
+                    else {
+                        // OFFSET MODE: Suma
+                        if (mov.pan !== undefined) {
+                            const panOffset = Math.round((mov.pan - 0.5) * 255);
+                            newPan = Math.max(0, Math.min(255, f.pan + panOffset));
+                            newPhysicalPan = Math.max(0, Math.min(255, (f.physicalPan ?? f.pan) + panOffset));
+                        }
+                        if (mov.tilt !== undefined) {
+                            const tiltOffset = Math.round((mov.tilt - 0.5) * 255);
+                            newTilt = Math.max(0, Math.min(255, f.tilt + tiltOffset));
+                            newPhysicalTilt = Math.max(0, Math.min(255, (f.physicalTilt ?? f.tilt) + tiltOffset));
+                        }
+                    }
+                    return {
+                        ...f,
+                        pan: newPan,
+                        tilt: newTilt,
+                        physicalPan: newPhysicalPan,
+                        physicalTilt: newPhysicalTilt,
+                    };
+                });
+                // Log throttled
+                if (this.frameCount % 30 === 0) {
+                    console.log(`[TitanOrchestrator ✂️] STEREO MOVEMENT: L=${leftMovement ? `P${leftMovement.pan?.toFixed(2)}/T${leftMovement.tilt?.toFixed(2)}` : 'N/A'} R=${rightMovement ? `P${rightMovement.pan?.toFixed(2)}/T${rightMovement.tilt?.toFixed(2)}` : 'N/A'}`);
+                }
             }
         }
         // 🥁 WAVE 700.7: MOVEMENT OVERRIDE - Efectos controlan Pan/Tilt de movers
-        if (effectOutput.hasActiveEffects && effectOutput.movementOverride) {
+        // Solo se aplica si NO hay zoneOverrides con movement (fallback global)
+        const hasZoneMovement = effectOutput.zoneOverrides &&
+            (effectOutput.zoneOverrides['movers_left']?.movement || effectOutput.zoneOverrides['movers_right']?.movement);
+        if (effectOutput.hasActiveEffects && effectOutput.movementOverride && !hasZoneMovement) {
             const mov = effectOutput.movementOverride;
             // Solo aplicar a fixtures que son movers (tienen pan/tilt)
             fixtureStates = fixtureStates.map(f => {
@@ -945,6 +1143,65 @@ export class TitanOrchestrator {
             g: Math.round(g * 255),
             b: Math.round(b * 255),
         };
+    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎨 WAVE 725: ZONE MATCHING HELPER - Pinceles Finos
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * Determina si una fixture pertenece a una zona específica
+     * Soporta AMBOS sistemas de zonas:
+     *   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
+     *   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
+     *
+     * @param fixtureZone Zona de la fixture (lowercase)
+     * @param targetZone Zona objetivo del efecto
+     * @returns true si la fixture pertenece a la zona
+     */
+    fixtureMatchesZone(fixtureZone, targetZone) {
+        const fz = fixtureZone.toLowerCase();
+        const tz = targetZone.toLowerCase();
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 730: MAPEO ESTRICTO DE ZONAS
+        // No más includes() vagos que causan matches falsos
+        // ═══════════════════════════════════════════════════════════════════════
+        switch (tz) {
+            case 'all':
+                return true;
+            case 'front':
+                // SOLO front pars, NO movers aunque estén "en frente"
+                return fz === 'front_pars' || fz === 'floor-front';
+            case 'back':
+                // SOLO back pars, NO movers aunque estén "atrás"
+                return fz === 'back_pars' || fz === 'floor-back';
+            case 'movers':
+                // SOLO cabezas móviles - CRITICAL: NO incluir pars
+                return fz === 'moving_left' || fz === 'moving_right' ||
+                    fz === 'MOVING_LEFT' || fz === 'MOVING_RIGHT' || // 🔥 WAVE 810.5: Legacy uppercase
+                    fz === 'ceiling-left' || fz === 'ceiling-right' ||
+                    fz.startsWith('moving') || fz.startsWith('ceiling');
+            // 🔥 WAVE 810: UNLOCK THE TWINS - Targeting L/R específico
+            case 'movers_left':
+                // SOLO movers del lado izquierdo
+                return fz === 'moving_left' || fz === 'ceiling-left' || fz === 'MOVING_LEFT'; // 🔥 WAVE 810.5: uppercase
+            case 'movers_right':
+                // SOLO movers del lado derecho
+                return fz === 'moving_right' || fz === 'ceiling-right' || fz === 'MOVING_RIGHT'; // 🔥 WAVE 810.5: uppercase
+            case 'pars':
+                // Todos los PARs (front + back) pero NUNCA movers
+                return fz === 'front_pars' || fz === 'back_pars' ||
+                    fz === 'floor-front' || fz === 'floor-back';
+            case 'left':
+                // Solo fixtures del lado izquierdo
+                return fz === 'moving_left' || fz === 'ceiling-left';
+            case 'right':
+                // Solo fixtures del lado derecho
+                return fz === 'moving_right' || fz === 'ceiling-right';
+            default:
+                // 🔥 WAVE 730: Sin fallback permisivo
+                // Si no reconocemos la zona, NO ENTREGAMOS NADA
+                console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`);
+                return false;
+        }
     }
 }
 // Singleton instance

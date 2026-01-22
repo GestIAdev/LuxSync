@@ -119,6 +119,7 @@ export class TitanEngine extends EventEmitter {
             lastFrameTime: Date.now(),
             previousEnergy: 0,
             previousBass: 0,
+            lastGlobalOverrideState: false, // 🧹 WAVE 930.2: Para evitar spam de logs
         };
         console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`);
         console.log(`[TitanEngine]    Vibe: ${this.config.initialVibe}`);
@@ -136,12 +137,13 @@ export class TitanEngine extends EventEmitter {
      * Este es el punto de entrada del loop de renderizado.
      * Recibe el análisis musical del Cerebro y produce un LightingIntent
      * que describe QUÉ queremos expresar visualmente.
+     * 🧬 WAVE 972: ASYNC para permitir DNA Brain sincrónico
      *
      * @param context - Contexto musical del Cerebro (TrinityBrain)
      * @param audio - Métricas de audio en tiempo real
      * @returns LightingIntent para el HAL
      */
-    update(context, audio) {
+    async update(context, audio) {
         const now = Date.now();
         const deltaTime = now - this.state.lastFrameTime;
         this.state.lastFrameTime = now;
@@ -293,16 +295,20 @@ export class TitanEngine extends EventEmitter {
         // ─────────────────────────────────────────────────────────────────────
         let zones = this.calculateZoneIntents(audio, context, vibeProfile);
         // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
+        // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
         if (nervousOutput.physicsApplied === 'latino' ||
             nervousOutput.physicsApplied === 'techno' ||
             nervousOutput.physicsApplied === 'rock' ||
             nervousOutput.physicsApplied === 'chill') {
             const ni = nervousOutput.zoneIntensities;
+            // 🧪 WAVE 908: THE DUEL - Si tenemos L/R separados (Techno), usarlos
+            const moverL = ni.moverL ?? ni.mover; // Si no hay L, fallback a mono
+            const moverR = ni.moverR ?? ni.mover; // Si no hay R, fallback a mono
             zones = {
                 front: { intensity: ni.front, paletteRole: 'primary' },
                 back: { intensity: ni.back, paletteRole: 'accent' },
-                left: { intensity: ni.mover, paletteRole: 'secondary' },
-                right: { intensity: ni.mover, paletteRole: 'ambient' }, // 🎨 WAVE 412: Stereo split (no secondary!)
+                left: { intensity: moverL, paletteRole: 'secondary' }, // 🧪 WAVE 908: LEFT = Mid-dominant
+                right: { intensity: moverR, paletteRole: 'ambient' }, // 🧪 WAVE 908: RIGHT = Treble-dominant
                 ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
             };
         }
@@ -361,7 +367,7 @@ export class TitanEngine extends EventEmitter {
             timestamp: now,
         };
         // 🧬 Ejecutar la consciencia (sense → think → dream → validate)
-        const consciousnessOutput = this.selene.process(titanStabilizedState);
+        const consciousnessOutput = await this.selene.process(titanStabilizedState);
         // 🧬 WAVE 550: Cachear output para telemetría HUD
         this.lastConsciousnessOutput = consciousnessOutput;
         // ─────────────────────────────────────────────────────────────────────
@@ -447,11 +453,16 @@ export class TitanEngine extends EventEmitter {
                 right: { intensity: overrideIntensity, paletteRole: 'primary' },
                 ambient: { intensity: overrideIntensity, paletteRole: 'primary' },
             };
-            // 🧹 WAVE 671.5: Only log at START (100%) and END (0%) to avoid decay spam
-            const intensityPercent = Math.round(overrideIntensity * 100);
-            if (intensityPercent >= 94 || intensityPercent === 0) {
-                console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ${intensityPercent >= 94 ? 'ACTIVATED' : 'RELEASED'} - All zones at ${intensityPercent}%`);
+            // 🧹 WAVE 930.2: Only log on STATE TRANSITIONS (not every frame)
+            if (!this.state.lastGlobalOverrideState) {
+                console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ACTIVATED`);
+                this.state.lastGlobalOverrideState = true;
             }
+        }
+        else if (this.state.lastGlobalOverrideState) {
+            // 🧹 WAVE 930.2: Log release only once
+            console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE RELEASED`);
+            this.state.lastGlobalOverrideState = false;
         }
         // Aplicar color override del efecto (si existe)
         if (effectOutput.hasActiveEffects && effectOutput.colorOverride) {
@@ -479,19 +490,21 @@ export class TitanEngine extends EventEmitter {
         };
         // ─────────────────────────────────────────────────────────────────────
         // WAVE 257: Throttled debug log (every second = 30 frames)
+        // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy (antiguo)
         // ─────────────────────────────────────────────────────────────────────
-        if (this.state.frameCount % 30 === 0 && audio.energy > 0.05) {
-            console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${audio.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`);
+        if (this.state.frameCount % 30 === 0 && context.energy > 0.05) {
+            console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${context.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`);
         }
         // Guardar estado para deltas
-        this.state.previousEnergy = audio.energy;
+        this.state.previousEnergy = context.energy;
         this.state.previousBass = audio.bass;
         this.state.currentIntent = intent;
         // Debug logging
+        // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
         if (this.config.debug && this.state.frameCount % 60 === 0) {
             console.log(`[TitanEngine] Frame ${this.state.frameCount}:`, {
                 vibe: vibeProfile.id,
-                energy: audio.energy.toFixed(2),
+                energy: context.energy.toFixed(2),
                 intensity: masterIntensity.toFixed(2),
             });
         }
@@ -888,8 +901,9 @@ export class TitanEngine extends EventEmitter {
         const currentVibeId = this.vibeManager.getActiveVibe().id;
         // Construir contexto de audio para VMM
         // WAVE 345: Incluir beatCount para phrase detection
+        // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
         const vmmContext = {
-            energy: audio.energy,
+            energy: context.energy, // 🔋 WAVE 935: Normalizado con AGC
             bass: audio.bass,
             mids: audio.mid,
             highs: audio.high,

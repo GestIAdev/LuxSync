@@ -76,6 +76,27 @@ export interface MoodProfile {
    */
   cooldownMultiplier: number;
   
+  /**
+   * 🧬 WAVE 973: Umbral ético para DNA cooldown override
+   * 
+   * Cuando DNA Brain decide con ethics score > ethicsThreshold,
+   * puede IGNORAR cooldowns y ejecutar su decisión inmediatamente.
+   * 
+   * Cada mood define su tolerancia a "romper las reglas del cooldown":
+   * - CALM (0.98):  Solo si la idea es SUBLIME (9.8/10)
+   * - BALANCED (0.90): Si es excelente (9/10)
+   * - PUNK (0.75): Si mola un poco (7.5/10) → ¡A LA MIERDA!
+   * - EUPHORIC (0.85): Si es bueno (8.5/10)
+   * 
+   * @example
+   * CALM: DNA ethics=0.97 < 0.98 → respeta cooldown
+   * CALM: DNA ethics=0.99 > 0.98 → IGNORA cooldown (sublime)
+   * 
+   * PUNK: DNA ethics=0.78 > 0.75 → IGNORA cooldown (mola)
+   * PUNK: DNA ethics=0.50 < 0.75 → respeta cooldown
+   */
+  ethicsThreshold: number;
+  
   // ═══════════════════════════════════════════════════════════════════════
   // INTENSITY LIMITS - Techo y suelo de intensidad
   // ═══════════════════════════════════════════════════════════════════════

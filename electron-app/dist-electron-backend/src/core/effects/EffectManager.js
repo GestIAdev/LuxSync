@@ -29,17 +29,33 @@
  */
 import { EventEmitter } from 'events';
 // Import effect library
-import { SolarFlare } from './library/SolarFlare';
-import { StrobeStorm } from './library/StrobeStorm';
-import { StrobeBurst } from './library/StrobeBurst';
-import { TidalWave } from './library/TidalWave';
-import { GhostBreath } from './library/GhostBreath';
+import { SolarFlare } from './library/fiestalatina/SolarFlare';
+import { StrobeStorm } from './library/fiestalatina/StrobeStorm';
+import { StrobeBurst } from './library/fiestalatina/StrobeBurst';
+import { TidalWave } from './library/fiestalatina/TidalWave';
+import { GhostBreath } from './library/fiestalatina/GhostBreath';
 // 🎺 WAVE 692: FIESTA LATINA ARSENAL
-import { TropicalPulse } from './library/TropicalPulse';
-import { SalsaFire } from './library/SalsaFire';
+import { TropicalPulse } from './library/fiestalatina/TropicalPulse';
+import { SalsaFire } from './library/fiestalatina/SalsaFire';
 // 🥁 WAVE 700.6: NEW LATINA EFFECT
-import { ClaveRhythm } from './library/ClaveRhythm';
-import { CumbiaMoon } from './library/CumbiaMoon';
+import { ClaveRhythm } from './library/fiestalatina/ClaveRhythm';
+import { CumbiaMoon } from './library/fiestalatina/CumbiaMoon';
+// ❤️ WAVE 750: THE ARCHITECT'S SOUL
+import { CorazonLatino } from './library/fiestalatina/CorazonLatino';
+// 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+import { IndustrialStrobe } from './library/techno/IndustrialStrobe';
+import { AcidSweep } from './library/techno/AcidSweep';
+// 🤖 WAVE 810: UNLOCK THE TWINS
+import { CyberDualism } from './library/techno/CyberDualism';
+// � WAVE 930: ARSENAL PESADO
+import { GatlingRaid } from './library/techno/GatlingRaid';
+import { SkySaw } from './library/techno/SkySaw';
+import { AbyssalRise } from './library/techno/AbyssalRise';
+// 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+import { VoidMist } from './library/techno/VoidMist';
+import { StaticPulse } from './library/techno/StaticPulse';
+import { DigitalRain } from './library/techno/DigitalRain';
+import { DeepBreath } from './library/techno/DeepBreath';
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager';
 /**
@@ -60,6 +76,13 @@ const EFFECT_VIBE_RULES = {
     'cumbia_moon': { isDynamic: false }, // 🌙 Ambient - allowed even in chill
     // 🥁 WAVE 700.6: NEW LATINA EFFECT
     'clave_rhythm': { isDynamic: true }, // 🥁 3-2 Clave pattern with movement
+    // ❤️ WAVE 750: THE ARCHITECT'S SOUL
+    'corazon_latino': { isDynamic: true }, // ❤️ Heartbeat passion effect
+    // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+    'industrial_strobe': { requiresStrobe: true, isDynamic: true }, // ⚡ Industrial hammer
+    'acid_sweep': { isDynamic: true }, // 🧪 Volumetric blade of light
+    // 🤖 WAVE 810: UNLOCK THE TWINS
+    'cyber_dualism': { isDynamic: true }, // 🤖 Ping-pong L/R spatial targeting
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MANAGER CLASS
@@ -158,12 +181,14 @@ export class EffectManager extends EventEmitter {
             vibeId,
             degraded: shieldResult.degraded,
         });
-        // 🛡️ Log con estado de shield
-        const shieldStatus = shieldResult.degraded ? '(DEGRADED)' : '';
+        // 🛡️ WAVE 811: Log ÚNICO de ejecución - LA VOZ DEL EJECUTOR
+        // Incluye: efecto, vibe, source, degraded, intensidad, z-score
+        const shieldStatus = shieldResult.degraded ? '⚠️DEGRADED' : '';
         const zInfo = config.musicalContext?.zScore
-            ? `Z: ${config.musicalContext.zScore.toFixed(1)}`
+            ? `Z:${config.musicalContext.zScore.toFixed(1)}`
             : '';
-        console.log(`[EffectManager ✅] ${config.effectType} FIRED in ${vibeId} ${shieldStatus} (Intensity: ${config.intensity.toFixed(2)} ${zInfo})`);
+        const sourceTag = config.source ? `[${config.source}]` : '';
+        console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} | I:${config.intensity.toFixed(2)} ${zInfo}`);
         return effect.id;
     }
     /**
@@ -197,6 +222,7 @@ export class EffectManager extends EventEmitter {
      * - Mayor prioridad para color
      * - 🧨 WAVE 630: globalOverride bypasea zonas
      * - 🥁 WAVE 700.7: Mayor prioridad para movement
+     * - 🎨 WAVE 725: zoneOverrides para pinceles finos
      */
     getCombinedOutput() {
         if (this.activeEffects.size === 0) {
@@ -214,12 +240,17 @@ export class EffectManager extends EventEmitter {
         let globalOverride = false; // 🧨 WAVE 630
         let highestPriorityColor;
         let highestPriority = -1;
+        // 🚂 WAVE 800: Mix Bus del efecto dominante
+        let dominantMixBus = 'htp';
         // 🥁 WAVE 700.7: Movement tracking
         let highestPriorityMovement;
         let movementPriority = -1;
         // 🌴 WAVE 700.8: Zone tracking
         const allZones = new Set();
         const contributing = [];
+        // 🎨 WAVE 725: Zone overrides acumulados de todos los efectos
+        // Estructura: { [zoneId]: { color?, dimmer?, white?, amber?, movement?, priority } }
+        const combinedZoneOverrides = {};
         for (const [id, effect] of this.activeEffects) {
             const output = effect.getOutput();
             if (!output)
@@ -249,10 +280,15 @@ export class EffectManager extends EventEmitter {
             if (output.globalOverride) {
                 globalOverride = true;
             }
-            // Highest priority takes color
+            // Highest priority takes color (legacy fallback)
             if (output.colorOverride && effect.priority > highestPriority) {
                 highestPriority = effect.priority;
                 highestPriorityColor = output.colorOverride;
+            }
+            // 🚂 WAVE 800: El efecto de mayor prioridad determina el mixBus
+            if (effect.priority > highestPriority || (effect.priority === highestPriority && effect.mixBus === 'global')) {
+                // Global tiene precedencia en caso de empate de prioridad
+                dominantMixBus = effect.mixBus;
             }
             // 🥁 WAVE 700.7: Highest priority takes movement
             if (output.movement && effect.priority > movementPriority) {
@@ -263,19 +299,67 @@ export class EffectManager extends EventEmitter {
             if (output.zones && output.zones.length > 0) {
                 output.zones.forEach(z => allZones.add(z));
             }
+            // 🎨 WAVE 725: ZONE OVERRIDES - "PINCELES FINOS"
+            // Procesar zoneOverrides del efecto y mezclarlos con HTP/LTP
+            if (output.zoneOverrides) {
+                const zoneEntries = Object.entries(output.zoneOverrides);
+                for (const [zoneId, zoneData] of zoneEntries) {
+                    if (!combinedZoneOverrides[zoneId]) {
+                        // Primera vez que vemos esta zona - inicializar
+                        combinedZoneOverrides[zoneId] = {
+                            priority: effect.priority,
+                        };
+                    }
+                    const existing = combinedZoneOverrides[zoneId];
+                    const existingPriority = existing.priority ?? -1;
+                    // HTP para dimmer (el más alto gana)
+                    if (zoneData.dimmer !== undefined) {
+                        if (existing.dimmer === undefined || zoneData.dimmer > existing.dimmer) {
+                            existing.dimmer = zoneData.dimmer;
+                        }
+                    }
+                    // HTP para white (el más alto gana)
+                    if (zoneData.white !== undefined) {
+                        if (existing.white === undefined || zoneData.white > existing.white) {
+                            existing.white = zoneData.white;
+                        }
+                    }
+                    // HTP para amber (el más alto gana)
+                    if (zoneData.amber !== undefined) {
+                        if (existing.amber === undefined || zoneData.amber > existing.amber) {
+                            existing.amber = zoneData.amber;
+                        }
+                    }
+                    // LTP para color (mayor prioridad gana)
+                    if (zoneData.color && effect.priority >= existingPriority) {
+                        existing.color = zoneData.color;
+                        existing.priority = effect.priority;
+                    }
+                    // LTP para movement (mayor prioridad gana)
+                    if (zoneData.movement && effect.priority >= existingPriority) {
+                        existing.movement = zoneData.movement;
+                    }
+                    // Agregar zona al set
+                    allZones.add(zoneId);
+                }
+            }
         }
+        // 🎨 WAVE 725: Determinar si hay zone overrides activos
+        const hasZoneOverrides = Object.keys(combinedZoneOverrides).length > 0;
         return {
             hasActiveEffects: true,
+            mixBus: dominantMixBus, // 🚂 WAVE 800: Railway Switch
             dimmerOverride: maxDimmer > 0 ? maxDimmer : undefined,
             whiteOverride: maxWhite > 0 ? maxWhite : undefined,
             amberOverride: maxAmber > 0 ? maxAmber : undefined, // 🧨 WAVE 630
-            colorOverride: highestPriorityColor,
+            colorOverride: highestPriorityColor, // Legacy fallback
             strobeRate: maxStrobeRate > 0 ? maxStrobeRate : undefined,
             intensity: maxIntensity,
             contributingEffects: contributing,
             globalOverride: globalOverride, // 🧨 WAVE 630
             zones: allZones.size > 0 ? Array.from(allZones) : undefined, // 🌴 WAVE 700.8
             movementOverride: highestPriorityMovement, // 🥁 WAVE 700.7
+            zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined, // 🎨 WAVE 725
         };
     }
     /**
@@ -353,6 +437,39 @@ export class EffectManager extends EventEmitter {
         // ═══════════════════════════════════════════════════════════════════════
         // 🥁 Clave Rhythm - 3-2 pattern with color + movement
         this.effectFactories.set('clave_rhythm', () => new ClaveRhythm());
+        // ═══════════════════════════════════════════════════════════════════════
+        // ❤️ WAVE 750: THE ARCHITECT'S SOUL
+        // ═══════════════════════════════════════════════════════════════════════
+        // ❤️ Corazón Latino - Heartbeat passion effect for epic moments
+        this.effectFactories.set('corazon_latino', () => new CorazonLatino());
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
+        // 🤖 WAVE 810: UNLOCK THE TWINS
+        // 🔫 WAVE 930: ARSENAL PESADO
+        // ═══════════════════════════════════════════════════════════════════════
+        // ⚡ Industrial Strobe - The hammer that strikes steel
+        this.effectFactories.set('industrial_strobe', () => new IndustrialStrobe());
+        // 🧪 Acid Sweep - Volumetric blade of light
+        this.effectFactories.set('acid_sweep', () => new AcidSweep());
+        // 🤖 Cyber Dualism - The ping-pong twins (L/R spatial targeting)
+        this.effectFactories.set('cyber_dualism', () => new CyberDualism());
+        // 🔫 Gatling Raid - Machine gun PAR barrage
+        this.effectFactories.set('gatling_raid', () => new GatlingRaid());
+        // 🗡️ Sky Saw - Aggressive mover cuts
+        this.effectFactories.set('sky_saw', () => new SkySaw());
+        // 🌪️ Abyssal Rise - Epic 8-bar transition
+        this.effectFactories.set('abyssal_rise', () => new AbyssalRise());
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌫️ Void Mist - Purple fog with breathing
+        this.effectFactories.set('void_mist', () => new VoidMist());
+        // ⚡ Static Pulse - Industrial glitch flashes
+        this.effectFactories.set('static_pulse', () => new StaticPulse());
+        // 💧 Digital Rain - Matrix flicker (cyan/lime)
+        this.effectFactories.set('digital_rain', () => new DigitalRain());
+        // 🫁 Deep Breath - Organic 4-bar breathing (blue/purple)
+        this.effectFactories.set('deep_breath', () => new DeepBreath());
     }
     /**
      * 🚦 IS BUSY - Check if a critical effect is hogging the stage
@@ -542,11 +659,17 @@ export class EffectManager extends EventEmitter {
  * 🚦 CRITICAL EFFECT TYPES
  * Efectos que bloquean el tráfico mientras están activos.
  * Ningún otro efecto puede dispararse mientras hay uno crítico.
+ *
+ * 🔥 WAVE 930.1 FIX: AbyssalRise REMOVIDO de CRITICAL
+ * Razón: Es un efecto largo (~16s) que bloqueaba todo el sistema.
+ * AbyssalRise usa mixBus='global' que ya garantiza control total del output,
+ * no necesita además bloquear el traffic de otros efectos.
  */
 EffectManager.CRITICAL_EFFECTS = new Set([
     'solar_flare', // Takeover total - nada más puede competir
     'strobe_storm', // Strobe intenso - no mezclar
     'blackout', // Blackout manual
+    // 'abyssal_rise' - REMOVIDO WAVE 930.1: mixBus='global' es suficiente
 ]);
 /**
  * 🚦 AMBIENT EFFECT TYPES

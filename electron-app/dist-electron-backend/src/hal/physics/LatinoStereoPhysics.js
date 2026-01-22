@@ -305,30 +305,32 @@ export class LatinoStereoPhysics {
 LatinoStereoPhysics.KICK_THRESHOLD = 0.55;
 LatinoStereoPhysics.BASS_DELTA_THRESHOLD = 0.08;
 LatinoStereoPhysics.DECAY_RATE = 0.08;
-// MOVERS (WAVE 296 - FLUIDEZ SUBLIME)
+// MOVERS (WAVE 760 - HIGH-FRAMERATE PRECISION)
+// El nuevo FFT elimina jitter → podemos usar decay más agresivo
 // Análisis estadístico de 200+ muestras de cumbia:
 //   - ~11.5% de beats perdidos con gate 0.24
 //   - Zona 0.20-0.24 tiene voces/melodías rescatables
 //   - Gate 0.22 rescata la mayoría sin meter ruido
-//   - Decay 0.75 para pintura más líquida
+//   - Decay 0.60 (antes 0.75) para respuesta más robot, menos ghost
 LatinoStereoPhysics.MOVER_ATTACK = 0.65; // Subida rápida
-LatinoStereoPhysics.MOVER_DECAY_FACTOR = 0.75; // 🔧 Subido de 0.72 (más líquido)
-LatinoStereoPhysics.MOVER_GATE = 0.22; // 🔧 Bajado de 0.24 (rescatar zona 0.22-0.24)
-LatinoStereoPhysics.MOVER_GAIN = 1.30; // 🔧 Bajado de 1.35 (compensar gate más bajo)
+LatinoStereoPhysics.MOVER_DECAY_FACTOR = 0.60; // 🔧 WAVE 760: Bajado de 0.75 (más robot, menos ghost)
+LatinoStereoPhysics.MOVER_GATE = 0.22; // Sin cambio (rescatar zona 0.22-0.24)
+LatinoStereoPhysics.MOVER_GAIN = 1.50; // 🔧 WAVE 760: Subido de 1.30 (compensar decay más rápido)
 LatinoStereoPhysics.MOVER_HYSTERESIS = 0.25; // Piso de relleno
-LatinoStereoPhysics.MOVER_TREBLE_REJECTION = 0.30; // Voces autotune tienen treble
-// BACK PARs - WAVE 294: BOFETADA PRECISA (snares, hi-hats)
-// Treble típico: 0.13-0.22. Gate 0.10 dejaba pasar casi TODO = saturación
-// Nueva math: (0.20 - 0.14) / 0.16 = 0.375 → * 2.0 = 0.75 ✓
-LatinoStereoPhysics.BACK_PAR_GATE = 0.16; // 🔧 Subido de 0.10 (solo snares reales)
-LatinoStereoPhysics.BACK_PAR_ATTACK = 0.70; // Attack rápido (sin cambio)
-LatinoStereoPhysics.BACK_PAR_DECAY = 0.25; // 🔧 Subido de 0.10 (bofetada rápida!)
-LatinoStereoPhysics.BACK_PAR_GAIN = 1.9; // 🔧 Bajado de 2.5 (evita saturación)
-// FRONT PARs (WAVE 294 - Bombo con más pegada)
-LatinoStereoPhysics.FRONT_PAR_GATE = 0.48; // Sin cambio
+LatinoStereoPhysics.MOVER_TREBLE_REJECTION = 0.30; // 🏆 ORO PURO - Voces autotune tienen treble
+// BACK PARs - WAVE 760: SURGICAL SNARE (solo snare y hi-hat puros)
+// Treble típico: 0.13-0.22. Gate subido para eliminar voces de fondo completamente
+// Attack instantáneo para respuesta quirúrgica
+LatinoStereoPhysics.BACK_PAR_GATE = 0.22; // 🔧 WAVE 760: Subido de 0.16 (solo snare/hi-hat puros)
+LatinoStereoPhysics.BACK_PAR_ATTACK = 0.85; // 🔧 WAVE 760: Subido de 0.70 (instantáneo)
+LatinoStereoPhysics.BACK_PAR_DECAY = 0.25; // Sin cambio (bofetada rápida)
+LatinoStereoPhysics.BACK_PAR_GAIN = 1.9; // Sin cambio
+// FRONT PARs (WAVE 760 - KILL THE BRICK)
+// Decay exponencial más agresivo para aprovechar motor sin jitter
+LatinoStereoPhysics.FRONT_PAR_GATE = 0.55; // 🔧 WAVE 760: Subido de 0.48 (solo bombos reales)
 LatinoStereoPhysics.FRONT_PAR_ATTACK = 0.70; // Sin cambio
-LatinoStereoPhysics.FRONT_PAR_DECAY_LINEAR = 0.05; // Sin cambio
-LatinoStereoPhysics.FRONT_PAR_GAIN = 1.7; // 🔧 Subido de 1.6 (más punch)
+LatinoStereoPhysics.FRONT_PAR_DECAY_LINEAR = 0.12; // 🔧 WAVE 760: Subido de 0.05 (más del doble de rápido)
+LatinoStereoPhysics.FRONT_PAR_GAIN = 1.7; // Sin cambio
 // Machine Gun Blackout
 LatinoStereoPhysics.NEGATIVE_DROP_THRESHOLD = 0.4;
 LatinoStereoPhysics.NEGATIVE_DROP_WINDOW_MS = 100;

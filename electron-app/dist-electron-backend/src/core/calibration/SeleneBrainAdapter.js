@@ -45,6 +45,8 @@ import { ContextualMemory } from '../intelligence/memory/ContextualMemory';
 import { FuzzyDecisionMaker } from '../intelligence/think/FuzzyDecisionMaker';
 // Drop Bridge
 import { DropBridge } from '../intelligence/think/DropBridge';
+// 🔋 WAVE 932: Import energy context helpers para calibración
+import { createDefaultEnergyContext } from '../protocol/MusicalContext';
 const DEFAULT_CONFIG = {
     sampleRate: 44100,
     bufferSize: 2048,
@@ -111,6 +113,8 @@ export class SeleneBrainAdapter {
         const bassZScore = contextOutput.stats.bass.zScore;
         const harshnessZScore = contextOutput.stats.harshness.zScore;
         // Step 6: Fuzzy Decision (use mapped section type)
+        // 🔋 WAVE 932: Pass neutral energyContext for calibration
+        // (Calibration doesn't use real energy consciousness, just neutral values)
         const mappedSection = mapSectionType(this.currentSection);
         const fuzzyDecision = this.fuzzyDecisionMaker.evaluate({
             energy: normalizedEnergy,
@@ -118,7 +122,8 @@ export class SeleneBrainAdapter {
             zScore: energyZScore,
             sectionType: mappedSection,
             huntScore: 0.5, // Neutral for calibration
-            beauty: 0.5 // Neutral for calibration
+            beauty: 0.5, // Neutral for calibration
+            energyContext: createDefaultEnergyContext() // 🔋 WAVE 932: Neutral context
         });
         // Step 7: Drop Bridge check
         const dropBridgeResult = this.dropBridge.check({

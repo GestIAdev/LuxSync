@@ -366,6 +366,13 @@ function generateStrikeDecision(
   output.debugInfo.consonance = consonance.totalConsonance
   
   // 🧬 WAVE 972.2: SI DNA DECIDIÓ, USAR SU EFECTO DIRECTAMENTE
+  // 🔍 WAVE 972.3: FORENSIC DEBUGGING
+  console.log(`[DecisionMaker 🔍] dreamIntegration EXISTS: ${!!dreamIntegration}`)
+  if (dreamIntegration) {
+    console.log(`[DecisionMaker 🔍] dreamIntegration.approved: ${dreamIntegration.approved}`)
+    console.log(`[DecisionMaker 🔍] dreamIntegration.effect: ${dreamIntegration.effect?.effect ?? 'NULL'}`)
+  }
+  
   if (dreamIntegration && dreamIntegration.approved && dreamIntegration.effect) {
     const dnaEffect = dreamIntegration.effect
     

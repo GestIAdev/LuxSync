@@ -102,7 +102,7 @@ function processSleeping(pattern, worthiness, cfg) {
         state.activeCandidate = createCandidate(worthiness, 'Actividad interesante detectada');
         return {
             suggestedPhase: 'stalking',
-            shouldStrike: false,
+            worthiness: worthiness, // 🔥 WAVE 811: worthiness en lugar de shouldStrike
             confidence: 0.4,
             conditions: null,
             activeCandidate: state.activeCandidate,
@@ -111,7 +111,7 @@ function processSleeping(pattern, worthiness, cfg) {
     }
     return {
         suggestedPhase: 'sleeping',
-        shouldStrike: false,
+        worthiness: 0, // 🔥 WAVE 811: worthiness = 0 cuando duerme
         confidence: 0.2,
         conditions: null,
         activeCandidate: null,
@@ -132,7 +132,7 @@ function processStalking(pattern, beauty, consonance, worthiness, cfg) {
             transitionTo('evaluating');
             return {
                 suggestedPhase: 'evaluating',
-                shouldStrike: false,
+                worthiness: worthiness, // 🔥 WAVE 811
                 confidence: 0.5,
                 conditions: null,
                 activeCandidate: state.activeCandidate,
@@ -145,7 +145,7 @@ function processStalking(pattern, beauty, consonance, worthiness, cfg) {
         transitionTo('sleeping');
         return {
             suggestedPhase: 'sleeping',
-            shouldStrike: false,
+            worthiness: 0, // 🔥 WAVE 811
             confidence: 0.3,
             conditions: null,
             activeCandidate: null,
@@ -154,7 +154,7 @@ function processStalking(pattern, beauty, consonance, worthiness, cfg) {
     }
     return {
         suggestedPhase: 'stalking',
-        shouldStrike: false,
+        worthiness: worthiness, // 🔥 WAVE 811
         confidence: 0.4,
         conditions: null,
         activeCandidate: state.activeCandidate,
@@ -164,42 +164,44 @@ function processStalking(pattern, beauty, consonance, worthiness, cfg) {
 function processEvaluating(pattern, beauty, consonance, worthiness, cfg) {
     // Evaluar condiciones de strike
     const conditions = evaluateStrikeConditions(pattern, beauty, consonance, cfg);
-    // ¿Strike perfecto? (WAVE 625: Weighted score >= threshold)
+    // 🔥 WAVE 811: HuntEngine ya NO decide disparar
+    // Solo reporta worthiness y condiciones - DecisionMaker decide
+    // ¿Condiciones óptimas? (worthiness alto)
     if (conditions.allMet) {
         transitionTo('striking');
-        // 🧨 WAVE 630: THE WHY LOG - Log explícito con breakdown
+        // 🔥 WAVE 811: LOG INFORMATIVO (sensor detectó momento valioso)
+        // ❌ ELIMINADO: [SOLAR FLARE] FIRED - El sensor NO dispara
         const weights = getVibeWeights(pattern.vibeId);
-        console.log(`[SOLAR FLARE] 🚀 FIRED! Score: ${conditions.strikeScore.toFixed(2)} (Threshold: ${weights.threshold.toFixed(2)}) | Breakdown: Urgency(${conditions.urgencyScore.toFixed(2)})*${weights.urgencyWeight} + Beauty(${conditions.beautyScore.toFixed(2)})*${weights.beautyWeight} + Consonance(${conditions.consonanceScore.toFixed(2)})*${weights.consonanceWeight} | Vibe: ${pattern.vibeId}`);
+        console.log(`[HuntEngine �] WORTHY MOMENT: Score=${conditions.strikeScore.toFixed(2)} (Threshold: ${weights.threshold.toFixed(2)}) | Vibe: ${pattern.vibeId}`);
         return {
             suggestedPhase: 'striking',
-            shouldStrike: true,
+            worthiness: conditions.strikeScore, // 🔥 WAVE 811: worthiness = strikeScore
             confidence: conditions.strikeScore,
             conditions,
             activeCandidate: state.activeCandidate,
-            reasoning: conditions.reasoning, // WAVE 625: Usar reasoning detallado
+            reasoning: conditions.reasoning,
         };
     }
-    // ¿Urgencia fuerza strike?
+    // ¿Urgencia alta + belleza suficiente?
     if (conditions.urgencyScore > cfg.urgencyForceThreshold && conditions.beautyMet) {
         transitionTo('striking');
-        // 🧨 WAVE 630: THE WHY LOG para FORCED STRIKE
-        console.log(`[SOLAR FLARE] 🚀 FORCED FIRE! Urgency=${conditions.urgencyScore.toFixed(2)} (Threshold: ${cfg.urgencyForceThreshold}) | Beauty=${conditions.beautyScore.toFixed(2)} | Vibe: ${pattern.vibeId}`);
+        // 🔥 WAVE 811: LOG INFORMATIVO
+        console.log(`[HuntEngine �] URGENT MOMENT: Urgency=${conditions.urgencyScore.toFixed(2)} | Beauty=${conditions.beautyScore.toFixed(2)}`);
         return {
             suggestedPhase: 'striking',
-            shouldStrike: true,
-            confidence: conditions.strikeScore * 0.9, // Penalizar por forzar
+            worthiness: conditions.strikeScore * 0.9, // 🔥 WAVE 811
+            confidence: conditions.strikeScore * 0.9,
             conditions,
             activeCandidate: state.activeCandidate,
-            reasoning: `FORCED STRIKE por urgencia=${conditions.urgencyScore.toFixed(2)}`,
+            reasoning: `URGENT MOMENT: urgency=${conditions.urgencyScore.toFixed(2)}`,
         };
     }
     // ¿Demasiado tiempo evaluando?
     if (state.framesInPhase > cfg.maxEvaluatingFrames) {
-        // Abortar - volver a stalking
         transitionTo('stalking');
         return {
             suggestedPhase: 'stalking',
-            shouldStrike: false,
+            worthiness: conditions.strikeScore * 0.5, // 🔥 WAVE 811: worthiness degradado
             confidence: 0.3,
             conditions,
             activeCandidate: state.activeCandidate,
@@ -211,7 +213,7 @@ function processEvaluating(pattern, beauty, consonance, worthiness, cfg) {
         transitionTo('stalking');
         return {
             suggestedPhase: 'stalking',
-            shouldStrike: false,
+            worthiness: conditions.strikeScore * 0.3, // 🔥 WAVE 811: worthiness bajo
             confidence: 0.3,
             conditions,
             activeCandidate: state.activeCandidate,
@@ -230,7 +232,7 @@ function processEvaluating(pattern, beauty, consonance, worthiness, cfg) {
     }
     return {
         suggestedPhase: 'evaluating',
-        shouldStrike: false,
+        worthiness: conditions.strikeScore, // 🔥 WAVE 811
         confidence: 0.5,
         conditions,
         activeCandidate: state.activeCandidate,
@@ -244,7 +246,7 @@ function processStriking(_pattern, _cfg) {
     transitionTo('learning');
     return {
         suggestedPhase: 'learning',
-        shouldStrike: false, // Ya se hizo
+        worthiness: 0, // 🔥 WAVE 811: Post-strike, worthiness = 0 (ya pasó)
         confidence: 0.8,
         conditions: null,
         activeCandidate: state.activeCandidate,
@@ -257,7 +259,7 @@ function processLearning(_pattern, cfg) {
         transitionTo('stalking');
         return {
             suggestedPhase: 'stalking',
-            shouldStrike: false,
+            worthiness: 0, // 🔥 WAVE 811
             confidence: 0.4,
             conditions: null,
             activeCandidate: null, // Reset candidato
@@ -266,7 +268,7 @@ function processLearning(_pattern, cfg) {
     }
     return {
         suggestedPhase: 'learning',
-        shouldStrike: false,
+        worthiness: 0, // 🔥 WAVE 811: En cooldown, worthiness = 0
         confidence: 0.3,
         conditions: null,
         activeCandidate: state.activeCandidate,

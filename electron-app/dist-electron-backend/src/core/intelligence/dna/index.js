@@ -1,16 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🧨 EFFECTS MODULE - PUBLIC API
+ * 🧬 EFFECT DNA MODULE INDEX
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * WAVE 600: EFFECT ARSENAL
+ * 🔥 WAVE 970: THE CONTEXTUAL DNA
  *
- * Exporta todo lo necesario para usar el sistema de efectos.
+ * Exports públicos del módulo de DNA para efectos.
  *
- * @module core/effects
- * @version WAVE 600
+ * @module core/intelligence/dna
+ * @version WAVE 970.2
  */
-// Effect Manager
-export { EffectManager, getEffectManager, resetEffectManager } from './EffectManager';
-// Effect Library
-export { SolarFlare, createSolarFlare, SOLAR_FLARE_DEFAULT_CONFIG } from './library/fiestalatina/SolarFlare';
+export { 
+// Registry
+EFFECT_DNA_REGISTRY, WILDCARD_EFFECTS, 
+// Class
+DNAAnalyzer, 
+// Singleton
+getDNAAnalyzer, } from './EffectDNA';
+export { default } from './EffectDNA';

@@ -135,10 +135,13 @@ export class SeleneLux {
                 sectionType: vibeContext.section
             });
             // Guardar overrides para usar después
+            // 🧪 WAVE 908: Guardar L/R separados para THE DUEL
             this.technoOverrides = {
                 front: zonesResult.frontParIntensity,
                 back: zonesResult.backParIntensity,
-                mover: zonesResult.moverIntensity
+                mover: zonesResult.moverIntensity, // Legacy fallback
+                moverL: zonesResult.moverIntensityL, // Split L (Mid-dominant)
+                moverR: zonesResult.moverIntensityR // Split R (Treble-dominant)
             };
             if (this.debug && isStrobeActive) {
                 console.log('[SeleneLux] ⚡ TECHNO PHYSICS | Strobe ACTIVE');
@@ -263,10 +266,16 @@ export class SeleneLux {
             this.latinoOverrides = null;
         }
         else if (this.technoOverrides && physicsApplied === 'techno') {
-            // ⚡ WAVE 290.3: El motor Techno calculó sus intensidades. Respétalas.
+            // ⚡ WAVE 290.3 + WAVE 908: El motor Techno calculó sus intensidades. Respétalas.
+            // 🧪 WAVE 908: THE DUEL - Guardar L/R separados
             frontIntensity = Math.min(0.95, this.technoOverrides.front * brightMod);
             backIntensity = Math.min(0.95, this.technoOverrides.back);
-            moverIntensity = Math.min(1.0, this.technoOverrides.mover);
+            moverIntensity = Math.min(1.0, this.technoOverrides.mover); // Legacy fallback
+            // 🧪 WAVE 908: Si tenemos L/R separados, preparar para el output
+            const technoL = this.technoOverrides.moverL ?? moverIntensity;
+            const technoR = this.technoOverrides.moverR ?? moverIntensity;
+            // Temporal: guardar en una variable para pasar al output
+            this.technoMoverSplit = { moverL: technoL, moverR: technoR };
             // Limpiar overrides para el próximo frame
             this.technoOverrides = null;
         }
@@ -324,7 +333,14 @@ export class SeleneLux {
             front: frontIntensity,
             back: backIntensity,
             mover: moverIntensity,
+            // 🧪 WAVE 908: THE DUEL - Incluir L/R si vienen de Techno
+            ...((this.technoMoverSplit) && {
+                moverL: this.technoMoverSplit.moverL,
+                moverR: this.technoMoverSplit.moverR
+            })
         };
+        // Limpiar split temporal
+        delete this.technoMoverSplit;
         // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
         // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
         // WAVE 300: Rock tiene su propio log con transientes (arriba)

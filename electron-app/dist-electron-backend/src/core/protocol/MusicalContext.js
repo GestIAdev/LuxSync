@@ -13,6 +13,23 @@
 // FACTORY / HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 /**
+ * Crea un EnergyContext por defecto (silencio)
+ */
+export function createDefaultEnergyContext() {
+    return {
+        absolute: 0,
+        smoothed: 0,
+        percentile: 0,
+        zone: 'silence',
+        previousZone: 'silence',
+        sustainedLow: true,
+        sustainedHigh: false,
+        trend: 0,
+        lastZoneChange: Date.now(),
+        isFlashbang: false, // 🌋 WAVE 960
+    };
+}
+/**
  * Crea un MusicalContext por defecto (silencio/unknown)
  */
 export function createDefaultMusicalContext() {
@@ -31,6 +48,7 @@ export function createDefaultMusicalContext() {
         },
         energy: 0,
         mood: 'neutral',
+        energyContext: createDefaultEnergyContext(),
         genre: {
             macro: 'UNKNOWN',
             subGenre: null,

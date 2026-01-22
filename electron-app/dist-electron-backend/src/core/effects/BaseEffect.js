@@ -30,6 +30,16 @@ export class BaseEffect {
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
     constructor(idPrefix) {
+        // ─────────────────────────────────────────────────────────────────────────
+        // 🚂 WAVE 800: RAILWAY SWITCH - Mix Bus Declaration
+        // 
+        // 'htp' = High Takes Precedence - Se mezcla con física (aditivo)
+        // 'global' = Global Override - Ignora física (dictador)
+        // 
+        // Default: 'htp' - Los efectos suman por defecto
+        // Los efectos que necesitan "silencio" deben sobrescribir con 'global'
+        // ─────────────────────────────────────────────────────────────────────────
+        this.mixBus = 'htp';
         this.phase = 'idle';
         this.elapsedMs = 0;
         this.triggerIntensity = 1.0;
@@ -145,6 +155,8 @@ export class BaseEffect {
             'pars': 1,
             'back': 2,
             'movers': 3,
+            'movers_left': 3, // 🤖 WAVE 810: L/R tienen mismo orden que movers
+            'movers_right': 3,
             'all': 0,
         };
         return (zoneOrder[zone] || 0) / totalZones;

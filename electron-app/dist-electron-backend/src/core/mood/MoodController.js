@@ -45,14 +45,16 @@ export const MOOD_PROFILES = {
     // ═══════════════════════════════════════════════════════════════════════
     // ⚖️ BALANCED - "Disparo cuando la música lo pide"
     // ═══════════════════════════════════════════════════════════════════════
-    // WAVE 700.5.2 - Consenso del Cónclave: Narrativa visual, no spam
-    // Target EPM: 4-6 (1 efecto cada 10-15 segundos)
+    // WAVE 937: BALANCED = PROFESIONAL → Solo momentos BUENOS, no "apenas dignos"
+    // Problema: worthiness 0.66-0.71 dispara cada 6s → 8-10 EPM (demasiado)
+    // Solución: Threshold 1.15x → worthiness efectivo debe ser ~0.75+ (mejor calidad)
+    // Target EPM: 5-6 (1 efecto cada 10-12 segundos)
     balanced: {
         name: 'balanced',
-        description: 'El profesional. Dispara cuando la música lo pide.',
+        description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
         emoji: '⚖️',
-        thresholdMultiplier: 1.2, // 20% más selectivo (era 1.0)
-        cooldownMultiplier: 1.5, // 50% más espera (era 1.0)
+        thresholdMultiplier: 1.15, // 🎯 WAVE 937: 15% más exigente (era 1.0)
+        cooldownMultiplier: 1.0, // Cooldowns normales
         maxIntensity: 1.0, // Sin límite
         minIntensity: undefined, // Sin mínimo
         blockList: [], // Nada bloqueado

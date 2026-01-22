@@ -1,71 +1,89 @@
 /**
- * WAVE 290.3: TECHNO STEREO PHYSICS
+ * ---------------------------------------------------------------------------
+ * ?? WAVE 770: TECHNO STEREO PHYSICS - THE BLADE
+ * ---------------------------------------------------------------------------
  *
- * Motor de fisicas EXCLUSIVO para el vibe TECHNO.
+ * FILOSOFÍA: Convertir la física reactiva en un arma blanca.
+ * Eliminar suavizado, maximizar agresión. El techno no perdona.
  *
- * DOBLE API:
- * - apply() [STATIC] -> Procesa COLORES/STROBE (compatibilidad SeleneLux)
- * - applyZones() [INSTANCE] -> Procesa ZONAS/INTENSIDADES (WAVE 290.3)
+ * DIFERENCIAS CON OTROS VIBES:
+ * - NO HAY INTENSITY_SMOOTHING (fue erradicado)
+ * - Decay instantáneo (1-2 frames, no gradual)
+ * - "The Slap": BACK_PAR multiplicador 1.8x + Gate alto
+ * - Spectral integration (harshness, flatness)
  *
- * ALMA DEL TECHNO:
- * - Movers = TREBLE (voces, melodias, efectos) con VITAMINAS
- * - Strobe = TREBLE peaks para techno puro
- * - Decay agresivo estilo katana
- * - Anti-epilepsy hysteresis (WAVE 280)
+ * ARQUITECTURA ZONE:
+ * - FRONT PARs = BASS (Bombo 4x4, el corazón del techno)
+ * - BACK PARs = MID con "The Slap" (snare/clap, bofetada brutal)
+ * - MOVERS = TREBLE vitaminado (leads sintetizados, acid lines)
+ *
+ * SPECTRAL FEATURES:
+ * - context.spectral.harshness ? Acid colors (0.6+ = toxic green)
+ * - context.spectral.flatness ? CO2/White Noise detection (0.7+ = strobe)
+ *
+ * * CAMBIOS WAVE 906:
+ * - ?? BASS ROIDS: Multiplicador x2.5 post-gate en FrontPars.
+ * - ?? STEREO SPLIT: Movers L (Mids) vs Movers R (Treble).
+ * - ?? BACK PAR SNIPER: Gate alto para aislar Snares de Melod�as.
+ *
+ * @module hal/physics/TechnoStereoPhysics
+ * @version WAVE 770 - THE BLADE
  */
 import { hslToRgb } from '../../engine/color/SeleneColorEngine';
 // ===========================================================================
-// TECHNO STEREO PHYSICS ENGINE
+// ?? WAVE 906: TECHNO STEREO PHYSICS ENGINE
 // ===========================================================================
 export class TechnoStereoPhysics {
     constructor() {
         // =========================================================================
-        // ZONE CONSTANTS (WAVE 290.3)
+        // 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection
         // =========================================================================
-        this.TREBLE_VITAMIN = 2.2;
-        this.ACTIVATION_THRESHOLD = 0.15;
-        this.VISIBILITY_FLOOR = 0.18;
-        this.HYSTERESIS_MARGIN = 0.06;
-        this.INTENSITY_SMOOTHING = 0.4;
-        this.MIN_STABLE_FRAMES = 2;
-        this.STROBE_THRESHOLD = 0.85;
-        this.STROBE_DURATION = 40;
-        // 🔊 FRONT PARS = BASS (Bombo, el empujón)
-        this.FRONT_PAR_BASE = 0.08; // Base ambiente muy baja
-        this.FRONT_PAR_BASS_MULT = 0.85; // 85% respuesta a bass
-        // 🥁 BACK PARS = MID (Caja/Snare, la bofetada)
-        // Gate ALTO para filtrar voces - solo transientes de percusión
-        this.BACK_PAR_GATE = 0.25; // Gate alto anti-karaoke
-        this.BACK_PAR_MID_MULT = 1.8; // Multiplicador agresivo para caja
+        // 🔊 FRONT (BASS) - Dry & Punchy (Corte militar)
+        this.FRONT_PAR_GATE_ON = 0.48; // ⬆️ Más estricto (evita Sidechain accidental)
+        this.FRONT_PAR_GATE_OFF = 0.35; // ⬆️ Corte alto (Secar el bajo)
+        this.BASS_VITAMIN_BOOST = 1.8;
+        // 🛡️ PARANOIA GATE (Para el rebote del AGC)
+        // Durante la recuperación post-silencio, exigimos un 80% de señal para encender
+        // Esto filtra el ruido de fondo inflado, pero deja pasar el Drop (100%)
+        this.RECOVERY_GATE_ON = 0.80; // 🚨 Gate paranoico post-silencio
+        this.RECOVERY_GATE_OFF = 0.60; // 🚨 Gate off proporcionalmente alto
+        this.RECOVERY_DURATION = 2000; // 2 segundos de desconfianza
+        // 🥁 BACK (SNARE SNIPER - GEOMETRIC MEAN + NOISE GATE)
+        // Media geométrica + Curva supresora de ruido
+        this.BACK_PAR_GATE = 0.30;
+        this.BACK_PAR_SLAP_MULT = 5.0; // ⬆️ Compensar curva supresora (4.0→6.0)
+        // 👯 MOVERS (STEREO SPLIT)
+        // LEFT (Mid/Voces) - "The Body"
+        this.MOVER_L_GATE = 0.20;
+        this.MOVER_L_BOOST = 4.0;
+        // RIGHT (Treble/Hats) - "SCHWARZENEGGER MODE" 🤖
+        this.MOVER_R_GATE = 0.14; // 📉 Hypersensitive (confirmado)
+        this.MOVER_R_BOOST = 10.0; // 💪 TERMINATOR BOOST (confirmado)
+        // STROBE & MODES
+        this.STROBE_THRESHOLD = 0.80;
+        this.STROBE_DURATION = 30;
+        this.HARSHNESS_ACID_THRESHOLD = 0.60;
+        this.FLATNESS_NOISE_THRESHOLD = 0.70;
         // =========================================================================
-        // INTERNAL STATE (Zonas)
+        // INTERNAL STATE
         // =========================================================================
-        this.moverIntensityBuffer = 0;
-        this.moverState = false;
-        this.stabilityCounter = 0;
         this.strobeActive = false;
         this.strobeStartTime = 0;
-        this.frontParSmoothed = 0;
-        this.backParSmoothed = 0;
-        this.frontParActive = false; // Estado para histéresis anti-parpadeo
-        console.log('[TechnoStereoPhysics] Initialized (WAVE 290.3)');
+        this.frontParActive = false;
+        // 🕵️‍♂️ WAVE 913: PARANOIA STATE (AGC Rebound Protection)
+        this.lastSilenceTime = 0;
+        this.inSilence = false;
+        console.log('[TechnoStereoPhysics] 🛡️ WAVE 913: PARANOIA GATE - AGC Rebound Protection - Initialized');
     }
-    // =========================================================================
-    // LEGACY API - STATIC (Compatibilidad SeleneLux)
-    // =========================================================================
-    /**
-     * LEGACY: Apply Techno strobe physics to palette.
-     * Detecta drops y aplica strobe magenta neon.
-     */
+    // ... (LEGACY apply STATIC METHOD MANTENIDO IGUAL) ...
     static apply(palette, audio, mods) {
+        // (Mismo c�digo legacy para compatibilidad de colores)
         const thresholdMod = mods?.thresholdMultiplier ?? 1.0;
         const brightnessMod = mods?.brightnessMultiplier ?? 1.0;
         const normalizedTreble = audio.normalizedTreble ?? 0;
         const normalizedBass = audio.normalizedBass ?? 0;
-        // Ratio Bass/Treble para detectar drops
         const dropRatio = normalizedBass / Math.max(0.01, normalizedTreble);
         const effectiveThreshold = this.STROBE_BASE_THRESHOLD * thresholdMod;
-        // Detectar strobe
         const isStrobeActive = normalizedTreble > effectiveThreshold && dropRatio < 2.0;
         let outputPalette = { ...palette };
         if (isStrobeActive) {
@@ -73,208 +91,233 @@ export class TechnoStereoPhysics {
             const strobeRgb = hslToRgb({ h: this.STROBE_HUE, s: this.STROBE_SATURATION, l: modulatedLightness });
             outputPalette.accent = strobeRgb;
         }
-        return {
-            palette: outputPalette,
-            isStrobeActive,
-            debugInfo: {
-                normalizedTreble,
-                normalizedBass,
-                dropRatio,
-                effectiveThreshold,
-                strobeTriggered: isStrobeActive
-            }
-        };
+        return { palette: outputPalette, isStrobeActive, debugInfo: { normalizedTreble, normalizedBass, dropRatio, effectiveThreshold, strobeTriggered: isStrobeActive } };
     }
     // =========================================================================
-    // NEW API - INSTANCE (Zonas/Intensidades WAVE 290.3)
+    // ?? WAVE 906: NEW API
     // =========================================================================
-    /**
-     * Apply Techno zone physics.
-     * Returns zone intensities and strobe state.
-     */
     applyZones(input) {
-        const { bass, mid, treble, isRealSilence, isAGCTrap } = input;
+        const { bass, mid, treble, isRealSilence, isAGCTrap, harshness = 0, flatness = 0 } = input;
+        const now = Date.now();
+        // ?? Modos
+        const acidMode = harshness > this.HARSHNESS_ACID_THRESHOLD;
+        const noiseMode = flatness > this.FLATNESS_NOISE_THRESHOLD;
+        // 🕵️‍♂️ WAVE 913: DETECCIÓN DE TRANSICIÓN DE SILENCIO
         if (isRealSilence || isAGCTrap) {
-            return this.handleSilence();
+            this.inSilence = true;
+            this.lastSilenceTime = now; // Actualizamos mientras dure el silencio
+            return this.handleSilence(acidMode, noiseMode);
         }
-        // Front = BASS (bombo), Back = MID (caja)
-        const frontParIntensity = this.calculateFrontPar(bass);
-        const backParIntensity = this.calculateBackPar(mid);
-        const moverResult = this.calculateMover(treble);
-        const strobeResult = this.calculateStrobe(treble);
+        else {
+            // Si acabamos de salir del silencio, this.inSilence será true
+            if (this.inSilence) {
+                this.inSilence = false;
+                // Aquí empieza el contador de "Recovery" (lastSilenceTime se queda fijo)
+            }
+        }
+        // 🛡️ WAVE 913: CÁLCULO DE PARANOIA
+        // ¿Cuánto tiempo ha pasado desde que volvió la música?
+        const timeSinceSilence = now - this.lastSilenceTime;
+        const isRecovering = timeSinceSilence < this.RECOVERY_DURATION;
+        // 🔊 FRONT PAR: LÓGICA DINÁMICA
+        // Si estamos recuperando, usamos el Gate Paranoico (0.80). Si no, el normal (0.48).
+        const effectiveGateOn = isRecovering ? this.RECOVERY_GATE_ON : this.FRONT_PAR_GATE_ON;
+        // También subimos el Gate Off proporcionalmente para evitar colas largas sucias
+        const effectiveGateOff = isRecovering ? this.RECOVERY_GATE_OFF : this.FRONT_PAR_GATE_OFF;
+        let frontParIntensity = this.calculateFrontPar(bass, effectiveGateOn, effectiveGateOff);
+        // 🥁 BACK: THE SNARE SNIPER (Geometric Mean)
+        // 🎯 WAVE 910: Multiplicamos Mid * Treble
+        // Solo si hay AMBOS (Cuerpo + Brillo = Snare/Drop) la señal será fuerte
+        // - Voces solas (Mid alto, Treble bajo) → sqrt(0.8 * 0.1) = 0.28 → APAGADO ❌
+        // - Hats solos (Mid bajo, Treble alto) → sqrt(0.1 * 0.8) = 0.28 → APAGADO ❌
+        // - SNARE (Mid 0.6, Treble 0.6) → sqrt(0.36) = 0.60 → ENCENDIDO ✅
+        const snareSignal = Math.sqrt(mid * treble);
+        let backParIntensity = this.calculateBackPar(snareSignal);
+        // ☁️ WAVE 914: THE ATMOSPHERIC FLOOR (Trance Fix)
+        // Si la música es muy densa (Pads/Trance), flatness será alto (ej: 0.6).
+        // Usamos eso para crear un "Glow" base en los Movers.
+        // Factor 0.3 significa: Si flatness es 1.0 (ruido puro), el brillo mínimo es 30%.
+        const atmosphericFloor = flatness * 0.3;
+        // 👯 STEREO ALCHEMY
+        // LEFT: Mid Dominante - "The Body"
+        const rawLeft = Math.max(0, mid - (treble * 0.3));
+        let moverL = this.calculateMoverChannel(rawLeft, this.MOVER_L_GATE, this.MOVER_L_BOOST);
+        // RIGHT: Treble "The Sparkle"
+        const rawRight = Math.max(0, treble - (mid * 0.2));
+        let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST);
+        // ☁️ APLICAR SUELO ATMOSFÉRICO
+        // Si moverL es 0 (silencio rítmico) pero hay Pad (flatness), se queda en el floor.
+        // Math.max asegura que el ritmo siempre gane al floor.
+        moverL = Math.max(moverL, atmosphericFloor);
+        moverR = Math.max(moverR, atmosphericFloor);
+        // 🔥 WAVE 916: APOCALYPSE DETECTION
+        // Si hay mucha distorsión (harshness) Y mucho ruido blanco (flatness),
+        // asumimos que es un Riser/Upswing aunque no haya bajos.
+        const isApocalypse = harshness > 0.5 && flatness > 0.5;
+        // 🚑 WAVE 916: APOCALYPSE OVERRIDE
+        // Si estamos en el apocalipsis, NO nos importa si no hay bajo.
+        // Usamos la energía del ruido (treble/mid) para encender TODAS LAS LUCES.
+        if (isApocalypse) {
+            // Calculamos la "Energía del Caos"
+            const chaosEnergy = Math.max(mid, treble);
+            // FORZAMOS EL ENCENDIDO (Override)
+            // Si el Front estaba apagado por falta de bajos, lo encendemos con el ruido.
+            // Math.max asegura que usamos lo que sea más alto: el bajo real o el caos.
+            frontParIntensity = Math.max(frontParIntensity, chaosEnergy);
+            // Lo mismo para los demás. ¡QUE TODO BRILLE!
+            backParIntensity = Math.max(backParIntensity, chaosEnergy);
+            moverL = Math.max(moverL, chaosEnergy);
+            moverR = Math.max(moverR, chaosEnergy);
+            // NOTA: Al forzar esto, el "Ghost Kick" (sidechain) queda anulado implícitamente
+            // porque estamos sobrescribiendo los valores al final.
+        }
+        else {
+            // LÓGICA NORMAL: GHOST KICK (Logic Sidechain)
+            // Solo aplicamos ducking si NO es el apocalipsis.
+            // Si hay mucho ruido (Trance/DnB) O el bajo es brutal,
+            // usamos el BOMBO para empujar hacia abajo el resto
+            // Detectamos "Muro de Sonido" si flatness es alto o si todo está alto
+            const wallOfSound = flatness > 0.6 || (bass > 0.6 && mid > 0.6 && treble > 0.6);
+            if (wallOfSound && frontParIntensity > 0.5) {
+                // Ducking Factor: Cuanto más fuerte el bombo, más agachamos lo demás
+                // Invertimos el bombo: 1.0 (golpe) -> 0.4 (ducking del 60%)
+                const ducking = 1.0 - (frontParIntensity * 0.6);
+                backParIntensity *= ducking;
+                moverL *= ducking;
+                moverR *= ducking;
+            }
+        }
+        // Strobe (Treble peaks + Noise)
+        const strobeResult = this.calculateStrobe(treble, noiseMode);
         return {
             strobeActive: strobeResult.active,
             strobeIntensity: strobeResult.intensity,
             frontParIntensity,
             backParIntensity,
-            moverIntensity: moverResult.intensity,
-            moverActive: moverResult.active,
-            physicsApplied: 'techno'
+            moverIntensityL: moverL,
+            moverIntensityR: moverR,
+            moverIntensity: Math.max(moverL, moverR), // Fallback mono (Legacy)
+            moverActive: (moverL > 0.1 || moverR > 0.1),
+            physicsApplied: 'techno',
+            acidMode,
+            noiseMode
         };
     }
     reset() {
-        this.moverIntensityBuffer = 0;
-        this.moverState = false;
-        this.stabilityCounter = 0;
         this.strobeActive = false;
         this.strobeStartTime = 0;
-        this.frontParSmoothed = 0;
-        this.backParSmoothed = 0;
         this.frontParActive = false;
     }
     // =========================================================================
-    // PRIVATE - Zone Calculations
+    // PRIVATE CALCULATIONS
     // =========================================================================
-    handleSilence() {
-        this.moverIntensityBuffer = 0;
-        this.moverState = false;
-        this.stabilityCounter = 0;
-        this.strobeActive = false;
-        this.frontParSmoothed *= 0.85;
-        this.backParSmoothed *= 0.85;
+    handleSilence(acidMode, noiseMode) {
         return {
             strobeActive: false,
             strobeIntensity: 0,
-            frontParIntensity: this.frontParSmoothed,
-            backParIntensity: this.backParSmoothed,
+            frontParIntensity: 0, // ?? Silencio absoluto instantáneo
+            backParIntensity: 0,
+            moverIntensityL: 0,
+            moverIntensityR: 0,
             moverIntensity: 0,
             moverActive: false,
-            physicsApplied: 'techno'
+            physicsApplied: 'techno',
+            acidMode,
+            noiseMode
         };
     }
     /**
-     * Front PAR = BASS (Bombo) - EL CORAZÓN
-     * Comportamiento BINARIO con HISTÉRESIS anti-parpadeo
-     * Gate alto + histéresis = sin rebote cerca del umbral
-     * Cap 0.80 (siempre por debajo de Back)
+     * 🔊 FRONT PAR (BASS) - AHORA ACEPTA GATES DINÁMICOS
+     * 🛡️ WAVE 913: Soporta Recovery Gates para AGC Rebound Protection
+     *
+     * @param bass - Señal de bajo normalizada
+     * @param gateOn - Umbral de activación (dinámico: 0.48 normal / 0.80 paranoia)
+     * @param gateOff - Umbral de desactivación (dinámico: 0.35 normal / 0.60 paranoia)
      */
-    calculateFrontPar(bass) {
-        // HISTÉRESIS: Diferentes umbrales para encender vs apagar
-        // Encender: bass > 0.35 (gate alto)
-        // Apagar: bass < 0.28 (margen de 0.07 para evitar rebote)
-        const gateOn = 0.35;
-        const gateOff = 0.28;
+    calculateFrontPar(bass, gateOn, gateOff) {
         if (this.frontParActive) {
-            // Ya está encendido - solo apagar si baja MUCHO
+            // Usamos el gateOff dinámico
             if (bass < gateOff) {
                 this.frontParActive = false;
                 return 0;
             }
         }
         else {
-            // Está apagado - solo encender si sube lo suficiente
-            if (bass < gateOn) {
+            // Usamos el gateOn dinámico
+            if (bass < gateOn)
                 return 0;
-            }
             this.frontParActive = true;
         }
-        // Normalizar desde gate de encendido
+        // Normalizamos usando el gate actual para mantener la curva correcta
         const gated = (bass - gateOn) / (1 - gateOn);
-        // Curva AGRESIVA sin multiplicador
-        const intensity = Math.pow(Math.max(0, gated), 0.6);
-        return Math.min(0.80, Math.max(0, intensity));
+        // ?? INYECCIÓN DE VITAMINAS (Gain post-gate)
+        // Multiplicamos para saturar rápido. Si bass es decente, llegamos al 100%.
+        const boosted = gated * this.BASS_VITAMIN_BOOST;
+        // 3. Curva de potencia para mantener contraste en la bajada
+        // x^2.0 es un buen compromiso entre golpe y sustain
+        const intensity = Math.pow(Math.max(0, boosted), 2.0);
+        return Math.min(1.0, Math.max(0, intensity)); // Cap al 100%
     }
     /**
-     * Back PAR = MID (Caja/Snare) - LA BOFETADA DE MAMÁ
-     * Gate calibrado para Techno 4x4 (caja clara a ~0.35-0.50)
-     * Multiplicador AGRESIVO - tiene que DOLER
-     * Cap 0.95 - SIEMPRE por encima de Front
+     * 🥁 BACK PAR - THE CLEANER (NOISE GATE MODE)
+     * 🧹 WAVE 911: Media geométrica + Curva supresora de ruido
+     *
+     * Matemática:
+     * - Signal ya viene como sqrt(mid * treble) desde applyZones
+     * - Solo valores altos (Snare completo) pasan el gate 0.25
+     * - 📉 CURVA x^1.5 (exponencial) → SUPRIME ruido, mantiene potencia
+     *   * Valores débiles (synth ruido) → Se hacen invisibles
+     *   * Valores fuertes (Snare) → Se mantienen fuertes
+     * - Mult x6.0 → Compensar la supresión
+     *
+     * @param signal - Media geométrica de mid y treble
      */
-    calculateBackPar(mid) {
-        // Gate para Techno 4x4: caja suele estar en 0.35-0.60
-        // Voces están en 0.25-0.40, así que gate en 0.32 es el sweet spot
-        if (mid < 0.32) {
+    calculateBackPar(signal) {
+        if (signal < this.BACK_PAR_GATE)
             return 0;
-        }
-        // Normalizar desde gate
-        const gated = (mid - 0.32) / (1 - 0.32);
-        // Multiplicador MÁS AGRESIVO 2.0 + exponente 0.65 para expandir débiles
-        // mid 0.40 → gated 0.12 → 0.47 (caja suave pero visible)
-        // mid 0.55 → gated 0.34 → 0.91 (PEGA)
-        // mid 0.70 → gated 0.56 → 0.95 (HOSTIA, capeado)
-        const intensity = Math.pow(gated, 0.65) * 2.0;
-        return Math.min(0.95, Math.max(0, intensity));
+        const gated = (signal - this.BACK_PAR_GATE) / (1 - this.BACK_PAR_GATE);
+        // 📉 CAMBIO DE CURVA: De 0.5 (inflar) a 1.5 (suprimir)
+        // Esto actúa como un "Noise Gate" suave. Lo débil se hace invisible.
+        // Lo fuerte (Snare) se mantiene fuerte.
+        const intensity = Math.pow(gated, 0.9) * this.BACK_PAR_SLAP_MULT;
+        return Math.min(1.0, Math.max(0, intensity));
     }
-    calculateMover(treble) {
-        const audioSignal = treble * this.TREBLE_VITAMIN;
-        const prevIntensity = this.moverIntensityBuffer;
-        const deactivationThreshold = Math.max(0.08, this.ACTIVATION_THRESHOLD - this.HYSTERESIS_MARGIN);
-        let rawTarget = 0;
-        let shouldBeOn = this.moverState;
-        if (audioSignal > this.ACTIVATION_THRESHOLD) {
-            shouldBeOn = true;
-            rawTarget = 0.25 + (audioSignal - this.ACTIVATION_THRESHOLD) * 0.75 / (1 - this.ACTIVATION_THRESHOLD);
-        }
-        else if (audioSignal > deactivationThreshold && this.moverState) {
-            shouldBeOn = true;
-            rawTarget = prevIntensity * 0.4;
-        }
-        else {
-            shouldBeOn = false;
-            rawTarget = 0;
-        }
-        let finalState = this.moverState;
-        if (shouldBeOn !== this.moverState) {
-            // RISING INSTANTÁNEO: Si quiere encender, enciende YA (0 frames de espera)
-            // APAGADO con estabilidad: Solo delay para apagar (evita parpadeo)
-            if (shouldBeOn) {
-                // ENCENDER = INMEDIATO (el rising que pedía Radwulf)
-                finalState = true;
-                this.stabilityCounter = 0;
-            }
-            else if (this.stabilityCounter >= this.MIN_STABLE_FRAMES) {
-                // APAGAR = con delay (evita flicker)
-                finalState = false;
-                this.stabilityCounter = 0;
-            }
-            else {
-                this.stabilityCounter++;
-                finalState = this.moverState;
-                if (this.moverState && rawTarget === 0) {
-                    rawTarget = prevIntensity * 0.7;
-                }
-            }
-        }
-        else {
-            this.stabilityCounter = 0;
-        }
-        let smoothedIntensity;
-        if (rawTarget > prevIntensity) {
-            // ATTACK INSTANTÁNEO - sin smooth en subida
-            // El Techno es golpe seco, no fade-in
-            smoothedIntensity = rawTarget;
-        }
-        else {
-            // DECAY BRUTAL - 10% retención = cae a negro en 2-3 frames
-            // Esto es lo que crea el DELTA que queremos
-            smoothedIntensity = prevIntensity * 0.10 + rawTarget * 0.90;
-        }
-        // Floor alto para cortar limpio y llegar a NEGRO real
-        const cleanedIntensity = smoothedIntensity < 0.20 ? 0 : Math.min(1, smoothedIntensity);
-        this.moverIntensityBuffer = cleanedIntensity;
-        this.moverState = cleanedIntensity > 0 ? finalState : false;
-        return { intensity: cleanedIntensity, active: this.moverState };
+    /**
+     * 👯 MOVER CHANNEL - GENERIC GATE + BOOST
+     * 🧹 WAVE 911: THE CLEANER
+     *
+     * @param signal - Señal ya procesada con sustracción:
+     *                 LEFT: Mid - 30% Treble (The Body)
+     *                 RIGHT: Treble - 20% Mid (SCHWARZENEGGER MODE 🤖)
+     * @param gate - Umbral de activación (RIGHT: 0.14 hypersensitive)
+     * @param boost - Multiplicador de ganancia (RIGHT: x10.0 TERMINATOR)
+     *
+     * NOTA: En "Wall of Sound", estos valores se reducen por ducking (sidechain)
+     */
+    calculateMoverChannel(signal, gate, boost) {
+        if (signal < gate)
+            return 0;
+        const gated = (signal - gate) / (1 - gate);
+        // Boost masivo y curva rápida
+        const intensity = Math.pow(gated, 1.2) * boost;
+        return Math.min(1.0, Math.max(0, intensity));
     }
-    calculateStrobe(treble) {
+    calculateStrobe(treble, noiseMode) {
         const now = Date.now();
         if (this.strobeActive && now - this.strobeStartTime > this.STROBE_DURATION) {
             this.strobeActive = false;
         }
-        if (treble > this.STROBE_THRESHOLD && !this.strobeActive) {
+        const effectiveThreshold = noiseMode ? this.STROBE_THRESHOLD * 0.80 : this.STROBE_THRESHOLD;
+        if (treble > effectiveThreshold && !this.strobeActive) {
             this.strobeActive = true;
             this.strobeStartTime = now;
         }
         return { active: this.strobeActive, intensity: this.strobeActive ? 1.0 : 0 };
     }
 }
-// =========================================================================
-// LEGACY CONSTANTS (Colores/Strobe - WAVE 151)
-// =========================================================================
+// LEGACY CONSTANTS
 TechnoStereoPhysics.STROBE_BASE_THRESHOLD = 0.6;
-TechnoStereoPhysics.STROBE_HUE = 300; // Magenta neon
+TechnoStereoPhysics.STROBE_HUE = 300;
 TechnoStereoPhysics.STROBE_SATURATION = 100;
 TechnoStereoPhysics.STROBE_LIGHTNESS = 85;
-// ===========================================================================
-// SINGLETON EXPORT (para zonas)
-// ===========================================================================
 export const technoStereoPhysics = new TechnoStereoPhysics();

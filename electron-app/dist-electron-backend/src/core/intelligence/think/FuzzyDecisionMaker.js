@@ -10,6 +10,10 @@
  * - El Mood modifica los UMBRALES de decisión
  * - CALM eleva el listón, PUNK lo baja
  *
+ * WAVE 932: Integración con EnergyConsciousness
+ * - Nuevas reglas de SUPRESIÓN para zonas de silencio
+ * - El sistema difuso ahora "sabe" si está en un funeral
+ *
  * ARQUITECTURA:
  *
  *   Crisp Inputs (números)
@@ -35,10 +39,15 @@
  *   └──────────────┘
  *          │
  *          ▼
+ *   ┌───────────────┐
+ *   │ 🔋 ENERGY CAP │ ← WAVE 932: Suppress in silence zones
+ *   └───────────────┘
+ *          │
+ *          ▼
  *   FuzzyDecision
  *
  * @module core/intelligence/think/FuzzyDecisionMaker
- * @wave 667, 700.1
+ * @wave 667, 700.1, 932
  */
 import { MoodController } from '../../mood';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,6 +127,8 @@ function rightTrapezoid(value, edge, spread) {
 /**
  * 🔮 FUZZIFICAR: Convierte valores crisp a conjuntos difusos
  *
+ * 🔋 WAVE 932: Ahora incluye fuzzificación de zona de energía absoluta
+ *
  * @param input - Valores crisp (números reales)
  * @returns Conjuntos difusos con grados de membresía
  */
@@ -143,13 +154,55 @@ function fuzzify(input) {
         medium: triangularMembership(input.harshness, 0.5, 0.35),
         high: rightTrapezoid(input.harshness, 0.65, 0.35),
     };
+    // === 🔋 WAVE 932: ENERGY ZONE (consciencia energética absoluta) ===
+    const energyZone = fuzzifyEnergyZone(input.energyContext);
     return {
         energy,
         zScore,
         section,
         harshness,
+        energyZone,
         huntScore: input.huntScore,
         beauty: input.beauty,
+    };
+}
+/**
+ * 🔋 WAVE 932: Fuzzifica la zona de energía absoluta
+ *
+ * Esto permite que las reglas difusas "sientan" si están en:
+ * - lowZone: silence/valley (supresión máxima)
+ * - midZone: ambient/gentle (supresión parcial)
+ * - highZone: active/intense/peak (sin supresión)
+ */
+function fuzzifyEnergyZone(energyContext) {
+    // Si no hay contexto, asumir zona alta (sin supresión) para backwards compat
+    if (!energyContext) {
+        return { lowZone: 0, midZone: 0.3, highZone: 0.7 };
+    }
+    const zone = energyContext.zone;
+    const absoluteEnergy = energyContext.absolute;
+    // Mapeo de zonas a conjuntos difusos
+    // Las transiciones son suaves, no binarias
+    const zoneProfiles = {
+        'silence': { lowZone: 1.0, midZone: 0.2, highZone: 0.0 },
+        'valley': { lowZone: 0.8, midZone: 0.4, highZone: 0.0 },
+        'ambient': { lowZone: 0.3, midZone: 0.9, highZone: 0.2 },
+        'gentle': { lowZone: 0.1, midZone: 0.7, highZone: 0.4 },
+        'active': { lowZone: 0.0, midZone: 0.3, highZone: 0.8 },
+        'intense': { lowZone: 0.0, midZone: 0.1, highZone: 1.0 },
+        'peak': { lowZone: 0.0, midZone: 0.0, highZone: 1.0 },
+    };
+    const baseProfile = zoneProfiles[zone] || zoneProfiles['active'];
+    // Ajuste fino basado en energía absoluta para transiciones suaves
+    // Esto evita saltos bruscos en los bordes de las zonas
+    const smoothingFactor = 0.3;
+    return {
+        lowZone: baseProfile.lowZone * (1 - smoothingFactor) +
+            (absoluteEnergy < 0.2 ? 1 : 0) * smoothingFactor,
+        midZone: baseProfile.midZone * (1 - smoothingFactor) +
+            (absoluteEnergy >= 0.2 && absoluteEnergy < 0.5 ? 1 : 0) * smoothingFactor,
+        highZone: baseProfile.highZone * (1 - smoothingFactor) +
+            (absoluteEnergy >= 0.5 ? 1 : 0) * smoothingFactor,
     };
 }
 /**
@@ -298,6 +351,29 @@ const FUZZY_RULES = [
         antecedent: (i) => (1 - i.huntScore) * i.energy.low,
         consequent: 'hold',
         weight: 0.60,
+    },
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔋 WAVE 932: SUPRESIÓN ENERGÉTICA
+    // La consciencia de zona de energía SUPRIME triggers en zonas bajas
+    // Esto evita el "Síndrome del Grito en Biblioteca"
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+        name: 'Energy_Silence_Total_Suppress',
+        antecedent: (i) => i.energyZone.lowZone * 1.0, // Zona de silencio = HOLD absoluto
+        consequent: 'hold',
+        weight: 1.5, // Peso alto para DOMINAR otras reglas
+    },
+    {
+        name: 'Energy_Valley_Suppress',
+        antecedent: (i) => i.energyZone.lowZone * 0.8, // Valle también suprime
+        consequent: 'hold',
+        weight: 1.2,
+    },
+    {
+        name: 'Energy_Low_Dampen_Action',
+        antecedent: (i) => i.energyZone.lowZone * (1 - i.section.peak), // No en picos
+        consequent: 'hold',
+        weight: 1.0,
     },
 ];
 // ═══════════════════════════════════════════════════════════════════════════

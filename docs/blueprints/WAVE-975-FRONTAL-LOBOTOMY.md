@@ -184,21 +184,21 @@ private filterByZone(effects: string[], zone: string): string[] {
 ## ✅ CHECKLIST DE IMPLEMENTACIÓN
 
 ### Phase 1: La Lobotomía
-- [ ] Eliminar función `selectEffectByVibe()` de DecisionMaker.ts
-- [ ] Eliminar bloque else/legacy en `generateStrikeDecision()`
-- [ ] Añadir log de silencio cuando DNA no propone
-- [ ] Verificar que return sin effectDecision = silencio real
+- [x] Eliminar función `selectEffectByVibe()` de DecisionMaker.ts
+- [x] Eliminar bloque else/legacy en `generateStrikeDecision()`
+- [x] Añadir log de silencio cuando DNA no propone
+- [x] Verificar que return sin effectDecision = silencio real
 
 ### Phase 2: Vibe Shield
-- [ ] Crear método `getVibeAllowedEffects()` en EffectDreamSimulator.ts
-- [ ] Integrar EFFECTS_BY_VIBE en generateCandidates()
-- [ ] Verificar que techno→techno y latina→latina
+- [x] Crear método `getVibeAllowedEffects()` en EffectDreamSimulator.ts
+- [x] Integrar EFFECTS_BY_VIBE en generateCandidates()
+- [x] Verificar que techno→techno y latina→latina
 
 ### Phase 3: Zone Awareness
-- [ ] Crear método `filterByZone()` en EffectDreamSimulator.ts
-- [ ] Implementar aggressionLimits por zona
-- [ ] Integrar con EFFECT_DNA_REGISTRY
-- [ ] Verificar valleys→suaves, peaks→agresivos
+- [x] Crear método `filterByZone()` en EffectDreamSimulator.ts
+- [x] Implementar aggressionLimits por zona
+- [x] Integrar con EFFECT_DNA_REGISTRY
+- [x] Crear método `deriveEnergyZone()` para mapear energía→zona
 
 ### Phase 4: Validación
 - [ ] Test con 12min de techno (verificar EPM ~5)

@@ -255,12 +255,13 @@ export class TitanEngine extends EventEmitter {
    * Este es el punto de entrada del loop de renderizado.
    * Recibe el análisis musical del Cerebro y produce un LightingIntent
    * que describe QUÉ queremos expresar visualmente.
+   * 🧬 WAVE 972: ASYNC para permitir DNA Brain sincrónico
    * 
    * @param context - Contexto musical del Cerebro (TrinityBrain)
    * @param audio - Métricas de audio en tiempo real
    * @returns LightingIntent para el HAL
    */
-  public update(context: MusicalContext, audio: EngineAudioMetrics): LightingIntent {
+  public async update(context: MusicalContext, audio: EngineAudioMetrics): Promise<LightingIntent> {
     const now = Date.now()
     const deltaTime = now - this.state.lastFrameTime
     this.state.lastFrameTime = now
@@ -531,7 +532,7 @@ export class TitanEngine extends EventEmitter {
     }
     
     // 🧬 Ejecutar la consciencia (sense → think → dream → validate)
-    const consciousnessOutput: ConsciousnessOutput = this.selene.process(titanStabilizedState)
+    const consciousnessOutput: ConsciousnessOutput = await this.selene.process(titanStabilizedState)
     
     // 🧬 WAVE 550: Cachear output para telemetría HUD
     this.lastConsciousnessOutput = consciousnessOutput

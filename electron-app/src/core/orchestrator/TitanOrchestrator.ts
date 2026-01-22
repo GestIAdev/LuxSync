@@ -236,7 +236,11 @@ export class TitanOrchestrator {
   /**
    * Process a single frame of the Brain -> Engine -> HAL pipeline
    */
-  private processFrame(): void {
+  /**
+   * 🎬 PROCESAR FRAME: El latido del universo
+   * 🧬 WAVE 972: ASYNC para DNA Brain sincrónico
+   */
+  private async processFrame(): Promise<void> {
     if (!this.brain || !this.engine || !this.hal) return
     
     this.frameCount++
@@ -310,8 +314,8 @@ export class TitanOrchestrator {
       isAGCTrap: false,
     }
     
-    // 3. Engine processes context -> produces LightingIntent
-    const intent = this.engine.update(context, engineAudioMetrics)
+    // 3. Engine processes context -> produces LightingIntent (🧬 DNA Brain now awaited)
+    const intent = await this.engine.update(context, engineAudioMetrics)
     
     // ═══════════════════════════════════════════════════════════════════════════
     // 🎭 WAVE 374: MASTER ARBITER INTEGRATION

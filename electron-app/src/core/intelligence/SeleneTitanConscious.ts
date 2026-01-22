@@ -269,9 +269,7 @@ export class SeleneTitanConscious extends EventEmitter {
   // 🔋 WAVE 931: Motor de Consciencia Energética
   private energyConsciousness: EnergyConsciousnessEngine
   
-  // 🌀 WAVE 900.4: Dream Engine Integration
-  private lastDreamDecision: IntegrationDecision | null = null
-  private lastDreamTimestamp: number = 0
+  // 🧬 WAVE 972: Effect history para DNA system (lastDream cache removido - ahora sincrónico)
   private effectHistory: Array<{ type: string; timestamp: number }> = []
   
   // 🔋 WAVE 934+: Zone transition throttling (prevent spam logging)
@@ -350,11 +348,12 @@ export class SeleneTitanConscious extends EventEmitter {
    * 🧠 PROCESAR FRAME - El latido del cerebro
    * 
    * Recibe estado estabilizado de Titan, procesa, y devuelve decisión.
+   * 🧬 WAVE 972: ASYNC para permitir DNA Brain sincrónico
    * 
    * @param titanState Estado estabilizado de TitanEngine
    * @returns Decisión de consciencia
    */
-  process(titanState: TitanStabilizedState): ConsciousnessOutput {
+  async process(titanState: TitanStabilizedState): Promise<ConsciousnessOutput> {
     this.state.framesProcessed++
     this.stats.framesProcessed++
     
@@ -395,7 +394,7 @@ export class SeleneTitanConscious extends EventEmitter {
     // ─────────────────────────────────────────────────────────────────────
     // 3. 🧠 THINK: Decidir qué hacer
     // ─────────────────────────────────────────────────────────────────────
-    const rawDecision = this.think(titanState, pattern)
+    const rawDecision = await this.think(titanState, pattern)
     
     // ─────────────────────────────────────────────────────────────────────
     // 4. 💭 DREAM: Simular si la decisión es buena
@@ -475,11 +474,12 @@ export class SeleneTitanConscious extends EventEmitter {
    * 🧠 Decidir qué hacer basado en el patrón percibido
    * PHASE 3: USA HuntEngine + PredictionEngine + DecisionMaker
    * 🌀 WAVE 900.4: Integra DreamEngine (non-blocking via cache)
+   * 🧬 WAVE 972: SINCRÓNICO - DNA Brain tiene la última palabra
    */
-  private think(
+  private async think(
     state: TitanStabilizedState,
     pattern: SeleneMusicalPattern
-  ): ConsciousnessOutput {
+  ): Promise<ConsciousnessOutput> {
     
     // 1. Obtener análisis de sensores (con fallback robusto)
     const beautyAnalysis = this.currentBeauty ?? {
@@ -639,26 +639,22 @@ export class SeleneTitanConscious extends EventEmitter {
         })),
       }
       
-      // EJECUTAR PIPELINE: Fire-and-forget con resultado cacheado
-      // El pipeline es async pero muy rápido (<10ms). Usamos .then() para no bloquear
-      // y aplicamos el resultado si está listo antes de que termine el frame.
-      dreamEngineIntegrator.executeFullPipeline(pipelineContext)
-        .then(integrationDecision => {
-          // Guardar resultado para uso inmediato si llegó a tiempo
-          this.lastDreamDecision = integrationDecision
-          this.lastDreamTimestamp = Date.now()
-        })
-        .catch(err => {
-          console.warn('[SeleneTitanConscious] 🌀 Dream pipeline error:', err)
-        })
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🧬 CEREBRO SINCRÓNICO: DNA TIENE LA ÚLTIMA PALABRA
+      // ═══════════════════════════════════════════════════════════════════════
+      // El pipeline DEBE completar antes de tomar decisión. NO fire-and-forget.
+      // DNA System (WAVE 970-971) con 35% weight en scoring EXIGE ejecución.
+      // Timeout 15ms = balance entre DNA precision y performance realtime.
       
-      // Usar último resultado del dream si es reciente (<100ms)
-      if (this.lastDreamDecision && 
-          this.lastDreamTimestamp && 
-          Date.now() - this.lastDreamTimestamp < 100) {
-        const integrationDecision = this.lastDreamDecision
+      try {
+        const integrationDecision = await Promise.race([
+          dreamEngineIntegrator.executeFullPipeline(pipelineContext),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Dream timeout')), 15)
+          )
+        ])
         
-        if (integrationDecision.approved && integrationDecision.effect) {
+        if (integrationDecision && integrationDecision.approved && integrationDecision.effect) {
           // ✅ DREAM + CONSCIENCE APROBARON
           const intent = integrationDecision.effect.effect
           const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
@@ -668,23 +664,20 @@ export class SeleneTitanConscious extends EventEmitter {
               effectType: intent,
               intensity: integrationDecision.effect.intensity,
               zones: integrationDecision.effect.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
-              reason: `🌀 DREAM: ${integrationDecision.dreamRecommendation} | Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`,
+              reason: `🧬 DNA BRAIN: ${integrationDecision.dreamRecommendation} | Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`,
               confidence: integrationDecision.ethicalVerdict?.ethicalScore ?? 0.7,
             }
             dreamIntegrationUsed = true
             
             console.log(
-              `[SeleneTitanConscious] 🌀 DREAM APPROVED: ${intent} | ` +
+              `[SeleneTitanConscious] 🧬 DNA BRAIN APPROVED: ${intent} | ` +
               `Dream: ${integrationDecision.dreamTime}ms | Filter: ${integrationDecision.filterTime}ms | ` +
               `Ethics: ${integrationDecision.ethicalVerdict?.ethicalScore.toFixed(2)}`
             )
-            
-            // Limpiar cache usado
-            this.lastDreamDecision = null
           } else {
             // Dream aprobó pero Gatekeeper bloqueó (cooldown)
             console.log(
-              `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED DREAM: ${intent} | ${availability.reason}`
+              `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED DNA: ${intent} | ${availability.reason}`
             )
             
             // Intentar con alternativas del dream
@@ -695,16 +688,19 @@ export class SeleneTitanConscious extends EventEmitter {
                   effectType: alt.effect,
                   intensity: alt.intensity,
                   zones: alt.zones as ('all' | 'front' | 'back' | 'movers' | 'pars')[] ?? ['all'],
-                  reason: `🌀 DREAM ALT: ${alt.effect} (primary blocked by cooldown)`,
+                  reason: `🧬 DNA ALT: ${alt.effect} (primary blocked by cooldown)`,
                   confidence: 0.6,
                 }
                 dreamIntegrationUsed = true
-                console.log(`[SeleneTitanConscious] 🌀 DREAM ALTERNATIVE: ${alt.effect}`)
+                console.log(`[SeleneTitanConscious] 🧬 DNA ALTERNATIVE: ${alt.effect}`)
                 break
               }
             }
           }
         }
+      } catch (err: any) {
+        // Timeout o error en pipeline - fallback a DecisionMaker legacy
+        console.warn('[SeleneTitanConscious] 🌀 DNA Brain timeout/error, fallback to legacy:', err?.message || err)
       }
     }
     

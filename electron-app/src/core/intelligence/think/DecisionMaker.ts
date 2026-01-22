@@ -79,128 +79,19 @@ const DEFAULT_CONFIG: DecisionMakerConfig = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧠 WAVE 811: VIBE-SPECIFIC EFFECT SELECTION
-// El lóbulo frontal decide QUÉ efecto usar según el contexto musical
+// 🔪 WAVE 975: THE FRONTAL LOBOTOMY
 // ═══════════════════════════════════════════════════════════════════════════
-
-import type { StrikeConditions } from './HuntEngine'
-
-interface EffectSelection {
-  effect: string
-  intensity: number
-  zones: ('all' | 'front' | 'back' | 'movers' | 'movers_left' | 'movers_right' | 'pars')[]
-  reasoning: string
-}
-
-/**
- * 🎯 WAVE 811: UNIFIED EFFECT SELECTOR
- * 🔪 WAVE 813: TECHNO PALETTE REBALANCE
- * 🛡️ WAVE 814: NULL RETURNS - Permite devolver null para decisiones débiles
- * 
- * DecisionMaker es el lóbulo frontal - elige efecto según vibe y contexto.
- * Cada familia de vibes tiene su propia personalidad y arsenal.
- * 
- * Si devuelve null, significa "no tengo decisión fuerte, que el Selector use su fallback".
- */
-function selectEffectByVibe(
-  vibeId: string,
-  strikeIntensity: number,
-  conditions: StrikeConditions | null | undefined
-): EffectSelection | null {
-  const normalizedIntensity = Math.min(1.0, 0.8 + strikeIntensity * 0.2)
-  const urgency = conditions?.urgencyScore ?? 0.5
-  const trend = conditions?.trend ?? 'stable'
-  const beautyScore = conditions?.beautyScore ?? 0.5
-  
-  // � WAVE 813: TECHNO FAMILY - La Máquina No Perdona
-  // Arsenal: IndustrialStrobe (martillo), AcidSweep (cuchilla), CyberDualism (cambio)
-  // Filosofía: Agresivo, industrial, mecánico. SolarFlare DESTERRADO.
-  if (vibeId === 'techno-club' || vibeId === 'techno' || vibeId === 'industrial') {
-    
-    // 🔨 EL MARTILLO (IndustrialStrobe) - Drop/Peak Time/Alta Energía
-    // Condición: urgency > 0.7 (climax) O strikeIntensity > 0.8 (peak)
-    if (urgency > 0.7 || strikeIntensity > 0.8) {
-      return {
-        effect: 'industrial_strobe',
-        intensity: normalizedIntensity,
-        zones: ['all'],
-        reasoning: `TECHNO HAMMER: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
-      }
-    }
-    
-    // ⚡ LA CUCHILLA (AcidSweep) - Buildup/Rising Tension
-    // Condición: beautyScore > 0.4 (tensión) O trend === 'rising'
-    if (beautyScore > 0.4 || trend === 'rising') {
-      return {
-        effect: 'acid_sweep',
-        intensity: Math.min(1.0, 0.7 + beautyScore * 0.3),
-        zones: ['all'],
-        reasoning: `TECHNO BLADE: beauty=${beautyScore.toFixed(2)} trend=${trend}`
-      }
-    }
-    
-    // 🤖 EL CAMBIO (CyberDualism) - Transición/Bridge
-    // Condición: strikeScore alto (momento único) O trend === 'stable' (plateau)
-    const strikeScore = conditions?.strikeScore ?? 0
-    if (strikeScore > 0.7 || trend === 'stable') {
-      return {
-        effect: 'cyber_dualism',
-        intensity: normalizedIntensity * 0.9,
-        zones: ['movers_left', 'movers_right'],
-        reasoning: `TECHNO SHIFT: strikeScore=${strikeScore.toFixed(2)} trend=${trend}`
-      }
-    }
-    
-    // 🔪 DEFAULT TECHNO: AcidSweep (ambiente agresivo, no explosión)
-    // Filosofía: Fallar hacia ambiente volumétrico, no hacia impacto dorado
-    return {
-      effect: 'acid_sweep',
-      intensity: normalizedIntensity * 0.75,
-      zones: ['all'],
-      reasoning: `TECHNO DEFAULT: ambient fallback`
-    }
-  }
-  
-  // 💃 LATINO FAMILY: Efectos cálidos, dorados, explosivos
-  if (vibeId === 'fiesta-latina' || vibeId === 'latino' || vibeId === 'tropical') {
-    // Alta urgencia → SolarFlare (explosión dorada)
-    if (urgency > 0.6 || strikeIntensity > 0.75) {
-      return {
-        effect: 'solar_flare',
-        intensity: normalizedIntensity,
-        zones: ['all'],
-        reasoning: `LATINO FLARE: urgency=${urgency.toFixed(2)} intensity=${strikeIntensity.toFixed(2)}`
-      }
-    }
-    
-    // Tensión moderada → StrobeBurst (destello rítmico)
-    if (beautyScore > 0.3) {
-      return {
-        effect: 'strobe_burst',
-        intensity: Math.min(1.0, 0.75 + beautyScore * 0.25),
-        zones: ['movers'],
-        reasoning: `LATINO BURST: beauty=${beautyScore.toFixed(2)}`
-      }
-    }
-    
-    // Default latino → SolarFlare (es el signature del vibe)
-    return {
-      effect: 'solar_flare',
-      intensity: normalizedIntensity * 0.9,
-      zones: ['all'],
-      reasoning: `LATINO DEFAULT: golden signature`
-    }
-  }
-  
-  // 🎵 FALLBACK: Si no reconocemos el vibe, usar SolarFlare como safe default
-  console.warn(`[DecisionMaker 🧠] Unknown vibe: ${vibeId}, defaulting to solar_flare`)
-  return {
-    effect: 'solar_flare',
-    intensity: normalizedIntensity * 0.8,
-    zones: ['all'],
-    reasoning: `UNKNOWN VIBE: ${vibeId} → safe fallback`
-  }
-}
+// 
+// LEGACY CODE ELIMINATED:
+// - selectEffectByVibe() - REMOVED (martillos, cuchillas hardcodeadas)
+// - Techno/Latino fallbacks - REMOVED
+// - Unknown vibe defaults - REMOVED
+//
+// DNA BRAIN IS THE ONLY DECISION MAKER NOW.
+// "El silencio a veces es una opción." - Radwulf
+//
+// Si DNA no propone → SILENCE. Las físicas reactivas son perfectas.
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FUNCIÓN PRINCIPAL
@@ -398,68 +289,37 @@ function generateStrikeDecision(
     return output
   }
   
-  // Si NO hay DNA, continuar con lógica legacy...
-  output.debugInfo.reasoning = `STRIKE: ${huntDecision.reasoning}`
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧘 WAVE 975: THE SILENCE RULE
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DNA Brain did not propose an effect → SILENCE IS GOLDEN
+  // 
+  // "El silencio a veces es una opción. Si Selene no tiene nada que disparar...
+  //  pues que NO dispare, y ya. La reactividad de las físicas que tenemos 
+  //  implementadas es PERFECTA." - Radwulf
+  //
+  // NO MORE LEGACY FALLBACKS. NO MORE selectEffectByVibe().
+  // DNA or silence. That's it.
+  // ═══════════════════════════════════════════════════════════════════════════
   
-  // Color decision: Cambio más agresivo
+  // Color decision: Subtle enhancement based on beauty (no effect)
   output.colorDecision = {
     suggestedStrategy: pattern.emotionalTension > 0.6 ? 'complementary' : 'triadic',
-    saturationMod: 1.0 + beauty.totalBeauty * 0.15,
-    brightnessMod: 1.0 + pattern.rhythmicIntensity * 0.10,
-    confidence: confidence,
-    reasoning: `Strike (beauty=${beauty.totalBeauty.toFixed(2)})`,
+    saturationMod: 1.0 + beauty.totalBeauty * 0.10,
+    brightnessMod: 1.0 + pattern.rhythmicIntensity * 0.05,
+    confidence: confidence * 0.5,
+    reasoning: `Silence Rule (DNA has no proposal)`,
   }
   
-  // Physics modifier: Intensidad según contexto
+  // Physics modifier: Let reactive physics do their job
   output.physicsModifier = {
-    strobeIntensity: 0.7 + pattern.rhythmicIntensity * 0.3,
-    flashIntensity: 0.8 + beauty.totalBeauty * 0.2,
-    confidence: confidence,
+    strobeIntensity: pattern.rhythmicIntensity * 0.2,
+    flashIntensity: 0.1,
+    confidence: confidence * 0.3,
   }
   
-  // 🧨 WAVE 600: SOLAR FLARE TRIGGER
-  // 🔥 WAVE 635: SNIPER CALIBRATION - Energy Veto + Weighted Scoring
-  // 🔥 WAVE 642: ENERGY UNIFICATION - Ahora usa rawEnergy (GAMMA directo)
-  const urgency = huntDecision.conditions?.urgencyScore ?? 0
-  const tension = pattern.emotionalTension
-  
-  // 🛡️ WAVE 635.1 → WAVE 640 → WAVE 642: THE ENERGY VETO (Anti-Silence)
-  // 🔥 WAVE 642: Ahora usa rawEnergy (GAMMA sin tocar) en lugar de smoothedEnergy
-  // - rawEnergy refleja el momento REAL (0.97 en un drop)
-  // - smoothedEnergy solo para visual base (evita flicker)
-  const hasPhysicalEnergy = pattern.rawEnergy >= 0.20
-  
-  if (!hasPhysicalEnergy) {
-    output.debugInfo.reasoning = `ENERGY VETO: rawEnergy=${pattern.rawEnergy.toFixed(2)} < 0.20 (silence/noise detected)`
-    console.log(`[DecisionMaker 🛡️] ${output.debugInfo.reasoning}`)
-    return output
-  }
-  
-  // 🔥 WAVE 811: UNIFIED BRAIN PROTOCOL - El lóbulo frontal decide QUÉ efecto
-  // 🛡️ WAVE 814: NULL HANDLING - Si DecisionMaker no tiene decisión fuerte, devuelve null
-  // Ya no hardcodeamos solar_flare. DecisionMaker es EL JUEZ que elige por vibe.
-  if (confidence > 0.50) {
-    const strikeIntensity = Math.max(urgency, tension, 0.7)  // Mínimo 70%
-    const effectSelection = selectEffectByVibe(pattern.vibeId, strikeIntensity, huntDecision.conditions ?? undefined)
-    
-    // 🛡️ WAVE 814: Si DecisionMaker devolvió null, significa "no tengo decisión fuerte"
-    // El ContextualEffectSelector aplicará su fallback vibe-aware
-    if (effectSelection !== null) {
-      output.effectDecision = {
-        effectType: effectSelection.effect,
-        intensity: effectSelection.intensity,
-        zones: effectSelection.zones as ('all' | 'front' | 'back' | 'movers' | 'pars' | 'movers_left' | 'movers_right')[],
-        reason: `HUNT STRIKE [${pattern.vibeId}]! effect=${effectSelection.effect} urgency=${urgency.toFixed(2)} tension=${tension.toFixed(2)} worthiness=${huntDecision.worthiness.toFixed(2)} rawEnergy=${pattern.rawEnergy.toFixed(2)}`,
-        confidence: confidence,
-      }
-      
-      // 🔥 WAVE 811: Log de INTENCIÓN - NO de ejecución. El FIRED solo viene de EffectManager
-      console.log(`[DecisionMaker 🧠] LEGACY INTENT: ${effectSelection.effect} [${pattern.vibeId}] | intensity=${output.effectDecision?.intensity.toFixed(2)} | worthiness=${huntDecision.worthiness.toFixed(2)}`)
-    } else {
-      // 🛡️ WAVE 814: DecisionMaker no tiene decisión → delegar a ContextualEffectSelector
-      console.log(`[DecisionMaker 🛡️] NO STRONG DECISION [${pattern.vibeId}] → ContextualEffectSelector will apply vibe-aware fallback`)
-    }
-  }
+  output.debugInfo.reasoning = `🧘 SILENCE: DNA has no proposal | vibe=${pattern.vibeId} | energy=${pattern.rawEnergy.toFixed(2)}`
+  console.log(`[DecisionMaker 🧘] SILENCE: DNA has no proposal | ${pattern.vibeId} | E=${pattern.rawEnergy.toFixed(2)}`)
   
   return output
 }

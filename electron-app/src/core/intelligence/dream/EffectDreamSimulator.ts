@@ -438,6 +438,157 @@ export class EffectDreamSimulator {
   // PRIVATE: CANDIDATE GENERATION
   // ═══════════════════════════════════════════════════════════════
   
+  /**
+   * 🛡️ WAVE 975: VIBE SHIELD
+   * 
+   * Solo efectos permitidos para el VIBE actual.
+   * industrial_strobe NUNCA aparece en fiesta-latina.
+   * cumbia_moon NUNCA aparece en techno-club.
+   */
+  private getVibeAllowedEffects(vibe: string): string[] {
+    const EFFECTS_BY_VIBE: Record<string, string[]> = {
+      // 🔪 TECHNO CLUB: El Arsenal Industrial
+      'techno-club': [
+        'industrial_strobe',  // El martillo
+        'acid_sweep',         // Sweeps volumétricos
+        'cyber_dualism',      // Ping-pong L/R
+        'gatling_raid',       // Machine gun
+        'sky_saw',            // Cortes agresivos
+        // 🌫️ Atmospheric Arsenal (low-energy zones)
+        'void_mist',          // Neblina púrpura
+        'static_pulse',       // Glitch industrial
+        'digital_rain',       // Matrix flicker
+        'deep_breath',        // Respiración orgánica
+      ],
+      // Aliases para techno
+      'techno': [
+        'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
+        'gatling_raid', 'sky_saw', 'void_mist', 'static_pulse', 
+        'digital_rain', 'deep_breath'
+      ],
+      'industrial': [
+        'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
+        'gatling_raid', 'sky_saw', 'void_mist', 'static_pulse', 
+        'digital_rain', 'deep_breath'
+      ],
+      
+      // 🎺 FIESTA LATINA: El Arsenal Tropical
+      'fiesta-latina': [
+        'solar_flare',        // Explosión solar
+        'strobe_burst',       // Destello rítmico
+        'tidal_wave',         // Ola oceánica
+        'ghost_breath',       // Respiro suave
+        'tropical_pulse',     // Pulso de conga
+        'salsa_fire',         // Fuego salsero
+        'cumbia_moon',        // Luna cumbianchera
+        'clave_rhythm',       // Ritmo de clave
+        'corazon_latino',     // El alma del arquitecto
+      ],
+      // Aliases para latino
+      'latino': [
+        'solar_flare', 'strobe_burst', 'tidal_wave', 'ghost_breath',
+        'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
+        'corazon_latino'
+      ],
+      'tropical': [
+        'solar_flare', 'strobe_burst', 'tidal_wave', 'ghost_breath',
+        'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
+        'corazon_latino'
+      ],
+    }
+    
+    // Buscar match exacto
+    if (EFFECTS_BY_VIBE[vibe]) {
+      return EFFECTS_BY_VIBE[vibe]
+    }
+    
+    // Buscar match parcial (contiene)
+    if (vibe.includes('techno') || vibe.includes('industrial')) {
+      return EFFECTS_BY_VIBE['techno-club']
+    }
+    if (vibe.includes('latin') || vibe.includes('latino') || vibe.includes('tropical') || vibe.includes('fiesta')) {
+      return EFFECTS_BY_VIBE['fiesta-latina']
+    }
+    
+    // Default: todas (vibe desconocido)
+    console.warn(`[DREAM_SIMULATOR] ⚠️ Unknown vibe: ${vibe}, allowing all effects`)
+    return Object.values(EFFECTS_BY_VIBE).flat()
+  }
+  
+  /**
+   * 🧘 WAVE 975: ZONE AWARENESS
+   * 
+   * Filtra efectos por zona energética usando DNA Aggression.
+   * - silence/valley: Aggression < 0.30 (efectos suaves)
+   * - ambient/gentle: Aggression < 0.55 (efectos moderados)
+   * - active: Aggression 0.30-0.80 (rango medio)
+   * - intense/peak: Aggression > 0.50 (efectos agresivos permitidos)
+   */
+  private filterByZone(effects: string[], zone: string): string[] {
+    const aggressionLimits: Record<string, { min: number; max: number }> = {
+      'silence': { min: 0, max: 0.20 },    // Solo los más suaves
+      'valley':  { min: 0, max: 0.35 },    // Suaves + algo de respiración
+      'ambient': { min: 0, max: 0.50 },    // Moderados hacia abajo
+      'gentle':  { min: 0, max: 0.60 },    // Transición
+      'active':  { min: 0.25, max: 0.85 }, // Rango medio-alto
+      'intense': { min: 0.45, max: 1.00 }, // Los pesados
+      'peak':    { min: 0.50, max: 1.00 }, // Libertad total para agresivos
+    }
+    
+    const limits = aggressionLimits[zone] || { min: 0, max: 1 }
+    
+    const filtered = effects.filter(effect => {
+      const dna = EFFECT_DNA_REGISTRY[effect]
+      if (!dna) {
+        console.warn(`[DREAM_SIMULATOR] ⚠️ No DNA for effect: ${effect}`)
+        return false
+      }
+      return dna.aggression >= limits.min && dna.aggression <= limits.max
+    })
+    
+    // Si el filtro es demasiado estricto y no queda nada, relajar
+    if (filtered.length === 0) {
+      console.log(`[DREAM_SIMULATOR] 🧘 Zone ${zone} filter too strict (limits: ${limits.min}-${limits.max}), returning suavest available`)
+      // Devolver los 3 efectos con menor agresión de la lista original
+      return effects
+        .filter(e => EFFECT_DNA_REGISTRY[e])
+        .sort((a, b) => EFFECT_DNA_REGISTRY[a].aggression - EFFECT_DNA_REGISTRY[b].aggression)
+        .slice(0, 3)
+    }
+    
+    return filtered
+  }
+  
+  /**
+   * Helper para logging: muestra el rango de agresión de una zona
+   */
+  private getZoneAggressionRange(zone: string): string {
+    const ranges: Record<string, string> = {
+      'silence': '0-0.20',
+      'valley': '0-0.35',
+      'ambient': '0-0.50',
+      'gentle': '0-0.60',
+      'active': '0.25-0.85',
+      'intense': '0.45-1.00',
+      'peak': '0.50-1.00',
+    }
+    return ranges[zone] || '0-1.00'
+  }
+  
+  /**
+   * 🧘 WAVE 975: Deriva la zona energética del valor de energía (0-1)
+   * Mismo mapeo que SeleneTitanConscious usa
+   */
+  private deriveEnergyZone(energy: number): string {
+    if (energy < 0.10) return 'silence'
+    if (energy < 0.25) return 'valley'
+    if (energy < 0.40) return 'ambient'
+    if (energy < 0.55) return 'gentle'
+    if (energy < 0.70) return 'active'
+    if (energy < 0.85) return 'intense'
+    return 'peak'
+  }
+  
   private generateCandidates(
     state: SystemState,
     prediction: MusicalPrediction,
@@ -445,51 +596,47 @@ export class EffectDreamSimulator {
   ): EffectCandidate[] {
     const candidates: EffectCandidate[] = []
     
-    // Determinar qué categoría de efectos explorar basado en vibe
-    let categoriesToExplore: string[] = []
+    // 🛡️ WAVE 975: VIBE SHIELD - Solo efectos permitidos para este VIBE
+    const vibeAllowedEffects = this.getVibeAllowedEffects(state.vibe)
     
-    if (state.vibe.includes('techno')) {
-      categoriesToExplore = ['techno-industrial']
-    } else if (state.vibe.includes('latino') || state.vibe.includes('latina')) {
-      categoriesToExplore = ['latino-organic']
-    } else if (state.vibe.includes('chill')) {
-      categoriesToExplore = ['chill-ambient']
-    } else {
-      // Explorar todas si vibe desconocido
-      categoriesToExplore = Object.keys(EFFECT_CATEGORIES)
-    }
+    // 🧘 WAVE 975: ZONE AWARENESS - Derivar zona de energía
+    const energyZone = this.deriveEnergyZone(context.energy)
+    const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
     
-    // Generar candidatos de cada categoría
+    console.log(`[DREAM_SIMULATOR] 🛡️ VIBE SHIELD: ${state.vibe} → ${vibeAllowedEffects.length} effects`)
+    console.log(`[DREAM_SIMULATOR] 🧘 ZONE FILTER: ${energyZone} (E=${context.energy.toFixed(2)}) → ${zoneFilteredEffects.length} effects (A=${this.getZoneAggressionRange(energyZone)})`)
+    
     // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
     const moodController = MoodController.getInstance()
     const currentProfile = moodController.getCurrentProfile()
     let blockedCount = 0
+    let zoneBlockedCount = vibeAllowedEffects.length - zoneFilteredEffects.length
     
-    for (const category of categoriesToExplore) {
-      const effects = EFFECT_CATEGORIES[category as keyof typeof EFFECT_CATEGORIES]
-      
-      for (const effect of effects) {
-        // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
-        if (moodController.isEffectBlocked(effect)) {
-          blockedCount++
-          continue
-        }
-        
-        // Calcular intensidad basada en energía predicha
-        const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
-        
-        candidates.push({
-          effect,
-          intensity,
-          zones: ['all'], // Simplificado para Phase 1
-          reasoning: `Dream exploration: ${category}`,
-          confidence: prediction.confidence * 0.9 // Ligeramente menor que prediction
-        })
+    // Generar candidatos SOLO de efectos filtrados
+    for (const effect of zoneFilteredEffects) {
+      // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
+      if (moodController.isEffectBlocked(effect)) {
+        blockedCount++
+        continue
       }
+      
+      // Calcular intensidad basada en energía predicha
+      const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
+      
+      candidates.push({
+        effect,
+        intensity,
+        zones: ['all'], // Simplificado para Phase 1
+        reasoning: `🧬 DNA Dream: vibe=${state.vibe} zone=${energyZone}`,
+        confidence: prediction.confidence * 0.9 // Ligeramente menor que prediction
+      })
     }
     
     if (blockedCount > 0) {
       console.log(`[DREAM_SIMULATOR] 🎭 Pre-filtered ${blockedCount} effects (blocked by ${currentProfile.emoji} mood)`)
+    }
+    if (zoneBlockedCount > 0) {
+      console.log(`[DREAM_SIMULATOR] 🧘 Zone filtered ${zoneBlockedCount} effects (too aggressive/soft for ${energyZone})`)
     }
     
     return candidates

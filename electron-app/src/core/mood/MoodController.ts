@@ -64,7 +64,7 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     cooldownMultiplier: 1.0,       // Cooldowns normales
     ethicsThreshold: 0.90,         // 🧬 WAVE 973: "Si es excelente (9/10), adelante"
     maxIntensity: 1.0,             // Sin límite
-    minIntensity: 0.45,            // 🔧 WAVE 976.5: PISO de intensidad (antes undefined)
+    minIntensity: undefined,       // � WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado
     forceUnlock: undefined,        // Cooldowns normales
   },

@@ -190,12 +190,15 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
   'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 },  // 🔫 WAVE 930
   'sky_saw': { base: 0.76, energyMultiplier: 1.25, technoBonus: 0.16 },       // 🗡️ WAVE 930
-  // �️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
+  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
   'void_mist': { base: 0.55, energyMultiplier: 0.6, technoBonus: 0.08 },      // 🌫️ Fog - low energy beauty
   'static_pulse': { base: 0.58, energyMultiplier: 0.8, technoBonus: 0.10 },   // ⚡ Glitch - edgy beauty
   'digital_rain': { base: 0.60, energyMultiplier: 0.75, technoBonus: 0.09 },  // 💧 Matrix - cyber beauty
   'deep_breath': { base: 0.52, energyMultiplier: 0.5, technoBonus: 0.07 },    // 🫁 Breathing - zen beauty
-  // �🌴 LATINO-ORGANIC (10 effects)
+  // ⚡ WAVE 977: LA FÁBRICA
+  'ambient_strobe': { base: 0.62, energyMultiplier: 0.9, technoBonus: 0.11 }, // 📸 Camera flashes - mid beauty
+  'sonar_ping': { base: 0.54, energyMultiplier: 0.55, technoBonus: 0.06 },    // 🔵 Submarine ping - subtle beauty
+  // 🌴 LATINO-ORGANIC (10 effects)
   'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
   'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
   'strobe_burst': { base: 0.78, energyMultiplier: 1.22, latinoBonus: 0.16 },
@@ -216,12 +219,15 @@ const EFFECT_GPU_COST = {
   'cyber_dualism': 0.28,
   'gatling_raid': 0.35,     // 🔫 Alto costo - muchos PARs disparando
   'sky_saw': 0.32,          // 🗡️ Alto costo - movimiento agresivo
-  // �️ WAVE 938: ATMOSPHERIC ARSENAL (Bajo costo - efectos suaves)
+  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (Bajo costo - efectos suaves)
   'void_mist': 0.08,        // 🌫️ Muy bajo - solo dimmer suave
   'static_pulse': 0.12,     // ⚡ Bajo - flashes esporádicos
   'digital_rain': 0.10,     // 💧 Bajo - flicker ligero
   'deep_breath': 0.06,      // 🫁 Muy bajo - solo breathing
-  // �🌴 LATINO-ORGANIC (Media-Alta intensidad)
+  // ⚡ WAVE 977: LA FÁBRICA
+  'ambient_strobe': 0.14,   // 📸 Bajo - flashes dispersos
+  'sonar_ping': 0.09,       // 🔵 Muy bajo - ping secuencial
+  // 🌴 LATINO-ORGANIC (Media-Alta intensidad)
   'solar_flare': 0.22,
   'strobe_storm': 0.32,
   'strobe_burst': 0.28,
@@ -242,12 +248,15 @@ const EFFECT_FATIGUE_IMPACT = {
   'cyber_dualism': 0.06,
   'gatling_raid': 0.10,     // 🔫 Alta fatiga - muy intenso
   'sky_saw': 0.08,          // 🗡️ Alta fatiga - movimiento agresivo
-  // �️ WAVE 938: ATMOSPHERIC ARSENAL (REDUCE fatiga - efectos relajantes)
+  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (REDUCE fatiga - efectos relajantes)
   'void_mist': -0.04,       // 🌫️ Reduce fatiga - ambiente zen
   'static_pulse': -0.01,    // ⚡ Neutral - glitches suaves
   'digital_rain': -0.02,    // 💧 Reduce fatiga - hipnótico
   'deep_breath': -0.05,     // 🫁 Muy relajante - máxima reducción
-  // �🌴 LATINO-ORGANIC (Mixto: strobes aumentan, suaves reducen)
+  // ⚡ WAVE 977: LA FÁBRICA
+  'ambient_strobe': 0.03,   // 📸 Leve fatiga - flashes moderados
+  'sonar_ping': -0.03,      // 🔵 Reduce fatiga - efecto zen/submarino
+  // 🌴 LATINO-ORGANIC (Mixto: strobes aumentan, suaves reducen)
   'solar_flare': 0.06,
   'strobe_storm': 0.09,
   'strobe_burst': 0.07,
@@ -459,17 +468,20 @@ export class EffectDreamSimulator {
         'static_pulse',       // Glitch industrial
         'digital_rain',       // Matrix flicker
         'deep_breath',        // Respiración orgánica
+        // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+        'ambient_strobe',     // Flashes dispersos tipo cámara
+        'sonar_ping',         // Ping submarino back→front
       ],
       // Aliases para techno
       'techno': [
         'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
         'gatling_raid', 'sky_saw', 'void_mist', 'static_pulse', 
-        'digital_rain', 'deep_breath'
+        'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping'
       ],
       'industrial': [
         'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
         'gatling_raid', 'sky_saw', 'void_mist', 'static_pulse', 
-        'digital_rain', 'deep_breath'
+        'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping'
       ],
       
       // 🎺 FIESTA LATINA: El Arsenal Tropical

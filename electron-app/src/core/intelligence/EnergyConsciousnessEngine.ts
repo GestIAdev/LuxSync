@@ -77,23 +77,35 @@ const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
   // 🌋 WAVE 960: THE FLOOR IS LAVA - AGC Adaptation
   // ═══════════════════════════════════════════════════════════════════════════
   // 
-  // PROBLEMA: El AGC amplifica el ruido de fondo hasta ~0.40
-  // ANTES: Silencio = 0.05, Ambient = 0.15, Valley = 0.20
-  // AHORA: El "silencio" del AGC = 0.40 → Los umbrales viejos detectaban
-  //        "actividad" en lo que es solo ruido amplificado.
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 976.10: RECALIBRACIÓN DE ZONAS - LA CIRUGÍA FINA
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROBLEMA ORIGINAL (WAVE 960):
+  // - AGC amplifica ruido → Umbrales subieron para compensar
   // 
-  // SOLUCIÓN: ZONE SHIFT - Mover TODOS los umbrales hacia arriba
-  // El suelo ha subido → La portería también sube.
+  // PROBLEMA DETECTADO (WAVE 976.10):
+  // - Drops reales (E=0.84-0.92) caían en `active`, no en `intense`
+  // - Zona `peak` (≥0.95) inalcanzable en tracks normales
+  // - Strobes nunca disparaban en drops reales
   // 
+  // SOLUCIÓN (Radwulf):
+  // - `intense` empieza en 0.82 → Captura drops reales (0.82-0.92)
+  // - `peak` empieza en 0.92 → Solo locura absoluta
+  // - `active` termina en 0.82 → Pre-drop, tensión creciente
+  // 
+  // EXPECTED:
+  // - Hard Techno drop (E=0.88) → `intense` → industrial_strobe ✅
+  // - Trance peak (E=0.93) → `peak` → gatling_raid ✅
+  // - Build-up (E=0.78) → `active` → acid_sweep ✅
   // ═══════════════════════════════════════════════════════════════════════════
   zoneThresholds: {
-    silence: 0.35,   // E < 0.35 = SILENCE (absorbe ruido AGC ~0.40)
-    valley: 0.55,    // E < 0.55 = VALLEY (breakdowns reales)
-    ambient: 0.70,   // E < 0.70 = AMBIENT (pads, voces suaves)
-    gentle: 0.80,    // E < 0.80 = GENTLE (ritmos ligeros)
-    active: 0.90,    // E < 0.90 = ACTIVE (techno normal)
-    intense: 0.95,   // E < 0.95 = INTENSE (bombos reales)
-                     // E >= 0.95 = PEAK (SOLO drops verdaderos)
+    silence: 0.30,   // E < 0.30 = SILENCE (silencio puro)
+    valley: 0.50,    // E < 0.50 = VALLEY (descansos, breakdowns)
+    ambient: 0.65,   // E < 0.65 = AMBIENT (pads, atmósfera)
+    gentle: 0.75,    // E < 0.75 = GENTLE (ritmos ligeros - techno vacío aquí)
+    active: 0.82,    // E < 0.82 = ACTIVE (pre-drop, tensión creciente)
+    intense: 0.92,   // E < 0.92 = INTENSE (🔥 DROPS REALES 0.82-0.92)
+                     // E >= 0.92 = PEAK (🔥 LOCURA ABSOLUTA)
   },
   
   // ASIMETRÍA TEMPORAL: Lento para bajar, rápido para subir

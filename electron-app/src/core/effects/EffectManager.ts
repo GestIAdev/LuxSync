@@ -73,6 +73,10 @@ import { StaticPulse } from './library/techno/StaticPulse'
 import { DigitalRain } from './library/techno/DigitalRain'
 import { DeepBreath } from './library/techno/DeepBreath'
 
+// ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+import { AmbientStrobe } from './library/techno/AmbientStrobe'
+import { SonarPing } from './library/techno/SonarPing'
+
 // 🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
@@ -133,6 +137,18 @@ const EFFECT_VIBE_RULES: Record<string, {
   'acid_sweep': { isDynamic: true },       // 🧪 Volumetric blade of light
   // 🤖 WAVE 810: UNLOCK THE TWINS
   'cyber_dualism': { isDynamic: true },    // 🤖 Ping-pong L/R spatial targeting
+  // 🔫 WAVE 930: ARSENAL PESADO
+  'gatling_raid': { isDynamic: true },     // 🔫 Machine gun PARs
+  'sky_saw': { isDynamic: true },          // 🗡️ Aggressive mover cuts
+  'abyssal_rise': { isDynamic: true },     // 🌪️ Epic 8-bar transition
+  // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL
+  'void_mist': { isDynamic: false },       // 🌫️ Ambient - allowed in chill
+  'static_pulse': { isDynamic: true },     // ⚡ Glitchy - needs energy
+  'digital_rain': { isDynamic: true },     // 💧 Matrix effect - subtle dynamic
+  'deep_breath': { isDynamic: false },     // 🫁 Ambient - allowed in chill
+  // ⚡ WAVE 977: LA FÁBRICA
+  'ambient_strobe': { isDynamic: true },   // 📸 Camera flashes - needs energy
+  'sonar_ping': { isDynamic: false },      // 🔵 Submarine ping - allowed in chill (for silences)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -621,6 +637,16 @@ export class EffectManager extends EventEmitter {
     
     // 🫁 Deep Breath - Organic 4-bar breathing (blue/purple)
     this.effectFactories.set('deep_breath', () => new DeepBreath())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ⚡ WAVE 977: LA FÁBRICA - Nuevos Efectos
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 📸 Ambient Strobe - Flashes dispersos tipo cámara de estadio (gentle/active zone)
+    this.effectFactories.set('ambient_strobe', () => new AmbientStrobe())
+    
+    // 🔵 Sonar Ping - Ping submarino back→front (silence/valley zone)
+    this.effectFactories.set('sonar_ping', () => new SonarPing())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

@@ -165,6 +165,10 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'static_pulse': 12000,       // 12s base (was 25s) → Glitches industriales
   'digital_rain': 18000,       // 18s base (was 35s) → Matrix flicker regular
   'deep_breath': 20000,        // 20s base (was 45s) → Respiración zen frecuente
+  
+  // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+  'ambient_strobe': 14000,     // 14s base → Flashes dispersos gentle/active zone
+  'sonar_ping': 25000,         // 25s base → Ping submarino silence/valley (efecto raro)
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -714,6 +718,9 @@ export class ContextualEffectSelector {
       'static_pulse',       // Glitch industrial blanco
       'digital_rain',       // Matrix flicker cyan/lime
       'deep_breath',        // Respiración orgánica azul/púrpura
+      // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+      'ambient_strobe',     // Flashes dispersos tipo cámara (gentle/active)
+      'sonar_ping',         // Ping submarino back→front (silence/valley)
     ],
     
     // 🎺 FIESTA LATINA: El Arsenal Tropical
@@ -749,12 +756,14 @@ export class ContextualEffectSelector {
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
       // SILENCE: Efectos fantasmales + atmosféricos profundos
       // 🌫️ WAVE 938: void_mist + deep_breath para momentos vacíos
-      silence: ['ghost_breath', 'void_mist', 'deep_breath'],
+      // ⚡ WAVE 977: sonar_ping para silencios tecnológicos
+      silence: ['ghost_breath', 'void_mist', 'deep_breath', 'sonar_ping'],
       
       // VALLEY: Pre-drop, efectos suaves + atmosféricos
       // 🌫️ WAVE 938: Todos los atmosféricos (bajo ruido visual)
       // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, clave_rhythm)
-      valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath'],
+      // ⚡ WAVE 977: sonar_ping para valleys tecnológicos
+      valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath', 'sonar_ping'],
       
       // AMBIENT: Sweeps y ondas + atmosféricos activos
       // 🌫️ WAVE 938: digital_rain, static_pulse (más activos)
@@ -764,13 +773,15 @@ export class ContextualEffectSelector {
       // GENTLE: Añadir dualismo + algunos atmosféricos
       // 🌫️ WAVE 938: static_pulse, digital_rain (transición a energía)
       // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'static_pulse', 'digital_rain'],
+      // ⚡ WAVE 977: ambient_strobe para flashes dispersos tipo cámara
+      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'static_pulse', 'digital_rain', 'ambient_strobe'],
       
       // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
       // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
       // 🌫️ WAVE 938: static_pulse para glitches rítmicos
       // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'static_pulse'],
+      // ⚡ WAVE 977: ambient_strobe para flashes dispersos
+      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'static_pulse', 'ambient_strobe'],
       
       // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
       intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino'],

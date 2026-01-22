@@ -117,7 +117,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
   'gatling_raid': {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
-    chaos: 0.70,        // MUY caótico (random burst)
+    chaos: 0.40,        // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
     organicity: 0.10,   // Mecánico puro
   },
   'sky_saw': {
@@ -140,7 +140,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     organicity: 0.30,   // 🔪 WAVE 976: 0.15 → 0.30 (más orgánico para competir)
   },
   'digital_rain': {
-    aggression: 0.20,   // 💧 Suave como lluvia
+    aggression: 0.35,   // � WAVE 977: 0.20 → 0.35 (más presencia)
     chaos: 0.65,        // Caótico (gotas aleatorias)
     organicity: 0.40,   // Semi-orgánico (agua)
   },
@@ -148,6 +148,20 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.05,   // 🫁 Cero violencia
     chaos: 0.10,        // MUY ordenado (sinusoidal)
     organicity: 0.95,   // MÁXIMA organicidad - respiración
+  },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // ⚡ WAVE 977: LA FÁBRICA - Nuevos Efectos Techno
+  // ═══════════════════════════════════════════════════════════════
+  'ambient_strobe': {
+    aggression: 0.45,   // 📸 Flashes moderados tipo cámara
+    chaos: 0.40,        // Disperso pero no caótico
+    organicity: 0.10,   // Máquina (flashes de cámara)
+  },
+  'sonar_ping': {
+    aggression: 0.15,   // 🔵 Pulso sutil submarino
+    chaos: 0.10,        // MUY ordenado (secuencia back→front)
+    organicity: 0.05,   // 100% máquina/tecnología
   },
   
   // ═══════════════════════════════════════════════════════════════

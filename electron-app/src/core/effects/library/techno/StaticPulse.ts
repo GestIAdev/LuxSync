@@ -1,32 +1,33 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚡ STATIC PULSE - PULSO ESTÁTICO
+ * ⚡ LASER CANDY - UV STABS (formerly Static Pulse)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🔬 WAVE 938: ATMOSPHERIC ARSENAL (PunkOpus)
+ * 🎨 WAVE 976.9: COLOR REVAMP - "Laser Candy" (PunkOpus + Radwulf)
  * 
  * FILOSOFÍA:
- * Interferencia electromagnética - glitch sutil y tenso.
- * Flashes cortos asíncronos entre fixtures, como si hubiera fallas eléctricas.
- * Perfecto para tensión en transiciones.
+ * Stabs de láser puro que perforan el ambiente techno frío.
+ * Ya no son "fallos eléctricos" - son LÁSERES PSICODÉLICOS.
  * 
  * COMPORTAMIENTO:
- * - MixBus: 'htp' (ADITIVO - suma con física)
- * - Pars: Flash muy corto (50ms) cada 2-4 beats, intensidad 0.3-0.5
+ * - MixBus: 'global' (ADITIVO - punzadas de color sobre físicas)
+ * - Pars: Flash muy corto (50ms) cada 2-4 beats, intensidad 0.4-0.7
  * - Posiciones aleatorias: No todos los pars disparan juntos
- * - Movers: NO se mueven (frozen) o micro-movimientos (±5°)
+ * - Movers: Frozen o micro-movimientos (±5°)
  * - Probabilidad 30% por beat → Asíncrono entre fixtures
  * 
- * COLORES:
- * - WHITE con tinte COLD BLUE (#e0f0ff)
- * - Simula luz fluorescente fallando
+ * COLORES DINÁMICOS (según intensidad):
+ * - Intensity < 0.5  → 🟣 UV VIOLETA (#9D00FF) - Sutil, misterioso, blacklight
+ * - Intensity 0.5-0.8 → 🟢 VERDE LÁSER (#00FF00) - Clásico, potente, cyberpunk
+ * - Intensity > 0.8  → 🔵 AZUL ELÉCTRICO (#0099FF) - Nuclear, high energy
  * 
  * ZONAS:
- * - Perfecto para ambient, gentle (transiciones tensas)
- * - Ideal para crear incomodidad sutil antes de eventos grandes
+ * - Perfecto para ambient, gentle, valley (puntuaciones sutiles)
+ * - En active/intense: Stabs potentes que cortan el ambiente
  * 
  * @module core/effects/library/techno/StaticPulse
- * @version WAVE 938 - ATMOSPHERIC ARSENAL (PunkOpus)
+ * @version WAVE 976.9 - LASER CANDY
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -222,9 +223,26 @@ export class StaticPulse extends BaseEffect {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // COLOR: WHITE con tinte COLD BLUE
+    // 🎨 WAVE 976.9: LASER CANDY - Color dinámico según intensidad
     // ═════════════════════════════════════════════════════════════════════
-    const color = { h: 200, s: 20, l: 95 } // Blanco azulado
+    // Intensity < 0.5  → 🟣 UV VIOLETA (misterioso, sutil)
+    // Intensity 0.5-0.8 → 🟢 VERDE LÁSER (clásico, potente)
+    // Intensity > 0.8  → 🔵 AZUL ELÉCTRICO (nuclear)
+    // ═════════════════════════════════════════════════════════════════════
+    
+    const effectiveIntensity = this.triggerIntensity * this.config.flashIntensity
+    let color: { h: number; s: number; l: number }
+    
+    if (effectiveIntensity < 0.5) {
+      // 🟣 UV VIOLETA - Blacklight effect
+      color = { h: 270, s: 100, l: 50 }  // #9D00FF
+    } else if (effectiveIntensity < 0.8) {
+      // 🟢 VERDE LÁSER - Cyberpunk classic
+      color = { h: 120, s: 100, l: 50 }  // #00FF00
+    } else {
+      // 🔵 AZUL ELÉCTRICO - High energy nuclear
+      color = { h: 200, s: 100, l: 50 }  // #0099FF
+    }
 
     // ═════════════════════════════════════════════════════════════════════
     // PARS: Flash en zones activas

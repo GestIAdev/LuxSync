@@ -287,6 +287,10 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastDNASimulationTimestamp: number = 0
   private readonly DNA_COOLDOWN_MS = 5000  // 5 segundos entre sueños
   
+  // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - "El silencio no debe spammear"
+  private lastSilenceLogTimestamp: number = 0
+  private readonly SILENCE_LOG_THROTTLE_MS = 5000  // Log silence solo cada 5 segundos
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
@@ -651,6 +655,16 @@ export class SeleneTitanConscious extends EventEmitter {
       dreamIntegration: dreamIntegrationData ?? undefined,
     }
     
+    // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
+    if (dreamIntegrationData && this.config.debug) {
+      console.log(
+        `[SeleneTitanConscious] 🔍 DNA DATA TO DECISIONMAKER: ` +
+        `approved=${dreamIntegrationData.approved} | ` +
+        `effect=${dreamIntegrationData.effect?.effect ?? 'null'} | ` +
+        `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
+      )
+    }
+    
     let output = makeDecision(inputs)
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -742,12 +756,14 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🔪 WAVE 976: THE EXORCISM - Fallback eliminado
     // Si DecisionMaker no decidió, SILENCIO. No hay plan B.
     if (!finalEffectDecision) {
-      // 🔇 El silencio NO grita - solo log en debug mode
-      if (this.config.debug) {
+      // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - Solo 1 vez cada 5 segundos
+      const now = Date.now()
+      if (this.config.debug && (now - this.lastSilenceLogTimestamp >= this.SILENCE_LOG_THROTTLE_MS)) {
         console.log(
-          `[SeleneTitanConscious] 🧘 SILENCE: No DNA proposal | ` +
+          `[SeleneTitanConscious] 🧘 SILENCE (throttled, last ${((now - this.lastSilenceLogTimestamp) / 1000).toFixed(1)}s ago) | ` +
           `vibe=${pattern.vibeId} | E=${state.rawEnergy.toFixed(2)} | Z=${zScore.toFixed(2)}σ`
         )
+        this.lastSilenceLogTimestamp = now
       }
     }
     

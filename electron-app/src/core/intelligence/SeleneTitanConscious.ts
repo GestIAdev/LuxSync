@@ -109,6 +109,12 @@ import {
 } from './think/DecisionMaker'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 973.3: MOOD CONTROLLER - Para ethics threshold
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { MoodController } from '../mood/MoodController'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -665,15 +671,37 @@ export class SeleneTitanConscious extends EventEmitter {
     // 1. Si DecisionMaker tiene decisión (ya procesó DNA internamente)
     if (output.effectDecision) {
       const intent = output.effectDecision.effectType
-      const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId)
+      
+      // 🧬 WAVE 973.3: DNA COOLDOWN OVERRIDE (MOOD-AWARE)
+      // Si DNA decidió con ethics score alto SEGÚN EL MOOD ACTUAL,
+      // ignora cooldown. Cada mood define su umbral ético.
+      const isDNADecision = inputs.dreamIntegration?.approved
+      const ethicsScore = inputs.dreamIntegration?.ethicalVerdict?.ethicalScore ?? 0
+      
+      // 🎭 WAVE 973.5: Ethics threshold viene del MoodController
+      const currentMoodProfile = MoodController.getInstance().getCurrentProfile()
+      const ethicsThreshold = currentMoodProfile.ethicsThreshold
+      
+      const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold
+      
+      const availability = hasHighEthicsOverride
+        ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
+        : this.effectSelector.checkAvailability(intent, pattern.vibeId)
       
       if (availability.available) {
         finalEffectDecision = output.effectDecision
         
-        console.log(
-          `[SeleneTitanConscious] 🧠 DECISION MAKER APPROVED: ${intent} | ` +
-          `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`
-        )
+        if (hasHighEthicsOverride) {
+          console.log(
+            `[SeleneTitanConscious] � DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
+            `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold}`
+          )
+        } else {
+          console.log(
+            `[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: ${intent} | ` +
+            `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`
+          )
+        }
       } else {
         console.log(
           `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`

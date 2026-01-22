@@ -177,7 +177,8 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
   const { huntDecision, prediction, pattern, beauty, dreamIntegration } = inputs
   
   // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
-  if (dreamIntegration && dreamIntegration.approved && dreamIntegration.effect) {
+  // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
+  if (dreamIntegration?.approved && dreamIntegration.effect?.effect) {
     return 'strike'  // DNA aprobó → strike con efecto de DNA
   }
   
@@ -249,6 +250,13 @@ function generateStrikeDecision(
   confidence: number
 ): ConsciousnessOutput {
   const { huntDecision, beauty, consonance, pattern, dreamIntegration } = inputs
+  
+  // 🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
+  console.log(
+    `[DecisionMaker] 🔍 generateStrikeDecision called | ` +
+    `DNA approved=${dreamIntegration?.approved ?? false} | ` +
+    `effect=${dreamIntegration?.effect?.effect ?? 'null'}`
+  )
   
   output.confidence = confidence
   output.source = 'hunt'

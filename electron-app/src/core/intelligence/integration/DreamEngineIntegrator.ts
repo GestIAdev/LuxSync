@@ -48,6 +48,9 @@ export interface PipelineContext {
   gpuLoad: number
   maxLuminosity: number
   recentEffects: Array<{ effect: string; timestamp: number }>
+  
+  // 🧠 WAVE 975.5: ZONE UNIFICATION - Source of truth desde SeleneTitanConscious
+  energyZone?: string  // 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
 }
 
 export interface IntegrationDecision {
@@ -390,6 +393,11 @@ export class DreamEngineIntegrator {
       .withEnergy(context.pattern.energy ?? 0.5)
       .withCrowdSize(context.crowdSize)
       .withGpuLoad(context.gpuLoad)
+    
+    // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde SeleneTitanConscious
+    if (context.energyZone) {
+      builder.withEnergyZone(context.energyZone)
+    }
     
     // Add epilepsy mode if enabled
     if (context.epilepsyMode) {

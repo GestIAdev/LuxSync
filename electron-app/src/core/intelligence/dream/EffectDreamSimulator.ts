@@ -599,12 +599,19 @@ export class EffectDreamSimulator {
     // 🛡️ WAVE 975: VIBE SHIELD - Solo efectos permitidos para este VIBE
     const vibeAllowedEffects = this.getVibeAllowedEffects(state.vibe)
     
-    // 🧘 WAVE 975: ZONE AWARENESS - Derivar zona de energía
-    const energyZone = this.deriveEnergyZone(context.energy)
+    // � WAVE 975.5: ZONE UNIFICATION - Usar zona INYECTADA si está disponible
+    // Si viene desde SeleneTitanConscious (source of truth), usarla
+    // Si no, derivar localmente (fallback para compatibilidad)
+    const energyZone = context.energyZone ?? this.deriveEnergyZone(context.energy)
+    const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback'
+    
     const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
     
     console.log(`[DREAM_SIMULATOR] 🛡️ VIBE SHIELD: ${state.vibe} → ${vibeAllowedEffects.length} effects`)
-    console.log(`[DREAM_SIMULATOR] 🧘 ZONE FILTER: ${energyZone} (E=${context.energy.toFixed(2)}) → ${zoneFilteredEffects.length} effects (A=${this.getZoneAggressionRange(energyZone)})`)
+    console.log(
+      `[DREAM_SIMULATOR] 🧘 ZONE FILTER: ${energyZone} (E=${context.energy.toFixed(2)}, source=${zoneSource}) → ` +
+      `${zoneFilteredEffects.length} effects (A=${this.getZoneAggressionRange(energyZone)})`
+    )
     
     // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
     const moodController = MoodController.getInstance()
@@ -1022,8 +1029,17 @@ export class EffectDreamSimulator {
     
     let score = 0
     
-    // 🧬 WAVE 970: projectedRelevance es el nuevo rey
-    score += scenario.projectedRelevance * 0.35   // 🧬 DNA relevance (NEW - highest weight)
+    // � WAVE 975.5: DIVERSITY PENALTY - Aplicar penalty DIRECTO a relevancia
+    // Si un efecto fue disparado recientemente, su relevancia SE CASTIGA
+    // Esto evita que cyber_dualism con 0.90 relevance gane SIEMPRE
+    const diversityPenalty = 1 - scenario.diversityScore  // 0.0 = sin penalty, 1.0 = penalty máximo
+    const adjustedRelevance = scenario.projectedRelevance * (1 - diversityPenalty * 0.60)
+    // Con penalty 0.60: Si diversityScore = 0 (usado 3+ veces), relevance se reduce 60%
+    // cyber_dualism (0.90) con penalty máximo → 0.90 * 0.40 = 0.36
+    // Otro efecto (0.75) sin penalty → 0.75 * 1.00 = 0.75 ¡GANA!
+    
+    // 🧬 WAVE 970: projectedRelevance es el nuevo rey (AHORA CON DIVERSITY PENALTY)
+    score += adjustedRelevance * 0.35             // 🧬 DNA relevance (NEW - highest weight)
     score += scenario.vibeCoherence * 0.15        // Coherencia de vibe (reduced from 0.20)
     score += scenario.diversityScore * 0.25       // 🔥 Diversidad CRÍTICA (unchanged)
     score += (1 - scenario.riskLevel) * 0.15      // Bajo riesgo preferido (unchanged)
@@ -1044,7 +1060,8 @@ export class EffectDreamSimulator {
     
     // 🧬 WAVE 970.1: Boost si el efecto tiene alta relevancia Y baja distancia
     // Un efecto con relevance > 0.85 y distance < 0.3 es un match PERFECTO
-    if (scenario.projectedRelevance > 0.85 && scenario.dnaDistance < 0.3) {
+    // 🧠 WAVE 975.5: Usar relevancia AJUSTADA con diversity penalty
+    if (adjustedRelevance > 0.85 && scenario.dnaDistance < 0.3) {
       score += 0.08  // Bonus por match perfecto
     }
     

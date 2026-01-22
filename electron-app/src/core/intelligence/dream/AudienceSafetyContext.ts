@@ -111,6 +111,24 @@ export interface AudienceSafetyContext {
   energy: number
   
   /**
+   * 🧠 WAVE 975.5: ZONE UNIFICATION
+   * Zona energética actual (derivada del EnergyConsciousnessEngine)
+   * Source of truth: SeleneTitanConscious
+   * 
+   * Valores posibles: 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
+   * 
+   * Esta zona usa los thresholds REALES del EnergyConsciousnessEngine (WAVE 960):
+   * - silence: < 0.35
+   * - valley: < 0.55
+   * - ambient: < 0.70
+   * - gentle: < 0.80
+   * - active: < 0.90
+   * - intense: < 0.95
+   * - peak: >= 0.95
+   */
+  energyZone?: string
+  
+  /**
    * Timestamp actual
    */
   timestamp: number
@@ -226,6 +244,12 @@ export class AudienceSafetyContextBuilder {
   
   withEnergy(energy: number): this {
     this.context.energy = Math.max(0, Math.min(1, energy))
+    return this
+  }
+  
+  // 🧠 WAVE 975.5: ZONE UNIFICATION
+  withEnergyZone(zone: string): this {
+    this.context.energyZone = zone
     return this
   }
   

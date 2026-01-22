@@ -283,10 +283,6 @@ export class SeleneTitanConscious extends EventEmitter {
   private framesInLastLoggedZone: number = 0
   private readonly ZONE_LOG_THRESHOLD = 5  // Log only after 5 frames in new zone (100ms @ 50fps)
   
-  // 🧠 WAVE 975.5: DNA REFRACTORY PERIOD - "El cerebro necesita descansar"
-  private lastDNASimulationTimestamp: number = 0
-  private readonly DNA_COOLDOWN_MS = 5000  // 5 segundos entre sueños
-  
   // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - "El silencio no debe spammear"
   private lastSilenceLogTimestamp: number = 0
   private readonly SILENCE_LOG_THROTTLE_MS = 5000  // Log silence solo cada 5 segundos
@@ -577,66 +573,58 @@ export class SeleneTitanConscious extends EventEmitter {
     
     let dreamIntegrationData: any = null
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula
+    // ═══════════════════════════════════════════════════════════════════════
+    // DNA NO TIENE COOLDOWN. DNA simula CADA VEZ que Hunt detecta momento worthy.
+    // Gatekeeper controla el spam con cooldowns de efectos.
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // Si Hunt detectó momento digno, ejecutar simulador DNA
     const WORTHINESS_THRESHOLD = 0.65
     if (huntDecision.worthiness >= WORTHINESS_THRESHOLD) {
-      // 🧠 WAVE 975.5: DNA REFRACTORY PERIOD - Bloquear si no han pasado 5 segundos
-      const timeSinceLastDNA = Date.now() - this.lastDNASimulationTimestamp
+      // Construir contexto para el pipeline integrado
+      const pipelineContext: PipelineContext = {
+        pattern: {
+          vibe: pattern.vibeId,
+          energy: state.rawEnergy,
+          tempo: pattern.bpm,
+        },
+        huntDecision: {
+          worthiness: huntDecision.worthiness,
+          confidence: huntDecision.confidence,
+        },
+        crowdSize: 500,
+        epilepsyMode: false,
+        estimatedFatigue: this.lastEffectTimestamp ? 
+          Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
+        gpuLoad: 0.5,
+        maxLuminosity: 100,
+        recentEffects: this.effectHistory.slice(-10).map(e => ({ 
+          effect: e.type, 
+          timestamp: e.timestamp 
+        })),
+        // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
+        energyZone: energyContext.zone,
+      }
       
-      if (timeSinceLastDNA < this.DNA_COOLDOWN_MS) {
-        const remainingTime = ((this.DNA_COOLDOWN_MS - timeSinceLastDNA) / 1000).toFixed(1)
-        console.log(
-          `[SeleneTitanConscious] 🧘 DNA REFRACTORY PERIOD: ` +
-          `${remainingTime}s remaining (no simulation)`
-        )
-        // Skip DNA simulation - el cerebro está descansando
-      } else {
-        // Construir contexto para el pipeline integrado
-        const pipelineContext: PipelineContext = {
-          pattern: {
-            vibe: pattern.vibeId,
-            energy: state.rawEnergy,
-            tempo: pattern.bpm,
-          },
-          huntDecision: {
-            worthiness: huntDecision.worthiness,
-            confidence: huntDecision.confidence,
-          },
-          crowdSize: 500,
-          epilepsyMode: false,
-          estimatedFatigue: this.lastEffectTimestamp ? 
-            Math.min(1, (Date.now() - this.lastEffectTimestamp) / 60000) : 0,
-          gpuLoad: 0.5,
-          maxLuminosity: 100,
-          recentEffects: this.effectHistory.slice(-10).map(e => ({ 
-            effect: e.type, 
-            timestamp: e.timestamp 
-          })),
-          // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
-          energyZone: energyContext.zone,
-        }
+      // 🧬 DNA Brain simula - NO decide
+      try {
+        dreamIntegrationData = await Promise.race([
+          dreamEngineIntegrator.executeFullPipeline(pipelineContext),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Dream timeout')), 15)
+          )
+        ])
         
-        // 🧬 DNA Brain simula - NO decide
-        try {
-          dreamIntegrationData = await Promise.race([
-            dreamEngineIntegrator.executeFullPipeline(pipelineContext),
-            new Promise<any>((_, reject) => 
-              setTimeout(() => reject(new Error('Dream timeout')), 15)
-            )
-          ])
-          
-          // 🧠 WAVE 975.5: Actualizar timestamp SOLO si la simulación fue exitosa
-          this.lastDNASimulationTimestamp = Date.now()
-          
-          if (dreamIntegrationData) {
-            console.log(
-              `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
-              `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
-            )
-          }
-        } catch (err: any) {
-          console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
+        if (dreamIntegrationData) {
+          console.log(
+            `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
+            `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
+          )
         }
+      } catch (err: any) {
+        console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
       }
     }
     

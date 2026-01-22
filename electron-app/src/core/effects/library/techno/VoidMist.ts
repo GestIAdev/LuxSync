@@ -61,8 +61,8 @@ interface VoidMistConfig {
 
 const DEFAULT_CONFIG: VoidMistConfig = {
   durationMs: 5000,          // 5 segundos (was 12s) - WAVE 964
-  minIntensity: 0.05,
-  maxIntensity: 0.15,
+  minIntensity: 0.20,        // 🔪 WAVE 976: 0.05 → 0.20 (más visible)
+  maxIntensity: 0.60,        // 🔪 WAVE 976: 0.15 → 0.60 (respiración más profunda)
   breathPeriodMs: 5000,      // 5s por ciclo de respiración
   panSpeed: 3.75,            // 3.75°/s → ±30° en 8 compases (120 BPM)
   panAmplitude: 30,          // ±30° de oscilación
@@ -164,6 +164,7 @@ export class VoidMist extends BaseEffect {
 
     // ═════════════════════════════════════════════════════════════════════
     // PARS: Respiración independiente por zona
+    // 🔪 WAVE 976: Respiración sinusoidal orgánica con offsets aleatorios
     // ═════════════════════════════════════════════════════════════════════
     const parZones = ['front', 'pars', 'back'] as const
     
@@ -171,7 +172,8 @@ export class VoidMist extends BaseEffect {
       const offset = this.breathOffsets.get(zone) || 0
       const breathPhase = (this.elapsedMs / this.config.breathPeriodMs) * 2 * Math.PI + offset
       
-      // Sine wave: 0 → 1 → 0 (respiración)
+      // 🔪 WAVE 976: Sine wave con respiración más profunda
+      // (Math.sin(x) + 1) / 2 → oscila entre 0 y 1 suavemente
       const breathIntensity = (Math.sin(breathPhase) + 1) / 2
       const dimmer = this.config.minIntensity + 
         breathIntensity * (this.config.maxIntensity - this.config.minIntensity)

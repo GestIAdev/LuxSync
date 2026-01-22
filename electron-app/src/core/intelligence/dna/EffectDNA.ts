@@ -136,8 +136,8 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   'static_pulse': {
     aggression: 0.35,   // ⚡ Glitches tienen "punch" pero suave
-    chaos: 0.75,        // MUY caótico (glitch = ruido)
-    organicity: 0.15,   // Digital, no orgánico
+    chaos: 0.50,        // 🔪 WAVE 976: 0.75 → 0.50 (menos caótico, más palatable)
+    organicity: 0.30,   // 🔪 WAVE 976: 0.15 → 0.30 (más orgánico para competir)
   },
   'digital_rain': {
     aggression: 0.20,   // 💧 Suave como lluvia

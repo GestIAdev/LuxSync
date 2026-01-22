@@ -59,7 +59,7 @@ interface DigitalRainConfig {
 }
 
 const DEFAULT_CONFIG: DigitalRainConfig = {
-  durationMs: 6000,          // 6 segundos (was 8s) - WAVE 964
+  durationMs: 4000,          // 🔪 WAVE 976: 6s → 4s (más dinámico)
   flickerProbability: 0.15,  // 15% chance por frame (~9 FPS flickering)
   minIntensity: 0.1,
   maxIntensity: 0.3,
@@ -79,7 +79,7 @@ export class DigitalRain extends BaseEffect {
   readonly effectType = 'digital_rain'
   readonly name = 'Digital Rain'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 70  // Media-alta - WAVE 964: Subida de 40 a 70
+  readonly priority = 90  // 🔪 WAVE 976: High priority (era 70)
   readonly mixBus = 'global' as const  // WAVE 964: HTP→GLOBAL para visibilidad
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -169,16 +169,20 @@ export class DigitalRain extends BaseEffect {
     })
 
     // ═════════════════════════════════════════════════════════════════════
-    // MOVERS: Tilt fijo hacia abajo, Pan escaneo lento
+    // MOVERS: Tilt fijo hacia abajo, dimmer flickering
+    // 🔪 WAVE 976: Eliminar movement override - deja que VMM controle posición
     // ═════════════════════════════════════════════════════════════════════
-    output.zoneOverrides!['movers'] = {
-      dimmer: 0.15,
-      color: { h: 180, s: 100, l: 50 }, // CYAN
-      blendMode: 'max' as const,
-      movement: {
-        pan: this.panOffset,
-        tilt: this.config.tiltAngle,
-      },
+    const moverDimmer = Math.random() < this.config.flickerProbability
+      ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
+      : 0
+    
+    if (moverDimmer > 0) {
+      output.zoneOverrides!['movers'] = {
+        dimmer: moverDimmer,
+        color: { h: 180, s: 100, l: 50 }, // CYAN
+        blendMode: 'max' as const,
+        // NO movement override - VMM takes control
+      }
     }
 
     return output

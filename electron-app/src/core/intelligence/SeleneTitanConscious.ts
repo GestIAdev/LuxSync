@@ -739,39 +739,13 @@ export class SeleneTitanConscious extends EventEmitter {
       }
     }
     
-    // 2. FALLBACK: Si DecisionMaker no decidió, usar Selector Contextual
+    // 🔪 WAVE 976: THE EXORCISM - Fallback eliminado
+    // Si DecisionMaker no decidió, SILENCIO. No hay plan B.
     if (!finalEffectDecision) {
-      const effectSelection = this.effectSelector.select(selectorInput)
-    
-      if (effectSelection.effectType) {
-        finalEffectDecision = {
-          effectType: effectSelection.effectType,
-          intensity: effectSelection.intensity,
-          zones: ['all'] as ('all' | 'front' | 'back' | 'movers' | 'pars')[],
-          reason: effectSelection.reason,
-          confidence: effectSelection.confidence,
-        }
-        
-        output = {
-          ...output,
-          confidence: Math.max(output.confidence, effectSelection.confidence),
-          effectDecision: finalEffectDecision,
-          debugInfo: {
-            ...output.debugInfo,
-            reasoning: `🎯 CONTEXTUAL FALLBACK: ${effectSelection.reason}`,
-            fuzzyAction: this.lastFuzzyDecision?.action ?? 'hold',
-            zScore: zScore,
-          }
-        }
-        
-        if (this.config.debug) {
-          console.log(
-            `[SeleneTitanConscious] 🎯 CONTEXTUAL FALLBACK: ` +
-            `${effectSelection.effectType} @ ${effectSelection.intensity.toFixed(2)} | ` +
-            `Z=${zScore.toFixed(2)}σ | Section=${selectorSection}`
-          )
-        }
-      }
+      console.log(
+        `[SeleneTitanConscious] 🧘 SILENCE CONFIRMED: No DNA proposal, no fallback | ` +
+        `vibe=${pattern.vibeId} | E=${state.rawEnergy.toFixed(2)} | Z=${zScore.toFixed(2)}σ`
+      )
     }
     
     // 3. Track para cooldown y anti-repetición

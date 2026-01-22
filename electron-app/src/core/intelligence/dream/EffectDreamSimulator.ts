@@ -3,38 +3,47 @@
  * "El Oráculo que ve el futuro de los efectos"
  * 
  * WAVE 900.1 - Phase 1: Foundation
- * WAVE 920.2 - Mood integration (pre-filterin  // 🌫️ WAVE 938 + 965: ATMOSPHERIC ARSENAL (low-energy zones)
-  // WAVE 965: Beauty boost para competir con acid_sweep/industrial_strobe
-  'void_mist': { base: 0.70, energyMultiplier: 0.85, technoBonus: 0.12 },      // 🌫️ Fog (was 0.55/0.6)
-  'static_pulse': { base: 0.73, energyMultiplier: 1.0, technoBonus: 0.14 },    // ⚡ Glitch (was 0.58/0.8)
-  'digital_rain': { base: 0.75, energyMultiplier: 1.05, technoBonus: 0.15 },   // 💧 Matrix (was 0.60/0.75)
-  'deep_breath': { base: 0.68, energyMultiplier: 0.75, technoBonus: 0.10 },    // 🫁 Breathing (was 0.52/0.5)cked effects)
+ * WAVE 920.2 - Mood integration (pre-filtering blocked effects)
+ * WAVE 970 - 🧬 CONTEXTUAL DNA: Relevancia contextual reemplaza belleza hardcodeada
  * 
  * @module EffectDreamSimulator
  * @description Sistema de simulación predictiva para efectos visuales.
- *              Simula múltiples escenarios de efectos y rankea por belleza proyectada,
+ *              Simula múltiples escenarios de efectos y rankea por RELEVANCIA CONTEXTUAL,
  *              riesgo, coherencia de vibe y diversidad.
  * 
  * RESPONSABILIDADES:
  * - Simular escenarios de efectos (no solo color como ScenarioSimulator)
- * - Predecir belleza proyectada de cada efecto
+ * - 🧬 WAVE 970: Predecir RELEVANCIA (no belleza) usando DNA matching
  * - Calcular risk level (GPU load, audience fatiga, cooldowns)
  * - Detectar conflictos de cooldown
  * - Mirar 4 compases adelante (musical prediction)
- * - Rankear escenarios por belleza esperada
+ * - Rankear escenarios por ADECUACIÓN CONTEXTUAL
  * - 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
  * 
  * FILOSOFÍA:
  * "Soñar antes de actuar. Ver el futuro antes de decidir."
  * 
+ * 🧬 WAVE 970 PHILOSOPHY:
+ * "Selene no busca belleza. Selene busca VERDAD."
+ * Un efecto no es "bonito" o "feo" - es ADECUADO o INADECUADO para el contexto.
+ * 
  * @author PunkOpus (Opus 4.5)
- * @date 2026-01-20
+ * @date 2026-01-21
  */
 
 import type { AudienceSafetyContext } from './AudienceSafetyContext'
 
 // 🎭 WAVE 920.2: MOOD INTEGRATION
 import { MoodController } from '../../mood/MoodController'
+
+// 🧬 WAVE 970: CONTEXTUAL DNA SYSTEM
+import { 
+  getDNAAnalyzer, 
+  EFFECT_DNA_REGISTRY,
+  type TargetDNA,
+  type AudioMetricsForDNA,
+  type MusicalContextForDNA
+} from '../dna/EffectDNA'
 
 // SelenePalette type (minimal definition for Phase 1)
 interface SelenePalette {
@@ -94,9 +103,15 @@ export interface EffectScenario {
   effect: EffectCandidate
   
   // 📊 PROJECTED METRICS
-  projectedBeauty: number           // 0-1, belleza esperada
-  beautyDelta: number               // Cambio vs estado actual
+  // 🧬 WAVE 970: projectedBeauty DEPRECADO - ahora es projectedRelevance
+  projectedBeauty: number           // 0-1, LEGACY (alias de projectedRelevance)
+  projectedRelevance: number        // 🧬 0-1, relevancia contextual DNA
+  beautyDelta: number               // Cambio vs estado actual (legacy)
   riskLevel: number                 // 0-1, riesgo del efecto
+  
+  // 🧬 WAVE 970: DNA METRICS
+  dnaDistance: number               // Distancia euclidiana al Target DNA
+  targetDNA?: TargetDNA             // Target DNA usado para calcular
   
   // 🔮 PREDICTION
   projectedConsonance: number       // Coherencia con estado anterior
@@ -355,11 +370,18 @@ export class EffectDreamSimulator {
       context
     )
     
+    // 🧬 WAVE 970: DNA-based contextual relevance
+    const { relevance: projectedRelevance, distance: dnaDistance, targetDNA } = 
+      this.calculateDNARelevance(effect, currentState, context)
+    
     return {
       effect,
       projectedBeauty,
+      projectedRelevance,       // 🧬 WAVE 970: DNA relevance (replaces beauty as primary)
       beautyDelta,
       riskLevel,
+      dnaDistance,              // 🧬 WAVE 970: Euclidean distance to target DNA
+      targetDNA,                // 🧬 WAVE 970: For debugging/logging
       projectedConsonance,
       gpuLoadImpact,
       audienceFatigueImpact,
@@ -490,7 +512,18 @@ export class EffectDreamSimulator {
   }
   
   // ═══════════════════════════════════════════════════════════════
-  // PRIVATE: BEAUTY PROJECTION
+  // 🦕 LEGACY: BEAUTY PROJECTION (WAVE 970: DEPRECADO)
+  // ═══════════════════════════════════════════════════════════════
+  // 
+  // ⚠️ WAVE 970: Este método está DEPRECADO.
+  // La "belleza" ya no es el criterio principal.
+  // Usamos calculateDNARelevance() para matching contextual.
+  // 
+  // Este método se mantiene SOLO para:
+  // 1. Compatibilidad con código legacy que espere projectedBeauty
+  // 2. Período de transición mientras se valida el nuevo sistema
+  // 
+  // TODO WAVE 971+: Remover completamente una vez validado DNA system
   // ═══════════════════════════════════════════════════════════════
   
   private projectBeauty(
@@ -601,6 +634,107 @@ export class EffectDreamSimulator {
     return 0.4
   }
   
+  // ═══════════════════════════════════════════════════════════════
+  // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
+  // ═══════════════════════════════════════════════════════════════
+  
+  /**
+   * Calcula la relevancia contextual de un efecto usando DNA matching.
+   * Reemplaza el antiguo sistema de "belleza" con algo más inteligente.
+   * 
+   * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA }
+   */
+  private calculateDNARelevance(
+    effect: EffectCandidate,
+    state: SystemState,
+    context: AudienceSafetyContext
+  ): { relevance: number; distance: number; targetDNA: TargetDNA } {
+    // Obtener el DNA del efecto del registry
+    const effectDNA = EFFECT_DNA_REGISTRY[effect.effect]
+    
+    // Si no existe en el registry, usar valores neutros (wildcard)
+    if (!effectDNA) {
+      console.warn(`[DREAM_SIMULATOR] ⚠️ Effect ${effect.effect} not in DNA registry, using neutral DNA`)
+      return {
+        relevance: 0.50,  // Neutral
+        distance: 0.866,  // √3/2 = centro del espacio
+        targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 }
+      }
+    }
+    
+    // Construir MusicalContext para el DNAAnalyzer
+    // Derivamos todo lo que podemos de AudienceSafetyContext + SystemState
+    const musicalContext: MusicalContextForDNA = {
+      energy: state.energy,
+      syncopation: undefined,  // No disponible directamente
+      mood: this.deriveMusicalMood(context),
+      section: {
+        type: this.deriveSection(state, context),
+        confidence: 0.75
+      },
+      rhythm: {
+        drums: {
+          kickIntensity: state.energy * 0.8  // Derivado de energía
+        },
+        fillDetected: false,
+        groove: context.vibe.includes('latino') ? 0.8 : 0.5,
+        confidence: 0.7
+      },
+      energyContext: {
+        trend: state.energy > 0.5 ? 1 : state.energy < 0.3 ? -1 : 0
+      },
+      confidence: 0.75
+    }
+    
+    // Construir AudioMetrics para el DNAAnalyzer
+    const audioMetrics: AudioMetricsForDNA = {
+      bass: state.energy * 0.7,
+      mid: 0.5,
+      treble: context.vibe.includes('techno') ? 0.6 : 0.4,
+      volume: state.energy,
+      harshness: context.vibe.includes('techno') ? 0.6 : 0.3,
+      spectralFlatness: 0.5
+    }
+    
+    // Usar el DNAAnalyzer singleton para derivar el Target DNA
+    const dnaAnalyzer = getDNAAnalyzer()
+    const targetDNA = dnaAnalyzer.deriveTargetDNA(musicalContext, audioMetrics)
+    
+    // Calcular distancia euclidiana 3D (effectDNA es directamente EffectDNA, no tiene .dna)
+    const dA = effectDNA.aggression - targetDNA.aggression
+    const dC = effectDNA.chaos - targetDNA.chaos
+    const dO = effectDNA.organicity - targetDNA.organicity
+    const distance = Math.sqrt(dA * dA + dC * dC + dO * dO)
+    
+    // Convertir distancia a relevancia (0-1)
+    // Distancia máxima teórica es √3 ≈ 1.732
+    const MAX_DISTANCE = Math.sqrt(3)
+    const relevance = 1.0 - (distance / MAX_DISTANCE)
+    
+    return { relevance, distance, targetDNA }
+  }
+  
+  /**
+   * 🧬 WAVE 970: Deriva mood musical del contexto de audiencia
+   */
+  private deriveMusicalMood(context: AudienceSafetyContext): 'aggressive' | 'melancholic' | 'euphoric' | 'neutral' {
+    if (context.vibe.includes('techno')) return 'aggressive'
+    if (context.vibe.includes('latino')) return 'euphoric'
+    if (context.vibe.includes('chill') || context.vibe.includes('ambient')) return 'melancholic'
+    return 'neutral'
+  }
+  
+  /**
+   * 🧬 WAVE 970: Deriva sección del estado actual
+   */
+  private deriveSection(state: SystemState, context: AudienceSafetyContext): 'drop' | 'buildup' | 'breakdown' | 'verse' | 'chorus' | 'intro' | 'outro' {
+    // Derivación simple basada en energía
+    if (state.energy > 0.85) return 'drop'
+    if (state.energy > 0.65) return 'chorus'
+    if (state.energy < 0.25) return 'breakdown'
+    return 'verse'
+  }
+
   private calculateGpuImpact(effect: EffectCandidate, context: AudienceSafetyContext): number {
     const gpuCost = EFFECT_GPU_COST[effect.effect as keyof typeof EFFECT_GPU_COST] || 0.15
     return Math.min(1.0, gpuCost * effect.intensity)
@@ -704,8 +838,9 @@ export class EffectDreamSimulator {
       confidence *= 0.8
     }
     
+    // 🧬 WAVE 970: Usar EFFECT_DNA_REGISTRY para verificar efectos conocidos
     // Reducir confianza si efecto desconocido
-    if (!(effect.effect in EFFECT_BEAUTY_WEIGHTS)) {
+    if (!(effect.effect in EFFECT_DNA_REGISTRY)) {
       confidence *= 0.5
     }
     
@@ -728,23 +863,42 @@ export class EffectDreamSimulator {
   }
   
   private calculateScenarioScore(scenario: EffectScenario, prediction: MusicalPrediction): number {
-    // Weighted score
-    // 🔫 WAVE 930.3: ANTI-MONOTONY - Rebalanced weights
+    // ═══════════════════════════════════════════════════════════════
+    // 🧬 WAVE 970: DNA-BASED SCORING
+    // ═══════════════════════════════════════════════════════════════
+    // 
+    // ANTES (CRIMEN): projectedBeauty era el rey (hardcoded)
+    // AHORA (ILUMINACIÓN): projectedRelevance es el rey (contextual)
+    //
+    // La "belleza" es subjetiva. La RELEVANCIA es matemática.
+    // ═══════════════════════════════════════════════════════════════
+    
     let score = 0
     
-    score += scenario.projectedBeauty * 0.30      // Belleza importante pero no dominante
-    score += scenario.vibeCoherence * 0.20        // Coherencia de vibe 
-    score += scenario.diversityScore * 0.25       // 🔥 Diversidad CRÍTICA (was 0.15)
-    score += (1 - scenario.riskLevel) * 0.15      // Bajo riesgo preferido
-    score += scenario.simulationConfidence * 0.10 // Confianza en predicción
+    // 🧬 WAVE 970: projectedRelevance es el nuevo rey
+    score += scenario.projectedRelevance * 0.35   // 🧬 DNA relevance (NEW - highest weight)
+    score += scenario.vibeCoherence * 0.15        // Coherencia de vibe (reduced from 0.20)
+    score += scenario.diversityScore * 0.25       // 🔥 Diversidad CRÍTICA (unchanged)
+    score += (1 - scenario.riskLevel) * 0.15      // Bajo riesgo preferido (unchanged)
+    score += scenario.simulationConfidence * 0.10 // Confianza en predicción (unchanged)
     
-    // Penalizar conflictos (aumentado)
-    score -= scenario.cooldownConflicts.length * 0.15   // was 0.1
-    score -= scenario.hardwareConflicts.length * 0.20   // was 0.15
+    // LEGACY: projectedBeauty sigue existiendo pero con peso mínimo
+    // Solo para compatibilidad y transición gradual
+    // score += scenario.projectedBeauty * 0.05  // 🦕 LEGACY (comentado por ahora)
+    
+    // Penalizar conflictos (sin cambios)
+    score -= scenario.cooldownConflicts.length * 0.15
+    score -= scenario.hardwareConflicts.length * 0.20
     
     // Boost si viene drop
     if (prediction.isDropComing && scenario.effect.intensity > 0.7) {
       score += 0.1
+    }
+    
+    // 🧬 WAVE 970.1: Boost si el efecto tiene alta relevancia Y baja distancia
+    // Un efecto con relevance > 0.85 y distance < 0.3 es un match PERFECTO
+    if (scenario.projectedRelevance > 0.85 && scenario.dnaDistance < 0.3) {
+      score += 0.08  // Bonus por match perfecto
     }
     
     return Math.max(0, Math.min(1, score))

@@ -452,14 +452,27 @@ export const StageSimulator2: React.FC = () => {
       // Guardar posiciÃ³n para hit testing
       newPositions.push({ id, x, y, radius: Math.max(fixtureRadius, 20) });
       
-      // WAVE 379.6: Si estÃ¡ completamente apagado, dibujar fixture "idle" (gris oscuro)
-      // Esto permite ver la posiciÃ³n del fixture aunque no haya data del backend
-      const isCompletelyOff = r + g + b < 10 && intensity < 0.05;
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🛡️ WAVE 994.1: VISUAL SANITY - Black Level Threshold
+      // 
+      // PROBLEMA: El visualizador mostraba "fantasmas de color" cuando dimmer=0
+      // Ejemplo: DigitalRain con dimmer=0 pero RGB=(0,255,0) → verde fantasma
+      // 
+      // SOLUCIÓN: Umbral de Corte (Black Level)
+      // Si dimmer < 1% (prácticamente apagado), forzamos color a GRIS OSCURO
+      // Ignoramos el RGB que tenga el fixture en memoria
+      // 
+      // RESULTADO: Visualizador refleja la realidad física:
+      //   - dimmer=0 → NEGRO (no luz)
+      //   - dimmer>0 → Color visible proporcional a intensidad
+      // ═══════════════════════════════════════════════════════════════════════
+      const isCompletelyOff = intensity < 0.01;  // 🛡️ WAVE 994.1: Umbral del 1%
+      
       if (isCompletelyOff) {
         // Dibujar fixture inactivo como cÃ­rculo gris oscuro
         ctx.beginPath();
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? 'rgba(0, 255, 255, 0.4)' : 'rgba(80, 80, 80, 0.6)';
+        ctx.fillStyle = isSelected ? 'rgba(0, 255, 255, 0.4)' : 'rgba(34, 34, 34, 0.6)';  // 🛡️ #222222
         ctx.fill();
         ctx.strokeStyle = isSelected ? '#00ffff' : '#444';
         ctx.lineWidth = isSelected ? 2 : 1;

@@ -1,7 +1,22 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌧️ DIGITAL RAIN - MATRIX VIBES
- * ═══════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════════════    // ═════════════════════════════════════════════════════════════════════
+    // MOVERS: Solo dimmer flickering - MODO FANTASMA
+    // 🛡️ WAVE 984: THE MOVER LAW - Eliminar color, deja que VMM controle
+    // 🛡️ WAVE 994: THE HOLDING PATTERN - Nunca suelta el control
+    // ═════════════════════════════════════════════════════════════════════
+    const moverDimmer = Math.random() < this.config.flickerProbability
+      ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
+      : 0
+    
+    // 🛡️ WAVE 994: SIEMPRE enviar override (nunca soltar el micro)
+    output.zoneOverrides!['movers'] = {
+      dimmer: moverDimmer,  // Puede ser 0 (darkness) o >0 (flash)
+      // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+      blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
+      // NO movement override - VMM takes control
+    }═
  * 
  * 🔬 WAVE 938: ATMOSPHERIC ARSENAL (Radwulf)
  * 
@@ -145,6 +160,7 @@ export class DigitalRain extends BaseEffect {
 
     // ═════════════════════════════════════════════════════════════════════
     // PARS: Flicker aleatorio con colores CYAN/LIME
+    // 🛡️ WAVE 994: THE HOLDING PATTERN - Nunca suelta el control
     // ═════════════════════════════════════════════════════════════════════
     const parZones = ['front', 'pars', 'back'] as const
     
@@ -153,8 +169,13 @@ export class DigitalRain extends BaseEffect {
         ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
         : 0
       
+      // 🛡️ WAVE 994: SIEMPRE enviar override, incluso si es dimmer=0
+      // LA REGLA DE ORO DEL TECHNO:
+      // "Si eres un efecto Global, tú eres el dueño del universo hasta que termines.
+      //  Si quieres negro, PINTA NEGRO. No dejes el lienzo en blanco."
+      
       if (dimmerValue > 0) {
-        // Color: alternar entre CYAN y LIME
+        // FLASH: Color visible (CYAN o LIME)
         const useCyan = Math.random() > 0.5
         const color = useCyan 
           ? { h: 180, s: 100, l: 50 } // CYAN
@@ -164,6 +185,12 @@ export class DigitalRain extends BaseEffect {
           dimmer: dimmerValue,
           color: color,
           blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
+        }
+      } else {
+        // DARKNESS: Blackout explícito para matar physics
+        output.zoneOverrides![zone] = {
+          dimmer: 0,  // 🛡️ WAVE 994: Darkness explícita (no soltar el micro)
+          blendMode: 'replace' as const,
         }
       }
     })

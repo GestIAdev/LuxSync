@@ -115,6 +115,15 @@ import {
 import { MoodController } from '../mood/MoodController'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧪 WAVE 978: ENERGY LOGGER
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { EnergyLogger } from './EnergyLogger'
+
+// DEBUG ENERGY FLAG - Set to true to enable CSV logging
+const DEBUG_ENERGY = true  // 🧪 Set to TRUE to activate Energy Lab
+
+// ═══════════════════════════════════════════════════════════════════════════
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -311,11 +320,17 @@ export class SeleneTitanConscious extends EventEmitter {
     // 🎯 WAVE 685: Inicializar selector de efectos contextual
     this.effectSelector = new ContextualEffectSelector()
     
-    // � WAVE 931: Inicializar motor de consciencia energética
+    // 🔋 WAVE 931: Inicializar motor de consciencia energética
     // Diseño asimétrico: Lento para entrar en silencio, rápido para detectar drops
     this.energyConsciousness = createEnergyConsciousnessEngine()
     
-    // �🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
+    // 🧪 WAVE 978: Inicializar Energy Logger si DEBUG activo
+    if (DEBUG_ENERGY) {
+      console.log('[🧪 ENERGY_LAB] DEBUG_ENERGY = TRUE → Initializing logger...')
+      EnergyLogger.initialize()
+    }
+    
+    // 🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
     // Solo registrar cooldown cuando EffectManager REALMENTE dispara el efecto
     // (no bloqueado por Shield/Traffic)
     const effectManager = getEffectManager()
@@ -530,7 +545,14 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // 🔋 WAVE 932: Calcular energyContext ANTES del fuzzy para supresión
     // (Lo movemos aquí para que FuzzyDecisionMaker tenga consciencia de zona)
-    const energyContext = this.energyConsciousness.process(state.rawEnergy)
+    // 🧪 WAVE 978: Pasamos debugData para el EnergyLogger
+    const energyContext = this.energyConsciousness.process(state.rawEnergy, {
+      bassEnergy: state.bass,
+      midEnergy: state.mid,
+      trebleEnergy: state.high,
+      // AGC gain no disponible en TitanState (TODO: agregar en el futuro)
+      // spectralFlux no disponible en TitanState (TODO: agregar en el futuro)
+    })
     
     // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
     // Track frames in current zone
@@ -617,12 +639,15 @@ export class SeleneTitanConscious extends EventEmitter {
           )
         ])
         
+        // 🔇 WAVE 982.5: DNA logs silenciados (arqueología del día 2)
+        /*
         if (dreamIntegrationData) {
           console.log(
             `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
             `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
           )
         }
+        */
       } catch (err: any) {
         console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
       }
@@ -644,6 +669,8 @@ export class SeleneTitanConscious extends EventEmitter {
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
+    // 🔇 WAVE 982.5: Silenciado
+    /*
     if (dreamIntegrationData && this.config.debug) {
       console.log(
         `[SeleneTitanConscious] 🔍 DNA DATA TO DECISIONMAKER: ` +
@@ -652,6 +679,7 @@ export class SeleneTitanConscious extends EventEmitter {
         `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
       )
     }
+    */
     
     let output = makeDecision(inputs)
     

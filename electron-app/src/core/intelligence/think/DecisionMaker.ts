@@ -251,12 +251,13 @@ function generateStrikeDecision(
 ): ConsciousnessOutput {
   const { huntDecision, beauty, consonance, pattern, dreamIntegration } = inputs
   
-  // 🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
-  console.log(
-    `[DecisionMaker] 🔍 generateStrikeDecision called | ` +
-    `DNA approved=${dreamIntegration?.approved ?? false} | ` +
-    `effect=${dreamIntegration?.effect?.effect ?? 'null'}`
-  )
+  // � WAVE 982.5: Silenciado (arqueología del día 2)
+  // �🔍 WAVE 976.4: DEBUG - Ver si DNA data llega aquí
+  // console.log(
+  //   `[DecisionMaker] 🔍 generateStrikeDecision called | ` +
+  //   `DNA approved=${dreamIntegration?.approved ?? false} | ` +
+  //   `effect=${dreamIntegration?.effect?.effect ?? 'null'}`
+  // )
   
   output.confidence = confidence
   output.source = 'hunt'
@@ -294,7 +295,8 @@ function generateStrikeDecision(
       confidence: confidence,
     }
     
-    console.log(`[DecisionMaker 🧬] DNA BRAIN DECISION: ${dnaEffect.effect} @ ${dnaEffect.intensity.toFixed(2)} | ethics=${dreamIntegration.ethicalVerdict?.ethicalScore.toFixed(2)}`)
+    // 🔇 WAVE 982.5: Silenciado (arqueología del día 2)
+    // console.log(`[DecisionMaker 🧬] DNA BRAIN DECISION: ${dnaEffect.effect} @ ${dnaEffect.intensity.toFixed(2)} | ethics=${dreamIntegration.ethicalVerdict?.ethicalScore.toFixed(2)}`)
     return output
   }
   

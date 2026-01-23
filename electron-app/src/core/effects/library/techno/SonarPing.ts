@@ -173,7 +173,12 @@ export class SonarPing extends BaseEffect {
     }
   }
   
-  getOutput(): EffectFrameOutput {
+  getOutput(): EffectFrameOutput | null {
+    // 🛠️ WAVE 987: Validación de phase - retornar null si no estamos activos
+    if (this.phase === 'idle' || this.phase === 'finished') {
+      return null
+    }
+    
     const progress = Math.min(this.elapsedMs / this.totalDurationMs, 1)
     
     // ═══════════════════════════════════════════════════════════════════
@@ -212,6 +217,7 @@ export class SonarPing extends BaseEffect {
     
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUIR OUTPUT
+    // 🛠️ WAVE 987: Solo retornar output válido cuando hay ping activo
     // ═══════════════════════════════════════════════════════════════════
     const zoneOverrides: Record<string, {
       dimmer: number
@@ -223,18 +229,23 @@ export class SonarPing extends BaseEffect {
         dimmer: pingIntensity,
         color: this.currentColor,
       }
+      
+      // 🔵 Retornar frame válido CON color override
+      return {
+        effectId: this.id,
+        category: this.category,
+        phase: this.phase,
+        progress,
+        zones: [activeZone],
+        intensity: pingIntensity,
+        zoneOverrides,
+        colorOverride: this.currentColor,
+      }
     }
     
-    return {
-      effectId: this.id,
-      category: this.category,
-      phase: this.phase,
-      progress,
-      zones: isInPing ? [activeZone] : [],
-      intensity: pingIntensity,
-      zoneOverrides,
-      colorOverride: this.currentColor,
-    }
+    // 🛠️ WAVE 987: Si NO hay ping activo (gap), retornar null
+    // Esto evita frames vacíos que confunden al MasterArbiter
+    return null
   }
   
   // ─────────────────────────────────────────────────────────────────────────

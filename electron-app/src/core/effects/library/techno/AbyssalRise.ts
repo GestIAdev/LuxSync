@@ -86,7 +86,7 @@ interface AbyssalRiseConfig {
 }
 
 const DEFAULT_CONFIG: AbyssalRiseConfig = {
-  durationMs: 8000,          // 8 segundos (8 compases @ 120 BPM)
+  durationMs: 5000,          // 5 segundos (5 compases @ 120 BPM) - WAVE 988 OPTIMIZADO
   darkPhaseRatio: 0.15,      // 15% del tiempo en oscuridad
   risePhaseRatio: 0.60,      // 60% del tiempo subiendo
   blindingPhaseRatio: 0.20,  // 20% del tiempo en ceguera
@@ -255,8 +255,9 @@ export class AbyssalRise extends BaseEffect {
       zoneOverrides: {
         'front': { color: COLORS.abyss, dimmer: parDimmer },
         'back': { color: COLORS.deep, dimmer: parDimmer * 0.5 },
+        // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
         'movers': { 
-          color: COLORS.black, 
+          // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
           dimmer: 0,
           movement: { tilt: moverTilt, pan: 0.5, isAbsolute: true, speed: 0.3 }
         }
@@ -311,13 +312,14 @@ export class AbyssalRise extends BaseEffect {
       zoneOverrides: {
         'front': { color, dimmer: parDimmer },
         'back': { color: COLORS.celestial, dimmer: parDimmer * 0.8 },
+        // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
         'movers_left': {
-          color,
+          // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
           dimmer: moverDimmer,
           movement: { tilt: moverTilt, pan: 0.5 - panSpread/2, isAbsolute: true, speed: 0.2 }
         },
         'movers_right': {
-          color,
+          // 🚫 NO COLOR - Transparente a rueda mecánica
           dimmer: moverDimmer,
           movement: { tilt: moverTilt, pan: 0.5 + panSpread/2, isAbsolute: true, speed: 0.2 }
         }
@@ -360,10 +362,12 @@ export class AbyssalRise extends BaseEffect {
       zoneOverrides: {
         'front': { color, dimmer, white: phaseProgress },
         'back': { color, dimmer, white: phaseProgress },
+        // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
+        // En fase blinding usamos white override pero NO color change
         'movers': {
-          color,
+          // 🚫 NO COLOR - Transparente a rueda mecánica
           dimmer,
-          white: phaseProgress,
+          white: phaseProgress,  // White override es canal independiente, OK
           movement: { tilt: moverTilt, pan: 0.5, isAbsolute: true, speed: 0.5 }
         }
       }

@@ -134,10 +134,16 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.20,        // Ordenado pero con pequeñas variaciones
     organicity: 0.85,   // Parece humo VIVO
   },
-  'static_pulse': {
-    aggression: 0.35,   // ⚡ Glitches tienen "punch" pero suave
-    chaos: 0.50,        // 🔪 WAVE 976: 0.75 → 0.50 (menos caótico, más palatable)
-    organicity: 0.30,   // 🔪 WAVE 976: 0.15 → 0.30 (más orgánico para competir)
+  // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
+  'binary_glitch': {
+    aggression: 0.60,   // ⚡ Golpe seco digital - tartamudeo de código
+    chaos: 0.85,        // ALTO caos - glitch impredecible
+    organicity: 0.00,   // 100% máquina - cero orgánico
+  },
+  'seismic_snap': {
+    aggression: 0.70,   // 💥 Golpe físico de luz - obturador gigante
+    chaos: 0.20,        // Ordenado - SNAP preciso
+    organicity: 0.10,   // Casi 100% máquina
   },
   'digital_rain': {
     aggression: 0.35,   // � WAVE 977: 0.20 → 0.35 (más presencia)
@@ -162,6 +168,20 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.15,   // 🔵 Pulso sutil submarino
     chaos: 0.10,        // MUY ordenado (secuencia back→front)
     organicity: 0.05,   // 100% máquina/tecnología
+  },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🔮 WAVE 988: THE FINAL ARSENAL
+  // ═══════════════════════════════════════════════════════════════
+  'fiber_optics': {
+    aggression: 0.10,   // 🌈 Cero violencia - solo viaja
+    chaos: 0.20,        // Ordenado - progresión cíclica
+    organicity: 0.00,   // 100% sintético tecnológico
+  },
+  'core_meltdown': {
+    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
+    chaos: 1.00,        // MÁXIMO - Impredecible strobe
+    organicity: 0.00,   // 100% máquina apocalíptica
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -601,7 +621,8 @@ export class DNAAnalyzer {
       return 'techno-industrial'
     }
     // Techno-atmospheric
-    if (['void_mist', 'static_pulse', 'digital_rain', 'deep_breath'].includes(effectId)) {
+    // 🔪 WAVE 986: static_pulse PURGED, binary_glitch + seismic_snap ADDED
+    if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap'].includes(effectId)) {
       return 'techno-atmospheric'
     }
     // Latino-organic

@@ -194,9 +194,14 @@ export class VoidMist extends BaseEffect {
     const moverDimmer = this.config.minIntensity + 
       moverBreathIntensity * (this.config.maxIntensity - this.config.minIntensity)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 984: THE MOVER LAW - Movers en MODO FANTASMA
+    // "Si dura >2s, los Movers tienen PROHIBIDO modular color"
+    // Solo dimmer + movement, sin color (transparente a física)
+    // ═══════════════════════════════════════════════════════════════════════
     output.zoneOverrides!['movers'] = {
       dimmer: moverDimmer,
-      color: baseColor,
+      // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
       blendMode: 'max' as const,
       movement: {
         pan: this.panOffset,

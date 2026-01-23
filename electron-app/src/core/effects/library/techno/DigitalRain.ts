@@ -60,9 +60,9 @@ interface DigitalRainConfig {
 
 const DEFAULT_CONFIG: DigitalRainConfig = {
   durationMs: 4000,          // 🔪 WAVE 976: 6s → 4s (más dinámico)
-  flickerProbability: 0.15,  // 15% chance por frame (~9 FPS flickering)
-  minIntensity: 0.1,
-  maxIntensity: 0.3,
+  flickerProbability: 0.03,  // � WAVE 986.1: 20% → 3% (de metralleta a lluvia)
+  minIntensity: 0.35,        // 🛡️ WAVE 984: 0.1 → 0.35 (BOOST - era invisible)
+  maxIntensity: 0.70,        // 🛡️ WAVE 984: 0.3 → 0.70 (BOOST para compensar movers)
   scanSpeed: 15,             // 15°/s - muy lento
   tiltAngle: -45,            // Mirando hacia abajo
 }
@@ -163,14 +163,14 @@ export class DigitalRain extends BaseEffect {
         output.zoneOverrides![zone] = {
           dimmer: dimmerValue,
           color: color,
-          blendMode: 'max' as const,
+          blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
         }
       }
     })
 
     // ═════════════════════════════════════════════════════════════════════
-    // MOVERS: Tilt fijo hacia abajo, dimmer flickering
-    // 🔪 WAVE 976: Eliminar movement override - deja que VMM controle posición
+    // MOVERS: Solo dimmer flickering - MODO FANTASMA
+    // �️ WAVE 984: THE MOVER LAW - Eliminar color, deja que VMM controle
     // ═════════════════════════════════════════════════════════════════════
     const moverDimmer = Math.random() < this.config.flickerProbability
       ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
@@ -179,8 +179,8 @@ export class DigitalRain extends BaseEffect {
     if (moverDimmer > 0) {
       output.zoneOverrides!['movers'] = {
         dimmer: moverDimmer,
-        color: { h: 180, s: 100, l: 50 }, // CYAN
-        blendMode: 'max' as const,
+        // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+        blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
         // NO movement override - VMM takes control
       }
     }

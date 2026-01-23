@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🏭 WAVE 977: LA FÁBRICA - El Eslabón Perdido del Techno
+ * 🚂 WAVE 990: RAILWAY SWITCH - VÍA HTP (Colaborador)
  * 
  * FILOSOFÍA:
  * Flashes suaves dispersos en el escenario. Como cámaras de fotos
@@ -14,7 +15,7 @@
  * El puente entre la calma y la tormenta.
  * 
  * COMPORTAMIENTO:
- * - MixBus: 'global' (ADITIVO - flashes que salpican la física)
+ * - MixBus: 'htp' (WAVE 990: Flashes que suman brillo al layer físico)
  * - Flashes blancos suaves, dispersos espacialmente
  * - NO sincrónicos: cada fixture tiene probabilidad independiente
  * - Frecuencia: 2-4 Hz (lento para no agredir)
@@ -30,7 +31,7 @@
  * - Opcional: Tinte cyan (190, 20, 85) en peaks
  * 
  * @module core/effects/library/techno/AmbientStrobe
- * @version WAVE 977 - LA FÁBRICA
+ * @version WAVE 990 - RAILWAY SWITCH HTP
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -94,7 +95,7 @@ export class AmbientStrobe extends BaseEffect {
   readonly name = 'Ambient Strobe'
   readonly category: EffectCategory = 'physical'
   readonly priority = 68  // Entre atmospheric (60-70) y aggressive (85-95)
-  readonly mixBus = 'global' as const  // 🚂 Salpica la física
+  readonly mixBus = 'htp' as const  // 🚂 WAVE 990: HTP - Flashes que suman brillo
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state
@@ -201,12 +202,14 @@ export class AmbientStrobe extends BaseEffect {
     const zoneOverrides: Record<string, {
       dimmer: number
       color?: { h: number; s: number; l: number }
+      blendMode?: 'replace' | 'max'  // 🔧 WAVE 982.5
     }> = {}
     
     for (const [zone, flash] of this.activeFlashes) {
       zoneOverrides[zone] = {
         dimmer: flash.intensity,
         color,
+        blendMode: 'max'  // 🔧 WAVE 982.5: HTP - suma con física
       }
     }
     

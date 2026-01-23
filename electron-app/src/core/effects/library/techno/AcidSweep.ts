@@ -250,23 +250,39 @@ export class AcidSweep extends BaseEffect {
     
     for (const [zone, zoneIntensity] of this.zoneIntensities) {
       if (zoneIntensity > 0.05) {  // Threshold para evitar ruido
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ WAVE 984: THE MOVER LAW - Movers solo dimmer, SIN COLOR
+        // AcidSweep dura ~6s total → Movers en MODO FANTASMA
+        // ═══════════════════════════════════════════════════════════════════
+        const isMovers = zone === 'movers'
+        
         // Escalar intensidad por trigger intensity
         const scaledIntensity = zoneIntensity * this.triggerIntensity
         
-        // 🔪 Modular luminosidad según intensidad
-        // Pico = 80% luminosidad, Base = 40%
-        const luminosity = this.baseColor.l * (0.4 + scaledIntensity * 0.6)
-        
-        // 🔪 Flash blanco en el pico del sweep
-        const isPeak = zoneIntensity > 0.95
-        const zoneColor = isPeak 
-          ? { h: 0, s: 0, l: 95 }  // Blanco flash
-          : { ...this.baseColor, l: luminosity }
-        
-        zoneOverrides[zone] = {
-          color: zoneColor,
-          dimmer: scaledIntensity,
-          blendMode: 'max'  // HTP - suma con física, no reemplaza
+        if (isMovers) {
+          // 🛡️ MOVERS: Solo dimmer, sin color (rueda mecánica no cambia)
+          zoneOverrides[zone] = {
+            dimmer: scaledIntensity,
+            // � NO COLOR - Transparente a rueda mecánica
+            blendMode: 'max'
+          }
+        } else {
+          // PARS: Color completo con modulación
+          // �🔪 Modular luminosidad según intensidad
+          // Pico = 80% luminosidad, Base = 40%
+          const luminosity = this.baseColor.l * (0.4 + scaledIntensity * 0.6)
+          
+          // 🔪 Flash blanco en el pico del sweep
+          const isPeak = zoneIntensity > 0.95
+          const zoneColor = isPeak 
+            ? { h: 0, s: 0, l: 95 }  // Blanco flash
+            : { ...this.baseColor, l: luminosity }
+          
+          zoneOverrides[zone] = {
+            color: zoneColor,
+            dimmer: scaledIntensity,
+            blendMode: 'max'  // HTP - suma con física, no reemplaza
+          }
         }
       }
     }

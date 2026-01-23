@@ -76,7 +76,7 @@ const DEFAULT_CONFIG: StaticPulseConfig = {
   flashDurationMs: 50,       // Flash muy corto (50ms)
   minIntervalMs: 500,        // Mínimo 0.5s entre flashes
   maxIntervalMs: 1200,       // Máximo 1.2s entre flashes
-  flashIntensity: 0.4,       // Intensidad media
+  flashIntensity: 0.75,      // 🛡️ WAVE 984: 0.4 → 0.75 (BOOST para compensar movers)
   flashProbability: 0.3,     // 30% chance por fixture
   bpmSync: true,
   minBeatsInterval: 2,       // Mínimo 2 beats
@@ -258,17 +258,13 @@ export class StaticPulse extends BaseEffect {
     })
 
     // ═════════════════════════════════════════════════════════════════════
-    // MOVERS: Frozen con micro-glitch
+    // 🛡️ WAVE 984: THE MOVER LAW - MOVERS CASTRADOS
+    // "Si dura >2s, los Movers tienen PROHIBIDO modular color"
+    // StaticPulse dura 5s → Movers ELIMINADOS del output
     // ═════════════════════════════════════════════════════════════════════
-    output.zoneOverrides!['movers'] = {
-      dimmer: 0.1, // Muy bajo - solo outline
-      color,
-      blendMode: 'max' as const,
-      movement: {
-        pan: this.moverPan,
-        tilt: this.moverTilt,
-      },
-    }
+    // ANTES: Movers con color + micro-glitch
+    // AHORA: SIN MOVERS - Solo los Pars disparan
+    // output.zoneOverrides!['movers'] = { ... } → ELIMINADO
 
     return output
   }

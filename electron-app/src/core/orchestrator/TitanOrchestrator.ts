@@ -388,6 +388,9 @@ export class TitanOrchestrator {
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
             
+            // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
+            const isGlobalBus = effectOutput.mixBus === 'global'
+            
             // Aplicar color si existe
             if (zoneData.color) {
               const rgb = this.hslToRgb(
@@ -415,15 +418,23 @@ export class TitanOrchestrator {
             // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
             // 
             // DEFAULT: 'max' - Más seguro para energía general
+            // 
+            // 🔗 WAVE 991: THE MISSING LINK
+            // Si el efecto tiene mixBus='global', forzamos 'replace' SIEMPRE
+            // El mixBus de la clase es la autoridad máxima
             // ═══════════════════════════════════════════════════════════════════════
             if (zoneData.dimmer !== undefined) {
               const effectDimmer = Math.round(zoneData.dimmer * 255)
-              const blendMode = zoneData.blendMode || 'max'  // Default: HTP (energía)
+              
+              // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
+              const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max')
+              
               const physicsDimmer = fixtureStates[index].dimmer
               
               let finalDimmer: number
               if (blendMode === 'replace') {
                 // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                // 🔗 WAVE 991: También forzado cuando mixBus='global'
                 finalDimmer = effectDimmer
               } else {
                 // 🔥 MAX (HTP): El más brillante gana - para efectos de energía
@@ -438,22 +449,27 @@ export class TitanOrchestrator {
             
             // ═══════════════════════════════════════════════════════════════════════
             // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
+            // 🔗 WAVE 991: Respetar mixBus='global' también para white/amber
             // 
             // PROBLEMA: TropicalPulse/ClaveRhythm enviaban white/amber pero el
             // Orchestrator los ignoraba completamente.
             // 
-            // SOLUCIÓN: HTP (Math.max) para white/amber - siempre SUMA, nunca resta
+            // SOLUCIÓN:
+            // - mixBus='htp' → HTP (Math.max) - siempre SUMA
+            // - mixBus='global' → LTP (replace) - el efecto dicta
             // ═══════════════════════════════════════════════════════════════════════
             if (zoneData.white !== undefined) {
               const effectWhite = Math.round(zoneData.white * 255)
               const physicsWhite = fixtureStates[index].white || 0
-              fixtureStates[index].white = Math.max(physicsWhite, effectWhite)
+              // 🔗 WAVE 991: global = LTP, htp = HTP
+              fixtureStates[index].white = isGlobalBus ? effectWhite : Math.max(physicsWhite, effectWhite)
             }
             
             if (zoneData.amber !== undefined) {
               const effectAmber = Math.round(zoneData.amber * 255)
               const physicsAmber = fixtureStates[index].amber || 0
-              fixtureStates[index].amber = Math.max(physicsAmber, effectAmber)
+              // 🔗 WAVE 991: global = LTP, htp = HTP
+              fixtureStates[index].amber = isGlobalBus ? effectAmber : Math.max(physicsAmber, effectAmber)
             }
           }
           // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)

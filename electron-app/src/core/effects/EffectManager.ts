@@ -69,7 +69,7 @@ import { AbyssalRise } from './library/techno/AbyssalRise'
 
 // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
 import { VoidMist } from './library/techno/VoidMist'
-import { StaticPulse } from './library/techno/StaticPulse'
+// 🔪 WAVE 986: StaticPulse PURGED - replaced by BinaryGlitch + SeismicSnap
 import { DigitalRain } from './library/techno/DigitalRain'
 import { DeepBreath } from './library/techno/DeepBreath'
 
@@ -77,7 +77,15 @@ import { DeepBreath } from './library/techno/DeepBreath'
 import { AmbientStrobe } from './library/techno/AmbientStrobe'
 import { SonarPing } from './library/techno/SonarPing'
 
-// 🛡️ WAVE 680: Import VibeManager for THE SHIELD
+// 🔪 WAVE 986: ACTIVE REINFORCEMENTS - Nuevas armas rápidas
+import { BinaryGlitch } from './library/techno/BinaryGlitch'
+import { SeismicSnap } from './library/techno/SeismicSnap'
+
+// � WAVE 988: THE FINAL ARSENAL
+import { FiberOptics } from './library/techno/FiberOptics'
+import { CoreMeltdown } from './library/techno/CoreMeltdown'
+
+// �🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
@@ -143,12 +151,18 @@ const EFFECT_VIBE_RULES: Record<string, {
   'abyssal_rise': { isDynamic: true },     // 🌪️ Epic 8-bar transition
   // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL
   'void_mist': { isDynamic: false },       // 🌫️ Ambient - allowed in chill
-  'static_pulse': { isDynamic: true },     // ⚡ Glitchy - needs energy
+  // 🔪 WAVE 986: static_pulse PURGED
   'digital_rain': { isDynamic: true },     // 💧 Matrix effect - subtle dynamic
   'deep_breath': { isDynamic: false },     // 🫁 Ambient - allowed in chill
   // ⚡ WAVE 977: LA FÁBRICA
   'ambient_strobe': { isDynamic: true },   // 📸 Camera flashes - needs energy
   'sonar_ping': { isDynamic: false },      // 🔵 Submarine ping - allowed in chill (for silences)
+  // 🔪 WAVE 986: ACTIVE REINFORCEMENTS
+  'binary_glitch': { isDynamic: true },    // ⚡ Digital stutter - tartamudeo código
+  'seismic_snap': { isDynamic: true },     // 💥 Physical light snap - golpe de obturador
+  // 🔮 WAVE 988: THE FINAL ARSENAL
+  'fiber_optics': { isDynamic: false },    // 🌈 Ambient traveling colors - allowed in chill
+  'core_meltdown': { requiresStrobe: true, isDynamic: true },  // ☢️ LA BESTIA - extreme strobe
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -343,9 +357,11 @@ export class EffectManager extends EventEmitter {
     let maxIntensity = 0
     let globalOverride = false  // 🧨 WAVE 630
     let highestPriorityColor: { h: number; s: number; l: number } | undefined
-    let highestPriority = -1
+    let highestPriority = -1  // Para color (legacy)
     // 🚂 WAVE 800: Mix Bus del efecto dominante
     let dominantMixBus: 'htp' | 'global' = 'htp'
+    // 🔗 WAVE 991: Prioridad separada para mixBus (THE MISSING LINK)
+    let mixBusPriority = -1
     // 🥁 WAVE 700.7: Movement tracking
     let highestPriorityMovement: { pan?: number; tilt?: number; isAbsolute?: boolean; speed?: number } | undefined
     let movementPriority = -1
@@ -399,9 +415,12 @@ export class EffectManager extends EventEmitter {
         highestPriorityColor = output.colorOverride
       }
       
-      // 🚂 WAVE 800: El efecto de mayor prioridad determina el mixBus
-      if (effect.priority > highestPriority || (effect.priority === highestPriority && effect.mixBus === 'global')) {
-        // Global tiene precedencia en caso de empate de prioridad
+      // � WAVE 991: THE MISSING LINK - El efecto de mayor prioridad determina el mixBus
+      // CRÍTICO: Usar variable SEPARADA (mixBusPriority) para no depender de colorOverride
+      // REGLA: Si hay empate de prioridad Y uno es 'global', el 'global' SIEMPRE gana
+      if (effect.priority > mixBusPriority || 
+          (effect.priority === mixBusPriority && effect.mixBus === 'global')) {
+        mixBusPriority = effect.priority
         dominantMixBus = effect.mixBus
       }
       
@@ -629,8 +648,7 @@ export class EffectManager extends EventEmitter {
     // 🌫️ Void Mist - Purple fog with breathing
     this.effectFactories.set('void_mist', () => new VoidMist())
     
-    // ⚡ Static Pulse - Industrial glitch flashes
-    this.effectFactories.set('static_pulse', () => new StaticPulse())
+    // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
     
     // 💧 Digital Rain - Matrix flicker (cyan/lime)
     this.effectFactories.set('digital_rain', () => new DigitalRain())
@@ -647,6 +665,26 @@ export class EffectManager extends EventEmitter {
     
     // 🔵 Sonar Ping - Ping submarino back→front (silence/valley zone)
     this.effectFactories.set('sonar_ping', () => new SonarPing())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔪 WAVE 986: ACTIVE REINFORCEMENTS - Nuevas armas rápidas
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ⚡ Binary Glitch - Tartamudeo de código morse corrupto (active zone)
+    this.effectFactories.set('binary_glitch', () => new BinaryGlitch())
+    
+    // 💥 Seismic Snap - Golpe físico de luz tipo obturador (active/intense zone)
+    this.effectFactories.set('seismic_snap', () => new SeismicSnap())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 988: THE FINAL ARSENAL
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🌈 Fiber Optics - Traveling ambient colors (silence/valley/ambient)
+    this.effectFactories.set('fiber_optics', () => new FiberOptics())
+    
+    // ☢️ Core Meltdown - LA BESTIA extreme strobe (intense/peak)
+    this.effectFactories.set('core_meltdown', () => new CoreMeltdown())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

@@ -1,5 +1,16 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════  balanced: {
+    name: 'balanced',
+    description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
+    emoji: '⚖️',
+    thresholdMultiplier: 1.15,     // 🎯 WAVE 937: 15% más exigente (era 1.0)
+    cooldownMultiplier: 1.0,       // Cooldowns normales
+    ethicsThreshold: 1.10,         // 🔒 WAVE 987: 0.90 → 1.10 - Solo EXCELENCIA salta cooldown
+    maxIntensity: 1.0,             // Sin límite
+    minIntensity: undefined,       // 🔪 WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
+    blockList: [],                 // Nada bloqueado
+    forceUnlock: undefined,        // Cooldowns normales
+  },═════════════
  * 🎭 MOOD CONTROLLER - THE SWITCH
  * ═══════════════════════════════════════════════════════════════════════════
  * 

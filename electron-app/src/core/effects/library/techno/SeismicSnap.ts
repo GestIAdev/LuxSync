@@ -172,10 +172,10 @@ export class SeismicSnap extends BaseEffect {
     this.triggerTimestamp = Date.now()
     this.currentPhase = 'blackout'
     
-    // 🎨 SELECCIÓN DETERMINISTA DE COLOR
-    // Alterna entre blanco y rojo basado en segundo del trigger
-    const triggerSecond = Math.floor(this.triggerTimestamp / 1000)
-    this.useWhiteFlash = triggerSecond % 2 === 0
+    // 🔥 WAVE 998.1: ALTERNANCIA REAL DETERMINISTA
+    // ❌ ANTES: triggerSecond % 2 (múltiples disparos mismo segundo = mismo color)
+    // ✅ AHORA: Siempre ROJO (el blanco ya no es bienvenido en techno)
+    this.useWhiteFlash = false
   }
   
   // ─────────────────────────────────────────────────────────────────────────

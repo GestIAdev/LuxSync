@@ -125,8 +125,10 @@ export class CoreMeltdown extends BaseEffect {
     this.strobeState = true  // Empezar encendido
     this.lastStrobeToggle = 0
     
-    // Alternar entre magenta y blanco por trigger (determinista)
-    this.useWhiteFlash = (Date.now() % 2) === 0
+    // 🔥 WAVE 998.1: MAGENTA NUCLEAR SIEMPRE
+    // ❌ ANTES: Alternaba magenta/blanco (Date.now() % 2)
+    // ✅ AHORA: Siempre MAGENTA (identidad techno, no más blanco)
+    this.useWhiteFlash = false
     
     console.log(`[☢️ CORE_MELTDOWN] ⚠️ LA BESTIA DESPIERTA! Rate=${this.config.strobeRateHz}Hz`)
   }

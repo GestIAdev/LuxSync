@@ -1,27 +1,32 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌈 FIBER OPTICS - TRAVELING COLORS
+ * 🌈 FIBER OPTICS - TRAVELING COLORS (FAST & VISIBLE)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * 🔧 WAVE 988: THE FINAL ARSENAL
+ * � WAVE 997.5: RESURRECTION - "De zen invisible a techno visible"
  * 
- * FILOSOFÍA:
- * Colores viajando suavemente por los PARs como fibra óptica.
- * Tecnología pura, sin caos, sin agresión. El efecto más "zen" del arsenal.
- * Perfecto para intros, silencios y momentos de transición.
+ * FILOSOFÍA ACTUALIZADA:
+ * Colores viajando RÁPIDAMENTE por los PARs como fibra óptica.
+ * Tecnología pura, VISIBLE, con FLOW y VIDA. Ya no es "zen invisible".
+ * Perfecto para intros, transiciones y momentos ambient CON ENERGÍA.
+ * 
+ * ❌ ELIMINADO (WAVE 997.5):
+ * - Intensidad baja (0.45 → 0.85) - Ya no es "suave", es VISIBLE
+ * - Velocidad zen (0.25 Hz → 1.0 Hz) - 4x más rápido
+ * - Movers fantasma débiles (0.20 → 0.50) - Más presencia
  * 
  * ZONA TARGET: SILENCE / VALLEY / AMBIENT (E < 0.45)
- * Cuando la música respira, la fibra brilla.
+ * Cuando la música respira, la fibra BRILLA CON VIDA.
  * 
  * COMPORTAMIENTO:
  * - MixBus: 'global' (para tener control total del escenario)
- * - PARs: Onda de color viajando back → pars → front (traveling wave)
- * - Movers: MODO FANTASMA - Solo movimiento lento, sin color override
- * - Colores: Cian → Magenta → Azul (paleta tech fría)
- * - Transiciones: Suaves, sinusoidales
+ * - PARs: Onda de color viajando back → pars → front (traveling wave RÁPIDO)
+ * - Movers: MODO FANTASMA - Solo movimiento medio-rápido, sin color override
+ * - Colores: Cian → Magenta → Azul (paleta tech fría BRILLANTE)
+ * - Transiciones: Fluidas, sinusoidales, VISIBLES
  * 
  * ADN:
- * - Aggression: 0.10 (Mínima - efecto zen)
+ * - Aggression: 0.10 (Mínima - efecto ambient)
  * - Chaos: 0.20 (Bajo - predecible y ordenado)
  * - Organicity: 0.00 (100% tecnología)
  * 
@@ -29,7 +34,7 @@
  * → Movers en MODO FANTASMA (solo dimmer, NO color override)
  * 
  * @module core/effects/library/techno/FiberOptics
- * @version WAVE 988 - THE FINAL ARSENAL
+ * @version WAVE 997.5 - THE RESURRECTION
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -63,10 +68,10 @@ interface FiberOpticsConfig {
 
 const DEFAULT_CONFIG: FiberOpticsConfig = {
   durationMs: 6000,          // 6 segundos - LONG effect
-  waveSpeedHz: 0.25,         // 0.25 Hz = 1 ciclo cada 4 segundos (muy lento)
-  parIntensity: 0.45,        // 45% - visible pero suave
-  moverIntensity: 0.20,      // 20% - tenue para modo fantasma
-  moverSpeedDegPerSec: 8,    // 8°/s - movimiento muy lento
+  waveSpeedHz: 1.0,          // 🔥 WAVE 997.5: 1.0 Hz = 1 ciclo por segundo (4x más rápido que antes)
+  parIntensity: 0.85,        // 🔥 WAVE 997.5: 85% - VISIBLE y BRILLANTE (era 0.45)
+  moverIntensity: 0.50,      // 🔥 WAVE 997.5: 50% - Más presencia (era 0.20)
+  moverSpeedDegPerSec: 15,   // 🔥 WAVE 997.5: 15°/s - Movimiento más rápido (era 8°/s)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -210,7 +215,9 @@ export class FiberOptics extends BaseEffect {
       }
       
       // Intensidad modulada por wave + envelope
-      const zoneIntensity = this.config.parIntensity * envelope * (0.5 + 0.5 * normalizedWave)
+      // 🔥 WAVE 997.5: Mayor contraste (0.3 - 1.0) en lugar de (0.5 - 1.0)
+      // Esto hace que la onda sea más visible y dramática
+      const zoneIntensity = this.config.parIntensity * envelope * (0.3 + 0.7 * normalizedWave)
       
       zoneOverrides[zone] = {
         dimmer: zoneIntensity * this.triggerIntensity,

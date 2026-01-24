@@ -33,7 +33,8 @@ import {
   Trash2,
   Copy,
   AlertTriangle,
-  Check
+  Check,
+  Palette  // 🎨 WAVE 1002: Color Engine Icon
 } from 'lucide-react'
 import { FixturePreview3D } from './FixturePreview3D'
 import { PhysicsTuner } from './PhysicsTuner'
@@ -44,7 +45,7 @@ import {
   MotorType,
   InstallationOrientation
 } from '../../../core/stage/ShowFileV2'
-import { FixtureDefinition, ChannelType, FixtureChannel } from '../../../types/FixtureDefinition'
+import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
 import './FixtureForge.css'
@@ -129,6 +130,16 @@ const FIXTURE_TYPES = [
   'Blinder',
   'Scanner',
   'Other'
+]
+
+// 🎨 WAVE 1002: Color Engine Options
+const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description: string; icon: string }[] = [
+  { value: 'rgb', label: 'RGB LEDs', description: 'Red/Green/Blue mixing (PARs, Washes)', icon: '🔴🟢🔵' },
+  { value: 'rgbw', label: 'RGBW LEDs', description: 'RGB + White LED', icon: '🔴🟢🔵⚪' },
+  { value: 'wheel', label: 'Color Wheel', description: 'Mechanical wheel (Beams, Spots)', icon: '🎨' },
+  { value: 'cmy', label: 'CMY Mixing', description: 'Cyan/Magenta/Yellow flags', icon: '🩵🩷💛' },
+  { value: 'hybrid', label: 'Hybrid', description: 'Wheel + LEDs combined', icon: '🎨+🔴' },
+  { value: 'none', label: 'No Color', description: 'Dimmer only (Strobes, etc)', icon: '⬜' },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -237,8 +248,16 @@ const TYPE_NORMALIZATION_MAP: Record<string, string> = {
  * 🔥 WAVE 390: SINGLE SOURCE OF TRUTH
  * Esta función es la ÚNICA autorizada para construir el JSON final.
  * Llamada por handleSave Y por la vista previa JSON.
+ * 
+ * @param fixture - Base fixture data
+ * @param physics - Physics profile
+ * @param colorEngine - 🎨 WAVE 1002: Manual color engine selection (overrides auto-detection)
  */
-function buildFinalFixture(fixture: FixtureDefinition, physics: PhysicsProfile): FixtureDefinition {
+function buildFinalFixture(
+  fixture: FixtureDefinition, 
+  physics: PhysicsProfile,
+  colorEngine?: ColorEngineType
+): FixtureDefinition {
   // 1. Normalizar tipo
   const normalizedType = TYPE_NORMALIZATION_MAP[fixture.type] || 'generic'
   
@@ -256,16 +275,54 @@ function buildFinalFixture(fixture: FixtureDefinition, physics: PhysicsProfile):
     is16bit: ch.is16bit || false
   }))
   
-  // 4. Generar capabilities basado en canales
+  // 4. 🎨 WAVE 1002: Generate capabilities based on colorEngine (if provided) or channels
+  // If colorEngine is explicitly set, use it to determine hasColorMixing/hasColorWheel
+  // This allows manual override for fixtures with generic channels
+  const hasColorMixingFromChannels = cleanChannels.some(ch => ['red', 'green', 'blue'].includes(ch.type))
+  const hasColorWheelFromChannels = cleanChannels.some(ch => ch.type === 'color_wheel')
+  
+  // Determine final color flags based on colorEngine selection
+  let hasColorMixing = hasColorMixingFromChannels
+  let hasColorWheel = hasColorWheelFromChannels
+  
+  if (colorEngine) {
+    // 🎨 WAVE 1002: Manual override - use colorEngine to set flags
+    switch (colorEngine) {
+      case 'rgb':
+      case 'rgbw':
+        hasColorMixing = true
+        hasColorWheel = false
+        break
+      case 'wheel':
+        hasColorMixing = false
+        hasColorWheel = true
+        break
+      case 'cmy':
+        hasColorMixing = true  // CMY is a form of color mixing
+        hasColorWheel = false
+        break
+      case 'hybrid':
+        hasColorMixing = true
+        hasColorWheel = true
+        break
+      case 'none':
+        hasColorMixing = false
+        hasColorWheel = false
+        break
+    }
+  }
+  
   const capabilities = {
     hasPan: cleanChannels.some(ch => ch.type === 'pan'),
     hasTilt: cleanChannels.some(ch => ch.type === 'tilt'),
-    hasColorMixing: cleanChannels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
-    hasColorWheel: cleanChannels.some(ch => ch.type === 'color_wheel'),
+    hasColorMixing,
+    hasColorWheel,
     hasGobo: cleanChannels.some(ch => ch.type === 'gobo'),
     hasPrism: cleanChannels.some(ch => ch.type === 'prism'),
     hasStrobe: cleanChannels.some(ch => ch.type === 'strobe'),
-    hasDimmer: cleanChannels.some(ch => ch.type === 'dimmer')
+    hasDimmer: cleanChannels.some(ch => ch.type === 'dimmer'),
+    // 🎨 WAVE 1002: Persist the explicit color engine selection
+    colorEngine: colorEngine || (hasColorWheel ? 'wheel' : hasColorMixing ? 'rgb' : 'none')
   }
   
   // 5. WAVE 390.5: Build complete physics object with ALL configurable fields
@@ -424,6 +481,9 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   const [dmxAddress, setDmxAddress] = useState<number | null>(null)
   const [universe, setUniverse] = useState<number>(1)
   
+  // 🎨 WAVE 1002: Color Engine Selection
+  const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
+  
   // Preview controls
   const [showPreview, setShowPreview] = useState(true)
   const [previewPan, setPreviewPan] = useState(127)
@@ -519,7 +579,22 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         
         console.log('[FixtureForge] 📝 Loaded existing definition:', existingDefinition.name, 'with', existingDefinition.channels.length, 'channels')
         
-        // 🎯 WAVE 685.6: If we also have editingFixture, load DMX from it
+        // � WAVE 1002: Load color engine from capabilities (if exists)
+        if (existingDefinition.capabilities?.colorEngine) {
+          console.log('[FixtureForge] 🎨 Loading color engine:', existingDefinition.capabilities.colorEngine)
+          setColorEngine(existingDefinition.capabilities.colorEngine)
+        } else {
+          // Auto-detect from capabilities flags (legacy support)
+          const autoDetected: ColorEngineType = existingDefinition.capabilities?.hasColorWheel 
+            ? (existingDefinition.capabilities?.hasColorMixing ? 'hybrid' : 'wheel')
+            : existingDefinition.capabilities?.hasColorMixing 
+              ? 'rgb' 
+              : 'none'
+          console.log('[FixtureForge] 🎨 Auto-detected color engine:', autoDetected)
+          setColorEngine(autoDetected)
+        }
+        
+        // �🎯 WAVE 685.6: If we also have editingFixture, load DMX from it
         if (editingFixture) {
           setDmxAddress(editingFixture.address ?? 1)
           setUniverse(editingFixture.universe ?? 1)
@@ -583,6 +658,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       // 🎯 WAVE 685.6: Reset DMX fields
       setDmxAddress(null)
       setUniverse(1)
+      // 🎨 WAVE 1002: Reset color engine
+      setColorEngine('rgb')
       console.log('[FixtureForge] 🧹 Modal closed, state reset')
     }
   }, [isOpen]) // 🎯 WAVE 685.6: ONLY depend on isOpen to prevent re-init while modal is open
@@ -698,15 +775,16 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
-    // 🔥 WAVE 390: Usar la función pura buildFinalFixture
-    const finalFixture = buildFinalFixture(fixture, physics)
+    // 🔥 WAVE 390 + 1002: Usar la función pura buildFinalFixture con colorEngine
+    const finalFixture = buildFinalFixture(fixture, physics, colorEngine)
     
-    console.log('[FixtureForge] � WAVE 390 DUMB SAVE:', {
+    console.log('[FixtureForge] 💾 WAVE 390 DUMB SAVE:', {
       id: finalFixture.id,
       name: finalFixture.name,
       type: finalFixture.type,
       channelCount: finalFixture.channels.length,
-      physics: finalFixture.physics
+      physics: finalFixture.physics,
+      colorEngine: finalFixture.capabilities?.colorEngine  // 🎨 WAVE 1002
     })
     
     // Guardar en disco
@@ -738,7 +816,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       console.error('[FixtureForge] ❌ window.lux.saveDefinition not available!')
       alert('Save function not available')
     }
-  }, [fixture, physics, isFormValid, onSave, onClose, dmxAddress, universe]) // 🎯 WAVE 685.6: Add DMX deps
+  }, [fixture, physics, isFormValid, onSave, onClose, dmxAddress, universe, colorEngine]) // 🎯 WAVE 685.6 + 1002: Add deps
   
   const handleExport = useCallback(() => {
     const fxtContent = exportToFXT(fixture)
@@ -845,7 +923,33 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
               </select>
             </div>
             
-            {/* 🎯 WAVE 685.6: DMX Address (only shown when editing stage fixture) */}
+            {/* � WAVE 1002: Color Engine Selector */}
+            <div className="forge-input-group color-engine-group">
+              <label>
+                <Palette size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                Color Engine
+              </label>
+              <select
+                value={colorEngine}
+                onChange={(e) => {
+                  const newEngine = e.target.value as ColorEngineType
+                  console.log('[FixtureForge] 🎨 Color engine changed:', newEngine)
+                  setColorEngine(newEngine)
+                }}
+                className="color-engine-select"
+              >
+                {COLOR_ENGINE_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.icon} {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className="color-engine-description">
+                {COLOR_ENGINE_OPTIONS.find(o => o.value === colorEngine)?.description}
+              </span>
+            </div>
+            
+            {/* �🎯 WAVE 685.6: DMX Address (only shown when editing stage fixture) */}
             {editingFixture && (
               <>
                 <div className="forge-input-group small">
@@ -1154,8 +1258,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                 <div className="preview-json">
                   <h3>Vista previa JSON (Lo que se guarda)</h3>
                   <pre>
-                    {/* 🔥 WAVE 390: Preview uses SAME function as save - SINGLE SOURCE OF TRUTH */}
-                    {JSON.stringify(buildFinalFixture(fixture, physics), null, 2)}
+                    {/* 🔥 WAVE 390 + 1002: Preview uses SAME function as save - SINGLE SOURCE OF TRUTH */}
+                    {JSON.stringify(buildFinalFixture(fixture, physics, colorEngine), null, 2)}
                   </pre>
                 </div>
               </div>

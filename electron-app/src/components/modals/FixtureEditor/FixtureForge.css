@@ -1325,3 +1325,47 @@
     flex-wrap: wrap;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* 🎨 WAVE 1002: COLOR ENGINE SELECTOR */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.color-engine-group {
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.color-engine-group label {
+  display: flex;
+  align-items: center;
+  color: #a855f7;
+}
+
+.color-engine-select {
+  background: #1a1a2e;
+  border: 1px solid #a855f7;
+  border-radius: 6px;
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-engine-select:hover {
+  border-color: #c084fc;
+  background: #22223b;
+}
+
+.color-engine-select:focus {
+  outline: none;
+  border-color: #c084fc;
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
+}
+
+.color-engine-description {
+  font-size: 0.7rem;
+  color: #71717a;
+  font-style: italic;
+  margin-top: 2px;
+}

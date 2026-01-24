@@ -1,5 +1,5 @@
 /**
- * 🏛️ WAVE 210: FIXTURE MAPPER
+ * 🏛️ WAVE 210 + WAVE 1001: FIXTURE MAPPER
  *
  * Extracted from main.ts fixtureStates.map() logic
  *
@@ -9,6 +9,8 @@
  * - Calculate DMX channel values
  * - Handle pan/tilt for movers
  * - Support effects override (strobe, blinder, police, rainbow)
+ * - 🎨 WAVE 1001: Color translation for wheel-based fixtures (Beams)
+ * - 🛡️ WAVE 1001: Safety layer for mechanical color wheels
  *
  * DOES NOT:
  * - Calculate intensity (that's ZoneRouter + PhysicsEngine)
@@ -16,6 +18,8 @@
  * - Send DMX (that's the Driver's job)
  */
 import { hslToRgb } from '../../core/protocol/LightingIntent';
+// 🎨 WAVE 1001: HAL Translation imports
+import { getColorTranslator, getHardwareSafetyLayer, } from '../translation';
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE MAPPER CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -31,7 +35,22 @@ export class FixtureMapper {
         this.blackoutActive = false;
         // 🔍 WAVE 338.2: Current optics (set by HAL on vibe change)
         this.currentOptics = { zoom: 127, focus: 127 };
-        console.log('[FixtureMapper] 🎛️ Initialized (WAVE 210)');
+        // 🎨 WAVE 1001: HAL Translation components (singletons)
+        this.colorTranslator = getColorTranslator();
+        this.safetyLayer = getHardwareSafetyLayer();
+        // 🎨 WAVE 1001: Profile cache (avoid repeated lookups)
+        this.profileCache = new Map();
+        // 🎨 WAVE 1001: Debug flag
+        this.halDebug = false;
+        this.halDebugLastLog = 0;
+        console.log('[FixtureMapper] 🎛️ Initialized (WAVE 210 + WAVE 1001 HAL)');
+    }
+    /**
+     * 🎨 WAVE 1001: Enable/disable HAL debug logging
+     */
+    setHALDebug(enabled) {
+        this.halDebug = enabled;
+        console.log(`[FixtureMapper] 🎨 HAL Debug: ${enabled ? 'ON' : 'OFF'}`);
     }
     /**
      * 🔍 WAVE 338.2: Update optics from HAL
@@ -85,6 +104,13 @@ export class FixtureMapper {
             // 🔍 WAVE 338.2: Optics (will be set by HAL via setCurrentOptics)
             zoom: this.currentOptics.zoom,
             focus: this.currentOptics.focus,
+            // 🎨 WAVE 687: Dynamic channel mapping
+            channels: fixture.channels,
+            // 🎨 WAVE 1001: HAL Translation metadata
+            hasColorWheel: fixture.hasColorWheel,
+            hasColorMixing: fixture.hasColorMixing,
+            profileId: fixture.profileId,
+            fixtureId: fixture.id ?? `fixture-${fixture.dmxAddress}`,
         };
     }
     /**
@@ -114,10 +140,15 @@ export class FixtureMapper {
         });
     }
     /**
-     * 🎨 WAVE 687: DYNAMIC CHANNEL MAPPER
+     * 🎨 WAVE 687 + WAVE 1001: DYNAMIC CHANNEL MAPPER WITH HAL TRANSLATION
      *
      * Convert fixture states to DMX packets using the fixture's channel definition.
      * This is the ARCHITECTURALLY CORRECT solution - no more hardcoded 8 channels.
+     *
+     * WAVE 1001 ADDITION: Before generating DMX, translate colors through HAL:
+     * - RGB fixtures: Pass-through (Selene's color goes directly)
+     * - Wheel fixtures: Translate RGB → nearest wheel color
+     * - Safety Layer: Debounce rapid changes to protect mechanical wheels
      *
      * Each fixture's JSON defines its channels (pan, tilt, dimmer, color_wheel, etc.)
      * and this method constructs the DMX packet dynamically based on that definition.
@@ -127,15 +158,102 @@ export class FixtureMapper {
      */
     statesToDMXPackets(states) {
         return states.map(state => {
+            // 🎨 WAVE 1001: Apply HAL translation BEFORE building channels
+            const translatedState = this.applyHALTranslation(state);
             // 🎨 WAVE 687: Build channel array dynamically from fixture definition
-            const channels = this.buildDynamicChannels(state);
+            const channels = this.buildDynamicChannels(translatedState);
             return {
-                universe: state.universe,
-                address: state.dmxAddress,
+                universe: translatedState.universe,
+                address: translatedState.dmxAddress,
                 channels,
-                fixtureId: `fixture-${state.dmxAddress}`
+                fixtureId: translatedState.fixtureId ?? `fixture-${translatedState.dmxAddress}`
             };
         });
+    }
+    /**
+     * 🎨 WAVE 1001: HAL TRANSLATION - The Magic Happens Here
+     *
+     * Translates Selene's RGB dreams into physical DMX reality:
+     * 1. Detect if fixture has color wheel or RGB
+     * 2. If wheel: Find nearest color, apply safety debounce
+     * 3. If RGB: Pass-through (no translation needed)
+     *
+     * PHILOSOPHY: "Selene dreams in RGB, Beams speak their dialect"
+     */
+    applyHALTranslation(state) {
+        // Skip if fixture has RGB mixing (no translation needed)
+        if (state.hasColorMixing && !state.hasColorWheel) {
+            return state;
+        }
+        // Skip if fixture explicitly has no color wheel
+        if (!state.hasColorWheel) {
+            return state;
+        }
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎨 FIXTURE HAS COLOR WHEEL - TRANSLATE!
+        // ═══════════════════════════════════════════════════════════════════
+        // Get or cache the fixture profile
+        const profile = this.getFixtureProfile(state.name, state.profileId);
+        // If no profile found, pass-through (assume RGB)
+        if (!profile) {
+            return state;
+        }
+        // Translate RGB to wheel color
+        const targetRGB = { r: state.r, g: state.g, b: state.b };
+        const translation = this.colorTranslator.translate(targetRGB, profile);
+        // If not translated (RGB fixture detected by profile), pass-through
+        if (!translation.wasTranslated) {
+            return state;
+        }
+        // Apply safety filter (debounce, latch, strobe delegation)
+        const fixtureId = state.fixtureId ?? `fixture-${state.dmxAddress}`;
+        const safetyResult = this.safetyLayer.filter(fixtureId, translation.colorWheelDmx ?? 0, profile, state.dimmer);
+        // Create translated state
+        const translatedState = {
+            ...state,
+            // 🎨 Replace RGB with translated color (for consistency)
+            r: translation.outputRGB.r,
+            g: translation.outputRGB.g,
+            b: translation.outputRGB.b,
+            // 🎨 Set color wheel DMX value
+            colorWheel: safetyResult.finalColorDmx,
+        };
+        // 🛡️ Handle strobe delegation (if color is changing too fast)
+        if (safetyResult.delegateToStrobe) {
+            // Force strobe instead of color changes
+            translatedState.strobe = safetyResult.suggestedShutter;
+        }
+        // 🔍 Debug logging (throttled)
+        if (this.halDebug) {
+            const now = Date.now();
+            if (now - this.halDebugLastLog > 1000) { // Log max once per second
+                this.halDebugLastLog = now;
+                console.log(`[HAL 🎨] ${state.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}${safetyResult.delegateToStrobe ? ' [→STROBE]' : ''}`);
+            }
+        }
+        return translatedState;
+    }
+    /**
+     * 🎨 WAVE 1001: Get fixture profile (with caching)
+     */
+    getFixtureProfile(fixtureName, profileId) {
+        const cacheKey = profileId ?? fixtureName;
+        // Check cache
+        if (this.profileCache.has(cacheKey)) {
+            return this.profileCache.get(cacheKey) ?? null;
+        }
+        // Import here to avoid circular dependencies
+        const { getProfile, getProfileByModel } = require('../translation');
+        // Try explicit profileId first, then model name detection
+        const profile = profileId
+            ? getProfile(profileId)
+            : getProfileByModel(fixtureName);
+        // Cache result (including null)
+        this.profileCache.set(cacheKey, profile ?? null);
+        if (profile && this.halDebug) {
+            console.log(`[HAL 🎨] Profile loaded for "${fixtureName}": ${profile.id} (${profile.colorEngine.mixing})`);
+        }
+        return profile ?? null;
     }
     /**
      * 🎨 WAVE 687: Build DMX channel array from fixture definition

@@ -33,6 +33,9 @@ export interface FixtureChannel {
 // WAVE 390.6: Import InstallationOrientation from ShowFileV2 for type consistency
 import type { InstallationOrientation } from '../core/stage/ShowFileV2'
 
+// 🎨 WAVE 1002: Color Engine types for HAL translation
+export type ColorEngineType = 'rgb' | 'rgbw' | 'cmy' | 'wheel' | 'hybrid' | 'none';
+
 export interface FixtureDefinition {
   id: string;
   name: string;
@@ -62,5 +65,7 @@ export interface FixtureDefinition {
     hasPrism?: boolean;
     hasStrobe?: boolean;
     hasDimmer?: boolean;
+    // 🎨 WAVE 1002: Explicit color engine type (overrides auto-detection)
+    colorEngine?: ColorEngineType;
   };
 }

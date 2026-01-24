@@ -88,6 +88,10 @@ const syncToBackend = async (fixtureList, lastSyncedHashRef) => {
             channels: f.channels || [],
             capabilities: f.capabilities || {},
             hasMovementChannels, // 🩸 WAVE 382: Explicit flag
+            // 🎨 WAVE 1001: HAL Color Translation - Pass color capability flags
+            hasColorWheel: f.hasColorWheel || Boolean(f.capabilities?.hasColorWheel) || false,
+            hasColorMixing: f.hasColorMixing || Boolean(f.capabilities?.hasColorMixing) || false,
+            profileId: f.profileId || f.id, // Use fixture ID as default profile ID
             position: f.position,
             rotation: f.rotation,
         };

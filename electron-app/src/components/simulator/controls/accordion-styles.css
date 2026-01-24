@@ -150,7 +150,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   WAVE 999: TACTICAL RADAR LAYOUT
+   WAVE 999.2: TACTICAL RADAR LAYOUT - UNCHAINED UI
    [SPEED] [RADAR/PAD] [SIZE]
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -158,10 +158,10 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  gap: 8px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
   margin: 8px 12px;
 }
 
@@ -171,96 +171,107 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  width: 36px;
-  padding: 8px 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 50px;
+  padding: 12px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .tactical-slider .tactical-label {
-  font-size: 14px;
-  margin-bottom: 4px;
+  font-size: 16px;
+  margin-bottom: 6px;
 }
 
 .tactical-slider .tactical-value {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--accent-cyan, #00ffff);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .tactical-slider .tactical-hint {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  font-weight: 600;
 }
 
-/* Vertical Range Input */
-.tactical-slider .vertical-slider {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  -webkit-appearance: none;
-  appearance: none;
-  width: 120px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+/* 🔓 WAVE 999.2: NATIVE VERTICAL SLIDER - UNCHAINED */
+.tactical-range-input {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  width: 40px;
+  height: 220px;
+  cursor: ns-resize;
+  accent-color: #00bcd4;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  outline: none;
+  margin: 8px 0;
+}
+
+/* 🔓 Quitar cursor prohibido - pointer events ALWAYS ON */
+.tactical-range-input:not(:disabled) {
   cursor: pointer;
+  pointer-events: auto !important;
 }
 
-.tactical-slider .vertical-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: var(--accent-cyan, #00ffff);
-  border-radius: 50%;
-  cursor: grab;
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+.tactical-range-input:hover:not(:disabled) {
+  accent-color: #00ffff;
 }
 
-.tactical-slider .vertical-slider::-webkit-slider-thumb:active {
-  cursor: grabbing;
-  transform: scale(1.1);
+.tactical-range-input:active:not(:disabled) {
+  accent-color: #ffffff;
 }
 
-.tactical-slider .vertical-slider:disabled {
-  opacity: 0.3;
+.tactical-range-input:disabled {
+  opacity: 0.25;
   cursor: not-allowed;
 }
 
-.tactical-slider .vertical-slider:disabled::-webkit-slider-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow: none;
-  cursor: not-allowed;
+/* Speed slider - Orange/Fire accent */
+.tactical-slider.speed-slider .tactical-range-input {
+  accent-color: #ff8c00;
 }
 
-/* Speed slider - Orange accent */
-.tactical-slider.speed-slider .vertical-slider::-webkit-slider-thumb {
-  background: #ff8c00;
-  box-shadow: 0 0 8px rgba(255, 140, 0, 0.5);
+.tactical-slider.speed-slider .tactical-range-input:hover:not(:disabled) {
+  accent-color: #ffaa33;
 }
 
 .tactical-slider.speed-slider .tactical-value {
   color: #ff8c00;
 }
 
-/* Size slider - Magenta accent */
-.tactical-slider.size-slider .vertical-slider::-webkit-slider-thumb {
-  background: #ff00ff;
-  box-shadow: 0 0 8px rgba(255, 0, 255, 0.5);
+/* Size slider - Magenta/Electric accent */
+.tactical-slider.size-slider .tactical-range-input {
+  accent-color: #ff00ff;
+}
+
+.tactical-slider.size-slider .tactical-range-input:hover:not(:disabled) {
+  accent-color: #ff66ff;
 }
 
 .tactical-slider.size-slider .tactical-value {
   color: #ff00ff;
 }
 
-/* Radar/Pad Container */
+/* 📡 WAVE 999.2: EXPANDED RADAR - 300x300 */
 .tactical-radar-layout .radar-container {
   flex: 1;
-  min-width: 140px;
-  max-width: 200px;
+  min-width: 280px;
+  max-width: 320px;
+}
+
+.tactical-radar-layout .radar-container.expanded-radar {
+  width: 300px;
+  height: 300px;
+  min-width: 300px;
+  min-height: 300px;
+}
+
+/* Force internal SVG/Canvas to fill expanded container */
+.tactical-radar-layout .radar-container.expanded-radar > * {
+  width: 100% !important;
+  height: 100% !important;
 }

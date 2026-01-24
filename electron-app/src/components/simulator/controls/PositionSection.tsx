@@ -365,21 +365,21 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   <label className="tactical-label">🚀</label>
                   <input
                     type="range"
-                    className="vertical-slider"
+                    className="tactical-range-input"
                     min="0"
                     max="100"
                     step="1"
                     value={patternSpeed}
                     onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                    disabled={isCalibrating || activePattern === 'static'}
+                    disabled={selectedIds.length === 0}
                     title="Movement Speed"
                   />
                   <span className="tactical-value">{patternSpeed}%</span>
                   <span className="tactical-hint">SPD</span>
                 </div>
                 
-                {/* 🎯 RADAR CENTER */}
-                <div className="radar-container">
+                {/* 🎯 RADAR CENTER - EXPANDED 300x300 */}
+                <div className="radar-container expanded-radar">
                   <RadarXY
                     pan={pan}
                     tilt={tilt}
@@ -397,13 +397,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   <label className="tactical-label">📏</label>
                   <input
                     type="range"
-                    className="vertical-slider"
+                    className="tactical-range-input"
                     min="0"
                     max="100"
                     step="1"
                     value={patternSize}
                     onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                    disabled={isCalibrating || activePattern === 'static'}
+                    disabled={selectedIds.length === 0}
                     title="Movement Size/Amplitude"
                   />
                   <span className="tactical-value">{patternSize}%</span>
@@ -450,21 +450,21 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   <label className="tactical-label">🚀</label>
                   <input
                     type="range"
-                    className="vertical-slider"
+                    className="tactical-range-input"
                     min="0"
                     max="100"
                     step="1"
                     value={patternSpeed}
                     onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                    disabled={isCalibrating || activePattern === 'static'}
+                    disabled={selectedIds.length === 0}
                     title="Movement Speed"
                   />
                   <span className="tactical-value">{patternSpeed}%</span>
                   <span className="tactical-hint">SPD</span>
                 </div>
                 
-                {/* 🎯 XY PAD CENTER */}
-                <div className="radar-container">
+                {/* 🎯 XY PAD CENTER - EXPANDED */}
+                <div className="radar-container expanded-radar">
                   <XYPad
                     pan={pan}
                     tilt={tilt}
@@ -479,13 +479,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   <label className="tactical-label">📏</label>
                   <input
                     type="range"
-                    className="vertical-slider"
+                    className="tactical-range-input"
                     min="0"
                     max="100"
                     step="1"
                     value={patternSize}
                     onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                    disabled={isCalibrating || activePattern === 'static'}
+                    disabled={selectedIds.length === 0}
                     title="Movement Size/Amplitude"
                   />
                   <span className="tactical-value">{patternSize}%</span>

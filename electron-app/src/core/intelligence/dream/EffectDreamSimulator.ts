@@ -1029,24 +1029,13 @@ export class EffectDreamSimulator {
   
   private calculateDiversityScore(effect: EffectCandidate, context: AudienceSafetyContext): number {
     // ═══════════════════════════════════════════════════════════════
-    // � WAVE 982.5: DIVERSITY ENGINE - ESCALERA DE PENALIZACIÓN
+    // 🔥 WAVE 982.5: DIVERSITY ENGINE - ESCALERA DE PENALIZACIÓN
     // ═══════════════════════════════════════════════════════════════
-    // 
-    // PROBLEMA ANTERIOR:
-    // - Fórmula basada en usageRate (porcentaje) era permisiva
-    // - Un efecto necesitaba 33%+ del historial para penalizarse
-    // 
-    // SOLUCIÓN (Radwulf & GeminiPunk):
-    // - Escalera directa por CONTEO de usos:
-    //   0 usos → 1.0 (Sin penalización - efecto fresco)
-    //   1 uso  → 0.7 (-30% Score - usado recientemente)
-    //   2 usos → 0.4 (-60% Score - repetitivo)
-    //   3+ usos → 0.1 (-90% Score - SHADOWBAN)
-    // 
-    // RESULTADO:
-    // - Efecto "perfecto" (0.9 relevance) usado 1x: 0.9*0.7 = 0.63
-    // - Efecto "bueno" (0.75 relevance) sin usar: 0.75*1.0 = 0.75 ¡GANA!
-    // ═══════════════════════════════════════════════════════════════
+    
+    // 🔍 WAVE 996.6: DEBUG - Ver historial recibido
+    if (effect.effect === 'cyber_dualism') {
+      console.log(`[DIVERSITY_DEBUG] 🔍 cyber_dualism: historySize=${context.recentEffects.length}, effects=[${context.recentEffects.map(e=>e.effect).join(',')}]`)
+    }
     
     // Contar uso reciente (últimos efectos en el historial)
     const recentUsage = context.recentEffects
@@ -1106,13 +1095,21 @@ export class EffectDreamSimulator {
   
   private rankScenarios(scenarios: EffectScenario[], prediction: MusicalPrediction): EffectScenario[] {
     // Multi-factor ranking
-    return scenarios.sort((a, b) => {
-      // Calcular score compuesto
-      const scoreA = this.calculateScenarioScore(a, prediction)
-      const scoreB = this.calculateScenarioScore(b, prediction)
-      
-      return scoreB - scoreA // Descending
-    })
+    // 🔍 WAVE 996.6: DEBUG - Log top candidates to diagnose diversity issues
+    const scored = scenarios.map(s => ({
+      scenario: s,
+      score: this.calculateScenarioScore(s, prediction)
+    })).sort((a, b) => b.score - a.score)
+    
+    // Log top 3 para debug
+    if (scored.length >= 2) {
+      const top3 = scored.slice(0, 3).map(s => 
+        `${s.scenario.effect.effect}(R=${s.scenario.projectedRelevance.toFixed(2)}×D=${s.scenario.diversityScore.toFixed(1)}→${s.score.toFixed(2)})`
+      ).join(' | ')
+      console.log(`[DREAM_SIMULATOR] 🏆 TOP3: ${top3}`)
+    }
+    
+    return scored.map(s => s.scenario)
   }
   
   private calculateScenarioScore(scenario: EffectScenario, prediction: MusicalPrediction): number {

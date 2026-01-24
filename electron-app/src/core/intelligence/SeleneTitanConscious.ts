@@ -793,6 +793,9 @@ export class SeleneTitanConscious extends EventEmitter {
         type: finalEffectDecision.effectType,
         timestamp: Date.now(),
       })
+      // 🔍 WAVE 996.7: DEBUG - Verify history is being filled
+      console.log(`[HISTORY_DEBUG] 📝 Pushed ${finalEffectDecision.effectType} → historySize=${this.effectHistory.length}`)
+      
       // Mantener solo últimos 20 efectos
       if (this.effectHistory.length > 20) {
         this.effectHistory.shift()

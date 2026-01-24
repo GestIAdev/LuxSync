@@ -792,15 +792,36 @@ export class EffectManager extends EventEmitter {
    * 🚦 CHECK TRAFFIC - Full traffic control validation
    * 
    * Rules:
+   * 0. 🔒 WAVE 998: GLOBAL LOCK - If DICTATOR (mixBus='global') is active → BLOCK ALL (except emergency)
    * 1. If a CRITICAL effect is active → block AMBIENT effects
    * 2. If same effectType is already active → block (no duplicates)
    * 3. 🔒 WAVE 996: ZONE MUTEX - If another effect from same zone is active → block
-   * 4. Otherwise → allow
+   * 4. 🌫️ WAVE 998: ATMOSPHERIC EXCLUSIVITY - Only one atmospheric at a time
+   * 5. Otherwise → allow
    * 
    * @param effectType Effect type to check
    * @returns { allowed: boolean, reason: string }
    */
   private checkTraffic(effectType: string): { allowed: boolean; reason: string } {
+    // 🔒 WAVE 998: Rule 0 - GLOBAL LOCK (THE RESPECT PROTOCOL)
+    // Si hay un DICTADOR (mixBus='global') activo, NADIE le interrumpe
+    const activeDictator = Array.from(this.activeEffects.values())
+      .find(e => (e as any).mixBus === 'global')
+    
+    if (activeDictator) {
+      // Excepción: Si el candidato es PEAK/EMERGENCY (techno-extreme)
+      const isEmergency = ['solar_flare', 'strobe_storm'].includes(effectType)
+      const dictatorIsPeak = ['solar_flare', 'strobe_storm'].includes(activeDictator.effectType)
+      
+      if (!isEmergency || dictatorIsPeak) {
+        console.log(`🔒 [GLOBAL_LOCK] ${effectType} BLOQUEADO: ${activeDictator.effectType} tiene la palabra.`)
+        return {
+          allowed: false,
+          reason: `🔒 GLOBAL_LOCK: ${activeDictator.effectType} (dictator) is speaking`,
+        }
+      }
+    }
+    
     // Rule 1: Critical effects block ambient
     if (this.isBusy() && EffectManager.AMBIENT_EFFECTS.has(effectType)) {
       const criticalEffect = Array.from(this.activeEffects.values())
@@ -821,7 +842,25 @@ export class EffectManager extends EventEmitter {
       }
     }
     
-    // 🔒 WAVE 996: Rule 3 - ZONE MUTEX
+    // 🌫️ WAVE 998: Rule 3 - ATMOSPHERIC EXCLUSIVITY
+    // Solo un efecto atmosférico a la vez
+    const ATMOSPHERIC_EFFECTS = ['void_mist', 'deep_breath', 'sonar_ping', 'fiber_optics', 'digital_rain']
+    const isAtmospheric = ATMOSPHERIC_EFFECTS.includes(effectType)
+    
+    if (isAtmospheric) {
+      const atmosphericRunning = Array.from(this.activeEffects.values())
+        .find(e => ATMOSPHERIC_EFFECTS.includes(e.effectType))
+      
+      if (atmosphericRunning) {
+        console.log(`🌫️ [ATMOSPHERIC_LOCK] ${effectType} BLOQUEADO: ${atmosphericRunning.effectType} ya está en el aire.`)
+        return {
+          allowed: false,
+          reason: `🌫️ ATMOSPHERIC_LOCK: ${atmosphericRunning.effectType} already running`,
+        }
+      }
+    }
+    
+    // 🔒 WAVE 996: Rule 4 - ZONE MUTEX
     // Solo un efecto por zona energética a la vez
     const incomingZone = EFFECT_ZONE_MAP[effectType]
     if (incomingZone) {

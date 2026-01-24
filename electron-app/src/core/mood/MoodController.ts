@@ -43,14 +43,15 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // 😌 CALM - "Tráeme un drop de nivel DIOS o me lo guardo"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
-  // Target EPM: 1-3 (1 efecto cada 20-60 segundos)
+  // 🔥 WAVE 998: THE RESPECT PROTOCOL - Ahora usable (EPM: 2-3 en lugar de 0)
+  // Target EPM: 2-3 (1 efecto cada 20-30 segundos)
   calm: {
     name: 'calm',
     description: 'Filtro de calidad. Solo dispara en momentos ÉPICOS.',
     emoji: '😌',
-    thresholdMultiplier: 1.8,      // 80% más difícil disparar (era 1.5)
-    cooldownMultiplier: 3.0,       // Triple espera entre efectos (era 2.0)
-    ethicsThreshold: 0.98,         // 🧬 WAVE 973: "Solo si es SUBLIME (9.8/10)"
+    thresholdMultiplier: 1.3,      // 🔥 WAVE 998: Bajado de 1.8 → 1.3 (más permisivo)
+    cooldownMultiplier: 2.0,       // 🔥 WAVE 998: Bajado de 3.0 → 2.0 (la mitad de espera)
+    ethicsThreshold: 0.85,         // 🔥 WAVE 998: Bajado de 0.98 → 0.85 (acepta "muy bueno")
     maxIntensity: 0.6,             // Max 60% intensidad
     minIntensity: undefined,       // Sin mínimo
     blockList: [
@@ -64,18 +65,17 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // ⚖️ BALANCED - "Disparo cuando la música lo pide"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 937: BALANCED = PROFESIONAL → Solo momentos BUENOS, no "apenas dignos"
-  // Problema: worthiness 0.66-0.71 dispara cada 6s → 8-10 EPM (demasiado)
-  // Solución: Threshold 1.15x → worthiness efectivo debe ser ~0.75+ (mejor calidad)
-  // Target EPM: 5-6 (1 efecto cada 10-12 segundos)
+  // 🔥 WAVE 998: THE RESPECT PROTOCOL - Un pelín más de filtro y aire
+  // Target EPM: 4-5 (1 efecto cada 12-15 segundos)
   balanced: {
     name: 'balanced',
     description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
     emoji: '⚖️',
-    thresholdMultiplier: 1.15,     // 🎯 WAVE 937: 15% más exigente (era 1.0)
-    cooldownMultiplier: 1.0,       // Cooldowns normales
+    thresholdMultiplier: 1.2,      // 🔥 WAVE 998: Subido de 1.15 → 1.2 (filtrar más ruido)
+    cooldownMultiplier: 1.2,       // 🔥 WAVE 998: Subido de 1.0 → 1.2 (más aire entre efectos)
     ethicsThreshold: 0.90,         // 🧬 WAVE 973: "Si es excelente (9/10), adelante"
     maxIntensity: 1.0,             // Sin límite
-    minIntensity: undefined,       // � WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
+    minIntensity: undefined,       // 🔪 WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado
     forceUnlock: undefined,        // Cooldowns normales
   },

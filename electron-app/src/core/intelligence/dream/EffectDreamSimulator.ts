@@ -595,14 +595,17 @@ export class EffectDreamSimulator {
    * - 'intense': min 0.45 SIN CAMBIOS (DigitalRain correctamente bloqueado)
    */
   private filterByZone(effects: string[], zone: string): string[] {
+    // 🎚️ WAVE 996: THE LADDER OVERRIDES - Rangos ampliados para no competir con ContextualEffectSelector
+    // THE LADDER ya hace la clasificación correcta en ContextualEffectSelector.
+    // Aquí solo filtramos extremos obvios (no poner strobe pesado en silence).
     const aggressionLimits: Record<string, { min: number; max: number }> = {
-      'silence': { min: 0, max: 0.20 },    // Solo los más suaves
-      'valley':  { min: 0, max: 0.35 },    // Suaves + algo de respiración
-      'ambient': { min: 0, max: 0.50 },    // Moderados hacia abajo
-      'gentle':  { min: 0, max: 0.60 },    // Transición
-      'active':  { min: 0.20, max: 0.95 }, // 🔥 WAVE 982: 0.85→0.95 (GATLING entra en builds)
-      'intense': { min: 0.45, max: 1.00 }, // Mantener min=0.45 (DigitalRain NO entra aquí, correcto)
-      'peak':    { min: 0.50, max: 1.00 }, // Libertad total para agresivos
+      'silence': { min: 0, max: 0.30 },    // Solo efectos muy suaves
+      'valley':  { min: 0, max: 0.50 },    // Suaves + algo de respiración
+      'ambient': { min: 0, max: 0.70 },    // Moderados (ampliar para digital_rain + acid_sweep)
+      'gentle':  { min: 0, max: 0.85 },    // Transición amplia (incluir ambient_strobe, binary_glitch)
+      'active':  { min: 0.20, max: 1.00 }, // Libertad casi total (cyber_dualism, seismic_snap)
+      'intense': { min: 0.45, max: 1.00 }, // Agresivos completos (sky_saw, abyssal_rise)
+      'peak':    { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
     }
     
     const limits = aggressionLimits[zone] || { min: 0, max: 1 }
@@ -631,17 +634,17 @@ export class EffectDreamSimulator {
   
   /**
    * Helper para logging: muestra el rango de agresión de una zona
-   * 🔥 WAVE 982: Updated - Gatling fix only (DigitalRain debe quedarse fuera de intense)
+   * 🎚️ WAVE 996: Updated para THE LADDER - rangos ampliados
    */
   private getZoneAggressionRange(zone: string): string {
     const ranges: Record<string, string> = {
-      'silence': '0-0.20',
-      'valley': '0-0.35',
-      'ambient': '0-0.50',
-      'gentle': '0-0.60',
-      'active': '0.20-0.95',   // 🔥 WAVE 982: Gatling entra en builds
-      'intense': '0.45-1.00',  // Mantener min=0.45 (DigitalRain ambiental NO entra)
-      'peak': '0.50-1.00',
+      'silence': '0-0.30',
+      'valley': '0-0.50',
+      'ambient': '0-0.70',
+      'gentle': '0-0.85',
+      'active': '0.20-1.00',
+      'intense': '0.45-1.00',
+      'peak': '0.70-1.00',
     }
     return ranges[zone] || '0-1.00'
   }

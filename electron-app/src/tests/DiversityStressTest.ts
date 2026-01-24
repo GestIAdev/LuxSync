@@ -60,14 +60,28 @@ const EFFECTS_BY_VIBE: Record<string, string[]> = {
 
 type DivTestEnergyZone = 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
 
+// 🎚️ WAVE 996: THE LADDER - Updated with equidistant zones
 const EFFECTS_BY_INTENSITY: Record<DivTestEnergyZone, string[]> = {
-  silence: ['ghost_breath', 'void_mist', 'deep_breath', 'sonar_ping', 'fiber_optics'],
-  valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'digital_rain', 'deep_breath', 'sonar_ping', 'fiber_optics'],
-  ambient: ['acid_sweep', 'tidal_wave', 'digital_rain', 'deep_breath', 'fiber_optics'],
-  gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'digital_rain', 'ambient_strobe', 'binary_glitch'],
-  active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'ambient_strobe', 'binary_glitch', 'seismic_snap'],
-  intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino', 'seismic_snap', 'core_meltdown'],
-  peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise', 'strobe_burst', 'corazon_latino', 'core_meltdown'],
+  // 🌑 SILENCE (0-15%): Respiración profunda y ecos minimalistas
+  silence: ['deep_breath', 'sonar_ping'],
+  
+  // 🌫️ VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
+  valley: ['void_mist', 'fiber_optics'],
+  
+  // 🌧️ AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
+  ambient: ['digital_rain', 'acid_sweep'],
+  
+  // ⚡ GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
+  gentle: ['ambient_strobe', 'binary_glitch'],
+  
+  // 👯 ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
+  active: ['cyber_dualism', 'seismic_snap'],
+  
+  // ☢️ INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
+  intense: ['sky_saw', 'abyssal_rise'],
+  
+  // 💣 PEAK (90-100%): Artillería pesada - territorio de drops
+  peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe'],
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

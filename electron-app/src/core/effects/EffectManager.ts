@@ -175,6 +175,58 @@ const EFFECT_VIBE_RULES: Record<string, {
 type EffectFactory = () => ILightEffect
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔒 WAVE 996: ZONE MUTEX - THE LADDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔒 EFFECT → ZONE MAP (THE LADDER - Equidistant 15% zones)
+ * 
+ * WAVE 996: Mapeo oficial de efectos a zonas energéticas.
+ * Usado por el MUTEX para bloquear múltiples efectos en la misma zona.
+ * 
+ * Zones:
+ * - silence  (0.00 - 0.15): Vacío profundo
+ * - valley   (0.15 - 0.30): Niebla atmosférica
+ * - ambient  (0.30 - 0.45): Movimiento suave
+ * - gentle   (0.45 - 0.60): Entrada a energía
+ * - active   (0.60 - 0.75): Ritmo establecido
+ * - intense  (0.75 - 0.90): Pre-clímax
+ * - peak     (0.90 - 1.00): Territorio de drops
+ */
+type EnergyZoneLadder = 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
+
+const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
+  // 🌑 SILENCE (0-15%): Respiración profunda y ecos minimalistas
+  'deep_breath': 'silence',
+  'sonar_ping': 'silence',
+  
+  // 🌫️ VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
+  'void_mist': 'valley',
+  'fiber_optics': 'valley',
+  
+  // 🌧️ AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
+  'digital_rain': 'ambient',
+  'acid_sweep': 'ambient',
+  
+  // ⚡ GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
+  'ambient_strobe': 'gentle',
+  'binary_glitch': 'gentle',
+  
+  // 👯 ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
+  'cyber_dualism': 'active',
+  'seismic_snap': 'active',
+  
+  // ☢️ INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
+  'sky_saw': 'intense',
+  'abyssal_rise': 'intense',
+  
+  // 💣 PEAK (90-100%): Artillería pesada - territorio de drops
+  'gatling_raid': 'peak',
+  'core_meltdown': 'peak',
+  'industrial_strobe': 'peak',
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MANAGER CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -742,7 +794,8 @@ export class EffectManager extends EventEmitter {
    * Rules:
    * 1. If a CRITICAL effect is active → block AMBIENT effects
    * 2. If same effectType is already active → block (no duplicates)
-   * 3. Otherwise → allow
+   * 3. 🔒 WAVE 996: ZONE MUTEX - If another effect from same zone is active → block
+   * 4. Otherwise → allow
    * 
    * @param effectType Effect type to check
    * @returns { allowed: boolean, reason: string }
@@ -765,6 +818,21 @@ export class EffectManager extends EventEmitter {
       return {
         allowed: false,
         reason: `Duplicate blocked: ${effectType} already active`,
+      }
+    }
+    
+    // 🔒 WAVE 996: Rule 3 - ZONE MUTEX
+    // Solo un efecto por zona energética a la vez
+    const incomingZone = EFFECT_ZONE_MAP[effectType]
+    if (incomingZone) {
+      const zoneConflict = Array.from(this.activeEffects.values())
+        .find(e => EFFECT_ZONE_MAP[e.effectType] === incomingZone)
+      
+      if (zoneConflict) {
+        return {
+          allowed: false,
+          reason: `🔒 MUTEX: Zone ${incomingZone} occupied by ${zoneConflict.effectType}`,
+        }
       }
     }
     

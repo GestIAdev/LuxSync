@@ -215,12 +215,14 @@ export class FiberOptics extends BaseEffect {
       }
       
       // Intensidad modulada por wave + envelope
-      // 🔥 WAVE 997.5: Mayor contraste (0.3 - 1.0) en lugar de (0.5 - 1.0)
-      // Esto hace que la onda sea más visible y dramática
-      const zoneIntensity = this.config.parIntensity * envelope * (0.3 + 0.7 * normalizedWave)
+      // 🔥 WAVE 997.7: ELIMINADA multiplicación por triggerIntensity
+      // Estaba causando doble atenuación (0.85 × 0.7 × wave = solo 34% real!)
+      // Ahora: 0.85 × wave = 70-85% real (VISIBLE como debe ser)
+      const waveModulation = 0.5 + 0.5 * normalizedWave  // 0.5 - 1.0 (menos contraste, más brillo)
+      const zoneIntensity = this.config.parIntensity * envelope * waveModulation
       
       zoneOverrides[zone] = {
-        dimmer: zoneIntensity * this.triggerIntensity,
+        dimmer: zoneIntensity,  // 🔥 SIN triggerIntensity
         color: interpolatedColor,
         blendMode: 'replace',
       }
@@ -231,7 +233,7 @@ export class FiberOptics extends BaseEffect {
     // 🛡️ THE MOVER LAW: Efecto >2s → Proteger ruedas mecánicas
     // ═════════════════════════════════════════════════════════════════════
     zoneOverrides['movers'] = {
-      dimmer: this.config.moverIntensity * envelope * this.triggerIntensity,
+      dimmer: this.config.moverIntensity * envelope,  // 🔥 WAVE 997.7: SIN triggerIntensity
       // 🚫 NO COLOR - Física controla la rueda mecánica
       blendMode: 'replace',
     }

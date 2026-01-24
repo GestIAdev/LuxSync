@@ -34,7 +34,7 @@ interface PatternOption {
 
 const PATTERNS: PatternOption[] = [
   // Row 1 - Current patterns
-  { id: 'static', icon: '●', label: 'HOLD', title: 'Static position' },
+  { id: 'static', icon: '🛑', label: 'HOLD', title: 'Freeze position - No movement' },
   { id: 'circle', icon: '○', label: 'CIRCLE', title: 'Circular motion' },
   { id: 'eight', icon: '∞', label: 'EIGHT', title: 'Figure-8 pattern' },
   { id: 'sweep', icon: '↔', label: 'SWEEP', title: 'Pan sweep' },

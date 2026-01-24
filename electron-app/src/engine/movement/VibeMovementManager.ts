@@ -386,7 +386,17 @@ const PATTERNS: Record<string, PatternFunction> = {
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * STATIC: Respiración zen mínima
+   * 🛑 HOLD: INMOVILIDAD TOTAL - WAVE 999.5
+   * El freno de mano. Offset cero absoluto. Sin respiración, sin nada.
+   * DJ dice "QUIETO" = QUIETO.
+   */
+  hold: (_t, _phase, _audio) => ({
+    x: 0,
+    y: 0,
+  }),
+  
+  /**
+   * STATIC: Respiración zen mínima (para AI cuando energía baja)
    */
   static: (t, phase, audio) => ({
     x: 0,

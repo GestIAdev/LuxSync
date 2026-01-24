@@ -140,24 +140,28 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * Pattern change - Procedural movement
-   * 🎯 WAVE 999.4: Direct connection to VibeMovementManager via setMovementPattern
+   * 🛑 WAVE 999.5: HOLD = FRENO DE MANO ACTIVO
+   * 
+   * HOLD ('static' en UI) → setMovementPattern('hold') → INMOVILIDAD TOTAL
+   * Circle/Eight/Sweep → setMovementPattern(pattern) → Override activo
+   * UNLOCK ALL → setMovementPattern(null) → Release a AI
    */
   const handlePatternChange = useCallback(async (pattern: PatternType) => {
     setActivePattern(pattern)
     
-    if (pattern === 'static') {
-      // Release pattern override, let AI control
-      await window.lux?.arbiter?.setMovementPattern(null)
-      console.log(`[Position] 🔓 Pattern: RELEASED → AI control`)
-      return
-    }
+    // 🛑 WAVE 999.5: HOLD es un OVERRIDE ACTIVO, no un release
+    // El botón "HOLD" en UI tiene id 'static', pero enviamos 'hold' al engine
+    const enginePattern = pattern === 'static' ? 'hold' : pattern
     
     onOverrideChange(true)
     
     try {
-      // 🎯 WAVE 999.4: Direct to VibeMovementManager - no more _patternType encoding!
-      await window.lux?.arbiter?.setMovementPattern(pattern)
-      console.log(`[Position] 🎯 Pattern LOCKED: ${pattern}`)
+      await window.lux?.arbiter?.setMovementPattern(enginePattern)
+      if (pattern === 'static') {
+        console.log(`[Position] 🛑 HOLD: Freno de mano activado (offset 0,0)`)
+      } else {
+        console.log(`[Position] 🎯 Pattern LOCKED: ${pattern}`)
+      }
     } catch (err) {
       console.error('[Position] Pattern error:', err)
     }

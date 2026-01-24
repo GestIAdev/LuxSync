@@ -13,7 +13,7 @@
 
 import React, { useCallback } from 'react'
 
-export type PatternType = 'static' | 'circle' | 'eight' | 'sweep'
+export type PatternType = 'static' | 'circle' | 'eight' | 'sweep' | 'spiral' | 'random' | 'bounce' | 'wave'
 
 export interface PatternSelectorProps {
   activePattern: PatternType
@@ -29,13 +29,20 @@ interface PatternOption {
   icon: string
   label: string
   title: string
+  placeholder?: boolean  // Future patterns
 }
 
 const PATTERNS: PatternOption[] = [
+  // Row 1 - Current patterns
   { id: 'static', icon: '●', label: 'HOLD', title: 'Static position' },
   { id: 'circle', icon: '○', label: 'CIRCLE', title: 'Circular motion' },
   { id: 'eight', icon: '∞', label: 'EIGHT', title: 'Figure-8 pattern' },
   { id: 'sweep', icon: '↔', label: 'SWEEP', title: 'Pan sweep' },
+  // Row 2 - Future patterns (placeholders)
+  { id: 'spiral', icon: '🌀', label: 'SPIRAL', title: 'Spiral inward/outward', placeholder: true },
+  { id: 'random', icon: '⚡', label: 'RANDOM', title: 'Random positions', placeholder: true },
+  { id: 'bounce', icon: '◆', label: 'BOUNCE', title: 'Bounce effect', placeholder: true },
+  { id: 'wave', icon: '〰', label: 'WAVE', title: 'Wave motion', placeholder: true },
 ]
 
 export const PatternSelector: React.FC<PatternSelectorProps> = ({
@@ -75,15 +82,15 @@ export const PatternSelector: React.FC<PatternSelectorProps> = ({
   
   return (
     <div className={`pattern-selector ${disabled ? 'disabled' : ''}`}>
-      {/* Pattern type buttons */}
-      <div className="pattern-buttons">
+      {/* Pattern type buttons - 2x4 GRID */}
+      <div className="pattern-buttons-grid">
         {PATTERNS.map(pattern => (
           <button
             key={pattern.id}
-            className={`pattern-btn ${activePattern === pattern.id ? 'active' : ''}`}
+            className={`pattern-btn ${activePattern === pattern.id ? 'active' : ''} ${pattern.placeholder ? 'placeholder' : ''}`}
             onClick={() => handlePatternClick(pattern.id)}
-            disabled={disabled}
-            title={pattern.title}
+            disabled={disabled || pattern.placeholder}
+            title={pattern.placeholder ? `${pattern.title} (Coming Soon)` : pattern.title}
           >
             <span className="pattern-icon">{pattern.icon}</span>
             <span className="pattern-label">{pattern.label}</span>

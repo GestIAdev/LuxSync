@@ -429,6 +429,58 @@ export class VibeMovementManager {
   private readonly ENERGY_HISTORY_SIZE = 120  // ~2 segundos @ 60fps
   private averageEnergy: number = 0.5         // Default inicial
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎚️ WAVE 999: MANUAL OVERRIDE PARAMETERS
+  // Los sliders del Commander UI sobrescriben temporalmente estos valores
+  // ═══════════════════════════════════════════════════════════════════════
+  private manualSpeedOverride: number | null = null     // null = use vibe default
+  private manualAmplitudeOverride: number | null = null // null = use vibe default
+  
+  /**
+   * 🎚️ WAVE 999: Set manual speed override (0-100 scale)
+   * @param speed 0-100 from UI, or null to release
+   */
+  setManualSpeed(speed: number | null): void {
+    this.manualSpeedOverride = speed
+    if (speed !== null) {
+      console.log(`[🎭 VMM] 🚀 Manual SPEED override: ${speed}%`)
+    } else {
+      console.log(`[🎭 VMM] 🚀 Manual SPEED released → AI control`)
+    }
+  }
+  
+  /**
+   * 🎚️ WAVE 999: Set manual amplitude override (0-100 scale)
+   * @param amplitude 0-100 from UI, or null to release
+   */
+  setManualAmplitude(amplitude: number | null): void {
+    this.manualAmplitudeOverride = amplitude
+    if (amplitude !== null) {
+      console.log(`[🎭 VMM] 📏 Manual AMPLITUDE override: ${amplitude}%`)
+    } else {
+      console.log(`[🎭 VMM] 📏 Manual AMPLITUDE released → AI control`)
+    }
+  }
+  
+  /**
+   * 🎚️ WAVE 999: Get current manual overrides status
+   */
+  getManualOverrides(): { speed: number | null; amplitude: number | null } {
+    return {
+      speed: this.manualSpeedOverride,
+      amplitude: this.manualAmplitudeOverride,
+    }
+  }
+  
+  /**
+   * 🎚️ WAVE 999: Clear all manual overrides
+   */
+  clearManualOverrides(): void {
+    this.manualSpeedOverride = null
+    this.manualAmplitudeOverride = null
+    console.log(`[🎭 VMM] 🔓 All manual overrides cleared`)
+  }
+  
   /**
    * 🎯 GENERA INTENT DE MOVIMIENTO
    * 
@@ -507,14 +559,36 @@ export class VibeMovementManager {
       }
     }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎚️ WAVE 999: MANUAL SPEED OVERRIDE
+    // Si el usuario mueve el slider, sobrescribe la frecuencia base
+    // 0% = Congelado (0.01 Hz), 100% = Velocidad máxima (0.5 Hz)
+    // ═══════════════════════════════════════════════════════════════════════
+    let effectiveFrequency = config.baseFrequency
+    if (this.manualSpeedOverride !== null) {
+      // 0% → casi congelado (0.01 Hz), 100% → muy rápido (0.5 Hz)
+      effectiveFrequency = 0.01 + (this.manualSpeedOverride / 100) * 0.49
+    }
+    
     // === FASE 2: CALCULAR PATRÓN (FULL RANGE) ===
-    const phase = Math.PI * 2 * config.baseFrequency * this.time
+    const phase = Math.PI * 2 * effectiveFrequency * this.time
     const patternFn = PATTERNS[patternName] || PATTERNS['static']
     const rawPosition = patternFn(this.time, phase, audio, fixtureIndex, totalFixtures)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎚️ WAVE 999: MANUAL AMPLITUDE OVERRIDE
+    // Si el usuario mueve el slider, sobrescribe la amplitud base
+    // 0% = Punto fijo (0.05 scale), 100% = Rango completo (1.0 scale)
+    // ═══════════════════════════════════════════════════════════════════════
+    let effectiveAmplitudeScale = config.amplitudeScale
+    if (this.manualAmplitudeOverride !== null) {
+      // 0% → punto fijo (5% del rango), 100% → full range
+      effectiveAmplitudeScale = 0.05 + (this.manualAmplitudeOverride / 100) * 0.95
+    }
+    
     // === FASE 1: ESCALAR POR AMPLITUDE DEL VIBE ===
     const energyBoost = 1.0 + audio.energy * 0.2 // Hasta +20% con energía máxima
-    const vibeScale = config.amplitudeScale * energyBoost
+    const vibeScale = effectiveAmplitudeScale * energyBoost
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🚗 WAVE 347.8: THE GEARBOX - Dynamic Amplitude Scaling
@@ -605,7 +679,9 @@ export class VibeMovementManager {
       const panDeg = Math.round(position.x * 270)
       const tiltDeg = Math.round(position.y * 135)
       const threshold = Math.max(0.05, this.averageEnergy * 0.5)
-      console.log(`[🎯 VMM] ${vibeId} | ${patternName} | phrase:${Math.floor(this.barCount / 8)} | E:${audio.energy.toFixed(2)} (avg:${this.averageEnergy.toFixed(2)} thr:${threshold.toFixed(2)}) | Pan:${panDeg}° Tilt:${tiltDeg}°`)
+      // 🎚️ WAVE 999: Mostrar si hay override manual
+      const manualTag = (this.manualSpeedOverride !== null || this.manualAmplitudeOverride !== null) ? ' [MANUAL]' : ''
+      console.log(`[🎯 VMM] ${vibeId} | ${patternName}${manualTag} | phrase:${Math.floor(this.barCount / 8)} | E:${audio.energy.toFixed(2)} (avg:${this.averageEnergy.toFixed(2)} thr:${threshold.toFixed(2)}) | Pan:${panDeg}° Tilt:${tiltDeg}°`)
     }
     
     // 🔧 WAVE 350: Determinar phaseType según patrón
@@ -616,10 +692,10 @@ export class VibeMovementManager {
       x: position.x,
       y: position.y,
       pattern: patternName,
-      speed: config.baseFrequency,
+      speed: effectiveFrequency,  // 🎚️ WAVE 999: Usar frecuencia efectiva (con override)
       amplitude: finalScale,
       phaseType: phaseType,
-      _frequency: config.baseFrequency,
+      _frequency: effectiveFrequency,  // 🎚️ WAVE 999: Debug con override
       _phrase: Math.floor(this.barCount / 8),
     }
   }

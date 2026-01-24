@@ -393,6 +393,24 @@ declare global {
         grandMaster: number
         blackout: boolean
       }) => void) => () => void
+      
+      /**
+       * 🎛️ WAVE 999: Set movement pattern parameter override
+       * Connects UI sliders directly to VibeMovementManager
+       */
+      setMovementParameter: (parameter: 'speed' | 'amplitude', value: number | null) => Promise<{
+        success: boolean
+        parameter: string
+        value: number | null
+      }>
+      
+      /**
+       * 🎛️ WAVE 999: Clear all movement pattern overrides
+       * Restores automatic AI-driven movement calculations
+       */
+      clearMovementOverrides: () => Promise<{
+        success: boolean
+      }>
     }
     
     // ============================================

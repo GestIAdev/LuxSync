@@ -207,6 +207,47 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
   })
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🎚️ WAVE 999: MOVEMENT PARAMETERS (Speed & Amplitude)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Set movement parameter (speed or amplitude)
+   * Called from PositionSection.tsx when user moves tactical sliders
+   */
+  ipcMain.handle('lux:arbiter:setMovementParameter', (
+    _event,
+    {
+      parameter,
+      value,
+    }: {
+      parameter: 'speed' | 'amplitude'
+      value: number | null  // 0-100 scale, or null to release
+    }
+  ) => {
+    // Import vibeMovementManager lazily to avoid circular deps
+    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
+    
+    if (parameter === 'speed') {
+      vibeMovementManager.setManualSpeed(value)
+      console.log(`[Arbiter IPC] 🚀 Movement SPEED: ${value === null ? 'RELEASED' : value + '%'}`)
+    } else if (parameter === 'amplitude') {
+      vibeMovementManager.setManualAmplitude(value)
+      console.log(`[Arbiter IPC] 📏 Movement AMPLITUDE: ${value === null ? 'RELEASED' : value + '%'}`)
+    }
+    
+    return { success: true, parameter, value }
+  })
+  
+  /**
+   * Clear all movement parameter overrides
+   */
+  ipcMain.handle('lux:arbiter:clearMovementOverrides', () => {
+    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
+    vibeMovementManager.clearManualOverrides()
+    return { success: true }
+  })
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════════════
   

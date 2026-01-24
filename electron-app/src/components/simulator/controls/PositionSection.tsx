@@ -177,13 +177,23 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * Pattern speed/size change
+   * 🎚️ WAVE 999: Now calls setMovementParameter to affect VibeMovementManager directly
    */
   const handlePatternParamsChange = useCallback(async (speed: number, size: number) => {
     setPatternSpeed(speed)
     setPatternSize(size)
     
+    // 🎚️ WAVE 999: Send to VibeMovementManager via IPC
+    try {
+      await window.lux?.arbiter?.setMovementParameter('speed', speed)
+      await window.lux?.arbiter?.setMovementParameter('amplitude', size)
+      console.log(`[Position] 🎚️ Movement params: Speed=${speed}% Amplitude=${size}%`)
+    } catch (err) {
+      console.error('[Position] Movement params error:', err)
+    }
+    
     if (activePattern !== 'static') {
-      // Re-send pattern with new params
+      // Re-send pattern with new params (legacy)
       await handlePatternChange(activePattern)
     }
   }, [activePattern, handlePatternChange])

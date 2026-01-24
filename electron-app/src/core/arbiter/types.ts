@@ -210,6 +210,10 @@ export interface ManualControls {
   tilt?: number         // 0-255 (or -1 to +1 for relative)
   zoom?: number         // 0-255
   focus?: number        // 0-255
+  
+  // 🎚️ WAVE 999: Pattern movement parameters (0-100 scale from UI)
+  patternSpeed?: number     // 0-100 → Multiplier for pattern frequency
+  patternAmplitude?: number // 0-100 → Multiplier for movement range
 }
 
 /**

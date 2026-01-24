@@ -484,35 +484,49 @@ export class EffectDreamSimulator {
     const EFFECTS_BY_VIBE: Record<string, string[]> = {
       // 🔪 TECHNO CLUB: El Arsenal Industrial
       // 🗑️ WAVE 986: static_pulse ELIMINADO, binary_glitch y seismic_snap AÑADIDOS
+      // 🎚️ WAVE 996: THE LADDER - 16 efectos techno totales
       'techno-club': [
+        // PEAK (90-100%)
         'industrial_strobe',  // El martillo
-        'acid_sweep',         // Sweeps volumétricos
-        'cyber_dualism',      // Ping-pong L/R
         'gatling_raid',       // Machine gun
+        'core_meltdown',      // ☢️ WAVE 988: LA BESTIA
+        // INTENSE (75-90%)
         'sky_saw',            // Cortes agresivos
-        // 🌫️ Atmospheric Arsenal (low-energy zones)
-        'void_mist',          // Neblina púrpura
+        'abyssal_rise',       // �️ WAVE 930: Epic rise
+        // ACTIVE (60-75%)
+        'cyber_dualism',      // Ping-pong L/R
+        'seismic_snap',       // ⚔️ WAVE 986: Golpe mecánico
+        // GENTLE (45-60%)
+        'ambient_strobe',     // ⚡ WAVE 977: Flashes dispersos
+        'binary_glitch',      // ⚔️ WAVE 986: Tartamudeo digital
+        // AMBIENT (30-45%)
+        'acid_sweep',         // Sweeps volumétricos
         'digital_rain',       // Matrix flicker
-        'deep_breath',        // Respiración orgánica
-        // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
-        'ambient_strobe',     // Flashes dispersos tipo cámara
-        'sonar_ping',         // Ping submarino back→front
-        // ⚔️ WAVE 986: ACTIVE REINFORCEMENTS
-        'binary_glitch',      // Tartamudeo digital
-        'seismic_snap',       // Golpe mecánico
+        // VALLEY (15-30%)
+        'void_mist',          // 🌫️ WAVE 938: Neblina púrpura
+        'fiber_optics',       // 🔮 WAVE 988: Traveling colors
+        // SILENCE (0-15%)
+        'deep_breath',        // 🫁 Respiración orgánica
+        'sonar_ping',         // ⚡ WAVE 977: Ping submarino
       ],
       // Aliases para techno
       'techno': [
-        'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
-        'gatling_raid', 'sky_saw', 'void_mist',
-        'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping',
-        'binary_glitch', 'seismic_snap'  // ⚔️ WAVE 986
+        'industrial_strobe', 'gatling_raid', 'core_meltdown',
+        'sky_saw', 'abyssal_rise',
+        'cyber_dualism', 'seismic_snap',
+        'ambient_strobe', 'binary_glitch',
+        'acid_sweep', 'digital_rain',
+        'void_mist', 'fiber_optics',
+        'deep_breath', 'sonar_ping'
       ],
       'industrial': [
-        'industrial_strobe', 'acid_sweep', 'cyber_dualism', 
-        'gatling_raid', 'sky_saw', 'void_mist',
-        'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping',
-        'binary_glitch', 'seismic_snap'  // ⚔️ WAVE 986
+        'industrial_strobe', 'gatling_raid', 'core_meltdown',
+        'sky_saw', 'abyssal_rise',
+        'cyber_dualism', 'seismic_snap',
+        'ambient_strobe', 'binary_glitch',
+        'acid_sweep', 'digital_rain',
+        'void_mist', 'fiber_optics',
+        'deep_breath', 'sonar_ping'
       ],
       
       // 🎺 FIESTA LATINA: El Arsenal Tropical

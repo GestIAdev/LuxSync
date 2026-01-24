@@ -411,11 +411,16 @@ export class DreamEngineIntegrator {
   private getDreamCacheKey(context: PipelineContext): string {
     // Cache key incluye factores que afectan decisión ética
     // NO cachear si epilepsyMode diferente (cambia completamente los resultados)
+    // 🔥 WAVE 996.5: INCLUIR recentEffects para que Diversity Engine funcione correctamente
     const energy = Math.round((context.pattern.energy ?? 0.5) * 10)
     const worthiness = context.huntDecision.worthiness.toFixed(1)
     const gpuBucket = Math.round(context.gpuLoad * 5) // 0, 0.2, 0.4, 0.6, 0.8, 1.0
     const epilepsy = context.epilepsyMode ? '1' : '0'
-    return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}`
+    // 🎯 WAVE 996.5: Hash de efectos recientes para invalidar cache cuando cambia el historial
+    const recentEffectsHash = context.recentEffects
+      .map(e => e.effect)
+      .join(',')
+    return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}:h${recentEffectsHash}`
   }
   
   private recordDecision(decision: IntegrationDecision): void {

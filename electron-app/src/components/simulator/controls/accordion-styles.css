@@ -317,6 +317,45 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   WAVE 999.6: SNIPER MODE - Single Fixture Layout
+   Shorter sliders, bigger pad, more breathing room for buttons
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tactical-compact-layout.sniper-layout {
+  height: 260px; /* Shorter than group mode (290px) */
+}
+
+/* Sniper sliders - more compact */
+.sniper-layout .v-slider-track {
+  width: 32px;
+  min-width: 32px;
+  padding: 6px 0;
+}
+
+.sniper-layout .v-slider-input {
+  width: 200px; /* Shorter track */
+  height: 20px;
+}
+
+.sniper-layout .v-slider-icon {
+  opacity: 0.6;
+}
+
+.sniper-layout .v-slider-value {
+  font-size: 10px;
+}
+
+/* Sniper pad - EXPANDED */
+.sniper-layout .radar-flex-container.sniper-pad {
+  padding: 4px;
+}
+
+.sniper-layout .radar-flex-container.sniper-pad > * {
+  max-width: 280px !important;
+  max-height: 240px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    FAN CONTROL - Slim Bar Below Radar
    ═══════════════════════════════════════════════════════════════════════ */
 

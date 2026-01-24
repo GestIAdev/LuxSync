@@ -436,13 +436,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             /* 🎯 SNIPER MODE - Single fixture selected */
             <div className="position-mode sniper-mode">
               {/* ═══════════════════════════════════════════════════════════════════════
-                  WAVE 999.3: COMPACT TACTICAL LAYOUT (Single)
-                  [SPD] [────PAD────] [AMP]
+                  WAVE 999.6: SNIPER TACTICAL LAYOUT (Single) - More pad, less sliders
+                  [SPD] [────────PAD────────] [AMP]
                   ═══════════════════════════════════════════════════════════════════════ */}
-              <div className="tactical-compact-layout">
-                {/* 🚀 SPEED SLIDER - TRUE VERTICAL */}
+              <div className="tactical-compact-layout sniper-layout">
+                {/* 🚀 SPEED SLIDER - Compact vertical */}
                 <div className="v-slider-track speed-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="14" height="14">
                     <path fill="currentColor" d="M13 2v8h4l-5 6-5-6h4V2h2zm-2 16v4h2v-4h-2zm-6-4l1.41-1.41L12 18.17l5.59-5.58L19 14l-7 7-7-7z"/>
                   </svg>
                   <div className="v-slider-wrapper">
@@ -460,8 +460,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   <span className="v-slider-value">{patternSpeed}</span>
                 </div>
                 
-                {/* 🎯 XY PAD CENTER - Flexible */}
-                <div className="radar-flex-container">
+                {/* 🎯 XY PAD CENTER - EXPANDED for single target */}
+                <div className="radar-flex-container sniper-pad">
                   <XYPad
                     pan={pan}
                     tilt={tilt}
@@ -471,9 +471,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   />
                 </div>
                 
-                {/* 📏 SIZE/AMP SLIDER - TRUE VERTICAL */}
+                {/* 📏 SIZE/AMP SLIDER - Compact vertical */}
                 <div className="v-slider-track amp-track">
-                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="14" height="14">
                     <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
                   </svg>
                   <div className="v-slider-wrapper">

@@ -326,37 +326,6 @@ export interface ILightEffect {
    * Fase actual del efecto
    */
   getPhase(): EffectPhase
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // 👻 WAVE 999: ZOMBIE STATE (Release Phase) - THE SILK PROTOCOL
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  /**
-   * 👻 ¿Está el efecto en fase de release (zombie)?
-   */
-  readonly isReleasing: boolean
-  
-  /**
-   * 👻 ¿Ha completado el release? (muerte real)
-   */
-  readonly releaseComplete: boolean
-  
-  /**
-   * 👻 Inicia el fade-out zombie
-   * @param durationMs Duración del fade-out (default: 500ms)
-   */
-  startRelease(durationMs?: number): void
-  
-  /**
-   * 👻 Eyección de emergencia (válvula de presión)
-   * @param durationMs Duración del fade-out rápido (default: 200ms)
-   */
-  forceFadeOut(durationMs?: number): void
-  
-  /**
-   * 👻 Multiplicador de dimmer durante release (1.0 → 0.0)
-   */
-  getReleaseMultiplier(): number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

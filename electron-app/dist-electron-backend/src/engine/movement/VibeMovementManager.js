@@ -278,7 +278,16 @@ const PATTERNS = {
     // 💤 UTILITY PATTERNS
     // ═══════════════════════════════════════════════════════════════════════
     /**
-     * STATIC: Respiración zen mínima
+     * 🛑 HOLD: INMOVILIDAD TOTAL - WAVE 999.5
+     * El freno de mano. Offset cero absoluto. Sin respiración, sin nada.
+     * DJ dice "QUIETO" = QUIETO.
+     */
+    hold: (_t, _phase, _audio) => ({
+        x: 0,
+        y: 0,
+    }),
+    /**
+     * STATIC: Respiración zen mínima (para AI cuando energía baja)
      */
     static: (t, phase, audio) => ({
         x: 0,
@@ -316,6 +325,71 @@ export class VibeMovementManager {
         this.energyHistory = [];
         this.ENERGY_HISTORY_SIZE = 120; // ~2 segundos @ 60fps
         this.averageEnergy = 0.5; // Default inicial
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎚️ WAVE 999: MANUAL OVERRIDE PARAMETERS
+        // Los sliders del Commander UI sobrescriben temporalmente estos valores
+        // ═══════════════════════════════════════════════════════════════════════
+        this.manualSpeedOverride = null; // null = use vibe default
+        this.manualAmplitudeOverride = null; // null = use vibe default
+        this.manualPatternOverride = null; // null = use AI selection
+    }
+    /**
+     * 🎚️ WAVE 999: Set manual speed override (0-100 scale)
+     * @param speed 0-100 from UI, or null to release
+     */
+    setManualSpeed(speed) {
+        this.manualSpeedOverride = speed;
+        if (speed !== null) {
+            console.log(`[🎭 VMM] 🚀 Manual SPEED override: ${speed}%`);
+        }
+        else {
+            console.log(`[🎭 VMM] 🚀 Manual SPEED released → AI control`);
+        }
+    }
+    /**
+     * 🎚️ WAVE 999: Set manual amplitude override (0-100 scale)
+     * @param amplitude 0-100 from UI, or null to release
+     */
+    setManualAmplitude(amplitude) {
+        this.manualAmplitudeOverride = amplitude;
+        if (amplitude !== null) {
+            console.log(`[🎭 VMM] 📏 Manual AMPLITUDE override: ${amplitude}%`);
+        }
+        else {
+            console.log(`[🎭 VMM] 📏 Manual AMPLITUDE released → AI control`);
+        }
+    }
+    /**
+     * 🎚️ WAVE 999.4: Set manual PATTERN override
+     * @param pattern Pattern name ('circle', 'eight', 'sweep', etc.), or null to release
+     */
+    setManualPattern(pattern) {
+        this.manualPatternOverride = pattern;
+        if (pattern !== null) {
+            console.log(`[🎭 VMM] 🎯 Manual PATTERN override: ${pattern}`);
+        }
+        else {
+            console.log(`[🎭 VMM] 🎯 Manual PATTERN released → AI control`);
+        }
+    }
+    /**
+     * 🎚️ WAVE 999: Get current manual overrides status
+     */
+    getManualOverrides() {
+        return {
+            speed: this.manualSpeedOverride,
+            amplitude: this.manualAmplitudeOverride,
+            pattern: this.manualPatternOverride,
+        };
+    }
+    /**
+     * 🎚️ WAVE 999: Clear all manual overrides
+     */
+    clearManualOverrides() {
+        this.manualSpeedOverride = null;
+        this.manualAmplitudeOverride = null;
+        this.manualPatternOverride = null;
+        console.log(`[🎭 VMM] 🔓 All manual overrides cleared (speed, amplitude, pattern)`);
     }
     /**
      * 🎯 GENERA INTENT DE MOVIMIENTO
@@ -381,13 +455,33 @@ export class VibeMovementManager {
                 _phrase: Math.floor(this.barCount / 8),
             };
         }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎚️ WAVE 999: MANUAL SPEED OVERRIDE
+        // Si el usuario mueve el slider, sobrescribe la frecuencia base
+        // 0% = Congelado (0.01 Hz), 100% = Velocidad máxima (0.5 Hz)
+        // ═══════════════════════════════════════════════════════════════════════
+        let effectiveFrequency = config.baseFrequency;
+        if (this.manualSpeedOverride !== null) {
+            // 0% → casi congelado (0.01 Hz), 100% → muy rápido (0.5 Hz)
+            effectiveFrequency = 0.01 + (this.manualSpeedOverride / 100) * 0.49;
+        }
         // === FASE 2: CALCULAR PATRÓN (FULL RANGE) ===
-        const phase = Math.PI * 2 * config.baseFrequency * this.time;
+        const phase = Math.PI * 2 * effectiveFrequency * this.time;
         const patternFn = PATTERNS[patternName] || PATTERNS['static'];
         const rawPosition = patternFn(this.time, phase, audio, fixtureIndex, totalFixtures);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎚️ WAVE 999: MANUAL AMPLITUDE OVERRIDE
+        // Si el usuario mueve el slider, sobrescribe la amplitud base
+        // 0% = Punto fijo (0.05 scale), 100% = Rango completo (1.0 scale)
+        // ═══════════════════════════════════════════════════════════════════════
+        let effectiveAmplitudeScale = config.amplitudeScale;
+        if (this.manualAmplitudeOverride !== null) {
+            // 0% → punto fijo (5% del rango), 100% → full range
+            effectiveAmplitudeScale = 0.05 + (this.manualAmplitudeOverride / 100) * 0.95;
+        }
         // === FASE 1: ESCALAR POR AMPLITUDE DEL VIBE ===
         const energyBoost = 1.0 + audio.energy * 0.2; // Hasta +20% con energía máxima
-        const vibeScale = config.amplitudeScale * energyBoost;
+        const vibeScale = effectiveAmplitudeScale * energyBoost;
         // ═══════════════════════════════════════════════════════════════════════
         // 🚗 WAVE 347.8: THE GEARBOX - Dynamic Amplitude Scaling
         // 
@@ -464,7 +558,9 @@ export class VibeMovementManager {
             const panDeg = Math.round(position.x * 270);
             const tiltDeg = Math.round(position.y * 135);
             const threshold = Math.max(0.05, this.averageEnergy * 0.5);
-            console.log(`[🎯 VMM] ${vibeId} | ${patternName} | phrase:${Math.floor(this.barCount / 8)} | E:${audio.energy.toFixed(2)} (avg:${this.averageEnergy.toFixed(2)} thr:${threshold.toFixed(2)}) | Pan:${panDeg}° Tilt:${tiltDeg}°`);
+            // 🎚️ WAVE 999: Mostrar si hay override manual
+            const manualTag = (this.manualSpeedOverride !== null || this.manualAmplitudeOverride !== null) ? ' [MANUAL]' : '';
+            console.log(`[🎯 VMM] ${vibeId} | ${patternName}${manualTag} | phrase:${Math.floor(this.barCount / 8)} | E:${audio.energy.toFixed(2)} (avg:${this.averageEnergy.toFixed(2)} thr:${threshold.toFixed(2)}) | Pan:${panDeg}° Tilt:${tiltDeg}°`);
         }
         // 🔧 WAVE 350: Determinar phaseType según patrón
         // sweep = linear (HAL no debe rotar), otros = polar (HAL aplica rotación)
@@ -473,10 +569,10 @@ export class VibeMovementManager {
             x: position.x,
             y: position.y,
             pattern: patternName,
-            speed: config.baseFrequency,
+            speed: effectiveFrequency, // 🎚️ WAVE 999: Usar frecuencia efectiva (con override)
             amplitude: finalScale,
             phaseType: phaseType,
-            _frequency: config.baseFrequency,
+            _frequency: effectiveFrequency, // 🎚️ WAVE 999: Debug con override
             _phrase: Math.floor(this.barCount / 8),
         };
     }
@@ -484,12 +580,20 @@ export class VibeMovementManager {
      * 🧠 SELECCIÓN DINÁMICA DE PATRÓN
      *
      * Lógica híbrida:
+     * 0. WAVE 999.4: MANUAL OVERRIDE tiene máxima prioridad
      * 1. VETO por energía baja → patrón calmado (WAVE 346: umbral dinámico)
      * 2. SELECCIÓN por phrase (cada 8 compases)
      *
      * 🔧 WAVE 349: Umbral reducido para que patrones roten más activamente
      */
     selectPattern(vibeId, config, audio, barCount) {
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎯 WAVE 999.4: MANUAL PATTERN OVERRIDE - MÁXIMA PRIORIDAD
+        // Si el DJ seleccionó un patrón manualmente, ese es LEY
+        // ═══════════════════════════════════════════════════════════════════════
+        if (this.manualPatternOverride !== null) {
+            return this.manualPatternOverride;
+        }
         const phrase = Math.floor(barCount / 8); // Cambia cada 8 compases
         const patterns = config.patterns;
         // Si no hay patrones, fallback

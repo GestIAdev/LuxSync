@@ -286,16 +286,39 @@ export class DreamEngineIntegrator {
         if (context.epilepsyMode) {
             builder.withEpilepsyMode(true);
         }
+        // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR
+        // El Diversity Engine NECESITA el historial de efectos recientes para penalizar repeticiones
+        // Sin esto, recentEffects siempre era [] y cyber_dualism ganaba TODO
+        if (context.recentEffects && context.recentEffects.length > 0) {
+            // Convertir al formato que espera el builder (EffectHistoryEntry[])
+            const effectHistoryEntries = context.recentEffects.map(e => ({
+                effect: e.effect,
+                timestamp: e.timestamp,
+                energy: 0.7, // Default razonable
+                intensity: 0.7, // Default razonable  
+                duration: 2000, // Default 2s
+                zones: ['all'], // Default zones
+                success: true, // Asumimos que se ejecutó
+                vibe: context.pattern.vibe // Vibe actual del contexto
+            }));
+            builder.withRecentEffects(effectHistoryEntries);
+            console.log(`[INTEGRATOR] 📝 Passed ${effectHistoryEntries.length} effects to DreamSimulator`);
+        }
         return builder.build();
     }
     getDreamCacheKey(context) {
         // Cache key incluye factores que afectan decisión ética
         // NO cachear si epilepsyMode diferente (cambia completamente los resultados)
+        // 🔥 WAVE 996.5: INCLUIR recentEffects para que Diversity Engine funcione correctamente
         const energy = Math.round((context.pattern.energy ?? 0.5) * 10);
         const worthiness = context.huntDecision.worthiness.toFixed(1);
         const gpuBucket = Math.round(context.gpuLoad * 5); // 0, 0.2, 0.4, 0.6, 0.8, 1.0
         const epilepsy = context.epilepsyMode ? '1' : '0';
-        return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}`;
+        // 🎯 WAVE 996.5: Hash de efectos recientes para invalidar cache cuando cambia el historial
+        const recentEffectsHash = context.recentEffects
+            .map(e => e.effect)
+            .join(',');
+        return `${context.pattern.vibe}:e${energy}:w${worthiness}:g${gpuBucket}:ep${epilepsy}:h${recentEffectsHash}`;
     }
     recordDecision(decision) {
         this.executionHistory.push(decision);

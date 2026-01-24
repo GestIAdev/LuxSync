@@ -191,9 +191,10 @@ export class BinaryGlitch extends BaseEffect {
         // Pero mismo timestamp = mismo patrón (DETERMINISTA)
         const patternIndex = this.triggerTimestamp % BINARY_PATTERNS.length;
         this.selectedPattern = BINARY_PATTERNS[patternIndex];
-        // Color alternativo basado en segundo del trigger
-        const triggerSecond = Math.floor(this.triggerTimestamp / 1000);
-        this.useAlternateColor = triggerSecond % 2 === 0;
+        // 🔥 WAVE 998.1: CYAN FRÍO SIEMPRE
+        // ❌ ANTES: Alternaba cyan/blanco cálido (triggerSecond % 2)
+        // ✅ AHORA: Siempre CYAN FRÍO (pale cyan, techno glacial)
+        this.useAlternateColor = true; // TRUE = paleCyan, FALSE = coldWhite
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Update loop

@@ -429,6 +429,30 @@ const luxApi = {
          */
         isCalibrating: (fixtureId) => ipcRenderer.invoke('lux:arbiter:isCalibrating', { fixtureId }),
         // ============================================
+        // �️ WAVE 999: MOVEMENT PARAMETERS (Commander UI)
+        // ============================================
+        /**
+         * Set movement parameter (speed or amplitude)
+         * @param parameter 'speed' | 'amplitude'
+         * @param value 0-100 scale, or null to release
+         */
+        setMovementParameter: (parameter, value) => ipcRenderer.invoke('lux:arbiter:setMovementParameter', { parameter, value }),
+        /**
+         * 🎯 WAVE 999.4: Set manual movement pattern
+         * @param pattern Pattern name ('circle', 'eight', etc) or null to release to AI
+         */
+        setMovementPattern: (pattern) => ipcRenderer.invoke('lux:arbiter:setMovementPattern', { pattern }),
+        /**
+         * Clear all movement parameter overrides (back to AI)
+         */
+        clearMovementOverrides: () => ipcRenderer.invoke('lux:arbiter:clearMovementOverrides'),
+        /**
+         * 🧠 WAVE 999.6: Get unified state for UI hydration
+         * @param fixtureIds Array of fixture IDs (uses first as "Leader")
+         * @returns State snapshot with null for AI-controlled channels
+         */
+        getFixturesState: (fixtureIds) => ipcRenderer.invoke('lux:arbiter:getFixturesState', { fixtureIds }),
+        // ============================================
         // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
         // ============================================
         /**

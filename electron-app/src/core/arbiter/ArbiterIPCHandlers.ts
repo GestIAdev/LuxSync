@@ -17,6 +17,7 @@ import { ipcMain } from 'electron'
 import type { MasterArbiter } from './MasterArbiter'
 import type { Layer2_Manual } from './types'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
 
 /**
  * Register all Arbiter IPC handlers
@@ -224,9 +225,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       value: number | null  // 0-100 scale, or null to release
     }
   ) => {
-    // Import vibeMovementManager lazily to avoid circular deps
-    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
-    
     if (parameter === 'speed') {
       vibeMovementManager.setManualSpeed(value)
       console.log(`[Arbiter IPC] 🚀 Movement SPEED: ${value === null ? 'RELEASED' : value + '%'}`)
@@ -242,7 +240,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
    * Clear all movement parameter overrides
    */
   ipcMain.handle('lux:arbiter:clearMovementOverrides', () => {
-    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
     vibeMovementManager.clearManualOverrides()
     return { success: true }
   })
@@ -259,7 +256,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       pattern: string | null  // Pattern name or null to release to AI
     }
   ) => {
-    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
     vibeMovementManager.setManualPattern(pattern)
     console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`)
     return { success: true, pattern }
@@ -284,7 +280,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
     
     // Get movement overrides (global - applies to all fixtures)
-    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
     const movementOverrides = vibeMovementManager.getManualOverrides()
     
     // Get fixture-specific override for FIRST fixture (Leader strategy)

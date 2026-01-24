@@ -84,12 +84,13 @@ const EFFECT_CATEGORIES = {
 };
 // Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
 const EFFECT_BEAUTY_WEIGHTS = {
-    // 🔪 TECHNO-INDUSTRIAL (5 effects - WAVE 930.2)
+    // 🔪 TECHNO-INDUSTRIAL (6 effects - WAVE 996 FIX)
     'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
     'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
     'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
     'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 }, // 🔫 WAVE 930
     'sky_saw': { base: 0.76, energyMultiplier: 1.25, technoBonus: 0.16 }, // 🗡️ WAVE 930
+    'abyssal_rise': { base: 0.88, energyMultiplier: 1.40, technoBonus: 0.22 }, // 🌊 WAVE 996: Epic 5s rise - high beauty
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
     'void_mist': { base: 0.55, energyMultiplier: 0.6, technoBonus: 0.08 }, // 🌫️ Fog - low energy beauty
     // 🗑️ WAVE 986: static_pulse ELIMINADO
@@ -124,6 +125,7 @@ const EFFECT_GPU_COST = {
     'cyber_dualism': 0.28,
     'gatling_raid': 0.35, // 🔫 Alto costo - muchos PARs disparando
     'sky_saw': 0.32, // 🗡️ Alto costo - movimiento agresivo
+    'abyssal_rise': 0.28, // 🌊 WAVE 996: Medium-high - 5s epic ramp
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (Bajo costo - efectos suaves)
     'void_mist': 0.08, // 🌫️ Muy bajo - solo dimmer suave
     // 🗑️ WAVE 986: static_pulse ELIMINADO
@@ -158,6 +160,7 @@ const EFFECT_FATIGUE_IMPACT = {
     'cyber_dualism': 0.06,
     'gatling_raid': 0.10, // 🔫 Alta fatiga - muy intenso
     'sky_saw': 0.08, // 🗡️ Alta fatiga - movimiento agresivo
+    'abyssal_rise': 0.04, // 🌊 WAVE 996: Low fatigue - epic build creates anticipation, not exhaustion
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (REDUCE fatiga - efectos relajantes)
     'void_mist': -0.04, // 🌫️ Reduce fatiga - ambiente zen
     // 🗑️ WAVE 986: static_pulse ELIMINADO
@@ -323,35 +326,49 @@ export class EffectDreamSimulator {
         const EFFECTS_BY_VIBE = {
             // 🔪 TECHNO CLUB: El Arsenal Industrial
             // 🗑️ WAVE 986: static_pulse ELIMINADO, binary_glitch y seismic_snap AÑADIDOS
+            // 🎚️ WAVE 996: THE LADDER - 16 efectos techno totales
             'techno-club': [
+                // PEAK (90-100%)
                 'industrial_strobe', // El martillo
-                'acid_sweep', // Sweeps volumétricos
-                'cyber_dualism', // Ping-pong L/R
                 'gatling_raid', // Machine gun
+                'core_meltdown', // ☢️ WAVE 988: LA BESTIA
+                // INTENSE (75-90%)
                 'sky_saw', // Cortes agresivos
-                // 🌫️ Atmospheric Arsenal (low-energy zones)
-                'void_mist', // Neblina púrpura
+                'abyssal_rise', // �️ WAVE 930: Epic rise
+                // ACTIVE (60-75%)
+                'cyber_dualism', // Ping-pong L/R
+                'seismic_snap', // ⚔️ WAVE 986: Golpe mecánico
+                // GENTLE (45-60%)
+                'ambient_strobe', // ⚡ WAVE 977: Flashes dispersos
+                'binary_glitch', // ⚔️ WAVE 986: Tartamudeo digital
+                // AMBIENT (30-45%)
+                'acid_sweep', // Sweeps volumétricos
                 'digital_rain', // Matrix flicker
-                'deep_breath', // Respiración orgánica
-                // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
-                'ambient_strobe', // Flashes dispersos tipo cámara
-                'sonar_ping', // Ping submarino back→front
-                // ⚔️ WAVE 986: ACTIVE REINFORCEMENTS
-                'binary_glitch', // Tartamudeo digital
-                'seismic_snap', // Golpe mecánico
+                // VALLEY (15-30%)
+                'void_mist', // 🌫️ WAVE 938: Neblina púrpura
+                'fiber_optics', // 🔮 WAVE 988: Traveling colors
+                // SILENCE (0-15%)
+                'deep_breath', // 🫁 Respiración orgánica
+                'sonar_ping', // ⚡ WAVE 977: Ping submarino
             ],
             // Aliases para techno
             'techno': [
-                'industrial_strobe', 'acid_sweep', 'cyber_dualism',
-                'gatling_raid', 'sky_saw', 'void_mist',
-                'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping',
-                'binary_glitch', 'seismic_snap' // ⚔️ WAVE 986
+                'industrial_strobe', 'gatling_raid', 'core_meltdown',
+                'sky_saw', 'abyssal_rise',
+                'cyber_dualism', 'seismic_snap',
+                'ambient_strobe', 'binary_glitch',
+                'acid_sweep', 'digital_rain',
+                'void_mist', 'fiber_optics',
+                'deep_breath', 'sonar_ping'
             ],
             'industrial': [
-                'industrial_strobe', 'acid_sweep', 'cyber_dualism',
-                'gatling_raid', 'sky_saw', 'void_mist',
-                'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping',
-                'binary_glitch', 'seismic_snap' // ⚔️ WAVE 986
+                'industrial_strobe', 'gatling_raid', 'core_meltdown',
+                'sky_saw', 'abyssal_rise',
+                'cyber_dualism', 'seismic_snap',
+                'ambient_strobe', 'binary_glitch',
+                'acid_sweep', 'digital_rain',
+                'void_mist', 'fiber_optics',
+                'deep_breath', 'sonar_ping'
             ],
             // 🎺 FIESTA LATINA: El Arsenal Tropical
             'fiesta-latina': [
@@ -415,14 +432,17 @@ export class EffectDreamSimulator {
      * - 'intense': min 0.45 SIN CAMBIOS (DigitalRain correctamente bloqueado)
      */
     filterByZone(effects, zone) {
+        // 🎚️ WAVE 996: THE LADDER OVERRIDES - Rangos ampliados para no competir con ContextualEffectSelector
+        // THE LADDER ya hace la clasificación correcta en ContextualEffectSelector.
+        // Aquí solo filtramos extremos obvios (no poner strobe pesado en silence).
         const aggressionLimits = {
-            'silence': { min: 0, max: 0.20 }, // Solo los más suaves
-            'valley': { min: 0, max: 0.35 }, // Suaves + algo de respiración
-            'ambient': { min: 0, max: 0.50 }, // Moderados hacia abajo
-            'gentle': { min: 0, max: 0.60 }, // Transición
-            'active': { min: 0.20, max: 0.95 }, // 🔥 WAVE 982: 0.85→0.95 (GATLING entra en builds)
-            'intense': { min: 0.45, max: 1.00 }, // Mantener min=0.45 (DigitalRain NO entra aquí, correcto)
-            'peak': { min: 0.50, max: 1.00 }, // Libertad total para agresivos
+            'silence': { min: 0, max: 0.30 }, // Solo efectos muy suaves
+            'valley': { min: 0, max: 0.50 }, // Suaves + algo de respiración
+            'ambient': { min: 0, max: 0.70 }, // Moderados (ampliar para digital_rain + acid_sweep)
+            'gentle': { min: 0, max: 0.85 }, // Transición amplia (incluir ambient_strobe, binary_glitch)
+            'active': { min: 0.20, max: 1.00 }, // Libertad casi total (cyber_dualism, seismic_snap)
+            'intense': { min: 0.45, max: 1.00 }, // Agresivos completos (sky_saw, abyssal_rise)
+            'peak': { min: 0.70, max: 1.00 }, // Solo los más brutales (gatling, core_meltdown, industrial)
         };
         const limits = aggressionLimits[zone] || { min: 0, max: 1 };
         const filtered = effects.filter(effect => {
@@ -446,17 +466,17 @@ export class EffectDreamSimulator {
     }
     /**
      * Helper para logging: muestra el rango de agresión de una zona
-     * 🔥 WAVE 982: Updated - Gatling fix only (DigitalRain debe quedarse fuera de intense)
+     * 🎚️ WAVE 996: Updated para THE LADDER - rangos ampliados
      */
     getZoneAggressionRange(zone) {
         const ranges = {
-            'silence': '0-0.20',
-            'valley': '0-0.35',
-            'ambient': '0-0.50',
-            'gentle': '0-0.60',
-            'active': '0.20-0.95', // 🔥 WAVE 982: Gatling entra en builds
-            'intense': '0.45-1.00', // Mantener min=0.45 (DigitalRain ambiental NO entra)
-            'peak': '0.50-1.00',
+            'silence': '0-0.30',
+            'valley': '0-0.50',
+            'ambient': '0-0.70',
+            'gentle': '0-0.85',
+            'active': '0.20-1.00',
+            'intense': '0.45-1.00',
+            'peak': '0.70-1.00',
         };
         return ranges[zone] || '0-1.00';
     }
@@ -776,24 +796,12 @@ export class EffectDreamSimulator {
     }
     calculateDiversityScore(effect, context) {
         // ═══════════════════════════════════════════════════════════════
-        // � WAVE 982.5: DIVERSITY ENGINE - ESCALERA DE PENALIZACIÓN
+        // 🔥 WAVE 982.5: DIVERSITY ENGINE - ESCALERA DE PENALIZACIÓN
         // ═══════════════════════════════════════════════════════════════
-        // 
-        // PROBLEMA ANTERIOR:
-        // - Fórmula basada en usageRate (porcentaje) era permisiva
-        // - Un efecto necesitaba 33%+ del historial para penalizarse
-        // 
-        // SOLUCIÓN (Radwulf & GeminiPunk):
-        // - Escalera directa por CONTEO de usos:
-        //   0 usos → 1.0 (Sin penalización - efecto fresco)
-        //   1 uso  → 0.7 (-30% Score - usado recientemente)
-        //   2 usos → 0.4 (-60% Score - repetitivo)
-        //   3+ usos → 0.1 (-90% Score - SHADOWBAN)
-        // 
-        // RESULTADO:
-        // - Efecto "perfecto" (0.9 relevance) usado 1x: 0.9*0.7 = 0.63
-        // - Efecto "bueno" (0.75 relevance) sin usar: 0.75*1.0 = 0.75 ¡GANA!
-        // ═══════════════════════════════════════════════════════════════
+        // 🔍 WAVE 996.6: DEBUG - Ver historial recibido
+        if (effect.effect === 'cyber_dualism') {
+            console.log(`[DIVERSITY_DEBUG] 🔍 cyber_dualism: historySize=${context.recentEffects.length}, effects=[${context.recentEffects.map(e => e.effect).join(',')}]`);
+        }
         // Contar uso reciente (últimos efectos en el historial)
         const recentUsage = context.recentEffects
             .filter(e => e.effect === effect.effect)
@@ -838,12 +846,17 @@ export class EffectDreamSimulator {
     // ═══════════════════════════════════════════════════════════════
     rankScenarios(scenarios, prediction) {
         // Multi-factor ranking
-        return scenarios.sort((a, b) => {
-            // Calcular score compuesto
-            const scoreA = this.calculateScenarioScore(a, prediction);
-            const scoreB = this.calculateScenarioScore(b, prediction);
-            return scoreB - scoreA; // Descending
-        });
+        // 🔍 WAVE 996.6: DEBUG - Log top candidates to diagnose diversity issues
+        const scored = scenarios.map(s => ({
+            scenario: s,
+            score: this.calculateScenarioScore(s, prediction)
+        })).sort((a, b) => b.score - a.score);
+        // Log top 3 para debug
+        if (scored.length >= 2) {
+            const top3 = scored.slice(0, 3).map(s => `${s.scenario.effect.effect}(R=${s.scenario.projectedRelevance.toFixed(2)}×D=${s.scenario.diversityScore.toFixed(1)}→${s.score.toFixed(2)})`).join(' | ');
+            console.log(`[DREAM_SIMULATOR] 🏆 TOP3: ${top3}`);
+        }
+        return scored.map(s => s.scenario);
     }
     calculateScenarioScore(scenario, prediction) {
         // ═══════════════════════════════════════════════════════════════

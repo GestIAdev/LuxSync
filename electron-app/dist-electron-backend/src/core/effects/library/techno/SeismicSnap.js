@@ -1,48 +1,60 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💥 SEISMIC SNAP - GOLPE FÍSICO DE LUZ
+ * 💥 SEISMIC SNAP - TERREMOTO VISUAL CONTUNDENTE
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * 🔪 WAVE 986: ACTIVE REINFORCEMENTS
- * Obturador de cámara gigante. El "snap" que corta el aire.
+ * � WAVE 997.6: SEISMIC RECONSTRUCTION - "De flash rojo a terremoto visual"
  *
- * FILOSOFÍA:
- * Como el flash de un fotógrafo con cámara de película.
- * BLACKOUT → SNAP instantáneo → Fade out rápido.
- * El contraste total crea percepción de "golpe físico".
+ * FILOSOFÍA ACTUALIZADA:
+ * NO es un "flash de cámara". Es un TERREMOTO SÍSMICO.
+ * Blackout → SNAP CONTUNDENTE → SHAKE (vibración) → Fade out.
+ * El impacto físico de un golpe que hace VIBRAR el escenario.
+ *
+ * ❌ ELIMINADO (WAVE 997.6):
+ * - Snap de 200ms (invisible)
+ * - Duración total de 1,500ms (demasiado corta)
+ * - Concepto "flash de fotógrafo" (poco techno)
+ *
+ * ✅ NUEVO:
+ * - Snap de 400ms (VISIBLE y CONTUNDENTE)
+ * - Fase SHAKE de 600ms (vibración post-impacto)
+ * - Duración total: 2,500ms (impactante)
  *
  * ZONA TARGET: ACTIVE / INTENSE (E=0.45-0.82)
- * Para momentos que necesitan IMPACTO puntual.
+ * Para momentos que necesitan IMPACTO BRUTAL y VISIBLE.
  *
  * COMPORTAMIENTO:
  * - MixBus: 'global' (OVERRIDE total durante el efecto)
- * - Pattern: 3 fases estrictas
- *   1. BLACKOUT (200ms) - Preparación del golpe
- *   2. SNAP (200ms) - Flash ROJO/BLANCO al 100%
- *   3. FADE (1100ms) - Decay exponencial
- * - Duración total: 1500ms (SHORT - exento de THE MOVER LAW)
+ * - Pattern: 4 fases estrictas
+ *   1. BLACKOUT (150ms) - Preparación del golpe
+ *   2. SNAP (400ms) - Flash ROJO/BLANCO al 100% SOSTENIDO
+ *   3. SHAKE (600ms) - Vibración rápida post-impacto
+ *   4. FADE (1350ms) - Decay exponencial
+ * - Duración total: 2500ms (MEDIUM - exento de THE MOVER LAW)
  *
  * ⚠️ AXIOMA ANTI-SIMULACIÓN:
  * Timing FIJO. Colores FIJOS. DETERMINISTA al 100%.
  *
  * ADN:
- * - Aggression: 0.70 (Golpe físico)
- * - Chaos: 0.20 (Muy ordenado - SNAP preciso)
+ * - Aggression: 0.80 (Golpe físico brutal)
+ * - Chaos: 0.30 (Vibración añade caos controlado)
  * - Organicity: 0.10 (Casi 100% máquina)
  *
- * THE MOVER LAW: Este efecto es SHORT (1500ms < 2000ms)
- * → PUEDE usar color en movers (exento de MODO FANTASMA)
+ * THE MOVER LAW: Este efecto es MEDIUM (2500ms > 2000ms)
+ * → Movers en MODO FANTASMA (solo dimmer, sin color override rápido)
  *
  * @module core/effects/library/techno/SeismicSnap
- * @version WAVE 986 - ACTIVE REINFORCEMENTS
+ * @version WAVE 997.6 - SEISMIC RECONSTRUCTION
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    blackoutDurationMs: 200, // 200ms de blackout preparatorio
-    snapDurationMs: 200, // 200ms de flash máximo
-    fadeDurationMs: 1100, // 1100ms de fade out
+    blackoutDurationMs: 150, // 🔥 WAVE 997.6: 150ms (más corto)
+    snapDurationMs: 400, // 🔥 WAVE 997.6: 400ms (DOBLE - visible y contundente)
+    shakeDurationMs: 600, // 🔥 WAVE 997.6: 600ms (nueva fase - vibración post-impacto)
+    fadeDurationMs: 1350, // 🔥 WAVE 997.6: 1350ms (decay más largo)
+    shakeFrequencyHz: 10, // 🔥 WAVE 997.6: 10 Hz = 10 vibraciones por segundo
 };
-// Total: 1500ms
+// Total: 2500ms - WAVE 997.6
 // ═══════════════════════════════════════════════════════════════════════════
 // COLORES Y ZONAS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -83,13 +95,17 @@ export class SeismicSnap extends BaseEffect {
     // Computed durations
     // ─────────────────────────────────────────────────────────────────────────
     get totalDurationMs() {
-        return this.config.blackoutDurationMs + this.config.snapDurationMs + this.config.fadeDurationMs;
+        return this.config.blackoutDurationMs + this.config.snapDurationMs +
+            this.config.shakeDurationMs + this.config.fadeDurationMs;
     }
     get snapStartMs() {
         return this.config.blackoutDurationMs;
     }
-    get fadeStartMs() {
+    get shakeStartMs() {
         return this.config.blackoutDurationMs + this.config.snapDurationMs;
+    }
+    get fadeStartMs() {
+        return this.config.blackoutDurationMs + this.config.snapDurationMs + this.config.shakeDurationMs;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Lifecycle
@@ -101,10 +117,10 @@ export class SeismicSnap extends BaseEffect {
         super.trigger(config);
         this.triggerTimestamp = Date.now();
         this.currentPhase = 'blackout';
-        // 🎨 SELECCIÓN DETERMINISTA DE COLOR
-        // Alterna entre blanco y rojo basado en segundo del trigger
-        const triggerSecond = Math.floor(this.triggerTimestamp / 1000);
-        this.useWhiteFlash = triggerSecond % 2 === 0;
+        // 🔥 WAVE 998.1: ALTERNANCIA REAL DETERMINISTA
+        // ❌ ANTES: triggerSecond % 2 (múltiples disparos mismo segundo = mismo color)
+        // ✅ AHORA: Siempre ROJO (el blanco ya no es bienvenido en techno)
+        this.useWhiteFlash = false;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Update loop
@@ -125,8 +141,11 @@ export class SeismicSnap extends BaseEffect {
         if (this.elapsedMs < this.snapStartMs) {
             this.currentPhase = 'blackout';
         }
-        else if (this.elapsedMs < this.fadeStartMs) {
+        else if (this.elapsedMs < this.shakeStartMs) {
             this.currentPhase = 'snap';
+        }
+        else if (this.elapsedMs < this.fadeStartMs) {
+            this.currentPhase = 'shake';
         }
         else {
             this.currentPhase = 'fade';
@@ -145,6 +164,8 @@ export class SeismicSnap extends BaseEffect {
                 return this.buildBlackoutOutput(progress);
             case 'snap':
                 return this.buildSnapOutput(progress);
+            case 'shake':
+                return this.buildShakeOutput(progress);
             case 'fade':
                 return this.buildFadeOutput(progress);
             default:
@@ -173,7 +194,8 @@ export class SeismicSnap extends BaseEffect {
     }
     /**
      * ⚡ FASE 2: SNAP
-     * Flash instantáneo al 100%. El golpe propiamente dicho.
+     * Flash instantáneo al 100% SOSTENIDO. El golpe propiamente dicho.
+     * 🔥 WAVE 997.6: Ahora dura 400ms (visible y contundente)
      */
     buildSnapOutput(progress) {
         const color = this.useWhiteFlash ? COLORS.warmWhite : COLORS.impactRed;
@@ -191,8 +213,38 @@ export class SeismicSnap extends BaseEffect {
         };
     }
     /**
-     * 📉 FASE 3: FADE
-     * Decay exponencial. Como la persistencia retiniana del flash.
+     * 🌀 FASE 3: SHAKE (NUEVA - WAVE 997.6)
+     * Vibración rápida post-impacto. Como un terremoto visual.
+     * Flicker ON/OFF a 10 Hz (10 vibraciones por segundo)
+     */
+    buildShakeOutput(progress) {
+        const color = this.useWhiteFlash ? COLORS.warmWhite : COLORS.impactRed;
+        // Calcular progreso dentro de la fase shake
+        const shakeElapsed = this.elapsedMs - this.shakeStartMs;
+        const shakeProgress = Math.min(shakeElapsed / this.config.shakeDurationMs, 1);
+        // Vibración ON/OFF basada en frecuencia
+        const cycleDurationMs = 1000 / this.config.shakeFrequencyHz;
+        const cycleProgress = (shakeElapsed % cycleDurationMs) / cycleDurationMs;
+        const isOn = cycleProgress < 0.5;
+        // Intensidad decae durante la vibración (de 1.0 a 0.4)
+        const decayIntensity = 1.0 - (shakeProgress * 0.6);
+        const vibrateIntensity = isOn ? decayIntensity : (decayIntensity * 0.3);
+        return {
+            effectId: this.id,
+            category: this.category,
+            phase: this.phase,
+            progress,
+            zones: SNAP_ZONES,
+            intensity: vibrateIntensity,
+            dimmerOverride: vibrateIntensity,
+            colorOverride: color,
+            globalOverride: true,
+            zoneOverrides: this.buildZoneOverrides(vibrateIntensity, color),
+        };
+    }
+    /**
+     * 📉 FASE 4: FADE
+     * Decay exponencial. Como la persistencia retiniana del impacto.
      */
     buildFadeOutput(progress) {
         // Calcular progreso dentro de la fase fade

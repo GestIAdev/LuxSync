@@ -128,6 +128,99 @@ export function registerArbiterHandlers(masterArbiter) {
         return { success: true };
     });
     // ═══════════════════════════════════════════════════════════════════════
+    // 🎚️ WAVE 999: MOVEMENT PARAMETERS (Speed & Amplitude)
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set movement parameter (speed or amplitude)
+     * Called from PositionSection.tsx when user moves tactical sliders
+     */
+    ipcMain.handle('lux:arbiter:setMovementParameter', (_event, { parameter, value, }) => {
+        // Import vibeMovementManager lazily to avoid circular deps
+        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
+        if (parameter === 'speed') {
+            vibeMovementManager.setManualSpeed(value);
+            console.log(`[Arbiter IPC] 🚀 Movement SPEED: ${value === null ? 'RELEASED' : value + '%'}`);
+        }
+        else if (parameter === 'amplitude') {
+            vibeMovementManager.setManualAmplitude(value);
+            console.log(`[Arbiter IPC] 📏 Movement AMPLITUDE: ${value === null ? 'RELEASED' : value + '%'}`);
+        }
+        return { success: true, parameter, value };
+    });
+    /**
+     * Clear all movement parameter overrides
+     */
+    ipcMain.handle('lux:arbiter:clearMovementOverrides', () => {
+        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
+        vibeMovementManager.clearManualOverrides();
+        return { success: true };
+    });
+    /**
+     * 🎯 WAVE 999.4: Set manual movement pattern
+     * Called from PatternSelector when user clicks a pattern button
+     */
+    ipcMain.handle('lux:arbiter:setMovementPattern', (_event, { pattern, }) => {
+        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
+        vibeMovementManager.setManualPattern(pattern);
+        console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`);
+        return { success: true, pattern };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 999.6: STATE HYDRATION - Get current fixture state for UI sync
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Get unified state snapshot for fixtures (for UI hydration)
+     * Strategy: "Follow the Leader" - returns state of FIRST fixture
+     *
+     * Returns null for channels controlled by AI (not manually overridden)
+     */
+    ipcMain.handle('lux:arbiter:getFixturesState', (_event, { fixtureIds }) => {
+        if (fixtureIds.length === 0) {
+            return { success: false, error: 'No fixture IDs provided' };
+        }
+        // Get movement overrides (global - applies to all fixtures)
+        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
+        const movementOverrides = vibeMovementManager.getManualOverrides();
+        // Get fixture-specific override for FIRST fixture (Leader strategy)
+        const leaderId = fixtureIds[0];
+        const fixtureOverride = masterArbiter.getManualOverride(leaderId);
+        // Build unified state snapshot
+        const state = {
+            // === INTENSITY ===
+            // dimmer: null = AI control, 0-100 = manual override
+            dimmer: fixtureOverride?.controls?.dimmer !== undefined
+                ? Math.round(fixtureOverride.controls.dimmer / 2.55) // 0-255 → 0-100
+                : null,
+            // === COLOR ===
+            // color: null = AI control, hex string = manual override
+            color: (fixtureOverride?.controls?.red !== undefined &&
+                fixtureOverride?.controls?.green !== undefined &&
+                fixtureOverride?.controls?.blue !== undefined)
+                ? `#${fixtureOverride.controls.red.toString(16).padStart(2, '0')}${fixtureOverride.controls.green.toString(16).padStart(2, '0')}${fixtureOverride.controls.blue.toString(16).padStart(2, '0')}`
+                : null,
+            // === POSITION (from fixture override) ===
+            pan: fixtureOverride?.controls?.pan !== undefined
+                ? Math.round((fixtureOverride.controls.pan / 255) * 540) // 0-255 → 0-540
+                : null,
+            tilt: fixtureOverride?.controls?.tilt !== undefined
+                ? Math.round((fixtureOverride.controls.tilt / 255) * 270) // 0-255 → 0-270
+                : null,
+            // === MOVEMENT (global overrides) ===
+            pattern: movementOverrides.pattern, // 'circle', 'hold', etc. or null
+            speed: movementOverrides.speed, // 0-100 or null
+            amplitude: movementOverrides.amplitude, // 0-100 or null
+            // === BEAM (from fixture override) ===
+            zoom: fixtureOverride?.controls?.zoom !== undefined
+                ? Math.round(fixtureOverride.controls.zoom / 2.55)
+                : null,
+            focus: fixtureOverride?.controls?.focus !== undefined
+                ? Math.round(fixtureOverride.controls.focus / 2.55)
+                : null,
+        };
+        console.log(`[Arbiter IPC] 🧠 State Hydration for ${fixtureIds.length} fixtures (Leader: ${leaderId})`);
+        return { success: true, state };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
     // EFFECTS
     // ═══════════════════════════════════════════════════════════════════════
     /**

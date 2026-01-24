@@ -1,70 +1,68 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌪️ ABYSSAL RISE - THE TRANCE ASCENSION
+ * 🦈 ABYSSAL PRESSURE - THE UNDERWATER CRUSH
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * 🔥 WAVE 930: THE ARSENAL
+ * 🔥 WAVE 997: ABYSSAL REDEMPTION - REFACTOR TOTAL
  *
  * FILOSOFÍA:
- * Los pads infinitos de Armin. El breakdown de 8 compases.
- * Ese momento donde la música SUBE y SUBE y todo el mundo sabe
- * que viene el drop pero la tensión es INSOPORTABLE.
+ * NO es una "subida divina". Es PRESIÓN SUBMARINA.
+ * La oscuridad del océano profundo que vibra, se contrae y colapsa
+ * en un VOID antes del drop. BRUTAL. OSCURO. RÁPIDO.
  *
- * Este efecto dura 4-8 compases. Es un viaje.
+ * ❌ ELIMINADO (WAVE 997):
+ * - Duración de 10s (demasiado larga)
+ * - Fase "Blinding" con whiteout cegador (molesto)
+ * - Rampas lentas (el techno no espera)
+ *
+ * ✅ NUEVO CONCEPTO:
+ * - Duración: 3,500-4,000ms (ÁGIL)
+ * - Colores: DEEP BLUE (#0000FF) + UV/PURPLE (#4B0082) - CERO BLANCO
+ * - 3 Fases: PRESSURE (flicker oscuro) → CRUSH (strobe cyan) → VOID (blackout)
  *
  * COMPORTAMIENTO:
- * - MixBus: 'global' (DICTADOR - controla todo el viaje)
- * - Duración: 4-8 compases (ajustable)
- * - Fase 1: Oscuridad. Solo un brillo azul profundo en el suelo.
- * - Fase 2: Los movers suben LENTAMENTE hacia el cielo. Zoom out.
- * - Fase 3: Los pares hacen fade in exponencial hacia BLINDING WHITE.
- * - Fase 4: BLACKOUT INSTANTÁNEO (0ms) sincronizado con el drop.
+ * - MixBus: 'global' (DICTADOR - mata la física)
+ * - Duración: 3,500-4,000ms (dinámico según BPM)
+ * - Fase 1 (0-80%): PRESSURE - Azul profundo vibrando (flicker)
+ * - Fase 2 (80-95%): CRUSH - Strobe cyan eléctrico (sin blanco)
+ * - Fase 3 (95-100%): VOID - Blackout total antes del drop
  *
  * USO IDEAL:
- * - Breakdowns épicos de Trance
- * - Buildups de Progressive House
- * - Cualquier momento "la tensión antes de la explosión"
+ * - Pre-drop techno oscuro (Boris Brejcha, Adam Beyer)
+ * - Buildups brutales de dubstep
+ * - Cualquier momento "presión antes del estallido"
  *
  * COLORES:
- * - Inicio: Azul abismal (240, 100, 15) - casi negro
- * - Medio: Cyan celestial (200, 90, 50) - subiendo
- * - Clímax: Blanco cegador (0, 0, 100) - CEGUERA TOTAL
- * - Final: NEGRO ABSOLUTO (el drop viene)
+ * - Pressure: Azul profundo (240°, 100%, 30%) - OSCURO
+ * - Crush: Cyan eléctrico (190°, 100%, 50%) - SIN BLANCO
+ * - Void: Negro absoluto (0%, 0%, 0%)
  *
  * MOVIMIENTO:
- * - Movers empiezan mirando al suelo (tilt bajo)
- * - Suben gradualmente durante toda la duración
- * - Al final miran directo al techo
- * - Pan: Se abren gradualmente (zoom out effect)
+ * - Movers: Azul fijo durante pressure (respeta Mover Law)
+ * - Sin cambios de color rápidos en movers
+ * - Strobe solo en dimmer, NO en color
  *
  * @module core/effects/library/techno/AbyssalRise
- * @version WAVE 930 - THE ASCENSION
+ * @version WAVE 997 - THE REDEMPTION
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    durationMs: 5000, // 5 segundos (5 compases @ 120 BPM) - WAVE 988 OPTIMIZADO
-    darkPhaseRatio: 0.15, // 15% del tiempo en oscuridad
-    risePhaseRatio: 0.60, // 60% del tiempo subiendo
-    blindingPhaseRatio: 0.20, // 20% del tiempo en ceguera
-    // El 5% restante es el blackout
-    fadeExponent: 2.5, // Fade exponencial (curva empinada)
-    blackoutDurationMs: 0, // Blackout instantáneo
-    startTilt: 0.1, // Empezar casi en el suelo
-    endTilt: 0.95, // Terminar casi en el techo
-    startPanSpread: 0.2, // Empezar cerrados (0.4 a 0.6)
-    endPanSpread: 0.8, // Terminar abiertos (0.1 a 0.9)
+    durationMs: 3800, // 3.8 segundos - WAVE 997 OPTIMIZADO (ágil)
+    pressurePhaseRatio: 0.80, // 80% en presión (3,040ms)
+    crushPhaseRatio: 0.15, // 15% en crush (570ms)
+    voidPhaseRatio: 0.05, // 5% en void (190ms)
+    flickerSpeedMs: 150, // Flicker rápido pero no agresivo
+    strobeSpeedMs: 80, // Strobe rápido en fase crush
 };
-// Colores del viaje
+// Colores del viaje - WAVE 997: SIN BLANCO
 const COLORS = {
-    abyss: { h: 240, s: 100, l: 10 }, // Azul abismal (casi negro)
-    deep: { h: 220, s: 90, l: 25 }, // Azul profundo
-    celestial: { h: 200, s: 85, l: 50 }, // Cyan celestial
-    bright: { h: 190, s: 70, l: 70 }, // Cyan brillante
-    blinding: { h: 0, s: 0, l: 100 }, // Blanco cegador
-    black: { h: 0, s: 0, l: 0 }, // Negro absoluto
+    deepBlue: { h: 240, s: 100, l: 30 }, // Azul profundo (PRESSURE)
+    uvPurple: { h: 270, s: 100, l: 40 }, // UV/Purple vibrante
+    cyanElectric: { h: 190, s: 100, l: 50 }, // Cyan eléctrico (CRUSH - NO BLANCO)
+    black: { h: 0, s: 0, l: 0 }, // Negro absoluto (VOID)
 };
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌪️ ABYSSAL RISE CLASS
+// 🦈 ABYSSAL PRESSURE CLASS - WAVE 997
 // ═══════════════════════════════════════════════════════════════════════════
 export class AbyssalRise extends BaseEffect {
     // ─────────────────────────────────────────────────────────────────────────
@@ -76,66 +74,61 @@ export class AbyssalRise extends BaseEffect {
         // ILightEffect properties
         // ─────────────────────────────────────────────────────────────────────────
         this.effectType = 'abyssal_rise';
-        this.name = 'Abyssal Rise';
-        this.category = 'physical'; // Afecta dimmer (física)
-        this.priority = 98; // MÁXIMA - este efecto es un viaje completo
-        this.mixBus = 'global'; // 🚂 DICTADOR - controla todo
-        this.currentPhase = 'dark';
+        this.name = 'Abyssal Pressure'; // WAVE 997: Renamed
+        this.category = 'physical';
+        this.priority = 98; // MÁXIMA - efecto global
+        this.mixBus = 'global'; // 🚂 DICTADOR
+        this.currentPhase = 'pressure';
         // Timestamps de transición entre fases
-        this.darkEndMs = 0;
-        this.risingEndMs = 0;
-        this.blindingEndMs = 0;
+        this.pressureEndMs = 0;
+        this.crushEndMs = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.calculatePhaseTimings();
     }
     calculatePhaseTimings() {
-        this.darkEndMs = this.config.durationMs * this.config.darkPhaseRatio;
-        this.risingEndMs = this.darkEndMs + (this.config.durationMs * this.config.risePhaseRatio);
-        this.blindingEndMs = this.risingEndMs + (this.config.durationMs * this.config.blindingPhaseRatio);
-        // Blackout es lo que queda hasta durationMs
+        this.pressureEndMs = this.config.durationMs * this.config.pressurePhaseRatio;
+        this.crushEndMs = this.pressureEndMs + (this.config.durationMs * this.config.crushPhaseRatio);
+        // Void es lo que queda hasta durationMs
     }
     // ─────────────────────────────────────────────────────────────────────────
     // ILightEffect implementation
     // ─────────────────────────────────────────────────────────────────────────
     trigger(config) {
         super.trigger(config);
-        // AbyssalRise afecta TODO
-        this.zones = ['front', 'back', 'movers'];
+        // Afecta TODO (global override)
+        this.zones = ['front', 'back', 'pars', 'movers'];
         // Reset state
-        this.currentPhase = 'dark';
-        // Ajustar duración si viene del contexto musical
+        this.currentPhase = 'pressure';
+        // Ajustar duración si viene BPM del contexto
         if (config.musicalContext?.bpm) {
             const bpm = config.musicalContext.bpm;
             const beatsPerMs = bpm / 60000;
-            // 8 compases = 32 beats
-            this.config.durationMs = 32 / beatsPerMs;
+            // ~4 compases = 16 beats
+            this.config.durationMs = Math.min(4000, 16 / beatsPerMs);
             this.calculatePhaseTimings();
         }
-        console.log(`[AbyssalRise 🌪️] TRIGGERED: ${(this.config.durationMs / 1000).toFixed(1)}s journey | ` +
-            `Phases: Dark(${(this.config.darkPhaseRatio * 100).toFixed(0)}%) → ` +
-            `Rise(${(this.config.risePhaseRatio * 100).toFixed(0)}%) → ` +
-            `Blind(${(this.config.blindingPhaseRatio * 100).toFixed(0)}%) → BLACKOUT`);
+        console.log(`[AbyssalPressure 🦈] TRIGGERED: ${(this.config.durationMs / 1000).toFixed(2)}s | ` +
+            `Phases: PRESSURE(${(this.config.pressurePhaseRatio * 100).toFixed(0)}%) → ` +
+            `CRUSH(${(this.config.crushPhaseRatio * 100).toFixed(0)}%) → ` +
+            `VOID(${(this.config.voidPhaseRatio * 100).toFixed(0)}%)`);
     }
     update(deltaMs) {
         if (this.phase === 'idle' || this.phase === 'finished')
             return;
         this.elapsedMs += deltaMs;
         // Determinar fase actual
-        if (this.elapsedMs < this.darkEndMs) {
-            this.currentPhase = 'dark';
+        if (this.elapsedMs < this.pressureEndMs) {
+            this.currentPhase = 'pressure';
         }
-        else if (this.elapsedMs < this.risingEndMs) {
-            this.currentPhase = 'rising';
-        }
-        else if (this.elapsedMs < this.blindingEndMs) {
-            this.currentPhase = 'blinding';
+        else if (this.elapsedMs < this.crushEndMs) {
+            this.currentPhase = 'crush';
         }
         else if (this.elapsedMs < this.config.durationMs) {
-            this.currentPhase = 'blackout';
+            this.currentPhase = 'void';
         }
         else {
             this.phase = 'finished';
-            console.log(`[AbyssalRise 🌪️] FINISHED - DROP TIME!`);
+            console.log(`[AbyssalPressure 🦈] FINISHED - DROP TIME!`);
         }
     }
     getOutput() {
@@ -144,150 +137,104 @@ export class AbyssalRise extends BaseEffect {
         const progress = Math.min(1, this.elapsedMs / this.config.durationMs);
         // Construir output según fase
         switch (this.currentPhase) {
-            case 'dark':
-                return this.buildDarkOutput(progress);
-            case 'rising':
-                return this.buildRisingOutput(progress);
-            case 'blinding':
-                return this.buildBlindingOutput(progress);
-            case 'blackout':
-                return this.buildBlackoutOutput(progress);
+            case 'pressure':
+                return this.buildPressureOutput(progress);
+            case 'crush':
+                return this.buildCrushOutput(progress);
+            case 'void':
+                return this.buildVoidOutput(progress);
         }
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // Phase outputs
+    // Phase outputs - WAVE 997 REFACTOR
     // ─────────────────────────────────────────────────────────────────────────
-    buildDarkOutput(progress) {
-        // Fase oscura: solo un brillo azul abismal en el suelo
-        const phaseProgress = this.elapsedMs / this.darkEndMs;
-        // Pars: brillo muy bajo, azul abismal
-        const parDimmer = 0.05 + (phaseProgress * 0.1); // 5% a 15%
-        // Movers: apagados, mirando al suelo
-        const moverTilt = this.config.startTilt;
-        const panSpread = this.config.startPanSpread;
+    buildPressureOutput(progress) {
+        // FASE 1: PRESSURE (0-80%) - Azul profundo vibrando
+        const phaseProgress = this.elapsedMs / this.pressureEndMs;
+        // Flicker rápido y oscuro (simulando presión submarina)
+        const flickerToggle = (Date.now() % this.config.flickerSpeedMs) < (this.config.flickerSpeedMs / 2);
+        const flicker = flickerToggle ? 0.8 : 0.2;
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress,
-            intensity: parDimmer,
-            colorOverride: COLORS.abyss,
-            dimmerOverride: parDimmer,
+            intensity: flicker * 0.8,
+            colorOverride: COLORS.deepBlue,
+            dimmerOverride: flicker * 0.8,
             zones: this.zones,
             globalOverride: true,
-            movement: {
-                tilt: moverTilt,
-                pan: 0.5, // Centro
-                isAbsolute: true,
-                speed: 0.3 // Movimiento lento
-            },
             zoneOverrides: {
-                'front': { color: COLORS.abyss, dimmer: parDimmer },
-                'back': { color: COLORS.deep, dimmer: parDimmer * 0.5 },
-                // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
+                // MOVERS: Azul fijo (respeta Mover Law - sin cambio de color rápido)
                 'movers': {
-                    // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
-                    dimmer: 0,
-                    movement: { tilt: moverTilt, pan: 0.5, isAbsolute: true, speed: 0.3 }
-                }
-            }
-        };
-    }
-    buildRisingOutput(progress) {
-        // Fase de ascenso: todo sube gradualmente
-        const phaseElapsed = this.elapsedMs - this.darkEndMs;
-        const phaseDuration = this.risingEndMs - this.darkEndMs;
-        const phaseProgress = Math.min(1, phaseElapsed / phaseDuration);
-        // Aplicar curva exponencial
-        const expProgress = Math.pow(phaseProgress, this.config.fadeExponent);
-        // Interpolar color: abyss → celestial → bright
-        const color = this.interpolateColor(phaseProgress < 0.5 ? COLORS.abyss : COLORS.celestial, phaseProgress < 0.5 ? COLORS.celestial : COLORS.bright, phaseProgress < 0.5 ? phaseProgress * 2 : (phaseProgress - 0.5) * 2);
-        // Intensidad creciente exponencial
-        const parDimmer = 0.15 + (expProgress * 0.6); // 15% a 75%
-        const moverDimmer = expProgress * 0.5; // 0% a 50%
-        // Movers suben gradualmente
-        const moverTilt = this.config.startTilt +
-            (this.config.endTilt - this.config.startTilt) * phaseProgress;
-        // Pan spread aumenta (zoom out)
-        const panSpread = this.config.startPanSpread +
-            (this.config.endPanSpread - this.config.startPanSpread) * phaseProgress;
-        return {
-            effectId: this.id,
-            category: this.category,
-            phase: this.phase,
-            progress,
-            intensity: parDimmer,
-            colorOverride: color,
-            dimmerOverride: parDimmer,
-            zones: this.zones,
-            globalOverride: true,
-            movement: {
-                tilt: moverTilt,
-                pan: 0.5,
-                isAbsolute: true,
-                speed: 0.2 // Lento
-            },
-            zoneOverrides: {
-                'front': { color, dimmer: parDimmer },
-                'back': { color: COLORS.celestial, dimmer: parDimmer * 0.8 },
-                // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
-                'movers_left': {
-                    // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
-                    dimmer: moverDimmer,
-                    movement: { tilt: moverTilt, pan: 0.5 - panSpread / 2, isAbsolute: true, speed: 0.2 }
+                    color: COLORS.deepBlue, // Azul profundo FIJO
+                    dimmer: 1.0, // Full dimmer (el color es oscuro)
+                    blendMode: 'replace'
                 },
-                'movers_right': {
-                    // 🚫 NO COLOR - Transparente a rueda mecánica
-                    dimmer: moverDimmer,
-                    movement: { tilt: moverTilt, pan: 0.5 + panSpread / 2, isAbsolute: true, speed: 0.2 }
+                // PARS: UV/Purple vibrando con el flicker
+                'pars': {
+                    color: COLORS.uvPurple, // UV/Purple
+                    dimmer: flicker * 0.8, // Intensidad variable (flicker)
+                    blendMode: 'replace'
+                },
+                // FRONT/BACK: Mix de ambos
+                'front': {
+                    color: COLORS.deepBlue,
+                    dimmer: flicker * 0.6,
+                    blendMode: 'replace'
+                },
+                'back': {
+                    color: COLORS.uvPurple,
+                    dimmer: flicker * 0.5,
+                    blendMode: 'replace'
                 }
             }
         };
     }
-    buildBlindingOutput(progress) {
-        // Fase de ceguera: TODO A TOPE
-        const phaseElapsed = this.elapsedMs - this.risingEndMs;
-        const phaseDuration = this.blindingEndMs - this.risingEndMs;
+    buildCrushOutput(progress) {
+        // FASE 2: CRUSH (80-95%) - Strobe cyan eléctrico (NO BLANCO)
+        const phaseElapsed = this.elapsedMs - this.pressureEndMs;
+        const phaseDuration = this.crushEndMs - this.pressureEndMs;
         const phaseProgress = Math.min(1, phaseElapsed / phaseDuration);
-        // Rápido hacia blanco cegador
-        const color = this.interpolateColor(COLORS.bright, COLORS.blinding, phaseProgress);
-        // Intensidad máxima
-        const dimmer = 0.75 + (phaseProgress * 0.25); // 75% a 100%
-        // Movers al máximo
-        const moverTilt = this.config.endTilt;
+        // Strobe rápido (sin blanco - cyan eléctrico)
+        const strobeToggle = (Date.now() % this.config.strobeSpeedMs) < (this.config.strobeSpeedMs / 2);
+        const strobe = strobeToggle ? 1 : 0;
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress,
-            intensity: dimmer,
-            colorOverride: color,
-            dimmerOverride: dimmer,
-            whiteOverride: phaseProgress, // Añadir canal blanco si disponible
+            intensity: strobe,
+            colorOverride: COLORS.cyanElectric, // Cyan eléctrico (NO BLANCO)
+            dimmerOverride: strobe,
             zones: this.zones,
             globalOverride: true,
-            movement: {
-                tilt: moverTilt,
-                pan: 0.5,
-                isAbsolute: true,
-                speed: 0.5
-            },
             zoneOverrides: {
-                'front': { color, dimmer, white: phaseProgress },
-                'back': { color, dimmer, white: phaseProgress },
-                // 🛡️ WAVE 984: THE MOVER LAW - Solo dimmer + movement, SIN COLOR
-                // En fase blinding usamos white override pero NO color change
                 'movers': {
-                    // 🚫 NO COLOR - Transparente a rueda mecánica
-                    dimmer,
-                    white: phaseProgress, // White override es canal independiente, OK
-                    movement: { tilt: moverTilt, pan: 0.5, isAbsolute: true, speed: 0.5 }
+                    color: COLORS.cyanElectric,
+                    dimmer: strobe,
+                    blendMode: 'replace'
+                },
+                'pars': {
+                    color: COLORS.cyanElectric,
+                    dimmer: strobe,
+                    blendMode: 'replace'
+                },
+                'front': {
+                    color: COLORS.cyanElectric,
+                    dimmer: strobe,
+                    blendMode: 'replace'
+                },
+                'back': {
+                    color: COLORS.cyanElectric,
+                    dimmer: strobe,
+                    blendMode: 'replace'
                 }
             }
         };
     }
-    buildBlackoutOutput(progress) {
-        // BLACKOUT INSTANTÁNEO - el drop viene
+    buildVoidOutput(progress) {
+        // FASE 3: VOID (95-100%) - Blackout total antes del drop
         return {
             effectId: this.id,
             category: this.category,
@@ -297,19 +244,18 @@ export class AbyssalRise extends BaseEffect {
             colorOverride: COLORS.black,
             dimmerOverride: 0,
             zones: this.zones,
-            globalOverride: true
+            globalOverride: true,
+            zoneOverrides: {
+                'movers': { dimmer: 0, blendMode: 'replace' },
+                'pars': { dimmer: 0, blendMode: 'replace' },
+                'front': { dimmer: 0, blendMode: 'replace' },
+                'back': { dimmer: 0, blendMode: 'replace' }
+            }
         };
     }
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
-    interpolateColor(from, to, t) {
-        return {
-            h: from.h + (to.h - from.h) * t,
-            s: from.s + (to.s - from.s) * t,
-            l: from.l + (to.l - from.l) * t,
-        };
-    }
     getPhase() {
         return this.phase;
     }

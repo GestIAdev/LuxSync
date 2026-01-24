@@ -7,7 +7,7 @@
  * 
  * Arquitectura:
  * - Header con selección info + UNLOCK ALL
- * - Accordion: Intensity, Color, Position, Beam
+ * - Accordion: Position, Intensity, Color, Beam (WAVE 999: Position es Rey)
  * 
  * Conecta directamente al MasterArbiter via window.lux.arbiter
  */
@@ -45,8 +45,8 @@ export const TheProgrammerContent: React.FC = () => {
     beam: false,
   })
   
-  // WAVE 430.5: EXCLUSIVE ACCORDION - Only one section open at a time
-  const [activeSection, setActiveSection] = useState<string>('intensity')
+  // WAVE 999: POSITION ES REY - Position abierto por defecto
+  const [activeSection, setActiveSection] = useState<string>('position')
   
   // Toggle section - exclusive mode (only one open)
   const toggleSection = useCallback((section: string) => {
@@ -237,7 +237,20 @@ export const TheProgrammerContent: React.FC = () => {
         </div>
       </div>
       
-      {/* INTENSITY SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          WAVE 999: NUEVA JERARQUÍA - Position es Rey
+          📍 POSITION → 💡 INTENSITY → 🎨 COLOR → 🔦 BEAM
+          ═══════════════════════════════════════════════════════════════════════ */}
+      
+      {/* 📍 POSITION SECTION - Ahora primero y abierto por defecto */}
+      <PositionSection
+        hasOverride={overrideState.position}
+        isExpanded={activeSection === 'position'}
+        onToggle={() => toggleSection('position')}
+        onOverrideChange={handlePositionOverrideChange}
+      />
+      
+      {/* 💡 INTENSITY SECTION */}
       {/* WAVE 440.5: Pass -1 when null to prevent any preset button from being active */}
       <IntensitySection
         value={currentDimmer ?? -1}
@@ -248,7 +261,7 @@ export const TheProgrammerContent: React.FC = () => {
         onRelease={handleDimmerRelease}
       />
       
-      {/* COLOR SECTION */}
+      {/* 🎨 COLOR SECTION */}
       {hasColorFixtures && (
         <ColorSection
           color={currentColor}
@@ -260,15 +273,7 @@ export const TheProgrammerContent: React.FC = () => {
         />
       )}
       
-      {/* POSITION SECTION */}
-      <PositionSection
-        hasOverride={overrideState.position}
-        isExpanded={activeSection === 'position'}
-        onToggle={() => toggleSection('position')}
-        onOverrideChange={handlePositionOverrideChange}
-      />
-      
-      {/* BEAM SECTION */}
+      {/* 🔦 BEAM SECTION */}
       <BeamSection
         hasOverride={overrideState.beam}
         isExpanded={activeSection === 'beam'}

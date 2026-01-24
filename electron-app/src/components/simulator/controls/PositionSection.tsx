@@ -1,12 +1,16 @@
 /**
- * 🕹️ POSITION SECTION - WAVE 430.5
+ * 🕹️ POSITION SECTION - WAVE 430.5 + WAVE 999 TACTICAL RADAR
  * Movement control for selected fixtures (moving heads)
  * 
  * Architecture:
- * - COLLAPSIBLE section header
+ * - COLLAPSIBLE section header (WAVE 999: Ahora es el primero)
  * - SWITCH INTELIGENTE:
  *   - 1 fixture → XYPad (Sniper Mode)
  *   - 2+ fixtures → RadarXY (Formation Mode) + Fan Control
+ * - WAVE 999: TACTICAL RADAR LAYOUT
+ *   - Left: 🚀 SPEED vertical slider
+ *   - Center: 🎯 RADAR / PAD
+ *   - Right: 📏 SIZE/AMP vertical slider
  * - Patterns: Circle, Eight, Sweep (procedural movement)
  * - Precision: Numeric inputs for exact values
  * 
@@ -341,16 +345,61 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
           {isMultiSelection ? (
             /* 📡 FORMATION MODE - Multiple fixtures selected */
             <div className="position-mode formation-mode">
-              <RadarXY
-                pan={pan}
-                tilt={tilt}
-                onChange={handlePositionChange}
-                onCenter={handleCenter}
-                isCalibrating={isCalibrating}
-                isGroupMode={true}
-                ghostPoints={ghostPoints}
-                fixtureCount={selectedIds.length}
-              />
+              {/* ═══════════════════════════════════════════════════════════════════════
+                  WAVE 999: TACTICAL RADAR LAYOUT
+                  [SPEED] [RADAR] [SIZE]
+                  ═══════════════════════════════════════════════════════════════════════ */}
+              <div className="tactical-radar-layout">
+                {/* 🚀 SPEED SLIDER - Vertical Left */}
+                <div className="tactical-slider speed-slider">
+                  <label className="tactical-label">🚀</label>
+                  <input
+                    type="range"
+                    className="vertical-slider"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={patternSpeed}
+                    onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
+                    disabled={isCalibrating || activePattern === 'static'}
+                    title="Movement Speed"
+                  />
+                  <span className="tactical-value">{patternSpeed}%</span>
+                  <span className="tactical-hint">SPD</span>
+                </div>
+                
+                {/* 🎯 RADAR CENTER */}
+                <div className="radar-container">
+                  <RadarXY
+                    pan={pan}
+                    tilt={tilt}
+                    onChange={handlePositionChange}
+                    onCenter={handleCenter}
+                    isCalibrating={isCalibrating}
+                    isGroupMode={true}
+                    ghostPoints={ghostPoints}
+                    fixtureCount={selectedIds.length}
+                  />
+                </div>
+                
+                {/* 📏 SIZE SLIDER - Vertical Right */}
+                <div className="tactical-slider size-slider">
+                  <label className="tactical-label">📏</label>
+                  <input
+                    type="range"
+                    className="vertical-slider"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={patternSize}
+                    onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
+                    disabled={isCalibrating || activePattern === 'static'}
+                    title="Movement Size/Amplitude"
+                  />
+                  <span className="tactical-value">{patternSize}%</span>
+                  <span className="tactical-hint">AMP</span>
+                </div>
+              </div>
               
               {/* FAN CONTROL - Exclusivo para grupos */}
               {!isCalibrating && (
@@ -381,13 +430,58 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
               <div className="mode-indicator">
                 <span className="mode-badge sniper">🎯 SINGLE TARGET</span>
               </div>
-              <XYPad
-                pan={pan}
-                tilt={tilt}
-                onChange={handlePositionChange}
-                onCenter={handleCenter}
-                disabled={isCalibrating}
-              />
+              {/* ═══════════════════════════════════════════════════════════════════════
+                  WAVE 999: TACTICAL PAD LAYOUT (Single)
+                  [SPEED] [XYPAD] [SIZE]
+                  ═══════════════════════════════════════════════════════════════════════ */}
+              <div className="tactical-radar-layout">
+                {/* 🚀 SPEED SLIDER - Vertical Left */}
+                <div className="tactical-slider speed-slider">
+                  <label className="tactical-label">🚀</label>
+                  <input
+                    type="range"
+                    className="vertical-slider"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={patternSpeed}
+                    onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
+                    disabled={isCalibrating || activePattern === 'static'}
+                    title="Movement Speed"
+                  />
+                  <span className="tactical-value">{patternSpeed}%</span>
+                  <span className="tactical-hint">SPD</span>
+                </div>
+                
+                {/* 🎯 XY PAD CENTER */}
+                <div className="radar-container">
+                  <XYPad
+                    pan={pan}
+                    tilt={tilt}
+                    onChange={handlePositionChange}
+                    onCenter={handleCenter}
+                    disabled={isCalibrating}
+                  />
+                </div>
+                
+                {/* 📏 SIZE SLIDER - Vertical Right */}
+                <div className="tactical-slider size-slider">
+                  <label className="tactical-label">📏</label>
+                  <input
+                    type="range"
+                    className="vertical-slider"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={patternSize}
+                    onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
+                    disabled={isCalibrating || activePattern === 'static'}
+                    title="Movement Size/Amplitude"
+                  />
+                  <span className="tactical-value">{patternSize}%</span>
+                  <span className="tactical-hint">AMP</span>
+                </div>
+              </div>
             </div>
           )}
           

@@ -1,22 +1,25 @@
 /**
- * 🎛️ SYSTEMS CHECK - WAVE 686
+ * 🎛️ SYSTEMS CHECK - WAVE 1003
  * "Mission Control Pre-Flight Check"
  * 
  * Quick status verification of Audio Input + DMX Output
- * NOW WITH INTEGRATED ARTNET CONFIG!
+ * NOW WITH FULL TRINITY AUDIO INTEGRATION!
  * 
  * Features:
- * - Audio device dropdown
+ * - Audio device dropdown WITH REAL TRINITY CONNECTION
  * - DMX driver dropdown with connection status
- * - INLINE ArtNet configuration (no more SetupView trips!)
+ * - INLINE ArtNet configuration
+ * - USB DMX panel with port detection
  * - High z-index dropdowns (overlay friendly)
  * 
- * WAVE 686: Removed AudioReactorRing, added ArtNet config panel
+ * WAVE 686: Initial ArtNet config panel
+ * WAVE 1003: Trinity audio integration + USB DMX driver
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
+import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon } from '../../../icons/LuxIcons'
 import './SystemsCheck.css'
 
@@ -350,11 +353,15 @@ const UsbDmxPanel: React.FC = () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const SystemsCheck: React.FC = () => {
+  // 🔥 WAVE 1003: Trinity integration for REAL audio connection
+  const trinity = useTrinityOptional()
   const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore()
   const hardware = useTruthStore(selectHardware)
   
   const [audioDropdownOpen, setAudioDropdownOpen] = useState(false)
   const [dmxDropdownOpen, setDmxDropdownOpen] = useState(false)
+  const [isAudioConnecting, setIsAudioConnecting] = useState(false)
+  const [audioError, setAudioError] = useState<string | null>(null)
   
   // Connection status
   const [status, setStatus] = useState<SystemStatus>({
@@ -370,6 +377,16 @@ export const SystemsCheck: React.FC = () => {
     }))
   }, [hardware?.dmx?.connected])
   
+  // 🔥 WAVE 1003: Update audio status from Trinity
+  useEffect(() => {
+    if (trinity?.state) {
+      setStatus(prev => ({
+        ...prev,
+        audio: trinity.state.isAudioActive ? 'online' : 'offline'
+      }))
+    }
+  }, [trinity?.state?.isAudioActive])
+  
   // Audio source options
   const audioOptions: { id: AudioSource; label: string; icon: string }[] = [
     { id: 'simulation', label: 'Simulation', icon: '🎵' },
@@ -384,13 +401,59 @@ export const SystemsCheck: React.FC = () => {
     { id: 'artnet', label: 'ArtNet', icon: '🌐' },
   ]
   
-  const handleAudioChange = useCallback((source: AudioSource) => {
-    setAudioSource(source)
+  // 🔥 WAVE 1003: REAL AUDIO CONNECTION VIA TRINITY!
+  const handleAudioChange = useCallback(async (source: AudioSource) => {
     setAudioDropdownOpen(false)
-    // TODO: Connect to actual audio system via IPC
-    console.log(`[SystemsCheck] Audio source: ${source}`)
-  }, [setAudioSource])
+    setAudioError(null)
+    
+    // Guard: Trinity not ready
+    if (!trinity) {
+      console.warn('[SystemsCheck] Trinity not ready, storing selection only')
+      setAudioSource(source)
+      return
+    }
+    
+    setIsAudioConnecting(true)
+    
+    try {
+      if (source === 'simulation') {
+        // 🎵 Simulation mode - no hardware needed
+        trinity.setSimulating(true)
+        setAudioSource('simulation')
+        console.log('[SystemsCheck] 🎵 Simulation mode activated')
+        
+      } else if (source === 'system') {
+        // 🖥️ System Audio - WASAPI loopback
+        await trinity.startSystemAudio()
+        trinity.setSimulating(false)
+        setAudioSource('system')
+        console.log('[SystemsCheck] 🖥️ System Audio connected!')
+        
+      } else if (source === 'microphone') {
+        // 🎤 Microphone input
+        await trinity.startMicrophone()
+        trinity.setSimulating(false)
+        setAudioSource('microphone')
+        console.log('[SystemsCheck] 🎤 Microphone connected!')
+      }
+      
+      // Persist to config file
+      if (window.lux?.saveConfig) {
+        await window.lux.saveConfig({ audio: { source } } as any)
+      }
+      
+    } catch (err) {
+      console.error('[SystemsCheck] Audio connection failed:', err)
+      setAudioError('Connection failed - using simulation')
+      trinity.setSimulating(true)
+      setAudioSource('simulation')
+      
+    } finally {
+      setIsAudioConnecting(false)
+    }
+  }, [trinity, setAudioSource])
   
+  // 🔥 WAVE 1003: DMX DRIVER CHANGE WITH FULL CONNECTION
   const handleDmxChange = useCallback(async (driver: DMXDriver) => {
     setDmxDriver(driver)
     setDmxDropdownOpen(false)
@@ -399,18 +462,33 @@ export const SystemsCheck: React.FC = () => {
     const dmxApi = getDmxApi()
     
     if (driver === 'virtual') {
-      // Virtual = instant connect
+      // 🎮 Virtual = instant connect
       try {
         if (dmxApi?.connect) {
           await dmxApi.connect('virtual')
-          console.log('[SystemsCheck] Virtual DMX connected')
+          console.log('[SystemsCheck] 🎮 Virtual DMX connected')
         }
       } catch (err) {
         console.error('[SystemsCheck] Virtual connect failed:', err)
       }
+    } else if (driver === 'usb-serial') {
+      // 🔌 USB Serial - auto-scan and show panel
+      try {
+        if (dmxApi?.listDevices) {
+          const devices = await dmxApi.listDevices()
+          console.log('[SystemsCheck] 🔌 USB DMX scan found:', devices?.length || 0, 'devices')
+          // UsbDmxPanel will handle the rest
+        }
+      } catch (err) {
+        console.error('[SystemsCheck] USB scan failed:', err)
+      }
     }
     // ArtNet: user configures in ArtNetPanel and clicks Start
-    // USB-Serial: would need port selection (not implemented in dashboard)
+    
+    // Persist to config
+    if (window.lux?.saveConfig) {
+      await window.lux.saveConfig({ dmx: { driver } } as any)
+    }
   }, [setDmxDriver])
   
   const currentAudio = audioOptions.find(o => o.id === audioSource) || audioOptions[0]
@@ -435,13 +513,16 @@ export const SystemsCheck: React.FC = () => {
         <div className="system-control">
           <div className="dropdown-wrapper">
             <button 
-              className="dropdown-trigger"
+              className={`dropdown-trigger ${isAudioConnecting ? 'connecting' : ''}`}
               onClick={() => {
                 setAudioDropdownOpen(!audioDropdownOpen)
                 setDmxDropdownOpen(false)
               }}
+              disabled={isAudioConnecting}
             >
-              <span className="trigger-icon">{currentAudio.icon}</span>
+              <span className="trigger-icon">
+                {isAudioConnecting ? '🔄' : currentAudio.icon}
+              </span>
               <span className="trigger-label">{currentAudio.label}</span>
               <span className="trigger-arrow">▼</span>
             </button>
@@ -463,7 +544,24 @@ export const SystemsCheck: React.FC = () => {
           </div>
         </div>
         
-        {/* Mini Visualizer */}
+        {/* Audio Connection Status */}
+        <div className={`status-indicator ${status.audio}`}>
+          <span className="status-dot" />
+          <span className="status-text">
+            {status.audio === 'online' ? 'ACTIVE' : 'IDLE'}
+          </span>
+        </div>
+      </div>
+      
+      {/* Audio Error Display */}
+      {audioError && (
+        <div className="system-error audio-error">
+          ⚠️ {audioError}
+        </div>
+      )}
+      
+      {/* Mini Visualizer - Always visible */}
+      <div className="audio-visualizer-row">
         <MiniVisualizer />
       </div>
       

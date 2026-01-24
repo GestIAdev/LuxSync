@@ -405,7 +405,16 @@ declare global {
       }>
       
       /**
-       * 🎛️ WAVE 999: Clear all movement pattern overrides
+       * � WAVE 999.4: Set manual movement pattern
+       * Pattern buttons in PatternSelector directly control VibeMovementManager
+       */
+      setMovementPattern: (pattern: string | null) => Promise<{
+        success: boolean
+        pattern: string | null
+      }>
+      
+      /**
+       * �🎛️ WAVE 999: Clear all movement pattern overrides
        * Restores automatic AI-driven movement calculations
        */
       clearMovementOverrides: () => Promise<{

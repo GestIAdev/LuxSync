@@ -635,6 +635,13 @@ const luxApi = {
       ipcRenderer.invoke('lux:arbiter:setMovementParameter', { parameter, value }),
     
     /**
+     * 🎯 WAVE 999.4: Set manual movement pattern
+     * @param pattern Pattern name ('circle', 'eight', etc) or null to release to AI
+     */
+    setMovementPattern: (pattern: string | null) =>
+      ipcRenderer.invoke('lux:arbiter:setMovementPattern', { pattern }),
+    
+    /**
      * Clear all movement parameter overrides (back to AI)
      */
     clearMovementOverrides: () =>

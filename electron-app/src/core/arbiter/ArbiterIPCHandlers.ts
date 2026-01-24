@@ -247,6 +247,24 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     return { success: true }
   })
   
+  /**
+   * 🎯 WAVE 999.4: Set manual movement pattern
+   * Called from PatternSelector when user clicks a pattern button
+   */
+  ipcMain.handle('lux:arbiter:setMovementPattern', (
+    _event,
+    {
+      pattern,
+    }: {
+      pattern: string | null  // Pattern name or null to release to AI
+    }
+  ) => {
+    const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager')
+    vibeMovementManager.setManualPattern(pattern)
+    console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`)
+    return { success: true, pattern }
+  })
+  
   // ═══════════════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════════════

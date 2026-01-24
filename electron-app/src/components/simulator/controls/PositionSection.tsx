@@ -140,40 +140,28 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * Pattern change - Procedural movement
-   * Note: Full pattern engine is in Arbiter (WAVE 376)
-   * For now, we send the pattern type and let backend handle it
+   * 🎯 WAVE 999.4: Direct connection to VibeMovementManager via setMovementPattern
    */
   const handlePatternChange = useCallback(async (pattern: PatternType) => {
     setActivePattern(pattern)
     
     if (pattern === 'static') {
-      // Just set current position
-      await handlePositionChange(pan, tilt)
+      // Release pattern override, let AI control
+      await window.lux?.arbiter?.setMovementPattern(null)
+      console.log(`[Position] 🔓 Pattern: RELEASED → AI control`)
       return
     }
     
     onOverrideChange(true)
     
     try {
-      // Send pattern config to Arbiter
-      // The Arbiter will generate frames at 60fps
-      await window.lux?.arbiter?.setManual({
-        fixtureIds: selectedIds,
-        controls: {
-          pan: Math.round((pan / 540) * 255),
-          tilt: Math.round((tilt / 270) * 255),
-          // Pattern params encoded as special controls
-          _patternType: pattern === 'circle' ? 1 : pattern === 'eight' ? 2 : 3,
-          _patternSpeed: patternSpeed,
-          _patternSize: patternSize,
-        },
-        channels: ['pan', 'tilt'],
-      })
-      console.log(`[Position] 🔄 Pattern: ${pattern} Speed: ${patternSpeed}% Size: ${patternSize}%`)
+      // 🎯 WAVE 999.4: Direct to VibeMovementManager - no more _patternType encoding!
+      await window.lux?.arbiter?.setMovementPattern(pattern)
+      console.log(`[Position] 🎯 Pattern LOCKED: ${pattern}`)
     } catch (err) {
       console.error('[Position] Pattern error:', err)
     }
-  }, [selectedIds, pan, tilt, patternSpeed, patternSize, onOverrideChange, handlePositionChange])
+  }, [selectedIds, onOverrideChange])
   
   /**
    * Pattern speed/size change

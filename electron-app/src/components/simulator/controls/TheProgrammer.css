@@ -182,6 +182,28 @@
   /* NO cambiar padding, border-width, margin */
 }
 
+/* UNLOCK FLASH - Visual feedback on click */
+.unlock-all-btn.flash {
+  animation: unlock-flash 0.5s ease-out;
+}
+
+@keyframes unlock-flash {
+  0% {
+    background: rgba(0, 255, 100, 0.8);
+    box-shadow: 0 0 20px rgba(0, 255, 100, 0.8);
+    transform: scale(1.05);
+  }
+  50% {
+    background: rgba(0, 255, 100, 0.4);
+    box-shadow: 0 0 30px rgba(0, 255, 100, 0.5);
+  }
+  100% {
+    background: rgba(255, 140, 0, 0.15);
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
 /* 
    DIVIDERS - Minimal
     */

@@ -157,8 +157,14 @@ export const TheProgrammerContent: React.FC = () => {
     }
   }, [selectedIds])
   
+  const [unlockFlash, setUnlockFlash] = useState(false)
+  
   const handleUnlockAll = useCallback(async () => {
     if (selectedIds.length === 0) return
+    
+    // 🔓 WAVE 999.7: Visual feedback - Flash effect
+    setUnlockFlash(true)
+    setTimeout(() => setUnlockFlash(false), 400)
     
     setOverrideState({ dimmer: false, color: false, position: false, beam: false })
     // WAVE 440.5: Reset UI values to neutral state
@@ -166,9 +172,13 @@ export const TheProgrammerContent: React.FC = () => {
     setCurrentColor({ r: 128, g: 128, b: 128 })
     
     try {
+      // Clear fixture manual overrides
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
+      // 🎚️ WAVE 999.7: Also clear movement parameter overrides (speed/amplitude)
+      await window.lux?.arbiter?.clearMovementOverrides?.()
+      console.log(`[Programmer] 🔓 UNLOCK ALL: Released ${selectedIds.length} fixtures + movement params`)
     } catch (err) {
       console.error('[Programmer] Unlock all error:', err)
     }
@@ -228,7 +238,7 @@ export const TheProgrammerContent: React.FC = () => {
         
         <div className="header-actions">
           <button 
-            className="unlock-all-btn"
+            className={`unlock-all-btn ${unlockFlash ? 'flash' : ''}`}
             onClick={handleUnlockAll}
             title="Release all manual overrides"
           >

@@ -435,6 +435,7 @@ export class VibeMovementManager {
   // ═══════════════════════════════════════════════════════════════════════
   private manualSpeedOverride: number | null = null     // null = use vibe default
   private manualAmplitudeOverride: number | null = null // null = use vibe default
+  private manualPatternOverride: string | null = null   // null = use AI selection
   
   /**
    * 🎚️ WAVE 999: Set manual speed override (0-100 scale)
@@ -463,12 +464,26 @@ export class VibeMovementManager {
   }
   
   /**
+   * 🎚️ WAVE 999.4: Set manual PATTERN override
+   * @param pattern Pattern name ('circle', 'eight', 'sweep', etc.), or null to release
+   */
+  setManualPattern(pattern: string | null): void {
+    this.manualPatternOverride = pattern
+    if (pattern !== null) {
+      console.log(`[🎭 VMM] 🎯 Manual PATTERN override: ${pattern}`)
+    } else {
+      console.log(`[🎭 VMM] 🎯 Manual PATTERN released → AI control`)
+    }
+  }
+  
+  /**
    * 🎚️ WAVE 999: Get current manual overrides status
    */
-  getManualOverrides(): { speed: number | null; amplitude: number | null } {
+  getManualOverrides(): { speed: number | null; amplitude: number | null; pattern: string | null } {
     return {
       speed: this.manualSpeedOverride,
       amplitude: this.manualAmplitudeOverride,
+      pattern: this.manualPatternOverride,
     }
   }
   
@@ -478,7 +493,8 @@ export class VibeMovementManager {
   clearManualOverrides(): void {
     this.manualSpeedOverride = null
     this.manualAmplitudeOverride = null
-    console.log(`[🎭 VMM] 🔓 All manual overrides cleared`)
+    this.manualPatternOverride = null
+    console.log(`[🎭 VMM] 🔓 All manual overrides cleared (speed, amplitude, pattern)`)
   }
   
   /**
@@ -704,6 +720,7 @@ export class VibeMovementManager {
    * 🧠 SELECCIÓN DINÁMICA DE PATRÓN
    * 
    * Lógica híbrida:
+   * 0. WAVE 999.4: MANUAL OVERRIDE tiene máxima prioridad
    * 1. VETO por energía baja → patrón calmado (WAVE 346: umbral dinámico)
    * 2. SELECCIÓN por phrase (cada 8 compases)
    * 
@@ -715,6 +732,14 @@ export class VibeMovementManager {
     audio: AudioContext,
     barCount: number
   ): string {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 999.4: MANUAL PATTERN OVERRIDE - MÁXIMA PRIORIDAD
+    // Si el DJ seleccionó un patrón manualmente, ese es LEY
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.manualPatternOverride !== null) {
+      return this.manualPatternOverride
+    }
+    
     const phrase = Math.floor(barCount / 8) // Cambia cada 8 compases
     const patterns = config.patterns
     

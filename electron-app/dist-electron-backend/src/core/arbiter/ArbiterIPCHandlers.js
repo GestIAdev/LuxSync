@@ -14,6 +14,7 @@
  */
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
+import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
 /**
  * Register all Arbiter IPC handlers
  * Call this from main.ts during initialization
@@ -135,8 +136,6 @@ export function registerArbiterHandlers(masterArbiter) {
      * Called from PositionSection.tsx when user moves tactical sliders
      */
     ipcMain.handle('lux:arbiter:setMovementParameter', (_event, { parameter, value, }) => {
-        // Import vibeMovementManager lazily to avoid circular deps
-        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
         if (parameter === 'speed') {
             vibeMovementManager.setManualSpeed(value);
             console.log(`[Arbiter IPC] 🚀 Movement SPEED: ${value === null ? 'RELEASED' : value + '%'}`);
@@ -151,7 +150,6 @@ export function registerArbiterHandlers(masterArbiter) {
      * Clear all movement parameter overrides
      */
     ipcMain.handle('lux:arbiter:clearMovementOverrides', () => {
-        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
         vibeMovementManager.clearManualOverrides();
         return { success: true };
     });
@@ -160,7 +158,6 @@ export function registerArbiterHandlers(masterArbiter) {
      * Called from PatternSelector when user clicks a pattern button
      */
     ipcMain.handle('lux:arbiter:setMovementPattern', (_event, { pattern, }) => {
-        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
         vibeMovementManager.setManualPattern(pattern);
         console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`);
         return { success: true, pattern };
@@ -179,7 +176,6 @@ export function registerArbiterHandlers(masterArbiter) {
             return { success: false, error: 'No fixture IDs provided' };
         }
         // Get movement overrides (global - applies to all fixtures)
-        const { vibeMovementManager } = require('../../engine/movement/VibeMovementManager');
         const movementOverrides = vibeMovementManager.getManualOverrides();
         // Get fixture-specific override for FIRST fixture (Leader strategy)
         const leaderId = fixtureIds[0];

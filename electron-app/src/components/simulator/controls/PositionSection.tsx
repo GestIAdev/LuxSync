@@ -107,47 +107,91 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   }, [selectedIds, pan, tilt, fanValue, isMultiSelection])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🧠 WAVE 999.6: STATE HYDRATION - Sync UI with backend state
+  // 🧠 WAVE 999.7: THE HYBRID FLUSH - Clean state on selection change
+  // Problema: Al cambiar de fixture A → B, la UI mostraba estado de A
+  // Solución: FLUSH inmediato + luego hidratar desde backend
   // ═══════════════════════════════════════════════════════════════════════
   useEffect(() => {
     let isMounted = true
     
     const hydrateState = async () => {
-      if (selectedIds.length === 0) return
+      // ═══════════════════════════════════════════════════════════════════
+      // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
+      // ═══════════════════════════════════════════════════════════════════
+      setPan(270)           // Centro físico (540/2)
+      setTilt(135)          // Centro físico (270/2)
+      setActivePattern('static')  // Ningún patrón activo
+      setPatternSpeed(50)   // Default
+      setPatternSize(50)    // Default
       
+      // Si no hay selección, ya terminamos con el flush
+      if (selectedIds.length === 0) {
+        console.log(`[Position] 🧼 FLUSH: No selection, defaults applied`)
+        return
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🧠 PASO 2: HIDRATAR - Pedir estado real al Arbiter
+      // ═══════════════════════════════════════════════════════════════════
       try {
         const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
         
-        if (!isMounted || !result?.success || !result?.state) return
+        if (!isMounted) return
+        
+        // Si el backend no responde, mantener defaults del flush
+        if (!result?.success || !result?.state) {
+          console.log(`[Position] 🧼 FLUSH: No backend state, keeping defaults`)
+          return
+        }
         
         const { state } = result
         
-        // Hydrate position
-        if (state.pan !== null) setPan(state.pan)
-        if (state.tilt !== null) setTilt(state.tilt)
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎯 PASO 3: APLICAR solo los valores que tienen OVERRIDE MANUAL
+        // Si es null = AI control = mantener el default del flush
+        // ═══════════════════════════════════════════════════════════════════
         
-        // Hydrate pattern - map 'hold' back to 'static' for UI
+        // --- POSITION (Individual Logic) ---
+        if (state.pan !== null) {
+          setPan(state.pan)
+        }
+        // else: mantiene 270 del flush (AI control)
+        
+        if (state.tilt !== null) {
+          setTilt(state.tilt)
+        }
+        // else: mantiene 135 del flush (AI control)
+        
+        // --- PATTERN (Hybrid Logic) ---
         if (state.pattern !== null) {
+          // map 'hold' back to 'static' for UI button
           const uiPattern = state.pattern === 'hold' ? 'static' : state.pattern
           setActivePattern(uiPattern as PatternType)
-        } else {
-          setActivePattern('static') // AI control = show HOLD
         }
+        // else: mantiene 'static' del flush (AI control = HOLD visual)
         
-        // Hydrate sliders (use defaults if null = AI control)
-        setPatternSpeed(state.speed ?? 50)
-        setPatternSize(state.amplitude ?? 50)
+        // --- DYNAMICS ---
+        if (state.speed !== null) {
+          setPatternSpeed(state.speed)
+        }
+        // else: mantiene 50 del flush
         
-        console.log(`[Position] 🧠 State hydrated from backend`)
+        if (state.amplitude !== null) {
+          setPatternSize(state.amplitude)
+        }
+        // else: mantiene 50 del flush
+        
+        console.log(`[Position] 🧠 Hydrated fixture ${selectedIds[0]} - Pattern: ${state.pattern ?? 'AI'}`)
       } catch (err) {
         console.error('[Position] Hydration error:', err)
+        // En caso de error, los defaults del flush ya están aplicados
       }
     }
     
     hydrateState()
     
     return () => { isMounted = false }
-  }, [selectedIds.length, selectedIds[0]]) // Re-hydrate when selection changes
+  }, [JSON.stringify(selectedIds)]) // 🔑 Stringify para detectar cambios de contenido, no solo length
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - Connect to Arbiter

@@ -185,43 +185,51 @@ export const TheProgrammerContent: React.FC = () => {
   }, [selectedIds])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🧠 WAVE 999.6: STATE HYDRATION - Sync UI with backend state
+  // 🧠 WAVE 999.7: THE HYBRID FLUSH - Clean state on selection change
   // ═══════════════════════════════════════════════════════════════════════
   useEffect(() => {
     let isMounted = true
     
     const hydrateState = async () => {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
+      // ═══════════════════════════════════════════════════════════════════
+      setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+      setCurrentDimmer(null)
+      setCurrentColor({ r: 128, g: 128, b: 128 })
+      
       if (selectedIds.length === 0) {
-        // Reset to defaults when nothing selected
-        setOverrideState({ dimmer: false, color: false, position: false, beam: false })
-        setCurrentDimmer(null)
-        setCurrentColor({ r: 128, g: 128, b: 128 })
+        console.log(`[Programmer] 🧼 FLUSH: No selection, defaults applied`)
         return
       }
       
+      // ═══════════════════════════════════════════════════════════════════
+      // 🧠 PASO 2: HIDRATAR - Pedir estado real al Arbiter
+      // ═══════════════════════════════════════════════════════════════════
       try {
         const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
         
-        if (!isMounted || !result?.success || !result?.state) {
-          // Fallback: reset to defaults
-          setOverrideState({ dimmer: false, color: false, position: false, beam: false })
-          setCurrentDimmer(null)
-          setCurrentColor({ r: 128, g: 128, b: 128 })
+        if (!isMounted) return
+        
+        if (!result?.success || !result?.state) {
+          console.log(`[Programmer] 🧼 FLUSH: No backend state, keeping defaults`)
           return
         }
         
         const { state } = result
         
-        // Hydrate INTENSITY
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎯 PASO 3: APLICAR solo los valores que tienen OVERRIDE MANUAL
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // --- INTENSITY ---
         if (state.dimmer !== null) {
           setCurrentDimmer(state.dimmer)
           setOverrideState(prev => ({ ...prev, dimmer: true }))
-        } else {
-          setCurrentDimmer(null) // AI control = -1 in UI
-          setOverrideState(prev => ({ ...prev, dimmer: false }))
         }
+        // else: mantiene null del flush (AI control)
         
-        // Hydrate COLOR
+        // --- COLOR ---
         if (state.color !== null) {
           // Parse hex to RGB
           const hex = state.color.replace('#', '')
@@ -230,26 +238,21 @@ export const TheProgrammerContent: React.FC = () => {
           const b = parseInt(hex.substring(4, 6), 16)
           setCurrentColor({ r, g, b })
           setOverrideState(prev => ({ ...prev, color: true }))
-        } else {
-          setCurrentColor({ r: 128, g: 128, b: 128 }) // Neutral gray = no selection
-          setOverrideState(prev => ({ ...prev, color: false }))
         }
+        // else: mantiene gris neutro del flush (AI control)
         
         // Position & Beam handled by their own sections
-        console.log(`[Programmer] 🧠 State hydrated for ${selectedIds.length} fixtures`)
+        console.log(`[Programmer] 🧠 Hydrated fixture ${selectedIds[0]} - Dimmer: ${state.dimmer ?? 'AI'} Color: ${state.color ?? 'AI'}`)
       } catch (err) {
         console.error('[Programmer] Hydration error:', err)
-        // Fallback: reset to defaults
-        setOverrideState({ dimmer: false, color: false, position: false, beam: false })
-        setCurrentDimmer(null)
-        setCurrentColor({ r: 128, g: 128, b: 128 })
+        // En caso de error, los defaults del flush ya están aplicados
       }
     }
     
     hydrateState()
     
     return () => { isMounted = false }
-  }, [selectedIds.length, selectedIds[0]]) // Re-hydrate when selection changes
+  }, [JSON.stringify(selectedIds)]) // 🔑 Stringify para detectar cambios de contenido
   
   const handlePositionOverrideChange = useCallback((hasOverride: boolean) => {
     setOverrideState(prev => ({ ...prev, position: hasOverride }))

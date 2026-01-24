@@ -184,13 +184,72 @@ export const TheProgrammerContent: React.FC = () => {
     }
   }, [selectedIds])
   
-  // Reset override state when selection changes
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 999.6: STATE HYDRATION - Sync UI with backend state
+  // ═══════════════════════════════════════════════════════════════════════
   useEffect(() => {
-    setOverrideState({ dimmer: false, color: false, position: false, beam: false })
-    // WAVE 440.5: Also reset UI values when selection changes
-    setCurrentDimmer(null)
-    setCurrentColor({ r: 128, g: 128, b: 128 })
-  }, [selectedIds.length])
+    let isMounted = true
+    
+    const hydrateState = async () => {
+      if (selectedIds.length === 0) {
+        // Reset to defaults when nothing selected
+        setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+        setCurrentDimmer(null)
+        setCurrentColor({ r: 128, g: 128, b: 128 })
+        return
+      }
+      
+      try {
+        const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
+        
+        if (!isMounted || !result?.success || !result?.state) {
+          // Fallback: reset to defaults
+          setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+          setCurrentDimmer(null)
+          setCurrentColor({ r: 128, g: 128, b: 128 })
+          return
+        }
+        
+        const { state } = result
+        
+        // Hydrate INTENSITY
+        if (state.dimmer !== null) {
+          setCurrentDimmer(state.dimmer)
+          setOverrideState(prev => ({ ...prev, dimmer: true }))
+        } else {
+          setCurrentDimmer(null) // AI control = -1 in UI
+          setOverrideState(prev => ({ ...prev, dimmer: false }))
+        }
+        
+        // Hydrate COLOR
+        if (state.color !== null) {
+          // Parse hex to RGB
+          const hex = state.color.replace('#', '')
+          const r = parseInt(hex.substring(0, 2), 16)
+          const g = parseInt(hex.substring(2, 4), 16)
+          const b = parseInt(hex.substring(4, 6), 16)
+          setCurrentColor({ r, g, b })
+          setOverrideState(prev => ({ ...prev, color: true }))
+        } else {
+          setCurrentColor({ r: 128, g: 128, b: 128 }) // Neutral gray = no selection
+          setOverrideState(prev => ({ ...prev, color: false }))
+        }
+        
+        // Position & Beam handled by their own sections
+        console.log(`[Programmer] 🧠 State hydrated for ${selectedIds.length} fixtures`)
+      } catch (err) {
+        console.error('[Programmer] Hydration error:', err)
+        // Fallback: reset to defaults
+        setOverrideState({ dimmer: false, color: false, position: false, beam: false })
+        setCurrentDimmer(null)
+        setCurrentColor({ r: 128, g: 128, b: 128 })
+      }
+    }
+    
+    hydrateState()
+    
+    return () => { isMounted = false }
+  }, [selectedIds.length, selectedIds[0]]) // Re-hydrate when selection changes
   
   const handlePositionOverrideChange = useCallback((hasOverride: boolean) => {
     setOverrideState(prev => ({ ...prev, position: hasOverride }))

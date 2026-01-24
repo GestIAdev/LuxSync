@@ -414,11 +414,31 @@ declare global {
       }>
       
       /**
-       * �🎛️ WAVE 999: Clear all movement pattern overrides
+       * 🎛️ WAVE 999: Clear all movement pattern overrides
        * Restores automatic AI-driven movement calculations
        */
       clearMovementOverrides: () => Promise<{
         success: boolean
+      }>
+      
+      /**
+       * 🧠 WAVE 999.6: Get unified state for UI hydration
+       * Returns state snapshot with null for AI-controlled channels
+       */
+      getFixturesState: (fixtureIds: string[]) => Promise<{
+        success: boolean
+        error?: string
+        state?: {
+          dimmer: number | null
+          color: string | null
+          pan: number | null
+          tilt: number | null
+          pattern: string | null
+          speed: number | null
+          amplitude: number | null
+          zoom: number | null
+          focus: number | null
+        }
       }>
     }
     

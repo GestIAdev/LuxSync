@@ -647,8 +647,16 @@ const luxApi = {
     clearMovementOverrides: () =>
       ipcRenderer.invoke('lux:arbiter:clearMovementOverrides'),
     
+    /**
+     * 🧠 WAVE 999.6: Get unified state for UI hydration
+     * @param fixtureIds Array of fixture IDs (uses first as "Leader")
+     * @returns State snapshot with null for AI-controlled channels
+     */
+    getFixturesState: (fixtureIds: string[]) =>
+      ipcRenderer.invoke('lux:arbiter:getFixturesState', { fixtureIds }),
+    
     // ============================================
-    // �🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
+    // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
     // ============================================
     
     /**

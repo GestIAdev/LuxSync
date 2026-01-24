@@ -107,6 +107,49 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   }, [selectedIds, pan, tilt, fanValue, isMultiSelection])
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 999.6: STATE HYDRATION - Sync UI with backend state
+  // ═══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    let isMounted = true
+    
+    const hydrateState = async () => {
+      if (selectedIds.length === 0) return
+      
+      try {
+        const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
+        
+        if (!isMounted || !result?.success || !result?.state) return
+        
+        const { state } = result
+        
+        // Hydrate position
+        if (state.pan !== null) setPan(state.pan)
+        if (state.tilt !== null) setTilt(state.tilt)
+        
+        // Hydrate pattern - map 'hold' back to 'static' for UI
+        if (state.pattern !== null) {
+          const uiPattern = state.pattern === 'hold' ? 'static' : state.pattern
+          setActivePattern(uiPattern as PatternType)
+        } else {
+          setActivePattern('static') // AI control = show HOLD
+        }
+        
+        // Hydrate sliders (use defaults if null = AI control)
+        setPatternSpeed(state.speed ?? 50)
+        setPatternSize(state.amplitude ?? 50)
+        
+        console.log(`[Position] 🧠 State hydrated from backend`)
+      } catch (err) {
+        console.error('[Position] Hydration error:', err)
+      }
+    }
+    
+    hydrateState()
+    
+    return () => { isMounted = false }
+  }, [selectedIds.length, selectedIds[0]]) // Re-hydrate when selection changes
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS - Connect to Arbiter
   // ═══════════════════════════════════════════════════════════════════════
   

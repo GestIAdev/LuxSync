@@ -768,50 +768,30 @@ export class ContextualEffectSelector {
     // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL añadido a zonas bajas (silence, valley, ambient, gentle)
     // 🔪 WAVE 961: VIBE LEAK SURGERY - Latinos removidos, techno tiene sus atmosféricos
     const EFFECTS_BY_INTENSITY: Record<EnergyZone, string[]> = {
-      // SILENCE: Efectos fantasmales + atmosféricos profundos
-      // 🌫️ WAVE 938: void_mist + deep_breath para momentos vacíos
-      // ⚡ WAVE 977: sonar_ping para silencios tecnológicos
-      // 🔮 WAVE 988: fiber_optics para silencios (traveling ambient colors)
-      silence: ['ghost_breath', 'void_mist', 'deep_breath', 'sonar_ping', 'fiber_optics'],
+      // 🎚️ WAVE 996: THE 7-ZONE EXPANSION - Equidistant thresholds (6×15% + peak 10%)
+      // THE LADDER: silence(0-15%), valley(15-30%), ambient(30-45%), gentle(45-60%),
+      //             active(60-75%), intense(75-90%), peak(90-100%)
       
-      // VALLEY: Pre-drop, efectos suaves + atmosféricos
-      // 🌫️ WAVE 938: Todos los atmosféricos (bajo ruido visual)
-      // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, clave_rhythm)
-      // 🔪 WAVE 986: static_pulse PURGED
-      // ⚡ WAVE 977: sonar_ping para valleys tecnológicos
-      // 🔮 WAVE 988: fiber_optics para valleys (traveling ambient colors)
-      valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'digital_rain', 'deep_breath', 'sonar_ping', 'fiber_optics'],
+      // SILENCE (0-15%): Respiración profunda y ecos minimalistas
+      silence: ['deep_breath', 'sonar_ping'],
       
-      // AMBIENT: Sweeps y ondas + atmosféricos activos
-      // 🌫️ WAVE 938: digital_rain (más activos)
-      // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, tropical_pulse, salsa_fire)
-      // 🔪 WAVE 986: static_pulse PURGED
-      // 🔮 WAVE 988: fiber_optics para ambient (traveling colors OK here)
-      ambient: ['acid_sweep', 'tidal_wave', 'digital_rain', 'deep_breath', 'fiber_optics'],
+      // VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
+      valley: ['void_mist', 'fiber_optics'],
       
-      // GENTLE: Añadir dualismo + algunos atmosféricos
-      // 🌫️ WAVE 938: digital_rain (transición a energía)
-      // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-      // 🔪 WAVE 986: static_pulse PURGED
-      // ⚡ WAVE 977: ambient_strobe para flashes dispersos tipo cámara
-      // 🔪 WAVE 986: binary_glitch añadido para gentle
-      gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'digital_rain', 'ambient_strobe', 'binary_glitch'],
+      // AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
+      ambient: ['digital_rain', 'acid_sweep'],
       
-      // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
-      // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
-      // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-      // 🔪 WAVE 986: static_pulse PURGED → binary_glitch + seismic_snap AÑADIDOS
-      // ⚡ WAVE 977: ambient_strobe para flashes dispersos
-      active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'ambient_strobe', 'binary_glitch', 'seismic_snap'],
+      // GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
+      gentle: ['ambient_strobe', 'binary_glitch'],
       
-      // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
-      // 🔪 WAVE 986: seismic_snap añadido para intense
-      // ☢️ WAVE 988: core_meltdown AÑADIDO (LA BESTIA para momentos INTENSE)
-      intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino', 'seismic_snap', 'core_meltdown'],
+      // ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
+      active: ['cyber_dualism', 'seismic_snap'],
       
-      // PEAK: Libertad total - DROP territory
-      // ☢️ WAVE 988: core_meltdown AÑADIDO (LA BESTIA para DROPs)
-      peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise', 'strobe_burst', 'corazon_latino', 'core_meltdown'],
+      // INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
+      intense: ['sky_saw', 'abyssal_rise'],
+      
+      // PEAK (90-100%): Artillería pesada - territorio de drops
+      peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe'],
     }
     
     const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || []

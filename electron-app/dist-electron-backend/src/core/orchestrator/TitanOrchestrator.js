@@ -303,6 +303,8 @@ export class TitanOrchestrator {
                         // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
                         // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
                         affectedFixtureIndices.add(index);
+                        // 🔗 WAVE 991: mixBus='global' determina el modo de mezcla para TODA la fixture
+                        const isGlobalBus = effectOutput.mixBus === 'global';
                         // Aplicar color si existe
                         if (zoneData.color) {
                             const rgb = this.hslToRgb(zoneData.color.h, zoneData.color.s, zoneData.color.l);
@@ -325,14 +327,20 @@ export class TitanOrchestrator {
                         // - 'max' (HTP): El más brillante gana, nunca bajamos (TropicalPulse, ClaveRhythm)
                         // 
                         // DEFAULT: 'max' - Más seguro para energía general
+                        // 
+                        // 🔗 WAVE 991: THE MISSING LINK
+                        // Si el efecto tiene mixBus='global', forzamos 'replace' SIEMPRE
+                        // El mixBus de la clase es la autoridad máxima
                         // ═══════════════════════════════════════════════════════════════════════
                         if (zoneData.dimmer !== undefined) {
                             const effectDimmer = Math.round(zoneData.dimmer * 255);
-                            const blendMode = zoneData.blendMode || 'max'; // Default: HTP (energía)
+                            // 🔗 WAVE 991: mixBus='global' SIEMPRE es 'replace' (LTP dictador)
+                            const blendMode = isGlobalBus ? 'replace' : (zoneData.blendMode || 'max');
                             const physicsDimmer = fixtureStates[index].dimmer;
                             let finalDimmer;
                             if (blendMode === 'replace') {
                                 // 🌊 REPLACE (LTP): El efecto manda - para efectos espaciales con valles
+                                // 🔗 WAVE 991: También forzado cuando mixBus='global'
                                 finalDimmer = effectDimmer;
                             }
                             else {
@@ -346,21 +354,48 @@ export class TitanOrchestrator {
                         }
                         // ═══════════════════════════════════════════════════════════════════════
                         // 🔥 WAVE 800: FLASH DORADO - Procesar white/amber de zoneOverrides
+                        // 🔗 WAVE 991: Respetar mixBus='global' también para white/amber
+                        // 🛡️ WAVE 993: THE IRON CURTAIN - Zero-fill para canales no especificados
                         // 
-                        // PROBLEMA: TropicalPulse/ClaveRhythm enviaban white/amber pero el
+                        // PROBLEMA WAVE 991: TropicalPulse/ClaveRhythm enviaban white/amber pero el
                         // Orchestrator los ignoraba completamente.
                         // 
-                        // SOLUCIÓN: HTP (Math.max) para white/amber - siempre SUMA, nunca resta
+                        // PROBLEMA WAVE 993: Efectos con mixBus='global' no mataban los canales
+                        // que NO especificaban → Physics "sangraba" a través de los huecos.
+                        // 
+                        // SOLUCIÓN WAVE 993 - THE IRON CURTAIN:
+                        // - mixBus='global' → TELÓN DE ACERO: Todo lo no especificado MUERE (0)
+                        // - mixBus='htp' → COLABORACIÓN: Solo procesa lo que trae el efecto
+                        // 
+                        // Ejemplo crítico: DigitalRain (verde puro techno)
+                        //   - Trae: RGB verde, dimmer
+                        //   - NO trae: white, amber
+                        //   - ANTES: white/amber quedaban con valor de physics (dorado bleeding)
+                        //   - AHORA: white=0, amber=0 → VERDE PURO ✅
                         // ═══════════════════════════════════════════════════════════════════════
-                        if (zoneData.white !== undefined) {
-                            const effectWhite = Math.round(zoneData.white * 255);
-                            const physicsWhite = fixtureStates[index].white || 0;
-                            fixtureStates[index].white = Math.max(physicsWhite, effectWhite);
+                        if (isGlobalBus) {
+                            // 🛡️ WAVE 993: THE IRON CURTAIN
+                            // Dictador global: Los canales no mencionados MUEREN
+                            // No permitimos que la física "sangre" a través de los huecos
+                            const effectWhite = zoneData.white !== undefined ? Math.round(zoneData.white * 255) : 0;
+                            const effectAmber = zoneData.amber !== undefined ? Math.round(zoneData.amber * 255) : 0;
+                            fixtureStates[index].white = effectWhite;
+                            fixtureStates[index].amber = effectAmber;
                         }
-                        if (zoneData.amber !== undefined) {
-                            const effectAmber = Math.round(zoneData.amber * 255);
-                            const physicsAmber = fixtureStates[index].amber || 0;
-                            fixtureStates[index].amber = Math.max(physicsAmber, effectAmber);
+                        else {
+                            // 🎉 HTP MODE (Fiesta Latina): COLABORACIÓN
+                            // Solo procesa los canales que el efecto trae explícitamente
+                            // Si el efecto no menciona white/amber, deja que physics brille
+                            if (zoneData.white !== undefined) {
+                                const effectWhite = Math.round(zoneData.white * 255);
+                                const physicsWhite = fixtureStates[index].white || 0;
+                                fixtureStates[index].white = Math.max(physicsWhite, effectWhite);
+                            }
+                            if (zoneData.amber !== undefined) {
+                                const effectAmber = Math.round(zoneData.amber * 255);
+                                const physicsAmber = fixtureStates[index].amber || 0;
+                                fixtureStates[index].amber = Math.max(physicsAmber, effectAmber);
+                            }
                         }
                     }
                     // Si NO pertenece a la zona → NO HACER NADA (ni siquiera tocarla)

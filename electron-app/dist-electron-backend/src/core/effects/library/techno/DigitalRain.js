@@ -1,7 +1,22 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌧️ DIGITAL RAIN - MATRIX VIBES
- * ═══════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════════════    // ═════════════════════════════════════════════════════════════════════
+    // MOVERS: Solo dimmer flickering - MODO FANTASMA
+    // 🛡️ WAVE 984: THE MOVER LAW - Eliminar color, deja que VMM controle
+    // 🛡️ WAVE 994: THE HOLDING PATTERN - Nunca suelta el control
+    // ═════════════════════════════════════════════════════════════════════
+    const moverDimmer = Math.random() < this.config.flickerProbability
+      ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
+      : 0
+    
+    // 🛡️ WAVE 994: SIEMPRE enviar override (nunca soltar el micro)
+    output.zoneOverrides!['movers'] = {
+      dimmer: moverDimmer,  // Puede ser 0 (darkness) o >0 (flash)
+      // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+      blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
+      // NO movement override - VMM takes control
+    }═
  *
  * 🔬 WAVE 938: ATMOSPHERIC ARSENAL (Radwulf)
  *
@@ -28,10 +43,10 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    durationMs: 6000, // 6 segundos (was 8s) - WAVE 964
-    flickerProbability: 0.15, // 15% chance por frame (~9 FPS flickering)
-    minIntensity: 0.1,
-    maxIntensity: 0.3,
+    durationMs: 4000, // 🔪 WAVE 976: 6s → 4s (más dinámico)
+    flickerProbability: 0.03, // � WAVE 986.1: 20% → 3% (de metralleta a lluvia)
+    minIntensity: 0.35, // 🛡️ WAVE 984: 0.1 → 0.35 (BOOST - era invisible)
+    maxIntensity: 0.70, // 🛡️ WAVE 984: 0.3 → 0.70 (BOOST para compensar movers)
     scanSpeed: 15, // 15°/s - muy lento
     tiltAngle: -45, // Mirando hacia abajo
 };
@@ -50,7 +65,7 @@ export class DigitalRain extends BaseEffect {
         this.effectType = 'digital_rain';
         this.name = 'Digital Rain';
         this.category = 'physical';
-        this.priority = 70; // Media-alta - WAVE 964: Subida de 40 a 70
+        this.priority = 90; // 🔪 WAVE 976: High priority (era 70)
         this.mixBus = 'global'; // WAVE 964: HTP→GLOBAL para visibilidad
         this.panOffset = -180;
         this.config = { ...DEFAULT_CONFIG, ...config };
@@ -96,14 +111,19 @@ export class DigitalRain extends BaseEffect {
         };
         // ═════════════════════════════════════════════════════════════════════
         // PARS: Flicker aleatorio con colores CYAN/LIME
+        // 🛡️ WAVE 994: THE HOLDING PATTERN - Nunca suelta el control
         // ═════════════════════════════════════════════════════════════════════
         const parZones = ['front', 'pars', 'back'];
         parZones.forEach(zone => {
             const dimmerValue = Math.random() < this.config.flickerProbability
                 ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
                 : 0;
+            // 🛡️ WAVE 994: SIEMPRE enviar override, incluso si es dimmer=0
+            // LA REGLA DE ORO DEL TECHNO:
+            // "Si eres un efecto Global, tú eres el dueño del universo hasta que termines.
+            //  Si quieres negro, PINTA NEGRO. No dejes el lienzo en blanco."
             if (dimmerValue > 0) {
-                // Color: alternar entre CYAN y LIME
+                // FLASH: Color visible (CYAN o LIME)
                 const useCyan = Math.random() > 0.5;
                 const color = useCyan
                     ? { h: 180, s: 100, l: 50 } // CYAN
@@ -111,22 +131,32 @@ export class DigitalRain extends BaseEffect {
                 output.zoneOverrides[zone] = {
                     dimmer: dimmerValue,
                     color: color,
-                    blendMode: 'max',
+                    blendMode: 'replace', // 🌧️ WAVE 987: max→replace (cortar bombo)
+                };
+            }
+            else {
+                // DARKNESS: Blackout explícito para matar physics
+                output.zoneOverrides[zone] = {
+                    dimmer: 0, // 🛡️ WAVE 994: Darkness explícita (no soltar el micro)
+                    blendMode: 'replace',
                 };
             }
         });
         // ═════════════════════════════════════════════════════════════════════
-        // MOVERS: Tilt fijo hacia abajo, Pan escaneo lento
+        // MOVERS: Solo dimmer flickering - MODO FANTASMA
+        // �️ WAVE 984: THE MOVER LAW - Eliminar color, deja que VMM controle
         // ═════════════════════════════════════════════════════════════════════
-        output.zoneOverrides['movers'] = {
-            dimmer: 0.15,
-            color: { h: 180, s: 100, l: 50 }, // CYAN
-            blendMode: 'max',
-            movement: {
-                pan: this.panOffset,
-                tilt: this.config.tiltAngle,
-            },
-        };
+        const moverDimmer = Math.random() < this.config.flickerProbability
+            ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
+            : 0;
+        if (moverDimmer > 0) {
+            output.zoneOverrides['movers'] = {
+                dimmer: moverDimmer,
+                // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+                blendMode: 'replace', // 🌧️ WAVE 987: max→replace (cortar bombo)
+                // NO movement override - VMM takes control
+            };
+        }
         return output;
     }
     isFinished() {

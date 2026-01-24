@@ -499,7 +499,8 @@ export class SeleneColorEngine {
                 light: Math.round(palette.primary.l), // 🛡️ WAVE 83: Añadido L para diagnóstico completo
                 energy: Math.round(data.energy * 100)
             };
-            console.log(`[COLOR_AUDIT] 🎨 ${JSON.stringify(audit)}`);
+            // 🔇 WAVE 982.5: Silenciado (arqueología del día 2)
+            // console.log(`[COLOR_AUDIT] 🎨 ${JSON.stringify(audit)}`);
             // Actualizar tracking
             this.lastLoggedKey = currentKey;
             this.lastLoggedStrategy = currentStrategy;

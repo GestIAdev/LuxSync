@@ -95,38 +95,43 @@ export interface EnergyConsciousnessConfig {
 
 const DEFAULT_CONFIG: EnergyConsciousnessConfig = {
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌋 WAVE 960: THE FLOOR IS LAVA - AGC Adaptation
+  // � WAVE 996: THE 7-ZONE EXPANSION - THE LADDER
   // ═══════════════════════════════════════════════════════════════════════════
+  // PROBLEMA (WAVE 976.10):
+  // - Zonas desbalanceadas: gentle muy estrecha (10%), peak inalcanzable (5%)
+  // - Drops reales (0.82-0.92) caían en `active`, no en `intense`
   // 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 976.10: RECALIBRACIÓN DE ZONAS - LA CIRUGÍA FINA
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PROBLEMA ORIGINAL (WAVE 960):
-  // - AGC amplifica ruido → Umbrales subieron para compensar
+  // SOLUCIÓN WAVE 996 (Radwulf - The Ladder):
+  // - 7 zonas EQUIDISTANTES: 6 x 15% + 1 x 10% (peak)
+  // - Distribución balanceada para Monte Carlo validation
+  // - Rango activo (0.45-1.00) dividido en 4 zonas de 15% cada una
   // 
-  // PROBLEMA DETECTADO (WAVE 976.10):
-  // - Drops reales (E=0.84-0.92) caían en `active`, no en `intense`
-  // - Zona `peak` (≥0.95) inalcanzable en tracks normales
-  // - Strobes nunca disparaban en drops reales
+  // THE LADDER (Escalera de 7 peldaños):
+  // ┌─────────────────────────────────────────────────────────────────┐
+  // │ ZONA    │ RANGO         │ ANCHO │ EFECTOS                      │
+  // ├─────────────────────────────────────────────────────────────────┤
+  // │ SILENCE │ 0.00 - 0.15   │ 15%   │ DeepBreath, SonarPing        │
+  // │ VALLEY  │ 0.15 - 0.30   │ 15%   │ VoidMist, FiberOptics        │
+  // │ AMBIENT │ 0.30 - 0.45   │ 15%   │ DigitalRain, AcidSweep       │
+  // │ GENTLE  │ 0.45 - 0.60   │ 15%   │ AmbientStrobe, BinaryGlitch  │
+  // │ ACTIVE  │ 0.60 - 0.75   │ 15%   │ CyberDualism, SeismicSnap    │
+  // │ INTENSE │ 0.75 - 0.90   │ 15%   │ SkySaw, AbyssalRise          │
+  // │ PEAK    │ 0.90 - 1.00   │ 10%   │ Gatling, CoreMeltdown, Indus │
+  // └─────────────────────────────────────────────────────────────────┘
   // 
-  // SOLUCIÓN (Radwulf):
-  // - `intense` empieza en 0.82 → Captura drops reales (0.82-0.92)
-  // - `peak` empieza en 0.92 → Solo locura absoluta
-  // - `active` termina en 0.82 → Pre-drop, tensión creciente
-  // 
-  // EXPECTED:
-  // - Hard Techno drop (E=0.88) → `intense` → industrial_strobe ✅
-  // - Trance peak (E=0.93) → `peak` → gatling_raid ✅
-  // - Build-up (E=0.78) → `active` → acid_sweep ✅
+  // EXPECTED (Monte Carlo 3500 cycles):
+  // - Cada zona activa (gentle-peak): ~25% distribución (4 zonas x 25% = 100%)
+  // - Zonas pasivas (silence-ambient): Mínima activación
+  // - STRICT ZONE MUTEX: 1 efecto por zona simultáneamente
   // ═══════════════════════════════════════════════════════════════════════════
   zoneThresholds: {
-    silence: 0.30,   // E < 0.30 = SILENCE (silencio puro)
-    valley: 0.50,    // E < 0.50 = VALLEY (descansos, breakdowns)
-    ambient: 0.65,   // E < 0.65 = AMBIENT (pads, atmósfera)
-    gentle: 0.75,    // E < 0.75 = GENTLE (ritmos ligeros - techno vacío aquí)
-    active: 0.82,    // E < 0.82 = ACTIVE (pre-drop, tensión creciente)
-    intense: 0.92,   // E < 0.92 = INTENSE (🔥 DROPS REALES 0.82-0.92)
-                     // E >= 0.92 = PEAK (🔥 LOCURA ABSOLUTA)
+    silence: 0.15,   // E < 0.15 = SILENCE (0-15%)
+    valley: 0.30,    // E < 0.30 = VALLEY (15-30%)
+    ambient: 0.45,   // E < 0.45 = AMBIENT (30-45%)
+    gentle: 0.60,    // E < 0.60 = GENTLE (45-60%)
+    active: 0.75,    // E < 0.75 = ACTIVE (60-75%)
+    intense: 0.90,   // E < 0.90 = INTENSE (75-90%)
+                     // E >= 0.90 = PEAK (90-100%)
   },
   
   // ASIMETRÍA TEMPORAL: Lento para bajar, rápido para subir

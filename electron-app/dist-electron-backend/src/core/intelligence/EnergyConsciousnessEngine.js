@@ -22,28 +22,46 @@
  * @module core/intelligence/EnergyConsciousnessEngine
  * @version 1.0.0 - WAVE 931
  */
+import { EnergyLogger } from './EnergyLogger.js';
 const DEFAULT_CONFIG = {
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🌋 WAVE 960: THE FLOOR IS LAVA - AGC Adaptation
+    // � WAVE 996: THE 7-ZONE EXPANSION - THE LADDER
     // ═══════════════════════════════════════════════════════════════════════════
+    // PROBLEMA (WAVE 976.10):
+    // - Zonas desbalanceadas: gentle muy estrecha (10%), peak inalcanzable (5%)
+    // - Drops reales (0.82-0.92) caían en `active`, no en `intense`
     // 
-    // PROBLEMA: El AGC amplifica el ruido de fondo hasta ~0.40
-    // ANTES: Silencio = 0.05, Ambient = 0.15, Valley = 0.20
-    // AHORA: El "silencio" del AGC = 0.40 → Los umbrales viejos detectaban
-    //        "actividad" en lo que es solo ruido amplificado.
+    // SOLUCIÓN WAVE 996 (Radwulf - The Ladder):
+    // - 7 zonas EQUIDISTANTES: 6 x 15% + 1 x 10% (peak)
+    // - Distribución balanceada para Monte Carlo validation
+    // - Rango activo (0.45-1.00) dividido en 4 zonas de 15% cada una
     // 
-    // SOLUCIÓN: ZONE SHIFT - Mover TODOS los umbrales hacia arriba
-    // El suelo ha subido → La portería también sube.
+    // THE LADDER (Escalera de 7 peldaños):
+    // ┌─────────────────────────────────────────────────────────────────┐
+    // │ ZONA    │ RANGO         │ ANCHO │ EFECTOS                      │
+    // ├─────────────────────────────────────────────────────────────────┤
+    // │ SILENCE │ 0.00 - 0.15   │ 15%   │ DeepBreath, SonarPing        │
+    // │ VALLEY  │ 0.15 - 0.30   │ 15%   │ VoidMist, FiberOptics        │
+    // │ AMBIENT │ 0.30 - 0.45   │ 15%   │ DigitalRain, AcidSweep       │
+    // │ GENTLE  │ 0.45 - 0.60   │ 15%   │ AmbientStrobe, BinaryGlitch  │
+    // │ ACTIVE  │ 0.60 - 0.75   │ 15%   │ CyberDualism, SeismicSnap    │
+    // │ INTENSE │ 0.75 - 0.90   │ 15%   │ SkySaw, AbyssalRise          │
+    // │ PEAK    │ 0.90 - 1.00   │ 10%   │ Gatling, CoreMeltdown, Indus │
+    // └─────────────────────────────────────────────────────────────────┘
     // 
+    // EXPECTED (Monte Carlo 3500 cycles):
+    // - Cada zona activa (gentle-peak): ~25% distribución (4 zonas x 25% = 100%)
+    // - Zonas pasivas (silence-ambient): Mínima activación
+    // - STRICT ZONE MUTEX: 1 efecto por zona simultáneamente
     // ═══════════════════════════════════════════════════════════════════════════
     zoneThresholds: {
-        silence: 0.35, // E < 0.35 = SILENCE (absorbe ruido AGC ~0.40)
-        valley: 0.55, // E < 0.55 = VALLEY (breakdowns reales)
-        ambient: 0.70, // E < 0.70 = AMBIENT (pads, voces suaves)
-        gentle: 0.80, // E < 0.80 = GENTLE (ritmos ligeros)
-        active: 0.90, // E < 0.90 = ACTIVE (techno normal)
-        intense: 0.95, // E < 0.95 = INTENSE (bombos reales)
-        // E >= 0.95 = PEAK (SOLO drops verdaderos)
+        silence: 0.15, // E < 0.15 = SILENCE (0-15%)
+        valley: 0.30, // E < 0.30 = VALLEY (15-30%)
+        ambient: 0.45, // E < 0.45 = AMBIENT (30-45%)
+        gentle: 0.60, // E < 0.60 = GENTLE (45-60%)
+        active: 0.75, // E < 0.75 = ACTIVE (60-75%)
+        intense: 0.90, // E < 0.90 = INTENSE (75-90%)
+        // E >= 0.90 = PEAK (90-100%)
     },
     // ASIMETRÍA TEMPORAL: Lento para bajar, rápido para subir
     smoothingFactorDown: 0.92, // ~500ms para estabilizar en silencio
@@ -65,6 +83,30 @@ export class EnergyConsciousnessEngine {
         this.currentZone = 'silence';
         this.previousZone = 'silence';
         this.lastZoneChange = Date.now();
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 979: PEAK HOLD - THE TRANSIENT PROTECTOR
+        // ═══════════════════════════════════════════════════════════════════════════
+        // PROBLEMA IDENTIFICADO (WAVE 978 Forensic Analysis):
+        // - Smoothing tiene lag de ~650ms después de peaks
+        // - Drops de Dubstep (raw=1.0) → espacios post-drop (raw=0.27) se ven como VALLEY (smooth=0.48)
+        // - Kicks reales (raw=0.44) se ven inflados como INTENSE (smooth=0.82) por lag
+        // 
+        // SOLUCIÓN:
+        // - Peak Hold mantiene picos durante 80ms (duración típica de kick)
+        // - Decay rápido (0.85) cuando bass > 0.65 (percusión detectada)
+        // - Decay lento (0.95) en ambiente sin percusión
+        // 
+        // EXPECTED:
+        // - Dubstep drop: raw=1.0 → peak hold en 0.95+ por 80ms
+        // - Post-drop space: raw=0.27 → peak decay a 0.35 en 150-200ms (vs 650ms actual)
+        // - Hard Techno: Sin cambios (smoothing funciona bien sin transitorios)
+        // ═══════════════════════════════════════════════════════════════════════════
+        this.peakHold = 0;
+        this.peakHoldTimestamp = 0;
+        this.PEAK_HOLD_DURATION = 80; // ms - mantener peak brevemente
+        this.FAST_DECAY_RATE = 0.85; // Decay rápido en percusión
+        this.SLOW_DECAY_RATE = 0.95; // Decay normal en ambiente
+        this.BASS_THRESHOLD = 0.65; // Umbral para detectar percusión
         // Historial para percentil
         this.energyHistory = [];
         // Ventana para tendencia
@@ -81,20 +123,34 @@ export class EnergyConsciousnessEngine {
      * Procesa la energía actual y retorna el contexto energético completo.
      *
      * @param rawEnergy - Energía absoluta del audio (0-1)
+     * @param debugData - (WAVE 978) Datos opcionales para el EnergyLogger
      * @returns EnergyContext con toda la información para decisiones
      */
-    process(rawEnergy) {
+    process(rawEnergy, debugData) {
         const now = Date.now();
         // ═══════════════════════════════════════════════════════════════════
         // 1. SUAVIZADO ASIMÉTRICO - La magia del "Fake Drop"
         // ═══════════════════════════════════════════════════════════════════
         const smoothed = this.calculateAsymmetricSmoothing(rawEnergy);
         // ═══════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 979: PEAK HOLD - Preservar transitorios
+        // ═══════════════════════════════════════════════════════════════════
+        const peakHeldEnergy = this.updatePeakHold(rawEnergy, now, debugData);
+        // 🔥 WAVE 980.3: FIX DEFINITIVO - Time-based + Delta detection
+        // PROBLEMA: Threshold fijo +0.15 demasiado alto (imposible si smooth=1.0)
+        // SOLUCIÓN: Peak hold activo durante 1.5s post-peak O si hay delta significativo
+        // 🔥 WAVE 980.4: Ventana reducida 2000ms → 1500ms (mejora transiciones en breakdowns)
+        const peakHoldActive = (now - this.peakHoldTimestamp) < 1500;
+        const energyDelta = rawEnergy - smoothed;
+        const isTransient = energyDelta > 0.05 || peakHoldActive;
+        const effectiveEnergy = isTransient ? peakHeldEnergy : smoothed;
+        // ═══════════════════════════════════════════════════════════════════
         // 2. DETERMINAR ZONA
         // ═══════════════════════════════════════════════════════════════════
         // CRITICAL: Para SALIR de zonas bajas, usamos energía RAW (instantánea)
         // Para ENTRAR en zonas bajas, usamos energía SMOOTHED (suavizada)
-        const newZone = this.determineZone(rawEnergy, smoothed);
+        // 🔥 WAVE 979: Ahora usamos effectiveEnergy (con peak hold) en lugar de smoothed
+        const newZone = this.determineZone(rawEnergy, effectiveEnergy);
         // Detectar cambio de zona
         if (newZone !== this.currentZone) {
             this.previousZone = this.currentZone;
@@ -106,6 +162,26 @@ export class EnergyConsciousnessEngine {
         // ═══════════════════════════════════════════════════════════════════
         this.updateHistory(rawEnergy);
         const percentile = this.calculatePercentile(rawEnergy);
+        // ═══════════════════════════════════════════════════════════════════
+        // 🧪 WAVE 978: ENERGY LAB - LOG DATA
+        // 🔥 WAVE 979: Ahora loggeamos effectiveEnergy (con peak hold aplicado)
+        // ═══════════════════════════════════════════════════════════════════
+        // Si el logger está activo, registrar datos crudos
+        if (EnergyLogger.isEnabled()) {
+            const logEntry = {
+                timestamp: now,
+                raw: rawEnergy,
+                smooth: effectiveEnergy, // 🔥 WAVE 979: Con peak hold
+                zone: this.currentZone,
+                gain: debugData?.agcGain ?? 1.0,
+                bass: debugData?.bassEnergy ?? 0,
+                spectralFlux: debugData?.spectralFlux,
+                mid: debugData?.midEnergy,
+                treble: debugData?.trebleEnergy,
+                percentile,
+            };
+            EnergyLogger.log(logEntry);
+        }
         // ═══════════════════════════════════════════════════════════════════
         // 4. CALCULAR TENDENCIA
         // ═══════════════════════════════════════════════════════════════════
@@ -124,7 +200,7 @@ export class EnergyConsciousnessEngine {
         // ═══════════════════════════════════════════════════════════════════
         return {
             absolute: rawEnergy,
-            smoothed: smoothed,
+            smoothed: effectiveEnergy, // 🔥 WAVE 979: Con peak hold
             percentile,
             zone: this.currentZone,
             previousZone: this.previousZone,
@@ -157,6 +233,55 @@ export class EnergyConsciousnessEngine {
         // Exponential Moving Average con factor asimétrico
         this.smoothedEnergy = this.smoothedEnergy * factor + rawEnergy * (1 - factor);
         return this.smoothedEnergy;
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 979: PEAK HOLD - TRANSIENT PRESERVATION
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Implementa Peak Hold con decay condicional bass-aware.
+     *
+     * ALGORITMO:
+     * 1. Si raw > peakHold → Capturar nuevo peak
+     * 2. Si dentro de PEAK_HOLD_DURATION (80ms) → Mantener peak
+     * 3. Si fuera de ventana → Aplicar decay según contexto:
+     *    - Bass > 0.65 (percusión) → FAST_DECAY (0.85) = 150-200ms para bajar
+     *    - Bass ≤ 0.65 (ambiente) → SLOW_DECAY (0.95) = mantener smoothing actual
+     *
+     * IMPACTO ESPERADO:
+     * - Dubstep drop (raw=1.0) → Peak hold en 0.95+ por 80ms
+     * - Post-drop space (raw=0.27) → Decay rápido a 0.35 en 200ms (vs 650ms)
+     * - Hard Techno constante → Sin cambios (no hay peaks extremos)
+     *
+     * @param rawEnergy - Energía cruda del audio
+     * @param now - Timestamp actual
+     * @param debugData - Datos opcionales (necesitamos bassEnergy)
+     * @returns Energía con peak hold aplicado
+     */
+    updatePeakHold(rawEnergy, now, debugData) {
+        // 1. ¿Nuevo peak detectado?
+        if (rawEnergy > this.peakHold) {
+            this.peakHold = rawEnergy;
+            this.peakHoldTimestamp = now;
+            return this.peakHold;
+        }
+        // 2. ¿Estamos dentro de la ventana de hold?
+        const timeSincePeak = now - this.peakHoldTimestamp;
+        if (timeSincePeak <= this.PEAK_HOLD_DURATION) {
+            // Mantener peak sin decay
+            return this.peakHold;
+        }
+        // 3. Aplicar decay según contexto (bass-aware)
+        const bassEnergy = debugData?.bassEnergy ?? 0;
+        const isPercussionActive = bassEnergy > this.BASS_THRESHOLD;
+        // Decay rápido si hay percusión, lento si es ambiente
+        const decayRate = isPercussionActive
+            ? this.FAST_DECAY_RATE // Percusión: bajar rápido (0.85)
+            : this.SLOW_DECAY_RATE; // Ambiente: bajar lento (0.95)
+        this.peakHold *= decayRate;
+        // No dejar que peak hold baje del raw actual
+        // (esto evita que el peak hold "compita" con subidas reales)
+        this.peakHold = Math.max(this.peakHold, rawEnergy);
+        return this.peakHold;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // 🎯 DETERMINACIÓN DE ZONA

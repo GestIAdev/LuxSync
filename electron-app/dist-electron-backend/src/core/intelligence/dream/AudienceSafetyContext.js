@@ -90,6 +90,11 @@ export class AudienceSafetyContextBuilder {
         this.context.energy = Math.max(0, Math.min(1, energy));
         return this;
     }
+    // 🧠 WAVE 975.5: ZONE UNIFICATION
+    withEnergyZone(zone) {
+        this.context.energyZone = zone;
+        return this;
+    }
     withTimestamp(timestamp) {
         this.context.timestamp = timestamp;
         return this;

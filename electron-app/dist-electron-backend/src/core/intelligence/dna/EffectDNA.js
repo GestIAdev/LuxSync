@@ -50,7 +50,7 @@ export const EFFECT_DNA_REGISTRY = {
     // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
     'gatling_raid': {
         aggression: 0.90, // 🔫 Ametralladora de PARs
-        chaos: 0.70, // MUY caótico (random burst)
+        chaos: 0.40, // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
         organicity: 0.10, // Mecánico puro
     },
     'sky_saw': {
@@ -66,13 +66,19 @@ export const EFFECT_DNA_REGISTRY = {
         chaos: 0.20, // Ordenado pero con pequeñas variaciones
         organicity: 0.85, // Parece humo VIVO
     },
-    'static_pulse': {
-        aggression: 0.35, // ⚡ Glitches tienen "punch" pero suave
-        chaos: 0.75, // MUY caótico (glitch = ruido)
-        organicity: 0.15, // Digital, no orgánico
+    // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
+    'binary_glitch': {
+        aggression: 0.60, // ⚡ Golpe seco digital - tartamudeo de código
+        chaos: 0.85, // ALTO caos - glitch impredecible
+        organicity: 0.00, // 100% máquina - cero orgánico
+    },
+    'seismic_snap': {
+        aggression: 0.70, // 💥 Golpe físico de luz - obturador gigante
+        chaos: 0.20, // Ordenado - SNAP preciso
+        organicity: 0.10, // Casi 100% máquina
     },
     'digital_rain': {
-        aggression: 0.20, // 💧 Suave como lluvia
+        aggression: 0.35, // � WAVE 977: 0.20 → 0.35 (más presencia)
         chaos: 0.65, // Caótico (gotas aleatorias)
         organicity: 0.40, // Semi-orgánico (agua)
     },
@@ -80,6 +86,32 @@ export const EFFECT_DNA_REGISTRY = {
         aggression: 0.05, // 🫁 Cero violencia
         chaos: 0.10, // MUY ordenado (sinusoidal)
         organicity: 0.95, // MÁXIMA organicidad - respiración
+    },
+    // ═══════════════════════════════════════════════════════════════
+    // ⚡ WAVE 977: LA FÁBRICA - Nuevos Efectos Techno
+    // ═══════════════════════════════════════════════════════════════
+    'ambient_strobe': {
+        aggression: 0.45, // 📸 Flashes moderados tipo cámara
+        chaos: 0.40, // Disperso pero no caótico
+        organicity: 0.10, // Máquina (flashes de cámara)
+    },
+    'sonar_ping': {
+        aggression: 0.15, // 🔵 Pulso sutil submarino
+        chaos: 0.10, // MUY ordenado (secuencia back→front)
+        organicity: 0.05, // 100% máquina/tecnología
+    },
+    // ═══════════════════════════════════════════════════════════════
+    // 🔮 WAVE 988: THE FINAL ARSENAL
+    // ═══════════════════════════════════════════════════════════════
+    'fiber_optics': {
+        aggression: 0.10, // 🌈 Cero violencia - solo viaja
+        chaos: 0.20, // Ordenado - progresión cíclica
+        organicity: 0.00, // 100% sintético tecnológico
+    },
+    'core_meltdown': {
+        aggression: 1.00, // ☢️ MÁXIMA - LA BESTIA
+        chaos: 1.00, // MÁXIMO - Impredecible strobe
+        organicity: 0.00, // 100% máquina apocalíptica
     },
     // ═══════════════════════════════════════════════════════════════
     // 🌴 LATINO-ORGANIC: La Fiesta
@@ -445,7 +477,8 @@ export class DNAAnalyzer {
             return 'techno-industrial';
         }
         // Techno-atmospheric
-        if (['void_mist', 'static_pulse', 'digital_rain', 'deep_breath'].includes(effectId)) {
+        // 🔪 WAVE 986: static_pulse PURGED, binary_glitch + seismic_snap ADDED
+        if (['void_mist', 'digital_rain', 'deep_breath', 'binary_glitch', 'seismic_snap'].includes(effectId)) {
             return 'techno-atmospheric';
         }
         // Latino-organic

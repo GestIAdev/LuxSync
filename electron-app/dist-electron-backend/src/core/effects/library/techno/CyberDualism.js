@@ -3,30 +3,31 @@
  * 🤖 CYBER DUALISM - THE PING-PONG TWINS
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * 🔥 WAVE 810: UNLOCK THE TWINS
+ * 🤖 WAVE 810: THE TWINS AWAKENING
+ * � WAVE 990: RAILWAY SWITCH - VÍA GLOBAL (Dictador)
  *
  * FILOSOFÍA:
  * El primer efecto que explota la dualidad espacial L/R de los movers.
  * Ping-pong visual: LEFT strobe → RIGHT strobe → repeat.
  *
  * COMPORTAMIENTO:
- * - MixBus: 'htp' (ADITIVO - suma con física)
+ * - MixBus: 'global' (WAVE 990: DICTADOR - Arregla sangrado de fondo)
  * - Patrón: Alternancia L/R sincronizada con beat
- * - Beat 1: LEFT=STROBE (Blanco) | RIGHT=DARK
+ * - Beat 1: LEFT=STROBE (Blanco) | RIGHT=DARK (NEGRO TOTAL)
  * - Beat 2: LEFT=DARK | RIGHT=STROBE (Blanco)
  * - Variante: LEFT=Cian | RIGHT=Magenta (chromatic mode)
  *
  * COLORES:
  * - Strobe Mode: Blanco puro (h:0, s:0, l:100)
  * - Chromatic Mode: Cian (h:180, s:100, l:70) vs Magenta (h:300, s:100, l:70)
- * - Dark: Negro (dimmer=0)
+ * - Dark: Negro (dimmer=0) - AHORA CON GLOBAL ES NEGRO REAL
  *
  * TARGETING:
  * - Usa 'movers_left' y 'movers_right' (WAVE 810)
  * - Sin targeting quirúrgico, aplastaría todo el rig
  *
  * @module core/effects/library/techno/CyberDualism
- * @version WAVE 810 - THE TWINS AWAKENING
+ * @version WAVE 990 - RAILWAY SWITCH GLOBAL
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
@@ -54,7 +55,7 @@ export class CyberDualism extends BaseEffect {
         this.name = 'Cyber Dualism';
         this.category = 'physical';
         this.priority = 85; // Alta (mayor que acid_sweep, menor que industrial_strobe)
-        this.mixBus = 'htp'; // 🚂 ADITIVO - suma con física
+        this.mixBus = 'global'; // 🚂 WAVE 990: GLOBAL - Arregla sangrado de fondo
         this.currentCycle = 0; // 0-based cycle counter
         this.cyclePhase = 0; // 0-1 dentro del cycle actual
         this.actualCycleDurationMs = 500;
@@ -117,16 +118,19 @@ export class CyberDualism extends BaseEffect {
     /**
      * 📤 GET OUTPUT - Devuelve el output del frame actual
      * 🤖 WAVE 810: TARGETING L/R - El core del ping-pong
+     * 🔦 WAVE 985: DIMMER LOCK - Blackout estricto en fase OFF
      */
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished') {
             return null;
         }
-        if (!this.flashActive) {
-            // Durante la fase DARK, no emitimos output (respira)
-            return null;
-        }
-        const intensity = this.triggerIntensity * this.config.strobeIntensity;
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔦 WAVE 985: DIMMER LOCK - NO MORE RETURN NULL
+        // Incluso en fase DARK, emitimos override para aplastar el layer inferior
+        // ═══════════════════════════════════════════════════════════════════════
+        const intensity = this.flashActive
+            ? this.triggerIntensity * this.config.strobeIntensity
+            : 0; // 🔦 EXPLÍCITO: dimmer=0 en fase dark
         // Determinar color según modo
         let color;
         if (this.config.chromaticMode) {
@@ -138,23 +142,28 @@ export class CyberDualism extends BaseEffect {
             color = this.strobeColor;
         }
         // 🔥 WAVE 810: TARGETING QUIRÚRGICO
-        // Solo afectar el lado activo, el otro respira
+        // Siempre afectamos AMBOS lados: uno ON, otro OFF
         const activeZone = this.currentSide === 'left' ? 'movers_left' : 'movers_right';
+        const darkZone = this.currentSide === 'left' ? 'movers_right' : 'movers_left';
         const output = {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.currentCycle / this.config.cycles,
-            zones: [activeZone], // 🎯 CRÍTICO: Solo un lado a la vez
+            zones: ['movers_left', 'movers_right'], // 🔦 AMBOS LADOS SIEMPRE
             intensity,
-            // Root-level overrides para HTP mixing
-            dimmerOverride: intensity,
-            // 🤖 Zone overrides con targeting quirúrgico
+            // 🤖 Zone overrides con Dimmer Lock
             zoneOverrides: {
+                // LADO ACTIVO: Strobe ON con COLOR BLANCO
                 [activeZone]: {
-                    color,
+                    color, // � WAVE 985: Forzar blanco (CyberDualism <1s = SAFE para ruedas)
                     dimmer: intensity,
-                    blendMode: 'max', // HTP = Maximum wins
+                    blendMode: 'replace', // 🔦 WAVE 985: LTP = Override estricto
+                },
+                // LADO DARK: Blackout forzado
+                [darkZone]: {
+                    dimmer: 0, // 🔦 EXPLÍCITO: Negro absoluto
+                    blendMode: 'replace', // 🔦 APLASTA el layer inferior
                 },
             },
         };

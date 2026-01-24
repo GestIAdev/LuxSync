@@ -491,23 +491,25 @@ export class TitanEngine extends EventEmitter {
         // ─────────────────────────────────────────────────────────────────────
         // WAVE 257: Throttled debug log (every second = 30 frames)
         // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy (antiguo)
+        // 🔇 WAVE 982.5: Silenciado (arqueología del día 2)
         // ─────────────────────────────────────────────────────────────────────
-        if (this.state.frameCount % 30 === 0 && context.energy > 0.05) {
-            console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${context.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`);
-        }
+        // if (this.state.frameCount % 30 === 0 && context.energy > 0.05) {
+        //   console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${context.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`)
+        // }
         // Guardar estado para deltas
         this.state.previousEnergy = context.energy;
         this.state.previousBass = audio.bass;
         this.state.currentIntent = intent;
         // Debug logging
-        // 🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
-        if (this.config.debug && this.state.frameCount % 60 === 0) {
-            console.log(`[TitanEngine] Frame ${this.state.frameCount}:`, {
-                vibe: vibeProfile.id,
-                energy: context.energy.toFixed(2),
-                intensity: masterIntensity.toFixed(2),
-            });
-        }
+        // � WAVE 982.5: Silenciado (arqueología del día 2)
+        // �🔋 WAVE 935: Usar context.energy (normalizado) en lugar de audio.energy
+        // if (this.config.debug && this.state.frameCount % 60 === 0) {
+        //   console.log(`[TitanEngine] Frame ${this.state.frameCount}:`, {
+        //     vibe: vibeProfile.id,
+        //     energy: context.energy.toFixed(2),
+        //     intensity: masterIntensity.toFixed(2),
+        //   })
+        // }
         return intent;
     }
     /**

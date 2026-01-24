@@ -48,7 +48,14 @@ export class DreamEngineIntegrator {
         console.log(`[INTEGRATOR] 🎭 Mood: ${currentProfile.emoji} | ` +
             `Raw worthiness: ${rawWorthiness.toFixed(2)} → Effective: ${effectiveWorthiness.toFixed(2)}`);
         // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
-        if (effectiveWorthiness < 0.65) {
+        // 🔧 WAVE 973.2: Threshold bajado de 0.65 → 0.60
+        // 🔧 WAVE 976.5: Threshold bajado de 0.60 → 0.55
+        // Permite que más DNA decisions lleguen al DecisionMaker
+        // Matemática con balanced (1.15x):
+        //   Raw 0.64 / 1.15 = 0.557 → PASA ✅ (antes fallaba)
+        //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
+        //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
+        if (effectiveWorthiness < 0.55) { // ← WAVE 976.5: era 0.60
             console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`);
             return {
                 approved: false,
@@ -271,6 +278,10 @@ export class DreamEngineIntegrator {
             .withEnergy(context.pattern.energy ?? 0.5)
             .withCrowdSize(context.crowdSize)
             .withGpuLoad(context.gpuLoad);
+        // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde SeleneTitanConscious
+        if (context.energyZone) {
+            builder.withEnergyZone(context.energyZone);
+        }
         // Add epilepsy mode if enabled
         if (context.epilepsyMode) {
             builder.withEpilepsyMode(true);

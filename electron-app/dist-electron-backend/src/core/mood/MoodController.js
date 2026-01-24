@@ -1,5 +1,16 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════  balanced: {
+    name: 'balanced',
+    description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
+    emoji: '⚖️',
+    thresholdMultiplier: 1.15,     // 🎯 WAVE 937: 15% más exigente (era 1.0)
+    cooldownMultiplier: 1.0,       // Cooldowns normales
+    ethicsThreshold: 1.10,         // 🔒 WAVE 987: 0.90 → 1.10 - Solo EXCELENCIA salta cooldown
+    maxIntensity: 1.0,             // Sin límite
+    minIntensity: undefined,       // 🔪 WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
+    blockList: [],                 // Nada bloqueado
+    forceUnlock: undefined,        // Cooldowns normales
+  },═════════════
  * 🎭 MOOD CONTROLLER - THE SWITCH
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -34,6 +45,7 @@ export const MOOD_PROFILES = {
         emoji: '😌',
         thresholdMultiplier: 1.8, // 80% más difícil disparar (era 1.5)
         cooldownMultiplier: 3.0, // Triple espera entre efectos (era 2.0)
+        ethicsThreshold: 0.98, // 🧬 WAVE 973: "Solo si es SUBLIME (9.8/10)"
         maxIntensity: 0.6, // Max 60% intensidad
         minIntensity: undefined, // Sin mínimo
         blockList: [
@@ -55,8 +67,9 @@ export const MOOD_PROFILES = {
         emoji: '⚖️',
         thresholdMultiplier: 1.15, // 🎯 WAVE 937: 15% más exigente (era 1.0)
         cooldownMultiplier: 1.0, // Cooldowns normales
+        ethicsThreshold: 0.90, // 🧬 WAVE 973: "Si es excelente (9/10), adelante"
         maxIntensity: 1.0, // Sin límite
-        minIntensity: undefined, // Sin mínimo
+        minIntensity: undefined, // � WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
         blockList: [], // Nada bloqueado
         forceUnlock: undefined, // Cooldowns normales
     },
@@ -71,6 +84,7 @@ export const MOOD_PROFILES = {
         emoji: '🔥',
         thresholdMultiplier: 0.8, // 20% más fácil (era 0.6)
         cooldownMultiplier: 0.7, // Cooldowns x0.7 (era 0.3)
+        ethicsThreshold: 0.75, // 🧬 WAVE 973: "Si mola (7.5/10), ¡A LA MIERDA EL COOLDOWN!"
         maxIntensity: 1.0, // Sin límite
         minIntensity: 0.5, // MÍNIMO 50% intensidad siempre
         blockList: [], // Nada bloqueado

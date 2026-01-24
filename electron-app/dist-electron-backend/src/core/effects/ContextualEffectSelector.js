@@ -66,9 +66,18 @@ export const EFFECT_COOLDOWNS = {
     // WAVE 963: Cooldowns reducidos para que compitan con acid_sweep/sky_saw
     // Objetivo: Que aparezcan en la rotación NORMAL de techno
     'void_mist': 15000, // 15s base (was 40s) → Neblina más frecuente
-    'static_pulse': 12000, // 12s base (was 25s) → Glitches industriales
+    // 🔪 WAVE 986: static_pulse PURGED
     'digital_rain': 18000, // 18s base (was 35s) → Matrix flicker regular
     'deep_breath': 20000, // 20s base (was 45s) → Respiración zen frecuente
+    // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+    'ambient_strobe': 14000, // 14s base → Flashes dispersos gentle/active zone
+    'sonar_ping': 25000, // 25s base → Ping submarino silence/valley (efecto raro)
+    // 🔪 WAVE 986: ACTIVE REINFORCEMENTS
+    'binary_glitch': 10000, // 10s base → Glitch digital frecuente
+    'seismic_snap': 12000, // 12s base → Golpe mecánico espaciado
+    // 🔮 WAVE 988: THE FINAL ARSENAL
+    'fiber_optics': 20000, // 20s base → Traveling colors ambient (long effect, needs space)
+    'core_meltdown': 30000, // 30s base → LA BESTIA es RARA (epic moment only)
 };
 const DEFAULT_CONFIG = {
     minCooldownMs: 800, // 0.8 segundos mínimo entre efectos
@@ -402,7 +411,7 @@ export class ContextualEffectSelector {
                 'cyber_dualism', // 3s - Ping-pong
                 'acid_sweep', // 3s - Sweep volumétrico
                 'sky_saw', // 3s - Cortes agresivos
-                'abyssal_rise', // 16s - Épica transición
+                'abyssal_rise', // 5s - Épica transición (WAVE 988 OPTIMIZADO)
                 'corazon_latino', // 4s - Corazón latino
                 'tropical_pulse', // 3s - Pulso de conga
                 'salsa_fire', // 3s - Fuego salsero
@@ -531,30 +540,23 @@ export class ContextualEffectSelector {
         // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL añadido a zonas bajas (silence, valley, ambient, gentle)
         // 🔪 WAVE 961: VIBE LEAK SURGERY - Latinos removidos, techno tiene sus atmosféricos
         const EFFECTS_BY_INTENSITY = {
-            // SILENCE: Efectos fantasmales + atmosféricos profundos
-            // 🌫️ WAVE 938: void_mist + deep_breath para momentos vacíos
-            silence: ['ghost_breath', 'void_mist', 'deep_breath'],
-            // VALLEY: Pre-drop, efectos suaves + atmosféricos
-            // 🌫️ WAVE 938: Todos los atmosféricos (bajo ruido visual)
-            // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, clave_rhythm)
-            valley: ['ghost_breath', 'tidal_wave', 'void_mist', 'static_pulse', 'digital_rain', 'deep_breath'],
-            // AMBIENT: Sweeps y ondas + atmosféricos activos
-            // 🌫️ WAVE 938: digital_rain, static_pulse (más activos)
-            // 🔪 WAVE 961: LATINOS REMOVIDOS (cumbia_moon, tropical_pulse, salsa_fire)
-            ambient: ['acid_sweep', 'tidal_wave', 'digital_rain', 'static_pulse', 'deep_breath'],
-            // GENTLE: Añadir dualismo + algunos atmosféricos
-            // 🌫️ WAVE 938: static_pulse, digital_rain (transición a energía)
-            // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-            gentle: ['acid_sweep', 'cyber_dualism', 'strobe_burst', 'ghost_breath', 'static_pulse', 'digital_rain'],
-            // 🎯 WAVE 937: ACTIVE - Arsenal MEDIO (Strobe EXPULSADO a zones superiores)
-            // ACTIVE = Ritmo constante (0.45-0.65), NO clímax → Sin strobes pesados
-            // 🌫️ WAVE 938: static_pulse para glitches rítmicos
-            // 🔪 WAVE 961: LATINOS REMOVIDOS (tropical_pulse, salsa_fire, clave_rhythm)
-            active: ['cyber_dualism', 'sky_saw', 'acid_sweep', 'strobe_burst', 'static_pulse'],
-            // INTENSE: Artillería completa (Gatling + Strobe DESBLOQUEADOS)
-            intense: ['gatling_raid', 'industrial_strobe', 'sky_saw', 'solar_flare', 'cyber_dualism', 'acid_sweep', 'strobe_burst', 'corazon_latino'],
-            // PEAK: Libertad total - DROP territory
-            peak: ['gatling_raid', 'industrial_strobe', 'solar_flare', 'sky_saw', 'cyber_dualism', 'abyssal_rise', 'strobe_burst', 'corazon_latino'],
+            // 🎚️ WAVE 996: THE 7-ZONE EXPANSION - Equidistant thresholds (6×15% + peak 10%)
+            // THE LADDER: silence(0-15%), valley(15-30%), ambient(30-45%), gentle(45-60%),
+            //             active(60-75%), intense(75-90%), peak(90-100%)
+            // SILENCE (0-15%): Respiración profunda y ecos minimalistas
+            silence: ['deep_breath', 'sonar_ping'],
+            // VALLEY (15-30%): Niebla y fibras - texturas atmosféricas pasivas
+            valley: ['void_mist', 'fiber_optics'],
+            // AMBIENT (30-45%): Lluvia digital y barridos ácidos - movimiento suave
+            ambient: ['digital_rain', 'acid_sweep'],
+            // GENTLE (45-60%): Primeros flashes y glitches - entrada a energía
+            gentle: ['ambient_strobe', 'binary_glitch'],
+            // ACTIVE (60-75%): Dualismo cibernético y snaps sísmicos - ritmo establecido
+            active: ['cyber_dualism', 'seismic_snap'],
+            // INTENSE (75-90%): Sierra celestial y ascenso abismal - pre-clímax
+            intense: ['sky_saw', 'abyssal_rise'],
+            // PEAK (90-100%): Artillería pesada - territorio de drops
+            peak: ['gatling_raid', 'core_meltdown', 'industrial_strobe'],
         };
         const intensityAllowed = EFFECTS_BY_INTENSITY[zone] || [];
         // 🛡️ WAVE 936 + 961: VIBE LEAK SHIELD + LATINA ZONE OVERRIDES
@@ -971,7 +973,7 @@ export class ContextualEffectSelector {
                     candidates = [
                         'void_mist', // 🌫️ Neblina púrpura
                         'deep_breath', // 🫁 Respiración orgánica
-                        'static_pulse', // ⚡ Glitch industrial
+                        // 🔪 WAVE 986: static_pulse PURGED
                         'digital_rain', // 💚 Matrix flicker
                         'acid_sweep', // Sweeps volumétricos (fallback)
                         'sky_saw', // Cortes agresivos (fallback)
@@ -979,10 +981,12 @@ export class ContextualEffectSelector {
                 }
                 else {
                     // Zonas medias/altas: sweeps y saws tienen prioridad
+                    // 🔪 WAVE 986: binary_glitch + seismic_snap AÑADIDOS
                     candidates = [
                         'acid_sweep', // Sweeps volumétricos
                         'sky_saw', // Cortes agresivos
-                        'static_pulse', // ⚡ Glitch industrial
+                        'binary_glitch', // ⚡ WAVE 986: Glitch digital
+                        'seismic_snap', // 💥 WAVE 986: Golpe mecánico
                         'digital_rain', // 💚 Matrix flicker
                         'void_mist', // 🌫️ Neblina púrpura (fallback)
                         'deep_breath', // 🫁 Respiración orgánica (fallback)
@@ -1179,9 +1183,18 @@ ContextualEffectSelector.EFFECTS_BY_VIBE = {
         'tidal_wave', // Ola industrial
         // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
         'void_mist', // Neblina púrpura con respiración
-        'static_pulse', // Glitch industrial blanco
+        // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
         'digital_rain', // Matrix flicker cyan/lime
         'deep_breath', // Respiración orgánica azul/púrpura
+        // ⚡ WAVE 977: LA FÁBRICA - Nuevos efectos
+        'ambient_strobe', // Flashes dispersos tipo cámara (gentle/active)
+        'sonar_ping', // Ping submarino back→front (silence/valley)
+        // 🔪 WAVE 988: FIX! binary_glitch + seismic_snap AÑADIDOS (estaban en zonas pero NO en vibe!)
+        'binary_glitch', // ⚡ Digital stutter chaos (gentle/active)
+        'seismic_snap', // 💥 Mechanical impact snap (active/intense)
+        // 🔮 WAVE 988: THE FINAL ARSENAL
+        'fiber_optics', // 🌈 Ambient traveling colors (silence/valley)
+        'core_meltdown', // ☢️ LA BESTIA - extreme strobe (peak only)
     ],
     // 🎺 FIESTA LATINA: El Arsenal Tropical
     'fiesta-latina': [

@@ -58,6 +58,16 @@ import { processHunt, resetHuntEngine, getHuntState, } from './think/HuntEngine'
 import { predict, resetPredictionEngine, } from './think/PredictionEngine';
 import { makeDecision, } from './think/DecisionMaker';
 // ═══════════════════════════════════════════════════════════════════════════
+// WAVE 973.3: MOOD CONTROLLER - Para ethics threshold
+// ═══════════════════════════════════════════════════════════════════════════
+import { MoodController } from '../mood/MoodController';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧪 WAVE 978: ENERGY LOGGER
+// ═══════════════════════════════════════════════════════════════════════════
+import { EnergyLogger } from './EnergyLogger';
+// DEBUG ENERGY FLAG - Set to true to enable CSV logging
+const DEBUG_ENERGY = true; // 🧪 Set to TRUE to activate Energy Lab
+// ═══════════════════════════════════════════════════════════════════════════
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
 import { dream as simulateDream, resetDreamEngine, } from './dream/ScenarioSimulator';
@@ -126,6 +136,9 @@ export class SeleneTitanConscious extends EventEmitter {
         this.lastLoggedZone = null;
         this.framesInLastLoggedZone = 0;
         this.ZONE_LOG_THRESHOLD = 5; // Log only after 5 frames in new zone (100ms @ 50fps)
+        // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - "El silencio no debe spammear"
+        this.lastSilenceLogTimestamp = 0;
+        this.SILENCE_LOG_THROTTLE_MS = 5000; // Log silence solo cada 5 segundos
         // ═══════════════════════════════════════════════════════════════════════
         // SENSE: Percepción - USANDO SENSORES REALES
         // ═══════════════════════════════════════════════════════════════════════
@@ -149,10 +162,15 @@ export class SeleneTitanConscious extends EventEmitter {
         });
         // 🎯 WAVE 685: Inicializar selector de efectos contextual
         this.effectSelector = new ContextualEffectSelector();
-        // � WAVE 931: Inicializar motor de consciencia energética
+        // 🔋 WAVE 931: Inicializar motor de consciencia energética
         // Diseño asimétrico: Lento para entrar en silencio, rápido para detectar drops
         this.energyConsciousness = createEnergyConsciousnessEngine();
-        // �🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
+        // 🧪 WAVE 978: Inicializar Energy Logger si DEBUG activo
+        if (DEBUG_ENERGY) {
+            console.log('[🧪 ENERGY_LAB] DEBUG_ENERGY = TRUE → Initializing logger...');
+            EnergyLogger.initialize();
+        }
+        // 🔥 WAVE 810.5: COOLDOWN SURGERY - Escuchar disparos exitosos
         // Solo registrar cooldown cuando EffectManager REALMENTE dispara el efecto
         // (no bloqueado por Shield/Traffic)
         const effectManager = getEffectManager();
@@ -323,7 +341,14 @@ export class SeleneTitanConscious extends EventEmitter {
         const normalizedSection = state.sectionType === 'build' ? 'buildup' : state.sectionType;
         // 🔋 WAVE 932: Calcular energyContext ANTES del fuzzy para supresión
         // (Lo movemos aquí para que FuzzyDecisionMaker tenga consciencia de zona)
-        const energyContext = this.energyConsciousness.process(state.rawEnergy);
+        // 🧪 WAVE 978: Pasamos debugData para el EnergyLogger
+        const energyContext = this.energyConsciousness.process(state.rawEnergy, {
+            bassEnergy: state.bass,
+            midEnergy: state.mid,
+            trebleEnergy: state.high,
+            // AGC gain no disponible en TitanState (TODO: agregar en el futuro)
+            // spectralFlux no disponible en TitanState (TODO: agregar en el futuro)
+        });
         // 🔋 WAVE 934+: Log zone transitions only when persistent (prevent spam)
         // Track frames in current zone
         if (energyContext.zone === this.lastLoggedZone) {
@@ -361,6 +386,12 @@ export class SeleneTitanConscious extends EventEmitter {
         // El simulador genera DATA, DecisionMaker toma la DECISIÓN
         // ═══════════════════════════════════════════════════════════════════════
         let dreamIntegrationData = null;
+        // ═══════════════════════════════════════════════════════════════════════
+        // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula
+        // ═══════════════════════════════════════════════════════════════════════
+        // DNA NO TIENE COOLDOWN. DNA simula CADA VEZ que Hunt detecta momento worthy.
+        // Gatekeeper controla el spam con cooldowns de efectos.
+        // ═══════════════════════════════════════════════════════════════════════
         // Si Hunt detectó momento digno, ejecutar simulador DNA
         const WORTHINESS_THRESHOLD = 0.65;
         if (huntDecision.worthiness >= WORTHINESS_THRESHOLD) {
@@ -385,6 +416,8 @@ export class SeleneTitanConscious extends EventEmitter {
                     effect: e.type,
                     timestamp: e.timestamp
                 })),
+                // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
+                energyZone: energyContext.zone,
             };
             // 🧬 DNA Brain simula - NO decide
             try {
@@ -392,10 +425,15 @@ export class SeleneTitanConscious extends EventEmitter {
                     dreamEngineIntegrator.executeFullPipeline(pipelineContext),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Dream timeout')), 15))
                 ]);
+                // 🔇 WAVE 982.5: DNA logs silenciados (arqueología del día 2)
+                /*
                 if (dreamIntegrationData) {
-                    console.log(`[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
-                        `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`);
+                  console.log(
+                    `[SeleneTitanConscious] 🧬 DNA SIMULATION COMPLETE: ${dreamIntegrationData.effect?.effect ?? 'none'} | ` +
+                    `Dream: ${dreamIntegrationData.dreamTime}ms | Ethics: ${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
+                  )
                 }
+                */
             }
             catch (err) {
                 console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err);
@@ -414,6 +452,18 @@ export class SeleneTitanConscious extends EventEmitter {
             // 🧬 WAVE 972.2: DNA DATA para el cerebro
             dreamIntegration: dreamIntegrationData ?? undefined,
         };
+        // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
+        // 🔇 WAVE 982.5: Silenciado
+        /*
+        if (dreamIntegrationData && this.config.debug) {
+          console.log(
+            `[SeleneTitanConscious] 🔍 DNA DATA TO DECISIONMAKER: ` +
+            `approved=${dreamIntegrationData.approved} | ` +
+            `effect=${dreamIntegrationData.effect?.effect ?? 'null'} | ` +
+            `ethics=${dreamIntegrationData.ethicalVerdict?.ethicalScore?.toFixed(2) ?? 'N/A'}`
+          )
+        }
+        */
         let output = makeDecision(inputs);
         // ═══════════════════════════════════════════════════════════════════════
         //  WAVE 685: CONTEXTUAL EFFECT SELECTION (FALLBACK SI DECISIONMAKER NO DECIDE)
@@ -448,11 +498,28 @@ export class SeleneTitanConscious extends EventEmitter {
         // 1. Si DecisionMaker tiene decisión (ya procesó DNA internamente)
         if (output.effectDecision) {
             const intent = output.effectDecision.effectType;
-            const availability = this.effectSelector.checkAvailability(intent, pattern.vibeId);
+            // 🧬 WAVE 973.3: DNA COOLDOWN OVERRIDE (MOOD-AWARE)
+            // Si DNA decidió con ethics score alto SEGÚN EL MOOD ACTUAL,
+            // ignora cooldown. Cada mood define su umbral ético.
+            const isDNADecision = inputs.dreamIntegration?.approved;
+            const ethicsScore = inputs.dreamIntegration?.ethicalVerdict?.ethicalScore ?? 0;
+            // 🎭 WAVE 973.5: Ethics threshold viene del MoodController
+            const currentMoodProfile = MoodController.getInstance().getCurrentProfile();
+            const ethicsThreshold = currentMoodProfile.ethicsThreshold;
+            const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold;
+            const availability = hasHighEthicsOverride
+                ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
+                : this.effectSelector.checkAvailability(intent, pattern.vibeId);
             if (availability.available) {
                 finalEffectDecision = output.effectDecision;
-                console.log(`[SeleneTitanConscious] 🧠 DECISION MAKER APPROVED: ${intent} | ` +
-                    `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`);
+                if (hasHighEthicsOverride) {
+                    console.log(`[SeleneTitanConscious] � DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
+                        `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold}`);
+                }
+                else {
+                    console.log(`[SeleneTitanConscious] �🧠 DECISION MAKER APPROVED: ${intent} | ` +
+                        `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`);
+                }
             }
             else {
                 console.log(`[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`);
@@ -466,33 +533,15 @@ export class SeleneTitanConscious extends EventEmitter {
                 };
             }
         }
-        // 2. FALLBACK: Si DecisionMaker no decidió, usar Selector Contextual
+        // 🔪 WAVE 976: THE EXORCISM - Fallback eliminado
+        // Si DecisionMaker no decidió, SILENCIO. No hay plan B.
         if (!finalEffectDecision) {
-            const effectSelection = this.effectSelector.select(selectorInput);
-            if (effectSelection.effectType) {
-                finalEffectDecision = {
-                    effectType: effectSelection.effectType,
-                    intensity: effectSelection.intensity,
-                    zones: ['all'],
-                    reason: effectSelection.reason,
-                    confidence: effectSelection.confidence,
-                };
-                output = {
-                    ...output,
-                    confidence: Math.max(output.confidence, effectSelection.confidence),
-                    effectDecision: finalEffectDecision,
-                    debugInfo: {
-                        ...output.debugInfo,
-                        reasoning: `🎯 CONTEXTUAL FALLBACK: ${effectSelection.reason}`,
-                        fuzzyAction: this.lastFuzzyDecision?.action ?? 'hold',
-                        zScore: zScore,
-                    }
-                };
-                if (this.config.debug) {
-                    console.log(`[SeleneTitanConscious] 🎯 CONTEXTUAL FALLBACK: ` +
-                        `${effectSelection.effectType} @ ${effectSelection.intensity.toFixed(2)} | ` +
-                        `Z=${zScore.toFixed(2)}σ | Section=${selectorSection}`);
-                }
+            // 🔇 WAVE 976.3: SILENCE LOG THROTTLING - Solo 1 vez cada 5 segundos
+            const now = Date.now();
+            if (this.config.debug && (now - this.lastSilenceLogTimestamp >= this.SILENCE_LOG_THROTTLE_MS)) {
+                console.log(`[SeleneTitanConscious] 🧘 SILENCE (throttled, last ${((now - this.lastSilenceLogTimestamp) / 1000).toFixed(1)}s ago) | ` +
+                    `vibe=${pattern.vibeId} | E=${state.rawEnergy.toFixed(2)} | Z=${zScore.toFixed(2)}σ`);
+                this.lastSilenceLogTimestamp = now;
             }
         }
         // 3. Track para cooldown y anti-repetición

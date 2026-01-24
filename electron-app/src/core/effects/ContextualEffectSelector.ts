@@ -1240,6 +1240,66 @@ export class ContextualEffectSelector {
         }
       }
       
+      // ═════════════════════════════════════════════════════════════════
+      // 🎚️ WAVE 998.2: GENTLE/ELEVATED ZONE (45-75%)
+      // Binary Glitch, Seismic Snap, Ambient Strobe - El ritmo constante
+      // ═════════════════════════════════════════════════════════════════
+      // PROBLEMA ORIGINAL: Estos efectos estaban registrados pero NUNCA propuestos
+      // ContextualEffectSelector solo tenía lógica para DIVINE/EPIC/BUILDUP
+      // RESULTADO: binary_glitch/seismic_snap NUNCA disparaban → Usuario: "no he visto binary_glitch!!"
+      // SOLUCIÓN: Añadir lógica explícita para zona GENTLE/ELEVATED (45-75% energy)
+      
+      if (zLevel === 'elevated' && energy > 0.45 && energy <= 0.75) {
+        // Priority 1: Binary Glitch (digital stutter chaos)
+        if (this.isEffectAvailable('binary_glitch', vibe)) {
+          console.log(`[EffectSelector 💻] TECHNO ELEVATED: binary_glitch (DIGITAL STUTTER)`)
+          return 'binary_glitch'
+        }
+        
+        // Priority 2: Seismic Snap (mechanical impact)
+        if (this.isEffectAvailable('seismic_snap', vibe)) {
+          console.log(`[EffectSelector 💥] TECHNO ELEVATED: seismic_snap (MECHANICAL SNAP)`)
+          return 'seismic_snap'
+        }
+        
+        // Priority 3: Ambient Strobe (camera flashes)
+        if (this.isEffectAvailable('ambient_strobe', vibe)) {
+          console.log(`[EffectSelector 📸] TECHNO ELEVATED: ambient_strobe (CAMERA FLASHES)`)
+          return 'ambient_strobe'
+        }
+        
+        // Fallback: Cyber Dualism (si todo lo demás está en cooldown)
+        if (this.isEffectAvailable('cyber_dualism', vibe)) {
+          console.log(`[EffectSelector 🤖] TECHNO ELEVATED FALLBACK: cyber_dualism`)
+          return 'cyber_dualism'
+        }
+      }
+      
+      // ═════════════════════════════════════════════════════════════════
+      // 🌫️ WAVE 998.2: NORMAL ZONE (30-60%)
+      // Acid Sweep, Digital Rain, Binary Glitch - Movimiento suave y glitches
+      // ═════════════════════════════════════════════════════════════════
+      
+      if (zLevel === 'normal' && energy > 0.30 && energy <= 0.60) {
+        // Priority 1: Acid Sweep (wobble bass)
+        if (this.isEffectAvailable('acid_sweep', vibe)) {
+          console.log(`[EffectSelector 🧪] TECHNO NORMAL: acid_sweep (ACID WOBBLE)`)
+          return 'acid_sweep'
+        }
+        
+        // Priority 2: Digital Rain (matrix flicker)
+        if (this.isEffectAvailable('digital_rain', vibe)) {
+          console.log(`[EffectSelector 💧] TECHNO NORMAL: digital_rain (MATRIX FLICKER)`)
+          return 'digital_rain'
+        }
+        
+        // Priority 3: Binary Glitch (fallback - también válido en NORMAL)
+        if (this.isEffectAvailable('binary_glitch', vibe)) {
+          console.log(`[EffectSelector 💻] TECHNO NORMAL FALLBACK: binary_glitch`)
+          return 'binary_glitch'
+        }
+      }
+      
       // 🤖 WAVE 810 + WAVE 930.4: ELEVATED: CyberDualism más accesible (no requiere verse/chorus)
       if (zLevel === 'elevated') {
         if (this.isEffectAvailable('cyber_dualism', vibe)) {

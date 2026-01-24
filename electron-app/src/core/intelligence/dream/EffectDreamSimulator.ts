@@ -192,12 +192,13 @@ const EFFECT_CATEGORIES = {
 
 // Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
 const EFFECT_BEAUTY_WEIGHTS = {
-  // 🔪 TECHNO-INDUSTRIAL (5 effects - WAVE 930.2)
+  // 🔪 TECHNO-INDUSTRIAL (6 effects - WAVE 996 FIX)
   'industrial_strobe': { base: 0.75, energyMultiplier: 1.2, technoBonus: 0.15 },
   'acid_sweep': { base: 0.78, energyMultiplier: 1.15, technoBonus: 0.13 },
   'cyber_dualism': { base: 0.65, energyMultiplier: 1.0, technoBonus: 0.10 },
   'gatling_raid': { base: 0.82, energyMultiplier: 1.35, technoBonus: 0.20 },  // 🔫 WAVE 930
   'sky_saw': { base: 0.76, energyMultiplier: 1.25, technoBonus: 0.16 },       // 🗡️ WAVE 930
+  'abyssal_rise': { base: 0.88, energyMultiplier: 1.40, technoBonus: 0.22 },  // 🌊 WAVE 996: Epic 5s rise - high beauty
   // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (low-energy zones)
   'void_mist': { base: 0.55, energyMultiplier: 0.6, technoBonus: 0.08 },      // 🌫️ Fog - low energy beauty
   // 🗑️ WAVE 986: static_pulse ELIMINADO
@@ -233,6 +234,7 @@ const EFFECT_GPU_COST = {
   'cyber_dualism': 0.28,
   'gatling_raid': 0.35,     // 🔫 Alto costo - muchos PARs disparando
   'sky_saw': 0.32,          // 🗡️ Alto costo - movimiento agresivo
+  'abyssal_rise': 0.28,     // 🌊 WAVE 996: Medium-high - 5s epic ramp
   // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (Bajo costo - efectos suaves)
   'void_mist': 0.08,        // 🌫️ Muy bajo - solo dimmer suave
   // 🗑️ WAVE 986: static_pulse ELIMINADO
@@ -268,6 +270,7 @@ const EFFECT_FATIGUE_IMPACT = {
   'cyber_dualism': 0.06,
   'gatling_raid': 0.10,     // 🔫 Alta fatiga - muy intenso
   'sky_saw': 0.08,          // 🗡️ Alta fatiga - movimiento agresivo
+  'abyssal_rise': 0.04,     // 🌊 WAVE 996: Low fatigue - epic build creates anticipation, not exhaustion
   // 🌫️ WAVE 938: ATMOSPHERIC ARSENAL (REDUCE fatiga - efectos relajantes)
   'void_mist': -0.04,       // 🌫️ Reduce fatiga - ambiente zen
   // 🗑️ WAVE 986: static_pulse ELIMINADO

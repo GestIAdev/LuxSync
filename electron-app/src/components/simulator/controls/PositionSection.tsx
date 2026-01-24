@@ -356,30 +356,32 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             /* 📡 FORMATION MODE - Multiple fixtures selected */
             <div className="position-mode formation-mode">
               {/* ═══════════════════════════════════════════════════════════════════════
-                  WAVE 999: TACTICAL RADAR LAYOUT
-                  [SPEED] [RADAR] [SIZE]
+                  WAVE 999.3: COMPACT TACTICAL LAYOUT - No overflow
+                  [SPD] [────RADAR────] [AMP]
                   ═══════════════════════════════════════════════════════════════════════ */}
-              <div className="tactical-radar-layout">
-                {/* 🚀 SPEED SLIDER - Vertical Left */}
-                <div className="tactical-slider speed-slider">
-                  <label className="tactical-label">🚀</label>
-                  <input
-                    type="range"
-                    className="tactical-range-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={patternSpeed}
-                    onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                    disabled={selectedIds.length === 0}
-                    title="Movement Speed"
-                  />
-                  <span className="tactical-value">{patternSpeed}%</span>
-                  <span className="tactical-hint">SPD</span>
+              <div className="tactical-compact-layout">
+                {/* 🚀 SPEED SLIDER - TRUE VERTICAL */}
+                <div className="v-slider-track speed-track">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M13 2v8h4l-5 6-5-6h4V2h2zm-2 16v4h2v-4h-2zm-6-4l1.41-1.41L12 18.17l5.59-5.58L19 14l-7 7-7-7z"/>
+                  </svg>
+                  <div className="v-slider-wrapper">
+                    <input
+                      type="range"
+                      className="v-slider-input"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={patternSpeed}
+                      onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
+                      disabled={selectedIds.length === 0}
+                    />
+                  </div>
+                  <span className="v-slider-value">{patternSpeed}</span>
                 </div>
                 
-                {/* 🎯 RADAR CENTER - EXPANDED 300x300 */}
-                <div className="radar-container expanded-radar">
+                {/* 🎯 RADAR CENTER - Flexible width */}
+                <div className="radar-flex-container">
                   <RadarXY
                     pan={pan}
                     tilt={tilt}
@@ -392,79 +394,74 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   />
                 </div>
                 
-                {/* 📏 SIZE SLIDER - Vertical Right */}
-                <div className="tactical-slider size-slider">
-                  <label className="tactical-label">📏</label>
-                  <input
-                    type="range"
-                    className="tactical-range-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={patternSize}
-                    onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                    disabled={selectedIds.length === 0}
-                    title="Movement Size/Amplitude"
-                  />
-                  <span className="tactical-value">{patternSize}%</span>
-                  <span className="tactical-hint">AMP</span>
+                {/* 📏 SIZE/AMP SLIDER - TRUE VERTICAL */}
+                <div className="v-slider-track amp-track">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                  </svg>
+                  <div className="v-slider-wrapper">
+                    <input
+                      type="range"
+                      className="v-slider-input"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={patternSize}
+                      onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
+                      disabled={selectedIds.length === 0}
+                    />
+                  </div>
+                  <span className="v-slider-value">{patternSize}</span>
                 </div>
               </div>
               
-              {/* FAN CONTROL - Exclusivo para grupos */}
+              {/* FAN CONTROL - Inline compact */}
               {!isCalibrating && (
-                <div className="fan-control">
-                  <div className="fan-header">
-                    <label className="fan-label">🌀 FAN SPREAD</label>
-                    <span className="fan-value">{fanValue}%</span>
-                  </div>
+                <div className="fan-control-compact">
+                  <span className="fan-label-mini">FAN</span>
                   <input
                     type="range"
-                    className="fan-slider"
+                    className="fan-slider-mini"
                     min="-100"
                     max="100"
                     step="1"
                     value={fanValue}
                     onChange={(e) => handleFanChange(Number(e.target.value))}
                   />
-                  <div className="fan-hints">
-                    <span>← Converge</span>
-                    <span>Diverge →</span>
-                  </div>
+                  <span className="fan-value-mini">{fanValue}%</span>
                 </div>
               )}
             </div>
           ) : (
             /* 🎯 SNIPER MODE - Single fixture selected */
             <div className="position-mode sniper-mode">
-              <div className="mode-indicator">
-                <span className="mode-badge sniper">🎯 SINGLE TARGET</span>
-              </div>
               {/* ═══════════════════════════════════════════════════════════════════════
-                  WAVE 999: TACTICAL PAD LAYOUT (Single)
-                  [SPEED] [XYPAD] [SIZE]
+                  WAVE 999.3: COMPACT TACTICAL LAYOUT (Single)
+                  [SPD] [────PAD────] [AMP]
                   ═══════════════════════════════════════════════════════════════════════ */}
-              <div className="tactical-radar-layout">
-                {/* 🚀 SPEED SLIDER - Vertical Left */}
-                <div className="tactical-slider speed-slider">
-                  <label className="tactical-label">🚀</label>
-                  <input
-                    type="range"
-                    className="tactical-range-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={patternSpeed}
-                    onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
-                    disabled={selectedIds.length === 0}
-                    title="Movement Speed"
-                  />
-                  <span className="tactical-value">{patternSpeed}%</span>
-                  <span className="tactical-hint">SPD</span>
+              <div className="tactical-compact-layout">
+                {/* 🚀 SPEED SLIDER - TRUE VERTICAL */}
+                <div className="v-slider-track speed-track">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M13 2v8h4l-5 6-5-6h4V2h2zm-2 16v4h2v-4h-2zm-6-4l1.41-1.41L12 18.17l5.59-5.58L19 14l-7 7-7-7z"/>
+                  </svg>
+                  <div className="v-slider-wrapper">
+                    <input
+                      type="range"
+                      className="v-slider-input"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={patternSpeed}
+                      onChange={(e) => handlePatternParamsChange(Number(e.target.value), patternSize)}
+                      disabled={selectedIds.length === 0}
+                    />
+                  </div>
+                  <span className="v-slider-value">{patternSpeed}</span>
                 </div>
                 
-                {/* 🎯 XY PAD CENTER - EXPANDED */}
-                <div className="radar-container expanded-radar">
+                {/* 🎯 XY PAD CENTER - Flexible */}
+                <div className="radar-flex-container">
                   <XYPad
                     pan={pan}
                     tilt={tilt}
@@ -474,22 +471,24 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   />
                 </div>
                 
-                {/* 📏 SIZE SLIDER - Vertical Right */}
-                <div className="tactical-slider size-slider">
-                  <label className="tactical-label">📏</label>
-                  <input
-                    type="range"
-                    className="tactical-range-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={patternSize}
-                    onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
-                    disabled={selectedIds.length === 0}
-                    title="Movement Size/Amplitude"
-                  />
-                  <span className="tactical-value">{patternSize}%</span>
-                  <span className="tactical-hint">AMP</span>
+                {/* 📏 SIZE/AMP SLIDER - TRUE VERTICAL */}
+                <div className="v-slider-track amp-track">
+                  <svg className="v-slider-icon" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                  </svg>
+                  <div className="v-slider-wrapper">
+                    <input
+                      type="range"
+                      className="v-slider-input"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={patternSize}
+                      onChange={(e) => handlePatternParamsChange(patternSpeed, Number(e.target.value))}
+                      disabled={selectedIds.length === 0}
+                    />
+                  </div>
+                  <span className="v-slider-value">{patternSize}</span>
                 </div>
               </div>
             </div>
@@ -506,14 +505,14 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
             />
           )}
           
-          {/* POSITION SLIDERS - Solo para modo single (Radar tiene su propio display) */}
+          {/* POSITION SLIDERS - Solo para modo single - COMPACT */}
           {!isMultiSelection && (
-            <div className="position-sliders">
-              <div className="position-slider-row">
-                <label className="slider-label">PAN</label>
+            <div className="position-sliders-compact">
+              <div className="pos-slider-row">
+                <span className="pos-label">PAN</span>
                 <input
                   type="range"
-                  className="position-slider pan-slider"
+                  className="pos-slider"
                   min="0"
                   max="540"
                   step="1"
@@ -521,14 +520,14 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   onChange={(e) => handlePositionChange(Number(e.target.value), tilt)}
                   disabled={isCalibrating}
                 />
-                <span className="slider-value">{pan}°</span>
+                <span className="pos-value">{pan}°</span>
               </div>
               
-              <div className="position-slider-row">
-                <label className="slider-label">TILT</label>
+              <div className="pos-slider-row">
+                <span className="pos-label">TILT</span>
                 <input
                   type="range"
-                  className="position-slider tilt-slider"
+                  className="pos-slider"
                   min="0"
                   max="270"
                   step="1"
@@ -536,19 +535,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
                   onChange={(e) => handlePositionChange(pan, Number(e.target.value))}
                   disabled={isCalibrating}
                 />
-                <span className="slider-value">{tilt}°</span>
+                <span className="pos-value">{tilt}°</span>
               </div>
             </div>
-          )}
-          
-          {/* Override indicator */}
-          {hasOverride && !isCalibrating && (
-            <div className="override-badge">MANUAL</div>
-          )}
-          
-          {/* Calibration badge */}
-          {isCalibrating && (
-            <div className="calibration-badge">🎯 CALIBRATION MODE</div>
           )}
         </>
       )}

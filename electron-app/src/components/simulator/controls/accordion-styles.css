@@ -150,128 +150,275 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   WAVE 999.2: TACTICAL RADAR LAYOUT - UNCHAINED UI
-   [SPEED] [RADAR/PAD] [SIZE]
+   WAVE 999.3: COMPACT TACTICAL LAYOUT - True Vertical Sliders
+   Zero overflow, maximum space efficiency
    ═══════════════════════════════════════════════════════════════════════ */
 
-.tactical-radar-layout {
+.tactical-compact-layout {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 8px;
-  margin: 8px 12px;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  margin: 4px 8px;
+  min-height: 160px;
+  max-height: 180px;
 }
 
-/* Vertical Sliders - Speed & Size */
-.tactical-slider {
+/* ═══════════════════════════════════════════════════════════════════════
+   VERTICAL SLIDER TRACK - Contains icon, slider wrapper, value
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.v-slider-track {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  width: 50px;
-  padding: 12px 6px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.tactical-slider .tactical-label {
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-
-.tactical-slider .tactical-value {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-cyan, #00ffff);
-  margin-top: 6px;
-}
-
-.tactical-slider .tactical-hint {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
-/* 🔓 WAVE 999.2: NATIVE VERTICAL SLIDER - UNCHAINED */
-.tactical-range-input {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  width: 40px;
-  height: 220px;
-  cursor: ns-resize;
-  accent-color: #00bcd4;
-  background: rgba(0, 0, 0, 0.3);
+  width: 28px;
+  padding: 4px 2px;
+  background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
-  margin: 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* 🔓 Quitar cursor prohibido - pointer events ALWAYS ON */
-.tactical-range-input:not(:disabled) {
+.v-slider-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.v-slider-value {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Speed track - Orange theme */
+.v-slider-track.speed-track {
+  border-color: rgba(255, 140, 0, 0.3);
+}
+.v-slider-track.speed-track .v-slider-icon { color: #ff8c00; }
+.v-slider-track.speed-track .v-slider-value { color: #ff8c00; }
+
+/* Amp track - Magenta theme */
+.v-slider-track.amp-track {
+  border-color: rgba(255, 0, 255, 0.3);
+}
+.v-slider-track.amp-track .v-slider-icon { color: #ff00ff; }
+.v-slider-track.amp-track .v-slider-value { color: #ff00ff; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VERTICAL SLIDER WRAPPER - Transform trick for true vertical
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.v-slider-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-height: 100px;
+  position: relative;
+}
+
+.v-slider-input {
+  /* Transform to vertical */
+  transform: rotate(-90deg);
+  transform-origin: center center;
+  
+  /* Dimensions (width becomes height after rotation) */
+  width: 100px;
+  height: 20px;
+  
+  /* Appearance */
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  outline: none;
   cursor: pointer;
-  pointer-events: auto !important;
+  margin: 0;
 }
 
-.tactical-range-input:hover:not(:disabled) {
-  accent-color: #00ffff;
+/* Thumb styling */
+.v-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #00ffff;
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+  transition: transform 0.1s, box-shadow 0.1s;
 }
 
-.tactical-range-input:active:not(:disabled) {
-  accent-color: #ffffff;
+.v-slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
 }
 
-.tactical-range-input:disabled {
-  opacity: 0.25;
+.v-slider-input::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.25);
+}
+
+/* Speed slider thumb */
+.speed-track .v-slider-input::-webkit-slider-thumb {
+  background: #ff8c00;
+  box-shadow: 0 0 6px rgba(255, 140, 0, 0.6);
+}
+.speed-track .v-slider-input::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.8);
+}
+
+/* Amp slider thumb */
+.amp-track .v-slider-input::-webkit-slider-thumb {
+  background: #ff00ff;
+  box-shadow: 0 0 6px rgba(255, 0, 255, 0.6);
+}
+.amp-track .v-slider-input::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+}
+
+/* Disabled state */
+.v-slider-input:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.v-slider-input:disabled::-webkit-slider-thumb {
+  background: #666;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
-/* Speed slider - Orange/Fire accent */
-.tactical-slider.speed-slider .tactical-range-input {
-  accent-color: #ff8c00;
-}
+/* ═══════════════════════════════════════════════════════════════════════
+   RADAR/PAD FLEX CONTAINER - Takes remaining space
+   ═══════════════════════════════════════════════════════════════════════ */
 
-.tactical-slider.speed-slider .tactical-range-input:hover:not(:disabled) {
-  accent-color: #ffaa33;
-}
-
-.tactical-slider.speed-slider .tactical-value {
-  color: #ff8c00;
-}
-
-/* Size slider - Magenta/Electric accent */
-.tactical-slider.size-slider .tactical-range-input {
-  accent-color: #ff00ff;
-}
-
-.tactical-slider.size-slider .tactical-range-input:hover:not(:disabled) {
-  accent-color: #ff66ff;
-}
-
-.tactical-slider.size-slider .tactical-value {
-  color: #ff00ff;
-}
-
-/* 📡 WAVE 999.2: EXPANDED RADAR - 300x300 */
-.tactical-radar-layout .radar-container {
+.radar-flex-container {
   flex: 1;
-  min-width: 280px;
-  max-width: 320px;
+  min-width: 140px;
+  max-width: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.tactical-radar-layout .radar-container.expanded-radar {
-  width: 300px;
-  height: 300px;
-  min-width: 300px;
-  min-height: 300px;
-}
-
-/* Force internal SVG/Canvas to fill expanded container */
-.tactical-radar-layout .radar-container.expanded-radar > * {
+.radar-flex-container > * {
   width: 100% !important;
   height: 100% !important;
+  max-width: 200px;
+  max-height: 160px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FAN CONTROL - COMPACT INLINE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.fan-control-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  margin: 4px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+.fan-label-mini {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 24px;
+}
+
+.fan-slider-mini {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, #00ffff 0%, transparent 50%, #ff00ff 100%);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.fan-slider-mini::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+.fan-value-mini {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #00ffff;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   POSITION SLIDERS - COMPACT (PAN/TILT for single mode)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.position-sliders-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 0 8px 4px;
+}
+
+.pos-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pos-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  min-width: 28px;
+}
+
+.pos-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.pos-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  background: #00ffff;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.pos-value {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 36px;
+  text-align: right;
 }

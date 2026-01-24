@@ -906,24 +906,12 @@ export class EffectManager extends EventEmitter {
    */
   private checkTraffic(effectType: string): { allowed: boolean; reason: string } {
     // 🔒 WAVE 998: Rule 0 - GLOBAL LOCK (THE RESPECT PROTOCOL)
-    // Si hay un DICTADOR (mixBus='global') activo, NADIE le interrumpe
-    // 🧟 WAVE 1000: FIX - Ignorar dictadores ZOMBIE (en release)
-    const activeDictator = Array.from(this.activeEffects.values())
-      .find(e => (e as any).mixBus === 'global' && !e.isReleasing)
-    
-    if (activeDictator) {
-      // Excepción: Si el candidato es PEAK/EMERGENCY (techno-extreme)
-      const isEmergency = ['solar_flare', 'strobe_storm'].includes(effectType)
-      const dictatorIsPeak = ['solar_flare', 'strobe_storm'].includes(activeDictator.effectType)
-      
-      if (!isEmergency || dictatorIsPeak) {
-        console.log(`🔒 [GLOBAL_LOCK] ${effectType} BLOQUEADO: ${activeDictator.effectType} tiene la palabra.`)
-        return {
-          allowed: false,
-          reason: `🔒 GLOBAL_LOCK: ${activeDictator.effectType} (dictator) is speaking`,
-        }
-      }
-    }
+    // ❌ WAVE 1001: DESACTIVADO - Demasiados efectos son 'global' (WAVE 964 error)
+    // TODO: Rehabilitar cuando solo efectos PEAK sean 'global'
+    // const activeDictator = Array.from(this.activeEffects.values())
+    //   .find(e => (e as any).mixBus === 'global' && !e.isReleasing)
+    // 
+    // if (activeDictator) { ... }
     
     // Rule 1: Critical effects block ambient
     if (this.isBusy() && EffectManager.AMBIENT_EFFECTS.has(effectType)) {

@@ -379,6 +379,46 @@ export class SolarFlare implements ILightEffect {
     const totalDuration = this.config.attackMs + this.config.sustainMs + this.config.decayMs
     return Math.min(1, this.elapsedMs / totalDuration)
   }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 👻 WAVE 999: ZOMBIE STATE (Release Phase) - THE SILK PROTOCOL
+  // SolarFlare no usa BaseEffect, así que implementamos los métodos aquí
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  private _isReleasing = false
+  private _releaseDurationMs = 500
+  private _releaseElapsedMs = 0
+  private _releaseComplete = false
+  
+  get isReleasing(): boolean { return this._isReleasing }
+  get releaseComplete(): boolean { return this._releaseComplete }
+  
+  startRelease(durationMs = 500): void {
+    if (this._isReleasing) return
+    this._isReleasing = true
+    this._releaseDurationMs = durationMs
+    this._releaseElapsedMs = 0
+    this._releaseComplete = false
+    console.log(`[👻 ZOMBIE] solar_flare entering release phase (${durationMs}ms fade-out)`)
+  }
+  
+  forceFadeOut(durationMs = 200): void {
+    if (this._releaseComplete) return
+    if (this._isReleasing) {
+      const remaining = this._releaseDurationMs - this._releaseElapsedMs
+      if (durationMs < remaining) this._releaseDurationMs = this._releaseElapsedMs + durationMs
+    } else {
+      this.startRelease(durationMs)
+    }
+    console.log(`[⏏️ EJECT] solar_flare force fade-out (${durationMs}ms)`)
+  }
+  
+  getReleaseMultiplier(): number {
+    if (!this._isReleasing) return 1.0
+    if (this._releaseComplete) return 0.0
+    const progress = this._releaseElapsedMs / this._releaseDurationMs
+    return Math.max(0, 1 - Math.pow(progress, 2))
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

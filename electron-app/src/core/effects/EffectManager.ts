@@ -227,6 +227,20 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ⏏️ WAVE 999: ENERGY ZONE THRESHOLDS - Para válvula de presión
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ZONE_ENERGY_THRESHOLDS: Record<EnergyZoneLadder, { min: number; max: number }> = {
+  'silence': { min: 0.00, max: 0.15 },
+  'valley':  { min: 0.15, max: 0.30 },
+  'ambient': { min: 0.30, max: 0.45 },
+  'gentle':  { min: 0.45, max: 0.60 },
+  'active':  { min: 0.60, max: 0.75 },
+  'intense': { min: 0.75, max: 0.90 },
+  'peak':    { min: 0.90, max: 1.00 },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MANAGER CLASS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -355,6 +369,21 @@ export class EffectManager extends EventEmitter {
     return effect.id
   }
   
+  // ─────────────────────────────────────────────────────────────────────────
+  // ⏏️ WAVE 999: ENERGY PRESSURE VALVE STATE
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /** Última energía conocida (actualizada por TitanEngine) */
+  private _currentEnergy = 0.5
+  
+  /**
+   * ⏏️ WAVE 999: Actualiza la energía actual del audio
+   * Llamado por TitanEngine cada frame
+   */
+  setCurrentEnergy(energy: number): void {
+    this._currentEnergy = energy
+  }
+  
   /**
    * 🔄 UPDATE - Actualiza todos los efectos activos
    * 
@@ -371,15 +400,75 @@ export class EffectManager extends EventEmitter {
     for (const [id, effect] of this.activeEffects) {
       effect.update(deltaMs)
       
+      // ⏏️ WAVE 999: ENERGY PRESSURE VALVE - "Botón de Eyección"
+      // Si la energía actual supera el límite de la zona del efecto, EYECTAR
+      // Ejemplo: DigitalRain (zona ambient, max 0.45) en energía 0.85 → EJECT
+      this.checkEnergyPressureValve(effect)
+      
+      // 👻 WAVE 999: ZOMBIE STATE - El efecto NO muere inmediatamente
+      // Cuando termina su duración, entra en RELEASE (fade-out)
       if (effect.isFinished()) {
-        toRemove.push(id)
+        // ¿Ya está en release?
+        if (!effect.isReleasing) {
+          // Iniciar release (500ms para efectos normales, 300ms para strobes)
+          const isStrobe = effect.effectType.includes('strobe') || effect.effectType === 'industrial_strobe'
+          const releaseDuration = isStrobe ? 300 : 500
+          effect.startRelease(releaseDuration)
+        }
+        
+        // Solo matar REALMENTE cuando el release termine
+        if (effect.releaseComplete) {
+          toRemove.push(id)
+        }
       }
     }
     
-    // Remove finished effects
+    // Remove TRULY finished effects (post-release)
     for (const id of toRemove) {
       this.activeEffects.delete(id)
       this.emit('effectFinished', { effectId: id })
+    }
+  }
+  
+  /**
+   * ⏏️ WAVE 999: ENERGY PRESSURE VALVE
+   * 
+   * "Botón de Eyección" - Si la energía sube drásticamente por encima
+   * de la zona del efecto, forzar fade-out rápido.
+   * 
+   * Ejemplo: DigitalRain se disparó en E=0.40 (zona ambient)
+   *          DJ sube energía a E=0.85 (zona intense)
+   *          → DigitalRain queda RIDÍCULO → EJECT (200ms fade-out)
+   * 
+   * MARGEN DE SEGURIDAD: +0.15 sobre el max de la zona
+   * (no eyectamos por 0.01 de diferencia, solo por saltos drásticos)
+   */
+  private checkEnergyPressureValve(effect: ILightEffect): void {
+    // No eyectar efectos que ya están en release
+    if (effect.isReleasing) return
+    
+    // No eyectar efectos de zona PEAK (no hay "arriba" de PEAK)
+    const effectZone = EFFECT_ZONE_MAP[effect.effectType]
+    if (!effectZone || effectZone === 'peak') return
+    
+    // No eyectar efectos globales/dictadores (tienen Duration Lock)
+    if (effect.mixBus === 'global') return
+    
+    const zoneThresholds = ZONE_ENERGY_THRESHOLDS[effectZone]
+    if (!zoneThresholds) return
+    
+    const currentEnergy = this._currentEnergy
+    const safetyMargin = 0.15
+    const ejectionThreshold = zoneThresholds.max + safetyMargin
+    
+    // ¿La energía actual supera el umbral de eyección?
+    if (currentEnergy > ejectionThreshold) {
+      console.log(
+        `[⏏️ EJECT] ${effect.effectType} expulsado. ` +
+        `Energía (${(currentEnergy * 100).toFixed(0)}%) supera zona ${effectZone} ` +
+        `(max ${(zoneThresholds.max * 100).toFixed(0)}% + ${(safetyMargin * 100).toFixed(0)}% margen)`
+      )
+      effect.forceFadeOut(200) // Muerte rápida (200ms)
     }
   }
   
@@ -431,29 +520,42 @@ export class EffectManager extends EventEmitter {
       
       contributing.push(id)
       
-      // HTP for dimmer
-      if (output.dimmerOverride !== undefined && output.dimmerOverride > maxDimmer) {
-        maxDimmer = output.dimmerOverride
+      // 🧟 WAVE 999: ZOMBIE STATE - El multiplicador de release atenúa TODO
+      const releaseMult = effect.getReleaseMultiplier()
+      
+      // HTP for dimmer (aplicando ZOMBIE fade)
+      if (output.dimmerOverride !== undefined) {
+        const fadedDimmer = output.dimmerOverride * releaseMult
+        if (fadedDimmer > maxDimmer) {
+          maxDimmer = fadedDimmer
+        }
       }
       
-      // HTP for white
-      if (output.whiteOverride !== undefined && output.whiteOverride > maxWhite) {
-        maxWhite = output.whiteOverride
+      // HTP for white (aplicando ZOMBIE fade)
+      if (output.whiteOverride !== undefined) {
+        const fadedWhite = output.whiteOverride * releaseMult
+        if (fadedWhite > maxWhite) {
+          maxWhite = fadedWhite
+        }
       }
       
-      // 🧨 WAVE 630: HTP for amber
-      if (output.amberOverride !== undefined && output.amberOverride > maxAmber) {
-        maxAmber = output.amberOverride
+      // 🧨 WAVE 630: HTP for amber (aplicando ZOMBIE fade)
+      if (output.amberOverride !== undefined) {
+        const fadedAmber = output.amberOverride * releaseMult
+        if (fadedAmber > maxAmber) {
+          maxAmber = fadedAmber
+        }
       }
       
-      // Max strobe rate
+      // Max strobe rate (NO se atenúa - el strobe se corta, no se desvanece)
       if (output.strobeRate !== undefined && output.strobeRate > maxStrobeRate) {
         maxStrobeRate = output.strobeRate
       }
       
-      // Max intensity
-      if (output.intensity > maxIntensity) {
-        maxIntensity = output.intensity
+      // Max intensity (aplicando ZOMBIE fade)
+      const fadedIntensity = output.intensity * releaseMult
+      if (fadedIntensity > maxIntensity) {
+        maxIntensity = fadedIntensity
       }
       
       // 🧨 WAVE 630: Global override - cualquier efecto con globalOverride activa el bypass

@@ -71,6 +71,24 @@ export abstract class BaseEffect implements ILightEffect {
   protected musicalContext: MusicalContext | null = null
   
   // ─────────────────────────────────────────────────────────────────────────
+  // 👻 WAVE 999: ZOMBIE STATE (Release Phase)
+  // Cuando un efecto "termina", no muere inmediatamente.
+  // Entra en estado ZOMBIE durante releaseMs para hacer fade-out elegante.
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /** ¿Está el efecto en fase de release (zombie)? */
+  private _isReleasing = false
+  
+  /** Duración del release en ms */
+  private _releaseDurationMs = 500
+  
+  /** Tiempo transcurrido en release */
+  private _releaseElapsedMs = 0
+  
+  /** ¿Ha completado el release? (muerte real) */
+  private _releaseComplete = false
+  
+  // ─────────────────────────────────────────────────────────────────────────
   // Constructor
   // ─────────────────────────────────────────────────────────────────────────
   
@@ -117,6 +135,105 @@ export abstract class BaseEffect implements ILightEffect {
    */
   abort(): void {
     this.phase = 'finished'
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 👻 WAVE 999: ZOMBIE STATE (Release Phase) - THE SILK PROTOCOL
+  // "El Fantasma de la Ópera" - Fade-Out obligatorio para transiciones suaves
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 👻 START RELEASE - Inicia el fade-out zombie
+   * 
+   * Llamado por EffectManager cuando el efecto termina su duración natural.
+   * El efecto NO muere inmediatamente - entra en estado ZOMBIE.
+   * 
+   * @param durationMs Duración del fade-out (default: 500ms)
+   */
+  startRelease(durationMs = 500): void {
+    if (this._isReleasing) return // Ya en release
+    
+    this._isReleasing = true
+    this._releaseDurationMs = durationMs
+    this._releaseElapsedMs = 0
+    this._releaseComplete = false
+    
+    console.log(`[👻 ZOMBIE] ${this.effectType} entering release phase (${durationMs}ms fade-out)`)
+  }
+  
+  /**
+   * 👻 FORCE FADE OUT - Eyección de emergencia (válvula de presión)
+   * 
+   * Llamado cuando el efecto está "fuera de lugar" por cambio de energía.
+   * Fade-out más rápido que el release natural.
+   * 
+   * @param durationMs Duración del fade-out rápido (default: 200ms)
+   */
+  forceFadeOut(durationMs = 200): void {
+    if (this._releaseComplete) return // Ya muerto
+    
+    // Si ya estaba en release, acortar el tiempo restante
+    if (this._isReleasing) {
+      const remaining = this._releaseDurationMs - this._releaseElapsedMs
+      if (durationMs < remaining) {
+        this._releaseDurationMs = this._releaseElapsedMs + durationMs
+      }
+    } else {
+      this.startRelease(durationMs)
+    }
+    
+    console.log(`[⏏️ EJECT] ${this.effectType} force fade-out (${durationMs}ms)`)
+  }
+  
+  /**
+   * 👻 UPDATE RELEASE - Actualiza el estado zombie
+   * 
+   * Llamado internamente durante update() si está en release.
+   * 
+   * @param deltaMs Tiempo desde último frame
+   */
+  protected updateRelease(deltaMs: number): void {
+    if (!this._isReleasing) return
+    
+    this._releaseElapsedMs += deltaMs
+    
+    if (this._releaseElapsedMs >= this._releaseDurationMs) {
+      this._releaseComplete = true
+      this.phase = 'finished'
+      console.log(`[👻 ZOMBIE] ${this.effectType} release complete - TRUE DEATH`)
+    }
+  }
+  
+  /**
+   * 👻 GET RELEASE MULTIPLIER - Multiplicador de dimmer durante release
+   * 
+   * Retorna un valor 1.0 → 0.0 durante el fade-out.
+   * Usa curva exponencial para fade más natural.
+   * 
+   * @returns Multiplicador 0-1 para aplicar al dimmer
+   */
+  getReleaseMultiplier(): number {
+    if (!this._isReleasing) return 1.0
+    if (this._releaseComplete) return 0.0
+    
+    const progress = this._releaseElapsedMs / this._releaseDurationMs
+    // Curva exponencial: más rápido al principio, más suave al final
+    // 1 - progress^2 da una curva más natural que lineal
+    return Math.max(0, 1 - Math.pow(progress, 2))
+  }
+  
+  /**
+   * 👻 IS RELEASING - ¿Está en estado zombie?
+   */
+  get isReleasing(): boolean {
+    return this._isReleasing
+  }
+  
+  /**
+   * 👻 IS RELEASE COMPLETE - ¿Ha terminado el fade-out?
+   */
+  get releaseComplete(): boolean {
+    return this._releaseComplete
   }
   
   /**

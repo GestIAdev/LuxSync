@@ -1261,6 +1261,7 @@ export class TitanOrchestrator {
     
     // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
     // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
+    // 🎨 WAVE 1001: Include HAL color flags
     masterArbiter.setFixtures(this.fixtures.map(f => ({
       id: f.id,
       name: f.name,
@@ -1270,6 +1271,9 @@ export class TitanOrchestrator {
       universe: f.universe || 1,
       capabilities: f.capabilities,
       hasMovementChannels: f.hasMovementChannels,
+      hasColorWheel: f.hasColorWheel,      // 🎨 WAVE 1001: HAL Translation
+      hasColorMixing: f.hasColorMixing,    // 🎨 WAVE 1001: HAL Translation
+      profileId: f.profileId || f.id,      // 🎨 WAVE 1001: HAL Translation
       channels: f.channels,
     })))
     

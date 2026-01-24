@@ -494,4 +494,9 @@ export interface ArbiterFixture {
   }
   hasMovementChannels?: boolean                 // 🔴 Para detectar movers sin parsear type
   channels?: string[]                           // Lista de canales disponibles
+  
+  // 🎨 WAVE 1001: HAL Translation metadata for color wheel fixtures
+  hasColorWheel?: boolean                       // Has physical color wheel (Beam 2R, etc.)
+  hasColorMixing?: boolean                      // Has RGB/RGBW LEDs (PARs, Washes)
+  profileId?: string                            // Fixture profile ID for HAL translation
 }

@@ -405,6 +405,25 @@ export class DreamEngineIntegrator {
       builder.withEpilepsyMode(true)
     }
     
+    // 🔥 WAVE 996.8: CABLEAR EL HISTORIAL AL DREAMSIMULATOR
+    // El Diversity Engine NECESITA el historial de efectos recientes para penalizar repeticiones
+    // Sin esto, recentEffects siempre era [] y cyber_dualism ganaba TODO
+    if (context.recentEffects && context.recentEffects.length > 0) {
+      // Convertir al formato que espera el builder (EffectHistoryEntry[])
+      const effectHistoryEntries = context.recentEffects.map(e => ({
+        effect: e.effect,
+        timestamp: e.timestamp,
+        energy: 0.7,        // Default razonable
+        intensity: 0.7,     // Default razonable  
+        duration: 2000,     // Default 2s
+        zones: ['all'],     // Default zones
+        success: true,      // Asumimos que se ejecutó
+        vibe: context.pattern.vibe  // Vibe actual del contexto
+      }))
+      builder.withRecentEffects(effectHistoryEntries)
+      console.log(`[INTEGRATOR] 📝 Passed ${effectHistoryEntries.length} effects to DreamSimulator`)
+    }
+    
     return builder.build()
   }
   

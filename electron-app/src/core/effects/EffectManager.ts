@@ -907,8 +907,9 @@ export class EffectManager extends EventEmitter {
   private checkTraffic(effectType: string): { allowed: boolean; reason: string } {
     // 🔒 WAVE 998: Rule 0 - GLOBAL LOCK (THE RESPECT PROTOCOL)
     // Si hay un DICTADOR (mixBus='global') activo, NADIE le interrumpe
+    // 🧟 WAVE 1000: FIX - Ignorar dictadores ZOMBIE (en release)
     const activeDictator = Array.from(this.activeEffects.values())
-      .find(e => (e as any).mixBus === 'global')
+      .find(e => (e as any).mixBus === 'global' && !e.isReleasing)
     
     if (activeDictator) {
       // Excepción: Si el candidato es PEAK/EMERGENCY (techno-extreme)

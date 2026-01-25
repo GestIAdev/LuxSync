@@ -533,7 +533,16 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         // Edit mode - load existing definition (from library)
         // WAVE 390.5: Set flag BEFORE updating state to prevent regeneration
         isLoadingExistingRef.current = true
-        setFixture(existingDefinition)
+        
+        // 🔥 WAVE 1003.7: Normalize type on LOAD (not just on save)
+        // This fixes fixtures that were saved before WAVE 1003.6
+        const normalizedType = TYPE_NORMALIZATION_MAP[existingDefinition.type] || existingDefinition.type
+        console.log('[FixtureForge] 🔄 Type normalization on load:', existingDefinition.type, '→', normalizedType)
+        
+        setFixture({
+          ...existingDefinition,
+          type: normalizedType  // Apply normalization
+        })
         setTotalChannels(existingDefinition.channels.length)
         
         // WAVE 390.5 FIX: Load physics from existing definition!
@@ -617,11 +626,15 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         
         console.log(`[FixtureForge] 🔥 Loaded ${fixtureChannels.length} channels from editingFixture`)
         
+        // 🔥 WAVE 1003.7: Normalize type on LOAD from stage fixture
+        const normalizedType = TYPE_NORMALIZATION_MAP[editingFixture.type] || editingFixture.type
+        console.log('[FixtureForge] 🔄 Type normalization (stage):', editingFixture.type, '→', normalizedType)
+        
         setFixture({
           id: editingFixture.profileId || editingFixture.id,
           name: editingFixture.model,
           manufacturer: editingFixture.manufacturer,
-          type: editingFixture.type,
+          type: normalizedType,  // Apply normalization
           channels: fixtureChannels
         })
         setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)

@@ -6,9 +6,22 @@
  * 🔪 WAVE 986: ACTIVE REINFORCEMENTS
  * Reemplazo de static_pulse. "Crush & Contrast" - Nada de líquidos. Golpes secos.
  * 
+ * 🎯 WAVE 1003.14: GLITCH PATTERNS REBUILD - CAOS REAL (NO strobe regular)
+ * 
  * FILOSOFÍA:
  * Error de sistema intencional. Tartamudeo de código binario.
  * 0% o 100%. Sin fades. Sin respiración. La máquina FALLA con estilo.
+ * 
+ * ❌ PROBLEMA (WAVE 1003.14):
+ * - Patrones originales: 16-20 segmentos con duraciones uniformes (60-80ms)
+ * - Resultado: Parecía IndustrialStrobe (strobe azul genérico)
+ * - User feedback: "es igual que el industrial strobe"
+ * 
+ * ✅ SOLUCIÓN (WAVE 1003.14):
+ * - Patrones CORTOS: 3-5 flashes máximo (NO 16-20 segmentos)
+ * - Duraciones MICROMÉTRICAS: 12-35ms (NO 60-120ms uniformes)
+ * - Timing NERVIOSO: Intervalos irregulares + silencios largos
+ * - Resultado: GLITCH real (nervioso, caótico) vs Strobe (regular, rítmico)
  * 
  * ZONA TARGET: ACTIVE (E=0.45-0.65)
  * Para momentos de ritmo constante que necesitan textura tech.
@@ -36,11 +49,15 @@
  * WAVE 1003.12: Pre-blackout de 50ms antes de cada flash
  * Fuerza contraste para que los flashes sean visibles incluso en ambiente blanco
  * 
+ * WAVE 1003.14: Patrones rebuild - GLITCH real (micrométrico, nervioso, caótico)
+ * Antes: 16-20 segmentos uniformes → Strobe azul genérico
+ * Ahora: 3-5 flashes micros + silencios → GLITCH de verdad
+ * 
  * THE MOVER LAW: Este efecto es SHORT (1200ms < 2000ms)
  * → PUEDE usar color en movers (exento de MODO FANTASMA)
  * 
  * @module core/effects/library/techno/BinaryGlitch
- * @version WAVE 1003.12 - PRE-BLACKOUT CONTRAST
+ * @version WAVE 1003.14 - GLITCH PATTERNS REBUILD
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -76,102 +93,59 @@ const DEFAULT_CONFIG: BinaryGlitchConfig = {
  * 
  * AXIOMA ANTI-SIMULACIÓN: NO Math.random(), patrón seleccionado por trigger timestamp
  */
+// 🎯 WAVE 1003.14: GLITCH PATTERNS - NERVIOSO Y CAÓTICO (NO strobe regular)
+// FILOSOFÍA: Duraciones MICROMÉTRICAS (10-35ms), patrones CORTOS (3-5 flashes)
+// ANTI-PATRÓN: NO strobes uniformes de 60-80ms → eso es IndustrialStrobe
 const BINARY_PATTERNS: Array<Array<{duration: number, on: boolean}>> = [
-  // Pattern 0: "SOS" corrupto
-  [
-    { duration: 50, on: false },
-    { duration: 60, on: true },
-    { duration: 40, on: false },
-    { duration: 60, on: true },
-    { duration: 40, on: false },
-    { duration: 60, on: true },
-    { duration: 120, on: false },
-    { duration: 100, on: true },
-    { duration: 60, on: false },
-    { duration: 100, on: true },
-    { duration: 60, on: false },
-    { duration: 100, on: true },
-    { duration: 120, on: false },
-    { duration: 60, on: true },
-    { duration: 40, on: false },
-    { duration: 60, on: true },
-    { duration: 40, on: false },
-    { duration: 60, on: true },
-  ],
-  
-  // Pattern 1: "Stutter" (tartamudeo)
+  // Pattern 0: "Double Tap" - 2 golpes rápidos + silencio
   [
     { duration: 80, on: false },
-    { duration: 40, on: true },
+    { duration: 18, on: true },   // Flash micrométrico
+    { duration: 25, on: false },
+    { duration: 22, on: true },   // Flash micrométrico
+    { duration: 955, on: false }, // Silencio largo (resto hasta 1200ms)
+  ],
+  
+  // Pattern 1: "Nervous Stutter" - 3 flashes nerviosos
+  [
+    { duration: 120, on: false },
+    { duration: 15, on: true },
+    { duration: 20, on: false },
+    { duration: 12, on: true },
     { duration: 30, on: false },
-    { duration: 40, on: true },
-    { duration: 30, on: false },
-    { duration: 40, on: true },
+    { duration: 18, on: true },
+    { duration: 985, on: false },
+  ],
+  
+  // Pattern 2: "Triple Glitch" - 3 golpes irregulares
+  [
+    { duration: 60, on: false },
+    { duration: 20, on: true },
+    { duration: 45, on: false },
+    { duration: 14, on: true },
+    { duration: 35, on: false },
+    { duration: 26, on: true },
+    { duration: 1000, on: false },
+  ],
+  
+  // Pattern 3: "Chaotic Burst" - Ráfaga caótica (4 flashes)
+  [
+    { duration: 100, on: false },
+    { duration: 12, on: true },
+    { duration: 18, on: false },
+    { duration: 16, on: true },
+    { duration: 22, on: false },
+    { duration: 14, on: true },
+    { duration: 28, on: false },
+    { duration: 20, on: true },
+    { duration: 970, on: false },
+  ],
+  
+  // Pattern 4: "Single Spike" - 1 golpe brutal + silencio
+  [
     { duration: 150, on: false },
-    { duration: 80, on: true },
-    { duration: 50, on: false },
-    { duration: 40, on: true },
-    { duration: 30, on: false },
-    { duration: 40, on: true },
-    { duration: 200, on: false },
-    { duration: 120, on: true },
-    { duration: 50, on: false },
-    { duration: 120, on: true },
-  ],
-  
-  // Pattern 2: "Heartbeat muerto" (flatline con picos)
-  [
-    { duration: 200, on: false },
-    { duration: 50, on: true },
-    { duration: 100, on: false },
-    { duration: 50, on: true },
-    { duration: 300, on: false },
-    { duration: 50, on: true },
-    { duration: 100, on: false },
-    { duration: 50, on: true },
-    { duration: 300, on: false },
-  ],
-  
-  // Pattern 3: "Código binario" (data transmission)
-  [
-    { duration: 50, on: false },
-    { duration: 80, on: true },
-    { duration: 80, on: false },
-    { duration: 80, on: true },
-    { duration: 40, on: false },
-    { duration: 40, on: true },
-    { duration: 80, on: false },
-    { duration: 40, on: true },
-    { duration: 40, on: false },
-    { duration: 80, on: true },
-    { duration: 80, on: false },
-    { duration: 40, on: true },
-    { duration: 40, on: false },
-    { duration: 80, on: true },
-    { duration: 120, on: false },
-    { duration: 120, on: true },
-    { duration: 50, on: false },
-  ],
-  
-  // Pattern 4: "Glitch agresivo" (más ON que OFF)
-  [
-    { duration: 30, on: false },
-    { duration: 100, on: true },
-    { duration: 20, on: false },
-    { duration: 80, on: true },
-    { duration: 20, on: false },
-    { duration: 120, on: true },
-    { duration: 30, on: false },
-    { duration: 60, on: true },
-    { duration: 20, on: false },
-    { duration: 100, on: true },
-    { duration: 50, on: false },
-    { duration: 150, on: true },
-    { duration: 30, on: false },
-    { duration: 80, on: true },
-    { duration: 30, on: false },
-    { duration: 150, on: true },
-    { duration: 80, on: false },
+    { duration: 35, on: true },   // Flash más largo (brutal)
+    { duration: 1015, on: false },
   ],
 ]
 

@@ -344,8 +344,9 @@ export class CorazonLatino extends BaseEffect {
     }
     
     // 🌟 MOVERS - LA EXPANSIÓN (Ámbar/Oro, abriendo brazos)
+    // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer y movement, NO color
     const moverOverride = {
-      color: this.config.heatColor,
+      // NO COLOR → La rueda mecánica o física decide
       dimmer: this.heartIntensity * 0.8,  // Un poco menos que el corazón
       movement: {
         pan: this.moverPanOffset,   // Abre hacia afuera en cada DUM
@@ -365,6 +366,7 @@ export class CorazonLatino extends BaseEffect {
     }
     
     // 🎨 WAVE 750/780: zoneOverrides - ARQUITECTURA PURA + SMART BLEND
+    // 🚨 WAVE 1004.2: MOVER LAW applied to moverOverride (no color)
     const zoneOverrides = {
       'back': { ...backOverride, blendMode: 'max' as const },
       'movers': { ...moverOverride, blendMode: 'max' as const },

@@ -211,26 +211,42 @@ export class CumbiaMoon extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // � WAVE 800: CumbiaMoon usa globalOverride para IMPONERSE a las físicas
-    // El sistema zoneOverrides + blendMode no funciona bien para este caso
-    // globalOverride es el camino probado y confiable
-    
+    // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
+    // CumbiaMoon es LONG (3000ms) → Solo dimmer para movers, NO color
+    // Front/Back SÍ pueden tener color (plata lunar suave)
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      'front': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity,
+        blendMode: 'max',
+      },
+      'back': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity * 0.7,  // Back más tenue (atmósfera)
+        blendMode: 'max',
+      },
+      // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer (física decide color)
+      'movers': {
+        dimmer: this.currentIntensity * 0.5,  // Movers muy sutiles (luna suave)
+        blendMode: 'max',
+        // NO COLOR → La rueda mecánica o física decide
+      },
+    }
+
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.actualCycleDurationMs,
-      zones: ['front', 'back', 'movers'] as EffectZone[],
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      // � WAVE 800: Sistema LEGACY que funciona
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
+      // 🚨 WAVE 1004.2: Eliminado dimmerOverride/colorOverride globales
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
-      // 🌙 WAVE 800: globalOverride = TRUE - La luna manda sobre las físicas
-      globalOverride: true,
-      
-      zoneOverrides: undefined,
+      globalOverride: false,  // 🚨 WAVE 1004.2: Ya no es global, usa zoneOverrides
+      zoneOverrides,
     }
   }
 }

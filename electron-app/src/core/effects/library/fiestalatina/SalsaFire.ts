@@ -35,6 +35,7 @@ import {
   EffectTriggerConfig,
   EffectFrameOutput,
   EffectCategory,
+  EffectZone,  // 🚨 WAVE 1004.2: Para typing de zones
 } from '../../types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -189,18 +190,42 @@ export class SalsaFire extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
+    // SalsaFire es LONG (2500ms) → Solo dimmer para movers, NO color
+    // Front/Back SÍ pueden tener color (flicker de fuego)
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      'front': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity,
+        blendMode: 'max',
+      },
+      'back': {
+        color: this.currentColor,
+        dimmer: this.currentIntensity * 0.8,  // Back un poco más suave
+        blendMode: 'max',
+      },
+      // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer (física decide color)
+      'movers': {
+        dimmer: this.currentIntensity * 0.6,  // Movers más sutiles que PARs
+        blendMode: 'max',
+        // NO COLOR → La rueda mecánica o física decide
+      },
+    }
+
     return {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress: this.elapsedMs / this.config.durationMs,
-      zones: ['all'],
+      zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      dimmerOverride: this.currentIntensity,
-      colorOverride: this.currentColor,
+      // 🚨 WAVE 1004.2: Eliminado dimmerOverride/colorOverride globales
+      dimmerOverride: undefined,
+      colorOverride: undefined,
       
-      globalOverride: true,  // 🔥 CLAVE: Funciona con arquitectura actual
+      globalOverride: false,  // � WAVE 1004.2: Ya no es global, usa zoneOverrides
+      zoneOverrides,
     }
   }
 }

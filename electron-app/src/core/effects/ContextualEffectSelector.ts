@@ -37,6 +37,8 @@ import type { FuzzyDecision } from '../intelligence/think/FuzzyDecisionMaker'
 import { MoodController } from '../mood'
 // 🔋 WAVE 931: Import EnergyZone para consciencia energética
 import type { EnergyZone, EnergyContext } from '../protocol/MusicalContext'
+// 🚨 WAVE 1004.2: DNA Diversity System - Shadowban por repetición
+import { getDNAAnalyzer } from '../intelligence/dna'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -295,9 +297,14 @@ export class ContextualEffectSelector {
   
   /**
    * 🌊 WAVE 691: Registra que un efecto fue disparado
+   * 🚨 WAVE 1004.2: También registra en DNAAnalyzer para Diversity Factor
    */
   public registerEffectFired(effectType: string): void {
     this.effectTypeLastFired.set(effectType, Date.now())
+    
+    // 🚨 WAVE 1004.2: DNA Diversity - Shadowban por repetición
+    // Esto reducirá la relevancia del efecto si se usa repetidamente
+    getDNAAnalyzer().recordEffectUsage(effectType)
   }
   
   // ═══════════════════════════════════════════════════════════════════════════

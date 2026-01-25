@@ -183,7 +183,8 @@ export class TidalWave extends BaseEffect {
     // 🎨 WAVE 725: Construir zone overrides con intensidad específica por zona
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {}
     
-    // � WAVE 805.2: THRESHOLD más bajo para incluir valles oscuros
+    // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
+    // TidalWave es LONG (4500ms) → Solo dimmer para movers, NO color
     for (const [zone, zoneIntensity] of this.zoneIntensities) {
       // Threshold 0.0 → TODAS las zonas incluidas, incluso valles negros
       if (zoneIntensity >= 0.0) {
@@ -200,10 +201,20 @@ export class TidalWave extends BaseEffect {
           l: Math.min(75, zoneLuminosity)  // Cap a 75 para no quemar
         }
         
-        zoneOverrides[zone] = {
-          color: zoneColor,
-          dimmer: scaledIntensity,
-          blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La ola manda, crea valles oscuros
+        // 🚨 WAVE 1004.2: MOVER LAW - Movers solo reciben dimmer, NO color
+        if (zone === 'movers') {
+          zoneOverrides[zone] = {
+            dimmer: scaledIntensity,
+            blendMode: 'replace',  // La ola manda
+            // NO COLOR → La rueda mecánica o física decide
+          }
+        } else {
+          // Front/Back/Pars SÍ reciben color
+          zoneOverrides[zone] = {
+            color: zoneColor,
+            dimmer: scaledIntensity,
+            blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La ola manda, crea valles oscuros
+          }
         }
       }
     }

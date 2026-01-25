@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * WAVE 680: THE ARSENAL & THE SHIELD
+ * WAVE 1004.2: MOVER LAW - Protección anti disco-ball para efectos LONG
  * 
  * Clase abstracta base para todos los efectos.
  * Provee helpers comunes para que los efectos "respiren" con la música.
@@ -12,9 +13,15 @@
  * - getIntensityFromZScore(): Escala intensidad según momento musical
  * - getBpmPulse(): Pulso sincronizado al BPM
  * - getPhaseOffset(): Offset de fase para efectos secuenciales
+ * - getMoverGhostOverride(): 🆕 WAVE 1004.2 - Override para Mover Law
+ * 
+ * MOVER LAW (WAVE 1004.2):
+ * - Efectos SHORT (< 2000ms): Pueden usar color en movers
+ * - Efectos LONG (>= 2000ms): Solo dimmer en movers (MODO FANTASMA)
+ * - Razón: Evitar disco-ball spam en efectos largos
  * 
  * @module core/effects/BaseEffect
- * @version WAVE 680
+ * @version WAVE 680, 1004.2
  */
 
 import { 
@@ -26,6 +33,18 @@ import {
   EffectZone,
   MusicalContext
 } from './types'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚨 WAVE 1004.2: MOVER LAW CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * MOVER LAW: Umbral de duración para restricción de color en movers
+ * 
+ * Efectos >= 2000ms NO deben enviar color a movers (solo dimmer)
+ * Esto previene el "disco-ball spam" donde movers cambian color cada frame
+ */
+export const MOVER_LAW_DURATION_MS = 2000
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BASE EFFECT ABSTRACT CLASS
@@ -337,5 +356,65 @@ export abstract class BaseEffect implements ILightEffect {
     return t < 0.5 
       ? 4 * t * t * t 
       : 1 - Math.pow(-2 * t + 2, 3) / 2
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🚨 WAVE 1004.2: MOVER LAW HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 👻 GET MOVER GHOST OVERRIDE
+   * 
+   * WAVE 1004.2: Mover Law - Para efectos LONG (>= 2000ms)
+   * 
+   * Genera un zoneOverride para movers que:
+   * - Solo envía dimmer (intensidad)
+   * - NO envía color (evita disco-ball spam)
+   * - Opcionalmente envía movement
+   * 
+   * USO:
+   * ```ts
+   * // En getOutput() de un efecto LONG:
+   * zoneOverrides['movers'] = this.getMoverGhostOverride(intensity, movement)
+   * ```
+   * 
+   * @param dimmer Intensidad del mover (0-1)
+   * @param movement Opcional: override de movimiento
+   * @returns Override de zona para movers sin color
+   */
+  protected getMoverGhostOverride(
+    dimmer: number,
+    movement?: {
+      pan?: number
+      tilt?: number
+      isAbsolute?: boolean
+      speed?: number
+    }
+  ): {
+    dimmer: number
+    blendMode: 'max'
+    movement?: typeof movement
+  } {
+    return {
+      dimmer,
+      // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
+      blendMode: 'max' as const,
+      ...(movement && { movement }),
+    }
+  }
+  
+  /**
+   * ⏱️ IS LONG EFFECT
+   * 
+   * WAVE 1004.2: Determina si este efecto es LONG (>= 2000ms)
+   * 
+   * Los efectos LONG deben usar getMoverGhostOverride() para movers
+   * en lugar de enviar color directamente.
+   * 
+   * @param durationMs Duración total del efecto en ms
+   * @returns true si es LONG, false si es SHORT
+   */
+  protected isLongEffect(durationMs: number): boolean {
+    return durationMs >= MOVER_LAW_DURATION_MS
   }
 }

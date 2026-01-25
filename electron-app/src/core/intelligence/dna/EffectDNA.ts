@@ -325,6 +325,7 @@ export const WILDCARD_EFFECTS: Record<string, string> = {
  * - EMA Smoothing para prevenir Parkinson Digital (WAVE 970.1)
  * - Snap Conditions para drops/breakdowns (respuesta inmediata)
  * - Middle Void Detection con wildcard fallback
+ * - 🚨 WAVE 1004.2: Diversity Factor (Shadowban) para evitar repetición
  */
 export class DNAAnalyzer {
   // ═══════════════════════════════════════════════════════════════════════
@@ -347,6 +348,28 @@ export class DNAAnalyzer {
   
   /** Máxima distancia posible en cubo unitario 3D = √3 ≈ 1.732 */
   private readonly MAX_DISTANCE = Math.sqrt(3)
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🚨 WAVE 1004.2: DIVERSITY FACTOR (SHADOWBAN)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Contador de uso por efecto en la ventana de tiempo */
+  private effectUsageCount: Map<string, number> = new Map()
+  
+  /** Timestamp del último reset del contador */
+  private lastUsageReset: number = Date.now()
+  
+  /** Ventana de tiempo para el contador de uso (10 segundos) */
+  private readonly USAGE_WINDOW_MS = 10000
+  
+  /** 
+   * Diversity Factor por número de usos:
+   * - 0 usos: 1.0x (sin penalty)
+   * - 1 uso:  0.7x (penalizado)
+   * - 2 usos: 0.4x (fuertemente penalizado)
+   * - 3+ usos: 0.1x (SHADOWBAN - casi imposible de seleccionar)
+   */
+  private readonly DIVERSITY_FACTORS = [1.0, 0.7, 0.4, 0.1]
   
   constructor() {
     // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
@@ -416,6 +439,8 @@ export class DNAAnalyzer {
    * distance = √[(Ae-At)² + (Ce-Ct)² + (Oe-Ot)²]
    * relevance = 1 - (distance / √3)
    * 
+   * 🚨 WAVE 1004.2: Aplicamos DIVERSITY FACTOR (shadowban) para evitar repetición
+   * 
    * @param effectId - ID del efecto a evaluar
    * @param targetDNA - Target DNA actual
    * @returns Relevancia (0-1, donde 1 = match perfecto)
@@ -426,6 +451,11 @@ export class DNAAnalyzer {
       console.warn(`[DNA_ANALYZER] ⚠️ Unknown effect: ${effectId}, returning neutral relevance`)
       return 0.5 // Unknown effect = neutral
     }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚨 WAVE 1004.2: DIVERSITY CHECK (reset ventana si expiró)
+    // ═══════════════════════════════════════════════════════════════════════
+    this.maybeResetUsageWindow()
     
     // Distancia euclidiana 3D
     const dA = effectDNA.aggression - targetDNA.aggression
@@ -438,7 +468,43 @@ export class DNAAnalyzer {
     const baseRelevance = 1 - (distance / this.MAX_DISTANCE)
     
     // Ponderar por confidence
-    return baseRelevance * targetDNA.confidence + (1 - targetDNA.confidence) * 0.5
+    const confidenceWeighted = baseRelevance * targetDNA.confidence + (1 - targetDNA.confidence) * 0.5
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚨 WAVE 1004.2: APLICAR DIVERSITY FACTOR (shadowban por repetición)
+    // ═══════════════════════════════════════════════════════════════════════
+    const usageCount = this.effectUsageCount.get(effectId) || 0
+    const diversityIndex = Math.min(usageCount, this.DIVERSITY_FACTORS.length - 1)
+    const diversityFactor = this.DIVERSITY_FACTORS[diversityIndex]
+    
+    return confidenceWeighted * diversityFactor
+  }
+  
+  /**
+   * 🚨 WAVE 1004.2: Resetea ventana de uso si expiró
+   */
+  private maybeResetUsageWindow(): void {
+    const now = Date.now()
+    if (now - this.lastUsageReset > this.USAGE_WINDOW_MS) {
+      this.effectUsageCount.clear()
+      this.lastUsageReset = now
+    }
+  }
+  
+  /**
+   * 🚨 WAVE 1004.2: Registra el uso de un efecto (llamar cuando se selecciona)
+   * 
+   * @param effectId - ID del efecto que fue seleccionado
+   */
+  recordEffectUsage(effectId: string): void {
+    this.maybeResetUsageWindow()
+    const currentCount = this.effectUsageCount.get(effectId) || 0
+    this.effectUsageCount.set(effectId, currentCount + 1)
+    
+    // Log solo si ya está penalizado (evitar spam)
+    if (currentCount >= 1) {
+      console.log(`[DNA_ANALYZER] 📊 Diversity: ${effectId} usado ${currentCount + 1}x - Factor: ${this.DIVERSITY_FACTORS[Math.min(currentCount + 1, this.DIVERSITY_FACTORS.length - 1)]}x`)
+    }
   }
   
   /**

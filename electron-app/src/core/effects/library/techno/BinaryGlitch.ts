@@ -19,6 +19,7 @@
  * - Duración: 1200ms total
  * - Flashes: 0% → 100% → 0% (sin fades, digital puro)
  * - Color: AZUL ELÉCTRICO / CIAN INTENSO (WAVE 1003.11: saturados para contrastar)
+ * - Pre-Blackout: 50ms ANTES de cada flash (WAVE 1003.12: contraste forzado)
  * 
  * ⚠️ AXIOMA ANTI-SIMULACIÓN:
  * Usamos pattern PREDETERMINADO, no Math.random()
@@ -32,11 +33,14 @@
  * WAVE 1003.11: Colores más saturados (electricBlue S100 L50, hotCyan S85 L55)
  * Antes: coldWhite S10 L95, paleCyan S40 L85 (invisibles en minimal techno blanco)
  * 
+ * WAVE 1003.12: Pre-blackout de 50ms antes de cada flash
+ * Fuerza contraste para que los flashes sean visibles incluso en ambiente blanco
+ * 
  * THE MOVER LAW: Este efecto es SHORT (1200ms < 2000ms)
  * → PUEDE usar color en movers (exento de MODO FANTASMA)
  * 
  * @module core/effects/library/techno/BinaryGlitch
- * @version WAVE 1003.11 - VISIBILITY FIX
+ * @version WAVE 1003.12 - PRE-BLACKOUT CONTRAST
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -310,15 +314,39 @@ export class BinaryGlitch extends BaseEffect {
   /**
    * 🔢 Determina si estamos en estado ON u OFF según el patrón
    * DETERMINISTA - mismo elapsed = mismo estado
+   * 
+   * 🔧 WAVE 1003.12: PRE-BLACKOUT de 50ms antes de cada flash ON
+   * Añade contraste forzado para que los flashes sean visibles
    */
   private getPatternState(elapsed: number): boolean {
-    let accumulatedTime = 0
+    const PRE_BLACKOUT_MS = 50  // 🔧 Blackout previo a cada flash
     
-    for (const segment of this.selectedPattern) {
-      accumulatedTime += segment.duration
-      if (elapsed < accumulatedTime) {
+    let accumulatedTime = 0
+    let previousSegmentWasOff = true  // Primer segmento siempre es OFF
+    
+    for (let i = 0; i < this.selectedPattern.length; i++) {
+      const segment = this.selectedPattern[i]
+      const segmentStart = accumulatedTime
+      const segmentEnd = accumulatedTime + segment.duration
+      
+      // Si este segmento está ON y el anterior era OFF → añadir pre-blackout
+      if (segment.on && previousSegmentWasOff) {
+        // Los últimos 50ms del segmento OFF anterior son pre-blackout
+        const blackoutStart = segmentStart - PRE_BLACKOUT_MS
+        const blackoutEnd = segmentStart
+        
+        if (elapsed >= blackoutStart && elapsed < blackoutEnd) {
+          return false  // 🖤 Pre-blackout forzado
+        }
+      }
+      
+      // Check si estamos en este segmento
+      if (elapsed < segmentEnd) {
         return segment.on
       }
+      
+      accumulatedTime = segmentEnd
+      previousSegmentWasOff = !segment.on
     }
     
     // Si superamos el patrón, loop desde el inicio
@@ -326,15 +354,7 @@ export class BinaryGlitch extends BaseEffect {
     const loopedElapsed = elapsed % patternDuration
     
     // Recursión con elapsed normalizado
-    accumulatedTime = 0
-    for (const segment of this.selectedPattern) {
-      accumulatedTime += segment.duration
-      if (loopedElapsed < accumulatedTime) {
-        return segment.on
-      }
-    }
-    
-    return false  // Fallback
+    return this.getPatternState(loopedElapsed)
   }
   
   // ─────────────────────────────────────────────────────────────────────────

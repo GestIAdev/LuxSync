@@ -60,7 +60,7 @@ interface VoidMistConfig {
 }
 
 const DEFAULT_CONFIG: VoidMistConfig = {
-  durationMs: 5000,          // 5 segundos (was 12s) - WAVE 964
+  durationMs: 4000,          // 5 segundos (was 12s) - WAVE 964
   minIntensity: 0.20,        // 🔪 WAVE 976: 0.05 → 0.20 (más visible)
   maxIntensity: 0.60,        // 🔪 WAVE 976: 0.15 → 0.60 (respiración más profunda)
   breathPeriodMs: 5000,      // 5s por ciclo de respiración

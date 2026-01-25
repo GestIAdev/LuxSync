@@ -18,7 +18,7 @@
  * - Pattern: ON/OFF pseudo-aleatorio pero DETERMINISTA
  * - Duración: 1200ms total
  * - Flashes: 0% → 100% → 0% (sin fades, digital puro)
- * - Color: BLANCO FRÍO / CIAN PÁLIDO (tecnología)
+ * - Color: AZUL ELÉCTRICO / CIAN INTENSO (WAVE 1003.11: saturados para contrastar)
  * 
  * ⚠️ AXIOMA ANTI-SIMULACIÓN:
  * Usamos pattern PREDETERMINADO, no Math.random()
@@ -29,11 +29,14 @@
  * - Chaos: 0.55 (WAVE 1003.10: 0.85→0.55 - caótico pero competitivo)
  * - Organicity: 0.00 (100% máquina)
  * 
+ * WAVE 1003.11: Colores más saturados (electricBlue S100 L50, hotCyan S85 L55)
+ * Antes: coldWhite S10 L95, paleCyan S40 L85 (invisibles en minimal techno blanco)
+ * 
  * THE MOVER LAW: Este efecto es SHORT (1200ms < 2000ms)
  * → PUEDE usar color en movers (exento de MODO FANTASMA)
  * 
  * @module core/effects/library/techno/BinaryGlitch
- * @version WAVE 1003.10 - DNA CALIBRATION
+ * @version WAVE 1003.11 - VISIBILITY FIX
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -168,10 +171,12 @@ const BINARY_PATTERNS: Array<Array<{duration: number, on: boolean}>> = [
   ],
 ]
 
-// Colores: BLANCO FRÍO y CIAN PÁLIDO (HSL)
+// Colores: AZUL ELÉCTRICO y CIAN INTENSO (HSL) - WAVE 1003.11: Mayor saturación
+// Antes: coldWhite (h200 s10 l95) y paleCyan (h190 s40 l85) - demasiado pálidos
+// Ahora: Colores saturados que contrasten con luz ambiente blanca de minimal techno
 const COLORS = {
-  coldWhite: { h: 200, s: 10, l: 95 },     // Blanco frío casi puro
-  paleCyan:  { h: 190, s: 40, l: 85 },     // Cian pálido tecnológico
+  electricBlue: { h: 200, s: 100, l: 50 },  // 🔧 Azul eléctrico intenso (visible en blanco)
+  hotCyan:      { h: 180, s: 85, l: 55 },   // 🔧 Cian caliente saturado (contraste alto)
 }
 
 // Zonas para el efecto
@@ -281,8 +286,8 @@ export class BinaryGlitch extends BaseEffect {
       }
     }
     
-    // Si ON → flash al 100%
-    const color = this.useAlternateColor ? COLORS.paleCyan : COLORS.coldWhite
+    // Si ON → flash al 100% con colores saturados (WAVE 1003.11)
+    const color = this.useAlternateColor ? COLORS.hotCyan : COLORS.electricBlue
     
     return {
       effectId: this.id,

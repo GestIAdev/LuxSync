@@ -188,9 +188,10 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.20,        // Ordenado - progresión cíclica
     organicity: 0.00,   // 100% sintético tecnológico
   },
+  // 🔧 WAVE 1003.11: core_meltdown 1.00/1.00 → 0.95/0.90 (extremo pero alcanzable)
   'core_meltdown': {
-    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
-    chaos: 1.00,        // MÁXIMO - Impredecible strobe
+    aggression: 0.95,   // ☢️ 1.00→0.95 - LA BESTIA pero no inalcanzable
+    chaos: 0.90,        // 1.00→0.90 - Muy impredecible pero no vértice extremo
     organicity: 0.00,   // 100% máquina apocalíptica
   },
   

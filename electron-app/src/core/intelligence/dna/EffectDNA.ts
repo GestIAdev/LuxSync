@@ -11,7 +11,15 @@
  * 
  * Un IndustrialStrobe NO ES más "bello" que un VoidMist.
  * Un IndustrialStrobe ES más ADECUADO para un DROP que un VoidMist.
- * Un VoidMist ES más ADECUADO para un BREAKDOWN que un IndustrialStrobe.
+  reset(): void {
+    this.smoothedTarget = {
+      aggression: 0.5,
+      chaos: 0.5,
+      organicity: 0.5,
+      confidence: 0.5,
+    }
+    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+    // console.log('[DNA_ANALYZER] 🔄 State reset to neutral')idMist ES más ADECUADO para un BREAKDOWN que un IndustrialStrobe.
  * 
  * TRES GENES FUNDAMENTALES:
  * - Aggression (A): ¿Cuánto "golpea"? (0=suave, 1=brutal)
@@ -341,7 +349,8 @@ export class DNAAnalyzer {
   private readonly MAX_DISTANCE = Math.sqrt(3)
   
   constructor() {
-    console.log('[DNA_ANALYZER] 🧬 Initialized - Contextual DNA System Active')
+    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+    // console.log('[DNA_ANALYZER] 🧬 Initialized - Contextual DNA System Active')
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -386,13 +395,15 @@ export class DNAAnalyzer {
       // Drop detectado → SNAP a alta agresión
       this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
       this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
-      console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+      // console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
     }
     if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
       // Breakdown detectado → SNAP a baja agresión, alta organicidad
       this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
       this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
-      console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+      // console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
     }
     
     return { ...this.smoothedTarget }

@@ -89,7 +89,8 @@ export class DreamEngineIntegrator {
   private dreamTimeoutMs: number = 3000
   
   constructor() {
-    console.log('[INTEGRATOR] 🌀 Dream Engine Integrator initialized')
+    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+    // console.log('[INTEGRATOR] 🌀 Dream Engine Integrator initialized')
   }
   
   /**
@@ -104,10 +105,11 @@ export class DreamEngineIntegrator {
     const rawWorthiness = context.huntDecision.worthiness
     const effectiveWorthiness = moodController.applyThreshold(rawWorthiness)
     
-    console.log(
-      `[INTEGRATOR] 🎭 Mood: ${currentProfile.emoji} | ` +
-      `Raw worthiness: ${rawWorthiness.toFixed(2)} → Effective: ${effectiveWorthiness.toFixed(2)}`
-    )
+    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+    // console.log(
+    //   `[INTEGRATOR] 🎭 Mood: ${currentProfile.emoji} | ` +
+    //   `Raw worthiness: ${rawWorthiness.toFixed(2)} → Effective: ${effectiveWorthiness.toFixed(2)}`
+    // )
     
     // 🚫 Guard: Si hunt no recomendó disparo (MOOD-AWARE)
     // 🔧 WAVE 973.2: Threshold bajado de 0.65 → 0.60
@@ -118,7 +120,8 @@ export class DreamEngineIntegrator {
     //   Raw 0.70 / 1.15 = 0.609 → PASA ✅
     //   Raw 0.75 / 1.15 = 0.652 → PASA ✅
     if (effectiveWorthiness < 0.55) {  // ← WAVE 976.5: era 0.60
-      console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
+      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
+      // console.log(`[INTEGRATOR] 🚫 Worthiness too low after mood adjustment (${currentProfile.name})`)
       return {
         approved: false,
         effect: null,

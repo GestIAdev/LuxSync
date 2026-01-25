@@ -92,18 +92,18 @@ export class LatinoStereoPhysics {
   // LEFT (El Galán / Mid / Conga / Voz) - Hereda lógica "Mid Puro"
   private static readonly MOVER_L_GATE = 0.22;
   private static readonly MOVER_L_ATTACK = 0.65;
-  private static readonly MOVER_L_DECAY = 0.60;
+  private static readonly MOVER_L_DECAY = 0.45;            // 🔧 WAVE 1004.1.2: Bajado de 0.60 (más fractura entre sílabas)
   
   // RIGHT (La Dama / Treble / Brass / Güira) - Nueva lógica "Brillo"
-  private static readonly MOVER_R_GATE = 0.18;    // Más sensible a agudos
+  private static readonly MOVER_R_GATE = 0.20;    // Más sensible a agudos
   private static readonly MOVER_R_ATTACK = 0.80;  // Ataque rápido (trompetazo)
-  private static readonly MOVER_R_DECAY = 0.40;   // Decay rápido (shaker/güira)
+  private static readonly MOVER_R_DECAY = 0.32;   // 🔧 WAVE 1004.1.2: Bajado de 0.40 (más punchy, guacharaca seca)
   private static readonly MOVER_R_GAIN = 2.0;     // Boost para que brille
   
   // BACK PARs - WAVE 760: SURGICAL SNARE (solo snare y hi-hat puros)
   // Treble típico: 0.13-0.22. Gate subido para eliminar voces de fondo completamente
   // Attack instantáneo para respuesta quirúrgica
-  private static readonly BACK_PAR_GATE = 0.22;            // 🔧 WAVE 760: Subido de 0.16 (solo snare/hi-hat puros)
+  private static readonly BACK_PAR_GATE = 0.24;            // 🔧 WAVE 760: Subido de 0.16 (solo snare/hi-hat puros)
   private static readonly BACK_PAR_ATTACK = 0.85;          // 🔧 WAVE 760: Subido de 0.70 (instantáneo)
   private static readonly BACK_PAR_DECAY = 0.25;           // Sin cambio (bofetada rápida)
   private static readonly BACK_PAR_GAIN = 1.9;             // Sin cambio

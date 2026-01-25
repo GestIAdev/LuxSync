@@ -132,6 +132,38 @@ const FIXTURE_TYPES = [
   'Other'
 ]
 
+// 🔥 WAVE 1003.9: Map FXTParser types to dropdown display values
+// This ensures the dropdown shows the correct option when editing from library
+const TYPE_TO_DISPLAY_MAP: Record<string, string> = {
+  'moving_head': 'Moving Head',
+  'moving-head': 'Moving Head',
+  'moving': 'Moving Head',
+  'movinghead': 'Moving Head',
+  'par': 'Par',
+  'wash': 'Wash',
+  'bar': 'Bar',
+  'strobe': 'Strobe',
+  'spot': 'Spot',
+  'laser': 'Laser',
+  'blinder': 'Blinder',
+  'scanner': 'Scanner',
+  'generic': 'Other',
+  'other': 'Other',
+}
+
+/**
+ * 🔥 WAVE 1003.9: Get display value for fixture type dropdown
+ * Handles all formats: 'moving_head', 'Moving Head', 'moving', etc.
+ */
+function getTypeDisplayValue(type: string | undefined): string {
+  if (!type) return 'Other'
+  // Check if already a display value
+  if (FIXTURE_TYPES.includes(type)) return type
+  // Try to map from internal format
+  const mapped = TYPE_TO_DISPLAY_MAP[type.toLowerCase()]
+  return mapped || 'Other'
+}
+
 // 🎨 WAVE 1002: Color Engine Options
 const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description: string; icon: string }[] = [
   { value: 'rgb', label: 'RGB LEDs', description: 'Red/Green/Blue mixing (PARs, Washes)', icon: '🔴🟢🔵' },
@@ -534,14 +566,13 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         // WAVE 390.5: Set flag BEFORE updating state to prevent regeneration
         isLoadingExistingRef.current = true
         
-        // 🔥 WAVE 1003.7: Normalize type on LOAD (not just on save)
-        // This fixes fixtures that were saved before WAVE 1003.6
-        const normalizedType = TYPE_NORMALIZATION_MAP[existingDefinition.type] || existingDefinition.type
-        console.log('[FixtureForge] 🔄 Type normalization on load:', existingDefinition.type, '→', normalizedType)
+        // 🔥 WAVE 1003.9: Convert type to display format for dropdown compatibility
+        const displayType = getTypeDisplayValue(existingDefinition.type)
+        console.log('[FixtureForge] 🔄 Type display conversion:', existingDefinition.type, '→', displayType)
         
         setFixture({
           ...existingDefinition,
-          type: normalizedType  // Apply normalization
+          type: displayType  // Use display format so dropdown works
         })
         setTotalChannels(existingDefinition.channels.length)
         
@@ -626,15 +657,15 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         
         console.log(`[FixtureForge] 🔥 Loaded ${fixtureChannels.length} channels from editingFixture`)
         
-        // 🔥 WAVE 1003.7: Normalize type on LOAD from stage fixture
-        const normalizedType = TYPE_NORMALIZATION_MAP[editingFixture.type] || editingFixture.type
-        console.log('[FixtureForge] 🔄 Type normalization (stage):', editingFixture.type, '→', normalizedType)
+        // 🔥 WAVE 1003.9: Convert type to display format
+        const displayType = getTypeDisplayValue(editingFixture.type)
+        console.log('[FixtureForge] 🔄 Type display conversion (stage):', editingFixture.type, '→', displayType)
         
         setFixture({
           id: editingFixture.profileId || editingFixture.id,
           name: editingFixture.model,
           manufacturer: editingFixture.manufacturer,
-          type: normalizedType,  // Apply normalization
+          type: displayType,  // Use display format
           channels: fixtureChannels
         })
         setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)
@@ -934,7 +965,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
             <div className="forge-input-group">
               <label>Tipo</label>
               <select
-                value={fixture.type || 'Other'}
+                value={getTypeDisplayValue(fixture.type)}
                 onChange={(e) => setFixture(prev => ({ ...prev, type: e.target.value }))}
               >
                 {FIXTURE_TYPES.map(type => (

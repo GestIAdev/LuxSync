@@ -223,6 +223,7 @@ function generateFixtureId(name: string): string {
 const TYPE_NORMALIZATION_MAP: Record<string, string> = {
   'Moving Head': 'moving',
   'moving': 'moving',
+  'moving_head': 'moving',  // 🔥 WAVE 1003.6: FXTParser format
   'Par': 'par', 
   'par': 'par',
   'Strobe': 'strobe',

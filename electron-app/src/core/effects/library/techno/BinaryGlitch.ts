@@ -26,14 +26,14 @@
  * 
  * ADN:
  * - Aggression: 0.60 (Golpe seco digital)
- * - Chaos: 0.85 (Alto - impredecible)
+ * - Chaos: 0.55 (WAVE 1003.10: 0.85→0.55 - caótico pero competitivo)
  * - Organicity: 0.00 (100% máquina)
  * 
  * THE MOVER LAW: Este efecto es SHORT (1200ms < 2000ms)
  * → PUEDE usar color en movers (exento de MODO FANTASMA)
  * 
  * @module core/effects/library/techno/BinaryGlitch
- * @version WAVE 986 - ACTIVE REINFORCEMENTS
+ * @version WAVE 1003.10 - DNA CALIBRATION
  */
 
 import { BaseEffect } from '../../BaseEffect'

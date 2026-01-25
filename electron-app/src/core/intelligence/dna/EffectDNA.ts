@@ -135,9 +135,10 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     organicity: 0.85,   // Parece humo VIVO
   },
   // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
+  // 🔧 WAVE 1003.10: binary_glitch chaos 0.85→0.55 (era demasiado alto vs target DNA)
   'binary_glitch': {
     aggression: 0.60,   // ⚡ Golpe seco digital - tartamudeo de código
-    chaos: 0.85,        // ALTO caos - glitch impredecible
+    chaos: 0.55,        // 🔧 WAVE 1003.10: 0.85→0.55 (caótico pero competitivo con target ~0.30)
     organicity: 0.00,   // 100% máquina - cero orgánico
   },
   'seismic_snap': {

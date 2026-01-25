@@ -78,7 +78,7 @@ interface BinaryGlitchConfig {
 }
 
 const DEFAULT_CONFIG: BinaryGlitchConfig = {
-  durationMs: 1200,          // 1.2 segundos - SHORT (< 2s)
+  durationMs: 2000,          // 1.2 segundos - SHORT (< 2s)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

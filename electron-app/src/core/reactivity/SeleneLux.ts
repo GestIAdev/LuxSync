@@ -150,7 +150,13 @@ export class SeleneLux {
   private readonly LOG_THROTTLE_MS = 2000;  // 2 segundos mínimo entre logs
   
   // 🆕 WAVE 288.7: Overrides de intensidad calculados por motor Latino
-  private latinoOverrides: { front: number; back: number; mover: number } | null = null;
+  private latinoOverrides: { 
+    front: number; 
+    back: number; 
+    mover: number;
+    moverL?: number;  // 🎺 WAVE 1004.1: Split L channel (Mid - El Galán)
+    moverR?: number;  // 🎺 WAVE 1004.1: Split R channel (Treble - La Dama)
+  } | null = null;
   
   // 🆕 WAVE 290.3: Overrides de intensidad calculados por motor Techno
   private technoOverrides: { 
@@ -349,10 +355,13 @@ export class SeleneLux {
       debugInfo = { flavor: result.flavor, ...result.debugInfo };
       
       // 🆕 WAVE 288.7: Guardar overrides del motor Latino para usar en AGC TRUST
+      // 🎺 WAVE 1004.1: Incluir L/R split para movers
       this.latinoOverrides = {
         front: result.frontParIntensity,
         back: result.backParIntensity,
         mover: result.moverIntensity,
+        moverL: result.moverIntensityL,  // 🎺 WAVE 1004.1: El Galán (Mid)
+        moverR: result.moverIntensityR,  // 🎺 WAVE 1004.1: La Dama (Treble)
       };
       
       // 🆕 WAVE 288.1: Log THROTTLED - Solo cuando cambia flavor O cada 2s
@@ -434,12 +443,19 @@ export class SeleneLux {
     let backIntensity: number;
     let moverIntensity: number;
     
-    // � WAVE 288.7: ¿Tenemos overrides de Latino?
+    // 🎺 WAVE 288.7: ¿Tenemos overrides de Latino?
     if (this.latinoOverrides && physicsApplied === 'latino') {
       // DEMOCRACIA: El motor Latino calculó sus intensidades. Respétalas.
       frontIntensity = Math.min(0.95, this.latinoOverrides.front * brightMod);
       backIntensity = Math.min(0.95, this.latinoOverrides.back);
-      moverIntensity = Math.min(1.0, this.latinoOverrides.mover);
+      moverIntensity = Math.min(1.0, this.latinoOverrides.mover);  // Legacy fallback
+      
+      // 🎺 WAVE 1004.1: LATINO STEREO SPLIT - Si tenemos L/R separados, preparar para el output
+      const latinoL = this.latinoOverrides.moverL ?? moverIntensity;  // El Galán (Mid)
+      const latinoR = this.latinoOverrides.moverR ?? moverIntensity;  // La Dama (Treble)
+      
+      // Temporal: guardar en una variable para pasar al output
+      (this as any).latinoMoverSplit = { moverL: latinoL, moverR: latinoR };
       
       // Limpiar overrides para el próximo frame
       this.latinoOverrides = null;
@@ -525,11 +541,17 @@ export class SeleneLux {
       ...(((this as any).technoMoverSplit) && {
         moverL: (this as any).technoMoverSplit.moverL,
         moverR: (this as any).technoMoverSplit.moverR
+      }),
+      // 🎺 WAVE 1004.1: LATINO STEREO - Incluir L/R si vienen de Latino
+      ...(((this as any).latinoMoverSplit) && {
+        moverL: (this as any).latinoMoverSplit.moverL,
+        moverR: (this as any).latinoMoverSplit.moverR
       })
     };
     
     // Limpiar split temporal
     delete (this as any).technoMoverSplit;
+    delete (this as any).latinoMoverSplit;  // 🎺 WAVE 1004.1
     
     // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)

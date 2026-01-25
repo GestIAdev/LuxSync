@@ -671,23 +671,29 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
     // WAVE 390.5: Skip regeneration if we just loaded an existing definition
     if (isLoadingExistingRef.current) {
       console.log('[FixtureForge] 🛡️ WAVE 390.5: Skipping channel regeneration (loading existing)')
-      // Keep the flag true until the next render cycle completes
-      // This prevents race conditions with React's batched updates
+      // 🔥 WAVE 1003.5 FIX: Reset flag AFTER this render cycle to allow future edits
+      // Use setTimeout to defer reset until after React's batched updates complete
+      setTimeout(() => {
+        isLoadingExistingRef.current = false
+        console.log('[FixtureForge] ✅ WAVE 1003.5: Flag reset, manual edits now allowed')
+      }, 0)
       return
     }
     
     // Only regenerate if we have a valid count AND we're not in edit mode
     if (totalChannels > 0 && totalChannels <= 64) {
-      // Check if fixture already has the right number of channels with real data
-      const hasRealChannels = fixture.channels.length === totalChannels && 
+      // 🔥 WAVE 1003.5 FIX: ALWAYS preserve existing channels when resizing
+      // If we already have the exact right number with data, skip
+      const hasExactMatch = fixture.channels.length === totalChannels && 
         fixture.channels.some(ch => ch.type !== 'unknown' || ch.name)
       
-      if (hasRealChannels) {
-        console.log('[FixtureForge] 🛡️ Channels already loaded, skipping regeneration')
+      if (hasExactMatch) {
+        console.log('[FixtureForge] 🛡️ Channels already match count, skipping')
         return
       }
       
-      console.log('[FixtureForge] 🔄 Regenerating channels:', totalChannels)
+      // Otherwise, resize the array while PRESERVING existing channel data
+      console.log(`[FixtureForge] 🔄 Resizing channels: ${fixture.channels.length} → ${totalChannels}`)
       const newChannels = FixtureFactory.generateChannels(totalChannels, fixture.channels)
       const sanitizedChannels = newChannels.map(ch =>
         ch.type ? ch : { ...ch, type: 'unknown' as ChannelType, name: '' }

@@ -823,13 +823,13 @@ const StageConstructorView: React.FC = () => {
     physics: PhysicsProfile,
     patchData?: { dmxAddress?: number; universe?: number }
   ) => {
+    // Map the definition type to FixtureV2 type
+    const fixtureType = mapLibraryTypeToFixtureType(definition.type)
+    
     if (forgeEditingFixtureId) {
-      // Update existing fixture with COMPLETE data
+      // Update SPECIFIC fixture (editing from stage)
       const existingFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
       if (existingFixture) {
-        // Map the definition type to FixtureV2 type
-        const fixtureType = mapLibraryTypeToFixtureType(definition.type)
-        
         updateFixture(forgeEditingFixtureId, {
           // Basic info
           model: definition.name,
@@ -875,6 +875,50 @@ const StageConstructorView: React.FC = () => {
             savedUniverse: patchData.universe
           })
         }
+      }
+    } else {
+      // 🔥 WAVE 1003.8: Editing from LIBRARY - update ALL fixtures that use this profile
+      // Find all fixtures on stage that use this library definition
+      const matchingFixtures = fixtures.filter(f => 
+        f.profileId === definition.id || 
+        f.model?.toLowerCase() === definition.name?.toLowerCase()
+      )
+      
+      if (matchingFixtures.length > 0) {
+        console.log(`[StageConstructor] 🔄 WAVE 1003.8: Updating ${matchingFixtures.length} fixtures using "${definition.name}"`)
+        
+        for (const fixture of matchingFixtures) {
+          updateFixture(fixture.id, {
+            model: definition.name,
+            manufacturer: definition.manufacturer,
+            channelCount: definition.channels.length,
+            type: fixtureType,  // 🔥 THIS IS THE FIX - update type!
+            channels: definition.channels.map((ch, idx) => ({
+              index: idx,
+              name: ch.name,
+              type: ch.type,
+              is16bit: ch.name?.toLowerCase().includes('fine') || false
+            })),
+            capabilities: {
+              hasMovementChannels: definition.channels.some(ch => 
+                ch.type === 'pan' || ch.type === 'tilt'
+              ),
+              has16bitMovement: definition.channels.some(ch => 
+                ch.type === 'pan_fine' || ch.type === 'tilt_fine'
+              ),
+              hasColorMixing: definition.channels.some(ch => 
+                ['red', 'green', 'blue'].includes(ch.type)
+              ),
+              hasColorWheel: definition.channels.some(ch => 
+                ch.type === 'color_wheel' || ch.name?.toLowerCase().includes('color')
+              )
+            }
+          })
+          updateFixturePhysics(fixture.id, physics)
+          console.log(`[StageConstructor] ✅ Updated fixture "${fixture.id}" type: ${fixture.type} → ${fixtureType}`)
+        }
+      } else {
+        console.log(`[StageConstructor] ℹ️ No stage fixtures using "${definition.name}", library-only save`)
       }
     }
     

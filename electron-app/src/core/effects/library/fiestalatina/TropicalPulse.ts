@@ -1,4 +1,22 @@
-﻿import { BaseEffect } from '../../BaseEffect'
+﻿/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🌴 TROPICAL PULSE - PERCUSIÓN TROPICAL
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * WAVE 805: Original implementation
+ * WAVE 1004.4: THE LATINO LADDER - GENTLE ZONE (45-60%)
+ *              + Pre-blackout ajustado a 50ms (patrón Techno)
+ * 
+ * DNA TARGET (WAVE 1004.4):
+ * - Aggression: 0.55 (GENTLE - Percusivo moderado)
+ * - Chaos: 0.40 (Rítmico)
+ * - Organicity: 0.65 (Festivo/humano)
+ * 
+ * @module core/effects/library/fiestalatina/TropicalPulse
+ * @version WAVE 805, 1004.4
+ */
+
+import { BaseEffect } from '../../BaseEffect'
 import { EffectTriggerConfig, EffectFrameOutput, EffectCategory, EffectZone } from '../../types'
 
 interface TropicalPulseConfig {
@@ -14,26 +32,26 @@ interface TropicalPulseConfig {
 }
 
 const DEFAULT_CONFIG: TropicalPulseConfig = {
-  preDuckingMs: 100,
+  preDuckingMs: 50,      // 🆕 WAVE 1004.4: 100→50ms (patrón Techno pre-blackout)
   flashCount: 3,
-  flashDurationMs: 20,
-  flashGapMs: 30,
-  finaleMs: 40,
-  releaseMs: 50,
+  flashDurationMs: 25,   // 🆙 20→25ms - ligeramente más largo
+  flashGapMs: 35,        // 🆙 30→35ms - más respiro
+  finaleMs: 45,          // 🆙 40→45ms
+  releaseMs: 60,         // 🆙 50→60ms - release más suave
   stormColors: [
-    { h: 16, s: 100, l: 65 },
-    { h: 174, s: 90, l: 50 },
-    { h: 300, s: 95, l: 55 },
+    { h: 16, s: 100, l: 65 },   // Naranja tropical
+    { h: 174, s: 90, l: 50 },   // Turquesa
+    { h: 300, s: 95, l: 55 },   // Magenta
   ],
-  finaleColor: { h: 45, s: 100, l: 60 },
-  flashIntensity: 1.0,
+  finaleColor: { h: 45, s: 100, l: 60 },  // Dorado
+  flashIntensity: 0.85,  // 🆘 1.0→0.85 - GENTLE ZONE (menos agresivo)
 }
 
 export class TropicalPulse extends BaseEffect {
   readonly effectType = 'tropical_pulse'
   readonly name = 'Tropical Pulse'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 75
+  readonly priority = 70  // 🆘 75→70 - GENTLE ZONE
   readonly mixBus = 'global' as const
   
   private config: TropicalPulseConfig

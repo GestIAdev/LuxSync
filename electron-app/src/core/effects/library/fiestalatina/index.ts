@@ -5,50 +5,58 @@
  * 
  * WAVE 680: THE ARSENAL
  * WAVE 1004.3: FULL EXPORT - Todos los efectos del arsenal latino
+ * WAVE 1004.4: THE LATINO LADDER - 14 efectos, 7 zonas energéticas
  * 
  * Exporta TODOS los efectos del arsenal Fiesta Latina.
  * 
- * ARSENAL COMPLETO (13 efectos):
- * - SolarFlare: Drop explosion
- * - StrobeStorm: Strobe degradado
- * - StrobeBurst: Ráfagas rítmicas
- * - TidalWave: Ola orgánica
- * - GhostBreath: Fantasma suave
- * - ClaveRhythm: Patrón 3-2 clave
- * - SalsaFire: Fuego pasional
- * - CumbiaMoon: Luna romántica
- * - CorazonLatino: Latido del corazón
- * - TropicalPulse: Percusión tropical
- * - LatinaMeltdown: 🔥 WAVE 1004.3 - Nuclear Salsa (A=0.95)
- * - GlitchGuaguanco: 🦠 WAVE 1004.3 - Cyber Virus (C=0.90)
+ * THE LATINO LADDER (7 ZONAS):
+ * ┌────────────────┬───────────┬─────────────────────────────────────────┐
+ * │ ZONA           │ AGGRESSION│ EFECTOS                                 │
+ * ├────────────────┼───────────┼─────────────────────────────────────────┤
+ * │ 1. SILENCE     │ 0.00-0.15 │ ghost_breath, amazon_mist               │
+ * │ 2. VALLEY      │ 0.15-0.30 │ cumbia_moon, tidal_wave                 │
+ * │ 3. AMBIENT     │ 0.30-0.45 │ corazon_latino, strobe_burst            │
+ * │ 4. GENTLE      │ 0.45-0.60 │ clave_rhythm, tropical_pulse            │
+ * │ 5. ACTIVE      │ 0.60-0.75 │ glitch_guaguanco, machete_spark         │
+ * │ 6. INTENSE     │ 0.75-0.90 │ salsa_fire, solar_flare                 │
+ * │ 7. PEAK        │ 0.90-1.00 │ latina_meltdown, strobe_storm           │
+ * └────────────────┴───────────┴─────────────────────────────────────────┘
  * 
  * @module core/effects/library/fiestalatina
- * @version WAVE 680, 1004.3
+ * @version WAVE 680, 1004.3, 1004.4
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🎉 FIESTA LATINA EFFECTS - FULL ARSENAL
+// 🎉 FIESTA LATINA EFFECTS - THE LATINO LADDER (14 efectos)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// 🌟 Core Effects
-export { SolarFlare, createSolarFlare, SOLAR_FLARE_DEFAULT_CONFIG } from './SolarFlare'
-export { StrobeStorm, createStrobeStorm } from './StrobeStorm'
-export { StrobeBurst } from './StrobeBurst'
-export { TidalWave } from './TidalWave'
+// � ZONA 1: SILENCE (0-15%)
 export { GhostBreath, createGhostBreath } from './GhostBreath'
+export { AmazonMist } from './AmazonMist'                    // 🆕 WAVE 1004.4
 
-// 🥁 Rhythmic Effects
+// 🌙 ZONA 2: VALLEY (15-30%)
+export { CumbiaMoon } from './CumbiaMoon'
+export { TidalWave } from './TidalWave'
+
+// 💓 ZONA 3: AMBIENT (30-45%)
+export { CorazonLatino } from './CorazonLatino'
+export { StrobeBurst } from './StrobeBurst'
+
+// 🥁 ZONA 4: GENTLE (45-60%)
 export { ClaveRhythm } from './ClaveRhythm'
 export { TropicalPulse } from './TropicalPulse'
 
-// 🔥 Passion Effects
-export { SalsaFire } from './SalsaFire'
-export { CorazonLatino } from './CorazonLatino'
-export { CumbiaMoon } from './CumbiaMoon'
+// ⚔️ ZONA 5: ACTIVE (60-75%)
+export { GlitchGuaguanco } from './GlitchGuaguanco'
+export { MacheteSpark } from './MacheteSpark'                // 🆕 WAVE 1004.4
 
-// 🚨 WAVE 1004.3: DNA EXTREMOS - Nuevos efectos para expandir el espacio DNA
-export { LatinaMeltdown } from './LatinaMeltdown'    // 🔥 Nuclear Salsa (A=0.95)
-export { GlitchGuaguanco } from './GlitchGuaguanco'  // 🦠 Cyber Virus (C=0.90)
+// 🔥 ZONA 6: INTENSE (75-90%)
+export { SalsaFire } from './SalsaFire'
+export { SolarFlare, createSolarFlare, SOLAR_FLARE_DEFAULT_CONFIG } from './SolarFlare'
+
+// 💥 ZONA 7: PEAK (90-100%)
+export { LatinaMeltdown } from './LatinaMeltdown'
+export { StrobeStorm, createStrobeStorm } from './StrobeStorm'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPE RE-EXPORTS

@@ -204,71 +204,85 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   
   // ═══════════════════════════════════════════════════════════════
-  // 🌴 LATINO-ORGANIC: La Fiesta
+  // 🌴 WAVE 1004.4: THE LATINO LADDER - Fiesta Latina Recalibrado
   // ═══════════════════════════════════════════════════════════════
   'solar_flare': {
-    aggression: 0.75,   // ☀️ Explosión pero festiva
+    aggression: 0.85,   // ☀️ WAVE 1004.4: INTENSE ZONE (Upgrade) - Explosión solar intensa
     chaos: 0.50,        // Moderado
-    organicity: 0.60,   // Fuego = orgánico
+    organicity: 0.40,   // Semi-sintético
   },
   'strobe_storm': {
-    aggression: 0.85,   // ⚡ Tormenta eléctrica
-    chaos: 0.65,        // Bastante caótico
-    organicity: 0.30,   // Eléctrico, semi-mecánico
+    aggression: 0.95,   // ⚡ WAVE 1004.4: PEAK ZONE - Tormenta total
+    chaos: 0.70,        // 🆙 Upgrade: Más caótico para competir con latina_meltdown
+    organicity: 0.25,   // Eléctrico, mecánico
   },
   'strobe_burst': {
-    aggression: 0.70,   // 💥 Ráfagas rítmicas
-    chaos: 0.40,        // Ordenado (sigue el ritmo)
-    organicity: 0.35,   // Semi-mecánico
+    aggression: 0.40,   // � WAVE 1004.4: AMBIENT ZONE (Downgrade) - Destellos de cámara suaves
+    chaos: 0.35,        // Ordenado, más suave
+    organicity: 0.40,   // Semi-orgánico
   },
   'tidal_wave': {
-    aggression: 0.30,   // 🌊 Suave como ola
-    chaos: 0.35,        // Fluido pero predecible
-    organicity: 0.75,   // Muy orgánico (agua)
+    aggression: 0.25,   // 🌊 WAVE 1004.4: VALLEY ZONE - Ola muy suave
+    chaos: 0.30,        // Fluido y predecible
+    organicity: 0.80,   // Muy orgánico (agua)
   },
   'ghost_breath': {
-    aggression: 0.10,   // 👻 Susurro fantasmal
-    chaos: 0.25,        // Muy suave
-    organicity: 0.90,   // Máxima organicidad
+    aggression: 0.08,   // 👻 WAVE 1004.4: SILENCE ZONE - Casi imperceptible
+    chaos: 0.15,        // Muy ordenado (sinusoidal)
+    organicity: 0.95,   // Máxima organicidad
   },
   'tropical_pulse': {
-    aggression: 0.60,   // 🌴 Percusivo pero alegre
-    chaos: 0.40,        // Rítmico = ordenado
-    organicity: 0.70,   // Muy festivo/humano
+    aggression: 0.55,   // 🌴 WAVE 1004.4: GENTLE ZONE - Percusivo moderado
+    chaos: 0.40,        // Rítmico
+    organicity: 0.65,   // Festivo/humano
   },
   'salsa_fire': {
-    aggression: 0.65,   // 🔥 Fuego de salsa
-    chaos: 0.45,        // Moderado
-    organicity: 0.65,   // Pasional/orgánico
+    aggression: 0.82,   // 🔥 WAVE 1004.4: INTENSE ZONE (Upgrade) - FUEGO QUE QUEMA
+    chaos: 0.55,        // 🆙 Más caótico (llamas vivas)
+    organicity: 0.60,   // Pasional pero más intenso
   },
   'cumbia_moon': {
-    aggression: 0.15,   // 🌙 Suave como la luna
+    aggression: 0.20,   // 🌙 WAVE 1004.4: VALLEY ZONE - Suave romántica
     chaos: 0.20,        // Muy ordenado
-    organicity: 0.80,   // Romántico/orgánico
+    organicity: 0.85,   // Romántico máximo
   },
   'clave_rhythm': {
-    aggression: 0.50,   // 🥁 Percusivo moderado
+    aggression: 0.52,   // 🥁 WAVE 1004.4: GENTLE ZONE - Percusivo controlado
     chaos: 0.35,        // Rítmico 3-2
     organicity: 0.70,   // Humano/orgánico
   },
   'corazon_latino': {
-    aggression: 0.50,   // 💃 Pasional pero no violento
-    chaos: 0.35,        // Rítmico
-    organicity: 0.90,   // MÁXIMA - latido del corazón
+    aggression: 0.38,   // 💃 WAVE 1004.4: AMBIENT ZONE (Downgrade) - Latido de fondo
+    chaos: 0.30,        // Más suave
+    organicity: 0.85,   // Orgánico pero sutil
   },
   
   // ═══════════════════════════════════════════════════════════════
   // 🔥 WAVE 1004.3: DNA EXTREMOS - Fiesta Latina
   // ═══════════════════════════════════════════════════════════════
   'latina_meltdown': {
-    aggression: 0.95,   // 🔥 BRUTAL - Nuclear Salsa (máxima agresión)
+    aggression: 0.95,   // 🔥 PEAK ZONE - Nuclear Salsa (máxima agresión)
     chaos: 0.30,        // Rítmico - sincronizado al kick
     organicity: 0.20,   // Sintético - mecánico, preciso
   },
   'glitch_guaguanco': {
-    aggression: 0.60,   // 🦠 Medio - no asesina, infecta
-    chaos: 0.90,        // CAOS TOTAL - impredecible
-    organicity: 0.10,   // Digital - glitch puro
+    aggression: 0.68,   // 🦠 WAVE 1004.4: ACTIVE ZONE - Virus controlado
+    chaos: 0.85,        // Alto caos pero no máximo
+    organicity: 0.15,   // Digital
+  },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🌿 WAVE 1004.4: THE LATINO LADDER - Nuevos Efectos
+  // ═══════════════════════════════════════════════════════════════
+  'amazon_mist': {
+    aggression: 0.05,   // 🌿 SILENCE ZONE - La selva respira
+    chaos: 0.20,        // Ordenado (sinusoidal lento)
+    organicity: 0.95,   // MÁXIMA organicidad
+  },
+  'machete_spark': {
+    aggression: 0.70,   // ⚔️ ACTIVE ZONE - Cortes precisos de acero
+    chaos: 0.50,        // Medio (rítmico con variación)
+    organicity: 0.30,   // Semi-mecánico (swing repetitivo)
   },
 }
 
@@ -319,7 +333,7 @@ const SECTION_ORGANICITY: Record<SectionType, number> = {
 /**
  * Efectos "comodín" por categoría - Usados cuando hay Middle Void
  * 
- * 🚨 WAVE 1004.3: Expandido para Fiesta Latina (1 → 5 wildcards)
+ * 🚨 WAVE 1004.4: THE LATINO LADDER - 7 zonas energéticas completas
  */
 export const WILDCARD_EFFECTS: Record<string, string> = {
   // ═══════════════════════════════════════════════════════════════
@@ -329,13 +343,36 @@ export const WILDCARD_EFFECTS: Record<string, string> = {
   'techno-atmospheric': 'digital_rain',   // Moderado: A=0.20, C=0.65, O=0.40
   
   // ═══════════════════════════════════════════════════════════════
-  // 🎉 WAVE 1004.3: FIESTA LATINA WILDCARDS (5 total)
+  // 🎉 WAVE 1004.4: THE LATINO LADDER - 7 ZONAS ENERGÉTICAS
   // ═══════════════════════════════════════════════════════════════
-  'latino-brutal': 'latina_meltdown',     // A=0.95 - NUCLEAR SALSA (extremo brutal)
-  'latino-chaotic': 'glitch_guaguanco',   // C=0.90 - CYBER VIRUS (extremo caos)
-  'latino-organic': 'clave_rhythm',       // O=0.70 - Patrón 3-2 (moderado orgánico)
-  'latino-romantic': 'cumbia_moon',       // O=0.80, A=0.15 - Luna romántica
-  'latino-fire': 'salsa_fire',            // A=0.65 - Fuego pasional (balanceado)
+  
+  // ZONA 1: SILENCE (0-15%) - A: 0.00-0.15
+  'latino-silence': 'amazon_mist',        // A=0.05 - La selva respira
+  'latino-ghost': 'ghost_breath',         // A=0.08 - Susurro fantasmal
+  
+  // ZONA 2: VALLEY (15-30%) - A: 0.15-0.30
+  'latino-valley': 'cumbia_moon',         // A=0.20 - Luna romántica
+  'latino-wave': 'tidal_wave',            // A=0.25 - Ola suave
+  
+  // ZONA 3: AMBIENT (30-45%) - A: 0.30-0.45
+  'latino-ambient': 'corazon_latino',     // A=0.38 - Latido de fondo
+  'latino-camera': 'strobe_burst',        // A=0.40 - Destellos de cámara
+  
+  // ZONA 4: GENTLE (45-60%) - A: 0.45-0.60
+  'latino-gentle': 'clave_rhythm',        // A=0.52 - Patrón 3-2
+  'latino-tropical': 'tropical_pulse',    // A=0.55 - Percusión tropical
+  
+  // ZONA 5: ACTIVE (60-75%) - A: 0.60-0.75
+  'latino-active': 'glitch_guaguanco',    // A=0.68 - Virus digital
+  'latino-machete': 'machete_spark',      // A=0.70 - Cortes de acero
+  
+  // ZONA 6: INTENSE (75-90%) - A: 0.75-0.90
+  'latino-fire': 'salsa_fire',            // A=0.82 - FUEGO QUE QUEMA
+  'latino-solar': 'solar_flare',          // A=0.85 - Explosión solar
+  
+  // ZONA 7: PEAK (90-100%) - A: 0.90-1.00
+  'latino-peak': 'latina_meltdown',       // A=0.95 - NUCLEAR SALSA
+  'latino-storm': 'strobe_storm',         // A=0.95 - Tormenta total
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

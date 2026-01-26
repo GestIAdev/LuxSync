@@ -4,16 +4,24 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * WAVE 692: FIESTA LATINA EFFECT ARSENAL
+ * WAVE 1004.4: THE LATINO LADDER - INTENSE ZONE (75-90%)
+ *              + PRE-BLACKOUT PATTERN (50ms antes de cada pico)
  * 
  * CONCEPTO:
  * Ráfagas de rojo/naranja que simulan llamas bailando con la música.
  * Es fuego ORGÁNICO - no mecánico. Como las llamas reales, tiene variación.
+ * 
+ * DNA TARGET (WAVE 1004.4):
+ * - Aggression: 0.82 (INTENSE - FUEGO QUE QUEMA)
+ * - Chaos: 0.55 (Caótico como llamas vivas)
+ * - Organicity: 0.60 (Pasional pero intenso)
  * 
  * COMPORTAMIENTO:
  * - Flicker rápido pero suave (no strobe harsh)
  * - Colores: rojo profundo → naranja → amarillo → back
  * - Intensidad varía de forma "caótica controlada"
  * - El fuego "respira" - nunca es constante
+ * - 🆕 PRE-BLACKOUT: 50ms de negrura antes de cada pico de intensidad
  * 
  * PHYSICS:
  * - Base intensity + random variation (Perlin-like noise)
@@ -21,13 +29,13 @@
  * - Duración corta pero impactante
  * 
  * PERFECT FOR:
- * - Momentos sensuales
- * - Cuando la música tiene "sabor"
+ * - Momentos sensuales INTENSOS
+ * - Cuando la música QUEMA
  * - Solos de instrumentos
  * - Transiciones dramáticas
  * 
  * @module core/effects/library/SalsaFire
- * @version WAVE 692
+ * @version WAVE 692, 1004.4
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -66,17 +74,25 @@ interface SalsaFireConfig {
   
   /** Fade out duration (ms) */
   fadeOutMs: number
+  
+  /** 🆕 WAVE 1004.4: Pre-blackout duration (ms) antes de cada pico */
+  preBlackoutMs: number
+  
+  /** 🆕 WAVE 1004.4: Threshold para detectar "pico" (0-1) */
+  peakThreshold: number
 }
 
 const DEFAULT_CONFIG: SalsaFireConfig = {
   durationMs: 2500,
-  flickerFrequency: 12,  // 12 Hz - fuego natural
-  intensityVariation: 0.35,
-  baseColor: { h: 10, s: 100, l: 45 },    // Rojo profundo
-  hotColor: { h: 50, s: 100, l: 70 },     // Amarillo cálido
-  minIntensity: 0.4,
-  fadeInMs: 200,
-  fadeOutMs: 400,
+  flickerFrequency: 15,  // 🆙 12→15 Hz - fuego más intenso
+  intensityVariation: 0.45,  // 🆙 0.35→0.45 - más variación
+  baseColor: { h: 5, s: 100, l: 50 },     // 🆙 Rojo más profundo (10→5)
+  hotColor: { h: 55, s: 100, l: 75 },     // 🆙 Amarillo más brillante
+  minIntensity: 0.35,  // 🆙 0.4→0.35 - más contraste
+  fadeInMs: 150,       // 🆙 200→150 - entrada más rápida
+  fadeOutMs: 350,      // 🆙 400→350 - salida más rápida
+  preBlackoutMs: 50,   // 🆕 WAVE 1004.4: 50ms de negrura antes de pico
+  peakThreshold: 0.75, // 🆕 WAVE 1004.4: Detectar picos > 75%
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -87,7 +103,7 @@ export class SalsaFire extends BaseEffect {
   readonly effectType = 'salsa_fire'
   readonly name = 'Salsa Fire'
   readonly category: EffectCategory = 'physical'
-  readonly priority = 72  // Entre strobe y ambient
+  readonly priority = 80  // 🆙 72→80 - INTENSE ZONE
   readonly mixBus = 'htp' as const  // 🌪️ WAVE 805: HTP - Fuego que suma energía
   
   private config: SalsaFireConfig
@@ -95,6 +111,11 @@ export class SalsaFire extends BaseEffect {
   private currentColor: { h: number; s: number; l: number }
   private noisePhase = 0  // Para el flicker pseudo-random
   private noiseSpeed = 0
+  
+  // 🆕 WAVE 1004.4: Pre-blackout state
+  private lastFlickerValue = 0
+  private preBlackoutTimer = 0
+  private isInPreBlackout = false
   
   constructor(config?: Partial<SalsaFireConfig>) {
     super('salsa_fire')
@@ -109,7 +130,13 @@ export class SalsaFire extends BaseEffect {
     this.noisePhase = Date.now() % 1000
     this.noiseSpeed = this.config.flickerFrequency * 2 * Math.PI / 1000
     
-    console.log(`[SalsaFire 🔥] TRIGGERED! Duration=${this.config.durationMs}ms Flicker=${this.config.flickerFrequency}Hz`)
+    // 🆕 WAVE 1004.4: Reset pre-blackout state
+    this.lastFlickerValue = 0
+    this.preBlackoutTimer = 0
+    this.isInPreBlackout = false
+    
+    console.log(`[SalsaFire 🔥] INTENSE ZONE TRIGGERED! Duration=${this.config.durationMs}ms Flicker=${this.config.flickerFrequency}Hz`)
+    console.log(`[SalsaFire 🔥] DNA: A=0.82 C=0.55 O=0.60 (FUEGO QUE QUEMA)`)
   }
   
   update(deltaMs: number): void {
@@ -131,9 +158,33 @@ export class SalsaFire extends BaseEffect {
     // Calculate flicker intensity using multiple sine waves (pseudo-Perlin)
     const flicker = this.calculateFlicker()
     
-    // Final intensity
-    const baseIntensity = this.config.minIntensity + 
+    // 🆕 WAVE 1004.4: PRE-BLACKOUT DETECTION
+    // Si el flicker cruza hacia arriba del threshold, activar pre-blackout
+    if (!this.isInPreBlackout && 
+        this.lastFlickerValue < this.config.peakThreshold && 
+        flicker >= this.config.peakThreshold) {
+      this.isInPreBlackout = true
+      this.preBlackoutTimer = 0
+    }
+    
+    // Actualizar timer de pre-blackout
+    if (this.isInPreBlackout) {
+      this.preBlackoutTimer += deltaMs
+      if (this.preBlackoutTimer >= this.config.preBlackoutMs) {
+        this.isInPreBlackout = false
+      }
+    }
+    
+    this.lastFlickerValue = flicker
+    
+    // Final intensity (con pre-blackout override)
+    let baseIntensity = this.config.minIntensity + 
       (1 - this.config.minIntensity) * flicker
+    
+    // 🆕 WAVE 1004.4: Durante pre-blackout, forzar negrura
+    if (this.isInPreBlackout) {
+      baseIntensity = 0
+    }
     
     this.currentIntensity = baseIntensity * envelope * this.triggerIntensity
     

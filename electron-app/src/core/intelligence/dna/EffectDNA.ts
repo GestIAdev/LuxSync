@@ -256,6 +256,20 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.35,        // Rítmico
     organicity: 0.90,   // MÁXIMA - latido del corazón
   },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🔥 WAVE 1004.3: DNA EXTREMOS - Fiesta Latina
+  // ═══════════════════════════════════════════════════════════════
+  'latina_meltdown': {
+    aggression: 0.95,   // 🔥 BRUTAL - Nuclear Salsa (máxima agresión)
+    chaos: 0.30,        // Rítmico - sincronizado al kick
+    organicity: 0.20,   // Sintético - mecánico, preciso
+  },
+  'glitch_guaguanco': {
+    aggression: 0.60,   // 🦠 Medio - no asesina, infecta
+    chaos: 0.90,        // CAOS TOTAL - impredecible
+    organicity: 0.10,   // Digital - glitch puro
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -304,11 +318,24 @@ const SECTION_ORGANICITY: Record<SectionType, number> = {
 
 /**
  * Efectos "comodín" por categoría - Usados cuando hay Middle Void
+ * 
+ * 🚨 WAVE 1004.3: Expandido para Fiesta Latina (1 → 5 wildcards)
  */
 export const WILDCARD_EFFECTS: Record<string, string> = {
+  // ═══════════════════════════════════════════════════════════════
+  // 🎛️ TECHNO WILDCARDS
+  // ═══════════════════════════════════════════════════════════════
   'techno-industrial': 'cyber_dualism',   // Moderado: A=0.55, C=0.50, O=0.45
   'techno-atmospheric': 'digital_rain',   // Moderado: A=0.20, C=0.65, O=0.40
-  'latino-organic': 'clave_rhythm',       // Moderado: A=0.50, C=0.35, O=0.70
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🎉 WAVE 1004.3: FIESTA LATINA WILDCARDS (5 total)
+  // ═══════════════════════════════════════════════════════════════
+  'latino-brutal': 'latina_meltdown',     // A=0.95 - NUCLEAR SALSA (extremo brutal)
+  'latino-chaotic': 'glitch_guaguanco',   // C=0.90 - CYBER VIRUS (extremo caos)
+  'latino-organic': 'clave_rhythm',       // O=0.70 - Patrón 3-2 (moderado orgánico)
+  'latino-romantic': 'cumbia_moon',       // O=0.80, A=0.15 - Luna romántica
+  'latino-fire': 'salsa_fire',            // A=0.65 - Fuego pasional (balanceado)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

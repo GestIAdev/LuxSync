@@ -1,6 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔋 WAVE 934: ENERGY CONSCIOUSNESS CALIBRATION TEST
+ * 🔪 WAVE 1010.5: THE PURGE - Refactored to remove deprecated imports
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Test automatizado para verificar que la consciencia energética funciona
@@ -14,11 +15,11 @@
  * 5. Sostenido bajo → Sigue en zona baja
  * 
  * @module tests/EnergyConsciousnessTest
- * @version WAVE 934
+ * @version WAVE 934, WAVE 1010.5
  */
 
 import { EnergyConsciousnessEngine } from '../core/intelligence/EnergyConsciousnessEngine'
-import { ContextualEffectSelector, ContextualSelectorInput } from '../core/effects/ContextualEffectSelector'
+import { ContextualEffectSelector } from '../core/effects/ContextualEffectSelector'
 import { createDefaultEnergyContext, EnergyZone } from '../core/protocol/MusicalContext'
 import { MoodController } from '../core/mood'
 

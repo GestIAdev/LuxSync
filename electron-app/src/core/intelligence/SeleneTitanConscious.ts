@@ -163,13 +163,12 @@ import {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎯 WAVE 685: CONTEXTUAL EFFECT SELECTOR
+// 🔪 WAVE 1010.5: THE PURGE - Interfaces deprecated removidas
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
   ContextualEffectSelector,
   getContextualEffectSelector,
-  type ContextualEffectSelection,
-  type ContextualSelectorInput,
 } from '../effects/ContextualEffectSelector'
 
 // 🔋 WAVE 931: Motor de Consciencia Energética
@@ -697,24 +696,12 @@ export class SeleneTitanConscious extends EventEmitter {
     // Normalizar sección para el selector
     const selectorSection = this.normalizeSectionType(state.sectionType)
     
-    // Construir input para el selector (fallback)
-    const selectorInput: ContextualSelectorInput = {
-      musicalContext: {
-        zScore: zScore,
-        bpm: pattern.bpm,
-        energy: state.rawEnergy,
-        vibeId: pattern.vibeId,
-        beatPhase: pattern.beatPhase,
-        inDrop: selectorSection === 'drop',
-        energyContext: energyContext,
-      },
-      huntDecision,
-      fuzzyDecision: this.lastFuzzyDecision ?? undefined,
-      sectionType: selectorSection,
-      energyTrend: this.energyTrend,
-      lastEffectTimestamp: this.lastEffectTimestamp,
-      lastEffectType: this.lastEffectType,
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔪 WAVE 1010.5: THE PURGE - selectorInput REMOVED (zombie variable)
+    // ═══════════════════════════════════════════════════════════════════════
+    // DELETED: selectorInput construction (20 lines)
+    // REASON: Nunca se usaba después de WAVE 1010 (DecisionMaker es el cerebro)
+    // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🧬 WAVE 972.2: DECISION FLOW SIMPLIFICADO

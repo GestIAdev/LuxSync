@@ -41,57 +41,12 @@ import type { EnergyZone, EnergyContext } from '../protocol/MusicalContext'
 import { getDNAAnalyzer } from '../intelligence/dna'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES
+// 🔪 WAVE 1010.5: TYPES PURGED
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Resultado de la selección contextual
- */
-export interface ContextualEffectSelection {
-  /** Efecto seleccionado (null = no disparar nada) */
-  effectType: string | null
-  
-  /** Intensidad calculada */
-  intensity: number
-  
-  /** Razón de la selección (para logging) */
-  reason: string
-  
-  /** Confianza en la decisión (0-1) */
-  confidence: number
-  
-  /** ¿Es una decisión de override/bypass? */
-  isOverride: boolean
-  
-  /** Contexto musical inyectado */
-  musicalContext: MusicalContext
-}
-
-/**
- * Input completo para el selector
- */
-export interface ContextualSelectorInput {
-  /** Contexto musical en tiempo real */
-  musicalContext: MusicalContext
-  
-  /** Decisión del HuntEngine (opcional) */
-  huntDecision?: HuntDecision
-  
-  /** Decisión del FuzzyDecisionMaker (opcional) */
-  fuzzyDecision?: FuzzyDecision
-  
-  /** Tipo de sección actual */
-  sectionType: 'intro' | 'verse' | 'chorus' | 'bridge' | 'buildup' | 'drop' | 'breakdown' | 'outro'
-  
-  /** Tendencia de energía */
-  energyTrend: 'rising' | 'stable' | 'falling'
-  
-  /** Timestamp del último efecto disparado (cooldown) */
-  lastEffectTimestamp: number
-  
-  /** Último efecto disparado (anti-repetición) */
-  lastEffectType: string | null
-}
+// REMOVED: ContextualEffectSelection (solo usado por select() deprecated)
+// REMOVED: ContextualSelectorInput (solo usado por select() deprecated)
+// Este módulo ahora es PURO REPOSITORIO - no toma decisiones.
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -474,291 +429,20 @@ export class ContextualEffectSelector {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔪 WAVE 1010: DEPRECATED - select() ya NO es el punto de decisión principal
+  // 🔪 WAVE 1010.5: THE PURGE - select() REMOVED
   // ═══════════════════════════════════════════════════════════════════════════
-  // 
-  // ANTES (WAVE 685-900): Este método decidía SI y QUÉ disparar.
-  // AHORA (WAVE 1010): DecisionMaker es EL ÚNICO que decide SI disparar.
-  //                    Este módulo solo proporciona availability checks.
-  //
-  // Este método se mantiene por compatibilidad con tests existentes.
-  // NO USAR EN CÓDIGO NUEVO. Usar:
-  // - DecisionMaker.makeDecision() para decisiones
-  // - ContextualEffectSelector.checkAvailability() para validación
-  // - ContextualEffectSelector.getAvailableFromArsenal() para selección de arsenal
+  // DELETED: select() - decision-making function (230 lines)
+  // REASON: DecisionMaker es ahora el ÚNICO cerebro. Este módulo es REPOSITORIO.
+  // MIGRATED TO: DecisionMaker.makeDecision() + getAvailableFromArsenal()
   // ═══════════════════════════════════════════════════════════════════════════
   
-  /**
-   * @deprecated WAVE 1010: Use DecisionMaker.makeDecision() instead.
-   * This method is kept for backward compatibility with tests.
-   * 
-   * Método legacy: dado el contexto completo, decide qué efecto disparar.
-   * ⚠️ REDUNDANTE: DecisionMaker ya toma esta decisión.
-   * 
-   * @returns Selección de efecto (puede ser null si no hay que disparar nada)
-   */
-  public select(input: ContextualSelectorInput): ContextualEffectSelection {
-    const { musicalContext, sectionType, lastEffectTimestamp, lastEffectType } = input
-    const now = Date.now()
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 1: COOLDOWN CHECK
-    // ═══════════════════════════════════════════════════════════════
-    
-    const timeSinceLastEffect = now - lastEffectTimestamp
-    const cooldown = this.calculateCooldown(lastEffectType)
-    
-    if (timeSinceLastEffect < cooldown) {
-      return this.noEffectDecision(musicalContext, `Cooldown (${cooldown - timeSinceLastEffect}ms remaining)`)
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 2: Z-SCORE CLASSIFICATION (🔋 WAVE 931: CON CONSCIENCIA ENERGÉTICA)
-    // ═══════════════════════════════════════════════════════════════
-    
-    // 🔋 Obtener contexto energético si está disponible
-    const energyContext = musicalContext.energyContext
-    const zLevel = this.classifyZScore(musicalContext.zScore, energyContext)
-    
-    // 🌩️ DIVINE MOMENT: Z > 3.5 = SOLAR FLARE OBLIGATORIO
-    // 🔋 WAVE 931: Pero solo si el zLevel NO fue capeado por consciencia energética
-    if (zLevel === 'divine') {
-      return this.divineDecision(musicalContext)
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 3: HUNT/FUZZY DECISION CHECK
-    // ═══════════════════════════════════════════════════════════════
-    
-    const shouldStrike = this.evaluateHuntFuzzy(input)
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🌀 WAVE 900.4: CEREBRO UNIFICADO
-    // ───────────────────────────────────────────────────────────────
-    // El camino HUNT HIGH WORTHINESS fue ELIMINADO de aquí.
-    // 
-    // ANTES (WAVE 814.2): Dos cerebros competían por disparar:
-    //   - DecisionMaker → INTENT
-    //   - ContextualEffectSelector → HUNT HIGH WORTHINESS
-    //   RESULTADO: Doble disparo, esquizofrenia
-    //
-    // AHORA (WAVE 900): Un solo cerebro decide:
-    //   DecisionMaker → DreamEngineIntegrator → VisualConscienceEngine
-    //   ContextualEffectSelector es SOLO FALLBACK cuando DecisionMaker calla
-    //
-    // El flujo Hunt ahora pasa por SeleneTitanConscious:
-    //   Hunt → Dream → Conscience → Gatekeeper → Execute
-    // ═══════════════════════════════════════════════════════════════
-    
-    if (!shouldStrike.should) {
-      return this.noEffectDecision(musicalContext, shouldStrike.reason)
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 4: CONTEXT-BASED EFFECT SELECTION
-    // 🌊 WAVE 691: Ahora con vibe y musicalContext para anti-ghost
-    // ═══════════════════════════════════════════════════════════════
-    
-    const effectType = this.selectEffectForContext(
-      sectionType, 
-      zLevel, 
-      input.energyTrend,
-      lastEffectType,
-      musicalContext,
-      musicalContext.vibeId
-    )
-    
-    // 🔥 WAVE 691.5: Si el selector devuelve 'none', no disparar nada
-    if (effectType === 'none') {
-      return this.noEffectDecision(musicalContext, 'LATINA breathing - strobe in cooldown')
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 4.5: 🔋 WAVE 933 + 936 - VERIFICACIÓN DE ZONA ENERGÉTICA + VIBE
-    // Si el efecto seleccionado NO es apropiado para la zona, buscar alternativa
-    // 🛡️ WAVE 936: Ahora con filtro de VIBE para evitar cumbia en techno
-    // ═══════════════════════════════════════════════════════════════
-    
-    let finalEffectType = effectType
-    
-    if (!this.isEffectAppropriateForZone(effectType, energyContext, musicalContext.vibeId)) {
-      // 🛡️ WAVE 936: Buscar alternativa CON filtro de vibe
-      const allowedEffects = energyContext 
-        ? this.getEffectsAllowedForZone(energyContext.zone, musicalContext.vibeId) 
-        : []
-      
-      // Encontrar un efecto permitido que NO sea el último (anti-repetición)
-      const alternative = allowedEffects.find(e => e !== lastEffectType && this.isEffectAvailable(e, musicalContext.vibeId))
-      
-      if (alternative) {
-        console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} → ${alternative} (zone-appropriate swap)`)
-        finalEffectType = alternative
-      } else if (allowedEffects.length > 0) {
-        // Fallback: cualquier efecto permitido
-        const fallback = allowedEffects.find(e => this.isEffectAvailable(e, musicalContext.vibeId))
-        if (fallback) {
-          console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} → ${fallback} (zone fallback)`)
-          finalEffectType = fallback
-        } else {
-          // No hay alternativa válida - suprimir disparo
-          console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: ${effectType} BLOCKED - no alternatives`)
-          return this.noEffectDecision(musicalContext, `Zone ${energyContext?.zone} blocked ${effectType} - no alternatives available`)
-        }
-      } else {
-        // Zona desconocida sin restricciones - mantener selección original
-        console.log(`[EffectSelector 🔋] Zone ${energyContext?.zone}: keeping ${effectType} (no restrictions)`)
-      }
-    }
-    
-    // 🔥 WAVE 810.5: NO registrar aquí - esperar a que EffectManager confirme el disparo
-    // El cooldown se registrará solo si el efecto REALMENTE se dispara (no bloqueado por Shield/Traffic)
-    // this.registerEffectFired(effectType)  // ❌ REMOVED
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🌋 WAVE 960: FLASHBANG PROTOCOL
-    // Filtrar efectos largos si detectamos salto instantáneo LOW → HIGH
-    // ═══════════════════════════════════════════════════════════════
-    
-    if (energyContext?.isFlashbang) {
-      // Lista de efectos de LARGA DURACIÓN (> 2 segundos)
-      // Estos NO deben dispararse en el primer frame de un Flashbang
-      const LONG_DURATION_EFFECTS = [
-        'gatling_raid',      // 4s - Metralladora
-        'cyber_dualism',     // 3s - Ping-pong
-        'acid_sweep',        // 3s - Sweep volumétrico
-        'sky_saw',           // 3s - Cortes agresivos
-        'abyssal_rise',      // 5s - Épica transición (WAVE 988 OPTIMIZADO)
-        'corazon_latino',    // 4s - Corazón latino
-        'tropical_pulse',    // 3s - Pulso de conga
-        'salsa_fire',        // 3s - Fuego salsero
-        'clave_rhythm',      // 3s - Ritmo de clave
-      ]
-      
-      if (LONG_DURATION_EFFECTS.includes(finalEffectType)) {
-        // ⚡ Buscar alternativa CORTA (StrobeBurst, strobe_burst)
-        const shortAlternatives = ['strobe_burst']
-        const shortEffect = shortAlternatives.find(e => this.isEffectAvailable(e, musicalContext.vibeId))
-        
-        if (shortEffect) {
-          console.log(`[🌋 FLASHBANG] Swapping LONG ${finalEffectType} → SHORT ${shortEffect} (wait for sustain confirmation)`)
-          finalEffectType = shortEffect
-        } else {
-          // No hay alternativa corta - suprimir efecto (mejor silencio que ametralladora post-grito)
-          console.log(`[🌋 FLASHBANG] BLOCKING LONG ${finalEffectType} (no short alternatives - wait for sustain)`)
-          return this.noEffectDecision(musicalContext, `Flashbang detected - blocked long effect ${finalEffectType}`)
-        }
-      } else {
-        // El efecto ya es corto - OK para disparar
-        console.log(`[🌋 FLASHBANG] Allowing SHORT ${finalEffectType} (< 2s duration)`)
-      }
-    }
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 5: INTENSITY CALCULATION
-    // ═══════════════════════════════════════════════════════════════
-    
-    const intensity = this.calculateIntensity(musicalContext, zLevel)
-    
-    // ═══════════════════════════════════════════════════════════════
-    // PASO 6: BUILD DECISION
-    // 🔋 WAVE 933: Usar finalEffectType (post zone-swap)
-    // ═══════════════════════════════════════════════════════════════
-    
-    // Anti-repetición tracking
-    if (finalEffectType === lastEffectType) {
-      this.consecutiveSameEffect++
-    } else {
-      this.consecutiveSameEffect = 0
-    }
-    
-    // 🔋 WAVE 933: Añadir zona energética al reason
-    const zoneInfo = energyContext ? ` [Zone:${energyContext.zone}]` : ''
-    
-    return {
-      effectType: finalEffectType,
-      intensity,
-      reason: `${zLevel.toUpperCase()} moment in ${sectionType}${zoneInfo} | Z=${musicalContext.zScore.toFixed(2)}σ`,
-      confidence: shouldStrike.confidence,
-      isOverride: false,
-      musicalContext,
-    }
-  }
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // 🔪 WAVE 1010 DEPRECATED: Classification helpers
-  // ─────────────────────────────────────────────────────────────────────────
-  // La clasificación Z-Score para DIVINE ahora se hace en DecisionMaker.
-  // Estas funciones se mantienen para compatibilidad con select() legacy.
-  // NO USAR EN CÓDIGO NUEVO.
-  // ─────────────────────────────────────────────────────────────────────────
-  
-  /**
-   * @deprecated WAVE 1010: DIVINE detection ahora vive en DecisionMaker.determineDecisionType()
-   * 
-   * 🔋 WAVE 931: Clasificación Z-Score con CONSCIENCIA ENERGÉTICA
-   * 
-   * ANTES: Solo miraba Z-Score (relativo) → "Grito en biblioteca"
-   * AHORA: Considera también energía absoluta → "Contexto inteligente"
-   * 
-   * MATRIZ DE CAPPING:
-   * ┌────────────┬─────────────────────────────────────────┐
-   * │ EnergyZone │ Máximo Z-Level Permitido                │
-   * ├────────────┼─────────────────────────────────────────┤
-   * │ silence    │ normal (sin importar Z real)            │
-   * │ valley     │ elevated (aunque Z=4.0)                 │
-   * │ ambient    │ epic (bloquea divine)                   │
-   * │ gentle+    │ Sin restricción                         │
-   * └────────────┴─────────────────────────────────────────┘
-   */
-  private classifyZScore(
-    z: number, 
-    energyContext?: EnergyContext
-  ): 'normal' | 'elevated' | 'epic' | 'divine' {
-    const { zScoreThresholds: t } = this.config
-    
-    // Clasificación base sin restricciones
-    let baseLevel: 'normal' | 'elevated' | 'epic' | 'divine' = 'normal'
-    if (z >= t.divine) baseLevel = 'divine'
-    else if (z >= t.epic) baseLevel = 'epic'
-    else if (z >= t.elevated) baseLevel = 'elevated'
-    
-    // 🔋 WAVE 931: Si no hay contexto energético, usar clasificación legacy
-    if (!energyContext) {
-      return baseLevel
-    }
-    
-    // 🛡️ CONSCIENCIA ENERGÉTICA: Cap basado en zona de energía absoluta
-    const zone = energyContext.zone
-    
-    // SILENCE (E < 0.10): Máximo NORMAL - No dispares machinegun en un funeral
-    if (zone === 'silence') {
-      if (baseLevel !== 'normal') {
-        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→${baseLevel} CAPPED to NORMAL (zone=SILENCE)`)
-      }
-      return 'normal'
-    }
-    
-    // VALLEY (E 0.10-0.20): Máximo ELEVATED - Preparando para el drop
-    if (zone === 'valley') {
-      if (baseLevel === 'divine' || baseLevel === 'epic') {
-        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→${baseLevel} CAPPED to ELEVATED (zone=VALLEY)`)
-        return 'elevated'
-      }
-      return baseLevel
-    }
-    
-    // AMBIENT (E 0.20-0.35): Máximo EPIC - Bloquea solar flares en ambiente suave
-    if (zone === 'ambient') {
-      if (baseLevel === 'divine') {
-        console.log(`[EffectSelector 🔋] ENERGY CAP: Z=${z.toFixed(2)}σ→DIVINE CAPPED to EPIC (zone=AMBIENT)`)
-        return 'epic'
-      }
-      return baseLevel
-    }
-    
-    // GENTLE+ (E > 0.35): Sin restricciones - Selene tiene libertad total
-    return baseLevel
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // � WAVE 1010.5: THE PURGE - classifyZScore() REMOVED
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DELETED: classifyZScore() - Z-Score classification with energy awareness
+  // REASON: Esta lógica ahora vive en DecisionMaker.determineDecisionType()
+  // MIGRATED TO: DecisionMaker con zone awareness integrada
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
    * 🔋 WAVE 936: EFECTOS PERMITIDOS POR VIBE
@@ -921,117 +605,14 @@ export class ContextualEffectSelector {
     return this.config.minCooldownMs
   }
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // 🔪 WAVE 1010 DEPRECATED: Hunt/Fuzzy evaluation
-  // ─────────────────────────────────────────────────────────────────────────
-  // Esta lógica es REDUNDANTE. DecisionMaker.determineDecisionType() ya evalúa:
-  // - HuntEngine worthiness
-  // - DNA Brain approval
-  // - DIVINE moments
-  // NO USAR EN CÓDIGO NUEVO - Solo existe para compatibilidad con select()
-  // ─────────────────────────────────────────────────────────────────────────
   
-  /**
-   * @deprecated WAVE 1010: Esta lógica ahora vive en DecisionMaker.determineDecisionType()
-   */
-  private evaluateHuntFuzzy(input: ContextualSelectorInput): { 
-    should: boolean
-    reason: string
-    confidence: number 
-  } {
-    const { huntDecision, fuzzyDecision, musicalContext } = input
-    
-    // Si el Hunt tiene worthiness alta con confianza alta, go
-    // 🔥 WAVE 811: UNIFIED BRAIN - Usa worthiness en vez de shouldStrike
-    const WORTHINESS_THRESHOLD = 0.65
-    if (huntDecision && huntDecision.worthiness >= WORTHINESS_THRESHOLD && huntDecision.confidence >= this.config.minHuntConfidence) {
-      return {
-        should: true,
-        reason: `Hunt WORTHY (worthiness=${huntDecision.worthiness.toFixed(2)} confidence=${huntDecision.confidence.toFixed(2)})`,
-        confidence: huntDecision.confidence,
-      }
-    }
-    
-    // Si el Fuzzy dice strike/force_strike, go
-    if (fuzzyDecision) {
-      if (fuzzyDecision.action === 'force_strike') {
-        return {
-          should: true,
-          reason: `Fuzzy FORCE_STRIKE: ${fuzzyDecision.reasoning}`,
-          confidence: fuzzyDecision.confidence,
-        }
-      }
-      if (fuzzyDecision.action === 'strike' && fuzzyDecision.confidence >= 0.7) {
-        return {
-          should: true,
-          reason: `Fuzzy STRIKE: ${fuzzyDecision.reasoning}`,
-          confidence: fuzzyDecision.confidence,
-        }
-      }
-      
-      // 🛡️ WAVE 936: FUZZY HOLD SUPREMACY
-      // Si el Fuzzy explícitamente dice HOLD con alta confianza, RESPETAR.
-      // Esto evita que el "Epic Z-Score bypass" dispare en momentos silenciosos.
-      if (fuzzyDecision.action === 'hold' && fuzzyDecision.confidence >= 0.7) {
-        // Pero solo si hay justificación de energía baja
-        if (fuzzyDecision.reasoning.includes('Silence') || 
-            fuzzyDecision.reasoning.includes('Suppress') ||
-            fuzzyDecision.reasoning.includes('silence')) {
-          // 🎯 WAVE 937.1: Silenciar spam de logs (solo log en cambios de estado)
-          // NO loggear cada frame → deja solo en DreamEngineIntegrator
-          return {
-            should: false,
-            reason: `Fuzzy HOLD (confidence=${fuzzyDecision.confidence.toFixed(2)}): ${fuzzyDecision.reasoning}`,
-            confidence: 0,
-          }
-        }
-      }
-    }
-    
-    // 🛡️ WAVE 936: ENERGY-AWARE EPIC BYPASS
-    // El bypass de Z-Score alto ya NO dispara en zonas de baja energía.
-    // Antes: Z >= 2.8 → siempre disparar
-    // Ahora: Z >= 2.8 + zona >= ambient → disparar (respeta consciencia energética)
-    if (musicalContext.zScore >= this.config.zScoreThresholds.epic) {
-      const energyContext = musicalContext.energyContext
-      const zone = energyContext?.zone ?? 'gentle'
-      
-      // Zonas donde el bypass NO debe funcionar
-      const suppressedZones: string[] = ['silence', 'valley']
-      
-      if (suppressedZones.includes(zone)) {
-        console.log(`[EffectSelector 🛡️] EPIC BYPASS BLOCKED: Z=${musicalContext.zScore.toFixed(2)}σ but zone=${zone}`)
-        return {
-          should: false,
-          reason: `Epic Z but low energy zone (Z=${musicalContext.zScore.toFixed(2)}σ, zone=${zone})`,
-          confidence: 0,
-        }
-      }
-      
-      // Zona ambient: permitir pero con baja confianza (efecto suave)
-      if (zone === 'ambient') {
-        return {
-          should: true,
-          reason: `Epic Z-Score in ambient (Z=${musicalContext.zScore.toFixed(2)}σ) - SOFT effect only`,
-          confidence: 0.5, // Baja confianza → efecto menos intenso
-        }
-      }
-      
-      // Zonas altas: bypass normal
-      return {
-        should: true,
-        reason: `Epic Z-Score bypass (Z=${musicalContext.zScore.toFixed(2)}σ)`,
-        confidence: 0.75,
-      }
-    }
-    
-    // No disparar
-    return {
-      should: false,
-      reason: `No trigger conditions met (Z=${musicalContext.zScore.toFixed(2)}σ)`,
-      confidence: 0,
-    }
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔪 WAVE 1010.5: THE PURGE - evaluateHuntFuzzy() REMOVED
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DELETED: evaluateHuntFuzzy() - Hunt/Fuzzy decision evaluation (118 lines)
+  // REASON: DecisionMaker.determineDecisionType() ahora evalúa Hunt/Fuzzy/DIVINE
+  // MIGRATED TO: DecisionMaker con lógica unificada de worthiness + DNA approval
+  // ═══════════════════════════════════════════════════════════════════════════
   
   // ─────────────────────────────────────────────────────────────────────────
   // PRIVATE: Effect selection logic
@@ -1591,34 +1172,15 @@ export class ContextualEffectSelector {
   // Estas funciones se mantienen para compatibilidad con select() legacy.
   // ─────────────────────────────────────────────────────────────────────────
   
-  /**
-   * @deprecated WAVE 1010: Usar DecisionMaker.generateDivineStrikeDecision() + getAvailableFromArsenal()
-   * 
-   * 🔪 WAVE 814.2: DIVINE DECISION - Vibe-Aware Impact
-   * Ahora usa getHighImpactEffect() para respetar la identidad del vibe
-   */
-  private divineDecision(musicalContext: MusicalContext): ContextualEffectSelection {
-    const impactEffect = this.getHighImpactEffect(musicalContext.vibeId)
-    return {
-      effectType: impactEffect, // ✅ Dinámico: industrial_strobe (Techno) o solar_flare (Latino)
-      intensity: 1.0,
-      reason: `🌩️ DIVINE MOMENT! [${musicalContext.vibeId}] effect=${impactEffect} Z=${musicalContext.zScore.toFixed(2)}σ - IMPACT MANDATORY`,
-      confidence: 0.99,
-      isOverride: true,
-      musicalContext,
-    }
-  }
   
-  private noEffectDecision(musicalContext: MusicalContext, reason: string): ContextualEffectSelection {
-    return {
-      effectType: null,
-      intensity: 0,
-      reason,
-      confidence: 0,
-      isOverride: false,
-      musicalContext,
-    }
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔪 WAVE 1010.5: THE PURGE - divineDecision() & noEffectDecision() REMOVED
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DELETED: divineDecision() - DIVINE moment decision builder (15 lines)
+  // DELETED: noEffectDecision() - No-effect decision builder (10 lines)
+  // REASON: Ambas funciones solo eran usadas por select() (deprecated)
+  // MIGRATED TO: DecisionMaker.generateDivineStrikeDecision() maneja DIVINE moments
+  // ═══════════════════════════════════════════════════════════════════════════
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

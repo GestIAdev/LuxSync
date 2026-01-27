@@ -424,7 +424,7 @@ export class DreamEngineIntegrator {
         vibe: context.pattern.vibe  // Vibe actual del contexto
       }))
       builder.withRecentEffects(effectHistoryEntries)
-      console.log(`[INTEGRATOR] 📝 Passed ${effectHistoryEntries.length} effects to DreamSimulator`)
+      console.log(`[INTEGRATOR] 📝 Passed ${effectHistoryEntries.length} recent effects (history context) to DreamSimulator`)
     }
     
     return builder.build()

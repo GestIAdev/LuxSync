@@ -747,10 +747,10 @@ export class EffectDreamSimulator {
     
     const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
     
-    console.log(`[DREAM_SIMULATOR] 🛡️ VIBE SHIELD: ${state.vibe} → ${vibeAllowedEffects.length} effects`)
+    console.log(`[DREAM_SIMULATOR] 🛡️ VIBE SHIELD: ${state.vibe} → ${vibeAllowedEffects.length} candidates available`)
     console.log(
       `[DREAM_SIMULATOR] 🧘 ZONE FILTER: ${energyZone} (E=${context.energy.toFixed(2)}, source=${zoneSource}) → ` +
-      `${zoneFilteredEffects.length} effects (A=${this.getZoneAggressionRange(energyZone)})`
+      `${zoneFilteredEffects.length} candidates (A=${this.getZoneAggressionRange(energyZone)})`
     )
     
     // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
@@ -1164,11 +1164,14 @@ export class EffectDreamSimulator {
       score: this.calculateScenarioScore(s, prediction)
     })).sort((a, b) => b.score - a.score)
     
-    // Log top 3 para debug
+    // Log top 3 para debug (WAVE 1009.4: formato clarificado)
     if (scored.length >= 2) {
-      const top3 = scored.slice(0, 3).map(s => 
-        `${s.scenario.effect.effect}(R=${s.scenario.projectedRelevance.toFixed(2)}×D=${s.scenario.diversityScore.toFixed(1)}→${s.score.toFixed(2)})`
-      ).join(' | ')
+      const top3 = scored.slice(0, 3).map(s => {
+        const raw = s.scenario.projectedRelevance
+        const div = s.scenario.diversityScore
+        const final = s.score
+        return `${s.scenario.effect.effect}(raw=${raw.toFixed(2)}, div=${div.toFixed(2)}, final=${final.toFixed(2)})`
+      }).join(' | ')
       console.log(`[DREAM_SIMULATOR] 🏆 TOP3: ${top3}`)
     }
     

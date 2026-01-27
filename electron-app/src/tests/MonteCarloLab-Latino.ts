@@ -28,33 +28,35 @@ interface EffectDNA {
 }
 
 const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
-  // WAVE 1005.15: GLITCH RESURRECTION - Moderación Radical + Blindaje Fronteras
+  // WAVE 1009.4: REGGAETON REALITY CHECK - FINAL VISUAL ITERATION
+  // Objetivo: HACER VISIBLES glitch_guaguanco, machete_spark, strobe_burst
+  
   // SILENCE (0-15%) - Target Center: 0.075
-  'amazon_mist': { aggression: 0.05, chaos: 0.25, organicity: 0.80 },
+  'amazon_mist': { aggression: 0.05, chaos: 0.15, organicity: 0.80 },
   'ghost_breath': { aggression: 0.13, chaos: 0.25, organicity: 0.80 },
   
   // VALLEY (15-30%) - Target Center: 0.225
   'cumbia_moon': { aggression: 0.21, chaos: 0.20, organicity: 0.80 },
-  'tidal_wave': { aggression: 0.28, chaos: 0.55, organicity: 0.70 },
+  'tidal_wave': { aggression: 0.28, chaos: 0.25, organicity: 0.65 },
   
   // AMBIENT (30-45%) - Target Center: 0.375
-  'corazon_latino': { aggression: 0.37, chaos: 0.35, organicity: 0.75 },
-  'strobe_burst': { aggression: 0.43, chaos: 0.40, organicity: 0.45 },
+  'corazon_latino': { aggression: 0.37, chaos: 0.25, organicity: 0.65 },
+  'strobe_burst': { aggression: 0.43, chaos: 0.25, organicity: 0.45 },
   
   // GENTLE (45-60%) - Target Center: 0.525
-  'clave_rhythm': { aggression: 0.48, chaos: 0.60, organicity: 0.60 },
-  'tropical_pulse': { aggression: 0.56, chaos: 0.45, organicity: 0.65 },
+  'clave_rhythm': { aggression: 0.48, chaos: 0.20, organicity: 0.70 },
+  'tropical_pulse': { aggression: 0.54, chaos: 0.25, organicity: 0.65 },
   
   // ACTIVE (60-75%) - Target Center: 0.675
-  'glitch_guaguanco': { aggression: 0.64, chaos: 0.60, organicity: 0.35 },
-  'machete_spark': { aggression: 0.70, chaos: 0.50, organicity: 0.30 },
+  'glitch_guaguanco': { aggression: 0.64, chaos: 0.30, organicity: 0.35 },
+  'machete_spark': { aggression: 0.70, chaos: 0.20, organicity: 0.30 },
   
   // INTENSE (75-90%) - Target Center: 0.825
-  'salsa_fire': { aggression: 0.81, chaos: 0.55, organicity: 0.40 },
-  'solar_flare': { aggression: 0.86, chaos: 0.30, organicity: 0.35 },
+  'salsa_fire': { aggression: 0.81, chaos: 0.30, organicity: 0.35 },
+  'solar_flare': { aggression: 0.86, chaos: 0.25, organicity: 0.45 },
   
   // PEAK (90-100%) - Target Center: 0.95
-  'latina_meltdown': { aggression: 0.97, chaos: 0.30, organicity: 0.20 },
+  'latina_meltdown': { aggression: 0.97, chaos: 0.20, organicity: 0.20 },
   'strobe_storm': { aggression: 0.93, chaos: 0.75, organicity: 0.15 },
 }
 
@@ -115,7 +117,8 @@ const ZONES: ZoneDefinition[] = [
 function deriveTargetDNA(energy: number): EffectDNA {
   return {
     aggression: energy,
-    chaos: 0.3 + energy * 0.4,      // 0.3-0.7 range
+    // REGGAETON REALITY CHECK: dembow es altamente ordenado → reducir rango de chaos
+    chaos: 0.15 + energy * 0.15,   // 0.15-0.30 range (low chaos)
     organicity: 0.8 - energy * 0.5,  // 0.8-0.3 range (más energía = más mecánico)
   }
 }

@@ -3,7 +3,60 @@
  * 🧬 EFFECT DNA - THE CONTEXTUAL GENOME
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * 🔥 WAVE 970: THE CONTEXTUAL DNA
+ * 🔥 WAVE 970: THE  'stro    '  // 💓 ZONA 3: AMBIENT (  // 💓 ZONA 3: AMBIENT (30-45% Energía)
+  'corazon_latino': {
+    aggression: 0.37,   // 🎯 WAVE 1005.11: 0.38→0.37 (ajuste fino)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (ACERCAR a target AMBIENT 0.23)
+    organicity: 0.65,   // 🔻 WAVE 1009.4: 0.75→0.65 (ACERCAR a target AMBIENT O≈0.53)
+  },
+  'strobe_burst': {
+    aggression: 0.43,   // 🎯 WAVE 1005.11: ajuste fino para Centrist - ambient entry
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (IGUALAR con corazon - COMPETIR en AMBIENT)
+    organicity: 0.45,   // 🆙 WAVE 1009.4: 0.40→0.45 (ACERCAR a target O≈0.53 - SER MÁS VISIBLE)
+  },//   // ⚔️ ZONA 5: ACTIVE (60-75% Energía)
+  'glitch_guaguanco': {
+    aggression: 0.64,   // 🎯 WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
+    chaos: 0.30,        // 🔻 WAVE 1009.4: 0.55→0.30 (BAJAR DRÁSTICAMENTE - HACERLO VISIBLE)
+    organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
+  },
+  'machete_spark': {
+    aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
+    chaos: 0.20,        // 🔻 WAVE 1009.4: 0.25→0.20 (ULTRA ORDENADO - DOMINAR ACTIVE)
+    organicity: 0.30,   // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
+  },ACTIVE (60-75% Energía)
+  'glitch_guaguanco': {
+    aggression: 0.64,   // 🎯 WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
+    chaos: 0.55,        // 🔻 WAVE 1009.4: 0.60→0.55 (BAJAR un poco para competir mejor en ACTIVE)
+    organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
+  },
+  'corazon_latino': {
+    aggression: 0.37,   // 🎯 WAVE 1005.11: 0.38→0.37 (ajuste fino)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (ACERCAR a target AMBIENT 0.23)
+    organicity: 0.65,   // 🔻 WAVE 1009.4: 0.75→0.65 (ACERCAR a target AMBIENT O≈0.53)
+  },
+  'strobe_burst': {
+    aggression: 0.43,   // 🎯 WAVE 1005.11: ajuste fino para Centrist - ambient entry
+    chaos: 0.30,        // 🔻 WAVE 1009.4: 0.35→0.30 (BAJAR para aparecer en AMBIENT)
+    organicity: 0.40,   // Semi-orgánico
+  },ino': {
+    aggression: 0.37,   // 🎯 WAVE 1005.11: 0.38→0.37 (ajuste fino)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (ACERCAR a target AMBIENT 0.23 - SER MÁS ATRACTIVO)
+    organicity: 0.65,   // 🔻 WAVE 1009.4: 0.75→0.65 (ACERCAR a target AMBIENT O≈0.53)
+  },be_burst'  'tropical_pulse': {
+    aggression: 0.54,   // 🔻 WAVE 1009.4: 0.58→0.54 (BAJAR para quedar en GENTLE - no invadir ACTIVE)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.45→0.25 (DEMBOW = PURO ORDEN - kick-clap-kick-clap)
+    organicity: 0.65,   // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
+  },    aggression: 0.43,   // 🎯 WAVE 1005.11: ajuste fino para Centrist - ambient entry
+    chaos: 0.40,        // 🆙 WAVE 1009.4: 0.35→0.40 (SUBIR para alejarlo de GENTLE - no invadir)
+    organicity: 0.40,   // Semi-orgánico
+  },rst'  'tropical_pulse': {
+    aggression: 0.56,   // � WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.45→0.25 (DEMBOW = ORDEN - kick-clap-kick-clap)
+    organicity: 0.65,   // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
+  },    aggression: 0.43,   // � WAVE 1005.11: ajuste fino para Centrist - ambient entry
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (BURSTS RÍTMICOS - siguen dembow)
+    organicity: 0.40,   // Semi-orgánico
+  },EXTUAL DNA
  * 
  * FILOSOFÍA:
  * Selene no busca "belleza" (concepto humano subjetivo).
@@ -202,7 +255,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // 🌿 ZONA 1: SILENCE (0-15% Energía)
   'amazon_mist': {
     aggression: 0.05,   // 🌿 WAVE 1005.11: 0.06→0.05 (Rescate - bajar un pelo)
-    chaos: 0.25,        // 🆙 WAVE 1005.11: 0.15→0.25 (moderado)
+    chaos: 0.15,        // 🔻 WAVE 1009.4: 0.25→0.15 (ULTRA ORDENADO - respiración constante)
     organicity: 0.80,   // 🔻 WAVE 1005.11: 0.90→0.80 (igualar con ghost - pelea solo por A)
   },
   'ghost_breath': {
@@ -219,8 +272,8 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   'tidal_wave': {
     aggression: 0.28,   // 🌊 WAVE 1005.14: 0.27→0.28 (borde de salida - dist 0.055 del centro)
-    chaos: 0.55,        // 🔻 WAVE 1005.8: 0.60→0.55 (ajuste fino)
-    organicity: 0.70,   // Orgánico pero moderado
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.30→0.25 (MÁS ORDENADO - quedar en VALLEY, no invadir AMBIENT)
+    organicity: 0.65,   // 🔻 WAVE 1009.4: 0.70→0.65 (alejarlo de AMBIENT target O≈0.53)
   },
   
   // 💓 ZONA 3: AMBIENT (30-45% Energía)
@@ -238,8 +291,8 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // 🥁 ZONA 4: GENTLE (45-60% Energía)
   'clave_rhythm': {
     aggression: 0.48,   // 🥁 WAVE 1005.11: 0.54→0.48 (entrada de Gentle - rescatar Tropical)
-    chaos: 0.60,        // 🔻 WAVE 1005.8: 0.65→0.60 (dejar de robar tanto)
-    organicity: 0.60,   // 🆙 WAVE 1005.8: 0.55→0.60 (alejarlo del centro)
+    chaos: 0.20,        // 🔻 WAVE 1009.4: 0.60→0.20 (CLAVE = PURO ORDEN - patrón matemático 3-2)
+    organicity: 0.70,   // 🆙 WAVE 1009.4: 0.60→0.70 (SUBIR para alejarlo de AMBIENT O≈0.53)
   },
   'tropical_pulse': {
     aggression: 0.56,   // � WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
@@ -255,26 +308,26 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   },
   'machete_spark': {
     aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
-    chaos: 0.50,        // 🆙 WAVE 1005.8: 0.30→0.50 (moderado)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.50→0.25 (CHISPAS RÍTMICAS - sparkles en el kick)
     organicity: 0.30,   // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
   },
   
   // 🔥 ZONA 6: INTENSE (75-90% Energía)
   'salsa_fire': {
     aggression: 0.81,   // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
-    chaos: 0.55,        // Llamas vivas
-    organicity: 0.40,   // 🔻 WAVE 1005.13: 0.60→0.40 (DES-HUMANIZACIÓN - quema, no baila)
+    chaos: 0.30,        // 🔻 WAVE 1009.4: 0.55→0.30 (FUEGO RÍTMICO - llamas siguen el kick)
+    organicity: 0.35,   // 🔻 WAVE 1009.4: 0.40→0.35 (hacerlo un poco menos 'orgánico' para dar ventaja a solar_flare)
   },
   'solar_flare': {
     aggression: 0.86,   // ☀️ WAVE 1005.13: 0.87→0.86 (distanciarse de Peak)
-    chaos: 0.30,        // 🔻 WAVE 1005.11: 0.20→0.30 (moderado)
-    organicity: 0.35,   // 🔻 WAVE 1005.13: 0.45→0.35 (sintético/brillante, no orgánico)
+    chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (BAJAR para quedar en INTENSE - no invadir ACTIVE/PEAK)
+    organicity: 0.45,   // 🆙 WAVE 1009.4: 0.40→0.45 (SUBIR para alejarlo de PEAK O≈0.18)
   },
   
   // 💥 ZONA 7: PEAK (90-100% Energía)
   'latina_meltdown': {
     aggression: 0.97,   // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
-    chaos: 0.30,        // Ordenado - kick sync
+    chaos: 0.20,        // 🔻 WAVE 1009.4: 0.30→0.20 (ULTRA ORDENADO - derretimiento en el kick)
     organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
   },
   'strobe_storm': {

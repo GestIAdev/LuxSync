@@ -105,17 +105,29 @@ const EFFECT_BEAUTY_WEIGHTS = {
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': { base: 0.50, energyMultiplier: 0.4, technoBonus: 0.05 }, // 🌈 Traveling colors - ambient beauty
     'core_meltdown': { base: 0.95, energyMultiplier: 1.5, technoBonus: 0.25 }, // ☢️ LA BESTIA - maximum beauty
-    // 🌴 LATINO-ORGANIC (10 effects)
-    'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
-    'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
-    'strobe_burst': { base: 0.78, energyMultiplier: 1.22, latinoBonus: 0.16 },
-    'tidal_wave': { base: 0.72, energyMultiplier: 1.05, latinoBonus: 0.12 },
+    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
+    // WAVE 1009.1: Añadidos amazon_mist, glitch_guaguanco, machete_spark, latina_meltdown
+    // 👻 ZONA 1: SILENCE (0-15%)
     'ghost_breath': { base: 0.68, energyMultiplier: 0.95, latinoBonus: 0.10 },
-    'tropical_pulse': { base: 0.82, energyMultiplier: 1.25, latinoBonus: 0.17 },
-    'salsa_fire': { base: 0.76, energyMultiplier: 1.15, latinoBonus: 0.14 },
+    'amazon_mist': { base: 0.62, energyMultiplier: 0.85, latinoBonus: 0.08 }, // 🆕 Neblina amazónica
+    // 🌙 ZONA 2: VALLEY (15-30%)
     'cumbia_moon': { base: 0.70, energyMultiplier: 1.00, latinoBonus: 0.11 },
+    'tidal_wave': { base: 0.72, energyMultiplier: 1.05, latinoBonus: 0.12 },
+    // 💓 ZONA 3: AMBIENT (30-45%)
+    'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 },
+    'strobe_burst': { base: 0.78, energyMultiplier: 1.22, latinoBonus: 0.16 },
+    // 🥁 ZONA 4: GENTLE (45-60%)
     'clave_rhythm': { base: 0.74, energyMultiplier: 1.10, latinoBonus: 0.13 },
-    'corazon_latino': { base: 0.90, energyMultiplier: 1.4, latinoBonus: 0.25 }
+    'tropical_pulse': { base: 0.82, energyMultiplier: 1.25, latinoBonus: 0.17 },
+    // ⚔️ ZONA 5: ACTIVE (60-75%)
+    'glitch_guaguanco': { base: 0.75, energyMultiplier: 1.15, latinoBonus: 0.14 }, // 🆕 Guaguancó glitcheado
+    'machete_spark': { base: 0.77, energyMultiplier: 1.18, latinoBonus: 0.15 }, // 🆕 Chispa de machete
+    // 🔥 ZONA 6: INTENSE (75-90%)
+    'salsa_fire': { base: 0.76, energyMultiplier: 1.15, latinoBonus: 0.14 },
+    'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
+    // 💥 ZONA 7: PEAK (90-100%)
+    'latina_meltdown': { base: 0.92, energyMultiplier: 1.45, latinoBonus: 0.24 }, // 🆕 LA BESTIA LATINA
+    'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 }
 };
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_GPU_COST = {
@@ -140,17 +152,29 @@ const EFFECT_GPU_COST = {
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': 0.05, // 🌈 Muy bajo - solo colores viajando
     'core_meltdown': 0.40, // ☢️ ALTO - LA BESTIA consume GPU
-    // 🌴 LATINO-ORGANIC (Media-Alta intensidad)
-    'solar_flare': 0.22,
-    'strobe_storm': 0.32,
-    'strobe_burst': 0.28,
-    'tidal_wave': 0.10,
+    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
+    // WAVE 1009.1: Añadidos nuevos efectos
+    // 👻 ZONA 1: SILENCE
     'ghost_breath': 0.12,
-    'tropical_pulse': 0.20,
-    'salsa_fire': 0.18,
+    'amazon_mist': 0.08, // 🆕 Muy bajo - neblina suave
+    // 🌙 ZONA 2: VALLEY
     'cumbia_moon': 0.08,
+    'tidal_wave': 0.10,
+    // 💓 ZONA 3: AMBIENT
+    'corazon_latino': 0.24,
+    'strobe_burst': 0.28,
+    // 🥁 ZONA 4: GENTLE
     'clave_rhythm': 0.15,
-    'corazon_latino': 0.24
+    'tropical_pulse': 0.20,
+    // ⚔️ ZONA 5: ACTIVE
+    'glitch_guaguanco': 0.22, // 🆕 Medio - glitches + groove
+    'machete_spark': 0.25, // 🆕 Medio-alto - chispas
+    // 🔥 ZONA 6: INTENSE
+    'salsa_fire': 0.18,
+    'solar_flare': 0.22,
+    // 💥 ZONA 7: PEAK
+    'latina_meltdown': 0.38, // 🆕 ALTO - LA BESTIA LATINA
+    'strobe_storm': 0.32
 };
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
 const EFFECT_FATIGUE_IMPACT = {
@@ -175,17 +199,29 @@ const EFFECT_FATIGUE_IMPACT = {
     // 🔮 WAVE 988: THE FINAL ARSENAL
     'fiber_optics': -0.06, // 🌈 Reduce fatiga - efecto hipnótico zen
     'core_meltdown': 0.15, // ☢️ ALTA fatiga - LA BESTIA agota
-    // 🌴 LATINO-ORGANIC (Mixto: strobes aumentan, suaves reducen)
-    'solar_flare': 0.06,
-    'strobe_storm': 0.09,
-    'strobe_burst': 0.07,
-    'tidal_wave': -0.01, // Suave, reduce fatiga
+    // 🌴 LATINO-ORGANIC (14 effects - THE LATINO LADDER)
+    // WAVE 1009.1: Añadidos nuevos efectos
+    // 👻 ZONA 1: SILENCE (REDUCE FATIGA - muy relajante)
     'ghost_breath': -0.02, // Breathing, reduce fatiga
-    'tropical_pulse': 0.04,
-    'salsa_fire': 0.03,
+    'amazon_mist': -0.04, // 🆕 Neblina zen, reduce fatiga
+    // 🌙 ZONA 2: VALLEY (REDUCE FATIGA - suaves)
     'cumbia_moon': -0.03, // Moon glow, reduce fatiga
+    'tidal_wave': -0.01, // Suave, reduce fatiga
+    // 💓 ZONA 3: AMBIENT (NEUTRAL)
+    'corazon_latino': 0.05,
+    'strobe_burst': 0.07,
+    // 🥁 ZONA 4: GENTLE (LEVE AUMENTO)
     'clave_rhythm': 0.02,
-    'corazon_latino': 0.05
+    'tropical_pulse': 0.04,
+    // ⚔️ ZONA 5: ACTIVE (MODERADO AUMENTO)
+    'glitch_guaguanco': 0.05, // 🆕 Moderada - groove frenético
+    'machete_spark': 0.06, // 🆕 Moderada - chispas rítmicas
+    // 🔥 ZONA 6: INTENSE (AUMENTO)
+    'salsa_fire': 0.03,
+    'solar_flare': 0.06,
+    // 💥 ZONA 7: PEAK (ALTA FATIGA)
+    'latina_meltdown': 0.12, // 🆕 ALTA - LA BESTIA LATINA agota
+    'strobe_storm': 0.09
 };
 // ═══════════════════════════════════════════════════════════════
 // EFFECT DREAM SIMULATOR
@@ -370,28 +406,49 @@ export class EffectDreamSimulator {
                 'void_mist', 'fiber_optics',
                 'deep_breath', 'sonar_ping'
             ],
-            // 🎺 FIESTA LATINA: El Arsenal Tropical
+            // 🎺 FIESTA LATINA: El Arsenal Tropical Completo (14 efectos)
+            // WAVE 1009.1: Añadidos los 5 efectos faltantes de THE LATINO LADDER
             'fiesta-latina': [
-                'solar_flare', // Explosión solar
-                'strobe_burst', // Destello rítmico
-                'tidal_wave', // Ola oceánica
-                'ghost_breath', // Respiro suave
-                'tropical_pulse', // Pulso de conga
-                'salsa_fire', // Fuego salsero
-                'cumbia_moon', // Luna cumbianchera
-                'clave_rhythm', // Ritmo de clave
-                'corazon_latino', // El alma del arquitecto
+                // 👻 ZONA 1: SILENCE (0-15%)
+                'ghost_breath', // Respiro suave (A=0.12)
+                'amazon_mist', // Neblina amazónica (A=0.10)
+                // 🌙 ZONA 2: VALLEY (15-30%)
+                'cumbia_moon', // Luna cumbianchera (A=0.25)
+                'tidal_wave', // Ola oceánica (A=0.28)
+                // 💓 ZONA 3: AMBIENT (30-45%)
+                'corazon_latino', // El alma del arquitecto (A=0.38)
+                'strobe_burst', // Destello rítmico (A=0.42)
+                // 🥁 ZONA 4: GENTLE (45-60%)
+                'clave_rhythm', // Ritmo de clave (A=0.52)
+                'tropical_pulse', // Pulso de conga (A=0.55)
+                // ⚔️ ZONA 5: ACTIVE (60-75%)
+                'glitch_guaguanco', // 🆕 Guaguancó glitcheado (A=0.68)
+                'machete_spark', // 🆕 Chispa de machete (A=0.72)
+                // 🔥 ZONA 6: INTENSE (75-90%)
+                'salsa_fire', // Fuego salsero (A=0.82)
+                'solar_flare', // Explosión solar (A=0.85)
+                // 💥 ZONA 7: PEAK (90-100%)
+                'latina_meltdown', // 🆕 Meltdown latino (A=0.92)
+                'strobe_storm', // 🆕 Tormenta estroboscópica (A=0.95)
             ],
-            // Aliases para latino
+            // Aliases para latino (FULL ARSENAL)
             'latino': [
-                'solar_flare', 'strobe_burst', 'tidal_wave', 'ghost_breath',
-                'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
-                'corazon_latino'
+                'ghost_breath', 'amazon_mist',
+                'cumbia_moon', 'tidal_wave',
+                'corazon_latino', 'strobe_burst',
+                'clave_rhythm', 'tropical_pulse',
+                'glitch_guaguanco', 'machete_spark',
+                'salsa_fire', 'solar_flare',
+                'latina_meltdown', 'strobe_storm'
             ],
             'tropical': [
-                'solar_flare', 'strobe_burst', 'tidal_wave', 'ghost_breath',
-                'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
-                'corazon_latino'
+                'ghost_breath', 'amazon_mist',
+                'cumbia_moon', 'tidal_wave',
+                'corazon_latino', 'strobe_burst',
+                'clave_rhythm', 'tropical_pulse',
+                'glitch_guaguanco', 'machete_spark',
+                'salsa_fire', 'solar_flare',
+                'latina_meltdown', 'strobe_storm'
             ],
         };
         // Buscar match exacto

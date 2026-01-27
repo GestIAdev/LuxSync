@@ -1,21 +1,9 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🧬 EFFECT DNA - THE CONTEXTUAL GENOME
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * 🔥   's  'strobe_burst': {
-    aggression: 0.43,   // 💥 WA  'glitch_guaguanco': {
-    aggression: 0.64,   // 🦠 WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
-    chaos: 0.60,        // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
-    organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
-  },05.11: 0.42→0.43 (ajuste fino)
-    chaos: 0.40,        // Ordenado
-    organicity: 0.45,   // 🆙 WAVE 1005.11: 0.30→0.45 (CRÍTICO - casi neutro, magnético)
-  },_burst': {
-    aggression: 0.42,   // 💥 WAVE 1005.9: 0.41→0.42 (FORTIFICAR - alejarlo del peligro)
-    chaos: 0.40,        // Ordenado
-    organicity: 0.30,   // 🆙 WAVE 1005.8: 0.20→0.30 (menos extremo)
-  },970: THE CONTEXTUAL DNA
+ * 🔥 WAVE 970: THE CONTEXTUAL DNA
  * 
  * FILOSOFÍA:
  * Selene no busca "belleza" (concepto humano subjetivo).
@@ -23,15 +11,7 @@
  * 
  * Un IndustrialStrobe NO ES más "bello" que un VoidMist.
  * Un IndustrialStrobe ES más ADECUADO para un DROP que un VoidMist.
-  reset(): void {
-    this.smoothedTarget = {
-      aggression: 0.5,
-      chaos: 0.5,
-      organicity: 0.5,
-      confidence: 0.5,
-    }
-    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-    // console.log('[DNA_ANALYZER] 🔄 State reset to neutral')idMist ES más ADECUADO para un BREAKDOWN que un IndustrialStrobe.
+ * Un VoidMist ES más ADECUADO para un BREAKDOWN que un IndustrialStrobe.
  * 
  * TRES GENES FUNDAMENTALES:
  * - Aggression (A): ¿Cuánto "golpea"? (0=suave, 1=brutal)
@@ -208,93 +188,94 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.20,        // Ordenado - progresión cíclica
     organicity: 0.00,   // 100% sintético tecnológico
   },
-  // 🔧 WAVE 1003.11: core_meltdown 1.00/1.00 → 0.95/0.90 (extremo pero alcanzable)
   'core_meltdown': {
-    aggression: 0.90,   // ☢️ 1.00→0.95 - LA BESTIA pero no inalcanzable
-    chaos: 0.80,        // 1.00→0.90 - Muy impredecible pero no vértice extremo
+    aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
+    chaos: 1.00,        // MÁXIMO - Impredecible strobe
     organicity: 0.00,   // 100% máquina apocalíptica
   },
   
   // ═══════════════════════════════════════════════════════════════
-  // 🌴 WAVE 1004.4: THE LATINO LADDER - Fiesta Latina Recalibrado
+  // 🌴 LATINO-ORGANIC: La Fiesta
   // ═══════════════════════════════════════════════════════════════
   'solar_flare': {
-    aggression: 0.86,   // ☀️ WAVE 1005.13: 0.87→0.86 (distanciarse de Peak)
-    chaos: 0.30,        // 🔻 WAVE 1005.11: 0.20→0.30 (moderado)
-    organicity: 0.35,   // 🔻 WAVE 1005.13: 0.45→0.35 (sintético/brillante, no orgánico)
+    aggression: 0.75,   // ☀️ Explosión pero festiva
+    chaos: 0.50,        // Moderado
+    organicity: 0.60,   // Fuego = orgánico
   },
   'strobe_storm': {
-    aggression: 0.93,   // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
-    chaos: 0.75,        // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
-    organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
+    aggression: 0.85,   // ⚡ Tormenta eléctrica
+    chaos: 0.65,        // Bastante caótico
+    organicity: 0.30,   // Eléctrico, semi-mecánico
   },
   'strobe_burst': {
-    aggression: 0.43,   // 🎯 WAVE 1005.11: ajuste fino para Centrist - ambient entry
-    chaos: 0.35,        // Ordenado, más suave
-    organicity: 0.40,   // Semi-orgánico
+    aggression: 0.70,   // 💥 Ráfagas rítmicas
+    chaos: 0.40,        // Ordenado (sigue el ritmo)
+    organicity: 0.35,   // Semi-mecánico
   },
   'tidal_wave': {
-    aggression: 0.28,   // 🌊 WAVE 1005.14: 0.27→0.28 (borde de salida - dist 0.055 del centro)
-    chaos: 0.55,        // 🔻 WAVE 1005.8: 0.60→0.55 (ajuste fino)
-    organicity: 0.70,   // Orgánico pero moderado
+    aggression: 0.30,   // 🌊 Suave como ola
+    chaos: 0.35,        // Fluido pero predecible
+    organicity: 0.75,   // Muy orgánico (agua)
   },
   'ghost_breath': {
-    aggression: 0.13,   // 👻 WAVE 1005.11: 0.11→0.13 (darle aire a amazon)
-    chaos: 0.25,        // Más variación que amazon
-    organicity: 0.80,   // 🎯 WAVE 1005.11: Igualado con amazon - pelea solo por A
+    aggression: 0.10,   // 👻 Susurro fantasmal
+    chaos: 0.25,        // Muy suave
+    organicity: 0.90,   // Máxima organicidad
   },
   'tropical_pulse': {
-    aggression: 0.56,   // 🌴 WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
-    chaos: 0.45,        // 🆙 WAVE 1005.8: 0.40→0.45 (balance)
-    organicity: 0.65,   // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
+    aggression: 0.60,   // 🌴 Percusivo pero alegre
+    chaos: 0.40,        // Rítmico = ordenado
+    organicity: 0.70,   // Muy festivo/humano
   },
   'salsa_fire': {
-    aggression: 0.81,   // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
-    chaos: 0.55,        // Llamas vivas
-    organicity: 0.40,   // 🔻 WAVE 1005.13: 0.60→0.40 (DES-HUMANIZACIÓN - quema, no baila)
+    aggression: 0.65,   // 🔥 Fuego de salsa
+    chaos: 0.45,        // Moderado
+    organicity: 0.65,   // Pasional/orgánico
   },
   'cumbia_moon': {
-    aggression: 0.21,   // 🌙 WAVE 1005.14: 0.18→0.21 (cerca del centro 0.225 - dist 0.015)
-    chaos: 0.20,        // MUY ordenado
-    organicity: 0.80,   // 🔻 WAVE 1005.8: 0.85→0.80 (alcanzable)
+    aggression: 0.15,   // 🌙 Suave como la luna
+    chaos: 0.20,        // Muy ordenado
+    organicity: 0.80,   // Romántico/orgánico
   },
   'clave_rhythm': {
-    aggression: 0.48,   // 🥁 WAVE 1005.11: 0.54→0.48 (entrada de Gentle - rescatar Tropical)
-    chaos: 0.60,        // 🔻 WAVE 1005.8: 0.65→0.60 (dejar de robar tanto)
-    organicity: 0.60,   // 🆙 WAVE 1005.8: 0.55→0.60 (alejarlo del centro)
+    aggression: 0.50,   // 🥁 Percusivo moderado
+    chaos: 0.35,        // Rítmico 3-2
+    organicity: 0.70,   // Humano/orgánico
   },
   'corazon_latino': {
-    aggression: 0.37,   // 💃 WAVE 1005.11: 0.38→0.37 (ajuste fino)
-    chaos: 0.35,        // 🆙 WAVE 1005.11: 0.30→0.35 (moderado)
-    organicity: 0.75,   // 🔻 WAVE 1005.11: 0.85→0.75 (moderar - menos extremo)
+    aggression: 0.50,   // 💃 Pasional pero no violento
+    chaos: 0.35,        // Rítmico
+    organicity: 0.90,   // MÁXIMA - latido del corazón
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔥 WAVE 1004.3: DNA EXTREMOS - LA BESTIA Y EL VIRUS
+  // ═══════════════════════════════════════════════════════════════
   
-  // ═══════════════════════════════════════════════════════════════
-  // 🔥 WAVE 1004.3: DNA EXTREMOS - Fiesta Latina
-  // ═══════════════════════════════════════════════════════════════
   'latina_meltdown': {
-    aggression: 0.97,   // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
+    aggression: 0.97,   // 🔥 NUCLEAR SALSA - almost peak
     chaos: 0.30,        // Ordenado - kick sync
-    organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
+    organicity: 0.20,   // Mecánico - máquina de devastación
   },
   'glitch_guaguanco': {
-    aggression: 0.66,   // 🦠 WAVE 1005.8: 0.65→0.66 (centrado en 0.675)
-    chaos: 0.85,        // Alto caos
-    organicity: 0.30,   // 🆙 WAVE 1005.11: 0.20→0.30 (menos alienígena)
+    aggression: 0.66,   // 🦠 El virus digital
+    chaos: 0.85,        // Alto caos - glitchy
+    organicity: 0.30,   // Alienígena digital
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🌿 WAVE 1004.4: DNA RESCATADOS - LOS EXTREMOS SILENCIOSOS
+  // ═══════════════════════════════════════════════════════════════
   
-  // ═══════════════════════════════════════════════════════════════
-  // 🌿 WAVE 1004.4: THE LATINO LADDER - Nuevos Efectos
-  // ═══════════════════════════════════════════════════════════════
   'amazon_mist': {
-    aggression: 0.05,   // 🌿 WAVE 1005.11: 0.06→0.05 (Rescate - bajar un pelo)
-    chaos: 0.25,        // 🆙 WAVE 1005.11: 0.15→0.25 (moderado)
-    organicity: 0.80,   // 🔻 WAVE 1005.11: 0.90→0.80 (igualar con ghost - pelea solo por A)
+    aggression: 0.05,   // 🌿 La selva respira - casi silencio
+    chaos: 0.25,        // Ordenado natural
+    organicity: 0.80,   // Muy orgánico - naturaleza pura
   },
   'machete_spark': {
-    aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
-    chaos: 0.50,        // 🆙 WAVE 1005.8: 0.30→0.50 (moderado)
-    organicity: 0.30,   // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
+    aggression: 0.70,   // ⚔️ Cortes de acero brillante
+    chaos: 0.50,        // Moderado
+    organicity: 0.30,   // Metálico
   },
 }
 
@@ -344,47 +325,11 @@ const SECTION_ORGANICITY: Record<SectionType, number> = {
 
 /**
  * Efectos "comodín" por categoría - Usados cuando hay Middle Void
- * 
- * 🚨 WAVE 1004.4: THE LATINO LADDER - 7 zonas energéticas completas
  */
 export const WILDCARD_EFFECTS: Record<string, string> = {
-  // ═══════════════════════════════════════════════════════════════
-  // 🎛️ TECHNO WILDCARDS
-  // ═══════════════════════════════════════════════════════════════
   'techno-industrial': 'cyber_dualism',   // Moderado: A=0.55, C=0.50, O=0.45
   'techno-atmospheric': 'digital_rain',   // Moderado: A=0.20, C=0.65, O=0.40
-  
-  // ═══════════════════════════════════════════════════════════════
-  // 🎉 WAVE 1004.4: THE LATINO LADDER - 7 ZONAS ENERGÉTICAS
-  // ═══════════════════════════════════════════════════════════════
-  
-  // ZONA 1: SILENCE (0-15%) - A: 0.00-0.15
-  'latino-silence': 'amazon_mist',        // A=0.05 - La selva respira
-  'latino-ghost': 'ghost_breath',         // A=0.08 - Susurro fantasmal
-  
-  // ZONA 2: VALLEY (15-30%) - A: 0.15-0.30
-  'latino-valley': 'cumbia_moon',         // A=0.20 - Luna romántica
-  'latino-wave': 'tidal_wave',            // A=0.25 - Ola suave
-  
-  // ZONA 3: AMBIENT (30-45%) - A: 0.30-0.45
-  'latino-ambient': 'corazon_latino',     // A=0.38 - Latido de fondo
-  'latino-camera': 'strobe_burst',        // A=0.40 - Destellos de cámara
-  
-  // ZONA 4: GENTLE (45-60%) - A: 0.45-0.60
-  'latino-gentle': 'clave_rhythm',        // A=0.52 - Patrón 3-2
-  'latino-tropical': 'tropical_pulse',    // A=0.55 - Percusión tropical
-  
-  // ZONA 5: ACTIVE (60-75%) - A: 0.60-0.75
-  'latino-active': 'glitch_guaguanco',    // A=0.68 - Virus digital
-  'latino-machete': 'machete_spark',      // A=0.70 - Cortes de acero
-  
-  // ZONA 6: INTENSE (75-90%) - A: 0.75-0.90
-  'latino-fire': 'salsa_fire',            // A=0.82 - FUEGO QUE QUEMA
-  'latino-solar': 'solar_flare',          // A=0.85 - Explosión solar
-  
-  // ZONA 7: PEAK (90-100%) - A: 0.90-1.00
-  'latino-peak': 'latina_meltdown',       // A=0.95 - NUCLEAR SALSA
-  'latino-storm': 'strobe_storm',         // A=0.95 - Tormenta total
+  'latino-organic': 'clave_rhythm',       // Moderado: A=0.50, C=0.35, O=0.70
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -401,7 +346,6 @@ export const WILDCARD_EFFECTS: Record<string, string> = {
  * - EMA Smoothing para prevenir Parkinson Digital (WAVE 970.1)
  * - Snap Conditions para drops/breakdowns (respuesta inmediata)
  * - Middle Void Detection con wildcard fallback
- * - 🚨 WAVE 1004.2: Diversity Factor (Shadowban) para evitar repetición
  */
 export class DNAAnalyzer {
   // ═══════════════════════════════════════════════════════════════════════
@@ -422,50 +366,28 @@ export class DNAAnalyzer {
   /** Threshold para detectar "Middle Void" */
   private readonly MIDDLE_VOID_THRESHOLD = 0.60
   
-  // ═══════════════════════════════════════════════════════════════════════
-  // 🚀 WAVE 1005.10: RELATIVITY UPDATE - Weighted Euclidean Distance
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  /** Peso para Aggression (la energía es Ley - 2x prioridad) */
-  private readonly WEIGHT_AGGRESSION = 2.0
-  
-  /** Peso para Chaos (estilo secundario) */
-  private readonly WEIGHT_CHAOS = 1.0
-  
-  /** Peso para Organicity (estilo secundario) */
-  private readonly WEIGHT_ORGANICITY = 1.0
-  
-  /** 
-   * Máxima distancia posible en cubo PONDERADO:
-   * √[(1.0 × 2.0)² + (1.0 × 1.0)² + (1.0 × 1.0)²] = √(4 + 1 + 1) = √6 ≈ 2.45
-   */
-  private readonly MAX_DISTANCE = Math.sqrt(6)
+  /** Máxima distancia posible en cubo unitario 3D = √3 ≈ 1.732 */
+  private readonly MAX_DISTANCE = Math.sqrt(3)
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🚨 WAVE 1004.2: DIVERSITY FACTOR (SHADOWBAN)
+  // 🎲 WAVE 1004.2: DIVERSITY FACTOR - Anti-repetición
   // ═══════════════════════════════════════════════════════════════════════
   
-  /** Contador de uso por efecto en la ventana de tiempo */
+  /** Contador de uso por efecto en la ventana actual */
   private effectUsageCount: Map<string, number> = new Map()
   
   /** Timestamp del último reset del contador */
   private lastUsageReset: number = Date.now()
   
-  /** Ventana de tiempo para el contador de uso (10 segundos) */
+  /** Ventana de tiempo para el contador (10 segundos) */
   private readonly USAGE_WINDOW_MS = 10000
   
-  /** 
-   * Diversity Factor por número de usos:
-   * - 0 usos: 1.0x (sin penalty)
-   * - 1 uso:  0.7x (penalizado)
-   * - 2 usos: 0.4x (fuertemente penalizado)
-   * - 3+ usos: 0.1x (SHADOWBAN - casi imposible de seleccionar)
-   */
+  /** Factores de diversidad: [1x, 0.7x, 0.4x, 0.1x] por uso repetido */
   private readonly DIVERSITY_FACTORS = [1.0, 0.7, 0.4, 0.1]
   
   constructor() {
-    // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-    // console.log('[DNA_ANALYZER] 🧬 Initialized - Contextual DNA System Active')
+    // 🔧 WAVE 1003.15: Silenciado para reducir spam de logs
+    // console.log('[DNA_ANALYZER] 🧬 Initialized')
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -510,15 +432,13 @@ export class DNAAnalyzer {
       // Drop detectado → SNAP a alta agresión
       this.smoothedTarget.aggression = Math.max(this.smoothedTarget.aggression, 0.80)
       this.smoothedTarget.organicity = Math.min(this.smoothedTarget.organicity, 0.25)
-      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-      // console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      console.log(`[DNA_ANALYZER] 🔴 DROP SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
     }
     if (context.section.type === 'breakdown' && context.section.confidence > 0.7) {
       // Breakdown detectado → SNAP a baja agresión, alta organicidad
       this.smoothedTarget.aggression = Math.min(this.smoothedTarget.aggression, 0.25)
       this.smoothedTarget.organicity = Math.max(this.smoothedTarget.organicity, 0.75)
-      // 🔧 WAVE 1003.15: Comentado para reducir spam de logs
-      // console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
+      console.log(`[DNA_ANALYZER] 🌊 BREAKDOWN SNAP: A=${this.smoothedTarget.aggression.toFixed(2)}, O=${this.smoothedTarget.organicity.toFixed(2)}`)
     }
     
     return { ...this.smoothedTarget }
@@ -527,14 +447,11 @@ export class DNAAnalyzer {
   /**
    * Calcula la relevancia de un efecto dado el target
    * 
-   * 🚀 WAVE 1005.10: RELATIVITY UPDATE
-   * Usa distancia euclidiana PONDERADA 3D:
-   * distance = √[(2.0×(Ae-At))² + (1.0×(Ce-Ct))² + (1.0×(Oe-Ot))²]
-   * relevance = 1 - (distance / √6)
+   * Usa distancia euclidiana 3D ponderada:
+   * distance = √[(Ae-At)² + (Ce-Ct)² + (Oe-Ot)²]
+   * relevance = (1 - (distance / √3)) * confidence * diversityFactor
    * 
-   * Aggression tiene 2x peso → energía es la dimensión primaria
-   * 
-   * 🚨 WAVE 1004.2: Aplicamos DIVERSITY FACTOR (shadowban) para evitar repetición
+   * 🎲 WAVE 1004.2: Ahora incluye DIVERSITY FACTOR para penalizar repetición
    * 
    * @param effectId - ID del efecto a evaluar
    * @param targetDNA - Target DNA actual
@@ -547,21 +464,15 @@ export class DNAAnalyzer {
       return 0.5 // Unknown effect = neutral
     }
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🚨 WAVE 1004.2: DIVERSITY CHECK (reset ventana si expiró)
-    // ═══════════════════════════════════════════════════════════════════════
+    // 🎲 WAVE 1004.2: Reset ventana si expiró
     this.maybeResetUsageWindow()
     
-    // 🚀 WAVE 1005.10: WEIGHTED Euclidean Distance
+    // Distancia euclidiana 3D
     const dA = effectDNA.aggression - targetDNA.aggression
     const dC = effectDNA.chaos - targetDNA.chaos
     const dO = effectDNA.organicity - targetDNA.organicity
     
-    const distance = Math.sqrt(
-      (dA * this.WEIGHT_AGGRESSION) ** 2 +
-      (dC * this.WEIGHT_CHAOS) ** 2 +
-      (dO * this.WEIGHT_ORGANICITY) ** 2
-    )
+    const distance = Math.sqrt(dA * dA + dC * dC + dO * dO)
     
     // Relevancia base (1 = perfecto match)
     const baseRelevance = 1 - (distance / this.MAX_DISTANCE)
@@ -569,9 +480,7 @@ export class DNAAnalyzer {
     // Ponderar por confidence
     const confidenceWeighted = baseRelevance * targetDNA.confidence + (1 - targetDNA.confidence) * 0.5
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🚨 WAVE 1004.2: APLICAR DIVERSITY FACTOR (shadowban por repetición)
-    // ═══════════════════════════════════════════════════════════════════════
+    // 🎲 WAVE 1004.2: Aplicar Diversity Factor
     const usageCount = this.effectUsageCount.get(effectId) || 0
     const diversityIndex = Math.min(usageCount, this.DIVERSITY_FACTORS.length - 1)
     const diversityFactor = this.DIVERSITY_FACTORS[diversityIndex]
@@ -580,18 +489,7 @@ export class DNAAnalyzer {
   }
   
   /**
-   * 🚨 WAVE 1004.2: Resetea ventana de uso si expiró
-   */
-  private maybeResetUsageWindow(): void {
-    const now = Date.now()
-    if (now - this.lastUsageReset > this.USAGE_WINDOW_MS) {
-      this.effectUsageCount.clear()
-      this.lastUsageReset = now
-    }
-  }
-  
-  /**
-   * 🚨 WAVE 1004.2: Registra el uso de un efecto (llamar cuando se selecciona)
+   * 🎲 WAVE 1004.2: Registra uso de un efecto para Diversity Factor
    * 
    * @param effectId - ID del efecto que fue seleccionado
    */
@@ -599,10 +497,21 @@ export class DNAAnalyzer {
     this.maybeResetUsageWindow()
     const currentCount = this.effectUsageCount.get(effectId) || 0
     this.effectUsageCount.set(effectId, currentCount + 1)
-    
+
     // Log solo si ya está penalizado (evitar spam)
     if (currentCount >= 1) {
       console.log(`[DNA_ANALYZER] 📊 Diversity: ${effectId} usado ${currentCount + 1}x - Factor: ${this.DIVERSITY_FACTORS[Math.min(currentCount + 1, this.DIVERSITY_FACTORS.length - 1)]}x`)
+    }
+  }
+  
+  /**
+   * 🎲 WAVE 1004.2: Reset automático de ventana de uso
+   */
+  private maybeResetUsageWindow(): void {
+    const now = Date.now()
+    if (now - this.lastUsageReset > this.USAGE_WINDOW_MS) {
+      this.effectUsageCount.clear()
+      this.lastUsageReset = now
     }
   }
   

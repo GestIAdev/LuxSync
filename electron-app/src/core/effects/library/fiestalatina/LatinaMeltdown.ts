@@ -240,9 +240,22 @@ export class LatinaMeltdown extends BaseEffect {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // SHORT EFFECT (<2000ms) = PUEDE usar color en movers
-    // No aplicamos MODO FANTASMA porque es efecto corto y brutal
+    // 🌊 WAVE 1010.8.6: MOVER SAFETY - DORADO FIJO (no alternancia)
+    // PROBLEMA: Alternancia Rojo/Amarillo cada 250ms = riesgo Color Wheel
+    // SOLUCIÓN: Movers reciben NARANJA_FUSION fijo (dorado latino)
+    // PARs/Wash mantienen alternancia Rojo↔Amarillo (RGB safe)
+    // CÓDIGO DEFENSIVO: Aunque HAL limite a 200ms, mejor prevenir desde código
     // ═══════════════════════════════════════════════════════════════════════
+    
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      movers: {
+        color: this.hitPhase === 'pre-blackout' || this.hitPhase === 'gap'
+          ? { h: 0, s: 0, l: 0 }  // Negro en blackout/gap
+          : MELTDOWN_PALETTE.NARANJA_FUSION,  // DORADO fijo en flash
+        dimmer: dimmer,
+        blendMode: 'replace',
+      }
+    }
     
     return {
       effectId: this.id,
@@ -253,7 +266,9 @@ export class LatinaMeltdown extends BaseEffect {
       intensity: dimmer,
       
       dimmerOverride: dimmer,
-      colorOverride: color,
+      colorOverride: color,  // PARs/Wash con alternancia Rojo↔Amarillo
+      
+      zoneOverrides,  // 🌊 WAVE 1010.8.6: Movers con DORADO fijo
       
       // White boost durante flash para punch extra
       whiteOverride: this.hitPhase === 'flash' && dimmer > 0.8 ? 0.3 : undefined,

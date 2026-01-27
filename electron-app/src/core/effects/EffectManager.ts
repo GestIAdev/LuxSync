@@ -55,6 +55,14 @@ import { CumbiaMoon } from './library/fiestalatina/CumbiaMoon'
 // ❤️ WAVE 750: THE ARCHITECT'S SOUL
 import { CorazonLatino } from './library/fiestalatina/CorazonLatino'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 WAVE 1010.5: THE LOST FOUR - 4 Efectos Huérfanos Conectados
+// ═══════════════════════════════════════════════════════════════════════════
+import { AmazonMist } from './library/fiestalatina/AmazonMist'
+import { MacheteSpark } from './library/fiestalatina/MacheteSpark'
+import { GlitchGuaguanco } from './library/fiestalatina/GlitchGuaguanco'
+import { LatinaMeltdown } from './library/fiestalatina/LatinaMeltdown'
+
 // 🔪 WAVE 780: TECHNO CLUB - THE BLADE
 import { IndustrialStrobe } from './library/techno/IndustrialStrobe'
 import { AcidSweep } from './library/techno/AcidSweep'
@@ -668,6 +676,24 @@ export class EffectManager extends EventEmitter {
     
     // ❤️ Corazón Latino - Heartbeat passion effect for epic moments
     this.effectFactories.set('corazon_latino', () => new CorazonLatino())
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🆕 WAVE 1010.5: THE LOST FOUR - Los 4 Huérfanos Conectados
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Estos efectos existían en DreamSimulator pero NO estaban registrados aquí.
+    // Por eso ganaban simulaciones pero nunca disparaban. THE PURGE los encontró.
+    
+    // 🌿 Amazon Mist - Neblina amazónica para zonas silence/valley
+    this.effectFactories.set('amazon_mist', () => new AmazonMist())
+    
+    // ⚔️ Machete Spark - Chispa de machete para active zone
+    this.effectFactories.set('machete_spark', () => new MacheteSpark())
+    
+    // 🪘 Glitch Guaguanco - Digital glitch con ritmo cubano para active zone
+    this.effectFactories.set('glitch_guaguanco', () => new GlitchGuaguanco())
+    
+    // 💥 Latina Meltdown - LA BESTIA LATINA para peak zone
+    this.effectFactories.set('latina_meltdown', () => new LatinaMeltdown())
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔪 WAVE 780: TECHNO CLUB - THE BLADE

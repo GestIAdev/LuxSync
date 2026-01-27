@@ -347,8 +347,9 @@ export class FixtureMapper {
             case 'zoom':
                 return Math.round(state.zoom);
             case 'speed':
-                // Movement speed/motor speed
-                return channel.defaultValue ?? 128;
+                // 🔥 WAVE 1008.2: Pan/Tilt movement speed (0=fast, 255=slow)
+                // Use state.speed if set by manual override, otherwise use fixture default
+                return state.speed ?? (channel.defaultValue ?? 128);
             case 'macro':
                 // Macro/program channel
                 return channel.defaultValue ?? 0;

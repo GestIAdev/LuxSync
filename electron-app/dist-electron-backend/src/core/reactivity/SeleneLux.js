@@ -185,10 +185,13 @@ export class SeleneLux {
             physicsApplied = 'latino';
             debugInfo = { flavor: result.flavor, ...result.debugInfo };
             // 🆕 WAVE 288.7: Guardar overrides del motor Latino para usar en AGC TRUST
+            // 🎺 WAVE 1004.1: Incluir L/R split para movers
             this.latinoOverrides = {
                 front: result.frontParIntensity,
                 back: result.backParIntensity,
                 mover: result.moverIntensity,
+                moverL: result.moverIntensityL, // 🎺 WAVE 1004.1: El Galán (Mid)
+                moverR: result.moverIntensityR, // 🎺 WAVE 1004.1: La Dama (Treble)
             };
             // 🆕 WAVE 288.1: Log THROTTLED - Solo cuando cambia flavor O cada 2s
             if (this.debug && isSolarFlare) {
@@ -256,12 +259,17 @@ export class SeleneLux {
         let frontIntensity;
         let backIntensity;
         let moverIntensity;
-        // � WAVE 288.7: ¿Tenemos overrides de Latino?
+        // 🎺 WAVE 288.7: ¿Tenemos overrides de Latino?
         if (this.latinoOverrides && physicsApplied === 'latino') {
             // DEMOCRACIA: El motor Latino calculó sus intensidades. Respétalas.
             frontIntensity = Math.min(0.95, this.latinoOverrides.front * brightMod);
             backIntensity = Math.min(0.95, this.latinoOverrides.back);
-            moverIntensity = Math.min(1.0, this.latinoOverrides.mover);
+            moverIntensity = Math.min(1.0, this.latinoOverrides.mover); // Legacy fallback
+            // 🎺 WAVE 1004.1: LATINO STEREO SPLIT - Si tenemos L/R separados, preparar para el output
+            const latinoL = this.latinoOverrides.moverL ?? moverIntensity; // El Galán (Mid)
+            const latinoR = this.latinoOverrides.moverR ?? moverIntensity; // La Dama (Treble)
+            // Temporal: guardar en una variable para pasar al output
+            this.latinoMoverSplit = { moverL: latinoL, moverR: latinoR };
             // Limpiar overrides para el próximo frame
             this.latinoOverrides = null;
         }
@@ -337,10 +345,16 @@ export class SeleneLux {
             ...((this.technoMoverSplit) && {
                 moverL: this.technoMoverSplit.moverL,
                 moverR: this.technoMoverSplit.moverR
+            }),
+            // 🎺 WAVE 1004.1: LATINO STEREO - Incluir L/R si vienen de Latino
+            ...((this.latinoMoverSplit) && {
+                moverL: this.latinoMoverSplit.moverL,
+                moverR: this.latinoMoverSplit.moverR
             })
         };
         // Limpiar split temporal
         delete this.technoMoverSplit;
+        delete this.latinoMoverSplit; // 🎺 WAVE 1004.1
         // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
         // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)
         // WAVE 300: Rock tiene su propio log con transientes (arriba)

@@ -31,6 +31,8 @@
  * @version WAVE 685, 700.1
  */
 import { MoodController } from '../mood';
+// 🚨 WAVE 1004.2: DNA Diversity System - Shadowban por repetición
+import { getDNAAnalyzer } from '../intelligence/dna';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🚪 WAVE 812: THE TIMEKEEPER - FUENTE DE VERDAD DEL TIEMPO
 // ═══════════════════════════════════════════════════════════════════════════
@@ -176,9 +178,13 @@ export class ContextualEffectSelector {
     }
     /**
      * 🌊 WAVE 691: Registra que un efecto fue disparado
+     * 🚨 WAVE 1004.2: También registra en DNAAnalyzer para Diversity Factor
      */
     registerEffectFired(effectType) {
         this.effectTypeLastFired.set(effectType, Date.now());
+        // 🚨 WAVE 1004.2: DNA Diversity - Shadowban por repetición
+        // Esto reducirá la relevancia del efecto si se usa repetidamente
+        getDNAAnalyzer().recordEffectUsage(effectType);
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // 🚪 WAVE 812: THE GATEKEEPER - Unified Availability Check

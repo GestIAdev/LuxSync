@@ -59,6 +59,11 @@ export { DeepBreath } from './DeepBreath';
 // WAVE 977: LA FÁBRICA - Nuevos efectos para gaps de energía
 export { AmbientStrobe } from './AmbientStrobe';
 export { SonarPing } from './SonarPing';
+// WAVE 988: THE FINAL ARSENAL - Efectos pesados de alto impacto
+export { BinaryGlitch } from './BinaryGlitch';
+export { CoreMeltdown } from './CoreMeltdown';
+export { SeismicSnap } from './SeismicSnap';
+export { FiberOptics } from './FiberOptics';
 // Default exports map
 export { default as IndustrialStrobeDefault } from './IndustrialStrobe';
 export { default as AcidSweepDefault } from './AcidSweep';

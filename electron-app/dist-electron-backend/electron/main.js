@@ -368,8 +368,12 @@ app.whenReady().then(async () => {
     // NOTE: Legacy startup that loaded from ConfigManager is REMOVED
     // Fixtures now come from ShowFileV2 via stageStore + StagePersistence
     console.log('[Main] 📭 patchedFixtures starts empty (will be loaded from ShowFileV2)');
-    createWindow();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 1008.5: Initialize Titan BEFORE creating window
+    // This ensures IPC handlers are registered BEFORE renderer loads and sends IPCs
+    // ═══════════════════════════════════════════════════════════════════════════
     await initTitan();
+    createWindow();
     // ═══════════════════════════════════════════════════════════════════════════
     // WAVE 367: TitanOrchestrator fixture injection happens from renderer
     // When stageStore loads ShowFileV2, it syncs to main process via IPC

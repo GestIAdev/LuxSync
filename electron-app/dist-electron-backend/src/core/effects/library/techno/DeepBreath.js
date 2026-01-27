@@ -29,7 +29,7 @@
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    breathCycleMs: 3000, // 3 segundos por ciclo (was 8s) - WAVE 964
+    breathCycleMs: 2500, // 3 segundos por ciclo (was 8s) - WAVE 964
     breathCount: 2, // 2 respiraciones completas → 6s total
     peakIntensity: 0.6, // 60% máximo
     bpmSync: true,

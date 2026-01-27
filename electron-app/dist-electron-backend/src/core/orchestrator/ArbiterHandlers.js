@@ -44,6 +44,13 @@ export function setupArbiterHandlers() {
      */
     ipcMain.handle('lux:arbiter:setManual', (_event, args) => {
         const { fixtureId, controls, channels, source, autoReleaseMs, releaseTransitionMs } = args;
+        // 🔥 WAVE 1008.3: DEBUG - Log incoming controls to trace Speed=0
+        console.log(`[ArbiterHandler] 📥 setManual received:`, {
+            fixtureId,
+            controls,
+            channels,
+            speed: controls.speed, // Explicit speed log
+        });
         // Determine which channels to override
         const overrideChannels = channels ||
             Object.keys(controls);
@@ -59,6 +66,12 @@ export function setupArbiterHandlers() {
                 tilt: controls.tilt,
                 zoom: controls.zoom,
                 focus: controls.focus,
+                // 🔥 WAVE 1008.2: Speed control for Pan/Tilt velocity
+                speed: controls.speed,
+                // Additional channels
+                strobe: controls.strobe,
+                gobo: controls.gobo,
+                color_wheel: controls.color_wheel ?? controls.colorWheel,
             },
             overrideChannels,
             mode: 'absolute',

@@ -1,19 +1,21 @@
 /**
  * 🎯 XY PAD - The Sniper
  * WAVE 375.4 - Position Control
+ * WAVE 1008.3 - SAFETY SHIELD
  * 
  * Direct position control for pan/tilt
- * - Pan: 0-540° (horizontal, X axis)
- * - Tilt: 0-270° (vertical, Y axis inverted)
+ * - Pan: 0-540° physical max, 0-513° safe max (95%)
+ * - Tilt: 0-270° physical max, 0-256° safe max (95%)
  * 
  * No Math.random(), no simulation - pure deterministic control
+ * Safety limits protect motor belts from strain/damage
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react'
 
 export interface XYPadProps {
-  pan: number   // 0-540 degrees
-  tilt: number  // 0-270 degrees
+  pan: number   // 0-540 degrees (physical), but UI enforces 0-513° (safe)
+  tilt: number  // 0-270 degrees (physical), but UI enforces 0-256° (safe)
   onChange: (pan: number, tilt: number) => void
   onCenter?: () => void
   disabled?: boolean
@@ -29,12 +31,17 @@ export const XYPad: React.FC<XYPadProps> = ({
   const padRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   
-  // Normalize to 0-1 range for display
-  const normalizedX = pan / 540
-  const normalizedY = tilt / 270
+  // 🛡️ WAVE 1008.3: SAFETY LIMITS (95% of physical max to protect motor belts)
+  const SAFE_PAN_MAX = 513   // 95% of 540° - prevents motor strain
+  const SAFE_TILT_MAX = 256  // 95% of 270° - prevents motor strain
+  
+  // Normalize to 0-1 range for display (using SAFE limits, not physical max!)
+  const normalizedX = pan / SAFE_PAN_MAX
+  const normalizedY = tilt / SAFE_TILT_MAX
   
   /**
    * Convert mouse position to pan/tilt values
+   * 🛡️ WAVE 1008.3: Enforces safety limits to protect motor
    */
   const handleMousePosition = useCallback((clientX: number, clientY: number) => {
     const pad = padRef.current
@@ -50,9 +57,9 @@ export const XYPad: React.FC<XYPadProps> = ({
     x = Math.max(0, Math.min(1, x))
     y = Math.max(0, Math.min(1, y))
     
-    // Convert to degrees
-    const newPan = Math.round(x * 540)
-    const newTilt = Math.round(y * 270)
+    // Convert to degrees using SAFE limits (95% of physical max)
+    const newPan = Math.round(x * SAFE_PAN_MAX)   // Max 513° (not 540°)
+    const newTilt = Math.round(y * SAFE_TILT_MAX) // Max 256° (not 270°)
     
     onChange(newPan, newTilt)
   }, [onChange, disabled])

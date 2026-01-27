@@ -118,8 +118,9 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       // ═══════════════════════════════════════════════════════════════════
       // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
       // ═══════════════════════════════════════════════════════════════════
-      setPan(270)           // Centro físico (540/2)
-      setTilt(135)          // Centro físico (270/2)
+      // 🛡️ WAVE 1008.3: Use safe center (95% of physical max)
+      setPan(256)           // Centro seguro (513/2 ≈ 256°)
+      setTilt(128)          // Centro seguro (256/2 = 128°)
       setActivePattern('static')  // Ningún patrón activo
       setPatternSpeed(50)   // Default
       setPatternSize(50)    // Default
@@ -201,8 +202,15 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * XY Pad change - Direct position control
    */
   const handlePositionChange = useCallback(async (newPan: number, newTilt: number) => {
-    setPan(newPan)
-    setTilt(newTilt)
+    // 🛡️ WAVE 1008.3: Safety clamps (95% of physical max)
+    const SAFE_PAN_MAX = 513   // 95% of 540°
+    const SAFE_TILT_MAX = 256  // 95% of 270°
+    
+    const safePan = Math.max(0, Math.min(SAFE_PAN_MAX, newPan))
+    const safeTilt = Math.max(0, Math.min(SAFE_TILT_MAX, newTilt))
+    
+    setPan(safePan)
+    setTilt(safeTilt)
     onOverrideChange(true)
     
     // Clear any active pattern when manually positioning
@@ -211,15 +219,20 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     }
     
     try {
+      // Convert to DMX with safety cap
+      const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
+      const tiltDmx = Math.min(241, Math.round((safeTilt / 270) * 255))
+      
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
         controls: {
-          pan: Math.round((newPan / 540) * 255),
-          tilt: Math.round((newTilt / 270) * 255),
+          pan: panDmx,
+          tilt: tiltDmx,
+          speed: 0,  // 🚀 WAVE 1008.2: Fast movement for moving heads
         },
-        channels: ['pan', 'tilt'],
+        channels: ['pan', 'tilt', 'speed'],
       })
-      console.log(`[Position] 🕹️ Pan: ${newPan}° Tilt: ${newTilt}°`)
+      console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
     } catch (err) {
       console.error('[Position] Error:', err)
     }
@@ -281,7 +294,10 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * Center position
    */
   const handleCenter = useCallback(() => {
-    handlePositionChange(270, 135) // Center of range
+    // 🛡️ WAVE 1008.3: Use safe center (50% of safe range)
+    const SAFE_PAN_MAX = 513
+    const SAFE_TILT_MAX = 256
+    handlePositionChange(Math.round(SAFE_PAN_MAX / 2), Math.round(SAFE_TILT_MAX / 2)) // ~256°, ~128°
   }, [handlePositionChange])
   
   /**

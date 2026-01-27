@@ -277,12 +277,14 @@ export interface FixtureV2 {
   /** 
    * Channel definitions from library (persisted inline)
    * This ensures the fixture knows its channels even if library changes
+   * 🔥 WAVE 1008.7: Added defaultValue for proper channel initialization
    */
   channels?: Array<{
     index: number
     name: string
     type: string
     is16bit: boolean
+    defaultValue?: number  // 🔥 WAVE 1008.7: Preserve channel defaults (Shutter=255, Speed=0, etc)
   }>
   
   /**

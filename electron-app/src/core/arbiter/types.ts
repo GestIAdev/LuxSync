@@ -55,6 +55,12 @@ export type ChannelType =
   | 'focus'
   | 'gobo'
   | 'prism'
+  // 🔥 WAVE 1008.2: Additional channels for full fixture control
+  | 'speed'
+  | 'strobe'
+  | 'color_wheel'
+  | 'amber'
+  | 'uv'
 
 /**
  * Merge strategy per channel
@@ -81,6 +87,12 @@ export const DEFAULT_MERGE_STRATEGIES: Record<ChannelType, MergeStrategy> = {
   focus: 'LTP',
   gobo: 'LTP',
   prism: 'LTP',
+  // 🔥 WAVE 1008.2: Additional channel strategies
+  speed: 'LTP',
+  strobe: 'LTP',
+  color_wheel: 'LTP',
+  amber: 'LTP',
+  uv: 'LTP',
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -211,6 +223,12 @@ export interface ManualControls {
   zoom?: number         // 0-255
   focus?: number        // 0-255
   
+  // 🔥 WAVE 1008.2: Movement speed and additional channels
+  speed?: number        // 0-255 (0=fast, 255=slow) for Pan/Tilt Speed
+  strobe?: number       // 0-255
+  gobo?: number         // 0-255
+  color_wheel?: number  // 0-255
+  
   // 🎚️ WAVE 999: Pattern movement parameters (0-100 scale from UI)
   patternSpeed?: number     // 0-100 → Multiplier for pattern frequency
   patternAmplitude?: number // 0-100 → Multiplier for movement range
@@ -326,6 +344,10 @@ export interface FixtureLightingTarget {
   /** Final optics */
   zoom: number   // 0-255
   focus: number  // 0-255
+  /** 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow) */
+  speed: number  // 0-255
+  /** 🎨 WAVE 1008.6: Color wheel position (THE WHEELSMITH) */
+  color_wheel: number  // 0-255
   /** Debug: which layer controls each channel */
   _controlSources: Partial<Record<ChannelType, ControlLayer>>
   /** Debug: is crossfade active */

@@ -779,11 +779,14 @@ export class HardwareAbstraction {
           tilt: fixtureTarget.tilt,
           zoom: fixtureTarget.zoom,
           focus: fixtureTarget.focus,
+          // 🔥 WAVE 1008.4: Movement speed from arbiter
+          speed: fixtureTarget.speed,
+          // 🎨 WAVE 1008.6: Color wheel position from arbiter (THE WHEELSMITH)
+          colorWheel: fixtureTarget.color_wheel,
           // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
           channels,
           // 🎨 WAVE 687: Default values for additional controls
           shutter: 255,  // Open by default
-          colorWheel: 0,
           gobo: 0,
           prism: 0,
           strobe: 0,
@@ -798,7 +801,7 @@ export class HardwareAbstraction {
         type: fixture.type || 'generic',
         zone,
         dmxAddress,  // 🎨 WAVE 686.11: Use normalized address
-        universe: fixture.universe || 1,
+        universe: fixture.universe || 0,
         dimmer: 0,
         r: 0,
         g: 0,
@@ -807,10 +810,13 @@ export class HardwareAbstraction {
         tilt: 128,
         zoom: 128,
         focus: 128,
+        // 🔥 WAVE 1008.4: Fast movement by default
+        speed: 0,
+        // 🎨 WAVE 1008.6: Color wheel off by default
+        colorWheel: 0,
         // 🎨 WAVE 687: Include channel definitions for dynamic DMX mapping
         channels,
         shutter: 255,
-        colorWheel: 0,
         gobo: 0,
         prism: 0,
         strobe: 0,

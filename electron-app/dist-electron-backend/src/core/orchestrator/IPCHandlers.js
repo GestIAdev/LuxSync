@@ -781,6 +781,43 @@ function setupDMXHandlers(deps) {
             return { success: false, error: String(err) };
         }
     });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎛️ WAVE 1007: THE NERVE LINK - Direct DMX injection for calibration tools
+    // GOD MODE: Bypasses HAL and TitanEngine for raw hardware access
+    // ═══════════════════════════════════════════════════════════════════════════
+    ipcMain.handle('dmx:sendDirect', (_event, params) => {
+        try {
+            const { universe, address, value } = params;
+            // Clamp values to valid DMX range
+            const clampedValue = Math.max(0, Math.min(255, Math.floor(value)));
+            const clampedAddress = Math.max(1, Math.min(512, Math.floor(address)));
+            console.log(`[IPC] 🎛️ NERVE LINK: Uni ${universe} | Addr ${clampedAddress} | Val ${clampedValue}`);
+            // Universe 0 = USB (universalDMX), Universe 1+ = ArtNet
+            if (universe === 0 || universe === 1) {
+                // Primary universe - send via USB/Serial
+                if (universalDMX?.isConnected) {
+                    universalDMX.setChannel(clampedAddress, clampedValue);
+                }
+                // Also send via ArtNet if configured (for ArtNet universe 0)
+                if (deps.artNetDriver?.isRunning) {
+                    deps.artNetDriver.setChannel(clampedAddress, clampedValue);
+                    deps.artNetDriver.send(); // 🔥 WAVE 1008.5: Force immediate send for calibration
+                }
+            }
+            else {
+                // Higher universes - ArtNet only
+                if (deps.artNetDriver?.isRunning) {
+                    deps.artNetDriver.setChannel(clampedAddress, clampedValue, universe);
+                    deps.artNetDriver.send(); // 🔥 WAVE 1008.5: Force immediate send
+                }
+            }
+            return { success: true };
+        }
+        catch (err) {
+            console.error('[IPC] 🔥 NERVE LINK Error:', err);
+            return { success: false, error: String(err) };
+        }
+    });
 }
 // =============================================================================
 // ARTNET HANDLERS

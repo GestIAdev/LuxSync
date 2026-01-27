@@ -296,19 +296,20 @@ export class TitanEngine extends EventEmitter {
         let zones = this.calculateZoneIntents(audio, context, vibeProfile);
         // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
         // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
+        // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
         if (nervousOutput.physicsApplied === 'latino' ||
             nervousOutput.physicsApplied === 'techno' ||
             nervousOutput.physicsApplied === 'rock' ||
             nervousOutput.physicsApplied === 'chill') {
             const ni = nervousOutput.zoneIntensities;
-            // 🧪 WAVE 908: THE DUEL - Si tenemos L/R separados (Techno), usarlos
+            // 🧪 WAVE 908 + 🎺 WAVE 1004.1: Si tenemos L/R separados (Techno/Latino), usarlos
             const moverL = ni.moverL ?? ni.mover; // Si no hay L, fallback a mono
             const moverR = ni.moverR ?? ni.mover; // Si no hay R, fallback a mono
             zones = {
                 front: { intensity: ni.front, paletteRole: 'primary' },
                 back: { intensity: ni.back, paletteRole: 'accent' },
-                left: { intensity: moverL, paletteRole: 'secondary' }, // 🧪 WAVE 908: LEFT = Mid-dominant
-                right: { intensity: moverR, paletteRole: 'ambient' }, // 🧪 WAVE 908: RIGHT = Treble-dominant
+                left: { intensity: moverL, paletteRole: 'secondary' }, // 🧪 WAVE 908 + 🎺 1004.1: LEFT = Mid (Techno kicks, Latino El Galán)
+                right: { intensity: moverR, paletteRole: 'ambient' }, // 🧪 WAVE 908 + 🎺 1004.1: RIGHT = Treble (Techno hats, Latino La Dama)
                 ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
             };
         }

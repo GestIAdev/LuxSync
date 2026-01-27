@@ -51,6 +51,12 @@ export const DEFAULT_MERGE_STRATEGIES = {
     focus: 'LTP',
     gobo: 'LTP',
     prism: 'LTP',
+    // 🔥 WAVE 1008.2: Additional channel strategies
+    speed: 'LTP',
+    strobe: 'LTP',
+    color_wheel: 'LTP',
+    amber: 'LTP',
+    uv: 'LTP',
 };
 /**
  * Default arbiter configuration

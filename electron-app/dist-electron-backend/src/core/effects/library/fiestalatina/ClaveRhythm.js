@@ -255,24 +255,20 @@ export class ClaveRhythm extends BaseEffect {
         // Flash Dorado: amber + white en cada hit
         // 🥁 WAVE 755: FLASH DORADO (latón de trompeta)
         // 🔥 WAVE 770: Subido white a 1.0 - ¡DESLUMBRA!
+        // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer para efectos LONG (>2s)
         const isInHit = this.hitPhase === 'attack' && this.currentIntensity > 0.7;
         const goldenFlash = isInHit ? {
             white: 1.0, // 🔥 WAVE 770: Flash blanco A TOPE
             amber: 1.0, // Dorado a tope (como latón de trompeta)
         } : {};
-        // 🥁 WAVE 755: Color BRILLANTE que fade a negro rápido
-        const hitColor = {
-            h: this.currentColor.h,
-            s: this.currentColor.s,
-            l: Math.min(75, this.currentColor.l + (this.currentIntensity * 15))
-        };
-        // 🥁 WAVE 755: SOLO MOVERS - No tocar front/back (WAVE 740: Si no está en keys, no se toca)
-        // 🎚️ WAVE 780: blendMode 'max' - El clave SUMA energía, no la resta
+        // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
+        // ClaveRhythm es LONG (>2s) → Solo dimmer, NO color en movers
+        // El color lo decide la física/rueda mecánica
         const zoneOverrides = {
             'movers': {
-                color: hitColor,
+                // 🚨 WAVE 1004.2: NO COLOR - Solo dimmer (Mover Law)
                 dimmer: this.currentIntensity,
-                ...goldenFlash, // 🥁 WAVE 755: Flash dorado en cada golpe
+                ...goldenFlash, // 🥁 WAVE 755: Flash dorado en cada golpe (white/amber SÍ permitido)
                 blendMode: 'max', // 🎚️ WAVE 780: HTP - El ritmo suma, nunca resta
                 movement: {
                     pan: this.currentPanOffset,

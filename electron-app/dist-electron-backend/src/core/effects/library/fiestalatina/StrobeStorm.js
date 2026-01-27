@@ -1,13 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚡ STROBE STORM - CONTROLLED CHAOS
+ * ⚡ STROBE STORM - PEAK ZONE CHAOS
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 680: THE ARSENAL - Primera arma de asalto
+ * 🪜 WAVE 1004.4: THE LATINO LADDER - Posicionado en PEAK ZONE (A=0.95)
+ *
+ * EL ARMA DEFINITIVA - Solo para momentos CLIMAX.
+ * Strobe caótico pero controlado, reservado para los drops más intensos.
+ *
+ * DNA PROFILE (THE LATINO LADDER):
+ * ┌─────────────────────────────────────────────────┐
+ * │ Aggression:  0.95 → PEAK ZONE (90-100%)        │
+ * │ Complexity:  0.75 → Caos controlado multi-fase │
+ * │ Organicity:  0.15 → Mecánico/Industrial        │
+ * │ Duration:    SHORT → COLOR PERMITIDO en movers │
+ * └─────────────────────────────────────────────────┘
  *
  * COMPORTAMIENTO:
- * - ATTACK:  Ramp up de frecuencia (0 → target Hz)
- * - SUSTAIN: Caos controlado - frecuencia oscila con BPM
+ * - PRE-BLACKOUT: 50ms de negro antes del caos
+ * - ATTACK:  Ramp up de frecuencia (0 → 12 Hz)
+ * - SUSTAIN: Caos máximo - frecuencia oscila con BPM
  * - DECAY:   Desaceleración gradual
  *
  * FÍSICA:
@@ -15,23 +28,23 @@
  * - Intensidad modulada por Z-Score
  * - Asíncrono pero musical (no random puro)
  *
- * RESTRICCIONES VIBE:
- * - chill-lounge: BLOCKED (0 Hz)
- * - fiesta-latina: DEGRADED (pulsos simples, sin strobe real)
- * - techno-club: UNLEASHED (15 Hz máx)
- * - pop-rock: MODERATE (10 Hz máx)
+ * ZONA PEAK:
+ * - Compañero de LatinaMeltdown (A=0.95)
+ * - SOLO para drops nucleares
+ * - Requiere energía > 0.9 para activarse
  *
  * @module core/effects/library/StrobeStorm
- * @version WAVE 680
+ * @version WAVE 680, 1004.4
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    attackMs: 100,
-    sustainMs: 500,
-    decayMs: 200,
-    baseFrequencyHz: 8, // 8 Hz base, modulado por BPM
+    attackMs: 80, // 🪜 LADDER: Attack más rápido (antes 100ms)
+    sustainMs: 600, // 🪜 LADDER: Más sustain para el caos (antes 500ms)
+    decayMs: 150, // 🪜 LADDER: Decay más rápido (antes 200ms)
+    baseFrequencyHz: 12, // 🪜 LADDER: 12 Hz base - PEAK ZONE (antes 8 Hz)
     degradedMode: false,
     flashColor: { h: 0, s: 0, l: 100 }, // Blanco puro
+    preBlackoutMs: 50, // 🪜 LADDER: 50ms negro antes del caos
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // STROBE STORM CLASS

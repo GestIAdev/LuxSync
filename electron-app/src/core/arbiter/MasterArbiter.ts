@@ -734,6 +734,10 @@ export class MasterArbiter extends EventEmitter {
     
     const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources)
     const focus = this.mergeChannelForFixture(fixtureId, 'focus', titanValues, manualOverride, now, controlSources)
+    // 🔥 WAVE 1008.4: Merge speed channel for Pan/Tilt movement velocity
+    const speed = this.mergeChannelForFixture(fixtureId, 'speed', titanValues, manualOverride, now, controlSources)
+    // 🎨 WAVE 1008.6: Merge color_wheel channel (THE WHEELSMITH)
+    const color_wheel = this.mergeChannelForFixture(fixtureId, 'color_wheel', titanValues, manualOverride, now, controlSources)
     
     // Check if any crossfade is active
     const crossfadeActive = this.isAnyCrossfadeActive(fixtureId)
@@ -754,6 +758,8 @@ export class MasterArbiter extends EventEmitter {
       tilt: clampDMX(tilt),
       zoom: clampDMX(zoom),
       focus: clampDMX(focus),
+      speed: clampDMX(speed),  // 🔥 WAVE 1008.4: Movement speed (0=fast, 255=slow)
+      color_wheel: clampDMX(color_wheel),  // 🎨 WAVE 1008.6: Color wheel position (THE WHEELSMITH)
       _controlSources: controlSources,
       _crossfadeActive: crossfadeActive,
       _crossfadeProgress: crossfadeProgress,
@@ -952,6 +958,11 @@ export class MasterArbiter extends EventEmitter {
       focus: 128,
       gobo: 0,
       prism: 0,
+      speed: 0,      // 0 = fast movement (critical for movers!)
+      strobe: 0,
+      color_wheel: 0,
+      amber: 0,
+      uv: 0,
     }
     
     if (!this.layer0_titan?.intent) return defaults
@@ -1121,6 +1132,11 @@ export class MasterArbiter extends EventEmitter {
       case 'tilt': return controls.tilt ?? 128
       case 'zoom': return controls.zoom ?? 128
       case 'focus': return controls.focus ?? 128
+      // 🔥 WAVE 1008.2: Movement speed and additional channels
+      case 'speed': return controls.speed ?? 128
+      case 'strobe': return controls.strobe ?? 0
+      case 'gobo': return controls.gobo ?? 0
+      case 'color_wheel': return controls.color_wheel ?? 0
       default: return 0
     }
   }
@@ -1183,7 +1199,7 @@ export class MasterArbiter extends EventEmitter {
     controlSources: Partial<Record<ChannelType, ControlLayer>>
   ): FixtureLightingTarget {
     // All channels sourced from BLACKOUT layer
-    const channels: ChannelType[] = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus']
+    const channels: ChannelType[] = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus', 'speed', 'color_wheel']
     for (const ch of channels) {
       controlSources[ch] = ControlLayer.BLACKOUT
     }
@@ -1196,6 +1212,8 @@ export class MasterArbiter extends EventEmitter {
       tilt: 128,
       zoom: 128,
       focus: 128,
+      speed: 0,  // 🔥 WAVE 1008.4: Fast movement during blackout (0=fast)
+      color_wheel: 0,  // 🎨 WAVE 1008.6: Color wheel off during blackout
       _controlSources: controlSources,
       _crossfadeActive: false,
       _crossfadeProgress: 0,

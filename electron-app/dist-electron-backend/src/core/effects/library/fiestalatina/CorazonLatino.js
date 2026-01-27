@@ -1,62 +1,70 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ❤️ CORAZÓN LATINO - THE ARCHITECT'S SOUL
+ * ❤️ CORAZÓN LATINO - AMBIENT HEARTBEAT
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 750: LATIN RESURRECTION - EL BROCHE DE ORO
+ * 🪜 WAVE 1004.4: THE LATINO LADDER - Recalibrado a AMBIENT ZONE (A=0.38)
  *
- * CONCEPTO:
- * La esencia de la música latina no es solo el ritmo, es la PASIÓN.
- * Un latido caliente que nace del centro y se expande hacia el público.
+ * CONCEPTO AMBIENT:
+ * Un latido SUAVE y contenido. La pasión existe pero en modo introspectivo.
+ * Ya no es la explosión sino el susurro del corazón latino.
+ *
+ * FILOSOFÍA AMBIENT ZONE:
+ * - Latidos más lentos y espaciados (2s por latido)
+ * - Intensidad reducida (~65%)
+ * - Movimientos de expansión contenidos (50%)
+ * - Transiciones más suaves
  *
  * MECÁNICA VISUAL:
  *
  * 1. EL LATIDO (Heartbeat) - BACK PARS
- *    - Doble latido: DUM-dum... DUM-dum...
- *    - Color: Rojo Sangre Profundo pulsando a Rojo Vivo
- *    - El corazón del escenario, donde nace la pasión
+ *    - Doble latido suave: dum-dum... dum-dum...
+ *    - Color: Rojo/Rosa tenue pulsando suavemente
+ *    - El corazón descansa, respira
  *
- * 2. LA EXPANSIÓN (The Heat) - MOVERS
- *    - En cada latido fuerte, barrido lento hacia afuera
- *    - Color: Ámbar/Oro - como el calor que sale hacia el público
- *    - "Abriendo los brazos" al público
+ * 2. LA EXPANSIÓN (The Heat) - MOVERS (MODO FANTASMA)
+ *    - Solo dimmer, sin color (efecto LONG)
+ *    - Movimiento contenido y lento
  *
  * 3. EL DESTELLO (The Spark) - FRONT PARS
- *    - Permanecen tenues durante los latidos
- *    - Blinder cálido (White + Amber) al final del compás 4
- *    - Sincronizado con el platillo imaginario
+ *    - Glow cálido constante (no blinder agresivo)
+ *    - Ámbar suave que acompaña
  *
- * TIMING:
- * - 4 compases totales (8 beats por compás = 32 beats)
- * - Compás 1-2: Latido 1 (DUM-dum)
- * - Compás 3-4: Latido 2 (DUM-dum) + Blinder final
+ * DNA PROFILE (THE LATINO LADDER):
+ * ┌─────────────────────────────────────────────────┐
+ * │ Aggression:  0.38 → AMBIENT ZONE (30-45%)      │
+ * │ Complexity:  0.60 → Patrón de latido orgánico  │
+ * │ Organicity:  0.90 → Muy natural y respirable   │
+ * │ Duration:    LONG → MODO FANTASMA en movers    │
+ * └─────────────────────────────────────────────────┘
  *
  * PERFECT FOR:
- * - Coros épicos
- * - Finales de canción
- * - Momentos de ALTA intensidad emocional
- * - Cuando la música EXPLOTA de pasión
+ * - Momentos de balada/románticos
+ * - Intros suaves de cumbia
+ * - Transiciones calmadas
+ * - Build-ups antes del drop
  *
  * @module core/effects/library/CorazonLatino
- * @version WAVE 750
+ * @version WAVE 750, 1004.4
  * @author The Architect (via Radwulf) - El Alma del Sistema
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    heartbeatDurationMs: 1500, // 1.5 segundos por DUM-dum
-    heartbeatCount: 2, // 🔥 WAVE 770: 2 latidos = ~3-4 segundos (doble intenso DUM-dum DUM-dum ¡FUERA!)
-    strongBeatRatio: 0.65, // 65% del tiempo en el golpe fuerte
-    // ❤️ Rojo Sangre Profundo (base)
-    heartColorBase: { h: 350, s: 100, l: 35 },
-    // ❤️ Rojo Vivo (pico)
-    heartColorPeak: { h: 0, s: 100, l: 55 },
-    // 🌟 SUPER DORADO (expansión) - WAVE 805.6
-    heatColor: { h: 45, s: 90, l: 60 },
-    // ✨ SUPER DORADO (blinder) - WAVE 805.6
-    blinderColor: { h: 45, s: 90, l: 60 },
+    heartbeatDurationMs: 2000, // 🪜 LADDER: 2 segundos por latido (antes 1.5s) - más lento
+    heartbeatCount: 2, // 2 latidos = ~4 segundos
+    strongBeatRatio: 0.55, // 🪜 LADDER: 55% tiempo fuerte (antes 65%) - menos contraste
+    // 🌸 Rosa/Rojo suave (base) - AMBIENT ZONE
+    heartColorBase: { h: 350, s: 80, l: 40 }, // 🪜 LADDER: Menos saturación
+    // 🌹 Rosa/Rojo tenue (pico) - AMBIENT ZONE
+    heartColorPeak: { h: 355, s: 85, l: 50 }, // 🪜 LADDER: Menos contraste con base
+    // 🧡 Ámbar suave (expansión) - AMBIENT ZONE
+    heatColor: { h: 40, s: 70, l: 50 }, // 🪜 LADDER: Menos saturación
+    // 🧡 Ámbar suave (glow) - AMBIENT ZONE (ya no es blinder)
+    blinderColor: { h: 40, s: 65, l: 45 }, // 🪜 LADDER: Mucho más suave
     bpmSync: true,
-    beatsPerHeartbeat: 4, // 4 beats = 1 DUM-dum
-    expansionAmplitude: 0.8, // 80% de movimiento máximo
+    beatsPerHeartbeat: 4, // 4 beats = 1 latido
+    expansionAmplitude: 0.5, // 🪜 LADDER: 50% movimiento (antes 80%) - más contenido
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // CORAZÓN LATINO CLASS
@@ -256,8 +264,9 @@ export class CorazonLatino extends BaseEffect {
             dimmer: this.heartIntensity,
         };
         // 🌟 MOVERS - LA EXPANSIÓN (Ámbar/Oro, abriendo brazos)
+        // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer y movement, NO color
         const moverOverride = {
-            color: this.config.heatColor,
+            // NO COLOR → La rueda mecánica o física decide
             dimmer: this.heartIntensity * 0.8, // Un poco menos que el corazón
             movement: {
                 pan: this.moverPanOffset, // Abre hacia afuera en cada DUM
@@ -275,6 +284,7 @@ export class CorazonLatino extends BaseEffect {
             amber: isBlinding ? this.blinderIntensity * 0.4 : undefined, // Amber para calidez
         };
         // 🎨 WAVE 750/780: zoneOverrides - ARQUITECTURA PURA + SMART BLEND
+        // 🚨 WAVE 1004.2: MOVER LAW applied to moverOverride (no color)
         const zoneOverrides = {
             'back': { ...backOverride, blendMode: 'max' },
             'movers': { ...moverOverride, blendMode: 'max' },

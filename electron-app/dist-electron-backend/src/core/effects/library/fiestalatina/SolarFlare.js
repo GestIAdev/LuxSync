@@ -1,33 +1,45 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ☀️ SOLAR FLARE - THE FIRST WEAPON
+ * ☀️ SOLAR FLARE - INTENSE ZONE BLINDER
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 600: EFFECT ARSENAL - Primera arma del arsenal
+ * 🪜 WAVE 1004.4: THE LATINO LADDER - Posicionado en INTENSE ZONE (A=0.85)
  *
  * COMPORTAMIENTO:
- * - ATTACK:  Sube instantáneamente al pico (50ms)
- * - SUSTAIN: Mantiene el pico un momento (100ms)
- * - DECAY:   Baja exponencialmente (400ms)
+ * - PRE-BLACKOUT: 50ms de negrura antes del golpe (máximo contraste)
+ * - ATTACK:  Sube instantáneamente al pico (0ms)
+ * - SUSTAIN: Mantiene el pico un momento (150ms)
+ * - DECAY:   Baja exponencialmente pasando por rojo cálido (800ms)
+ *
+ * DNA PROFILE (THE LATINO LADDER):
+ * ┌─────────────────────────────────────────────────┐
+ * │ Aggression:  0.85 → INTENSE ZONE (75-90%)      │
+ * │ Complexity:  0.25 → Patrón simple y directo    │
+ * │ Organicity:  0.30 → Físico/Mecánico dominante  │
+ * │ Duration:    SHORT → COLOR PERMITIDO en movers │
+ * └─────────────────────────────────────────────────┘
  *
  * FÍSICA:
  * - HTP (Highest Takes Precedence) para dimmer
  * - Brilla POR ENCIMA de cualquier otra cosa
- * - White override para ese flash cegador
+ * - Dorado brillante que QUEMA (no blanco frío)
  *
- * TRIGGER SOURCES:
- * - Hunt Strike con urgency > 0.8
- * - Vibes Latino/Fiesta en drops
- * - Manual trigger
+ * ZONA INTENSE:
+ * - Compañero de SalsaFire (A=0.82)
+ * - Pre-drop y momentos de alta energía
+ * - No tan extremo como PEAK pero impactante
  *
  * @module core/effects/library/SolarFlare
- * @version WAVE 600
+ * @version WAVE 600, 1004.4
  */
 const DEFAULT_CONFIG = {
     attackMs: 0, // 🔥 INSTANTÁNEO - sin ramp
     sustainMs: 150, // Pico sostenido
     decayMs: 800, // Decay lento y cálido
     decayCurve: 2.0, // Exponencial suave
+    // 🪜 WAVE 1004.4: PRE-BLACKOUT para INTENSE ZONE
+    preBlackoutMs: 50, // 50ms de negro antes del flash (máximo contraste)
     // 🌟 WAVE 630: GOLDEN WHITE - Dorado brillante que no se ve gris
     // ⚠️ RGB(255,255,255) se ve azulado en LEDs baratos
     // ✅ R:255, G:200, B:80 = Dorado intenso que QUEMA
@@ -74,6 +86,9 @@ export class SolarFlare {
         this.triggerIntensity = 1.0;
         this.zones = ['all'];
         this.source = 'unknown';
+        /** 🪜 WAVE 1004.4: Pre-blackout state */
+        this.preBlackoutActive = false;
+        this.preBlackoutEndTime = 0;
         this.id = `solar_flare_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
@@ -82,16 +97,27 @@ export class SolarFlare {
     // ─────────────────────────────────────────────────────────────────────────
     /**
      * ☀️ TRIGGER - Inicia el Solar Flare
+     * 🪜 WAVE 1004.4: Ahora comienza con pre-blackout (50ms negro)
      */
     trigger(triggerConfig) {
-        this.phase = 'attack';
-        this.phaseStartTime = Date.now();
+        const now = Date.now();
+        // 🪜 WAVE 1004.4: Pre-blackout antes del flash
+        if (this.config.preBlackoutMs > 0) {
+            this.preBlackoutActive = true;
+            this.preBlackoutEndTime = now + this.config.preBlackoutMs;
+            this.phase = 'attack'; // En attack pero con intensidad 0 (pre-blackout)
+            this.intensity = 0; // Negro total
+        }
+        else {
+            this.phase = 'attack';
+            this.preBlackoutActive = false;
+        }
+        this.phaseStartTime = now;
         this.elapsedMs = 0;
         this.triggerIntensity = triggerConfig.intensity;
         this.zones = triggerConfig.zones || ['all'];
         this.source = triggerConfig.source;
-        this.intensity = 0;
-        console.log(`[SolarFlare ☀️] TRIGGERED! Intensity=${this.triggerIntensity.toFixed(2)} Source=${this.source}`);
+        console.log(`[SolarFlare ☀️] TRIGGERED! Intensity=${this.triggerIntensity.toFixed(2)} Source=${this.source} PreBlackout=${this.config.preBlackoutMs}ms`);
     }
     /**
      * 🔄 UPDATE - Avanza el estado del efecto
@@ -221,8 +247,20 @@ export class SolarFlare {
     /**
      * ⬆️ ATTACK - Subida INSTANTÁNEA al pico (0ms)
      * 🔥 WAVE 610: Sin ramp - directo a 100%
+     * 🪜 WAVE 1004.4: Respeta pre-blackout antes del flash
      */
     processAttack(phaseElapsed) {
+        const now = Date.now();
+        // 🪜 WAVE 1004.4: Si estamos en pre-blackout, mantener negro
+        if (this.preBlackoutActive && now < this.preBlackoutEndTime) {
+            this.intensity = 0; // Negro total durante pre-blackout
+            return;
+        }
+        // Pre-blackout terminó, ahora sí flasheamos
+        if (this.preBlackoutActive) {
+            this.preBlackoutActive = false;
+            this.phaseStartTime = now; // Reset del timer de attack
+        }
         // Si attackMs es 0, transición instantánea a sustain
         if (this.config.attackMs === 0) {
             this.intensity = 1.0;
@@ -230,7 +268,8 @@ export class SolarFlare {
             return;
         }
         // Fallback para configs con attack > 0ms
-        const progress = Math.min(1, phaseElapsed / this.config.attackMs);
+        const attackElapsed = now - this.phaseStartTime;
+        const progress = Math.min(1, attackElapsed / this.config.attackMs);
         this.intensity = 1 - Math.pow(1 - progress, 3);
         if (progress >= 1) {
             this.transitionTo('sustain');

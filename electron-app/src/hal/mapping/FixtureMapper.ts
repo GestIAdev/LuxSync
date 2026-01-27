@@ -87,6 +87,8 @@ export interface FixtureState {
   white?: number         // 0-255 (white LED)
   amber?: number         // 0-255 (amber LED)
   uv?: number            // 0-255 (UV LED)
+  // 🔥 WAVE 1008.2: Movement speed
+  speed?: number         // 0-255 (0=fast, 255=slow for Pan/Tilt)
   // 🎨 WAVE 1001: HAL Translation metadata
   hasColorWheel?: boolean        // From fixture definition
   hasColorMixing?: boolean       // From fixture definition
@@ -538,8 +540,9 @@ export class FixtureMapper {
         return Math.round(state.zoom)
       
       case 'speed':
-        // Movement speed/motor speed
-        return channel.defaultValue ?? 128
+        // 🔥 WAVE 1008.2: Pan/Tilt movement speed (0=fast, 255=slow)
+        // Use state.speed if set by manual override, otherwise use fixture default
+        return state.speed ?? (channel.defaultValue ?? 128)
       
       case 'macro':
         // Macro/program channel

@@ -58,6 +58,13 @@ const api = {
   // APP
   // ============================================
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  
+  // ============================================
+  // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection
+  // Shortcut for calibration tools (ColorWheelEditor, etc.)
+  // ============================================
+  sendDmxChannel: (universe: number, address: number, value: number) =>
+    ipcRenderer.invoke('dmx:sendDirect', { universe, address, value }),
 
   // ============================================
   // DMX - WAVE 11: Universal Driver
@@ -78,6 +85,9 @@ const api = {
     // 🔦 Highlight fixture para testing
     highlightFixture: (startChannel: number, channelCount: number, isMovingHead: boolean) =>
       ipcRenderer.invoke('dmx:highlightFixture', startChannel, channelCount, isMovingHead),
+    // 🎛️ WAVE 1007: THE NERVE LINK - Direct DMX injection for calibration tools
+    sendDirect: (universe: number, address: number, value: number) =>
+      ipcRenderer.invoke('dmx:sendDirect', { universe, address, value }),
     // 📡 Status events (connected/disconnected/reconnecting)
     onStatus: (callback: (status: { state: string; device?: any; error?: string }) => void) => {
       const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
@@ -554,11 +564,13 @@ const luxApi = {
       source?: string
       autoReleaseMs?: number
     }) => {
-      // Send all fixtures in a single call to backend (WAVE 439.6 fix)
+      // 🔥 WAVE 1008.4: Send fixtureIds array to ArbiterIPCHandlers (not orchestrator handler)
       return ipcRenderer.invoke('lux:arbiter:setManual', {
-        fixtureIds: args.fixtureIds,
+        fixtureIds: args.fixtureIds,  // Plural! Handler expects array
         controls: args.controls,
         channels: args.channels || Object.keys(args.controls),
+        source: args.source,
+        autoReleaseMs: args.autoReleaseMs,
       })
     },
     

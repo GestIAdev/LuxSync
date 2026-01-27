@@ -823,6 +823,15 @@ const StageConstructorView: React.FC = () => {
     physics: PhysicsProfile,
     patchData?: { dmxAddress?: number; universe?: number }
   ) => {
+    // 🔥 WAVE 1007: DEBUG - Log incoming patchData
+    console.log('[StageConstructor] 🔍 FORGE SAVE CALLED:', {
+      fixtureName: definition.name,
+      patchData,
+      dmxAddress: patchData?.dmxAddress,
+      universe: patchData?.universe,
+      forgeEditingFixtureId
+    })
+    
     // Map the definition type to FixtureV2 type
     const fixtureType = mapLibraryTypeToFixtureType(definition.type)
     
@@ -842,11 +851,13 @@ const StageConstructorView: React.FC = () => {
           ...(patchData?.dmxAddress !== undefined && { address: patchData.dmxAddress }),
           ...(patchData?.universe !== undefined && { universe: patchData.universe }),
           // Inline channels for persistence
+          // 🔥 WAVE 1008.7: Preserve defaultValue (Shutter=255, Speed=0, etc)
           channels: definition.channels.map((ch, idx) => ({
             index: idx,
             name: ch.name,
             type: ch.type,
-            is16bit: ch.name?.toLowerCase().includes('fine') || false
+            is16bit: ch.name?.toLowerCase().includes('fine') || false,
+            ...(ch.defaultValue !== undefined && { defaultValue: ch.defaultValue })
           })),
           // Capabilities derived from channel analysis
           capabilities: {
@@ -865,6 +876,19 @@ const StageConstructorView: React.FC = () => {
           }
         })
         updateFixturePhysics(forgeEditingFixtureId, physics)
+        
+        // 🔥 WAVE 1007: DEBUG - Verify what was actually saved
+        const updatedFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
+        console.log(`[StageConstructor] 🔥 FORGE SAVE COMPLETE:`, {
+          fixtureName: definition.name,
+          fixtureId: forgeEditingFixtureId,
+          requestedAddress: patchData?.dmxAddress,
+          actualAddress: updatedFixture?.address,
+          requestedUniverse: patchData?.universe,
+          actualUniverse: updatedFixture?.universe,
+          channelCount: definition.channels.length,
+          type: fixtureType
+        })
         
         console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
         if (patchData) {
@@ -893,11 +917,13 @@ const StageConstructorView: React.FC = () => {
             manufacturer: definition.manufacturer,
             channelCount: definition.channels.length,
             type: fixtureType,  // 🔥 THIS IS THE FIX - update type!
+            // 🔥 WAVE 1008.7: Preserve defaultValue when updating from library
             channels: definition.channels.map((ch, idx) => ({
               index: idx,
               name: ch.name,
               type: ch.type,
-              is16bit: ch.name?.toLowerCase().includes('fine') || false
+              is16bit: ch.name?.toLowerCase().includes('fine') || false,
+              ...(ch.defaultValue !== undefined && { defaultValue: ch.defaultValue })
             })),
             capabilities: {
               hasMovementChannels: definition.channels.some(ch => 

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { FixturePreview3D } from './FixturePreview3D'
 import { PhysicsTuner } from './PhysicsTuner'
+import { ColorWheelEditor } from './ColorWheelEditor' // 🎨 WAVE 1006: THE WHEELSMITH
 import { 
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
@@ -45,7 +46,7 @@ import {
   MotorType,
   InstallationOrientation
 } from '../../../core/stage/ShowFileV2'
-import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType } from '../../../types/FixtureDefinition'
+import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, ColorWheelDefinition } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
 import './FixtureForge.css'
@@ -285,11 +286,13 @@ const TYPE_NORMALIZATION_MAP: Record<string, string> = {
  * @param fixture - Base fixture data
  * @param physics - Physics profile
  * @param colorEngine - 🎨 WAVE 1002: Manual color engine selection (overrides auto-detection)
+ * @param wheelColors - 🎨 WAVE 1006: THE WHEELSMITH color wheel configuration
  */
 function buildFinalFixture(
   fixture: FixtureDefinition, 
   physics: PhysicsProfile,
-  colorEngine?: ColorEngineType
+  colorEngine?: ColorEngineType,
+  wheelColors?: WheelColor[]
 ): FixtureDefinition {
   // 1. Normalizar tipo
   const normalizedType = TYPE_NORMALIZATION_MAP[fixture.type] || 'generic'
@@ -304,7 +307,7 @@ function buildFinalFixture(
     index: i,
     type: ch.type || 'unknown',
     name: ch.name || undefined, // undefined se omite en JSON
-    defaultValue: typeof ch.defaultValue === 'number' ? ch.defaultValue : 0,
+    defaultValue: ch.defaultValue, // 🔥 WAVE 1008.7: Preserve undefined - let FixtureMapper handle defaults
     is16bit: ch.is16bit || false
   }))
   
@@ -345,6 +348,16 @@ function buildFinalFixture(
     }
   }
   
+  // 🎨 WAVE 1006: THE WHEELSMITH - Build colorWheel capability if colors exist
+  const colorWheelConfig: ColorWheelDefinition | undefined = 
+    wheelColors && wheelColors.length > 0 
+      ? {
+          colors: wheelColors,
+          allowsContinuousSpin: false, // Future: could be configurable
+          minChangeTimeMs: 150 // Mechanical protection default
+        }
+      : undefined
+  
   const capabilities = {
     hasPan: cleanChannels.some(ch => ch.type === 'pan'),
     hasTilt: cleanChannels.some(ch => ch.type === 'tilt'),
@@ -355,7 +368,9 @@ function buildFinalFixture(
     hasStrobe: cleanChannels.some(ch => ch.type === 'strobe'),
     hasDimmer: cleanChannels.some(ch => ch.type === 'dimmer'),
     // 🎨 WAVE 1002: Persist the explicit color engine selection
-    colorEngine: colorEngine || (hasColorWheel ? 'wheel' : hasColorMixing ? 'rgb' : 'none')
+    colorEngine: colorEngine || (hasColorWheel ? 'wheel' : hasColorMixing ? 'rgb' : 'none'),
+    // 🎨 WAVE 1006: THE WHEELSMITH - Persist color wheel mapping for HAL
+    colorWheel: colorWheelConfig
   }
   
   // 5. WAVE 390.5: Build complete physics object with ALL configurable fields
@@ -512,10 +527,15 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   
   // 🎯 WAVE 685.6: DMX Address (only for stage fixtures, not library definitions)
   const [dmxAddress, setDmxAddress] = useState<number | null>(null)
-  const [universe, setUniverse] = useState<number>(1)
+  const [universe, setUniverse] = useState<number>(0)  // 🔥 WAVE 1008.5: Default to 0, not 1
   
   // 🎨 WAVE 1002: Color Engine Selection
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
+  
+  // 🎨 WAVE 1006: THE WHEELSMITH - Color Wheel Configuration
+  const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
+  const [wheelEditorOpen, setWheelEditorOpen] = useState(false)
+  const [wheelEditorChannelIndex, setWheelEditorChannelIndex] = useState<number | null>(null)  // 🎛️ WAVE 1006.5
   
   // Preview controls
   const [showPreview, setShowPreview] = useState(true)
@@ -635,13 +655,21 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
           setColorEngine(autoDetected)
         }
         
+        // 🎨 WAVE 1006: THE WHEELSMITH - Load color wheel configuration
+        if (existingDefinition.capabilities?.colorWheel?.colors) {
+          console.log('[FixtureForge] 🎨 Loading color wheel:', existingDefinition.capabilities.colorWheel.colors.length, 'colors')
+          setWheelColors(existingDefinition.capabilities.colorWheel.colors)
+        } else {
+          setWheelColors([])
+        }
+        
         // �🎯 WAVE 685.6: If we also have editingFixture, load DMX from it
         if (editingFixture) {
           setDmxAddress(editingFixture.address ?? 1)
-          setUniverse(editingFixture.universe ?? 1)
+          setUniverse(editingFixture.universe ?? 0)
           console.log('[FixtureForge] 📍 Loaded DMX from stage fixture:', {
             address: editingFixture.address ?? 1,
-            universe: editingFixture.universe ?? 1
+            universe: editingFixture.universe ?? 0
           })
         }
       } else if (editingFixture) {
@@ -673,10 +701,10 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         
         // 🎯 WAVE 685.6: Load DMX address from stage fixture (default to 1 if missing)
         setDmxAddress(editingFixture.address ?? 1)
-        setUniverse(editingFixture.universe ?? 1)
+        setUniverse(editingFixture.universe ?? 0)
         console.log('[FixtureForge] 📍 Loaded DMX:', {
           address: editingFixture.address ?? 1,
-          universe: editingFixture.universe ?? 1
+          universe: editingFixture.universe ?? 0
         })
       } else {
         // New fixture
@@ -702,9 +730,11 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
       // 🎯 WAVE 685.6: Reset DMX fields
       setDmxAddress(null)
-      setUniverse(1)
+      setUniverse(0)  // 🔥 WAVE 1008.5: Default to universe 0
       // 🎨 WAVE 1002: Reset color engine
       setColorEngine('rgb')
+      // 🎨 WAVE 1006: Reset wheel colors
+      setWheelColors([])
       console.log('[FixtureForge] 🧹 Modal closed, state reset')
     }
   }, [isOpen]) // 🎯 WAVE 685.6: ONLY depend on isOpen to prevent re-init while modal is open
@@ -820,14 +850,96 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
   }, [fixture.channels])
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🎛️ WAVE 1006.5: THE LIVE PROBE - DMX Test Handler
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleWheelTest = useCallback(async (dmxValue: number) => {
+    // Only send DMX if we know the channel index and have a valid address
+    if (wheelEditorChannelIndex === null) {
+      console.log('[FixtureForge] 🎛️ LIVE PROBE: No channel index set')
+      return
+    }
+    
+    // Calculate the absolute DMX channel
+    // dmxAddress is the fixture's start address (1-based), channelIndex is 0-based
+    const baseAddress = dmxAddress ?? 1
+    const absoluteChannel = baseAddress + wheelEditorChannelIndex
+    
+    console.log('[FixtureForge] 🎛️ NERVE LINK:', {
+      channelIndex: wheelEditorChannelIndex,
+      baseAddress,
+      absoluteChannel,
+      universe,
+      value: dmxValue
+    })
+    
+    // 🔥 WAVE 1008.8: USE THE SAME API AS TESTPANEL - window.lux.arbiter.setManual
+    // This is the PROVEN path that works for TestPanel's color tests
+    const lux = window.lux as any
+    
+    if (!lux) {
+      console.error('[FixtureForge] 🎛️ window.lux is undefined!')
+      return
+    }
+    
+    // Get fixture ID for arbiter calls
+    const fixtureId = editingFixture?.id
+    if (!fixtureId) {
+      console.error('[FixtureForge] 🎛️ No fixture ID available for Arbiter')
+      return
+    }
+    
+    // 🔥 WAVE 1008.8: Use Arbiter.setManual (same as TestPanel - IT WORKS!)
+    if (lux?.arbiter?.setManual) {
+      try {
+        // Set strobe OFF first
+        const strobeChannelIndex = fixture.channels.findIndex((ch: any) => ch.type === 'strobe')
+        if (strobeChannelIndex >= 0) {
+          console.log(`[FixtureForge] ⚡ Setting strobe = 0 via Arbiter`)
+          await lux.arbiter.setManual({
+            fixtureIds: [fixtureId],
+            controls: { strobe: 0 },
+            channels: ['strobe'],
+          })
+        }
+        
+        // Set dimmer ON
+        const dimmerChannelIndex = fixture.channels.findIndex((ch: any) => ch.type === 'dimmer')
+        if (dimmerChannelIndex >= 0) {
+          console.log(`[FixtureForge] 🔆 Setting dimmer = 255 via Arbiter`)
+          await lux.arbiter.setManual({
+            fixtureIds: [fixtureId],
+            controls: { dimmer: 255 },
+            channels: ['dimmer'],
+          })
+        }
+        
+        // Set color wheel value
+        console.log(`[FixtureForge] � Setting color_wheel = ${dmxValue} via Arbiter`)
+        await lux.arbiter.setManual({
+          fixtureIds: [fixtureId],
+          controls: { color_wheel: dmxValue },
+          channels: ['color_wheel'],
+        })
+        
+        console.log(`[FixtureForge] ✅ Arbiter commands sent successfully`)
+      } catch (err) {
+        console.error('[FixtureForge] ❌ Arbiter error:', err)
+      }
+    } else {
+      console.error('[FixtureForge] 🎛️ window.lux.arbiter.setManual not available')
+    }
+  }, [wheelEditorChannelIndex, dmxAddress, universe, fixture.channels])
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 390: DUMB SAVE HANDLER - USES SINGLE SOURCE OF TRUTH
   // ═══════════════════════════════════════════════════════════════════════
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
-    // 🔥 WAVE 390 + 1002: Usar la función pura buildFinalFixture con colorEngine
-    const finalFixture = buildFinalFixture(fixture, physics, colorEngine)
+    // 🔥 WAVE 390 + 1002 + 1006: Usar la función pura buildFinalFixture con colorEngine y wheelColors
+    const finalFixture = buildFinalFixture(fixture, physics, colorEngine, wheelColors)
     
     console.log('[FixtureForge] 💾 WAVE 390 DUMB SAVE:', {
       id: finalFixture.id,
@@ -835,7 +947,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       type: finalFixture.type,
       channelCount: finalFixture.channels.length,
       physics: finalFixture.physics,
-      colorEngine: finalFixture.capabilities?.colorEngine  // 🎨 WAVE 1002
+      colorEngine: finalFixture.capabilities?.colorEngine,  // 🎨 WAVE 1002
+      colorWheelSlots: finalFixture.capabilities?.colorWheel?.colors?.length ?? 0  // 🎨 WAVE 1006
     })
     
     // Guardar en disco
@@ -867,7 +980,7 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
       console.error('[FixtureForge] ❌ window.lux.saveDefinition not available!')
       alert('Save function not available')
     }
-  }, [fixture, physics, isFormValid, onSave, onClose, dmxAddress, universe, colorEngine]) // 🎯 WAVE 685.6 + 1002: Add deps
+  }, [fixture, physics, isFormValid, onSave, onClose, dmxAddress, universe, colorEngine, wheelColors]) // 🎯 WAVE 685.6 + 1002 + 1006: Add deps
   
   const handleExport = useCallback(() => {
     const fxtContent = exportToFXT(fixture)
@@ -1258,6 +1371,22 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                             {channel.is16bit && (
                               <span className="slot-16bit">16bit</span>
                             )}
+                            {/* 🎨 WAVE 1006: THE WHEELSMITH - Config button for color_wheel channels */}
+                            {channel.type === 'color_wheel' && (
+                              <button
+                                className="slot-wheel-config-btn"
+                                onClick={() => {
+                                  setWheelEditorChannelIndex(index)  // 🎛️ WAVE 1006.5: Track channel for LIVE PROBE
+                                  setWheelEditorOpen(true)
+                                }}
+                                title={`Configurar Color Wheel (${wheelColors.length} colores)`}
+                              >
+                                <Settings size={12} />
+                                {wheelColors.length > 0 && (
+                                  <span className="wheel-count">{wheelColors.length}</span>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       )
@@ -1309,8 +1438,8 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
                 <div className="preview-json">
                   <h3>Vista previa JSON (Lo que se guarda)</h3>
                   <pre>
-                    {/* 🔥 WAVE 390 + 1002: Preview uses SAME function as save - SINGLE SOURCE OF TRUTH */}
-                    {JSON.stringify(buildFinalFixture(fixture, physics, colorEngine), null, 2)}
+                    {/* 🔥 WAVE 390 + 1002 + 1006: Preview uses SAME function as save - SINGLE SOURCE OF TRUTH */}
+                    {JSON.stringify(buildFinalFixture(fixture, physics, colorEngine, wheelColors), null, 2)}
                   </pre>
                 </div>
               </div>
@@ -1392,6 +1521,23 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
           </div>
         </footer>
       </div>
+      
+      {/* 🎨 WAVE 1006 + 1006.5: THE WHEELSMITH - Color Wheel Editor Modal with LIVE PROBE */}
+      <ColorWheelEditor
+        isOpen={wheelEditorOpen}
+        onClose={() => {
+          setWheelEditorOpen(false)
+          setWheelEditorChannelIndex(null)  // 🎛️ Clear channel index on close
+        }}
+        onSave={(colors) => {
+          setWheelColors(colors)
+          setWheelEditorOpen(false)
+          setWheelEditorChannelIndex(null)
+          console.log('[FixtureForge] 🎨 WHEELSMITH saved:', colors.length, 'colors')
+        }}
+        existingColors={wheelColors}
+        onTestDmx={handleWheelTest}  // 🎛️ WAVE 1006.5: THE LIVE PROBE
+      />
     </div>
   )
 }

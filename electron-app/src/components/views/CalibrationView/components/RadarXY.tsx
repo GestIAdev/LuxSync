@@ -16,8 +16,8 @@ import React, { useCallback, useRef, useState, useEffect } from 'react'
 import './RadarXY.css'
 
 export interface RadarXYProps {
-  pan: number        // 0-540 degrees
-  tilt: number       // 0-270 degrees
+  pan: number        // 0-540 degrees (EL-1140 max, but UI enforces 95% safety = 513°)
+  tilt: number       // 0-270 degrees (EL-1140 max, but UI enforces 95% safety = 256°)
   onChange: (pan: number, tilt: number) => void
   onCenter?: () => void
   isCalibrating?: boolean
@@ -35,9 +35,13 @@ export const RadarXY: React.FC<RadarXYProps> = ({
   const radarRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   
-  // Normalize to 0-1 range for display
-  const normalizedX = pan / 540
-  const normalizedY = tilt / 270
+  // 🛡️ WAVE 1008.3: SAFETY LIMITS (95% of physical max to protect motor belts)
+  const SAFE_PAN_MAX = 513   // 95% of 540° - prevents motor strain
+  const SAFE_TILT_MAX = 256  // 95% of 270° - prevents motor strain
+  
+  // Normalize to 0-1 range for display (using SAFE limits, not physical max!)
+  const normalizedX = pan / SAFE_PAN_MAX
+  const normalizedY = tilt / SAFE_TILT_MAX
   
   // Convert to centered coordinates (-1 to 1)
   const centeredX = (normalizedX - 0.5) * 2
@@ -45,6 +49,7 @@ export const RadarXY: React.FC<RadarXYProps> = ({
   
   /**
    * Convert mouse position to pan/tilt values
+   * 🛡️ WAVE 1008.3: Enforces safety limits to protect motor
    */
   const handleMousePosition = useCallback((clientX: number, clientY: number) => {
     const radar = radarRef.current
@@ -60,9 +65,9 @@ export const RadarXY: React.FC<RadarXYProps> = ({
     x = Math.max(0, Math.min(1, x))
     y = Math.max(0, Math.min(1, y))
     
-    // Convert to degrees
-    const newPan = Math.round(x * 540)
-    const newTilt = Math.round(y * 270)
+    // Convert to degrees using SAFE limits (95% of physical max)
+    const newPan = Math.round(x * SAFE_PAN_MAX)   // Max 513° (not 540°)
+    const newTilt = Math.round(y * SAFE_TILT_MAX) // Max 256° (not 270°)
     
     onChange(newPan, newTilt)
   }, [onChange, disabled])

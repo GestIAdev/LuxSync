@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔬 DMX UNIVERSAL SCANNER - THE LAB</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .scanner-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .channel-box {
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.3s ease;
+    }
+
+    .channel-box:hover {
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+    }
+
+    .channel-label {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #00ff00;
+    }
+
+    .channel-slider {
+      width: 100%;
+      height: 30px;
+      background: #333;
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .channel-slider::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 30px;
+      background: #00ff00;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .channel-slider::-moz-range-thumb {
+      width: 20px;
+      height: 30px;
+      background: #00ff00;
+      border-radius: 3px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .channel-value {
+      display: block;
+      text-align: center;
+      margin-top: 5px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffff00;
+    }
+
+    .header {
+      background: #1a1a1a;
+      border: 2px solid #00ff00;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #00ff00;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      background: #333;
+      border: 2px solid #00ff00;
+      border-radius: 5px;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      background: #00ff00;
+      color: #000;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-group label {
+      color: #00ff00;
+      font-size: 14px;
+    }
+
+    .input-group input {
+      padding: 8px;
+      background: #333;
+      border: 2px solid #00ff00;
+      border-radius: 5px;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      width: 80px;
+      text-align: center;
+    }
+
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      background: #222;
+      border-left: 4px solid #00ff00;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .channel-name {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    .quick-values {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+
+    .quick-btn {
+      flex: 1;
+      padding: 3px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 3px;
+      color: #00ff00;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .quick-btn:hover {
+      background: #00ff00;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔬 DMX UNIVERSAL SCANNER</h1>
+    <p>THE LAB - Fixture Calibration Tool</p>
+    
+    <div class="controls">
+      <div class="input-group">
+        <label>DMX Base Address:</label>
+        <input type="number" id="baseAddress" value="50" min="1" max="512">
+      </div>
+      
+      <div class="input-group">
+        <label>Universe:</label>
+        <input type="number" id="universe" value="0" min="0" max="7">
+      </div>
+      
+      <div class="input-group">
+        <label>Channels:</label>
+        <input type="number" id="channelCount" value="16" min="1" max="32">
+      </div>
+      
+      <button class="btn" onclick="initChannels()">🔄 Reload</button>
+      <button class="btn" onclick="resetAll()">🔴 Reset All (0)</button>
+      <button class="btn" onclick="fullAll()">🟢 Full All (255)</button>
+      <button class="btn" onclick="centerAll()">🟡 Center All (127)</button>
+    </div>
+
+    <div class="status" id="status">
+      Ready. Configure base address and click Reload.
+    </div>
+  </div>
+
+  <div class="scanner-grid" id="channelGrid"></div>
+
+  <script>
+    const EL_1140_CHANNELS = [
+      { index: 0, name: "Pan", type: "pan", default: 127 },
+      { index: 1, name: "Tilt", type: "tilt", default: 127 },
+      { index: 2, name: "Pan Fine", type: "pan_fine", default: 0 },
+      { index: 3, name: "Tilt Fine", type: "tilt_fine", default: 0 },
+      { index: 4, name: "Speed", type: "speed", default: 128 },
+      { index: 5, name: "Dimmer", type: "dimmer", default: 255 },
+      { index: 6, name: "Strobe", type: "strobe", default: 0 },
+      { index: 7, name: "Color Wheel", type: "color_wheel", default: 0 },
+      { index: 8, name: "Gobo", type: "gobo", default: 0 },
+      { index: 9, name: "Gobo Rotation", type: "gobo_rotation", default: 0 },
+      { index: 10, name: "Prism", type: "prism", default: 0 },
+      { index: 11, name: "Focus", type: "focus", default: 0 },
+      { index: 12, name: "Function", type: "function", default: 0 },
+      { index: 13, name: "Reset", type: "reset", default: 0 },
+      { index: 14, name: "Unknown 14", type: "unknown", default: 0 },
+      { index: 15, name: "Unknown 15", type: "unknown", default: 0 }
+    ];
+
+    function sendDMX(universe, address, value) {
+      if (typeof window.lux?.sendDmxChannel === 'function') {
+        window.lux.sendDmxChannel(universe, address, value);
+        return true;
+      } else {
+        console.warn('⚠️ DMX API not available (running outside Electron?)');
+        return false;
+      }
+    }
+
+    function updateChannel(channelIndex, value) {
+      const baseAddress = parseInt(document.getElementById('baseAddress').value);
+      const universe = parseInt(document.getElementById('universe').value);
+      const absoluteAddress = baseAddress + channelIndex;
+      
+      const success = sendDMX(universe, absoluteAddress, value);
+      
+      if (success) {
+        document.getElementById('status').innerHTML = 
+          `✅ Sent: Universe ${universe}, DMX ${absoluteAddress} (CH${channelIndex}) → Value ${value}`;
+      } else {
+        document.getElementById('status').innerHTML = 
+          `❌ DMX API not available. Run this inside Selene.`;
+      }
+    }
+
+    function createChannelBox(channelIndex) {
+      const channelInfo = EL_1140_CHANNELS[channelIndex] || { 
+        name: `Channel ${channelIndex}`, 
+        type: 'unknown', 
+        default: 0 
+      };
+
+      const box = document.createElement('div');
+      box.className = 'channel-box';
+      box.innerHTML = `
+        <div class="channel-label">CH${channelIndex} (DMX +${channelIndex})</div>
+        <div class="channel-name">${channelInfo.name} (${channelInfo.type})</div>
+        <input 
+          type="range" 
+          class="channel-slider" 
+          min="0" 
+          max="255" 
+          value="${channelInfo.default}"
+          oninput="updateChannel(${channelIndex}, parseInt(this.value)); this.nextElementSibling.textContent = this.value"
+        >
+        <span class="channel-value">${channelInfo.default}</span>
+        <div class="quick-values">
+          <button class="quick-btn" onclick="setChannel(${channelIndex}, 0)">0</button>
+          <button class="quick-btn" onclick="setChannel(${channelIndex}, 64)">64</button>
+          <button class="quick-btn" onclick="setChannel(${channelIndex}, 127)">127</button>
+          <button class="quick-btn" onclick="setChannel(${channelIndex}, 191)">191</button>
+          <button class="quick-btn" onclick="setChannel(${channelIndex}, 255)">255</button>
+        </div>
+      `;
+      
+      return box;
+    }
+
+    function setChannel(channelIndex, value) {
+      const slider = document.querySelectorAll('.channel-slider')[channelIndex];
+      slider.value = value;
+      slider.nextElementSibling.textContent = value;
+      updateChannel(channelIndex, value);
+    }
+
+    function initChannels() {
+      const channelCount = parseInt(document.getElementById('channelCount').value);
+      const grid = document.getElementById('channelGrid');
+      grid.innerHTML = '';
+      
+      for (let i = 0; i < channelCount; i++) {
+        grid.appendChild(createChannelBox(i));
+      }
+      
+      document.getElementById('status').innerHTML = 
+        `🔄 Loaded ${channelCount} channels. Base address: ${document.getElementById('baseAddress').value}`;
+    }
+
+    function resetAll() {
+      const sliders = document.querySelectorAll('.channel-slider');
+      sliders.forEach((slider, index) => {
+        slider.value = 0;
+        slider.nextElementSibling.textContent = 0;
+        updateChannel(index, 0);
+      });
+    }
+
+    function fullAll() {
+      const sliders = document.querySelectorAll('.channel-slider');
+      sliders.forEach((slider, index) => {
+        slider.value = 255;
+        slider.nextElementSibling.textContent = 255;
+        updateChannel(index, 255);
+      });
+    }
+
+    function centerAll() {
+      const sliders = document.querySelectorAll('.channel-slider');
+      sliders.forEach((slider, index) => {
+        const channelInfo = EL_1140_CHANNELS[index];
+        const defaultVal = channelInfo ? channelInfo.default : 127;
+        slider.value = defaultVal;
+        slider.nextElementSibling.textContent = defaultVal;
+        updateChannel(index, defaultVal);
+      });
+    }
+
+    // Initialize on load
+    window.addEventListener('load', () => {
+      initChannels();
+      // Set defaults for critical channels
+      setTimeout(() => {
+        setChannel(5, 255); // Dimmer full
+        setChannel(0, 127); // Pan center
+        setChannel(1, 127); // Tilt center
+      }, 500);
+    });
+  </script>
+</body>
+</html>

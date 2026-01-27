@@ -1,43 +1,50 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 💥 STROBE BURST - RHYTHMIC FLASH BURSTS
+ * 💥 STROBE BURST - AMBIENT FLASH PULSES
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * 🌊 WAVE 691: DESATASCAR A LA DIOSA
  * 🎨 WAVE 962: CONTEXTUAL COLOR - UV techno, dorado latina
+ * 🪜 WAVE 1004.4: THE LATINO LADDER - Recalibrado a AMBIENT ZONE (A=0.40)
  *
- * Variante de StrobeStorm diseñada para DROPS CROSS-VIBE:
- * - Ráfagas cortas y rítmicas (no caos continuo)
- * - Sincronizado al BPM del track
- * - Respeta límites de Hz para no ser invasivo
- * - 🎨 Color contextual según vibe:
+ * Efecto de flashes SUAVES para zona media-baja del espectro energético.
+ * Recalibrado para THE LATINO LADDER - ya no es agresivo como StrobeStorm.
+ *
+ * FILOSOFÍA AMBIENT ZONE:
+ * - Flashes más largos y espaciados (80ms flash, 200ms gap)
+ * - Solo 2 flashes por ráfaga (no bombardeo)
+ * - Transición suave fade-out entre flashes
+ * - Intensidad contenida (~70%)
+ *
+ * 🎨 Color contextual según vibe:
  *   * TECHNO: UV (H=270°) - Ultravioleta industrial
- *   * LATINA: Dorado/Magenta/Cyan/Blanco (según intensidad)
+ *   * LATINA: Dorado cálido - tonos amigables
  *
- * COMPORTAMIENTO:
- * - 3-5 flashes rápidos en cada ráfaga
- * - Sincronizado al beat (downbeat = flash)
- * - Duración total: 500-800ms
- * - Color: Contextual según vibe o config override
+ * DNA PROFILE (THE LATINO LADDER):
+ * ┌─────────────────────────────────────────────────┐
+ * │ Aggression:  0.40 → AMBIENT ZONE (30-45%)      │
+ * │ Complexity:  0.35 → Patrón simple y predecible │
+ * │ Organicity:  0.50 → Balance mecánico/orgánico  │
+ * │ Duration:    SHORT → COLOR PERMITIDO en movers │
+ * └─────────────────────────────────────────────────┘
  *
  * PERFECT FOR:
- * - Drops en techno (UV industrial)
- * - Drops en reggaetón/cumbia (dorado latino)
- * - Chorus energéticos
- * - Transiciones rítmicas
+ * - Acentos suaves en cumbia/bachata
+ * - Momentos de énfasis sin romper el flow
+ * - Transiciones calmadas con un toque de luz
  *
  * @module core/effects/library/StrobeBurst
- * @version WAVE 691, 962
+ * @version WAVE 691, 962, 1004.4
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    flashCount: 4, // 4 flashes por ráfaga
-    flashDurationMs: 50, // 50ms por flash
-    gapDurationMs: 100, // 100ms entre flashes
+    flashCount: 2, // 🪜 LADDER: Solo 2 flashes (antes 4)
+    flashDurationMs: 80, // 🪜 LADDER: 80ms por flash (antes 50ms) - más suave
+    gapDurationMs: 200, // 🪜 LADDER: 200ms entre flashes (antes 100ms) - más espacio
     bpmSync: true, // Sincronizar con beat
-    maxFrequencyHz: 10, // Máximo 10 Hz (seguro para epilepsia)
+    maxFrequencyHz: 6, // 🪜 LADDER: Máximo 6 Hz (antes 10 Hz) - más calmado
     flashColor: null, // Usar paleta del vibe
-    colorIntensity: 0.8, // 80% saturación
+    colorIntensity: 0.7, // 🪜 LADDER: 70% saturación (antes 80%) - menos intenso
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // STROBE BURST CLASS

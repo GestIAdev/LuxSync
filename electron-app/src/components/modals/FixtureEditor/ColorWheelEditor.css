@@ -1,0 +1,597 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎨 COLOR WHEEL EDITOR STYLES - WAVE 1006: THE WHEELSMITH
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OVERLAY & MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-editor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001; /* Above FixtureForge */
+}
+
+.wheel-editor-modal {
+  background: #1a1a1e;
+  border: 1px solid #3a3a4a;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #252530 0%, #1a1a1e 100%);
+  border-bottom: 1px solid #3a3a4a;
+  border-radius: 12px 12px 0 0;
+}
+
+.wheel-editor-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wheel-editor-title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.wheel-editor-title svg {
+  color: #ff00ff;
+}
+
+.channel-badge {
+  background: #3a3a4a;
+  color: #aaa;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.wheel-close-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.wheel-close-btn:hover {
+  background: #ff4444;
+  color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRESETS BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-presets-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #222228;
+  border-bottom: 1px solid #3a3a4a;
+}
+
+.presets-label {
+  color: #888;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.presets-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.preset-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY - COLOR LIST
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-editor-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wheel-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #666;
+  text-align: center;
+}
+
+.wheel-empty-state svg {
+  color: #444;
+  margin-bottom: 16px;
+}
+
+.wheel-empty-state p {
+  margin: 4px 0;
+}
+
+.wheel-empty-state .hint {
+  font-size: 12px;
+  color: #555;
+}
+
+.wheel-colors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOR ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #252530;
+  border: 1px solid #3a3a4a;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.wheel-color-row:hover {
+  border-color: #ff00ff44;
+  background: #2a2a35;
+}
+
+/* Reorder buttons */
+.color-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.color-reorder button {
+  background: transparent;
+  border: 1px solid #444;
+  color: #666;
+  padding: 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-reorder button:hover:not(:disabled) {
+  background: #444;
+  color: #fff;
+}
+
+.color-reorder button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* DMX Input */
+.color-dmx {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 60px;
+}
+
+.color-dmx label {
+  font-size: 9px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.color-dmx input {
+  background: #1a1a1e;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  width: 50px;
+}
+
+.color-dmx input:focus {
+  border-color: #ff00ff;
+  outline: none;
+}
+
+/* Color Picker */
+.color-picker-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-picker-cell input[type="color"] {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-picker-cell input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-picker-cell input[type="color"]::-webkit-color-swatch {
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Name Input */
+.color-name {
+  flex: 1;
+}
+
+.color-name input {
+  width: 100%;
+  background: #1a1a1e;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.color-name input:focus {
+  border-color: #ff00ff;
+  outline: none;
+}
+
+.color-name input::placeholder {
+  color: #555;
+}
+
+/* Texture checkbox */
+.color-texture {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.color-texture input {
+  display: none;
+}
+
+.color-texture span {
+  font-size: 18px;
+  opacity: 0.3;
+  transition: all 0.2s;
+}
+
+.color-texture input:checked + span {
+  opacity: 1;
+}
+
+/* Delete button */
+.color-delete {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #666;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-delete:hover {
+  background: #ff444422;
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+/* Add button */
+.wheel-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: transparent;
+  border: 2px dashed #444;
+  color: #888;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+}
+
+.wheel-add-btn:hover {
+  border-color: #ff00ff;
+  color: #ff00ff;
+  background: rgba(255, 0, 255, 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VALIDATION ERROR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-validation-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #ff444422;
+  border-top: 1px solid #ff4444;
+  color: #ff6666;
+  font-size: 12px;
+}
+
+.wheel-validation-error svg {
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎛️ WAVE 1006.5: THE LIVE PROBE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-live-probe {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(255, 200, 0, 0.08) 0%, rgba(255, 100, 0, 0.08) 100%);
+  border-top: 1px solid rgba(255, 200, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 200, 0, 0.3);
+}
+
+.probe-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.probe-header svg {
+  color: #ffc800;
+}
+
+.probe-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #ffc800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.probe-subtitle {
+  color: #888;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.probe-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.probe-slider {
+  flex: 1;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #333 0%, #ffc800 100%);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.probe-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #ffc800;
+  border-radius: 50%;
+  cursor: grab;
+  border: 3px solid #1a1a20;
+  box-shadow: 0 2px 8px rgba(255, 200, 0, 0.4);
+  transition: transform 0.15s;
+}
+
+.probe-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.probe-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.probe-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #ffc800;
+  border-radius: 50%;
+  cursor: grab;
+  border: 3px solid #1a1a20;
+  box-shadow: 0 2px 8px rgba(255, 200, 0, 0.4);
+}
+
+.probe-input {
+  width: 60px;
+  padding: 8px;
+  background: #1a1a20;
+  border: 2px solid #ffc800;
+  border-radius: 6px;
+  color: #ffc800;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.probe-input:focus {
+  outline: none;
+  box-shadow: 0 0 12px rgba(255, 200, 0, 0.4);
+}
+
+.probe-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 2px solid #ffc800;
+  color: #ffc800;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.probe-add-btn:hover {
+  background: rgba(255, 200, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 200, 0, 0.2);
+}
+
+/* 🎛️ WAVE 1006.5: Eye preview button in color row */
+.color-preview-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #666;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-preview-btn:hover {
+  background: rgba(255, 200, 0, 0.15);
+  border-color: #ffc800;
+  color: #ffc800;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wheel-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #222228;
+  border-top: 1px solid #3a3a4a;
+  border-radius: 0 0 12px 12px;
+}
+
+.wheel-stats {
+  color: #888;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsaved-badge {
+  color: #ff9900;
+}
+
+.wheel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wheel-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wheel-btn.secondary {
+  background: transparent;
+  border: 1px solid #444;
+  color: #888;
+}
+
+.wheel-btn.secondary:hover:not(:disabled) {
+  background: #333;
+  color: #fff;
+}
+
+.wheel-btn.secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.wheel-btn.primary {
+  background: linear-gradient(135deg, #ff00ff 0%, #aa00ff 100%);
+  border: none;
+  color: white;
+}
+
+.wheel-btn.primary:hover {
+  background: linear-gradient(135deg, #ff44ff 0%, #cc00ff 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 0, 255, 0.3);
+}

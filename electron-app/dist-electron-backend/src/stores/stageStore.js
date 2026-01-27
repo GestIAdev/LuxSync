@@ -101,10 +101,13 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
     // ═══════════════════════════════════════════════════════════════════════
     _setDirty: () => {
         set({ isDirty: true });
-        // Trigger debounced auto-save
-        const state = get();
-        if (state.showFilePath) {
-            debouncedSave(() => state.saveShow());
+        // 🔥 WAVE 1007.5 FIX: Debounce the save call itself, not a closure
+        // ANTI-CLOSURE: Force fresh state read inside debounced execution
+        if (get().showFilePath) {
+            debouncedSave(async () => {
+                // ⚡ CRITICAL: get() called HERE, not captured in closure
+                return await get().saveShow();
+            });
         }
     },
     _syncDerivedState: () => {
@@ -182,7 +185,10 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         get()._syncDerivedState();
     },
     saveShow: async () => {
-        const { showFile, showFilePath } = get();
+        // 🔥 WAVE 1007.5 FIX: ALWAYS get fresh state, never trust closure
+        // The debouncer captures stale showFile references. Force fresh read.
+        const state = get();
+        const { showFile, showFilePath } = state;
         if (!showFile) {
             set({ lastError: 'No show to save' });
             return false;

@@ -80,6 +80,8 @@ export function registerArbiterHandlers(masterArbiter) {
      * Example from UI Programmer panel
      */
     ipcMain.handle('lux:arbiter:setManual', (_event, { fixtureIds, controls, channels, }) => {
+        // 🔥 WAVE 1008.4: Debug log BEFORE validation
+        console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed });
         // Validate required parameters
         if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             console.error('[Arbiter] setManual: Invalid or empty fixtureIds', { fixtureIds, controls, channels });

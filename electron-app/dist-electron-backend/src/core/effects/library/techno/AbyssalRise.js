@@ -4,6 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * 🔥 WAVE 997: ABYSSAL REDEMPTION - REFACTOR TOTAL
+ * 🎯 WAVE 1003.13: STROBE QUIRÚRGICO (maxStrobeCount=3, NO spam)
  *
  * FILOSOFÍA:
  * NO es una "subida divina". Es PRESIÓN SUBMARINA.
@@ -20,11 +21,16 @@
  * - Colores: DEEP BLUE (#0000FF) + UV/PURPLE (#4B0082) - CERO BLANCO
  * - 3 Fases: PRESSURE (flicker oscuro) → CRUSH (strobe cyan) → VOID (blackout)
  *
+ * 🎯 WAVE 1003.13: STROBE REDUCTION
+ * - ANTES: strobeSpeedMs=80ms → ~7 flashes en CRUSH (570ms)
+ * - AHORA: maxStrobeCount=3 → Solo 3 golpes quirúrgicos (NO spam)
+ * - RAZÓN: "Con que pegue 2 flashes o 3, es mas que suficiente" - Radwulf
+ *
  * COMPORTAMIENTO:
  * - MixBus: 'global' (DICTADOR - mata la física)
  * - Duración: 3,500-4,000ms (dinámico según BPM)
  * - Fase 1 (0-80%): PRESSURE - Azul profundo vibrando (flicker)
- * - Fase 2 (80-95%): CRUSH - Strobe cyan eléctrico (sin blanco)
+ * - Fase 2 (80-95%): CRUSH - 3 strobes cyan (80ms cada uno)
  * - Fase 3 (95-100%): VOID - Blackout total antes del drop
  *
  * USO IDEAL:
@@ -53,6 +59,7 @@ const DEFAULT_CONFIG = {
     voidPhaseRatio: 0.05, // 5% en void (190ms)
     flickerSpeedMs: 150, // Flicker rápido pero no agresivo
     strobeSpeedMs: 80, // Strobe rápido en fase crush
+    maxStrobeCount: 3, // Solo 3 flashes (quirúrgico, NO spam)
 };
 // Colores del viaje - WAVE 997: SIN BLANCO
 const COLORS = {
@@ -196,8 +203,13 @@ export class AbyssalRise extends BaseEffect {
         const phaseElapsed = this.elapsedMs - this.pressureEndMs;
         const phaseDuration = this.crushEndMs - this.pressureEndMs;
         const phaseProgress = Math.min(1, phaseElapsed / phaseDuration);
-        // Strobe rápido (sin blanco - cyan eléctrico)
-        const strobeToggle = (Date.now() % this.config.strobeSpeedMs) < (this.config.strobeSpeedMs / 2);
+        // WAVE 1003.13: Limitar a maxStrobeCount flashes (2-3 golpes quirúrgicos)
+        // Calcular cuántos ciclos completos han pasado (ON+OFF = 1 ciclo)
+        const cycleCount = Math.floor(phaseElapsed / this.config.strobeSpeedMs);
+        const withinStrobeLimit = cycleCount < this.config.maxStrobeCount;
+        // Strobe solo si no hemos alcanzado el límite
+        const strobeToggle = withinStrobeLimit &&
+            (phaseElapsed % this.config.strobeSpeedMs) < (this.config.strobeSpeedMs / 2);
         const strobe = strobeToggle ? 1 : 0;
         return {
             effectId: this.id,

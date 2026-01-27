@@ -10,23 +10,26 @@
  * ✅ Integración real con Veritas para validación criptográfica
  * ✅ Conflict resolution y rate limiting
  * ✅ Safety systems: circuit breakers, timeouts, backups
+ * 
+ * 🔥 WAVE 1008.7: Temporarily disabled - missing dependencies
  */
 
-import {
-  BaseMetaEngine,
-  EngineConfig,
-  EngineMetrics,
-  SafetyContext,
-  ExecutionResult,
-  EngineHealth,
-  HealthIssue,
-  EthicalDilemma,
-  EthicalDecision,
-  EthicalCertificate
-} from './MetaEngineInterfaces.js';
-import { RealVeritasInterface, ClaimVerificationRequest } from '../../swarm/veritas/VeritasInterface.js';
-import { CircuitBreaker } from './CircuitBreaker.js';
-import { TimeoutWrapper } from './TimeoutWrapper.js';
+// DISABLED - Missing imports
+// import {
+//   BaseMetaEngine,
+//   EngineConfig,
+//   EngineMetrics,
+//   SafetyContext,
+//   ExecutionResult,
+//   EngineHealth,
+//   HealthIssue,
+//   EthicalDilemma,
+//   EthicalDecision,
+//   EthicalCertificate
+// } from './MetaEngineInterfaces.js';
+// import { RealVeritasInterface, ClaimVerificationRequest } from '../../swarm/veritas/VeritasInterface.js';
+// import { CircuitBreaker } from './CircuitBreaker.js';
+// import { TimeoutWrapper } from './TimeoutWrapper.js';
 
 
 // 🔧 SAFETY SYSTEMS DEL APOYO SUPREMO

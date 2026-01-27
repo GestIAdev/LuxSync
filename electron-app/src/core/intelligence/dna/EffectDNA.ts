@@ -3,7 +3,19 @@
  * 🧬 EFFECT DNA - THE CONTEXTUAL GENOME
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * 🔥 WAVE 970: THE CONTEXTUAL DNA
+ * 🔥   's  'strobe_burst': {
+    aggression: 0.43,   // 💥 WA  'glitch_guaguanco': {
+    aggression: 0.64,   // 🦠 WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
+    chaos: 0.60,        // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
+    organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
+  },05.11: 0.42→0.43 (ajuste fino)
+    chaos: 0.40,        // Ordenado
+    organicity: 0.45,   // 🆙 WAVE 1005.11: 0.30→0.45 (CRÍTICO - casi neutro, magnético)
+  },_burst': {
+    aggression: 0.42,   // 💥 WAVE 1005.9: 0.41→0.42 (FORTIFICAR - alejarlo del peligro)
+    chaos: 0.40,        // Ordenado
+    organicity: 0.30,   // 🆙 WAVE 1005.8: 0.20→0.30 (menos extremo)
+  },970: THE CONTEXTUAL DNA
  * 
  * FILOSOFÍA:
  * Selene no busca "belleza" (concepto humano subjetivo).
@@ -207,82 +219,82 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
   // 🌴 WAVE 1004.4: THE LATINO LADDER - Fiesta Latina Recalibrado
   // ═══════════════════════════════════════════════════════════════
   'solar_flare': {
-    aggression: 0.85,   // ☀️ WAVE 1004.4: INTENSE ZONE (Upgrade) - Explosión solar intensa
-    chaos: 0.50,        // Moderado
-    organicity: 0.40,   // Semi-sintético
+    aggression: 0.86,   // ☀️ WAVE 1005.13: 0.87→0.86 (distanciarse de Peak)
+    chaos: 0.30,        // 🔻 WAVE 1005.11: 0.20→0.30 (moderado)
+    organicity: 0.35,   // 🔻 WAVE 1005.13: 0.45→0.35 (sintético/brillante, no orgánico)
   },
   'strobe_storm': {
-    aggression: 0.95,   // ⚡ WAVE 1004.4: PEAK ZONE - Tormenta total
-    chaos: 0.70,        // 🆙 Upgrade: Más caótico para competir con latina_meltdown
-    organicity: 0.25,   // Eléctrico, mecánico
+    aggression: 0.93,   // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
+    chaos: 0.75,        // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
+    organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
   },
   'strobe_burst': {
-    aggression: 0.40,   // � WAVE 1004.4: AMBIENT ZONE (Downgrade) - Destellos de cámara suaves
+    aggression: 0.43,   // 🎯 WAVE 1005.11: ajuste fino para Centrist - ambient entry
     chaos: 0.35,        // Ordenado, más suave
     organicity: 0.40,   // Semi-orgánico
   },
   'tidal_wave': {
-    aggression: 0.25,   // 🌊 WAVE 1004.4: VALLEY ZONE - Ola muy suave
-    chaos: 0.30,        // Fluido y predecible
-    organicity: 0.80,   // Muy orgánico (agua)
+    aggression: 0.28,   // 🌊 WAVE 1005.14: 0.27→0.28 (borde de salida - dist 0.055 del centro)
+    chaos: 0.55,        // 🔻 WAVE 1005.8: 0.60→0.55 (ajuste fino)
+    organicity: 0.70,   // Orgánico pero moderado
   },
   'ghost_breath': {
-    aggression: 0.08,   // 👻 WAVE 1004.4: SILENCE ZONE - Casi imperceptible
-    chaos: 0.15,        // Muy ordenado (sinusoidal)
-    organicity: 0.95,   // Máxima organicidad
+    aggression: 0.13,   // 👻 WAVE 1005.11: 0.11→0.13 (darle aire a amazon)
+    chaos: 0.25,        // Más variación que amazon
+    organicity: 0.80,   // 🎯 WAVE 1005.11: Igualado con amazon - pelea solo por A
   },
   'tropical_pulse': {
-    aggression: 0.55,   // 🌴 WAVE 1004.4: GENTLE ZONE - Percusivo moderado
-    chaos: 0.40,        // Rítmico
-    organicity: 0.65,   // Festivo/humano
+    aggression: 0.56,   // 🌴 WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
+    chaos: 0.45,        // 🆙 WAVE 1005.8: 0.40→0.45 (balance)
+    organicity: 0.65,   // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
   },
   'salsa_fire': {
-    aggression: 0.82,   // 🔥 WAVE 1004.4: INTENSE ZONE (Upgrade) - FUEGO QUE QUEMA
-    chaos: 0.55,        // 🆙 Más caótico (llamas vivas)
-    organicity: 0.60,   // Pasional pero más intenso
+    aggression: 0.81,   // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
+    chaos: 0.55,        // Llamas vivas
+    organicity: 0.40,   // 🔻 WAVE 1005.13: 0.60→0.40 (DES-HUMANIZACIÓN - quema, no baila)
   },
   'cumbia_moon': {
-    aggression: 0.20,   // 🌙 WAVE 1004.4: VALLEY ZONE - Suave romántica
-    chaos: 0.20,        // Muy ordenado
-    organicity: 0.85,   // Romántico máximo
+    aggression: 0.21,   // 🌙 WAVE 1005.14: 0.18→0.21 (cerca del centro 0.225 - dist 0.015)
+    chaos: 0.20,        // MUY ordenado
+    organicity: 0.80,   // 🔻 WAVE 1005.8: 0.85→0.80 (alcanzable)
   },
   'clave_rhythm': {
-    aggression: 0.52,   // 🥁 WAVE 1004.4: GENTLE ZONE - Percusivo controlado
-    chaos: 0.35,        // Rítmico 3-2
-    organicity: 0.70,   // Humano/orgánico
+    aggression: 0.48,   // 🥁 WAVE 1005.11: 0.54→0.48 (entrada de Gentle - rescatar Tropical)
+    chaos: 0.60,        // 🔻 WAVE 1005.8: 0.65→0.60 (dejar de robar tanto)
+    organicity: 0.60,   // 🆙 WAVE 1005.8: 0.55→0.60 (alejarlo del centro)
   },
   'corazon_latino': {
-    aggression: 0.38,   // 💃 WAVE 1004.4: AMBIENT ZONE (Downgrade) - Latido de fondo
-    chaos: 0.30,        // Más suave
-    organicity: 0.85,   // Orgánico pero sutil
+    aggression: 0.37,   // 💃 WAVE 1005.11: 0.38→0.37 (ajuste fino)
+    chaos: 0.35,        // 🆙 WAVE 1005.11: 0.30→0.35 (moderado)
+    organicity: 0.75,   // 🔻 WAVE 1005.11: 0.85→0.75 (moderar - menos extremo)
   },
   
   // ═══════════════════════════════════════════════════════════════
   // 🔥 WAVE 1004.3: DNA EXTREMOS - Fiesta Latina
   // ═══════════════════════════════════════════════════════════════
   'latina_meltdown': {
-    aggression: 0.95,   // 🔥 PEAK ZONE - Nuclear Salsa (máxima agresión)
-    chaos: 0.30,        // Rítmico - sincronizado al kick
-    organicity: 0.20,   // Sintético - mecánico, preciso
+    aggression: 0.97,   // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
+    chaos: 0.30,        // Ordenado - kick sync
+    organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
   },
   'glitch_guaguanco': {
-    aggression: 0.68,   // 🦠 WAVE 1004.4: ACTIVE ZONE - Virus controlado
-    chaos: 0.85,        // Alto caos pero no máximo
-    organicity: 0.15,   // Digital
+    aggression: 0.66,   // 🦠 WAVE 1005.8: 0.65→0.66 (centrado en 0.675)
+    chaos: 0.85,        // Alto caos
+    organicity: 0.30,   // 🆙 WAVE 1005.11: 0.20→0.30 (menos alienígena)
   },
   
   // ═══════════════════════════════════════════════════════════════
   // 🌿 WAVE 1004.4: THE LATINO LADDER - Nuevos Efectos
   // ═══════════════════════════════════════════════════════════════
   'amazon_mist': {
-    aggression: 0.05,   // 🌿 SILENCE ZONE - La selva respira
-    chaos: 0.20,        // Ordenado (sinusoidal lento)
-    organicity: 0.95,   // MÁXIMA organicidad
+    aggression: 0.05,   // 🌿 WAVE 1005.11: 0.06→0.05 (Rescate - bajar un pelo)
+    chaos: 0.25,        // 🆙 WAVE 1005.11: 0.15→0.25 (moderado)
+    organicity: 0.80,   // 🔻 WAVE 1005.11: 0.90→0.80 (igualar con ghost - pelea solo por A)
   },
   'machete_spark': {
-    aggression: 0.70,   // ⚔️ ACTIVE ZONE - Cortes precisos de acero
-    chaos: 0.50,        // Medio (rítmico con variación)
-    organicity: 0.30,   // Semi-mecánico (swing repetitivo)
+    aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
+    chaos: 0.50,        // 🆙 WAVE 1005.8: 0.30→0.50 (moderado)
+    organicity: 0.30,   // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
   },
 }
 
@@ -410,8 +422,24 @@ export class DNAAnalyzer {
   /** Threshold para detectar "Middle Void" */
   private readonly MIDDLE_VOID_THRESHOLD = 0.60
   
-  /** Máxima distancia posible en cubo unitario 3D = √3 ≈ 1.732 */
-  private readonly MAX_DISTANCE = Math.sqrt(3)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🚀 WAVE 1005.10: RELATIVITY UPDATE - Weighted Euclidean Distance
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Peso para Aggression (la energía es Ley - 2x prioridad) */
+  private readonly WEIGHT_AGGRESSION = 2.0
+  
+  /** Peso para Chaos (estilo secundario) */
+  private readonly WEIGHT_CHAOS = 1.0
+  
+  /** Peso para Organicity (estilo secundario) */
+  private readonly WEIGHT_ORGANICITY = 1.0
+  
+  /** 
+   * Máxima distancia posible en cubo PONDERADO:
+   * √[(1.0 × 2.0)² + (1.0 × 1.0)² + (1.0 × 1.0)²] = √(4 + 1 + 1) = √6 ≈ 2.45
+   */
+  private readonly MAX_DISTANCE = Math.sqrt(6)
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🚨 WAVE 1004.2: DIVERSITY FACTOR (SHADOWBAN)
@@ -499,9 +527,12 @@ export class DNAAnalyzer {
   /**
    * Calcula la relevancia de un efecto dado el target
    * 
-   * Usa distancia euclidiana 3D:
-   * distance = √[(Ae-At)² + (Ce-Ct)² + (Oe-Ot)²]
-   * relevance = 1 - (distance / √3)
+   * 🚀 WAVE 1005.10: RELATIVITY UPDATE
+   * Usa distancia euclidiana PONDERADA 3D:
+   * distance = √[(2.0×(Ae-At))² + (1.0×(Ce-Ct))² + (1.0×(Oe-Ot))²]
+   * relevance = 1 - (distance / √6)
+   * 
+   * Aggression tiene 2x peso → energía es la dimensión primaria
    * 
    * 🚨 WAVE 1004.2: Aplicamos DIVERSITY FACTOR (shadowban) para evitar repetición
    * 
@@ -521,12 +552,16 @@ export class DNAAnalyzer {
     // ═══════════════════════════════════════════════════════════════════════
     this.maybeResetUsageWindow()
     
-    // Distancia euclidiana 3D
+    // 🚀 WAVE 1005.10: WEIGHTED Euclidean Distance
     const dA = effectDNA.aggression - targetDNA.aggression
     const dC = effectDNA.chaos - targetDNA.chaos
     const dO = effectDNA.organicity - targetDNA.organicity
     
-    const distance = Math.sqrt(dA * dA + dC * dC + dO * dO)
+    const distance = Math.sqrt(
+      (dA * this.WEIGHT_AGGRESSION) ** 2 +
+      (dC * this.WEIGHT_CHAOS) ** 2 +
+      (dO * this.WEIGHT_ORGANICITY) ** 2
+    )
     
     // Relevancia base (1 = perfecto match)
     const baseRelevance = 1 - (distance / this.MAX_DISTANCE)

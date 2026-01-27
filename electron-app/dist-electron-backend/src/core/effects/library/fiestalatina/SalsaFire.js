@@ -4,16 +4,24 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * WAVE 692: FIESTA LATINA EFFECT ARSENAL
+ * WAVE 1004.4: THE LATINO LADDER - INTENSE ZONE (75-90%)
+ *              + PRE-BLACKOUT PATTERN (50ms antes de cada pico)
  *
  * CONCEPTO:
  * Ráfagas de rojo/naranja que simulan llamas bailando con la música.
  * Es fuego ORGÁNICO - no mecánico. Como las llamas reales, tiene variación.
+ *
+ * DNA TARGET (WAVE 1004.4):
+ * - Aggression: 0.82 (INTENSE - FUEGO QUE QUEMA)
+ * - Chaos: 0.55 (Caótico como llamas vivas)
+ * - Organicity: 0.60 (Pasional pero intenso)
  *
  * COMPORTAMIENTO:
  * - Flicker rápido pero suave (no strobe harsh)
  * - Colores: rojo profundo → naranja → amarillo → back
  * - Intensidad varía de forma "caótica controlada"
  * - El fuego "respira" - nunca es constante
+ * - 🆕 PRE-BLACKOUT: 50ms de negrura antes de cada pico de intensidad
  *
  * PHYSICS:
  * - Base intensity + random variation (Perlin-like noise)
@@ -21,24 +29,26 @@
  * - Duración corta pero impactante
  *
  * PERFECT FOR:
- * - Momentos sensuales
- * - Cuando la música tiene "sabor"
+ * - Momentos sensuales INTENSOS
+ * - Cuando la música QUEMA
  * - Solos de instrumentos
  * - Transiciones dramáticas
  *
  * @module core/effects/library/SalsaFire
- * @version WAVE 692
+ * @version WAVE 692, 1004.4
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
     durationMs: 2500,
-    flickerFrequency: 12, // 12 Hz - fuego natural
-    intensityVariation: 0.35,
-    baseColor: { h: 10, s: 100, l: 45 }, // Rojo profundo
-    hotColor: { h: 50, s: 100, l: 70 }, // Amarillo cálido
-    minIntensity: 0.4,
-    fadeInMs: 200,
-    fadeOutMs: 400,
+    flickerFrequency: 15, // 🆙 12→15 Hz - fuego más intenso
+    intensityVariation: 0.45, // 🆙 0.35→0.45 - más variación
+    baseColor: { h: 5, s: 100, l: 50 }, // 🆙 Rojo más profundo (10→5)
+    hotColor: { h: 55, s: 100, l: 75 }, // 🆙 Amarillo más brillante
+    minIntensity: 0.35, // 🆙 0.4→0.35 - más contraste
+    fadeInMs: 150, // 🆙 200→150 - entrada más rápida
+    fadeOutMs: 350, // 🆙 400→350 - salida más rápida
+    preBlackoutMs: 50, // 🆕 WAVE 1004.4: 50ms de negrura antes de pico
+    peakThreshold: 0.75, // 🆕 WAVE 1004.4: Detectar picos > 75%
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // SALSA FIRE CLASS
@@ -49,11 +59,15 @@ export class SalsaFire extends BaseEffect {
         this.effectType = 'salsa_fire';
         this.name = 'Salsa Fire';
         this.category = 'physical';
-        this.priority = 72; // Entre strobe y ambient
+        this.priority = 80; // 🆙 72→80 - INTENSE ZONE
         this.mixBus = 'htp'; // 🌪️ WAVE 805: HTP - Fuego que suma energía
         this.currentIntensity = 0;
         this.noisePhase = 0; // Para el flicker pseudo-random
         this.noiseSpeed = 0;
+        // 🆕 WAVE 1004.4: Pre-blackout state
+        this.lastFlickerValue = 0;
+        this.preBlackoutTimer = 0;
+        this.isInPreBlackout = false;
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.currentColor = { ...this.config.baseColor };
     }
@@ -62,7 +76,12 @@ export class SalsaFire extends BaseEffect {
         // Seed único para este disparo
         this.noisePhase = Date.now() % 1000;
         this.noiseSpeed = this.config.flickerFrequency * 2 * Math.PI / 1000;
-        console.log(`[SalsaFire 🔥] TRIGGERED! Duration=${this.config.durationMs}ms Flicker=${this.config.flickerFrequency}Hz`);
+        // 🆕 WAVE 1004.4: Reset pre-blackout state
+        this.lastFlickerValue = 0;
+        this.preBlackoutTimer = 0;
+        this.isInPreBlackout = false;
+        console.log(`[SalsaFire 🔥] INTENSE ZONE TRIGGERED! Duration=${this.config.durationMs}ms Flicker=${this.config.flickerFrequency}Hz`);
+        console.log(`[SalsaFire 🔥] DNA: A=0.82 C=0.55 O=0.60 (FUEGO QUE QUEMA)`);
     }
     update(deltaMs) {
         if (this.phase === 'idle' || this.phase === 'finished')
@@ -79,9 +98,29 @@ export class SalsaFire extends BaseEffect {
         const envelope = this.calculateEnvelope();
         // Calculate flicker intensity using multiple sine waves (pseudo-Perlin)
         const flicker = this.calculateFlicker();
-        // Final intensity
-        const baseIntensity = this.config.minIntensity +
+        // 🆕 WAVE 1004.4: PRE-BLACKOUT DETECTION
+        // Si el flicker cruza hacia arriba del threshold, activar pre-blackout
+        if (!this.isInPreBlackout &&
+            this.lastFlickerValue < this.config.peakThreshold &&
+            flicker >= this.config.peakThreshold) {
+            this.isInPreBlackout = true;
+            this.preBlackoutTimer = 0;
+        }
+        // Actualizar timer de pre-blackout
+        if (this.isInPreBlackout) {
+            this.preBlackoutTimer += deltaMs;
+            if (this.preBlackoutTimer >= this.config.preBlackoutMs) {
+                this.isInPreBlackout = false;
+            }
+        }
+        this.lastFlickerValue = flicker;
+        // Final intensity (con pre-blackout override)
+        let baseIntensity = this.config.minIntensity +
             (1 - this.config.minIntensity) * flicker;
+        // 🆕 WAVE 1004.4: Durante pre-blackout, forzar negrura
+        if (this.isInPreBlackout) {
+            baseIntensity = 0;
+        }
         this.currentIntensity = baseIntensity * envelope * this.triggerIntensity;
         // Update color based on intensity (hotter = more yellow)
         this.updateColor();
@@ -125,16 +164,39 @@ export class SalsaFire extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
+        // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
+        // SalsaFire es LONG (2500ms) → Solo dimmer para movers, NO color
+        // Front/Back SÍ pueden tener color (flicker de fuego)
+        const zoneOverrides = {
+            'front': {
+                color: this.currentColor,
+                dimmer: this.currentIntensity,
+                blendMode: 'max',
+            },
+            'back': {
+                color: this.currentColor,
+                dimmer: this.currentIntensity * 0.8, // Back un poco más suave
+                blendMode: 'max',
+            },
+            // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer (física decide color)
+            'movers': {
+                dimmer: this.currentIntensity * 0.6, // Movers más sutiles que PARs
+                blendMode: 'max',
+                // NO COLOR → La rueda mecánica o física decide
+            },
+        };
         return {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.elapsedMs / this.config.durationMs,
-            zones: ['all'],
+            zones: Object.keys(zoneOverrides),
             intensity: this.currentIntensity,
-            dimmerOverride: this.currentIntensity,
-            colorOverride: this.currentColor,
-            globalOverride: true, // 🔥 CLAVE: Funciona con arquitectura actual
+            // 🚨 WAVE 1004.2: Eliminado dimmerOverride/colorOverride globales
+            dimmerOverride: undefined,
+            colorOverride: undefined,
+            globalOverride: false, // � WAVE 1004.2: Ya no es global, usa zoneOverrides
+            zoneOverrides,
         };
     }
 }

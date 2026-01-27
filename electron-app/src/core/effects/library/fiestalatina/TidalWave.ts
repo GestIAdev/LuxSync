@@ -1,7 +1,17 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌊 TIDAL WAVE - SPATIAL PHASE SWEEP
- * ═══════════════════════════════════════════════════════════════════════════
+ * ═════════════════════════════════════════════════════════    // 🌊 WAVE 1009: FREEDOM DAY - Movers reciben COLOR
+    // El HAL traduce RGB → Color Wheel DMX automáticamente
+    for (const [zone, zoneIntensity] of this.zoneIntensities) {
+      // Threshold 0.0 → TODAS las zonas incluidas, incluso valles negros
+      if (zoneIntensity >= 0.0) {
+        // 🌊 WAVE 1010.7: MULTIPLICADOR - En lugar de setear, AMPLIFICAMOS la energía base
+        // ANTES: getIntensityFromZScore(zoneIntensity * triggerIntensity) → Seteaba valor
+        // AHORA: zoneIntensity es el MULTIPLICADOR de la energía base (triggerIntensity)
+        // Si triggerIntensity=0.3 y zoneIntensity=2.5 → 0.75 (amplificado pero real)
+        const amplifiedIntensity = Math.min(1.0, zoneIntensity * this.triggerIntensity)
+        const scaledIntensity = this.getIntensityFromZScore(amplifiedIntensity, 0.25)═════════
  * 
  * WAVE 680: THE ARSENAL - La ola que barre el escenario
  * 
@@ -305,12 +315,14 @@ export class TidalWave extends BaseEffect {
       const sineValue = Math.sin(localPhase * Math.PI * 2)
       const shapedSine = sineValue > 0 ? Math.pow(sineValue, 6) : 0  // Pico ultra-estrecho
       
-      // 🌊 WAVE 1010.6: VITAMINA MEGA-BOOST - La cresta necesita MÁS LUZ
-      // Boost aumentado de 1.3 → 1.8 (80% más intenso en el pico)
-      const intensityBoost = 1.8  // MEGA BOOST para que se vea la cresta
-      const boostedIntensity = Math.min(1.0, shapedSine * intensityBoost)
+      // 🌊 WAVE 1010.7: VITAMINA DOBLE WHAMMY - MULTIPLICADOR + BOOST BRUTAL
+      // ANTES: Intensidad fija [0.0, 1.8] → Se veía escuchimizada en momentos de poca energía
+      // AHORA: Multiplicador de energía actual × BOOST 2.5
+      const intensityBoost = 2.5  // ULTRA BOOST - Si nos pasamos, git checkout!
+      const boostedIntensity = shapedSine * intensityBoost
       
       // 🌊 WAVE 805.2: CONTRASTE BRUTAL - floor=0.0 (negro total en valles)
+      // NUEVO: En lugar de setear [floor, 1.0], ahora MODULAMOS [floor, boost]
       const intensity = this.config.intensityFloor + 
         boostedIntensity * (1.0 - this.config.intensityFloor)
       

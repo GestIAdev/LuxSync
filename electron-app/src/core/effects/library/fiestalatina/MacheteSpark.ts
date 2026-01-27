@@ -73,7 +73,7 @@ interface MacheteSparkConfig {
 }
 
 const DEFAULT_CONFIG: MacheteSparkConfig = {
-  cutCount: 4,              // 4 cortes por ráfaga
+  cutCount: 2,              // 4 cortes por ráfaga
   sparkDurationMs: 25,      // 25ms - destello muy corto (filo del acero)
   preBlackoutMs: 50,        // 50ms de oscuridad antes del corte
   gapMs: 120,               // 120ms entre cortes (ritmo de trabajo)

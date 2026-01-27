@@ -44,10 +44,13 @@ export {
 } from './PredictionEngine'
 
 // Decision Maker - Síntesis final
+// 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD y DIVINE_ARSENAL
 export {
   makeDecision,
   mergeDecisions,
   isSignificantDecision,
+  DIVINE_THRESHOLD,
+  DIVINE_ARSENAL,
   type DecisionInputs,
   type DecisionMakerConfig
 } from './DecisionMaker'

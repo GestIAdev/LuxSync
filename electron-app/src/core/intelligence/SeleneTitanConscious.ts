@@ -654,7 +654,7 @@ export class SeleneTitanConscious extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 4. DECISION MAKER: EL LÓBULO FRONTAL - TIENE TODO EL CONTEXTO
+    // 4. DECISION MAKER: EL ÚNICO GENERAL (WAVE 1010: UNIFIED BRAIN)
     // ═══════════════════════════════════════════════════════════════════════
     
     const inputs: DecisionInputs = {
@@ -666,6 +666,9 @@ export class SeleneTitanConscious extends EventEmitter {
       timestamp: state.timestamp,
       // 🧬 WAVE 972.2: DNA DATA para el cerebro
       dreamIntegration: dreamIntegrationData ?? undefined,
+      // 🔪 WAVE 1010: Zone & Z-Score Awareness (movido desde Selector)
+      energyContext: energyContext,
+      zScore: zScore,
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -684,7 +687,8 @@ export class SeleneTitanConscious extends EventEmitter {
     let output = makeDecision(inputs)
     
     // ═══════════════════════════════════════════════════════════════════════
-    //  WAVE 685: CONTEXTUAL EFFECT SELECTION (FALLBACK SI DECISIONMAKER NO DECIDE)
+    // 🔪 WAVE 1010: SIMPLIFIED FLOW - DecisionMaker is THE ONLY decision point
+    // ContextualEffectSelector is now EffectRepository (only availability check)
     // ═══════════════════════════════════════════════════════════════════════
     
     // Actualizar trend de energía
@@ -721,7 +725,34 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // 1. Si DecisionMaker tiene decisión (ya procesó DNA internamente)
     if (output.effectDecision) {
-      const intent = output.effectDecision.effectType
+      let intent = output.effectDecision.effectType
+      
+      // 🔪 WAVE 1010: DIVINE STRIKE con Arsenal - el Repository elige el arma disponible
+      const divineArsenal = (output.effectDecision as any).divineArsenal as string[] | undefined
+      if (divineArsenal && divineArsenal.length > 0) {
+        // El General ordenó DIVINE STRIKE, el Bibliotecario busca el arma
+        const availableWeapon = this.effectSelector.getAvailableFromArsenal(divineArsenal, pattern.vibeId)
+        if (availableWeapon) {
+          intent = availableWeapon
+          output.effectDecision.effectType = availableWeapon
+          console.log(
+            `[SeleneTitanConscious 🌩️] DIVINE ARSENAL: Selected ${availableWeapon} from [${divineArsenal.join(', ')}]`
+          )
+        } else {
+          // Todo el arsenal en cooldown - silencio forzado
+          console.log(
+            `[SeleneTitanConscious 🌩️] DIVINE ARSENAL EXHAUSTED - all weapons in cooldown`
+          )
+          output = {
+            ...output,
+            effectDecision: null,
+            debugInfo: {
+              ...output.debugInfo,
+              reasoning: `🌩️ DIVINE BLOCKED: Arsenal exhausted [${divineArsenal.join(', ')}]`,
+            }
+          }
+        }
+      }
       
       // 🧬 WAVE 973.3: DNA COOLDOWN OVERRIDE (MOOD-AWARE)
       // Si DNA decidió con ethics score alto SEGÚN EL MOOD ACTUAL,
@@ -735,11 +766,16 @@ export class SeleneTitanConscious extends EventEmitter {
       
       const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold
       
-      const availability = hasHighEthicsOverride
+      // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
+      const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision
+      
+      const availability = alreadyValidatedByArsenal
+        ? { available: true, reason: 'DIVINE arsenal pre-validated' }
+        : hasHighEthicsOverride
         ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
         : this.effectSelector.checkAvailability(intent, pattern.vibeId)
       
-      if (availability.available) {
+      if (availability.available && output.effectDecision) {
         finalEffectDecision = output.effectDecision
         
         if (hasHighEthicsOverride) {
@@ -753,7 +789,7 @@ export class SeleneTitanConscious extends EventEmitter {
             `confidence=${output.effectDecision.confidence?.toFixed(2)} | ${output.effectDecision.reason}`
           )
         }
-      } else {
+      } else if (output.effectDecision) {
         console.log(
           `[SeleneTitanConscious] 🚪 GATEKEEPER BLOCKED: ${intent} | ${availability.reason}`
         )

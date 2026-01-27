@@ -308,7 +308,34 @@ export class ContextualEffectSelector {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🚪 WAVE 812: THE GATEKEEPER - Unified Availability Check
+  // � WAVE 1010: EFFECT REPOSITORY - The Librarian (demoted from decision maker)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🔪 WAVE 1010: Get first available effect from an arsenal (for DIVINE moments)
+   * 
+   * El General (DecisionMaker) ordena "DIVINE STRIKE" y proporciona un arsenal.
+   * El Bibliotecario (este módulo) encuentra el primer efecto DISPONIBLE.
+   * 
+   * @param arsenal - Lista de efectos válidos para este momento (ordenados por preferencia)
+   * @param vibeId - Vibe actual para verificar cooldowns
+   * @returns El primer efecto disponible, o null si todos están en cooldown
+   */
+  public getAvailableFromArsenal(arsenal: string[], vibeId: string): string | null {
+    for (const effect of arsenal) {
+      const availability = this.checkAvailability(effect, vibeId)
+      if (availability.available) {
+        console.log(`[EffectRepository 🔪] Arsenal selection: ${effect} AVAILABLE (from [${arsenal.join(', ')}])`)
+        return effect
+      }
+    }
+    
+    console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown: [${arsenal.join(', ')}]`)
+    return null
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // �🚪 WAVE 812: THE GATEKEEPER - Unified Availability Check
   // ═══════════════════════════════════════════════════════════════════════════
   
   /**
@@ -446,10 +473,27 @@ export class ContextualEffectSelector {
     return this.moodController.isEffectBlocked(effectType)
   }
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔪 WAVE 1010: DEPRECATED - select() ya NO es el punto de decisión principal
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 
+  // ANTES (WAVE 685-900): Este método decidía SI y QUÉ disparar.
+  // AHORA (WAVE 1010): DecisionMaker es EL ÚNICO que decide SI disparar.
+  //                    Este módulo solo proporciona availability checks.
+  //
+  // Este método se mantiene por compatibilidad con tests existentes.
+  // NO USAR EN CÓDIGO NUEVO. Usar:
+  // - DecisionMaker.makeDecision() para decisiones
+  // - ContextualEffectSelector.checkAvailability() para validación
+  // - ContextualEffectSelector.getAvailableFromArsenal() para selección de arsenal
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   /**
-   * 🎯 SELECT EFFECT
+   * @deprecated WAVE 1010: Use DecisionMaker.makeDecision() instead.
+   * This method is kept for backward compatibility with tests.
    * 
-   * Método principal: dado el contexto completo, decide qué efecto disparar.
+   * Método legacy: dado el contexto completo, decide qué efecto disparar.
+   * ⚠️ REDUNDANTE: DecisionMaker ya toma esta decisión.
    * 
    * @returns Selección de efecto (puede ser null si no hay que disparar nada)
    */
@@ -641,10 +685,16 @@ export class ContextualEffectSelector {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE: Classification helpers
+  // 🔪 WAVE 1010 DEPRECATED: Classification helpers
+  // ─────────────────────────────────────────────────────────────────────────
+  // La clasificación Z-Score para DIVINE ahora se hace en DecisionMaker.
+  // Estas funciones se mantienen para compatibilidad con select() legacy.
+  // NO USAR EN CÓDIGO NUEVO.
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
+   * @deprecated WAVE 1010: DIVINE detection ahora vive en DecisionMaker.determineDecisionType()
+   * 
    * 🔋 WAVE 931: Clasificación Z-Score con CONSCIENCIA ENERGÉTICA
    * 
    * ANTES: Solo miraba Z-Score (relativo) → "Grito en biblioteca"
@@ -872,9 +922,18 @@ export class ContextualEffectSelector {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE: Hunt/Fuzzy evaluation
+  // 🔪 WAVE 1010 DEPRECATED: Hunt/Fuzzy evaluation
+  // ─────────────────────────────────────────────────────────────────────────
+  // Esta lógica es REDUNDANTE. DecisionMaker.determineDecisionType() ya evalúa:
+  // - HuntEngine worthiness
+  // - DNA Brain approval
+  // - DIVINE moments
+  // NO USAR EN CÓDIGO NUEVO - Solo existe para compatibilidad con select()
   // ─────────────────────────────────────────────────────────────────────────
   
+  /**
+   * @deprecated WAVE 1010: Esta lógica ahora vive en DecisionMaker.determineDecisionType()
+   */
   private evaluateHuntFuzzy(input: ContextualSelectorInput): { 
     should: boolean
     reason: string
@@ -1526,10 +1585,15 @@ export class ContextualEffectSelector {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // PRIVATE: Decision builders
+  // 🔪 WAVE 1010 DEPRECATED: Decision builders
+  // ─────────────────────────────────────────────────────────────────────────
+  // DIVINE decisions ahora se generan en DecisionMaker.generateDivineStrikeDecision()
+  // Estas funciones se mantienen para compatibilidad con select() legacy.
   // ─────────────────────────────────────────────────────────────────────────
   
   /**
+   * @deprecated WAVE 1010: Usar DecisionMaker.generateDivineStrikeDecision() + getAvailableFromArsenal()
+   * 
    * 🔪 WAVE 814.2: DIVINE DECISION - Vibe-Aware Impact
    * Ahora usa getHighImpactEffect() para respetar la identidad del vibe
    */

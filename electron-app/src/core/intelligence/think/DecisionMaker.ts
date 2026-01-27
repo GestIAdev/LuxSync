@@ -1,8 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  🎯 DECISION MAKER - El Juez Final
+//  🎯 DECISION MAKER - El Juez Final (EL ÚNICO GENERAL)
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAVE 500 - PROJECT GENESIS - PHASE 3
+//  WAVE 1010 - FRONTAL LOBOTOMY - UNIFIED BRAIN
 //  "Combina hunt + prediction + context → Decisión única"
+//  "El General manda. El Bibliotecario obedece."
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { 
@@ -18,6 +20,36 @@ import type { BeautyAnalysis } from '../sense/BeautySensor'
 import type { ConsonanceAnalysis } from '../sense/ConsonanceSensor'
 // 🧬 WAVE 972.2: DNA Brain Integration
 import type { IntegrationDecision } from '../integration/DreamEngineIntegrator'
+// 🔪 WAVE 1010: Zone Awareness (movido desde ContextualEffectSelector)
+import type { EnergyZone, EnergyContext } from '../../protocol/MusicalContext'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
+// ═══════════════════════════════════════════════════════════════════════════
+// Movido desde ContextualEffectSelector - EL GENERAL tiene el control total
+
+/** Umbral de Z-Score para DIVINE moment (momento de máximo impacto obligatorio) */
+export const DIVINE_THRESHOLD = 3.5
+
+/**
+ * 🔪 WAVE 1010: DIVINE ARSENAL BY VIBE
+ * Armas de destrucción masiva por género musical.
+ * Cuando Z > DIVINE_THRESHOLD, el General ordena fuego pesado.
+ */
+export const DIVINE_ARSENAL: Record<string, string[]> = {
+  'fiesta-latina': [
+    'solar_flare',       // ☀️ Explosión dorada
+    'strobe_storm',      // ⚡ Tormenta de strobes
+    'latina_meltdown',   // 🔥 El derretimiento final
+    'corazon_latino',    // ❤️ El alma del arquitecto
+  ],
+  'techno-club': [
+    'industrial_strobe', // 🔨 El Martillo
+    'gatling_raid',      // 🔫 Metralladora
+    'core_meltdown',     // ☢️ LA BESTIA
+    'strobe_storm',      // ⚡ Tormenta compartida
+  ],
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -26,6 +58,7 @@ import type { IntegrationDecision } from '../integration/DreamEngineIntegrator'
 /**
  * Todos los inputs para tomar una decisión
  * 🧬 WAVE 972.2: Ahora incluye DNA Brain integration
+ * 🔪 WAVE 1010: Ahora incluye Zone & Vibe Awareness (movido desde Selector)
  */
 export interface DecisionInputs {
   /** Patrón musical actual */
@@ -48,6 +81,12 @@ export interface DecisionInputs {
   
   /** 🧬 WAVE 972.2: DNA Brain integration decision (opcional) */
   dreamIntegration?: IntegrationDecision
+  
+  /** 🔪 WAVE 1010: Contexto energético para consciencia de zona */
+  energyContext?: EnergyContext
+  
+  /** 🔪 WAVE 1010: Z-Score actual (para DIVINE detection) */
+  zScore?: number
 }
 
 /**
@@ -131,6 +170,10 @@ export function makeDecision(
   
   // Generar decisiones específicas
   switch (decisionType) {
+    // 🔪 WAVE 1010: DIVINE STRIKE - Máximo impacto obligatorio
+    case 'divine_strike':
+      return generateDivineStrikeDecision(inputs, output, combinedConfidence)
+    
     case 'strike':
       return generateStrikeDecision(inputs, output, combinedConfidence)
     
@@ -157,6 +200,7 @@ export function makeDecision(
 // ═══════════════════════════════════════════════════════════════════════════
 
 type DecisionType = 
+  | 'divine_strike'     // 🔪 WAVE 1010: Z > 3.5 = FUEGO OBLIGATORIO
   | 'strike'            // Strike del hunt engine
   | 'prepare_for_drop'  // Preparar para drop predicho
   | 'buildup_enhance'   // Potenciar buildup
@@ -164,17 +208,37 @@ type DecisionType =
   | 'hold'              // Mantener sin cambios
 
 /**
- * 🔥 WAVE 811 → 🧬 WAVE 972.2: DNA BRAIN FIRST
+ * 🔥 WAVE 811 → 🧬 WAVE 972.2 → 🔪 WAVE 1010: UNIFIED BRAIN
  * 
- * NUEVA JERARQUÍA:
- * 1. DNA Brain Integration (si disponible y aprobado)
- * 2. HuntEngine worthiness
- * 3. Drop predicho
- * 4. Buildup/Beauty
- * 5. Hold
+ * NUEVA JERARQUÍA (WAVE 1010):
+ * 0. 🌩️ DIVINE MOMENT (Z > 3.5 + zona válida) - OBLIGATORIO
+ * 1. 🧬 DNA Brain Integration (si disponible y aprobado)
+ * 2. 🎯 HuntEngine worthiness
+ * 3. 📉 Drop predicho
+ * 4. 📈 Buildup/Beauty
+ * 5. 🧘 Hold
  */
 function determineDecisionType(inputs: DecisionInputs): DecisionType {
-  const { huntDecision, prediction, pattern, beauty, dreamIntegration } = inputs
+  const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore } = inputs
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
+  // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
+  // ═══════════════════════════════════════════════════════════════════════
+  const currentZ = zScore ?? 0
+  if (currentZ >= DIVINE_THRESHOLD) {
+    const zone = energyContext?.zone ?? 'gentle'
+    
+    // Consciencia energética: NO divine en zonas de silencio
+    // (No dispares artillería pesada en un funeral)
+    if (zone === 'silence' || zone === 'valley') {
+      console.log(`[DecisionMaker 🌩️] DIVINE BLOCKED: Z=${currentZ.toFixed(2)}σ but zone=${zone} (protected)`)
+      // Continuar a siguiente prioridad, no return 'hold'
+    } else {
+      console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ zone=${zone} → MANDATORY FIRE`)
+      return 'divine_strike'  // 🔪 WAVE 1010: Nuevo tipo
+    }
+  }
   
   // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA
   // 🔌 WAVE 976.4: FIX - Chequear effect.effect (STRING), no solo el objeto
@@ -243,6 +307,75 @@ function calculateCombinedConfidence(
 // ═══════════════════════════════════════════════════════════════════════════
 // GENERADORES DE DECISIONES ESPECÍFICAS
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔪 WAVE 1010: DIVINE STRIKE - MANDATORY MAXIMUM IMPACT
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🌩️ DIVINE STRIKE DECISION
+ * 
+ * Cuando Z > 3.5 y estamos en zona válida, ES OBLIGATORIO disparar.
+ * El General ordena fuego pesado, el Repository seleccionará el arma específica.
+ * 
+ * VIBE-AWARE:
+ * - Latino: solar_flare, strobe_storm, latina_meltdown, corazon_latino
+ * - Techno: industrial_strobe, gatling_raid, core_meltdown, strobe_storm
+ */
+function generateDivineStrikeDecision(
+  inputs: DecisionInputs,
+  output: ConsciousnessOutput,
+  confidence: number
+): ConsciousnessOutput {
+  const { beauty, pattern, zScore, energyContext } = inputs
+  const vibeId = pattern.vibeId
+  
+  output.confidence = 0.99  // DIVINE = máxima confianza
+  output.source = 'hunt'
+  output.debugInfo.huntState = 'striking'
+  output.debugInfo.beautyScore = beauty.totalBeauty
+  
+  // 🔪 WAVE 1010: Seleccionar arsenal según vibe
+  const arsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['fiesta-latina']
+  const suggestedEffect = arsenal[0]  // Primer efecto del arsenal (será validado por Repository)
+  
+  output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | suggested=${suggestedEffect}`
+  
+  // 🔪 WAVE 1010: El General ordena el TIPO de ataque, el Repository elige el arma disponible
+  output.effectDecision = {
+    effectType: suggestedEffect,  // Sugerencia - Repository puede cambiar si está en cooldown
+    intensity: 1.0,  // DIVINE = máxima intensidad
+    zones: ['all'],  // DIVINE afecta todo
+    reason: `🌩️ DIVINE: Z=${(zScore ?? 0).toFixed(2)}σ > ${DIVINE_THRESHOLD} | Arsenal: ${arsenal.join(', ')}`,
+    confidence: 0.99,
+    // 🔪 WAVE 1010: Metadata para el Repository
+    divineArsenal: arsenal,  // Lista de efectos válidos para DIVINE en este vibe
+  } as any  // Type assertion para añadir divineArsenal
+  
+  // Color decision: Máximo impacto
+  output.colorDecision = {
+    suggestedStrategy: 'complementary',  // Alto contraste
+    saturationMod: 1.25,  // Colores vivos
+    brightnessMod: 1.20,  // Brillante
+    confidence: 0.99,
+    reasoning: `DIVINE Strike (Z=${(zScore ?? 0).toFixed(2)}σ)`,
+  }
+  
+  // Physics modifier: Máxima potencia
+  output.physicsModifier = {
+    strobeIntensity: 1.0,
+    flashIntensity: 1.0,
+    confidence: 0.99,
+  }
+  
+  console.log(
+    `[DecisionMaker 🌩️] DIVINE STRIKE: Z=${(zScore ?? 0).toFixed(2)}σ | ` +
+    `vibe=${vibeId} | zone=${energyContext?.zone ?? 'unknown'} | ` +
+    `arsenal=[${arsenal.join(', ')}]`
+  )
+  
+  return output
+}
 
 function generateStrikeDecision(
   inputs: DecisionInputs,

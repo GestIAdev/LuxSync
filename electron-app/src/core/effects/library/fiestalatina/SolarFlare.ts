@@ -92,7 +92,7 @@ interface SolarFlareConfig {
 const DEFAULT_CONFIG: SolarFlareConfig = {
   attackMs: 0,         // 🔥 INSTANTÁNEO - sin ramp
   sustainMs: 150,      // Pico sostenido
-  decayMs: 800,        // Decay lento y cálido
+  decayMs: 500,        // Decay lento y cálido
   decayCurve: 2.0,     // Exponencial suave
   
   // 🪜 WAVE 1004.4: PRE-BLACKOUT para INTENSE ZONE

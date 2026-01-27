@@ -95,7 +95,7 @@ interface CorazonLatinoConfig {
 }
 
 const DEFAULT_CONFIG: CorazonLatinoConfig = {
-  heartbeatDurationMs: 2000,    // 🪜 LADDER: 2 segundos por latido (antes 1.5s) - más lento
+  heartbeatDurationMs: 1500,    // 🪜 LADDER: 2 segundos por latido (antes 1.5s) - más lento
   heartbeatCount: 2,            // 2 latidos = ~4 segundos
   strongBeatRatio: 0.55,        // 🪜 LADDER: 55% tiempo fuerte (antes 65%) - menos contraste
   

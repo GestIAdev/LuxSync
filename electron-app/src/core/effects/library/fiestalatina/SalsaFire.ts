@@ -83,7 +83,7 @@ interface SalsaFireConfig {
 }
 
 const DEFAULT_CONFIG: SalsaFireConfig = {
-  durationMs: 2500,
+  durationMs: 2000,
   flickerFrequency: 15,  // 🆙 12→15 Hz - fuego más intenso
   intensityVariation: 0.45,  // 🆙 0.35→0.45 - más variación
   baseColor: { h: 5, s: 100, l: 50 },     // 🆙 Rojo más profundo (10→5)

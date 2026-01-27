@@ -72,7 +72,7 @@ interface CumbiaMoonConfig {
 const DEFAULT_CONFIG: CumbiaMoonConfig = {
   cycleDurationMs: 3000,  // 🌙 WAVE 750: 3 segundos - más corto
   peakIntensity: 0.30,     // 🌙 WAVE 785: 30% máximo - lunitas sutiles
-  floorIntensity: 0.05,   // 🌙 WAVE 750: Casi apagado
+  floorIntensity: 0.15,   // 🌙 WAVE 750: Casi apagado
   peakSustainMs: 400,     // 🌙 WAVE 750: Sustain breve
   // 🌙 WAVE 785: PLATA LUNAR - azul pálido que insinúa, no grita
   colorCycle: [
@@ -211,25 +211,29 @@ export class CumbiaMoon extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
-    // CumbiaMoon es LONG (3000ms) → Solo dimmer para movers, NO color
-    // Front/Back SÍ pueden tener color (plata lunar suave)
+    // � WAVE 1010.6: MOVER COLOR FREEDOM - HAL traduce RGB→ColorWheel seguro
+    // CumbiaMoon ahora puede dar BLANCO (plata lunar) a los movers
+    // El traductor HAL tiene múltiples medidas de seguridad para EL-1140
+    
+    // Color blanco lunar (plata brillante)
+    const moonWhite = { h: 0, s: 0, l: 95 }  // BLANCO puro (sin tinte)
+    
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
       'front': {
-        color: this.currentColor,
+        color: moonWhite,  // Blanco lunar en front
         dimmer: this.currentIntensity,
         blendMode: 'max',
       },
       'back': {
-        color: this.currentColor,
+        color: moonWhite,  // Blanco lunar en back
         dimmer: this.currentIntensity * 0.7,  // Back más tenue (atmósfera)
         blendMode: 'max',
       },
-      // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer (física decide color)
+      // � WAVE 1010.6: MOVERS reciben BLANCO - HAL traduce a DMX seguro
       'movers': {
+        color: moonWhite,  // ✅ BLANCO lunar para movers (HAL traduce a Color Wheel)
         dimmer: this.currentIntensity * 0.5,  // Movers muy sutiles (luna suave)
         blendMode: 'max',
-        // NO COLOR → La rueda mecánica o física decide
       },
     }
 
@@ -241,11 +245,10 @@ export class CumbiaMoon extends BaseEffect {
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.currentIntensity,
       
-      // 🚨 WAVE 1004.2: Eliminado dimmerOverride/colorOverride globales
       dimmerOverride: undefined,
       colorOverride: undefined,
       
-      globalOverride: false,  // 🚨 WAVE 1004.2: Ya no es global, usa zoneOverrides
+      globalOverride: false,
       zoneOverrides,
     }
   }

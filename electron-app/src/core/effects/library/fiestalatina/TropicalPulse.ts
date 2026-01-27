@@ -34,7 +34,7 @@ interface TropicalPulseConfig {
 const DEFAULT_CONFIG: TropicalPulseConfig = {
   preDuckingMs: 50,      // 🆕 WAVE 1004.4: 100→50ms (patrón Techno pre-blackout)
   flashCount: 3,
-  flashDurationMs: 25,   // 🆙 20→25ms - ligeramente más largo
+  flashDurationMs: 70,   // 🆙 20→25ms - ligeramente más largo
   flashGapMs: 35,        // 🆙 30→35ms - más respiro
   finaleMs: 45,          // 🆙 40→45ms
   releaseMs: 60,         // 🆙 50→60ms - release más suave

@@ -73,12 +73,12 @@ interface AmazonMistConfig {
 }
 
 const DEFAULT_CONFIG: AmazonMistConfig = {
-  durationMs: 8000,         // 8 segundos - efecto LONG
-  breathCycleMs: 6000,      // 6 segundos por respiración completa
+  durationMs: 4000,         // 8 segundos - efecto LONG
+  breathCycleMs: 2000,      // 6 segundos por respiración completa
   minIntensity: 0.08,       // 8% floor - casi oscuridad
   maxIntensity: 0.25,       // 25% ceiling - tenue pero visible
-  fadeInMs: 1500,           // 1.5s fade in suave
-  fadeOutMs: 2000,          // 2s fade out muy suave
+  fadeInMs: 500,           // 1.5s fade in suave
+  fadeOutMs: 1000,          // 2s fade out muy suave
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

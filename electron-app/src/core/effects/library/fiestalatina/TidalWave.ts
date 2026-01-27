@@ -305,8 +305,9 @@ export class TidalWave extends BaseEffect {
       const sineValue = Math.sin(localPhase * Math.PI * 2)
       const shapedSine = sineValue > 0 ? Math.pow(sineValue, 6) : 0  // Pico ultra-estrecho
       
-      // 🌊 WAVE 805.5: VITAMINA BOOST - Multiplicador de intensidad en el pico
-      const intensityBoost = 1.3  // 30% más intenso en el pico
+      // 🌊 WAVE 1010.6: VITAMINA MEGA-BOOST - La cresta necesita MÁS LUZ
+      // Boost aumentado de 1.3 → 1.8 (80% más intenso en el pico)
+      const intensityBoost = 1.8  // MEGA BOOST para que se vea la cresta
       const boostedIntensity = Math.min(1.0, shapedSine * intensityBoost)
       
       // 🌊 WAVE 805.2: CONTRASTE BRUTAL - floor=0.0 (negro total en valles)

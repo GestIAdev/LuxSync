@@ -87,10 +87,10 @@ interface GhostBreathConfig {
 }
 
 const DEFAULT_CONFIG: GhostBreathConfig = {
-  breathPeriodMs: 4000,   // 4 segundos por respiración
+  breathPeriodMs: 3000,   // 4 segundos por respiración
   breathCount: 1,          //  WAVE 750: SOLO 1 respiración = 4s total (silencio dramático)
   inhaleRatio: 0.35,       // Inhale más rápido que exhale
-  intensityFloor: 0.05,    // 5% mínimo (no blackout)
+  intensityFloor: 0.15,    // 5% mínimo (no blackout)
   intensityCeiling: 0.7,   // 70% máximo (no cegador)
   useUV: true,
   baseColor: { h: 270, s: 100, l: 40 },   // Deep Blue oscuro

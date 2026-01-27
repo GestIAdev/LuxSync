@@ -351,10 +351,10 @@ export class CorazonLatino extends BaseEffect {
       dimmer: this.heartIntensity,
     }
     
-    // 🌟 MOVERS - LA EXPANSIÓN (Ámbar/Oro, abriendo brazos)
-    // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer y movement, NO color
+    // 🔓 WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
+    // El HAL traduce Ámbar/Oro → DMX 70 en EL-1140
     const moverOverride = {
-      // NO COLOR → La rueda mecánica o física decide
+      color: this.config.heatColor,  // 🔓 ¡LIBERTAD! Ámbar/Oro para movers
       dimmer: this.heartIntensity * 0.8,  // Un poco menos que el corazón
       movement: {
         pan: this.moverPanOffset,   // Abre hacia afuera en cada DUM

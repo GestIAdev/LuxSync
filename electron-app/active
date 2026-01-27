@@ -3,7 +3,7 @@
   "name": "definitivo",
   "description": "",
   "createdAt": "2026-01-26T23:50:19.051Z",
-  "modifiedAt": "2026-01-27T00:03:24.293Z",
+  "modifiedAt": "2026-01-27T01:18:21.731Z",
   "createdWith": "1.0.0",
   "stage": {
     "width": 12,
@@ -20,7 +20,7 @@
   },
   "fixtures": [
     {
-      "id": "fixture-1769472192302",
+      "id": "fixture-1769471435090",
       "name": "EL 1140",
       "model": "EL 1140",
       "manufacturer": "Chino",
@@ -30,9 +30,9 @@
       "channelCount": 10,
       "profileId": "944226ff-e66f-48db-a318-7bda149c9438",
       "position": {
-        "x": -4.340419876868224,
+        "x": -4.616657331253394,
         "y": 3,
-        "z": -2.7746994942805516
+        "z": -3.08772566393041
       },
       "rotation": {
         "pitch": -45,
@@ -57,7 +57,7 @@
           "max": 241
         }
       },
-      "zone": "ceiling-left",
+      "zone": "unassigned",
       "enabled": true,
       "definitionPath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\EL_1140.json",
       "channels": [

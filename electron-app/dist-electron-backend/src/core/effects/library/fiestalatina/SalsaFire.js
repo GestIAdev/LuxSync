@@ -164,9 +164,8 @@ export class SalsaFire extends BaseEffect {
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
-        // 🚨 WAVE 1004.2: MOVER LAW ENFORCEMENT
-        // SalsaFire es LONG (2500ms) → Solo dimmer para movers, NO color
-        // Front/Back SÍ pueden tener color (flicker de fuego)
+        // � WAVE 1009: FREEDOM DAY - TODOS reciben color
+        // El HAL traduce Rojo/Naranja → DMX 120 en EL-1140
         const zoneOverrides = {
             'front': {
                 color: this.currentColor,
@@ -178,11 +177,11 @@ export class SalsaFire extends BaseEffect {
                 dimmer: this.currentIntensity * 0.8, // Back un poco más suave
                 blendMode: 'max',
             },
-            // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer (física decide color)
+            // � WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
             'movers': {
+                color: this.currentColor, // 🔓 ¡LIBERTAD! Rojo fuego para movers
                 dimmer: this.currentIntensity * 0.6, // Movers más sutiles que PARs
                 blendMode: 'max',
-                // NO COLOR → La rueda mecánica o física decide
             },
         };
         return {

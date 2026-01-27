@@ -171,12 +171,12 @@ export class FiberOptics extends BaseEffect {
             };
         });
         // ═════════════════════════════════════════════════════════════════════
-        // MOVERS: MODO FANTASMA - Solo dimmer, NO color override
-        // 🛡️ THE MOVER LAW: Efecto >2s → Proteger ruedas mecánicas
+        // 🔓 WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
+        // El HAL traduce Cyan/Azul → Color Wheel DMX automáticamente
         // ═════════════════════════════════════════════════════════════════════
         zoneOverrides['movers'] = {
-            dimmer: this.config.moverIntensity * envelope, // 🔥 WAVE 997.7: SIN triggerIntensity
-            // 🚫 NO COLOR - Física controla la rueda mecánica
+            color: FIBER_COLORS[0], // 🔓 ¡LIBERTAD! Cian brillante para movers
+            dimmer: this.config.moverIntensity * envelope,
             blendMode: 'replace',
         };
         return {

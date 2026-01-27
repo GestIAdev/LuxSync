@@ -143,18 +143,22 @@ export class DigitalRain extends BaseEffect {
             }
         });
         // ═════════════════════════════════════════════════════════════════════
-        // MOVERS: Solo dimmer flickering - MODO FANTASMA
-        // �️ WAVE 984: THE MOVER LAW - Eliminar color, deja que VMM controle
+        // 🔓 WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
+        // El HAL traduce Cyan/Lime → Color Wheel DMX automáticamente
         // ═════════════════════════════════════════════════════════════════════
         const moverDimmer = Math.random() < this.config.flickerProbability
             ? this.config.minIntensity + Math.random() * (this.config.maxIntensity - this.config.minIntensity)
             : 0;
         if (moverDimmer > 0) {
+            // 🔓 FREEDOM: Elegir color aleatorio (cyan o lime) para los movers también
+            const useCyan = Math.random() > 0.5;
+            const moverColor = useCyan
+                ? { h: 180, s: 100, l: 50 } // CYAN
+                : { h: 120, s: 100, l: 50 }; // LIME
             output.zoneOverrides['movers'] = {
+                color: moverColor, // 🔓 ¡LIBERTAD! Cyan/Lime para movers
                 dimmer: moverDimmer,
-                // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
-                blendMode: 'replace', // 🌧️ WAVE 987: max→replace (cortar bombo)
-                // NO movement override - VMM takes control
+                blendMode: 'replace',
             };
         }
         return output;

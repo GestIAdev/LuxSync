@@ -10,10 +10,25 @@
  * ✅ Integración real con Veritas para validación criptográfica
  * ✅ Conflict resolution y rate limiting
  * ✅ Safety systems: circuit breakers, timeouts, backups
+ *
+ * 🔥 WAVE 1008.7: Temporarily disabled - missing dependencies
  */
-import { RealVeritasInterface } from '../../swarm/veritas/VeritasInterface.js';
-import { CircuitBreaker } from './CircuitBreaker.js';
-import { TimeoutWrapper } from './TimeoutWrapper.js';
+// DISABLED - Missing imports
+// import {
+//   BaseMetaEngine,
+//   EngineConfig,
+//   EngineMetrics,
+//   SafetyContext,
+//   ExecutionResult,
+//   EngineHealth,
+//   HealthIssue,
+//   EthicalDilemma,
+//   EthicalDecision,
+//   EthicalCertificate
+// } from './MetaEngineInterfaces.js';
+// import { RealVeritasInterface, ClaimVerificationRequest } from '../../swarm/veritas/VeritasInterface.js';
+// import { CircuitBreaker } from './CircuitBreaker.js';
+// import { TimeoutWrapper } from './TimeoutWrapper.js';
 // 🔧 SAFETY SYSTEMS DEL APOYO SUPREMO
 const ETHICAL_TIMEOUT_MS = 5000; // 5s timeout para evaluaciones éticas
 const ETHICAL_MEMORY_LIMIT_MB = 50; // Límite de memoria para engine ético

@@ -24,15 +24,26 @@
  * @version WAVE 680, 1004.2
  */
 // ═══════════════════════════════════════════════════════════════════════════
-// 🚨 WAVE 1004.2: MOVER LAW CONSTANTS
+// � WAVE 1009: FREEDOM DAY - MOVER LAW ABOLISHED
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * MOVER LAW: Umbral de duración para restricción de color en movers
+ * @deprecated WAVE 1009 - FREEDOM DAY: La Mover Law ha sido ABOLIDA
  *
- * Efectos >= 2000ms NO deben enviar color a movers (solo dimmer)
- * Esto previene el "disco-ball spam" donde movers cambian color cada frame
+ * El HAL ahora tiene ColorTranslator que convierte RGB → Color Wheel DMX.
+ * Los efectos PUEDEN y DEBEN enviar color a movers - el HAL traduce.
+ *
+ * ANTES (Ley Seca):
+ *   - Efectos NO enviaban color a movers (miedo a disco-ball)
+ *   - Movers siempre en blanco
+ *
+ * AHORA (Freedom Day):
+ *   - Efectos ENVÍAN color RGB a movers
+ *   - HAL traduce RGB → nearest color wheel position
+ *   - HardwareSafetyLayer debouncea cambios rápidos
+ *
+ * La constante se mantiene por compatibilidad pero ya no tiene efecto.
  */
-export const MOVER_LAW_DURATION_MS = 2000;
+export const MOVER_LAW_DURATION_MS = 2000; // DEPRECATED - Ignored by HAL
 // ═══════════════════════════════════════════════════════════════════════════
 // BASE EFFECT ABSTRACT CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -296,32 +307,51 @@ export class BaseEffect {
             : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // 🚨 WAVE 1004.2: MOVER LAW HELPERS
+    // � WAVE 1009: FREEDOM DAY - MOVER COLOR HELPERS (Replacing Mover Law)
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * 👻 GET MOVER GHOST OVERRIDE
+     * 🎨 GET MOVER COLOR OVERRIDE
      *
-     * WAVE 1004.2: Mover Law - Para efectos LONG (>= 2000ms)
+     * WAVE 1009: Freedom Day - Los movers RECIBEN color
      *
-     * Genera un zoneOverride para movers que:
-     * - Solo envía dimmer (intensidad)
-     * - NO envía color (evita disco-ball spam)
-     * - Opcionalmente envía movement
+     * El HAL traduce RGB → Color Wheel DMX automáticamente.
+     * Ya no hay restricción de color para movers.
      *
      * USO:
      * ```ts
-     * // En getOutput() de un efecto LONG:
-     * zoneOverrides['movers'] = this.getMoverGhostOverride(intensity, movement)
+     * // En getOutput() de cualquier efecto:
+     * zoneOverrides['movers'] = this.getMoverColorOverride(color, intensity, movement)
      * ```
+     *
+     * @param color Color HSL a enviar (HAL traduce a wheel position)
+     * @param dimmer Intensidad del mover (0-1)
+     * @param movement Opcional: override de movimiento
+     * @returns Override de zona para movers CON COLOR
+     */
+    getMoverColorOverride(color, dimmer, movement) {
+        return {
+            color, // � FREEDOM! HAL traduce RGB → Color Wheel DMX
+            dimmer,
+            blendMode: 'max',
+            ...(movement && { movement }),
+        };
+    }
+    /**
+     * 👻 GET MOVER GHOST OVERRIDE
+     *
+     * @deprecated WAVE 1009 - Freedom Day: Usa getMoverColorOverride() en su lugar
+     *
+     * Se mantiene por compatibilidad pero se recomienda migrar a getMoverColorOverride()
+     * para que los movers muestren color real en lugar de blanco.
      *
      * @param dimmer Intensidad del mover (0-1)
      * @param movement Opcional: override de movimiento
-     * @returns Override de zona para movers sin color
+     * @returns Override de zona para movers sin color (DEPRECATED)
      */
     getMoverGhostOverride(dimmer, movement) {
+        console.warn('[BaseEffect] ⚠️ getMoverGhostOverride() is DEPRECATED. Use getMoverColorOverride() instead - WAVE 1009 Freedom Day');
         return {
             dimmer,
-            // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
             blendMode: 'max',
             ...(movement && { movement }),
         };
@@ -329,13 +359,13 @@ export class BaseEffect {
     /**
      * ⏱️ IS LONG EFFECT
      *
-     * WAVE 1004.2: Determina si este efecto es LONG (>= 2000ms)
+     * @deprecated WAVE 1009 - Freedom Day: Ya no importa la duración
      *
-     * Los efectos LONG deben usar getMoverGhostOverride() para movers
-     * en lugar de enviar color directamente.
+     * El HAL maneja la traducción y debounce de color para movers.
+     * Los efectos pueden enviar color independientemente de su duración.
      *
      * @param durationMs Duración total del efecto en ms
-     * @returns true si es LONG, false si es SHORT
+     * @returns true si es LONG (pero ya no tiene efecto sobre color)
      */
     isLongEffect(durationMs) {
         return durationMs >= MOVER_LAW_DURATION_MS;

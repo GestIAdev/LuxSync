@@ -162,7 +162,7 @@ export class AmazonMist extends BaseEffect {
             strobeRate: undefined,
             // NO global override - se mezcla con el ambiente
             globalOverride: false,
-            // 🚨 WAVE 1004.4: Zone overrides para MOVER LAW
+            // � WAVE 1009: FREEDOM DAY - Zone overrides CON COLOR
             zoneOverrides: {
                 front: {
                     dimmer: this.currentIntensity,
@@ -172,10 +172,10 @@ export class AmazonMist extends BaseEffect {
                     dimmer: this.currentIntensity,
                     color: color,
                 },
-                // 🚨 MOVERS: MODO FANTASMA - Solo dimmer, sin color
+                // � MOVERS: ¡LIBERTAD! - Reciben color de selva
                 movers: {
+                    color: color, // 🔓 Verde/Cyan de la selva para movers
                     dimmer: this.currentIntensity * 0.5, // Movers aún más tenues
-                    // NO color - la selva no molesta a los movers
                 },
             },
         };

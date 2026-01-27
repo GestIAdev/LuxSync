@@ -199,18 +199,18 @@ export class GhostBreath extends BaseEffect {
     
     // 🎨 WAVE 725: Zone Overrides - El fantasma solo respira en BACK y MOVERS
     // FRONT queda INTACTO (sin override = mantiene la paleta base)
-    // 🚨 WAVE 1004.2: MOVER LAW - Movers solo dimmer, Back SÍ tiene color
+    // � WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR (HAL traduce)
     const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
       'back': {
         color: ghostColor,
         dimmer: scaledIntensity,
         blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La respiración manda
       },
-      // 🚨 WAVE 1004.2: MOVER LAW - Solo dimmer, NO color
+      // � WAVE 1009: FREEDOM DAY - Movers reciben color fantasmal
       'movers': {
+        color: ghostColor,  // 🔓 ¡LIBERTAD! Color UV/Cyan para movers
         dimmer: scaledIntensity * 0.7,  // Movers más sutiles
         blendMode: 'replace',  // 🎚️ WAVE 780: LTP - La respiración manda
-        // NO COLOR → La rueda mecánica o física decide
       }
       // NOTA: NO incluimos 'front' - esto deja los Front PARs INTACTOS
       // El fantasma está DETRÁS del escenario

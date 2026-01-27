@@ -123,83 +123,85 @@ export const EFFECT_DNA_REGISTRY = {
         organicity: 0.00, // 100% máquina apocalíptica
     },
     // ═══════════════════════════════════════════════════════════════
-    // 🌴 LATINO-ORGANIC: La Fiesta
+    //  FIESTA LATINA ARSENAL - THE LATINO LADDER (WAVE 1004.4 + 1005.x)
+    // 7 ZONAS DE ENERGÍA - DNA CALIBRADO TRAS MÚLTIPLES WAVES
     // ═══════════════════════════════════════════════════════════════
-    'solar_flare': {
-        aggression: 0.75, // ☀️ Explosión pero festiva
-        chaos: 0.50, // Moderado
-        organicity: 0.60, // Fuego = orgánico
-    },
-    'strobe_storm': {
-        aggression: 0.85, // ⚡ Tormenta eléctrica
-        chaos: 0.65, // Bastante caótico
-        organicity: 0.30, // Eléctrico, semi-mecánico
-    },
-    'strobe_burst': {
-        aggression: 0.70, // 💥 Ráfagas rítmicas
-        chaos: 0.40, // Ordenado (sigue el ritmo)
-        organicity: 0.35, // Semi-mecánico
-    },
-    'tidal_wave': {
-        aggression: 0.30, // 🌊 Suave como ola
-        chaos: 0.35, // Fluido pero predecible
-        organicity: 0.75, // Muy orgánico (agua)
+    // 🌿 ZONA 1: SILENCE (0-15% Energía)
+    'amazon_mist': {
+        aggression: 0.05, // 🌿 WAVE 1005.11: 0.06→0.05 (Rescate - bajar un pelo)
+        chaos: 0.25, // 🆙 WAVE 1005.11: 0.15→0.25 (moderado)
+        organicity: 0.80, // 🔻 WAVE 1005.11: 0.90→0.80 (igualar con ghost - pelea solo por A)
     },
     'ghost_breath': {
-        aggression: 0.10, // 👻 Susurro fantasmal
-        chaos: 0.25, // Muy suave
-        organicity: 0.90, // Máxima organicidad
+        aggression: 0.13, // � WAVE 1005.11: 0.11→0.13 (darle aire a amazon)
+        chaos: 0.25, // Más variación que amazon
+        organicity: 0.80, // 🎯 WAVE 1005.11: Igualado con amazon - pelea solo por A
+    },
+    // 🌙 ZONA 2: VALLEY (15-30% Energía)
+    'cumbia_moon': {
+        aggression: 0.21, // 🌙 WAVE 1005.14: 0.18→0.21 (cerca del centro 0.225 - dist 0.015)
+        chaos: 0.20, // MUY ordenado
+        organicity: 0.80, // 🔻 WAVE 1005.8: 0.85→0.80 (alcanzable)
+    },
+    'tidal_wave': {
+        aggression: 0.28, // 🌊 WAVE 1005.14: 0.27→0.28 (borde de salida - dist 0.055 del centro)
+        chaos: 0.55, // 🔻 WAVE 1005.8: 0.60→0.55 (ajuste fino)
+        organicity: 0.70, // Orgánico pero moderado
+    },
+    // 💓 ZONA 3: AMBIENT (30-45% Energía)
+    'corazon_latino': {
+        aggression: 0.37, // � WAVE 1005.11: 0.38→0.37 (ajuste fino)
+        chaos: 0.35, // 🆙 WAVE 1005.11: 0.30→0.35 (moderado)
+        organicity: 0.75, // 🔻 WAVE 1005.11: 0.85→0.75 (moderar - menos extremo)
+    },
+    'strobe_burst': {
+        aggression: 0.43, // � WAVE 1005.11: ajuste fino para Centrist - ambient entry
+        chaos: 0.35, // Ordenado, más suave
+        organicity: 0.40, // Semi-orgánico
+    },
+    // 🥁 ZONA 4: GENTLE (45-60% Energía)
+    'clave_rhythm': {
+        aggression: 0.48, // 🥁 WAVE 1005.11: 0.54→0.48 (entrada de Gentle - rescatar Tropical)
+        chaos: 0.60, // 🔻 WAVE 1005.8: 0.65→0.60 (dejar de robar tanto)
+        organicity: 0.60, // 🆙 WAVE 1005.8: 0.55→0.60 (alejarlo del centro)
     },
     'tropical_pulse': {
-        aggression: 0.60, // 🌴 Percusivo pero alegre
-        chaos: 0.40, // Rítmico = ordenado
-        organicity: 0.70, // Muy festivo/humano
+        aggression: 0.56, // � WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
+        chaos: 0.45, // 🆙 WAVE 1005.8: 0.40→0.45 (balance)
+        organicity: 0.65, // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
     },
-    'salsa_fire': {
-        aggression: 0.65, // 🔥 Fuego de salsa
-        chaos: 0.45, // Moderado
-        organicity: 0.65, // Pasional/orgánico
-    },
-    'cumbia_moon': {
-        aggression: 0.15, // 🌙 Suave como la luna
-        chaos: 0.20, // Muy ordenado
-        organicity: 0.80, // Romántico/orgánico
-    },
-    'clave_rhythm': {
-        aggression: 0.50, // 🥁 Percusivo moderado
-        chaos: 0.35, // Rítmico 3-2
-        organicity: 0.70, // Humano/orgánico
-    },
-    'corazon_latino': {
-        aggression: 0.50, // 💃 Pasional pero no violento
-        chaos: 0.35, // Rítmico
-        organicity: 0.90, // MÁXIMA - latido del corazón
-    },
-    // ═══════════════════════════════════════════════════════════════
-    // 🔥 WAVE 1004.3: DNA EXTREMOS - LA BESTIA Y EL VIRUS
-    // ═══════════════════════════════════════════════════════════════
-    'latina_meltdown': {
-        aggression: 0.97, // 🔥 NUCLEAR SALSA - almost peak
-        chaos: 0.30, // Ordenado - kick sync
-        organicity: 0.20, // Mecánico - máquina de devastación
-    },
+    // ⚔️ ZONA 5: ACTIVE (60-75% Energía)
     'glitch_guaguanco': {
-        aggression: 0.66, // 🦠 El virus digital
-        chaos: 0.85, // Alto caos - glitchy
-        organicity: 0.30, // Alienígena digital
-    },
-    // ═══════════════════════════════════════════════════════════════
-    // 🌿 WAVE 1004.4: DNA RESCATADOS - LOS EXTREMOS SILENCIOSOS
-    // ═══════════════════════════════════════════════════════════════
-    'amazon_mist': {
-        aggression: 0.05, // 🌿 La selva respira - casi silencio
-        chaos: 0.25, // Ordenado natural
-        organicity: 0.80, // Muy orgánico - naturaleza pura
+        aggression: 0.64, // � WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
+        chaos: 0.60, // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
+        organicity: 0.35, // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
     },
     'machete_spark': {
-        aggression: 0.70, // ⚔️ Cortes de acero brillante
-        chaos: 0.50, // Moderado
-        organicity: 0.30, // Metálico
+        aggression: 0.70, // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
+        chaos: 0.50, // 🆙 WAVE 1005.8: 0.30→0.50 (moderado)
+        organicity: 0.30, // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
+    },
+    // 🔥 ZONA 6: INTENSE (75-90% Energía)
+    'salsa_fire': {
+        aggression: 0.81, // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
+        chaos: 0.55, // Llamas vivas
+        organicity: 0.40, // 🔻 WAVE 1005.13: 0.60→0.40 (DES-HUMANIZACIÓN - quema, no baila)
+    },
+    'solar_flare': {
+        aggression: 0.86, // ☀️ WAVE 1005.13: 0.87→0.86 (distanciarse de Peak)
+        chaos: 0.30, // 🔻 WAVE 1005.11: 0.20→0.30 (moderado)
+        organicity: 0.35, // 🔻 WAVE 1005.13: 0.45→0.35 (sintético/brillante, no orgánico)
+    },
+    // 💥 ZONA 7: PEAK (90-100% Energía)
+    'latina_meltdown': {
+        aggression: 0.97, // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
+        chaos: 0.30, // Ordenado - kick sync
+        organicity: 0.20, // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
+    },
+    'strobe_storm': {
+        aggression: 0.93, // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
+        chaos: 0.75, // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
+        organicity: 0.15, // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
     },
 };
 // ═══════════════════════════════════════════════════════════════════════════

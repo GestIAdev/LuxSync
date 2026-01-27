@@ -43,20 +43,28 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // 😌 CALM - "Tráeme un drop de nivel DIOS o me lo guardo"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
-  // 🔥 WAVE 998: THE RESPECT PROTOCOL - Ahora usable (EPM: 2-3 en lugar de 0)
-  // Target EPM: 2-3 (1 efecto cada 20-30 segundos)
+  // 🔥 WAVE 1010.8: CALM = CALMADO DE VERDAD
+  // ANTES: Era un Balanced disfrazado (EPM ~4-5)
+  // AHORA: Modo RELAX real (EPM ~1-2, para reggaetón lento o chillout)
+  // Target EPM: 1-2 (1 efecto cada 30-60 segundos)
   calm: {
     name: 'calm',
-    description: 'Filtro de calidad. Solo dispara en momentos ÉPICOS.',
+    description: 'Zen mode. Solo dispara en momentos LEGENDARIOS.',
     emoji: '😌',
-    thresholdMultiplier: 1.3,      // 🔥 WAVE 998: Bajado de 1.8 → 1.3 (más permisivo)
-    cooldownMultiplier: 2.0,       // 🔥 WAVE 998: Bajado de 3.0 → 2.0 (la mitad de espera)
-    ethicsThreshold: 0.85,         // 🔥 WAVE 998: Bajado de 0.98 → 0.85 (acepta "muy bueno")
-    maxIntensity: 0.6,             // Max 60% intensidad
+    thresholdMultiplier: 2.0,      // 🧘 WAVE 1010.8: BRUTAL filtro (antes 1.3)
+    cooldownMultiplier: 3.5,       // 🧘 WAVE 1010.8: Cooldowns x3.5 (antes 2.0)
+    ethicsThreshold: 0.95,         // 🧘 WAVE 1010.8: Solo LEGENDARY (antes 0.85)
+    maxIntensity: 0.5,             // 🧘 WAVE 1010.8: Max 50% (antes 60%)
     minIntensity: undefined,       // Sin mínimo
     blockList: [
       'strobe_storm',              // Strobes agresivos PROHIBIDOS
       'strobe_burst',              // Mini-strobes también
+      'latina_meltdown',           // 🧘 WAVE 1010.8: Meltdown = CAOS = NO CALMADO
+      'glitch_guaguanco',          // 🧘 WAVE 1010.8: Glitch = CAOS = NO CALMADO
+      'machete_spark',             // 🧘 WAVE 1010.8: Machete = AGRESIVO = NO CALMADO
+      'gatling_raid',              // 🧘 WAVE 1010.8: Gatling = EPILEPSIA = NO CALMADO
+      'industrial_strobe',         // 🧘 WAVE 1010.8: Industrial = TECHNO = NO CALMADO
+      'core_meltdown',             // 🧘 WAVE 1010.8: Meltdown = CAOS = NO CALMADO
     ],
     forceUnlock: undefined,        // Cooldowns normales
   },

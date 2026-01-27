@@ -67,12 +67,12 @@ interface GlitchGuaguancoConfig {
 }
 
 const DEFAULT_CONFIG: GlitchGuaguancoConfig = {
-  durationMs: 2200,         // 2200ms - LONG pero justo en el límite
-  baseGlitchHz: 15,         // 15 Hz base (rápido pero no epiléptico)
-  frequencyJitter: 0.6,     // 60% variación en timing
-  freezeProbability: 0.15,  // 15% chance de freeze cada ciclo
-  freezeDurationMs: 150,    // 150ms de freeze
-  chaosIntensity: 0.9,      // 90% caos
+  durationMs: 1400,         // 🌊 WAVE 1010.8: Bajado de 2200 → 1400 (más flow, menos orgasmo)
+  baseGlitchHz: 10,         // 🌊 WAVE 1010.8: Bajado de 15 → 10 Hz (más suave, menos epiléptico)
+  frequencyJitter: 0.4,     // 🌊 WAVE 1010.8: Bajado de 0.6 → 0.4 (menos caótico, más groove)
+  freezeProbability: 0.08,  // 🌊 WAVE 1010.8: Bajado de 0.15 → 0.08 (menos freezes)
+  freezeDurationMs: 100,    // 🌊 WAVE 1010.8: Bajado de 150 → 100ms (freezes más cortos)
+  chaosIntensity: 0.7,      // 🌊 WAVE 1010.8: Bajado de 0.9 → 0.7 (más flow, menos locura)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

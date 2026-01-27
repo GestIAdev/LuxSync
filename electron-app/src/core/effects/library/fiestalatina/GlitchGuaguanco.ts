@@ -309,11 +309,18 @@ export class GlitchGuaguanco extends BaseEffect {
       : this.currentDimmer
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚨 MOVER LAW: Efecto LONG (2200ms >= 2000ms)
-    // Solo mandamos dimmer a movers, NO color (MODO FANTASMA)
-    // Pero como es un efecto CAÓTICO, lo dejamos con color porque
-    // es parte de la "infección" visual. Excepción justificada.
+    // 🌊 WAVE 1010.8: MOVER SAFETY - Un solo color fijo (MAGENTA)
+    // Los glitches rápidos + cambios de color = riesgo en Color Wheel DMX
+    // PARs/Wash pueden tener glitch multicolor, movers SOLO MAGENTA fijo
     // ═══════════════════════════════════════════════════════════════════════
+    
+    const zoneOverrides: EffectFrameOutput['zoneOverrides'] = {
+      movers: {
+        color: TOXIC_PALETTE.MAGENTA_VIRUS,  // MAGENTA fijo - virus digital
+        dimmer: dimmer,
+        blendMode: 'replace',
+      }
+    }
     
     return {
       effectId: this.id,
@@ -324,7 +331,9 @@ export class GlitchGuaguanco extends BaseEffect {
       intensity: dimmer,
       
       dimmerOverride: dimmer,
-      colorOverride: color,
+      colorOverride: color,  // PARs/Wash mantienen glitch multicolor
+      
+      zoneOverrides,  // 🌊 WAVE 1010.8: Movers con MAGENTA fijo
       
       // Strobe micro-flicker durante glitch activo (no en freeze)
       strobeRate: this.glitchState === 'flicker' ? 12 : undefined,

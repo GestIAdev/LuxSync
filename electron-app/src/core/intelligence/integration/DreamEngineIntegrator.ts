@@ -208,10 +208,13 @@ export class DreamEngineIntegrator {
       alternatives: ethicalVerdict.alternatives.slice(0, 2)
     }
     
-    console.log(
-      `[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
-      `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms`
-    )
+    // 🧹 WAVE 1015: Solo logear si slow (>10ms) o si rejected
+    if (decision.totalTime > 10 || !decision.approved) {
+      console.log(
+        `[INTEGRATOR] 📊 Pipeline: ${decision.approved ? '✅ APPROVED' : '❌ REJECTED'} | ` +
+        `Dream: ${dreamTime}ms | Filter: ${filterTime}ms | Total: ${decision.totalTime}ms`
+      )
+    }
     
     // Record for learning
     if (decision.approved && decision.effect) {
@@ -299,7 +302,7 @@ export class DreamEngineIntegrator {
     // Check cache
     const cached = this.dreamCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < this.dreamCacheTTL) {
-      console.log('[INTEGRATOR] 💾 Using cached dream result')
+      // 🧹 WAVE 1015: Silenciado - spam innecesario
       return cached.result
     }
     
@@ -424,7 +427,7 @@ export class DreamEngineIntegrator {
         vibe: context.pattern.vibe  // Vibe actual del contexto
       }))
       builder.withRecentEffects(effectHistoryEntries)
-      console.log(`[INTEGRATOR] 📝 Passed ${effectHistoryEntries.length} recent effects (history context) to DreamSimulator`)
+      // 🧹 WAVE 1015: Silenciado - spam innecesario
     }
     
     return builder.build()

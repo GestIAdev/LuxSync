@@ -31,9 +31,11 @@
 import { 
   TechnoStereoPhysics,
   technoStereoPhysics,
-  RockStereoPhysics, 
+  RockStereoPhysics2,    // 🎸 WAVE 1011.5: UNIFIED ARCHITECTURE (Lobotomized)
+  rockPhysics2,          // 🎸 WAVE 1011.5: Singleton instance
   LatinoStereoPhysics, 
-  ChillStereoPhysics 
+  ChillStereoPhysics,
+  type RockPhysicsInput, // 🎸 WAVE 1011.5: Unified input type
 } from '../../hal/physics';
 
 import { 
@@ -65,12 +67,26 @@ export interface RGB {
 
 /**
  * Métricas de audio normalizadas que recibimos de TitanEngine
+ * 🎸 WAVE 1011: Extended con métricas espectrales para RockStereoPhysics2
  */
 export interface SeleneLuxAudioMetrics {
   normalizedBass: number;     // 0-1
   normalizedMid: number;      // 0-1
   normalizedTreble: number;   // 0-1
   avgNormEnergy: number;      // 0-1
+  
+  // 🎸 WAVE 1011: Métricas espectrales avanzadas (FFT.ts)
+  subBass?: number;           // 0-1 (20-60Hz kicks profundos)
+  lowMid?: number;            // 0-1 (250-500Hz)
+  highMid?: number;           // 0-1 (2000-4000Hz)
+  harshness?: number;         // 0-1 (ratio 2-5kHz vs total)
+  spectralFlatness?: number;  // 0-1 (0=tonal, 1=noise)
+  spectralCentroid?: number;  // Hz (brillo tonal)
+  
+  // 🎸 WAVE 1011: Detección de transientes
+  kickDetected?: boolean;
+  snareDetected?: boolean;
+  hihatDetected?: boolean;
 }
 
 /**
@@ -137,7 +153,8 @@ export class SeleneLux {
   // Instancias de física stateful (Latino, Chill y Rock necesitan estado)
   private latinoPhysics: LatinoStereoPhysics;
   private chillPhysics: ChillStereoPhysics;
-  private rockPhysics: RockStereoPhysics;  // 🆕 WAVE 298: Rock zone physics
+  // 🎸 WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 con 4 bandas + subgéneros
+  // ❌ BORRADO: private rockPhysics: RockStereoPhysics (legacy Frankenstein)
   
   // Estado del último frame
   private lastOutput: SeleneLuxOutput;
@@ -167,17 +184,13 @@ export class SeleneLux {
     moverR?: number;  // 🧪 WAVE 908: Split R channel
   } | null = null;
   
-  // 🆕 WAVE 301: ANALOG ROCK - Overrides de voltaje analógico
+  // � WAVE 1011: HIGH VOLTAGE ROCK - Overrides con L/R split para Movers
   private rockOverrides: { 
     front: number; 
     back: number; 
-    mover: number;
-    debug?: { 
-      mode: 'ANALOG';
-      frontVoltage: number; 
-      backCharge: number;
-      moverForce: number;
-    };
+    moverLeft: number;   // 🎸 WAVE 1011: The Body (riffs, wall of sound)
+    moverRight: number;  // 🎸 WAVE 1011: The Shine (solos, platos)
+    subgenre: string;    // 🎸 WAVE 1011: Subgénero detectado (metal/indie/prog/classic)
   } | null = null;
   
   // 🆕 WAVE 315: CHILL BREATHING - Overrides de bioluminiscencia
@@ -193,7 +206,8 @@ export class SeleneLux {
     // Inicializar físicas stateful
     this.latinoPhysics = new LatinoStereoPhysics();
     this.chillPhysics = new ChillStereoPhysics();
-    this.rockPhysics = new RockStereoPhysics();  // 🆕 WAVE 298: Rock zone physics
+    // 🎸 WAVE 1011: RockStereoPhysics2 usa singleton (rockPhysics2)
+    // ❌ BORRADO: this.rockPhysics = new RockStereoPhysics() (legacy Frankenstein)
     
     // Output por defecto
     this.lastOutput = {
@@ -279,6 +293,9 @@ export class SeleneLux {
       debugInfo = result.debugInfo;
       
       // 2. WAVE 290.3: Nueva API para zonas/intensidades
+      // 🔥 WAVE 1012: TECHNO NEEDS SPECTRAL DATA!
+      // Sin harshness/flatness, Techno opera en modo degradado (acidMode=false, noiseMode=false)
+      // Esto mata el atmosphericFloor y el Apocalypse Detection
       const zonesResult = technoStereoPhysics.applyZones({
         bass: audioMetrics.normalizedBass,
         mid: audioMetrics.normalizedMid,
@@ -287,7 +304,10 @@ export class SeleneLux {
         melodyThreshold: 0.4,
         isRealSilence: audioMetrics.avgNormEnergy < 0.01,
         isAGCTrap: false,
-        sectionType: vibeContext.section
+        sectionType: vibeContext.section,
+        // 🎛️ WAVE 1012: Métricas espectrales para Acid/Noise modes
+        harshness: audioMetrics.harshness ?? 0.45,      // Default más agresivo que Rock (Techno = duro)
+        flatness: audioMetrics.spectralFlatness ?? 0.35  // Default para pads/atmos
       });
       
       // Guardar overrides para usar después
@@ -305,22 +325,71 @@ export class SeleneLux {
       }
       
     } else if (vibeNormalized.includes('rock') || vibeNormalized.includes('pop')) {
-      // 🎸 ROCK: Snare Crack + Kick Punch
-      // WAVE 304: Simple zone processing (nuevo sistema de ganancias analógicas)
-      this.rockOverrides = this.rockPhysics.applyZones(
-        {
-          bass: audioMetrics.normalizedBass,
-          mid: audioMetrics.normalizedMid,
-          treble: audioMetrics.normalizedTreble,
-        },
-        vibeContext.bpm ?? 120
-      );
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎸 WAVE 1011.5: UNIFIED ROCK PHYSICS (LOBOTOMIZED)
+      // ═══════════════════════════════════════════════════════════════════════
+      // ARQUITECTURA UNIFICADA - Sin subgéneros, modulación lineal:
+      //   - Front: Low-Mid (guitar/bass fundamentals)
+      //   - Back: Sub-Bass + harshness modulation (atmospheric depth)
+      //   - MoverLeft: High-Mid (guitar crunch)
+      //   - MoverRight: Presence (cymbal attacks, harmonics)
+      // 
+      // MODULADORES LINEALES:
+      //   - harshness: Modula ganancia BackPar
+      //   - flatness: Modula spread de Movers
+      //   - centroidHz: Modula velocidad de decay
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      // Construir contexto para RockStereoPhysics2
+      // 🔥 WAVE 1011.7: VITAMINAS PARA LOS PARS
+      // Las bandas detalladas vienen muy atenuadas, usar bass/mid/treble directos
+      const rockContext = {
+        // Bandas tradicionales - USAR DIRECTAMENTE, sin atenuar
+        bass: audioMetrics.normalizedBass,
+        lowMid: audioMetrics.normalizedBass * 0.5 + audioMetrics.normalizedMid * 0.5,  // Mix gordo
+        mid: audioMetrics.normalizedMid,
+        highMid: audioMetrics.normalizedMid * 0.6 + audioMetrics.normalizedTreble * 0.4,  // Mix crujiente
+        treble: audioMetrics.normalizedTreble,
+        subBass: audioMetrics.normalizedBass * 0.9,  // Sub-bass = casi todo el bass
+        
+        // Métricas espectrales (con fallbacks conservadores)
+        harshness: audioMetrics.harshness ?? 0.35,
+        spectralFlatness: audioMetrics.spectralFlatness ?? 0.40,
+        spectralCentroid: audioMetrics.spectralCentroid ?? 1500,
+        
+        // Transientes detectados
+        kickDetected: audioMetrics.kickDetected ?? false,
+        snareDetected: audioMetrics.snareDetected ?? false,
+        hihatDetected: audioMetrics.hihatDetected ?? false,
+        
+        bpm: vibeContext.bpm ?? 120,
+      };
+      
+      // 🎸 Usar singleton de RockStereoPhysics2 (UNIFIED)
+      const rockResult = rockPhysics2.applyZones(rockContext);
+      
+      // Guardar overrides con L/R split
+      this.rockOverrides = {
+        front: rockResult.front,
+        back: rockResult.back,
+        moverLeft: rockResult.moverLeft,
+        moverRight: rockResult.moverRight,
+        subgenre: rockResult.subgenre,  // Siempre 'ROCK' ahora
+      };
       
       // No hay cambio de paleta en Rock (usamos la entrada)
       // outputPalette permanece igual
-      isFlashActive = false;  // Rock no usa flash, usa voltajes analógicos
+      isFlashActive = false;  // Rock no usa flash binario, usa física analógica
       physicsApplied = 'rock';
-      debugInfo = { front: this.rockOverrides.front, back: this.rockOverrides.back, mover: this.rockOverrides.mover };
+      
+      // Debug info con el nuevo formato
+      debugInfo = { 
+        front: rockResult.front, 
+        back: rockResult.back, 
+        moverL: rockResult.moverLeft,
+        moverR: rockResult.moverRight,
+        subgenre: rockResult.subgenre,
+      };
       
     } else if (
       vibeNormalized.includes('latin') || 
@@ -476,18 +545,33 @@ export class SeleneLux {
       // Limpiar overrides para el próximo frame
       this.technoOverrides = null;
     } else if (this.rockOverrides && physicsApplied === 'rock') {
-      // 🎸 WAVE 298: El motor Rock calculó sus intensidades. Respétalas.
-      // MOVERS escuchan MID (guitarra), no treble!
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎸 WAVE 1011: HIGH VOLTAGE ROCK - 4 Bandas con L/R Split
+      // ═══════════════════════════════════════════════════════════════════════
+      // Front: Kicks + SubBass (The Pulse)
+      // Back: Snares + Harsh Guitars (The Power)
+      // MoverL: Body/Riffs/Wall of Sound (The Body)
+      // MoverR: Solos/Platos/Shine (The Shine)
+      // ═══════════════════════════════════════════════════════════════════════
       frontIntensity = Math.min(0.95, this.rockOverrides.front * brightMod);
       backIntensity = Math.min(0.95, this.rockOverrides.back);
-      moverIntensity = Math.min(1.0, this.rockOverrides.mover);
+      // Legacy fallback: promedio de L/R para compatibilidad
+      moverIntensity = Math.min(1.0, (this.rockOverrides.moverLeft + this.rockOverrides.moverRight) / 2);
       
-      // WAVE 301: Log ANALOG cada 30 frames - voltaje/carga/fuerza
-      if (this.frameCount % 30 === 0 && this.rockOverrides.debug) {
-        const fv = this.rockOverrides.debug.frontVoltage.toFixed(2);
-        const bc = this.rockOverrides.debug.backCharge.toFixed(2);
-        const mf = this.rockOverrides.debug.moverForce.toFixed(2);
-        console.log(`[AGC TRUST 🎸ANALOG] IN[B:${bass.toFixed(2)}, M:${mid.toFixed(2)}, T:${treble.toFixed(2)}] -> ⚡ VOLTS[Filament:${fv}, Spark:${bc}, Force:${mf}] -> 💡 OUT[F:${frontIntensity.toFixed(2)}, B:${backIntensity.toFixed(2)}, M:${moverIntensity.toFixed(2)}]`);
+      // 🎸 WAVE 1011: Guardar L/R split para el output
+      const rockL = this.rockOverrides.moverLeft;   // The Body (riffs)
+      const rockR = this.rockOverrides.moverRight;  // The Shine (solos)
+      
+      // Temporal: guardar en una variable para pasar al output
+      (this as any).rockMoverSplit = { moverL: rockL, moverR: rockR };
+      
+      // 🎸 WAVE 1011: Log HIGH VOLTAGE cada 30 frames con subgénero
+      if (this.frameCount % 30 === 0) {
+        console.log(
+          `[AGC TRUST 🎸HIGH VOLTAGE] Subgenre:${this.rockOverrides.subgenre.toUpperCase()} | ` +
+          `IN[B:${bass.toFixed(2)}, M:${mid.toFixed(2)}, T:${treble.toFixed(2)}] → ` +
+          `💡 OUT[F:${frontIntensity.toFixed(2)}, Bk:${backIntensity.toFixed(2)}, ML:${rockL.toFixed(2)}, MR:${rockR.toFixed(2)}]`
+        );
       }
       
       // Limpiar overrides para el próximo frame
@@ -546,12 +630,18 @@ export class SeleneLux {
       ...(((this as any).latinoMoverSplit) && {
         moverL: (this as any).latinoMoverSplit.moverL,
         moverR: (this as any).latinoMoverSplit.moverR
+      }),
+      // 🎸 WAVE 1011: HIGH VOLTAGE ROCK - Incluir L/R si vienen de Rock
+      ...(((this as any).rockMoverSplit) && {
+        moverL: (this as any).rockMoverSplit.moverL,
+        moverR: (this as any).rockMoverSplit.moverR
       })
     };
     
     // Limpiar split temporal
     delete (this as any).technoMoverSplit;
     delete (this as any).latinoMoverSplit;  // 🎺 WAVE 1004.1
+    delete (this as any).rockMoverSplit;    // 🎸 WAVE 1011
     
     // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)

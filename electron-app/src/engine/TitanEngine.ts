@@ -91,6 +91,14 @@ export interface EngineAudioMetrics {
   harshness?: number        // 0-1 (ratio 2-5kHz vs total)
   spectralFlatness?: number // 0-1 (0=tonal, 1=noise)
   spectralCentroid?: number // Hz (brillo tonal)
+  // 🎸 WAVE 1011: Bandas extendidas para RockStereoPhysics2
+  subBass?: number          // 0-1 (20-60Hz deep kicks)
+  lowMid?: number           // 0-1 (250-500Hz)
+  highMid?: number          // 0-1 (2000-4000Hz presence)
+  // 🎸 WAVE 1011: Detección de transientes
+  kickDetected?: boolean
+  snareDetected?: boolean
+  hihatDetected?: boolean
 }
 
 /**
@@ -409,6 +417,7 @@ export class TitanEngine extends EventEmitter {
     const primaryHue = selenePalette.primary.h
     
     // Actualizar sistema nervioso con datos de la trinidad + paleta + mods zodiacales
+    // 🎸 WAVE 1011: Extended audio metrics con FFT para RockStereoPhysics2
     const nervousOutput = this.nervousSystem.updateFromTitan(
       {
         activeVibe: vibeProfile.id,
@@ -423,6 +432,21 @@ export class TitanEngine extends EventEmitter {
         normalizedMid: audio.mid,
         normalizedTreble: audio.high,
         avgNormEnergy: energyOutput.smoothedEnergy,
+        
+        // 🎸 WAVE 1011: Métricas espectrales FFT para Rock (harshness, flatness, centroid)
+        harshness: audio.harshness,
+        spectralFlatness: audio.spectralFlatness,
+        spectralCentroid: audio.spectralCentroid,
+        
+        // 🎸 WAVE 1011: Bandas extendidas para 4-band physics
+        subBass: audio.subBass,
+        lowMid: audio.lowMid,
+        highMid: audio.highMid,
+        
+        // 🎸 WAVE 1011: Transientes para rock dynamics
+        kickDetected: audio.kickDetected,
+        snareDetected: audio.snareDetected,
+        hihatDetected: audio.hihatDetected,
       },
       elementalMods
     )

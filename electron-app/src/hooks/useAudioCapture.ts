@@ -44,9 +44,10 @@ const MID_MAX_HZ = 4000
 const BPM_MIN = 60
 const BPM_MAX = 180
 const BEAT_THRESHOLD = 0.5
-const METRICS_INTERVAL_MS = 33
-const BUFFER_INTERVAL_MS = 100
-const UI_UPDATE_INTERVAL_MS = 33
+// 🏎️ WAVE 1013: NITRO BOOST - Frontend Overclock to 60fps
+const METRICS_INTERVAL_MS = 16    // 60fps (was 33ms/30fps)
+const BUFFER_INTERVAL_MS = 50     // 20fps (was 100ms/10fps) - Overlap Strategy
+const UI_UPDATE_INTERVAL_MS = 16  // 60fps UI updates
 
 interface MutableMetrics {
   bass: number

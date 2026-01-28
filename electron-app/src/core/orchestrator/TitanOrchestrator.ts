@@ -87,6 +87,7 @@ export class TitanOrchestrator {
 
   // WAVE 255: Real audio buffer from frontend
   // 🎛️ WAVE 661: Ampliado para incluir textura espectral
+  // 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
   private lastAudioData: { 
     bass: number; 
     mid: number; 
@@ -95,10 +96,32 @@ export class TitanOrchestrator {
     harshness?: number;
     spectralFlatness?: number;
     spectralCentroid?: number;
+    subBass?: number;           // 🎸 WAVE 1011: 20-60Hz deep kicks
+    lowMid?: number;            // 🎸 WAVE 1011: 250-500Hz
+    highMid?: number;           // 🎸 WAVE 1011: 2000-4000Hz presence
+    kickDetected?: boolean;     // 🎸 WAVE 1011: Kick transient
+    snareDetected?: boolean;    // 🎸 WAVE 1011: Snare transient
+    hihatDetected?: boolean;    // 🎸 WAVE 1011: Hihat transient
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
   private hasRealAudio = false
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
+  // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
+  // ═══════════════════════════════════════════════════════════════════════════
+  private readonly EMA_ALPHA_FAST = 0.25;   // Para métricas reactivas (harshness, transients)
+  private readonly EMA_ALPHA_SLOW = 0.08;   // Para contexto ambiental (centroid, flatness)
+  
+  private smoothedMetrics = {
+    harshness: 0,
+    spectralFlatness: 0.5,
+    spectralCentroid: 2000,
+    subBass: 0,
+    lowMid: 0,
+    highMid: 0,
+  }
   
   // 🗡️ WAVE 265: STALENESS DETECTION - Anti-Simulación
   // Si no llega audio fresco en AUDIO_STALENESS_THRESHOLD_MS, hasRealAudio = false
@@ -145,6 +168,51 @@ export class TitanOrchestrator {
       this.trinity = trinity  // 🧠 WAVE 258: Save reference for audio feeding
       this.brain.connectToOrchestrator(trinity)
       console.log('[TitanOrchestrator] Brain connected to Trinity')
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
+      // 
+      // Frontend (30fps) → bass/mid/high/energy → processAudioFrame()
+      // Worker (10fps) → harshness/flatness/centroid/transients → brain.on('audio-levels')
+      // 
+      // El Worker TAMBIÉN envía bass/mid/high, pero los IGNORAMOS aquí porque
+      // el Frontend tiene mayor frecuencia (30fps vs 10fps) y da fluidez visual.
+      // El Worker es autoritativo SOLO para métricas FFT extendidas.
+      // ═══════════════════════════════════════════════════════════════════════════
+      this.brain.on('audio-levels', (levels: {
+        bass: number; mid: number; treble: number; energy: number;
+        subBass?: number; lowMid?: number; highMid?: number;
+        harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
+        kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
+      }) => {
+        // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
+        // NO sobrescribir bass/mid/high/energy - Frontend tiene prioridad temporal (30fps)
+        // SÍ actualizar métricas FFT extendidas - Worker tiene precisión espectral
+        this.lastAudioData = {
+          ...this.lastAudioData,
+          // Core bands - IGNORADOS (Frontend es más rápido a 30fps)
+          // bass: levels.bass,     // ❌ Frontend tiene prioridad
+          // mid: levels.mid,       // ❌ Frontend tiene prioridad  
+          // high: levels.treble,   // ❌ Frontend tiene prioridad
+          // energy: levels.energy, // ❌ Frontend tiene prioridad
+          
+          // Extended FFT metrics - WORKER AUTHORITATIVE (precisión espectral)
+          subBass: levels.subBass ?? this.lastAudioData.subBass,
+          lowMid: levels.lowMid ?? this.lastAudioData.lowMid,
+          highMid: levels.highMid ?? this.lastAudioData.highMid,
+          harshness: levels.harshness ?? this.lastAudioData.harshness,
+          spectralFlatness: levels.spectralFlatness ?? this.lastAudioData.spectralFlatness,
+          spectralCentroid: levels.spectralCentroid ?? this.lastAudioData.spectralCentroid,
+          
+          // Transient detection - WORKER AUTHORITATIVE (detección precisa)
+          kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
+          snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
+          hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+        };
+        // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
+        // Frontend los gestiona a 30fps
+      });
+      console.log('[TitanOrchestrator] 🔥 WAVE 1012.5: HYBRID SOURCE - Frontend(30fps)=bass/mid/high, Worker(10fps)=FFT metrics')
       
       // 🧠 WAVE 258 CORTEX KICKSTART: Start the Workers!
       console.log('[TitanOrchestrator] 🧠 Starting Trinity Neural Network...')
@@ -207,12 +275,13 @@ export class TitanOrchestrator {
       return
     }
     
-    console.log('[TitanOrchestrator] Starting main loop @ 30fps')
+    // 🏎️ WAVE 1013: NITRO BOOST - Overclock to 60fps
+    console.log('[TitanOrchestrator] 🏎️ Starting main loop @ 60fps (WAVE 1013: NITRO BOOST)')
     
     this.isRunning = true
     this.mainLoopInterval = setInterval(() => {
       this.processFrame()
-    }, 33) // ~30fps
+    }, 16) // ~60fps (was 33ms/30fps)
     
     // WAVE 257: Log system start to Tactical Log (delayed to ensure callback is set)
     setTimeout(() => {
@@ -271,7 +340,13 @@ export class TitanOrchestrator {
       this.hasRealAudio = false
       // Reset lastAudioData para no mentir con datos viejos
       // 🎛️ WAVE 661: Incluir reset de textura espectral
-      this.lastAudioData = { bass: 0, mid: 0, high: 0, energy: 0, harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined }
+      // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
+      this.lastAudioData = { 
+        bass: 0, mid: 0, high: 0, energy: 0, 
+        harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
+        subBass: undefined, lowMid: undefined, highMid: undefined,
+        kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined
+      }
     }
     
     // 2. WAVE 255: Use real audio if available, otherwise silence (IDLE mode)
@@ -290,18 +365,35 @@ export class TitanOrchestrator {
       energy = 0
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1011.5: THE DAM - Apply EMA smoothing to FFT metrics
+    // Esto elimina el parpadeo causado por picos/caídas bruscas del FFT crudo
+    // Bass/Mid/Treble ya están normalizados por AGC - NO los tocamos
+    // ═══════════════════════════════════════════════════════════════════════════
+    this.applyEMASmoothing();
+    
     // For TitanEngine
     // 🎛️ WAVE 661: Incluir textura espectral
+    // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
     const engineAudioMetrics = {
-      bass,
-      mid,
-      high,
-      energy,
+      bass,  // Ya normalizado por AGC - INTOCABLE
+      mid,   // Ya normalizado por AGC - INTOCABLE
+      high,  // Ya normalizado por AGC - INTOCABLE
+      energy, // Ya normalizado por AGC - INTOCABLE
       beatPhase: (this.frameCount % 30) / 30,
       isBeat: this.frameCount % 30 === 0 && energy > 0.3,
-      harshness: this.lastAudioData.harshness,
-      spectralFlatness: this.lastAudioData.spectralFlatness,
-      spectralCentroid: this.lastAudioData.spectralCentroid,
+      // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
+      harshness: this.smoothedMetrics.harshness,
+      spectralFlatness: this.smoothedMetrics.spectralFlatness,
+      spectralCentroid: this.smoothedMetrics.spectralCentroid,
+      // 🎸 WAVE 1011.5: Bandas extendidas SUAVIZADAS
+      subBass: this.smoothedMetrics.subBass,
+      lowMid: this.smoothedMetrics.lowMid,
+      highMid: this.smoothedMetrics.highMid,
+      // 🎸 WAVE 1011: Transientes (estos SÍ son instantáneos - no suavizar)
+      kickDetected: this.lastAudioData.kickDetected,
+      snareDetected: this.lastAudioData.snareDetected,
+      hihatDetected: this.lastAudioData.hihatDetected,
     }
     
     // For HAL
@@ -1167,46 +1259,92 @@ export class TitanOrchestrator {
    * WAVE 255: Process incoming audio frame from frontend
    * This method receives audio data and stores it for the main loop
    * 🎛️ WAVE 661: Ahora incluye textura espectral (harshness, spectralFlatness, spectralCentroid)
+   * 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
+   * 
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔥 WAVE 1011.9: THE SINGLE SOURCE OF TRUTH
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ANTES: Este método sobrescribía bass/mid/high con datos del Frontend,
+   *        mientras brain.on('audio-levels') los sobrescribía con datos del Worker.
+   *        Esto creaba una RACE CONDITION que causaba PARPADEO en todas las vibes.
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔥 WAVE 1012.5: HYBRID SOURCE ARCHITECTURE
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 
+   * PROBLEMA DETECTADO:
+   * - WAVE 1011.9 hizo al Worker "single source of truth" para bass/mid/high/energy
+   * - PERO el Worker solo recibe buffers cada 100ms (10fps)
+   * - El Frontend envía métricas cada 33ms (30fps)
+   * - Resultado: Sistema corriendo a 10fps visual, no 30fps
+   * 
+   * SOLUCIÓN HÍBRIDA:
+   * - Frontend (30fps) → bass/mid/high/energy básicos (para fluidez visual)
+   * - Worker (10fps) → harshness/flatness/centroid (para precisión espectral)
+   * - AMBOS coexisten sin sobrescribirse
+   * 
+   * El Worker TAMBIÉN envía bass/mid/high, pero el Frontend tiene prioridad
+   * temporal porque es más frecuente. Cuando llega data del Worker, las métricas
+   * FFT extendidas se actualizan pero bass/mid/high se mantienen del Frontend.
+   * ═══════════════════════════════════════════════════════════════════════════
    */
   processAudioFrame(data: Record<string, unknown>): void {
     if (!this.isRunning || !this.useBrain) return
     
-    // Extract audio metrics from incoming data
-    const bass = typeof data.bass === 'number' ? data.bass : 0
-    const mid = typeof data.mid === 'number' ? data.mid : 0
-    const high = typeof data.high === 'number' ? (data.high as number) : 
-                 typeof data.treble === 'number' ? (data.treble as number) : 0
-    const energy = typeof data.energy === 'number' ? data.energy : 
-                   typeof data.volume === 'number' ? data.volume : 0
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 1012.5: FRONTEND = HIGH FREQUENCY SOURCE (30fps)
+    // El Frontend provee bass/mid/high/energy a 30fps para fluidez visual
+    // El Worker provee métricas FFT a 10fps para precisión espectral
+    // ═══════════════════════════════════════════════════════════════════════════
     
-    // 🎛️ WAVE 661: Extraer textura espectral
+    // Core bands - FRONTEND SOURCE (30fps)
+    const bass = typeof data.bass === 'number' ? data.bass : this.lastAudioData.bass
+    const mid = typeof data.mid === 'number' ? data.mid : this.lastAudioData.mid
+    const high = typeof data.treble === 'number' ? data.treble : 
+                 typeof data.high === 'number' ? data.high : this.lastAudioData.high
+    const energy = typeof data.energy === 'number' ? data.energy : this.lastAudioData.energy
+    
+    // 🎛️ WAVE 661: Extraer textura espectral (si viene del frontend, raro pero posible)
     const harshness = typeof data.harshness === 'number' ? data.harshness : undefined
     const spectralFlatness = typeof data.spectralFlatness === 'number' ? data.spectralFlatness : undefined
     const spectralCentroid = typeof data.spectralCentroid === 'number' ? data.spectralCentroid : undefined
     
-    // Store for main loop (used by TitanEngine for immediate visual response)
-    this.lastAudioData = { bass, mid, high, energy, harshness, spectralFlatness, spectralCentroid }
-    this.hasRealAudio = energy > 0.01 // Mark as having real audio if not silent
+    // 🎸 WAVE 1011: Extraer bandas extendidas
+    const subBass = typeof data.subBass === 'number' ? data.subBass : undefined
+    const lowMid = typeof data.lowMid === 'number' ? data.lowMid : undefined
+    const highMid = typeof data.highMid === 'number' ? data.highMid : undefined
+    
+    // 🎸 WAVE 1011: Extraer detección de transientes
+    const kickDetected = typeof data.kickDetected === 'boolean' ? data.kickDetected : undefined
+    const snareDetected = typeof data.snareDetected === 'boolean' ? data.snareDetected : undefined
+    const hihatDetected = typeof data.hihatDetected === 'boolean' ? data.hihatDetected : undefined
+    
+    // 🔥 WAVE 1012.5: HYBRID MERGE
+    // - bass/mid/high/energy: FRONTEND (30fps, prioridad visual)
+    // - métricas FFT: WORKER vía brain.on('audio-levels') (10fps, prioridad espectral)
+    this.lastAudioData = { 
+      // Core bands - FRONTEND SOURCE (30fps para fluidez)
+      bass,
+      mid,
+      high,
+      energy,
+      // Métricas FFT extendidas - PRESERVAR del Worker si frontend no las tiene
+      harshness: harshness ?? this.lastAudioData.harshness,
+      spectralFlatness: spectralFlatness ?? this.lastAudioData.spectralFlatness,
+      spectralCentroid: spectralCentroid ?? this.lastAudioData.spectralCentroid,
+      subBass: subBass ?? this.lastAudioData.subBass,
+      lowMid: lowMid ?? this.lastAudioData.lowMid,
+      highMid: highMid ?? this.lastAudioData.highMid,
+      kickDetected: kickDetected ?? this.lastAudioData.kickDetected,
+      snareDetected: snareDetected ?? this.lastAudioData.snareDetected,
+      hihatDetected: hihatDetected ?? this.lastAudioData.hihatDetected
+    }
+    
+    // 🔥 WAVE 1012.5: Frontend también detecta audio real
+    this.hasRealAudio = energy > 0.01
     
     // 🗡️ WAVE 265: Update timestamp para staleness detection
     this.lastAudioTimestamp = Date.now()
-    
-    // 🗡️ WAVE 261.5: PURGA DEL BYPASS
-    // ====================================================================
-    // ELIMINADO: feedAudioMetrics() - Este era un bypass que enviaba datos
-    // directamente a GAMMA sin pasar por BETA, violando WAVE 15.3.
-    // 
-    // El flujo correcto es:
-    //   Frontend → audioBuffer() → BETA (FFT real) → GAMMA (análisis) → Brain
-    // 
-    // audioFrame() ahora SOLO almacena métricas para el Engine,
-    // NO alimenta el análisis musical. Eso lo hace audioBuffer().
-    // ====================================================================
-    
-    // 🧹 WAVE 671.5: Silenced audio metrics spam (every 1s)
-    // if (this.config.debug && this.frameCount % 30 === 0) {
-    //   console.log(`[TitanOrchestrator] 👂 Audio metrics stored: bass=${bass.toFixed(2)} mid=${mid.toFixed(2)} energy=${energy.toFixed(2)}`)
-    // }
   }
 
   /**
@@ -1428,6 +1566,60 @@ export class TitanOrchestrator {
         // Si no reconocemos la zona, NO ENTREGAMOS NADA
         console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`)
         return false
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing
+  // Elimina el "ruido digital" del FFT crudo que causa parpadeo en los Pars
+  // 
+  // EMA Formula: smoothed = (1 - alpha) * smoothed + alpha * raw
+  // - ALPHA_FAST (0.25): Reacciona en ~4 frames (~133ms) - para harshness/guitarras
+  // - ALPHA_SLOW (0.08): Reacciona en ~12 frames (~400ms) - para contexto/ambiente
+  // ═══════════════════════════════════════════════════════════════════════════
+  private applyEMASmoothing(): void {
+    const raw = this.lastAudioData;
+    
+    // Harshness: FAST - queremos que responda a guitarras distorsionadas
+    if (typeof raw.harshness === 'number') {
+      this.smoothedMetrics.harshness = 
+        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.harshness + 
+        this.EMA_ALPHA_FAST * raw.harshness;
+    }
+    
+    // SpectralFlatness: SLOW - contexto ambiental, no debería saltar
+    if (typeof raw.spectralFlatness === 'number') {
+      this.smoothedMetrics.spectralFlatness = 
+        (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralFlatness + 
+        this.EMA_ALPHA_SLOW * raw.spectralFlatness;
+    }
+    
+    // SpectralCentroid: SLOW - el "brillo" tonal es contexto, no evento
+    if (typeof raw.spectralCentroid === 'number') {
+      this.smoothedMetrics.spectralCentroid = 
+        (1 - this.EMA_ALPHA_SLOW) * this.smoothedMetrics.spectralCentroid + 
+        this.EMA_ALPHA_SLOW * raw.spectralCentroid;
+    }
+    
+    // SubBass: FAST - kicks profundos deben sentirse
+    if (typeof raw.subBass === 'number') {
+      this.smoothedMetrics.subBass = 
+        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.subBass + 
+        this.EMA_ALPHA_FAST * raw.subBass;
+    }
+    
+    // LowMid: FAST - presencia de guitarras/voces
+    if (typeof raw.lowMid === 'number') {
+      this.smoothedMetrics.lowMid = 
+        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.lowMid + 
+        this.EMA_ALPHA_FAST * raw.lowMid;
+    }
+    
+    // HighMid: FAST - claridad/ataque
+    if (typeof raw.highMid === 'number') {
+      this.smoothedMetrics.highMid = 
+        (1 - this.EMA_ALPHA_FAST) * this.smoothedMetrics.highMid + 
+        this.EMA_ALPHA_FAST * raw.highMid;
     }
   }
 }

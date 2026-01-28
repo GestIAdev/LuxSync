@@ -89,6 +89,11 @@ interface BetaState {
   beatPhase: number;
   lastBeatTime: number;
   
+  // 🏎️ WAVE 1013: NITRO BOOST - Ring Buffer for Overlap Strategy
+  ringBuffer: Float32Array;        // 4096 samples circular buffer
+  ringBufferWriteIndex: number;    // Current write position (0-4095)
+  ringBufferFilled: boolean;       // Has buffer been filled at least once?
+  
   // Wave 8 Analysis Outputs (cached for GAMMA)
   lastRhythmOutput: RhythmOutput | null;
   lastHarmonyOutput: HarmonyOutput | null;
@@ -112,6 +117,11 @@ const state: BetaState = {
   bpmHistory: [],
   beatPhase: 0,
   lastBeatTime: Date.now(),
+  
+  // 🏎️ WAVE 1013: Ring Buffer (4096 samples for FFT, ~85ms @ 48kHz)
+  ringBuffer: new Float32Array(4096),
+  ringBufferWriteIndex: 0,
+  ringBufferFilled: false,
   
   // Wave 8 outputs
   lastRhythmOutput: null,
@@ -289,8 +299,9 @@ class SpectrumAnalyzer {
       mid: fftResult.mid,
       treble: fftResult.treble,
       
-      // Métricas espectrales
-      spectralCentroid: Math.min(1, fftResult.spectralCentroid / 10000), // Normalizar
+      // 🎸 WAVE 1011.2: spectralCentroid EN HZ (no normalizado!)
+      // RockStereoPhysics2 necesita Hz para detectar "bright" (>2000) vs "dark" (<1200)
+      spectralCentroid: fftResult.spectralCentroid, // Hz directo (típicamente 500-5000)
       spectralFlux,
       
       // 🧮 WAVE 15: Datos adicionales para análisis avanzado
@@ -362,9 +373,89 @@ interface ExtendedAudioAnalysis extends AudioAnalysis {
   };
 }
 
-function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
+function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis {
   const startTime = performance.now();
   state.frameCount++;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🏎️ WAVE 1013: NITRO BOOST - RING BUFFER / OVERLAP STRATEGY
+  // ═══════════════════════════════════════════════════════════════════════════
+  // El frontend ahora envía buffers cada 50ms (~2400 samples @ 48kHz).
+  // Para mantener FFT de 4096 samples, usamos un Ring Buffer con overlap de 50%.
+  //
+  // Estrategia:
+  // 1. Copiar incoming samples al ring buffer circular
+  // 2. Cuando el ring esté lleno, crear snapshot lineal de 4096 samples
+  // 3. Ejecutar FFT sobre el snapshot
+  //
+  // Beneficio: 20fps de análisis espectral manteniendo resolución de 4096 samples
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // 1. Copiar incoming buffer al ring buffer
+  const incomingLength = incomingBuffer.length;
+  const startIndex = state.ringBufferWriteIndex;
+  
+  for (let i = 0; i < incomingLength; i++) {
+    state.ringBuffer[state.ringBufferWriteIndex] = incomingBuffer[i];
+    state.ringBufferWriteIndex = (state.ringBufferWriteIndex + 1) % 4096;
+  }
+  
+  // Marcar como lleno cuando el índice wraps around (volvemos al inicio)
+  // Esto ocurre cuando el nuevo índice es MENOR que el índice inicial + incoming length
+  // O más simple: después de acumular suficientes samples (al menos 4096)
+  if (!state.ringBufferFilled) {
+    // Si el writeIndex dio la vuelta (era mayor, ahora es menor que startIndex + length)
+    // O si ya hemos procesado suficientes samples totales
+    const totalSamplesWritten = state.frameCount * incomingLength;
+    if (totalSamplesWritten >= 4096) {
+      state.ringBufferFilled = true;
+      console.log('[BETA 🏎️] Ring buffer READY - 4096 samples accumulated, FFT analysis active');
+    }
+  }
+  
+  // 2. Si el ring buffer NO está lleno aún, retornar análisis con ceros
+  if (!state.ringBufferFilled) {
+    // 🏎️ WAVE 1013: Silenciado - solo log primera vez
+    if (state.frameCount === 1) {
+      console.log('[BETA 🏎️] Ring buffer initializing (4096 samples)...');
+    }
+    // Retornar análisis mínimo mientras el buffer se llena
+    return {
+      timestamp: Date.now(),
+      frameId: state.frameCount,
+      agcGainFactor: 1.0,
+      bpm: state.currentBpm,
+      bpmConfidence: 0,
+      onBeat: false,
+      beatPhase: 0,
+      beatStrength: 0,
+      syncopation: 0,
+      groove: 0,
+      subdivision: 4,
+      bass: 0,
+      mid: 0,
+      treble: 0,
+      subBass: 0,
+      lowMid: 0,
+      highMid: 0,
+      harshness: 0,
+      spectralFlatness: 0,
+      spectralCentroid: 0,
+      energy: 0,
+      spectralFlux: 0,
+      zeroCrossingRate: 0,
+      kickDetected: false,
+      snareDetected: false,
+      hihatDetected: false
+    };
+  }
+  
+  // 3. Crear snapshot lineal del ring buffer para FFT (4096 samples)
+  const buffer = new Float32Array(4096);
+  for (let i = 0; i < 4096; i++) {
+    const readIndex = (state.ringBufferWriteIndex + i) % 4096;
+    buffer[i] = state.ringBuffer[readIndex];
+  }
   
   // ═══════════════════════════════════════════════════════════════════════════
   // �️ WAVE 670: AUTOMATIC GAIN CONTROL - NORMALIZACIÓN DE ENTRADA
@@ -567,6 +658,20 @@ function processAudioBuffer(buffer: Float32Array): ExtendedAudioAnalysis {
     bass: spectrum.bass,
     mid: spectrum.mid,
     treble: spectrum.treble,
+    
+    // 🎸 WAVE 1011: Extended spectrum for RockStereoPhysics2
+    subBass: spectrum.subBass,
+    lowMid: spectrum.lowMid,
+    highMid: spectrum.highMid,
+    
+    // 🎸 WAVE 1011: Spectral texture metrics
+    harshness: spectrum.harshness,
+    spectralFlatness: spectrum.spectralFlatness,
+    
+    // 🎸 WAVE 1011: Transient detection
+    kickDetected: spectrum.kickDetected,
+    snareDetected: spectrum.snareDetected,
+    hihatDetected: spectrum.hihatDetected,
     
     // Mood (from Wave 8 Harmony)
     mood,

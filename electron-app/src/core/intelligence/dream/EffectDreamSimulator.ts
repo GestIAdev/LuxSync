@@ -360,12 +360,12 @@ export class EffectDreamSimulator {
     const startTime = Date.now()
     this.simulationCount++
     
-    console.log(`[DREAM_SIMULATOR] 🔮 Dream #${this.simulationCount} - Exploring futures...`)
+    // 🧹 WAVE 1015: Silenciado - solo logear resultado si slow (>5ms)
     
     // 1. Generar candidatos basados en vibe y prediction
     const candidates = this.generateCandidates(currentState, musicalPrediction, context)
     
-    console.log(`[DREAM_SIMULATOR] 📊 Generated ${candidates.length} candidates`)
+    // 🧹 WAVE 1015: Silenciado - spam innecesario
     
     // 2. Simular cada escenario
     const scenarios: EffectScenario[] = []
@@ -388,9 +388,9 @@ export class EffectDreamSimulator {
     
     const simulationTimeMs = Date.now() - startTime
     
-    console.log(`[DREAM_SIMULATOR] ✨ Dream complete in ${simulationTimeMs}ms`)
-    if (bestScenario) {
-      console.log(`[DREAM_SIMULATOR] 🎯 Best: ${bestScenario.effect.effect} (beauty: ${bestScenario.projectedBeauty.toFixed(2)}, risk: ${bestScenario.riskLevel.toFixed(2)})`)
+    // 🧹 WAVE 1015: Solo logear si slow (>5ms) o si hay problema
+    if (simulationTimeMs > 5 && bestScenario) {
+      console.log(`[DREAM_SIMULATOR] 🎯 ${bestScenario.effect.effect} (${simulationTimeMs}ms)`)
     }
     
     return {
@@ -747,11 +747,7 @@ export class EffectDreamSimulator {
     
     const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
     
-    console.log(`[DREAM_SIMULATOR] 🛡️ VIBE SHIELD: ${state.vibe} → ${vibeAllowedEffects.length} candidates available`)
-    console.log(
-      `[DREAM_SIMULATOR] 🧘 ZONE FILTER: ${energyZone} (E=${context.energy.toFixed(2)}, source=${zoneSource}) → ` +
-      `${zoneFilteredEffects.length} candidates (A=${this.getZoneAggressionRange(energyZone)})`
-    )
+    // 🧹 WAVE 1015: Silenciado - spam innecesario
     
     // 🎭 WAVE 920.2: Pre-filtrar efectos bloqueados por mood
     const moodController = MoodController.getInstance()
@@ -779,12 +775,7 @@ export class EffectDreamSimulator {
       })
     }
     
-    if (blockedCount > 0) {
-      console.log(`[DREAM_SIMULATOR] 🎭 Pre-filtered ${blockedCount} effects (blocked by ${currentProfile.emoji} mood)`)
-    }
-    if (zoneBlockedCount > 0) {
-      console.log(`[DREAM_SIMULATOR] 🧘 Zone filtered ${zoneBlockedCount} effects (too aggressive/soft for ${energyZone})`)
-    }
+    // 🧹 WAVE 1015: Silenciado - logs redundantes
     
     return candidates
   }
@@ -1164,16 +1155,7 @@ export class EffectDreamSimulator {
       score: this.calculateScenarioScore(s, prediction)
     })).sort((a, b) => b.score - a.score)
     
-    // Log top 3 para debug (WAVE 1009.4: formato clarificado)
-    if (scored.length >= 2) {
-      const top3 = scored.slice(0, 3).map(s => {
-        const raw = s.scenario.projectedRelevance
-        const div = s.scenario.diversityScore
-        const final = s.score
-        return `${s.scenario.effect.effect}(raw=${raw.toFixed(2)}, div=${div.toFixed(2)}, final=${final.toFixed(2)})`
-      }).join(' | ')
-      console.log(`[DREAM_SIMULATOR] 🏆 TOP3: ${top3}`)
-    }
+    // 🧹 WAVE 1015: Silenciado - spam innecesario
     
     return scored.map(s => s.scenario)
   }

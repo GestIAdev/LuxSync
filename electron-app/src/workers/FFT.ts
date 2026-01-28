@@ -273,8 +273,13 @@ export function computeBandEnergies(fftResult: FFTResult, sampleRate: number): B
     return Math.min(1, rms * scaleFactor);
   };
   
-  // WAVE 50.1: Calcular harshness (ratio de energía harsh vs total)
-  const harshness = totalEnergy > 0 ? Math.min(1, harshEnergy / totalEnergy) : 0;
+  // 🎸 WAVE 1011.2: Harshness mejorado para ROCK
+  // Comparar energía 2-5kHz vs MID+HIGH (no vs total, porque bajos dominan en rock)
+  // Esto da valores más altos para guitarras distorsionadas
+  const midHighEnergy = midEnergy + highMidEnergy + trebleEnergy;
+  const harshness = midHighEnergy > 0 
+    ? Math.min(1, (harshEnergy / midHighEnergy) * 1.5) // x1.5 boost para rock
+    : 0;
   
   // WAVE 50.1: Calcular spectral flatness (geometric mean / arithmetic mean)
   const geometricMean = validBins > 0 ? Math.exp(logSum / validBins) : 0;

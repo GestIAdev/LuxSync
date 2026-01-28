@@ -67,11 +67,20 @@ export interface AGCConfig {
   noiseFloor: number;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔥 WAVE 1011.9: AGC RECALIBRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+// ANTES: targetRMS=0.25 → Metallica con bass=0.05 (ABSURDO)
+// El AGC atenuaba señales fuertes demasiado, matando la dinámica.
+// 
+// AHORA: targetRMS=0.50 → Permite que señales fuertes pasen con más fuerza
+// También subimos minGain de 0.25 a 0.5 para no atenuar tanto
+// ═══════════════════════════════════════════════════════════════════════════════
 const DEFAULT_AGC_CONFIG: AGCConfig = {
-  targetRMS: 0.25,      // Nivel objetivo moderado (0.25 = -12dB aprox)
+  targetRMS: 0.50,      // 🔥 WAVE 1011.9: Subido de 0.25 a 0.50 (menos atenuación)
   peakDecay: 0.997,     // Muy lento: ~3 segundos para caer 50%
   maxGain: 8.0,         // Máximo 8x amplificación (24dB)
-  minGain: 0.25,        // Mínimo 0.25x atenuación (-12dB)
+  minGain: 0.5,         // 🔥 WAVE 1011.9: Subido de 0.25 a 0.5 (mínimo 50% de señal)
   warmupFrames: 60,     // 1 segundo @ 60fps para calibrar
   noiseFloor: 0.005,    // Debajo de esto = silencio, no amplificar
 };

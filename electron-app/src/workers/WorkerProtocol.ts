@@ -126,6 +126,20 @@ export interface AudioAnalysis {
   mid: number;                // 0-1
   treble: number;             // 0-1
   
+  // 🎸 WAVE 1011: Extended spectrum bands for RockStereoPhysics2
+  subBass?: number;           // 0-1 (20-60Hz - deep kicks)
+  lowMid?: number;            // 0-1 (250-500Hz)
+  highMid?: number;           // 0-1 (2000-4000Hz - presence)
+  
+  // 🎸 WAVE 1011: Spectral texture metrics (FFT.ts advanced)
+  harshness?: number;         // 0-1 (ratio 2-5kHz vs total)
+  spectralFlatness?: number;  // 0-1 (0=tonal, 1=noise)
+  
+  // 🎸 WAVE 1011: Transient detection (kick/snare/hihat)
+  kickDetected?: boolean;
+  snareDetected?: boolean;
+  hihatDetected?: boolean;
+  
   // Harmony (optional, more CPU intensive)
   key?: string;               // e.g., "C minor"
   mood?: 'dark' | 'bright' | 'neutral';

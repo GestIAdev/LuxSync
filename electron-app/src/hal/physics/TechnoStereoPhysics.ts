@@ -126,7 +126,7 @@ export class TechnoStereoPhysics {
 
   // RIGHT (Treble/Hats) - "SCHWARZENEGGER MODE" 🤖
   private readonly MOVER_R_GATE = 0.14        // 📉 Hypersensitive (confirmado)
-  private readonly MOVER_R_BOOST = 10.0       // 💪 TERMINATOR BOOST (confirmado)
+  private readonly MOVER_R_BOOST = 8.0       // 💪 TERMINATOR BOOST (confirmado)
 
   // STROBE & MODES
   private readonly STROBE_THRESHOLD = 0.80
@@ -178,7 +178,17 @@ export class TechnoStereoPhysics {
   // =========================================================================
 
   public applyZones(input: TechnoPhysicsInput): TechnoPhysicsResult {
-    const { bass, mid, treble, isRealSilence, isAGCTrap, harshness = 0, flatness = 0 } = input
+    // 🔥 WAVE 1012: Defaults inteligentes para métricas espectrales
+    // Sin estos, acidMode/noiseMode/atmosphericFloor quedan MUERTOS
+    const { 
+      bass, 
+      mid, 
+      treble, 
+      isRealSilence, 
+      isAGCTrap, 
+      harshness = 0.45,  // 🎛️ Default agresivo (Techno = duro)
+      flatness = 0.35    // 🎛️ Default para pads/atmos
+    } = input
     const now = Date.now()
 
     // ?? Modos
@@ -220,12 +230,6 @@ export class TechnoStereoPhysics {
     const snareSignal = Math.sqrt(mid * treble)
     let backParIntensity = this.calculateBackPar(snareSignal)
 
-    // ☁️ WAVE 914: THE ATMOSPHERIC FLOOR (Trance Fix)
-    // Si la música es muy densa (Pads/Trance), flatness será alto (ej: 0.6).
-    // Usamos eso para crear un "Glow" base en los Movers.
-    // Factor 0.3 significa: Si flatness es 1.0 (ruido puro), el brillo mínimo es 30%.
-    const atmosphericFloor = flatness * 0.3
-
     // 👯 STEREO ALCHEMY
     
     // LEFT: Mid Dominante - "The Body"
@@ -236,11 +240,8 @@ export class TechnoStereoPhysics {
     const rawRight = Math.max(0, treble - (mid * 0.2))
     let moverR = this.calculateMoverChannel(rawRight, this.MOVER_R_GATE, this.MOVER_R_BOOST)
 
-    // ☁️ APLICAR SUELO ATMOSFÉRICO
-    // Si moverL es 0 (silencio rítmico) pero hay Pad (flatness), se queda en el floor.
-    // Math.max asegura que el ritmo siempre gane al floor.
-    moverL = Math.max(moverL, atmosphericFloor)
-    moverR = Math.max(moverR, atmosphericFloor)
+    // 🔥 WAVE 1014.5: ATMOSPHERIC FLOOR ELIMINADO
+    // Causaba "hilito permanente" - Los Movers ahora se apagan cuando deben, como los PARs
 
     // 🔥 WAVE 916: APOCALYPSE DETECTION
     // Si hay mucha distorsión (harshness) Y mucho ruido blanco (flatness),

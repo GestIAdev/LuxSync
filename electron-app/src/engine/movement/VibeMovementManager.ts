@@ -112,11 +112,45 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
     homeOnSilence: false,
   },
   
-  // 🎸 ROCK: Impacto, gravedad, poder
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1011: ROCK SUBGENRES (High Voltage Edition)
+  // 
+  // 4 CONFIGS DISTINTAS según subgénero detectado:
+  // - pop-rock: Default, classic rock equilibrado
+  // - rock-metal: Metallica, agresivo, headbanger
+  // - rock-indie: The Strokes, brillante, guitarSolo activo
+  // - rock-prog: Pink Floyd, fluido, wave épico
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 🎸 ROCK CLASSIC: Equilibrado, AC/DC, Led Zeppelin
   'pop-rock': {
-    amplitudeScale: 0.75,     // Movimiento con peso
-    baseFrequency: 0.2,       // Moderado
-    patterns: ['blinder', 'vShape', 'wave'],
+    amplitudeScale: 0.80,     // Movimiento con peso (subido de 0.75)
+    baseFrequency: 0.20,      // Moderado
+    patterns: ['blinder', 'vShape', 'wave', 'stageDive'],  // +stageDive
+    homeOnSilence: true,
+  },
+  
+  // 🤘 ROCK METAL: Metallica, Slayer, Pantera
+  'rock-metal': {
+    amplitudeScale: 0.95,     // CASI FULL (brutal)
+    baseFrequency: 0.28,      // Rápido (thrash)
+    patterns: ['headbanger', 'chaos', 'blinder', 'stageDive'],
+    homeOnSilence: false,     // Metal NO descansa
+  },
+  
+  // 🎸 ROCK INDIE: The Strokes, Arctic Monkeys, Franz Ferdinand
+  'rock-indie': {
+    amplitudeScale: 0.70,     // Controlado pero visible
+    baseFrequency: 0.22,      // Energético
+    patterns: ['guitarSolo', 'wave', 'vShape', 'blinder'],
+    homeOnSilence: true,
+  },
+  
+  // 🌌 ROCK PROG: Pink Floyd, Tool, Rush
+  'rock-prog': {
+    amplitudeScale: 0.75,     // Épico pero no agresivo
+    baseFrequency: 0.12,      // LENTO (épico)
+    patterns: ['wave', 'nebula', 'ocean', 'guitarSolo'],  // Psicodélico
     homeOnSilence: true,
   },
   
@@ -183,6 +217,11 @@ const PATTERN_PERIOD: Record<string, number> = {
   vShape: 2,       // Formación dinámica necesita period 2x para no aplastarse (197→98 DMX)
   wave: 2,         // Pink Floyd ondulación lenta
   chaos: 1,        // Caos DEBE ser rápido (noise extremo)
+  
+  // 🎸 WAVE 1011: HIGH VOLTAGE ROCK PATTERNS
+  stageDive: 2,    // Stage dive sincronizado con drop (2 beats)
+  guitarSolo: 1,   // Solo rápido, movimiento dinámico (1 beat para agilidad)
+  headbanger: 1,   // Headbang reactivo al kick (1 beat para sincronía perfecta)
   
   // 🍸 CHILL: HALF-TIME como los demás (4x era GLACIAL)
   // 🔧 WAVE 350.9: Chill debe ser relajado pero NO congelado
@@ -351,7 +390,99 @@ const PATTERNS: Record<string, PatternFunction> = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🍸 CHILL PATTERNS (Fluido / Ambiente)
+  // � WAVE 1011: ROCK ADVANCED PATTERNS (High Voltage Edition)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🤘 STAGE DIVE: Tilt hacia abajo AGRESIVO en Drop/Chorus
+   * 
+   * El "golpe al público" definitivo. Cuando el riff entra,
+   * las luces se clavan en el pit como un guitarrista tirándose.
+   * 
+   * Usa audio.bass para modular la agresividad:
+   * - Bass alto = tilt profundo (-1.0)
+   * - Bass bajo = tilt suave (-0.3)
+   * 
+   * 🔧 WAVE 1011: Pan estable, toda la energía en el TILT
+   */
+  stageDive: (t, phase, audio) => {
+    // Tilt reactivo al bass - más bass = más profundo
+    // Curva exponencial para punch (baja rápido, sube lento)
+    const bassImpact = Math.pow(audio.bass, 1.5)  // Exponencial para punch
+    const tiltDepth = -0.3 - bassImpact * 0.7     // Range: -0.3 a -1.0
+    
+    // Pan mínimo (no distraer del impacto vertical)
+    const panDrift = Math.sin(phase * 0.2) * 0.15
+    
+    return {
+      x: panDrift,
+      y: tiltDepth,  // SIEMPRE hacia abajo, modulado por bass
+    }
+  },
+  
+  /**
+   * 🎸 GUITAR SOLO: Movers al centro, movimiento rápido en Pan
+   * 
+   * Cuando el solo de guitarra entra, todos los movers
+   * convergen al centro y hacen barridos rápidos horizontales.
+   * 
+   * Ideal para cuando spectralCentroid sube (solos brillantes).
+   * 
+   * 🔧 WAVE 1011: Iris cerrado (aplicar desde fuera), 
+   *              movimiento lateral protagonista
+   */
+  guitarSolo: (t, phase, audio) => {
+    // Pan rápido y amplio (el solo CORTA la mezcla)
+    // Frecuencia 2x para movimiento más dinámico
+    const panSpeed = Math.sin(phase * 2) * 0.85
+    
+    // Tilt centrado con micro-vibración de energía
+    // Simula la vibración de un amplificador Marshall
+    const tiltVibration = Math.sin(t * 12) * 0.08 * audio.highs
+    const tiltBase = -0.15 + tiltVibration  // Ligeramente hacia el público
+    
+    return {
+      x: panSpeed,   // Barridos rápidos L-R
+      y: tiltBase,   // Casi estable, micro-vibración
+    }
+  },
+  
+  /**
+   * 🤘 HEADBANGER: Tilt arriba/abajo sincronizado con Kick
+   * 
+   * Para METAL. El tilt hace headbanging con el bombo.
+   * Pan casi estático (toda la energía en el movimiento vertical).
+   * 
+   * Usa audio.bass para timing del "headbang":
+   * - Bass alto = cabeza abajo
+   * - Bass bajo = cabeza arriba
+   * 
+   * 🔧 WAVE 1011: Movimiento binario, no fluido (METAL)
+   */
+  headbanger: (t, phase, audio) => {
+    // Headbang binario basado en bass threshold
+    // Si bass > 0.5, cabeza ABAJO. Si no, cabeza ARRIBA.
+    const headDown = audio.bass > 0.45
+    
+    // Tilt extremo para headbang real
+    // Abajo = -0.9, Arriba = +0.2 (no llega al techo)
+    const tiltTarget = headDown ? -0.85 : 0.15
+    
+    // Suavizado mínimo para que no sea 100% binario
+    // pero manteniendo el punch del headbang
+    const tiltSmooth = Math.sin(phase) * 0.1  // Micro-oscilación
+    
+    // Pan con drift lento (no distraer del headbang vertical)
+    const panDrift = Math.sin(phase * 0.3) * 0.20
+    
+    return {
+      x: panDrift,
+      y: tiltTarget + tiltSmooth,
+    }
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // �🍸 CHILL PATTERNS (Fluido / Ambiente)
   // ═══════════════════════════════════════════════════════════════════════
   
   /**

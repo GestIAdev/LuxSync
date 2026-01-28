@@ -223,11 +223,24 @@ export class TrinityBrain extends EventEmitter {
     this.emit('context-update', context)
     
     // Emitir niveles de audio para visualización
+    // 🎸 WAVE 1011.1: Extended con métricas FFT para Physics Engines
     this.emit('audio-levels', {
       bass: analysis.bass,
       mid: analysis.mid,
       treble: analysis.treble,
       energy: analysis.energy,
+      // 🎸 WAVE 1011.1: Bandas extendidas
+      subBass: analysis.subBass,
+      lowMid: analysis.lowMid,
+      highMid: analysis.highMid,
+      // 🎸 WAVE 1011.1: Métricas espectrales
+      harshness: analysis.harshness,
+      spectralFlatness: analysis.spectralFlatness,
+      spectralCentroid: analysis.spectralCentroid,
+      // 🎸 WAVE 1011.1: Transientes
+      kickDetected: analysis.kickDetected,
+      snareDetected: analysis.snareDetected,
+      hihatDetected: analysis.hihatDetected,
     })
 
     // Log cada ~30 frames (1 segundo)

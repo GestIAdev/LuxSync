@@ -235,7 +235,15 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'solar_flare': { base: 0.85, energyMultiplier: 1.3, latinoBonus: 0.20 },
   // 💥 ZONA 7: PEAK (90-100%)
   'latina_meltdown': { base: 0.92, energyMultiplier: 1.45, latinoBonus: 0.24 },   // 🆕 LA BESTIA LATINA
-  'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 }
+  'strobe_storm': { base: 0.80, energyMultiplier: 1.25, latinoBonus: 0.18 },
+  
+  // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
+  // Beauty weights calibrados para stadium performance
+  'thunder_struck': { base: 0.88, energyMultiplier: 1.35, rockBonus: 0.22 },     // ⚡ Stadium blinder - high impact
+  'feedback_storm': { base: 0.82, energyMultiplier: 1.30, rockBonus: 0.20 },     // 😵 Chaos - peak moment beauty
+  'arena_sweep': { base: 0.74, energyMultiplier: 1.10, rockBonus: 0.14 },        // 🌊 Wembley sweep - steady beauty
+  'liquid_solo': { base: 0.78, energyMultiplier: 1.15, rockBonus: 0.16 },        // 🎸 Spotlight - organic elegance
+  'amp_heat': { base: 0.68, energyMultiplier: 0.90, rockBonus: 0.10 },           // 🔥 Breathing valves - intimate beauty
 } as const
 
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -283,7 +291,14 @@ const EFFECT_GPU_COST = {
   'solar_flare': 0.22,
   // 💥 ZONA 7: PEAK
   'latina_meltdown': 0.38,  // 🆕 ALTO - LA BESTIA LATINA
-  'strobe_storm': 0.32
+  'strobe_storm': 0.32,
+  
+  // 🎸 WAVE 1020: POP-ROCK ARSENAL
+  'thunder_struck': 0.30,   // ⚡ Alto - double flash stadium blinder
+  'feedback_storm': 0.35,   // 😵 Muy alto - strobe caótico + intensidad
+  'arena_sweep': 0.26,      // 🌊 Medio-alto - sweep amplio con inercia
+  'liquid_solo': 0.22,      // 🎸 Medio - spotlight asimétrico L/R
+  'amp_heat': 0.12,         // 🔥 Bajo - solo breathing suave
 } as const
 
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -331,7 +346,14 @@ const EFFECT_FATIGUE_IMPACT = {
   'solar_flare': 0.06,
   // 💥 ZONA 7: PEAK (ALTA FATIGA)
   'latina_meltdown': 0.12,  // 🆕 ALTA - LA BESTIA LATINA agota
-  'strobe_storm': 0.09
+  'strobe_storm': 0.09,
+  
+  // 🎸 WAVE 1020: POP-ROCK ARSENAL
+  'thunder_struck': 0.08,   // ⚡ Alta - blinder brutal doble flash
+  'feedback_storm': 0.11,   // 😵 MUY alta - caos visual agota
+  'arena_sweep': 0.04,      // 🌊 Moderada - sweep amplio pero fluido
+  'liquid_solo': 0.03,      // 🎸 Baja - spotlight elegante, no cansa
+  'amp_heat': -0.02,        // 🔥 REDUCE fatiga - breathing intimista
 } as const
 
 // ═══════════════════════════════════════════════════════════════
@@ -867,11 +889,13 @@ export class EffectDreamSimulator {
     // Energy multiplier
     beauty *= (1 + (context.energy - 0.5) * (weights.energyMultiplier - 1))
     
-    // Vibe bonus (WAVE 902.1: Only Techno + Latino implemented)
+    // Vibe bonus (WAVE 902.1: Techno + Latino, WAVE 1020: Rock added)
     if (context.vibe.includes('techno') && 'technoBonus' in weights) {
       beauty += weights.technoBonus
     } else if (context.vibe.includes('latino') && 'latinoBonus' in weights) {
       beauty += weights.latinoBonus
+    } else if (context.vibe.includes('rock') && 'rockBonus' in weights) {
+      beauty += weights.rockBonus
     }
     // Note: chillBonus removed - chill genre not implemented yet
     

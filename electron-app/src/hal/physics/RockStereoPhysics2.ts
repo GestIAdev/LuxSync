@@ -3,13 +3,21 @@
  * 🎸 ROCK STEREO PHYSICS 2.0 - UNIFIED ARCHITECTURE
  * ============================================================================
  * 
- * WAVE 1017.1 "GOD EAR CALIBRATION" - POST-TRANSPLANT EDITION
+ * WAVE 1017.2 "BRIAN JOHNSON VOICE FILTER" - THUNDERSTRUCK CALIBRATION
  * 
  * FILOSOFÍA: El rock es rock. No hay METAL, no hay INDIE, no hay PROG.
  * Pink Floyd es Rock. Metallica es Rock. Arctic Monkeys es Rock.
+ * AC/DC es ROCK PURO.
  * 
  * La diferencia NO está en cambiar de modo/config, sino en cómo las
  * métricas espectrales MODULAN LINEALMENTE los parámetros base.
+ * 
+ * 🩻 WAVE 1017.2 FINE TUNING (POST-THUNDERSTRUCK TEST):
+ * ═══════════════════════════════════════════════════════
+ * - SubBass floor 0.42→0.50 (eliminar bajo de Cliff Williams)
+ * - Front gate 0.22→0.28 (solo kicks sísmicos reales)
+ * - Voice Leak Filter mejorado (3-stage: ratio + absolute + graduated)
+ * - MoverRight gate 0.08→0.12 (filtrar ruido residual)
  * 
  * 🩻 GOD EAR ZONE REDISTRIBUTION:
  * ═══════════════════════════════
@@ -115,20 +123,20 @@ export interface RockPhysicsResult {
  * └─────────────┴──────────────────────────────────────────────────────┘
  */
 const ROCK_UNIFIED_CONFIG = {
-  // 🎸 Ganancias base por zona - WAVE 1017.1: Redistribuido para GOD EAR
+  // 🎸 Ganancias base por zona - WAVE 1017.2: Fine-tuned para AC/DC
   gains: {
-    frontPar: 2.4,      // SUBIDO - SubBass puro necesita amplificación
-    backPar: 2.0,       // SUBIDO - Mid (voces) necesita presencia
-    moverLeft: 1.5,     // SUBIDO - LowMid+HighMid = guitarras completas
-    moverRight: 1.8,    // Presence/Treble - cymbals brillantes
+    frontPar: 2.6,      // SUBIDO 2.4→2.6 - compensar floor alto de SubBass
+    backPar: 2.0,       // OK - Mid (voces) tiene buena presencia
+    moverLeft: 1.5,     // OK - LowMid+HighMid = guitarras completas
+    moverRight: 2.0,    // SUBIDO 1.8→2.0 - compensar voice rejection
   },
   
-  // 🚪 Gates - WAVE 1017.1: Front MUY SELECTIVO, Back MUY SENSIBLE
+  // 🚪 Gates - WAVE 1017.2: Front QUIRÚRGICAMENTE SELECTIVO
   gates: {
-    frontPar: 0.22,     // MUY ALTO - solo kicks sísmicos pasan
-    backPar: 0.05,      // MUY BAJO - voces sensibles (Freddie territory)
-    moverLeft: 0.12,    // MEDIO - guitarras con cuerpo
-    moverRight: 0.08,   // BAJO - cymbals reactivos
+    frontPar: 0.28,     // SUBIDO 0.22→0.28 - solo kicks SÍSMICOS reales
+    backPar: 0.05,      // OK - voces sensibles (Brian Johnson territory)
+    moverLeft: 0.12,    // OK - guitarras con cuerpo
+    moverRight: 0.12,   // SUBIDO 0.08→0.12 - filtrar ruido de voz leak
   },
   
   // ⚡ Decay speeds - WAVE 1017.1: Ajustados para cada rol
@@ -279,9 +287,9 @@ export class RockStereoPhysics2 {
     highMid: number;
     presence: number;
   } {
-    // 🎯 WAVE 1015 ROCK DETOX: PRIORIZAR bandas FFT reales si están disponibles
-    // Si vienen pre-calculadas desde SeleneLux, usarlas DIRECTAMENTE
-    // Si no, reconstruir desde bass/mid/treble (legacy path)
+    // 🩻 WAVE 1017.2: GOD EAR FINE TUNING para AC/DC y rock clásico
+    // El bajo de Cliff Williams (AC/DC) está en 60-150Hz, justo en el límite
+    // SubBass/LowMid. Necesitamos floors MÁS ALTOS para separar kick del bajo.
     
     const hasRealBands = (
       input.subBass !== undefined && 
@@ -290,38 +298,32 @@ export class RockStereoPhysics2 {
     );
     
     if (hasRealBands) {
-      // ✅ Path 1: Usar bandas FFT reales + RENORMALIZACIÓN
-      // 🎯 WAVE 1015.3: Las bandas vienen normalizadas (0.5-0.8 = música normal)
-      // Necesitamos estirarlas a 0.0-1.0 para tener rango dinámico
       const rawSubBass = input.subBass ?? 0;
       const rawLowMid = input.lowMid ?? 0;
       const rawHighMid = input.highMid ?? 0;
       const rawPresence = input.treble ?? 0;
       
-      // Renormalización con EXPANSIÓN (no compresión): (valor - floor) / (ceiling - floor)
-      // 🎯 WAVE 1015.8: MODERATE EXPANSION - ni crush ni saturación
-      const renormalize = (val: number, floor: number, ceiling: number, expansionPower = 0.8) => {
-        if (val < floor) return 0;  // Hard cut bajo el floor
+      // 🩻 WAVE 1017.2: RENORMALIZACIÓN AJUSTADA PARA ROCK CLÁSICO
+      // - SubBass: Floor MUY ALTO (0.50) - solo kicks sísmicos reales
+      // - LowMid: Floor ALTO (0.45) - filtrar bajo constante
+      // - HighMid: Floor MODERADO (0.28) - voces con sensibilidad
+      // - Presence: Floor BAJO (0.12) - cymbals reactivos
+      const renormalize = (val: number, floor: number, ceiling: number, expansionPower = 0.85) => {
+        if (val < floor) return 0;
         const normalized = (val - floor) / (ceiling - floor);
-        
-        // 🎯 CURVA DE EXPANSIÓN MODERADA:
-        // expansionPower = 0.80 → levanta suavemente sin saturar
-        // Ejemplo: 0.5^0.80 = 0.57 (sube +14%), 0.3^0.80 = 0.39 (sube +30%)
-        const expanded = Math.pow(normalized, expansionPower);
-        
-        return Math.min(1.0, expanded);
+        const expanded = Math.pow(Math.min(1, normalized), expansionPower);
+        return expanded;
       };
       
       return {
-        subBass: renormalize(rawSubBass, 0.42, 0.85, 0.82),   // Floor MUY ALTO (0.42) - SubBass es MUY potente
-        lowMid: renormalize(rawLowMid, 0.42, 0.85, 0.84),     // Floor 0.42, casi lineal - LowMid constante
-        highMid: renormalize(rawHighMid, 0.25, 0.75, 0.85),   // ✅ PERFECTO - NO TOCAR
-        presence: renormalize(rawPresence, 0.15, 0.50, 0.88), // ✅ PERFECTO - NO TOCAR
+        subBass: renormalize(rawSubBass, 0.50, 0.85, 0.80),   // SUBIDO 0.42→0.50 (solo kicks)
+        lowMid: renormalize(rawLowMid, 0.45, 0.85, 0.82),     // SUBIDO 0.42→0.45 (filtrar bajo)
+        highMid: renormalize(rawHighMid, 0.28, 0.75, 0.85),   // SUBIDO 0.25→0.28 (voces)
+        presence: renormalize(rawPresence, 0.12, 0.50, 0.90), // BAJADO 0.15→0.12 (cymbals sensibles)
       };
     }
     
-    // ❌ Path 2: Legacy - Reconstruir desde bass/mid/treble
-    // IMPORTANTE: Estos valores vienen del AGC y pueden estar inflados
+    // Legacy path
     const bass = input.bass ?? 0;
     const mid = input.mid ?? 0;
     const treble = input.treble ?? 0;
@@ -503,9 +505,15 @@ export class RockStereoPhysics2 {
   }
   
   /**
-   * MOVER RIGHT: Presence + Treble - WAVE 1017.1 GOD EAR CALIBRATION
-   * ✨ CYMBALS + BRILLO (2.5k-16kHz)
-   * Con VOICE LEAK FILTER mejorado - solo "crispiness", no voces.
+   * MOVER RIGHT: Presence + Treble - WAVE 1017.2 BRIAN JOHNSON FILTER
+   * ✨ CYMBALS + BRILLO (2.5k-16kHz) - SIN VOCES
+   * 
+   * PROBLEMA: Los gritos de Brian Johnson ("THUNDER!") tienen energía
+   * en HighMid (3-5kHz) Y Presence (5-8kHz) simultáneamente.
+   * Cymbals puros tienen ratio Presence/HighMid cercano a 1:1.
+   * Voces humanas (incluso gritos) tienen HighMid dominante.
+   * 
+   * SOLUCIÓN: Multi-stage voice rejection
    */
   private processMoverRight(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
@@ -515,7 +523,7 @@ export class RockStereoPhysics2 {
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🩻 WAVE 1017.1: Presence PURO (2.5k-8kHz) = cymbals territory
+    // 🩻 WAVE 1017.2: Presence PURO (2.5k-8kHz) = cymbals territory
     const input = bands.presence;
     
     // Gate check
@@ -525,12 +533,49 @@ export class RockStereoPhysics2 {
       return;
     }
     
-    // 🎯 VOICE LEAK FILTER: Si HighMid >> Presence, son voces, no cymbals
-    // Cymbals tienen balance Presence/HighMid similar
-    // Voces son HighMid-heavy con poco Presence
+    // ========================================================================
+    // 🎯 WAVE 1017.2: ENHANCED VOICE REJECTION SYSTEM
+    // ========================================================================
+    // 
+    // ANÁLISIS DEL LOG DE THUNDERSTRUCK:
+    // - Cuando Brian grita: HighMid=0.50+, Presence=0.15-0.25
+    // - Cuando cymbals pegan: HighMid=0.20-0.30, Presence=0.25-0.40
+    // 
+    // REGLA: Si HighMid domina (>1.8x Presence), es VOICE → reducir
+    // REGLA 2: Si HighMid > 0.35 absoluto Y ratio > 1.5 → definitivamente voz
+    //
     const voiceLeakRatio = bands.highMid / Math.max(0.01, bands.presence);
-    const isVoiceLeak = voiceLeakRatio > 2.5;  // Si HighMid > 2.5x Presence → voces
-    const filteredInput = isVoiceLeak ? input * 0.4 : input;  // Reducir 60% si es voz
+    
+    // Stage 1: Ratio check (1.8x en vez de 2.5x)
+    const isVoiceByRatio = voiceLeakRatio > 1.8;
+    
+    // Stage 2: Absolute HighMid check (voces tienen HighMid fuerte)
+    const isVoiceByAbsolute = bands.highMid > 0.35 && voiceLeakRatio > 1.5;
+    
+    // Stage 3: Combined decision con rejection graduado
+    let voiceRejection = 1.0;  // 1.0 = no rejection
+    
+    if (isVoiceByAbsolute) {
+      // Definitive voice → heavy rejection (20% pass)
+      voiceRejection = 0.20;
+    } else if (isVoiceByRatio) {
+      // Probable voice → moderate rejection (40% pass)  
+      voiceRejection = 0.40;
+    } else if (voiceLeakRatio > 1.3) {
+      // Suspicious → light rejection (70% pass)
+      voiceRejection = 0.70;
+    }
+    // else: voiceRejection = 1.0 → cymbals puros, no rejection
+    
+    const filteredInput = input * voiceRejection;
+    
+    // Debug cada 2 segundos cuando hay voice rejection
+    if (this.frameCount % 120 === 0 && voiceRejection < 1.0) {
+      console.log(
+        `🔇 [MoverR Voice Filter] Ratio=${voiceLeakRatio.toFixed(2)} HM=${bands.highMid.toFixed(2)} ` +
+        `→ Rejection=${(1-voiceRejection)*100}%`
+      );
+    }
     
     // Gain con harshness moderado
     const harshnessBoost = (harshnessMod - 1.0) * config.harshnessModulation.moverIntensity;

@@ -37,13 +37,18 @@ import type { AudienceSafetyContext } from './AudienceSafetyContext'
 import { MoodController } from '../../mood/MoodController'
 
 // 🧬 WAVE 970: CONTEXTUAL DNA SYSTEM
+// 🎨 WAVE 1029: THE DREAMER - Texture Affinity Integration
 import { 
   getDNAAnalyzer, 
   EFFECT_DNA_REGISTRY,
   type TargetDNA,
   type AudioMetricsForDNA,
-  type MusicalContextForDNA
+  type MusicalContextForDNA,
+  type TextureAffinity
 } from '../dna/EffectDNA'
+
+// 🎨 WAVE 1029: THE DREAMER - SpectralContext for Texture Awareness
+import type { SpectralTexture, SpectralContext } from '../../protocol/MusicalContext'
 
 // SelenePalette type (minimal definition for Phase 1)
 interface SelenePalette {
@@ -1001,19 +1006,194 @@ export class EffectDreamSimulator {
   
   // ═══════════════════════════════════════════════════════════════
   // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
+  // 🎨 WAVE 1029: THE DREAMER - Texture DNA Integration
   // ═══════════════════════════════════════════════════════════════
   
+  /**
+   * 🎨 WAVE 1029: THE DREAMER - Ghost Input System
+   * 
+   * Permite inyectar un SpectralContext falso para testing/simulación.
+   * Cuando está seteado, calculateDNARelevance usará este contexto
+   * en lugar de derivar uno del AudienceSafetyContext.
+   * 
+   * Uso:
+   * ```ts
+   * simulator.setGhostSpectralContext({ texture: 'harsh', clarity: 0.3, harshness: 0.8, ... })
+   * const result = simulator.dreamEffects(...) // Usará ghost context
+   * simulator.clearGhostSpectralContext()
+   * ```
+   */
+  private ghostSpectralContext: SpectralContext | null = null
+  
+  /**
+   * 🎨 WAVE 1029: Set ghost spectral context for testing
+   */
+  setGhostSpectralContext(context: SpectralContext): void {
+    this.ghostSpectralContext = context
+    console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext SET: texture=${context.texture}, clarity=${context.clarity.toFixed(2)}, harshness=${context.harshness.toFixed(2)}`)
+  }
+  
+  /**
+   * 🎨 WAVE 1029: Clear ghost spectral context
+   */
+  clearGhostSpectralContext(): void {
+    this.ghostSpectralContext = null
+    console.log(`[DREAM_SIMULATOR] 👻 Ghost SpectralContext CLEARED`)
+  }
+  
+  /**
+   * 🎨 WAVE 1029: Check if effect is compatible with current spectral texture
+   * 
+   * REGLAS:
+   * - 'dirty' effects: ONLY with harsh/noisy textures (harshness > 0.5)
+   * - 'clean' effects: ONLY with clean/crystal textures (clarity > 0.6, harshness < 0.4)
+   * - 'universal': Always compatible
+   * 
+   * @returns { compatible: boolean, reason: string, penalty: number }
+   */
+  private checkTextureCompatibility(
+    effectId: string,
+    spectralContext: SpectralContext | null
+  ): { compatible: boolean; reason: string; penalty: number } {
+    // Si no hay contexto espectral, asumir universal
+    if (!spectralContext) {
+      return { compatible: true, reason: 'No spectral context - assuming universal', penalty: 0 }
+    }
+    
+    const effectDNA = EFFECT_DNA_REGISTRY[effectId]
+    if (!effectDNA) {
+      return { compatible: true, reason: 'Unknown effect - assuming universal', penalty: 0 }
+    }
+    
+    const textureAffinity = effectDNA.textureAffinity || 'universal'
+    
+    // 🌐 UNIVERSAL: Siempre compatible
+    if (textureAffinity === 'universal') {
+      return { compatible: true, reason: 'Universal affinity', penalty: 0 }
+    }
+    
+    // 🔥 DIRTY: Requiere texturas sucias (harsh/noisy)
+    if (textureAffinity === 'dirty') {
+      const isHarsh = spectralContext.texture === 'harsh' || 
+                      spectralContext.texture === 'noisy' ||
+                      spectralContext.harshness > 0.5
+      
+      if (isHarsh) {
+        // BONUS: +0.15 relevance por match perfecto
+        return { 
+          compatible: true, 
+          reason: `Dirty effect matches ${spectralContext.texture} texture`, 
+          penalty: -0.15  // Negative penalty = bonus
+        }
+      } else {
+        // INCOMPATIBLE: Efecto dirty con textura limpia
+        return { 
+          compatible: false, 
+          reason: `Dirty effect REJECTED - context is ${spectralContext.texture} (clarity=${spectralContext.clarity.toFixed(2)})`, 
+          penalty: 1.0  // Total rejection
+        }
+      }
+    }
+    
+    // 💎 CLEAN: Requiere texturas limpias (crystal/clean)
+    if (textureAffinity === 'clean') {
+      const isClean = spectralContext.texture === 'clean' || 
+                      spectralContext.texture === 'warm' ||
+                      (spectralContext.clarity > 0.6 && spectralContext.harshness < 0.4)
+      
+      if (isClean) {
+        // BONUS: +0.15 relevance por match perfecto
+        return { 
+          compatible: true, 
+          reason: `Clean effect matches ${spectralContext.texture} texture`, 
+          penalty: -0.15  // Negative penalty = bonus
+        }
+      } else {
+        // INCOMPATIBLE: Efecto clean con textura sucia
+        return { 
+          compatible: false, 
+          reason: `Clean effect REJECTED - context is ${spectralContext.texture} (harshness=${spectralContext.harshness.toFixed(2)})`, 
+          penalty: 1.0  // Total rejection
+        }
+      }
+    }
+    
+    return { compatible: true, reason: 'Default pass', penalty: 0 }
+  }
+  
+  /**
+   * 🎨 WAVE 1029: Derive SpectralContext from AudienceSafetyContext
+   * 
+   * Si no hay ghost context, derivamos uno básico del vibe y energy.
+   */
+  private deriveSpectralContext(context: AudienceSafetyContext, state: SystemState): SpectralContext {
+    // Si hay ghost context, usarlo
+    if (this.ghostSpectralContext) {
+      return this.ghostSpectralContext
+    }
+    
+    // Derivar textura del vibe
+    let texture: SpectralTexture = 'warm'  // Default safe
+    let harshness = 0.4
+    let clarity = 0.5
+    
+    if (context.vibe.includes('techno') || context.vibe.includes('industrial')) {
+      texture = state.energy > 0.7 ? 'harsh' : 'noisy'
+      harshness = 0.5 + (state.energy * 0.3)
+      clarity = 0.4
+    } else if (context.vibe.includes('chill') || context.vibe.includes('ambient')) {
+      texture = 'clean'
+      harshness = 0.2
+      clarity = 0.8
+    } else if (context.vibe.includes('rock') || context.vibe.includes('pop-rock')) {
+      // Rock: depende de la energía
+      if (state.energy > 0.75) {
+        texture = 'harsh'
+        harshness = 0.6
+        clarity = 0.5
+      } else {
+        texture = 'warm'
+        harshness = 0.35
+        clarity = 0.65
+      }
+    } else if (context.vibe.includes('latino')) {
+      texture = 'warm'
+      harshness = 0.3
+      clarity = 0.7
+    }
+    
+    return {
+      texture,
+      clarity,
+      harshness,
+      flatness: 0.5,  // Default
+      centroid: 2500, // Default ~2.5kHz
+      bands: { 
+        subBass: 0.5, 
+        bass: 0.5, 
+        lowMid: 0.5, 
+        mid: 0.5, 
+        highMid: 0.5, 
+        treble: 0.5, 
+        ultraAir: 0.3 
+      }
+    }
+  }
+
   /**
    * Calcula la relevancia contextual de un efecto usando DNA matching.
    * Reemplaza el antiguo sistema de "belleza" con algo más inteligente.
    * 
-   * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA }
+   * 🎨 WAVE 1029: Ahora incluye verificación de textura espectral.
+   * Un efecto incompatible con la textura actual será RECHAZADO (relevance=0).
+   * 
+   * @returns { relevance: 0-1, distance: 0-√3, targetDNA: TargetDNA, textureRejected: boolean }
    */
   private calculateDNARelevance(
     effect: EffectCandidate,
     state: SystemState,
     context: AudienceSafetyContext
-  ): { relevance: number; distance: number; targetDNA: TargetDNA } {
+  ): { relevance: number; distance: number; targetDNA: TargetDNA; textureRejected?: boolean } {
     // Obtener el DNA del efecto del registry
     const effectDNA = EFFECT_DNA_REGISTRY[effect.effect]
     
@@ -1024,6 +1204,21 @@ export class EffectDreamSimulator {
         relevance: 0.50,  // Neutral
         distance: 0.866,  // √3/2 = centro del espacio
         targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 }
+      }
+    }
+    
+    // 🎨 WAVE 1029: Check texture compatibility FIRST
+    const spectralContext = this.deriveSpectralContext(context, state)
+    const textureCheck = this.checkTextureCompatibility(effect.effect, spectralContext)
+    
+    if (!textureCheck.compatible) {
+      // REJECTED by texture filter - return zero relevance
+      console.log(`[DREAM_SIMULATOR] 🎨 TEXTURE REJECT: ${effect.effect} - ${textureCheck.reason}`)
+      return {
+        relevance: 0,
+        distance: Math.sqrt(3),  // Máxima distancia
+        targetDNA: { aggression: 0.5, chaos: 0.5, organicity: 0.5, confidence: 0.5 },
+        textureRejected: true
       }
     }
     
@@ -1057,8 +1252,8 @@ export class EffectDreamSimulator {
       mid: 0.5,
       treble: context.vibe.includes('techno') ? 0.6 : 0.4,
       volume: state.energy,
-      harshness: context.vibe.includes('techno') ? 0.6 : 0.3,
-      spectralFlatness: 0.5
+      harshness: spectralContext.harshness,  // 🎨 WAVE 1029: Usar spectralContext
+      spectralFlatness: spectralContext.flatness
     }
     
     // Usar el DNAAnalyzer singleton para derivar el Target DNA
@@ -1074,7 +1269,10 @@ export class EffectDreamSimulator {
     // Convertir distancia a relevancia (0-1)
     // Distancia máxima teórica es √3 ≈ 1.732
     const MAX_DISTANCE = Math.sqrt(3)
-    const relevance = 1.0 - (distance / MAX_DISTANCE)
+    let relevance = 1.0 - (distance / MAX_DISTANCE)
+    
+    // 🎨 WAVE 1029: Apply texture bonus/penalty
+    relevance = Math.max(0, Math.min(1, relevance - textureCheck.penalty))
     
     return { relevance, distance, targetDNA }
   }

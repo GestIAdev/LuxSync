@@ -86,7 +86,19 @@ import type { Mood, SectionType } from '../../protocol/MusicalContext'
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * 🎨 WAVE 1029: THE DREAMER - Texture Affinity
+ * 
+ * Define con qué textura espectral es compatible un efecto:
+ * - 'dirty': Solo con texturas sucias/harsh (distorsión, ruido)
+ * - 'clean': Solo con texturas limpias/cristalinas (claridad alta)
+ * - 'universal': Funciona con cualquier textura
+ */
+export type TextureAffinity = 'dirty' | 'clean' | 'universal'
+
+/**
  * ADN inmutable de un efecto - Su NATURALEZA, no su "belleza"
+ * 
+ * 🧬 WAVE 1029: Ahora incluye textureAffinity como 4to gen
  */
 export interface EffectDNA {
   /** Agresión: ¿Cuánto "golpea"? (0=suave, 1=brutal) */
@@ -97,6 +109,9 @@ export interface EffectDNA {
   
   /** Organicidad: ¿Parece vivo o máquina? (0=sintético, 1=orgánico) */
   organicity: number
+  
+  /** 🎨 WAVE 1029: Afinidad de textura espectral */
+  textureAffinity?: TextureAffinity
 }
 
 /**
@@ -156,27 +171,32 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.95,   // 🔥 El martillo más brutal
     chaos: 0.30,        // Ordenado: flashes predecibles
     organicity: 0.05,   // 100% máquina
+    textureAffinity: 'dirty',  // 🎨 Solo con harshness
   },
   'acid_sweep': {
     aggression: 0.70,   // Agresivo pero más fluido
     chaos: 0.45,        // Semi-caótico (acid wobble)
     organicity: 0.25,   // Algo de "vida" en el movimiento
+    textureAffinity: 'universal',  // 🎨 Versátil
   },
   'cyber_dualism': {
     aggression: 0.55,   // 🎯 WAVE 970.1: Ajustado al centro (was 0.65)
     chaos: 0.50,        // Centro perfecto ✓
     organicity: 0.45,   // 🎯 WAVE 970.1: Ajustado al centro (was 0.30)
+    textureAffinity: 'universal',  // 🎨 WILDCARD por excelencia
   },
   // ⭐ Cyber Dualism = WILDCARD para zonas 'active' moderadas
   'gatling_raid': {
     aggression: 0.90,   // 🔫 Ametralladora de PARs
     chaos: 0.40,        // 🔧 WAVE 977: 0.70 → 0.40 (menos caótico, más predecible)
     organicity: 0.10,   // Mecánico puro
+    textureAffinity: 'dirty',  // 🎨 Industrial = dirty
   },
   'sky_saw': {
     aggression: 0.80,   // Sierra cortante
     chaos: 0.55,        // Moderado (movimiento agresivo pero direccional)
     organicity: 0.20,   // Mecánico con "swing"
+    textureAffinity: 'universal',  // 🎨 Funciona en varios contextos
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -186,6 +206,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.05,   // 🌫️ Cero violencia - solo flota
     chaos: 0.20,        // Ordenado pero con pequeñas variaciones
     organicity: 0.85,   // Parece humo VIVO
+    textureAffinity: 'universal',  // 🎨 Atmosférico versátil
   },
   // 🔪 WAVE 986: static_pulse PURGED - replaced by binary_glitch + seismic_snap
   // 🔧 WAVE 1003.10: binary_glitch chaos 0.85→0.55 (era demasiado alto vs target DNA)
@@ -193,21 +214,25 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.60,   // ⚡ Golpe seco digital - tartamudeo de código
     chaos: 0.55,        // 🔧 WAVE 1003.10: 0.85→0.55 (caótico pero competitivo con target ~0.30)
     organicity: 0.00,   // 100% máquina - cero orgánico
+    textureAffinity: 'dirty',  // 🎨 Glitch = ruido digital
   },
   'seismic_snap': {
     aggression: 0.70,   // 💥 Golpe físico de luz - obturador gigante
     chaos: 0.20,        // Ordenado - SNAP preciso
     organicity: 0.10,   // Casi 100% máquina
+    textureAffinity: 'dirty',  // 🎨 Impacto mecánico
   },
   'digital_rain': {
-    aggression: 0.35,   // � WAVE 977: 0.20 → 0.35 (más presencia)
+    aggression: 0.35,   // 🌧️ WAVE 977: 0.20 → 0.35 (más presencia)
     chaos: 0.65,        // Caótico (gotas aleatorias)
     organicity: 0.40,   // Semi-orgánico (agua)
+    textureAffinity: 'universal',  // 🎨 Matrix versátil
   },
   'deep_breath': {
     aggression: 0.05,   // 🫁 Cero violencia
     chaos: 0.10,        // MUY ordenado (sinusoidal)
     organicity: 0.95,   // MÁXIMA organicidad - respiración
+    textureAffinity: 'clean',  // 🎨 Zen = limpio
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -217,11 +242,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.45,   // 📸 Flashes moderados tipo cámara
     chaos: 0.40,        // Disperso pero no caótico
     organicity: 0.10,   // Máquina (flashes de cámara)
+    textureAffinity: 'universal',  // 🎨 Suave, funciona en varios
   },
   'sonar_ping': {
     aggression: 0.15,   // 🔵 Pulso sutil submarino
     chaos: 0.10,        // MUY ordenado (secuencia back→front)
     organicity: 0.05,   // 100% máquina/tecnología
+    textureAffinity: 'clean',  // 🎨 Ping limpio
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -231,6 +258,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.80,   // 🌪️ Alto - épica transición dramática
     chaos: 0.30,        // Ordenado - progresión estructurada (8 bars)
     organicity: 0.50,   // 50/50 - Orgánico (ocean depths) + Sintético (techno)
+    textureAffinity: 'universal',  // 🎨 Transición épica versátil
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -240,11 +268,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.10,   // 🌈 Cero violencia - solo viaja
     chaos: 0.20,        // Ordenado - progresión cíclica
     organicity: 0.00,   // 100% sintético tecnológico
+    textureAffinity: 'clean',  // 🎨 Elegante, requiere claridad
   },
   'core_meltdown': {
     aggression: 1.00,   // ☢️ MÁXIMA - LA BESTIA
     chaos: 1.00,        // MÁXIMO - Impredecible strobe
     organicity: 0.00,   // 100% máquina apocalíptica
+    textureAffinity: 'dirty',  // 🎨 Solo con harshness extremo
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -257,11 +287,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.05,   // 🌿 WAVE 1005.11: 0.06→0.05 (Rescate - bajar un pelo)
     chaos: 0.15,        // 🔻 WAVE 1009.4: 0.25→0.15 (ULTRA ORDENADO - respiración constante)
     organicity: 0.80,   // 🔻 WAVE 1005.11: 0.90→0.80 (igualar con ghost - pelea solo por A)
+    textureAffinity: 'clean',  // 🎨 Neblina suave = limpio
   },
   'ghost_breath': {
-    aggression: 0.13,   // � WAVE 1005.11: 0.11→0.13 (darle aire a amazon)
+    aggression: 0.13,   // 👻 WAVE 1005.11: 0.11→0.13 (darle aire a amazon)
     chaos: 0.25,        // Más variación que amazon
     organicity: 0.80,   // 🎯 WAVE 1005.11: Igualado con amazon - pelea solo por A
+    textureAffinity: 'universal',  // 🎨 Atmósférico versátil
   },
   
   // 🌙 ZONA 2: VALLEY (15-30% Energía)
@@ -269,23 +301,27 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.21,   // 🌙 WAVE 1005.14: 0.18→0.21 (cerca del centro 0.225 - dist 0.015)
     chaos: 0.20,        // MUY ordenado
     organicity: 0.80,   // 🔻 WAVE 1005.8: 0.85→0.80 (alcanzable)
+    textureAffinity: 'clean',  // 🎨 Luna suave = limpio
   },
   'tidal_wave': {
     aggression: 0.28,   // 🌊 WAVE 1005.14: 0.27→0.28 (borde de salida - dist 0.055 del centro)
     chaos: 0.25,        // 🔻 WAVE 1009.4: 0.30→0.25 (MÁS ORDENADO - quedar en VALLEY, no invadir AMBIENT)
     organicity: 0.65,   // 🔻 WAVE 1009.4: 0.70→0.65 (alejarlo de AMBIENT target O≈0.53)
+    textureAffinity: 'universal',  // 🎨 Momentum versátil
   },
   
   // 💓 ZONA 3: AMBIENT (30-45% Energía)
   'corazon_latino': {
-    aggression: 0.37,   // � WAVE 1005.11: 0.38→0.37 (ajuste fino)
+    aggression: 0.37,   // 💓 WAVE 1005.11: 0.38→0.37 (ajuste fino)
     chaos: 0.35,        // 🆙 WAVE 1005.11: 0.30→0.35 (moderado)
     organicity: 0.75,   // 🔻 WAVE 1005.11: 0.85→0.75 (moderar - menos extremo)
+    textureAffinity: 'clean',  // 🎨 Emotivo = limpio
   },
   'strobe_burst': {
-    aggression: 0.43,   // � WAVE 1005.11: ajuste fino para Centrist - ambient entry
+    aggression: 0.43,   // 💥 WAVE 1005.11: ajuste fino para Centrist - ambient entry
     chaos: 0.35,        // Ordenado, más suave
     organicity: 0.40,   // Semi-orgánico
+    textureAffinity: 'universal',  // 🎨 Impacto versátil
   },
   
   // 🥁 ZONA 4: GENTLE (45-60% Energía)
@@ -293,23 +329,27 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.48,   // 🥁 WAVE 1005.11: 0.54→0.48 (entrada de Gentle - rescatar Tropical)
     chaos: 0.20,        // 🔻 WAVE 1009.4: 0.60→0.20 (CLAVE = PURO ORDEN - patrón matemático 3-2)
     organicity: 0.70,   // 🆙 WAVE 1009.4: 0.60→0.70 (SUBIR para alejarlo de AMBIENT O≈0.53)
+    textureAffinity: 'universal',  // 🎨 Ritmo percusivo versátil
   },
   'tropical_pulse': {
-    aggression: 0.56,   // � WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
+    aggression: 0.56,   // 🌴 WAVE 1005.15: 0.58→0.56 (FRONTERA SUR - dejar de invadir Active)
     chaos: 0.45,        // 🆙 WAVE 1005.8: 0.40→0.45 (balance)
     organicity: 0.65,   // 🔻 WAVE 1005.8: 0.75→0.65 (menos extremo)
+    textureAffinity: 'universal',  // 🎨 Pulso versátil
   },
   
   // ⚔️ ZONA 5: ACTIVE (60-75% Energía)
   'glitch_guaguanco': {
-    aggression: 0.64,   // � WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
+    aggression: 0.64,   // ⚔️ WAVE 1005.15: 0.66→0.64 (ajuste fino de entrada ACTIVE)
     chaos: 0.60,        // 🔻 WAVE 1005.15: 0.85→0.60 (MODERACIÓN RADICAL - aún caótico pero elegible)
     organicity: 0.35,   // 🆙 WAVE 1005.15: 0.30→0.35 (menos alienígena, más humano)
+    textureAffinity: 'dirty',  // 🎨 Glitch = ruido
   },
   'machete_spark': {
     aggression: 0.70,   // ⚔️ WAVE 1005.15: 0.69→0.70 (defensa frontera superior con Intense)
     chaos: 0.25,        // 🔻 WAVE 1009.4: 0.50→0.25 (CHISPAS RÍTMICAS - sparkles en el kick)
     organicity: 0.30,   // 🔻 WAVE 1005.13: 0.35→0.30 (mantener excelente O pero sin alcance)
+    textureAffinity: 'universal',  // 🎨 Chispas versátiles
   },
   
   // 🔥 ZONA 6: INTENSE (75-90% Energía)
@@ -317,11 +357,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.81,   // 🔥 WAVE 1005.15: 0.79→0.81 (FRONTERA NORTE - dejar de invadir Active)
     chaos: 0.30,        // 🔻 WAVE 1009.4: 0.55→0.30 (FUEGO RÍTMICO - llamas siguen el kick)
     organicity: 0.35,   // 🔻 WAVE 1009.4: 0.40→0.35 (hacerlo un poco menos 'orgánico' para dar ventaja a solar_flare)
+    textureAffinity: 'universal',  // 🎨 Fuego versátil
   },
   'solar_flare': {
     aggression: 0.86,   // ☀️ WAVE 1005.13: 0.87→0.86 (distanciarse de Peak)
     chaos: 0.25,        // 🔻 WAVE 1009.4: 0.35→0.25 (BAJAR para quedar en INTENSE - no invadir ACTIVE/PEAK)
     organicity: 0.45,   // 🆙 WAVE 1009.4: 0.40→0.45 (SUBIR para alejarlo de PEAK O≈0.18)
+    textureAffinity: 'universal',  // 🎨 Explosión épica universal
   },
   
   // 💥 ZONA 7: PEAK (90-100% Energía)
@@ -329,11 +371,13 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.97,   // 🔥 WAVE 1005.14: 0.99→0.97 (EQUIDISTANCIA - dist 0.02, accesible)
     chaos: 0.20,        // 🔻 WAVE 1009.4: 0.30→0.20 (ULTRA ORDENADO - derretimiento en el kick)
     organicity: 0.20,   // 🆙 WAVE 1005.8: 0.10→0.20 (alcanzable)
+    textureAffinity: 'dirty',  // 🎨 Meltdown = intenso, requiere harshness
   },
   'strobe_storm': {
     aggression: 0.93,   // ⚡ WAVE 1005.14: 0.95→0.93 (EQUIDISTANCIA - dist 0.02 del centro 0.95)
     chaos: 0.75,        // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
     organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
+    textureAffinity: 'dirty',  // 🎨 Tormenta de strobes = caos dirty
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -345,6 +389,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.95,   // ⚡ Brutal stadium blinder - PAM-PAM
     chaos: 0.10,        // MUY ordenado - 2 flashes predecibles
     organicity: 0.05,   // 100% sintético - NO es fuego orgánico, es MÁQUINA de luz
+    textureAffinity: 'dirty',  // 🎨 Impacto agresivo = dirty
   },
   
   // 🎸 LIQUID SOLO - El protagonista iluminado
@@ -352,6 +397,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.40,   // 🎸 Moderado - elegancia sobre brutalidad
     chaos: 0.35,        // Semi-caótico - L/R asimétricos pero coordinados
     organicity: 0.75,   // Alto orgánico - el MÚSICO es humano, fluido, expresivo
+    textureAffinity: 'clean',  // 🎨 Solo elegante = limpio
   },
   
   // 🔥 AMP HEAT - Las válvulas respirando
@@ -359,6 +405,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.15,   // 🔥 Suave - calor íntimo, NO violencia
     chaos: 0.15,        // Muy ordenado - respiración sinusoidal constante
     organicity: 0.90,   // MÁXIMA organicidad - respiración humana, calor analógico
+    textureAffinity: 'clean',  // 🎨 Calor analógico = warm/clean
   },
   
   // 🌊 ARENA SWEEP - El barrido de Wembley
@@ -366,6 +413,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.50,   // 🌊 Medio - presencia sin brutalidad
     chaos: 0.20,        // Ordenado - progresión V-shape predecible
     organicity: 0.25,   // Bajo orgánico - movimiento mecánico con INERCIA física
+    textureAffinity: 'clean',  // 🎨 Geometría elegante = clean
   },
   
   // 😵 FEEDBACK STORM - El caos visual
@@ -373,6 +421,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.85,   // 😵 Alto - distorsión harsh, caos auricular
     chaos: 0.90,        // Muy caótico - strobe errático, impredecible
     organicity: 0.10,   // Sintético - feedback es fenómeno eléctrico, NO orgánico
+    textureAffinity: 'dirty',  // 🎨 Caos visual = SOLO con distorsión
   },
   
   // ═══════════════════════════════════════════════════════════════
@@ -384,6 +433,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.85,   // ⚡ Alto - flash brutal + strobe rítmico
     chaos: 0.15,        // Ordenado - 4 flashes predecibles
     organicity: 0.10,   // Sintético - strobe mecánico, NO orgánico
+    textureAffinity: 'dirty',  // 🎨 Power chord = impacto
   },
   
   // 🌊 STAGE WASH - El respiro cálido
@@ -391,6 +441,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.25,   // 🌊 Bajo - transición suave, respiro
     chaos: 0.10,        // Muy ordenado - fade in/out lineal
     organicity: 0.60,   // Medio-alto - calor amber, ambiente humano
+    textureAffinity: 'clean',  // 🎨 Respiro cálido = clean
   },
   
   // 💡 SPOTLIGHT PULSE - El pulso emotivo
@@ -398,6 +449,7 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     aggression: 0.50,   // 💡 Moderado - pulso visible pero no violento
     chaos: 0.20,        // Ordenado - sinusoide predecible (2.5 pulsos)
     organicity: 0.40,   // Semi-orgánico - respiración mecánica pero emotiva
+    textureAffinity: 'clean',  // 🎨 Pulso emotivo = clean
   },
 }
 

@@ -57,6 +57,11 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
     'feedback_storm',    // 😵 Caos visual - metal/harshness peak
     'strobe_burst',      // 💥 Impacto puntual - drops menores
     'liquid_solo',       // 🎸 Spotlight guitarra - solos épicos
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - DIVINE ADDITIONS
+    // ═══════════════════════════════════════════════════════════════════════
+    'power_chord',       // ⚡ Flash + strobe - power chord hits
+    'spotlight_pulse',   // 💡 Pulso emotivo - builds épicos
   ],
 }
 

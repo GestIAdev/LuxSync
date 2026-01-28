@@ -143,6 +143,12 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'amp_heat': 20000,           // 20s base → Válvulas calientes, más frecuente (ambiente)
   'arena_sweep': 15000,        // 15s base → El pan y mantequilla, frecuente pero no spam
   'feedback_storm': 35000,     // 35s base → Caos visual, muy raro (solo harshness alto)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════════════════
+  'power_chord': 20000,        // 20s base → Flash + strobe, golpes de acorde (moderado)
+  'stage_wash': 25000,         // 25s base → Respiro cálido, transiciones (espaciado)
+  'spotlight_pulse': 22000,    // 22s base → Pulso emotivo, builds (medio-frecuente)
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -515,6 +521,13 @@ export class ContextualEffectSelector {
       // 😵 CHAOS (harshness reactive)
       'feedback_storm',     // Caos visual, metal/distorsión
       
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+      // ═══════════════════════════════════════════════════════════════════════
+      'stage_wash',         // Respiro cálido, transiciones/intros
+      'spotlight_pulse',    // Pulso emotivo, builds contemplativos
+      'power_chord',        // Flash + strobe, golpes de acorde/drops
+      
       // 🌐 UNIVERSAL FALLBACKS (compartidos)
       'ghost_breath',       // Respiro suave (breakdowns)
       'strobe_burst',       // Impacto puntual (drops menores)
@@ -600,24 +613,24 @@ export class ContextualEffectSelector {
         zoneAdjusted.push('amp_heat', 'ghost_breath')
       }
       if (zone === 'ambient') {
-        // 🌊 Arena sweep empieza, amp_heat sigue disponible
-        zoneAdjusted.push('amp_heat', 'arena_sweep')
+        // 🌊 Arena sweep empieza, stage_wash entra, amp_heat sigue disponible
+        zoneAdjusted.push('amp_heat', 'arena_sweep', 'stage_wash')
       }
       if (zone === 'gentle') {
-        // 🌊 Arena sweep domina, preparando energía
-        zoneAdjusted.push('arena_sweep')
+        // 🌊 Arena sweep domina, stage_wash de respaldo
+        zoneAdjusted.push('arena_sweep', 'stage_wash')
       }
       if (zone === 'active') {
-        // 🎸 Solos pueden entrar, arena sweep continúa
-        zoneAdjusted.push('arena_sweep', 'liquid_solo')
+        // 🎸 Solos + spotlight pulse pueden entrar, arena sweep continúa
+        zoneAdjusted.push('arena_sweep', 'liquid_solo', 'spotlight_pulse')
       }
       if (zone === 'intense') {
-        // ⚡ Thunder struck disponible, solos en su peak
-        zoneAdjusted.push('liquid_solo', 'thunder_struck')
+        // ⚡ Thunder struck + power chord disponibles, solos + pulse en peak
+        zoneAdjusted.push('liquid_solo', 'thunder_struck', 'power_chord', 'spotlight_pulse')
       }
       if (zone === 'peak') {
-        // 😵 Todo el arsenal pesado: blinder + caos
-        zoneAdjusted.push('thunder_struck', 'feedback_storm', 'strobe_burst')
+        // 😵 Todo el arsenal pesado: blinder + power chord + caos
+        zoneAdjusted.push('thunder_struck', 'power_chord', 'feedback_storm', 'strobe_burst')
       }
     }
     

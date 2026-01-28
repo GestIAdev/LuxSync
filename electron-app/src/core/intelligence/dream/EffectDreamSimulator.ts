@@ -244,6 +244,10 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'arena_sweep': { base: 0.74, energyMultiplier: 1.10, rockBonus: 0.14 },        // 🌊 Wembley sweep - steady beauty
   'liquid_solo': { base: 0.78, energyMultiplier: 1.15, rockBonus: 0.16 },        // 🎸 Spotlight - organic elegance
   'amp_heat': { base: 0.68, energyMultiplier: 0.90, rockBonus: 0.10 },           // 🔥 Breathing valves - intimate beauty
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+  'power_chord': { base: 0.84, energyMultiplier: 1.28, rockBonus: 0.19 },        // ⚡ Power chord flash - strong impact
+  'stage_wash': { base: 0.70, energyMultiplier: 0.95, rockBonus: 0.12 },         // 🌊 Warm wash - transition beauty
+  'spotlight_pulse': { base: 0.76, energyMultiplier: 1.12, rockBonus: 0.15 },    // 💡 Breathing pulse - moderate beauty
 } as const
 
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -299,6 +303,10 @@ const EFFECT_GPU_COST = {
   'arena_sweep': 0.26,      // 🌊 Medio-alto - sweep amplio con inercia
   'liquid_solo': 0.22,      // 🎸 Medio - spotlight asimétrico L/R
   'amp_heat': 0.12,         // 🔥 Bajo - solo breathing suave
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION
+  'power_chord': 0.28,      // ⚡ Medio-alto - flash + strobe 4 golpes
+  'stage_wash': 0.14,       // 🌊 Bajo - wash suave fade in/out
+  'spotlight_pulse': 0.20,  // 💡 Medio - pulsing dimmer sinusoidal
 } as const
 
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -354,6 +362,10 @@ const EFFECT_FATIGUE_IMPACT = {
   'arena_sweep': 0.04,      // 🌊 Moderada - sweep amplio pero fluido
   'liquid_solo': 0.03,      // 🎸 Baja - spotlight elegante, no cansa
   'amp_heat': -0.02,        // 🔥 REDUCE fatiga - breathing intimista
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION
+  'power_chord': 0.07,      // ⚡ Alta - flash + strobe impacto
+  'stage_wash': -0.01,      // 🌊 REDUCE fatiga - respiro cálido
+  'spotlight_pulse': 0.03,  // 💡 Baja - pulso suave, no cansa
 } as const
 
 // ═══════════════════════════════════════════════════════════════
@@ -643,16 +655,20 @@ export class EffectDreamSimulator {
       
       // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
       // 🔧 WAVE 1020.7: PURGED techno contamination (digital_rain, cyber_dualism)
+      // 🎸 WAVE 1020.9: EXPANDED with 3 new effects
       'pop-rock': [
         // PEAK/INTENSE (75-100%) - Stadium moments
         'thunder_struck',     // ⚡ Stadium blinder PAM-PAM (A=0.95)
+        'power_chord',        // ⚡ Power chord flash + strobe (A=0.85)
         'feedback_storm',     // 😵 Visual chaos (A=0.85)
         
         // ACTIVE/GENTLE (45-75%) - Performance zone
         'arena_sweep',        // 🌊 Wembley sweep (A=0.50)
+        'spotlight_pulse',    // 💡 Breathing spotlight (A=0.50)
         'liquid_solo',        // 🎸 Guitarist spotlight (A=0.40)
         
         // AMBIENT/VALLEY (15-45%) - Intimate moments
+        'stage_wash',         // 🌊 Warm amber wash (A=0.25)
         'amp_heat',           // 🔥 Hot valves breathing (A=0.15)
         
         // Universal fallback only
@@ -660,18 +676,21 @@ export class EffectDreamSimulator {
       ],
       // Aliases for rock
       'rock': [
-        'thunder_struck', 'feedback_storm',
-        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'thunder_struck', 'power_chord', 'feedback_storm',
+        'arena_sweep', 'spotlight_pulse', 'liquid_solo',
+        'stage_wash', 'amp_heat',
         'strobe_burst'
       ],
       'alternative': [
-        'thunder_struck', 'feedback_storm',
-        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'thunder_struck', 'power_chord', 'feedback_storm',
+        'arena_sweep', 'spotlight_pulse', 'liquid_solo',
+        'stage_wash', 'amp_heat',
         'strobe_burst'
       ],
       'indie': [
-        'thunder_struck', 'feedback_storm',
-        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'thunder_struck', 'power_chord', 'feedback_storm',
+        'arena_sweep', 'spotlight_pulse', 'liquid_solo',
+        'stage_wash', 'amp_heat',
         'strobe_burst'
       ],
     }

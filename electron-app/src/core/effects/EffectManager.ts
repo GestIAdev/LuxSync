@@ -102,7 +102,14 @@ import { AmpHeat } from './library/poprock/AmpHeat'
 import { ArenaSweep } from './library/poprock/ArenaSweep'
 import { FeedbackStorm } from './library/poprock/FeedbackStorm'
 
-// �🛡️ WAVE 680: Import VibeManager for THE SHIELD
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+// ═══════════════════════════════════════════════════════════════════════════
+import { PowerChord } from './library/poprock/PowerChord'
+import { StageWash } from './library/poprock/StageWash'
+import { SpotlightPulse } from './library/poprock/SpotlightPulse'
+
+// 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
@@ -188,6 +195,12 @@ const EFFECT_VIBE_RULES: Record<string, {
   'amp_heat': { isDynamic: false },          // 🔥 Ambient válvulas - intros/versos (allowed in chill)
   'arena_sweep': { isDynamic: true },        // 🌊 Wembley sweep - bread & butter
   'feedback_storm': { requiresStrobe: true, isDynamic: true },  // 😵 Caos visual - harshness reactive
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════════════════
+  'power_chord': { isDynamic: true },        // ⚡ Power chord flash - golpe del acorde
+  'stage_wash': { isDynamic: false },        // 🌊 Warm wash - respiro cálido (allowed in chill)
+  'spotlight_pulse': { isDynamic: true },    // 💡 Breathing spotlight - pulso emotivo
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -267,6 +280,18 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   
   // 😵 FEEDBACK_STORM (peak): Caos visual - harshness reactive
   'feedback_storm': 'peak',
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - Zone Mapping
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 STAGE_WASH (valley→ambient): Respiro cálido - transiciones/intros
+  'stage_wash': 'ambient',
+  
+  // 💡 SPOTLIGHT_PULSE (active): Pulso emotivo - builds contemplativos
+  'spotlight_pulse': 'active',
+  
+  // ⚡ POWER_CHORD (intense): Golpe del acorde - downbeats/drops
+  'power_chord': 'intense',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -817,6 +842,19 @@ export class EffectManager extends EventEmitter {
     
     // 😵 Feedback Storm - Caos visual, strobe random escalado por harshness
     this.effectFactories.set('feedback_storm', () => new FeedbackStorm())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ⚡ Power Chord - Flash + strobe rítmico, golpe del acorde
+    this.effectFactories.set('power_chord', () => new PowerChord())
+    
+    // 🌊 Stage Wash - Respiro cálido amber, transiciones suaves
+    this.effectFactories.set('stage_wash', () => new StageWash())
+    
+    // 💡 Spotlight Pulse - Breathing spotlight, pulso emotivo
+    this.effectFactories.set('spotlight_pulse', () => new SpotlightPulse())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

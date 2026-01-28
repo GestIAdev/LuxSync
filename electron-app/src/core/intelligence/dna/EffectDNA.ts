@@ -374,6 +374,31 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.90,        // Muy caótico - strobe errático, impredecible
     organicity: 0.10,   // Sintético - feedback es fenómeno eléctrico, NO orgánico
   },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020.9: ROCK ARSENAL EXPANSION - LOS 3 NUEVOS MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════
+  
+  // ⚡ POWER CHORD - El golpe del acorde
+  'power_chord': {
+    aggression: 0.85,   // ⚡ Alto - flash brutal + strobe rítmico
+    chaos: 0.15,        // Ordenado - 4 flashes predecibles
+    organicity: 0.10,   // Sintético - strobe mecánico, NO orgánico
+  },
+  
+  // 🌊 STAGE WASH - El respiro cálido
+  'stage_wash': {
+    aggression: 0.25,   // 🌊 Bajo - transición suave, respiro
+    chaos: 0.10,        // Muy ordenado - fade in/out lineal
+    organicity: 0.60,   // Medio-alto - calor amber, ambiente humano
+  },
+  
+  // 💡 SPOTLIGHT PULSE - El pulso emotivo
+  'spotlight_pulse': {
+    aggression: 0.50,   // 💡 Moderado - pulso visible pero no violento
+    chaos: 0.20,        // Ordenado - sinusoide predecible (2.5 pulsos)
+    organicity: 0.40,   // Semi-orgánico - respiración mecánica pero emotiva
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

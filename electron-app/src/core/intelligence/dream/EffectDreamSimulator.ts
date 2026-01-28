@@ -642,6 +642,7 @@ export class EffectDreamSimulator {
       ],
       
       // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
+      // 🔧 WAVE 1020.7: PURGED techno contamination (digital_rain, cyber_dualism)
       'pop-rock': [
         // PEAK/INTENSE (75-100%) - Stadium moments
         'thunder_struck',     // ⚡ Stadium blinder PAM-PAM (A=0.95)
@@ -654,26 +655,24 @@ export class EffectDreamSimulator {
         // AMBIENT/VALLEY (15-45%) - Intimate moments
         'amp_heat',           // 🔥 Hot valves breathing (A=0.15)
         
-        // Fallbacks from other genres (crossover)
-        'strobe_burst',       // Universal peak moment
-        'cyber_dualism',      // L/R ping-pong (works for rock too)
-        'digital_rain',       // Ambient filler
+        // Universal fallback only
+        'strobe_burst',       // Rhythmic flash - works in ANY genre
       ],
       // Aliases for rock
       'rock': [
         'thunder_struck', 'feedback_storm',
         'arena_sweep', 'liquid_solo', 'amp_heat',
-        'strobe_burst', 'cyber_dualism', 'digital_rain'
+        'strobe_burst'
       ],
       'alternative': [
         'thunder_struck', 'feedback_storm',
         'arena_sweep', 'liquid_solo', 'amp_heat',
-        'strobe_burst', 'cyber_dualism', 'digital_rain'
+        'strobe_burst'
       ],
       'indie': [
         'thunder_struck', 'feedback_storm',
         'arena_sweep', 'liquid_solo', 'amp_heat',
-        'strobe_burst', 'cyber_dualism', 'digital_rain'
+        'strobe_burst'
       ],
     }
     

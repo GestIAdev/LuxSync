@@ -1,31 +1,30 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎸 LIQUID_SOLO - EL FOCO DEL GUITARRISTA
+ * 🎸 LIQUID_SOLO - SPOTLIGHT SWEEP ELEGANTE
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * WAVE 1019: ROCK LEGENDS ARSENAL - "ANALOG POWER"
+ * WAVE 1020.8: REDISEÑO COMPLETO - Realismo y Timing
  * 
  * CONCEPTO:
- * Un haz de luz que busca al protagonista. Diseñado para cuando
- * la guitarra "llora" o solea. El moment de gloria del guitarrista.
+ * Un sweep horizontal suave de spotlight, como si un foco siguiera
+ * un movimiento fluido en el escenario. NO asume posición de músico.
  * 
  * COMPORTAMIENTO FÍSICO:
- * - Separación L/R: Aprovechamos la física stereo
- *   - MoverR (agudos/guitarra): Se mueve RÁPIDO siguiendo la melodía
- *   - MoverL (base): Se queda LENTO, estable
- * - Iris: Cerrado (Spot) - foco definido
- * - Movimiento: Barridos suaves tipo "Wave" pero rápidos
+ * - Sweep L→R o R→L (aleatorio con seed determinista)
+ * - Movimiento SUAVE y continuo (no errático)
+ * - Iris cerrado (spot definido)
+ * - Duración: 3-4 segundos MAX (catcheable por Selene)
  * 
  * AUDIO KEY:
- * - Se alimenta del MidHigh (guitarra lead)
- * - Clarity alta = solo definido = efecto más pronunciado
+ * - Se alimenta del MidHigh (guitarra/melodía)
+ * - Clarity alta = movimiento más pronunciado
  * 
  * COLORES:
- * - Azul Eléctrico (David Gilmour vibes)
- * - Transición a Blanco Cálido en los peaks
+ * - Azul Eléctrico (elegante)
+ * - Transición a Blanco Cálido en el peak del sweep
  * 
  * @module core/effects/library/poprock/LiquidSolo
- * @version WAVE 1019 - ROCK LEGENDS ARSENAL
+ * @version WAVE 1020.8 - REDISEÑO REALISTA
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -44,42 +43,32 @@ interface LiquidSoloConfig {
   /** Duración total del efecto (ms) */
   durationMs: number
   
-  /** ¿BPM-synced? */
-  bpmSync: boolean
-  
-  /** Beats de duración */
-  beatsTotal: number
-  
   /** Color principal - Azul Eléctrico */
   electricBlue: { h: number; s: number; l: number }
   
   /** Color peak - Blanco Cálido */
   peakWhite: { h: number; s: number; l: number }
   
-  /** Velocidad del wave (ciclos por segundo) */
-  waveFrequency: number
-  
-  /** Amplitud del pan del MoverR (más rápido) */
-  moverRightPanAmplitude: number
-  
-  /** Amplitud del pan del MoverL (más lento) */
-  moverLeftPanAmplitude: number
+  /** Amplitud del sweep (pan range) */
+  sweepAmplitude: number
 }
 
 const DEFAULT_CONFIG: LiquidSoloConfig = {
-  durationMs: 4000,              // 4 segundos de spotlight
-  bpmSync: true,
-  beatsTotal: 8,                 // 8 beats de gloria
+  durationMs: 3500,              // 3.5 segundos - corto y catcheable
   
-  // 💙 Azul Eléctrico (Gilmour vibes)
-  electricBlue: { h: 210, s: 90, l: 55 },
+  // 💙 Azul Eléctrico
+  electricBlue: { h: 210, s: 85, l: 55 },
   
-  // 💡 Blanco Cálido para peaks
-  peakWhite: { h: 40, s: 20, l: 90 },
+  // 💡 Blanco Cálido para peak
+  peakWhite: { h: 40, s: 20, l: 88 },
   
-  waveFrequency: 0.8,            // Ondas suaves, no frenéticas
-  moverRightPanAmplitude: 0.4,   // MoverR: movimiento amplio (sigue guitarra)
-  moverLeftPanAmplitude: 0.15,   // MoverL: drift sutil (base estable)
+  sweepAmplitude: 0.6,           // Sweep amplio pero no extremo
+}
+
+// Deterministic random para dirección del sweep
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000
+  return x - Math.floor(x)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -89,18 +78,17 @@ const DEFAULT_CONFIG: LiquidSoloConfig = {
 export class LiquidSolo extends BaseEffect {
   readonly effectType = 'liquid_solo'
   readonly name = 'Liquid Solo'
-  readonly category: EffectCategory = 'physical'
-  readonly priority = 85  // Alta - es un momento especial
-  readonly mixBus = 'htp' as const  // HTP - suma con física, no la reemplaza
+  readonly category: EffectCategory = 'movement'  // Movement - evita spam
+  readonly priority = 75  // Moderado - no compite con thunder_struck
+  readonly mixBus = 'htp' as const
   
   private config: LiquidSoloConfig
-  private actualDurationMs = 4000
   
   // 🎸 State
-  private soloIntensity = 0
-  private wavePhase = 0
-  private moverRightPan = 0
-  private moverLeftPan = 0
+  private sweepIntensity = 0
+  private sweepProgress = 0      // 0-1 progress del sweep
+  private sweepDirection = 1     // 1 = L→R, -1 = R→L
+  private currentPan = 0
   private currentColor: { h: number; s: number; l: number }
   
   constructor(config?: Partial<LiquidSoloConfig>) {
@@ -117,31 +105,17 @@ export class LiquidSolo extends BaseEffect {
     super.trigger(config)
     
     // Reset state
-    this.soloIntensity = 0
-    this.wavePhase = 0
-    this.moverRightPan = 0
-    this.moverLeftPan = 0
+    this.sweepIntensity = 0
+    this.sweepProgress = 0
     
-    // Calcular duración basada en BPM
-    this.calculateDuration()
+    // Dirección aleatoria (pero determinista) basada en timestamp
+    const seed = Date.now()
+    this.sweepDirection = seededRandom(seed) > 0.5 ? 1 : -1
     
-    console.log(`[LiquidSolo 🎸] TRIGGERED! Duration=${this.actualDurationMs}ms`)
-    console.log(`[LiquidSolo 🎸] THE GUITARIST TAKES THE STAGE...`)
-  }
-  
-  private calculateDuration(): void {
-    if (this.config.bpmSync && this.musicalContext?.bpm) {
-      const msPerBeat = 60000 / this.musicalContext.bpm
-      this.actualDurationMs = msPerBeat * this.config.beatsTotal
-    } else {
-      this.actualDurationMs = this.config.durationMs
-    }
+    // Pan inicial: borde opuesto a la dirección del sweep
+    this.currentPan = -this.sweepDirection * this.config.sweepAmplitude
     
-    // MAX DURATION de seguridad
-    const MAX_DURATION_MS = 8000
-    if (this.actualDurationMs > MAX_DURATION_MS) {
-      this.actualDurationMs = MAX_DURATION_MS
-    }
+    console.log(`[LiquidSolo 🎸] TRIGGERED! Duration=${this.config.durationMs}ms Direction=${this.sweepDirection > 0 ? 'L→R' : 'R→L'}`)
   }
   
   update(deltaMs: number): void {
@@ -150,61 +124,59 @@ export class LiquidSolo extends BaseEffect {
     this.elapsedMs += deltaMs
     
     // Progreso normalizado (0-1)
-    const progress = Math.min(1, this.elapsedMs / this.actualDurationMs)
+    const progress = Math.min(1, this.elapsedMs / this.config.durationMs)
     
     // ¿Terminamos?
     if (progress >= 1) {
       this.phase = 'finished'
-      console.log(`[LiquidSolo 🎸] SOLO COMPLETE (${this.elapsedMs}ms)`)
-      console.log(`[LiquidSolo 🎸] THE GUITAR WEEPS NO MORE...`)
+      console.log(`[LiquidSolo 🎸] SWEEP COMPLETE (${this.elapsedMs}ms)`)
       return
     }
-    
-    // Calcular fase de wave
-    this.wavePhase += (deltaMs / 1000) * this.config.waveFrequency * 2 * Math.PI
     
     // Curva de intensidad: Fade in → Sustain → Fade out
     this.updateIntensity(progress)
     
-    // Actualizar movimientos de movers (L vs R)
-    this.updateMoverMovements()
+    // Actualizar sweep (movimiento horizontal suave)
+    this.updateSweep(progress)
     
     // Actualizar color
-    this.updateColor()
+    this.updateColor(progress)
   }
   
   private updateIntensity(progress: number): void {
-    // Envelope: Attack (10%) → Sustain (70%) → Decay (20%)
-    if (progress < 0.1) {
+    // Envelope: Attack (15%) → Sustain (60%) → Decay (25%)
+    if (progress < 0.15) {
       // Fade in suave
-      this.soloIntensity = Math.pow(progress / 0.1, 0.7) * 0.9
-    } else if (progress < 0.8) {
-      // Sustain con breathing
-      const sustainProgress = (progress - 0.1) / 0.7
-      const breathe = Math.sin(sustainProgress * Math.PI * 4) * 0.1  // 4 respiraciones
-      this.soloIntensity = 0.85 + breathe
+      this.sweepIntensity = Math.pow(progress / 0.15, 0.6)
+    } else if (progress < 0.75) {
+      // Sustain estable
+      this.sweepIntensity = 0.95
     } else {
       // Fade out elegante
-      const decayProgress = (progress - 0.8) / 0.2
-      this.soloIntensity = 0.85 * (1 - Math.pow(decayProgress, 0.5))
+      const decayProgress = (progress - 0.75) / 0.25
+      this.sweepIntensity = 0.95 * (1 - Math.pow(decayProgress, 0.4))
     }
   }
   
-  private updateMoverMovements(): void {
-    // 🎸 MoverR: Rápido, sigue la "melodía" (ondas más frecuentes)
-    // Wave principal + armónico
-    const fastWave = Math.sin(this.wavePhase * 1.5) * 0.6 + Math.sin(this.wavePhase * 2.3) * 0.4
-    this.moverRightPan = fastWave * this.config.moverRightPanAmplitude * this.soloIntensity
+  private updateSweep(progress: number): void {
+    // Sweep suave con easing (ease-in-out)
+    // Fórmula: 3t² - 2t³ (smooth hermite interpolation)
+    this.sweepProgress = progress * progress * (3 - 2 * progress)
     
-    // 🎸 MoverL: Lento, drift estable (onda más lenta)
-    const slowWave = Math.sin(this.wavePhase * 0.4)
-    this.moverLeftPan = slowWave * this.config.moverLeftPanAmplitude * this.soloIntensity
+    // Pan position: Start → End con dirección
+    const startPan = -this.sweepDirection * this.config.sweepAmplitude
+    const endPan = this.sweepDirection * this.config.sweepAmplitude
+    
+    this.currentPan = startPan + (endPan - startPan) * this.sweepProgress
   }
   
-  private updateColor(): void {
-    // Transición: Azul Eléctrico → Blanco en los peaks de intensidad
-    const peakBlend = Math.max(0, (this.soloIntensity - 0.8) / 0.2)  // Solo sobre 0.8
-    const t = peakBlend * 0.4  // Máximo 40% de blanco
+  private updateColor(progress: number): void {
+    // Transición: Azul → Blanco en el peak (centro del sweep)
+    // Peak = cuando sweepProgress ≈ 0.5
+    const distanceFromCenter = Math.abs(this.sweepProgress - 0.5) * 2  // 0-1
+    const peakBlend = 1 - distanceFromCenter  // 1 en centro, 0 en bordes
+    
+    const t = peakBlend * 0.5  // Máximo 50% de blanco en el peak
     
     this.currentColor = {
       h: this.config.electricBlue.h + (this.config.peakWhite.h - this.config.electricBlue.h) * t,
@@ -220,50 +192,35 @@ export class LiquidSolo extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    const progress = this.elapsedMs / this.actualDurationMs
-    
-    // 🎸 MOVER RIGHT - El protagonista, sigue la melodía
-    const moverRightOverride = {
+    // 🎸 MOVERS - Sweep horizontal suave
+    const moverOverride = {
       color: this.currentColor,
-      dimmer: this.soloIntensity,
+      dimmer: this.sweepIntensity * 0.95,
       movement: {
-        pan: this.moverRightPan,
-        tilt: -0.1 + Math.sin(this.wavePhase * 0.7) * 0.15,  // Tilt sutil
-        isAbsolute: false,   // Offset sobre la física
-        speed: 0.8,          // Rápido para seguir la guitarra
-      },
-      blendMode: 'max' as const,
-    }
-    
-    // 🎸 MOVER LEFT - La base estable
-    const moverLeftOverride = {
-      color: this.currentColor,
-      dimmer: this.soloIntensity * 0.7,  // Un poco menos intenso
-      movement: {
-        pan: this.moverLeftPan,
-        tilt: 0,             // Estable
+        pan: this.currentPan,
+        tilt: -0.05,         // Ligeramente hacia abajo (público/escenario)
         isAbsolute: false,
-        speed: 0.4,          // Lento, orgánico
+        speed: 0.7,          // Smooth sweep
       },
       blendMode: 'max' as const,
     }
     
-    // 💡 PARs - Acompañan suavemente (no roban el spotlight)
+    // 💡 PARs - Acompañan sutilmente (no roban protagonismo)
     const backOverride = {
-      color: { ...this.config.electricBlue, l: this.config.electricBlue.l * 0.5 },  // Más oscuro
-      dimmer: this.soloIntensity * 0.3,
+      color: { ...this.config.electricBlue, l: this.config.electricBlue.l * 0.4 },
+      dimmer: this.sweepIntensity * 0.25,
       blendMode: 'max' as const,
     }
     
     const frontOverride = {
-      color: { ...this.config.electricBlue, l: this.config.electricBlue.l * 0.4 },
-      dimmer: this.soloIntensity * 0.2,  // Muy sutil
+      color: { ...this.config.electricBlue, l: this.config.electricBlue.l * 0.3 },
+      dimmer: this.sweepIntensity * 0.15,
       blendMode: 'max' as const,
     }
     
     const zoneOverrides = {
-      'movers_right': moverRightOverride,
-      'movers_left': moverLeftOverride,
+      'movers_left': moverOverride,
+      'movers_right': moverOverride,  // Ambos movers hacen el MISMO sweep
       'back': backOverride,
       'front': frontOverride,
     }
@@ -272,15 +229,28 @@ export class LiquidSolo extends BaseEffect {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
-      progress,
+      progress: this.elapsedMs / this.config.durationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
-      intensity: this.soloIntensity,
+      intensity: this.sweepIntensity,
       globalOverride: false,
       zoneOverrides,
     }
   }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  resetState(): void {
+    this.sweepIntensity = 0
+    this.sweepProgress = 0
+    this.currentPan = 0
+    this.currentColor = { ...this.config.electricBlue }
+  }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
 // ═══════════════════════════════════════════════════════════════════════════

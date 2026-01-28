@@ -1,20 +1,49 @@
 /**
- * 📊 SECTION TRACKER - Detector de Secciones Musicales
- * =====================================================
- * Wave 8 - FASE 3: Clasificación
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📊 WAVE 1024: THE NARRATIVE ARC - SECTION TRACKER v2.0
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Detecta en qué sección de la canción estamos:
- * - intro, verse, buildup, drop, breakdown, chorus, outro
+ * DIAGNÓSTICO DEL CÓDIGO ANTERIOR (WAVE 8 → WAVE 289):
  * 
- * ALGORITMO:
- * 1. Analizar tendencia de energía (rising/falling/stable)
- * 2. Detectar cambios bruscos de intensidad
- * 3. Correlacionar con fills de batería
- * 4. Predecir próxima sección
+ * 1. 🩺 UMBRALES FIJOS GLOBALES
+ *    Aunque WAVE 47.2 añadió baseline de percentiles (P25/P50/P75),
+ *    estos se calculan sobre TODA la sesión (60s de historial).
+ *    Problema: Una canción antigua masterizada baja (max 0.6) 
+ *    NUNCA disparaba el DROP. Una moderna comprimida NUNCA el breakdown.
  * 
- * ⚠️ REGLA 1: Throttled 500ms (Worker Thread o Main con cache)
- * ⚠️ REGLA 2: Retorna 'confidence' para fallback
+ * 2. 🩺 DETECCIÓN DE BUILDUP CIEGA
+ *    Solo miraba trend (rising) + zona media de energía.
+ *    NO usaba métricas espectrales del God Ear FFT:
+ *    - Rolloff ↑ (brillo sube)
+ *    - Flatness ↑ (ruido blanco, snare roll)
+ *    - SubBass ↓ (bajo desaparece antes del drop)
  * 
+ * 3. 🩺 SISTEMA DE VOTOS INDEPENDIENTE
+ *    Cada regla votaba por su cuenta sin correlación.
+ *    No había "consenso" entre múltiples fuentes de verdad.
+ * 
+ * SOLUCIÓN: THE NARRATIVE ARC
+ * 
+ * A. 📈 SLIDING WINDOW ADAPATIVA (30 segundos)
+ *    - localMaxEnergy: Pico de los últimos 30s
+ *    - localMinEnergy: Suelo de los últimos 30s
+ *    - DROP = currentEnergy > 0.8 * localMax (aunque absoluto sea bajo)
+ *    - BREAKDOWN = currentEnergy < 1.2 * localMin (aunque absoluto sea alto)
+ * 
+ * B. 🎻 BUILDUP DETECTOR ESPECTRAL (God Ear Integration)
+ *    - Rising Rolloff: Brillo sube progresivamente
+ *    - Rising Flatness: Ruido blanco aumenta (snare roll típico)
+ *    - Falling SubBass: Bajo desaparece (filter sweep hacia arriba)
+ *    - Resultado: Estado BUILDUP con precisión quirúrgica
+ * 
+ * C. 🗳️ CONSENSUS VOTING (Multi-Motor)
+ *    Si RhythmAnalyzer dice "mucha síncopa" +
+ *    GodEar dice "alta claridad" +
+ *    Energía es alta =
+ *    VOTO UNÁNIME para CHORUS/DROP (peso 2.5x)
+ * 
+ * @author PunkOpus
+ * @wave 1024
  * @module engines/musical/analysis/SectionTracker
  */
 
@@ -204,6 +233,51 @@ const DEFAULT_CONFIG: SectionTrackerConfig = {
   dropEnergyKillThreshold: 0.6,         // Si energía < 0.6, forzar salida de DROP
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 📈 WAVE 1024: SLIDING WINDOW - Estructura de ventana deslizante
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 📈 WAVE 1024: Ventana deslizante de 30 segundos
+ * Para calcular máximos y mínimos LOCALES (no de toda la sesión)
+ */
+interface SlidingWindow {
+  /** Energías de los últimos 30 segundos */
+  samples: number[];
+  /** Timestamps correspondientes */
+  timestamps: number[];
+  /** Máximo local calculado */
+  localMax: number;
+  /** Mínimo local calculado */
+  localMin: number;
+  /** Mediana local */
+  localMedian: number;
+}
+
+/**
+ * 🎻 WAVE 1024: Métricas espectrales para detección de Buildup
+ * Integración con God Ear FFT
+ */
+interface SpectralMetrics {
+  /** Spectral Rolloff (Hz) - brillo */
+  rolloff: number;
+  /** Spectral Flatness (0-1) - ruido vs tonal */
+  flatness: number;
+  /** Sub-bass (0-1) - energía grave profunda */
+  subBass: number;
+  /** Claridad (0-1) - del God Ear */
+  clarity: number;
+}
+
+/**
+ * 🎻 WAVE 1024: Historial de métricas espectrales para detectar tendencias
+ */
+interface SpectralHistory {
+  rolloffHistory: number[];
+  flatnessHistory: number[];
+  subBassHistory: number[];
+}
+
 // ============================================================
 // 📊 SECTION TRACKER CLASS
 // ============================================================
@@ -309,6 +383,35 @@ export class SectionTracker extends EventEmitter {
   private timeInLowEnergy: number = 0;       // Tiempo acumulado en energía baja
   private lastFrameTime: number = 0;         // Timestamp del último frame
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📈 WAVE 1024: THE NARRATIVE ARC - Sliding Window + Spectral Detection
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Ventana deslizante de 30 segundos para umbrales LOCALES */
+  private slidingWindow: SlidingWindow = {
+    samples: [],
+    timestamps: [],
+    localMax: 0.8,
+    localMin: 0.2,
+    localMedian: 0.5,
+  };
+  
+  /** Historial espectral para detección de buildup (últimos 10 frames) */
+  private spectralHistory: SpectralHistory = {
+    rolloffHistory: [],
+    flatnessHistory: [],
+    subBassHistory: [],
+  };
+  
+  /** Última claridad recibida del God Ear (para Consensus Voting) */
+  private lastClarity: number = 0.5;
+  
+  /** Última síncopa recibida del RhythmAnalyzer (para Consensus Voting) */
+  private lastSyncopation: number = 0;
+  
+  /** Contador de frames con señales de buildup espectral */
+  private buildupSpectralFrames: number = 0;
+  
   constructor(config: Partial<SectionTrackerConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -371,21 +474,26 @@ export class SectionTracker extends EventEmitter {
   // ============================================================
 
   /**
-   * Analizar y trackear sección actual
+   * 📈 WAVE 1024: Analizar y trackear sección actual (THE NARRATIVE ARC)
    * 
    * ⚠️ THROTTLED: Solo ejecuta si ha pasado suficiente tiempo
    * ⚠️ REGLA 2: Siempre retorna confidence
+   * 
+   * 📈 WAVE 1024 NUEVO: Acepta métricas espectrales opcionales del God Ear
+   * para detección de buildup con precisión quirúrgica.
    * 
    * @param rhythm Análisis rítmico del frame actual
    * @param harmony Análisis armónico (puede ser null si no está disponible)
    * @param audio Métricas de audio del frame actual
    * @param forceAnalysis Forzar análisis ignorando throttle (para tests)
+   * @param spectral 📈 WAVE 1024: Métricas espectrales opcionales del God Ear
    */
   track(
     rhythm: RhythmAnalysis,
     _harmony: HarmonyAnalysis | null, // Reserved for future genre-aware section detection
-    audio: { energy: number; bass: number; mid: number; treble: number },
-    forceAnalysis: boolean = false
+    audio: { energy: number; bass: number; mid: number; treble: number; subBass?: number },
+    forceAnalysis: boolean = false,
+    spectral?: SpectralMetrics
   ): SectionAnalysis {
     const now = Date.now();
     
@@ -396,6 +504,18 @@ export class SectionTracker extends EventEmitter {
       return this.cachedAnalysis;
     }
 
+    // === PASO 0: 📈 WAVE 1024: Actualizar ventana deslizante ===
+    this.updateSlidingWindow(audio.energy, now);
+    
+    // === PASO 0.5: 📈 WAVE 1024: Actualizar métricas espectrales ===
+    if (spectral) {
+      this.updateSpectralHistory(spectral);
+      this.lastClarity = spectral.clarity;
+    }
+    
+    // === PASO 0.7: 📈 WAVE 1024: Guardar síncopa para Consensus Voting ===
+    this.lastSyncopation = rhythm.groove?.syncopation ?? 0;
+    
     // === PASO 1: Actualizar historial de energía ===
     this.updateEnergyHistory(audio, now);
     
@@ -405,8 +525,8 @@ export class SectionTracker extends EventEmitter {
     // === PASO 3: Detectar trend de energía ===
     const trend = this.detectEnergyTrend();
     
-    // === PASO 4: Detectar sección actual ===
-    const detectedSection = this.detectSection(intensity, trend, rhythm, audio);
+    // === PASO 4: 📈 WAVE 1024: Detectar sección con métricas espectrales ===
+    const detectedSection = this.detectSection(intensity, trend, rhythm, audio, spectral);
     
     // === PASO 5: Verificar cambio de sección ===
     this.handleSectionChange(detectedSection, now);
@@ -445,6 +565,235 @@ export class SectionTracker extends EventEmitter {
   // ============================================================
   // 🔋 CÁLCULO DE ENERGÍA E INTENSIDAD
   // ============================================================
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📈 WAVE 1024: THE NARRATIVE ARC - Sliding Window Methods
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 📈 WAVE 1024: Actualizar ventana deslizante de 30 segundos
+   * 
+   * Esta ventana permite calcular máximos y mínimos LOCALES
+   * en lugar de usar umbrales fijos globales.
+   * 
+   * Resultado: Una canción antigua masterizada baja (max 0.6) 
+   * ahora SÍ puede disparar el DROP porque comparamos contra
+   * su propio localMax, no contra 0.8 hardcoded.
+   */
+  private updateSlidingWindow(energy: number, timestamp: number): void {
+    const WINDOW_DURATION_MS = 30000; // 30 segundos
+    
+    // Añadir nueva muestra
+    this.slidingWindow.samples.push(energy);
+    this.slidingWindow.timestamps.push(timestamp);
+    
+    // Eliminar muestras fuera de la ventana de 30s
+    while (
+      this.slidingWindow.timestamps.length > 0 &&
+      this.slidingWindow.timestamps[0] < timestamp - WINDOW_DURATION_MS
+    ) {
+      this.slidingWindow.samples.shift();
+      this.slidingWindow.timestamps.shift();
+    }
+    
+    // Recalcular min/max/median solo si tenemos suficientes muestras
+    if (this.slidingWindow.samples.length >= 10) {
+      const sorted = [...this.slidingWindow.samples].sort((a, b) => a - b);
+      const len = sorted.length;
+      
+      this.slidingWindow.localMin = sorted[0];
+      this.slidingWindow.localMax = sorted[len - 1];
+      this.slidingWindow.localMedian = sorted[Math.floor(len / 2)];
+    }
+  }
+
+  /**
+   * 🎻 WAVE 1024: Actualizar historial de métricas espectrales
+   * 
+   * Guarda las últimas 10 muestras de rolloff, flatness y subBass
+   * para detectar TENDENCIAS (rising/falling) necesarias para buildup.
+   */
+  private updateSpectralHistory(spectral: SpectralMetrics): void {
+    const MAX_HISTORY = 10; // ~5 segundos @ 500ms throttle
+    
+    this.spectralHistory.rolloffHistory.push(spectral.rolloff);
+    this.spectralHistory.flatnessHistory.push(spectral.flatness);
+    this.spectralHistory.subBassHistory.push(spectral.subBass);
+    
+    // Mantener tamaño del buffer
+    while (this.spectralHistory.rolloffHistory.length > MAX_HISTORY) {
+      this.spectralHistory.rolloffHistory.shift();
+    }
+    while (this.spectralHistory.flatnessHistory.length > MAX_HISTORY) {
+      this.spectralHistory.flatnessHistory.shift();
+    }
+    while (this.spectralHistory.subBassHistory.length > MAX_HISTORY) {
+      this.spectralHistory.subBassHistory.shift();
+    }
+  }
+
+  /**
+   * 🎻 WAVE 1024: Detectar buildup usando métricas espectrales
+   * 
+   * Señales de buildup típicas:
+   * - Rising Rolloff: El brillo sube progresivamente (filtro abriendo)
+   * - Rising Flatness: Ruido blanco aumenta (snare roll, white noise sweep)
+   * - Falling SubBass: El bajo desaparece (ducking antes del drop)
+   * 
+   * @returns Score 0-1 de "probabilidad de buildup espectral"
+   */
+  private detectSpectralBuildup(): number {
+    const history = this.spectralHistory;
+    
+    // Necesitamos al menos 5 muestras para detectar tendencia
+    if (history.rolloffHistory.length < 5) {
+      return 0;
+    }
+    
+    const len = history.rolloffHistory.length;
+    const halfLen = Math.floor(len / 2);
+    
+    // Calcular promedios de primera y segunda mitad
+    const avgRolloffFirst = history.rolloffHistory.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
+    const avgRolloffSecond = history.rolloffHistory.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen);
+    
+    const avgFlatnessFirst = history.flatnessHistory.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
+    const avgFlatnessSecond = history.flatnessHistory.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen);
+    
+    const avgSubBassFirst = history.subBassHistory.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen;
+    const avgSubBassSecond = history.subBassHistory.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen);
+    
+    let buildupScore = 0;
+    
+    // ⬆️ Rising Rolloff (brillo sube) - peso 0.35
+    const rolloffRising = avgRolloffSecond > avgRolloffFirst * 1.1; // >10% incremento
+    if (rolloffRising) {
+      const rolloffDelta = (avgRolloffSecond - avgRolloffFirst) / (avgRolloffFirst + 0.01);
+      buildupScore += Math.min(0.35, rolloffDelta * 0.5);
+    }
+    
+    // ⬆️ Rising Flatness (ruido sube) - peso 0.35
+    const flatnessRising = avgFlatnessSecond > avgFlatnessFirst + 0.05; // >5% incremento absoluto
+    if (flatnessRising) {
+      const flatnessDelta = avgFlatnessSecond - avgFlatnessFirst;
+      buildupScore += Math.min(0.35, flatnessDelta * 3.5);
+    }
+    
+    // ⬇️ Falling SubBass (bajo cae) - peso 0.30
+    const subBassFalling = avgSubBassSecond < avgSubBassFirst * 0.85; // >15% caída
+    if (subBassFalling) {
+      const subBassDelta = (avgSubBassFirst - avgSubBassSecond) / (avgSubBassFirst + 0.01);
+      buildupScore += Math.min(0.30, subBassDelta * 0.5);
+    }
+    
+    return Math.min(1, buildupScore);
+  }
+
+  /**
+   * 🗳️ WAVE 1024: Calcular voto de consenso multi-motor
+   * 
+   * Si múltiples fuentes de verdad están de acuerdo, el voto es más fuerte.
+   * 
+   * @param intensity Intensidad actual (0-1)
+   * @param syncopation Síncopa del RhythmAnalyzer (0-1)
+   * @param clarity Claridad del God Ear (0-1)
+   * @returns { section: SectionType, weight: number } o null si no hay consenso
+   */
+  private calculateConsensusVote(
+    intensity: number,
+    syncopation: number,
+    clarity: number
+  ): { section: SectionType; weight: number } | null {
+    // Consenso para CHORUS/DROP: Alta energía + Alta síncopa + Alta claridad
+    if (intensity > 0.7 && syncopation > 0.3 && clarity > 0.6) {
+      // Voto unánime! Peso 2.5x
+      return {
+        section: intensity > 0.85 ? 'drop' : 'chorus',
+        weight: 2.5,
+      };
+    }
+    
+    // Consenso para BREAKDOWN: Baja energía + Baja síncopa + Alta claridad
+    if (intensity < 0.35 && syncopation < 0.2 && clarity > 0.5) {
+      return {
+        section: 'breakdown',
+        weight: 2.0,
+      };
+    }
+    
+    // Consenso para VERSE: Energía media + Síncopa media + Claridad decente
+    if (intensity >= 0.35 && intensity <= 0.65 && syncopation < 0.4 && clarity > 0.4) {
+      return {
+        section: 'verse',
+        weight: 1.5,
+      };
+    }
+    
+    // Sin consenso claro
+    return null;
+  }
+
+  /**
+   * 📈 WAVE 1024: Calcular energía relativa usando Sliding Window
+   * 
+   * En lugar de comparar contra umbrales fijos (0.8 para DROP),
+   * comparamos contra el máximo LOCAL de los últimos 30 segundos.
+   * 
+   * @param currentEnergy Energía actual (0-1)
+   * @returns Energía relativa (0-1+) donde 0.8 = 80% del máximo local
+   */
+  private calculateRelativeEnergy(currentEnergy: number): number {
+    const window = this.slidingWindow;
+    
+    // Si no tenemos ventana, usar energía absoluta
+    if (window.samples.length < 10) {
+      return currentEnergy;
+    }
+    
+    const range = window.localMax - window.localMin;
+    
+    // Si el rango es muy pequeño (canción muy plana), usar absoluta
+    if (range < 0.1) {
+      return currentEnergy;
+    }
+    
+    // Normalizar: 0 = localMin, 1 = localMax
+    const relativeEnergy = (currentEnergy - window.localMin) / range;
+    
+    return Math.max(0, Math.min(1.2, relativeEnergy));
+  }
+
+  /**
+   * 📈 WAVE 1024: Setter para claridad externa (God Ear integration)
+   */
+  public setClarity(clarity: number): void {
+    this.lastClarity = Math.max(0, Math.min(1, clarity));
+  }
+
+  /**
+   * 📈 WAVE 1024: Getter para diagnósticos de Narrative Arc
+   */
+  public getNarrativeArcDiagnostics(): {
+    slidingWindow: SlidingWindow;
+    spectralHistory: SpectralHistory;
+    buildupSpectralScore: number;
+    relativeEnergy: number;
+    lastClarity: number;
+    lastSyncopation: number;
+  } {
+    return {
+      slidingWindow: { ...this.slidingWindow },
+      spectralHistory: { ...this.spectralHistory },
+      buildupSpectralScore: this.detectSpectralBuildup(),
+      relativeEnergy: this.calculateRelativeEnergy(this.instantEnergy),
+      lastClarity: this.lastClarity,
+      lastSyncopation: this.lastSyncopation,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FIN WAVE 1024 - Métodos de Sliding Window y Spectral Detection
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Actualizar historial de energía
@@ -603,15 +952,28 @@ export class SectionTracker extends EventEmitter {
    * 3. Decay de votos existentes (memoria temporal)
    * 4. Votar por sección más probable
    * 5. Validar transición con matriz (o transitionOverrides)
+   * 
+   * 📈 WAVE 1024: THE NARRATIVE ARC - Mejoras:
+   * 6. Usar energía RELATIVA (Sliding Window) en lugar de absoluta
+   * 7. Detectar buildup con métricas espectrales (Rolloff, Flatness, SubBass)
+   * 8. Aplicar Consensus Voting cuando múltiples fuentes están de acuerdo
    */
   private detectSection(
     intensity: number,
     trend: 'rising' | 'falling' | 'stable',
     rhythm: RhythmAnalysis,
-    audio: { energy: number; bass: number; mid: number; treble: number }
+    audio: { energy: number; bass: number; mid: number; treble: number; subBass?: number },
+    spectral?: SpectralMetrics
   ): SectionType {
     const now = Date.now();
     const profile = this.activeProfile; // 🎯 WAVE 289: Usar perfil activo
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📈 WAVE 1024: ENERGÍA RELATIVA (Sliding Window)
+    // En lugar de comparar contra umbrales fijos, comparamos contra
+    // el máximo/mínimo LOCAL de los últimos 30 segundos.
+    // ═══════════════════════════════════════════════════════════════════════
+    const relativeEnergy = this.calculateRelativeEnergy(audio.energy);
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎯 WAVE 289: ENERGÍA PONDERADA POR GÉNERO
@@ -660,6 +1022,41 @@ export class SectionTracker extends EventEmitter {
       : dropAbsThreshold;
     
     // ═══════════════════════════════════════════════════════════════════════
+    // 📈 WAVE 1024: DETECCIÓN DE BUILDUP ESPECTRAL
+    // Usa métricas del God Ear FFT para detectar buildups con precisión
+    // ═══════════════════════════════════════════════════════════════════════
+    const spectralBuildupScore = this.detectSpectralBuildup();
+    if (spectralBuildupScore > 0.5 && this.currentSection !== 'drop') {
+      this.buildupSpectralFrames++;
+      // Si tenemos 3+ frames con señales de buildup espectral, votar fuertemente
+      if (this.buildupSpectralFrames >= 3) {
+        this.addVote('buildup', 1.5 + spectralBuildupScore);
+      }
+    } else {
+      this.buildupSpectralFrames = Math.max(0, this.buildupSpectralFrames - 1);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🗳️ WAVE 1024: CONSENSUS VOTING
+    // Si múltiples fuentes de verdad están de acuerdo, voto más fuerte
+    // ═══════════════════════════════════════════════════════════════════════
+    const consensusVote = this.calculateConsensusVote(
+      intensity,
+      this.lastSyncopation,
+      this.lastClarity
+    );
+    if (consensusVote) {
+      this.addVote(consensusVote.section, consensusVote.weight);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📈 WAVE 1024: DROP DETECTION CON ENERGÍA RELATIVA
+    // Ahora usamos relativeEnergy además del ratio absoluto
+    // Un DROP es cuando: relativeEnergy > 0.8 (80% del máximo local)
+    // ═══════════════════════════════════════════════════════════════════════
+    const passesRelativeDrop = relativeEnergy > 0.8;
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // 🩺 OPERATION OPEN HEART: TELEMETRY PROBE
     // 🗑️ WAVE 289.5: PROBE DESACTIVADO - Diagnóstico completado
     // Dejar código comentado para referencia futura
@@ -702,8 +1099,15 @@ export class SectionTracker extends EventEmitter {
     const timeSinceLastDrop = now - this.lastDropEndTime;
     
     // 🚀 DETECCIÓN DE DROP (La Subida Explosiva)
-    // � WAVE 289: Usar umbrales del perfil del género
-    if (ratio > adjustedDropRatio && this.instantEnergy > adjustedDropAbsThreshold) {
+    // 🎯 WAVE 289: Usar umbrales del perfil del género
+    // 📈 WAVE 1024: TAMBIÉN usar energía relativa (Sliding Window)
+    // Un DROP puede ser detectado por:
+    // A) ratio > adjustedDropRatio && instantEnergy > adjustedDropAbsThreshold (método original)
+    // B) relativeEnergy > 0.8 (80% del máximo local - método nuevo para canciones masterizadas bajo)
+    const passesOriginalDrop = ratio > adjustedDropRatio && this.instantEnergy > adjustedDropAbsThreshold;
+    const passesRelativeDropCheck = passesRelativeDrop && this.slidingWindow.samples.length >= 20;
+    
+    if (passesOriginalDrop || passesRelativeDropCheck) {
       if (this.currentSection !== 'drop') {
         // 🛡️ Si estamos en cooldown específico del género, redirigir a CHORUS
         if (timeSinceLastDrop < dropCooldownMs) {
@@ -713,43 +1117,66 @@ export class SectionTracker extends EventEmitter {
           // 🔥 Transición real a DROP (fuera de cooldown)
           this.timeInLowEnergy = 0;
           this.lastFrameTime = now;
-          // Votar fuertemente por DROP para que el sistema de votos lo valide
-          this.addVote('drop', 2.5);
+          // 📈 WAVE 1024: Votar más fuerte si ambos métodos coinciden
+          const dropWeight = (passesOriginalDrop && passesRelativeDropCheck) ? 3.0 : 2.5;
+          this.addVote('drop', dropWeight);
         }
       }
     }
     
     // 🛡️ DETECCIÓN DE BREAKDOWN (El Silencio)
     // 🎯 WAVE 289: Usar umbral del perfil del género
-    else if (this.avgEnergy < profile.breakdownEnergyThreshold && 
-             this.instantEnergy < profile.breakdownEnergyThreshold * 0.75) {
+    // 📈 WAVE 1024: TAMBIÉN usar energía relativa (por debajo del 25% del máximo local)
+    const relativeBreakdown = relativeEnergy < 0.25;
+    const passesBreakdownCheck = (this.avgEnergy < profile.breakdownEnergyThreshold && 
+             this.instantEnergy < profile.breakdownEnergyThreshold * 0.75) || relativeBreakdown;
+    
+    if (passesBreakdownCheck && !passesOriginalDrop && !passesRelativeDropCheck) {
       const frameTime = this.lastFrameTime > 0 ? now - this.lastFrameTime : 16;
       this.timeInLowEnergy += frameTime;
       
       // 🎯 WAVE 289: Histéresis del perfil
       if (this.timeInLowEnergy > profile.minBreakdownDuration) {
-        this.addVote('breakdown', 1.5);
+        // 📈 WAVE 1024: Votar más fuerte si relativeBreakdown también
+        const breakdownWeight = relativeBreakdown ? 1.8 : 1.5;
+        this.addVote('breakdown', breakdownWeight);
       }
-    } else {
+    } else if (!passesOriginalDrop && !passesRelativeDropCheck) {
       this.timeInLowEnergy = 0;
     }
     
     // 📈 DETECCIÓN DE BUILDUP (La Escalada)
     // 🎯 WAVE 289: Usar delta threshold del perfil
-    if (this.avgEnergy > 0.4 && delta > profile.buildupDeltaThreshold && this.currentSection !== 'drop') {
-      this.addVote('buildup', 0.8);
+    // 🎬 WAVE 1024: TAMBIÉN usar detección espectral (rolloff ↑, flatness ↑, subBass ↓)
+    const energyBasedBuildup = this.avgEnergy > 0.4 && delta > profile.buildupDeltaThreshold;
+    const spectralBuildup = spectralBuildupScore > 0.6; // Tendencias espectrales de buildup
+    
+    if ((energyBasedBuildup || spectralBuildup) && this.currentSection !== 'drop') {
+      // 📈 WAVE 1024: El peso depende de cuántas señales coinciden
+      let buildupWeight = 0.8;
+      if (energyBasedBuildup && spectralBuildup) {
+        buildupWeight = 1.5; // Ambas señales = certeza alta
+      } else if (spectralBuildup) {
+        buildupWeight = 1.2; // Solo espectral = muy fiable (detecta antes que energía)
+      }
+      this.addVote('buildup', buildupWeight);
     }
     
     // 🎵 ALTA ENERGÍA SOSTENIDA = CHORUS (no DROP)
-    if (this.avgEnergy > 0.6 && delta < 0.03 && delta > -0.03 && this.currentSection !== 'drop') {
-      this.addVote('chorus', 0.6);
+    // 📈 WAVE 1024: También usar consenso si está disponible
+    const stableHighEnergy = this.avgEnergy > 0.6 && delta < 0.03 && delta > -0.03;
+    const consensusChorusVote = consensusVote?.section === 'chorus';
+    
+    if ((stableHighEnergy || consensusChorusVote) && this.currentSection !== 'drop') {
+      const chorusWeight = (stableHighEnergy && consensusChorusVote) ? 1.0 : 0.6;
+      this.addVote('chorus', chorusWeight);
     }
     
     // Actualizar timestamp
     this.lastFrameTime = now;
     
     // ═══════════════════════════════════════════════════════════════════════
-    // FIN WAVE 81/289 - Continúa con sistema de votos legacy
+    // FIN WAVE 81/289/1024 - Continúa con sistema de votos legacy
     // ═══════════════════════════════════════════════════════════════════════
     
     // WAVE 47.2: Decay de votos (memoria temporal, no reset total)

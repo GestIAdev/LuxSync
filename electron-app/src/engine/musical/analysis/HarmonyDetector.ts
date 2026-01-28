@@ -15,8 +15,23 @@
  * - NO en cada frame de 30ms
  * - La armonía no cambia tan rápido como el ritmo
  * 
+ * ═══════════════════════════════════════════════════════════════════════
+ * 🎬 WAVE 1024.B - VOTE BOOST
+ * ═══════════════════════════════════════════════════════════════════════
+ * Nueva capacidad: Votos con peso basado en claridad del God Ear FFT.
+ * 
+ * Problema Pre-1024: Todos los votos de detección de key tenían peso 1.0,
+ * independientemente de si el frame tenía buena señal o era ruidoso.
+ * 
+ * Solución WAVE 1024.B:
+ * - El Trinity Bridge envía clarity (0-1) del God Ear
+ * - Si clarity > 0.7: El voto tiene peso 2.0 (confianza alta)
+ * - Si clarity < 0.4: El voto tiene peso 0.5 (señal ruidosa)
+ * - Eventos key-change incluyen weight para KeyStabilizer
+ * ═══════════════════════════════════════════════════════════════════════
+ * 
  * @author LuxSync Team
- * @version 1.0.0 - Wave 8 FASE 2
+ * @version 1.1.0 - Wave 8 FASE 2 → WAVE 1024.B
  */
 
 import { EventEmitter } from 'events';
@@ -152,6 +167,7 @@ const DEFAULT_CONFIG: HarmonyDetectorConfig = {
  * 
  * ⚠️ REGLA 1: Ejecutar throttled (500ms) en Worker Thread
  * ⚠️ REGLA 2: Retorna confidence para fallback
+ * 🎬 WAVE 1024.B: Vote boost basado en clarity del God Ear
  */
 export class HarmonyDetector extends EventEmitter {
   private config: HarmonyDetectorConfig;
@@ -165,10 +181,130 @@ export class HarmonyDetector extends EventEmitter {
   // Cache de chromagrama para smoothing
   private chromaHistory: number[][] = [];
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 1024.B - VOTE BOOST STATE
+  // ═══════════════════════════════════════════════════════════════════════
+  /** Claridad del God Ear FFT (0-1). Actualizada externamente. */
+  private currentClarity: number = 0.5;
+  
+  /** Historial de votos con peso para estabilización */
+  private keyVoteHistory: Map<string, { totalWeight: number; count: number }> = new Map();
+  
+  /** Número de frames para mantener el historial de votos */
+  private readonly VOTE_HISTORY_FRAMES: number = 10;
+  // ═══════════════════════════════════════════════════════════════════════
+  
   constructor(config: Partial<HarmonyDetectorConfig> = {}) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.scaleIdentifier = createScaleIdentifier();
+  }
+
+  // ============================================================
+  // 🎬 WAVE 1024.B - CLARITY INTEGRATION
+  // ============================================================
+
+  /**
+   * Actualizar claridad del God Ear
+   * 
+   * Llamado por el Trinity Bridge cuando recibe nuevas métricas del FFT 8K.
+   * Este valor determina el peso de los votos de detección de key.
+   * 
+   * @param clarity Valor 0-1 del God Ear (1 = señal muy limpia)
+   */
+  setClarity(clarity: number): void {
+    this.currentClarity = Math.max(0, Math.min(1, clarity));
+  }
+
+  /**
+   * Obtener el peso del voto basado en la claridad actual
+   * 
+   * - clarity > 0.7: Peso 2.0 (señal limpia, voto fuerte)
+   * - clarity 0.4-0.7: Peso 1.0 (señal normal)
+   * - clarity < 0.4: Peso 0.5 (señal ruidosa, voto débil)
+   */
+  private getVoteWeight(): number {
+    if (this.currentClarity > 0.7) {
+      return 2.0;  // Alta confianza
+    } else if (this.currentClarity < 0.4) {
+      return 0.5;  // Baja confianza
+    }
+    return 1.0;    // Normal
+  }
+
+  /**
+   * Registrar un voto de key con peso
+   */
+  private registerKeyVote(key: string, weight: number): void {
+    const existing = this.keyVoteHistory.get(key) || { totalWeight: 0, count: 0 };
+    existing.totalWeight += weight;
+    existing.count += 1;
+    this.keyVoteHistory.set(key, existing);
+  }
+
+  /**
+   * Obtener la key con más votos ponderados
+   */
+  getStabilizedKey(): { key: string; confidence: number } | null {
+    if (this.keyVoteHistory.size === 0) {
+      return null;
+    }
+
+    let bestKey = '';
+    let bestWeight = 0;
+    let totalWeight = 0;
+
+    for (const [key, votes] of this.keyVoteHistory) {
+      totalWeight += votes.totalWeight;
+      if (votes.totalWeight > bestWeight) {
+        bestWeight = votes.totalWeight;
+        bestKey = key;
+      }
+    }
+
+    if (!bestKey || totalWeight === 0) {
+      return null;
+    }
+
+    return {
+      key: bestKey,
+      confidence: bestWeight / totalWeight,
+    };
+  }
+
+  /**
+   * Decaer los votos históricos (llamar cada frame de análisis)
+   */
+  private decayKeyVotes(): void {
+    const DECAY_FACTOR = 0.9;
+    for (const [key, votes] of this.keyVoteHistory) {
+      votes.totalWeight *= DECAY_FACTOR;
+      if (votes.totalWeight < 0.01) {
+        this.keyVoteHistory.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Obtener diagnósticos del sistema de votos (para debugging)
+   */
+  getVoteDiagnostics(): {
+    currentClarity: number;
+    currentVoteWeight: number;
+    keyVoteHistory: Record<string, { totalWeight: number; count: number }>;
+    stabilizedKey: { key: string; confidence: number } | null;
+  } {
+    const historyObject: Record<string, { totalWeight: number; count: number }> = {};
+    for (const [key, votes] of this.keyVoteHistory) {
+      historyObject[key] = { ...votes };
+    }
+
+    return {
+      currentClarity: this.currentClarity,
+      currentVoteWeight: this.getVoteWeight(),
+      keyVoteHistory: historyObject,
+      stabilizedKey: this.getStabilizedKey(),
+    };
   }
 
   // ============================================================
@@ -195,6 +331,9 @@ export class HarmonyDetector extends EventEmitter {
       return this.lastAnalysis;
     }
 
+    // 🎬 WAVE 1024.B: Decaer votos históricos cada frame de análisis
+    this.decayKeyVotes();
+
     // === CHECK SILENCIO PRIMERO ===
     // Verificar energía del audio ANTES de procesar
     const audioEnergy = this.calculateRawAudioEnergy(audio);
@@ -213,6 +352,10 @@ export class HarmonyDetector extends EventEmitter {
     // === PASO 2: Identificar Escala/Tonalidad ===
     const scaleMatch = this.scaleIdentifier.identifyScale(chromaAnalysis.chroma);
     
+    // 🎬 WAVE 1024.B: Registrar voto de key con peso basado en clarity
+    const voteWeight = this.getVoteWeight();
+    this.registerKeyVote(scaleMatch.rootName, voteWeight * scaleMatch.confidence);
+    
     // === PASO 3: Mapear a Mood ===
     const mood = MODE_TO_MOOD[scaleMatch.scale];
     
@@ -226,8 +369,14 @@ export class HarmonyDetector extends EventEmitter {
     }
 
     // === PASO 6: Construir Resultado ===
+    // 🎬 WAVE 1024.B: Usar key estabilizada si está disponible
+    const stabilized = this.getStabilizedKey();
+    const finalKey = (stabilized && stabilized.confidence > 0.6) 
+      ? stabilized.key 
+      : scaleMatch.rootName;
+    
     const analysis: HarmonyAnalysis = {
-      key: scaleMatch.rootName,
+      key: finalKey,
       mode: {
         scale: scaleMatch.scale,
         confidence: scaleMatch.confidence,
@@ -250,11 +399,20 @@ export class HarmonyDetector extends EventEmitter {
       this.emit('tension', dissonance);
     }
 
-    // Detectar cambios de tonalidad
+    // 🎬 WAVE 1024.B: Detectar cambios de tonalidad con peso de voto
+    // Solo emitimos key-change si el voto tiene peso significativo
     if (this.history.length > 1) {
       const prevKey = this.history[this.history.length - 2]?.key;
       if (prevKey && prevKey !== analysis.key && analysis.confidence > 0.6) {
-        this.emit('key-change', { from: prevKey, to: analysis.key, confidence: analysis.confidence });
+        // El peso del evento indica cuán confiable es este cambio
+        const keyChangeWeight = voteWeight * analysis.confidence;
+        this.emit('key-change', { 
+          from: prevKey, 
+          to: analysis.key, 
+          confidence: analysis.confidence,
+          weight: keyChangeWeight,  // 🎬 WAVE 1024.B: Nuevo campo
+          clarity: this.currentClarity,  // 🎬 WAVE 1024.B: Información de contexto
+        });
       }
     }
 

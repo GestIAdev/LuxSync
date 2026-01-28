@@ -3,7 +3,7 @@
  * 🎸 ROCK STEREO PHYSICS 2.0 - UNIFIED ARCHITECTURE
  * ============================================================================
  * 
- * WAVE 1011.5 "THE DAM" - LOBOTOMIZED EDITION
+ * WAVE 1017.1 "GOD EAR CALIBRATION" - POST-TRANSPLANT EDITION
  * 
  * FILOSOFÍA: El rock es rock. No hay METAL, no hay INDIE, no hay PROG.
  * Pink Floyd es Rock. Metallica es Rock. Arctic Monkeys es Rock.
@@ -11,11 +11,17 @@
  * La diferencia NO está en cambiar de modo/config, sino en cómo las
  * métricas espectrales MODULAN LINEALMENTE los parámetros base.
  * 
- * ARQUITECTURA UNIFICADA:
- * - harshness: Modula ganancia BackPar (más sucio = más luz de fondo)
- * - flatness: Modula spread de Movers (más plano = movimientos más amplios)
- * - centroidHz: Modula velocidad (frecuencias altas = respuestas más rápidas)
- * - Los 4 canales (Front/Back/MoverL/MoverR) reciben las mismas reglas físicas
+ * 🩻 GOD EAR ZONE REDISTRIBUTION:
+ * ═══════════════════════════════
+ * ┌─────────────┬──────────────────────────────────────────────────────┐
+ * │ Front Par   │ SubBass PURO (20-80Hz) - KICK DRUM                   │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Back Par    │ Mid PURO (500-2000Hz) - VOCES + MELODÍA              │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Mover Left  │ LowMid + HighMid (80-2500Hz) - GUITARRAS + BAJO      │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Mover Right │ Presence (2.5k-8kHz) - CYMBALS + BRILLO              │
+ * └─────────────┴──────────────────────────────────────────────────────┘
  * 
  * 4 BANDAS REALES (Hz):
  * - Sub-Bass: 20-80Hz (kick drum, floor tom)
@@ -81,49 +87,63 @@ export interface RockPhysicsResult {
 }
 
 // ===========================================================================
-// CONFIGURACIÓN UNIFICADA DE ROCK - WAVE 1011.8 "THE GOLDILOCKS ZONE"
+// CONFIGURACIÓN UNIFICADA DE ROCK - WAVE 1017.1 "GOD EAR CALIBRATION"
 // ===========================================================================
 
 /**
  * Una sola configuración. Sin modos. Sin switches. Sin drama.
  * Los multiplicadores son BASE y las métricas los escalan linealmente.
  * 
- * 🎯 WAVE 1015: ROCK DETOX - ELIMINATING PANIC BOOSTS
- * - Gains reducidos para evitar saturación constante con metal
- * - Gates dinámicos que SUBEN con harshness (no al revés)
- * - Front: SubBass puro + curva exponencial para PUNCH
- * - Movers: LowMid para L, HighMid+Presence para R (estéreo real)
+ * 🩻 WAVE 1017.1: GOD EAR ZONE REDISTRIBUTION
+ * ═══════════════════════════════════════════
+ * Con GOD EAR FFT (Blackman-Harris + LR4 filters), la señal es MÁS PURA.
+ * Esto significa que podemos ser MÁS SELECTIVOS con las zonas.
+ * 
+ * NUEVA DISTRIBUCIÓN:
+ * ┌─────────────┬──────────────────────────────────────────────────────┐
+ * │ Front Par   │ SubBass PURO (20-80Hz) - KICK DRUM                   │
+ * │             │ Gate ALTO (0.22) - solo golpes sísmicos              │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Back Par    │ Mid PURO (500-2000Hz) - VOCES + MELODÍA              │
+ * │             │ Gate BAJO (0.05) - sensible a Freddie Mercury        │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Mover Left  │ LowMid + HighMid (80-2500Hz) - GUITARRAS + BAJO      │
+ * │             │ El "director" musical - riffs y cuerpo               │
+ * ├─────────────┼──────────────────────────────────────────────────────┤
+ * │ Mover Right │ Presence + Treble (2.5k-16kHz) - CYMBALS + BRILLO    │
+ * │             │ Con VOICE LEAK FILTER - solo crispiness              │
+ * └─────────────┴──────────────────────────────────────────────────────┘
  */
 const ROCK_UNIFIED_CONFIG = {
-  // 🎸 Ganancias base por zona - WAVE 1015.10: Front BOOST + Mover R BOOST
+  // 🎸 Ganancias base por zona - WAVE 1017.1: Redistribuido para GOD EAR
   gains: {
-    frontPar: 2.2,      // SUBIDO de 1.5 - necesita EXAGERAR diferencias para PULSO
-    backPar: 1.8,       // ✅ PERFECTO - NO TOCAR (HighMid hits fuerte)
-    moverLeft: 1.3,     // ✅ PERFECTO - NO TOCAR (LowMid controlado)
-    moverRight: 2.0,    // SUBIDO de 1.4 - necesita cuerpo para guitarras
+    frontPar: 2.4,      // SUBIDO - SubBass puro necesita amplificación
+    backPar: 2.0,       // SUBIDO - Mid (voces) necesita presencia
+    moverLeft: 1.5,     // SUBIDO - LowMid+HighMid = guitarras completas
+    moverRight: 1.8,    // Presence/Treble - cymbals brillantes
   },
   
-  // 🚪 Gates - WAVE 1015.9: ALTOS para Front/ML (filtrar base constante)
+  // 🚪 Gates - WAVE 1017.1: Front MUY SELECTIVO, Back MUY SENSIBLE
   gates: {
-    frontPar: 0.15,     // ✅ PERFECTO - SubBass controlado
-    backPar: 0.08,      // ✅ PERFECTO - NO TOCAR
-    moverLeft: 0.15,    // ✅ PERFECTO - LowMid controlado
-    moverRight: 0.05,   // Presence: brillo reactivo
+    frontPar: 0.22,     // MUY ALTO - solo kicks sísmicos pasan
+    backPar: 0.05,      // MUY BAJO - voces sensibles (Freddie territory)
+    moverLeft: 0.12,    // MEDIO - guitarras con cuerpo
+    moverRight: 0.08,   // BAJO - cymbals reactivos
   },
   
-  // ⚡ Decay speeds - WAVE 1015.10: Front MUY RÁPIDO para PULSO
+  // ⚡ Decay speeds - WAVE 1017.1: Ajustados para cada rol
   decay: {
-    frontPar: 0.25,     // REDUCIDO de 0.35 - PULSO RÁPIDO (pump effect)
-    backPar: 0.68,      // ✅ PERFECTO - atmósfera que respira
-    moverLeft: 0.60,    // ✅ PERFECTO - riffs con presencia
-    moverRight: 0.55,   // ✅ PERFECTO - cymbals con ataque limpio
+    frontPar: 0.20,     // MUY RÁPIDO - PULSO de kick (pump effect)
+    backPar: 0.75,      // LENTO - voces con sustain (mantiene presencia)
+    moverLeft: 0.65,    // MEDIO - riffs con presencia pero no pegajosos
+    moverRight: 0.50,   // RÁPIDO - cymbals con ataque limpio
   },
   
-  // 🎸 Modulación por harshness - WAVE 1015: INVERTIDA (gate up, not gain up)
+  // 🎸 Modulación por harshness - WAVE 1017.1: Afecta Back (voces distorsionadas)
   harshnessModulation: {
-    backParBoost: 0.0,      // ELIMINADO! harshness ya NO amplifica gain
-    moverIntensity: 0.2,    // Reducido de 0.4
-    gateBoost: 0.25,        // NUEVO: harshness 1.0 = +25% gate (filtra más)
+    backParBoost: 0.3,      // NUEVO: harshness sube voces (gritos de metal)
+    moverIntensity: 0.15,   // Reducido - guitarras ya están en Mover L
+    gateBoost: 0.20,        // harshness 1.0 = +20% gate en Front (más selectivo)
   },
   
   // 🌊 Modulación por flatness (Pink Floyd territory)
@@ -162,7 +182,8 @@ export class RockStereoPhysics2 {
   private frameCount = 0;
   
   constructor() {
-    console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1011.5)');
+    console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1017.1 GOD EAR)');
+    console.log('[RockStereoPhysics2] 🩻 Zones: Front=Kick | Back=Voces | ML=Guitarras | MR=Cymbals');
   }
   
   // ==========================================================================
@@ -353,8 +374,10 @@ export class RockStereoPhysics2 {
   // PROCESAMIENTO POR ZONA
   // ==========================================================================
   /**
-   * FRONT PAR: Responde a SUB-BASS puro - WAVE 1015 ROCK DETOX
-   * El KICK es el rey. Curva exponencial para PUNCH que EXPLOTA.
+   * FRONT PAR: SubBass PURO - WAVE 1017.1 GOD EAR CALIBRATION
+   * 🥁 KICK DRUM TERRITORY (20-80Hz)
+   * Con GOD EAR la señal es más pura, podemos ser MÁS selectivos.
+   * Gate ALTO para que SOLO pasen golpes sísmicos reales.
    */
   private processFrontPar(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
@@ -362,49 +385,43 @@ export class RockStereoPhysics2 {
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🎯 WAVE 1015.11: BANDPASS FILTER - eliminar LowMid leak (voces/bajo)
-    // Si LowMid > SubBass × 1.3 → probable leak de voces/bajo, reducir input
+    // 🩻 WAVE 1017.1: SubBass PURO - sin LowMid leak
+    // GOD EAR ya separa bien las bandas, no necesitamos filtro de leak
     const rawInput = bands.subBass;
-    const leakDetection = bands.lowMid > (bands.subBass * 1.3);
-    const filteredInput = leakDetection ? rawInput * 0.7 : rawInput;
     
-    // Gate check
-    if (filteredInput < config.gates.frontPar) {
-      // Decay hacia 0
+    // 🎯 Gate check ESTRICTO - solo kicks sísmicos
+    if (rawInput < config.gates.frontPar) {
+      // Decay MUY RÁPIDO hacia 0 (pump effect)
       this.frontIntensity *= config.decay.frontPar * centroidMod;
       if (this.frontIntensity < 0.01) this.frontIntensity = 0;
       return;
     }
     
-    // 🎯 WAVE 1015.7: SIN CURVA - la renormalización ya tiene expansión x^0.65
-    // Curvas adicionales (x^2, x^3) APLASTAN en vez de levantar
-    // Ahora: input directo con gain alto
-    const target = filteredInput * config.gains.frontPar;
+    // Gain directo - la renormalización ya tiene expansión
+    const target = rawInput * config.gains.frontPar;
     
-    // Aplicar con decay asimétrico (attack rápido, release suave)
+    // Attack/Release asimétrico (attack rápido, release suave)
     if (target > this.frontIntensity) {
-      // Attack: seguir inmediatamente
-      this.frontIntensity = target;
+      this.frontIntensity = target;  // Attack instantáneo
     } else {
-      // Release: decay gradual
       const decaySpeed = config.decay.frontPar * centroidMod;
       this.frontIntensity = this.frontIntensity * decaySpeed + target * (1 - decaySpeed);
     }
     
-    // 🎯 WAVE 1015.11: SOFT LIMITER - comprimir suavemente por encima de 0.85
+    // Soft limiter por encima de 0.85
     if (this.frontIntensity > 0.85) {
       const excess = this.frontIntensity - 0.85;
-      this.frontIntensity = 0.85 + (excess * 0.4);  // Comprimir exceso al 40%
+      this.frontIntensity = 0.85 + (excess * 0.4);
     }
     
-    // 🎯 Clamp a 1.0 - controlado
     this.frontIntensity = Math.max(0, Math.min(1.0, this.frontIntensity));
   }
   
   /**
-   * BACK PAR: Responde a SUB-BASS + LOW-MID - WAVE 1015 ROCK DETOX
-   * 🎯 NUEVA LÓGICA: Harshness sube el GATE, no el Gain.
-   * Metal sucio = más selectivo, no más brillante
+   * BACK PAR: Mid PURO - WAVE 1017.1 GOD EAR CALIBRATION
+   * � VOCES + MELODÍA (500-2000Hz) - FREDDIE MERCURY TERRITORY
+   * Gate MUY BAJO para captar voces con sensibilidad.
+   * Harshness SUBE el gain (gritos de metal = más Back).
    */
   private processBackPar(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
@@ -413,27 +430,25 @@ export class RockStereoPhysics2 {
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🎯 WAVE 1015.6: Input = HighMid (400-2500Hz = SNARE + RHYTHM GUITAR)
-    // ¡PLAN ORIGINAL DE SONNET! Back debe estar en CONTRATIEMPO con Front
-    // Front=SubBass(kick) → sincroniza con Mover L=LowMid(bajo)
-    // Back=HighMid(snare) → contratiempo, crea ritmo visual
+    // 🩻 WAVE 1017.1: Mid = HighMid en nuestra nomenclatura (400-2500Hz)
+    // Aquí viven las VOCES de rock (Brian Johnson, Freddie, etc.)
     const input = bands.highMid;
     
-    // Gate check simple
+    // Gate MUY SENSIBLE para voces
     if (input < config.gates.backPar) {
       this.backIntensity *= config.decay.backPar * centroidMod;
       if (this.backIntensity < 0.01) this.backIntensity = 0;
       return;
     }
     
-    // 🎯 WAVE 1015.6: Ganancia MODULADA por harshness (plan original)
-    // Balada suave (harshness bajo) → Back suave
-    // Metal agresivo (harshness alto) → Back POTENTE
-    const harshnessBoost = (harshnessMod - 1.0) * 0.5;  // Max +50% con harshness=1.0
+    // � Harshness BOOST para voces distorsionadas/gritos
+    // Metal agresivo → Back POTENTE (gritos de Dickinson)
+    // Balada suave → Back suave (voces limpias)
+    const harshnessBoost = (harshnessMod - 1.0) * config.harshnessModulation.backParBoost;
     const modulatedGain = config.gains.backPar * (1.0 + harshnessBoost);
     const target = input * modulatedGain;
     
-    // Aplicar con decay
+    // Decay LENTO para mantener presencia de voz (sustain)
     if (target > this.backIntensity) {
       this.backIntensity = target;
     } else {
@@ -441,13 +456,13 @@ export class RockStereoPhysics2 {
       this.backIntensity = this.backIntensity * decaySpeed + target * (1 - decaySpeed);
     }
     
-    // 🎯 Clamp a 1.0 - saturación controlada
     this.backIntensity = Math.max(0, Math.min(1.0, this.backIntensity));
   }
   
   /**
-   * MOVER LEFT: Responde a LOW-MID (bass body, low guitar riffs)
-   * ¡PLAN ORIGINAL DE SONNET! El lado del PESO - sigue el bajo
+   * MOVER LEFT: LowMid + HighMid - WAVE 1017.1 GOD EAR CALIBRATION
+   * 🎸 GUITARRAS + BAJO - EL DIRECTOR MUSICAL (80-2500Hz)
+   * Este mover "dirige" la música - sigue los riffs y el cuerpo.
    */
   private processMoverLeft(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
@@ -457,11 +472,11 @@ export class RockStereoPhysics2 {
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🎯 WAVE 1015.6: Input = LowMid (150-500Hz = BAJO + CUERPO)
-    // ¡PLAN ORIGINAL! Mover L da peso, sincroniza con Front (kick+bajo)
-    // Front=SubBass(kick), MoverL=LowMid(bajo) → sincronizan (base rítmica)
-    // Back=HighMid(snare), MoverR=Presence(brillo) → contratiempo (ritmo visual)
-    const input = bands.lowMid;
+    // 🩻 WAVE 1017.1: BLEND de LowMid (bajo) + HighMid (guitarras)
+    // 60% LowMid (cuerpo/peso) + 40% HighMid (definición/ataque)
+    const bassBody = bands.lowMid * 0.6;
+    const guitarCrunch = bands.highMid * 0.4;
+    const input = bassBody + guitarCrunch;
     
     // Gate check
     if (input < config.gates.moverLeft) {
@@ -470,12 +485,12 @@ export class RockStereoPhysics2 {
       return;
     }
     
-    // 🎯 WAVE 1015: Harshness boost REDUCIDO (de *2 a *1)
+    // Harshness boost moderado (guitarras distorsionadas)
     const harshnessBoost = (harshnessMod - 1.0) * config.harshnessModulation.moverIntensity;
     const modulatedGain = config.gains.moverLeft * (1.0 + harshnessBoost);
     const target = input * modulatedGain;
     
-    // Aplicar con decay (flatness aumenta el decay = más suave)
+    // Decay con flatness stretch (Pink Floyd = más sustain)
     if (target > this.moverLeftIntensity) {
       this.moverLeftIntensity = target;
     } else {
@@ -484,14 +499,13 @@ export class RockStereoPhysics2 {
       this.moverLeftIntensity = this.moverLeftIntensity * decaySpeed + target * (1 - decaySpeed);
     }
     
-    // 🎯 Clamp a 1.0 - garra controlada
     this.moverLeftIntensity = Math.max(0, Math.min(1.0, this.moverLeftIntensity));
   }
   
   /**
-   * MOVER RIGHT: Responde a PRESENCE + HIGH-MID - WAVE 1015 ROCK DETOX
-   * 🎯 El lado "brillante" - cymbals, harmonics, guitarras agudas
-   * SIN solapamiento con Mover L (separación estéreo real)
+   * MOVER RIGHT: Presence + Treble - WAVE 1017.1 GOD EAR CALIBRATION
+   * ✨ CYMBALS + BRILLO (2.5k-16kHz)
+   * Con VOICE LEAK FILTER mejorado - solo "crispiness", no voces.
    */
   private processMoverRight(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
@@ -501,31 +515,29 @@ export class RockStereoPhysics2 {
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🎯 WAVE 1015.10: Input = HighMid (guitarras) + Presence (cymbals) BLEND
-    // Las guitarras están en HighMid (400-2500Hz), NO en Presence!
-    // Blend: 60% HighMid (guitarras) + 40% Presence (brillo/cymbals)
-    const guitarBody = bands.highMid * 0.6;
-    const brightness = bands.presence * 0.4;
-    const rawInput = guitarBody + brightness;
-    
-    // 🎯 WAVE 1015.11: VOICE LEAK FILTER - si HighMid MUY alto vs Presence → voces
-    // Guitarras tienen balance similar HighMid/Presence, voces son HighMid-heavy
-    const voiceLeakDetection = bands.highMid > (bands.presence * 2.0);
-    const filteredInput = voiceLeakDetection ? rawInput * 0.6 : rawInput;
+    // 🩻 WAVE 1017.1: Presence PURO (2.5k-8kHz) = cymbals territory
+    const input = bands.presence;
     
     // Gate check
-    if (filteredInput < config.gates.moverRight) {
+    if (input < config.gates.moverRight) {
       this.moverRightIntensity *= config.decay.moverRight * centroidMod;
       if (this.moverRightIntensity < 0.01) this.moverRightIntensity = 0;
       return;
     }
     
-    // 🎯 WAVE 1015: Harshness boost REDUCIDO
+    // 🎯 VOICE LEAK FILTER: Si HighMid >> Presence, son voces, no cymbals
+    // Cymbals tienen balance Presence/HighMid similar
+    // Voces son HighMid-heavy con poco Presence
+    const voiceLeakRatio = bands.highMid / Math.max(0.01, bands.presence);
+    const isVoiceLeak = voiceLeakRatio > 2.5;  // Si HighMid > 2.5x Presence → voces
+    const filteredInput = isVoiceLeak ? input * 0.4 : input;  // Reducir 60% si es voz
+    
+    // Gain con harshness moderado
     const harshnessBoost = (harshnessMod - 1.0) * config.harshnessModulation.moverIntensity;
     const modulatedGain = config.gains.moverRight * (1.0 + harshnessBoost);
     const target = filteredInput * modulatedGain;
     
-    // Aplicar
+    // Decay RÁPIDO para ataque limpio de cymbals
     if (target > this.moverRightIntensity) {
       this.moverRightIntensity = target;
     } else {
@@ -534,13 +546,12 @@ export class RockStereoPhysics2 {
       this.moverRightIntensity = this.moverRightIntensity * decaySpeed + target * (1 - decaySpeed);
     }
     
-    // 🎯 WAVE 1015.11: SOFT LIMITER - comprimir suavemente por encima de 0.85
+    // Soft limiter
     if (this.moverRightIntensity > 0.85) {
       const excess = this.moverRightIntensity - 0.85;
-      this.moverRightIntensity = 0.85 + (excess * 0.4);  // Comprimir exceso al 40%
+      this.moverRightIntensity = 0.85 + (excess * 0.4);
     }
     
-    // 🎯 Clamp a 1.0 - brillo controlado
     this.moverRightIntensity = Math.max(0, Math.min(1.0, this.moverRightIntensity));
   }
   

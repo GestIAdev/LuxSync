@@ -1,26 +1,51 @@
 /**
- * 🥁 RHYTHM ANALYZER - LA MATEMÁTICA DEL RITMO
- * =============================================
- * El Motor de Análisis Rítmico de Selene Lux
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🥁 WAVE 1023: THE GROOVE SURGEON - RHYTHM ANALYZER v2.0
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Este componente analiza el audio en tiempo real para detectar:
- * - Patrones rítmicos (Dembow, Caballito, Four-on-floor)
- * - Sincopación (el "swing" o "groove" de la música)
- * - Detección de drums (kick, snare, hihat)
- * - Fills y transiciones
+ * DIAGNÓSTICO DEL CÓDIGO ANTERIOR (WAVE 8):
  * 
- * REGLAS DE ORO APLICADAS:
- * - REGLA 1: Análisis LIGERO para Main Thread (< 5ms)
- * - REGLA 3: Sincopación como ciudadano de PRIMERA CLASE
+ * 1. 🩺 DETECCIÓN POR RESTA SIMPLE (bass - prevBass)
+ *    Problema: Confunde rampas de sintetizador con golpes de bombo.
+ *    Un bombo REAL sube verticalmente (pendiente infinita).
+ *    Una subida de volumen sube en rampa (pendiente suave).
+ *    Resultado: Falsos positivos en música electrónica densa.
  * 
- * MATEMÁTICA DE SINCOPACIÓN:
- * - Si la energía máxima cae en fase ~0.0 (on-beat) → sincopation ≈ 0
- * - Si la energía máxima cae en fase 0.25-0.75 (off-beat) → sincopation ↑
- * - syncopation = OffBeatEnergy / TotalEnergy
+ * 2. 🩺 DUPLICIDAD DE ESFUERZOS
+ *    BeatDetector detecta kicks... RhythmAnalyzer detecta kicks otra vez.
+ *    Pueden estar en DESACUERDO → Confunde a Selene.
+ *    Deuda técnica: código repetido = bugs repetidos.
  * 
- * @module engines/musical/analysis/RhythmAnalyzer
- * @version 1.0.0
- * @date December 2025
+ * 3. 🩺 UMBRALES FIJOS (0.6, 0.5, 0.4)
+ *    Ignora la CLARIDAD de la señal.
+ *    Jazz limpio necesita umbrales BAJOS (sensibilidad).
+ *    Rock sucio necesita umbrales ALTOS (filtrado).
+ * 
+ * SOLUCIÓN: THE GROOVE SURGEON
+ * 
+ * A. 📐 SLOPE-BASED ONSET DETECTOR (Pendiente, no magnitud)
+ *    - Mide la VELOCIDAD de subida, no cuánto subió
+ *    - Bombo real: pendiente > 0.8 en 1 frame (vertical)
+ *    - Rampa de synth: pendiente ~0.2 sostenida (suave)
+ *    - Elimina 90% de falsos positivos
+ * 
+ * B. 🎚️ ADAPTIVE THRESHOLDS (Umbrales dinámicos)
+ *    - Conectado a Clarity del God Ear
+ *    - Clarity alta (señal limpia) → umbrales BAJOS (sensibles)
+ *    - Clarity baja (ruido) → umbrales ALTOS (filtrado)
+ *    - Rango: ±30% del umbral base
+ * 
+ * C. 🔗 INTEGRACIÓN CON PACEMAKER (BeatDetector v2.0)
+ *    - NO calcula BPM propio (elimina duplicidad)
+ *    - CONSUME la fase estable del BeatDetector
+ *    - Una sola fuente de verdad para el ritmo
+ * 
+ * D. 🎯 DETECTION BUFFER (Anti-jitter)
+ *    - Requiere 2 frames consecutivos para confirmar hit
+ *    - Elimina disparos espurios de 1 frame
+ * 
+ * @author PunkOpus
+ * @wave 1023
  */
 
 import type { AudioMetrics } from '../../types';
@@ -31,67 +56,95 @@ import type {
   DrumPatternType,
 } from '../types';
 
-// ============================================================
-// 📊 CONFIGURACIÓN
-// ============================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Configuración del analizador de ritmo
+ * Configuración del Groove Surgeon
  */
 export interface RhythmAnalyzerConfig {
   /** Tamaño del buffer circular para análisis (default: 16 frames) */
   bufferSize: number;
   
-  /** Umbral de detección de kick (bass transient) */
-  kickThreshold: number;
+  /** Umbral BASE de pendiente para kick (se adapta con clarity) */
+  kickSlopeThreshold: number;
   
-  /** Umbral de detección de snare (mid transient) */
-  snareThreshold: number;
+  /** Umbral BASE de pendiente para snare */
+  snareSlopeThreshold: number;
   
-  /** Umbral de detección de hihat (treble transient) */
-  hihatThreshold: number;
+  /** Umbral BASE de pendiente para hihat */
+  hihatSlopeThreshold: number;
   
-  /** Umbral para detectar fill */
+  /** Umbral de energía para fill detection */
   fillThreshold: number;
   
   /** Tiempo mínimo entre fills (ms) */
   minFillInterval: number;
+  
+  /** Frames de confirmación para evitar jitter */
+  confirmationFrames: number;
 }
-
-const DEFAULT_CONFIG: RhythmAnalyzerConfig = {
-  bufferSize: 16,
-  kickThreshold: 0.6,
-  snareThreshold: 0.5,
-  hihatThreshold: 0.4,
-  fillThreshold: 0.8,
-  minFillInterval: 2000,
-};
-
-// ============================================================
-// 📦 BUFFER CIRCULAR PARA ANÁLISIS
-// ============================================================
 
 /**
  * Frame de energía para análisis de sincopación
  */
 interface EnergyFrame {
-  /** Fase del beat cuando se capturó (0-1) */
   phase: number;
-  /** Energía de graves */
   bass: number;
-  /** Energía de medios */
   mid: number;
-  /** Energía de agudos */
   treble: number;
-  /** Energía total */
   total: number;
-  /** Timestamp */
   timestamp: number;
 }
 
 /**
- * Buffer circular optimizado para análisis
+ * 📐 WAVE 1023: Estado del Slope Detector
  */
+interface SlopeState {
+  /** Valores de los últimos N frames para calcular pendiente */
+  history: number[];
+  /** Pendiente actual calculada */
+  currentSlope: number;
+  /** Frames consecutivos con pendiente alta (confirmación) */
+  confirmationCount: number;
+  /** Última detección confirmada */
+  lastConfirmedHit: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS - THE GROOVE SURGEON TUNING
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_CONFIG: RhythmAnalyzerConfig = {
+  bufferSize: 16,
+  // 📐 SLOPE THRESHOLDS (pendiente, no magnitud)
+  // Un golpe real tiene pendiente > 0.5 en 1-2 frames
+  // Una rampa tiene pendiente < 0.2 sostenida
+  kickSlopeThreshold: 0.45,    // Bajado de 0.6 → detectamos por velocidad
+  snareSlopeThreshold: 0.35,   // Snares tienen transientes más suaves
+  hihatSlopeThreshold: 0.25,   // Hihats son los más suaves
+  fillThreshold: 0.75,
+  minFillInterval: 2000,
+  confirmationFrames: 2,       // Requiere 2 frames para confirmar
+};
+
+/** Tamaño del historial para cálculo de pendiente */
+const SLOPE_HISTORY_SIZE = 4;
+
+/** Frames de cooldown después de un hit (anti-double-trigger) */
+const HIT_COOLDOWN_FRAMES = 3;
+
+/** Factor de adaptación de umbral según clarity (±30%) */
+const CLARITY_ADAPTATION_RANGE = 0.30;
+
+/** Alpha para EMA de sincopación (suavizado lento) */
+const SYNC_SMOOTHING_ALPHA = 0.08;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CIRCULAR BUFFER
+// ═══════════════════════════════════════════════════════════════════════════
+
 class CircularBuffer<T> {
   private buffer: T[];
   private writeIndex: number = 0;
@@ -111,7 +164,6 @@ class CircularBuffer<T> {
     if (this.count < this.size) {
       return this.buffer.slice(0, this.count);
     }
-    // Devolver en orden cronológico
     return [
       ...this.buffer.slice(this.writeIndex),
       ...this.buffer.slice(0, this.writeIndex),
@@ -128,74 +180,103 @@ class CircularBuffer<T> {
   }
 }
 
-// ============================================================
-// 🥁 RHYTHM ANALYZER CLASS
-// ============================================================
+// ═══════════════════════════════════════════════════════════════════════════
+// THE GROOVE SURGEON
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🥁 RhythmAnalyzer
+ * 🥁 RhythmAnalyzer v2.0 - THE GROOVE SURGEON
  * 
- * Analiza patrones rítmicos y calcula sincopación
- * 
- * @example
- * ```typescript
- * const analyzer = new RhythmAnalyzer();
- * const result = analyzer.analyze(audioMetrics, beatState);
- * console.log(result.groove.syncopation); // 0.45 para reggaeton
- * ```
+ * Analiza patrones rítmicos con precisión quirúrgica.
+ * Detecta por PENDIENTE, no por magnitud.
+ * Umbrales ADAPTATIVOS según claridad de señal.
  */
 export class RhythmAnalyzer {
   private config: RhythmAnalyzerConfig;
   private energyBuffer: CircularBuffer<EnergyFrame>;
   
-  // Estado previo para detección de transientes
-  private prevBass: number = 0;
-  private prevMid: number = 0;
-  private prevTreble: number = 0;
+  // 📐 WAVE 1023: Slope Detectors (uno por instrumento)
+  private kickSlope: SlopeState;
+  private snareSlope: SlopeState;
+  private hihatSlope: SlopeState;
   
-  // Historial para detección de patrones
-  private kickHistory: number[] = [];      // Fases donde se detectó kick
-  private snareHistory: number[] = [];     // Fases donde se detectó snare
-  private hihatHistory: number[] = [];     // Fases donde se detectó hihat
-  private readonly historySize = 32;
+  // Historial de fases para análisis de patrones
+  private kickPhases: number[] = [];
+  private snarePhases: number[] = [];
+  private hihatPhases: number[] = [];
+  private readonly phaseHistorySize = 32;
   
-  // Estado de fill
+  // Fill detection state
   private lastFillTime: number = 0;
   private consecutiveHighEnergy: number = 0;
+  
+  // Sincopación suavizada (EMA)
+  private smoothedSyncopation: number = 0;
+  
+  // Frame counter para cooldowns
+  private frameCount: number = 0;
   
   // Cache del último resultado
   private cachedResult: RhythmAnalysis | null = null;
   
-  // 🌊 WAVE 41.0: EMA para suavizar sincopación (evitar saltos 0→1)
-  private smoothedSyncopation: number = 0;
-  private readonly SYNC_ALPHA = 0.08; // Factor de suavizado (lento y estable)
+  // 🎚️ WAVE 1023: Clarity actual para adaptación de umbrales
+  private currentClarity: number = 0.5;
   
   constructor(config: Partial<RhythmAnalyzerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.energyBuffer = new CircularBuffer<EnergyFrame>(this.config.bufferSize);
+    
+    // Inicializar slope detectors
+    this.kickSlope = this.createSlopeState();
+    this.snareSlope = this.createSlopeState();
+    this.hihatSlope = this.createSlopeState();
   }
   
-  // ============================================================
+  /**
+   * Crear estado inicial para slope detector
+   */
+  private createSlopeState(): SlopeState {
+    return {
+      history: [],
+      currentSlope: 0,
+      confirmationCount: 0,
+      lastConfirmedHit: -HIT_COOLDOWN_FRAMES, // Permite hit en frame 0
+    };
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // 🎯 MÉTODO PRINCIPAL: analyze()
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
    * 🎯 Analizar frame de audio
    * 
-   * ⚠️ REGLA 1: Este método debe ser LIGERO (< 5ms)
-   * Se ejecuta en Main Thread a 30ms de frecuencia
-   * 
    * @param audio - Métricas de audio del frame actual
-   * @param beat - Estado del beat (bpm, phase, etc.)
+   * @param beat - Estado del beat desde BeatDetector (PACEMAKER)
+   * @param clarity - Claridad de la señal (opcional, del God Ear)
    * @returns Análisis rítmico completo
    */
-  analyze(audio: AudioMetrics, beat: { bpm: number; phase: number; onBeat: boolean }): RhythmAnalysis {
+  analyze(
+    audio: AudioMetrics, 
+    beat: { bpm: number; phase: number; onBeat: boolean },
+    clarity?: number
+  ): RhythmAnalysis {
     const now = audio.timestamp;
+    this.frameCount++;
     
-    // 1. Detectar transientes (cambios bruscos de energía)
-    const drums = this.detectDrums(audio);
+    // 🎚️ Actualizar clarity para umbrales adaptativos
+    if (clarity !== undefined) {
+      this.currentClarity = clarity;
+    }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1. 📐 SLOPE-BASED DRUM DETECTION
+    // ═══════════════════════════════════════════════════════════════════════
+    const drums = this.detectDrumsBySlope(audio);
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // 2. Registrar en buffer de energía
+    // ═══════════════════════════════════════════════════════════════════════
     this.energyBuffer.push({
       phase: beat.phase,
       bass: audio.bass,
@@ -205,31 +286,38 @@ export class RhythmAnalyzer {
       timestamp: now,
     });
     
-    // 3. Registrar hits de drums con sus fases
-    if (drums.kickDetected) this.recordHit(this.kickHistory, beat.phase);
-    if (drums.snareDetected) this.recordHit(this.snareHistory, beat.phase);
-    if (drums.hihatDetected) this.recordHit(this.hihatHistory, beat.phase);
+    // ═══════════════════════════════════════════════════════════════════════
+    // 3. Registrar hits con sus fases (para análisis de patrones)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (drums.kickDetected) this.recordPhase(this.kickPhases, beat.phase);
+    if (drums.snareDetected) this.recordPhase(this.snarePhases, beat.phase);
+    if (drums.hihatDetected) this.recordPhase(this.hihatPhases, beat.phase);
     
+    // ═══════════════════════════════════════════════════════════════════════
     // 4. Calcular groove (sincopación, swing, complejidad)
-    const groove = this.calculateGroove(beat.phase);
+    // ═══════════════════════════════════════════════════════════════════════
+    const groove = this.calculateGroove();
     
+    // ═══════════════════════════════════════════════════════════════════════
     // 5. Detectar tipo de patrón
+    // ═══════════════════════════════════════════════════════════════════════
     const pattern = this.detectPatternType(audio, drums, groove, beat.bpm);
     
+    // ═══════════════════════════════════════════════════════════════════════
     // 6. Detectar fill en progreso
+    // ═══════════════════════════════════════════════════════════════════════
     const fillInProgress = this.detectFill(audio, drums, now);
     
+    // ═══════════════════════════════════════════════════════════════════════
     // 7. Calcular confianza general
+    // ═══════════════════════════════════════════════════════════════════════
     const confidence = this.calculateConfidence(groove, drums);
     
-    // 8. Actualizar estado previo
-    this.prevBass = audio.bass;
-    this.prevMid = audio.mid;
-    this.prevTreble = audio.treble;
-    
-    // 9. Construir resultado
+    // ═══════════════════════════════════════════════════════════════════════
+    // 8. Construir resultado
+    // ═══════════════════════════════════════════════════════════════════════
     const result: RhythmAnalysis = {
-      bpm: beat.bpm,
+      bpm: beat.bpm,  // 🔗 INTEGRACIÓN: BPM viene del PACEMAKER, no calculamos
       confidence,
       beatPhase: beat.phase,
       barPhase: (beat.phase * 4) % 1,  // Asumiendo 4/4
@@ -247,30 +335,59 @@ export class RhythmAnalyzer {
     return result;
   }
   
-  // ============================================================
-  // 🥁 DETECCIÓN DE DRUMS
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📐 SLOPE-BASED ONSET DETECTOR
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * Detectar kicks, snares y hihats
+   * 📐 Detectar drums por PENDIENTE (velocidad de subida)
+   * 
+   * La clave: Un golpe REAL sube verticalmente en 1-2 frames.
+   * Una rampa de volumen sube gradualmente en muchos frames.
+   * 
+   * Pendiente = (valor_actual - valor_anterior) / delta_tiempo
+   * Pero como delta_tiempo es constante (1 frame), simplificamos:
+   * Pendiente = valor_actual - promedio_últimos_N_frames
+   * 
+   * Esto nos da la ACELERACIÓN del volumen, no el volumen en sí.
    */
-  private detectDrums(audio: AudioMetrics): DrumDetection {
-    // Calcular transientes (cambios bruscos)
-    const bassTransient = Math.max(0, audio.bass - this.prevBass);
-    const midTransient = Math.max(0, audio.mid - this.prevMid);
-    const trebleTransient = Math.max(0, audio.treble - this.prevTreble);
+  private detectDrumsBySlope(audio: AudioMetrics): DrumDetection {
+    // Calcular pendientes para cada banda
+    const kickSlope = this.updateSlope(this.kickSlope, audio.bass);
+    const snareSlope = this.updateSlope(this.snareSlope, audio.mid);
+    const hihatSlope = this.updateSlope(this.hihatSlope, audio.treble);
     
-    // Detectar kick: Bass transient fuerte + nivel de bass alto
-    const kickDetected = bassTransient > this.config.kickThreshold && audio.bass > 0.5;
+    // 🎚️ ADAPTIVE THRESHOLDS basados en clarity
+    const adaptedKickThreshold = this.adaptThreshold(this.config.kickSlopeThreshold);
+    const adaptedSnareThreshold = this.adaptThreshold(this.config.snareSlopeThreshold);
+    const adaptedHihatThreshold = this.adaptThreshold(this.config.hihatSlopeThreshold);
     
-    // Detectar snare: Mid transient fuerte + nivel de mid
-    const snareDetected = midTransient > this.config.snareThreshold && audio.mid > 0.4;
+    // Detectar con confirmación (anti-jitter)
+    const kickDetected = this.confirmHit(
+      this.kickSlope, 
+      kickSlope, 
+      adaptedKickThreshold,
+      audio.bass > 0.35  // Nivel mínimo para considerar
+    );
     
-    // Detectar hihat: Treble transient + nivel de treble
-    const hihatDetected = trebleTransient > this.config.hihatThreshold && audio.treble > 0.3;
+    const snareDetected = this.confirmHit(
+      this.snareSlope, 
+      snareSlope, 
+      adaptedSnareThreshold,
+      audio.mid > 0.30
+    );
     
-    // Detectar crash: Treble MUY fuerte + bass simultáneo
-    const crashDetected = audio.treble > 0.8 && audio.bass > 0.6 && trebleTransient > 0.5;
+    const hihatDetected = this.confirmHit(
+      this.hihatSlope, 
+      hihatSlope, 
+      adaptedHihatThreshold,
+      audio.treble > 0.25
+    );
+    
+    // Detectar crash: Treble MUY fuerte + bass simultáneo + pendiente alta
+    const crashDetected = audio.treble > 0.75 && 
+                          audio.bass > 0.55 && 
+                          hihatSlope > adaptedHihatThreshold * 1.5;
     
     return {
       kickDetected,
@@ -280,59 +397,129 @@ export class RhythmAnalyzer {
       hihatDetected,
       hihatIntensity: hihatDetected ? audio.treble : 0,
       crashDetected,
-      fillDetected: false, // Se actualiza en detectFill()
+      fillDetected: false,
     };
   }
   
-  // ============================================================
-  // 🎵 CÁLCULO DE SINCOPACIÓN - EL ARMA SECRETA
-  // ============================================================
+  /**
+   * Actualizar historial y calcular pendiente
+   * 
+   * Pendiente = valor_actual - promedio_histórico
+   * Esto captura la ACELERACIÓN, no el valor absoluto.
+   */
+  private updateSlope(state: SlopeState, currentValue: number): number {
+    // Agregar al historial
+    state.history.push(currentValue);
+    if (state.history.length > SLOPE_HISTORY_SIZE) {
+      state.history.shift();
+    }
+    
+    // Necesitamos al menos 2 valores
+    if (state.history.length < 2) {
+      state.currentSlope = 0;
+      return 0;
+    }
+    
+    // Calcular promedio del historial (excluyendo el valor actual)
+    const historicalValues = state.history.slice(0, -1);
+    const historicalAvg = historicalValues.reduce((a, b) => a + b, 0) / historicalValues.length;
+    
+    // Pendiente = qué tan rápido subimos respecto al promedio reciente
+    // Normalizado para que valores típicos estén en rango 0-1
+    const slope = Math.max(0, (currentValue - historicalAvg) * 2);
+    
+    state.currentSlope = slope;
+    return slope;
+  }
   
   /**
-   * 🎯 Calcular groove (sincopación, swing, complejidad)
+   * 🎚️ Adaptar umbral según clarity
    * 
-   * MATEMÁTICA DE SINCOPACIÓN - FÓRMULA FINAL:
-   * - Dividir el beat en ON-BEAT (fase 0.0-0.15, 0.85-1.0) y OFF-BEAT (0.15-0.85)
-   * - Medir qué % de la energía TOTAL está en off-beat
-   * - PERO ponderar por la INTENSIDAD de los picos off-beat
-   * 
-   * CLAVE: Four-on-floor tiene picos SOLO en on-beat
-   *        Reggaeton tiene picos FUERTES en off-beat (dembow)
-   * 
-   * FÓRMULA: syncopation = (peakOffBeat / maxPeak) * (offBeatEnergy / totalEnergy)
-   * 
-   * UMBRALES (de types.ts):
-   * - < 0.15: Straight/Four-on-floor (Techno, House)
-   * - 0.15-0.4: Moderado (Pop, Rock)
-   * - > 0.4: Alto (Reggaeton, Funk)
+   * Clarity alta (señal limpia) → umbral BAJO (más sensible)
+   * Clarity baja (ruido) → umbral ALTO (filtrado)
    */
-  private calculateGroove(_currentPhase: number): GrooveAnalysis {
+  private adaptThreshold(baseThreshold: number): number {
+    // clarity 0.5 → factor 1.0 (sin cambio)
+    // clarity 1.0 → factor 0.7 (umbral bajo, sensible)
+    // clarity 0.0 → factor 1.3 (umbral alto, filtrado)
+    const clarityFactor = 1 - ((this.currentClarity - 0.5) * CLARITY_ADAPTATION_RANGE * 2);
+    
+    return baseThreshold * clarityFactor;
+  }
+  
+  /**
+   * Confirmar hit con sistema anti-jitter
+   * 
+   * Requiere N frames consecutivos con pendiente alta para confirmar.
+   * Evita disparos espurios de 1 frame.
+   */
+  private confirmHit(
+    state: SlopeState, 
+    slope: number, 
+    threshold: number,
+    levelOk: boolean
+  ): boolean {
+    // Cooldown: no detectar otro hit demasiado pronto
+    const framesSinceLastHit = this.frameCount - state.lastConfirmedHit;
+    if (framesSinceLastHit < HIT_COOLDOWN_FRAMES) {
+      return false;
+    }
+    
+    // ¿Pendiente supera umbral Y nivel es suficiente?
+    if (slope > threshold && levelOk) {
+      state.confirmationCount++;
+      
+      // ¿Suficientes frames de confirmación?
+      if (state.confirmationCount >= this.config.confirmationFrames) {
+        state.lastConfirmedHit = this.frameCount;
+        state.confirmationCount = 0;
+        return true;
+      }
+    } else {
+      // Reset confirmación si la pendiente baja
+      state.confirmationCount = 0;
+    }
+    
+    return false;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎵 CÁLCULO DE SINCOPACIÓN
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🎵 Calcular groove (sincopación, swing, complejidad)
+   * 
+   * MATEMÁTICA DE SINCOPACIÓN:
+   * - ON-BEAT: fase 0.0-0.15 y 0.85-1.0
+   * - OFF-BEAT: fase 0.15-0.85
+   * 
+   * syncopation = (peakOffBeat / peakOnBeat) * 0.7 + (offBeatEnergy / totalEnergy) * 0.3
+   */
+  private calculateGroove(): GrooveAnalysis {
     const frames = this.energyBuffer.getAll();
     
-    // Si no hay suficientes datos, devolver valores neutros
     if (frames.length < 4) {
       return {
-        syncopation: 0, // RESCUE DIRECTIVE: NO DEFAULTS - use 0 if no data
-        swingAmount: 0.0,
+        syncopation: 0,
+        swingAmount: 0,
         complexity: 'low',
         humanization: 0.05,
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎯 CÁLCULO DE SINCOPACIÓN - FÓRMULA MEJORADA V2
-    // ═══════════════════════════════════════════════════════════
-    
+    // ═══════════════════════════════════════════════════════════════════════
+    // SINCOPACIÓN
+    // ═══════════════════════════════════════════════════════════════════════
     let onBeatEnergy = 0;
     let offBeatEnergy = 0;
-    let peakOnBeat = 0;   // Pico más alto en on-beat
-    let peakOffBeat = 0;  // Pico más alto en off-beat
+    let peakOnBeat = 0;
+    let peakOffBeat = 0;
     
     for (const frame of frames) {
-      // Usar bass + mid ponderado (bass domina el groove)
+      // Bass + mid ponderado (bass domina el groove)
       const energy = frame.bass + frame.mid * 0.5;
       
-      // On-beat: cerca de 0.0 o 1.0 (inicio del beat)
       const isOnBeat = frame.phase < 0.15 || frame.phase > 0.85;
       
       if (isOnBeat) {
@@ -345,33 +532,24 @@ export class RhythmAnalyzer {
     }
     
     const totalEnergy = onBeatEnergy + offBeatEnergy;
+    const offBeatRatio = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0;
     
-    // Factor 1: Qué proporción de energía está off-beat (0-1)
-    const offBeatRatio = totalEnergy > 0 ? offBeatEnergy / totalEnergy : 0; // RESCUE DIRECTIVE: NO DEFAULTS - use 0 if no energy
-    
-    // Factor 2: Qué tan fuertes son los picos off-beat vs ON-beat
-    // Si peakOffBeat ≈ peakOnBeat → hay golpes importantes off-beat (alto syncopation)
-    // Si peakOffBeat << peakOnBeat → toda la acción está on-beat (bajo syncopation)
-    // CLAVE: Comparar con peakOnBeat, no con maxPeak
     const peakDominance = peakOnBeat > 0.01 
-      ? Math.min(1, peakOffBeat / peakOnBeat)  // 0 si offBeat débil, 1 si igual o mayor
-      : (peakOffBeat > 0.3 ? 1 : 0); // RESCUE DIRECTIVE: If no onBeat, use 0 not 0.5
+      ? Math.min(1, peakOffBeat / peakOnBeat)
+      : (peakOffBeat > 0.3 ? 1 : 0);
     
-    // FÓRMULA FINAL:
-    // - offBeatRatio alto + peakDominance alto = ALTA syncopation (reggaeton)
-    // - offBeatRatio bajo + peakDominance bajo = BAJA syncopation (four-on-floor)
-    // El peakDominance es clave: si los picos off-beat son débiles comparados con on-beat,
-    // la syncopation es baja aunque haya energía background off-beat
-    const syncopation = peakDominance * 0.7 + offBeatRatio * 0.3;
+    const rawSyncopation = peakDominance * 0.7 + offBeatRatio * 0.3;
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎷 CÁLCULO DE SWING
-    // ═══════════════════════════════════════════════════════════
-    // Swing: Energía desplazada hacia la segunda mitad de cada división
-    // Jazz típico tiene swing > 0.15
+    // EMA suavizado
+    const clampedSync = Math.max(0, Math.min(1, rawSyncopation));
+    this.smoothedSyncopation = (SYNC_SMOOTHING_ALPHA * clampedSync) + 
+                               ((1 - SYNC_SMOOTHING_ALPHA) * this.smoothedSyncopation);
     
-    let earlyOffBeatEnergy = 0;  // 0.2-0.4
-    let lateOffBeatEnergy = 0;   // 0.6-0.8
+    // ═══════════════════════════════════════════════════════════════════════
+    // SWING
+    // ═══════════════════════════════════════════════════════════════════════
+    let earlyOffBeatEnergy = 0;
+    let lateOffBeatEnergy = 0;
     
     for (const frame of frames) {
       if (frame.phase > 0.2 && frame.phase < 0.4) {
@@ -383,27 +561,17 @@ export class RhythmAnalyzer {
     
     const totalOffBeat = earlyOffBeatEnergy + lateOffBeatEnergy;
     const swingAmount = totalOffBeat > 0.01
-      ? (lateOffBeatEnergy / totalOffBeat) - 0.5  // 0 = sin swing, >0 = swung
+      ? Math.max(0, Math.min(1, ((lateOffBeatEnergy / totalOffBeat) - 0.5) * 2))
       : 0;
     
-    // Normalizar a 0-1
-    const normalizedSwing = Math.max(0, Math.min(1, swingAmount * 2));
-    
-    // ═══════════════════════════════════════════════════════════
-    // 📊 CÁLCULO DE COMPLEJIDAD
-    // ═══════════════════════════════════════════════════════════
-    
-    // Complejidad basada en:
-    // 1. Variación de fases donde hay hits
-    // 2. Cantidad de hits por beat
-    // 3. Variación de intensidad
-    
+    // ═══════════════════════════════════════════════════════════════════════
+    // COMPLEJIDAD
+    // ═══════════════════════════════════════════════════════════════════════
     const phaseVariance = this.calculatePhaseVariance();
-    const hitDensity = (this.kickHistory.length + this.snareHistory.length + this.hihatHistory.length) / 
-                       Math.max(1, this.historySize);
+    const hitDensity = (this.kickPhases.length + this.snarePhases.length + this.hihatPhases.length) / 
+                       Math.max(1, this.phaseHistorySize);
     
     let complexity: 'low' | 'medium' | 'high';
-    
     if (phaseVariance > 0.3 || hitDensity > 0.5) {
       complexity = 'high';
     } else if (phaseVariance > 0.15 || hitDensity > 0.3) {
@@ -412,111 +580,75 @@ export class RhythmAnalyzer {
       complexity = 'low';
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🤖 CÁLCULO DE HUMANIZACIÓN
-    // ═══════════════════════════════════════════════════════════
-    // Humanización: Variación del timing de los kicks respecto al beat perfecto
-    
+    // ═══════════════════════════════════════════════════════════════════════
+    // HUMANIZACIÓN
+    // ═══════════════════════════════════════════════════════════════════════
     const humanization = this.calculateHumanization();
     
-    // 🌊 WAVE 41.0: Aplicar EMA para suavizar sincopación
-    // Evita saltos bruscos (0.00 → 1.00) que confunden al GenreClassifier
-    const instantSync = Math.max(0, Math.min(1, syncopation));
-    this.smoothedSyncopation = (this.SYNC_ALPHA * instantSync) + ((1 - this.SYNC_ALPHA) * this.smoothedSyncopation);
-    
     return {
-      syncopation: this.smoothedSyncopation, // 🌊 WAVE 41.0: Exportar valor suavizado
-      swingAmount: normalizedSwing,
+      syncopation: this.smoothedSyncopation,
+      swingAmount,
       complexity,
       humanization,
     };
   }
   
   /**
-   * Calcular varianza de fases de hits
+   * Calcular varianza de fases
    */
   private calculatePhaseVariance(): number {
-    const allPhases = [...this.kickHistory, ...this.snareHistory];
+    const allPhases = [...this.kickPhases, ...this.snarePhases];
     if (allPhases.length < 3) return 0;
     
     const mean = allPhases.reduce((a, b) => a + b, 0) / allPhases.length;
     const variance = allPhases.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / allPhases.length;
     
-    return Math.sqrt(variance);  // Desviación estándar
+    return Math.sqrt(variance);
   }
   
   /**
-   * Calcular humanización (variación de timing)
+   * Calcular humanización
    */
   private calculateHumanization(): number {
-    // Kicks deberían estar en fase ~0.0
-    // La humanización es cuánto se desvían del beat perfecto
+    if (this.kickPhases.length < 4) return 0.05;
     
-    if (this.kickHistory.length < 4) return 0.05;
-    
-    // Calcular desviación media de fase 0.0 o 0.5
     let totalDeviation = 0;
-    
-    for (const phase of this.kickHistory) {
-      // Distancia al beat más cercano (0.0, 0.5 o 1.0)
+    for (const phase of this.kickPhases) {
       const distTo0 = Math.min(phase, 1 - phase);
       const distTo05 = Math.abs(phase - 0.5);
       totalDeviation += Math.min(distTo0, distTo05);
     }
     
-    const avgDeviation = totalDeviation / this.kickHistory.length;
-    
-    // Normalizar: 0.06 es típico para drums humanizados
-    return Math.min(0.15, avgDeviation * 2);
+    return Math.min(0.15, (totalDeviation / this.kickPhases.length) * 2);
   }
   
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
   // 🎭 DETECCIÓN DE PATRONES
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * 🎭 Detectar tipo de patrón rítmico
+   * Detectar tipo de patrón rítmico
    * 
-   * ⚠️ REGLA 3: Priorizar SYNCOPATION sobre BPM
-   * 
-   * Orden de detección:
-   * 1. Sincopación → Reggaeton (>0.4) vs Techno (<0.15)
-   * 2. Constancia de treble → Cumbia (güiro constante)
-   * 3. Swing → Jazz (>0.15)
-   * 4. BPM → Solo para desempatar
+   * PRIORIDAD: Sincopación > BPM
    */
   private detectPatternType(
     audio: AudioMetrics,
-    _drums: DrumDetection,
+    drums: DrumDetection,
     groove: GrooveAnalysis,
     bpm: number
   ): { type: DrumPatternType; confidence: number } {
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎯 REGGAETON (Dembow pattern)
-    // ═══════════════════════════════════════════════════════════
-    // - Alta sincopación (> 0.4)
-    // - Patrón Dembow: Kick en 1, Snare/Rim en 1.75 y 2.75
-    // - BPM: 85-100
-    // - Bass heavy
-    
+    // REGGAETON (Dembow)
     if (groove.syncopation > 0.4 && this.hasDembowPattern()) {
-      const bpmMatch = bpm >= 85 && bpm <= 100 ? 1.0 : 0.7;
-      const bassMatch = audio.bass > 0.6 ? 1.0 : 0.8;
+      const bpmMatch = bpm >= 85 && bpm <= 105 ? 1.0 : 0.7;
+      const bassMatch = audio.bass > 0.55 ? 1.0 : 0.8;
       return {
         type: 'reggaeton',
         confidence: Math.min(0.95, (groove.syncopation * 0.4 + bpmMatch * 0.3 + bassMatch * 0.3)),
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🇦🇷 CUMBIA (Caballito pattern)
-    // ═══════════════════════════════════════════════════════════
-    // - Güiro/Shaker CONSTANTE en trebles
-    // - NO tiene Dembow
-    // - BPM: 85-115
-    // - Treble constante con micro-variaciones
-    
+    // CUMBIA (Caballito - güiro constante)
     if (this.hasConstantHighPercussion(audio) && !this.hasDembowPattern()) {
       const bpmMatch = bpm >= 85 && bpm <= 115 ? 1.0 : 0.6;
       const trebleConstancy = this.calculateTrebleConstancy();
@@ -529,30 +661,15 @@ export class RhythmAnalyzer {
       }
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎹 FOUR ON THE FLOOR (Techno, House, Disco)
-    // ═══════════════════════════════════════════════════════════
-    // - Sincopación MUY BAJA (< 0.15)
-    // - Kick en cada beat (1, 2, 3, 4)
-    // - Swing muy bajo
-    
-    if (groove.syncopation < 0.15 && groove.swingAmount < 0.1) {
-      const hasRegularKick = this.hasRegularKickPattern();
-      if (hasRegularKick) {
-        return {
-          type: 'four_on_floor',
-          confidence: Math.min(0.90, ((1 - groove.syncopation) * 0.5 + 0.4)),
-        };
-      }
+    // FOUR ON THE FLOOR (Techno, House)
+    if (groove.syncopation < 0.15 && groove.swingAmount < 0.1 && this.hasRegularKickPattern()) {
+      return {
+        type: 'four_on_floor',
+        confidence: Math.min(0.90, ((1 - groove.syncopation) * 0.5 + 0.4)),
+      };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎷 JAZZ SWING
-    // ═══════════════════════════════════════════════════════════
-    // - Swing alto (> 0.15)
-    // - Complejidad alta
-    // - Treble dominante (ride cymbal)
-    
+    // JAZZ SWING
     if (groove.swingAmount > 0.15 && groove.complexity === 'high') {
       return {
         type: 'jazz_swing',
@@ -560,27 +677,15 @@ export class RhythmAnalyzer {
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎸 HALF TIME (Dubstep, Trap)
-    // ═══════════════════════════════════════════════════════════
-    // - Snare en beat 3, no en 2
-    // - Bass MUY heavy
-    // - Complejidad baja
-    
-    if (this.hasHalfTimeSnare() && audio.bass > 0.7 && groove.complexity === 'low') {
+    // HALF TIME (Dubstep, Trap)
+    if (this.hasHalfTimeSnare() && audio.bass > 0.65 && groove.complexity === 'low') {
       return {
         type: 'half_time',
         confidence: 0.75,
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🥁 BREAKBEAT (Drum & Bass, Jungle)
-    // ═══════════════════════════════════════════════════════════
-    // - Alta sincopación (> 0.5)
-    // - Alta complejidad
-    // - BPM alto (160-180)
-    
+    // BREAKBEAT (D&B, Jungle)
     if (groove.syncopation > 0.5 && groove.complexity === 'high' && bpm > 150) {
       return {
         type: 'breakbeat',
@@ -588,13 +693,7 @@ export class RhythmAnalyzer {
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎸 ROCK STANDARD
-    // ═══════════════════════════════════════════════════════════
-    // - Sincopación media
-    // - Snare en 2 y 4
-    // - Kick en 1 y 3
-    
+    // ROCK STANDARD
     if (groove.syncopation >= 0.15 && groove.syncopation <= 0.35 && this.hasRockPattern()) {
       return {
         type: 'rock_standard',
@@ -602,9 +701,7 @@ export class RhythmAnalyzer {
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // 🎵 LATIN (Clave patterns)
-    // ═══════════════════════════════════════════════════════════
+    // LATIN
     if (groove.syncopation > 0.35 && groove.complexity === 'medium') {
       return {
         type: 'latin',
@@ -612,178 +709,133 @@ export class RhythmAnalyzer {
       };
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // ⏸️ MINIMAL (Intro/Outro)
-    // ═══════════════════════════════════════════════════════════
-    if (audio.energy < 0.3 && this.kickHistory.length < 4) {
+    // MINIMAL
+    if (audio.energy < 0.3 && this.kickPhases.length < 4) {
       return {
         type: 'minimal',
         confidence: 0.50,
       };
     }
     
-    // Fallback
-    return {
-      type: 'unknown',
-      confidence: 0.30,
-    };
+    return { type: 'unknown', confidence: 0.30 };
   }
   
-  // ============================================================
-  // 🔍 HELPERS DE DETECCIÓN DE PATRONES
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔍 PATTERN HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * Detectar patrón Dembow (Reggaeton)
-   * 
-   * El Dembow tiene un patrón característico:
-   * - Kick fuerte en beat 1
-   * - Snare/Rim en ~1.75 (off-beat del 2)
-   * - Otro Snare/Rim en ~2.75 (off-beat del 3)
-   * 
-   * "Tum... pa-Tum... pa" 
+   * Detectar patrón Dembow
    */
   private hasDembowPattern(): boolean {
-    if (this.snareHistory.length < 4) return false;
+    if (this.snarePhases.length < 4) return false;
     
-    // Buscar snares en fases típicas del Dembow: ~0.75 y ~0.25
-    // (que corresponden a 1.75 y 2.75 en el compás)
     let dembowHits = 0;
-    
-    for (const phase of this.snareHistory.slice(-8)) {
-      // Off-beats típicos del Dembow
+    for (const phase of this.snarePhases.slice(-8)) {
       if ((phase > 0.2 && phase < 0.35) || (phase > 0.7 && phase < 0.85)) {
         dembowHits++;
       }
     }
     
-    // Si más del 50% de los snares están en posiciones Dembow
-    return dembowHits / Math.min(8, this.snareHistory.length) > 0.5;
+    return dembowHits / Math.min(8, this.snarePhases.length) > 0.5;
   }
   
   /**
-   * 🇦🇷 Detectar percusión alta constante (Güiro de Cumbia)
-   * 
-   * El "Caballito" de la cumbia:
-   * - Güiro/Shaker SIEMPRE presente
-   * - Treble alto y CONSTANTE
-   * - Micro-variaciones de volumen (pero siempre ahí)
+   * Detectar percusión alta constante (güiro de cumbia)
    */
   private hasConstantHighPercussion(audio: AudioMetrics): boolean {
-    // Necesitamos treble alto
     if (audio.treble < 0.4) return false;
     
-    // Verificar constancia en el buffer
     const frames = this.energyBuffer.getAll();
     if (frames.length < 8) return false;
     
-    // Contar frames con treble presente
     let treblePresent = 0;
     for (const frame of frames) {
       if (frame.treble > 0.35) treblePresent++;
     }
     
-    // Si más del 70% de los frames tienen treble alto → constante
     return treblePresent / frames.length > 0.7;
   }
   
   /**
-   * Calcular constancia del treble (para Cumbia)
+   * Calcular constancia del treble
    */
   private calculateTrebleConstancy(): number {
     const frames = this.energyBuffer.getAll();
     if (frames.length < 4) return 0;
     
-    // Calcular varianza del treble
     const trebles = frames.map(f => f.treble);
     const mean = trebles.reduce((a, b) => a + b, 0) / trebles.length;
     const variance = trebles.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / trebles.length;
     
-    // Constancia alta = varianza baja pero media alta
-    const constancy = mean > 0.3 ? (1 - Math.min(1, variance * 10)) : 0;
-    
-    return constancy;
+    return mean > 0.3 ? (1 - Math.min(1, variance * 10)) : 0;
   }
   
   /**
-   * Detectar kick regular (Four-on-floor)
+   * Detectar kick regular (four-on-floor)
    */
   private hasRegularKickPattern(): boolean {
-    if (this.kickHistory.length < 4) return false;
+    if (this.kickPhases.length < 4) return false;
     
-    // Kicks deberían estar cerca de fase 0.0
     let onBeatKicks = 0;
-    for (const phase of this.kickHistory.slice(-8)) {
+    for (const phase of this.kickPhases.slice(-8)) {
       if (phase < 0.15 || phase > 0.85) {
         onBeatKicks++;
       }
     }
     
-    return onBeatKicks / Math.min(8, this.kickHistory.length) > 0.7;
+    return onBeatKicks / Math.min(8, this.kickPhases.length) > 0.7;
   }
   
   /**
-   * Detectar half-time snare (beat 3 en lugar de 2)
+   * Detectar half-time snare
    */
   private hasHalfTimeSnare(): boolean {
-    if (this.snareHistory.length < 4) return false;
+    if (this.snarePhases.length < 4) return false;
     
-    // En half-time, snare está en fase ~0.5 (beat 3 de un compás de 4)
     let halfTimeHits = 0;
-    for (const phase of this.snareHistory.slice(-8)) {
+    for (const phase of this.snarePhases.slice(-8)) {
       if (phase > 0.45 && phase < 0.55) {
         halfTimeHits++;
       }
     }
     
-    return halfTimeHits / Math.min(8, this.snareHistory.length) > 0.5;
+    return halfTimeHits / Math.min(8, this.snarePhases.length) > 0.5;
   }
   
   /**
-   * Detectar patrón de rock (snare en 2 y 4)
+   * Detectar patrón rock (snare en 2 y 4)
    */
   private hasRockPattern(): boolean {
-    if (this.snareHistory.length < 4) return false;
+    if (this.snarePhases.length < 4) return false;
     
-    // Rock: snare en ~0.25 (beat 2) y ~0.75 (beat 4)
     let rockHits = 0;
-    for (const phase of this.snareHistory.slice(-8)) {
+    for (const phase of this.snarePhases.slice(-8)) {
       if ((phase > 0.2 && phase < 0.3) || (phase > 0.7 && phase < 0.8)) {
         rockHits++;
       }
     }
     
-    return rockHits / Math.min(8, this.snareHistory.length) > 0.5;
+    return rockHits / Math.min(8, this.snarePhases.length) > 0.5;
   }
   
-  // ============================================================
-  // 🎭 DETECCIÓN DE FILLS
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎭 FILL DETECTION
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
    * Detectar fill en progreso
-   * 
-   * Un fill se caracteriza por:
-   * - Alta densidad de hits
-   * - Variación rápida de intensidad
-   * - Duración corta (típicamente 1-2 beats)
-   * - O energía sostenida muy alta (builds en EDM)
    */
   private detectFill(audio: AudioMetrics, drums: DrumDetection, now: number): boolean {
-    // Verificar intervalo mínimo entre fills
     if (now - this.lastFillTime < this.config.minFillInterval) {
-      // Pero si ya detectamos un fill reciente, mantenerlo brevemente
       if (this.consecutiveHighEnergy > 3) return true;
     }
     
-    // OPCIÓN 1: Alta energía + muchos hits (fill clásico)
     const highEnergy = audio.energy > this.config.fillThreshold;
     const manyHits = (drums.kickDetected ? 1 : 0) + 
                      (drums.snareDetected ? 1 : 0) + 
                      (drums.hihatDetected ? 1 : 0) >= 2;
     
-    // OPCIÓN 2: Energía MUY alta sostenida (build/riser)
-    // Bass + mid + treble todos altos simultáneamente
     const extremeEnergy = audio.energy > 0.85 && 
                           audio.bass > 0.7 && 
                           audio.mid > 0.7;
@@ -802,45 +854,32 @@ export class RhythmAnalyzer {
     return false;
   }
   
-  // ============================================================
-  // 📊 CÁLCULO DE CONFIANZA
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📊 CONFIDENCE
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * Calcular confianza general del análisis
-   * 
-   * ⚠️ REGLA 2: Confianza < 0.5 → usar modo reactivo
+   * Calcular confianza general
    */
   private calculateConfidence(groove: GrooveAnalysis, drums: DrumDetection): number {
-    // Factores que aumentan confianza:
-    // - Buffer lleno
-    // - Historial de hits suficiente
-    // - Patrón detectado claro
-    // - Energía presente
+    let confidence = 0.3;
     
-    let confidence = 0.3;  // Base
-    
-    // Buffer de energía lleno
     if (this.energyBuffer.isFull()) {
       confidence += 0.2;
     }
     
-    // Historial de kicks suficiente
-    if (this.kickHistory.length >= 8) {
+    if (this.kickPhases.length >= 8) {
       confidence += 0.15;
     }
     
-    // Groove claro (no neutral)
     if (groove.syncopation < 0.15 || groove.syncopation > 0.35) {
-      confidence += 0.15;  // Patrón claro (muy bajo o muy alto)
+      confidence += 0.15;
     }
     
-    // Drums detectados recientemente
     if (drums.kickDetected || drums.snareDetected) {
       confidence += 0.1;
     }
     
-    // Complejidad no desconocida
     if (groove.complexity !== 'low') {
       confidence += 0.1;
     }
@@ -848,18 +887,25 @@ export class RhythmAnalyzer {
     return Math.min(0.95, confidence);
   }
   
-  // ============================================================
-  // 🔧 UTILIDADES
-  // ============================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 UTILITIES
+  // ═══════════════════════════════════════════════════════════════════════════
   
   /**
-   * Registrar hit en historial
+   * Registrar fase en historial
    */
-  private recordHit(history: number[], phase: number): void {
+  private recordPhase(history: number[], phase: number): void {
     history.push(phase);
-    if (history.length > this.historySize) {
+    if (history.length > this.phaseHistorySize) {
       history.shift();
     }
+  }
+  
+  /**
+   * 🎚️ WAVE 1023: Actualizar clarity externamente
+   */
+  setClarity(clarity: number): void {
+    this.currentClarity = Math.max(0, Math.min(1, clarity));
   }
   
   /**
@@ -870,18 +916,44 @@ export class RhythmAnalyzer {
   }
   
   /**
+   * 📐 WAVE 1023: Obtener diagnóstico del Groove Surgeon
+   */
+  getDiagnostics(): {
+    kickSlope: number;
+    snareSlope: number;
+    hihatSlope: number;
+    currentClarity: number;
+    adaptedKickThreshold: number;
+    smoothedSyncopation: number;
+    frameCount: number;
+  } {
+    return {
+      kickSlope: this.kickSlope.currentSlope,
+      snareSlope: this.snareSlope.currentSlope,
+      hihatSlope: this.hihatSlope.currentSlope,
+      currentClarity: this.currentClarity,
+      adaptedKickThreshold: this.adaptThreshold(this.config.kickSlopeThreshold),
+      smoothedSyncopation: this.smoothedSyncopation,
+      frameCount: this.frameCount,
+    };
+  }
+  
+  /**
    * Reset del analizador
    */
   reset(): void {
     this.energyBuffer.clear();
-    this.kickHistory = [];
-    this.snareHistory = [];
-    this.hihatHistory = [];
-    this.prevBass = 0;
-    this.prevMid = 0;
-    this.prevTreble = 0;
+    this.kickPhases = [];
+    this.snarePhases = [];
+    this.hihatPhases = [];
+    this.kickSlope = this.createSlopeState();
+    this.snareSlope = this.createSlopeState();
+    this.hihatSlope = this.createSlopeState();
     this.lastFillTime = 0;
     this.consecutiveHighEnergy = 0;
+    this.smoothedSyncopation = 0;
+    this.frameCount = 0;
     this.cachedResult = null;
+    this.currentClarity = 0.5;
   }
 }

@@ -49,6 +49,15 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
     'core_meltdown',     // ☢️ LA BESTIA
     'strobe_storm',      // ⚡ Tormenta compartida
   ],
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020: POP-ROCK LEGENDS - DIVINE ARSENAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  'pop-rock': [
+    'thunder_struck',    // ⚡ Stadium blinder - AC/DC moment
+    'feedback_storm',    // 😵 Caos visual - metal/harshness peak
+    'strobe_burst',      // 💥 Impacto puntual - drops menores
+    'liquid_solo',       // 🎸 Spotlight guitarra - solos épicos
+  ],
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

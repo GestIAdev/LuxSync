@@ -134,6 +134,15 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   // 🔮 WAVE 988: THE FINAL ARSENAL
   'fiber_optics': 20000,       // 20s base → Traveling colors ambient (long effect, needs space)
   'core_meltdown': 30000,      // 30s base → LA BESTIA es RARA (epic moment only)
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════════════════
+  'thunder_struck': 25000,     // 25s base → Stadium blinder, momentos épicos (no spam)
+  'liquid_solo': 30000,        // 30s base → Spotlight del guitarrista (solos son raros)
+  'amp_heat': 20000,           // 20s base → Válvulas calientes, más frecuente (ambiente)
+  'arena_sweep': 15000,        // 15s base → El pan y mantequilla, frecuente pero no spam
+  'feedback_storm': 35000,     // 35s base → Caos visual, muy raro (solo harshness alto)
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -490,6 +499,26 @@ export class ContextualEffectSelector {
       'solar_flare',        // Explosión solar
       'corazon_latino',     // El alma del arquitecto
     ],
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
+    // ═══════════════════════════════════════════════════════════════════════════
+    'pop-rock': [
+      // 🌊 CORE (80% del show - bread & butter)
+      'arena_sweep',        // Barrido de Wembley, vShape con inercia
+      'amp_heat',           // Válvulas calientes, intros/versos
+      
+      // 🎸 HIGH IMPACT (momentos especiales)
+      'liquid_solo',        // Spotlight del guitarrista, solos
+      'thunder_struck',     // Stadium blinder, drops
+      
+      // 😵 CHAOS (harshness reactive)
+      'feedback_storm',     // Caos visual, metal/distorsión
+      
+      // 🌐 UNIVERSAL FALLBACKS (compartidos)
+      'ghost_breath',       // Respiro suave (breakdowns)
+      'strobe_burst',       // Impacto puntual (drops menores)
+    ],
   }
   
   /**
@@ -558,6 +587,37 @@ export class ContextualEffectSelector {
       }
       if (zone === 'active') {
         zoneAdjusted.push('tropical_pulse', 'salsa_fire', 'clave_rhythm')
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎸 WAVE 1020: POP-ROCK - Zone Overrides
+    // Los efectos rock aparecen según intensidad energética
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (vibe === 'pop-rock') {
+      if (zone === 'valley') {
+        // 🔥 Válvulas calientes - intros, versos tranquilos
+        zoneAdjusted.push('amp_heat', 'ghost_breath')
+      }
+      if (zone === 'ambient') {
+        // 🌊 Arena sweep empieza, amp_heat sigue disponible
+        zoneAdjusted.push('amp_heat', 'arena_sweep')
+      }
+      if (zone === 'gentle') {
+        // 🌊 Arena sweep domina, preparando energía
+        zoneAdjusted.push('arena_sweep')
+      }
+      if (zone === 'active') {
+        // 🎸 Solos pueden entrar, arena sweep continúa
+        zoneAdjusted.push('arena_sweep', 'liquid_solo')
+      }
+      if (zone === 'intense') {
+        // ⚡ Thunder struck disponible, solos en su peak
+        zoneAdjusted.push('liquid_solo', 'thunder_struck')
+      }
+      if (zone === 'peak') {
+        // 😵 Todo el arsenal pesado: blinder + caos
+        zoneAdjusted.push('thunder_struck', 'feedback_storm', 'strobe_burst')
       }
     }
     

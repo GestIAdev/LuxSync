@@ -93,6 +93,15 @@ import { SeismicSnap } from './library/techno/SeismicSnap'
 import { FiberOptics } from './library/techno/FiberOptics'
 import { CoreMeltdown } from './library/techno/CoreMeltdown'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
+// ═══════════════════════════════════════════════════════════════════════════
+import { ThunderStruck } from './library/poprock/ThunderStruck'
+import { LiquidSolo } from './library/poprock/LiquidSolo'
+import { AmpHeat } from './library/poprock/AmpHeat'
+import { ArenaSweep } from './library/poprock/ArenaSweep'
+import { FeedbackStorm } from './library/poprock/FeedbackStorm'
+
 // �🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
 import type { VibeProfile, VibeId } from '../../types/VibeProfile'
@@ -171,6 +180,14 @@ const EFFECT_VIBE_RULES: Record<string, {
   // 🔮 WAVE 988: THE FINAL ARSENAL
   'fiber_optics': { isDynamic: false },    // 🌈 Ambient traveling colors - allowed in chill
   'core_meltdown': { requiresStrobe: true, isDynamic: true },  // ☢️ LA BESTIA - extreme strobe
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════════════════
+  'thunder_struck': { isDynamic: true },     // ⚡ Stadium blinder - drops de estadio
+  'liquid_solo': { isDynamic: true },        // 🎸 Guitarist spotlight - solos emotivos
+  'amp_heat': { isDynamic: false },          // 🔥 Ambient válvulas - intros/versos (allowed in chill)
+  'arena_sweep': { isDynamic: true },        // 🌊 Wembley sweep - bread & butter
+  'feedback_storm': { requiresStrobe: true, isDynamic: true },  // 😵 Caos visual - harshness reactive
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,6 +249,24 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   'gatling_raid': 'peak',
   'core_meltdown': 'peak',
   'industrial_strobe': 'peak',
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020: POP-ROCK LEGENDS - Zone Mapping
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 AMP_HEAT (valley): Válvulas calientes - intros/versos íntimos
+  'amp_heat': 'valley',
+  
+  // 🌊 ARENA_SWEEP (ambient→active): El pan y mantequilla - 80% del show
+  'arena_sweep': 'ambient',
+  
+  // 🎸 LIQUID_SOLO (active→intense): Spotlight del guitarrista - solos emotivos
+  'liquid_solo': 'active',
+  
+  // ⚡ THUNDER_STRUCK (intense→peak): Stadium blinder - drops de estribillo
+  'thunder_struck': 'intense',
+  
+  // 😵 FEEDBACK_STORM (peak): Caos visual - harshness reactive
+  'feedback_storm': 'peak',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -763,6 +798,25 @@ export class EffectManager extends EventEmitter {
     
     // ☢️ Core Meltdown - LA BESTIA extreme strobe (intense/peak)
     this.effectFactories.set('core_meltdown', () => new CoreMeltdown())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎸 WAVE 1020: POP-ROCK LEGENDS ARSENAL - LOS 5 MAGNÍFICOS
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // ⚡ Thunder Struck - Stadium blinder para drops de estribillo
+    this.effectFactories.set('thunder_struck', () => new ThunderStruck())
+    
+    // 🎸 Liquid Solo - Spotlight del guitarrista, MoverR rápido, MoverL estable
+    this.effectFactories.set('liquid_solo', () => new LiquidSolo())
+    
+    // 🔥 Amp Heat - Válvulas calientes respirando, intros/versos íntimos
+    this.effectFactories.set('amp_heat', () => new AmpHeat())
+    
+    // 🌊 Arena Sweep - El barrido de Wembley, vShape con inercia
+    this.effectFactories.set('arena_sweep', () => new ArenaSweep())
+    
+    // 😵 Feedback Storm - Caos visual, strobe random escalado por harshness
+    this.effectFactories.set('feedback_storm', () => new FeedbackStorm())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

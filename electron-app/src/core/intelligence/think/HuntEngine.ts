@@ -157,6 +157,24 @@ function createInitialState(): HuntState {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔮 WAVE 1026: ROSETTA STONE - Spectral Hint for Hunt Decisions
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Información espectral del God Ear FFT para decisiones de caza.
+ * Permite al cazador distinguir entre "metal bien producido" (EUPHORIA)
+ * y "ruido caótico" (STRESS).
+ */
+export interface SpectralHint {
+  /** Clarity: 0 = muddy/chaotic, 1 = crystal clear production */
+  clarity: number
+  /** Harshness: 0 = soft/warm, 1 = aggressive/harsh */
+  harshness: number
+  /** Texture derivada: clean | warm | harsh | noisy */
+  texture?: 'clean' | 'warm' | 'harsh' | 'noisy'
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // FUNCIONES PÚBLICAS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -166,6 +184,7 @@ function createInitialState(): HuntState {
  * @param pattern - Patrón musical actual
  * @param beauty - Análisis de belleza
  * @param consonance - Análisis de consonancia
+ * @param spectralHint - 🔮 WAVE 1026: Información espectral del God Ear FFT
  * @param config - Configuración opcional
  * @returns Decisión de caza
  */
@@ -173,14 +192,15 @@ export function processHunt(
   pattern: SeleneMusicalPattern,
   beauty: BeautyAnalysis,
   consonance: ConsonanceAnalysis,
+  spectralHint?: SpectralHint,
   config: Partial<HuntConfig> = {}
 ): HuntDecision {
   const cfg = { ...DEFAULT_CONFIG, ...config }
   
   state.framesInPhase++
   
-  // Calcular worthiness actual
-  const worthiness = calculateWorthiness(pattern, beauty, consonance)
+  // 🔮 WAVE 1026: Calcular worthiness con consciencia espectral
+  const worthiness = calculateWorthiness(pattern, beauty, consonance, spectralHint)
   updateWorthinessHistory(worthiness)
   
   // Decisión basada en fase actual
@@ -506,10 +526,24 @@ function createCandidate(worthiness: number, reason: string): HuntCandidate {
   }
 }
 
+/**
+ * 🔮 WAVE 1026: ROSETTA STONE - Spectral-Aware Worthiness
+ * 
+ * La fórmula ÉTICA para decidir si un momento vale la pena:
+ * 
+ * - High Energy + High Harshness + HIGH CLARITY = EUPHORIA (BOOST)
+ *   → Metal bien producido = poder trip
+ *   → Clarity actúa como CONTROL, no como suavidad
+ * 
+ * - High Harshness + LOW CLARITY = CHAOS (PENALTY)
+ *   → Ruido sucio sin definición = estrés real
+ *   → Glitch effects solo si texture === 'noisy' || 'harsh' && clarity < 0.4
+ */
 function calculateWorthiness(
   pattern: SeleneMusicalPattern,
   beauty: BeautyAnalysis,
-  consonance: ConsonanceAnalysis
+  consonance: ConsonanceAnalysis,
+  spectralHint?: SpectralHint
 ): number {
   // Combinar métricas para "worthiness" de caza
   
@@ -539,6 +573,42 @@ function calculateWorthiness(
   // Tendencia de belleza subiendo = muy interesante
   if (beauty.trend === 'rising') {
     bonus += 0.10
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1026: SPECTRAL CONSCIOUSNESS - The Rosetta Stone Formula
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  if (spectralHint) {
+    const { clarity, harshness, texture } = spectralHint
+    
+    // 🎸 EUPHORIA DETECTION: High Energy + High Harshness + HIGH CLARITY
+    // = Metal bien producido = PODER, no estrés
+    const isControlledPower = harshness > 0.5 && clarity > 0.65
+    if (isControlledPower && tensionScore > 0.6) {
+      // 🔥 POWER BONUS: El cerebro humano DISFRUTA esto
+      bonus += 0.12
+    }
+    
+    // 🌊 CLEAN & BEAUTIFUL: High clarity without harshness = premium pop/electronic
+    const isPremiumProduction = clarity > 0.7 && harshness < 0.3
+    if (isPremiumProduction) {
+      bonus += 0.08  // Subtle boost for hi-fi vibes
+    }
+    
+    // ⚠️ CHAOS PENALTY: High harshness + LOW clarity = muddy noise
+    // Esto SÍ es estresante - garage metal, feedback loop
+    const isChaotic = harshness > 0.6 && clarity < 0.4
+    if (isChaotic) {
+      bonus -= 0.15  // Penalizar - esto NO es disfrutable
+    }
+    
+    // 🎭 TEXTURE-BASED DECISIONS (para efectos glitch/noise más adelante)
+    // Solo permitir efectos "glitch" si la textura lo amerita Y hay control
+    if (texture === 'noisy' && clarity < 0.4) {
+      // Ruido real sin control - reducir worthiness para evitar overwhelm
+      bonus -= 0.10
+    }
   }
   
   // Combinar (ponderado)

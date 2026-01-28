@@ -91,10 +91,14 @@ export interface EngineAudioMetrics {
   harshness?: number        // 0-1 (ratio 2-5kHz vs total)
   spectralFlatness?: number // 0-1 (0=tonal, 1=noise)
   spectralCentroid?: number // Hz (brillo tonal)
+  // 🔮 WAVE 1026: ROSETTA STONE - Clarity from God Ear FFT
+  clarity?: number          // 0-1 (tonal definition vs noise floor)
   // 🎸 WAVE 1011: Bandas extendidas para RockStereoPhysics2
   subBass?: number          // 0-1 (20-60Hz deep kicks)
   lowMid?: number           // 0-1 (250-500Hz)
   highMid?: number          // 0-1 (2000-4000Hz presence)
+  // 🔮 WAVE 1026: ROSETTA STONE - Ultra Air band for lasers/scanners
+  ultraAir?: number         // 0-1 (16000-22000Hz shimmer)
   // 🎸 WAVE 1011: Detección de transientes
   kickDetected?: boolean
   snareDetected?: boolean
@@ -418,6 +422,7 @@ export class TitanEngine extends EventEmitter {
     
     // Actualizar sistema nervioso con datos de la trinidad + paleta + mods zodiacales
     // 🎸 WAVE 1011: Extended audio metrics con FFT para RockStereoPhysics2
+    // 🔮 WAVE 1026: ROSETTA STONE - clarity + ultraAir for full spectral awareness
     const nervousOutput = this.nervousSystem.updateFromTitan(
       {
         activeVibe: vibeProfile.id,
@@ -437,6 +442,10 @@ export class TitanEngine extends EventEmitter {
         harshness: audio.harshness,
         spectralFlatness: audio.spectralFlatness,
         spectralCentroid: audio.spectralCentroid,
+        
+        // 🔮 WAVE 1026: ROSETTA STONE - Clarity & UltraAir for full spectral integration
+        clarity: audio.clarity,       // Production quality for Hunt ethics
+        ultraAir: audio.ultraAir,     // 16-22kHz shimmer for lasers/scanners
         
         // 🎸 WAVE 1011: Bandas extendidas para 4-band physics
         subBass: audio.subBass,
@@ -541,6 +550,10 @@ export class TitanEngine extends EventEmitter {
       harshness: audio.harshness ?? 0,
       spectralFlatness: audio.spectralFlatness ?? 0,
       spectralCentroid: audio.spectralCentroid ?? 1000,
+      
+      // 🔮 WAVE 1026: ROSETTA STONE - God Ear Signal Integration
+      clarity: audio.clarity ?? 0.5,      // Default neutral si no disponible
+      ultraAir: audio.ultraAir ?? 0,      // Default silencio si no disponible
       
       // Contexto musical
       bpm: context.bpm,

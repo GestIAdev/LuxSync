@@ -110,6 +110,28 @@ export interface TitanStabilizedState {
   spectralCentroid: number
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1026: ROSETTA STONE - God Ear Signal Integration
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Clarity: Definición tonal vs ruido de fondo
+   * 0 = lodazal (muddy), 1 = cristalino (hi-fi mastering)
+   * 
+   * 💡 INSIGHT ÉTICO: High Energy + High Harshness + HIGH CLARITY = EUPHORIA
+   *    El cerebro humano DISFRUTA el heavy metal bien producido.
+   *    Metal desafinado en garage (low clarity) = estrés.
+   *    Metallica en estudio (high clarity) = power trip.
+   */
+  clarity: number
+  
+  /**
+   * Ultra Air: Energía en frecuencias muy altas (16-22kHz)
+   * Ideal para modular lasers y scanners (shimmer, sparkle)
+   * 0 = sordo, 1 = presencia de sizzle/air
+   */
+  ultraAir: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // CONTEXTO MUSICAL
   // ═══════════════════════════════════════════════════════════════════════
   

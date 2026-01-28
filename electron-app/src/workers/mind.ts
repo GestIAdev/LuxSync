@@ -32,7 +32,16 @@ import {
 } from './WorkerProtocol';
 
 // 🧠 WAVE 230: THE LOBOTOMY - MusicalContext para TITAN 2.0
-import { MusicalContext, createDefaultMusicalContext } from '../core/protocol/MusicalContext';
+import { 
+  MusicalContext, 
+  createDefaultMusicalContext,
+  // 🔬 WAVE 1026: Nuevos contextos
+  createDefaultSpectralContext,
+  createDefaultNarrativeContext,
+  deriveSpectralTexture,
+  type SpectralContext,
+  type NarrativeContext,
+} from '../core/protocol/MusicalContext';
 
 // Wave 8 Bridge imports - Solo tipos, no funciones de color
 import {
@@ -210,6 +219,16 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
     harmony.confidence * 0.30 +
     section.confidence * 0.25;
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔬 WAVE 1026: THE ROSETTA STONE - Poblar SpectralContext
+  // ═══════════════════════════════════════════════════════════════════════
+  const spectral: SpectralContext = buildSpectralContext(analysis);
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 1026: Poblar NarrativeContext (desde SectionTracker si disponible)
+  // ═══════════════════════════════════════════════════════════════════════
+  const narrative: NarrativeContext = buildNarrativeContext(section, analysis.energy);
+  
   return {
     key,
     mode,
@@ -230,8 +249,94 @@ function extractMusicalContext(analysis: ExtendedAudioAnalysis): MusicalContext 
       subGenre: genreName !== macro ? genreName.toLowerCase() : null,
       confidence: genre.confidence,
     },
+    // 🔬 WAVE 1026: Nuevos contextos
+    spectral,
+    narrative,
     confidence: combinedConfidence,
     timestamp: Date.now(),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 1026: SPECTRAL CONTEXT BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Construye SpectralContext desde el AudioAnalysis con datos del God Ear FFT
+ */
+function buildSpectralContext(analysis: ExtendedAudioAnalysis): SpectralContext {
+  // Obtener métricas espectrales del analysis (vienen de senses.ts / GodEarFFT)
+  // Usamos 'as any' porque estas propiedades existen en runtime pero
+  // el tipo AudioAnalysis del WorkerProtocol aún no las incluye todas
+  const extendedAnalysis = analysis as any;
+  
+  const clarity = extendedAnalysis.clarity ?? 0.5;
+  const flatness = extendedAnalysis.spectralFlatness ?? 0;
+  const centroid = extendedAnalysis.spectralCentroid ?? 440;
+  const harshness = extendedAnalysis.harshness ?? 0;
+  
+  // Derivar textura usando la lógica de WAVE 1026
+  const texture = deriveSpectralTexture(harshness, clarity, centroid);
+  
+  // Obtener las 7 bandas tácticas
+  const bands = {
+    subBass: extendedAnalysis.subBass ?? 0,
+    bass: analysis.bass ?? 0,
+    lowMid: extendedAnalysis.lowMid ?? 0,
+    mid: analysis.mid ?? 0,
+    highMid: extendedAnalysis.highMid ?? 0,
+    treble: analysis.treble ?? 0,
+    // 🆕 WAVE 1026: ultraAir - fallback a treble * 0.3 si no disponible
+    ultraAir: extendedAnalysis.ultraAir ?? (analysis.treble * 0.3),
+  };
+  
+  return {
+    clarity,
+    texture,
+    flatness,
+    centroid,
+    harshness,
+    bands,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎬 WAVE 1026: NARRATIVE CONTEXT BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Construye NarrativeContext desde SectionOutput
+ * 
+ * Nota: Los valores avanzados (buildupScore, relativeEnergy, consensus)
+ * vendrán del SectionTracker WAVE 1024 cuando se integre completamente.
+ * Por ahora usamos estimaciones basadas en section.type.
+ */
+function buildNarrativeContext(section: any, energy: number): NarrativeContext {
+  // Estimar buildupScore basado en tipo de sección
+  let buildupScore = 0;
+  if (section.type === 'buildup') {
+    buildupScore = 0.8;  // Alta probabilidad de drop inminente
+  } else if (section.type === 'verse' && energy > 0.5) {
+    buildupScore = 0.3;  // Posible transición
+  }
+  
+  // Por ahora relativeEnergy = energy (sin normalización de ventana)
+  // TODO: Integrar SectionTracker.calculateRelativeEnergy() cuando Trinity Bridge lo soporte
+  const relativeEnergy = energy;
+  
+  // Consenso: null por ahora hasta que SectionTracker lo proporcione
+  // TODO: Integrar SectionTracker.calculateConsensusVote()
+  const consensus = null;
+  
+  return {
+    buildupScore,
+    relativeEnergy,
+    consensus,
+    slidingWindow: {
+      localMin: 0,
+      localMax: 1,
+      sampleCount: 0,
+    },
   };
 }
 

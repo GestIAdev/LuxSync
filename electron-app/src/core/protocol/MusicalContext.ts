@@ -6,8 +6,22 @@
  * 
  * REGLA: El Cerebro NO decide colores ni DMX. Solo describe QUÉ SUENA.
  * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔬 WAVE 1026: THE ROSETTA STONE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Expansión del protocolo para transportar la carga útil del God Ear FFT 8K:
+ * - SpectralContext: clarity, texture, bands (7 tactical bands)
+ * - NarrativeContext: buildupScore, relativeEnergy, consensusVote (WAVE 1024)
+ * 
+ * CONSUMIDORES:
+ * - SeleneTitanConscious: Usa clarity para evaluación ética (no stress)
+ * - HuntEngine: Usa texture para criterios de caza (glitch effects)
+ * - SeleneLux: Usa ultraAir para lasers/scanners
+ * - EffectDreamSimulator: Usa texture para DNA de efectos
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
  * @layer CEREBRO → MOTOR
- * @version TITAN 2.0
+ * @version TITAN 2.0 → WAVE 1026
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,6 +187,158 @@ export interface EnergyContext {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 1026: SPECTRAL CONTEXT - THE ROSETTA STONE
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Textura del sonido detectada
+ * 
+ * Derivada de harshness + clarity:
+ * - clean: harshness < 0.3, clarity > 0.6 (piano, voz limpia)
+ * - warm: centroid < 300Hz (graves dominantes, bass music)
+ * - harsh: harshness > 0.6, clarity > 0.7 (metal controlado, distorsión intencional)
+ * - noisy: harshness > 0.6, clarity < 0.4 (ruido sucio, clipping, audio malo)
+ */
+export type SpectralTexture = 'clean' | 'warm' | 'harsh' | 'noisy'
+
+/**
+ * 🔬 SPECTRAL CONTEXT
+ * 
+ * Contexto espectral del God Ear FFT 8K.
+ * Transporta la información de frecuencias tácticas para decisiones avanzadas.
+ * 
+ * CONSUMIDORES:
+ * - HuntEngine: Usa texture para criterios de caza ('harsh' → glitch effects)
+ * - SeleneTitanConscious: Usa clarity para evaluación ética
+ * - SeleneLux: Usa bands.ultraAir para lasers/scanners
+ * - EffectDreamSimulator: Usa texture para DNA matching
+ */
+export interface SpectralContext {
+  // ═══════════════════════════════════════════════════════════════════════
+  // MÉTRICAS GLOBALES
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * Claridad de la señal (0-1)
+   * 
+   * CRÍTICO para SeleneTitanConscious:
+   * - High Energy + High Harshness + HIGH CLARITY = EUPHORIA (no stress)
+   * - High Energy + High Harshness + LOW CLARITY = STRESS (audio malo)
+   */
+  clarity: number
+  
+  /** Textura del sonido detectada */
+  texture: SpectralTexture
+  
+  /** 
+   * Planitud espectral (0-1)
+   * 0 = Señal tonal pura (nota musical)
+   * 1 = Ruido blanco puro
+   */
+  flatness: number
+  
+  /** 
+   * Centroide espectral (Hz)
+   * Indica el "centro de masa" de las frecuencias.
+   * Valores bajos = sonido oscuro/cálido
+   * Valores altos = sonido brillante/agudo
+   */
+  centroid: number
+  
+  /**
+   * Harshness / Aspereza (0-1)
+   * Ratio de energía en 2-5kHz vs total.
+   * Alto = sonido agresivo/metálico
+   */
+  harshness: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 7 BANDAS TÁCTICAS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Acceso directo a las 7 bandas de frecuencia tácticas.
+   * Cada banda normalizada 0-1.
+   */
+  bands: {
+    /** 20-60Hz - Kicks profundos, sub graves */
+    subBass: number
+    
+    /** 60-250Hz - Bass, bajo eléctrico */
+    bass: number
+    
+    /** 250-500Hz - Cuerpo, calidez */
+    lowMid: number
+    
+    /** 500-2000Hz - Voz, instrumentos principales */
+    mid: number
+    
+    /** 2000-4000Hz - Presencia, claridad */
+    highMid: number
+    
+    /** 4000-8000Hz - Brillo, platillos */
+    treble: number
+    
+    /** 
+     * 8000-20000Hz - Aire, espacio
+     * 🆕 WAVE 1026: Para drivers de Laser/Scanner (aunque no tengamos fixtures aún)
+     */
+    ultraAir: number
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎬 WAVE 1024/1026: NARRATIVE CONTEXT - THE STORY ARC
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎬 NARRATIVE CONTEXT
+ * 
+ * Contexto narrativo del SectionTracker WAVE 1024.
+ * Transporta la información de la "historia" de la canción.
+ * 
+ * Permite a los consumidores entender:
+ * - ¿Estamos en un buildup espectral?
+ * - ¿Cuál es la energía relativa al track (no absoluta)?
+ * - ¿Hay consenso entre múltiples motores?
+ */
+export interface NarrativeContext {
+  /** 
+   * Score de buildup espectral (0-1)
+   * Detectado por tendencias de rolloff↑, flatness↑, subBass↓
+   * > 0.6 = Buildup inminente
+   */
+  buildupScore: number
+  
+  /**
+   * Energía relativa al track (0-1)
+   * Normalizada al min/max de los últimos 30 segundos.
+   * > 0.8 = Cerca del máximo local (probable DROP)
+   * < 0.25 = Cerca del mínimo local (probable BREAKDOWN)
+   */
+  relativeEnergy: number
+  
+  /**
+   * Consenso entre motores
+   * null = No hay consenso claro
+   * object = Múltiples motores coinciden en la sección
+   */
+  consensus: {
+    section: SectionType
+    weight: number
+  } | null
+  
+  /**
+   * Diagnósticos del Sliding Window (opcional, para debugging)
+   */
+  slidingWindow?: {
+    localMin: number
+    localMax: number
+    sampleCount: number
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // INTERFAZ PRINCIPAL: MUSICAL CONTEXT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -261,6 +427,40 @@ export interface MusicalContext {
   genre: GenreContext
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔬 WAVE 1026: SPECTRAL CONTEXT - THE ROSETTA STONE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Contexto espectral del God Ear FFT 8K.
+   * 
+   * OPCIONAL para compatibilidad retroactiva.
+   * Los módulos que no lo provean obtendrán createDefaultSpectralContext()
+   * 
+   * CONSUMIDORES:
+   * - HuntEngine: texture para criterios de caza
+   * - SeleneTitanConscious: clarity para evaluación ética
+   * - SeleneLux: bands.ultraAir para lasers/scanners
+   */
+  spectral?: SpectralContext
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎬 WAVE 1024/1026: NARRATIVE CONTEXT - THE STORY ARC
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Contexto narrativo del SectionTracker.
+   * 
+   * OPCIONAL para compatibilidad retroactiva.
+   * Los módulos que no lo provean obtendrán createDefaultNarrativeContext()
+   * 
+   * Permite decisiones basadas en la "historia" del track:
+   * - buildupScore: ¿Viene un DROP?
+   * - relativeEnergy: ¿Energía alta para ESTE track?
+   * - consensus: ¿Múltiples motores coinciden?
+   */
+  narrative?: NarrativeContext
+
+  // ═══════════════════════════════════════════════════════════════════════
   // META
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -294,6 +494,77 @@ export function createDefaultEnergyContext(): EnergyContext {
 }
 
 /**
+ * 🔬 WAVE 1026: Crea un SpectralContext por defecto (silencio/clean)
+ */
+export function createDefaultSpectralContext(): SpectralContext {
+  return {
+    clarity: 0.5,
+    texture: 'clean',
+    flatness: 0,
+    centroid: 440,  // A4 - punto neutral
+    harshness: 0,
+    bands: {
+      subBass: 0,
+      bass: 0,
+      lowMid: 0,
+      mid: 0,
+      highMid: 0,
+      treble: 0,
+      ultraAir: 0,
+    },
+  }
+}
+
+/**
+ * 🎬 WAVE 1026: Crea un NarrativeContext por defecto (sin historia)
+ */
+export function createDefaultNarrativeContext(): NarrativeContext {
+  return {
+    buildupScore: 0,
+    relativeEnergy: 0.5,  // Medio del rango
+    consensus: null,
+    slidingWindow: {
+      localMin: 0,
+      localMax: 1,
+      sampleCount: 0,
+    },
+  }
+}
+
+/**
+ * 🔬 WAVE 1026: Deriva la textura espectral desde harshness, clarity y centroid
+ * 
+ * REGLAS:
+ * - clean: harshness < 0.3, clarity > 0.6 (piano, voz limpia)
+ * - warm: centroid < 300Hz (graves dominantes, bass music)
+ * - harsh: harshness > 0.6, clarity > 0.7 (metal controlado, distorsión intencional)
+ * - noisy: harshness > 0.6, clarity < 0.4 (ruido sucio, clipping, audio malo)
+ */
+export function deriveSpectralTexture(
+  harshness: number,
+  clarity: number,
+  centroid: number
+): SpectralTexture {
+  // Prioridad 1: ¿Es cálido? (frecuencias bajas dominantes)
+  if (centroid < 300) {
+    return 'warm'
+  }
+  
+  // Prioridad 2: ¿Es ruidoso? (harshness alta + clarity baja = basura)
+  if (harshness > 0.6 && clarity < 0.4) {
+    return 'noisy'
+  }
+  
+  // Prioridad 3: ¿Es áspero pero controlado? (metal, rock pesado)
+  if (harshness > 0.6 && clarity > 0.7) {
+    return 'harsh'
+  }
+  
+  // Default: limpio
+  return 'clean'
+}
+
+/**
  * Crea un MusicalContext por defecto (silencio/unknown)
  */
 export function createDefaultMusicalContext(): MusicalContext {
@@ -318,6 +589,9 @@ export function createDefaultMusicalContext(): MusicalContext {
       subGenre: null,
       confidence: 0,
     },
+    // 🔬 WAVE 1026: Nuevos contextos
+    spectral: createDefaultSpectralContext(),
+    narrative: createDefaultNarrativeContext(),
     confidence: 0,
     timestamp: Date.now(),
   }

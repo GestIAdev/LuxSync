@@ -68,6 +68,7 @@ export interface RGB {
 /**
  * Métricas de audio normalizadas que recibimos de TitanEngine
  * 🎸 WAVE 1011: Extended con métricas espectrales para RockStereoPhysics2
+ * 🔮 WAVE 1026: ROSETTA STONE - ultraAir for lasers/scanners
  */
 export interface SeleneLuxAudioMetrics {
   normalizedBass: number;     // 0-1
@@ -83,10 +84,13 @@ export interface SeleneLuxAudioMetrics {
   spectralFlatness?: number;  // 0-1 (0=tonal, 1=noise)
   spectralCentroid?: number;  // Hz (brillo tonal)
   
-  // � WAVE 1018: Clarity for PROG ROCK detection
+  // 🔮 WAVE 1018+1026: Clarity for production quality detection
   clarity?: number;           // 0-1 (0=ruidoso, 1=limpio)
   
-  // �🎸 WAVE 1011: Detección de transientes
+  // 🔮 WAVE 1026: ROSETTA STONE - Ultra Air band for lasers/scanners
+  ultraAir?: number;          // 0-1 (16-22kHz shimmer/sparkle)
+  
+  // 🎸 WAVE 1011: Detección de transientes
   kickDetected?: boolean;
   snareDetected?: boolean;
   hihatDetected?: boolean;

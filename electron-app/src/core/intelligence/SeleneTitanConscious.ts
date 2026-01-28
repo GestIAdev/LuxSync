@@ -95,6 +95,7 @@ import {
   resetHuntEngine,
   getHuntState,
   type HuntDecision,
+  type SpectralHint,  // 🔮 WAVE 1026: ROSETTA STONE
 } from './think/HuntEngine'
 
 import {
@@ -458,6 +459,35 @@ export class SeleneTitanConscious extends EventEmitter {
   private currentBeauty: BeautyAnalysis | null = null
   private currentConsonance: ConsonanceAnalysis | null = null
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1026: ROSETTA STONE - Spectral Texture Derivation
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Deriva la textura espectral desde el estado de TitanEngine
+   * Replica la lógica de mind.ts para consistencia
+   * 
+   * @param state - Estado estabilizado de Titan
+   * @returns Textura derivada: clean | warm | harsh | noisy
+   */
+  private deriveTextureFromState(
+    state: TitanStabilizedState
+  ): 'clean' | 'warm' | 'harsh' | 'noisy' {
+    const { harshness, clarity, spectralCentroid } = state
+    
+    // 🎸 Metal controlado: Alta agresión CON claridad = PODER, no ruido
+    if (harshness > 0.6 && clarity > 0.7) return 'harsh'
+    
+    // ⚠️ Ruido sucio: Alta agresión SIN claridad = caos estresante  
+    if (harshness > 0.6 && clarity < 0.4) return 'noisy'
+    
+    // 🌙 Warm: Centroide bajo = sonido oscuro/profundo
+    if (spectralCentroid < 300) return 'warm'
+    
+    // ✨ Default: Clean production
+    return 'clean'
+  }
+  
   /**
    * 👁️ Percibir el estado actual como patrón musical
    * AHORA USA LOS SENSORES REALES DE PHASE 2
@@ -527,8 +557,15 @@ export class SeleneTitanConscious extends EventEmitter {
       timestamp: Date.now()
     }
     
-    // 2. HUNT ENGINE: Procesar FSM del depredador
-    const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis)
+    // 🔮 WAVE 1026: ROSETTA STONE - Build SpectralHint from TitanState
+    const spectralHint = {
+      clarity: state.clarity,
+      harshness: state.harshness,
+      texture: this.deriveTextureFromState(state),
+    }
+    
+    // 2. HUNT ENGINE: Procesar FSM del depredador (🔮 con SpectralHint)
+    const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis, spectralHint)
     
     // 3. PREDICTION ENGINE: Anticipar próximos eventos
     const prediction = predict(pattern)

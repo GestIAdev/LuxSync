@@ -130,20 +130,20 @@ export interface RockPhysicsResult {
  * └─────────────┴──────────────────────────────────────────────────────┘
  */
 const ROCK_UNIFIED_CONFIG = {
-  // 🎸 Ganancias base por zona - WAVE 1017.2: Fine-tuned para AC/DC
+  // 🎸 Ganancias base por zona - WAVE 1019: FINAL TUNING (Metallica/Red Hot perfecto)
   gains: {
-    frontPar: 2.6,      // SUBIDO 2.4→2.6 - compensar floor alto de SubBass
+    frontPar: 2.6,      // OK - compensar floor alto de SubBass
     backPar: 2.0,       // OK - Mid (voces) tiene buena presencia
-    moverLeft: 1.5,     // OK - LowMid+HighMid = guitarras completas
-    moverRight: 2.0,    // SUBIDO 1.8→2.0 - compensar voice rejection
+    moverLeft: 1.8,     // SUBIDO 1.5→1.8 - VITAMINAS para riffs (Metallica/Red Hot)
+    moverRight: 1.8,    // BAJADO 2.0→1.8 - un pelín menos agresivo
   },
   
-  // 🚪 Gates - WAVE 1017.2: Front QUIRÚRGICAMENTE SELECTIVO
+  // 🚪 Gates - WAVE 1019: FINAL TUNING
   gates: {
-    frontPar: 0.28,     // SUBIDO 0.22→0.28 - solo kicks SÍSMICOS reales
+    frontPar: 0.28,     // OK - solo kicks SÍSMICOS reales
     backPar: 0.05,      // OK - voces sensibles (Brian Johnson territory)
-    moverLeft: 0.12,    // OK - guitarras con cuerpo
-    moverRight: 0.12,   // SUBIDO 0.08→0.12 - filtrar ruido de voz leak
+    moverLeft: 0.10,    // BAJADO 0.12→0.10 - más reactivo a riffs
+    moverRight: 0.12,   // OK - filtrar ruido residual
   },
   
   // ⚡ Decay speeds - WAVE 1017.1: Ajustados para cada rol

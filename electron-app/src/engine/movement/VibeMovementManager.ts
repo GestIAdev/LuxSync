@@ -155,9 +155,10 @@ const VIBE_CONFIG: Record<string, VibeConfig> = {
   },
   
   // 🍸 CHILL: Fluido, ambiente, sutil
+  // 🌊 WAVE 1032: Incrementada frecuencia y amplitud para visibilidad
   'chill-lounge': {
-    amplitudeScale: 0.35,     // MUY sutil
-    baseFrequency: 0.05,      // Ultra lento
+    amplitudeScale: 0.55,     // Más visible (era 0.35)
+    baseFrequency: 0.12,      // Más rápido (era 0.05 = 20s ciclo → ahora 8.3s ciclo)
     patterns: ['ocean', 'drift', 'nebula'],
     homeOnSilence: true,
   },
@@ -496,11 +497,11 @@ const PATTERNS: Record<string, PatternFunction> = {
   
   /**
    * DRIFT: Deriva browniana suave
-   * 🔧 WAVE 350.9: SIMPLIFICADO - Un solo seno como ocean (múltiples se cancelaban)
+   * 🌊 WAVE 1032: Amplitud aumentada + multi-frecuencia para sensación orgánica
    */
   drift: (t, phase, audio) => ({
-    x: Math.sin(phase * 0.7) * 0.5,        // Deriva horizontal visible
-    y: Math.cos(phase * 0.6) * 0.4,        // Deriva vertical suave
+    x: Math.sin(phase * 0.7) * 0.6 + Math.sin(phase * 1.9) * 0.15,  // Deriva horizontal + micro-variación
+    y: Math.cos(phase * 0.6) * 0.5 + Math.cos(phase * 2.3) * 0.12,  // Deriva vertical + micro-variación
   }),
   
   /**

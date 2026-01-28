@@ -294,6 +294,8 @@ class SpectrumAnalyzer {
     // 🤖 WAVE 50.1: Texture-based detection
     harshness: number;
     spectralFlatness: number;
+    // 🎭 WAVE 1018: Clarity for PROG ROCK detection
+    clarity: number;
   } {
     // � Ejecutar GOD EAR FFT
     const godEarResult = this.godEar.analyze(buffer);
@@ -345,6 +347,9 @@ class SpectrumAnalyzer {
       // 🤖 Texture metrics - GOD EAR native
       harshness: godEarResult.bands.highMid, // Proxy para harshness
       spectralFlatness: godEarResult.spectral.flatness,
+      
+      // 🎭 WAVE 1018: Clarity para PROG ROCK detection
+      clarity: godEarResult.spectral.clarity,
     };
   }
   

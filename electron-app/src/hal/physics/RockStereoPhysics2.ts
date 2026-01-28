@@ -3,39 +3,31 @@
  * 🎸 ROCK STEREO PHYSICS 2.0 - UNIFIED ARCHITECTURE
  * ============================================================================
  * 
- * WAVE 1017.2 "BRIAN JOHNSON VOICE FILTER" - THUNDERSTRUCK CALIBRATION
+ * WAVE 1018 "PROG ROCK DETECTOR" - PINK FLOYD EDITION
  * 
- * FILOSOFÍA: El rock es rock. No hay METAL, no hay INDIE, no hay PROG.
- * Pink Floyd es Rock. Metallica es Rock. Arctic Monkeys es Rock.
- * AC/DC es ROCK PURO.
+ * FILOSOFÍA: El rock es rock. NO cambiamos de modo cada 10 segundos.
+ * Una canción de Metallica ES Metallica. Una de Pink Floyd ES Floyd.
  * 
- * La diferencia NO está en cambiar de modo/config, sino en cómo las
- * métricas espectrales MODULAN LINEALMENTE los parámetros base.
+ * NUEVA ARQUITECTURA:
+ * - Detector de subgénero CON MEMORIA HISTÓRICA (30 segundos)
+ * - Hysteresis: 70% threshold para cambiar de subgénero
+ * - Una vez detectado, SE MANTIENE hasta que la música REALMENTE cambia
  * 
- * 🩻 WAVE 1017.2 FINE TUNING (POST-THUNDERSTRUCK TEST):
- * ═══════════════════════════════════════════════════════
- * - SubBass floor 0.42→0.50 (eliminar bajo de Cliff Williams)
- * - Front gate 0.22→0.28 (solo kicks sísmicos reales)
- * - Voice Leak Filter mejorado (3-stage: ratio + absolute + graduated)
- * - MoverRight gate 0.08→0.12 (filtrar ruido residual)
+ * 🎭 SUBGÉNEROS DETECTABLES:
+ * ═══════════════════════════
  * 
- * 🩻 GOD EAR ZONE REDISTRIBUTION:
- * ═══════════════════════════════
- * ┌─────────────┬──────────────────────────────────────────────────────┐
- * │ Front Par   │ SubBass PURO (20-80Hz) - KICK DRUM                   │
- * ├─────────────┼──────────────────────────────────────────────────────┤
- * │ Back Par    │ Mid PURO (500-2000Hz) - VOCES + MELODÍA              │
- * ├─────────────┼──────────────────────────────────────────────────────┤
- * │ Mover Left  │ LowMid + HighMid (80-2500Hz) - GUITARRAS + BAJO      │
- * ├─────────────┼──────────────────────────────────────────────────────┤
- * │ Mover Right │ Presence (2.5k-8kHz) - CYMBALS + BRILLO              │
- * └─────────────┴──────────────────────────────────────────────────────┘
+ * 1. PROG ROCK (Pink Floyd, Yes, Genesis, Rush)
+ *    - Centroid: 500-1500Hz (teclados dominantes)
+ *    - Flatness: <0.05 (atmosférico/tonal)
+ *    - Clarity: >0.95 (mezcla limpia)
+ *    - Treble: <0.15 (guitarra enterrada)
+ *    → MoverRight DUAL-BAND: Presence OR HighMid (detecta solos enterrados)
  * 
- * 4 BANDAS REALES (Hz):
- * - Sub-Bass: 20-80Hz (kick drum, floor tom)
- * - Low-Mid: 80-400Hz (bass guitar, snare body)
- * - High-Mid: 400-2500Hz (guitar crunch, vocals)
- * - Presence: 2500-8000Hz (cymbal attack, guitar harmonics)
+ * 2. HARD ROCK (AC/DC, Metallica, System of a Down, Red Hot)
+ *    - Centroid: 1000-3000Hz (guitarras al frente)
+ *    - Harshness: >0.20 (distorsión)
+ *    - Clarity: 0.7-0.95 (mezcla agresiva)
+ *    → Configuración estándar (WAVE 1017.2)
  * 
  * ============================================================================
  */
@@ -43,6 +35,15 @@
 // ===========================================================================
 // TYPES - INPUT/OUTPUT INTERFACES
 // ===========================================================================
+
+// 🎭 WAVE 1018: SUBGÉNERO DE ROCK CON MEMORIA HISTÓRICA
+export type RockSubgenre = 'HARD_ROCK' | 'PROG_ROCK';
+
+interface SubgenreDetectionSample {
+  subgenre: RockSubgenre;
+  confidence: number;  // 0-1
+  timestamp: number;   // frameCount
+}
 
 export interface RockPhysicsInput {
   // Bandas de audio normalizadas (0-1)
@@ -59,6 +60,9 @@ export interface RockPhysicsInput {
   harshness?: number;          // 0-1, cuán "sucio" es el sonido
   flatness?: number;           // 0-1, cuán "plano" vs tonal
   spectralCentroidHz?: number; // Centro espectral en Hz
+  
+  // 🩻 WAVE 1018: Nuevas métricas de GOD EAR para detección
+  clarity?: number;            // 0-1, de GOD EAR telemetry
   
   // Contexto
   bpm: number;
@@ -85,6 +89,9 @@ export interface RockPhysicsResult {
   
   // Meta
   physicsApplied: 'rock';
+  
+  // 🎭 WAVE 1018: Subgénero detectado
+  detectedSubgenre?: RockSubgenre;
   
   // Debug
   modulators?: {
@@ -189,9 +196,18 @@ export class RockStereoPhysics2 {
   // Frame counter para debug
   private frameCount = 0;
   
+  // 🎭 WAVE 1018: SUBGENRE DETECTOR CON MEMORIA HISTÓRICA
+  private detectionHistory: SubgenreDetectionSample[] = [];
+  private currentSubgenre: RockSubgenre = 'HARD_ROCK';  // Default
+  private readonly HISTORY_WINDOW = 1800;  // 30 segundos @ 60fps
+  private readonly CHANGE_THRESHOLD = 0.70; // 70% de samples deben coincidir para cambiar
+  private lastSubgenreChangeFrame = 0;
+  private readonly MIN_FRAMES_BETWEEN_CHANGES = 600;  // Mínimo 10 segundos entre cambios
+  
   constructor() {
-    console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1017.1 GOD EAR)');
+    console.log('[RockStereoPhysics2] 🎸 UNIFIED ARCHITECTURE initialized (WAVE 1018 PROG DETECTOR)');
     console.log('[RockStereoPhysics2] 🩻 Zones: Front=Kick | Back=Voces | ML=Guitarras | MR=Cymbals');
+    console.log('[RockStereoPhysics2] 🎭 Subgenre Detection: HARD_ROCK (default) | PROG_ROCK (auto-detect)');
   }
   
   // ==========================================================================
@@ -227,17 +243,21 @@ export class RockStereoPhysics2 {
     const harshness = input.harshness ?? 0.35;
     const flatness = input.flatness ?? 0.40;
     const centroidHz = input.spectralCentroidHz ?? 2000;
+    const clarity = input.clarity ?? 0.85;
+    
+    // 🎭 WAVE 1018: DETECCIÓN DE SUBGÉNERO CON MEMORIA HISTÓRICA
+    this.detectAndUpdateSubgenre(centroidHz, flatness, clarity, harshness, input.treble);
     
     // 3. Calcular moduladores lineales
     const hMod = this.calculateHarshnessModulator(harshness);
     const fMod = this.calculateFlatnessModulator(flatness);
     const cMod = this.calculateCentroidModulator(centroidHz);
     
-    // 4. Procesar cada zona
+    // 4. Procesar cada zona (con lógica específica de subgénero)
     this.processFrontPar(bands, cMod);
     this.processBackPar(bands, hMod, cMod);
     this.processMoverLeft(bands, hMod, fMod, cMod);
-    this.processMoverRight(bands, hMod, fMod, cMod);
+    this.processMoverRight(bands, hMod, fMod, cMod, centroidHz);  // 🎭 Ahora recibe centroid
     
     // 🎯 WAVE 1015.2: STEREO DIFFERENTIAL GATING
     // Si L y R están muy cerca (< 20% diferencia), forzar al más bajo a apagarse
@@ -268,6 +288,9 @@ export class RockStereoPhysics2 {
       moverPositionR: this.moverRightPosition,
       
       physicsApplied: 'rock',
+      
+      // 🎭 WAVE 1018: Subgénero detectado
+      detectedSubgenre: this.currentSubgenre,
       
       modulators: {
         harshness: hMod,
@@ -370,6 +393,110 @@ export class RockStereoPhysics2 {
     
     // Centroid alto = decay más bajo (más rápido)
     return 1.0 - (normalized * decayScale);
+  }
+  
+  // ==========================================================================
+  // 🎭 WAVE 1018: SUBGENRE DETECTOR CON MEMORIA HISTÓRICA
+  // ==========================================================================
+  
+  /**
+   * Detecta el subgénero de rock basándose en métricas espectrales
+   * y MANTIENE la detección usando una ventana histórica de 30 segundos.
+   * 
+   * NO cambia cada 10 segundos como loco. Una vez detectado "PROG_ROCK",
+   * se mantiene ahí hasta que >70% de las muestras recientes indiquen otra cosa.
+   */
+  private detectAndUpdateSubgenre(
+    centroidHz: number,
+    flatness: number,
+    clarity: number,
+    harshness: number,
+    treble: number
+  ): void {
+    // 🎯 PROG ROCK SIGNATURE (Pink Floyd, Yes, Genesis, Rush)
+    const progSignals = {
+      lowCentroid: centroidHz >= 500 && centroidHz <= 1500,     // Teclados dominantes
+      veryTonal: flatness < 0.05,                               // Atmosférico/limpio
+      highClarity: clarity > 0.95,                              // Mezcla pristina
+      lowTreble: treble < 0.15,                                 // Guitarra enterrada
+    };
+    
+    const progScore = Object.values(progSignals).filter(Boolean).length;
+    
+    // 🎯 HARD ROCK SIGNATURE (AC/DC, Metallica, Red Hot, System of a Down)
+    const hardSignals = {
+      midHighCentroid: centroidHz >= 1000 && centroidHz <= 3000, // Guitarras al frente
+      harshness: harshness > 0.20,                                // Distorsión
+      mediumClarity: clarity >= 0.70 && clarity <= 0.95,          // Mezcla agresiva
+    };
+    
+    const hardScore = Object.values(hardSignals).filter(Boolean).length;
+    
+    // Determinar subgénero con CONFIANZA
+    let detectedSubgenre: RockSubgenre;
+    let confidence: number;
+    
+    if (progScore >= 3) {
+      // 3+ de 4 señales PROG → PROG_ROCK
+      detectedSubgenre = 'PROG_ROCK';
+      confidence = progScore / 4;
+    } else if (hardScore >= 2) {
+      // 2+ de 3 señales HARD → HARD_ROCK
+      detectedSubgenre = 'HARD_ROCK';
+      confidence = hardScore / 3;
+    } else {
+      // Default: HARD_ROCK (bajo confianza)
+      detectedSubgenre = 'HARD_ROCK';
+      confidence = 0.4;
+    }
+    
+    // Añadir sample a historial
+    this.detectionHistory.push({
+      subgenre: detectedSubgenre,
+      confidence,
+      timestamp: this.frameCount,
+    });
+    
+    // Mantener solo los últimos 30 segundos (1800 frames @ 60fps)
+    if (this.detectionHistory.length > this.HISTORY_WINDOW) {
+      this.detectionHistory.shift();
+    }
+    
+    // 🧠 HYSTERESIS: Solo cambiar si >70% de samples recientes coinciden
+    // Y han pasado al menos 10 segundos desde el último cambio
+    if (this.frameCount - this.lastSubgenreChangeFrame >= this.MIN_FRAMES_BETWEEN_CHANGES) {
+      const recentSamples = this.detectionHistory.slice(-300);  // Últimos 5 segundos
+      
+      if (recentSamples.length >= 100) {  // Al menos 100 samples (~2 segundos)
+        const progCount = recentSamples.filter(s => s.subgenre === 'PROG_ROCK').length;
+        const hardCount = recentSamples.filter(s => s.subgenre === 'HARD_ROCK').length;
+        
+        const progRatio = progCount / recentSamples.length;
+        const hardRatio = hardCount / recentSamples.length;
+        
+        // Cambiar SOLO si hay consenso fuerte (>70%)
+        if (progRatio > this.CHANGE_THRESHOLD && this.currentSubgenre !== 'PROG_ROCK') {
+          this.currentSubgenre = 'PROG_ROCK';
+          this.lastSubgenreChangeFrame = this.frameCount;
+          console.log(`🎭 [RockPhysics2] SUBGENRE CHANGE → PROG_ROCK (confidence: ${(progRatio*100).toFixed(1)}%)`);
+          console.log(`   🩻 Signature: C=${centroidHz.toFixed(0)}Hz F=${flatness.toFixed(3)} Clarity=${clarity.toFixed(3)} T=${treble.toFixed(3)}`);
+        } else if (hardRatio > this.CHANGE_THRESHOLD && this.currentSubgenre !== 'HARD_ROCK') {
+          this.currentSubgenre = 'HARD_ROCK';
+          this.lastSubgenreChangeFrame = this.frameCount;
+          console.log(`🎭 [RockPhysics2] SUBGENRE CHANGE → HARD_ROCK (confidence: ${(hardRatio*100).toFixed(1)}%)`);
+        }
+      }
+    }
+    
+    // Debug cada 5 segundos
+    if (this.frameCount % 300 === 0 && this.detectionHistory.length > 0) {
+      const recent = this.detectionHistory.slice(-300);
+      const progPct = (recent.filter(s => s.subgenre === 'PROG_ROCK').length / recent.length * 100).toFixed(1);
+      console.log(
+        `🎭 [Subgenre Monitor] Current=${this.currentSubgenre} | ` +
+        `Last 5s: PROG=${progPct}% | C=${centroidHz.toFixed(0)}Hz F=${flatness.toFixed(2)}`
+      );
+    }
   }
   
   // ==========================================================================
@@ -505,26 +632,49 @@ export class RockStereoPhysics2 {
   }
   
   /**
-   * MOVER RIGHT: Presence + Treble - WAVE 1017.2 BRIAN JOHNSON FILTER
-   * ✨ CYMBALS + BRILLO (2.5k-16kHz) - SIN VOCES
+   * MOVER RIGHT - WAVE 1018: DUAL-BAND ADAPTIVE SYSTEM
    * 
-   * PROBLEMA: Los gritos de Brian Johnson ("THUNDER!") tienen energía
-   * en HighMid (3-5kHz) Y Presence (5-8kHz) simultáneamente.
-   * Cymbals puros tienen ratio Presence/HighMid cercano a 1:1.
-   * Voces humanas (incluso gritos) tienen HighMid dominante.
+   * HARD ROCK MODE (AC/DC, Metallica):
+   *   ✨ Presence (2.5k-8kHz) = CYMBALS PURO
+   *   🔇 Voice Rejection Filter (3-stage)
    * 
-   * SOLUCIÓN: Multi-stage voice rejection
+   * PROG ROCK MODE (Pink Floyd, Yes):
+   *   🎸 DUAL-BAND: Presence OR HighMid (detecta solos enterrados)
+   *   📡 Guitar Solo Detection: HighMid>0.30 + Centroid>1500Hz
    */
   private processMoverRight(
     bands: { subBass: number; lowMid: number; highMid: number; presence: number },
     harshnessMod: number,
     flatnessMod: number,
-    centroidMod: number
+    centroidMod: number,
+    centroidHz: number  // 🎭 WAVE 1018: Necesario para PROG detection
   ): void {
     const config = ROCK_UNIFIED_CONFIG;
     
-    // 🩻 WAVE 1017.2: Presence PURO (2.5k-8kHz) = cymbals territory
-    const input = bands.presence;
+    // 🎭 WAVE 1018: DUAL-BAND LOGIC FOR PROG ROCK
+    // Si estamos en PROG y detectamos signature de solo de guitarra,
+    // usar HighMid también (guitarra enterrada en mezcla densa)
+    let rawInput = bands.presence;
+    
+    if (this.currentSubgenre === 'PROG_ROCK') {
+      // Guitar Solo Signature: HighMid alto + Centroid en rango de solo
+      const guitarSoloSignature = bands.highMid > 0.30 && centroidHz > 1500;
+      
+      if (guitarSoloSignature) {
+        // DUAL-BAND: Tomar el MAYOR entre Presence y HighMid ajustado
+        rawInput = Math.max(bands.presence, bands.highMid * 0.7);
+        
+        // Debug cuando detecta solo
+        if (this.frameCount % 60 === 0 && rawInput > 0.2) {
+          console.log(
+            `🎸 [PROG Guitar Solo] HM=${bands.highMid.toFixed(2)} PR=${bands.presence.toFixed(2)} ` +
+            `C=${centroidHz.toFixed(0)}Hz → MR_input=${rawInput.toFixed(2)}`
+          );
+        }
+      }
+    }
+    
+    const input = rawInput;
     
     // Gate check
     if (input < config.gates.moverRight) {

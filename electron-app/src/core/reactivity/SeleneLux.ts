@@ -83,7 +83,10 @@ export interface SeleneLuxAudioMetrics {
   spectralFlatness?: number;  // 0-1 (0=tonal, 1=noise)
   spectralCentroid?: number;  // Hz (brillo tonal)
   
-  // 🎸 WAVE 1011: Detección de transientes
+  // � WAVE 1018: Clarity for PROG ROCK detection
+  clarity?: number;           // 0-1 (0=ruidoso, 1=limpio)
+  
+  // �🎸 WAVE 1011: Detección de transientes
   kickDetected?: boolean;
   snareDetected?: boolean;
   hihatDetected?: boolean;
@@ -356,6 +359,9 @@ export class SeleneLux {
         harshness: audioMetrics.harshness ?? 0.35,
         spectralFlatness: audioMetrics.spectralFlatness ?? 0.40,
         spectralCentroid: audioMetrics.spectralCentroid ?? 1500,
+        
+        // 🎭 WAVE 1018: Clarity for PROG ROCK detection
+        clarity: audioMetrics.clarity ?? 0.85,
         
         // Transientes detectados
         kickDetected: audioMetrics.kickDetected ?? false,

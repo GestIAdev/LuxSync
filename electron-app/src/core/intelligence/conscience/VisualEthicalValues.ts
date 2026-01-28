@@ -3,6 +3,7 @@
  * "Los 7 Principios que guían la Conciencia Visual"
  * 
  * WAVE 900.2 - Phase 2: Ethical Core
+ * WAVE 1030 - THE GUARDIAN: Texture-Aware Ethics
  * 
  * @module VisualEthicalValues
  * @description Define los valores éticos para decisiones de efectos visuales.
@@ -13,6 +14,11 @@
  * - Data Integrity → Vibe Coherence (no solar_flare en Techno)
  * - Fairness → Effect Diversity (no monotonía)
  * 
+ * 🛡️ WAVE 1030: THE GUARDIAN
+ * - Licencia de Metal: Strobes hasta 25Hz si texture='harsh' && clarity>0.7
+ * - Excepción de Claridad: Fatiga ×0.5 si clarity>0.9
+ * - Coherencia Estética: Penalizar música clean + efecto dirty
+ * 
  * FILOSOFÍA:
  * "La belleza sin ética es vanidad. La ética sin belleza es dogma."
  * 
@@ -22,6 +28,8 @@
 
 import type { AudienceSafetyContext } from '../dream/AudienceSafetyContext'
 import type { EffectCandidate } from '../dream/EffectDreamSimulator'
+// 🛡️ WAVE 1030: DNA registry for texture affinity checking
+import { EFFECT_DNA_REGISTRY } from '../dna/EffectDNA'
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -85,25 +93,85 @@ const AUDIENCE_SAFETY: EthicalValue = {
       }
     },
     {
+      // 🛡️ WAVE 1030: THE GUARDIAN - Metal License 🤘
+      // En Metal/Rock con audio Hi-Fi, permitir strobes más agresivos
+      id: 'metal_license',
+      severity: 'medium',
+      check: (context, effect) => {
+        // Solo aplica a efectos de strobe
+        if (!effect.effect.includes('strobe')) {
+          return { passed: true }
+        }
+        
+        // Verificar si tenemos contexto espectral
+        const spectral = context.spectral
+        if (!spectral) {
+          // Sin contexto espectral, usar reglas conservadoras (sin bonus)
+          return { passed: true }
+        }
+        
+        // 🤘 METAL LICENSE: texture='harsh' && clarity>0.7
+        // En Rock/Metal bien producido, el strobe rápido es PERCUSIVO, no error
+        const isMetalContext = spectral.texture === 'harsh' && spectral.clarity > 0.7
+        
+        if (isMetalContext) {
+          // BOOST: Permitir strobes más intensos sin penalización
+          // El límite de Hz se maneja en el efecto mismo, aquí damos el OK ético
+          return {
+            passed: true,
+            boost: 0.20,  // +20% bonus de aprobación
+            reason: `🤘 METAL LICENSE: High clarity (${(spectral.clarity * 100).toFixed(0)}%) harsh context permits aggressive strobes`
+          }
+        }
+        
+        // Si texture es 'noisy' (audio malo) pero alta intensidad de strobe → penalizar
+        if (spectral.texture === 'noisy' && effect.intensity > 0.7) {
+          return {
+            passed: true,
+            penalty: 0.2,
+            reason: `Noisy audio with intense strobe may cause discomfort`,
+            suggestion: 'Reduce strobe intensity or wait for cleaner audio'
+          }
+        }
+        
+        return { passed: true }
+      }
+    },
+    {
       id: 'fatigue_protection',
       severity: 'high',
       check: (context, effect) => {
-        // Si fatiga > 0.8, bloquear efectos intensos
-        if (context.audienceFatigue > 0.8 && effect.intensity > 0.7) {
+        // 🛡️ WAVE 1030: THE GUARDIAN - Clarity Exception
+        // Si clarity > 0.9 (Hi-Fi sound), el cerebro se cansa menos
+        // Reducir threshold de fatiga efectivo
+        const clarityMultiplier = (context.spectral?.clarity ?? 0.5) > 0.9 ? 0.5 : 1.0
+        const effectiveFatigue = context.audienceFatigue * clarityMultiplier
+        
+        // Si fatiga > 0.8 (ajustada por claridad), bloquear efectos intensos
+        if (effectiveFatigue > 0.8 && effect.intensity > 0.7) {
           return {
             passed: false,
-            reason: `Audience fatigue critical (${(context.audienceFatigue * 100).toFixed(1)}%)`,
+            reason: `Audience fatigue critical (${(context.audienceFatigue * 100).toFixed(1)}% × ${clarityMultiplier} clarity factor)`,
             penalty: 0.6
           }
         }
         
-        // Si fatiga > 0.6, reducir intensidad
-        if (context.audienceFatigue > 0.6 && effect.intensity > 0.8) {
+        // Si fatiga > 0.6 (ajustada por claridad), reducir intensidad
+        if (effectiveFatigue > 0.6 && effect.intensity > 0.8) {
           return {
             passed: true,
-            reason: 'Fatigue moderate - intensity should be reduced',
+            reason: `Fatigue moderate - intensity should be reduced (clarity factor: ${clarityMultiplier})`,
             suggestion: 'Reduce intensity to 0.7 or lower',
             penalty: 0.3
+          }
+        }
+        
+        // 🛡️ WAVE 1030: Bonus if clarity is exceptional
+        if ((context.spectral?.clarity ?? 0) > 0.9) {
+          return {
+            passed: true,
+            boost: 0.05,
+            reason: 'Hi-Fi clarity allows extended intensity'
           }
         }
         
@@ -146,6 +214,59 @@ const AUDIENCE_SAFETY: EthicalValue = {
             passed: false,
             reason: `Too soon after last intense effect (${Date.now() - context.lastIntenseEffect}ms)`,
             penalty: 0.3
+          }
+        }
+        
+        return { passed: true }
+      }
+    },
+    {
+      // 🛡️ WAVE 1030: THE GUARDIAN - Clarity-Adjusted System Stress
+      // El estrés del sistema NO es solo Energy + Noise
+      // Nuevo cálculo: Stress = Energy × (1 - Clarity)
+      // Si la música es potente pero clara, el estrés es BAJO
+      id: 'clarity_stress_adjustment',
+      severity: 'medium',
+      check: (context, effect) => {
+        const spectral = context.spectral
+        
+        // Sin contexto espectral, usar lógica simple basada en energía
+        if (!spectral) {
+          // Stress = Energy (conservative fallback)
+          const simpleStress = context.energy
+          if (simpleStress > 0.85 && effect.intensity > 0.8) {
+            return {
+              passed: true,
+              penalty: 0.2,
+              reason: `High system stress (${(simpleStress * 100).toFixed(0)}%) - no clarity data`
+            }
+          }
+          return { passed: true }
+        }
+        
+        // 🛡️ WAVE 1030: Clarity-Adjusted Stress Formula
+        // Stress = Energy × (1 - Clarity)
+        // Ejemplo: Energy=0.9, Clarity=0.9 → Stress = 0.9 × 0.1 = 0.09 (muy bajo!)
+        // Ejemplo: Energy=0.9, Clarity=0.3 → Stress = 0.9 × 0.7 = 0.63 (alto)
+        const clarityAdjustedStress = context.energy * (1 - spectral.clarity)
+        
+        // Si stress ajustado > 0.5 y efecto es intenso, advertir
+        if (clarityAdjustedStress > 0.5 && effect.intensity > 0.8) {
+          return {
+            passed: true,  // Permitir pero advertir
+            penalty: 0.15,
+            reason: `Elevated stress: ${(clarityAdjustedStress * 100).toFixed(0)}% (Energy=${(context.energy * 100).toFixed(0)}%, Clarity=${(spectral.clarity * 100).toFixed(0)}%)`,
+            suggestion: 'Consider reducing intensity or waiting for clearer audio'
+          }
+        }
+        
+        // Si stress ajustado es muy bajo (< 0.2), dar BONUS
+        // Esto significa: alta energía + alta claridad = LIBERACIÓN DE POTENCIA 🤘
+        if (clarityAdjustedStress < 0.2 && context.energy > 0.7) {
+          return {
+            passed: true,
+            boost: 0.15,
+            reason: `🤘 LOW STRESS ZONE: ${(clarityAdjustedStress * 100).toFixed(0)}% stress despite ${(context.energy * 100).toFixed(0)}% energy - Hi-Fi clarity permits full power!`
           }
         }
         
@@ -352,6 +473,61 @@ const AESTHETIC_BEAUTY: EthicalValue = {
             passed: true,
             boost: 0.1,
             reason: `High projected beauty: ${effect.projectedBeauty.toFixed(2)}`
+          }
+        }
+        
+        return { passed: true }
+      }
+    },
+    {
+      // 🛡️ WAVE 1030: THE GUARDIAN - Aesthetic Coherence (The Vibe Check) 🎨
+      // Penalizar incoherencia entre textura del audio y textura del efecto
+      id: 'texture_coherence',
+      severity: 'high',
+      check: (context, effect) => {
+        const spectral = context.spectral
+        if (!spectral) {
+          return { passed: true } // Sin contexto espectral, sin verificación
+        }
+        
+        // Obtener la afinidad de textura del efecto del DNA Registry
+        const effectDNA = EFFECT_DNA_REGISTRY[effect.effect]
+        const effectTextureAffinity = effectDNA?.textureAffinity || 'universal'
+        
+        // 🎨 CASO 1: Música CLEAN/WARM + Efecto DIRTY = INCOHERENCIA GRAVE
+        // Es como poner death metal visual sobre un balada de piano
+        const isCleanAudio = spectral.texture === 'clean' || spectral.texture === 'warm'
+        if (isCleanAudio && effectTextureAffinity === 'dirty') {
+          return {
+            passed: false,
+            reason: `🎨 AESTHETIC INCOHERENCE: ${effect.effect} (dirty) clashes with ${spectral.texture} audio`,
+            penalty: 0.5,
+            suggestion: 'Use clean or universal effect for this audio texture'
+          }
+        }
+        
+        // 🎨 CASO 2: Música HARSH/NOISY + Efecto CLEAN = FALTA DE ENERGÍA
+        // Es como poner una vela en un concierto de Metallica
+        const isHarshAudio = spectral.texture === 'harsh' || spectral.texture === 'noisy'
+        if (isHarshAudio && effectTextureAffinity === 'clean') {
+          // Penalización LEVE - no es un error grave, solo falta punch
+          return {
+            passed: true,  // Permitir pero penalizar
+            penalty: 0.15,
+            reason: `🎨 LOW ENERGY: ${effect.effect} (clean) may lack punch for ${spectral.texture} audio`,
+            suggestion: 'Consider dirty or universal effect for more impact'
+          }
+        }
+        
+        // 🎨 CASO 3: MATCH PERFECTO
+        // Música harsh + efecto dirty = BOOST
+        // Música clean + efecto clean = BOOST
+        if ((isHarshAudio && effectTextureAffinity === 'dirty') ||
+            (isCleanAudio && effectTextureAffinity === 'clean')) {
+          return {
+            passed: true,
+            boost: 0.15,
+            reason: `🎨 PERFECT TEXTURE MATCH: ${effect.effect} (${effectTextureAffinity}) with ${spectral.texture} audio`
           }
         }
         

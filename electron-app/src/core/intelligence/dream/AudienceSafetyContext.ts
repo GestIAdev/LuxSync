@@ -3,6 +3,7 @@
  * "El contexto de seguridad y estado que alimenta las decisiones éticas"
  * 
  * WAVE 900.1 - Phase 1: Foundation
+ * WAVE 1030 - THE GUARDIAN: Spectral Context Integration
  * 
  * @module AudienceSafetyContext
  * @description Estructura de datos completa que describe el estado actual
@@ -16,6 +17,7 @@
  * - Agregar historial de efectos recientes
  * - Agregar cooldowns activos
  * - Agregar insights del DreamEngine (warnings, bias reports)
+ * - 🛡️ WAVE 1030: Agregar SpectralContext para decisiones éticas conscientes
  * 
  * FILOSOFÍA:
  * "No puedes tomar decisiones éticas sin conocer el contexto completo."
@@ -25,6 +27,8 @@
  */
 
 import type { EffectHistoryEntry, EffectBiasAnalysis } from './EffectBiasTracker'
+// 🛡️ WAVE 1030: THE GUARDIAN - SpectralContext for texture-aware ethics
+import type { SpectralContext } from '../../protocol/MusicalContext'
 
 // ═══════════════════════════════════════════════════════════════
 // AUDIENCE SAFETY CONTEXT
@@ -164,6 +168,28 @@ export interface AudienceSafetyContext {
    * Análisis completo de patrones y monotonía
    */
   biasReport?: EffectBiasAnalysis
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 1030: THE GUARDIAN - SPECTRAL CONTEXT
+  // ═══════════════════════════════════════════════════════════════
+  
+  /**
+   * 🛡️ WAVE 1030: Contexto espectral del God Ear
+   * 
+   * Permite a las reglas éticas tomar decisiones conscientes basadas en:
+   * - texture: 'clean' | 'warm' | 'harsh' | 'noisy'
+   * - clarity: 0-1 (calidad de señal)
+   * - harshness: 0-1 (agresividad espectral)
+   * - flatness: 0-1 (ruido vs tono)
+   * 
+   * USOS ÉTICOS:
+   * - "Licencia de Metal": Si texture='harsh' && clarity>0.7 → permitir strobes más rápidos
+   * - "Excepción de Claridad": Si clarity>0.9 → reducir acumulación de fatiga
+   * - "Coherencia Estética": Si música clean pero efecto dirty → penalizar
+   * 
+   * OPTIONAL: Si no está presente, las reglas usan defaults conservadores.
+   */
+  spectral?: SpectralContext
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -191,7 +217,8 @@ export class AudienceSafetyContextBuilder {
       recentEffects: [],
       activeCooldowns: new Map(),
       dreamWarnings: [],
-      biasReport: undefined
+      biasReport: undefined,
+      spectral: undefined  // 🛡️ WAVE 1030: Optional spectral context
     }
   }
   
@@ -283,6 +310,17 @@ export class AudienceSafetyContextBuilder {
   
   withBiasReport(report: EffectBiasAnalysis): this {
     this.context.biasReport = report
+    return this
+  }
+  
+  /**
+   * 🛡️ WAVE 1030: THE GUARDIAN - Set spectral context
+   * 
+   * Permite inyectar el contexto espectral del God Ear para
+   * decisiones éticas conscientes de textura.
+   */
+  withSpectral(spectral: SpectralContext): this {
+    this.context.spectral = spectral
     return this
   }
   

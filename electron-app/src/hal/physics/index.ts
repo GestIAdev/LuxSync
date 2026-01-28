@@ -3,6 +3,7 @@
  * WAVE 253: Added StereoPhysics exports with named classes
  * WAVE 290.3: Added technoStereoPhysics singleton
  * WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 replaces legacy
+ * WAVE 1031: THE PHOTON WEAVER - Laser & Washer physics
  */
 
 export * from './PhysicsEngine'
@@ -19,3 +20,36 @@ export {
   type RockPhysicsInput,
   type RockPhysicsResult,
 } from './RockStereoPhysics2'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics
+// ═══════════════════════════════════════════════════════════════════════════
+// 
+// ARQUITECTURA ESPECTRAL COMPLETA:
+// - Sub-Graves (Washers) = Sentimiento/Atmósfera
+// - Medios (Movers/PARs) = Ritmo/Baile
+// - Ultra-Agudos (Láseres) = Detalle/Tecnología
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 🟢 LASER PHYSICS - "La Cirugía de Luz"
+// Input: ultraAir (16-22kHz) + clarity
+// Comportamientos: LIQUID_SKY (clean) | SPARKLE_RAIN (harsh)
+export {
+  LaserPhysics,
+  laserPhysics,
+  type LaserPhysicsInput,
+  type LaserPhysicsResult,
+  type LaserTextureMode,
+  type LaserSafetyConfig,
+} from './LaserPhysics'
+
+// 🎨 WASHER PHYSICS - "El Lienzo de Fondo"
+// Input: subBass (20-60Hz) + texture
+// Comportamientos: BREATHING_WALL (warm) | REACTIVE_STROBE (harsh)
+export {
+  WasherPhysics,
+  washerPhysics,
+  type WasherPhysicsInput,
+  type WasherPhysicsResult,
+  type WasherMode,
+} from './WasherPhysics'

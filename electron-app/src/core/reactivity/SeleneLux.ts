@@ -36,6 +36,13 @@ import {
   LatinoStereoPhysics, 
   ChillStereoPhysics,
   type RockPhysicsInput, // 🎸 WAVE 1011.5: Unified input type
+  // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics
+  LaserPhysics,
+  laserPhysics,
+  type LaserPhysicsInput,
+  WasherPhysics,
+  washerPhysics,
+  type WasherPhysicsInput,
 } from '../../hal/physics';
 
 import { 
@@ -69,6 +76,7 @@ export interface RGB {
  * Métricas de audio normalizadas que recibimos de TitanEngine
  * 🎸 WAVE 1011: Extended con métricas espectrales para RockStereoPhysics2
  * 🔮 WAVE 1026: ROSETTA STONE - ultraAir for lasers/scanners
+ * 🟢🎨 WAVE 1031: THE PHOTON WEAVER - texture for spectral routing
  */
 export interface SeleneLuxAudioMetrics {
   normalizedBass: number;     // 0-1
@@ -89,6 +97,9 @@ export interface SeleneLuxAudioMetrics {
   
   // 🔮 WAVE 1026: ROSETTA STONE - Ultra Air band for lasers/scanners
   ultraAir?: number;          // 0-1 (16-22kHz shimmer/sparkle)
+  
+  // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Texture for spectral routing
+  texture?: 'clean' | 'warm' | 'harsh' | 'noisy';  // Audio texture classification
   
   // 🎸 WAVE 1011: Detección de transientes
   kickDetected?: boolean;
@@ -124,6 +135,9 @@ export interface SeleneLuxOutput {
     mover: number;   // 0-1: Treble → Movers (Melodía/Voz) - LEGACY mono
     moverL?: number; // 🧪 WAVE 908: LEFT mover (Mid-dominant) - TECHNO only
     moverR?: number; // 🧪 WAVE 908: RIGHT mover (Treble-dominant) - TECHNO only
+    // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - New spectral zones
+    laser?: number;  // 0-1: UltraAir → Lasers (16-22kHz shimmer)
+    washer?: number; // 0-1: SubBass → Washers (20-60Hz atmosphere)
   };
   isStrobeActive: boolean;
   isFlashActive: boolean;
@@ -133,6 +147,19 @@ export interface SeleneLuxOutput {
   physicsApplied: string;     // 'techno' | 'rock' | 'latino' | 'chill' | 'none'
   /** 🧠 WAVE 450: Indica si Energy Override está activo */
   energyOverrideActive: boolean;
+  // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Extended physics info
+  laserPhysics?: {
+    mode: string;
+    beamWidth: number;
+    scanSpeed: number;
+    safetyTriggered: boolean;
+  };
+  washerPhysics?: {
+    mode: string;
+    colorTransitionSpeed: number;
+    impactActive: boolean;
+    breathingFactor: number;
+  };
   debugInfo?: Record<string, unknown>;
 }
 
@@ -205,6 +232,28 @@ export class SeleneLux {
     front: number; 
     back: number; 
     mover: number;
+  } | null = null;
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics State
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 🟢 LASER: Intensidad y metadata del último frame
+  private laserResult: {
+    intensity: number;
+    mode: string;
+    beamWidth: number;
+    scanSpeed: number;
+    safetyTriggered: boolean;
+  } | null = null;
+  
+  // 🎨 WASHER: Intensidad y metadata del último frame
+  private washerResult: {
+    intensity: number;
+    mode: string;
+    colorTransitionSpeed: number;
+    impactActive: boolean;
+    breathingFactor: number;
   } | null = null;
   
   constructor(config: SeleneLuxConfig = {}) {
@@ -502,6 +551,69 @@ export class SeleneLux {
       };
       // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
     } // Guardar estado
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Routing
+    // ═══════════════════════════════════════════════════════════════════════
+    // ARQUITECTURA ESPECTRAL COMPLETA:
+    // - Sub-Graves (Washers) = Sentimiento/Atmósfera (subBass 20-60Hz)
+    // - Medios (Movers/PARs) = Ritmo/Baile (ya procesado por género)
+    // - Ultra-Agudos (Láseres) = Detalle/Tecnología (ultraAir 16-22kHz)
+    // 
+    // Estos motores corren SIEMPRE, independientemente del género.
+    // La física espectral es UNIVERSAL - todos los vibes tienen láseres y washers.
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🟢 LASER PHYSICS: UltraAir (16-22kHz) → Láseres
+    // Los láseres responden a las frecuencias que los humanos CASI NO OYEN
+    const laserInput: LaserPhysicsInput = {
+      ultraAir: audioMetrics.ultraAir ?? 0,
+      clarity: audioMetrics.clarity ?? 0.5,
+      texture: audioMetrics.texture ?? 'clean',
+      lowMid: audioMetrics.lowMid ?? audioMetrics.normalizedMid * 0.5,
+      energy: audioMetrics.avgNormEnergy,
+      bpm: vibeContext.bpm,
+    };
+    
+    const laserOutput = laserPhysics.apply(laserInput);
+    this.laserResult = {
+      intensity: laserOutput.intensity,
+      mode: laserOutput.mode,
+      beamWidth: laserOutput.beamWidth,
+      scanSpeed: laserOutput.scanSpeed,
+      safetyTriggered: laserOutput.safetyTriggered,
+    };
+    
+    // 🎨 WASHER PHYSICS: SubBass (20-60Hz) → Washers/Barras LED
+    // Los washers responden donde la música se SIENTE, no se oye
+    const washerInput: WasherPhysicsInput = {
+      subBass: audioMetrics.subBass ?? audioMetrics.normalizedBass * 0.8,
+      texture: audioMetrics.texture ?? 'warm',
+      energy: audioMetrics.avgNormEnergy,
+      bass: audioMetrics.normalizedBass,
+      clarity: audioMetrics.clarity,
+      bpm: vibeContext.bpm,
+    };
+    
+    const washerOutput = washerPhysics.apply(washerInput);
+    this.washerResult = {
+      intensity: washerOutput.intensity,
+      mode: washerOutput.mode,
+      colorTransitionSpeed: washerOutput.colorTransitionSpeed,
+      impactActive: washerOutput.impactActive,
+      breathingFactor: washerOutput.breathingFactor,
+    };
+    
+    // Log cada 60 frames (~1 segundo) si hay actividad significativa
+    if (this.frameCount % 60 === 0 && (laserOutput.intensity > 0.1 || washerOutput.intensity > 0.3)) {
+      console.log(
+        `[SeleneLux 🟢🎨 PHOTON WEAVER] ` +
+        `Laser:${laserOutput.mode}(${(laserOutput.intensity * 100).toFixed(0)}%) | ` +
+        `Washer:${washerOutput.mode}(${(washerOutput.intensity * 100).toFixed(0)}%) | ` +
+        `Safety:${laserOutput.safetyTriggered ? '⚠️TRIGGERED' : '✅OK'}`
+      );
+    }
+    
     this.lastStrobeActive = isStrobeActive;
     this.lastForceMovement = forceMovement;
     
@@ -645,7 +757,15 @@ export class SeleneLux {
       ...(((this as any).rockMoverSplit) && {
         moverL: (this as any).rockMoverSplit.moverL,
         moverR: (this as any).rockMoverSplit.moverR
-      })
+      }),
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Zones
+      // ═══════════════════════════════════════════════════════════════════════
+      // Estas intensidades vienen de los nuevos motores espectrales.
+      // Son INDEPENDIENTES del género - la física espectral es universal.
+      // ═══════════════════════════════════════════════════════════════════════
+      laser: this.laserResult?.intensity ?? 0,
+      washer: this.washerResult?.intensity ?? 0.15,  // Floor mínimo para washers
     };
     
     // Limpiar split temporal
@@ -676,6 +796,19 @@ export class SeleneLux {
       forceMovement,
       physicsApplied,
       energyOverrideActive,
+      // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Extended physics metadata
+      laserPhysics: this.laserResult ? {
+        mode: this.laserResult.mode,
+        beamWidth: this.laserResult.beamWidth,
+        scanSpeed: this.laserResult.scanSpeed,
+        safetyTriggered: this.laserResult.safetyTriggered,
+      } : undefined,
+      washerPhysics: this.washerResult ? {
+        mode: this.washerResult.mode,
+        colorTransitionSpeed: this.washerResult.colorTransitionSpeed,
+        impactActive: this.washerResult.impactActive,
+        breathingFactor: this.washerResult.breathingFactor,
+      } : undefined,
       debugInfo,
     };
     

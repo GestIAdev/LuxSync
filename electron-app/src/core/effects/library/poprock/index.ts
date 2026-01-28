@@ -3,33 +3,42 @@
  * 🎸 POP-ROCK EFFECTS LIBRARY - INDEX
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * WAVE 1019: ROCK LEGENDS ARSENAL - "ANALOG POWER"
+ * WAVE 1020.9: ROCK ARSENAL EXPANSION - 8 Effects Total
  * 
- * LOS 5 MAGNÍFICOS:
+ * THE MAGNIFICENT 8:
  * 
- * ⚡ THUNDER_STRUCK - El Blinder de Estadio
+ * ⚡ THUNDER_STRUCK - El Blinder de Estadio (2s)
  *    Golpe de luz brutal en drops. Energy > 0.8.
  * 
- * 🎸 LIQUID_SOLO - El Foco del Guitarrista
- *    Spotlight para solos. MoverR rápido, MoverL estable.
+ * 🎸 LIQUID_SOLO - Spotlight Sweep Elegante (3.5s)
+ *    Sweep horizontal suave L→R o R→L. NO asume músico.
  * 
- * 🔥 AMP_HEAT - Válvulas Calientes
+ * 🔥 AMP_HEAT - Válvulas Calientes (variable)
  *    Atmósfera íntima. Respiración lenta, drift imperceptible.
  * 
- * 🌊 ARENA_SWEEP - El Barrido de Rock
- *    Queen en Wembley. vShape con inercia. 80% del show.
+ * 🌊 ARENA_SWEEP - El Barrido de Rock (variable)
+ *    Queen en Wembley. vShape con inercia.
  * 
- * 😵 FEEDBACK_STORM - La Distorsión Visual
+ * 😵 FEEDBACK_STORM - La Distorsión Visual (variable)
  *    Caos controlado. Strobe aleatorio escalado por Harshness.
  * 
+ * ⚡ POWER_CHORD - El Golpe del Acorde (2s)
+ *    Flash potente + strobe rítmico. NO movimiento.
+ * 
+ * 🌊 STAGE_WASH - Lavado de Escenario (3.5s)
+ *    Wash amber/warm. Fade suave, todo iluminado.
+ * 
+ * 💡 SPOTLIGHT_PULSE - Pulso de Spotlight (3s)
+ *    Movers respiran en intensidad. NO movimiento.
+ * 
  * FILOSOFÍA:
- * - Calor: Tungsteno, Ámbar, Blanco Cálido, Rojo Profundo
- * - Física: Inercia, haces que pesan, movimientos amplios
- * - Reactividad: L/R separación para diálogo entre instrumentos
- * - "La música dicta el efecto, no la etiqueta"
+ * - Duración: 2-4s MAX (catcheable por Selene)
+ * - Movimiento: Mínimo (motor tiene bugs)
+ * - Color: Cambios suaves en movers (proteger rueda)
+ * - Simplicidad > Complejidad
  * 
  * @module core/effects/library/poprock
- * @version WAVE 1019 - ROCK LEGENDS ARSENAL
+ * @version WAVE 1020.9 - ROCK ARSENAL EXPANSION
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,6 +50,9 @@ export { LiquidSolo, createLiquidSolo } from './LiquidSolo'
 export { AmpHeat, createAmpHeat } from './AmpHeat'
 export { ArenaSweep, createArenaSweep } from './ArenaSweep'
 export { FeedbackStorm, createFeedbackStorm } from './FeedbackStorm'
+export { PowerChord, createPowerChord } from './PowerChord'
+export { StageWash, createStageWash } from './StageWash'
+export { SpotlightPulse, createSpotlightPulse } from './SpotlightPulse'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT REGISTRY (para EffectManager)
@@ -51,9 +63,14 @@ import { LiquidSolo } from './LiquidSolo'
 import { AmpHeat } from './AmpHeat'
 import { ArenaSweep } from './ArenaSweep'
 import { FeedbackStorm } from './FeedbackStorm'
+import { PowerChord } from './PowerChord'
+import { StageWash } from './StageWash'
+import { SpotlightPulse } from './SpotlightPulse'
 
 /**
  * Registro de efectos pop-rock para el EffectManager
+ * 
+ * WAVE 1020.9: THE MAGNIFICENT 8
  * 
  * Uso:
  * ```ts
@@ -67,6 +84,9 @@ export const POPROCK_EFFECTS = {
   amp_heat: AmpHeat,
   arena_sweep: ArenaSweep,
   feedback_storm: FeedbackStorm,
+  power_chord: PowerChord,
+  stage_wash: StageWash,
+  spotlight_pulse: SpotlightPulse,
 } as const
 
 /**

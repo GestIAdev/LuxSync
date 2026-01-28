@@ -31,8 +31,13 @@ import {
   DEFAULT_CONFIG
 } from './WorkerProtocol';
 
-// 🧮 WAVE 15: FFT REAL - Matemática pura, sin simulaciones
-import { FFTAnalyzer, BandEnergy } from './FFT';
+// ═══════════════════════════════════════════════════════════════════════════════
+// � WAVE 1017: THE TRANSPLANT - GOD EAR FFT INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+// El viejo FFT.ts ha sido reemplazado por el espectroscopio quirúrgico GOD EAR.
+// Blackman-Harris windowing, Linkwitz-Riley 4th order, 7 bandas tácticas.
+// ═══════════════════════════════════════════════════════════════════════════════
+import { GodEarAnalyzer, toLegacyFormat, GodEarSpectrum } from './GodEarFFT';
 
 // Wave 8 Bridge - Analizadores simplificados para Worker
 import {
@@ -242,29 +247,34 @@ class BeatDetector {
 }
 
 // ============================================
-// SPECTRUM ANALYZER - 🧮 WAVE 15: FFT REAL
+// SPECTRUM ANALYZER - � WAVE 1017: GOD EAR TRANSPLANT
 // ============================================
 
 /**
- * Analizador espectral usando FFT matemático puro (Cooley-Tukey).
+ * 🩻 WAVE 1017: THE TRANSPLANT
  * 
- * WAVE 15: Reemplaza la versión anterior que solo dividía el buffer
- * por índice sin hacer análisis de frecuencia real.
+ * Analizador espectral quirúrgico con GOD EAR FFT.
  * 
- * Ahora usa transformada de Fourier para obtener:
- * - Energía real en bandas de frecuencia (20-250Hz = bass, etc.)
- * - Detección de kicks, snares, hi-hats
- * - Centroide espectral para "brillo" tonal
+ * REEMPLAZA: El viejo Cooley-Tukey del WAVE 15
+ * AHORA USA: Blackman-Harris 4-term windowing (-92dB sidelobes)
+ *            Linkwitz-Riley 4th order filters (24dB/octave)
+ *            7 bandas tácticas con ZERO overlap
+ *            Per-band AGC Trust Zones
+ * 
+ * PERFORMANCE TARGET: <2ms (GODLIKE: <1ms)
  */
 class SpectrumAnalyzer {
-  private readonly fftAnalyzer: FFTAnalyzer;
+  private readonly godEar: GodEarAnalyzer;
   private lastSpectralFlux: number = 0;
   private prevEnergy: number = 0;
+  private frameCount: number = 0;
+  private lastGodEarResult: GodEarSpectrum | null = null;
   
   constructor(sampleRate: number = 44100) {
-    // FFT con 2048 muestras para buena resolución en graves
-    this.fftAnalyzer = new FFTAnalyzer(sampleRate, 2048);
-    console.log('[BETA] 🧮 FFT Analyzer initialized (Cooley-Tukey Radix-2)');
+    // 🩻 GOD EAR con 4096 muestras para resolución máxima
+    this.godEar = new GodEarAnalyzer(sampleRate, 4096);
+    console.log('[BETA] � GOD EAR Analyzer initialized (WAVE 1017: THE TRANSPLANT)');
+    console.log('[BETA] 💀 Blackman-Harris | LR4 24dB/oct | 7 Tactical Bands');
   }
   
   analyze(buffer: Float32Array, sampleRate: number): {
@@ -285,43 +295,69 @@ class SpectrumAnalyzer {
     harshness: number;
     spectralFlatness: number;
   } {
-    // 🧮 Ejecutar FFT REAL
-    const fftResult = this.fftAnalyzer.analyze(buffer);
+    // � Ejecutar GOD EAR FFT
+    const godEarResult = this.godEar.analyze(buffer);
+    this.lastGodEarResult = godEarResult;
+    this.frameCount++;
+    
+    // 🔮 SHADOW MODE TELEMETRY - Nuevas métricas GOD EAR (cada ~2 segundos)
+    if (this.frameCount % 40 === 0) {
+      console.log(`[GOD EAR 🩻] SHADOW MODE TELEMETRY:`);
+      console.log(`   Clarity:     ${godEarResult.spectral.clarity.toFixed(3)} (Rock target: >0.7)`);
+      console.log(`   Flatness:    ${godEarResult.spectral.flatness.toFixed(3)} (Tonal<0.3, Noise>0.7)`);
+      console.log(`   Centroid:    ${godEarResult.spectral.centroid.toFixed(0)}Hz (Bright>2000, Dark<1200)`);
+      console.log(`   CrestFactor: ${godEarResult.spectral.crestFactor.toFixed(2)} (Dynamics)`);
+      console.log(`   Rolloff:     ${godEarResult.spectral.rolloff.toFixed(0)}Hz (85% energy)`);
+      console.log(`   Latency:     ${godEarResult.meta.processingLatencyMs.toFixed(2)}ms`);
+      console.log(`   UltraAir:    ${godEarResult.bands.ultraAir.toFixed(3)} (NEW: 16-22kHz sizzle)`);
+    }
+    
+    // 📦 Legacy Adapter - Convertir a formato viejo para Vibes existentes
+    const legacy = toLegacyFormat(godEarResult);
     
     // Calcular flujo espectral (cambio de energía total)
-    const currentEnergy = fftResult.bass + fftResult.mid + fftResult.treble;
+    const currentEnergy = legacy.bass + legacy.mid + legacy.treble;
     const spectralFlux = Math.min(1, Math.abs(currentEnergy - this.prevEnergy) * 2);
     this.prevEnergy = currentEnergy;
     
     return {
-      // Bandas principales (normalizadas 0-1)
-      bass: fftResult.bass,
-      mid: fftResult.mid,
-      treble: fftResult.treble,
+      // Bandas principales (normalizadas 0-1) - LEGACY FORMAT
+      bass: legacy.bass,
+      mid: legacy.mid,
+      treble: legacy.treble,
       
       // 🎸 WAVE 1011.2: spectralCentroid EN HZ (no normalizado!)
       // RockStereoPhysics2 necesita Hz para detectar "bright" (>2000) vs "dark" (<1200)
-      spectralCentroid: fftResult.spectralCentroid, // Hz directo (típicamente 500-5000)
+      spectralCentroid: godEarResult.spectral.centroid, // Hz directo del GOD EAR
       spectralFlux,
       
-      // 🧮 WAVE 15: Datos adicionales para análisis avanzado
-      subBass: fftResult.subBass,
-      lowMid: fftResult.lowMid,
-      highMid: fftResult.highMid,
-      dominantFrequency: fftResult.dominantFrequency,
-      kickDetected: fftResult.kickDetected,
-      snareDetected: fftResult.snareDetected,
-      hihatDetected: fftResult.hihatDetected,
+      // 🧮 Bandas extendidas (LEGACY FORMAT con GOD EAR data)
+      subBass: legacy.subBass,
+      lowMid: legacy.lowMid,
+      highMid: legacy.highMid,
+      dominantFrequency: godEarResult.dominantFrequency,
       
-      // 🤖 WAVE 50.1: Texture-based detection (Skrillex/DnB)
-      harshness: fftResult.harshness,
-      spectralFlatness: fftResult.spectralFlatness,
+      // 🥁 Transient detection - GOD EAR slope-based (más preciso)
+      kickDetected: godEarResult.transients.kick,
+      snareDetected: godEarResult.transients.snare,
+      hihatDetected: godEarResult.transients.hihat,
+      
+      // 🤖 Texture metrics - GOD EAR native
+      harshness: godEarResult.bands.highMid, // Proxy para harshness
+      spectralFlatness: godEarResult.spectral.flatness,
     };
   }
   
+  /**
+   * Acceso directo al resultado GOD EAR para métricas avanzadas
+   */
+  getLastGodEarResult(): GodEarSpectrum | null {
+    return this.lastGodEarResult;
+  }
+  
   reset(): void {
-    this.fftAnalyzer.reset();
     this.prevEnergy = 0;
+    this.lastGodEarResult = null;
   }
 }
 

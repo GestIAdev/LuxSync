@@ -37,6 +37,8 @@ import type { FuzzyDecision } from '../intelligence/think/FuzzyDecisionMaker'
 import { MoodController } from '../mood'
 // 🔋 WAVE 931: Import EnergyZone para consciencia energética
 import type { EnergyZone, EnergyContext } from '../protocol/MusicalContext'
+// 🎨 WAVE 1028: THE CURATOR - Spectral Texture Awareness
+import type { SpectralTexture, SpectralContext } from '../protocol/MusicalContext'
 // 🚨 WAVE 1004.2: DNA Diversity System - Shadowban por repetición
 import { getDNAAnalyzer } from '../intelligence/dna'
 
@@ -149,6 +151,103 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'power_chord': 20000,        // 20s base → Flash + strobe, golpes de acorde (moderado)
   'stage_wash': 25000,         // 25s base → Respiro cálido, transiciones (espaciado)
   'spotlight_pulse': 22000,    // 22s base → Pulso emotivo, builds (medio-frecuente)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎨 WAVE 1028: THE CURATOR - TEXTURE COMPATIBILITY METADATA
+// ═══════════════════════════════════════════════════════════════════════════
+// 
+// EL PROBLEMA:
+//   - Escenario: Solo de violín eléctrico (Alta Energía, Vibe Rock, Textura CLEAN)
+//   - Error Actual: El selector ve "High Energy Rock" → FeedbackStorm (ruido visual)
+//   - Resultado: El ruido visual MATA la elegancia del violín
+//
+// LA SOLUCIÓN: Cada efecto tiene texturas compatibles
+//   - 'dirty' = Compatible con harsh/noisy (metal, distorsión, clipping)
+//   - 'clean' = Compatible con clean/warm (piano, voz, jazz, violín)
+//   - 'universal' = Compatible con cualquier textura
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎨 TEXTURE COMPATIBILITY TYPES
+ * 
+ * dirty: Solo dispara con harsh/noisy (texturas sucias)
+ * clean: Solo dispara con clean/warm (texturas limpias)
+ * universal: Dispara con cualquier textura
+ */
+export type TextureCompatibility = 'dirty' | 'clean' | 'universal'
+
+/**
+ * 🎨 EFFECT TEXTURE METADATA
+ * 
+ * Mapea cada efecto a su compatibilidad de textura.
+ * Si un efecto no está en este mapa, se asume 'universal'.
+ */
+export const EFFECT_TEXTURE_COMPATIBILITY: Record<string, TextureCompatibility> = {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 DIRTY/HARSH COMPATIBLE - Solo con texturas sucias
+  // Efectos de caos, strobes agresivos, ruido visual
+  // ═══════════════════════════════════════════════════════════════════════
+  'feedback_storm': 'dirty',       // 😵 Caos visual - SOLO con distorsión/harshness
+  'thunder_struck': 'dirty',       // ⚡ Stadium blinder - impacto agresivo
+  'industrial_strobe': 'dirty',    // 🔨 El Martillo - techno sucio
+  'strobe_storm': 'dirty',         // ⚡ Tormenta de strobes - chaos
+  'gatling_raid': 'dirty',         // 🔫 Metralladora - industrial
+  'core_meltdown': 'dirty',        // ☢️ LA BESTIA - extreme
+  'binary_glitch': 'dirty',        // 💻 Digital glitch - solo con ruido
+  'seismic_snap': 'dirty',         // 💥 Golpe mecánico - impacto
+  'power_chord': 'dirty',          // ⚡ Flash + strobe - golpes de acorde
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 💎 CLEAN/LIQUID COMPATIBLE - Solo con texturas limpias
+  // Efectos de elegancia, geometría, flujo
+  // ═══════════════════════════════════════════════════════════════════════
+  'liquid_solo': 'clean',          // 🎸 Spotlight guitarra - solos elegantes
+  'arena_sweep': 'clean',          // 🌊 Barrido Wembley - geometría definida
+  'amp_heat': 'clean',             // 🔥 Válvulas calientes - warmth
+  'stage_wash': 'clean',           // 🌅 Respiro cálido - transiciones
+  'spotlight_pulse': 'clean',      // 💡 Pulso emotivo - contemplativo
+  'fiber_optics': 'clean',         // 🌈 Colores viajeros - elegante
+  'deep_breath': 'clean',          // 🫁 Respiración - zen
+  'cumbia_moon': 'clean',          // 🌙 Luna cumbianchera - suave
+  'borealis_wave': 'clean',        // 🌌 Aurora - espacial suave
+  'corazon_latino': 'clean',       // ❤️ Alma del arquitecto - emotivo
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌐 UNIVERSAL - Compatible con cualquier textura
+  // Efectos versátiles que funcionan en cualquier contexto
+  // ═══════════════════════════════════════════════════════════════════════
+  'solar_flare': 'universal',      // ☀️ Explosión dorada - épico universal
+  'strobe_burst': 'universal',     // 💥 Impacto puntual - versátil
+  'tidal_wave': 'universal',       // 🌊 Ola oceánica - momentum
+  'tropical_pulse': 'universal',   // 🌴 Pulso de conga - ritmo
+  'salsa_fire': 'universal',       // 🔥 Fuego salsero - energía
+  'clave_rhythm': 'universal',     // 🎶 Ritmo de clave - percusión
+  'acid_sweep': 'universal',       // 🧪 Sweeps volumétricos - techno
+  'sky_saw': 'universal',          // 🗡️ Cortes agresivos - tensión
+  'cyber_dualism': 'universal',    // 🤖 L/R ping-pong - dinámico
+  'ghost_breath': 'universal',     // 👻 Respiro oscuro - atmosférico
+  'void_mist': 'universal',        // 🌫️ Neblina púrpura - ambiente
+  'digital_rain': 'universal',     // 💧 Matrix flicker - ambiente
+  'abyssal_rise': 'universal',     // 🌪️ Transición épica - buildup
+  'ambient_strobe': 'universal',   // 📸 Camera flashes - suave
+  'sonar_ping': 'universal',       // 🔊 Ping submarino - ambiente
+}
+
+/**
+ * 🎨 TEXTURE FILTER RESULT
+ * 
+ * Resultado de aplicar el filtro de textura a un efecto.
+ */
+export interface TextureFilterResult {
+  /** ¿El efecto pasa el filtro? */
+  allowed: boolean
+  /** Modificador de probabilidad (-1 a +1) */
+  probabilityMod: number
+  /** Razón del filtrado */
+  reason: string
+  /** Regla aplicada */
+  rule: 'grime' | 'crystal' | 'warmth' | 'none'
 }
 
 const DEFAULT_CONFIG: EffectSelectionConfig = {
@@ -283,25 +382,236 @@ export class ContextualEffectSelector {
   
   /**
    * 🔪 WAVE 1010: Get first available effect from an arsenal (for DIVINE moments)
+   * 🎨 WAVE 1028: THE CURATOR - Now texture-aware
    * 
    * El General (DecisionMaker) ordena "DIVINE STRIKE" y proporciona un arsenal.
    * El Bibliotecario (este módulo) encuentra el primer efecto DISPONIBLE.
    * 
    * @param arsenal - Lista de efectos válidos para este momento (ordenados por preferencia)
    * @param vibeId - Vibe actual para verificar cooldowns
+   * @param spectralContext - (WAVE 1028) Contexto espectral para filtrado por textura
    * @returns El primer efecto disponible, o null si todos están en cooldown
    */
-  public getAvailableFromArsenal(arsenal: string[], vibeId: string): string | null {
+  public getAvailableFromArsenal(
+    arsenal: string[], 
+    vibeId: string,
+    spectralContext?: SpectralContext
+  ): string | null {
     for (const effect of arsenal) {
       const availability = this.checkAvailability(effect, vibeId)
-      if (availability.available) {
-        console.log(`[EffectRepository 🔪] Arsenal selection: ${effect} AVAILABLE (from [${arsenal.join(', ')}])`)
-        return effect
+      if (!availability.available) continue
+      
+      // 🎨 WAVE 1028: THE CURATOR - Texture filtering
+      if (spectralContext) {
+        const textureResult = this.applyTextureFilter(effect, spectralContext)
+        if (!textureResult.allowed) {
+          console.log(`[EffectRepository 🎨] Arsenal TEXTURE BLOCKED: ${effect} (${textureResult.reason})`)
+          continue
+        }
+      }
+      
+      console.log(`[EffectRepository 🔪] Arsenal selection: ${effect} AVAILABLE (from [${arsenal.join(', ')}])`)
+      return effect
+    }
+    
+    console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown or texture-blocked: [${arsenal.join(', ')}]`)
+    return null
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎨 WAVE 1028: THE CURATOR - Texture Filter System
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // 3 REGLAS DE CURADURÍA:
+  //
+  // 📜 REGLA DE LA SUCIEDAD (The Grime Rule):
+  //    Si texture === 'harsh' o 'noisy':
+  //    - 🚫 BAN: Efectos líquidos (LiquidSolo, ArenaSweep)
+  //    - ✅ BOOST: Efectos de corte/strobe (ThunderStruck +30% prob)
+  //
+  // 💎 REGLA DEL CRISTAL (The Crystal Rule):
+  //    Si clarity > 0.85 (Sonido HD):
+  //    - 🚫 BAN: Efectos caóticos/random (Chaos, FeedbackStorm)
+  //    - ✅ BOOST: Efectos de geometría definida (ArenaSweep, BeamAlign)
+  //
+  // 🔥 REGLA DE LA CALIDEZ (The Warmth Rule):
+  //    Si texture === 'warm' (Bajo profundo, Jazz):
+  //    - ✅ BOOST: Efectos lentos y atmosféricos (AmpHeat, DeepBreath)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 🎨 WAVE 1028: THE CURATOR - Apply Texture Filter
+   * 
+   * Evalúa si un efecto es apropiado para la textura espectral actual.
+   * Implementa las 3 Reglas de Curaduría (Grime, Crystal, Warmth).
+   * 
+   * @param effectType - Efecto a evaluar
+   * @param spectralContext - Contexto espectral del GodEar FFT
+   * @returns TextureFilterResult con decisión y modificadores
+   */
+  public applyTextureFilter(
+    effectType: string, 
+    spectralContext: SpectralContext
+  ): TextureFilterResult {
+    const { texture, clarity, harshness } = spectralContext
+    const compatibility = EFFECT_TEXTURE_COMPATIBILITY[effectType] || 'universal'
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📜 REGLA DE LA SUCIEDAD (The Grime Rule)
+    // Si texture === 'harsh' o 'noisy': BAN clean effects, BOOST dirty effects
+    // ═══════════════════════════════════════════════════════════════════════
+    if (texture === 'harsh' || texture === 'noisy') {
+      // 🚫 BAN: Efectos líquidos/limpios NO van con texturas sucias
+      if (compatibility === 'clean') {
+        return {
+          allowed: false,
+          probabilityMod: -1.0,
+          reason: `GRIME RULE: ${effectType} (clean) incompatible with ${texture} texture`,
+          rule: 'grime'
+        }
+      }
+      
+      // ✅ BOOST: Efectos sucios van PERFECTO con texturas sucias
+      if (compatibility === 'dirty') {
+        return {
+          allowed: true,
+          probabilityMod: 0.30, // +30% probabilidad
+          reason: `GRIME RULE: ${effectType} (dirty) BOOSTED for ${texture} texture`,
+          rule: 'grime'
+        }
       }
     }
     
-    console.log(`[EffectRepository 🔪] Arsenal EXHAUSTED - all effects in cooldown: [${arsenal.join(', ')}]`)
-    return null
+    // ═══════════════════════════════════════════════════════════════════════
+    // 💎 REGLA DEL CRISTAL (The Crystal Rule)
+    // Si clarity > 0.85: BAN chaotic effects, BOOST geometric effects
+    // ═══════════════════════════════════════════════════════════════════════
+    if (clarity > 0.85) {
+      // 🚫 BAN: Efectos caóticos NO van con sonido HD cristalino
+      if (compatibility === 'dirty') {
+        return {
+          allowed: false,
+          probabilityMod: -1.0,
+          reason: `CRYSTAL RULE: ${effectType} (chaotic) blocked by high clarity (${clarity.toFixed(2)})`,
+          rule: 'crystal'
+        }
+      }
+      
+      // ✅ BOOST: Efectos de geometría definida brillan con claridad alta
+      if (compatibility === 'clean') {
+        return {
+          allowed: true,
+          probabilityMod: 0.25, // +25% probabilidad
+          reason: `CRYSTAL RULE: ${effectType} (geometric) BOOSTED for high clarity (${clarity.toFixed(2)})`,
+          rule: 'crystal'
+        }
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // � REGLA DE LA CALIDEZ (The Warmth Rule)
+    // Si texture === 'warm': BOOST slow/atmospheric effects
+    // ═══════════════════════════════════════════════════════════════════════
+    if (texture === 'warm') {
+      // ✅ BOOST: Efectos lentos y atmosféricos van con warmth
+      if (compatibility === 'clean') {
+        return {
+          allowed: true,
+          probabilityMod: 0.20, // +20% probabilidad
+          reason: `WARMTH RULE: ${effectType} (atmospheric) BOOSTED for warm texture`,
+          rule: 'warmth'
+        }
+      }
+      
+      // Efectos sucios son MENOS apropiados para warmth (pero no bloqueados)
+      if (compatibility === 'dirty') {
+        return {
+          allowed: true,
+          probabilityMod: -0.15, // -15% probabilidad (pero permitido)
+          reason: `WARMTH RULE: ${effectType} (dirty) slightly penalized for warm texture`,
+          rule: 'warmth'
+        }
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌐 DEFAULT: Sin regla específica aplicada
+    // ═══════════════════════════════════════════════════════════════════════
+    return {
+      allowed: true,
+      probabilityMod: 0.0,
+      reason: `NO RULE: ${effectType} allowed (compatibility=${compatibility}, texture=${texture})`,
+      rule: 'none'
+    }
+  }
+
+  /**
+   * 🎨 WAVE 1028: Quick check if effect passes texture filter
+   */
+  public isTextureCompatible(effectType: string, spectralContext?: SpectralContext): boolean {
+    if (!spectralContext) return true // Sin contexto = permitir
+    return this.applyTextureFilter(effectType, spectralContext).allowed
+  }
+
+  /**
+   * 🎨 WAVE 1028: Filter an arsenal by texture compatibility
+   * 
+   * Útil para pre-filtrar arsenales antes de verificar cooldowns.
+   * 
+   * @param arsenal - Lista de efectos
+   * @param spectralContext - Contexto espectral
+   * @returns Arsenal filtrado (solo efectos compatibles con la textura)
+   */
+  public filterArsenalByTexture(
+    arsenal: string[], 
+    spectralContext?: SpectralContext
+  ): string[] {
+    if (!spectralContext) return arsenal
+    
+    const filtered = arsenal.filter(effect => {
+      const result = this.applyTextureFilter(effect, spectralContext)
+      if (!result.allowed) {
+        console.log(`[TextureFilter 🎨] ${effect} FILTERED OUT: ${result.reason}`)
+      }
+      return result.allowed
+    })
+    
+    if (filtered.length < arsenal.length) {
+      console.log(`[TextureFilter 🎨] Arsenal reduced: ${arsenal.length} → ${filtered.length} (texture=${spectralContext.texture}, clarity=${spectralContext.clarity.toFixed(2)})`)
+    }
+    
+    return filtered
+  }
+
+  /**
+   * 🎨 WAVE 1028: Get texture-boosted effects for current context
+   * 
+   * Devuelve efectos que tienen BOOST positivo para la textura actual.
+   * Útil para priorizar efectos en selección.
+   * 
+   * @param spectralContext - Contexto espectral
+   * @returns Lista de efectos con boost, ordenados por boost descendente
+   */
+  public getTextureBoostedEffects(spectralContext: SpectralContext): Array<{
+    effect: string
+    boost: number
+    rule: string
+  }> {
+    const boosted: Array<{ effect: string; boost: number; rule: string }> = []
+    
+    for (const [effect, compatibility] of Object.entries(EFFECT_TEXTURE_COMPATIBILITY)) {
+      const result = this.applyTextureFilter(effect, spectralContext)
+      if (result.allowed && result.probabilityMod > 0) {
+        boosted.push({
+          effect,
+          boost: result.probabilityMod,
+          rule: result.rule
+        })
+      }
+    }
+    
+    // Ordenar por boost descendente
+    return boosted.sort((a, b) => b.boost - a.boost)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

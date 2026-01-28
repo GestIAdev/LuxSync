@@ -693,6 +693,15 @@ export class SeleneTitanConscious extends EventEmitter {
     // 4. DECISION MAKER: EL ÚNICO GENERAL (WAVE 1010: UNIFIED BRAIN)
     // ═══════════════════════════════════════════════════════════════════════
     
+    // 🎨 WAVE 1028: THE CURATOR - Build SpectralContext for texture awareness
+    const spectralContextForDecision = {
+      clarity: state.clarity,
+      texture: this.deriveTextureFromState(state),
+      harshness: state.harshness,
+      flatness: state.spectralFlatness,
+      centroid: state.spectralCentroid,
+    }
+    
     const inputs: DecisionInputs = {
       pattern,
       beauty: beautyAnalysis,
@@ -705,6 +714,8 @@ export class SeleneTitanConscious extends EventEmitter {
       // 🔪 WAVE 1010: Zone & Z-Score Awareness (movido desde Selector)
       energyContext: energyContext,
       zScore: zScore,
+      // 🎨 WAVE 1028: THE CURATOR - Spectral Context for texture filtering
+      spectralContext: spectralContextForDecision,
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAVE 500 - PROJECT GENESIS - PHASE 3
 //  WAVE 1010 - FRONTAL LOBOTOMY - UNIFIED BRAIN
+//  WAVE 1028 - THE CURATOR - Texture Awareness Integration
 //  "Combina hunt + prediction + context → Decisión única"
 //  "El General manda. El Bibliotecario obedece."
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,6 +23,9 @@ import type { ConsonanceAnalysis } from '../sense/ConsonanceSensor'
 import type { IntegrationDecision } from '../integration/DreamEngineIntegrator'
 // 🔪 WAVE 1010: Zone Awareness (movido desde ContextualEffectSelector)
 import type { EnergyZone, EnergyContext } from '../../protocol/MusicalContext'
+// 🎨 WAVE 1028: THE CURATOR - Texture Filter integration
+import { getContextualEffectSelector } from '../../effects/ContextualEffectSelector'
+import type { SpectralContext } from '../../protocol/MusicalContext'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔪 WAVE 1010: DIVINE THRESHOLD & VIBE-AWARE ARSENAL
@@ -73,6 +77,7 @@ export const DIVINE_ARSENAL: Record<string, string[]> = {
  * Todos los inputs para tomar una decisión
  * 🧬 WAVE 972.2: Ahora incluye DNA Brain integration
  * 🔪 WAVE 1010: Ahora incluye Zone & Vibe Awareness (movido desde Selector)
+ * 🎨 WAVE 1028: THE CURATOR - Ahora incluye SpectralContext para texture awareness
  */
 export interface DecisionInputs {
   /** Patrón musical actual */
@@ -101,6 +106,15 @@ export interface DecisionInputs {
   
   /** 🔪 WAVE 1010: Z-Score actual (para DIVINE detection) */
   zScore?: number
+  
+  /** 🎨 WAVE 1028: THE CURATOR - Contexto espectral para texture awareness */
+  spectralContext?: {
+    clarity: number
+    texture: 'clean' | 'warm' | 'harsh' | 'noisy'
+    harshness: number
+    flatness: number
+    centroid: number
+  }
 }
 
 /**
@@ -332,6 +346,9 @@ function calculateCombinedConfidence(
  * Cuando Z > 3.5 y estamos en zona válida, ES OBLIGATORIO disparar.
  * El General ordena fuego pesado, el Repository seleccionará el arma específica.
  * 
+ * 🎨 WAVE 1028: THE CURATOR - Now texture-aware
+ * El arsenal se filtra por compatibilidad de textura antes de seleccionar.
+ * 
  * VIBE-AWARE:
  * - Latino: solar_flare, strobe_storm, latina_meltdown, corazon_latino
  * - Techno: industrial_strobe, gatling_raid, core_meltdown, strobe_storm
@@ -341,7 +358,7 @@ function generateDivineStrikeDecision(
   output: ConsciousnessOutput,
   confidence: number
 ): ConsciousnessOutput {
-  const { beauty, pattern, zScore, energyContext } = inputs
+  const { beauty, pattern, zScore, energyContext, spectralContext } = inputs
   const vibeId = pattern.vibeId
   
   output.confidence = 0.99  // DIVINE = máxima confianza
@@ -350,10 +367,45 @@ function generateDivineStrikeDecision(
   output.debugInfo.beautyScore = beauty.totalBeauty
   
   // 🔪 WAVE 1010: Seleccionar arsenal según vibe
-  const arsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['fiesta-latina']
+  let arsenal = DIVINE_ARSENAL[vibeId] || DIVINE_ARSENAL['fiesta-latina']
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎨 WAVE 1028: THE CURATOR - Texture Filter for DIVINE arsenal
+  // ═══════════════════════════════════════════════════════════════════════
+  // Ejemplo: Solo de violín (High Energy, Rock, CLEAN texture)
+  //   - Sin filtro: thunder_struck (dirty) → RUIDO VISUAL MATA LA ELEGANCIA
+  //   - Con filtro: liquid_solo (clean) → SPOTLIGHT ELEGANTE ✨
+  // ═══════════════════════════════════════════════════════════════════════
+  if (spectralContext) {
+    const selector = getContextualEffectSelector()
+    const filteredArsenal = selector.filterArsenalByTexture(arsenal, {
+      clarity: spectralContext.clarity,
+      texture: spectralContext.texture,
+      harshness: spectralContext.harshness,
+      flatness: spectralContext.flatness,
+      centroid: spectralContext.centroid,
+      bands: {
+        subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0, ultraAir: 0
+      }
+    })
+    
+    if (filteredArsenal.length > 0) {
+      console.log(
+        `[DecisionMaker 🎨] DIVINE TEXTURE FILTER: ${arsenal.length} → ${filteredArsenal.length} | ` +
+        `texture=${spectralContext.texture} | clarity=${spectralContext.clarity.toFixed(2)}`
+      )
+      arsenal = filteredArsenal
+    } else {
+      // Si el filtro eliminó TODO, usar arsenal original (fallback de seguridad)
+      console.warn(
+        `[DecisionMaker 🎨] DIVINE TEXTURE FILTER: All effects filtered out! Using original arsenal.`
+      )
+    }
+  }
+  
   const suggestedEffect = arsenal[0]  // Primer efecto del arsenal (será validado por Repository)
   
-  output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | suggested=${suggestedEffect}`
+  output.debugInfo.reasoning = `🌩️ DIVINE MOMENT: Z=${(zScore ?? 0).toFixed(2)}σ | vibe=${vibeId} | texture=${spectralContext?.texture ?? 'unknown'} | suggested=${suggestedEffect}`
   
   // 🔪 WAVE 1010: El General ordena el TIPO de ataque, el Repository elige el arma disponible
   output.effectDecision = {
@@ -385,6 +437,7 @@ function generateDivineStrikeDecision(
   console.log(
     `[DecisionMaker 🌩️] DIVINE STRIKE: Z=${(zScore ?? 0).toFixed(2)}σ | ` +
     `vibe=${vibeId} | zone=${energyContext?.zone ?? 'unknown'} | ` +
+    `texture=${spectralContext?.texture ?? 'N/A'} | ` +
     `arsenal=[${arsenal.join(', ')}]`
   )
   

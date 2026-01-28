@@ -1,11 +1,35 @@
 /**
- * 🥁 BEAT DETECTOR
- * Detecta BPM, beats y fases rítmicas
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 💓 WAVE 1022: THE PACEMAKER - BEAT DETECTOR v2.0
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Basado en: DrumPatternEngine de Auditoría 2
- * - Detección de BPM en tiempo real
- * - Tracking de fase del beat
- * - Detección de kicks, snares, hihats
+ * DIAGNÓSTICO DEL CÓDIGO ANTERIOR:
+ * - Promedio simple de todos los intervalos → contaminación por sub-divisiones
+ * - Media móvil 80/20 por frame → esquizofrenia BPM (120→180→80 en 3 frames)
+ * - Cero histéresis → cambios de BPM cada frame
+ * - Cero clustering → fills de batería = caos
+ * 
+ * SOLUCIÓN: THE PACEMAKER
+ * 
+ * A. 🧹 SMART INTERVAL SELECTOR (Clustering)
+ *    - Agrupa intervalos similares (±25ms)
+ *    - Usa el CLUSTER DOMINANTE (Moda), NO el promedio
+ *    - Ignora sub-divisiones (intervalos < 55% del dominante) si son minoría
+ * 
+ * B. ⚓ HYSTERESIS ANCHOR (Estabilidad)
+ *    - candidateBpm: lo que calculamos este frame
+ *    - stableBpm: lo que USAMOS para las luces
+ *    - Solo cambia stableBpm si candidateBpm persiste ±2.5 BPM durante 45 frames (~1.5s)
+ *    - Excepción: primeros 16 beats → cambios rápidos permitidos (warm-up)
+ * 
+ * C. 🔒 OCTAVE PROTECTION (Anti-multiplicación)
+ *    - Si BPM salta a 2x, 0.5x, 1.5x, o 0.66x → mantiene el actual
+ *    - Solo acepta cambio de octava si confidence > 0.85 durante 90 frames (~3s)
+ * 
+ * Resultado: BPM clavado como ROCA aunque el baterista se vuelva loco.
+ * 
+ * @author PunkOpus
+ * @wave 1022
  */
 
 import type {
@@ -13,21 +37,30 @@ import type {
   AudioConfig,
 } from '../types'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
  * Estado del detector de beats
  */
 export interface BeatState {
-  bpm: number
-  confidence: number
-  phase: number           // 0-1 (posición en el beat)
-  onBeat: boolean
-  beatCount: number
-  lastBeatTime: number
+  bpm: number                 // BPM estable (THE TRUTH)
+  confidence: number          // 0-1 (consistencia de intervalos)
+  phase: number               // 0-1 (posición en el beat)
+  onBeat: boolean             // ¿Estamos en el golpe?
+  beatCount: number           // Número total de beats detectados
+  lastBeatTime: number        // Timestamp del último beat
   
   // Detección de instrumentos
   kickDetected: boolean
   snareDetected: boolean
   hihatDetected: boolean
+  
+  // 💓 WAVE 1022: Nuevos campos de diagnóstico
+  rawBpm: number              // BPM sin filtrar (para debug)
+  isLocked: boolean           // ¿BPM está "locked" (high confidence)?
+  lockFrames: number          // Frames que llevamos locked
 }
 
 /**
@@ -40,34 +73,94 @@ interface PeakHistory {
 }
 
 /**
- * 🥁 BeatDetector
- * Detecta y trackea el ritmo del audio
+ * 💓 WAVE 1022: Cluster de intervalos
+ */
+interface IntervalCluster {
+  centerMs: number            // Centro del cluster en ms
+  count: number               // Cantidad de intervalos en este cluster
+  intervals: number[]         // Los intervalos raw
+  bpm: number                 // BPM correspondiente
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS - THE PACEMAKER TUNING
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Tolerancia para agrupar intervalos similares (ms) */
+const CLUSTER_TOLERANCE_MS = 25
+
+/** Frames mínimos para aceptar cambio de BPM */
+const HYSTERESIS_FRAMES = 45  // ~1.5 segundos @ 30fps
+
+/** BPM delta máximo para considerar "estable" */
+const BPM_STABILITY_DELTA = 2.5
+
+/** Beats iniciales con warm-up (cambios rápidos permitidos) */
+const WARMUP_BEATS = 16
+
+/** Confidence mínima para lock de octava */
+const OCTAVE_LOCK_CONFIDENCE = 0.85
+
+/** Frames mínimos para aceptar cambio de octava */
+const OCTAVE_CHANGE_FRAMES = 90  // ~3 segundos @ 30fps
+
+/** Intervalo mínimo válido (ms) - 200bpm max */
+const MIN_INTERVAL_MS = 300
+
+/** Intervalo máximo válido (ms) - 40bpm min */
+const MAX_INTERVAL_MS = 1500
+
+/** Ratio para detectar sub-división (beat → half-beat) */
+const SUBDIVISION_RATIO = 0.55  // Si interval < 55% del dominante, es sub-división
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE PACEMAKER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 💓 BeatDetector v2.0 - THE PACEMAKER
+ * 
+ * Detecta y trackea el ritmo del audio con estabilidad de hospital.
  */
 export class BeatDetector {
+  // State
   private state: BeatState
   private peakHistory: PeakHistory[] = []
-  private readonly maxPeakHistory = 50
+  private readonly maxPeakHistory = 64
   
-  // Configuración
+  // Configuration
   private readonly minBpm: number
   private readonly maxBpm: number
   
-  // Umbrales de detección
-  private kickThreshold = 0.7
-  private snareThreshold = 0.6
-  private hihatThreshold = 0.5
+  // Transient detection thresholds
+  private kickThreshold = 0.65
+  private snareThreshold = 0.55
+  private hihatThreshold = 0.45
   
-  // Energía previa para detección de transientes
+  // Previous frame values (for transient detection)
   private prevBass = 0
   private prevMid = 0
   private prevTreble = 0
   
+  // 💓 WAVE 1022: THE PACEMAKER STATE
+  private candidateBpm = 120          // BPM que estamos "probando"
+  private candidateFrames = 0         // Frames que el candidato ha sido estable
+  private octaveChangeFrames = 0      // Frames intentando cambio de octava
+  private lastDominantInterval = 500  // Último intervalo dominante detectado
+  
   constructor(config: AudioConfig) {
     this.minBpm = config.minBpm || 60
-    this.maxBpm = config.maxBpm || 180
+    this.maxBpm = config.maxBpm || 200
     
-    this.state = {
-      bpm: 120,           // Default BPM
+    this.state = this.createInitialState()
+  }
+  
+  /**
+   * Estado inicial
+   */
+  private createInitialState(): BeatState {
+    return {
+      bpm: 120,
       confidence: 0.5,
       phase: 0,
       onBeat: false,
@@ -76,40 +169,44 @@ export class BeatDetector {
       kickDetected: false,
       snareDetected: false,
       hihatDetected: false,
+      // WAVE 1022
+      rawBpm: 120,
+      isLocked: false,
+      lockFrames: 0,
     }
   }
   
   /**
-   * Procesar frame de audio
+   * 🎯 Procesar frame de audio
    */
   process(metrics: AudioMetrics): BeatState {
     const now = metrics.timestamp
     
-    // Detectar transientes (cambios bruscos)
+    // 1. Detectar transientes (cambios bruscos de energía)
     const bassTransient = metrics.bass - this.prevBass
     const midTransient = metrics.mid - this.prevMid
     const trebleTransient = metrics.treble - this.prevTreble
     
-    // Detectar instrumentos
-    this.state.kickDetected = bassTransient > this.kickThreshold && metrics.bass > 0.5
-    this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.4
-    this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.3
+    // 2. Detectar instrumentos
+    this.state.kickDetected = bassTransient > this.kickThreshold && metrics.bass > 0.45
+    this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.35
+    this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.25
     
-    // Registrar picos para análisis de BPM
-    if (this.state.kickDetected || (bassTransient > 0.3 && metrics.bass > 0.6)) {
+    // 3. Registrar picos para análisis de BPM (solo kicks significativos)
+    if (this.state.kickDetected || (bassTransient > 0.35 && metrics.bass > 0.55)) {
       this.recordPeak(now, metrics.energy, 'kick')
     }
     
-    // Calcular BPM desde historial de picos
-    this.updateBpm(now)
+    // 4. 💓 THE PACEMAKER: Calcular BPM con clustering + histéresis
+    this.updateBpmWithPacemaker(now)
     
-    // Actualizar fase del beat
+    // 5. Actualizar fase del beat
     this.updatePhase(now)
     
-    // Detectar si estamos "en el beat"
-    this.state.onBeat = this.state.phase < 0.1 || this.state.phase > 0.9
+    // 6. Detectar si estamos "en el beat"
+    this.state.onBeat = this.state.phase < 0.12 || this.state.phase > 0.88
     
-    // Guardar valores anteriores
+    // 7. Guardar valores anteriores
     this.prevBass = metrics.bass
     this.prevMid = metrics.mid
     this.prevTreble = metrics.treble
@@ -121,6 +218,12 @@ export class BeatDetector {
    * Registrar un pico detectado
    */
   private recordPeak(time: number, energy: number, type: PeakHistory['type']): void {
+    // Anti-spam: No registrar si el último peak fue hace menos de 80ms
+    const lastPeak = this.peakHistory[this.peakHistory.length - 1]
+    if (lastPeak && (time - lastPeak.time) < 80) {
+      return
+    }
+    
     this.peakHistory.push({ time, energy, type })
     
     // Mantener historial limitado
@@ -136,46 +239,260 @@ export class BeatDetector {
   }
   
   /**
-   * Calcular BPM desde historial de picos
+   * 💓 WAVE 1022: THE PACEMAKER - BPM con clustering + histéresis
    */
-  private updateBpm(now: number): void {
-    // Necesitamos al menos 4 picos para calcular
+  private updateBpmWithPacemaker(now: number): void {
+    // Necesitamos suficientes kicks para analizar
     const kicks = this.peakHistory.filter(p => p.type === 'kick')
-    if (kicks.length < 4) return
+    if (kicks.length < 6) return
     
-    // Calcular intervalos entre kicks
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 1: Calcular todos los intervalos válidos
+    // ═══════════════════════════════════════════════════════════════════════
     const intervals: number[] = []
     for (let i = 1; i < kicks.length; i++) {
       const interval = kicks[i].time - kicks[i - 1].time
-      // Filtrar intervalos razonables (200ms - 2000ms = 30-300 BPM)
-      if (interval > 200 && interval < 2000) {
+      if (interval >= MIN_INTERVAL_MS && interval <= MAX_INTERVAL_MS) {
         intervals.push(interval)
       }
     }
     
-    if (intervals.length < 3) return
+    if (intervals.length < 4) return
     
-    // Calcular media de intervalos
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
-    const calculatedBpm = 60000 / avgInterval
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 2: 🧹 CLUSTERING - Agrupar intervalos similares
+    // ═══════════════════════════════════════════════════════════════════════
+    const clusters = this.clusterIntervals(intervals)
     
-    // Verificar que está en rango
-    if (calculatedBpm >= this.minBpm && calculatedBpm <= this.maxBpm) {
-      // Media móvil para suavizar
-      this.state.bpm = this.state.bpm * 0.8 + calculatedBpm * 0.2
+    if (clusters.length === 0) return
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 3: Encontrar el CLUSTER DOMINANTE (Moda, no promedio)
+    // ═══════════════════════════════════════════════════════════════════════
+    const dominantCluster = this.findDominantCluster(clusters)
+    
+    if (!dominantCluster) return
+    
+    // Guardar para referencia
+    this.lastDominantInterval = dominantCluster.centerMs
+    
+    // BPM crudo (sin filtrar)
+    const rawBpm = dominantCluster.bpm
+    this.state.rawBpm = rawBpm
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 4: 🔒 OCTAVE PROTECTION - Detectar saltos de octava falsos
+    // ═══════════════════════════════════════════════════════════════════════
+    const currentBpm = this.state.bpm
+    const isOctaveJump = this.isOctaveJump(rawBpm, currentBpm)
+    
+    if (isOctaveJump && this.state.beatCount > WARMUP_BEATS) {
+      // Incrementar contador de frames intentando cambiar octava
+      this.octaveChangeFrames++
       
-      // Calcular confianza basada en consistencia
-      const variance = intervals.reduce((sum, i) => sum + Math.pow(i - avgInterval, 2), 0) / intervals.length
-      const stdDev = Math.sqrt(variance)
-      this.state.confidence = Math.max(0, 1 - (stdDev / avgInterval))
+      // Solo aceptar cambio de octava si:
+      // - Llevamos MUCHOS frames intentándolo
+      // - La confianza es MUY alta
+      if (this.octaveChangeFrames < OCTAVE_CHANGE_FRAMES || 
+          this.state.confidence < OCTAVE_LOCK_CONFIDENCE) {
+        // RECHAZAR cambio de octava - mantener BPM actual
+        return
+      }
+      // Si llegamos aquí, el cambio de octava es legítimo (muy raro)
+    } else {
+      // Reset contador de octava si no es salto
+      this.octaveChangeFrames = 0
     }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 5: ⚓ HYSTERESIS - Solo cambiar si el candidato persiste
+    // ═══════════════════════════════════════════════════════════════════════
+    const bpmDelta = Math.abs(rawBpm - this.candidateBpm)
+    
+    if (bpmDelta <= BPM_STABILITY_DELTA) {
+      // BPM es similar al candidato anterior → incrementar estabilidad
+      this.candidateFrames++
+      
+      // Refinar el candidato con media móvil suave
+      this.candidateBpm = this.candidateBpm * 0.92 + rawBpm * 0.08
+    } else {
+      // BPM cambió significativamente → nuevo candidato
+      this.candidateBpm = rawBpm
+      this.candidateFrames = 0
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 6: Aplicar cambio SOLO si es estable
+    // ═══════════════════════════════════════════════════════════════════════
+    const isWarmup = this.state.beatCount < WARMUP_BEATS
+    const requiredFrames = isWarmup ? 8 : HYSTERESIS_FRAMES
+    
+    if (this.candidateFrames >= requiredFrames) {
+      // ¡El candidato es estable! Aplicar cambio
+      this.state.bpm = Math.round(this.candidateBpm * 10) / 10  // 1 decimal
+      this.state.isLocked = true
+      this.state.lockFrames++
+    } else {
+      this.state.isLocked = false
+      this.state.lockFrames = 0
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PASO 7: Calcular confianza basada en consistencia del cluster dominante
+    // ═══════════════════════════════════════════════════════════════════════
+    this.state.confidence = this.calculateConfidence(dominantCluster, clusters)
+  }
+  
+  /**
+   * 🧹 Agrupar intervalos similares en clusters
+   */
+  private clusterIntervals(intervals: number[]): IntervalCluster[] {
+    if (intervals.length === 0) return []
+    
+    // Ordenar intervalos
+    const sorted = [...intervals].sort((a, b) => a - b)
+    
+    const clusters: IntervalCluster[] = []
+    let currentCluster: IntervalCluster | null = null
+    
+    for (const interval of sorted) {
+      if (!currentCluster) {
+        // Primer cluster
+        currentCluster = {
+          centerMs: interval,
+          count: 1,
+          intervals: [interval],
+          bpm: 60000 / interval,
+        }
+      } else if (Math.abs(interval - currentCluster.centerMs) <= CLUSTER_TOLERANCE_MS) {
+        // Agregar al cluster actual
+        currentCluster.intervals.push(interval)
+        currentCluster.count++
+        // Recalcular centro como promedio del cluster
+        currentCluster.centerMs = currentCluster.intervals.reduce((a, b) => a + b, 0) / currentCluster.count
+        currentCluster.bpm = 60000 / currentCluster.centerMs
+      } else {
+        // Nuevo cluster
+        clusters.push(currentCluster)
+        currentCluster = {
+          centerMs: interval,
+          count: 1,
+          intervals: [interval],
+          bpm: 60000 / interval,
+        }
+      }
+    }
+    
+    // No olvidar el último cluster
+    if (currentCluster) {
+      clusters.push(currentCluster)
+    }
+    
+    return clusters
+  }
+  
+  /**
+   * 🎯 Encontrar el cluster dominante (Moda)
+   * 
+   * Prioriza:
+   * 1. El cluster con más intervalos
+   * 2. Si hay empate, el que está más cerca del BPM actual (estabilidad)
+   * 3. Ignora clusters de sub-división si hay uno de beat completo
+   */
+  private findDominantCluster(clusters: IntervalCluster[]): IntervalCluster | null {
+    if (clusters.length === 0) return null
+    if (clusters.length === 1) return clusters[0]
+    
+    // Ordenar por cantidad (más intervalos primero)
+    const sorted = [...clusters].sort((a, b) => b.count - a.count)
+    
+    // El más grande
+    const largest = sorted[0]
+    
+    // Verificar si hay otros clusters significativos
+    const significant = sorted.filter(c => c.count >= largest.count * 0.6)
+    
+    if (significant.length === 1) {
+      return largest
+    }
+    
+    // Si hay múltiples clusters significativos, priorizar el más cercano al BPM actual
+    // (estabilidad temporal)
+    const currentBpm = this.state.bpm
+    
+    let best = largest
+    let bestDistance = Math.abs(largest.bpm - currentBpm)
+    
+    for (const cluster of significant) {
+      const distance = Math.abs(cluster.bpm - currentBpm)
+      
+      // Si está más cerca del BPM actual Y no es una sub-división obvia
+      if (distance < bestDistance) {
+        // Verificar que no sea sub-división del largest
+        const ratio = cluster.centerMs / largest.centerMs
+        const isSubdivision = ratio < SUBDIVISION_RATIO || (ratio > 1.8 && ratio < 2.2)
+        
+        if (!isSubdivision) {
+          best = cluster
+          bestDistance = distance
+        }
+      }
+    }
+    
+    return best
+  }
+  
+  /**
+   * 🔒 Detectar si el cambio de BPM es un salto de octava (falso positivo)
+   */
+  private isOctaveJump(newBpm: number, currentBpm: number): boolean {
+    if (currentBpm === 0) return false
+    
+    const ratio = newBpm / currentBpm
+    
+    // Ratios peligrosos: 2x, 0.5x, 1.5x, 0.66x
+    const dangerousRatios = [
+      { min: 1.85, max: 2.15 },   // Doble
+      { min: 0.45, max: 0.55 },   // Mitad
+      { min: 1.45, max: 1.55 },   // 1.5x
+      { min: 0.65, max: 0.70 },   // 2/3
+    ]
+    
+    for (const range of dangerousRatios) {
+      if (ratio >= range.min && ratio <= range.max) {
+        return true
+      }
+    }
+    
+    return false
+  }
+  
+  /**
+   * 📊 Calcular confianza basada en consistencia
+   */
+  private calculateConfidence(dominant: IntervalCluster, allClusters: IntervalCluster[]): number {
+    // Base: qué porcentaje de intervalos están en el cluster dominante
+    const totalIntervals = allClusters.reduce((sum, c) => sum + c.count, 0)
+    const dominantRatio = dominant.count / totalIntervals
+    
+    // Varianza dentro del cluster dominante
+    const mean = dominant.centerMs
+    const variance = dominant.intervals.reduce((sum, i) => sum + Math.pow(i - mean, 2), 0) / dominant.count
+    const stdDev = Math.sqrt(variance)
+    const consistencyScore = Math.max(0, 1 - (stdDev / mean) * 2)
+    
+    // Combinar scores
+    const confidence = (dominantRatio * 0.6) + (consistencyScore * 0.4)
+    
+    // Clamp 0-1
+    return Math.max(0, Math.min(1, confidence))
   }
   
   /**
    * Actualizar fase del beat (0-1)
    */
   private updatePhase(now: number): void {
-    const beatDuration = 60000 / this.state.bpm // ms por beat
+    const beatDuration = 60000 / this.state.bpm
     const timeSinceLastBeat = now - this.state.lastBeatTime
     
     // Calcular fase (0-1)
@@ -183,12 +500,15 @@ export class BeatDetector {
   }
   
   /**
-   * Forzar BPM manualmente (para sync externo)
+   * Forzar BPM manualmente (para sync externo o usuario)
    */
   setBpm(bpm: number): void {
     if (bpm >= this.minBpm && bpm <= this.maxBpm) {
       this.state.bpm = bpm
+      this.candidateBpm = bpm
+      this.candidateFrames = HYSTERESIS_FRAMES  // Forzar lock inmediato
       this.state.confidence = 1.0
+      this.state.isLocked = true
     }
   }
   
@@ -197,7 +517,7 @@ export class BeatDetector {
    */
   tap(timestamp: number): void {
     this.recordPeak(timestamp, 1.0, 'kick')
-    this.updateBpm(timestamp)
+    this.updateBpmWithPacemaker(timestamp)
   }
   
   /**
@@ -208,20 +528,42 @@ export class BeatDetector {
   }
   
   /**
+   * 💓 WAVE 1022: Obtener diagnóstico del Pacemaker
+   */
+  getDiagnostics(): {
+    stableBpm: number
+    rawBpm: number
+    candidateBpm: number
+    candidateFrames: number
+    isLocked: boolean
+    confidence: number
+    octaveChangeFrames: number
+    lastInterval: number
+  } {
+    return {
+      stableBpm: this.state.bpm,
+      rawBpm: this.state.rawBpm,
+      candidateBpm: this.candidateBpm,
+      candidateFrames: this.candidateFrames,
+      isLocked: this.state.isLocked,
+      confidence: this.state.confidence,
+      octaveChangeFrames: this.octaveChangeFrames,
+      lastInterval: this.lastDominantInterval,
+    }
+  }
+  
+  /**
    * Reset detector
    */
   reset(): void {
     this.peakHistory = []
-    this.state = {
-      bpm: 120,
-      confidence: 0.5,
-      phase: 0,
-      onBeat: false,
-      beatCount: 0,
-      lastBeatTime: 0,
-      kickDetected: false,
-      snareDetected: false,
-      hihatDetected: false,
-    }
+    this.candidateBpm = 120
+    this.candidateFrames = 0
+    this.octaveChangeFrames = 0
+    this.lastDominantInterval = 500
+    this.prevBass = 0
+    this.prevMid = 0
+    this.prevTreble = 0
+    this.state = this.createInitialState()
   }
 }

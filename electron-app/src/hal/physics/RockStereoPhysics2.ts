@@ -658,7 +658,7 @@ export class RockStereoPhysics2 {
     
     if (this.currentSubgenre === 'PROG_ROCK') {
       // Guitar Solo Signature: HighMid alto + Centroid en rango de solo
-      const guitarSoloSignature = bands.highMid > 0.30 && centroidHz > 1500;
+      const guitarSoloSignature = bands.highMid > 0.25 && centroidHz > 1200;  // 🎸 BAJADO 0.30→0.25, 1500→1200
       
       if (guitarSoloSignature) {
         // DUAL-BAND: Tomar el MAYOR entre Presence y HighMid ajustado
@@ -671,6 +671,14 @@ export class RockStereoPhysics2 {
             `C=${centroidHz.toFixed(0)}Hz → MR_input=${rawInput.toFixed(2)}`
           );
         }
+      }
+    } else {
+      // 🎸 WAVE 1018.1: HARD_ROCK TAMBIÉN USA DUAL-BAND (menos agresivo)
+      // Algunas grabaciones modernas de Floyd tienen mejor mezcla
+      const possibleGuitarSolo = bands.highMid > 0.35 && centroidHz > 1800;
+      
+      if (possibleGuitarSolo) {
+        rawInput = Math.max(bands.presence, bands.highMid * 0.5);  // Menos weight que PROG
       }
     }
     

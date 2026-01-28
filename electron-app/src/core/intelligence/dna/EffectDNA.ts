@@ -335,6 +335,45 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     chaos: 0.75,        // 🔧 WAVE 1005.8: 0.85→0.75 (menos extremo)
     organicity: 0.15,   // 🆙 WAVE 1005.8: 0.10→0.15 (alcanzable)
   },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
+  // ═══════════════════════════════════════════════════════════════
+  
+  // ⚡ THUNDER STRUCK - El martillo del estadio
+  'thunder_struck': {
+    aggression: 0.95,   // ⚡ Brutal stadium blinder - PAM-PAM
+    chaos: 0.10,        // MUY ordenado - 2 flashes predecibles
+    organicity: 0.05,   // 100% sintético - NO es fuego orgánico, es MÁQUINA de luz
+  },
+  
+  // 🎸 LIQUID SOLO - El protagonista iluminado
+  'liquid_solo': {
+    aggression: 0.40,   // 🎸 Moderado - elegancia sobre brutalidad
+    chaos: 0.35,        // Semi-caótico - L/R asimétricos pero coordinados
+    organicity: 0.75,   // Alto orgánico - el MÚSICO es humano, fluido, expresivo
+  },
+  
+  // 🔥 AMP HEAT - Las válvulas respirando
+  'amp_heat': {
+    aggression: 0.15,   // 🔥 Suave - calor íntimo, NO violencia
+    chaos: 0.15,        // Muy ordenado - respiración sinusoidal constante
+    organicity: 0.90,   // MÁXIMA organicidad - respiración humana, calor analógico
+  },
+  
+  // 🌊 ARENA SWEEP - El barrido de Wembley
+  'arena_sweep': {
+    aggression: 0.50,   // 🌊 Medio - presencia sin brutalidad
+    chaos: 0.20,        // Ordenado - progresión V-shape predecible
+    organicity: 0.25,   // Bajo orgánico - movimiento mecánico con INERCIA física
+  },
+  
+  // 😵 FEEDBACK STORM - El caos visual
+  'feedback_storm': {
+    aggression: 0.85,   // 😵 Alto - distorsión harsh, caos auricular
+    chaos: 0.90,        // Muy caótico - strobe errático, impredecible
+    organicity: 0.10,   // Sintético - feedback es fenómeno eléctrico, NO orgánico
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

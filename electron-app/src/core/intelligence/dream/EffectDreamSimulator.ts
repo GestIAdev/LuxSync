@@ -187,7 +187,7 @@ const EFFECT_CATEGORIES = {
     'corazon_latino'      // ✅ WAVE 750: Heartbeat passion
   ]
   // 🚧 chill-ambient: NOT IMPLEMENTED YET
-  // 🚧 pop-rock: NOT IMPLEMENTED YET
+  // ✅ WAVE 1020: pop-rock IMPLEMENTED - Los 5 Magnificos LIVE
 }
 
 // Pesos de belleza por tipo de efecto (WAVE 902.1: TRUTH - Only Latina + Techno)
@@ -618,6 +618,41 @@ export class EffectDreamSimulator {
         'salsa_fire', 'solar_flare',
         'latina_meltdown', 'strobe_storm'
       ],
+      
+      // 🎸 WAVE 1020: POP-ROCK ARSENAL - LOS 5 MAGNÍFICOS
+      'pop-rock': [
+        // PEAK/INTENSE (75-100%) - Stadium moments
+        'thunder_struck',     // ⚡ Stadium blinder PAM-PAM (A=0.95)
+        'feedback_storm',     // 😵 Visual chaos (A=0.85)
+        
+        // ACTIVE/GENTLE (45-75%) - Performance zone
+        'arena_sweep',        // 🌊 Wembley sweep (A=0.50)
+        'liquid_solo',        // 🎸 Guitarist spotlight (A=0.40)
+        
+        // AMBIENT/VALLEY (15-45%) - Intimate moments
+        'amp_heat',           // 🔥 Hot valves breathing (A=0.15)
+        
+        // Fallbacks from other genres (crossover)
+        'strobe_burst',       // Universal peak moment
+        'cyber_dualism',      // L/R ping-pong (works for rock too)
+        'digital_rain',       // Ambient filler
+      ],
+      // Aliases for rock
+      'rock': [
+        'thunder_struck', 'feedback_storm',
+        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'strobe_burst', 'cyber_dualism', 'digital_rain'
+      ],
+      'alternative': [
+        'thunder_struck', 'feedback_storm',
+        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'strobe_burst', 'cyber_dualism', 'digital_rain'
+      ],
+      'indie': [
+        'thunder_struck', 'feedback_storm',
+        'arena_sweep', 'liquid_solo', 'amp_heat',
+        'strobe_burst', 'cyber_dualism', 'digital_rain'
+      ],
     }
     
     // Buscar match exacto
@@ -631,6 +666,9 @@ export class EffectDreamSimulator {
     }
     if (vibe.includes('latin') || vibe.includes('latino') || vibe.includes('tropical') || vibe.includes('fiesta')) {
       return EFFECTS_BY_VIBE['fiesta-latina']
+    }
+    if (vibe.includes('rock') || vibe.includes('alternative') || vibe.includes('indie') || vibe.includes('pop')) {
+      return EFFECTS_BY_VIBE['pop-rock']
     }
     
     // Default: todas (vibe desconocido)

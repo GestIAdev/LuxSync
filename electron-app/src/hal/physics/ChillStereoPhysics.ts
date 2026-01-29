@@ -281,18 +281,6 @@ export class ChillStereoPhysics {
   private readonly LIGHTHOUSE_FREQUENCY = 0.08   // 0.08 Hz = ciclo de 12.5 segundos
   private readonly LIGHTHOUSE_AMPLITUDE = 0.25   // ±25% del rango de pan
   
-  // 🌊 THERMAL PACKET TIMING - Coreografía FRONT → BACK → MOVER
-  // (Sistema legacy, evoluciona a LightBubble en WAVE 1034+)
-  private readonly PACKET_TOTAL_DURATION = 4.5   // Duración total de la corriente (segundos)
-  private readonly PACKET_FRONT_END = 1.5        // FRONT: 0s → 1.5s
-  private readonly PACKET_BACK_START = 0.8       // BACK: 0.8s → 3.0s (solapamiento)
-  private readonly PACKET_BACK_END = 3.0
-  private readonly PACKET_MOVER_START = 1.8      // MOVER: 1.8s → 4.5s (liberación)
-  private readonly PACKET_PEAK_INTENSITY = 0.35  // Pico de intensidad (35%)
-  private readonly PACKET_BYPASS_AGC = 1.2       // Multiplicador post-AGC
-  private readonly PACKET_THRESHOLD = 0.45       // Alias de BUBBLE_SPAWN_THRESHOLD
-  private readonly PACKET_COOLDOWN_FRAMES = 60   // Alias de BUBBLE_COOLDOWN_FRAMES
-  
   // 🧂 GRANULARITY - Micro-textura según audio
   private readonly GRAIN_LFO_WARM = 0.5          // 0.5 Hz (parpadeo de vela)
   private readonly GRAIN_LFO_AMPLITUDE = 0.06    // ±6% variación
@@ -341,19 +329,18 @@ export class ChillStereoPhysics {
   private readonly BREATH_PERIOD_SECONDS = 8  // Respiración de 8 segundos
   
   // ═══════════════════════════════════════════════════════════════════════
-  //  WAVE 1033: FLUID MATRIX STATE
+  //  🪸 WAVE 1034: BIOLUMINESCENT REEF STATE
   // ═══════════════════════════════════════════════════════════════════════
   
-  // 🌡️ Heat Accumulator
+  // 🌡️ Heat Accumulator (para spawn de burbujas)
   private thermalEnergy = 0.0           // 0.0 - 1.0
-  private packetCooldown = 0            // Frames hasta poder disparar otro packet
+  private bubbleCooldown = 0            // Frames hasta poder crear otra burbuja
   
-  // 🌊 Active Thermal Packets (corrientes ascendentes)
-  private activePackets: Array<{
-    startFrame: number              // Cuando empezó
-    side: 'L' | 'R'                 // Lado del escenario
-    peakIntensity: number           // Intensidad máxima
-  }> = []
+  // 🫧 Active Light Bubbles (EL ARRECIFE)
+  private activeBubbles: LightBubble[] = []
+  
+  // 🌊 Ocean Fractal Phase (para pulso de fondo)
+  private oceanTime = 0
   
   // 💓 Tidal Breath phase (onda global de fondo)
   private tidalPhase = 0
@@ -364,13 +351,16 @@ export class ChillStereoPhysics {
   // 🔦 Lighthouse phase (siempre activo)
   private lighthousePhase = 0
   
+  // 🎯 Lane spawn counter (determinista, no random)
+  private laneSpawnCounter = 0
+  
   constructor() {
     // Inicializar buffer de stereo delay
     for (let i = 0; i < this.STEREO_OFFSET_FRAMES; i++) {
       this.stereoBuffer.push(this.MOVER_FLOOR)
     }
-    console.log('[ChillStereoPhysics]  WAVE 1033: THE FLUID MATRIX initialized')
-    console.log(`[ChillStereoPhysics] 🔥 Packet Duration: ${this.PACKET_TOTAL_DURATION}s | Tidal: ${this.TIDAL_FREQUENCY}Hz | Grain: ${this.GRAIN_LFO_WARM}Hz`)
+    console.log('[ChillStereoPhysics] 🪸 WAVE 1034: THE BIOLUMINESCENT REEF initialized')
+    console.log(`[ChillStereoPhysics] 🫧 Lanes: ${this.TOTAL_LANES} | MaxBubbles: ${this.MAX_ACTIVE_BUBBLES} | Ocean: ${this.OCEAN_WAVE_1}+${this.OCEAN_WAVE_2}+${this.OCEAN_WAVE_3}Hz`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -453,80 +443,87 @@ export class ChillStereoPhysics {
     }
     
     // ─────────────────────────────────────────────────────────────────────
-    // 🌋 9. LAVA LAMP PHYSICS (WAVE 1032.4)
+    // 🪸 9. BIOLUMINESCENT REEF PHYSICS (WAVE 1034)
     // ─────────────────────────────────────────────────────────────────────
     
-    // 🌡️ 9.1 Heat Accumulator - Cargar y disparar burbujas
-    const highMid = (mid + treble) * 0.5  // HighMid para Deep House oscuro
+    // 🌡️ 9.1 Heat Accumulator - Cargar energía para spawn de burbujas
+    const highMid = (mid + treble) * 0.5
     this.updateHeatAccumulator(subBass ?? bass, highMid)
     
-    // 🌊 9.2 Process Thermal Packets - Corriente ascendente FRONT→BACK→MOVERS
-    const packetContribution = this.processThermalPackets()
+    // 🫧 9.2 Process Light Bubbles - El Arrecife Bioluminiscente
+    const bubbleContribution = this.processLightBubbles(texture)
     
-    // 🧂 9.3 Granularity - Micro-textura según audio
+    // 🌊 9.3 Ocean Fractal Pulse - Respiración del océano
+    const oceanPulse = this.calculateOceanPulse()
+    
+    // 🧂 9.4 Granularity - Micro-textura según audio
     const grainMod = this.processGranularity(texture)
     
-    // 💓 9.4 Tidal Breath - Onda sinusoidal global de fondo
+    // 💓 9.5 Tidal Breath - Onda sinusoidal global de fondo
     const tidalMod = this.processTidalBreath()
     
-    // 🔦 9.5 Lighthouse - Movimiento constante garantizado
+    // 🔦 9.6 Lighthouse - Movimiento constante garantizado
     const lighthouse = this.updateLighthouse()
     
     // ─────────────────────────────────────────────────────────────────────
-    // 10. CONSTRUIR OUTPUT FINAL
-    // 🔥 WAVE 1032.2: BUBBLE BYPASS - Las burbujas se suman POST-AGC
-    // Base respeta el Chill, burbujas rompen el límite
+    // 10. CONSTRUIR OUTPUT FINAL - THE BIOLUMINESCENT REEF
+    // 🪸 WAVE 1034: Las burbujas viajan independientes por carriles
     // ─────────────────────────────────────────────────────────────────────
     
-    // BASE (con AGC implícito via viscosidad) + TIDAL BREATH
-    // Tidal solo aplica a zonas SIN packet activo
+    // BASE: Floor + Respiración + Ember + Ocean Pulse de fondo
+    const oceanMod = oceanPulse * this.OCEAN_AMPLITUDE
+    
     const baseFront = Math.min(
       this.INTENSITY_CEILING, 
-      this.frontVal + breathMod * 0.03 + emberGlow + (packetContribution.front < 0.1 ? tidalMod : 0)
+      this.frontVal + breathMod * 0.03 + emberGlow + oceanMod + tidalMod
     )
     const baseBack = Math.min(
       this.INTENSITY_CEILING, 
-      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5 + (packetContribution.back < 0.1 ? tidalMod : 0)
+      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5 + oceanMod + tidalMod
     )
     const baseMoverL = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValL + breathMod * 0.02 + (packetContribution.moverL < 0.1 ? tidalMod : 0)
+      this.moverValL + breathMod * 0.02 + oceanMod * 0.5 + tidalMod
     )
     const baseMoverR = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValR + breathMod * 0.02 + (packetContribution.moverR < 0.1 ? tidalMod : 0)
+      this.moverValR + breathMod * 0.02 + oceanMod * 0.5 + tidalMod
     )
     
-    // PACKET BYPASS: Se suma por encima del AGC (con granularidad)
-    const grainedFront = packetContribution.front * (1 + grainMod)
-    const grainedBack = packetContribution.back * (1 + grainMod)
-    const grainedMoverL = packetContribution.moverL * (1 + grainMod)
-    const grainedMoverR = packetContribution.moverR * (1 + grainMod)
+    // 🫧 BUBBLE BOOST: Se suma por encima del base (con granularidad)
+    const grainedFrontL = bubbleContribution.frontL * (1 + grainMod)
+    const grainedFrontR = bubbleContribution.frontR * (1 + grainMod)
+    const grainedBack = bubbleContribution.back * (1 + grainMod)
+    const grainedMoverL = bubbleContribution.moverL * (1 + grainMod)
+    const grainedMoverR = bubbleContribution.moverR * (1 + grainMod)
     
-    const finalFront = Math.min(1.0, baseFront + (grainedFront * this.PACKET_BYPASS_AGC))
-    const finalBack = Math.min(1.0, baseBack + (grainedBack * this.PACKET_BYPASS_AGC))
-    const finalMoverL = Math.min(1.0, baseMoverL + (grainedMoverL * this.PACKET_BYPASS_AGC))
-    const finalMoverR = Math.min(1.0, baseMoverR + (grainedMoverR * this.PACKET_BYPASS_AGC))
+    // Front combina ambos carriles frontales
+    const bubbleFront = (grainedFrontL + grainedFrontR) * 0.6
+    
+    const finalFront = Math.min(1.0, baseFront + bubbleFront)
+    const finalBack = Math.min(1.0, baseBack + grainedBack)
+    const finalMoverL = Math.min(1.0, baseMoverL + grainedMoverL)
+    const finalMoverR = Math.min(1.0, baseMoverR + grainedMoverR)
     
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2
     
-    // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
+    // Log cada 90 frames (~1.5 segundos) - REEF stats
     if (this.frameCount % 90 === 0) {
       console.log(
-        `[� FLUID MATRIX] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Packets:${this.activePackets.length} | ` +
+        `[🪸 REEF] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} Ocean:${(oceanPulse * 100).toFixed(0)}% | ` +
         `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
         `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
-        `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
+        `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}%`
       )
     }
     
     return {
       frontParIntensity: finalFront,
       backParIntensity: finalBack,
-      moverIntensity: avgMover,             // Legacy: promedio
-      moverIntensityL: finalMoverL,         // 🫧 WAVE 1032.10: Individual L
-      moverIntensityR: finalMoverR,         // 🫧 WAVE 1032.10: Individual R
+      moverIntensity: avgMover,
+      moverIntensityL: finalMoverL,
+      moverIntensityR: finalMoverR,
       moverActive: avgMover > this.MOVER_FLOOR + 0.05,
       physicsApplied: 'chill',
       fluidState: {
@@ -539,10 +536,10 @@ export class ChillStereoPhysics {
       // 🪸 WAVE 1034: BIOLUMINESCENT REEF OUTPUT
       reef: {
         thermalEnergy: this.thermalEnergy,
-        activeBubbles: this.activePackets.length,  // TODO: Migrar a LightBubble[]
-        oceanPulse: 0,  // TODO: Implementar ocean fractal
+        activeBubbles: this.activeBubbles.length,
+        oceanPulse: oceanPulse,
         lighthousePan: lighthouse.panOffset,
-        lighthouseTilt: lighthouse.tiltOffset + packetContribution.tiltBoost
+        lighthouseTilt: lighthouse.tiltOffset + bubbleContribution.tiltBoost
       }
     }
   }
@@ -848,23 +845,25 @@ export class ChillStereoPhysics {
     for (let i = 0; i < this.stereoBuffer.length; i++) {
       this.stereoBuffer[i] = this.MOVER_FLOOR
     }
-    // � Reset Fluid Matrix state
+    // 🪸 Reset Reef state
     this.thermalEnergy = 0
-    this.packetCooldown = 0
-    this.activePackets = []
+    this.bubbleCooldown = 0
+    this.activeBubbles = []
+    this.oceanTime = 0
     this.tidalPhase = 0
     this.grainPhase = 0
     this.lighthousePhase = 0
+    this.laneSpawnCounter = 0
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // � WAVE 1033: FLUID MATRIX PHYSICS METHODS
+  // 🪸 WAVE 1034: BIOLUMINESCENT REEF PHYSICS METHODS
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * 🌡️ HEAT ACCUMULATOR - Acumula energía del bajo y dispara thermal packets
+   * 🌡️ HEAT ACCUMULATOR - Acumula energía y dispara burbujas
    * 
-   * No reacciona al bombo. Se CARGA con el ritmo y se libera como corriente ascendente.
+   * Se CARGA con el ritmo y se libera creando burbujas en carriles aleatorios.
    */
   private updateHeatAccumulator(subBass: number, highMid: number): void {
     // ─────────────────────────────────────────────────────────────────────
@@ -880,142 +879,211 @@ export class ChillStereoPhysics {
     this.thermalEnergy = Math.min(1.0, Math.max(0, this.thermalEnergy))
     
     // ─────────────────────────────────────────────────────────────────────
-    // DISPARAR THERMAL PACKET SI HAY SUFICIENTE CALOR
+    // SPAWN BUBBLE SI HAY SUFICIENTE CALOR
     // ─────────────────────────────────────────────────────────────────────
-    if (this.packetCooldown > 0) {
-      this.packetCooldown--
+    if (this.bubbleCooldown > 0) {
+      this.bubbleCooldown--
     }
     
-    if (this.thermalEnergy > this.PACKET_THRESHOLD && 
-        this.packetCooldown === 0 && 
-        this.activePackets.length < 2) {  // Máximo 2 packets simultáneos (L y R)
-      this.spawnThermalPacket()
-      // Descargar parte del calor al crear packet
-      this.thermalEnergy *= 0.5
-      this.packetCooldown = this.PACKET_COOLDOWN_FRAMES
+    if (this.thermalEnergy > this.BUBBLE_SPAWN_THRESHOLD && 
+        this.bubbleCooldown === 0 && 
+        this.activeBubbles.length < this.MAX_ACTIVE_BUBBLES) {
+      this.spawnLightBubble()
+      // Descargar parte del calor al crear burbuja
+      this.thermalEnergy *= 0.6
+      this.bubbleCooldown = this.BUBBLE_COOLDOWN_FRAMES
     }
   }
   
   /**
-   * 🌊 SPAWN THERMAL PACKET - Crea una corriente ascendente
-   * Alterna entre lado L y R para crear movimiento estéreo
-   */
-  private spawnThermalPacket(): void {
-    // Alternar lado (L→R→L→R...)
-    const side: 'L' | 'R' = this.activePackets.length === 0 || 
-                            this.activePackets[this.activePackets.length - 1]?.side === 'R' ? 'L' : 'R'
-    
-    // Varianza determinista basada en frame (AXIOMA ANTI-SIMULACIÓN)
-    const intensityVariance = 0.85 + (this.frameCount % 30) / 100  // 0.85-1.15
-    
-    this.activePackets.push({
-      startFrame: this.frameCount,
-      side,
-      peakIntensity: this.PACKET_PEAK_INTENSITY * intensityVariance
-    })
-    
-    console.log(
-      `[🌊 THERMAL] Packet spawned on ${side} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | ` +
-      `Active: ${this.activePackets.length} | Intensity: ${(this.PACKET_PEAK_INTENSITY * intensityVariance * 100).toFixed(1)}%`
-    )
-  }
-  
-  /**
-   * 🌊 PROCESS THERMAL PACKETS - Corriente ascendente FRONT → BACK → MOVERS
+   * 🫧 SPAWN LIGHT BUBBLE - Crea una burbuja bioluminiscente
    * 
-   * Coreografía:
-   * - T=0.0s-1.5s: Energía en FRONT (nacimiento)
-   * - T=0.8s-3.0s: Energía en BACK (transferencia, solapamiento)
-   * - T=1.8s-4.5s: Energía en MOVERS + TILT UP (liberación, solapamiento)
+   * DETERMINISTA (AXIOMA ANTI-SIMULACIÓN):
+   * - Carril basado en contador cíclico
+   * - Velocidad basada en frame % 17
+   * - Tamaño basado en frame % 23
+   * - Hue basado en frame % 31
    */
-  private processThermalPackets(): { front: number; back: number; moverL: number; moverR: number; tiltBoost: number } {
-    const result = { front: 0, back: 0, moverL: 0, moverR: 0, tiltBoost: 0 }
+  private spawnLightBubble(): void {
+    // 🎯 Carril determinista (cicla por los 5 carriles)
+    const laneIndex = this.laneSpawnCounter % this.TOTAL_LANES
+    this.laneSpawnCounter++
     
-    // Filtrar packets muertos y procesar activos
-    this.activePackets = this.activePackets.filter(packet => {
-      const ageSeconds = (this.frameCount - packet.startFrame) / this.FRAMES_PER_SECOND
+    // 🚀 Velocidad determinista (0.3x - 1.2x de velocidad base)
+    const speedVariance = (this.frameCount % 17) / 17  // 0-1
+    const speed = this.BUBBLE_BASE_SPEED * (0.6 + speedVariance * 0.8)  // 0.6x - 1.4x
+    
+    // 📏 Tamaño determinista
+    const sizeVariance = (this.frameCount % 23) / 23  // 0-1
+    const size = this.BUBBLE_SIZE_MIN + sizeVariance * (this.BUBBLE_SIZE_MAX - this.BUBBLE_SIZE_MIN)
+    
+    // 🎨 Hue offset determinista (-15 a +15)
+    const hueVariance = (this.frameCount % 31) / 31  // 0-1
+    const hueOffset = (hueVariance - 0.5) * 2 * this.BUBBLE_HUE_DRIFT  // -15 to +15
+    
+    const bubble: LightBubble = {
+      laneIndex,
+      progress: 0,  // Empieza en el fondo (Front)
+      speed,
+      size,
+      hueOffset,
+      birthFrame: this.frameCount,
+      isPopping: false
+    }
+    
+    this.activeBubbles.push(bubble)
+    
+    // Log de debug para ver las burbujas
+    if (this.activeBubbles.length <= 3) {
+      console.log(
+        `[🫧 BUBBLE] Lane:${laneIndex} Speed:${(speed * 100).toFixed(1)}% Size:${size.toFixed(2)} Hue:${hueOffset > 0 ? '+' : ''}${hueOffset.toFixed(0)}° | Total:${this.activeBubbles.length}`
+      )
+    }
+  }
+  
+  /**
+   * 🪸 PROCESS LIGHT BUBBLES - El corazón del Arrecife Bioluminiscente
+   * 
+   * ARQUITECTURA DE CARRILES:
+   * ┌─────────────────────────────────────────────────────────────┐
+   * │  Lane 0: FrontL  │  Lane 1: Front  │  Lane 2: FrontR      │
+   * │  Lane 3: Back    │  Lane 4: Mover                          │
+   * └─────────────────────────────────────────────────────────────┘
+   * 
+   * PROGRESO DE BURBUJA:
+   * - progress 0.0 → 1.0: En zona Front (según carril 0-2)
+   * - progress 1.0 → 2.0: En zona Back (carril 3)
+   * - progress 2.0 → 3.0: En zona Mover (carril 4, L o R según origen)
+   * - progress > 3.0: POP! (destello final) → muerte
+   */
+  private processLightBubbles(texture: string): { 
+    frontL: number; frontR: number; back: number; 
+    moverL: number; moverR: number; tiltBoost: number 
+  } {
+    const result = { frontL: 0, frontR: 0, back: 0, moverL: 0, moverR: 0, tiltBoost: 0 }
+    
+    // Aplicar turbulencia si textura es harsh
+    const turbulence = (texture === 'harsh' || texture === 'noisy') 
+      ? Math.sin(this.frameCount * this.TURBULENCE_FREQUENCY * 0.1) * this.TURBULENCE_AMPLITUDE
+      : 0
+    
+    // Procesar cada burbuja
+    this.activeBubbles = this.activeBubbles.filter(bubble => {
+      // Avanzar progreso (las burbujas lentas tardan más)
+      bubble.progress += bubble.speed
       
-      if (ageSeconds >= this.PACKET_TOTAL_DURATION) {
-        return false  // Packet muerto
-      }
+      // Calcular intensidad base con tamaño
+      const baseIntensity = 0.25 * bubble.size  // Pico ~35% para size=1.4
       
-      const intensity = packet.peakIntensity
-      const moverKey = packet.side === 'L' ? 'moverL' : 'moverR'
+      // Aplicar turbulencia
+      const intensity = baseIntensity * (1 + turbulence)
       
-      // ─────────────────────────────────────────────────────────────────────
-      // FRONT: T=0 a T=1.5s (nacimiento)
-      // ─────────────────────────────────────────────────────────────────────
-      if (ageSeconds < this.PACKET_FRONT_END) {
-        // EaseInOutSine para attack/decay suave
-        let frontIntensity: number
-        if (ageSeconds < this.PACKET_FRONT_END * 0.5) {
-          // Attack (0 → peak)
-          const progress = ageSeconds / (this.PACKET_FRONT_END * 0.5)
-          frontIntensity = Math.sin(progress * Math.PI / 2) * intensity
-        } else {
-          // Decay (peak → 0)
-          const progress = (ageSeconds - this.PACKET_FRONT_END * 0.5) / (this.PACKET_FRONT_END * 0.5)
-          frontIntensity = Math.cos(progress * Math.PI / 2) * intensity
-        }
-        result.front += frontIntensity
-      }
-      
-      // ─────────────────────────────────────────────────────────────────────
-      // BACK: T=0.8s a T=3.0s (transferencia)
-      // ─────────────────────────────────────────────────────────────────────
-      if (ageSeconds > this.PACKET_BACK_START && ageSeconds < this.PACKET_BACK_END) {
-        const backAge = ageSeconds - this.PACKET_BACK_START
-        const backDuration = this.PACKET_BACK_END - this.PACKET_BACK_START
-        let backIntensity: number
+      // ─────────────────────────────────────────────────────────────────
+      // FASE 1: FRONT (progress 0-1)
+      // ─────────────────────────────────────────────────────────────────
+      if (bubble.progress < 1.0) {
+        // EaseInOutSine para suavidad
+        const phase = bubble.progress
+        const envelope = Math.sin(phase * Math.PI)  // 0→1→0
+        const contribution = intensity * envelope
         
-        if (backAge < backDuration * 0.4) {
-          // Attack
-          const progress = backAge / (backDuration * 0.4)
-          backIntensity = Math.sin(progress * Math.PI / 2) * intensity
-        } else if (backAge < backDuration * 0.6) {
-          // Peak
-          backIntensity = intensity
+        // Asignar a carril Front según laneIndex original
+        if (bubble.laneIndex === 0 || bubble.laneIndex === 1) {
+          result.frontL += contribution
+        } else if (bubble.laneIndex === 2 || bubble.laneIndex === 3) {
+          result.frontR += contribution
         } else {
-          // Decay
-          const progress = (backAge - backDuration * 0.6) / (backDuration * 0.4)
-          backIntensity = Math.cos(progress * Math.PI / 2) * intensity
+          // Lane 4: Contribuye a ambos
+          result.frontL += contribution * 0.5
+          result.frontR += contribution * 0.5
         }
-        result.back += backIntensity
       }
-      
-      // ─────────────────────────────────────────────────────────────────────
-      // MOVERS: T=1.8s a T=4.5s (liberación) + TILT UP
-      // ─────────────────────────────────────────────────────────────────────
-      if (ageSeconds > this.PACKET_MOVER_START) {
-        const moverAge = ageSeconds - this.PACKET_MOVER_START
-        const moverDuration = this.PACKET_TOTAL_DURATION - this.PACKET_MOVER_START
-        let moverIntensity: number
-        let tiltBoost: number
+      // ─────────────────────────────────────────────────────────────────
+      // FASE 2: BACK (progress 1-2)
+      // ─────────────────────────────────────────────────────────────────
+      else if (bubble.progress < 2.0) {
+        const phase = bubble.progress - 1.0
+        const envelope = Math.sin(phase * Math.PI)
+        result.back += intensity * envelope
+      }
+      // ─────────────────────────────────────────────────────────────────
+      // FASE 3: MOVER (progress 2-3)
+      // ─────────────────────────────────────────────────────────────────
+      else if (bubble.progress < 3.0) {
+        const phase = bubble.progress - 2.0
+        const envelope = Math.sin(phase * Math.PI)
+        const contribution = intensity * envelope
         
-        if (moverAge < moverDuration * 0.3) {
-          // Attack + Tilt UP
-          const progress = moverAge / (moverDuration * 0.3)
-          moverIntensity = Math.sin(progress * Math.PI / 2) * intensity
-          tiltBoost = progress * 0.2  // 20% tilt boost al máximo
-        } else if (moverAge < moverDuration * 0.5) {
-          // Peak + Max Tilt
-          moverIntensity = intensity
-          tiltBoost = 0.2
+        // Asignar a mover L o R según carril de origen
+        if (bubble.laneIndex < 2) {
+          result.moverL += contribution
+        } else if (bubble.laneIndex > 2) {
+          result.moverR += contribution
         } else {
-          // Decay + Tilt DOWN
-          const progress = (moverAge - moverDuration * 0.5) / (moverDuration * 0.5)
-          moverIntensity = Math.cos(progress * Math.PI / 2) * intensity
-          tiltBoost = (1 - progress) * 0.2
+          // Lane 2 (centro): Contribuye a ambos
+          result.moverL += contribution * 0.5
+          result.moverR += contribution * 0.5
         }
         
-        result[moverKey] += moverIntensity
-        result.tiltBoost += tiltBoost
+        // Tilt boost mientras sube
+        result.tiltBoost += envelope * 0.15
+      }
+      // ─────────────────────────────────────────────────────────────────
+      // FASE 4: POP (progress 3+)
+      // ─────────────────────────────────────────────────────────────────
+      else if (bubble.progress < 3.0 + this.BUBBLE_POP_DURATION / 60) {
+        if (!bubble.isPopping) {
+          bubble.isPopping = true
+          // Log del pop para debug
+          // console.log(`[💥 POP] Bubble died after ${((this.frameCount - bubble.birthFrame) / 60).toFixed(1)}s`)
+        }
+        
+        // Destello final (decae rápido)
+        const popPhase = (bubble.progress - 3.0) * 60 / this.BUBBLE_POP_DURATION
+        const popIntensity = (1 - popPhase) * intensity * this.BUBBLE_POP_INTENSITY
+        
+        // El pop afecta al mover donde murió
+        if (bubble.laneIndex < 2) {
+          result.moverL += popIntensity
+        } else {
+          result.moverR += popIntensity
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────
+      // MUERTE
+      // ─────────────────────────────────────────────────────────────────
+      else {
+        return false  // Burbuja muerta, filtrar
       }
       
-      return true  // Packet sigue vivo
+      return true  // Burbuja sigue viva
     })
     
     return result
+  }
+  
+  /**
+   * 🌊 OCEAN FRACTAL PULSE - Interferencia de ondas que nunca se repite
+   * 
+   * Fórmula: sin(t×0.2) + sin(t×0.5)×0.5 + sin(t×0.9)×0.2
+   * 
+   * Las tres frecuencias irracionales entre sí crean un patrón
+   * que matemáticamente NUNCA se repite exactamente.
+   * Resultado: "Marejada impredecible" como fondo del arrecife.
+   */
+  private calculateOceanPulse(): number {
+    // Avanzar tiempo del océano
+    this.oceanTime += 1 / this.FRAMES_PER_SECOND
+    
+    // Tres ondas con frecuencias irracionales (nunca se alinean)
+    const wave1 = Math.sin(this.oceanTime * 2 * Math.PI * this.OCEAN_WAVE_1)
+    const wave2 = Math.sin(this.oceanTime * 2 * Math.PI * this.OCEAN_WAVE_2) * 0.5
+    const wave3 = Math.sin(this.oceanTime * 2 * Math.PI * this.OCEAN_WAVE_3) * 0.2
+    
+    // Normalizar a -1..1
+    const combined = (wave1 + wave2 + wave3) / 1.7
+    
+    return combined
   }
   
   /**

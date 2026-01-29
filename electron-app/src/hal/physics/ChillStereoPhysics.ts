@@ -1,38 +1,49 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🍸 WAVE 1032: THE LIQUID LOUNGE - Chill Fluid Physics
+ * � WAVE 1033: THE FLUID MATRIX - Granular Flow
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * FILOSOFÍA: Dejar de "bailar" el Chill Out y empezar a "pintarlo".
+ * EVOLUCIÓN: De "Lámpara de Lava" (burbujas random) a "Corriente Termal".
  * 
- * DIAGNÓSTICO DEL SISTEMA ANTERIOR:
- * - Attack/Decay lineales sobre volumen = luz "nerviosa"
- * - En cuanto entra un gol    // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
+ * 🔥 WAVE 1032: Sistema de Burbujas
+ * - Burbujas spawn en zonas aleatorias
+ * - Cada una tiene su lifecycle independiente
+ * - Efecto hipnótico pero.    // Log cada 90 frames (~1.5 segundos) - FLUID MATRIX stats
     if (this.frameCount % 90 === 0) {
       console.log(
-        `[🌋 LAVA LAMP] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} | ` +
+        `[🌊 FLUID MATRIX] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Packets:${this.activePackets.length} | ` +
         `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
-        `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
-        `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
+        `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}%`
       )
-    } la luz SALTA
- * - Se siente "reactivo" cuando debería "fluir"
+    }O
  * 
- * SOLUCIÓN WAVE 1032: Física de FLUIDOS
- * - Cambiar de "Impacto" a "Viscosidad"
- * - Movimiento Browniano (Perlin Noise) para drift orgánico
- * - Low-Pass Filter EXTREMO para dimmer bioluminiscente
- * - Stereo Drift con desfase temporal (ola que viaja por la sala)
- * - Texture-aware: WARM=miel, CLEAN=agua
+ * 🌊 WAVE 1033: Corriente Ascendente
+ * - ThermalPacket: Objeto que VIAJA por zonas
+ * - Secuencia: FRONT → BACK → MOVERS (suelo → pared → techo)
+ * - Granularidad: Micro-textura según audio
+ * - Tidal Breath: Onda sinusoidal global de fondo
  * 
- * RESULTADO:
- * - Los huecos se llenan con atmósfera
- * - El estrés visual baja a CERO
- * - La luz siempre va un milisegundo DETRÁS de la música (como un eco)
- * - Ese es el SECRETO de la relajación
+ * COREOGRAFÍA DE UN THERMAL PACKET:
+ * ┌────────────────────────────────────────────────────────────┐
+ * │ T=0.0s     FRONT (Nacimiento)     Ámbar/Rojo suave        │
+ * │ T=1.5s     BACK (Transferencia)   Energía sube pared      │
+ * │ T=3.0s     MOVERS (Liberación)    Tilt UP + Flota techo   │
+ * │ T=4.5s     Packet muere                                    │
+ * └────────────────────────────────────────────────────────────┘
+ * 
+ * GRANULARIDAD POR TEXTURA:
+ * - WARM: Micro-parpadeo 0.5Hz (vela/fuego)
+ * - CLEAN: Intensidad sólida (medusa bioluminiscente)
+ * 
+ * TIDAL BREATH (Background):
+ * - Onda sinusoidal global a 0.1Hz (10s ciclo)
+ * - Amplitud ±5% (muy sutil)
+ * - Aplica a zonas SIN packet activo
+ * 
+ * RESULTADO: La música "empuja" la luz desde el suelo hasta el techo.
  * 
  * @module hal/physics/ChillStereoPhysics
- * @version WAVE 1032 - THE LIQUID LOUNGE
+ * @version WAVE 1033 - THE FLUID MATRIX
  */
 
 import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
@@ -71,13 +82,13 @@ export interface ChillPhysicsResult {
     driftPhaseR: number      // Fase de drift derecho
     stereoOffset: number     // Offset estéreo actual (0-1)
   }
-  // 🌋 WAVE 1032.4: Lava Lamp Physics output
+  // � WAVE 1033: Fluid Matrix Physics output
   lavaLamp?: {
     thermalEnergy: number    // 0-1: Energía acumulada
-    activeBubbles: number    // Cantidad de burbujas activas
+    activePackets: number    // Cantidad de thermal packets activos
     lighthousePan: number    // Offset de pan del faro (-1 a 1)
     lighthouseTilt: number   // Offset de tilt del faro (-1 a 1)
-    bubbleTiltBoost: number  // Boost de tilt por burbujas activas
+    bubbleTiltBoost: number  // Boost de tilt por packets activos
   }
 }
 
@@ -171,7 +182,7 @@ class PerlinNoise {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🍸 CHILL STEREO PHYSICS - THE LIQUID LOUNGE
+// � CHILL STEREO PHYSICS - THE FLUID MATRIX
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ChillStereoPhysics {
@@ -221,21 +232,31 @@ export class ChillStereoPhysics {
   private readonly SPARKLE_INTENSITY = 0.08   // Muy sutil
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌋 WAVE 1032.4: LAVA LAMP PHYSICS
+  // 🌋 WAVE 1033: THE FLUID MATRIX - Thermal Packets
   // ═══════════════════════════════════════════════════════════════════════
   
   // 🌡️ HEAT ACCUMULATOR - Acumulación térmica
-  // 🔥 WAVE 1032.3: Balance carga/descarga recalibrado
-  private readonly HEAT_CHARGE_RATE = 0.035     // Subido de 0.025 → más calor/frame
-  private readonly HEAT_DECAY_RATE = 0.95       // 🔥 WAVE 1032.2: Decay más rápido (5% pérdida vs 1.5%) para blup...blup...
-  private readonly BUBBLE_THRESHOLD = 0.50      // Bajado de 0.65 → dispara antes
-  private readonly BUBBLE_COOLDOWN_FRAMES = 90  // ~1.5 segundos entre burbujas
+  private readonly HEAT_CHARGE_RATE = 0.035     // Carga por frame con subBass
+  private readonly HEAT_DECAY_RATE = 0.95       // 5% pérdida sin subBass
+  private readonly PACKET_THRESHOLD = 0.50      // Umbral para disparar packet
+  private readonly PACKET_COOLDOWN_FRAMES = 120 // ~2 segundos entre packets
   
-  // 🫧 BUBBLE LIFECYCLE - Ciclo de vida de burbujas (4-6 segundos)
-  private readonly BUBBLE_DURATION_FRAMES = 300  // ~5 segundos a 60fps
-  private readonly BUBBLE_PEAK_INTENSITY = 0.65  // Intensidad máxima de burbuja
-  private readonly BUBBLE_BYPASS_AGC = 0.6       // 🔥 WAVE 1032.2: Bypass POST-AGC (60% directo visible)
-  private readonly BUBBLE_TILT_DELTA = 0.15      // Cuánto sube el tilt (0-1 normalizado)
+  // 🌊 THERMAL PACKET - Corriente ascendente (FRONT → BACK → MOVERS)
+  private readonly PACKET_TOTAL_DURATION = 4.5  // Segundos totales de viaje
+  private readonly PACKET_FRONT_END = 1.5       // T=0 a T=1.5s en FRONT
+  private readonly PACKET_BACK_START = 0.8      // Solapamiento: Back empieza T=0.8s
+  private readonly PACKET_BACK_END = 3.0        // T=0.8s a T=3.0s en BACK
+  private readonly PACKET_MOVER_START = 1.8     // Solapamiento: Movers empiezan T=1.8s
+  private readonly PACKET_PEAK_INTENSITY = 0.70 // Intensidad máxima del packet
+  private readonly PACKET_BYPASS_AGC = 0.6      // Bypass POST-AGC (60% directo)
+  
+  // 🧂 GRANULARITY - Textura micro
+  private readonly GRAIN_LFO_WARM = 0.5         // 0.5Hz para WARM (vela)
+  private readonly GRAIN_LFO_AMPLITUDE = 0.12   // ±12% de modulación
+  
+  // 💓 TIDAL BREATH - Onda global de fondo
+  private readonly TIDAL_FREQUENCY = 0.1        // 0.1Hz = 10 segundos por ciclo
+  private readonly TIDAL_AMPLITUDE = 0.05       // ±5% muy sutil
   
   // 🔦 LIGHTHOUSE - Faro constante (movimiento garantizado)
   private readonly LIGHTHOUSE_FREQUENCY = 0.08   // 0.08 Hz = ciclo de 12.5 segundos
@@ -281,21 +302,25 @@ export class ChillStereoPhysics {
   private readonly BREATH_PERIOD_SECONDS = 8  // Respiración de 8 segundos
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌋 LAVA LAMP STATE
+  // � WAVE 1033: FLUID MATRIX STATE
   // ═══════════════════════════════════════════════════════════════════════
   
   // 🌡️ Heat Accumulator
   private thermalEnergy = 0.0           // 0.0 - 1.0
-  private bubbleCooldown = 0            // Frames hasta poder disparar otra burbuja
+  private packetCooldown = 0            // Frames hasta poder disparar otro packet
   
-  // 🫧 Active Bubbles (hasta 3 simultáneas)
-  private activeBubbles: Array<{
-    zone: 'front' | 'back' | 'moverL' | 'moverR'
-    startFrame: number
-    duration: number
-    peakIntensity: number
-    phase: 'rising' | 'peak' | 'falling'
+  // 🌊 Active Thermal Packets (corrientes ascendentes)
+  private activePackets: Array<{
+    startFrame: number              // Cuando empezó
+    side: 'L' | 'R'                 // Lado del escenario
+    peakIntensity: number           // Intensidad máxima
   }> = []
+  
+  // 💓 Tidal Breath phase (onda global de fondo)
+  private tidalPhase = 0
+  
+  // 🧂 Grain LFO phase (micro-textura)
+  private grainPhase = 0
   
   // 🔦 Lighthouse phase (siempre activo)
   private lighthousePhase = 0
@@ -305,8 +330,8 @@ export class ChillStereoPhysics {
     for (let i = 0; i < this.STEREO_OFFSET_FRAMES; i++) {
       this.stereoBuffer.push(this.MOVER_FLOOR)
     }
-    console.log('[ChillStereoPhysics] 🍸 WAVE 1032: THE LIQUID LOUNGE initialized')
-    console.log(`[ChillStereoPhysics] 🌊 Attack: ${(this.ATTACK_TIME_SECONDS * 1000).toFixed(0)}ms | Decay: ${(this.DECAY_TIME_SECONDS * 1000).toFixed(0)}ms`)
+    console.log('[ChillStereoPhysics] � WAVE 1033: THE FLUID MATRIX initialized')
+    console.log(`[ChillStereoPhysics] 🔥 Packet Duration: ${this.PACKET_TOTAL_DURATION}s | Tidal: ${this.TIDAL_FREQUENCY}Hz | Grain: ${this.GRAIN_LFO_WARM}Hz`)
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -396,10 +421,16 @@ export class ChillStereoPhysics {
     const highMid = (mid + treble) * 0.5  // HighMid para Deep House oscuro
     this.updateHeatAccumulator(subBass ?? bass, highMid)
     
-    // 🫧 9.2 Process Bubbles - Actualizar ciclo de vida
-    const bubbleContribution = this.processBubbles()
+    // 🌊 9.2 Process Thermal Packets - Corriente ascendente FRONT→BACK→MOVERS
+    const packetContribution = this.processThermalPackets()
     
-    // 🔦 9.3 Lighthouse - Movimiento constante garantizado
+    // 🧂 9.3 Granularity - Micro-textura según audio
+    const grainMod = this.processGranularity(texture)
+    
+    // 💓 9.4 Tidal Breath - Onda sinusoidal global de fondo
+    const tidalMod = this.processTidalBreath()
+    
+    // 🔦 9.5 Lighthouse - Movimiento constante garantizado
     const lighthouse = this.updateLighthouse()
     
     // ─────────────────────────────────────────────────────────────────────
@@ -408,29 +439,35 @@ export class ChillStereoPhysics {
     // Base respeta el Chill, burbujas rompen el límite
     // ─────────────────────────────────────────────────────────────────────
     
-    // BASE (con AGC implícito via viscosidad)
+    // BASE (con AGC implícito via viscosidad) + TIDAL BREATH
+    // Tidal solo aplica a zonas SIN packet activo
     const baseFront = Math.min(
       this.INTENSITY_CEILING, 
-      this.frontVal + breathMod * 0.03 + emberGlow
+      this.frontVal + breathMod * 0.03 + emberGlow + (packetContribution.front < 0.1 ? tidalMod : 0)
     )
     const baseBack = Math.min(
       this.INTENSITY_CEILING, 
-      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5
+      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5 + (packetContribution.back < 0.1 ? tidalMod : 0)
     )
     const baseMoverL = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValL + breathMod * 0.02
+      this.moverValL + breathMod * 0.02 + (packetContribution.moverL < 0.1 ? tidalMod : 0)
     )
     const baseMoverR = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValR + breathMod * 0.02
+      this.moverValR + breathMod * 0.02 + (packetContribution.moverR < 0.1 ? tidalMod : 0)
     )
     
-    // BUBBLE BYPASS: Se suma por encima del AGC
-    const finalFront = Math.min(1.0, baseFront + (bubbleContribution.front * this.BUBBLE_BYPASS_AGC))
-    const finalBack = Math.min(1.0, baseBack + (bubbleContribution.back * this.BUBBLE_BYPASS_AGC))
-    const finalMoverL = Math.min(1.0, baseMoverL + (bubbleContribution.moverL * this.BUBBLE_BYPASS_AGC))
-    const finalMoverR = Math.min(1.0, baseMoverR + (bubbleContribution.moverR * this.BUBBLE_BYPASS_AGC))
+    // PACKET BYPASS: Se suma por encima del AGC (con granularidad)
+    const grainedFront = packetContribution.front * (1 + grainMod)
+    const grainedBack = packetContribution.back * (1 + grainMod)
+    const grainedMoverL = packetContribution.moverL * (1 + grainMod)
+    const grainedMoverR = packetContribution.moverR * (1 + grainMod)
+    
+    const finalFront = Math.min(1.0, baseFront + (grainedFront * this.PACKET_BYPASS_AGC))
+    const finalBack = Math.min(1.0, baseBack + (grainedBack * this.PACKET_BYPASS_AGC))
+    const finalMoverL = Math.min(1.0, baseMoverL + (grainedMoverL * this.PACKET_BYPASS_AGC))
+    const finalMoverR = Math.min(1.0, baseMoverR + (grainedMoverR * this.PACKET_BYPASS_AGC))
     
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2
@@ -438,7 +475,7 @@ export class ChillStereoPhysics {
     // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
     if (this.frameCount % 90 === 0) {
       console.log(
-        `[� LAVA LAMP] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} | ` +
+        `[� FLUID MATRIX] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Packets:${this.activePackets.length} | ` +
         `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
         `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
         `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
@@ -460,13 +497,13 @@ export class ChillStereoPhysics {
         driftPhaseR: this.driftTime + 0.5,
         stereoOffset: this.STEREO_OFFSET_SECONDS
       },
-      // 🌋 LAVA LAMP OUTPUT
+      // 🌊 FLUID MATRIX OUTPUT
       lavaLamp: {
         thermalEnergy: this.thermalEnergy,
-        activeBubbles: this.activeBubbles.length,
+        activePackets: this.activePackets.length,
         lighthousePan: lighthouse.panOffset,
-        lighthouseTilt: lighthouse.tiltOffset,
-        bubbleTiltBoost: bubbleContribution.tiltBoost
+        lighthouseTilt: lighthouse.tiltOffset + packetContribution.tiltBoost,
+        bubbleTiltBoost: packetContribution.tiltBoost
       }
     }
   }
@@ -772,28 +809,28 @@ export class ChillStereoPhysics {
     for (let i = 0; i < this.stereoBuffer.length; i++) {
       this.stereoBuffer[i] = this.MOVER_FLOOR
     }
-    // 🌋 Reset Lava Lamp state
+    // � Reset Fluid Matrix state
     this.thermalEnergy = 0
-    this.bubbleCooldown = 0
-    this.activeBubbles = []
+    this.packetCooldown = 0
+    this.activePackets = []
+    this.tidalPhase = 0
+    this.grainPhase = 0
     this.lighthousePhase = 0
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌋 LAVA LAMP PHYSICS METHODS
+  // � WAVE 1033: FLUID MATRIX PHYSICS METHODS
   // ═══════════════════════════════════════════════════════════════════════
   
   /**
-   * 🌡️ HEAT ACCUMULATOR - Acumula energía del bajo y dispara burbujas
+   * 🌡️ HEAT ACCUMULATOR - Acumula energía del bajo y dispara thermal packets
    * 
-   * No reacciona al bombo. Se CARGA con el ritmo y se libera suavemente.
+   * No reacciona al bombo. Se CARGA con el ritmo y se libera como corriente ascendente.
    */
   private updateHeatAccumulator(subBass: number, highMid: number): void {
     // ─────────────────────────────────────────────────────────────────────
     // CARGAR CALOR
     // ─────────────────────────────────────────────────────────────────────
-    // Input principal: SubBass (presión)
-    // Input secundario: HighMid (para Deep House oscuro sin agudos)
     const heatInput = Math.max(subBass, highMid * 0.7)
     this.thermalEnergy += heatInput * this.HEAT_CHARGE_RATE
     
@@ -801,113 +838,180 @@ export class ChillStereoPhysics {
     // ENFRIAMIENTO NATURAL
     // ─────────────────────────────────────────────────────────────────────
     this.thermalEnergy *= this.HEAT_DECAY_RATE
-    
-    // Clamp 0-1
     this.thermalEnergy = Math.min(1.0, Math.max(0, this.thermalEnergy))
     
     // ─────────────────────────────────────────────────────────────────────
-    // DISPARAR BURBUJA SI HAY SUFICIENTE CALOR
+    // DISPARAR THERMAL PACKET SI HAY SUFICIENTE CALOR
     // ─────────────────────────────────────────────────────────────────────
-    if (this.bubbleCooldown > 0) {
-      this.bubbleCooldown--
+    if (this.packetCooldown > 0) {
+      this.packetCooldown--
     }
     
-    if (this.thermalEnergy > this.BUBBLE_THRESHOLD && 
-        this.bubbleCooldown === 0 && 
-        this.activeBubbles.length < 3) {
-      this.spawnBubble()
-      // Descargar parte del calor al crear burbuja
-      this.thermalEnergy *= 0.6
-      this.bubbleCooldown = this.BUBBLE_COOLDOWN_FRAMES
+    if (this.thermalEnergy > this.PACKET_THRESHOLD && 
+        this.packetCooldown === 0 && 
+        this.activePackets.length < 2) {  // Máximo 2 packets simultáneos (L y R)
+      this.spawnThermalPacket()
+      // Descargar parte del calor al crear packet
+      this.thermalEnergy *= 0.5
+      this.packetCooldown = this.PACKET_COOLDOWN_FRAMES
     }
   }
   
   /**
-   * 🫧 SPAWN BUBBLE - Crear una nueva burbuja en una zona
+   * 🌊 SPAWN THERMAL PACKET - Crea una corriente ascendente
+   * Alterna entre lado L y R para crear movimiento estéreo
    */
-  private spawnBubble(): void {
-    // Seleccionar zona con distribución determinista (no random)
-    const zoneIndex = this.frameCount % 4
-    const zones: Array<'front' | 'back' | 'moverL' | 'moverR'> = ['front', 'back', 'moverL', 'moverR']
-    const zone = zones[zoneIndex]
+  private spawnThermalPacket(): void {
+    // Alternar lado (L→R→L→R...)
+    const side: 'L' | 'R' = this.activePackets.length === 0 || 
+                            this.activePackets[this.activePackets.length - 1]?.side === 'R' ? 'L' : 'R'
     
-    // Variar duración e intensidad basado en energía térmica
-    const durationVariance = 0.8 + (this.thermalEnergy * 0.4)  // 80%-120% de duración base
-    const intensityVariance = 0.7 + (this.thermalEnergy * 0.6) // 70%-130% de intensidad base
+    // Varianza determinista basada en frame (AXIOMA ANTI-SIMULACIÓN)
+    const intensityVariance = 0.85 + (this.frameCount % 30) / 100  // 0.85-1.15
     
-    this.activeBubbles.push({
-      zone,
+    this.activePackets.push({
       startFrame: this.frameCount,
-      duration: Math.round(this.BUBBLE_DURATION_FRAMES * durationVariance),
-      peakIntensity: this.BUBBLE_PEAK_INTENSITY * intensityVariance,
-      phase: 'rising'
+      side,
+      peakIntensity: this.PACKET_PEAK_INTENSITY * intensityVariance
     })
     
-    // 🐛 WAVE 1032.4: DEBUG - Ver peakIntensity asignado
     console.log(
-      `[🫧 LAVA] Bubble spawned in ${zone} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | ` +
-      `Active: ${this.activeBubbles.length} | PeakIntensity: ${(this.BUBBLE_PEAK_INTENSITY * intensityVariance * 100).toFixed(1)}%`
+      `[🌊 THERMAL] Packet spawned on ${side} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | ` +
+      `Active: ${this.activePackets.length} | Intensity: ${(this.PACKET_PEAK_INTENSITY * intensityVariance * 100).toFixed(1)}%`
     )
   }
   
   /**
-   * 🫧 PROCESS BUBBLES - Actualizar ciclo de vida de burbujas activas
+   * 🌊 PROCESS THERMAL PACKETS - Corriente ascendente FRONT → BACK → MOVERS
    * 
-   * Ciclo de vida (EaseInOutSine):
-   * - RISING (0-40%): Dimmer sube suavemente, tilt sube
-   * - PEAK (40-60%): Mantiene intensidad máxima
-   * - FALLING (60-100%): Dimmer baja suavemente, tilt baja
+   * Coreografía:
+   * - T=0.0s-1.5s: Energía en FRONT (nacimiento)
+   * - T=0.8s-3.0s: Energía en BACK (transferencia, solapamiento)
+   * - T=1.8s-4.5s: Energía en MOVERS + TILT UP (liberación, solapamiento)
    */
-  private processBubbles(): { front: number; back: number; moverL: number; moverR: number; tiltBoost: number } {
+  private processThermalPackets(): { front: number; back: number; moverL: number; moverR: number; tiltBoost: number } {
     const result = { front: 0, back: 0, moverL: 0, moverR: 0, tiltBoost: 0 }
     
-    // Filtrar burbujas muertas y procesar activas
-    this.activeBubbles = this.activeBubbles.filter(bubble => {
-      const age = this.frameCount - bubble.startFrame
-      const progress = age / bubble.duration
+    // Filtrar packets muertos y procesar activos
+    this.activePackets = this.activePackets.filter(packet => {
+      const ageSeconds = (this.frameCount - packet.startFrame) / this.FRAMES_PER_SECOND
       
-      if (progress >= 1.0) {
-        return false  // Burbuja muerta
+      if (ageSeconds >= this.PACKET_TOTAL_DURATION) {
+        return false  // Packet muerto
+      }
+      
+      const intensity = packet.peakIntensity
+      const moverKey = packet.side === 'L' ? 'moverL' : 'moverR'
+      
+      // ─────────────────────────────────────────────────────────────────────
+      // FRONT: T=0 a T=1.5s (nacimiento)
+      // ─────────────────────────────────────────────────────────────────────
+      if (ageSeconds < this.PACKET_FRONT_END) {
+        // EaseInOutSine para attack/decay suave
+        let frontIntensity: number
+        if (ageSeconds < this.PACKET_FRONT_END * 0.5) {
+          // Attack (0 → peak)
+          const progress = ageSeconds / (this.PACKET_FRONT_END * 0.5)
+          frontIntensity = Math.sin(progress * Math.PI / 2) * intensity
+        } else {
+          // Decay (peak → 0)
+          const progress = (ageSeconds - this.PACKET_FRONT_END * 0.5) / (this.PACKET_FRONT_END * 0.5)
+          frontIntensity = Math.cos(progress * Math.PI / 2) * intensity
+        }
+        result.front += frontIntensity
       }
       
       // ─────────────────────────────────────────────────────────────────────
-      // CALCULAR INTENSIDAD CON EASE-IN-OUT-SINE
+      // BACK: T=0.8s a T=3.0s (transferencia)
       // ─────────────────────────────────────────────────────────────────────
-      let intensity: number
-      let tiltDelta: number
-      
-      if (progress < 0.4) {
-        // RISING: EaseInSine (0 → peak)
-        // 🔥 WAVE 1032.7: FIX - Usar sin() en vez de (1-cos()) para curva más rápida
-        const riseProgress = progress / 0.4
-        intensity = Math.sin(riseProgress * Math.PI / 2) * bubble.peakIntensity
-        tiltDelta = riseProgress * this.BUBBLE_TILT_DELTA
-        bubble.phase = 'rising'
-      } else if (progress < 0.6) {
-        // PEAK: Mantener máximo
-        intensity = bubble.peakIntensity
-        tiltDelta = this.BUBBLE_TILT_DELTA
-        bubble.phase = 'peak'
-      } else {
-        // FALLING: EaseOutSine (peak → 0)
-        const fallProgress = (progress - 0.6) / 0.4
-        intensity = Math.cos(fallProgress * Math.PI / 2) * bubble.peakIntensity
-        tiltDelta = (1 - fallProgress) * this.BUBBLE_TILT_DELTA
-        bubble.phase = 'falling'
+      if (ageSeconds > this.PACKET_BACK_START && ageSeconds < this.PACKET_BACK_END) {
+        const backAge = ageSeconds - this.PACKET_BACK_START
+        const backDuration = this.PACKET_BACK_END - this.PACKET_BACK_START
+        let backIntensity: number
+        
+        if (backAge < backDuration * 0.4) {
+          // Attack
+          const progress = backAge / (backDuration * 0.4)
+          backIntensity = Math.sin(progress * Math.PI / 2) * intensity
+        } else if (backAge < backDuration * 0.6) {
+          // Peak
+          backIntensity = intensity
+        } else {
+          // Decay
+          const progress = (backAge - backDuration * 0.6) / (backDuration * 0.4)
+          backIntensity = Math.cos(progress * Math.PI / 2) * intensity
+        }
+        result.back += backIntensity
       }
       
-      // Aplicar a la zona correspondiente
-      result[bubble.zone] += intensity
-      
-      // Tilt boost para movers
-      if (bubble.zone === 'moverL' || bubble.zone === 'moverR') {
-        result.tiltBoost += tiltDelta
+      // ─────────────────────────────────────────────────────────────────────
+      // MOVERS: T=1.8s a T=4.5s (liberación) + TILT UP
+      // ─────────────────────────────────────────────────────────────────────
+      if (ageSeconds > this.PACKET_MOVER_START) {
+        const moverAge = ageSeconds - this.PACKET_MOVER_START
+        const moverDuration = this.PACKET_TOTAL_DURATION - this.PACKET_MOVER_START
+        let moverIntensity: number
+        let tiltBoost: number
+        
+        if (moverAge < moverDuration * 0.3) {
+          // Attack + Tilt UP
+          const progress = moverAge / (moverDuration * 0.3)
+          moverIntensity = Math.sin(progress * Math.PI / 2) * intensity
+          tiltBoost = progress * 0.2  // 20% tilt boost al máximo
+        } else if (moverAge < moverDuration * 0.5) {
+          // Peak + Max Tilt
+          moverIntensity = intensity
+          tiltBoost = 0.2
+        } else {
+          // Decay + Tilt DOWN
+          const progress = (moverAge - moverDuration * 0.5) / (moverDuration * 0.5)
+          moverIntensity = Math.cos(progress * Math.PI / 2) * intensity
+          tiltBoost = (1 - progress) * 0.2
+        }
+        
+        result[moverKey] += moverIntensity
+        result.tiltBoost += tiltBoost
       }
       
-      return true  // Burbuja sigue viva
+      return true  // Packet sigue vivo
     })
     
     return result
+  }
+  
+  /**
+   * 🧂 PROCESS GRANULARITY - Micro-textura según audio
+   * 
+   * WARM: Micro-parpadeo 0.5Hz (vela/fuego)
+   * CLEAN: Intensidad sólida (medusa bioluminiscente)
+   */
+  private processGranularity(texture: string): number {
+    // Avanzar fase del LFO
+    this.grainPhase += (2 * Math.PI * this.GRAIN_LFO_WARM) / this.FRAMES_PER_SECOND
+    if (this.grainPhase > Math.PI * 2) this.grainPhase -= Math.PI * 2
+    
+    if (texture === 'warm') {
+      // WARM: Micro-parpadeo (efecto vela)
+      return Math.sin(this.grainPhase) * this.GRAIN_LFO_AMPLITUDE
+    } else {
+      // CLEAN: Sin modulación (medusa bioluminiscente)
+      return 0
+    }
+  }
+  
+  /**
+   * 💓 PROCESS TIDAL BREATH - Onda sinusoidal global de fondo
+   * 
+   * Muy lenta (0.1Hz = 10 segundos), muy sutil (±5%)
+   * Aplica a zonas sin packet activo para que la sala "respire"
+   */
+  private processTidalBreath(): number {
+    // Avanzar fase
+    this.tidalPhase += (2 * Math.PI * this.TIDAL_FREQUENCY) / this.FRAMES_PER_SECOND
+    if (this.tidalPhase > Math.PI * 2) this.tidalPhase -= Math.PI * 2
+    
+    // Onda sinusoidal muy sutil
+    return Math.sin(this.tidalPhase) * this.TIDAL_AMPLITUDE
   }
   
   /**
@@ -941,3 +1045,4 @@ export class ChillStereoPhysics {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const chillStereoPhysics = new ChillStereoPhysics()
+

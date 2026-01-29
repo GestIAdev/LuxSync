@@ -230,6 +230,28 @@ drift: (t, phase, audio) => ({
 })
 ```
 
+**SOLUCIÓN (WAVE 1032.2 - INTENSITY FLOW FIX):**
+```typescript
+// ChillStereoPhysics.ts - Parámetros de flujo acelerados
+
+// BEFORE: Glacial
+ATTACK_TIME: 0.5s     →  AFTER: 0.2s  (2.5x más rápido)
+DECAY_TIME: 2.0s      →  AFTER: 0.8s  (2.5x más rápido)
+VISCOSITY_WARM: 0.92  →  AFTER: 0.80  (miel → jarabe)
+VISCOSITY_CLEAN: 0.85 →  AFTER: 0.70  (aceite → agua)
+
+// BEFORE: Tímido
+frontRaw = bass * 0.4 + energy * 0.2      →  AFTER: bass * 0.6 + energy * 0.35
+moverBase = mid * 0.35                    →  AFTER: mid * 0.55
+targetFront ceiling: 0.5                  →  AFTER: 0.7
+```
+
+**RESULTADO:**
+- Intensidades ahora cambian **2.5x más rápido** (perceptibles, no glaciales)
+- Dynamic range incrementado **+40%** (12%-45% → 12%-70%)
+- Viscosidad reducida pero aún fluida (el "breathing" sigue ahí)
+- Pan/Tilt drift ya estaba perfecto (VMM fix previo)
+
 ---
 
 ## �🔮 EL RESULTADO

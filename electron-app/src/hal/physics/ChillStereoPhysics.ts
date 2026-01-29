@@ -169,17 +169,19 @@ export class ChillStereoPhysics {
   private readonly INTENSITY_CEILING = 0.75  // Nunca cegar en Chill
   
   // 🌊 VISCOSIDAD: Qué tan "espeso" es el fluido
-  // WARM (Jazz/Soul) = Alta viscosidad (miel)
-  // CLEAN (Deep House/Ambient) = Media viscosidad (agua)
-  private readonly VISCOSITY_WARM = 0.92     // Miel: cambios MUY lentos
-  private readonly VISCOSITY_CLEAN = 0.85    // Agua: cambios suaves pero perceptibles
-  private readonly VISCOSITY_DEFAULT = 0.88  // Default intermedio
+  // 🌊 WAVE 1032.2: Reducida para permitir cambios más perceptibles
+  // WARM (Jazz/Soul) = Alta viscosidad (miel, pero no melaza)
+  // CLEAN (Deep House/Ambient) = Media viscosidad (agua, no aceite)
+  private readonly VISCOSITY_WARM = 0.80     // Miel: cambios lentos pero visibles (era 0.92)
+  private readonly VISCOSITY_CLEAN = 0.70    // Agua: cambios suaves y perceptibles (era 0.85)
+  private readonly VISCOSITY_DEFAULT = 0.75  // Default intermedio (era 0.88)
   
   // ⏱️ LOW-PASS FILTER: Tiempos de respuesta
-  // Attack LENTO (0.5s), Decay MUY LENTO (2.0s)
-  // La luz tarda en subir y MUCHO MÁS en bajar
-  private readonly ATTACK_TIME_SECONDS = 0.5   // 500ms para subir
-  private readonly DECAY_TIME_SECONDS = 2.0    // 2000ms para bajar
+  // 🌊 WAVE 1032.2: Acelerado para ser perceptible sin perder fluidez
+  // Attack: 0.5s → 0.2s (más responsive)
+  // Decay: 2.0s → 0.8s (suave pero visible)
+  private readonly ATTACK_TIME_SECONDS = 0.2   // 200ms para subir (era 500ms)
+  private readonly DECAY_TIME_SECONDS = 0.8    // 800ms para bajar (era 2000ms)
   private readonly FRAMES_PER_SECOND = 60
   
   // Factores calculados (convertir tiempo a factor de convergencia)
@@ -418,41 +420,43 @@ export class ChillStereoPhysics {
   ): void {
     // ─────────────────────────────────────────────────────────────────────
     // FRONT: Basado en SubBass/Bass (presión de aire)
+    // 🌊 WAVE 1032.2: Incrementados multiplicadores para mayor dynamic range
     // ─────────────────────────────────────────────────────────────────────
     const bassSource = subBass ?? this.smoothBass
-    const frontRaw = bassSource * 0.4 + this.smoothEnergy * 0.2
-    this.targetFront = Math.max(this.FRONT_FLOOR, Math.min(0.5, frontRaw))
+    const frontRaw = bassSource * 0.6 + this.smoothEnergy * 0.35  // Era 0.4 + 0.2
+    this.targetFront = Math.max(this.FRONT_FLOOR, Math.min(0.7, frontRaw))  // Era 0.5
     
     // ─────────────────────────────────────────────────────────────────────
     // BACK: Ambiente general + brillo tonal
     // ─────────────────────────────────────────────────────────────────────
     // El centroide espectral indica "brillo" - valores altos = más luz back
     const brightnessFromCentroid = spectralCentroid 
-      ? Math.min(1, spectralCentroid / 4000) * 0.15 
+      ? Math.min(1, spectralCentroid / 4000) * 0.2   // Era 0.15
       : 0
     
     if (texture === 'warm') {
       // WARM: Ignorar agudos completamente, solo energía general
       this.targetBack = Math.max(
         this.BACK_FLOOR, 
-        this.BACK_FLOOR + this.smoothEnergy * 0.25 + brightnessFromCentroid
+        this.BACK_FLOOR + this.smoothEnergy * 0.4 + brightnessFromCentroid  // Era 0.25
       )
     } else {
       // CLEAN/DEFAULT: Permitir algo de treble influence
-      const trebleInfluence = this.smoothTreble * 0.15
+      const trebleInfluence = this.smoothTreble * 0.25  // Era 0.15
       this.targetBack = Math.max(
         this.BACK_FLOOR,
-        this.BACK_FLOOR + this.smoothEnergy * 0.2 + trebleInfluence + brightnessFromCentroid
+        this.BACK_FLOOR + this.smoothEnergy * 0.35 + trebleInfluence + brightnessFromCentroid  // Era 0.2
       )
     }
     
     // ─────────────────────────────────────────────────────────────────────
     // MOVERS: Basados en Mid (melodías) con rechazo de percusión
+    // 🌊 WAVE 1032.2: Incrementado multiplicador para mayor presencia
     // ─────────────────────────────────────────────────────────────────────
     // Si hay mucho treble (snares, hi-hats), REDUCIR movers
     const percussionRejection = Math.max(0.3, 1 - this.smoothTreble * 2)
     
-    const moverBase = this.smoothMid * 0.35 * percussionRejection
+    const moverBase = this.smoothMid * 0.55 * percussionRejection  // Era 0.35
     this.targetMoverL = Math.max(this.MOVER_FLOOR, moverBase)
     this.targetMoverR = Math.max(this.MOVER_FLOOR, moverBase)
   }

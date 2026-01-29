@@ -900,6 +900,14 @@ export class ChillStereoPhysics {
         bubble.phase = 'falling'
       }
       
+      // 🐛 DEBUG: Ver qué está pasando con el cálculo
+      if (age < 10) {  // Solo primeros 10 frames (recién nacida)
+        console.log(
+          `[🐛 BUBBLE LIFECYCLE] Zone:${bubble.zone} Age:${age} Progress:${(progress * 100).toFixed(1)}% ` +
+          `Phase:${bubble.phase} | PeakIntensity:${(bubble.peakIntensity * 100).toFixed(1)}% → Intensity:${(intensity * 100).toFixed(1)}%`
+        )
+      }
+      
       // Aplicar a la zona correspondiente
       result[bubble.zone] += intensity
       

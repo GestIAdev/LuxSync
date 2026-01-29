@@ -215,9 +215,10 @@ export class ChillStereoPhysics {
   // ═══════════════════════════════════════════════════════════════════════
   
   // 🌡️ HEAT ACCUMULATOR - Acumulación térmica
-  private readonly HEAT_CHARGE_RATE = 0.025     // Cuánto calor añade el bajo por frame
+  // 🔥 WAVE 1032.3: Balance carga/descarga recalibrado
+  private readonly HEAT_CHARGE_RATE = 0.035     // Subido de 0.025 → más calor/frame
   private readonly HEAT_DECAY_RATE = 0.95       // 🔥 WAVE 1032.2: Decay más rápido (5% pérdida vs 1.5%) para blup...blup...
-  private readonly BUBBLE_THRESHOLD = 0.65      // Umbral para disparar burbuja
+  private readonly BUBBLE_THRESHOLD = 0.50      // Bajado de 0.65 → dispara antes
   private readonly BUBBLE_COOLDOWN_FRAMES = 90  // ~1.5 segundos entre burbujas
   
   // 🫧 BUBBLE LIFECYCLE - Ciclo de vida de burbujas (4-6 segundos)

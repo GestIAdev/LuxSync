@@ -745,7 +745,14 @@ export class VibeMovementManager {
     }
     
     // === FASE 1: ESCALAR POR AMPLITUDE DEL VIBE ===
-    const energyBoost = 1.0 + audio.energy * 0.2 // Hasta +20% con energía máxima
+    // 🔥 WAVE 1032.2: MINIMUM DRIFT - Motor propio para Chill
+    // Si energy < 0.2, forzar movementScale = 0.4 (el barco tiene motor)
+    let effectiveEnergy = audio.energy
+    if (vibeId === 'chill-lounge' && audio.energy < 0.2) {
+      effectiveEnergy = 0.4  // Velocity Floor - movimiento garantizado
+    }
+    
+    const energyBoost = 1.0 + effectiveEnergy * 0.2 // Hasta +20% con energía máxima
     const vibeScale = effectiveAmplitudeScale * energyBoost
     
     // ═══════════════════════════════════════════════════════════════════════

@@ -216,13 +216,14 @@ export class ChillStereoPhysics {
   
   // 🌡️ HEAT ACCUMULATOR - Acumulación térmica
   private readonly HEAT_CHARGE_RATE = 0.025     // Cuánto calor añade el bajo por frame
-  private readonly HEAT_DECAY_RATE = 0.985      // Enfriamiento por frame (1.5% pérdida)
+  private readonly HEAT_DECAY_RATE = 0.95       // 🔥 WAVE 1032.2: Decay más rápido (5% pérdida vs 1.5%) para blup...blup...
   private readonly BUBBLE_THRESHOLD = 0.65      // Umbral para disparar burbuja
   private readonly BUBBLE_COOLDOWN_FRAMES = 90  // ~1.5 segundos entre burbujas
   
   // 🫧 BUBBLE LIFECYCLE - Ciclo de vida de burbujas (4-6 segundos)
   private readonly BUBBLE_DURATION_FRAMES = 300  // ~5 segundos a 60fps
   private readonly BUBBLE_PEAK_INTENSITY = 0.65  // Intensidad máxima de burbuja
+  private readonly BUBBLE_BYPASS_AGC = 0.6       // 🔥 WAVE 1032.2: Bypass POST-AGC (60% directo visible)
   private readonly BUBBLE_TILT_DELTA = 0.15      // Cuánto sube el tilt (0-1 normalizado)
   
   // 🔦 LIGHTHOUSE - Faro constante (movimiento garantizado)
@@ -392,23 +393,33 @@ export class ChillStereoPhysics {
     
     // ─────────────────────────────────────────────────────────────────────
     // 10. CONSTRUIR OUTPUT FINAL
+    // 🔥 WAVE 1032.2: BUBBLE BYPASS - Las burbujas se suman POST-AGC
+    // Base respeta el Chill, burbujas rompen el límite
     // ─────────────────────────────────────────────────────────────────────
-    const finalFront = Math.min(
+    
+    // BASE (con AGC implícito via viscosidad)
+    const baseFront = Math.min(
       this.INTENSITY_CEILING, 
-      this.frontVal + breathMod * 0.03 + emberGlow + bubbleContribution.front
+      this.frontVal + breathMod * 0.03 + emberGlow
     )
-    const finalBack = Math.min(
+    const baseBack = Math.min(
       this.INTENSITY_CEILING, 
-      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5 + bubbleContribution.back
+      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5
     )
-    const finalMoverL = Math.min(
+    const baseMoverL = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValL + breathMod * 0.02 + bubbleContribution.moverL
+      this.moverValL + breathMod * 0.02
     )
-    const finalMoverR = Math.min(
+    const baseMoverR = Math.min(
       this.INTENSITY_CEILING, 
-      this.moverValR + breathMod * 0.02 + bubbleContribution.moverR
+      this.moverValR + breathMod * 0.02
     )
+    
+    // BUBBLE BYPASS: Se suma por encima del AGC
+    const finalFront = Math.min(1.0, baseFront + (bubbleContribution.front * this.BUBBLE_BYPASS_AGC))
+    const finalBack = Math.min(1.0, baseBack + (bubbleContribution.back * this.BUBBLE_BYPASS_AGC))
+    const finalMoverL = Math.min(1.0, baseMoverL + (bubbleContribution.moverL * this.BUBBLE_BYPASS_AGC))
+    const finalMoverR = Math.min(1.0, baseMoverR + (bubbleContribution.moverR * this.BUBBLE_BYPASS_AGC))
     
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2

@@ -883,8 +883,9 @@ export class ChillStereoPhysics {
       
       if (progress < 0.4) {
         // RISING: EaseInSine (0 → peak)
+        // 🔥 WAVE 1032.7: FIX - Usar sin() en vez de (1-cos()) para curva más rápida
         const riseProgress = progress / 0.4
-        intensity = (1 - Math.cos(riseProgress * Math.PI / 2)) * bubble.peakIntensity
+        intensity = Math.sin(riseProgress * Math.PI / 2) * bubble.peakIntensity
         tiltDelta = riseProgress * this.BUBBLE_TILT_DELTA
         bubble.phase = 'rising'
       } else if (progress < 0.6) {

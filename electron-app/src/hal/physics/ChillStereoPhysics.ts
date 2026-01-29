@@ -58,7 +58,9 @@ export interface ChillPhysicsInput {
 export interface ChillPhysicsResult {
   frontParIntensity: number
   backParIntensity: number
-  moverIntensity: number
+  moverIntensity: number        // Legacy: promedio de L+R
+  moverIntensityL: number       // 🫧 WAVE 1032.10: Burbuja izquierda
+  moverIntensityR: number       // 🫧 WAVE 1032.10: Burbuja derecha
   moverActive: boolean
   physicsApplied: 'chill'
   // 🍸 WAVE 1032: Extended fluid physics metadata
@@ -430,15 +432,6 @@ export class ChillStereoPhysics {
     const finalMoverL = Math.min(1.0, baseMoverL + (bubbleContribution.moverL * this.BUBBLE_BYPASS_AGC))
     const finalMoverR = Math.min(1.0, baseMoverR + (bubbleContribution.moverR * this.BUBBLE_BYPASS_AGC))
     
-    // 🐛 DEBUG BYPASS INMEDIATO: Log cada vez que hay burbujas activas
-    if (this.activeBubbles.length > 0 && this.frameCount % 30 === 0) {
-      console.log(
-        `[🐛 BUBBLE DEBUG] RAW: ML:${(bubbleContribution.moverL * 100).toFixed(1)}% MR:${(bubbleContribution.moverR * 100).toFixed(1)}% | ` +
-        `BASE: ML:${(baseMoverL * 100).toFixed(1)}% MR:${(baseMoverR * 100).toFixed(1)}% | ` +
-        `BYPASS×${this.BUBBLE_BYPASS_AGC} → FINAL: ML:${(finalMoverL * 100).toFixed(1)}% MR:${(finalMoverR * 100).toFixed(1)}%`
-      )
-    }
-    
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2
     
@@ -455,7 +448,9 @@ export class ChillStereoPhysics {
     return {
       frontParIntensity: finalFront,
       backParIntensity: finalBack,
-      moverIntensity: avgMover,
+      moverIntensity: avgMover,             // Legacy: promedio
+      moverIntensityL: finalMoverL,         // 🫧 WAVE 1032.10: Individual L
+      moverIntensityR: finalMoverR,         // 🫧 WAVE 1032.10: Individual R
       moverActive: avgMover > this.MOVER_FLOOR + 0.05,
       physicsApplied: 'chill',
       fluidState: {
@@ -741,8 +736,8 @@ export class ChillStereoPhysics {
       zoneIntensities: {
         front: result.frontParIntensity,
         back: result.backParIntensity,
-        moverL: this.moverValL,
-        moverR: this.moverValR
+        moverL: result.moverIntensityL,   // 🫧 WAVE 1032.10: Usar valores del result
+        moverR: result.moverIntensityR    // 🫧 WAVE 1032.10: Usar valores del result
       },
       debugInfo: {
         bassHit: false,  // No hay "hits" en fluid physics
@@ -899,14 +894,6 @@ export class ChillStereoPhysics {
         intensity = Math.cos(fallProgress * Math.PI / 2) * bubble.peakIntensity
         tiltDelta = (1 - fallProgress) * this.BUBBLE_TILT_DELTA
         bubble.phase = 'falling'
-      }
-      
-      // 🐛 DEBUG: Ver qué está pasando con el cálculo
-      if (age < 10) {  // Solo primeros 10 frames (recién nacida)
-        console.log(
-          `[🐛 BUBBLE LIFECYCLE] Zone:${bubble.zone} Age:${age} Progress:${(progress * 100).toFixed(1)}% ` +
-          `Phase:${bubble.phase} | PeakIntensity:${(bubble.peakIntensity * 100).toFixed(1)}% → Intensity:${(intensity * 100).toFixed(1)}%`
-        )
       }
       
       // Aplicar a la zona correspondiente

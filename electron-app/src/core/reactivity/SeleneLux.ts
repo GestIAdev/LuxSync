@@ -555,6 +555,7 @@ export class SeleneLux {
         moverL: result.zoneIntensities.moverL,     // 🫧 Burbuja izquierda
         moverR: result.zoneIntensities.moverR,     // 🫧 Burbuja derecha
       };
+      
       // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
     } // Guardar estado
     

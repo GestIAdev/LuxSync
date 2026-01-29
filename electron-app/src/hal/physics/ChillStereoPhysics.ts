@@ -7,7 +7,26 @@
  * 
  * DIAGNÓSTICO DEL SISTEMA ANTERIOR:
  * - Attack/Decay lineales sobre volumen = luz "nerviosa"
- * - En cuanto entra un golpe suave, la luz SALTA
+ * - En cuanto entra un gol    // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
+    if (this.frameCount % 90 === 0) {
+      // 🔥 WAVE 1032.4: DEBUG - Mostrar bubbleContribution RAW
+      console.log(
+        `[🌋 LAVA LAMP] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} | ` +
+        `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
+        `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
+        `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
+      )
+      
+      // 🐛 DEBUG BYPASS: Ver qué valores tiene bubbleContribution
+      if (this.activeBubbles.length > 0) {
+        console.log(
+          `[🐛 BUBBLE DEBUG] RAW contribution: ` +
+          `ML:${(bubbleContribution.moverL * 100).toFixed(1)}% MR:${(bubbleContribution.moverR * 100).toFixed(1)}% | ` +
+          `BASE: ML:${(baseMoverL * 100).toFixed(1)}% MR:${(baseMoverR * 100).toFixed(1)}% | ` +
+          `BYPASS: ×${this.BUBBLE_BYPASS_AGC}`
+        )
+      }
+    } la luz SALTA
  * - Se siente "reactivo" cuando debería "fluir"
  * 
  * SOLUCIÓN WAVE 1032: Física de FLUIDOS
@@ -831,7 +850,11 @@ export class ChillStereoPhysics {
       phase: 'rising'
     })
     
-    console.log(`[🫧 LAVA] Bubble spawned in ${zone} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | Active: ${this.activeBubbles.length}`)
+    // 🐛 WAVE 1032.4: DEBUG - Ver peakIntensity asignado
+    console.log(
+      `[🫧 LAVA] Bubble spawned in ${zone} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | ` +
+      `Active: ${this.activeBubbles.length} | PeakIntensity: ${(this.BUBBLE_PEAK_INTENSITY * intensityVariance * 100).toFixed(1)}%`
+    )
   }
   
   /**

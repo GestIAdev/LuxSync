@@ -9,23 +9,12 @@
  * - Attack/Decay lineales sobre volumen = luz "nerviosa"
  * - En cuanto entra un gol    // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
     if (this.frameCount % 90 === 0) {
-      // 🔥 WAVE 1032.4: DEBUG - Mostrar bubbleContribution RAW
       console.log(
         `[🌋 LAVA LAMP] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} | ` +
         `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
         `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
         `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
       )
-      
-      // 🐛 DEBUG BYPASS: Ver qué valores tiene bubbleContribution
-      if (this.activeBubbles.length > 0) {
-        console.log(
-          `[🐛 BUBBLE DEBUG] RAW contribution: ` +
-          `ML:${(bubbleContribution.moverL * 100).toFixed(1)}% MR:${(bubbleContribution.moverR * 100).toFixed(1)}% | ` +
-          `BASE: ML:${(baseMoverL * 100).toFixed(1)}% MR:${(baseMoverR * 100).toFixed(1)}% | ` +
-          `BYPASS: ×${this.BUBBLE_BYPASS_AGC}`
-        )
-      }
     } la luz SALTA
  * - Se siente "reactivo" cuando debería "fluir"
  * 
@@ -440,6 +429,15 @@ export class ChillStereoPhysics {
     const finalBack = Math.min(1.0, baseBack + (bubbleContribution.back * this.BUBBLE_BYPASS_AGC))
     const finalMoverL = Math.min(1.0, baseMoverL + (bubbleContribution.moverL * this.BUBBLE_BYPASS_AGC))
     const finalMoverR = Math.min(1.0, baseMoverR + (bubbleContribution.moverR * this.BUBBLE_BYPASS_AGC))
+    
+    // 🐛 DEBUG BYPASS INMEDIATO: Log cada vez que hay burbujas activas
+    if (this.activeBubbles.length > 0 && this.frameCount % 30 === 0) {
+      console.log(
+        `[🐛 BUBBLE DEBUG] RAW: ML:${(bubbleContribution.moverL * 100).toFixed(1)}% MR:${(bubbleContribution.moverR * 100).toFixed(1)}% | ` +
+        `BASE: ML:${(baseMoverL * 100).toFixed(1)}% MR:${(baseMoverR * 100).toFixed(1)}% | ` +
+        `BYPASS×${this.BUBBLE_BYPASS_AGC} → FINAL: ML:${(finalMoverL * 100).toFixed(1)}% MR:${(finalMoverR * 100).toFixed(1)}%`
+      )
+    }
     
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2

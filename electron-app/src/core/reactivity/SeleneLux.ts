@@ -701,14 +701,16 @@ export class SeleneLux {
     } else if (this.chillOverrides && physicsApplied === 'chill') {
       // ═══════════════════════════════════════════════════════════════════════
       // 🌊 WAVE 315.3: CHILL - El Techno Pacífico (Olas Desfasadas)
+      // 🔥 WAVE 1032.8: BUBBLE FREEDOM - Removido ceiling 0.85 para permitir burbujas brillantes
       // ═══════════════════════════════════════════════════════════════════════
       // FILOSOFÍA: Movimiento LATERAL como el océano.
       // Front/Back/Mover tienen fases diferentes (0°/120°/240°)
       // Las intensidades YA vienen calculadas con floor de 0.35
+      // 🫧 BURBUJAS: Pueden alcanzar 1.0 gracias al bypass POST-AGC
       // ═══════════════════════════════════════════════════════════════════════
-      frontIntensity = Math.min(0.85, this.chillOverrides.front * brightMod);
-      backIntensity = Math.min(0.85, this.chillOverrides.back);
-      moverIntensity = Math.min(0.85, this.chillOverrides.mover);
+      frontIntensity = Math.min(1.0, this.chillOverrides.front * brightMod);  // Era 0.85
+      backIntensity = Math.min(1.0, this.chillOverrides.back);                 // Era 0.85
+      moverIntensity = Math.min(1.0, this.chillOverrides.mover);               // Era 0.85 ← FREEDOM!
       
       // 🆕 WAVE 315.3: Log OLAS cada 15 frames (~250ms)
       if (this.frameCount % 15 === 0) {

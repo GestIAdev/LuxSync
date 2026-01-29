@@ -246,11 +246,46 @@ moverBase = mid * 0.35                    →  AFTER: mid * 0.55
 targetFront ceiling: 0.5                  →  AFTER: 0.7
 ```
 
+**SOLUCIÓN (WAVE 1032.3 - CARBONATACIÓN):**
+```typescript
+// 🫧 EL PROBLEMA: Deep House oscuro sin UltraAir
+UltraAir: 0.000 (no hay hi-hats/shakers cristalinos)
+Centroid: 401Hz (música muy grave)
+Sparkle: 0% → LUZ ZOMBIE 🧟
+
+// 🫧 FIX 1: SPARKLE FALLBACK (Plan B)
+// ANTES: Sparkles solo para CLEAN + clarity > 0.85
+// AHORA: Si no hay clarity, buscar vida en treble/ritmo
+if (texture === 'clean' && clarity >= 0.85) {
+  return claritySparkles  // Plan A
+}
+// Plan B: Carbonatación con treble
+if (treble > 0.3 && energy > 0.3) {
+  return treble * 0.15 * rhythmMod  // Micro-burbujas
+}
+
+// 🔥 FIX 2: EFECTO BRASAS (Ember Glow)
+// Para música WARM/oscura (centroid < 1200Hz)
+// Micro-pulso basado en el bajo
+if (texture === 'warm' || centroid < 1200) {
+  emberGlow = bass * 0.15 * slowPulse(0.03Hz) * 0.08
+  finalFront += emberGlow
+  finalBack += emberGlow * 0.5
+}
+
+// 🌊 FIX 3: DRIFT MÁS INQUIETO
+VISCOSITY_WARM: 0.80  →  0.75  (miel → jarabe ligero)
+VISCOSITY_CLEAN: 0.70 →  0.60  (agua → agua con gas)
+```
+
 **RESULTADO:**
 - Intensidades ahora cambian **2.5x más rápido** (perceptibles, no glaciales)
 - Dynamic range incrementado **+40%** (12%-45% → 12%-70%)
 - Viscosidad reducida pero aún fluida (el "breathing" sigue ahí)
 - Pan/Tilt drift ya estaba perfecto (VMM fix previo)
+- **🫧 Sparkles fallback:** Si no hay clarity, busca ritmo en treble
+- **🔥 Ember glow:** Música oscura = micro-pulso cálido en graves
+- **🌊 Drift inquieto:** Viscosidad mínima 0.60 (más recorrido espacial)
 
 ---
 

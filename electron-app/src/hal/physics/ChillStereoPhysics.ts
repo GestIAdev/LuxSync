@@ -170,11 +170,12 @@ export class ChillStereoPhysics {
   
   // 🌊 VISCOSIDAD: Qué tan "espeso" es el fluido
   // 🌊 WAVE 1032.2: Reducida para permitir cambios más perceptibles
+  // 🫧 WAVE 1032.3: Mínimo bajado a 0.60 para drift más inquieto
   // WARM (Jazz/Soul) = Alta viscosidad (miel, pero no melaza)
-  // CLEAN (Deep House/Ambient) = Media viscosidad (agua, no aceite)
-  private readonly VISCOSITY_WARM = 0.80     // Miel: cambios lentos pero visibles (era 0.92)
-  private readonly VISCOSITY_CLEAN = 0.70    // Agua: cambios suaves y perceptibles (era 0.85)
-  private readonly VISCOSITY_DEFAULT = 0.75  // Default intermedio (era 0.88)
+  // CLEAN (Deep House/Ambient) = Media-baja viscosidad (agua ligera)
+  private readonly VISCOSITY_WARM = 0.75     // Miel ligera (era 0.80)
+  private readonly VISCOSITY_CLEAN = 0.60    // Agua + movimiento (era 0.70)
+  private readonly VISCOSITY_DEFAULT = 0.68  // Default intermedio (era 0.75)
   
   // ⏱️ LOW-PASS FILTER: Tiempos de respuesta
   // 🌊 WAVE 1032.2: Acelerado para ser perceptible sin perder fluidez
@@ -306,9 +307,10 @@ export class ChillStereoPhysics {
     this.applyStereoDelay()
     
     // ─────────────────────────────────────────────────────────────────────
-    // 7. SPARKLES PARA CLEAN + ALTA CLARITY
+    // 7. SPARKLES PARA CLEAN + ALTA CLARITY (+ Carbonatación fallback)
+    // 🫧 WAVE 1032.3: Ahora busca vida en treble si no hay clarity
     // ─────────────────────────────────────────────────────────────────────
-    const sparkleBoost = this.calculateSparkle(texture, clarity)
+    const sparkleBoost = this.calculateSparkle(texture, clarity, input)
     
     // ─────────────────────────────────────────────────────────────────────
     // 8. RESPIRACIÓN ORGÁNICA (Modulación de fondo)
@@ -316,10 +318,22 @@ export class ChillStereoPhysics {
     const breathMod = this.calculateBreathing()
     
     // ─────────────────────────────────────────────────────────────────────
+    // 🔥 8.5. EFECTO BRASAS (EMBER) - Para música oscura/WARM
+    // 🫧 WAVE 1032.3: Micro-pulso en el bajo cuando no hay brillos
+    // ─────────────────────────────────────────────────────────────────────
+    let emberGlow = 0
+    if (texture === 'warm' || (spectralCentroid && spectralCentroid < 1200)) {
+      // Música oscura: modular con el bajo para dar vida
+      const bassPulse = (subBass ?? bass) * 0.15
+      const slowPulse = Math.sin(this.frameCount * 0.03) * 0.5 + 0.5
+      emberGlow = bassPulse * slowPulse * 0.08  // Micro-pulso sutil
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
     // 9. CONSTRUIR OUTPUT
     // ─────────────────────────────────────────────────────────────────────
-    const finalFront = Math.min(this.INTENSITY_CEILING, this.frontVal + breathMod * 0.03)
-    const finalBack = Math.min(this.INTENSITY_CEILING, this.backVal + sparkleBoost + breathMod * 0.05)
+    const finalFront = Math.min(this.INTENSITY_CEILING, this.frontVal + breathMod * 0.03 + emberGlow)
+    const finalBack = Math.min(this.INTENSITY_CEILING, this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5)
     const finalMoverL = Math.min(this.INTENSITY_CEILING, this.moverValL + breathMod * 0.02)
     const finalMoverR = Math.min(this.INTENSITY_CEILING, this.moverValR + breathMod * 0.02)
     
@@ -524,19 +538,44 @@ export class ChillStereoPhysics {
   
   /**
    * ✨ Sparkles - Micro-brillos para CLEAN + alta clarity
-   * Como estrellas que parpadean suavemente
+   * 🫧 WAVE 1032.3 CARBONATACIÓN: Plan B cuando no hay UltraAir
+   * 
+   * ANTES: Sparkles solo para CLEAN + clarity alta (purismo)
+   * AHORA: Buscar vida en ritmo/groove si no hay agudos cristalinos
    */
-  private calculateSparkle(texture: string, clarity: number): number {
-    // Solo sparkles para CLEAN con clarity muy alta
-    if (texture !== 'clean' || clarity < this.SPARKLE_CLARITY_THRESHOLD) {
-      return 0
+  private calculateSparkle(
+    texture: string, 
+    clarity: number,
+    input?: ChillPhysicsInput
+  ): number {
+    // ─────────────────────────────────────────────────────────────────────
+    // PLAN A: Sparkles tradicionales (CLEAN + clarity)
+    // ─────────────────────────────────────────────────────────────────────
+    if (texture === 'clean' && clarity >= this.SPARKLE_CLARITY_THRESHOLD) {
+      // Sparkle basado en tiempo (determinista, no random)
+      const sparklePhase = Math.sin(this.frameCount * 0.05) * 0.5 + 0.5
+      const clarityBonus = (clarity - this.SPARKLE_CLARITY_THRESHOLD) * 5  // 0-0.4
+      
+      return sparklePhase * this.SPARKLE_INTENSITY * clarityBonus
     }
     
-    // Sparkle basado en tiempo (determinista, no random)
-    const sparklePhase = Math.sin(this.frameCount * 0.05) * 0.5 + 0.5
-    const clarityBonus = (clarity - this.SPARKLE_CLARITY_THRESHOLD) * 5  // 0-0.4
+    // ─────────────────────────────────────────────────────────────────────
+    // 🫧 PLAN B: CARBONATACIÓN - Buscar vida en el groove
+    // ─────────────────────────────────────────────────────────────────────
+    // Si no hay clarity, pero SÍ hay ritmo/treble, usar eso como "burbujas"
+    if (!input) return 0
     
-    return sparklePhase * this.SPARKLE_INTENSITY * clarityBonus
+    const hasTreble = (input.treble || 0) > 0.3
+    const hasEnergy = (input.energy || 0) > 0.3
+    
+    if (hasTreble && hasEnergy) {
+      // Micro-burbujas basadas en treble (hi-hats, shakers)
+      const bubbleIntensity = (input.treble || 0) * 0.15
+      const rhythmMod = Math.sin(this.frameCount * 0.08) * 0.5 + 0.5
+      return bubbleIntensity * rhythmMod
+    }
+    
+    return 0
   }
   
   /**

@@ -1,49 +1,46 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * � WAVE 1033: THE FLUID MATRIX - Granular Flow
+ * 🪸 WAVE 1034: THE BIOLUMINESCENT REEF - Arte Generativo Puro
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * EVOLUCIÓN: De "Lámpara de Lava" (burbujas random) a "Corriente Termal".
+ * EVOLUCIÓN: De "Corriente Termal" (flujo direccional) a "Arrecife" (partículas)
  * 
- * 🔥 WAVE 1032: Sistema de Burbujas
- * - Burbujas spawn en zonas aleatorias
- * - Cada una tiene su lifecycle independiente
- * - Efecto hipnótico pero.    // Log cada 90 frames (~1.5 segundos) - FLUID MATRIX stats
-    if (this.frameCount % 90 === 0) {
-      console.log(
-        `[🌊 FLUID MATRIX] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Packets:${this.activePackets.length} | ` +
-        `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
-        `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}%`
-      )
-    }O
+ * 🌊 WAVE 1033: Sistema de Thermal Packets
+ * - Un objeto viajaba FRONT → BACK → MOVERS
+ * - Sincronizado, predecible, "mecánico"
  * 
- * 🌊 WAVE 1033: Corriente Ascendente
- * - ThermalPacket: Objeto que VIAJA por zonas
- * - Secuencia: FRONT → BACK → MOVERS (suelo → pared → techo)
- * - Granularidad: Micro-textura según audio
- * - Tidal Breath: Onda sinusoidal global de fondo
+ * 🪸 WAVE 1034: Sistema de Partículas Bioluminiscentes
+ * - Cada burbuja es un ORGANISMO INDEPENDIENTE
+ * - Spawn aleatorio en 5 carriles (lanes)
+ * - Velocidades distintas (rápidas vs perezosas)
+ * - Drift cromático (variación de hue por burbuja)
+ * - Turbulencia en texturas harsh
+ * - Finale "Pop" al llegar al mover
  * 
- * COREOGRAFÍA DE UN THERMAL PACKET:
+ * ESTRUCTURA DE PARTÍCULA:
  * ┌────────────────────────────────────────────────────────────┐
- * │ T=0.0s     FRONT (Nacimiento)     Ámbar/Rojo suave        │
- * │ T=1.5s     BACK (Transferencia)   Energía sube pared      │
- * │ T=3.0s     MOVERS (Liberación)    Tilt UP + Flota techo   │
- * │ T=4.5s     Packet muere                                    │
+ * │ laneIndex: 0-4    (5 carriles: Izq extrema → Der extrema) │
+ * │ progress: 0→3     (0=Front, 1=Back, 2=Mover, 3=Pop/Death) │
+ * │ speed: variable   (algunas rápidas, otras perezosas)      │
+ * │ size: 0.5-1.5     (burbujas pequeñas vs grandes)          │
+ * │ hueOffset: ±15°   (Cian ↔ Violeta sobre base azul)        │
  * └────────────────────────────────────────────────────────────┘
  * 
- * GRANULARIDAD POR TEXTURA:
- * - WARM: Micro-parpadeo 0.5Hz (vela/fuego)
- * - CLEAN: Intensidad sólida (medusa bioluminiscente)
+ * OCÉANO FRACTAL (Interferencia de Ondas):
+ * OceanPulse = sin(t×0.2) + sin(t×0.5)×0.5 + sin(t×0.9)×0.2
+ * → Patrón que NUNCA se repite exactamente
+ * → Calma chicha, marejada, olas rápidas... impredecible
  * 
- * TIDAL BREATH (Background):
- * - Onda sinusoidal global a 0.1Hz (10s ciclo)
- * - Amplitud ±5% (muy sutil)
- * - Aplica a zonas SIN packet activo
+ * DETALLES ARTÍSTICOS:
+ * - Drift Cromático: Cada burbuja tiene tinte único
+ * - Turbulencia: Texturas harsh = temblor al subir
+ * - Finale Pop: Destello extra antes de morir
  * 
- * RESULTADO: La música "empuja" la luz desde el suelo hasta el techo.
+ * RESULTADO: Un arrecife donde cada luz es un organismo vivo.
  * 
  * @module hal/physics/ChillStereoPhysics
- * @version WAVE 1033 - THE FLUID MATRIX
+ * @version WAVE 1034 - THE BIOLUMINESCENT REEF
+ * @credits Directiva creativa de GeminiPunk
  */
 
 import type { ElementalModifiers } from '../../engine/physics/ElementalModifiers';
@@ -82,14 +79,32 @@ export interface ChillPhysicsResult {
     driftPhaseR: number      // Fase de drift derecho
     stereoOffset: number     // Offset estéreo actual (0-1)
   }
-  // � WAVE 1033: Fluid Matrix Physics output
-  lavaLamp?: {
-    thermalEnergy: number    // 0-1: Energía acumulada
-    activePackets: number    // Cantidad de thermal packets activos
-    lighthousePan: number    // Offset de pan del faro (-1 a 1)
-    lighthouseTilt: number   // Offset de tilt del faro (-1 a 1)
-    bubbleTiltBoost: number  // Boost de tilt por packets activos
+  // 🪸 WAVE 1034: Bioluminescent Reef output
+  reef?: {
+    thermalEnergy: number     // 0-1: Energía acumulada
+    activeBubbles: number     // Cantidad de burbujas activas
+    oceanPulse: number        // -1 a 1: Pulso fractal del océano
+    lighthousePan: number     // Offset de pan del faro
+    lighthouseTilt: number    // Offset de tilt del faro
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🪸 WAVE 1034: LIGHT BUBBLE - Partícula Bioluminiscente
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🫧 Estructura de una burbuja de luz independiente
+ * Cada burbuja es un organismo que viaja por su carril
+ */
+export interface LightBubble {
+  laneIndex: number      // 0-4: Carril (0=Izq extrema, 4=Der extrema)
+  progress: number       // 0.0→1.0=Front, 1.0→2.0=Back, 2.0→3.0=Mover
+  speed: number          // Velocidad de ascenso (varía por burbuja)
+  size: number           // Intensidad/tamaño (0.5-1.5)
+  hueOffset: number      // Variación cromática (-15 a +15 grados)
+  birthFrame: number     // Frame de nacimiento
+  isPopping: boolean     // True cuando está en fase de "pop" final
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -182,7 +197,7 @@ class PerlinNoise {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// � CHILL STEREO PHYSICS - THE FLUID MATRIX
+//  CHILL STEREO PHYSICS - THE FLUID MATRIX
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ChillStereoPhysics {
@@ -232,35 +247,59 @@ export class ChillStereoPhysics {
   private readonly SPARKLE_INTENSITY = 0.08   // Muy sutil
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌋 WAVE 1033: THE FLUID MATRIX - Thermal Packets
+  // 🪸 WAVE 1034: THE BIOLUMINESCENT REEF - Particle System
   // ═══════════════════════════════════════════════════════════════════════
   
-  // 🌡️ HEAT ACCUMULATOR - Acumulación térmica
-  private readonly HEAT_CHARGE_RATE = 0.035     // Carga por frame con subBass
-  private readonly HEAT_DECAY_RATE = 0.95       // 5% pérdida sin subBass
-  private readonly PACKET_THRESHOLD = 0.50      // Umbral para disparar packet
-  private readonly PACKET_COOLDOWN_FRAMES = 120 // ~2 segundos entre packets
+  // 🌡️ HEAT ACCUMULATOR - Acumulación térmica para spawn de burbujas
+  private readonly HEAT_CHARGE_RATE = 0.04      // Carga por frame con subBass
+  private readonly HEAT_DECAY_RATE = 0.96       // 4% pérdida sin subBass
+  private readonly BUBBLE_SPAWN_THRESHOLD = 0.45 // Umbral para disparar burbuja
+  private readonly BUBBLE_COOLDOWN_FRAMES = 60   // ~1 segundo entre burbujas
   
-  // 🌊 THERMAL PACKET - Corriente ascendente (FRONT → BACK → MOVERS)
-  private readonly PACKET_TOTAL_DURATION = 4.5  // Segundos totales de viaje
-  private readonly PACKET_FRONT_END = 1.5       // T=0 a T=1.5s en FRONT
-  private readonly PACKET_BACK_START = 0.8      // Solapamiento: Back empieza T=0.8s
-  private readonly PACKET_BACK_END = 3.0        // T=0.8s a T=3.0s en BACK
-  private readonly PACKET_MOVER_START = 1.8     // Solapamiento: Movers empiezan T=1.8s
-  private readonly PACKET_PEAK_INTENSITY = 0.70 // Intensidad máxima del packet
-  private readonly PACKET_BYPASS_AGC = 0.6      // Bypass POST-AGC (60% directo)
+  // 🫧 LIGHT BUBBLES - Sistema de partículas
+  private readonly TOTAL_LANES = 5              // 5 carriles (0=izq extrema, 4=der extrema)
+  private readonly BUBBLE_BASE_SPEED = 0.012    // Velocidad base por frame
+  private readonly BUBBLE_SPEED_VARIANCE = 0.008 // ±variación de velocidad
+  private readonly BUBBLE_SIZE_MIN = 0.6        // Tamaño mínimo
+  private readonly BUBBLE_SIZE_MAX = 1.4        // Tamaño máximo
+  private readonly BUBBLE_HUE_DRIFT = 15        // ±15 grados de variación de color
+  private readonly MAX_ACTIVE_BUBBLES = 8       // Máximo de burbujas simultáneas
+  private readonly BUBBLE_POP_INTENSITY = 1.5   // Multiplicador del destello final
+  private readonly BUBBLE_POP_DURATION = 6      // Frames del destello
   
-  // 🧂 GRANULARITY - Textura micro
-  private readonly GRAIN_LFO_WARM = 0.5         // 0.5Hz para WARM (vela)
-  private readonly GRAIN_LFO_AMPLITUDE = 0.12   // ±12% de modulación
+  // 🌊 OCEAN FRACTAL - Interferencia de ondas (nunca se repite)
+  private readonly OCEAN_WAVE_1 = 0.2           // Primera onda (lenta)
+  private readonly OCEAN_WAVE_2 = 0.5           // Segunda onda (media)
+  private readonly OCEAN_WAVE_3 = 0.9           // Tercera onda (rápida)
+  private readonly OCEAN_AMPLITUDE = 0.08       // ±8% de variación base
   
-  // 💓 TIDAL BREATH - Onda global de fondo
-  private readonly TIDAL_FREQUENCY = 0.1        // 0.1Hz = 10 segundos por ciclo
-  private readonly TIDAL_AMPLITUDE = 0.05       // ±5% muy sutil
+  // 🌀 TURBULENCE - Efecto para texturas harsh
+  private readonly TURBULENCE_FREQUENCY = 2.5   // Hz del temblor
+  private readonly TURBULENCE_AMPLITUDE = 0.15  // ±15% de variación
   
   // 🔦 LIGHTHOUSE - Faro constante (movimiento garantizado)
   private readonly LIGHTHOUSE_FREQUENCY = 0.08   // 0.08 Hz = ciclo de 12.5 segundos
   private readonly LIGHTHOUSE_AMPLITUDE = 0.25   // ±25% del rango de pan
+  
+  // 🌊 THERMAL PACKET TIMING - Coreografía FRONT → BACK → MOVER
+  // (Sistema legacy, evoluciona a LightBubble en WAVE 1034+)
+  private readonly PACKET_TOTAL_DURATION = 4.5   // Duración total de la corriente (segundos)
+  private readonly PACKET_FRONT_END = 1.5        // FRONT: 0s → 1.5s
+  private readonly PACKET_BACK_START = 0.8       // BACK: 0.8s → 3.0s (solapamiento)
+  private readonly PACKET_BACK_END = 3.0
+  private readonly PACKET_MOVER_START = 1.8      // MOVER: 1.8s → 4.5s (liberación)
+  private readonly PACKET_PEAK_INTENSITY = 0.35  // Pico de intensidad (35%)
+  private readonly PACKET_BYPASS_AGC = 1.2       // Multiplicador post-AGC
+  private readonly PACKET_THRESHOLD = 0.45       // Alias de BUBBLE_SPAWN_THRESHOLD
+  private readonly PACKET_COOLDOWN_FRAMES = 60   // Alias de BUBBLE_COOLDOWN_FRAMES
+  
+  // 🧂 GRANULARITY - Micro-textura según audio
+  private readonly GRAIN_LFO_WARM = 0.5          // 0.5 Hz (parpadeo de vela)
+  private readonly GRAIN_LFO_AMPLITUDE = 0.06    // ±6% variación
+  
+  // 💓 TIDAL BREATH - Respiración de fondo
+  private readonly TIDAL_FREQUENCY = 0.1         // 0.1 Hz = 10 segundos por ciclo
+  private readonly TIDAL_AMPLITUDE = 0.05        // ±5% variación
   
   // ═══════════════════════════════════════════════════════════════════════
   // ESTADO INTERNO
@@ -302,7 +341,7 @@ export class ChillStereoPhysics {
   private readonly BREATH_PERIOD_SECONDS = 8  // Respiración de 8 segundos
   
   // ═══════════════════════════════════════════════════════════════════════
-  // � WAVE 1033: FLUID MATRIX STATE
+  //  WAVE 1033: FLUID MATRIX STATE
   // ═══════════════════════════════════════════════════════════════════════
   
   // 🌡️ Heat Accumulator
@@ -330,7 +369,7 @@ export class ChillStereoPhysics {
     for (let i = 0; i < this.STEREO_OFFSET_FRAMES; i++) {
       this.stereoBuffer.push(this.MOVER_FLOOR)
     }
-    console.log('[ChillStereoPhysics] � WAVE 1033: THE FLUID MATRIX initialized')
+    console.log('[ChillStereoPhysics]  WAVE 1033: THE FLUID MATRIX initialized')
     console.log(`[ChillStereoPhysics] 🔥 Packet Duration: ${this.PACKET_TOTAL_DURATION}s | Tidal: ${this.TIDAL_FREQUENCY}Hz | Grain: ${this.GRAIN_LFO_WARM}Hz`)
   }
   
@@ -497,13 +536,13 @@ export class ChillStereoPhysics {
         driftPhaseR: this.driftTime + 0.5,
         stereoOffset: this.STEREO_OFFSET_SECONDS
       },
-      // 🌊 FLUID MATRIX OUTPUT
-      lavaLamp: {
+      // 🪸 WAVE 1034: BIOLUMINESCENT REEF OUTPUT
+      reef: {
         thermalEnergy: this.thermalEnergy,
-        activePackets: this.activePackets.length,
+        activeBubbles: this.activePackets.length,  // TODO: Migrar a LightBubble[]
+        oceanPulse: 0,  // TODO: Implementar ocean fractal
         lighthousePan: lighthouse.panOffset,
-        lighthouseTilt: lighthouse.tiltOffset + packetContribution.tiltBoost,
-        bubbleTiltBoost: packetContribution.tiltBoost
+        lighthouseTilt: lighthouse.tiltOffset + packetContribution.tiltBoost
       }
     }
   }

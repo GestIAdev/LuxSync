@@ -228,10 +228,13 @@ export class SeleneLux {
   } | null = null;
   
   // 🆕 WAVE 315: CHILL BREATHING - Overrides de bioluminiscencia
+  // 🔥 WAVE 1032.9: Agregado moverL/moverR para burbujas independientes
   private chillOverrides: { 
     front: number; 
     back: number; 
-    mover: number;
+    mover: number;   // Legacy: promedio para compatibilidad
+    moverL: number;  // 🫧 WAVE 1032.9: Burbuja izquierda
+    moverR: number;  // 🫧 WAVE 1032.9: Burbuja derecha
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -542,12 +545,15 @@ export class SeleneLux {
       physicsApplied = 'chill';
       debugInfo = result.debugInfo;
       
-      // Extraer intensidades por zona (4 zonas → 3 overrides)
+      // Extraer intensidades por zona (4 zonas → 5 overrides)
+      // 🔥 WAVE 1032.9: Agregar moverL/moverR para burbujas independientes
       const moverAvg = (result.zoneIntensities.moverL + result.zoneIntensities.moverR) / 2;
       this.chillOverrides = {
         front: result.zoneIntensities.front,
         back: result.zoneIntensities.back,
-        mover: moverAvg,
+        mover: moverAvg,                           // Legacy promedio
+        moverL: result.zoneIntensities.moverL,     // 🫧 Burbuja izquierda
+        moverR: result.zoneIntensities.moverR,     // 🫧 Burbuja derecha
       };
       // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
     } // Guardar estado
@@ -702,21 +708,32 @@ export class SeleneLux {
       // ═══════════════════════════════════════════════════════════════════════
       // 🌊 WAVE 315.3: CHILL - El Techno Pacífico (Olas Desfasadas)
       // 🔥 WAVE 1032.8: BUBBLE FREEDOM - Removido ceiling 0.85 para permitir burbujas brillantes
+      // 🫧 WAVE 1032.9: BUBBLE L/R SPLIT - Movers independientes como Rock/Latino
       // ═══════════════════════════════════════════════════════════════════════
       // FILOSOFÍA: Movimiento LATERAL como el océano.
-      // Front/Back/Mover tienen fases diferentes (0°/120°/240°)
-      // Las intensidades YA vienen calculadas con floor de 0.35
+      // Front/Back/MoverL/MoverR con burbujas independientes
       // 🫧 BURBUJAS: Pueden alcanzar 1.0 gracias al bypass POST-AGC
       // ═══════════════════════════════════════════════════════════════════════
-      frontIntensity = Math.min(1.0, this.chillOverrides.front * brightMod);  // Era 0.85
-      backIntensity = Math.min(1.0, this.chillOverrides.back);                 // Era 0.85
-      moverIntensity = Math.min(1.0, this.chillOverrides.mover);               // Era 0.85 ← FREEDOM!
+      frontIntensity = Math.min(1.0, this.chillOverrides.front * brightMod);
+      backIntensity = Math.min(1.0, this.chillOverrides.back);
+      
+      // 🫧 WAVE 1032.9: Usar moverL/moverR individuales (burbujas independientes)
+      const chillL = Math.min(1.0, this.chillOverrides.moverL);
+      const chillR = Math.min(1.0, this.chillOverrides.moverR);
+      moverIntensity = Math.min(1.0, (chillL + chillR) / 2);  // Promedio para legacy
+      
+      // 🫧 WAVE 1032.9: Guardar split L/R para incluir en zoneIntensities
+      (this as any).chillMoverSplit = {
+        moverL: chillL,
+        moverR: chillR
+      };
       
       // 🆕 WAVE 315.3: Log OLAS cada 15 frames (~250ms)
+      // 🫧 WAVE 1032.9: Mostrar L/R individuales
       if (this.frameCount % 15 === 0) {
         console.log(
-          `[AGC TRUST 🌊CHILL] IN[F:${this.chillOverrides.front.toFixed(2)}, B:${this.chillOverrides.back.toFixed(2)}, M:${this.chillOverrides.mover.toFixed(2)}] → ` +
-          `💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, Mover:${moverIntensity.toFixed(2)}] (×brightMod:${brightMod.toFixed(2)})`
+          `[AGC TRUST 🌊CHILL] IN[F:${this.chillOverrides.front.toFixed(2)}, B:${this.chillOverrides.back.toFixed(2)}, ML:${this.chillOverrides.moverL.toFixed(2)}, MR:${this.chillOverrides.moverR.toFixed(2)}] → ` +
+          `💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, ML:${chillL.toFixed(2)}, MR:${chillR.toFixed(2)}] (×brightMod:${brightMod.toFixed(2)})`
         );
       }
       
@@ -759,6 +776,11 @@ export class SeleneLux {
       ...(((this as any).rockMoverSplit) && {
         moverL: (this as any).rockMoverSplit.moverL,
         moverR: (this as any).rockMoverSplit.moverR
+      }),
+      // 🫧 WAVE 1032.9: BUBBLE L/R SPLIT - Incluir L/R si vienen de Chill
+      ...(((this as any).chillMoverSplit) && {
+        moverL: (this as any).chillMoverSplit.moverL,
+        moverR: (this as any).chillMoverSplit.moverR
       }),
       // ═══════════════════════════════════════════════════════════════════════
       // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Zones

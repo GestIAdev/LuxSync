@@ -61,6 +61,14 @@ export interface ChillPhysicsResult {
     driftPhaseR: number      // Fase de drift derecho
     stereoOffset: number     // Offset estéreo actual (0-1)
   }
+  // 🌋 WAVE 1032.4: Lava Lamp Physics output
+  lavaLamp?: {
+    thermalEnergy: number    // 0-1: Energía acumulada
+    activeBubbles: number    // Cantidad de burbujas activas
+    lighthousePan: number    // Offset de pan del faro (-1 a 1)
+    lighthouseTilt: number   // Offset de tilt del faro (-1 a 1)
+    bubbleTiltBoost: number  // Boost de tilt por burbujas activas
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -203,6 +211,25 @@ export class ChillStereoPhysics {
   private readonly SPARKLE_INTENSITY = 0.08   // Muy sutil
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🌋 WAVE 1032.4: LAVA LAMP PHYSICS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 🌡️ HEAT ACCUMULATOR - Acumulación térmica
+  private readonly HEAT_CHARGE_RATE = 0.025     // Cuánto calor añade el bajo por frame
+  private readonly HEAT_DECAY_RATE = 0.985      // Enfriamiento por frame (1.5% pérdida)
+  private readonly BUBBLE_THRESHOLD = 0.65      // Umbral para disparar burbuja
+  private readonly BUBBLE_COOLDOWN_FRAMES = 90  // ~1.5 segundos entre burbujas
+  
+  // 🫧 BUBBLE LIFECYCLE - Ciclo de vida de burbujas (4-6 segundos)
+  private readonly BUBBLE_DURATION_FRAMES = 300  // ~5 segundos a 60fps
+  private readonly BUBBLE_PEAK_INTENSITY = 0.65  // Intensidad máxima de burbuja
+  private readonly BUBBLE_TILT_DELTA = 0.15      // Cuánto sube el tilt (0-1 normalizado)
+  
+  // 🔦 LIGHTHOUSE - Faro constante (movimiento garantizado)
+  private readonly LIGHTHOUSE_FREQUENCY = 0.08   // 0.08 Hz = ciclo de 12.5 segundos
+  private readonly LIGHTHOUSE_AMPLITUDE = 0.25   // ±25% del rango de pan
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // ESTADO INTERNO
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -240,6 +267,26 @@ export class ChillStereoPhysics {
   // 💫 Breath phase for organic pulsing
   private breathPhase = 0
   private readonly BREATH_PERIOD_SECONDS = 8  // Respiración de 8 segundos
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌋 LAVA LAMP STATE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 🌡️ Heat Accumulator
+  private thermalEnergy = 0.0           // 0.0 - 1.0
+  private bubbleCooldown = 0            // Frames hasta poder disparar otra burbuja
+  
+  // 🫧 Active Bubbles (hasta 3 simultáneas)
+  private activeBubbles: Array<{
+    zone: 'front' | 'back' | 'moverL' | 'moverR'
+    startFrame: number
+    duration: number
+    peakIntensity: number
+    phase: 'rising' | 'peak' | 'falling'
+  }> = []
+  
+  // 🔦 Lighthouse phase (siempre activo)
+  private lighthousePhase = 0
   
   constructor() {
     // Inicializar buffer de stereo delay
@@ -330,23 +377,49 @@ export class ChillStereoPhysics {
     }
     
     // ─────────────────────────────────────────────────────────────────────
-    // 9. CONSTRUIR OUTPUT
+    // 🌋 9. LAVA LAMP PHYSICS (WAVE 1032.4)
     // ─────────────────────────────────────────────────────────────────────
-    const finalFront = Math.min(this.INTENSITY_CEILING, this.frontVal + breathMod * 0.03 + emberGlow)
-    const finalBack = Math.min(this.INTENSITY_CEILING, this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5)
-    const finalMoverL = Math.min(this.INTENSITY_CEILING, this.moverValL + breathMod * 0.02)
-    const finalMoverR = Math.min(this.INTENSITY_CEILING, this.moverValR + breathMod * 0.02)
+    
+    // 🌡️ 9.1 Heat Accumulator - Cargar y disparar burbujas
+    const highMid = (mid + treble) * 0.5  // HighMid para Deep House oscuro
+    this.updateHeatAccumulator(subBass ?? bass, highMid)
+    
+    // 🫧 9.2 Process Bubbles - Actualizar ciclo de vida
+    const bubbleContribution = this.processBubbles()
+    
+    // 🔦 9.3 Lighthouse - Movimiento constante garantizado
+    const lighthouse = this.updateLighthouse()
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 10. CONSTRUIR OUTPUT FINAL
+    // ─────────────────────────────────────────────────────────────────────
+    const finalFront = Math.min(
+      this.INTENSITY_CEILING, 
+      this.frontVal + breathMod * 0.03 + emberGlow + bubbleContribution.front
+    )
+    const finalBack = Math.min(
+      this.INTENSITY_CEILING, 
+      this.backVal + sparkleBoost + breathMod * 0.05 + emberGlow * 0.5 + bubbleContribution.back
+    )
+    const finalMoverL = Math.min(
+      this.INTENSITY_CEILING, 
+      this.moverValL + breathMod * 0.02 + bubbleContribution.moverL
+    )
+    const finalMoverR = Math.min(
+      this.INTENSITY_CEILING, 
+      this.moverValR + breathMod * 0.02 + bubbleContribution.moverR
+    )
     
     // Intensidad promedio para legacy API
     const avgMover = (finalMoverL + finalMoverR) / 2
     
-    // Log cada 90 frames (~1.5 segundos)
+    // Log cada 90 frames (~1.5 segundos) - MEJORADO con Lava Lamp stats
     if (this.frameCount % 90 === 0) {
       console.log(
-        `[🍸 LIQUID LOUNGE] Viscosity:${this.currentViscosity.toFixed(2)} | ` +
+        `[� LAVA LAMP] Thermal:${(this.thermalEnergy * 100).toFixed(0)}% Bubbles:${this.activeBubbles.length} | ` +
         `F:${(finalFront * 100).toFixed(0)}% B:${(finalBack * 100).toFixed(0)}% ` +
         `ML:${(finalMoverL * 100).toFixed(0)}% MR:${(finalMoverR * 100).toFixed(0)}% | ` +
-        `Breath:${(breathMod * 100).toFixed(0)}% Sparkle:${(sparkleBoost * 100).toFixed(0)}%`
+        `🔦 Pan:${(lighthouse.panOffset * 100).toFixed(0)}% Tilt:${(lighthouse.tiltOffset * 100).toFixed(0)}%`
       )
     }
     
@@ -362,6 +435,14 @@ export class ChillStereoPhysics {
         driftPhaseL: this.driftTime,
         driftPhaseR: this.driftTime + 0.5,
         stereoOffset: this.STEREO_OFFSET_SECONDS
+      },
+      // 🌋 LAVA LAMP OUTPUT
+      lavaLamp: {
+        thermalEnergy: this.thermalEnergy,
+        activeBubbles: this.activeBubbles.length,
+        lighthousePan: lighthouse.panOffset,
+        lighthouseTilt: lighthouse.tiltOffset,
+        bubbleTiltBoost: bubbleContribution.tiltBoost
       }
     }
   }
@@ -667,6 +748,162 @@ export class ChillStereoPhysics {
     for (let i = 0; i < this.stereoBuffer.length; i++) {
       this.stereoBuffer[i] = this.MOVER_FLOOR
     }
+    // 🌋 Reset Lava Lamp state
+    this.thermalEnergy = 0
+    this.bubbleCooldown = 0
+    this.activeBubbles = []
+    this.lighthousePhase = 0
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌋 LAVA LAMP PHYSICS METHODS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🌡️ HEAT ACCUMULATOR - Acumula energía del bajo y dispara burbujas
+   * 
+   * No reacciona al bombo. Se CARGA con el ritmo y se libera suavemente.
+   */
+  private updateHeatAccumulator(subBass: number, highMid: number): void {
+    // ─────────────────────────────────────────────────────────────────────
+    // CARGAR CALOR
+    // ─────────────────────────────────────────────────────────────────────
+    // Input principal: SubBass (presión)
+    // Input secundario: HighMid (para Deep House oscuro sin agudos)
+    const heatInput = Math.max(subBass, highMid * 0.7)
+    this.thermalEnergy += heatInput * this.HEAT_CHARGE_RATE
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // ENFRIAMIENTO NATURAL
+    // ─────────────────────────────────────────────────────────────────────
+    this.thermalEnergy *= this.HEAT_DECAY_RATE
+    
+    // Clamp 0-1
+    this.thermalEnergy = Math.min(1.0, Math.max(0, this.thermalEnergy))
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // DISPARAR BURBUJA SI HAY SUFICIENTE CALOR
+    // ─────────────────────────────────────────────────────────────────────
+    if (this.bubbleCooldown > 0) {
+      this.bubbleCooldown--
+    }
+    
+    if (this.thermalEnergy > this.BUBBLE_THRESHOLD && 
+        this.bubbleCooldown === 0 && 
+        this.activeBubbles.length < 3) {
+      this.spawnBubble()
+      // Descargar parte del calor al crear burbuja
+      this.thermalEnergy *= 0.6
+      this.bubbleCooldown = this.BUBBLE_COOLDOWN_FRAMES
+    }
+  }
+  
+  /**
+   * 🫧 SPAWN BUBBLE - Crear una nueva burbuja en una zona
+   */
+  private spawnBubble(): void {
+    // Seleccionar zona con distribución determinista (no random)
+    const zoneIndex = this.frameCount % 4
+    const zones: Array<'front' | 'back' | 'moverL' | 'moverR'> = ['front', 'back', 'moverL', 'moverR']
+    const zone = zones[zoneIndex]
+    
+    // Variar duración e intensidad basado en energía térmica
+    const durationVariance = 0.8 + (this.thermalEnergy * 0.4)  // 80%-120% de duración base
+    const intensityVariance = 0.7 + (this.thermalEnergy * 0.6) // 70%-130% de intensidad base
+    
+    this.activeBubbles.push({
+      zone,
+      startFrame: this.frameCount,
+      duration: Math.round(this.BUBBLE_DURATION_FRAMES * durationVariance),
+      peakIntensity: this.BUBBLE_PEAK_INTENSITY * intensityVariance,
+      phase: 'rising'
+    })
+    
+    console.log(`[🫧 LAVA] Bubble spawned in ${zone} | Thermal: ${(this.thermalEnergy * 100).toFixed(0)}% | Active: ${this.activeBubbles.length}`)
+  }
+  
+  /**
+   * 🫧 PROCESS BUBBLES - Actualizar ciclo de vida de burbujas activas
+   * 
+   * Ciclo de vida (EaseInOutSine):
+   * - RISING (0-40%): Dimmer sube suavemente, tilt sube
+   * - PEAK (40-60%): Mantiene intensidad máxima
+   * - FALLING (60-100%): Dimmer baja suavemente, tilt baja
+   */
+  private processBubbles(): { front: number; back: number; moverL: number; moverR: number; tiltBoost: number } {
+    const result = { front: 0, back: 0, moverL: 0, moverR: 0, tiltBoost: 0 }
+    
+    // Filtrar burbujas muertas y procesar activas
+    this.activeBubbles = this.activeBubbles.filter(bubble => {
+      const age = this.frameCount - bubble.startFrame
+      const progress = age / bubble.duration
+      
+      if (progress >= 1.0) {
+        return false  // Burbuja muerta
+      }
+      
+      // ─────────────────────────────────────────────────────────────────────
+      // CALCULAR INTENSIDAD CON EASE-IN-OUT-SINE
+      // ─────────────────────────────────────────────────────────────────────
+      let intensity: number
+      let tiltDelta: number
+      
+      if (progress < 0.4) {
+        // RISING: EaseInSine (0 → peak)
+        const riseProgress = progress / 0.4
+        intensity = (1 - Math.cos(riseProgress * Math.PI / 2)) * bubble.peakIntensity
+        tiltDelta = riseProgress * this.BUBBLE_TILT_DELTA
+        bubble.phase = 'rising'
+      } else if (progress < 0.6) {
+        // PEAK: Mantener máximo
+        intensity = bubble.peakIntensity
+        tiltDelta = this.BUBBLE_TILT_DELTA
+        bubble.phase = 'peak'
+      } else {
+        // FALLING: EaseOutSine (peak → 0)
+        const fallProgress = (progress - 0.6) / 0.4
+        intensity = Math.cos(fallProgress * Math.PI / 2) * bubble.peakIntensity
+        tiltDelta = (1 - fallProgress) * this.BUBBLE_TILT_DELTA
+        bubble.phase = 'falling'
+      }
+      
+      // Aplicar a la zona correspondiente
+      result[bubble.zone] += intensity
+      
+      // Tilt boost para movers
+      if (bubble.zone === 'moverL' || bubble.zone === 'moverR') {
+        result.tiltBoost += tiltDelta
+      }
+      
+      return true  // Burbuja sigue viva
+    })
+    
+    return result
+  }
+  
+  /**
+   * 🔦 LIGHTHOUSE DRIFT - Movimiento constante garantizado
+   * 
+   * LFO muy lento que mueve el pan de todos los fixtures.
+   * SIEMPRE activo, incluso sin música.
+   * "Escaneando el horizonte" - hipnótico como lámpara de lava.
+   */
+  private updateLighthouse(): { panOffset: number; tiltOffset: number } {
+    // Avanzar fase (0.08 Hz = ciclo de 12.5 segundos)
+    this.lighthousePhase += (2 * Math.PI * this.LIGHTHOUSE_FREQUENCY) / this.FRAMES_PER_SECOND
+    
+    // Wrap phase
+    if (this.lighthousePhase > 2 * Math.PI) {
+      this.lighthousePhase -= 2 * Math.PI
+    }
+    
+    // Pan: Onda sinusoidal principal
+    const panOffset = Math.sin(this.lighthousePhase) * this.LIGHTHOUSE_AMPLITUDE
+    
+    // Tilt: Onda más lenta y menor amplitud (movimiento de "respiración" vertical)
+    const tiltOffset = Math.sin(this.lighthousePhase * 0.7) * (this.LIGHTHOUSE_AMPLITUDE * 0.4)
+    
+    return { panOffset, tiltOffset }
   }
 }
 

@@ -152,7 +152,8 @@ export const calculateChillStereo = (
     
     airIntensity: clamp(energy * 0.2 + planktonFlash, 0, 0.5),
     
-    debug: `${zoneConfig.label} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° | UA:${(godEar.ultraAir||0).toFixed(3)}`
+    // 🔍 EL NUEVO LOG DE DEPURACIÓN (Si ves esto, funciona)
+    debug: `${zoneConfig.label} ${zone} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° S:${saturation.toFixed(0)}% L:${lightness.toFixed(0)}%`
   }
 }
 

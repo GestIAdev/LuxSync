@@ -540,8 +540,43 @@ export class TitanEngine extends EventEmitter {
     
     // ─────────────────────────────────────────────────────────────────────
     // 4. CALCULAR MOVIMIENTO
-    // ─────────────────────────────────────────────────────────────────────
-    const movement = this.calculateMovement(audio, context, vibeProfile)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 1046: THE MECHANICS BYPASS
+    // Si la física envía coordenadas directas (THE DEEP FIELD), usarlas.
+    // Si no, delegar al VMM como siempre.
+    // ═══════════════════════════════════════════════════════════════════════
+    let movement: MovementIntent;
+    
+    if (nervousOutput.mechanics) {
+      // 🔧 MECHANICS BYPASS: La física manda, VMM calla
+      // THE DEEP FIELD envía coordenadas 0-1 normalizadas
+      const mech = nervousOutput.mechanics;
+      
+      // Usar promedio de L/R para el centerX/centerY global
+      // (MasterArbiter se encargará del spread per-mover)
+      const avgPan = (mech.moverL.pan + mech.moverR.pan) / 2;
+      const avgTilt = (mech.moverL.tilt + mech.moverR.tilt) / 2;
+      
+      movement = {
+        pattern: 'CELESTIAL_MOVERS' as MovementIntent['pattern'],
+        speed: 0.1,  // Lento - la velocidad está implícita en las coordenadas
+        amplitude: 0.5,  // El amplitud ya está en las coordenadas
+        centerX: Math.max(0, Math.min(1, avgPan)),
+        centerY: Math.max(0, Math.min(1, avgTilt)),
+        beatSync: false,  // THE DEEP FIELD no usa beatSync
+        // 🔧 WAVE 1046: Include raw L/R coordinates for MasterArbiter stereo routing
+        mechanicsL: mech.moverL,
+        mechanicsR: mech.moverR,
+      };
+      
+      // Debug log cada 60 frames (~1s)
+      if (this.state.frameCount % 60 === 0) {
+        console.log(`[🔧 MECHANICS BYPASS] ${mech.source}: L(${mech.moverL.pan.toFixed(2)},${mech.moverL.tilt.toFixed(2)}) R(${mech.moverR.pan.toFixed(2)},${mech.moverR.tilt.toFixed(2)})`);
+      }
+    } else {
+      // Sin mechanics: Delegar al VMM normalmente
+      movement = this.calculateMovement(audio, context, vibeProfile);
+    }
     
     // ─────────────────────────────────────────────────────────────────────
     // ─────────────────────────────────────────────────────────────────────

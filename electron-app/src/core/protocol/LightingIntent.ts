@@ -130,6 +130,15 @@ export interface MovementIntent {
   beatSync: boolean
   /** 🔧 WAVE 350: Tipo de desfase (linear = sin rotación polar, polar = con rotación) */
   phaseType?: 'linear' | 'polar'
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 1046: THE MECHANICS BYPASS
+  // Si la física (THE DEEP FIELD) envía coordenadas L/R explícitas,
+  // MasterArbiter las usa para routing estéreo de movers
+  // ═══════════════════════════════════════════════════════════════════════════
+  /** Coordenadas explícitas del mover izquierdo (0-1) */
+  mechanicsL?: { pan: number; tilt: number }
+  /** Coordenadas explícitas del mover derecho (0-1) */
+  mechanicsR?: { pan: number; tilt: number }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,16 @@
+/**
+ * 🥁 ANALYSIS MODULE
+ * ==================
+ * Análisis de audio en tiempo real (Main Thread - 30ms)
+ *
+ * Componentes:
+ * - RhythmAnalyzer: Detección de ritmo, BPM, groove, sincopación ✅
+ * - HarmonyDetector: Detección de tonalidad, acordes, modos ✅
+ * - SectionTracker: Tracking de secciones (verse, chorus, drop)
+ *
+ * @module engines/musical/analysis
+ */
+// ✅ FASE 1 COMPLETADA - RhythmAnalyzer
+export { RhythmAnalyzer } from './RhythmAnalyzer.js';
+// ✅ FASE 2 COMPLETADA - HarmonyDetector  
+export { HarmonyDetector, MODE_TO_MOOD, MOOD_TEMPERATURE, DISSONANT_INTERVALS, TRITONE_INTERVAL, createHarmonyDetector, defaultHarmonyDetector, } from './HarmonyDetector.js';

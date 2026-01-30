@@ -34,7 +34,7 @@ import {
   RockStereoPhysics2,    // 🎸 WAVE 1011.5: UNIFIED ARCHITECTURE (Lobotomized)
   rockPhysics2,          // 🎸 WAVE 1011.5: Singleton instance
   LatinoStereoPhysics, 
-  ChillStereoPhysics,
+  calculateChillStereo,
   type RockPhysicsInput, // 🎸 WAVE 1011.5: Unified input type
   // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics
   LaserPhysics,
@@ -168,6 +168,16 @@ export interface SeleneLuxOutput {
     impactActive: boolean;
     breathingFactor: number;
   };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 1046: THE MECHANICS BYPASS
+  // Coordenadas de movimiento calculadas por la física (THE DEEP FIELD)
+  // Si existen, TitanEngine las usa EN VEZ DEL VMM
+  // ═══════════════════════════════════════════════════════════════════════════
+  mechanics?: {
+    moverL: { pan: number; tilt: number };  // 0-1 normalized
+    moverR: { pan: number; tilt: number };  // 0-1 normalized
+    source: string;  // 'THE_DEEP_FIELD' | 'CELESTIAL_MOVERS' etc
+  };
   debugInfo?: Record<string, unknown>;
 }
 
@@ -194,7 +204,7 @@ export class SeleneLux {
   
   // Instancias de física stateful (Latino, Chill y Rock necesitan estado)
   private latinoPhysics: LatinoStereoPhysics;
-  private chillPhysics: ChillStereoPhysics;
+  // 🟢 WAVE 1043.2: Chill uses functional approach (calculateChillStereo)
   // 🎸 WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 con 4 bandas + subgéneros
   // ❌ BORRADO: private rockPhysics: RockStereoPhysics (legacy Frankenstein)
   
@@ -238,6 +248,7 @@ export class SeleneLux {
   // 🆕 WAVE 315: CHILL BREATHING - Overrides de bioluminiscencia
   // 🔥 WAVE 1032.9: Agregado moverL/moverR para burbujas independientes
   // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R para oscilación lateral
+  // 🌌 WAVE 1044: THE DEEP FIELD - Air zone para futuro láser cósmico
   private chillOverrides: { 
     front: number; 
     back: number; 
@@ -249,6 +260,16 @@ export class SeleneLux {
     frontR?: number; // Front Right Pars
     backL?: number;  // Back Left Pars
     backR?: number;  // Back Right Pars
+    // 🌌 WAVE 1044: THE DEEP FIELD - Reservado para láser cósmico
+    air?: number;    // Canal atmosférico (láser/haze)
+  } | null = null;
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates from physics
+  // ═══════════════════════════════════════════════════════════════════════
+  private deepFieldMechanics: {
+    moverL: { pan: number; tilt: number };
+    moverR: { pan: number; tilt: number };
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -278,7 +299,7 @@ export class SeleneLux {
     
     // Inicializar físicas stateful
     this.latinoPhysics = new LatinoStereoPhysics();
-    this.chillPhysics = new ChillStereoPhysics();
+    // 🟢 WAVE 1043.2: Chill is stateless functional
     // 🎸 WAVE 1011: RockStereoPhysics2 usa singleton (rockPhysics2)
     // ❌ BORRADO: this.rockPhysics = new RockStereoPhysics() (legacy Frankenstein)
     
@@ -531,52 +552,71 @@ export class SeleneLux {
       vibeNormalized.includes('classical')
     ) {
       // ═══════════════════════════════════════════════════════════════════════
-      // 🌊✨ WAVE 316: COSMIC TWILIGHT - Sunset Argentino con Cocktails
+      // � WAVE 1044: THE DEEP FIELD - Chill Lounge Generative Ecosystem
       // ═══════════════════════════════════════════════════════════════════════
-      // FILOSOFÍA: "Techno que se fumó un porro"
-      // - Bass hits (djembes) → Front PARs pulse (+20%, 300ms decay)
-      // - Pads sustained (treble) → Back PARs cross-fade glow (8 sec)
-      // - Movers drift independientes (estrellas contrafase, 20 sec)
-      // - Twilight breathing (20 sec, ±5% lightness, floor 0.50 SIEMPRE)
-      // - Colores fríos/oceánicos: verde agua → violeta → índigo
-      // - CERO oscuridad (cocktail-friendly), CERO velocidad, TODO orgánico
+      // 5 ORGANISMOS INDEPENDIENTES:
+      // 1. THE BREATHING FLOOR - Ondas Fibonacci (Front/Back L/R)
+      // 2. THE DRIFTING PLANKTON - Sparkles con números primos
+      // 3. THE CELESTIAL MOVERS - Lissajous + Zodiac modulation
+      // 4. THE TIDE SURGE - Evento raro cada 5-8 minutos
+      // 5. THE CHROMATIC MIGRATION - Colores que fluyen
       // ═══════════════════════════════════════════════════════════════════════
-      // 🕐 WAVE 318: Pasamos BPM para gravedad temporal
-      const result = this.chillPhysics.apply(
-        inputPalette,
-        {
-          normalizedBass: audioMetrics.normalizedBass,
-          normalizedMid: audioMetrics.normalizedMid,
-          normalizedTreble: audioMetrics.normalizedTreble,
-          normalizedEnergy: audioMetrics.avgNormEnergy,
-        },
-        elementalMods,
-        vibeContext.bpm  // 🆕 BPM para Chronos physics
+      
+      const now = Date.now() / 1000; // Continuous time in seconds
+      
+      const result = calculateChillStereo(
+        now,
+        audioMetrics.avgNormEnergy,     // Nutriente (modula velocidad, no dispara)
+        audioMetrics.normalizedTreble,  // Air/Plankton probability modulator
+        audioMetrics.kickDetected ?? false  // Subtle surge boost
       );
       
-      outputPalette = result.palette;
-      dimmerOverride = 0.70; // Chill siempre luminoso (cocktail party)
-      physicsApplied = 'chill';
-      debugInfo = result.debugInfo;
+      // La paleta NO se modifica (respetamos TitanEngine/SeleneColorEngine)
+      outputPalette = inputPalette; 
+      dimmerOverride = 0.75; // Chill ambiental (cocktail sunset)
+      forceMovement = true;  // Celestial Movers activos
+      physicsApplied = 'chill';  // 🔧 CRITICAL: Must set this for AGC TRUST to apply overrides
       
-      // Extraer intensidades por zona (4 zonas → 5 overrides)
-      // 🔥 WAVE 1032.9: Agregar moverL/moverR para burbujas independientes
-      // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R
-      const moverAvg = (result.zoneIntensities.moverL + result.zoneIntensities.moverR) / 2;
+      // Store calculated physics in overrides
       this.chillOverrides = {
-        front: result.zoneIntensities.front,
-        back: result.zoneIntensities.back,
-        mover: moverAvg,                           // Legacy promedio
-        moverL: result.zoneIntensities.moverL,     // 🫧 Burbuja izquierda
-        moverR: result.zoneIntensities.moverR,     // 🫧 Burbuja derecha
-        // 🌊 WAVE 1035: 7-Zone Stereo Architecture
-        frontL: result.zoneIntensities.frontL,     // Front Left Pars
-        frontR: result.zoneIntensities.frontR,     // Front Right Pars
-        backL: result.zoneIntensities.backL,       // Back Left Pars
-        backR: result.zoneIntensities.backR,       // Back Right Pars
+        front: (result.frontL + result.frontR) / 2, // Legacy fallback
+        back: (result.backL + result.backR) / 2,   // Legacy fallback
+        mover: (result.moverL.intensity + result.moverR.intensity) / 2, // Legacy fallback
+        
+        // 🫧 WAVE 1032.9: Independent Bubbles
+        moverL: result.moverL.intensity,
+        moverR: result.moverR.intensity,
+        
+        // � WAVE 1044: Full 7-Zone Stereo Ecosystem
+        frontL: result.frontL,
+        frontR: result.frontR,
+        backL: result.backL,
+        backR: result.backR,
+        
+        // 🔦 AIR zone (future lasers)
+        air: result.airIntensity,
+      };
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 1046: THE MECHANICS BYPASS
+      // Store movement coordinates for TitanEngine to bypass VMM
+      // ═══════════════════════════════════════════════════════════════════════
+      this.deepFieldMechanics = {
+        moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt },
+        moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt },
+      };
+
+      // Pass movement data for Celestial Movers
+      debugInfo = {
+        internalDebug: result.debug,
+        panL: result.moverL.pan,
+        tiltL: result.moverL.tilt,
+        panR: result.moverR.pan,
+        tiltR: result.moverR.tilt,
+        // 🌌 Deep Field ecosystem debug
+        ecosystem: 'THE_DEEP_FIELD'
       };
       
-      // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
     } // Guardar estado
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -675,8 +715,9 @@ export class SeleneLux {
       // Temporal: guardar en una variable para pasar al output
       (this as any).latinoMoverSplit = { moverL: latinoL, moverR: latinoR };
       
-      // Limpiar overrides para el próximo frame
-      this.latinoOverrides = null;
+      // 🔧 WAVE 1049: NO limpiar overrides - se sobrescriben en próximo tick
+      // this.latinoOverrides = null;
+      
     } else if (this.technoOverrides && physicsApplied === 'techno') {
       // ⚡ WAVE 290.3 + WAVE 908: El motor Techno calculó sus intensidades. Respétalas.
       // 🧪 WAVE 908: THE DUEL - Guardar L/R separados
@@ -691,8 +732,9 @@ export class SeleneLux {
       // Temporal: guardar en una variable para pasar al output
       (this as any).technoMoverSplit = { moverL: technoL, moverR: technoR };
       
-      // Limpiar overrides para el próximo frame
-      this.technoOverrides = null;
+      // 🔧 WAVE 1049: NO limpiar overrides - se sobrescriben en próximo tick
+      // this.technoOverrides = null;
+      
     } else if (this.rockOverrides && physicsApplied === 'rock') {
       // ═══════════════════════════════════════════════════════════════════════
       // 🎸 WAVE 1011: HIGH VOLTAGE ROCK - 4 Bandas con L/R Split
@@ -723,8 +765,9 @@ export class SeleneLux {
         );
       }
       
-      // Limpiar overrides para el próximo frame
-      this.rockOverrides = null;
+      // 🔧 WAVE 1049: NO limpiar overrides - se sobrescriben en próximo tick
+      // this.rockOverrides = null;
+      
     } else if (this.chillOverrides && physicsApplied === 'chill') {
       // ═══════════════════════════════════════════════════════════════════════
       // 🌊 WAVE 315.3: CHILL - El Techno Pacífico (Olas Desfasadas)
@@ -777,8 +820,10 @@ export class SeleneLux {
         );
       }
       
-      // Limpiar overrides para el próximo frame
-      this.chillOverrides = null;
+      // 🔧 WAVE 1049: NO limpiar overrides aquí - se sobrescriben en próximo tick de Chill
+      // Esto permite que el bloque "else if (this.chillOverrides ...)" funcione correctamente
+      // this.chillOverrides = null;  ← REMOVED - was causing overrides to disappear
+      
     } else {
       // LÓGICA POR DEFECTO: Techno/Rock/Chill (treble en movers, etc.)
       
@@ -882,8 +927,21 @@ export class SeleneLux {
         impactActive: this.washerResult.impactActive,
         breathingFactor: this.washerResult.breathingFactor,
       } : undefined,
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔧 WAVE 1046: THE MECHANICS BYPASS
+      // If physics calculated movement coordinates, include them for TitanEngine
+      // to use INSTEAD of VMM patterns
+      // ═══════════════════════════════════════════════════════════════════════
+      mechanics: this.deepFieldMechanics ? {
+        moverL: this.deepFieldMechanics.moverL,
+        moverR: this.deepFieldMechanics.moverR,
+        source: 'THE_DEEP_FIELD',
+      } : undefined,
       debugInfo,
     };
+    
+    // Clear deepFieldMechanics for next frame
+    this.deepFieldMechanics = null;
     
     return this.lastOutput;
   }

@@ -1400,6 +1400,7 @@ export class TitanOrchestrator {
     // 🎭 WAVE 382: Register fixtures in MasterArbiter with FULL metadata
     // 🎨 WAVE 686.11: Use normalized fixtures (dmxAddress already set above)
     // 🎨 WAVE 1001: Include HAL color flags
+    // 🔧 WAVE 1055: IDENTITY CRISIS FIX - INCLUDE POSITION!!!
     masterArbiter.setFixtures(this.fixtures.map(f => ({
       id: f.id,
       name: f.name,
@@ -1413,6 +1414,11 @@ export class TitanOrchestrator {
       hasColorMixing: f.hasColorMixing,    // 🎨 WAVE 1001: HAL Translation
       profileId: f.profileId || f.id,      // 🎨 WAVE 1001: HAL Translation
       channels: f.channels,
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🕵️ WAVE 1055: THE MISSING LINK - Position for L/R stereo detection
+      // WITHOUT THIS, Arbiter receives position=undefined, assumes x=0, ALL → RIGHT
+      // ═══════════════════════════════════════════════════════════════════════
+      position: f.position,  // 🔧 WAVE 1055: CRITICAL FOR STEREO ROUTING
     })))
     
     // 🔥 WAVE 339.6: Register movers in PhysicsDriver

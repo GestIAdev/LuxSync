@@ -672,6 +672,10 @@ export class SeleneLuxConscious extends EventEmitter {
       kickDetected: false,
       snareDetected: false,
       hihatDetected: false,
+      // Added fields to match BeatState interface
+      rawBpm: 120,
+      isLocked: false,
+      lockFrames: 0,
     }
     
     return {

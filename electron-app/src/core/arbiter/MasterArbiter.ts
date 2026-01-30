@@ -147,8 +147,34 @@ export class MasterArbiter extends EventEmitter {
     let moverCount = 0
     let totalChannels = 0
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🕵️ WAVE 1055: IDENTITY CRISIS DIAGNOSTIC
+    // Log EVERY fixture's spatial identity to find the broken link
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[🕵️ WAVE 1055 IDENTITY AUDIT] ═══════════════════════════════════════`)
+    console.log(`[🕵️ WAVE 1055] Receiving ${fixtures.length} fixtures for registration:`)
+    
     for (const fixture of fixtures) {
       const id = fixture.id ?? fixture.name
+      const posX = fixture.position?.x ?? 'UNDEFINED'
+      const posY = fixture.position?.y ?? 'UNDEFINED'
+      const zone = fixture.zone || 'NO_ZONE'
+      const name = fixture.name || 'NO_NAME'
+      
+      // 🕵️ WAVE 1055: Diagnose identity for EVERY fixture
+      const hasValidPosition = fixture.position?.x !== undefined && fixture.position?.x !== 0
+      const nameHasLR = name.toLowerCase().includes('left') || 
+                        name.toLowerCase().includes('right') ||
+                        name.toLowerCase().includes(' l ') ||
+                        name.toLowerCase().includes(' r ')
+      const zoneHasLR = zone.toLowerCase().includes('left') || 
+                        zone.toLowerCase().includes('right')
+      
+      const identityStatus = hasValidPosition ? '✅ POS' : 
+                            (nameHasLR ? '⚠️ NAME' : 
+                            (zoneHasLR ? '⚠️ ZONE' : '❌ LOST'))
+      
+      console.log(`[🕵️ IDENTITY] ${identityStatus} | "${name}" | zone="${zone}" | pos.x=${posX} | pos.y=${posY}`)
       
       // 🩸 WAVE 382: Preserve ALL metadata, don't strip
       const isMover = this.isMovingFixture(fixture)
@@ -178,6 +204,8 @@ export class MasterArbiter extends EventEmitter {
         console.log(`[MasterArbiter] 📦 Fixture "${fixture.name}": ${channelCount} channels, movement=${fixture.hasMovementChannels}`)
       }
     }
+    
+    console.log(`[🕵️ WAVE 1055] ═══════════════════════════════════════════════════════════`)
     
     // Store mover count for spread calculations
     this.moverCount = moverCount
@@ -984,18 +1012,53 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     // 🧱 WAVE 1039: 7-ZONE STEREO ROUTING
     // Demolición del "Muro de Luz Mono"
+    // 🔧 WAVE 1052: ROBUST IDENTITY - Multi-heuristic Left/Right detection
     // ═══════════════════════════════════════════════════════════════════════
     
     const zone = (fixture?.zone || 'UNASSIGNED').toLowerCase()
     const fixtureType = (fixture?.type || 'generic').toLowerCase()
     
-    // 1. Detectar lateralidad física (Left vs Right)
-    // Si x < 0 es Left. Si x >= 0 es Right.
-    const isLeft = (fixture?.position?.x ?? 0) < 0
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🕵️‍♂️ WAVE 1052: ROBUST LATERALITY DETECTION
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEM: If position.x is undefined/0, isLeft was always FALSE
+    //          → ALL fixtures assigned to RIGHT channel
+    //          → frontL had no fixtures → MONO visual
+    //
+    // SOLUTION: Multi-heuristic detection using:
+    //   1. Physical position.x (primary)
+    //   2. Fixture name contains "left"/"izq"/"L"
+    //   3. Zone name contains "left"
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    const nameStr = (fixture?.name || '').toLowerCase()
+    const zoneStr = zone  // Already lowercase
+    const posX = fixture?.position?.x ?? 0
+    
+    // Is Left IF: (X < -0.1) OR (Name says "left") OR (Zone says "left")
+    // Using -0.1 threshold instead of 0 to avoid centerline ambiguity
+    const isLeft = (posX < -0.1) || 
+                   nameStr.includes('left') || 
+                   nameStr.includes('izq') ||      // Spanish "Izquierda"
+                   nameStr.includes(' l ') ||      // "Front L PAR"
+                   nameStr.endsWith(' l') ||       // "PAR L"
+                   nameStr.startsWith('l ') ||     // "L PAR"
+                   zoneStr.includes('left') ||
+                   zoneStr.includes('moving_left')
     
     // 2. Detectar si Titan está enviando señal Estéreo
     // (Si frontL existe en el intent, asumimos modo 7-zonas)
     const hasStereoSignal = intent.zones && 'frontL' in intent.zones
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🕵️ WAVE 1055: ROUTING DECISION DIAGNOSTIC (Every 60 frames)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.frameNumber % 60 === 1) {
+      const debugPosX = posX.toFixed(2)
+      const debugIsLeft = isLeft ? 'LEFT' : 'RIGHT'
+      const debugHasStereo = hasStereoSignal ? 'STEREO' : 'MONO'
+      console.log(`[🕵️ ROUTING] "${nameStr.substring(0,20)}" | pos.x=${debugPosX} | zone="${zoneStr}" | → ${debugIsLeft} | signal=${debugHasStereo}`)
+    }
     
     // 3. Mapeo Dinámico
     // Tipado extendido localmente para incluir las nuevas zonas
@@ -1087,36 +1150,76 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
     // 🎯 WAVE 382: INDIVIDUAL MOVER MOVEMENT (No more Borg convergence!)
+    // 🔧 WAVE 1046: THE MECHANICS BYPASS - Use explicit L/R coordinates if provided
+    // 🔧 WAVE 1052: ROBUST MECHANICS DRAGNET - Search mechanics in ALL possible locations
     // ═══════════════════════════════════════════════════════════════════════
     
     if (intent.movement && fixture) {
       const isMover = this.isMovingFixture(fixture)
       
-      if (isMover && this.moverCount > 1) {
-        // Calculate this mover's index among all movers
-        const moverIndex = this.getMoverIndex(fixtureId)
+      if (isMover) {
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔧 WAVE 1052: ROBUST MECHANICS BYPASS
+        // ═══════════════════════════════════════════════════════════════════════
+        // PROBLEM: Mechanics could be in:
+        //   - intent.movement.mechanicsL/R (WAVE 1046 standard)
+        //   - intent.mechanics.moverL/R (WAVE 1044 legacy)
+        //   - Nowhere (fallback to VMM)
+        //
+        // SOLUTION: Search ALL locations, use first found
+        // ═══════════════════════════════════════════════════════════════════════
         
-        // Calculate spread offset based on mover index
-        // Formula: Creates a fan pattern centered around the base position
-        const spreadFactor = 0.15  // How much to spread (0.15 = 15% of full range per mover)
-        const totalSpread = spreadFactor * (this.moverCount - 1)
-        const offset = (moverIndex * spreadFactor) - (totalSpread / 2)
+        let mechanic = null
         
-        // Apply offset to base position, clamped to 0-1 range
-        const basePan = intent.movement.centerX
-        const baseTilt = intent.movement.centerY
+        // 1. Try intent.movement.mechanicsL/R (WAVE 1046 Standard)
+        if (intent.movement.mechanicsL && intent.movement.mechanicsR) {
+          mechanic = isLeft ? intent.movement.mechanicsL : intent.movement.mechanicsR
+        }
         
-        // Pan spreads horizontally, Tilt stays mostly centered with slight variation
-        const finalPan = Math.max(0, Math.min(1, basePan + offset))
-        const finalTilt = Math.max(0, Math.min(1, baseTilt + (offset * 0.3)))  // Less vertical spread
+        // 2. Try intent.mechanics (root-level, WAVE 1044 Legacy)
+        if (!mechanic && (intent as any).mechanics) {
+          const rootMech = (intent as any).mechanics
+          if (rootMech.moverL && rootMech.moverR) {
+            mechanic = isLeft ? rootMech.moverL : rootMech.moverR
+          }
+        }
         
-        defaults.pan = finalPan * 255
-        defaults.tilt = finalTilt * 255
-      } else {
-        // Single mover or non-mover: use base position
-        defaults.pan = intent.movement.centerX * 255
-        defaults.tilt = intent.movement.centerY * 255
+        // 3. Apply mechanics if found
+        if (mechanic) {
+          // THE DEEP FIELD / CELESTIAL MOVERS: Use explicit coordinates
+          defaults.pan = mechanic.pan * 255
+          defaults.tilt = mechanic.tilt * 255
+          
+          // WAVE 1048: Intensity coupling (if present)
+          if (mechanic.intensity !== undefined) {
+            defaults.dimmer = mechanic.intensity * 255
+          }
+        } else if (this.moverCount > 1) {
+          // LEGACY: Calculate spread offset based on mover index
+          const moverIndex = this.getMoverIndex(fixtureId)
+          
+          // Formula: Creates a fan pattern centered around the base position
+          const spreadFactor = 0.15  // How much to spread (0.15 = 15% of full range per mover)
+          const totalSpread = spreadFactor * (this.moverCount - 1)
+          const offset = (moverIndex * spreadFactor) - (totalSpread / 2)
+          
+          // Apply offset to base position, clamped to 0-1 range
+          const basePan = intent.movement.centerX
+          const baseTilt = intent.movement.centerY
+          
+          // Pan spreads horizontally, Tilt stays mostly centered with slight variation
+          const finalPan = Math.max(0, Math.min(1, basePan + offset))
+          const finalTilt = Math.max(0, Math.min(1, baseTilt + (offset * 0.3)))  // Less vertical spread
+          
+          defaults.pan = finalPan * 255
+          defaults.tilt = finalTilt * 255
+        } else {
+          // Single mover: use base position
+          defaults.pan = intent.movement.centerX * 255
+          defaults.tilt = intent.movement.centerY * 255
+        }
       }
     }
     

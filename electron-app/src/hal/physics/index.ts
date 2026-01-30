@@ -4,6 +4,7 @@
  * WAVE 290.3: Added technoStereoPhysics singleton
  * WAVE 1011: HIGH VOLTAGE - RockStereoPhysics2 replaces legacy
  * WAVE 1031: THE PHOTON WEAVER - Laser & Washer physics
+ * WAVE 1044: THE DEEP FIELD - Chill ecosystem rewrite
  */
 
 export * from './PhysicsEngine'
@@ -11,7 +12,14 @@ export { TechnoStereoPhysics, technoStereoPhysics } from './TechnoStereoPhysics'
 // ❌ WAVE 1011: DELETED LEGACY FRANKENSTEIN
 // export { RockStereoPhysics } from './RockStereoPhysics'
 export { LatinoStereoPhysics } from './LatinoStereoPhysics'
-export { ChillStereoPhysics } from './ChillStereoPhysics'
+
+// 🌌 WAVE 1044: THE DEEP FIELD - Chill Lounge Generative Ecosystem
+export { 
+  calculateChillStereo, 
+  resetDeepFieldState,
+  getDeepFieldState,
+  type DeepFieldOutput 
+} from './ChillStereoPhysics'
 
 // 🎸 WAVE 1011.5: UNIFIED ROCK PHYSICS (Lobotomized - No Subgenres)
 export { 

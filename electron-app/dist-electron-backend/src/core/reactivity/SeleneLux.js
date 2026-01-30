@@ -61,6 +61,7 @@ export class SeleneLux {
         this.chillOverrides = null;
         // ═══════════════════════════════════════════════════════════════════════
         // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates from physics
+        // 🔥 WAVE 1060: Extended with intensity and color override
         // ═══════════════════════════════════════════════════════════════════════
         this.deepFieldMechanics = null;
         // ═══════════════════════════════════════════════════════════════════════
@@ -320,10 +321,12 @@ export class SeleneLux {
             // ═══════════════════════════════════════════════════════════════════════
             // 🔧 WAVE 1046: THE MECHANICS BYPASS
             // Store movement coordinates for TitanEngine to bypass VMM
+            // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
             // ═══════════════════════════════════════════════════════════════════════
             this.deepFieldMechanics = {
-                moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt },
-                moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt },
+                moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt, intensity: result.moverL.intensity },
+                moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt, intensity: result.moverR.intensity },
+                colorOverride: result.colorOverride, // HSL 0-1 normalized
             };
             // Pass movement data for Celestial Movers
             debugInfo = {
@@ -608,10 +611,12 @@ export class SeleneLux {
             // 🔧 WAVE 1046: THE MECHANICS BYPASS
             // If physics calculated movement coordinates, include them for TitanEngine
             // to use INSTEAD of VMM patterns
+            // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
             // ═══════════════════════════════════════════════════════════════════════
             mechanics: this.deepFieldMechanics ? {
                 moverL: this.deepFieldMechanics.moverL,
                 moverR: this.deepFieldMechanics.moverR,
+                colorOverride: this.deepFieldMechanics.colorOverride,
                 source: 'THE_DEEP_FIELD',
             } : undefined,
             debugInfo,

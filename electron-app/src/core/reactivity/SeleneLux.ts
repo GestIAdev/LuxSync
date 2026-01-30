@@ -172,10 +172,12 @@ export interface SeleneLuxOutput {
   // 🔧 WAVE 1046: THE MECHANICS BYPASS
   // Coordenadas de movimiento calculadas por la física (THE DEEP FIELD)
   // Si existen, TitanEngine las usa EN VEZ DEL VMM
+  // 🔥 WAVE 1060: Extended with intensity and colorOverride
   // ═══════════════════════════════════════════════════════════════════════════
   mechanics?: {
-    moverL: { pan: number; tilt: number };  // 0-1 normalized
-    moverR: { pan: number; tilt: number };  // 0-1 normalized
+    moverL: { pan: number; tilt: number; intensity: number };  // 0-1 normalized
+    moverR: { pan: number; tilt: number; intensity: number };  // 0-1 normalized
+    colorOverride?: { h: number; s: number; l: number };  // HSL 0-1 normalized
     source: string;  // 'THE_DEEP_FIELD' | 'CELESTIAL_MOVERS' etc
   };
   debugInfo?: Record<string, unknown>;
@@ -266,10 +268,12 @@ export class SeleneLux {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates from physics
+  // 🔥 WAVE 1060: Extended with intensity and color override
   // ═══════════════════════════════════════════════════════════════════════
   private deepFieldMechanics: {
-    moverL: { pan: number; tilt: number };
-    moverR: { pan: number; tilt: number };
+    moverL: { pan: number; tilt: number; intensity: number };
+    moverR: { pan: number; tilt: number; intensity: number };
+    colorOverride?: { h: number; s: number; l: number };
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -600,10 +604,12 @@ export class SeleneLux {
       // ═══════════════════════════════════════════════════════════════════════
       // 🔧 WAVE 1046: THE MECHANICS BYPASS
       // Store movement coordinates for TitanEngine to bypass VMM
+      // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
       // ═══════════════════════════════════════════════════════════════════════
       this.deepFieldMechanics = {
-        moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt },
-        moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt },
+        moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt, intensity: result.moverL.intensity },
+        moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt, intensity: result.moverR.intensity },
+        colorOverride: result.colorOverride,  // HSL 0-1 normalized
       };
 
       // Pass movement data for Celestial Movers
@@ -931,10 +937,12 @@ export class SeleneLux {
       // 🔧 WAVE 1046: THE MECHANICS BYPASS
       // If physics calculated movement coordinates, include them for TitanEngine
       // to use INSTEAD of VMM patterns
+      // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
       // ═══════════════════════════════════════════════════════════════════════
       mechanics: this.deepFieldMechanics ? {
         moverL: this.deepFieldMechanics.moverL,
         moverR: this.deepFieldMechanics.moverR,
+        colorOverride: this.deepFieldMechanics.colorOverride,
         source: 'THE_DEEP_FIELD',
       } : undefined,
       debugInfo,

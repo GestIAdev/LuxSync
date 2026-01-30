@@ -1197,6 +1197,24 @@ export class MasterArbiter extends EventEmitter {
           if (mechanic.intensity !== undefined) {
             defaults.dimmer = mechanic.intensity * 255
           }
+          
+          // 🔥 WAVE 1060: COLOR OVERRIDE FROM PHYSICS
+          // Si la física manda un color explícito (The Abyssal Chronicles), úsalo.
+          // El colorOverride viene del calculateChillStereo() en ChillStereoPhysics.ts
+          if ((intent as any).mechanics?.colorOverride) {
+            const col = (intent as any).mechanics.colorOverride
+            // colorOverride viene normalizado: { h: 0-1, s: 0-1, l: 0-1 }
+            // Convertir a rango 0-360 para hsl:
+            const hslInput = {
+              h: col.h * 360,
+              s: col.s * 100,
+              l: col.l * 100
+            }
+            const rgb = this.hslToRgb(hslInput)
+            defaults.red = Math.round(rgb.r * 255)
+            defaults.green = Math.round(rgb.g * 255)
+            defaults.blue = Math.round(rgb.b * 255)
+          }
         } else if (this.moverCount > 1) {
           // LEGACY: Calculate spread offset based on mover index
           const moverIndex = this.getMoverIndex(fixtureId)

@@ -1242,6 +1242,17 @@ export class MasterArbiter extends EventEmitter {
       }
     }
     
+    // 🎨 WAVE 1060: GLOBAL COLOR OVERRIDE
+    // Permite que la física dicte el color base (ej: profundidad marina)
+    if ((intent as any).mechanics?.colorOverride) {
+        const col = (intent as any).mechanics.colorOverride
+        // Usamos el helper existente hslToRgb
+        const rgb = this.hslToRgb(col)
+        defaults.red = rgb.r
+        defaults.green = rgb.g
+        defaults.blue = rgb.b
+    }
+    
     return defaults
   }
   

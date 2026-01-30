@@ -1,136 +1,160 @@
 ﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌊 CHILL STEREO PHYSICS: TWIN TIDES (WAVE 1053)
+ * 🌌 CHILL STEREO PHYSICS: THE ABYSSAL CHRONICLES (WAVE 1060)
  * ═══════════════════════════════════════════════════════════════════════════
- * OBJETIVO: Separación Estéreo REAL y ROBUSTA para Pares y Movers.
- * * ESTRATEGIA "SOLID STATE":
- * 1. 🕒 TIEMPO ABSOLUTO: Date.now() es el único reloj. Cero drift, cero sync.
- * 2. 🧬 ADN DIVIDIDO: 
- * - IZQUIERDA usa primos (23s, 29s).
- * - DERECHA usa primos (19s, 31s).
- * - Matemáticamente imposible que se sincronicen.
- * 3. 🔊 BYPASS VMM: Coordenadas directas para Movers.
+ * "Cuanto más profundo vas, más extraña es la luz."
+ * * SISTEMA DE PROFUNDIDAD DINÁMICA:
+ * 1. ⚛️ RELOJ ISOTÓPICO: Ciclo base de ~45 min basado en Date.now().
+ * 2. 🩻 GOD EAR MODULATION: 
+ * - Centroid alto (>2000Hz) -> Flotabilidad positiva (hacia superficie).
+ * - Centroid bajo (<500Hz) -> Presión negativa (hacia el fondo).
+ * 3. 🎨 COLOR SYNTHESIS: Genera HSL nativo basado en la profundidad.
+ * 4. 🪼 BIOLUMINISCENCIA: Reactiva a UltraAir (16-22kHz).
  */
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INTERFACES (Required for type exports)
-// ═══════════════════════════════════════════════════════════════════════════
-
-export interface MoverCoordinates {
-  intensity: number
-  pan: number
-  tilt: number
-}
+// Tipos para el sistema de profundidad
+type DepthZone = 'SHALLOWS' | 'OPEN_OCEAN' | 'TWILIGHT' | 'MIDNIGHT'
 
 export interface DeepFieldOutput {
-  frontL: number
-  frontR: number
-  backL: number
-  backR: number
-  moverL: MoverCoordinates
-  moverR: MoverCoordinates
-  airIntensity: number
+  frontL: number; frontR: number; backL: number; backR: number
+  moverL: any; moverR: any; airIntensity: number
+  colorOverride?: { h: number, s: number, l: number } // Nuevo canal de color
   debug: string
 }
 
-const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════════════════════════════════════════════
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+// Configuración de las zonas de profundidad (Metros virtuales)
+const ZONES = {
+  SHALLOWS: { min: 0, max: 200, hue: 160, speed: 1.5, label: '🌿' },    // Verde Agua
+  OPEN_OCEAN: { min: 200, max: 1000, hue: 200, speed: 1.0, label: '🐬' }, // Cian/Azul
+  TWILIGHT: { min: 1000, max: 4000, hue: 250, speed: 0.6, label: '🐋' },  // Índigo
+  MIDNIGHT: { min: 4000, max: 11000, hue: 290, speed: 0.3, label: '🪼' }  // UV/Magenta
+}
+
+// Estado persistente mínimo (para suavizado de profundidad)
+let currentDepth = 500 // Empezamos en Open Ocean
 
 export const calculateChillStereo = (
-  time: number,      // Ignorado, usamos reloj atómico
-  energy: number,    // 0-1
-  air: number,
-  isKick: boolean
+  time: number,      
+  energy: number,    
+  air: number,       
+  isKick: boolean,
+  godEar: any = {} // Recibimos telemetría completa
 ): DeepFieldOutput => {
   
-  // 1. RELOJ ATÓMICO
-  const now = Date.now(); 
-
-  // Factor de "Vida": La energía añade un poco de brillo base, pero no toca el tiempo
-  const ambience = 0.05 + (energy * 0.15);
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 2. LEFT HEMISPHERE (Océano Pacífico - Lento y Profundo)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Ciclos: 23 segundos (Principal) + 13 segundos (Detalle)
+  const now = Date.now() / 1000 // Segundos absolutos
   
-  // Wave principal (-1 a 1)
-  const oscL = Math.sin(now / 3659) + (Math.sin(now / 2069) * 0.3);
-  
-  // FRONT LEFT: Mapeo suave (0.2 a 0.9)
-  const frontL = 0.55 + (oscL * 0.35);
-  
-  // BACK LEFT: Eco retardado (Phase shift pi/2) + Oscilación propia lenta
-  // Esto crea profundidad: El fondo respira después del frente
-  const backL = 0.45 + (Math.sin((now / 3659) - 1.5) * 0.3) + (Math.sin(now / 5000) * 0.1);
-
   // ═══════════════════════════════════════════════════════════════════════
-  // 3. RIGHT HEMISPHERE (Océano Atlántico - Nervioso y Activo)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Ciclos: 19 segundos (Principal) + 17 segundos (Detalle)
-  // Divisores DIFERENTES a la izquierda. Nunca coincidirán.
-  
-  // Wave principal
-  const oscR = Math.cos(now / 3023) + (Math.sin(now / 2707) * 0.3);
-  
-  // FRONT RIGHT
-  const frontR = 0.55 + (oscR * 0.35);
-  
-  // BACK RIGHT: Eco retardado distinto
-  const backR = 0.45 + (Math.cos((now / 3023) - 2.0) * 0.3) + (Math.sin(now / 4500) * 0.1);
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 4. MOVERS (Searchlights Desacoplados)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Mantienen la lógica que ya te funcionó (Totalmente asimétricos)
-
-  // Pan L: Barrido muy lento (~29s)
-  const panL = 0.5 + Math.sin(now / 4603) * 0.45; 
-  // Tilt L: Respiración vertical (~11s)
-  const tiltL = 0.6 + Math.cos(now / 1753) * 0.25;
-
-  // Pan R: Barrido medio (~23s) - Phase offset enorme
-  const panR = 0.5 + Math.sin((now / 3659) + 100) * 0.45; 
-  // Tilt R: Respiración vertical (~7s)
-  const tiltR = 0.6 + Math.cos((now / 1117) + 50) * 0.25;
-
-  // Intensidad Movers: Respiración independiente del suelo
-  const intL = 0.3 + (Math.sin(now / 2500) * 0.5 + 0.5) * 0.6;
-  const intR = 0.3 + (Math.sin((now / 3100) + 2) * 0.5 + 0.5) * 0.6;
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // 5. OUTPUT ASSEMBLY
+  // 1. CÁLCULO DE PROFUNDIDAD (La Narrativa)
   // ═══════════════════════════════════════════════════════════════════════
   
-  // "Ducking" muy sutil en el bombo para dar sensación de aire
-  const kickDip = isKick ? 0.15 : 0;
+  // A. El Ciclo de Marea (Reloj de 45 minutos)
+  // Oscila entre 0m y 8000m lentamente
+  const tideCycle = 45 * 60 // 45 min en segundos
+  const tidePhase = (now % tideCycle) / tideCycle // 0.0 a 1.0
+  const baseDepth = 4000 * (1 + Math.sin(tidePhase * Math.PI * 2)) // 0 a 8000m
+  
+  // B. Modulación Espectral (God Ear) - La "Flotabilidad"
+  // Centroid alto (voces, hihats) nos sube. Bajos profundos nos hunden.
+  const centroid = godEar.centroid || 1000
+  const buoyancy = (centroid - 800) * -2 // -2m por cada Hz arriba de 800
+  
+  // Integración suave (Lerp) para evitar saltos bruscos
+  const targetDepth = clamp(baseDepth + buoyancy, 0, 10000)
+  currentDepth = currentDepth * 0.99 + targetDepth * 0.01 // Inercia hidrodinámica
+  
+  // Determinar Zona Actual
+  let zone: DepthZone = 'OPEN_OCEAN'
+  let zoneConfig = ZONES.OPEN_OCEAN
+  
+  if (currentDepth < ZONES.SHALLOWS.max) { zone = 'SHALLOWS'; zoneConfig = ZONES.SHALLOWS }
+  else if (currentDepth < ZONES.OPEN_OCEAN.max) { zone = 'OPEN_OCEAN'; zoneConfig = ZONES.OPEN_OCEAN }
+  else if (currentDepth < ZONES.TWILIGHT.max) { zone = 'TWILIGHT'; zoneConfig = ZONES.TWILIGHT }
+  else { zone = 'MIDNIGHT'; zoneConfig = ZONES.MIDNIGHT }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 2. SÍNTESIS DE COLOR (Cromatografía de Presión)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // El color base depende de la profundidad exacta, no solo de la zona (gradiente)
+  // Mapeamos 0-10000m a un rango de HUE (150 - 320)
+  // 0m = 150 (Verde) -> 10000m = 300 (Magenta)
+  const depthHue = 150 + (Math.min(currentDepth, 8000) / 8000) * 150
+  
+  // Variación "Bioluminiscente": Ondulación lenta del matiz
+  const hueDrift = Math.sin(now * 0.1) * 10
+  const finalHue = depthHue + hueDrift
+  
+  // Saturación y Luz bajan con la profundidad (más oscuro y monocromático abajo)
+  const saturation = clamp(100 - (currentDepth / 500), 60, 100)
+  const lightness = clamp(60 - (currentDepth / 300), 20, 60) // Nunca negro total
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 3. FÍSICA DE FLUIDOS (Adaptativa)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Velocidad del agua depende de la zona (rápida arriba, estática abajo)
+  const flowSpeed = zoneConfig.speed * (1 + energy * 0.5)
+  const t = now * flowSpeed
+  
+  // -- TWIN TIDES ENGINE (Solid State) --
+  
+  // Left Hemisphere
+  const oscL = Math.sin(t / 3.6) + (Math.sin(t / 2.0) * 0.2)
+  const frontL = 0.5 + (oscL * 0.4)
+  const backL = 0.4 + (Math.sin((t / 3.6) - 1.8) * 0.3)
+
+  // Right Hemisphere (Desfasado)
+  const oscR = Math.cos(t / 3.0) + (Math.sin(t / 2.7) * 0.2)
+  const frontR = 0.5 + (oscR * 0.4)
+  const backR = 0.4 + (Math.cos((t / 3.0) - 2.2) * 0.3)
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 4. MOVERS & PLANKTON (Los Habitantes)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Plankton: Reactivo a UltraAir (16-22kHz)
+  // Si estamos profundos (TWILIGHT/MIDNIGHT), el plankton brilla más
+  const planktonSensitivity = currentDepth > 1000 ? 50 : 10
+  const planktonFlash = (godEar.ultraAir || 0) * planktonSensitivity
+  
+  // Movers: "Searchlights"
+  // En superficie barren rápido. En fondo son casi estáticos.
+  const moverPanL = 0.5 + Math.sin(now / (40 / zoneConfig.speed)) * 0.45
+  const moverPanR = 0.5 + Math.sin((now / (35 / zoneConfig.speed)) + 100) * 0.45
+  
+  // Intensidad Movers + Plankton flash
+  const moverIntL = clamp(0.3 + (Math.sin(now * 0.2) * 0.3) + planktonFlash, 0, 1)
+  const moverIntR = clamp(0.3 + (Math.sin(now * 0.23 + 2) * 0.3) + planktonFlash, 0, 1)
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 5. SALIDA
+  // ═══════════════════════════════════════════════════════════════════════
 
   return {
-    frontL: clamp(frontL + ambience - kickDip, 0, 1),
-    frontR: clamp(frontR + ambience - kickDip, 0, 1),
+    frontL: clamp(frontL, 0, 1),
+    frontR: clamp(frontR, 0, 1),
+    backL:  clamp(backL, 0, 1),
+    backR:  clamp(backR, 0, 1),
     
-    // Back no hace ducking, sube un poco para compensar (Push-Pull dinámico)
-    backL: clamp(backL + ambience + (kickDip * 0.3), 0, 1),
-    backR: clamp(backR + ambience + (kickDip * 0.3), 0, 1),
+    moverL: { intensity: moverIntL, pan: moverPanL, tilt: 0.6 + Math.cos(now*0.1)*0.2 },
+    moverR: { intensity: moverIntR, pan: moverPanR, tilt: 0.6 + Math.cos(now*0.11)*0.2 },
     
-    // Mechanics Bypass Object (Para WAVE 1052 Arbiter)
-    moverL: {
-      intensity: clamp(intL, 0, 1),
-      pan: panL,
-      tilt: tiltL
-    },
-    moverR: {
-      intensity: clamp(intR, 0, 1),
-      pan: panR,
-      tilt: tiltR
-    },
+    // Inyectamos el COLOR CALCULADO para que el Arbiter lo use
+    colorOverride: { h: finalHue / 360, s: saturation / 100, l: lightness / 100 },
     
-    airIntensity: clamp(energy * 0.25, 0, 0.4),
+    airIntensity: clamp(energy * 0.2 + planktonFlash, 0, 0.5),
     
-    // Debug visual para verificar asimetría
-    debug: `TwinTides 🌊 L:${frontL.toFixed(2)} R:${frontR.toFixed(2)}`
+    debug: `${zoneConfig.label} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° | UA:${(godEar.ultraAir||0).toFixed(3)}`
   }
 }
 
-// Stubs para compatibilidad con código legacy que intente llamar a esto
+// Stubs legacy
 export const resetDeepFieldState = () => {}
 export const getDeepFieldState = () => ({})

@@ -78,29 +78,29 @@ export class MasterArbiter extends EventEmitter {
         let moverCount = 0;
         let totalChannels = 0;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🕵️ WAVE 1055: IDENTITY CRISIS DIAGNOSTIC
-        // Log EVERY fixture's spatial identity to find the broken link
+        // 🕵️ WAVE 1055: IDENTITY CRISIS DIAGNOSTIC (COMMENTED - Mission Accomplished)
+        // Uncomment if stereo routing breaks again
         // ═══════════════════════════════════════════════════════════════════════
-        console.log(`\n[🕵️ WAVE 1055 IDENTITY AUDIT] ═══════════════════════════════════════`);
-        console.log(`[🕵️ WAVE 1055] Receiving ${fixtures.length} fixtures for registration:`);
+        // console.log(`\n[🕵️ WAVE 1055 IDENTITY AUDIT] ═══════════════════════════════════════`)
+        // console.log(`[🕵️ WAVE 1055] Receiving ${fixtures.length} fixtures for registration:`)
         for (const fixture of fixtures) {
             const id = fixture.id ?? fixture.name;
-            const posX = fixture.position?.x ?? 'UNDEFINED';
-            const posY = fixture.position?.y ?? 'UNDEFINED';
+            // const posX = fixture.position?.x ?? 'UNDEFINED'
+            // const posY = fixture.position?.y ?? 'UNDEFINED'
             const zone = fixture.zone || 'NO_ZONE';
             const name = fixture.name || 'NO_NAME';
-            // 🕵️ WAVE 1055: Diagnose identity for EVERY fixture
-            const hasValidPosition = fixture.position?.x !== undefined && fixture.position?.x !== 0;
-            const nameHasLR = name.toLowerCase().includes('left') ||
-                name.toLowerCase().includes('right') ||
-                name.toLowerCase().includes(' l ') ||
-                name.toLowerCase().includes(' r ');
-            const zoneHasLR = zone.toLowerCase().includes('left') ||
-                zone.toLowerCase().includes('right');
-            const identityStatus = hasValidPosition ? '✅ POS' :
-                (nameHasLR ? '⚠️ NAME' :
-                    (zoneHasLR ? '⚠️ ZONE' : '❌ LOST'));
-            console.log(`[🕵️ IDENTITY] ${identityStatus} | "${name}" | zone="${zone}" | pos.x=${posX} | pos.y=${posY}`);
+            // 🕵️ WAVE 1055: Diagnose identity for EVERY fixture (DIAGNOSTICS COMMENTED)
+            // const hasValidPosition = fixture.position?.x !== undefined && fixture.position?.x !== 0
+            // const nameHasLR = name.toLowerCase().includes('left') || 
+            //                   name.toLowerCase().includes('right') ||
+            //                   name.toLowerCase().includes(' l ') ||
+            //                   name.toLowerCase().includes(' r ')
+            // const zoneHasLR = zone.toLowerCase().includes('left') || 
+            //                   zone.toLowerCase().includes('right')
+            // const identityStatus = hasValidPosition ? '✅ POS' : 
+            //                       (nameHasLR ? '⚠️ NAME' : 
+            //                       (zoneHasLR ? '⚠️ ZONE' : '❌ LOST'))
+            // console.log(`[🕵️ IDENTITY] ${identityStatus} | "${name}" | zone="${zone}" | pos.x=${posX} | pos.y=${posY}`)
             // 🩸 WAVE 382: Preserve ALL metadata, don't strip
             const isMover = this.isMovingFixture(fixture);
             const channelCount = fixture.channels?.length || 0;
@@ -828,14 +828,15 @@ export class MasterArbiter extends EventEmitter {
         // (Si frontL existe en el intent, asumimos modo 7-zonas)
         const hasStereoSignal = intent.zones && 'frontL' in intent.zones;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🕵️ WAVE 1055: ROUTING DECISION DIAGNOSTIC (Every 60 frames)
+        // 🕵️ WAVE 1055: ROUTING DECISION DIAGNOSTIC (COMMENTED - Mission Accomplished)
+        // Uncomment if stereo routing breaks again
         // ═══════════════════════════════════════════════════════════════════════
-        if (this.frameNumber % 60 === 1) {
-            const debugPosX = posX.toFixed(2);
-            const debugIsLeft = isLeft ? 'LEFT' : 'RIGHT';
-            const debugHasStereo = hasStereoSignal ? 'STEREO' : 'MONO';
-            console.log(`[🕵️ ROUTING] "${nameStr.substring(0, 20)}" | pos.x=${debugPosX} | zone="${zoneStr}" | → ${debugIsLeft} | signal=${debugHasStereo}`);
-        }
+        // if (this.frameNumber % 60 === 1) {
+        //   const debugPosX = posX.toFixed(2)
+        //   const debugIsLeft = isLeft ? 'LEFT' : 'RIGHT'
+        //   const debugHasStereo = hasStereoSignal ? 'STEREO' : 'MONO'
+        //   console.log(`[🕵️ ROUTING] "${nameStr.substring(0,20)}" | pos.x=${debugPosX} | zone="${zoneStr}" | → ${debugIsLeft} | signal=${debugHasStereo}`)
+        // }
         // 3. Mapeo Dinámico
         // Tipado extendido localmente para incluir las nuevas zonas
         let intentZone = 'front';

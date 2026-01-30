@@ -674,6 +674,9 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         }
       } else if (editingFixture) {
         // 🔥 WAVE 384.5: Create from stage fixture - NOW USES INLINE CHANNELS!
+        // 🔥 WAVE 1042.2: Set flag BEFORE updating state to prevent resize effect from nuking channels!
+        isLoadingExistingRef.current = true
+        
         // editingFixture.channels now contains the channel definitions thanks to WAVE 384
         const fixtureChannels: FixtureChannel[] = editingFixture.channels?.map((ch, idx) => ({
           index: ch.index ?? idx,
@@ -698,6 +701,29 @@ export const FixtureForge: React.FC<FixtureForgeProps> = ({
         })
         setTotalChannels(fixtureChannels.length || editingFixture.channelCount || 8)
         setPhysics(editingFixture.physics)
+        
+        // 🔥 WAVE 1042.1: Load color engine from stage fixture capabilities
+        if (editingFixture.capabilities?.colorEngine) {
+          console.log('[FixtureForge] 🎨 WAVE 1042.1: Loaded colorEngine from stage fixture:', editingFixture.capabilities.colorEngine)
+          setColorEngine(editingFixture.capabilities.colorEngine)
+        } else {
+          // Auto-detect from capabilities flags (fallback)
+          const hasWheel = editingFixture.capabilities?.hasColorWheel
+          const hasMixing = editingFixture.capabilities?.hasColorMixing
+          const autoDetected = hasWheel 
+            ? (hasMixing ? 'hybrid' : 'wheel')
+            : hasMixing ? 'rgb' : 'none'
+          console.log('[FixtureForge] 🎨 WAVE 1042.1: Auto-detected colorEngine:', autoDetected)
+          setColorEngine(autoDetected)
+        }
+        
+        // 🔥 WAVE 1042.1: Load color wheel from stage fixture capabilities  
+        if (editingFixture.capabilities?.colorWheel?.colors) {
+          console.log('[FixtureForge] 🎨 WAVE 1042.1: Loading wheel colors from stage fixture:', editingFixture.capabilities.colorWheel.colors.length, 'colors')
+          setWheelColors(editingFixture.capabilities.colorWheel.colors)
+        } else {
+          setWheelColors([])
+        }
         
         // 🎯 WAVE 685.6: Load DMX address from stage fixture (default to 1 if missing)
         setDmxAddress(editingFixture.address ?? 1)

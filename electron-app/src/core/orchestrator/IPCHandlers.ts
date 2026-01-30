@@ -587,7 +587,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       
       // Return the COMPLETE fixture definition from library
       // This includes channels[], capabilities, hasMovementChannels, etc.
-      console.log(`[IPC] 🔥 lux:getFixtureDefinition: Returning "${definition.name}" (${definition.channelCount}ch, type: ${definition.type})`)
+      console.log(`[IPC] 🔥 lux:getFixtureDefinition: Returning "${definition.name}" (${definition.channelCount}ch, type: ${definition.type}, motor: ${definition.physics?.motorType || 'none'})`)
       
       return { 
         success: true, 
@@ -599,7 +599,11 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
           channelCount: definition.channelCount,
           channels: definition.channels || [],
           filePath: definition.filePath,
-          // Capabilities from FXTParser
+          // 🔥 WAVE 1042.1: INCLUDE PHYSICS!
+          physics: definition.physics || null,
+          // 🔥 WAVE 1042.1: FULL CAPABILITIES including colorEngine and colorWheel
+          capabilities: definition.capabilities || null,
+          // Legacy flat capabilities flags (for backward compat)
           hasMovementChannels: definition.hasMovementChannels || false,
           has16bitMovement: definition.has16bitMovement || false,
           hasColorMixing: definition.hasColorMixing || false,

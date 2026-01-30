@@ -465,6 +465,7 @@ export class HardwareAbstraction {
       
       // 🔥 WAVE 290.1: Usar intent.zones como fuente de verdad
       // Mapeo: BACK_PARS→back, MOVING_LEFT→left, MOVING_RIGHT→right, FRONT_PARS→front
+      // 🌊 WAVE 1035: 7-ZONE STEREO - Mapeo estéreo por posición X de fixture
       const intentZoneMap: Record<string, keyof typeof intent.zones> = {
         'BACK_PARS': 'back',
         'FRONT_PARS': 'front',
@@ -472,7 +473,33 @@ export class HardwareAbstraction {
         'MOVING_RIGHT': 'right',
         'AMBIENT': 'ambient',
       };
-      const intentZoneKey = intentZoneMap[zone];
+      
+      // 🌊 WAVE 1035: 7-ZONE STEREO ROUTING
+      // Si hay zonas estéreo disponibles (frontL/R, backL/R), usar posición X
+      // para determinar si la fixture está a la izquierda o derecha
+      const fixtureX = fixture.position?.x ?? 0;  // Negativo = izquierda, Positivo = derecha
+      const isLeftSide = fixtureX < 0;
+      
+      // Determinar si tenemos datos estéreo de Chill
+      const hasChillStereo = intent.zones.frontL !== undefined || intent.zones.frontR !== undefined;
+      
+      let intentZoneKey: keyof typeof intent.zones | undefined;
+      
+      if (hasChillStereo) {
+        // 🌊 7-ZONE MODE: Usar zonas estéreo basadas en posición X
+        if (zone === 'FRONT_PARS') {
+          intentZoneKey = isLeftSide ? 'frontL' : 'frontR';
+        } else if (zone === 'BACK_PARS') {
+          intentZoneKey = isLeftSide ? 'backL' : 'backR';
+        } else {
+          // Movers y otras zonas usan mapeo normal
+          intentZoneKey = intentZoneMap[zone];
+        }
+      } else {
+        // LEGACY MODE: Mapeo mono tradicional
+        intentZoneKey = intentZoneMap[zone];
+      }
+      
       const intentZoneValue = intentZoneKey ? intent.zones[intentZoneKey] : null;
       
       // 1. ROUTER: Si el Intent tiene intensidad para esta zona, úsala. Si no, calcula.

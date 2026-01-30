@@ -504,6 +504,13 @@ export interface ArbiterFixture {
   dmxAddress: number
   universe: number
   
+  // 🌊 WAVE 1039: Physical position for stereo routing
+  position?: {
+    x: number  // Negative = Left, Positive = Right
+    y: number
+    z: number
+  }
+  
   // 🩸 WAVE 382: Restored metadata for UI control visibility
   capabilities?: {
     hasColor?: boolean

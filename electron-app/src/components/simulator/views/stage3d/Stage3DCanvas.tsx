@@ -34,6 +34,7 @@ import { Fixture3D } from './fixtures/Fixture3D'
 import { StageFloor } from './environment/StageFloor'
 import { StageTruss } from './environment/StageTruss'
 import './Stage3DCanvas.css'
+import * as THREE from 'three'  // 🔥 WAVE 1037: For clipping plane
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -215,8 +216,10 @@ const SceneContent = memo<{ showStats: boolean }>(({ showStats }) => {
         target={[0, 2, 0]}
       />
       
-      {/* AMBIENT LIGHT - Muy tenue para ver geometría */}
-      <ambientLight intensity={0.05} color="#1a1a2e" />
+      {/* 🔥 WAVE 1037: Better Lighting - Brighter stage without losing drama */}
+      <hemisphereLight intensity={0.3} groundColor="#000000" color="#444488" />
+      <ambientLight intensity={0.2} color="#1a1a2e" />
+      <directionalLight position={[10, 20, 10]} intensity={0.5} castShadow />
       
       {/* ENVIRONMENT */}
       <StageFloor onClick={handleBackgroundClick} />
@@ -281,7 +284,13 @@ export const Stage3DCanvas: React.FC<Stage3DCanvasProps> = ({
           powerPreference: 'high-performance',
           // WAVE 378.7: Prevent context loss
           preserveDrawingBuffer: true,
-          failIfMajorPerformanceCaveat: false
+          failIfMajorPerformanceCaveat: false,
+          // 🔥 WAVE 1037: Enable global clipping for solid floor
+          localClippingEnabled: true
+        }}
+        onCreated={({ gl }) => {
+          // 🔥 WAVE 1037: The Invisible Saw - Nothing renders below Y=0
+          gl.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)]
         }}
         // WAVE 378.8: Revert to default 'always' - 'demand' caused issues
         style={{

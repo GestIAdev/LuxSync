@@ -982,30 +982,50 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🧱 WAVE 410: DEMOLICIÓN DEL "MURO DE LUZ"
-    // Use zone-specific intensity instead of flat masterIntensity
+    // 🧱 WAVE 1039: 7-ZONE STEREO ROUTING
+    // Demolición del "Muro de Luz Mono"
     // ═══════════════════════════════════════════════════════════════════════
     
     const zone = (fixture?.zone || 'UNASSIGNED').toLowerCase()
     const fixtureType = (fixture?.type || 'generic').toLowerCase()
     
-    // Map fixture zone to intent zone (handle legacy and new naming)
-    let intentZone: 'front' | 'back' | 'left' | 'right' | 'ambient' = 'front' // default
+    // 1. Detectar lateralidad física (Left vs Right)
+    // Si x < 0 es Left. Si x >= 0 es Right.
+    const isLeft = (fixture?.position?.x ?? 0) < 0
+    
+    // 2. Detectar si Titan está enviando señal Estéreo
+    // (Si frontL existe en el intent, asumimos modo 7-zonas)
+    const hasStereoSignal = intent.zones && 'frontL' in intent.zones
+    
+    // 3. Mapeo Dinámico
+    // Tipado extendido localmente para incluir las nuevas zonas
+    let intentZone: string = 'front' 
     
     if (zone.includes('front')) {
-      intentZone = 'front'
+      if (hasStereoSignal) {
+        intentZone = isLeft ? 'frontL' : 'frontR'
+      } else {
+        intentZone = 'front' // Legacy Fallback
+      }
     } else if (zone.includes('back')) {
-      intentZone = 'back'
+      if (hasStereoSignal) {
+        intentZone = isLeft ? 'backL' : 'backR'
+      } else {
+        intentZone = 'back' // Legacy Fallback
+      }
     } else if (zone.includes('left')) {
-      intentZone = 'left'
+      intentZone = 'left' // Movers L
     } else if (zone.includes('right')) {
-      intentZone = 'right'
+      intentZone = 'right' // Movers R
     } else if (zone.includes('ambient') || zone === 'unassigned') {
       intentZone = 'ambient'
+    } else {
+      // Caso Air/Ceiling no mapeado explícitamente -> Ambient o Front
+      intentZone = 'ambient' 
     }
     
-    // � FIX: Get zone-specific intensity, fallback to masterIntensity
-    const zoneIntent = intent.zones?.[intentZone]
+    // Acceso dinámico seguro (TypeScript-friendly)
+    const zoneIntent = (intent.zones as any)?.[intentZone]
     const zoneIntensity = zoneIntent?.intensity ?? intent.masterIntensity
     defaults.dimmer = zoneIntensity * 255
     

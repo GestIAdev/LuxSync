@@ -57,16 +57,23 @@ export type PaletteRole = keyof ColorPalette
 /**
  * Zonas abstractas del escenario
  * El HAL mapeará estas zonas a fixtures reales
+ * 
+ * 🌊 WAVE 1035: Añadidas zonas stereo (frontL/R, backL/R)
  */
 export type AbstractZone = 
-  | 'front'           // Frente del escenario (hacia el público)
-  | 'back'            // Fondo del escenario
-  | 'left'            // Lado izquierdo
-  | 'right'           // Lado derecho
+  | 'front'           // Frente del escenario (hacia el público) - LEGACY MONO
+  | 'back'            // Fondo del escenario - LEGACY MONO
+  | 'left'            // Lado izquierdo (movers)
+  | 'right'           // Lado derecho (movers)
   | 'center'          // Centro
   | 'floor'           // Nivel del suelo
   | 'elevated'        // Elevado/truss
   | 'ambient'         // Ambiente general
+  // 🌊 WAVE 1035: 7-Zone Stereo Architecture
+  | 'frontL'          // Front Left Pars
+  | 'frontR'          // Front Right Pars
+  | 'backL'           // Back Left Pars
+  | 'backR'           // Back Right Pars
 
 /**
  * Intención para una zona específica

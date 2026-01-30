@@ -1059,56 +1059,96 @@ const StageConstructorView: React.FC = () => {
 // Extracted Properties content for tabs
 const PropertiesContent: React.FC = () => {
   const selectedIds = useSelectionStore(state => state.selectedIds)
-  const fixtures = useStageStore(state => state.fixtures)
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   const { openFixtureForge } = useConstructorContext()
   
-  const selectedArray = Array.from(selectedIds)
-  const selectedFixture = selectedArray.length === 1 
-    ? fixtures.find(f => f.id === selectedArray[0])
-    : null
+  // 🔥 WAVE 1042.2: REACTIVIDAD GRANULAR MEJORADA
+  // El problema era que useCallback memorizaba el selector y no detectaba cambios.
+  // Solución: Suscribirse al array de fixtures Y al selectedId, recalcular en cada cambio.
+  const selectedId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : null
+  const fixtures = useStageStore(state => state.fixtures)
+  const selectedFixture = selectedId ? fixtures.find(f => f.id === selectedId) : null
   
-  // Zone options for dropdown
-  const ZONE_OPTIONS: FixtureZone[] = [
-    'stage-left', 'stage-center', 'stage-right',
-    'ceiling-front', 'ceiling-back', 'ceiling-left', 'ceiling-right', 'ceiling-center',
-    'floor-front', 'floor-back',
-    'truss-1', 'truss-2', 'truss-3',
-    'custom', 'unassigned'
+  // ⚙️ WAVE 1042.1: STRICT MOTOR MAPPING (con aliases)
+  // Los tipos canónicos + aliases comunes
+  const getMotorLabel = (type?: string) => {
+    // Normalizar input por si acaso llega mayúscula/minúscula mezclada
+    const t = type?.toLowerCase().trim() || 'unknown'
+    
+    switch (t) {
+      // Canónicos
+      case 'servo-pro':       return '🏎️ Servo Pro'
+      case 'stepper-quality': return '🚙 Stepper Quality'
+      case 'stepper-economy': return '🛵 Stepper Económico'
+      // Aliases comunes
+      case 'stepper-cheap':   return '🛵 Stepper Económico'  // Alias
+      case 'servo':           return '🏎️ Servo Pro'         // Alias
+      case 'stepper':         return '🚙 Stepper Quality'   // Alias (default stepper)
+      // Desconocido
+      case 'unknown':         return '❓ Desconocido'
+      default:                return `❓ ${type}` // Fallback visual por si hay datos viejos
+    }
+  }
+
+  // 🧹 WAVE 1040: THE CLEAN SLATE - Only canonical zones
+  // 💡 PARS & BARS: Auto-Stereo L/R via Position X (handled by MasterArbiter)
+  // 🏎️ MOVERS: Explicit Stereo (user must choose L or R)
+  // ✨ SPECIALS: Air, Ambient, Center
+  const ZONES_V2 = [
+    // 💡 PARS & BARS (Auto-Stereo L/R via Position X)
+    { value: 'FRONT_PARS',   label: '🔴 FRONT (Main)' },
+    { value: 'BACK_PARS',    label: '🔵 BACK (Counter)' },
+    { value: 'FLOOR_PARS',   label: '⬇️ FLOOR (Uplight)' }, 
+    
+    // 🏎️ MOVERS (Explicit Stereo)
+    { value: 'MOVING_LEFT',  label: '🏎️ MOVER LEFT' },
+    { value: 'MOVING_RIGHT', label: '🏎️ MOVER RIGHT' },
+    
+    // ✨ SPECIALS
+    { value: 'AIR',          label: '✨ AIR (Laser/Atmosphere)' },
+    { value: 'AMBIENT',      label: '🌫️ AMBIENT (House)' },
+    { value: 'CENTER',       label: '⚡ CENTER (Strobes/Blinders)' }
   ]
   
-  if (selectedArray.length === 0) {
+  // 🔥 WAVE 1041.2: REACTIVE TRUTH - Detect invalid zones
+  const isValidZone = (zone?: string) => {
+    if (!zone) return false
+    return ZONES_V2.some(z => z.value === zone)
+  }
+  
+  // Empty state
+  if (selectedIds.size === 0) {
     return (
       <div className="empty-state">
         <Move3D size={32} className="empty-icon" />
         <p>Selecciona un fixture</p>
-        <span>Click en un objeto 3D para editar</span>
+        <span>Click en el grid 3D para editar</span>
       </div>
     )
   }
   
-  if (selectedArray.length > 1) {
+  // Multi-select state
+  if (selectedIds.size > 1) {
     return (
       <div className="multi-select-info">
-        <p>{selectedArray.length} fixtures seleccionados</p>
-        <span>Click on zone below to assign to all</span>
+        <p>{selectedIds.size} fixtures seleccionados</p>
+        <span style={{ fontSize: '11px', opacity: 0.6 }}>Edición en lote activa</span>
         
         {/* Zone selector for multi-select */}
         <div className="property-group" style={{ marginTop: 16 }}>
-          <label>Assign Zone to All</label>
+          <label>Asignar Zona a Lote</label>
           <select
             className="zone-select"
             onChange={(e) => {
               const zone = e.target.value as FixtureZone
-              for (const id of selectedIds) {
-                setFixtureZone(id, zone)
-              }
+              if (zone) selectedIds.forEach(id => setFixtureZone(id, zone))
             }}
+            defaultValue=""
           >
-            <option value="">Select zone...</option>
-            {ZONE_OPTIONS.map(z => (
-              <option key={z} value={z}>{z}</option>
+            <option value="" disabled>-- Seleccionar Zona --</option>
+            {ZONES_V2.map(z => (
+              <option key={z.value} value={z.value}>{z.label}</option>
             ))}
           </select>
         </div>
@@ -1118,129 +1158,117 @@ const PropertiesContent: React.FC = () => {
   
   if (!selectedFixture) return null
   
+  // 🕵️ WAVE 1042: DETECCIÓN DE ZONA VÁLIDA
+  const currentZoneIsValid = ZONES_V2.some(z => z.value === selectedFixture.zone)
+  const zoneSelectValue = currentZoneIsValid ? selectedFixture.zone : "INVALID_ZONE"
+  
   return (
     <div className="fixture-properties">
       {/* Header */}
       <div className="property-header">
-        <h4>{selectedFixture.name}</h4>
-        <span className="fixture-model">{selectedFixture.model}</span>
+        <div className="header-icon">
+           {selectedFixture.type === 'moving-head' ? '🎯' : 
+            selectedFixture.type === 'laser' ? '🔺' : '💡'}
+        </div>
+        <div className="header-info">
+          <h4>{selectedFixture.name || 'Unnamed'}</h4>
+          <span className="fixture-model">{selectedFixture.model || 'Generic'}</span>
+        </div>
       </div>
       
       {/* Position */}
       <div className="property-group">
-        <label>Position (meters)</label>
+        <label>Coordenadas (m)</label>
         <div className="position-inputs">
-          <div className="input-row">
-            <span className="axis-label x">X</span>
-            <input 
-              type="number" 
-              step="0.1"
-              value={selectedFixture.position.x.toFixed(2)}
-              onChange={(e) => updateFixturePosition(selectedFixture.id, {
-                ...selectedFixture.position,
-                x: parseFloat(e.target.value) || 0
-              })}
-            />
-          </div>
-          <div className="input-row">
-            <span className="axis-label y">Y</span>
-            <input 
-              type="number" 
-              step="0.1"
-              value={selectedFixture.position.y.toFixed(2)}
-              onChange={(e) => updateFixturePosition(selectedFixture.id, {
-                ...selectedFixture.position,
-                y: parseFloat(e.target.value) || 0
-              })}
-            />
-          </div>
-          <div className="input-row">
-            <span className="axis-label z">Z</span>
-            <input 
-              type="number" 
-              step="0.1"
-              value={selectedFixture.position.z.toFixed(2)}
-              onChange={(e) => updateFixturePosition(selectedFixture.id, {
-                ...selectedFixture.position,
-                z: parseFloat(e.target.value) || 0
-              })}
-            />
-          </div>
+          {(['x', 'y', 'z'] as const).map(axis => (
+            <div key={axis} className="input-row">
+              <span className={`axis-label ${axis}`}>{axis.toUpperCase()}</span>
+              <input 
+                type="number" step="0.1"
+                value={selectedFixture.position[axis].toFixed(2)}
+                onChange={(e) => updateFixturePosition(selectedFixture.id, {
+                  ...selectedFixture.position,
+                  [axis]: parseFloat(e.target.value) || 0
+                })}
+              />
+            </div>
+          ))}
         </div>
       </div>
       
-      {/* Zone - WAVE 363: Now a dropdown */}
+      {/* Zone Selector - WAVE 1042: REACTIVO */}
       <div className="property-group">
-        <label>Zone</label>
+        <label>Zona DMX</label>
         <select
-          className="zone-select"
-          value={selectedFixture.zone}
+          className={`zone-select ${!currentZoneIsValid ? 'invalid' : ''}`}
+          value={zoneSelectValue}
           onChange={(e) => setFixtureZone(selectedFixture.id, e.target.value as FixtureZone)}
         >
-          {ZONE_OPTIONS.map(z => (
-            <option key={z} value={z}>{z}</option>
+          {!currentZoneIsValid && (
+            <option value="INVALID_ZONE" disabled>
+              ⚠️ {selectedFixture.zone || 'Sin Asignar'}
+            </option>
+          )}
+          {ZONES_V2.map(z => (
+            <option key={z.value} value={z.value}>{z.label}</option>
           ))}
         </select>
       </div>
       
-      {/* Physics */}
+      {/* Physics - WAVE 1041.2: Strict Motor Mapping */}
       <div className="property-group">
-        <label>Physics Profile</label>
+        <label>Hardware & Física</label>
         <div className="physics-info">
           <div className="physics-row">
-            <span>Motor Type:</span>
-            <span className="physics-value">{selectedFixture.physics.motorType}</span>
+            <span>Motor:</span>
+            <span className="physics-value highlight">
+              {getMotorLabel(selectedFixture.physics?.motorType)}
+            </span>
           </div>
           <div className="physics-row">
-            <span>Max Accel:</span>
-            <span className="physics-value">{selectedFixture.physics.maxAcceleration}</span>
+            <span>Aceleración:</span>
+            <span className="physics-value">
+              {(selectedFixture.physics?.maxAcceleration || 0).toFixed(0)} rad/s²
+            </span>
           </div>
           <div className="physics-row">
-            <span>Safety Cap:</span>
-            <span className={`physics-value ${selectedFixture.physics.safetyCap ? 'on' : 'off'}`}>
-              {selectedFixture.physics.safetyCap ? 'ON' : 'OFF'}
+            <span>Safety:</span>
+            <span className={`physics-badge ${selectedFixture.physics?.safetyCap ? 'safe' : 'raw'}`}>
+              {selectedFixture.physics?.safetyCap ? '🛡️ ON' : '⚡ RAW'}
             </span>
           </div>
         </div>
-        {/* WAVE 364: Edit Profile Button */}
-        {/* 🔥 WAVE 685.6: FIX - Load definition from library to preserve channels */}
+        
         <button 
           className="edit-profile-btn"
-          onClick={async () => {
-            // Load full definition from library
-            try {
-              const result = await window.lux?.getFixtureLibrary?.()
-              if (result?.success && result.fixtures) {
-                // Find definition by profileId or name
-                const definition = result.fixtures.find((f: any) => 
-                  f.id === selectedFixture.profileId || 
-                  f.name === selectedFixture.model
-                )
-                if (definition) {
-                  console.log('[Properties] 📝 Loading definition for edit:', definition.name, 'with', definition.channels?.length || 0, 'channels')
-                  openFixtureForge(selectedFixture.id, definition as FixtureDefinition)
-                } else {
-                  console.warn('[Properties] ⚠️ Definition not found in library, falling back to stage fixture')
-                  // Fallback: open with stage fixture (will lose some data)
-                  openFixtureForge(selectedFixture.id)
-                }
-              }
-            } catch (err) {
-              console.error('[Properties] Failed to load definition:', err)
-              openFixtureForge(selectedFixture.id)
-            }
-          }}
+          onClick={() => openFixtureForge(selectedFixture.id)}
         >
           <Wrench size={14} />
-          <span>Edit Profile</span>
+          <span>Editar en Forge</span>
         </button>
       </div>
       
-      {/* DMX Info */}
+      {/* DMX - WAVE 1042: Patch Info */}
       <div className="property-group">
-        <label>DMX</label>
-        <div className="dmx-info">
-          <span>Universe {selectedFixture.universe} · Address {selectedFixture.address}</span>
+        <label>Patch DMX</label>
+        <div className="dmx-patch-row" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr 1fr', 
+          gap: '8px',
+          marginTop: '4px'
+        }}>
+          <div className="dmx-field" style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '10px', opacity: 0.6 }}>UNIVERSE</span>
+            <strong style={{ display: 'block', fontSize: '14px' }}>{selectedFixture.universe || 1}</strong>
+          </div>
+          <div className="dmx-field" style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '10px', opacity: 0.6 }}>ADDRESS</span>
+            <strong className="address-highlight" style={{ display: 'block', fontSize: '14px', color: '#00ff88' }}>{selectedFixture.address || 1}</strong>
+          </div>
+          <div className="dmx-field" style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '10px', opacity: 0.6 }}>CHANNELS</span>
+            <strong style={{ display: 'block', fontSize: '14px' }}>{selectedFixture.channelCount}</strong>
+          </div>
         </div>
       </div>
     </div>

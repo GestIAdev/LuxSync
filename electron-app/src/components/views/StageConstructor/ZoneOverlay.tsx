@@ -1,22 +1,17 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🗺️ ZONE OVERLAY - WAVE 363
+ * 🗺️ ZONE OVERLAY - WAVE 363 + WAVE 1036: 6-ZONE LAYOUT
  * "El Territorio Visual - Ver para Dominar"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Renderiza las zonas como rectángulos semitransparentes en el grid 3D.
- * Permite:
- * - Visualización de territorios de cada zona
- * - Feedback visual al arrastrar fixtures sobre zonas
- * - Color coding por zona
- * 
- * INTEGRACIÓN:
- * - Se renderiza dentro de StageGrid3D
- * - Lee zonas desde la configuración del stage
- * - Responde a eventos de hover/drop
+ * WAVE 1036: Simplificado a 6 zonas claras para arquitectura estéreo:
+ * - MOVER LEFT (columna izquierda)
+ * - FRONT LEFT / FRONT RIGHT (centro superior)
+ * - BACK LEFT / BACK RIGHT (centro inferior)  
+ * - MOVER RIGHT (columna derecha)
  * 
  * @module components/views/StageConstructor/ZoneOverlay
- * @version 363.0.0
+ * @version 1036.0.0
  */
 
 import React, { useMemo } from 'react'
@@ -25,7 +20,7 @@ import type { FixtureZone } from '../../../core/stage/ShowFileV2'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZONE DEFINITIONS
+// ZONE DEFINITIONS - 🌊 WAVE 1036: 6-ZONE STEREO LAYOUT
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ZoneDefinition {
@@ -34,84 +29,95 @@ interface ZoneDefinition {
   color: string
   position: [number, number, number]  // Centro de la zona [x, y, z]
   size: [number, number]              // [width, depth] en metros
+  /** 🌊 WAVE 1036: Canal estéreo que asigna esta zona */
+  stereoChannel: 'frontL' | 'frontR' | 'backL' | 'backR' | 'moverL' | 'moverR'
 }
 
 /**
- * Definiciones de zonas predefinidas
- * Estas zonas se renderizan en el suelo del stage
+ * 🌊 WAVE 1036: 6-ZONE STEREO LAYOUT
  * 
- * Coordinate System:
- * - X: Left (-) to Right (+) desde perspectiva audiencia
- * - Y: Up (siempre 0.02 para estar sobre el grid)
- * - Z: Back (-) to Front (+) (audiencia está en Z positivo)
+ * Layout Visual (vista desde arriba, audiencia abajo):
+ * 
+ *        Z- (BACK/Fondo)
+ *   ┌─────┬───────┬───────┬─────┐
+ *   │     │ BACK  │ BACK  │     │
+ *   │ MOV │  Ⓛ   │  Ⓡ   │ MOV │
+ *   │  Ⓛ  │       │       │  Ⓡ  │
+ *   │     ├───────┼───────┤     │
+ *   │     │ FRONT │ FRONT │     │
+ *   │     │  Ⓛ   │  Ⓡ   │     │
+ *   └─────┴───────┴───────┴─────┘
+ *        Z+ (FRONT/Audiencia)
+ *   
+ *   X-          X=0          X+
  */
 const ZONE_DEFINITIONS: ZoneDefinition[] = [
-  // Stage zones (nivel de escenario, Z negativo = atrás)
-  {
-    id: 'stage-left',
-    name: 'Stage Left',
-    color: '#ef4444',      // Red
-    position: [-3, 0.02, -1],
-    size: [2, 4]
-  },
-  {
-    id: 'stage-center',
-    name: 'Stage Center',
-    color: '#22d3ee',      // Cyan
-    position: [0, 0.02, -1],
-    size: [3, 4]
-  },
-  {
-    id: 'stage-right',
-    name: 'Stage Right',
-    color: '#a855f7',      // Purple
-    position: [3, 0.02, -1],
-    size: [2, 4]
-  },
-  // Front zones (frente, hacia audiencia)
-  {
-    id: 'floor-front',
-    name: 'Floor Front',
-    color: '#84cc16',      // Lime
-    position: [0, 0.02, 2],
-    size: [8, 2]
-  },
-  // Back zones (atrás)
-  {
-    id: 'floor-back',
-    name: 'Floor Back',
-    color: '#f97316',      // Orange
-    position: [0, 0.02, -4],
-    size: [8, 2]
-  },
-  // Ceiling zones (altura elevada, Y > 0)
-  {
-    id: 'ceiling-front',
-    name: 'Ceiling Front',
-    color: '#06b6d4',      // Teal (más oscuro)
-    position: [0, 0.03, 1],
-    size: [6, 2]
-  },
-  {
-    id: 'ceiling-back',
-    name: 'Ceiling Back',
-    color: '#8b5cf6',      // Violet
-    position: [0, 0.03, -3],
-    size: [6, 2]
-  },
+  // ═══════════════════════════════════════════════════════════════════════
+  // COLUMNA IZQUIERDA - MOVER LEFT (Expanded +50%)
+  // ═══════════════════════════════════════════════════════════════════════
   {
     id: 'ceiling-left',
-    name: 'Ceiling Left',
-    color: '#ec4899',      // Pink
-    position: [-4, 0.03, -1],
-    size: [1.5, 4]
+    name: 'MOVER Ⓛ',
+    color: '#22d3ee',      // Cyan
+    position: [-7, 0.02, 0],
+    size: [3, 9],          // Was [2, 6] - Now +50%
+    stereoChannel: 'moverL'
   },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // BLOQUE CENTRAL - 4 CUADRANTES STEREO (Expanded +50%)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // BACK LEFT (arriba-izquierda = fondo del escenario, lado izquierdo)
+  {
+    id: 'floor-back',      // Reusing existing zone ID for compatibility
+    name: 'BACK Ⓛ',
+    color: '#a855f7',      // Purple
+    position: [-2.5, 0.02, -2.5],
+    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
+    stereoChannel: 'backL'
+  },
+  
+  // BACK RIGHT (arriba-derecha = fondo del escenario, lado derecho)
+  {
+    id: 'ceiling-back',    // Reusing existing zone ID for compatibility
+    name: 'BACK Ⓡ',
+    color: '#d946ef',      // Fuchsia
+    position: [2.5, 0.02, -2.5],
+    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
+    stereoChannel: 'backR'
+  },
+  
+  // FRONT LEFT (abajo-izquierda = cerca de audiencia, lado izquierdo)
+  {
+    id: 'floor-front',     // Reusing existing zone ID for compatibility
+    name: 'FRONT Ⓛ',
+    color: '#a855f7',      // Purple
+    position: [-2.5, 0.02, 2],
+    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
+    stereoChannel: 'frontL'
+  },
+  
+  // FRONT RIGHT (abajo-derecha = cerca de audiencia, lado derecho)
+  {
+    id: 'ceiling-front',   // Reusing existing zone ID for compatibility
+    name: 'FRONT Ⓡ',
+    color: '#d946ef',      // Fuchsia
+    position: [2.5, 0.02, 2],
+    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
+    stereoChannel: 'frontR'
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // COLUMNA DERECHA - MOVER RIGHT (Expanded +50%)
+  // ═══════════════════════════════════════════════════════════════════════
   {
     id: 'ceiling-right',
-    name: 'Ceiling Right',
-    color: '#d946ef',      // Fuchsia
-    position: [4, 0.03, -1],
-    size: [1.5, 4]
+    name: 'MOVER Ⓡ',
+    color: '#22d3ee',      // Cyan
+    position: [7, 0.02, 0],
+    size: [3, 9],          // Was [2, 6] - Now +50%
+    stereoChannel: 'moverR'
   },
 ]
 
@@ -260,6 +266,28 @@ export function getZoneAtPosition(x: number, z: number): FixtureZone | null {
 }
 
 /**
+ * 🌊 WAVE 1036: Obtiene el canal estéreo para una posición dada
+ * Esto es lo que determina qué intensidad recibe el fixture
+ */
+export function getStereoChannelAtPosition(x: number, z: number): ZoneDefinition['stereoChannel'] | null {
+  for (const zone of ZONE_DEFINITIONS) {
+    const [cx, , cz] = zone.position
+    const [width, depth] = zone.size
+    
+    const halfWidth = width / 2
+    const halfDepth = depth / 2
+    
+    if (
+      x >= cx - halfWidth && x <= cx + halfWidth &&
+      z >= cz - halfDepth && z <= cz + halfDepth
+    ) {
+      return zone.stereoChannel
+    }
+  }
+  return null
+}
+
+/**
  * Obtiene el color de una zona
  */
 export function getZoneColor(zoneId: FixtureZone): string {
@@ -273,6 +301,14 @@ export function getZoneColor(zoneId: FixtureZone): string {
 export function getZoneName(zoneId: FixtureZone): string {
   const zone = ZONE_DEFINITIONS.find(z => z.id === zoneId)
   return zone?.name || zoneId
+}
+
+/**
+ * 🌊 WAVE 1036: Obtiene el canal estéreo de una zona por ID
+ */
+export function getZoneStereoChannel(zoneId: FixtureZone): ZoneDefinition['stereoChannel'] | null {
+  const zone = ZONE_DEFINITIONS.find(z => z.id === zoneId)
+  return zone?.stereoChannel || null
 }
 
 /**

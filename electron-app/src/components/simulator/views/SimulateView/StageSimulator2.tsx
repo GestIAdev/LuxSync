@@ -79,11 +79,18 @@ const STAGE_COLORS = {
 } as const;
 
 const ZONE_CONFIG = {
-  FRONT_PARS: { y: 0.85, label: 'FRONT PARS' },
-  BACK_PARS: { y: 0.55, label: 'BACK PARS' },
-  MOVING_LEFT: { y: 0.28, label: 'MOVING L' },   // 🌟 WAVE 25.6: 0.25→0.28 (más cerca)
-  MOVING_RIGHT: { y: 0.28, label: 'MOVING R' },  // 🌟 WAVE 25.6: 0.25→0.28 (más cerca)
-  STROBES: { y: 0.40, label: 'STROBES' },
+  // 🌊 WAVE 1037: Split Stereo Zones for visual clarity
+  // Left/Right separation with visual gap in center
+  BACK_L:  { y: 0.55, label: 'BACK L', xRange: [0.12, 0.42] },
+  BACK_R:  { y: 0.55, label: 'BACK R', xRange: [0.58, 0.88] },
+  
+  FRONT_L: { y: 0.85, label: 'FRONT L', xRange: [0.08, 0.42] },
+  FRONT_R: { y: 0.85, label: 'FRONT R', xRange: [0.58, 0.92] },
+  
+  MOVING_LEFT:  { y: 0.28, label: 'MOVING L', xRange: [0.12, 0.12] },
+  MOVING_RIGHT: { y: 0.28, label: 'MOVING R', xRange: [0.88, 0.88] },
+  
+  STROBES: { y: 0.40, label: 'CENTER', xRange: [0.45, 0.55] },
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -458,11 +465,11 @@ export const StageSimulator2: React.FC = () => {
       // PROBLEMA: El visualizador mostraba "fantasmas de color" cuando dimmer=0
       // Ejemplo: DigitalRain con dimmer=0 pero RGB=(0,255,0) ? verde fantasma
       // 
-      // SOLUCI�N: Umbral de Corte (Black Level)
-      // Si dimmer < 1% (pr�cticamente apagado), forzamos color a GRIS OSCURO
+      // SOLUCI�N: Umbral de Corte (Black Level)
+      // Si dimmer < 1% (pr�cticamente apagado), forzamos color a GRIS OSCURO
       // Ignoramos el RGB que tenga el fixture en memoria
       // 
-      // RESULTADO: Visualizador refleja la realidad f�sica:
+      // RESULTADO: Visualizador refleja la realidad f�sica:
       //   - dimmer=0 ? NEGRO (no luz)
       //   - dimmer>0 ? Color visible proporcional a intensidad
       // -----------------------------------------------------------------------
@@ -706,20 +713,44 @@ export const StageSimulator2: React.FC = () => {
     };
     
     // ─────────────────────────────────────────────────────────────────────────
-    // RENDER EACH ZONE
+    // RENDER EACH ZONE - 🌊 WAVE 1037: STEREO SPLIT RENDERING
     // ─────────────────────────────────────────────────────────────────────────
     
-    // FRONT PARS
-    frontPars.forEach((f, i) => {
-      const x = distributeX(frontPars.length, i, W * 0.15, W * 0.85);
-      const y = H * ZONE_CONFIG.FRONT_PARS.y;
+    // Split Front Pars into L/R halves
+    const midF = Math.ceil(frontPars.length / 2);
+    const frontParsL = frontPars.slice(0, midF);
+    const frontParsR = frontPars.slice(midF);
+    
+    // Split Back Pars into L/R halves  
+    const midB = Math.ceil(backPars.length / 2);
+    const backParsL = backPars.slice(0, midB);
+    const backParsR = backPars.slice(midB);
+    
+    // FRONT LEFT
+    frontParsL.forEach((f, i) => {
+      const x = distributeX(frontParsL.length, i, W * ZONE_CONFIG.FRONT_L.xRange[0], W * ZONE_CONFIG.FRONT_L.xRange[1]);
+      const y = H * ZONE_CONFIG.FRONT_L.y;
       renderFixture(f, x, y);
     });
     
-    // BACK PARS
-    backPars.forEach((f, i) => {
-      const x = distributeX(backPars.length, i, W * 0.2, W * 0.8);
-      const y = H * ZONE_CONFIG.BACK_PARS.y;
+    // FRONT RIGHT
+    frontParsR.forEach((f, i) => {
+      const x = distributeX(frontParsR.length, i, W * ZONE_CONFIG.FRONT_R.xRange[0], W * ZONE_CONFIG.FRONT_R.xRange[1]);
+      const y = H * ZONE_CONFIG.FRONT_R.y;
+      renderFixture(f, x, y);
+    });
+    
+    // BACK LEFT
+    backParsL.forEach((f, i) => {
+      const x = distributeX(backParsL.length, i, W * ZONE_CONFIG.BACK_L.xRange[0], W * ZONE_CONFIG.BACK_L.xRange[1]);
+      const y = H * ZONE_CONFIG.BACK_L.y;
+      renderFixture(f, x, y);
+    });
+    
+    // BACK RIGHT
+    backParsR.forEach((f, i) => {
+      const x = distributeX(backParsR.length, i, W * ZONE_CONFIG.BACK_R.xRange[0], W * ZONE_CONFIG.BACK_R.xRange[1]);
+      const y = H * ZONE_CONFIG.BACK_R.y;
       renderFixture(f, x, y);
     });
     
@@ -745,7 +776,30 @@ export const StageSimulator2: React.FC = () => {
     });
     
     // ═══════════════════════════════════════════════════════════════════════
-    // ZONE LABELS - 🌟 WAVE 25.6: Ajustadas para no tapar fixtures grandes
+    // 🌊 WAVE 1035: STEREO CENTER LINE - Visual division of L/R zones
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    if (qualityMode === 'high') {
+      // Draw vertical center line (dashed) to show stereo split
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';  // Purple, subtle
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 10]);  // Dashed line
+      ctx.beginPath();
+      ctx.moveTo(W * 0.5, H * 0.1);
+      ctx.lineTo(W * 0.5, H * 0.9);
+      ctx.stroke();
+      ctx.setLineDash([]);  // Reset dash
+      
+      // 🌊 L/R indicators at top
+      ctx.font = '11px monospace';
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
+      ctx.textAlign = 'center';
+      ctx.fillText('Ⓛ LEFT', W * 0.25, H * 0.05);
+      ctx.fillText('Ⓡ RIGHT', W * 0.75, H * 0.05);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ZONE LABELS - 🌟 WAVE 25.6 + 🌊 WAVE 1035: Stereo zone labels
     // ═══════════════════════════════════════════════════════════════════════
     
     if (qualityMode === 'high') {
@@ -753,12 +807,16 @@ export const StageSimulator2: React.FC = () => {
       ctx.font = '10px monospace';
       ctx.textAlign = 'left';
       
-      ctx.fillText('MOVING L', W * 0.02, H * ZONE_CONFIG.MOVING_LEFT.y - 15); // +10px arriba
+      ctx.fillText('MOVING Ⓛ', W * 0.02, H * ZONE_CONFIG.MOVING_LEFT.y - 15);
       ctx.textAlign = 'right';
-      ctx.fillText('MOVING R', W * 0.98, H * ZONE_CONFIG.MOVING_RIGHT.y - 15); // +10px arriba
+      ctx.fillText('MOVING Ⓡ', W * 0.98, H * ZONE_CONFIG.MOVING_RIGHT.y - 15);
       ctx.textAlign = 'center';
-      ctx.fillText('BACK PARS', W * 0.5, H * ZONE_CONFIG.BACK_PARS.y - 35); // +5px arriba
-      ctx.fillText('FRONT PARS', W * 0.5, H * ZONE_CONFIG.FRONT_PARS.y + 30); // +5px abajo
+      
+      // 🌊 WAVE 1037: Split stereo labels for FRONT and BACK
+      ctx.fillText('BACK Ⓛ', W * 0.27, H * ZONE_CONFIG.BACK_L.y - 35);
+      ctx.fillText('BACK Ⓡ', W * 0.73, H * ZONE_CONFIG.BACK_R.y - 35);
+      ctx.fillText('FRONT Ⓛ', W * 0.25, H * ZONE_CONFIG.FRONT_L.y + 30);
+      ctx.fillText('FRONT Ⓡ', W * 0.75, H * ZONE_CONFIG.FRONT_R.y + 30);
     }
     
     // ═══════════════════════════════════════════════════════════════════════

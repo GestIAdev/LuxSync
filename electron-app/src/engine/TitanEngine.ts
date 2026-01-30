@@ -482,6 +482,7 @@ export class TitanEngine extends EventEmitter {
     // 🔥 WAVE 290.1/290.3/298.5/315.3: Latino/Techno/Rock/Chill override - El NervousSystem manda
     // 🧪 WAVE 908: THE DUEL - Si Techno tiene L/R split, respetarlo
     // 🎺 WAVE 1004.1: LATINO STEREO - Si Latino tiene L/R split, respetarlo
+    // 🌊 WAVE 1035: CHILL 7-ZONE - Si Chill tiene Front/Back L/R, usarlos
     if (nervousOutput.physicsApplied === 'latino' || 
         nervousOutput.physicsApplied === 'techno' || 
         nervousOutput.physicsApplied === 'rock' ||
@@ -492,13 +493,49 @@ export class TitanEngine extends EventEmitter {
       const moverL = ni.moverL ?? ni.mover;  // Si no hay L, fallback a mono
       const moverR = ni.moverR ?? ni.mover;  // Si no hay R, fallback a mono
       
-      zones = {
-        front: { intensity: ni.front, paletteRole: 'primary' },
-        back: { intensity: ni.back, paletteRole: 'accent' },
-        left: { intensity: moverL, paletteRole: 'secondary' },      // 🧪 WAVE 908 + 🎺 1004.1: LEFT = Mid (Techno kicks, Latino El Galán)
-        right: { intensity: moverR, paletteRole: 'ambient' },       // 🧪 WAVE 908 + 🎺 1004.1: RIGHT = Treble (Techno hats, Latino La Dama)
-        ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
-      };
+      // 🌊 WAVE 1035: 7-Zone Stereo - Si Chill tiene Front/Back L/R, usarlos
+      // Fallback: Si no hay stereo, usar mono y dividir
+      const frontL = ni.frontL ?? (ni.front ?? 0);  // Fallback a mono front
+      const frontR = ni.frontR ?? (ni.front ?? 0);  // Fallback a mono front
+      const backL = ni.backL ?? (ni.back ?? 0);     // Fallback a mono back
+      const backR = ni.backR ?? (ni.back ?? 0);     // Fallback a mono back
+      
+      // 🌊 WAVE 1035: Si tenemos valores stereo, construir zonas expandidas
+      const hasChillStereo = nervousOutput.physicsApplied === 'chill' && 
+                             (ni.frontL !== undefined || ni.frontR !== undefined);
+      
+      if (hasChillStereo) {
+        // CHILL 7-ZONE MODE: Todas las zonas stereo
+        zones = {
+          // Stereo Front (new)
+          frontL: { intensity: frontL, paletteRole: 'primary' },
+          frontR: { intensity: frontR, paletteRole: 'primary' },
+          // Stereo Back (new)
+          backL: { intensity: backL, paletteRole: 'accent' },
+          backR: { intensity: backR, paletteRole: 'accent' },
+          // Movers (existing stereo)
+          left: { intensity: moverL, paletteRole: 'secondary' },
+          right: { intensity: moverR, paletteRole: 'ambient' },
+          // Legacy mono (for backward compat)
+          front: { intensity: ni.front ?? (frontL + frontR) * 0.5, paletteRole: 'primary' },
+          back: { intensity: ni.back ?? (backL + backR) * 0.5, paletteRole: 'accent' },
+          ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
+        };
+        
+        // Log de debug para ver 7-zone en acción
+        if (this.state.frameCount % 60 === 0) {
+          console.log(`[TitanEngine �] CHILL 7-ZONE: FL:${(frontL*100).toFixed(0)}% FR:${(frontR*100).toFixed(0)}% BL:${(backL*100).toFixed(0)}% BR:${(backR*100).toFixed(0)}%`)
+        }
+      } else {
+        // LEGACY MODE: Mono front/back + stereo movers
+        zones = {
+          front: { intensity: ni.front, paletteRole: 'primary' },
+          back: { intensity: ni.back, paletteRole: 'accent' },
+          left: { intensity: moverL, paletteRole: 'secondary' },
+          right: { intensity: moverR, paletteRole: 'ambient' },
+          ambient: { intensity: audio.energy * 0.3, paletteRole: 'ambient' },
+        };
+      }
     }
     
     // ─────────────────────────────────────────────────────────────────────

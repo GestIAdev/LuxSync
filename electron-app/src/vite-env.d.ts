@@ -254,6 +254,7 @@ declare global {
     getFixtureLibrary: () => Promise<{ success: boolean; fixtures: FixtureLibraryItem[] }>
     
     // 🔥 WAVE 384: Get FULL fixture definition with channels
+    // 🔥 WAVE 1042.1: Added capabilities object with colorEngine and colorWheel
     getFixtureDefinition: (profileId: string) => Promise<{ 
       success: boolean
       definition?: {
@@ -264,6 +265,32 @@ declare global {
         channelCount: number
         channels: Array<{ index: number; name: string; type: string; is16bit: boolean }>
         filePath: string
+        // 🔥 WAVE 1042.1: Physics for motor/movement info
+        physics?: {
+          motorType?: string
+          maxAcceleration?: number
+          maxVelocity?: number
+          safetyCap?: boolean
+          orientation?: string
+          invertPan?: boolean
+          invertTilt?: boolean
+          swapPanTilt?: boolean
+          homePosition?: { pan: number; tilt: number }
+          tiltLimits?: { min: number; max: number }
+        } | null
+        // 🔥 WAVE 1042.1: Full capabilities with color engine
+        capabilities?: {
+          colorEngine?: 'rgb' | 'cmy' | 'wheel' | 'hybrid' | 'none'
+          colorWheel?: {
+            colors: Array<{
+              dmx: number
+              name: string
+              rgb: { r: number; g: number; b: number }
+              hasTexture?: boolean
+            }>
+          }
+        } | null
+        // Legacy flat flags (backward compat)
         hasMovementChannels: boolean
         has16bitMovement: boolean
         hasColorMixing: boolean

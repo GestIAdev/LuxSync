@@ -120,6 +120,8 @@ export interface SeleneLuxVibeContext {
 
 /**
  * Resultado del procesamiento físico
+ * 
+ * 🌊 WAVE 1035: Expandido para soportar 7-Zone Stereo Architecture
  */
 export interface SeleneLuxOutput {
   palette: {
@@ -129,12 +131,18 @@ export interface SeleneLuxOutput {
     accent: RGB;
   };
   /** 🎚️ WAVE 275: Intensidades por zona basadas en frecuencias */
+  /** 🌊 WAVE 1035: Añadido soporte para Front/Back L/R stereo */
   zoneIntensities: {
-    front: number;   // 0-1: Bass → Front PARs (Kick/Graves)
-    back: number;    // 0-1: Mid → Back PARs (Snare/Clap)
+    front: number;   // 0-1: Bass → Front PARs (Kick/Graves) - LEGACY mono
+    back: number;    // 0-1: Mid → Back PARs (Snare/Clap) - LEGACY mono
     mover: number;   // 0-1: Treble → Movers (Melodía/Voz) - LEGACY mono
-    moverL?: number; // 🧪 WAVE 908: LEFT mover (Mid-dominant) - TECHNO only
-    moverR?: number; // 🧪 WAVE 908: RIGHT mover (Treble-dominant) - TECHNO only
+    moverL?: number; // 🧪 WAVE 908: LEFT mover (Mid-dominant)
+    moverR?: number; // 🧪 WAVE 908: RIGHT mover (Treble-dominant)
+    // 🌊 WAVE 1035: 7-Zone Stereo Architecture (Chill Pilot)
+    frontL?: number; // Front Left PARs
+    frontR?: number; // Front Right PARs
+    backL?: number;  // Back Left PARs
+    backR?: number;  // Back Right PARs
     // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - New spectral zones
     laser?: number;  // 0-1: UltraAir → Lasers (16-22kHz shimmer)
     washer?: number; // 0-1: SubBass → Washers (20-60Hz atmosphere)
@@ -229,12 +237,18 @@ export class SeleneLux {
   
   // 🆕 WAVE 315: CHILL BREATHING - Overrides de bioluminiscencia
   // 🔥 WAVE 1032.9: Agregado moverL/moverR para burbujas independientes
+  // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R para oscilación lateral
   private chillOverrides: { 
     front: number; 
     back: number; 
     mover: number;   // Legacy: promedio para compatibilidad
     moverL: number;  // 🫧 WAVE 1032.9: Burbuja izquierda
     moverR: number;  // 🫧 WAVE 1032.9: Burbuja derecha
+    // 🌊 WAVE 1035: 7-Zone Stereo Architecture
+    frontL?: number; // Front Left Pars
+    frontR?: number; // Front Right Pars
+    backL?: number;  // Back Left Pars
+    backR?: number;  // Back Right Pars
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -547,6 +561,7 @@ export class SeleneLux {
       
       // Extraer intensidades por zona (4 zonas → 5 overrides)
       // 🔥 WAVE 1032.9: Agregar moverL/moverR para burbujas independientes
+      // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R
       const moverAvg = (result.zoneIntensities.moverL + result.zoneIntensities.moverR) / 2;
       this.chillOverrides = {
         front: result.zoneIntensities.front,
@@ -554,6 +569,11 @@ export class SeleneLux {
         mover: moverAvg,                           // Legacy promedio
         moverL: result.zoneIntensities.moverL,     // 🫧 Burbuja izquierda
         moverR: result.zoneIntensities.moverR,     // 🫧 Burbuja derecha
+        // 🌊 WAVE 1035: 7-Zone Stereo Architecture
+        frontL: result.zoneIntensities.frontL,     // Front Left Pars
+        frontR: result.zoneIntensities.frontR,     // Front Right Pars
+        backL: result.zoneIntensities.backL,       // Back Left Pars
+        backR: result.zoneIntensities.backR,       // Back Right Pars
       };
       
       // WAVE 316.1: Log eliminado de SeleneLux (ya lo hace ChillStereoPhysics internamente)
@@ -710,10 +730,12 @@ export class SeleneLux {
       // 🌊 WAVE 315.3: CHILL - El Techno Pacífico (Olas Desfasadas)
       // 🔥 WAVE 1032.8: BUBBLE FREEDOM - Removido ceiling 0.85 para permitir burbujas brillantes
       // 🫧 WAVE 1032.9: BUBBLE L/R SPLIT - Movers independientes como Rock/Latino
+      // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R split para oscilación lateral
       // ═══════════════════════════════════════════════════════════════════════
       // FILOSOFÍA: Movimiento LATERAL como el océano.
       // Front/Back/MoverL/MoverR con burbujas independientes
       // 🫧 BURBUJAS: Pueden alcanzar 1.0 gracias al bypass POST-AGC
+      // 🌊 WAVE 1035: Marea cruzada - cuando FrontL sube, FrontR baja ligeramente
       // ═══════════════════════════════════════════════════════════════════════
       frontIntensity = Math.min(1.0, this.chillOverrides.front * brightMod);
       backIntensity = Math.min(1.0, this.chillOverrides.back);
@@ -729,12 +751,29 @@ export class SeleneLux {
         moverR: chillR
       };
       
-      // 🆕 WAVE 315.3: Log OLAS cada 15 frames (~250ms)
+      // � WAVE 1035: 7-ZONE STEREO - Front/Back L/R split
+      // Extraer las nuevas zonas stereo del chillOverrides
+      const chillFrontL = this.chillOverrides.frontL ?? frontIntensity;
+      const chillFrontR = this.chillOverrides.frontR ?? frontIntensity;
+      const chillBackL = this.chillOverrides.backL ?? backIntensity;
+      const chillBackR = this.chillOverrides.backR ?? backIntensity;
+      
+      // Guardar stereo split para incluir en zoneIntensities
+      (this as any).chillStereoSplit = {
+        frontL: chillFrontL,
+        frontR: chillFrontR,
+        backL: chillBackL,
+        backR: chillBackR,
+      };
+      
+      // �🆕 WAVE 315.3: Log OLAS cada 15 frames (~250ms)
       // 🫧 WAVE 1032.9: Mostrar L/R individuales
+      // 🌊 WAVE 1035: Mostrar 7-zone stereo
       if (this.frameCount % 15 === 0) {
         console.log(
-          `[AGC TRUST 🌊CHILL] IN[F:${this.chillOverrides.front.toFixed(2)}, B:${this.chillOverrides.back.toFixed(2)}, ML:${this.chillOverrides.moverL.toFixed(2)}, MR:${this.chillOverrides.moverR.toFixed(2)}] → ` +
-          `💡 OUT[Front:${frontIntensity.toFixed(2)}, Back:${backIntensity.toFixed(2)}, ML:${chillL.toFixed(2)}, MR:${chillR.toFixed(2)}] (×brightMod:${brightMod.toFixed(2)})`
+          `[AGC TRUST 🌊CHILL 7Z] FL:${chillFrontL.toFixed(2)} FR:${chillFrontR.toFixed(2)} | ` +
+          `BL:${chillBackL.toFixed(2)} BR:${chillBackR.toFixed(2)} | ` +
+          `ML:${chillL.toFixed(2)} MR:${chillR.toFixed(2)}`
         );
       }
       
@@ -783,6 +822,13 @@ export class SeleneLux {
         moverL: (this as any).chillMoverSplit.moverL,
         moverR: (this as any).chillMoverSplit.moverR
       }),
+      // 🌊 WAVE 1035: 7-ZONE STEREO - Front/Back L/R si vienen de Chill
+      ...(((this as any).chillStereoSplit) && {
+        frontL: (this as any).chillStereoSplit.frontL,
+        frontR: (this as any).chillStereoSplit.frontR,
+        backL: (this as any).chillStereoSplit.backL,
+        backR: (this as any).chillStereoSplit.backR,
+      }),
       // ═══════════════════════════════════════════════════════════════════════
       // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Zones
       // ═══════════════════════════════════════════════════════════════════════
@@ -797,6 +843,8 @@ export class SeleneLux {
     delete (this as any).technoMoverSplit;
     delete (this as any).latinoMoverSplit;  // 🎺 WAVE 1004.1
     delete (this as any).rockMoverSplit;    // 🎸 WAVE 1011
+    delete (this as any).chillMoverSplit;   // 🫧 WAVE 1032.9
+    delete (this as any).chillStereoSplit;  // 🌊 WAVE 1035: 7-ZONE STEREO
     
     // 🧹 WAVE 671.5: Silenced AGC TRUST spam (every 1s)
     // 👓 WAVE 276: Log AGC TRUST cada 30 frames (~1 segundo)

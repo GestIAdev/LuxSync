@@ -185,7 +185,21 @@ export interface Rotation3D {
 /**
  * Zone identifiers (now explicit strings, not auto-assigned)
  */
+// 🧹 WAVE 1042: CANONICAL ZONES V2
+// Reemplaza legacy zones con arquitectura semántica
 export type FixtureZone = 
+  // 💡 PARS & BARS (Auto-Stereo L/R via Position X)
+  | 'FRONT_PARS'
+  | 'BACK_PARS'
+  | 'FLOOR_PARS'
+  // 🏎️ MOVERS (Explicit Stereo)
+  | 'MOVING_LEFT'
+  | 'MOVING_RIGHT'
+  // ✨ SPECIALS
+  | 'AIR'
+  | 'AMBIENT'
+  | 'CENTER'
+  // Legacy support (deprecated)
   | 'stage-left'
   | 'stage-right'
   | 'stage-center'
@@ -290,12 +304,23 @@ export interface FixtureV2 {
   /**
    * Fixture capabilities flags (persisted inline)
    * Used by MasterArbiter for intelligent color/movement routing
+   * 🔥 WAVE 1042.1: Extended to include colorEngine and colorWheel for Forge parity
    */
   capabilities?: {
     hasMovementChannels?: boolean
     has16bitMovement?: boolean
     hasColorMixing?: boolean
     hasColorWheel?: boolean
+    // 🔥 WAVE 1042.1: Color system data (for Forge editing from stage)
+    colorEngine?: 'rgb' | 'cmy' | 'wheel' | 'hybrid' | 'none'
+    colorWheel?: {
+      colors: Array<{
+        dmx: number
+        name: string
+        rgb: { r: number; g: number; b: number }
+        hasTexture?: boolean
+      }>
+    }
   }
 }
 

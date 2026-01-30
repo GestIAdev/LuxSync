@@ -306,8 +306,10 @@ export const useStageStore = create<StageStore>()(
         return
       }
       
+      // 🔥 WAVE 1042.2: Create NEW array reference for Zustand shallow comparison
+      // Without this, React components with shallow selectors won't re-render
       set({
-        fixtures: showFile.fixtures,
+        fixtures: [...showFile.fixtures],
         groups: showFile.groups,
         scenes: showFile.scenes,
         stage: showFile.stage,
@@ -482,10 +484,14 @@ export const useStageStore = create<StageStore>()(
       const { showFile } = get()
       if (!showFile) return
       
-      const fixture = showFile.fixtures.find(f => f.id === id)
-      if (!fixture) return
+      const fixtureIndex = showFile.fixtures.findIndex(f => f.id === id)
+      if (fixtureIndex === -1) return
       
-      Object.assign(fixture, updates)
+      // 🔥 WAVE 1042.2: Create NEW fixture reference for Zustand reactivity
+      // Object.assign mutates in place - shallow comparison misses it
+      const updatedFixture = { ...showFile.fixtures[fixtureIndex], ...updates }
+      showFile.fixtures[fixtureIndex] = updatedFixture
+      
       get()._syncDerivedState()
       get()._setDirty()
     },

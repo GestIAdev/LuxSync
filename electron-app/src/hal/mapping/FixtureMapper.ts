@@ -53,6 +53,8 @@ export interface PatchedFixture {
   hasColorMixing?: boolean       // Has RGB/RGBW LEDs
   hasColorWheel?: boolean        // Has physical color wheel
   profileId?: string             // HAL profile ID for translation
+  // 🌊 WAVE 1035: 7-ZONE STEREO - Fixture physical position for stereo routing
+  position?: { x: number; y: number; z: number }
 }
 
 /** Calculated fixture state (output of mapper) */

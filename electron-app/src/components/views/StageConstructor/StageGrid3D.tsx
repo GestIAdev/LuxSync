@@ -37,39 +37,37 @@ import { useStageStore, selectFixtures } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { shallow } from 'zustand/shallow'
 import { useConstructorContext } from '../StageConstructorView'
-import { createDefaultFixture, mapLibraryTypeToFixtureType } from '../../../core/stage/ShowFileV2'
+import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType } from '../../../core/stage/ShowFileV2'
 import type { FixtureV2, Position3D, FixtureZone } from '../../../core/stage/ShowFileV2'
 import ZoneOverlay, { getZoneAtPosition } from './ZoneOverlay'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVE 378.5: GRANULAR SELECTORS - Prevent re-render cascade during sync
+// 🔓 WAVE 1036.2: UNLOCK THE GRID - FULL REACTIVITY
+// Eliminada la memoización agresiva que impedía ver cambios en tiempo real
+// En el Constructor, la reactividad es más importante que la performance
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Extrae SOLO la estructura estática de fixtures (para layout, no RT data)
- * NO incluye: pan, tilt, color, intensity - esos cambian cada frame
- */
-const selectFixtureStructure = (state: ReturnType<typeof useStageStore.getState>) => 
-  state.fixtures.map(f => ({
-    id: f?.id,
-    name: f?.name,
-    type: f?.type,
-    address: f?.address,
-    zone: f?.zone,
-    position: f?.position,
-    rotation: f?.rotation
-  }))
-
-/**
- * Igualdad por IDs - si los IDs no cambian, no re-renderizar
- * Ignora cambios en posición/rotación durante sync masivo inicial
- */
-const fixtureStructureEquals = (a: any[], b: any[]): boolean => {
-  if (a.length !== b.length) return false
-  const aIds = a.map(f => f?.id).sort().join(',')
-  const bIds = b.map(f => f?.id).sort().join(',')
-  return aIds === bIds
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧹 WAVE 1042: ZONE NORMALIZER
+// Asegura que al soltar, la zona sea V2 y no una legacy extraña
+// ═══════════════════════════════════════════════════════════════════════════
+const normalizeZone = (rawZone: string, x: number, z: number, type: string): FixtureZone => {
+  const zone = rawZone?.toLowerCase() || ''
+  const isMover = type.includes('moving') || type.includes('head')
+  
+  // 1. Movers tienen prioridad lateral
+  if (isMover) {
+    if (x < -0.1) return 'MOVING_LEFT'
+    if (x > 0.1) return 'MOVING_RIGHT'
+  }
+  
+  // 2. Pars dependen de profundidad (Z)
+  // El "Ceiling" visual sigue existiendo, pero la zona DMX es Front o Back
+  if (z < -0.5) return 'BACK_PARS'
+  if (z >= -0.5) return 'FRONT_PARS' // Default seguro para todo lo que está adelante
+  
+  return 'FRONT_PARS' // Fallback final
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -129,6 +127,35 @@ const CameraBridge: React.FC<CameraBridgeProps> = ({ onCameraReady }) => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 1035: STEREO ZONE INDICATOR
+// Helper function to show L/R indicator for stereo-capable zones
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Genera etiqueta con indicador estéreo basado en posición X del fixture
+ * @param fixture El fixture a evaluar
+ * @returns String con zona + indicador Ⓛ/Ⓡ si aplica
+ */
+const getStereoZoneLabel = (fixture: FixtureV2): string => {
+  const zone = fixture.zone?.toLowerCase() || '';
+  const posX = fixture.position?.x ?? 0;
+  
+  // Solo zonas front/back son stereo-capable
+  if (zone.includes('front') || zone.includes('back')) {
+    const side = posX < 0 ? 'Ⓛ' : 'Ⓡ';  // Left / Right indicators
+    const zoneName = zone.includes('front') ? 'FRONT' : 'BACK';
+    return `${zoneName} ${side}`;
+  }
+  
+  // Movers ya tienen L/R por defecto
+  if (zone.includes('left')) return 'MOV Ⓛ';
+  if (zone.includes('right')) return 'MOV Ⓡ';
+  
+  // Default: mostrar zona raw
+  return fixture.zone?.toUpperCase() || 'ZONE?';
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE 3D MESH
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -165,6 +192,19 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
     }
   }
   
+  // 🪜 WAVE 1036: Get fixture height for visual offset calculation
+  // This ensures y=0 means "resting on floor", not "center at floor"
+  const getFixtureHeight = (): number => {
+    switch (fixture.type) {
+      case 'moving-head': return 0.6  // cone height
+      case 'par':
+      case 'wash': return 0.3         // cylinder height
+      case 'strobe':
+      case 'blinder': return 0.2      // box height
+      default: return 0.4             // sphere diameter
+    }
+  }
+  
   // Determine geometry based on fixture type
   const renderGeometry = () => {
     switch (fixture.type) {
@@ -185,9 +225,11 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
     }
   }
   
+  // 🪜 WAVE 1036 FIX: Visual offset so y=0 = "floor contact"
+  const visualYOffset = getFixtureHeight() / 2
+  
   return (
-    <mesh
-      ref={meshRef}
+    <group
       position={[fixture.position.x, fixture.position.y, fixture.position.z]}
       rotation={[
         THREE.MathUtils.degToRad(fixture.rotation.pitch),
@@ -208,19 +250,25 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
         document.body.style.cursor = 'default'
       }}
     >
-      {renderGeometry()}
-      <meshStandardMaterial 
-        color={getColor()}
-        emissive={getColor()}
-        emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.2}
-        metalness={0.3}
-        roughness={0.4}
-      />
+      {/* 🪜 WAVE 1036: Mesh offset by half-height so pivot is at BASE */}
+      <mesh
+        ref={meshRef}
+        position={[0, visualYOffset, 0]}
+      >
+        {renderGeometry()}
+        <meshStandardMaterial 
+          color={getColor()}
+          emissive={getColor()}
+          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.2}
+          metalness={0.3}
+          roughness={0.4}
+        />
+      </mesh>
       
-      {/* Label on hover/select */}
+      {/* Label on hover/select - 🌊 WAVE 1035: Stereo zone indicator */}
       {(isHovered || isSelected) && (
         <Html
-          position={[0, 0.5, 0]}
+          position={[0, visualYOffset + 0.4, 0]}
           center
           zIndexRange={[0, 10]} // WAVE 385.5: No bloquear modales
           style={{
@@ -231,10 +279,11 @@ const Fixture3D: React.FC<Fixture3DProps> = ({
           <div className="fixture-label-3d">
             <span className="label-name">{fixture.name}</span>
             <span className="label-address">#{fixture.address}</span>
+            <span className="label-zone">{getStereoZoneLabel(fixture)}</span>
           </div>
         </Html>
       )}
-    </mesh>
+    </group>
   )
 }
 
@@ -299,6 +348,25 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
     return () => controls.removeEventListener('dragging-changed', handleDraggingChanged)
   }, [fixture.id, onPositionChange, onDraggingChanged])
   
+  // 🪜 WAVE 1036: Hide Y axis gizmo (2D planar movement only)
+  useEffect(() => {
+    const controls = transformRef.current
+    if (!controls) return
+    
+    // THREE.TransformControls exposes gizmo.children for axis manipulation
+    // Find and hide the Y axis helper (green arrow)
+    const gizmo = (controls as any).children?.find((c: any) => c.name === 'TransformControlsGizmo')
+    if (gizmo) {
+      // The gizmo contains axis handles - Y axis is typically the second one
+      gizmo.traverse((child: any) => {
+        // Hide Y-axis translation handle by checking name/userData
+        if (child.name?.includes('Y') || child.userData?.axis === 'Y') {
+          child.visible = false
+        }
+      })
+    }
+  }, [])
+  
   return (
     <group>
       {/* Invisible object that TransformControls attaches to */}
@@ -307,6 +375,7 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
         position={[fixture.position.x, fixture.position.y, fixture.position.z]}
       />
       
+      {/* 🪜 WAVE 1036: showY={false} restricts to XZ plane movement */}
       <TransformControls
         ref={transformRef}
         object={objectRef.current || undefined}
@@ -314,6 +383,7 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
         size={0.8}
         translationSnap={snapEnabled ? snapDistance : null}
         rotationSnap={snapEnabled ? snapRotation : null}
+        showY={false}
       />
       
       {/* WAVE 369: Floating zone indicator while dragging */}
@@ -340,8 +410,8 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════
 // STAGE GRID SCENE - Receives snap config as props
 // WAVE 369: Now with interaction lock for camera control isolation
-// WAVE 369.6: Receives selectedIds as ARRAY prop to fix R3F context issue
-// WAVE 378.5: MEMOIZED + Granular selectors to prevent Context Lost
+// WAVE 369.6: Receives selectedIds as ARRAY prop to fix R3F reactivity
+// 🔓 WAVE 1036.2: UNLOCKED - Direct fixtures prop for full reactivity
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface StageSceneProps {
@@ -355,7 +425,7 @@ interface StageSceneProps {
   isBoxSelectMode: boolean  // WAVE 369: Disable camera during box select
   onInteractionChange: (isInteracting: boolean) => void  // WAVE 369
   selectedIdsArray: string[]  // WAVE 369.6: Array instead of Set to fix R3F reactivity
-  fixtureStructure: any[]  // WAVE 378.5: Pre-extracted fixture structure (from parent)
+  fixtures: FixtureV2[]  // 🔓 WAVE 1036.2: Direct fixtures for immediate reactivity
 }
 
 const StageScene = memo<StageSceneProps>(({ 
@@ -369,11 +439,10 @@ const StageScene = memo<StageSceneProps>(({
   isBoxSelectMode,
   onInteractionChange,
   selectedIdsArray,
-  fixtureStructure  // WAVE 378.5
+  fixtures  // 🔓 WAVE 1036.2: Direct fixtures prop
 }) => {
-  // WAVE 378.5: Use fixtureStructure prop instead of subscribing directly
-  // This prevents re-renders during TitanSyncBridge sync operations
-  const fixtures = fixtureStructure
+  // 🔓 WAVE 1036.2: No transformation needed - use fixtures directly
+  // Full reactivity: changes in position/height/rotation are immediately visible
   
   const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
@@ -394,7 +463,7 @@ const StageScene = memo<StageSceneProps>(({
   
   // Get the single selected fixture for transform controls
   const selectedFixture = selectedIdsArray.length === 1 
-    ? fixtures.find((f: any) => f.id === selectedIdsArray[0])
+    ? fixtures.find((f: FixtureV2) => f.id === selectedIdsArray[0])
     : null
   
   // WAVE 369: Handle gizmo dragging change
@@ -404,11 +473,19 @@ const StageScene = memo<StageSceneProps>(({
   }, [onInteractionChange])
   
   // WAVE 369: Handle position change with auto-zoning
+  // 🔥 WAVE 1042: Manejo de movimiento con normalización
   const handlePositionChangeWithZone = useCallback((id: string, position: Position3D, newZone: FixtureZone | null) => {
     updateFixturePosition(id, position)
+    
+    // Si el gizmo reporta una zona (aunque sea legacy), la normalizamos y aplicamos
     if (newZone) {
-      setFixtureZone(id, newZone)
-      console.log(`[StageScene] 🗺️ Auto-assigned zone: ${newZone}`)
+      // Obtenemos el tipo del fixture para determinar si es mover
+      const fixture = useStageStore.getState().fixtures.find(f => f.id === id)
+      const typeHint = fixture?.type || 'par'
+      const cleanZone = normalizeZone(newZone, position.x, position.z, typeHint)
+      
+      setFixtureZone(id, cleanZone)
+      console.log(`[StageGrid3D] 🗺️ Moved & Normalized: ${newZone} → ${cleanZone}`)
     }
   }, [updateFixturePosition, setFixtureZone])
   
@@ -493,7 +570,7 @@ const StageScene = memo<StageSceneProps>(({
       />
       
       {/* Fixtures */}
-      {fixtures.map(fixture => (
+      {fixtures.map((fixture: FixtureV2) => (
         <Fixture3D
           key={fixture.id}
           fixture={fixture}
@@ -544,17 +621,18 @@ const StageGrid3D: React.FC = () => {
   const addFixture = useStageStore(state => state.addFixture)
   const setFixtureZone = useStageStore(state => state.setFixtureZone)
   
-  // WAVE 378.5: GRANULAR selector - only re-render when fixture IDs change, not on every sync
-  const fixtureStructure = useStageStore(selectFixtureStructure, fixtureStructureEquals)
+  // 🔓 WAVE 1036.2: FULL REACTIVITY - Direct fixture subscription
+  // No memoization - we WANT to see position/height changes immediately
+  const fixtures = useStageStore(state => state.fixtures)
   
-  // Keep a reference to full fixtures for box selection raycasting (read once, not reactive)
-  const fixturesRef = useRef(useStageStore.getState().fixtures)
+  // Keep a reference for box selection raycasting (non-reactive read)
+  const fixturesRef = useRef(fixtures)
   useEffect(() => {
-    // Update ref when structure changes (new fixtures added/removed)
-    fixturesRef.current = useStageStore.getState().fixtures
-  }, [fixtureStructure])
+    fixturesRef.current = fixtures
+  }, [fixtures])
   
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
+  const deselectAll = useSelectionStore(state => state.deselectAll)  // 🪜 WAVE 1036
   
   // WAVE 369.6 FIX: Subscribe to selection changes with a simple primitive selector
   const selectionVersion = useSelectionStore(state => state.selectedIds.size)
@@ -581,6 +659,17 @@ const StageGrid3D: React.FC = () => {
   // Zone highlight state - WAVE 363
   const [highlightedZone, setHighlightedZone] = useState<FixtureZone | null>(null)
   
+  // 🪜 WAVE 1036: Context Menu state for height management
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    fixtureId: string
+  } | null>(null)
+  
+  // 🪜 WAVE 1036: Get fixture update function
+  const updateFixturePosition = useStageStore(state => state.updateFixturePosition)
+  const updateFixture = useStageStore(state => state.updateFixture)
+  
   // WAVE 368.5: Camera ready callback - WAVE 378.5: Log removed (one-time but noisy)
   const handleCameraReady = useCallback((camera: THREE.Camera) => {
     cameraRef.current = camera
@@ -590,6 +679,131 @@ const StageGrid3D: React.FC = () => {
   const handleInteractionChange = useCallback((isInteracting: boolean) => {
     setIsGizmoInteracting(isInteracting)
   }, [])
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🪜 WAVE 1036: CONTEXT MENU - Height Management
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Find if click is on a fixture by checking selection
+    if (selectedIds.size === 1) {
+      const fixtureId = [...selectedIds][0]
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        fixtureId
+      })
+    }
+  }, [selectedIds])
+  
+  // Close context menu
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
+  
+  // Send fixture to specific height
+  const sendFixtureToHeight = useCallback((height: number, invertTilt: boolean = false) => {
+    if (!contextMenu) return
+    
+    const fixture = fixturesRef.current.find((f: FixtureV2) => f.id === contextMenu.fixtureId)
+    if (!fixture) return
+    
+    // Update position with new Y
+    const newPosition = { ...fixture.position, y: height }
+    updateFixturePosition(contextMenu.fixtureId, newPosition)
+    
+    // If going to ceiling, auto-invert tilt
+    if (invertTilt && fixture.physics) {
+      updateFixture(contextMenu.fixtureId, {
+        physics: {
+          ...fixture.physics,
+          invertTilt: true,
+          orientation: 'ceiling' as const
+        }
+      })
+    } else if (height === 0 && fixture.physics) {
+      // Reset tilt inversion when going to floor
+      updateFixture(contextMenu.fixtureId, {
+        physics: {
+          ...fixture.physics,
+          invertTilt: false,
+          orientation: 'floor' as const
+        }
+      })
+    }
+    
+    closeContextMenu()
+    console.log(`[StageGrid3D] 🪜 Fixture "${fixture.name}" sent to Y=${height}m ${invertTilt ? '(tilt inverted)' : ''}`)
+  }, [contextMenu, updateFixturePosition, updateFixture, closeContextMenu])
+  
+  // 🪜 WAVE 1036: FLIP Left/Right (mirror X axis)
+  const flipLeftRight = useCallback(() => {
+    if (!contextMenu) return
+    
+    const fixture = fixturesRef.current.find((f: FixtureV2) => f.id === contextMenu.fixtureId)
+    if (!fixture) return
+    
+    // Flip X position
+    const newPosition = { ...fixture.position, x: -fixture.position.x }
+    updateFixturePosition(contextMenu.fixtureId, newPosition)
+    
+    // Auto-recalculate zone based on new position
+    const newZone = getZoneAtPosition(newPosition.x, newPosition.z)
+    if (newZone) {
+      setFixtureZone(contextMenu.fixtureId, newZone)
+    }
+    
+    closeContextMenu()
+    console.log(`[StageGrid3D] 🔄 Fixture "${fixture.name}" flipped L/R to X=${newPosition.x}`)
+  }, [contextMenu, updateFixturePosition, setFixtureZone, closeContextMenu])
+  
+  // 🪜 WAVE 1036: FLIP Front/Back (mirror Z axis)
+  const flipFrontBack = useCallback(() => {
+    if (!contextMenu) return
+    
+    const fixture = fixturesRef.current.find((f: FixtureV2) => f.id === contextMenu.fixtureId)
+    if (!fixture) return
+    
+    // Flip Z position
+    const newPosition = { ...fixture.position, z: -fixture.position.z }
+    updateFixturePosition(contextMenu.fixtureId, newPosition)
+    
+    // Auto-recalculate zone based on new position
+    const newZone = getZoneAtPosition(newPosition.x, newPosition.z)
+    if (newZone) {
+      setFixtureZone(contextMenu.fixtureId, newZone)
+    }
+    
+    closeContextMenu()
+    console.log(`[StageGrid3D] 🔄 Fixture "${fixture.name}" flipped F/B to Z=${newPosition.z}`)
+  }, [contextMenu, updateFixturePosition, setFixtureZone, closeContextMenu])
+  
+  // 🪜 WAVE 1036: DELETE fixture
+  const removeFixture = useStageStore(state => state.removeFixture)
+  const deleteFixture = useCallback(() => {
+    if (!contextMenu) return
+    
+    const fixture = fixturesRef.current.find((f: FixtureV2) => f.id === contextMenu.fixtureId)
+    if (!fixture) return
+    
+    // Deselect before removing
+    deselectAll()
+    removeFixture(contextMenu.fixtureId)
+    
+    closeContextMenu()
+    console.log(`[StageGrid3D] 🗑️ Fixture "${fixture.name}" deleted`)
+  }, [contextMenu, removeFixture, deselectAll, closeContextMenu])
+  
+  // 🪜 WAVE 1036: EDIT fixture (open modal)
+  const { openFixtureForge } = useConstructorContext()
+  const editFixture = useCallback(() => {
+    if (!contextMenu) return
+    
+    openFixtureForge(contextMenu.fixtureId)
+    closeContextMenu()
+  }, [contextMenu, openFixtureForge, closeContextMenu])
   
   // Handle zone click - assign zone to selected fixtures
   const handleZoneClick = useCallback((zoneId: FixtureZone) => {
@@ -754,8 +968,8 @@ const StageGrid3D: React.FC = () => {
     worldX = Math.max(-6, Math.min(6, worldX))
     worldZ = Math.max(-4, Math.min(4, worldZ))
     
-    // WAVE 369: Auto-detect zone from drop position
-    const autoZone = getZoneAtPosition(worldX, worldZ) || 'unassigned'
+    // 🔥 WAVE 1042.1: DEBUG + FIX - Normalizar DESPUÉS de conocer el tipo real
+    console.log(`[StageGrid3D] 📍 Drop position: (${worldX.toFixed(2)}, ${worldZ.toFixed(2)}), fixtureType from drag: "${fixtureType}"`)
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 384: LOAD FULL FIXTURE DEFINITION FROM LIBRARY
@@ -764,11 +978,14 @@ const StageGrid3D: React.FC = () => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
     
+    // Variable para el tipo REAL (se actualiza si cargamos definición)
+    let realType = fixtureType
+    
     // Try to load the FULL definition from library
     let fixtureData: Partial<FixtureV2> = {
       type: fixtureType as FixtureV2['type'],
-      position: { x: worldX, y: 3, z: worldZ },
-      zone: autoZone
+      position: { x: worldX, y: 0, z: worldZ },
+      zone: 'unassigned' as FixtureZone  // Placeholder, se normaliza después
     }
     
     if (libraryId && window.lux?.getFixtureDefinition) {
@@ -777,8 +994,8 @@ const StageGrid3D: React.FC = () => {
         const result = await window.lux.getFixtureDefinition(libraryId)
         
         if (result.success && result.definition) {
-          const def = result.definition
-          console.log(`[StageGrid3D] ✅ Got definition: ${def.name} (${def.channelCount}ch, ${def.channels?.length || 0} channel defs)`)
+          const def = result.definition as any  // 🔥 WAVE 1042.1: Allow access to physics field
+          console.log(`[StageGrid3D] ✅ Got definition: ${def.name} (${def.channelCount}ch, physics.motor: ${def.physics?.motorType || 'none'})`)
           
           // INJECT ALL THE DATA! This is the key fix.
           fixtureData = {
@@ -792,12 +1009,28 @@ const StageGrid3D: React.FC = () => {
             definitionPath: def.filePath,
             // 🔥 WAVE 384: Store channels inline for persistence
             channels: def.channels,
+            // 🔥 WAVE 1042.1: COPY PHYSICS FROM DEFINITION!
+            physics: def.physics ? {
+              motorType: def.physics.motorType || 'unknown',
+              maxAcceleration: def.physics.maxAcceleration || 2000,
+              maxVelocity: def.physics.maxVelocity || 400,
+              safetyCap: def.physics.safetyCap ?? true,
+              orientation: def.physics.orientation || 'floor',
+              invertPan: def.physics.invertPan ?? false,
+              invertTilt: def.physics.invertTilt ?? false,
+              swapPanTilt: def.physics.swapPanTilt ?? false,
+              homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
+              tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 }
+            } : undefined,
             // Store capabilities for rendering decisions
+            // 🔥 WAVE 1042.1: Include full capabilities with colorEngine and colorWheel
             capabilities: {
               hasMovementChannels: def.hasMovementChannels,
               has16bitMovement: def.has16bitMovement,
               hasColorMixing: def.hasColorMixing,
-              hasColorWheel: def.hasColorWheel
+              hasColorWheel: def.hasColorWheel,
+              colorEngine: def.capabilities?.colorEngine,
+              colorWheel: def.capabilities?.colorWheel
             }
           }
         } else {
@@ -810,12 +1043,28 @@ const StageGrid3D: React.FC = () => {
       console.warn(`[StageGrid3D] ⚠️ No getFixtureDefinition API, falling back to generic`)
     }
     
+    // 🔥 WAVE 1042.1: NORMALIZAR ZONA AL FINAL, con el tipo REAL conocido
+    const finalType = fixtureData.type || fixtureType
+    const cleanZone = normalizeZone('unassigned', worldX, worldZ, finalType)
+    fixtureData.zone = cleanZone
+    
+    console.log(`[StageGrid3D] 🎯 Zone normalization: type="${finalType}", pos=(${worldX.toFixed(2)}, ${worldZ.toFixed(2)}) → zone="${cleanZone}"`)
+    console.log(`[StageGrid3D] 📦 fixtureData BEFORE createDefaultFixture:`, JSON.stringify({
+      zone: fixtureData.zone,
+      physics: fixtureData.physics ? { motorType: fixtureData.physics.motorType } : 'undefined'
+    }))
+    
     const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
+    
+    console.log(`[StageGrid3D] 📦 newFixture AFTER createDefaultFixture:`, JSON.stringify({
+      zone: newFixture.zone,
+      physics: newFixture.physics ? { motorType: newFixture.physics.motorType } : 'undefined'
+    }))
     
     addFixture(newFixture)
     setDraggedFixtureType(null)
     
-    console.log(`[StageGrid3D] 🎯 Fixture created: "${newFixture.name}" at (${worldX.toFixed(2)}, 3, ${worldZ.toFixed(2)}) → Zone: ${autoZone}, Channels: ${newFixture.channelCount}`)
+    console.log(`[StageGrid3D] ✅ Dropped: ${newFixture.name} → Zone: ${cleanZone}`)
   }, [addFixture, setDraggedFixtureType])
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -826,15 +1075,15 @@ const StageGrid3D: React.FC = () => {
   
   // Handler for drops from inside R3F (proper raycast)
   // 🔥 WAVE 384: Also make this async and load definition
+  // 🔥 WAVE 1042.1: Normalizar zona AL FINAL
   const handleFixtureDrop = useCallback(async (type: string, position: Position3D, libraryId?: string) => {
     const fixtureId = `fixture-${Date.now()}`
     const nextAddress = useStageStore.getState().fixtures.length * 8 + 1
-    const autoZone = getZoneAtPosition(position.x, position.z) || 'unassigned'
     
     let fixtureData: Partial<FixtureV2> = {
       type: type as FixtureV2['type'],
       position,
-      zone: autoZone
+      zone: 'unassigned' as FixtureZone  // Placeholder, se normaliza después
     }
     
     // Load full definition if we have libraryId
@@ -853,11 +1102,29 @@ const StageGrid3D: React.FC = () => {
             profileId: libraryId,
             definitionPath: def.filePath,
             channels: def.channels,
+            // 🔥 WAVE 1042.1: COPY PHYSICS FROM DEFINITION (R3F drop)
+            physics: def.physics ? {
+              motorType: (def.physics.motorType || 'unknown') as MotorType,
+              maxAcceleration: def.physics.maxAcceleration || 2000,
+              maxVelocity: def.physics.maxVelocity || 400,
+              safetyCap: def.physics.safetyCap ?? true,
+              orientation: (['ceiling', 'floor', 'wall-left', 'wall-right', 'truss-front', 'truss-back'].includes(def.physics.orientation || '') 
+                ? def.physics.orientation 
+                : 'floor') as 'ceiling' | 'floor' | 'wall-left' | 'wall-right' | 'truss-front' | 'truss-back',
+              invertPan: def.physics.invertPan ?? false,
+              invertTilt: def.physics.invertTilt ?? false,
+              swapPanTilt: def.physics.swapPanTilt ?? false,
+              homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
+              tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 }
+            } : undefined,
+            // 🔥 WAVE 1042.1: Include full capabilities with colorEngine and colorWheel
             capabilities: {
               hasMovementChannels: def.hasMovementChannels,
               has16bitMovement: def.has16bitMovement,
               hasColorMixing: def.hasColorMixing,
-              hasColorWheel: def.hasColorWheel
+              hasColorWheel: def.hasColorWheel,
+              colorEngine: def.capabilities?.colorEngine,
+              colorWheel: def.capabilities?.colorWheel
             }
           }
         }
@@ -866,8 +1133,15 @@ const StageGrid3D: React.FC = () => {
       }
     }
     
+    // 🔥 WAVE 1042.1: NORMALIZAR ZONA AL FINAL, con el tipo REAL conocido
+    const finalType = fixtureData.type || type
+    const cleanZone = normalizeZone('unassigned', position.x, position.z, finalType)
+    fixtureData.zone = cleanZone
+    
     const newFixture = createDefaultFixture(fixtureId, nextAddress, fixtureData)
     addFixture(newFixture)
+    
+    console.log(`[StageGrid3D] ✅ R3F Drop: ${newFixture.name} → Zone: ${cleanZone}`)
   }, [addFixture])
   
   return (
@@ -880,6 +1154,8 @@ const StageGrid3D: React.FC = () => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={handleContextMenu}
+      onClick={closeContextMenu}
       style={{ cursor: toolMode === 'boxSelect' ? 'crosshair' : 'default' }}
     >
       <Canvas
@@ -915,7 +1191,7 @@ const StageGrid3D: React.FC = () => {
           isBoxSelectMode={isBoxSelectMode}
           onInteractionChange={handleInteractionChange}
           selectedIdsArray={selectedIdsArray}
-          fixtureStructure={fixtureStructure}
+          fixtures={fixtures}
         />
       </Canvas>
       
@@ -961,6 +1237,92 @@ const StageGrid3D: React.FC = () => {
           <span>⚙️ Scroll: Zoom</span>
         </div>
       </div>
+      
+      {/* 🪜 WAVE 1036: Context Menu - THE ULTIMATE MENU */}
+      {contextMenu && (
+        <div 
+          className="fixture-context-menu"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* ═══════ SECTION: HEIGHT (The Elevator) ═══════ */}
+          <div className="context-menu-title">🪜 ALTURA</div>
+          <button 
+            className="context-menu-item"
+            onClick={() => sendFixtureToHeight(0, false)}
+          >
+            <span className="icon">🟢</span>
+            <span>FLOOR</span>
+            <span className="hint">0m</span>
+          </button>
+          <button 
+            className="context-menu-item"
+            onClick={() => sendFixtureToHeight(1.5, false)}
+          >
+            <span className="icon">🟡</span>
+            <span>MID</span>
+            <span className="hint">1.5m</span>
+          </button>
+          <button 
+            className="context-menu-item"
+            onClick={() => sendFixtureToHeight(3.5, true)}
+          >
+            <span className="icon">🔴</span>
+            <span>CEILING</span>
+            <span className="hint">3.5m + ↻</span>
+          </button>
+          
+          {/* ═══════ SECTION: SMART MOVES (Teleport) ═══════ */}
+          <div className="context-menu-divider" />
+          <div className="context-menu-title">🔄 FLIP</div>
+          <button 
+            className="context-menu-item"
+            onClick={flipLeftRight}
+          >
+            <span className="icon">↔️</span>
+            <span>FLIP L/R</span>
+            <span className="hint">x = -x</span>
+          </button>
+          <button 
+            className="context-menu-item"
+            onClick={flipFrontBack}
+          >
+            <span className="icon">↕️</span>
+            <span>FLIP F/B</span>
+            <span className="hint">z = -z</span>
+          </button>
+          
+          {/* ═══════ SECTION: CRUD ═══════ */}
+          <div className="context-menu-divider" />
+          <button 
+            className="context-menu-item"
+            onClick={editFixture}
+          >
+            <span className="icon">✏️</span>
+            <span>EDIT</span>
+            <span className="hint">Propiedades</span>
+          </button>
+          <button 
+            className="context-menu-item context-menu-danger"
+            onClick={deleteFixture}
+          >
+            <span className="icon">🗑️</span>
+            <span>DELETE</span>
+            <span className="hint">Eliminar</span>
+          </button>
+          
+          <div className="context-menu-divider" />
+          <button 
+            className="context-menu-item context-menu-cancel"
+            onClick={closeContextMenu}
+          >
+            ✕ Cancelar
+          </button>
+        </div>
+      )}
       
       <style>{`
         .stage-grid-3d {
@@ -1074,6 +1436,98 @@ const StageGrid3D: React.FC = () => {
         .label-address {
           color: rgba(255, 255, 255, 0.5);
           font-size: 9px;
+        }
+        
+        /* 🌊 WAVE 1035: Stereo zone indicator */
+        .label-zone {
+          color: #a855f7;
+          font-size: 9px;
+          font-weight: 500;
+          margin-top: 2px;
+          padding: 1px 4px;
+          background: rgba(168, 85, 247, 0.2);
+          border-radius: 2px;
+        }
+        
+        /* 🪜 WAVE 1036: Context Menu Styles */
+        .fixture-context-menu {
+          position: fixed;
+          z-index: 1000;
+          min-width: 180px;
+          background: rgba(15, 15, 25, 0.98);
+          border: 1px solid rgba(168, 85, 247, 0.5);
+          border-radius: 8px;
+          padding: 4px 0;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(8px);
+        }
+        
+        .context-menu-title {
+          padding: 8px 12px;
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          margin-bottom: 4px;
+        }
+        
+        .context-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 12px;
+          background: transparent;
+          border: none;
+          color: white;
+          font-size: 13px;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.15s;
+        }
+        
+        .context-menu-item:hover {
+          background: rgba(168, 85, 247, 0.3);
+        }
+        
+        .context-menu-item .icon {
+          font-size: 14px;
+        }
+        
+        .context-menu-item .hint {
+          margin-left: auto;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .context-menu-divider {
+          height: 1px;
+          background: rgba(255, 255, 255, 0.1);
+          margin: 4px 0;
+        }
+        
+        .context-menu-cancel {
+          color: rgba(255, 255, 255, 0.5);
+          justify-content: center;
+        }
+        
+        .context-menu-cancel:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* 🪜 WAVE 1036: Danger button (DELETE) */
+        .context-menu-danger {
+          color: #ef4444;
+        }
+        
+        .context-menu-danger:hover {
+          background: rgba(239, 68, 68, 0.2);
+        }
+        
+        .context-menu-danger .hint {
+          color: rgba(239, 68, 68, 0.6);
         }
       `}</style>
     </div>

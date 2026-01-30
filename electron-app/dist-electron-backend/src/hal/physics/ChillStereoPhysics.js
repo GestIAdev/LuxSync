@@ -28,13 +28,13 @@ const ZONES = {
 let currentDepth = 500; // Empezamos en Open Ocean
 export const calculateChillStereo = (time, energy, air, isKick, godEar = {} // Recibimos telemetría completa
 ) => {
-    const now = Date.now() / 1000; // Segundos absolutos
+    const now = Date.now(); // Milisegundos absolutos (FIX: Evita saltos cuánticos)
     // ═══════════════════════════════════════════════════════════════════════
     // 1. CÁLCULO DE PROFUNDIDAD (La Narrativa)
     // ═══════════════════════════════════════════════════════════════════════
     // A. El Ciclo de Marea (Reloj de 45 minutos)
     // Oscila entre 0m y 8000m lentamente
-    const tideCycle = 45 * 60; // 45 min en segundos
+    const tideCycle = 45 * 60 * 1000; // 45 min en milisegundos
     const tidePhase = (now % tideCycle) / tideCycle; // 0.0 a 1.0
     const baseDepth = 4000 * (1 + Math.sin(tidePhase * Math.PI * 2)); // 0 a 8000m
     // B. Modulación Espectral (God Ear) - La "Flotabilidad"
@@ -77,20 +77,20 @@ export const calculateChillStereo = (time, energy, air, isKick, godEar = {} // R
     const saturation = clamp(100 - (currentDepth / 500), 60, 100);
     const lightness = clamp(60 - (currentDepth / 300), 20, 60); // Nunca negro total
     // ═══════════════════════════════════════════════════════════════════════
-    // 3. FÍSICA DE FLUIDOS (Adaptativa)
+    // 3. FÍSICA DE FLUIDOS (SOLID STATE - NO FLICKER)
     // ═══════════════════════════════════════════════════════════════════════
-    // Velocidad del agua depende de la zona (rápida arriba, estática abajo)
-    const flowSpeed = zoneConfig.speed * (1 + energy * 0.5);
-    const t = now * flowSpeed;
-    // -- TWIN TIDES ENGINE (Solid State) --
-    // Left Hemisphere
-    const oscL = Math.sin(t / 3.6) + (Math.sin(t / 2.0) * 0.2);
-    const frontL = 0.5 + (oscL * 0.4);
-    const backL = 0.4 + (Math.sin((t / 3.6) - 1.8) * 0.3);
-    // Right Hemisphere (Desfasado)
-    const oscR = Math.cos(t / 3.0) + (Math.sin(t / 2.7) * 0.2);
-    const frontR = 0.5 + (oscR * 0.4);
-    const backR = 0.4 + (Math.cos((t / 3.0) - 2.2) * 0.3);
+    // Usamos divisores PRIMOS CONSTANTES en ms. La energía NO toca el tiempo.
+    // LEFT: Ciclo ~23 segundos
+    const oscL = Math.sin(now / 3659) + (Math.sin(now / 2069) * 0.2);
+    // RIGHT: Ciclo ~19 segundos (Desfasado)
+    const oscR = Math.cos(now / 3023) + (Math.sin(now / 2707) * 0.2);
+    // Modulador de Amplitud (Respiración): La energía solo afecta la altura de la ola
+    const breathDepth = 0.4 + (energy * 0.2);
+    const frontL = 0.5 + (oscL * breathDepth);
+    const frontR = 0.5 + (oscR * breathDepth);
+    // Back: Eco con retraso fijo
+    const backL = 0.4 + (Math.sin((now / 3659) - 1.8) * 0.3);
+    const backR = 0.4 + (Math.cos((now / 3023) - 2.2) * 0.3);
     // ═══════════════════════════════════════════════════════════════════════
     // 4. MOVERS & PLANKTON (Los Habitantes)
     // ═══════════════════════════════════════════════════════════════════════
@@ -98,13 +98,12 @@ export const calculateChillStereo = (time, energy, air, isKick, godEar = {} // R
     // Si estamos profundos (TWILIGHT/MIDNIGHT), el plankton brilla más
     const planktonSensitivity = currentDepth > 1000 ? 50 : 10;
     const planktonFlash = (godEar.ultraAir || 0) * planktonSensitivity;
-    // Movers: "Searchlights"
-    // En superficie barren rápido. En fondo son casi estáticos.
-    const moverPanL = 0.5 + Math.sin(now / (40 / zoneConfig.speed)) * 0.45;
-    const moverPanR = 0.5 + Math.sin((now / (35 / zoneConfig.speed)) + 100) * 0.45;
-    // Intensidad Movers + Plankton flash
-    const moverIntL = clamp(0.3 + (Math.sin(now * 0.2) * 0.3) + planktonFlash, 0, 1);
-    const moverIntR = clamp(0.3 + (Math.sin(now * 0.23 + 2) * 0.3) + planktonFlash, 0, 1);
+    // Movers (Movimiento lento constante basado en ms)
+    const moverPanL = 0.5 + Math.sin(now / 4603) * 0.45;
+    const moverPanR = 0.5 + Math.sin((now / 3659) + 100) * 0.45;
+    // Intensidad Movers (Divisores lentos en ms)
+    const moverIntL = clamp(0.3 + (Math.sin(now / 2500) * 0.3) + planktonFlash, 0, 1);
+    const moverIntR = clamp(0.3 + (Math.sin(now / 3100 + 2) * 0.3) + planktonFlash, 0, 1);
     // ═══════════════════════════════════════════════════════════════════════
     // 5. SALIDA
     // ═══════════════════════════════════════════════════════════════════════

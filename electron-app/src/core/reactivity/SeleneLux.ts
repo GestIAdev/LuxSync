@@ -575,6 +575,11 @@ export class SeleneLux {
         audioMetrics.kickDetected ?? false  // Subtle surge boost
       );
       
+      // 🔍 LOG THE DEEP FIELD DEBUG INFO (Solo si hay cambio de profundidad >500m)
+      if (result.debug.includes('[DEPTH CHANGE]')) {
+        console.log(`[🌊 THE DEEP FIELD] ${result.debug}`);
+      }
+      
       // La paleta NO se modifica (respetamos TitanEngine/SeleneColorEngine)
       outputPalette = inputPalette; 
       dimmerOverride = 0.75; // Chill ambiental (cocktail sunset)

@@ -39,6 +39,7 @@ const ZONES = {
 
 // Estado persistente mínimo (para suavizado de profundidad)
 let currentDepth = 500 // Empezamos en Open Ocean
+let lastLoggedDepth = 500 // Control de logging (evita spam)
 
 export const calculateChillStereo = (
   time: number,      
@@ -138,6 +139,14 @@ export const calculateChillStereo = (
   // 5. SALIDA
   // ═══════════════════════════════════════════════════════════════════════
 
+  // 🔍 LOGGING CONDICIONAL: Solo logea si profundidad cambió >500m
+  const depthChanged = Math.abs(currentDepth - lastLoggedDepth) > 500
+  if (depthChanged) {
+    lastLoggedDepth = currentDepth
+  }
+  
+  const debugMsg = `${zoneConfig.label} ${zone} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° S:${saturation.toFixed(0)}% L:${lightness.toFixed(0)}%`
+
   return {
     frontL: clamp(frontL, 0, 1),
     frontR: clamp(frontR, 0, 1),
@@ -152,8 +161,8 @@ export const calculateChillStereo = (
     
     airIntensity: clamp(energy * 0.2 + planktonFlash, 0, 0.5),
     
-    // 🔍 EL NUEVO LOG DE DEPURACIÓN (Si ves esto, funciona)
-    debug: `${zoneConfig.label} ${zone} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° S:${saturation.toFixed(0)}% L:${lightness.toFixed(0)}%`
+    // 🔍 LOG CON FLAG DE CUANDO LOGEAR (depthChanged = true si varió >500m)
+    debug: depthChanged ? `[DEPTH CHANGE] ${debugMsg}` : `${debugMsg}`
   }
 }
 

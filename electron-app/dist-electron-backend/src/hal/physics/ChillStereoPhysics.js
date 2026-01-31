@@ -1,131 +1,123 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🌌 CHILL STEREO PHYSICS: THE ABYSSAL CHRONICLES (WAVE 1060)
+ * 🌌 CHILL STEREO PHYSICS: THE FOUR WORLDS (WAVE 1064)
  * ═══════════════════════════════════════════════════════════════════════════
- * "Cuanto más profundo vas, más extraña es la luz."
- * * SISTEMA DE PROFUNDIDAD DINÁMICA:
- * 1. ⚛️ RELOJ ISOTÓPICO: Ciclo base de ~45 min basado en Date.now().
- * 2. 🩻 GOD EAR MODULATION:
- * - Centroid alto (>2000Hz) -> Flotabilidad positiva (hacia superficie).
- * - Centroid bajo (<500Hz) -> Presión negativa (hacia el fondo).
- * 3. 🎨 COLOR SYNTHESIS: Genera HSL nativo basado en la profundidad.
- * 4. 🪼 BIOLUMINISCENCIA: Reactiva a UltraAir (16-22kHz).
+ *
+ * WAVE 1064: THE FOUR WORLDS - Color Grading por Profundidad
+ *
+ * Cada zona tiene un "efecto" visual distinto:
+ * 🌿 SHALLOWS (0-200m):   "Sunlight" - Verde Esmeralda brillante (L:70, S:95)
+ * 🐬 OPEN_OCEAN (200-1000m): "Clear Water" - Azul Tropical (L:60, S:90)
+ * 🐋 TWILIGHT (1000-4000m): "Deep Pressure" - Índigo Puro (L:40, S:100)
+ * 🪼 MIDNIGHT (4000+m):    "Bioluminescence" - Neón oscuro (L:25+energy*20, S:100)
  */
 // ═══════════════════════════════════════════════════════════════════════════
-// UTILIDADES
+// CONFIGURACIÓN DE ZONAS (WAVE 1064)
 // ═══════════════════════════════════════════════════════════════════════════
+const ZONES = {
+    SHALLOWS: { min: 0, max: 200, label: '🌿' },
+    OPEN_OCEAN: { min: 200, max: 1000, label: '🐬' },
+    TWILIGHT: { min: 1000, max: 4000, label: '🐋' },
+    MIDNIGHT: { min: 4000, max: 11000, label: '🪼' }
+};
+// Estado persistente
+let currentDepth = 500;
+let lastLoggedDepth = 500;
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
-// Configuración de las zonas de profundidad (Metros virtuales)
-const ZONES = {
-    SHALLOWS: { min: 0, max: 200, hue: 160, speed: 1.5, label: '🌿' }, // Verde Agua
-    OPEN_OCEAN: { min: 200, max: 1000, hue: 200, speed: 1.0, label: '🐬' }, // Cian/Azul
-    TWILIGHT: { min: 1000, max: 4000, hue: 250, speed: 0.6, label: '🐋' }, // Índigo
-    MIDNIGHT: { min: 4000, max: 11000, hue: 290, speed: 0.3, label: '🪼' } // UV/Magenta
-};
-// Estado persistente mínimo (para suavizado de profundidad)
-let currentDepth = 500; // Empezamos en Open Ocean
-let lastLoggedDepth = 500; // Control de logging (evita spam)
-export const calculateChillStereo = (time, energy, air, isKick, godEar = {} // Recibimos telemetría completa
-) => {
-    const now = Date.now(); // Milisegundos absolutos (FIX: Evita saltos cuánticos)
+export const calculateChillStereo = (time, energy, air, isKick, godEar = {}) => {
+    const now = Date.now();
     // ═══════════════════════════════════════════════════════════════════════
-    // 1. CÁLCULO DE PROFUNDIDAD (La Narrativa)
+    // 1. CÁLCULO DE PROFUNDIDAD (Igual que antes)
     // ═══════════════════════════════════════════════════════════════════════
-    // A. El Ciclo de Marea (Reloj de 45 minutos)
-    // Oscila entre 0m y 8000m lentamente
-    const tideCycle = 45 * 60 * 1000; // 45 min en milisegundos
-    const tidePhase = (now % tideCycle) / tideCycle; // 0.0 a 1.0
-    const baseDepth = 4000 * (1 + Math.sin(tidePhase * Math.PI * 2)); // 0 a 8000m
-    // B. Modulación Espectral (God Ear) - La "Flotabilidad"
-    // Centroid alto (voces, hihats) nos sube. Bajos profundos nos hunden.
+    const tideCycle = 45 * 60 * 1000;
+    const tidePhase = (now % tideCycle) / tideCycle;
+    const baseDepth = 4000 * (1 + Math.sin(tidePhase * Math.PI * 2));
     const centroid = godEar.centroid || 1000;
-    const buoyancy = (centroid - 800) * -2; // -2m por cada Hz arriba de 800
-    // Integración suave (Lerp) para evitar saltos bruscos
-    const targetDepth = clamp(baseDepth + buoyancy, 0, 10000);
-    currentDepth = currentDepth * 0.99 + targetDepth * 0.01; // Inercia hidrodinámica
-    // Determinar Zona Actual
-    let zone = 'OPEN_OCEAN';
-    let zoneConfig = ZONES.OPEN_OCEAN;
-    if (currentDepth < ZONES.SHALLOWS.max) {
-        zone = 'SHALLOWS';
-        zoneConfig = ZONES.SHALLOWS;
+    const buoyancy = (centroid - 800) * -4;
+    const targetDepth = Math.max(0, Math.min(10000, baseDepth + buoyancy));
+    currentDepth = currentDepth * 0.98 + targetDepth * 0.02;
+    // Determinar Zona
+    let zoneLabel = ZONES.OPEN_OCEAN.label;
+    if (currentDepth < 200)
+        zoneLabel = ZONES.SHALLOWS.label;
+    else if (currentDepth < 1000)
+        zoneLabel = ZONES.OPEN_OCEAN.label;
+    else if (currentDepth < 4000)
+        zoneLabel = ZONES.TWILIGHT.label;
+    else
+        zoneLabel = ZONES.MIDNIGHT.label;
+    // ═══════════════════════════════════════════════════════════════════════
+    // 2. COLOR GRADING (Los 4 Efectos) - AQUÍ ESTÁ LA MAGIA 🎨
+    // ═══════════════════════════════════════════════════════════════════════
+    // Mapeo base: 0m=150° (Verde) -> 9000m=300° (Magenta)
+    const rawHue = 150 + (Math.min(currentDepth, 9000) / 9000) * 150;
+    const finalHue = rawHue + Math.sin(now / 15000) * 8; // Drift suave
+    let saturation = 100;
+    let lightness = 50;
+    // APLICAR "EFECTO" SEGÚN ZONA
+    if (currentDepth < 200) {
+        // 🌿 EFECTO SHALLOWS: "Sunlight"
+        // Verde brillante, no sucio. Luz alta y saturación fuerte.
+        saturation = 95 + energy * 5;
+        lightness = 70 + Math.sin(now / 2000) * 10; // Destellos solares
     }
-    else if (currentDepth < ZONES.OPEN_OCEAN.max) {
-        zone = 'OPEN_OCEAN';
-        zoneConfig = ZONES.OPEN_OCEAN;
+    else if (currentDepth < 1000) {
+        // 🐬 EFECTO OCEAN: "Clear Water"
+        saturation = 90;
+        lightness = 60;
     }
-    else if (currentDepth < ZONES.TWILIGHT.max) {
-        zone = 'TWILIGHT';
-        zoneConfig = ZONES.TWILIGHT;
+    else if (currentDepth < 4000) {
+        // 🐋 EFECTO TWILIGHT: "Deep Pressure"
+        saturation = 100;
+        lightness = 40;
     }
     else {
-        zone = 'MIDNIGHT';
-        zoneConfig = ZONES.MIDNIGHT;
+        // 🪼 EFECTO MIDNIGHT: "Bioluminescence"
+        saturation = 100;
+        lightness = 25 + energy * 20; // Solo brilla si hay energía
     }
     // ═══════════════════════════════════════════════════════════════════════
-    // 2. SÍNTESIS DE COLOR (Cromatografía de Presión)
+    // 3. FÍSICA DE FLUIDOS (Solid State)
     // ═══════════════════════════════════════════════════════════════════════
-    // El color base depende de la profundidad exacta, no solo de la zona (gradiente)
-    // Mapeamos 0-10000m a un rango de HUE (150 - 320)
-    // 0m = 150 (Verde) -> 10000m = 300 (Magenta)
-    const depthHue = 150 + (Math.min(currentDepth, 8000) / 8000) * 150;
-    // Variación "Bioluminiscente": Ondulación lenta del matiz
-    const hueDrift = Math.sin(now * 0.1) * 10;
-    const finalHue = depthHue + hueDrift;
-    // Saturación y Luz bajan con la profundidad (más oscuro y monocromático abajo)
-    const saturation = clamp(100 - (currentDepth / 500), 60, 100);
-    const lightness = clamp(60 - (currentDepth / 300), 20, 60); // Nunca negro total
+    const oscL = Math.sin(now / 3659) + Math.sin(now / 2069) * 0.2;
+    const oscR = Math.cos(now / 3023) + Math.sin(now / 2707) * 0.2;
+    const breathDepth = 0.4 + energy * 0.25;
+    const frontL = 0.5 + oscL * breathDepth;
+    const frontR = 0.5 + oscR * breathDepth;
+    const backL = 0.4 + Math.sin(now / 3659 - 1.8) * 0.3;
+    const backR = 0.4 + Math.cos(now / 3023 - 2.2) * 0.3;
     // ═══════════════════════════════════════════════════════════════════════
-    // 3. FÍSICA DE FLUIDOS (SOLID STATE - NO FLICKER)
+    // 4. MOVERS & PLANKTON (Alive)
     // ═══════════════════════════════════════════════════════════════════════
-    // Usamos divisores PRIMOS CONSTANTES en ms. La energía NO toca el tiempo.
-    // LEFT: Ciclo ~23 segundos
-    const oscL = Math.sin(now / 3659) + (Math.sin(now / 2069) * 0.2);
-    // RIGHT: Ciclo ~19 segundos (Desfasado)
-    const oscR = Math.cos(now / 3023) + (Math.sin(now / 2707) * 0.2);
-    // Modulador de Amplitud (Respiración): La energía solo afecta la altura de la ola
-    const breathDepth = 0.4 + (energy * 0.2);
-    const frontL = 0.5 + (oscL * breathDepth);
-    const frontR = 0.5 + (oscR * breathDepth);
-    // Back: Eco con retraso fijo
-    const backL = 0.4 + (Math.sin((now / 3659) - 1.8) * 0.3);
-    const backR = 0.4 + (Math.cos((now / 3023) - 2.2) * 0.3);
-    // ═══════════════════════════════════════════════════════════════════════
-    // 4. MOVERS & PLANKTON (Los Habitantes)
-    // ═══════════════════════════════════════════════════════════════════════
-    // Plankton: Reactivo a UltraAir (16-22kHz)
-    // Si estamos profundos (TWILIGHT/MIDNIGHT), el plankton brilla más
-    const planktonSensitivity = currentDepth > 1000 ? 50 : 10;
-    const planktonFlash = (godEar.ultraAir || 0) * planktonSensitivity;
-    // Movers (Movimiento lento constante basado en ms)
+    const clarity = godEar.clarity || 0;
+    const bioActivity = clarity > 0.8 || energy > 0.6 ? 0.4 : 0;
+    const bioRandom = Math.random() > 0.9 ? 0.5 : 0;
+    const planktonFlash = (godEar.ultraAir || 0) * 50 + bioActivity * bioRandom;
     const moverPanL = 0.5 + Math.sin(now / 4603) * 0.45;
-    const moverPanR = 0.5 + Math.sin((now / 3659) + 100) * 0.45;
-    // Intensidad Movers (Divisores lentos en ms)
-    const moverIntL = clamp(0.3 + (Math.sin(now / 2500) * 0.3) + planktonFlash, 0, 1);
-    const moverIntR = clamp(0.3 + (Math.sin(now / 3100 + 2) * 0.3) + planktonFlash, 0, 1);
+    const moverPanR = 0.5 + Math.sin(now / 3659 + 100) * 0.45;
+    const moverIntL = Math.max(0, Math.min(1, 0.2 + Math.sin(now / 2500) * 0.2 + planktonFlash));
+    const moverIntR = Math.max(0, Math.min(1, 0.2 + Math.sin(now / 3100 + 2) * 0.2 + planktonFlash));
     // ═══════════════════════════════════════════════════════════════════════
-    // 5. SALIDA
+    // 5. LOGGING CONDICIONAL
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔍 LOGGING CONDICIONAL: Solo logea si profundidad cambió >500m
     const depthChanged = Math.abs(currentDepth - lastLoggedDepth) > 500;
     if (depthChanged) {
         lastLoggedDepth = currentDepth;
     }
-    const debugMsg = `${zoneConfig.label} ${zone} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° S:${saturation.toFixed(0)}% L:${lightness.toFixed(0)}%`;
+    const debugMsg = `${zoneLabel} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° L:${lightness.toFixed(0)}%`;
     return {
-        frontL: clamp(frontL, 0, 1),
-        frontR: clamp(frontR, 0, 1),
-        backL: clamp(backL, 0, 1),
-        backR: clamp(backR, 0, 1),
-        moverL: { intensity: moverIntL, pan: moverPanL, tilt: 0.6 + Math.cos(now * 0.1) * 0.2 },
-        moverR: { intensity: moverIntR, pan: moverPanR, tilt: 0.6 + Math.cos(now * 0.11) * 0.2 },
-        // Inyectamos el COLOR CALCULADO para que el Arbiter lo use
+        frontL: Math.max(0, Math.min(1, frontL)),
+        frontR: Math.max(0, Math.min(1, frontR)),
+        backL: Math.max(0, Math.min(1, backL)),
+        backR: Math.max(0, Math.min(1, backR)),
+        moverL: { intensity: moverIntL, pan: moverPanL, tilt: 0.6 + Math.cos(now / 1753) * 0.25 },
+        moverR: { intensity: moverIntR, pan: moverPanR, tilt: 0.6 + Math.cos(now / 1117) * 0.25 },
+        // Override con el Grading aplicado
         colorOverride: { h: finalHue / 360, s: saturation / 100, l: lightness / 100 },
-        airIntensity: clamp(energy * 0.2 + planktonFlash, 0, 0.5),
-        // 🔍 LOG CON FLAG DE CUANDO LOGEAR (depthChanged = true si varió >500m)
-        debug: depthChanged ? `[DEPTH CHANGE] ${debugMsg}` : `${debugMsg}`
+        airIntensity: Math.max(0, Math.min(0.6, energy * 0.2 + planktonFlash)),
+        debug: depthChanged ? `[DEPTH CHANGE] ${debugMsg}` : debugMsg
     };
 };
 // Stubs legacy

@@ -136,6 +136,11 @@ export const calculateChillStereo = (
 
   const debugMsg = `${zoneLabel} ${currentDepth.toFixed(0)}m | H:${finalHue.toFixed(0)}° L:${lightness.toFixed(0)}%`;
 
+  // 🔍 TELEMETRÍA SUBMARINA (Cada ~60 frames)
+  if (Math.floor(now / 1000) % 2 === 0 && Math.random() < 0.02) {
+    console.log(`[⚓ SUBMARINE] Z:${zoneLabel} | 📏 Depth:${currentDepth.toFixed(0)}m | 🌡️ Buoyancy:${buoyancy.toFixed(0)} | 🎨 H:${finalHue.toFixed(0)}° L:${lightness.toFixed(0)}% | 🦠 Bio:${planktonFlash.toFixed(2)}`);
+  }
+
   return {
     frontL: Math.max(0, Math.min(1, frontL)),
     frontR: Math.max(0, Math.min(1, frontR)),

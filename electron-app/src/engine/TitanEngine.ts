@@ -699,6 +699,44 @@ export class TitanEngine extends EventEmitter {
       }
     }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+    // When ChillStereoPhysics detects oceanic conditions, dispatch effects
+    // ═══════════════════════════════════════════════════════════════════════
+    if (nervousOutput.oceanicTriggers) {
+      const triggers = nervousOutput.oceanicTriggers
+      
+      if (triggers.solarCaustics) {
+        this.effectManager.trigger({
+          effectType: 'solar_caustics',
+          intensity: 0.8,
+          source: 'physics',  // Physics-driven oceanic trigger
+          reason: '🌊 LIVING OCEAN: SolarCaustics - clarity alta en SHALLOWS',
+        })
+        console.log('[TitanEngine] 🌊 LIVING OCEAN: ☀️ Solar Caustics triggered')
+      }
+      
+      if (triggers.schoolOfFish) {
+        this.effectManager.trigger({
+          effectType: 'school_of_fish',
+          intensity: 0.75,
+          source: 'physics',  // Physics-driven oceanic trigger
+          reason: '🌊 LIVING OCEAN: SchoolOfFish - transientDensity alta en OPEN_OCEAN',
+        })
+        console.log('[TitanEngine] 🌊 LIVING OCEAN: 🐠 School of Fish triggered')
+      }
+      
+      if (triggers.abyssalJellyfish) {
+        this.effectManager.trigger({
+          effectType: 'abyssal_jellyfish',
+          intensity: 0.6,
+          source: 'physics',  // Physics-driven oceanic trigger
+          reason: '🌊 LIVING OCEAN: AbyssalJellyfish - spectralFlatness bajo en MIDNIGHT',
+        })
+        console.log('[TitanEngine] 🌊 LIVING OCEAN: 🪼 Abyssal Jellyfish triggered')
+      }
+    }
+    
     // Update all active effects (EffectManager maneja su propio deltaTime)
     this.effectManager.update()
     

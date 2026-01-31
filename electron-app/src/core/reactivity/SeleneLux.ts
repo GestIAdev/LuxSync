@@ -180,6 +180,15 @@ export interface SeleneLuxOutput {
     colorOverride?: { h: number; s: number; l: number };  // HSL 0-1 normalized
     source: string;  // 'THE_DEEP_FIELD' | 'CELESTIAL_MOVERS' etc
   };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+  // Flags for TitanEngine to dispatch oceanic effects via EffectManager
+  // ═══════════════════════════════════════════════════════════════════════════
+  oceanicTriggers?: {
+    solarCaustics: boolean;
+    schoolOfFish: boolean;
+    abyssalJellyfish: boolean;
+  };
   debugInfo?: Record<string, unknown>;
 }
 
@@ -276,6 +285,15 @@ export class SeleneLux {
     colorOverride?: { h: number; s: number; l: number };
   } | null = null;
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+  // ═══════════════════════════════════════════════════════════════════════
+  private oceanicTriggersState: {
+    solarCaustics: boolean;
+    schoolOfFish: boolean;
+    abyssalJellyfish: boolean;
+  } | null = null;
+
   // ═══════════════════════════════════════════════════════════════════════
   // 🟢🎨 WAVE 1031: THE PHOTON WEAVER - Spectral Band Physics State
   // ═══════════════════════════════════════════════════════════════════════
@@ -568,11 +586,24 @@ export class SeleneLux {
       
       const now = Date.now() / 1000; // Continuous time in seconds
       
+      // 🌊 WAVE 1070: Build GodEar metrics for oceanic physics
+      const godEarMetrics = {
+        clarity: audioMetrics.clarity ?? 0.5,
+        spectralFlatness: audioMetrics.spectralFlatness ?? 0.5,
+        centroid: audioMetrics.spectralCentroid ?? 800,
+        // Approximate transient density from kick+snare detection
+        transientDensity: ((audioMetrics.kickDetected ? 0.5 : 0) + 
+                          (audioMetrics.snareDetected ? 0.3 : 0) +
+                          (audioMetrics.hihatDetected ? 0.2 : 0)) * 
+                          (0.5 + audioMetrics.avgNormEnergy * 0.5),
+      }
+      
       const result = calculateChillStereo(
         now,
         audioMetrics.avgNormEnergy,     // Nutriente (modula velocidad, no dispara)
         audioMetrics.normalizedTreble,  // Air/Plankton probability modulator
-        audioMetrics.kickDetected ?? false  // Subtle surge boost
+        audioMetrics.kickDetected ?? false,  // Subtle surge boost
+        godEarMetrics  // 🌊 WAVE 1070: GodEar metrics for oceanic triggers
       );
       
       // 🔍 LOG THE DEEP FIELD DEBUG INFO (Solo si hay cambio de profundidad >500m)
@@ -616,6 +647,12 @@ export class SeleneLux {
         moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt, intensity: result.moverR.intensity },
         colorOverride: result.colorOverride,  // HSL 0-1 normalized
       };
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 1070: THE LIVING OCEAN - Store Oceanic Triggers
+      // These will be dispatched to EffectManager by TitanEngine
+      // ═══════════════════════════════════════════════════════════════════════
+      this.oceanicTriggersState = result.oceanicTriggers;
 
       // Pass movement data for Celestial Movers
       debugInfo = {
@@ -950,11 +987,18 @@ export class SeleneLux {
         colorOverride: this.deepFieldMechanics.colorOverride,
         source: 'THE_DEEP_FIELD',
       } : undefined,
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+      // ═══════════════════════════════════════════════════════════════════════
+      oceanicTriggers: this.oceanicTriggersState ?? undefined,
       debugInfo,
     };
     
     // Clear deepFieldMechanics for next frame
     this.deepFieldMechanics = null;
+    
+    // 🌊 WAVE 1070: Clear oceanicTriggers after each frame (prevent re-triggering)
+    this.oceanicTriggersState = null;
     
     return this.lastOutput;
   }

@@ -86,8 +86,50 @@ import { FeedbackStorm } from './library/poprock/FeedbackStorm';
 import { PowerChord } from './library/poprock/PowerChord';
 import { StageWash } from './library/poprock/StageWash';
 import { SpotlightPulse } from './library/poprock/SpotlightPulse';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+// ═══════════════════════════════════════════════════════════════════════════
+import { SolarCaustics } from './library/chillLounge/SolarCaustics';
+import { SchoolOfFish } from './library/chillLounge/SchoolOfFish';
+import { AbyssalJellyfish } from './library/chillLounge/AbyssalJellyfish';
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 1070: CHILL LOUNGE SHIELD - ALLOW/BLOCK LISTS
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Efectos PERMITIDOS en Chill Lounge
+ * Solo estos efectos pueden dispararse cuando vibeId === 'chill-lounge'
+ */
+const CHILL_LOUNGE_ALLOWED_EFFECTS = [
+    // WAVE 1070: Oceanic Effects
+    'solar_caustics',
+    'school_of_fish',
+    'abyssal_jellyfish',
+    // Legacy allowed (atmospheric, non-dynamic)
+    'deep_breath',
+    'stage_wash',
+];
+/**
+ * Efectos BLOQUEADOS EXPLÍCITAMENTE en Chill Lounge
+ * Estos NUNCA deben dispararse, aunque alguien intente forzarlo
+ */
+const CHILL_LOUNGE_BLOCKED_EFFECTS = [
+    // Strobes - NEVER
+    'industrial_strobe',
+    'strobe_storm',
+    'strobe_burst',
+    'ambient_strobe',
+    // Aggressive dynamics - NEVER
+    'gatling_raid',
+    'core_meltdown',
+    'thunder_struck',
+    'feedback_storm',
+    // Fast sweeps - NEVER
+    'acid_sweep',
+    'sky_saw',
+    'arena_sweep',
+];
 /**
  * 🛡️ EFFECT TYPE → VIBE RULES
  *
@@ -145,6 +187,12 @@ const EFFECT_VIBE_RULES = {
     'power_chord': { isDynamic: true }, // ⚡ Power chord flash - golpe del acorde
     'stage_wash': { isDynamic: false }, // 🌊 Warm wash - respiro cálido (allowed in chill)
     'spotlight_pulse': { isDynamic: true }, // 💡 Breathing spotlight - pulso emotivo
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
+    // ═══════════════════════════════════════════════════════════════════════════
+    'solar_caustics': { isDynamic: false }, // ☀️ Sun rays underwater - shallow zone atmosphere
+    'school_of_fish': { isDynamic: false }, // 🐠 Fish school crossing - open ocean fauna
+    'abyssal_jellyfish': { isDynamic: false }, // 🪼 Bioluminescent pulse - deep abyss creature
 };
 const EFFECT_ZONE_MAP = {
     // 🌑 SILENCE (0-15%): Respiración profunda y ecos minimalistas
@@ -191,6 +239,15 @@ const EFFECT_ZONE_MAP = {
     'spotlight_pulse': 'active',
     // ⚡ POWER_CHORD (intense): Golpe del acorde - downbeats/drops
     'power_chord': 'intense',
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1070: THE LIVING OCEAN - Zone Mapping
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ☀️ SOLAR_CAUSTICS (silence→valley): Rayos de sol en aguas someras
+    'solar_caustics': 'silence',
+    // 🐠 SCHOOL_OF_FISH (ambient): Cardumen cruzando el océano abierto
+    'school_of_fish': 'ambient',
+    // 🪼 ABYSSAL_JELLYFISH (valley): Medusas bioluminiscentes en el abismo
+    'abyssal_jellyfish': 'valley',
 };
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MANAGER CLASS
@@ -638,6 +695,15 @@ export class EffectManager extends EventEmitter {
         this.effectFactories.set('stage_wash', () => new StageWash());
         // 💡 Spotlight Pulse - Breathing spotlight, pulso emotivo
         this.effectFactories.set('spotlight_pulse', () => new SpotlightPulse());
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
+        // ═══════════════════════════════════════════════════════════════════════
+        // ☀️ Solar Caustics - Rayos de sol danzando en aguas someras
+        this.effectFactories.set('solar_caustics', () => new SolarCaustics());
+        // 🐠 School of Fish - Cardumen cruzando el océano abierto
+        this.effectFactories.set('school_of_fish', () => new SchoolOfFish());
+        // 🪼 Abyssal Jellyfish - Medusas bioluminiscentes del abismo
+        this.effectFactories.set('abyssal_jellyfish', () => new AbyssalJellyfish());
     }
     /**
      * 🚦 IS BUSY - Check if a critical effect is hogging the stage
@@ -788,9 +854,45 @@ export class EffectManager extends EventEmitter {
             vibeEffects = { allowed: [], maxStrobeRate: 0, maxIntensity: 0 };
         }
         // ═══════════════════════════════════════════════════════════════
-        // REGLA 1: chill-lounge e idle = BLOQUEO TOTAL de dinámicos
+        // REGLA 1: chill-lounge = CHILL SHIELD (whitelist + blacklist)
+        // 🌊 WAVE 1070: THE LIVING OCEAN
         // ═══════════════════════════════════════════════════════════════
-        if ((vibeId === 'chill-lounge' || vibeId === 'idle') && rules.isDynamic) {
+        if (vibeId === 'chill-lounge') {
+            // PRIORITY 1: Block explicitly forbidden effects
+            if (CHILL_LOUNGE_BLOCKED_EFFECTS.includes(effectType)) {
+                return {
+                    allowed: false,
+                    degraded: false,
+                    message: `🛡️ CHILL SHIELD: "${effectType}" está BLOQUEADO en Chill Lounge (lista negra)`,
+                };
+            }
+            // PRIORITY 2: Allow whitelisted effects
+            if (CHILL_LOUNGE_ALLOWED_EFFECTS.includes(effectType)) {
+                return {
+                    allowed: true,
+                    degraded: false,
+                    message: `🌊 LIVING OCEAN: "${effectType}" permitido en Chill Lounge`,
+                };
+            }
+            // PRIORITY 3: Block anything dynamic not in whitelist
+            if (rules.isDynamic) {
+                return {
+                    allowed: false,
+                    degraded: false,
+                    message: `🛡️ CHILL SHIELD: Efecto dinámico "${effectType}" bloqueado (no está en whitelist)`,
+                };
+            }
+            // Non-dynamic effects not in whitelist: block for safety
+            return {
+                allowed: false,
+                degraded: false,
+                message: `🛡️ CHILL SHIELD: "${effectType}" no está en whitelist de Chill Lounge`,
+            };
+        }
+        // ═══════════════════════════════════════════════════════════════
+        // REGLA 1.5: idle = BLOQUEO TOTAL de dinámicos
+        // ═══════════════════════════════════════════════════════════════
+        if (vibeId === 'idle' && rules.isDynamic) {
             return {
                 allowed: false,
                 degraded: false,

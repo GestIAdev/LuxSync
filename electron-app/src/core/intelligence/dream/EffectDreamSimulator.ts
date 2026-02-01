@@ -253,6 +253,11 @@ const EFFECT_BEAUTY_WEIGHTS = {
   'power_chord': { base: 0.84, energyMultiplier: 1.28, rockBonus: 0.19 },        // ⚡ Power chord flash - strong impact
   'stage_wash': { base: 0.70, energyMultiplier: 0.95, rockBonus: 0.12 },         // 🌊 Warm wash - transition beauty
   'spotlight_pulse': { base: 0.76, energyMultiplier: 1.12, rockBonus: 0.15 },    // 💡 Breathing pulse - moderate beauty
+  
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
+  'solar_caustics': { base: 0.72, energyMultiplier: 0.85, chillBonus: 0.14 },    // ☀️ Sun rays in shallows - gentle beauty
+  'school_of_fish': { base: 0.68, energyMultiplier: 0.90, chillBonus: 0.12 },    // 🐟 Fish crossing - natural elegance
+  'abyssal_jellyfish': { base: 0.78, energyMultiplier: 1.05, chillBonus: 0.16 }, // 🪼 Bioluminescent bloom - mysterious beauty
 } as const
 
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -312,6 +317,11 @@ const EFFECT_GPU_COST = {
   'power_chord': 0.28,      // ⚡ Medio-alto - flash + strobe 4 golpes
   'stage_wash': 0.14,       // 🌊 Bajo - wash suave fade in/out
   'spotlight_pulse': 0.20,  // 💡 Medio - pulsing dimmer sinusoidal
+  
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
+  'solar_caustics': 0.16,   // ☀️ Bajo - caustic patterns suaves
+  'school_of_fish': 0.18,   // 🐟 Bajo-medio - sweep direccional
+  'abyssal_jellyfish': 0.24, // 🪼 Medio - gaussian blooms + color rotation
 } as const
 
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -371,6 +381,11 @@ const EFFECT_FATIGUE_IMPACT = {
   'power_chord': 0.07,      // ⚡ Alta - flash + strobe impacto
   'stage_wash': -0.01,      // 🌊 REDUCE fatiga - respiro cálido
   'spotlight_pulse': 0.03,  // 💡 Baja - pulso suave, no cansa
+  
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
+  'solar_caustics': -0.04,  // ☀️ REDUCE fatiga - sun rays hipnóticos
+  'school_of_fish': -0.02,  // 🐟 REDUCE fatiga - natural calming
+  'abyssal_jellyfish': -0.03, // 🪼 REDUCE fatiga - bioluminescent zen
 } as const
 
 // ═══════════════════════════════════════════════════════════════

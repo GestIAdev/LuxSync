@@ -451,6 +451,34 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     organicity: 0.40,   // Semi-orgánico - respiración mecánica pero emotiva
     textureAffinity: 'clean',  // 🎨 Pulso emotivo = clean
   },
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Chill Lounge Arsenal
+  // ═══════════════════════════════════════════════════════════════
+  
+  // ☀️ SOLAR CAUSTICS - Rayos de sol submarinos
+  'solar_caustics': {
+    aggression: 0.10,   // ☀️ Muy bajo - rayos gentiles acarician
+    chaos: 0.15,        // Ordenado - patrón de cáusticas predecible
+    organicity: 0.85,   // Muy orgánico - luz natural, fluye como agua
+    textureAffinity: 'clean',  // 🎨 Claridad = luz solar
+  },
+  
+  // 🐠 SCHOOL OF FISH - Cardumen cruzando
+  'school_of_fish': {
+    aggression: 0.15,   // 🐠 Bajo - movimiento suave del cardumen
+    chaos: 0.30,        // Semi-caótico - comportamiento de banco aleatorio
+    organicity: 0.90,   // Muy orgánico - comportamiento animal vivo
+    textureAffinity: 'clean',  // 🎨 Transientes = peces
+  },
+  
+  // 🪼 ABYSSAL JELLYFISH - Medusas bioluminiscentes
+  'abyssal_jellyfish': {
+    aggression: 0.20,   // 🪼 Bajo - pulso bioluminiscente suave
+    chaos: 0.40,        // Semi-caótico - criaturas del abismo, impredecibles
+    organicity: 0.95,   // Muy orgánico - ser vivo pulsante
+    textureAffinity: 'universal',  // 🎨 Flatness bajo = universalmente compatible
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -538,6 +538,31 @@ export class EffectDreamSimulator {
                 'stage_wash', 'amp_heat',
                 'strobe_burst'
             ],
+            // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+            'chill-lounge': [
+                // 🌊 Oceanic creatures
+                'solar_caustics', // ☀️ Sun rays in shallows (A=0.10)
+                'school_of_fish', // 🐠 Fish school crossing (A=0.15)
+                'abyssal_jellyfish', // 🪼 Bioluminescent pulse (A=0.20)
+                // Atmospheric allowed effects
+                'deep_breath', // 🫁 Breathing (A=0.10)
+                'stage_wash', // 🌊 Warm wash (A=0.25)
+                'fiber_optics', // 🌈 Ambient colors (A=0.05)
+                'void_mist', // 🌫️ Purple fog (A=0.10)
+            ],
+            // Aliases for chill
+            'chill': [
+                'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
+                'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+            ],
+            'ambient': [
+                'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
+                'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+            ],
+            'lounge': [
+                'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
+                'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+            ],
         };
         // Buscar match exacto
         if (EFFECTS_BY_VIBE[vibe]) {
@@ -552,6 +577,9 @@ export class EffectDreamSimulator {
         }
         if (vibe.includes('rock') || vibe.includes('alternative') || vibe.includes('indie') || vibe.includes('pop')) {
             return EFFECTS_BY_VIBE['pop-rock'];
+        }
+        if (vibe.includes('chill') || vibe.includes('lounge') || vibe.includes('ambient') || vibe.includes('jazz')) {
+            return EFFECTS_BY_VIBE['chill-lounge'];
         }
         // Default: todas (vibe desconocido)
         console.warn(`[DREAM_SIMULATOR] ⚠️ Unknown vibe: ${vibe}, allowing all effects`);

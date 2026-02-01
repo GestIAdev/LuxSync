@@ -44,11 +44,16 @@ export type EffectPhase =
 /**
  * Zonas que puede afectar un efecto
  * 🔥 WAVE 810: UNLOCK THE TWINS - Movers con targeting L/R
+ * 🪼 WAVE 1070.3: ABYSSAL JELLYFISH - Stereo PARs support
  */
 export type EffectZone = 
   | 'all'
   | 'front'
   | 'back'
+  | 'frontL'        // 🪼 WAVE 1070.3: Front left PARs
+  | 'frontR'        // 🪼 WAVE 1070.3: Front right PARs
+  | 'backL'         // 🪼 WAVE 1070.3: Back left PARs
+  | 'backR'         // 🪼 WAVE 1070.3: Back right PARs
   | 'movers'
   | 'movers_left'   // 🔥 WAVE 810: Solo movers left (índice par o side='left')
   | 'movers_right'  // 🔥 WAVE 810: Solo movers right (índice impar o side='right')

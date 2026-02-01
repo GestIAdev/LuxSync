@@ -87,13 +87,16 @@ import { PowerChord } from './library/poprock/PowerChord';
 import { StageWash } from './library/poprock/StageWash';
 import { SpotlightPulse } from './library/poprock/SpotlightPulse';
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+// 🌊 WAVE 1070.6: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
 // ═══════════════════════════════════════════════════════════════════════════
 import { SolarCaustics } from './library/chillLounge/SolarCaustics';
 import { SchoolOfFish } from './library/chillLounge/SchoolOfFish';
+import { WhaleSong } from './library/chillLounge/WhaleSong';
 import { AbyssalJellyfish } from './library/chillLounge/AbyssalJellyfish';
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager';
+// 🌊 WAVE 1070.3: Import depth validation for oceanic effects
+import { isOceanicEffectValidForDepth } from '../../hal/physics/ChillStereoPhysics';
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 1070: CHILL LOUNGE SHIELD - ALLOW/BLOCK LISTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -102,13 +105,12 @@ import { VibeManager } from '../../engine/vibe/VibeManager';
  * Solo estos efectos pueden dispararse cuando vibeId === 'chill-lounge'
  */
 const CHILL_LOUNGE_ALLOWED_EFFECTS = [
-    // WAVE 1070: Oceanic Effects
-    'solar_caustics',
-    'school_of_fish',
-    'abyssal_jellyfish',
-    // Legacy allowed (atmospheric, non-dynamic)
-    'deep_breath',
-    'stage_wash',
+    // 🌊 WAVE 1070: THE LIVING OCEAN - ONLY OCEANIC EFFECTS
+    // Estos son los ÚNICOS efectos válidos para chill-lounge
+    // NO hay "legacy allowed" - el océano es puro y cristalino
+    'solar_caustics', // ☀️ Rayos de sol en superficie (depth < 200m)
+    'school_of_fish', // 🐟 Banco de peces en aguas abiertas (200-1000m)
+    'abyssal_jellyfish', // 🪼 Medusas bioluminiscentes en abismo (depth > 4000m)
 ];
 /**
  * Efectos BLOQUEADOS EXPLÍCITAMENTE en Chill Lounge
@@ -696,13 +698,15 @@ export class EffectManager extends EventEmitter {
         // 💡 Spotlight Pulse - Breathing spotlight, pulso emotivo
         this.effectFactories.set('spotlight_pulse', () => new SpotlightPulse());
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
+        // 🌊 WAVE 1070.6: THE LIVING OCEAN - CHILL LOUNGE OCEANIC EFFECTS
         // ═══════════════════════════════════════════════════════════════════════
-        // ☀️ Solar Caustics - Rayos de sol danzando en aguas someras
+        // ☀️ Solar Caustics - Rayos de sol danzando en aguas someras (SHALLOWS 0-1000m)
         this.effectFactories.set('solar_caustics', () => new SolarCaustics());
-        // 🐠 School of Fish - Cardumen cruzando el océano abierto
+        // 🐠 School of Fish - Cardumen cruzando el océano abierto (OCEAN 1000-3000m)
         this.effectFactories.set('school_of_fish', () => new SchoolOfFish());
-        // 🪼 Abyssal Jellyfish - Medusas bioluminiscentes del abismo
+        // 🐋 Whale Song - Canto de ballena en zona crepuscular (TWILIGHT 3000-6000m)
+        this.effectFactories.set('whale_song', () => new WhaleSong());
+        // 🪼 Abyssal Jellyfish - Medusas bioluminiscentes del abismo (MIDNIGHT 6000+m)
         this.effectFactories.set('abyssal_jellyfish', () => new AbyssalJellyfish());
     }
     /**
@@ -866,8 +870,18 @@ export class EffectManager extends EventEmitter {
                     message: `🛡️ CHILL SHIELD: "${effectType}" está BLOQUEADO en Chill Lounge (lista negra)`,
                 };
             }
-            // PRIORITY 2: Allow whitelisted effects
+            // PRIORITY 2: Check whitelist
             if (CHILL_LOUNGE_ALLOWED_EFFECTS.includes(effectType)) {
+                // 🌊 WAVE 1070.3: DEPTH VALIDATION
+                // Efectos oceánicos solo pueden dispararse en su zona de profundidad
+                const depthCheck = isOceanicEffectValidForDepth(effectType);
+                if (!depthCheck.valid) {
+                    return {
+                        allowed: false,
+                        degraded: false,
+                        message: depthCheck.reason,
+                    };
+                }
                 return {
                     allowed: true,
                     degraded: false,

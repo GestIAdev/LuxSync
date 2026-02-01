@@ -527,6 +527,15 @@ export class TitanEngine extends EventEmitter {
                 });
                 console.log('[TitanEngine] 🌊 LIVING OCEAN: 🐠 School of Fish triggered');
             }
+            if (triggers.whaleSong) {
+                this.effectManager.trigger({
+                    effectType: 'whale_song',
+                    intensity: 0.70,
+                    source: 'physics', // Physics-driven oceanic trigger
+                    reason: '🌊 LIVING OCEAN: WhaleSong - bass profundo en TWILIGHT',
+                });
+                console.log('[TitanEngine] 🌊 LIVING OCEAN: 🐋 Whale Song triggered');
+            }
             if (triggers.abyssalJellyfish) {
                 this.effectManager.trigger({
                     effectType: 'abyssal_jellyfish',
@@ -599,6 +608,56 @@ export class TitanEngine extends EventEmitter {
                     l: Math.min(100, flareColor.l * 1.2), // Más brillo
                 },
             };
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌊 WAVE 1070.4: OCEANIC COLOR OVERRIDE
+        // En chill-lounge, el color del océano MANDA sobre Selene
+        // El colorOverride de ChillStereoPhysics tiene prioridad absoluta
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🌊 WAVE 1070.5: FIX UNIT MISMATCH
+        // oceanColor está en rango 0-1 (como lo genera ChillStereoPhysics)
+        // ColorPalette espera rango 0-1 (HSLColor interface)
+        // ¡NO multiplicar! Solo pasarlo directamente.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (vibeProfile.id === 'chill-lounge') {
+            const oceanColor = nervousOutput.mechanics?.colorOverride;
+            if (oceanColor) {
+                // 🌊 OCEAN CONTROLS THE PALETTE - NO WHITE ALLOWED
+                // oceanColor ya está en 0-1, ColorPalette espera 0-1 → DIRECTO
+                finalPalette = {
+                    ...finalPalette,
+                    primary: {
+                        ...finalPalette.primary,
+                        h: oceanColor.h, // YA está en 0-1
+                        s: oceanColor.s, // YA está en 0-1
+                        l: oceanColor.l, // YA está en 0-1
+                    },
+                    secondary: {
+                        ...finalPalette.secondary,
+                        // Secondary es una variación más clara del color oceánico
+                        h: (oceanColor.h + 30 / 360) % 1, // +30° en rango 0-1
+                        s: oceanColor.s * 0.8, // Menos saturado
+                        l: Math.min(0.9, oceanColor.l * 1.2), // Más claro
+                    },
+                    accent: {
+                        ...finalPalette.accent,
+                        // Accent también toma color del océano
+                        h: (oceanColor.h - 15 / 360 + 1) % 1, // -15° en rango 0-1
+                        s: oceanColor.s,
+                        l: Math.min(0.85, oceanColor.l + 0.15),
+                    },
+                };
+                // 🌊 Log throttled (cada 2 segundos) - Mostrar en grados para humanos
+                if (this.state.frameCount % 120 === 0) {
+                    console.log(`[🌊 OCEAN COLOR] H:${(oceanColor.h * 360).toFixed(0)}° S:${(oceanColor.s * 100).toFixed(0)}% L:${(oceanColor.l * 100).toFixed(0)}%`);
+                }
+            }
+            else {
+                // 🚨 DEBUG: colorOverride missing
+                if (this.state.frameCount % 120 === 0) {
+                    console.log(`[🚨 OCEAN] colorOverride MISSING! mechanics=${!!nervousOutput.mechanics}`);
+                }
+            }
         }
         const intent = {
             palette: finalPalette,

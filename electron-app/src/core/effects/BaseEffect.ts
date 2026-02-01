@@ -233,8 +233,12 @@ export abstract class BaseEffect implements ILightEffect {
   protected getZonePhaseOffset(zone: EffectZone, totalZones = 4): number {
     const zoneOrder: Record<EffectZone, number> = {
       'front': 0,
+      'frontL': 0,        // 🪼 WAVE 1070.3: Stereo PARs
+      'frontR': 0.25,     // 🪼 WAVE 1070.3: Slight offset
       'pars': 1,
       'back': 2,
+      'backL': 2,         // 🪼 WAVE 1070.3: Stereo PARs
+      'backR': 2.25,      // 🪼 WAVE 1070.3: Slight offset
       'movers': 3,
       'movers_left': 3,   // 🤖 WAVE 810: L/R tienen mismo orden que movers
       'movers_right': 3,

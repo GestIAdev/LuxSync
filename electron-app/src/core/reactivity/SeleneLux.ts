@@ -181,13 +181,14 @@ export interface SeleneLuxOutput {
     source: string;  // 'THE_DEEP_FIELD' | 'CELESTIAL_MOVERS' etc
   };
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+  // 🌊 WAVE 1070.6: THE LIVING OCEAN - Oceanic Creature Triggers
   // Flags for TitanEngine to dispatch oceanic effects via EffectManager
   // ═══════════════════════════════════════════════════════════════════════════
   oceanicTriggers?: {
-    solarCaustics: boolean;
-    schoolOfFish: boolean;
-    abyssalJellyfish: boolean;
+    solarCaustics: boolean;   // SHALLOWS (0-1000m)
+    schoolOfFish: boolean;    // OCEAN (1000-3000m)
+    whaleSong: boolean;       // TWILIGHT (3000-6000m)
+    abyssalJellyfish: boolean; // MIDNIGHT (6000+m)
   };
   debugInfo?: Record<string, unknown>;
 }
@@ -286,11 +287,12 @@ export class SeleneLux {
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+  // 🌊 WAVE 1070.6: THE LIVING OCEAN - Oceanic Creature Triggers
   // ═══════════════════════════════════════════════════════════════════════
   private oceanicTriggersState: {
     solarCaustics: boolean;
     schoolOfFish: boolean;
+    whaleSong: boolean;
     abyssalJellyfish: boolean;
   } | null = null;
 
@@ -586,16 +588,19 @@ export class SeleneLux {
       
       const now = Date.now() / 1000; // Continuous time in seconds
       
-      // 🌊 WAVE 1070: Build GodEar metrics for oceanic physics
+      // 🌊 WAVE 1070.6: Build GodEar metrics for oceanic physics
       const godEarMetrics = {
         clarity: audioMetrics.clarity ?? 0.5,
         spectralFlatness: audioMetrics.spectralFlatness ?? 0.5,
         centroid: audioMetrics.spectralCentroid ?? 800,
-        // Approximate transient density from kick+snare detection
-        transientDensity: ((audioMetrics.kickDetected ? 0.5 : 0) + 
-                          (audioMetrics.snareDetected ? 0.3 : 0) +
-                          (audioMetrics.hihatDetected ? 0.2 : 0)) * 
-                          (0.5 + audioMetrics.avgNormEnergy * 0.5),
+        // 🐟 Transient density: kick+snare+hihat + energy boost
+        transientDensity: ((audioMetrics.kickDetected ? 0.4 : 0) + 
+                          (audioMetrics.snareDetected ? 0.35 : 0) +
+                          (audioMetrics.hihatDetected ? 0.25 : 0)) * 
+                          (0.6 + audioMetrics.avgNormEnergy * 0.6),
+        // 🐋 Bass energy: normalizedBass para whaleSong
+        bassEnergy: audioMetrics.normalizedBass ?? 0,
+        bass: audioMetrics.normalizedBass ?? 0,
       }
       
       const result = calculateChillStereo(

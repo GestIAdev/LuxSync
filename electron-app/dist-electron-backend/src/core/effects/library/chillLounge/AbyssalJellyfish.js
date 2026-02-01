@@ -1,156 +1,99 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * 🪼 ABYSSAL JELLYFISH - Medusa Bioluminiscente
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * WAVE 1070: THE LIVING OCEAN
- *
- * Simula medusas bioluminiscentes en las profundidades.
- * Se activa cuando el audio tiene tonos puros (bajo contenido armónico)
- * en la zona MIDNIGHT (>4000m).
- *
- * VISUAL:
- * - Pars con colores "alienígenas" (magenta/lima/violeta neón)
- * - Pulsos muy lentos (cada 2 segundos)
- * - Intensidad baja pero saturación máxima
- * - Bloom gaussiano para efecto de luz suave
- *
- * FILOSOFÍA:
- * En las profundidades, donde la luz del sol nunca llega,
- * la vida crea su propia luz. Colores que no deberían existir.
- * Visitantes de otro mundo en el nuestro.
- *
- * NOTA: Los colores magenta/lima VIOLAN la CHILL_CONSTITUTION intencionalmente.
- * La bioluminiscencia es "alienígena" al océano normal.
- *
- * @module core/effects/library/chillLounge/AbyssalJellyfish
- * @version WAVE 1070 - THE LIVING OCEAN
+ *  ABYSSAL JELLYFISH - Medusa Bioluminiscente en MIDNIGHT (6000+m)
+ * WAVE 1070.6: CHROMATIC RENAISSANCE
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    durationMs: 6000,
-    peakIntensity: 0.55,
-    pulseIntervalMs: 2000,
-    colors: [
-        { h: 300, s: 100, l: 45 }, // Magenta neón
-        { h: 140, s: 100, l: 48 }, // Verde lima neón
-        { h: 280, s: 100, l: 40 }, // Violeta profundo
-        { h: 195, s: 100, l: 50 }, // Cyan eléctrico
+    durationMs: 12000,
+    peakIntensity: 0.95,
+    moverIntensity: 0.80,
+    colorRotationMs: 3000,
+};
+const BIOLUMINESCENT_PALETTE = {
+    leftColors: [
+        { h: 300 / 360, s: 0.95, l: 0.42 },
+        { h: 285 / 360, s: 0.90, l: 0.38 },
+        { h: 270 / 360, s: 0.85, l: 0.45 },
+        { h: 315 / 360, s: 0.88, l: 0.40 },
+    ],
+    rightColors: [
+        { h: 165 / 360, s: 0.95, l: 0.50 },
+        { h: 180 / 360, s: 0.90, l: 0.45 },
+        { h: 195 / 360, s: 0.85, l: 0.52 },
+        { h: 150 / 360, s: 0.88, l: 0.48 },
     ],
 };
-// ═══════════════════════════════════════════════════════════════════════════
-// ABYSSAL JELLYFISH EFFECT
-// ═══════════════════════════════════════════════════════════════════════════
 export class AbyssalJellyfish extends BaseEffect {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Constructor
-    // ─────────────────────────────────────────────────────────────────────────
     constructor(config) {
         super('abyssal_jellyfish');
-        // ─────────────────────────────────────────────────────────────────────────
-        // ILightEffect properties
-        // ─────────────────────────────────────────────────────────────────────────
         this.effectType = 'abyssal_jellyfish';
         this.name = 'Abyssal Jellyfish';
-        this.category = 'color'; // Principalmente afecta color
-        this.priority = 60; // Bajo - no interrumpe nada
-        // HTP: Se suma a la oscuridad del abismo
+        this.category = 'physical';
+        this.priority = 65;
         this.mixBus = 'htp';
-        this.currentColorIndex = 0;
+        this.colorIndex = 0;
+        this.lastColorRotation = 0;
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
-    // ─────────────────────────────────────────────────────────────────────────
-    // ILightEffect implementation
-    // ─────────────────────────────────────────────────────────────────────────
     trigger(triggerConfig) {
         super.trigger(triggerConfig);
-        this.currentColorIndex = 0;
-        console.log(`[AbyssalJellyfish 🪼] TRIGGERED! Duration=${this.config.durationMs}ms Colors=${this.config.colors.length}`);
+        this.colorIndex = 0;
+        this.lastColorRotation = Date.now();
+        console.log(`[AbyssalJellyfish] TRIGGERED! 6-ZONE STEREO BIOLUMINESCENCE`);
     }
     update(deltaMs) {
         if (this.phase === 'idle' || this.phase === 'finished')
             return;
         this.elapsedMs += deltaMs;
+        const now = Date.now();
+        if (now - this.lastColorRotation > this.config.colorRotationMs) {
+            this.colorIndex = (this.colorIndex + 1) % BIOLUMINESCENT_PALETTE.leftColors.length;
+            this.lastColorRotation = now;
+        }
         if (this.elapsedMs >= this.config.durationMs) {
             this.phase = 'finished';
-            console.log(`[AbyssalJellyfish 🪼] FINISHED - Medusa drifted away`);
         }
     }
-    /**
-     * 📤 GET OUTPUT - Pulsos bioluminiscentes
-     */
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = this.elapsedMs / this.config.durationMs;
-        // ═════════════════════════════════════════════════════════════════════
-        // GLOBAL ENVELOPE: Fade in muy lento → sustain → fade out muy lento
-        // ═════════════════════════════════════════════════════════════════════
-        let globalEnvelope;
-        if (progress < 0.2) {
-            globalEnvelope = progress / 0.2; // Fade in 20%
+        let envelope;
+        if (progress < 0.10) {
+            envelope = progress / 0.10;
         }
-        else if (progress < 0.75) {
-            globalEnvelope = 1.0; // Sustain 55%
+        else if (progress < 0.85) {
+            envelope = 1.0;
         }
         else {
-            globalEnvelope = 1 - ((progress - 0.75) / 0.25); // Fade out 25%
+            envelope = 1 - ((progress - 0.85) / 0.15);
         }
-        // ═════════════════════════════════════════════════════════════════════
-        // PULSE PATTERN: Bloom gaussiano para cada medusa
-        // ═════════════════════════════════════════════════════════════════════
-        const pulsePhase = (this.elapsedMs % this.config.pulseIntervalMs) / this.config.pulseIntervalMs;
-        // Gaussian bloom: e^(-(x-center)² / (2*sigma²))
-        // Centro en 0.4, sigma pequeño para pulso definido
-        const sigma = 0.15;
-        const center = 0.4;
-        const gaussian = Math.exp(-Math.pow(pulsePhase - center, 2) / (2 * sigma * sigma));
-        // Determinar qué color usar (rota con cada pulso)
-        const pulseNumber = Math.floor(this.elapsedMs / this.config.pulseIntervalMs);
-        const colorIndex = pulseNumber % this.config.colors.length;
-        const currentColor = this.config.colors[colorIndex];
-        // Intensidad final
-        const dimmer = gaussian * globalEnvelope * this.config.peakIntensity;
-        // ═════════════════════════════════════════════════════════════════════
-        // ZONE DISTRIBUTION: Diferentes pars, diferentes fases
-        // ═════════════════════════════════════════════════════════════════════
+        const pulsePhase = progress * Math.PI * 8;
+        const pulse = (Math.sin(pulsePhase) + 1) / 2 * 0.25 + 0.75;
+        const leftColor = BIOLUMINESCENT_PALETTE.leftColors[this.colorIndex];
+        const rightColor = BIOLUMINESCENT_PALETTE.rightColors[this.colorIndex];
+        const waveOffset = Math.sin(progress * Math.PI * 4) * 0.15;
+        const frontIntensity = (0.9 + waveOffset) * pulse;
+        const backIntensity = (0.75 - waveOffset) * pulse;
+        const driftPan = Math.sin(progress * Math.PI * 2) * 20;
+        const driftTilt = Math.cos(progress * Math.PI * 3) * 15;
         const output = {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress,
-            zones: ['front', 'back', 'pars'],
-            intensity: this.triggerIntensity * dimmer,
+            zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+            intensity: this.triggerIntensity * envelope * this.config.peakIntensity,
             zoneOverrides: {},
         };
-        // Front pars: pulso principal
-        output.zoneOverrides['front'] = {
-            dimmer,
-            color: currentColor,
-            blendMode: 'max',
-        };
-        // Back pars: pulso desfasado (otra medusa)
-        const backPulsePhase = ((this.elapsedMs + this.config.pulseIntervalMs * 0.5) % this.config.pulseIntervalMs) / this.config.pulseIntervalMs;
-        const backGaussian = Math.exp(-Math.pow(backPulsePhase - center, 2) / (2 * sigma * sigma));
-        const backColorIndex = (pulseNumber + 1) % this.config.colors.length;
-        output.zoneOverrides['back'] = {
-            dimmer: backGaussian * globalEnvelope * this.config.peakIntensity * 0.7,
-            color: this.config.colors[backColorIndex],
-            blendMode: 'max',
-        };
-        // Pars generales: eco suave del pulso principal
-        output.zoneOverrides['pars'] = {
-            dimmer: dimmer * 0.5,
-            color: currentColor,
-            blendMode: 'max',
-        };
+        output.zoneOverrides['frontL'] = { dimmer: frontIntensity * envelope * this.config.peakIntensity, color: leftColor, blendMode: 'max' };
+        output.zoneOverrides['frontR'] = { dimmer: frontIntensity * envelope * this.config.peakIntensity, color: rightColor, blendMode: 'max' };
+        output.zoneOverrides['backL'] = { dimmer: backIntensity * envelope * this.config.peakIntensity, color: leftColor, blendMode: 'max' };
+        output.zoneOverrides['backR'] = { dimmer: backIntensity * envelope * this.config.peakIntensity, color: rightColor, blendMode: 'max' };
+        output.zoneOverrides['movers_left'] = { dimmer: pulse * envelope * this.config.moverIntensity, color: leftColor, blendMode: 'max', movement: { pan: driftPan - 30, tilt: driftTilt - 10 } };
+        output.zoneOverrides['movers_right'] = { dimmer: pulse * envelope * this.config.moverIntensity, color: rightColor, blendMode: 'max', movement: { pan: driftPan + 30, tilt: driftTilt + 5 } };
         return output;
     }
-    isFinished() {
-        return this.phase === 'finished';
-    }
-    abort() {
-        this.phase = 'finished';
-        console.log(`[AbyssalJellyfish 🪼] Aborted`);
-    }
+    isFinished() { return this.phase === 'finished'; }
+    abort() { this.phase = 'finished'; }
 }

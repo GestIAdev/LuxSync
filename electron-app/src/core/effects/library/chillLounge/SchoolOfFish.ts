@@ -1,226 +1,152 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * 🐟 SCHOOL OF FISH - Banco de Peces Cruzando
- * ═══════════════════════════════════════════════════════════════════════════
+ *  SCHOOL OF FISH - Banco de Peces en OCEAN (1000-3000m)
+ * WAVE 1070.6: CHROMATIC RENAISSANCE
  * 
- * WAVE 1070: THE LIVING OCEAN
- * 
- * Simula un banco de peces brillantes cruzando el campo visual.
- * Se activa cuando hay muchos transientes suaves (hi-hats, shakers)
- * en la zona OPEN_OCEAN (200-1000m).
- * 
- * VISUAL:
- * - Movers en cyan brillante cruzando de L→R (o R→L)
- * - Pulsos de intensidad durante el cruce (cada "pez")
- * - Movimiento rápido pero no violento
- * 
- * FILOSOFÍA:
- * Los peces no saben que están siendo observados.
- * Su movimiento es natural, fluido, como si siempre
- * hubieran estado ahí. Aparecen y desaparecen.
- * 
- * @module core/effects/library/chillLounge/SchoolOfFish
- * @version WAVE 1070 - THE LIVING OCEAN
+ * COLORES: Cyan y turquesa (peces tropicales)
+ * HSL FORMAT: h(0-360), s(0-100), l(0-100) - Standard para TitanOrchestrator
  */
 
 import { BaseEffect } from '../../BaseEffect'
-import { 
-  EffectTriggerConfig, 
-  EffectFrameOutput, 
-  EffectCategory 
-} from '../../types'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
+import { EffectTriggerConfig, EffectFrameOutput, EffectCategory } from '../../types'
 
 interface SchoolOfFishConfig {
-  /** Duración del cruce en ms */
   durationMs: number
-  
-  /** Intensidad máxima de los peces */
   peakIntensity: number
-  
-  /** Dirección del cruce */
-  direction: 'LtoR' | 'RtoL' | 'random'
-  
-  /** Número de "peces" (pulsos de intensidad) */
   fishCount: number
 }
 
 const DEFAULT_CONFIG: SchoolOfFishConfig = {
-  durationMs: 1800,
-  peakIntensity: 0.85,
-  direction: 'random',
-  fishCount: 5,
+  durationMs: 3500,
+  peakIntensity: 0.90,
+  fishCount: 7,
 }
 
-// Color: Cyan tropical brillante (dentro de CHILL_CONSTITUTION)
-const FISH_COLOR = { h: 185, s: 90, l: 58 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SCHOOL OF FISH EFFECT
-// ═══════════════════════════════════════════════════════════════════════════
+//  COLORES PECES: Cyan y turquesa (HSL: h=0-360, s=0-100, l=0-100)
+const FISH_COLORS = [
+  { h: 185, s: 85, l: 55 },  // Cyan vibrante
+  { h: 195, s: 70, l: 60 },  // Azul agua
+  { h: 170, s: 90, l: 50 },  // Turquesa
+  { h: 200, s: 60, l: 65 },  // Azul claro
+]
 
 export class SchoolOfFish extends BaseEffect {
-  // ─────────────────────────────────────────────────────────────────────────
-  // ILightEffect properties
-  // ─────────────────────────────────────────────────────────────────────────
-  
   readonly effectType = 'school_of_fish'
   readonly name = 'School of Fish'
   readonly category: EffectCategory = 'physical'
   readonly priority = 70
-  
-  // HTP: Se suma a la física base, no la reemplaza
   readonly mixBus = 'htp' as const
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // Internal state
-  // ─────────────────────────────────────────────────────────────────────────
-  
   private config: SchoolOfFishConfig
-  private actualDirection: 'LtoR' | 'RtoL' = 'LtoR'
-  
-  // ─────────────────────────────────────────────────────────────────────────
-  // Constructor
-  // ─────────────────────────────────────────────────────────────────────────
+  private direction: 'LtoR' | 'RtoL' = 'LtoR'
   
   constructor(config?: Partial<SchoolOfFishConfig>) {
     super('school_of_fish')
     this.config = { ...DEFAULT_CONFIG, ...config }
   }
   
-  // ─────────────────────────────────────────────────────────────────────────
-  // ILightEffect implementation
-  // ─────────────────────────────────────────────────────────────────────────
-  
   trigger(triggerConfig: EffectTriggerConfig): void {
     super.trigger(triggerConfig)
-    
-    // Determinar dirección
-    if (this.config.direction === 'random') {
-      // Usar tiempo para pseudo-random determinista (NO Math.random)
-      this.actualDirection = Date.now() % 2 === 0 ? 'LtoR' : 'RtoL'
-    } else {
-      this.actualDirection = this.config.direction
-    }
-    
-    console.log(`[SchoolOfFish 🐟] TRIGGERED! Direction=${this.actualDirection} FishCount=${this.config.fishCount}`)
+    this.direction = Date.now() % 2 === 0 ? 'LtoR' : 'RtoL'
+    console.log(`[ SchoolOfFish] TRIGGERED! Direction=${this.direction}`)
   }
 
   update(deltaMs: number): void {
     if (this.phase === 'idle' || this.phase === 'finished') return
-    
     this.elapsedMs += deltaMs
-    
     if (this.elapsedMs >= this.config.durationMs) {
       this.phase = 'finished'
-      console.log(`[SchoolOfFish 🐟] FINISHED - School passed`)
     }
   }
   
-  /**
-   * 📤 GET OUTPUT - Banco de peces cruzando
-   */
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
-
     const progress = this.elapsedMs / this.config.durationMs
     
-    // ═════════════════════════════════════════════════════════════════════
-    // ENVELOPE: Fade in rápido → sustain → fade out rápido
-    // ═════════════════════════════════════════════════════════════════════
+    // Envelope
     let envelope: number
-    if (progress < 0.1) {
-      envelope = progress / 0.1  // Fade in 10%
-    } else if (progress < 0.85) {
-      envelope = 1.0  // Sustain 75%
-    } else {
-      envelope = 1 - ((progress - 0.85) / 0.15)  // Fade out 15%
-    }
+    if (progress < 0.08) { envelope = progress / 0.08 }
+    else if (progress < 0.80) { envelope = 1.0 }
+    else { envelope = 1 - ((progress - 0.80) / 0.20) }
     
-    // ═════════════════════════════════════════════════════════════════════
-    // FISH PULSES: Cada pez es un pulso de intensidad
-    // ═════════════════════════════════════════════════════════════════════
+    // Posición de la ola de peces
+    let wavePosition = progress * 1.3 - 0.15
+    if (this.direction === 'RtoL') { wavePosition = 1 - wavePosition }
+    
+    // Shimmer de peces
     const fishPhase = progress * this.config.fishCount * Math.PI * 2
-    const fishPulse = (Math.sin(fishPhase) + 1) / 2  // 0-1
+    const fishPulse = (Math.sin(fishPhase) + 1) / 2 * 0.3 + 0.7
     
-    // Intensidad: base + pulso
-    const baseIntensity = 0.4
-    const pulseIntensity = 0.6 * fishPulse
-    const dimmer = (baseIntensity + pulseIntensity) * envelope * this.config.peakIntensity
+    // Posiciones de zonas en el espacio
+    const zonePositions: Record<string, number> = {
+      frontL: 0.0, backL: 0.15, movers_left: 0.30,
+      movers_right: 0.70, backR: 0.85, frontR: 1.0,
+    }
+    const waveWidth = 0.35
     
-    // ═════════════════════════════════════════════════════════════════════
-    // PAN SWEEP: Cruce de lado a lado
-    // ═════════════════════════════════════════════════════════════════════
-    let panProgress = progress
-    if (this.actualDirection === 'RtoL') {
-      panProgress = 1 - progress
+    // Calcular intensidad por distancia a la ola
+    const getZoneIntensity = (zonePos: number): number => {
+      const distance = Math.abs(zonePos - wavePosition)
+      if (distance > waveWidth) return 0
+      const normalized = distance / waveWidth
+      return Math.exp(-normalized * normalized * 3) * fishPulse
     }
     
-    // Curva suave para el pan (easing)
-    const easedPan = panProgress * panProgress * (3 - 2 * panProgress)
+    // Color basado en posición relativa
+    const getZoneColor = (zonePos: number) => {
+      const relativePos = (zonePos - wavePosition + 0.5)
+      const colorIndex = Math.floor(Math.abs(relativePos * FISH_COLORS.length * 2)) % FISH_COLORS.length
+      return FISH_COLORS[colorIndex]
+    }
     
-    // Convertir a grados: -60° a +60°
-    const panDegrees = -60 + easedPan * 120
+    // Movimiento de movers siguiendo el cardumen
+    const basePan = (wavePosition - 0.5) * 80
+    const tiltWobble = Math.sin(progress * Math.PI * 6) * 5
     
-    // Tilt ligeramente ondulante (peces no nadan en línea recta)
-    const tiltWobble = Math.sin(progress * Math.PI * 4) * 8
-    const tiltDegrees = tiltWobble
-    
-    // ═════════════════════════════════════════════════════════════════════
-    // OUTPUT
-    // ═════════════════════════════════════════════════════════════════════
     const output: EffectFrameOutput = {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['movers_left', 'movers_right'],
-      intensity: this.triggerIntensity * dimmer,
+      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+      intensity: this.triggerIntensity * envelope * this.config.peakIntensity,
       zoneOverrides: {},
     }
 
-    // Movers izquierdo: Lidera si LtoR, sigue si RtoL
-    const leftDelay = this.actualDirection === 'LtoR' ? 0 : 0.15
-    const leftProgress = Math.max(0, Math.min(1, progress - leftDelay))
-    const leftPan = -60 + (leftProgress * leftProgress * (3 - 2 * leftProgress)) * 120
-    
+    output.zoneOverrides!['frontL'] = {
+      dimmer: getZoneIntensity(zonePositions.frontL) * envelope * this.config.peakIntensity,
+      color: getZoneColor(zonePositions.frontL),
+      blendMode: 'max' as const,
+    }
+    output.zoneOverrides!['frontR'] = {
+      dimmer: getZoneIntensity(zonePositions.frontR) * envelope * this.config.peakIntensity,
+      color: getZoneColor(zonePositions.frontR),
+      blendMode: 'max' as const,
+    }
+    output.zoneOverrides!['backL'] = {
+      dimmer: getZoneIntensity(zonePositions.backL) * envelope * this.config.peakIntensity * 0.85,
+      color: getZoneColor(zonePositions.backL),
+      blendMode: 'max' as const,
+    }
+    output.zoneOverrides!['backR'] = {
+      dimmer: getZoneIntensity(zonePositions.backR) * envelope * this.config.peakIntensity * 0.85,
+      color: getZoneColor(zonePositions.backR),
+      blendMode: 'max' as const,
+    }
     output.zoneOverrides!['movers_left'] = {
-      dimmer: dimmer * (this.actualDirection === 'LtoR' ? 1 : 0.7),
-      color: FISH_COLOR,
+      dimmer: getZoneIntensity(zonePositions.movers_left) * envelope * this.config.peakIntensity * 0.90,
+      color: getZoneColor(zonePositions.movers_left),
       blendMode: 'max' as const,
-      movement: {
-        pan: leftPan,
-        tilt: tiltDegrees,
-      },
+      movement: { pan: basePan - 15, tilt: tiltWobble - 10 },
     }
-
-    // Movers derecho: Sigue si LtoR, lidera si RtoL
-    const rightDelay = this.actualDirection === 'RtoL' ? 0 : 0.15
-    const rightProgress = Math.max(0, Math.min(1, progress - rightDelay))
-    const rightPan = -60 + (rightProgress * rightProgress * (3 - 2 * rightProgress)) * 120
-    
     output.zoneOverrides!['movers_right'] = {
-      dimmer: dimmer * (this.actualDirection === 'RtoL' ? 1 : 0.7),
-      color: FISH_COLOR,
+      dimmer: getZoneIntensity(zonePositions.movers_right) * envelope * this.config.peakIntensity * 0.90,
+      color: getZoneColor(zonePositions.movers_right),
       blendMode: 'max' as const,
-      movement: {
-        pan: rightPan,
-        tilt: tiltDegrees + 5,  // Ligeramente diferente
-      },
+      movement: { pan: basePan + 15, tilt: tiltWobble + 5 },
     }
-
     return output
   }
   
-  isFinished(): boolean {
-    return this.phase === 'finished'
-  }
-  
-  abort(): void {
-    this.phase = 'finished'
-    console.log(`[SchoolOfFish 🐟] Aborted`)
-  }
+  isFinished(): boolean { return this.phase === 'finished' }
+  abort(): void { this.phase = 'finished' }
 }

@@ -715,30 +715,28 @@ export class EffectDreamSimulator {
       ],
       
       // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+      // PUREZA TOTAL: Solo efectos oceánicos, NADA MÁS
+      // Los 3 efectos oceánicos son TODO lo que necesitamos
       'chill-lounge': [
-        // 🌊 Oceanic creatures
-        'solar_caustics',     // ☀️ Sun rays in shallows (A=0.10)
-        'school_of_fish',     // 🐠 Fish school crossing (A=0.15)
-        'abyssal_jellyfish',  // 🪼 Bioluminescent pulse (A=0.20)
-        
-        // Atmospheric allowed effects
-        'deep_breath',        // 🫁 Breathing (A=0.10)
-        'stage_wash',         // 🌊 Warm wash (A=0.25)
-        'fiber_optics',       // 🌈 Ambient colors (A=0.05)
-        'void_mist',          // 🌫️ Purple fog (A=0.10)
+        // 🌊 THE LIVING OCEAN - Los únicos 3 efectos válidos
+        'solar_caustics',     // ☀️ Sun rays in shallows (depth < 200m)
+        'school_of_fish',     // 🐠 Fish school crossing (200-1000m)
+        'abyssal_jellyfish',  // 🪼 Bioluminescent pulse (depth > 4000m)
+        // 🚫 NO deep_breath, NO stage_wash, NO void_mist
+        // El océano es PURO y CRISTALINO
       ],
-      // Aliases for chill
+      // Aliases for chill - MISMA PUREZA
       'chill': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
-        'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
       ],
       'ambient': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
-        'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
       ],
       'lounge': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish',
-        'deep_breath', 'stage_wash', 'fiber_optics', 'void_mist'
+        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
+      ],
+      'jazz': [
+        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
       ],
     }
     

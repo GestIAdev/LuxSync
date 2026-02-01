@@ -472,6 +472,14 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     textureAffinity: 'clean',  // 🎨 Transientes = peces
   },
   
+  // 🐋 WHALE SONG - Canto de ballena en zona crepuscular
+  'whale_song': {
+    aggression: 0.05,   // 🐋 Muy bajo - presencia majestuosa y gentil
+    chaos: 0.15,        // Muy ordenado - movimiento lento y predecible
+    organicity: 0.98,   // Extremadamente orgánico - criatura viva gigante
+    textureAffinity: 'clean',  // 🎨 Bass profundo = limpio
+  },
+  
   // 🪼 ABYSSAL JELLYFISH - Medusas bioluminiscentes
   'abyssal_jellyfish': {
     aggression: 0.20,   // 🪼 Bajo - pulso bioluminiscente suave

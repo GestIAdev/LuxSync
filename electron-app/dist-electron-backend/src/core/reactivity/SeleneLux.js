@@ -65,7 +65,7 @@ export class SeleneLux {
         // ═══════════════════════════════════════════════════════════════════════
         this.deepFieldMechanics = null;
         // ═══════════════════════════════════════════════════════════════════════
-        // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
+        // 🌊 WAVE 1070.6: THE LIVING OCEAN - Oceanic Creature Triggers
         // ═══════════════════════════════════════════════════════════════════════
         this.oceanicTriggersState = null;
         // ═══════════════════════════════════════════════════════════════════════

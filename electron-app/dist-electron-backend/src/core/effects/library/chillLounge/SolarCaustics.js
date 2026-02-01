@@ -1,63 +1,33 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- * 🌞 SOLAR CAUSTICS - Rayos de Sol Submarinos
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * WAVE 1070: THE LIVING OCEAN
- *
- * Simula los rayos de luz solar penetrando la superficie del agua.
- * Se activa SOLO en zona SHALLOWS (0-200m) cuando la claridad
- * del audio es alta (voces claras, guitarras acústicas, pianos).
- *
- * VISUAL:
- * - Movers en blanco cálido (2800K) muy pálido
- * - Movimiento lento y orgánico simulando cáusticas
- * - Intensidad modulada por "olas" de superficie
- *
- * FILOSOFÍA:
- * Los rayos de sol son efímeros y gentiles. No deslumbran,
- * acarician. Como la luz que entra por una ventana al amanecer.
- *
- * @module core/effects/library/chillLounge/SolarCaustics
- * @version WAVE 1070 - THE LIVING OCEAN
+ *  SOLAR CAUSTICS - Rayos de Sol en SHALLOWS (0-1000m)
+ * WAVE 1070.6: CHROMATIC RENAISSANCE
  */
 import { BaseEffect } from '../../BaseEffect';
 const DEFAULT_CONFIG = {
-    durationMs: 4000,
-    peakIntensity: 0.65,
+    durationMs: 5000,
+    peakIntensity: 0.85,
     patternSpeed: 1.0,
-    rayCount: 3,
+    rayCount: 4,
 };
-// Color: Blanco cálido con hint de ámbar (2800K equivalent)
-const CAUSTIC_COLOR = { h: 45, s: 25, l: 88 };
-// ═══════════════════════════════════════════════════════════════════════════
-// SOLAR CAUSTICS EFFECT
-// ═══════════════════════════════════════════════════════════════════════════
+const SOLAR_COLORS = [
+    { h: 45 / 360, s: 0.90, l: 0.65 },
+    { h: 35 / 360, s: 0.85, l: 0.60 },
+    { h: 55 / 360, s: 0.70, l: 0.70 },
+    { h: 30 / 360, s: 0.95, l: 0.55 },
+];
 export class SolarCaustics extends BaseEffect {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Constructor
-    // ─────────────────────────────────────────────────────────────────────────
     constructor(config) {
         super('solar_caustics');
-        // ─────────────────────────────────────────────────────────────────────────
-        // ILightEffect properties
-        // ─────────────────────────────────────────────────────────────────────────
         this.effectType = 'solar_caustics';
         this.name = 'Solar Caustics';
         this.category = 'physical';
         this.priority = 75;
-        // Global override para simular rayos de sol reales penetrando
-        this.mixBus = 'global';
-        this.startTime = 0;
+        this.mixBus = 'htp';
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
-    // ─────────────────────────────────────────────────────────────────────────
-    // ILightEffect implementation
-    // ─────────────────────────────────────────────────────────────────────────
     trigger(triggerConfig) {
         super.trigger(triggerConfig);
-        this.startTime = Date.now();
-        console.log(`[SolarCaustics 🌞] TRIGGERED! Duration=${this.config.durationMs}ms`);
+        console.log(`[SolarCaustics] TRIGGERED! Duration=${this.config.durationMs}ms`);
     }
     update(deltaMs) {
         if (this.phase === 'idle' || this.phase === 'finished')
@@ -65,85 +35,78 @@ export class SolarCaustics extends BaseEffect {
         this.elapsedMs += deltaMs;
         if (this.elapsedMs >= this.config.durationMs) {
             this.phase = 'finished';
-            console.log(`[SolarCaustics 🌞] FINISHED - Rays faded`);
         }
     }
-    /**
-     * 📤 GET OUTPUT - Patrón de cáusticas solares
-     */
     getOutput() {
         if (this.phase === 'idle' || this.phase === 'finished')
             return null;
         const progress = this.elapsedMs / this.config.durationMs;
         const now = Date.now();
-        // ═════════════════════════════════════════════════════════════════════
-        // ENVELOPE: Fade in suave → sustain → fade out largo
-        // ═════════════════════════════════════════════════════════════════════
+        const speed = this.config.patternSpeed;
         let envelope;
-        if (progress < 0.15) {
-            // Fade in (15%)
-            envelope = progress / 0.15;
+        if (progress < 0.10) {
+            envelope = progress / 0.10;
         }
-        else if (progress < 0.7) {
-            // Sustain (55%)
+        else if (progress < 0.75) {
             envelope = 1.0;
         }
         else {
-            // Fade out largo (30%)
-            envelope = 1 - ((progress - 0.7) / 0.3);
+            envelope = 1 - ((progress - 0.75) / 0.25);
         }
-        // Curva suave
         envelope = envelope * envelope * (3 - 2 * envelope);
-        // ═════════════════════════════════════════════════════════════════════
-        // CAUSTIC PATTERN: Múltiples rayos con fases desfasadas
-        // ═════════════════════════════════════════════════════════════════════
-        const speed = this.config.patternSpeed;
-        let causticIntensity = 0;
-        for (let i = 0; i < this.config.rayCount; i++) {
-            // Cada rayo tiene su propia frecuencia y fase
-            const rayPhase = (i * Math.PI * 2) / this.config.rayCount;
-            const rayFreq = 2000 + i * 500; // Frecuencias diferentes
-            // Patrón de cáustica: superposición de senos
-            const ray = Math.sin((now * speed) / rayFreq + rayPhase);
-            const ripple = Math.sin((now * speed) / (rayFreq * 0.7) + rayPhase * 1.3);
-            // Solo sumamos cuando es positivo (rayos, no sombras)
-            causticIntensity += Math.max(0, (ray + ripple * 0.5) / 1.5);
-        }
-        // Normalizar por número de rayos
-        causticIntensity = causticIntensity / this.config.rayCount;
-        // Aplicar envelope y peak
-        const dimmer = causticIntensity * envelope * this.config.peakIntensity;
-        // ═════════════════════════════════════════════════════════════════════
-        // MOVEMENT: Pan/Tilt orgánico simulando olas de superficie
-        // ═════════════════════════════════════════════════════════════════════
-        const waveX = Math.sin(now / 3000) * 25 + Math.sin(now / 1700) * 10;
-        const waveY = Math.cos(now / 2500) * 15 + Math.cos(now / 1900) * 8;
+        const zonePositions = {
+            frontL: { x: 0.0, y: 0.0 }, frontR: { x: 1.0, y: 0.0 },
+            backL: { x: 0.0, y: 1.0 }, backR: { x: 1.0, y: 1.0 },
+            movers_left: { x: 0.25, y: 0.5 }, movers_right: { x: 0.75, y: 0.5 },
+        };
+        const getCausticIntensity = (x, y) => {
+            let intensity = 0;
+            for (let i = 0; i < this.config.rayCount; i++) {
+                const rayAngle = (i * Math.PI * 2) / this.config.rayCount;
+                const rayFreq = 1800 + i * 400;
+                const rayX = Math.sin(rayAngle) * 0.5;
+                const rayY = Math.cos(rayAngle) * 0.5;
+                const rayPos = (now * speed) / rayFreq;
+                const distToRay = Math.sin(rayPos + x * rayX * 10 + y * rayY * 10);
+                const ripple = Math.sin(rayPos * 0.7 + (x + y) * 5);
+                intensity += Math.max(0, (distToRay + ripple * 0.4) / 1.4);
+            }
+            return intensity / this.config.rayCount;
+        };
+        const getZoneColor = (x, y) => {
+            const colorPhase = (now / 2000 + x * 2 + y) % (SOLAR_COLORS.length);
+            const colorIndex = Math.floor(colorPhase);
+            const nextIndex = (colorIndex + 1) % SOLAR_COLORS.length;
+            const blend = colorPhase - colorIndex;
+            const c1 = SOLAR_COLORS[colorIndex];
+            const c2 = SOLAR_COLORS[nextIndex];
+            return { h: c1.h + (c2.h - c1.h) * blend, s: c1.s + (c2.s - c1.s) * blend, l: c1.l + (c2.l - c1.l) * blend };
+        };
+        const basePan = Math.sin(now / 4000) * 30;
+        const baseTilt = Math.cos(now / 3500) * 15 - 25;
         const output = {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress,
-            zones: ['movers'],
-            intensity: this.triggerIntensity * dimmer,
+            zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+            intensity: this.triggerIntensity * envelope * this.config.peakIntensity,
             zoneOverrides: {},
         };
-        // Movers: Color blanco cálido + movimiento de cáusticas
-        output.zoneOverrides['movers'] = {
-            dimmer,
-            color: CAUSTIC_COLOR,
-            blendMode: 'max',
-            movement: {
-                pan: waveX,
-                tilt: waveY - 20, // Apuntan ligeramente hacia arriba (luz viene de arriba)
-            },
-        };
+        const flPos = zonePositions.frontL;
+        output.zoneOverrides['frontL'] = { dimmer: getCausticIntensity(flPos.x, flPos.y) * envelope * this.config.peakIntensity, color: getZoneColor(flPos.x, flPos.y), blendMode: 'max' };
+        const frPos = zonePositions.frontR;
+        output.zoneOverrides['frontR'] = { dimmer: getCausticIntensity(frPos.x, frPos.y) * envelope * this.config.peakIntensity, color: getZoneColor(frPos.x, frPos.y), blendMode: 'max' };
+        const blPos = zonePositions.backL;
+        output.zoneOverrides['backL'] = { dimmer: getCausticIntensity(blPos.x, blPos.y) * envelope * this.config.peakIntensity * 0.75, color: getZoneColor(blPos.x, blPos.y), blendMode: 'max' };
+        const brPos = zonePositions.backR;
+        output.zoneOverrides['backR'] = { dimmer: getCausticIntensity(brPos.x, brPos.y) * envelope * this.config.peakIntensity * 0.75, color: getZoneColor(brPos.x, brPos.y), blendMode: 'max' };
+        const mlPos = zonePositions.movers_left;
+        output.zoneOverrides['movers_left'] = { dimmer: getCausticIntensity(mlPos.x, mlPos.y) * envelope * this.config.peakIntensity * 0.90, color: getZoneColor(mlPos.x, mlPos.y), blendMode: 'max', movement: { pan: basePan - 20, tilt: baseTilt } };
+        const mrPos = zonePositions.movers_right;
+        output.zoneOverrides['movers_right'] = { dimmer: getCausticIntensity(mrPos.x, mrPos.y) * envelope * this.config.peakIntensity * 0.90, color: getZoneColor(mrPos.x, mrPos.y), blendMode: 'max', movement: { pan: basePan + 20, tilt: baseTilt + Math.sin(now / 2000) * 5 } };
         return output;
     }
-    isFinished() {
-        return this.phase === 'finished';
-    }
-    abort() {
-        this.phase = 'finished';
-        console.log(`[SolarCaustics 🌞] Aborted`);
-    }
+    isFinished() { return this.phase === 'finished'; }
+    abort() { this.phase = 'finished'; }
 }

@@ -1533,10 +1533,24 @@ export class TitanOrchestrator {
       case 'front':
         // SOLO front pars, NO movers aunque estén "en frente"
         return fz === 'front_pars' || fz === 'floor-front'
+      
+      // 🪼 WAVE 1070.3: STEREO PARs support
+      case 'frontl':
+        return fz === 'front_pars' || fz === 'floor-front'  // Front left PARs
+      
+      case 'frontr':
+        return fz === 'front_pars' || fz === 'floor-front'  // Front right PARs
         
       case 'back':
         // SOLO back pars, NO movers aunque estén "atrás"
         return fz === 'back_pars' || fz === 'floor-back'
+      
+      // 🪼 WAVE 1070.3: STEREO PARs support
+      case 'backl':
+        return fz === 'back_pars' || fz === 'floor-back'  // Back left PARs
+      
+      case 'backr':
+        return fz === 'back_pars' || fz === 'floor-back'  // Back right PARs
         
       case 'movers':
         // SOLO cabezas móviles - CRITICAL: NO incluir pars

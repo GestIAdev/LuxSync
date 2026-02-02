@@ -64,6 +64,10 @@ export interface IPCDependencies {
   // WAVE 390.5: Rescan ALL libraries (factory + custom) with proper merge
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rescanAllLibraries: () => Promise<any[]>
+  
+  // WAVE 1115: Library paths (resolved in main.ts)
+  getFactoryLibPath: () => string
+  getCustomLibPath: () => string
 }
 
 /**
@@ -443,7 +447,9 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
     recalculateZoneCounters,
     configManager,
     getMainWindow,
-    rescanAllLibraries  // WAVE 390.5: Full library rescan
+    rescanAllLibraries,  // WAVE 390.5: Full library rescan
+    getFactoryLibPath,   // WAVE 1115: Resolved paths
+    getCustomLibPath     // WAVE 1115: Resolved paths
   } = deps
   
   ipcMain.handle('fixtures:scanLibrary', async (_event, folderPath: string) => {
@@ -895,23 +901,22 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
 
   /**
    * List ALL fixtures from both sources:
-   * - System (factory): Read-only, from /librerias
+   * - System (factory): Read-only, from /librerias (resolved by PATHFINDER in main.ts)
    * - User (custom): Writable, from userData/fixtures
+   * 
+   * WAVE 1115 FIX: Use paths resolved by PATHFINDER, not hardcoded
    */
   ipcMain.handle('lux:library:list-all', async () => {
     try {
       const fs = await import('fs')
       const path = await import('path')
       
-      // Get factory path (read-only)
-      const { app } = await import('electron')
-      const isDev = !app.isPackaged
-      const factoryPath = isDev 
-        ? path.join(__dirname, '../../../../librerias')
-        : path.join(app.getPath('userData'), 'librerias')
+      // WAVE 1115 FIX: Get paths from main.ts (resolved by PATHFINDER)
+      const factoryPath = getFactoryLibPath()
+      const userPath = getCustomLibPath()
       
-      // Get user path (writable)
-      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      console.log(`[Library IPC] 📂 Factory path: ${factoryPath}`)
+      console.log(`[Library IPC] 📂 User path: ${userPath}`)
       
       // Ensure user path exists
       if (!fs.existsSync(userPath)) {
@@ -949,6 +954,8 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
             }
           }
         }
+      } else {
+        console.warn(`[Library IPC] ⚠️ Factory path does not exist: ${factoryPath}`)
       }
       
       // Scan user library
@@ -971,7 +978,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
         }
       }
       
-      console.log(`[Library] 📚 WAVE 1113: Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`)
+      console.log(`[Library IPC] ✅ Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`)
       
       return {
         success: true,
@@ -1129,14 +1136,27 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
 
   /**
    * Get DMX connection status for Live Probe
+   * WAVE 1115 FIX: Check BOTH UniversalDMX (USB) and ArtNet
    */
   ipcMain.handle('lux:library:dmx-status', () => {
-    const { universalDMX } = deps
-    const isConnected = universalDMX?.isConnected ?? false
-    const device = universalDMX?.currentDevice ?? null
+    const { universalDMX, artNetDriver } = deps
+    
+    // Check USB DMX
+    const usbConnected = universalDMX?.isConnected ?? false
+    const usbDevice = universalDMX?.currentDevice ?? null
+    
+    // Check ArtNet
+    const artNetStatus = artNetDriver?.getStatus?.() || null
+    const artNetConnected = artNetStatus?.connected ?? false
+    
+    // Return combined status (connected if EITHER is connected)
+    const connected = usbConnected || artNetConnected
+    const device = usbDevice || (artNetConnected ? 'ArtNet' : null)
+    
+    console.log(`[Library DMX Status] USB:${usbConnected} ArtNet:${artNetConnected} → ${connected}`)
     
     return {
-      connected: isConnected,
+      connected,
       device,
     }
   })

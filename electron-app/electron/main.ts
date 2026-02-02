@@ -368,6 +368,9 @@ async function initTitan(): Promise<void> {
     setFixtureLibrary: (library: FixtureLibraryItem[]) => { fixtureLibrary = library },
     // WAVE 390.5: Rescan ALL libraries (factory + custom)
     rescanAllLibraries,
+    // WAVE 1115: Library paths (resolved by PATHFINDER)
+    getFactoryLibPath: () => factoryLibPath,
+    getCustomLibPath: () => customLibPath,
   }
   
   setupIPCHandlers(ipcDeps)

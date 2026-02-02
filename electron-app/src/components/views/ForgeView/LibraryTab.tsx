@@ -290,7 +290,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
         ) : (
           filteredFixtures.map(fixture => (
             <div 
-              key={fixture.id}
+              key={`${fixture.source}-${fixture.id}`}
               className={`library-item ${selectedFixtureId === fixture.id ? 'selected' : ''} ${fixture.source}`}
               onClick={() => handleSelectFixture(fixture)}
             >

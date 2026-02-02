@@ -1,17 +1,22 @@
 # 🐛 WAVE 1116: LIBRARY IPC PATH FIX + DUPLICATE KEY FIX + DMX STATUS FIX
 
-**Commit:** `cc9312c`  
+**Commits:** `cc9312c` + `4b5efdf`  
 **Status:** ✅ COMPLETE  
-**Date:** 2025-02-XX  
+**Date:** 2025-02-02  
 **Doctrine:** *"Ver el Bug es Matarlo."*
 
 ---
 
 ## 📋 BUGS REPORTADOS (Post-WAVE 1115)
 
+### Initial Report:
 1. **0 system fixtures loaded** - IPC handler usaba path hardcoded incorrecto
 2. **Duplicate key warning** - React warning sobre `key={fixture.id}` duplicado
 3. **DMX offline** - Live Probe marca DMX desconectado aunque ArtNet funciona
+
+### Follow-up Report (Post-commit 1):
+4. **No guarda cambios** - Handler `lux:library:save-user` usaba path hardcoded
+5. **No deletea fixtures** - Handler `lux:library:delete-user` usaba path hardcoded
 
 ---
 
@@ -135,13 +140,14 @@ Live Probe ahora muestra 🟢 cuando ArtNet está conectado.
 
 ## 📁 ARCHIVOS MODIFICADOS
 
-| Archivo | Cambio | Líneas |
-|---------|--------|--------|
-| `IPCHandlers.ts` | Path getters + DMX ArtNet check | +15/-10 |
-| `main.ts` | Pass getFactoryLibPath/getCustomLibPath | +3 |
-| `LibraryTab.tsx` | Unique key with source prefix | +1/-1 |
+| Archivo | Cambio | Commit | Líneas |
+|---------|--------|--------|--------|
+| `IPCHandlers.ts` | Path getters + DMX ArtNet check | `cc9312c` | +15/-10 |
+| `main.ts` | Pass getFactoryLibPath/getCustomLibPath | `cc9312c` | +3 |
+| `LibraryTab.tsx` | Unique key with source prefix | `cc9312c` | +1/-1 |
+| `IPCHandlers.ts` | Save + Delete path fix | `4b5efdf` | +8/-4 |
 
-**Total:** +19/-11 líneas
+**Total:** +27/-15 líneas
 
 ---
 
@@ -174,11 +180,26 @@ Live Probe ahora muestra 🟢 cuando ArtNet está conectado.
 
 ✅ **16 system fixtures cargados correctamente**  
 ✅ **0 React duplicate key warnings**  
-✅ **Live Probe muestra DMX conectado (ArtNet)**
+✅ **Live Probe muestra DMX conectado (ArtNet)**  
+✅ **Saves persisten en disco**  
+✅ **Delete funciona correctamente**
 
 ---
 
-**🎸 WAVE 1116 COMPLETADA**
+## 📝 ROOT CAUSE ANALYSIS
 
-*"Tres bugs, un commit. Eficiencia punk."*  
+**Patrón detectado:**  
+Tres handlers IPC tenían lógica independiente para resolver paths:
+- `lux:library:list-all` → Usaba PATHFINDER ✅ (desde WAVE 1116.1)
+- `lux:library:save-user` → Hardcoded path ❌ (fixed en WAVE 1116.2)
+- `lux:library:delete-user` → Hardcoded path ❌ (fixed en WAVE 1116.2)
+
+**Solución arquitectónica:**  
+Todos los handlers ahora usan `getCustomLibPath()` que devuelve el path ya resuelto por PATHFINDER en main.ts. Esto garantiza consistencia entre READ, WRITE y DELETE.
+
+---
+
+**🎸 WAVE 1116 + 1116.2 COMPLETADAS**
+
+*"Cinco bugs, dos commits. La muerte llega en oleadas."*  
 — PunkOpus

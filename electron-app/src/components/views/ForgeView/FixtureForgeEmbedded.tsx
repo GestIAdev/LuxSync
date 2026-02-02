@@ -42,8 +42,9 @@ import {
   BookOpen,
   Lock
 } from 'lucide-react'
-import { FixturePreview3D } from '../../modals/FixtureEditor/FixturePreview3D'
-import { PhysicsTuner } from '../../modals/FixtureEditor/PhysicsTuner'
+// WAVE 1117: Moved to shared components (modal folder deleted)
+import { FixturePreview3D } from '../../shared/PhysicsTuner/FixturePreview3D'
+import { PhysicsTuner } from '../../shared/PhysicsTuner/PhysicsTuner'
 import { WheelSmithEmbedded } from './WheelSmithEmbedded'
 import { LibraryTab } from './LibraryTab'
 import { 

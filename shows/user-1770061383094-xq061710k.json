@@ -1,0 +1,109 @@
+{
+  "id": "user-1770061383094-xq061710k",
+  "name": "EL 1140 (User Copy)",
+  "manufacturer": "Chino",
+  "type": "moving",
+  "channels": [
+    {
+      "index": 0,
+      "type": "pan",
+      "name": "Pan",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 1,
+      "type": "tilt",
+      "name": "Tilt",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 2,
+      "type": "speed",
+      "name": "Speed",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 3,
+      "type": "dimmer",
+      "name": "Dimmer",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 4,
+      "type": "strobe",
+      "name": "Strobe",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 5,
+      "type": "color_wheel",
+      "name": "Color Wheel",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 6,
+      "type": "gobo",
+      "name": "Gobo",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 7,
+      "type": "prism",
+      "name": "Prism",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 8,
+      "type": "focus",
+      "name": "Focus",
+      "defaultValue": 0,
+      "is16bit": false
+    },
+    {
+      "index": 9,
+      "type": "unknown",
+      "defaultValue": 0,
+      "is16bit": false
+    }
+  ],
+  "capabilities": {
+    "hasPan": true,
+    "hasTilt": true,
+    "hasColorMixing": false,
+    "hasColorWheel": true,
+    "hasGobo": true,
+    "hasPrism": true,
+    "hasStrobe": true,
+    "hasDimmer": true,
+    "colorEngine": "wheel"
+  },
+  "physics": {
+    "motorType": "stepper-cheap",
+    "maxAcceleration": 1500,
+    "maxVelocity": 250,
+    "safetyCap": true,
+    "orientation": "floor",
+    "invertPan": false,
+    "invertTilt": false,
+    "swapPanTilt": false,
+    "homePosition": {
+      "pan": 127,
+      "tilt": 127
+    },
+    "tiltLimits": {
+      "min": 30,
+      "max": 180
+    }
+  },
+  "source": "user",
+  "filePath": "C:\\Users\\Raulacate\\AppData\\Roaming\\luxsync-electron\\fixtures\\user-1770061383094-xq061710k.json",
+  "savedAt": "2026-02-02T20:03:21.094Z"
+}

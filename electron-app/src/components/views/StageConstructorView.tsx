@@ -23,6 +23,7 @@
 import React, { Suspense, lazy, useState, useCallback, useEffect, createContext, useContext, useRef } from 'react'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useNavigationStore } from '../../stores/navigationStore'
 import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus, Pencil } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
@@ -33,7 +34,7 @@ import './StageConstructorView.css'
 // Lazy load the heavy 3D canvas
 const StageGrid3D = lazy(() => import('./StageConstructor/StageGrid3D'))
 const GroupManagerPanel = lazy(() => import('./StageConstructor/GroupManagerPanel'))
-const FixtureForge = lazy(() => import('../modals/FixtureEditor/FixtureForge'))
+// WAVE 1117: DELETED - FixtureForge modal removed, now uses /forge view
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVE 368.5: COLLAPSIBLE SECTION COMPONENT
@@ -788,11 +789,8 @@ const StageConstructorView: React.FC = () => {
   const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('properties')
   const [showGroupCreateModal, setShowGroupCreateModal] = useState(false)
   
-  // WAVE 364 - Fixture Forge
-  const [isForgeOpen, setIsForgeOpen] = useState(false)
-  const [forgeEditingFixtureId, setForgeEditingFixtureId] = useState<string | null>(null)
-  // WAVE 389: State for editing library definitions
-  const [forgeExistingDefinition, setForgeExistingDefinition] = useState<FixtureDefinition | null>(null)
+  // WAVE 1117: DELETED - Forge modal state removed, now uses /forge view
+  const { setActiveTab, editFixture } = useNavigationStore()
   
   // WAVE 389: Ref to call library reload from child component
   const reloadLibraryRef = useRef<(() => Promise<void>) | null>(null)
@@ -806,159 +804,23 @@ const StageConstructorView: React.FC = () => {
   const snapDistance = 0.5    // 0.5 metros
   const snapRotation = Math.PI / 12  // 15 grados
   
-  // WAVE 364 - Open Fixture Forge
-  // WAVE 389: Now accepts existingDefinition for library editing
+  // WAVE 1117: THE GREAT PURGE - Rewired to use navigation store
+  // Opens /forge view with optional fixture to edit
   const openFixtureForge = useCallback((fixtureId?: string, existingDefinition?: FixtureDefinition) => {
-    setForgeEditingFixtureId(fixtureId || null)
-    setForgeExistingDefinition(existingDefinition || null)
-    setIsForgeOpen(true)
-  }, [])
-  
-  // WAVE 364 - Handle Forge Save
-  // 🔥 WAVE 384: Save ALL fixture data, not just 3 fields
-  // 🔥 WAVE 389: Add hot reload after save
-  // 🎯 WAVE 685.6: Handle patch data (dmxAddress, universe)
-  const handleForgeSave = useCallback(async (
-    definition: FixtureDefinition, 
-    physics: PhysicsProfile,
-    patchData?: { dmxAddress?: number; universe?: number }
-  ) => {
-    // 🔥 WAVE 1007: DEBUG - Log incoming patchData
-    console.log('[StageConstructor] 🔍 FORGE SAVE CALLED:', {
-      fixtureName: definition.name,
-      patchData,
-      dmxAddress: patchData?.dmxAddress,
-      universe: patchData?.universe,
-      forgeEditingFixtureId
-    })
-    
-    // Map the definition type to FixtureV2 type
-    const fixtureType = mapLibraryTypeToFixtureType(definition.type)
-    
-    if (forgeEditingFixtureId) {
-      // Update SPECIFIC fixture (editing from stage)
-      const existingFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
-      if (existingFixture) {
-        updateFixture(forgeEditingFixtureId, {
-          // Basic info
-          model: definition.name,
-          manufacturer: definition.manufacturer,
-          channelCount: definition.channels.length,
-          // 🔥 WAVE 384: Type, channels and capabilities
-          type: fixtureType,
-          profileId: definition.id || existingFixture.profileId,
-          // 🎯 WAVE 685.6: Update DMX address if provided
-          ...(patchData?.dmxAddress !== undefined && { address: patchData.dmxAddress }),
-          ...(patchData?.universe !== undefined && { universe: patchData.universe }),
-          // Inline channels for persistence
-          // 🔥 WAVE 1008.7: Preserve defaultValue (Shutter=255, Speed=0, etc)
-          channels: definition.channels.map((ch, idx) => ({
-            index: idx,
-            name: ch.name,
-            type: ch.type,
-            is16bit: ch.name?.toLowerCase().includes('fine') || false,
-            ...(ch.defaultValue !== undefined && { defaultValue: ch.defaultValue })
-          })),
-          // Capabilities derived from channel analysis
-          capabilities: {
-            hasMovementChannels: definition.channels.some(ch => 
-              ch.type === 'pan' || ch.type === 'tilt'
-            ),
-            has16bitMovement: definition.channels.some(ch => 
-              ch.type === 'pan_fine' || ch.type === 'tilt_fine'
-            ),
-            hasColorMixing: definition.channels.some(ch => 
-              ['red', 'green', 'blue'].includes(ch.type)
-            ),
-            hasColorWheel: definition.channels.some(ch => 
-              ch.type === 'color_wheel' || ch.name?.toLowerCase().includes('color')
-            )
-          }
-        })
-        updateFixturePhysics(forgeEditingFixtureId, physics)
-        
-        // 🔥 WAVE 1007: DEBUG - Verify what was actually saved
-        const updatedFixture = fixtures.find(f => f.id === forgeEditingFixtureId)
-        console.log(`[StageConstructor] 🔥 FORGE SAVE COMPLETE:`, {
-          fixtureName: definition.name,
-          fixtureId: forgeEditingFixtureId,
-          requestedAddress: patchData?.dmxAddress,
-          actualAddress: updatedFixture?.address,
-          requestedUniverse: patchData?.universe,
-          actualUniverse: updatedFixture?.universe,
-          channelCount: definition.channels.length,
-          type: fixtureType
-        })
-        
-        console.log(`[StageConstructor] 🔥 Forge save: Updated "${definition.name}" with ${definition.channels.length} channels, type: ${fixtureType}`)
-        if (patchData) {
-          console.log(`[StageConstructor] 📍 DMX Patch updated:`, {
-            dmxAddress: patchData.dmxAddress,
-            universe: patchData.universe,
-            savedAddress: patchData.dmxAddress,
-            savedUniverse: patchData.universe
-          })
-        }
-      }
+    if (existingDefinition?.id) {
+      // Edit existing fixture from library
+      editFixture(existingDefinition.id)
+    } else if (fixtureId) {
+      // Edit fixture from stage
+      editFixture(fixtureId)
     } else {
-      // 🔥 WAVE 1003.8: Editing from LIBRARY - update ALL fixtures that use this profile
-      // Find all fixtures on stage that use this library definition
-      const matchingFixtures = fixtures.filter(f => 
-        f.profileId === definition.id || 
-        f.model?.toLowerCase() === definition.name?.toLowerCase()
-      )
-      
-      if (matchingFixtures.length > 0) {
-        console.log(`[StageConstructor] 🔄 WAVE 1003.8: Updating ${matchingFixtures.length} fixtures using "${definition.name}"`)
-        
-        for (const fixture of matchingFixtures) {
-          updateFixture(fixture.id, {
-            model: definition.name,
-            manufacturer: definition.manufacturer,
-            channelCount: definition.channels.length,
-            type: fixtureType,  // 🔥 THIS IS THE FIX - update type!
-            // 🔥 WAVE 1008.7: Preserve defaultValue when updating from library
-            channels: definition.channels.map((ch, idx) => ({
-              index: idx,
-              name: ch.name,
-              type: ch.type,
-              is16bit: ch.name?.toLowerCase().includes('fine') || false,
-              ...(ch.defaultValue !== undefined && { defaultValue: ch.defaultValue })
-            })),
-            capabilities: {
-              hasMovementChannels: definition.channels.some(ch => 
-                ch.type === 'pan' || ch.type === 'tilt'
-              ),
-              has16bitMovement: definition.channels.some(ch => 
-                ch.type === 'pan_fine' || ch.type === 'tilt_fine'
-              ),
-              hasColorMixing: definition.channels.some(ch => 
-                ['red', 'green', 'blue'].includes(ch.type)
-              ),
-              hasColorWheel: definition.channels.some(ch => 
-                ch.type === 'color_wheel' || ch.name?.toLowerCase().includes('color')
-              )
-            }
-          })
-          updateFixturePhysics(fixture.id, physics)
-          console.log(`[StageConstructor] ✅ Updated fixture "${fixture.id}" type: ${fixture.type} → ${fixtureType}`)
-        }
-      } else {
-        console.log(`[StageConstructor] ℹ️ No stage fixtures using "${definition.name}", library-only save`)
-      }
+      // New fixture from scratch
+      setActiveTab('forge')
     }
-    
-    // 🔥 WAVE 389: Reload library to reflect changes immediately (hot reload)
-    if (reloadLibraryRef.current) {
-      await reloadLibraryRef.current()
-    }
-    
-    // TODO: Save definition to library for new fixtures
-    setIsForgeOpen(false)
-    setForgeEditingFixtureId(null)
-    setForgeExistingDefinition(null)
-  }, [forgeEditingFixtureId, fixtures, updateFixture, updateFixturePhysics])
-
+  }, [editFixture, setActiveTab])
+  
+  // WAVE 1117: DELETED - handleForgeSave removed (modal architecture eliminated)
+  // Forge view now handles saving directly via LibraryStore IPC
   
   const contextValue: ConstructorContextType = {
     snapEnabled,
@@ -1033,24 +895,7 @@ const StageConstructorView: React.FC = () => {
           </aside>
         </div>
         
-        {/* WAVE 364 - Fixture Forge Modal */}
-        {isForgeOpen && (
-          <Suspense fallback={null}>
-            <FixtureForge
-              isOpen={isForgeOpen}
-              onClose={() => {
-                setIsForgeOpen(false)
-                setForgeEditingFixtureId(null)
-                setForgeExistingDefinition(null)
-              }}
-              onSave={handleForgeSave}
-              editingFixture={forgeEditingFixtureId 
-                ? fixtures.find(f => f.id === forgeEditingFixtureId) 
-                : null}
-              existingDefinition={forgeExistingDefinition}
-            />
-          </Suspense>
-        )}
+        {/* WAVE 1117: DELETED - FixtureForge modal removed, now uses /forge route */}
       </div>
     </ConstructorContext.Provider>
   )

@@ -56,6 +56,31 @@ export interface InstallationPreset {
   tiltOffset: number
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏗️ WAVE 1105.2: PHYSICS PROFILE - Hardware capabilities from Fixture Forge
+// 
+// Cada fixture puede tener su propio perfil de física basado en las
+// capacidades reales del hardware. Un mover chino de $50 tiene motores
+// más lentos que un Clay Paky de $5000.
+// 
+// Estos valores vienen del JSON del fixture (Fixture Forge) y representan
+// los LÍMITES FÍSICOS REALES del hardware.
+// ═══════════════════════════════════════════════════════════════════════════
+export interface PhysicsProfile {
+  /** Motor type for logging/debugging */
+  motorType?: 'stepper' | 'servo' | 'belt' | 'unknown'
+  /** Maximum acceleration the hardware can handle (DMX units/s²) */
+  maxAcceleration?: number
+  /** Maximum velocity the hardware can achieve (DMX units/s) */
+  maxVelocity?: number
+  /** Pan speed multiplier (0-1, where 1 = fast motor) */
+  panSpeedFactor?: number
+  /** Tilt speed multiplier (0-1, where 1 = fast motor) */
+  tiltSpeedFactor?: number
+  /** Quality tier for auto-tuning (budget/mid/pro) */
+  qualityTier?: 'budget' | 'mid' | 'pro'
+}
+
 export interface FixtureConfig {
   installationType: string
   home: Position2D
@@ -65,6 +90,8 @@ export interface FixtureConfig {
   maxSpeed: { pan: number; tilt: number }
   mirror: boolean
   tiltOffset?: number
+  /** 🏗️ WAVE 1105.2: Hardware physics profile from Fixture Forge JSON */
+  physicsProfile?: PhysicsProfile
 }
 
 export interface PhysicsConfig {
@@ -220,13 +247,25 @@ export class FixturePhysicsDriver {
       home: { ...defaultConfig.home, ...preset?.defaultHome, ...config.home },
       invert: { ...defaultConfig.invert, ...preset?.invert, ...config.invert },
       limits: { ...defaultConfig.limits, ...preset?.limits, ...config.limits },
+      // 🏗️ WAVE 1105.2: Preserve physicsProfile if provided
+      physicsProfile: config.physicsProfile,
     }
 
     this.configs.set(fixtureId, finalConfig)
     this.currentPositions.set(fixtureId, { pan: finalConfig.home.pan, tilt: finalConfig.home.tilt })
     this.velocities.set(fixtureId, { pan: 0, tilt: 0 })
 
-    console.log(`[PhysicsDriver] Fixture "${fixtureId}" registrado:`, finalConfig.installationType)
+    // 🏗️ WAVE 1105.2: Log physics profile if present
+    if (finalConfig.physicsProfile) {
+      const pp = finalConfig.physicsProfile
+      console.log(`[PhysicsDriver] 🏗️ Fixture "${fixtureId}" has PhysicsProfile: ` +
+        `${pp.motorType ?? 'unknown'} motor | ` +
+        `maxAcc:${pp.maxAcceleration ?? 'default'} | ` +
+        `maxVel:${pp.maxVelocity ?? 'default'} | ` +
+        `tier:${pp.qualityTier ?? 'unknown'}`)
+    } else {
+      console.log(`[PhysicsDriver] Fixture "${fixtureId}" registrado:`, finalConfig.installationType)
+    }
 
     return this
   }
@@ -385,6 +424,80 @@ export class FixturePhysicsDriver {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🏗️ WAVE 1105.2: THE BOTTLENECK - Effective Physics Limits Calculator
+  // 
+  // Jerarquía de seguridad (de más restrictivo a menos):
+  // 
+  //   1. SAFETY_CAP (hardcoded) → Límite absoluto del sistema
+  //   2. Vibe Request (physicsConfig) → Lo que pide el género musical
+  //   3. Fixture Hardware Limit (physicsProfile) → Lo que aguanta el motor
+  // 
+  // La fórmula es: EffectiveLimit = Math.min(SafetyCap, VibeRequest, HardwareLimit)
+  // 
+  // Si el fixture no tiene physicsProfile, usa los defaults globales.
+  // El hardware SIEMPRE manda - un mover lento seguirá siendo lento aunque
+  // Techno pida velocidad Warp.
+  // ═══════════════════════════════════════════════════════════════════════════
+  private getEffectivePhysicsLimits(config: FixtureConfig): {
+    maxAcceleration: number
+    maxVelocity: number
+    speedFactorPan: number
+    speedFactorTilt: number
+  } {
+    const profile = config.physicsProfile
+    
+    // Nivel 1: SAFETY_CAP (siempre presente)
+    let effectiveMaxAccel = this.SAFETY_CAP.maxAcceleration
+    let effectiveMaxVel = this.SAFETY_CAP.maxVelocity
+    
+    // Nivel 2: Vibe Request (lo que pide el género)
+    effectiveMaxAccel = Math.min(effectiveMaxAccel, this.physicsConfig.maxAcceleration)
+    effectiveMaxVel = Math.min(effectiveMaxVel, this.physicsConfig.maxVelocity)
+    
+    // Nivel 3: Hardware Limit (lo que aguanta el fixture)
+    // Solo aplica si el fixture tiene physicsProfile definido
+    if (profile) {
+      if (profile.maxAcceleration !== undefined) {
+        effectiveMaxAccel = Math.min(effectiveMaxAccel, profile.maxAcceleration)
+      }
+      if (profile.maxVelocity !== undefined) {
+        effectiveMaxVel = Math.min(effectiveMaxVel, profile.maxVelocity)
+      }
+      
+      // 🏗️ Auto-tune basado en qualityTier si no hay valores explícitos
+      if (profile.qualityTier && !profile.maxAcceleration && !profile.maxVelocity) {
+        switch (profile.qualityTier) {
+          case 'budget':
+            // Movers chinos de $50-150 - motores lentos
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 400)
+            break
+          case 'mid':
+            // Movers de $200-500 - motores decentes
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 600)
+            break
+          case 'pro':
+            // Movers de $1000+ - motores rápidos
+            // No limitamos más allá del SAFETY_CAP
+            break
+        }
+      }
+    }
+    
+    // Speed factors (1.0 = motor rápido, 0.5 = motor lento)
+    const speedFactorPan = profile?.panSpeedFactor ?? 1.0
+    const speedFactorTilt = profile?.tiltSpeedFactor ?? 1.0
+    
+    return {
+      maxAcceleration: effectiveMaxAccel,
+      maxVelocity: effectiveMaxVel,
+      speedFactorPan,
+      speedFactorTilt,
+    }
+  }
+
   /**
    *  PHYSICS EASING: Curva S con aceleración/deceleración
    * V16.1: Fix safeDistance para protección contra singularidad
@@ -415,10 +528,25 @@ export class FixturePhysicsDriver {
     // Figure8 @ 0.1Hz con amplitud 216° = pico de ~13.5°/frame @ 30fps
     // Necesitamos REV_LIMIT ≥ 20 para seguirlo sin lag
     // ═══════════════════════════════════════════════════════════════════════
-    const maxAccel = this.physicsConfig.maxAcceleration
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 1105.2: FÍSICA HÍBRIDA - EL HARDWARE MANDA
+    // 
+    // Jerarquía de 3 niveles (el más restrictivo gana):
+    // 1. SAFETY_CAP (hardcoded) - Nunca se viola
+    // 2. Vibe Request (physicsConfig) - Dinámico por género
+    // 3. Fixture Hardware Limit (physicsProfile) - El fixture real
+    // 
+    // "Si tu motor es un burro, se mueve como burro aunque la Vibe pida F1"
+    // ═══════════════════════════════════════════════════════════════════════
+    const effectiveLimits = this.getEffectivePhysicsLimits(config)
+    const maxAccel = effectiveLimits.maxAcceleration
+    const speedFactorPan = effectiveLimits.speedFactorPan
+    const speedFactorTilt = effectiveLimits.speedFactorTilt
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🏎️ WAVE 342.5: REV LIMITER PER-VIBE (Seguro de Vida para Correas)
+    // 🔧 WAVE 1105.2: Ahora modulado por speedFactor del fixture
     // 
     // Ahora que TODOS los patrones usan frecuencias FIJAS (sin saltos por BPM),
     // podemos ser más generosos con los límites. Los patrones son SUAVES.
@@ -427,6 +555,7 @@ export class FixturePhysicsDriver {
     // - Cambios bruscos de patrón (ej: cambio de vibe)
     // - Errores de código que generen saltos
     // - Valores extremos inesperados
+    // - 🔧 NUEVO: Motores lentos del fixture individual
     // ═══════════════════════════════════════════════════════════════════════
     
     // Determinar límites según aceleración del vibe
@@ -458,6 +587,12 @@ export class FixturePhysicsDriver {
       REV_LIMIT_PAN = 255  // Sin límite práctico
       REV_LIMIT_TILT = 255
     }
+    
+    // 🔧 WAVE 1105.2: APLICAR SPEED FACTOR DEL FIXTURE
+    // Un fixture con panSpeedFactor = 0.5 reduce su REV_LIMIT a la mitad
+    // Esto hace que el hardware lento NO intente seguir el ritmo de Techno
+    REV_LIMIT_PAN = Math.round(REV_LIMIT_PAN * speedFactorPan)
+    REV_LIMIT_TILT = Math.round(REV_LIMIT_TILT * speedFactorTilt)
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔧 WAVE 342.5: UNIFIED SNAP MODE
@@ -504,8 +639,10 @@ export class FixturePhysicsDriver {
     // ═══════════════════════════════════════════════════════════════════════
     // MODO CLÁSICO: Física con aceleración/frenado (para vibes lentos)
     // Solo CHILL usa esto (maxAccel < 1000)
+    // 🔧 WAVE 1105.2: Usa límites efectivos del fixture
     // ═══════════════════════════════════════════════════════════════════════
     const axes: (keyof Position2D)[] = ['pan', 'tilt']
+    const effectiveMaxVel = effectiveLimits.maxVelocity
 
     for (const axis of axes) {
       const target = targetDMX[axis]
@@ -523,8 +660,9 @@ export class FixturePhysicsDriver {
       }
 
       const direction = Math.sign(distance)
-      const maxSpeed = config.maxSpeed[axis] || this.physicsConfig.maxVelocity
-      const brakingDistance = (vel * vel) / (2 * this.physicsConfig.maxAcceleration)
+      // 🔧 WAVE 1105.2: maxSpeed usa límite efectivo del fixture
+      const maxSpeed = Math.min(config.maxSpeed[axis] || effectiveMaxVel, effectiveMaxVel)
+      const brakingDistance = (vel * vel) / (2 * maxAccel)
 
       let acceleration: number
 
@@ -537,8 +675,8 @@ export class FixturePhysicsDriver {
         acceleration = Math.max(-this.SAFETY_CAP.maxAcceleration, 
                                Math.min(this.SAFETY_CAP.maxAcceleration, acceleration))
       } else {
-        //  FASE DE ACELERACIÓN
-        acceleration = this.physicsConfig.maxAcceleration * direction
+        //  FASE DE ACELERACIÓN - usa maxAccel efectivo
+        acceleration = maxAccel * direction
       }
 
       // Aplicar física

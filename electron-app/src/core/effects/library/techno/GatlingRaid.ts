@@ -62,6 +62,12 @@ interface GatlingRaidConfig {
   
   /** Patrón de disparo */
   pattern: 'linear' | 'zigzag' | 'chaos'
+  
+  /** 🌊 WAVE 1090: Fade in (ms) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: GatlingRaidConfig = {
@@ -70,6 +76,8 @@ const DEFAULT_CONFIG: GatlingRaidConfig = {
   bulletGapMs: 35,           // 🔫 WAVE 930.4: 35ms entre balas (was 40ms) - más rápido
   sweepCount: 3,             // 🔫 WAVE 930.4: 3 barridos completos (was 2) - más ametralladora
   pattern: 'linear',         // L→C→R default
+  fadeInMs: 0,               // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 200,            // 🌊 WAVE 1090: Salida corta
 }
 
 // Posiciones del rig (orden de disparo)
@@ -222,6 +230,15 @@ export class GatlingRaid extends BaseEffect {
     const progress = Math.min(1, this.elapsedMs / this.totalDurationMs)
     const targetPosition = this.sequence[this.currentBullet]
     
+    // 🌊 WAVE 1090: FLUID DYNAMICS
+    let fadeOpacity = 1.0
+    const fadeOutStart = this.totalDurationMs - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && this.elapsedMs < this.config.fadeInMs) {
+      fadeOpacity = (this.elapsedMs / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && this.elapsedMs > fadeOutStart) {
+      fadeOpacity = ((this.totalDurationMs - this.elapsedMs) / this.config.fadeOutMs) ** 1.5
+    }
+    
     // Durante el gap: NEGRO TOTAL
     if (!this.isFlashOn) {
       return {
@@ -233,7 +250,7 @@ export class GatlingRaid extends BaseEffect {
         colorOverride: { h: 0, s: 0, l: 0 },
         intensity: 0,
         zones: this.zones,
-        globalComposition: 1.0  // 🌊 WAVE 1080
+        globalComposition: fadeOpacity  // 🌊 WAVE 1090
       }
     }
     
@@ -266,7 +283,7 @@ export class GatlingRaid extends BaseEffect {
       colorOverride: this.bulletColor,
       intensity: this.triggerIntensity,
       zones: this.zones,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides
     }
   }

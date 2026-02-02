@@ -85,6 +85,12 @@ interface AbyssalPressureConfig {
   
   /** Número máximo de flashes en fase CRUSH (2-3 para impacto quirúrgico) */
   maxStrobeCount: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade in (ms) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: AbyssalPressureConfig = {
@@ -95,6 +101,8 @@ const DEFAULT_CONFIG: AbyssalPressureConfig = {
   flickerSpeedMs: 150,       // Flicker rápido pero no agresivo
   strobeSpeedMs: 80,         // Strobe rápido en fase crush
   maxStrobeCount: 3,         // Solo 3 flashes (quirúrgico, NO spam)
+  fadeInMs: 0,               // 🌊 WAVE 1090: Ataque instantáneo (techno)
+  fadeOutMs: 200,            // 🌊 WAVE 1090: Salida limpia (void absorbe)
 }
 
 // Colores del viaje - WAVE 997: SIN BLANCO
@@ -199,15 +207,26 @@ export class AbyssalRise extends BaseEffect {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
     const progress = Math.min(1, this.elapsedMs / this.config.durationMs)
+    const elapsed = this.elapsedMs
+    const duration = this.config.durationMs
+    
+    // 🌊 WAVE 1090: FLUID DYNAMICS
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
     
     // Construir output según fase
     switch (this.currentPhase) {
       case 'pressure':
-        return this.buildPressureOutput(progress)
+        return this.buildPressureOutput(progress, fadeOpacity)
       case 'crush':
-        return this.buildCrushOutput(progress)
+        return this.buildCrushOutput(progress, fadeOpacity)
       case 'void':
-        return this.buildVoidOutput(progress)
+        return this.buildVoidOutput(progress, fadeOpacity)
     }
   }
   
@@ -215,7 +234,7 @@ export class AbyssalRise extends BaseEffect {
   // Phase outputs - WAVE 997 REFACTOR
   // ─────────────────────────────────────────────────────────────────────────
   
-  private buildPressureOutput(progress: number): EffectFrameOutput {
+  private buildPressureOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     // FASE 1: PRESSURE (0-80%) - Azul profundo vibrando
     const phaseProgress = this.elapsedMs / this.pressureEndMs
     
@@ -232,7 +251,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.deepBlue,
       dimmerOverride: flicker * 0.8,
       zones: this.zones,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: {
         // MOVERS: Azul fijo (respeta Mover Law - sin cambio de color rápido)
         'movers': {
@@ -261,7 +280,7 @@ export class AbyssalRise extends BaseEffect {
     }
   }
   
-  private buildCrushOutput(progress: number): EffectFrameOutput {
+  private buildCrushOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     // FASE 2: CRUSH (80-95%) - Strobe cyan eléctrico (NO BLANCO)
     const phaseElapsed = this.elapsedMs - this.pressureEndMs
     const phaseDuration = this.crushEndMs - this.pressureEndMs
@@ -286,7 +305,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.cyanElectric,  // Cyan eléctrico (NO BLANCO)
       dimmerOverride: strobe,
       zones: this.zones,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: {
         'movers': {
           color: COLORS.cyanElectric,
@@ -312,7 +331,7 @@ export class AbyssalRise extends BaseEffect {
     }
   }
   
-  private buildVoidOutput(progress: number): EffectFrameOutput {
+  private buildVoidOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     // FASE 3: VOID (95-100%) - Blackout total antes del drop
     return {
       effectId: this.id,
@@ -323,7 +342,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.black,
       dimmerOverride: 0,
       zones: this.zones,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: {
         'movers': { dimmer: 0, blendMode: 'replace' },
         'pars': { dimmer: 0, blendMode: 'replace' },

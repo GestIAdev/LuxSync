@@ -64,6 +64,12 @@ interface GlitchGuaguancoConfig {
   
   /** Intensidad del caos (0-1, afecta todo) */
   chaosIntensity: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade in (ms) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: GlitchGuaguancoConfig = {
@@ -73,6 +79,8 @@ const DEFAULT_CONFIG: GlitchGuaguancoConfig = {
   freezeProbability: 0.08,  // 🌊 WAVE 1010.8: Bajado de 0.15 → 0.08 (menos freezes)
   freezeDurationMs: 100,    // 🌊 WAVE 1010.8: Bajado de 150 → 100ms (freezes más cortos)
   chaosIntensity: 0.7,      // 🌊 WAVE 1010.8: Bajado de 0.9 → 0.7 (más flow, menos locura)
+  fadeInMs: 200,            // 🌊 WAVE 1090: Entrada suave (latino)
+  fadeOutMs: 600,           // 🌊 WAVE 1090: Salida latina (más flow)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -296,6 +304,18 @@ export class GlitchGuaguanco extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    const elapsed = this.elapsedMs
+    const duration = this.config.durationMs
+    
+    // 🌊 WAVE 1090: FLUID DYNAMICS (Latino - suave)
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 🦠 VIRUS OUTPUT
     // ═══════════════════════════════════════════════════════════════════════
@@ -326,7 +346,7 @@ export class GlitchGuaguanco extends BaseEffect {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
-      progress: this.elapsedMs / this.config.durationMs,
+      progress: elapsed / duration,
       zones: this.zones,
       intensity: dimmer,
       
@@ -338,7 +358,7 @@ export class GlitchGuaguanco extends BaseEffect {
       // Strobe micro-flicker durante glitch activo (no en freeze)
       strobeRate: this.glitchState === 'flicker' ? 12 : undefined,
       
-      globalComposition: 1.0,  // 🌊 WAVE 1080: DICTADOR - virus controla todo
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
     }
   }
   

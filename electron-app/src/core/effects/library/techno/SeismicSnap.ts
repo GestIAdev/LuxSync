@@ -74,6 +74,12 @@ interface SeismicSnapConfig {
   
   /** Frecuencia de vibración en fase SHAKE (Hz) */
   shakeFrequencyHz: number
+  
+  /** 🌊 WAVE 1090: Fade in (ms) - 0 para techno */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Fade out de globalComposition (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: SeismicSnapConfig = {
@@ -82,6 +88,8 @@ const DEFAULT_CONFIG: SeismicSnapConfig = {
   shakeDurationMs: 600,      // 🔥 WAVE 997.6: 600ms (nueva fase - vibración post-impacto)
   fadeDurationMs: 1350,      // 🔥 WAVE 997.6: 1350ms (decay más largo)
   shakeFrequencyHz: 10,      // 🔥 WAVE 997.6: 10 Hz = 10 vibraciones por segundo
+  fadeInMs: 0,               // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 400,            // 🌊 WAVE 1090: Fade out en últimos 400ms
 }
 
 // Total: 2500ms - WAVE 997.6
@@ -217,15 +225,24 @@ export class SeismicSnap extends BaseEffect {
     const elapsed = this.elapsedMs
     const progress = Math.min(elapsed / this.totalDurationMs, 1)
     
+    // 🌊 WAVE 1090: FLUID DYNAMICS - Calcular fadeOpacity global
+    let fadeOpacity = 1.0
+    const fadeOutStart = this.totalDurationMs - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((this.totalDurationMs - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
     switch (this.currentPhase) {
       case 'blackout':
-        return this.buildBlackoutOutput(progress)
+        return this.buildBlackoutOutput(progress, fadeOpacity)
       case 'snap':
-        return this.buildSnapOutput(progress)
+        return this.buildSnapOutput(progress, fadeOpacity)
       case 'shake':
-        return this.buildShakeOutput(progress)
+        return this.buildShakeOutput(progress, fadeOpacity)
       case 'fade':
-        return this.buildFadeOutput(progress)
+        return this.buildFadeOutput(progress, fadeOpacity)
       default:
         return null
     }
@@ -239,7 +256,7 @@ export class SeismicSnap extends BaseEffect {
    * 🖤 FASE 1: BLACKOUT
    * Preparación del golpe. Silencio total antes del SNAP.
    */
-  private buildBlackoutOutput(progress: number): EffectFrameOutput {
+  private buildBlackoutOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     return {
       effectId: this.id,
       category: this.category,
@@ -248,7 +265,7 @@ export class SeismicSnap extends BaseEffect {
       zones: SNAP_ZONES,
       intensity: 0,
       dimmerOverride: 0,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: this.buildZoneOverrides(0, null),
     }
   }
@@ -258,7 +275,7 @@ export class SeismicSnap extends BaseEffect {
    * Flash instantáneo al 100% SOSTENIDO. El golpe propiamente dicho.
    * 🔥 WAVE 997.6: Ahora dura 400ms (visible y contundente)
    */
-  private buildSnapOutput(progress: number): EffectFrameOutput {
+  private buildSnapOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     const color = this.useWhiteFlash ? COLORS.warmWhite : COLORS.impactRed
     
     return {
@@ -270,7 +287,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: 1.0,
       dimmerOverride: 1.0,
       colorOverride: color,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: this.buildZoneOverrides(1.0, color),
     }
   }
@@ -280,7 +297,7 @@ export class SeismicSnap extends BaseEffect {
    * Vibración rápida post-impacto. Como un terremoto visual.
    * Flicker ON/OFF a 10 Hz (10 vibraciones por segundo)
    */
-  private buildShakeOutput(progress: number): EffectFrameOutput {
+  private buildShakeOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     const color = this.useWhiteFlash ? COLORS.warmWhite : COLORS.impactRed
     
     // Calcular progreso dentro de la fase shake
@@ -305,7 +322,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: vibrateIntensity,
       dimmerOverride: vibrateIntensity,
       colorOverride: color,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: this.buildZoneOverrides(vibrateIntensity, color),
     }
   }
@@ -314,7 +331,7 @@ export class SeismicSnap extends BaseEffect {
    * 📉 FASE 4: FADE
    * Decay exponencial. Como la persistencia retiniana del impacto.
    */
-  private buildFadeOutput(progress: number): EffectFrameOutput {
+  private buildFadeOutput(progress: number, fadeOpacity: number): EffectFrameOutput {
     // Calcular progreso dentro de la fase fade
     const fadeElapsed = this.elapsedMs - this.fadeStartMs
     const fadeProgress = Math.min(fadeElapsed / this.config.fadeDurationMs, 1)
@@ -334,7 +351,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: decayIntensity,
       dimmerOverride: decayIntensity,
       colorOverride: color,
-      globalComposition: 1.0,  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
       zoneOverrides: this.buildZoneOverrides(decayIntensity, color),
     }
   }

@@ -54,12 +54,20 @@ interface CoreMeltdownConfig {
   
   /** Intensidad máxima (0-1) - LA BESTIA VA AL 100% */
   maxIntensity: number
+  
+  /** 🌊 WAVE 1090: Fade in (ms) - 0 para techno (ataque duro) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Fade out (ms) - salida limpia */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: CoreMeltdownConfig = {
   durationMs: 800,           // 800ms - SHORT (exento de THE MOVER LAW)
   strobeRateHz: 12,          // 12 Hz - Límite de seguridad (no más de 15)
   maxIntensity: 1.0,         // 100% - SIN PIEDAD
+  fadeInMs: 0,               // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 300,            // 🌊 WAVE 1090: TECHNO = Salida limpia (400ms sería 50% del efecto)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -168,6 +176,15 @@ export class CoreMeltdown extends BaseEffect {
     
     const progress = this.elapsedMs / this.config.durationMs
     
+    // 🌊 WAVE 1090: FLUID DYNAMICS - Fade calculation
+    let fadeOpacity = 1.0
+    const fadeOutStart = this.config.durationMs - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && this.elapsedMs < this.config.fadeInMs) {
+      fadeOpacity = (this.elapsedMs / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && this.elapsedMs > fadeOutStart) {
+      fadeOpacity = ((this.config.durationMs - this.elapsedMs) / this.config.fadeOutMs) ** 1.5
+    }
+    
     // ═════════════════════════════════════════════════════════════════════
     // NUCLEAR STROBE: ON/OFF binario, sin fades
     // ═════════════════════════════════════════════════════════════════════
@@ -207,7 +224,7 @@ export class CoreMeltdown extends BaseEffect {
       intensity: intensity * this.triggerIntensity,
       dimmerOverride: intensity * this.triggerIntensity,  // ☢️ OVERRIDE DIRECTO
       colorOverride: currentColor,
-      globalComposition: 1.0,  // 🌊 WAVE 1080: Opacidad total (hard override techno)
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090: Fluid Dynamics
       strobeRate: this.config.strobeRateHz,
       zoneOverrides,
     }

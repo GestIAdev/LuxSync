@@ -274,7 +274,8 @@ export class MacheteSpark extends BaseEffect {
       // White boost durante el spark para brillo metálico
       whiteOverride: this.cutPhase === 'spark' ? 0.7 : undefined,
       
-      globalOverride: this.cutPhase === 'spark',  // Solo override durante el corte
+      // 🌊 WAVE 1090: globalOverride → globalComposition
+      globalComposition: this.cutPhase === 'spark' ? 1.0 : 0,
     }
   }
   

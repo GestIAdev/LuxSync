@@ -4,7 +4,31 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * 🔪 WAVE 986: ACTIVE REINFORCEMENTS
- * Reemplazo de static_pulse. "Crush & Contrast" - Nada de líquidos. Golpes secos.
+ * Reemplazo     // Si OFF → blackout total    return {
+      effectId: this.id,
+      category: this.category,
+      phase: this.phase,
+      progress,
+      zones: GLITCH_ZONES,
+      intensity: 1.0,
+      dimmerOverride: 1.0,  // 100% - digital, sin fades
+      colorOverride: color,
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090
+      zoneOverrides: this.buildFlashOverrides(color),
+    }
+  }n) {
+      return {
+        effectId: this.id,
+        category: this.category,
+        phase: this.phase,
+        progress,
+        zones: GLITCH_ZONES,
+        intensity: 0,
+        dimmerOverride: 0,
+        globalComposition: fadeOpacity,  // 🌊 WAVE 1090
+        zoneOverrides: this.buildBlackoutOverrides(),
+      }
+    }e. "Crush & Contrast" - Nada de líquidos. Golpes secos.
  * 
  * 🎯 WAVE 1003.14: GLITCH PATTERNS REBUILD - CAOS REAL (NO strobe regular)
  * 
@@ -75,10 +99,16 @@ import {
 interface BinaryGlitchConfig {
   /** Duración total del efecto (ms) */
   durationMs: number
+  /** 🌊 WAVE 1090: Fade in (ms) */
+  fadeInMs: number
+  /** 🌊 WAVE 1090: Fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: BinaryGlitchConfig = {
   durationMs: 2000,          // 1.2 segundos - SHORT (< 2s)
+  fadeInMs: 0,               // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 400,            // 🌊 WAVE 1090: Salida limpia
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -246,7 +276,16 @@ export class BinaryGlitch extends BaseEffect {
     const duration = this.config.durationMs
     const progress = Math.min(elapsed / duration, 1)
     
-    // 🔢 DETERMINAR ESTADO ON/OFF SEGÚN PATRÓN
+    // 🌊 WAVE 1090: FLUID DYNAMICS
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
+    // DETERMINAR ESTADO ON/OFF SEGUN PATRON
     const isOn = this.getPatternState(elapsed)
     
     // Si OFF → blackout total

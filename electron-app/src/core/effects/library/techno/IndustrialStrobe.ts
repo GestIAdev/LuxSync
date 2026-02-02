@@ -63,6 +63,12 @@ interface IndustrialStrobeConfig {
   /** Umbrales para modos espectrales */
   harshnessThreshold: number
   flatnessThreshold: number
+  
+  /** 🌊 WAVE 1090: Fade in (ms) - 0 para techno */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: IndustrialStrobeConfig = {
@@ -74,6 +80,8 @@ const DEFAULT_CONFIG: IndustrialStrobeConfig = {
   cooldownMs: 150,         // 150ms entre ráfagas
   harshnessThreshold: 0.6, // Umbral para modo ácido
   flatnessThreshold: 0.7,  // Umbral para modo noise
+  fadeInMs: 0,             // 🌊 WAVE 1090: TECHNO = Ataque instantáneo
+  fadeOutMs: 100,          // 🌊 WAVE 1090: Salida muy corta (efecto corto)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -225,6 +233,15 @@ export class IndustrialStrobe extends BaseEffect {
     
     const progress = Math.min(1, this.elapsedMs / this.totalDurationMs)
     
+    // 🌊 WAVE 1090: FLUID DYNAMICS - Calcular fadeOpacity
+    let fadeOpacity = 1.0
+    const fadeOutStart = this.totalDurationMs - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && this.elapsedMs < this.config.fadeInMs) {
+      fadeOpacity = (this.elapsedMs / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && this.elapsedMs > fadeOutStart) {
+      fadeOpacity = ((this.totalDurationMs - this.elapsedMs) / this.config.fadeOutMs) ** 1.5
+    }
+    
     // 🔪 Durante pre-duck: NEGRO TOTAL (el contraste hace el efecto)
     if (this.isPreDucking) {
       return {
@@ -236,7 +253,7 @@ export class IndustrialStrobe extends BaseEffect {
         colorOverride: { h: 0, s: 0, l: 0 },  // Negro
         intensity: 0,
         zones: this.zones,
-        globalComposition: 1.0  // 🌊 WAVE 1080
+        globalComposition: fadeOpacity  // 🌊 WAVE 1090
       }
     }
     
@@ -251,7 +268,7 @@ export class IndustrialStrobe extends BaseEffect {
         colorOverride: this.calculatedColor,
         intensity: 1.0,  // FULL
         zones: this.zones,
-        globalComposition: 1.0  // 🌊 WAVE 1080
+        globalComposition: fadeOpacity  // 🌊 WAVE 1090
       }
     }
     
@@ -265,7 +282,7 @@ export class IndustrialStrobe extends BaseEffect {
       colorOverride: { h: 0, s: 0, l: 0 },  // Negro
       intensity: 0,
       zones: this.zones,
-      globalComposition: 1.0  // 🌊 WAVE 1080
+      globalComposition: fadeOpacity  // 🌊 WAVE 1090
     }
   }
   

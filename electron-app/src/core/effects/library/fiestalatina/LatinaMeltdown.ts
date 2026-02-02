@@ -64,6 +64,12 @@ interface LatinaMeltdownConfig {
   
   /** ¿Alternar colores? */
   alternateColors: boolean
+  
+  /** 🌊 WAVE 1090: Tiempo de fade in (ms) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: LatinaMeltdownConfig = {
@@ -73,6 +79,8 @@ const DEFAULT_CONFIG: LatinaMeltdownConfig = {
   gapMs: 120,               // 120ms entre golpes
   maxIntensity: 1.0,        // 100% sin piedad
   alternateColors: true,    // Rojo → Amarillo → Rojo → Amarillo
+  fadeInMs: 200,            // 🌊 WAVE 1090: Entrada suave (latino)
+  fadeOutMs: 600,           // 🌊 WAVE 1090: Salida latina (más flow)
 }
 
 // Duración total calculada: ~1500ms (SHORT effect - puede usar color en movers)
@@ -208,6 +216,18 @@ export class LatinaMeltdown extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    const elapsed = this.elapsedMs
+    const duration = this.totalDurationMs
+    
+    // 🌊 WAVE 1090: FLUID DYNAMICS (Latino - suave)
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 NUCLEAR SALSA OUTPUT
     // ═══════════════════════════════════════════════════════════════════════
@@ -261,7 +281,7 @@ export class LatinaMeltdown extends BaseEffect {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
-      progress: this.elapsedMs / this.totalDurationMs,
+      progress: elapsed / duration,
       zones: this.zones,
       intensity: dimmer,
       
@@ -273,7 +293,7 @@ export class LatinaMeltdown extends BaseEffect {
       // White boost durante flash para punch extra
       whiteOverride: this.hitPhase === 'flash' && dimmer > 0.8 ? 0.3 : undefined,
       
-      globalComposition: 1.0,  // 🌊 WAVE 1080: DICTADOR - manda sobre todo
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
     }
   }
   

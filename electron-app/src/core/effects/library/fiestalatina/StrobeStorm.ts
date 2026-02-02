@@ -284,8 +284,8 @@ export class StrobeStorm extends BaseEffect {
       // Color del flash
       colorOverride: this.config.flashColor,
       
-      // Global override solo en sustain peak
-      globalOverride: this.phase === 'sustain' && this.currentFrequency > 5,
+      // 🌊 WAVE 1090: globalOverride → globalComposition
+      globalComposition: (this.phase === 'sustain' && this.currentFrequency > 5) ? 1.0 : 0,
     }
   }
   

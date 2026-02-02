@@ -48,6 +48,12 @@ interface PowerChordConfig {
   
   /** Número de strobes en PARs */
   strobeCount: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade in (ms) */
+  fadeInMs: number
+  
+  /** 🌊 WAVE 1090: Tiempo de fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: PowerChordConfig = {
@@ -57,6 +63,9 @@ const DEFAULT_CONFIG: PowerChordConfig = {
   warmWhite: { h: 40, s: 15, l: 92 },
   
   strobeCount: 4,                // 4 flashes rítmicos
+  
+  fadeInMs: 100,                 // 🌊 WAVE 1090: Ataque de guitarra (rock)
+  fadeOutMs: 1000,               // 🌊 WAVE 1090: Resonancia (sustain largo)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -157,6 +166,18 @@ export class PowerChord extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
+    const elapsed = this.elapsedMs
+    const duration = this.config.durationMs
+    
+    // 🌊 WAVE 1090: FLUID DYNAMICS (Rock - ataque medio, resonancia larga)
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
     const strobeIntensity = this.getStrobeIntensity()
     
     // ⚡ MOVERS - Flash sostenido (NO strobe, solo dimmer)
@@ -185,10 +206,10 @@ export class PowerChord extends BaseEffect {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
-      progress: this.elapsedMs / this.config.durationMs,
+      progress: elapsed / duration,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.chordIntensity,
-      globalComposition: 1.0,  // 🌊 WAVE 1080: Override total
+      globalComposition: fadeOpacity,  // 🌊 WAVE 1090: FLUID DYNAMICS
       zoneOverrides,
     }
   }

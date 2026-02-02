@@ -29,6 +29,10 @@ interface TropicalPulseConfig {
   stormColors: Array<{ h: number; s: number; l: number }>
   finaleColor: { h: number; s: number; l: number }
   flashIntensity: number
+  /** 🌊 WAVE 1090: Tiempo de fade in (ms) */
+  fadeInMs: number
+  /** 🌊 WAVE 1090: Tiempo de fade out (ms) */
+  fadeOutMs: number
 }
 
 const DEFAULT_CONFIG: TropicalPulseConfig = {
@@ -45,6 +49,8 @@ const DEFAULT_CONFIG: TropicalPulseConfig = {
   ],
   finaleColor: { h: 45, s: 100, l: 60 },  // Dorado
   flashIntensity: 0.85,  // 🆘 1.0→0.85 - GENTLE ZONE (menos agresivo)
+  fadeInMs: 200,         // 🌊 WAVE 1090: Entrada suave (latino)
+  fadeOutMs: 600,        // 🌊 WAVE 1090: Salida latina (más flow)
 }
 
 export class TropicalPulse extends BaseEffect {
@@ -140,18 +146,30 @@ export class TropicalPulse extends BaseEffect {
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
-    // 🌪️ WAVE 805.1: Durante preDucking, silenciar TODO (incluye movers)
+    const elapsed = this.elapsedMs
+    const duration = this.totalDurationMs
+    
+    // � WAVE 1090: FLUID DYNAMICS (Latino - suave)
+    let fadeOpacity = 1.0
+    const fadeOutStart = duration - this.config.fadeOutMs
+    if (this.config.fadeInMs > 0 && elapsed < this.config.fadeInMs) {
+      fadeOpacity = (elapsed / this.config.fadeInMs) ** 1.5
+    } else if (this.config.fadeOutMs > 0 && elapsed > fadeOutStart) {
+      fadeOpacity = ((duration - elapsed) / this.config.fadeOutMs) ** 1.5
+    }
+    
+    // �🌪️ WAVE 805.1: Durante preDucking, silenciar TODO (incluye movers)
     if (this.currentPhase === 'preDucking') {
       return {
         effectId: this.id,
         category: this.category,
         phase: this.phase,
-        progress: this.elapsedMs / this.totalDurationMs,
+        progress: elapsed / duration,
         zones: [],
         intensity: 0,
         dimmerOverride: 0,
         colorOverride: undefined,
-        globalComposition: 1.0,  // 🌊 WAVE 1080
+        globalComposition: fadeOpacity,  // 🌊 WAVE 1090
         zoneOverrides: undefined,
       }
     }

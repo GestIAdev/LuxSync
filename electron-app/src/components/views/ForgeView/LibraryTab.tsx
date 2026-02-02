@@ -1,18 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📚 LIBRARY TAB - WAVE 1112: FUNCTIONAL CLOSURE & LIBRARY MANAGER
+ * 📚 LIBRARY TAB - WAVE 1113: HARDWARE BINDING & REAL FS
  * "The Blueprint Library" - Browse, search, select fixtures
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * First tab in Forge. Lists all available fixture definitions.
- * - System fixtures (read-only, clonable)
- * - User fixtures (editable, deletable)
+ * - System fixtures (read-only, from /librerias)
+ * - User fixtures (editable, from userData/fixtures)
+ * 
+ * WAVE 1113: Now loads from filesystem via IPC, not localStorage
  * 
  * @module components/views/ForgeView/LibraryTab
- * @version WAVE 1112
+ * @version WAVE 1113
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import './LibraryTab.css'
 import { 
   Search, 
@@ -25,9 +27,11 @@ import {
   Palette,
   Server,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Loader
 } from 'lucide-react'
-import { useLibraryStore, LibraryFixture, SYSTEM_FIXTURES } from '../../../stores/libraryStore'
+import { useLibraryStore, LibraryFixture } from '../../../stores/libraryStore'
 import { FixtureDefinition } from '../../../types/FixtureDefinition'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -92,21 +96,37 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   
   // Store
-  const { getAllFixtures, deleteUserFixture, cloneSystemFixture, isSystemFixture } = useLibraryStore()
+  const { 
+    systemFixtures,
+    userFixtures,
+    isLoading,
+    lastError,
+    loadFromDisk,
+    deleteUserFixture, 
+    saveUserFixture,
+    isSystemFixture,
+    getAllFixtures
+  } = useLibraryStore()
+  
+  // Load fixtures on mount
+  useEffect(() => {
+    console.log('[LibraryTab] 📂 Loading fixtures from disk...')
+    loadFromDisk()
+  }, [loadFromDisk])
   
   // Computed: Filtered fixtures
-  const filteredFixtures = useMemo(() => {
-    let fixtures = getAllFixtures()
+  const filteredFixtures = useMemo((): LibraryFixture[] => {
+    let fixtures: LibraryFixture[] = getAllFixtures()
     
     // Filter by source
     if (filterSource !== 'all') {
-      fixtures = fixtures.filter(f => f.source === filterSource)
+      fixtures = fixtures.filter((f: LibraryFixture) => f.source === filterSource)
     }
     
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      fixtures = fixtures.filter(f => 
+      fixtures = fixtures.filter((f: LibraryFixture) => 
         f.name.toLowerCase().includes(query) ||
         f.manufacturer?.toLowerCase().includes(query) ||
         f.type?.toLowerCase().includes(query)
@@ -114,7 +134,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     }
     
     // Sort: User fixtures first, then by name
-    return fixtures.sort((a, b) => {
+    return fixtures.sort((a: LibraryFixture, b: LibraryFixture) => {
       if (a.source !== b.source) {
         return a.source === 'user' ? -1 : 1
       }
@@ -133,17 +153,28 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setCloneName(`${fixture.name} (Copy)`)
   }, [])
   
-  const handleConfirmClone = useCallback(() => {
+  const handleConfirmClone = useCallback(async () => {
     if (!cloneDialogFixture || !cloneName.trim()) return
     
-    const cloned = cloneSystemFixture(cloneDialogFixture.id, cloneName)
-    if (cloned) {
-      console.log(`[LibraryTab] 📋 Cloned fixture: ${cloned.name}`)
-      onSelectFixture(cloned)
+    // Clone by saving a copy with new name and ID
+    const clonedFixture: FixtureDefinition = {
+      ...cloneDialogFixture,
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: cloneName,
+    }
+    delete (clonedFixture as any).source
+    delete (clonedFixture as any).filePath
+    
+    const result = await saveUserFixture(clonedFixture)
+    if (result.success) {
+      console.log(`[LibraryTab] 📋 Cloned fixture: ${cloneName}`)
+      onSelectFixture(clonedFixture)
+    } else {
+      console.error(`[LibraryTab] ❌ Failed to clone: ${result.error}`)
     }
     setCloneDialogFixture(null)
     setCloneName('')
-  }, [cloneDialogFixture, cloneName, cloneSystemFixture, onSelectFixture])
+  }, [cloneDialogFixture, cloneName, saveUserFixture, onSelectFixture])
   
   const handleDelete = useCallback((fixtureId: string) => {
     if (isSystemFixture(fixtureId)) {
@@ -153,15 +184,20 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setDeleteConfirmId(fixtureId)
   }, [isSystemFixture])
   
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!deleteConfirmId) return
-    deleteUserFixture(deleteConfirmId)
+    await deleteUserFixture(deleteConfirmId)
     setDeleteConfirmId(null)
   }, [deleteConfirmId, deleteUserFixture])
   
+  const handleRefresh = useCallback(() => {
+    console.log('[LibraryTab] 🔄 Manual refresh...')
+    loadFromDisk()
+  }, [loadFromDisk])
+  
   // Stats
-  const systemCount = SYSTEM_FIXTURES.length
-  const userCount = filteredFixtures.filter(f => f.source === 'user').length
+  const systemCount = systemFixtures.length
+  const userCount = userFixtures.length
   
   return (
     <div className="library-tab">
@@ -174,11 +210,29 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
           </span>
         </div>
         
-        <button className="library-new-btn" onClick={onNewFromScratch}>
-          <Plus size={18} />
-          <span>New from Scratch</span>
-        </button>
+        <div className="library-header-actions">
+          <button 
+            className="library-refresh-btn" 
+            onClick={handleRefresh}
+            disabled={isLoading}
+            title="Refresh Library"
+          >
+            {isLoading ? <Loader size={16} className="spinning" /> : <RefreshCw size={16} />}
+          </button>
+          <button className="library-new-btn" onClick={onNewFromScratch}>
+            <Plus size={18} />
+            <span>New from Scratch</span>
+          </button>
+        </div>
       </div>
+      
+      {/* Error message */}
+      {lastError && (
+        <div className="library-error">
+          <AlertCircle size={14} />
+          <span>{lastError}</span>
+        </div>
+      )}
       
       {/* Search & Filter */}
       <div className="library-toolbar">

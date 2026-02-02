@@ -204,12 +204,16 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   existingDefinition
 }) => {
   // ═══════════════════════════════════════════════════════════════════════
-  // STORES - WAVE 1112
+  // STORES - WAVE 1113: Updated to async library store
   // ═══════════════════════════════════════════════════════════════════════
   
-  const { saveUserFixture, isSystemFixture, cloneSystemFixture } = useLibraryStore()
+  const { 
+    saveUserFixture, 
+    isSystemFixture, 
+    getFixtureById,
+    loadFromDisk 
+  } = useLibraryStore()
   const { targetFixtureId, clearTargetFixture } = useNavigationStore()
-  const { getFixtureById } = useLibraryStore()
   
   // ═══════════════════════════════════════════════════════════════════════
   // STATE
@@ -244,6 +248,13 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 1112: Load fixture from navigation target
   // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 1113: Load library from disk on mount
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    console.log('[ForgeEmbedded] 📂 Loading library from disk...')
+    loadFromDisk()
+  }, [loadFromDisk])
   
   useEffect(() => {
     if (targetFixtureId) {
@@ -420,40 +431,51 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     }
   }, [fixture, wheelColors, colorEngine])
   
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!isFormValid) return
     
     const completeFixture = buildCompleteFixture()
     
     // Check if trying to save a system fixture
     if (editingSource === 'system') {
-      // Force clone for system fixtures
+      // WAVE 1113: Clone manually - system fixtures are read-only
       const clonedName = `${completeFixture.name} (User Copy)`
-      const cloned = cloneSystemFixture(originalFixtureId!, clonedName)
-      if (cloned) {
-        // Update the clone with current edits
-        const updatedClone = { ...cloned, ...completeFixture, id: cloned.id, name: clonedName }
-        saveUserFixture(updatedClone)
-        setFixture(updatedClone)
+      const clonedFixture = {
+        ...completeFixture,
+        id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: clonedName,
+      }
+      
+      const result = await saveUserFixture(clonedFixture)
+      if (result.success) {
+        setFixture(clonedFixture)
         setEditingSource('user')
-        setOriginalFixtureId(updatedClone.id)
+        setOriginalFixtureId(clonedFixture.id)
         setSaveMessage('✅ Saved as User Copy (System fixtures are read-only)')
         setTimeout(() => setSaveMessage(null), 3000)
+      } else {
+        setSaveMessage(`❌ Save failed: ${result.error}`)
+        setTimeout(() => setSaveMessage(null), 5000)
       }
     } else {
       // Save directly (new or user fixture)
-      saveUserFixture(completeFixture)
-      setEditingSource('user')
-      setOriginalFixtureId(completeFixture.id)
-      setSaveMessage('✅ Saved to User Library')
-      setTimeout(() => setSaveMessage(null), 3000)
+      const result = await saveUserFixture(completeFixture)
+      if (result.success) {
+        setEditingSource('user')
+        setOriginalFixtureId(completeFixture.id)
+        setSaveMessage('✅ Saved to User Library')
+        setTimeout(() => setSaveMessage(null), 3000)
+      } else {
+        setSaveMessage(`❌ Save failed: ${result.error}`)
+        setTimeout(() => setSaveMessage(null), 5000)
+      }
     }
     
     console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name)
     
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)
-  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, cloneSystemFixture])
+  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture])
 
   const handleExportJSON = useCallback(() => {
     const completeFixture = buildCompleteFixture()

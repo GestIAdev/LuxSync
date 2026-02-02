@@ -193,35 +193,68 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   
   // Live Probe handlers
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 1112: Live Probe with Mock DMX
+  // WAVE 1113: Live Probe with REAL DMX via IPC
   // ═══════════════════════════════════════════════════════════════════════
   
-  const handleProbeChange = useCallback((value: number) => {
+  const [dmxConnected, setDmxConnected] = useState<boolean>(false)
+  
+  // Check DMX status on mount and periodically
+  useEffect(() => {
+    const checkDMXStatus = async () => {
+      if (typeof window !== 'undefined' && window.lux?.library?.dmxStatus) {
+        const status = await window.lux.library.dmxStatus()
+        setDmxConnected(status.connected)
+      }
+    }
+    
+    checkDMXStatus()
+    const interval = setInterval(checkDMXStatus, 5000) // Check every 5s
+    return () => clearInterval(interval)
+  }, [])
+  
+  const handleProbeChange = useCallback(async (value: number) => {
     const clampedValue = Math.max(0, Math.min(255, value))
     setProbeValue(clampedValue)
     
-    // Try to send real DMX if available
+    // WAVE 1113: Send via REAL DMX IPC (THE NERVE LINK)
+    // Using window.luxsync.sendDmxChannel for raw hardware access
+    if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
+      try {
+        // Universe 0, Channel 8 (typical color wheel channel)
+        // In real use, this should read from the channel rack
+        await (window as any).luxsync.sendDmxChannel(0, 8, clampedValue)
+        console.log(`[DMX PROBE] ✅ Sent: Ch8 → ${clampedValue}`)
+      } catch (err) {
+        console.error('[DMX PROBE] ❌ Send failed:', err)
+      }
+    } else {
+      // Fallback for when IPC not available
+      console.log(`[DMX PROBE] ⚠️ Offline mock: Ch8 → ${clampedValue}`)
+    }
+    
+    // Also call parent callback if provided
     if (onTestDmx) {
       onTestDmx(clampedValue)
-    } else {
-      // WAVE 1112: Mock DMX output - will be connected to TitanEngine later
-      console.log(`[DMX PROBE] Color Wheel → ${clampedValue}`)
-      
-      // Try electron IPC if available (future connection)
-      if (typeof window !== 'undefined' && (window as any).electron?.sendDmx) {
-        (window as any).electron.sendDmx(1, 8, clampedValue) // Universe 1, Channel 8 (typical color wheel)
-      }
     }
   }, [onTestDmx])
   
-  const handleAutoJump = useCallback((dmxValue: number) => {
+  const handleAutoJump = useCallback(async (dmxValue: number) => {
     setProbeValue(dmxValue)
     
-    // Also trigger probe output
+    // Trigger DMX output
+    if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
+      try {
+        await (window as any).luxsync.sendDmxChannel(0, 8, dmxValue)
+        console.log(`[DMX PROBE] ✅ Jump: Ch8 → ${dmxValue}`)
+      } catch (err) {
+        console.error('[DMX PROBE] ❌ Jump failed:', err)
+      }
+    } else {
+      console.log(`[DMX PROBE] ⚠️ Offline jump: Ch8 → ${dmxValue}`)
+    }
+    
     if (onTestDmx) {
       onTestDmx(dmxValue)
-    } else {
-      console.log(`[DMX PROBE] Jump to → ${dmxValue}`)
     }
   }, [onTestDmx])
   

@@ -502,6 +502,24 @@ const luxApi = {
   /** 🎭 WAVE 10.6: Nuevo show - reset completo */
   newShow: () =>
     ipcRenderer.invoke('lux:new-show'),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔌 WAVE 1113: LIBRARY UNIFIED API - Real FileSystem
+  // Single Source of Truth for Forge + StageConstructor
+  // ═══════════════════════════════════════════════════════════════════════════
+  library: {
+    /** List ALL fixtures: system (read-only from /librerias) + user (writable from userData/fixtures) */
+    listAll: () => ipcRenderer.invoke('lux:library:list-all'),
+    
+    /** Save a fixture to user library (userData/fixtures) */
+    saveUser: (fixture: any) => ipcRenderer.invoke('lux:library:save-user', fixture),
+    
+    /** Delete a fixture from user library (cannot delete system fixtures) */
+    deleteUser: (fixtureId: string) => ipcRenderer.invoke('lux:library:delete-user', fixtureId),
+    
+    /** Get DMX connection status for Live Probe */
+    dmxStatus: () => ipcRenderer.invoke('lux:library:dmx-status'),
+  },
   
   // ============================================
   // ⚡ WAVE 27: FIXTURES OBJECT

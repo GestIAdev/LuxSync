@@ -354,6 +354,45 @@ declare global {
         error?: string
       }>
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔌 WAVE 1113: LIBRARY UNIFIED API - Real FileSystem
+    // Single Source of Truth for Forge + StageConstructor
+    // ═══════════════════════════════════════════════════════════════════════════
+    library: {
+      /** List ALL fixtures: system (read-only from /librerias) + user (writable from userData/fixtures) */
+      listAll: () => Promise<{
+        success: boolean
+        systemFixtures: FixtureLibraryItem[]
+        userFixtures: FixtureLibraryItem[]
+        paths: {
+          system: string
+          user: string
+        }
+        error?: string
+      }>
+      
+      /** Save a fixture to user library (userData/fixtures) */
+      saveUser: (fixture: FixtureDefinition) => Promise<{
+        success: boolean
+        filePath?: string
+        fixture?: FixtureDefinition
+        error?: string
+      }>
+      
+      /** Delete a fixture from user library (cannot delete system fixtures) */
+      deleteUser: (fixtureId: string) => Promise<{
+        success: boolean
+        deletedPath?: string
+        error?: string
+      }>
+      
+      /** Get DMX connection status for Live Probe */
+      dmxStatus: () => Promise<{
+        connected: boolean
+        device: string | null
+      }>
+    }
     
     // 🎭 WAVE 26: Show Management - PURGED WAVE 365
     // Legacy methods removed. Use lux.stage.* API instead

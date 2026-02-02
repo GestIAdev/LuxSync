@@ -44,6 +44,46 @@
   display: block;
 }
 
+.library-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.library-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.library-refresh-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.library-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.library-refresh-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .library-new-btn {
   display: flex;
   align-items: center;
@@ -62,6 +102,25 @@
 .library-new-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(34, 211, 238, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ERROR MESSAGE - WAVE 1113 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.library-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.15);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  font-size: 12px;
+}
+
+.library-error svg {
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

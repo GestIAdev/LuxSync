@@ -887,6 +887,228 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       return { success: false, error: String(err) }
     }
   })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔌 WAVE 1113: LIBRARY UNIFIED API - Real FileSystem, No localStorage
+  // Single Source of Truth for Forge + StageConstructor
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * List ALL fixtures from both sources:
+   * - System (factory): Read-only, from /librerias
+   * - User (custom): Writable, from userData/fixtures
+   */
+  ipcMain.handle('lux:library:list-all', async () => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      
+      // Get factory path (read-only)
+      const { app } = await import('electron')
+      const isDev = !app.isPackaged
+      const factoryPath = isDev 
+        ? path.join(__dirname, '../../../../librerias')
+        : path.join(app.getPath('userData'), 'librerias')
+      
+      // Get user path (writable)
+      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      
+      // Ensure user path exists
+      if (!fs.existsSync(userPath)) {
+        fs.mkdirSync(userPath, { recursive: true })
+      }
+      
+      const systemFixtures: any[] = []
+      const userFixtures: any[] = []
+      
+      // Scan factory library
+      if (fs.existsSync(factoryPath)) {
+        const factoryFiles = fs.readdirSync(factoryPath)
+        for (const file of factoryFiles) {
+          if (file.endsWith('.json')) {
+            try {
+              const content = fs.readFileSync(path.join(factoryPath, file), 'utf-8')
+              const fixture = JSON.parse(content)
+              systemFixtures.push({
+                ...fixture,
+                source: 'system',
+                filePath: path.join(factoryPath, file),
+              })
+            } catch (e) {
+              console.warn(`[Library] ⚠️ Failed to parse factory fixture: ${file}`)
+            }
+          } else if (file.endsWith('.fxt')) {
+            // Parse FXT files via parser
+            const parsed = fxtParser.parseFile(path.join(factoryPath, file))
+            if (parsed) {
+              systemFixtures.push({
+                ...parsed,
+                source: 'system',
+                filePath: path.join(factoryPath, file),
+              })
+            }
+          }
+        }
+      }
+      
+      // Scan user library
+      if (fs.existsSync(userPath)) {
+        const userFiles = fs.readdirSync(userPath)
+        for (const file of userFiles) {
+          if (file.endsWith('.json')) {
+            try {
+              const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
+              const fixture = JSON.parse(content)
+              userFixtures.push({
+                ...fixture,
+                source: 'user',
+                filePath: path.join(userPath, file),
+              })
+            } catch (e) {
+              console.warn(`[Library] ⚠️ Failed to parse user fixture: ${file}`)
+            }
+          }
+        }
+      }
+      
+      console.log(`[Library] 📚 WAVE 1113: Loaded ${systemFixtures.length} system + ${userFixtures.length} user fixtures`)
+      
+      return {
+        success: true,
+        systemFixtures,
+        userFixtures,
+        paths: {
+          system: factoryPath,
+          user: userPath,
+        },
+      }
+    } catch (err) {
+      console.error('[Library] ❌ Failed to list fixtures:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
+  /**
+   * Save a user fixture to userData/fixtures
+   */
+  ipcMain.handle('lux:library:save-user', async (_event, fixture: any) => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const { app } = await import('electron')
+      
+      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      
+      // Ensure directory exists
+      if (!fs.existsSync(userPath)) {
+        fs.mkdirSync(userPath, { recursive: true })
+      }
+      
+      // Generate safe filename from fixture id or name
+      const safeId = (fixture.id || fixture.name || 'fixture')
+        .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 50)
+      
+      const fileName = `${safeId}.json`
+      const filePath = path.join(userPath, fileName)
+      
+      // Ensure fixture has an ID
+      if (!fixture.id) {
+        fixture.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+      
+      // Add metadata
+      fixture.savedAt = new Date().toISOString()
+      fixture.source = 'user'
+      
+      // Write file
+      fs.writeFileSync(filePath, JSON.stringify(fixture, null, 2), 'utf-8')
+      
+      console.log(`[Library] 💾 WAVE 1113: Saved user fixture: ${filePath}`)
+      
+      // Rescan to update cache
+      await rescanAllLibraries()
+      
+      return {
+        success: true,
+        filePath,
+        fixture,
+      }
+    } catch (err) {
+      console.error('[Library] ❌ Failed to save user fixture:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
+  /**
+   * Delete a user fixture from userData/fixtures
+   * Only user fixtures can be deleted (not system)
+   */
+  ipcMain.handle('lux:library:delete-user', async (_event, fixtureId: string) => {
+    try {
+      const fs = await import('fs')
+      const path = await import('path')
+      const { app } = await import('electron')
+      
+      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      
+      if (!fs.existsSync(userPath)) {
+        return { success: false, error: 'User fixtures folder does not exist' }
+      }
+      
+      // Find the fixture file
+      const files = fs.readdirSync(userPath)
+      let fileToDelete: string | null = null
+      
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue
+        
+        try {
+          const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
+          const fixture = JSON.parse(content)
+          
+          if (fixture.id === fixtureId) {
+            fileToDelete = path.join(userPath, file)
+            break
+          }
+        } catch (e) {
+          continue
+        }
+      }
+      
+      if (!fileToDelete) {
+        return { success: false, error: `Fixture "${fixtureId}" not found in user library` }
+      }
+      
+      // Delete the file
+      fs.unlinkSync(fileToDelete)
+      
+      console.log(`[Library] 🗑️ WAVE 1113: Deleted user fixture: ${fileToDelete}`)
+      
+      // Rescan to update cache
+      await rescanAllLibraries()
+      
+      return { success: true, deletedPath: fileToDelete }
+    } catch (err) {
+      console.error('[Library] ❌ Failed to delete user fixture:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+
+  /**
+   * Get DMX connection status for Live Probe
+   */
+  ipcMain.handle('lux:library:dmx-status', () => {
+    const { universalDMX } = deps
+    const isConnected = universalDMX?.isConnected ?? false
+    const device = universalDMX?.currentDevice ?? null
+    
+    return {
+      connected: isConnected,
+      device,
+    }
+  })
 }
 
 // =============================================================================

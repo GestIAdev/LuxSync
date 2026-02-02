@@ -430,7 +430,8 @@ export class TitanEngine extends EventEmitter {
         energyOutput.smoothedEnergy,
         audio.high,
         audio.kickDetected ?? false,
-        godEarMetrics
+        godEarMetrics,
+        context.bpm  // 🩰 WAVE 1102: Pasar BPM para Elastic Time
       )
       
       preComputedOceanicContext = chillResult.oceanicContext

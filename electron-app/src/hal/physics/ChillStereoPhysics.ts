@@ -156,6 +156,10 @@ interface OceanState {
   zoneEntryTime: number
   /** WAVE 1072: Zona anterior para detectar cambios */
   previousZone: DepthZone | null
+  /** 🩰 WAVE 1102: Tiempo elástico acumulado, escalado por BPM */
+  oceanTime: number
+  /** 🩰 WAVE 1102: Timestamp del último update de oceanTime */
+  lastOceanUpdate: number
 }
 
 const state: OceanState = {
@@ -178,6 +182,13 @@ const state: OceanState = {
   startTime: Date.now(),
   zoneEntryTime: Date.now(),
   previousZone: null,
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🩰 WAVE 1102: ELASTIC TIME - oceanTime acumula tiempo escalado por BPM
+  // El océano respira más rápido cuando la música acelera
+  // Base: 60 BPM = 1.0x, 120 BPM = 2.0x, 80 BPM = 1.33x
+  // ═══════════════════════════════════════════════════════════════════════════
+  oceanTime: 0,
+  lastOceanUpdate: Date.now(),
 }
 
 // UTILIDADES
@@ -437,14 +448,42 @@ function checkOceanicTriggers(godEar: any, depth: number, now: number): OceanicT
 }
 
 // FUNCIÓN PRINCIPAL
+// 🩰 WAVE 1102: Añadido parámetro bpm para Elastic Time
 export const calculateChillStereo = (
   time: number,
   energy: number,
   air: number,
   isKick: boolean,
-  godEar: any = {}
+  godEar: any = {},
+  bpm: number = 60  // 🩰 WAVE 1102: BPM del Pacemaker (default 60 = 1.0x time)
 ): DeepFieldOutput => {
   const now = Date.now()
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🩰 WAVE 1102: ELASTIC TIME - El océano respira con la música
+  // 
+  // En lugar de usar Date.now() directamente para los osciladores,
+  // usamos un acumulador de tiempo que escala con el BPM.
+  // 
+  // - 60 BPM = 1.0x (tempo base, el océano respira normal)
+  // - 120 BPM = 2.0x (tempo alto, el océano acelera)
+  // - 80 BPM = 1.33x (tempo medio, el océano fluye suave)
+  // 
+  // Esto sincroniza imperceptiblemente las olas con el pulso de la música.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const deltaMs = now - state.lastOceanUpdate
+  state.lastOceanUpdate = now
+  
+  // timeScaler: 60 BPM = 1.0x, 120 BPM = 2.0x
+  // Si BPM < 40 (silencio o error), fallback a 60 BPM
+  const safeBpm = (bpm > 40 && isFinite(bpm)) ? bpm : 60
+  const timeScaler = safeBpm / 60
+  
+  // Acumular tiempo elástico
+  state.oceanTime += deltaMs * timeScaler
+  
+  // Usar oceanTime para los osciladores (en lugar de now)
+  const elasticTime = state.oceanTime
   
   const depth = calculateHydrostaticDepth(now, godEar)
   const zone = getZoneFromDepth(depth)
@@ -459,9 +498,10 @@ export const calculateChillStereo = (
   }
   state.currentZone = zone
   
-  const color = calculateColorGrading(depth, energy, now)
-  const physics = calculateFluidPhysics(now, energy, depth, godEar)
-  const oceanicTriggers = checkOceanicTriggers(godEar, depth, now)
+  // 🩰 WAVE 1102: Pasar elasticTime a los cálculos de física y color
+  const color = calculateColorGrading(depth, energy, elasticTime)
+  const physics = calculateFluidPhysics(elasticTime, energy, depth, godEar)
+  const oceanicTriggers = checkOceanicTriggers(godEar, depth, now) // Triggers usan tiempo real
   
   // WAVE 1072: Construir contexto oceánico usando el adapter
   // Calcular tidePhase del ciclo de marea actual (0=superficie, 1=abismo)

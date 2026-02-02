@@ -657,7 +657,8 @@ export class SeleneLux {
         audioMetrics.avgNormEnergy,     // Nutriente (modula velocidad, no dispara)
         audioMetrics.normalizedTreble,  // Air/Plankton probability modulator
         audioMetrics.kickDetected ?? false,  // Subtle surge boost
-        godEarMetrics  // 🌊 WAVE 1070: GodEar metrics for oceanic triggers
+        godEarMetrics,  // 🌊 WAVE 1070: GodEar metrics for oceanic triggers
+        vibeContext.bpm ?? 60  // 🩰 WAVE 1102: BPM para Elastic Time
       );
       
       // 🔍 LOG THE DEEP FIELD DEBUG INFO (Solo si hay cambio de profundidad >500m)

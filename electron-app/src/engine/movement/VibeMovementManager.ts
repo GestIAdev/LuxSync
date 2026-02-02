@@ -677,19 +677,27 @@ export class VibeMovementManager {
     }
     
     // Actualizar contador de compases (beats / 4)
-    const beatCount = audio.beatCount || 0
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩰 WAVE 1102: PHASE LOCKING - Sincronización matemática con el Pacemaker
+    // 
+    // En lugar de usar this.time (segundos reales), calculamos la fase
+    // directamente desde beatCount + beatPhase del BeatDetector.
+    // 
+    // Beneficio: Si el audio salta (seek), la luz salta a la posición correcta.
+    // No hay drift temporal - la sincronización es matemáticamente perfecta.
+    // ═══════════════════════════════════════════════════════════════════════
+    const beatCount = audio.beatCount ?? 0
+    const beatPhase = audio.beatPhase ?? 0
+    
+    // Posición absoluta en beats (ej: 124.75 beats desde el inicio)
+    const absoluteBeats = beatCount + beatPhase
+    
+    // Actualizar barCount basado en beatCount (para pattern rotation)
     if (beatCount !== this.lastBeatCount) {
       if (beatCount % 4 === 0) {
         this.barCount++
       }
       this.lastBeatCount = beatCount
-    }
-    
-    // 🔧 WAVE 349: FALLBACK - Si beatCount no llega, usar tiempo para forzar rotación
-    // Cada 8 segundos (~2 compases a 120 BPM) forzamos incremento de bar
-    if (beatCount === 0 && this.frameCount % (30 * 8) === 0) {
-      this.barCount++
-      console.log(`[🎭 CHOREO] ⚠️ FALLBACK: barCount forced to ${this.barCount} (beatCount not available)`)
     }
     
     // Obtener configuración del vibe
@@ -698,10 +706,10 @@ export class VibeMovementManager {
     // === FASE 3: CEREBRO DE DECISIÓN ===
     const patternName = this.selectPattern(vibeId, config, audio, this.barCount)
     
-    // 🔬 WAVE 349: DEBUG - Pattern rotation logging
+    // 🔬 WAVE 1102: DEBUG - Pattern rotation logging (sin mensaje de fallback)
     if (this.frameCount % 120 === 0) { // Cada ~4 segundos
       const phrase = Math.floor(this.barCount / 8)
-      console.log(`[🎭 CHOREO] Bar:${this.barCount} | Phrase:${phrase} | Pattern:${patternName} | Energy:${audio.energy.toFixed(2)} | BeatCount:${audio.beatCount ?? 'N/A'}`)
+      console.log(`[🎭 CHOREO] Bar:${this.barCount} | Phrase:${phrase} | Pattern:${patternName} | Energy:${audio.energy.toFixed(2)} | Beats:${absoluteBeats.toFixed(2)}`)
     }
     
     // Si hay muy poca energía, home position
@@ -728,8 +736,24 @@ export class VibeMovementManager {
       effectiveFrequency = 0.01 + (this.manualSpeedOverride / 100) * 0.49
     }
     
-    // === FASE 2: CALCULAR PATRÓN (FULL RANGE) ===
-    const phase = Math.PI * 2 * effectiveFrequency * this.time
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🩰 WAVE 1102: PHASE CALCULATION - Beat-Locked
+    // 
+    // Fase del patrón basada en beats, no en tiempo.
+    // patternPeriod = cuántos beats toma el patrón en completar un ciclo
+    // 
+    // Ejemplo: sweep con patternPeriod=2
+    //   - Beat 0.0 → phase = 0
+    //   - Beat 1.0 → phase = π
+    //   - Beat 2.0 → phase = 2π (ciclo completo)
+    // ═══════════════════════════════════════════════════════════════════════
+    const patternPeriod = PATTERN_PERIOD[patternName] || 1
+    const patternPhase = (absoluteBeats % patternPeriod) / patternPeriod
+    const phase = patternPhase * Math.PI * 2
+    
+    // También mantener this.time para patrones que lo necesiten (chaos, etc)
+    this.time += (now - this.lastUpdate) / 1000
+    
     const patternFn = PATTERNS[patternName] || PATTERNS['static']
     const rawPosition = patternFn(this.time, phase, audio, fixtureIndex, totalFixtures)
     
@@ -803,7 +827,7 @@ export class VibeMovementManager {
     // Distancia máxima que el motor puede recorrer en un beat
     // 🚗 WAVE 349: Multiplicamos por el período del patrón
     // Si el patrón toma 2 beats (HALF-TIME), tenemos el DOBLE de presupuesto
-    const patternPeriod = PATTERN_PERIOD[patternName] || 1
+    // 🩰 WAVE 1102: patternPeriod ya calculado arriba para phase locking
     const maxTravelPerCycle = HARDWARE_MAX_SPEED * secondsPerBeat * patternPeriod
     
     // Distancia que el patrón quiere recorrer (full DMX range * scale)

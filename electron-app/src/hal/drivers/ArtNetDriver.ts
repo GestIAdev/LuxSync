@@ -97,7 +97,7 @@ export class ArtNetDriver extends EventEmitter {
       ip: config.ip ?? '10.0.0.10',
       port: config.port ?? ARTNET_PORT,
       universe: config.universe ?? 0,
-      refreshRate: config.refreshRate ?? 40,  // 40Hz = 25ms
+      refreshRate: config.refreshRate ?? 30,  // ✅ WAVE 1101: SAFETY THROTTLE (33ms)
       nodeName: config.nodeName ?? 'LuxSync',
       debug: config.debug ?? false,
     }

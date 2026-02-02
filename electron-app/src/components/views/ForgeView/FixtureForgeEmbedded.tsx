@@ -292,11 +292,30 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       setWheelColors([])
     }
     
-    // Load physics if available
+    // Load physics if available - WAVE 1116.3 FIX: Use ACTUAL saved values
     if (def.physics) {
-      const motorType = def.physics.motorType || 'stepper'
-      const profileKey = `${motorType}-quality` as keyof typeof DEFAULT_PHYSICS_PROFILES
-      setPhysics(DEFAULT_PHYSICS_PROFILES[profileKey] || DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+      // Use the physics object directly from JSON, not a default profile
+      console.log(`[ForgeEmbedded] 📦 Loading physics from JSON:`, def.physics)
+      
+      // Map old motor types to valid MotorType
+      const rawMotorType = def.physics.motorType || 'stepper-quality'
+      const validMotorTypes: MotorType[] = ['servo-pro', 'stepper-quality', 'stepper-cheap', 'unknown']
+      const motorType: MotorType = validMotorTypes.includes(rawMotorType as MotorType) 
+        ? (rawMotorType as MotorType) 
+        : 'stepper-quality'
+      
+      setPhysics({
+        motorType,
+        maxAcceleration: def.physics.maxAcceleration ?? 2000,
+        maxVelocity: def.physics.maxVelocity ?? 500,
+        safetyCap: Boolean(def.physics.safetyCap ?? true),
+        orientation: def.physics.orientation || 'floor',
+        invertPan: def.physics.invertPan ?? false,
+        invertTilt: def.physics.invertTilt ?? false,
+        swapPanTilt: def.physics.swapPanTilt ?? false,
+        homePosition: def.physics.homePosition || { pan: 127, tilt: 127 },
+        tiltLimits: def.physics.tiltLimits || { min: 0, max: 270 },
+      })
     }
   }, [])
 

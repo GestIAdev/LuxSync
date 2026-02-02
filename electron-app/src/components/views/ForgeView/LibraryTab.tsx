@@ -115,8 +115,11 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   }, [loadFromDisk])
   
   // Computed: Filtered fixtures
+  // WAVE 1116.3 FIX: Add systemFixtures + userFixtures as dependencies
+  // so memo recomputes when store loads new data
   const filteredFixtures = useMemo((): LibraryFixture[] => {
-    let fixtures: LibraryFixture[] = getAllFixtures()
+    // Use arrays directly instead of getAllFixtures() for proper reactivity
+    let fixtures: LibraryFixture[] = [...systemFixtures, ...userFixtures]
     
     // Filter by source
     if (filterSource !== 'all') {
@@ -140,7 +143,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
       }
       return a.name.localeCompare(b.name)
     })
-  }, [getAllFixtures, filterSource, searchQuery])
+  }, [systemFixtures, userFixtures, filterSource, searchQuery])
   
   // Handlers
   const handleSelectFixture = useCallback((fixture: LibraryFixture) => {

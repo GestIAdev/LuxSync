@@ -201,9 +201,19 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // Check DMX status on mount and periodically
   useEffect(() => {
     const checkDMXStatus = async () => {
+      // WAVE 1116.3: Enhanced DMX status check with logging
       if (typeof window !== 'undefined' && window.lux?.library?.dmxStatus) {
-        const status = await window.lux.library.dmxStatus()
-        setDmxConnected(status.connected)
+        try {
+          const status = await window.lux.library.dmxStatus()
+          console.log(`[WheelSmith] 📡 DMX Status: connected=${status.connected}, device=${status.device}`)
+          setDmxConnected(status.connected)
+        } catch (err) {
+          console.error('[WheelSmith] ❌ DMX Status check failed:', err)
+          setDmxConnected(false)
+        }
+      } else {
+        console.warn('[WheelSmith] ⚠️ window.lux.library.dmxStatus not available')
+        setDmxConnected(false)
       }
     }
     

@@ -1,0 +1,47 @@
+/**
+ * 🔨 FORGE VIEW CSS - WAVE 1110
+ * Full-screen embedded Forge styling
+ * Inherits from FixtureForge.css aesthetics
+ */
+
+.forge-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #0a0a0f;
+  overflow: hidden;
+}
+
+/* Loading State */
+.forge-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.forge-loading-icon {
+  font-size: 48px;
+  animation: forgeHammer 1s ease-in-out infinite;
+}
+
+@keyframes forgeHammer {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg) translateY(-5px); }
+}
+
+.forge-loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  color: #f97316;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.forge-loading-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}

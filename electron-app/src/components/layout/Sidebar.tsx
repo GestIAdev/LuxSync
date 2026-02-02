@@ -1,16 +1,17 @@
 /**
- * 📱 SIDEBAR - WAVE 428: OPERATION NEON POLISH
- * Cyberpunk Industrial Navigation
+ * 📱 SIDEBAR - WAVE 1110: THE GREAT UNBUNDLING
+ * Cyberpunk Industrial Navigation - 7 Tabs (Forge as first-class citizen)
  * 
  * Layout: Flex column 100%
  *   ┌─ LOGO ─────────────────────┐
- *   ├─ STAGES (4) ───────────────┤ flex-start
+ *   ├─ STAGES (3) ───────────────┤ flex-start
  *   │  COMMAND → LIVE → CALIBRATE│
  *   │                            │
  *   ├─ SPACER ───────────────────┤ flex-grow: 1
  *   │                            │
- *   ├─ TOOLS (2) ────────────────┤ flex-end
- *   │  BUILD → LUX CORE → SETUP  │
+ *   ├─ TOOLS (4) ────────────────┤ flex-end
+ *   │  BUILD → FORGE → SETUP →   │
+ *   │  LUX CORE                  │
  *   └────────────────────────────┘
  */
 
@@ -22,21 +23,23 @@ import {
   IconLiveStage, 
   IconCalibration,
   IconSetup,
-  IconLuxCore 
+  IconLuxCore,
+  IconForge  // 🔨 WAVE 1110: Forge icon
 } from './NavigationIcons'
 import './Sidebar.css'
 
-// WAVE 428: Colores por tab - Cyberpunk palette
+// WAVE 1110: Colores por tab - Cyberpunk palette (Forge = Amber/Orange)
 const TAB_COLORS: Record<TabId, string> = {
   'dashboard': '#00fff0',    // Cian (Command Center)
   'live': '#ff00ff',         // Magenta (Performance) 
   'calibration': '#22d3ee',  // Cyan-400 (Hardware)
   'constructor': '#a855f7',  // Purple (Build)
-  'core': '#f59e0b',         // Naranja (AI Monitor)
+  'forge': '#f97316',        // Orange (The Blacksmith) - WAVE 1110
+  'core': '#f59e0b',         // Amber (AI Monitor)
   'setup': '#84cc16',        // Lime (Config)
 }
 
-// WAVE 428: Custom SVG Icons mapping
+// WAVE 1110: Custom SVG Icons mapping (added forge)
 const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
   'bolt': IconDashboard,      // Dashboard (Command lightning)
   'construct': IconConstruct, // Constructor (wrench + fixture)
@@ -44,6 +47,7 @@ const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>>
   'target': IconCalibration,  // Calibration (crosshair)
   'settings': IconSetup,      // Setup (gear + audio)
   'brain': IconLuxCore,       // LUX CORE (neural network)
+  'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110
 }
 
 // Separar tabs por tipo

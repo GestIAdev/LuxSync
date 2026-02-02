@@ -1,14 +1,15 @@
 /**
- * 🧭 NAVIGATION STORE - WAVE 428: Full System Restore
- * 6 Tabs Architecture
+ * 🧭 NAVIGATION STORE - WAVE 1110: THE GREAT UNBUNDLING
+ * 7 Tabs Architecture - Forge as First-Class Citizen
  * 
  * STAGES:
  *   - dashboard: Session management, show load, power control
- *   - constructor: Fixture creation/editing
  *   - live: Performance hub with simulator
  *   - calibration: Hardware setup (pan/tilt offsets)
  * 
  * TOOLS:
+ *   - constructor: Stage layout builder (Build)
+ *   - forge: Fixture definition editor (The Blacksmith)
  *   - setup: Audio Input + DMX configuration
  *   - core: LUX CORE monitoring (visible, not hidden)
  */
@@ -16,11 +17,11 @@
 import { create } from 'zustand'
 
 // ============================================
-// TYPES - WAVE 428: 4 Stages + 2 Tools
+// TYPES - WAVE 1110: 3 Stages + 4 Tools (Forge promoted)
 // ============================================
 
-export type StageId = 'dashboard' | 'constructor' | 'live' | 'calibration'
-export type ToolId = 'setup' | 'core'
+export type StageId = 'dashboard' | 'live' | 'calibration'
+export type ToolId = 'constructor' | 'forge' | 'setup' | 'core'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -46,7 +47,7 @@ export interface NavigationState {
 }
 
 // ============================================
-// TAB CONFIGURATION - WAVE 428.1: 3 Stages + 3 Tools
+// TAB CONFIGURATION - WAVE 1110: 3 Stages + 4 Tools (Forge promoted)
 // ============================================
 
 export const TABS: TabConfig[] = [
@@ -79,15 +80,24 @@ export const TABS: TabConfig[] = [
     description: 'Hardware Setup - Pan/Tilt Offsets',
   },
   
-  // === TOOLS (3 utilidades) ===
+  // === TOOLS (4 utilidades - WAVE 1110: Forge promoted) ===
   {
     id: 'constructor',
     label: 'BUILD',
     icon: 'construct',      // IconConstruct (custom SVG)
     customIcon: true,
-    type: 'tool',           // WAVE 428.1: BUILD es TOOL, no stage
+    type: 'tool',
     shortcut: 'Alt+4',
-    description: 'Fixture Constructor - Create & Edit Fixtures',
+    description: 'Stage Layout - Position & Group Fixtures',
+  },
+  {
+    id: 'forge',
+    label: 'FORGE',
+    icon: 'forge',          // IconForge (custom SVG) - WAVE 1110
+    customIcon: true,
+    type: 'tool',
+    shortcut: 'Alt+5',
+    description: 'Fixture Forge - Create & Edit Definitions',
   },
   {
     id: 'setup',
@@ -95,7 +105,7 @@ export const TABS: TabConfig[] = [
     icon: 'settings',       // IconSetup (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+5',
+    shortcut: 'Alt+6',
     description: 'Audio Input & DMX Configuration',
   },
   {
@@ -104,12 +114,12 @@ export const TABS: TabConfig[] = [
     icon: 'brain',          // IconLuxCore (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+6',
+    shortcut: 'Alt+7',
     description: 'Selene AI Monitoring & Telemetry',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'constructor', 'live', 'calibration', 'setup', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'constructor', 'forge', 'setup', 'core']
 
 // ============================================
 // STORE - WAVE 423

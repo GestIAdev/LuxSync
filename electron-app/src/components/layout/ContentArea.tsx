@@ -1,11 +1,12 @@
 /**
- * CONTENT AREA - WAVE 434: THE GREAT CONSOLIDATION
+ * CONTENT AREA - WAVE 1110: THE GREAT UNBUNDLING
  * 
- * 4 Stages + 2 Tools Architecture:
+ * 3 Stages + 4 Tools Architecture:
  *   - dashboard: DashboardView (Command Center + Show Load)
- *   - constructor: StageConstructorView (Fixture Creation)
  *   - live: StageViewDual (Performance - 2D/3D) → MOVED to simulator/
  *   - calibration: CalibrationView (Hardware Setup)
+ *   - constructor: StageConstructorView (Stage Layout)
+ *   - forge: ForgeView (Fixture Definition Editor) - WAVE 1110
  *   - setup: SetupView (Audio + DMX Config)
  *   - core: LuxCoreView (AI Monitoring)
  * 
@@ -17,11 +18,11 @@ import { useNavigationStore } from '../../stores/navigationStore'
 import './ContentArea.css'
 
 // Lazy load views for better performance
-// WAVE 434: StageViewDual moved to simulator/
 const DashboardView = lazy(() => import('../views/DashboardView'))
 const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 const LiveStageView = lazy(() => import('../simulator'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
+const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
 const SetupView = lazy(() => import('../views/SetupView'))
 const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
 
@@ -94,7 +95,7 @@ const ContentArea: React.FC = () => {
       return <TransitionLoader />
     }
     
-    // WAVE 428: 4 Stages + 2 Tools routing
+    // WAVE 1110: 3 Stages + 4 Tools routing (Forge promoted)
     switch (renderedTab) {
       case 'dashboard':
         return <DashboardView />
@@ -104,6 +105,8 @@ const ContentArea: React.FC = () => {
         return <LiveStageView />
       case 'calibration':
         return <CalibrationView />
+      case 'forge':
+        return <ForgeView />  // 🔨 WAVE 1110
       case 'setup':
         return <SetupView />
       case 'core':

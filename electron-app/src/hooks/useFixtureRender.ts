@@ -1,9 +1,20 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useControlStore, FlowParams, GlobalMode, LivingPaletteId } from '../stores/controlStore'
 import { useOverrideStore, FixtureOverride, ChannelMask, hslToRgb } from '../stores/overrideStore'
 import { useTruthStore } from '../stores/truthStore'
 import { getLivingColor, mapZoneToSide, Side } from '../utils/frontendColorEngine'
 import { calculateMovement } from '../utils/movementGenerator'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 1101: VISUAL SMOOTHING CONFIG - "LA MENTIRA PIADOSA"
+// 
+// Interpolación visual independiente del backend. Si el PC pierde un frame,
+// el Canvas no da saltos - interpola suavemente hacia la última posición conocida.
+// 
+// Esto es PURAMENTE COSMÉTICO - el hardware real tiene su propia física.
+// El objetivo es dar PAZ MENTAL al DJ, no confundir con saltos visuales.
+// ═══════════════════════════════════════════════════════════════════════════
+const VISUAL_SMOOTH_FACTOR = 0.3 // 0.3 = suave pero responsive
 
 /**
  * 🎬 WAVE 339: Extended with optics and physics for simulator
@@ -176,6 +187,9 @@ export function useFixtureRender(
   fixtureId: string,
   fixtureIndex: number = 0
 ): FixtureRenderData {
+  // 🛡️ WAVE 1101: Visual smoothing state (per-fixture)
+  const prevVisualRef = useRef<{ pan: number; tilt: number }>({ pan: 0.5, tilt: 0.5 })
+  
   // 🩸 WAVE 380: If truthData not passed, fetch from truthStore by fixtureId
   // This enables Stage3DCanvas to get real-time data without cascade re-renders
   const hardwareFixtures = useTruthStore(state => state.truth?.hardware?.fixtures)
@@ -201,7 +215,7 @@ export function useFixtureRender(
   const fixtureOverride = useOverrideStore(state => state.overrides.get(fixtureId))
   
   // 3. Calculate with full hierarchy + transition support
-  return calculateFixtureRenderValues(
+  const rawRender = calculateFixtureRenderValues(
     resolvedTruthData,
     globalMode,
     flowParams,
@@ -214,4 +228,26 @@ export function useFixtureRender(
     targetPalette,
     transitionProgress
   )
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 1101: VISUAL SMOOTHING - "LA MENTIRA PIADOSA"
+  // 
+  // Si el backend pierde un frame o hay lag de IPC, el Canvas interpola
+  // suavemente en lugar de dar un salto. El hardware real tiene su propia
+  // física y no se ve afectado por esto - es puramente cosmético.
+  // ═══════════════════════════════════════════════════════════════════════
+  const smoothedPan = prevVisualRef.current.pan + 
+    (rawRender.physicalPan - prevVisualRef.current.pan) * VISUAL_SMOOTH_FACTOR
+  const smoothedTilt = prevVisualRef.current.tilt + 
+    (rawRender.physicalTilt - prevVisualRef.current.tilt) * VISUAL_SMOOTH_FACTOR
+  
+  // Update ref for next frame
+  prevVisualRef.current = { pan: smoothedPan, tilt: smoothedTilt }
+  
+  return {
+    ...rawRender,
+    // Override physicalPan/Tilt with smoothed values for Canvas
+    physicalPan: smoothedPan,
+    physicalTilt: smoothedTilt,
+  }
 }

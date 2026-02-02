@@ -100,8 +100,17 @@ export class UniversalDMXDriver extends EventEmitter {
   constructor(config: Partial<UniversalDMXConfig> = {}) {
     super()
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 1101: PARANOIA PROTOCOL - DMX THROTTLING
+    // 
+    // El refresh rate baja de 44Hz a 30Hz para proteger movers baratos.
+    // Los chips chinos ($50-200) típicamente solo procesan 20-30Hz.
+    // A 44Hz sus buffers se saturan → movimientos erráticos.
+    // 
+    // 30Hz = 33.3ms por frame = SEGURO para todo el hardware
+    // ═══════════════════════════════════════════════════════════════════════
     this.config = {
-      refreshRate: config.refreshRate ?? 44,
+      refreshRate: config.refreshRate ?? 30, // WAVE 1101: 44→30 (Paranoia Protocol)
       autoReconnect: config.autoReconnect ?? true,
       reconnectDelay: config.reconnectDelay ?? 2000,
       watchdogInterval: config.watchdogInterval ?? 1000,

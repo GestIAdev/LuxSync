@@ -152,6 +152,16 @@ export class FixturePhysicsDriver {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 1101: PAN SAFETY MARGIN - EL AIRBAG HORIZONTAL
+  // 
+  // Margen de seguridad para PAN. El motor NUNCA llegará a 0 ni a 255.
+  // Esto evita golpes mecánicos contra los topes físicos del mover.
+  // 
+  // 5 DMX units ≈ 2% del rango → suficiente para frenar antes del tope
+  // ═══════════════════════════════════════════════════════════════════════
+  private readonly PAN_SAFETY_MARGIN = 5
+
+  // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 338: VIBE-AWARE PHYSICS
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -368,8 +378,9 @@ export class FixturePhysicsDriver {
   private applySafetyLimits(targetDMX: Position2D, config: FixtureConfig): Position2D {
     const { limits } = config
 
+    // 🛡️ WAVE 1101: PAN con AIRBAG - nunca toca los topes físicos
     return {
-      pan: Math.max(0, Math.min(255, targetDMX.pan)),
+      pan: Math.max(this.PAN_SAFETY_MARGIN, Math.min(255 - this.PAN_SAFETY_MARGIN, targetDMX.pan)),
       tilt: Math.max(limits.tiltMin, Math.min(limits.tiltMax, targetDMX.tilt)),
     }
   }
@@ -522,8 +533,9 @@ export class FixturePhysicsDriver {
         //  FIX V16.1: PROTECCIÓN CONTRA SINGULARIDAD
         const safeDistance = Math.max(0.5, absDistance)
         acceleration = -(vel * vel) / (2 * safeDistance) * direction
-        acceleration = Math.max(-this.physicsConfig.maxAcceleration, 
-                               Math.min(this.physicsConfig.maxAcceleration, acceleration))
+        // 🛡️ WAVE 1101: PARANOIA CLAMP - Usa SAFETY_CAP absoluto, no config dinámica
+        acceleration = Math.max(-this.SAFETY_CAP.maxAcceleration, 
+                               Math.min(this.SAFETY_CAP.maxAcceleration, acceleration))
       } else {
         //  FASE DE ACELERACIÓN
         acceleration = this.physicsConfig.maxAcceleration * direction

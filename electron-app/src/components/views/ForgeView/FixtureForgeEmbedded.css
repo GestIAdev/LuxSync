@@ -423,6 +423,8 @@
   padding: 8px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   transition: all 0.2s;
+  /* WAVE 1111: THE GLOW - Default state */
+  border-left: 4px solid transparent;
 }
 
 .channel-slot:hover {
@@ -436,6 +438,55 @@
 
 .channel-slot.assigned {
   background: rgba(34, 211, 238, 0.03);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* WAVE 1111: THE GLOW - Category Color Coding */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.channel-slot.category-intensity {
+  border-left: 4px solid var(--slot-category-color, #a0a0a0);
+  background: rgba(160, 160, 160, 0.05);
+}
+
+.channel-slot.category-intensity .channel-name {
+  color: #e0e0e0;
+}
+
+.channel-slot.category-color {
+  border-left: 4px solid var(--slot-category-color, #ef4444);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.channel-slot.category-color .channel-name {
+  color: #ef4444;
+}
+
+.channel-slot.category-position {
+  border-left: 4px solid var(--slot-category-color, #22d3ee);
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.channel-slot.category-position .channel-name {
+  color: #22d3ee;
+}
+
+.channel-slot.category-beam {
+  border-left: 4px solid var(--slot-category-color, #f59e0b);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.channel-slot.category-beam .channel-name {
+  color: #f59e0b;
+}
+
+.channel-slot.category-control {
+  border-left: 4px solid var(--slot-category-color, #a855f7);
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.channel-slot.category-control .channel-name {
+  color: #a855f7;
 }
 
 .channel-number {
@@ -492,6 +543,17 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* WHEELSMITH TAB - WAVE 1111 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.forge-wheelsmith-panel {
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  overflow: auto;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

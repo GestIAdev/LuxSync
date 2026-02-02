@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import { FixturePreview3D } from '../../modals/FixtureEditor/FixturePreview3D'
 import { PhysicsTuner } from '../../modals/FixtureEditor/PhysicsTuner'
+import { WheelSmithEmbedded } from './WheelSmithEmbedded'
 import { 
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
@@ -55,10 +56,10 @@ import '../../modals/FixtureEditor/FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Override styles for embedded mode
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES - WAVE 1110: Extended tabs
+// TYPES - WAVE 1111: THE WHEELSMITH & THE GLOW
 // ═══════════════════════════════════════════════════════════════════════════
 
-type ForgeTabId = 'general' | 'channels' | 'physics' | 'export'
+type ForgeTabId = 'general' | 'channels' | 'wheelsmith' | 'physics' | 'export'
 
 interface FixtureForgeEmbeddedProps {
   onSave: (
@@ -71,15 +72,28 @@ interface FixtureForgeEmbeddedProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTS - English labels (WAVE 1110: EN-US Standard)
+// CONSTANTS - English labels (WAVE 1111: THE WHEELSMITH & THE GLOW)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const TAB_CONFIG: { id: ForgeTabId; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'GENERAL', icon: <Settings size={16} /> },
   { id: 'channels', label: 'CHANNEL RACK', icon: <Server size={16} /> },
+  { id: 'wheelsmith', label: 'WHEELSMITH', icon: <Palette size={16} /> },
   { id: 'physics', label: 'PHYSICS ENGINE', icon: <Cpu size={16} /> },
   { id: 'export', label: 'EXPORT', icon: <Download size={16} /> },
 ]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FUNCTION CATEGORY COLORS - WAVE 1111: THE GLOW
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CATEGORY_COLORS: Record<string, string> = {
+  INTENSITY: '#a0a0a0',   // White/Gray
+  COLOR: '#ef4444',       // Red Neon
+  POSITION: '#22d3ee',    // Cyan Neon
+  BEAM: '#f59e0b',        // Yellow/Amber
+  CONTROL: '#a855f7',     // Violet
+}
 
 interface FunctionDef {
   type: ChannelType
@@ -146,6 +160,34 @@ const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HELPERS - WAVE 1111: Channel Category Detection
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Maps a ChannelType to its visual category for THE GLOW
+ */
+function getChannelCategory(type: ChannelType): string {
+  // Intensity category
+  if (['dimmer', 'shutter', 'strobe'].includes(type)) return 'intensity'
+  // Color category
+  if (['red', 'green', 'blue', 'white', 'amber', 'uv', 'color_wheel', 'cyan', 'magenta', 'yellow'].includes(type)) return 'color'
+  // Position category
+  if (['pan', 'pan_fine', 'tilt', 'tilt_fine'].includes(type)) return 'position'
+  // Beam category
+  if (['gobo', 'gobo_rotation', 'prism', 'prism_rotation', 'focus', 'zoom', 'iris', 'frost'].includes(type)) return 'beam'
+  // Control category
+  if (['speed', 'macro', 'control', 'effect', 'reset'].includes(type)) return 'control'
+  return ''
+}
+
+/**
+ * Gets the color for a channel category - THE GLOW palette
+ */
+function getCategoryColor(category: string): string {
+  return CATEGORY_COLORS[category.toUpperCase()] || ''
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -163,6 +205,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [totalChannels, setTotalChannels] = useState<number>(8)
   const [activeTab, setActiveTab] = useState<ForgeTabId>('general')
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
+  const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
   
   // Preview controls
   const [showPreview, setShowPreview] = useState(true)
@@ -497,50 +540,57 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 <span>Default</span>
                 <span></span>
               </div>
-              {fixture.channels.map((channel, idx) => (
-                <div 
-                  key={idx}
-                  className={`channel-slot ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''}`}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, idx)}
-                >
-                  <span className="channel-number">{idx + 1}</span>
-                  <div className="channel-function">
-                    {channel.type !== 'unknown' ? (
-                      <>
-                        <span className="channel-name">{channel.name || channel.type}</span>
-                      </>
-                    ) : (
-                      <span className="channel-empty">Drop function here</span>
+              {fixture.channels.map((channel, idx) => {
+                const category = getChannelCategory(channel.type)
+                const categoryColor = getCategoryColor(category)
+                return (
+                  <div 
+                    key={idx}
+                    className={`channel-slot ${channel.type !== 'unknown' ? 'assigned' : ''} ${dragOverSlot === idx ? 'drag-over' : ''} ${category ? `category-${category}` : ''}`}
+                    style={categoryColor ? { 
+                      '--slot-category-color': categoryColor 
+                    } as React.CSSProperties : undefined}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, idx)}
+                  >
+                    <span className="channel-number">{idx + 1}</span>
+                    <div className="channel-function">
+                      {channel.type !== 'unknown' ? (
+                        <>
+                          <span className="channel-name">{channel.name || channel.type}</span>
+                        </>
+                      ) : (
+                        <span className="channel-empty">Drop function here</span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      className="channel-default"
+                      min={0}
+                      max={255}
+                      value={channel.defaultValue || 0}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
+                        setFixture(prev => {
+                          const newChannels = [...prev.channels]
+                          newChannels[idx] = { ...newChannels[idx], defaultValue: val }
+                          return { ...prev, channels: newChannels }
+                        })
+                      }}
+                    />
+                    {channel.type !== 'unknown' && (
+                      <button 
+                        className="channel-clear"
+                        onClick={() => clearChannel(idx)}
+                        title="Clear channel"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
-                  <input
-                    type="number"
-                    className="channel-default"
-                    min={0}
-                    max={255}
-                    value={channel.defaultValue || 0}
-                    onChange={(e) => {
-                      const val = Math.max(0, Math.min(255, parseInt(e.target.value) || 0))
-                      setFixture(prev => {
-                        const newChannels = [...prev.channels]
-                        newChannels[idx] = { ...newChannels[idx], defaultValue: val }
-                        return { ...prev, channels: newChannels }
-                      })
-                    }}
-                  />
-                  {channel.type !== 'unknown' && (
-                    <button 
-                      className="channel-clear"
-                      onClick={() => clearChannel(idx)}
-                      title="Clear channel"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
             
             {/* Preview - Right */}
@@ -560,6 +610,18 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 </Suspense>
               </div>
             )}
+          </div>
+        )}
+
+        {/* WHEELSMITH TAB - WAVE 1111 */}
+        {activeTab === 'wheelsmith' && (
+          <div className="forge-wheelsmith-panel">
+            <WheelSmithEmbedded
+              colors={wheelColors}
+              onColorsChange={setWheelColors}
+              hasColorWheelChannel={fixture.channels.some(ch => ch.type === 'color_wheel')}
+              onNavigateToRack={() => setActiveTab('channels')}
+            />
           </div>
         )}
 

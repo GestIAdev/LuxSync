@@ -20,12 +20,15 @@ interface DeepCurrentPulseConfig {
   durationMs: number
   waveSpeed: number      // Velocidad de la corriente
   peakIntensity: number
+  /** 🌀 WAVE 1083.1: Intensidad mínima garantizada (supera noise floor) */
+  minIntensity: number
 }
 
 const DEFAULT_CONFIG: DeepCurrentPulseConfig = {
   durationMs: 5000,      // Lento y majestuoso
   waveSpeed: 0.3,        // Muy lento
-  peakIntensity: 0.30,   // Sutil pero presente
+  peakIntensity: 0.90,   // 🌀 WAVE 1083.1: RESCATE LUMÍNICO - Sin límites artificiales
+  minIntensity: 0.55,    // 🌀 WAVE 1083.1: Supera noise floor TWILIGHT (0.25)
 }
 
 // 🌀 COLORES TWILIGHT: Azul profundo e índigo
@@ -114,7 +117,13 @@ export class DeepCurrentPulse extends BaseEffect {
       return Math.cos(normalized * Math.PI / 2) * 0.9 + 0.1
     }
     
-    const baseIntensity = envelope * this.config.peakIntensity * pressurePulse
+    // 🌀 WAVE 1083.1: INTENSITY FLOOR - Garantizar visibilidad
+    const effectiveIntensity = Math.max(
+      this.triggerIntensity,
+      this.config.minIntensity
+    )
+    
+    const baseIntensity = envelope * this.config.peakIntensity * pressurePulse * effectiveIntensity
     
     // Color que cambia lentamente con la profundidad de la corriente
     const colorIndex = Math.floor((progress * CURRENT_COLORS.length * 0.5) % CURRENT_COLORS.length)
@@ -127,7 +136,9 @@ export class DeepCurrentPulse extends BaseEffect {
       phase: this.phase,
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
-      intensity: this.triggerIntensity * baseIntensity,
+      // 🌀 WAVE 1083.1: RESCATE LUMÍNICO
+      // baseIntensity YA contiene effectiveIntensity - NO multiplicar de nuevo
+      intensity: baseIntensity,
       zoneOverrides: {},
     }
     

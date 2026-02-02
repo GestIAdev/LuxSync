@@ -2,11 +2,17 @@
  * 🐋 WHALE SONG - Canto de Ballena en TWILIGHT (3000-6000m)
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 1073: OCEANIC CALIBRATION - De "estático aburrido" a "majestuoso"
+ * WAVE 1085: CHILL LOUNGE FINAL POLISH
+ *   - Organic easing curves (ease-in-out cubic)
+ *   - Intensity floor: 0.6 (macro-fauna)
+ *   - Atmospheric bed: 18% índigo profundo (sensación de inmensidad)
+ *   - EXTRA LONG TAIL fade out (la ballena desaparece en la distancia)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * CONCEPTO: Una ballena ENORME cruzando el espacio con PRESENCIA.
  * No es solo un cambio de color - es una SILUETA que se mueve.
  * El "canto" son pulsos de bioluminiscencia que viajan por su cuerpo.
+ * La ballena EMERGE majestuosamente, no robóticamente.
  * 
  * MECÁNICA WAVE 1073:
  * - La ballena es ANCHA (ocupa varias zonas a la vez)
@@ -25,6 +31,10 @@ interface WhaleSongConfig {
   peakIntensity: number
   whaleWidth: number
   songPulses: number      // 🌊 WAVE 1073: Número de "cantos" durante el cruce
+  /** 🌊 WAVE 1085: Intensidad mínima garantizada (macro-fauna) */
+  minIntensity: number
+  /** 🌊 WAVE 1085: Relleno atmosférico índigo (sensación de inmensidad) */
+  atmosphericBed: number
 }
 
 const DEFAULT_CONFIG: WhaleSongConfig = {
@@ -32,6 +42,8 @@ const DEFAULT_CONFIG: WhaleSongConfig = {
   peakIntensity: 0.80,
   whaleWidth: 0.55,          // Ballena ancha
   songPulses: 3,             // 3 cantos durante el cruce
+  minIntensity: 0.60,        // 🌊 WAVE 1085: Floor para macro-fauna
+  atmosphericBed: 0.18,      // 🌊 WAVE 1085: 18% atmósfera índigo
 }
 
 // 🐋 PALETA TWILIGHT BIOLUMINISCENTE
@@ -112,25 +124,45 @@ export class WhaleSong extends BaseEffect {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope MUY suave (ballena = gracia)
+    // 🌊 WAVE 1085: ORGANIC EASING - Ease-in-out cubic
+    // La ballena EMERGE majestuosamente, no robóticamente
+    const easeInOutCubic = (t: number): number => 
+      t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
+    
+    const easedProgress = easeInOutCubic(progress)
+    
+    // 🌊 WAVE 1085: INTENSITY FLOOR - Garantizar visibilidad macro-fauna
+    const effectiveIntensity = Math.max(
+      this.triggerIntensity,
+      this.config.minIntensity
+    )
+    
+    // 🌊 WAVE 1085: Envelope con EXTRA LONG TAIL (ballena desaparece en la distancia)
+    // Entrada: 20% (majestuosa) | Sustain: 45% | Fade out EXTRA LARGO: 35%
     let envelope: number
     if (progress < 0.20) { 
-      envelope = (progress / 0.20) ** 2  // Entrada suave
-    } else if (progress < 0.75) { 
+      envelope = easeInOutCubic(progress / 0.20)  // Entrada orgánica majestuosa
+    } else if (progress < 0.65) { 
       envelope = 1.0 
     } else { 
-      envelope = ((1 - progress) / 0.25) ** 2  // Salida suave
+      // 🌊 WAVE 1085: EXTRA LONG TAIL - La ballena se desvanece lentamente
+      const fadeOutProgress = (progress - 0.65) / 0.35
+      envelope = (1 - fadeOutProgress) ** 3.0  // Curva cúbica para long tail
     }
     
-    // 🐋 Posición de la ballena con ondulación natural
-    let basePosition = progress * 1.2 - 0.1
-    // Ondulación S sutil (la ballena "nada")
-    const swimWave = Math.sin(progress * Math.PI * 1.5) * 0.08
+    // 🌊 WAVE 1085: ATMOSPHERIC BED - Índigo profundo que "tiñe" el tanque
+    const atmosphericAmbient = this.config.atmosphericBed * envelope * effectiveIntensity
+    const atmosphericColor = { h: 240, s: 55, l: 22 }  // Índigo muy profundo
+    
+    // 🐋 Posición de la ballena con ondulación natural + EASING
+    let basePosition = easedProgress * 1.2 - 0.1
+    // Ondulación S sutil (la ballena "nada") con easing
+    const swimWave = Math.sin(easedProgress * Math.PI * 1.5) * 0.08
     let whaleCenter = basePosition + swimWave + this.verticalOffset
     if (this.direction === 'RtoL') { whaleCenter = 1 - whaleCenter }
     
     // Respiración profunda (la ballena respira cada ~4 segundos)
-    const breathCycle = Math.sin(progress * Math.PI * 3) * 0.12 + 0.88
+    const breathCycle = Math.sin(easedProgress * Math.PI * 3) * 0.12 + 0.88
     
     // 🌊 WAVE 1073: Zonas con partes del cuerpo de la ballena
     // La ballena tiene: COLA --- CUERPO --- CABEZA
@@ -154,12 +186,15 @@ export class WhaleSong extends BaseEffect {
     }
     
     // 🐋 Movimiento de movers siguiendo la CABEZA de la ballena
-    // Muy lento, muy suave
+    // Muy lento, muy suave, con EASING
     const headPosition = this.direction === 'LtoR' 
       ? whaleCenter + this.config.whaleWidth * 0.4
       : whaleCenter - this.config.whaleWidth * 0.4
     const moverPan = (headPosition - 0.5) * 40  // Rango reducido
-    const moverTilt = Math.sin(progress * Math.PI * 0.6) * 5 - 5  // Mirando ligeramente abajo
+    const moverTilt = Math.sin(easedProgress * Math.PI * 0.6) * 5 - 5  // Mirando ligeramente abajo
+    
+    // 🌊 WAVE 1085: Intensidad final con floor aplicado
+    const finalPeakIntensity = this.config.peakIntensity * effectiveIntensity
     
     const output: EffectFrameOutput = {
       effectId: this.id,
@@ -167,18 +202,19 @@ export class WhaleSong extends BaseEffect {
       phase: this.phase,
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
-      intensity: this.triggerIntensity * envelope * this.config.peakIntensity,
+      intensity: effectiveIntensity * envelope * this.config.peakIntensity,
       zoneOverrides: {},
     }
 
-    // 🎨 Aplicar cada zona con su color de parte del cuerpo + canto
+    // 🎨 Aplicar cada zona con su color de parte del cuerpo + canto + ATMOSPHERIC BED
     for (const [zoneName, zoneData] of Object.entries(zonePositions)) {
       const presence = getWhalePresence(zoneData.pos)
+      
+      // 🌊 WAVE 1085: Si no hay ballena, usar atmospheric bed en lugar de negro
       if (presence < 0.01) {
-        // Zona fuera de la ballena = oscuro
         output.zoneOverrides![zoneName] = {
-          dimmer: 0,
-          color: TWILIGHT_COLORS.body,
+          dimmer: atmosphericAmbient,  // 🌊 WAVE 1085: Atmósfera en lugar de 0
+          color: atmosphericColor,
           blendMode: 'replace' as const,
         }
         continue
@@ -188,7 +224,7 @@ export class WhaleSong extends BaseEffect {
       const bodyColor = TWILIGHT_COLORS[zoneData.bodyPart]
       
       // Intensidad del canto en esta zona
-      const songIntensity = this.getSongIntensity(progress, zoneData.pos)
+      const songIntensity = this.getSongIntensity(easedProgress, zoneData.pos)  // 🌊 WAVE 1085: easing
       
       // Mezclar color de cuerpo con canto
       const finalColor = this.blendColors(bodyColor, TWILIGHT_COLORS.song, songIntensity)
@@ -198,21 +234,24 @@ export class WhaleSong extends BaseEffect {
         : zoneData.bodyPart === 'body' ? 0.85 
         : 0.65  // Cola más tenue
       
+      // 🌊 WAVE 1085: Math.max entre ballena y atmospheric bed
+      const whaleIntensity = presence * envelope * finalPeakIntensity * partAttenuation
+      
       output.zoneOverrides![zoneName] = {
-        dimmer: presence * envelope * this.config.peakIntensity * partAttenuation,
-        color: finalColor,
+        dimmer: Math.max(whaleIntensity, atmosphericAmbient),
+        color: whaleIntensity > atmosphericAmbient ? finalColor : atmosphericColor,
         blendMode: 'replace' as const,
       }
     }
     
-    // 🐋 Movers con movimiento ULTRA LENTO
+    // 🐋 Movers con movimiento ULTRA LENTO + EASING
     output.zoneOverrides!['movers_left'] = {
       ...output.zoneOverrides!['movers_left'],
       movement: { 
         pan: moverPan - 12, 
         tilt: moverTilt,
         isAbsolute: false,
-        speed: 0.12,  // 🌊 WAVE 1073: ULTRA LENTO
+        speed: 0.12,
       },
     }
     output.zoneOverrides!['movers_right'] = {

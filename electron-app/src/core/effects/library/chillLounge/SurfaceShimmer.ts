@@ -1,9 +1,17 @@
 /**
  * 🌊 SURFACE SHIMMER - Destellos Sutiles en SHALLOWS (0-1000m)
+ * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 1072: AMBIENT FAUNA - Tier 2 (Frequent/Subtle)
+ * WAVE 1085: CHILL LOUNGE FINAL POLISH
+ *   - Organic easing curves (shimmer más natural)
+ *   - Intensity floor: 0.4 (micro-fauna, muy sutil)
+ *   - Atmospheric bed: 10% esmeralda tenue (superficie del agua)
+ *   - Fade más orgánico
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
  * DESCRIPCIÓN: Pequeños destellos que imitan la luz del sol refractándose
  * en la superficie del agua. Efecto sutil y constante.
+ * Los destellos EMERGEN suavemente, no aparecen bruscamente.
  * 
  * COLORES: Tonos esmeralda brillante y oro pálido
  * HSL FORMAT: h(0-360), s(0-100), l(0-100)
@@ -19,12 +27,18 @@ interface SurfaceShimmerConfig {
   durationMs: number
   shimmerCount: number
   peakIntensity: number
+  /** 🌊 WAVE 1085: Intensidad mínima garantizada (micro-fauna) */
+  minIntensity: number
+  /** 🌊 WAVE 1085: Relleno atmosférico esmeralda tenue */
+  atmosphericBed: number
 }
 
 const DEFAULT_CONFIG: SurfaceShimmerConfig = {
   durationMs: 2500,      // Más corto que SolarCaustics
   shimmerCount: 5,       // Varios destellos pequeños
-  peakIntensity: 0.45,   // Intensidad sutil
+  peakIntensity: 0.95,   // 🌊 WAVE 1083.1: SUBIDO de 0.45 → 0.95 (sin limitación artificial)
+  minIntensity: 0.75,    // 🌊 WAVE 1083.1: SUBIDO de 0.40 → 0.75 (superar noise floor 0.5)
+  atmosphericBed: 0.10,  // 🌊 WAVE 1085: 10% atmósfera esmeralda
 }
 
 // 🌊 COLORES SUPERFICIE: Esmeralda brillante + oro pálido
@@ -76,17 +90,34 @@ export class SurfaceShimmer extends BaseEffect {
     
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope suave: fade in lento, fade out lento
+    // 🌊 WAVE 1085: ORGANIC EASING - Ease-in-out cubic
+    // Los destellos EMERGEN suavemente, no aparecen bruscamente
+    const easeInOutCubic = (t: number): number => 
+      t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
+    
+    // 🌊 WAVE 1085: INTENSITY FLOOR - Garantizar visibilidad micro-fauna
+    const effectiveIntensity = Math.max(
+      this.triggerIntensity,
+      this.config.minIntensity
+    )
+    
+    // 🌊 WAVE 1085: Envelope con transiciones orgánicas
     let envelope: number
-    if (progress < 0.2) {
-      envelope = progress / 0.2  // 20% fade in
-    } else if (progress < 0.7) {
+    if (progress < 0.20) {
+      envelope = easeInOutCubic(progress / 0.20)  // Entrada orgánica
+    } else if (progress < 0.65) {
       envelope = 1.0
     } else {
-      envelope = 1 - ((progress - 0.7) / 0.3)  // 30% fade out
+      // 🌊 WAVE 1085: Salida suave y orgánica
+      const fadeOutProgress = (progress - 0.65) / 0.35
+      envelope = (1 - easeInOutCubic(fadeOutProgress))
     }
     
-    // Calcular shimmer combinado de todos los destellos
+    // 🌊 WAVE 1085: ATMOSPHERIC BED - Esmeralda tenue de superficie
+    const atmosphericAmbient = this.config.atmosphericBed * envelope * effectiveIntensity
+    const atmosphericColor = { h: 158, s: 65, l: 42 }  // Esmeralda profundo
+    
+    // Calcular shimmer combinado de todos los destellos con easing
     let shimmerValue = 0
     for (let i = 0; i < this.shimmerOffsets.length; i++) {
       const offset = this.shimmerOffsets[i]
@@ -95,7 +126,9 @@ export class SurfaceShimmer extends BaseEffect {
       shimmerValue += singleShimmer / this.shimmerOffsets.length
     }
     
-    const intensity = envelope * this.config.peakIntensity * shimmerValue
+    // 🌊 WAVE 1083.1: Intensidad SIN doble multiplicación
+    // effectiveIntensity ya está aplicado en el cálculo de intensity
+    const intensity = envelope * this.config.peakIntensity * shimmerValue * effectiveIntensity
     
     // Color que varía sutilmente con el tiempo
     const colorIndex = Math.floor((progress * SHIMMER_COLORS.length * 2) % SHIMMER_COLORS.length)
@@ -108,31 +141,31 @@ export class SurfaceShimmer extends BaseEffect {
       phase: this.phase,
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR'],  // Solo PARs, no movers
-      intensity: this.triggerIntensity * intensity,
+      intensity,  // 🌊 WAVE 1083.1: FIX - Solo intensity, NO effectiveIntensity × intensity
       zoneOverrides: {},
     }
     
-    // Front: Mayor intensidad (superficie del agua)
+    // 🌊 WAVE 1085: Front con atmospheric bed
     output.zoneOverrides!['frontL'] = {
-      dimmer: intensity,
-      color: shimmerColor,
+      dimmer: Math.max(intensity, atmosphericAmbient),
+      color: intensity > atmosphericAmbient ? shimmerColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     output.zoneOverrides!['frontR'] = {
-      dimmer: intensity * 0.85,  // Ligera asimetría natural
-      color: shimmerColor,
+      dimmer: Math.max(intensity * 0.85, atmosphericAmbient),
+      color: intensity * 0.85 > atmosphericAmbient ? shimmerColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     
-    // Back: Sutil (luz que penetra hacia abajo)
+    // 🌊 WAVE 1085: Back sutil con atmospheric bed
     output.zoneOverrides!['backL'] = {
-      dimmer: intensity * 0.3,
-      color: shimmerColor,
+      dimmer: Math.max(intensity * 0.3, atmosphericAmbient * 0.6),
+      color: intensity * 0.3 > atmosphericAmbient * 0.6 ? shimmerColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     output.zoneOverrides!['backR'] = {
-      dimmer: intensity * 0.25,
-      color: shimmerColor,
+      dimmer: Math.max(intensity * 0.25, atmosphericAmbient * 0.5),
+      color: intensity * 0.25 > atmosphericAmbient * 0.5 ? shimmerColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     

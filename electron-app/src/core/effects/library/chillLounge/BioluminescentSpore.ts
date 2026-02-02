@@ -20,12 +20,15 @@ interface BioluminescentSporeConfig {
   durationMs: number
   sporeCount: number       // Número de esporas que brillarán
   peakIntensity: number
+  /** ✨ WAVE 1083.1: Intensidad mínima garantizada (supera noise floor) */
+  minIntensity: number
 }
 
 const DEFAULT_CONFIG: BioluminescentSporeConfig = {
   durationMs: 3500,        // Moderado
   sporeCount: 4,           // Pocas esporas (zona aislada)
-  peakIntensity: 0.55,     // Más brillante que otros ambients (contraste con oscuridad)
+  peakIntensity: 0.90,     // ✨ WAVE 1083.1: RESCATE LUMÍNICO - Sin límites artificiales
+  minIntensity: 0.45,      // ✨ WAVE 1083.1: Supera noise floor MIDNIGHT (0.15) con margen
 }
 
 // ✨ COLORES ABISALES: Magenta y violeta profundo
@@ -149,6 +152,20 @@ export class BioluminescentSpore extends BaseEffect {
       }
     }
     
+    // ✨ WAVE 1083.1: INTENSITY FLOOR - Garantizar visibilidad
+    const effectiveIntensity = Math.max(
+      this.triggerIntensity,
+      this.config.minIntensity
+    )
+    
+    // ✨ WAVE 1083.1: Aplicar effectiveIntensity a las intensidades de zona
+    const scaledZoneIntensities = Object.fromEntries(
+      Object.entries(zoneIntensities).map(([zone, intensity]) => [
+        zone,
+        intensity * effectiveIntensity / this.config.peakIntensity  // Escalar proporcionalmente
+      ])
+    )
+    
     // Output estructurado
     const output: EffectFrameOutput = {
       effectId: this.id,
@@ -156,13 +173,14 @@ export class BioluminescentSpore extends BaseEffect {
       phase: this.phase,
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR'],
-      intensity: this.triggerIntensity * Math.max(...Object.values(zoneIntensities)),
+      // ✨ WAVE 1083.1: RESCATE LUMÍNICO - NO duplicar multiplicación
+      intensity: Math.max(...Object.values(scaledZoneIntensities)),
       zoneOverrides: {},
     }
     
-    // Aplicar cada zona con su intensidad y color
+    // ✨ WAVE 1083.1: Aplicar cada zona con intensidad ESCALADA
     for (const zone of SPORE_ZONES) {
-      const intensity = zoneIntensities[zone]
+      const intensity = scaledZoneIntensities[zone] || 0
       const color = zoneColors[zone] || SPORE_COLORS[0]  // Default magenta
       
       output.zoneOverrides![zone] = {

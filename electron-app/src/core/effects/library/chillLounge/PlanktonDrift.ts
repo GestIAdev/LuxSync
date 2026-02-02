@@ -1,10 +1,18 @@
 /**
  * 🦠 PLANKTON DRIFT - Deriva de Plancton Bioluminiscente en OCEAN (1000-3000m)
+ * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 1072: AMBIENT FAUNA - Tier 2 (Frequent/Subtle)
+ * WAVE 1085: CHILL LOUNGE FINAL POLISH
+ *   - Organic easing curves (deriva más natural)
+ *   - Intensity floor: 0.4 (micro-fauna)
+ *   - Atmospheric bed: 12% cyan profundo (océano bioluminiscente)
+ *   - Breathing más orgánico
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
  * DESCRIPCIÓN: Pequeñas partículas de plancton bioluminiscente que flotan
  * y derivan lentamente, creando un ambiente etéreo de profundidad media.
  * El efecto simula millones de microorganismos brillando suavemente.
+ * La deriva es ORGÁNICA, no mecánica.
  * 
  * COLORES: Cyan eléctrico y turquesa profundo (bioluminiscencia real)
  * HSL FORMAT: h(0-360), s(0-100), l(0-100)
@@ -20,12 +28,18 @@ interface PlanktonDriftConfig {
   durationMs: number
   clusterCount: number
   peakIntensity: number
+  /** 🌊 WAVE 1085: Intensidad mínima garantizada (micro-fauna) */
+  minIntensity: number
+  /** 🌊 WAVE 1085: Relleno atmosférico cyan profundo */
+  atmosphericBed: number
 }
 
 const DEFAULT_CONFIG: PlanktonDriftConfig = {
   durationMs: 4000,      // Duración más larga (deriva lenta)
   clusterCount: 8,       // Grupos de plancton
-  peakIntensity: 0.35,   // Muy sutil
+  peakIntensity: 0.90,   // 🦠 WAVE 1083.1: RESCATE LUMÍNICO - Sin límites artificiales
+  minIntensity: 0.65,    // 🦠 WAVE 1083.1: Supera noise floor OCEAN (0.40)
+  atmosphericBed: 0.12,  // 🌊 WAVE 1085: 12% atmósfera cyan
 }
 
 // 🦠 COLORES BIOLUMINISCENCIA: Cyan y turquesa (científicamente preciso)
@@ -77,31 +91,49 @@ export class PlanktonDrift extends BaseEffect {
     
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope muy suave: breathing del plancton
+    // 🌊 WAVE 1085: ORGANIC EASING - Ease-in-out cubic
+    // La deriva es ORGÁNICA, no mecánica
+    const easeInOutCubic = (t: number): number => 
+      t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
+    
+    const easedProgress = easeInOutCubic(progress)
+    
+    // 🌊 WAVE 1085: INTENSITY FLOOR - Garantizar visibilidad micro-fauna
+    const effectiveIntensity = Math.max(
+      this.triggerIntensity,
+      this.config.minIntensity
+    )
+    
+    // 🌊 WAVE 1085: Envelope muy suave con transiciones orgánicas
     let envelope: number
     if (progress < 0.25) {
-      envelope = progress / 0.25  // Fade in gradual
-    } else if (progress < 0.65) {
+      envelope = easeInOutCubic(progress / 0.25)  // Entrada orgánica gradual
+    } else if (progress < 0.60) {
       envelope = 1.0
     } else {
-      envelope = 1 - ((progress - 0.65) / 0.35)  // Fade out muy suave
+      // 🌊 WAVE 1085: Salida muy suave (plancton se desvanece gradualmente)
+      const fadeOutProgress = (progress - 0.60) / 0.40
+      envelope = (1 - easeInOutCubic(fadeOutProgress))
     }
     
-    // El plancton "pulsa" suavemente (respiración bioluminiscente)
-    const breathPhase = progress * Math.PI * 4  // 2 respiraciones completas
+    // 🌊 WAVE 1085: ATMOSPHERIC BED - Cyan profundo del océano
+    const atmosphericAmbient = this.config.atmosphericBed * envelope * effectiveIntensity
+    const atmosphericColor = { h: 188, s: 75, l: 32 }  // Cyan profundo
+    
+    // El plancton "pulsa" suavemente con easing (respiración bioluminiscente)
+    const breathPhase = easedProgress * Math.PI * 4
     const breathPulse = (Math.sin(breathPhase) + 1) / 2 * 0.4 + 0.6
     
-    // Calcular deriva de los clusters
-    // Cada cluster está en una posición diferente del espacio estéreo
+    // Calcular deriva de los clusters con easing
     const zoneIntensities: Record<string, number> = {
       frontL: 0, frontR: 0, backL: 0, backR: 0
     }
     
     for (let i = 0; i < this.clusterPhases.length; i++) {
       const phase = this.clusterPhases[i]
-      // La deriva es sinusoidal (movimiento browniano simplificado)
-      const driftPosition = (phase + progress * 0.5) % 1  // Deriva lenta
-      const clusterPulse = Math.sin((progress * 2 + phase) * Math.PI * 2) * 0.5 + 0.5
+      // La deriva es sinusoidal con easing (movimiento browniano orgánico)
+      const driftPosition = (phase + easedProgress * 0.5) % 1
+      const clusterPulse = Math.sin((easedProgress * 2 + phase) * Math.PI * 2) * 0.5 + 0.5
       
       // Mapear posición a zonas
       if (driftPosition < 0.25) {
@@ -115,10 +147,11 @@ export class PlanktonDrift extends BaseEffect {
       }
     }
     
-    const baseIntensity = envelope * this.config.peakIntensity * breathPulse
+    // 🌊 WAVE 1085: Intensidad con floor aplicado
+    const baseIntensity = envelope * this.config.peakIntensity * breathPulse * effectiveIntensity
     
     // Color que varía muy sutilmente
-    const colorIndex = Math.floor((progress * PLANKTON_COLORS.length) % PLANKTON_COLORS.length)
+    const colorIndex = Math.floor((easedProgress * PLANKTON_COLORS.length) % PLANKTON_COLORS.length)
     const planktonColor = PLANKTON_COLORS[colorIndex]
     
     // Output estructurado según EffectFrameOutput
@@ -128,29 +161,37 @@ export class PlanktonDrift extends BaseEffect {
       phase: this.phase,
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR'],
-      intensity: this.triggerIntensity * baseIntensity,
+      // 🦠 WAVE 1083.1: RESCATE LUMÍNICO
+      // baseIntensity YA contiene effectiveIntensity (línea 149)
+      // Multiplicar de nuevo era MUERTE por matemáticas
+      intensity: baseIntensity,
       zoneOverrides: {},
     }
     
-    // Aplicar intensidades calculadas por zona
+    // 🌊 WAVE 1085: Aplicar intensidades con atmospheric bed
+    const frontLInt = baseIntensity * zoneIntensities['frontL']
+    const frontRInt = baseIntensity * zoneIntensities['frontR']
+    const backLInt = baseIntensity * zoneIntensities['backL']
+    const backRInt = baseIntensity * zoneIntensities['backR']
+    
     output.zoneOverrides!['frontL'] = {
-      dimmer: baseIntensity * zoneIntensities['frontL'],
-      color: planktonColor,
+      dimmer: Math.max(frontLInt, atmosphericAmbient),
+      color: frontLInt > atmosphericAmbient ? planktonColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     output.zoneOverrides!['frontR'] = {
-      dimmer: baseIntensity * zoneIntensities['frontR'],
-      color: planktonColor,
+      dimmer: Math.max(frontRInt, atmosphericAmbient),
+      color: frontRInt > atmosphericAmbient ? planktonColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     output.zoneOverrides!['backL'] = {
-      dimmer: baseIntensity * zoneIntensities['backL'],
-      color: planktonColor,
+      dimmer: Math.max(backLInt, atmosphericAmbient * 0.7),
+      color: backLInt > atmosphericAmbient * 0.7 ? planktonColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     output.zoneOverrides!['backR'] = {
-      dimmer: baseIntensity * zoneIntensities['backR'],
-      color: planktonColor,
+      dimmer: Math.max(backRInt, atmosphericAmbient * 0.7),
+      color: backRInt > atmosphericAmbient * 0.7 ? planktonColor : atmosphericColor,
       blendMode: 'max' as const,
     }
     

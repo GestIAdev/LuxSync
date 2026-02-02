@@ -4,6 +4,7 @@
  * WAVE 1073: OCEANIC CALIBRATION - Desplazamiento REAL estilo TidalWave
  * WAVE 1080: FLUID DYNAMICS - Composición Alpha para transiciones suaves
  * WAVE 1081: VOLUMETRIC SUN - Intensity Floor + Atmospheric Fill
+ * WAVE 1081.2: SOLAR FLARE OPTIMIZATION - El Sol NO pierde potencia en 5m
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * CONCEPTO ARTÍSTICO:
@@ -72,7 +73,7 @@ const DEFAULT_CONFIG: SolarCausticsConfig = {
   rayDescentMs: 5000,         // 🌊 WAVE 1073.2: 5 segundos por rayo (duración=1200+5000=6200 + margen)
   fadeInMs: 800,              // 🌊 WAVE 1080: 800ms para fade in suave (azul→dorado)
   fadeOutMs: 1200,            // 🌊 WAVE 1080: 1200ms para fade out más lento (dorado→azul)
-  volumetricFill: 0.18,       // ☀️ WAVE 1081: 18% de relleno atmosférico dorado base
+  volumetricFill: 0.20,       // ☀️ WAVE 1081.2: 20% de relleno atmosférico dorado (subido de 18%)
   minIntensity: 0.75,         // ☀️ WAVE 1081: Intensidad mínima garantizada (independiente del trigger)
 }
 
@@ -191,7 +192,9 @@ export class SolarCaustics extends BaseEffect {
   ): number {
     if (rayDepth < 0) return 0  // Rayo no ha empezado
     
-    const frontWidth = 0.35  // Ancho del frente del rayo
+    // ☀️ WAVE 1081.2: SOLAR FLARE OPTIMIZATION
+    // frontWidth aumentado de 0.35 a 0.65 = haz más ancho, más tiempo en 1.0
+    const frontWidth = 0.65
     const distance = rayDepth - zoneDepth
     
     let intensity: number
@@ -275,9 +278,9 @@ export class SolarCaustics extends BaseEffect {
     }
     
     // Profundidades y atenuaciones de las zonas
-    // 🌊 WAVE 1073.1: Subidas las atenuaciones para más visibilidad
+    // ☀️ WAVE 1081.2: SOLAR FLARE OPTIMIZATION - El Sol NO pierde potencia en 5m de agua
     const ZONE_DEPTHS = { movers: 0.0, back: 0.45, front: 1.0 }
-    const ZONE_ATTENUATION = { movers: 1.0, back: 0.80, front: 0.55 }
+    const ZONE_ATTENUATION = { movers: 1.0, back: 1.0, front: 1.0 }
     
     // Acumuladores de intensidad por zona
     const intensities = {

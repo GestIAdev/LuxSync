@@ -252,7 +252,6 @@ export class AmpHeat extends BaseEffect {
       progress,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.heatIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

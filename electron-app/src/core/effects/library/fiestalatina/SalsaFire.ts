@@ -273,8 +273,6 @@ export class SalsaFire extends BaseEffect {
       // 🚨 WAVE 1004.2: Eliminado dimmerOverride/colorOverride globales
       dimmerOverride: undefined,
       colorOverride: undefined,
-      
-      globalOverride: false,  // � WAVE 1004.2: Ya no es global, usa zoneOverrides
       zoneOverrides,
     }
   }

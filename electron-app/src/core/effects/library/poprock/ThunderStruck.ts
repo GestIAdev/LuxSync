@@ -312,7 +312,6 @@ export class ThunderStruck extends BaseEffect {
       progress: this.elapsedMs / this.totalDurationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.flashIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

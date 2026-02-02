@@ -259,7 +259,7 @@ export class BinaryGlitch extends BaseEffect {
         zones: GLITCH_ZONES,
         intensity: 0,
         dimmerOverride: 0,
-        globalOverride: true,  // 🎯 OVERRIDE total
+        globalComposition: 1.0,  // � WAVE 1080: Override total
         zoneOverrides: this.buildBlackoutOverrides(),
       }
     }
@@ -276,7 +276,7 @@ export class BinaryGlitch extends BaseEffect {
       intensity: 1.0,
       dimmerOverride: 1.0,  // 100% - digital, sin fades
       colorOverride: color,
-      globalOverride: true,  // 🎯 OVERRIDE total
+      globalComposition: 1.0,  // � WAVE 1080: Override total
       zoneOverrides: this.buildFlashOverrides(color),
     }
   }

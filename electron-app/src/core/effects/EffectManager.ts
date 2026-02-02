@@ -566,7 +566,7 @@ export class EffectManager extends EventEmitter {
    * Combina usando:
    * - HTP (Highest Takes Precedence) para dimmer
    * - Mayor prioridad para color
-   * - 🧨 WAVE 630: globalOverride bypasea zonas
+   * - 🌊 WAVE 1080: globalComposition para mezcla analógica (FLUID DYNAMICS)
    * - 🥁 WAVE 700.7: Mayor prioridad para movement
    * - 🎨 WAVE 725: zoneOverrides para pinceles finos
    */
@@ -584,7 +584,7 @@ export class EffectManager extends EventEmitter {
     let maxAmber = 0  // 🧨 WAVE 630
     let maxStrobeRate = 0
     let maxIntensity = 0
-    let globalOverride = false  // 🧨 WAVE 630
+    let globalComposition = 0  // 🌊 WAVE 1080: FLUID DYNAMICS - Máximo de todos los efectos
     let highestPriorityColor: { h: number; s: number; l: number } | undefined
     let highestPriority = -1  // Para color (legacy)
     // 🚂 WAVE 800: Mix Bus del efecto dominante
@@ -633,9 +633,10 @@ export class EffectManager extends EventEmitter {
         maxIntensity = output.intensity
       }
       
-      // 🧨 WAVE 630: Global override - cualquier efecto con globalOverride activa el bypass
-      if (output.globalOverride) {
-        globalOverride = true
+      // 🌊 WAVE 1080: Global composition - tomar el MÁXIMO de todos los efectos
+      // Esto permite que múltiples efectos globales se combinen con el más "opaco" ganando
+      if (output.globalComposition !== undefined && output.globalComposition > globalComposition) {
+        globalComposition = output.globalComposition
       }
       
       // Highest priority takes color (legacy fallback)
@@ -740,7 +741,7 @@ export class EffectManager extends EventEmitter {
       strobeRate: maxStrobeRate > 0 ? maxStrobeRate : undefined,
       intensity: maxIntensity,
       contributingEffects: contributing,
-      globalOverride: globalOverride,  // 🧨 WAVE 630
+      globalComposition: globalComposition > 0 ? globalComposition : undefined,  // 🌊 WAVE 1080
       zones: allZones.size > 0 ? Array.from(allZones) : undefined,  // 🌴 WAVE 700.8
       movementOverride: highestPriorityMovement,  // 🥁 WAVE 700.7
       zoneOverrides: hasZoneOverrides ? combinedZoneOverrides : undefined,  // 🎨 WAVE 725

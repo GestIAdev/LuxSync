@@ -236,8 +236,6 @@ export class GhostBreath extends BaseEffect {
       // Sin strobe - orgánico y suave
       strobeRate: undefined,
       
-      globalOverride: false,  // Nunca global - solo zonas específicas
-      
       // 🎨 WAVE 725/740: ZONE OVERRIDES - ÚNICA FUENTE DE VERDAD
       zoneOverrides,
     }

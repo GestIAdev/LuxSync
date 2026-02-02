@@ -318,7 +318,6 @@ export class ClaveRhythm extends BaseEffect {
         intensity: 0,
         dimmerOverride: undefined,
         colorOverride: undefined,
-        globalOverride: false,  // NO apagar física global
         zoneOverrides: {
           'movers': {
             color: { h: 0, s: 0, l: 0 },
@@ -377,8 +376,6 @@ export class ClaveRhythm extends BaseEffect {
       // 🔥 WAVE 740: Legacy fallback ELIMINADO
       dimmerOverride: undefined,
       colorOverride: undefined,
-      
-      globalOverride: false,  // 🌪️ WAVE 805: Durante flash, NO silenciar física (deja que se sume)
       
       // 🥁 WAVE 755: Movement override - ABSOLUTO para snaps secos
       movement: {

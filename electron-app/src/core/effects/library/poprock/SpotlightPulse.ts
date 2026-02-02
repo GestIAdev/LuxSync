@@ -186,7 +186,6 @@ export class SpotlightPulse extends BaseEffect {
       progress: this.elapsedMs / this.config.durationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.pulseIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

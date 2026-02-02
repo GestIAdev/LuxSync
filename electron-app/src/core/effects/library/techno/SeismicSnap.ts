@@ -248,7 +248,7 @@ export class SeismicSnap extends BaseEffect {
       zones: SNAP_ZONES,
       intensity: 0,
       dimmerOverride: 0,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: this.buildZoneOverrides(0, null),
     }
   }
@@ -270,7 +270,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: 1.0,
       dimmerOverride: 1.0,
       colorOverride: color,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: this.buildZoneOverrides(1.0, color),
     }
   }
@@ -305,7 +305,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: vibrateIntensity,
       dimmerOverride: vibrateIntensity,
       colorOverride: color,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: this.buildZoneOverrides(vibrateIntensity, color),
     }
   }
@@ -334,7 +334,7 @@ export class SeismicSnap extends BaseEffect {
       intensity: decayIntensity,
       dimmerOverride: decayIntensity,
       colorOverride: color,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: this.buildZoneOverrides(decayIntensity, color),
     }
   }

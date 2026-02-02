@@ -151,7 +151,7 @@ export class TropicalPulse extends BaseEffect {
         intensity: 0,
         dimmerOverride: 0,
         colorOverride: undefined,
-        globalOverride: true,
+        globalComposition: 1.0,  // 🌊 WAVE 1080
         zoneOverrides: undefined,
       }
     }
@@ -181,7 +181,7 @@ export class TropicalPulse extends BaseEffect {
       intensity: this.currentIntensity,
       dimmerOverride: undefined,
       colorOverride: undefined,
-      globalOverride: false,
+      // 🌊 WAVE 1080: globalComposition omitido = 0 (física manda, zoneOverrides para granularidad)
       zoneOverrides,
     }
   }

@@ -240,7 +240,7 @@ export class StrobeBurst extends BaseEffect {
         zones: this.zones,
         intensity: 0.05,  // Mínimo durante gap
         dimmerOverride: 0.05,
-        globalOverride: false,
+        // 🌊 WAVE 1080: globalComposition omitido = 0 (física manda)
       }
     }
     
@@ -264,7 +264,7 @@ export class StrobeBurst extends BaseEffect {
       // NO strobe rate - nosotros manejamos el timing manualmente
       strobeRate: undefined,
       
-      globalOverride: true,  // Override global durante el burst
+      globalComposition: 1.0,  // 🌊 WAVE 1080: Override global durante el burst
     }
   }
 }

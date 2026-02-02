@@ -313,8 +313,6 @@ export class StrobeStorm extends BaseEffect {
       
       // Color cálido en lugar de blanco (menos agresivo)
       colorOverride: { h: 45, s: 80, l: 60 },  // Naranja cálido
-      
-      globalOverride: false,  // Nunca global en degraded
     }
   }
   

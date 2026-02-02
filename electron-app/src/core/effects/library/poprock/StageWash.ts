@@ -157,7 +157,6 @@ export class StageWash extends BaseEffect {
       progress: this.elapsedMs / this.config.durationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.washIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

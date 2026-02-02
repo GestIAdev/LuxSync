@@ -255,8 +255,6 @@ export class TidalWave extends BaseEffect {
         ? (scaledMaxIntensity - 0.8) * 5  // Ramp de 0.8→1 = white 0→1
         : undefined,
       
-      globalOverride: false,  // TidalWave es espacial, no global
-      
       // � WAVE 725: ZONE OVERRIDES - El corazón de la ola espacial
       zoneOverrides,
     }

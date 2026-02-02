@@ -311,7 +311,6 @@ export class ArenaSweep extends BaseEffect {
       progress,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.sweepIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

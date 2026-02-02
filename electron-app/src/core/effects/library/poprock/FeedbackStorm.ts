@@ -352,7 +352,6 @@ export class FeedbackStorm extends BaseEffect {
       progress,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.stormIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

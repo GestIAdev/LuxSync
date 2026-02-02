@@ -233,7 +233,7 @@ export class GatlingRaid extends BaseEffect {
         colorOverride: { h: 0, s: 0, l: 0 },
         intensity: 0,
         zones: this.zones,
-        globalOverride: true
+        globalComposition: 1.0  // 🌊 WAVE 1080
       }
     }
     
@@ -266,7 +266,7 @@ export class GatlingRaid extends BaseEffect {
       colorOverride: this.bulletColor,
       intensity: this.triggerIntensity,
       zones: this.zones,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides
     }
   }

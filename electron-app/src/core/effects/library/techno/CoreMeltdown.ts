@@ -207,7 +207,7 @@ export class CoreMeltdown extends BaseEffect {
       intensity: intensity * this.triggerIntensity,
       dimmerOverride: intensity * this.triggerIntensity,  // ☢️ OVERRIDE DIRECTO
       colorOverride: currentColor,
-      globalOverride: true,  // ☢️ BYPASEAR TODA LÓGICA DE ZONAS
+      globalComposition: 1.0,  // 🌊 WAVE 1080: Opacidad total (hard override techno)
       strobeRate: this.config.strobeRateHz,
       zoneOverrides,
     }

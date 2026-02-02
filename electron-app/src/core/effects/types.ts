@@ -103,11 +103,26 @@ export interface EffectFrameOutput {
   intensity: number
   
   /**
-   * 🧨 WAVE 630: GLOBAL OVERRIDE FLAG
-   * Si true, el efecto bypasea TODA la lógica de zonas.
-   * Todas las fixtures con dimmer reciben el override al 100%.
+   * 🧨 WAVE 630 → 🌊 WAVE 1080: GLOBAL COMPOSITION (FLUID DYNAMICS)
+   * 
+   * ANTES (WAVE 630): globalOverride: boolean → Hard Cut (blackout al terminar)
+   * AHORA (WAVE 1080): globalComposition: number → Crossfade suave (0.0 - 1.0)
+   * 
+   * El efecto controla su "opacidad" sobre la capa física:
+   * - 0.0 = La física manda al 100% (efecto invisible)
+   * - 0.5 = Mezcla 50/50 (crossfade)
+   * - 1.0 = El efecto manda al 100% (dictador completo)
+   * 
+   * Fórmula de mezcla: FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
+   * 
+   * Los efectos "Dictadores" (SolarCaustics, TidalWave, etc.) deben:
+   * - Fade IN: Subir globalComposition de 0 → 1 al inicio
+   * - Fade OUT: Bajar globalComposition de 1 → 0 al final
+   * 
+   * Esto elimina los "blackouts" bruscos y permite que el océano
+   * "sangre" a través de los rayos de sol mientras desaparecen.
    */
-  globalOverride?: boolean
+  globalComposition?: number
   
   /**
    * 🧨 WAVE 630: AMBER OVERRIDE
@@ -396,11 +411,16 @@ export interface CombinedEffectOutput {
   contributingEffects: string[]
   
   /**
-   * 🧨 WAVE 630: GLOBAL OVERRIDE FLAG
-   * Si true, bypasea TODA la lógica de zonas.
-   * El efecto se aplica a TODAS las fixtures con dimmer.
+   * 🧨 WAVE 630 → 🌊 WAVE 1080: GLOBAL COMPOSITION (FLUID DYNAMICS)
+   * 
+   * ANTES (WAVE 630): globalOverride: boolean → Hard Cut
+   * AHORA (WAVE 1080): globalComposition: number → Crossfade suave
+   * 
+   * Máximo globalComposition de todos los efectos activos.
+   * El TitanOrchestrator usa este valor para hacer LERP:
+   * FinalOutput = (BasePhysics × (1-globalComposition)) + (GlobalEffect × globalComposition)
    */
-  globalOverride?: boolean
+  globalComposition?: number
   
   /**
    * 🌴 WAVE 700.8: ZONE FILTERING

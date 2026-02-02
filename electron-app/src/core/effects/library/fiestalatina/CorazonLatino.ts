@@ -394,10 +394,6 @@ export class CorazonLatino extends BaseEffect {
       // 🔥 WAVE 740: Legacy DEPRECATED
       dimmerOverride: undefined,
       colorOverride: undefined,
-      
-      globalOverride: false,
-      
-      // ❤️ WAVE 750: EL CORAZÓN LATE
       zoneOverrides,
     }
   }

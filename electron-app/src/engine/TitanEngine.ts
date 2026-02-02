@@ -141,7 +141,7 @@ interface EngineState {
   /** Bass del frame anterior (para deltas) */
   previousBass: number
   /** 🧹 WAVE 930.2: Tracker para evitar spam de GLOBAL OVERRIDE logs */
-  lastGlobalOverrideState: boolean
+  lastGlobalComposition: number  // 🌊 WAVE 1080: FLUID DYNAMICS
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -253,7 +253,7 @@ export class TitanEngine extends EventEmitter {
       lastFrameTime: Date.now(),
       previousEnergy: 0,
       previousBass: 0,
-      lastGlobalOverrideState: false,  // 🧹 WAVE 930.2: Para evitar spam de logs
+      lastGlobalComposition: 0,  // 🌊 WAVE 1080: FLUID DYNAMICS - Para evitar spam de logs
     }
     
     console.log(`[TitanEngine] ⚡ Initialized (WAVE 217 + WAVE 271 SYNAPTIC + WAVE 274 ORGAN HARVEST + WAVE 500 GENESIS + WAVE 600 ARSENAL)`)
@@ -879,27 +879,40 @@ export class TitanEngine extends EventEmitter {
       finalMasterIntensity = Math.max(masterIntensity, effectOutput.dimmerOverride)
     }
     
-    // 🧨 WAVE 630: GLOBAL OVERRIDE - Si el efecto tiene flag, bypasear zonas
-    if (effectOutput.hasActiveEffects && effectOutput.globalOverride) {
-      // Override TODAS las zonas al máximo (el efecto manda)
+    // 🌊 WAVE 1080: FLUID DYNAMICS - Global Composition con alpha variable
+    // El globalComposition (0-1) determina cuánto "pesa" el efecto global
+    // La mezcla real se hace en TitanOrchestrator con LERP
+    const globalComp = effectOutput.globalComposition ?? 0
+    
+    if (effectOutput.hasActiveEffects && globalComp > 0) {
+      // Las zonas se modifican proporcionalmente al globalComposition
+      // Esto prepara el intent para que TitanOrchestrator haga el LERP final
       const overrideIntensity = effectOutput.dimmerOverride ?? 1.0
-      zones = {
-        front: { intensity: overrideIntensity, paletteRole: 'primary' },
-        back: { intensity: overrideIntensity, paletteRole: 'primary' },
-        left: { intensity: overrideIntensity, paletteRole: 'primary' },
-        right: { intensity: overrideIntensity, paletteRole: 'primary' },
-        ambient: { intensity: overrideIntensity, paletteRole: 'primary' },
+      
+      // Mezclar las zonas existentes con el override global
+      // FinalZoneIntensity = (BaseZone × (1-α)) + (OverrideIntensity × α)
+      const blendZoneIntensity = (baseIntensity: number): number => {
+        return baseIntensity * (1 - globalComp) + overrideIntensity * globalComp
       }
       
-      // 🧹 WAVE 930.2: Only log on STATE TRANSITIONS (not every frame)
-      if (!this.state.lastGlobalOverrideState) {
-        console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE ACTIVATED`)
-        this.state.lastGlobalOverrideState = true
+      zones = {
+        front: { intensity: blendZoneIntensity(zones.front?.intensity ?? 0.5), paletteRole: 'primary' },
+        back: { intensity: blendZoneIntensity(zones.back?.intensity ?? 0.5), paletteRole: 'primary' },
+        left: { intensity: blendZoneIntensity(zones.left?.intensity ?? 0.5), paletteRole: 'primary' },
+        right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
+        ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
       }
-    } else if (this.state.lastGlobalOverrideState) {
-      // 🧹 WAVE 930.2: Log release only once
-      console.log(`[TitanEngine 🧨] GLOBAL OVERRIDE RELEASED`)
-      this.state.lastGlobalOverrideState = false
+      
+      // 🧹 WAVE 930.2 + 1080: Log solo en transiciones significativas (>10% cambio)
+      const compDelta = Math.abs(globalComp - this.state.lastGlobalComposition)
+      if (compDelta > 0.1) {
+        console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION: ${(globalComp * 100).toFixed(0)}%`)
+        this.state.lastGlobalComposition = globalComp
+      }
+    } else if (this.state.lastGlobalComposition > 0) {
+      // Log release solo una vez cuando baja a 0
+      console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION RELEASED (0%)`)
+      this.state.lastGlobalComposition = 0
     }
     
     // Aplicar color override del efecto (si existe)

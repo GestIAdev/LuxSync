@@ -273,7 +273,7 @@ export class LatinaMeltdown extends BaseEffect {
       // White boost durante flash para punch extra
       whiteOverride: this.hitPhase === 'flash' && dimmer > 0.8 ? 0.3 : undefined,
       
-      globalOverride: true,  // 🚂 DICTADOR - manda sobre todo
+      globalComposition: 1.0,  // 🌊 WAVE 1080: DICTADOR - manda sobre todo
     }
   }
   

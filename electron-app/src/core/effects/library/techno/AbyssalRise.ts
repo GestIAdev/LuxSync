@@ -232,7 +232,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.deepBlue,
       dimmerOverride: flicker * 0.8,
       zones: this.zones,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: {
         // MOVERS: Azul fijo (respeta Mover Law - sin cambio de color rápido)
         'movers': {
@@ -286,7 +286,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.cyanElectric,  // Cyan eléctrico (NO BLANCO)
       dimmerOverride: strobe,
       zones: this.zones,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: {
         'movers': {
           color: COLORS.cyanElectric,
@@ -323,7 +323,7 @@ export class AbyssalRise extends BaseEffect {
       colorOverride: COLORS.black,
       dimmerOverride: 0,
       zones: this.zones,
-      globalOverride: true,
+      globalComposition: 1.0,  // 🌊 WAVE 1080
       zoneOverrides: {
         'movers': { dimmer: 0, blendMode: 'replace' },
         'pars': { dimmer: 0, blendMode: 'replace' },

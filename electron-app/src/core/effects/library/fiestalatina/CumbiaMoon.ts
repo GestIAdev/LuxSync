@@ -247,8 +247,6 @@ export class CumbiaMoon extends BaseEffect {
       
       dimmerOverride: undefined,
       colorOverride: undefined,
-      
-      globalOverride: false,
       zoneOverrides,
     }
   }

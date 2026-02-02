@@ -440,8 +440,8 @@ export class TitanOrchestrator {
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
     // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
-    // Si hay un efecto activo con globalOverride, usar SU color (no hardcoded dorado)
-    // Si globalOverride=false, MEZCLAR con lo que ya renderizó el HAL (no machacar)
+    // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
+    // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
     const effectManager = getEffectManager()
     const effectOutput = effectManager.getCombinedOutput()
     
@@ -627,14 +627,15 @@ export class TitanOrchestrator {
         flareB = rgb.b
       }
       
-      // 🌴 WAVE 700.8.5 → 700.9: Filtrado inteligente por zona
+      // 🌴 WAVE 700.8.5 → 700.9 → 1080: Filtrado inteligente por zona + FLUID DYNAMICS
       // Soporta AMBOS sistemas de zonas:
       //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
       //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
       const shouldApplyToFixture = (f: typeof fixtureStates[0]): boolean => {
-        if (effectOutput.globalOverride) return true  // Global afecta todo
+        // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
+        if ((effectOutput.globalComposition ?? 0) > 0) return true
         
-        // Sin globalOverride, verificar zones
+        // Sin globalComposition, verificar zones
         const zones = effectOutput.zones || []
         if (zones.length === 0) return false
         
@@ -668,10 +669,12 @@ export class TitanOrchestrator {
         return false
       }
       
-      // � WAVE 800: RAILWAY SWITCH
-      // mixBus='global' → REEMPLAZA todo (modo dictador)
+      // 🚂 WAVE 800 → 1080: RAILWAY SWITCH + FLUID DYNAMICS
+      // mixBus='global' → Modo dictador (pero ahora con alpha variable)
       // mixBus='htp' → MEZCLA con HTP (respeta lo que ya renderizó el HAL)
-      const isGlobalMode = effectOutput.mixBus === 'global' || effectOutput.globalOverride
+      // globalComposition → Alpha de mezcla (0-1) para transiciones suaves
+      const globalComp = effectOutput.globalComposition ?? 0
+      const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0
       
       fixtureStates = fixtureStates.map(f => {
         const shouldApply = shouldApplyToFixture(f)
@@ -679,16 +682,30 @@ export class TitanOrchestrator {
         
         if (isGlobalMode) {
           // ═══════════════════════════════════════════════════════════════════════
-          // 🚂 WAVE 800: VÍA GLOBAL - El efecto manda, ignora física
-          // El efecto REEMPLAZA completamente lo que había.
-          // Perfecto para: SolarFlare, CumbiaMoon, TidalWave, etc.
+          // 🌊 WAVE 1080: FLUID DYNAMICS - LERP entre física y efecto
+          // FinalOutput = (BasePhysics × (1-α)) + (GlobalEffect × α)
+          // 
+          // Esto elimina los "blackouts" bruscos cuando termina un efecto global.
+          // El océano "sangra" a través de los rayos de sol mientras desaparecen.
           // ═══════════════════════════════════════════════════════════════════════
+          const alpha = globalComp  // 0.0 = física pura, 1.0 = efecto puro
+          const invAlpha = 1 - alpha
+          
+          // LERP para cada componente RGB
+          const lerpedR = Math.round(f.r * invAlpha + flareR * alpha)
+          const lerpedG = Math.round(f.g * invAlpha + flareG * alpha)
+          const lerpedB = Math.round(f.b * invAlpha + flareB * alpha)
+          
+          // LERP para dimmer también
+          const baseDimmer = f.dimmer / 255  // Normalizar a 0-1
+          const lerpedDimmer = baseDimmer * invAlpha + flareIntensity * alpha
+          
           return {
             ...f,
-            r: flareR,
-            g: flareG,
-            b: flareB,
-            dimmer: Math.round(flareIntensity * 255),  // LTP: El efecto dicta
+            r: lerpedR,
+            g: lerpedG,
+            b: lerpedB,
+            dimmer: Math.round(lerpedDimmer * 255),
           }
         } else {
           // ═══════════════════════════════════════════════════════════════════════
@@ -721,11 +738,10 @@ export class TitanOrchestrator {
       // Log throttled
       if (this.frameCount % 60 === 0) {
         const affectedFixtures = fixtureStates.filter(shouldApplyToFixture)
-        const mode = isGlobalMode ? 'GLOBAL' : 'HTP'
-        // WAVE 800 DEBUG: Show mixBus mode
-        const fixtureZoneList = fixtureStates.map(f => `${f.zone}:${shouldApplyToFixture(f) ? 'Y' : 'N'}`).join(', ')
-        console.log(`[TitanOrchestrator 800] 🚂 EFFECT [${mode}] mixBus=${effectOutput.mixBus} zones=${JSON.stringify(effectOutput.zones)}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
-        console.log(`[TitanOrchestrator 800] Fixtures: ${fixtureZoneList} | Affected: ${affectedFixtures.length}/${fixtureStates.length}`)
+        const mode = isGlobalMode ? `GLOBAL(${(globalComp * 100).toFixed(0)}%)` : 'HTP'
+        // WAVE 1080 DEBUG: Show globalComposition alpha
+        console.log(`[TitanOrchestrator 🌊] EFFECT [${mode}] mixBus=${effectOutput.mixBus}: RGB(${flareR},${flareG},${flareB}) @ ${(flareIntensity * 100).toFixed(0)}%`)
+        console.log(`[TitanOrchestrator 🌊] Affected: ${affectedFixtures.length}/${fixtureStates.length} fixtures`)
       }
     }
     

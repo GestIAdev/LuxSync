@@ -232,7 +232,6 @@ export class LiquidSolo extends BaseEffect {
       progress: this.elapsedMs / this.config.durationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.sweepIntensity,
-      globalOverride: false,
       zoneOverrides,
     }
   }

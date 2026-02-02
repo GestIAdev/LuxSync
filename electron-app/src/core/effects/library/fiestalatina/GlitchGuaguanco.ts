@@ -338,7 +338,7 @@ export class GlitchGuaguanco extends BaseEffect {
       // Strobe micro-flicker durante glitch activo (no en freeze)
       strobeRate: this.glitchState === 'flicker' ? 12 : undefined,
       
-      globalOverride: true,  // 🚂 DICTADOR - virus controla todo
+      globalComposition: 1.0,  // 🌊 WAVE 1080: DICTADOR - virus controla todo
     }
   }
   

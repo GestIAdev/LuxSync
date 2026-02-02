@@ -233,9 +233,6 @@ export class AmazonMist extends BaseEffect {
       strobeRate: undefined,
       
       // NO global override - se mezcla con el ambiente
-      globalOverride: false,
-      
-      // � WAVE 1009: FREEDOM DAY - Zone overrides CON COLOR
       zoneOverrides: {
         front: {
           dimmer: this.currentIntensity,

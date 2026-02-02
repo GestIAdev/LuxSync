@@ -188,7 +188,7 @@ export class PowerChord extends BaseEffect {
       progress: this.elapsedMs / this.config.durationMs,
       zones: Object.keys(zoneOverrides) as EffectZone[],
       intensity: this.chordIntensity,
-      globalOverride: true,  // Override total
+      globalComposition: 1.0,  // 🌊 WAVE 1080: Override total
       zoneOverrides,
     }
   }

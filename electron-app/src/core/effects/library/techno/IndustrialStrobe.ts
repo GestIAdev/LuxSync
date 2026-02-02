@@ -236,7 +236,7 @@ export class IndustrialStrobe extends BaseEffect {
         colorOverride: { h: 0, s: 0, l: 0 },  // Negro
         intensity: 0,
         zones: this.zones,
-        globalOverride: true
+        globalComposition: 1.0  // 🌊 WAVE 1080
       }
     }
     
@@ -251,7 +251,7 @@ export class IndustrialStrobe extends BaseEffect {
         colorOverride: this.calculatedColor,
         intensity: 1.0,  // FULL
         zones: this.zones,
-        globalOverride: true
+        globalComposition: 1.0  // 🌊 WAVE 1080
       }
     }
     
@@ -265,7 +265,7 @@ export class IndustrialStrobe extends BaseEffect {
       colorOverride: { h: 0, s: 0, l: 0 },  // Negro
       intensity: 0,
       zones: this.zones,
-      globalOverride: true
+      globalComposition: 1.0  // 🌊 WAVE 1080
     }
   }
   

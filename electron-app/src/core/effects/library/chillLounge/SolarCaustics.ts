@@ -2,6 +2,8 @@
  * ☀️ SOLAR CAUSTICS - Rayos de Sol Descendiendo en SHALLOWS (0-1000m)
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 1073: OCEANIC CALIBRATION - Desplazamiento REAL estilo TidalWave
+ * WAVE 1080: FLUID DYNAMICS - Composición Alpha para transiciones suaves
+ * WAVE 1081: VOLUMETRIC SUN - Intensity Floor + Atmospheric Fill
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * CONCEPTO ARTÍSTICO:
@@ -19,6 +21,16 @@
  * - CRUCE DIAGONAL: El rayo puede cruzar de L a R durante el descenso
  * - mixBus='global' + blendMode='replace': El rayo MANDA (override completo)
  * - Movimiento de movers ULTRA LENTO (protección movers chinos)
+ * 
+ * WAVE 1080: FLUID DYNAMICS
+ * - globalComposition: 0→1 al inicio (fade in), 1→0 al final (fade out)
+ * - Elimina los "blackouts" bruscos al terminar
+ * - El océano "sangra" a través de los rayos mientras desaparecen
+ * 
+ * WAVE 1081: VOLUMETRIC SUN
+ * - Intensity Floor: Desacoplado del trigger (minIntensity garantizado)
+ * - Volumetric Fill: Relleno atmosférico dorado base (18% en todas las zonas)
+ * - Resultado: Los rayos caen sobre una atmósfera dorada, no sobre negro
  * 
  * HSL FORMAT: h(0-360), s(0-100), l(0-100)
  * ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +54,14 @@ interface SolarCausticsConfig {
   crossProbability: number
   /** Duración del descenso de un rayo en ms */
   rayDescentMs: number
+  /** 🌊 WAVE 1080: Duración del fade in de globalComposition (ms) */
+  fadeInMs: number
+  /** 🌊 WAVE 1080: Duración del fade out de globalComposition (ms) */
+  fadeOutMs: number
+  /** ☀️ WAVE 1081: Intensidad del relleno atmosférico volumétrico (0-1) */
+  volumetricFill: number
+  /** ☀️ WAVE 1081: Intensidad mínima garantizada (desacoplada del trigger) */
+  minIntensity: number
 }
 
 const DEFAULT_CONFIG: SolarCausticsConfig = {
@@ -50,6 +70,10 @@ const DEFAULT_CONFIG: SolarCausticsConfig = {
   rayOffsetMs: 1200,          // 🌊 WAVE 1073.2: 1.2s desfase (más overlap visual)
   crossProbability: 0.35,     // 35% de probabilidad de cruce diagonal
   rayDescentMs: 5000,         // 🌊 WAVE 1073.2: 5 segundos por rayo (duración=1200+5000=6200 + margen)
+  fadeInMs: 800,              // 🌊 WAVE 1080: 800ms para fade in suave (azul→dorado)
+  fadeOutMs: 1200,            // 🌊 WAVE 1080: 1200ms para fade out más lento (dorado→azul)
+  volumetricFill: 0.18,       // ☀️ WAVE 1081: 18% de relleno atmosférico dorado base
+  minIntensity: 0.75,         // ☀️ WAVE 1081: Intensidad mínima garantizada (independiente del trigger)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -211,13 +235,36 @@ export class SolarCaustics extends BaseEffect {
   
   /**
    * 📤 GET OUTPUT - Genera el frame de salida
+   * 🌊 WAVE 1080: Ahora incluye globalComposition para transiciones suaves
    */
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope global
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1080: FLUID DYNAMICS - Calcular globalComposition (0-1)
+    // Fade In: 0→1 durante los primeros fadeInMs
+    // Sustain: 1.0 durante el cuerpo del efecto
+    // Fade Out: 1→0 durante los últimos fadeOutMs
+    // ═══════════════════════════════════════════════════════════════════════
+    let globalComposition: number
+    const fadeOutStart = this.config.durationMs - this.config.fadeOutMs
+    
+    if (this.elapsedMs < this.config.fadeInMs) {
+      // FADE IN: 0 → 1 (suave, cuadrático)
+      const fadeInProgress = this.elapsedMs / this.config.fadeInMs
+      globalComposition = fadeInProgress ** 1.5  // Ease-in suave
+    } else if (this.elapsedMs > fadeOutStart) {
+      // FADE OUT: 1 → 0 (más lento, cuadrático inverso)
+      const fadeOutProgress = (this.elapsedMs - fadeOutStart) / this.config.fadeOutMs
+      globalComposition = (1 - fadeOutProgress) ** 1.5  // Ease-out suave
+    } else {
+      // SUSTAIN: 1.0 (efecto a máxima opacidad)
+      globalComposition = 1.0
+    }
+    
+    // Envelope global (ya existente para intensidad)
     let globalEnvelope: number
     if (progress < 0.15) {
       globalEnvelope = (progress / 0.15) ** 1.5
@@ -290,8 +337,24 @@ export class SolarCaustics extends BaseEffect {
     const rayPanR = Math.sin(progress * Math.PI * 0.6 + Math.PI * 0.3) * 15 + 10
     const rayTilt = 0.35 + Math.cos(progress * Math.PI * 0.4) * 0.08
     
-    const finalIntensity = globalEnvelope * this.config.peakIntensity * this.triggerIntensity
+    // ═══════════════════════════════════════════════════════════════════════
+    // ☀️ WAVE 1081: VOLUMETRIC SUN - Intensity Floor + Atmospheric Fill
+    // ═══════════════════════════════════════════════════════════════════════
     
+    // 1. INTENSITY FLOOR: Desacoplar del trigger para garantizar visibilidad
+    //    Problema: trigger * dna * peak = 0.04 (invisible)
+    //    Solución: Usar mínimo garantizado
+    const effectiveInput = Math.max(this.triggerIntensity, this.config.minIntensity)
+    const finalIntensity = globalEnvelope * this.config.peakIntensity * effectiveInput
+    
+    // 2. VOLUMETRIC FILL: Relleno atmosférico base en todas las zonas
+    //    Esto crea la "atmósfera dorada" sobre la que caen los rayos brillantes
+    const volumetricAmbient = this.config.volumetricFill * globalEnvelope * effectiveInput
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1080: FLUID DYNAMICS - El output ahora incluye globalComposition
+    // Esto permite que TitanOrchestrator haga LERP suave entre física y efecto
+    // ═══════════════════════════════════════════════════════════════════════
     const output: EffectFrameOutput = {
       effectId: this.id,
       category: this.category,
@@ -299,12 +362,16 @@ export class SolarCaustics extends BaseEffect {
       progress,
       zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
       intensity: finalIntensity,
+      globalComposition,  // 🌊 WAVE 1080: Alpha de opacidad (0-1)
       zoneOverrides: {},
     }
 
+    // ☀️ WAVE 1081: Aplicar volumetric fill (MAX entre rayo y ambiente)
+    // Cada zona brilla por el rayo O por el ambiente dorado base
+    
     // MOVERS: Rayos de sol desde ARRIBA - ULTRA LENTO
     output.zoneOverrides!['movers_left'] = {
-      dimmer: intensities.movers_left * shimmerL * finalIntensity,
+      dimmer: Math.max(intensities.movers_left * shimmerL * finalIntensity, volumetricAmbient),
       color: colorMovers,
       blendMode: 'replace' as const,  // 🌊 WAVE 1073: REPLACE = El rayo manda
       movement: { 
@@ -315,7 +382,7 @@ export class SolarCaustics extends BaseEffect {
       },
     }
     output.zoneOverrides!['movers_right'] = {
-      dimmer: intensities.movers_right * shimmerR * finalIntensity,
+      dimmer: Math.max(intensities.movers_right * shimmerR * finalIntensity, volumetricAmbient),
       color: colorMovers,
       blendMode: 'replace' as const,
       movement: { 
@@ -328,24 +395,24 @@ export class SolarCaustics extends BaseEffect {
     
     // BACK: Zona media
     output.zoneOverrides!['backL'] = {
-      dimmer: intensities.backL * shimmerL * finalIntensity,
+      dimmer: Math.max(intensities.backL * shimmerL * finalIntensity, volumetricAmbient),
       color: colorBack,
       blendMode: 'replace' as const,
     }
     output.zoneOverrides!['backR'] = {
-      dimmer: intensities.backR * shimmerR * finalIntensity,
+      dimmer: Math.max(intensities.backR * shimmerR * finalIntensity, volumetricAmbient),
       color: colorBack,
       blendMode: 'replace' as const,
     }
     
     // FRONT: Fondo oceánico
     output.zoneOverrides!['frontL'] = {
-      dimmer: intensities.frontL * shimmerL * finalIntensity,
+      dimmer: Math.max(intensities.frontL * shimmerL * finalIntensity, volumetricAmbient),
       color: colorFront,
       blendMode: 'replace' as const,
     }
     output.zoneOverrides!['frontR'] = {
-      dimmer: intensities.frontR * shimmerR * finalIntensity,
+      dimmer: Math.max(intensities.frontR * shimmerR * finalIntensity, volumetricAmbient),
       color: colorFront,
       blendMode: 'replace' as const,
     }

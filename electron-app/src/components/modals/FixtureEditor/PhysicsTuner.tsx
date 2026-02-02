@@ -66,37 +66,37 @@ const MOTOR_TYPE_INFO: Record<MotorType, {
 }> = {
   'servo-pro': {
     label: 'Servo Pro',
-    description: 'Motores de alta gama (Clay Paky, Robe). Rápidos y precisos.',
+    description: 'High-end motors (Clay Paky, Robe). Fast and precise.',
     icon: '🏎️',
     recommendedAccel: 4000
   },
   'stepper-quality': {
     label: 'Stepper Quality',
-    description: 'Motores de calidad media (ADJ Vizi, Chauvet). Buen equilibrio.',
+    description: 'Mid-range motors (ADJ Vizi, Chauvet). Good balance.',
     icon: '🚗',
     recommendedAccel: 2500
   },
   'stepper-cheap': {
-    label: 'Stepper Económico',
-    description: 'Motores de bajo costo (clones chinos). Necesitan protección.',
+    label: 'Stepper Cheap',
+    description: 'Low-cost motors (Chinese clones). Need protection.',
     icon: '🛵',
     recommendedAccel: 1500
   },
   'unknown': {
-    label: 'Desconocido',
-    description: 'Motor no identificado. Usar configuración conservadora.',
+    label: 'Unknown',
+    description: 'Unidentified motor. Use conservative settings.',
     icon: '❓',
     recommendedAccel: 2000
   }
 }
 
 const ORIENTATION_OPTIONS: { value: InstallationOrientation; label: string; icon: string }[] = [
-  { value: 'ceiling', label: 'Techo (colgado)', icon: '⬇️' },
-  { value: 'floor', label: 'Suelo (apuntando arriba)', icon: '⬆️' },
-  { value: 'wall-left', label: 'Pared izquierda', icon: '➡️' },
-  { value: 'wall-right', label: 'Pared derecha', icon: '⬅️' },
-  { value: 'truss-front', label: 'Truss frontal', icon: '🎪' },
-  { value: 'truss-back', label: 'Truss trasero', icon: '🏗️' }
+  { value: 'ceiling', label: 'Ceiling (hanging)', icon: '⬇️' },
+  { value: 'floor', label: 'Floor (pointing up)', icon: '⬆️' },
+  { value: 'wall-left', label: 'Left Wall', icon: '➡️' },
+  { value: 'wall-right', label: 'Right Wall', icon: '⬅️' },
+  { value: 'truss-front', label: 'Front Truss', icon: '🎪' },
+  { value: 'truss-back', label: 'Back Truss', icon: '🏗️' }
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -114,29 +114,29 @@ function calculateRisk(motorType: MotorType, acceleration: number): RiskLevel {
     return {
       level: 'safe',
       color: '#22c55e',
-      label: 'SEGURO',
-      description: 'Aceleración dentro de límites recomendados'
+      label: 'SAFE',
+      description: 'Acceleration within recommended limits'
     }
   } else if (ratio <= 1.3) {
     return {
       level: 'moderate',
       color: '#eab308',
-      label: 'MODERADO',
-      description: 'Aceleración ligeramente por encima. Monitorear desgaste.'
+      label: 'MODERATE',
+      description: 'Acceleration slightly above. Monitor wear.'
     }
   } else if (ratio <= 1.6) {
     return {
       level: 'high',
       color: '#f97316',
-      label: 'ALTO',
-      description: '⚠️ Riesgo de salto de correa y desgaste prematuro'
+      label: 'HIGH',
+      description: '⚠️ Risk of belt slip and premature wear'
     }
   } else {
     return {
       level: 'extreme',
       color: '#ef4444',
-      label: 'EXTREMO',
-      description: '🔥 PELIGRO: Alta probabilidad de daño mecánico'
+      label: 'EXTREME',
+      description: '🔥 DANGER: High probability of mechanical damage'
     }
   }
 }
@@ -224,7 +224,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
           onClick={() => toggleSection('motor')}
         >
           <Activity size={18} />
-          <span>Tipo de Motor</span>
+          <span>Motor Type</span>
           <ChevronDown 
             size={16} 
             className={expandedSection === 'motor' ? 'expanded' : ''} 
@@ -263,7 +263,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
           onClick={() => toggleSection('accel')}
         >
           <Zap size={18} />
-          <span>Aceleración (El Seguro de Vida)</span>
+          <span>Acceleration (Life Insurance)</span>
           <ChevronDown 
             size={16} 
             className={expandedSection === 'accel' ? 'expanded' : ''} 
@@ -275,7 +275,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             {/* Max Acceleration Slider */}
             <div className="slider-group">
               <label className="slider-label">
-                Max Aceleración
+                Max Acceleration
                 <span className="slider-value" style={{ color: riskLevel.color }}>
                   {physics.maxAcceleration}
                 </span>
@@ -302,7 +302,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             {/* Max Velocity Slider */}
             <div className="slider-group">
               <label className="slider-label">
-                Max Velocidad
+                Max Velocity
                 <span className="slider-value">{physics.maxVelocity}</span>
               </label>
               <input
@@ -329,7 +329,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
                 {physics.safetyCap ? 'ON' : 'OFF'}
               </button>
               <span className="toggle-hint">
-                {physics.safetyCap ? 'Protección activa' : '⚠️ Sin protección'}
+                {physics.safetyCap ? 'Protection active' : '⚠️ No protection'}
               </span>
             </div>
             
@@ -340,7 +340,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
               disabled={isStressTesting}
             >
               <Zap size={18} />
-              {isStressTesting ? 'PROBANDO...' : 'TEST DE ESTRÉS'}
+              {isStressTesting ? 'TESTING...' : 'STRESS TEST'}
             </button>
           </div>
         )}
@@ -355,7 +355,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
           onClick={() => toggleSection('limits')}
         >
           <RotateCcw size={18} />
-          <span>Orientación y Límites</span>
+          <span>Orientation & Limits</span>
           <ChevronDown 
             size={16} 
             className={expandedSection === 'limits' ? 'expanded' : ''} 
@@ -366,7 +366,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
           <div className="section-content">
             {/* Installation Orientation */}
             <div className="select-group">
-              <label>Instalación</label>
+              <label>Installation</label>
               <select
                 value={physics.orientation}
                 onChange={(e) => updatePhysics('orientation', e.target.value as InstallationOrientation)}
@@ -383,7 +383,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             {/* Invert toggles */}
             <div className="invert-grid">
               <div className="toggle-row compact">
-                <label>Invertir Pan</label>
+                <label>Invert Pan</label>
                 <button
                   className={`toggle-btn small ${physics.invertPan ? 'on' : 'off'}`}
                   onClick={() => updatePhysics('invertPan', !physics.invertPan)}
@@ -393,7 +393,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
               </div>
               
               <div className="toggle-row compact">
-                <label>Invertir Tilt</label>
+                <label>Invert Tilt</label>
                 <button
                   className={`toggle-btn small ${physics.invertTilt ? 'on' : 'off'}`}
                   onClick={() => updatePhysics('invertTilt', !physics.invertTilt)}
@@ -415,7 +415,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             
             {/* Tilt Limits */}
             <div className="limits-group">
-              <label>Límites de Tilt (evitar apuntar al público)</label>
+              <label>Tilt Limits (avoid pointing at audience)</label>
               <div className="dual-slider">
                 <div className="mini-slider">
                   <span>Min</span>
@@ -457,7 +457,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
             
             {/* Home Position */}
             <div className="home-position">
-              <label>Posición de Reposo (Home)</label>
+              <label>Home Position (Rest)</label>
               <div className="home-inputs">
                 <div className="home-input">
                   <span>Pan</span>
@@ -494,7 +494,7 @@ export const PhysicsTuner: React.FC<PhysicsTunerProps> = ({
       {/* Reset Button */}
       <button className="reset-btn" onClick={handleReset}>
         <RotateCcw size={14} />
-        Restaurar valores por defecto
+        Reset to Defaults
       </button>
     </div>
   )

@@ -427,6 +427,19 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const buildCompleteFixture = useCallback((): FixtureDefinition => {
     return {
       ...fixture,
+      // WAVE 1116.4: Include PHYSICS at root level for JSON export!
+      physics: {
+        motorType: physics.motorType as any,  // Cast needed: ShowFileV2 vs FixtureDefinition types differ
+        maxAcceleration: physics.maxAcceleration,
+        maxVelocity: physics.maxVelocity,
+        safetyCap: physics.safetyCap,
+        orientation: physics.orientation,
+        invertPan: physics.invertPan,
+        invertTilt: physics.invertTilt,
+        swapPanTilt: physics.swapPanTilt,
+        homePosition: { ...physics.homePosition },
+        tiltLimits: { ...physics.tiltLimits },
+      },
       // WAVE 1112: Include wheels at root level for JSON export
       wheels: wheelColors.length > 0 ? { colors: wheelColors } : undefined,
       // Also keep in capabilities for HAL compatibility
@@ -448,7 +461,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         hasDimmer: fixture.channels.some(ch => ch.type === 'dimmer'),
       },
     }
-  }, [fixture, wheelColors, colorEngine])
+  }, [fixture, physics, wheelColors, colorEngine])
   
   const handleSave = useCallback(async () => {
     if (!isFormValid) return

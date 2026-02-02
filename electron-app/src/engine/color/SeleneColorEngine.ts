@@ -430,7 +430,48 @@ export interface GenerationOptions {
   };
   
   // ═══════════════════════════════════════════════════════════════════
-  // SECCIÓN F: LEGACY COMPATIBILITY (WAVE 142)
+  // SECCIÓN F: OCEANIC MODULATION (WAVE 1072)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🌊 WAVE 1072: THE OCEAN TRANSLATOR
+   * 
+   * Modulación oceánica para ChillLounge. En vez de bypasear el engine
+   * con colorOverride hardcodeado, ahora el océano MODULA el color base.
+   * 
+   * El oceanicContext traduce profundidad→sugestión cromática que el engine
+   * puede aplicar de forma natural junto con las reglas de la constitution.
+   * 
+   * @example
+   * oceanicModulation: {
+   *   enabled: true,
+   *   hueInfluence: 180,        // Sugerir azul tropical
+   *   hueInfluenceStrength: 0.7, // 70% de influencia
+   *   saturationMod: -10,        // Ligeramente desaturado
+   *   lightnessMod: -5,          // Ligeramente más oscuro
+   *   breathingFactor: 1.05,     // 5% de modulación por audio
+   * }
+   */
+  oceanicModulation?: {
+    enabled: boolean;
+    /** Hue sugerido por la profundidad (0-360 grados) */
+    hueInfluence: number;
+    /** Fuerza de la sugestión de hue (0-1) */
+    hueInfluenceStrength: number;
+    /** Modificador de saturación (-30 a +30) */
+    saturationMod: number;
+    /** Modificador de luminosidad (-20 a +20) */
+    lightnessMod: number;
+    /** Factor de "respiración" modulado por audio (0.85-1.15) */
+    breathingFactor: number;
+    /** Zona oceánica actual para logging */
+    zone?: string;
+    /** Profundidad actual para logging */
+    depth?: number;
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // SECCIÓN G: LEGACY COMPATIBILITY (WAVE 142)
   // ═══════════════════════════════════════════════════════════════════
   
   /**
@@ -1306,6 +1347,45 @@ export class SeleneColorEngine {
     
     correctedSat = clamp(correctedSat, satMin, satMax);
     correctedLight = clamp(correctedLight, lightMin, lightMax);
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Oceanic Modulation
+    // ═══════════════════════════════════════════════════════════════════════
+    // Si oceanicModulation está activo, modulamos el hue, sat y light
+    // basándonos en la profundidad oceánica traducida a contexto musical.
+    // Esto reemplaza el viejo "colorOverride" que bypaseaba el engine.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (options?.oceanicModulation?.enabled) {
+      const ocean = options.oceanicModulation;
+      
+      // 1. HUE BLEND: Mezclar hue actual con influencia oceánica
+      // La fuerza determina cuánto "arrastra" el océano el color hacia su sugestión
+      const hueDiff = ocean.hueInfluence - finalHue;
+      // Normalizar la diferencia para el camino más corto en el círculo
+      const normalizedDiff = ((hueDiff + 180) % 360) - 180;
+      finalHue = normalizeHue(finalHue + normalizedDiff * ocean.hueInfluenceStrength);
+      
+      // 2. SATURATION MOD: Aplicar modificador oceánico
+      correctedSat = clamp(correctedSat + ocean.saturationMod, satMin, satMax);
+      
+      // 3. LIGHTNESS MOD: Aplicar modificador oceánico
+      correctedLight = clamp(correctedLight + ocean.lightnessMod, lightMin, lightMax);
+      
+      // 4. BREATHING: Modulación sutil por audio (±15%)
+      // Afecta tanto saturación como luminosidad para "pulso vital"
+      const breathDelta = (ocean.breathingFactor - 1.0) * 10; // ±1.5 aprox
+      correctedSat = clamp(correctedSat + breathDelta, satMin, satMax);
+      correctedLight = clamp(correctedLight + breathDelta * 0.5, lightMin, lightMax);
+      
+      // Log de modulación oceánica (solo ocasionalmente)
+      if (Math.random() < 0.01) {  // 1% de frames
+        console.log(
+          `[🌊 OCEAN→COLOR] Zone:${ocean.zone ?? '?'} Depth:${ocean.depth?.toFixed(0) ?? '?'}m | ` +
+          `Hue:${finalHue.toFixed(0)}° (influence:${ocean.hueInfluence.toFixed(0)}° @${(ocean.hueInfluenceStrength*100).toFixed(0)}%) | ` +
+          `S:${correctedSat.toFixed(0)} L:${correctedLight.toFixed(0)}`
+        );
+      }
+    }
     
     // === E. COLOR PRIMARIO ===
     // 🛡️ WAVE 81: Usar valores corregidos por Anti-Mud Protocol

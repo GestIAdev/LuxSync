@@ -473,8 +473,10 @@ export class TitanOrchestrator {
         // Encontrar fixtures que pertenecen a esta zona
         fixtureStates.forEach((f, index) => {
           const fixtureZone = (f.zone || '').toLowerCase()
+          // 🔊 WAVE 1075.2: Use position.x from original fixtures array
+          const positionX = this.fixtures[index]?.position?.x ?? 0
           
-          if (this.fixtureMatchesZone(fixtureZone, zoneId)) {
+          if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
             // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
             
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
@@ -1586,6 +1588,64 @@ export class TitanOrchestrator {
         // Si no reconocemos la zona, NO ENTREGAMOS NADA
         console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`)
         return false
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔊 WAVE 1075.2: STEREO ROUTING - POSITION-BASED (NOT INDEX-BASED)
+  // Usa position.x del StageBuilder para determinar L/R
+  // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
+  //             position.x >= 0 = RIGHT (lado derecho del escenario)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
+    const fz = fixtureZone.toLowerCase()
+    const tz = targetZone.toLowerCase()
+    const isLeft = positionX < 0  // position.x negativo = lado IZQUIERDO del escenario
+    
+    switch (tz) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔊 STEREO PARs - Front
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'frontl':
+      case 'front_left':
+        // Front PARs + debe estar en posición X negativa (izquierda)
+        if (fz === 'front_pars' || fz === 'floor-front') {
+          return isLeft
+        }
+        return false
+        
+      case 'frontr':
+      case 'front_right':
+        // Front PARs + debe estar en posición X positiva/cero (derecha)
+        if (fz === 'front_pars' || fz === 'floor-front') {
+          return !isLeft
+        }
+        return false
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🔊 STEREO PARs - Back
+      // ═══════════════════════════════════════════════════════════════════════
+      case 'backl':
+      case 'back_left':
+        // Back PARs + debe estar en posición X negativa (izquierda)
+        if (fz === 'back_pars' || fz === 'floor-back') {
+          return isLeft
+        }
+        return false
+        
+      case 'backr':
+      case 'back_right':
+        // Back PARs + debe estar en posición X positiva/cero (derecha)
+        if (fz === 'back_pars' || fz === 'floor-back') {
+          return !isLeft
+        }
+        return false
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // Todas las demás zonas: delegar al método original (sin filtro L/R)
+      // ═══════════════════════════════════════════════════════════════════════
+      default:
+        return this.fixtureMatchesZone(fz, tz)
     }
   }
 

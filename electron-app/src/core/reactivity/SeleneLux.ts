@@ -172,23 +172,47 @@ export interface SeleneLuxOutput {
   // 🔧 WAVE 1046: THE MECHANICS BYPASS
   // Coordenadas de movimiento calculadas por la física (THE DEEP FIELD)
   // Si existen, TitanEngine las usa EN VEZ DEL VMM
-  // 🔥 WAVE 1060: Extended with intensity and colorOverride
+  // 🌊 WAVE 1072: colorOverride REMOVED - now uses oceanicModulation in SeleneColorEngine
   // ═══════════════════════════════════════════════════════════════════════════
   mechanics?: {
     moverL: { pan: number; tilt: number; intensity: number };  // 0-1 normalized
     moverR: { pan: number; tilt: number; intensity: number };  // 0-1 normalized
-    colorOverride?: { h: number; s: number; l: number };  // HSL 0-1 normalized
+    // colorOverride: DEPRECATED in WAVE 1072
     source: string;  // 'THE_DEEP_FIELD' | 'CELESTIAL_MOVERS' etc
   };
   // ═══════════════════════════════════════════════════════════════════════════
   // 🌊 WAVE 1070.6: THE LIVING OCEAN - Oceanic Creature Triggers
   // Flags for TitanEngine to dispatch oceanic effects via EffectManager
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🎭 WAVE 1074: MICRO-FAUNA INTEGRATION - Extended with 4 ambient fillers
   oceanicTriggers?: {
-    solarCaustics: boolean;   // SHALLOWS (0-1000m)
-    schoolOfFish: boolean;    // OCEAN (1000-3000m)
-    whaleSong: boolean;       // TWILIGHT (3000-6000m)
-    abyssalJellyfish: boolean; // MIDNIGHT (6000+m)
+    // MAJOR EFFECTS (45-90s cooldowns)
+    solarCaustics: boolean;      // SHALLOWS (0-1000m)
+    schoolOfFish: boolean;       // OCEAN (1000-3000m)
+    whaleSong: boolean;          // TWILIGHT (3000-6000m)
+    abyssalJellyfish: boolean;   // MIDNIGHT (6000+m)
+    // MICRO-FAUNA FILLERS (18-35s cooldowns)
+    surfaceShimmer: boolean;     // SHALLOWS (0-1000m) - Subtle light play
+    planktonDrift: boolean;      // OCEAN (1000-3000m) - Ambient particles
+    deepCurrentPulse: boolean;   // TWILIGHT (3000-6000m) - Flow patterns
+    bioluminescentSpore: boolean; // MIDNIGHT (6000+m) - Organic glow
+  };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Oceanic Musical Context
+  // Modulation hints for SeleneColorEngine when in Chill vibe
+  // ═══════════════════════════════════════════════════════════════════════════
+  oceanicContext?: {
+    hueInfluence: number;          // Suggested hue (degrees 0-360)
+    hueInfluenceStrength: number;  // How strongly to apply (0-1)
+    saturationMod: number;         // Saturation modifier (-30 to +30)
+    lightnessMod: number;          // Lightness modifier (-20 to +20)
+    translatedSection: string;     // 'intro'|'verse'|'bridge'|'breakdown'|'ambient'
+    translatedEnergy: number;      // Energy (0-1)
+    translatedEmotion: string;     // 'serene'|'contemplative'|'melancholic'|'ethereal'
+    depth: number;                 // Current depth in meters
+    zone: string;                  // 'SHALLOWS'|'OCEAN'|'TWILIGHT'|'MIDNIGHT'
+    tidePhase: number;             // Tide phase (0-1)
+    breathingFactor: number;       // Audio-modulated breathing (0.85-1.15)
   };
   debugInfo?: Record<string, unknown>;
 }
@@ -278,22 +302,47 @@ export class SeleneLux {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates from physics
-  // 🔥 WAVE 1060: Extended with intensity and color override
+  // 🌊 WAVE 1072: colorOverride REMOVED - now uses oceanicModulation
   // ═══════════════════════════════════════════════════════════════════════
   private deepFieldMechanics: {
     moverL: { pan: number; tilt: number; intensity: number };
     moverR: { pan: number; tilt: number; intensity: number };
-    colorOverride?: { h: number; s: number; l: number };
+    // colorOverride removed in WAVE 1072 - ocean colors flow through SeleneColorEngine
   } | null = null;
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🌊 WAVE 1070.6: THE LIVING OCEAN - Oceanic Creature Triggers
+  // 🎭 WAVE 1074: MICRO-FAUNA INTEGRATION - Extended with 4 ambient fillers
   // ═══════════════════════════════════════════════════════════════════════
   private oceanicTriggersState: {
+    // MAJOR EFFECTS
     solarCaustics: boolean;
     schoolOfFish: boolean;
     whaleSong: boolean;
     abyssalJellyfish: boolean;
+    // MICRO-FAUNA FILLERS
+    surfaceShimmer: boolean;
+    planktonDrift: boolean;
+    deepCurrentPulse: boolean;
+    bioluminescentSpore: boolean;
+  } | null = null;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Oceanic Musical Context
+  // Permite a SeleneColorEngine modular paletas basándose en profundidad
+  // ═══════════════════════════════════════════════════════════════════════
+  private oceanicContextState: {
+    hueInfluence: number;
+    hueInfluenceStrength: number;
+    saturationMod: number;
+    lightnessMod: number;
+    translatedSection: string;
+    translatedEnergy: number;
+    translatedEmotion: string;
+    depth: number;
+    zone: string;
+    tidePhase: number;
+    breathingFactor: number;
   } | null = null;
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -643,14 +692,13 @@ export class SeleneLux {
       };
 
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 1046: THE MECHANICS BYPASS
-      // Store movement coordinates for TitanEngine to bypass VMM
-      // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
+      // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement coordinates only
+      // 🌊 WAVE 1072: colorOverride REMOVED - now uses oceanicModulation in SeleneColorEngine
       // ═══════════════════════════════════════════════════════════════════════
       this.deepFieldMechanics = {
         moverL: { pan: result.moverL.pan, tilt: result.moverL.tilt, intensity: result.moverL.intensity },
         moverR: { pan: result.moverR.pan, tilt: result.moverR.tilt, intensity: result.moverR.intensity },
-        colorOverride: result.colorOverride,  // HSL 0-1 normalized
+        // colorOverride: DEPRECATED - ocean colors now flow through SeleneColorEngine
       };
 
       // ═══════════════════════════════════════════════════════════════════════
@@ -658,6 +706,12 @@ export class SeleneLux {
       // These will be dispatched to EffectManager by TitanEngine
       // ═══════════════════════════════════════════════════════════════════════
       this.oceanicTriggersState = result.oceanicTriggers;
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Store Oceanic Musical Context
+      // This allows SeleneColorEngine to modulate palettes based on depth
+      // ═══════════════════════════════════════════════════════════════════════
+      this.oceanicContextState = result.oceanicContext;
 
       // Pass movement data for Celestial Movers
       debugInfo = {
@@ -981,29 +1035,37 @@ export class SeleneLux {
         breathingFactor: this.washerResult.breathingFactor,
       } : undefined,
       // ═══════════════════════════════════════════════════════════════════════
-      // 🔧 WAVE 1046: THE MECHANICS BYPASS
-      // If physics calculated movement coordinates, include them for TitanEngine
-      // to use INSTEAD of VMM patterns
-      // 🔥 WAVE 1060: Include colorOverride from Abyssal Chronicles
+      // 🔧 WAVE 1046: THE MECHANICS BYPASS - Movement only
+      // 🌊 WAVE 1072: colorOverride REMOVED from mechanics
       // ═══════════════════════════════════════════════════════════════════════
       mechanics: this.deepFieldMechanics ? {
         moverL: this.deepFieldMechanics.moverL,
         moverR: this.deepFieldMechanics.moverR,
-        colorOverride: this.deepFieldMechanics.colorOverride,
+        // colorOverride: DEPRECATED in WAVE 1072 - flows through SeleneColorEngine now
         source: 'THE_DEEP_FIELD',
       } : undefined,
       // ═══════════════════════════════════════════════════════════════════════
       // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Triggers
       // ═══════════════════════════════════════════════════════════════════════
       oceanicTriggers: this.oceanicTriggersState ?? undefined,
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Oceanic Musical Context
+      // Allows SeleneColorEngine to modulate based on oceanic depth/zone
+      // ═══════════════════════════════════════════════════════════════════════
+      oceanicContext: this.oceanicContextState ?? undefined,
       debugInfo,
     };
     
     // Clear deepFieldMechanics for next frame
     this.deepFieldMechanics = null;
     
-    // 🌊 WAVE 1070: Clear oceanicTriggers after each frame (prevent re-triggering)
-    this.oceanicTriggersState = null;
+    // 🌊 WAVE 1073.8: NO limpiar oceanicTriggers - se sobrescriben naturalmente
+    // El problema era que se limpiaban ANTES de que TitanEngine los leyera
+    // this.oceanicTriggersState = null;  // ❌ COMENTADO
+    
+    // 🌊 WAVE 1072: oceanicContext NO necesita limpiarse tampoco
+    // this.oceanicContextState = null;   // ❌ COMENTADO
     
     return this.lastOutput;
   }

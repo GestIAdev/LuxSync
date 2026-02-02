@@ -1,5 +1,10 @@
 /**
- *  CHILL STEREO PHYSICS: THE LIVING OCEAN (WAVE 1070.6)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🌊 CHILL STEREO PHYSICS: THE LIVING OCEAN
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 1070.6: Original implementation
+ * WAVE 1072: THE OCEAN TRANSLATOR - Integrated OceanicContextAdapter
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Motor hidrostático que controla profundidad oceánica y triggers de criaturas.
  * 
@@ -9,21 +14,38 @@
  *  TWILIGHT (3000-6000m):  Zona crepuscular - Índigo
  *  MIDNIGHT (6000+m):      Abismo profundo - Bioluminiscencia
  * 
- * CRIATURAS:
- * - SolarCaustics: clarity alta en SHALLOWS
- * - SchoolOfFish: transientDensity alta en OCEAN
- * - WhaleSong: bassEnergy alta en TWILIGHT
- * - AbyssalJellyfish: spectralFlatness bajo en MIDNIGHT
+ * CRIATURAS (Efectos RAROS - Tier 1):
+ * - SolarCaustics: clarity alta + TIEMPO en SHALLOWS
+ * - SchoolOfFish: transientDensity alta + TIEMPO en OCEAN
+ * - WhaleSong: bassEnergy alta + TIEMPO en TWILIGHT
+ * - AbyssalJellyfish: spectralFlatness bajo + TIEMPO en MIDNIGHT
+ * 
+ * WAVE 1072: Los triggers ahora requieren TIEMPO EN ZONA, no solo profundidad.
+ * Esto evita que los efectos se disparen "con prisas" al llegar a una zona.
  */
 
-// TIPOS
-type DepthZone = 'SHALLOWS' | 'OCEAN' | 'TWILIGHT' | 'MIDNIGHT'
+import { 
+  translateOceanicContext, 
+  resetOceanicSmoothing,
+  type OceanicMusicalContext,
+  type StableGodEarMetrics,
+  type DepthZone 
+} from './OceanicContextAdapter'
+
+// Re-export types for consumers
+export type { DepthZone, OceanicMusicalContext }
 
 export interface OceanicTriggers {
+  // 🌊 Major Effects
   solarCaustics: boolean
   schoolOfFish: boolean
   whaleSong: boolean
   abyssalJellyfish: boolean
+  // 🦠 WAVE 1074: Micro-Fauna
+  surfaceShimmer: boolean
+  planktonDrift: boolean
+  deepCurrentPulse: boolean
+  bioluminescentSpore: boolean
 }
 
 export interface DeepFieldOutput {
@@ -34,7 +56,10 @@ export interface DeepFieldOutput {
   moverL: { intensity: number; pan: number; tilt: number }
   moverR: { intensity: number; pan: number; tilt: number }
   airIntensity: number
+  /** @deprecated WAVE 1072: Use oceanicContext.hueInfluence instead */
   colorOverride: { h: number; s: number; l: number }
+  /** WAVE 1072: Contexto oceánico para modular SeleneColorEngine */
+  oceanicContext: OceanicMusicalContext
   currentDepth: number
   currentZone: DepthZone
   oceanicTriggers: OceanicTriggers
@@ -43,10 +68,10 @@ export interface DeepFieldOutput {
 
 // CONFIGURACIÓN DE ZONAS
 const ZONES: Record<DepthZone, { min: number; max: number; label: string }> = {
-  SHALLOWS: { min: 0,    max: 1000,  label: '' },
-  OCEAN:    { min: 1000, max: 3000,  label: '' },
-  TWILIGHT: { min: 3000, max: 6000,  label: '' },
-  MIDNIGHT: { min: 6000, max: 10000, label: '' }
+  SHALLOWS: { min: 0,    max: 1000,  label: '🌊' },
+  OCEAN:    { min: 1000, max: 3000,  label: '🐠' },
+  TWILIGHT: { min: 3000, max: 6000,  label: '🐋' },
+  MIDNIGHT: { min: 6000, max: 10000, label: '🪼' }
 }
 
 // CONFIGURACIÓN MOTOR HIDROSTÁTICO
@@ -61,29 +86,62 @@ const HYDROSTATIC_CONFIG = {
   BUOYANCY_NEUTRAL_CENTROID: 1200,
 }
 
-// CONFIGURACIÓN DE TRIGGERS
+// CONFIGURACIÓN DE TRIGGERS - CHILL MODE: Cooldowns largos, thresholds altos
+// WAVE 1072: Ahora incluye TIME_IN_ZONE_MS - tiempo mínimo en zona antes de trigger
 const TRIGGER_CONFIG = {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🐋 MAJOR EFFECTS (45-90s cooldowns) - Los protagonistas
+  // ═══════════════════════════════════════════════════════════════════════════
   solarCaustics: {
-    cooldownMs: 8000,
-    clarityThreshold: 0.75,
+    cooldownMs: 45000,           // 45 segundos entre triggers (era 8s)
+    clarityThreshold: 0.75,     // 🌊 WAVE 1073.2: 0.88 → 0.75 (más permisivo para chill)
     maxDepth: 1000,
+    timeInZoneMs: 10000,        // WAVE 1072: 10 segundos mínimo en SHALLOWS
   },
   schoolOfFish: {
-    cooldownMs: 5000,
-    transientThreshold: 0.55,
+    cooldownMs: 35000,           // 35 segundos (era 5s)
+    transientThreshold: 0.55,   // 🌊 WAVE 1073.2: 0.72 → 0.55 (chill music tiene menos transientes)
     minDepth: 1000,
     maxDepth: 3000,
+    timeInZoneMs: 8000,         // WAVE 1072: 8 segundos mínimo en OCEAN
   },
   whaleSong: {
-    cooldownMs: 15000,
-    bassThreshold: 0.60,
+    cooldownMs: 60000,           // 60 segundos - ballenas son raras (era 15s)
+    bassThreshold: 0.30,        // 🌊 WAVE 1073.5: 0.55 → 0.30 (chill bass es SUAVE)
     minDepth: 3000,
     maxDepth: 6000,
+    timeInZoneMs: 15000,        // WAVE 1072: 15 segundos mínimo en TWILIGHT
   },
   abyssalJellyfish: {
-    cooldownMs: 25000,
-    flatnessThreshold: 0.35,
+    cooldownMs: 90000,           // 90 segundos - evento especial (era 25s)
+    flatnessThreshold: 0.30,    // 🌊 WAVE 1073.2: 0.22 → 0.30 (más permisivo)
     minDepth: 6000,
+    timeInZoneMs: 20000,        // WAVE 1072: 20 segundos mínimo en MIDNIGHT
+  },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎭 WAVE 1074.1: MICRO-FAUNA FILLERS (18-35s cooldowns) - Ambiente de fondo
+  // ═══════════════════════════════════════════════════════════════════════════
+  surfaceShimmer: {
+    cooldownMs: 18000,           // 18 segundos - relleno sutil
+    maxDepth: 200,              // Solo en superficie (<200m)
+    timeInZoneMs: 5000,         // 5 segundos mínimo
+  },
+  planktonDrift: {
+    cooldownMs: 22000,           // 22 segundos
+    minDepth: 200,
+    maxDepth: 1000,             // 200-1000m (transición SHALLOWS→OCEAN)
+    timeInZoneMs: 6000,
+  },
+  deepCurrentPulse: {
+    cooldownMs: 28000,           // 28 segundos
+    minDepth: 1000,
+    maxDepth: 6000,             // 1000-6000m (OCEAN→TWILIGHT) - Incluye frontera
+    timeInZoneMs: 8000,
+  },
+  bioluminescentSpore: {
+    cooldownMs: 35000,           // 35 segundos
+    minDepth: 6000,             // Solo abismo profundo (>6000m) - Sincronizado con lógica de disparo
+    timeInZoneMs: 10000,
   },
 }
 
@@ -94,6 +152,10 @@ interface OceanState {
   lastLoggedDepth: number
   lastTriggerTime: Record<keyof OceanicTriggers, number>
   startTime: number
+  /** WAVE 1072: Momento en que entramos a la zona actual */
+  zoneEntryTime: number
+  /** WAVE 1072: Zona anterior para detectar cambios */
+  previousZone: DepthZone | null
 }
 
 const state: OceanState = {
@@ -101,12 +163,21 @@ const state: OceanState = {
   currentZone: 'OCEAN',
   lastLoggedDepth: 500,
   lastTriggerTime: {
-    solarCaustics: 0,
-    schoolOfFish: 0,
-    whaleSong: 0,
-    abyssalJellyfish: 0,
+    // 🌊 WAVE 1073.8: Cooldowns negativos = primer disparo inmediato
+    // Major Effects
+    solarCaustics: -999999,
+    schoolOfFish: -999999,
+    whaleSong: -999999,
+    abyssalJellyfish: -999999,
+    // 🦠 WAVE 1074: Micro-Fauna
+    surfaceShimmer: -999999,
+    planktonDrift: -999999,
+    deepCurrentPulse: -999999,
+    bioluminescentSpore: -999999,
   },
   startTime: Date.now(),
+  zoneEntryTime: Date.now(),
+  previousZone: null,
 }
 
 // UTILIDADES
@@ -237,23 +308,35 @@ function calculateFluidPhysics(
 }
 
 // TEXTURE MONITOR - Detección de Criaturas
+// WAVE 1072: Ahora requiere TIEMPO EN ZONA antes de disparar
 function checkOceanicTriggers(godEar: any, depth: number, now: number): OceanicTriggers {
   const clarity = godEar.clarity || 0
   const transientDensity = godEar.transientDensity || 0
   const spectralFlatness = godEar.spectralFlatness ?? 0.5
   const bassEnergy = godEar.bassEnergy || godEar.bass || 0
   
+  // WAVE 1072: Tiempo que llevamos en la zona actual
+  const timeInZone = now - state.zoneEntryTime
+  
   const triggers: OceanicTriggers = {
+    // Major Effects
     solarCaustics: false,
     schoolOfFish: false,
     whaleSong: false,
     abyssalJellyfish: false,
+    // 🦠 WAVE 1074: Micro-Fauna
+    surfaceShimmer: false,
+    planktonDrift: false,
+    deepCurrentPulse: false,
+    bioluminescentSpore: false,
   }
   
-  //  SOLAR CAUSTICS
+  // 🌊 SOLAR CAUSTICS - Solo en SHALLOWS y tras tiempo de aclimatación
   const causticsConfig = TRIGGER_CONFIG.solarCaustics
+  const inShallows = depth < causticsConfig.maxDepth
   if (
-    depth < causticsConfig.maxDepth &&
+    inShallows &&
+    timeInZone > causticsConfig.timeInZoneMs &&  // WAVE 1072: Requiere 10s en zona
     clarity > causticsConfig.clarityThreshold &&
     now - state.lastTriggerTime.solarCaustics > causticsConfig.cooldownMs
   ) {
@@ -261,11 +344,12 @@ function checkOceanicTriggers(godEar: any, depth: number, now: number): OceanicT
     state.lastTriggerTime.solarCaustics = now
   }
   
-  //  SCHOOL OF FISH
+  // 🐠 SCHOOL OF FISH - Solo en OCEAN y tras tiempo de aclimatación
   const fishConfig = TRIGGER_CONFIG.schoolOfFish
+  const inOcean = depth >= fishConfig.minDepth && depth < fishConfig.maxDepth
   if (
-    depth >= fishConfig.minDepth &&
-    depth < fishConfig.maxDepth &&
+    inOcean &&
+    timeInZone > fishConfig.timeInZoneMs &&  // WAVE 1072: Requiere 8s en zona
     transientDensity > fishConfig.transientThreshold &&
     now - state.lastTriggerTime.schoolOfFish > fishConfig.cooldownMs
   ) {
@@ -273,27 +357,80 @@ function checkOceanicTriggers(godEar: any, depth: number, now: number): OceanicT
     state.lastTriggerTime.schoolOfFish = now
   }
   
-  //  WHALE SONG
+  // 🐋 WHALE SONG - Solo en TWILIGHT y tras tiempo de aclimatación
   const whaleConfig = TRIGGER_CONFIG.whaleSong
+  const inTwilight = depth >= whaleConfig.minDepth && depth <= whaleConfig.maxDepth  // <= para incluir 6000m
   if (
-    depth >= whaleConfig.minDepth &&
-    depth < whaleConfig.maxDepth &&
+    inTwilight &&
+    timeInZone > whaleConfig.timeInZoneMs &&  // WAVE 1072: Requiere 15s en zona
     bassEnergy > whaleConfig.bassThreshold &&
     now - state.lastTriggerTime.whaleSong > whaleConfig.cooldownMs
   ) {
     triggers.whaleSong = true
     state.lastTriggerTime.whaleSong = now
+    console.log(`[🐋 WHALE FIRED] depth=${depth}m bass=${bassEnergy.toFixed(3)} time=${(timeInZone/1000).toFixed(1)}s`)
   }
   
-  //  ABYSSAL JELLYFISH
+  // 🪼 ABYSSAL JELLYFISH - Solo en MIDNIGHT y tras tiempo de aclimatación
   const jellyConfig = TRIGGER_CONFIG.abyssalJellyfish
+  const inMidnight = depth >= jellyConfig.minDepth
   if (
-    depth >= jellyConfig.minDepth &&
+    inMidnight &&
+    timeInZone > jellyConfig.timeInZoneMs &&  // WAVE 1072: Requiere 20s en zona
     spectralFlatness < jellyConfig.flatnessThreshold &&
     now - state.lastTriggerTime.abyssalJellyfish > jellyConfig.cooldownMs
   ) {
     triggers.abyssalJellyfish = true
     state.lastTriggerTime.abyssalJellyfish = now
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers
+  // Disparos más frecuentes, menos espectaculares, relleno ambiental
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // ✨ SURFACE SHIMMER - Destellos de superficie (0-1000m SHALLOWS)
+  // Dispara con claridad media, cooldown corto
+  if (
+    depth < 1000 &&
+    clarity > 0.4 &&
+    now - state.lastTriggerTime.surfaceShimmer > 18000  // 18s cooldown
+  ) {
+    triggers.surfaceShimmer = true
+    state.lastTriggerTime.surfaceShimmer = now
+  }
+  
+  // 🦠 PLANKTON DRIFT - Deriva de plancton (1000-3000m OCEAN)
+  // Dispara con actividad media, cooldown moderado
+  if (
+    depth >= 1000 && depth < 3000 &&
+    transientDensity > 0.25 &&
+    now - state.lastTriggerTime.planktonDrift > 22000  // 22s cooldown
+  ) {
+    triggers.planktonDrift = true
+    state.lastTriggerTime.planktonDrift = now
+  }
+  
+  // 🌀 DEEP CURRENT PULSE - Corrientes profundas (3000-6000m TWILIGHT)
+  // Dispara con bass suave, cooldown más largo (no competir con whale)
+  if (
+    depth >= 3000 && depth <= 6000 &&  // <= para incluir 6000m
+    bassEnergy > 0.20 && bassEnergy < 0.50 &&  // Bass suave, no explosivo
+    now - state.lastTriggerTime.deepCurrentPulse > 28000  // 28s cooldown
+  ) {
+    triggers.deepCurrentPulse = true
+    state.lastTriggerTime.deepCurrentPulse = now
+  }
+  
+  // ✨ BIOLUMINESCENT SPORE - Esporas abisales (6000m+ MIDNIGHT)
+  // Dispara en silencio relativo (flatness muy bajo), cooldown largo
+  if (
+    depth >= 6000 &&
+    spectralFlatness < 0.15 &&  // Silencio casi total
+    now - state.lastTriggerTime.bioluminescentSpore > 35000  // 35s cooldown
+  ) {
+    triggers.bioluminescentSpore = true
+    state.lastTriggerTime.bioluminescentSpore = now
   }
   
   return triggers
@@ -311,42 +448,65 @@ export const calculateChillStereo = (
   
   const depth = calculateHydrostaticDepth(now, godEar)
   const zone = getZoneFromDepth(depth)
+  
+  // WAVE 1072: Detectar cambio de zona y actualizar zoneEntryTime
+  if (state.previousZone !== zone) {
+    if (state.previousZone !== null) {
+      console.log(`[🌊 ZONE] ${state.previousZone} → ${zone} | Depth: ${depth.toFixed(0)}m`)
+    }
+    state.zoneEntryTime = now
+    state.previousZone = zone
+  }
   state.currentZone = zone
   
   const color = calculateColorGrading(depth, energy, now)
   const physics = calculateFluidPhysics(now, energy, depth, godEar)
   const oceanicTriggers = checkOceanicTriggers(godEar, depth, now)
   
+  // WAVE 1072: Construir contexto oceánico usando el adapter
+  // Calcular tidePhase del ciclo de marea actual (0=superficie, 1=abismo)
+  const effectiveTime = (now - state.startTime) * HYDROSTATIC_CONFIG.DEBUG_SPEED
+  const tidePhase = (effectiveTime % HYDROSTATIC_CONFIG.TIDE_CYCLE_MS) / HYDROSTATIC_CONFIG.TIDE_CYCLE_MS
+  
+  const stableMetrics: Partial<StableGodEarMetrics> = {
+    clarity: godEar.clarity ?? 0.95,
+    spectralFlatness: godEar.spectralFlatness ?? 0.35,
+    smoothedEnergy: energy,  // Ya viene smoothed de arriba en el pipeline
+    bassEnergy: godEar.bassEnergy ?? godEar.bass ?? 0,
+    crestFactor: godEar.crestFactor ?? 10,
+  }
+  
+  // translateOceanicContext(depth, zone, tidePhase, godEar?)
+  const oceanicContext = translateOceanicContext(depth, zone, tidePhase, stableMetrics)
+  
   const depthChanged = Math.abs(depth - state.lastLoggedDepth) > 500
   if (depthChanged) {
     state.lastLoggedDepth = depth
   }
   
-  //  TELEMETRÍA SUBMARINA (Cada ~2 segundos)
+  // 📟 TELEMETRÍA SUBMARINA (Cada ~2 segundos)
+  const timeInZone = now - state.zoneEntryTime
   if (Math.floor(now / 1000) % 2 === 0 && Math.sin(now / 100) > 0.95) {
-    const centroid = godEar.centroid || 0
     console.log(
-      `[ SUBMARINE] Z:${ZONES[zone].label} |  ${depth.toFixed(0)}m | ` +
-      ` C:${centroid.toFixed(0)} |  H:${color.hue.toFixed(0)} L:${color.lightness.toFixed(0)}% | ` +
-      ` E:${(energy * 100).toFixed(0)}%`
+      `[🌊 OCEAN] ${ZONES[zone].label} ${depth.toFixed(0)}m | ` +
+      `🕐 ${(timeInZone/1000).toFixed(0)}s in zone | ` +
+      `🎨 H:${oceanicContext.hueInfluence.toFixed(0)}° S:${oceanicContext.saturationMod.toFixed(0)} L:${oceanicContext.lightnessMod.toFixed(0)} | ` +
+      `⚡ E:${(energy * 100).toFixed(0)}%`
     )
   }
   
-  // Log de triggers
+  // Log de triggers con tiempo en zona
   if (oceanicTriggers.solarCaustics) {
-    console.log(`[ TRIGGER] Solar Caustics! Depth:${depth.toFixed(0)}m Clarity:${(godEar.clarity || 0).toFixed(2)}`)
+    console.log(`[☀️ CAUSTICS] Solar rays! Depth:${depth.toFixed(0)}m Clarity:${(godEar.clarity || 0).toFixed(2)} | Zone time: ${(timeInZone/1000).toFixed(0)}s`)
   }
   if (oceanicTriggers.schoolOfFish) {
-    console.log(`[ TRIGGER] School of Fish! Depth:${depth.toFixed(0)}m Transients:${(godEar.transientDensity || 0).toFixed(2)}`)
-  }
-  if (oceanicTriggers.whaleSong) {
-    console.log(`[ TRIGGER] Whale Song! Depth:${depth.toFixed(0)}m BassEnergy:${(godEar.bassEnergy || 0).toFixed(2)}`)
+    console.log(`[🐠 FISH] School crossing! Depth:${depth.toFixed(0)}m Transients:${(godEar.transientDensity || 0).toFixed(2)} | Zone time: ${(timeInZone/1000).toFixed(0)}s`)
   }
   if (oceanicTriggers.abyssalJellyfish) {
-    console.log(`[ TRIGGER] Abyssal Jellyfish! Depth:${depth.toFixed(0)}m Flatness:${(godEar.spectralFlatness ?? 0.5).toFixed(2)}`)
+    console.log(`[🪼 JELLY] Bioluminescence! Depth:${depth.toFixed(0)}m Flatness:${(godEar.spectralFlatness ?? 0.5).toFixed(2)} | Zone time: ${(timeInZone/1000).toFixed(0)}s`)
   }
   
-  const debugMsg = `${ZONES[zone].label} ${depth.toFixed(0)}m | H:${color.hue.toFixed(0)} L:${color.lightness.toFixed(0)}%`
+  const debugMsg = `${ZONES[zone].label} ${depth.toFixed(0)}m | 🕐${(timeInZone/1000).toFixed(0)}s | H:${oceanicContext.hueInfluence.toFixed(0)}°`
   
   return {
     frontL: physics.frontL,
@@ -355,11 +515,14 @@ export const calculateChillStereo = (
     backR: physics.backR,
     moverL: physics.moverL,
     moverR: physics.moverR,
+    // @deprecated: colorOverride se mantiene por retrocompatibilidad
     colorOverride: {
       h: color.hue / 360,
       s: color.saturation / 100,
       l: color.lightness / 100,
     },
+    // WAVE 1072: oceanicContext es la forma correcta de modular color
+    oceanicContext,
     airIntensity: physics.airIntensity,
     currentDepth: depth,
     currentZone: zone,
@@ -373,9 +536,20 @@ export const resetDeepFieldState = () => {
   state.currentDepth = 500
   state.currentZone = 'OCEAN'
   state.lastLoggedDepth = 500
-  state.lastTriggerTime = { solarCaustics: 0, schoolOfFish: 0, whaleSong: 0, abyssalJellyfish: 0 }
+  state.lastTriggerTime = { 
+    // Major Effects
+    solarCaustics: 0, schoolOfFish: 0, whaleSong: 0, abyssalJellyfish: 0,
+    // 🦠 WAVE 1074: Micro-Fauna
+    surfaceShimmer: 0, planktonDrift: 0, deepCurrentPulse: 0, bioluminescentSpore: 0,
+  }
   state.startTime = Date.now()
-  console.log('[ OCEAN] State reset - returning to surface')
+  state.zoneEntryTime = Date.now()  // WAVE 1072
+  state.previousZone = null         // WAVE 1072
+  
+  // Reset también el smoothing del adapter oceánico
+  resetOceanicSmoothing()
+  
+  console.log('[🌊 OCEAN] State reset - returning to surface')
 }
 
 export const getDeepFieldState = () => ({
@@ -386,16 +560,20 @@ export const getDeepFieldState = () => ({
 })
 
 // DEPTH VALIDATION
+// 🛡️ WAVE 1074.1: DEPTH GUARD EXTENSION - Incluye micro-fauna
 export const isOceanicEffectValidForDepth = (effectType: string): { valid: boolean; reason: string } => {
   const depth = state.currentDepth
   const zone = state.currentZone
   
   switch (effectType) {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🐋 MAJOR EFFECTS - Depth Validation
+    // ═══════════════════════════════════════════════════════════════════════════
     case 'solar_caustics':
       if (depth > TRIGGER_CONFIG.solarCaustics.maxDepth) {
         return { 
           valid: false, 
-          reason: ` DEPTH BLOCK: solar_caustics requiere depth<1000m, actual=${Math.round(depth)}m (${zone})`
+          reason: `🛡️ DEPTH BLOCK: solar_caustics requiere depth<1000m, actual=${Math.round(depth)}m (${zone})`
         }
       }
       return { valid: true, reason: '' }
@@ -404,7 +582,7 @@ export const isOceanicEffectValidForDepth = (effectType: string): { valid: boole
       if (depth < TRIGGER_CONFIG.schoolOfFish.minDepth || depth > TRIGGER_CONFIG.schoolOfFish.maxDepth) {
         return {
           valid: false,
-          reason: ` DEPTH BLOCK: school_of_fish requiere 1000-3000m, actual=${Math.round(depth)}m (${zone})`
+          reason: `🛡️ DEPTH BLOCK: school_of_fish requiere 1000-3000m, actual=${Math.round(depth)}m (${zone})`
         }
       }
       return { valid: true, reason: '' }
@@ -413,7 +591,7 @@ export const isOceanicEffectValidForDepth = (effectType: string): { valid: boole
       if (depth < TRIGGER_CONFIG.whaleSong.minDepth || depth > TRIGGER_CONFIG.whaleSong.maxDepth) {
         return {
           valid: false,
-          reason: ` DEPTH BLOCK: whale_song requiere 3000-6000m, actual=${Math.round(depth)}m (${zone})`
+          reason: `🛡️ DEPTH BLOCK: whale_song requiere 3000-6000m, actual=${Math.round(depth)}m (${zone})`
         }
       }
       return { valid: true, reason: '' }
@@ -422,7 +600,47 @@ export const isOceanicEffectValidForDepth = (effectType: string): { valid: boole
       if (depth < TRIGGER_CONFIG.abyssalJellyfish.minDepth) {
         return {
           valid: false,
-          reason: ` DEPTH BLOCK: abyssal_jellyfish requiere depth>6000m, actual=${Math.round(depth)}m (${zone})`
+          reason: `🛡️ DEPTH BLOCK: abyssal_jellyfish requiere depth>6000m, actual=${Math.round(depth)}m (${zone})`
+        }
+      }
+      return { valid: true, reason: '' }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎭 WAVE 1074.1: MICRO-FAUNA DEPTH GUARD
+    // Evita que el DecisionMaker dispare efectos de fondo en la zona incorrecta
+    // ═══════════════════════════════════════════════════════════════════════════
+    case 'surface_shimmer':
+      if (depth > TRIGGER_CONFIG.surfaceShimmer.maxDepth) {
+        return {
+          valid: false,
+          reason: `🛡️ DEPTH BLOCK: surface_shimmer requiere depth<200m, actual=${Math.round(depth)}m (${zone})`
+        }
+      }
+      return { valid: true, reason: '' }
+
+    case 'plankton_drift':
+      if (depth < TRIGGER_CONFIG.planktonDrift.minDepth || depth > TRIGGER_CONFIG.planktonDrift.maxDepth) {
+        return {
+          valid: false,
+          reason: `🛡️ DEPTH BLOCK: plankton_drift requiere 200-1000m, actual=${Math.round(depth)}m (${zone})`
+        }
+      }
+      return { valid: true, reason: '' }
+
+    case 'deep_current_pulse':
+      if (depth < TRIGGER_CONFIG.deepCurrentPulse.minDepth || depth > TRIGGER_CONFIG.deepCurrentPulse.maxDepth) {
+        return {
+          valid: false,
+          reason: `🛡️ DEPTH BLOCK: deep_current_pulse requiere 1000-6000m, actual=${Math.round(depth)}m (${zone})`
+        }
+      }
+      return { valid: true, reason: '' }
+
+    case 'bioluminescent_spore':
+      if (depth < TRIGGER_CONFIG.bioluminescentSpore.minDepth) {
+        return {
+          valid: false,
+          reason: `🛡️ DEPTH BLOCK: bioluminescent_spore requiere depth>6000m, actual=${Math.round(depth)}m (${zone})`
         }
       }
       return { valid: true, reason: '' }

@@ -1,9 +1,20 @@
-/**
- *  WHALE SONG - Canto de Ballena en TWILIGHT (3000-6000m)
- * WAVE 1070.6: CHROMATIC RENAISSANCE
+﻿/**
+ * 🐋 WHALE SONG - Canto de Ballena en TWILIGHT (3000-6000m)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 1073: OCEANIC CALIBRATION - De "estático aburrido" a "majestuoso"
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * COLORES: Índigo y violeta profundo (zona crepuscular)
- * HSL FORMAT: h(0-360), s(0-100), l(0-100) - Standard para TitanOrchestrator
+ * CONCEPTO: Una ballena ENORME cruzando el espacio con PRESENCIA.
+ * No es solo un cambio de color - es una SILUETA que se mueve.
+ * El "canto" son pulsos de bioluminiscencia que viajan por su cuerpo.
+ * 
+ * MECÁNICA WAVE 1073:
+ * - La ballena es ANCHA (ocupa varias zonas a la vez)
+ * - PULSOS DE CANTO: Ondas que viajan de cola a cabeza
+ * - COLORES CAMBIANTES: Índigo/violeta que varían con el canto
+ * - MOVERS: Siguen la cabeza de la ballena, MUY LENTO
+ * 
+ * HSL FORMAT: h(0-360), s(0-100), l(0-100)
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -13,31 +24,38 @@ interface WhaleSongConfig {
   durationMs: number
   peakIntensity: number
   whaleWidth: number
+  songPulses: number      // 🌊 WAVE 1073: Número de "cantos" durante el cruce
 }
 
 const DEFAULT_CONFIG: WhaleSongConfig = {
-  durationMs: 8000,
+  durationMs: 12000,        // 🌊 WAVE 1073: 12 segundos - evento MAJESTUOSO
   peakIntensity: 0.80,
-  whaleWidth: 0.45,
+  whaleWidth: 0.55,          // Ballena ancha
+  songPulses: 3,             // 3 cantos durante el cruce
 }
 
-//  COLORES CREPUSCULARES: Índigo y violeta (HSL: h=0-360, s=0-100, l=0-100)
-const TWILIGHT_COLORS = [
-  { h: 240, s: 75, l: 35 },  // Índigo profundo
-  { h: 260, s: 70, l: 40 },  // Violeta
-  { h: 220, s: 80, l: 30 },  // Azul medianoche
-  { h: 250, s: 65, l: 45 },  // Lavanda oscuro
-]
+// 🐋 PALETA TWILIGHT BIOLUMINISCENTE
+const TWILIGHT_COLORS = {
+  // Color base de la ballena
+  body: { h: 235, s: 72, l: 32 },      // Índigo profundo
+  // Color del "canto" (pulso bioluminiscente)
+  song: { h: 275, s: 85, l: 50 },      // Violeta brillante
+  // Color de la cola (más oscuro)
+  tail: { h: 250, s: 60, l: 25 },      // Azul medianoche
+  // Color de la cabeza (más claro)
+  head: { h: 265, s: 78, l: 42 },      // Lavanda brillante
+}
 
 export class WhaleSong extends BaseEffect {
   readonly effectType = 'whale_song'
   readonly name = 'Whale Song'
   readonly category: EffectCategory = 'physical'
   readonly priority = 72
-  readonly mixBus = 'htp' as const
+  readonly mixBus = 'global' as const  // 🌊 WAVE 1073: Override completo
   
   private config: WhaleSongConfig
   private direction: 'LtoR' | 'RtoL' = 'LtoR'
+  private verticalOffset: number = 0
   
   constructor(config?: Partial<WhaleSongConfig>) {
     super('whale_song')
@@ -47,7 +65,8 @@ export class WhaleSong extends BaseEffect {
   trigger(triggerConfig: EffectTriggerConfig): void {
     super.trigger(triggerConfig)
     this.direction = Date.now() % 2 === 0 ? 'LtoR' : 'RtoL'
-    console.log(`[ WhaleSong] TRIGGERED! Direction=${this.direction}`)
+    this.verticalOffset = ((Date.now() % 100) / 100) * 0.2 - 0.1
+    console.log(`[🐋 WHALE] Majestic crossing ${this.direction}, ${this.config.songPulses} songs`)
   }
 
   update(deltaMs: number): void {
@@ -58,44 +77,89 @@ export class WhaleSong extends BaseEffect {
     }
   }
   
+  /**
+   * 🎵 Calcula la intensidad del "canto" (pulso bioluminiscente)
+   * Los cantos viajan de cola a cabeza
+   */
+  private getSongIntensity(progress: number, zonePosition: number): number {
+    // Frecuencia de los cantos
+    const songPhase = progress * this.config.songPulses * Math.PI * 2
+    
+    // El canto viaja como una onda
+    const waveOffset = zonePosition * Math.PI * 0.5  // Desfase por posición
+    const songWave = Math.sin(songPhase + waveOffset)
+    
+    // Solo pulsos positivos (cantos reales, no "anti-cantos")
+    return Math.max(0, songWave) ** 2  // Cuadrado para más punch
+  }
+  
+  /**
+   * 🎨 Mezcla color de cuerpo con color de canto
+   */
+  private blendColors(
+    bodyColor: { h: number; s: number; l: number },
+    songColor: { h: number; s: number; l: number },
+    songIntensity: number
+  ): { h: number; s: number; l: number } {
+    return {
+      h: bodyColor.h + (songColor.h - bodyColor.h) * songIntensity,
+      s: bodyColor.s + (songColor.s - bodyColor.s) * songIntensity * 0.5,
+      l: bodyColor.l + (songColor.l - bodyColor.l) * songIntensity,
+    }
+  }
+  
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope muy suave para ballena majestuosa
+    // Envelope MUY suave (ballena = gracia)
     let envelope: number
-    if (progress < 0.20) { envelope = (progress / 0.20) ** 1.5 }
-    else if (progress < 0.70) { envelope = 1.0 }
-    else { envelope = 1 - ((progress - 0.70) / 0.30) ** 1.5 }
-    
-    // Posición de la ballena cruzando
-    let whalePosition = progress * 1.4 - 0.2
-    if (this.direction === 'RtoL') { whalePosition = 1 - whalePosition }
-    
-    // Respiración profunda de la ballena
-    const breathCycle = Math.sin(progress * Math.PI * 2) * 0.2 + 0.8
-    
-    // Posiciones de zonas
-    const zonePositions: Record<string, number> = {
-      frontL: 0.0, backL: 0.20, movers_left: 0.35,
-      movers_right: 0.65, backR: 0.80, frontR: 1.0,
+    if (progress < 0.20) { 
+      envelope = (progress / 0.20) ** 2  // Entrada suave
+    } else if (progress < 0.75) { 
+      envelope = 1.0 
+    } else { 
+      envelope = ((1 - progress) / 0.25) ** 2  // Salida suave
     }
     
-    // Calcular presencia de la ballena (más ancha que peces)
+    // 🐋 Posición de la ballena con ondulación natural
+    let basePosition = progress * 1.2 - 0.1
+    // Ondulación S sutil (la ballena "nada")
+    const swimWave = Math.sin(progress * Math.PI * 1.5) * 0.08
+    let whaleCenter = basePosition + swimWave + this.verticalOffset
+    if (this.direction === 'RtoL') { whaleCenter = 1 - whaleCenter }
+    
+    // Respiración profunda (la ballena respira cada ~4 segundos)
+    const breathCycle = Math.sin(progress * Math.PI * 3) * 0.12 + 0.88
+    
+    // 🌊 WAVE 1073: Zonas con partes del cuerpo de la ballena
+    // La ballena tiene: COLA --- CUERPO --- CABEZA
+    // Mapeo: Las zonas más alejadas del centro = cola, cercanas = cuerpo, delante = cabeza
+    const zonePositions: Record<string, { pos: number; bodyPart: 'tail' | 'body' | 'head' }> = {
+      frontL:       { pos: 0.0,  bodyPart: this.direction === 'LtoR' ? 'head' : 'tail' },
+      backL:        { pos: 0.18, bodyPart: 'body' },
+      movers_left:  { pos: 0.35, bodyPart: 'body' },
+      movers_right: { pos: 0.65, bodyPart: 'body' },
+      backR:        { pos: 0.82, bodyPart: 'body' },
+      frontR:       { pos: 1.0,  bodyPart: this.direction === 'LtoR' ? 'tail' : 'head' },
+    }
+    
+    // Función para calcular presencia de la ballena en una zona
     const getWhalePresence = (zonePos: number): number => {
-      const distance = Math.abs(zonePos - whalePosition)
+      const distance = Math.abs(zonePos - whaleCenter)
       if (distance > this.config.whaleWidth) return 0
       const normalized = distance / this.config.whaleWidth
-      return Math.exp(-normalized * normalized * 2) * breathCycle
+      // Curva suave (ballena = masa suave, no afilada)
+      return Math.exp(-normalized * normalized * 1.5) * breathCycle
     }
     
-    // Color basado en progreso
-    const colorIndex = Math.floor(progress * TWILIGHT_COLORS.length) % TWILIGHT_COLORS.length
-    const color = TWILIGHT_COLORS[colorIndex]
-    
-    // Movimiento de movers: lento y majestuoso
-    const moverPan = (whalePosition - 0.5) * 60  // Menor rango que peces
-    const moverTilt = Math.sin(progress * Math.PI * 2) * 8 - 5  // Ondulación vertical
+    // 🐋 Movimiento de movers siguiendo la CABEZA de la ballena
+    // Muy lento, muy suave
+    const headPosition = this.direction === 'LtoR' 
+      ? whaleCenter + this.config.whaleWidth * 0.4
+      : whaleCenter - this.config.whaleWidth * 0.4
+    const moverPan = (headPosition - 0.5) * 40  // Rango reducido
+    const moverTilt = Math.sin(progress * Math.PI * 0.6) * 5 - 5  // Mirando ligeramente abajo
     
     const output: EffectFrameOutput = {
       effectId: this.id,
@@ -107,38 +171,60 @@ export class WhaleSong extends BaseEffect {
       zoneOverrides: {},
     }
 
-    output.zoneOverrides!['frontL'] = {
-      dimmer: getWhalePresence(zonePositions.frontL) * envelope * this.config.peakIntensity,
-      color: color,
-      blendMode: 'max' as const,
+    // 🎨 Aplicar cada zona con su color de parte del cuerpo + canto
+    for (const [zoneName, zoneData] of Object.entries(zonePositions)) {
+      const presence = getWhalePresence(zoneData.pos)
+      if (presence < 0.01) {
+        // Zona fuera de la ballena = oscuro
+        output.zoneOverrides![zoneName] = {
+          dimmer: 0,
+          color: TWILIGHT_COLORS.body,
+          blendMode: 'replace' as const,
+        }
+        continue
+      }
+      
+      // Color base según parte del cuerpo
+      const bodyColor = TWILIGHT_COLORS[zoneData.bodyPart]
+      
+      // Intensidad del canto en esta zona
+      const songIntensity = this.getSongIntensity(progress, zoneData.pos)
+      
+      // Mezclar color de cuerpo con canto
+      const finalColor = this.blendColors(bodyColor, TWILIGHT_COLORS.song, songIntensity)
+      
+      // Atenuación por parte del cuerpo
+      const partAttenuation = zoneData.bodyPart === 'head' ? 1.0 
+        : zoneData.bodyPart === 'body' ? 0.85 
+        : 0.65  // Cola más tenue
+      
+      output.zoneOverrides![zoneName] = {
+        dimmer: presence * envelope * this.config.peakIntensity * partAttenuation,
+        color: finalColor,
+        blendMode: 'replace' as const,
+      }
     }
-    output.zoneOverrides!['frontR'] = {
-      dimmer: getWhalePresence(zonePositions.frontR) * envelope * this.config.peakIntensity,
-      color: color,
-      blendMode: 'max' as const,
-    }
-    output.zoneOverrides!['backL'] = {
-      dimmer: getWhalePresence(zonePositions.backL) * envelope * this.config.peakIntensity * 0.80,
-      color: color,
-      blendMode: 'max' as const,
-    }
-    output.zoneOverrides!['backR'] = {
-      dimmer: getWhalePresence(zonePositions.backR) * envelope * this.config.peakIntensity * 0.80,
-      color: color,
-      blendMode: 'max' as const,
-    }
+    
+    // 🐋 Movers con movimiento ULTRA LENTO
     output.zoneOverrides!['movers_left'] = {
-      dimmer: getWhalePresence(zonePositions.movers_left) * envelope * this.config.peakIntensity * 0.85,
-      color: color,
-      blendMode: 'max' as const,
-      movement: { pan: moverPan - 25, tilt: moverTilt - 8 },
+      ...output.zoneOverrides!['movers_left'],
+      movement: { 
+        pan: moverPan - 12, 
+        tilt: moverTilt,
+        isAbsolute: false,
+        speed: 0.12,  // 🌊 WAVE 1073: ULTRA LENTO
+      },
     }
     output.zoneOverrides!['movers_right'] = {
-      dimmer: getWhalePresence(zonePositions.movers_right) * envelope * this.config.peakIntensity * 0.85,
-      color: color,
-      blendMode: 'max' as const,
-      movement: { pan: moverPan + 25, tilt: moverTilt + 3 },
+      ...output.zoneOverrides!['movers_right'],
+      movement: { 
+        pan: moverPan + 12, 
+        tilt: moverTilt,
+        isAbsolute: false,
+        speed: 0.12,
+      },
     }
+    
     return output
   }
   

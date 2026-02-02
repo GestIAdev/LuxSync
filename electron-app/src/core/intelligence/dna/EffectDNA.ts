@@ -487,6 +487,42 @@ export const EFFECT_DNA_REGISTRY: Record<string, EffectDNA> = {
     organicity: 0.95,   // Muy orgánico - ser vivo pulsante
     textureAffinity: 'universal',  // 🎨 Flatness bajo = universalmente compatible
   },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers DNA
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // ✨ SURFACE SHIMMER - Destellos de superficie
+  'surface_shimmer': {
+    aggression: 0.0,    // ✨ Cero agresión - puro ambiente
+    chaos: 0.15,        // Muy ordenado - patrones predecibles
+    organicity: 0.80,   // Orgánico - luz natural
+    textureAffinity: 'clean',  // 🎨 Brillo = claridad
+  },
+  
+  // 🦠 PLANKTON DRIFT - Deriva de plancton
+  'plankton_drift': {
+    aggression: 0.05,   // 🦠 Casi nula - partículas flotantes
+    chaos: 0.35,        // Semi-ordenado - deriva con corrientes
+    organicity: 0.90,   // Muy orgánico - microorganismos vivos
+    textureAffinity: 'clean',  // 🎨 Bioluminiscencia = limpio
+  },
+  
+  // 🌀 DEEP CURRENT PULSE - Pulsos de corriente profunda
+  'deep_current_pulse': {
+    aggression: 0.10,   // 🌀 Muy bajo - movimiento lento
+    chaos: 0.05,        // Muy ordenado - corrientes predecibles
+    organicity: 0.95,   // Muy orgánico - agua viva
+    textureAffinity: 'universal',  // 🎨 Profundidad - funciona con cualquier textura
+  },
+  
+  // ✨ BIOLUMINESCENT SPORE - Esporas bioluminiscentes
+  'bioluminescent_spore': {
+    aggression: 0.0,    // ✨ Cero agresión - magia pura
+    chaos: 0.25,        // Semi-ordenado - apariciones esporádicas
+    organicity: 1.0,    // Máximo orgánico - vida en oscuridad total
+    textureAffinity: 'universal',  // 🎨 Funciona con cualquier textura
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -581,6 +617,7 @@ export class DNAAnalyzer {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎲 WAVE 1004.2: DIVERSITY FACTOR - Anti-repetición
+  // 🌊 WAVE 1073.4: Ventana reducida - 5 segundos es más justo
   // ═══════════════════════════════════════════════════════════════════════
   
   /** Contador de uso por efecto en la ventana actual */
@@ -589,11 +626,20 @@ export class DNAAnalyzer {
   /** Timestamp del último reset del contador */
   private lastUsageReset: number = Date.now()
   
-  /** Ventana de tiempo para el contador (10 segundos) */
-  private readonly USAGE_WINDOW_MS = 10000
+  /** 
+   * Ventana de tiempo para el contador
+   * 🌊 WAVE 1073.4: Reducido de 10s a 5s
+   * Los efectos oceánicos tienen cooldowns de 45-90s, una ventana de 10s
+   * era demasiado larga y penalizaba injustamente la intensidad
+   */
+  private readonly USAGE_WINDOW_MS = 5000
   
-  /** Factores de diversidad: [1x, 0.7x, 0.4x, 0.1x] por uso repetido */
-  private readonly DIVERSITY_FACTORS = [1.0, 0.7, 0.4, 0.1]
+  /** 
+   * Factores de diversidad por uso repetido
+   * 🌊 WAVE 1073.4: Más generosos [1.0, 0.8, 0.5, 0.2]
+   * Antes: [1.0, 0.7, 0.4, 0.1] - muy agresivo
+   */
+  private readonly DIVERSITY_FACTORS = [1.0, 0.8, 0.5, 0.2]
   
   constructor() {
     // 🔧 WAVE 1003.15: Silenciado para reducir spam de logs

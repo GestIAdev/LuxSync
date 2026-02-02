@@ -257,7 +257,13 @@ const EFFECT_BEAUTY_WEIGHTS = {
   // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
   'solar_caustics': { base: 0.72, energyMultiplier: 0.85, chillBonus: 0.14 },    // ☀️ Sun rays in shallows - gentle beauty
   'school_of_fish': { base: 0.68, energyMultiplier: 0.90, chillBonus: 0.12 },    // 🐟 Fish crossing - natural elegance
+  'whale_song': { base: 0.82, energyMultiplier: 0.75, chillBonus: 0.18 },        // 🐋 Majestic whale - deep beauty
   'abyssal_jellyfish': { base: 0.78, energyMultiplier: 1.05, chillBonus: 0.16 }, // 🪼 Bioluminescent bloom - mysterious beauty
+  // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers (sutiles, puntúan bien en chill)
+  'surface_shimmer': { base: 0.65, energyMultiplier: 0.50, chillBonus: 0.20 },      // ✨ Sparkles - gentle
+  'plankton_drift': { base: 0.60, energyMultiplier: 0.40, chillBonus: 0.25 },       // 🦠 Particles - ambient
+  'deep_current_pulse': { base: 0.70, energyMultiplier: 0.60, chillBonus: 0.15 },   // 🌀 Currents - presence
+  'bioluminescent_spore': { base: 0.75, energyMultiplier: 0.30, chillBonus: 0.30 }, // ✨ Spores - magical
 } as const
 
 // GPU cost por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -321,7 +327,13 @@ const EFFECT_GPU_COST = {
   // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
   'solar_caustics': 0.16,   // ☀️ Bajo - caustic patterns suaves
   'school_of_fish': 0.18,   // 🐟 Bajo-medio - sweep direccional
+  'whale_song': 0.20,       // 🐋 Medio - crossing sweep + pulses
   'abyssal_jellyfish': 0.24, // 🪼 Medio - gaussian blooms + color rotation
+  // 🦠 WAVE 1074: MICRO-FAUNA - GPU Cost (muy bajos - efectos sutiles)
+  'surface_shimmer': 0.08,       // ✨ Muy bajo - sparkles simples
+  'plankton_drift': 0.10,        // 🦠 Muy bajo - partículas
+  'deep_current_pulse': 0.12,    // 🌀 Bajo - ondas suaves
+  'bioluminescent_spore': 0.14,  // ✨ Bajo - flashes puntuales
 } as const
 
 // Fatigue impact por efecto (WAVE 902.1: TRUTH, WAVE 930.2: Arsenal added)
@@ -385,7 +397,13 @@ const EFFECT_FATIGUE_IMPACT = {
   // 🌊 WAVE 1070: THE LIVING OCEAN - Oceanic Creature Effects
   'solar_caustics': -0.04,  // ☀️ REDUCE fatiga - sun rays hipnóticos
   'school_of_fish': -0.02,  // 🐟 REDUCE fatiga - natural calming
+  'whale_song': -0.05,      // 🐋 MÁXIMA reducción fatiga - majestic zen
   'abyssal_jellyfish': -0.03, // 🪼 REDUCE fatiga - bioluminescent zen
+  // 🦠 WAVE 1074: MICRO-FAUNA - Fatigue Impact (negativos = relajan la vista)
+  'surface_shimmer': -0.03,      // ✨ Reduce fatiga - gentle sparkles
+  'plankton_drift': -0.04,       // 🦠 Reduce fatiga - hypnotic drift
+  'deep_current_pulse': -0.02,   // 🌀 Reduce fatiga - slow movement
+  'bioluminescent_spore': -0.05, // ✨ Reduce fatiga - magical moments
 } as const
 
 // ═══════════════════════════════════════════════════════════════
@@ -716,27 +734,34 @@ export class EffectDreamSimulator {
       
       // 🌊 WAVE 1070: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
       // PUREZA TOTAL: Solo efectos oceánicos, NADA MÁS
-      // Los 3 efectos oceánicos son TODO lo que necesitamos
       'chill-lounge': [
-        // 🌊 THE LIVING OCEAN - Los únicos 3 efectos válidos
-        'solar_caustics',     // ☀️ Sun rays in shallows (depth < 200m)
-        'school_of_fish',     // 🐠 Fish school crossing (200-1000m)
-        'abyssal_jellyfish',  // 🪼 Bioluminescent pulse (depth > 4000m)
-        // 🚫 NO deep_breath, NO stage_wash, NO void_mist
-        // El océano es PURO y CRISTALINO
+        // 🌊 THE LIVING OCEAN - Major Effects (4)
+        'solar_caustics',     // ☀️ Sun rays in shallows (depth < 1000m)
+        'school_of_fish',     // 🐠 Fish school crossing (1000-3000m)
+        'whale_song',         // 🐋 Whale song in twilight zone (3000-6000m)
+        'abyssal_jellyfish',  // 🪼 Bioluminescent pulse (depth > 6000m)
+        // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers (4)
+        'surface_shimmer',       // ✨ Surface sparkles (0-1000m)
+        'plankton_drift',        // 🦠 Plankton particles (1000-3000m)
+        'deep_current_pulse',    // 🌀 Deep currents (3000-6000m)
+        'bioluminescent_spore',  // ✨ Abyssal spores (6000m+)
       ],
       // Aliases for chill - MISMA PUREZA
       'chill': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
+        'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+        'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
       ],
       'ambient': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
+        'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+        'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
       ],
       'lounge': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
+        'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+        'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
       ],
       'jazz': [
-        'solar_caustics', 'school_of_fish', 'abyssal_jellyfish'
+        'solar_caustics', 'school_of_fish', 'whale_song', 'abyssal_jellyfish',
+        'surface_shimmer', 'plankton_drift', 'deep_current_pulse', 'bioluminescent_spore'
       ],
     }
     

@@ -116,6 +116,11 @@ import { SolarCaustics } from './library/chillLounge/SolarCaustics'
 import { SchoolOfFish } from './library/chillLounge/SchoolOfFish'
 import { WhaleSong } from './library/chillLounge/WhaleSong'
 import { AbyssalJellyfish } from './library/chillLounge/AbyssalJellyfish'
+// 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
+import { SurfaceShimmer } from './library/chillLounge/SurfaceShimmer'
+import { PlanktonDrift } from './library/chillLounge/PlanktonDrift'
+import { DeepCurrentPulse } from './library/chillLounge/DeepCurrentPulse'
+import { BioluminescentSpore } from './library/chillLounge/BioluminescentSpore'
 
 // 💚🛡️ WAVE 680: Import VibeManager for THE SHIELD
 import { VibeManager } from '../../engine/vibe/VibeManager'
@@ -123,6 +128,9 @@ import type { VibeProfile, VibeId } from '../../types/VibeProfile'
 
 // 🌊 WAVE 1070.3: Import depth validation for oceanic effects
 import { isOceanicEffectValidForDepth } from '../../hal/physics/ChillStereoPhysics'
+
+// 🌊 WAVE 1071: Import ContextualEffectSelector for cooldown registration
+import { getContextualEffectSelector } from './ContextualEffectSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛡️ WAVE 1070: CHILL LOUNGE SHIELD - ALLOW/BLOCK LISTS
@@ -133,13 +141,16 @@ import { isOceanicEffectValidForDepth } from '../../hal/physics/ChillStereoPhysi
  * Solo estos efectos pueden dispararse cuando vibeId === 'chill-lounge'
  */
 const CHILL_LOUNGE_ALLOWED_EFFECTS = [
-  // 🌊 WAVE 1070: THE LIVING OCEAN - ONLY OCEANIC EFFECTS
-  // Estos son los ÚNICOS efectos válidos para chill-lounge
-  // NO hay "legacy allowed" - el océano es puro y cristalino
+  // 🌊 WAVE 1070: THE LIVING OCEAN - Major Oceanic Effects
   'solar_caustics',    // ☀️ Rayos de sol en superficie (depth < 1000m)
   'school_of_fish',    // 🐟 Banco de peces en aguas abiertas (1000-3000m)
   'whale_song',        // 🐋 Canto de ballena en zona crepuscular (3000-6000m)
   'abyssal_jellyfish', // 🪼 Medusas bioluminiscentes en abismo (depth > 6000m)
+  // 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
+  'surface_shimmer',       // ✨ Destellos de superficie (0-1000m)
+  'plankton_drift',        // 🦠 Deriva de plancton (1000-3000m)
+  'deep_current_pulse',    // 🌀 Pulsos de corriente (3000-6000m)
+  'bioluminescent_spore',  // ✨ Esporas abisales (6000m+)
 ]
 
 /**
@@ -261,6 +272,11 @@ const EFFECT_VIBE_RULES: Record<string, {
   'school_of_fish': { isDynamic: false },     // 🐠 Fish school crossing - open ocean fauna
   'whale_song': { isDynamic: false },         // 🐋 Majestic whale crossing - twilight zone giant
   'abyssal_jellyfish': { isDynamic: false },  // 🪼 Bioluminescent pulse - deep abyss creature
+  // 🦠 WAVE 1074: MICRO-FAUNA (Ambient Fillers)
+  'surface_shimmer': { isDynamic: false },      // ✨ Surface sparkles
+  'plankton_drift': { isDynamic: false },       // 🦠 Drifting particles
+  'deep_current_pulse': { isDynamic: false },   // 🌀 Deep water currents
+  'bioluminescent_spore': { isDynamic: false }, // ✨ Abyssal spores
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -367,6 +383,12 @@ const EFFECT_ZONE_MAP: Record<string, EnergyZoneLadder> = {
   
   // 🪼 ABYSSAL_JELLYFISH (valley): Medusas bioluminiscentes en el abismo
   'abyssal_jellyfish': 'valley',
+  
+  // 🦠 WAVE 1074: MICRO-FAUNA - Zone Mapping (all silence/ambient - background fillers)
+  'surface_shimmer': 'silence',      // ✨ Fondo sutil en superficie
+  'plankton_drift': 'silence',       // 🦠 Fondo sutil en océano
+  'deep_current_pulse': 'ambient',   // 🌀 Más presencia en twilight
+  'bioluminescent_spore': 'valley',  // ✨ Contraste en abismo
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -494,6 +516,18 @@ export class EffectManager extends EventEmitter {
       : ''
     const sourceTag = config.source ? `[${config.source}]` : ''
     console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} | I:${config.intensity.toFixed(2)} ${zInfo}`)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1071: COOLDOWN REGISTRATION - Informar al ContextualEffectSelector
+    // Esto asegura que CUALQUIER sistema que quiera disparar este efecto
+    // (DreamEngine, DecisionMaker, etc.) sepa que ya está en cooldown.
+    // ═══════════════════════════════════════════════════════════════════════
+    try {
+      const selector = getContextualEffectSelector()
+      selector.registerEffectFired(config.effectType)
+    } catch (e) {
+      // Fail silently - el selector puede no estar inicializado aún
+    }
     
     return effect.id
   }
@@ -946,6 +980,14 @@ export class EffectManager extends EventEmitter {
     
     // 🪼 Abyssal Jellyfish - Medusas bioluminiscentes del abismo (MIDNIGHT 6000+m)
     this.effectFactories.set('abyssal_jellyfish', () => new AbyssalJellyfish())
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers
+    // ═══════════════════════════════════════════════════════════════════════
+    this.effectFactories.set('surface_shimmer', () => new SurfaceShimmer())
+    this.effectFactories.set('plankton_drift', () => new PlanktonDrift())
+    this.effectFactories.set('deep_current_pulse', () => new DeepCurrentPulse())
+    this.effectFactories.set('bioluminescent_spore', () => new BioluminescentSpore())
   }
   
   // ─────────────────────────────────────────────────────────────────────────

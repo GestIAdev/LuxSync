@@ -72,6 +72,13 @@ import {
   type CombinedEffectOutput,
 } from '../core/effects'
 
+// 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context for color modulation
+import { 
+  calculateChillStereo,
+  type DeepFieldOutput,
+  type OceanicMusicalContext,
+} from '../hal/physics/ChillStereoPhysics'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -394,9 +401,57 @@ export class TitanEngine extends EventEmitter {
     }
     
     // Obtener la Constitución del Vibe actual
-    const constitution = getColorConstitution(vibeProfile.id)
+    let constitution = getColorConstitution(vibeProfile.id)
     
-    // 🎨 GENERAR PALETA CON EL FERRARI
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context
+    // Si el vibe es chill, calculamos el contexto oceánico ANTES de la paleta
+    // para que SeleneColorEngine pueda modular los colores naturalmente
+    // en vez de bypasear con colorOverride
+    // ═══════════════════════════════════════════════════════════════════════
+    let preComputedOceanicContext: OceanicMusicalContext | null = null
+    const isChillVibe = vibeProfile.id.includes('chill') || vibeProfile.id.includes('lounge')
+    
+    if (isChillVibe) {
+      // Pre-calculate chill physics para obtener oceanicContext
+      const godEarMetrics = {
+        clarity: audio.clarity ?? 0.95,
+        spectralFlatness: audio.spectralFlatness ?? 0.35,
+        bassEnergy: audio.bass,
+        transientDensity: ((audio.kickDetected ? 0.4 : 0) + 
+                          (audio.snareDetected ? 0.35 : 0) +
+                          (audio.hihatDetected ? 0.25 : 0)) * 
+                          (0.6 + energyOutput.smoothedEnergy * 0.6),
+        centroid: audio.spectralCentroid ?? 800,
+      }
+      
+      const chillResult = calculateChillStereo(
+        now,
+        energyOutput.smoothedEnergy,
+        audio.high,
+        audio.kickDetected ?? false,
+        godEarMetrics
+      )
+      
+      preComputedOceanicContext = chillResult.oceanicContext
+      
+      // Inyectar oceanicModulation en la constitution
+      constitution = {
+        ...constitution,
+        oceanicModulation: {
+          enabled: true,
+          hueInfluence: preComputedOceanicContext.hueInfluence,
+          hueInfluenceStrength: preComputedOceanicContext.hueInfluenceStrength,
+          saturationMod: preComputedOceanicContext.saturationMod,
+          lightnessMod: preComputedOceanicContext.lightnessMod,
+          breathingFactor: preComputedOceanicContext.breathingFactor,
+          zone: preComputedOceanicContext.zone,
+          depth: preComputedOceanicContext.depth,
+        }
+      }
+    }
+    
+    // 🎨 GENERAR PALETA CON EL FERRARI (ahora con oceanicModulation si es chill)
     const selenePalette = SeleneColorEngine.generate(audioAnalysis, constitution)
     
     // Convertir SelenePalette → ColorPalette
@@ -709,7 +764,7 @@ export class TitanEngine extends EventEmitter {
       if (triggers.solarCaustics) {
         this.effectManager.trigger({
           effectType: 'solar_caustics',
-          intensity: 0.8,
+          intensity: 1.5,  // 🌊 WAVE 1073.8: 0.95→1.5 (compensar atenuación de zonas + global envelope)
           source: 'physics',  // Physics-driven oceanic trigger
           reason: '🌊 LIVING OCEAN: SolarCaustics - clarity alta en SHALLOWS',
         })
@@ -719,7 +774,7 @@ export class TitanEngine extends EventEmitter {
       if (triggers.schoolOfFish) {
         this.effectManager.trigger({
           effectType: 'school_of_fish',
-          intensity: 0.75,
+          intensity: 0.85,  // 🌊 WAVE 1073.3: Subido de 0.75 a 0.85
           source: 'physics',  // Physics-driven oceanic trigger
           reason: '🌊 LIVING OCEAN: SchoolOfFish - transientDensity alta en OPEN_OCEAN',
         })
@@ -729,7 +784,7 @@ export class TitanEngine extends EventEmitter {
       if (triggers.whaleSong) {
         this.effectManager.trigger({
           effectType: 'whale_song',
-          intensity: 0.70,
+          intensity: 0.80,  // 🌊 WAVE 1073.3: Subido de 0.70 a 0.80
           source: 'physics',  // Physics-driven oceanic trigger
           reason: '🌊 LIVING OCEAN: WhaleSong - bass profundo en TWILIGHT',
         })
@@ -739,11 +794,55 @@ export class TitanEngine extends EventEmitter {
       if (triggers.abyssalJellyfish) {
         this.effectManager.trigger({
           effectType: 'abyssal_jellyfish',
-          intensity: 0.6,
+          intensity: 0.75,  // 🌊 WAVE 1073.3: Subido de 0.6 a 0.75
           source: 'physics',  // Physics-driven oceanic trigger
           reason: '🌊 LIVING OCEAN: AbyssalJellyfish - spectralFlatness bajo en MIDNIGHT',
         })
         console.log('[TitanEngine] 🌊 LIVING OCEAN: 🪼 Abyssal Jellyfish triggered')
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // 🦠 WAVE 1074: MICRO-FAUNA - Ambient Fillers
+      // ═══════════════════════════════════════════════════════════════════════
+      
+      if (triggers.surfaceShimmer) {
+        this.effectManager.trigger({
+          effectType: 'surface_shimmer',
+          intensity: 0.45,  // Sutil
+          source: 'physics',
+          reason: '🦠 MICRO-FAUNA: SurfaceShimmer - claridad en SHALLOWS',
+        })
+        console.log('[TitanEngine] 🦠 MICRO-FAUNA: ✨ Surface Shimmer triggered')
+      }
+      
+      if (triggers.planktonDrift) {
+        this.effectManager.trigger({
+          effectType: 'plankton_drift',
+          intensity: 0.35,  // Muy sutil
+          source: 'physics',
+          reason: '🦠 MICRO-FAUNA: PlanktonDrift - transientes en OCEAN',
+        })
+        console.log('[TitanEngine] 🦠 MICRO-FAUNA: 🦠 Plankton Drift triggered')
+      }
+      
+      if (triggers.deepCurrentPulse) {
+        this.effectManager.trigger({
+          effectType: 'deep_current_pulse',
+          intensity: 0.40,  // Presencia moderada
+          source: 'physics',
+          reason: '🦠 MICRO-FAUNA: DeepCurrentPulse - bass suave en TWILIGHT',
+        })
+        console.log('[TitanEngine] 🦠 MICRO-FAUNA: 🌀 Deep Current Pulse triggered')
+      }
+      
+      if (triggers.bioluminescentSpore) {
+        this.effectManager.trigger({
+          effectType: 'bioluminescent_spore',
+          intensity: 0.55,  // Contraste en oscuridad
+          source: 'physics',
+          reason: '🦠 MICRO-FAUNA: BioluminescentSpore - silencio en MIDNIGHT',
+        })
+        console.log('[TitanEngine] 🦠 MICRO-FAUNA: ✨ Bioluminescent Spore triggered')
       }
     }
     
@@ -819,54 +918,19 @@ export class TitanEngine extends EventEmitter {
     }
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1070.4: OCEANIC COLOR OVERRIDE
-    // En chill-lounge, el color del océano MANDA sobre Selene
-    // El colorOverride de ChillStereoPhysics tiene prioridad absoluta
+    // 🌊 WAVE 1072: OCEANIC COLOR BYPASS REMOVED
     // ═══════════════════════════════════════════════════════════════════════
-    // 🌊 WAVE 1070.5: FIX UNIT MISMATCH
-    // oceanColor está en rango 0-1 (como lo genera ChillStereoPhysics)
-    // ColorPalette espera rango 0-1 (HSLColor interface)
-    // ¡NO multiplicar! Solo pasarlo directamente.
+    // ANTES (WAVE 1070.4): El oceanColor bypaseaba toda la paleta aquí,
+    // reescribiendo primary/secondary/accent con colores hardcodeados.
+    //
+    // AHORA: La modulación oceánica fluye a través de SeleneColorEngine.generate()
+    // via oceanicModulation en la constitution. Los colores ya vienen correctos
+    // en la paleta, no necesitamos bypasear.
+    //
+    // Los colores oceánicos ahora son PARTE de la paleta generada, no un
+    // reemplazo posterior. Esto permite que las reglas constitucionales
+    // (allowedHueRanges, saturationRange, etc) sigan aplicándose.
     // ═══════════════════════════════════════════════════════════════════════
-    if (vibeProfile.id === 'chill-lounge') {
-      const oceanColor = nervousOutput.mechanics?.colorOverride
-      if (oceanColor) {
-        // 🌊 OCEAN CONTROLS THE PALETTE - NO WHITE ALLOWED
-        // oceanColor ya está en 0-1, ColorPalette espera 0-1 → DIRECTO
-        finalPalette = {
-          ...finalPalette,
-          primary: {
-            ...finalPalette.primary,
-            h: oceanColor.h,       // YA está en 0-1
-            s: oceanColor.s,       // YA está en 0-1
-            l: oceanColor.l,       // YA está en 0-1
-          },
-          secondary: {
-            ...finalPalette.secondary,
-            // Secondary es una variación más clara del color oceánico
-            h: (oceanColor.h + 30/360) % 1,  // +30° en rango 0-1
-            s: oceanColor.s * 0.8,            // Menos saturado
-            l: Math.min(0.9, oceanColor.l * 1.2),  // Más claro
-          },
-          accent: {
-            ...finalPalette.accent,
-            // Accent también toma color del océano
-            h: (oceanColor.h - 15/360 + 1) % 1,  // -15° en rango 0-1
-            s: oceanColor.s,
-            l: Math.min(0.85, oceanColor.l + 0.15),
-          },
-        }
-        // 🌊 Log throttled (cada 2 segundos) - Mostrar en grados para humanos
-        if (this.state.frameCount % 120 === 0) {
-          console.log(`[🌊 OCEAN COLOR] H:${(oceanColor.h * 360).toFixed(0)}° S:${(oceanColor.s * 100).toFixed(0)}% L:${(oceanColor.l * 100).toFixed(0)}%`)
-        }
-      } else {
-        // 🚨 DEBUG: colorOverride missing
-        if (this.state.frameCount % 120 === 0) {
-          console.log(`[🚨 OCEAN] colorOverride MISSING! mechanics=${!!nervousOutput.mechanics}`)
-        }
-      }
-    }
     
     const intent: LightingIntent = {
       palette: finalPalette,

@@ -151,6 +151,17 @@ export const EFFECT_COOLDOWNS: Record<string, number> = {
   'power_chord': 20000,        // 20s base → Flash + strobe, golpes de acorde (moderado)
   'stage_wash': 25000,         // 25s base → Respiro cálido, transiciones (espaciado)
   'spotlight_pulse': 22000,    // 22s base → Pulso emotivo, builds (medio-frecuente)
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1071: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+  // Cooldowns MUY largos - esto es una performance, no reactivo
+  // ChillStereoPhysics tiene sus propios triggers, pero necesitan backup aquí
+  // para evitar spam si el DreamEngine o algún otro sistema intenta forzarlos
+  // ═══════════════════════════════════════════════════════════════════════════
+  'solar_caustics': 45000,     // 45s base → Rayos de sol descendiendo lentamente
+  'school_of_fish': 35000,     // 35s base → Cardumen cruzando el escenario
+  'whale_song': 60000,         // 60s base → Ballenas son RARAS y majestuosas
+  'abyssal_jellyfish': 90000,  // 90s base → Evento especial del abismo profundo
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,11 +243,20 @@ export const EFFECT_TEXTURE_COMPATIBILITY: Record<string, TextureCompatibility> 
   'abyssal_rise': 'universal',     // 🌪️ Transición épica - buildup
   'ambient_strobe': 'universal',   // 📸 Camera flashes - suave
   'sonar_ping': 'universal',       // 🔊 Ping submarino - ambiente
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🌊 WAVE 1071: THE LIVING OCEAN - CHILL LOUNGE ARSENAL
+  // Todos son CLEAN - la performance oceánica es pura elegancia
+  // ═══════════════════════════════════════════════════════════════════════
+  'solar_caustics': 'clean',       // ☀️ Rayos de sol descendiendo - contemplativo
+  'school_of_fish': 'clean',       // 🐠 Cardumen atravesando - fluido
+  'whale_song': 'clean',           // 🐋 Canto de ballena - majestuoso
+  'abyssal_jellyfish': 'clean',    // 🪼 Medusas bioluminiscentes - etéreo
 }
 
 /**
  * 🎨 TEXTURE FILTER RESULT
- * 
+ *
  * Resultado de aplicar el filtro de textura a un efecto.
  */
 export interface TextureFilterResult {

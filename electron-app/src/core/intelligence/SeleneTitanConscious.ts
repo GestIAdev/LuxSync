@@ -198,6 +198,19 @@ import { getEffectManager } from '../effects/EffectManager'
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🌊 WAVE 1073.4: OCEANIC EFFECTS - NO DNA COOLDOWN OVERRIDE
+// ═══════════════════════════════════════════════════════════════════════════
+// Estos efectos tienen cooldowns especiales gestionados por ChillStereoPhysics.
+// El DNA Cooldown Override NO debe saltarse sus cooldowns - la física oceánica
+// es sagrada y debe respetarse para mantener la narrativa de la marea.
+const OCEANIC_EFFECTS_NO_OVERRIDE: Set<string> = new Set([
+  'solar_caustics',      // ☀️ Rayos solares descendiendo - SHALLOWS
+  'school_of_fish',      // 🐟 Cardumen en movimiento - OCEAN
+  'whale_song',          // 🐋 Canto de ballena - TWILIGHT
+  'abyssal_jellyfish',   // 🪼 Medusas bioluminiscentes - MIDNIGHT
+])
+
 /**
  * Configuración del cerebro
  */
@@ -799,7 +812,14 @@ export class SeleneTitanConscious extends EventEmitter {
       const currentMoodProfile = MoodController.getInstance().getCurrentProfile()
       const ethicsThreshold = currentMoodProfile.ethicsThreshold
       
-      const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold
+      // 🌊 WAVE 1073.4: OCEANIC EFFECTS PROTECTION
+      // Los efectos oceánicos NO permiten DNA override en chill-lounge
+      // Sus cooldowns son gestionados por ChillStereoPhysics y son sagrados
+      const isOceanicEffect = OCEANIC_EFFECTS_NO_OVERRIDE.has(intent)
+      const isChillVibe = pattern.vibeId === 'chill-lounge'
+      const oceanicProtection = isOceanicEffect && isChillVibe
+      
+      const hasHighEthicsOverride = isDNADecision && ethicsScore > ethicsThreshold && !oceanicProtection
       
       // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
       const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision
@@ -817,6 +837,12 @@ export class SeleneTitanConscious extends EventEmitter {
           console.log(
             `[SeleneTitanConscious] � DNA COOLDOWN OVERRIDE (${currentMoodProfile.emoji} ${currentMoodProfile.name}): ` +
             `${intent} | ethics=${ethicsScore.toFixed(2)} > threshold=${ethicsThreshold}`
+          )
+        } else if (oceanicProtection && isDNADecision && ethicsScore > ethicsThreshold) {
+          // 🌊 WAVE 1073.4: Log cuando protección oceánica bloqueó el override
+          console.log(
+            `[SeleneTitanConscious] 🌊 OCEANIC PROTECTION: ${intent} respects ChillStereoPhysics cooldown ` +
+            `(would have overridden: ethics=${ethicsScore.toFixed(2)} > ${ethicsThreshold})`
           )
         } else {
           console.log(

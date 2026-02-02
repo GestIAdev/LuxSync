@@ -1198,23 +1198,19 @@ export class MasterArbiter extends EventEmitter {
             defaults.dimmer = mechanic.intensity * 255
           }
           
-          // 🔥 WAVE 1060: COLOR OVERRIDE FROM PHYSICS
-          // Si la física manda un color explícito (The Abyssal Chronicles), úsalo.
-          // El colorOverride viene del calculateChillStereo() en ChillStereoPhysics.ts
-          if ((intent as any).mechanics?.colorOverride) {
-            const col = (intent as any).mechanics.colorOverride
-            // colorOverride viene normalizado: { h: 0-1, s: 0-1, l: 0-1 }
-            // Convertir a rango 0-360 para hsl:
-            const hslInput = {
-              h: col.h * 360,
-              s: col.s * 100,
-              l: col.l * 100
-            }
-            const rgb = this.hslToRgb(hslInput)
-            defaults.red = Math.round(rgb.r * 255)
-            defaults.green = Math.round(rgb.g * 255)
-            defaults.blue = Math.round(rgb.b * 255)
-          }
+          // ═══════════════════════════════════════════════════════════════════
+          // 🌊 WAVE 1072: DEPRECATED - colorOverride bypass removed
+          // ═══════════════════════════════════════════════════════════════════
+          // ANTES (WAVE 1060): Usábamos colorOverride para bypasear el engine
+          // y forzar colores oceánicos hardcodeados.
+          //
+          // AHORA: La modulación oceánica se aplica via oceanicModulation en
+          // SeleneColorEngine.generate(), integrándose con la constitution
+          // en vez de bypasear. Los colores ya vienen correctos en la paleta.
+          //
+          // if ((intent as any).mechanics?.colorOverride) { ... }  // REMOVED
+          // ═══════════════════════════════════════════════════════════════════
+          
         } else if (this.moverCount > 1) {
           // LEGACY: Calculate spread offset based on mover index
           const moverIndex = this.getMoverIndex(fixtureId)
@@ -1242,16 +1238,17 @@ export class MasterArbiter extends EventEmitter {
       }
     }
     
-    // 🎨 WAVE 1060: GLOBAL COLOR OVERRIDE
-    // Permite que la física dicte el color base (ej: profundidad marina)
-    if ((intent as any).mechanics?.colorOverride) {
-        const col = (intent as any).mechanics.colorOverride
-        // Usamos el helper existente hslToRgb
-        const rgb = this.hslToRgb(col)
-        defaults.red = rgb.r
-        defaults.green = rgb.g
-        defaults.blue = rgb.b
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // � WAVE 1072: DEPRECATED - Global colorOverride bypass removed
+    // ═══════════════════════════════════════════════════════════════════════
+    // ANTES (WAVE 1060): Había un segundo bypass global aquí para forzar
+    // colores oceánicos en TODOS los fixtures.
+    //
+    // AHORA: Los colores ya vienen correctos desde SeleneColorEngine porque
+    // oceanicModulation modula la paleta de forma natural.
+    //
+    // if ((intent as any).mechanics?.colorOverride) { ... }  // REMOVED
+    // ═══════════════════════════════════════════════════════════════════════
     
     return defaults
   }

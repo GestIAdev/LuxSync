@@ -1,9 +1,18 @@
-/**
- *  ABYSSAL JELLYFISH - Medusa Bioluminiscente en MIDNIGHT (6000+m)
- * WAVE 1070.6: CHROMATIC RENAISSANCE
+﻿/**
+ * 🪼 ABYSSAL JELLYFISH - Medusas Bioluminiscentes en MIDNIGHT (6000+m)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 1073.3: COMPLETE REWRITE - DOS MEDUSAS que CRUZAN el escenario
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
- * COLORES: Magenta y cyan bioluminiscente (medusas del abismo)
- * HSL FORMAT: h(0-360), s(0-100), l(0-100) - Standard para TitanOrchestrator
+ * CONCEPTO SIMPLE Y EFECTIVO:
+ * - Medusa MAGENTA: Empieza en IZQUIERDA, viaja hacia DERECHA
+ * - Medusa CYAN: Empieza en DERECHA, viaja hacia IZQUIERDA
+ * - Se CRUZAN en el centro creando un momento VIOLETA
+ * - Cada zona solo se ilumina cuando una medusa está CERCA
+ * 
+ * ZONAS EN ORDEN L→R: frontL(0.0), backL(0.2), movers_L(0.35), movers_R(0.65), backR(0.8), frontR(1.0)
+ * 
+ * HSL FORMAT: h(0-360), s(0-100), l(0-100)
  */
 
 import { BaseEffect } from '../../BaseEffect'
@@ -12,30 +21,33 @@ import { EffectTriggerConfig, EffectFrameOutput, EffectCategory } from '../../ty
 interface AbyssalJellyfishConfig {
   durationMs: number
   peakIntensity: number
-  colorRotationMs: number
+  jellyWidth: number  // Qué tan "gorda" es cada medusa (0-1)
 }
 
 const DEFAULT_CONFIG: AbyssalJellyfishConfig = {
-  durationMs: 12000,
-  peakIntensity: 0.95,
-  colorRotationMs: 3000,
+  durationMs: 18000,        // 18 segundos
+  peakIntensity: 0.90,
+  jellyWidth: 0.18,         // 🌊 WAVE 1073.7: 30% → 18% (medusas más focalizadas para stereo)
 }
 
-//  COLORES BIOLUMINISCENTES (HSL: h=0-360, s=0-100, l=0-100)
-const BIOLUMINESCENT_PALETTE = {
-  leftColors: [
-    { h: 300, s: 95, l: 42 },  // Magenta brillante
-    { h: 285, s: 90, l: 38 },  // Púrpura
-    { h: 270, s: 85, l: 45 },  // Violeta
-    { h: 315, s: 88, l: 40 },  // Rosa fuerte
-  ],
-  rightColors: [
-    { h: 165, s: 95, l: 50 },  // Cyan eléctrico
-    { h: 180, s: 90, l: 45 },  // Turquesa
-    { h: 195, s: 85, l: 52 },  // Azul agua
-    { h: 150, s: 88, l: 48 },  // Verde agua
-  ],
+// 🪼 COLORES NEON BIOLUMINISCENTES
+const JELLY_COLORS = {
+  magenta: { h: 310, s: 100, l: 58 },  // MAGENTA NEON - viaja L→R
+  cyan:    { h: 185, s: 100, l: 55 },  // CYAN NEON - viaja R→L
+  violet:  { h: 270, s: 100, l: 60 },  // VIOLETA - cuando se cruzan
 }
+
+// Zonas ordenadas de L a R (posición 0 a 1)
+const ZONE_POSITIONS: Record<string, number> = {
+  frontL: 0.0,
+  backL: 0.20,
+  movers_left: 0.35,
+  movers_right: 0.65,
+  backR: 0.80,
+  frontR: 1.0,
+}
+
+const ZONE_NAMES = ['frontL', 'backL', 'movers_left', 'movers_right', 'backR', 'frontR'] as const
 
 export class AbyssalJellyfish extends BaseEffect {
   readonly effectType = 'abyssal_jellyfish'
@@ -45,8 +57,6 @@ export class AbyssalJellyfish extends BaseEffect {
   readonly mixBus = 'htp' as const
   
   private config: AbyssalJellyfishConfig
-  private colorIndex: number = 0
-  private lastColorRotation: number = 0
   
   constructor(config?: Partial<AbyssalJellyfishConfig>) {
     super('abyssal_jellyfish')
@@ -55,96 +65,141 @@ export class AbyssalJellyfish extends BaseEffect {
   
   trigger(triggerConfig: EffectTriggerConfig): void {
     super.trigger(triggerConfig)
-    this.colorIndex = 0
-    this.lastColorRotation = Date.now()
-    console.log(`[ AbyssalJellyfish] TRIGGERED! 6-ZONE STEREO BIOLUMINESCENCE`)
+    console.log(
+      `[🪼 JELLY] Two bioluminescent jellies crossing - ${this.config.durationMs}ms | ` +
+      `width=${this.config.jellyWidth} | MAGENTA(L→R) CYAN(R→L)`
+    )
   }
 
   update(deltaMs: number): void {
     if (this.phase === 'idle' || this.phase === 'finished') return
     this.elapsedMs += deltaMs
-    
-    const now = Date.now()
-    if (now - this.lastColorRotation > this.config.colorRotationMs) {
-      this.colorIndex = (this.colorIndex + 1) % BIOLUMINESCENT_PALETTE.leftColors.length
-      this.lastColorRotation = now
-    }
-    
     if (this.elapsedMs >= this.config.durationMs) {
       this.phase = 'finished'
     }
   }
   
+  /**
+   * 🪼 Calcula la intensidad de una medusa en una zona
+   */
+  private getJellyIntensity(jellyPos: number, zonePos: number): number {
+    const distance = Math.abs(jellyPos - zonePos)
+    if (distance > this.config.jellyWidth) return 0
+    
+    // Forma gaussiana: máximo en el centro, cae suavemente
+    const normalizedDist = distance / this.config.jellyWidth
+    return Math.exp(-normalizedDist * normalizedDist * 4)
+  }
+  
   getOutput(): EffectFrameOutput | null {
     if (this.phase === 'idle' || this.phase === 'finished') return null
+    
     const progress = this.elapsedMs / this.config.durationMs
     
-    // Envelope
+    // Envelope con plateau largo
     let envelope: number
-    if (progress < 0.10) { envelope = progress / 0.10 }
-    else if (progress < 0.85) { envelope = 1.0 }
-    else { envelope = 1 - ((progress - 0.85) / 0.15) }
+    if (progress < 0.10) { 
+      envelope = (progress / 0.10) ** 1.5
+    } else if (progress < 0.85) { 
+      envelope = 1.0 
+    } else { 
+      envelope = ((1 - progress) / 0.15) ** 1.5
+    }
     
-    // Pulso bioluminiscente
-    const pulsePhase = progress * Math.PI * 8
-    const pulse = (Math.sin(pulsePhase) + 1) / 2 * 0.25 + 0.75
+    // 🪼 POSICIONES DE LAS DOS MEDUSAS CON DESFASE
+    // 🌊 WAVE 1073.6: Desfase reducido - ambas visibles desde el inicio
     
-    // Colores para cada lado
-    const leftColor = BIOLUMINESCENT_PALETTE.leftColors[this.colorIndex]
-    const rightColor = BIOLUMINESCENT_PALETTE.rightColors[this.colorIndex]
+    // Medusa MAGENTA: L→R (empieza en frontL, termina en frontR)
+    const magentaPos = progress * 1.0
     
-    // Onda de intensidad
-    const waveOffset = Math.sin(progress * Math.PI * 4) * 0.15
-    const frontIntensity = (0.9 + waveOffset) * pulse
-    const backIntensity = (0.75 - waveOffset) * pulse
+    // Medusa CYAN: R→L (empieza en frontR con 15% de desfase, termina en frontL)
+    // 🌊 WAVE 1073.6: Desfase reducido de 20% a 15% para que ambas sean visibles
+    const cyanDelay = 0.15  // 15% de retraso
+    const cyanProgress = Math.max(0, (progress - cyanDelay) / (1 - cyanDelay))
+    const cyanPos = 1.0 - cyanProgress  // Empieza en 1.0 (frontR), termina en 0.0 (frontL)
     
-    // Movimiento de deriva
-    const driftPan = Math.sin(progress * Math.PI * 2) * 20
-    const driftTilt = Math.cos(progress * Math.PI * 3) * 15
+    // 🌊 Pulsos individuales (respiración bioluminiscente)
+    // También desfasados para que no pulsen al unísono
+    const magentaPulse = Math.sin(progress * Math.PI * 5) * 0.12 + 0.88
+    const cyanPulse = Math.sin(progress * Math.PI * 5.5 + Math.PI * 0.7) * 0.14 + 0.86  // Frecuencia ligeramente diferente
     
     const output: EffectFrameOutput = {
       effectId: this.id,
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+      zones: [...ZONE_NAMES],
       intensity: this.triggerIntensity * envelope * this.config.peakIntensity,
       zoneOverrides: {},
     }
 
-    // Stereo split: Left=Magenta, Right=Cyan
-    output.zoneOverrides!['frontL'] = {
-      dimmer: frontIntensity * envelope * this.config.peakIntensity,
-      color: leftColor,
-      blendMode: 'max' as const,
+    // 🪼 Calcular cada zona
+    for (const zoneName of ZONE_NAMES) {
+      const zonePos = ZONE_POSITIONS[zoneName]
+      
+      // Intensidad de cada medusa en esta zona
+      const magentaInt = this.getJellyIntensity(magentaPos, zonePos) * magentaPulse
+      const cyanInt = this.getJellyIntensity(cyanPos, zonePos) * cyanPulse
+      
+      // Decidir color y intensidad final
+      let finalColor: { h: number; s: number; l: number }
+      let finalIntensity: number
+      
+      const threshold = 0.15  // Umbral para considerar que una medusa está presente
+      
+      if (magentaInt > threshold && cyanInt > threshold) {
+        // ✨ CRUCE: Ambas medusas presentes → VIOLETA brillante
+        finalColor = JELLY_COLORS.violet
+        finalIntensity = Math.min(1, (magentaInt + cyanInt) * 1.2)  // Boost
+      } else if (magentaInt > cyanInt && magentaInt > threshold) {
+        // Solo MAGENTA
+        finalColor = JELLY_COLORS.magenta
+        finalIntensity = magentaInt
+      } else if (cyanInt > threshold) {
+        // Solo CYAN
+        finalColor = JELLY_COLORS.cyan
+        finalIntensity = cyanInt
+      } else {
+        // Sin medusas cerca → muy tenue
+        finalColor = { h: 280, s: 50, l: 30 }
+        finalIntensity = 0.05
+      }
+      
+      const zoneDimmer = finalIntensity * envelope * this.config.peakIntensity
+      
+      output.zoneOverrides![zoneName] = {
+        dimmer: zoneDimmer,
+        color: finalColor,
+        blendMode: 'max' as const,
+      }
     }
-    output.zoneOverrides!['frontR'] = {
-      dimmer: frontIntensity * envelope * this.config.peakIntensity,
-      color: rightColor,
-      blendMode: 'max' as const,
-    }
-    output.zoneOverrides!['backL'] = {
-      dimmer: backIntensity * envelope * this.config.peakIntensity,
-      color: leftColor,
-      blendMode: 'max' as const,
-    }
-    output.zoneOverrides!['backR'] = {
-      dimmer: backIntensity * envelope * this.config.peakIntensity,
-      color: rightColor,
-      blendMode: 'max' as const,
-    }
+    
+    // 🪼 Movers: siguen a la medusa más cercana
+    // El mover izquierdo sigue a MAGENTA (L→R), el derecho a CYAN (R→L)
+    const moverLeftPan = (magentaPos - 0.5) * 18  // Sigue a MAGENTA
+    const moverRightPan = (cyanPos - 0.5) * 18    // Sigue a CYAN
+    
+    const moverTilt = Math.sin(progress * Math.PI * 1.2) * 6
+    
     output.zoneOverrides!['movers_left'] = {
-      dimmer: pulse * envelope * this.config.peakIntensity * 0.80,
-      color: leftColor,
-      blendMode: 'max' as const,
-      movement: { pan: driftPan - 30, tilt: driftTilt - 10 },
+      ...output.zoneOverrides!['movers_left'],
+      movement: { 
+        pan: moverLeftPan, 
+        tilt: moverTilt + 5,
+        isAbsolute: false,
+        speed: 0.06,
+      },
     }
     output.zoneOverrides!['movers_right'] = {
-      dimmer: pulse * envelope * this.config.peakIntensity * 0.80,
-      color: rightColor,
-      blendMode: 'max' as const,
-      movement: { pan: driftPan + 30, tilt: driftTilt + 5 },
+      ...output.zoneOverrides!['movers_right'],
+      movement: { 
+        pan: moverRightPan, 
+        tilt: moverTilt - 3,
+        isAbsolute: false,
+        speed: 0.06,
+      },
     }
+    
     return output
   }
   

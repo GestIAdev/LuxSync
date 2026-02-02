@@ -59,8 +59,9 @@ import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
 import { useLibraryStore } from '../../../stores/libraryStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
-import '../../modals/FixtureEditor/FixtureForge.css'
-import './FixtureForgeEmbedded.css'  // Override styles for embedded mode
+// WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
+import './FixtureForge.css'
+import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES - WAVE 1112: Added 'library' tab

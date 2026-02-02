@@ -998,14 +998,17 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
   /**
    * Save a user fixture to userData/fixtures
    * WAVE 1114 FIX: Check if file already exists and update instead of duplicating
+   * WAVE 1116.2 FIX: Use PATHFINDER-resolved custom library path
    */
   ipcMain.handle('lux:library:save-user', async (_event, fixture: any) => {
     try {
       const fs = await import('fs')
       const path = await import('path')
-      const { app } = await import('electron')
       
-      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      // WAVE 1116.2: Use PATHFINDER-resolved path
+      const userPath = getCustomLibPath()
+      
+      console.log(`[Library Save] 📂 User path: ${userPath}`)
       
       // Ensure directory exists
       if (!fs.existsSync(userPath)) {
@@ -1082,14 +1085,15 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
   /**
    * Delete a user fixture from userData/fixtures
    * Only user fixtures can be deleted (not system)
+   * WAVE 1116 FIX: Use PATHFINDER-resolved custom library path
    */
   ipcMain.handle('lux:library:delete-user', async (_event, fixtureId: string) => {
     try {
       const fs = await import('fs')
       const path = await import('path')
-      const { app } = await import('electron')
       
-      const userPath = path.join(app.getPath('userData'), 'fixtures')
+      // WAVE 1116: Use PATHFINDER-resolved path
+      const userPath = getCustomLibPath()
       
       if (!fs.existsSync(userPath)) {
         return { success: false, error: 'User fixtures folder does not exist' }

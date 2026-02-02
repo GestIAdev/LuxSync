@@ -436,9 +436,9 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
     
     const completeFixture = buildCompleteFixture()
     
-    // Check if trying to save a system fixture
+    // WAVE 1114 FIX: Handle system vs user vs new correctly
     if (editingSource === 'system') {
-      // WAVE 1113: Clone manually - system fixtures are read-only
+      // System fixture: Clone with new ID + "(User Copy)" suffix
       const clonedName = `${completeFixture.name} (User Copy)`
       const clonedFixture = {
         ...completeFixture,
@@ -457,8 +457,28 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
         setSaveMessage(`❌ Save failed: ${result.error}`)
         setTimeout(() => setSaveMessage(null), 5000)
       }
+    } else if (editingSource === 'user') {
+      // User fixture: UPDATE with SAME ID (no duplication!)
+      // Use originalFixtureId to maintain identity
+      const updatedFixture = {
+        ...completeFixture,
+        id: originalFixtureId || completeFixture.id, // Preserve original ID
+      }
+      
+      const result = await saveUserFixture(updatedFixture)
+      if (result.success) {
+        setSaveMessage('✅ Updated in User Library')
+        setTimeout(() => setSaveMessage(null), 3000)
+      } else {
+        setSaveMessage(`❌ Update failed: ${result.error}`)
+        setTimeout(() => setSaveMessage(null), 5000)
+      }
     } else {
-      // Save directly (new or user fixture)
+      // New fixture: Generate new ID
+      if (!completeFixture.id || !completeFixture.id.startsWith('user-')) {
+        completeFixture.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+      
       const result = await saveUserFixture(completeFixture)
       if (result.success) {
         setEditingSource('user')
@@ -471,7 +491,7 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       }
     }
     
-    console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name)
+    console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name, '| ID:', completeFixture.id)
     
     // Also call the prop callback for any external handlers
     onSave(completeFixture, physics)

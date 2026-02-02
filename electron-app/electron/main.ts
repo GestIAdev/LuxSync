@@ -434,9 +434,10 @@ app.whenReady().then(async () => {
   const fs = await import('fs')
   
   // WAVE 1114: PATHFINDER - Search multiple locations for system library
-  // Order: Legacy dev → Electron packaged → Dev fallback
+  // Order: Root librerias → Legacy dev → Electron packaged → Dev fallbacks
   const candidatePaths = [
-    path.join(process.cwd(), 'librerias'),                    // Legacy Prod/Dev (LuxSync root)
+    path.join(process.cwd(), '../librerias'),                 // Root: LuxSync/librerias (desde electron-app)
+    path.join(process.cwd(), 'librerias'),                    // Legacy Prod/Dev
     path.join(process.cwd(), 'resources/librerias'),          // Electron Packaged
     path.join(__dirname, '../../librerias'),                  // Dev fallback (from dist-electron)
     path.join(__dirname, '../../../librerias'),               // Another dev fallback

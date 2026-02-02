@@ -216,20 +216,18 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     const clampedValue = Math.max(0, Math.min(255, value))
     setProbeValue(clampedValue)
     
-    // WAVE 1113: Send via REAL DMX IPC (THE NERVE LINK)
-    // Using window.luxsync.sendDmxChannel for raw hardware access
+    // WAVE 1114 FIX: Use window.luxsync.sendDmxChannel (WORKS in ColorWheelEditor)
+    // This hits the UniversalDMX driver which routes to ArtNet if configured
     if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
       try {
         // Universe 0, Channel 8 (typical color wheel channel)
-        // In real use, this should read from the channel rack
         await (window as any).luxsync.sendDmxChannel(0, 8, clampedValue)
-        console.log(`[DMX PROBE] ✅ Sent: Ch8 → ${clampedValue}`)
+        console.log(`[WheelSmith] ✅ DMX OUT: Ch8 → ${clampedValue}`)
       } catch (err) {
-        console.error('[DMX PROBE] ❌ Send failed:', err)
+        console.error('[WheelSmith] ❌ DMX Send failed:', err)
       }
     } else {
-      // Fallback for when IPC not available
-      console.log(`[DMX PROBE] ⚠️ Offline mock: Ch8 → ${clampedValue}`)
+      console.warn('[WheelSmith] ⚠️ luxsync.sendDmxChannel not available')
     }
     
     // Also call parent callback if provided
@@ -241,16 +239,14 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   const handleAutoJump = useCallback(async (dmxValue: number) => {
     setProbeValue(dmxValue)
     
-    // Trigger DMX output
+    // WAVE 1114 FIX: Use window.luxsync.sendDmxChannel (WORKS in ColorWheelEditor)
     if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
       try {
         await (window as any).luxsync.sendDmxChannel(0, 8, dmxValue)
-        console.log(`[DMX PROBE] ✅ Jump: Ch8 → ${dmxValue}`)
+        console.log(`[WheelSmith] ✅ Auto-jump: Ch8 → ${dmxValue}`)
       } catch (err) {
-        console.error('[DMX PROBE] ❌ Jump failed:', err)
+        console.error('[WheelSmith] ❌ Auto-jump failed:', err)
       }
-    } else {
-      console.log(`[DMX PROBE] ⚠️ Offline jump: Ch8 → ${dmxValue}`)
     }
     
     if (onTestDmx) {

@@ -990,6 +990,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
 
   /**
    * Save a user fixture to userData/fixtures
+   * WAVE 1114 FIX: Check if file already exists and update instead of duplicating
    */
   ipcMain.handle('lux:library:save-user', async (_event, fixture: any) => {
     try {
@@ -1004,18 +1005,48 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
         fs.mkdirSync(userPath, { recursive: true })
       }
       
-      // Generate safe filename from fixture id or name
-      const safeId = (fixture.id || fixture.name || 'fixture')
-        .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
-        .replace(/\s+/g, '_')
-        .substring(0, 50)
-      
-      const fileName = `${safeId}.json`
-      const filePath = path.join(userPath, fileName)
-      
       // Ensure fixture has an ID
       if (!fixture.id) {
         fixture.id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }
+      
+      // WAVE 1114 FIX: Check if fixture already exists (by ID)
+      // If exists, update the same file instead of creating new
+      let existingFilePath: string | null = null
+      
+      const existingFiles = fs.readdirSync(userPath)
+      for (const file of existingFiles) {
+        if (!file.endsWith('.json')) continue
+        
+        try {
+          const content = fs.readFileSync(path.join(userPath, file), 'utf-8')
+          const existingFixture = JSON.parse(content)
+          
+          if (existingFixture.id === fixture.id) {
+            existingFilePath = path.join(userPath, file)
+            console.log(`[Library] 🔄 Updating existing fixture file: ${file}`)
+            break
+          }
+        } catch (e) {
+          continue
+        }
+      }
+      
+      // Determine file path
+      let filePath: string
+      
+      if (existingFilePath) {
+        // Update existing file
+        filePath = existingFilePath
+      } else {
+        // Create new file with safe name from fixture id
+        const safeId = fixture.id
+          .replace(/[^a-z0-9áéíóúñü\s-]/gi, '')
+          .replace(/\s+/g, '_')
+          .substring(0, 50)
+        
+        const fileName = `${safeId}.json`
+        filePath = path.join(userPath, fileName)
       }
       
       // Add metadata
@@ -1025,7 +1056,7 @@ function setupFixtureHandlers(deps: IPCDependencies): void {
       // Write file
       fs.writeFileSync(filePath, JSON.stringify(fixture, null, 2), 'utf-8')
       
-      console.log(`[Library] 💾 WAVE 1113: Saved user fixture: ${filePath}`)
+      console.log(`[Library] 💾 WAVE 1114: Saved user fixture: ${filePath}`)
       
       // Rescan to update cache
       await rescanAllLibraries()

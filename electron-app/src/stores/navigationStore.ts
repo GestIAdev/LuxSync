@@ -39,11 +39,18 @@ export interface NavigationState {
   previousTab: TabId | null
   tabHistory: TabId[]
   
+  // WAVE 1112: Target fixture for Forge
+  targetFixtureId: string | null
+  
   // Actions
   setActiveTab: (tab: TabId) => void
   goBack: () => void
   nextTab: () => void
   prevTab: () => void
+  
+  // WAVE 1112: Edit fixture action (Builder -> Forge bridge)
+  editFixture: (fixtureId: string) => void
+  clearTargetFixture: () => void
 }
 
 // ============================================
@@ -122,13 +129,16 @@ export const TABS: TabConfig[] = [
 const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'constructor', 'forge', 'setup', 'core']
 
 // ============================================
-// STORE - WAVE 423
+// STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge
 // ============================================
 
 export const useNavigationStore = create<NavigationState>((set, get) => ({
   activeTab: 'dashboard',  // WAVE 423: Start at Command Center
   previousTab: null,
   tabHistory: ['dashboard'],
+  
+  // WAVE 1112: Target fixture for Forge
+  targetFixtureId: null,
   
   setActiveTab: (tab: TabId) => {
     const { activeTab, tabHistory } = get()
@@ -164,5 +174,16 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
     const currentIndex = TAB_ORDER.indexOf(activeTab)
     const prevIndex = (currentIndex - 1 + TAB_ORDER.length) % TAB_ORDER.length
     get().setActiveTab(TAB_ORDER[prevIndex])
+  },
+  
+  // WAVE 1112: Edit fixture action - Builder -> Forge bridge
+  editFixture: (fixtureId: string) => {
+    console.log(`[NavigationStore] 🔨 Navigating to Forge with fixture: ${fixtureId}`)
+    set({ targetFixtureId: fixtureId })
+    get().setActiveTab('forge')
+  },
+  
+  clearTargetFixture: () => {
+    set({ targetFixtureId: null })
   },
 }))

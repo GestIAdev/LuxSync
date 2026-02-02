@@ -66,6 +66,12 @@ export interface FixtureDefinition {
   manufacturer: string;
   type: string;
   channels: FixtureChannel[];
+  
+  // 🎡 WAVE 1112: THE WHEELSMITH - Root level wheel colors for JSON export
+  wheels?: {
+    colors: WheelColor[];
+  };
+  
   // WAVE 388 + 390.5: Extended metadata for persistence
   physics?: {
     motorType: 'servo' | 'stepper' | 'brushless' | 'servo-pro' | 'stepper-pro';

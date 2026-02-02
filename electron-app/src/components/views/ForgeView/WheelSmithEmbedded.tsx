@@ -192,18 +192,36 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   }, [colors, onColorsChange])
   
   // Live Probe handlers
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 1112: Live Probe with Mock DMX
+  // ═══════════════════════════════════════════════════════════════════════
+  
   const handleProbeChange = useCallback((value: number) => {
     const clampedValue = Math.max(0, Math.min(255, value))
     setProbeValue(clampedValue)
+    
+    // Try to send real DMX if available
     if (onTestDmx) {
       onTestDmx(clampedValue)
+    } else {
+      // WAVE 1112: Mock DMX output - will be connected to TitanEngine later
+      console.log(`[DMX PROBE] Color Wheel → ${clampedValue}`)
+      
+      // Try electron IPC if available (future connection)
+      if (typeof window !== 'undefined' && (window as any).electron?.sendDmx) {
+        (window as any).electron.sendDmx(1, 8, clampedValue) // Universe 1, Channel 8 (typical color wheel)
+      }
     }
   }, [onTestDmx])
   
   const handleAutoJump = useCallback((dmxValue: number) => {
     setProbeValue(dmxValue)
+    
+    // Also trigger probe output
     if (onTestDmx) {
       onTestDmx(dmxValue)
+    } else {
+      console.log(`[DMX PROBE] Jump to → ${dmxValue}`)
     }
   }, [onTestDmx])
   

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔨 FIXTURE FORGE EMBEDDED - WAVE 1110: THE GREAT UNBUNDLING
+ * 🔨 FIXTURE FORGE EMBEDDED - WAVE 1112: FUNCTIONAL CLOSURE & LIBRARY MANAGER
  * "The Blacksmith's Workshop" - Full-screen Fixture Editor (no modal overlay)
  * ═══════════════════════════════════════════════════════════════════════════
  * 
@@ -12,9 +12,10 @@
  * - No close button (navigation handled by sidebar)
  * - Full viewport width/height
  * - English labels (WAVE 1110 localization)
+ * - LIBRARY tab for fixture browsing (WAVE 1112)
  * 
  * @module components/views/ForgeView/FixtureForgeEmbedded
- * @version 1110.0.0
+ * @version 1112.0.0
  */
 
 import React, { useState, useCallback, useEffect, DragEvent, Suspense } from 'react'
@@ -37,11 +38,14 @@ import {
   Copy,
   AlertTriangle,
   Check,
-  Palette
+  Palette,
+  BookOpen,
+  Lock
 } from 'lucide-react'
 import { FixturePreview3D } from '../../modals/FixtureEditor/FixturePreview3D'
 import { PhysicsTuner } from '../../modals/FixtureEditor/PhysicsTuner'
 import { WheelSmithEmbedded } from './WheelSmithEmbedded'
+import { LibraryTab } from './LibraryTab'
 import { 
   PhysicsProfile, 
   DEFAULT_PHYSICS_PROFILES,
@@ -52,14 +56,16 @@ import {
 import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
+import { useLibraryStore } from '../../../stores/libraryStore'
+import { useNavigationStore } from '../../../stores/navigationStore'
 import '../../modals/FixtureEditor/FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Override styles for embedded mode
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TYPES - WAVE 1111: THE WHEELSMITH & THE GLOW
+// TYPES - WAVE 1112: Added 'library' tab
 // ═══════════════════════════════════════════════════════════════════════════
 
-type ForgeTabId = 'general' | 'channels' | 'wheelsmith' | 'physics' | 'export'
+type ForgeTabId = 'library' | 'general' | 'channels' | 'wheelsmith' | 'physics' | 'export'
 
 interface FixtureForgeEmbeddedProps {
   onSave: (
@@ -72,10 +78,11 @@ interface FixtureForgeEmbeddedProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTS - English labels (WAVE 1111: THE WHEELSMITH & THE GLOW)
+// CONSTANTS - English labels (WAVE 1112: LIBRARY tab added)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const TAB_CONFIG: { id: ForgeTabId; label: string; icon: React.ReactNode }[] = [
+  { id: 'library', label: 'LIBRARY', icon: <BookOpen size={16} /> },
   { id: 'general', label: 'GENERAL', icon: <Settings size={16} /> },
   { id: 'channels', label: 'CHANNEL RACK', icon: <Server size={16} /> },
   { id: 'wheelsmith', label: 'WHEELSMITH', icon: <Palette size={16} /> },
@@ -197,15 +204,27 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   existingDefinition
 }) => {
   // ═══════════════════════════════════════════════════════════════════════
+  // STORES - WAVE 1112
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const { saveUserFixture, isSystemFixture, cloneSystemFixture } = useLibraryStore()
+  const { targetFixtureId, clearTargetFixture } = useNavigationStore()
+  const { getFixtureById } = useLibraryStore()
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // STATE
   // ═══════════════════════════════════════════════════════════════════════
   
   const [fixture, setFixture] = useState<FixtureDefinition>(FixtureFactory.createEmpty())
   const [physics, setPhysics] = useState<PhysicsProfile>(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
   const [totalChannels, setTotalChannels] = useState<number>(8)
-  const [activeTab, setActiveTab] = useState<ForgeTabId>('general')
+  const [activeTab, setActiveTab] = useState<ForgeTabId>('library')  // WAVE 1112: Start at library
   const [colorEngine, setColorEngine] = useState<ColorEngineType>('rgb')
   const [wheelColors, setWheelColors] = useState<WheelColor[]>([])
+  
+  // WAVE 1112: Current editing source tracking
+  const [editingSource, setEditingSource] = useState<'system' | 'user' | 'new'>('new')
+  const [originalFixtureId, setOriginalFixtureId] = useState<string | null>(null)
   
   // Preview controls
   const [showPreview, setShowPreview] = useState(true)
@@ -220,6 +239,55 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   const [validationMessage, setValidationMessage] = useState('')
   const [isFormValid, setIsFormValid] = useState(false)
   const [expandedFoundry, setExpandedFoundry] = useState<string | null>('POSITION')
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 1112: Load fixture from navigation target
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    if (targetFixtureId) {
+      const targetFixture = getFixtureById(targetFixtureId)
+      if (targetFixture) {
+        console.log(`[ForgeEmbedded] 📖 Loading fixture from navigation: ${targetFixture.name}`)
+        loadFixtureIntoEditor(targetFixture)
+        setEditingSource(targetFixture.source)
+        setOriginalFixtureId(targetFixture.id)
+        setActiveTab('general')  // Go to edit tabs
+        clearTargetFixture()  // Clear the navigation target
+      }
+    }
+  }, [targetFixtureId])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 1112: Load fixture into editor
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const loadFixtureIntoEditor = useCallback((def: FixtureDefinition) => {
+    setFixture(def)
+    setTotalChannels(def.channels.length)
+    
+    // Load color engine from capabilities
+    if (def.capabilities?.colorEngine) {
+      setColorEngine(def.capabilities.colorEngine)
+    }
+    
+    // Load wheel colors from wheels or capabilities.colorWheel
+    if (def.wheels?.colors) {
+      setWheelColors(def.wheels.colors)
+    } else if (def.capabilities?.colorWheel?.colors) {
+      setWheelColors(def.capabilities.colorWheel.colors)
+    } else {
+      setWheelColors([])
+    }
+    
+    // Load physics if available
+    if (def.physics) {
+      const motorType = def.physics.motorType || 'stepper'
+      const profileKey = `${motorType}-quality` as keyof typeof DEFAULT_PHYSICS_PROFILES
+      setPhysics(DEFAULT_PHYSICS_PROFILES[profileKey] || DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+    }
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
   // VALIDATION
@@ -320,25 +388,105 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // HANDLERS
+  // HANDLERS - WAVE 1112: Save to Library
   // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Build the complete FixtureDefinition with wheels included
+   */
+  const buildCompleteFixture = useCallback((): FixtureDefinition => {
+    return {
+      ...fixture,
+      // WAVE 1112: Include wheels at root level for JSON export
+      wheels: wheelColors.length > 0 ? { colors: wheelColors } : undefined,
+      // Also keep in capabilities for HAL compatibility
+      capabilities: {
+        ...fixture.capabilities,
+        colorEngine,
+        colorWheel: wheelColors.length > 0 ? {
+          colors: wheelColors,
+          allowsContinuousSpin: false,
+          minChangeTimeMs: 500,
+        } : undefined,
+        hasPan: fixture.channels.some(ch => ch.type === 'pan'),
+        hasTilt: fixture.channels.some(ch => ch.type === 'tilt'),
+        hasColorMixing: fixture.channels.some(ch => ['red', 'green', 'blue'].includes(ch.type)),
+        hasColorWheel: fixture.channels.some(ch => ch.type === 'color_wheel'),
+        hasGobo: fixture.channels.some(ch => ch.type === 'gobo'),
+        hasPrism: fixture.channels.some(ch => ch.type === 'prism'),
+        hasStrobe: fixture.channels.some(ch => ch.type === 'strobe'),
+        hasDimmer: fixture.channels.some(ch => ch.type === 'dimmer'),
+      },
+    }
+  }, [fixture, wheelColors, colorEngine])
   
   const handleSave = useCallback(() => {
     if (!isFormValid) return
     
-    console.log('[ForgeEmbedded] 🔨 Saving fixture:', fixture.name)
-    onSave(fixture, physics)
-  }, [fixture, physics, isFormValid, onSave])
+    const completeFixture = buildCompleteFixture()
+    
+    // Check if trying to save a system fixture
+    if (editingSource === 'system') {
+      // Force clone for system fixtures
+      const clonedName = `${completeFixture.name} (User Copy)`
+      const cloned = cloneSystemFixture(originalFixtureId!, clonedName)
+      if (cloned) {
+        // Update the clone with current edits
+        const updatedClone = { ...cloned, ...completeFixture, id: cloned.id, name: clonedName }
+        saveUserFixture(updatedClone)
+        setFixture(updatedClone)
+        setEditingSource('user')
+        setOriginalFixtureId(updatedClone.id)
+        setSaveMessage('✅ Saved as User Copy (System fixtures are read-only)')
+        setTimeout(() => setSaveMessage(null), 3000)
+      }
+    } else {
+      // Save directly (new or user fixture)
+      saveUserFixture(completeFixture)
+      setEditingSource('user')
+      setOriginalFixtureId(completeFixture.id)
+      setSaveMessage('✅ Saved to User Library')
+      setTimeout(() => setSaveMessage(null), 3000)
+    }
+    
+    console.log('[ForgeEmbedded] 🔨 Saved fixture:', completeFixture.name)
+    
+    // Also call the prop callback for any external handlers
+    onSave(completeFixture, physics)
+  }, [fixture, physics, isFormValid, onSave, buildCompleteFixture, editingSource, originalFixtureId, saveUserFixture, cloneSystemFixture])
 
   const handleExportJSON = useCallback(() => {
-    const blob = new Blob([JSON.stringify(fixture, null, 2)], { type: 'application/json' })
+    const completeFixture = buildCompleteFixture()
+    const blob = new Blob([JSON.stringify(completeFixture, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${fixture.name || 'fixture'}.json`
+    a.download = `${completeFixture.name || 'fixture'}.json`
     a.click()
     URL.revokeObjectURL(url)
-  }, [fixture])
+  }, [buildCompleteFixture])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 1112: Library Tab Handlers
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleSelectFromLibrary = useCallback((selectedFixture: FixtureDefinition) => {
+    loadFixtureIntoEditor(selectedFixture)
+    setEditingSource(isSystemFixture(selectedFixture.id) ? 'system' : 'user')
+    setOriginalFixtureId(selectedFixture.id)
+    setActiveTab('general')  // Go to edit mode
+  }, [loadFixtureIntoEditor, isSystemFixture])
+  
+  const handleNewFromScratch = useCallback(() => {
+    setFixture(FixtureFactory.createEmpty())
+    setTotalChannels(8)
+    setWheelColors([])
+    setColorEngine('rgb')
+    setPhysics(DEFAULT_PHYSICS_PROFILES['stepper-quality'])
+    setEditingSource('new')
+    setOriginalFixtureId(null)
+    setActiveTab('general')
+  }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER
@@ -347,16 +495,23 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
   return (
     <div className="forge-embedded">
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* HEADER - WAVE 1110: English labels */}
+      {/* HEADER - WAVE 1112: Shows editing source */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <header className="forge-header embedded">
         <div className="forge-title">
           <Factory size={24} />
           <h1>FIXTURE FORGE</h1>
-          <span className="forge-subtitle">The Blacksmith</span>
+          <span className="forge-subtitle">
+            {editingSource === 'system' && <><Lock size={12} /> System (Read-Only)</>}
+            {editingSource === 'user' && 'User Library'}
+            {editingSource === 'new' && 'New Fixture'}
+          </span>
         </div>
         
         <div className="forge-actions">
+          {saveMessage && (
+            <span className="save-message">{saveMessage}</span>
+          )}
           <span className={`validation-status ${isFormValid ? 'valid' : 'invalid'}`}>
             {validationMessage}
           </span>
@@ -372,16 +527,16 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
             className="forge-action-btn save"
             onClick={handleSave}
             disabled={!isFormValid}
-            title="Save Profile"
+            title={editingSource === 'system' ? 'Save as Copy (System is read-only)' : 'Save Profile'}
           >
             <Save size={18} />
-            <span>Save Profile</span>
+            <span>{editingSource === 'system' ? 'Save Copy' : 'Save'}</span>
           </button>
         </div>
       </header>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* TABS - WAVE 1110 */}
+      {/* TABS - WAVE 1112: Added LIBRARY tab */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <nav className="forge-tabs embedded">
         {TAB_CONFIG.map(tab => (
@@ -400,6 +555,15 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
       {/* MAIN CONTENT */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="forge-main-content embedded">
+        
+        {/* LIBRARY TAB - WAVE 1112 */}
+        {activeTab === 'library' && (
+          <LibraryTab
+            onSelectFixture={handleSelectFromLibrary}
+            onNewFromScratch={handleNewFromScratch}
+            selectedFixtureId={originalFixtureId}
+          />
+        )}
         
         {/* GENERAL TAB */}
         {activeTab === 'general' && (

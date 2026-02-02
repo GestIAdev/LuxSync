@@ -123,6 +123,32 @@
   flex-shrink: 0;
 }
 
+/* WAVE 1114: System Library Warning Banner */
+.library-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(245, 158, 11, 0.15);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.library-warning svg {
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+.library-warning code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* TOOLBAR - Search & Filter */
 /* ═══════════════════════════════════════════════════════════════════════════ */

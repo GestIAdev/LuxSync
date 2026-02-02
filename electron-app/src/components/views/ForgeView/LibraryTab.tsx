@@ -234,6 +234,17 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
         </div>
       )}
       
+      {/* WAVE 1114: System Library Warning Banner */}
+      {!isLoading && systemCount === 0 && (
+        <div className="library-warning">
+          <AlertCircle size={14} />
+          <span>
+            ⚠️ System Library not found! Check backend console for path details.
+            Expected locations: <code>librerias/</code>, <code>resources/librerias/</code>
+          </span>
+        </div>
+      )}
+      
       {/* Search & Filter */}
       <div className="library-toolbar">
         <div className="library-search">

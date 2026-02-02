@@ -456,43 +456,54 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
       )}
       
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* LIVE PROBE */}
+      {/* LIVE PROBE - WAVE 1114: ALWAYS VISIBLE                         */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {onTestDmx && (
-        <div className="wheel-live-probe">
-          <div className="probe-header">
-            <Zap size={16} />
-            <span className="probe-title">LIVE PROBE</span>
-            <span className="probe-subtitle">(Channel Output)</span>
-          </div>
-          <div className="probe-controls">
-            <input
-              type="range"
-              min={0}
-              max={255}
-              value={probeValue}
-              onChange={(e) => handleProbeChange(parseInt(e.target.value))}
-              className="probe-slider"
-            />
-            <input
-              type="number"
-              min={0}
-              max={255}
-              value={probeValue}
-              onChange={(e) => handleProbeChange(parseInt(e.target.value) || 0)}
-              className="probe-input"
-            />
-            <button 
-              className="probe-add-btn"
-              onClick={handleCreateFromProbe}
-              title="Create slot at this value"
-            >
-              <Plus size={14} />
-              Create Slot
-            </button>
-          </div>
+      <div className="wheel-live-probe">
+        <div className="probe-header">
+          <Zap size={16} />
+          <span className="probe-title">LIVE PROBE</span>
+          <span className="probe-subtitle">(Channel Output)</span>
+          {/* WAVE 1114: DMX Status Indicator - Always show */}
+          <span 
+            className={`probe-dmx-status ${dmxConnected ? 'connected' : 'offline'}`}
+            title={dmxConnected ? 'DMX Connected' : 'DMX Offline'}
+          >
+            {dmxConnected ? '🟢' : '🔴'}
+          </span>
         </div>
-      )}
+        <div className="probe-controls">
+          <input
+            type="range"
+            min={0}
+            max={255}
+            value={probeValue}
+            onChange={(e) => handleProbeChange(parseInt(e.target.value))}
+            className="probe-slider"
+          />
+          <input
+            type="number"
+            min={0}
+            max={255}
+            value={probeValue}
+            onChange={(e) => handleProbeChange(parseInt(e.target.value) || 0)}
+            className="probe-input"
+          />
+          <button 
+            className="probe-add-btn"
+            onClick={handleCreateFromProbe}
+            title="Create slot at this value"
+          >
+            <Plus size={14} />
+            Create Slot
+          </button>
+        </div>
+        {/* WAVE 1114: Offline warning (non-blocking) */}
+        {!dmxConnected && (
+          <div className="probe-offline-warning">
+            ⚠️ DMX Offline - slider moves but won't output
+          </div>
+        )}
+      </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* FOOTER STATS */}

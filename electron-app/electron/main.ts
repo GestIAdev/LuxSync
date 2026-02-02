@@ -428,12 +428,46 @@ app.whenReady().then(async () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // WAVE 255: LA BIBLIOTECA - Load fixture definitions from luxsync/librerias
   // WAVE 387: THE LIBRARY PATHFINDER - Setup custom library path in userData
+  // WAVE 1114: PATHFINDER V2 - Multi-path search for system library
   // ═══════════════════════════════════════════════════════════════════════════
   
-  // Factory library path (read-only, bundled with app)
-  const factoryLibraryPath = isDev 
-    ? path.join(__dirname, '../../librerias')  // Dev: luxsync/librerias
-    : path.join(app.getPath('userData'), 'librerias')  // Prod: userData/librerias (copied on first run)
+  const fs = await import('fs')
+  
+  // WAVE 1114: PATHFINDER - Search multiple locations for system library
+  // Order: Legacy dev → Electron packaged → Dev fallback
+  const candidatePaths = [
+    path.join(process.cwd(), 'librerias'),                    // Legacy Prod/Dev (LuxSync root)
+    path.join(process.cwd(), 'resources/librerias'),          // Electron Packaged
+    path.join(__dirname, '../../librerias'),                  // Dev fallback (from dist-electron)
+    path.join(__dirname, '../../../librerias'),               // Another dev fallback
+    path.join(app.getPath('userData'), 'librerias'),          // Prod: userData copy
+  ]
+  
+  console.log('[Library] 🔍 WAVE 1114 PATHFINDER: Searching system library...')
+  
+  let factoryLibraryPath: string = ''
+  for (const candidate of candidatePaths) {
+    console.log(`[Library] 🔍 Checking: ${candidate}`)
+    if (fs.existsSync(candidate)) {
+      const files = fs.readdirSync(candidate).filter((f: string) => f.endsWith('.fxt') || f.endsWith('.json'))
+      if (files.length > 0) {
+        console.log(`[Library] ✅ Found ${files.length} fixture files at: ${candidate}`)
+        factoryLibraryPath = candidate
+        break
+      } else {
+        console.log(`[Library] ⚠️ Folder exists but empty: ${candidate}`)
+      }
+    } else {
+      console.log(`[Library] ❌ Not found: ${candidate}`)
+    }
+  }
+  
+  if (!factoryLibraryPath) {
+    console.error('[Library] ⛔ CRITICAL: No system library found in any candidate path!')
+    console.error('[Library] ⛔ Candidates searched:', candidatePaths)
+    // Fallback to first candidate for error display purposes
+    factoryLibraryPath = candidatePaths[0]
+  }
   
   // Custom library path (user's custom fixtures and edited definitions)
   const customLibraryPath = path.join(app.getPath('userData'), 'fixtures')
@@ -443,7 +477,7 @@ app.whenReady().then(async () => {
   customLibPath = customLibraryPath
   
   // WAVE 387 STEP 2: Auto-create custom library folder
-  const fs = await import('fs')
+  // (fs already imported above in PATHFINDER section)
   if (!fs.existsSync(customLibraryPath)) {
     fs.mkdirSync(customLibraryPath, { recursive: true })
     console.log('[Library] � Created custom library folder:', customLibraryPath)

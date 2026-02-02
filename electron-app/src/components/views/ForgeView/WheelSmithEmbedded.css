@@ -386,15 +386,18 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* LIVE PROBE */
+/* LIVE PROBE - WAVE 1114: ALWAYS VISIBLE                                      */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 .wheel-live-probe {
+  position: relative;
+  z-index: 100;
   padding: 16px;
   margin: 0 16px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: #18181b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .probe-header {
@@ -414,6 +417,37 @@
 .probe-subtitle {
   font-size: 10px;
   color: rgba(245, 158, 11, 0.6);
+}
+
+/* WAVE 1114: DMX Status indicator */
+.probe-dmx-status {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.probe-dmx-status.connected {
+  animation: pulse-connected 2s ease-in-out infinite;
+}
+
+.probe-dmx-status.offline {
+  opacity: 0.6;
+}
+
+@keyframes pulse-connected {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* WAVE 1114: Offline warning */
+.probe-offline-warning {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: #ef4444;
+  font-size: 11px;
+  text-align: center;
 }
 
 .probe-controls {

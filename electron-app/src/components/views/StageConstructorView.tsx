@@ -24,7 +24,7 @@ import React, { Suspense, lazy, useState, useCallback, useEffect, createContext,
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useNavigationStore } from '../../stores/navigationStore'
-import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, Hammer, FilePlus, Pencil } from 'lucide-react'
+import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
 import type { FixtureDefinition } from '../../types/FixtureDefinition'
@@ -297,16 +297,7 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
       </div>
       
       <div className="sidebar-content">
-        {/* WAVE 368.5: THE IMPOSING BUTTON */}
-        <button 
-          className="forge-big-button"
-          onClick={() => openFixtureForge()}
-        >
-          <Hammer size={20} />
-          <span>FORGE NEW FIXTURE</span>
-        </button>
-        
-        {/* WAVE 1117: DELETED Quick Templates section (no functionality, wasted space) */}
+        {/* WAVE 1117: DELETED "FORGE NEW FIXTURE" button - use /forge tab instead */}
         
         {/* User Library - Open by default, most important */}
         <CollapsibleSection 

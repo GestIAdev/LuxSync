@@ -31,6 +31,7 @@ import {
   EyeOff,
   Sliders,
   Cpu,
+  Cog,
   Settings,
   ChevronDown,
   ChevronUp,
@@ -822,10 +823,29 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                 )
               })()}
               
-              {/* Channel count summary */}
-              <div className="channel-summary">
-                <span className="summary-label">DMX Footprint</span>
-                <span className="summary-value">{fixture.channels.length} CH</span>
+              {/* ENGINE SPECS - Physics Preview (Read-only) */}
+              <div className="engine-specs">
+                <div className="cockpit-section-header compact">
+                  <Cog size={14} />
+                  <span>ENGINE SPECS</span>
+                </div>
+                <div className="engine-specs-grid">
+                  <div className="engine-badge" title="Motor Type">
+                    <span className="engine-icon">⚙️</span>
+                    <span className="engine-label">MOTOR</span>
+                    <span className="engine-value">{fixture.physics?.motorType?.toUpperCase() || '—'}</span>
+                  </div>
+                  <div className="engine-badge" title="Max Acceleration (°/s²)">
+                    <span className="engine-icon">⚡</span>
+                    <span className="engine-label">ACCEL</span>
+                    <span className="engine-value">{fixture.physics?.maxAcceleration || '—'}</span>
+                  </div>
+                  <div className="engine-badge" title="Installation Orientation">
+                    <span className="engine-icon">📍</span>
+                    <span className="engine-label">MOUNT</span>
+                    <span className="engine-value">{fixture.physics?.orientation?.toUpperCase() || '—'}</span>
+                  </div>
+                </div>
               </div>
             </div>
             

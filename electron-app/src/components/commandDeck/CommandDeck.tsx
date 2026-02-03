@@ -159,19 +159,19 @@ export const CommandDeck: React.FC = () => {
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * ZONE 4: TRIGGERS - GO + BLACKOUT (The Gate)
+       * ZONE 4: TRIGGERS - BLACKOUT + GO (The Gate) - WAVE 1131.2 Swap
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="deck-zone zone-triggers">
+        <BlackoutButton />
+        
         <button
-          className={`trigger-btn trigger-go ${outputEnabled ? 'active' : ''}`}
+          className={`trigger-sq trigger-go ${outputEnabled ? 'active' : ''}`}
           onClick={handleOutputToggle}
           title={outputEnabled ? 'Output ENABLED - Click to pause' : 'Output PAUSED - Click to go live'}
         >
           <Power className="trigger-icon" />
           <span className="trigger-label">GO</span>
         </button>
-        
-        <BlackoutButton />
       </div>
     </footer>
   )

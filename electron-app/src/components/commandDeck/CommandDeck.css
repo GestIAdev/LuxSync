@@ -1,8 +1,8 @@
 ﻿/**
- *  COMMAND DECK - CSS - WAVE 1131: REFORGED
+ *  COMMAND DECK - CSS - WAVE 1131: REFORGED (v2 - BALANCED)
  * New layout: [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ]
- * Grid: 0.8fr 2fr 3fr 1.5fr (Master is protagonist)
- * Height: 80px (compact)
+ * Grid: 100px 1.5fr 1.2fr 160px (Balanced, Vibes protagonist)
+ * Height: 140px (original)
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -25,14 +25,14 @@
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* WAVE 1131: REFORGED LAYOUT */
+/* WAVE 1131: REFORGED LAYOUT - BALANCED */
 .command-deck.command-deck-reforged {
   /* [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ] */
-  grid-template-columns: 80px 2fr 3fr 1.5fr;
-  height: 80px;
-  min-height: 80px;
-  padding: 8px 16px;
-  gap: 16px;
+  grid-template-columns: 100px 1.5fr 1.2fr 180px;
+  height: 140px;
+  min-height: 140px;
+  padding: 10px 16px;
+  gap: 12px;
 }
 
 .command-deck.blackout-active {
@@ -50,7 +50,10 @@
   display: flex;
   align-items: center;
   height: 100%;
-  padding: 0 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 /* ZONE 1: INTELLIGENCE (Tech Badge) */
@@ -63,9 +66,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 64px;
-  height: 64px;
+  gap: 6px;
+  width: 80px;
+  height: 100%;
   background: rgba(30, 30, 40, 0.8);
   border: 2px solid rgba(100, 100, 120, 0.3);
   border-radius: 8px;
@@ -74,14 +77,14 @@
 }
 
 .intelligence-badge .intel-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   transition: all 0.2s ease;
 }
 
 .intelligence-badge .intel-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
   transition: all 0.2s ease;
@@ -128,10 +131,10 @@
   box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
 }
 
-/* ZONE 2: VIBES + MOOD (Compressed) */
+/* ZONE 2: VIBES + MOOD (Side by side) */
 .zone-vibes-mood {
-  gap: 12px;
-  padding: 0 12px;
+  gap: 16px;
+  padding: 8px 16px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -139,14 +142,13 @@
 
 .zone-divider {
   width: 1px;
-  height: 60%;
+  height: 70%;
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* ZONE 3: GRAND MASTER (Protagonist) */
+/* ZONE 3: GRAND MASTER */
 .zone-grandmaster {
-  flex: 1;
-  padding: 0 20px;
+  padding: 8px 16px;
   background: rgba(0, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(0, 255, 255, 0.08);
@@ -154,9 +156,9 @@
 
 /* ZONE 4: TRIGGERS (The Gate) */
 .zone-triggers {
-  gap: 10px;
-  justify-content: flex-end;
-  padding-right: 8px;
+  gap: 8px;
+  justify-content: center;
+  padding: 8px;
 }
 
 .trigger-btn {
@@ -165,8 +167,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 100%;
   background: rgba(30, 30, 40, 0.8);
   border: 2px solid rgba(100, 100, 120, 0.3);
   border-radius: 8px;
@@ -175,13 +177,13 @@
 }
 
 .trigger-btn .trigger-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 .trigger-btn .trigger-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -215,11 +217,11 @@
   filter: drop-shadow(0 0 4px #4ade80);
 }
 
-/* Blackout in Triggers - Override for square shape */
+/* Blackout in Triggers - Override for matching shape */
 .zone-triggers .blackout-master {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
+  width: 80px;
+  height: 100%;
+  min-width: 80px;
   padding: 0;
   flex-direction: column;
   gap: 4px;
@@ -227,12 +229,12 @@
 }
 
 .zone-triggers .blackout-master .blackout-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 .zone-triggers .blackout-master .blackout-text {
-  font-size: 8px;
+  font-size: 9px;
   letter-spacing: 0.5px;
 }
 
@@ -531,39 +533,40 @@
   height: 100%;
 }
 
-/* WAVE 1131: Compressed Vibe Selector in zone */
+/* WAVE 1131: Vibe Selector in zone - horizontal with labels */
 .zone-vibes-mood .vibe-selector-compact {
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  height: 100%;
 }
 
 .zone-vibes-mood .vibe-label-header {
-  display: none; /* Hide "VIBE" header in compressed mode */
+  display: none;
 }
 
 .zone-vibes-mood .vibe-buttons-row {
-  gap: 4px;
-  flex: none;
+  gap: 6px;
+  flex: 1;
+  height: 100%;
 }
 
 .zone-vibes-mood .vibe-btn-compact {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
-  flex: none;
-  padding: 4px;
+  flex: 1;
+  height: 100%;
+  min-width: 60px;
+  min-height: unset;
+  padding: 6px;
   border-radius: 8px;
 }
 
 .zone-vibes-mood .vibe-btn-compact .vibe-icon {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .zone-vibes-mood .vibe-btn-compact .vibe-label {
-  display: none; /* Hide text label - use tooltip */
+  font-size: 9px;
 }
 
 .zone-vibes-mood .vibe-btn-compact.active::after {

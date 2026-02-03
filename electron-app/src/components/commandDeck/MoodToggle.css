@@ -191,14 +191,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * WAVE 1131: COMPRESSED MODE for zone-vibes-mood
+ * WAVE 1131: ZONE MODE for zone-vibes-mood
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .zone-vibes-mood .mood-toggle {
   flex-direction: row;
   padding: 0;
   gap: 4px;
-  height: auto;
+  height: 100%;
 }
 
 .zone-vibes-mood .mood-toggle-label {
@@ -206,25 +206,25 @@
 }
 
 .zone-vibes-mood .mood-toggle-buttons {
-  padding: 2px;
+  padding: 4px;
   gap: 4px;
-  background: transparent;
-  border: none;
+  background: rgba(0, 0, 0, 0.2);
+  height: 100%;
 }
 
 .zone-vibes-mood .mood-btn {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  padding: 4px;
+  width: auto;
+  height: 100%;
+  min-width: 50px;
+  padding: 6px 10px;
   border-radius: 6px;
 }
 
 .zone-vibes-mood .mood-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .zone-vibes-mood .mood-label {
-  display: none;
+  font-size: 8px;
 }

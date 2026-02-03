@@ -194,13 +194,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   
   /**
    * Delete a user fixture via IPC
-   * System fixtures cannot be deleted
+   * Note: Frontend is responsible for checking fixture.source before calling
    */
   deleteUserFixture: async (fixtureId: string) => {
-    // Check if it's a system fixture
-    if (get().isSystemFixture(fixtureId)) {
-      return { success: false, error: 'Cannot delete system fixtures' }
-    }
+    // WAVE 1120.3: Removed isSystemFixture check - it was causing false positives
+    // when fixtures had same ID in both system and user arrays.
+    // The frontend checks fixture.source === 'user' before calling this.
+    // The backend (IPC) will also reject if the file doesn't exist in user folder.
     
     if (!window.lux?.library?.deleteUser) {
       return { success: false, error: 'IPC bridge not available' }

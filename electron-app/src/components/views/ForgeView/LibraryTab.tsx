@@ -184,12 +184,18 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
       console.warn('[LibraryTab] ⚠️ Cannot delete system fixture')
       return
     }
+    console.log(`[LibraryTab] 🗑️ Opening delete dialog for: ${fixture.name} (${fixture.id})`)
     setDeleteConfirmId(fixture.id)
   }, [])
   
   const handleConfirmDelete = useCallback(async () => {
-    if (!deleteConfirmId) return
-    await deleteUserFixture(deleteConfirmId)
+    console.log(`[LibraryTab] 🗑️ Confirming delete for ID: ${deleteConfirmId}`)
+    if (!deleteConfirmId) {
+      console.warn('[LibraryTab] ⚠️ No deleteConfirmId set!')
+      return
+    }
+    const result = await deleteUserFixture(deleteConfirmId)
+    console.log(`[LibraryTab] 🗑️ Delete result:`, result)
     setDeleteConfirmId(null)
   }, [deleteConfirmId, deleteUserFixture])
   

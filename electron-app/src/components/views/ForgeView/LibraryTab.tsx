@@ -104,8 +104,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     loadFromDisk,
     deleteUserFixture, 
     saveUserFixture,
-    isSystemFixture,
-    getAllFixtures
+    // Note: isSystemFixture not used - we check fixture.source directly
   } = useLibraryStore()
   
   // Load fixtures on mount
@@ -179,13 +178,14 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     setCloneName('')
   }, [cloneDialogFixture, cloneName, saveUserFixture, onSelectFixture])
   
-  const handleDelete = useCallback((fixtureId: string) => {
-    if (isSystemFixture(fixtureId)) {
+  const handleDelete = useCallback((fixture: LibraryFixture) => {
+    // Use fixture.source directly - the source of truth from IPC load
+    if (fixture.source === 'system') {
       console.warn('[LibraryTab] ⚠️ Cannot delete system fixture')
       return
     }
-    setDeleteConfirmId(fixtureId)
-  }, [isSystemFixture])
+    setDeleteConfirmId(fixture.id)
+  }, [])
   
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteConfirmId) return
@@ -331,7 +331,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
                 {fixture.source === 'user' && (
                   <button 
                     className="action-btn delete"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(fixture.id) }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(fixture) }}
                     title="Delete"
                   >
                     <Trash2 size={14} />

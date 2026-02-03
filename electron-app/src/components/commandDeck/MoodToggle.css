@@ -189,3 +189,42 @@
     min-width: 40px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 1131: COMPRESSED MODE for zone-vibes-mood
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.zone-vibes-mood .mood-toggle {
+  flex-direction: row;
+  padding: 0;
+  gap: 4px;
+  height: auto;
+}
+
+.zone-vibes-mood .mood-toggle-label {
+  display: none;
+}
+
+.zone-vibes-mood .mood-toggle-buttons {
+  padding: 2px;
+  gap: 4px;
+  background: transparent;
+  border: none;
+}
+
+.zone-vibes-mood .mood-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.zone-vibes-mood .mood-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.zone-vibes-mood .mood-label {
+  display: none;
+}

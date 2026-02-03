@@ -1,16 +1,17 @@
 /**
- * 🎛️ THE COMMAND DECK - WAVE 700.4: THE COCKPIT REDESIGN
+ * 🎛️ THE COMMAND DECK - WAVE 1131: REFORGED
  * Bottom control bar for live performance - "THE FLIGHT STICK"
  * 
- * Layout (WAVE 700.4 - Cockpit Redesign):
- * [CONSCIOUSNESS] | [VIBES] | [MOOD TOGGLE] | [BLACKOUT] | [GRAND MASTER]
+ * Layout (WAVE 1131 - Command Deck Reforged):
+ * [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ]
  * 
- * Moved to StatusBar (top): BPM, Energy, Strike, Debug
+ * Grid: 0.8fr 2fr 3fr 1.5fr (Master is protagonist)
  * 
- * Height: 140px
+ * Height: 80px (compact, dense)
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { Zap, Sparkles, Power } from 'lucide-react'
 import { useEffectsStore } from '../../stores/effectsStore'
 import { useControlStore, selectAIEnabled } from '../../stores/controlStore'
 import { GrandMasterSlider } from './GrandMasterSlider'
@@ -25,6 +26,9 @@ export const CommandDeck: React.FC = () => {
   // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
   const aiEnabled = useControlStore(selectAIEnabled)
   const toggleAI = useControlStore(state => state.toggleAI)
+  
+  // Output GO state
+  const [outputEnabled, setOutputEnabled] = useState(true)
   
   // Arbiter status state
   const [arbiterStatus, setArbiterStatus] = useState<{
@@ -104,59 +108,70 @@ export const CommandDeck: React.FC = () => {
     }
   }, [aiEnabled, toggleAI])
 
+  // 🚦 WAVE 1131: Output GO toggle handler
+  // Note: Full backend integration pending - for now it controls local state
+  const handleOutputToggle = useCallback(async () => {
+    const newState = !outputEnabled
+    setOutputEnabled(newState)
+    
+    // TODO: Integrate with arbiter when IPC method is available
+    // await window.lux?.arbiter?.setOutputEnabled?.(newState)
+    console.log(`[CommandDeck] 🚦 Output ${newState ? 'ENABLED ✅' : 'PAUSED ⏸️'}`)
+  }, [outputEnabled])
+
   return (
-    <footer className={`command-deck command-deck-v2 ${blackout ? 'blackout-active' : ''}`}>
+    <footer className={`command-deck command-deck-reforged ${blackout ? 'blackout-active' : ''}`}>
       {/* ═══════════════════════════════════════════════════════════════════
-       * BLOCK 1: EL CEREBRO - Consciousness Toggle
+       * ZONE 1: INTELLIGENCE - Mode Toggle (Tech Badge)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="deck-section deck-consciousness">
+      <div className="deck-zone zone-intelligence">
         <button
-          className={`consciousness-btn ${aiEnabled ? 'active' : 'inactive'}`}
+          className={`intelligence-badge ${aiEnabled ? 'conscious' : 'reactive'}`}
           onClick={handleConsciousnessToggle}
-          title={aiEnabled ? 'Desactivar Consciencia (Solo Física Reactiva)' : 'Activar Consciencia (Selene V2)'}
+          title={aiEnabled ? 'CONSCIOUS: AI-driven lighting' : 'REACTIVE: Physics-only mode'}
         >
-          <span 
-            className="consciousness-dot" 
-            style={{
-              backgroundColor: aiEnabled ? '#4ADE80' : '#EF4444',
-              boxShadow: aiEnabled ? '0 0 12px #4ADE80' : '0 0 8px #EF4444',
-            }} 
-          />
-          <span className="consciousness-label">
-            {aiEnabled ? '🧠 CONSCIOUS' : '⚙️ REACTIVE'}
-          </span>
+          {aiEnabled ? (
+            <Sparkles className="intel-icon" />
+          ) : (
+            <Zap className="intel-icon" />
+          )}
+          <span className="intel-label">{aiEnabled ? 'AI' : 'RX'}</span>
         </button>
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * BLOCK 2: EL CONTEXTO - Vibe Selector (Compact)
+       * ZONE 2: VIBES + MOOD (Compressed)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="deck-section deck-vibes">
+      <div className="deck-zone zone-vibes-mood">
         <VibeSelectorCompact />
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * BLOCK 3: LA ACTITUD - Mood Toggle [NUEVO WAVE 700.4]
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="deck-section deck-mood">
+        <div className="zone-divider" />
         <MoodToggle />
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * BLOCK 4: EMERGENCIA - Blackout
+       * ZONE 3: GRAND MASTER (THE PROTAGONIST)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="deck-section deck-emergency">
-        <BlackoutButton />
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * BLOCK 5: MASTER - Grand Master Slider
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="deck-section deck-grandmaster">
+      <div className="deck-zone zone-grandmaster">
         <GrandMasterSlider 
           value={arbiterStatus.grandMaster}
           onChange={handleGrandMasterChange}
         />
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * ZONE 4: TRIGGERS - GO + BLACKOUT (The Gate)
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="deck-zone zone-triggers">
+        <button
+          className={`trigger-btn trigger-go ${outputEnabled ? 'active' : ''}`}
+          onClick={handleOutputToggle}
+          title={outputEnabled ? 'Output ENABLED - Click to pause' : 'Output PAUSED - Click to go live'}
+        >
+          <Power className="trigger-icon" />
+          <span className="trigger-label">GO</span>
+        </button>
+        
+        <BlackoutButton />
       </div>
     </footer>
   )

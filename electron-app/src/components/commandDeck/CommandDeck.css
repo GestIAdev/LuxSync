@@ -1,18 +1,16 @@
 ﻿/**
- *  COMMAND DECK - CSS - WAVE 700.4: THE COCKPIT REDESIGN
- * Physical console feel - dense blocks, tactile buttons
- * Height: 140px, Grid Layout for 1920px+ screens
- * 
- * Layout: [CONSCIOUS] | [VIBES] | [MOOD] | [BLACKOUT] | [MASTER]
+ *  COMMAND DECK - CSS - WAVE 1131: REFORGED
+ * New layout: [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ]
+ * Grid: 0.8fr 2fr 3fr 1.5fr (Master is protagonist)
+ * Height: 80px (compact)
  */
 
-/* 
-   MAIN CONTAINER - GRID ASIMÉTRICO (WAVE 700.4)
-    */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTAINER - WAVE 1131 GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .command-deck {
   display: grid;
-  /* OLD: Source | Master | Vibes (Flex) | Panic | Status | Blackout */
   grid-template-columns: 140px 260px 1fr 320px 180px 130px;
   gap: 12px;
   padding: 10px 16px;
@@ -27,10 +25,14 @@
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* WAVE 700.4: NEW LAYOUT - 5 columns */
-.command-deck.command-deck-v2 {
-  /* Columns: Conscious | Vibes | Mood | Blackout | Master */
-  grid-template-columns: 160px 1fr 240px 130px 200px;
+/* WAVE 1131: REFORGED LAYOUT */
+.command-deck.command-deck-reforged {
+  /* [ INTELLIGENCE ] [ VIBES_MOOD ] [ GRAND_MASTER ] [ TRIGGERS ] */
+  grid-template-columns: 80px 2fr 3fr 1.5fr;
+  height: 80px;
+  min-height: 80px;
+  padding: 8px 16px;
+  gap: 16px;
 }
 
 .command-deck.blackout-active {
@@ -40,17 +42,214 @@
     inset 0 0 50px rgba(255, 0, 0, 0.05);
 }
 
-/* 
-   DECK SECTIONS - Module Encapsulation
-   WAVE 431.5: Perfect Vertical Alignment
-    */
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 1131: DECK ZONES (New Architecture)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.deck-zone {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px;
+}
+
+/* ZONE 1: INTELLIGENCE (Tech Badge) */
+.zone-intelligence {
+  justify-content: center;
+}
+
+.intelligence-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 64px;
+  height: 64px;
+  background: rgba(30, 30, 40, 0.8);
+  border: 2px solid rgba(100, 100, 120, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.intelligence-badge .intel-icon {
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s ease;
+}
+
+.intelligence-badge .intel-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+/* REACTIVE State (OFF) - Amber/Gray */
+.intelligence-badge.reactive {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.intelligence-badge.reactive .intel-icon {
+  color: #fbbf24;
+}
+
+.intelligence-badge.reactive .intel-label {
+  color: #fbbf24;
+}
+
+.intelligence-badge.reactive:hover {
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+/* CONSCIOUS State (ON) - Violet/Neon */
+.intelligence-badge.conscious {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.12);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+}
+
+.intelligence-badge.conscious .intel-icon {
+  color: #a855f7;
+  filter: drop-shadow(0 0 6px #a855f7);
+}
+
+.intelligence-badge.conscious .intel-label {
+  color: #a855f7;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.intelligence-badge.conscious:hover {
+  border-color: rgba(168, 85, 247, 0.9);
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+}
+
+/* ZONE 2: VIBES + MOOD (Compressed) */
+.zone-vibes-mood {
+  gap: 12px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.zone-divider {
+  width: 1px;
+  height: 60%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ZONE 3: GRAND MASTER (Protagonist) */
+.zone-grandmaster {
+  flex: 1;
+  padding: 0 20px;
+  background: rgba(0, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 255, 0.08);
+}
+
+/* ZONE 4: TRIGGERS (The Gate) */
+.zone-triggers {
+  gap: 10px;
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+.trigger-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 64px;
+  height: 64px;
+  background: rgba(30, 30, 40, 0.8);
+  border: 2px solid rgba(100, 100, 120, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trigger-btn .trigger-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.trigger-btn .trigger-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* GO Button - Green */
+.trigger-btn.trigger-go {
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.trigger-btn.trigger-go .trigger-icon,
+.trigger-btn.trigger-go .trigger-label {
+  color: rgba(74, 222, 128, 0.5);
+}
+
+.trigger-btn.trigger-go:hover {
+  border-color: rgba(74, 222, 128, 0.6);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.trigger-btn.trigger-go.active {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+  box-shadow: 
+    0 0 20px rgba(74, 222, 128, 0.4),
+    inset 0 0 15px rgba(74, 222, 128, 0.1);
+}
+
+.trigger-btn.trigger-go.active .trigger-icon,
+.trigger-btn.trigger-go.active .trigger-label {
+  color: #4ade80;
+  filter: drop-shadow(0 0 4px #4ade80);
+}
+
+/* Blackout in Triggers - Override for square shape */
+.zone-triggers .blackout-master {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  padding: 0;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 8px;
+}
+
+.zone-triggers .blackout-master .blackout-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.zone-triggers .blackout-master .blackout-text {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+
+.zone-triggers .blackout-master .blackout-shortcut {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEGACY: DECK SECTIONS (Keep for backward compat)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .deck-section {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  height: calc(100% - 16px);  /* Account for padding */
+  height: calc(100% - 16px);
   min-height: 108px;
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.02);
@@ -165,7 +364,7 @@
 }
 
 /* 
-   GRAND MASTER - FAT FADER
+   GRAND MASTER - WAVE 1131: EXPANDED RAIL FADER
     */
 
 .deck-grandmaster {
@@ -174,6 +373,11 @@
   gap: 12px;
   padding: 8px 16px;
   height: 100%;
+}
+
+/* WAVE 1131: Grand Master in Zone */
+.zone-grandmaster .grand-master {
+  gap: 16px;
 }
 
 .grand-master {
@@ -206,78 +410,93 @@
   flex: 1;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
+/* WAVE 1131: Enhanced Slider Rail */
 .gm-slider {
   width: 100%;
-  height: 14px;
+  height: 18px;
   -webkit-appearance: none;
   appearance: none;
   background: linear-gradient(180deg, 
-    rgba(20, 20, 30, 0.9) 0%, 
-    rgba(30, 30, 45, 0.9) 100%
+    rgba(15, 15, 25, 0.95) 0%, 
+    rgba(25, 25, 40, 0.95) 50%,
+    rgba(15, 15, 25, 0.95) 100%
   );
-  border-radius: 7px;
+  border-radius: 9px;
   outline: none;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(0, 255, 255, 0.1);
 }
 
-/* Fat Metallic Thumb */
+/* WAVE 1131: Bigger Metallic Thumb for easy grab */
 .gm-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 44px;
+  width: 28px;
+  height: 52px;
   background: linear-gradient(180deg, 
-    #555 0%, 
-    #333 40%, 
-    #444 60%, 
+    #666 0%, 
+    #444 30%, 
+    #555 50%,
+    #333 70%, 
     #222 100%
   );
-  border-radius: 4px;
-  cursor: pointer;
+  border-radius: 6px;
+  cursor: grab;
   border: 2px solid #00ffff;
   box-shadow: 
-    0 0 15px rgba(0, 255, 255, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    0 0 20px rgba(0, 255, 255, 0.5),
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
   transition: all 0.15s ease;
 }
 
 .gm-slider::-webkit-slider-thumb:hover {
-  border-color: #00ffff;
+  border-color: #22d3ee;
   box-shadow: 
-    0 0 25px rgba(0, 255, 255, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    0 0 30px rgba(0, 255, 255, 0.7),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.gm-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.05);
 }
 
 .gm-slider::-moz-range-thumb {
-  width: 22px;
-  height: 44px;
-  background: linear-gradient(180deg, #555 0%, #333 40%, #444 60%, #222 100%);
-  border-radius: 4px;
-  cursor: pointer;
+  width: 28px;
+  height: 52px;
+  background: linear-gradient(180deg, #666 0%, #444 30%, #555 50%, #333 70%, #222 100%);
+  border-radius: 6px;
+  cursor: grab;
   border: 2px solid #00ffff;
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
 }
 
-/* Track fill */
+/* WAVE 1131: Track fill with gradient */
 .gm-slider::-webkit-slider-runnable-track {
-  height: 14px;
+  height: 18px;
   background: linear-gradient(90deg, 
-    rgba(0, 255, 255, 0.3) 0%, 
-    rgba(0, 255, 255, 0.1) var(--gm-progress, 100%), 
+    rgba(0, 255, 255, 0.4) 0%,
+    rgba(34, 211, 238, 0.3) calc(var(--gm-progress, 100%) * 0.5),
+    rgba(255, 255, 255, 0.2) var(--gm-progress, 100%), 
     transparent var(--gm-progress, 100%)
   );
-  border-radius: 7px;
+  border-radius: 9px;
 }
 
-/* Digital Value Display */
+/* Digital Value Display - Compact for 80px height */
 .gm-value-display {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #00ffff;
   text-shadow: 
@@ -310,6 +529,45 @@
   gap: 6px;
   width: 100%;
   height: 100%;
+}
+
+/* WAVE 1131: Compressed Vibe Selector in zone */
+.zone-vibes-mood .vibe-selector-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.zone-vibes-mood .vibe-label-header {
+  display: none; /* Hide "VIBE" header in compressed mode */
+}
+
+.zone-vibes-mood .vibe-buttons-row {
+  gap: 4px;
+  flex: none;
+}
+
+.zone-vibes-mood .vibe-btn-compact {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  flex: none;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.zone-vibes-mood .vibe-btn-compact .vibe-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.zone-vibes-mood .vibe-btn-compact .vibe-label {
+  display: none; /* Hide text label - use tooltip */
+}
+
+.zone-vibes-mood .vibe-btn-compact.active::after {
+  height: 3px;
 }
 
 .vibe-label-header {

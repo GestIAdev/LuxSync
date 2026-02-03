@@ -137,25 +137,10 @@ const Loading3DFallback: React.FC = () => (
 // FIXTURE TEMPLATES FOR DRAG & DROP
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface FixtureTemplate {
-  type: FixtureV2['type']
-  name: string
-  icon: string
-  channelCount: number
-}
-
-const FIXTURE_TEMPLATES: FixtureTemplate[] = [
-  { type: 'moving-head', name: 'Moving Head', icon: '🎯', channelCount: 16 },
-  { type: 'par', name: 'LED Par', icon: '💡', channelCount: 8 },
-  { type: 'wash', name: 'Wash Light', icon: '🌊', channelCount: 12 },
-  { type: 'strobe', name: 'Strobe', icon: '⚡', channelCount: 4 },
-  { type: 'laser', name: 'Laser', icon: '🔺', channelCount: 8 },
-  { type: 'blinder', name: 'Blinder', icon: '☀️', channelCount: 2 },
-]
-
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURE LIBRARY SIDEBAR (LEFT) - With Drag Source
 // WAVE 368: Now reads real .fxt files from library!
+// WAVE 1117: DELETED Quick Templates (FixtureTemplate interface + FIXTURE_TEMPLATES array)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Library fixture loaded from .fxt file
@@ -321,26 +306,7 @@ const FixtureLibrarySidebar: React.FC<FixtureLibrarySidebarProps> = ({ onLoadLib
           <span>FORGE NEW FIXTURE</span>
         </button>
         
-        {/* WAVE 368.5: Collapsible Sections */}
-        
-        {/* Quick Templates - Collapsed by default */}
-        <CollapsibleSection title="Quick Templates" defaultOpen={false} badge={FIXTURE_TEMPLATES.length}>
-          <div className="template-grid">
-            {FIXTURE_TEMPLATES.map(template => (
-              <div
-                key={template.type}
-                className="fixture-template"
-                draggable
-                onDragStart={(e) => handleDragStart(e, template.type)}
-                onDragEnd={handleDragEnd}
-                title={`Drag ${template.name} to stage`}
-              >
-                <span className="template-icon">{template.icon}</span>
-                <span className="template-name">{template.name}</span>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
+        {/* WAVE 1117: DELETED Quick Templates section (no functionality, wasted space) */}
         
         {/* User Library - Open by default, most important */}
         <CollapsibleSection 

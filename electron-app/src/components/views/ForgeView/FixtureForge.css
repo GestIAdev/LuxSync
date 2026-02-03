@@ -326,6 +326,7 @@
   background: #27272a;
   border-radius: 2px;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .control-row input[type="range"]::-webkit-slider-thumb {
@@ -796,12 +797,14 @@
   height: 6px;
   border-radius: 3px;
   -webkit-appearance: none;
+  appearance: none;
   cursor: pointer;
 }
 
 .accel-slider::-webkit-slider-thumb,
 .velocity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 16px;
   height: 16px;
   background: white;
@@ -1404,4 +1407,356 @@
   color: #71717a;
   font-style: italic;
   margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAVE 1120: THE COCKPIT OVERHAUL - Zero Bloat UI
+   "Inteligencia Derivada" - High-density technical dashboard
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cockpit-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+}
+
+.cockpit-identity {
+  grid-row: 1 / 2;
+  grid-column: 1 / 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cockpit-capabilities {
+  grid-row: 1 / 2;
+  grid-column: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cockpit-dmx-ribbon {
+  grid-row: 2 / 3;
+  grid-column: 1 / 3;
+}
+
+.cockpit-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #18181b;
+  border-left: 3px solid #22d3ee;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #a1a1aa;
+  text-transform: uppercase;
+}
+
+.cockpit-section-header svg {
+  width: 16px;
+  height: 16px;
+  color: #22d3ee;
+}
+
+.cockpit-section-header .auto-badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: rgba(34, 211, 238, 0.15);
+  border: 1px solid #22d3ee;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  color: #22d3ee;
+}
+
+.cockpit-section-header .ribbon-count {
+  margin-left: auto;
+  color: #71717a;
+  font-weight: 400;
+}
+
+/* COCKPIT FORM */
+.cockpit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cockpit-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cockpit-input-group label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cockpit-input-group input {
+  padding: 10px 12px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  color: #e4e4e7;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.cockpit-input-group input:focus {
+  outline: none;
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
+}
+
+.cockpit-input-group input::placeholder {
+  color: #52525b;
+}
+
+/* VISUAL TYPE SELECTOR */
+.type-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.type-selector-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-selector-btn:hover {
+  background: #27272a;
+  border-color: var(--type-color, #22d3ee);
+}
+
+.type-selector-btn.active {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: var(--type-color, #22d3ee);
+  box-shadow: 
+    0 0 12px rgba(34, 211, 238, 0.2),
+    inset 0 0 20px rgba(34, 211, 238, 0.05);
+}
+
+.type-selector-btn .type-icon {
+  width: 24px;
+  height: 24px;
+  color: #71717a;
+  transition: all 0.2s;
+}
+
+.type-selector-btn.active .type-icon,
+.type-selector-btn:hover .type-icon {
+  color: var(--type-color, #22d3ee);
+}
+
+.type-selector-btn .type-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.type-selector-btn .type-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.type-selector-btn.active .type-label,
+.type-selector-btn:hover .type-label {
+  color: var(--type-color, #22d3ee);
+}
+
+/* CAPABILITIES MATRIX */
+.capabilities-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  background: #0f0f12;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+}
+
+.capability-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.capability-badge.inactive {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.capability-badge.active {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: var(--cap-color, #22d3ee);
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.15);
+}
+
+.capability-badge .cap-icon {
+  width: 20px;
+  height: 20px;
+  color: #52525b;
+  transition: all 0.3s;
+}
+
+.capability-badge.active .cap-icon {
+  color: var(--cap-color, #22d3ee);
+}
+
+.capability-badge .cap-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.capability-badge .cap-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #52525b;
+  letter-spacing: 0.5px;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.capability-badge.active .cap-label {
+  color: var(--cap-color, #22d3ee);
+}
+
+.capability-badge .cap-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6rem;
+  color: var(--cap-color, #22d3ee);
+}
+
+.color-mix-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--cap-color, #ef4444);
+  border-radius: 4px;
+  grid-column: span 2;
+}
+
+.color-mix-indicator .mix-type {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--cap-color, #ef4444);
+  letter-spacing: 2px;
+}
+
+.channel-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  margin-top: auto;
+}
+
+.channel-summary .summary-label {
+  font-size: 0.7rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.channel-summary .summary-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #22d3ee;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* DMX RIBBON */
+.cockpit-dmx-ribbon {
+  padding-top: 8px;
+}
+
+.dmx-ribbon-track {
+  display: flex;
+  gap: 2px;
+  padding: 12px;
+  background: #0f0f12;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  overflow-x: auto;
+  min-height: 60px;
+}
+
+.dmx-ribbon-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 44px;
+  background: #18181b;
+  border: 1px solid var(--ch-color, #27272a);
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.dmx-ribbon-block:hover {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: var(--ch-color, #22d3ee);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.2);
+}
+
+.dmx-ribbon-block .block-ch {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ch-color, #71717a);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.dmx-ribbon-block .block-type {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dmx-ribbon-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: #52525b;
+  font-size: 0.75rem;
+  font-style: italic;
 }

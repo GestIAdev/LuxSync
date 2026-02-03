@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
-// ⚡ WAVE 27: Fixture Definition Types (Fixture Forge)
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 1120: SYNCHRONIZED WITH FixtureDefinition.ts - SINGLE SOURCE OF TRUTH
+// ═══════════════════════════════════════════════════════════════════════════
 type ChannelType = 
   | 'dimmer'
   | 'strobe'
@@ -11,15 +13,21 @@ type ChannelType =
   | 'white'
   | 'amber'
   | 'uv'
+  | 'cyan'
+  | 'magenta'
+  | 'yellow'
   | 'pan'
   | 'pan_fine'
   | 'tilt'
   | 'tilt_fine'
   | 'color_wheel'
   | 'gobo'
+  | 'gobo_rotation'
   | 'prism'
+  | 'prism_rotation'
   | 'focus'
   | 'zoom'
+  | 'frost'
   | 'speed'
   | 'macro'
   | 'control'

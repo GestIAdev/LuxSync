@@ -54,7 +54,7 @@ import {
   MotorType,
   InstallationOrientation
 } from '../../../core/stage/ShowFileV2'
-import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor } from '../../../types/FixtureDefinition'
+import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, DerivedCapabilities } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
 import { useLibraryStore } from '../../../stores/libraryStore'
@@ -146,17 +146,102 @@ const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
   ],
 }
 
-const FIXTURE_TYPES = [
-  'Moving Head', 
-  'Par', 
-  'Wash',
-  'Bar', 
-  'Strobe', 
-  'Spot', 
-  'Laser', 
-  'Blinder',
-  'Scanner',
-  'Other'
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 1120: FIXTURE TYPE CONFIG - Visual Type Selector
+// "Cyberpunk Industrial" icons for each fixture class
+// ═══════════════════════════════════════════════════════════════════════════
+interface FixtureTypeConfig {
+  value: FixtureType
+  label: string
+  icon: JSX.Element
+  color: string
+}
+
+const FIXTURE_TYPES: FixtureTypeConfig[] = [
+  { 
+    value: 'moving-head', 
+    label: 'Moving Head', 
+    color: '#22d3ee',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M8 14l-2 8M16 14l2 8M10 12v4M14 12v4"/></svg>
+  },
+  { 
+    value: 'scanner', 
+    label: 'Scanner', 
+    color: '#a855f7',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="12" height="8" rx="1"/><path d="M12 12v6M8 22h8M12 18l4 4M12 18l-4 4"/></svg>
+  },
+  { 
+    value: 'par', 
+    label: 'Par', 
+    color: '#ef4444',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>
+  },
+  { 
+    value: 'bar', 
+    label: 'LED Bar', 
+    color: '#22c55e',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="8" width="20" height="8" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+  },
+  { 
+    value: 'wash', 
+    label: 'Wash', 
+    color: '#3b82f6',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="10" rx="8" ry="5"/><path d="M4 10c0 6 8 10 8 10s8-4 8-10"/></svg>
+  },
+  { 
+    value: 'strobe', 
+    label: 'Strobe', 
+    color: '#fbbf24',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+  },
+  { 
+    value: 'effect', 
+    label: 'Effect', 
+    color: '#ec4899',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l2 7h7l-5.5 4 2 7-5.5-4-5.5 4 2-7L3 9h7z"/></svg>
+  },
+  { 
+    value: 'laser', 
+    label: 'Laser', 
+    color: '#14b8a6',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12h4M18 12h4M12 2v4M12 18v4"/><circle cx="12" cy="12" r="3"/><path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+  },
+  { 
+    value: 'blinder', 
+    label: 'Blinder', 
+    color: '#f97316',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="8" height="12" rx="1"/><rect x="13" y="6" width="8" height="12" rx="1"/><circle cx="7" cy="12" r="2" fill="currentColor"/><circle cx="17" cy="12" r="2" fill="currentColor"/></svg>
+  },
+  { 
+    value: 'generic', 
+    label: 'Generic', 
+    color: '#71717a',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+  },
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 1120: CAPABILITY BADGES CONFIG
+// Auto-generated badges based on channel analysis
+// ═══════════════════════════════════════════════════════════════════════════
+interface CapabilityBadge {
+  key: keyof DerivedCapabilities
+  label: string
+  icon: JSX.Element
+  color: string
+}
+
+const CAPABILITY_BADGES: CapabilityBadge[] = [
+  { key: 'hasPanTilt', label: 'PAN/TILT', color: '#22d3ee', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v8M12 22v-8M2 12h8M22 12h-8"/><circle cx="12" cy="12" r="3"/></svg> },
+  { key: 'hasColorMixing', label: 'COLOR MIX', color: '#ef4444', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="10" r="5"/><circle cx="16" cy="10" r="5"/><circle cx="12" cy="16" r="5"/></svg> },
+  { key: 'hasColorWheel', label: 'WHEEL', color: '#a855f7', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="6" r="2"/><circle cx="17" cy="14" r="2"/><circle cx="7" cy="14" r="2"/></svg> },
+  { key: 'hasGobos', label: 'GOBO', color: '#fbbf24', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg> },
+  { key: 'hasPrism', label: 'PRISM', color: '#ec4899', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 22 20 2 20"/></svg> },
+  { key: 'hasZoom', label: 'ZOOM', color: '#3b82f6', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/><path d="M8 11h6M11 8v6"/></svg> },
+  { key: 'hasFocus', label: 'FOCUS', color: '#14b8a6', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="10"/></svg> },
+  { key: 'hasShutter', label: 'SHUTTER', color: '#f97316', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+  { key: 'hasDimmer', label: 'DIMMER', color: '#71717a', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg> },
+  { key: 'is16bit', label: '16-BIT', color: '#22c55e', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="6" width="16" height="12" rx="2"/><text x="12" y="15" fontSize="8" fill="currentColor" textAnchor="middle">16</text></svg> },
 ]
 
 const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description: string; icon: string }[] = [
@@ -641,98 +726,141 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
           />
         )}
         
-        {/* GENERAL TAB */}
+        {/* GENERAL TAB - WAVE 1120: THE COCKPIT OVERHAUL */}
         {activeTab === 'general' && (
-          <div className="forge-general-panel">
-            <div className="forge-form-grid">
-              <div className="forge-input-group">
-                <label>Manufacturer</label>
-                <input
-                  type="text"
-                  placeholder="ADJ, Chauvet, Martin..."
-                  value={fixture.manufacturer || ''}
-                  onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
-                />
+          <div className="forge-general-panel cockpit-layout">
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION A: IDENTITY & CLASSIFICATION (LEFT COLUMN)
+                ═══════════════════════════════════════════════════════════════ */}
+            <div className="cockpit-identity">
+              <div className="cockpit-section-header">
+                <Factory size={16} />
+                <span>IDENTITY</span>
               </div>
               
-              <div className="forge-input-group">
-                <label>Model Name *</label>
-                <input
-                  type="text"
-                  placeholder="Vizi Beam 5RX"
-                  value={fixture.name || ''}
-                  onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
-                />
+              <div className="cockpit-form">
+                <div className="cockpit-input-group">
+                  <label>Manufacturer</label>
+                  <input
+                    type="text"
+                    placeholder="ADJ, Chauvet, Martin..."
+                    value={fixture.manufacturer || ''}
+                    onChange={(e) => setFixture(prev => ({ ...prev, manufacturer: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="cockpit-input-group">
+                  <label>Model Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Vizi Beam 5RX"
+                    value={fixture.name || ''}
+                    onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
               </div>
               
-              <div className="forge-input-group">
-                <label>Fixture Type</label>
-                <select
-                  value={fixture.type || 'Other'}
-                  onChange={(e) => setFixture(prev => ({ ...prev, type: e.target.value }))}
-                >
-                  {FIXTURE_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+              {/* VISUAL TYPE SELECTOR - Grid of icons */}
+              <div className="cockpit-section-header" style={{ marginTop: '16px' }}>
+                <Cpu size={16} />
+                <span>FIXTURE CLASS</span>
               </div>
               
-              <div className="forge-input-group">
-                <label>Channel Count</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={64}
-                  value={totalChannels}
-                  onChange={(e) => setTotalChannels(Math.max(1, Math.min(64, parseInt(e.target.value) || 1)))}
-                />
-              </div>
-              
-              <div className="forge-input-group full-width">
-                <label>
-                  <Palette size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                  Color Engine
-                </label>
-                <select
-                  value={colorEngine}
-                  onChange={(e) => setColorEngine(e.target.value as ColorEngineType)}
-                >
-                  {COLOR_ENGINE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.icon} {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="color-engine-description">
-                  {COLOR_ENGINE_OPTIONS.find(o => o.value === colorEngine)?.description}
-                </span>
+              <div className="type-selector-grid">
+                {FIXTURE_TYPES.map(typeConfig => (
+                  <button
+                    key={typeConfig.value}
+                    className={`type-selector-btn ${fixture.type === typeConfig.value ? 'active' : ''}`}
+                    style={{ '--type-color': typeConfig.color } as React.CSSProperties}
+                    onClick={() => setFixture(prev => ({ ...prev, type: typeConfig.value }))}
+                    title={typeConfig.label}
+                  >
+                    <span className="type-icon">{typeConfig.icon}</span>
+                    <span className="type-label">{typeConfig.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
             
-            {/* Preview Panel */}
-            <div className="forge-preview-panel">
-              <div className="preview-header">
-                <h3>Preview</h3>
-                <button onClick={() => setShowPreview(!showPreview)}>
-                  {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION B: CAPABILITIES MATRIX (CENTER - AUTO-GENERATED)
+                ═══════════════════════════════════════════════════════════════ */}
+            <div className="cockpit-capabilities">
+              <div className="cockpit-section-header">
+                <Sliders size={16} />
+                <span>CAPABILITIES</span>
+                <span className="auto-badge">AUTO</span>
               </div>
-              {showPreview && (
-                <div className="preview-canvas">
-                  <Suspense fallback={<div className="preview-loading">Loading 3D...</div>}>
-                    <FixturePreview3D
-                      fixtureType={fixture.type || 'Moving Head'}
-                      pan={previewPan}
-                      tilt={previewTilt}
-                      dimmer={previewDimmer}
-                      color={previewColor}
-                      strobeActive={false}
-                      showBeam={true}
-                      isStressTesting={isStressTesting}
-                    />
-                  </Suspense>
-                </div>
-              )}
+              
+              {(() => {
+                const caps = deriveCapabilities(fixture.channels)
+                return (
+                  <div className="capabilities-matrix">
+                    {CAPABILITY_BADGES.map(badge => {
+                      const isActive = caps[badge.key] as boolean
+                      return (
+                        <div
+                          key={badge.key}
+                          className={`capability-badge ${isActive ? 'active' : 'inactive'}`}
+                          style={{ '--cap-color': badge.color } as React.CSSProperties}
+                          title={`${badge.label}: ${isActive ? 'DETECTED' : 'Not found'}`}
+                        >
+                          <span className="cap-icon">{badge.icon}</span>
+                          <span className="cap-label">{badge.label}</span>
+                          {isActive && <span className="cap-check">✓</span>}
+                        </div>
+                      )
+                    })}
+                    
+                    {/* Color mixing type indicator */}
+                    {caps.hasColorMixing && (
+                      <div className="color-mix-indicator" style={{ '--cap-color': '#ef4444' } as React.CSSProperties}>
+                        <span className="mix-type">{caps.colorMixingType.toUpperCase()}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+              
+              {/* Channel count summary */}
+              <div className="channel-summary">
+                <span className="summary-label">DMX Footprint</span>
+                <span className="summary-value">{fixture.channels.length} CH</span>
+              </div>
+            </div>
+            
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION C: DMX RIBBON (BOTTOM - VISUAL FOOTPRINT)
+                ═══════════════════════════════════════════════════════════════ */}
+            <div className="cockpit-dmx-ribbon">
+              <div className="cockpit-section-header">
+                <Server size={16} />
+                <span>DMX RIBBON</span>
+                <span className="ribbon-count">{fixture.channels.length} channels</span>
+              </div>
+              
+              <div className="dmx-ribbon-track">
+                {fixture.channels.map((channel, idx) => {
+                  const category = getChannelCategory(channel.type)
+                  const color = getCategoryColor(category)
+                  return (
+                    <div
+                      key={idx}
+                      className="dmx-ribbon-block"
+                      style={{ '--ch-color': color } as React.CSSProperties}
+                      title={`CH${idx + 1}: ${channel.name || channel.type}`}
+                    >
+                      <span className="block-ch">{idx + 1}</span>
+                      <span className="block-type">{channel.type.slice(0, 3).toUpperCase()}</span>
+                    </div>
+                  )
+                })}
+                {fixture.channels.length === 0 && (
+                  <div className="dmx-ribbon-empty">
+                    No channels defined — Add in Channel Rack tab
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

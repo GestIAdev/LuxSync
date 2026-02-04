@@ -52,6 +52,9 @@ export class MasterArbiter extends EventEmitter {
         this._outputEnabled = false;
         // Fixtures (populated from HAL or StageStore)
         this.fixtures = new Map();
+        // 🥶 WAVE 1165: GHOST PROTOCOL - Last known position cache
+        // Used to freeze fixtures in place during blackout/silence instead of whipping to center
+        this.lastKnownPositions = new Map();
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
         // Pattern Engine (WAVE 376)
@@ -679,6 +682,8 @@ export class MasterArbiter extends EventEmitter {
             _crossfadeActive: crossfadeActive,
             _crossfadeProgress: crossfadeProgress,
         };
+        // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
+        this.lastKnownPositions.set(fixtureId, { pan: target.pan, tilt: target.tilt });
         return target;
     }
     /**
@@ -1156,7 +1161,8 @@ export class MasterArbiter extends EventEmitter {
         return null;
     }
     /**
-     * Create blackout target
+     * 🥶 WAVE 1165: GHOST PROTOCOL - Create blackout target with FREEZE
+     * Blackout = dimmer 0 + shutter closed, BUT position FREEZES in place
      */
     createBlackoutTarget(fixtureId, controlSources) {
         // All channels sourced from BLACKOUT layer
@@ -1164,12 +1170,16 @@ export class MasterArbiter extends EventEmitter {
         for (const ch of channels) {
             controlSources[ch] = ControlLayer.BLACKOUT;
         }
+        // 🥶 WAVE 1165: GHOST PROTOCOL - Get last known position to FREEZE in place
+        const lastPos = this.lastKnownPositions.get(fixtureId);
+        const freezePan = lastPos?.pan ?? 128;
+        const freezeTilt = lastPos?.tilt ?? 128;
         return {
             fixtureId,
             dimmer: 0,
             color: { r: 0, g: 0, b: 0 },
-            pan: 128,
-            tilt: 128,
+            pan: freezePan, // 🥶 FREEZE: Stay where you are
+            tilt: freezeTilt, // 🥶 FREEZE: Stay where you are
             zoom: 128,
             focus: 128,
             speed: 0, // 🔥 WAVE 1008.4: Fast movement during blackout (0=fast)
@@ -1186,10 +1196,12 @@ export class MasterArbiter extends EventEmitter {
      * ALL fixtures are forced to safe values regardless of any other layer.
      * Different from manual blackout: this is a safety interlock, not a creative choice.
      *
+     * 🥶 WAVE 1165: GHOST PROTOCOL - FREEZE instead of WHIP
+     *
      * SAFE STATE:
      * - Dimmer: 0 (no light emission)
      * - Color: Black (no color)
-     * - Position: Center (128,128) - safe default, no wild movements
+     * - Position: LAST KNOWN (freeze in place) or Center if unknown
      * - Speed: 0 (fast) - if enabled later, respond quickly
      * - Color wheel: 0 (open/white)
      */
@@ -1200,12 +1212,16 @@ export class MasterArbiter extends EventEmitter {
         for (const ch of channels) {
             controlSources[ch] = ControlLayer.BLACKOUT; // Use BLACKOUT layer for compatibility
         }
+        // 🥶 WAVE 1165: GHOST PROTOCOL - Get last known position to FREEZE in place
+        const lastPos = this.lastKnownPositions.get(fixtureId);
+        const freezePan = lastPos?.pan ?? 128; // Default to center if no history
+        const freezeTilt = lastPos?.tilt ?? 128;
         return {
             fixtureId,
             dimmer: 0, // 🚫 No light
             color: { r: 0, g: 0, b: 0 }, // 🖤 Black
-            pan: 128, // 🎯 Center
-            tilt: 128, // 🎯 Center
+            pan: freezePan, // 🥶 FREEZE: Last known position
+            tilt: freezeTilt, // 🥶 FREEZE: Last known position
             zoom: 128, // 🔍 Mid zoom
             focus: 128, // 🔍 Mid focus
             speed: 0, // ⚡ Fast response when enabled

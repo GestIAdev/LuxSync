@@ -267,9 +267,11 @@ export class VibeMovementManager {
         }
         // Seleccionar patron
         const patternName = this.selectPattern(config, audio);
-        // Si energia muy baja y homeOnSilence, ir a home
+        // 🥶 WAVE 1165: GHOST PROTOCOL - FREEZE instead of HOME on silence
+        // When energy is very low, MAINTAIN last position instead of going to center
+        // This prevents the "whip to home" movement when audio stops
         if (audio.energy < 0.03 && config.homeOnSilence) {
-            return this.createHomeIntent(patternName);
+            return this.createFreezeIntent(patternName);
         }
         // PHASE CALCULATION - Beat-Locked (WAVE 1153 compatible)
         const patternPeriod = PATTERN_PERIOD[patternName] || 4;
@@ -409,6 +411,22 @@ export class VibeMovementManager {
             x: 0,
             y: 0,
             pattern: 'home',
+            speed: 0,
+            amplitude: 0,
+            _frequency: 0,
+            _phrase: Math.floor(this.barCount / 8),
+        };
+    }
+    /**
+     * 🥶 WAVE 1165: GHOST PROTOCOL - Create FREEZE intent
+     * Returns LAST KNOWN POSITION instead of going home
+     * This prevents the "whip to center" movement when audio stops
+     */
+    createFreezeIntent(pattern) {
+        return {
+            x: this.lastPosition.x, // Stay where you are
+            y: this.lastPosition.y, // Stay where you are
+            pattern: 'freeze', // Special pattern name for debugging
             speed: 0,
             amplitude: 0,
             _frequency: 0,

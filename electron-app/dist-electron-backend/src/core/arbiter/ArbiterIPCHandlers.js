@@ -260,6 +260,42 @@ export function registerArbiterHandlers(masterArbiter) {
         return { success: true, blackoutActive: result };
     });
     // ═══════════════════════════════════════════════════════════════════════
+    // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * Set output enabled state (THE GATE)
+     * When false: System is ARMED - engine runs, calculates, but DMX stays at safe values
+     * When true: System is LIVE - DMX flows to fixtures
+     */
+    ipcMain.handle('lux:arbiter:setOutputEnabled', (_event, { enabled }) => {
+        masterArbiter.setOutputEnabled(enabled);
+        return {
+            success: true,
+            outputEnabled: masterArbiter.isOutputEnabled(),
+            state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+        };
+    });
+    /**
+     * Toggle output gate (ARMED ↔ LIVE)
+     */
+    ipcMain.handle('lux:arbiter:toggleOutput', () => {
+        const result = masterArbiter.toggleOutput();
+        return {
+            success: true,
+            outputEnabled: result,
+            state: result ? 'LIVE' : 'ARMED'
+        };
+    });
+    /**
+     * Get output enabled state
+     */
+    ipcMain.handle('lux:arbiter:getOutputEnabled', () => {
+        return {
+            outputEnabled: masterArbiter.isOutputEnabled(),
+            state: masterArbiter.isOutputEnabled() ? 'LIVE' : 'ARMED'
+        };
+    });
+    // ═══════════════════════════════════════════════════════════════════════
     // CALIBRATION MODE - WAVE 377
     // ═══════════════════════════════════════════════════════════════════════
     /**

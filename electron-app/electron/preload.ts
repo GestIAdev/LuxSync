@@ -617,12 +617,36 @@ const luxApi = {
     /** Set blackout state */
     setBlackout: (active: boolean) => ipcRenderer.invoke('lux:arbiter:blackout', active),
     
+    // ============================================
+    // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+    // ============================================
+    
+    /** 
+     * Set output enabled state (THE GATE)
+     * false = ARMED (engine runs but DMX blocked)
+     * true = LIVE (DMX flows to fixtures)
+     */
+    setOutputEnabled: (enabled: boolean) =>
+      ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled }),
+    
+    /** Toggle output gate (ARMED ↔ LIVE) */
+    toggleOutput: () => ipcRenderer.invoke('lux:arbiter:toggleOutput'),
+    
+    /** Get output enabled state */
+    getOutputEnabled: () => ipcRenderer.invoke('lux:arbiter:getOutputEnabled'),
+    
     /** Check if fixture has manual override */
     hasManual: (fixtureId: string, channel?: string) => 
       ipcRenderer.invoke('lux:arbiter:hasManual', { fixtureId, channel }),
     
-    /** Subscribe to Arbiter status changes */
-    onStatusChange: (callback: (status: { layer: 'ai' | 'manual'; hasManualOverrides: boolean; grandMaster: number; blackout: boolean }) => void) => {
+    /** Subscribe to Arbiter status changes (includes outputEnabled) */
+    onStatusChange: (callback: (status: { 
+      layer: 'ai' | 'manual'; 
+      hasManualOverrides: boolean; 
+      grandMaster: number; 
+      blackout: boolean;
+      outputEnabled: boolean;  // 🚦 WAVE 1132
+    }) => void) => {
       const handler = (_: Electron.IpcRendererEvent, status: any) => callback(status)
       ipcRenderer.on('lux:arbiter:status-change', handler)
       return () => ipcRenderer.removeListener('lux:arbiter:status-change', handler)

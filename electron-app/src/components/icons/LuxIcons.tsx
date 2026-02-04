@@ -668,6 +668,110 @@ export const MixerIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * 💡 WAVE 1135: CALIBRATION LAB ICONS
+ */
+
+/**
+ * Moving Head - Cabeza móvil con base y yoke
+ */
+export const MovingHeadIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Base */}
+    <rect x="7" y="19" width="10" height="3" rx="1" fill={color} />
+    {/* Yoke arms */}
+    <path d="M8 19V14M16 19V14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Head */}
+    <rect x="6" y="8" width="12" height="6" rx="2" fill={color} />
+    {/* Lens */}
+    <circle cx="12" cy="11" r="2" fill="#22d3ee" />
+    {/* Light beam */}
+    <path d="M10 6L8 2M14 6L16 2M12 6V2" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * PAR Can - Tradicional PAR light
+ */
+export const ParCanIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Body */}
+    <path d="M6 8L4 18H20L18 8H6Z" fill={color} />
+    {/* Lens ring */}
+    <ellipse cx="12" cy="8" rx="6" ry="2" stroke={color} strokeWidth="2" />
+    {/* Light beam */}
+    <path d="M8 6L6 2M16 6L18 2M12 6V2" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+    {/* Bracket */}
+    <path d="M4 18V20H20V18" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * Blackout - Círculo tachado
+ */
+export const BlackoutIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" />
+    <path d="M5 19L19 5" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * Flash - Destello/relámpago
+ */
+export const FlashIcon: React.FC<IconProps> = ({ 
+  size = 24, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path 
+      d="M13 2L4 13H12L11 22L20 11H12L13 2Z" 
+      fill={color}
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -697,4 +801,9 @@ export default {
   File: FileIcon,
   Bolt: BoltIcon,
   Mixer: MixerIcon,
+  // WAVE 1135: Calibration Lab icons
+  MovingHead: MovingHeadIcon,
+  ParCan: ParCanIcon,
+  Blackout: BlackoutIcon,
+  Flash: FlashIcon,
 }

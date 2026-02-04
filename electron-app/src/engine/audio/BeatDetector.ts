@@ -85,33 +85,49 @@ interface IntervalCluster {
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS - THE PACEMAKER TUNING
 // ═══════════════════════════════════════════════════════════════════════════
+// 💀 WAVE 1158: CARDIAC TRANSPLANT
+// El problema: detectábamos hi-hats y bass wobbles como kicks
+// La solución: copiar la lógica de BETA que SÍ funciona
+// ═══════════════════════════════════════════════════════════════════════════
 
 /** Tolerancia para agrupar intervalos similares (ms) */
-const CLUSTER_TOLERANCE_MS = 25
+const CLUSTER_TOLERANCE_MS = 30  // Era 25 - Más tolerante para agrupar
 
 /** Frames mínimos para aceptar cambio de BPM */
-const HYSTERESIS_FRAMES = 45  // ~1.5 segundos @ 30fps
+const HYSTERESIS_FRAMES = 30  // ~1s @ 30fps
 
 /** BPM delta máximo para considerar "estable" */
-const BPM_STABILITY_DELTA = 2.5
+const BPM_STABILITY_DELTA = 5
 
 /** Beats iniciales con warm-up (cambios rápidos permitidos) */
-const WARMUP_BEATS = 16
+const WARMUP_BEATS = 8
 
 /** Confidence mínima para lock de octava */
-const OCTAVE_LOCK_CONFIDENCE = 0.85
+const OCTAVE_LOCK_CONFIDENCE = 0.70
 
 /** Frames mínimos para aceptar cambio de octava */
-const OCTAVE_CHANGE_FRAMES = 90  // ~3 segundos @ 30fps
+const OCTAVE_CHANGE_FRAMES = 45
 
-/** Intervalo mínimo válido (ms) - 200bpm max */
-const MIN_INTERVAL_MS = 300
+/**
+ * 💀 WAVE 1158: INTERVALO MÍNIMO = 200ms (300 BPM max)
+ * A 160 BPM = 375ms/beat
+ * A 200 BPM = 300ms/beat  
+ * BETA usa 200ms y FUNCIONA. El problema no era este.
+ */
+const MIN_INTERVAL_MS = 200  // Era 300 - Igual que BETA
 
 /** Intervalo máximo válido (ms) - 40bpm min */
 const MAX_INTERVAL_MS = 1500
 
 /** Ratio para detectar sub-división (beat → half-beat) */
-const SUBDIVISION_RATIO = 0.55  // Si interval < 55% del dominante, es sub-división
+const SUBDIVISION_RATIO = 0.55
+
+/**
+ * 💀 WAVE 1158: DEBOUNCE MÍNIMO ENTRE KICKS
+ * A 200 BPM = 300ms entre kicks → debounce 200ms es seguro
+ * BETA usa 200ms y FUNCIONA. Nosotros teníamos 80ms (LOCURA)
+ */
+const MIN_PEAK_SPACING_MS = 200  // Era 80 - Igual que BETA
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE PACEMAKER
@@ -132,15 +148,50 @@ export class BeatDetector {
   private readonly minBpm: number
   private readonly maxBpm: number
   
-  // Transient detection thresholds
-  private kickThreshold = 0.65
-  private snareThreshold = 0.55
-  private hihatThreshold = 0.45
+  // ═══════════════════════════════════════════════════════════════════════════
+  // � WAVE 1162: THE BYPASS - RAW BASS CALIBRATION
+  // 
+  // ANTES (WAVE 1161): Audio normalizado por AGC → transients pequeños (0.05-0.18)
+  // AHORA (WAVE 1162): Audio RAW sin AGC → transients GRANDES (0.1-0.5+)
+  // 
+  // La señal RAW del GOD EAR tiene MUCHA más dinámica:
+  // - Silencio: ~0.01-0.05
+  // - Bajo continuo: ~0.1-0.3  
+  // - KICK: ~0.4-0.8+ (¡PICOS REALES!)
+  // 
+  // Los transientes (frame-to-frame delta) serán proporcionalmente mayores.
+  // Un kick real puede generar transients de 0.2-0.5 (vs 0.05-0.15 con AGC)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // 🎚️ AUTO-GAIN: Media móvil del bass para calibración
+  private bassHistory: number[] = []
+  private readonly BASS_HISTORY_SIZE = 30  // ~1 segundo @ 30fps
+  private bassAvg = 0.2  // Valor inicial para RAW (más bajo que AGC)
+  
+  // 🔥 WAVE 1162: Thresholds para audio RAW (sin AGC)
+  // La señal RAW tiene MAYOR dinámica → umbrales más altos
+  // PERO el GOD EAR rawBands ya está parcialmente normalizado
+  // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
+  // bassAvg=0.15 → thresh=0.065 (música suave)
+  // bassAvg=0.30 → thresh=0.095 (normal)
+  // bassAvg=0.50 → thresh=0.125 (fuerte)
+  // bassAvg=0.70 → thresh=0.155 (muy fuerte)
+  private readonly KICK_THRESHOLD_BASE = 0.05
+  private readonly KICK_THRESHOLD_MULTIPLIER = 0.15  // Reducido de 0.35 - rawBands ya normalizado
+  
+  // Transient detection thresholds (DINÁMICOS - estos son fallbacks)
+  private kickThreshold = 0.12   // Se recalcula cada frame
+  private snareThreshold = 0.10  
+  private hihatThreshold = 0.08
   
   // Previous frame values (for transient detection)
   private prevBass = 0
   private prevMid = 0
   private prevTreble = 0
+  
+  // 💀 WAVE 1156: Diagnostic counters
+  private diagnosticFrames = 0
+  private kicksDetectedTotal = 0
   
   // 💓 WAVE 1022: THE PACEMAKER STATE
   private candidateBpm = 120          // BPM que estamos "probando"
@@ -182,19 +233,56 @@ export class BeatDetector {
   process(metrics: AudioMetrics): BeatState {
     const now = metrics.timestamp
     
-    // 1. Detectar transientes (cambios bruscos de energía)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 💀 WAVE 1160: AUTO-GAIN PACEMAKER - Calcular threshold dinámico
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // 1. Actualizar historial de bass para media móvil
+    this.bassHistory.push(metrics.bass)
+    if (this.bassHistory.length > this.BASS_HISTORY_SIZE) {
+      this.bassHistory.shift()
+    }
+    
+    // 2. Calcular media móvil del bass
+    if (this.bassHistory.length >= 5) {
+      this.bassAvg = this.bassHistory.reduce((a, b) => a + b, 0) / this.bassHistory.length
+    }
+    
+    // 3. Calcular threshold DINÁMICO
+    // 💀 WAVE 1161: Recalibrado para audio AGC
+    // Formula: threshold = BASE + (bassAvg * MULTIPLIER)
+    // bassAvg=0.3 → threshold=0.086 (muy sensible)
+    // bassAvg=0.6 → threshold=0.122 (normal - detecta kicks reales)
+    // bassAvg=0.8 → threshold=0.146 (fuerte - ignora wobbles)
+    this.kickThreshold = this.KICK_THRESHOLD_BASE + (this.bassAvg * this.KICK_THRESHOLD_MULTIPLIER)
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // 4. Detectar transientes (cambios bruscos de energía)
     const bassTransient = metrics.bass - this.prevBass
     const midTransient = metrics.mid - this.prevMid
     const trebleTransient = metrics.treble - this.prevTreble
     
-    // 2. Detectar instrumentos
-    this.state.kickDetected = bassTransient > this.kickThreshold && metrics.bass > 0.45
-    this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.35
-    this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.25
+    // 5. Detectar instrumentos con threshold DINÁMICO
+    // 💀 WAVE 1161: SOLO el transiente importa, sin condición secundaria
+    // La condición "bass > bassAvg * 0.7" era redundante y restrictiva
+    // Un transiente positivo grande YA indica que estamos en un pico
+    this.state.kickDetected = bassTransient > this.kickThreshold
+    this.state.snareDetected = midTransient > this.snareThreshold && metrics.mid > 0.15
+    this.state.hihatDetected = trebleTransient > this.hihatThreshold && metrics.treble > 0.10
     
-    // 3. Registrar picos para análisis de BPM (solo kicks significativos)
-    if (this.state.kickDetected || (bassTransient > 0.35 && metrics.bass > 0.55)) {
+    // 💀 WAVE 1160/1162: Diagnostic logging con threshold dinámico
+    // WAVE 1162: El bass que recibimos ahora es RAW (sin AGC)
+    this.diagnosticFrames++
+    if (this.diagnosticFrames % 60 === 0) {
+      console.log(`[💓 PACEMAKER RAW] bass=${metrics.bass.toFixed(2)} avg=${this.bassAvg.toFixed(2)} thresh=${this.kickThreshold.toFixed(3)} trans=${bassTransient.toFixed(3)} | kicks=${this.kicksDetectedTotal} | bpm=${this.state.bpm.toFixed(0)} (raw:${this.state.rawBpm.toFixed(0)})`)
+    }
+    
+    // 6. Registrar picos para análisis de BPM
+    // 💀 WAVE 1158: Solo kicks reales pasan. El debounce de 200ms filtra el resto.
+    if (this.state.kickDetected) {
       this.recordPeak(now, metrics.energy, 'kick')
+      this.kicksDetectedTotal++
     }
     
     // 4. 💓 THE PACEMAKER: Calcular BPM con clustering + histéresis
@@ -218,9 +306,11 @@ export class BeatDetector {
    * Registrar un pico detectado
    */
   private recordPeak(time: number, energy: number, type: PeakHistory['type']): void {
-    // Anti-spam: No registrar si el último peak fue hace menos de 80ms
+    // 💀 WAVE 1158: DEBOUNCE CRÍTICO
+    // El bug era que 80ms permitía hi-hats como kicks
+    // BETA usa 200ms y FUNCIONA PERFECTAMENTE
     const lastPeak = this.peakHistory[this.peakHistory.length - 1]
-    if (lastPeak && (time - lastPeak.time) < 80) {
+    if (lastPeak && (time - lastPeak.time) < MIN_PEAK_SPACING_MS) {
       return
     }
     
@@ -250,11 +340,25 @@ export class BeatDetector {
     // PASO 1: Calcular todos los intervalos válidos
     // ═══════════════════════════════════════════════════════════════════════
     const intervals: number[] = []
+    let rejectedIntervals = 0
     for (let i = 1; i < kicks.length; i++) {
       const interval = kicks[i].time - kicks[i - 1].time
       if (interval >= MIN_INTERVAL_MS && interval <= MAX_INTERVAL_MS) {
         intervals.push(interval)
+      } else {
+        rejectedIntervals++
       }
+    }
+    
+    // 💀 WAVE 1158: Log intervals para diagnóstico (cada 4 segundos)
+    if (this.diagnosticFrames % 120 === 0 && intervals.length > 0) {
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
+      const minInterval = Math.min(...intervals)
+      const maxInterval = Math.max(...intervals)
+      // Mostrar los últimos 8 intervalos para debug
+      const lastIntervals = intervals.slice(-8).map(i => `${i.toFixed(0)}ms`).join(', ')
+      console.log(`[💓 INTERVALS] valid=${intervals.length} rejected=${rejectedIntervals} | avg=${avgInterval.toFixed(0)}ms (${(60000/avgInterval).toFixed(0)}bpm) | range=${minInterval.toFixed(0)}-${maxInterval.toFixed(0)}ms`)
+      console.log(`[💓 LAST 8] ${lastIntervals}`)
     }
     
     if (intervals.length < 4) return
@@ -282,6 +386,7 @@ export class BeatDetector {
     
     // ═══════════════════════════════════════════════════════════════════════
     // PASO 4: 🔒 OCTAVE PROTECTION - Detectar saltos de octava falsos
+    // 💀 WAVE 1157: Relajado para permitir cambios de canción
     // ═══════════════════════════════════════════════════════════════════════
     const currentBpm = this.state.bpm
     const isOctaveJump = this.isOctaveJump(rawBpm, currentBpm)
@@ -289,6 +394,12 @@ export class BeatDetector {
     if (isOctaveJump && this.state.beatCount > WARMUP_BEATS) {
       // Incrementar contador de frames intentando cambiar octava
       this.octaveChangeFrames++
+      
+      // 💀 WAVE 1157: Log cuando bloqueamos (cada 2 segundos)
+      if (this.diagnosticFrames % 60 === 0) {
+        const ratio = (rawBpm / currentBpm).toFixed(2)
+        console.log(`[💓 OCTAVE BLOCK] ${currentBpm.toFixed(0)}→${rawBpm.toFixed(0)} BPM (ratio=${ratio}) | frames=${this.octaveChangeFrames}/${OCTAVE_CHANGE_FRAMES} | conf=${this.state.confidence.toFixed(2)}`)
+      }
       
       // Solo aceptar cambio de octava si:
       // - Llevamos MUCHOS frames intentándolo
@@ -298,7 +409,8 @@ export class BeatDetector {
         // RECHAZAR cambio de octava - mantener BPM actual
         return
       }
-      // Si llegamos aquí, el cambio de octava es legítimo (muy raro)
+      // 💀 WAVE 1157: Log cuando finalmente aceptamos
+      console.log(`[💓 OCTAVE ACCEPT] ${currentBpm.toFixed(0)}→${rawBpm.toFixed(0)} BPM after ${this.octaveChangeFrames} frames`)
     } else {
       // Reset contador de octava si no es salto
       this.octaveChangeFrames = 0
@@ -444,18 +556,19 @@ export class BeatDetector {
   
   /**
    * 🔒 Detectar si el cambio de BPM es un salto de octava (falso positivo)
+   * 💀 WAVE 1157: Rangos más estrictos para no bloquear cambios legítimos
    */
   private isOctaveJump(newBpm: number, currentBpm: number): boolean {
     if (currentBpm === 0) return false
     
     const ratio = newBpm / currentBpm
     
-    // Ratios peligrosos: 2x, 0.5x, 1.5x, 0.66x
+    // Ratios peligrosos: SOLO doble y mitad (las octavas reales)
+    // 💀 WAVE 1157: Eliminamos 1.5x y 0.66x porque bloquean cambios de canción
+    // Ejemplo: 87 BPM (Dub) → 127 BPM (Techno) = 1.46x NO es octava
     const dangerousRatios = [
-      { min: 1.85, max: 2.15 },   // Doble
-      { min: 0.45, max: 0.55 },   // Mitad
-      { min: 1.45, max: 1.55 },   // 1.5x
-      { min: 0.65, max: 0.70 },   // 2/3
+      { min: 1.90, max: 2.10 },   // Doble exacto (±5%)
+      { min: 0.48, max: 0.52 },   // Mitad exacto (±4%)
     ]
     
     for (const range of dangerousRatios) {
@@ -564,6 +677,9 @@ export class BeatDetector {
     this.prevBass = 0
     this.prevMid = 0
     this.prevTreble = 0
+    // 💀 WAVE 1156: Reset diagnostic counters
+    this.diagnosticFrames = 0
+    this.kicksDetectedTotal = 0
     this.state = this.createInitialState()
   }
 }

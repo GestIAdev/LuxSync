@@ -140,6 +140,11 @@ export interface AudioAnalysis {
   snareDetected?: boolean;
   hihatDetected?: boolean;
   
+  // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+  // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
+  // El AGC comprime la dinámica y mata los transients reales
+  rawBassEnergy?: number;
+  
   // Harmony (optional, more CPU intensive)
   key?: string;               // e.g., "C minor"
   mood?: 'dark' | 'bright' | 'neutral';

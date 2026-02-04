@@ -414,7 +414,7 @@ declare global {
     // 🎛️ WAVE 375: MASTER ARBITER API
     // ============================================
     arbiter: {
-      /** Get Arbiter status */
+      /** Get Arbiter status (includes outputEnabled - WAVE 1132) */
       status: () => Promise<{
         success: boolean
         status: {
@@ -422,6 +422,7 @@ declare global {
           hasManualOverrides: boolean
           grandMaster: number
           blackout: boolean
+          outputEnabled: boolean  // 🚦 WAVE 1132
           activeOverrides?: Record<string, unknown>
         }
       }>
@@ -457,15 +458,44 @@ declare global {
       /** Set blackout state */
       setBlackout: (active: boolean) => Promise<{ success: boolean; active: boolean }>
       
+      // ============================================
+      // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+      // ============================================
+      
+      /** 
+       * Set output enabled state (THE GATE)
+       * false = ARMED (engine runs but DMX blocked)
+       * true = LIVE (DMX flows to fixtures)
+       */
+      setOutputEnabled: (enabled: boolean) => Promise<{
+        success: boolean
+        outputEnabled: boolean
+        state: 'LIVE' | 'ARMED'
+      }>
+      
+      /** Toggle output gate (ARMED ↔ LIVE) */
+      toggleOutput: () => Promise<{
+        success: boolean
+        outputEnabled: boolean
+        state: 'LIVE' | 'ARMED'
+      }>
+      
+      /** Get output enabled state */
+      getOutputEnabled: () => Promise<{
+        outputEnabled: boolean
+        state: 'LIVE' | 'ARMED'
+      }>
+      
       /** Check if fixture has manual override */
       hasManual: (fixtureId: string, channel?: string) => Promise<{ success: boolean; hasOverride: boolean }>
       
-      /** Subscribe to Arbiter status changes */
+      /** Subscribe to Arbiter status changes (includes outputEnabled - WAVE 1132) */
       onStatusChange: (callback: (status: {
         layer: 'ai' | 'manual'
         hasManualOverrides: boolean
         grandMaster: number
         blackout: boolean
+        outputEnabled: boolean  // 🚦 WAVE 1132
       }) => void) => () => void
       
       /**

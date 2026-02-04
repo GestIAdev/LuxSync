@@ -240,67 +240,113 @@ export const Fixture3D: React.FC<Fixture3DProps> = ({
   const transientPanRef = useRef(pan)
   const transientTiltRef = useRef(tilt)
   
-  useFrame(() => {
-    // 🎯 LECTURA DIRECTA: Bypass React, lectura del "Ghost Store"
-    const transientFixture = getTransientFixture(id)
-    
-    if (transientFixture) {
-      // Actualizar refs sin causar re-render
-      transientPanRef.current = transientFixture.pan ?? 0.5
-      transientTiltRef.current = transientFixture.tilt ?? 0.5
-    }
-    // � WAVE 378: Logs removidos - 0 logs por frame en producción
-  })
+  // 🚂 WAVE 1150/1151: Visual Inertia Refs - Posición VISUAL actual (renderizada)
+  // Diferente de transientPanRef/Tilt que son los TARGETS (donde queremos ir)
+  const visualPanAngle = useRef((pan - 0.5) * Math.PI * 2.0)
+  const visualTiltAngle = useRef(-(tilt - 0.5) * Math.PI * 1.0)
   
   // ═════════════════════════════════════════════════════════════════════════
   // ANIMATIONS & PAN/TILT UPDATES
-  // 🔧 WAVE 342: Fast LERP (0.3) for smooth visual interpolation
-  // 3D shows TARGET position with visual smoothing
-  // 2D shows PHYSICAL position (what hardware is doing)
+  // � WAVE 1150: THE INERTIA DAMPENER - Physics-based damping
+  // 🛑 WAVE 1151: THE SPEED LIMITER - Motor physics simulation
+  // Unified loop: transient read + speed limiter + soft landing + animations
   // ═════════════════════════════════════════════════════════════════════════
   
-  useFrame((state) => {
-    // 🔥 WAVE 348: Usar targets del transient store (NO de props)
+  useFrame((state, delta) => {
+    // ───────────────────────────────────────────────────────────────────────
+    // PHASE 1: Read transient targets (bypass React)
+    // ───────────────────────────────────────────────────────────────────────
+    const transientFixture = getTransientFixture(id)
+    
+    if (transientFixture) {
+      transientPanRef.current = transientFixture.pan ?? 0.5
+      transientTiltRef.current = transientFixture.tilt ?? 0.5
+    }
+    
+    // ───────────────────────────────────────────────────────────────────────
+    // PHASE 2: Calculate target angles
+    // ───────────────────────────────────────────────────────────────────────
     const livePan = transientPanRef.current
     const liveTilt = transientTiltRef.current
     
-    // � WAVE 378: Logs removidos - 0 logs por frame
+    const targetPanAngle = (livePan - 0.5) * Math.PI * 2.0   // ±180°
+    const targetTiltAngle = -(liveTilt - 0.5) * Math.PI * 1.0  // ±90° INVERTED
     
-    // 🔥 WAVE 348.5: AMPLIFY rotation for debugging (±180° instead of ±72°)
-    const livePanAngle = (livePan - 0.5) * Math.PI * 2.0   // ±180° (was 0.8 = ±72°)
-    // 🔧 WAVE 350.8: NEGATE tilt - Three.js rotation.x is inverted
-    // liveTilt > 0.5 (above horizon) should rotate UP (negative X)
-    // liveTilt < 0.5 (below horizon) should rotate DOWN (positive X)
-    const liveTiltAngle = -(liveTilt - 0.5) * Math.PI * 1.0  // ±90° INVERTED
+    // ───────────────────────────────────────────────────────────────────────
+    // PHASE 3: � WAVE 1151: THE SPEED LIMITER - Motor Physics
+    // ───────────────────────────────────────────────────────────────────────
+    // MAX_SPEED = 300°/s → ~1.8s para giro completo de Pan (540°)
+    // Simula limitaciones físicas de motores stepper (15kg de hardware)
+    // ───────────────────────────────────────────────────────────────────────
+    const MAX_ANGULAR_SPEED_DEG = 300 // Grados por segundo (ajustable)
+    const maxStepRadians = THREE.MathUtils.degToRad(MAX_ANGULAR_SPEED_DEG * delta)
+    
+    // ───────────────────────────────────────────────────────────────────────
+    // PHASE 4: 🛡️ TELEPORT DETECTION + SPEED CLAMPING
+    // ───────────────────────────────────────────────────────────────────────
+    const TELEPORT_THRESHOLD = Math.PI // 180° threshold
     
     // ─────────────────────────────────────────────────────────────────────
-    // Moving Head: Aplicar PAN al Yoke, TILT al Head
-    // 🔧 WAVE 342: LERP 0.3 = seguir targets suavemente
-    // Para patrones lentos (figure8 @ 0.1Hz): se ve fluido
-    // Para patrones rápidos (mirror @ 0.5Hz): sigue bien, sin congelarse
+    // PAN: Calcular diferencia al objetivo
     // ─────────────────────────────────────────────────────────────────────
+    const panDiff = targetPanAngle - visualPanAngle.current
+    const absPanDiff = Math.abs(panDiff)
+    
+    if (absPanDiff > TELEPORT_THRESHOLD) {
+      // TELEPORT: Cambio de escena → SNAP instantáneo
+      visualPanAngle.current = targetPanAngle
+    } else {
+      // MOVIMIENTO FÍSICO: Limitar por velocidad máxima del motor
+      const panStep = THREE.MathUtils.clamp(panDiff, -maxStepRadians, maxStepRadians)
+      visualPanAngle.current += panStep
+      
+      // 🔧 WAVE 1151: SOFT LANDING - Si estamos MUY cerca, frenar suavemente
+      // Esto previene "jitter" cuando el motor llega al target
+      const SOFT_LANDING_ZONE = THREE.MathUtils.degToRad(5) // 5° de zona de frenado
+      if (absPanDiff < SOFT_LANDING_ZONE) {
+        const softFactor = absPanDiff / SOFT_LANDING_ZONE // 0 a 1
+        const remainingDiff = targetPanAngle - visualPanAngle.current
+        visualPanAngle.current += remainingDiff * (1 - softFactor) * 0.3 // LERP suave
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // TILT: Mismo algoritmo pero con rango más pequeño (±90°)
+    // ─────────────────────────────────────────────────────────────────────
+    const tiltDiff = targetTiltAngle - visualTiltAngle.current
+    const absTiltDiff = Math.abs(tiltDiff)
+    
+    if (absTiltDiff > TELEPORT_THRESHOLD) {
+      // TELEPORT: SNAP instantáneo
+      visualTiltAngle.current = targetTiltAngle
+    } else {
+      // MOVIMIENTO FÍSICO: Speed limiter
+      const tiltStep = THREE.MathUtils.clamp(tiltDiff, -maxStepRadians, maxStepRadians)
+      visualTiltAngle.current += tiltStep
+      
+      // SOFT LANDING
+      const SOFT_LANDING_ZONE = THREE.MathUtils.degToRad(5)
+      if (absTiltDiff < SOFT_LANDING_ZONE) {
+        const softFactor = absTiltDiff / SOFT_LANDING_ZONE
+        const remainingDiff = targetTiltAngle - visualTiltAngle.current
+        visualTiltAngle.current += remainingDiff * (1 - softFactor) * 0.3
+      }
+    }
+    
+    // ───────────────────────────────────────────────────────────────────────
+    // PHASE 5: Apply visual rotation to Moving Head
+    // ⚡ PERFORMANCE: Imperativo, 0 re-renders
+    // ───────────────────────────────────────────────────────────────────────
     if (type === 'moving') {
-      // Yoke rota en Y (PAN) - LERP rápido
       if (yokeRef.current) {
-        yokeRef.current.rotation.y = THREE.MathUtils.lerp(
-          yokeRef.current.rotation.y,
-          livePanAngle,
-          0.3  // Rápido pero suave
-        )
-        // � WAVE 378: Logs removidos
+        yokeRef.current.rotation.y = visualPanAngle.current
       }
       
-      // Head rota en X (TILT) - LERP rápido
       if (headRef.current) {
-        headRef.current.rotation.x = THREE.MathUtils.lerp(
-          headRef.current.rotation.x,
-          liveTiltAngle,
-          0.3  // Rápido pero suave
-        )
+        headRef.current.rotation.x = visualTiltAngle.current
       }
       
       // 🔧 WAVE 350.8: Conectar spotlight al target dummy
-      // El target hereda la rotación del head, apunta donde el head mira
       if (spotLightRef.current && spotLightTargetRef.current) {
         spotLightRef.current.target = spotLightTargetRef.current
       }

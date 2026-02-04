@@ -73,6 +73,145 @@ const state = {
 // ============================================
 // BEAT DETECTION
 // ============================================
+/**
+ * 🔥 WAVE 1163.5: GOD EAR BPM TRACKER - FIX CÍRCULO VICIOSO
+ *
+ * PROBLEMA DESCUBIERTO (WAVE 1163.4):
+ * - A 160 BPM real, detectábamos 85 BPM (la mitad)
+ * - CÍRCULO VICIOSO: debounce de 459ms (85 BPM) > intervalo real 375ms (160 BPM)
+ * - Bloqueaba cada 2do kick → confirmaba 85 BPM → loop infinito
+ *
+ * SOLUCIÓN:
+ * 1. MIN_INTERVAL_MS: 300ms → 200ms (permite hasta 300 BPM / DnB)
+ * 2. Factor debounce: 0.65 → 0.40 (más agresivo, no nos quedamos atascados)
+ * 3. Esto rompe el círculo vicioso permitiendo detectar BPMs altos
+ */
+class GodEarBPMTracker {
+    constructor() {
+        this.kickTimestamps = [];
+        this.MAX_TIMESTAMPS = 32;
+        this.MIN_INTERVAL_MS = 200; // 🔥 WAVE 1163.5: Bajado a 200ms (300 BPM max)
+        this.MAX_INTERVAL_MS = 1500; // 40 BPM min
+        this.stableBpm = 128; // 🔥 Default más cercano a techno
+        this.bpmHistory = [];
+        this.BPM_HISTORY_SIZE = 12; // 🔥 Más historia para estabilidad
+        this.lastKickTime = 0;
+        // 🔥 WAVE 1163.3: Self-detection state
+        this.energyHistory = [];
+        this.ENERGY_HISTORY_SIZE = 24; // 🔥 ~0.8s para mejor promedio
+        this.prevEnergy = 0;
+        this.inKick = false; // Histéresis: estamos "dentro" de un kick?
+    }
+    /**
+     * 🔥 WAVE 1163.5: Detecta kicks y calcula BPM
+     * Debounce adaptativo con factor 0.40 y floor 200ms para evitar círculo vicioso
+     */
+    process(rawBassEnergy, externalKickDetected, timestamp = Date.now()) {
+        // Actualizar historial de energía
+        this.energyHistory.push(rawBassEnergy);
+        if (this.energyHistory.length > this.ENERGY_HISTORY_SIZE) {
+            this.energyHistory.shift();
+        }
+        // Calcular promedio de energía
+        const avgEnergy = this.energyHistory.length > 3
+            ? this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length
+            : 0.05;
+        // 🔥 DETECCIÓN DE KICK por RATIO
+        // Un kick es cuando la energía actual es significativamente mayor que el promedio
+        // Para señales pequeñas (0.01-0.15), usamos ratio de 1.5x
+        const energyRatio = avgEnergy > 0.001 ? rawBassEnergy / avgEnergy : 0;
+        const delta = rawBassEnergy - this.prevEnergy;
+        // 🔥 WAVE 1163.5: DEBOUNCE ADAPTATIVO MÁS AGRESIVO
+        // Factor reducido de 0.65 → 0.40 para evitar círculo vicioso
+        // Con floor de 200ms permite detectar hasta 300 BPM (DnB)
+        // Ejemplo: a 126 BPM → intervalo = 476ms → debounce = 200ms (floor)
+        // Ejemplo: a 80 BPM → intervalo = 750ms → debounce = 300ms
+        const expectedInterval = 60000 / this.stableBpm;
+        const adaptiveDebounce = Math.max(this.MIN_INTERVAL_MS, expectedInterval * 0.40);
+        const timeSinceLastKick = timestamp - this.lastKickTime;
+        const isRising = delta > 0.008; // 🔥 WAVE 1163.4: Bajado un poco para no perder kicks reales
+        const isPeak = energyRatio > 1.6; // 🔥 WAVE 1163.4: Subido a 1.6 - MÁS selectivo
+        const debounceOk = timeSinceLastKick >= adaptiveDebounce;
+        // 🔍 DEBUG logs removed for production - keeping only BPM UPDATED
+        let kickDetected = false;
+        if (isPeak && isRising && !this.inKick && debounceOk) {
+            // ¡KICK DETECTADO!
+            kickDetected = true;
+            this.inKick = true;
+            this.lastKickTime = timestamp;
+            this.kickTimestamps.push(timestamp);
+            if (this.kickTimestamps.length > this.MAX_TIMESTAMPS) {
+                this.kickTimestamps.shift();
+            }
+            // 🔇 KICK LOG: Commented for production (uncomment if debugging BPM)
+            // console.log(`[GODEAR BPM 🥁] KICK! raw=${rawBassEnergy.toFixed(4)} ratio=${energyRatio.toFixed(2)} kicks=${this.kickTimestamps.length}`);
+        }
+        // Salir del estado "in kick" cuando la energía baja
+        if (this.inKick && rawBassEnergy < avgEnergy * 0.9) {
+            this.inKick = false;
+        }
+        // También aceptar kick externo del GOD EAR si pasa debounce
+        if (externalKickDetected && debounceOk && !kickDetected) {
+            kickDetected = true;
+            this.lastKickTime = timestamp;
+            this.kickTimestamps.push(timestamp);
+            if (this.kickTimestamps.length > this.MAX_TIMESTAMPS) {
+                this.kickTimestamps.shift();
+            }
+        }
+        this.prevEnergy = rawBassEnergy;
+        // Calcular BPM desde intervalos
+        if (this.kickTimestamps.length < 4) {
+            return { bpm: this.stableBpm, confidence: 0, kickCount: this.kickTimestamps.length, kickDetected };
+        }
+        // Calcular intervalos válidos
+        const intervals = [];
+        for (let i = 1; i < this.kickTimestamps.length; i++) {
+            const interval = this.kickTimestamps[i] - this.kickTimestamps[i - 1];
+            if (interval >= this.MIN_INTERVAL_MS && interval <= this.MAX_INTERVAL_MS) {
+                intervals.push(interval);
+            }
+        }
+        if (intervals.length < 3) {
+            return { bpm: this.stableBpm, confidence: 0.1, kickCount: this.kickTimestamps.length, kickDetected };
+        }
+        // MEDIANA para robustez
+        const sorted = [...intervals].sort((a, b) => a - b);
+        const medianInterval = sorted[Math.floor(sorted.length / 2)];
+        const rawBpm = Math.round(60000 / medianInterval);
+        const clampedBpm = Math.max(60, Math.min(200, rawBpm));
+        // Confidence basada en consistencia
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const variance = intervals.reduce((sum, int) => sum + Math.pow(int - avgInterval, 2), 0) / intervals.length;
+        const stdDev = Math.sqrt(variance);
+        const confidence = Math.max(0, Math.min(1, 1 - (stdDev / avgInterval)));
+        // Smoothing si confidence > 0.3 (bajado de 0.4)
+        if (confidence > 0.3) {
+            this.bpmHistory.push(clampedBpm);
+            if (this.bpmHistory.length > this.BPM_HISTORY_SIZE) {
+                this.bpmHistory.shift();
+            }
+            this.stableBpm = Math.round(this.bpmHistory.reduce((a, b) => a + b, 0) / this.bpmHistory.length);
+        }
+        return { bpm: this.stableBpm, confidence, kickCount: this.kickTimestamps.length, kickDetected };
+    }
+    // Método legacy para compatibilidad (redirige a process)
+    processKick(kickDetected, timestamp = Date.now()) {
+        const result = this.process(0, kickDetected, timestamp);
+        return { bpm: result.bpm, confidence: result.confidence, kickCount: result.kickCount };
+    }
+    reset() {
+        this.kickTimestamps = [];
+        this.bpmHistory = [];
+        this.energyHistory = [];
+        this.stableBpm = 120;
+        this.lastKickTime = 0;
+        this.prevEnergy = 0;
+        this.inKick = false;
+    }
+}
+// Instancia global del tracker
+const godEarBPMTracker = new GodEarBPMTracker();
 class BeatDetector {
     constructor() {
         this.historySize = 43; // ~1 second at 44100Hz/1024 samples
@@ -228,6 +367,11 @@ class SpectrumAnalyzer {
             spectralFlatness: godEarResult.spectral.flatness,
             // 🎭 WAVE 1018: Clarity para PROG ROCK detection
             clarity: godEarResult.spectral.clarity,
+            // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+            // El AGC comprime la dinámica y mata los transients.
+            // rawBassEnergy es la suma de subBass + bass ANTES del AGC.
+            // Esto permite al BeatDetector ver los PICOS REALES de los kicks.
+            rawBassEnergy: godEarResult.bandsRaw.subBass + godEarResult.bandsRaw.bass,
         };
     }
     /**
@@ -350,35 +494,52 @@ function processAudioBuffer(incomingBuffer) {
             buffer[i] *= gain;
         }
     }
-    // === PHASE 1: Basic Beat Detection ===
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 1163: REORDER - Spectrum Analysis FIRST (we need kickDetected)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // === PHASE 1: Spectrum Analysis (🧮 FFT REAL with GOD EAR) ===
+    const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
+    // === PHASE 2: GOD EAR BPM Tracking (uses rawBassEnergy + kickDetected) ===
+    // 🔥 WAVE 1163.1: THE SELF-DETECTING BPM TRACKER
+    // Ahora detecta kicks internamente usando rawBassEnergy (ratio-based detection)
+    // También acepta kickDetected del GOD EAR como señal adicional
+    const godEarBpmResult = godEarBPMTracker.process(spectrum.rawBassEnergy, // Raw bass energy sin AGC
+    spectrum.kickDetected, // External kick detection del GOD EAR
+    Date.now());
+    // === PHASE 3: Legacy Beat Detection (fallback/comparison) ===
     const beatResult = beatDetector.analyze(buffer, config.audioSampleRate);
-    // Update BPM smoothing
-    // 🎯 WAVE 261.5: Bajamos umbral de 0.5 a 0.3 para que el BPM se actualice más fácilmente
-    // La confianza alta es difícil de alcanzar con audio de sistema (loopback)
-    if (beatResult.confidence > 0.3) {
+    // 🔥 WAVE 1163.1: Use GOD EAR BPM as PRIMARY source
+    // Only fall back to legacy beatDetector if GOD EAR has low confidence
+    if (godEarBpmResult.confidence > 0.30) { // Bajado de 0.35 a 0.30
+        // GOD EAR tiene buena confianza - usar su BPM
+        state.currentBpm = godEarBpmResult.bpm;
+        if (state.frameCount % 120 === 0) {
+            console.log(`[BETA 🥁] BPM UPDATED: ${state.currentBpm} (godEar kicks=${godEarBpmResult.kickCount}, conf=${godEarBpmResult.confidence.toFixed(2)}, selfKick=${godEarBpmResult.kickDetected}) | legacy=${beatResult.bpm}`);
+        }
+    }
+    else if (beatResult.confidence > 0.3) {
+        // Fallback al viejo método si GOD EAR no tiene suficientes kicks
         state.bpmHistory.push(beatResult.bpm);
         if (state.bpmHistory.length > 10) {
             state.bpmHistory.shift();
         }
         state.currentBpm = Math.round(state.bpmHistory.reduce((a, b) => a + b, 0) / state.bpmHistory.length);
-        // 🎯 WAVE 261.5: Log BPM updates para debug
         if (state.frameCount % 120 === 0) {
-            console.log(`[BETA 🥁] BPM UPDATED: ${state.currentBpm} (raw=${beatResult.bpm}, conf=${beatResult.confidence.toFixed(2)})`);
+            console.log(`[BETA 🥁] BPM UPDATED (legacy): ${state.currentBpm} (raw=${beatResult.bpm}, conf=${beatResult.confidence.toFixed(2)}) | godEar kicks=${godEarBpmResult.kickCount}`);
         }
     }
     else if (state.frameCount % 300 === 0) {
         // Log cada 5 segundos cuando NO se actualiza
-        console.log(`[BETA 🥁] BPM NOT UPDATED - conf=${beatResult.confidence.toFixed(3)} < 0.3 (raw=${beatResult.bpm}, current=${state.currentBpm})`);
+        console.log(`[BETA 🥁] BPM NOT UPDATED - godEar conf=${godEarBpmResult.confidence.toFixed(3)} kicks=${godEarBpmResult.kickCount} | legacy conf=${beatResult.confidence.toFixed(3)}`);
     }
     // Update beat phase (0-1 within current beat)
     const beatInterval = 60000 / state.currentBpm;
     const timeSinceLastBeat = Date.now() - state.lastBeatTime;
     state.beatPhase = (timeSinceLastBeat % beatInterval) / beatInterval;
-    if (beatResult.onBeat) {
+    // 🔥 WAVE 1163: Use kickDetected from GOD EAR as primary beat indicator
+    if (spectrum.kickDetected || beatResult.onBeat) {
         state.lastBeatTime = Date.now();
     }
-    // === PHASE 2: Spectrum Analysis (🧮 FFT REAL) ===
-    const spectrum = spectrumAnalyzer.analyze(buffer, config.audioSampleRate);
     // Calculate overall energy (weighted by perceptual importance)
     const rawEnergy = (spectrum.bass * 0.5 + spectrum.mid * 0.3 + spectrum.treble * 0.2);
     // 🎯 WAVE 16: Normalizar energía con Rolling Peak 15s
@@ -386,13 +547,7 @@ function processAudioBuffer(incomingBuffer) {
     const energyNormalizer = getEnergyNormalizer();
     const normalizedEnergy = energyNormalizer.normalize(rawEnergy);
     const energy = normalizedEnergy; // Usar energía normalizada en todo el pipeline
-    // � WAVE 39.5: DIAGNOSTIC silenciado (spam)
-    // if (state.frameCount % 60 === 0) {
-    //   const gain = config.inputGain || 1.0;
-    //   const normStats = energyNormalizer.getStats();
-    //   console.log(`[BETA 🧮] FFT: bass=... normE=...`);
-    // }
-    // === PHASE 3: Wave 8 Rich Analysis ===
+    // === PHASE 4: Wave 8 Rich Analysis ===
     // Create AudioMetrics for Wave 8 analyzers
     const audioMetrics = {
         bass: spectrum.bass,
@@ -526,6 +681,9 @@ function processAudioBuffer(incomingBuffer) {
         spectralCentroid: spectrum.spectralCentroid,
         spectralFlux: spectrum.spectralFlux,
         zeroCrossingRate: calculateZeroCrossingRate(buffer),
+        // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+        // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
+        rawBassEnergy: spectrum.rawBassEnergy,
         // === WAVE 8 RICH DATA FOR GAMMA ===
         wave8: {
             rhythm: rhythmOutput,

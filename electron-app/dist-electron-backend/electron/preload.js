@@ -346,6 +346,20 @@ const luxApi = {
     saveDefinition: (definition) => ipcRenderer.invoke('lux:save-fixture-definition', definition),
     /** 🎭 WAVE 10.6: Nuevo show - reset completo */
     newShow: () => ipcRenderer.invoke('lux:new-show'),
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔌 WAVE 1113: LIBRARY UNIFIED API - Real FileSystem
+    // Single Source of Truth for Forge + StageConstructor
+    // ═══════════════════════════════════════════════════════════════════════════
+    library: {
+        /** List ALL fixtures: system (read-only from /librerias) + user (writable from userData/fixtures) */
+        listAll: () => ipcRenderer.invoke('lux:library:list-all'),
+        /** Save a fixture to user library (userData/fixtures) */
+        saveUser: (fixture) => ipcRenderer.invoke('lux:library:save-user', fixture),
+        /** Delete a fixture from user library (cannot delete system fixtures) */
+        deleteUser: (fixtureId) => ipcRenderer.invoke('lux:library:delete-user', fixtureId),
+        /** Get DMX connection status for Live Probe */
+        dmxStatus: () => ipcRenderer.invoke('lux:library:dmx-status'),
+    },
     // ============================================
     // ⚡ WAVE 27: FIXTURES OBJECT
     // ============================================
@@ -412,9 +426,22 @@ const luxApi = {
         toggleBlackout: () => ipcRenderer.invoke('lux:arbiter:toggleBlackout'),
         /** Set blackout state */
         setBlackout: (active) => ipcRenderer.invoke('lux:arbiter:blackout', active),
+        // ============================================
+        // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+        // ============================================
+        /**
+         * Set output enabled state (THE GATE)
+         * false = ARMED (engine runs but DMX blocked)
+         * true = LIVE (DMX flows to fixtures)
+         */
+        setOutputEnabled: (enabled) => ipcRenderer.invoke('lux:arbiter:setOutputEnabled', { enabled }),
+        /** Toggle output gate (ARMED ↔ LIVE) */
+        toggleOutput: () => ipcRenderer.invoke('lux:arbiter:toggleOutput'),
+        /** Get output enabled state */
+        getOutputEnabled: () => ipcRenderer.invoke('lux:arbiter:getOutputEnabled'),
         /** Check if fixture has manual override */
         hasManual: (fixtureId, channel) => ipcRenderer.invoke('lux:arbiter:hasManual', { fixtureId, channel }),
-        /** Subscribe to Arbiter status changes */
+        /** Subscribe to Arbiter status changes (includes outputEnabled) */
         onStatusChange: (callback) => {
             const handler = (_, status) => callback(status);
             ipcRenderer.on('lux:arbiter:status-change', handler);

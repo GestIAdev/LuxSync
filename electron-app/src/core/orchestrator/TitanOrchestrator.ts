@@ -32,6 +32,9 @@ import {
 // 🧨 WAVE 635: Import EffectManager para color override global
 import { getEffectManager } from '../effects/EffectManager'
 
+// ❤️ WAVE 1153: THE PACEMAKER - Real Beat Detection
+import { BeatDetector } from '../../engine/audio/BeatDetector'
+
 // 🎭 WAVE 700.5.4: Import MoodController for backend mood control
 import { MoodController } from '../mood/MoodController'
 
@@ -61,6 +64,9 @@ export class TitanOrchestrator {
   private trinity: TrinityOrchestrator | null = null  // 🧠 WAVE 258: Trinity reference
   private eventRouter: EventRouter
   
+  // ❤️ WAVE 1153: THE PACEMAKER - Heart of the rhythm system
+  private beatDetector: BeatDetector | null = null
+  
   private config: TitanConfig
   private isInitialized = false
   private isRunning = false
@@ -88,6 +94,7 @@ export class TitanOrchestrator {
   // WAVE 255: Real audio buffer from frontend
   // 🎛️ WAVE 661: Ampliado para incluir textura espectral
   // 🎸 WAVE 1011: Extended para RockStereoPhysics2 (subBass, lowMid, highMid, transients)
+  // 🔥 WAVE 1162: THE BYPASS - rawBassEnergy para BeatDetector
   private lastAudioData: { 
     bass: number; 
     mid: number; 
@@ -102,6 +109,7 @@ export class TitanOrchestrator {
     kickDetected?: boolean;     // 🎸 WAVE 1011: Kick transient
     snareDetected?: boolean;    // 🎸 WAVE 1011: Snare transient
     hihatDetected?: boolean;    // 🎸 WAVE 1011: Hihat transient
+    rawBassEnergy?: number;     // 🔥 WAVE 1162: Bass SIN AGC para BeatDetector
   } = {
     bass: 0, mid: 0, high: 0, energy: 0
   }
@@ -184,6 +192,7 @@ export class TitanOrchestrator {
         subBass?: number; lowMid?: number; highMid?: number;
         harshness?: number; spectralFlatness?: number; spectralCentroid?: number;
         kickDetected?: boolean; snareDetected?: boolean; hihatDetected?: boolean;
+        rawBassEnergy?: number;  // 🔥 WAVE 1162: THE BYPASS
       }) => {
         // 🔥 WAVE 1012.5: Worker = SPECTRAL SOURCE ONLY
         // NO sobrescribir bass/mid/high/energy - Frontend tiene prioridad temporal (30fps)
@@ -208,6 +217,10 @@ export class TitanOrchestrator {
           kickDetected: levels.kickDetected ?? this.lastAudioData.kickDetected,
           snareDetected: levels.snareDetected ?? this.lastAudioData.snareDetected,
           hihatDetected: levels.hihatDetected ?? this.lastAudioData.hihatDetected,
+          
+          // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+          // Energía de graves SIN normalizar por AGC - crítico para detección de kicks
+          rawBassEnergy: levels.rawBassEnergy ?? this.lastAudioData.rawBassEnergy,
         };
         // 🔥 WAVE 1012.5: NO tocar hasRealAudio ni lastAudioTimestamp
         // Frontend los gestiona a 30fps
@@ -229,6 +242,17 @@ export class TitanOrchestrator {
       initialVibe: this.config.initialVibe 
     })
     console.log('[TitanOrchestrator] TitanEngine created')
+    
+    // ❤️ WAVE 1153: Initialize THE PACEMAKER
+    // The heart that pumps beat data through the entire system
+    this.beatDetector = new BeatDetector({
+      sampleRate: 44100,
+      fftSize: 2048,
+      smoothingTimeConstant: 0.8,
+      minBpm: 60,    // Slowest heartbeat: 60 BPM ballads
+      maxBpm: 200,   // Fastest heartbeat: 200 BPM hardcore
+    })
+    console.log('[TitanOrchestrator] ❤️ PACEMAKER (BeatDetector) installed - WAVE 1153')
     
     // 📜 WAVE 560: Subscribe to TitanEngine log events for Tactical Log
     this.engine.on('log', (logEntry: { category: string; message: string; data?: Record<string, unknown> }) => {
@@ -341,11 +365,13 @@ export class TitanOrchestrator {
       // Reset lastAudioData para no mentir con datos viejos
       // 🎛️ WAVE 661: Incluir reset de textura espectral
       // 🎸 WAVE 1011: Incluir reset de bandas extendidas y transientes
+      // 🔥 WAVE 1162.2: Incluir reset de rawBassEnergy
       this.lastAudioData = { 
         bass: 0, mid: 0, high: 0, energy: 0, 
         harshness: undefined, spectralFlatness: undefined, spectralCentroid: undefined,
         subBass: undefined, lowMid: undefined, highMid: undefined,
-        kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined
+        kickDetected: undefined, snareDetected: undefined, hihatDetected: undefined,
+        rawBassEnergy: undefined  // 🔥 WAVE 1162.2: Reset también el bypass
       }
     }
     
@@ -372,16 +398,85 @@ export class TitanOrchestrator {
     // ═══════════════════════════════════════════════════════════════════════════
     this.applyEMASmoothing();
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ❤️ WAVE 1153: FEED THE PACEMAKER
+    // El corazón necesita sangre (audio) para latir
+    // ═══════════════════════════════════════════════════════════════════════════
+    let beatState = { 
+      bpm: 120, 
+      phase: 0, 
+      beatCount: 0, 
+      onBeat: false,
+      confidence: 0,
+      kickDetected: false,
+      snareDetected: false,
+      hihatDetected: false
+    }
+    
+    if (this.beatDetector && this.hasRealAudio) {
+      // Feed audio metrics to the Pacemaker
+      // AudioMetrics interface requires many fields, but BeatDetector only uses:
+      // bass, mid, treble, energy, timestamp
+      // 🔥 WAVE 1162: THE BYPASS - Usar rawBassEnergy si disponible
+      const rawBassAvailable = this.lastAudioData.rawBassEnergy !== undefined;
+      const rawBass = this.lastAudioData.rawBassEnergy ?? bass;
+      
+      // 🔥 DEBUG: Ver si rawBassEnergy está llegando
+      if (this.frameCount % 120 === 0) {
+        console.log(`[💓 BYPASS DEBUG] rawBassEnergy=${this.lastAudioData.rawBassEnergy?.toFixed(3) ?? 'UNDEFINED'} | frontendBass=${bass.toFixed(3)} | using=${rawBassAvailable ? 'RAW' : 'FRONTEND'}`)
+      }
+      
+      const audioForBeat = {
+        bass: rawBass,  // 🔥 WAVE 1162: BYPASS AGC - Bass crudo para detección de kicks
+        mid,
+        treble: high,
+        energy,
+        peak: energy, // Use energy as peak approximation
+        timestamp: Date.now(),
+        frameIndex: this.frameCount,
+        // These are outputs from BeatDetector, but required by interface
+        // We pass previous state values (circular but harmless)
+        bpm: beatState.bpm,
+        beatPhase: beatState.phase,
+        beatConfidence: beatState.confidence,
+        onBeat: beatState.onBeat,
+      }
+      
+      // THE HEARTBEAT: Process and get the state
+      this.beatDetector.process(audioForBeat)
+      beatState = this.beatDetector.getState()
+      
+      // 💀 WAVE 1159: Log comparison - BETA vs PACEMAKER
+      // Log every ~2 seconds to show which BPM wins
+      if (this.frameCount % 60 === 0) {
+        const betaBpm = context.bpm || 120
+        const pacemakerBpm = beatState.bpm
+        const winner = betaBpm !== 120 ? 'BETA' : 'PACEMAKER'
+        console.log(`[TitanOrchestrator] ❤️ BPM: ${winner}=${winner === 'BETA' ? betaBpm : pacemakerBpm} | BETA=${betaBpm} PACEMAKER=${pacemakerBpm.toFixed(0)} | beat #${beatState.beatCount}`)
+      }
+    }
+    
     // For TitanEngine
     // 🎛️ WAVE 661: Incluir textura espectral
     // 🎸 WAVE 1011.5: Usar métricas SUAVIZADAS (no crudas) para evitar parpadeo
+    // ❤️ WAVE 1153: beatPhase/isBeat/beatCount NOW FROM REAL PACEMAKER
+    // 💀 WAVE 1159: THE FERRARI TAKES THE WHEEL
+    // El PACEMAKER está roto (detecta 64 BPM cuando BETA dice 170+ BPM).
+    // BETA funciona perfectamente → usamos context.bpm de BETA como fuente de verdad.
+    // PACEMAKER solo aporta: beatPhase, onBeat, beatCount (ritmo local)
     const engineAudioMetrics = {
       bass,  // Ya normalizado por AGC - INTOCABLE
       mid,   // Ya normalizado por AGC - INTOCABLE
       high,  // Ya normalizado por AGC - INTOCABLE
       energy, // Ya normalizado por AGC - INTOCABLE
-      beatPhase: (this.frameCount % 30) / 30,
-      isBeat: this.frameCount % 30 === 0 && energy > 0.3,
+      // ❤️ WAVE 1153 + 💀 WAVE 1159: 
+      // - beatPhase/isBeat/beatCount: del PACEMAKER (ritmo local)
+      // - BPM: de BETA/context (el Ferrari que SÍ funciona)
+      beatPhase: beatState.phase,
+      isBeat: beatState.onBeat,
+      beatCount: beatState.beatCount,  // 🔥 THE MISSING PIECE! VMM needs this!
+      bpm: context.bpm || beatState.bpm,  // 💀 WAVE 1159: BETA primero, Pacemaker fallback
+      beatConfidence: beatState.confidence,
       // 🌊 WAVE 1011.5: Métricas FFT SUAVIZADAS
       harshness: this.smoothedMetrics.harshness,
       spectralFlatness: this.smoothedMetrics.spectralFlatness,
@@ -390,10 +485,10 @@ export class TitanOrchestrator {
       subBass: this.smoothedMetrics.subBass,
       lowMid: this.smoothedMetrics.lowMid,
       highMid: this.smoothedMetrics.highMid,
-      // 🎸 WAVE 1011: Transientes (estos SÍ son instantáneos - no suavizar)
-      kickDetected: this.lastAudioData.kickDetected,
-      snareDetected: this.lastAudioData.snareDetected,
-      hihatDetected: this.lastAudioData.hihatDetected,
+      // 🎸 WAVE 1011: Transientes - ahora también desde Pacemaker si disponibles
+      kickDetected: beatState.kickDetected || this.lastAudioData.kickDetected,
+      snareDetected: beatState.snareDetected || this.lastAudioData.snareDetected,
+      hihatDetected: beatState.hihatDetected || this.lastAudioData.hihatDetected,
     }
     
     // For HAL
@@ -903,6 +998,29 @@ export class TitanOrchestrator {
       })
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
+    // The effects processing above can OVERRIDE the arbiter's gate decision.
+    // This is the FINAL FILTER: if output is disabled (ARMED state), 
+    // force ALL fixtures to safe/blackout state for UI visualization too.
+    // This ensures the StageSimulator respects the Gate, not just DMX output.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (!masterArbiter.isOutputEnabled()) {
+      // ARMED state: Force blackout for UI visualization
+      fixtureStates = fixtureStates.map(f => ({
+        ...f,
+        dimmer: 0,          // 🚫 No light
+        r: 0, g: 0, b: 0,   // 🖤 Black
+        pan: 128,           // 🎯 Center
+        tilt: 128,          // 🎯 Center
+      }))
+      
+      // Throttled log (every ~5s at 30fps)
+      if (this.frameCount % 150 === 0) {
+        console.log(`[TitanOrchestrator] 🛡️ VISUAL GATE: UI forced to blackout (ARMED state)`)
+      }
+    }
+    
     // 5. WAVE 256: Broadcast VALID SeleneTruth to frontend for StageSimulator
     if (this.onBroadcast) {
       const currentVibe = this.engine.getCurrentVibe()
@@ -1355,7 +1473,11 @@ export class TitanOrchestrator {
       highMid: highMid ?? this.lastAudioData.highMid,
       kickDetected: kickDetected ?? this.lastAudioData.kickDetected,
       snareDetected: snareDetected ?? this.lastAudioData.snareDetected,
-      hihatDetected: hihatDetected ?? this.lastAudioData.hihatDetected
+      hihatDetected: hihatDetected ?? this.lastAudioData.hihatDetected,
+      // 🔥 WAVE 1162.2: CRITICAL FIX - Preservar rawBassEnergy del Worker!
+      // El Frontend NO tiene esta métrica, viene solo del BETA Worker vía GOD EAR
+      // Sin esta línea, el Frontend (30fps) BORRABA el valor que el Worker (10fps) enviaba
+      rawBassEnergy: this.lastAudioData.rawBassEnergy,
     }
     
     // 🔥 WAVE 1012.5: Frontend también detecta audio real

@@ -322,6 +322,21 @@ export interface FixtureV2 {
       }>
     }
   }
+  
+  /**
+   * 🔧 WAVE 1135.2: Calibration offsets (persisted per-show)
+   * Used by CalibrationLab to compensate for physical mounting differences
+   */
+  calibration?: {
+    /** Pan offset in degrees (-180 to +180) */
+    panOffset: number
+    /** Tilt offset in degrees (-90 to +90) */
+    tiltOffset: number
+    /** Invert pan direction */
+    panInvert: boolean
+    /** Invert tilt direction */
+    tiltInvert: boolean
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

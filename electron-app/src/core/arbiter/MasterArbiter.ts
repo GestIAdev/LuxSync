@@ -103,6 +103,14 @@ export class MasterArbiter extends EventEmitter {
   private layer3_effects: Layer3_Effect[] = []
   private layer4_blackout: boolean = false
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+  // When false, system is in ARMED state: engine runs but DMX output is blocked
+  // When true, system is in LIVE state: DMX flows to fixtures
+  // DEFAULT: false (COLD START - no hot patching on app launch)
+  // ═══════════════════════════════════════════════════════════════════════════
+  private _outputEnabled: boolean = false
+  
   // Fixtures (populated from HAL or StageStore)
   private fixtures: Map<string, ArbiterFixture> = new Map()
   
@@ -123,6 +131,9 @@ export class MasterArbiter extends EventEmitter {
     super()
     this.config = { ...DEFAULT_ARBITER_CONFIG, ...config }
     this.crossfadeEngine = new CrossfadeEngine(this.config.defaultCrossfadeMs)
+    
+    // 🚦 WAVE 1132: Log cold start state
+    console.log('[MasterArbiter] 🚦 COLD START: Output DISABLED by default (ARMED state)')
     
     if (this.config.debug) {
       console.log('[MasterArbiter] Initialized with config:', this.config)
@@ -559,6 +570,44 @@ export class MasterArbiter extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Set output enabled state (THE GATE)
+   * When false: System is ARMED - engine runs, calculates, but DMX stays at safe values
+   * When true: System is LIVE - DMX flows to fixtures
+   * 
+   * IMPORTANT: This is the final gate before hardware. 
+   * Even with blackout OFF and GM at 100%, if outputEnabled is false → no DMX.
+   */
+  setOutputEnabled(enabled: boolean): void {
+    const changed = this._outputEnabled !== enabled
+    this._outputEnabled = enabled
+    
+    if (changed) {
+      const state = enabled ? '🟢 LIVE' : '🔴 ARMED'
+      console.log(`[MasterArbiter] 🚦 Output Gate: ${state}`)
+      this.emit('outputEnabled', enabled)
+    }
+  }
+  
+  /**
+   * Get output enabled state
+   */
+  isOutputEnabled(): boolean {
+    return this._outputEnabled
+  }
+  
+  /**
+   * Toggle output enabled state
+   */
+  toggleOutput(): boolean {
+    this.setOutputEnabled(!this._outputEnabled)
+    return this._outputEnabled
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // PATTERN ENGINE (WAVE 376)
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -695,6 +744,14 @@ export class MasterArbiter extends EventEmitter {
     // Clean up expired effects
     this.cleanupExpiredEffects()
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚦 WAVE 1132: OUTPUT GATE STATUS LOGGING (Throttled)
+    // Log every ~5 seconds when in ARMED state so user knows DMX is blocked
+    // ═══════════════════════════════════════════════════════════════════════
+    if (!this._outputEnabled && this.frameNumber % 150 === 0) {
+      console.log(`[MasterArbiter] 🚦 ARMED STATE: Output DISABLED | ${this.fixtures.size} fixtures forced to BLACKOUT | Press GO to enable DMX`)
+    }
+    
     // 🧹 WAVE 671.5: Silenced fixture processing spam (every 5s)
     // WAVE 380: Debug fixture IDs being processed
     // if (this.frameNumber % 300 === 0) { // Every ~5s at 60fps
@@ -742,7 +799,17 @@ export class MasterArbiter extends EventEmitter {
   private arbitrateFixture(fixtureId: string, now: number): FixtureLightingTarget {
     const controlSources: Partial<Record<ChannelType, ControlLayer>> = {}
     
-    // LAYER 4: Check blackout first (highest priority)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🚦 WAVE 1132: OUTPUT GATE - SUPREME PRIORITY
+    // When output is DISABLED (ARMED state), ALL fixtures get BLACKOUT
+    // This happens BEFORE any other layer processing - it's the Iron Curtain
+    // User must explicitly press GO to enter LIVE state and enable DMX flow
+    // ═══════════════════════════════════════════════════════════════════════
+    if (!this._outputEnabled) {
+      return this.createOutputGateBlackout(fixtureId)
+    }
+    
+    // LAYER 4: Check blackout first (highest priority after output gate)
     if (this.layer4_blackout) {
       return this.createBlackoutTarget(fixtureId, controlSources)
     }
@@ -1371,6 +1438,44 @@ export class MasterArbiter extends EventEmitter {
   }
   
   /**
+   * 🚦 WAVE 1132: Create OUTPUT GATE blackout target
+   * 
+   * This is the SUPREME blackout - when the system is in ARMED state,
+   * ALL fixtures are forced to safe values regardless of any other layer.
+   * Different from manual blackout: this is a safety interlock, not a creative choice.
+   * 
+   * SAFE STATE:
+   * - Dimmer: 0 (no light emission)
+   * - Color: Black (no color)
+   * - Position: Center (128,128) - safe default, no wild movements
+   * - Speed: 0 (fast) - if enabled later, respond quickly
+   * - Color wheel: 0 (open/white)
+   */
+  private createOutputGateBlackout(fixtureId: string): FixtureLightingTarget {
+    // Mark all channels as controlled by OUTPUT_GATE (BLACKOUT layer for compatibility)
+    const controlSources: Partial<Record<ChannelType, ControlLayer>> = {}
+    const channels: ChannelType[] = ['dimmer', 'red', 'green', 'blue', 'pan', 'tilt', 'zoom', 'focus', 'speed', 'color_wheel']
+    for (const ch of channels) {
+      controlSources[ch] = ControlLayer.BLACKOUT  // Use BLACKOUT layer for compatibility
+    }
+    
+    return {
+      fixtureId,
+      dimmer: 0,                    // 🚫 No light
+      color: { r: 0, g: 0, b: 0 },  // 🖤 Black
+      pan: 128,                     // 🎯 Center
+      tilt: 128,                    // 🎯 Center
+      zoom: 128,                    // 🔍 Mid zoom
+      focus: 128,                   // 🔍 Mid focus
+      speed: 0,                     // ⚡ Fast response when enabled
+      color_wheel: 0,               // ⚪ Open/white
+      _controlSources: controlSources,
+      _crossfadeActive: false,
+      _crossfadeProgress: 0,
+    }
+  }
+  
+  /**
    * Build global effects state
    */
   private buildGlobalEffectsState(): GlobalEffectsState {
@@ -1458,18 +1563,23 @@ export class MasterArbiter extends EventEmitter {
   
   /**
    * Get arbiter status for debugging/UI
+   * 🚦 WAVE 1132: Added outputEnabled for Cold Start Protocol
    */
   getStatus() {
     return {
       fixtureCount: this.fixtures.size,
       frameNumber: this.frameNumber,
+      // 🚦 WAVE 1132: Output Gate status
+      outputEnabled: this._outputEnabled,
       blackoutActive: this.layer4_blackout,
+      grandMaster: this.grandMaster,
       titanActive: this.layer0_titan !== null,
       titanVibeId: this.layer0_titan?.vibeId ?? null,
       consciousnessActive: this.layer1_consciousness?.active ?? false,
       consciousnessStatus: this.layer1_consciousness?.status ?? null,
       manualOverrideCount: this.layer2_manualOverrides.size,
       manualFixtureIds: Array.from(this.layer2_manualOverrides.keys()),
+      hasManualOverrides: this.layer2_manualOverrides.size > 0,
       activeEffects: this.layer3_effects.map(e => e.type),
       activeCrossfades: this.crossfadeEngine.getActiveCount(),
     }
@@ -1477,6 +1587,7 @@ export class MasterArbiter extends EventEmitter {
   
   /**
    * Reset arbiter state
+   * 🚦 WAVE 1132: Reset also sets outputEnabled to false (back to COLD)
    */
   reset(): void {
     this.layer0_titan = null
@@ -1484,8 +1595,11 @@ export class MasterArbiter extends EventEmitter {
     this.layer2_manualOverrides.clear()
     this.layer3_effects = []
     this.layer4_blackout = false
+    this._outputEnabled = false  // 🚦 WAVE 1132: Reset to COLD state
     this.crossfadeEngine.clearAll()
     this.frameNumber = 0
+    
+    console.log('[MasterArbiter] 🚦 Reset complete - Output DISABLED (COLD state)')
     
     if (this.config.debug) {
       console.log('[MasterArbiter] Reset complete')

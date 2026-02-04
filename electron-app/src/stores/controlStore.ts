@@ -92,6 +92,24 @@ export interface ControlState {
   enableAI: (enabled: boolean) => void
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🚦 WAVE 1132: OUTPUT GATE - THE COLD START PROTOCOL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 
+   * ¿Está la salida DMX habilitada?
+   * false = ARMED (engine corre pero DMX bloqueado)
+   * true = LIVE (DMX fluye a fixtures)
+   * DEFAULT: false (Cold Start)
+   */
+  outputEnabled: boolean
+  
+  /** Toggle output gate (ARMED ↔ LIVE) */
+  toggleOutput: () => void
+  
+  /** Set output state explicitly */
+  setOutputEnabled: (enabled: boolean) => void
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // UI STATE
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -161,7 +179,11 @@ const DEFAULT_FLOW_PARAMS: FlowParams = {
 const DEFAULT_STATE = {
   viewMode: '2D' as ViewMode,
   globalMode: null as GlobalMode,  // 🔌 WAVE 63.9: Start idle (system OFF)
-  aiEnabled: true,
+  // 🧠 WAVE 1133: AI LOBOTOMY - Selene starts SEDATED, not creative
+  // User must explicitly enable Conscious mode after GO
+  aiEnabled: false,
+  // 🚦 WAVE 1132: Cold Start Protocol - output disabled by default
+  outputEnabled: false,
   flowParams: DEFAULT_FLOW_PARAMS,
   showDebugOverlay: false,
   sidebarExpanded: true,
@@ -224,6 +246,23 @@ export const useControlStore = create<ControlState>()(
       enableAI: (enabled) => {
         console.log(`[ControlStore] 🤖 AI explicitly set: ${enabled}`)
         set({ aiEnabled: enabled })
+      },
+      
+      // ═══════════════════════════════════════════════════════════════════
+      // 🚦 WAVE 1132: OUTPUT GATE ACTIONS - THE COLD START PROTOCOL
+      // ═══════════════════════════════════════════════════════════════════
+      
+      toggleOutput: () => {
+        const current = get().outputEnabled
+        const newState = !current
+        console.log(`[ControlStore] 🚦 Output toggled: ${current ? 'LIVE' : 'ARMED'} → ${newState ? 'LIVE' : 'ARMED'}`)
+        set({ outputEnabled: newState })
+      },
+      
+      setOutputEnabled: (enabled) => {
+        const state = enabled ? 'LIVE' : 'ARMED'
+        console.log(`[ControlStore] 🚦 Output explicitly set: ${state}`)
+        set({ outputEnabled: enabled })
       },
       
       // ═══════════════════════════════════════════════════════════════════
@@ -328,6 +367,9 @@ export const selectAIEnabled = (state: ControlState) => state.aiEnabled
 export const selectFlowParams = (state: ControlState) => state.flowParams
 export const selectIs3DMode = (state: ControlState) => state.viewMode === '3D'
 export const selectIs2DMode = (state: ControlState) => state.viewMode === '2D'
+
+// 🚦 WAVE 1132: Output Gate selector
+export const selectOutputEnabled = (state: ControlState) => state.outputEnabled
 
 // WAVE 33.2: Palette selectors
 export const selectActivePalette = (state: ControlState) => state.activePalette

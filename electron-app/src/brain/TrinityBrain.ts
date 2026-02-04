@@ -224,6 +224,7 @@ export class TrinityBrain extends EventEmitter {
     
     // Emitir niveles de audio para visualización
     // 🎸 WAVE 1011.1: Extended con métricas FFT para Physics Engines
+    // 🔥 WAVE 1162: rawBassEnergy para BeatDetector bypass
     this.emit('audio-levels', {
       bass: analysis.bass,
       mid: analysis.mid,
@@ -241,6 +242,8 @@ export class TrinityBrain extends EventEmitter {
       kickDetected: analysis.kickDetected,
       snareDetected: analysis.snareDetected,
       hihatDetected: analysis.hihatDetected,
+      // 🔥 WAVE 1162: THE BYPASS - RAW BASS FOR PACEMAKER
+      rawBassEnergy: analysis.rawBassEnergy,
     })
 
     // Log cada ~30 frames (1 segundo)

@@ -127,29 +127,30 @@ export const NeuralCommandView = memo(() => {
       </nav>
       
       {/* ═══════════════════════════════════════════════════════════════════
-          CONTENT
+          CONTENT - WAVE 1167.6: THE VERTICAL LOCK
+          Grid directo sin rows intermedias, 60/40 ratio áureo
           ═══════════════════════════════════════════════════════════════════ */}
       <main className="ncv-content">
         {activeTab === 'command' && (
           <div className="ncv-grid">
-            {/* Row 1: Audio Spectrum + Consciousness HUD */}
-            <div className="ncv-grid__row ncv-grid__row--top">
-              <div className="ncv-grid__cell ncv-grid__cell--audio">
-                <AudioSpectrumPanel />
-              </div>
-              <div className="ncv-grid__cell ncv-grid__cell--consciousness">
-                <ConsciousnessHUD />
-              </div>
+            {/* Grid cell 1: Audio Spectrum (top-left) */}
+            <div className="ncv-grid__cell ncv-grid__cell--audio">
+              <AudioSpectrumPanel />
             </div>
             
-            {/* Row 2: Chromatic Core + Context Matrix */}
-            <div className="ncv-grid__row ncv-grid__row--bottom">
-              <div className="ncv-grid__cell ncv-grid__cell--chromatic">
-                <ChromaticCorePanel />
-              </div>
-              <div className="ncv-grid__cell ncv-grid__cell--context">
-                <ContextMatrixPanel />
-              </div>
+            {/* Grid cell 2: Consciousness HUD (top-right) */}
+            <div className="ncv-grid__cell ncv-grid__cell--consciousness">
+              <ConsciousnessHUD />
+            </div>
+            
+            {/* Grid cell 3: Chromatic Core (bottom-left) */}
+            <div className="ncv-grid__cell ncv-grid__cell--chromatic">
+              <ChromaticCorePanel />
+            </div>
+            
+            {/* Grid cell 4: Context Matrix (bottom-right) */}
+            <div className="ncv-grid__cell ncv-grid__cell--context">
+              <ContextMatrixPanel />
             </div>
           </div>
         )}

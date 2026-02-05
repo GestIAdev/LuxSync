@@ -145,40 +145,50 @@
 .ncv-content {
   flex: 1;
   padding: 16px 20px;
-  overflow-y: auto;
+  overflow: hidden; /* No scroll - todo debe caber */
+  min-height: 0; /* Crucial para que flex funcione correctamente */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GRID LAYOUT (Command Center)
+   GRID LAYOUT (Command Center) - WAVE 1167.6: THE VERTICAL LOCK 🔒
+   
+   Ratio Áureo: 60% arriba (gráficos complejos), 40% abajo (datos)
+   Filosofía: Interfaz de nave espacial, NO página web.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ncv-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 1.5fr 1fr; /* Ratio ~60/40 */
   gap: 16px;
   height: 100%;
+  min-height: 0; /* Permite que grid se comprima si es necesario */
 }
 
-.ncv-grid__row {
-  display: grid;
-  gap: 16px;
+/* Grid areas para claridad */
+.ncv-grid__cell--audio {
+  grid-column: 1;
+  grid-row: 1;
 }
 
-/* Top row: Audio (320px fixed) + Consciousness (rest) */
-.ncv-grid__row--top {
-  grid-template-columns: 320px 1fr;
-  flex: 1;
-  min-height: 280px;
+.ncv-grid__cell--consciousness {
+  grid-column: 2;
+  grid-row: 1;
 }
 
-/* Bottom row: Chromatic (320px fixed, same as Audio) + Context (rest) */
-.ncv-grid__row--bottom {
-  grid-template-columns: 320px 1fr;
-  flex: 0 0 auto;
+.ncv-grid__cell--chromatic {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.ncv-grid__cell--context {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .ncv-grid__cell {
-  min-width: 0; /* Prevent overflow */
+  min-width: 0;
+  min-height: 0; /* Permite compresión vertical */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -195,24 +205,28 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE - THE VERTICAL LOCK adapts
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1200px) {
-  .ncv-grid__row--top,
-  .ncv-grid__row--bottom {
+  .ncv-grid {
     grid-template-columns: 280px 1fr;
   }
 }
 
 @media (max-width: 900px) {
-  .ncv-grid__row--top,
-  .ncv-grid__row--bottom {
+  .ncv-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto; /* Stack everything */
   }
   
-  .ncv-grid__row--top {
-    min-height: auto;
+  .ncv-grid__cell--audio { grid-column: 1; grid-row: 1; }
+  .ncv-grid__cell--consciousness { grid-column: 1; grid-row: 2; }
+  .ncv-grid__cell--chromatic { grid-column: 1; grid-row: 3; }
+  .ncv-grid__cell--context { grid-column: 1; grid-row: 4; }
+  
+  .ncv-content {
+    overflow-y: auto; /* Allow scroll on mobile */
   }
 }
 

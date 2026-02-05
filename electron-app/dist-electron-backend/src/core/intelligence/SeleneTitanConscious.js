@@ -112,7 +112,7 @@ const OCEANIC_EFFECTS_NO_OVERRIDE = new Set([
 ]);
 const DEFAULT_CONFIG = {
     debug: false,
-    enabled: true,
+    enabled: false, // 🧠 WAVE 1166: AI LOBOTOMY - Start in Reactive Mode (no dreams)
     confidenceThreshold: 0.60,
     consciousnessWeight: 0.65,
 };

@@ -230,7 +230,7 @@ export interface SeleneTitanConsciousConfig {
 
 const DEFAULT_CONFIG: SeleneTitanConsciousConfig = {
   debug: false,
-  enabled: true,
+  enabled: false,  // 🧠 WAVE 1166: AI LOBOTOMY - Start in Reactive Mode (no dreams)
   confidenceThreshold: 0.60,
   consciousnessWeight: 0.65,
 }

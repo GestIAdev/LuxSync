@@ -50,38 +50,40 @@ export const ConsciousnessHUD: React.FC<ConsciousnessHUDProps> = ({
         </div>
       </div>
 
-      {/* Body - 2x2 Grid of cards */}
-      <div className="consciousness-hud__grid">
-        {/* AI State */}
-        <AIStateCard 
-          huntState={ai?.huntState ?? 'sleeping'}
-          confidence={ai?.confidence ?? 0}
-          beautyScore={ai?.beautyScore ?? 0}
-          beautyTrend={ai?.beautyTrend ?? 'stable'}
-          reasoning={ai?.reasoning ?? null}
-        />
+      {/* Body - 2x2 Grid of cards - wrapped in neural-card__content for flex behavior */}
+      <div className="neural-card__content">
+        <div className="consciousness-hud__grid">
+          {/* AI State */}
+          <AIStateCard 
+            huntState={ai?.huntState ?? 'sleeping'}
+            confidence={ai?.confidence ?? 0}
+            beautyScore={ai?.beautyScore ?? 0}
+            beautyTrend={ai?.beautyTrend ?? 'stable'}
+            reasoning={ai?.reasoning ?? null}
+          />
 
-        {/* Dream Forge */}
-        <DreamForgeCard 
-          isActive={cognitive.dream?.isActive ?? false}
-          currentType={cognitive.dream?.currentType ?? 'palette'}
-          currentThought={cognitive.dream?.currentThought ?? ''}
-          projectedBeauty={cognitive.dream?.projectedBeauty ?? 0}
-          lastRecommendation={cognitive.dream?.lastRecommendation ?? 'skip'}
-        />
+          {/* Dream Forge */}
+          <DreamForgeCard 
+            isActive={cognitive.dream?.isActive ?? false}
+            currentType={cognitive.dream?.currentType ?? 'palette'}
+            currentThought={cognitive.dream?.currentThought ?? ''}
+            projectedBeauty={cognitive.dream?.projectedBeauty ?? 0}
+            lastRecommendation={cognitive.dream?.lastRecommendation ?? 'skip'}
+          />
 
-        {/* Ethics */}
-        <EthicsCard 
-          biasesDetected={ai?.biasesDetected ?? []}
-          energyOverrideActive={ai?.energyOverrideActive ?? false}
-        />
+          {/* Ethics */}
+          <EthicsCard 
+            biasesDetected={ai?.biasesDetected ?? []}
+            energyOverrideActive={ai?.energyOverrideActive ?? false}
+          />
 
-        {/* Prediction */}
-        <PredictionCard 
-          prediction={ai?.prediction ?? null}
-          probability={ai?.predictionProbability ?? 0}
-          timeMs={ai?.predictionTimeMs ?? 0}
-        />
+          {/* Prediction */}
+          <PredictionCard 
+            prediction={ai?.prediction ?? null}
+            probability={ai?.predictionProbability ?? 0}
+            timeMs={ai?.predictionTimeMs ?? 0}
+          />
+        </div>
       </div>
     </div>
   )

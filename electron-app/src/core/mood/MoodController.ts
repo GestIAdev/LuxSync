@@ -29,66 +29,70 @@ import { MoodId, MoodProfile, MoodChangeEvent, MoodChangeListener } from './type
 export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 😌 CALM - "Tráeme un drop de nivel DIOS o me lo guardo"
+  // 😌 CALM - "Cubata en mano, salsa, reggaetón tranquilo"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
   // 🔥 WAVE 1010.8: CALM = CALMADO DE VERDAD
-  // ANTES: Era un Balanced disfrazado (EPM ~4-5)
-  // AHORA: Modo RELAX real (EPM ~1-2, para reggaetón lento o chillout)
-  // Target EPM: 1-2 (1 efecto cada 30-60 segundos)
+  // 🍹 WAVE 1182: CALM = SOLO DIVINE - El cubata no se derrama
+  // FILOSOFÍA: Si no es DIVINE (Z≥3.5σ), Selene se queda quieta
+  // Target EPM: 0-1 (solo momentos DIVINOS de la música)
   calm: {
     name: 'calm',
-    description: 'Zen mode. Solo dispara en momentos LEGENDARIOS.',
+    description: 'Zen mode. Solo DIVINE. El cubata no se derrama. 🍹',
     emoji: '😌',
-    thresholdMultiplier: 2.0,      // 🧘 WAVE 1010.8: BRUTAL filtro (antes 1.3)
-    cooldownMultiplier: 3.5,       // 🧘 WAVE 1010.8: Cooldowns x3.5 (antes 2.0)
-    ethicsThreshold: 0.95,         // 🧘 WAVE 1010.8: Solo LEGENDARY (antes 0.85)
-    maxIntensity: 0.5,             // 🧘 WAVE 1010.8: Max 50% (antes 60%)
+    thresholdMultiplier: 99.0,     // 🍹 WAVE 1182: INFINITO - Solo DIVINE bypasea esto
+    cooldownMultiplier: 10.0,      // 🍹 WAVE 1182: Cooldowns x10 - irrelevante, solo DIVINE dispara
+    ethicsThreshold: 99.0,         // 🍹 WAVE 1182: IMPOSIBLE - DNA override NUNCA activo
+    maxIntensity: 0.7,             // 🍹 WAVE 1182: Max 70% - incluso DIVINE es suave
     minIntensity: undefined,       // Sin mínimo
     blockList: [
       'strobe_storm',              // Strobes agresivos PROHIBIDOS
       'strobe_burst',              // Mini-strobes también
-      'latina_meltdown',           // 🧘 WAVE 1010.8: Meltdown = CAOS = NO CALMADO
-      'glitch_guaguanco',          // 🧘 WAVE 1010.8: Glitch = CAOS = NO CALMADO
-      'machete_spark',             // 🧘 WAVE 1010.8: Machete = AGRESIVO = NO CALMADO
-      'gatling_raid',              // 🧘 WAVE 1010.8: Gatling = EPILEPSIA = NO CALMADO
-      'industrial_strobe',         // 🧘 WAVE 1010.8: Industrial = TECHNO = NO CALMADO
-      'core_meltdown',             // 🧘 WAVE 1010.8: Meltdown = CAOS = NO CALMADO
+      'latina_meltdown',           // Meltdown = CAOS = NO CALMADO
+      'glitch_guaguanco',          // Glitch = CAOS = NO CALMADO
+      'machete_spark',             // Machete = AGRESIVO = NO CALMADO
+      'gatling_raid',              // Gatling = EPILEPSIA = NO CALMADO
+      'industrial_strobe',         // Industrial = TECHNO = NO CALMADO
+      'core_meltdown',             // Meltdown = CAOS = NO CALMADO
     ],
     forceUnlock: undefined,        // Cooldowns normales
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // ⚖️ BALANCED - "Disparo cuando la música lo pide"
+  // ⚖️ BALANCED - "Fiesta normal, el DJ está sobrio"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 937: BALANCED = PROFESIONAL → Solo momentos BUENOS, no "apenas dignos"
   // 🔥 WAVE 998: THE RESPECT PROTOCOL - Un pelín más de filtro y aire
   // 🎯 WAVE 1176: OPERATION SNIPER - Balanced más estricto, francotirador
-  // Target EPM: 3-4 (1 efecto cada 15-20 segundos)
+  // 🎧 WAVE 1182: ETHICS RECALIBRATION - Solo épicos (1.13+) bypassean cooldown
+  // FILOSOFÍA: effects normales (ethics=1.00) respetan cooldown
+  //            effects épicos (ethics≥1.10) pueden override
+  // Target EPM: 4-5 (1 efecto cada 12-15 segundos)
   balanced: {
     name: 'balanced',
-    description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
+    description: 'El profesional. El DJ está sobrio. 🎧',
     emoji: '⚖️',
-    thresholdMultiplier: 1.2,      // 🔥 WAVE 998: Subido de 1.15 → 1.2 (filtrar más ruido)
-    cooldownMultiplier: 1.5,       // 🎯 WAVE 1176: SUBIDO de 1.2 → 1.5 (más calma entre disparos)
-    ethicsThreshold: 0.80,         // 🎯 WAVE 1176: BAJADO de 0.90 → 0.80 (más estricto, filtra basura)
+    thresholdMultiplier: 1.2,      // 🔥 WAVE 998: Filtro estándar
+    cooldownMultiplier: 1.5,       // 🎯 WAVE 1176: Cooldowns x1.5
+    ethicsThreshold: 1.10,         // � WAVE 1182: SUBIDO 0.80 → 1.10 (solo épicos bypassean)
     maxIntensity: 1.0,             // Sin límite
-    minIntensity: undefined,       // 🔪 WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
+    minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado
     forceUnlock: undefined,        // Cooldowns normales
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 PUNK - "¿Ha estornudado el DJ? ¡SOLAR FLARE!"
+  // 🔥 PUNK - "El DJ se ha drogado y quiere fiesta"
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 700.5.2 - Consenso del Cónclave: Caos controlado, no epilepsia
-  // Target EPM: 8-10 (1 efecto cada 6-8 segundos)
+  // 💊 WAVE 1182: Mantenemos valores - 15 EPM ya es MUCHA fiesta
+  // Target EPM: 8-15 (1 efecto cada 4-8 segundos)
   punk: {
     name: 'punk',
-    description: 'El anarquista. Cualquier excusa es buena para disparar.',
+    description: 'El DJ se ha drogado. Cualquier excusa es buena. 💊🔥',
     emoji: '🔥',
-    thresholdMultiplier: 0.8,      // 20% más fácil (era 0.6)
-    cooldownMultiplier: 0.7,       // Cooldowns x0.7 (era 0.3)
+    thresholdMultiplier: 0.8,      // 20% más fácil
+    cooldownMultiplier: 0.7,       // Cooldowns x0.7
     ethicsThreshold: 0.75,         // 🧬 WAVE 973: "Si mola (7.5/10), ¡A LA MIERDA EL COOLDOWN!"
     maxIntensity: 1.0,             // Sin límite
     minIntensity: 0.5,             // MÍNIMO 50% intensidad siempre

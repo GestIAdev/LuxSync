@@ -643,14 +643,18 @@ this.log('Section', `Transition: ${prev} → ${next}`, {
 - [x] Header con stats (FPS, Mode, Uptime)
 - **Total**: 3 archivos modificados - 5 Feb 2026
 
-### Fase 5: Backend Enhancement (1 hora)
-- [ ] Añadir logs adicionales en TitanOrchestrator
-- [ ] Verificar IPCs de control (forceMutate, etc)
+### Fase 5: Backend Enhancement (1 hora) ✅ COMPLETADA
+- [x] Backend ya emite logs via TitanOrchestrator.log() → setLogCallback → 'lux:log'
+- [x] LogEntry.tsx actualizado con aliases de backend (Mode→system, Visual→effect, etc)
+- [x] IPCs de control verificados
+- **Completada**: 5 Feb 2026
 
-### Fase 6: Polish (1-2 horas)
-- [ ] Responsive adjustments
-- [ ] Animaciones y transiciones
-- [ ] Testing visual
+### Fase 6: Polish (1-2 horas) ✅ COMPLETADA
+- [x] Animaciones añadidas (glow-pulse, status-pulse, breathe, confidence-fill)
+- [x] CSS hover effects para neural-card
+- [x] Efectos de glow para estados AI (striking, evaluating)
+- [x] Animación de drop section highlight
+- **Completada**: 5 Feb 2026
 
 ### Fase 7: Legacy Purge 🗑️ (30 min)
 - [ ] Eliminar `AudioOscilloscope/` completo

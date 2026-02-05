@@ -57,18 +57,24 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   dream: { icon: DreamCloudIcon, color: 'var(--cat-dream)', label: 'DREAM' },
   ethics: { icon: ShieldCheckIcon, color: 'var(--cat-ethics)', label: 'ETHICS' },
   strike: { icon: LightningStrikeIcon, color: 'var(--cat-strike)', label: 'STRIKE' },
+  hunt: { icon: LightningStrikeIcon, color: 'var(--cat-strike)', label: 'HUNT' },
   
   // Audio/Music
   beat: { icon: BPMHeartIcon, color: 'var(--cat-beat)', label: 'BEAT' },
   drop: { icon: DropImpactIcon, color: 'var(--cat-drop)', label: 'DROP' },
   section: { icon: SectionFlowIcon, color: 'var(--cat-section)', label: 'SECTION' },
+  music: { icon: BPMHeartIcon, color: 'var(--cat-beat)', label: 'MUSIC' },
+  genre: { icon: SectionFlowIcon, color: 'var(--cat-section)', label: 'GENRE' },
   
   // Visual
   effect: { icon: SpectrumBarsIcon, color: 'var(--cat-effect)', label: 'EFFECT' },
   color: { icon: PaletteChromaticIcon, color: 'var(--cat-color)', label: 'COLOR' },
+  visual: { icon: PaletteChromaticIcon, color: 'var(--cat-color)', label: 'VISUAL' },
   
   // System
   system: { icon: StreamLogIcon, color: 'var(--cat-system)', label: 'SYSTEM' },
+  mode: { icon: StreamLogIcon, color: 'var(--cat-system)', label: 'MODE' },
+  info: { icon: StreamLogIcon, color: 'var(--cat-system)', label: 'INFO' },
   dmx: { icon: StreamLogIcon, color: 'var(--cat-dmx)', label: 'DMX' },
   error: { icon: StreamLogIcon, color: 'var(--cat-error)', label: 'ERROR' },
 }

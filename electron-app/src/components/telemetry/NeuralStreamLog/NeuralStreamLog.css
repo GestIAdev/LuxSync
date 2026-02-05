@@ -1,0 +1,259 @@
+/**
+ * 📜 NEURAL STREAM LOG - CSS - WAVE 1167
+ */
+
+.neural-stream-log {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  max-height: 400px;
+}
+
+/* Header with status and actions */
+.neural-stream-log__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.neural-stream-log__status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--accent-success);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neural-stream-log__status--paused {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: rgba(100, 116, 139, 0.2);
+  color: var(--text-muted);
+}
+
+.neural-stream-log__actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.neural-stream-log__btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.neural-stream-log__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.neural-stream-log__btn--danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Category Filters */
+.neural-stream-log__filters {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.neural-stream-log__filters::-webkit-scrollbar {
+  display: none;
+}
+
+.neural-stream-log__filter {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.neural-stream-log__filter:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+}
+
+.neural-stream-log__filter--active {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: var(--accent-primary);
+}
+
+/* Log Scroll Container */
+.neural-stream-log__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.neural-stream-log__scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.neural-stream-log__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.neural-stream-log__scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Empty State */
+.neural-stream-log__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 120px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.neural-stream-log__empty span:first-child {
+  font-size: 2rem;
+  opacity: 0.3;
+}
+
+/* Footer */
+.neural-stream-log__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.neural-stream-log__filter-label {
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 3px;
+  color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOG ENTRY STYLES (supplement globals.css)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  border-left: 2px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.log-entry:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Timestamp */
+.log-entry__time {
+  flex-shrink: 0;
+  width: 28px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+}
+
+/* Category Badge */
+.log-entry__category {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 70px;
+  font-weight: 600;
+  font-size: 0.55rem;
+  letter-spacing: 0.5px;
+}
+
+/* Message */
+.log-entry__message {
+  flex: 1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category-specific borders on hover */
+.log-entry--brain:hover { border-left-color: var(--cat-brain); }
+.log-entry--dream:hover { border-left-color: var(--cat-dream); }
+.log-entry--ethics:hover { border-left-color: var(--cat-ethics); }
+.log-entry--strike:hover { border-left-color: var(--cat-strike); }
+.log-entry--effect:hover { border-left-color: var(--cat-effect); }
+.log-entry--color:hover { border-left-color: var(--cat-color); }
+.log-entry--beat:hover { border-left-color: var(--cat-beat); }
+.log-entry--drop:hover { border-left-color: var(--cat-drop); }
+.log-entry--section:hover { border-left-color: var(--cat-section); }
+.log-entry--system:hover { border-left-color: var(--cat-system); }
+.log-entry--dmx:hover { border-left-color: var(--cat-dmx); }
+.log-entry--error:hover { border-left-color: var(--cat-error); }
+
+/* Error entries stand out */
+.log-entry--error {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.log-entry--error .log-entry__message {
+  color: var(--cat-error);
+}
+
+/* Drop entries are exciting */
+.log-entry--drop {
+  animation: drop-flash 0.3s ease-out;
+}
+
+@keyframes drop-flash {
+  0% { background: rgba(239, 68, 68, 0.2); }
+  100% { background: transparent; }
+}
+
+/* Strike entries pulse */
+.log-entry--strike {
+  animation: strike-flash 0.2s ease-out;
+}
+
+@keyframes strike-flash {
+  0% { background: rgba(250, 204, 21, 0.15); }
+  100% { background: transparent; }
+}

@@ -52,26 +52,28 @@ Solución: Mantenemos como está - 15 EPM ya es MUCHA fiesta.
 
 ## 📊 CAMBIOS REALIZADOS
 
-### 😌 CALM - SOLO DIVINE
+### 😌 CALM - EFECTOS SUAVES PERMITIDOS
 
 | Parámetro | ANTES | DESPUÉS | Razón |
 |-----------|-------|---------|-------|
-| thresholdMultiplier | 2.0 | **99.0** | Solo DIVINE bypasea |
-| cooldownMultiplier | 3.5 | **10.0** | Irrelevante, solo DIVINE dispara |
+| thresholdMultiplier | 2.0 | **99.0** | Filtro brutal - solo momentos significativos |
+| cooldownMultiplier | 3.5 | **10.0** | Cooldowns x10 - mucho respiro |
 | ethicsThreshold | 0.95 | **99.0** | DNA override NUNCA activo |
-| maxIntensity | 0.5 | **0.7** | Incluso DIVINE es suave |
+| maxIntensity | 0.5 | **0.7** | Max 70% intensidad |
+| blockList | 8 efectos | **11 efectos** | Strobes + agresivos prohibidos |
 
-**Resultado**: EPM ~0-1 (solo momentos DIVINOS)
+**Resultado**: EPM ~1-2 (efectos suaves en momentos significativos)  
+**WAVE 1182.1**: Solo strobes y agresivos prohibidos - efectos suaves (ambient, breath, void_mist) permitidos
 
 ### ⚖️ BALANCED - SOLO ÉPICOS BYPASSEAN
 
-| Parámetro | ANTES | DESPUÉS | Razón |
-|-----------|-------|---------|-------|
+| Parámetro | ANTES | DESPUÉS (manual) | Razón |
+|-----------|-------|------------------|-------|
 | ethicsThreshold | 0.80 | **1.10** | Solo épicos (1.13+) bypassean |
-| thresholdMultiplier | 1.2 | 1.2 | Sin cambio |
-| cooldownMultiplier | 1.5 | 1.5 | Sin cambio |
+| thresholdMultiplier | 1.2 | **1.4** | Ajuste fino manual de Radwulf |
+| cooldownMultiplier | 1.5 | **1.8** | Ajuste fino manual de Radwulf |
 
-**Resultado**: EPM ~4-5 (efectos normales respetan cooldown)
+**Resultado**: EPM ~6-7 con dubstep brutal (perfecto para el tipo de música)
 
 ### 🔥 PUNK - SIN CAMBIOS
 

@@ -109,15 +109,17 @@ export class KeyStabilizer {
   // Default config
   // 🔌 WAVE 65: Valores originales para estabilidad
   // 🔌 WAVE 66.5: Aumentados para máxima estabilidad cromática
-  // � WAVE 287: RELAXED STABILIZATION - Balance entre estabilidad y reactividad
-  //    El locking de 10s era demasiado conservador para shows dinámicos.
-  //    Nuevo balance: 5s buffer, 3s locking, 40% dominancia
-  //    Permite cambios de key cada ~3-5 segundos si la música lo pide.
+  // 📊 WAVE 287: RELAXED STABILIZATION - Balance entre estabilidad y reactividad
+  // 🎨 WAVE 1183: CHROMATIC SANITY - 30s mínimo entre cambios de paleta
+  //    El locking de 3s creaba "estroboscopia cromática" (cambios cada 10s).
+  //    Nuevo balance: 10s buffer, 30s locking, 50% dominancia
+  //    Cambios de key solo en modulaciones reales o cambio de track.
+  //    Nadie cambia la paleta cada 10 segundos en una discoteca.
   private static readonly DEFAULT_CONFIG: KeyStabilizerConfig = {
-    bufferSize: 300,           // 5 segundos @ 60fps (era 720 = 12s)
-    lockingFrames: 180,        // 3 segundos para cambiar (era 600 = 10s!!!)
-    dominanceThreshold: 0.40,  // 40% de votos para ser dominante (era 45%)
-    minConfidence: 0.35,       // Ignorar detecciones con confianza < 35% (era 40%)
+    bufferSize: 600,           // 🎨 WAVE 1183: 10 segundos @ 60fps (era 300 = 5s)
+    lockingFrames: 1800,       // 🎨 WAVE 1183: 30 segundos para cambiar (era 180 = 3s)
+    dominanceThreshold: 0.50,  // 🎨 WAVE 1183: 50% de votos (era 40%) - más consenso
+    minConfidence: 0.35,       // Ignorar detecciones con confianza < 35%
     useEnergyWeighting: true,  // Votos ponderados por energía
     energyPower: 1.5,          // energia^1.5
   };

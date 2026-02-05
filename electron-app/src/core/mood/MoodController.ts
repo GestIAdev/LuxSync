@@ -33,27 +33,42 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
   // 🔥 WAVE 1010.8: CALM = CALMADO DE VERDAD
-  // 🍹 WAVE 1182: CALM = SOLO DIVINE - El cubata no se derrama
-  // FILOSOFÍA: Si no es DIVINE (Z≥3.5σ), Selene se queda quieta
-  // Target EPM: 0-1 (solo momentos DIVINOS de la música)
+  // 🍹 WAVE 1182: CALM = Efectos suaves permitidos, strobes prohibidos
+  // 🧘 WAVE 1182.1: CALM FIX - Solo strobes y agresivos prohibidos
+  // FILOSOFÍA: Los límites (threshold x99, cooldown x10) garantizan 1-2 EPM
+  //            Efectos suaves (ambient, breath, void_mist) sí pueden entrar
+  //            Efectos agresivos (strobes, raids, melts) PROHIBIDOS
+  // Target EPM: 1-2 (momentos significativos con efectos suaves)
   calm: {
     name: 'calm',
-    description: 'Zen mode. Solo DIVINE. El cubata no se derrama. 🍹',
+    description: 'Zen mode. Efectos suaves, nada agresivo. 🍹',
     emoji: '😌',
-    thresholdMultiplier: 99.0,     // 🍹 WAVE 1182: INFINITO - Solo DIVINE bypasea esto
-    cooldownMultiplier: 10.0,      // 🍹 WAVE 1182: Cooldowns x10 - irrelevante, solo DIVINE dispara
+    thresholdMultiplier: 99.0,     // 🍹 WAVE 1182: INFINITO - Filtro brutal
+    cooldownMultiplier: 10.0,      // 🍹 WAVE 1182: Cooldowns x10 - mucho respiro
     ethicsThreshold: 99.0,         // 🍹 WAVE 1182: IMPOSIBLE - DNA override NUNCA activo
-    maxIntensity: 0.7,             // 🍹 WAVE 1182: Max 70% - incluso DIVINE es suave
+    maxIntensity: 0.7,             // 🍹 WAVE 1182: Max 70% - todo suave
     minIntensity: undefined,       // Sin mínimo
     blockList: [
-      'strobe_storm',              // Strobes agresivos PROHIBIDOS
-      'strobe_burst',              // Mini-strobes también
-      'latina_meltdown',           // Meltdown = CAOS = NO CALMADO
-      'glitch_guaguanco',          // Glitch = CAOS = NO CALMADO
-      'machete_spark',             // Machete = AGRESIVO = NO CALMADO
-      'gatling_raid',              // Gatling = EPILEPSIA = NO CALMADO
-      'industrial_strobe',         // Industrial = TECHNO = NO CALMADO
-      'core_meltdown',             // Meltdown = CAOS = NO CALMADO
+      // 🚨 STROBES - Todo lo que parpadea rápido
+      'strobe_storm',              
+      'strobe_burst',              
+      'industrial_strobe',         
+      'ambient_strobe',            // 🧘 WAVE 1182.1: Strobes suaves también prohibidos
+      
+      // 🔥 RAIDS & AGRESIVOS - Gatling, machetes, ataques
+      'gatling_raid',              
+      'machete_spark',             
+      
+      // 💥 MELTDOWNS - Caos nuclear
+      'latina_meltdown',           
+      'core_meltdown',             
+      
+      // 🎪 GLITCHES - Efectos caóticos
+      'glitch_guaguanco',
+      
+      // ⚡ OTROS AGRESIVOS
+      'solar_flare',               // 🧘 WAVE 1182.1: Flares muy intensos
+      'seismic_snap',              // 🧘 WAVE 1182.1: Snap muy agresivo
     ],
     forceUnlock: undefined,        // Cooldowns normales
   },
@@ -72,9 +87,9 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
     name: 'balanced',
     description: 'El profesional. El DJ está sobrio. 🎧',
     emoji: '⚖️',
-    thresholdMultiplier: 1.2,      // 🔥 WAVE 998: Filtro estándar
-    cooldownMultiplier: 1.5,       // 🎯 WAVE 1176: Cooldowns x1.5
-    ethicsThreshold: 1.10,         // � WAVE 1182: SUBIDO 0.80 → 1.10 (solo épicos bypassean)
+    thresholdMultiplier: 1.4,      // 🔥 WAVE 998: Filtro estándar
+    cooldownMultiplier: 1.8,       // 🎯 WAVE 1176: Cooldowns x1.5
+    ethicsThreshold: 1.10,         // WAVE 1182: SUBIDO 0.80 → 1.10 (solo épicos bypassean)
     maxIntensity: 1.0,             // Sin límite
     minIntensity: undefined,       // Los pads tienen su propio dimmer mínimo
     blockList: [],                 // Nada bloqueado

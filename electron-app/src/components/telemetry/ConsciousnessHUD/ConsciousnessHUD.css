@@ -166,7 +166,7 @@
   align-items: center;
   justify-content: center;
   height: 60px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
   font-size: 0.75rem;
 }
 
@@ -230,12 +230,12 @@
 
 .ethics-card__bias-item {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 
 .ethics-card__bias-more {
   font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
 }
 
 /* ═══════════════════════════════════════════════
@@ -310,7 +310,7 @@
 
 .prediction-card__preparing span:last-child {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
 }
 
 .prediction-card__idle {
@@ -320,13 +320,13 @@
   justify-content: center;
   gap: 4px;
   height: 80px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
   font-size: 0.75rem;
 }
 
 .prediction-card__idle span:first-child {
   font-size: 1.5rem;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 /* ═══════════════════════════════════════════════

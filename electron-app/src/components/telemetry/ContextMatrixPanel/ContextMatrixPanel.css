@@ -3,7 +3,8 @@
  */
 
 .context-matrix-panel {
-  min-width: 260px;
+  min-width: 300px;
+  width: 100%;
 }
 
 /* 2x2 Grid */
@@ -47,11 +48,11 @@
 }
 
 .context-cell__label {
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
 }
 
 .context-cell__value {
@@ -101,8 +102,8 @@
 
 .context-confidence {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.65rem;
+  color: var(--text-muted);
   margin-left: 2px;
 }
 

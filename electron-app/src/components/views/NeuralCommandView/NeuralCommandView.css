@@ -9,6 +9,7 @@
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
+  font-size: 14px; /* WAVE 1167: Increased base font for readability in dark cabins */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -159,41 +160,25 @@
 }
 
 .ncv-grid__row {
-  display: flex;
+  display: grid;
   gap: 16px;
 }
 
+/* Top row: Audio (320px fixed) + Consciousness (rest) */
 .ncv-grid__row--top {
+  grid-template-columns: 320px 1fr;
   flex: 1;
   min-height: 280px;
 }
 
+/* Bottom row: Chromatic (320px fixed, same as Audio) + Context (rest) */
 .ncv-grid__row--bottom {
+  grid-template-columns: 320px 1fr;
   flex: 0 0 auto;
 }
 
 .ncv-grid__cell {
   min-width: 0; /* Prevent overflow */
-}
-
-/* Audio Spectrum: Fixed width */
-.ncv-grid__cell--audio {
-  flex: 0 0 320px;
-}
-
-/* Consciousness HUD: Takes remaining space */
-.ncv-grid__cell--consciousness {
-  flex: 1;
-}
-
-/* Chromatic Core: Fixed width */
-.ncv-grid__cell--chromatic {
-  flex: 0 0 280px;
-}
-
-/* Context Matrix: Takes remaining space */
-.ncv-grid__cell--context {
-  flex: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -214,18 +199,20 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1200px) {
-  .ncv-grid__row {
-    flex-wrap: wrap;
+  .ncv-grid__row--top,
+  .ncv-grid__row--bottom {
+    grid-template-columns: 280px 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .ncv-grid__row--top,
+  .ncv-grid__row--bottom {
+    grid-template-columns: 1fr;
   }
   
-  .ncv-grid__cell--audio,
-  .ncv-grid__cell--chromatic {
-    flex: 1 1 300px;
-  }
-  
-  .ncv-grid__cell--consciousness,
-  .ncv-grid__cell--context {
-    flex: 1 1 400px;
+  .ncv-grid__row--top {
+    min-height: auto;
   }
 }
 
@@ -238,16 +225,5 @@
   
   .ncv-header__stats {
     gap: 16px;
-  }
-  
-  .ncv-grid__row {
-    flex-direction: column;
-  }
-  
-  .ncv-grid__cell--audio,
-  .ncv-grid__cell--chromatic,
-  .ncv-grid__cell--consciousness,
-  .ncv-grid__cell--context {
-    flex: 1 1 auto;
   }
 }

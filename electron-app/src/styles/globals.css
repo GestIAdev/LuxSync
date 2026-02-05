@@ -36,8 +36,9 @@
   /* Text */
   --text-primary: #FFFFFF;
   --text-secondary: #A0A0B0;
-  --text-muted: #606070;
-  --text-disabled: #404050;
+  --text-muted: #8080A0;      /* WAVE 1167: Increased contrast for dark cabins */
+  --text-dimmed: #6a6a88;     /* WAVE 1167: New dimmed level with better visibility */
+  --text-disabled: #505068;
   
   /* Borders */
   --border-subtle: #2a2a3a;
@@ -632,13 +633,21 @@ select:focus {
     0 0 0 1px rgba(139, 92, 246, 0.2);
 }
 
-.neural-card-header {
+/* Header - supports both conventions */
+.neural-card-header,
+.neural-card__header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--neural-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-family: var(--font-display);
 }
 
 .neural-card-title {
@@ -648,9 +657,16 @@ select:focus {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 1.5px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-muted);
   text-transform: uppercase;
   font-family: var(--font-display);
+}
+
+/* Content area */
+.neural-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .neural-card-status {
@@ -658,8 +674,9 @@ select:focus {
   align-items: center;
   gap: 6px;
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-family: var(--font-mono);
+  margin-left: auto;
 }
 
 .neural-card-body {

@@ -1,9 +1,11 @@
 /**
  * 📡 TELEMETRY COMPONENTS
- * WAVE 14: Brain Surgery & Monitoring UI Components
+ * WAVE 1167: Neural Command Center - Telemetry renovado
  */
 
-export { default as AudioOscilloscope } from './AudioOscilloscope'
-export { default as MusicalDNAPanel } from './MusicalDNAPanel'
-export { default as HuntMonitor } from './HuntMonitor'
-export { default as PalettePreview } from './PalettePreview'
+// WAVE 1167: New Neural Command Components
+export { default as AudioSpectrumPanel } from './AudioSpectrumPanel'
+export { default as ConsciousnessHUD } from './ConsciousnessHUD'
+export { default as ChromaticCorePanel } from './ChromaticCorePanel'
+export { default as ContextMatrixPanel } from './ContextMatrixPanel'
+export { default as NeuralStreamLog } from './NeuralStreamLog'

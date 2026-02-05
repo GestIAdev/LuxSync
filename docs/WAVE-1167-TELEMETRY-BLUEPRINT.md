@@ -656,15 +656,17 @@ this.log('Section', `Transition: ${prev} → ${next}`, {
 - [x] Animación de drop section highlight
 - **Completada**: 5 Feb 2026
 
-### Fase 7: Legacy Purge 🗑️ (30 min)
-- [ ] Eliminar `AudioOscilloscope/` completo
-- [ ] Eliminar `HuntMonitor/` completo
-- [ ] Eliminar `MusicalDNAPanel/` completo  
-- [ ] Eliminar `PalettePreview/` completo
-- [ ] Eliminar `LuxCoreView/TacticalLog.tsx`
-- [ ] Eliminar `LuxCoreView/` (tras migrar a NeuralCommandView)
-- [ ] Limpiar imports huérfanos en `telemetry/index.ts`
-- [ ] Verificar que no hay referencias rotas
+### Fase 7: Legacy Purge 🗑️ (30 min) ✅ COMPLETADA
+- [x] Eliminar `AudioOscilloscope/` completo (3 archivos)
+- [x] Eliminar `HuntMonitor/` completo (3 archivos)
+- [x] Eliminar `MusicalDNAPanel/` completo (3 archivos)
+- [x] Eliminar `PalettePreview/` completo (3 archivos)
+- [x] Eliminar `LuxCoreView/TacticalLog.tsx` (2 archivos)
+- [x] Eliminar `LuxCoreView/` completo (2 archivos)
+- [x] Limpiar imports huérfanos en `telemetry/index.ts`
+- [x] Verificar que no hay referencias rotas
+- **Total eliminado**: 17 archivos legacy
+- **Completada**: 5 Feb 2026
 
 **Tiempo total estimado**: 9-13 horas
 

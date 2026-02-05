@@ -8,7 +8,7 @@
  *   - constructor: StageConstructorView (Stage Layout)
  *   - forge: ForgeView (Fixture Definition Editor) - WAVE 1110
  *   - setup: SetupView (Audio + DMX Config)
- *   - core: LuxCoreView (AI Monitoring)
+ *   - core: NeuralCommandView (AI Monitoring) - WAVE 1167
  * 
  * WAVE 379.4: Atomic Handoff for WebGL transitions
  */
@@ -24,7 +24,7 @@ const LiveStageView = lazy(() => import('../simulator'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
 const SetupView = lazy(() => import('../views/SetupView'))
-const LuxCoreView = lazy(() => import('../views/LuxCoreView'))
+const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
 
 // Loading fallback
 const ViewLoader: React.FC = () => (
@@ -110,7 +110,7 @@ const ContentArea: React.FC = () => {
       case 'setup':
         return <SetupView />
       case 'core':
-        return <LuxCoreView />
+        return <NeuralCommandView />  // 🧠 WAVE 1167
       default:
         return <DashboardView />
     }

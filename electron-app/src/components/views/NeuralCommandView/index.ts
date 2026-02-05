@@ -5,3 +5,4 @@
  */
 
 export { NeuralCommandView } from './NeuralCommandView'
+export { NeuralCommandView as default } from './NeuralCommandView'

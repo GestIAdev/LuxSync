@@ -1,0 +1,253 @@
+/**
+ * 🧠 NEURAL COMMAND VIEW - CSS - WAVE 1167
+ */
+
+.neural-command-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ncv-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ncv-header__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Status Badge */
+.ncv-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.ncv-status--online {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: var(--accent-success);
+}
+
+.ncv-status--offline {
+  background: rgba(100, 116, 139, 0.1);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  color: var(--text-muted);
+}
+
+/* Stats */
+.ncv-header__stats {
+  display: flex;
+  gap: 24px;
+}
+
+.ncv-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ncv-stat__value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ncv-stat__label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncv-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ncv-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ncv-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.ncv-tab--active {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: var(--accent-primary);
+}
+
+.ncv-tab svg {
+  opacity: 0.7;
+}
+
+.ncv-tab--active svg {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncv-content {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRID LAYOUT (Command Center)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.ncv-grid__row {
+  display: flex;
+  gap: 16px;
+}
+
+.ncv-grid__row--top {
+  flex: 1;
+  min-height: 280px;
+}
+
+.ncv-grid__row--bottom {
+  flex: 0 0 auto;
+}
+
+.ncv-grid__cell {
+  min-width: 0; /* Prevent overflow */
+}
+
+/* Audio Spectrum: Fixed width */
+.ncv-grid__cell--audio {
+  flex: 0 0 320px;
+}
+
+/* Consciousness HUD: Takes remaining space */
+.ncv-grid__cell--consciousness {
+  flex: 1;
+}
+
+/* Chromatic Core: Fixed width */
+.ncv-grid__cell--chromatic {
+  flex: 0 0 280px;
+}
+
+/* Context Matrix: Takes remaining space */
+.ncv-grid__cell--context {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGS TAB
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncv-logs {
+  height: 100%;
+}
+
+.ncv-logs .neural-stream-log {
+  height: 100%;
+  max-height: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1200px) {
+  .ncv-grid__row {
+    flex-wrap: wrap;
+  }
+  
+  .ncv-grid__cell--audio,
+  .ncv-grid__cell--chromatic {
+    flex: 1 1 300px;
+  }
+  
+  .ncv-grid__cell--consciousness,
+  .ncv-grid__cell--context {
+    flex: 1 1 400px;
+  }
+}
+
+@media (max-width: 800px) {
+  .ncv-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .ncv-header__stats {
+    gap: 16px;
+  }
+  
+  .ncv-grid__row {
+    flex-direction: column;
+  }
+  
+  .ncv-grid__cell--audio,
+  .ncv-grid__cell--chromatic,
+  .ncv-grid__cell--consciousness,
+  .ncv-grid__cell--context {
+    flex: 1 1 auto;
+  }
+}

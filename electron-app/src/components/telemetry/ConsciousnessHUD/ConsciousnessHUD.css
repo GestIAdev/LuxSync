@@ -917,3 +917,202 @@
   background: #64748b;
   animation: none;
 }
+
+/* ═══════════════════════════════════════════════
+   🔥 WAVE 1184: THE NEURAL BINDING
+   Visual Latches, Ghost Data & Dynamic States
+   ═══════════════════════════════════════════════ */
+
+/* ───────── ETHICS CARD: 2s Latched Flags ───────── */
+
+/* Latch indicator - bit que está mostrando dato latched */
+.ethics-bit--latched {
+  position: relative;
+  border-style: dashed;
+}
+
+.ethics-bit--latched::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  animation: latch-fade 2s ease-out forwards;
+}
+
+@keyframes latch-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ───────── DREAM FORGE: 3s Ghost Data ───────── */
+
+.dream-forge-card--ghost {
+  border-color: rgba(255, 255, 255, 0.15);
+  opacity: 0.7;
+  position: relative;
+}
+
+.dream-forge-card--ghost::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 60%
+  );
+  animation: ghost-shimmer 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ghost-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.dream-forge-card__ghost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+/* ───────── PREDICTION CARD: Dynamic Visual States ───────── */
+
+/* DROP INCOMING - El evento más importante */
+.prediction-card--drop-incoming {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+.prediction-card--drop-incoming.prediction-card--animate {
+  animation: drop-incoming-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes drop-incoming-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+  50% { 
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+}
+
+/* ENERGY SPIKE - Impacto detectado */
+.prediction-card--spike,
+.prediction-card--energy-spike {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.08) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+.prediction-card--spike.prediction-card--animate,
+.prediction-card--energy-spike.prediction-card--animate {
+  animation: energy-spike-flash 0.3s ease-out;
+}
+
+@keyframes energy-spike-flash {
+  0% { 
+    background: rgba(251, 191, 36, 0.3);
+    transform: scale(1.02);
+  }
+  100% { 
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(0, 0, 0, 0.3) 100%);
+    transform: scale(1);
+  }
+}
+
+/* BUILDUP - Energía subiendo */
+.prediction-card--buildup {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.06) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+/* BREAKDOWN - Energía bajando */
+.prediction-card--breakdown {
+  border-color: rgba(100, 116, 139, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(100, 116, 139, 0.06) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+/* STABLE - Sin eventos significativos */
+.prediction-card--stable {
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+/* Flash effect on state change */
+.prediction-card--flash {
+  animation: state-change-flash 0.4s ease-out;
+}
+
+@keyframes state-change-flash {
+  0% { 
+    filter: brightness(1.3);
+    transform: scale(1.01);
+  }
+  100% { 
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+/* Prediction visual header */
+.prediction-card__visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.prediction-card__visual-icon {
+  font-size: 1.2rem;
+}
+
+.prediction-card__visual-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Icon pulsing when animated */
+.prediction-card--animate .prediction-card__visual-icon {
+  animation: icon-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}

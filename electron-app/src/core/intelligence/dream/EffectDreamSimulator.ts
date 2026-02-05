@@ -952,19 +952,45 @@ export class EffectDreamSimulator {
       
       // ═══════════════════════════════════════════════════════════════════════════
       // 🔥 WAVE 1179: STROBE Z-GUARD - Los strobes SOLO disparan en energía SUBIENDO
+      // 💥 WAVE 1180: SEISMIC SNAP Z-GUARD - Añadido al filtro (flash estroboscópico)
       // ═══════════════════════════════════════════════════════════════════════════
       // PROBLEMA: industrial_strobe se disparó con Z=-1.5 (valle profundo).
-      // Los strobes son efectos de IMPACTO que deben coincidir con momentos de
-      // energía ASCENDENTE, no descendente. Disparar un strobe en un valle
-      // es como gritar en un funeral.
+      // seismic_snap se disparó con Z=-0.7 (energía cayendo).
+      // Los efectos estroboscópicos/flash son efectos de IMPACTO que deben coincidir
+      // con momentos de energía ASCENDENTE, no descendente. Disparar un strobe/snap
+      // en un valle es como gritar en un funeral.
       // 
-      // CRITERIO: Si el efecto contiene 'strobe' y Z <= 0 → NO CANDIDATO
+      // CRITERIO: Si el efecto es strobe o seismic_snap y Z <= 0 → NO CANDIDATO
       // ═══════════════════════════════════════════════════════════════════════════
-      const isStrobeEffect = effect.includes('strobe')
+      const STROBE_EFFECTS = ['industrial_strobe', 'strobe_storm', 'strobe_burst', 'ambient_strobe', 'seismic_snap']
+      const isStrobeEffect = STROBE_EFFECTS.includes(effect)
       if (isStrobeEffect && zScore <= 0) {
-        // 🔇 Silent skip - strobe in falling energy = bad match
+        // 🔇 Silent skip - strobe/snap in falling energy = bad match
         continue
       }
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔫 WAVE 1180: GATLING PEAK REQUIREMENT - La ametralladora necesita PICOS
+      // ═══════════════════════════════════════════════════════════════════════════
+      // PROBLEMA: gatling_raid (DNA: aggression=0.85, chaos=0.60) se disparó en
+      // momentos medios (I:0.45 Z:0.4). Es una AMETRALLADORA de 6 balas x 3 sweeps.
+      // Es VIOLENCE pura, no un efecto casual.
+      // 
+      // CRITERIO: gatling_raid necesita:
+      // - Intensidad >= 0.65 (por encima del promedio)
+      // - Z-Score >= 0.8 (energía subiendo fuerte, no plano)
+      // 
+      // FILOSOFÍA: Gatling no es para "active" genérico, es para BUILDS PRE-DROP
+      // y PEAKS con momentum fuerte. Es el "pre-drop snare roll" de los efectos.
+      // ═══════════════════════════════════════════════════════════════════════════
+      if (effect === 'gatling_raid') {
+        const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)
+        if (intensity < 0.65 || zScore < 0.8) {
+          // 🔇 Silent skip - gatling needs peak conditions
+          continue
+        }
+      }
+
       
       // Calcular intensidad basada en energía predicha
       const intensity = this.calculateIntensity(prediction.predictedEnergy, effect)

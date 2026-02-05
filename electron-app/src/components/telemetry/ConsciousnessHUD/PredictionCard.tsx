@@ -1,15 +1,15 @@
 /**
- * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184/1185/1186
+ * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184/1185/1186/1189
  * "The Oracle" - La Money Card que tiene que verse VIVA
  * 
  * WAVE 1184: THE NEURAL BINDING - Estados visuales dinámicos
  * WAVE 1185: VISUAL SENSITIVITY - Micro-trend basado en slope
+ * WAVE 1186: VISUAL SMOOTHING & UI CANDY
  * 
- * 🎯 WAVE 1186: VISUAL SMOOTHING & UI CANDY
- * - Anti-Jitter: Rolling average de 30 frames para suavizar slope
- * - Trend Gauge: Barra central con cyan derecha / purple izquierda
- * - Sparkline: Mini gráfico de energía últimos 10 segundos
- * - Animación CSS suave: transition 0.2s ease-out
+ * 🎯 WAVE 1189: SILENT ORACLE FIX
+ * - Fallback Cascade: prediction → physical trend → idle
+ * - Dynamic Labels: No más "SCANNING" - muestra tendencias reales
+ * - energyZone como criterio para buildup/breakdown
  */
 
 import React, { useMemo, useEffect, useRef, useState } from 'react'
@@ -142,13 +142,17 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   }
   
   const predictionState: PredictionState = useMemo(() => {
+    // 🔮 WAVE 1189: FALLBACK CASCADE - El oráculo ya no calla
+    // Prioridad 1: Predicción explícita (Drop/Buildup) si prob > 0.3
     if (hasPrediction) {
       return parsePredictionType(prediction)
     }
+    // Prioridad 2: Tendencia física cuando no hay predicción fuerte
     if (energyTrend === 'spike') return 'energy_spike'
-    if (energyTrend === 'rising' && energyVelocity > 0.01) return 'buildup'
+    if (energyTrend === 'rising' && energyZone !== 'calm') return 'buildup'
+    if (energyTrend === 'falling' && energyZone === 'falling') return 'breakdown'
     return 'stable'
-  }, [hasPrediction, prediction, energyTrend, energyVelocity])
+  }, [hasPrediction, prediction, energyTrend, energyZone])
   
   useEffect(() => {
     if (prevStateRef.current !== predictionState) {
@@ -180,6 +184,21 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
     : energyTrend === 'falling' ? TrendDownIcon : TrendStableIcon
 
   const visual = PREDICTION_VISUALS[predictionState]
+
+  // 🔮 WAVE 1189: DYNAMIC LABELS - El oráculo habla con claridad
+  // No más "SCANNING" estático - mostrar lo que realmente está pasando
+  const displayLabel = useMemo(() => {
+    // Si hay un estado activo (no stable), usar su label
+    if (predictionState !== 'stable') {
+      return visual.label
+    }
+    // En stable, mostrar tendencia física
+    if (energyTrend === 'rising') return 'ENERGY RISING'
+    if (energyTrend === 'falling') return 'ENERGY FADING'
+    if (energyTrend === 'spike') return 'SPIKE DETECTED'
+    // Solo si es plano total
+    return 'MONITORING FLOW'
+  }, [predictionState, energyTrend, visual.label])
 
   const zoneConfig: Record<string, { label: string; color: string; emoji: string }> = {
     calm: { label: 'CALM', color: '#64748b', emoji: '🌊' },
@@ -225,7 +244,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
                 {visual.icon}
               </span>
               <span className="prediction-card__state-label" style={{ color: visual.color }}>
-                {visual.label}
+                {displayLabel}
               </span>
             </div>
 
@@ -261,7 +280,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
             <div className={`prediction-card__analyzing-header ${predictionState !== 'stable' ? 'prediction-card__analyzing-header--active' : ''}`}>
               <span className="prediction-card__analyzing-icon">{visual.icon}</span>
               <span className="prediction-card__analyzing-text" style={{ color: visual.color }}>
-                {visual.label}
+                {displayLabel}
               </span>
               <span className="prediction-card__zone-mini" style={{ color: zone.color }}>
                 {zone.emoji}

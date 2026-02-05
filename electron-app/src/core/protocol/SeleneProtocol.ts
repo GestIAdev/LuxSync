@@ -351,6 +351,48 @@ export interface AITelemetry {
   
   /** ¿Energy Override activo? (physics veto) */
   energyOverrideActive: boolean
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1168: DREAM SIMULATOR OUTPUT
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Último resultado del Dream Simulator */
+  lastDreamResult: {
+    /** Efecto que se intentó (puede ser null si no hubo candidato) */
+    effectName: string | null
+    /** Estado final: ACCEPTED, REJECTED, IDLE */
+    status: 'ACCEPTED' | 'REJECTED' | 'IDLE'
+    /** Razón del resultado (ej: "TEXTURE REJECT - context too warm") */
+    reason: string
+    /** Nivel de riesgo del efecto (0-1) */
+    riskLevel: number
+  }
+  
+  /** Flags éticos activos (los que están en warning/limiting) */
+  ethicsFlags: string[]
+  
+  /** Zona de energía actual */
+  energyZone: 'calm' | 'rising' | 'peak' | 'falling'
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎲 WAVE 1168: FUZZY DECISION DEBUG
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Acción del sistema fuzzy */
+  fuzzyAction: 'force_strike' | 'strike' | 'prepare' | 'hold' | null
+  
+  /** Z-Score de energía (desviación estándar) */
+  zScore: number
+  
+  /** Alerta del Drop Bridge */
+  dropBridgeAlert: 'none' | 'watching' | 'imminent' | 'activated'
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 1176: OPERATION SNIPER - Raw velocity for UI debugging
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Velocidad de energía cruda (slope) para debug en UI */
+  energyVelocity: number
 }
 
 /**
@@ -806,6 +848,7 @@ export function createDefaultCognitive(): CognitiveData {
     thermalTemperature: 4500,
     dropState: { state: 'IDLE', isActive: false },
     // 🧠 WAVE 550: AI Telemetry defaults
+    // 🔮 WAVE 1168: Expanded with Dream Simulator output
     ai: {
       enabled: false,
       huntState: 'sleeping',
@@ -820,7 +863,22 @@ export function createDefaultCognitive(): CognitiveData {
       decisionSource: null,
       reasoning: null,
       biasesDetected: [],
-      energyOverrideActive: false
+      energyOverrideActive: false,
+      // 🔮 WAVE 1168: Dream Simulator output
+      lastDreamResult: {
+        effectName: null,
+        status: 'IDLE',
+        reason: 'No simulation yet',
+        riskLevel: 0
+      },
+      ethicsFlags: [],
+      energyZone: 'calm',
+      // 🎲 WAVE 1168: Fuzzy Decision debug
+      fuzzyAction: null,
+      zScore: 0,
+      dropBridgeAlert: 'none',
+      // 🔥 WAVE 1176: OPERATION SNIPER
+      energyVelocity: 0
     }
   }
 }

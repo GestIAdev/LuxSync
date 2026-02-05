@@ -641,13 +641,15 @@ function defuzzify(
     action = 'force_strike'
     dominantRule = activations.find(a => a.output === 'forceStrike')?.rule ?? 'Divine_Override'
   }
-  // Prioridad 2: Strike supera Hold significativamente
-  else if (outputs.strike > outputs.hold + 0.15 && outputs.strike > 0.3) {
+  // 🎯 WAVE 1176: OPERATION SNIPER - Más exigente para strike
+  // Prioridad 2: Strike supera Hold significativamente (SUBIDO de 0.3 → 0.45)
+  else if (outputs.strike > outputs.hold + 0.15 && outputs.strike > 0.45) {
     action = 'strike'
     dominantRule = activations.find(a => a.output === 'strike')?.rule ?? 'Strike_Rule'
   }
+  // 🎯 WAVE 1176: Prepare también más exigente (SUBIDO de 0.25 → 0.35)
   // Prioridad 3: Prepare supera Hold
-  else if (outputs.prepare > outputs.hold && outputs.prepare > 0.25) {
+  else if (outputs.prepare > outputs.hold && outputs.prepare > 0.35) {
     action = 'prepare'
     dominantRule = activations.find(a => a.output === 'prepare')?.rule ?? 'Prepare_Rule'
   }
@@ -876,11 +878,12 @@ export class FuzzyDecisionMaker {
     let finalAction = decision.action
     let wasDowngraded = false
     
+    // 🎯 WAVE 1176: OPERATION SNIPER - Umbrales más exigentes
     // Umbrales para cada acción (estos son los "listones")
     const THRESHOLDS = {
       force_strike: 0.7,  // Necesitas score alto para force_strike
-      strike: 0.5,        // Strike requiere score moderado
-      prepare: 0.3,       // Prepare requiere poco
+      strike: 0.60,       // 🎯 WAVE 1176: SUBIDO de 0.5 (Más exigente)
+      prepare: 0.35,      // 🎯 WAVE 1176: SUBIDO de 0.3 (Más exigente)
       hold: 0.0,          // Hold siempre pasa
     }
     

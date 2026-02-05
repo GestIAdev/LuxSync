@@ -34,10 +34,14 @@ export {
 // Prediction Engine - Anticipación musical
 export {
   predict,
+  predictCombined,           // 🔮 WAVE 1169: Combinado sección + energía
+  predictFromEnergy,         // 🔮 WAVE 1169: Solo por tendencia de energía
   getLastPrediction,
   getSectionHistory,
+  getEnergyPredictionState,  // 🔮 WAVE 1169: Debug del historial de energía
   validatePrediction,
   resetPredictionEngine,
+  resetEnergyHistory,        // 🔮 WAVE 1169: Reset historial energía
   type PredictionType,
   type MusicalPrediction,
   type PredictionAction

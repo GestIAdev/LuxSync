@@ -98,6 +98,11 @@ export class AudienceSafetyContextBuilder {
         this.context.energyZone = zone;
         return this;
     }
+    // 🛡️ WAVE 1178: ZONE PROTECTION
+    withZScore(zScore) {
+        this.context.zScore = zScore;
+        return this;
+    }
     withTimestamp(timestamp) {
         this.context.timestamp = timestamp;
         return this;

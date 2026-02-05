@@ -101,6 +101,10 @@ export interface MusicalPrediction {
   isDropComing: boolean             // ¿Viene un drop en 4 bars?
   isBreakdownComing: boolean        // ¿Viene un breakdown?
   energyTrend: 'rising' | 'stable' | 'falling'
+  
+  // 🧠 WAVE 1173: NEURAL LINK - Oracle → Dreamer
+  /** Tipo de predicción cruda del Oráculo (para boost/penalty en scoring) */
+  predictionType?: 'energy_spike' | 'buildup_starting' | 'breakdown_imminent' | 'drop_incoming' | 'energy_drop' | 'none'
 }
 
 export interface EffectScenario {
@@ -867,6 +871,28 @@ export class EffectDreamSimulator {
   }
   
   /**
+   * 🎲 WAVE 1178: ANTI-DETERMINISM - Hash de nombre de efecto
+   * 
+   * Genera un número determinista (0-99) basado en el nombre del efecto.
+   * NO ES ALEATORIO - el mismo nombre siempre da el mismo hash.
+   * 
+   * Se usa combinado con el timestamp para crear una "rotación"
+   * de qué efectos tienen boost en cada ventana de tiempo.
+   * 
+   * Esto rompe el determinismo sin violar el Axioma Anti-Simulación
+   * (no usamos Math.random(), usamos el timestamp del mundo real).
+   */
+  private hashEffectName(name: string): number {
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      const char = name.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    return Math.abs(hash) % 100
+  }
+  
+  /**
    * 🧘 WAVE 975: Deriva la zona energética del valor de energía (0-1)
    * Mismo mapeo que SeleneTitanConscious usa
    */
@@ -890,10 +916,20 @@ export class EffectDreamSimulator {
     // 🛡️ WAVE 975: VIBE SHIELD - Solo efectos permitidos para este VIBE
     const vibeAllowedEffects = this.getVibeAllowedEffects(state.vibe)
     
-    // � WAVE 975.5: ZONE UNIFICATION - Usar zona INYECTADA si está disponible
-    // Si viene desde SeleneTitanConscious (source of truth), usarla
-    // Si no, derivar localmente (fallback para compatibilidad)
+    // 🛡️ WAVE 1178: ZONE PROTECTION - Obtener Z-Score para protección de valles
+    const zScore = context.zScore ?? 0
+    
+    // 🔴 WAVE 1178: VALLEY/SILENCE PROTECTION
+    // Si estamos en zone de baja energía Y la energía está BAJANDO (Z<0),
+    // NO DISPARAR EFECTOS. La música está en un funeral, no molestes.
     const energyZone = context.energyZone ?? this.deriveEnergyZone(context.energy)
+    
+    if ((energyZone === 'valley' || energyZone === 'silence') && zScore < 0) {
+      // 🧹 WAVE 1178.1: Log SILENCIADO - spam innecesario
+      // console.log(`[DREAM_SIMULATOR] 🛡️ VALLEY PROTECTION: zone=${energyZone} Z=${zScore.toFixed(2)} → NO CANDIDATES`)
+      return [] // No generar candidatos - la música está muriendo
+    }
+    
     const zoneSource = context.energyZone ? 'SeleneTitanConscious' : 'local-fallback'
     
     const zoneFilteredEffects = this.filterByZone(vibeAllowedEffects, energyZone)
@@ -911,6 +947,22 @@ export class EffectDreamSimulator {
       // 🎭 WAVE 920.2: Skip efectos bloqueados por mood (no gastar CPU simulando)
       if (moodController.isEffectBlocked(effect)) {
         blockedCount++
+        continue
+      }
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 1179: STROBE Z-GUARD - Los strobes SOLO disparan en energía SUBIENDO
+      // ═══════════════════════════════════════════════════════════════════════════
+      // PROBLEMA: industrial_strobe se disparó con Z=-1.5 (valle profundo).
+      // Los strobes son efectos de IMPACTO que deben coincidir con momentos de
+      // energía ASCENDENTE, no descendente. Disparar un strobe en un valle
+      // es como gritar en un funeral.
+      // 
+      // CRITERIO: Si el efecto contiene 'strobe' y Z <= 0 → NO CANDIDATO
+      // ═══════════════════════════════════════════════════════════════════════════
+      const isStrobeEffect = effect.includes('strobe')
+      if (isStrobeEffect && zScore <= 0) {
+        // 🔇 Silent skip - strobe in falling energy = bad match
         continue
       }
       
@@ -1281,7 +1333,8 @@ export class EffectDreamSimulator {
     
     if (!textureCheck.compatible) {
       // REJECTED by texture filter - return zero relevance
-      console.log(`[DREAM_SIMULATOR] 🎨 TEXTURE REJECT: ${effect.effect} - ${textureCheck.reason}`)
+      // 🧹 WAVE 1178.1: Log SILENCIADO - spam innecesario
+      // console.log(`[DREAM_SIMULATOR] 🎨 TEXTURE REJECT: ${effect.effect} - ${textureCheck.reason}`)
       return {
         relevance: 0,
         distance: Math.sqrt(3),  // Máxima distancia
@@ -1432,10 +1485,10 @@ export class EffectDreamSimulator {
     // 🔥 WAVE 982.5: DIVERSITY ENGINE - ESCALERA DE PENALIZACIÓN
     // ═══════════════════════════════════════════════════════════════
     
-    // 🔍 WAVE 996.6: DEBUG - Ver historial recibido
-    if (effect.effect === 'cyber_dualism') {
-      console.log(`[DIVERSITY_DEBUG] 🔍 cyber_dualism: historySize=${context.recentEffects.length}, effects=[${context.recentEffects.map(e=>e.effect).join(',')}]`)
-    }
+    // 🧹 WAVE 1178.1: DEBUG silenciado
+    // if (effect.effect === 'cyber_dualism') {
+    //   console.log(`[DIVERSITY_DEBUG] 🔍 cyber_dualism: historySize=${context.recentEffects.length}, effects=[${context.recentEffects.map(e=>e.effect).join(',')}]`)
+    // }
     
     // Contar uso reciente (últimos efectos en el historial)
     const recentUsage = context.recentEffects
@@ -1510,29 +1563,45 @@ export class EffectDreamSimulator {
     // ═══════════════════════════════════════════════════════════════
     // 🧬 WAVE 970: DNA-BASED SCORING
     // 🔥 WAVE 982.5: DIVERSITY ENGINE INTEGRATION
+    // 🧠 WAVE 1173: NEURAL LINK - Oracle → Dreamer scoring
+    // 🎲 WAVE 1178: ANTI-DETERMINISM ENGINE - Exploration factor
     // ═══════════════════════════════════════════════════════════════
     // 
-    // FÓRMULA SIMPLIFICADA:
-    // FinalScore = (Relevance * DiversityFactor) + vibeBonus + riskPenalty
+    // FÓRMULA:
+    // FinalScore = (Relevance * DiversityFactor) + vibeBonus + riskPenalty + SPIKE_BOOST + EXPLORATION
     // 
-    // DiversityFactor viene de calculateDiversityScore():
-    // - 0 usos → 1.0 (sin penalización)
-    // - 1 uso  → 0.7 (-30%)
-    // - 2 usos → 0.4 (-60%)
-    // - 3+ usos → 0.1 (-90% SHADOWBAN)
+    // 🎲 WAVE 1178: EXPLORATION FACTOR
+    // El problema: DNA scoring es 100% determinista, siempre gana el mismo.
+    // Solución: Añadir varianza basada en TIMESTAMP para que diferentes
+    //           candidatos ganen en diferentes momentos sin usar Math.random().
+    // 
+    // El exploration factor usa el hash del nombre del efecto XOR timestamp
+    // para crear una rotación determinista que varía en el tiempo.
+    // Esto NO es aleatorio, pero tampoco es predecible sin conocer el timestamp.
     // ═══════════════════════════════════════════════════════════════
     
     let score = 0
+    const effectName = scenario.effect.effect.toLowerCase()
     
     // 🎯 CORE: DNA Relevance MULTIPLICADA por Diversity Factor
     // diversityScore ya viene con la escalera (1.0 / 0.7 / 0.4 / 0.1)
     const adjustedRelevance = scenario.projectedRelevance * scenario.diversityScore
     
-    // 🧬 Pesos del scoring
-    score += adjustedRelevance * 0.50              // 🧬 DNA + Diversity (50% del score)
-    score += scenario.vibeCoherence * 0.20         // Coherencia de vibe
-    score += (1 - scenario.riskLevel) * 0.20       // Bajo riesgo preferido
-    score += scenario.simulationConfidence * 0.10  // Confianza en predicción
+    // 🎲 WAVE 1178: ANTI-DETERMINISM - Exploration Factor
+    // Usa el timestamp actual para rotar qué efectos tienen boost
+    // El hash del nombre del efecto crea una "firma" única para cada efecto
+    // que se combina con el timestamp para crear varianza temporal
+    const effectHash = this.hashEffectName(effectName)
+    const timeWindow = Math.floor(Date.now() / 10000) // Cambia cada 10 segundos
+    const explorationSeed = (effectHash + timeWindow) % 100
+    const explorationBoost = (explorationSeed < 30) ? 0.15 : 0 // 30% de efectos reciben boost en cada ventana
+    
+    // 🧬 Pesos del scoring (ajustados para hacer espacio a exploración)
+    score += adjustedRelevance * 0.45              // 🧬 DNA + Diversity (45% - era 50%)
+    score += scenario.vibeCoherence * 0.18         // Coherencia de vibe (era 20%)
+    score += (1 - scenario.riskLevel) * 0.18       // Bajo riesgo preferido (era 20%)
+    score += scenario.simulationConfidence * 0.09  // Confianza en predicción (era 10%)
+    score += explorationBoost                      // 🎲 WAVE 1178: Exploration (10% efectivo)
     
     // Penalizar conflictos
     score -= scenario.cooldownConflicts.length * 0.15
@@ -1546,6 +1615,60 @@ export class EffectDreamSimulator {
     // Boost si match perfecto (alta relevancia Y sin penalización de diversidad)
     if (adjustedRelevance > 0.80 && scenario.dnaDistance < 0.3) {
       score += 0.05
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🧠 WAVE 1173: NEURAL LINK - Oracle Spike Reaction
+    // 🎯 WAVE 1176: OPERATION SNIPER - Reacción VIOLENTA a drops
+    // "El sistema debe reaccionar visualmente ANTES que el humano"
+    // ═══════════════════════════════════════════════════════════════
+    
+    const predictionType = prediction.predictionType ?? 'none'
+    
+    if (predictionType === 'energy_spike' || predictionType === 'drop_incoming') {
+      // 🎯 WAVE 1176: SPIKE BOOST AUMENTADO - Efectos de IMPACTO ganan +50% (era +25%)
+      const IMPACT_EFFECTS = [
+        'strobe', 'flash', 'blind', 'gatling', 'thunder', 'meltdown', 
+        'storm', 'raid', 'snap', 'spark', 'burst', 'strike', 'glitch'
+      ]
+      const isImpactEffect = IMPACT_EFFECTS.some(keyword => effectName.includes(keyword))
+      
+      if (isImpactEffect) {
+        score += 0.50  // 🎯 WAVE 1176: SUBIDO de 0.25 (¡Prioridad total al impacto!)
+        // También boost intensity del candidato (mutación temporal para scoring)
+        scenario.effect.intensity = Math.min(1.0, scenario.effect.intensity * 1.25)
+      }
+      
+      // 🎯 WAVE 1176: SLOW PENALTY AUMENTADO - Efectos LENTOS pierden -70% (era -30%)
+      const SLOW_EFFECTS = [
+        'breath', 'mist', 'drift', 'moon', 'wave', 'sweep', 'ambient', 
+        'fiber', 'pulse', 'shimmer', 'plankton', 'whale', 'caustic'
+      ]
+      const isSlowEffect = SLOW_EFFECTS.some(keyword => effectName.includes(keyword))
+      
+      if (isSlowEffect) {
+        score -= 0.70  // 🎯 WAVE 1176: SUBIDO de 0.30 (¡Muerte a los lentos en drops!)
+      }
+    }
+    
+    // 🌊 WAVE 1173: Buildup - Boost efectos de tensión
+    if (predictionType === 'buildup_starting') {
+      const TENSION_EFFECTS = ['rise', 'sweep', 'ramp', 'build', 'acid']
+      const isTensionEffect = TENSION_EFFECTS.some(keyword => effectName.includes(keyword))
+      
+      if (isTensionEffect) {
+        score += 0.15
+      }
+    }
+    
+    // 📉 WAVE 1173: Breakdown - Boost efectos atmosféricos
+    if (predictionType === 'breakdown_imminent' || predictionType === 'energy_drop') {
+      const ATMOSPHERIC_EFFECTS = ['mist', 'breath', 'ambient', 'fiber', 'drift', 'moon']
+      const isAtmospheric = ATMOSPHERIC_EFFECTS.some(keyword => effectName.includes(keyword))
+      
+      if (isAtmospheric) {
+        score += 0.20
+      }
     }
     
     return Math.max(0, Math.min(1, score))

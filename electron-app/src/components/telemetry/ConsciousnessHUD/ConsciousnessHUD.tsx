@@ -1,14 +1,14 @@
 /**
- * 🧠 CONSCIOUSNESS HUD - WAVE 1167
+ * 🧠 CONSCIOUSNESS HUD - WAVE 1168 "NEURAL BRIDGE"
  * HUD completo de los 4 motores cognitivos de Selene
  * 
- * Reemplaza al legacy HuntMonitor (WAVE 550)
+ * Conecta el Dream Simulator, Ethics, y Prediction reales al UI.
  * 
  * Sub-componentes:
  * - AIStateCard: Estado de caza (sleeping/stalking/evaluating/striking/learning)
- * - DreamForgeCard: Qué está "imaginando" Selene
- * - EthicsCard: Estado de seguridad visual
- * - PredictionCard: Predicciones activas
+ * - DreamForgeCard: Resultado del Dream Simulator (ACCEPTED/REJECTED/IDLE)
+ * - EthicsCard: Estado de seguridad visual con checks reales
+ * - PredictionCard: Predicciones activas con countdown
  */
 
 import React from 'react'
@@ -53,35 +53,39 @@ export const ConsciousnessHUD: React.FC<ConsciousnessHUDProps> = ({
       {/* Body - 2x2 Grid of cards - wrapped in neural-card__content for flex behavior */}
       <div className="neural-card__content">
         <div className="consciousness-hud__grid">
-          {/* AI State */}
+          {/* AI State - The Hunter (WAVE 1169: Added target) */}
           <AIStateCard 
             huntState={ai?.huntState ?? 'sleeping'}
             confidence={ai?.confidence ?? 0}
             beautyScore={ai?.beautyScore ?? 0}
             beautyTrend={ai?.beautyTrend ?? 'stable'}
             reasoning={ai?.reasoning ?? null}
+            target={ai?.prediction ?? null}
           />
 
-          {/* Dream Forge */}
+          {/* Dream Forge - The Simulator (WAVE 1169: Added confidence) */}
           <DreamForgeCard 
-            isActive={cognitive.dream?.isActive ?? false}
-            currentType={cognitive.dream?.currentType ?? 'palette'}
-            currentThought={cognitive.dream?.currentThought ?? ''}
-            projectedBeauty={cognitive.dream?.projectedBeauty ?? 0}
-            lastRecommendation={cognitive.dream?.lastRecommendation ?? 'skip'}
+            effectName={ai?.lastDreamResult?.effectName ?? null}
+            status={ai?.lastDreamResult?.status ?? 'IDLE'}
+            reason={ai?.lastDreamResult?.reason ?? 'No simulation yet'}
+            riskLevel={ai?.lastDreamResult?.riskLevel ?? 0}
+            confidence={ai?.confidence ?? 0}
           />
 
-          {/* Ethics */}
+          {/* Ethics - The Guardian */}
           <EthicsCard 
-            biasesDetected={ai?.biasesDetected ?? []}
+            ethicsFlags={ai?.ethicsFlags ?? []}
             energyOverrideActive={ai?.energyOverrideActive ?? false}
           />
 
-          {/* Prediction */}
+          {/* Prediction - The Oracle (WAVE 1169: Added trend/zone, WAVE 1176: Added velocity) */}
           <PredictionCard 
             prediction={ai?.prediction ?? null}
             probability={ai?.predictionProbability ?? 0}
             timeMs={ai?.predictionTimeMs ?? 0}
+            energyTrend={ai?.beautyTrend ?? 'stable'}
+            energyZone={ai?.energyZone ?? 'calm'}
+            energyVelocity={ai?.energyVelocity ?? 0}
           />
         </div>
       </div>

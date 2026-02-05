@@ -3,6 +3,21 @@
  * WAVE 500 - PROJECT GENESIS: SCENARIO SIMULATOR
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * 🚫🚫🚫 DEPRECATED - WAVE 1169 🚫🚫🚫
+ *
+ * Este módulo está CONGELADO para V1.0.
+ * Será reactivado cuando el MOTOR EVOLUTIVO y DB estén listos.
+ *
+ * NO ENVÍA DATOS A LA UI.
+ * NO MODIFICA LA PALETA.
+ * DESCONECTADO DEL MUNDO.
+ *
+ * TODO WAVE 2.0: Reactivar con el sistema de aprendizaje evolutivo.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ORIGINAL DESCRIPTION (preserved for future):
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
  * El SOÑADOR de Selene.
  *
  * "¿Qué pasaría si...?" - La pregunta que separa la inteligencia

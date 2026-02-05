@@ -115,6 +115,9 @@ export interface DecisionInputs {
     flatness: number
     centroid: number
   }
+  
+  /** 🔒 WAVE 1177: CALIBRATION - Dictador activo (efecto global en ejecución) */
+  activeDictator?: string | null
 }
 
 /**
@@ -237,6 +240,7 @@ type DecisionType =
 
 /**
  * 🔥 WAVE 811 → 🧬 WAVE 972.2 → 🔪 WAVE 1010: UNIFIED BRAIN
+ * 🔒 WAVE 1177: CALIBRATION - Skip DIVINE evaluation if dictator is active
  * 
  * NUEVA JERARQUÍA (WAVE 1010):
  * 0. 🌩️ DIVINE MOMENT (Z > 3.5 + zona válida) - OBLIGATORIO
@@ -247,14 +251,21 @@ type DecisionType =
  * 5. 🧘 Hold
  */
 function determineDecisionType(inputs: DecisionInputs): DecisionType {
-  const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore } = inputs
+  const { huntDecision, prediction, pattern, beauty, dreamIntegration, energyContext, zScore, activeDictator } = inputs
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🌩️ PRIORIDAD -1: DIVINE MOMENT (Z > 3.5)
   // WAVE 1010: Movido desde ContextualEffectSelector - EL GENERAL DECIDE
+  // 🔒 WAVE 1177: Skip if dictator is active (prevents log spam)
   // ═══════════════════════════════════════════════════════════════════════
   const currentZ = zScore ?? 0
-  if (currentZ >= DIVINE_THRESHOLD) {
+  
+  // 🔒 WAVE 1177: Si hay dictador activo, no intentar DIVINE
+  // (El efecto activo tiene "la palabra", no le interrumpimos)
+  if (activeDictator) {
+    // No loggear nada - silencio total para evitar spam
+    // El dictador ya fue anunciado cuando se disparó
+  } else if (currentZ >= DIVINE_THRESHOLD) {
     const zone = energyContext?.zone ?? 'gentle'
     
     // Consciencia energética: NO divine en zonas de silencio
@@ -266,6 +277,19 @@ function determineDecisionType(inputs: DecisionInputs): DecisionType {
       console.log(`[DecisionMaker 🌩️] DIVINE MOMENT: Z=${currentZ.toFixed(2)}σ zone=${zone} → MANDATORY FIRE`)
       return 'divine_strike'  // 🔪 WAVE 1010: Nuevo tipo
     }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 1178: VALLEY PROTECTION - Bloquear TODOS los disparos en valley+Z<0
+  // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario
+  // ═══════════════════════════════════════════════════════════════════════
+  // Si estamos en zone de baja energía Y la energía está BAJANDO (Z<0),
+  // NO DISPARAR EFECTOS. La música está en un funeral, no molestes.
+  const zone = energyContext?.zone ?? 'gentle'
+  if ((zone === 'valley' || zone === 'silence') && currentZ < 0) {
+    // 🧹 WAVE 1178.1: Log SILENCIADO - ya sabemos que funciona
+    // console.log(`[DecisionMaker 🛡️] VALLEY PROTECTION: zone=${zone} Z=${currentZ.toFixed(2)} → HOLD`)
+    return 'hold'  // BLOQUEADO - música muriendo
   }
   
   // 🧬 PRIORIDAD 0: DNA BRAIN - LA ÚLTIMA PALABRA

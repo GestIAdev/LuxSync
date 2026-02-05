@@ -1,24 +1,28 @@
 /**
- * 🎵 CONTEXT MATRIX PANEL - WAVE 1167
+ * 🎵 CONTEXT MATRIX PANEL - WAVE 1167/1174
  * 
  * Muestra el contexto musical:
  * - Key (tonalidad) + Mode (mayor/menor)
- * - Section (intro, verse, chorus, drop...)
- * - Vibe activo (techno-club, chill-lounge...)
- * - Mood emocional (euphoric, melancholic...)
+ * - Section (intro, verse, chorus, drop...) - CON DISPLAY LATCH
+ * - Vibe activo (techno-club, chill-lounge...) - REAL desde AI
+ * - Energy Zone (PEAK, RISING, VALLEY...) - REEMPLAZA MOOD
  * 
- * SIN ZODÍACO. Eso queda en el legacy land.
+ * WAVE 1174: Context Cleanup & Matrix Fix
+ * - ❌ ELIMINADO: Genre Badge footer (basura visual)
+ * - ✅ RECONECTADO: Vibe desde consciousness.vibe.active
+ * - ✅ REEMPLAZADO: Mood por Energy Zone
+ * - ✅ ESTABILIZADO: Section con Display Latch (2s delay, <80% confidence)
  */
 
-import { memo } from 'react'
-import { useTruthContext, useTruthCognitive } from '../../../hooks/useSeleneTruth'
+import { memo, useState, useEffect, useRef } from 'react'
+import { useTruthContext, useTruthCognitive, useTruthAI } from '../../../hooks/useSeleneTruth'
 import { 
   ContextMatrixIcon, 
   MusicalKeyIcon, 
   SectionFlowIcon, 
   VibeAuraIcon 
 } from '../../icons/LuxIcons'
-import type { MusicalKey, MusicalMode, SectionType, Mood, MacroGenre } from '../../../core/protocol/MusicalContext'
+import type { MusicalKey, MusicalMode, SectionType } from '../../../core/protocol/MusicalContext'
 import type { VibeId } from '../../../core/protocol/SeleneProtocol'
 import './ContextMatrixPanel.css'
 
@@ -59,14 +63,16 @@ const SECTION_CONFIG: Record<SectionType, { label: string; emoji: string; color:
   'unknown': { label: 'Unknown', emoji: '❓', color: '#475569' },
 }
 
-const MOOD_CONFIG: Record<Mood, { label: string; emoji: string; color: string }> = {
-  'euphoric': { label: 'Euphoric', emoji: '🌟', color: '#fbbf24' },
-  'melancholic': { label: 'Melancholic', emoji: '🌧️', color: '#60a5fa' },
-  'aggressive': { label: 'Aggressive', emoji: '🔥', color: '#ef4444' },
-  'dreamy': { label: 'Dreamy', emoji: '☁️', color: '#a78bfa' },
-  'neutral': { label: 'Neutral', emoji: '⚖️', color: '#64748b' },
-  'mysterious': { label: 'Mysterious', emoji: '🌙', color: '#8b5cf6' },
-  'triumphant': { label: 'Triumphant', emoji: '🏆', color: '#22c55e' },
+// ═══════════════════════════════════════════════════════════════════════════
+// ENERGY ZONE CONFIG - WAVE 1175: Alineado con backend (TitanEngine)
+// Backend envía: 'calm' | 'rising' | 'peak' | 'falling'
+// ═══════════════════════════════════════════════════════════════════════════
+const ENERGY_ZONE_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
+  'peak':    { label: 'PEAK',    emoji: '🔥', color: '#ef4444' },  // Rojo - máxima energía
+  'rising':  { label: 'RISING',  emoji: '📈', color: '#f97316' },  // Naranja - subiendo
+  'calm':    { label: 'CALM',    emoji: '🌿', color: '#22c55e' },  // Verde - tranquilo
+  'falling': { label: 'FALLING', emoji: '�', color: '#3b82f6' },  // Azul - bajando
+  'idle':    { label: 'IDLE',    emoji: '💤', color: '#64748b' },  // Gris - sin señal
 }
 
 const VIBE_CONFIG: Record<VibeId, { label: string; color: string }> = {
@@ -78,39 +84,60 @@ const VIBE_CONFIG: Record<VibeId, { label: string; color: string }> = {
   'custom': { label: 'Custom', color: '#a855f7' },
 }
 
-const GENRE_COLORS: Record<MacroGenre, string> = {
-  'ELECTRONIC': '#8b5cf6',
-  'LATIN': '#f97316',
-  'ROCK': '#ef4444',
-  'POP': '#ec4899',
-  'CHILL': '#06b6d4',
-  'UNKNOWN': '#64748b',
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Display Latch: evita flickering en Section cuando confidence < 80%
+const SECTION_LATCH_DELAY_MS = 2000
+const SECTION_LATCH_MIN_CONFIDENCE = 0.80
 
 export const ContextMatrixPanel = memo(() => {
   const context = useTruthContext()
   const cognitive = useTruthCognitive()
   
-  // Extraer datos
+  // Display Latch para Section - evita flickering
+  const [displayedSection, setDisplayedSection] = useState<SectionType>('unknown')
+  const [displayedSectionConf, setDisplayedSectionConf] = useState(0)
+  const lastSectionChangeRef = useRef<number>(Date.now())
+  
+  // Extraer datos reales
   const key = context.key || 'C'
   const mode = context.mode || 'unknown'
-  const section = context.section?.type || 'unknown'
-  const sectionConf = context.section?.confidence || 0
+  const realSection = context.section?.type || 'unknown'
+  const realSectionConf = context.section?.confidence || 0
   const vibe = cognitive.vibe?.active || 'idle'
-  const mood = context.mood || 'neutral'
-  const genre = context.genre?.macro || 'UNKNOWN'
+  const energyZone = cognitive.ai?.energyZone || 'idle'
+  
+  // Display Latch Logic - estabiliza Section para evitar flickering
+  useEffect(() => {
+    const now = Date.now()
+    const timeSinceLastChange = now - lastSectionChangeRef.current
+    
+    // Si confidence es alta (>80%) o han pasado más de 2 segundos, actualizar inmediatamente
+    if (realSectionConf >= SECTION_LATCH_MIN_CONFIDENCE || timeSinceLastChange >= SECTION_LATCH_DELAY_MS) {
+      if (displayedSection !== realSection) {
+        setDisplayedSection(realSection)
+        setDisplayedSectionConf(realSectionConf)
+        lastSectionChangeRef.current = now
+      } else {
+        // Solo actualizar confidence si es la misma sección
+        setDisplayedSectionConf(realSectionConf)
+      }
+    }
+    // Si confidence es baja y no han pasado 2s, mantener el valor anterior (latch)
+  }, [realSection, realSectionConf, displayedSection])
+  
+  // Usar valores con latch para el render
+  const section = displayedSection
+  const sectionConf = displayedSectionConf
   
   // Configs
   const keyDisplay = KEY_DISPLAY[key] || key
   const modeInfo = MODE_DISPLAY[mode]
   const sectionInfo = SECTION_CONFIG[section]
-  const moodInfo = MOOD_CONFIG[mood]
   const vibeInfo = VIBE_CONFIG[vibe]
-  const genreColor = GENRE_COLORS[genre]
+  const energyInfo = ENERGY_ZONE_CONFIG[energyZone] || ENERGY_ZONE_CONFIG['idle']
   
   return (
     <div className="neural-card context-matrix-panel">
@@ -176,35 +203,21 @@ export const ContextMatrixPanel = memo(() => {
             </div>
           </div>
           
-          {/* Mood */}
-          <div className="context-cell context-cell--mood">
+          {/* Energy Zone (reemplaza Mood) */}
+          <div className="context-cell context-cell--energy">
             <div className="context-cell__icon">
-              <span className="context-mood-emoji">{moodInfo.emoji}</span>
+              <span className="context-energy-emoji">{energyInfo.emoji}</span>
             </div>
             <div className="context-cell__content">
-              <span className="context-cell__label">Mood</span>
+              <span className="context-cell__label">Energy</span>
               <div className="context-cell__value">
-                <span className="context-mood" style={{ color: moodInfo.color }}>
-                  {moodInfo.label}
+                <span className="context-energy" style={{ color: energyInfo.color }}>
+                  {energyInfo.label}
                 </span>
               </div>
             </div>
           </div>
           
-        </div>
-        
-        {/* Genre Badge */}
-        <div className="context-genre-footer">
-          <span 
-            className="context-genre-badge"
-            style={{ 
-              backgroundColor: `${genreColor}20`,
-              borderColor: `${genreColor}50`,
-              color: genreColor 
-            }}
-          >
-            {genre}
-          </span>
         </div>
       </div>
     </div>

@@ -222,14 +222,27 @@ export class DreamEngineIntegrator {
                 vibe: context.pattern.vibe
             };
             // Build proper MusicalPrediction
+            // 🧠 WAVE 1173: NEURAL LINK - Pass Oracle prediction to Dreamer
+            const energy = context.pattern.energy ?? 0.5;
+            const predictionType = context.predictionType ?? 'none';
+            const energyTrend = context.energyTrend ?? 'stable';
+            // Derive drop/breakdown flags from prediction type
+            const isDropComing = predictionType === 'drop_incoming' ||
+                predictionType === 'energy_spike' ||
+                energy > 0.8;
+            const isBreakdownComing = predictionType === 'breakdown_imminent' ||
+                predictionType === 'energy_drop' ||
+                energy < 0.3;
             const musicalPrediction = {
-                predictedEnergy: context.pattern.energy ?? 0.5,
-                predictedSection: 'stable', // Default - not prediction based
+                predictedEnergy: energy,
+                predictedSection: this.deriveSectionFromPrediction(predictionType, energy),
                 predictedTempo: context.pattern.tempo ?? 120,
-                confidence: 0.6, // Medium confidence for non-prediction input
-                isDropComing: (context.pattern.energy ?? 0.5) > 0.8,
-                isBreakdownComing: (context.pattern.energy ?? 0.5) < 0.3,
-                energyTrend: 'stable'
+                confidence: predictionType !== 'none' ? 0.75 : 0.5, // Higher if Oracle has prediction
+                isDropComing,
+                isBreakdownComing,
+                energyTrend: energyTrend === 'spike' ? 'rising' : energyTrend,
+                // 🧠 WAVE 1173: Pass raw prediction type to Dreamer
+                predictionType,
             };
             // Execute with timeout
             const dreamPromise = effectDreamSimulator.dreamEffects(systemState, musicalPrediction, this.buildAudienceSafetyContext(context));
@@ -290,6 +303,10 @@ export class DreamEngineIntegrator {
         if (context.energyZone) {
             builder.withEnergyZone(context.energyZone);
         }
+        // 🛡️ WAVE 1178: ZONE PROTECTION - Inyectar Z-Score para bloquear disparos en bajadas
+        if (context.zScore !== undefined) {
+            builder.withZScore(context.zScore);
+        }
         // Add epilepsy mode if enabled
         if (context.epilepsyMode) {
             builder.withEpilepsyMode(true);
@@ -313,6 +330,33 @@ export class DreamEngineIntegrator {
             // 🧹 WAVE 1015: Silenciado - spam innecesario
         }
         return builder.build();
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 1173: NEURAL LINK - Helper methods
+    // ═════════════════════════════════════════════════════════════════════════
+    /**
+     * Deriva la sección musical esperada del tipo de predicción del Oráculo
+     */
+    deriveSectionFromPrediction(predictionType, energy) {
+        switch (predictionType) {
+            case 'energy_spike':
+            case 'drop_incoming':
+                return 'drop';
+            case 'buildup_starting':
+                return 'buildup';
+            case 'breakdown_imminent':
+            case 'energy_drop':
+                return 'breakdown';
+            default:
+                // Fallback basado en energía
+                if (energy > 0.8)
+                    return 'drop';
+                if (energy > 0.6)
+                    return 'chorus';
+                if (energy < 0.3)
+                    return 'breakdown';
+                return 'verse';
+        }
     }
     getDreamCacheKey(context) {
         // Cache key incluye factores que afectan decisión ética

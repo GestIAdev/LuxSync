@@ -100,7 +100,9 @@ import {
 
 import {
   predict,
+  predictCombined, // 🔮 WAVE 1169: Predicción reactiva por energía
   resetPredictionEngine,
+  getEnergyPredictionState, // 🔥 WAVE 1176: OPERATION SNIPER - Expose velocity for UI
   type MusicalPrediction,
 } from './think/PredictionEngine'
 
@@ -128,10 +130,12 @@ const DEBUG_ENERGY = true  // 🧪 Set to TRUE to activate Energy Lab
 // IMPORTAR META-CONSCIENCIA - PHASE 4 COMPLETE
 // ═══════════════════════════════════════════════════════════════════════════
 
-import {
-  dream as simulateDream,
-  resetDreamEngine,
-} from './dream/ScenarioSimulator'
+// 🚫 WAVE 1169: ScenarioSimulator DEPRECATED for V1.0
+// TODO WAVE 2.0: Reactivar cuando el motor evolutivo esté listo
+// import {
+//   dream as simulateDream,
+//   resetDreamEngine,
+// } from './dream/ScenarioSimulator'
 
 import {
   recordDecision,
@@ -309,6 +313,10 @@ export class SeleneTitanConscious extends EventEmitter {
   private lastSilenceLogTimestamp: number = 0
   private readonly SILENCE_LOG_THROTTLE_MS = 5000  // Log silence solo cada 5 segundos
   
+  // 🔮 WAVE 1168: NEURAL BRIDGE - Dream/Energy state for UI telemetry
+  private lastDreamIntegrationResult: IntegrationDecision | null = null
+  private lastEnergyZone: 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak' = 'ambient'
+  
   constructor(config: Partial<SeleneTitanConsciousConfig> = {}) {
     super()
     
@@ -350,6 +358,18 @@ export class SeleneTitanConscious extends EventEmitter {
     effectManager.on('effectTriggered', (event: any) => {
       this.effectSelector.registerEffectFired(event.effectType)
       console.log(`[SeleneTitanConscious 🔥] Cooldown registered: ${event.effectType}`)
+      
+      // 🔒 WAVE 1177: CALIBRATION - Solo pushear al historial cuando REALMENTE se ejecuta
+      // Esto evita que efectos bloqueados por GLOBAL_LOCK contaminen el historial
+      this.effectHistory.push({
+        type: event.effectType,
+        timestamp: Date.now(),
+      })
+      
+      // Mantener solo últimos 20 efectos
+      if (this.effectHistory.length > 20) {
+        this.effectHistory.shift()
+      }
     })
     
     // Inicializar estado interno
@@ -581,7 +601,8 @@ export class SeleneTitanConscious extends EventEmitter {
     const huntDecision = processHunt(pattern, beautyAnalysis, consonanceAnalysis, spectralHint)
     
     // 3. PREDICTION ENGINE: Anticipar próximos eventos
-    const prediction = predict(pattern)
+    // 🔮 WAVE 1169: Usar predictCombined para detección reactiva por energía
+    const prediction = predictCombined(pattern, state.smoothedEnergy)
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
@@ -645,16 +666,28 @@ export class SeleneTitanConscious extends EventEmitter {
     let dreamIntegrationData: any = null
     
     // ═══════════════════════════════════════════════════════════════════════
+    // 🔒 WAVE 1179: DICTATOR AWARENESS - Si hay dictador, DNA NO simula
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROBLEMA: El DNA seguía recomendando efectos aunque había un dictador activo.
+    // Esto generaba spam de GLOBAL_LOCK (acid_sweep bloqueado 14 veces seguidas).
+    // SOLUCIÓN: Verificar dictador ANTES de simular, no después de recomendar.
+    // ═══════════════════════════════════════════════════════════════════════
+    const activeDictator = getEffectManager().hasDictator()
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // � WAVE 976.7: DNA SIMULATION - Hunt dice hay presa → DNA simula
+    // 🔒 WAVE 1179: PERO SOLO SI NO HAY DICTADOR
     // ═══════════════════════════════════════════════════════════════════════
     // DNA NO TIENE COOLDOWN. DNA simula CADA VEZ que Hunt detecta momento worthy.
     // Gatekeeper controla el spam con cooldowns de efectos.
+    // 🔒 WAVE 1179: Si hay dictador activo, el DNA respeta el silencio.
     // ═══════════════════════════════════════════════════════════════════════
     
-    // Si Hunt detectó momento digno, ejecutar simulador DNA
+    // Si Hunt detectó momento digno Y no hay dictador activo, ejecutar simulador DNA
     const WORTHINESS_THRESHOLD = 0.65
-    if (huntDecision.worthiness >= WORTHINESS_THRESHOLD) {
+    if (huntDecision.worthiness >= WORTHINESS_THRESHOLD && !activeDictator) {
       // Construir contexto para el pipeline integrado
+      // 🧠 WAVE 1173: NEURAL LINK - Pasar predicción del Oráculo al Dreamer
       const pipelineContext: PipelineContext = {
         pattern: {
           vibe: pattern.vibeId,
@@ -677,6 +710,13 @@ export class SeleneTitanConscious extends EventEmitter {
         })),
         // 🧠 WAVE 975.5: ZONE UNIFICATION - Inyectar zona desde EnergyConsciousness
         energyZone: energyContext.zone,
+        // 🛡️ WAVE 1178: ZONE PROTECTION - Inyectar Z-Score para bloquear disparos en bajadas
+        zScore: zScore,
+        // 🧠 WAVE 1173: NEURAL LINK - Oracle → Dreamer
+        predictionType: prediction.type as PipelineContext['predictionType'],
+        energyTrend: prediction.type === 'energy_spike' ? 'spike' : 
+                     (prediction.reasoning?.includes('RISING') ? 'rising' :
+                      prediction.reasoning?.includes('FALLING') ? 'falling' : 'stable'),
       }
       
       // 🧬 DNA Brain simula - NO decide
@@ -688,7 +728,10 @@ export class SeleneTitanConscious extends EventEmitter {
           )
         ])
         
-        // 🔇 WAVE 982.5: DNA logs silenciados (arqueología del día 2)
+        // � WAVE 1168: NEURAL BRIDGE - Cache dream result for UI telemetry
+        this.lastDreamIntegrationResult = dreamIntegrationData
+        
+        // �🔇 WAVE 982.5: DNA logs silenciados (arqueología del día 2)
         /*
         if (dreamIntegrationData) {
           console.log(
@@ -701,6 +744,9 @@ export class SeleneTitanConscious extends EventEmitter {
         console.warn('[SeleneTitanConscious] 🧬 DNA Simulation timeout/error:', err?.message || err)
       }
     }
+    
+    // 🔮 WAVE 1168: NEURAL BRIDGE - Cache energy zone for UI telemetry
+    this.lastEnergyZone = energyContext.zone
     
     // ═══════════════════════════════════════════════════════════════════════
     // 4. DECISION MAKER: EL ÚNICO GENERAL (WAVE 1010: UNIFIED BRAIN)
@@ -729,6 +775,8 @@ export class SeleneTitanConscious extends EventEmitter {
       zScore: zScore,
       // 🎨 WAVE 1028: THE CURATOR - Spectral Context for texture filtering
       spectralContext: spectralContextForDecision,
+      // 🔒 WAVE 1177: CALIBRATION - Check if dictator is active to prevent DIVINE spam
+      activeDictator: getEffectManager().hasDictator(),
     }
     
     // 🔍 WAVE 976.3: DEBUG - Ver qué recibe DecisionMaker
@@ -824,11 +872,22 @@ export class SeleneTitanConscious extends EventEmitter {
       // 🔪 WAVE 1010: Si ya procesamos DIVINE arsenal, el efecto ya está validado
       const alreadyValidatedByArsenal = divineArsenal && divineArsenal.length > 0 && output.effectDecision
       
-      const availability = alreadyValidatedByArsenal
+      // ═══════════════════════════════════════════════════════════════════════════
+      // 🔒 WAVE 1179: DICTATOR HARD MINIMUM PROTECTION
+      // ═══════════════════════════════════════════════════════════════════════════
+      // Incluso con DNA COOLDOWN OVERRIDE, verificamos el HARD MINIMUM primero.
+      // Esto evita que abyssal_rise se dispare 2x en 10 segundos.
+      // ═══════════════════════════════════════════════════════════════════════════
+      const hardMinimumCheck = this.effectSelector.checkAvailability(intent, pattern.vibeId)
+      const isHardMinimumBlocked = hardMinimumCheck.reason?.includes('HARD_COOLDOWN')
+      
+      const availability = isHardMinimumBlocked
+        ? hardMinimumCheck  // 🔒 HARD MINIMUM es LEY ABSOLUTA
+        : alreadyValidatedByArsenal
         ? { available: true, reason: 'DIVINE arsenal pre-validated' }
         : hasHighEthicsOverride
         ? { available: true, reason: `DNA override (${currentMoodProfile.emoji} ${currentMoodProfile.name}: ethics ${ethicsScore.toFixed(2)} > ${ethicsThreshold})` }
-        : this.effectSelector.checkAvailability(intent, pattern.vibeId)
+        : hardMinimumCheck
       
       if (availability.available && output.effectDecision) {
         finalEffectDecision = output.effectDecision
@@ -885,18 +944,9 @@ export class SeleneTitanConscious extends EventEmitter {
       this.lastEffectTimestamp = Date.now()
       this.lastEffectType = finalEffectDecision.effectType
       
-      // 🧬 WAVE 972.2: Track para Dream Engine
-      this.effectHistory.push({
-        type: finalEffectDecision.effectType,
-        timestamp: Date.now(),
-      })
-      // 🔍 WAVE 996.7: DEBUG - Verify history is being filled
-      console.log(`[HISTORY_DEBUG] 📝 Pushed ${finalEffectDecision.effectType} → historySize=${this.effectHistory.length}`)
-      
-      // Mantener solo últimos 20 efectos
-      if (this.effectHistory.length > 20) {
-        this.effectHistory.shift()
-      }
+      // 🔒 WAVE 1177: REMOVED - History push moved to effectTriggered listener
+      // This prevents blocked effects from contaminating history
+      // (See constructor: effectManager.on('effectTriggered', ...))
       
       output = { ...output, effectDecision: finalEffectDecision }
       
@@ -949,7 +999,12 @@ export class SeleneTitanConscious extends EventEmitter {
   
   /**
    * 💭 Simular si la decisión mejorará la belleza
-   * PHASE 4: USA ScenarioSimulator + BiasDetector
+   * 
+   * 🚫 WAVE 1169: DEPRECATED - ScenarioSimulator desconectado para V1.0
+   * El motor evolutivo y DB están preparados pero no para esta release.
+   * Este método ahora es un pass-through que solo registra decisiones.
+   * 
+   * TODO WAVE 2.0: Reactivar cuando el motor evolutivo esté listo
    */
   private dream(
     state: TitanStabilizedState,
@@ -957,77 +1012,35 @@ export class SeleneTitanConscious extends EventEmitter {
   ): ConsciousnessOutput {
     this.stats.dreamsSimulated++
     
-    // Obtener pattern y beauty actuales
-    const pattern = this.state.lastPattern ?? senseMusicalPattern(state)
-    const currentBeauty = this.currentBeauty?.totalBeauty ?? 0.5
-    
-    // Solo soñar en estados de baja energía (cuando hay tiempo)
-    // En momentos de alta actividad, pasamos directo
-    if (state.smoothedEnergy > 0.6 || decision.confidence < 0.4) {
-      // Registrar decisión para análisis de sesgos
-      recordDecision(decision)
-      return decision
-    }
-    
-    // SCENARIO SIMULATOR: ¿Hay un mejor camino?
-    const dreamResult = simulateDream(state, pattern, currentBeauty)
-    
-    // Guardar resultado del sueño
-    this.state.lastDream = dreamResult
-    
-    // Si el sueño recomienda abortar, reducir confianza
-    if (dreamResult.recommendation === 'abort') {
-      return {
-        ...decision,
-        confidence: decision.confidence * 0.6,
-        debugInfo: {
-          ...decision.debugInfo,
-          reasoning: `Dream abort: ${dreamResult.reason}`,
-          lastDream: {
-            scenario: dreamResult.bestScenario?.type ?? 'none',
-            beautyDelta: dreamResult.bestScenario?.beautyDelta ?? 0,
-            recommendation: 'abort'
-          }
-        }
-      }
-    }
-    
-    // Si el sueño recomienda ejecutar con mejor escenario
-    if (dreamResult.recommendation === 'execute' && dreamResult.bestScenario) {
-      const best = dreamResult.bestScenario
-      
-      // Usar la decisión del mejor escenario soñado
-      return {
-        ...decision,
-        colorDecision: best.decision,
-        confidence: Math.min(1, decision.confidence * 1.2), // Boost de confianza
-        source: 'dream',
-        debugInfo: {
-          ...decision.debugInfo,
-          reasoning: `Dream execute: ${best.description}`,
-          lastDream: {
-            scenario: best.type,
-            beautyDelta: best.beautyDelta,
-            recommendation: 'execute'
-          }
-        }
-      }
-    }
-    
-    // BIAS DETECTOR: Analizar sesgos periódicamente
+    // 🚫 WAVE 1169: ScenarioSimulator BYPASSED
+    // Solo registramos la decisión para análisis de sesgos
+    // El dream simulation se reactivará con el motor evolutivo
     recordDecision(decision)
     
-    if (this.stats.framesProcessed % 100 === 0) {
-      const biasAnalysis = analyzeBiases()
-      this.state.detectedBiases = getBiasStrings()
-      this.stats.biasesDetected += biasAnalysis.biases.length
-      
-      if (this.config.debug && biasAnalysis.biases.length > 0) {
-        console.log(`[SeleneTitanConscious] 🧠 Biases detected: ${this.state.detectedBiases.join(', ')}`)
-      }
-    }
-    
+    // Pass-through: devolver la decisión sin modificar
     return decision
+    
+    /* ═══════════════════════════════════════════════════════════════════════
+     * 🧊 FROZEN CODE - ScenarioSimulator (reactivar en WAVE 2.0)
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * // Obtener pattern y beauty actuales
+     * const pattern = this.state.lastPattern ?? senseMusicalPattern(state)
+     * const currentBeauty = this.currentBeauty?.totalBeauty ?? 0.5
+     * 
+     * // Solo soñar en estados de baja energía (cuando hay tiempo)
+     * if (state.smoothedEnergy > 0.6 || decision.confidence < 0.4) {
+     *   recordDecision(decision)
+     *   return decision
+     * }
+     * 
+     * // SCENARIO SIMULATOR: ¿Hay un mejor camino?
+     * const dreamResult = simulateDream(state, pattern, currentBeauty)
+     * this.state.lastDream = dreamResult
+     * 
+     * // ... rest of dream logic ...
+     * 
+     * ═══════════════════════════════════════════════════════════════════════ */
   }
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -1165,8 +1178,8 @@ export class SeleneTitanConscious extends EventEmitter {
     resetHuntEngine()
     resetPredictionEngine()
     
-    // Resetear meta-consciencia (PHASE 4)
-    resetDreamEngine()
+    // 🚫 WAVE 1169: ScenarioSimulator DEPRECATED for V1.0
+    // resetDreamEngine()
     resetBiasDetector()
     
     // 🧠 WAVE 666: Resetear memoria contextual
@@ -1257,9 +1270,29 @@ export class SeleneTitanConscious extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🎯 WAVE 685: HELPERS PARA CONTEXTUAL EFFECT SELECTOR
+  // 🔮 WAVE 1168: NEURAL BRIDGE - UI TELEMETRY API
   // ═══════════════════════════════════════════════════════════════════════
   
+  /**
+   * Obtiene el último resultado del Dream Engine Integrator.
+   * Contiene: approved, effect, dreamRecommendation, ethicalVerdict
+   */
+  getLastDreamResult(): IntegrationDecision | null {
+    return this.lastDreamIntegrationResult
+  }
+  
+  /**
+   * Obtiene la zona de energía actual del EnergyConsciousness.
+   * Zonas: silence, valley, ambient, gentle, active, intense, peak
+   */
+  getEnergyZone(): 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak' {
+    return this.lastEnergyZone
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 685: HELPERS PARA CONTEXTUAL EFFECT SELECTOR
+  // ═══════════════════════════════════════════════════════════════════════
+
   /**
    * Actualiza la tendencia de energía basada en historial reciente.
    */
@@ -1326,6 +1359,15 @@ export class SeleneTitanConscious extends EventEmitter {
    */
   getEnergyTrend(): 'rising' | 'stable' | 'falling' {
     return this.energyTrend
+  }
+
+  /**
+   * 🔥 WAVE 1176: OPERATION SNIPER - Obtiene la velocidad de energía cruda
+   * Para mostrar en UI el slope de predicción
+   */
+  getEnergyVelocity(): number {
+    const state = getEnergyPredictionState()
+    return state.velocity
   }
 }
 

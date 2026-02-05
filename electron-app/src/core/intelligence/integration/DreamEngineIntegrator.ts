@@ -51,6 +51,15 @@ export interface PipelineContext {
   
   // 🧠 WAVE 975.5: ZONE UNIFICATION - Source of truth desde SeleneTitanConscious
   energyZone?: string  // 'silence' | 'valley' | 'ambient' | 'gentle' | 'active' | 'intense' | 'peak'
+  
+  // 🛡️ WAVE 1178: ZONE PROTECTION - Z-Score para bloquear efectos en bajadas
+  /** Z-Score de energía (derivada). Z<0 = bajando, Z>0 = subiendo */
+  zScore?: number
+  
+  // 🧠 WAVE 1173: NEURAL LINK - Oracle prediction type for Dreamer scoring
+  predictionType?: 'energy_spike' | 'buildup_starting' | 'breakdown_imminent' | 'drop_incoming' | 'energy_drop' | 'none'
+  /** Tendencia de energía del Oráculo */
+  energyTrend?: 'rising' | 'stable' | 'falling' | 'spike'
 }
 
 export interface IntegrationDecision {
@@ -321,14 +330,29 @@ export class DreamEngineIntegrator {
       }
       
       // Build proper MusicalPrediction
+      // 🧠 WAVE 1173: NEURAL LINK - Pass Oracle prediction to Dreamer
+      const energy = context.pattern.energy ?? 0.5
+      const predictionType = context.predictionType ?? 'none'
+      const energyTrend = context.energyTrend ?? 'stable'
+      
+      // Derive drop/breakdown flags from prediction type
+      const isDropComing = predictionType === 'drop_incoming' || 
+                           predictionType === 'energy_spike' ||
+                           energy > 0.8
+      const isBreakdownComing = predictionType === 'breakdown_imminent' ||
+                                 predictionType === 'energy_drop' ||
+                                 energy < 0.3
+      
       const musicalPrediction: MusicalPrediction = {
-        predictedEnergy: context.pattern.energy ?? 0.5,
-        predictedSection: 'stable',  // Default - not prediction based
+        predictedEnergy: energy,
+        predictedSection: this.deriveSectionFromPrediction(predictionType, energy),
         predictedTempo: context.pattern.tempo ?? 120,
-        confidence: 0.6,  // Medium confidence for non-prediction input
-        isDropComing: (context.pattern.energy ?? 0.5) > 0.8,
-        isBreakdownComing: (context.pattern.energy ?? 0.5) < 0.3,
-        energyTrend: 'stable'
+        confidence: predictionType !== 'none' ? 0.75 : 0.5, // Higher if Oracle has prediction
+        isDropComing,
+        isBreakdownComing,
+        energyTrend: energyTrend === 'spike' ? 'rising' : energyTrend as 'rising' | 'stable' | 'falling',
+        // 🧠 WAVE 1173: Pass raw prediction type to Dreamer
+        predictionType,
       }
       
       // Execute with timeout
@@ -406,6 +430,11 @@ export class DreamEngineIntegrator {
       builder.withEnergyZone(context.energyZone)
     }
     
+    // 🛡️ WAVE 1178: ZONE PROTECTION - Inyectar Z-Score para bloquear disparos en bajadas
+    if (context.zScore !== undefined) {
+      builder.withZScore(context.zScore)
+    }
+    
     // Add epilepsy mode if enabled
     if (context.epilepsyMode) {
       builder.withEpilepsyMode(true)
@@ -431,6 +460,35 @@ export class DreamEngineIntegrator {
     }
     
     return builder.build()
+  }
+  
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 1173: NEURAL LINK - Helper methods
+  // ═════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Deriva la sección musical esperada del tipo de predicción del Oráculo
+   */
+  private deriveSectionFromPrediction(
+    predictionType: string,
+    energy: number
+  ): string {
+    switch (predictionType) {
+      case 'energy_spike':
+      case 'drop_incoming':
+        return 'drop'
+      case 'buildup_starting':
+        return 'buildup'
+      case 'breakdown_imminent':
+      case 'energy_drop':
+        return 'breakdown'
+      default:
+        // Fallback basado en energía
+        if (energy > 0.8) return 'drop'
+        if (energy > 0.6) return 'chorus'
+        if (energy < 0.3) return 'breakdown'
+        return 'verse'
+    }
   }
   
   private getDreamCacheKey(context: PipelineContext): string {

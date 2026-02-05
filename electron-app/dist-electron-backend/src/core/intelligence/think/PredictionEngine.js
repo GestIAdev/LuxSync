@@ -169,6 +169,7 @@ export function validatePrediction(prediction, actualSection) {
 export function resetPredictionEngine() {
     sectionHistory = [];
     lastPrediction = null;
+    energyHistory = []; // 🔮 WAVE 1169: Reset energy history too
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -267,4 +268,237 @@ function buildReasoning(matchedPattern, pattern) {
         reason += ', alta tensión';
     }
     return reason;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔮 WAVE 1169/1172: REACTIVE ENERGY PREDICTION
+// "No dependas de etiquetas, lee la energía bruta"
+// 
+// WAVE 1172 TUNING: Oráculo más sensible
+// - Spike threshold: 0.85 → 0.70
+// - Drop detection: tension > 0.5 (was 0.6)
+// - Rising energy feedback visible
+// ═══════════════════════════════════════════════════════════════════════════
+/** Historial de energía para detección de tendencias */
+const MAX_ENERGY_HISTORY = 30; // ~0.5 segundos a 60fps
+let energyHistory = [];
+/** 🔮 WAVE 1172: Umbrales calibrados para mayor sensibilidad */
+/** 🎯 WAVE 1176: OPERATION SNIPER - Sensibilidad x10 */
+const ENERGY_THRESHOLDS = {
+    SPIKE_DELTA: 0.08, // 🎯 WAVE 1176: Era 0.12, ahora x10 sensibilidad
+    RISING_DELTA: 0.015, // 🎯 WAVE 1176: Era 0.04, detecta subidas sutiles
+    FALLING_DELTA: -0.02, // 🎯 WAVE 1176: Era -0.06, detecta caídas antes
+    MIN_ENERGY_FOR_RISING: 0.25, // 🎯 WAVE 1176: Era 0.35, activa mucho antes
+    MIN_ENERGY_FOR_SPIKE: 0.60, // 🎯 WAVE 1176: Era 0.70, más sensible
+    TENSION_FOR_DROP: 0.4, // 🎯 WAVE 1176: Era 0.5, más sensible
+};
+/**
+ * Actualiza el historial de energía
+ */
+function updateEnergyHistory(energy) {
+    energyHistory.push(energy);
+    if (energyHistory.length > MAX_ENERGY_HISTORY) {
+        energyHistory.shift();
+    }
+}
+/**
+ * Calcula la tendencia de energía (derivada suavizada)
+ * 🔮 WAVE 1172: Usa umbrales calibrados
+ * @returns 'rising' | 'falling' | 'stable' | 'spike'
+ */
+function calculateEnergyTrend() {
+    if (energyHistory.length < 10)
+        return 'stable';
+    const recent = energyHistory.slice(-10);
+    const older = energyHistory.slice(-20, -10);
+    if (older.length < 5)
+        return 'stable';
+    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
+    const delta = recentAvg - olderAvg;
+    // 🔮 WAVE 1172: Umbrales más sensibles
+    if (delta > ENERGY_THRESHOLDS.SPIKE_DELTA)
+        return 'spike';
+    if (delta > ENERGY_THRESHOLDS.RISING_DELTA)
+        return 'rising';
+    if (delta < ENERGY_THRESHOLDS.FALLING_DELTA)
+        return 'falling';
+    return 'stable';
+}
+/**
+ * Calcula la velocidad de subida de energía (para estimar tiempo hasta pico)
+ * @returns Velocidad de energía por frame (0-1 scale)
+ */
+function calculateEnergyVelocity() {
+    if (energyHistory.length < 5)
+        return 0;
+    const recent = energyHistory.slice(-5);
+    const velocities = [];
+    for (let i = 1; i < recent.length; i++) {
+        velocities.push(recent[i] - recent[i - 1]);
+    }
+    return velocities.reduce((a, b) => a + b, 0) / velocities.length;
+}
+/**
+ * 🔮 WAVE 1169/1172: REACTIVE PREDICTION
+ * Predice basándose en TENDENCIA DE ENERGÍA BRUTA, no en etiquetas de sección.
+ *
+ * WAVE 1172: Umbrales más bajos para feedback visual más activo
+ * - Spike threshold: 0.70 (was 0.85)
+ * - Tension for drop: 0.5 (was 0.6)
+ *
+ * @param pattern - Patrón musical actual
+ * @param currentEnergy - Energía actual (0-1)
+ * @param bpm - BPM actual
+ * @returns Predicción reactiva basada en energía
+ */
+export function predictFromEnergy(pattern, currentEnergy, bpm = 120) {
+    const timestamp = Date.now();
+    // Actualizar historial
+    updateEnergyHistory(currentEnergy);
+    const trend = calculateEnergyTrend();
+    const velocity = calculateEnergyVelocity();
+    // ═══════════════════════════════════════════════════════════════════════
+    // SPIKE DETECTION: Energía subiendo MUY rápido → Algo grande viene
+    // WAVE 1172: Umbral bajado a 0.70
+    // ═══════════════════════════════════════════════════════════════════════
+    if (trend === 'spike' && currentEnergy >= ENERGY_THRESHOLDS.MIN_ENERGY_FOR_SPIKE) {
+        // Estimar tiempo hasta pico basado en velocidad y energía actual
+        const remainingEnergy = 1 - currentEnergy;
+        const framesUntilPeak = velocity > 0 ? Math.ceil(remainingEnergy / velocity) : 60;
+        const msPerBeat = 60000 / bpm;
+        const beatsUntilPeak = Math.max(2, Math.round((framesUntilPeak / 60) * (bpm / 60)));
+        return {
+            type: 'energy_spike',
+            probableSection: 'drop',
+            probability: 0.75 + (velocity * 2), // Mayor velocidad = mayor certeza
+            estimatedTimeMs: beatsUntilPeak * msPerBeat,
+            estimatedBeats: beatsUntilPeak,
+            reasoning: `⚡ ENERGY SPIKE: +${(velocity * 100).toFixed(1)}%/frame → Peak en ~${beatsUntilPeak} beats`,
+            suggestedActions: [
+                { type: 'prepare', effect: 'intensity_ramp', intensity: 0.8, durationMs: 1500, timingOffsetMs: -1500 },
+                { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 200, timingOffsetMs: 0 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // RISING ENERGY: Subida sostenida → Buildup probable
+    // WAVE 1172: Umbral bajado a 0.35
+    // ═══════════════════════════════════════════════════════════════════════
+    if (trend === 'rising' && currentEnergy > ENERGY_THRESHOLDS.MIN_ENERGY_FOR_RISING) {
+        const msPerBeat = 60000 / bpm;
+        const estimatedBeats = Math.round(8 - (currentEnergy * 4)); // Menos beats cuanto más alta la energía
+        return {
+            type: 'buildup_starting',
+            probableSection: 'buildup',
+            probability: 0.55 + (currentEnergy * 0.2), // 55-75% según energía
+            estimatedTimeMs: estimatedBeats * msPerBeat,
+            estimatedBeats,
+            reasoning: `📈 RISING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y subiendo → Buildup detectado`,
+            suggestedActions: [
+                { type: 'prepare', effect: 'intensity_ramp', intensity: 0.5, durationMs: 2000, timingOffsetMs: -2000 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔮 WAVE 1172: RISING pero bajo umbral → Mostrar "ENERGY BUILDING"
+    // UI Feedback activo aunque no haya predicción fuerte
+    // ═══════════════════════════════════════════════════════════════════════
+    if (trend === 'rising') {
+        return {
+            type: 'buildup_starting',
+            probableSection: null,
+            probability: 0.35 + (currentEnergy * 0.15), // 35-50% - bajo pero visible
+            estimatedTimeMs: 8000,
+            estimatedBeats: 8,
+            reasoning: `⚠️ ENERGY BUILDING: ${(currentEnergy * 100).toFixed(0)}% | Trend: Rising`,
+            suggestedActions: [],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // DROP DETECTION: Tensión alta + energía cayendo → Drop incoming
+    // WAVE 1172: Umbral de tensión bajado a 0.5
+    // ═══════════════════════════════════════════════════════════════════════
+    if (pattern.emotionalTension > ENERGY_THRESHOLDS.TENSION_FOR_DROP && trend === 'falling') {
+        return {
+            type: 'drop_incoming',
+            probableSection: 'drop',
+            probability: 0.60 + (pattern.emotionalTension * 0.2),
+            estimatedTimeMs: 4000,
+            estimatedBeats: 4,
+            reasoning: `🎯 DROP INCOMING: Tension ${(pattern.emotionalTension * 100).toFixed(0)}% + Energy falling`,
+            suggestedActions: [
+                { type: 'prepare', effect: 'intensity_ramp', intensity: 0.7, durationMs: 2000, timingOffsetMs: -2000 },
+                { type: 'execute', effect: 'flash', intensity: 1.0, durationMs: 150, timingOffsetMs: 0 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // FALLING ENERGY: Bajando → Recovery/Breakdown
+    // ═══════════════════════════════════════════════════════════════════════
+    if (trend === 'falling' && currentEnergy < 0.5) {
+        return {
+            type: 'energy_drop',
+            probableSection: 'breakdown',
+            probability: 0.50,
+            estimatedTimeMs: 4000,
+            estimatedBeats: 8,
+            reasoning: `📉 FALLING ENERGY: ${(currentEnergy * 100).toFixed(0)}% y bajando → Recovery mode`,
+            suggestedActions: [
+                { type: 'recover', effect: 'breathe', intensity: 0.4, durationMs: 3000, timingOffsetMs: 0 },
+            ],
+            timestamp,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // STABLE: Sin cambio significativo → Analizar flow
+    // ═══════════════════════════════════════════════════════════════════════
+    return {
+        type: 'none',
+        probableSection: null,
+        probability: 0,
+        estimatedTimeMs: 0,
+        estimatedBeats: 0,
+        reasoning: `🌊 STABLE FLOW: ${(currentEnergy * 100).toFixed(0)}% | Analyzing...`,
+        suggestedActions: [],
+        timestamp,
+    };
+}
+/**
+ * 🔮 WAVE 1169: Combined Prediction
+ * Combina predicción por sección + predicción por energía
+ * Usa la que tenga mayor probabilidad
+ *
+ * @param pattern - Patrón musical actual
+ * @param currentEnergy - Energía actual (0-1)
+ */
+export function predictCombined(pattern, currentEnergy) {
+    // Predicción tradicional por sección
+    const sectionPrediction = predict(pattern);
+    // Predicción reactiva por energía
+    const energyPrediction = predictFromEnergy(pattern, currentEnergy, pattern.bpm);
+    // Usar la que tenga mayor probabilidad
+    if (energyPrediction.probability > sectionPrediction.probability) {
+        return energyPrediction;
+    }
+    return sectionPrediction;
+}
+/**
+ * Obtiene el estado del historial de energía (para debug)
+ */
+export function getEnergyPredictionState() {
+    return {
+        historyLength: energyHistory.length,
+        trend: calculateEnergyTrend(),
+        velocity: calculateEnergyVelocity(),
+    };
+}
+/**
+ * Reset del historial de energía (para tests)
+ */
+export function resetEnergyHistory() {
+    energyHistory = [];
 }

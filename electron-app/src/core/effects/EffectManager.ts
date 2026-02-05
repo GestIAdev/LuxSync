@@ -1039,6 +1039,24 @@ export class EffectManager extends EventEmitter {
     }
     return false
   }
+
+  /**
+   * 🔒 WAVE 1177: HAS DICTATOR - Check if a global mixBus effect is active
+   * 
+   * Used by DecisionMaker to skip DIVINE evaluation when an effect
+   * has "the word" (mixBus='global'). This prevents log spam from
+   * repeated DIVINE attempts that will be blocked anyway.
+   * 
+   * @returns The dictator effect type if active, null otherwise
+   */
+  hasDictator(): string | null {
+    for (const effect of this.activeEffects.values()) {
+      if ((effect as any).mixBus === 'global') {
+        return effect.effectType
+      }
+    }
+    return null
+  }
   
   /**
    * 🚦 CHECK TRAFFIC - Full traffic control validation

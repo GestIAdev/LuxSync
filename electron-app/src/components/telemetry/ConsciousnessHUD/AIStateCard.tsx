@@ -1,6 +1,8 @@
 /**
- * 🐱 AI STATE CARD - WAVE 1167
+ * 🐱 AI STATE CARD - WAVE 1169
  * Estado de caza de la gata Selene
+ * 
+ * WAVE 1169: Muerte al scrollbar, truncate del reasoning
  */
 
 import React from 'react'
@@ -18,6 +20,8 @@ export interface AIStateCardProps {
   beautyScore: number
   beautyTrend: 'rising' | 'falling' | 'stable'
   reasoning: string | null
+  /** Target actual (DROP, BREAKDOWN, etc) */
+  target?: string | null
 }
 
 // Configuración visual para cada estado
@@ -59,6 +63,12 @@ const STATE_CONFIG: Record<AIHuntState, {
   },
 }
 
+// WAVE 1169: Truncate reasoning para evitar scroll
+const truncateReasoning = (text: string, maxLen: number = 45): string => {
+  if (!text || text.length <= maxLen) return text
+  return text.slice(0, maxLen) + '...'
+}
+
 /**
  * 🐱 Card mostrando estado de caza
  */
@@ -67,7 +77,8 @@ export const AIStateCard: React.FC<AIStateCardProps> = ({
   confidence,
   beautyScore,
   beautyTrend,
-  reasoning
+  reasoning,
+  target
 }) => {
   const config = STATE_CONFIG[huntState]
   const confidencePercent = Math.round(confidence * 100)
@@ -119,11 +130,20 @@ export const AIStateCard: React.FC<AIStateCardProps> = ({
           <span className="ai-state-card__confidence-value">{confidencePercent}%</span>
         </div>
 
-        {/* Reasoning (si existe) */}
+        {/* WAVE 1169: Target display */}
+        {target && (
+          <div className="ai-state-card__target">
+            <span className="neural-label">Target:</span>
+            <span className="ai-state-card__target-value">{target.toUpperCase()}</span>
+          </div>
+        )}
+
+        {/* Reasoning - TRUNCATED (tooltip shows full) */}
         {reasoning && (
-          <div className="ai-state-card__reasoning">
-            <span className="neural-label">Reason:</span>
-            <p>"{reasoning}"</p>
+          <div className="ai-state-card__reasoning" title={reasoning}>
+            <span className="ai-state-card__reasoning-text">
+              {truncateReasoning(reasoning)}
+            </span>
           </div>
         )}
 

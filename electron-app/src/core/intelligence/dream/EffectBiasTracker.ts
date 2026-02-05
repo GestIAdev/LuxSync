@@ -139,14 +139,14 @@ export class EffectBiasTracker {
       this.history.shift()
     }
     
-    // 🧹 WAVE 1015: Solo logear si uniqueness < 3 (problema real de diversidad)
-    if (this.history.length % 10 === 0) {
-      const recent = this.history.slice(-10)
-      const uniqueEffects = new Set(recent.map(e => e.effect)).size
-      if (uniqueEffects < 3) {
-        console.log(`[BIAS_TRACKER] ⚠️ LOW DIVERSITY: Last 10 effects: ${uniqueEffects}/10 unique`)
-      }
-    }
+    // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario
+    // if (this.history.length % 10 === 0) {
+    //   const recent = this.history.slice(-10)
+    //   const uniqueEffects = new Set(recent.map(e => e.effect)).size
+    //   if (uniqueEffects < 3) {
+    //     console.log(`[BIAS_TRACKER] ⚠️ LOW DIVERSITY: Last 10 effects: ${uniqueEffects}/10 unique`)
+    //   }
+    // }
   }
   
   /**

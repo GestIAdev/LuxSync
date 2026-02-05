@@ -133,6 +133,21 @@ export interface AudienceSafetyContext {
   energyZone?: string
   
   /**
+   * 🛡️ WAVE 1178: ZONE PROTECTION
+   * Z-Score de energía (slope/derivada)
+   * 
+   * Valores:
+   * - Z > 0: Energía SUBIENDO (apropiado para disparar efectos)
+   * - Z < 0: Energía BAJANDO (NO disparar en valley/silence)
+   * - Z > 3.5: DIVINE MOMENT (spike extremo)
+   * 
+   * REGLA DE ORO:
+   * Si zone='valley' Y zScore<0 → PROHIBIDO disparar efectos
+   * (La música está en un valle Y cayendo = funeral, no dispares strobes)
+   */
+  zScore?: number
+  
+  /**
    * Timestamp actual
    */
   timestamp: number
@@ -277,6 +292,12 @@ export class AudienceSafetyContextBuilder {
   // 🧠 WAVE 975.5: ZONE UNIFICATION
   withEnergyZone(zone: string): this {
     this.context.energyZone = zone
+    return this
+  }
+  
+  // 🛡️ WAVE 1178: ZONE PROTECTION
+  withZScore(zScore: number): this {
+    this.context.zScore = zScore
     return this
   }
   

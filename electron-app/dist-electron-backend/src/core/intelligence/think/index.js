@@ -21,7 +21,10 @@
 // Hunt Engine - FSM del depredador
 export { processHunt, forcePhaseTransition, getHuntState, resetHuntEngine, getHuntStats } from './HuntEngine';
 // Prediction Engine - Anticipación musical
-export { predict, getLastPrediction, getSectionHistory, validatePrediction, resetPredictionEngine } from './PredictionEngine';
+export { predict, predictCombined, // 🔮 WAVE 1169: Combinado sección + energía
+predictFromEnergy, // 🔮 WAVE 1169: Solo por tendencia de energía
+getLastPrediction, getSectionHistory, getEnergyPredictionState, // 🔮 WAVE 1169: Debug del historial de energía
+validatePrediction, resetPredictionEngine, resetEnergyHistory } from './PredictionEngine';
 // Decision Maker - Síntesis final
 // 🔪 WAVE 1010: Ahora incluye DIVINE_THRESHOLD y DIVINE_ARSENAL
 export { makeDecision, mergeDecisions, isSignificantDecision, DIVINE_THRESHOLD, DIVINE_ARSENAL } from './DecisionMaker';

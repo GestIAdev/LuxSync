@@ -672,16 +672,16 @@ export class TitanEngine extends EventEmitter {
                 right: { intensity: blendZoneIntensity(zones.right?.intensity ?? 0.5), paletteRole: 'primary' },
                 ambient: { intensity: blendZoneIntensity(zones.ambient?.intensity ?? 0.3), paletteRole: 'primary' },
             };
-            // 🧹 WAVE 930.2 + 1080: Log solo en transiciones significativas (>10% cambio)
-            const compDelta = Math.abs(globalComp - this.state.lastGlobalComposition);
-            if (compDelta > 0.1) {
-                console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION: ${(globalComp * 100).toFixed(0)}%`);
-                this.state.lastGlobalComposition = globalComp;
-            }
+            // 🧹 WAVE 1178.1: SILENCIADO - spam innecesario
+            // const compDelta = Math.abs(globalComp - this.state.lastGlobalComposition)
+            // if (compDelta > 0.1) {
+            //   console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION: ${(globalComp * 100).toFixed(0)}%`)
+            //   this.state.lastGlobalComposition = globalComp
+            // }
         }
         else if (this.state.lastGlobalComposition > 0) {
-            // Log release solo una vez cuando baja a 0
-            console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION RELEASED (0%)`);
+            // 🧹 WAVE 1178.1: Log release silenciado
+            // console.log(`[TitanEngine 🌊] GLOBAL COMPOSITION RELEASED (0%)`)
             this.state.lastGlobalComposition = 0;
         }
         // Aplicar color override del efecto (si existe)
@@ -775,6 +775,7 @@ export class TitanEngine extends EventEmitter {
     }
     /**
      * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
+     * 🔮 WAVE 1168: Expanded with Dream Simulator + Energy Zone + Fuzzy Decision
      *
      * Devuelve datos del cerebro de Selene en formato listo para UI.
      */
@@ -797,7 +798,21 @@ export class TitanEngine extends EventEmitter {
                 decisionSource: null,
                 reasoning: null,
                 biasesDetected: [],
-                energyOverrideActive: false
+                energyOverrideActive: false,
+                // 🔮 WAVE 1168: Default dream result
+                lastDreamResult: {
+                    effectName: null,
+                    status: 'IDLE',
+                    reason: 'Consciousness offline',
+                    riskLevel: 0
+                },
+                ethicsFlags: [],
+                energyZone: 'calm',
+                fuzzyAction: null,
+                zScore: 0,
+                dropBridgeAlert: 'none',
+                // 🔥 WAVE 1176: OPERATION SNIPER
+                energyVelocity: 0
             };
         }
         const debugInfo = output.debugInfo;
@@ -821,6 +836,60 @@ export class TitanEngine extends EventEmitter {
         }
         // Determinar si Energy Override está activo
         const energyOverrideActive = this.lastStabilizedState.smoothedEnergy >= 0.85;
+        // 🔮 WAVE 1168: Get Dream Simulator result from Selene
+        const dreamResult = this.selene.getLastDreamResult();
+        let lastDreamResult;
+        if (dreamResult) {
+            lastDreamResult = {
+                effectName: dreamResult.effect?.effect ?? null,
+                status: dreamResult.approved ? 'ACCEPTED' : 'REJECTED',
+                reason: dreamResult.dreamRecommendation ?? 'No reason',
+                riskLevel: dreamResult.ethicalVerdict?.ethicalScore ?? 0
+            };
+        }
+        else {
+            lastDreamResult = {
+                effectName: null,
+                status: 'IDLE',
+                reason: 'No simulation yet',
+                riskLevel: 0
+            };
+        }
+        // 🔮 WAVE 1168: Get Ethics flags (biases + any active warnings)
+        // 🔌 WAVE 1175: DATA PIPE FIX - Incluir violaciones REALES del VisualConscienceEngine
+        const ethicsFlags = [...debugInfo.biasesDetected];
+        if (energyOverrideActive) {
+            ethicsFlags.push('energy_override');
+        }
+        // 🔌 WAVE 1175: Inyectar violaciones éticas del último dreamResult
+        if (dreamResult?.ethicalVerdict?.violations) {
+            for (const violation of dreamResult.ethicalVerdict.violations) {
+                // Formato: "rule_id:severity" para que el frontend pueda parsear
+                const violationId = violation.value?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
+                if (!ethicsFlags.includes(violationId)) {
+                    ethicsFlags.push(violationId);
+                }
+            }
+        }
+        // 🔮 WAVE 1168: Map energy zone from 7-zone to 4-zone for UI simplicity
+        const seleneZone = this.selene.getEnergyZone();
+        const energyZoneMap = {
+            'silence': 'calm',
+            'valley': 'calm',
+            'ambient': 'calm',
+            'gentle': 'rising',
+            'active': 'rising',
+            'intense': 'peak',
+            'peak': 'peak'
+        };
+        const energyZone = energyZoneMap[seleneZone] ?? 'calm';
+        // 🔮 WAVE 1168: Get fuzzy decision data
+        const fuzzyDecision = this.selene.getFuzzyDecision();
+        const fuzzyAction = fuzzyDecision?.action ?? null;
+        const zScore = debugInfo.zScore ?? this.selene.getEnergyZScore();
+        const dropBridgeAlert = this.selene.getDropBridgeAlertLevel();
+        // 🔥 WAVE 1176: OPERATION SNIPER - Get raw velocity for UI debugging
+        const energyVelocity = this.selene.getEnergyVelocity();
         return {
             enabled: true,
             huntState: debugInfo.huntState,
@@ -835,7 +904,16 @@ export class TitanEngine extends EventEmitter {
             decisionSource: output.source,
             reasoning: debugInfo.reasoning ?? null,
             biasesDetected: debugInfo.biasesDetected,
-            energyOverrideActive
+            energyOverrideActive,
+            // 🔮 WAVE 1168: New fields
+            lastDreamResult,
+            ethicsFlags,
+            energyZone,
+            fuzzyAction,
+            zScore,
+            dropBridgeAlert,
+            // 🔥 WAVE 1176: OPERATION SNIPER
+            energyVelocity
         };
     }
     /**

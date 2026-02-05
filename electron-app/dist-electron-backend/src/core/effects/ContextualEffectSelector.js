@@ -41,6 +41,27 @@ import { getDNAAnalyzer } from '../intelligence/dna';
 //       - CALM: 3.0x (muy conservador)
 //       - BALANCED: 1.5x (equilibrado)
 //       - PUNK: 0.7x (agresivo)
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 WAVE 1179: DICTATOR HARD MINIMUM COOLDOWNS
+// ═══════════════════════════════════════════════════════════════════════════
+// Estos son cooldowns ABSOLUTOS que ni siquiera el DNA puede saltarse.
+// Los efectos dictadores (mixBus='global') son de LARGO DURACIÓN y si se
+// disparan 2x en 10 segundos el show se vuelve un caos sin sentido.
+//
+// FILOSOFÍA: Un dictador tiene el escenario. Cuando termina, necesita
+// un RESPIRO MÍNIMO antes de que otro dictador pueda hablar.
+// ═══════════════════════════════════════════════════════════════════════════
+export const DICTATOR_HARD_MINIMUM_COOLDOWNS = {
+    // DICTADORES TECHNO (mixBus='global')
+    'abyssal_rise': 20000, // 20s MÍNIMO ABSOLUTO (efecto de 4-5s + respiro)
+    'gatling_raid': 15000, // 15s MÍNIMO ABSOLUTO (efecto de 1.6s + respiro)
+    'industrial_strobe': 8000, // 8s MÍNIMO ABSOLUTO (efecto de ~0.5s pero es STROBE)
+    'core_meltdown': 25000, // 25s MÍNIMO ABSOLUTO (LA BESTIA necesita espacio)
+    // DICTADORES LATINOS (mixBus='global')
+    'solar_flare': 20000, // 20s MÍNIMO ABSOLUTO
+    'strobe_storm': 18000, // 18s MÍNIMO ABSOLUTO
+    'latina_meltdown': 25000, // 25s MÍNIMO ABSOLUTO
+};
 export const EFFECT_COOLDOWNS = {
     // === EFECTOS HÍBRIDOS (Solomillo - mueven todo el escenario) ===
     'cumbia_moon': 25000, // 25s base → CALM:75s, BALANCED:37s, PUNK:17s
@@ -507,6 +528,27 @@ export class ContextualEffectSelector {
                 available: false,
                 reason: `MOOD_BLOCKED: Effect "${effectType}" blocked by current mood`
             };
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 2.5. 🔒 WAVE 1179: DICTATOR HARD MINIMUM COOLDOWN
+        // ═══════════════════════════════════════════════════════════════════════════
+        // Este check NO puede ser bypasado por DNA COOLDOWN OVERRIDE.
+        // Los efectos dictadores necesitan un mínimo absoluto de respiro.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const hardMinimum = DICTATOR_HARD_MINIMUM_COOLDOWNS[effectType];
+        if (hardMinimum) {
+            const lastFired = this.effectTypeLastFired.get(effectType);
+            if (lastFired) {
+                const elapsed = Date.now() - lastFired;
+                const remaining = hardMinimum - elapsed;
+                if (remaining > 0) {
+                    return {
+                        available: false,
+                        reason: `🔒 HARD_COOLDOWN: ${effectType} needs ${Math.ceil(remaining / 1000)}s more (dictator protection)`,
+                        cooldownRemaining: remaining
+                    };
+                }
+            }
         }
         // 3. ⏱️ COOLDOWN CHECK - El reloj manda
         const lastFired = this.effectTypeLastFired.get(effectType);

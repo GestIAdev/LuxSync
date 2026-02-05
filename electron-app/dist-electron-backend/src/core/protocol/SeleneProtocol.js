@@ -125,6 +125,7 @@ export function createDefaultCognitive() {
         thermalTemperature: 4500,
         dropState: { state: 'IDLE', isActive: false },
         // 🧠 WAVE 550: AI Telemetry defaults
+        // 🔮 WAVE 1168: Expanded with Dream Simulator output
         ai: {
             enabled: false,
             huntState: 'sleeping',
@@ -139,7 +140,22 @@ export function createDefaultCognitive() {
             decisionSource: null,
             reasoning: null,
             biasesDetected: [],
-            energyOverrideActive: false
+            energyOverrideActive: false,
+            // 🔮 WAVE 1168: Dream Simulator output
+            lastDreamResult: {
+                effectName: null,
+                status: 'IDLE',
+                reason: 'No simulation yet',
+                riskLevel: 0
+            },
+            ethicsFlags: [],
+            energyZone: 'calm',
+            // 🎲 WAVE 1168: Fuzzy Decision debug
+            fuzzyAction: null,
+            zScore: 0,
+            dropBridgeAlert: 'none',
+            // 🔥 WAVE 1176: OPERATION SNIPER
+            energyVelocity: 0
         }
     };
 }

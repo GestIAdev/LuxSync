@@ -1078,11 +1078,17 @@ export class TitanOrchestrator {
         },
         // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
         // 🧬 WAVE 550: Añadir telemetría de IA para el HUD táctico
+        // 🔌 WAVE 1175: DATA PIPE FIX - Inyectar vibe REAL desde el engine
         consciousness: {
           ...createDefaultCognitive(),
           stableEmotion: this.engine.getStableEmotion(),
           thermalTemperature: this.engine.getThermalTemperature(),
           ai: this.engine.getConsciousnessTelemetry(),
+          // 🔌 WAVE 1175: Vibe activo REAL (no el default 'idle')
+          vibe: {
+            active: currentVibe as 'techno-club' | 'fiesta-latina' | 'pop-rock' | 'chill-lounge' | 'idle' | 'custom',
+            transitioning: false // TODO: implementar transición real
+          }
         },
         // 🧠 WAVE 260: SYNAPTIC BRIDGE - Usar el contexto REAL del Brain
         // Antes esto estaba hardcodeado a UNKNOWN/null. Ahora propagamos

@@ -127,6 +127,86 @@
   box-shadow: 0 0 12px rgba(168, 85, 247, 0.1);
 }
 
+/* WAVE 1168: Status-based styling */
+.dream-forge-card--accepted {
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.08);
+}
+
+.dream-forge-card--rejected {
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.08);
+}
+
+.dream-forge-card__result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.dream-forge-card__effect-name {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  background: rgba(168, 85, 247, 0.15);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.dream-forge-card__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dream-forge-card__status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dream-forge-card__status-badge--accepted {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.dream-forge-card__status-badge--rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.dream-forge-card__risk {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.dream-forge-card__risk--low { color: #22c55e; }
+.dream-forge-card__risk--medium { color: #fbbf24; }
+.dream-forge-card__risk--high { color: #ef4444; }
+
+.dream-forge-card__reason {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  line-height: 1.3;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
 .dream-forge-card__status {
   margin-bottom: 4px;
 }
@@ -179,11 +259,84 @@
 
 .dream-forge-card__idle {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  gap: 6px;
+  flex: 1;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.dream-forge-card__idle-icon {
+  font-size: 1.5rem;
+  opacity: 0.6;
+}
+
+.dream-forge-card__idle-text {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.dream-forge-card__result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.dream-forge-card__result--accepted {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.dream-forge-card__result--rejected {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.dream-forge-card__result-icon {
+  font-size: 0.9rem;
+}
+
+.dream-forge-card__result-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+
+.dream-forge-card__effect-name {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.dream-forge-card__blocked-effect,
+.dream-forge-card__reason {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.7rem;
+  padding: 4px 0;
+}
+
+.dream-forge-card__risk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.dream-forge-card__risk-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.dream-forge-card__risk-value--high {
+  color: #ef4444;
 }
 
 /* ═══════════════════════════════════════════════
@@ -198,25 +351,59 @@
   border-color: rgba(251, 191, 36, 0.3);
 }
 
-.ethics-card__checks {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* WAVE 1168: NEW 2x2 Grid Layout */
+.ethics-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  flex: 1;
 }
 
 .ethics-card__check {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.7rem;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: border-color var(--transition-fast);
 }
 
-.ethics-card__check--ok span:last-child {
-  color: rgba(255, 255, 255, 0.6);
+.ethics-card__check-icon {
+  font-size: 0.85rem;
 }
 
-.ethics-card__check--warn span:last-child {
+.ethics-card__check-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ethics-card__check--ok {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.ethics-card__check--ok .ethics-card__check-label {
+  color: rgba(34, 197, 94, 0.8);
+}
+
+.ethics-card__check--warn {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.ethics-card__check--warn .ethics-card__check-label {
   color: var(--accent-warning);
+}
+
+/* Legacy support - OLD STYLES (remove after migration confirmed) */
+.ethics-card__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .ethics-card__biases {
@@ -252,6 +439,196 @@
 .ethics-card__bias-more {
   font-size: 0.6rem;
   color: var(--text-muted);
+}
+
+/* WAVE 1168: Status and Override indicators */
+.ethics-card__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+}
+
+.ethics-card__status--safe {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.ethics-card__status--warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.ethics-card__override {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.ethics-card__override--active {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: override-pulse 1s ease-in-out infinite;
+}
+
+@keyframes override-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════
+   🛡️ WAVE 1172: ETHICS MICRO-GRID STATUS BITS
+   Ultra-compact 4x2 grid with 3-letter codes
+   ═══════════════════════════════════════════════ */
+
+.ethics-card--active {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Micro-grid: 4 columnas, auto rows */
+.ethics-bits {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  flex: 1;
+  align-content: start;
+}
+
+/* Status Bit: Rectángulo compacto con código 3 letras */
+.ethics-bit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: all 150ms ease;
+  min-height: 24px;
+}
+
+.ethics-bit__code {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Safe State: Transparente con borde/texto verde tenue */
+.ethics-bit--safe {
+  background: transparent;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.ethics-bit--safe .ethics-bit__code {
+  color: rgba(34, 197, 94, 0.6);
+}
+
+/* Warning State: Fondo amarillo opaco, texto negro */
+.ethics-bit--warning {
+  background: rgba(251, 191, 36, 0.85);
+  border-color: rgba(251, 191, 36, 1);
+}
+
+.ethics-bit--warning .ethics-bit__code {
+  color: #000;
+  font-weight: 800;
+}
+
+/* Critical State: Fondo rojo parpadeante, texto blanco */
+.ethics-bit--critical {
+  background: rgba(239, 68, 68, 0.9);
+  border-color: rgba(239, 68, 68, 1);
+  animation: critical-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.ethics-bit--critical .ethics-bit__code {
+  color: #fff;
+  font-weight: 800;
+}
+
+@keyframes critical-pulse {
+  0% { 
+    background: rgba(239, 68, 68, 0.9);
+    transform: scale(1);
+  }
+  100% { 
+    background: rgba(239, 68, 68, 0.6);
+    transform: scale(0.98);
+  }
+}
+
+/* Global Status Footer */
+.ethics-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.ethics-status__icon {
+  font-size: 0.7rem;
+}
+
+.ethics-status__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ethics-status--safe {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.ethics-status--warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.ethics-status--critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: status-critical-pulse 0.8s ease-in-out infinite;
+}
+
+.ethics-status--override {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+@keyframes status-critical-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* ═══════════════════════════════════════════════
@@ -343,6 +720,193 @@
 .prediction-card__idle span:first-child {
   font-size: 1.5rem;
   opacity: 0.6;
+}
+
+/* WAVE 1169: Analyzing state (when no prediction) */
+.prediction-card__analyzing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.prediction-card__analyzing-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.prediction-card__analyzing-icon {
+  font-size: 1rem;
+  animation: crystal-pulse 2s ease-in-out infinite;
+}
+
+@keyframes crystal-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.prediction-card__analyzing-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--accent-primary);
+}
+
+/* 🔮 WAVE 1172: Header activo cuando energía está subiendo */
+.prediction-card__analyzing-header--active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  animation: energy-building-pulse 1s ease-in-out infinite;
+}
+
+@keyframes energy-building-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.2);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+    transform: scale(1.01);
+  }
+}
+
+.prediction-card__zone,
+.prediction-card__trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.prediction-card__zone-badge {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.prediction-card__trend-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.prediction-card__hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  margin-top: auto;
+}
+
+/* ═══════════════════════════════════════════════
+   WAVE 1169: AI STATE CARD FIXES
+   ═══════════════════════════════════════════════ */
+
+.ai-state-card__target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.ai-state-card__target-value {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+/* WAVE 1169: Reasoning - NO SCROLL, TRUNCATE */
+.ai-state-card__reasoning {
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.ai-state-card__reasoning-text {
+  font-size: 0.65rem; /* Smaller for data terminal feel */
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════════════
+   WAVE 1169: DREAM FORGE CARD NEW STATES
+   ═══════════════════════════════════════════════ */
+
+.dream-forge-card--modify {
+  border-color: rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.08);
+}
+
+.dream-forge-card__result--modify {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.dream-forge-card__success,
+.dream-forge-card__modify,
+.dream-forge-card__blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.dream-forge-card__confidence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.dream-forge-card__confidence-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-success);
+}
+
+.dream-forge-card__modification {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dream-forge-card__mod-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  color: #fbbf24;
+}
+
+.dream-forge-card__effect-name--blocked {
+  color: rgba(255, 255, 255, 0.5) !important;
+  text-decoration: line-through;
+}
+
+.dream-forge-card__reason {
+  font-size: 0.65rem;
+  color: rgba(239, 68, 68, 0.8);
+  font-style: italic;
+  padding: 4px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ═══════════════════════════════════════════════

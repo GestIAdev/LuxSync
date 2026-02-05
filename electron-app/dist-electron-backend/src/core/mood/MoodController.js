@@ -57,14 +57,15 @@ export const MOOD_PROFILES = {
     // ═══════════════════════════════════════════════════════════════════════
     // WAVE 937: BALANCED = PROFESIONAL → Solo momentos BUENOS, no "apenas dignos"
     // 🔥 WAVE 998: THE RESPECT PROTOCOL - Un pelín más de filtro y aire
-    // Target EPM: 4-5 (1 efecto cada 12-15 segundos)
+    // 🎯 WAVE 1176: OPERATION SNIPER - Balanced más estricto, francotirador
+    // Target EPM: 3-4 (1 efecto cada 15-20 segundos)
     balanced: {
         name: 'balanced',
         description: 'El profesional. Dispara cuando la música REALMENTE lo pide.',
         emoji: '⚖️',
         thresholdMultiplier: 1.2, // 🔥 WAVE 998: Subido de 1.15 → 1.2 (filtrar más ruido)
-        cooldownMultiplier: 1.2, // 🔥 WAVE 998: Subido de 1.0 → 1.2 (más aire entre efectos)
-        ethicsThreshold: 0.90, // 🧬 WAVE 973: "Si es excelente (9/10), adelante"
+        cooldownMultiplier: 1.5, // 🎯 WAVE 1176: SUBIDO de 1.2 → 1.5 (más calma entre disparos)
+        ethicsThreshold: 0.80, // 🎯 WAVE 1176: BAJADO de 0.90 → 0.80 (más estricto, filtra basura)
         maxIntensity: 1.0, // Sin límite
         minIntensity: undefined, // 🔪 WAVE 976.9: ELIMINADO - Los pads tienen su propio dimmer mínimo
         blockList: [], // Nada bloqueado

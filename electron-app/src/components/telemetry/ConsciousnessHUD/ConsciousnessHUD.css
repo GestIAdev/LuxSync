@@ -1,0 +1,339 @@
+/**
+ * 🧠 CONSCIOUSNESS HUD - CSS - WAVE 1167
+ */
+
+.consciousness-hud {
+  min-width: 400px;
+}
+
+/* Grid 2x2 para las cards */
+.consciousness-hud__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   CONSCIOUSNESS CARD (Base para sub-cards)
+   ═══════════════════════════════════════════════ */
+
+.consciousness-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.consciousness-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.consciousness-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.consciousness-card__header span {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.consciousness-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════════
+   AI STATE CARD
+   ═══════════════════════════════════════════════ */
+
+.ai-state-card__confidence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ai-state-card__confidence .neural-gauge {
+  flex: 1;
+}
+
+.ai-state-card__confidence-value {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 32px;
+  text-align: right;
+}
+
+.ai-state-card__reasoning {
+  margin-top: 4px;
+}
+
+.ai-state-card__reasoning p {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  margin: 2px 0 0 0;
+  line-height: 1.3;
+}
+
+.ai-state-card__beauty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ai-state-card__beauty-value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   DREAM FORGE CARD
+   ═══════════════════════════════════════════════ */
+
+.dream-forge-card--active {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.1);
+}
+
+.dream-forge-card__status {
+  margin-bottom: 4px;
+}
+
+.dream-forge-card__indicator {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dream-forge-card__indicator--active {
+  color: var(--cat-dream);
+  animation: dream-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dream-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.dream-forge-card__type span:last-child,
+.dream-forge-card__projected span:last-child {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  margin-left: 4px;
+}
+
+.dream-forge-card__thought p {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  margin: 2px 0 0 0;
+  line-height: 1.3;
+}
+
+.dream-forge-card__beauty {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--cat-dream);
+}
+
+.dream-forge-card__recommendation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.dream-forge-card__idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════
+   ETHICS CARD
+   ═══════════════════════════════════════════════ */
+
+.ethics-card--safe {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.ethics-card--warning {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.ethics-card__checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ethics-card__check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.ethics-card__check--ok span:last-child {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ethics-card__check--warn span:last-child {
+  color: var(--accent-warning);
+}
+
+.ethics-card__biases {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ethics-card__biases span:last-child {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ethics-card__biases--warning {
+  color: var(--accent-warning) !important;
+}
+
+.ethics-card__bias-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 8px;
+}
+
+.ethics-card__bias-item {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ethics-card__bias-more {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   PREDICTION CARD
+   ═══════════════════════════════════════════════ */
+
+.prediction-card--urgency-high {
+  border-color: rgba(239, 68, 68, 0.4);
+  animation: urgency-pulse 0.5s ease-in-out infinite;
+}
+
+.prediction-card--urgency-medium {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+@keyframes urgency-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+}
+
+.prediction-card__type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prediction-card__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.prediction-card__probability,
+.prediction-card__eta,
+.prediction-card__preparing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prediction-card__value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.prediction-card__time {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prediction-card__time--urgent {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.prediction-card__progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.prediction-card__progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.prediction-card__preparing span:last-child {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.prediction-card__idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 80px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+}
+
+.prediction-card__idle span:first-child {
+  font-size: 1.5rem;
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════
+   OFFLINE STATE
+   ═══════════════════════════════════════════════ */
+
+.neural-live-dot--offline {
+  background: #64748b;
+  animation: none;
+}

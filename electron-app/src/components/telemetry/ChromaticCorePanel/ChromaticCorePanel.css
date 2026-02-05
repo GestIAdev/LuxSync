@@ -1,0 +1,89 @@
+/**
+ * 🎨 CHROMATIC CORE PANEL - CSS - WAVE 1167
+ */
+
+.chromatic-core-panel {
+  min-width: 200px;
+}
+
+/* Strategy badge en header */
+.chromatic-strategy-badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--cat-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Palette Grid - 2x2 */
+.chromatic-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+/* Individual Swatch */
+.chromatic-swatch {
+  position: relative;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chromatic-swatch:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+/* Primary has slight emphasis */
+.chromatic-swatch--primary {
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Labels inside swatch */
+.chromatic-swatch__label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(0, 0, 0, 0.7);
+  text-transform: uppercase;
+}
+
+.chromatic-swatch__label--light {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chromatic-swatch__values {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.chromatic-swatch__values--light {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Strategy description */
+.chromatic-strategy-desc {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  font-style: italic;
+}

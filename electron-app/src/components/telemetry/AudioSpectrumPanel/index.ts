@@ -8,3 +8,8 @@ export { AudioSpectrumPanel } from './AudioSpectrumPanel'
 export { FrequencyBars } from './FrequencyBars'
 export { BPMGauge } from './BPMGauge'
 export { EnergyMeter } from './EnergyMeter'
+
+export type { AudioSpectrumPanelProps } from './AudioSpectrumPanel'
+export type { FrequencyBarsProps } from './FrequencyBars'
+export type { BPMGaugeProps } from './BPMGauge'
+export type { EnergyMeterProps } from './EnergyMeter'

@@ -1,0 +1,142 @@
+/**
+ * 🎵 CONTEXT MATRIX PANEL - CSS - WAVE 1167
+ */
+
+.context-matrix-panel {
+  min-width: 260px;
+}
+
+/* 2x2 Grid */
+.context-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+/* Individual Context Cell */
+.context-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: border-color var(--transition-fast);
+}
+
+.context-cell:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.context-cell__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-cell__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.context-cell__label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.context-cell__value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* Key Cell */
+.context-key {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.context-mode {
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+/* Section Cell */
+.context-cell--section {
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.context-cell--drop {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+  animation: drop-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes drop-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+}
+
+.context-section-emoji {
+  font-size: 0.9rem;
+}
+
+.context-section {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.context-confidence {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 2px;
+}
+
+/* Vibe Cell */
+.context-vibe {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Mood Cell */
+.context-mood-emoji {
+  font-size: 1rem;
+}
+
+.context-mood {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Genre Footer */
+.context-genre-footer {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: center;
+}
+
+.context-genre-badge {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+}

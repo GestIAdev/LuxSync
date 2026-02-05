@@ -618,16 +618,18 @@ this.log('Section', `Transition: ${prev} → ${next}`, {
 
 ## 📋 PLAN DE IMPLEMENTACIÓN
 
-### Fase 1: Preparación (1-2 horas)
-- [ ] Crear estructura de carpetas
-- [ ] Añadir nuevos iconos a `LuxIcons.tsx`
-- [ ] Añadir variables CSS globales
+### Fase 1: Preparación (1-2 horas) ✅ COMPLETADA
+- [x] Crear estructura de carpetas
+- [x] Añadir nuevos iconos a `LuxIcons.tsx` (+21 iconos)
+- [x] Añadir variables CSS globales (+300 líneas)
+- **Commit**: `fe24a8c` - 4 Feb 2026
 
-### Fase 2: Componentes Core (3-4 horas)
-- [ ] Implementar `AudioSpectrumPanel`
-- [ ] Implementar `ConsciousnessHUD` con sub-cards
-- [ ] Implementar `ChromaticCorePanel`
-- [ ] Implementar `ContextMatrixPanel`
+### Fase 2: Componentes Core (3-4 horas) ✅ COMPLETADA
+- [x] Implementar `AudioSpectrumPanel` (6 archivos)
+- [x] Implementar `ConsciousnessHUD` con sub-cards (6 archivos)
+- [x] Implementar `ChromaticCorePanel` (3 archivos)
+- [x] Implementar `ContextMatrixPanel` (3 archivos)
+- **Total**: 18 archivos nuevos - 5 Feb 2026
 
 ### Fase 3: Logger (1-2 horas)
 - [ ] Implementar `NeuralStreamLog`
@@ -648,7 +650,17 @@ this.log('Section', `Transition: ${prev} → ${next}`, {
 - [ ] Animaciones y transiciones
 - [ ] Testing visual
 
-**Tiempo total estimado**: 8-12 horas
+### Fase 7: Legacy Purge 🗑️ (30 min)
+- [ ] Eliminar `AudioOscilloscope/` completo
+- [ ] Eliminar `HuntMonitor/` completo
+- [ ] Eliminar `MusicalDNAPanel/` completo  
+- [ ] Eliminar `PalettePreview/` completo
+- [ ] Eliminar `LuxCoreView/TacticalLog.tsx`
+- [ ] Eliminar `LuxCoreView/` (tras migrar a NeuralCommandView)
+- [ ] Limpiar imports huérfanos en `telemetry/index.ts`
+- [ ] Verificar que no hay referencias rotas
+
+**Tiempo total estimado**: 9-13 horas
 
 ---
 

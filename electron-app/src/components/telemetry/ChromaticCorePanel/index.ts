@@ -5,4 +5,3 @@
  */
 
 export { ChromaticCorePanel } from './ChromaticCorePanel'
-export { ColorSwatch } from './ColorSwatch'

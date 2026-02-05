@@ -570,3 +570,464 @@ select:focus {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
+
+/* ============================================
+   WAVE 1167: NEURAL COMMAND CENTER SYSTEM
+   ============================================ */
+
+:root {
+  /* NEURAL COMMAND COLORS */
+  --neural-bg: #0a0a0f;
+  --neural-card: rgba(15, 20, 30, 0.8);
+  --neural-border: rgba(255, 255, 255, 0.08);
+  --neural-glow: rgba(139, 92, 246, 0.3);
+  
+  /* CONSCIOUSNESS STATE COLORS */
+  --state-sleeping: #64748b;
+  --state-stalking: #f97316;
+  --state-evaluating: #fbbf24;
+  --state-striking: #ef4444;
+  --state-learning: #a855f7;
+  
+  /* LOG CATEGORY COLORS */
+  --cat-brain: #fbbf24;
+  --cat-dream: #a855f7;
+  --cat-ethics: #22c55e;
+  --cat-strike: #ef4444;
+  --cat-effect: #ec4899;
+  --cat-color: #06b6d4;
+  --cat-beat: #22c55e;
+  --cat-drop: #ff0040;
+  --cat-section: #8b5cf6;
+  --cat-system: #64748b;
+  --cat-dmx: #14b8a6;
+  --cat-error: #ef4444;
+  
+  /* GLASSMORPHISM */
+  --glass-bg: rgba(15, 20, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: 12px;
+}
+
+/* ============================================
+   NEURAL CARD COMPONENTS
+   ============================================ */
+
+.neural-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: box-shadow var(--transition-normal);
+}
+
+.neural-card:hover {
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(139, 92, 246, 0.2);
+}
+
+.neural-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--neural-border);
+}
+
+.neural-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+.neural-card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono);
+}
+
+.neural-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================
+   LIVE INDICATOR ANIMATIONS
+   ============================================ */
+
+.neural-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live {
+  0%, 100% { 
+    opacity: 1; 
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); 
+  }
+  50% { 
+    opacity: 0.7; 
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); 
+  }
+}
+
+/* Para el icono LiveDot SVG */
+.live-pulse-ring {
+  animation: live-ring-pulse 2s ease-out infinite;
+  transform-origin: center;
+}
+
+.live-pulse-ring-outer {
+  animation: live-ring-pulse 2s ease-out infinite 0.3s;
+  transform-origin: center;
+}
+
+@keyframes live-ring-pulse {
+  0% { 
+    opacity: 0.6; 
+    transform: scale(1); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: scale(1.5); 
+  }
+}
+
+/* Cursor parpadeante para StreamLog */
+.cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ============================================
+   NEURAL GAUGE COMPONENT
+   ============================================ */
+
+.neural-gauge {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.neural-gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(90deg, var(--gauge-start, #7c4dff), var(--gauge-end, #a855f7));
+  box-shadow: 0 0 10px var(--gauge-glow, rgba(124, 77, 255, 0.5));
+}
+
+.neural-gauge-threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.neural-gauge--small {
+  height: 4px;
+}
+
+.neural-gauge--large {
+  height: 12px;
+}
+
+/* ============================================
+   NEURAL VALUE DISPLAY
+   ============================================ */
+
+.neural-value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.neural-value--small {
+  font-size: 1rem;
+}
+
+.neural-value--large {
+  font-size: 2rem;
+}
+
+.neural-label {
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  font-family: var(--font-body);
+}
+
+/* ============================================
+   SPECTRUM BARS ANIMATION
+   ============================================ */
+
+.spectrum-bar {
+  background: linear-gradient(180deg, 
+    var(--accent-primary) 0%, 
+    var(--accent-secondary) 100%
+  );
+  border-radius: 2px 2px 0 0;
+  transition: height 0.05s ease-out;
+  min-height: 4px;
+}
+
+.spectrum-bar--sub-bass { --bar-color: #6366f1; }
+.spectrum-bar--bass { --bar-color: #8b5cf6; }
+.spectrum-bar--low-mid { --bar-color: #a855f7; }
+.spectrum-bar--mid { --bar-color: #d946ef; }
+.spectrum-bar--high-mid { --bar-color: #ec4899; }
+.spectrum-bar--presence { --bar-color: #f43f5e; }
+.spectrum-bar--brilliance { --bar-color: #ef4444; }
+
+/* ============================================
+   CONSCIOUSNESS STATE BADGES
+   ============================================ */
+
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.state-badge--sleeping {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--state-sleeping);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.state-badge--stalking {
+  background: rgba(249, 115, 22, 0.2);
+  color: var(--state-stalking);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  animation: state-pulse-stalking 2s ease-in-out infinite;
+}
+
+.state-badge--evaluating {
+  background: rgba(251, 191, 36, 0.2);
+  color: var(--state-evaluating);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.state-badge--striking {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--state-striking);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: state-pulse-striking 0.5s ease-in-out infinite;
+}
+
+.state-badge--learning {
+  background: rgba(168, 85, 247, 0.2);
+  color: var(--state-learning);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+@keyframes state-pulse-stalking {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(249, 115, 22, 0); }
+}
+
+@keyframes state-pulse-striking {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+}
+
+/* ============================================
+   LOG ENTRY STYLES
+   ============================================ */
+
+.log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  transition: background var(--transition-fast);
+}
+
+.log-entry:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.log-entry__timestamp {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.65rem;
+  min-width: 48px;
+}
+
+.log-entry__category {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+
+.log-entry__message {
+  color: rgba(255, 255, 255, 0.8);
+  flex: 1;
+}
+
+.log-entry--brain .log-entry__category { color: var(--cat-brain); }
+.log-entry--dream .log-entry__category { color: var(--cat-dream); }
+.log-entry--ethics .log-entry__category { color: var(--cat-ethics); }
+.log-entry--strike .log-entry__category { color: var(--cat-strike); }
+.log-entry--effect .log-entry__category { color: var(--cat-effect); }
+.log-entry--color .log-entry__category { color: var(--cat-color); }
+.log-entry--beat .log-entry__category { color: var(--cat-beat); }
+.log-entry--drop .log-entry__category { color: var(--cat-drop); }
+.log-entry--section .log-entry__category { color: var(--cat-section); }
+.log-entry--system .log-entry__category { color: var(--cat-system); }
+.log-entry--dmx .log-entry__category { color: var(--cat-dmx); }
+.log-entry--error .log-entry__category { color: var(--cat-error); }
+
+/* ============================================
+   COLOR SWATCH COMPONENT
+   ============================================ */
+
+.color-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-swatch__preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.color-swatch__preview:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--swatch-glow, rgba(255, 255, 255, 0.2));
+}
+
+.color-swatch__hex {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.5px;
+}
+
+.color-swatch__label {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ============================================
+   BPM GAUGE CIRCULAR
+   ============================================ */
+
+.bpm-gauge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bpm-gauge__circle {
+  transform: rotate(-90deg);
+}
+
+.bpm-gauge__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
+}
+
+.bpm-gauge__fill {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+  filter: drop-shadow(0 0 4px var(--accent-primary));
+}
+
+.bpm-gauge__value {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bpm-gauge__number {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.bpm-gauge__label {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Beat pulse effect */
+.bpm-gauge--on-beat .bpm-gauge__fill {
+  filter: drop-shadow(0 0 12px var(--accent-primary));
+}
+
+.bpm-gauge--on-beat .bpm-gauge__number {
+  animation: beat-pulse 0.15s ease-out;
+}
+
+@keyframes beat-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+

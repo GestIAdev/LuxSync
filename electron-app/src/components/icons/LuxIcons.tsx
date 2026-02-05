@@ -772,6 +772,649 @@ export const FlashIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ============================================
+// 🧠 WAVE 1167: NEURAL COMMAND CENTER ICONS
+// ============================================
+
+/**
+ * 🧠 BRAIN NEURAL - Cerebro con sinapsis activas
+ * Para: ConsciousnessHUD AI State
+ */
+export const BrainNeuralIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cerebro base */}
+    <path 
+      d="M12 4C8 4 5 7 5 11C5 13 6 15 7 16L7 19C7 20 8 21 9 21H15C16 21 17 20 17 19L17 16C18 15 19 13 19 11C19 7 16 4 12 4Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* División cerebral */}
+    <path d="M12 4V21" stroke={color} strokeWidth="1" opacity="0.5" />
+    {/* Sinapsis izquierda */}
+    <circle cx="8" cy="10" r="1.5" fill={color} opacity="0.8" />
+    <circle cx="9" cy="14" r="1" fill={color} opacity="0.6" />
+    {/* Sinapsis derecha */}
+    <circle cx="16" cy="10" r="1.5" fill={color} opacity="0.8" />
+    <circle cx="15" cy="14" r="1" fill={color} opacity="0.6" />
+    {/* Conexiones */}
+    <path d="M8 10L12 8L16 10" stroke={color} strokeWidth="0.75" opacity="0.4" />
+  </svg>
+)
+
+/**
+ * 💭 DREAM CLOUD - Nube de pensamiento con estrellas
+ * Para: ConsciousnessHUD Dream Forge
+ */
+export const DreamCloudIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Nube soñadora */}
+    <path 
+      d="M6 16C4 16 2 14.5 2 12.5C2 10.5 3.5 9 5.5 9C5.5 6 8 4 11 4C14 4 16.5 6 16.5 9C18.5 9 20 10.5 20 12.5C20 14.5 18 16 16 16H6Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Estrellas de sueño */}
+    <path d="M8 11L8.5 10L9 11L8.5 11.5Z" fill={color} />
+    <path d="M14 11L14.5 10L15 11L14.5 11.5Z" fill={color} />
+    <path d="M11 9L11.5 8L12 9L11.5 9.5Z" fill={color} />
+    {/* Pensamiento flotante */}
+    <circle cx="7" cy="19" r="1" fill={color} opacity="0.4" />
+    <circle cx="5" cy="21" r="0.7" fill={color} opacity="0.3" />
+  </svg>
+)
+
+/**
+ * 🛡️ SHIELD CHECK - Escudo con verificación ética
+ * Para: ConsciousnessHUD Ethics
+ */
+export const ShieldCheckIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Escudo */}
+    <path 
+      d="M12 3L4 7V12C4 16.4 7.4 20.4 12 21C16.6 20.4 20 16.4 20 12V7L12 3Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Check */}
+    <path 
+      d="M8 12L11 15L16 9" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * 🐱 CAT STALK - Gata Selene en modo stalking
+ * Para: AI State cuando está cazando
+ */
+export const CatStalkIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cuerpo agachado */}
+    <ellipse cx="10" cy="16" rx="7" ry="3" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Cabeza */}
+    <circle cx="18" cy="13" r="3.5" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Orejas puntiagudas */}
+    <path d="M15.5 10L14 7.5L16 9.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M20.5 10L22 7.5L20 9.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Ojos alertas (brillantes) */}
+    <circle cx="17" cy="12.5" r="0.8" fill="#22c55e" />
+    <circle cx="19" cy="12.5" r="0.8" fill="#22c55e" />
+    {/* Cola ondulante */}
+    <path d="M3 14Q5 10 7 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * ⚡ LIGHTNING STRIKE - Rayo de ejecución
+ * Para: Strike/Execute actions
+ */
+export const LightningStrikeIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Rayo principal */}
+    <path 
+      d="M13 2L4 13H11L10 22L19 11H12L13 2Z" 
+      fill={color}
+    />
+    {/* Destellos laterales */}
+    <path d="M17 6L20 7L17 8" stroke={color} strokeWidth="1" opacity="0.5" />
+    <path d="M7 16L4 17L7 18" stroke={color} strokeWidth="1" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 📊 SPECTRUM BARS - Barras de espectro de audio
+ * Para: AudioSpectrumPanel header
+ */
+export const SpectrumBarsIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <rect x="2" y="14" width="2.5" height="6" rx="1" fill={color} opacity="0.6" />
+    <rect x="6" y="10" width="2.5" height="10" rx="1" fill={color} opacity="0.7" />
+    <rect x="10" y="6" width="2.5" height="14" rx="1" fill={color} opacity="0.9" />
+    <rect x="14" y="8" width="2.5" height="12" rx="1" fill={color} />
+    <rect x="18" y="12" width="2.5" height="8" rx="1" fill={color} opacity="0.7" />
+  </svg>
+)
+
+/**
+ * 〰️ WAVEFORM - Onda sinusoidal
+ * Para: Audio visualization
+ */
+export const WaveformIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path 
+      d="M2 12C4 12 4 6 6 6C8 6 8 18 10 18C12 18 12 4 14 4C16 4 16 20 18 20C20 20 20 12 22 12" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round"
+      fill="none"
+    />
+  </svg>
+)
+
+/**
+ * 💓 BPM HEART - Corazón con pulso BPM
+ * Para: BPM indicator
+ */
+export const BPMHeartIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Corazón */}
+    <path 
+      d="M12 21C12 21 4 15 4 9.5C4 6.5 6.5 4 9.5 4C11 4 12 5 12 5C12 5 13 4 14.5 4C17.5 4 20 6.5 20 9.5C20 15 12 21 12 21Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Pulso ECG */}
+    <path 
+      d="M6 12H9L10 9L12 15L14 11L15 12H18" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * 💧 DROP IMPACT - Gota impactando (para drops musicales)
+ * Para: Beat drop detection
+ */
+export const DropImpactIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Gota */}
+    <path 
+      d="M12 3C12 3 6 10 6 14C6 17.3 8.7 20 12 20C15.3 20 18 17.3 18 14C18 10 12 3 12 3Z" 
+      fill={color}
+    />
+    {/* Ondas de impacto */}
+    <path d="M6 21C8 19 10 19 12 19C14 19 16 19 18 21" stroke={color} strokeWidth="1" opacity="0.4" />
+    <path d="M4 22C7 20 9 20 12 20C15 20 17 20 20 22" stroke={color} strokeWidth="1" opacity="0.2" />
+  </svg>
+)
+
+/**
+ * 🎵 MUSICAL KEY - Llave musical
+ * Para: Key detection display
+ */
+export const MusicalKeyIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Nota musical como llave */}
+    <circle cx="8" cy="18" r="3" stroke={color} strokeWidth="1.5" fill="none" />
+    <path d="M11 18V6" stroke={color} strokeWidth="2" />
+    <path d="M11 6C11 6 15 4 17 6C19 8 17 12 11 10" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Dientes de llave */}
+    <path d="M11 12H14" stroke={color} strokeWidth="1.5" />
+    <path d="M11 15H13" stroke={color} strokeWidth="1.5" />
+  </svg>
+)
+
+/**
+ * 📈 SECTION FLOW - Flujo de secciones
+ * Para: Section tracker
+ */
+export const SectionFlowIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Bloques de sección */}
+    <rect x="2" y="8" width="4" height="8" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    <rect x="8" y="6" width="4" height="12" rx="1" stroke={color} strokeWidth="1.5" fill="none" opacity="0.8" />
+    <rect x="14" y="4" width="4" height="16" rx="1" stroke={color} strokeWidth="1.5" fill="none" opacity="0.6" />
+    {/* Flecha de flujo */}
+    <path d="M20 12L23 12M23 12L21 10M23 12L21 14" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * ✨ VIBE AURA - Aura energética
+ * Para: Vibe indicator
+ */
+export const VibeAuraIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Núcleo */}
+    <circle cx="12" cy="12" r="4" fill={color} />
+    {/* Auras concéntricas */}
+    <circle cx="12" cy="12" r="6" stroke={color} strokeWidth="1" opacity="0.6" />
+    <circle cx="12" cy="12" r="8" stroke={color} strokeWidth="1" opacity="0.4" />
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1" opacity="0.2" />
+    {/* Rayos de energía */}
+    <path d="M12 2V4M12 20V22M2 12H4M20 12H22" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🌡️ THERMO COLOR - Termómetro de temperatura de color
+ * Para: Color temperature display
+ */
+export const ThermoColorIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cuerpo del termómetro */}
+    <path 
+      d="M14 14V6C14 4.9 13.1 4 12 4C10.9 4 10 4.9 10 6V14C8.8 14.8 8 16.3 8 18C8 20.2 9.8 22 12 22C14.2 22 16 20.2 16 18C16 16.3 15.2 14.8 14 14Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Mercurio con gradiente de color */}
+    <circle cx="12" cy="18" r="2" fill="#ff6b35" />
+    <rect x="11" y="10" width="2" height="6" fill="#ff6b35" />
+    {/* Marcas */}
+    <path d="M14 8H16M14 10H15M14 12H16" stroke={color} strokeWidth="1" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🔴 LIVE DOT - Punto pulsante de LIVE
+ * Para: Status indicators
+ */
+export const LiveDotIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#22c55e',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Punto central */}
+    <circle cx="12" cy="12" r="4" fill={color} />
+    {/* Pulso animado (CSS lo animará) */}
+    <circle cx="12" cy="12" r="6" stroke={color} strokeWidth="2" opacity="0.5" className="live-pulse-ring" />
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1" opacity="0.2" className="live-pulse-ring-outer" />
+  </svg>
+)
+
+/**
+ * ↗️ TREND UP - Tendencia ascendente
+ * Para: Energy/metrics trends
+ */
+export const TrendUpIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#22c55e',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path 
+      d="M4 16L10 10L14 14L20 8" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <path 
+      d="M14 8H20V14" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * ↘️ TREND DOWN - Tendencia descendente
+ * Para: Energy/metrics trends
+ */
+export const TrendDownIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#ef4444',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path 
+      d="M4 8L10 14L14 10L20 16" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+    <path 
+      d="M14 16H20V10" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * → TREND STABLE - Tendencia estable
+ * Para: Energy/metrics trends
+ */
+export const TrendStableIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#fbbf24',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path 
+      d="M4 12H20" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round"
+    />
+    <path 
+      d="M16 8L20 12L16 16" 
+      stroke={color} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * 🔮 PREDICTION ORB - Orbe de predicción
+ * Para: Prediction display
+ */
+export const PredictionOrbIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Orbe/bola de cristal */}
+    <circle cx="12" cy="10" r="8" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Base */}
+    <path d="M8 18H16L14 16H10L8 18Z" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Reflejo */}
+    <path d="M8 7Q10 5 14 7" stroke={color} strokeWidth="1" opacity="0.5" />
+    {/* Visión interior */}
+    <circle cx="12" cy="10" r="2" fill={color} opacity="0.3" />
+    <path d="M10 10L12 8L14 10L12 12Z" fill={color} opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🎨 PALETTE CHROMATIC - Paleta cromática
+ * Para: ChromaticCorePanel header
+ */
+export const PaletteChromaticIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Paleta base */}
+    <path 
+      d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C12.8 22 13.5 21.3 13.5 20.5C13.5 20.1 13.4 19.8 13.1 19.5C12.9 19.2 12.8 18.9 12.8 18.5C12.8 17.7 13.5 17 14.3 17H16C19.3 17 22 14.3 22 11C22 6 17.5 2 12 2Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Colores */}
+    <circle cx="8" cy="10" r="2" fill="#ff4444" />
+    <circle cx="12" cy="7" r="2" fill="#fbbf24" />
+    <circle cx="16" cy="10" r="2" fill="#22c55e" />
+    <circle cx="9" cy="14" r="2" fill="#3b82f6" />
+  </svg>
+)
+
+/**
+ * 📜 STREAM LOG - Log en streaming
+ * Para: NeuralStreamLog header
+ */
+export const StreamLogIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Terminal/consola */}
+    <rect x="3" y="4" width="18" height="16" rx="2" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Líneas de log */}
+    <path d="M6 9H10" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+    <path d="M6 12H14" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+    <path d="M6 15H12" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+    {/* Cursor parpadeante */}
+    <rect x="14" y="14" width="2" height="3" fill={color} className="cursor-blink" />
+  </svg>
+)
+
+/**
+ * 🧭 CONTEXT MATRIX - Matriz de contexto
+ * Para: ContextMatrixPanel header
+ */
+export const ContextMatrixIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Grid de matriz */}
+    <rect x="3" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    <rect x="14" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    <rect x="3" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    <rect x="14" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Conexiones */}
+    <circle cx="6.5" cy="6.5" r="1.5" fill={color} opacity="0.6" />
+    <circle cx="17.5" cy="6.5" r="1.5" fill={color} opacity="0.8" />
+    <circle cx="6.5" cy="17.5" r="1.5" fill={color} opacity="0.4" />
+    <circle cx="17.5" cy="17.5" r="1.5" fill={color} />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -806,4 +1449,26 @@ export default {
   ParCan: ParCanIcon,
   Blackout: BlackoutIcon,
   Flash: FlashIcon,
+  // WAVE 1167: Neural Command Center icons
+  BrainNeural: BrainNeuralIcon,
+  DreamCloud: DreamCloudIcon,
+  ShieldCheck: ShieldCheckIcon,
+  CatStalk: CatStalkIcon,
+  LightningStrike: LightningStrikeIcon,
+  SpectrumBars: SpectrumBarsIcon,
+  Waveform: WaveformIcon,
+  BPMHeart: BPMHeartIcon,
+  DropImpact: DropImpactIcon,
+  MusicalKey: MusicalKeyIcon,
+  SectionFlow: SectionFlowIcon,
+  VibeAura: VibeAuraIcon,
+  ThermoColor: ThermoColorIcon,
+  LiveDot: LiveDotIcon,
+  TrendUp: TrendUpIcon,
+  TrendDown: TrendDownIcon,
+  TrendStable: TrendStableIcon,
+  PredictionOrb: PredictionOrbIcon,
+  PaletteChromatic: PaletteChromaticIcon,
+  StreamLog: StreamLogIcon,
+  ContextMatrix: ContextMatrixIcon,
 }

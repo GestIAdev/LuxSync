@@ -56,14 +56,15 @@ Solución: Mantenemos como está - 15 EPM ya es MUCHA fiesta.
 
 | Parámetro | ANTES | DESPUÉS | Razón |
 |-----------|-------|---------|-------|
-| thresholdMultiplier | 2.0 | **99.0** | Filtro brutal - solo momentos significativos |
-| cooldownMultiplier | 3.5 | **10.0** | Cooldowns x10 - mucho respiro |
-| ethicsThreshold | 0.95 | **99.0** | DNA override NUNCA activo |
-| maxIntensity | 0.5 | **0.7** | Max 70% intensidad |
+| thresholdMultiplier | 2.0 | **2.5** | Filtro fuerte pero no imposible (antes 99.0 en WAVE 1182) |
+| cooldownMultiplier | 3.5 | **4.0** | Cooldowns x4 - respiro sin bloqueo total (antes 10.0) |
+| ethicsThreshold | 0.95 | **0.95** | Solo LEGENDARY bypassea (antes 99.0) |
+| maxIntensity | 0.5 | **0.6** | Max 60% - suave y tranquilo |
 | blockList | 8 efectos | **11 efectos** | Strobes + agresivos prohibidos |
 
 **Resultado**: EPM ~1-2 (efectos suaves en momentos significativos)  
-**WAVE 1182.1**: Solo strobes y agresivos prohibidos - efectos suaves (ambient, breath, void_mist) permitidos
+**WAVE 1182.1**: BlockList con 11 efectos - strobes y agresivos prohibidos  
+**WAVE 1182.2**: Threshold/cooldown realistas - con x99 y x10 NADA pasaba 😂
 
 ### ⚖️ BALANCED - SOLO ÉPICOS BYPASSEAN
 

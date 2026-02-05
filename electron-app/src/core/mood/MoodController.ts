@@ -34,26 +34,26 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
   // WAVE 700.5.2 - Consenso del Cónclave: "Menos es más cuando lo que tienes es BUENO"
   // 🔥 WAVE 1010.8: CALM = CALMADO DE VERDAD
   // 🍹 WAVE 1182: CALM = Efectos suaves permitidos, strobes prohibidos
-  // 🧘 WAVE 1182.1: CALM FIX - Solo strobes y agresivos prohibidos
-  // FILOSOFÍA: Los límites (threshold x99, cooldown x10) garantizan 1-2 EPM
-  //            Efectos suaves (ambient, breath, void_mist) sí pueden entrar
-  //            Efectos agresivos (strobes, raids, melts) PROHIBIDOS
-  // Target EPM: 1-2 (momentos significativos con efectos suaves)
+  // 🧘 WAVE 1182.2: CALM REALISTA - Threshold/cooldown permiten efectos suaves
+  // FILOSOFÍA: threshold x2.5 + cooldown x4 = ~1-2 EPM con efectos suaves
+  //            Strobes y agresivos bloqueados por blockList
+  //            maxIntensity 0.6 = todo suave y tranquilo
+  // Target EPM: 1-2 (momentos significativos con efectos suaves, no agresivos)
   calm: {
     name: 'calm',
     description: 'Zen mode. Efectos suaves, nada agresivo. 🍹',
     emoji: '😌',
-    thresholdMultiplier: 99.0,     // 🍹 WAVE 1182: INFINITO - Filtro brutal
-    cooldownMultiplier: 10.0,      // 🍹 WAVE 1182: Cooldowns x10 - mucho respiro
-    ethicsThreshold: 99.0,         // 🍹 WAVE 1182: IMPOSIBLE - DNA override NUNCA activo
-    maxIntensity: 0.7,             // 🍹 WAVE 1182: Max 70% - todo suave
+    thresholdMultiplier: 2.5,      // 🧘 WAVE 1182.2: Filtro fuerte pero no imposible (era 99.0)
+    cooldownMultiplier: 4.0,       // 🧘 WAVE 1182.2: Cooldowns x4 (era 10.0)
+    ethicsThreshold: 0.95,         // 🧘 WAVE 1182.2: Solo LEGENDARY bypassea (era 99.0)
+    maxIntensity: 0.6,             // 🧘 WAVE 1182.2: Max 60% - todo suave (era 0.7)
     minIntensity: undefined,       // Sin mínimo
     blockList: [
       // 🚨 STROBES - Todo lo que parpadea rápido
       'strobe_storm',              
       'strobe_burst',              
       'industrial_strobe',         
-      'ambient_strobe',            // 🧘 WAVE 1182.1: Strobes suaves también prohibidos
+      'ambient_strobe',            // Strobes suaves también prohibidos
       
       // 🔥 RAIDS & AGRESIVOS - Gatling, machetes, ataques
       'gatling_raid',              
@@ -67,8 +67,8 @@ export const MOOD_PROFILES: Record<MoodId, MoodProfile> = {
       'glitch_guaguanco',
       
       // ⚡ OTROS AGRESIVOS
-      'solar_flare',               // 🧘 WAVE 1182.1: Flares muy intensos
-      'seismic_snap',              // 🧘 WAVE 1182.1: Snap muy agresivo
+      'solar_flare',               // Flares muy intensos
+      'seismic_snap',              // Snap muy agresivo
     ],
     forceUnlock: undefined,        // Cooldowns normales
   },

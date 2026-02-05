@@ -1116,3 +1116,184 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.15); }
 }
+
+/* ═══════════════════════════════════════════════
+   🎯 WAVE 1186: VISUAL SMOOTHING & UI CANDY
+   Trend Gauge, Sparkline, Heartbeat Animation
+   ═══════════════════════════════════════════════ */
+
+/* ───────── PREDICTION: Zone Mini (inline) ───────── */
+.prediction-card__zone-mini {
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+
+/* ───────── PREDICTION: TREND GAUGE ───────── */
+.prediction-card__trend-gauge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.prediction-card__gauge-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  width: 14px;
+  text-align: center;
+}
+
+.prediction-card__gauge-label--left {
+  color: #a855f7;
+}
+
+.prediction-card__gauge-label--right {
+  color: #22d3ee;
+}
+
+.prediction-card__gauge-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prediction-card__gauge-center {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  z-index: 2;
+}
+
+.prediction-card__gauge-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.2s ease-out; /* 🎯 WAVE 1186: Smooth animation */
+}
+
+.prediction-card__gauge-fill--left {
+  right: 50%;
+  border-radius: 4px 0 0 4px;
+}
+
+.prediction-card__gauge-fill--right {
+  left: 50%;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ───────── PREDICTION: DELTA VALUE ───────── */
+.prediction-card__delta {
+  text-align: center;
+  margin: 2px 0;
+}
+
+.prediction-card__delta-value {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ───────── PREDICTION: SPARKLINE ───────── */
+.prediction-card__sparkline {
+  position: relative;
+  height: 24px;
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.prediction-card__sparkline-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.prediction-card__sparkline-label {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: var(--font-mono);
+}
+
+/* ───────── ETHICS: HEARTBEAT ANIMATION ───────── */
+/* 🛡️ WAVE 1186: "ALL SAFE" badge pulses to show system is alive */
+.ethics-status--safe {
+  position: relative;
+  overflow: hidden;
+}
+
+.ethics-status--safe::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 197, 94, 0.3) 50%,
+    transparent 100%
+  );
+  animation: heartbeat-scan 3s ease-in-out infinite;
+}
+
+@keyframes heartbeat-scan {
+  0% {
+    left: -100%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    left: 100%;
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+/* Heartbeat dot indicator */
+.ethics-status--safe::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: heartbeat-dot 3s ease-in-out infinite;
+}
+
+@keyframes heartbeat-dot {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translateY(-50%) scale(1);
+  }
+  15%, 25% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
+  50% {
+    opacity: 0.4;
+    transform: translateY(-50%) scale(1);
+  }
+}

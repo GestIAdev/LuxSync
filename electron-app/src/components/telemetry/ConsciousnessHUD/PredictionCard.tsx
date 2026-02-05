@@ -1,5 +1,5 @@
 /**
- * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184
+ * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184/1185
  * "The Oracle" - La Money Card que tiene que verse VIVA
  * 
  * WAVE 1169: Si no hay predicción, muestra tendencia de energía
@@ -12,6 +12,12 @@
  * - BUILDUP: BARRA DE PROGRESO subiendo
  * - STABLE: "MONITORING FLOW..." con tendencia pequeña
  * - Log al NeuralStream cuando cambia el estado
+ * 
+ * 🔮 WAVE 1185: VISUAL SENSITIVITY
+ * - Si stable, mostrar micro-trend basado en slope
+ * - Flecha ↗️ cyan si slope > 0.0001
+ * - Flecha ↘️ purple si slope < -0.0001
+ * - "FLOW: STABLE (δ +0.000)" o "FLOW: DRIFTING (δ +0.002)"
  */
 
 import React, { useMemo, useEffect, useRef, useState } from 'react'
@@ -219,7 +225,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
             </div>
           </>
         ) : (
-          /* 🔮 WAVE 1184: Estado sin predicción - muestra tendencia */
+          /* 🔮 WAVE 1184/1185: Estado sin predicción - muestra tendencia */
           <div className="prediction-card__analyzing">
             <div 
               className={`prediction-card__analyzing-header ${
@@ -243,24 +249,39 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
               </span>
             </div>
 
-            {/* Energy Trend - 🔥 WAVE 1176: Ahora con slope */}
+            {/* � WAVE 1185: Flow con Micro-Trend visual */}
             <div className="prediction-card__trend">
               <span className="neural-label">Flow:</span>
-              <span className="prediction-card__trend-value" style={{ color: visual.color }}>
-                {energyTrend.toUpperCase()}
+              <span className="prediction-card__trend-value">
+                {/* 🔮 WAVE 1185: Dynamic flow label basado en slope */}
+                <span style={{ color: energyVelocity > 0.0001 ? '#22d3ee' : energyVelocity < -0.0001 ? '#a855f7' : '#64748b' }}>
+                  {Math.abs(energyVelocity) > 0.0001 ? 'DRIFTING' : 'STABLE'}
+                </span>
+                {/* 🔮 WAVE 1185: Micro-trend arrow */}
+                <span 
+                  style={{ 
+                    marginLeft: '4px',
+                    color: energyVelocity > 0.0001 ? '#22d3ee' : energyVelocity < -0.0001 ? '#a855f7' : '#64748b',
+                    fontSize: '0.9em'
+                  }}
+                >
+                  {energyVelocity > 0.0001 ? '↗️' : energyVelocity < -0.0001 ? '↘️' : ''}
+                </span>
+                {/* Delta value */}
                 <span 
                   className="prediction-card__slope" 
                   style={{ 
                     fontSize: '0.7em', 
                     opacity: 0.8, 
                     marginLeft: '4px',
-                    fontFamily: 'monospace'
+                    fontFamily: 'monospace',
+                    color: '#64748b'
                   }}
                 >
-                  ({energyVelocity >= 0 ? '+' : ''}{energyVelocity.toFixed(3)})
+                  (δ {energyVelocity >= 0 ? '+' : ''}{energyVelocity.toFixed(4)})
                 </span>
               </span>
-              <TrendIcon size={14} color={visual.color} />
+              <TrendIcon size={14} color={energyVelocity > 0.0001 ? '#22d3ee' : energyVelocity < -0.0001 ? '#a855f7' : '#64748b'} />
             </div>
           </div>
         )}

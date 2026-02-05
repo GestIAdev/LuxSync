@@ -1,5 +1,5 @@
 /**
- * 🛡️ ETHICS CARD - WAVE 1168/1172/1184
+ * 🛡️ ETHICS CARD - WAVE 1168/1172/1184/1185
  * "The Guardian" - Estado de seguridad visual con checks reales
  * 
  * WAVE 1172: COMPRESSION & SENSITIVITY
@@ -11,9 +11,13 @@
  * - Latch de 2s para flags visuales (ojo humano puede ver el bloqueo)
  * - Mapping correcto de flags del backend a códigos UI
  * - Colores más distintivos: Rojo si bloquea, Amarillo si limita
+ * 
+ * 🪲 WAVE 1185: ENGLISH & UNSTUCK
+ * - Cambió de setTimeout a Timestamps para evitar race conditions
+ * - Limpieza periódica con setInterval cada 500ms
  */
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ShieldCheckIcon } from '../../icons/LuxIcons'
 
 export interface EthicsCardProps {
@@ -75,82 +79,84 @@ const STATUS_BITS = [
 
 type StatusBitState = 'safe' | 'warning' | 'critical'
 
-// 🔮 WAVE 1184: Latch duration for visual persistence
+// 🔮 WAVE 1184/1185: Latch duration and cleanup interval
 const LATCH_DURATION_MS = 2000
+const CLEANUP_INTERVAL_MS = 500
 
 /**
  * 🛡️ Micro-grid Ethics Card con Status Bits compactos
- * WAVE 1184: Con latches visuales de 2s para que el ojo humano vea los bloqueos
+ * WAVE 1185: Sistema de timestamps sin race conditions
  */
 export const EthicsCard: React.FC<EthicsCardProps> = ({
   ethicsFlags,
   energyOverrideActive,
   criticalFlags = []
 }) => {
-  // 🔮 WAVE 1184: Latch state - mantiene flags activos por 2s
-  const [latchedFlags, setLatchedFlags] = useState<Set<string>>(new Set())
-  const latchTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  // 🪲 WAVE 1185: Timestamps instead of timeouts - Map<flag, lastSeenTimestamp>
+  const [latchedFlags, setLatchedFlags] = useState<Record<string, number>>({})
   
-  // Actualizar latches cuando cambian los flags
+  // 1. Actualizar timestamps cuando llegan nuevos flags
   useEffect(() => {
-    const newLatchedFlags = new Set(latchedFlags)
+    const now = Date.now()
     
-    // Agregar nuevos flags al latch
-    for (const flag of ethicsFlags) {
-      const normalizedFlag = flag.toLowerCase().replace(/[_\s]/g, '')
-      newLatchedFlags.add(normalizedFlag)
+    setLatchedFlags(prev => {
+      const updated = { ...prev }
       
-      // Cancelar timer existente si hay uno
-      const existingTimer = latchTimersRef.current.get(normalizedFlag)
-      if (existingTimer) {
-        clearTimeout(existingTimer)
+      // Marcar timestamp de flags activos actuales
+      for (const flag of ethicsFlags) {
+        const normalized = flag.toLowerCase().replace(/[_\s]/g, '')
+        updated[normalized] = now
       }
       
-      // Crear nuevo timer para remover el flag después del latch
-      const timer = setTimeout(() => {
-        setLatchedFlags(prev => {
-          const next = new Set(prev)
-          next.delete(normalizedFlag)
-          return next
-        })
-        latchTimersRef.current.delete(normalizedFlag)
-      }, LATCH_DURATION_MS)
+      // Si energy_override está activo, también
+      if (energyOverrideActive) {
+        updated['energyoverride'] = now
+      }
       
-      latchTimersRef.current.set(normalizedFlag, timer)
-    }
-    
-    // Agregar energy_override si está activo
-    if (energyOverrideActive) {
-      newLatchedFlags.add('energyoverride')
-      
-      const existingTimer = latchTimersRef.current.get('energyoverride')
-      if (existingTimer) clearTimeout(existingTimer)
-      
-      const timer = setTimeout(() => {
-        setLatchedFlags(prev => {
-          const next = new Set(prev)
-          next.delete('energyoverride')
-          return next
-        })
-      }, LATCH_DURATION_MS)
-      
-      latchTimersRef.current.set('energyoverride', timer)
-    }
-    
-    setLatchedFlags(newLatchedFlags)
-    
-    // Cleanup
-    return () => {
-      latchTimersRef.current.forEach(timer => clearTimeout(timer))
-    }
+      return updated
+    })
   }, [ethicsFlags, energyOverrideActive])
   
-  // Combinar flags actuales con latched para display
-  const displayFlags = new Set([
+  // 2. 🪲 WAVE 1185: Limpieza periódica cada 500ms (sin race conditions)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      
+      // Set de flags actualmente activos (para no borrar los que siguen activos)
+      const currentActiveSet = new Set([
+        ...ethicsFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')),
+        ...(energyOverrideActive ? ['energyoverride'] : [])
+      ])
+      
+      setLatchedFlags(prev => {
+        const cleaned: Record<string, number> = {}
+        
+        for (const [flag, timestamp] of Object.entries(prev)) {
+          const age = now - timestamp
+          const isCurrentlyActive = currentActiveSet.has(flag)
+          
+          // Mantener si: está activo ahora O no ha expirado el latch
+          if (isCurrentlyActive || age < LATCH_DURATION_MS) {
+            cleaned[flag] = timestamp
+          }
+        }
+        
+        return cleaned
+      })
+    }, CLEANUP_INTERVAL_MS)
+    
+    return () => clearInterval(interval)
+  }, [ethicsFlags, energyOverrideActive])
+  
+  // Flags a mostrar = todos los que están en el latch (activos + recientes)
+  const displayFlags = useMemo(() => new Set(Object.keys(latchedFlags)), [latchedFlags])
+  
+  // Set de flags actualmente activos (no solo latched)
+  const currentActiveSet = useMemo(() => new Set([
     ...ethicsFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')),
-    ...(energyOverrideActive ? ['energyoverride'] : []),
-    ...latchedFlags
-  ])
+    ...(energyOverrideActive ? ['energyoverride'] : [])
+  ]), [ethicsFlags, energyOverrideActive])
+  
   const criticalSet = new Set(criticalFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')))
   
   // Determinar estado de cada bit usando aliases
@@ -205,17 +211,13 @@ export const EthicsCard: React.FC<EthicsCardProps> = ({
     }
   }
   
-  // 🔮 WAVE 1184: Helper para saber si un bit es latched (no current)
+  // 🪲 WAVE 1185: Helper para saber si un bit es latched (no current)
+  // Ahora usa currentActiveSet que ya calculamos arriba
   const isBitLatched = (bit: typeof STATUS_BITS[number]): boolean => {
-    // Verificar si está en latchedFlags pero NO en current flags
-    const currentNormalized = new Set([
-      ...ethicsFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')),
-      ...(energyOverrideActive ? ['energyoverride'] : [])
-    ])
-    
     return bit.aliases.some(alias => {
       const normalized = alias.toLowerCase().replace(/[_\s]/g, '')
-      return latchedFlags.has(normalized) && !currentNormalized.has(normalized)
+      // Está en latchedFlags (lo vimos recientemente) pero NO está activo ahora
+      return (normalized in latchedFlags) && !currentActiveSet.has(normalized)
     })
   }
   

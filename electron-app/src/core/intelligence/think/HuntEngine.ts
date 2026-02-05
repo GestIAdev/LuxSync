@@ -277,7 +277,7 @@ function processSleeping(
   
   if (shouldWake) {
     transitionTo('stalking')
-    state.activeCandidate = createCandidate(worthiness, 'Actividad interesante detectada')
+    state.activeCandidate = createCandidate(worthiness, 'Activity detected: Analyzing...')
     
     return {
       suggestedPhase: 'stalking',
@@ -285,7 +285,7 @@ function processSleeping(
       confidence: 0.4,
       conditions: null,
       activeCandidate: state.activeCandidate,
-      reasoning: `Despertando: worthiness=${worthiness.toFixed(2)}`,
+      reasoning: `SYSTEM WAKE_UP: worthiness=${worthiness.toFixed(2)}`,
     }
   }
   
@@ -295,7 +295,7 @@ function processSleeping(
     confidence: 0.2,
     conditions: null,
     activeCandidate: null,
-    reasoning: 'Durmiendo - nada interesante',
+    reasoning: 'STANDBY: No significant activity',
   }
 }
 
@@ -325,7 +325,7 @@ function processStalking(
         confidence: 0.5,
         conditions: null,
         activeCandidate: state.activeCandidate,
-        reasoning: `Promoviendo a evaluating después de ${state.framesInPhase} frames`,
+        reasoning: `Promoting to EVAL: Threshold met after ${state.framesInPhase} frames`,
       }
     }
   }
@@ -427,7 +427,7 @@ function processEvaluating(
       confidence: 0.3,
       conditions,
       activeCandidate: state.activeCandidate,
-      reasoning: 'Condiciones empeorando - abortar evaluación',
+      reasoning: 'Conditions degrading: ABORT eval',
     }
   }
   

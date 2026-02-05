@@ -65,13 +65,13 @@ const PREDICTION_VISUALS: Record<PredictionState, {
   breakdown: {
     icon: '📉',
     label: 'BREAKDOWN',
-    color: '#8b5cf6',
+    color: '#a855f7',
     bgClass: 'prediction-card--breakdown',
     animate: false
   },
   stable: {
-    icon: '🔮',
-    label: 'SCANNING',
+    icon: '🎵',
+    label: 'TRACKING STRUCTURE',
     color: '#64748b',
     bgClass: 'prediction-card--stable',
     animate: false

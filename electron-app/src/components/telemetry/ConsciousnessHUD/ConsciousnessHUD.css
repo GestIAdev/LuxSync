@@ -502,13 +502,15 @@
   border-color: rgba(251, 191, 36, 0.3);
 }
 
-/* Micro-grid: 4 columnas, auto rows */
+/* 🎯 WAVE 1187: Micro-grid 4 columnas con flex-wrap para 7+ tags */
 .ethics-bits {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   flex: 1;
   align-content: start;
+  /* WAVE 1187: Ensure all rows show (7 tags = 2 rows) */
+  grid-auto-rows: min-content;
 }
 
 /* Status Bit: Rectángulo compacto con código 3 letras */
@@ -532,9 +534,16 @@
 }
 
 /* Safe State: Transparente con borde/texto verde tenue */
+/* 🎯 WAVE 1187: Added breathing/pulse animation for "monitoring" feel */
 .ethics-bit--safe {
   background: transparent;
   border-color: rgba(34, 197, 94, 0.25);
+  animation: ethics-safe-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ethics-safe-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .ethics-bit--safe .ethics-bit__code {
@@ -545,6 +554,7 @@
 .ethics-bit--warning {
   background: rgba(251, 191, 36, 0.85);
   border-color: rgba(251, 191, 36, 1);
+  animation: none; /* Override safe pulse */
 }
 
 .ethics-bit--warning .ethics-bit__code {
@@ -704,6 +714,24 @@
 .prediction-card__preparing span:last-child {
   font-size: 0.7rem;
   color: var(--text-secondary);
+}
+
+/* 🎯 WAVE 1187: COUNTDOWN BAR - Tension builder before drop */
+.prediction-card__countdown {
+  margin-top: 6px;
+}
+
+.prediction-card__countdown-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.prediction-card__countdown-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.05s linear; /* Fast updates for smooth countdown */
 }
 
 .prediction-card__idle {
@@ -1131,28 +1159,35 @@
 /* ───────── PREDICTION: TREND GAUGE ───────── */
 .prediction-card__trend-gauge {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   margin: 6px 0;
 }
 
+/* 🪲 WAVE 1187: Container para labels debajo del gauge */
+.prediction-card__gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
 .prediction-card__gauge-label {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.4);
-  width: 14px;
-  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .prediction-card__gauge-label--left {
-  color: #a855f7;
+  text-align: left;
 }
 
 .prediction-card__gauge-label--right {
-  color: #22d3ee;
+  text-align: right;
 }
 
 .prediction-card__gauge-track {
-  flex: 1;
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;

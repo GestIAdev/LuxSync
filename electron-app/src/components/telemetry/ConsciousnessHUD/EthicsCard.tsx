@@ -17,7 +17,7 @@
  * - Limpieza periódica con setInterval cada 500ms
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { ShieldCheckIcon } from '../../icons/LuxIcons'
 
 export interface EthicsCardProps {
@@ -30,7 +30,8 @@ export interface EthicsCardProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔮 WAVE 1184: STATUS BITS - Mapping de flags backend a códigos UI
+// 🔮 WAVE 1184/1187: STATUS BITS - Mapping de flags backend a códigos UI
+// 🎯 WAVE 1187: Added PAT (pattern_abuse) - 7 tags total for 4x2 grid
 // ═══════════════════════════════════════════════════════════════════════════
 const STATUS_BITS = [
   { 
@@ -75,6 +76,14 @@ const STATUS_BITS = [
     tooltip: 'Overdrive Limit - Sobrecarga sistema',
     isCritical: true
   },
+  // 🎯 WAVE 1187: RESCUED PAT TAG
+  { 
+    id: 'pattern_abuse', 
+    aliases: ['pattern_abuse', 'pattern', 'monotony', 'repetition'],
+    code: 'PAT', 
+    tooltip: 'Pattern Abuse - Anti-monotonía',
+    isCritical: false
+  },
 ] as const
 
 type StatusBitState = 'safe' | 'warning' | 'critical'
@@ -86,19 +95,25 @@ const CLEANUP_INTERVAL_MS = 500
 /**
  * 🛡️ Micro-grid Ethics Card con Status Bits compactos
  * WAVE 1185: Sistema de timestamps sin race conditions
+ * WAVE 1188: ZOMBIE KILLER - Desacoplado props del interval
  */
 export const EthicsCard: React.FC<EthicsCardProps> = ({
   ethicsFlags,
   energyOverrideActive,
   criticalFlags = []
 }) => {
-  // 🪲 WAVE 1185: Timestamps instead of timeouts - Map<flag, lastSeenTimestamp>
+  // 🪲 WAVE 1185/1187: Timestamps - Map<flag, lastSeenTimestamp>
   const [latchedFlags, setLatchedFlags] = useState<Record<string, number>>({})
   
-  // 1. Actualizar timestamps cuando llegan nuevos flags
+  // 🧟 WAVE 1188: ZOMBIE KILLER - Decouple props from interval
+  const latestPropsRef = useRef({ ethicsFlags, energyOverrideActive })
+  
+  // 1. Sync effect: actualizar ref cada vez que cambian los props
   useEffect(() => {
-    const now = Date.now()
+    latestPropsRef.current = { ethicsFlags, energyOverrideActive }
     
+    // Actualizar timestamps de flags activos
+    const now = Date.now()
     setLatchedFlags(prev => {
       const updated = { ...prev }
       
@@ -117,36 +132,46 @@ export const EthicsCard: React.FC<EthicsCardProps> = ({
     })
   }, [ethicsFlags, energyOverrideActive])
   
-  // 2. 🪲 WAVE 1185: Limpieza periódica cada 500ms (sin race conditions)
+  // 2. � WAVE 1188: ZOMBIE KILLER - Cleanup effect con [] dependencies
+  // El interval corre ININTERRUMPIDAMENTE cada 250ms
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now()
       
-      // Set de flags actualmente activos (para no borrar los que siguen activos)
-      const currentActiveSet = new Set([
-        ...ethicsFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')),
-        ...(energyOverrideActive ? ['energyoverride'] : [])
-      ])
-      
       setLatchedFlags(prev => {
+        // Leer props frescos desde la ref (no desde closure)
+        const { ethicsFlags: currentFlags, energyOverrideActive: currentOvr } = latestPropsRef.current
+        
+        const currentActiveSet = new Set([
+          ...currentFlags.map(f => f.toLowerCase().replace(/[_\s]/g, '')),
+          ...(currentOvr ? ['energyoverride'] : [])
+        ])
+        
         const cleaned: Record<string, number> = {}
+        let hasChanges = false
         
         for (const [flag, timestamp] of Object.entries(prev)) {
           const age = now - timestamp
           const isCurrentlyActive = currentActiveSet.has(flag)
           
-          // Mantener si: está activo ahora O no ha expirado el latch
-          if (isCurrentlyActive || age < LATCH_DURATION_MS) {
+          // � WAVE 1188: BORRADO A LA FUERZA si NO activo Y expirado
+          const shouldKeep = isCurrentlyActive || age < LATCH_DURATION_MS
+          
+          if (shouldKeep) {
             cleaned[flag] = timestamp
+          } else {
+            hasChanges = true
+            console.log(`[EthicsCard 🛡️] ZOMBIE KILLED: ${flag} (age=${age}ms, active=${isCurrentlyActive})`)
           }
         }
         
-        return cleaned
+        // Solo actualizar si hubo cambios (evitar re-renders innecesarios)
+        return hasChanges ? cleaned : prev
       })
     }, CLEANUP_INTERVAL_MS)
     
     return () => clearInterval(interval)
-  }, [ethicsFlags, energyOverrideActive])
+  }, [])  // 🧟 WAVE 1188: Empty deps - interval runs forever
   
   // Flags a mostrar = todos los que están en el latch (activos + recientes)
   const displayFlags = useMemo(() => new Set(Object.keys(latchedFlags)), [latchedFlags])

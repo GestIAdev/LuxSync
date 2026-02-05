@@ -78,7 +78,7 @@ export const ConsciousnessHUD: React.FC<ConsciousnessHUDProps> = ({
             energyOverrideActive={ai?.energyOverrideActive ?? false}
           />
 
-          {/* Prediction - The Oracle (WAVE 1169: Added trend/zone, WAVE 1176: Added velocity) */}
+          {/* Prediction - The Oracle (WAVE 1169: Added trend/zone, WAVE 1176: Added velocity, WAVE 1186: Added energyValue) */}
           <PredictionCard 
             prediction={ai?.prediction ?? null}
             probability={ai?.predictionProbability ?? 0}
@@ -86,6 +86,7 @@ export const ConsciousnessHUD: React.FC<ConsciousnessHUDProps> = ({
             energyTrend={ai?.beautyTrend ?? 'stable'}
             energyZone={ai?.energyZone ?? 'calm'}
             energyVelocity={ai?.energyVelocity ?? 0}
+            energyValue={ai?.beautyScore ?? 0.5}
           />
         </div>
       </div>

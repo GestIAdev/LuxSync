@@ -1,8 +1,41 @@
 # 🔬 WAVE 1181: Z-Score Recalibration - "Boris Brejcha nos enseñó la verdad"
 
-**Status**: ✅ IMPLEMENTED  
+**Status**: ✅ IMPLEMENTED (+ HOTFIX 1181.1)  
 **Date**: 2026-02-05  
 **Context**: Post-WAVE 1180 final calibration (72h before disco test)
+
+---
+
+## 🔥 HOTFIX 1181.1: minStdDev Floor
+
+**PROBLEMA POST-1181:** Después de aplicar ventana de 30s, seguían apareciendo Z=9σ
+
+**CAUSA RAÍZ:** El problema NO era solo la ventana, era el `minStdDev: 0.001`
+
+**ESCENARIO:**
+```
+Durante breakdown con poca variación:
+- mean = 0.12
+- stdDev real = 0.02 (pero > 0.001, así que se usa)
+- Llega pico de 0.30
+- Z = (0.30 - 0.12) / 0.02 = 9σ
+```
+
+**SOLUCIÓN:**
+```typescript
+// ANTES:
+minStdDev: 0.001
+
+// AHORA:
+minStdDev: 0.08  // Floor realista para música
+```
+
+**IMPACTO:**
+```
+Con minStdDev = 0.08:
+- Z = (0.30 - 0.12) / 0.08 = 2.25σ ← NORMAL
+- Z máximo teórico = (1.0 - 0.0) / 0.08 = 12.5σ ← Solo con energía 100% vs 0%
+```
 
 ---
 

@@ -1063,7 +1063,10 @@ export class SeleneTitanConscious extends EventEmitter {
     this.state.cyclesInPhase = huntState.framesInPhase
     
     // 6. Almacenar predicción completa (WAVE 500: tipo real)
-    if (prediction.probability > 0.5) {
+    // 🔮 WAVE 1190: PROJECT CASSANDRA - Umbral bajado a 0.25
+    // Ahora TODAS las predicciones medias+ se muestran en UI
+    // El Oráculo merece ser escuchado, incluso sin certeza total
+    if (prediction.probability > 0.25) {
       this.state.activePrediction = prediction
     } else {
       this.state.activePrediction = null

@@ -1361,15 +1361,21 @@ export class TitanEngine extends EventEmitter {
   private lastHuntState: string = 'sleeping'
   private lastPredictionType: string | null = null
   private lastStrikeCount = 0
+  private lastLogFrame = 0  // 🎛️ WAVE 1198.7: Throttle de logs
   
   /**
    * 📜 WAVE 560: Emite logs de consciencia para el Tactical Log
    * 
    * Solo emite cuando hay cambios de estado significativos, no cada frame.
+   * 🎛️ WAVE 1198.7: THROTTLE - Máximo 1 log cada 10 frames (~6/segundo @ 60fps)
    */
   private emitConsciousnessLogs(output: ConsciousnessOutput, energy: number): void {
     // No emitir si no hay energía o consciencia deshabilitada
     if (energy < 0.05 || !this.selene.isEnabled()) return
+    
+    // 🎛️ WAVE 1198.7: THROTTLE - Solo permitir logs cada 10 frames
+    const framesSinceLastLog = this.state.frameCount - this.lastLogFrame
+    const canEmitLog = framesSinceLastLog >= 10
     
     const debug = output.debugInfo
     const huntState = debug.huntState
@@ -1378,7 +1384,7 @@ export class TitanEngine extends EventEmitter {
     // ─────────────────────────────────────────────────────────────────────
     // 🎯 HUNT STATE CHANGES
     // ─────────────────────────────────────────────────────────────────────
-    if (huntState !== this.lastHuntState) {
+    if (huntState !== this.lastHuntState && canEmitLog) {
       const huntMessages: Record<string, string> = {
         'sleeping': '💤 Hunt: Sleeping...',
         'stalking': '🐆 Hunt: Stalking target...',
@@ -1397,13 +1403,14 @@ export class TitanEngine extends EventEmitter {
       })
       
       this.lastHuntState = huntState
+      this.lastLogFrame = this.state.frameCount  // 🎛️ Update throttle
     }
     
     // ─────────────────────────────────────────────────────────────────────
     // 🔮 PREDICTION CHANGES
     // ─────────────────────────────────────────────────────────────────────
     const predType = activePred?.type ?? null
-    if (predType !== this.lastPredictionType && predType !== null) {
+    if (predType !== this.lastPredictionType && predType !== null && canEmitLog) {
       const pct = Math.round((activePred?.probability ?? 0) * 100)
       const timeMs = activePred?.timeUntilMs ?? 0
       
@@ -1418,13 +1425,15 @@ export class TitanEngine extends EventEmitter {
       })
       
       this.lastPredictionType = predType
-    } else if (predType === null && this.lastPredictionType !== null) {
+      this.lastLogFrame = this.state.frameCount  // 🎛️ Update throttle
+    } else if (predType === null && this.lastPredictionType !== null && canEmitLog) {
       // Predicción terminó
       this.emit('log', {
         category: 'Brain',
         message: '🔮 Prediction: Cleared',
       })
       this.lastPredictionType = null
+      this.lastLogFrame = this.state.frameCount  // 🎛️ Update throttle
     }
     
     // ─────────────────────────────────────────────────────────────────────

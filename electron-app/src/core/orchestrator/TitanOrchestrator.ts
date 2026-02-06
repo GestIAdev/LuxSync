@@ -1005,8 +1005,9 @@ export class TitanOrchestrator {
       }
     }
     
-    // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
-    const shouldLogToTactical = this.frameCount % 30 === 0
+    // WAVE 257: Throttled logging to Tactical Log (every 2 seconds = 120 frames @ 60fps)
+    // 🎛️ WAVE 1198.7: Aumentado de 30 a 120 frames para reducir spam
+    const shouldLogToTactical = this.frameCount % 120 === 0
     
     if (shouldLogToTactical && this.hasRealAudio) {
       const avgDimmer = fixtureStates.length > 0 

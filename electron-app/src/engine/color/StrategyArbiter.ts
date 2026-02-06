@@ -167,7 +167,8 @@ export class StrategyArbiter {
   //    La paleta completa (base + secundarios) se comporta como UNIDAD CROMÁTICA
   // 🔒 WAVE 1208.6: ULTRA-LOCK - NO overrides por sección/drop/breakdown
   //    Solo cambios naturales basados en síncopa promediada (rolling 15s)
-  private strategyCommitmentFrames = 0;
+  // 🐛 WAVE 1209.2: FIX - Inicializar en DURATION en lugar de 0 para que empiece bloqueado
+  private strategyCommitmentFrames = 1800;  // Empieza bloqueado por 30s
   private readonly STRATEGY_COMMITMENT_DURATION = 1800;  // 30 segundos @ 60fps (sync con KeyStabilizer)
   private lastCommittedStrategy: ColorStrategy = 'analogous';
   
@@ -199,6 +200,9 @@ export class StrategyArbiter {
     // Inicializar buffer con valores neutros
     this.syncBuffer = new Array(this.config.bufferSize).fill(0.45);
     
+    // 🐛 WAVE 1209 DEBUG: Confirmar inicialización
+    console.log(`[StrategyArbiter] 🎨 Initialized: bufferSize=${this.config.bufferSize}, lockingFrames=${this.config.lockingFrames}, commitment=${this.STRATEGY_COMMITMENT_DURATION}`);
+    
     // 🧹 WAVE 63: Log init comentado - solo vibes importan
     // console.log(`[StrategyArbiter] 🎨 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(0)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(0)}s)`);
   }
@@ -211,7 +215,12 @@ export class StrategyArbiter {
   update(input: StrategyArbiterInput): StrategyArbiterOutput {
     this.frameCount++;
     
-    // 🔒 WAVE 1208.6: Decrementar strategy commitment timer
+    // � WAVE 1209 DEBUG: Log SIEMPRE para confirmar que se ejecuta
+    if (this.frameCount % 600 === 0) {  // Cada 10 segundos
+      console.log(`[StrategyArbiter] 🔄 Running... frame=${this.frameCount} | current=${this.stableStrategy} | commitment=${this.strategyCommitmentFrames}`);
+    }
+    
+    // �🔒 WAVE 1208.6: Decrementar strategy commitment timer
     if (this.strategyCommitmentFrames > 0) {
       this.strategyCommitmentFrames--;
     }

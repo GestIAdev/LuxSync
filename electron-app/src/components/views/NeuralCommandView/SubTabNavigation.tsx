@@ -7,10 +7,17 @@
  * - CONSCIOUSNESS: Lo que Selene "piensa"
  * - STREAM: Lo que Selene "dice"
  * 
+ * 🧠 WAVE 1195: Custom LuxIcons + CSS transitions
  * Keyboard shortcuts: 1, 2, 3
  */
 
 import React, { useEffect, useCallback, memo } from 'react'
+// 🧠 WAVE 1195: Custom LuxIcons instead of emojis
+import { 
+  SpectrumBarsIcon,   // SENSORY 🎛️
+  BrainNeuralIcon,    // CONSCIOUSNESS 🧠
+  StreamLogIcon       // STREAM 📜
+} from '../../icons/LuxIcons'
 import './SubTabNavigation.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,9 +29,10 @@ export type SubTabId = 'sensory' | 'consciousness' | 'stream'
 export interface SubTabConfig {
   id: SubTabId
   label: string
-  icon: string
+  Icon: React.FC<{ size?: number; color?: string }>
   shortcut: string
   description: string
+  color: string  // 🧠 WAVE 1195: Icon color when active
 }
 
 export interface SubTabNavigationProps {
@@ -40,23 +48,26 @@ export const SUB_TABS: SubTabConfig[] = [
   { 
     id: 'sensory', 
     label: 'SENSORY', 
-    icon: '🎛️', 
+    Icon: SpectrumBarsIcon,
     shortcut: '1',
-    description: 'Audio & Color Input'
+    description: 'Audio & Color Input',
+    color: '#22d3ee'  // Cyan
   },
   { 
     id: 'consciousness', 
     label: 'CONSCIOUSNESS', 
-    icon: '🧠', 
+    Icon: BrainNeuralIcon,
     shortcut: '2',
-    description: 'AI Decision Engine'
+    description: 'AI Decision Engine',
+    color: '#8b5cf6'  // Violet (primary)
   },
   { 
     id: 'stream', 
     label: 'STREAM', 
-    icon: '📜', 
+    Icon: StreamLogIcon,
     shortcut: '3',
-    description: 'Neural Activity Log'
+    description: 'Neural Activity Log',
+    color: '#22c55e'  // Green
   },
 ]
 
@@ -91,6 +102,7 @@ export const SubTabNavigation: React.FC<SubTabNavigationProps> = memo(({
     <nav className="subtab-nav" role="tablist" aria-label="Neural Command Sections">
       {SUB_TABS.map((tab) => {
         const isActive = activeTab === tab.id
+        const IconComponent = tab.Icon
         
         return (
           <button
@@ -102,7 +114,13 @@ export const SubTabNavigation: React.FC<SubTabNavigationProps> = memo(({
             onClick={() => onTabChange(tab.id)}
             title={`${tab.description} (Press ${tab.shortcut})`}
           >
-            <span className="subtab-nav__icon">{tab.icon}</span>
+            {/* 🧠 WAVE 1195: Custom LuxIcon with color transition */}
+            <span className="subtab-nav__icon">
+              <IconComponent 
+                size={16} 
+                color={isActive ? tab.color : 'var(--text-muted)'} 
+              />
+            </span>
             <span className="subtab-nav__label">{tab.label}</span>
             <span className="subtab-nav__shortcut">{tab.shortcut}</span>
           </button>

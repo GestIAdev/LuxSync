@@ -24,11 +24,27 @@ import './EthicsCouncilExpanded.css'
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🧠 WAVE 1195: Backend council vote structure
+export interface BackendCouncilVote {
+  vote: 'for' | 'against' | 'abstain'
+  confidence: number
+  reason: string
+}
+
+export interface BackendCouncilVotes {
+  beauty: BackendCouncilVote
+  energy: BackendCouncilVote
+  calm: BackendCouncilVote
+}
+
 export interface EthicsCouncilExpandedProps {
   ethicsFlags: string[]
   energyOverrideActive: boolean
   beautyScore: number
   confidence: number
+  // 🧠 WAVE 1195: Real votes from backend
+  councilVotes?: BackendCouncilVotes
+  consensusScore?: number
 }
 
 type VoteStatus = 'for' | 'against' | 'abstain'
@@ -146,17 +162,57 @@ export const EthicsCouncilExpanded: React.FC<EthicsCouncilExpandedProps> = memo(
   ethicsFlags,
   energyOverrideActive,
   beautyScore,
-  confidence
+  confidence,
+  councilVotes,
+  consensusScore
 }) => {
-  const votes = useMemo(() => 
-    calculateVotes(ethicsFlags, energyOverrideActive, beautyScore, confidence),
-    [ethicsFlags, energyOverrideActive, beautyScore, confidence]
-  )
+  // 🧠 WAVE 1195: Use backend votes if available, otherwise calculate
+  const votes = useMemo(() => {
+    if (councilVotes) {
+      // Use real backend data
+      return [
+        {
+          id: 'beauty',
+          name: 'BEAUTY',
+          emoji: '🦋',
+          Icon: ButterflyBeautyIcon,
+          color: '#ec4899',
+          status: councilVotes.beauty.vote,
+          reason: councilVotes.beauty.reason,
+          confidence: councilVotes.beauty.confidence
+        },
+        {
+          id: 'energy',
+          name: 'ENERGY',
+          emoji: '🦊',
+          Icon: FoxEnergyIcon,
+          color: '#f97316',
+          status: councilVotes.energy.vote,
+          reason: councilVotes.energy.reason,
+          confidence: councilVotes.energy.confidence
+        },
+        {
+          id: 'calm',
+          name: 'CALM',
+          emoji: '🐋',
+          Icon: WhaleCalmIcon,
+          color: '#3b82f6',
+          status: councilVotes.calm.vote,
+          reason: councilVotes.calm.reason,
+          confidence: councilVotes.calm.confidence
+        }
+      ]
+    }
+    // Fallback to calculated votes
+    return calculateVotes(ethicsFlags, energyOverrideActive, beautyScore, confidence)
+  }, [councilVotes, ethicsFlags, energyOverrideActive, beautyScore, confidence])
   
-  // Calculate consensus
+  // Calculate consensus - use backend value if available
   const forCount = votes.filter(v => v.status === 'for').length
   const againstCount = votes.filter(v => v.status === 'against').length
-  const consensusPercent = Math.round((forCount / 3) * 100)
+  const consensusPercent = consensusScore !== undefined 
+    ? Math.round(consensusScore * 100)
+    : Math.round((forCount / 3) * 100)
   
   const verdict = againstCount >= 2 
     ? 'BLOCKED' 

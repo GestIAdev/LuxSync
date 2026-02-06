@@ -47,10 +47,17 @@
   background: rgba(139, 92, 246, 0.08);
 }
 
-/* Icon */
+/* Icon - 🧠 WAVE 1195: Enhanced for SVG LuxIcons */
 .subtab-nav__icon {
   font-size: 1.1rem;
-  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.subtab-nav__icon svg {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .subtab-nav__tab:hover .subtab-nav__icon {
@@ -59,6 +66,7 @@
 
 .subtab-nav__tab--active .subtab-nav__icon {
   transform: scale(1.15);
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 /* Label */

@@ -18,7 +18,8 @@ import {
   TrendUpIcon, 
   TrendDownIcon, 
   TrendStableIcon,
-  SparklineMiniIcon
+  SparklineMiniIcon,
+  TargetIcon  // 🧠 WAVE 1195: For targets acquired stat
 } from '../../icons/LuxIcons'
 import type { AIHuntState } from '../../../core/protocol/SeleneProtocol'
 import './AIStateTitan.css'
@@ -27,12 +28,20 @@ import './AIStateTitan.css'
 // TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface HuntStats {
+  duration: number
+  targetsAcquired: number
+  successRate: number
+}
+
 export interface AIStateTitanProps {
   huntState: AIHuntState
   confidence: number
   beautyScore: number
   beautyTrend: 'rising' | 'falling' | 'stable'
   reasoning: string | null
+  // 🧠 WAVE 1195: Real hunt stats from backend
+  huntStats?: HuntStats
 }
 
 const STATE_CONFIG: Record<AIHuntState, { 
@@ -84,42 +93,33 @@ export const AIStateTitan: React.FC<AIStateTitanProps> = memo(({
   confidence,
   beautyScore,
   beautyTrend,
-  reasoning
+  reasoning,
+  huntStats
 }) => {
   const config = STATE_CONFIG[huntState]
   const confidencePercent = Math.round(confidence * 100)
   const beautyDisplay = (beautyScore * 1.618).toFixed(3) // φ format
   
-  // Hunt duration timer
-  const [huntDuration, setHuntDuration] = useState(0)
+  // 🧠 WAVE 1195: Use real hunt stats from backend
+  const huntDuration = huntStats?.duration ?? 0
+  const targetsAcquired = huntStats?.targetsAcquired ?? 0
+  const successRate = Math.round((huntStats?.successRate ?? 0) * 100)
+  
+  // Format duration (ms to seconds)
+  const durationSeconds = (huntDuration / 1000).toFixed(1)
+  
   const lastStateRef = useRef(huntState)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
   
   // Beauty history for mini-sparkline
   const beautyHistoryRef = useRef<number[]>(new Array(BEAUTY_HISTORY_SIZE).fill(0.5))
   const [beautyHistory, setBeautyHistory] = useState<number[]>(new Array(BEAUTY_HISTORY_SIZE).fill(0.5))
   
-  // Success rate (simulated - would come from backend in production)
-  const [successRate] = useState(() => 75 + Math.floor(Math.random() * 20))
-  
-  // Reset duration on state change
+  // Reset on state change (for sparkline reset)
   useEffect(() => {
     if (huntState !== lastStateRef.current) {
       lastStateRef.current = huntState
-      setHuntDuration(0)
     }
   }, [huntState])
-  
-  // Increment duration timer
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setHuntDuration(d => d + 0.1)
-    }, 100)
-    
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
   
   // Update beauty history
   useEffect(() => {
@@ -196,7 +196,14 @@ export const AIStateTitan: React.FC<AIStateTitanProps> = memo(({
         <div className="ai-titan__stat">
           <HourglassHuntIcon size={14} color="var(--text-muted)" />
           <span className="ai-titan__stat-label">Hunt</span>
-          <span className="ai-titan__stat-value">{huntDuration.toFixed(1)}s</span>
+          <span className="ai-titan__stat-value">{durationSeconds}s</span>
+        </div>
+        
+        {/* Targets Acquired - WAVE 1195 */}
+        <div className="ai-titan__stat">
+          <TargetIcon size={14} color="#22c55e" />
+          <span className="ai-titan__stat-label">Targets</span>
+          <span className="ai-titan__stat-value">{targetsAcquired}</span>
         </div>
         
         {/* Success Rate */}

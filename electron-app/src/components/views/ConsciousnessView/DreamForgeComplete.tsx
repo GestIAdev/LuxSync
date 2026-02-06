@@ -21,12 +21,22 @@ import './DreamForgeComplete.css'
 // TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// 🧠 WAVE 1195: Backend dream history entry
+export interface DreamHistoryEntry {
+  name: string
+  score: number
+  timestamp: number
+  reason: string
+}
+
 export interface DreamForgeCompleteProps {
   effectName: string | null
   status: 'ACCEPTED' | 'REJECTED' | 'IDLE'
   reason: string
   riskLevel: number
   confidence: number
+  // 🧠 WAVE 1195: Real dream history from backend
+  dreamHistory?: DreamHistoryEntry[]
 }
 
 interface HistoryItem {
@@ -94,43 +104,62 @@ export const DreamForgeComplete: React.FC<DreamForgeCompleteProps> = memo(({
   status,
   reason,
   riskLevel,
-  confidence
+  confidence,
+  dreamHistory
 }) => {
-  // History state (simulated - would come from backend)
-  const [history, setHistory] = useState<HistoryItem[]>([])
+  // 🧠 WAVE 1195: Use backend history if available, otherwise simulate
+  const [localHistory, setLocalHistory] = useState<HistoryItem[]>([])
   const historyIdRef = useRef(0)
   const lastEffectRef = useRef<string | null>(null)
   
-  // Add to history when effect changes
-  useEffect(() => {
-    if (effectName && effectName !== lastEffectRef.current && status !== 'IDLE') {
-      lastEffectRef.current = effectName
-      const realStatus = parseRealStatus(status, reason)
-      
-      setHistory(prev => {
-        const newItem: HistoryItem = {
-          id: historyIdRef.current++,
-          effectName,
-          status: realStatus === 'SUCCESS' ? 'CAST' : 'BLOCKED',
-          timestamp: 0
-        }
-        // Keep last 5
-        return [newItem, ...prev.slice(0, 4)]
-      })
+  // Convert backend history to display format
+  const history = useMemo((): HistoryItem[] => {
+    if (dreamHistory && dreamHistory.length > 0) {
+      // Use real backend data
+      const now = Date.now()
+      return dreamHistory.slice(0, 5).map((entry, idx) => ({
+        id: idx,
+        effectName: entry.name,
+        status: entry.score > 0.5 ? 'CAST' as const : 'BLOCKED' as const,
+        timestamp: now - entry.timestamp
+      }))
     }
-  }, [effectName, status, reason])
+    // Fallback to local simulation
+    return localHistory
+  }, [dreamHistory, localHistory])
   
-  // Update timestamps every second
+  // Add to local history when effect changes (only if no backend history)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setHistory(prev => prev.map(item => ({
-        ...item,
-        timestamp: item.timestamp + 1000
-      })))
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [])
+    if (!dreamHistory || dreamHistory.length === 0) {
+      if (effectName && effectName !== lastEffectRef.current && status !== 'IDLE') {
+        lastEffectRef.current = effectName
+        const realStatus = parseRealStatus(status, reason)
+        
+        setLocalHistory(prev => {
+          const newItem: HistoryItem = {
+            id: historyIdRef.current++,
+            effectName,
+            status: realStatus === 'SUCCESS' ? 'CAST' : 'BLOCKED',
+            timestamp: 0
+          }
+          return [newItem, ...prev.slice(0, 4)]
+        })
+      }
+    }
+  }, [effectName, status, reason, dreamHistory])
+  
+  // Update timestamps every second (only for local history)
+  useEffect(() => {
+    if (!dreamHistory || dreamHistory.length === 0) {
+      const interval = setInterval(() => {
+        setLocalHistory(prev => prev.map(item => ({
+          ...item,
+          timestamp: item.timestamp + 1000
+        })))
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [dreamHistory])
   
   const realStatus = parseRealStatus(status, reason)
   const displayName = effectName ? formatEffectName(effectName) : 'Waiting...'

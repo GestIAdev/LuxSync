@@ -213,6 +213,9 @@ export class TitanEngine extends EventEmitter {
   // 🧨 WAVE 610: Manual strike trigger (force effect without HuntEngine decision)
   private manualStrikePending: { effect: string; intensity: number } | null = null
   
+  // 🎨 WAVE 1196: Dream history buffer (last 3 effects launched)
+  private dreamHistoryBuffer: Array<{ name: string; score: number; timestamp: number; reason: string }> = []
+  
   // ═══════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR
   // ═══════════════════════════════════════════════════════════════════════
@@ -1244,13 +1247,29 @@ export class TitanEngine extends EventEmitter {
     const forVotes = votes.filter(v => v.vote === 'for').length
     const consensusScore = forVotes / 3
     
-    // Dream history from last decision
-    const dreamHistory = lastDreamResult && lastDreamResult.effectName ? [{
-      name: lastDreamResult.effectName,
-      score: 1 - lastDreamResult.riskLevel,
-      timestamp: Date.now(),
-      reason: lastDreamResult.reason
-    }] : []
+    // 🎨 WAVE 1196: Dream history buffer - Add new effect to buffer if effect changed
+    if (lastDreamResult && lastDreamResult.effectName) {
+      const lastInBuffer = this.dreamHistoryBuffer[0]
+      const isDifferent = !lastInBuffer || lastInBuffer.name !== lastDreamResult.effectName
+      
+      if (isDifferent) {
+        // Add to front of buffer
+        this.dreamHistoryBuffer.unshift({
+          name: lastDreamResult.effectName,
+          score: 1 - lastDreamResult.riskLevel,
+          timestamp: Date.now(),
+          reason: lastDreamResult.reason
+        })
+        
+        // Keep only last 3
+        if (this.dreamHistoryBuffer.length > 3) {
+          this.dreamHistoryBuffer = this.dreamHistoryBuffer.slice(0, 3)
+        }
+      }
+    }
+    
+    // Return buffer copy (newest first)
+    const dreamHistory = [...this.dreamHistoryBuffer]
     
     // Prediction history - use last prediction probability and fill with zeros
     const predictionHistory = lastPrediction 

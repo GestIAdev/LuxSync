@@ -1,19 +1,16 @@
 /**
- * 🚀 LAUNCHPAD CSS - WAVE 437.2
- * "Stage Access Panel" - TAMED HEIGHT
- * 
- * Big, beautiful, clickable cards
- * Glassmorphism + neon accents
- * MAX HEIGHT CONSTRAINT for balance
+ * 🚀 LAUNCHPAD CSS - WAVE 1199: 5 COMPACT CARDS
+ * 2-column grid, ~80px height per card
+ * Unified Cyberpunk Cyan (#22d3ee)
+ * No var(--card-color) rainbow — everything cyan
  */
 
 .launchpad {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 12px;
   height: 100%;
-  max-height: 320px;
 }
 
 .launchpad-header {
@@ -23,81 +20,64 @@
   flex-shrink: 0;
 }
 
-.launchpad-icon {
-  font-size: 16px;
-}
-
 .launchpad-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LAUNCHPAD GRID - WAVE 437.2: Horizontal layout, balanced cards
+   LAUNCHPAD GRID - 2 columns, primary spans full width
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launchpad-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   flex: 1;
   min-height: 0;
-  max-height: 240px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LAUNCH CARD - WAVE 437.2: Square-ish aspect ratio
+   LAUNCH CARD - Compact ~80px
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-card {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 16px;
-  background: linear-gradient(
-    145deg,
-    rgba(20, 15, 35, 0.9) 0%,
-    rgba(10, 8, 20, 0.95) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(10, 10, 18, 0.9);
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 8px;
   cursor: pointer;
   overflow: hidden;
-  transition: all 0.3s ease;
-  min-height: 120px;
-  max-height: 200px;
+  transition: all 0.2s ease;
+  height: 60px;
+  text-align: left;
 }
 
 .launch-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--card-color);
-  box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.4),
-    0 0 40px var(--card-glow);
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.05);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
 }
 
-/* Primary card (LIVE SHOW) - Same size as others now */
+/* Primary card (LIVE STAGE) — spans full width top row */
 .launch-card.primary {
-  background: linear-gradient(
-    145deg,
-    rgba(40, 15, 40, 0.9) 0%,
-    rgba(20, 8, 25, 0.95) 100%
-  );
-  border-color: rgba(255, 0, 255, 0.2);
+  grid-column: 1 / -1;
+  height: 64px;
+  background: rgba(34, 211, 238, 0.06);
+  border-color: rgba(34, 211, 238, 0.25);
 }
 
-.launch-card.primary .launch-title {
-  font-size: 16px;
-}
-
-.launch-card.primary .launch-icon {
-  width: 44px;
-  height: 44px;
+.launch-card.primary:hover {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.12);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -105,74 +85,70 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-icon {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: var(--card-color);
-  margin-bottom: 12px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 8px;
+  color: #22d3ee;
   flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .launch-card:hover .launch-icon {
-  background: var(--card-glow);
-  border-color: var(--card-color);
-  transform: scale(1.1);
-  box-shadow: 0 0 25px var(--card-glow);
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
 }
 
 .launch-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  min-width: 0;
 }
 
 .launch-title {
   font-family: 'Orbitron', 'Rajdhani', sans-serif;
-  font-size: 16px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
   color: #ffffff;
   margin: 0;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .launch-subtitle {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0;
-  letter-spacing: 0.5px;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 2px 0 0 0;
+  letter-spacing: 0.3px;
 }
 
 .launch-arrow {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--card-color);
+  color: #22d3ee;
   opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.3s ease;
+  transform: translateX(-6px);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .launch-card:hover .launch-arrow {
-  opacity: 1;
+  opacity: 0.6;
   transform: translateX(0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GLOW EFFECTS
+   GLOW EFFECT — Subtle top glow on hover
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-glow {
@@ -180,39 +156,19 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 100px;
+  height: 40px;
   background: linear-gradient(
     180deg,
-    var(--card-glow) 0%,
+    rgba(34, 211, 238, 0.08) 0%,
     transparent 100%
   );
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
   pointer-events: none;
 }
 
 .launch-card:hover .launch-glow {
-  opacity: 0.3;
-}
-
-.launch-border-glow {
-  position: absolute;
-  inset: -2px;
-  border-radius: 18px;
-  background: linear-gradient(
-    135deg,
-    var(--card-color) 0%,
-    transparent 50%,
-    var(--card-color) 100%
-  );
-  opacity: 0;
-  z-index: -1;
-  transition: opacity 0.3s ease;
-  filter: blur(8px);
-}
-
-.launch-card:hover .launch-border-glow {
-  opacity: 0.2;
+  opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -225,7 +181,7 @@
   }
   
   .launch-card.primary {
-    grid-column: span 2;
+    grid-column: 1 / -1;
   }
 }
 

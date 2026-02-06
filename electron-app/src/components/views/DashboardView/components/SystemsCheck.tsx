@@ -16,11 +16,12 @@
  * WAVE 1003: Trinity audio integration + USB DMX driver
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
+import { useStageStore } from '../../../../stores/stageStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
-import { AudioWaveIcon, NetworkIcon } from '../../../icons/LuxIcons'
+import { AudioWaveIcon, NetworkIcon, MovingHeadIcon } from '../../../icons/LuxIcons'
 import './SystemsCheck.css'
 
 // 🎨 WAVE 686: ArtNet API access
@@ -349,6 +350,115 @@ const UsbDmxPanel: React.FC = () => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔌 WAVE 1199: TACTICAL PATCH BAY
+// Inline fixture list with DMX address editing and collision detection
+// Smart Defaults: Shows what's already in show.fixtures
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TacticalPatchBay: React.FC = () => {
+  const fixtures = useStageStore(state => state.fixtures)
+  const updateFixture = useStageStore(state => state.updateFixture)
+  
+  // Detect DMX collisions — O(n²) but n is always small for fixtures
+  const collisions = useMemo(() => {
+    const collisionSet = new Set<string>()
+    
+    for (let i = 0; i < fixtures.length; i++) {
+      const a = fixtures[i]
+      const aEnd = a.address + a.channelCount - 1
+      
+      for (let j = i + 1; j < fixtures.length; j++) {
+        const b = fixtures[j]
+        if (a.universe !== b.universe) continue
+        
+        const bEnd = b.address + b.channelCount - 1
+        
+        // Check overlap: A starts before B ends AND A ends after B starts
+        if (a.address <= bEnd && aEnd >= b.address) {
+          collisionSet.add(a.id)
+          collisionSet.add(b.id)
+        }
+      }
+    }
+    
+    return collisionSet
+  }, [fixtures])
+  
+  const handleAddressChange = useCallback((fixtureId: string, newAddress: number) => {
+    // Clamp to valid DMX range
+    const clamped = Math.max(1, Math.min(512, newAddress))
+    updateFixture(fixtureId, { address: clamped })
+  }, [updateFixture])
+  
+  const hasCollisions = collisions.size > 0
+  
+  return (
+    <div className="patch-bay">
+      <div className="patch-bay-header">
+        <div className="patch-bay-title">
+          <span className="patch-icon">
+            <MovingHeadIcon size={14} color="#22d3ee" />
+          </span>
+          <span className="patch-bay-label">PATCH BAY</span>
+        </div>
+        <span className="patch-bay-count">{fixtures.length} fixtures</span>
+      </div>
+      
+      {hasCollisions && (
+        <div className="patch-collision-warning">
+          ⚠️ DMX channel collision detected
+        </div>
+      )}
+      
+      {fixtures.length > 0 ? (
+        <>
+          <div className="patch-table-header">
+            <span>FIXTURE</span>
+            <span>ADDRESS</span>
+            <span>CH</span>
+            <span>UNI</span>
+          </div>
+          
+          <div className="patch-list">
+            {fixtures.map(fixture => (
+              <div 
+                key={fixture.id}
+                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''}`}
+              >
+                <div>
+                  <div className="patch-fixture-name">{fixture.name}</div>
+                  <div className="patch-fixture-model">{fixture.model}</div>
+                </div>
+                
+                <input
+                  type="number"
+                  className="patch-address-input"
+                  value={fixture.address}
+                  onChange={(e) => handleAddressChange(fixture.id, parseInt(e.target.value) || 1)}
+                  min={1}
+                  max={512}
+                />
+                
+                <span className="patch-channels">{fixture.channelCount}</span>
+                <span className="patch-universe">U{fixture.universe + 1}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="patch-empty">
+          <span className="patch-empty-icon">
+            <MovingHeadIcon size={28} color="rgba(255,255,255,0.2)" />
+          </span>
+          <span className="patch-empty-text">No fixtures loaded</span>
+          <span className="patch-empty-hint">Load a show or add fixtures in Constructor</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SYSTEMS CHECK COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -617,6 +727,10 @@ export const SystemsCheck: React.FC = () => {
       {/* 🎨 WAVE 686: Config Panels - Show based on selected driver */}
       {dmxDriver === 'artnet' && <ArtNetPanel />}
       {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
+      
+      {/* 🔌 WAVE 1199: TACTICAL PATCH BAY — Divider + Inline fixture patching */}
+      <div className="systems-divider" />
+      <TacticalPatchBay />
     </div>
   )
 }

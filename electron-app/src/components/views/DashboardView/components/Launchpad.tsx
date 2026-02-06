@@ -1,26 +1,30 @@
 /**
- * 🚀 LAUNCHPAD - WAVE 437
- * "Stage Access Panel"
+ * 🚀 LAUNCHPAD - WAVE 1199: 5 COMPACT CARDS
+ * "Stage Access Panel" — Rapid navigation to every stage
  * 
- * Large clickable cards for quick navigation to main stages
+ * Layout: 2-column grid, ~80px cards
+ * Cards: LIVE STAGE (primary/span2), NEURAL COMMAND, SHOW CONSTRUCTOR,
+ *        FIXTURE FORGE, CALIBRATION
  * 
- * Layout: 3 Big Cards in row
- * - LIVE SHOW (primary, largest)
- * - CALIBRATE
- * - CONSTRUCT
+ * 0 iconos genéricos. Solo LuxIcons custom.
+ * Color: Cyberpunk Cyan (#22d3ee) unified.
  */
 
 import React, { useCallback } from 'react'
 import { useNavigationStore } from '../../../../stores/navigationStore'
-import { PlayCircleIcon, TargetIcon, HammerIcon } from '../../../icons/LuxIcons'
+import { 
+  PlayCircleIcon, 
+  BrainNeuralIcon, 
+  HammerIcon, 
+  MovingHeadIcon, 
+  TargetIcon 
+} from '../../../icons/LuxIcons'
 import './Launchpad.css'
 
 interface LaunchCardProps {
   title: string
   subtitle: string
   icon: React.ReactNode
-  color: string
-  glowColor: string
   isPrimary?: boolean
   onClick: () => void
 }
@@ -29,18 +33,12 @@ const LaunchCard: React.FC<LaunchCardProps> = ({
   title,
   subtitle,
   icon,
-  color,
-  glowColor,
   isPrimary = false,
   onClick
 }) => (
   <button
     className={`launch-card ${isPrimary ? 'primary' : ''}`}
     onClick={onClick}
-    style={{ 
-      '--card-color': color,
-      '--card-glow': glowColor 
-    } as React.CSSProperties}
   >
     <div className="launch-icon">
       {icon}
@@ -50,69 +48,69 @@ const LaunchCard: React.FC<LaunchCardProps> = ({
       <p className="launch-subtitle">{subtitle}</p>
     </div>
     <div className="launch-arrow">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
         <path d="M5 12H19M19 12L12 5M19 12L12 19" />
       </svg>
     </div>
-    
-    {/* Glow effects */}
     <div className="launch-glow" />
-    <div className="launch-border-glow" />
   </button>
 )
 
 export const Launchpad: React.FC = () => {
   const { setActiveTab } = useNavigationStore()
   
-  const handleLive = useCallback(() => {
-    setActiveTab('live')
-  }, [setActiveTab])
-  
-  const handleCalibrate = useCallback(() => {
-    setActiveTab('calibration')
-  }, [setActiveTab])
-  
-  const handleConstruct = useCallback(() => {
-    setActiveTab('constructor')
-  }, [setActiveTab])
+  const handleLive = useCallback(() => setActiveTab('live'), [setActiveTab])
+  const handleNeural = useCallback(() => setActiveTab('core'), [setActiveTab])
+  const handleConstruct = useCallback(() => setActiveTab('constructor'), [setActiveTab])
+  const handleForge = useCallback(() => setActiveTab('forge'), [setActiveTab])
+  const handleCalibrate = useCallback(() => setActiveTab('calibration'), [setActiveTab])
   
   return (
     <div className="launchpad">
       <div className="launchpad-header">
-        <span className="launchpad-icon">🚀</span>
         <span className="launchpad-label">LAUNCHPAD</span>
       </div>
       
       <div className="launchpad-grid">
-        {/* LIVE SHOW - Primary/Largest */}
+        {/* LIVE STAGE — Primary, spans full width */}
         <LaunchCard
-          title="LIVE SHOW"
-          subtitle="Start the performance"
-          icon={<PlayCircleIcon size={36} />}
-          color="#ff00ff"
-          glowColor="rgba(255, 0, 255, 0.3)"
+          title="LIVE STAGE"
+          subtitle="Launch the performance"
+          icon={<PlayCircleIcon size={28} color="#22d3ee" />}
           isPrimary={true}
           onClick={handleLive}
         />
         
-        {/* CALIBRATE */}
+        {/* NEURAL COMMAND */}
         <LaunchCard
-          title="CALIBRATE"
-          subtitle="Align fixtures"
-          icon={<TargetIcon size={32} />}
-          color="#00ffff"
-          glowColor="rgba(0, 255, 255, 0.3)"
-          onClick={handleCalibrate}
+          title="NEURAL COMMAND"
+          subtitle="AI consciousness"
+          icon={<BrainNeuralIcon size={24} color="#22d3ee" />}
+          onClick={handleNeural}
         />
         
-        {/* CONSTRUCT */}
+        {/* SHOW CONSTRUCTOR */}
         <LaunchCard
-          title="CONSTRUCT"
+          title="CONSTRUCTOR"
           subtitle="Build your rig"
-          icon={<HammerIcon size={32} />}
-          color="#f59e0b"
-          glowColor="rgba(245, 158, 11, 0.3)"
+          icon={<HammerIcon size={24} color="#22d3ee" />}
           onClick={handleConstruct}
+        />
+        
+        {/* FIXTURE FORGE */}
+        <LaunchCard
+          title="FIXTURE FORGE"
+          subtitle="Define fixtures"
+          icon={<MovingHeadIcon size={24} color="#22d3ee" />}
+          onClick={handleForge}
+        />
+        
+        {/* CALIBRATION */}
+        <LaunchCard
+          title="CALIBRATION"
+          subtitle="Align hardware"
+          icon={<TargetIcon size={24} color="#22d3ee" />}
+          onClick={handleCalibrate}
         />
       </div>
     </div>

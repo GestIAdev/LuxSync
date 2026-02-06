@@ -1,27 +1,20 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 437: MISSION CONTROL
+ * 🎛️ DASHBOARD VIEW - WAVE 1199: MISSION CONTROL FINAL POLISH
  * 
- * Transformed from "Command Center" to "Mission Control"
- * Pre-flight check + Quick navigation
- * 
- * Layout: Mission Control Grid
+ * Layout: 60/40 Grid — Systems dominates, Launchpad compact
  * ┌─────────────────────────────────────────────────────────────────────┐
- * │ [POWER]  MISSION CONTROL                                            │
- * ├──────────────────┬──────────────────────────────────────────────────┤
- * │                  │        ACTIVE SESSION (horizontal card)          │
- * │   SYSTEMS CHECK  ├──────────────────────────────────────────────────┤
- * │   (Audio + DMX)  │        LAUNCHPAD (3 big cards)                   │
- * │                  │        [LIVE]    [CALIBRATE]    [CONSTRUCT]      │
- * ├──────────────────┴──────────────────────────────────────────────────┤
+ * │ [POWER]  MISSION CONTROL                          ● SYSTEMS READY  │
+ * ├──────────────────────────────────┬──────────────────────────────────┤
+ * │                                  │  ACTIVE SESSION (thin card)      │
+ * │   SYSTEMS CHECK (60-65%)         ├──────────────────────────────────┤
+ * │   Audio + DMX + Patch Bay        │  LAUNCHPAD (5 compact cards)     │
+ * │                                  │  2-col grid, ~80px each          │
+ * ├──────────────────────────────────┴──────────────────────────────────┤
  * │                     DATA CARDS (BPM, FPS, Uptime)                   │
  * └─────────────────────────────────────────────────────────────────────┘
  * 
- * WAVE 437 Changes:
- * - NEW: SystemsCheck widget (Audio + DMX selectors)
- * - NEW: ActiveSession widget (horizontal show card)
- * - NEW: Launchpad widget (big navigation cards)
- * - KEEP: DataCards in footer
- * - REMOVE: Old AudioReactorRing, ShowSelector, QuickLinks
+ * WAVE 1199: Layout Rebalance, Tactical Patch Bay, 5-Card Launchpad
+ * ALL CYBERPUNK CYAN (#22d3ee). No violet. No magenta borders.
  */
 
 import React from 'react'
@@ -36,13 +29,13 @@ import './DashboardView.css'
 const DashboardView: React.FC = () => {
   return (
     <div className="dashboard-mission-control">
-      {/* Header Strip */}
+      {/* Header Strip — Clean, minimal */}
       <header className="mission-header">
         <div className="header-left">
           <PowerButton />
           <div className="header-title">
             <span className="title-icon">
-              <BoltIcon size={22} color="#00ffff" />
+              <BoltIcon size={20} color="#22d3ee" />
             </span>
             <h1>MISSION CONTROL</h1>
           </div>
@@ -52,21 +45,18 @@ const DashboardView: React.FC = () => {
         </div>
       </header>
 
-      {/* Mission Control Grid */}
+      {/* Mission Control Grid — 60/40 split */}
       <main className="mission-grid">
-        {/* Left Column: Systems Check */}
+        {/* Left Column: Systems Check + Patch Bay (60-65%) */}
         <section className="grid-cell cell-systems">
           <SystemsCheck />
         </section>
 
-        {/* Right Column: Session + Launchpad */}
+        {/* Right Column: Thin Session + Compact Launchpad (35-40%) */}
         <div className="grid-column-right">
-          {/* Top: Active Session */}
           <section className="grid-cell cell-session">
             <ActiveSession />
           </section>
-
-          {/* Bottom: Launchpad */}
           <section className="grid-cell cell-launchpad">
             <Launchpad />
           </section>
@@ -78,7 +68,7 @@ const DashboardView: React.FC = () => {
         <DataCards />
       </footer>
 
-      {/* Ambient Effects */}
+      {/* Ambient — Cyan only */}
       <div className="mission-glow-overlay" />
       <div className="mission-scanlines" />
     </div>

@@ -1,69 +1,63 @@
 /**
- * 💾 ACTIVE SESSION CSS - WAVE 437
- * Horizontal card layout for show management
+ * 💾 ACTIVE SESSION CSS - WAVE 1199: THIN & CYAN
+ * Compact horizontal card, no bloat
+ * Cyberpunk Cyan unified
  */
 
 .active-session {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  height: 100%;
+  gap: 8px;
+  padding: 10px 12px;
 }
 
 .session-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .session-icon {
-  font-size: 16px;
+  font-size: 12px;
 }
 
 .session-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SESSION CARD
+   SESSION CARD — Compact horizontal strip
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .session-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 40, 60, 0.4) 0%,
-    rgba(0, 20, 40, 0.3) 100%
-  );
-  border: 1px solid rgba(0, 255, 255, 0.2);
-  border-radius: 12px;
-  flex: 1;
-  min-height: 80px;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(10, 10, 18, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 8px;
+  min-height: 0;
 }
 
 .session-card:hover {
-  border-color: rgba(0, 255, 255, 0.35);
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.08);
+  border-color: rgba(34, 211, 238, 0.25);
 }
 
-/* File Icon */
+/* File Icon — Smaller */
 .session-file-icon {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 255, 255, 0.2);
-  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.04);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 8px;
   flex-shrink: 0;
 }
 
@@ -75,11 +69,10 @@
 
 .session-name {
   font-family: 'Orbitron', 'Rajdhani', sans-serif;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: #ffffff;
-  margin: 0 0 6px 0;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  margin: 0 0 3px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,100 +81,83 @@
 .session-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .meta-icon {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .meta-separator {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.15);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ACTION BUTTONS
+   ACTION BUTTONS — Compact cyan
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .session-actions {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .session-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 6px;
+  padding: 6px 10px;
   border: 1px solid;
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .session-btn.primary {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 255, 255, 0.2) 0%,
-    rgba(0, 200, 255, 0.15) 100%
-  );
-  border-color: rgba(0, 255, 255, 0.4);
-  color: #00ffff;
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
 }
 
 .session-btn.primary:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 255, 255, 0.3) 0%,
-    rgba(0, 200, 255, 0.25) 100%
-  );
-  border-color: rgba(0, 255, 255, 0.6);
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
 }
 
 .session-btn.secondary {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 0, 255, 0.15) 0%,
-    rgba(200, 0, 255, 0.1) 100%
-  );
-  border-color: rgba(255, 0, 255, 0.3);
-  color: #ff00ff;
+  background: rgba(34, 211, 238, 0.03);
+  border-color: rgba(34, 211, 238, 0.15);
+  color: rgba(34, 211, 238, 0.7);
 }
 
 .session-btn.secondary:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 0, 255, 0.25) 0%,
-    rgba(200, 0, 255, 0.2) 100%
-  );
-  border-color: rgba(255, 0, 255, 0.5);
-  box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.3);
 }
 
 .session-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn-icon {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .btn-text {

@@ -521,6 +521,90 @@ export class SeleneTitanConscious extends EventEmitter {
     return 'clean'
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1190: PROJECT CASSANDRA - Spectral Buildup Detection
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Historial de valores espectrales para detectar tendencias */
+  private spectralHistory: {
+    flatness: number[],
+    centroid: number[],
+    bass: number[],
+    timestamp: number
+  } = { flatness: [], centroid: [], bass: [], timestamp: 0 }
+  
+  /**
+   * 🔮 WAVE 1190: Calcular score de buildup espectral
+   * 
+   * Detecta patrones físicos de buildup en EDM:
+   * - Rising centroid: El brillo sube (high-pass abriendo)
+   * - Rising flatness: Ruido blanco aumenta (snare roll, white noise sweep)
+   * - Falling bass: El bajo desaparece (ducking antes del drop)
+   * 
+   * @param state - Estado estabilizado de Titan
+   * @returns Score 0-1 de "probabilidad de buildup espectral"
+   */
+  private calculateSpectralBuildupScore(state: TitanStabilizedState): number {
+    const now = Date.now()
+    
+    // Actualizar historial
+    this.spectralHistory.flatness.push(state.spectralFlatness)
+    this.spectralHistory.centroid.push(state.spectralCentroid)
+    this.spectralHistory.bass.push(state.bass)
+    this.spectralHistory.timestamp = now
+    
+    // Mantener últimas 10 muestras (~1-2 segundos a 60fps)
+    const MAX_HISTORY = 10
+    if (this.spectralHistory.flatness.length > MAX_HISTORY) {
+      this.spectralHistory.flatness.shift()
+      this.spectralHistory.centroid.shift()
+      this.spectralHistory.bass.shift()
+    }
+    
+    // Necesitamos al menos 5 muestras para detectar tendencia
+    if (this.spectralHistory.flatness.length < 5) {
+      return 0
+    }
+    
+    const len = this.spectralHistory.flatness.length
+    const halfLen = Math.floor(len / 2)
+    
+    // Calcular promedios de primera y segunda mitad
+    const avgFlatnessFirst = this.spectralHistory.flatness.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen
+    const avgFlatnessSecond = this.spectralHistory.flatness.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen)
+    
+    const avgCentroidFirst = this.spectralHistory.centroid.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen
+    const avgCentroidSecond = this.spectralHistory.centroid.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen)
+    
+    const avgBassFirst = this.spectralHistory.bass.slice(0, halfLen).reduce((a, b) => a + b, 0) / halfLen
+    const avgBassSecond = this.spectralHistory.bass.slice(halfLen).reduce((a, b) => a + b, 0) / (len - halfLen)
+    
+    let buildupScore = 0
+    
+    // ⬆️ Rising Centroid (brillo sube) - peso 0.35
+    const centroidRising = avgCentroidSecond > avgCentroidFirst * 1.1 // >10% incremento
+    if (centroidRising) {
+      const centroidDelta = (avgCentroidSecond - avgCentroidFirst) / (avgCentroidFirst + 1)
+      buildupScore += Math.min(0.35, centroidDelta * 0.5)
+    }
+    
+    // ⬆️ Rising Flatness (ruido blanco sube) - peso 0.35
+    const flatnessRising = avgFlatnessSecond > avgFlatnessFirst + 0.05 // >5% incremento absoluto
+    if (flatnessRising) {
+      const flatnessDelta = avgFlatnessSecond - avgFlatnessFirst
+      buildupScore += Math.min(0.35, flatnessDelta * 3.5)
+    }
+    
+    // ⬇️ Falling Bass (bajo cae) - peso 0.30
+    const bassFalling = avgBassSecond < avgBassFirst * 0.85 // >15% caída
+    if (bassFalling) {
+      const bassDelta = (avgBassFirst - avgBassSecond) / (avgBassFirst + 0.01)
+      buildupScore += Math.min(0.30, bassDelta * 0.5)
+    }
+    
+    return Math.min(1, buildupScore)
+  }
+  
   /**
    * 👁️ Percibir el estado actual como patrón musical
    * AHORA USA LOS SENSORES REALES DE PHASE 2
@@ -602,7 +686,9 @@ export class SeleneTitanConscious extends EventEmitter {
     
     // 3. PREDICTION ENGINE: Anticipar próximos eventos
     // 🔮 WAVE 1169: Usar predictCombined para detección reactiva por energía
-    const prediction = predictCombined(pattern, state.smoothedEnergy)
+    // 🔮 WAVE 1190: PROJECT CASSANDRA - Integrar spectral buildup score
+    const spectralBuildupScore = this.calculateSpectralBuildupScore(state)
+    const prediction = predictCombined(pattern, state.smoothedEnergy, spectralBuildupScore)
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🎲 WAVE 667-669: FUZZY DECISION SYSTEM
@@ -717,6 +803,16 @@ export class SeleneTitanConscious extends EventEmitter {
         energyTrend: prediction.type === 'energy_spike' ? 'spike' : 
                      (prediction.reasoning?.includes('RISING') ? 'rising' :
                       prediction.reasoning?.includes('FALLING') ? 'falling' : 'stable'),
+        // ═══════════════════════════════════════════════════════════════
+        // 🔮 WAVE 1190: PROJECT CASSANDRA - ORACLE → DREAMER DATA FLOW
+        // Ahora el Dreamer recibe los datos REALES del Oráculo para:
+        // 1. Saber CUÁNTO tiempo tiene para actuar
+        // 2. Saber QUÉ TAN SEGURO está el Oráculo
+        // 3. Recibir SUGERENCIAS de efectos apropiados
+        // ═══════════════════════════════════════════════════════════════
+        predictionProbability: prediction.probability,
+        predictionTimeMs: prediction.estimatedTimeMs ?? 4000,
+        suggestedEffects: prediction.suggestedActions?.map(a => a.effect) ?? [],
       }
       
       // 🧬 DNA Brain simula - NO decide

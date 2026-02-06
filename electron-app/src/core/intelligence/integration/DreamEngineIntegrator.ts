@@ -60,6 +60,16 @@ export interface PipelineContext {
   predictionType?: 'energy_spike' | 'buildup_starting' | 'breakdown_imminent' | 'drop_incoming' | 'energy_drop' | 'none'
   /** Tendencia de energía del Oráculo */
   energyTrend?: 'rising' | 'stable' | 'falling' | 'spike'
+  
+  // 🔮 WAVE 1190: PROYECTO CASSANDRA - Predicción completa del Oráculo
+  /** Probabilidad real de la predicción (0-1) */
+  predictionProbability?: number
+  /** Tiempo estimado hasta el evento predicho (ms) */
+  predictionTimeMs?: number
+  /** Razonamiento del Oráculo */
+  predictionReasoning?: string
+  /** Efectos sugeridos por el Oráculo */
+  suggestedEffects?: string[]
 }
 
 export interface IntegrationDecision {
@@ -331,28 +341,45 @@ export class DreamEngineIntegrator {
       
       // Build proper MusicalPrediction
       // 🧠 WAVE 1173: NEURAL LINK - Pass Oracle prediction to Dreamer
+      // 🔮 WAVE 1190: PROYECTO CASSANDRA - Usar predicción REAL del Oráculo
       const energy = context.pattern.energy ?? 0.5
       const predictionType = context.predictionType ?? 'none'
       const energyTrend = context.energyTrend ?? 'stable'
       
+      // 🔮 CASSANDRA: Usar probabilidad REAL, no hardcodeada
+      const realProbability = context.predictionProbability ?? 0
+      const hasStrongPrediction = realProbability > 0.5
+      
       // Derive drop/breakdown flags from prediction type
       const isDropComing = predictionType === 'drop_incoming' || 
                            predictionType === 'energy_spike' ||
-                           energy > 0.8
+                           (energy > 0.8 && energyTrend === 'rising')
       const isBreakdownComing = predictionType === 'breakdown_imminent' ||
                                  predictionType === 'energy_drop' ||
-                                 energy < 0.3
+                                 (energy < 0.3 && energyTrend === 'falling')
+      
+      // 🔮 CASSANDRA: Calcular tiempo de anticipación para el Dreamer
+      // Si el Oráculo predice algo en <2s, el Dreamer tiene que actuar YA
+      const timeToEvent = context.predictionTimeMs ?? 8000
+      const isUrgent = timeToEvent < 2000 && hasStrongPrediction
       
       const musicalPrediction: MusicalPrediction = {
         predictedEnergy: energy,
         predictedSection: this.deriveSectionFromPrediction(predictionType, energy),
         predictedTempo: context.pattern.tempo ?? 120,
-        confidence: predictionType !== 'none' ? 0.75 : 0.5, // Higher if Oracle has prediction
+        // 🔮 CASSANDRA: Usar probabilidad REAL del Oráculo
+        confidence: hasStrongPrediction ? realProbability : (predictionType !== 'none' ? 0.5 : 0.3),
         isDropComing,
         isBreakdownComing,
         energyTrend: energyTrend === 'spike' ? 'rising' : energyTrend as 'rising' | 'stable' | 'falling',
         // 🧠 WAVE 1173: Pass raw prediction type to Dreamer
         predictionType,
+        // 🔮 CASSANDRA: Nuevos campos para anticipación inteligente
+        timeToEventMs: timeToEvent,
+        isUrgent,
+        oracleProbability: realProbability,  // 🔮 Probabilidad cruda del Oráculo para scoring
+        suggestedEffects: context.suggestedEffects ?? [],
+        oracleReasoning: context.predictionReasoning ?? null,
       }
       
       // Execute with timeout

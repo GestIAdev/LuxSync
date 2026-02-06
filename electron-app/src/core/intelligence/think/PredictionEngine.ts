@@ -659,15 +659,22 @@ export function predictFromEnergy(
 
 /**
  * 🔮 WAVE 1169: Combined Prediction
- * Combina predicción por sección + predicción por energía
- * Usa la que tenga mayor probabilidad
+ * 🔮 WAVE 1190: PROJECT CASSANDRA - Integración de Spectral Buildup
+ * 
+ * Combina predicción por sección + predicción por energía + spectral buildup
+ * El spectral buildup detecta FÍSICAMENTE el buildup en el audio:
+ * - Rising rolloff (brillo sube)
+ * - Rising flatness (ruido blanco sube)
+ * - Falling subbass (el bajo desaparece antes del drop)
  * 
  * @param pattern - Patrón musical actual
  * @param currentEnergy - Energía actual (0-1)
+ * @param spectralBuildupScore - Score de buildup espectral (0-1) desde SectionTracker
  */
 export function predictCombined(
   pattern: SeleneMusicalPattern,
-  currentEnergy: number
+  currentEnergy: number,
+  spectralBuildupScore?: number
 ): MusicalPrediction {
   // Predicción tradicional por sección
   const sectionPrediction = predict(pattern)
@@ -675,12 +682,55 @@ export function predictCombined(
   // Predicción reactiva por energía
   const energyPrediction = predictFromEnergy(pattern, currentEnergy, pattern.bpm)
   
-  // Usar la que tenga mayor probabilidad
-  if (energyPrediction.probability > sectionPrediction.probability) {
-    return energyPrediction
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔮 WAVE 1190: PROJECT CASSANDRA - Spectral Buildup Boost
+  // 
+  // Si detectamos buildup espectral FÍSICO (>0.4), SABEMOS que viene algo.
+  // Esto NO es heurística, es análisis real del espectro de frecuencias.
+  // El sonido LITERALMENTE está cambiando hacia un buildup.
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const spectralScore = spectralBuildupScore ?? 0
+  let bestPrediction = energyPrediction.probability > sectionPrediction.probability 
+    ? energyPrediction 
+    : sectionPrediction
+  
+  // Si spectral buildup > 0.4, BOOST a la predicción
+  if (spectralScore > 0.4) {
+    // Si ya estamos prediciendo buildup/drop, aumentar probabilidad
+    if (bestPrediction.type === 'buildup_starting' || 
+        bestPrediction.type === 'drop_incoming' ||
+        bestPrediction.type === 'energy_spike') {
+      // Boost proporcional al score espectral
+      const spectralBoost = (spectralScore - 0.4) * 0.5 // Max +0.3 para score=1.0
+      bestPrediction = {
+        ...bestPrediction,
+        probability: Math.min(0.95, bestPrediction.probability + spectralBoost),
+        reasoning: `${bestPrediction.reasoning} | 🔊 SPECTRAL BUILDUP: ${(spectralScore * 100).toFixed(0)}%`,
+      }
+    } else if (spectralScore > 0.6) {
+      // Spectral buildup fuerte pero no estamos prediciendo buildup/drop
+      // CREAR una predicción de buildup desde cero
+      const msPerBeat = 60000 / pattern.bpm
+      const estimatedBeats = 4 + (1 - spectralScore) * 4 // 4-8 beats según score
+      
+      bestPrediction = {
+        type: 'buildup_starting',
+        probableSection: 'buildup',
+        probability: spectralScore * 0.85, // El spectral score ES la probabilidad
+        estimatedTimeMs: estimatedBeats * msPerBeat,
+        estimatedBeats,
+        reasoning: `🔊 SPECTRAL BUILDUP DETECTED: Rolloff↑ Flatness↑ SubBass↓ (${(spectralScore * 100).toFixed(0)}%)`,
+        suggestedActions: [
+          { type: 'prepare', effect: 'intensity_ramp', intensity: 0.6, durationMs: 2000, timingOffsetMs: -2000 },
+          { type: 'execute', effect: 'strobe', intensity: 0.9, durationMs: 500, timingOffsetMs: 0 },
+        ],
+        timestamp: pattern.timestamp,
+      }
+    }
   }
   
-  return sectionPrediction
+  return bestPrediction
 }
 
 /**

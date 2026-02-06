@@ -63,6 +63,10 @@ import {
   type ConsciousnessOutput,
   type ConsciousnessColorDecision,
   type ConsciousnessPhysicsModifier,
+  // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+  getHuntStats,
+  getDreamStats,
+  getLastPrediction,
 } from '../core/intelligence'
 
 // 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos
@@ -1018,6 +1022,7 @@ export class TitanEngine extends EventEmitter {
   /**
    * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
    * 🔮 WAVE 1168: Expanded with Dream Simulator + Energy Zone + Fuzzy Decision
+   * 🧠 WAVE 1195: Expanded with hunt stats, council votes, dream history
    * 
    * Devuelve datos del cerebro de Selene en formato listo para UI.
    */
@@ -1050,6 +1055,20 @@ export class TitanEngine extends EventEmitter {
     dropBridgeAlert: 'none' | 'watching' | 'imminent' | 'activated'
     // 🔥 WAVE 1176: OPERATION SNIPER - Raw velocity for UI debugging
     energyVelocity: number
+    // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+    huntStats: {
+      duration: number
+      targetsAcquired: number
+      successRate: number
+    }
+    councilVotes: {
+      beauty: { vote: 'for' | 'against' | 'abstain'; confidence: number; reason: string }
+      energy: { vote: 'for' | 'against' | 'abstain'; confidence: number; reason: string }
+      calm: { vote: 'for' | 'against' | 'abstain'; confidence: number; reason: string }
+    }
+    consensusScore: number
+    dreamHistory: Array<{ name: string; score: number; timestamp: number; reason: string }>
+    predictionHistory: number[]
   } {
     const output = this.lastConsciousnessOutput
     const isEnabled = this.selene.isEnabled()
@@ -1084,7 +1103,21 @@ export class TitanEngine extends EventEmitter {
         zScore: 0,
         dropBridgeAlert: 'none',
         // 🔥 WAVE 1176: OPERATION SNIPER
-        energyVelocity: 0
+        energyVelocity: 0,
+        // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+        huntStats: {
+          duration: 0,
+          targetsAcquired: 0,
+          successRate: 0
+        },
+        councilVotes: {
+          beauty: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' },
+          energy: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' },
+          calm: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' }
+        },
+        consensusScore: 0.33,
+        dreamHistory: [],
+        predictionHistory: []
       }
     }
     
@@ -1171,6 +1204,59 @@ export class TitanEngine extends EventEmitter {
     // 🔥 WAVE 1176: OPERATION SNIPER - Get raw velocity for UI debugging
     const energyVelocity = this.selene.getEnergyVelocity()
     
+    // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - Get expanded consciousness data
+    const huntStatsRaw = getHuntStats()
+    const dreamStatsRaw = getDreamStats()
+    const lastPrediction = getLastPrediction()
+    
+    // Build expanded telemetry structures
+    const huntStats = {
+      duration: huntStatsRaw.lastStrike > 0 
+        ? Date.now() - huntStatsRaw.lastStrike 
+        : 0,
+      targetsAcquired: huntStatsRaw.strikes,
+      successRate: dreamStatsRaw.totalDreams > 0 
+        ? huntStatsRaw.strikes / dreamStatsRaw.totalDreams 
+        : 0
+    }
+    
+    // Council votes derived from consciousness output
+    const councilVotes = {
+      beauty: {
+        vote: debugInfo.beautyScore > 0.6 ? 'for' as const : debugInfo.beautyScore < 0.4 ? 'against' as const : 'abstain' as const,
+        confidence: Math.abs(debugInfo.beautyScore - 0.5) * 2,
+        reason: `Beauty score: ${(debugInfo.beautyScore * 100).toFixed(0)}%`
+      },
+      energy: {
+        vote: energyOverrideActive ? 'for' as const : zScore > 1.5 ? 'for' as const : zScore < -0.5 ? 'against' as const : 'abstain' as const,
+        confidence: Math.min(Math.abs(zScore) / 2, 1),
+        reason: energyOverrideActive ? 'Energy override active' : `Z-Score: ${zScore.toFixed(2)}`
+      },
+      calm: {
+        vote: debugInfo.consonance > 0.7 ? 'for' as const : debugInfo.consonance < 0.3 ? 'against' as const : 'abstain' as const,
+        confidence: Math.abs(debugInfo.consonance - 0.5) * 2,
+        reason: `Consonance: ${(debugInfo.consonance * 100).toFixed(0)}%`
+      }
+    }
+    
+    // Consensus: average of positive votes
+    const votes = [councilVotes.beauty, councilVotes.energy, councilVotes.calm]
+    const forVotes = votes.filter(v => v.vote === 'for').length
+    const consensusScore = forVotes / 3
+    
+    // Dream history from last decision
+    const dreamHistory = lastDreamResult && lastDreamResult.effectName ? [{
+      name: lastDreamResult.effectName,
+      score: 1 - lastDreamResult.riskLevel,
+      timestamp: Date.now(),
+      reason: lastDreamResult.reason
+    }] : []
+    
+    // Prediction history - use last prediction probability and fill with zeros
+    const predictionHistory = lastPrediction 
+      ? [lastPrediction.probability, 0, 0, 0, 0] 
+      : [0, 0, 0, 0, 0]
+    
     return {
       enabled: true,
       huntState: debugInfo.huntState,
@@ -1194,7 +1280,13 @@ export class TitanEngine extends EventEmitter {
       zScore,
       dropBridgeAlert,
       // 🔥 WAVE 1176: OPERATION SNIPER
-      energyVelocity
+      energyVelocity,
+      // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+      huntStats,
+      councilVotes,
+      consensusScore,
+      dreamHistory,
+      predictionHistory
     }
   }
   

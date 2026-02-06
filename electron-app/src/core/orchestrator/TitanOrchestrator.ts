@@ -1074,6 +1074,19 @@ export class TitanOrchestrator {
             device: 'Microphone',
             active: this.hasRealAudio,
             isClipping: false
+          },
+          // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
+          spectrumBands: {
+            subBass: this.smoothedMetrics.subBass,
+            bass: bass,  // Use the already available bass from engineAudioMetrics
+            lowMid: this.smoothedMetrics.lowMid,
+            mid: mid,    // Use the already available mid from engineAudioMetrics
+            highMid: this.smoothedMetrics.highMid,
+            treble: high * 0.8,  // Approximate from high
+            ultraAir: high * 0.3, // Approximate ultra-high from high
+            dominant: bass > mid && bass > high ? 'bass' as const : 
+                     mid > bass && mid > high ? 'mid' as const : 'treble' as const,
+            flux: Math.abs((this.lastAudioData.energy || 0) - energy)
           }
         },
         // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults

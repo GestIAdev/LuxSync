@@ -132,6 +132,32 @@ export interface SensoryData {
     /** Clipping detection */
     isClipping: boolean
   }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 1195: GOD EAR SPECTRUM BANDS (7 tactical bands)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** 7 tactical frequency bands from GodEar FFT */
+  spectrumBands: {
+    /** 20-60Hz - Presión de aire pura (kicks sísmicos, 808 rumble) */
+    subBass: number
+    /** 60-250Hz - Cuerpo rítmico (bajos, kick body, toms) */
+    bass: number
+    /** 250-500Hz - Calor/Mud zone (limpieza crítica) */
+    lowMid: number
+    /** 500-2000Hz - Voces/Snare/Lead (corazón musical) */
+    mid: number
+    /** 2000-6000Hz - Crunch/Ataque/Presencia (edge definition) */
+    highMid: number
+    /** 6000-16000Hz - Brillo/Hi-Hats/Aire (sparkle zone) */
+    treble: number
+    /** 16000-22000Hz - Armónicos superiores (sizzle digital) */
+    ultraAir: number
+    /** Dominant band name */
+    dominant: 'subBass' | 'bass' | 'lowMid' | 'mid' | 'highMid' | 'treble' | 'ultraAir'
+    /** Spectral flux (change rate) */
+    flux: number
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -393,6 +419,53 @@ export interface AITelemetry {
   
   /** Velocidad de energía cruda (slope) para debug en UI */
   energyVelocity: number
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /** Hunt session statistics */
+  huntStats: {
+    /** Seconds in current hunt state */
+    duration: number
+    /** Total targets processed this session */
+    targetsAcquired: number
+    /** Success rate (0-1) */
+    successRate: number
+  }
+  
+  /** Individual council votes (for EthicsCouncilExpanded) */
+  councilVotes: {
+    beauty: {
+      vote: 'for' | 'against' | 'abstain'
+      confidence: number
+      reason: string
+    }
+    energy: {
+      vote: 'for' | 'against' | 'abstain'
+      confidence: number
+      reason: string
+    }
+    calm: {
+      vote: 'for' | 'against' | 'abstain'
+      confidence: number
+      reason: string
+    }
+  }
+  
+  /** Consensus score of the council (0-1) */
+  consensusScore: number
+  
+  /** Dream history queue (last 5) */
+  dreamHistory: Array<{
+    name: string
+    score: number
+    timestamp: number
+    reason: string
+  }>
+  
+  /** Prediction history for sparkline (last 60 values) */
+  predictionHistory: number[]
 }
 
 /**
@@ -826,7 +899,19 @@ export function createDefaultSensory(): SensoryData {
     },
     fft: new Array(256).fill(0),
     beat: { onBeat: false, confidence: 0, bpm: 120, beatPhase: 0, barPhase: 0, timeSinceLastBeat: 0 },
-    input: { gain: 1, device: 'None', active: false, isClipping: false }
+    input: { gain: 1, device: 'None', active: false, isClipping: false },
+    // 🧠 WAVE 1195: GOD EAR SPECTRUM BANDS
+    spectrumBands: {
+      subBass: 0,
+      bass: 0,
+      lowMid: 0,
+      mid: 0,
+      highMid: 0,
+      treble: 0,
+      ultraAir: 0,
+      dominant: 'mid',
+      flux: 0
+    }
   }
 }
 
@@ -849,6 +934,7 @@ export function createDefaultCognitive(): CognitiveData {
     dropState: { state: 'IDLE', isActive: false },
     // 🧠 WAVE 550: AI Telemetry defaults
     // 🔮 WAVE 1168: Expanded with Dream Simulator output
+    // 🧠 WAVE 1195: Expanded with hunt stats, council votes, dream history
     ai: {
       enabled: false,
       huntState: 'sleeping',
@@ -878,7 +964,21 @@ export function createDefaultCognitive(): CognitiveData {
       zScore: 0,
       dropBridgeAlert: 'none',
       // 🔥 WAVE 1176: OPERATION SNIPER
-      energyVelocity: 0
+      energyVelocity: 0,
+      // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+      huntStats: {
+        duration: 0,
+        targetsAcquired: 0,
+        successRate: 0
+      },
+      councilVotes: {
+        beauty: { vote: 'abstain', confidence: 0, reason: 'Waiting for beauty signal' },
+        energy: { vote: 'abstain', confidence: 0, reason: 'Analyzing energy levels' },
+        calm: { vote: 'abstain', confidence: 0, reason: 'Assessing stability' }
+      },
+      consensusScore: 0.33,
+      dreamHistory: [],
+      predictionHistory: []
     }
   }
 }

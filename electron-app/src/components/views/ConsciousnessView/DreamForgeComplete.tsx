@@ -117,7 +117,7 @@ export const DreamForgeComplete: React.FC<DreamForgeCompleteProps> = memo(({
     if (dreamHistory && dreamHistory.length > 0) {
       // Use real backend data
       const now = Date.now()
-      return dreamHistory.slice(0, 5).map((entry, idx) => ({
+      return dreamHistory.slice(0, 3).map((entry, idx) => ({
         id: idx,
         effectName: entry.name,
         status: entry.score > 0.5 ? 'CAST' as const : 'BLOCKED' as const,

@@ -143,14 +143,14 @@
 .cell-systems {
   flex: 1;
   min-height: 0;
-  max-height: 70%;
+  max-height: 78%;
   border-color: rgba(34, 211, 238, 0.15);
 }
 
 /* Launchpad — WAVE 1203: Reduced height to recover vertical space */
 .cell-launchpad {
   flex: 0 0 auto;
-  height: 218px;
+  height: 240px;
   border-color: rgba(34, 211, 238, 0.1);
 }
 

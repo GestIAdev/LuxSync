@@ -303,26 +303,27 @@ const UsbDmxPanel: React.FC = () => {
 
   return (
     <div className="usb-panel">
-      <div className="usb-panel-header">
-        <label>COM PORT</label>
+      {/* WAVE 1203: Compact header - Auto-connect + Rescan inline */}
+      <div className="usb-controls">
+        <label className="usb-auto-toggle">
+          <input
+            type="checkbox"
+            checked={autoConnect}
+            onChange={(e) => handleAutoConnectChange(e.target.checked)}
+          />
+          <span className="usb-toggle-slider" />
+          <span className="usb-toggle-label">Auto-connect</span>
+        </label>
+        
         <button 
           className={`usb-rescan-btn ${isDmxScanning ? 'scanning' : ''}`}
           onClick={handleRescan}
           disabled={isDmxScanning}
+          title="Rescan ports"
         >
           {isDmxScanning ? '🔄' : '🔍'}
         </button>
       </div>
-      
-      <label className="usb-auto-toggle">
-        <input
-          type="checkbox"
-          checked={autoConnect}
-          onChange={(e) => handleAutoConnectChange(e.target.checked)}
-        />
-        <span className="usb-toggle-slider" />
-        <span className="usb-toggle-label">Auto-connect</span>
-      </label>
       
       <select 
         className="usb-port-dropdown"
@@ -333,7 +334,7 @@ const UsbDmxPanel: React.FC = () => {
         <option value="">-- Select Port --</option>
         {detectedDmxPorts.map((port) => (
           <option key={port.path} value={port.path}>
-            {port.path} - {port.chipType || port.manufacturer || 'Unknown'}
+            {port.path} {port.chipType ? `(${port.chipType})` : ''}
           </option>
         ))}
       </select>
@@ -341,9 +342,7 @@ const UsbDmxPanel: React.FC = () => {
       {error && <div className="usb-error">⚠️ {error}</div>}
       
       {detectedDmxPorts.length === 0 && !isDmxScanning && (
-        <div className="usb-no-ports">
-          No DMX devices found
-        </div>
+        <div className="usb-no-ports">No DMX devices found</div>
       )}
     </div>
   )

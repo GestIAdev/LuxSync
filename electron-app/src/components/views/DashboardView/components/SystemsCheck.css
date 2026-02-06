@@ -715,12 +715,12 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🔌 WAVE 686: USB DMX PANEL
-   Compact inline USB DMX configuration
+   🔌 WAVE 1203: USB DMX PANEL — ULTRA COMPACT
+   Inline controls, reduced padding, compact layout
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .usb-panel {
-  padding: 16px;
+  padding: 10px 12px;
   background: linear-gradient(
     135deg,
     rgba(100, 60, 0, 0.15) 0%,
@@ -728,42 +728,36 @@
   );
   border: 1px solid rgba(255, 165, 0, 0.2);
   border-left: 3px solid #ffaa00;
-  border-radius: 8px;
+  border-radius: 6px;
   animation: slideIn 0.2s ease-out;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.usb-panel-header {
+/* WAVE 1203: Controls inline (Auto-connect + Rescan) */
+.usb-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.usb-panel-header label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: rgba(255, 165, 0, 0.7);
-  text-transform: uppercase;
+  gap: 8px;
 }
 
 .usb-rescan-btn {
-  padding: 4px 8px;
+  padding: 4px 10px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 165, 0, 0.3);
   border-radius: 4px;
   color: #ffaa00;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .usb-rescan-btn:hover:not(:disabled) {
   border-color: #ffaa00;
-  box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
 }
 
 .usb-rescan-btn:disabled {
@@ -783,9 +777,10 @@
 .usb-auto-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   user-select: none;
+  flex: 1;
 }
 
 .usb-auto-toggle input[type="checkbox"] {
@@ -794,19 +789,20 @@
 
 .usb-toggle-slider {
   position: relative;
-  width: 36px;
-  height: 18px;
+  width: 32px;
+  height: 16px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 165, 0, 0.3);
-  border-radius: 9px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .usb-toggle-slider::before {
   content: '';
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   top: 2px;
   left: 2px;
   background: rgba(255, 165, 0, 0.5);
@@ -820,25 +816,25 @@
 }
 
 .usb-auto-toggle input:checked + .usb-toggle-slider::before {
-  transform: translateX(18px);
+  transform: translateX(16px);
   background: #ffaa00;
-  box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+  box-shadow: 0 0 6px rgba(255, 165, 0, 0.6);
 }
 
 .usb-toggle-label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
 }
 
 .usb-port-dropdown {
-  padding: 8px 10px;
+  padding: 6px 8px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 165, 0, 0.3);
   border-radius: 4px;
   color: #ffffff;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -846,7 +842,7 @@
 .usb-port-dropdown:focus {
   outline: none;
   border-color: #ffaa00;
-  box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
+  box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
 }
 
 .usb-port-dropdown:disabled {
@@ -855,22 +851,22 @@
 }
 
 .usb-error {
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: rgba(255, 68, 68, 0.15);
   border: 1px solid rgba(255, 68, 68, 0.4);
   border-radius: 4px;
   color: #ff6666;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .usb-no-ports {
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.4);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   text-align: center;
 }
 

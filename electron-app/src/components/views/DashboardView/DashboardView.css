@@ -1,10 +1,9 @@
 ﻿/**
- * 🚀 DASHBOARD VIEW CSS - WAVE 1199: MISSION CONTROL FINAL POLISH
+ * 🚀 DASHBOARD VIEW CSS - WAVE 1201: THE GREAT SWAP
  * 
- * PURGED: All legacy dashboard-cyberpunk, dashboard-bento, cell-reactor cruft
- * COLOR: Cyberpunk Cyan (#22d3ee) ONLY. No violet. No magenta.
- * GRID: 60-65% left (SystemsCheck) / 35-40% right (Session + Launchpad)
- * AESTHETIC: Matches ForgeView + NeuralCommandView dark industrial style
+ * LAYOUT: Hardware Left (40%) / Data Right (60%)
+ * Left: SystemsCheck (Legacy Buttons) + Launchpad (Dock)
+ * Right: ActiveSession (Header) + PatchBay (Infinite Scroll)
  */
 
 /* ═══════════════════════════════════════════════════════
@@ -92,18 +91,27 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   MISSION GRID — 60/40 SPLIT (SystemsCheck dominates)
+   MISSION GRID — SWAPPED: 40% Left (Hardware) / 60% Right (Data)
    ═══════════════════════════════════════════════════════ */
 
 .mission-grid {
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: 2fr 3fr;
   gap: 12px;
   padding: 12px 16px;
   min-height: 0;
   overflow: hidden;
 }
 
+/* Left Column: Hardware Stack (Systems + Launchpad Dock) */
+.grid-column-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* Right Column: Data Stack (Session + Patch Bay) */
 .grid-column-right {
   display: flex;
   flex-direction: column;
@@ -131,25 +139,32 @@
   box-shadow: 0 0 20px rgba(34, 211, 238, 0.04);
 }
 
-/* Systems Check — Full height left column, the commander */
+/* Systems Check — Flexible, grows with content but limited */
 .cell-systems {
+  flex: 0 0 auto;
+  max-height: 50%;
   border-color: rgba(34, 211, 238, 0.15);
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
 }
 
-/* Session — Compact, no grow */
+/* Launchpad — DOCK MODE: Fills remaining left column space */
+.cell-launchpad {
+  flex: 1;
+  min-height: 180px;
+  border-color: rgba(34, 211, 238, 0.1);
+}
+
+/* Session — Compact header, no grow */
 .cell-session {
   flex-shrink: 0;
   border-color: rgba(34, 211, 238, 0.1);
 }
 
-/* Launchpad — Fills remaining space */
-.cell-launchpad {
+/* Patch Bay — VERTICAL FREEDOM: Full remaining height, dark bg */
+.cell-patchbay {
   flex: 1;
-  border-color: rgba(34, 211, 238, 0.1);
+  min-height: 0;
+  border-color: rgba(34, 211, 238, 0.15);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -210,7 +225,7 @@
 
 @media (max-width: 1100px) {
   .mission-grid {
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: 2fr 3fr;
     gap: 10px;
   }
 }
@@ -218,6 +233,11 @@
 @media (max-width: 900px) {
   .mission-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .grid-column-left,
+  .grid-column-right {
+    max-height: 50vh;
   }
   
   .header-title h1 {

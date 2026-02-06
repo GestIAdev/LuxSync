@@ -1,0 +1,310 @@
+/**
+ * 🔌 TACTICAL PATCH BAY CSS - WAVE 1201
+ * 
+ * Standalone component with VERTICAL FREEDOM
+ * Dark bg, infinite scroll, SAVE button with dirty state
+ */
+
+.patch-bay-standalone {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 14px;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════
+   HEADER WITH SAVE BUTTON
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-bay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.patch-bay-standalone .patch-bay-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.patch-bay-standalone .patch-icon {
+  display: flex;
+  align-items: center;
+}
+
+.patch-bay-standalone .patch-bay-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.patch-bay-standalone .patch-bay-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #22d3ee;
+  padding: 2px 8px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 4px;
+}
+
+/* Save Button */
+.patch-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 6px;
+  color: rgba(34, 211, 238, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.patch-save-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.4);
+  color: #22d3ee;
+}
+
+.patch-save-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Dirty state — Yellow warning */
+.patch-save-btn.dirty {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+  animation: dirty-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dirty-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(251, 191, 36, 0.2); }
+  50% { box-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
+}
+
+.patch-save-btn.dirty:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.7);
+  animation: none;
+}
+
+.save-icon {
+  font-size: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   COLLISION WARNING
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-collision-warning {
+  padding: 8px 12px;
+  background: rgba(255, 68, 68, 0.12);
+  border: 1px solid rgba(255, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #ff6666;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABLE HEADER
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-table-header {
+  display: grid;
+  grid-template-columns: 1fr 70px 45px 55px;
+  gap: 8px;
+  padding: 6px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FIXTURE LIST — INFINITE SCROLL
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.patch-bay-standalone .patch-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.patch-bay-standalone .patch-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.patch-bay-standalone .patch-list::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.25);
+  border-radius: 3px;
+}
+
+.patch-bay-standalone .patch-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FIXTURE ROW
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 45px 55px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(10, 10, 18, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.08);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.patch-bay-standalone .patch-row:hover {
+  background: rgba(34, 211, 238, 0.04);
+  border-color: rgba(34, 211, 238, 0.15);
+}
+
+.patch-bay-standalone .patch-row.collision {
+  background: rgba(255, 68, 68, 0.08);
+  border-color: rgba(255, 68, 68, 0.4);
+}
+
+/* Fixture info */
+.patch-bay-standalone .col-fixture {
+  min-width: 0;
+}
+
+.patch-bay-standalone .patch-fixture-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patch-bay-standalone .patch-fixture-model {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Input fields — Legacy style */
+.patch-bay-standalone .patch-address-input,
+.patch-bay-standalone .patch-universe-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #22d3ee;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 4px;
+  text-align: center;
+  outline: none;
+  transition: all 0.15s ease;
+  -moz-appearance: textfield;
+}
+
+.patch-bay-standalone .patch-address-input::-webkit-inner-spin-button,
+.patch-bay-standalone .patch-address-input::-webkit-outer-spin-button,
+.patch-bay-standalone .patch-universe-input::-webkit-inner-spin-button,
+.patch-bay-standalone .patch-universe-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.patch-bay-standalone .patch-address-input:hover,
+.patch-bay-standalone .patch-universe-input:hover {
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+.patch-bay-standalone .patch-address-input:focus,
+.patch-bay-standalone .patch-universe-input:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+  background: rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.15);
+}
+
+.patch-row.collision .patch-address-input {
+  border-color: rgba(255, 68, 68, 0.5);
+  color: #ff6666;
+}
+
+/* Channel count — Static display */
+.patch-bay-standalone .patch-channels {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════ */
+
+.patch-bay-standalone .patch-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+
+.patch-bay-standalone .patch-empty-icon {
+  opacity: 0.5;
+}
+
+.patch-bay-standalone .patch-empty-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.patch-bay-standalone .patch-empty-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+}

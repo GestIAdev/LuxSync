@@ -1,27 +1,21 @@
 /**
- * 🎛️ SYSTEMS CHECK - WAVE 1003
+ * 🎛️ SYSTEMS CHECK - WAVE 1201: LEGACY BUTTONS
  * "Mission Control Pre-Flight Check"
  * 
- * Quick status verification of Audio Input + DMX Output
- * NOW WITH FULL TRINITY AUDIO INTEGRATION!
+ * WAVE 1201: Segmented Controls instead of dropdowns
+ * - Audio: [ SIMULATION ] [ SYSTEM ] [ MIC ]
+ * - DMX: [ VIRTUAL ] [ USB ] [ ARTNET ]
+ * - Config panels push content (no floating dropdowns)
  * 
- * Features:
- * - Audio device dropdown WITH REAL TRINITY CONNECTION
- * - DMX driver dropdown with connection status
- * - INLINE ArtNet configuration
- * - USB DMX panel with port detection
- * - High z-index dropdowns (overlay friendly)
- * 
- * WAVE 686: Initial ArtNet config panel
- * WAVE 1003: Trinity audio integration + USB DMX driver
+ * WAVE 1003: Trinity audio integration
+ * WAVE 686: ArtNet/USB panels
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
-import { useStageStore } from '../../../../stores/stageStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
-import { AudioWaveIcon, NetworkIcon, MovingHeadIcon } from '../../../icons/LuxIcons'
+import { AudioWaveIcon, NetworkIcon } from '../../../icons/LuxIcons'
 import './SystemsCheck.css'
 
 // 🎨 WAVE 686: ArtNet API access
@@ -350,115 +344,6 @@ const UsbDmxPanel: React.FC = () => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔌 WAVE 1199: TACTICAL PATCH BAY
-// Inline fixture list with DMX address editing and collision detection
-// Smart Defaults: Shows what's already in show.fixtures
-// ═══════════════════════════════════════════════════════════════════════════
-
-const TacticalPatchBay: React.FC = () => {
-  const fixtures = useStageStore(state => state.fixtures)
-  const updateFixture = useStageStore(state => state.updateFixture)
-  
-  // Detect DMX collisions — O(n²) but n is always small for fixtures
-  const collisions = useMemo(() => {
-    const collisionSet = new Set<string>()
-    
-    for (let i = 0; i < fixtures.length; i++) {
-      const a = fixtures[i]
-      const aEnd = a.address + a.channelCount - 1
-      
-      for (let j = i + 1; j < fixtures.length; j++) {
-        const b = fixtures[j]
-        if (a.universe !== b.universe) continue
-        
-        const bEnd = b.address + b.channelCount - 1
-        
-        // Check overlap: A starts before B ends AND A ends after B starts
-        if (a.address <= bEnd && aEnd >= b.address) {
-          collisionSet.add(a.id)
-          collisionSet.add(b.id)
-        }
-      }
-    }
-    
-    return collisionSet
-  }, [fixtures])
-  
-  const handleAddressChange = useCallback((fixtureId: string, newAddress: number) => {
-    // Clamp to valid DMX range
-    const clamped = Math.max(1, Math.min(512, newAddress))
-    updateFixture(fixtureId, { address: clamped })
-  }, [updateFixture])
-  
-  const hasCollisions = collisions.size > 0
-  
-  return (
-    <div className="patch-bay">
-      <div className="patch-bay-header">
-        <div className="patch-bay-title">
-          <span className="patch-icon">
-            <MovingHeadIcon size={14} color="#22d3ee" />
-          </span>
-          <span className="patch-bay-label">PATCH BAY</span>
-        </div>
-        <span className="patch-bay-count">{fixtures.length} fixtures</span>
-      </div>
-      
-      {hasCollisions && (
-        <div className="patch-collision-warning">
-          ⚠️ DMX channel collision detected
-        </div>
-      )}
-      
-      {fixtures.length > 0 ? (
-        <>
-          <div className="patch-table-header">
-            <span>FIXTURE</span>
-            <span>ADDRESS</span>
-            <span>CH</span>
-            <span>UNI</span>
-          </div>
-          
-          <div className="patch-list">
-            {fixtures.map(fixture => (
-              <div 
-                key={fixture.id}
-                className={`patch-row ${collisions.has(fixture.id) ? 'collision' : ''}`}
-              >
-                <div>
-                  <div className="patch-fixture-name">{fixture.name}</div>
-                  <div className="patch-fixture-model">{fixture.model}</div>
-                </div>
-                
-                <input
-                  type="number"
-                  className="patch-address-input"
-                  value={fixture.address}
-                  onChange={(e) => handleAddressChange(fixture.id, parseInt(e.target.value) || 1)}
-                  min={1}
-                  max={512}
-                />
-                
-                <span className="patch-channels">{fixture.channelCount}</span>
-                <span className="patch-universe">U{fixture.universe + 1}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="patch-empty">
-          <span className="patch-empty-icon">
-            <MovingHeadIcon size={28} color="rgba(255,255,255,0.2)" />
-          </span>
-          <span className="patch-empty-text">No fixtures loaded</span>
-          <span className="patch-empty-hint">Load a show or add fixtures in Constructor</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // SYSTEMS CHECK COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -468,8 +353,6 @@ export const SystemsCheck: React.FC = () => {
   const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore()
   const hardware = useTruthStore(selectHardware)
   
-  const [audioDropdownOpen, setAudioDropdownOpen] = useState(false)
-  const [dmxDropdownOpen, setDmxDropdownOpen] = useState(false)
   const [isAudioConnecting, setIsAudioConnecting] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
   
@@ -513,7 +396,6 @@ export const SystemsCheck: React.FC = () => {
   
   // 🔥 WAVE 1003: REAL AUDIO CONNECTION VIA TRINITY!
   const handleAudioChange = useCallback(async (source: AudioSource) => {
-    setAudioDropdownOpen(false)
     setAudioError(null)
     
     // Guard: Trinity not ready
@@ -566,7 +448,6 @@ export const SystemsCheck: React.FC = () => {
   // 🔥 WAVE 1003: DMX DRIVER CHANGE WITH FULL CONNECTION
   const handleDmxChange = useCallback(async (driver: DMXDriver) => {
     setDmxDriver(driver)
-    setDmxDropdownOpen(false)
     console.log(`[SystemsCheck] DMX driver: ${driver}`)
     
     const dmxApi = getDmxApi()
@@ -601,70 +482,22 @@ export const SystemsCheck: React.FC = () => {
     }
   }, [setDmxDriver])
   
-  const currentAudio = audioOptions.find(o => o.id === audioSource) || audioOptions[0]
-  const currentDmx = dmxOptions.find(o => o.id === dmxDriver) || dmxOptions[0]
-  
   return (
     <div className="systems-check">
+      <div className="systems-header">
+        <span className="systems-icon">🛰️</span>
+        <span className="systems-label">SYSTEMS CHECK</span>
+      </div>
+      
       {/* ════════════════════════════════════════════════════════════════════
-          🛰️ HARDWARE BLOCK - NUNCA ENCOGE (flex-shrink: 0)
-          Audio IN → DMX OUT → ArtNet/USB panels
+          🎵 AUDIO INPUT — LEGACY SEGMENTED BUTTONS
           ════════════════════════════════════════════════════════════════════ */}
-      <div className="systems-hardware-block">
-        <div className="systems-header">
-          <span className="systems-icon">🛰️</span>
-          <span className="systems-label">SYSTEMS CHECK</span>
-        </div>
-        
-        {/* AUDIO INPUT SECTION */}
-        <div className="system-row audio-system">
-          <div className="system-info">
-            <div className="system-icon-badge audio">
-              <AudioWaveIcon size={16} />
-            </div>
-            <span className="system-name">AUDIO IN</span>
+      <div className="system-section">
+        <div className="section-header">
+          <div className="section-icon-badge audio">
+            <AudioWaveIcon size={16} />
           </div>
-          
-          <div className="system-control">
-            <div className="dropdown-wrapper">
-              <button 
-                className={`dropdown-trigger ${isAudioConnecting ? 'connecting' : ''}`}
-                onClick={() => {
-                  setAudioDropdownOpen(!audioDropdownOpen)
-                  setDmxDropdownOpen(false)
-                }}
-                disabled={isAudioConnecting}
-              >
-                <span className="trigger-icon">
-                  {isAudioConnecting ? '🔄' : currentAudio.icon}
-                </span>
-                <span className="trigger-label">{currentAudio.label}</span>
-                <span className="trigger-arrow">▼</span>
-              </button>
-              
-              {audioDropdownOpen && (
-                <div className="dropdown-menu">
-                  {audioOptions.map(opt => (
-                    <button
-                      key={opt.id}
-                      className={`dropdown-item ${opt.id === audioSource ? 'active' : ''}`}
-                      onClick={() => handleAudioChange(opt.id)}
-                    >
-                      <span className="item-icon">{opt.icon}</span>
-                      <span className="item-label">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* 🎵 Mini Visualizer INLINE - WAVE 1200 */}
-          <div className="audio-visualizer-inline">
-            <MiniVisualizer />
-          </div>
-          
-          {/* Audio Connection Status */}
+          <span className="section-title">AUDIO IN</span>
           <div className={`status-indicator ${status.audio}`}>
             <span className="status-dot" />
             <span className="status-text">
@@ -673,54 +506,40 @@ export const SystemsCheck: React.FC = () => {
           </div>
         </div>
         
-        {/* Audio Error Display */}
-        {audioError && (
-          <div className="system-error audio-error">
-            ⚠️ {audioError}
-          </div>
-        )}
+        {/* Legacy Segmented Control */}
+        <div className="legacy-button-group">
+          {audioOptions.map(opt => (
+            <button
+              key={opt.id}
+              className={`legacy-btn ${audioSource === opt.id ? 'active' : ''} ${isAudioConnecting && audioSource === opt.id ? 'connecting' : ''}`}
+              onClick={() => handleAudioChange(opt.id)}
+              disabled={isAudioConnecting}
+            >
+              <span className="btn-icon">{opt.icon}</span>
+              <span className="btn-label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
         
-        {/* DMX OUTPUT SECTION */}
-        <div className="system-row dmx-system">
-          <div className="system-info">
-            <div className="system-icon-badge dmx">
-              <NetworkIcon size={16} />
-            </div>
-            <span className="system-name">DMX OUT</span>
+        {/* Mini Visualizer */}
+        <div className="audio-visualizer-inline">
+          <MiniVisualizer />
+        </div>
+        
+        {audioError && (
+          <div className="system-error">⚠️ {audioError}</div>
+        )}
+      </div>
+      
+      {/* ════════════════════════════════════════════════════════════════════
+          📡 DMX OUTPUT — LEGACY SEGMENTED BUTTONS
+          ════════════════════════════════════════════════════════════════════ */}
+      <div className="system-section">
+        <div className="section-header">
+          <div className="section-icon-badge dmx">
+            <NetworkIcon size={16} />
           </div>
-          
-          <div className="system-control">
-            <div className="dropdown-wrapper">
-              <button 
-                className="dropdown-trigger"
-                onClick={() => {
-                  setDmxDropdownOpen(!dmxDropdownOpen)
-                  setAudioDropdownOpen(false)
-                }}
-              >
-                <span className="trigger-icon">{currentDmx.icon}</span>
-                <span className="trigger-label">{currentDmx.label}</span>
-                <span className="trigger-arrow">▼</span>
-              </button>
-              
-              {dmxDropdownOpen && (
-                <div className="dropdown-menu">
-                  {dmxOptions.map(opt => (
-                    <button
-                      key={opt.id}
-                      className={`dropdown-item ${opt.id === dmxDriver ? 'active' : ''}`}
-                      onClick={() => handleDmxChange(opt.id)}
-                    >
-                      <span className="item-icon">{opt.icon}</span>
-                      <span className="item-label">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Connection Status */}
+          <span className="section-title">DMX OUT</span>
           <div className={`status-indicator ${status.dmx}`}>
             <span className="status-dot" />
             <span className="status-text">
@@ -729,18 +548,24 @@ export const SystemsCheck: React.FC = () => {
           </div>
         </div>
         
-        {/* Config Panels - ArtNet or USB */}
-        {dmxDriver === 'artnet' && <ArtNetPanel />}
-        {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
+        {/* Legacy Segmented Control */}
+        <div className="legacy-button-group">
+          {dmxOptions.map(opt => (
+            <button
+              key={opt.id}
+              className={`legacy-btn ${dmxDriver === opt.id ? 'active' : ''}`}
+              onClick={() => handleDmxChange(opt.id)}
+            >
+              <span className="btn-icon">{opt.icon}</span>
+              <span className="btn-label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
       
-      {/* ════════════════════════════════════════════════════════════════════
-          🔌 PATCH BAY ZONE - CRECE y SCROLLEA (flex: 1, overflow-y: auto)
-          ════════════════════════════════════════════════════════════════════ */}
-      <div className="patch-bay-zone">
-        <div className="systems-divider" />
-        <TacticalPatchBay />
-      </div>
+      {/* Config Panels — Solid blocks that push content */}
+      {dmxDriver === 'artnet' && <ArtNetPanel />}
+      {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
     </div>
   )
 }

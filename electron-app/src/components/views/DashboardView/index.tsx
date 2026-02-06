@@ -1,25 +1,27 @@
 ﻿/**
- * 🎛️ DASHBOARD VIEW - WAVE 1199: MISSION CONTROL FINAL POLISH
+ * 🎛️ DASHBOARD VIEW - WAVE 1201: THE GREAT SWAP
  * 
- * Layout: 60/40 Grid — Systems dominates, Launchpad compact
+ * Layout: INVERTED — Hardware Left, Data Right
  * ┌─────────────────────────────────────────────────────────────────────┐
  * │ [POWER]  MISSION CONTROL                          ● SYSTEMS READY  │
  * ├──────────────────────────────────┬──────────────────────────────────┤
- * │                                  │  ACTIVE SESSION (thin card)      │
- * │   SYSTEMS CHECK (60-65%)         ├──────────────────────────────────┤
- * │   Audio + DMX + Patch Bay        │  LAUNCHPAD (5 compact cards)     │
- * │                                  │  2-col grid, ~80px each          │
+ * │   SYSTEMS CHECK (40%)            │  ACTIVE SESSION (header)         │
+ * │   Audio + DMX (Legacy Buttons)   ├──────────────────────────────────┤
+ * │   ArtNet/USB Config Panel        │  TACTICAL PATCH BAY (flex-grow)  │
+ * ├──────────────────────────────────┤  Lista de fixtures con scroll    │
+ * │   LAUNCHPAD (Dock Mode)          │  infinito — nunca rompe nada     │
+ * │   Compacto, abajo                │                                  │
  * ├──────────────────────────────────┴──────────────────────────────────┤
  * │                     DATA CARDS (BPM, FPS, Uptime)                   │
  * └─────────────────────────────────────────────────────────────────────┘
  * 
- * WAVE 1199: Layout Rebalance, Tactical Patch Bay, 5-Card Launchpad
- * ALL CYBERPUNK CYAN (#22d3ee). No violet. No magenta borders.
+ * WAVE 1201: Great Swap (Left=Hardware, Right=Data), Legacy Buttons
  */
 
 import React from 'react'
 import { SystemsCheck } from './components/SystemsCheck'
 import { ActiveSession } from './components/ActiveSession'
+import { TacticalPatchBay } from './components/TacticalPatchBay'
 import { Launchpad } from './components/Launchpad'
 import DataCards from './components/DataCards'
 import PowerButton from './components/PowerButton'
@@ -45,20 +47,25 @@ const DashboardView: React.FC = () => {
         </div>
       </header>
 
-      {/* Mission Control Grid — 60/40 split */}
+      {/* Mission Control Grid — SWAPPED: Hardware Left, Data Right */}
       <main className="mission-grid">
-        {/* Left Column: Systems Check + Patch Bay (60-65%) */}
-        <section className="grid-cell cell-systems">
-          <SystemsCheck />
-        </section>
+        {/* LEFT COLUMN: Hardware & Navigation (40%) */}
+        <div className="grid-column-left">
+          <section className="grid-cell cell-systems">
+            <SystemsCheck />
+          </section>
+          <section className="grid-cell cell-launchpad">
+            <Launchpad />
+          </section>
+        </div>
 
-        {/* Right Column: Thin Session + Compact Launchpad (35-40%) */}
+        {/* RIGHT COLUMN: Data & Management (60%) */}
         <div className="grid-column-right">
           <section className="grid-cell cell-session">
             <ActiveSession />
           </section>
-          <section className="grid-cell cell-launchpad">
-            <Launchpad />
+          <section className="grid-cell cell-patchbay">
+            <TacticalPatchBay />
           </section>
         </div>
       </main>

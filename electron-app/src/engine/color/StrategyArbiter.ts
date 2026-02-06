@@ -222,6 +222,11 @@ export class StrategyArbiter {
     // Los drops ocurren 20 veces por canción (saturación de cambios)
     // SOLO permitimos cambios cuando el commitment expira naturalmente (30 segundos)
     if (this.strategyCommitmentFrames > 0) {
+      // 🐛 WAVE 1209 DEBUG: Log cada 5s para diagnosticar
+      if (this.frameCount % 300 === 0) {
+        console.log(`[StrategyArbiter] 🔒 LOCKED: ${this.lastCommittedStrategy} | Remaining: ${this.strategyCommitmentFrames} frames (${(this.strategyCommitmentFrames/60).toFixed(1)}s)`);
+      }
+      
       // Actualizar rolling average aunque estemos comprometidos
       const sync = Math.max(0, Math.min(1, input.syncopation));
       this.syncBuffer[this.bufferIndex] = sync;
@@ -283,7 +288,8 @@ export class StrategyArbiter {
         this.strategyCommitmentFrames = this.STRATEGY_COMMITMENT_DURATION;
         this.lastCommittedStrategy = effectiveStrategy;
         
-        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} (avgSync=${avgSync.toFixed(2)}) [COMMITTED for ${this.STRATEGY_COMMITMENT_DURATION} frames]`);
+        // 🐛 WAVE 1209 DEBUG: Log detallado de cambios
+        console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} | avgSync=${avgSync.toFixed(2)} | commitment=${this.strategyCommitmentFrames} frames (30s) | canChange=${canChange} | isLocked=${this.isLocked} | framesSinceChange=${framesSinceChange}`);
       }
     }
     

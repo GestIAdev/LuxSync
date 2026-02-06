@@ -55,10 +55,12 @@ const GENRE_PALETTES: Record<string, ColorPalette> = {
     ambient: { h: 0.60, s: 0.3, l: 0.15 },     // Azul muy oscuro
   },
   UNKNOWN: {
-    primary: { h: 0.0, s: 0.0, l: 0.70 },      // Blanco
-    secondary: { h: 0.0, s: 0.0, l: 0.50 },    // Gris
-    accent: { h: 0.0, s: 0.0, l: 0.90 },       // Blanco brillante
-    ambient: { h: 0.0, s: 0.0, l: 0.10 },      // Negro
+    // 🎭 WAVE 1209: Changed from WHITE to warm neutral (amber glow)
+    // Blanco causaba confusión - ahora usa tono cálido neutro cuando no detecta género
+    primary: { h: 0.08, s: 0.7, l: 0.50 },     // Amber/Oro suave
+    secondary: { h: 0.55, s: 0.5, l: 0.45 },   // Cyan tenue
+    accent: { h: 0.90, s: 0.6, l: 0.55 },      // Rosa tenue
+    ambient: { h: 0.08, s: 0.3, l: 0.20 },     // Amber oscuro
   },
 }
 

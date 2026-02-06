@@ -1,6 +1,7 @@
 /**
  * ⚡ WAVE 217: TITAN ENGINE
  * 🧠 WAVE 271: SYNAPTIC RESURRECTION
+ * 🎭 WAVE 1208.5: CHROMATIC SYNCHRONIZATION
  * 
  * Motor de iluminación reactiva PURO. No conoce DMX ni hardware.
  * Recibe MusicalContext del Cerebro → Devuelve LightingIntent al HAL.
@@ -10,14 +11,15 @@
  * - Solo calcula QUÉ queremos expresar, no CÓMO se hace en hardware
  * - Los Vibes definen las restricciones, el motor las respeta
  * 
- * 🧠 WAVE 271: STABILIZATION LAYER
- * - KeyStabilizer: Buffer 12s, locking 10s - evita cambios frenéticos de Key
+ * 🧠 WAVE 271 + 🎭 WAVE 1208.5: STABILIZATION LAYER (SYNCHRONIZED)
+ * - KeyStabilizer: Buffer 10s, locking 30s - evita cambios frenéticos de Key
  * - EnergyStabilizer: Rolling 2s, DROP FSM - suaviza energía, detecta drops
  * - MoodArbiter: Buffer 10s, locking 5s - BRIGHT/DARK/NEUTRAL estables
- * - StrategyArbiter: Rolling 15s, locking 15s - Analogous/Complementary estable
+ * - StrategyArbiter: Rolling 15s, locking 30s - SINCRONIZADO con KeyStabilizer
+ *   🎭 La paleta completa (Key + Strategy) baila junta por 30 segundos
  * 
  * @layer ENGINE (Motor)
- * @version TITAN 2.0 + WAVE 271
+ * @version TITAN 2.0 + WAVE 271 + WAVE 1208.5
  */
 
 import { EventEmitter } from 'events'

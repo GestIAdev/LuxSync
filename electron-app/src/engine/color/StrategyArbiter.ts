@@ -170,12 +170,19 @@ export class StrategyArbiter {
   private readonly BREAKDOWN_LOCK_DURATION = 60;  // 1 segundo @ 60fps
   private readonly DROP_LOCK_DURATION = 120;       // 2 segundos @ 60fps
   
-  // 🔒 WAVE 74: STRATEGY COMMITMENT TIMER - Histéresis temporal fuerte
+  // 🔒 WAVE 74 + WAVE 1208 + WAVE 1208.5: STRATEGY COMMITMENT TIMER - Histéresis temporal FUERTE
   // Una vez elegida una estrategia, nos comprometemos por N frames
   // Esto evita el "destino móvil" donde el interpolador siempre resetea
+  // 🎯 WAVE 1208.5: CHROMATIC SYNCHRONIZATION - Igualado a KeyStabilizer (30 segundos)
+  //    KeyStabilizer mantiene el HUE BASE por 30s → StrategyArbiter debe mantener ACENTOS por 30s
+  //    La paleta completa (base + secundarios) se comporta como UNIDAD CROMÁTICA
+  //    Cambios solo en: modulación de key, DROP real, o cambio de sección
   private strategyCommitmentFrames = 0;
-  private readonly STRATEGY_COMMITMENT_DURATION = 240;  // 4 segundos @ 60fps
+  private readonly STRATEGY_COMMITMENT_DURATION = 1800;  // 30 segundos @ 60fps (sync con KeyStabilizer)
   private lastCommittedStrategy: ColorStrategy = 'analogous';
+  
+  // 🎯 WAVE 1208: Track last section to detect REAL section changes
+  private lastSectionType: SectionType = 'unknown';
   
   // Histéresis state
   private lastDecisionZone: 'low' | 'mid' | 'high' = 'mid';
@@ -195,9 +202,10 @@ export class StrategyArbiter {
   
   // Default config
   // 🌴 WAVE 85: TROPICAL MIRROR - Expandir zona Triadic para baile latino
+  // 🎭 WAVE 1208.5: CHROMATIC SYNCHRONIZATION - Igualado a KeyStabilizer (30s)
   private static readonly DEFAULT_CONFIG: StrategyArbiterConfig = {
-    bufferSize: 900,           // 15 segundos @ 60fps
-    lockingFrames: 900,        // 15 segundos de bloqueo
+    bufferSize: 900,           // 15 segundos @ 60fps (rolling average)
+    lockingFrames: 1800,       // 🎭 WAVE 1208.5: 30 segundos (sync con KeyStabilizer)
     lowSyncThreshold: 0.40,    // 🌴 WAVE 85: < 0.40 = ANALOGOUS (antes 0.35)
     highSyncThreshold: 0.65,   // 🌴 WAVE 85: > 0.65 = COMPLEMENTARY (antes 0.55)
     hysteresisBand: 0.05,      // Banda de histéresis
@@ -240,10 +248,20 @@ export class StrategyArbiter {
       this.strategyCommitmentFrames--;
     }
     
-    // 🔒 WAVE 74: COMMITMENT GATE - Si estamos comprometidos con una estrategia, mantenerla
-    // EXCEPCIÓN: DROP puede romper el compromiso (es un evento de alto impacto)
+    // 🎯 WAVE 1208: SECTION CHANGE DETECTION
+    // Si la sección REAL cambió (no solo energía relativa), esto es un evento de alto impacto
+    const sectionReallyChanged = input.sectionType !== this.lastSectionType;
+    if (sectionReallyChanged) {
+      this.lastSectionType = input.sectionType;
+    }
+    
+    // 🔒 WAVE 74 + WAVE 1208: COMMITMENT GATE - Si estamos comprometidos con una estrategia, mantenerla
+    // EXCEPCIONES que pueden romper el compromiso:
+    // 1. DROP con isRelativeDrop (evento de alto impacto)
+    // 2. CAMBIO DE SECCIÓN REAL (verse → chorus, etc.)
     if (this.strategyCommitmentFrames > 0) {
       const isDrop = input.sectionType === 'drop' && input.isRelativeDrop;
+      const canBreakCommitment = isDrop || sectionReallyChanged;
       
       // Actualizar rolling average aunque estemos comprometidos
       const sync = Math.max(0, Math.min(1, input.syncopation));
@@ -251,12 +269,16 @@ export class StrategyArbiter {
       this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
       const avgSync = this.calculateWeightedAverage();
       
-      // Si es DROP y no estamos ya en override de DROP, permitir cambio
-      if (isDrop && this.currentOverride !== 'drop') {
-        // Permitir que la lógica normal procese el DROP
-        console.log(`[StrategyArbiter] ⚡ DROP breaks commitment: ${this.strategyCommitmentFrames} frames remaining`);
+      // Si es evento de alto impacto, permitir cambio
+      if (canBreakCommitment && this.currentOverride !== 'drop') {
+        // Permitir que la lógica normal procese
+        if (isDrop) {
+          console.log(`[StrategyArbiter] ⚡ DROP breaks commitment: ${this.strategyCommitmentFrames} frames remaining`);
+        } else if (sectionReallyChanged) {
+          console.log(`[StrategyArbiter] 🎵 SECTION CHANGE (${this.lastSectionType}) breaks commitment: ${this.strategyCommitmentFrames} frames remaining`);
+        }
       } else {
-        // Mantener estrategia comprometida
+        // Mantener estrategia comprometida - HYSTERESIS ACTIVA
         return {
           stableStrategy: this.lastCommittedStrategy,
           instantStrategy: this.lastCommittedStrategy,

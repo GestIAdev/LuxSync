@@ -1026,14 +1026,12 @@ export class HardwareAbstraction {
   }
   
   private sendToDriver(states: FixtureState[]): void {
+    // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
+    // If driver is not connected, silently drop packets.
+    // User MUST manually start ArtNet/USB from Dashboard.
+    // This respects "Manual First" doctrine: hardware = explicit human action.
     if (!this.driver.isConnected) {
-      console.warn('[HAL] ⚠️ sendToDriver() - Driver not connected, attempting connection...')
-      // Try to connect
-      this.driver.connect().catch(err => {
-        if (this.config.debug) {
-          console.error('[HAL] ❌ Driver connection failed:', err)
-        }
-      })
+      // Silent drop - no spam, no auto-connect zombie
       return
     }
     

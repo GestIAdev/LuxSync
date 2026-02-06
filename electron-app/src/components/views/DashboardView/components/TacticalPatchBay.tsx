@@ -18,6 +18,7 @@ export const TacticalPatchBay: React.FC = () => {
   const fixtures = useStageStore(state => state.fixtures)
   const updateFixture = useStageStore(state => state.updateFixture)
   const showFile = useStageStore(state => state.showFile)
+  const saveShow = useStageStore(state => state.saveShow)
   
   // Track dirty state (unsaved changes)
   const [isDirty, setIsDirty] = useState(false)
@@ -66,18 +67,20 @@ export const TacticalPatchBay: React.FC = () => {
     
     setIsSaving(true)
     try {
-      const luxApi = (window as any).lux
-      if (luxApi?.stage?.save) {
-        await luxApi.stage.save()
+      // WAVE 1207: Use stageStore.saveShow() instead of direct IPC
+      const success = await saveShow()
+      if (success) {
         setIsDirty(false)
         console.log('[TacticalPatchBay] 💾 Patch saved!')
+      } else {
+        console.error('[TacticalPatchBay] Save failed')
       }
     } catch (err) {
-      console.error('[TacticalPatchBay] Save failed:', err)
+      console.error('[TacticalPatchBay] Save error:', err)
     } finally {
       setIsSaving(false)
     }
-  }, [showFile])
+  }, [showFile, saveShow])
   
   const hasCollisions = collisions.size > 0
   

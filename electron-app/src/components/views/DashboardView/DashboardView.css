@@ -161,7 +161,7 @@
 /* 🚀 WAVE 1205: ZONE 2 ACTION (Launchpad) - Purple Neon Glass */
 .cell-launchpad {
   flex: 0 0 auto;
-  height: 240px;
+  height: 245px;
   background: linear-gradient(180deg, rgba(20, 15, 40, 0.8) 0%, rgba(10, 10, 20, 0.9) 100%);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(139, 92, 246, 0.4);

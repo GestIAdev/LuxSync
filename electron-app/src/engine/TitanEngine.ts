@@ -216,6 +216,9 @@ export class TitanEngine extends EventEmitter {
   // 🎨 WAVE 1196: Dream history buffer (last 3 effects launched)
   private dreamHistoryBuffer: Array<{ name: string; score: number; timestamp: number; reason: string }> = []
   
+  // 📜 WAVE 1198: Ethics tracking for War Log
+  private lastEthicsFlags: string[] = []
+  
   // ═══════════════════════════════════════════════════════════════════════
   // CONSTRUCTOR
   // ═══════════════════════════════════════════════════════════════════════
@@ -1468,6 +1471,31 @@ export class TitanEngine extends EventEmitter {
         })
       }
     }
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🛡️ ETHICS FLAGS (WAVE 1198) - Log when new violations detected
+    // ─────────────────────────────────────────────────────────────────────
+    const currentEthicsFlags = debug.biasesDetected || []
+    const newFlags = currentEthicsFlags.filter(f => !this.lastEthicsFlags.includes(f))
+    const clearedFlags = this.lastEthicsFlags.filter(f => !currentEthicsFlags.includes(f))
+    
+    if (newFlags.length > 0) {
+      this.emit('log', {
+        category: 'Ethics',
+        message: `🛡️ Ethics Alert: ${newFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
+        data: { flags: newFlags }
+      })
+    }
+    
+    if (clearedFlags.length > 0 && this.state.frameCount % 30 === 0) {
+      this.emit('log', {
+        category: 'Ethics',
+        message: `✅ Ethics Cleared: ${clearedFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
+        data: { cleared: clearedFlags }
+      })
+    }
+    
+    this.lastEthicsFlags = [...currentEthicsFlags]
   }
   
   // ═══════════════════════════════════════════════════════════════════════

@@ -137,6 +137,13 @@ export class TitanOrchestrator {
   private lastAudioTimestamp = 0
   private readonly AUDIO_STALENESS_THRESHOLD_MS = 500 // 500ms = medio segundo sin audio = stale
 
+  // 📜 WAVE 1198: THE WARLOG HEARTBEAT - State tracking for tactical logs
+  private hasLoggedFirstAudio = false
+  private lastLoggedVibe = ''
+  private lastLoggedMood = ''
+  private lastLoggedBrainState = false
+  private warlogHeartbeatFrame = 0  // For periodic heartbeat logs
+
   // WAVE 255.5: Callback to broadcast fixture states to frontend
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private onBroadcast: ((truth: any) => void) | null = null
@@ -523,6 +530,26 @@ export class TitanOrchestrator {
     
     // Arbitrate all layers (this merges manual overrides, effects, blackout)
     const arbitratedTarget = masterArbiter.arbitrate()
+    
+    // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~2 seconds (120 frames at 60fps)
+    this.warlogHeartbeatFrame++
+    if (this.warlogHeartbeatFrame >= 120) {
+      this.warlogHeartbeatFrame = 0
+      
+      const currentVibe = this.engine.getCurrentVibe()
+      const brainEnabled = this.useBrain
+      const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT'
+      const bpm = context.bpm || 120
+      
+      // Emit heartbeat log
+      this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
+        audioActive: this.hasRealAudio,
+        bpm,
+        vibe: currentVibe,
+        brainEnabled,
+        fixtureCount: this.fixtures.length,
+      })
+    }
     
     // WAVE 380: Debug - verify fixtures are present in loop
     if (this.frameCount === 1 || this.frameCount % 300 === 0) {
@@ -1500,7 +1527,17 @@ export class TitanOrchestrator {
     }
     
     // 🔥 WAVE 1012.5: Frontend también detecta audio real
+    const wasAudioActive = this.hasRealAudio
     this.hasRealAudio = energy > 0.01
+    
+    // 📜 WAVE 1198: Log first audio detection (only once per session)
+    if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+      this.hasLoggedFirstAudio = true
+      this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!')
+    } else if (!this.hasRealAudio && wasAudioActive) {
+      // Audio lost - log it
+      this.log('System', '🔇 AUDIO LOST - Waiting for signal...')
+    }
     
     // 🗡️ WAVE 265: Update timestamp para staleness detection
     this.lastAudioTimestamp = Date.now()

@@ -1,0 +1,128 @@
+/**
+ * 📊 CONTEXT MATRIX EXPANDED - CSS - WAVE 1193: THE GREAT DIVIDE
+ * 
+ * Grid de 8 cards con sparklines, valores grandes y legibles.
+ */
+
+.context-matrix-expanded {
+  height: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRID LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.context-matrix-expanded__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 12px;
+  padding: 12px 16px 16px;
+  height: calc(100% - 48px); /* Minus header */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTEXT CARD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.context-matrix-expanded__card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.context-matrix-expanded__card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Card Header */
+.context-matrix-expanded__card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.context-matrix-expanded__card-emoji {
+  font-size: 0.9rem;
+}
+
+.context-matrix-expanded__card-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Card Body */
+.context-matrix-expanded__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.context-matrix-expanded__card-value {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: color 0.2s ease;
+}
+
+.context-matrix-expanded__card-subvalue {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+/* Card Sparkline */
+.context-matrix-expanded__card-sparkline {
+  margin-top: auto;
+  padding-top: 6px;
+  height: 24px;
+}
+
+.context-matrix-expanded__sparkline {
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 800px) {
+  .context-matrix-expanded__grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .context-matrix-expanded__grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  
+  .context-matrix-expanded__card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .context-matrix-expanded__card-header {
+    margin-bottom: 0;
+  }
+  
+  .context-matrix-expanded__card-sparkline {
+    display: none;
+  }
+}

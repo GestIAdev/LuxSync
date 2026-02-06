@@ -1,0 +1,139 @@
+/**
+ * 🧭 SUB-TAB NAVIGATION - CSS - WAVE 1193: THE GREAT DIVIDE
+ * 
+ * Estilo minimalista tipo "tabs de navegador".
+ * Animación suave del indicador activo.
+ */
+
+.subtab-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 16px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.subtab-nav__tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.subtab-nav__tab:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.subtab-nav__tab--active {
+  color: var(--accent-primary);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+/* Icon */
+.subtab-nav__icon {
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.subtab-nav__tab:hover .subtab-nav__icon {
+  transform: scale(1.1);
+}
+
+.subtab-nav__tab--active .subtab-nav__icon {
+  transform: scale(1.15);
+}
+
+/* Label */
+.subtab-nav__label {
+  font-family: var(--font-mono);
+}
+
+/* Shortcut badge */
+.subtab-nav__shortcut {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.subtab-nav__tab:hover .subtab-nav__shortcut {
+  opacity: 0.8;
+}
+
+.subtab-nav__tab--active .subtab-nav__shortcut {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--accent-primary);
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACTIVE INDICATOR (animated bar)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.subtab-nav__indicator {
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  height: 2px;
+  width: calc((100% - 32px) / 3); /* 3 tabs */
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 2px 2px 0 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(calc(var(--indicator-index, 0) * 100%));
+  box-shadow: 
+    0 0 10px rgba(139, 92, 246, 0.5),
+    0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOW EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.subtab-nav__tab--active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at bottom,
+    rgba(139, 92, 246, 0.15) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .subtab-nav__label {
+    display: none;
+  }
+  
+  .subtab-nav__tab {
+    padding: 10px 14px;
+  }
+}

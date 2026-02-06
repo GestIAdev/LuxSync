@@ -1,0 +1,263 @@
+/**
+ * 🎨 CHROMATIC CORE COMPLETE - CSS - WAVE 1193: THE GREAT DIVIDE
+ * 
+ * Panel cromático con rueda de color, temperatura, y paleta expandida.
+ */
+
+.chromatic-core-complete {
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STRATEGY BADGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chromatic-core-complete__strategy-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOR WHEEL SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chromatic-core-complete__wheel-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+.chromatic-core-complete__wheel {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+/* Conic gradient ring */
+.chromatic-core-complete__wheel-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    hsl(0, 80%, 50%),
+    hsl(60, 80%, 50%),
+    hsl(120, 80%, 50%),
+    hsl(180, 80%, 50%),
+    hsl(240, 80%, 50%),
+    hsl(300, 80%, 50%),
+    hsl(360, 80%, 50%)
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 55%,
+    black 56%,
+    black 100%
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 55%,
+    black 56%,
+    black 100%
+  );
+}
+
+/* Indicator arm */
+.chromatic-core-complete__wheel-indicator {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.3s ease;
+}
+
+.chromatic-core-complete__wheel-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  border: 2px solid white;
+  box-shadow: 
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Center display */
+.chromatic-core-complete__wheel-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60%;
+  height: 60%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 0 20px rgba(0, 0, 0, 0.3),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.chromatic-core-complete__wheel-hex {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.chromatic-core-complete__wheel-hex--light {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* HSL Values */
+.chromatic-core-complete__hsl {
+  display: flex;
+  gap: 16px;
+}
+
+.chromatic-core-complete__hsl-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.chromatic-core-complete__hsl-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.chromatic-core-complete__hsl-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INFO SECTION (Temperature & Key)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chromatic-core-complete__info-section {
+  display: flex;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.chromatic-core-complete__info-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chromatic-core-complete__info-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.chromatic-core-complete__info-value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chromatic-core-complete__info-desc {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STRATEGY SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chromatic-core-complete__strategy-section {
+  padding: 0 16px;
+  text-align: center;
+}
+
+.chromatic-core-complete__strategy-desc {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PALETTE GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chromatic-core-complete__palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px 16px 16px;
+  margin-top: auto;
+}
+
+.chromatic-core-complete__swatch {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+}
+
+.chromatic-core-complete__swatch:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 0 20px rgba(255, 255, 255, 0.15);
+}
+
+.chromatic-core-complete__swatch-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.chromatic-core-complete__swatch-label--light {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chromatic-core-complete__swatch-hue {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.chromatic-core-complete__swatch-hue--light {
+  color: rgba(255, 255, 255, 0.7);
+}

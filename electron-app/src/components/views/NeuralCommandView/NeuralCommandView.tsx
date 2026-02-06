@@ -1,35 +1,32 @@
 /**
- * 🧠 NEURAL COMMAND VIEW - WAVE 1167
+ * 🧠 NEURAL COMMAND VIEW - WAVE 1167/1193: THE GREAT DIVIDE
  * 
- * Centro de mando neural de Selene - Reemplaza LuxCoreView.
- * Conecta todos los paneles de telemetría nuevos:
- * - AudioSpectrumPanel
- * - ConsciousnessHUD  
- * - ChromaticCorePanel
- * - ContextMatrixPanel
- * - NeuralStreamLog
+ * Centro de mando neural de Selene - Ahora con 3 sub-vistas especializadas:
+ * 
+ * 🎛️ SENSORY: Lo que Selene "siente" (Audio, Color, Context)
+ * 🧠 CONSCIOUSNESS: Lo que Selene "piensa" (AI, Prediction, Dream, Ethics)
+ * 📜 STREAM: Lo que Selene "dice" (Neural Log)
+ * 
+ * WAVE 1193: THE GREAT DIVIDE - Cada vista tiene el 100% del espacio disponible
  */
 
-import { useState, memo } from 'react'
+import { useState, memo, useCallback, useEffect } from 'react'
 import { useTruthSystem, useTruthConnected } from '../../../hooks'
 
-// Nuevos componentes de telemetría WAVE 1167
-import { AudioSpectrumPanel } from '../../telemetry/AudioSpectrumPanel'
+// WAVE 1193: Sub-tab navigation
+import { SubTabNavigation, type SubTabId } from './SubTabNavigation'
+
+// WAVE 1193: New specialized views
+import { SensoryView } from '../SensoryView'
+
+// Legacy components (ConsciousnessHUD stays as-is until Phase 3)
 import { ConsciousnessHUD } from '../../telemetry/ConsciousnessHUD'
-import { ChromaticCorePanel } from '../../telemetry/ChromaticCorePanel'
-import { ContextMatrixPanel } from '../../telemetry/ContextMatrixPanel'
 import { NeuralStreamLog } from '../../telemetry/NeuralStreamLog'
 
 // Icons
-import { BrainNeuralIcon, LiveDotIcon, StreamLogIcon } from '../../icons/LuxIcons'
+import { BrainNeuralIcon, LiveDotIcon } from '../../icons/LuxIcons'
 
 import './NeuralCommandView.css'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
-type ViewTab = 'command' | 'logs'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -58,7 +55,8 @@ function getModeColor(mode: string): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const NeuralCommandView = memo(() => {
-  const [activeTab, setActiveTab] = useState<ViewTab>('command')
+  // WAVE 1193: Default to consciousness (the "brain" view)
+  const [activeSubTab, setActiveSubTab] = useState<SubTabId>('consciousness')
   
   // Truth Store
   const connected = useTruthConnected()
@@ -67,6 +65,11 @@ export const NeuralCommandView = memo(() => {
   const fps = system?.actualFPS?.toFixed(0) || '--'
   const mode = system?.mode?.toUpperCase() || 'OFFLINE'
   const uptime = system?.uptime ? formatUptime(system.uptime) : '0s'
+  
+  // Tab change handler
+  const handleTabChange = useCallback((tab: SubTabId) => {
+    setActiveSubTab(tab)
+  }, [])
   
   return (
     <div className="neural-command-view">
@@ -107,56 +110,35 @@ export const NeuralCommandView = memo(() => {
       </header>
       
       {/* ═══════════════════════════════════════════════════════════════════
-          TAB NAVIGATION
+          WAVE 1193: SUB-TAB NAVIGATION
           ═══════════════════════════════════════════════════════════════════ */}
-      <nav className="ncv-tabs">
-        <button
-          className={`ncv-tab ${activeTab === 'command' ? 'ncv-tab--active' : ''}`}
-          onClick={() => setActiveTab('command')}
-        >
-          <BrainNeuralIcon size={14} />
-          <span>COMMAND CENTER</span>
-        </button>
-        <button
-          className={`ncv-tab ${activeTab === 'logs' ? 'ncv-tab--active' : ''}`}
-          onClick={() => setActiveTab('logs')}
-        >
-          <StreamLogIcon size={14} />
-          <span>NEURAL STREAM</span>
-        </button>
-      </nav>
+      <SubTabNavigation 
+        activeTab={activeSubTab}
+        onTabChange={handleTabChange}
+      />
       
       {/* ═══════════════════════════════════════════════════════════════════
-          CONTENT - WAVE 1167.6: THE VERTICAL LOCK
-          Grid directo sin rows intermedias, 60/40 ratio áureo
+          CONTENT - WAVE 1193: THE GREAT DIVIDE
+          Each view gets 100% of available space
           ═══════════════════════════════════════════════════════════════════ */}
       <main className="ncv-content">
-        {activeTab === 'command' && (
-          <div className="ncv-grid">
-            {/* Grid cell 1: Audio Spectrum (top-left) */}
-            <div className="ncv-grid__cell ncv-grid__cell--audio">
-              <AudioSpectrumPanel />
-            </div>
-            
-            {/* Grid cell 2: Consciousness HUD (top-right) */}
-            <div className="ncv-grid__cell ncv-grid__cell--consciousness">
-              <ConsciousnessHUD />
-            </div>
-            
-            {/* Grid cell 3: Chromatic Core (bottom-left) */}
-            <div className="ncv-grid__cell ncv-grid__cell--chromatic">
-              <ChromaticCorePanel />
-            </div>
-            
-            {/* Grid cell 4: Context Matrix (bottom-right) */}
-            <div className="ncv-grid__cell ncv-grid__cell--context">
-              <ContextMatrixPanel />
-            </div>
+        {/* 🎛️ SENSORY VIEW */}
+        {activeSubTab === 'sensory' && (
+          <div className="ncv-view ncv-view--sensory" role="tabpanel" id="panel-sensory">
+            <SensoryView />
           </div>
         )}
         
-        {activeTab === 'logs' && (
-          <div className="ncv-logs">
+        {/* 🧠 CONSCIOUSNESS VIEW (Legacy mode until Phase 3) */}
+        {activeSubTab === 'consciousness' && (
+          <div className="ncv-view ncv-view--consciousness" role="tabpanel" id="panel-consciousness">
+            <ConsciousnessHUD />
+          </div>
+        )}
+        
+        {/* 📜 STREAM VIEW */}
+        {activeSubTab === 'stream' && (
+          <div className="ncv-view ncv-view--stream" role="tabpanel" id="panel-stream">
             <NeuralStreamLog />
           </div>
         )}

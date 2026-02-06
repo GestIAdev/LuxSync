@@ -1,5 +1,7 @@
 /**
- * 🧠 NEURAL COMMAND VIEW - CSS - WAVE 1167
+ * 🧠 NEURAL COMMAND VIEW - CSS - WAVE 1167/1193: THE GREAT DIVIDE
+ * 
+ * WAVE 1193: Restructured for sub-tab navigation with full-height views
  */
 
 .neural-command-view {
@@ -9,7 +11,7 @@
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
-  font-size: 14px; /* WAVE 1167: Increased base font for readability in dark cabins */
+  font-size: 14px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -23,6 +25,7 @@
   padding: 12px 20px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .ncv-header__left {
@@ -92,109 +95,50 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TAB NAVIGATION
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.ncv-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px 20px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.ncv-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.ncv-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
-}
-
-.ncv-tab--active {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.2);
-  color: var(--accent-primary);
-}
-
-.ncv-tab svg {
-  opacity: 0.7;
-}
-
-.ncv-tab--active svg {
-  opacity: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CONTENT
+   CONTENT - WAVE 1193: THE GREAT DIVIDE
+   Each view gets 100% of available height
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ncv-content {
   flex: 1;
-  padding: 16px 20px;
-  overflow: hidden; /* No scroll - todo debe caber */
-  min-height: 0; /* Crucial para que flex funcione correctamente */
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   GRID LAYOUT (Command Center) - WAVE 1167.6: THE VERTICAL LOCK 🔒
-   
-   Ratio Áureo: 60% arriba (gráficos complejos), 40% abajo (datos)
-   Filosofía: Interfaz de nave espacial, NO página web.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.ncv-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  grid-template-rows: 2.2fr 1fr; /* WAVE 1169: Ratio ~70/30 - Más espacio para el cerebro */
-  gap: 16px;
+/* View containers - full height */
+.ncv-view {
   height: 100%;
-  min-height: 0; /* Permite que grid se comprima si es necesario */
+  padding: 16px 20px;
+  overflow: hidden;
 }
 
-/* Grid areas para claridad */
-.ncv-grid__cell--audio {
-  grid-column: 1;
-  grid-row: 1;
+.ncv-view--sensory {
+  padding: 12px 16px;
 }
 
-.ncv-grid__cell--consciousness {
-  grid-column: 2;
-  grid-row: 1;
+.ncv-view--consciousness {
+  padding: 12px 16px;
 }
 
-.ncv-grid__cell--chromatic {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.ncv-grid__cell--context {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.ncv-grid__cell {
-  min-width: 0;
-  min-height: 0; /* Permite compresión vertical */
+.ncv-view--stream {
+  padding: 12px 16px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LOGS TAB
+   LEGACY: Old grid styles (keeping for reference, can be removed later)
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Old tab navigation - replaced by SubTabNavigation */
+.ncv-tabs {
+  display: none; /* Hidden, using SubTabNavigation now */
+}
+
+/* Old grid layout - no longer used */
+.ncv-grid {
+  display: none;
+}
+
+/* Old logs container */
 .ncv-logs {
   height: 100%;
 }

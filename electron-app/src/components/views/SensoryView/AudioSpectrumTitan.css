@@ -1,0 +1,277 @@
+/**
+ * 🎵 AUDIO SPECTRUM TITAN - CSS - WAVE 1193: THE GREAT DIVIDE
+ * 
+ * Espectro expandido con 32 bandas, peak hold, y métricas detalladas.
+ * Estilo cyberpunk con glow y gradientes.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TITAN CARD BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.titan-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(18, 18, 26, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.titan-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.titan-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}
+
+.titan-card__subtitle {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 4px;
+}
+
+.titan-card__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--accent-success);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUDIO SPECTRUM TITAN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-spectrum-titan {
+  transition: box-shadow 0.1s ease;
+}
+
+.audio-spectrum-titan--beat {
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.3),
+    inset 0 0 30px rgba(139, 92, 246, 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VISUALIZER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-spectrum-titan__visualizer {
+  flex: 1;
+  position: relative;
+  padding: 40px 16px 16px;
+  min-height: 200px;
+}
+
+/* Frequency Labels */
+.audio-spectrum-titan__freq-labels {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  right: 16px;
+  height: 24px;
+  display: flex;
+  pointer-events: none;
+}
+
+.audio-spectrum-titan__freq-label {
+  position: absolute;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* Bars Container */
+.audio-spectrum-titan__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.audio-spectrum-titan__bar-container {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* Individual Bar */
+.audio-spectrum-titan__bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.05s ease-out;
+}
+
+/* Peak Indicator */
+.audio-spectrum-titan__peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 1px;
+  opacity: 0.8;
+  transition: bottom 0.05s ease-out;
+}
+
+/* Grid Lines */
+.audio-spectrum-titan__grid {
+  position: absolute;
+  inset: 40px 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.audio-spectrum-titan__grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  border-style: dashed;
+}
+
+.audio-spectrum-titan__grid-line span {
+  position: absolute;
+  right: 0;
+  top: -8px;
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-spectrum-titan__stats {
+  display: flex;
+  gap: 20px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.audio-spectrum-titan__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 70px;
+}
+
+.audio-spectrum-titan__stat--distribution {
+  flex: 1;
+  min-width: 120px;
+}
+
+.audio-spectrum-titan__stat-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.audio-spectrum-titan__stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.audio-spectrum-titan__stat-value--pulse {
+  animation: stat-pulse 0.15s ease-out;
+}
+
+@keyframes stat-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); color: var(--accent-primary); }
+  100% { transform: scale(1); }
+}
+
+.audio-spectrum-titan__stat-value--dominant {
+  color: var(--accent-primary);
+}
+
+/* Confidence/Energy/Flux Bars */
+.audio-spectrum-titan__confidence-bar,
+.audio-spectrum-titan__energy-bar,
+.audio-spectrum-titan__flux-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.audio-spectrum-titan__confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  transition: width 0.2s ease;
+}
+
+.audio-spectrum-titan__energy-fill,
+.audio-spectrum-titan__flux-fill {
+  height: 100%;
+  transition: width 0.1s ease;
+}
+
+.audio-spectrum-titan__flux-fill {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+}
+
+/* Distribution Bar */
+.audio-spectrum-titan__distribution {
+  display: flex;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.audio-spectrum-titan__dist-segment {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.audio-spectrum-titan__dist-segment--sub {
+  background: #8b5cf6;
+}
+
+.audio-spectrum-titan__dist-segment--bass {
+  background: #6366f1;
+}
+
+.audio-spectrum-titan__dist-segment--mid {
+  background: #22d3ee;
+}
+
+.audio-spectrum-titan__dist-segment--high {
+  background: #f59e0b;
+}

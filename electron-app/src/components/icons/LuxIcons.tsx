@@ -1415,6 +1415,413 @@ export const ContextMatrixIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ============================================
+// 🌊 WAVE 1194: CONSCIOUSNESS UNLEASHED ICONS
+// ============================================
+
+/**
+ * 🔮 ORACLE EYE - Ojo místico para el Oracle Híbrido
+ */
+export const OracleEyeIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Ojo exterior */}
+    <path 
+      d="M12 5C5 5 2 12 2 12C2 12 5 19 12 19C19 19 22 12 22 12C22 12 19 5 12 5Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Iris */}
+    <circle cx="12" cy="12" r="4" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Pupila con brillo */}
+    <circle cx="12" cy="12" r="2" fill={color} />
+    <circle cx="10.5" cy="10.5" r="1" fill="white" opacity="0.8" />
+    {/* Rayos místicos */}
+    <path d="M12 2V4M12 20V22M4 12H2M22 12H20" stroke={color} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 🦋 BUTTERFLY BEAUTY - Mariposa para voto de Belleza
+ */
+export const ButterflyBeautyIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cuerpo */}
+    <path d="M12 6V18" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Cabeza */}
+    <circle cx="12" cy="5" r="1.5" fill={color} />
+    {/* Antenas */}
+    <path d="M11 4L9 2M13 4L15 2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Alas izquierdas */}
+    <path d="M12 8C12 8 6 6 4 9C2 12 5 15 8 14C8 14 12 13 12 11" stroke={color} strokeWidth="1.5" fill="none" />
+    <path d="M12 14C12 14 7 14 5 17C3 20 7 21 9 19C9 19 12 17 12 15" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Alas derechas */}
+    <path d="M12 8C12 8 18 6 20 9C22 12 19 15 16 14C16 14 12 13 12 11" stroke={color} strokeWidth="1.5" fill="none" />
+    <path d="M12 14C12 14 17 14 19 17C21 20 17 21 15 19C15 19 12 17 12 15" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Patrones en alas */}
+    <circle cx="7" cy="10" r="1" fill={color} opacity="0.5" />
+    <circle cx="17" cy="10" r="1" fill={color} opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🦊 FOX ENERGY - Zorro alerta para voto de Energía
+ */
+export const FoxEnergyIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cara del zorro */}
+    <path 
+      d="M12 20C12 20 6 18 4 14C2 10 4 6 4 6L8 10L12 4L16 10L20 6C20 6 22 10 20 14C18 18 12 20 12 20Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+      strokeLinejoin="round"
+    />
+    {/* Orejas internas */}
+    <path d="M5 7L8 10M19 7L16 10" stroke={color} strokeWidth="1" opacity="0.5" />
+    {/* Ojos astutos */}
+    <ellipse cx="9" cy="13" rx="1.5" ry="1" fill={color} />
+    <ellipse cx="15" cy="13" rx="1.5" ry="1" fill={color} />
+    {/* Nariz */}
+    <path d="M12 15L10 17H14L12 15Z" fill={color} />
+    {/* Marcas faciales */}
+    <path d="M8 14L6 16M16 14L18 16" stroke={color} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 🐋 WHALE CALM - Ballena serena para voto de Calma
+ */
+export const WhaleCalmIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cuerpo de ballena */}
+    <path 
+      d="M3 14C3 14 4 10 8 9C12 8 16 9 19 11C22 13 22 15 22 15C22 15 20 18 16 18C12 18 8 17 5 16C2 15 3 14 3 14Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Aleta dorsal */}
+    <path d="M12 9C12 9 13 6 15 7" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Cola */}
+    <path d="M3 14C3 14 1 12 2 10C3 8 5 9 5 9" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Ojo tranquilo */}
+    <circle cx="17" cy="12" r="1" fill={color} />
+    {/* Agua/chorro */}
+    <path d="M7 6C7 6 8 4 7 2M9 5C9 5 10 3 9 1" stroke={color} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+    {/* Líneas de serenidad */}
+    <path d="M10 13H14" stroke={color} strokeWidth="1" opacity="0.3" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * ✓ VOTE FOR - Check circular con rayos de aprobación
+ */
+export const VoteForIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#22c55e',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Círculo exterior */}
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" fill="none" />
+    {/* Check mark */}
+    <path d="M7 12L10 15L17 8" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    {/* Rayos de aprobación */}
+    <path d="M12 1V3M12 21V23M1 12H3M21 12H23" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
+/**
+ * ✗ VOTE AGAINST - X circular con ondas de rechazo
+ */
+export const VoteAgainstIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#ef4444',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Círculo exterior */}
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" fill="none" />
+    {/* X mark */}
+    <path d="M8 8L16 16M16 8L8 16" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    {/* Ondas de rechazo */}
+    <circle cx="12" cy="12" r="11" stroke={color} strokeWidth="1" opacity="0.3" />
+  </svg>
+)
+
+/**
+ * ◐ VOTE ABSTAIN - Círculo mitad para abstención
+ */
+export const VoteAbstainIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = '#64748b',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Círculo exterior */}
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" fill="none" />
+    {/* Mitad rellena */}
+    <path d="M12 3A9 9 0 0 0 12 21V3Z" fill={color} opacity="0.4" />
+    {/* Línea central */}
+    <path d="M12 3V21" stroke={color} strokeWidth="1.5" />
+  </svg>
+)
+
+/**
+ * 🕐 HOURGLASS HUNT - Reloj de arena con patas de gato
+ */
+export const HourglassHuntIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Marco del reloj */}
+    <path d="M6 2H18M6 22H18" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Cuerpo del reloj */}
+    <path 
+      d="M7 2V6C7 8 9 10 12 12C9 14 7 16 7 18V22M17 2V6C17 8 15 10 12 12C15 14 17 16 17 18V22" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Arena cayendo */}
+    <circle cx="12" cy="12" r="1" fill={color} />
+    <path d="M10 17H14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Patas de gato decorativas */}
+    <circle cx="5" cy="22" r="1" fill={color} opacity="0.5" />
+    <circle cx="19" cy="22" r="1" fill={color} opacity="0.5" />
+  </svg>
+)
+
+/**
+ * 🏆 TROPHY SUCCESS - Trofeo con estrella
+ */
+export const TrophySuccessIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Copa */}
+    <path 
+      d="M7 4H17V10C17 13 15 15 12 15C9 15 7 13 7 10V4Z" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      fill="none"
+    />
+    {/* Asas */}
+    <path d="M7 6H5C4 6 3 7 3 8C3 10 4 11 6 11H7" stroke={color} strokeWidth="1.5" />
+    <path d="M17 6H19C20 6 21 7 21 8C21 10 20 11 18 11H17" stroke={color} strokeWidth="1.5" />
+    {/* Base */}
+    <path d="M12 15V18M9 21H15M9 18H15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Estrella central */}
+    <path d="M12 7L13 9H15L13.5 10.5L14 12.5L12 11L10 12.5L10.5 10.5L9 9H11L12 7Z" fill={color} />
+  </svg>
+)
+
+/**
+ * 📜 SCROLL HISTORY - Pergamino con líneas
+ */
+export const ScrollHistoryIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Pergamino enrollado arriba */}
+    <path d="M6 4C6 2.9 6.9 2 8 2H18C19.1 2 20 2.9 20 4V4C20 5.1 19.1 6 18 6H8C6.9 6 6 5.1 6 4Z" stroke={color} strokeWidth="1.5" />
+    {/* Cuerpo del pergamino */}
+    <path d="M6 4V18C6 19.1 6.9 20 8 20H16" stroke={color} strokeWidth="1.5" />
+    {/* Enrollado abajo */}
+    <path d="M16 20C16 20 20 20 20 18V6" stroke={color} strokeWidth="1.5" />
+    <circle cx="18" cy="20" r="2" stroke={color} strokeWidth="1.5" />
+    {/* Líneas de texto */}
+    <path d="M9 9H15M9 12H13M9 15H14" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+  </svg>
+)
+
+/**
+ * ❓ WHY QUESTION - Signo de interrogación luminoso
+ */
+export const WhyQuestionIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Círculo exterior brillante */}
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.5" fill="none" />
+    <circle cx="12" cy="12" r="8" stroke={color} strokeWidth="0.5" opacity="0.3" />
+    {/* Signo de interrogación */}
+    <path 
+      d="M9 9C9 7.3 10.3 6 12 6C13.7 6 15 7.3 15 9C15 10.5 14 11 13 11.5C12.5 11.8 12 12.2 12 13V14" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round"
+      fill="none"
+    />
+    {/* Punto */}
+    <circle cx="12" cy="17" r="1.5" fill={color} />
+    {/* Rayos de iluminación */}
+    <path d="M12 1V2M12 22V23M1 12H2M22 12H23M4 4L5 5M19 19L20 20M4 20L5 19M19 4L20 5" stroke={color} strokeWidth="1" opacity="0.3" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 📊 SPARKLINE MINI - Mini gráfico de línea
+ */
+export const SparklineMiniIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Marco */}
+    <rect x="2" y="4" width="20" height="16" rx="2" stroke={color} strokeWidth="1.5" fill="none" opacity="0.3" />
+    {/* Línea de sparkline */}
+    <path 
+      d="M4 16L7 12L10 14L13 8L16 11L19 6L22 10" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      fill="none"
+    />
+    {/* Punto actual */}
+    <circle cx="22" cy="10" r="2" fill={color} />
+  </svg>
+)
+
+/**
+ * ⚖️ COUNCIL GAVEL - Mazo del consejo ético
+ */
+export const CouncilGavelIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Cabeza del mazo */}
+    <rect x="4" y="4" width="10" height="6" rx="1" stroke={color} strokeWidth="1.5" transform="rotate(-45 9 7)" />
+    {/* Mango */}
+    <path d="M11 11L18 18" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    {/* Base/plataforma */}
+    <path d="M16 20H22V22H16V20Z" fill={color} opacity="0.5" />
+    <ellipse cx="19" cy="20" rx="3" ry="1" stroke={color} strokeWidth="1.5" />
+    {/* Líneas de impacto */}
+    <path d="M6 14L4 16M8 16L6 18" stroke={color} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -1471,4 +1878,18 @@ export default {
   PaletteChromatic: PaletteChromaticIcon,
   StreamLog: StreamLogIcon,
   ContextMatrix: ContextMatrixIcon,
+  // WAVE 1194: Consciousness Unleashed icons
+  OracleEye: OracleEyeIcon,
+  ButterflyBeauty: ButterflyBeautyIcon,
+  FoxEnergy: FoxEnergyIcon,
+  WhaleCalm: WhaleCalmIcon,
+  VoteFor: VoteForIcon,
+  VoteAgainst: VoteAgainstIcon,
+  VoteAbstain: VoteAbstainIcon,
+  HourglassHunt: HourglassHuntIcon,
+  TrophySuccess: TrophySuccessIcon,
+  ScrollHistory: ScrollHistoryIcon,
+  WhyQuestion: WhyQuestionIcon,
+  SparklineMini: SparklineMiniIcon,
+  CouncilGavel: CouncilGavelIcon,
 }

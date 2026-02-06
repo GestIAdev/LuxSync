@@ -1,0 +1,230 @@
+/**
+ * 🎨 DREAM FORGE COMPLETE - CSS - WAVE 1194
+ */
+
+.dream-forge {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dream-forge__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+.dream-forge__title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CURRENT DREAM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dream-forge__current {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dream-forge__current-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dream-forge__current-emoji {
+  font-size: 1.3rem;
+}
+
+.dream-forge__current-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.dream-forge__current-status {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border: 1px solid;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Confidence */
+.dream-forge__confidence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dream-forge__confidence-label {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  min-width: 45px;
+}
+
+.dream-forge__confidence-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dream-forge__confidence-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.dream-forge__confidence-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WHY BLOCK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dream-forge__why {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dream-forge__why-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.dream-forge__why-text {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HISTORY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dream-forge__history {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.dream-forge__history-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.dream-forge__history-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dream-forge__history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dream-forge__history-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.dream-forge__history-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.dream-forge__history-empty {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+}
+
+.dream-forge__history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+}
+
+.dream-forge__history-item--cast {
+  border-left-color: #22c55e;
+}
+
+.dream-forge__history-item--blocked {
+  border-left-color: #ef4444;
+  opacity: 0.7;
+}
+
+.dream-forge__history-emoji {
+  font-size: 0.9rem;
+}
+
+.dream-forge__history-name {
+  flex: 1;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dream-forge__history-time {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  min-width: 45px;
+  text-align: right;
+}
+
+.dream-forge__history-status {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  min-width: 50px;
+  text-align: right;
+}

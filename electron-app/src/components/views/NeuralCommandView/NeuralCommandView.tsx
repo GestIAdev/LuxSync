@@ -1,5 +1,5 @@
 /**
- * 🧠 NEURAL COMMAND VIEW - WAVE 1167/1193: THE GREAT DIVIDE
+ * 🧠 NEURAL COMMAND VIEW - WAVE 1167/1193/1194: CONSCIOUSNESS UNLEASHED
  * 
  * Centro de mando neural de Selene - Ahora con 3 sub-vistas especializadas:
  * 
@@ -8,6 +8,7 @@
  * 📜 STREAM: Lo que Selene "dice" (Neural Log)
  * 
  * WAVE 1193: THE GREAT DIVIDE - Cada vista tiene el 100% del espacio disponible
+ * WAVE 1194: CONSCIOUSNESS UNLEASHED - ConsciousnessView reemplaza al HUD legado
  */
 
 import { useState, memo, useCallback, useEffect } from 'react'
@@ -16,11 +17,11 @@ import { useTruthSystem, useTruthConnected } from '../../../hooks'
 // WAVE 1193: Sub-tab navigation
 import { SubTabNavigation, type SubTabId } from './SubTabNavigation'
 
-// WAVE 1193: New specialized views
+// WAVE 1193/1194: Specialized views
 import { SensoryView } from '../SensoryView'
+import { ConsciousnessView } from '../ConsciousnessView'
 
-// Legacy components (ConsciousnessHUD stays as-is until Phase 3)
-import { ConsciousnessHUD } from '../../telemetry/ConsciousnessHUD'
+// Legacy components (NeuralStreamLog stays as-is)
 import { NeuralStreamLog } from '../../telemetry/NeuralStreamLog'
 
 // Icons
@@ -129,10 +130,10 @@ export const NeuralCommandView = memo(() => {
           </div>
         )}
         
-        {/* 🧠 CONSCIOUSNESS VIEW (Legacy mode until Phase 3) */}
+        {/* 🧠 CONSCIOUSNESS VIEW - WAVE 1194: UNLEASHED */}
         {activeSubTab === 'consciousness' && (
           <div className="ncv-view ncv-view--consciousness" role="tabpanel" id="panel-consciousness">
-            <ConsciousnessHUD />
+            <ConsciousnessView />
           </div>
         )}
         

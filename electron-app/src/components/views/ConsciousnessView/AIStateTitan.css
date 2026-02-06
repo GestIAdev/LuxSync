@@ -1,0 +1,234 @@
+/**
+ * 🐱 AI STATE TITAN - CSS - WAVE 1194
+ */
+
+.ai-titan {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.05) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.ai-titan__title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATE BADGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.ai-titan__state-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.ai-titan__state-badge--striking {
+  animation: strike-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes strike-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+}
+
+.ai-titan__state-emoji {
+  font-size: 1.2rem;
+}
+
+.ai-titan__state-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.ai-titan__state-desc {
+  font-size: 0.65rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIDENCE BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__confidence {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 10px;
+}
+
+.ai-titan__confidence-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  min-width: 70px;
+}
+
+.ai-titan__confidence-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ai-titan__confidence-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.ai-titan__confidence-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__stats {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ai-titan__stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-titan__stat-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.ai-titan__stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REASONING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__reasoning {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px 12px;
+}
+
+.ai-titan__reasoning-header {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.ai-titan__reasoning-text {
+  flex: 1;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.ai-titan__reasoning-text::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ai-titan__reasoning-text::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.ai-titan__reasoning-text::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BEAUTY SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-titan__beauty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ai-titan__beauty-sparkline {
+  width: 80px;
+  height: 24px;
+}
+
+.ai-titan__beauty-sparkline svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ai-titan__beauty-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-titan__beauty-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.ai-titan__beauty-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}

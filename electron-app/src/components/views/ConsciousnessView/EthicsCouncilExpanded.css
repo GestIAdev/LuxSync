@@ -1,0 +1,171 @@
+/**
+ * ⚖️ ETHICS COUNCIL EXPANDED - CSS - WAVE 1194
+ */
+
+.ethics-council {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.05) 0%, transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ethics-council__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.ethics-council__title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VOTE CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ethics-council__votes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+
+.ethics-council__vote-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.ethics-council__vote-card:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.ethics-council__vote-card--for {
+  box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+.ethics-council__vote-card--against {
+  box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+.ethics-council__vote-card--abstain {
+  opacity: 0.7;
+}
+
+/* Advisor Row */
+.ethics-council__advisor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ethics-council__advisor-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Vote Status */
+.ethics-council__vote-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 32px;
+}
+
+.ethics-council__vote-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Reason */
+.ethics-council__reason {
+  font-size: 0.6rem;
+  color: var(--text-muted, #64748b);
+  margin-left: 32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ethics-council__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Consensus */
+.ethics-council__consensus {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ethics-council__consensus-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  min-width: 60px;
+}
+
+.ethics-council__consensus-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ethics-council__consensus-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.ethics-council__consensus-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Verdict */
+.ethics-council__verdict {
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.3);
+}

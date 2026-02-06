@@ -1,0 +1,60 @@
+/**
+ * 🧠 CONSCIOUSNESS VIEW - CSS - WAVE 1194
+ * Layout: Grid 2x2 (50% × 50% cada panel)
+ */
+
+.consciousness-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+  padding: 4px;
+}
+
+.consciousness-view__row {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-height: 0; /* Permite que flex shrink funcione */
+}
+
+.consciousness-view__panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card, rgba(18, 18, 26, 0.8));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Panel específicos con bordes temáticos */
+.consciousness-view__panel--oracle {
+  border-color: rgba(139, 92, 246, 0.3); /* Violeta místico */
+}
+
+.consciousness-view__panel--ethics {
+  border-color: rgba(34, 211, 238, 0.3); /* Cyan balance */
+}
+
+.consciousness-view__panel--ai {
+  border-color: rgba(249, 115, 22, 0.3); /* Naranja cazador */
+}
+
+.consciousness-view__panel--dream {
+  border-color: rgba(236, 72, 153, 0.3); /* Rosa sueño */
+}
+
+/* Hover effects */
+.consciousness-view__panel:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive: Stack vertical en pantallas pequeñas */
+@media (max-width: 1200px) {
+  .consciousness-view__row {
+    flex-direction: column;
+  }
+}

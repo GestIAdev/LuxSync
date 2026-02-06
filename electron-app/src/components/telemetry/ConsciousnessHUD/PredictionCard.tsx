@@ -1,5 +1,5 @@
 /**
- * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184/1185/1186/1189
+ * 🔮 PREDICTION CARD - WAVE 1169/1172/1176/1184/1185/1186/1189/1192
  * "The Oracle" - La Money Card que tiene que verse VIVA
  * 
  * WAVE 1184: THE NEURAL BINDING - Estados visuales dinámicos
@@ -10,9 +10,14 @@
  * - Fallback Cascade: prediction → physical trend → idle
  * - Dynamic Labels: No más "SCANNING" - muestra tendencias reales
  * - energyZone como criterio para buildup/breakdown
+ * 
+ * 💊 WAVE 1192: VISUAL VALIUM - Anti-epileptic State Latching
+ * - visualState desacoplado del predictionState
+ * - Ascenso inmediato a estados prioritarios
+ * - Descenso con delay de 1000ms a STABLE
  */
 
-import React, { useMemo, useEffect, useRef, useState } from 'react'
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
 import { PredictionOrbIcon, TrendUpIcon, TrendDownIcon, TrendStableIcon } from '../../icons/LuxIcons'
 
 export interface PredictionCardProps {
@@ -32,7 +37,19 @@ const ROLLING_BUFFER_SIZE = 30
 const SPARKLINE_POINTS = 60
 const SPARKLINE_SAMPLE_INTERVAL = 10 // cada 10 frames
 
+// 💊 WAVE 1192: Estado de descenso - cuánto esperar antes de volver a STABLE
+const DESCENT_DELAY_MS = 1000
+
 type PredictionState = 'drop_incoming' | 'energy_spike' | 'buildup' | 'breakdown' | 'stable'
+
+// 💊 WAVE 1192: Prioridad de estados (mayor = más importante, se muestra antes)
+const STATE_PRIORITY: Record<PredictionState, number> = {
+  drop_incoming: 100,  // Máxima prioridad
+  energy_spike: 80,
+  buildup: 60,
+  breakdown: 40,
+  stable: 0            // Mínima prioridad
+}
 
 const PREDICTION_VISUALS: Record<PredictionState, {
   icon: string
@@ -94,7 +111,11 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   const prevStateRef = useRef<PredictionState>('stable')
   const [flashActive, setFlashActive] = useState(false)
   
-  // 🔮 WAVE 1186: Rolling average buffer para anti-jitter
+  // � WAVE 1192: VISUAL VALIUM - Estado visual desacoplado
+  const [visualState, setVisualState] = useState<PredictionState>('stable')
+  const descentTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // �🔮 WAVE 1186: Rolling average buffer para anti-jitter
   const velocityBufferRef = useRef<number[]>([])
   const [smoothedVelocity, setSmoothedVelocity] = useState(0)
   
@@ -154,12 +175,59 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
     return 'stable'
   }, [hasPrediction, prediction, energyTrend, energyZone])
   
+  // 💊 WAVE 1192: VISUAL VALIUM - State Latching System
+  // El visualState se desacopla del predictionState para evitar parpadeo
   useEffect(() => {
-    if (prevStateRef.current !== predictionState) {
-      console.log(`[PredictionCard 🔮] STATE: ${prevStateRef.current} → ${predictionState} | vel=${smoothedVelocity.toFixed(4)}`)
-      prevStateRef.current = predictionState
+    const currentPriority = STATE_PRIORITY[predictionState]
+    const visualPriority = STATE_PRIORITY[visualState]
+    
+    // REGLA DE ASCENSO: Si llega un estado de mayor prioridad, actualizar INMEDIATAMENTE
+    if (currentPriority > visualPriority) {
+      // Cancelar cualquier timer de descenso pendiente
+      if (descentTimerRef.current) {
+        clearTimeout(descentTimerRef.current)
+        descentTimerRef.current = null
+      }
+      console.log(`[PredictionCard 💊] ASCENT: ${visualState} → ${predictionState} (priority ${visualPriority} → ${currentPriority})`)
+      setVisualState(predictionState)
       setFlashActive(true)
       setTimeout(() => setFlashActive(false), 300)
+    }
+    // REGLA DE DESCENSO: Si el estado baja a STABLE, esperar DESCENT_DELAY_MS
+    else if (predictionState === 'stable' && visualState !== 'stable') {
+      // Solo programar si no hay timer activo
+      if (!descentTimerRef.current) {
+        console.log(`[PredictionCard 💊] DESCENT SCHEDULED: ${visualState} → stable in ${DESCENT_DELAY_MS}ms`)
+        descentTimerRef.current = setTimeout(() => {
+          console.log(`[PredictionCard 💊] DESCENT EXECUTED: → stable`)
+          setVisualState('stable')
+          descentTimerRef.current = null
+        }, DESCENT_DELAY_MS)
+      }
+    }
+    // Si el nuevo estado es diferente pero no es stable, y es de igual o menor prioridad
+    // Solo actualizar si no estamos esperando descenso
+    else if (predictionState !== visualState && predictionState !== 'stable') {
+      // Estado lateral (ej: buildup → breakdown) - actualizar con pequeño delay
+      if (!descentTimerRef.current) {
+        setVisualState(predictionState)
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (descentTimerRef.current) {
+        clearTimeout(descentTimerRef.current)
+      }
+    }
+  }, [predictionState, visualState])
+  
+  // 💊 WAVE 1192: Log de estado raw para debugging (sin flash duplicado)
+  useEffect(() => {
+    if (prevStateRef.current !== predictionState) {
+      console.log(`[PredictionCard 🔮] RAW STATE: ${prevStateRef.current} → ${predictionState} | vel=${smoothedVelocity.toFixed(4)}`)
+      prevStateRef.current = predictionState
+      // Flash ya se maneja en el latching de arriba
     }
   }, [predictionState, smoothedVelocity])
   
@@ -183,13 +251,14 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
     ? TrendUpIcon 
     : energyTrend === 'falling' ? TrendDownIcon : TrendStableIcon
 
-  const visual = PREDICTION_VISUALS[predictionState]
+  // 💊 WAVE 1192: Usar visualState para los visuales, no predictionState
+  const visual = PREDICTION_VISUALS[visualState]
 
   // 🔮 WAVE 1189: DYNAMIC LABELS - El oráculo habla con claridad
-  // No más "SCANNING" estático - mostrar lo que realmente está pasando
+  // 💊 WAVE 1192: Basado en visualState para consistencia visual
   const displayLabel = useMemo(() => {
     // Si hay un estado activo (no stable), usar su label
-    if (predictionState !== 'stable') {
+    if (visualState !== 'stable') {
       return visual.label
     }
     // En stable, mostrar tendencia física
@@ -198,7 +267,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
     if (energyTrend === 'spike') return 'SPIKE DETECTED'
     // Solo si es plano total
     return 'MONITORING FLOW'
-  }, [predictionState, energyTrend, visual.label])
+  }, [visualState, energyTrend, visual.label])
 
   const zoneConfig: Record<string, { label: string; color: string; emoji: string }> = {
     calm: { label: 'CALM', color: '#64748b', emoji: '🌊' },
@@ -275,9 +344,10 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
           </>
         ) : (
           /* 🔮 WAVE 1186: Estado sin predicción - Trend Gauge + Sparkline */
+          /* 💊 WAVE 1192: Usa visualState para clase activa */
           <div className="prediction-card__analyzing">
             {/* Header con estado */}
-            <div className={`prediction-card__analyzing-header ${predictionState !== 'stable' ? 'prediction-card__analyzing-header--active' : ''}`}>
+            <div className={`prediction-card__analyzing-header ${visualState !== 'stable' ? 'prediction-card__analyzing-header--active' : ''}`}>
               <span className="prediction-card__analyzing-icon">{visual.icon}</span>
               <span className="prediction-card__analyzing-text" style={{ color: visual.color }}>
                 {displayLabel}
@@ -313,43 +383,45 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
               <span className="prediction-card__gauge-label prediction-card__gauge-label--right">↗</span>
             </div>
 
-            {/* Delta numérico */}
-            <div className="prediction-card__delta">
-              <span 
-                className="prediction-card__delta-value"
-                style={{ 
-                  color: isRising ? '#22d3ee' : isFalling ? '#a855f7' : '#64748b'
-                }}
-              >
-                δ {smoothedVelocity >= 0 ? '+' : ''}{smoothedVelocity.toFixed(4)}
-              </span>
-            </div>
-
-            {/* 🔮 WAVE 1186: SPARKLINE - Mini gráfico de energía */}
-            <div className="prediction-card__sparkline">
+            {/* 🔮 WAVE 1191: VISUAL SILENCE FIX - Sparkline más grande, sin delta numérico */}
+            {/* El delta numérico δ +0.0014 era ilegible a 60fps - ELIMINADO */}
+            <div className="prediction-card__sparkline prediction-card__sparkline--large">
               <svg 
-                viewBox="0 0 100 20" 
+                viewBox="0 0 100 30" 
                 preserveAspectRatio="none"
                 className="prediction-card__sparkline-svg"
               >
-                {/* Grid lines */}
-                <line x1="0" y1="10" x2="100" y2="10" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-                {/* Energy line */}
+                {/* Grid lines sutiles */}
+                <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+                <line x1="0" y1="7.5" x2="100" y2="7.5" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" strokeDasharray="2,2" />
+                <line x1="0" y1="22.5" x2="100" y2="22.5" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" strokeDasharray="2,2" />
+                
+                {/* Energy line con glow */}
                 <path 
-                  d={sparklinePath}
+                  d={sparklinePath.replace(/20/g, '30')}
                   fill="none"
                   stroke="url(#sparklineGradient)"
-                  strokeWidth="1.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  filter="url(#glow)"
                 />
-                {/* Gradient definition */}
+                
+                {/* Gradient y glow definitions */}
                 <defs>
                   <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#64748b" />
-                    <stop offset="50%" stopColor="#8b5cf6" />
-                    <stop offset="100%" stopColor="#22d3ee" />
+                    <stop offset="40%" stopColor="#8b5cf6" />
+                    <stop offset="70%" stopColor="#22d3ee" />
+                    <stop offset="100%" stopColor="#06b6d4" />
                   </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
                 </defs>
               </svg>
               <span className="prediction-card__sparkline-label">10s</span>

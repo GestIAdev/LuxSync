@@ -1,8 +1,9 @@
 /**
- * 🐱 AI STATE CARD - WAVE 1169
+ * 🐱 AI STATE CARD - WAVE 1169/1192
  * Estado de caza de la gata Selene
  * 
  * WAVE 1169: Muerte al scrollbar, truncate del reasoning
+ * 💊 WAVE 1192: VISUAL VALIUM - Eliminada barra de Target (redundante con PredictionCard)
  */
 
 import React from 'react'
@@ -20,7 +21,7 @@ export interface AIStateCardProps {
   beautyScore: number
   beautyTrend: 'rising' | 'falling' | 'stable'
   reasoning: string | null
-  /** Target actual (DROP, BREAKDOWN, etc) */
+  /** @deprecated 💊 WAVE 1192: Ya no se renderiza, usar PredictionCard */
   target?: string | null
 }
 
@@ -130,13 +131,8 @@ export const AIStateCard: React.FC<AIStateCardProps> = ({
           <span className="ai-state-card__confidence-value">{confidencePercent}%</span>
         </div>
 
-        {/* WAVE 1169: Target display */}
-        {target && (
-          <div className="ai-state-card__target">
-            <span className="neural-label">Target:</span>
-            <span className="ai-state-card__target-value">{target.toUpperCase()}</span>
-          </div>
-        )}
+        {/* 💊 WAVE 1192: Target display ELIMINADO - Redundante con PredictionCard */}
+        {/* La información de target ahora se muestra únicamente en la PredictionCard */}
 
         {/* Reasoning - TRUNCATED (tooltip shows full) */}
         {reasoning && (

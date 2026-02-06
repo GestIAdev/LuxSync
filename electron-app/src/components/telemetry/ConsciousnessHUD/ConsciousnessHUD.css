@@ -1019,6 +1019,20 @@
   margin-left: auto;
 }
 
+/* ═══════════════════════════════════════════════
+   💊 WAVE 1192: VISUAL VALIUM - PREDICTION CARD BASE
+   Altura fija para evitar layout shift
+   ═══════════════════════════════════════════════ */
+.prediction-card {
+  min-height: 140px;
+  max-height: 160px;
+  overflow: hidden;
+}
+
+.prediction-card .consciousness-card__body {
+  overflow: hidden;
+}
+
 /* ───────── PREDICTION CARD: Dynamic Visual States ───────── */
 
 /* DROP INCOMING - El evento más importante */
@@ -1223,20 +1237,8 @@
   border-radius: 0 4px 4px 0;
 }
 
-/* ───────── PREDICTION: DELTA VALUE ───────── */
-.prediction-card__delta {
-  text-align: center;
-  margin: 2px 0;
-}
-
-.prediction-card__delta-value {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
 /* ───────── PREDICTION: SPARKLINE ───────── */
+/* 🔮 WAVE 1191: Sparkline más grande, eliminado delta numérico */
 .prediction-card__sparkline {
   position: relative;
   height: 24px;
@@ -1244,6 +1246,16 @@
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   padding: 2px;
+}
+
+/* 🔮 WAVE 1191: Versión grande del sparkline */
+.prediction-card__sparkline--large {
+  height: 40px;
+  flex: 1;
+  min-height: 40px;
+  margin-top: 6px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .prediction-card__sparkline-svg {

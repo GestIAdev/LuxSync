@@ -1072,6 +1072,22 @@ export class SeleneTitanConscious extends EventEmitter {
       this.state.activePrediction = null
     }
     
+    // 🔌 WAVE 1191: VISUAL SILENCE FIX - Inyectar activePrediction en debugInfo
+    // Ahora TitanEngine.getConsciousnessTelemetry() recibirá el dato REAL
+    if (this.state.activePrediction) {
+      output = {
+        ...output,
+        debugInfo: {
+          ...output.debugInfo,
+          activePrediction: {
+            type: this.state.activePrediction.type,
+            probability: this.state.activePrediction.probability,
+            timeUntilMs: this.state.activePrediction.estimatedTimeMs ?? 0,
+          }
+        }
+      }
+    }
+    
     // Log periódico con información fuzzy
     if (this.config.debug && this.stats.framesProcessed % 30 === 0) {
       const fuzzyEmoji = {

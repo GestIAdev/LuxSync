@@ -415,6 +415,20 @@ export class TitanEngine extends EventEmitter {
     // Obtener la Constitución del Vibe actual
     let constitution = getColorConstitution(vibeProfile.id)
     
+    // 🔒 WAVE 1209.3: ULTRA-LOCK MODE - Force StrategyArbiter's locked strategy
+    // SeleneColorEngine tiene su propio cálculo de estrategia basado en syncopation crudo.
+    // Forzamos la estrategia estabilizada del Arbiter (con commitment de 30s) para que
+    // el lock realmente funcione.
+    // Map split-complementary → complementary (SeleneColorEngine no soporta split)
+    const mappedStrategy = strategyOutput.stableStrategy === 'split-complementary' 
+      ? 'complementary' 
+      : strategyOutput.stableStrategy as ('analogous' | 'triadic' | 'complementary');
+    
+    constitution = {
+      ...constitution,
+      forceStrategy: mappedStrategy,
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context
     // Si el vibe es chill, calculamos el contexto oceánico ANTES de la paleta

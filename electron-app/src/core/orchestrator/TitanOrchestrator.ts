@@ -531,9 +531,10 @@ export class TitanOrchestrator {
     // Arbitrate all layers (this merges manual overrides, effects, blackout)
     const arbitratedTarget = masterArbiter.arbitrate()
     
-    // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~2 seconds (120 frames at 60fps)
+    // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
+    // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
     this.warlogHeartbeatFrame++
-    if (this.warlogHeartbeatFrame >= 120) {
+    if (this.warlogHeartbeatFrame >= 240) {
       this.warlogHeartbeatFrame = 0
       
       const currentVibe = this.engine.getCurrentVibe()
@@ -1005,9 +1006,9 @@ export class TitanOrchestrator {
       }
     }
     
-    // WAVE 257: Throttled logging to Tactical Log (every 2 seconds = 120 frames @ 60fps)
-    // 🎛️ WAVE 1198.7: Aumentado de 30 a 120 frames para reducir spam
-    const shouldLogToTactical = this.frameCount % 120 === 0
+    // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
+    // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+    const shouldLogToTactical = this.frameCount % 240 === 0
     
     if (shouldLogToTactical && this.hasRealAudio) {
       const avgDimmer = fixtureStates.length > 0 

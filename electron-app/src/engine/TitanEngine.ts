@@ -1367,15 +1367,15 @@ export class TitanEngine extends EventEmitter {
    * 📜 WAVE 560: Emite logs de consciencia para el Tactical Log
    * 
    * Solo emite cuando hay cambios de estado significativos, no cada frame.
-   * 🎛️ WAVE 1198.7: THROTTLE - Máximo 1 log cada 10 frames (~6/segundo @ 60fps)
+   * 🎛️ WAVE 1198.7: THROTTLE - Máximo 1 log cada 30 frames (~2/segundo @ 60fps)
    */
   private emitConsciousnessLogs(output: ConsciousnessOutput, energy: number): void {
     // No emitir si no hay energía o consciencia deshabilitada
     if (energy < 0.05 || !this.selene.isEnabled()) return
     
-    // 🎛️ WAVE 1198.7: THROTTLE - Solo permitir logs cada 10 frames
+    // 🎛️ WAVE 1198.7: THROTTLE - Solo permitir logs cada 30 frames (~2/segundo)
     const framesSinceLastLog = this.state.frameCount - this.lastLogFrame
-    const canEmitLog = framesSinceLastLog >= 10
+    const canEmitLog = framesSinceLastLog >= 30
     
     const debug = output.debugInfo
     const huntState = debug.huntState
@@ -1488,20 +1488,22 @@ export class TitanEngine extends EventEmitter {
     const newFlags = currentEthicsFlags.filter(f => !this.lastEthicsFlags.includes(f))
     const clearedFlags = this.lastEthicsFlags.filter(f => !currentEthicsFlags.includes(f))
     
-    if (newFlags.length > 0) {
+    if (newFlags.length > 0 && canEmitLog) {
       this.emit('log', {
         category: 'Ethics',
         message: `🛡️ Ethics Alert: ${newFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
         data: { flags: newFlags }
       })
+      this.lastLogFrame = this.state.frameCount  // 🎛️ Update throttle
     }
     
-    if (clearedFlags.length > 0 && this.state.frameCount % 30 === 0) {
+    if (clearedFlags.length > 0 && canEmitLog) {
       this.emit('log', {
         category: 'Ethics',
         message: `✅ Ethics Cleared: ${clearedFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
         data: { cleared: clearedFlags }
       })
+      this.lastLogFrame = this.state.frameCount  // 🎛️ Update throttle
     }
     
     this.lastEthicsFlags = [...currentEthicsFlags]

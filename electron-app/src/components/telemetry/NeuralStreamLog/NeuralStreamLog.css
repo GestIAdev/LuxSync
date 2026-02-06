@@ -1,259 +1,378 @@
 /**
- * 📜 NEURAL STREAM LOG - CSS - WAVE 1167
+ * 📜 WAR LOG CSS - WAVE 1197: THE WAR LOG
+ * Full-screen tactical logger with spaceship aesthetics
  */
 
-.neural-stream-log {
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTAINER - Full Height
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.war-log {
   display: flex;
   flex-direction: column;
-  min-height: 200px;
-  max-height: 400px;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-/* Header with status and actions */
-.neural-stream-log__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   STICKY HEADER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.war-log__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
 }
 
-.neural-stream-log__status {
+.war-log__title-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.war-log__title {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+/* Status Badge */
+.war-log__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
-  padding: 2px 8px;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 4px;
-  font-size: 0.6rem;
+  padding: 4px 10px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
   font-weight: 600;
   color: var(--accent-success);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
-.neural-stream-log__status--paused {
-  background: rgba(100, 116, 139, 0.1);
-  border-color: rgba(100, 116, 139, 0.2);
+.war-log__status--paused {
+  background: rgba(100, 116, 139, 0.12);
+  border-color: rgba(100, 116, 139, 0.25);
   color: var(--text-muted);
 }
 
-.neural-stream-log__actions {
+/* Action Buttons */
+.war-log__actions {
   display: flex;
-  gap: 4px;
-  margin-left: 8px;
+  gap: 6px;
 }
 
-.neural-stream-log__btn {
-  width: 24px;
-  height: 24px;
+.war-log__btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  font-size: 0.7rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
 }
 
-.neural-stream-log__btn:hover {
+.war-log__btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
+  transform: scale(1.05);
 }
 
-.neural-stream-log__btn--danger:hover {
+.war-log__btn--danger:hover {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.3);
   color: #ef4444;
 }
 
-/* Category Filters */
-.neural-stream-log__filters {
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPACESHIP FILTERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.war-log__filters {
   display: flex;
-  gap: 4px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 8px;
   overflow-x: auto;
+  padding-bottom: 4px;
   scrollbar-width: none;
 }
 
-.neural-stream-log__filters::-webkit-scrollbar {
+.war-log__filters::-webkit-scrollbar {
   display: none;
 }
 
-.neural-stream-log__filter {
-  padding: 4px 8px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: var(--text-muted);
+.war-log__filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  min-width: 70px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s ease;
+}
+
+.war-log__filter:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.war-log__filter--active {
+  background: rgba(var(--filter-color-rgb, 139, 92, 246), 0.12);
+  border-color: var(--filter-color, var(--accent-primary));
+  box-shadow: 
+    0 0 15px rgba(var(--filter-color-rgb, 139, 92, 246), 0.2),
+    inset 0 0 10px rgba(var(--filter-color-rgb, 139, 92, 246), 0.05);
+}
+
+.war-log__filter--active .war-log__filter-label {
+  color: var(--filter-color, var(--accent-primary));
+}
+
+.war-log__filter-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.neural-stream-log__filter:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  color: var(--text-secondary);
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOG STREAM - Scrollable Area
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.neural-stream-log__filter--active {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
-  color: var(--accent-primary);
-}
-
-/* Log Scroll Container */
-.neural-stream-log__scroll {
+.war-log__scroll {
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-.neural-stream-log__scroll::-webkit-scrollbar {
-  width: 4px;
+.war-log__scroll::-webkit-scrollbar {
+  width: 6px;
 }
 
-.neural-stream-log__scroll::-webkit-scrollbar-track {
+.war-log__scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.neural-stream-log__scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+.war-log__scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.war-log__scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Empty State */
-.neural-stream-log__empty {
+.war-log__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 120px;
+  gap: 16px;
+  height: 100%;
+  min-height: 200px;
   color: var(--text-muted);
-  font-size: 0.75rem;
-}
-
-.neural-stream-log__empty span:first-child {
-  font-size: 2rem;
-  opacity: 0.3;
-}
-
-/* Footer */
-.neural-stream-log__footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.6rem;
-  color: var(--text-muted);
-}
-
-.neural-stream-log__filter-label {
-  padding: 2px 6px;
-  background: rgba(139, 92, 246, 0.1);
-  border-radius: 3px;
-  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  opacity: 0.5;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LOG ENTRY STYLES (supplement globals.css)
+   LOG ENTRY
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.log-entry {
+.war-log__entry {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 16px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  border-left: 2px solid transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.log-entry:hover {
+.war-log__entry:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
 /* Timestamp */
-.log-entry__time {
+.war-log__time {
   flex-shrink: 0;
-  width: 28px;
+  width: 36px;
   text-align: right;
   color: var(--text-muted);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
 }
 
 /* Category Badge */
-.log-entry__category {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.war-log__category {
   flex-shrink: 0;
-  min-width: 70px;
-  font-weight: 600;
-  font-size: 0.55rem;
+  min-width: 65px;
+  font-weight: 700;
+  font-size: 0.65rem;
   letter-spacing: 0.5px;
 }
 
 /* Message */
-.log-entry__message {
+.war-log__message {
   flex: 1;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
-/* Category-specific borders on hover */
-.log-entry--brain:hover { border-left-color: var(--cat-brain); }
-.log-entry--dream:hover { border-left-color: var(--cat-dream); }
-.log-entry--ethics:hover { border-left-color: var(--cat-ethics); }
-.log-entry--strike:hover { border-left-color: var(--cat-strike); }
-.log-entry--effect:hover { border-left-color: var(--cat-effect); }
-.log-entry--color:hover { border-left-color: var(--cat-color); }
-.log-entry--beat:hover { border-left-color: var(--cat-beat); }
-.log-entry--drop:hover { border-left-color: var(--cat-drop); }
-.log-entry--section:hover { border-left-color: var(--cat-section); }
-.log-entry--system:hover { border-left-color: var(--cat-system); }
-.log-entry--dmx:hover { border-left-color: var(--cat-dmx); }
-.log-entry--error:hover { border-left-color: var(--cat-error); }
+/* ═══════════════════════════════════════════════════════════════════════════
+   STYLE VARIANTS - Border Colors on Hover
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Error entries stand out */
-.log-entry--error {
-  background: rgba(239, 68, 68, 0.05);
+.war-log__entry--cassandra:hover {
+  border-left-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.05);
 }
 
-.log-entry--error .log-entry__message {
-  color: var(--cat-error);
+.war-log__entry--ethics:hover {
+  border-left-color: #fb923c;
+  background: rgba(251, 146, 60, 0.05);
 }
 
-/* Drop entries are exciting */
-.log-entry--drop {
-  animation: drop-flash 0.3s ease-out;
+.war-log__entry--divine {
+  background: rgba(251, 191, 36, 0.08);
+  border-left-color: #fbbf24;
+  animation: divine-glow 0.5s ease-out;
 }
 
-@keyframes drop-flash {
-  0% { background: rgba(239, 68, 68, 0.2); }
-  100% { background: transparent; }
+.war-log__entry--divine:hover {
+  background: rgba(251, 191, 36, 0.12);
 }
 
-/* Strike entries pulse */
-.log-entry--strike {
-  animation: strike-flash 0.2s ease-out;
+.war-log__entry--dream:hover {
+  border-left-color: #94a3b8;
 }
 
-@keyframes strike-flash {
-  0% { background: rgba(250, 204, 21, 0.15); }
-  100% { background: transparent; }
+.war-log__entry--system:hover {
+  border-left-color: #64748b;
+}
+
+.war-log__entry--default:hover {
+  border-left-color: #a78bfa;
+}
+
+/* Divine Glow Animation */
+@keyframes divine-glow {
+  0% {
+    background: rgba(251, 191, 36, 0.25);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+  }
+  100% {
+    background: rgba(251, 191, 36, 0.08);
+    box-shadow: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.war-log__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.war-log__filter-active {
+  padding: 3px 8px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 4px;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.war-log__resume {
+  margin-left: auto;
+  padding: 5px 12px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent-success);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.war-log__resume:hover {
+  background: rgba(34, 197, 94, 0.2);
+  transform: scale(1.02);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* New entry fade-in */
+.war-log__entry {
+  animation: entry-slide 0.2s ease-out;
+}
+
+@keyframes entry-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Drop impact flash */
+.war-log__entry--divine .war-log__message {
+  animation: text-glow 0.3s ease-out;
+}
+
+@keyframes text-glow {
+  0% {
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+  }
+  100% {
+    text-shadow: none;
+  }
 }

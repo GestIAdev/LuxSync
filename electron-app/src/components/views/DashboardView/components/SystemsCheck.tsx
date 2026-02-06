@@ -1,6 +1,11 @@
 /**
- * 🎛️ SYSTEMS CHECK - WAVE 1201: LEGACY BUTTONS
+ * 🎛️ SYSTEMS CHECK - WAVE 1203: THE ACCORDION MANEUVER
  * "Mission Control Pre-Flight Check"
+ * 
+ * WAVE 1203: Accordion Mutex behavior
+ * - Audio/DMX sections are mutually exclusive (click to toggle)
+ * - Visualizer ALWAYS visible in Audio header
+ * - Recovers vertical space for 1080p
  * 
  * WAVE 1201: Segmented Controls instead of dropdowns
  * - Audio: [ SIMULATION ] [ SYSTEM ] [ MIC ]
@@ -28,6 +33,7 @@ const getDmxApi = () => (window as any).lux?.dmx
 
 type AudioSource = 'simulation' | 'system' | 'microphone'
 type DMXDriver = 'virtual' | 'usb-serial' | 'artnet'
+type AccordionSection = 'audio' | 'dmx'
 
 interface SystemStatus {
   audio: 'online' | 'offline' | 'error'
@@ -353,6 +359,9 @@ export const SystemsCheck: React.FC = () => {
   const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore()
   const hardware = useTruthStore(selectHardware)
   
+  // 🪗 WAVE 1203: ACCORDION STATE (Mutex behavior - null = todas cerradas)
+  const [activeSection, setActiveSection] = useState<AccordionSection | null>('dmx')
+  
   const [isAudioConnecting, setIsAudioConnecting] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
   
@@ -361,6 +370,11 @@ export const SystemsCheck: React.FC = () => {
     audio: 'online',
     dmx: hardware?.dmx?.connected ? 'online' : 'offline'
   })
+  
+  // 🪗 WAVE 1203: Toggle accordion (click mismo = cierra)
+  const toggleSection = useCallback((section: AccordionSection) => {
+    setActiveSection(prev => prev === section ? null : section)
+  }, [])
   
   // Update DMX status from truth
   useEffect(() => {
@@ -490,52 +504,61 @@ export const SystemsCheck: React.FC = () => {
       </div>
       
       {/* ════════════════════════════════════════════════════════════════════
-          🎵 AUDIO INPUT — LEGACY SEGMENTED BUTTONS
+          🎵 AUDIO INPUT — WAVE 1203: ACCORDION WITH INLINE VISUALIZER
           ════════════════════════════════════════════════════════════════════ */}
       <div className="system-section">
-        <div className="section-header">
+        <div 
+          className={`section-header clickable ${activeSection === 'audio' ? 'active' : 'inactive'}`}
+          onClick={() => toggleSection('audio')}
+        >
           <div className="section-icon-badge audio">
             <AudioWaveIcon size={16} />
           </div>
           <span className="section-title">AUDIO IN</span>
+          {/* WAVE 1203: Visualizer ALWAYS visible in header */}
+          <div className="header-visualizer">
+            <MiniVisualizer />
+          </div>
           <div className={`status-indicator ${status.audio}`}>
             <span className="status-dot" />
             <span className="status-text">
               {status.audio === 'online' ? 'ACTIVE' : 'IDLE'}
             </span>
           </div>
+          <span className="accordion-arrow">{activeSection === 'audio' ? '▼' : '▶'}</span>
         </div>
         
-        {/* Legacy Segmented Control */}
-        <div className="legacy-button-group">
-          {audioOptions.map(opt => (
-            <button
-              key={opt.id}
-              className={`legacy-btn ${audioSource === opt.id ? 'active' : ''} ${isAudioConnecting && audioSource === opt.id ? 'connecting' : ''}`}
-              onClick={() => handleAudioChange(opt.id)}
-              disabled={isAudioConnecting}
-            >
-              <span className="btn-icon">{opt.icon}</span>
-              <span className="btn-label">{opt.label}</span>
-            </button>
-          ))}
+        {/* Collapsible Content */}
+        <div className={`section-content ${activeSection === 'audio' ? 'expanded' : 'collapsed'}`}>
+          {/* Legacy Segmented Control */}
+          <div className="legacy-button-group">
+            {audioOptions.map(opt => (
+              <button
+                key={opt.id}
+                className={`legacy-btn ${audioSource === opt.id ? 'active' : ''} ${isAudioConnecting && audioSource === opt.id ? 'connecting' : ''}`}
+                onClick={() => handleAudioChange(opt.id)}
+                disabled={isAudioConnecting}
+              >
+                <span className="btn-icon">{opt.icon}</span>
+                <span className="btn-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+          
+          {audioError && (
+            <div className="system-error">⚠️ {audioError}</div>
+          )}
         </div>
-        
-        {/* Mini Visualizer */}
-        <div className="audio-visualizer-inline">
-          <MiniVisualizer />
-        </div>
-        
-        {audioError && (
-          <div className="system-error">⚠️ {audioError}</div>
-        )}
       </div>
       
       {/* ════════════════════════════════════════════════════════════════════
-          📡 DMX OUTPUT — LEGACY SEGMENTED BUTTONS
+          📡 DMX OUTPUT — WAVE 1203: ACCORDION WITH CONFIG PANELS
           ════════════════════════════════════════════════════════════════════ */}
       <div className="system-section">
-        <div className="section-header">
+        <div 
+          className={`section-header clickable ${activeSection === 'dmx' ? 'active' : 'inactive'}`}
+          onClick={() => toggleSection('dmx')}
+        >
           <div className="section-icon-badge dmx">
             <NetworkIcon size={16} />
           </div>
@@ -546,26 +569,30 @@ export const SystemsCheck: React.FC = () => {
               {status.dmx === 'online' ? 'ONLINE' : 'OFFLINE'}
             </span>
           </div>
+          <span className="accordion-arrow">{activeSection === 'dmx' ? '▼' : '▶'}</span>
         </div>
         
-        {/* Legacy Segmented Control */}
-        <div className="legacy-button-group">
-          {dmxOptions.map(opt => (
-            <button
-              key={opt.id}
-              className={`legacy-btn ${dmxDriver === opt.id ? 'active' : ''}`}
-              onClick={() => handleDmxChange(opt.id)}
-            >
-              <span className="btn-icon">{opt.icon}</span>
-              <span className="btn-label">{opt.label}</span>
-            </button>
-          ))}
+        {/* Collapsible Content */}
+        <div className={`section-content ${activeSection === 'dmx' ? 'expanded' : 'collapsed'}`}>
+          {/* Legacy Segmented Control */}
+          <div className="legacy-button-group">
+            {dmxOptions.map(opt => (
+              <button
+                key={opt.id}
+                className={`legacy-btn ${dmxDriver === opt.id ? 'active' : ''}`}
+                onClick={() => handleDmxChange(opt.id)}
+              >
+                <span className="btn-icon">{opt.icon}</span>
+                <span className="btn-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+          
+          {/* Config Panels — Inside accordion */}
+          {dmxDriver === 'artnet' && <ArtNetPanel />}
+          {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
         </div>
       </div>
-      
-      {/* Config Panels — Solid blocks that push content */}
-      {dmxDriver === 'artnet' && <ArtNetPanel />}
-      {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
     </div>
   )
 }

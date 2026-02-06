@@ -1,15 +1,14 @@
 /**
- * 🚀 LAUNCHPAD CSS - WAVE 1200: COLOR-CODED CARDS
- * 2-column grid, ~80px height per card
- * Each card has its identity color!
+ * 🚀 LAUNCHPAD CSS - WAVE 1203: ULTRA COMPACT
+ * 2-column grid, minimal padding
  * LIVE=cyan, NEURAL=purple, CONSTRUCT=orange, FORGE=yellow, CALIBRATE=blue
  */
 
 .launchpad {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px;
   height: 100%;
 }
 

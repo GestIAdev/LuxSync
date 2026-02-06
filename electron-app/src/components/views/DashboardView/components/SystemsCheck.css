@@ -1,14 +1,13 @@
 /**
- * 🎛️ SYSTEMS CHECK CSS - WAVE 1201: LEGACY BUTTONS
- * Segmented Controls instead of dropdowns
- * Clean, solid layout that doesn't break
+ * 🎛️ SYSTEMS CHECK CSS - WAVE 1203: ACCORDION + ULTRA COMPACT
+ * Segmented Controls, Accordion behavior, minimal padding
  */
 
 .systems-check {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
@@ -47,23 +46,88 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🎛️ WAVE 1201: SYSTEM SECTION (Audio / DMX)
+   🪗 WAVE 1203: ACCORDION SECTION (Mutex behavior)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .system-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+  gap: 0;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(34, 211, 238, 0.1);
   border-radius: 10px;
+  overflow: hidden;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+/* WAVE 1203: Clickable header */
+.section-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header.clickable:hover {
+  background: rgba(34, 211, 238, 0.03);
+}
+
+/* Active header - Cyan glow */
+.section-header.active {
+  background: rgba(34, 211, 238, 0.05);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+}
+
+.section-header.active .section-title {
+  color: #22d3ee;
+}
+
+.section-header.active .accordion-arrow {
+  color: #22d3ee;
+}
+
+/* Inactive header - Dimmed */
+.section-header.inactive .section-title {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.section-header.inactive .accordion-arrow {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Accordion arrow indicator */
+.accordion-arrow {
+  font-size: 10px;
+  margin-left: 6px;
+  transition: all 0.2s ease;
+}
+
+/* WAVE 1203: Collapsible content */
+.section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px 12px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+}
+
+.section-content.expanded {
+  max-height: 600px;
+  opacity: 1;
+}
+
+.section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 12px;
 }
 
 .section-icon-badge {
@@ -222,7 +286,34 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MINI VISUALIZER (Audio feedback)
+   🎵 HEADER VISUALIZER - INLINE 16px
+   Audio viz in header between title and status — saves ~50px vertical!
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.header-visualizer {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 80px;
+  margin: 0 8px;
+}
+
+.header-visualizer .mini-visualizer {
+  width: 100%;
+  height: 16px;
+  gap: 2px;
+  padding: 0;
+}
+
+.header-visualizer .viz-bar {
+  width: 4px;
+  min-height: 2px;
+  border-radius: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MINI VISUALIZER (Audio feedback) - DEPRECATED, usar header-visualizer
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .audio-visualizer-inline {

@@ -25,7 +25,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   MISSION HEADER — Clean, compact
+   MISSION HEADER — WAVE 1203: Ultra-compact
    ═══════════════════════════════════════════════════════ */
 
 .mission-header {
@@ -33,7 +33,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 20px;
+  padding: 6px 16px;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
@@ -91,14 +91,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   MISSION GRID — SWAPPED: 40% Left (Hardware) / 60% Right (Data)
+   MISSION GRID — WAVE 1203: Ultra-compact gaps
    ═══════════════════════════════════════════════════════ */
 
 .mission-grid {
   display: grid;
   grid-template-columns: 2fr 3fr;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 8px 12px;
   min-height: 0;
   overflow: hidden;
 }
@@ -107,7 +107,7 @@
 .grid-column-left {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
 }
 
@@ -115,7 +115,7 @@
 .grid-column-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
 }
 
@@ -139,17 +139,18 @@
   box-shadow: 0 0 20px rgba(34, 211, 238, 0.04);
 }
 
-/* Systems Check — Flexible, grows with content but limited */
+/* Systems Check — WAVE 1202: More vertical space with inline visualizer */
 .cell-systems {
-  flex: 0 0 auto;
-  max-height: 50%;
+  flex: 1;
+  min-height: 0;
+  max-height: 70%;
   border-color: rgba(34, 211, 238, 0.15);
 }
 
-/* Launchpad — DOCK MODE: Fills remaining left column space */
+/* Launchpad — WAVE 1203: Reduced height to recover vertical space */
 .cell-launchpad {
-  flex: 1;
-  min-height: 180px;
+  flex: 0 0 auto;
+  height: 218px;
   border-color: rgba(34, 211, 238, 0.1);
 }
 

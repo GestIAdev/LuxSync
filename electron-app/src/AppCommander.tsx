@@ -15,6 +15,7 @@ import { TitanSyncBridge } from './core/sync'
 import { useSeleneStore } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
+import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import './styles/globals.css'
 
 function AppContent() {
@@ -25,6 +26,9 @@ function AppContent() {
 
   // Initialize system on mount
   useEffect(() => {
+    // 📜 WAVE 1198: Initialize War Log IPC listener
+    const cleanupLogs = initializeLogIPC()
+    
     // Start Selene session
     startSession()
     addLogEntry({ type: 'INIT', message: 'LuxSync Commander started' })
@@ -37,6 +41,7 @@ function AppContent() {
     
     // Cleanup on unmount
     return () => {
+      cleanupLogs()
       unsubscribeStageListeners()
     }
   }, [startSession, addLogEntry])

@@ -94,11 +94,11 @@ export function initializeLogIPC(): () => void {
     const cleanup = window.lux.onLog((logEntry) => {
       useLogStore.getState().addLog(logEntry)
     })
-    console.log('[LogStore] 📜 IPC listener registered for selene:log')
+    console.log('[LogStore] 📜 War Log IPC listener registered')
     return cleanup
   }
   
-  console.warn('[LogStore] ⚠️ window.lux.onLog not available')
+  console.warn('[LogStore] ⚠️ window.lux.onLog not available - LOGS WILL NOT WORK!')
   return () => {}
 }
 

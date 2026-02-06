@@ -91,13 +91,13 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   MISSION GRID — WAVE 1203: Ultra-compact gaps
+   MISSION GRID — WAVE 1204: CHROMATIC GLASS separation
    ═══════════════════════════════════════════════════════ */
 
 .mission-grid {
   display: grid;
   grid-template-columns: 2fr 3fr;
-  gap: 8px;
+  gap: 16px;
   padding: 8px 12px;
   min-height: 0;
   overflow: hidden;
@@ -111,61 +111,74 @@
   min-height: 0;
 }
 
-/* Right Column: Data Stack (Session + Patch Bay) */
+/* Right Column: WAVE 1204 CHROMATIC GLASS - Data Stack (Cyan/Teal glass) */
 .grid-column-right {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  padding: 12px;
   min-height: 0;
+  background: linear-gradient(145deg, rgba(8, 20, 25, 0.6) 0%, rgba(5, 10, 15, 0.8) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════
-   GRID CELLS — Unified Cyberpunk Cyan borders
+   GRID CELLS — WAVE 1204: Glassmorphic backgrounds
    ═══════════════════════════════════════════════════════ */
 
 .grid-cell {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: rgba(10, 10, 18, 0.8);
-  border: 1px solid rgba(34, 211, 238, 0.1);
   border-radius: 12px;
   overflow: hidden;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .grid-cell:hover {
-  border-color: rgba(34, 211, 238, 0.2);
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Systems Check — WAVE 1202: More vertical space with inline visualizer */
+/* 🎛️ ZONE 1: CONTROL (Systems Check) - Neutral/Technical Glass */
 .cell-systems {
   flex: 1;
   min-height: 0;
   max-height: 78%;
-  border-color: rgba(34, 211, 238, 0.15);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.6) 0%, rgba(10, 10, 15, 0.8) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Launchpad — WAVE 1203: Reduced height to recover vertical space */
+/* 🚀 ZONE 2: ACTION (Launchpad) - Purple/Deep Blue Glass */
 .cell-launchpad {
   flex: 0 0 auto;
   height: 240px;
-  border-color: rgba(34, 211, 238, 0.1);
+  background: linear-gradient(145deg, rgba(20, 15, 40, 0.6) 0%, rgba(10, 10, 20, 0.8) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Session — Compact header, no grow */
+/* 💾 ZONE 3: DATA (Session + Patch) - Transparent dentro del glass column */
+.cell-session,
+.cell-patchbay {
+  background: transparent;
+  border: 1px solid rgba(34, 211, 238, 0.08);
+  box-shadow: none;
+}
+
 .cell-session {
   flex-shrink: 0;
-  border-color: rgba(34, 211, 238, 0.1);
 }
 
-/* Patch Bay — VERTICAL FREEDOM: Full remaining height, dark bg */
 .cell-patchbay {
   flex: 1;
   min-height: 0;
-  border-color: rgba(34, 211, 238, 0.15);
-  background: rgba(0, 0, 0, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════

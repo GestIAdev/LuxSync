@@ -134,6 +134,10 @@
 /* Systems Check — Full height left column, the commander */
 .cell-systems {
   border-color: rgba(34, 211, 238, 0.15);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Session — Compact, no grow */

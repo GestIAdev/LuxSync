@@ -92,6 +92,10 @@ export const ActiveSession: React.FC = () => {
     setActiveTab('constructor')
   }, [setActiveTab])
   
+  // WAVE 1200: Detectar estado sin show cargado
+  const hasShow = showFile !== null && fixtures.length > 0
+  const sessionCardClass = `session-card ${hasShow ? 'session-loaded' : 'session-empty'}`
+  
   return (
     <div className="active-session">
       <div className="session-header">
@@ -99,19 +103,19 @@ export const ActiveSession: React.FC = () => {
         <span className="session-label">ACTIVE SESSION</span>
       </div>
       
-      <div className="session-card">
+      <div className={sessionCardClass}>
         {/* File Icon */}
         <div className="session-file-icon">
-          <FileIcon size={32} color="#00ffff" />
+          <FileIcon size={32} color={hasShow ? "#22d3ee" : "#f97316"} />
         </div>
         
         {/* Show Info */}
         <div className="session-info">
           <h3 className="session-name">
-            {currentShow?.name || 'No Project Loaded'}
+            {hasShow ? (currentShow?.name || 'Untitled Project') : 'NO SHOW LOADED'}
           </h3>
           <div className="session-meta">
-            {currentShow && (
+            {hasShow && currentShow ? (
               <>
                 <span className="meta-item">
                   <span className="meta-icon">📅</span>
@@ -128,6 +132,11 @@ export const ActiveSession: React.FC = () => {
                   {currentShow.size}
                 </span>
               </>
+            ) : (
+              <span className="meta-item warning">
+                <span className="meta-icon">⚠️</span>
+                Load a show to start controlling lights
+              </span>
             )}
           </div>
         </div>
@@ -135,7 +144,7 @@ export const ActiveSession: React.FC = () => {
         {/* Actions */}
         <div className="session-actions">
           <button 
-            className="session-btn primary"
+            className={`session-btn ${hasShow ? 'secondary' : 'warning'}`}
             onClick={handleLoadShow}
             disabled={isLoading}
           >

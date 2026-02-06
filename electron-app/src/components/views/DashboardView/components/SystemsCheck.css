@@ -1,31 +1,24 @@
 /**
- * 🎛️ SYSTEMS CHECK CSS - WAVE 1199: TACTICAL PATCH BAY
- * Cyberpunk Cyan (#22d3ee) unified
- * Audio + DMX + Patch Bay
+ * 🎛️ SYSTEMS CHECK CSS - WAVE 1200: VIRGO PRECISION
+ * Flexbox estricto: Audio/DMX/ArtNet NO encoge, Patch Bay crece + scroll
+ * Inputs estilo ConsciousnessHUD
  */
 
 .systems-check {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* Parent no scrollea, Patch Bay sí */
 }
 
-/* Custom scrollbar */
-.systems-check::-webkit-scrollbar {
-  width: 4px;
-}
-
-.systems-check::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.systems-check::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.2);
-  border-radius: 2px;
+/* Bloque superior: Audio + DMX + ArtNet — NUNCA encoge */
+.systems-hardware-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .systems-header {
@@ -690,36 +683,61 @@
   border-left: 3px solid #22d3ee;
 }
 
-/* Audio visualizer row - separate from system row */
-.audio-visualizer-row {
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎵 WAVE 1200: VISUALIZER INLINE (inside audio row)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.audio-visualizer-inline {
+  flex: 1;
   display: flex;
   justify-content: center;
-  padding: 8px 12px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.3) 0%,
-    rgba(10, 15, 20, 0.3) 100%
-  );
-  border: 1px solid rgba(34, 211, 238, 0.1);
-  border-radius: 6px;
+  align-items: center;
+  padding: 0 8px;
+  min-width: 0;
+  max-width: 180px;
 }
 
-.audio-visualizer-row .mini-visualizer {
+.audio-visualizer-inline .mini-visualizer {
   width: 100%;
-  max-width: 200px;
-  height: 50px;
+  height: 32px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 4px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🔌 WAVE 1199: TACTICAL PATCH BAY
-   Inline fixture list with DMX address editing and collision detection
+   🔌 WAVE 1200: TACTICAL PATCH BAY
+   Flex zone inferior — crece y scrollea cuando ArtNet abre
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Zona del Patch Bay - CRECE y scrollea */
+.patch-bay-zone {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.patch-bay-zone::-webkit-scrollbar {
+  width: 4px;
+}
+
+.patch-bay-zone::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.patch-bay-zone::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.2);
+  border-radius: 2px;
+}
 
 .patch-bay {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 4px;
   flex: 1;
   min-height: 0;
 }
@@ -775,15 +793,14 @@
   flex-shrink: 0;
 }
 
-/* Fixture list */
+/* Fixture list - scroll interno */
 .patch-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
   flex: 1;
-  min-height: 60px;
-  max-height: 300px;
+  min-height: 50px;
 }
 
 .patch-list::-webkit-scrollbar {

@@ -606,131 +606,141 @@ export const SystemsCheck: React.FC = () => {
   
   return (
     <div className="systems-check">
-      <div className="systems-header">
-        <span className="systems-icon">🛰️</span>
-        <span className="systems-label">SYSTEMS CHECK</span>
-      </div>
-      
-      {/* AUDIO INPUT SECTION - TOP */}
-      <div className="system-row audio-system">
-        <div className="system-info">
-          <div className="system-icon-badge audio">
-            <AudioWaveIcon size={16} />
-          </div>
-          <span className="system-name">AUDIO IN</span>
+      {/* ════════════════════════════════════════════════════════════════════
+          🛰️ HARDWARE BLOCK - NUNCA ENCOGE (flex-shrink: 0)
+          Audio IN → DMX OUT → ArtNet/USB panels
+          ════════════════════════════════════════════════════════════════════ */}
+      <div className="systems-hardware-block">
+        <div className="systems-header">
+          <span className="systems-icon">🛰️</span>
+          <span className="systems-label">SYSTEMS CHECK</span>
         </div>
         
-        <div className="system-control">
-          <div className="dropdown-wrapper">
-            <button 
-              className={`dropdown-trigger ${isAudioConnecting ? 'connecting' : ''}`}
-              onClick={() => {
-                setAudioDropdownOpen(!audioDropdownOpen)
-                setDmxDropdownOpen(false)
-              }}
-              disabled={isAudioConnecting}
-            >
-              <span className="trigger-icon">
-                {isAudioConnecting ? '🔄' : currentAudio.icon}
-              </span>
-              <span className="trigger-label">{currentAudio.label}</span>
-              <span className="trigger-arrow">▼</span>
-            </button>
-            
-            {audioDropdownOpen && (
-              <div className="dropdown-menu">
-                {audioOptions.map(opt => (
-                  <button
-                    key={opt.id}
-                    className={`dropdown-item ${opt.id === audioSource ? 'active' : ''}`}
-                    onClick={() => handleAudioChange(opt.id)}
-                  >
-                    <span className="item-icon">{opt.icon}</span>
-                    <span className="item-label">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* AUDIO INPUT SECTION */}
+        <div className="system-row audio-system">
+          <div className="system-info">
+            <div className="system-icon-badge audio">
+              <AudioWaveIcon size={16} />
+            </div>
+            <span className="system-name">AUDIO IN</span>
           </div>
-        </div>
-        
-        {/* Audio Connection Status */}
-        <div className={`status-indicator ${status.audio}`}>
-          <span className="status-dot" />
-          <span className="status-text">
-            {status.audio === 'online' ? 'ACTIVE' : 'IDLE'}
-          </span>
-        </div>
-      </div>
-      
-      {/* Audio Error Display */}
-      {audioError && (
-        <div className="system-error audio-error">
-          ⚠️ {audioError}
-        </div>
-      )}
-      
-      {/* Mini Visualizer - Always visible */}
-      <div className="audio-visualizer-row">
-        <MiniVisualizer />
-      </div>
-      
-      {/* DMX OUTPUT SECTION - MIDDLE (safe dropdown space) */}
-      <div className="system-row dmx-system">
-        <div className="system-info">
-          <div className="system-icon-badge dmx">
-            <NetworkIcon size={16} />
+          
+          <div className="system-control">
+            <div className="dropdown-wrapper">
+              <button 
+                className={`dropdown-trigger ${isAudioConnecting ? 'connecting' : ''}`}
+                onClick={() => {
+                  setAudioDropdownOpen(!audioDropdownOpen)
+                  setDmxDropdownOpen(false)
+                }}
+                disabled={isAudioConnecting}
+              >
+                <span className="trigger-icon">
+                  {isAudioConnecting ? '🔄' : currentAudio.icon}
+                </span>
+                <span className="trigger-label">{currentAudio.label}</span>
+                <span className="trigger-arrow">▼</span>
+              </button>
+              
+              {audioDropdownOpen && (
+                <div className="dropdown-menu">
+                  {audioOptions.map(opt => (
+                    <button
+                      key={opt.id}
+                      className={`dropdown-item ${opt.id === audioSource ? 'active' : ''}`}
+                      onClick={() => handleAudioChange(opt.id)}
+                    >
+                      <span className="item-icon">{opt.icon}</span>
+                      <span className="item-label">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <span className="system-name">DMX OUT</span>
-        </div>
-        
-        <div className="system-control">
-          <div className="dropdown-wrapper">
-            <button 
-              className="dropdown-trigger"
-              onClick={() => {
-                setDmxDropdownOpen(!dmxDropdownOpen)
-                setAudioDropdownOpen(false)
-              }}
-            >
-              <span className="trigger-icon">{currentDmx.icon}</span>
-              <span className="trigger-label">{currentDmx.label}</span>
-              <span className="trigger-arrow">▼</span>
-            </button>
-            
-            {dmxDropdownOpen && (
-              <div className="dropdown-menu">
-                {dmxOptions.map(opt => (
-                  <button
-                    key={opt.id}
-                    className={`dropdown-item ${opt.id === dmxDriver ? 'active' : ''}`}
-                    onClick={() => handleDmxChange(opt.id)}
-                  >
-                    <span className="item-icon">{opt.icon}</span>
-                    <span className="item-label">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+          
+          {/* 🎵 Mini Visualizer INLINE - WAVE 1200 */}
+          <div className="audio-visualizer-inline">
+            <MiniVisualizer />
+          </div>
+          
+          {/* Audio Connection Status */}
+          <div className={`status-indicator ${status.audio}`}>
+            <span className="status-dot" />
+            <span className="status-text">
+              {status.audio === 'online' ? 'ACTIVE' : 'IDLE'}
+            </span>
           </div>
         </div>
         
-        {/* Connection Status */}
-        <div className={`status-indicator ${status.dmx}`}>
-          <span className="status-dot" />
-          <span className="status-text">
-            {status.dmx === 'online' ? 'ONLINE' : 'OFFLINE'}
-          </span>
+        {/* Audio Error Display */}
+        {audioError && (
+          <div className="system-error audio-error">
+            ⚠️ {audioError}
+          </div>
+        )}
+        
+        {/* DMX OUTPUT SECTION */}
+        <div className="system-row dmx-system">
+          <div className="system-info">
+            <div className="system-icon-badge dmx">
+              <NetworkIcon size={16} />
+            </div>
+            <span className="system-name">DMX OUT</span>
+          </div>
+          
+          <div className="system-control">
+            <div className="dropdown-wrapper">
+              <button 
+                className="dropdown-trigger"
+                onClick={() => {
+                  setDmxDropdownOpen(!dmxDropdownOpen)
+                  setAudioDropdownOpen(false)
+                }}
+              >
+                <span className="trigger-icon">{currentDmx.icon}</span>
+                <span className="trigger-label">{currentDmx.label}</span>
+                <span className="trigger-arrow">▼</span>
+              </button>
+              
+              {dmxDropdownOpen && (
+                <div className="dropdown-menu">
+                  {dmxOptions.map(opt => (
+                    <button
+                      key={opt.id}
+                      className={`dropdown-item ${opt.id === dmxDriver ? 'active' : ''}`}
+                      onClick={() => handleDmxChange(opt.id)}
+                    >
+                      <span className="item-icon">{opt.icon}</span>
+                      <span className="item-label">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Connection Status */}
+          <div className={`status-indicator ${status.dmx}`}>
+            <span className="status-dot" />
+            <span className="status-text">
+              {status.dmx === 'online' ? 'ONLINE' : 'OFFLINE'}
+            </span>
+          </div>
         </div>
+        
+        {/* Config Panels - ArtNet or USB */}
+        {dmxDriver === 'artnet' && <ArtNetPanel />}
+        {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
       </div>
       
-      {/* 🎨 WAVE 686: Config Panels - Show based on selected driver */}
-      {dmxDriver === 'artnet' && <ArtNetPanel />}
-      {dmxDriver === 'usb-serial' && <UsbDmxPanel />}
-      
-      {/* 🔌 WAVE 1199: TACTICAL PATCH BAY — Divider + Inline fixture patching */}
-      <div className="systems-divider" />
-      <TacticalPatchBay />
+      {/* ════════════════════════════════════════════════════════════════════
+          🔌 PATCH BAY ZONE - CRECE y SCROLLEA (flex: 1, overflow-y: auto)
+          ════════════════════════════════════════════════════════════════════ */}
+      <div className="patch-bay-zone">
+        <div className="systems-divider" />
+        <TacticalPatchBay />
+      </div>
     </div>
   )
 }

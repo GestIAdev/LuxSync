@@ -1,13 +1,13 @@
 /**
- * 🚀 LAUNCHPAD - WAVE 1199: 5 COMPACT CARDS
+ * 🚀 LAUNCHPAD - WAVE 1200: COLOR-CODED CARDS
  * "Stage Access Panel" — Rapid navigation to every stage
  * 
  * Layout: 2-column grid, ~80px cards
- * Cards: LIVE STAGE (primary/span2), NEURAL COMMAND, SHOW CONSTRUCTOR,
- *        FIXTURE FORGE, CALIBRATION
+ * Cards: LIVE STAGE (cyan), NEURAL COMMAND (purple), SHOW CONSTRUCTOR (orange),
+ *        FIXTURE FORGE (yellow), CALIBRATION (blue)
  * 
  * 0 iconos genéricos. Solo LuxIcons custom.
- * Color: Cyberpunk Cyan (#22d3ee) unified.
+ * Each card has its identity color!
  */
 
 import React, { useCallback } from 'react'
@@ -21,10 +21,20 @@ import {
 } from '../../../icons/LuxIcons'
 import './Launchpad.css'
 
+// WAVE 1200: Color palette per card
+const CARD_COLORS = {
+  live: '#22d3ee',       // Cyberpunk Cyan
+  neural: '#a855f7',     // Purple
+  construct: '#f97316',  // Orange
+  forge: '#fbbf24',      // Yellow/Gold
+  calibrate: '#3b82f6',  // Blue
+} as const
+
 interface LaunchCardProps {
   title: string
   subtitle: string
   icon: React.ReactNode
+  colorClass: string
   isPrimary?: boolean
   onClick: () => void
 }
@@ -33,11 +43,12 @@ const LaunchCard: React.FC<LaunchCardProps> = ({
   title,
   subtitle,
   icon,
+  colorClass,
   isPrimary = false,
   onClick
 }) => (
   <button
-    className={`launch-card ${isPrimary ? 'primary' : ''}`}
+    className={`launch-card ${isPrimary ? 'primary' : ''} ${colorClass}`}
     onClick={onClick}
   >
     <div className="launch-icon">
@@ -72,44 +83,49 @@ export const Launchpad: React.FC = () => {
       </div>
       
       <div className="launchpad-grid">
-        {/* LIVE STAGE — Primary, spans full width */}
+        {/* LIVE STAGE — Primary, cyan */}
         <LaunchCard
           title="LIVE STAGE"
           subtitle="Launch the performance"
-          icon={<PlayCircleIcon size={28} color="#22d3ee" />}
+          icon={<PlayCircleIcon size={28} color={CARD_COLORS.live} />}
+          colorClass="card-live"
           isPrimary={true}
           onClick={handleLive}
         />
         
-        {/* NEURAL COMMAND */}
+        {/* NEURAL COMMAND — Purple */}
         <LaunchCard
           title="NEURAL COMMAND"
           subtitle="AI consciousness"
-          icon={<BrainNeuralIcon size={24} color="#22d3ee" />}
+          icon={<BrainNeuralIcon size={24} color={CARD_COLORS.neural} />}
+          colorClass="card-neural"
           onClick={handleNeural}
         />
         
-        {/* SHOW CONSTRUCTOR */}
+        {/* SHOW CONSTRUCTOR — Orange */}
         <LaunchCard
           title="CONSTRUCTOR"
           subtitle="Build your rig"
-          icon={<HammerIcon size={24} color="#22d3ee" />}
+          icon={<HammerIcon size={24} color={CARD_COLORS.construct} />}
+          colorClass="card-construct"
           onClick={handleConstruct}
         />
         
-        {/* FIXTURE FORGE */}
+        {/* FIXTURE FORGE — Yellow */}
         <LaunchCard
           title="FIXTURE FORGE"
           subtitle="Define fixtures"
-          icon={<MovingHeadIcon size={24} color="#22d3ee" />}
+          icon={<MovingHeadIcon size={24} color={CARD_COLORS.forge} />}
+          colorClass="card-forge"
           onClick={handleForge}
         />
         
-        {/* CALIBRATION */}
+        {/* CALIBRATION — Blue */}
         <LaunchCard
           title="CALIBRATION"
           subtitle="Align hardware"
-          icon={<TargetIcon size={24} color="#22d3ee" />}
+          icon={<TargetIcon size={24} color={CARD_COLORS.calibrate} />}
+          colorClass="card-calibrate"
           onClick={handleCalibrate}
         />
       </div>

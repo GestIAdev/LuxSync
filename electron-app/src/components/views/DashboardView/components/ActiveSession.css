@@ -163,3 +163,86 @@
 .btn-text {
   text-transform: uppercase;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔥 WAVE 1200: HERO STATES
+   session-loaded → elegant cyan
+   session-empty → pulsing warning (no show cargado)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Estado: Show cargado — Elegante cyan */
+.session-card.session-loaded {
+  border-color: rgba(34, 211, 238, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.03) 0%,
+    rgba(10, 10, 18, 0.6) 100%
+  );
+}
+
+.session-card.session-loaded:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.1);
+}
+
+/* Estado: Sin show — PULSING WARNING */
+.session-card.session-empty {
+  border-color: rgba(249, 115, 22, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(249, 115, 22, 0.06) 0%,
+    rgba(251, 191, 36, 0.03) 50%,
+    rgba(10, 10, 18, 0.6) 100%
+  );
+  animation: pulse-warning 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    border-color: rgba(249, 115, 22, 0.3);
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.1);
+  }
+  50% {
+    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.2), 0 0 30px rgba(251, 191, 36, 0.1);
+  }
+}
+
+.session-card.session-empty .session-file-icon {
+  background: rgba(249, 115, 22, 0.06);
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+.session-card.session-empty .session-name {
+  color: #fbbf24;
+}
+
+/* Meta item en modo warning */
+.meta-item.warning {
+  color: rgba(251, 191, 36, 0.8);
+  font-size: 10px;
+}
+
+/* Botón warning para LOAD SHOW cuando no hay show */
+.session-btn.warning {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #f97316;
+  animation: btn-pulse 2s ease-in-out infinite;
+}
+
+@keyframes btn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(249, 115, 22, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+  }
+}
+
+.session-btn.warning:hover:not(:disabled) {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.25);
+  animation: none;
+}

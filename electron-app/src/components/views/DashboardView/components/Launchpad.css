@@ -1,8 +1,8 @@
 /**
- * 🚀 LAUNCHPAD CSS - WAVE 1199: 5 COMPACT CARDS
+ * 🚀 LAUNCHPAD CSS - WAVE 1200: COLOR-CODED CARDS
  * 2-column grid, ~80px height per card
- * Unified Cyberpunk Cyan (#22d3ee)
- * No var(--card-color) rainbow — everything cyan
+ * Each card has its identity color!
+ * LIVE=cyan, NEURAL=purple, CONSTRUCT=orange, FORGE=yellow, CALIBRATE=blue
  */
 
 .launchpad {
@@ -41,17 +41,18 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LAUNCH CARD - Compact ~80px
+   LAUNCH CARD - Compact ~80px — CSS Custom Property for per-card color
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-card {
+  --card-color: #22d3ee; /* Default cyan, overridden per card */
   position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
   background: rgba(10, 10, 18, 0.9);
-  border: 1px solid rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   cursor: pointer;
   overflow: hidden;
@@ -61,27 +62,46 @@
 }
 
 .launch-card:hover {
-  border-color: rgba(34, 211, 238, 0.4);
-  background: rgba(34, 211, 238, 0.05);
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
+  border-color: color-mix(in srgb, var(--card-color) 40%, transparent);
+  background: color-mix(in srgb, var(--card-color) 5%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--card-color) 10%, transparent);
 }
 
 /* Primary card (LIVE STAGE) — spans full width top row */
 .launch-card.primary {
   grid-column: 1 / -1;
   height: 64px;
-  background: rgba(34, 211, 238, 0.06);
-  border-color: rgba(34, 211, 238, 0.25);
+  background: color-mix(in srgb, var(--card-color) 6%, transparent);
+  border-color: color-mix(in srgb, var(--card-color) 25%, transparent);
 }
 
 .launch-card.primary:hover {
-  background: rgba(34, 211, 238, 0.12);
-  border-color: rgba(34, 211, 238, 0.5);
-  box-shadow: 0 0 30px rgba(34, 211, 238, 0.12);
+  background: color-mix(in srgb, var(--card-color) 12%, transparent);
+  border-color: color-mix(in srgb, var(--card-color) 50%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--card-color) 15%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CARD CONTENT
+   🎨 WAVE 1200: COLOR-CODED CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* LIVE — Cyberpunk Cyan */
+.launch-card.card-live { --card-color: #22d3ee; }
+
+/* NEURAL — Purple */
+.launch-card.card-neural { --card-color: #a855f7; }
+
+/* CONSTRUCTOR — Orange */
+.launch-card.card-construct { --card-color: #f97316; }
+
+/* FIXTURE FORGE — Yellow/Gold */
+.launch-card.card-forge { --card-color: #fbbf24; }
+
+/* CALIBRATION — Blue */
+.launch-card.card-calibrate { --card-color: #3b82f6; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD CONTENT — Icon uses card color
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-icon {
@@ -90,18 +110,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(34, 211, 238, 0.06);
-  border: 1px solid rgba(34, 211, 238, 0.15);
+  background: color-mix(in srgb, var(--card-color) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-color) 15%, transparent);
   border-radius: 8px;
-  color: #22d3ee;
+  color: var(--card-color);
   flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
 .launch-card:hover .launch-icon {
-  background: rgba(34, 211, 238, 0.12);
-  border-color: rgba(34, 211, 238, 0.3);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
+  background: color-mix(in srgb, var(--card-color) 12%, transparent);
+  border-color: color-mix(in srgb, var(--card-color) 30%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--card-color) 20%, transparent);
 }
 
 .launch-content {
@@ -135,7 +155,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #22d3ee;
+  color: var(--card-color);
   opacity: 0;
   transform: translateX(-6px);
   transition: all 0.2s ease;
@@ -148,7 +168,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GLOW EFFECT — Subtle top glow on hover
+   GLOW EFFECT — Uses card color
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .launch-glow {
@@ -159,7 +179,7 @@
   height: 40px;
   background: linear-gradient(
     180deg,
-    rgba(34, 211, 238, 0.08) 0%,
+    color-mix(in srgb, var(--card-color) 8%, transparent) 0%,
     transparent 100%
   );
   opacity: 0;

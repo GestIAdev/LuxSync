@@ -5,7 +5,8 @@
  */
 
 .chromatic-core-complete {
-  gap: 12px;
+  gap: 8px;
+  overflow: hidden;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -34,14 +35,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px;
-  gap: 12px;
+  padding: 8px;
+  gap: 8px;
 }
 
 .chromatic-core-complete__wheel {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 90px;
+  height: 90px;
 }
 
 /* Conic gradient ring */
@@ -82,10 +83,10 @@
 
 .chromatic-core-complete__wheel-dot {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 50%;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   transform: translateX(-50%);
   border: 2px solid white;
@@ -113,7 +114,7 @@
 
 .chromatic-core-complete__wheel-hex {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: rgba(0, 0, 0, 0.8);
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
@@ -127,25 +128,25 @@
 /* HSL Values */
 .chromatic-core-complete__hsl {
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
 
 .chromatic-core-complete__hsl-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .chromatic-core-complete__hsl-label {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .chromatic-core-complete__hsl-value {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -156,8 +157,8 @@
 
 .chromatic-core-complete__info-section {
   display: flex;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 8px;
+  padding: 0 12px;
 }
 
 .chromatic-core-complete__info-item {
@@ -165,15 +166,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px;
+  gap: 2px;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .chromatic-core-complete__info-label {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 600;
   letter-spacing: 0.5px;
   color: var(--text-muted);
@@ -181,13 +182,13 @@
 
 .chromatic-core-complete__info-value {
   font-family: var(--font-mono);
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .chromatic-core-complete__info-desc {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: var(--text-muted);
 }
 
@@ -213,19 +214,19 @@
 .chromatic-core-complete__palette {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 12px 16px 16px;
+  gap: 6px;
+  padding: 8px 12px 10px;
   margin-top: auto;
 }
 
 .chromatic-core-complete__swatch {
-  aspect-ratio: 1;
-  border-radius: 8px;
+  aspect-ratio: 2 / 1;
+  border-radius: 6px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   box-shadow: 
     0 2px 8px rgba(0, 0, 0, 0.3),
     inset 0 0 20px rgba(255, 255, 255, 0.1);

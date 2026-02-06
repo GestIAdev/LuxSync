@@ -36,17 +36,19 @@
 .ethics-council__votes {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
   padding: 10px 12px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .ethics-council__vote-card {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 8px 10px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid;
   border-radius: 6px;
@@ -73,34 +75,34 @@
 .ethics-council__advisor {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ethics-council__advisor-name {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
 }
 
 /* Vote Status */
 .ethics-council__vote-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 32px;
+  gap: 4px;
+  margin-left: 0;
 }
 
 .ethics-council__vote-label {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.5px;
 }
 
 /* Reason */
 .ethics-council__reason {
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   color: var(--text-muted, #64748b);
-  margin-left: 32px;
+  margin-left: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

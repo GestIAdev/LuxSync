@@ -16,9 +16,9 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 12px;
-  padding: 12px 16px 16px;
-  height: calc(100% - 48px); /* Minus header */
+  gap: 8px;
+  padding: 8px 12px 12px;
+  height: calc(100% - 40px); /* Minus header */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -28,11 +28,13 @@
 .context-matrix-expanded__card {
   display: flex;
   flex-direction: column;
-  padding: 10px 12px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  border-radius: 6px;
   transition: border-color 0.2s ease, background 0.2s ease;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .context-matrix-expanded__card:hover {
@@ -44,18 +46,19 @@
 .context-matrix-expanded__card-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .context-matrix-expanded__card-emoji {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
 }
 
 .context-matrix-expanded__card-label {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   color: var(--text-muted);
   text-transform: uppercase;
 }
@@ -70,14 +73,14 @@
 
 .context-matrix-expanded__card-value {
   font-family: var(--font-mono);
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
   transition: color 0.2s ease;
 }
 
 .context-matrix-expanded__card-subvalue {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: var(--text-muted);
   letter-spacing: 0.3px;
 }
@@ -85,8 +88,9 @@
 /* Card Sparkline */
 .context-matrix-expanded__card-sparkline {
   margin-top: auto;
-  padding-top: 6px;
-  height: 24px;
+  padding-top: 4px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .context-matrix-expanded__sparkline {

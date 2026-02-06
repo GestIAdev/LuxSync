@@ -17,8 +17,9 @@
   gap: 6px;
 }
 
-.session-icon {
-  font-size: 12px;
+/* WAVE 1206: Icon with glow */
+.session-header svg {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
 }
 
 /* WAVE 1205: NEON GAMMA - Cyan illuminated header */

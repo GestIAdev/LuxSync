@@ -17,7 +17,8 @@ import {
   BrainNeuralIcon, 
   HammerIcon, 
   MovingHeadIcon, 
-  TargetIcon 
+  TargetIcon,
+  BoltIcon 
 } from '../../../icons/LuxIcons'
 import './Launchpad.css'
 
@@ -78,7 +79,9 @@ export const Launchpad: React.FC = () => {
   
   return (
     <div className="launchpad">
+      {/* WAVE 1206: ICONIC HIERARCHY - Purple BoltIcon */}
       <div className="launchpad-header">
+        <BoltIcon size={16} color="#a855f7" />
         <span className="launchpad-label">LAUNCHPAD</span>
       </div>
       

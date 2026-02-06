@@ -33,8 +33,9 @@
   flex-shrink: 0;
 }
 
-.systems-icon {
-  font-size: 14px;
+/* WAVE 1206: Icon with text-shadow glow */
+.systems-header svg {
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.5));
 }
 
 /* WAVE 1205: NEON GAMMA - Cyan illuminated header */

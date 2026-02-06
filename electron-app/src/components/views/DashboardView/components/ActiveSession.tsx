@@ -98,8 +98,9 @@ export const ActiveSession: React.FC = () => {
   
   return (
     <div className="active-session">
+      {/* WAVE 1206: ICONIC HIERARCHY - Green FileIcon */}
       <div className="session-header">
-        <span className="session-icon">💾</span>
+        <FileIcon size={14} color="#10b981" />
         <span className="session-label">ACTIVE SESSION</span>
       </div>
       

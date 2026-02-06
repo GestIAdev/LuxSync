@@ -20,7 +20,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
-import { AudioWaveIcon, NetworkIcon } from '../../../icons/LuxIcons'
+import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
 import './SystemsCheck.css'
 
 // 🎨 WAVE 686: ArtNet API access
@@ -497,8 +497,9 @@ export const SystemsCheck: React.FC = () => {
   
   return (
     <div className="systems-check">
+      {/* WAVE 1206: ICONIC HIERARCHY - Cyan ControlsIcon */}
       <div className="systems-header">
-        <span className="systems-icon">🛰️</span>
+        <ControlsIcon size={16} color="#22d3ee" />
         <span className="systems-label">SYSTEMS CHECK</span>
       </div>
       

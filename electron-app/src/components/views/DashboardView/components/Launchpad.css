@@ -12,11 +12,22 @@
   height: 100%;
 }
 
+/* WAVE 1206: ICONIC HIERARCHY - Fixed height header with icon glow */
 .launchpad-header {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  height: 24px;  /* ALTURA FIJA - NO PUEDE CRECER */
+  line-height: 1;
+}
+
+/* WAVE 1206: Purple BoltIcon glow effect */
+.launchpad-header svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.5));
 }
 
 /* WAVE 1205: NEON GAMMA - Purple illuminated header */

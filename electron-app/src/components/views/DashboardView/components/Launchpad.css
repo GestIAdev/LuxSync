@@ -19,12 +19,14 @@
   flex-shrink: 0;
 }
 
+/* WAVE 1205: NEON GAMMA - Purple illuminated header */
 .launchpad-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: #a855f7;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

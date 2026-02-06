@@ -36,12 +36,14 @@
   align-items: center;
 }
 
+/* WAVE 1205: NEON GAMMA - Cyan illuminated header */
 .patch-bay-standalone .patch-bay-label {
   font-family: 'Orbitron', 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #22d3ee;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
 }
 
 .patch-bay-standalone .patch-bay-count {

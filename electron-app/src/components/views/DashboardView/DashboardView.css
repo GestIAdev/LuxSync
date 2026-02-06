@@ -111,18 +111,20 @@
   min-height: 0;
 }
 
-/* Right Column: WAVE 1204 CHROMATIC GLASS - Data Stack (Cyan/Teal glass) */
+/* Right Column: WAVE 1205 NEON GAMMA - Data Stack (Cyan/Teal Neon Glass) */
 .grid-column-right {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px;
   min-height: 0;
-  background: linear-gradient(145deg, rgba(8, 20, 25, 0.6) 0%, rgba(5, 10, 15, 0.8) 100%);
+  background: linear-gradient(180deg, rgba(8, 20, 30, 0.8) 0%, rgba(5, 10, 15, 0.9) 100%);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(34, 211, 238, 0.15);
+  border: 1px solid rgba(34, 211, 238, 0.4);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.05),
+    inset 0 0 20px rgba(34, 211, 238, 0.05);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -143,25 +145,29 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
-/* 🎛️ ZONE 1: CONTROL (Systems Check) - Neutral/Technical Glass */
+/* 🎛️ WAVE 1205: ZONE 1 CONTROL (Systems Check) - Cyan Neon Glass */
 .cell-systems {
   flex: 1;
   min-height: 0;
   max-height: 78%;
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.6) 0%, rgba(10, 10, 15, 0.8) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(10, 10, 15, 0.9) 100%);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  box-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.05),
+    inset 0 0 20px rgba(34, 211, 238, 0.05);
 }
 
-/* 🚀 ZONE 2: ACTION (Launchpad) - Purple/Deep Blue Glass */
+/* 🚀 WAVE 1205: ZONE 2 ACTION (Launchpad) - Purple Neon Glass */
 .cell-launchpad {
   flex: 0 0 auto;
   height: 240px;
-  background: linear-gradient(145deg, rgba(20, 15, 40, 0.6) 0%, rgba(10, 10, 20, 0.8) 100%);
+  background: linear-gradient(180deg, rgba(20, 15, 40, 0.8) 0%, rgba(10, 10, 20, 0.9) 100%);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.05),
+    inset 0 0 20px rgba(139, 92, 246, 0.05);
 }
 
 /* 💾 ZONE 3: DATA (Session + Patch) - Transparent dentro del glass column */

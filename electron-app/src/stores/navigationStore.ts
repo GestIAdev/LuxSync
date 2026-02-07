@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration'
-export type ToolId = 'constructor' | 'forge' | 'setup' | 'core'
+export type ToolId = 'constructor' | 'forge' | 'nexus' | 'core'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -106,14 +106,23 @@ export const TABS: TabConfig[] = [
     shortcut: 'Alt+5',
     description: 'Fixture Forge - Create & Edit Definitions',
   },
+  // {
+  //   id: 'setup',
+  //   label: 'SETUP',
+  //   icon: 'settings',       // IconSetup (custom SVG)
+  //   customIcon: true,
+  //   type: 'tool',
+  //   shortcut: 'Alt+6',
+  //   description: 'Audio Input & DMX Configuration',
+  // },
   {
-    id: 'setup',
-    label: 'SETUP',
-    icon: 'settings',       // IconSetup (custom SVG)
+    id: 'nexus',
+    label: 'DMX NEXUS',
+    icon: 'plug',
     customIcon: true,
     type: 'tool',
     shortcut: 'Alt+6',
-    description: 'Audio Input & DMX Configuration',
+    description: 'Visual Patching & Fixture Location',
   },
   {
     id: 'core',
@@ -126,7 +135,7 @@ export const TABS: TabConfig[] = [
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'constructor', 'forge', 'setup', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'constructor', 'forge', 'nexus', 'core']
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

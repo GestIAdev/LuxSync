@@ -36,7 +36,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'constructor': '#a855f7',  // Purple (Build)
   'forge': '#f97316',        // Orange (The Blacksmith) - WAVE 1110
   'core': '#f59e0b',         // Amber (AI Monitor)
-  'setup': '#84cc16',        // Lime (Config)
+  'nexus': '#ef4444',
 }
 
 // WAVE 1110: Custom SVG Icons mapping (added forge)
@@ -45,7 +45,7 @@ const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>>
   'construct': IconConstruct, // Constructor (wrench + fixture)
   'monitor': IconLiveStage,   // Live Stage (spotlights)
   'target': IconCalibration,  // Calibration (crosshair)
-  'settings': IconSetup,      // Setup (gear + audio)
+  'plug': IconSetup,          // Nexus (reusing setup icon)
   'brain': IconLuxCore,       // LUX CORE (neural network)
   'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110
 }

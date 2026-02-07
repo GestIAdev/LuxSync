@@ -23,7 +23,7 @@ const StageConstructorView = lazy(() => import('../views/StageConstructorView'))
 const LiveStageView = lazy(() => import('../simulator'))
 const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
-const SetupView = lazy(() => import('../views/SetupView'))
+const VisualPatcher = lazy(() => import('../views/VisualPatcher/VisualPatcher'))
 const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
 
 // Loading fallback
@@ -43,7 +43,7 @@ const TransitionLoader: React.FC = () => (
 
 // WAVE 428: Vistas que tienen WebGL Canvas pesado
 // WAVE 429: SETUP no es WebGL, solo audio inputs + DMX config
-const WEBGL_VIEWS = ['live', 'calibration', 'constructor']
+const WEBGL_VIEWS = ['live', 'calibration', 'constructor', 'nexus']
 
 // WAVE 379.4: Tiempo de "aire" para que la GPU respire (ms)
 const GPU_HANDOFF_DELAY = 150
@@ -107,8 +107,8 @@ const ContentArea: React.FC = () => {
         return <CalibrationView />
       case 'forge':
         return <ForgeView />  // 🔨 WAVE 1110
-      case 'setup':
-        return <SetupView />
+      case 'nexus':
+        return <VisualPatcher />
       case 'core':
         return <NeuralCommandView />  // 🧠 WAVE 1167
       default:

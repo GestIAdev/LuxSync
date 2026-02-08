@@ -191,6 +191,59 @@ export class SeleneMusicalBrain extends EventEmitter {
     }
     /**
      * ═══════════════════════════════════════════════════════════════════════════
+     * 🎯 PROCESO PRINCIPAL (WAVE 1230) - El latido del corazón de Selene
+     * ═══════════════════════════════════════════════════════════════════════════
+     *
+     * 🆕 WAVE 1230: Ahora recibe MusicalContext OFICIAL desde GAMMA worker
+     * Ya NO crea su propio análisis. Enriquece el contexto del worker.
+     */
+    processWithOfficialContext(baseContext, audio) {
+        if (!this.isInitialized) {
+            throw new Error('Brain not initialized. Call initialize() first.');
+        }
+        const startTime = performance.now();
+        const timestamp = Date.now();
+        this.frameCount++;
+        const perfMetrics = {
+            totalMs: 0,
+            contextMs: 0,
+            memoryMs: 0,
+            paletteMs: 0,
+            mappingMs: 0,
+        };
+        // 🔮 WAVE 13.5: Calcular elemento zodiacal UNA VEZ al inicio
+        const zodiacElement = this.calculateZodiacElement(audio);
+        // ─────────────────────────────────────────────────────────────────────────
+        // PASO 1: Enriquecer contexto musical con consciencia energética + predicción
+        // ─────────────────────────────────────────────────────────────────────────
+        const contextStart = performance.now();
+        // 🆕 WAVE 1230: Usar enrich() en lugar de process()
+        const enrichedResult = this.contextEngine.enrich(baseContext, audio);
+        perfMetrics.contextMs = performance.now() - contextStart;
+        // ─────────────────────────────────────────────────────────────────────────
+        // PASO 2: Procesar en modo inteligente (SIEMPRE, confiamos en GAMMA)
+        // ─────────────────────────────────────────────────────────────────────────
+        // 🆕 WAVE 1230: Ya no tenemos modo reactivo aquí, todo es inteligente
+        const output = this.processIntelligentMode(enrichedResult, timestamp, perfMetrics, zodiacElement);
+        // ─────────────────────────────────────────────────────────────────────────
+        // PASO 3: Finalizar métricas
+        // ─────────────────────────────────────────────────────────────────────────
+        perfMetrics.totalMs = performance.now() - startTime;
+        output.performance = perfMetrics;
+        // Actualizar estadísticas
+        this.updateSessionStats(output);
+        this.lastOutput = output;
+        // Emitir resultado
+        this.emit('output', output);
+        if (this.config.debug && this.frameCount % 30 === 0) {
+            console.log(`[Brain] Frame ${this.frameCount}: intelligent mode (Wave 1230), ` +
+                `source: ${output.paletteSource}, beauty: ${output.estimatedBeauty.toFixed(2)}, ` +
+                `${perfMetrics.totalMs.toFixed(1)}ms`);
+        }
+        return output;
+    }
+    /**
+     * ═══════════════════════════════════════════════════════════════════════════
      * 🎯 PROCESO PRINCIPAL - El latido del corazón de Selene
      * ═══════════════════════════════════════════════════════════════════════════
      */
@@ -266,52 +319,7 @@ export class SeleneMusicalBrain extends EventEmitter {
         // Paleta básica basada en energía
         const energy = audio.energy.current;
         const palette = this.generateFallbackPalette(energy);
-        // 🔧 WAVE 14.5: Obtener último rhythm análisis para telemetría
-        // Aunque estamos en modo reactivo, el RhythmAnalyzer siempre corre
-        const lastRhythm = this.contextEngine.getLastRhythm();
-        // 🔧 WAVE 14.5: Crear context MÍNIMO para telemetría de syncopation
-        // Esto permite que la UI muestre métricas incluso en modo reactivo
-        const minimalContext = lastRhythm ? {
-            rhythm: lastRhythm,
-            harmony: {
-                key: null,
-                mode: {
-                    scale: 'major',
-                    confidence: 0,
-                    mood: 'universal',
-                },
-                currentChord: {
-                    root: null,
-                    quality: null,
-                    confidence: 0,
-                },
-                confidence: 0,
-                timestamp: timestamp,
-            },
-            section: {
-                current: {
-                    type: 'unknown',
-                    confidence: 0,
-                    startedAt: timestamp,
-                    duration: 0,
-                },
-                predicted: null,
-                intensity: energy,
-                intensityTrend: 'stable',
-                confidence: 0,
-                timestamp: timestamp,
-            },
-            genre: {
-                primary: 'unknown',
-                confidence: 0,
-                characteristics: [],
-                timestamp: timestamp,
-            },
-            mood: 'neutral',
-            energy: energy,
-            confidence: 0.3,
-            timestamp: timestamp,
-        } : undefined;
+        // �️ WAVE 1230: No hay contexto completo en fallback
         return {
             timestamp,
             sessionId: this.currentSessionId,
@@ -322,7 +330,7 @@ export class SeleneMusicalBrain extends EventEmitter {
                 strategy: 'reactive',
             },
             lighting,
-            context: minimalContext, // 🔧 WAVE 14.5: Ahora incluye context con rhythm!
+            context: undefined, // �️ WAVE 1230: Sin contexto en fallback
             paletteSource: 'fallback',
             estimatedBeauty: 0.5, // Neutral en modo reactivo
             performance: perf,

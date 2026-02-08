@@ -11,9 +11,22 @@ import type {
   FixtureType,
   RGBColor,
 } from '../types'
-import type { ColorOutput } from '../color/ColorEngine'
+// 🗑️ WAVE 1233: ColorOutput movido a definición local (ColorEngine.ts eliminado)
 import type { MovementOutput } from '../color/MovementEngine'
 import type { EffectsOutput } from '../color/EffectsEngine'
+
+/**
+ * 🗑️ WAVE 1233: Tipo ColorOutput definido localmente
+ * (Anteriormente importado de ColorEngine.ts - ahora eliminado)
+ */
+export interface ColorOutput {
+  primary: RGBColor
+  secondary: RGBColor
+  accent: RGBColor
+  ambient: RGBColor
+  intensity: number
+  saturation: number
+}
 
 /**
  * Definición de un fixture (de archivo .fxt)

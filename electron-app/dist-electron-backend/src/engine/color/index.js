@@ -2,7 +2,7 @@
  * 🎨 VISUAL ENGINES - Index
  * Sub-motores de generación visual
  */
-export { ColorEngine } from './ColorEngine';
+// 🗑️ WAVE 1233: ColorEngine.ts ELIMINADO (Zombie - lógica duplicada en SeleneColorEngine)
 export { MovementEngine } from './MovementEngine';
 export { EffectsEngine } from './EffectsEngine';
 // WAVE 68.5: Motor de color PURO (sin género)

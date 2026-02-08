@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import { ZodiacElement, ZodiacAffinityCalculator } from '../consciousness/ZodiacAffinityCalculator';
+import { ZodiacElement, ZodiacAffinityCalculator } from './ZodiacAffinityCalculator';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERFACES

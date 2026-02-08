@@ -34,7 +34,7 @@
  */
 
 import type { TitanStabilizedState, SeleneMusicalPattern } from '../types'
-import type { ConsciousnessOutput, ConsciousnessColorDecision } from '../../../engine/consciousness/ConsciousnessOutput'
+import type { ConsciousnessOutput, ConsciousnessColorDecision } from '../../protocol/ConsciousnessOutput'
 import type { SelenePalette } from '../../../engine/color/SeleneColorEngine'
 import { senseBeauty, type BeautyAnalysis } from '../sense/BeautySensor'
 

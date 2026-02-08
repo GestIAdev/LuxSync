@@ -14,7 +14,7 @@
  * 🌊 WATER (Cancer, Scorpio, Pisces) - Fluido, Profundo, Líquido
  * ============================================================================
  */
-import { ZodiacAffinityCalculator } from '../consciousness/ZodiacAffinityCalculator';
+import { ZodiacAffinityCalculator } from './ZodiacAffinityCalculator';
 // ═══════════════════════════════════════════════════════════════════════════
 // KEY TO ZODIAC MAPPING
 // ═══════════════════════════════════════════════════════════════════════════

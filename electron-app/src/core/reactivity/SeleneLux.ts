@@ -57,7 +57,7 @@ import {
   ENERGY_OVERRIDE_THRESHOLD,
   isEnergyOverrideActive,
   applyEnergyOverride,
-} from '../../engine/consciousness/ConsciousnessOutput';
+} from '../protocol/ConsciousnessOutput';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS

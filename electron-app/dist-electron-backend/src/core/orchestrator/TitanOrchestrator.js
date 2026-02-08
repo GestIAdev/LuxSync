@@ -1006,7 +1006,7 @@ export class TitanOrchestrator {
                     dmx: {
                         connected: true,
                         driver: 'none',
-                        universe: 1,
+                        universe: 0, // 🔥 WAVE 1219: ArtNet 0-indexed
                         frameRate: 30,
                         port: null
                     },
@@ -1400,7 +1400,7 @@ export class TitanOrchestrator {
             zone: f.zone,
             type: f.type || 'generic',
             dmxAddress: f.dmxAddress, // 🎨 WAVE 686.11: Already normalized above
-            universe: f.universe || 1,
+            universe: f.universe ?? 0, // 🔥 WAVE 1219: ArtNet 0-indexed
             capabilities: f.capabilities,
             hasMovementChannels: f.hasMovementChannels,
             hasColorWheel: f.hasColorWheel, // 🎨 WAVE 1001: HAL Translation

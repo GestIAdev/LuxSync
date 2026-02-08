@@ -178,7 +178,7 @@ export type {
   ConsciousnessDebugInfo,
   HuntState,
   DecisionSource,
-} from '../../engine/consciousness/ConsciousnessOutput'
+} from '../protocol/ConsciousnessOutput'
 
 export {
   ENERGY_OVERRIDE_THRESHOLD,
@@ -186,7 +186,7 @@ export {
   createEmptyOutput,
   clampPhysicsModifier,
   clampColorDecision,
-} from '../../engine/consciousness/ConsciousnessOutput'
+} from '../protocol/ConsciousnessOutput'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS INTERNOS DE SELENE - NATIVE TO TITAN

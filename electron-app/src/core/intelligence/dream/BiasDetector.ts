@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import type { ConsciousnessOutput, ConsciousnessColorDecision } from '../../../engine/consciousness/ConsciousnessOutput'
+import type { ConsciousnessOutput, ConsciousnessColorDecision } from '../../protocol/ConsciousnessOutput'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

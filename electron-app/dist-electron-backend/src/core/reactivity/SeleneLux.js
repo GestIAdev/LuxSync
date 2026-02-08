@@ -29,7 +29,7 @@
 import { TechnoStereoPhysics, technoStereoPhysics, // 🎸 WAVE 1011.5: UNIFIED ARCHITECTURE (Lobotomized)
 rockPhysics2, // 🎸 WAVE 1011.5: Singleton instance
 LatinoStereoPhysics, calculateChillStereo, laserPhysics, washerPhysics, } from '../../hal/physics';
-import { isEnergyOverrideActive, } from '../../engine/consciousness/ConsciousnessOutput';
+import { isEnergyOverrideActive, } from '../protocol/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // SELENE LUX CLASS
 // ═══════════════════════════════════════════════════════════════════════════

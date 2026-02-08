@@ -14,7 +14,7 @@
  * @module core/intelligence/types
  * @version 500.0.0
  */
-export { ENERGY_OVERRIDE_THRESHOLD, isEnergyOverrideActive, createEmptyOutput, clampPhysicsModifier, clampColorDecision, } from '../../engine/consciousness/ConsciousnessOutput';
+export { ENERGY_OVERRIDE_THRESHOLD, isEnergyOverrideActive, createEmptyOutput, clampPhysicsModifier, clampColorDecision, } from '../protocol/ConsciousnessOutput';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES FELINAS
 // ═══════════════════════════════════════════════════════════════════════════

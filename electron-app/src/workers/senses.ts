@@ -62,13 +62,14 @@ import {
 // 🎯 WAVE 16: Normalización adaptativa de energía
 import { getEnergyNormalizer } from './utils/AdaptiveEnergyNormalizer';
 
-// �️ WAVE 670: AGC - Normalización de buffer ANTES del FFT
+//  WAVE 670: AGC - Normalización de buffer ANTES del FFT
 // CRITICAL: Sin esto, los Z-Scores del WAVE 660 son ficción matemática
 import { getAGC, type AGCOutput } from './utils/AutomaticGainControl';
 
-// �🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
+// 🌈 WAVE 47.1: MoodSynthesizer - VAD Emotional Analysis
 // WAVE 254: Migrado desde selene-lux-core a engine/consciousness
-import { MoodSynthesizer } from '../engine/consciousness/MoodSynthesizer';
+// WAVE 2026: Migrado a engine/musical/classification
+import { MoodSynthesizer } from '../engine/musical/classification/MoodSynthesizer';
 
 // ============================================
 // CONFIGURATION

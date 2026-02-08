@@ -1,5 +1,4 @@
 /**
  * 🏛️ WAVE 202: ENGINE INDEX
+ * SeleneLux2 removed in legacy purge
  */
-
-export { SeleneLux2 } from './SeleneLux2'

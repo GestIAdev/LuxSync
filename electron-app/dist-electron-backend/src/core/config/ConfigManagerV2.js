@@ -37,7 +37,7 @@ const DEFAULT_CONFIG_V2 = {
     dmx: {
         driver: 'enttec-usb-dmx-pro',
         port: '',
-        universe: 1,
+        universe: 0, // 🔥 WAVE 1219: ArtNet es 0-indexed (0 = Universo 1 en display)
         frameRate: 40,
     },
     audio: {

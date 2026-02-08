@@ -12,8 +12,8 @@ import type {
   AudioMetrics,
   EmotionalTone,
   MusicalPattern,
-} from '../types'
-import type { BeatState } from '../audio/BeatDetector'
+} from '../../types'
+import type { BeatState } from '../../audio/BeatDetector'
 
 /**
  * Estado de mood sintetizado

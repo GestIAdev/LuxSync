@@ -577,7 +577,7 @@ export class HardwareAbstraction {
                 type: fixture.type || 'generic',
                 zone: (fixture.zone || 'UNASSIGNED'),
                 dmxAddress: fixture.dmxAddress,
-                universe: fixture.universe || 1,
+                universe: fixture.universe ?? 0, // 🔥 WAVE 1219: ArtNet 0-indexed
                 dimmer: 0,
                 r: 0,
                 g: 0,
@@ -613,7 +613,7 @@ export class HardwareAbstraction {
                     type: fixture.type || 'generic',
                     zone,
                     dmxAddress, // 🎨 WAVE 686.11: Use normalized address
-                    universe: fixture.universe || 1,
+                    universe: fixture.universe ?? 0, // 🔥 WAVE 1219: ArtNet 0-indexed
                     dimmer: fixtureTarget.dimmer,
                     r: fixtureTarget.color.r,
                     g: fixtureTarget.color.g,
@@ -814,11 +814,19 @@ export class HardwareAbstraction {
         // User MUST manually start ArtNet/USB from Dashboard.
         // This respects "Manual First" doctrine: hardware = explicit human action.
         if (!this.driver.isConnected) {
-            // Silent drop - no spam, no auto-connect zombie
+            // 🔥 WAVE 1219: Debug - driver not connected
+            if (this.framesRendered % 100 === 0) {
+                console.warn(`[HAL] ⚠️ Driver not connected, dropping frames`);
+            }
             return;
         }
         // Convert states to DMX packets and send
         const packets = this.mapper.statesToDMXPackets(states);
+        // 🔥 WAVE 1219: Debug first packet values
+        if (packets.length > 0 && this.framesRendered % 30 === 0) {
+            const p = packets[0];
+            console.log(`[HAL] 📡 DMX OUT: Uni ${p.universe} | Addr ${p.address} | Ch0-5: [${p.channels.slice(0, 6).join(', ')}]`);
+        }
         for (const packet of packets) {
             this.driver.send(packet);
         }

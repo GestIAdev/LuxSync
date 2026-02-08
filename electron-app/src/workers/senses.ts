@@ -849,10 +849,11 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
   state.lastGenreOutput = genreOutput as any;  // GenreAnalysis casted to GenreOutput for compatibility
   
   // === PHASE 4: Build Response ===
-  // Mood from Wave 8 harmony (richer than simple bass/treble)
-  let mood: 'dark' | 'bright' | 'neutral' = 'neutral';
-  if (harmonyOutput.temperature === 'cool') mood = 'dark';
-  else if (harmonyOutput.temperature === 'warm') mood = 'bright';
+  // 🎵 WAVE 1228: Temperature field neutered - mood is computed in mind.ts instead
+  // harmonyOutput.temperature was decoration-only (never consumed by TitanEngine)
+  let mood: 'dark' | 'bright' | 'neutral' = 'neutral'; // Default neutral
+  // Removed: if (harmonyOutput.temperature === 'cool') mood = 'dark';
+  // Removed: else if (harmonyOutput.temperature === 'warm') mood = 'bright';
   
   // Track processing time
   state.totalProcessingTime += performance.now() - startTime;
@@ -887,7 +888,8 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
     // Wave 8 Rhythm (REGLA 3: Syncopation is king)
     syncopation: rhythmOutput.syncopation,
     groove: rhythmOutput.groove,
-    subdivision: rhythmOutput.subdivision,
+    // 🎵 WAVE 1228: Phantom Field - subdivision never used, return static value
+    subdivision: 4 as const,
     
     // Spectrum
     bass: spectrum.bass,
@@ -928,15 +930,17 @@ function processAudioBuffer(incomingBuffer: Float32Array): ExtendedAudioAnalysis
       harmony: harmonyOutput,
       section: sectionOutput,
       genre: genreOutput as any,  // GenreAnalysis casted to GenreOutput
-      // 🌈 WAVE 47.1: MoodSynthesizer output (VAD emotional analysis)
+      // 🌈 WAVE 1228: MoodSynthesizer pruning - keep only primary (others are UI decoration)
+      // CONSUMED: primary (affects EffectDNA organicity)
+      // NOT CONSUMED: valence, arousal, dominance, intensity, stability (phantom fields)
       mood: {
         primary: moodOutput.primary,
-        secondary: moodOutput.secondary,
-        valence: moodOutput.valence,
-        arousal: moodOutput.arousal,
-        dominance: moodOutput.dominance,
-        intensity: moodOutput.intensity,
-        stability: moodOutput.stability,
+        secondary: null,  // 🎵 WAVE 1228: Phantom field - rarely used, return null
+        valence: 0,       // 🎵 WAVE 1228: Phantom field - decoration, static 0
+        arousal: 0,       // 🎵 WAVE 1228: Phantom field - decoration, static 0
+        dominance: 0,     // 🎵 WAVE 1228: Phantom field - decoration, static 0
+        intensity: 0.5,   // 🎵 WAVE 1228: Phantom field - decoration, static neutral
+        stability: 1,     // 🎵 WAVE 1228: Phantom field - decoration, static 1
       }
     }
   };

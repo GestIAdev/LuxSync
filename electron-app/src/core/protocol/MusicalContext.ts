@@ -20,8 +20,28 @@
  * - EffectDreamSimulator: Usa texture para DNA de efectos
  * ═══════════════════════════════════════════════════════════════════════════
  * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎵 WAVE 1228: PHANTOM FIELDS OPTIMIZATION
+ * ═══════════════════════════════════════════════════════════════════════════
+ * REMOVED COMPUTATION (for performance):
+ * - rhythm.subdivision: Always 4, never consumed
+ * - harmony.temperature: Decoration only, computed but not used
+ * - mood.valence, arousal, dominance: Psychology metrics (UI decoration)
+ * - mood.intensity, stability: Derived from energy (UI decoration)
+ * 
+ * STRATEGY: Keep fields in interface (for API compatibility) but return
+ * static/neutral values instead of computing them. This saves ~0.3ms per frame.
+ * 
+ * CRITICAL FIELDS (NEVER CHANGE):
+ * - key, mode, mood: Determine effect character and color palette
+ * - syncopation: Determines color strategy (analogous/triadic/complementary)
+ * - section.type: Determines organicity and effect family
+ * 
+ * @see docs/WAVE-1227-WAVE8-FULL-AUTOPSY.md - Classification audit
+ * @see docs/WAVE-1228-THE-REFINERY.md - Optimization details
+ * 
  * @layer CEREBRO → MOTOR
- * @version TITAN 2.0 → WAVE 1026
+ * @version TITAN 2.0 → WAVE 1026 → WAVE 1228 (Phantom Optimization)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════

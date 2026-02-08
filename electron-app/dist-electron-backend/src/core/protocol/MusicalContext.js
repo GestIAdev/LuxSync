@@ -132,6 +132,10 @@ export function createDefaultMusicalContext() {
         // 🔬 WAVE 1026: Nuevos contextos
         spectral: createDefaultSpectralContext(),
         narrative: createDefaultNarrativeContext(),
+        // 🔴 WAVE 1186.5: Legacy fields - valores por defecto
+        zScore: 0,
+        vibeId: 'unknown',
+        inDrop: false,
         confidence: 0,
         timestamp: Date.now(),
     };

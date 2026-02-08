@@ -461,6 +461,59 @@ export interface MusicalContext {
   narrative?: NarrativeContext
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔴 WAVE 1186.5: LEGACY COMPATIBILITY FIELDS
+  // NOTA: Estos campos existen en effects/types.ts y son críticos para
+  // el sistema de detección de drops, fuzzy logic y hunt decisions.
+  // Se agregan aquí para unificación gradual sin romper funcionalidad.
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🔴 LEGACY: Z-Score de desviación estándar del audio
+   * 
+   * CRÍTICO PARA:
+   * - FuzzyDecisionMaker: antecedentes en reglas fuzzy (epic, notable, normal)
+   * - DropBridge: detección de drops con threshold >= 2.8
+   * - HuntEngine: scoring de "worthy moments"
+   * - EnergyConsciousness: clasificación de zonas energéticas
+   * 
+   * Valores típicos:
+   * - 0.0 = silencio
+   * - 1.5 = normal
+   * - 2.8 = DROP (umbral)
+   * - 4.0+ = DIVINE
+   * 
+   * DEPRECATED: Usar `energyContext.zone` para nueva lógica.
+   * Se mantiene para retrocompatibilidad.
+   */
+  zScore?: number
+
+  /**
+   * 🔴 LEGACY: ID del vibe musical activo
+   * 
+   * CRÍTICO PARA:
+   * - HuntEngine: weighting basado en vibe (beautyWeight, urgencyWeight, etc.)
+   * - DecisionMaker: razonamiento de decisiones
+   * - SeleneTitanConscious: selección de arsenal divino
+   * - VibeSectionProfiles: mapping de patrones por estilo
+   * 
+   * Ejemplos: 'chill-lounge', 'dark-ambient', 'tech-house', etc.
+   * 
+   * DEPRECATED: Usar `genre.subGenre` para nueva lógica.
+   * Se mantiene para retrocompatibilidad.
+   */
+  vibeId?: string
+
+  /**
+   * 🔴 LEGACY: ¿Estamos dentro de un DROP?
+   * 
+   * Campo derivado de `zScore >= 2.8` para conveniencia.
+   * 
+   * DEPRECATED: Usar `energyContext.zone === 'divine'` para nueva lógica.
+   * Se mantiene para retrocompatibilidad.
+   */
+  inDrop?: boolean
+
+  // ═══════════════════════════════════════════════════════════════════════
   // META
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -592,6 +645,10 @@ export function createDefaultMusicalContext(): MusicalContext {
     // 🔬 WAVE 1026: Nuevos contextos
     spectral: createDefaultSpectralContext(),
     narrative: createDefaultNarrativeContext(),
+    // 🔴 WAVE 1186.5: Legacy fields - valores por defecto
+    zScore: 0,
+    vibeId: 'unknown',
+    inDrop: false,
     confidence: 0,
     timestamp: Date.now(),
   }

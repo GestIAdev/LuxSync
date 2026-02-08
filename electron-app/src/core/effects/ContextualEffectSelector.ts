@@ -31,7 +31,7 @@
  * @version WAVE 685, 700.1
  */
 
-import type { MusicalContext } from './types'
+import type { MusicalContext } from '../protocol/MusicalContext'
 import type { HuntDecision } from '../intelligence/think/HuntEngine'
 import type { FuzzyDecision } from '../intelligence/think/FuzzyDecisionMaker'
 import { MoodController } from '../mood'

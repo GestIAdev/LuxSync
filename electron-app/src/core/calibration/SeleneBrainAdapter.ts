@@ -40,8 +40,8 @@
 
 import { BrainMetricProvider } from './CalibrationRunner'
 
-// FFT Analyzer - The mathematical core
-import { FFTAnalyzer } from '../../workers/FFT'
+// FFT Analyzer - The mathematical core (migrated to GodEarAnalyzer WAVE 1235)
+import { GodEarAnalyzer, GodEarSpectrum } from '../../workers/GodEarFFT'
 
 // Contextual Memory - Z-Score calculation (in memory/ folder)
 import { 
@@ -140,7 +140,7 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
   private config: BrainAdapterConfig
   
   // Core components
-  private fftAnalyzer: FFTAnalyzer
+  private godEarAnalyzer: GodEarAnalyzer
   private contextualMemory: ContextualMemory
   private fuzzyDecisionMaker: FuzzyDecisionMaker
   private dropBridge: DropBridge
@@ -162,7 +162,7 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     this.config = { ...DEFAULT_CONFIG, ...config }
     
     // Initialize components
-    this.fftAnalyzer = new FFTAnalyzer()
+    this.godEarAnalyzer = new GodEarAnalyzer(this.config.sampleRate, 4096)
     this.contextualMemory = new ContextualMemory()
     this.fuzzyDecisionMaker = new FuzzyDecisionMaker()
     this.dropBridge = new DropBridge()
@@ -183,8 +183,29 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     // Step 2: Apply AGC (simple implementation)
     const { normalizedEnergy, agcGain } = this.applyAGC(rawEnergy, peakLevel)
     
-    // Step 3: FFT Analysis (only takes buffer, not sample rate)
-    const spectrum = this.fftAnalyzer.analyze(buffer)
+    // Step 3: FFT Analysis using GodEar (WAVE 1235: Migrated from FFT.ts)
+    const godEarResult = this.godEarAnalyzer.analyze(buffer)
+    
+    // Extract spectrum values for compatibility with downstream analysis
+    // GodEar provides bands and more advanced metrics
+    const spectrum = {
+      bass: godEarResult.bands.bass,
+      lowMid: godEarResult.bands.lowMid,
+      mid: godEarResult.bands.mid,
+      highMid: godEarResult.bands.highMid,
+      treble: godEarResult.bands.treble,
+      subBass: godEarResult.bands.subBass,
+      // Harshness proxy: use (1 - clarity) as roughness measure
+      harshness: 1 - godEarResult.spectral.clarity,
+      // Spectral metrics from GodEar
+      spectralCentroid: godEarResult.spectral.centroid,
+      spectralFlatness: godEarResult.spectral.flatness,
+      dominantFrequency: godEarResult.dominantFrequency,
+      // Transients
+      kickDetected: godEarResult.transients.kick,
+      snareDetected: godEarResult.transients.snare,
+      hihatDetected: godEarResult.transients.hihat,
+    }
     
     // Step 4: Update section tracking (simplified heuristic)
     this.updateSection(normalizedEnergy, spectrum.bass)
@@ -300,8 +321,8 @@ export class SeleneBrainAdapter implements BrainMetricProvider {
     this.fuzzyDecisionMaker.reset()
     this.dropBridge.reset()
     
-    // Reset FFT analyzer
-    this.fftAnalyzer.reset()
+    // Reset GodEar FFT analyzer (WAVE 1235)
+    this.godEarAnalyzer.reset()
     
     // Reset metrics
     this.currentMetrics = this.createEmptyMetrics()

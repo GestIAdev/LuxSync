@@ -1018,7 +1018,7 @@ export function createDefaultHardware(): HardwareState {
     dmx: {
       connected: false,
       driver: 'none',
-      universe: 1,
+      universe: 0,  // 🔥 WAVE 1219: ArtNet 0-indexed
       frameRate: 40,
       port: null
     },

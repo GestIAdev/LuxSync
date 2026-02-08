@@ -1288,13 +1288,15 @@ function setupDMXHandlers(deps: IPCDependencies): void {
           universalDMX.setChannel(clampedAddress, clampedValue)
         }
         // Also send via ArtNet if configured (for ArtNet universe 0)
-        if (deps.artNetDriver?.isRunning) {
+        // 🔧 WAVE 1218 FIX: isConnected not isRunning
+        if (deps.artNetDriver?.isConnected) {
           deps.artNetDriver.setChannel(clampedAddress, clampedValue)
           deps.artNetDriver.send()  // 🔥 WAVE 1008.5: Force immediate send for calibration
         }
       } else {
         // Higher universes - ArtNet only
-        if (deps.artNetDriver?.isRunning) {
+        // 🔧 WAVE 1218 FIX: isConnected not isRunning
+        if (deps.artNetDriver?.isConnected) {
           deps.artNetDriver.setChannel(clampedAddress, clampedValue, universe)
           deps.artNetDriver.send()  // 🔥 WAVE 1008.5: Force immediate send
         }

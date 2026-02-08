@@ -77,6 +77,12 @@ export class TitanOrchestrator {
         // Esto evita que el sistema siga "animando" con datos congelados cuando el frontend muere
         this.lastAudioTimestamp = 0;
         this.AUDIO_STALENESS_THRESHOLD_MS = 500; // 500ms = medio segundo sin audio = stale
+        // 📜 WAVE 1198: THE WARLOG HEARTBEAT - State tracking for tactical logs
+        this.hasLoggedFirstAudio = false;
+        this.lastLoggedVibe = '';
+        this.lastLoggedMood = '';
+        this.lastLoggedBrainState = false;
+        this.warlogHeartbeatFrame = 0; // For periodic heartbeat logs
         // WAVE 255.5: Callback to broadcast fixture states to frontend
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.onBroadcast = null;
@@ -422,6 +428,24 @@ export class TitanOrchestrator {
         masterArbiter.setTitanIntent(titanLayer);
         // Arbitrate all layers (this merges manual overrides, effects, blackout)
         const arbitratedTarget = masterArbiter.arbitrate();
+        // 📜 WAVE 1198: WARLOG HEARTBEAT - Periodic status every ~4 seconds (240 frames at 60fps)
+        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+        this.warlogHeartbeatFrame++;
+        if (this.warlogHeartbeatFrame >= 240) {
+            this.warlogHeartbeatFrame = 0;
+            const currentVibe = this.engine.getCurrentVibe();
+            const brainEnabled = this.useBrain;
+            const audioStatus = this.hasRealAudio ? 'LIVE' : 'SILENT';
+            const bpm = context.bpm || 120;
+            // Emit heartbeat log
+            this.log('System', `💓 HEARTBEAT: ${audioStatus} | ${bpm} BPM | ${currentVibe.toUpperCase()}`, {
+                audioActive: this.hasRealAudio,
+                bpm,
+                vibe: currentVibe,
+                brainEnabled,
+                fixtureCount: this.fixtures.length,
+            });
+        }
         // WAVE 380: Debug - verify fixtures are present in loop
         if (this.frameCount === 1 || this.frameCount % 300 === 0) {
             console.log(`[TitanOrchestrator] 🔄 Loop running with ${this.fixtures.length} fixtures in memory`);
@@ -833,8 +857,9 @@ export class TitanOrchestrator {
                 console.log(`[TitanOrchestrator 🥁] MOVEMENT OVERRIDE [${mode}]: Pan=${mov.pan?.toFixed(2) ?? 'N/A'} Tilt=${mov.tilt?.toFixed(2) ?? 'N/A'}`);
             }
         }
-        // WAVE 257: Throttled logging to Tactical Log (every second = 30 frames)
-        const shouldLogToTactical = this.frameCount % 30 === 0;
+        // WAVE 257: Throttled logging to Tactical Log (every 4 seconds = 240 frames @ 60fps)
+        // 🎛️ WAVE 1198.8: De 120 a 240 frames para reducir spam
+        const shouldLogToTactical = this.frameCount % 240 === 0;
         if (shouldLogToTactical && this.hasRealAudio) {
             const avgDimmer = fixtureStates.length > 0
                 ? fixtureStates.reduce((sum, f) => sum + f.dimmer, 0) / fixtureStates.length
@@ -923,6 +948,19 @@ export class TitanOrchestrator {
                         device: 'Microphone',
                         active: this.hasRealAudio,
                         isClipping: false
+                    },
+                    // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - 7 GodEar Tactical Bands
+                    spectrumBands: {
+                        subBass: this.smoothedMetrics.subBass,
+                        bass: bass, // Use the already available bass from engineAudioMetrics
+                        lowMid: this.smoothedMetrics.lowMid,
+                        mid: mid, // Use the already available mid from engineAudioMetrics
+                        highMid: this.smoothedMetrics.highMid,
+                        treble: high * 0.8, // Approximate from high
+                        ultraAir: high * 0.3, // Approximate ultra-high from high
+                        dominant: bass > mid && bass > high ? 'bass' :
+                            mid > bass && mid > high ? 'mid' : 'treble',
+                        flux: Math.abs((this.lastAudioData.energy || 0) - energy)
                     }
                 },
                 // 🌡️ WAVE 283: Usar datos REALES del TitanEngine en vez de defaults
@@ -1298,7 +1336,17 @@ export class TitanOrchestrator {
             rawBassEnergy: this.lastAudioData.rawBassEnergy,
         };
         // 🔥 WAVE 1012.5: Frontend también detecta audio real
+        const wasAudioActive = this.hasRealAudio;
         this.hasRealAudio = energy > 0.01;
+        // 📜 WAVE 1198: Log first audio detection (only once per session)
+        if (this.hasRealAudio && !this.hasLoggedFirstAudio) {
+            this.hasLoggedFirstAudio = true;
+            this.log('System', '🎧 AUDIO DETECTED - Selene is now listening!');
+        }
+        else if (!this.hasRealAudio && wasAudioActive) {
+            // Audio lost - log it
+            this.log('System', '🔇 AUDIO LOST - Waiting for signal...');
+        }
         // 🗡️ WAVE 265: Update timestamp para staleness detection
         this.lastAudioTimestamp = Date.now();
     }

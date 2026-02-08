@@ -6,8 +6,21 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { CircularBuffer } from './CircularBuffer';
 import { RollingStats } from './RollingStats';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 1181: Z-SCORE RECALIBRATION - "Boris Brejcha nos enseñó la verdad"
+// ═══════════════════════════════════════════════════════════════════════════
+// PROBLEMA: Z-Scores de 6σ, 8σ, 12σ cada 2-3 minutos en minimal techno.
+// CAUSA: Ventana de 5s demasiado corta → media inestable en breakdowns largos.
+// SOLUCIÓN: Alargar ventana a 30s (~1800 frames @ 60fps).
+// 
+// FILOSOFÍA:
+// "La media debe representar el CONTEXTO MUSICAL, no los últimos 5 segundos"
+// 
+// ANTES: bufferSize=300 (5s) → Z=12σ en drops normales
+// AHORA: bufferSize=1800 (30s) → Z=3-4σ en drops reales
+// ═══════════════════════════════════════════════════════════════════════════
 const DEFAULT_CONFIG = {
-    bufferSize: 300, // ~5 segundos @ 60fps
+    bufferSize: 1800, // 🔬 WAVE 1181: 30 segundos @ 60fps (was 300 = 5s)
     zScoreNotable: 1.5, // |z| > 1.5 = notable
     zScoreSignificant: 2.0, // |z| > 2.0 = significativo
     zScoreEpic: 2.5, // |z| > 2.5 = anomalía/épico (trigger threshold)

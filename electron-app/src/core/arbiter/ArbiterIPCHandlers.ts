@@ -158,13 +158,30 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       return { success: false, error: 'Invalid or empty channels' }
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 1219: AUTO-INJECT SPEED FOR MOVEMENT COMMANDS
+    // Moving heads require speed channel to be set for pan/tilt to work.
+    // If pan or tilt is being controlled but speed is not specified, inject speed=0 (fast)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const hasMovement = channels.includes('pan') || channels.includes('tilt')
+    const hasSpeed = channels.includes('speed')
+    
+    let finalControls = { ...controls }
+    let finalChannels = [...channels]
+    
+    if (hasMovement && !hasSpeed) {
+      finalControls.speed = controls.speed ?? 0  // 0 = fastest movement
+      finalChannels.push('speed')
+      console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
+    }
+    
     const overrideCount = fixtureIds.length
     
     for (const fixtureId of fixtureIds) {
       const override: Layer2_Manual = {
         fixtureId,
-        controls: controls as any,
-        overrideChannels: channels as any,
+        controls: finalControls as any,
+        overrideChannels: finalChannels as any,
         mode: 'absolute',
         source: 'ui_programmer',
         priority: 100,

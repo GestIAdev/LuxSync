@@ -394,7 +394,10 @@ export const useStageStore = create<StageStore>()(
         
         if (stageAPI) {
           // WAVE 365: Use Electron IPC
-          const result = await stageAPI.save(showFile, showFilePath || undefined)
+          // 🔥 WAVE 1218 FIX: 'active' is a sentinel value, not a real path!
+          // Pass undefined so StagePersistence uses getActiveShowPath()
+          const actualPath = showFilePath === 'active' ? undefined : showFilePath
+          const result = await stageAPI.save(showFile, actualPath || undefined)
           
           if (result.success) {
             set({ isDirty: false })
@@ -796,10 +799,12 @@ export function setupStageStoreListeners(): () => void {
   
   const unsubscribe = lux.stage.onLoaded((data: { 
     showFile: ShowFileV2
+    filePath?: string  // 🔥 WAVE 1218: Accept filePath from backend!
     migrated?: boolean
     warnings?: string[] 
   }) => {
     console.log('[stageStore] 📨 Received show from main process:', data.showFile.name)
+    console.log('[stageStore] 📂 File path:', data.filePath || '(active)')
     
     if (data.migrated) {
       console.log('[stageStore] 🔄 Show was migrated from legacy format')
@@ -809,9 +814,11 @@ export function setupStageStoreListeners(): () => void {
       console.warn('[stageStore] ⚠️ Migration warnings:', data.warnings)
     }
     
+    // 🔥 WAVE 1218 FIX: Use the actual filePath from backend, not hardcoded 'active'!
+    // This ensures saves go back to the original file
     useStageStore.setState({
       showFile: data.showFile,
-      showFilePath: 'active',
+      showFilePath: data.filePath || 'active',
       isLoading: false,
       isDirty: false
     })

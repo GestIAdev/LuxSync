@@ -309,6 +309,22 @@ export class SectionTracker extends EventEmitter {
     getActiveProfile() {
         return this.activeProfile;
     }
+    /**
+     * 🔮 WAVE 1190: PROJECT CASSANDRA - Spectral Buildup Score
+     *
+     * Expone el score de buildup espectral para que el PredictionEngine
+     * pueda usarlo para mejorar la anticipación de drops.
+     *
+     * Detecta patrones típicos de buildup en EDM:
+     * - Rising Rolloff: El brillo sube (high-pass abriendo)
+     * - Rising Flatness: Ruido blanco aumenta (snare roll, white noise sweep)
+     * - Falling SubBass: El bajo desaparece (ducking antes del drop)
+     *
+     * @returns Score 0-1 de "probabilidad de buildup espectral"
+     */
+    getSpectralBuildupScore() {
+        return this.detectSpectralBuildup();
+    }
     // ============================================================
     // 📊 MÉTODO PRINCIPAL - TRACK
     // ============================================================

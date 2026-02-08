@@ -112,7 +112,7 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   isConnected: false,  // ❌ PESIMISTA: Desconectado por defecto
   connectionError: null,
   availableInterfaces: [],
-  universe: 1,
+  universe: 0,  // 🔥 WAVE 1219: ArtNet es 0-indexed (0 = Universo 1 en display)
   frameRate: 44,
   fixtures: [],
   fixtureCount: 0,
@@ -148,7 +148,8 @@ export const useDMXStore = create<DMXState>((set, get) => ({
   },
   
   setUniverse: (universe) => {
-    set({ universe: Math.max(1, Math.min(universe, 32768)) })
+    // 🔥 WAVE 1219: ArtNet universes are 0-indexed (0 = Universo 1 en display)
+    set({ universe: Math.max(0, Math.min(universe, 32767)) })
   },
   
   setFrameRate: (rate) => {

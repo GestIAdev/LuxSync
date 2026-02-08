@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔌 THE DMX NEXUS - VISUAL PATCHER
  * WAVE 1211: OPERATION FIRST LIGHT
@@ -510,10 +510,12 @@ const s = {
     color: '#000',
     boxShadow: '0 0 20px rgba(245, 158, 11, 0.3)',
   },
-  // Ghost Button (SAVE)
+  // Ghost Button (SAVE) - Using separate border properties to avoid React warning
   btnGhost: {
     background: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     color: COLORS.text.secondary,
     padding: '6px 10px',
     borderRadius: '6px',
@@ -986,8 +988,41 @@ export const VisualPatcher: React.FC = () => {
     }
   }, [selectedFixture, updateFixture]);
 
-  // --- � BATCH PATCHING HANDLER ---
-  const handleBatchPatch = useCallback(() => {
+  // --- 🌐 UNIVERSE CHANGE (Single) - WAVE 1219 ---
+  const handleUniverseChange = useCallback((value: string) => {
+    if (!selectedFixture) return;
+    // 🔥 WAVE 1219: Direct 0-indexed input (ArtNet native: 0-63)
+    const universe = parseInt(value);
+    if (!isNaN(universe) && universe >= 0 && universe <= 63) {
+      updateFixture(selectedFixture.id, { universe });
+      console.log(`[Patcher] 🌐 Universe changed: ${universe}`);
+    }
+  }, [selectedFixture, updateFixture]);
+
+  // --- 💾 SAVE HANDLER ---
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    setSaveSuccess(null);
+    
+    try {
+      console.log('💾 SAVING SHOW...');
+      const success = await saveShow();
+      setSaveSuccess(success);
+      console.log(success ? '✅ SHOW SAVED' : '❌ SAVE FAILED');
+      
+      // Clear feedback after 2s
+      setTimeout(() => setSaveSuccess(null), 2000);
+    } catch (err) {
+      console.error('💥 SAVE ERROR:', err);
+      setSaveSuccess(false);
+      setTimeout(() => setSaveSuccess(null), 2000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [saveShow]);
+
+  // --- �🐝 BATCH PATCHING HANDLER ---
+  const handleBatchPatch = useCallback(async () => {
     if (selectedIds.length < 2) return;
     
     console.log(`🐝 BATCH PATCHING: ${selectedIds.length} fixtures, start=${batchStartAddress}, offset=${batchOffset}`);
@@ -1001,14 +1036,17 @@ export const VisualPatcher: React.FC = () => {
         console.log(`  → ${fixture?.name || id}: Ch ${newAddress}`);
       }
     });
-  }, [selectedIds, batchStartAddress, batchOffset, updateFixture, fixtures]);
+    
+    // Auto-save after batch patch
+    await handleSave();
+  }, [selectedIds, batchStartAddress, batchOffset, updateFixture, fixtures, handleSave]);
 
   // --- 🗑️ CLEAR SELECTION ---
   const handleClearSelection = useCallback(() => {
     setSelectedIds([]);
   }, []);
 
-  // --- �🖼️ RENDER ---
+  // --- 🖼️ RENDER ---
   return (
     <div style={s.container}>
       {/* MAIN CONTENT */}
@@ -1097,32 +1135,56 @@ export const VisualPatcher: React.FC = () => {
         <div style={s.sidebar}>
           <div style={s.header}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={s.title}>🔌 DMX NEXUS</div>
+              <div style={s.title}><IconDmxNexus /> DMX NEXUS</div>
               <div style={s.statusOnline}>
                 <span style={{ fontSize: '8px' }}>●</span> ONLINE
               </div>
             </div>
-            {/* 💾 SAVE BUTTON - 🎨 WAVE 1217: Icon with Glow */}
+            {/* 💾 SAVE BUTTON - 🎨 WAVE 1218: Real Persistence! */}
             <button 
-              style={s.btnGhost}
-              onClick={() => {
-                console.log('💾 SAVE SHOW triggered');
-                // TODO: Connect to actual save function
+              style={{
+                ...s.btnGhost,
+                ...(isSaving && { opacity: 0.6, cursor: 'wait' }),
+                ...(saveSuccess === true && { borderColor: '#00FF88', color: '#00FF88' }),
+                ...(saveSuccess === false && { borderColor: '#FF4444', color: '#FF4444' }),
               }}
+              onClick={handleSave}
+              disabled={isSaving}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = COLORS.accent.cyan;
-                e.currentTarget.style.color = COLORS.accent.cyan;
-                e.currentTarget.style.filter = 'drop-shadow(0 0 6px rgba(34, 211, 238, 0.6))';
+                if (!isSaving) {
+                  e.currentTarget.style.borderColor = COLORS.accent.cyan;
+                  e.currentTarget.style.color = COLORS.accent.cyan;
+                  e.currentTarget.style.filter = 'drop-shadow(0 0 6px rgba(34, 211, 238, 0.6))';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.color = COLORS.text.secondary;
+                e.currentTarget.style.borderColor = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.color = saveSuccess === true ? '#00FF88' : saveSuccess === false ? '#FF4444' : COLORS.text.secondary;
                 e.currentTarget.style.filter = 'none';
               }}
               title="Save Show"
             >
-              <IconFloppy />
-              <span>SAVE</span>
+              {isSaving ? (
+                <>
+                  <span style={{ animation: 'spin 1s linear infinite' }}>⟳</span>
+                  <span>SAVING...</span>
+                </>
+              ) : saveSuccess === true ? (
+                <>
+                  <IconCheck />
+                  <span>SAVED!</span>
+                </>
+              ) : saveSuccess === false ? (
+                <>
+                  <span>✕</span>
+                  <span>ERROR</span>
+                </>
+              ) : (
+                <>
+                  <IconFloppy />
+                  <span>SAVE</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -1181,14 +1243,20 @@ export const VisualPatcher: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <div style={s.label}>UNIVERSE</div>
                     <input 
-                      style={{ 
-                        ...s.inputVFD, 
-                        color: COLORS.text.muted,
-                        textShadow: 'none',
-                        cursor: 'not-allowed',
-                      }} 
-                      value={(selectedFixture.universe || 0) + 1} 
-                      readOnly 
+                      type="number"
+                      min={0}
+                      max={63}
+                      style={s.inputVFD} 
+                      value={selectedFixture.universe ?? 0}
+                      onChange={(e) => handleUniverseChange(e.target.value)}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#a855f7';
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.3)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#334155';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -1271,10 +1339,10 @@ export const VisualPatcher: React.FC = () => {
           {selectionMode === 'multi' && (
             /* CASE C: Multi-selection - BATCH PATCHING PANEL 🐝 */
             <>
-              {/* 🔮 SWARM HEADER - Clean & Bold (WAVE 1215) */}
+              {/* 🔮 SWARM HEADER - Clean & Bold (WAVE 1215 + 1218 ICON) */}
               <div style={s.swarmHeader}>
                 <div style={s.swarmLabel}>
-                  <span style={{ fontSize: '12px', marginRight: '6px' }}>🐝</span>
+                  <IconSwarm />
                   SWARM MODE
                 </div>
                 <div style={s.swarmCount}>
@@ -1282,9 +1350,9 @@ export const VisualPatcher: React.FC = () => {
                 </div>
               </div>
 
-              {/* 🔮 BATCH ADDRESSING - VFD STYLE (WAVE 1215) */}
+              {/* 🔮 BATCH ADDRESSING - VFD STYLE (WAVE 1215 + 1218 ICON) */}
               <div style={s.cardGlass}>
-                <div style={s.cardTitle}>🪄 BATCH PATCHING</div>
+                <div style={s.cardTitle}><IconMagicWand /> BATCH PATCHING</div>
                 
                 <div style={s.inputRow}>
                   <div style={{ flex: 1 }}>
@@ -1334,7 +1402,7 @@ export const VisualPatcher: React.FC = () => {
                     background: 'rgba(0, 0, 0, 0.4)', 
                     borderRadius: '4px', 
                     padding: '6px',
-                    maxHeight: '110px',
+                    maxHeight: '140px',  // 🎨 WAVE 1218: Más altura ahora que AUTO-PATCH salió!
                     overflowY: 'auto',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
                   }}>
@@ -1364,14 +1432,19 @@ export const VisualPatcher: React.FC = () => {
                     })}
                   </div>
                 </div>
+              </div>
 
-                {/* 🎨 WAVE 1217: AUTO-PATCH BUTTON with Icon */}
+              {/* ═══════════════════════════════════════════════════════════════
+                  🎨 WAVE 1218: ACTION ROW - AUTO-PATCH + FLASH CONSOLIDATED
+                  ═══════════════════════════════════════════════════════════════ */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                {/* 🪄 AUTO-PATCH (Moved from card - now aligned with FLASH) */}
                 <button 
                   style={{ 
                     ...s.btn, 
                     ...s.btnAutoPatch,
                     ...s.btnIcon,
-                    marginTop: '12px',
+                    flex: 1,
                   }}
                   onClick={handleBatchPatch}
                   onMouseEnter={(e) => {
@@ -1386,39 +1459,50 @@ export const VisualPatcher: React.FC = () => {
                   }}
                 >
                   <IconWand />
-                  <span>AUTO-PATCH</span>
+                  <span>PATCH</span>
+                </button>
+
+                {/* ⚡ FLASH ALL (Elevated to action row) */}
+                <button 
+                  style={{ 
+                    ...s.btn, 
+                    ...s.btnFlashGradient, 
+                    ...s.btnIcon,
+                    flex: 1,
+                    ...(isFlashing ? s.btnFlashActive : {})
+                  }}
+                  onMouseDown={() => handleFlash(true)}
+                  onMouseUp={() => handleFlash(false)}
+                  onMouseEnter={(e) => {
+                    if (!isFlashing) {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 0 30px rgba(245, 158, 11, 0.5)';
+                      e.currentTarget.style.filter = 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    // Stop flashing if mouse leaves
+                    if (isFlashing) {
+                      handleFlash(false);
+                    } else {
+                      // Reset hover styles
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(245, 158, 11, 0.3)';
+                      e.currentTarget.style.filter = 'none';
+                    }
+                  }}
+                >
+                  <IconFlash />
+                  <span>{isFlashing ? `FIRING ${selectedIds.length}x...` : `FLASH`}</span>
                 </button>
               </div>
 
-              {/* 🎨 WAVE 1217: SWARM FLASH BUTTON with Icon */}
-              <button 
-                style={{ 
-                  ...s.btn, 
-                  ...s.btnFlashGradient, 
-                  ...s.btnIcon,
-                  marginTop: 'auto',
-                  ...(isFlashing ? s.btnFlashActive : {})
-                }}
-                onMouseDown={() => handleFlash(true)}
-                onMouseUp={() => handleFlash(false)}
-                onMouseLeave={() => isFlashing && handleFlash(false)}
-                onMouseEnter={(e) => {
-                  if (!isFlashing) {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 0 30px rgba(245, 158, 11, 0.5)';
-                    e.currentTarget.style.filter = 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))';
-                  }
-                }}
-              >
-                <IconFlash />
-                <span>{isFlashing ? `FIRING ${selectedIds.length}x...` : `FLASH ALL`}</span>
-              </button>
-
-              {/* 🎨 WAVE 1217: CLEAR BUTTON with Icon */}
+              {/* 🎨 WAVE 1218: CLEAR BUTTON - Discrete, separated from action row */}
               <button 
                 style={{ 
                   ...s.btn, 
                   ...s.btnClear,
+                  marginTop: '10px',  // Space from action row
                 }}
                 onClick={handleClearSelection}
                 onMouseEnter={(e) => {

@@ -330,6 +330,11 @@ export class MasterArbiter extends EventEmitter {
       return
     }
     
+    // 🔥 WAVE 1219: Debug log for successful override (only with controls for movement)
+    if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
+      console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
+    }
+    
     // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
     
@@ -804,12 +809,15 @@ export class MasterArbiter extends EventEmitter {
     const controlSources: Partial<Record<ChannelType, ControlLayer>> = {}
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🚦 WAVE 1132: OUTPUT GATE - SUPREME PRIORITY
-    // When output is DISABLED (ARMED state), ALL fixtures get BLACKOUT
-    // This happens BEFORE any other layer processing - it's the Iron Curtain
-    // User must explicitly press GO to enter LIVE state and enable DMX flow
+    // 🚦 WAVE 1132 + 1219: OUTPUT GATE - WITH CALIBRATION BYPASS
+    // When output is DISABLED (ARMED state), AI/effects get BLACKOUT
+    // BUT: Manual overrides (from Calibration/Commander) still work!
+    // This allows testing hardware before going LIVE.
     // ═══════════════════════════════════════════════════════════════════════
-    if (!this._outputEnabled) {
+    const manualOverride = this.layer2_manualOverrides.get(fixtureId)
+    
+    if (!this._outputEnabled && !manualOverride) {
+      // No manual control → full blackout
       return this.createOutputGateBlackout(fixtureId)
     }
     
@@ -820,7 +828,7 @@ export class MasterArbiter extends EventEmitter {
     
     // Get values from each layer
     const titanValues = this.getTitanValuesForFixture(fixtureId)
-    const manualOverride = this.layer2_manualOverrides.get(fixtureId)
+    // manualOverride already fetched above for OUTPUT GATE check
     
     // Merge each channel
     const dimmer = this.mergeChannelForFixture(fixtureId, 'dimmer', titanValues, manualOverride, now, controlSources)

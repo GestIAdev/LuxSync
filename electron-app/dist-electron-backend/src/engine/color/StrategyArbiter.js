@@ -59,35 +59,29 @@ export class StrategyArbiter {
         this.stableStrategy = 'analogous';
         this.lastChangeFrame = 0;
         this.isLocked = false;
-        // Override tracking
-        this.currentOverride = 'none';
-        this.overrideStartFrame = 0;
-        // 🏛️ WAVE 73: OVERRIDE LOCK - Previene parpadeo entre BREAKDOWN/DROP
-        // Cuando se activa un override, bloqueamos cambios por N frames
-        this.overrideLockFrames = 0;
-        this.BREAKDOWN_LOCK_DURATION = 60; // 1 segundo @ 60fps
-        this.DROP_LOCK_DURATION = 120; // 2 segundos @ 60fps
-        // 🔒 WAVE 74: STRATEGY COMMITMENT TIMER - Histéresis temporal fuerte
+        // 🔒 WAVE 74 + WAVE 1208.5 + WAVE 1208.6: STRATEGY COMMITMENT TIMER
         // Una vez elegida una estrategia, nos comprometemos por N frames
-        // Esto evita el "destino móvil" donde el interpolador siempre resetea
-        this.strategyCommitmentFrames = 0;
-        this.STRATEGY_COMMITMENT_DURATION = 240; // 4 segundos @ 60fps
+        // 🎯 WAVE 1208.5: CHROMATIC SYNCHRONIZATION - Igualado a KeyStabilizer (30 segundos)
+        //    KeyStabilizer mantiene el HUE BASE por 30s → StrategyArbiter debe mantener ACENTOS por 30s
+        //    La paleta completa (base + secundarios) se comporta como UNIDAD CROMÁTICA
+        // 🔒 WAVE 1208.6: ULTRA-LOCK - NO overrides por sección/drop/breakdown
+        //    Solo cambios naturales basados en síncopa promediada (rolling 15s)
+        // 🐛 WAVE 1209.2: FIX - Inicializar en DURATION en lugar de 0 para que empiece bloqueado
+        this.strategyCommitmentFrames = 1800; // Empieza bloqueado por 30s
+        this.STRATEGY_COMMITMENT_DURATION = 1800; // 30 segundos @ 60fps (sync con KeyStabilizer)
         this.lastCommittedStrategy = 'analogous';
         // Histéresis state
         this.lastDecisionZone = 'mid';
-        // 🎢 WAVE 55.1: DROP STATE MACHINE - Evita ametrallamiento de logs
-        this.dropState = 'IDLE';
-        this.dropCooldownFrames = 0;
-        this.DROP_COOLDOWN_DURATION = 120; // 2 segundos @ 60fps
         // Contadores
         this.frameCount = 0;
         this.totalChanges = 0;
-        this.lastLogFrame = 0;
         // Callbacks para reset
         this.onResetCallbacks = [];
         this.config = { ...StrategyArbiter.DEFAULT_CONFIG, ...config };
         // Inicializar buffer con valores neutros
         this.syncBuffer = new Array(this.config.bufferSize).fill(0.45);
+        // 🐛 WAVE 1209 DEBUG: Confirmar inicialización
+        console.log(`[StrategyArbiter] 🎨 Initialized: bufferSize=${this.config.bufferSize}, lockingFrames=${this.config.lockingFrames}, commitment=${this.STRATEGY_COMMITMENT_DURATION}`);
         // 🧹 WAVE 63: Log init comentado - solo vibes importan
         // console.log(`[StrategyArbiter] 🎨 Initialized: buffer=${this.config.bufferSize} frames (~${(this.config.bufferSize / 60).toFixed(0)}s), locking=${this.config.lockingFrames} frames (~${(this.config.lockingFrames / 60).toFixed(0)}s)`);
     }
@@ -98,68 +92,40 @@ export class StrategyArbiter {
      */
     update(input) {
         this.frameCount++;
-        // 🎢 WAVE 55.1: Decrementar cooldown del DROP state machine
-        if (this.dropCooldownFrames > 0) {
-            this.dropCooldownFrames--;
-            if (this.dropCooldownFrames === 0) {
-                this.dropState = 'IDLE';
-            }
+        // � WAVE 1209 DEBUG: Log SIEMPRE para confirmar que se ejecuta
+        if (this.frameCount % 600 === 0) { // Cada 10 segundos
+            console.log(`[StrategyArbiter] 🔄 Running... frame=${this.frameCount} | current=${this.stableStrategy} | commitment=${this.strategyCommitmentFrames}`);
         }
-        // 🏛️ WAVE 73: Decrementar override lock
-        if (this.overrideLockFrames > 0) {
-            this.overrideLockFrames--;
-        }
-        // 🔒 WAVE 74: Decrementar strategy commitment timer
+        // �🔒 WAVE 1208.6: Decrementar strategy commitment timer
         if (this.strategyCommitmentFrames > 0) {
             this.strategyCommitmentFrames--;
         }
-        // 🔒 WAVE 74: COMMITMENT GATE - Si estamos comprometidos con una estrategia, mantenerla
-        // EXCEPCIÓN: DROP puede romper el compromiso (es un evento de alto impacto)
+        // 🔒 WAVE 1208.6: ULTRA-LOCK MODE
+        // NO BREAKS POR SECCIÓN/DROP/BREAKDOWN - Solo cambios naturales por síncopa
+        // Las secciones duran milisegundos y son ruidosas (no tenemos section tracker potente)
+        // Los drops ocurren 20 veces por canción (saturación de cambios)
+        // SOLO permitimos cambios cuando el commitment expira naturalmente (30 segundos)
         if (this.strategyCommitmentFrames > 0) {
-            const isDrop = input.sectionType === 'drop' && input.isRelativeDrop;
+            // 🐛 WAVE 1209 DEBUG: Log cada 5s para diagnosticar
+            if (this.frameCount % 300 === 0) {
+                console.log(`[StrategyArbiter] 🔒 LOCKED: ${this.lastCommittedStrategy} | Remaining: ${this.strategyCommitmentFrames} frames (${(this.strategyCommitmentFrames / 60).toFixed(1)}s)`);
+            }
             // Actualizar rolling average aunque estemos comprometidos
             const sync = Math.max(0, Math.min(1, input.syncopation));
             this.syncBuffer[this.bufferIndex] = sync;
             this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
             const avgSync = this.calculateWeightedAverage();
-            // Si es DROP y no estamos ya en override de DROP, permitir cambio
-            if (isDrop && this.currentOverride !== 'drop') {
-                // Permitir que la lógica normal procese el DROP
-                console.log(`[StrategyArbiter] ⚡ DROP breaks commitment: ${this.strategyCommitmentFrames} frames remaining`);
-            }
-            else {
-                // Mantener estrategia comprometida
-                return {
-                    stableStrategy: this.lastCommittedStrategy,
-                    instantStrategy: this.lastCommittedStrategy,
-                    strategyChanged: false,
-                    framesSinceChange: this.frameCount - this.lastChangeFrame,
-                    isLocked: true,
-                    sectionOverride: this.currentOverride !== 'none',
-                    overrideType: this.currentOverride,
-                    averagedSyncopation: avgSync,
-                    contrastLevel: this.calculateContrastLevel(this.lastCommittedStrategy, avgSync),
-                };
-            }
-        }
-        // 🏛️ WAVE 73: Si estamos en override lock, mantener la decisión anterior
-        if (this.overrideLockFrames > 0) {
-            // Actualizar rolling average aunque estemos bloqueados
-            const sync = Math.max(0, Math.min(1, input.syncopation));
-            this.syncBuffer[this.bufferIndex] = sync;
-            this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
-            const avgSync = this.calculateWeightedAverage();
-            // Retornar la última decisión estable sin cambios
+            // MANTENER estrategia comprometida - NO EXCEPCIONES
             return {
-                stableStrategy: this.stableStrategy,
-                instantStrategy: this.stableStrategy,
+                stableStrategy: this.lastCommittedStrategy,
+                instantStrategy: this.lastCommittedStrategy,
                 strategyChanged: false,
                 framesSinceChange: this.frameCount - this.lastChangeFrame,
                 isLocked: true,
-                sectionOverride: this.currentOverride !== 'none',
-                overrideType: this.currentOverride,
+                sectionOverride: false, // 🔒 WAVE 1208.6: NO overrides
+                overrideType: 'none',
                 averagedSyncopation: avgSync,
-                contrastLevel: this.calculateContrastLevel(this.stableStrategy, avgSync),
+                contrastLevel: this.calculateContrastLevel(this.lastCommittedStrategy, avgSync),
             };
         }
         // === PASO 1: Actualizar rolling average ===
@@ -168,116 +134,22 @@ export class StrategyArbiter {
         this.bufferIndex = (this.bufferIndex + 1) % this.config.bufferSize;
         // Calcular promedio ponderado (más peso a valores recientes)
         const avgSync = this.calculateWeightedAverage();
-        // === PASO 2: Determinar estrategia instantánea ===
+        // === PASO 2: Determinar estrategia instantánea basada en SÍNCOPA ===
         const instantStrategy = this.syncToStrategy(avgSync);
-        // === PASO 3: Verificar overrides de sección ===
-        let sectionOverride = false;
-        let overrideType = 'none';
-        let effectiveStrategy = instantStrategy;
-        // � WAVE 164: KILL THE DICTATOR
-        // En Fiesta Latina, los breakdowns son cortos y constantes. Si forzamos ANALOGOUS
-        // cada vez que baja la energía, convertimos la paleta tropical (Cyan/Magenta/Oro)
-        // en una sopa monocromática (Naranja/Rojo/Amarillo). ¡El Dictador debe caer!
-        const isFiestaLatina = input.vibeId === 'fiesta-latina';
-        // �🛡️ BREAKDOWN OVERRIDE: Forzar ANALOGOUS (excepto en Fiesta Latina)
-        if (input.sectionType === 'breakdown' || input.sectionType === 'bridge') {
-            sectionOverride = true;
-            overrideType = 'breakdown';
-            // 🔫 WAVE 164: En Fiesta Latina, NO forzar analogous, mantener la estrategia base
-            if (isFiestaLatina) {
-                effectiveStrategy = instantStrategy; // Mantener triadic/complementary
-                if (this.currentOverride !== 'breakdown') {
-                    console.log(`[StrategyArbiter] 🎺 BREAKDOWN (Fiesta Latina): Keeping ${instantStrategy} strategy (NO analogous override)`);
-                    this.currentOverride = 'breakdown';
-                    this.overrideStartFrame = this.frameCount;
-                    this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
-                }
-            }
-            else {
-                effectiveStrategy = 'analogous';
-                if (this.currentOverride !== 'breakdown') {
-                    console.log(`[StrategyArbiter] 🛡️ BREAKDOWN OVERRIDE: Forcing ANALOGOUS for visual relaxation`);
-                    this.currentOverride = 'breakdown';
-                    this.overrideStartFrame = this.frameCount;
-                    // 🏛️ WAVE 73: Activar lock para prevenir flicker
-                    this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
-                }
-            }
-        }
-        // 📉 WAVE 55: BREAKDOWN RELATIVO (energía baja respecto al promedio)
-        else if (input.isRelativeBreakdown) {
-            sectionOverride = true;
-            overrideType = 'breakdown';
-            // 🔫 WAVE 164: En Fiesta Latina, NO forzar analogous en breakdowns relativos
-            if (isFiestaLatina) {
-                effectiveStrategy = instantStrategy; // Mantener triadic/complementary
-                if (this.currentOverride !== 'breakdown') {
-                    console.log(`[StrategyArbiter] 🎺 RELATIVE BREAKDOWN (Fiesta Latina): Keeping ${instantStrategy} strategy (NO analogous override)`);
-                    this.currentOverride = 'breakdown';
-                    this.overrideStartFrame = this.frameCount;
-                    this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
-                }
-            }
-            else {
-                effectiveStrategy = 'analogous';
-                if (this.currentOverride !== 'breakdown') {
-                    console.log(`[StrategyArbiter] 📉 RELATIVE BREAKDOWN: Energy dip detected, forcing ANALOGOUS`);
-                    this.currentOverride = 'breakdown';
-                    this.overrideStartFrame = this.frameCount;
-                    // 🏛️ WAVE 73: Activar lock para prevenir flicker
-                    this.overrideLockFrames = this.BREAKDOWN_LOCK_DURATION;
-                }
-            }
-        }
-        // 📉 WAVE 55: DROP RELATIVO (energía alta respecto al promedio)
-        // 🎢 WAVE 55.1: DROP STATE MACHINE - Evita ametrallamiento de logs
-        else if (input.sectionType === 'drop' && input.isRelativeDrop) {
-            sectionOverride = true;
-            overrideType = 'drop';
-            // En DROP REAL, preferir COMPLEMENTARY para impacto
-            if (avgSync > 0.3) {
-                effectiveStrategy = 'complementary';
-            }
-            // 🎢 STATE MACHINE: Solo loguear en transición IDLE → DROP_ACTIVE
-            if (this.dropState === 'IDLE') {
-                console.log(`[StrategyArbiter] 🚀 DROP START: Real energy spike detected`);
-                this.dropState = 'DROP_ACTIVE';
-                this.currentOverride = 'drop';
-                this.overrideStartFrame = this.frameCount;
-                // 🏛️ WAVE 73: Activar lock más largo para DROP (2 segundos)
-                this.overrideLockFrames = this.DROP_LOCK_DURATION;
-            }
-            // Si ya estamos en DROP_ACTIVE, mantener sin log (evita ametrallamiento)
-            else if (this.dropState === 'DROP_COOLDOWN') {
-                // Volvió DROP durante cooldown, reactivar
-                this.dropState = 'DROP_ACTIVE';
-                this.currentOverride = 'drop';
-                // 🏛️ WAVE 73: Reactivar lock
-                this.overrideLockFrames = this.DROP_LOCK_DURATION;
-            }
-        }
-        else {
-            // 🎢 STATE MACHINE: Transición cuando sale de DROP
-            if (this.dropState === 'DROP_ACTIVE') {
-                this.dropState = 'DROP_COOLDOWN';
-                this.dropCooldownFrames = this.DROP_COOLDOWN_DURATION;
-                // 🧹 WAVE 63.5: Log comentado - spameaba cada frame
-                // console.log(`[StrategyArbiter] 🏁 DROP END: Back to normal operation`);
-            }
-            // En COOLDOWN, el decremento ya se hace al inicio del método
-            this.currentOverride = 'none';
-        }
-        // === PASO 4: Aplicar histéresis y bloqueo ===
+        // 🔒 WAVE 1208.6: NO SECTION/DROP/BREAKDOWN OVERRIDES
+        // Estrategia basada SOLO en síncopa promediada (rolling 15s)
+        // Sin eventos externos ruidosos que fuercen cambios
+        const effectiveStrategy = instantStrategy;
+        // === PASO 3: Aplicar histéresis y bloqueo ===
         let strategyChanged = false;
         const framesSinceChange = this.frameCount - this.lastChangeFrame;
-        // ¿Podemos cambiar la estrategia?
-        const canChange = !this.isLocked ||
-            framesSinceChange >= this.config.lockingFrames ||
-            (sectionOverride && overrideType === 'drop'); // DROP puede romper bloqueo
+        // 🔒 WAVE 1208.6: ULTRA-SIMPLE GATE - Solo cambiar si NO estamos bloqueados
+        // No hay excepciones por DROP/BREAKDOWN/SECCIÓN
+        const canChange = !this.isLocked || framesSinceChange >= this.config.lockingFrames;
         if (canChange && effectiveStrategy !== this.stableStrategy) {
             // Verificar histéresis (evitar oscilación en umbrales)
             const shouldChange = this.checkHysteresis(avgSync, effectiveStrategy);
-            if (shouldChange || sectionOverride) {
+            if (shouldChange) {
                 const oldStrategy = this.stableStrategy;
                 this.stableStrategy = effectiveStrategy;
                 this.lastChangeFrame = this.frameCount;
@@ -288,30 +160,26 @@ export class StrategyArbiter {
                 // Esto evita que el interpolador resetee constantemente su destino
                 this.strategyCommitmentFrames = this.STRATEGY_COMMITMENT_DURATION;
                 this.lastCommittedStrategy = effectiveStrategy;
-                console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} (avgSync=${avgSync.toFixed(2)}, section=${input.sectionType}, override=${overrideType}) [COMMITTED for ${this.STRATEGY_COMMITMENT_DURATION} frames]`);
+                // 🐛 WAVE 1209 DEBUG: Log detallado de cambios
+                console.log(`[StrategyArbiter] 🎨 STRATEGY SHIFT: ${oldStrategy} → ${this.stableStrategy} | avgSync=${avgSync.toFixed(2)} | commitment=${this.strategyCommitmentFrames} frames (30s) | canChange=${canChange} | isLocked=${this.isLocked} | framesSinceChange=${framesSinceChange}`);
             }
         }
         // Desbloquear después de período completo
-        if (this.isLocked && framesSinceChange >= this.config.lockingFrames && !sectionOverride) {
+        if (this.isLocked && framesSinceChange >= this.config.lockingFrames) {
             this.isLocked = false;
         }
-        // === PASO 5: Calcular nivel de contraste ===
+        // === PASO 4: Calcular nivel de contraste ===
         // 0 = muy suave (analogous puro), 1 = extremo (complementary puro)
         const contrastLevel = this.calculateContrastLevel(this.stableStrategy, avgSync);
-        // === PASO 6: Log periódico ===
-        // 🧹 WAVE 63: Comentado - solo vibes importan
-        // if (this.frameCount - this.lastLogFrame > 300) {  // Cada 5 segundos
-        //   console.log(`[StrategyArbiter] 🎨 Strategy=${this.stableStrategy} AvgSync=${avgSync.toFixed(2)} Contrast=${contrastLevel.toFixed(2)} Locked=${this.isLocked} Override=${overrideType}`);
-        //   this.lastLogFrame = this.frameCount;
-        // }
+        // === PASO 5: Return output ===
         return {
             stableStrategy: this.stableStrategy,
             instantStrategy,
             strategyChanged,
             framesSinceChange,
             isLocked: this.isLocked,
-            sectionOverride,
-            overrideType,
+            sectionOverride: false, // 🔒 WAVE 1208.6: NO overrides
+            overrideType: 'none',
             averagedSyncopation: avgSync,
             contrastLevel,
         };
@@ -412,10 +280,8 @@ export class StrategyArbiter {
         this.stableStrategy = 'analogous'; // Default seguro
         this.lastChangeFrame = 0;
         this.isLocked = false;
-        this.currentOverride = 'none';
         this.lastDecisionZone = 'mid';
         this.frameCount = 0;
-        this.lastLogFrame = 0;
         console.log('[StrategyArbiter] 🧹 RESET: Strategy state cleared');
         // Notificar callbacks
         for (const callback of this.onResetCallbacks) {
@@ -471,9 +337,10 @@ export class StrategyArbiter {
 }
 // Default config
 // 🌴 WAVE 85: TROPICAL MIRROR - Expandir zona Triadic para baile latino
+// 🎭 WAVE 1208.5: CHROMATIC SYNCHRONIZATION - Igualado a KeyStabilizer (30s)
 StrategyArbiter.DEFAULT_CONFIG = {
-    bufferSize: 900, // 15 segundos @ 60fps
-    lockingFrames: 900, // 15 segundos de bloqueo
+    bufferSize: 900, // 15 segundos @ 60fps (rolling average)
+    lockingFrames: 1800, // 🎭 WAVE 1208.5: 30 segundos (sync con KeyStabilizer)
     lowSyncThreshold: 0.40, // 🌴 WAVE 85: < 0.40 = ANALOGOUS (antes 0.35)
     highSyncThreshold: 0.65, // 🌴 WAVE 85: > 0.65 = COMPLEMENTARY (antes 0.55)
     hysteresisBand: 0.05, // Banda de histéresis

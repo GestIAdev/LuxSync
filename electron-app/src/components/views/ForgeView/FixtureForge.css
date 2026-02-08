@@ -674,7 +674,7 @@
 .tuner-section {
   background: #18181b;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; /* 🔧 WAVE 1218 FIX: Changed from hidden to visible */
 }
 
 .section-header {
@@ -705,12 +705,16 @@
   transform: rotate(180deg);
 }
 
-.section-content {
+/* 🔧 WAVE 1218 FIX: Selector específico (ya no necesita !important tras fix de SystemsCheck) */
+.physics-tuner .section-content {
   padding: 16px;
   border-top: 1px solid #27272a;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: none;
+  overflow: visible;
+  opacity: 1;
 }
 
 .motor-grid {

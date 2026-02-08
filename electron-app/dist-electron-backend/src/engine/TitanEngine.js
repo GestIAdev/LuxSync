@@ -1,6 +1,7 @@
 /**
  * ⚡ WAVE 217: TITAN ENGINE
  * 🧠 WAVE 271: SYNAPTIC RESURRECTION
+ * 🎭 WAVE 1208.5: CHROMATIC SYNCHRONIZATION
  *
  * Motor de iluminación reactiva PURO. No conoce DMX ni hardware.
  * Recibe MusicalContext del Cerebro → Devuelve LightingIntent al HAL.
@@ -10,14 +11,15 @@
  * - Solo calcula QUÉ queremos expresar, no CÓMO se hace en hardware
  * - Los Vibes definen las restricciones, el motor las respeta
  *
- * 🧠 WAVE 271: STABILIZATION LAYER
- * - KeyStabilizer: Buffer 12s, locking 10s - evita cambios frenéticos de Key
+ * 🧠 WAVE 271 + 🎭 WAVE 1208.5: STABILIZATION LAYER (SYNCHRONIZED)
+ * - KeyStabilizer: Buffer 10s, locking 30s - evita cambios frenéticos de Key
  * - EnergyStabilizer: Rolling 2s, DROP FSM - suaviza energía, detecta drops
  * - MoodArbiter: Buffer 10s, locking 5s - BRIGHT/DARK/NEUTRAL estables
- * - StrategyArbiter: Rolling 15s, locking 15s - Analogous/Complementary estable
+ * - StrategyArbiter: Rolling 15s, locking 30s - SINCRONIZADO con KeyStabilizer
+ *   🎭 La paleta completa (Key + Strategy) baila junta por 30 segundos
  *
  * @layer ENGINE (Motor)
- * @version TITAN 2.0 + WAVE 271
+ * @version TITAN 2.0 + WAVE 271 + WAVE 1208.5
  */
 import { EventEmitter } from 'events';
 import { createDefaultLightingIntent, withHex, } from '../core/protocol/LightingIntent';
@@ -37,7 +39,9 @@ import { vibeMovementManager } from './movement/VibeMovementManager';
 // 🔦 WAVE 410: OPERATION SYNAPSE RECONNECT - Optics Config
 import { getOpticsConfig } from './movement/VibeMovementPresets';
 // 🧬 WAVE 500: PROJECT GENESIS - Consciencia Nativa
-import { SeleneTitanConscious, } from '../core/intelligence';
+import { SeleneTitanConscious, 
+// 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+getHuntStats, getDreamStats, getLastPrediction, } from '../core/intelligence';
 // 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos
 import { getEffectManager, } from '../core/effects';
 // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context for color modulation
@@ -82,6 +86,10 @@ export class TitanEngine extends EventEmitter {
         this.lastConsciousnessOutput = null;
         // 🧨 WAVE 610: Manual strike trigger (force effect without HuntEngine decision)
         this.manualStrikePending = null;
+        // 🎨 WAVE 1196: Dream history buffer (last 3 effects launched)
+        this.dreamHistoryBuffer = [];
+        // 📜 WAVE 1198: Ethics tracking for War Log
+        this.lastEthicsFlags = [];
         // ═══════════════════════════════════════════════════════════════════════
         // 📜 WAVE 560: TACTICAL LOG EMISSION
         // ═══════════════════════════════════════════════════════════════════════
@@ -91,6 +99,7 @@ export class TitanEngine extends EventEmitter {
         this.lastHuntState = 'sleeping';
         this.lastPredictionType = null;
         this.lastStrikeCount = 0;
+        this.lastLogFrame = 0; // 🎛️ WAVE 1198.7: Throttle de logs
         this.config = {
             targetFps: config.targetFps ?? 60,
             debug: config.debug ?? false,
@@ -252,6 +261,18 @@ export class TitanEngine extends EventEmitter {
         };
         // Obtener la Constitución del Vibe actual
         let constitution = getColorConstitution(vibeProfile.id);
+        // 🔒 WAVE 1209.3: ULTRA-LOCK MODE - Force StrategyArbiter's locked strategy
+        // SeleneColorEngine tiene su propio cálculo de estrategia basado en syncopation crudo.
+        // Forzamos la estrategia estabilizada del Arbiter (con commitment de 30s) para que
+        // el lock realmente funcione.
+        // Map split-complementary → complementary (SeleneColorEngine no soporta split)
+        const mappedStrategy = strategyOutput.stableStrategy === 'split-complementary'
+            ? 'complementary'
+            : strategyOutput.stableStrategy;
+        constitution = {
+            ...constitution,
+            forceStrategy: mappedStrategy,
+        };
         // ═══════════════════════════════════════════════════════════════════════
         // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context
         // Si el vibe es chill, calculamos el contexto oceánico ANTES de la paleta
@@ -776,6 +797,7 @@ export class TitanEngine extends EventEmitter {
     /**
      * 🧬 WAVE 550: Obtiene telemetría de consciencia para el HUD táctico
      * 🔮 WAVE 1168: Expanded with Dream Simulator + Energy Zone + Fuzzy Decision
+     * 🧠 WAVE 1195: Expanded with hunt stats, council votes, dream history
      *
      * Devuelve datos del cerebro de Selene en formato listo para UI.
      */
@@ -812,7 +834,21 @@ export class TitanEngine extends EventEmitter {
                 zScore: 0,
                 dropBridgeAlert: 'none',
                 // 🔥 WAVE 1176: OPERATION SNIPER
-                energyVelocity: 0
+                energyVelocity: 0,
+                // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+                huntStats: {
+                    duration: 0,
+                    targetsAcquired: 0,
+                    successRate: 0
+                },
+                councilVotes: {
+                    beauty: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' },
+                    energy: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' },
+                    calm: { vote: 'abstain', confidence: 0, reason: 'Consciousness offline' }
+                },
+                consensusScore: 0.33,
+                dreamHistory: [],
+                predictionHistory: []
             };
         }
         const debugInfo = output.debugInfo;
@@ -890,6 +926,66 @@ export class TitanEngine extends EventEmitter {
         const dropBridgeAlert = this.selene.getDropBridgeAlertLevel();
         // 🔥 WAVE 1176: OPERATION SNIPER - Get raw velocity for UI debugging
         const energyVelocity = this.selene.getEnergyVelocity();
+        // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION - Get expanded consciousness data
+        const huntStatsRaw = getHuntStats();
+        const dreamStatsRaw = getDreamStats();
+        const lastPrediction = getLastPrediction();
+        // Build expanded telemetry structures
+        const huntStats = {
+            duration: huntStatsRaw.lastStrike > 0
+                ? Date.now() - huntStatsRaw.lastStrike
+                : 0,
+            targetsAcquired: huntStatsRaw.strikes,
+            successRate: dreamStatsRaw.totalDreams > 0
+                ? huntStatsRaw.strikes / dreamStatsRaw.totalDreams
+                : 0
+        };
+        // Council votes derived from consciousness output
+        const councilVotes = {
+            beauty: {
+                vote: debugInfo.beautyScore > 0.6 ? 'for' : debugInfo.beautyScore < 0.4 ? 'against' : 'abstain',
+                confidence: Math.abs(debugInfo.beautyScore - 0.5) * 2,
+                reason: `Beauty score: ${(debugInfo.beautyScore * 100).toFixed(0)}%`
+            },
+            energy: {
+                vote: energyOverrideActive ? 'for' : zScore > 1.5 ? 'for' : zScore < -0.5 ? 'against' : 'abstain',
+                confidence: Math.min(Math.abs(zScore) / 2, 1),
+                reason: energyOverrideActive ? 'Energy override active' : `Z-Score: ${zScore.toFixed(2)}`
+            },
+            calm: {
+                vote: debugInfo.consonance > 0.7 ? 'for' : debugInfo.consonance < 0.3 ? 'against' : 'abstain',
+                confidence: Math.abs(debugInfo.consonance - 0.5) * 2,
+                reason: `Consonance: ${(debugInfo.consonance * 100).toFixed(0)}%`
+            }
+        };
+        // Consensus: average of positive votes
+        const votes = [councilVotes.beauty, councilVotes.energy, councilVotes.calm];
+        const forVotes = votes.filter(v => v.vote === 'for').length;
+        const consensusScore = forVotes / 3;
+        // 🎨 WAVE 1196: Dream history buffer - Add new effect to buffer if effect changed
+        if (lastDreamResult && lastDreamResult.effectName) {
+            const lastInBuffer = this.dreamHistoryBuffer[0];
+            const isDifferent = !lastInBuffer || lastInBuffer.name !== lastDreamResult.effectName;
+            if (isDifferent) {
+                // Add to front of buffer
+                this.dreamHistoryBuffer.unshift({
+                    name: lastDreamResult.effectName,
+                    score: 1 - lastDreamResult.riskLevel,
+                    timestamp: Date.now(),
+                    reason: lastDreamResult.reason
+                });
+                // Keep only last 3
+                if (this.dreamHistoryBuffer.length > 3) {
+                    this.dreamHistoryBuffer = this.dreamHistoryBuffer.slice(0, 3);
+                }
+            }
+        }
+        // Return buffer copy (newest first)
+        const dreamHistory = [...this.dreamHistoryBuffer];
+        // Prediction history - use last prediction probability and fill with zeros
+        const predictionHistory = lastPrediction
+            ? [lastPrediction.probability, 0, 0, 0, 0]
+            : [0, 0, 0, 0, 0];
         return {
             enabled: true,
             huntState: debugInfo.huntState,
@@ -913,7 +1009,13 @@ export class TitanEngine extends EventEmitter {
             zScore,
             dropBridgeAlert,
             // 🔥 WAVE 1176: OPERATION SNIPER
-            energyVelocity
+            energyVelocity,
+            // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+            huntStats,
+            councilVotes,
+            consensusScore,
+            dreamHistory,
+            predictionHistory
         };
     }
     /**
@@ -955,18 +1057,22 @@ export class TitanEngine extends EventEmitter {
      * 📜 WAVE 560: Emite logs de consciencia para el Tactical Log
      *
      * Solo emite cuando hay cambios de estado significativos, no cada frame.
+     * 🎛️ WAVE 1198.7: THROTTLE - Máximo 1 log cada 30 frames (~2/segundo @ 60fps)
      */
     emitConsciousnessLogs(output, energy) {
         // No emitir si no hay energía o consciencia deshabilitada
         if (energy < 0.05 || !this.selene.isEnabled())
             return;
+        // 🎛️ WAVE 1198.7: THROTTLE - Solo permitir logs cada 30 frames (~2/segundo)
+        const framesSinceLastLog = this.state.frameCount - this.lastLogFrame;
+        const canEmitLog = framesSinceLastLog >= 30;
         const debug = output.debugInfo;
         const huntState = debug.huntState;
         const activePred = debug.activePrediction;
         // ─────────────────────────────────────────────────────────────────────
         // 🎯 HUNT STATE CHANGES
         // ─────────────────────────────────────────────────────────────────────
-        if (huntState !== this.lastHuntState) {
+        if (huntState !== this.lastHuntState && canEmitLog) {
             const huntMessages = {
                 'sleeping': '💤 Hunt: Sleeping...',
                 'stalking': '🐆 Hunt: Stalking target...',
@@ -983,12 +1089,13 @@ export class TitanEngine extends EventEmitter {
                 }
             });
             this.lastHuntState = huntState;
+            this.lastLogFrame = this.state.frameCount; // 🎛️ Update throttle
         }
         // ─────────────────────────────────────────────────────────────────────
         // 🔮 PREDICTION CHANGES
         // ─────────────────────────────────────────────────────────────────────
         const predType = activePred?.type ?? null;
-        if (predType !== this.lastPredictionType && predType !== null) {
+        if (predType !== this.lastPredictionType && predType !== null && canEmitLog) {
             const pct = Math.round((activePred?.probability ?? 0) * 100);
             const timeMs = activePred?.timeUntilMs ?? 0;
             this.emit('log', {
@@ -1001,14 +1108,16 @@ export class TitanEngine extends EventEmitter {
                 }
             });
             this.lastPredictionType = predType;
+            this.lastLogFrame = this.state.frameCount; // 🎛️ Update throttle
         }
-        else if (predType === null && this.lastPredictionType !== null) {
+        else if (predType === null && this.lastPredictionType !== null && canEmitLog) {
             // Predicción terminó
             this.emit('log', {
                 category: 'Brain',
                 message: '🔮 Prediction: Cleared',
             });
             this.lastPredictionType = null;
+            this.lastLogFrame = this.state.frameCount; // 🎛️ Update throttle
         }
         // ─────────────────────────────────────────────────────────────────────
         // ⚡ STRIKE EXECUTED (detectado por transición a 'striking')
@@ -1050,6 +1159,29 @@ export class TitanEngine extends EventEmitter {
                 });
             }
         }
+        // ─────────────────────────────────────────────────────────────────────
+        // 🛡️ ETHICS FLAGS (WAVE 1198) - Log when new violations detected
+        // ─────────────────────────────────────────────────────────────────────
+        const currentEthicsFlags = debug.biasesDetected || [];
+        const newFlags = currentEthicsFlags.filter(f => !this.lastEthicsFlags.includes(f));
+        const clearedFlags = this.lastEthicsFlags.filter(f => !currentEthicsFlags.includes(f));
+        if (newFlags.length > 0 && canEmitLog) {
+            this.emit('log', {
+                category: 'Ethics',
+                message: `🛡️ Ethics Alert: ${newFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
+                data: { flags: newFlags }
+            });
+            this.lastLogFrame = this.state.frameCount; // 🎛️ Update throttle
+        }
+        if (clearedFlags.length > 0 && canEmitLog) {
+            this.emit('log', {
+                category: 'Ethics',
+                message: `✅ Ethics Cleared: ${clearedFlags.map(f => f.replace(/_/g, ' ')).join(', ')}`,
+                data: { cleared: clearedFlags }
+            });
+            this.lastLogFrame = this.state.frameCount; // 🎛️ Update throttle
+        }
+        this.lastEthicsFlags = [...currentEthicsFlags];
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PRIVATE: CÁLCULOS INTERNOS

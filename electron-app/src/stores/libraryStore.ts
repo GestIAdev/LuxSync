@@ -277,8 +277,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   
   /**
    * Check if a fixture is from system library (read-only)
+   * 🔧 WAVE 1218 FIX: ID starting with 'user-' is NEVER a system fixture
    */
   isSystemFixture: (id: string): boolean => {
+    // Quick check: IDs starting with 'user-' are ALWAYS user fixtures
+    if (id.startsWith('user-')) {
+      return false
+    }
     const { systemFixtures } = get()
     return systemFixtures.some(f => f.id === id)
   },

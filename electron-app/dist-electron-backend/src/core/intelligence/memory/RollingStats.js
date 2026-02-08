@@ -7,7 +7,21 @@
 import { CircularBuffer } from './CircularBuffer';
 const DEFAULT_CONFIG = {
     windowSize: 300, // ~5 segundos a 60fps
-    minStdDev: 0.001, // Evita Z-Scores infinitos
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔬 WAVE 1181.1: Z-SCORE FLOOR FIX
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PROBLEMA: Durante breakdowns con poca variación (stdDev real = 0.02),
+    // cualquier pico moderado se convierte en Z=9σ porque:
+    //   Z = (0.30 - 0.12) / 0.02 = 9σ
+    //
+    // SOLUCIÓN: Establecer un FLOOR de stdDev realista para música.
+    // En la realidad musical, la variación natural de energía es ~10-15%.
+    // Usamos 0.08 como floor → Máximo Z-Score posible ≈ 10σ con pico de 1.0
+    //
+    // ANTES: minStdDev: 0.001 → Z = 9σ fácilmente
+    // AHORA: minStdDev: 0.08 → Z = (1.0 - 0.2) / 0.08 = 10σ máximo teórico
+    // ═══════════════════════════════════════════════════════════════════════════
+    minStdDev: 0.08, // 🔬 WAVE 1181.1: Floor realista (was 0.001)
 };
 /**
  * 📊 ROLLING STATS

@@ -57,7 +57,8 @@ export const TacticalPatchBay: React.FC = () => {
   }, [updateFixture])
   
   const handleUniverseChange = useCallback((fixtureId: string, newUniverse: number) => {
-    const clamped = Math.max(0, Math.min(15, newUniverse))
+    // 🔥 WAVE 1219: ArtNet 0-indexed (0-63)
+    const clamped = Math.max(0, Math.min(63, newUniverse))
     updateFixture(fixtureId, { universe: clamped })
     setIsDirty(true)
   }, [updateFixture])
@@ -149,10 +150,10 @@ export const TacticalPatchBay: React.FC = () => {
                 <input
                   type="number"
                   className="patch-universe-input"
-                  value={fixture.universe + 1}
-                  onChange={(e) => handleUniverseChange(fixture.id, (parseInt(e.target.value) || 1) - 1)}
-                  min={1}
-                  max={16}
+                  value={fixture.universe ?? 0}
+                  onChange={(e) => handleUniverseChange(fixture.id, parseInt(e.target.value) || 0)}
+                  min={0}
+                  max={63}
                 />
               </div>
             ))}

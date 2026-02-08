@@ -92,7 +92,7 @@ export function makeDecision(inputs, config = {}) {
     if (combinedConfidence < cfg.minConfidenceThreshold) {
         output.confidence = combinedConfidence;
         output.debugInfo.huntState = inputs.huntDecision.suggestedPhase;
-        output.debugInfo.reasoning = `Confianza insuficiente: ${combinedConfidence.toFixed(2)} < ${cfg.minConfidenceThreshold}`;
+        output.debugInfo.reasoning = `Low Confidence Matrix: ${combinedConfidence.toFixed(2)} < ${cfg.minConfidenceThreshold}`;
         return output;
     }
     // Determinar tipo de decisión basado en contexto
@@ -410,7 +410,7 @@ function generateBuildupEnhanceDecision(inputs, output, confidence) {
     output.debugInfo.huntState = 'stalking';
     output.debugInfo.beautyScore = beauty.totalBeauty;
     output.debugInfo.consonance = consonance.totalConsonance;
-    output.debugInfo.reasoning = 'Potenciando buildup';
+    output.debugInfo.reasoning = 'BOOSTING BUILD-UP PHASE';
     // Color decision: Incremento gradual
     const intensityFactor = pattern.emotionalTension * 0.1;
     output.colorDecision = {

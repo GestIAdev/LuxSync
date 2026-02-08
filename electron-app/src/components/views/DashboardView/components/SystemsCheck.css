@@ -111,7 +111,8 @@
 }
 
 /* WAVE 1203: Collapsible content */
-.section-content {
+/* 🔧 WAVE 1218 FIX: Prefixed with .systems-check to avoid global pollution */
+.systems-check .section-content {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -122,12 +123,12 @@
   transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
 }
 
-.section-content.expanded {
+.systems-check .section-content.expanded {
   max-height: 600px;
   opacity: 1;
 }
 
-.section-content.collapsed {
+.systems-check .section-content.collapsed {
   max-height: 0;
   opacity: 0;
   padding: 0 12px;

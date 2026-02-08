@@ -285,12 +285,14 @@ const EFFECT_FATIGUE_IMPACT = {
     'deep_current_pulse': -0.02, // 🌀 Reduce fatiga - slow movement
     'bioluminescent_spore': -0.05, // ✨ Reduce fatiga - magical moments
 };
-// ═══════════════════════════════════════════════════════════════
-// EFFECT DREAM SIMULATOR
-// ═══════════════════════════════════════════════════════════════
 export class EffectDreamSimulator {
     constructor() {
         this.simulationCount = 0;
+        // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer system
+        this.preBuffer = null;
+        this.PRE_BUFFER_MIN_PROBABILITY = 0.65; // Solo buffer si Oráculo > 65% seguro
+        this.PRE_BUFFER_MIN_TIME_MS = 2000; // Solo buffer si > 2s hasta evento
+        this.PRE_BUFFER_MAX_AGE_MS = 5000; // Expira después de 5s
         // ═══════════════════════════════════════════════════════════════
         // 🧬 WAVE 970: DNA-BASED CONTEXTUAL RELEVANCE
         // 🎨 WAVE 1029: THE DREAMER - Texture DNA Integration
@@ -310,7 +312,7 @@ export class EffectDreamSimulator {
          * ```
          */
         this.ghostSpectralContext = null;
-        console.log('[DREAM_SIMULATOR] 🔮 Initialized');
+        console.log('[DREAM_SIMULATOR] 🔮 Initialized with Cassandra Pre-Buffer');
     }
     // ═══════════════════════════════════════════════════════════════
     // PUBLIC API
@@ -321,10 +323,47 @@ export class EffectDreamSimulator {
     async dreamEffects(currentState, musicalPrediction, context) {
         const startTime = Date.now();
         this.simulationCount++;
-        // 🧹 WAVE 1015: Silenciado - solo logear resultado si slow (>5ms)
+        // ═══════════════════════════════════════════════════════════════
+        // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Check
+        // Si tenemos un efecto pre-bufferizado y el evento está cerca, USARLO
+        // ═══════════════════════════════════════════════════════════════
+        const now = Date.now();
+        const timeToEvent = musicalPrediction.timeToEventMs ?? 4000;
+        const oracleProbability = musicalPrediction.oracleProbability ?? 0;
+        const isUrgent = musicalPrediction.isUrgent ?? false;
+        // Verificar si el pre-buffer es válido y relevante
+        if (this.preBuffer) {
+            const bufferAge = now - this.preBuffer.bufferedAt;
+            const isExpired = bufferAge > this.PRE_BUFFER_MAX_AGE_MS;
+            const isEventImminent = timeToEvent < 1500; // < 1.5s = ya casi llega
+            if (isExpired) {
+                // Buffer expirado, limpiar
+                this.preBuffer = null;
+            }
+            else if (isEventImminent && isUrgent) {
+                // 🚀 CASSANDRA FAST PATH: Usar el efecto pre-bufferizado!
+                console.log(`[DREAM_SIMULATOR] 🔮⚡ CASSANDRA FAST PATH: Using pre-buffered "${this.preBuffer.effect.effect}" (buffered ${bufferAge}ms ago, event in ${timeToEvent}ms)`);
+                // Crear escenario desde el buffer
+                const bufferedScenario = this.simulateScenario(this.preBuffer.effect, currentState, context);
+                // Limpiar buffer (usado)
+                const usedBuffer = this.preBuffer;
+                this.preBuffer = null;
+                const simulationTimeMs = Date.now() - startTime;
+                return {
+                    scenarios: [bufferedScenario],
+                    bestScenario: bufferedScenario,
+                    recommendation: 'execute',
+                    reason: `🔮 CASSANDRA PRE-BUFFER: "${usedBuffer.effect.effect}" ready for ${usedBuffer.predictionType} (${(usedBuffer.oracleProbability * 100).toFixed(0)}% confidence)`,
+                    warnings: [],
+                    simulationTimeMs
+                };
+            }
+        }
+        // ═══════════════════════════════════════════════════════════════
+        // NORMAL PATH: Generar y evaluar candidatos
+        // ═══════════════════════════════════════════════════════════════
         // 1. Generar candidatos basados en vibe y prediction
         const candidates = this.generateCandidates(currentState, musicalPrediction, context);
-        // 🧹 WAVE 1015: Silenciado - spam innecesario
         // 2. Simular cada escenario
         const scenarios = [];
         for (const candidate of candidates) {
@@ -335,6 +374,27 @@ export class EffectDreamSimulator {
         const rankedScenarios = this.rankScenarios(scenarios, musicalPrediction);
         // 4. Seleccionar mejor escenario
         const bestScenario = rankedScenarios[0] || null;
+        // ═══════════════════════════════════════════════════════════════
+        // 🔮 WAVE 1190: PROJECT CASSANDRA - Pre-buffer Storage
+        // Si alta confianza y tiempo suficiente, guardar el mejor para después
+        // ═══════════════════════════════════════════════════════════════
+        if (bestScenario &&
+            oracleProbability >= this.PRE_BUFFER_MIN_PROBABILITY &&
+            timeToEvent >= this.PRE_BUFFER_MIN_TIME_MS &&
+            !this.preBuffer) { // Solo si no hay buffer ya
+            const predictionType = musicalPrediction.predictionType ?? 'none';
+            if (predictionType !== 'none') {
+                this.preBuffer = {
+                    effect: bestScenario.effect,
+                    score: bestScenario.projectedRelevance,
+                    bufferedAt: now,
+                    predictedEventAt: now + timeToEvent,
+                    predictionType,
+                    oracleProbability,
+                };
+                console.log(`[DREAM_SIMULATOR] 🔮📦 CASSANDRA PRE-BUFFER: "${bestScenario.effect.effect}" stored for ${predictionType} in ~${(timeToEvent / 1000).toFixed(1)}s (${(oracleProbability * 100).toFixed(0)}% confidence)`);
+            }
+        }
         // 5. Generar recomendación
         const recommendation = this.generateRecommendation(bestScenario, context);
         // 6. Detectar warnings
@@ -764,30 +824,69 @@ export class EffectDreamSimulator {
             }
             // ═══════════════════════════════════════════════════════════════════════════
             // 🔥 WAVE 1179: STROBE Z-GUARD - Los strobes SOLO disparan en energía SUBIENDO
+            // 💥 WAVE 1180: SEISMIC SNAP Z-GUARD - Añadido al filtro (flash estroboscópico)
             // ═══════════════════════════════════════════════════════════════════════════
             // PROBLEMA: industrial_strobe se disparó con Z=-1.5 (valle profundo).
-            // Los strobes son efectos de IMPACTO que deben coincidir con momentos de
-            // energía ASCENDENTE, no descendente. Disparar un strobe en un valle
-            // es como gritar en un funeral.
+            // seismic_snap se disparó con Z=-0.7 (energía cayendo).
+            // Los efectos estroboscópicos/flash son efectos de IMPACTO que deben coincidir
+            // con momentos de energía ASCENDENTE, no descendente. Disparar un strobe/snap
+            // en un valle es como gritar en un funeral.
             // 
-            // CRITERIO: Si el efecto contiene 'strobe' y Z <= 0 → NO CANDIDATO
+            // CRITERIO: Si el efecto es strobe o seismic_snap y Z <= 0 → NO CANDIDATO
             // ═══════════════════════════════════════════════════════════════════════════
-            const isStrobeEffect = effect.includes('strobe');
+            const STROBE_EFFECTS = ['industrial_strobe', 'strobe_storm', 'strobe_burst', 'ambient_strobe', 'seismic_snap'];
+            const isStrobeEffect = STROBE_EFFECTS.includes(effect);
             if (isStrobeEffect && zScore <= 0) {
-                // 🔇 Silent skip - strobe in falling energy = bad match
+                // 🔇 Silent skip - strobe/snap in falling energy = bad match
                 continue;
+            }
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 🔫 WAVE 1180: GATLING PEAK REQUIREMENT - La ametralladora necesita PICOS
+            // ═══════════════════════════════════════════════════════════════════════════
+            // PROBLEMA: gatling_raid (DNA: aggression=0.85, chaos=0.60) se disparó en
+            // momentos medios (I:0.45 Z:0.4). Es una AMETRALLADORA de 6 balas x 3 sweeps.
+            // Es VIOLENCE pura, no un efecto casual.
+            // 
+            // CRITERIO: gatling_raid necesita:
+            // - Intensidad >= 0.65 (por encima del promedio)
+            // - Z-Score >= 0.8 (energía subiendo fuerte, no plano)
+            // 
+            // FILOSOFÍA: Gatling no es para "active" genérico, es para BUILDS PRE-DROP
+            // y PEAKS con momentum fuerte. Es el "pre-drop snare roll" de los efectos.
+            // ═══════════════════════════════════════════════════════════════════════════
+            if (effect === 'gatling_raid') {
+                const intensity = this.calculateIntensity(prediction.predictedEnergy, effect);
+                if (intensity < 0.65 || zScore < 0.8) {
+                    // 🔇 Silent skip - gatling needs peak conditions
+                    continue;
+                }
             }
             // Calcular intensidad basada en energía predicha
             const intensity = this.calculateIntensity(prediction.predictedEnergy, effect);
+            // 🔮 WAVE 1190: PROYECTO CASSANDRA - Boost para efectos sugeridos por el Oráculo
+            const isSuggestedByOracle = prediction.suggestedEffects?.some(suggested => effect.includes(suggested) || suggested.includes(effect)) ?? false;
+            // 🔮 CASSANDRA: Confidence boost si el Oráculo sugirió este efecto
+            const oracleBoost = isSuggestedByOracle ? 0.15 : 0;
+            const baseConfidence = prediction.confidence * 0.9;
+            const finalConfidence = Math.min(1, baseConfidence + oracleBoost);
             candidates.push({
                 effect,
                 intensity,
                 zones: ['all'], // Simplificado para Phase 1
-                reasoning: `🧬 DNA Dream: vibe=${state.vibe} zone=${energyZone}`,
-                confidence: prediction.confidence * 0.9 // Ligeramente menor que prediction
+                reasoning: isSuggestedByOracle
+                    ? `🔮 CASSANDRA: Oracle suggested | vibe=${state.vibe} zone=${energyZone}`
+                    : `🧬 DNA Dream: vibe=${state.vibe} zone=${energyZone}`,
+                confidence: finalConfidence
             });
         }
-        // 🧹 WAVE 1015: Silenciado - logs redundantes
+        // 🔮 WAVE 1190: CASSANDRA LOG - Solo si hay predicción fuerte
+        if (prediction.confidence > 0.6 && prediction.predictionType !== 'none') {
+            console.log(`[DREAM_SIMULATOR] 🔮 CASSANDRA: type=${prediction.predictionType} ` +
+                `conf=${prediction.confidence.toFixed(2)} ` +
+                `timeToEvent=${prediction.timeToEventMs ?? '?'}ms ` +
+                `urgent=${prediction.isUrgent} ` +
+                `candidates=${candidates.length}`);
+        }
         return candidates;
     }
     calculateIntensity(predictedEnergy, effect) {
@@ -1357,6 +1456,30 @@ export class EffectDreamSimulator {
             if (isAtmospheric) {
                 score += 0.20;
             }
+        }
+        // ═══════════════════════════════════════════════════════════════
+        // 🔮 WAVE 1189: PROJECT CASSANDRA - URGENCY SCORING
+        // Si el Oráculo dice que algo viene PRONTO (< 2s), hay que actuar YA
+        // No hay tiempo para deliberación - el efecto correcto AHORA > perfecto tarde
+        // ═══════════════════════════════════════════════════════════════
+        const isUrgent = prediction.isUrgent ?? false;
+        const timeToEvent = prediction.timeToEventMs ?? 4000;
+        const oracleProbability = prediction.oracleProbability ?? 0;
+        if (isUrgent && oracleProbability > 0.5) {
+            // 🚨 URGENCIA ALTA: < 2 segundos para el evento
+            // Boost MASIVO a efectos que matchean el tipo de predicción
+            const urgencyBoost = Math.min(0.35, (2000 - timeToEvent) / 2000 * 0.35);
+            score += urgencyBoost;
+            // Log para debugging de Cassandra urgency
+            if (urgencyBoost > 0.15) {
+                console.log(`[DREAM_SIMULATOR] ⚡ CASSANDRA URGENCY: "${effectName}" +${urgencyBoost.toFixed(2)} (${timeToEvent}ms to event, prob: ${oracleProbability.toFixed(2)})`);
+            }
+        }
+        // 🔮 CASSANDRA: Boost adicional si alta probabilidad del Oráculo (> 0.7)
+        // Esto significa que el Oráculo está MUY seguro de la predicción
+        if (oracleProbability > 0.7) {
+            const confidenceBoost = (oracleProbability - 0.7) * 0.2; // Max +0.06 para prob=1.0
+            score += confidenceBoost;
         }
         return Math.max(0, Math.min(1, score));
     }

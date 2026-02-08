@@ -104,7 +104,19 @@ export function createDefaultSensory() {
         },
         fft: new Array(256).fill(0),
         beat: { onBeat: false, confidence: 0, bpm: 120, beatPhase: 0, barPhase: 0, timeSinceLastBeat: 0 },
-        input: { gain: 1, device: 'None', active: false, isClipping: false }
+        input: { gain: 1, device: 'None', active: false, isClipping: false },
+        // 🧠 WAVE 1195: GOD EAR SPECTRUM BANDS
+        spectrumBands: {
+            subBass: 0,
+            bass: 0,
+            lowMid: 0,
+            mid: 0,
+            highMid: 0,
+            treble: 0,
+            ultraAir: 0,
+            dominant: 'mid',
+            flux: 0
+        }
     };
 }
 /**
@@ -126,6 +138,7 @@ export function createDefaultCognitive() {
         dropState: { state: 'IDLE', isActive: false },
         // 🧠 WAVE 550: AI Telemetry defaults
         // 🔮 WAVE 1168: Expanded with Dream Simulator output
+        // 🧠 WAVE 1195: Expanded with hunt stats, council votes, dream history
         ai: {
             enabled: false,
             huntState: 'sleeping',
@@ -155,7 +168,21 @@ export function createDefaultCognitive() {
             zScore: 0,
             dropBridgeAlert: 'none',
             // 🔥 WAVE 1176: OPERATION SNIPER
-            energyVelocity: 0
+            energyVelocity: 0,
+            // 🧠 WAVE 1195: BACKEND TELEMETRY EXPANSION
+            huntStats: {
+                duration: 0,
+                targetsAcquired: 0,
+                successRate: 0
+            },
+            councilVotes: {
+                beauty: { vote: 'abstain', confidence: 0, reason: 'Waiting for beauty signal' },
+                energy: { vote: 'abstain', confidence: 0, reason: 'Analyzing energy levels' },
+                calm: { vote: 'abstain', confidence: 0, reason: 'Assessing stability' }
+            },
+            consensusScore: 0.33,
+            dreamHistory: [],
+            predictionHistory: []
         }
     };
 }

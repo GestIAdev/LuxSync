@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏱️ CHRONOS LAYOUT - WAVE 2004: THE SKELETON
+ * ⏱️ CHRONOS LAYOUT - WAVE 2005: THE PULSE
  * Main container for Chronos Studio - Offline Timeline Editor
  * 
  * Layout Architecture:
@@ -20,13 +20,17 @@
  * │                                                         │               │
  * └─────────────────────────────────────────────────────────┴───────────────┘
  * 
+ * WAVE 2005: Added audio loading and waveform visualization
+ * 
  * @module chronos/ui/ChronosLayout
- * @version WAVE 2004
+ * @version WAVE 2005
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { TransportBar } from './transport/TransportBar'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
+import { useAudioLoader } from '../hooks/useAudioLoader'
+import type { AnalysisData } from '../core/types'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,11 +94,25 @@ const ArsenalPlaceholder: React.FC = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
-  // Transport state (will connect to ChronosStore in future WAVEs)
+  // Audio loader hook
+  const audioLoader = useAudioLoader()
+  
+  // Transport state
   const [isPlaying, setIsPlaying] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [bpm, setBpm] = useState(120)
+  
+  // Drag state
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Update BPM from analysis if available
+  React.useEffect(() => {
+    if (audioLoader.result?.analysisData?.beatGrid?.bpm) {
+      setBpm(Math.round(audioLoader.result.analysisData.beatGrid.bpm))
+    }
+  }, [audioLoader.result])
   
   // Transport controls
   const handlePlay = useCallback(() => {
@@ -118,8 +136,66 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     console.log('[ChronosLayout] ⏭️ Seek to:', time)
   }, [])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // DRAG & DROP HANDLERS - WAVE 2005
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }, [])
+  
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }, [])
+  
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
+      console.log('[ChronosLayout] 📂 File dropped:', file.name)
+      await audioLoader.loadFile(file)
+    }
+  }, [audioLoader])
+  
+  const handleLoadAudioClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+  
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      await audioLoader.loadFile(files[0])
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [audioLoader])
+  
   return (
-    <div className={`chronos-layout ${className}`}>
+    <div 
+      className={`chronos-layout ${className} ${isDragOver ? 'dragover' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".mp3,.wav,.ogg,.flac,.m4a,.aac,.webm,audio/*"
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+      />
+      
       {/* ═══════════════════════════════════════════════════════════════════
        * TRANSPORT BAR - The Cockpit
        * ═══════════════════════════════════════════════════════════════════ */}
@@ -132,7 +208,39 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         onStop={handleStop}
         onRecord={handleRecord}
         onBpmChange={setBpm}
+        audioLoaded={!!audioLoader.result}
+        audioFileName={audioLoader.result?.fileName}
+        onLoadAudio={handleLoadAudioClick}
       />
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * LOADING OVERLAY
+       * ═══════════════════════════════════════════════════════════════════ */}
+      {audioLoader.isLoading && (
+        <div className="chronos-loading-overlay">
+          <div className="loading-spinner" />
+          <div className="loading-phase">{audioLoader.phase.toUpperCase()}</div>
+          <div className="loading-message">{audioLoader.message}</div>
+          <div className="loading-progress-bar">
+            <div 
+              className="loading-progress-fill"
+              style={{ width: `${audioLoader.progress}%` }}
+            />
+          </div>
+          <div className="loading-percent">{audioLoader.progress}%</div>
+        </div>
+      )}
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * DRAG OVERLAY
+       * ═══════════════════════════════════════════════════════════════════ */}
+      {isDragOver && (
+        <div className="chronos-drag-overlay">
+          <div className="drag-icon">🎵</div>
+          <div className="drag-text">DROP AUDIO FILE</div>
+          <div className="drag-formats">MP3, WAV, OGG, FLAC, M4A</div>
+        </div>
+      )}
       
       {/* ═══════════════════════════════════════════════════════════════════
        * MAIN CONTENT AREA
@@ -152,6 +260,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
             bpm={bpm}
             isPlaying={isPlaying}
             onSeek={handleSeek}
+            analysisData={audioLoader.result?.analysisData ?? null}
+            durationMs={audioLoader.result?.durationMs ?? 60000}
           />
         </div>
         

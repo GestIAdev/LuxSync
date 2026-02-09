@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏯️ TRANSPORT BAR - WAVE 2004: THE COCKPIT
+ * ⏯️ TRANSPORT BAR - WAVE 2005: THE COCKPIT
  * Master control panel for Chronos Studio playback and recording
  * 
  * Layout:
@@ -8,8 +8,10 @@
  * │ [⏮] [⏹] [▶/⏸] [⏺] │ 00:00:00.000 │ ⊙ 120 BPM │ [QUANT] [SNAP] [LOOP] │
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
+ * WAVE 2005: Added audio file indicator and load button
+ * 
  * @module chronos/ui/transport/TransportBar
- * @version WAVE 2004
+ * @version WAVE 2005
  */
 
 import React, { useCallback, memo } from 'react'
@@ -28,6 +30,10 @@ export interface TransportBarProps {
   onStop: () => void
   onRecord: () => void
   onBpmChange: (bpm: number) => void
+  // WAVE 2005: Audio state
+  audioLoaded?: boolean
+  audioFileName?: string
+  onLoadAudio?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -94,6 +100,9 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   onStop,
   onRecord,
   onBpmChange,
+  audioLoaded = false,
+  audioFileName,
+  onLoadAudio,
 }) => {
   // BPM adjustment handlers
   const handleBpmDecrease = useCallback(() => {
@@ -213,6 +222,31 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
           <span className="mode-icon">🔁</span>
           <span className="mode-label">LOOP</span>
         </button>
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * AUDIO FILE INDICATOR - WAVE 2005
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="transport-audio">
+        {audioLoaded ? (
+          <div className="audio-loaded" title={audioFileName}>
+            <span className="audio-icon">🎵</span>
+            <span className="audio-name">
+              {audioFileName && audioFileName.length > 20 
+                ? audioFileName.slice(0, 17) + '...' 
+                : audioFileName}
+            </span>
+          </div>
+        ) : (
+          <button 
+            className="audio-load-btn"
+            onClick={onLoadAudio}
+            title="Load Audio File (or drag & drop)"
+          >
+            <span className="audio-icon">📂</span>
+            <span className="audio-label">LOAD AUDIO</span>
+          </button>
+        )}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════

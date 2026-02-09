@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📊 TIMELINE CANVAS - WAVE 2004: THE TEMPORAL GRID
+ * 📊 TIMELINE CANVAS - WAVE 2005: THE PULSE
  * High-performance SVG/Canvas timeline for Chronos Studio
  * 
  * Track Structure (Top to Bottom):
@@ -20,11 +20,15 @@
  * - Click on ruler: Seek playhead
  * - Drag: Pan timeline
  * 
+ * WAVE 2005: Integrated WaveformLayer for audio visualization
+ * 
  * @module chronos/ui/timeline/TimelineCanvas
- * @version WAVE 2004
+ * @version WAVE 2005
  */
 
 import React, { useRef, useState, useCallback, useEffect, memo } from 'react'
+import { WaveformLayer } from './WaveformLayer'
+import type { AnalysisData } from '../../core/types'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -36,6 +40,9 @@ export interface TimelineCanvasProps {
   bpm: number
   isPlaying: boolean
   onSeek: (time: number) => void
+  // WAVE 2005: Audio analysis data
+  analysisData?: AnalysisData | null
+  durationMs?: number
 }
 
 interface TimelineViewport {
@@ -340,6 +347,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   currentTime,
   bpm,
   isPlaying,
+  analysisData,
+  durationMs = 60000, // Default 1 minute if no audio
   onSeek,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -419,6 +428,13 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
   }, [viewport, onSeek])
   
+  // Calculate waveform track position (second track, after ruler)
+  const waveformTrackIndex = DEFAULT_TRACKS.findIndex(t => t.type === 'waveform')
+  const waveformTrackY = waveformTrackIndex >= 0 
+    ? DEFAULT_TRACKS.slice(0, waveformTrackIndex).reduce((sum, t) => sum + t.height, 0)
+    : 0
+  const waveformTrack = waveformTrackIndex >= 0 ? DEFAULT_TRACKS[waveformTrackIndex] : null
+  
   return (
     <div 
       ref={containerRef}
@@ -489,6 +505,33 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           )
         })}
       </svg>
+      
+      {/* Waveform Canvas Overlay - Positioned over waveform track */}
+      {analysisData?.waveform && waveformTrack && (
+        <div
+          className="waveform-layer-container"
+          style={{
+            position: 'absolute',
+            top: waveformTrackY,
+            left: TRACK_LABEL_WIDTH,
+            width: dimensions.width - TRACK_LABEL_WIDTH,
+            height: waveformTrack.height,
+            pointerEvents: 'none', // Allow clicks to pass through to SVG
+          }}
+        >
+          <WaveformLayer
+            analysisData={analysisData}
+            viewportStartMs={viewport.startTime}
+            viewportEndMs={viewport.endTime}
+            pixelsPerSecond={viewport.pixelsPerSecond}
+            height={waveformTrack.height}
+            leftOffset={0}
+            durationMs={analysisData.durationMs ?? durationMs}
+            bpm={bpm}
+            showBeatGrid={false}
+          />
+        </div>
+      )}
       
       {/* Zoom indicator */}
       <div className="timeline-zoom-indicator">

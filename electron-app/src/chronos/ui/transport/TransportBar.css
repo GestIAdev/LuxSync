@@ -273,6 +273,70 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * AUDIO FILE INDICATOR - WAVE 2005
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-audio {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.audio-loaded {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 4px;
+}
+
+.audio-loaded .audio-icon {
+  font-size: 14px;
+}
+
+.audio-loaded .audio-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #22d3ee;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-load-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
+}
+
+.audio-load-btn:hover {
+  background: var(--bg-elevated);
+  border-color: #3b82f6;
+  border-style: solid;
+  color: #3b82f6;
+}
+
+.audio-load-btn .audio-icon {
+  font-size: 14px;
+}
+
+.audio-load-btn .audio-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * RESPONSIVE
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -291,5 +355,11 @@
   
   .transport-brand {
     display: none;
+  }
+  
+  .transport-audio {
+    order: 2;
+    width: 100%;
+    justify-content: center;
   }
 }

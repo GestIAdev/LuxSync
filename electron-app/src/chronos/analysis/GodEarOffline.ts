@@ -143,7 +143,11 @@ export async function analyzeAudioFile(
   
   report('complete', 100, 'Análisis completado')
   
+  // Duration in milliseconds
+  const durationMs = duration * 1000
+  
   return {
+    durationMs,
     waveform,
     energyHeatmap,
     beatGrid,

@@ -589,6 +589,9 @@ export interface ChronosMarker {
  * Usado para visualización y snap.
  */
 export interface AnalysisData {
+  /** Duration of audio in milliseconds */
+  durationMs: TimeMs
+  
   /** Waveform overview (para visualización) */
   waveform: WaveformData
   

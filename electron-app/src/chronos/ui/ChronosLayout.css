@@ -1,0 +1,280 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⏱️ CHRONOS LAYOUT STYLES - WAVE 2004: THE SKELETON
+ * Cyberpunk Industrial aesthetic for timeline editor
+ * 
+ * Color Palette:
+ * - Primary: #3b82f6 (Electric Blue - temporal/studio feel)
+ * - Accents: #7C4DFF (Purple), #00E5FF (Cyan), #f97316 (Orange)
+ * - Background: Deep blacks with blue undertones
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MAIN LAYOUT
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deepest);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.chronos-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chronos-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * DIVIDERS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-divider {
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.chronos-divider.horizontal {
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--border-subtle) 20%, 
+    #3b82f6 50%, 
+    var(--border-subtle) 80%, 
+    transparent 100%
+  );
+}
+
+.chronos-divider.vertical {
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(180deg, 
+    transparent 0%, 
+    var(--border-subtle) 20%, 
+    #3b82f6 50%, 
+    var(--border-subtle) 80%, 
+    transparent 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * STAGE PREVIEW PLACEHOLDER
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-stage-preview {
+  flex: 0 0 35%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: 
+    linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  margin: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chronos-stage-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 50px,
+      rgba(59, 130, 246, 0.02) 50px,
+      rgba(59, 130, 246, 0.02) 51px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 50px,
+      rgba(59, 130, 246, 0.02) 50px,
+      rgba(59, 130, 246, 0.02) 51px
+    );
+  pointer-events: none;
+}
+
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+}
+
+.preview-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.preview-label {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #3b82f6;
+  opacity: 0.6;
+}
+
+.preview-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ARSENAL PANEL
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-arsenal {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+  border-left: 1px solid var(--border-subtle);
+  overflow-y: auto;
+}
+
+.arsenal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.arsenal-icon {
+  font-size: 16px;
+}
+
+.arsenal-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #3b82f6;
+}
+
+.arsenal-content {
+  flex: 1;
+  padding: 8px;
+}
+
+.arsenal-section {
+  margin-bottom: 16px;
+}
+
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--border-subtle);
+}
+
+.arsenal-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arsenal-item {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.arsenal-item:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-interactive);
+  transform: translateX(4px);
+}
+
+/* Vibe colors */
+.arsenal-item.vibe-chillout {
+  border-left: 3px solid #22d3ee;
+}
+
+.arsenal-item.vibe-techno {
+  border-left: 3px solid #a855f7;
+}
+
+.arsenal-item.vibe-ambient {
+  border-left: 3px solid #4ade80;
+}
+
+/* FX colors */
+.arsenal-item.fx-strobe {
+  border-left: 3px solid #fbbf24;
+}
+
+.arsenal-item.fx-sweep {
+  border-left: 3px solid #f97316;
+}
+
+.arsenal-item.fx-pulse {
+  border-left: 3px solid #ef4444;
+}
+
+.arsenal-item.fx-chase {
+  border-left: 3px solid #ec4899;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RESPONSIVE ADJUSTMENTS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1200px) {
+  .chronos-arsenal {
+    width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .chronos-main {
+    flex-direction: column;
+  }
+  
+  .chronos-arsenal {
+    width: 100%;
+    height: 150px;
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+  }
+  
+  .arsenal-items {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .arsenal-item {
+    flex: 1 1 80px;
+  }
+}

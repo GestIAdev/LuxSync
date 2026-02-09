@@ -20,7 +20,7 @@ import { create } from 'zustand'
 // TYPES - WAVE 1110: 3 Stages + 4 Tools (Forge promoted)
 // ============================================
 
-export type StageId = 'dashboard' | 'live' | 'calibration'
+export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
 export type ToolId = 'constructor' | 'forge' | 'nexus' | 'core'
 export type TabId = StageId | ToolId
 
@@ -86,6 +86,15 @@ export const TABS: TabConfig[] = [
     shortcut: 'Alt+3',
     description: 'Hardware Setup - Pan/Tilt Offsets',
   },
+  {
+    id: 'chronos',
+    label: 'CHRONOS',
+    icon: 'chronos',        // IconChronos (custom SVG) - WAVE 2004
+    customIcon: true,
+    type: 'stage',
+    shortcut: 'Alt+4',
+    description: 'Chronos Studio - Offline Timeline Editor',
+  },
   
   // === TOOLS (4 utilidades - WAVE 1110: Forge promoted) ===
   {
@@ -94,7 +103,7 @@ export const TABS: TabConfig[] = [
     icon: 'construct',      // IconConstruct (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+4',
+    shortcut: 'Alt+5',      // WAVE 2004: Shifted for Chronos
     description: 'Stage Layout - Position & Group Fixtures',
   },
   {
@@ -103,7 +112,7 @@ export const TABS: TabConfig[] = [
     icon: 'forge',          // IconForge (custom SVG) - WAVE 1110
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+5',
+    shortcut: 'Alt+6',      // WAVE 2004: Shifted
     description: 'Fixture Forge - Create & Edit Definitions',
   },
   // {
@@ -112,7 +121,7 @@ export const TABS: TabConfig[] = [
   //   icon: 'settings',       // IconSetup (custom SVG)
   //   customIcon: true,
   //   type: 'tool',
-  //   shortcut: 'Alt+6',
+  //   shortcut: 'Alt+7',
   //   description: 'Audio Input & DMX Configuration',
   // },
   {
@@ -121,7 +130,7 @@ export const TABS: TabConfig[] = [
     icon: 'plug',
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+6',
+    shortcut: 'Alt+7',      // WAVE 2004: Shifted
     description: 'Visual Patching & Fixture Location',
   },
   {
@@ -130,7 +139,7 @@ export const TABS: TabConfig[] = [
     icon: 'brain',          // IconLuxCore (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+7',
+    shortcut: 'Alt+8',      // WAVE 2004: Shifted
     description: 'Selene AI Monitoring & Telemetry',
   },
 ]

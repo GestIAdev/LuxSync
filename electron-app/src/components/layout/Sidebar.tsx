@@ -24,15 +24,18 @@ import {
   IconCalibration,
   IconSetup,
   IconLuxCore,
-  IconForge  // 🔨 WAVE 1110: Forge icon
+  IconForge,  // 🔨 WAVE 1110: Forge icon
+  IconChronos  // ⏱️ WAVE 2004: Chronos icon
 } from './NavigationIcons'
 import './Sidebar.css'
 
 // WAVE 1110: Colores por tab - Cyberpunk palette (Forge = Amber/Orange)
+// WAVE 2004: Chronos = Electric Blue (temporal/studio feel)
 const TAB_COLORS: Record<TabId, string> = {
   'dashboard': '#00fff0',    // Cian (Command Center)
   'live': '#ff00ff',         // Magenta (Performance) 
   'calibration': '#22d3ee',  // Cyan-400 (Hardware)
+  'chronos': '#3b82f6',      // Blue-500 (Chronos Studio) - WAVE 2004
   'constructor': '#a855f7',  // Purple (Build)
   'forge': '#f97316',        // Orange (The Blacksmith) - WAVE 1110
   'core': '#f59e0b',         // Amber (AI Monitor)
@@ -40,11 +43,13 @@ const TAB_COLORS: Record<TabId, string> = {
 }
 
 // WAVE 1110: Custom SVG Icons mapping (added forge)
+// WAVE 2004: Added chronos icon
 const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
   'bolt': IconDashboard,      // Dashboard (Command lightning)
   'construct': IconConstruct, // Constructor (wrench + fixture)
   'monitor': IconLiveStage,   // Live Stage (spotlights)
   'target': IconCalibration,  // Calibration (crosshair)
+  'chronos': IconChronos,     // Chronos (clock + timeline) - WAVE 2004
   'plug': IconSetup,          // Nexus (reusing setup icon)
   'brain': IconLuxCore,       // LUX CORE (neural network)
   'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110

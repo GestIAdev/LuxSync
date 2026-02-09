@@ -285,6 +285,52 @@ export const IconForge: React.FC<IconProps> = ({ size = 20, className = '' }) =>
   </svg>
 )
 
+/**
+ * ⏱️ CHRONOS / Timeline Editor Icon - WAVE 2004
+ * Clock with timeline tracks - temporal editing aesthetic
+ */
+export const IconChronos: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Central clock core */}
+    <circle cx="12" cy="12" r="8" stroke="currentColor" />
+    <circle cx="12" cy="12" r="2" stroke="currentColor" fill="currentColor" opacity="0.4" />
+    
+    {/* Clock hands - frozen at "performance time" */}
+    <path d="M12 12L12 7" stroke="currentColor" strokeWidth="2" />
+    <path d="M12 12L15 14" stroke="currentColor" strokeWidth="1.5" />
+    
+    {/* Timeline tracks emanating outward */}
+    <path d="M4 5H2" stroke="currentColor" opacity="0.6" />
+    <path d="M4 7H1" stroke="currentColor" opacity="0.4" />
+    <path d="M4 9H2" stroke="currentColor" opacity="0.6" />
+    
+    <path d="M20 5H22" stroke="currentColor" opacity="0.6" />
+    <path d="M20 7H23" stroke="currentColor" opacity="0.4" />
+    <path d="M20 9H22" stroke="currentColor" opacity="0.6" />
+    
+    {/* Tick marks on clock face */}
+    <path d="M12 4.5V5.5" stroke="currentColor" opacity="0.5" />
+    <path d="M19 12H18" stroke="currentColor" opacity="0.5" />
+    <path d="M12 18.5V19.5" stroke="currentColor" opacity="0.5" />
+    <path d="M5 12H6" stroke="currentColor" opacity="0.5" />
+    
+    {/* Corner HUD frame - studio feel */}
+    <path d="M1 2H3V4" stroke="currentColor" opacity="0.3" />
+    <path d="M23 2H21V4" stroke="currentColor" opacity="0.3" />
+    <path d="M1 22H3V20" stroke="currentColor" opacity="0.3" />
+    <path d="M23 22H21V20" stroke="currentColor" opacity="0.3" />
+  </svg>
+)
+
 export default {
   IconDashboard,
   IconLiveStage,
@@ -292,5 +338,6 @@ export default {
   IconLuxCore,
   IconConstruct,
   IconSetup,
-  IconForge
+  IconForge,
+  IconChronos  // WAVE 2004
 }

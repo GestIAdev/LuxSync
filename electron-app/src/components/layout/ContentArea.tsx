@@ -25,6 +25,7 @@ const CalibrationView = lazy(() => import('../views/CalibrationView'))
 const ForgeView = lazy(() => import('../views/ForgeView'))  // 🔨 WAVE 1110
 const VisualPatcher = lazy(() => import('../views/VisualPatcher/VisualPatcher'))
 const NeuralCommandView = lazy(() => import('../views/NeuralCommandView'))  // 🧠 WAVE 1167
+const ChronosStudio = lazy(() => import('../../chronos/ui/ChronosLayout'))  // ⏱️ WAVE 2004
 
 // Loading fallback
 const ViewLoader: React.FC = () => (
@@ -107,6 +108,8 @@ const ContentArea: React.FC = () => {
         return <CalibrationView />
       case 'forge':
         return <ForgeView />  // 🔨 WAVE 1110
+      case 'chronos':
+        return <ChronosStudio />  // ⏱️ WAVE 2004
       case 'nexus':
         return <VisualPatcher />
       case 'core':

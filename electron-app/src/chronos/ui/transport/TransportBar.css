@@ -1,0 +1,295 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⏯️ TRANSPORT BAR STYLES - WAVE 2004: THE COCKPIT
+ * Industrial control panel aesthetic - tight, precise, military
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MAIN BAR
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: 
+    linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%),
+    var(--bg-deep);
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 48px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TRANSPORT CONTROLS (Play/Stop/Record)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.transport-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
+}
+
+.transport-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-interactive);
+  color: var(--text-primary);
+}
+
+.transport-btn:active {
+  transform: scale(0.95);
+}
+
+.transport-btn-icon {
+  font-size: 16px;
+}
+
+/* Play button - Green when active */
+.transport-btn.play:hover {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.transport-btn.play.active {
+  background: rgba(74, 222, 128, 0.15);
+  border-color: #4ade80;
+  color: #4ade80;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+}
+
+/* Stop button - Default */
+.transport-btn.stop:hover {
+  border-color: var(--text-secondary);
+}
+
+/* Record button - Red when active */
+.transport-btn.record:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.transport-btn.record.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+  animation: record-pulse 1s ease-in-out infinite;
+}
+
+@keyframes record-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TIMECODE DISPLAY
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-timecode {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: var(--bg-deepest);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  min-width: 160px;
+  justify-content: center;
+}
+
+.timecode-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #3b82f6;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * BPM CONTROL
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-bpm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.bpm-adjust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.15s ease;
+}
+
+.bpm-adjust:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.bpm-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.bpm-input {
+  width: 48px;
+  background: var(--bg-deepest);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: #f97316;
+  text-align: center;
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.bpm-input::-webkit-outer-spin-button,
+.bpm-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bpm-input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.2);
+}
+
+.bpm-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MODE TOGGLES
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-modes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--text-tertiary);
+}
+
+.mode-toggle:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-interactive);
+  color: var(--text-secondary);
+}
+
+.mode-toggle.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.mode-icon {
+  font-size: 12px;
+}
+
+.mode-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * BRANDING
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.brand-icon {
+  font-size: 16px;
+  color: #3b82f6;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #3b82f6;
+  opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RESPONSIVE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .transport-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .transport-modes {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+  
+  .transport-brand {
+    display: none;
+  }
+}

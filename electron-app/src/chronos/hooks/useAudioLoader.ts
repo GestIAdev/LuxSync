@@ -88,6 +88,13 @@ const SUPPORTED_MIME_TYPES = [
   'audio/webm',
 ]
 
+// 🛡️ WAVE 2005.1: Memory protection limits
+// WAV files are uncompressed = huge in memory
+// A 5-minute stereo 44.1kHz 16-bit WAV = ~50MB file → ~100MB in AudioBuffer
+const MAX_FILE_SIZE_BYTES = 150 * 1024 * 1024  // 150MB max file size
+const MAX_DURATION_SECONDS = 600               // 10 minutes max duration
+const WARN_FILE_SIZE_BYTES = 50 * 1024 * 1024  // Warn above 50MB
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AUDIO CONTEXT SINGLETON
 // ═══════════════════════════════════════════════════════════════════════════
@@ -157,6 +164,25 @@ export function useAudioLoader(): UseAudioLoaderReturn {
     abortRef.current = false
     
     try {
+      // 🛡️ WAVE 2005.1: Check file size limit FIRST
+      if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(1)
+        const maxMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0)
+        console.error(`[useAudioLoader] ❌ File too large: ${sizeMB}MB (max ${maxMB}MB)`)
+        updateState({
+          isLoading: false,
+          phase: 'error',
+          error: `File too large (${sizeMB}MB). Maximum: ${maxMB}MB. Try a compressed format like MP3.`,
+        })
+        return null
+      }
+      
+      // Warn for large files
+      if (buffer.byteLength > WARN_FILE_SIZE_BYTES) {
+        const sizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(1)
+        console.warn(`[useAudioLoader] ⚠️ Large file: ${sizeMB}MB - this may take a while...`)
+      }
+      
       // Start loading
       updateState({
         isLoading: true,
@@ -172,17 +198,61 @@ export function useAudioLoader(): UseAudioLoaderReturn {
         fileName,
       })
       
-      // Decode audio
+      // 🛡️ WAVE 2005.1: Give the event loop a breath before heavy operation
+      await new Promise(resolve => setTimeout(resolve, 50))
+      
+      // Decode audio with specific error handling for OOM
+      // NOTE: decodeAudioData consumes the buffer, so we pass it directly
+      // The .slice(0) was causing memory duplication - REMOVED
       const audioContext = getAudioContext()
-      const audioBuffer = await audioContext.decodeAudioData(buffer.slice(0))
+      let audioBuffer: AudioBuffer
+      
+      try {
+        audioBuffer = await audioContext.decodeAudioData(buffer)
+      } catch (decodeErr) {
+        console.error('[useAudioLoader] ❌ Decode failed:', decodeErr)
+        const errMsg = decodeErr instanceof Error ? decodeErr.message : String(decodeErr)
+        
+        // Check for common decode errors
+        if (errMsg.includes('Unable to decode') || errMsg.includes('EncodingError')) {
+          updateState({
+            isLoading: false,
+            phase: 'error',
+            error: 'Unable to decode audio file. The file may be corrupted or in an unsupported format.',
+          })
+        } else {
+          updateState({
+            isLoading: false,
+            phase: 'error',
+            error: `Decode error: ${errMsg}`,
+          })
+        }
+        return null
+      }
       
       if (abortRef.current) return null
+      
+      // 🛡️ WAVE 2005.1: Check duration limit
+      if (audioBuffer.duration > MAX_DURATION_SECONDS) {
+        const durationMin = (audioBuffer.duration / 60).toFixed(1)
+        const maxMin = (MAX_DURATION_SECONDS / 60).toFixed(0)
+        console.error(`[useAudioLoader] ❌ Audio too long: ${durationMin} min (max ${maxMin} min)`)
+        updateState({
+          isLoading: false,
+          phase: 'error',
+          error: `Audio too long (${durationMin} min). Maximum: ${maxMin} minutes.`,
+        })
+        return null
+      }
       
       console.log('[useAudioLoader] ✅ Audio decoded:', {
         duration: audioBuffer.duration,
         sampleRate: audioBuffer.sampleRate,
         channels: audioBuffer.numberOfChannels,
       })
+      
+      // 🛡️ WAVE 2005.1: Give the event loop another breath before analysis
+      await new Promise(resolve => setTimeout(resolve, 50))
       
       // Analyze audio
       updateState({
@@ -238,6 +308,19 @@ export function useAudioLoader(): UseAudioLoaderReturn {
    * Load audio from File object
    */
   const loadFile = useCallback(async (file: File): Promise<AudioLoadResult | null> => {
+    // 🛡️ WAVE 2005.1: Check file size BEFORE reading into memory
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+      const maxMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0)
+      console.error(`[useAudioLoader] ❌ File too large: ${sizeMB}MB (max ${maxMB}MB)`)
+      updateState({
+        isLoading: false,
+        phase: 'error',
+        error: `File too large (${sizeMB}MB). Maximum: ${maxMB}MB. Try a compressed format like MP3.`,
+      })
+      return null
+    }
+    
     // Validate file type
     const isSupported = SUPPORTED_MIME_TYPES.some(type => file.type.includes(type)) ||
       SUPPORTED_FORMATS.some(ext => file.name.toLowerCase().endsWith(ext))

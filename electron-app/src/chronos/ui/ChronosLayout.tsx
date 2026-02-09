@@ -26,11 +26,13 @@
  * @version WAVE 2005
  */
 
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { TransportBar } from './transport/TransportBar'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
 // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
 import { useAudioLoaderPhantom } from '../hooks/useAudioLoaderPhantom'
+// 🎵 WAVE 2005.4: Streaming playback (no RAM bloat)
+import { useStreamingPlayback } from '../hooks/useStreamingPlayback'
 import type { AnalysisData } from '../core/types'
 import './ChronosLayout.css'
 
@@ -98,44 +100,53 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
   const audioLoader = useAudioLoaderPhantom()
   
-  // Transport state
-  const [isPlaying, setIsPlaying] = useState(false)
+  // 🎵 WAVE 2005.4: Streaming playback (constant ~5MB RAM, no decode to memory)
+  const streaming = useStreamingPlayback()
+  
+  // Transport state (recording is still local)
   const [isRecording, setIsRecording] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
   const [bpm, setBpm] = useState(120)
   
   // Drag state
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
+  // 🎵 WAVE 2005.4: Connect streaming to audioLoader result
+  useEffect(() => {
+    if (audioLoader.result?.audioPath) {
+      console.log('[ChronosLayout] 🎵 Loading audio into streaming player')
+      streaming.loadAudio(audioLoader.result.audioPath)
+    }
+  }, [audioLoader.result?.audioPath])
+  
   // Update BPM from analysis if available
-  React.useEffect(() => {
+  useEffect(() => {
     if (audioLoader.result?.analysisData?.beatGrid?.bpm) {
       setBpm(Math.round(audioLoader.result.analysisData.beatGrid.bpm))
     }
   }, [audioLoader.result])
   
-  // Transport controls
+  // 🎵 WAVE 2005.4: Transport controls now use streaming hook
   const handlePlay = useCallback(() => {
-    setIsPlaying(prev => !prev)
+    streaming.togglePlay()
     console.log('[ChronosLayout] ▶️ Play toggled')
-  }, [])
+  }, [streaming])
   
   const handleStop = useCallback(() => {
-    setIsPlaying(false)
-    setCurrentTime(0)
+    streaming.stop()
     console.log('[ChronosLayout] ⏹️ Stop')
-  }, [])
+  }, [streaming])
   
   const handleRecord = useCallback(() => {
     setIsRecording(prev => !prev)
     console.log('[ChronosLayout] ⏺️ Record toggled')
   }, [])
   
-  const handleSeek = useCallback((time: number) => {
-    setCurrentTime(time)
-    console.log('[ChronosLayout] ⏭️ Seek to:', time)
-  }, [])
+  // 🎵 WAVE 2005.4: Seek uses streaming hook
+  const handleSeek = useCallback((timeMs: number) => {
+    streaming.seek(timeMs)
+    console.log('[ChronosLayout] ⏭️ Seek to:', timeMs)
+  }, [streaming])
   
   // ═══════════════════════════════════════════════════════════════════════
   // DRAG & DROP HANDLERS - WAVE 2005
@@ -181,14 +192,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader])
   
-  // 👻 WAVE 2005.3: Close audio and reset state
+  // 👻 WAVE 2005.3 + 🎵 WAVE 2005.4: Close audio and reset both loaders
   const handleCloseAudio = useCallback(() => {
     console.log('[ChronosLayout] 🗑️ Closing audio file')
-    audioLoader.reset()
-    setIsPlaying(false)
-    setCurrentTime(0)
-    setBpm(120) // Reset to default
-  }, [audioLoader])
+    streaming.unloadAudio()  // Stop streaming playback
+    audioLoader.reset()      // Clear analysis data
+    setBpm(120)              // Reset to default
+  }, [audioLoader, streaming])
   
   return (
     <div 
@@ -210,9 +220,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
        * TRANSPORT BAR - The Cockpit
        * ═══════════════════════════════════════════════════════════════════ */}
       <TransportBar
-        isPlaying={isPlaying}
+        isPlaying={streaming.isPlaying}
         isRecording={isRecording}
-        currentTime={currentTime}
+        currentTime={streaming.currentTimeMs}
         bpm={bpm}
         onPlay={handlePlay}
         onStop={handleStop}
@@ -267,9 +277,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           
           {/* Timeline Canvas (65% height) */}
           <TimelineCanvas
-            currentTime={currentTime}
+            currentTime={streaming.currentTimeMs}
             bpm={bpm}
-            isPlaying={isPlaying}
+            isPlaying={streaming.isPlaying}
             onSeek={handleSeek}
             analysisData={audioLoader.result?.analysisData ?? null}
             durationMs={audioLoader.result?.durationMs ?? 60000}

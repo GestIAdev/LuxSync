@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>👻 LuxSync Phantom Audio Analyzer</title>
+  <style>
+    /* This window is invisible, but let's make it look nice for debugging */
+    body {
+      background: #0a0a0a;
+      color: #00ff88;
+      font-family: 'Consolas', monospace;
+      padding: 20px;
+    }
+    h1 { color: #ff00ff; }
+    .status { color: #00ffff; }
+    .log { 
+      background: #111; 
+      padding: 10px; 
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>👻 PHANTOM WORKER</h1>
+  <p class="status">Status: <span id="status">Initializing...</span></p>
+  <div class="log" id="log"></div>
+  
+  <script>
+    /**
+     * ═══════════════════════════════════════════════════════════════════════════
+     * 👻 PHANTOM ANALYZER - WAVE 2005.3: THE PHANTOM WORKER
+     * 
+     * Este script corre en una BrowserWindow OCULTA.
+     * Procesa audio sin afectar la UI principal.
+     * 
+     * VENTAJAS:
+     * - AudioContext NATIVO de Chromium (cero dependencias)
+     * - Memoria aislada del renderer principal
+     * - Si crashea, la UI sigue viva
+     * - Soporta todos los formatos que soporta Chrome
+     * 
+     * @version WAVE 2005.3
+     */
+    
+    const { ipcRenderer } = require('electron')
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LOGGING
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    const statusEl = document.getElementById('status')
+    const logEl = document.getElementById('log')
+    
+    function log(msg) {
+      console.log('[PhantomAnalyzer]', msg)
+      const line = document.createElement('div')
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`
+      logEl.appendChild(line)
+      logEl.scrollTop = logEl.scrollHeight
+    }
+    
+    function setStatus(status) {
+      statusEl.textContent = status
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // GODEAR OFFLINE ANALYSIS (Embedded for isolation)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Configuration for offline analysis
+     */
+    const DEFAULT_CONFIG = {
+      waveformSamplesPerSecond: 100,
+      heatmapResolutionMs: 50,
+      fftWindowSize: 2048,
+      beatSensitivity: 0.3,
+      sectionMinDurationMs: 5000,
+      transientThreshold: 0.6,
+    }
+    
+    /**
+     * Get mono samples from AudioBuffer
+     */
+    function getMonoSamples(buffer) {
+      const numChannels = buffer.numberOfChannels
+      const length = buffer.length
+      const mono = new Float32Array(length)
+      
+      // Get first channel
+      buffer.copyFromChannel(mono, 0)
+      
+      // If stereo+, average channels
+      if (numChannels > 1) {
+        const temp = new Float32Array(length)
+        for (let ch = 1; ch < numChannels; ch++) {
+          buffer.copyFromChannel(temp, ch)
+          for (let i = 0; i < length; i++) {
+            mono[i] += temp[i]
+          }
+        }
+        for (let i = 0; i < length; i++) {
+          mono[i] /= numChannels
+        }
+      }
+      
+      return mono
+    }
+    
+    /**
+     * Extract waveform peaks and RMS
+     */
+    function extractWaveform(samples, sampleRate, config, reportProgress) {
+      const samplesPerPoint = Math.floor(sampleRate / config.waveformSamplesPerSecond)
+      const numPoints = Math.ceil(samples.length / samplesPerPoint)
+      
+      const peaks = new Array(numPoints)
+      const rms = new Array(numPoints)
+      
+      for (let i = 0; i < numPoints; i++) {
+        const start = i * samplesPerPoint
+        const end = Math.min(start + samplesPerPoint, samples.length)
+        
+        let maxPeak = 0
+        let sumSquares = 0
+        
+        for (let j = start; j < end; j++) {
+          const val = Math.abs(samples[j])
+          if (val > maxPeak) maxPeak = val
+          sumSquares += samples[j] * samples[j]
+        }
+        
+        peaks[i] = Math.min(1, maxPeak)
+        rms[i] = Math.min(1, Math.sqrt(sumSquares / (end - start)))
+        
+        // Report progress every 10%
+        if (i % Math.ceil(numPoints / 10) === 0) {
+          reportProgress('waveform', Math.round((i / numPoints) * 100))
+        }
+      }
+      
+      return {
+        samplesPerSecond: config.waveformSamplesPerSecond,
+        peaks,
+        rms,
+      }
+    }
+    
+    /**
+     * Extract energy heatmap
+     */
+    function extractEnergyHeatmap(samples, sampleRate, config, reportProgress) {
+      const resolutionSamples = Math.floor(sampleRate * config.heatmapResolutionMs / 1000)
+      const numPoints = Math.ceil(samples.length / resolutionSamples)
+      
+      const energy = new Array(numPoints)
+      const bass = new Array(numPoints)
+      const high = new Array(numPoints)
+      const flux = new Array(numPoints)
+      
+      let prevEnergy = 0
+      
+      for (let i = 0; i < numPoints; i++) {
+        const start = i * resolutionSamples
+        const end = Math.min(start + resolutionSamples, samples.length)
+        
+        let sumSquares = 0
+        let prevSample = 0
+        let zeroCrossings = 0
+        
+        for (let j = start; j < end; j++) {
+          const val = samples[j]
+          sumSquares += val * val
+          
+          if ((val >= 0 && prevSample < 0) || (val < 0 && prevSample >= 0)) {
+            zeroCrossings++
+          }
+          prevSample = val
+        }
+        
+        const blockSize = end - start
+        const blockEnergy = Math.sqrt(sumSquares / blockSize)
+        
+        energy[i] = Math.min(1, blockEnergy * 3)
+        
+        const zcRate = zeroCrossings / blockSize
+        bass[i] = Math.min(1, blockEnergy * 3 * Math.max(0, 1 - zcRate * 50))
+        high[i] = Math.min(1, blockEnergy * 3 * Math.min(1, zcRate * 20))
+        flux[i] = Math.abs(blockEnergy - prevEnergy)
+        prevEnergy = blockEnergy
+        
+        if (i % Math.ceil(numPoints / 10) === 0) {
+          reportProgress('energy', Math.round((i / numPoints) * 100))
+        }
+      }
+      
+      // Normalize flux
+      const maxFlux = Math.max(...flux)
+      if (maxFlux > 0) {
+        for (let i = 0; i < flux.length; i++) {
+          flux[i] /= maxFlux
+        }
+      }
+      
+      return {
+        resolutionMs: config.heatmapResolutionMs,
+        energy,
+        bass,
+        high,
+        flux,
+      }
+    }
+    
+    /**
+     * Detect beats from energy heatmap
+     */
+    function detectBeats(samples, sampleRate, heatmap, config, reportProgress) {
+      reportProgress('beats', 0)
+      
+      const onsets = []
+      const threshold = config.beatSensitivity
+      
+      for (let i = 1; i < heatmap.flux.length - 1; i++) {
+        const curr = heatmap.flux[i]
+        const prev = heatmap.flux[i - 1]
+        const next = heatmap.flux[i + 1]
+        
+        if (curr > prev && curr > next && curr > threshold) {
+          const bassWeight = 1 + heatmap.bass[i] * 0.5
+          if (curr * bassWeight > threshold) {
+            onsets.push(i * heatmap.resolutionMs)
+          }
+        }
+      }
+      
+      reportProgress('beats', 50)
+      
+      // Estimate BPM
+      const bpm = estimateBpm(onsets)
+      const msPerBeat = 60000 / bpm
+      const durationMs = (samples.length / sampleRate) * 1000
+      
+      // Build beat grid
+      let firstBeatMs = 0
+      if (onsets.length > 0) {
+        let bestAlign = Infinity
+        for (const onset of onsets.slice(0, 20)) {
+          const align = onset % msPerBeat
+          if (align < bestAlign) {
+            bestAlign = align
+            firstBeatMs = onset
+          }
+        }
+      }
+      
+      const grid = []
+      for (let t = firstBeatMs; t < durationMs; t += msPerBeat) {
+        grid.push(t)
+      }
+      
+      reportProgress('beats', 100)
+      
+      return {
+        bpm,
+        confidence: Math.min(1, onsets.length / 50),
+        firstBeatMs,
+        grid,
+      }
+    }
+    
+    /**
+     * Estimate BPM from onset times
+     */
+    function estimateBpm(onsets) {
+      if (onsets.length < 2) return 120
+      
+      const intervals = []
+      for (let i = 1; i < Math.min(onsets.length, 100); i++) {
+        intervals.push(onsets[i] - onsets[i - 1])
+      }
+      
+      intervals.sort((a, b) => a - b)
+      const median = intervals[Math.floor(intervals.length / 2)]
+      
+      if (median <= 0) return 120
+      
+      let bpm = 60000 / median
+      
+      // Normalize to 60-180 range
+      while (bpm < 60) bpm *= 2
+      while (bpm > 180) bpm /= 2
+      
+      return Math.round(bpm * 10) / 10
+    }
+    
+    /**
+     * Detect sections
+     */
+    function detectSections(heatmap, beatGrid, duration, config, reportProgress) {
+      reportProgress('sections', 0)
+      
+      const sections = []
+      const minDuration = config.sectionMinDurationMs
+      
+      // Simple section detection based on energy changes
+      const smoothedEnergy = []
+      const windowSize = Math.ceil(2000 / heatmap.resolutionMs)
+      
+      for (let i = 0; i < heatmap.energy.length; i++) {
+        let sum = 0
+        let count = 0
+        for (let j = Math.max(0, i - windowSize); j < Math.min(heatmap.energy.length, i + windowSize); j++) {
+          sum += heatmap.energy[j]
+          count++
+        }
+        smoothedEnergy.push(sum / count)
+      }
+      
+      reportProgress('sections', 50)
+      
+      // Find significant changes
+      const changes = [0]
+      for (let i = 1; i < smoothedEnergy.length; i++) {
+        const diff = Math.abs(smoothedEnergy[i] - smoothedEnergy[i - 1])
+        const timeMs = i * heatmap.resolutionMs
+        
+        if (diff > 0.15 && (changes.length === 0 || timeMs - changes[changes.length - 1] > minDuration)) {
+          changes.push(timeMs)
+        }
+      }
+      changes.push(duration)
+      
+      // Create sections
+      for (let i = 0; i < changes.length - 1; i++) {
+        const startMs = changes[i]
+        const endMs = changes[i + 1]
+        
+        // Calculate average energy for this section
+        const startIdx = Math.floor(startMs / heatmap.resolutionMs)
+        const endIdx = Math.ceil(endMs / heatmap.resolutionMs)
+        let avgEnergy = 0
+        for (let j = startIdx; j < endIdx && j < heatmap.energy.length; j++) {
+          avgEnergy += heatmap.energy[j]
+        }
+        avgEnergy /= (endIdx - startIdx) || 1
+        
+        // Determine section type
+        let type = 'verse'
+        if (avgEnergy > 0.7) type = 'drop'
+        else if (avgEnergy > 0.5) type = 'chorus'
+        else if (avgEnergy < 0.2) type = 'intro'
+        
+        sections.push({
+          startMs,
+          endMs,
+          type,
+          intensity: avgEnergy,
+        })
+      }
+      
+      reportProgress('sections', 100)
+      
+      return sections
+    }
+    
+    /**
+     * Detect transients for snap points
+     */
+    function detectTransients(samples, sampleRate, config, reportProgress) {
+      reportProgress('transients', 0)
+      
+      const transients = []
+      const windowSize = Math.floor(sampleRate * 0.01) // 10ms windows
+      const numWindows = Math.floor(samples.length / windowSize)
+      
+      let prevEnergy = 0
+      
+      for (let i = 0; i < numWindows; i++) {
+        const start = i * windowSize
+        const end = start + windowSize
+        
+        let energy = 0
+        for (let j = start; j < end; j++) {
+          energy += samples[j] * samples[j]
+        }
+        energy = Math.sqrt(energy / windowSize)
+        
+        const diff = energy - prevEnergy
+        if (diff > config.transientThreshold * prevEnergy && diff > 0.05) {
+          transients.push({
+            timeMs: (start / sampleRate) * 1000,
+            strength: Math.min(1, diff * 5),
+          })
+        }
+        
+        prevEnergy = energy
+        
+        if (i % Math.ceil(numWindows / 10) === 0) {
+          reportProgress('transients', Math.round((i / numWindows) * 100))
+        }
+      }
+      
+      return transients.slice(0, 1000) // Limit to 1000 transients
+    }
+    
+    /**
+     * Main analysis function
+     */
+    async function analyzeAudioBuffer(buffer, sampleRate, reportProgress) {
+      const config = DEFAULT_CONFIG
+      const duration = buffer.duration
+      
+      // Get mono samples
+      const monoSamples = getMonoSamples(buffer)
+      
+      // Yield to event loop
+      await new Promise(r => setTimeout(r, 0))
+      
+      // Extract waveform
+      const waveform = extractWaveform(monoSamples, sampleRate, config, reportProgress)
+      await new Promise(r => setTimeout(r, 0))
+      
+      // Extract energy heatmap
+      const energyHeatmap = extractEnergyHeatmap(monoSamples, sampleRate, config, reportProgress)
+      await new Promise(r => setTimeout(r, 0))
+      
+      // Detect beats
+      const beatGrid = detectBeats(monoSamples, sampleRate, energyHeatmap, config, reportProgress)
+      await new Promise(r => setTimeout(r, 0))
+      
+      // Detect sections
+      const sections = detectSections(energyHeatmap, beatGrid, duration * 1000, config, reportProgress)
+      await new Promise(r => setTimeout(r, 0))
+      
+      // Detect transients
+      const transients = detectTransients(monoSamples, sampleRate, config, reportProgress)
+      
+      reportProgress('complete', 100)
+      
+      return {
+        durationMs: duration * 1000,
+        waveform,
+        energyHeatmap,
+        beatGrid,
+        sections,
+        transients,
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // IPC HANDLERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    ipcRenderer.on('phantom:analyze', async (event, data) => {
+      const { requestId, fileName, buffer } = data
+      
+      log(`📂 Received analysis request: ${fileName}`)
+      setStatus(`Analyzing: ${fileName}`)
+      
+      const startTime = Date.now()
+      
+      // Progress reporter
+      const reportProgress = (phase, progress) => {
+        ipcRenderer.send('phantom:analysis-progress', {
+          requestId,
+          phase,
+          progress,
+          message: `${phase}: ${progress}%`,
+        })
+      }
+      
+      try {
+        reportProgress('loading', 0)
+        
+        // Create AudioContext
+        const audioContext = new AudioContext()
+        log(`🎵 AudioContext created (sample rate: ${audioContext.sampleRate}Hz)`)
+        
+        reportProgress('decoding', 0)
+        
+        // Decode audio (NATIVE Chromium - this is the magic! 🎩)
+        log(`🔓 Decoding ${(buffer.byteLength / 1024 / 1024).toFixed(2)}MB...`)
+        const audioBuffer = await audioContext.decodeAudioData(buffer)
+        
+        log(`✅ Decoded: ${audioBuffer.duration.toFixed(2)}s, ${audioBuffer.numberOfChannels}ch, ${audioBuffer.sampleRate}Hz`)
+        reportProgress('decoding', 100)
+        
+        // Analyze
+        log(`🧠 Running GodEar analysis...`)
+        const analysisData = await analyzeAudioBuffer(audioBuffer, audioBuffer.sampleRate, reportProgress)
+        
+        // Cleanup
+        await audioContext.close()
+        log(`🧹 AudioContext closed`)
+        
+        const elapsed = Date.now() - startTime
+        log(`✅ Analysis complete in ${elapsed}ms`)
+        setStatus('Ready')
+        
+        // Send result back
+        ipcRenderer.send('phantom:analysis-complete', {
+          requestId,
+          success: true,
+          data: analysisData,
+          durationMs: elapsed,
+        })
+        
+      } catch (err) {
+        log(`❌ Error: ${err.message}`)
+        setStatus(`Error: ${err.message}`)
+        
+        ipcRenderer.send('phantom:analysis-error', {
+          requestId,
+          success: false,
+          error: err.message || 'Unknown error',
+        })
+      }
+    })
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INITIALIZATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    log('👻 Phantom Analyzer initialized')
+    setStatus('Ready')
+    ipcRenderer.send('phantom:ready')
+  </script>
+</body>
+</html>

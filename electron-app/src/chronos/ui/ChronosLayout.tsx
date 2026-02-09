@@ -29,7 +29,8 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { TransportBar } from './transport/TransportBar'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
-import { useAudioLoader } from '../hooks/useAudioLoader'
+// 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
+import { useAudioLoaderPhantom } from '../hooks/useAudioLoaderPhantom'
 import type { AnalysisData } from '../core/types'
 import './ChronosLayout.css'
 
@@ -94,8 +95,8 @@ const ArsenalPlaceholder: React.FC = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
-  // Audio loader hook
-  const audioLoader = useAudioLoader()
+  // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
+  const audioLoader = useAudioLoaderPhantom()
   
   // Transport state
   const [isPlaying, setIsPlaying] = useState(false)

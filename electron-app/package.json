@@ -7,10 +7,11 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.node.json && vite build && electron-builder",
+    "build": "tsc -p tsconfig.node.json && vite build && npm run copy:phantom && electron-builder",
+    "copy:phantom": "node -e \"require('fs').copyFileSync('electron/workers/phantomWorker.html', 'dist-electron/phantomWorker.html')\"",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder",
+    "electron:build": "vite build && npm run copy:phantom && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
@@ -53,6 +54,16 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-electron/phantomWorker.html",
+        "to": "phantomWorker.html"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico"

@@ -139,6 +139,35 @@ const api = {
         setBlackout: (active) => ipcRenderer.invoke('controls:setBlackout', active),
         setMovement: (params) => ipcRenderer.invoke('controls:setMovement', params),
     },
+    // ============================================
+    // 👻 CHRONOS - WAVE 2005.3: THE PHANTOM WORKER
+    // Audio analysis via isolated BrowserWindow
+    // ============================================
+    chronos: {
+        /** Analyze audio file via Phantom Worker (crash-isolated process)
+         * @param request - { buffer: ArrayBuffer, fileName: string } for drag-drop files
+         *                  or { filePath: string, fileName: string } for files on disk
+         */
+        analyzeAudio: (request) => ipcRenderer.invoke('chronos:analyze-audio', request),
+        /** Subscribe to analysis progress updates */
+        onProgress: (callback) => {
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on('chronos:analysis-progress', handler);
+            return () => ipcRenderer.removeListener('chronos:analysis-progress', handler);
+        },
+        /** Subscribe to analysis completion */
+        onComplete: (callback) => {
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on('chronos:analysis-complete', handler);
+            return () => ipcRenderer.removeListener('chronos:analysis-complete', handler);
+        },
+        /** Subscribe to analysis errors */
+        onError: (callback) => {
+            const handler = (_, error) => callback(error);
+            ipcRenderer.on('chronos:analysis-error', handler);
+            return () => ipcRenderer.removeListener('chronos:analysis-error', handler);
+        },
+    },
 };
 // ============================================================================
 // 🌙 LUX API - Selene Lux Core Bridge (WAVE 2)

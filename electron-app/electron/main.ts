@@ -41,6 +41,10 @@ import { EffectsEngine } from '../src/engine/color/EffectsEngine'
 // ShowManager PURGED - WAVE 365: Replaced by StagePersistence
 import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
 
+// 👻 WAVE 2005.3: Phantom Worker for audio analysis
+import { getPhantomWorker, destroyPhantomWorker } from './workers/PhantomWorkerManager'
+import { setupChronosIPCHandlers, cleanupChronosIPC } from './ipc/ChronosIPCHandlers'
+
 // =============================================================================
 // GLOBAL STATE
 // =============================================================================
@@ -309,6 +313,19 @@ async function initTitan(): Promise<void> {
   setupStageIPCHandlers(() => mainWindow)
   console.log('[Main] 💾 Stage Persistence V2 initialized')
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis
+  // ═══════════════════════════════════════════════════════════════════════════
+  try {
+    const phantom = getPhantomWorker()
+    await phantom.init()
+    setupChronosIPCHandlers(mainWindow!)
+    console.log('[Main] 👻 Phantom Worker initialized (WAVE 2005.3)')
+  } catch (err) {
+    console.error('[Main] ❌ Failed to initialize Phantom Worker:', err)
+    // Non-fatal - Chronos will work without audio analysis
+  }
+
   // Initialize EffectsEngine
   effectsEngine = new EffectsEngine()
   
@@ -558,12 +575,15 @@ app.whenReady().then(async () => {
 })
 
 // Save config before quit
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   configManager.forceSave()
   if (titanOrchestrator) {
     titanOrchestrator.stop()
   }
-  console.log('[Main] Config saved, TITAN stopped')
+  // 👻 WAVE 2005.3: Cleanup Phantom Worker
+  destroyPhantomWorker()
+  await cleanupChronosIPC()
+  console.log('[Main] Config saved, TITAN stopped, Phantom destroyed')
 })
 
 app.on('window-all-closed', () => {

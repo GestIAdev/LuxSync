@@ -210,6 +210,40 @@ const api = {
     setBlackout: (active: boolean) => ipcRenderer.invoke('controls:setBlackout', active),
     setMovement: (params: Record<string, number>) => ipcRenderer.invoke('controls:setMovement', params),
   },
+
+  // ============================================
+  // 👻 CHRONOS - WAVE 2005.3: THE PHANTOM WORKER
+  // Audio analysis via isolated BrowserWindow
+  // ============================================
+  chronos: {
+    /** Analyze audio file via Phantom Worker (crash-isolated process) 
+     * @param request - { buffer: ArrayBuffer, fileName: string } for drag-drop files
+     *                  or { filePath: string, fileName: string } for files on disk
+     */
+    analyzeAudio: (request: { buffer?: ArrayBuffer; filePath?: string; fileName: string }) => 
+      ipcRenderer.invoke('chronos:analyze-audio', request),
+    
+    /** Subscribe to analysis progress updates */
+    onProgress: (callback: (data: { progress: number; phase: string }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: { progress: number; phase: string }) => callback(data)
+      ipcRenderer.on('chronos:analysis-progress', handler)
+      return () => ipcRenderer.removeListener('chronos:analysis-progress', handler)
+    },
+    
+    /** Subscribe to analysis completion */
+    onComplete: (callback: (data: { analysisData: any; audioUrl: string }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: { analysisData: any; audioUrl: string }) => callback(data)
+      ipcRenderer.on('chronos:analysis-complete', handler)
+      return () => ipcRenderer.removeListener('chronos:analysis-complete', handler)
+    },
+    
+    /** Subscribe to analysis errors */
+    onError: (callback: (error: { message: string; code?: string }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, error: { message: string; code?: string }) => callback(error)
+      ipcRenderer.on('chronos:analysis-error', handler)
+      return () => ipcRenderer.removeListener('chronos:analysis-error', handler)
+    },
+  },
 }
 
 // ============================================================================

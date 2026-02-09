@@ -380,38 +380,48 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // Calculate total tracks height
   const totalTracksHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)
   
-  // Zoom handler
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
+  // Zoom handler - Using native event listener to allow preventDefault on wheel
+  // React synthetic wheel events are passive by default, which causes the console warning
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
     
-    if (e.ctrlKey || e.metaKey) {
-      // Zoom
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
-      setViewport(prev => {
-        const newPPS = Math.max(
-          MIN_PIXELS_PER_SECOND,
-          Math.min(MAX_PIXELS_PER_SECOND, prev.pixelsPerSecond * zoomFactor)
-        )
-        const visibleDuration = (dimensions.width - TRACK_LABEL_WIDTH) / newPPS * 1000
-        return {
-          ...prev,
-          pixelsPerSecond: newPPS,
-          endTime: prev.startTime + visibleDuration,
-        }
-      })
-    } else {
-      // Pan
-      const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
-      setViewport(prev => {
-        const newStart = Math.max(0, prev.startTime + panAmount)
-        const duration = prev.endTime - prev.startTime
-        return {
-          ...prev,
-          startTime: newStart,
-          endTime: newStart + duration,
-        }
-      })
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      
+      if (e.ctrlKey || e.metaKey) {
+        // Zoom
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
+        setViewport(prev => {
+          const newPPS = Math.max(
+            MIN_PIXELS_PER_SECOND,
+            Math.min(MAX_PIXELS_PER_SECOND, prev.pixelsPerSecond * zoomFactor)
+          )
+          const visibleDuration = (dimensions.width - TRACK_LABEL_WIDTH) / newPPS * 1000
+          return {
+            ...prev,
+            pixelsPerSecond: newPPS,
+            endTime: prev.startTime + visibleDuration,
+          }
+        })
+      } else {
+        // Pan
+        const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
+        setViewport(prev => {
+          const newStart = Math.max(0, prev.startTime + panAmount)
+          const duration = prev.endTime - prev.startTime
+          return {
+            ...prev,
+            startTime: newStart,
+            endTime: newStart + duration,
+          }
+        })
+      }
     }
+    
+    // Register with { passive: false } to allow preventDefault
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
   }, [dimensions.width])
   
   // Click to seek
@@ -444,7 +454,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         className="timeline-canvas"
         width={dimensions.width}
         height={Math.max(dimensions.height, totalTracksHeight)}
-        onWheel={handleWheel}
         onClick={handleClick}
       >
         {/* Background */}

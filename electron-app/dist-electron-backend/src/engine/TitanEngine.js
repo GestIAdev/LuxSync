@@ -46,6 +46,8 @@ getHuntStats, getDreamStats, getLastPrediction, } from '../core/intelligence';
 import { getEffectManager, } from '../core/effects';
 // 🌊 WAVE 1072: THE OCEAN TRANSLATOR - Pre-calculate oceanic context for color modulation
 import { calculateChillStereo, } from '../hal/physics/ChillStereoPhysics';
+// 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline control injection
+import { getChronosInjector, } from '../chronos/bridge/ChronosInjector';
 // ═══════════════════════════════════════════════════════════════════════════
 // TITAN ENGINE CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,6 +92,8 @@ export class TitanEngine extends EventEmitter {
         this.dreamHistoryBuffer = [];
         // 📜 WAVE 1198: Ethics tracking for War Log
         this.lastEthicsFlags = [];
+        this.chronosOverrides = null;
+        this.chronosEnabled = false;
         // ═══════════════════════════════════════════════════════════════════════
         // 📜 WAVE 560: TACTICAL LOG EMISSION
         // ═══════════════════════════════════════════════════════════════════════
@@ -120,6 +124,8 @@ export class TitanEngine extends EventEmitter {
         this.selene = new SeleneTitanConscious({ debug: this.config.debug });
         // 🧨 WAVE 600: EFFECT ARSENAL - Sistema de Efectos Singleton
         this.effectManager = getEffectManager();
+        // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline injector
+        this.chronosInjector = getChronosInjector();
         // Establecer vibe inicial
         this.vibeManager.setActiveVibe(this.config.initialVibe);
         // Inicializar estado
@@ -138,10 +144,57 @@ export class TitanEngine extends EventEmitter {
         console.log(`[TitanEngine]    ⚡ NervousSystem: SeleneLux✓ (StereoPhysics CONNECTED)`);
         console.log(`[TitanEngine]    🧬 Consciousness: SeleneTitanConscious V2✓ (Native Intelligence)`);
         console.log(`[TitanEngine]    🧨 EffectManager: ${this.effectManager.getState().activeEffects} effects ready`);
+        console.log(`[TitanEngine]    🕰️ ChronosInjector: Ready (Timeline Control)`);
     }
     // ═══════════════════════════════════════════════════════════════════════
     // PUBLIC API
     // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline Control API
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🕰️ CHRONOS INPUT: Recibe overrides desde el timeline de Chronos.
+     *
+     * Este método es llamado por ChronosEngine cada frame cuando el timeline
+     * está activo. Los overrides pueden "susurrar" (blending) o "dictar"
+     * (control total) dependiendo del modo.
+     *
+     * @param overrides - Overrides generados por ChronosInjector
+     */
+    setChronosInput(overrides) {
+        this.chronosOverrides = overrides;
+        this.chronosEnabled = overrides !== null;
+        // Si hay overrides con efectos activos, sincronizar progreso
+        if (overrides?.activeEffectsWithProgress) {
+            for (const effectProgress of overrides.activeEffectsWithProgress) {
+                // Solo sincronizar si tenemos un instanceId válido
+                if (effectProgress.instanceId) {
+                    this.effectManager.forceEffectProgress(effectProgress.instanceId, effectProgress.progress);
+                }
+            }
+        }
+    }
+    /**
+     * 🕰️ CHRONOS STATUS: Consulta si Chronos está controlando el sistema.
+     *
+     * @returns true si hay overrides activos de Chronos
+     */
+    isChronosActive() {
+        return this.chronosEnabled && this.chronosOverrides !== null;
+    }
+    /**
+     * 🕰️ CHRONOS RESET: Limpia los overrides de Chronos.
+     *
+     * Llamar cuando el timeline termina o se detiene.
+     * Restaura el control completo al sistema live.
+     */
+    clearChronosInput() {
+        this.chronosOverrides = null;
+        this.chronosEnabled = false;
+        this.chronosInjector.reset();
+        // Restaurar control normal de efectos activos
+        this.effectManager.clearAllForcedProgress();
+    }
     /**
      * 🎯 MÉTODO PRINCIPAL: Actualiza el motor con el contexto musical actual.
      *
@@ -162,33 +215,64 @@ export class TitanEngine extends EventEmitter {
         // Obtener perfil del vibe actual
         const vibeProfile = this.vibeManager.getActiveVibe();
         // ─────────────────────────────────────────────────────────────────────
+        // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline Injection Point
+        // Si Chronos está activo, modificamos el contexto antes de Stabilizers
+        // ─────────────────────────────────────────────────────────────────────
+        let processedContext = context;
+        if (this.chronosEnabled && this.chronosOverrides) {
+            // Aplicar overrides de Chronos al contexto musical
+            processedContext = this.chronosInjector.applyToMusicalContext(context, this.chronosOverrides);
+            // Procesar eventos de trigger (efectos que deben dispararse en este frame)
+            if (this.chronosOverrides.triggerEvents.length > 0) {
+                for (const trigger of this.chronosOverrides.triggerEvents) {
+                    // Solo disparar si es un trigger nuevo este frame
+                    if (trigger.isNewTrigger) {
+                        this.effectManager.trigger({
+                            effectType: trigger.effectId,
+                            intensity: trigger.intensity,
+                            zones: trigger.zones,
+                            source: 'manual', // Chronos usa 'manual' como source
+                            reason: `Chronos Timeline [clip: ${trigger.sourceClipId}]`,
+                            // Cast necesario: MusicalContext de protocol vs effects.types
+                            musicalContext: processedContext,
+                        });
+                    }
+                }
+            }
+            // Log cada 120 frames cuando Chronos está activo
+            if (this.state.frameCount % 120 === 0) {
+                const mode = this.chronosOverrides.forcedVibe ? 'FULL' : 'WHISPER';
+                console.log(`[TitanEngine 🕰️] Chronos ${mode}: Energy=${processedContext.energy.toFixed(2)} Effects=${this.chronosOverrides.activeEffectsWithProgress.length}`);
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
         // 🧠 WAVE 271: STABILIZATION LAYER
         // Procesar datos crudos → datos estabilizados (anti-epilepsia)
         // ─────────────────────────────────────────────────────────────────────
         // 1. ENERGY STABILIZER: Rolling 2s + DROP State Machine
-        const energyOutput = this.energyStabilizer.update(context.energy);
+        const energyOutput = this.energyStabilizer.update(processedContext.energy);
         // 2. KEY STABILIZER: Buffer 12s, locking 10s
         const keyInput = {
-            key: context.key,
-            confidence: context.confidence,
+            key: processedContext.key,
+            confidence: processedContext.confidence,
             energy: energyOutput.smoothedEnergy, // Usar energía suavizada para ponderación
         };
         const keyOutput = this.keyStabilizer.update(keyInput);
         // 3. MOOD ARBITER: Buffer 10s, locking 5s → BRIGHT/DARK/NEUTRAL
         const moodInput = {
-            mode: context.mode,
-            mood: context.mood,
-            confidence: context.confidence,
+            mode: processedContext.mode,
+            mood: processedContext.mood,
+            confidence: processedContext.confidence,
             energy: energyOutput.smoothedEnergy,
             key: keyOutput.stableKey, // Usar key estabilizada
         };
         const moodOutput = this.moodArbiter.update(moodInput);
         // 4. STRATEGY ARBITER: Rolling 15s → Analogous/Complementary/Triadic
         const strategyInput = {
-            syncopation: context.syncopation,
-            sectionType: context.section.type,
+            syncopation: processedContext.syncopation,
+            sectionType: processedContext.section.type,
             energy: energyOutput.instantEnergy, // Usar energía instantánea para drops
-            confidence: context.confidence,
+            confidence: processedContext.confidence,
             isRelativeDrop: energyOutput.isRelativeDrop,
             isRelativeBreakdown: energyOutput.isRelativeBreakdown,
             vibeId: vibeProfile.id,
@@ -208,7 +292,7 @@ export class TitanEngine extends EventEmitter {
         };
         // Log cambios importantes de estabilización (cada 60 frames si cambio relevante)
         // 🌡️ WAVE 283: Añadido thermalTemperature al log
-        if (this.state.frameCount % 60 === 0 && context.energy > 0.05) {
+        if (this.state.frameCount % 60 === 0 && processedContext.energy > 0.05) {
             if (keyOutput.isChanging || moodOutput.emotionChanged || strategyOutput.strategyChanged) {
                 console.log(`[TitanEngine 🧠] Stabilization: Key=${keyOutput.stableKey ?? '?'} Emotion=${moodOutput.stableEmotion} Strategy=${strategyOutput.stableStrategy} Temp=${moodOutput.thermalTemperature.toFixed(0)}K`);
             }
@@ -222,16 +306,16 @@ export class TitanEngine extends EventEmitter {
             timestamp: now,
             frameId: this.state.frameCount,
             // Trinity Core
-            bpm: context.bpm,
+            bpm: processedContext.bpm,
             onBeat: audio.isBeat,
-            beatPhase: context.beatPhase,
+            beatPhase: processedContext.beatPhase,
             beatStrength: audio.bass,
             // Spectrum
             bass: audio.bass,
             mid: audio.mid,
             treble: audio.high,
             // 🧠 WAVE 271: Top-level usa datos ESTABILIZADOS (no crudos)
-            syncopation: context.syncopation,
+            syncopation: processedContext.syncopation,
             // Mood estabilizado: BRIGHT→'bright', DARK→'dark', NEUTRAL→'neutral'
             mood: moodOutput.stableEmotion === 'BRIGHT' ? 'bright' :
                 moodOutput.stableEmotion === 'DARK' ? 'dark' : 'neutral',
@@ -244,18 +328,18 @@ export class TitanEngine extends EventEmitter {
             wave8: {
                 harmony: {
                     key: keyOutput.stableKey, // 🧠 KEY ESTABILIZADA
-                    mode: context.mode === 'major' ? 'major' :
-                        context.mode === 'minor' ? 'minor' : 'minor',
-                    mood: context.mood,
+                    mode: processedContext.mode === 'major' ? 'major' :
+                        processedContext.mode === 'minor' ? 'minor' : 'minor',
+                    mood: processedContext.mood,
                 },
                 rhythm: {
-                    syncopation: context.syncopation,
+                    syncopation: processedContext.syncopation,
                 },
                 genre: {
-                    primary: context.genre.subGenre || context.genre.macro || 'unknown',
+                    primary: processedContext.genre.subGenre || processedContext.genre.macro || 'unknown',
                 },
                 section: {
-                    type: context.section.current,
+                    type: processedContext.section.current,
                 },
             },
         };
@@ -293,7 +377,7 @@ export class TitanEngine extends EventEmitter {
                     (0.6 + energyOutput.smoothedEnergy * 0.6),
                 centroid: audio.spectralCentroid ?? 800,
             };
-            const chillResult = calculateChillStereo(now, energyOutput.smoothedEnergy, audio.high, audio.kickDetected ?? false, godEarMetrics, context.bpm // 🩰 WAVE 1102: Pasar BPM para Elastic Time
+            const chillResult = calculateChillStereo(now, energyOutput.smoothedEnergy, audio.high, audio.kickDetected ?? false, godEarMetrics, processedContext.bpm // 🩰 WAVE 1102: Pasar BPM para Elastic Time
             );
             preComputedOceanicContext = chillResult.oceanicContext;
             // Inyectar oceanicModulation en la constitution
@@ -318,7 +402,7 @@ export class TitanEngine extends EventEmitter {
         this.state.lastPalette = palette;
         // Log cromático (cada 60 frames = 1 segundo)
         if (this.state.frameCount % 60 === 0 && audio.energy > 0.05) {
-            SeleneColorEngine.logChromaticAudit({ key: context.key, mood: context.mood, energy: context.energy }, selenePalette, vibeProfile.id);
+            SeleneColorEngine.logChromaticAudit({ key: processedContext.key, mood: processedContext.mood, energy: processedContext.energy }, selenePalette, vibeProfile.id);
         }
         // ─────────────────────────────────────────────────────────────────────
         // ⚡ WAVE 274: SISTEMA NERVIOSO - Procesar física reactiva por género
@@ -333,8 +417,8 @@ export class TitanEngine extends EventEmitter {
             activeVibe: vibeProfile.id,
             primaryHue: primaryHue,
             stableKey: keyOutput.stableKey,
-            bpm: context.bpm,
-            section: context.section.type, // 🆕 WAVE 290: Sección para White Puncture
+            bpm: processedContext.bpm,
+            section: processedContext.section.type, // 🆕 WAVE 290: Sección para White Puncture
         }, palette, {
             normalizedBass: audio.bass,
             normalizedMid: audio.mid,
@@ -505,10 +589,10 @@ export class TitanEngine extends EventEmitter {
             clarity: audio.clarity ?? 0.5, // Default neutral si no disponible
             ultraAir: audio.ultraAir ?? 0, // Default silencio si no disponible
             // Contexto musical
-            bpm: context.bpm,
-            beatPhase: context.beatPhase,
-            syncopation: context.syncopation,
-            sectionType: this.normalizeSectionType(context.section.type),
+            bpm: processedContext.bpm,
+            beatPhase: processedContext.beatPhase,
+            syncopation: processedContext.syncopation,
+            sectionType: this.normalizeSectionType(processedContext.section.type),
             // Paleta actual
             currentPalette: selenePalette,
             // Timing
@@ -551,10 +635,10 @@ export class TitanEngine extends EventEmitter {
                     reason,
                     musicalContext: {
                         zScore: this.selene.getEnergyZScore(), // 🧠 Desde SeleneTitanConscious
-                        bpm: context.bpm,
+                        bpm: processedContext.bpm,
                         energy: energyOutput.rawEnergy,
                         vibeId: vibeProfile.id,
-                        beatPhase: context.beatPhase,
+                        beatPhase: processedContext.beatPhase,
                         inDrop: titanStabilizedState.sectionType === 'drop',
                     },
                 });
@@ -752,7 +836,7 @@ export class TitanEngine extends EventEmitter {
         //   console.log(`[TitanEngine] 🎨 Palette: P=${palette.primary.hex || '#???'} S=${palette.secondary.hex || '#???'} | Energy=${context.energy.toFixed(2)} | Master=${masterIntensity.toFixed(2)}`)
         // }
         // Guardar estado para deltas
-        this.state.previousEnergy = context.energy;
+        this.state.previousEnergy = processedContext.energy;
         this.state.previousBass = audio.bass;
         this.state.currentIntent = intent;
         // Debug logging

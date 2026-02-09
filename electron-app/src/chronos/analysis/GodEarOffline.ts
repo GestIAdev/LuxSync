@@ -101,10 +101,16 @@ export async function analyzeAudioFile(
     onProgress?.({ phase, progress, message })
   }
   
+  // 🛡️ WAVE 2005.2: Helper to yield to event loop periodically
+  const yieldToEventLoop = () => new Promise<void>(resolve => setTimeout(resolve, 0))
+  
   // Obtener samples mono (mezcla de todos los canales)
   const monoSamples = getMonoSamples(buffer)
   const sampleRate = buffer.sampleRate
   const duration = buffer.duration
+  
+  // 🛡️ WAVE 2005.2: Yield after getting mono samples (heavy operation)
+  await yieldToEventLoop()
   
   // ─────────────────────────────────────────────────────────────────────────
   // 1. WAVEFORM - Extracción de picos
@@ -112,6 +118,7 @@ export async function analyzeAudioFile(
   report('waveform', 0, 'Extrayendo waveform...')
   const waveform = extractWaveform(monoSamples, sampleRate, cfg)
   report('waveform', 100, 'Waveform extraída')
+  await yieldToEventLoop()
   
   // ─────────────────────────────────────────────────────────────────────────
   // 2. ENERGY HEATMAP - Análisis espectral simplificado
@@ -119,6 +126,7 @@ export async function analyzeAudioFile(
   report('energy', 0, 'Analizando energía espectral...')
   const energyHeatmap = extractEnergyHeatmap(monoSamples, sampleRate, cfg)
   report('energy', 100, 'Heatmap generado')
+  await yieldToEventLoop()
   
   // ─────────────────────────────────────────────────────────────────────────
   // 3. BEAT DETECTION - Detección de BPM y beat grid
@@ -126,6 +134,7 @@ export async function analyzeAudioFile(
   report('beats', 0, 'Detectando beats...')
   const beatGrid = detectBeats(monoSamples, sampleRate, energyHeatmap, cfg)
   report('beats', 100, 'Beat grid detectado')
+  await yieldToEventLoop()
   
   // ─────────────────────────────────────────────────────────────────────────
   // 4. SECTION DETECTION - Análisis estructural
@@ -133,6 +142,7 @@ export async function analyzeAudioFile(
   report('sections', 0, 'Detectando secciones...')
   const sections = detectSections(energyHeatmap, beatGrid, duration, cfg)
   report('sections', 100, 'Secciones detectadas')
+  await yieldToEventLoop()
   
   // ─────────────────────────────────────────────────────────────────────────
   // 5. TRANSIENT DETECTION - Hits para snap

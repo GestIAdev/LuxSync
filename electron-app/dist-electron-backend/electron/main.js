@@ -232,15 +232,28 @@ async function initTitan() {
     registerTitanOrchestrator(titanOrchestrator);
     await titanOrchestrator.init();
     // WAVE 255.5: Connect broadcast callback to send fixture states to frontend
+    // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
     titanOrchestrator.setBroadcastCallback((truth) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('selene:truth', truth);
+        try {
+            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                mainWindow.webContents.send('selene:truth', truth);
+            }
+        }
+        catch (err) {
+            // Silently ignore - the renderer is being destroyed (e.g., during heavy audio loading)
+            // This is not a critical error, just a timing issue
         }
     });
     // WAVE 257: Connect log callback for Tactical Log
+    // 🛡️ WAVE 2005.1: Added try-catch for "Render frame disposed" errors
     titanOrchestrator.setLogCallback((entry) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('lux:log', entry);
+        try {
+            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                mainWindow.webContents.send('lux:log', entry);
+            }
+        }
+        catch (err) {
+            // Silently ignore - the renderer is being destroyed
         }
     });
     titanOrchestrator.start(); // Setup IPC handlers with all dependencies

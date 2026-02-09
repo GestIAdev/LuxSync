@@ -88,12 +88,19 @@ const SUPPORTED_MIME_TYPES = [
   'audio/webm',
 ]
 
-// 🛡️ WAVE 2005.1: Memory protection limits
-// WAV files are uncompressed = huge in memory
-// A 5-minute stereo 44.1kHz 16-bit WAV = ~50MB file → ~100MB in AudioBuffer
-const MAX_FILE_SIZE_BYTES = 150 * 1024 * 1024  // 150MB max file size
-const MAX_DURATION_SECONDS = 600               // 10 minutes max duration
-const WARN_FILE_SIZE_BYTES = 50 * 1024 * 1024  // Warn above 50MB
+// 🛡️ WAVE 2005.2: More aggressive memory protection limits
+// The renderer process has limited memory (typically ~512MB-1GB on Electron)
+// A WAV file expands to ~20x its compressed equivalent in memory:
+// - 50MB WAV → ~50MB ArrayBuffer → ~100MB AudioBuffer (Float32 stereo)
+// - Plus analysis arrays, plus rendering... can easily hit 300-400MB
+// 
+// CONSERVATIVE LIMITS to prevent OOM crashes:
+const MAX_FILE_SIZE_BYTES = 30 * 1024 * 1024   // 30MB max (was 150MB - too aggressive)
+const MAX_DURATION_SECONDS = 300               // 5 minutes max (was 10 - too long)
+const WARN_FILE_SIZE_BYTES = 15 * 1024 * 1024  // Warn above 15MB
+
+// 🛡️ WAVE 2005.2: Recommend compressed formats for large files
+const UNCOMPRESSED_EXTENSIONS = ['.wav', '.aiff', '.aif']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUDIO CONTEXT SINGLETON
@@ -164,23 +171,40 @@ export function useAudioLoader(): UseAudioLoaderReturn {
     abortRef.current = false
     
     try {
-      // 🛡️ WAVE 2005.1: Check file size limit FIRST
+      // 🛡️ WAVE 2005.2: Check file size limit FIRST
       if (buffer.byteLength > MAX_FILE_SIZE_BYTES) {
         const sizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(1)
         const maxMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0)
+        
+        // Check if it's an uncompressed format
+        const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase()
+        const isUncompressed = UNCOMPRESSED_EXTENSIONS.includes(ext)
+        
         console.error(`[useAudioLoader] ❌ File too large: ${sizeMB}MB (max ${maxMB}MB)`)
+        
+        const hint = isUncompressed
+          ? ' Convert to MP3 or OGG for smaller file size.'
+          : ''
+        
         updateState({
           isLoading: false,
           phase: 'error',
-          error: `File too large (${sizeMB}MB). Maximum: ${maxMB}MB. Try a compressed format like MP3.`,
+          error: `File too large (${sizeMB}MB). Maximum: ${maxMB}MB.${hint}`,
         })
         return null
       }
       
-      // Warn for large files
+      // 🛡️ WAVE 2005.2: Warn for large uncompressed files
+      const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase()
+      const isUncompressed = UNCOMPRESSED_EXTENSIONS.includes(ext)
+      
       if (buffer.byteLength > WARN_FILE_SIZE_BYTES) {
         const sizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(1)
         console.warn(`[useAudioLoader] ⚠️ Large file: ${sizeMB}MB - this may take a while...`)
+        
+        if (isUncompressed) {
+          console.warn(`[useAudioLoader] 💡 TIP: ${ext.toUpperCase()} files are uncompressed. Consider using MP3/OGG for faster loading.`)
+        }
       }
       
       // Start loading

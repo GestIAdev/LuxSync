@@ -144,11 +144,30 @@ function createBarGradient(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WAVEFORM RENDERER
+// WAVEFORM RENDERER - OPTIMIZED FOR PERFORMANCE
 // ═══════════════════════════════════════════════════════════════════════════
+
+// 🛡️ WAVE 2005.2: Pre-computed color cache to avoid HSL string creation per bar
+const colorCache = new Map<string, string>()
+
+function getCachedColor(energy: number, bass: number, high: number): string {
+  // Quantize to reduce cache size (5% steps = 20 levels per param = 8000 combos max)
+  const eKey = Math.round(energy * 20)
+  const bKey = Math.round(bass * 20)
+  const hKey = Math.round(high * 20)
+  const key = `${eKey}-${bKey}-${hKey}`
+  
+  let color = colorCache.get(key)
+  if (!color) {
+    color = energyToColor(energy, bass, high)
+    colorCache.set(key, color)
+  }
+  return color
+}
 
 /**
  * Render waveform to canvas with mirror reflection
+ * 🛡️ WAVE 2005.2: Heavily optimized for large files
  */
 function renderWaveform(
   canvas: HTMLCanvasElement,
@@ -168,47 +187,60 @@ function renderWaveform(
   // Clear canvas
   ctx.clearRect(0, 0, width, height)
   
+  // 🛡️ WAVE 2005.2: Early exit if no data
+  if (!waveform.peaks || waveform.peaks.length === 0) return
+  
   // Calculate visible range in waveform samples
   const msPerSample = 1000 / waveform.samplesPerSecond
-  const startSample = Math.floor(viewportStartMs / msPerSample)
-  const endSample = Math.ceil(viewportEndMs / msPerSample)
+  const startSample = Math.max(0, Math.floor(viewportStartMs / msPerSample))
+  const endSample = Math.min(waveform.peaks.length, Math.ceil(viewportEndMs / msPerSample))
+  
+  // 🛡️ WAVE 2005.2: Early exit if nothing to render
+  if (startSample >= endSample) return
   
   // Calculate pixels per sample at current zoom
   const visibleWidth = width - leftOffset
   const visibleDurationMs = viewportEndMs - viewportStartMs
   const pixelsPerSample = (visibleWidth / visibleDurationMs) * msPerSample
   
-  // Determine downsampling factor if zoomed out too much
+  // 🛡️ WAVE 2005.2: More aggressive downsampling - limit max bars to ~600 for performance
+  const maxBarsOnScreen = 600
+  const numVisibleSamples = endSample - startSample
+  const minDownsample = Math.ceil(numVisibleSamples / maxBarsOnScreen)
+  
+  // Determine downsampling factor 
   const minPixelsPerBar = 2
-  const downsampleFactor = Math.max(1, Math.floor(minPixelsPerBar / pixelsPerSample))
+  const pixelBasedDownsample = Math.max(1, Math.floor(minPixelsPerBar / pixelsPerSample))
+  const downsampleFactor = Math.max(pixelBasedDownsample, minDownsample)
   
   // Center line (for mirror)
   const centerY = height / 2
   const maxAmplitude = centerY * 0.9 // Leave small margin
   
-  // Enable anti-aliasing
-  ctx.imageSmoothingEnabled = true
-  ctx.imageSmoothingQuality = 'high'
+  // 🛡️ WAVE 2005.2: Disable expensive anti-aliasing for performance
+  ctx.imageSmoothingEnabled = false
   
-  // Draw waveform bars
-  for (let i = startSample; i < endSample && i < waveform.peaks.length; i += downsampleFactor) {
+  // Draw waveform bars - OPTIMIZED
+  for (let i = startSample; i < endSample; i += downsampleFactor) {
     // Find max peak in downsampled range
     let maxPeak = 0
     let avgRms = 0
     let count = 0
     
-    for (let j = i; j < Math.min(i + downsampleFactor, waveform.peaks.length); j++) {
-      maxPeak = Math.max(maxPeak, waveform.peaks[j])
+    const rangeEnd = Math.min(i + downsampleFactor, endSample)
+    for (let j = i; j < rangeEnd; j++) {
+      const peak = waveform.peaks[j]
+      if (peak > maxPeak) maxPeak = peak
       avgRms += waveform.rms[j]
       count++
     }
-    avgRms /= count
+    if (count > 0) avgRms /= count
     
     // Get energy data for coloring
     const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
     const energy = energyHeatmap.energy[heatmapIndex] ?? 0.3
-    const bass = energyHeatmap.bass[heatmapIndex] ?? 0.3
-    const high = energyHeatmap.high[heatmapIndex] ?? 0.3
+    const bass = energyHeatmap.bass?.[heatmapIndex] ?? 0.3
+    const high = energyHeatmap.high?.[heatmapIndex] ?? 0.3
     
     // Calculate bar position
     const sampleTimeMs = i * msPerSample
@@ -222,22 +254,22 @@ function renderWaveform(
     const peakHeight = maxPeak * maxAmplitude
     const rmsHeight = avgRms * maxAmplitude
     
-    // Create gradient based on energy
-    const gradient = createBarGradient(ctx, x, centerY - peakHeight, peakHeight * 2, energy, bass, high)
+    // 🛡️ WAVE 2005.2: Use cached solid color instead of expensive gradient
+    const color = getCachedColor(energy, bass, high)
     
     // Draw RMS (solid inner bar) - top half
-    ctx.fillStyle = gradient
+    ctx.fillStyle = color
     ctx.fillRect(x, centerY - rmsHeight, barWidth, rmsHeight)
     
     // Draw RMS - bottom half (mirror)
     ctx.fillRect(x, centerY, barWidth, rmsHeight)
     
-    // Draw peak outline (subtle) - top
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + energy * 0.15})`
-    ctx.fillRect(x, centerY - peakHeight, barWidth, peakHeight - rmsHeight)
-    
-    // Draw peak outline - bottom (mirror)
-    ctx.fillRect(x, centerY + rmsHeight, barWidth, peakHeight - rmsHeight)
+    // 🛡️ WAVE 2005.2: Only draw peak outline if significant difference (performance)
+    if (peakHeight - rmsHeight > 2) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.08 + energy * 0.1})`
+      ctx.fillRect(x, centerY - peakHeight, barWidth, peakHeight - rmsHeight)
+      ctx.fillRect(x, centerY + rmsHeight, barWidth, peakHeight - rmsHeight)
+    }
   }
   
   // Draw center line
@@ -248,27 +280,8 @@ function renderWaveform(
   ctx.lineTo(width, centerY)
   ctx.stroke()
   
-  // Draw glow effect at high energy points
-  ctx.globalCompositeOperation = 'lighter'
-  ctx.filter = 'blur(4px)'
-  
-  for (let i = startSample; i < endSample && i < waveform.peaks.length; i += downsampleFactor * 3) {
-    const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
-    const energy = energyHeatmap.energy[heatmapIndex] ?? 0
-    
-    if (energy > 0.7) {
-      const sampleTimeMs = i * msPerSample
-      const x = leftOffset + ((sampleTimeMs - viewportStartMs) / 1000) * pixelsPerSecond
-      const peak = waveform.peaks[i]
-      const glowHeight = peak * maxAmplitude * 0.5
-      
-      ctx.fillStyle = `rgba(0, 255, 255, ${(energy - 0.7) * 0.3})`
-      ctx.fillRect(x - 2, centerY - glowHeight, 6, glowHeight * 2)
-    }
-  }
-  
-  ctx.filter = 'none'
-  ctx.globalCompositeOperation = 'source-over'
+  // 🛡️ WAVE 2005.2: REMOVED expensive glow effect loop entirely
+  // The color heatmap already provides visual energy feedback
 }
 
 /**

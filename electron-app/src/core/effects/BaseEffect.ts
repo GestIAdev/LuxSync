@@ -101,6 +101,20 @@ export abstract class BaseEffect implements ILightEffect {
   protected musicalContext: MusicalContext | null = null
   
   // ─────────────────────────────────────────────────────────────────────────
+  // 🕰️ WAVE 2002: CHRONOS SCRUBBING SUPPORT
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /** 
+   * Progress forzado por Chronos (null = usar elapsedMs normal)
+   * Cuando Chronos controla el timeline, este valor overridea el progreso
+   * calculado internamente por el efecto.
+   */
+  protected _forcedProgress: number | null = null
+  
+  /** Duración del efecto en ms (para cálculo de progress) */
+  protected _durationMs: number = 1000
+  
+  // ─────────────────────────────────────────────────────────────────────────
   // Constructor
   // ─────────────────────────────────────────────────────────────────────────
   
@@ -154,6 +168,87 @@ export abstract class BaseEffect implements ILightEffect {
    */
   getPhase(): EffectPhase {
     return this.phase
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🕰️ WAVE 2002: CHRONOS PARAMETRIC SCRUBBING
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * 🕰️ FORCE PROGRESS (CHRONOS CONTROL)
+   * 
+   * Fuerza el progreso del efecto desde Chronos.
+   * Esto permite "rebobinar" y "adelantar" efectos en el timeline.
+   * 
+   * Cuando se llama este método, el efecto ignora su elapsedMs interno
+   * y usa el progress forzado para calcular su estado visual.
+   * 
+   * @param progress Progreso forzado (0-1, donde 0=inicio, 1=fin)
+   */
+  _forceProgress(progress: number): void {
+    this._forcedProgress = Math.max(0, Math.min(1, progress))
+    
+    // Calcular fase basada en progress
+    if (progress <= 0) {
+      this.phase = 'attack'
+    } else if (progress >= 1) {
+      this.phase = 'decay'
+    } else if (progress < 0.15) {
+      this.phase = 'attack'
+    } else if (progress > 0.85) {
+      this.phase = 'decay'
+    } else {
+      this.phase = 'sustain'
+    }
+  }
+  
+  /**
+   * 🕰️ CLEAR FORCED PROGRESS
+   * 
+   * Libera el control de Chronos y vuelve al modo normal (elapsedMs).
+   */
+  _clearForcedProgress(): void {
+    this._forcedProgress = null
+  }
+  
+  /**
+   * 🕰️ IS CONTROLLED BY CHRONOS
+   * 
+   * ¿Está este efecto siendo controlado por Chronos?
+   */
+  _isChronosControlled(): boolean {
+    return this._forcedProgress !== null
+  }
+  
+  /**
+   * 📊 GET PROGRESS
+   * 
+   * Obtiene el progreso actual del efecto (0-1).
+   * 
+   * Si Chronos está controlando, devuelve el progress forzado.
+   * Si no, calcula basándose en elapsedMs y _durationMs.
+   * 
+   * @returns Progreso normalizado 0-1
+   */
+  getProgress(): number {
+    // Si Chronos está controlando, usar su valor
+    if (this._forcedProgress !== null) {
+      return this._forcedProgress
+    }
+    
+    // Modo normal: calcular desde tiempo
+    if (this._durationMs <= 0) return 0
+    return Math.min(1, this.elapsedMs / this._durationMs)
+  }
+  
+  /**
+   * 📏 SET DURATION
+   * 
+   * Establece la duración del efecto (para cálculo de progress).
+   * Los efectos hijos deben llamar esto en trigger() o constructor.
+   */
+  protected setDuration(durationMs: number): void {
+    this._durationMs = Math.max(1, durationMs)
   }
   
   // ─────────────────────────────────────────────────────────────────────────

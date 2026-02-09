@@ -532,6 +532,48 @@ export class EffectManager extends EventEmitter {
     return effect.id
   }
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🕰️ WAVE 2002: CHRONOS SYNAPTIC BRIDGE - Timeline Control Methods
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🕰️ FORCE EFFECT PROGRESS - Permite a Chronos controlar el progreso de un efecto
+   * 
+   * Cuando el timeline de Chronos está activo, puede "scrubbear" efectos
+   * forzando su progreso a un valor específico (0-1).
+   * 
+   * @param instanceId - ID de la instancia del efecto activo
+   * @param progress - Progreso forzado (0.0 = inicio, 1.0 = fin)
+   */
+  forceEffectProgress(instanceId: string, progress: number): void {
+    const effect = this.activeEffects.get(instanceId)
+    
+    if (!effect) {
+      // El efecto puede haber terminado - es normal
+      return
+    }
+    
+    // Verificar si el efecto soporta Chronos control
+    if (typeof (effect as any)._forceProgress === 'function') {
+      (effect as any)._forceProgress(progress)
+    }
+  }
+  
+  /**
+   * 🕰️ CLEAR ALL FORCED PROGRESS - Restaura el control normal de todos los efectos
+   * 
+   * Llamar cuando Chronos se desactiva o el timeline termina.
+   * Restaura el timing basado en elapsedMs normal.
+   */
+  clearAllForcedProgress(): void {
+    for (const [_id, effect] of this.activeEffects) {
+      // Verificar si el efecto soporta Chronos control
+      if (typeof (effect as any)._clearForcedProgress === 'function') {
+        (effect as any)._clearForcedProgress()
+      }
+    }
+  }
+  
   /**
    * 🔄 UPDATE - Actualiza todos los efectos activos
    * 

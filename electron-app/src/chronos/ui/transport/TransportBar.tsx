@@ -34,6 +34,8 @@ export interface TransportBarProps {
   audioLoaded?: boolean
   audioFileName?: string
   onLoadAudio?: () => void
+  // 👻 WAVE 2005.3: Close audio to load another
+  onCloseAudio?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -103,6 +105,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   audioLoaded = false,
   audioFileName,
   onLoadAudio,
+  onCloseAudio,
 }) => {
   // BPM adjustment handlers
   const handleBpmDecrease = useCallback(() => {
@@ -225,7 +228,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * AUDIO FILE INDICATOR - WAVE 2005
+       * AUDIO FILE INDICATOR - WAVE 2005 + 2005.3
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="transport-audio">
         {audioLoaded ? (
@@ -236,6 +239,14 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
                 ? audioFileName.slice(0, 17) + '...' 
                 : audioFileName}
             </span>
+            {/* 👻 WAVE 2005.3: Close button to load another file */}
+            <button 
+              className="audio-close-btn"
+              onClick={onCloseAudio}
+              title="Close audio and load another"
+            >
+              ✕
+            </button>
           </div>
         ) : (
           <button 

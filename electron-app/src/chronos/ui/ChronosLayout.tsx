@@ -181,6 +181,15 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader])
   
+  // 👻 WAVE 2005.3: Close audio and reset state
+  const handleCloseAudio = useCallback(() => {
+    console.log('[ChronosLayout] 🗑️ Closing audio file')
+    audioLoader.reset()
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setBpm(120) // Reset to default
+  }, [audioLoader])
+  
   return (
     <div 
       className={`chronos-layout ${className} ${isDragOver ? 'dragover' : ''}`}
@@ -212,6 +221,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         audioLoaded={!!audioLoader.result}
         audioFileName={audioLoader.result?.fileName}
         onLoadAudio={handleLoadAudioClick}
+        onCloseAudio={handleCloseAudio}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════

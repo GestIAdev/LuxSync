@@ -253,12 +253,23 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
       const audioUrl = URL.createObjectURL(audioBlob)
       
       // Build result
+      // 🧠 WAVE 2017: Capture real filesystem path for session persistence
+      // In Electron, dropped/selected files have a `path` property with the real path
+      const electronFilePath = (file as any).path as string | undefined
+      
       const result: AudioLoadResult = {
         analysisData: response.data,
         fileName: file.name,
         fileSize: file.size,
         durationMs: response.data.durationMs,
         audioPath: audioUrl,
+        realPath: electronFilePath, // 🧠 WAVE 2017: For session restore
+      }
+      
+      if (electronFilePath) {
+        console.log(`[useAudioLoaderPhantom] 🧠 Real path captured: ${electronFilePath}`)
+      } else {
+        console.warn('[useAudioLoaderPhantom] ⚠️ No real path available (browser context?)')
       }
       
       updateState({

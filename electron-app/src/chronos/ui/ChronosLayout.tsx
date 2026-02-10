@@ -98,6 +98,17 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   const sessionStore = useChronosSession()
   const sessionRestoredRef = useRef(false)
   
+  // 🧠 WAVE 2017 FIX: Use refs to keep track of current state for unmount cleanup
+  // This avoids stale closures in the cleanup function
+  const stateRef = useRef({
+    audioResult: null as any,
+    clips: [] as TimelineClip[],
+    selectedIds: new Set<string>(),
+    playheadMs: 0,
+    bpm: 120,
+    stageVisible: true,
+  })
+  
   // Transport state (recording is still local)
   const [isRecording, setIsRecording] = useState(false)
   const [bpm, setBpm] = useState(120)
@@ -264,38 +275,49 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, []) // Empty deps - run only on mount
   
   // 🧠 SAVE: On unmount, save the current session
+  // Using ref to avoid stale closures - cleanup always has latest values
+  useEffect(() => {
+    // Keep ref in sync with current state
+    stateRef.current = {
+      audioResult: audioLoader.result,
+      clips: clipState.clips,
+      selectedIds: clipState.selectedIds,
+      playheadMs: streaming.currentTimeMs,
+      bpm,
+      stageVisible,
+    }
+  })
+  
+  // Actual unmount cleanup - only runs once when component truly unmounts
   useEffect(() => {
     return () => {
       // Save session when leaving Chronos
-      console.log('[SessionKeeper] 💾 Saving session on unmount')
+      const state = stateRef.current
+      console.log('[SessionKeeper] 💾 Saving session on unmount', {
+        audioPath: state.audioResult?.realPath,
+        clipCount: state.clips.length,
+        playhead: state.playheadMs,
+      })
       
       sessionStore.saveSession({
         // Audio
-        audioRealPath: audioLoader.result?.realPath || null,
-        audioFileName: audioLoader.result?.fileName || null,
-        audioDurationMs: audioLoader.result?.durationMs || 60000,
-        analysisData: audioLoader.result?.analysisData || null,
+        audioRealPath: state.audioResult?.realPath || null,
+        audioFileName: state.audioResult?.fileName || null,
+        audioDurationMs: state.audioResult?.durationMs || 60000,
+        analysisData: state.audioResult?.analysisData || null,
         
         // Timeline
-        clips: clipState.clips,
-        playheadMs: streaming.currentTimeMs,
-        bpm,
+        clips: state.clips,
+        playheadMs: state.playheadMs,
+        bpm: state.bpm,
         
         // Meta
-        isDirty: clipState.clips.length > 0 || audioLoader.result !== null,
-        stageVisible,
-        selectedClipIds: Array.from(clipState.selectedIds),
+        isDirty: state.clips.length > 0 || state.audioResult !== null,
+        stageVisible: state.stageVisible,
+        selectedClipIds: Array.from(state.selectedIds),
       })
     }
-  }, [
-    audioLoader.result,
-    clipState.clips,
-    clipState.selectedIds,
-    streaming.currentTimeMs,
-    bpm,
-    stageVisible,
-    sessionStore.saveSession,
-  ])
+  }, []) // Empty deps - only run cleanup on true unmount
   
   // 🧠 PERIODIC SYNC: Keep session store in sync with clips changes
   useEffect(() => {

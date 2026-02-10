@@ -43,6 +43,9 @@ export interface TransportBarProps {
   onSaveProject?: () => void
   onLoadProject?: () => void
   onNewProject?: () => void
+  // 🎭 WAVE 2015.5: Stage visibility toggle
+  stageVisible?: boolean
+  onToggleStage?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -122,6 +125,9 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   onSaveProject,
   onLoadProject,
   onNewProject,
+  // 🎭 WAVE 2015.5: Stage visibility toggle
+  stageVisible = true,
+  onToggleStage,
 }) => {
   // BPM adjustment handlers
   const handleBpmDecrease = useCallback(() => {
@@ -274,6 +280,18 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
        * MODE TOGGLES (Right)
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="transport-modes">
+        {/* 🎭 WAVE 2015.5: Stage Preview Toggle */}
+        {onToggleStage && (
+          <button 
+            className={`mode-toggle ${stageVisible ? 'active' : ''}`}
+            onClick={onToggleStage}
+            title={stageVisible ? 'Hide Stage Preview' : 'Show Stage Preview'}
+          >
+            <span className="mode-icon">🎭</span>
+            <span className="mode-label">STAGE</span>
+          </button>
+        )}
+        
         <button className="mode-toggle" title="Quantize to Grid">
           <span className="mode-icon">⊞</span>
           <span className="mode-label">QUANT</span>

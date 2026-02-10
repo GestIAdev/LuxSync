@@ -27,6 +27,13 @@ import './StagePreview.css'
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface StagePreviewProps {
+  /** Whether the stage preview is visible */
+  visible?: boolean
+  /** Optional className for additional styling */
+  className?: string
+}
+
 interface FixtureVisualLite {
   id: string
   x: number
@@ -62,7 +69,10 @@ const ZONE_POSITIONS = {
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const StagePreview: React.FC = memo(() => {
+export const StagePreview: React.FC<StagePreviewProps> = memo(({ 
+  visible = true,
+  className = ''
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number>(0)
@@ -337,8 +347,15 @@ export const StagePreview: React.FC = memo(() => {
     return () => resizeObserver.disconnect()
   }, [])
   
+  // WAVE 2015.5: Compute container classes
+  const containerClasses = [
+    'stage-preview',
+    !visible && 'hidden',
+    className
+  ].filter(Boolean).join(' ')
+  
   return (
-    <div className="stage-preview" ref={containerRef}>
+    <div className={containerClasses} ref={containerRef}>
       <canvas ref={canvasRef} className="stage-preview-canvas" />
       <div className="stage-preview-badge">STAGE</div>
     </div>

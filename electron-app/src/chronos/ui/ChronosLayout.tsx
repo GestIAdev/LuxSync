@@ -49,11 +49,14 @@ import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
 // 🎬 WAVE 2010: ChronosRecorder for live recording
 import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
 // 🚀 WAVE 2013: ChronosInjector for Stage Simulator link
-import { getChronosInjector } from '../core/ChronosInjector'
+import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 // 💾 WAVE 2014: Project persistence (The Memory Core)
 import { useChronosProject } from '../hooks/useChronosProject'
 // 🧠 WAVE 2014.5: Store singleton for event subscriptions
 import { getChronosStore } from '../core/ChronosStore'
+// ⚡ WAVE 2015.5: ENGINE IGNITION - Control store for phantom mode
+import { useControlStore, type LivingPaletteId } from '../../stores/controlStore'
+import { useOverrideStore } from '../../stores/overrideStore'
 import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
@@ -90,6 +93,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // Transport state (recording is still local)
   const [isRecording, setIsRecording] = useState(false)
   const [bpm, setBpm] = useState(120)
+  
+  // 🎭 WAVE 2015.5: Stage visibility toggle
+  const [stageVisible, setStageVisible] = useState(true)
   
   // 🧲 WAVE 2006: Clips state management (needs bpm/duration from above)
   const durationMs = audioLoader.result?.durationMs ?? 60000
@@ -179,6 +185,45 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       injector.reset()
     }
   }, [streaming.isPlaying, injector])
+  
+  // ⚡ WAVE 2015.5: ENGINE IGNITION - Phantom Mode
+  // Connect ChronosInjector commands to controlStore for Stage Preview rendering
+  // This enables "visual-only" playback without DMX output
+  const setPalette = useControlStore(state => state.setPalette)
+  const setGlobalIntensity = useControlStore(state => state.setGlobalIntensity)
+  
+  useEffect(() => {
+    // Subscribe to stage commands from ChronosInjector
+    const unsubscribe = injector.subscribe((command: StageCommand) => {
+      switch (command.type) {
+        case 'vibe-change':
+          // Map vibe effectId to palette (vibes ARE palettes in LuxSync)
+          // Common vibes: fuego, ocean, neon, sunset, midnight, aurora, etc.
+          const paletteId = command.effectId as LivingPaletteId
+          console.log(`[ChronosLayout] ⚡ ENGINE IGNITION: Palette → ${paletteId}`)
+          setPalette(paletteId)
+          break
+          
+        case 'intensity-change':
+          if (command.intensity !== undefined) {
+            setGlobalIntensity(command.intensity)
+          }
+          break
+          
+        case 'fx-trigger':
+          // FX effects are handled by the effect system, not palette changes
+          // In phantom mode, we could flash the stage or apply temporary overrides
+          console.log(`[ChronosLayout] ⚡ ENGINE IGNITION: FX → ${command.effectId}`)
+          break
+          
+        case 'fx-stop':
+          // Effect ended
+          break
+      }
+    })
+    
+    return unsubscribe
+  }, [injector, setPalette, setGlobalIntensity])
   
   // 💾 WAVE 2014: Sync clips to project store for persistence
   useEffect(() => {
@@ -595,6 +640,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         onSaveProject={project.save}
         onLoadProject={project.load}
         onNewProject={project.newProject}
+        // 🎭 WAVE 2015.5: Stage visibility toggle
+        stageVisible={stageVisible}
+        onToggleStage={() => setStageVisible(v => !v)}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════
@@ -637,8 +685,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           onBlur={() => setIsTimelineFocused(false)}
           tabIndex={0}
         >
-          {/* Stage Preview (30% height) - WAVE 2015: Real fixtures */}
-          <StagePreview />
+          {/* Stage Preview (30% height) - WAVE 2015: Real fixtures, WAVE 2015.5: Toggle */}
+          <StagePreview visible={stageVisible} />
           
           {/* Horizontal Divider */}
           <div className="chronos-divider horizontal" />

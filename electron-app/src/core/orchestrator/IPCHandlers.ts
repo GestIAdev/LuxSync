@@ -171,6 +171,52 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2019: THE PULSE - Chronos Timeline → Stage Commands
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🎭 chronos:setVibe
+   * Called from ChronosIPCBridge when a vibe-change clip is reached.
+   * Same as lux:setVibe but with Chronos-specific logging.
+   */
+  ipcMain.handle('chronos:setVibe', (_event, vibeId: string) => {
+    console.log('[Chronos→Stage] 🎭 VIBE CHANGE:', vibeId)
+    if (titanOrchestrator) {
+      titanOrchestrator.setVibe(vibeId as any)
+    }
+    return { success: true }
+  })
+  
+  /**
+   * 🧨 chronos:triggerFX
+   * Called from ChronosIPCBridge when an FX clip starts.
+   * Maps to forceStrikeNextFrame with the effect from FXMapper.
+   */
+  ipcMain.handle('chronos:triggerFX', (_event, config: { effectId: string; intensity: number; durationMs?: number }) => {
+    console.log('[Chronos→Stage] 🧨 FX TRIGGER:', config.effectId, `@ ${(config.intensity * 100).toFixed(0)}%`)
+    if (titanOrchestrator) {
+      titanOrchestrator.forceStrikeNextFrame({
+        effect: config.effectId,
+        intensity: config.intensity,
+        // Note: durationMs passed but may not be used by all effects
+      })
+    }
+    return { success: true }
+  })
+  
+  /**
+   * 🛑 chronos:stopFX
+   * Called from ChronosIPCBridge when an FX clip ends.
+   * Currently a placeholder - most effects auto-expire.
+   * Future: Can cancel specific running effects.
+   */
+  ipcMain.handle('chronos:stopFX', (_event, effectId: string) => {
+    console.log('[Chronos→Stage] 🛑 FX STOP:', effectId)
+    // Future implementation: titanOrchestrator.cancelEffect(effectId)
+    return { success: true }
+  })
+
   // 🎭 WAVE 700.5.4: MOOD CONTROL
   ipcMain.handle('lux:setMood', (_event, moodId: 'calm' | 'balanced' | 'punk') => {
     console.log('[IPC] 🎭 lux:setMood:', moodId)

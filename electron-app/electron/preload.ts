@@ -283,6 +283,36 @@ const api = {
     /** Delete auto-save file (after successful manual save) */
     deleteAutoSave: (request: { path: string }): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('chronos:delete-auto-save', request),
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🎯 WAVE 2019: THE PULSE - Timeline → Stage Commands
+    // ─────────────────────────────────────────────────────────────────────
+    
+    /** 
+     * 🎭 Set Vibe from Chronos timeline
+     * Triggered when a vibe-change clip is reached during playback.
+     * @param vibeId - The target vibe (techno-club, fiesta-latina, etc.)
+     */
+    setVibe: (vibeId: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:setVibe', vibeId),
+    
+    /**
+     * 🧨 Trigger FX from Chronos timeline
+     * Fires a mapped effect when an FX clip starts during playback.
+     * @param effectId - BaseEffect ID (from FXMapper)
+     * @param intensity - Effect intensity 0-1
+     * @param durationMs - Optional duration override
+     */
+    triggerFX: (effectId: string, intensity: number, durationMs?: number): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+    
+    /**
+     * 🛑 Stop FX from Chronos timeline
+     * Called when a clip ends or playback stops.
+     * @param effectId - BaseEffect ID to stop
+     */
+    stopFX: (effectId: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:stopFX', effectId),
   },
 }
 

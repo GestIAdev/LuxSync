@@ -220,6 +220,31 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, [streaming.isPlaying, injector])
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2019: THE PULSE - Connect ChronosInjector to Stage via IPC
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Import and wire the bridge on mount/unmount
+  useEffect(() => {
+    let disconnectFn: (() => void) | undefined
+    
+    // Dynamic import to avoid circular dependencies
+    import('../bridge/ChronosIPCBridge').then((bridge) => {
+      bridge.connectChronosToStage()
+      disconnectFn = bridge.disconnectChronosFromStage
+      console.log('[ChronosLayout] 🎯 WAVE 2019: IPC Bridge connected!')
+    }).catch((err) => {
+      console.error('[ChronosLayout] ❌ Failed to connect IPC Bridge:', err)
+    })
+    
+    return () => {
+      if (disconnectFn) {
+        disconnectFn()
+        console.log('[ChronosLayout] 🎯 WAVE 2019: IPC Bridge disconnected')
+      }
+    }
+  }, [])
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // 🧠 WAVE 2017: THE SESSION KEEPER - Restore & Save Logic
   // ═══════════════════════════════════════════════════════════════════════════
   

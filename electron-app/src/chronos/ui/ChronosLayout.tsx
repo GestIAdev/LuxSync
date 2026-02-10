@@ -30,7 +30,9 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
-// 🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
+// � WAVE 2015: Stage Preview (real fixtures, optimized)
+import { StagePreview } from './stage/StagePreview'
+// �🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
 import { ArsenalDock } from './arsenal/ArsenalDock'
 // 🔍 WAVE 2007: Inspector and Context Menu
 import { ClipInspector } from './inspector/ClipInspector'
@@ -70,23 +72,6 @@ interface ContextMenuState {
   position: { x: number; y: number } | null
   clipId: string | null
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PLACEHOLDER COMPONENTS (to be replaced in future WAVEs)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Stage Preview Placeholder - Will contain mini StageSimulator
- */
-const StagePreviewPlaceholder: React.FC = () => (
-  <div className="chronos-stage-preview">
-    <div className="preview-placeholder">
-      <div className="preview-icon">🎭</div>
-      <span className="preview-label">STAGE PREVIEW</span>
-      <span className="preview-hint">Conectará con StageSimulator2</span>
-    </div>
-  </div>
-)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -652,8 +637,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           onBlur={() => setIsTimelineFocused(false)}
           tabIndex={0}
         >
-          {/* Stage Preview (30% height) */}
-          <StagePreviewPlaceholder />
+          {/* Stage Preview (30% height) - WAVE 2015: Real fixtures */}
+          <StagePreview />
           
           {/* Horizontal Divider */}
           <div className="chronos-divider horizontal" />

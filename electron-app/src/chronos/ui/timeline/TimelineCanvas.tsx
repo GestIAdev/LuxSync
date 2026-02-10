@@ -91,7 +91,8 @@ interface Track {
  */
 const DEFAULT_TRACKS: Track[] = [
   { id: 'ruler', type: 'ruler', label: 'TIME', height: 32, color: '#3b82f6' },
-  { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 64, color: '#22d3ee' },
+  // 🌊 WAVE 2015: Increased waveform height for spectral effect
+  { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 80, color: '#22d3ee' },
   { id: 'vibe', type: 'vibe', label: 'VIBE', height: 48, color: '#a855f7' },
   { id: 'fx1', type: 'fx', label: 'FX 1', height: 36, color: '#f97316' },
   { id: 'fx2', type: 'fx', label: 'FX 2', height: 36, color: '#ef4444' },
@@ -917,42 +918,92 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           pointerEvents="none"
         />
         
-        {/* WAVE 2006: Time Grid - aligned with Ruler
-            - Seconds: solid lines (visible)
-            - 250ms subdivisions: dotted (subtle, only when zoomed)
+        {/* 🎹 WAVE 2015: GOD MODE GRID - Musical Beat Lines across ALL tracks
+            - Bar lines: Bright blue, full opacity
+            - Beat lines: Subtle blue
+            - Highlight: When dragging, nearby beats glow white
         */}
         {(() => {
           const lines: React.ReactNode[] = []
+          const msPerBeat = 60000 / bpm
+          const msPerBar = msPerBeat * 4
           const pixelsPerMs = viewport.pixelsPerSecond / 1000
           
-          // Show 250ms subdivisions only when zoomed in enough
-          const showSubdivisions = viewport.pixelsPerSecond > 50
-          const gridInterval = showSubdivisions ? 250 : 1000
+          // Show beat subdivisions when zoomed in enough
+          const showBeats = viewport.pixelsPerSecond > 30
           
-          const firstGrid = Math.floor(viewport.startTime / gridInterval) * gridInterval
-          const lastGrid = Math.ceil(viewport.endTime / gridInterval) * gridInterval
+          // Find first bar in viewport
+          const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
+          const lastBar = Math.ceil(viewport.endTime / msPerBar)
           
-          for (let timeMs = firstGrid; timeMs <= lastGrid; timeMs += gridInterval) {
-            const x = TRACK_LABEL_WIDTH + (timeMs - viewport.startTime) * pixelsPerMs
+          // Calculate if we're dragging (for glow effect)
+          const isDragging = draggingClipId !== null || resizingClip !== null
+          const dragClip = draggingClipId 
+            ? clips.find(c => c.id === draggingClipId) 
+            : resizingClip 
+              ? clips.find(c => c.id === resizingClip.id) 
+              : null
+          const dragTimeMs = dragClip?.startMs ?? null
+          const dragEndMs = dragClip?.endMs ?? null
+          
+          for (let bar = firstBar; bar <= lastBar; bar++) {
+            // Bar line
+            const barTimeMs = bar * msPerBar
+            const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
             
-            // Skip if outside visible area
-            if (x < TRACK_LABEL_WIDTH || x > dimensions.width) continue
+            if (barX >= TRACK_LABEL_WIDTH && barX <= dimensions.width) {
+              // 🌟 WAVE 2015: Highlight if clip edge is near this beat
+              const isNearDrag = isDragging && dragTimeMs !== null && (
+                Math.abs(barTimeMs - dragTimeMs) < msPerBeat * 0.5 ||
+                (dragEndMs !== null && Math.abs(barTimeMs - dragEndMs) < msPerBeat * 0.5)
+              )
+              
+              lines.push(
+                <line
+                  key={`bar-${bar}`}
+                  x1={barX}
+                  y1={32} // Start below ruler
+                  x2={barX}
+                  y2={totalTracksHeight}
+                  stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.35)'}
+                  strokeWidth={isNearDrag ? 2 : 1}
+                  opacity={isNearDrag ? 0.9 : 1}
+                  pointerEvents="none"
+                  className={isNearDrag ? 'grid-line-glow' : ''}
+                />
+              )
+            }
             
-            const isSecond = timeMs % 1000 === 0
-            
-            lines.push(
-              <line
-                key={`grid-${timeMs}`}
-                x1={x}
-                y1={32} // Start below ruler (ruler height = 32)
-                x2={x}
-                y2={totalTracksHeight}
-                stroke={isSecond ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.08)'}
-                strokeWidth={isSecond ? 1 : 0.5}
-                strokeDasharray={isSecond ? 'none' : '2 6'}
-                pointerEvents="none"
-              />
-            )
+            // Beat lines within this bar
+            if (showBeats) {
+              for (let beat = 1; beat < 4; beat++) {
+                const beatTimeMs = barTimeMs + (beat * msPerBeat)
+                const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
+                
+                if (beatX >= TRACK_LABEL_WIDTH && beatX <= dimensions.width) {
+                  // 🌟 WAVE 2015: Highlight if clip edge is near this beat
+                  const isNearDrag = isDragging && dragTimeMs !== null && (
+                    Math.abs(beatTimeMs - dragTimeMs) < msPerBeat * 0.3 ||
+                    (dragEndMs !== null && Math.abs(beatTimeMs - dragEndMs) < msPerBeat * 0.3)
+                  )
+                  
+                  lines.push(
+                    <line
+                      key={`beat-${bar}-${beat}`}
+                      x1={beatX}
+                      y1={32}
+                      x2={beatX}
+                      y2={totalTracksHeight}
+                      stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.12)'}
+                      strokeWidth={isNearDrag ? 1.5 : 0.5}
+                      opacity={isNearDrag ? 0.8 : 1}
+                      pointerEvents="none"
+                      className={isNearDrag ? 'grid-line-glow' : ''}
+                    />
+                  )
+                }
+              }
+            }
           }
           return lines
         })()}

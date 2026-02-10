@@ -150,6 +150,41 @@ function createBarGradient(
   return gradient
 }
 
+// 🌊 WAVE 2015: SPECTRAL GRADIENT COLORS
+// Creates the neon spectral effect: violet edges → cyan middle → white center
+const SPECTRAL_COLORS = {
+  edge: '#6d28d9',    // Violeta oscuro (0%, 100%)
+  middle: '#06b6d4',  // Cyan neón (30%, 70%)
+  center: '#ffffff',  // Blanco puro (50%)
+} as const
+
+/**
+ * 🌊 WAVE 2015: Create spectral gradient for waveform fill
+ */
+function createSpectralGradient(
+  ctx: CanvasRenderingContext2D,
+  height: number,
+  intensity: number = 1
+): CanvasGradient {
+  const centerY = height / 2
+  const gradient = ctx.createLinearGradient(0, 0, 0, height)
+  
+  // Edge opacity scales with intensity
+  const edgeOpacity = 0.6 + intensity * 0.3
+  const middleOpacity = 0.8 + intensity * 0.2
+  
+  // Top to center
+  gradient.addColorStop(0, `rgba(109, 40, 217, ${edgeOpacity})`)     // Violet edge
+  gradient.addColorStop(0.30, `rgba(6, 182, 212, ${middleOpacity})`) // Cyan
+  gradient.addColorStop(0.48, `rgba(255, 255, 255, ${0.9 + intensity * 0.1})`) // Near-white
+  gradient.addColorStop(0.50, '#ffffff')                              // Pure white center
+  gradient.addColorStop(0.52, `rgba(255, 255, 255, ${0.9 + intensity * 0.1})`) // Near-white
+  gradient.addColorStop(0.70, `rgba(6, 182, 212, ${middleOpacity})`) // Cyan
+  gradient.addColorStop(1, `rgba(109, 40, 217, ${edgeOpacity})`)     // Violet edge
+  
+  return gradient
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // WAVEFORM RENDERER - OPTIMIZED FOR PERFORMANCE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,7 +208,9 @@ function getCachedColor(energy: number, bass: number, high: number): string {
 }
 
 /**
- * Render waveform to canvas with mirror reflection
+ * 🌊 WAVE 2015: SPECTRAL WAVEFORM RENDERER
+ * Render waveform with neon spectral gradient (violet→cyan→white→cyan→violet)
+ * Uses filled continuous path for smooth, professional look
  * 🛡️ WAVE 2005.2: Heavily optimized for large files
  */
 function renderWaveform(
@@ -194,7 +231,7 @@ function renderWaveform(
   // Clear canvas
   ctx.clearRect(0, 0, width, height)
   
-  // 🛡️ WAVE 2005.2: Early exit if no data
+  // 🛡️ Early exit if no data
   if (!waveform.peaks || waveform.peaks.length === 0) return
   
   // Calculate visible range in waveform samples
@@ -202,7 +239,7 @@ function renderWaveform(
   const startSample = Math.max(0, Math.floor(viewportStartMs / msPerSample))
   const endSample = Math.min(waveform.peaks.length, Math.ceil(viewportEndMs / msPerSample))
   
-  // 🛡️ WAVE 2005.2: Early exit if nothing to render
+  // 🛡️ Early exit if nothing to render
   if (startSample >= endSample) return
   
   // Calculate pixels per sample at current zoom
@@ -210,85 +247,130 @@ function renderWaveform(
   const visibleDurationMs = viewportEndMs - viewportStartMs
   const pixelsPerSample = (visibleWidth / visibleDurationMs) * msPerSample
   
-  // 🛡️ WAVE 2005.2: More aggressive downsampling - limit max bars to ~600 for performance
-  const maxBarsOnScreen = 600
+  // 🛡️ Limit max points for performance
+  const maxPoints = 800
   const numVisibleSamples = endSample - startSample
-  const minDownsample = Math.ceil(numVisibleSamples / maxBarsOnScreen)
-  
-  // Determine downsampling factor 
-  const minPixelsPerBar = 2
-  const pixelBasedDownsample = Math.max(1, Math.floor(minPixelsPerBar / pixelsPerSample))
-  const downsampleFactor = Math.max(pixelBasedDownsample, minDownsample)
+  const downsampleFactor = Math.max(1, Math.ceil(numVisibleSamples / maxPoints))
   
   // Center line (for mirror)
   const centerY = height / 2
-  const maxAmplitude = centerY * 0.9 // Leave small margin
+  const maxAmplitude = centerY * 0.92 // Leave small margin
   
-  // 🛡️ WAVE 2005.2: Disable expensive anti-aliasing for performance
+  // Disable anti-aliasing for crisper look
   ctx.imageSmoothingEnabled = false
   
-  // Draw waveform bars - OPTIMIZED
+  // 🌊 WAVE 2015: Calculate average energy for spectral intensity
+  let totalEnergy = 0
+  let energyCount = 0
+  for (let i = startSample; i < endSample; i += downsampleFactor * 4) {
+    const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
+    totalEnergy += energyHeatmap.energy[heatmapIndex] ?? 0.3
+    energyCount++
+  }
+  const avgEnergy = energyCount > 0 ? totalEnergy / energyCount : 0.5
+  
+  // 🌊 WAVE 2015: Create spectral gradient
+  const spectralGradient = createSpectralGradient(ctx, height, avgEnergy)
+  
+  // Build waveform path (top half)
+  const topPath = new Path2D()
+  const bottomPath = new Path2D()
+  let isFirst = true
+  
   for (let i = startSample; i < endSample; i += downsampleFactor) {
-    // Find max peak in downsampled range
-    let maxPeak = 0
+    // Find max RMS in downsampled range
     let avgRms = 0
     let count = 0
     
     const rangeEnd = Math.min(i + downsampleFactor, endSample)
     for (let j = i; j < rangeEnd; j++) {
-      const peak = waveform.peaks[j]
-      if (peak > maxPeak) maxPeak = peak
-      avgRms += waveform.rms[j]
+      avgRms += waveform.rms[j] ?? 0
       count++
     }
     if (count > 0) avgRms /= count
     
-    // Get energy data for coloring
-    const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
-    const energy = energyHeatmap.energy[heatmapIndex] ?? 0.3
-    const bass = energyHeatmap.bass?.[heatmapIndex] ?? 0.3
-    const high = energyHeatmap.high?.[heatmapIndex] ?? 0.3
-    
-    // Calculate bar position
+    // Calculate position
     const sampleTimeMs = i * msPerSample
     const x = leftOffset + ((sampleTimeMs - viewportStartMs) / 1000) * pixelsPerSecond
-    const barWidth = Math.max(1, pixelsPerSample * downsampleFactor - 1)
     
     // Skip if outside visible area
-    if (x < leftOffset - barWidth || x > width) continue
+    if (x < leftOffset - 10 || x > width + 10) continue
     
-    // Calculate bar heights
-    const peakHeight = maxPeak * maxAmplitude
+    // Calculate heights
     const rmsHeight = avgRms * maxAmplitude
     
-    // 🛡️ WAVE 2005.2: Use cached solid color instead of expensive gradient
-    const color = getCachedColor(energy, bass, high)
-    
-    // Draw RMS (solid inner bar) - top half
-    ctx.fillStyle = color
-    ctx.fillRect(x, centerY - rmsHeight, barWidth, rmsHeight)
-    
-    // Draw RMS - bottom half (mirror)
-    ctx.fillRect(x, centerY, barWidth, rmsHeight)
-    
-    // 🛡️ WAVE 2005.2: Only draw peak outline if significant difference (performance)
-    if (peakHeight - rmsHeight > 2) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.08 + energy * 0.1})`
-      ctx.fillRect(x, centerY - peakHeight, barWidth, peakHeight - rmsHeight)
-      ctx.fillRect(x, centerY + rmsHeight, barWidth, peakHeight - rmsHeight)
+    // Build continuous path
+    if (isFirst) {
+      topPath.moveTo(x, centerY - rmsHeight)
+      bottomPath.moveTo(x, centerY + rmsHeight)
+      isFirst = false
+    } else {
+      topPath.lineTo(x, centerY - rmsHeight)
+      bottomPath.lineTo(x, centerY + rmsHeight)
     }
   }
   
-  // Draw center line
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+  // Complete the filled shape (close the paths)
+  // Top path: trace back along center line
+  topPath.lineTo(width, centerY)
+  topPath.lineTo(leftOffset, centerY)
+  topPath.closePath()
+  
+  // Bottom path: trace back along center line
+  bottomPath.lineTo(width, centerY)
+  bottomPath.lineTo(leftOffset, centerY)
+  bottomPath.closePath()
+  
+  // 🌊 WAVE 2015: Fill with spectral gradient
+  ctx.fillStyle = spectralGradient
+  ctx.fill(topPath)
+  ctx.fill(bottomPath)
+  
+  // 🌊 WAVE 2015: Add subtle stroke for definition
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+  ctx.lineWidth = 0.5
+  
+  // Stroke only the outer edge (not the center line closure)
+  const strokeTopPath = new Path2D()
+  const strokeBottomPath = new Path2D()
+  isFirst = true
+  
+  for (let i = startSample; i < endSample; i += downsampleFactor) {
+    let avgRms = 0
+    let count = 0
+    const rangeEnd = Math.min(i + downsampleFactor, endSample)
+    for (let j = i; j < rangeEnd; j++) {
+      avgRms += waveform.rms[j] ?? 0
+      count++
+    }
+    if (count > 0) avgRms /= count
+    
+    const sampleTimeMs = i * msPerSample
+    const x = leftOffset + ((sampleTimeMs - viewportStartMs) / 1000) * pixelsPerSecond
+    if (x < leftOffset - 10 || x > width + 10) continue
+    
+    const rmsHeight = avgRms * maxAmplitude
+    
+    if (isFirst) {
+      strokeTopPath.moveTo(x, centerY - rmsHeight)
+      strokeBottomPath.moveTo(x, centerY + rmsHeight)
+      isFirst = false
+    } else {
+      strokeTopPath.lineTo(x, centerY - rmsHeight)
+      strokeBottomPath.lineTo(x, centerY + rmsHeight)
+    }
+  }
+  
+  ctx.stroke(strokeTopPath)
+  ctx.stroke(strokeBottomPath)
+  
+  // 🌊 WAVE 2015: Glow center line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.moveTo(leftOffset, centerY)
   ctx.lineTo(width, centerY)
   ctx.stroke()
-  
-  // 🛡️ WAVE 2005.2: REMOVED expensive glow effect loop entirely
-  // The color heatmap already provides visual energy feedback
 }
 
 /**

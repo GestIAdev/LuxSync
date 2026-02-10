@@ -41,6 +41,9 @@ export interface ChronosProjectActions {
     audio: { name: string; path: string; bpm: number; durationMs: number } | null,
     playheadMs?: number
   ) => void
+  // 🆔 WAVE 2014.5: Audio path management
+  setAudioPath: (path: string) => void
+  getAudioInfo: () => { path: string; bpm: number; durationMs: number } | null
 }
 
 export interface UseChronosProjectReturn extends ChronosProjectState, ChronosProjectActions {
@@ -87,9 +90,13 @@ export function useChronosProject(): UseChronosProjectReturn {
       setLastError(null)
     }
     
-    const handleProjectSaved = () => {
+    const handleProjectSaved = (data: { path: string; name?: string }) => {
       if (!mountedRef.current) return
       setHasUnsavedChanges(false)
+      // 🆔 WAVE 2014.5: Update name if changed
+      if (data.name) {
+        setProjectName(data.name)
+      }
     }
     
     const handleProjectModified = (data: { isDirty: boolean }) => {
@@ -152,16 +159,8 @@ export function useChronosProject(): UseChronosProjectReturn {
   }, [store])
   
   const load = useCallback(async (): Promise<LoadResult> => {
-    // Check for unsaved changes
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Do you want to discard them and open another project?'
-      )
-      if (!confirmed) {
-        return { success: false, error: 'Cancelled' }
-      }
-    }
-    
+    // 🧹 WAVE 2014.5: Direct load, no confirmation dialog
+    // The user clicked "Open" - they know what they're doing
     setIsLoading(true)
     setLastError(null)
     try {
@@ -173,19 +172,14 @@ export function useChronosProject(): UseChronosProjectReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [store, hasUnsavedChanges])
+  }, [store])
   
   const newProject = useCallback(() => {
-    // Check for unsaved changes
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Do you want to discard them and create a new project?'
-      )
-      if (!confirmed) return
-    }
-    
+    // 🧹 WAVE 2014.5: Direct reset, no confirmation dialog
+    // The user clicked "New" - they know what they're doing
     store.newProject('Untitled Project')
-  }, [store, hasUnsavedChanges])
+    console.log('[useChronosProject] 🆕 New project created')
+  }, [store])
   
   const markDirty = useCallback(() => {
     store.markDirty()
@@ -197,6 +191,15 @@ export function useChronosProject(): UseChronosProjectReturn {
     playheadMs: number = 0
   ) => {
     store.updateFromSession(clips, audio, playheadMs)
+  }, [store])
+  
+  // 🆔 WAVE 2014.5: Audio path management
+  const setAudioPath = useCallback((path: string) => {
+    store.setAudioPath(path)
+  }, [store])
+  
+  const getAudioInfo = useCallback(() => {
+    return store.getAudioInfo()
   }, [store])
   
   // ─────────────────────────────────────────────────────────────────────────
@@ -281,6 +284,9 @@ export function useChronosProject(): UseChronosProjectReturn {
     newProject,
     markDirty,
     updateFromSession,
+    // 🆔 WAVE 2014.5
+    setAudioPath,
+    getAudioInfo,
   }
 }
 

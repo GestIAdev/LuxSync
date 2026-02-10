@@ -145,6 +145,7 @@ export class ChronosStore {
   
   /**
    * 📝 Update project state from current session
+   * WAVE 2014.5: Filters out blob: URLs - only stores real file paths
    */
   updateFromSession(
     clips: TimelineClip[],
@@ -155,9 +156,12 @@ export class ChronosStore {
     this.project.timeline.playheadMs = playheadMs
     
     if (audio) {
+      // 🔧 WAVE 2014.5: Never store blob: URLs - they're ephemeral
+      const isRealPath = audio.path && !audio.path.startsWith('blob:')
+      
       this.project.audio = {
         name: audio.name,
-        path: audio.path,
+        path: isRealPath ? audio.path : '', // Empty if blob, will prompt on save
         bpm: audio.bpm,
         offsetMs: 0,
         durationMs: audio.durationMs,
@@ -165,11 +169,23 @@ export class ChronosStore {
       this.project.meta.durationMs = audio.durationMs
     }
     
-    // Check if dirty
+    // Check if dirty (compare serialized state)
     const currentJson = serializeProject(this.project)
     if (currentJson !== this.lastSavedJson) {
-      this.isDirty = true
-      this.emit('project-modified', { isDirty: true })
+      if (!this.isDirty) {
+        this.isDirty = true
+        this.emit('project-modified', { isDirty: true })
+      }
+    }
+  }
+  
+  /**
+   * 🎵 WAVE 2014.5: Set audio path directly (from real file path)
+   */
+  setAudioPath(path: string): void {
+    if (this.project.audio) {
+      this.project.audio.path = path
+      console.log(`[ChronosStore] 🎵 Audio path set: ${path}`)
     }
   }
   
@@ -216,12 +232,27 @@ export class ChronosStore {
         return { success: false, error: 'Cancelled' }
       }
       
-      if (result.success) {
+      if (result.success && result.path) {
+        // 🆔 WAVE 2014.5: PROJECT IDENTITY SYNC
+        // Extract filename without extension and update project name
+        const fileName = this.extractProjectName(result.path)
+        if (fileName && fileName !== this.project.meta.name) {
+          this.project.meta.name = fileName
+          console.log(`[ChronosStore] 🆔 Project renamed to: "${fileName}"`)
+        }
+        
+        // Update modified timestamp
+        this.project.meta.modified = Date.now()
+        
+        // Re-serialize with updated name and save
+        const finalJson = serializeProject(this.project)
+        
         this.projectPath = result.path
         this.isDirty = false
-        this.lastSavedJson = json
+        this.lastSavedJson = finalJson
+        
         console.log(`[ChronosStore] 💾 Saved to: ${result.path}`)
-        this.emit('project-saved', { path: result.path })
+        this.emit('project-saved', { path: result.path, name: fileName })
       }
       
       return result
@@ -375,6 +406,47 @@ export class ChronosStore {
       this.project.timeline.clips = clips
     }
     this.markDirty()
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🆔 WAVE 2014.5: HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  
+  /**
+   * Extract project name from file path (without extension)
+   * C:/Projects/test1.lux -> "test1"
+   */
+  private extractProjectName(filePath: string): string {
+    // Handle both Windows and Unix paths
+    const separator = filePath.includes('\\') ? '\\' : '/'
+    const parts = filePath.split(separator)
+    const fileName = parts[parts.length - 1] || 'Untitled'
+    
+    // Remove .lux extension
+    if (fileName.toLowerCase().endsWith(PROJECT_EXTENSION)) {
+      return fileName.slice(0, -PROJECT_EXTENSION.length)
+    }
+    return fileName
+  }
+  
+  /**
+   * 🧹 WAVE 2014.5: Set clips directly (for load operations)
+   */
+  setClips(clips: TimelineClip[]): void {
+    this.project.timeline.clips = clips
+    // Don't mark dirty - this is from a load operation
+  }
+  
+  /**
+   * 🎵 WAVE 2014.5: Get stored audio info for restoration
+   */
+  getAudioInfo(): { path: string; bpm: number; durationMs: number } | null {
+    if (!this.project.audio) return null
+    return {
+      path: this.project.audio.path,
+      bpm: this.project.audio.bpm,
+      durationMs: this.project.audio.durationMs,
+    }
   }
 }
 

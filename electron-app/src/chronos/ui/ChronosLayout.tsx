@@ -50,6 +50,9 @@ import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
 import { getChronosInjector } from '../core/ChronosInjector'
 // 💾 WAVE 2014: Project persistence (The Memory Core)
 import { useChronosProject } from '../hooks/useChronosProject'
+// 🧠 WAVE 2014.5: Store singleton for event subscriptions
+import { getChronosStore } from '../core/ChronosStore'
+import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import './ChronosLayout.css'
@@ -210,6 +213,55 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       project.markDirty()
     }
   }, [clipState.clips, project])
+  
+  // 🧠 WAVE 2014.5: THE SYNAPSE - Wire store events to UI
+  useEffect(() => {
+    const store = getChronosStore()
+    
+    // 👂 LOAD: Inject data into UI when project is loaded
+    const handleProjectLoaded = (data: { project: LuxProject; path: string }) => {
+      console.log('[ChronosLayout] 📂 Project loaded, syncing UI...')
+      
+      // Restore clips from loaded project
+      clipState.setClips(data.project.timeline.clips)
+      
+      // Restore audio if path exists and is valid
+      if (data.project.audio?.path && !data.project.audio.path.startsWith('blob:')) {
+        console.log('[ChronosLayout] 🎵 Loading audio:', data.project.audio.path)
+        audioLoader.loadFromPath(data.project.audio.path)
+        setBpm(data.project.audio.bpm)
+      }
+    }
+    
+    // ✨ NEW: Full cleanup when creating new project
+    const handleProjectNew = () => {
+      console.log('[ChronosLayout] 🆕 New project, resetting UI...')
+      
+      // Clear all clips
+      clipState.setClips([])
+      
+      // Reset audio (stop streaming, clear loader)
+      streaming.stop()
+      audioLoader.reset()
+      
+      // Reset BPM to default
+      setBpm(120)
+      
+      // Stop recording if active
+      if (isRecording) {
+        setIsRecording(false)
+        recorder.stopRecording()
+      }
+    }
+    
+    store.on('project-loaded', handleProjectLoaded)
+    store.on('project-new', handleProjectNew)
+    
+    return () => {
+      store.off('project-loaded', handleProjectLoaded)
+      store.off('project-new', handleProjectNew)
+    }
+  }, [clipState, audioLoader, streaming, isRecording, recorder])
   
   // 🎬 WAVE 2010: Subscribe to recorded clips and add them to timeline
   useEffect(() => {

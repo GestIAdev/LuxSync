@@ -16,7 +16,7 @@
  * @version WAVE 2006
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo } from 'react'
 import { 
   type TimelineClip, 
   type VibeClip, 
@@ -73,6 +73,9 @@ export interface UseTimelineClipsReturn {
   selectAll: () => void
   deselectAll: () => void
   deleteSelected: () => void
+  
+  // 🧠 WAVE 2014.5: Direct clip setter for load/new operations
+  setClips: React.Dispatch<React.SetStateAction<TimelineClip[]>>
   
   // WAVE 2007: Advanced operations
   duplicateSelected: () => void
@@ -381,6 +384,9 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
     selectAll,
     deselectAll,
     deleteSelected,
+    
+    // 🧠 WAVE 2014.5: Direct clip setter for load/new operations
+    setClips,
     
     // WAVE 2007: Advanced operations
     duplicateSelected,

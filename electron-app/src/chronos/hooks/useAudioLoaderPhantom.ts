@@ -44,8 +44,11 @@ export interface AudioLoadResult {
   /** Duration in milliseconds */
   durationMs: number
   
-  /** Path to audio file (for <audio> element) */
+  /** Path to audio file (for <audio> element) - can be blob: or file:// URL */
   audioPath: string
+  
+  /** 🧠 WAVE 2014.5: Real filesystem path for saving to project (optional) */
+  realPath?: string
 }
 
 export interface AudioLoaderState {
@@ -71,6 +74,9 @@ export interface AudioLoaderState {
 export interface UseAudioLoaderPhantomReturn extends AudioLoaderState {
   /** Load audio from File object */
   loadFile: (file: File) => Promise<AudioLoadResult | null>
+  
+  /** 🧠 WAVE 2014.5: Load audio from file path (for project load) */
+  loadFromPath: (filePath: string) => Promise<AudioLoadResult | null>
   
   /** Reset loader state */
   reset: () => void
@@ -100,7 +106,7 @@ const SUPPORTED_MIME_TYPES = [
 
 // Access Chronos IPC via window.luxsync.chronos (exposed by preload.ts)
 interface ChronosAPI {
-  analyzeAudio: (request: { buffer: ArrayBuffer; fileName: string }) => Promise<{
+  analyzeAudio: (request: { buffer?: ArrayBuffer; filePath?: string; fileName: string }) => Promise<{
     success: boolean
     data?: any
     error?: string
@@ -109,6 +115,8 @@ interface ChronosAPI {
   onProgress: (callback: (data: { progress: number; phase: string }) => void) => () => void
   onComplete: (callback: (data: { analysisData: any; audioUrl: string }) => void) => () => void
   onError: (callback: (error: { message: string; code?: string }) => void) => () => void
+  // 🧠 WAVE 2014.5: File existence check
+  checkFileExists?: (filePath: string) => Promise<boolean>
 }
 
 function getChronosAPI(): ChronosAPI | null {
@@ -299,9 +307,83 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
     })
   }, [state.result?.audioPath])
   
+  /**
+   * 🧠 WAVE 2014.5: Load audio from file path (for project load)
+   * Uses file:// URL for playback without copying to memory
+   */
+  const loadFromPath = useCallback(async (filePath: string): Promise<AudioLoadResult | null> => {
+    const chronos = getChronosAPI()
+    
+    console.log(`[useAudioLoaderPhantom] 📂 Loading from path: ${filePath}`)
+    
+    // Check if file exists
+    const exists = await chronos?.checkFileExists?.(filePath)
+    if (!exists) {
+      console.error(`[useAudioLoaderPhantom] ❌ File not found: ${filePath}`)
+      updateState({
+        error: `File not found: ${filePath}`,
+        phase: 'error',
+      })
+      return null
+    }
+    
+    // Extract filename from path
+    const fileName = filePath.split(/[\\/]/).pop() || 'audio.mp3'
+    
+    updateState({
+      isLoading: true,
+      phase: 'analyzing',
+      progress: 10,
+      message: 'Loading from disk...',
+      error: null,
+    })
+    
+    try {
+      // Send path directly to phantom for analysis
+      const response = await chronos?.analyzeAudio({ filePath, fileName })
+      
+      if (!response?.success) {
+        throw new Error(response?.error || 'Analysis failed')
+      }
+      
+      // Create file:// URL for playback (no memory copy)
+      const fileUrl = `file://${filePath.replace(/\\/g, '/')}`
+      
+      const result: AudioLoadResult = {
+        fileName,
+        audioPath: fileUrl, // file:// URL for playback
+        realPath: filePath, // Actual filesystem path for saving
+        fileSize: 0, // Not available for path-based load
+        durationMs: response.data?.durationMs || 0,
+        analysisData: response.data,
+      }
+      
+      updateState({
+        isLoading: false,
+        phase: 'complete',
+        progress: 100,
+        message: 'Complete!',
+        result,
+      })
+      
+      console.log(`[useAudioLoaderPhantom] ✅ Loaded from path: ${filePath}`)
+      return result
+      
+    } catch (err) {
+      console.error('[useAudioLoaderPhantom] ❌ Load from path error:', err)
+      updateState({
+        isLoading: false,
+        phase: 'error',
+        error: err instanceof Error ? err.message : String(err),
+      })
+      return null
+    }
+  }, [updateState])
+  
   return {
     ...state,
     loadFile,
+    loadFromPath,
     reset,
     supportedFormats: SUPPORTED_FORMATS,
   }

@@ -31,6 +31,8 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
 // ⚡ WAVE 2016.5: Engine Status - Command Center in Chronos
 import { EngineStatus } from './header/EngineStatus'
+// 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
+import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
 // � WAVE 2015: Stage Preview (real fixtures, optimized)
 import { StagePreview } from './stage/StagePreview'
@@ -92,6 +94,10 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 💾 WAVE 2014: Project persistence (The Memory Core)
   const project = useChronosProject()
   
+  // 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
+  const sessionStore = useChronosSession()
+  const sessionRestoredRef = useRef(false)
+  
   // Transport state (recording is still local)
   const [isRecording, setIsRecording] = useState(false)
   const [bpm, setBpm] = useState(120)
@@ -144,6 +150,20 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader.result])
   
+  // 🧠 WAVE 2017: Sync audio to session store when loaded (for persistence)
+  useEffect(() => {
+    if (audioLoader.result?.realPath && sessionRestoredRef.current) {
+      // Only save if we've already restored (don't overwrite during restore)
+      sessionStore.saveSession({
+        audioRealPath: audioLoader.result.realPath,
+        audioFileName: audioLoader.result.fileName,
+        audioDurationMs: audioLoader.result.durationMs,
+        analysisData: audioLoader.result.analysisData,
+      })
+      console.log('[SessionKeeper] 🎵 Audio synced to session:', audioLoader.result.fileName)
+    }
+  }, [audioLoader.result])
+  
   // 🎵 WAVE 2005.4: Transport controls now use streaming hook
   const handlePlay = useCallback(() => {
     streaming.togglePlay()
@@ -187,6 +207,102 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       injector.reset()
     }
   }, [streaming.isPlaying, injector])
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 2017: THE SESSION KEEPER - Restore & Save Logic
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // 🧠 RESTORE: On mount, check if there's a saved session and restore it
+  useEffect(() => {
+    if (sessionRestoredRef.current) return // Only restore once
+    
+    const hasSession = sessionStore.hasSession()
+    if (!hasSession) {
+      console.log('[SessionKeeper] 📭 No saved session found')
+      sessionRestoredRef.current = true
+      return
+    }
+    
+    const session = sessionStore
+    console.log('[SessionKeeper] 🔄 Restoring session:', {
+      audioPath: session.audioRealPath,
+      clipCount: session.clips.length,
+      playhead: session.playheadMs,
+    })
+    
+    // Restore BPM and stage visibility first (synchronous)
+    setBpm(session.bpm)
+    setStageVisible(session.stageVisible)
+    
+    // Restore clips
+    if (session.clips.length > 0) {
+      clipState.setClips(session.clips)
+      console.log(`[SessionKeeper] 📋 Restored ${session.clips.length} clips`)
+    }
+    
+    // Restore audio (asynchronous - auto-load from path)
+    if (session.audioRealPath) {
+      console.log('[SessionKeeper] 🎵 Auto-loading audio from:', session.audioRealPath)
+      audioLoader.loadFromPath(session.audioRealPath)
+        .then((result) => {
+          if (result) {
+            console.log('[SessionKeeper] ✅ Audio restored successfully')
+            // Seek to saved playhead position after audio loads
+            if (session.playheadMs > 0) {
+              streaming.seek(session.playheadMs)
+            }
+          } else {
+            console.warn('[SessionKeeper] ⚠️ Failed to restore audio')
+          }
+        })
+        .catch((err) => {
+          console.error('[SessionKeeper] ❌ Error restoring audio:', err)
+        })
+    }
+    
+    sessionRestoredRef.current = true
+  }, []) // Empty deps - run only on mount
+  
+  // 🧠 SAVE: On unmount, save the current session
+  useEffect(() => {
+    return () => {
+      // Save session when leaving Chronos
+      console.log('[SessionKeeper] 💾 Saving session on unmount')
+      
+      sessionStore.saveSession({
+        // Audio
+        audioRealPath: audioLoader.result?.realPath || null,
+        audioFileName: audioLoader.result?.fileName || null,
+        audioDurationMs: audioLoader.result?.durationMs || 60000,
+        analysisData: audioLoader.result?.analysisData || null,
+        
+        // Timeline
+        clips: clipState.clips,
+        playheadMs: streaming.currentTimeMs,
+        bpm,
+        
+        // Meta
+        isDirty: clipState.clips.length > 0 || audioLoader.result !== null,
+        stageVisible,
+        selectedClipIds: Array.from(clipState.selectedIds),
+      })
+    }
+  }, [
+    audioLoader.result,
+    clipState.clips,
+    clipState.selectedIds,
+    streaming.currentTimeMs,
+    bpm,
+    stageVisible,
+    sessionStore.saveSession,
+  ])
+  
+  // 🧠 PERIODIC SYNC: Keep session store in sync with clips changes
+  useEffect(() => {
+    if (clipState.clips.length > 0) {
+      sessionStore.updateClips(clipState.clips)
+    }
+  }, [clipState.clips])
   
   // ⚡ WAVE 2015.5: ENGINE IGNITION - Phantom Mode
   // Connect ChronosInjector commands to controlStore for Stage Preview rendering

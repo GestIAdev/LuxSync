@@ -147,12 +147,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, [clipState.selectedIds, clipState.getClipById, clipState.clips])
   
   // 🎵 WAVE 2005.4: Connect streaming to audioLoader result
+  // 🎵 WAVE 2019.7: Use blobUrl instead of audioPath
   useEffect(() => {
-    if (audioLoader.result?.audioPath) {
+    if (audioLoader.result?.blobUrl) {
       console.log('[ChronosLayout] 🎵 Loading audio into streaming player')
-      streaming.loadAudio(audioLoader.result.audioPath)
+      streaming.loadAudio(audioLoader.result.blobUrl)
     }
-  }, [audioLoader.result?.audioPath])
+  }, [audioLoader.result?.blobUrl])
   
   // Update BPM from analysis if available
   useEffect(() => {
@@ -277,9 +278,24 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
     
     // Restore audio (asynchronous - auto-load from path)
+    // 🎵 WAVE 2019.7: Create File from path and load via audioLoader
     if (session.audioRealPath) {
-      console.log('[SessionKeeper] 🎵 Auto-loading audio from:', session.audioRealPath)
-      audioLoader.loadFromPath(session.audioRealPath)
+      console.log('[SessionKeeper] 🎵 Restoring audio from:', session.audioRealPath)
+      
+      // Electron provides File.path - we can recreate File from filesystem path
+      fetch(`file:///${session.audioRealPath.replace(/\\/g, '/')}`)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], session.audioFileName || 'restored-audio', {
+            type: 'audio/*'
+          })
+          // Manually set the path property for Electron
+          Object.defineProperty(file, 'path', {
+            value: session.audioRealPath,
+            writable: false
+          })
+          return audioLoader.loadFile(file)
+        })
         .then((result) => {
           if (result) {
             console.log('[SessionKeeper] ✅ Audio restored successfully')
@@ -409,10 +425,11 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, [injector, setPalette, setGlobalIntensity])
   
   // 💾 WAVE 2014: Sync clips to project store for persistence
+  // 🎵 WAVE 2019.7: Use realPath for filesystem persistence
   useEffect(() => {
     const audio = audioLoader.result ? {
       name: audioLoader.result.fileName,
-      path: audioLoader.result.audioPath,
+      path: audioLoader.result.realPath || audioLoader.result.blobUrl, // Prefer realPath for save
       bpm,
       durationMs: audioLoader.result.durationMs,
     } : null

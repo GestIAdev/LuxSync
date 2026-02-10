@@ -44,10 +44,10 @@ export interface AudioLoadResult {
   /** Duration in milliseconds */
   durationMs: number
   
-  /** Path to audio file (for <audio> element) - can be blob: or file:// URL */
-  audioPath: string
+  /** 🎵 WAVE 2019.7: Blob URL for streaming playback (replaces audioPath) */
+  blobUrl: string
   
-  /** 🧠 WAVE 2014.5: Real filesystem path for saving to project (optional) */
+  /** 🧠 WAVE 2014.5 + 2019.7: Real filesystem path for saving to project */
   realPath?: string
 }
 
@@ -262,7 +262,7 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
         fileName: file.name,
         fileSize: file.size,
         durationMs: response.data.durationMs,
-        audioPath: audioUrl,
+        blobUrl: audioUrl, // 🎵 WAVE 2019.7: blob: URL
         realPath: electronFilePath, // 🧠 WAVE 2017: For session restore
       }
       
@@ -304,8 +304,8 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
     abortRef.current = true
     
     // Revoke any blob URLs
-    if (state.result?.audioPath?.startsWith('blob:')) {
-      URL.revokeObjectURL(state.result.audioPath)
+    if (state.result?.blobUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(state.result.blobUrl)
     }
     
     setState({
@@ -316,7 +316,7 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
       error: null,
       result: null,
     })
-  }, [state.result?.audioPath])
+  }, [state.result?.blobUrl])
   
   /**
    * 🧠 WAVE 2014.5: Load audio from file path (for project load)
@@ -362,7 +362,7 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
       
       const result: AudioLoadResult = {
         fileName,
-        audioPath: fileUrl, // file:// URL for playback
+        blobUrl: fileUrl, // 🎵 WAVE 2019.7: file:// URL (not blob but same concept)
         realPath: filePath, // Actual filesystem path for saving
         fileSize: 0, // Not available for path-based load
         durationMs: response.data?.durationMs || 0,

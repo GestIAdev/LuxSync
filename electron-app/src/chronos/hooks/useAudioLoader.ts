@@ -37,6 +37,12 @@ export interface AudioLoadResult {
   
   /** Duration in milliseconds */
   durationMs: number
+  
+  /** 🎵 WAVE 2019.7: Blob URL for streaming playback */
+  blobUrl?: string
+  
+  /** 📁 WAVE 2019.7: Real filesystem path (Electron only, for session restore) */
+  realPath?: string
 }
 
 export interface AudioLoaderState {
@@ -360,6 +366,17 @@ export function useAudioLoader(): UseAudioLoaderReturn {
     
     console.log('[useAudioLoader] 📂 Loading file:', file.name, file.type, file.size)
     
+    // 🎵 WAVE 2019.7: Create Blob URL for streaming playback
+    const blobUrl = URL.createObjectURL(file)
+    console.log('[useAudioLoader] 🔗 Created Blob URL:', blobUrl)
+    
+    // 📁 WAVE 2019.7: Get real filesystem path if available (Electron only)
+    // @ts-ignore - File.path exists in Electron but not in standard File API
+    const realPath: string | undefined = file.path
+    if (realPath) {
+      console.log('[useAudioLoader] 📁 Real path:', realPath)
+    }
+    
     // Read file as ArrayBuffer
     updateState({
       isLoading: true,
@@ -371,9 +388,20 @@ export function useAudioLoader(): UseAudioLoaderReturn {
     
     try {
       const arrayBuffer = await file.arrayBuffer()
-      return await loadBuffer(arrayBuffer, file.name)
+      const result = await loadBuffer(arrayBuffer, file.name)
+      
+      // 🎵 WAVE 2019.7: Inject blobUrl and realPath into result
+      if (result) {
+        result.blobUrl = blobUrl
+        result.realPath = realPath
+      }
+      
+      return result
     } catch (err) {
       console.error('[useAudioLoader] ❌ File read error:', err)
+      
+      // Clean up Blob URL on error
+      URL.revokeObjectURL(blobUrl)
       
       updateState({
         isLoading: false,

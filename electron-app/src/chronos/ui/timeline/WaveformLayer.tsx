@@ -18,7 +18,7 @@
  * @version WAVE 2005
  */
 
-import React, { useRef, useEffect, useCallback, memo } from 'react'
+import React, { useRef, useEffect, useCallback, memo, useState } from 'react'
 import type { WaveformData, HeatmapData, AnalysisData } from '../../core/types'
 import './WaveformLayer.css'
 
@@ -391,6 +391,9 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   
+  // 🔧 WAVE 2018.1: Force render trigger after resize
+  const [renderTrigger, setRenderTrigger] = useState(0)
+  
   // Handle resize
   const updateCanvasSize = useCallback(() => {
     const canvas = canvasRef.current
@@ -409,6 +412,9 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     if (ctx) {
       ctx.scale(dpr, dpr)
     }
+    
+    // 🔧 WAVE 2018.1: Trigger re-render after resize
+    setRenderTrigger(prev => prev + 1)
   }, [height])
   
   // Resize observer
@@ -435,6 +441,7 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     if (analysisData && !hadDataRef.current) {
       // First time data arrives - ensure canvas is sized
       hadDataRef.current = true
+      console.log('[WaveformLayer] 🎨 First data arrival - forcing resize')
       updateCanvasSize()
     } else if (!analysisData) {
       hadDataRef.current = false
@@ -455,8 +462,16 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     
     // 🔧 WAVE 2018: Skip render if canvas has zero dimensions (wait for resize)
     if (canvas.width === 0 || canvas.height === 0) {
+      console.log('[WaveformLayer] ⏸️ Skipping render - canvas not sized yet')
       return
     }
+    
+    console.log('[WaveformLayer] 🎨 Rendering waveform', {
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      viewportStart: viewportStartMs,
+      viewportEnd: viewportEndMs
+    })
     
     // Use requestAnimationFrame for smooth rendering
     const rafId = requestAnimationFrame(() => {
@@ -492,6 +507,7 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     durationMs,
     bpm,
     showBeatGrid,
+    renderTrigger, // 🔧 WAVE 2018.1: Re-render when canvas resizes
   ])
   
   return (

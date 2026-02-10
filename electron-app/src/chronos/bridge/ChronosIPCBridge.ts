@@ -101,7 +101,7 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
   
   console.log(`[ChronosBridge] 🧨 FX: ${fxType} → ${effectId}`, 
-    fxInfo.vibeSpecific ? '(vibe-specific)' : '')
+    fxInfo.isPassthrough ? '(direct)' : fxInfo.vibeSpecific ? '(vibe-specific)' : '(mapped)')
   
   try {
     // Try chronos:triggerFX first, fallback to lux:forceStrike

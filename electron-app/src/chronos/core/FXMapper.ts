@@ -4,16 +4,38 @@
  * 
  * Maps Chronos FX types (timeline clips) to BaseEffect IDs (backend).
  * 
- * Chronos uses simplified FX names for the timeline.
- * The backend uses specific BaseEffect IDs from the effect library.
- * This module translates between them.
+ * TWO MODES:
+ * 1. Timeline FX types (strobe, flash, drop) → mapped to BaseEffect IDs
+ * 2. Direct BaseEffect IDs (salsa_fire, strobe_burst) → passthrough
  * 
  * AXIOMA ANTI-SIMULACIÓN:
  * Real effects, real mappings. No random selection, no simulation.
  * 
  * @module chronos/core/FXMapper
- * @version WAVE 2019
+ * @version WAVE 2019.2
  */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KNOWN BASEEFFECT IDS (passthrough list)
+// These are valid BaseEffect IDs that should pass through without mapping
+// ═══════════════════════════════════════════════════════════════════════════
+
+const KNOWN_BASEEFFECT_IDS = new Set([
+  // Fiesta Latina
+  'solar_flare', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
+  'corazon_latino', 'amazon_mist', 'machete_spark', 'pachanga_flash',
+  // Techno
+  'strobe_burst', 'acid_sweep', 'industrial_strobe', 'cyber_dualism',
+  'circuit_overload', 'bass_cannon', 'strobe_storm', 'gatling_raid', 'sky_saw',
+  // Pop-Rock
+  'arena_sweep', 'thunder_struck', 'power_chord', 'anthem_rise', 'spotlight_solo',
+  'crowd_wave', 'stadium_pulse',
+  // Chill-Lounge
+  'void_mist', 'deep_breath', 'sonar_ping', 'abyssal_rise', 'tidal_wave',
+  'aurora_drift', 'lotus_bloom', 'fiber_optics',
+  // Universal
+  'core_meltdown', 'prism_split', 'horizon_fade', 'phoenix_rebirth', 'quantum_shift',
+])
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MAPPINGS
@@ -93,7 +115,11 @@ const VIBE_SPECIFIC_FX: Record<string, Record<string, string>> = {
 /**
  * 🎯 Map Chronos FX type to BaseEffect ID
  * 
- * @param fxType - The FX type from the timeline clip
+ * Handles two cases:
+ * 1. If fxType is already a valid BaseEffect ID → return as-is (passthrough)
+ * 2. If fxType is a timeline type (strobe, flash) → map to BaseEffect ID
+ * 
+ * @param fxType - The FX type from the timeline clip (can be timeline type OR baseEffect ID)
  * @param vibeId - Optional current vibe for vibe-specific variants
  * @returns BaseEffect ID to trigger
  */
@@ -101,12 +127,17 @@ export function mapChronosFXToBaseEffect(
   fxType: string, 
   vibeId?: string
 ): string {
-  // Check for vibe-specific variant first
+  // 🎯 PASSTHROUGH: If it's already a known BaseEffect ID, return as-is
+  if (KNOWN_BASEEFFECT_IDS.has(fxType)) {
+    return fxType
+  }
+  
+  // Check for vibe-specific variant of timeline type
   if (vibeId && VIBE_SPECIFIC_FX[vibeId]?.[fxType]) {
     return VIBE_SPECIFIC_FX[vibeId][fxType]
   }
   
-  // Use default mapping
+  // Use default mapping for timeline types
   const mapped = FX_MAP[fxType]
   
   if (!mapped) {
@@ -137,10 +168,10 @@ export function getAvailableFXTypes(): Array<{ id: string; label: string; icon: 
 }
 
 /**
- * 🔍 Check if an FX type is valid
+ * 🔍 Check if an FX type is valid (either timeline type or BaseEffect ID)
  */
 export function isValidFXType(fxType: string): boolean {
-  return fxType in FX_MAP
+  return fxType in FX_MAP || KNOWN_BASEEFFECT_IDS.has(fxType)
 }
 
 /**
@@ -150,14 +181,17 @@ export function getFXInfo(fxType: string, vibeId?: string): {
   chronosType: string
   backendId: string
   vibeSpecific: boolean
+  isPassthrough: boolean
 } {
-  const vibeSpecific = !!(vibeId && VIBE_SPECIFIC_FX[vibeId]?.[fxType])
+  const isPassthrough = KNOWN_BASEEFFECT_IDS.has(fxType)
+  const vibeSpecific = !isPassthrough && !!(vibeId && VIBE_SPECIFIC_FX[vibeId]?.[fxType])
   const backendId = mapChronosFXToBaseEffect(fxType, vibeId)
   
   return {
     chronosType: fxType,
     backendId,
     vibeSpecific,
+    isPassthrough,
   }
 }
 

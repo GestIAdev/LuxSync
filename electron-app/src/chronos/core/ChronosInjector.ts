@@ -70,7 +70,8 @@ export type StageCommandListener = (command: StageCommand) => void
 /** State of currently active effects for diffing */
 interface ActiveState {
   activeVibeId: string | null
-  activeFxIds: Set<string>
+  /** Map of clipId → fxType for active FX (so we can emit fxType on stop) */
+  activeFxMap: Map<string, string>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,7 +85,7 @@ export class ChronosInjector {
   /** Previous state for diffing (only trigger on changes) */
   private prevState: ActiveState = {
     activeVibeId: null,
-    activeFxIds: new Set(),
+    activeFxMap: new Map(),
   }
   
   /** Debug mode - logs all commands */
@@ -147,7 +148,6 @@ export class ChronosInjector {
     
     // Get current state
     const currentVibeId = activeVibes[0]?.id ?? null
-    const currentFxIds = new Set(activeFx.map(fx => fx.id))
     
     // ═══════════════════════════════════════════════════════════════════════
     // VIBE CHANGE DETECTION
@@ -175,7 +175,7 @@ export class ChronosInjector {
     // FX TRIGGER DETECTION (new FX started)
     // ═══════════════════════════════════════════════════════════════════════
     for (const fx of activeFx) {
-      if (!this.prevState.activeFxIds.has(fx.id)) {
+      if (!this.prevState.activeFxMap.has(fx.id)) {
         // New FX - trigger it
         this.emit({
           type: 'fx-trigger',
@@ -192,27 +192,33 @@ export class ChronosInjector {
       }
     }
     
+    // Build current FX map (id → fxType)
+    const currentFxMap = new Map<string, string>()
+    for (const fx of activeFx) {
+      currentFxMap.set(fx.id, fx.fxType)
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // FX STOP DETECTION (FX ended)
     // ═══════════════════════════════════════════════════════════════════════
-    for (const prevId of this.prevState.activeFxIds) {
-      if (!currentFxIds.has(prevId)) {
-        // FX ended - find it from previous tick (might not be in current clips)
+    for (const [prevId, prevFxType] of this.prevState.activeFxMap) {
+      if (!currentFxMap.has(prevId)) {
+        // FX ended - emit the fxType, not the clipId!
         this.emit({
           type: 'fx-stop',
-          effectId: prevId,
+          effectId: prevFxType,  // ← FIX: was prevId (clipId), now prevFxType
           displayName: '',
           timestamp: Date.now(),
         })
         
         if (this.debug) {
-          console.log(`[ChronosInjector] ⬛ FX OFF → ${prevId}`)
+          console.log(`[ChronosInjector] ⬛ FX OFF → ${prevFxType}`)
         }
       }
     }
     
     // Update state
-    this.prevState.activeFxIds = currentFxIds
+    this.prevState.activeFxMap = currentFxMap
   }
   
   /**
@@ -220,10 +226,10 @@ export class ChronosInjector {
    */
   reset(): void {
     // Stop all active FX
-    for (const fxId of this.prevState.activeFxIds) {
+    for (const [clipId, fxType] of this.prevState.activeFxMap) {
       this.emit({
         type: 'fx-stop',
-        effectId: fxId,
+        effectId: fxType,  // ← FIX: emit fxType, not clipId
         displayName: '',
         timestamp: Date.now(),
       })
@@ -231,7 +237,7 @@ export class ChronosInjector {
     
     this.prevState = {
       activeVibeId: null,
-      activeFxIds: new Set(),
+      activeFxMap: new Map(),
     }
     
     if (this.debug) {

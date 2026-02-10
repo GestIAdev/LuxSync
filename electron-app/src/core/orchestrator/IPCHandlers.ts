@@ -192,6 +192,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
    * 🧨 chronos:triggerFX
    * Called from ChronosIPCBridge when an FX clip starts.
    * Maps to forceStrikeNextFrame with the effect from FXMapper.
+   * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
    */
   ipcMain.handle('chronos:triggerFX', (_event, config: { effectId: string; intensity: number; durationMs?: number }) => {
     console.log('[Chronos→Stage] 🧨 FX TRIGGER:', config.effectId, `@ ${(config.intensity * 100).toFixed(0)}%`)
@@ -199,7 +200,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
       titanOrchestrator.forceStrikeNextFrame({
         effect: config.effectId,
         intensity: config.intensity,
-        // Note: durationMs passed but may not be used by all effects
+        source: 'chronos',  // 🧠 WAVE 2019.3: Bypass Shield for timeline-triggered effects
       })
     }
     return { success: true }

@@ -465,8 +465,19 @@ export class EffectManager extends EventEmitter {
     }
     
     // 🛡️ THE SHIELD - Validar permisos del Vibe
+    // 🎯 WAVE 2019.3: Chronos & Manual sources bypass Shield (timeline is law)
     const vibeId = config.musicalContext?.vibeId || this.getCurrentVibeId()
-    const shieldResult = this.validateWithShield(config.effectType, vibeId)
+    const bypassShield = config.source === 'chronos' || config.source === 'manual'
+    
+    let shieldResult: { allowed: boolean; degraded: boolean; message: string; constraints?: any }
+    
+    if (bypassShield) {
+      // Chronos/Manual: Skip vibe restrictions entirely
+      shieldResult = { allowed: true, degraded: false, message: 'Bypassed (chronos/manual source)' }
+      console.log(`[EffectManager 🎯] ${config.effectType} BYPASS SHIELD (source: ${config.source})`)
+    } else {
+      shieldResult = this.validateWithShield(config.effectType, vibeId)
+    }
     
     if (!shieldResult.allowed) {
       console.log(`[EffectManager ⛔] ${config.effectType} BLOCKED in ${vibeId}. ${shieldResult.message}`)

@@ -220,7 +220,7 @@ export class TitanEngine extends EventEmitter {
   private lastConsciousnessOutput: ConsciousnessOutput | null = null
   
   // 🧨 WAVE 610: Manual strike trigger (force effect without HuntEngine decision)
-  private manualStrikePending: { effect: string; intensity: number } | null = null
+  private manualStrikePending: { effect: string; intensity: number; source?: 'manual' | 'chronos' } | null = null
   
   // 🎨 WAVE 1196: Dream history buffer (last 3 effects launched)
   private dreamHistoryBuffer: Array<{ name: string; score: number; timestamp: number; reason: string }> = []
@@ -850,13 +850,13 @@ export class TitanEngine extends EventEmitter {
     
     // 🧨 WAVE 610: Procesar manual strike si está pendiente (prioridad sobre AI)
     if (this.manualStrikePending) {
-      const { effect, intensity } = this.manualStrikePending
+      const { effect, intensity, source } = this.manualStrikePending
       
       this.effectManager.trigger({
         effectType: effect,
         intensity,
-        source: 'manual',
-        reason: 'Manual strike from FORCE STRIKE button',
+        source: source || 'manual',  // 🧠 WAVE 2019.3: Dynamic source (chronos bypasses Shield)
+        reason: source === 'chronos' ? 'Chronos timeline trigger' : 'Manual strike from FORCE STRIKE button',
       })
       
       console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}`)
@@ -1451,12 +1451,12 @@ export class TitanEngine extends EventEmitter {
    * Fuerza un disparo de efecto en el próximo frame, sin esperar decisión del HuntEngine.
    * Útil para testeo manual de efectos sin alterar umbrales de algoritmos.
    * 
-   * @param config - { effect: string, intensity: number }
+   * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
    * @example engine.forceStrikeNextFrame({ effect: 'solar_flare', intensity: 1.0 })
    */
-  public forceStrikeNextFrame(config: { effect: string; intensity: number }): void {
+  public forceStrikeNextFrame(config: { effect: string; intensity: number; source?: 'manual' | 'chronos' }): void {
     this.manualStrikePending = config
-    console.log(`[TitanEngine] 🧨 Manual strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`)
+    console.log(`[TitanEngine] 🧨 ${config.source === 'chronos' ? 'CHRONOS' : 'Manual'} strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`)
   }
   
   /**

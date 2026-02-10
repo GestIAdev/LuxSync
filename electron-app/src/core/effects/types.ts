@@ -261,8 +261,14 @@ export interface EffectTriggerConfig {
   /** Zonas objetivo. Default: 'all' */
   zones?: EffectZone[]
   
-  /** Fuente del disparo (para logging) */
-  source: 'hunt_strike' | 'prediction' | 'manual' | 'physics' | 'vibe'
+  /** 
+   * Fuente del disparo (para logging y bypass rules)
+   * - 'chronos': From timeline - bypasses vibe restrictions
+   * - 'manual': From UI button
+   * - 'hunt_strike': From HuntEngine AI decision
+   * - Others: standard rules apply
+   */
+  source: 'hunt_strike' | 'prediction' | 'manual' | 'physics' | 'vibe' | 'chronos'
   
   /** Razón del disparo (para debug) */
   reason?: string

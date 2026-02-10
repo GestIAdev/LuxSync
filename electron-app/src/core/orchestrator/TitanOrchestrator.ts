@@ -1376,16 +1376,17 @@ export class TitanOrchestrator {
    * 3. Este método llama engine's forceStrikeNextFrame(config)
    * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
    * 
-   * @param config - { effect: string, intensity: number }
+   * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
    */
-  forceStrikeNextFrame(config: { effect: string; intensity: number }): void {
+  forceStrikeNextFrame(config: { effect: string; intensity: number; source?: 'manual' | 'chronos' }): void {
     if (!this.engine) {
       console.warn('[TitanOrchestrator] 🧨 Cannot force strike - Engine not initialized')
       return
     }
     
-    console.log(`[TitanOrchestrator] 🧨 FORCE STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`)
-    this.log('Effect', `🧨 Manual Strike: ${config.effect}`, { intensity: config.intensity })
+    const sourceLabel = config.source === 'chronos' ? 'CHRONOS' : 'Manual'
+    console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`)
+    this.log('Effect', `🧨 ${sourceLabel} Strike: ${config.effect}`, { intensity: config.intensity })
     
     // Delegar al TitanEngine
     this.engine.forceStrikeNextFrame(config)

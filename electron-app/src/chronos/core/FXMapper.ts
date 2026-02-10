@@ -12,30 +12,54 @@
  * Real effects, real mappings. No random selection, no simulation.
  * 
  * @module chronos/core/FXMapper
- * @version WAVE 2019.2
+ * @version WAVE 2019.3
  */
 
+import { getEffectCategories } from './EffectRegistry'
+
 // ═══════════════════════════════════════════════════════════════════════════
-// KNOWN BASEEFFECT IDS (passthrough list)
-// These are valid BaseEffect IDs that should pass through without mapping
+// KNOWN BASEEFFECT IDS - Dynamically generated from EffectRegistry
 // ═══════════════════════════════════════════════════════════════════════════
 
-const KNOWN_BASEEFFECT_IDS = new Set([
-  // Fiesta Latina
-  'solar_flare', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
-  'corazon_latino', 'amazon_mist', 'machete_spark', 'pachanga_flash',
-  // Techno
-  'strobe_burst', 'acid_sweep', 'industrial_strobe', 'cyber_dualism',
-  'circuit_overload', 'bass_cannon', 'strobe_storm', 'gatling_raid', 'sky_saw',
-  // Pop-Rock
-  'arena_sweep', 'thunder_struck', 'power_chord', 'anthem_rise', 'spotlight_solo',
-  'crowd_wave', 'stadium_pulse',
-  // Chill-Lounge
-  'void_mist', 'deep_breath', 'sonar_ping', 'abyssal_rise', 'tidal_wave',
-  'aurora_drift', 'lotus_bloom', 'fiber_optics',
-  // Universal
-  'core_meltdown', 'prism_split', 'horizon_fade', 'phoenix_rebirth', 'quantum_shift',
-])
+// Build the set lazily on first access
+let _knownBaseEffectIds: Set<string> | null = null
+
+function getKnownBaseEffectIds(): Set<string> {
+  if (!_knownBaseEffectIds) {
+    _knownBaseEffectIds = new Set<string>()
+    try {
+      const registry = getEffectCategories()
+      for (const category of registry) {
+        for (const effect of category.effects) {
+          _knownBaseEffectIds.add(effect.id)
+        }
+      }
+      console.log(`[FXMapper] 📋 Loaded ${_knownBaseEffectIds.size} known BaseEffect IDs from registry`)
+    } catch (err) {
+      console.warn('[FXMapper] ⚠️ Could not load EffectRegistry, using fallback set')
+      // Comprehensive fallback set
+      _knownBaseEffectIds = new Set([
+        // Fiesta Latina
+        'solar_flare', 'tropical_pulse', 'salsa_fire', 'cumbia_moon', 'clave_rhythm',
+        'corazon_latino', 'amazon_mist', 'machete_spark', 'glitch_guaguanco', 'latina_meltdown',
+        // Techno
+        'strobe_burst', 'acid_sweep', 'industrial_strobe', 'cyber_dualism', 'gatling_raid',
+        'sky_saw', 'strobe_storm', 'abyssal_rise',
+        // Chill/Ambient
+        'void_mist', 'digital_rain', 'deep_breath', 'ambient_strobe', 'sonar_ping',
+        'binary_glitch', 'seismic_snap', 'fiber_optics',
+        // Pop-Rock
+        'core_meltdown', 'thunder_struck', 'liquid_solo', 'amp_heat', 'arena_sweep',
+        'feedback_storm', 'power_chord', 'stage_wash', 'spotlight_pulse',
+        // Ocean/Chill
+        'tidal_wave', 'ghost_breath', 'solar_caustics', 'school_of_fish', 'whale_song',
+        'abyssal_jellyfish', 'surface_shimmer', 'plankton_drift', 'deep_current_pulse',
+        'bioluminescent_spore',
+      ])
+    }
+  }
+  return _knownBaseEffectIds
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT MAPPINGS
@@ -128,7 +152,7 @@ export function mapChronosFXToBaseEffect(
   vibeId?: string
 ): string {
   // 🎯 PASSTHROUGH: If it's already a known BaseEffect ID, return as-is
-  if (KNOWN_BASEEFFECT_IDS.has(fxType)) {
+  if (getKnownBaseEffectIds().has(fxType)) {
     return fxType
   }
   
@@ -171,7 +195,7 @@ export function getAvailableFXTypes(): Array<{ id: string; label: string; icon: 
  * 🔍 Check if an FX type is valid (either timeline type or BaseEffect ID)
  */
 export function isValidFXType(fxType: string): boolean {
-  return fxType in FX_MAP || KNOWN_BASEEFFECT_IDS.has(fxType)
+  return fxType in FX_MAP || getKnownBaseEffectIds().has(fxType)
 }
 
 /**
@@ -183,7 +207,7 @@ export function getFXInfo(fxType: string, vibeId?: string): {
   vibeSpecific: boolean
   isPassthrough: boolean
 } {
-  const isPassthrough = KNOWN_BASEEFFECT_IDS.has(fxType)
+  const isPassthrough = getKnownBaseEffectIds().has(fxType)
   const vibeSpecific = !isPassthrough && !!(vibeId && VIBE_SPECIFIC_FX[vibeId]?.[fxType])
   const backendId = mapChronosFXToBaseEffect(fxType, vibeId)
   

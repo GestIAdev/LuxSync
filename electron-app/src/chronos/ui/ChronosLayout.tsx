@@ -890,6 +890,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         <div className="chronos-inspector-panel">
           <ClipInspector
             clip={selectedClip}
+            selectedCount={clipState.selectedIds.size}
             onUpdateClip={handleUpdateClip}
             onDeleteClip={handleDeleteClip}
             onDuplicateClip={handleDuplicateClip}

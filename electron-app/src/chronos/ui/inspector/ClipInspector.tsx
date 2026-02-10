@@ -35,6 +35,9 @@ export interface ClipInspectorProps {
   /** Selected clip (or null if nothing selected) */
   clip: TimelineClip | null
   
+  /** 🔧 WAVE 2018: Number of selected clips (for multi-selection UI) */
+  selectedCount?: number
+  
   /** Callback to update clip properties */
   onUpdateClip: (clipId: string, updates: Partial<TimelineClip>) => void
   
@@ -194,6 +197,9 @@ const VibeInspector: React.FC<VibeInspectorProps> = memo(({ clip, onUpdate }) =>
     }))
   , [])
   
+  // 🔧 WAVE 2018: Calculate duration for display
+  const durationMs = clip.endMs - clip.startMs
+  
   return (
     <div className="inspector-section vibe-inspector">
       <div className="section-header">
@@ -226,6 +232,28 @@ const VibeInspector: React.FC<VibeInspectorProps> = memo(({ clip, onUpdate }) =>
         unit="%"
         onChange={(v) => onUpdate({ intensity: v / 100 })}
       />
+      
+      {/* 🔧 WAVE 2018: Precision positioning */}
+      <div className="inspector-row">
+        <NumberInput
+          label="START"
+          value={Math.round(clip.startMs)}
+          min={0}
+          max={3600000}
+          step={100}
+          unit="ms"
+          onChange={(v) => onUpdate({ startMs: v, endMs: v + durationMs })}
+        />
+        <NumberInput
+          label="DURATION"
+          value={Math.round(durationMs)}
+          min={100}
+          max={300000}
+          step={100}
+          unit="ms"
+          onChange={(v) => onUpdate({ endMs: clip.startMs + v })}
+        />
+      </div>
       
       <div className="inspector-row">
         <NumberInput
@@ -273,6 +301,9 @@ const FXInspector: React.FC<FXInspectorProps> = memo(({ clip, onUpdate }) => {
   // Get speed param if exists
   const speed = (clip.params?.speed as number) ?? 1
   const intensity = (clip.params?.intensity as number) ?? 1
+  
+  // 🔧 WAVE 2018: Calculate duration for display
+  const durationMs = clip.endMs - clip.startMs
   
   const handleParamChange = useCallback((param: string, value: number) => {
     onUpdate({ 
@@ -322,18 +353,25 @@ const FXInspector: React.FC<FXInspectorProps> = memo(({ clip, onUpdate }) => {
         onChange={(v) => handleParamChange('intensity', v / 100)}
       />
       
+      {/* 🔧 WAVE 2018: Precision positioning */}
       <div className="inspector-row">
         <NumberInput
+          label="START"
+          value={Math.round(clip.startMs)}
+          min={0}
+          max={3600000}
+          step={100}
+          unit="ms"
+          onChange={(v) => onUpdate({ startMs: v, endMs: v + durationMs })}
+        />
+        <NumberInput
           label="DURATION"
-          value={clip.endMs - clip.startMs}
+          value={Math.round(durationMs)}
           min={100}
           max={30000}
           step={100}
           unit="ms"
-          onChange={(v) => {
-            // Keep start, adjust end
-            onUpdate({ endMs: clip.startMs + v })
-          }}
+          onChange={(v) => onUpdate({ endMs: clip.startMs + v })}
         />
       </div>
       
@@ -365,11 +403,25 @@ FXInspector.displayName = 'FXInspector'
 
 export const ClipInspector: React.FC<ClipInspectorProps> = ({
   clip,
+  selectedCount = 0,
   onUpdateClip,
   onDeleteClip,
   onDuplicateClip,
   onBackToLibrary,
 }) => {
+  // 🔧 WAVE 2018: Multi-selection state
+  if (selectedCount > 1) {
+    return (
+      <div className="clip-inspector multi-selection">
+        <div className="empty-state">
+          <span className="empty-icon">📦</span>
+          <span className="empty-text">{selectedCount} CLIPS SELECTED</span>
+          <span className="empty-hint">Select a single clip to edit properties</span>
+        </div>
+      </div>
+    )
+  }
+  
   if (!clip) {
     return (
       <div className="clip-inspector empty">

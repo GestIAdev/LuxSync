@@ -426,6 +426,21 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     return () => resizeObserver.disconnect()
   }, [updateCanvasSize])
   
+  // 🔧 WAVE 2018: Force canvas resize when analysisData arrives
+  // This fixes the "ghost waveform" bug where canvas has zero dimensions
+  // when data arrives before ResizeObserver fires
+  const hadDataRef = useRef(false)
+  
+  useEffect(() => {
+    if (analysisData && !hadDataRef.current) {
+      // First time data arrives - ensure canvas is sized
+      hadDataRef.current = true
+      updateCanvasSize()
+    } else if (!analysisData) {
+      hadDataRef.current = false
+    }
+  }, [analysisData, updateCanvasSize])
+  
   // Render waveform
   useEffect(() => {
     const canvas = canvasRef.current
@@ -435,6 +450,11 @@ export const WaveformLayer: React.FC<WaveformLayerProps> = memo(({
     if (!analysisData) {
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
+    
+    // 🔧 WAVE 2018: Skip render if canvas has zero dimensions (wait for resize)
+    if (canvas.width === 0 || canvas.height === 0) {
       return
     }
     

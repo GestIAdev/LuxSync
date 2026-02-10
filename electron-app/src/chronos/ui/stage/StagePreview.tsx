@@ -16,11 +16,11 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback, useMemo, memo } from 'react'
-import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
-import { useStageStore } from '../../../../stores/stageStore'
-import { calculateFixtureRenderValues } from '../../../../hooks/useFixtureRender'
-import { useControlStore } from '../../../../stores/controlStore'
-import { useOverrideStore } from '../../../../stores/overrideStore'
+import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useStageStore } from '../../../stores/stageStore'
+import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender'
+import { useControlStore } from '../../../stores/controlStore'
+import { useOverrideStore } from '../../../stores/overrideStore'
 import './StagePreview.css'
 
 // ═══════════════════════════════════════════════════════════════════════════

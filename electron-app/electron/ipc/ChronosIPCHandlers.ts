@@ -386,6 +386,96 @@ function setupProjectIPCHandlers(mainWindow: BrowserWindow): void {
     return { path: result.filePaths[0] }
   })
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save Handlers
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Auto-save directory (in user data folder)
+  const autoSaveDir = path.join(os.homedir(), '.luxsync', 'autosave')
+  
+  // Ensure auto-save directory exists
+  fs.promises.mkdir(autoSaveDir, { recursive: true }).catch(() => {})
+  
+  /**
+   * Write auto-save file (shadow copy)
+   */
+  ipcMain.handle('chronos:write-auto-save', async (_event, request: { path: string; json: string }) => {
+    try {
+      // If path is just a filename, put it in the auto-save directory
+      const filePath = path.isAbsolute(request.path) 
+        ? request.path 
+        : path.join(autoSaveDir, request.path)
+      
+      await fs.promises.writeFile(filePath, request.json, 'utf-8')
+      console.log(`[ChronosIPC] 🛡️ Auto-save written: ${filePath}`)
+      
+      return { success: true, path: filePath }
+    } catch (err) {
+      console.error('[ChronosIPC] ❌ Auto-save write failed:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+  
+  /**
+   * Check if auto-save file exists and get its modification time
+   */
+  ipcMain.handle('chronos:check-auto-save', async (_event, request: { path: string }) => {
+    try {
+      const filePath = path.isAbsolute(request.path) 
+        ? request.path 
+        : path.join(autoSaveDir, request.path)
+      
+      const stats = await fs.promises.stat(filePath)
+      
+      return { 
+        exists: true, 
+        mtime: stats.mtime.toISOString(),
+        path: filePath,
+      }
+    } catch (err) {
+      // File doesn't exist
+      return { exists: false }
+    }
+  })
+  
+  /**
+   * Load auto-save file for recovery
+   */
+  ipcMain.handle('chronos:load-auto-save', async (_event, request: { path: string }) => {
+    try {
+      const filePath = path.isAbsolute(request.path) 
+        ? request.path 
+        : path.join(autoSaveDir, request.path)
+      
+      const json = await fs.promises.readFile(filePath, 'utf-8')
+      console.log(`[ChronosIPC] 🛡️ Auto-save loaded for recovery: ${filePath}`)
+      
+      return { success: true, json }
+    } catch (err) {
+      console.error('[ChronosIPC] ❌ Auto-save load failed:', err)
+      return { success: false, error: String(err) }
+    }
+  })
+  
+  /**
+   * Delete auto-save file (after successful manual save)
+   */
+  ipcMain.handle('chronos:delete-auto-save', async (_event, request: { path: string }) => {
+    try {
+      const filePath = path.isAbsolute(request.path) 
+        ? request.path 
+        : path.join(autoSaveDir, request.path)
+      
+      await fs.promises.unlink(filePath)
+      console.log(`[ChronosIPC] 🗑️ Auto-save deleted: ${filePath}`)
+      
+      return { success: true }
+    } catch (err) {
+      // File might not exist, that's OK
+      return { success: true }
+    }
+  })
+  
   console.log('[ChronosIPC] ✅ Project IPC handlers ready')
 }
 
@@ -404,6 +494,12 @@ export async function cleanupChronosIPC(): Promise<void> {
   ipcMain.removeHandler('chronos:load-project')
   ipcMain.removeHandler('chronos:check-file-exists')
   ipcMain.removeHandler('chronos:browse-audio')
+  
+  // Remove auto-save handlers (WAVE 2017)
+  ipcMain.removeHandler('chronos:write-auto-save')
+  ipcMain.removeHandler('chronos:check-auto-save')
+  ipcMain.removeHandler('chronos:load-auto-save')
+  ipcMain.removeHandler('chronos:delete-auto-save')
   
   // Cleanup temp directory
   try {

@@ -263,6 +263,26 @@ const api = {
     /** Browse for audio file (to replace missing audio) */
     browseAudio: (): Promise<{ path: string } | null> =>
       ipcRenderer.invoke('chronos:browse-audio'),
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save & Recovery
+    // ─────────────────────────────────────────────────────────────────────
+    
+    /** Write auto-save file (shadow copy) */
+    writeAutoSave: (request: { path: string; json: string }): Promise<{ success: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke('chronos:write-auto-save', request),
+    
+    /** Check if auto-save file exists */
+    checkAutoSave: (request: { path: string }): Promise<{ exists: boolean; mtime?: string; path?: string }> =>
+      ipcRenderer.invoke('chronos:check-auto-save', request),
+    
+    /** Load auto-save file for recovery */
+    loadAutoSave: (request: { path: string }): Promise<{ success: boolean; json?: string; error?: string }> =>
+      ipcRenderer.invoke('chronos:load-auto-save', request),
+    
+    /** Delete auto-save file (after successful manual save) */
+    deleteAutoSave: (request: { path: string }): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:delete-auto-save', request),
   },
 }
 

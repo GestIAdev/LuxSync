@@ -8,14 +8,17 @@
  * - DATA: DMX Output GO/ARMED (MasterArbiter)
  * - SYNAPSE: AI Consciousness ON/OFF (SeleneTitanConscious)
  * 
+ * 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save Indicator
+ * 
  * @module chronos/ui/header/EngineStatus
- * @version WAVE 2016.5
+ * @version WAVE 2017
  */
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { ReactorIcon, DataStreamIcon, SynapseIcon } from '../../../components/icons/LuxIcons'
 import { usePowerStore, type SystemPowerState } from '../../../hooks/useSystemPower'
 import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../../stores/controlStore'
+import { getChronosStore, type StoreEventType } from '../../core/ChronosStore'
 import './EngineStatus.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -63,6 +66,10 @@ const StatusButton: React.FC<StatusButtonProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const EngineStatus: React.FC = () => {
+  // 🛡️ WAVE 2017: Auto-save indicator state
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false)
+  
   // ─────────────────────────────────────────────────────────────────────────
   // POWER STATE (usePowerStore)
   // ─────────────────────────────────────────────────────────────────────────
@@ -178,8 +185,47 @@ export const EngineStatus: React.FC = () => {
     syncWithBackend()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
+  // 🛡️ WAVE 2017: Subscribe to auto-save events
+  useEffect(() => {
+    const store = getChronosStore()
+    
+    const handleAutoSaveStart = () => {
+      setIsAutoSaving(true)
+      setShowSaveIndicator(true)
+    }
+    
+    const handleAutoSaveComplete = () => {
+      setIsAutoSaving(false)
+      // Keep indicator visible for 2 seconds after save
+      setTimeout(() => setShowSaveIndicator(false), 2000)
+    }
+    
+    const handleAutoSaveError = () => {
+      setIsAutoSaving(false)
+      setShowSaveIndicator(false)
+    }
+    
+    store.on('auto-save-start', handleAutoSaveStart)
+    store.on('auto-save-complete', handleAutoSaveComplete)
+    store.on('auto-save-error', handleAutoSaveError)
+    
+    return () => {
+      store.off('auto-save-start', handleAutoSaveStart)
+      store.off('auto-save-complete', handleAutoSaveComplete)
+      store.off('auto-save-error', handleAutoSaveError)
+    }
+  }, [])
+  
   return (
     <div className="engine-status">
+      {/* 🛡️ WAVE 2017: Auto-Save Indicator */}
+      {showSaveIndicator && (
+        <div className={`auto-save-indicator ${isAutoSaving ? 'saving' : 'saved'}`}>
+          <span className="save-icon">{isAutoSaving ? '💾' : '✓'}</span>
+          <span className="save-text">{isAutoSaving ? 'Saving...' : 'Saved'}</span>
+        </div>
+      )}
+      
       {/* REACTOR - Power */}
       <StatusButton
         icon={<ReactorIcon size={18} />}

@@ -37,6 +37,11 @@ export type StoreEventType =
   | 'project-modified'
   | 'audio-loaded'
   | 'audio-missing'
+  // 🛡️ WAVE 2017: PROJECT LAZARUS
+  | 'auto-save-start'
+  | 'auto-save-complete'
+  | 'auto-save-error'
+  | 'recovery-available'
 
 type EventCallback = (data: any) => void
 
@@ -73,6 +78,25 @@ export class ChronosStore {
   
   /** Event listeners */
   private listeners: Map<StoreEventType, Set<EventCallback>> = new Map()
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save System
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /** Auto-save interval ID */
+  private autoSaveInterval: ReturnType<typeof setInterval> | null = null
+  
+  /** Auto-save interval in ms (default 60 seconds) */
+  private autoSaveIntervalMs: number = 60000
+  
+  /** Is auto-save currently in progress */
+  private isAutoSaving: boolean = false
+  
+  /** Last auto-save timestamp */
+  private lastAutoSave: number = 0
+  
+  /** Auto-save file extension */
+  private static readonly AUTO_SAVE_SUFFIX = '.auto'
   
   // ─────────────────────────────────────────────────────────────────────────
   // EVENT SYSTEM
@@ -446,6 +470,237 @@ export class ChronosStore {
       path: this.project.audio.path,
       bpm: this.project.audio.bpm,
       durationMs: this.project.audio.durationMs,
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save & Recovery System
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Start the auto-save heartbeat
+   * @param intervalMs Auto-save interval in milliseconds (default 60000 = 1 minute)
+   */
+  startAutoSave(intervalMs: number = 60000): void {
+    // Clear existing interval if any
+    this.stopAutoSave()
+    
+    this.autoSaveIntervalMs = intervalMs
+    console.log(`[ChronosStore] 🛡️ PROJECT LAZARUS: Auto-save started (every ${intervalMs / 1000}s)`)
+    
+    this.autoSaveInterval = setInterval(() => {
+      this.performAutoSave()
+    }, intervalMs)
+  }
+  
+  /**
+   * Stop the auto-save heartbeat
+   */
+  stopAutoSave(): void {
+    if (this.autoSaveInterval) {
+      clearInterval(this.autoSaveInterval)
+      this.autoSaveInterval = null
+      console.log('[ChronosStore] 🛡️ PROJECT LAZARUS: Auto-save stopped')
+    }
+  }
+  
+  /**
+   * Perform auto-save to shadow file
+   * Only saves if there are unsaved changes
+   */
+  private async performAutoSave(): Promise<void> {
+    // Skip if no unsaved changes or already saving
+    if (!this.isDirty || this.isAutoSaving) {
+      return
+    }
+    
+    // Skip if project has no content worth saving
+    if (!this.projectPath && this.project.timeline.clips.length === 0 && !this.project.audio) {
+      return
+    }
+    
+    this.isAutoSaving = true
+    this.emit('auto-save-start')
+    
+    try {
+      const json = serializeProject(this.project)
+      const autoSavePath = this.getAutoSavePath()
+      
+      // Use Electron IPC for file operations
+      const chronosAPI = (window as any).luxsync?.chronos
+      if (chronosAPI?.writeAutoSave) {
+        const result = await chronosAPI.writeAutoSave({
+          path: autoSavePath,
+          json,
+        })
+        
+        if (result.success) {
+          this.lastAutoSave = Date.now()
+          console.log(`[ChronosStore] 🛡️ Auto-saved: ${autoSavePath}`)
+          this.emit('auto-save-complete', { path: autoSavePath, timestamp: this.lastAutoSave })
+        } else {
+          throw new Error(result.error || 'Auto-save failed')
+        }
+      } else {
+        // Fallback: store in localStorage for development
+        localStorage.setItem('chronos-auto-save', json)
+        localStorage.setItem('chronos-auto-save-time', Date.now().toString())
+        this.lastAutoSave = Date.now()
+        console.log('[ChronosStore] 🛡️ Auto-saved to localStorage (dev mode)')
+        this.emit('auto-save-complete', { path: 'localStorage', timestamp: this.lastAutoSave })
+      }
+    } catch (err) {
+      console.error('[ChronosStore] ❌ Auto-save failed:', err)
+      this.emit('auto-save-error', { error: String(err) })
+    } finally {
+      this.isAutoSaving = false
+    }
+  }
+  
+  /**
+   * Get the auto-save file path
+   * [ProjectName].lux.auto or chronos-recovery.lux.auto for unsaved projects
+   */
+  private getAutoSavePath(): string {
+    if (this.projectPath) {
+      return this.projectPath + ChronosStore.AUTO_SAVE_SUFFIX
+    }
+    // For unsaved projects, use a default recovery path
+    return `chronos-recovery-${this.project.meta.name}${PROJECT_EXTENSION}${ChronosStore.AUTO_SAVE_SUFFIX}`
+  }
+  
+  /**
+   * Check if a recovery file exists and is newer than the original
+   * @returns Recovery info or null if no recovery available
+   */
+  async checkForRecovery(): Promise<{ autoSavePath: string; autoSaveTime: number } | null> {
+    try {
+      const chronosAPI = (window as any).luxsync?.chronos
+      if (!chronosAPI?.checkAutoSave) {
+        // Fallback: check localStorage
+        const autoSave = localStorage.getItem('chronos-auto-save')
+        const autoSaveTime = localStorage.getItem('chronos-auto-save-time')
+        if (autoSave && autoSaveTime) {
+          return {
+            autoSavePath: 'localStorage',
+            autoSaveTime: parseInt(autoSaveTime, 10),
+          }
+        }
+        return null
+      }
+      
+      const autoSavePath = this.getAutoSavePath()
+      const result = await chronosAPI.checkAutoSave({ path: autoSavePath })
+      
+      if (result.exists && result.mtime) {
+        // Check if auto-save is newer than last manual save
+        const autoSaveTime = new Date(result.mtime).getTime()
+        const lastSaveTime = this.project.meta.modified || 0
+        
+        if (autoSaveTime > lastSaveTime) {
+          console.log(`[ChronosStore] 🛡️ Recovery available: ${autoSavePath}`)
+          this.emit('recovery-available', { autoSavePath, autoSaveTime })
+          return { autoSavePath, autoSaveTime }
+        }
+      }
+      
+      return null
+    } catch (err) {
+      console.error('[ChronosStore] Recovery check failed:', err)
+      return null
+    }
+  }
+  
+  /**
+   * Recover from auto-save file
+   */
+  async recoverFromAutoSave(autoSavePath: string): Promise<LoadResult> {
+    console.log(`[ChronosStore] 🛡️ RESURRECTION: Recovering from ${autoSavePath}`)
+    
+    try {
+      const chronosAPI = (window as any).luxsync?.chronos
+      
+      if (autoSavePath === 'localStorage') {
+        // Recover from localStorage
+        const json = localStorage.getItem('chronos-auto-save')
+        if (!json) {
+          return { success: false, error: 'No recovery data found' }
+        }
+        
+        const project = deserializeProject(json)
+        if (!project || !validateProject(project)) {
+          return { success: false, error: 'Recovery data is corrupted' }
+        }
+        
+        this.project = project
+        this.isDirty = true // Mark as dirty so user saves properly
+        this.emit('project-loaded', { project, path: null, recovered: true })
+        
+        // Clear recovery data
+        localStorage.removeItem('chronos-auto-save')
+        localStorage.removeItem('chronos-auto-save-time')
+        
+        return { success: true, project }
+      }
+      
+      if (!chronosAPI?.loadAutoSave) {
+        return { success: false, error: 'Recovery not available in this environment' }
+      }
+      
+      const result = await chronosAPI.loadAutoSave({ path: autoSavePath })
+      
+      if (result.success && result.json) {
+        const project = deserializeProject(result.json)
+        if (!project || !validateProject(project)) {
+          return { success: false, error: 'Recovery data is corrupted' }
+        }
+        
+        this.project = project
+        this.isDirty = true // Mark as dirty so user saves properly
+        this.projectPath = autoSavePath.replace(ChronosStore.AUTO_SAVE_SUFFIX, '')
+        
+        this.emit('project-loaded', { project, path: this.projectPath, recovered: true })
+        
+        return { success: true, project, path: this.projectPath }
+      }
+      
+      return { success: false, error: result.error || 'Recovery failed' }
+    } catch (err) {
+      console.error('[ChronosStore] ❌ Recovery failed:', err)
+      return { success: false, error: String(err) }
+    }
+  }
+  
+  /**
+   * Delete auto-save file (after successful manual save or user chooses to ignore)
+   */
+  async clearAutoSave(): Promise<void> {
+    try {
+      const chronosAPI = (window as any).luxsync?.chronos
+      const autoSavePath = this.getAutoSavePath()
+      
+      if (chronosAPI?.deleteAutoSave) {
+        await chronosAPI.deleteAutoSave({ path: autoSavePath })
+        console.log(`[ChronosStore] 🗑️ Auto-save cleared: ${autoSavePath}`)
+      } else {
+        localStorage.removeItem('chronos-auto-save')
+        localStorage.removeItem('chronos-auto-save-time')
+        console.log('[ChronosStore] 🗑️ Auto-save cleared from localStorage')
+      }
+    } catch (err) {
+      // Non-critical, just log
+      console.warn('[ChronosStore] Could not clear auto-save:', err)
+    }
+  }
+  
+  /**
+   * Get auto-save status for UI
+   */
+  get autoSaveStatus(): { enabled: boolean; lastSave: number; isRunning: boolean } {
+    return {
+      enabled: this.autoSaveInterval !== null,
+      lastSave: this.lastAutoSave,
+      isRunning: this.isAutoSaving,
     }
   }
 }

@@ -326,6 +326,24 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [clipState.clips])
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save System
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    // Start auto-save when Chronos mounts
+    const store = getChronosStore()
+    store.startAutoSave(60000) // Every 60 seconds
+    
+    console.log('[ProjectLazarus] 🛡️ Auto-save started (60s interval)')
+    
+    return () => {
+      // Stop auto-save when leaving Chronos
+      store.stopAutoSave()
+      console.log('[ProjectLazarus] 🛡️ Auto-save stopped')
+    }
+  }, [])
+  
   // ⚡ WAVE 2015.5: ENGINE IGNITION - Phantom Mode
   // Connect ChronosInjector commands to controlStore for Stage Preview rendering
   // This enables "visual-only" playback without DMX output

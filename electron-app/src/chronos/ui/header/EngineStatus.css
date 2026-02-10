@@ -180,3 +180,79 @@
     height: 28px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save Indicator
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.auto-save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin-right: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  animation: fadeInSlide 0.3s ease;
+}
+
+.auto-save-indicator.saving {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.auto-save-indicator.saving .save-icon {
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+.auto-save-indicator.saved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  animation: fadeOutSlide 2s ease forwards;
+  animation-delay: 1s;
+}
+
+.save-icon {
+  font-size: 12px;
+}
+
+.save-text {
+  text-transform: uppercase;
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOutSlide {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@keyframes savePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+}

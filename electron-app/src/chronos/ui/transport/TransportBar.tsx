@@ -44,13 +44,16 @@ export interface TransportBarProps {
 
 /**
  * Format milliseconds to timecode: HH:MM:SS.mmm
+ * Ensures clean integers - no floating point artifacts
  */
 function formatTimecode(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
+  // Floor everything to avoid floating point nanosecond display
+  const totalMs = Math.floor(ms)
+  const totalSeconds = Math.floor(totalMs / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
-  const milliseconds = ms % 1000
+  const milliseconds = totalMs % 1000
   
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
 }

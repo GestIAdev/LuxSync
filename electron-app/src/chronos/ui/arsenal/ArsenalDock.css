@@ -1,0 +1,867 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎹 ARSENAL DOCK STYLES - WAVE 2009.5: POLISH & POWER
+ * 
+ * Diseño PRO estilo Ableton Push / Novation Launchpad
+ * Panel inferior fijo de 240px con grid de efectos 2 filas
+ * 
+ * LAYOUT:
+ * ┌───────────┬─────────────────────────────────────────────┬─────────────┐
+ * │  VIBE     │              EFFECT GRID                    │   TRIGGER   │
+ * │  TABS     │  [2 rows × horizontal scroll]               │    ZONE     │
+ * │  (120px)  │              80×80 pads                     │   (200px)   │
+ * └───────────┴─────────────────────────────────────────────┴─────────────┘
+ * 
+ * @module chronos/ui/arsenal/ArsenalDock.css
+ * @version WAVE 2009.5
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTAINER - 240px Fixed Height
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.arsenal-dock {
+  display: flex;
+  align-items: stretch;
+  height: 240px;
+  width: 100%;
+  background: linear-gradient(180deg, 
+    rgba(20, 20, 28, 0.98) 0%,
+    rgba(12, 12, 18, 0.99) 100%
+  );
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 
+    0 -4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+}
+
+/* ARMED state - subtle glow */
+.arsenal-dock.armed {
+  border-top: 1px solid rgba(255, 80, 80, 0.3);
+  box-shadow: 
+    0 -4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 30px rgba(255, 50, 50, 0.05);
+}
+
+/* RECORDING state - RED HOT */
+.arsenal-dock.recording {
+  border-top: 2px solid #E91E63;
+  box-shadow: 
+    0 -4px 24px rgba(0, 0, 0, 0.5),
+    inset 0 0 50px rgba(233, 30, 99, 0.1);
+  animation: dock-rec-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dock-rec-pulse {
+  0%, 100% { border-top-color: #E91E63; }
+  50% { border-top-color: #ff5577; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEFT: VIBE CARDS (280px width, 2×2 Grid - CONTAINER HIERARCHY)
+   WAVE 2009.6: Vibes are CONTAINERS, visually superior to effect items
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dock-vibes {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: rgba(8, 8, 12, 0.85);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vibes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.vibes-title {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 2px;
+}
+
+.vibes-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+}
+
+/* 2×2 Grid of Vibe Cards */
+.vibes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 6px;
+  flex: 1;
+  padding: 8px;
+}
+
+/* VIBE CARD - Large Container Style */
+.vibe-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(145deg, 
+    rgba(22, 22, 30, 0.95) 0%,
+    rgba(15, 15, 22, 0.98) 100%
+  );
+  border: 2px solid rgba(60, 60, 70, 0.3);
+  border-radius: 10px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.vibe-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--vibe-color, #555) 8%, transparent) 0%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.vibe-card:hover {
+  border-color: color-mix(in srgb, var(--vibe-color, #666) 50%, transparent);
+  transform: scale(1.02);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 0 30px color-mix(in srgb, var(--vibe-color, #555) 8%, transparent);
+}
+
+.vibe-card:hover::before {
+  opacity: 1;
+}
+
+.vibe-card.active {
+  border-color: var(--vibe-color);
+  background: linear-gradient(145deg, 
+    color-mix(in srgb, var(--vibe-color, #555) 15%, rgba(22, 22, 30, 0.95)),
+    color-mix(in srgb, var(--vibe-color, #555) 8%, rgba(15, 15, 22, 0.98))
+  );
+  box-shadow: 
+    0 0 25px color-mix(in srgb, var(--vibe-color, #666) 30%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--vibe-color, #555) 10%, transparent);
+}
+
+.vibe-card.active::before {
+  opacity: 1;
+}
+
+.vibe-card:active {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+.vibe-card-icon {
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.vibe-card-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.vibe-card-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.vibe-card.active .vibe-card-count {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Drag handle hint */
+.vibe-card-drag-hint {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.1);
+  letter-spacing: -2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.vibe-card:hover .vibe-card-drag-hint {
+  opacity: 1;
+}
+
+/* 🔴 WAVE 2010: Recording Mode - Vibe Card Ready to Record */
+.vibe-card.rec-mode {
+  border-color: rgba(233, 30, 99, 0.5);
+  animation: vibe-rec-pulse 1.2s ease-in-out infinite;
+}
+
+.vibe-card.rec-mode:hover {
+  border-color: #E91E63;
+  transform: scale(1.03);
+  box-shadow: 
+    0 0 30px rgba(233, 30, 99, 0.4),
+    inset 0 0 40px rgba(233, 30, 99, 0.1);
+}
+
+@keyframes vibe-rec-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 15px rgba(233, 30, 99, 0.2);
+  }
+  50% { 
+    box-shadow: 0 0 25px rgba(233, 30, 99, 0.35);
+  }
+}
+
+/* Recording indicator dot */
+.vibe-card-rec-dot {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 10px;
+  color: #E91E63;
+  animation: rec-dot-blink 0.6s ease-in-out infinite;
+}
+
+@keyframes rec-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CENTER: EFFECT GRID (2 rows × horizontal scroll)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dock-grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.grid-category {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.grid-mode {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.5px;
+}
+
+.arsenal-dock.recording .grid-mode {
+  color: #E91E63;
+  animation: blink-mode 0.8s ease-in-out infinite;
+}
+
+@keyframes blink-mode {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Scroll container */
+.grid-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
+/* Grid: 2 rows, horizontal flow */
+.grid-pads {
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 80px;
+  gap: 6px;
+  min-height: 100%;
+}
+
+/* Custom scrollbar */
+.grid-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.grid-scroll::-webkit-scrollbar-track {
+  background: rgba(20, 20, 25, 0.6);
+  border-radius: 3px;
+}
+
+.grid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 110, 0.4);
+  border-radius: 3px;
+}
+
+.grid-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(130, 130, 140, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EFFECT PAD - 80×80 Launchpad button
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.effect-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(145deg, 
+    color-mix(in srgb, var(--pad-color, #555) 18%, rgba(35, 35, 45, 0.92)),
+    color-mix(in srgb, var(--pad-color, #555) 8%, rgba(25, 25, 35, 0.95))
+  );
+  border: 1px solid color-mix(in srgb, var(--pad-color, #555) 30%, transparent);
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.12s ease;
+  position: relative;
+  user-select: none;
+}
+
+.effect-pad:hover {
+  background: linear-gradient(145deg, 
+    color-mix(in srgb, var(--pad-color, #555) 35%, rgba(45, 45, 55, 0.95)),
+    color-mix(in srgb, var(--pad-color, #555) 20%, rgba(35, 35, 45, 0.98))
+  );
+  border-color: var(--pad-color);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px color-mix(in srgb, var(--pad-color, #555) 25%, transparent);
+}
+
+.effect-pad:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+  transition: transform 0.08s ease;
+}
+
+/* Recording mode - click instead of drag */
+.effect-pad.rec-mode {
+  cursor: pointer;
+  border-style: dashed;
+}
+
+.effect-pad.rec-mode:hover {
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    0 0 25px rgba(233, 30, 99, 0.35);
+  border-color: #E91E63;
+}
+
+.effect-pad.rec-mode:active {
+  cursor: pointer;
+  transform: scale(0.92);
+  background: linear-gradient(145deg, 
+    var(--pad-color),
+    color-mix(in srgb, var(--pad-color) 80%, black)
+  );
+  box-shadow: 
+    inset 0 0 20px rgba(0, 0, 0, 0.3),
+    0 0 30px var(--pad-color);
+}
+
+.pad-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.pad-name {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  line-height: 1.15;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pad-strobe {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-size: 11px;
+  opacity: 0.4;
+}
+
+.effect-pad.strobe .pad-strobe {
+  animation: strobe-flash 1.2s ease-in-out infinite;
+}
+
+@keyframes strobe-flash {
+  0%, 80%, 100% { opacity: 0.3; }
+  85% { opacity: 1; filter: brightness(1.5); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOM FX SLOT - Ghost Button for Future Effect Creator
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.effect-pad.custom-slot {
+  background: transparent;
+  border: 2px dashed rgba(100, 100, 120, 0.4);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.effect-pad.custom-slot:hover {
+  opacity: 1;
+  border-color: rgba(150, 150, 170, 0.6);
+  background: rgba(60, 60, 80, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.3),
+    inset 0 0 30px rgba(100, 100, 150, 0.1);
+}
+
+.effect-pad.custom-slot:active {
+  transform: scale(0.95);
+}
+
+.effect-pad.custom-slot .pad-icon {
+  font-size: 28px;
+  color: rgba(150, 150, 170, 0.6);
+  font-weight: 300;
+  transition: color 0.2s ease;
+}
+
+.effect-pad.custom-slot:hover .pad-icon {
+  color: rgba(200, 200, 220, 0.9);
+}
+
+.effect-pad.custom-slot .pad-name {
+  color: rgba(120, 120, 140, 0.7);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+
+.effect-pad.custom-slot:hover .pad-name {
+  color: rgba(180, 180, 200, 0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RIGHT: TRIGGER ZONE (200px) - THE DANGER ZONE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dock-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 200px;
+  min-width: 200px;
+  flex-shrink: 0;
+  padding: 16px;
+  background: rgba(10, 10, 15, 0.7);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ARM BUTTON - THE BUTTON THAT SCARES YOU
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.arm-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100px;
+  height: 100px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.arm-button:hover {
+  transform: scale(1.05);
+}
+
+.arm-button:active {
+  transform: scale(0.98);
+}
+
+/* Glow layer - only visible when armed/recording */
+.arm-glow {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.arm-button.armed .arm-glow {
+  background: radial-gradient(circle, 
+    rgba(255, 80, 80, 0.15) 0%,
+    transparent 70%
+  );
+  animation: arm-glow-pulse 1.5s ease-in-out infinite;
+}
+
+.arm-button.recording .arm-glow {
+  background: radial-gradient(circle, 
+    rgba(233, 30, 99, 0.3) 0%,
+    transparent 70%
+  );
+  animation: rec-glow-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes arm-glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes rec-glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+/* Ring layer */
+.arm-ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 3px solid rgba(100, 100, 110, 0.3);
+  transition: all 0.2s ease;
+}
+
+.arm-button:hover .arm-ring {
+  border-color: rgba(150, 100, 100, 0.5);
+}
+
+.arm-button.armed .arm-ring {
+  border-color: rgba(255, 100, 100, 0.6);
+  animation: ring-pulse 1.5s ease-in-out infinite;
+}
+
+.arm-button.recording .arm-ring {
+  border-color: #E91E63;
+  border-width: 4px;
+  animation: ring-spin 2s linear infinite;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { border-color: rgba(255, 100, 100, 0.4); }
+  50% { border-color: rgba(255, 100, 100, 0.8); }
+}
+
+@keyframes ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Core button */
+.arm-core {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, 
+    rgba(60, 60, 70, 0.8),
+    rgba(40, 40, 50, 0.9)
+  );
+  border: 2px solid rgba(80, 80, 90, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.arm-button:hover .arm-core {
+  background: linear-gradient(145deg, 
+    rgba(80, 60, 60, 0.8),
+    rgba(50, 40, 40, 0.9)
+  );
+  border-color: rgba(150, 100, 100, 0.4);
+}
+
+.arm-button.armed .arm-core {
+  background: linear-gradient(145deg, 
+    rgba(150, 50, 50, 0.8),
+    rgba(100, 30, 30, 0.9)
+  );
+  border-color: rgba(255, 100, 100, 0.6);
+  box-shadow: inset 0 0 15px rgba(255, 50, 50, 0.3);
+}
+
+.arm-button.recording .arm-core {
+  background: linear-gradient(145deg, 
+    #E91E63,
+    #c2185b
+  );
+  border-color: #ff4081;
+  box-shadow: 
+    inset 0 0 20px rgba(255, 255, 255, 0.2),
+    0 0 30px rgba(233, 30, 99, 0.5);
+  animation: core-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes core-pulse {
+  0%, 100% { box-shadow: 
+    inset 0 0 20px rgba(255, 255, 255, 0.2),
+    0 0 30px rgba(233, 30, 99, 0.5);
+  }
+  50% { box-shadow: 
+    inset 0 0 25px rgba(255, 255, 255, 0.3),
+    0 0 40px rgba(233, 30, 99, 0.7);
+  }
+}
+
+/* Core icon */
+.arm-icon {
+  font-size: 28px;
+  color: rgba(180, 100, 100, 0.5);
+  transition: all 0.2s ease;
+}
+
+.arm-button:hover .arm-icon {
+  color: rgba(220, 100, 100, 0.7);
+}
+
+.arm-button.armed .arm-icon {
+  color: #ff6b6b;
+  text-shadow: 0 0 10px rgba(255, 100, 100, 0.5);
+  animation: icon-blink 1s ease-in-out infinite;
+}
+
+.arm-button.recording .arm-icon {
+  color: #ffffff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  animation: icon-blink 0.4s ease-in-out infinite;
+}
+
+@keyframes icon-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Label */
+.arm-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(150, 150, 160, 0.6);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.arm-button:hover .arm-label {
+  color: rgba(200, 150, 150, 0.8);
+}
+
+.arm-button.armed .arm-label {
+  color: #ff6b6b;
+  text-shadow: 0 0 8px rgba(255, 100, 100, 0.4);
+}
+
+.arm-button.recording .arm-label {
+  color: #E91E63;
+  text-shadow: 0 0 10px rgba(233, 30, 99, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS DISPLAY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.trigger-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 1px;
+}
+
+.status-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: right;
+}
+
+.status-value.rec {
+  color: #E91E63;
+  animation: status-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DRAG GHOSTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pad-drag-ghost,
+.vibe-drag-ghost {
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 20px currentColor;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+.vibe-drag-ghost {
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1400px) {
+  .dock-vibes {
+    width: 240px;
+    min-width: 240px;
+  }
+  
+  .vibe-card-icon {
+    font-size: 26px;
+  }
+  
+  .vibe-card-name {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .arsenal-dock {
+    height: 220px;
+  }
+  
+  .dock-vibes {
+    width: 200px;
+    min-width: 200px;
+  }
+  
+  .vibe-card-count {
+    display: none;
+  }
+  
+  .dock-trigger {
+    width: 160px;
+    min-width: 160px;
+  }
+  
+  .arm-button {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .arm-core {
+    inset: 14px;
+  }
+  
+  .arm-ring {
+    inset: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .arsenal-dock {
+    height: 200px;
+  }
+  
+  .dock-vibes {
+    width: 160px;
+    min-width: 160px;
+  }
+  
+  .vibe-card-name {
+    font-size: 8px;
+  }
+  
+  .vibe-card-icon {
+    font-size: 22px;
+  }
+  
+  .dock-trigger {
+    width: 120px;
+    min-width: 120px;
+  }
+  
+  .trigger-status {
+    display: none;
+  }
+  
+  .effect-pad.custom-slot {
+    display: none;
+  }
+}

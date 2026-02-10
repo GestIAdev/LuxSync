@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏱️ CHRONOS LAYOUT - WAVE 2005: THE PULSE
+ * ⏱️ CHRONOS LAYOUT - WAVE 2009: THE FULL SCREEN EXPERIENCE
  * Main container for Chronos Studio - Offline Timeline Editor
  * 
  * Layout Architecture:
@@ -8,32 +8,46 @@
  * │                    TRANSPORT BAR (fixed top)                            │
  * ├─────────────────────────────────────────────────────────┬───────────────┤
  * │                                                         │               │
- * │                 STAGE PREVIEW (35%)                     │   ARSENAL     │
- * │                 [Mini Stage Simulator]                  │   (Effects)   │
+ * │                 STAGE PREVIEW (30%)                     │   INSPECTOR   │
+ * │                 [Mini Stage Simulator]                  │   (280px)     │
  * │                                                         │               │
- * ├─────────────────────────────────────────────────────────┤   Panel       │
+ * ├─────────────────────────────────────────────────────────┤  Clip Props   │
  * │                                                         │               │
- * │                                                         │               │
- * │                 TIMELINE CANVAS (65%)                   │               │
+ * │                 TIMELINE CANVAS (70%)                   │               │
  * │                 [Tracks: Ruler | Waveform | Vibe | FX]  │               │
- * │                                                         │               │
- * │                                                         │               │
- * └─────────────────────────────────────────────────────────┴───────────────┘
+ * │                 🧲 Magnetic Snap to Beats               │               │
+ * ├─────────────────────────────────────────────────────────┴───────────────┤
+ * │                    ARSENAL DOCK (180px)                                 │
+ * │          [🎺 🤖 🎸 🌊]  [ Effect Grid / Launchpad ]  [🔴 ARM]          │
+ * └─────────────────────────────────────────────────────────────────────────┘
  * 
- * WAVE 2005: Added audio loading and waveform visualization
+ * WAVE 2009: Full screen experience - No global CommandDeck, Zen Mode auto
  * 
  * @module chronos/ui/ChronosLayout
- * @version WAVE 2005
+ * @version WAVE 2009
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
+// 🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
+import { ArsenalDock } from './arsenal/ArsenalDock'
+// 🔍 WAVE 2007: Inspector and Context Menu
+import { ClipInspector } from './inspector/ClipInspector'
+import { ContextMenu, CLIP_MENU_ITEMS } from './context/ContextMenu'
 // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
 import { useAudioLoaderPhantom } from '../hooks/useAudioLoaderPhantom'
 // 🎵 WAVE 2005.4: Streaming playback (no RAM bloat)
 import { useStreamingPlayback } from '../hooks/useStreamingPlayback'
+// 🧲 WAVE 2006: Clips state management and auto-scroll
+import { useTimelineClips } from '../hooks/useTimelineClips'
+import { useAutoScroll } from '../hooks/useAutoScroll'
+// ⌨️ WAVE 2007: Keyboard shortcuts
+import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
+// 🎬 WAVE 2010: ChronosRecorder for live recording
+import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
 import type { AnalysisData } from '../core/types'
+import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +56,12 @@ import './ChronosLayout.css'
 
 export interface ChronosLayoutProps {
   className?: string
+}
+
+// Context menu state
+interface ContextMenuState {
+  position: { x: number; y: number } | null
+  clipId: string | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -61,37 +81,6 @@ const StagePreviewPlaceholder: React.FC = () => (
   </div>
 )
 
-/**
- * Arsenal Panel Placeholder - Will contain effect library/palette
- */
-const ArsenalPlaceholder: React.FC = () => (
-  <div className="chronos-arsenal">
-    <div className="arsenal-header">
-      <span className="arsenal-icon">🎨</span>
-      <span className="arsenal-title">THE ARSENAL</span>
-    </div>
-    <div className="arsenal-content">
-      <div className="arsenal-section">
-        <div className="section-label">VIBES</div>
-        <div className="arsenal-items">
-          <div className="arsenal-item vibe-chillout">CHILLOUT</div>
-          <div className="arsenal-item vibe-techno">TECHNO</div>
-          <div className="arsenal-item vibe-ambient">AMBIENT</div>
-        </div>
-      </div>
-      <div className="arsenal-section">
-        <div className="section-label">EFFECTS</div>
-        <div className="arsenal-items">
-          <div className="arsenal-item fx-strobe">STROBE</div>
-          <div className="arsenal-item fx-sweep">SWEEP</div>
-          <div className="arsenal-item fx-pulse">PULSE</div>
-          <div className="arsenal-item fx-chase">CHASE</div>
-        </div>
-      </div>
-    </div>
-  </div>
-)
-
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -107,9 +96,35 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   const [isRecording, setIsRecording] = useState(false)
   const [bpm, setBpm] = useState(120)
   
+  // 🧲 WAVE 2006: Clips state management (needs bpm/duration from above)
+  const durationMs = audioLoader.result?.durationMs ?? 60000
+  const clipState = useTimelineClips({ bpm, durationMs })
+  
+  // 🧲 WAVE 2006: Auto-scroll follows playhead when playing
+  const [followEnabled, setFollowEnabled] = useState(true)
+  
   // Drag state
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // 🔍 WAVE 2007: Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    position: null,
+    clipId: null,
+  })
+  
+  // 🔍 WAVE 2007: Timeline focus state for keyboard shortcuts
+  const [isTimelineFocused, setIsTimelineFocused] = useState(true)
+  
+  // 🔍 WAVE 2007: Clipboard for copy/paste
+  const [clipboard, setClipboard] = useState<TimelineClip[]>([])
+  
+  // 🔍 WAVE 2007: Get selected clip for inspector (only when single selection)
+  const selectedClip = useMemo(() => {
+    if (clipState.selectedIds.size !== 1) return null
+    const clipId = Array.from(clipState.selectedIds)[0]
+    return clipState.getClipById(clipId) ?? null
+  }, [clipState.selectedIds, clipState.getClipById, clipState.clips])
   
   // 🎵 WAVE 2005.4: Connect streaming to audioLoader result
   useEffect(() => {
@@ -137,10 +152,100 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     console.log('[ChronosLayout] ⏹️ Stop')
   }, [streaming])
   
+  // 🎬 WAVE 2010: Get recorder instance
+  const recorder = useMemo(() => getChronosRecorder(), [])
+  
+  // 🎬 WAVE 2010: Sync recorder with BPM changes
+  useEffect(() => {
+    recorder.setBpm(bpm)
+  }, [bpm, recorder])
+  
+  // 🎬 WAVE 2010: Sync playhead with recorder during playback
+  useEffect(() => {
+    if (streaming.isPlaying && isRecording) {
+      recorder.updatePlayhead(streaming.currentTimeMs)
+    }
+  }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, recorder])
+  
+  // 🎬 WAVE 2010: Subscribe to recorded clips and add them to timeline
+  useEffect(() => {
+    const handleClipRecorded = (data: { clip: RecordedClip }) => {
+      const clip = data.clip
+      console.log(`[ChronosLayout] 🎬 Recorded clip received:`, clip.displayName)
+      
+      // Build TimelineClip based on clip type
+      let timelineClip: TimelineClip
+      
+      if (clip.clipType === 'vibe') {
+        timelineClip = {
+          id: clip.id,
+          type: 'vibe',
+          label: clip.displayName,
+          startMs: clip.startMs,
+          endMs: clip.startMs + clip.durationMs,
+          color: clip.color || '#FF6B35',
+          trackId: clip.trackId,
+          locked: false,
+          vibeType: clip.effectId as any,
+          intensity: 1.0,
+          fadeInMs: 500,
+          fadeOutMs: 500,
+        }
+      } else {
+        timelineClip = {
+          id: clip.id,
+          type: 'fx',
+          label: clip.displayName,
+          startMs: clip.startMs,
+          endMs: clip.startMs + clip.durationMs,
+          color: clip.color || '#00D9FF',
+          trackId: clip.trackId,
+          locked: false,
+          fxType: clip.effectId as any,
+          keyframes: [],
+          params: { intensity: 1.0 },
+        }
+      }
+      
+      clipState.addClip(timelineClip)
+    }
+    
+    // 🎹 WAVE 2012: Handle clip updates (Latch Mode duration changes)
+    const handleClipUpdated = (data: { clip: RecordedClip }) => {
+      const clip = data.clip
+      console.log(`[ChronosLayout] 🎹 Clip updated (LATCH):`, clip.displayName, `duration: ${clip.durationMs}ms`)
+      
+      // Update the clip's endMs based on new duration
+      clipState.updateClip(clip.id, {
+        endMs: clip.startMs + clip.durationMs,
+      })
+    }
+    
+    recorder.on('clip-added', handleClipRecorded)
+    recorder.on('clip-updated', handleClipUpdated)
+    
+    return () => {
+      recorder.off('clip-added', handleClipRecorded)
+      recorder.off('clip-updated', handleClipUpdated)
+    }
+  }, [recorder, clipState])
+  
+  // 🎬 WAVE 2010: Connect recording toggle to ChronosRecorder
   const handleRecord = useCallback(() => {
-    setIsRecording(prev => !prev)
-    console.log('[ChronosLayout] ⏺️ Record toggled')
-  }, [])
+    const newState = !isRecording
+    setIsRecording(newState)
+    
+    if (newState) {
+      // Update playhead position before starting
+      recorder.updatePlayhead(streaming.currentTimeMs)
+      recorder.startRecording()
+      console.log('[ChronosLayout] ⏺️ Recording STARTED at', streaming.currentTimeMs, 'ms')
+    } else {
+      // Stop recording and get all recorded clips
+      const recordedClips = recorder.stopRecording()
+      console.log('[ChronosLayout] ⏹️ Recording STOPPED. Clips:', recordedClips.length)
+    }
+  }, [isRecording, recorder, streaming.currentTimeMs])
   
   // 🎵 WAVE 2005.4: Seek uses streaming hook
   const handleSeek = useCallback((timeMs: number) => {
@@ -149,13 +254,27 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, [streaming])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // DRAG & DROP HANDLERS - WAVE 2005
+  // DRAG & DROP HANDLERS - WAVE 2005 (Audio Files only)
   // ═══════════════════════════════════════════════════════════════════════
   
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOver(true)
+    // Check if this is a clip drag - those are handled entirely by TimelineCanvas
+    const isClipDrag = e.dataTransfer.types.includes('application/luxsync-vibe') ||
+                       e.dataTransfer.types.includes('application/luxsync-fx')
+    
+    if (isClipDrag) {
+      // DON'T prevent default here - let TimelineCanvas decide
+      // This allows forbidden cursor to show on invalid drops
+      return
+    }
+    
+    // For file drops, show the audio overlay
+    const hasFiles = e.dataTransfer.types.includes('Files')
+    if (hasFiles) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+    }
   }, [])
   
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -165,6 +284,11 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   }, [])
   
   const handleDrop = useCallback(async (e: React.DragEvent) => {
+    // Only handle file drops, not clip drops
+    const isClipDrag = e.dataTransfer.types.includes('application/luxsync-vibe') ||
+                       e.dataTransfer.types.includes('application/luxsync-fx')
+    if (isClipDrag) return  // Let TimelineCanvas handle clip drops
+    
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
@@ -200,6 +324,147 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     setBpm(120)              // Reset to default
   }, [audioLoader, streaming])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2006: CLIP INTERACTION CALLBACKS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleClipSelect = useCallback((clipId: string, addToSelection: boolean) => {
+    clipState.selectClip(clipId, addToSelection)
+    console.log(`[ChronosLayout] 🎯 Clip selected: ${clipId}`)
+  }, [clipState])
+  
+  const handleClipMove = useCallback((clipId: string, newStartMs: number) => {
+    clipState.moveClip(clipId, newStartMs)
+  }, [clipState])
+  
+  const handleClipResize = useCallback((clipId: string, edge: 'left' | 'right', newTimeMs: number) => {
+    clipState.resizeClip(clipId, edge, newTimeMs)
+  }, [clipState])
+  
+  const handleClipDrop = useCallback((payload: DragPayload, timeMs: number, trackId: string) => {
+    const clip = clipState.createClipFromDrop(payload, timeMs, trackId)
+    if (clip) {
+      console.log(`[ChronosLayout] 🧲 Created ${clip.type} clip at ${(clip.startMs/1000).toFixed(2)}s on track ${trackId}`)
+    }
+  }, [clipState])
+  
+  const handleClipContextMenu = useCallback((clipId: string, event: React.MouseEvent) => {
+    event.preventDefault()
+    // Select the clip first
+    clipState.selectClip(clipId, false)
+    // Show context menu
+    setContextMenu({
+      position: { x: event.clientX, y: event.clientY },
+      clipId,
+    })
+    console.log(`[ChronosLayout] 📋 Context menu for clip: ${clipId}`)
+  }, [clipState])
+  
+  const handleFollowToggle = useCallback(() => {
+    setFollowEnabled(prev => !prev)
+  }, [])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2007: INSPECTOR CALLBACKS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleUpdateClip = useCallback((clipId: string, updates: Partial<TimelineClip>) => {
+    clipState.updateClip(clipId, updates)
+  }, [clipState])
+  
+  const handleDeleteClip = useCallback((clipId: string) => {
+    clipState.removeClip(clipId)
+  }, [clipState])
+  
+  const handleDuplicateClip = useCallback((clipId: string) => {
+    clipState.duplicateClip(clipId)
+  }, [clipState])
+  
+  const handleBackToLibrary = useCallback(() => {
+    clipState.deselectAll()
+  }, [clipState])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2007: CONTEXT MENU CALLBACKS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleContextMenuSelect = useCallback((action: string) => {
+    const clipId = contextMenu.clipId
+    if (!clipId) return
+    
+    switch (action) {
+      case 'duplicate':
+        clipState.duplicateClip(clipId)
+        break
+      case 'copy':
+        const clip = clipState.getClipById(clipId)
+        if (clip) setClipboard([{ ...clip }])
+        break
+      case 'paste':
+        if (clipboard.length > 0) {
+          clipState.pasteClips(clipboard, streaming.currentTimeMs)
+        }
+        break
+      case 'split':
+        clipState.splitClipAtTime(clipId, streaming.currentTimeMs)
+        break
+      case 'delete':
+        clipState.removeClip(clipId)
+        break
+      case 'lock':
+        const toToggle = clipState.getClipById(clipId)
+        if (toToggle) {
+          clipState.updateClip(clipId, { locked: !toToggle.locked })
+        }
+        break
+      case 'rename':
+        // Rename via inspector - clip is already selected
+        break
+    }
+    
+    setContextMenu({ position: null, clipId: null })
+  }, [contextMenu.clipId, clipState, clipboard, streaming.currentTimeMs])
+  
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu({ position: null, clipId: null })
+  }, [])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2007: KEYBOARD SHORTCUTS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  useTimelineKeyboard({
+    selectedIds: clipState.selectedIds,
+    clips: clipState.clips,
+    currentTimeMs: streaming.currentTimeMs,
+    isFocused: isTimelineFocused,
+    onDeleteSelected: clipState.deleteSelected,
+    onDuplicateSelected: clipState.duplicateSelected,
+    onCopy: (clips) => setClipboard(clips.map(c => ({ ...c }))),
+    onPaste: (timeMs) => {
+      if (clipboard.length > 0) {
+        clipState.pasteClips(clipboard, timeMs)
+      }
+    },
+    onSelectAll: clipState.selectAll,
+    onDeselectAll: clipState.deselectAll,
+    onPlayPause: streaming.togglePlay,
+    onSplitAtPlayhead: () => {
+      // Split all selected clips at playhead
+      clipState.selectedIds.forEach(id => {
+        clipState.splitClipAtTime(id, streaming.currentTimeMs)
+      })
+    },
+  })
+  
+  // Click on background deselects
+  const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
+    // Only if clicking directly on the layout (not a child)
+    if (e.target === e.currentTarget) {
+      clipState.deselectAll()
+    }
+  }, [clipState])
+
   return (
     <div 
       className={`chronos-layout ${className} ${isDragOver ? 'dragover' : ''}`}
@@ -266,32 +531,78 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       {/* ═══════════════════════════════════════════════════════════════════
        * MAIN CONTENT AREA
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="chronos-main">
+      <div className="chronos-main" onClick={handleBackgroundClick}>
         {/* Left: Stage + Timeline Stack */}
-        <div className="chronos-workspace">
-          {/* Stage Preview (35% height) */}
+        <div 
+          className="chronos-workspace"
+          onFocus={() => setIsTimelineFocused(true)}
+          onBlur={() => setIsTimelineFocused(false)}
+          tabIndex={0}
+        >
+          {/* Stage Preview (30% height) */}
           <StagePreviewPlaceholder />
           
           {/* Horizontal Divider */}
           <div className="chronos-divider horizontal" />
           
-          {/* Timeline Canvas (65% height) */}
+          {/* Timeline Canvas (70% height) - WAVE 2006: Interactive */}
           <TimelineCanvas
             currentTime={streaming.currentTimeMs}
             bpm={bpm}
             isPlaying={streaming.isPlaying}
             onSeek={handleSeek}
             analysisData={audioLoader.result?.analysisData ?? null}
-            durationMs={audioLoader.result?.durationMs ?? 60000}
+            durationMs={durationMs}
+            // WAVE 2006: Clips & Interaction
+            clips={clipState.clips}
+            selectedClipIds={clipState.selectedIds}
+            snapEnabled={clipState.snapEnabled}
+            snapPosition={clipState.snapPosition}
+            onClipSelect={handleClipSelect}
+            onClipMove={handleClipMove}
+            onClipResize={handleClipResize}
+            onClipDrop={handleClipDrop}
+            onClipContextMenu={handleClipContextMenu}
+            // WAVE 2006: Auto-scroll
+            followEnabled={followEnabled}
+            onFollowToggle={handleFollowToggle}
           />
         </div>
         
         {/* Vertical Divider */}
         <div className="chronos-divider vertical" />
         
-        {/* Right: Arsenal Panel */}
-        <ArsenalPlaceholder />
+        {/* Right: Inspector Panel - WAVE 2009: Always visible, wider */}
+        <div className="chronos-inspector-panel">
+          <ClipInspector
+            clip={selectedClip}
+            onUpdateClip={handleUpdateClip}
+            onDeleteClip={handleDeleteClip}
+            onDuplicateClip={handleDuplicateClip}
+            onBackToLibrary={handleBackToLibrary}
+          />
+        </div>
       </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * 🎹 WAVE 2009: ARSENAL DOCK (Bottom Panel - Launchpad Style)
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="chronos-arsenal-dock-container">
+        <ArsenalDock
+          isRecording={isRecording}
+          onRecordToggle={handleRecord}
+        />
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * WAVE 2007: CONTEXT MENU
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <ContextMenu
+        position={contextMenu.position}
+        items={CLIP_MENU_ITEMS}
+        onSelect={handleContextMenuSelect}
+        onClose={handleContextMenuClose}
+      />
     </div>
   )
 }

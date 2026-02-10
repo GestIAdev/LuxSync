@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📊 TIMELINE CANVAS - WAVE 2005: THE PULSE
+ * 📊 TIMELINE CANVAS - WAVE 2006: THE INTERACTIVE CANVAS
  * High-performance SVG/Canvas timeline for Chronos Studio
  * 
  * Track Structure (Top to Bottom):
@@ -14,21 +14,19 @@
  * │ FX TRACK        │ ◆────◆────◆ (effect keyframes)                       │
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
- * Interactions:
- * - Wheel: Horizontal zoom
- * - Shift+Wheel: Vertical scroll (track selection)
- * - Click on ruler: Seek playhead
- * - Drag: Pan timeline
- * 
  * WAVE 2005: Integrated WaveformLayer for audio visualization
+ * WAVE 2006: Interactive clips, drag & drop, snapping, auto-scroll
  * 
  * @module chronos/ui/timeline/TimelineCanvas
- * @version WAVE 2005
+ * @version WAVE 2006
  */
 
 import React, { useRef, useState, useCallback, useEffect, memo } from 'react'
 import { WaveformLayer } from './WaveformLayer'
+import { ClipRenderer } from './ClipRenderer'
 import type { AnalysisData } from '../../core/types'
+import type { TimelineClip, DragPayload } from '../../core/TimelineClip'
+import { deserializeDragPayload } from '../../core/TimelineClip'
 import './TimelineCanvas.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,6 +41,20 @@ export interface TimelineCanvasProps {
   // WAVE 2005: Audio analysis data
   analysisData?: AnalysisData | null
   durationMs?: number
+  // WAVE 2006: Clips and interaction
+  clips?: TimelineClip[]
+  selectedClipIds?: Set<string>
+  snapEnabled?: boolean
+  snapPosition?: number | null
+  onClipSelect?: (clipId: string, addToSelection: boolean) => void
+  onClipMove?: (clipId: string, newStartMs: number) => void
+  onClipResize?: (clipId: string, edge: 'left' | 'right', newTimeMs: number) => void
+  onClipDrop?: (payload: DragPayload, timeMs: number, trackId: string) => void
+  onClipContextMenu?: (clipId: string, event: React.MouseEvent) => void
+  // WAVE 2006: Auto-scroll
+  followEnabled?: boolean
+  onFollowToggle?: () => void
+  onUserScroll?: () => void
 }
 
 interface TimelineViewport {
@@ -66,12 +78,18 @@ interface Track {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * 🎹 WAVE 2012: Track list with 4 FX tracks for Smart Layering
+ * FX tracks are thinner to fit more without overwhelming the UI
+ */
 const DEFAULT_TRACKS: Track[] = [
   { id: 'ruler', type: 'ruler', label: 'TIME', height: 32, color: '#3b82f6' },
   { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 64, color: '#22d3ee' },
   { id: 'vibe', type: 'vibe', label: 'VIBE', height: 48, color: '#a855f7' },
-  { id: 'fx1', type: 'fx', label: 'FX 1', height: 40, color: '#f97316' },
-  { id: 'fx2', type: 'fx', label: 'FX 2', height: 40, color: '#ef4444' },
+  { id: 'fx1', type: 'fx', label: 'FX 1', height: 36, color: '#f97316' },
+  { id: 'fx2', type: 'fx', label: 'FX 2', height: 36, color: '#ef4444' },
+  { id: 'fx3', type: 'fx', label: 'FX 3', height: 36, color: '#22d3ee' },
+  { id: 'fx4', type: 'fx', label: 'FX 4', height: 36, color: '#10b981' },
 ]
 
 const MIN_PIXELS_PER_SECOND = 10
@@ -139,7 +157,14 @@ interface TrackRendererProps {
 }
 
 /**
- * Ruler Track - Time markers and beat grid
+ * 🎼 WAVE 2011: MUSICAL RULER - Bars & Beats (not seconds!)
+ * DAW-style musical grid:
+ * - Major marks: Every BAR (compás) with bar number
+ * - Minor marks: Every BEAT within the bar
+ * - Based on BPM and 4/4 time signature
+ * 
+ * Formula: msPerBeat = 60000 / BPM
+ *          msPerBar = msPerBeat * 4 (4/4 time)
  */
 const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
   track,
@@ -148,10 +173,83 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
   width,
   yOffset,
 }) => {
-  const beats = calculateBeatPositions(viewport, bpm, width)
+  // 🎼 MUSICAL GRID CALCULATIONS
+  const msPerBeat = 60000 / bpm
+  const msPerBar = msPerBeat * 4 // 4/4 time signature
+  const pixelsPerMs = viewport.pixelsPerSecond / 1000
+  
+  // Determine if we should show beat subdivisions based on zoom
+  const showBeats = viewport.pixelsPerSecond > 30
+  const showSubBeats = viewport.pixelsPerSecond > 100
+  
+  // Build grid lines: bars and beats
+  const gridLines: { 
+    timeMs: number
+    x: number 
+    type: 'bar' | 'beat' | 'subbeat'
+    barNum: number
+    beatNum: number
+  }[] = []
+  
+  // Find first bar in viewport
+  const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
+  const lastBar = Math.ceil(viewport.endTime / msPerBar)
+  
+  for (let bar = firstBar; bar <= lastBar; bar++) {
+    // Add bar marker
+    const barTimeMs = bar * msPerBar
+    const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
+    
+    if (barX >= TRACK_LABEL_WIDTH - 50 && barX <= width + 50) {
+      gridLines.push({
+        timeMs: barTimeMs,
+        x: barX,
+        type: 'bar',
+        barNum: bar + 1, // 1-indexed for display
+        beatNum: 1,
+      })
+    }
+    
+    // Add beat markers within this bar
+    if (showBeats) {
+      for (let beat = 1; beat < 4; beat++) { // Beats 2, 3, 4 (beat 1 is the bar)
+        const beatTimeMs = barTimeMs + (beat * msPerBeat)
+        const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
+        
+        if (beatX >= TRACK_LABEL_WIDTH && beatX <= width) {
+          gridLines.push({
+            timeMs: beatTimeMs,
+            x: beatX,
+            type: 'beat',
+            barNum: bar + 1,
+            beatNum: beat + 1,
+          })
+        }
+      }
+    }
+    
+    // Add sub-beat markers (1/8th notes) if very zoomed in
+    if (showSubBeats) {
+      for (let subbeat = 0; subbeat < 8; subbeat++) {
+        if (subbeat % 2 === 0) continue // Skip quarter notes (already drawn)
+        const subbeatTimeMs = barTimeMs + (subbeat * msPerBeat / 2)
+        const subbeatX = TRACK_LABEL_WIDTH + (subbeatTimeMs - viewport.startTime) * pixelsPerMs
+        
+        if (subbeatX >= TRACK_LABEL_WIDTH && subbeatX <= width) {
+          gridLines.push({
+            timeMs: subbeatTimeMs,
+            x: subbeatX,
+            type: 'subbeat',
+            barNum: bar + 1,
+            beatNum: Math.floor(subbeat / 2) + 1,
+          })
+        }
+      }
+    }
+  }
   
   return (
-    <g className="timeline-track ruler-track">
+    <g className="timeline-track ruler-track" style={{ pointerEvents: 'none' }}>
       {/* Background */}
       <rect
         x={TRACK_LABEL_WIDTH}
@@ -159,34 +257,64 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
         width={width - TRACK_LABEL_WIDTH}
         height={track.height}
         fill="var(--bg-deepest)"
-        opacity="0.8"
+        pointerEvents="none"
       />
       
-      {/* Beat markers */}
-      {beats.map(({ position, beat, isBar }) => (
-        <g key={beat}>
-          <line
-            x1={TRACK_LABEL_WIDTH + position}
-            y1={yOffset}
-            x2={TRACK_LABEL_WIDTH + position}
-            y2={yOffset + track.height}
-            stroke={isBar ? track.color : 'var(--border-subtle)'}
-            strokeWidth={isBar ? 1.5 : 0.5}
-            opacity={isBar ? 0.8 : 0.3}
-          />
-          {isBar && (
-            <text
-              x={TRACK_LABEL_WIDTH + position + 4}
-              y={yOffset + 20}
-              fill={track.color}
-              fontSize="11"
-              fontFamily="var(--font-mono)"
-            >
-              {Math.floor(beat / 4) + 1}
-            </text>
-          )}
-        </g>
-      ))}
+      {/* 🎼 Musical Grid Lines */}
+      {gridLines.map(({ timeMs, x, type, barNum, beatNum }) => {
+        const isBar = type === 'bar'
+        const isBeat = type === 'beat'
+        
+        // Colors and sizes based on type
+        const strokeColor = isBar ? '#3b82f6' : isBeat ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.15)'
+        const strokeWidth = isBar ? 1.5 : isBeat ? 0.75 : 0.5
+        const lineY1 = isBar ? yOffset : isBeat ? yOffset + 12 : yOffset + 20
+        
+        return (
+          <g key={`${barNum}-${beatNum}-${type}`} style={{ pointerEvents: 'none' }}>
+            {/* Grid line */}
+            <line
+              x1={x}
+              y1={lineY1}
+              x2={x}
+              y2={yOffset + track.height}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              pointerEvents="none"
+            />
+            
+            {/* Bar number label */}
+            {isBar && (
+              <text
+                x={x + 4}
+                y={yOffset + 14}
+                fill="#3b82f6"
+                fontSize="12"
+                fontFamily="var(--font-mono)"
+                fontWeight="700"
+                pointerEvents="none"
+              >
+                {barNum}
+              </text>
+            )}
+            
+            {/* Beat number (small, subtle) */}
+            {isBeat && viewport.pixelsPerSecond > 60 && (
+              <text
+                x={x + 2}
+                y={yOffset + 22}
+                fill="rgba(59, 130, 246, 0.4)"
+                fontSize="8"
+                fontFamily="var(--font-mono)"
+                fontWeight="500"
+                pointerEvents="none"
+              >
+                .{beatNum}
+              </text>
+            )}
+          </g>
+        )
+      })}
       
       {/* Track label */}
       <rect
@@ -195,6 +323,7 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
         width={TRACK_LABEL_WIDTH}
         height={track.height}
         fill="var(--bg-deep)"
+        pointerEvents="none"
       />
       <text
         x={8}
@@ -203,8 +332,23 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
         fontSize="10"
         fontFamily="var(--font-mono)"
         fontWeight="600"
+        pointerEvents="none"
       >
-        {track.label}
+        BARS
+      </text>
+      
+      {/* BPM indicator */}
+      <text
+        x={TRACK_LABEL_WIDTH - 8}
+        y={yOffset + track.height / 2 + 4}
+        fill="rgba(59, 130, 246, 0.6)"
+        fontSize="9"
+        fontFamily="var(--font-mono)"
+        fontWeight="500"
+        textAnchor="end"
+        pointerEvents="none"
+      >
+        {bpm}
       </text>
     </g>
   )
@@ -213,7 +357,8 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
 RulerTrackRenderer.displayName = 'RulerTrackRenderer'
 
 /**
- * Generic Track Renderer - Placeholder for waveform/vibe/fx
+ * 🎼 WAVE 2011: Generic Track Renderer with Musical Grid
+ * Shows beat grid lines for visual quantize feedback
  */
 const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
   track,
@@ -222,10 +367,39 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
   width,
   yOffset,
 }) => {
-  const beats = calculateBeatPositions(viewport, bpm, width)
+  // 🎼 Calculate musical grid for visual feedback
+  const msPerBeat = 60000 / bpm
+  const msPerBar = msPerBeat * 4
+  const pixelsPerMs = viewport.pixelsPerSecond / 1000
+  const showBeats = viewport.pixelsPerSecond > 30
+  
+  // Build grid positions
+  const gridLines: { x: number; isBar: boolean }[] = []
+  const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
+  const lastBar = Math.ceil(viewport.endTime / msPerBar)
+  
+  for (let bar = firstBar; bar <= lastBar; bar++) {
+    const barTimeMs = bar * msPerBar
+    const barX = TRACK_LABEL_WIDTH + (barTimeMs - viewport.startTime) * pixelsPerMs
+    
+    if (barX >= TRACK_LABEL_WIDTH && barX <= width) {
+      gridLines.push({ x: barX, isBar: true })
+    }
+    
+    // Add beat lines
+    if (showBeats) {
+      for (let beat = 1; beat < 4; beat++) {
+        const beatTimeMs = barTimeMs + (beat * msPerBeat)
+        const beatX = TRACK_LABEL_WIDTH + (beatTimeMs - viewport.startTime) * pixelsPerMs
+        if (beatX >= TRACK_LABEL_WIDTH && beatX <= width) {
+          gridLines.push({ x: beatX, isBar: false })
+        }
+      }
+    }
+  }
   
   return (
-    <g className={`timeline-track ${track.type}-track`}>
+    <g className={`timeline-track ${track.type}-track`} style={{ pointerEvents: 'none' }}>
       {/* Background */}
       <rect
         x={TRACK_LABEL_WIDTH}
@@ -234,19 +408,20 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         height={track.height}
         fill="var(--bg-deep)"
         opacity="0.6"
+        pointerEvents="none"
       />
       
-      {/* Grid lines (subtle) */}
-      {beats.filter(b => b.isBar).map(({ position, beat }) => (
+      {/* 🎼 WAVE 2011: Musical Grid Lines (subtle quantize visual) */}
+      {gridLines.map(({ x, isBar }, i) => (
         <line
-          key={beat}
-          x1={TRACK_LABEL_WIDTH + position}
+          key={i}
+          x1={x}
           y1={yOffset}
-          x2={TRACK_LABEL_WIDTH + position}
+          x2={x}
           y2={yOffset + track.height}
-          stroke="var(--border-subtle)"
-          strokeWidth={0.5}
-          opacity={0.2}
+          stroke={isBar ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)'}
+          strokeWidth={isBar ? 1 : 0.5}
+          pointerEvents="none"
         />
       ))}
       
@@ -259,6 +434,7 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         fontFamily="var(--font-mono)"
         textAnchor="middle"
         opacity="0.3"
+        pointerEvents="none"
       >
         {track.type === 'waveform' ? '〰️ DROP AUDIO FILE' : 
          track.type === 'vibe' ? '⬛ DRAG VIBES HERE' : 
@@ -272,6 +448,7 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         width={TRACK_LABEL_WIDTH}
         height={track.height}
         fill="var(--bg-surface)"
+        pointerEvents="none"
       />
       <rect
         x={0}
@@ -279,6 +456,7 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         width={4}
         height={track.height}
         fill={track.color}
+        pointerEvents="none"
       />
       <text
         x={12}
@@ -287,6 +465,7 @@ const GenericTrackRenderer: React.FC<TrackRendererProps> = memo(({
         fontSize="10"
         fontFamily="var(--font-mono)"
         fontWeight="600"
+        pointerEvents="none"
       >
         {track.label}
       </text>
@@ -318,7 +497,7 @@ const Playhead: React.FC<PlayheadProps> = memo(({
   if (position < TRACK_LABEL_WIDTH || position > 2000) return null
   
   return (
-    <g className="timeline-playhead">
+    <g className="timeline-playhead" style={{ pointerEvents: 'none' }}>
       {/* Playhead line */}
       <line
         x1={position}
@@ -327,11 +506,13 @@ const Playhead: React.FC<PlayheadProps> = memo(({
         y2={height}
         stroke="#ff0055"
         strokeWidth={2}
+        pointerEvents="none"
       />
       {/* Playhead triangle */}
       <polygon
         points={`${position - 6},0 ${position + 6},0 ${position},10`}
         fill="#ff0055"
+        pointerEvents="none"
       />
     </g>
   )
@@ -350,6 +531,19 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   analysisData,
   durationMs = 60000, // Default 1 minute if no audio
   onSeek,
+  // WAVE 2006 props
+  clips = [],
+  selectedClipIds = new Set(),
+  snapEnabled = true,
+  snapPosition = null,
+  onClipSelect,
+  onClipMove,
+  onClipResize,
+  onClipDrop,
+  onClipContextMenu,
+  followEnabled = true,
+  onFollowToggle,
+  onUserScroll,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 1200, height: 300 })
@@ -358,6 +552,52 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     endTime: 12000, // 12 seconds
     pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
   })
+  
+  // WAVE 2006: Auto-follow playhead
+  const lastUserScrollRef = useRef<number>(0)
+  const USER_SCROLL_COOLDOWN = 2000 // Wait 2s after user scrolls before auto-following
+  
+  useEffect(() => {
+    // Only auto-follow when playing and follow is enabled
+    if (!isPlaying || !followEnabled) return
+    
+    // Don't interrupt if user recently scrolled
+    const timeSinceUserScroll = Date.now() - lastUserScrollRef.current
+    if (timeSinceUserScroll < USER_SCROLL_COOLDOWN) return
+    
+    const viewportDuration = viewport.endTime - viewport.startTime
+    const viewportWidth = dimensions.width - TRACK_LABEL_WIDTH
+    
+    // Calculate playhead position in viewport
+    const playheadRelative = currentTime - viewport.startTime
+    const playheadPosition = (playheadRelative / 1000) * viewport.pixelsPerSecond
+    
+    // Define "safe zone" - playhead should stay in left 80% of viewport
+    const safeZoneEnd = viewportWidth * 0.8
+    
+    // If playhead exits right side of safe zone, scroll so playhead is at 10% from left
+    if (playheadPosition > safeZoneEnd || playheadPosition < 0) {
+      // Position playhead at 10% from left edge (not center)
+      const targetStart = currentTime - viewportDuration * 0.1
+      const newStart = Math.max(0, targetStart)
+      
+      setViewport(prev => ({
+        ...prev,
+        startTime: newStart,
+        endTime: newStart + viewportDuration,
+      }))
+    }
+  }, [currentTime, isPlaying, followEnabled, viewport.pixelsPerSecond, dimensions.width])
+  
+  // WAVE 2006: Drag state
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [dragTrackId, setDragTrackId] = useState<string | null>(null)
+  const [dragTimeMs, setDragTimeMs] = useState<number | null>(null)
+  
+  // WAVE 2006: Clip drag state
+  const [draggingClipId, setDraggingClipId] = useState<string | null>(null)
+  const [resizingClip, setResizingClip] = useState<{ id: string; edge: 'left' | 'right' } | null>(null)
+  const dragStartRef = useRef<{ x: number; startMs: number } | null>(null)
   
   // Track the container size
   useEffect(() => {
@@ -405,7 +645,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           }
         })
       } else {
-        // Pan
+        // Pan - user is manually scrolling
+        lastUserScrollRef.current = Date.now()  // Mark user scroll time
         const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
         setViewport(prev => {
           const newStart = Math.max(0, prev.startTime + panAmount)
@@ -438,6 +679,192 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
   }, [viewport, onSeek])
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2006: DRAG & DROP FROM ARSENAL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const getTrackAtY = useCallback((y: number): string | null => {
+    let accY = 0
+    for (const track of DEFAULT_TRACKS) {
+      if (y >= accY && y < accY + track.height) {
+        return track.id
+      }
+      accY += track.height
+    }
+    return null
+  }, [])
+  
+  const getTimeAtX = useCallback((x: number): number => {
+    const offsetX = x - TRACK_LABEL_WIDTH
+    return viewport.startTime + (offsetX / viewport.pixelsPerSecond) * 1000
+  }, [viewport])
+  
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    const types = e.dataTransfer.types
+    
+    // Detect drag type using TYPE-SPECIFIC mime types
+    const isVibeDrag = types.includes('application/luxsync-vibe')
+    const isFxDrag = types.includes('application/luxsync-fx')
+    const isClipDrag = isVibeDrag || isFxDrag
+    
+    if (!isClipDrag) {
+      // Not a clip drag - don't interfere
+      return
+    }
+    
+    // Get drop position
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const trackId = getTrackAtY(y)
+    const timeMs = getTimeAtX(x)
+    
+    // Determine if drop is valid (vibe→vibe, fx→fx)
+    const isVibeTrack = trackId === 'vibe'
+    const isFxTrack = trackId === 'fx1' || trackId === 'fx2'
+    const isValidDrop = (isVibeDrag && isVibeTrack) || (isFxDrag && isFxTrack)
+    const isTrackArea = isVibeTrack || isFxTrack
+    
+    if (isValidDrop) {
+      // Valid drop - allow and show highlight
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+      setDragTrackId(trackId)
+      setDragTimeMs(timeMs)
+    } else if (isTrackArea) {
+      // Invalid drop (cross-type) - show forbidden cursor
+      // Don't preventDefault - browser will show forbidden cursor naturally
+      setIsDragOver(false)
+      setDragTrackId(null)
+      setDragTimeMs(null)
+    } else {
+      // Over ruler/waveform - allow cursor but no highlight
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(false)
+      setDragTrackId(null)
+      setDragTimeMs(null)
+    }
+  }, [getTrackAtY, getTimeAtX])
+  
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false)
+    setDragTrackId(null)
+    setDragTimeMs(null)
+  }, [])
+  
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    setDragTrackId(null)
+    setDragTimeMs(null)
+    
+    const data = e.dataTransfer.getData('application/luxsync-clip')
+    if (!data) return
+    
+    const payload = deserializeDragPayload(data)
+    if (!payload) return
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    
+    const trackId = getTrackAtY(y)
+    const timeMs = getTimeAtX(x)
+    
+    if (!trackId) return
+    
+    // Validate drop target matches clip type
+    const isVibeTrack = trackId === 'vibe'
+    const isFxTrack = trackId === 'fx1' || trackId === 'fx2'
+    
+    if ((payload.clipType === 'vibe' && isVibeTrack) || 
+        (payload.clipType === 'fx' && isFxTrack)) {
+      onClipDrop?.(payload, timeMs, trackId)
+      console.log(`[TimelineCanvas] 🎬 Dropped ${payload.clipType} at ${(timeMs/1000).toFixed(2)}s on track ${trackId}`)
+    }
+  }, [getTrackAtY, getTimeAtX, onClipDrop])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2006: CLIP INTERACTION
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const handleClipSelect = useCallback((clipId: string, e: React.MouseEvent) => {
+    onClipSelect?.(clipId, e.shiftKey || e.ctrlKey || e.metaKey)
+  }, [onClipSelect])
+  
+  const handleClipDragStart = useCallback((clipId: string, e: React.MouseEvent) => {
+    const clip = clips.find(c => c.id === clipId)
+    if (!clip) return
+    
+    setDraggingClipId(clipId)
+    dragStartRef.current = { x: e.clientX, startMs: clip.startMs }
+  }, [clips])
+  
+  const handleClipResizeStart = useCallback((clipId: string, edge: 'left' | 'right', e: React.MouseEvent) => {
+    setResizingClip({ id: clipId, edge })
+    dragStartRef.current = { x: e.clientX, startMs: 0 }
+  }, [])
+  
+  // Global mouse move/up for drag operations
+  useEffect(() => {
+    if (!draggingClipId && !resizingClip) return
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStartRef.current) return
+      
+      const deltaX = e.clientX - dragStartRef.current.x
+      const deltaMs = (deltaX / viewport.pixelsPerSecond) * 1000
+      
+      if (draggingClipId) {
+        const newStartMs = dragStartRef.current.startMs + deltaMs
+        onClipMove?.(draggingClipId, newStartMs)
+      } else if (resizingClip) {
+        const clip = clips.find(c => c.id === resizingClip.id)
+        if (clip) {
+          const currentTime = resizingClip.edge === 'left' ? clip.startMs : clip.endMs
+          const newTimeMs = currentTime + deltaMs
+          onClipResize?.(resizingClip.id, resizingClip.edge, newTimeMs)
+        }
+      }
+    }
+    
+    const handleMouseUp = () => {
+      setDraggingClipId(null)
+      setResizingClip(null)
+      dragStartRef.current = null
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [draggingClipId, resizingClip, viewport.pixelsPerSecond, clips, onClipMove, onClipResize])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2006: CLIP RENDERING HELPERS
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const getTrackYOffset = useCallback((trackId: string): number => {
+    let offset = 0
+    for (const track of DEFAULT_TRACKS) {
+      if (track.id === trackId) return offset
+      offset += track.height
+    }
+    return offset
+  }, [])
+  
+  const getTrackHeight = useCallback((trackId: string): number => {
+    const track = DEFAULT_TRACKS.find(t => t.id === trackId)
+    return track?.height ?? 40
+  }, [])
+
   // Calculate waveform track position (second track, after ruler)
   const waveformTrackIndex = DEFAULT_TRACKS.findIndex(t => t.type === 'waveform')
   const waveformTrackY = waveformTrackIndex >= 0 
@@ -448,22 +875,68 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   return (
     <div 
       ref={containerRef}
-      className="timeline-canvas-container"
+      className={`timeline-canvas-container ${isDragOver ? 'drag-over' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <svg
         className="timeline-canvas"
         width={dimensions.width}
         height={Math.max(dimensions.height, totalTracksHeight)}
         onClick={handleClick}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
-        {/* Background */}
+        {/* Background - pointer events none to let SVG handle drag */}
         <rect
           x={0}
           y={0}
           width={dimensions.width}
           height={totalTracksHeight}
           fill="var(--bg-deepest)"
+          pointerEvents="none"
         />
+        
+        {/* WAVE 2006: Time Grid - aligned with Ruler
+            - Seconds: solid lines (visible)
+            - 250ms subdivisions: dotted (subtle, only when zoomed)
+        */}
+        {(() => {
+          const lines: React.ReactNode[] = []
+          const pixelsPerMs = viewport.pixelsPerSecond / 1000
+          
+          // Show 250ms subdivisions only when zoomed in enough
+          const showSubdivisions = viewport.pixelsPerSecond > 50
+          const gridInterval = showSubdivisions ? 250 : 1000
+          
+          const firstGrid = Math.floor(viewport.startTime / gridInterval) * gridInterval
+          const lastGrid = Math.ceil(viewport.endTime / gridInterval) * gridInterval
+          
+          for (let timeMs = firstGrid; timeMs <= lastGrid; timeMs += gridInterval) {
+            const x = TRACK_LABEL_WIDTH + (timeMs - viewport.startTime) * pixelsPerMs
+            
+            // Skip if outside visible area
+            if (x < TRACK_LABEL_WIDTH || x > dimensions.width) continue
+            
+            const isSecond = timeMs % 1000 === 0
+            
+            lines.push(
+              <line
+                key={`grid-${timeMs}`}
+                x1={x}
+                y1={32} // Start below ruler (ruler height = 32)
+                x2={x}
+                y2={totalTracksHeight}
+                stroke={isSecond ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.08)'}
+                strokeWidth={isSecond ? 1 : 0.5}
+                strokeDasharray={isSecond ? 'none' : '2 6'}
+                pointerEvents="none"
+              />
+            )
+          }
+          return lines
+        })()}
         
         {/* Render tracks */}
         {DEFAULT_TRACKS.map((track, index) => {
@@ -486,6 +959,77 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
             />
           )
         })}
+        
+        {/* WAVE 2006: Render Clips */}
+        {clips.map(clip => {
+          const x = TRACK_LABEL_WIDTH + ((clip.startMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond
+          const width = ((clip.endMs - clip.startMs) / 1000) * viewport.pixelsPerSecond
+          const y = getTrackYOffset(clip.trackId)
+          const height = getTrackHeight(clip.trackId) - 4 // Padding
+          
+          // Skip if completely outside viewport
+          if (x + width < TRACK_LABEL_WIDTH || x > dimensions.width) return null
+          
+          return (
+            <ClipRenderer
+              key={clip.id}
+              clip={clip}
+              x={Math.max(TRACK_LABEL_WIDTH, x)}
+              width={width}
+              y={y + 2}
+              height={height}
+              isSelected={selectedClipIds.has(clip.id)}
+              onSelect={handleClipSelect}
+              onDragStart={handleClipDragStart}
+              onResizeStart={handleClipResizeStart}
+              onContextMenu={onClipContextMenu}
+            />
+          )
+        })}
+        
+        {/* WAVE 2006: Snap Indicator Line */}
+        {snapEnabled && snapPosition !== null && (
+          <line
+            x1={TRACK_LABEL_WIDTH + ((snapPosition - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
+            y1={0}
+            x2={TRACK_LABEL_WIDTH + ((snapPosition - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
+            y2={totalTracksHeight}
+            stroke="#22d3ee"
+            strokeWidth={2}
+            opacity={0.8}
+            strokeDasharray="4 2"
+            className="snap-indicator"
+            pointerEvents="none"
+          />
+        )}
+        
+        {/* WAVE 2006: Drop Target Highlight */}
+        {isDragOver && dragTrackId && dragTimeMs !== null && (
+          <>
+            {/* Track highlight */}
+            <rect
+              x={TRACK_LABEL_WIDTH}
+              y={getTrackYOffset(dragTrackId)}
+              width={dimensions.width - TRACK_LABEL_WIDTH}
+              height={getTrackHeight(dragTrackId)}
+              fill="rgba(34, 211, 238, 0.1)"
+              stroke="#22d3ee"
+              strokeWidth={2}
+              strokeDasharray="8 4"
+              pointerEvents="none"
+            />
+            {/* Drop position line */}
+            <line
+              x1={TRACK_LABEL_WIDTH + ((dragTimeMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
+              y1={getTrackYOffset(dragTrackId)}
+              x2={TRACK_LABEL_WIDTH + ((dragTimeMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
+              y2={getTrackYOffset(dragTrackId) + getTrackHeight(dragTrackId)}
+              stroke="#22d3ee"
+              strokeWidth={3}
+              pointerEvents="none"
+            />
+          </>
+        )}
         
         {/* Playhead */}
         <Playhead
@@ -510,6 +1054,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
               y2={y}
               stroke="var(--border-subtle)"
               strokeWidth={1}
+              pointerEvents="none"
             />
           )
         })}
@@ -542,8 +1087,26 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         </div>
       )}
       
-      {/* Zoom indicator */}
-      <div className="timeline-zoom-indicator">
+      {/* WAVE 2006: Status Bar */}
+      <div className="timeline-status-bar">
+        {/* Snap Toggle */}
+        <button 
+          className={`status-btn ${snapEnabled ? 'active' : ''}`}
+          title="Magnetic Grid (Snap to Beats)"
+        >
+          🧲 {snapEnabled ? 'SNAP ON' : 'SNAP OFF'}
+        </button>
+        
+        {/* Follow Toggle */}
+        <button 
+          className={`status-btn ${followEnabled ? 'active' : ''}`}
+          onClick={onFollowToggle}
+          title="Auto-scroll to follow playhead"
+        >
+          🎯 {followEnabled ? 'FOLLOW' : 'FREE'}
+        </button>
+        
+        {/* Zoom indicator */}
         <span className="zoom-value">{Math.round(viewport.pixelsPerSecond)}px/s</span>
         <span className="zoom-hint">Ctrl+Scroll to zoom</span>
       </div>

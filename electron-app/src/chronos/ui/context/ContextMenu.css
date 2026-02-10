@@ -1,0 +1,88 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📋 CONTEXT MENU STYLES - WAVE 2007: DEEP CONTROL
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 180px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  animation: menu-appear 0.1s ease-out;
+}
+
+@keyframes menu-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.menu-item:hover:not(.disabled) {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.menu-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menu-item.danger {
+  color: #ef4444;
+}
+
+.menu-item.danger:hover:not(.disabled) {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.item-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.item-label {
+  flex: 1;
+}
+
+.item-shortcut {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  padding: 2px 4px;
+  background: var(--bg-deep);
+  border-radius: 3px;
+}
+
+.menu-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 8px;
+}

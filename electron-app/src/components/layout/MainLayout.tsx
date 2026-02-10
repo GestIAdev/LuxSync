@@ -5,6 +5,7 @@
  * WAVE 39.9: FLEXBOX STRUCTURAL LAYOUT - TitleBar ocupa espacio real (no position:fixed)
  * WAVE 375: ZEN MODE - Sidebar collapse for maximum viewport
  * WAVE 375.2: COMMAND DECK - Replaces GlobalEffectsBar (140px height)
+ * WAVE 2009: CHRONOS FULLSCREEN - Hide CommandDeck in Chronos view
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -14,13 +15,26 @@ import { CommandDeck } from '../commandDeck'
 import BlackoutOverlay from './BlackoutOverlay'
 import TitleBar from './TitleBar'
 import { useEffectsStore } from '../../stores'
+import { useNavigationStore } from '../../stores/navigationStore'
 import './MainLayout.css'
 
 const MainLayout: React.FC = () => {
   const { blackout } = useEffectsStore()
+  const { activeTab } = useNavigationStore()
+  
+  // 🎬 WAVE 2009: Chronos is a full-screen experience
+  const isChronosView = activeTab === 'chronos'
   
   // 🧘 WAVE 375: Zen Mode - Sidebar collapse state
   const [isZenMode, setIsZenMode] = useState(false)
+  
+  // 🎬 WAVE 2009: Auto-enable Zen Mode when entering Chronos
+  useEffect(() => {
+    if (isChronosView && !isZenMode) {
+      setIsZenMode(true)
+      console.log('[MainLayout] 🎬 Chronos detected → Auto Zen Mode')
+    }
+  }, [isChronosView])
   
   // Toggle function (passed to TitleBar)
   const toggleZenMode = useCallback(() => {
@@ -65,7 +79,8 @@ const MainLayout: React.FC = () => {
       </div>
       
       {/* 🎛️ WAVE 375: Command Deck - 140px bottom bar, full width */}
-      <CommandDeck />
+      {/* 🎬 WAVE 2009: Hidden in Chronos (Chronos has its own Arsenal Dock) */}
+      {!isChronosView && <CommandDeck />}
       
       {/* Blackout Overlay */}
       {blackout && <BlackoutOverlay />}

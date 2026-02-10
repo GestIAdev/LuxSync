@@ -56,14 +56,18 @@ export interface WaveformLayerProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COLOR PALETTE - CYBERPUNK ENERGY HEATMAP
+// COLOR PALETTE - WAVE 2006: HIGH CONTRAST ENERGY HEATMAP
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Energy to color mapping (0-1 energy -> color)
- * Low energy: Deep purple/blue (chill)
- * Medium energy: Cyan (groove)
- * High energy: White/Hot cyan (drop)
+ * 
+ * WAVE 2006 ENHANCEMENT:
+ * - Low energy: Deep purple/blue (chill) - DARKER
+ * - Medium energy: BRIGHT CYAN (groove) - MORE SATURATED
+ * - High energy: WHITE (drop) - PURE WHITE for peaks
+ * 
+ * Increased contrast for better readability
  */
 function energyToColor(energy: number, bass: number, high: number): string {
   // Normalize inputs
@@ -71,45 +75,48 @@ function energyToColor(energy: number, bass: number, high: number): string {
   const b = Math.min(1, Math.max(0, bass))
   const h = Math.min(1, Math.max(0, high))
   
-  // Base hue: 260 (purple) -> 180 (cyan) -> 180 (white) based on energy
-  // Saturation: Higher for mid-energy, lower for extremes
-  // Lightness: 30% (dark) -> 50% (vibrant) -> 90% (white hot)
-  
   let hue: number
   let saturation: number
   let lightness: number
   
-  if (e < 0.3) {
-    // Low energy: Purple/Blue (chill zone)
-    hue = 260 - (e / 0.3) * 40  // 260 -> 220
-    saturation = 60 + e * 40    // 60% -> 72%
-    lightness = 25 + e * 25     // 25% -> 32%
-  } else if (e < 0.7) {
-    // Medium energy: Cyan (groove zone)
-    const t = (e - 0.3) / 0.4
-    hue = 220 - t * 40           // 220 -> 180
-    saturation = 72 + t * 18     // 72% -> 90%
-    lightness = 32 + t * 20      // 32% -> 52%
+  if (e < 0.25) {
+    // Low energy: Deep purple/blue (chill zone) - DARKER
+    const t = e / 0.25
+    hue = 270 - t * 30           // 270 (purple) -> 240 (blue)
+    saturation = 50 + t * 30     // 50% -> 80%
+    lightness = 15 + t * 15      // 15% -> 30% (darker base)
+  } else if (e < 0.6) {
+    // Medium energy: BRIGHT CYAN (groove zone) - HIGHER CONTRAST
+    const t = (e - 0.25) / 0.35
+    hue = 240 - t * 60           // 240 (blue) -> 180 (cyan)
+    saturation = 80 + t * 15     // 80% -> 95%
+    lightness = 30 + t * 30      // 30% -> 60% (bright cyan)
+  } else if (e < 0.85) {
+    // High energy: Hot cyan (intense) 
+    const t = (e - 0.6) / 0.25
+    hue = 180                    // Pure cyan
+    saturation = 95 - t * 25     // 95% -> 70% (desaturating towards white)
+    lightness = 60 + t * 25      // 60% -> 85%
   } else {
-    // High energy: Hot cyan to white (drop zone)
-    const t = (e - 0.7) / 0.3
-    hue = 180                    // Stay cyan
-    saturation = 90 - t * 40     // 90% -> 50% (whiter)
-    lightness = 52 + t * 38      // 52% -> 90% (brighter)
+    // Peak energy: PURE WHITE (drops/transients)
+    const t = (e - 0.85) / 0.15
+    hue = 180                    // Stays cyan-ish
+    saturation = 70 - t * 60     // 70% -> 10% (almost desaturated)
+    lightness = 85 + t * 13      // 85% -> 98% (near white)
   }
   
-  // Bass boost: Shift towards purple/magenta
-  if (b > 0.5) {
-    const bassInfluence = (b - 0.5) * 0.3
-    hue = hue + (280 - hue) * bassInfluence
-    saturation = Math.min(100, saturation + bassInfluence * 20)
+  // Bass boost: Shift towards purple/magenta (stronger influence)
+  if (b > 0.4) {
+    const bassInfluence = (b - 0.4) * 0.5
+    hue = hue + (290 - hue) * bassInfluence
+    saturation = Math.min(100, saturation + bassInfluence * 15)
   }
   
-  // High frequency boost: Shift towards white/cyan
-  if (h > 0.6) {
-    const highInfluence = (h - 0.6) * 0.5
-    lightness = Math.min(95, lightness + highInfluence * 30)
-    saturation = Math.max(30, saturation - highInfluence * 20)
+  // High frequency boost: Shift towards white
+  if (h > 0.5) {
+    const highInfluence = (h - 0.5) * 0.6
+    lightness = Math.min(98, lightness + highInfluence * 25)
+    saturation = Math.max(5, saturation - highInfluence * 30)
   }
   
   return `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`

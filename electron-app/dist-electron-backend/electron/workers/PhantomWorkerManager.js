@@ -74,21 +74,26 @@ export class PhantomWorkerManager {
         // Setup IPC handlers for phantom responses
         this.setupIpcHandlers();
         // Load the phantom worker HTML
-        const workerPath = path.join(__dirname, 'phantomWorker.html');
-        // Check if file exists (dev vs prod)
-        if (fs.existsSync(workerPath)) {
-            await this.phantomWindow.loadFile(workerPath);
-        }
-        else {
-            // In development, might be in different location
-            const devPath = path.join(app.getAppPath(), 'electron', 'workers', 'phantomWorker.html');
-            if (fs.existsSync(devPath)) {
-                await this.phantomWindow.loadFile(devPath);
+        // Priority order: 1) dist-electron (dev/build), 2) extraResources (packaged), 3) source (dev)
+        const possiblePaths = [
+            path.join(__dirname, 'phantomWorker.html'), // dist-electron/
+            path.join(process.resourcesPath || '', 'phantomWorker.html'), // extraResources (packaged)
+            path.join(app.getAppPath(), 'electron', 'workers', 'phantomWorker.html'), // source (dev)
+            path.join(app.getAppPath(), 'dist-electron', 'phantomWorker.html'), // dist-electron from app root
+        ];
+        let workerPath = null;
+        for (const p of possiblePaths) {
+            console.log(`[PhantomWorker] Checking path: ${p}`);
+            if (fs.existsSync(p)) {
+                workerPath = p;
+                console.log(`[PhantomWorker] ✅ Found at: ${p}`);
+                break;
             }
-            else {
-                throw new Error(`[PhantomWorker] Cannot find phantomWorker.html at ${workerPath} or ${devPath}`);
-            }
         }
+        if (!workerPath) {
+            throw new Error(`[PhantomWorker] Cannot find phantomWorker.html in any of: ${possiblePaths.join(', ')}`);
+        }
+        await this.phantomWindow.loadFile(workerPath);
         this.isReady = true;
         console.log('[PhantomWorker] 👻 Phantom ready for audio processing!');
     }

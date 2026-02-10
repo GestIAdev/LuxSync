@@ -1,0 +1,396 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎨 ARSENAL PANEL STYLES - WAVE 2008: THE LIVING ARSENAL
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+.chronos-arsenal {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  height: 100%;
+  width: 220px;
+  min-width: 200px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+/* Recording mode indicator on container */
+.chronos-arsenal.recording {
+  border-left: 2px solid #E91E63;
+  box-shadow: inset 0 0 20px rgba(233, 30, 99, 0.15);
+}
+
+/* Header */
+.arsenal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.arsenal-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arsenal-icon {
+  font-size: 18px;
+}
+
+.arsenal-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+.arsenal-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Record Toggle Button */
+.record-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(100, 100, 100, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.record-toggle:hover {
+  background: rgba(233, 30, 99, 0.2);
+  border-color: rgba(233, 30, 99, 0.4);
+}
+
+.record-toggle.active {
+  background: rgba(233, 30, 99, 0.3);
+  border-color: #E91E63;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+.rec-dot {
+  font-size: 10px;
+  color: #888;
+}
+
+.record-toggle.active .rec-dot {
+  color: #E91E63;
+}
+
+.rec-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #888;
+  letter-spacing: 0.5px;
+}
+
+.record-toggle.active .rec-label {
+  color: #E91E63;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Mode Indicator */
+.mode-indicator {
+  padding: 8px 12px;
+  background: rgba(30, 30, 40, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mode {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.mode.recording {
+  color: #E91E63;
+}
+
+/* Content */
+.arsenal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Section */
+.arsenal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-icon {
+  font-size: 12px;
+}
+
+.section-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+/* Items Grid */
+.arsenal-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Draggable Item */
+.arsenal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border-left: 3px solid var(--item-color, var(--accent-cyan));
+  border-radius: 0 4px 4px 0;
+  cursor: grab;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  /* GPU acceleration to prevent layout thrashing */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.arsenal-item:hover {
+  background: var(--bg-elevated);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--item-color);
+}
+
+.arsenal-item:active {
+  cursor: grabbing;
+}
+
+.arsenal-item.vibe {
+  /* Vibe items have a subtle gradient */
+  background: linear-gradient(90deg, 
+    color-mix(in srgb, var(--item-color) 15%, var(--bg-deep)),
+    var(--bg-deep)
+  );
+}
+
+.arsenal-item.fx {
+  /* FX items have a different style */
+  background: linear-gradient(90deg, 
+    color-mix(in srgb, var(--item-color) 10%, var(--bg-deep)),
+    var(--bg-deep)
+  );
+}
+
+.item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.item-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+/* Drag state */
+.arsenal-item[draggable]:active,
+.arsenal-item.dragging {
+  opacity: 0.5;
+  background: var(--item-color);
+}
+
+/* Drag Ghost (created in JS) */
+.arsenal-drag-ghost {
+  position: fixed;
+  top: -100px;
+  left: -100px;
+  z-index: 10000;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Help Section */
+.arsenal-help {
+  margin-top: auto;
+  padding: 12px;
+  background: var(--bg-deepest);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.help-icon {
+  font-size: 11px;
+}
+
+/* Scrollbar */
+.arsenal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.arsenal-content::-webkit-scrollbar-track {
+  background: var(--bg-deepest);
+}
+
+.arsenal-content::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+.arsenal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EFFECTS GRID - WAVE 2008
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.vibes-grid,
+.effects-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Effect Item (from EffectRegistry) */
+.effect-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: linear-gradient(90deg, 
+    color-mix(in srgb, var(--effect-color, #666) 12%, rgba(30, 30, 40, 0.8)),
+    rgba(30, 30, 40, 0.6)
+  );
+  border-left: 3px solid var(--effect-color, #666);
+  border-radius: 0 4px 4px 0;
+  cursor: grab;
+  transition: all 0.15s ease;
+  user-select: none;
+  transform: translateZ(0);
+  will-change: transform;
+  position: relative;
+}
+
+.effect-item:hover {
+  background: linear-gradient(90deg, 
+    color-mix(in srgb, var(--effect-color, #666) 25%, rgba(40, 40, 50, 0.9)),
+    rgba(40, 40, 50, 0.7)
+  );
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.effect-item:active {
+  cursor: grabbing;
+}
+
+/* Recording mode - click instead of drag */
+.effect-item.recording-mode {
+  cursor: pointer;
+  border-left-width: 4px;
+}
+
+.effect-item.recording-mode:hover {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(233, 30, 99, 0.3);
+}
+
+.effect-item.recording-mode:active {
+  cursor: pointer;
+  transform: scale(0.98);
+}
+
+.effect-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.effect-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.effect-zone {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+.strobe-badge {
+  font-size: 10px;
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  opacity: 0.6;
+}
+
+.effect-item.has-strobe .strobe-badge {
+  animation: strobe-flash 2s linear infinite;
+}
+
+@keyframes strobe-flash {
+  0%, 90%, 100% { opacity: 0.3; }
+  95% { opacity: 1; }
+}

@@ -29,6 +29,8 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
+// ⚡ WAVE 2016.5: Engine Status - Command Center in Chronos
+import { EngineStatus } from './header/EngineStatus'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
 // � WAVE 2015: Stage Preview (real fixtures, optimized)
 import { StagePreview } from './stage/StagePreview'
@@ -617,6 +619,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         style={{ display: 'none' }}
         onChange={handleFileSelect}
       />
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * ⚡ WAVE 2016.5: ENGINE STATUS - Command Center
+       * Shows POWER/GO/AI states from global stores - control without leaving Chronos
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <EngineStatus />
       
       {/* ═══════════════════════════════════════════════════════════════════
        * TRANSPORT BAR - The Cockpit

@@ -1822,6 +1822,165 @@ export const CouncilGavelIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔬 WAVE 2016.5: CHRONOS ENGINE STATUS ICONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚡ REACTOR ICON - Engine Power Core
+ * Hexágono roto con símbolo de power integrado
+ * Representa el núcleo del motor Titan
+ */
+export const ReactorIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Hexágono roto (fragmentado) */}
+    <path 
+      d="M12 2L20 6.5V11M20 13V17.5L12 22L4 17.5V6.5L12 2Z" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    {/* Fragmento flotante (la ruptura) */}
+    <path 
+      d="M18 11.5L20 12.5" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+      opacity="0.6"
+    />
+    {/* Power symbol integrado */}
+    <path 
+      d="M12 7V12" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round"
+    />
+    <path 
+      d="M8.5 9.5C7.5 10.5 7 11.8 7 13C7 15.8 9.2 18 12 18C14.8 18 17 15.8 17 13C17 11.8 16.5 10.5 15.5 9.5" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
+/**
+ * 📡 DATA STREAM ICON - DMX/GO Output
+ * Conector XLR abstracto con flujo de datos
+ * Representa el flujo de señal DMX hacia el mundo real
+ */
+export const DataStreamIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Conector XLR estilizado (3 pines) */}
+    <circle cx="8" cy="10" r="1.5" fill={color} />
+    <circle cx="12" cy="7" r="1.5" fill={color} />
+    <circle cx="16" cy="10" r="1.5" fill={color} />
+    {/* Carcasa del conector */}
+    <path 
+      d="M5 14C5 11 7 5 12 5C17 5 19 11 19 14" 
+      stroke={color} 
+      strokeWidth="1.8" 
+      strokeLinecap="round"
+    />
+    {/* Flujo de datos saliendo (desfragmentado) */}
+    <path 
+      d="M8 16L8 18M12 15L12 19M16 16L16 18" 
+      stroke={color} 
+      strokeWidth="2" 
+      strokeLinecap="round"
+      opacity="0.9"
+    />
+    <path 
+      d="M10 20L10 21M14 20L14 22" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round"
+      opacity="0.5"
+    />
+  </svg>
+)
+
+/**
+ * 🧠 SYNAPSE ICON - AI/Selene Consciousness
+ * Nodo neuronal conectado con pulsos
+ * Representa la inteligencia artificial del sistema
+ */
+export const SynapseIcon: React.FC<IconProps> = ({ 
+  size = 20, 
+  color = 'currentColor',
+  className = '' 
+}) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    {/* Nodo central (el cerebro) */}
+    <circle cx="12" cy="12" r="4" stroke={color} strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="1.5" fill={color} />
+    {/* Dendritas (conexiones neuronales) */}
+    <path 
+      d="M12 8V4M12 20V16" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round"
+    />
+    <path 
+      d="M8.5 9.5L5.5 6.5M18.5 17.5L15.5 14.5" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round"
+    />
+    <path 
+      d="M8.5 14.5L5.5 17.5M18.5 6.5L15.5 9.5" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round"
+    />
+    {/* Nodos terminales (sinapsis) */}
+    <circle cx="4" cy="5" r="1.5" fill={color} opacity="0.7" />
+    <circle cx="20" cy="5" r="1.5" fill={color} opacity="0.7" />
+    <circle cx="4" cy="19" r="1.5" fill={color} opacity="0.7" />
+    <circle cx="20" cy="19" r="1.5" fill={color} opacity="0.7" />
+    <circle cx="12" cy="3" r="1" fill={color} opacity="0.5" />
+    <circle cx="12" cy="21" r="1" fill={color} opacity="0.5" />
+    {/* Pulsos de actividad */}
+    <path 
+      d="M8 12H4M20 12H16" 
+      stroke={color} 
+      strokeWidth="1.5" 
+      strokeLinecap="round"
+      opacity="0.6"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -1892,4 +2051,8 @@ export default {
   WhyQuestion: WhyQuestionIcon,
   SparklineMini: SparklineMiniIcon,
   CouncilGavel: CouncilGavelIcon,
+  // WAVE 2016.5: Chronos Engine Status icons
+  Reactor: ReactorIcon,
+  DataStream: DataStreamIcon,
+  Synapse: SynapseIcon,
 }

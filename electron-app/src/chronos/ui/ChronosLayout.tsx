@@ -597,7 +597,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
             // WAVE 2006: Auto-scroll
             followEnabled={followEnabled}
             onFollowToggle={handleFollowToggle}
-            // WAVE 2013: Living Clip - show pulse on growing clip
+            // WAVE 2013.5: Living Clip - only VIBE clips grow (activeVibeClipId)
             growingClipId={isRecording ? recorder.activeVibeClipId : null}
           />
         </div>

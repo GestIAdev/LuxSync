@@ -598,10 +598,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const [dragTrackId, setDragTrackId] = useState<string | null>(null)
   const [dragTimeMs, setDragTimeMs] = useState<number | null>(null)
   
-  // WAVE 2006: Clip drag state
+  // WAVE 2006 + 2013.5: Clip drag state
+  // startMs stores the ORIGINAL time at drag start (clip.startMs for move, edge time for resize)
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null)
   const [resizingClip, setResizingClip] = useState<{ id: string; edge: 'left' | 'right' } | null>(null)
-  const dragStartRef = useRef<{ x: number; startMs: number } | null>(null)
+  const dragStartRef = useRef<{ x: number; startMs: number; originalEdgeMs: number } | null>(null)
   
   // Track the container size
   useEffect(() => {
@@ -805,13 +806,19 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     if (!clip) return
     
     setDraggingClipId(clipId)
-    dragStartRef.current = { x: e.clientX, startMs: clip.startMs }
+    // WAVE 2013.5: Store original position for correct delta calculation
+    dragStartRef.current = { x: e.clientX, startMs: clip.startMs, originalEdgeMs: 0 }
   }, [clips])
   
   const handleClipResizeStart = useCallback((clipId: string, edge: 'left' | 'right', e: React.MouseEvent) => {
+    const clip = clips.find(c => c.id === clipId)
+    if (!clip) return
+    
+    // WAVE 2013.5: Store the ORIGINAL edge time at drag start
+    const originalEdgeMs = edge === 'left' ? clip.startMs : clip.endMs
     setResizingClip({ id: clipId, edge })
-    dragStartRef.current = { x: e.clientX, startMs: 0 }
-  }, [])
+    dragStartRef.current = { x: e.clientX, startMs: clip.startMs, originalEdgeMs }
+  }, [clips])
   
   // Global mouse move/up for drag operations
   useEffect(() => {
@@ -820,19 +827,20 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return
       
+      // WAVE 2013.5: Correct delta calculation
+      // deltaX is in pixels, convert to milliseconds using zoom level
       const deltaX = e.clientX - dragStartRef.current.x
       const deltaMs = (deltaX / viewport.pixelsPerSecond) * 1000
       
       if (draggingClipId) {
-        const newStartMs = dragStartRef.current.startMs + deltaMs
+        // MOVE: Calculate new position from ORIGINAL startMs + delta
+        const newStartMs = Math.max(0, dragStartRef.current.startMs + deltaMs)
         onClipMove?.(draggingClipId, newStartMs)
       } else if (resizingClip) {
-        const clip = clips.find(c => c.id === resizingClip.id)
-        if (clip) {
-          const currentTime = resizingClip.edge === 'left' ? clip.startMs : clip.endMs
-          const newTimeMs = currentTime + deltaMs
-          onClipResize?.(resizingClip.id, resizingClip.edge, newTimeMs)
-        }
+        // RESIZE: Calculate new edge time from ORIGINAL edge position + delta
+        // This prevents drift by always calculating from the fixed starting point
+        const newTimeMs = Math.max(0, dragStartRef.current.originalEdgeMs + deltaMs)
+        onClipResize?.(resizingClip.id, resizingClip.edge, newTimeMs)
       }
     }
     

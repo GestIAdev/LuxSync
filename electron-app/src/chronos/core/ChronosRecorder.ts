@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 CHRONOS RECORDER - WAVE 2013: THE LIVING CLIP
+ * 🔴 CHRONOS RECORDER - WAVE 2013.5: THE MATH FIX
  * 
  * Motor de grabación en tiempo real para el Timeline.
  * Cuando el modo REC está activo, cada click en un efecto del Arsenal
@@ -15,6 +15,9 @@
  *   - Dynamic growth: Active clips visually extend in real-time during recording
  *   - tick() method updates activeVibeClipId.durationMs every frame
  *   - Emits 'clip-growing' event for real-time UI updates
+ * WAVE 2013.5: THE MATH FIX
+ *   - VIBE-ONLY GROWTH: Only vibe clips grow, FX clips have fixed duration
+ *   - FX clips appear with defaultDurationMs and stay fixed
  * 
  * MIXBUS ROUTING:
  * - GLOBAL (strobes, meltdowns) → FX1
@@ -27,7 +30,7 @@
  * No hay demos, no hay mocks.
  * 
  * @module chronos/core/ChronosRecorder
- * @version WAVE 2013
+ * @version WAVE 2013.5
  */
 
 import { getEffectById, getEffectTrackId, type EffectMeta } from './EffectRegistry'
@@ -241,17 +244,20 @@ export class ChronosRecorder {
   }
   
   /**
-   * 🎬 WAVE 2013: THE LIVING CLIP - Tick active clips
-   * Updates the duration of any "growing" clips in real-time.
+   * 🎬 WAVE 2013.5: THE LIVING CLIP - Tick active clips
+   * Updates the duration of VIBE clips ONLY in real-time.
+   * FX clips are created with fixed duration and don't grow.
    * Called automatically from updatePlayhead during recording.
    */
   private tickActiveClips(): void {
     if (!this.state.isRecording) return
     
-    // Update active Vibe clip (Latch mode - grows until replaced)
+    // WAVE 2013.5: Only update VIBE clips (trackId === 'vibe')
+    // FX clips have fixed duration and don't grow
     if (this.state.activeVibeClipId) {
       const vibeClip = this.state.clips.find(c => c.id === this.state.activeVibeClipId)
-      if (vibeClip) {
+      // Double-check: only grow if it's actually on the vibe track
+      if (vibeClip && vibeClip.trackId === 'vibe') {
         const newDuration = this.state.playheadMs - vibeClip.startMs
         if (newDuration > 0 && newDuration !== vibeClip.durationMs) {
           vibeClip.durationMs = newDuration

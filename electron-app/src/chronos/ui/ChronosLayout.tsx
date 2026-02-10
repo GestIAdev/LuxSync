@@ -46,6 +46,8 @@ import { useAutoScroll } from '../hooks/useAutoScroll'
 import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
 // 🎬 WAVE 2010: ChronosRecorder for live recording
 import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
+// 🚀 WAVE 2013: ChronosInjector for Stage Simulator link
+import { getChronosInjector } from '../core/ChronosInjector'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import './ChronosLayout.css'
@@ -155,6 +157,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 🎬 WAVE 2010: Get recorder instance
   const recorder = useMemo(() => getChronosRecorder(), [])
   
+  // 🚀 WAVE 2013: Get injector instance for Stage Simulator link
+  const injector = useMemo(() => getChronosInjector(), [])
+  
   // 🎬 WAVE 2010: Sync recorder with BPM changes
   useEffect(() => {
     recorder.setBpm(bpm)
@@ -166,6 +171,21 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       recorder.updatePlayhead(streaming.currentTimeMs)
     }
   }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, recorder])
+  
+  // 🚀 WAVE 2013: Tick the injector during playback (sends commands to Stage)
+  useEffect(() => {
+    if (streaming.isPlaying && !isRecording) {
+      // Only inject during playback (not during recording)
+      injector.tick(clipState.clips, streaming.currentTimeMs)
+    }
+  }, [streaming.currentTimeMs, streaming.isPlaying, isRecording, injector, clipState.clips])
+  
+  // 🚀 WAVE 2013: Reset injector when playback stops or seeks
+  useEffect(() => {
+    if (!streaming.isPlaying) {
+      injector.reset()
+    }
+  }, [streaming.isPlaying, injector])
   
   // 🎬 WAVE 2010: Subscribe to recorded clips and add them to timeline
   useEffect(() => {
@@ -221,12 +241,23 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       })
     }
     
+    // 🎬 WAVE 2013: Handle real-time clip growth during recording
+    const handleClipGrowing = (data: { clip: RecordedClip }) => {
+      const clip = data.clip
+      // Update the clip's endMs in real-time (no logging to avoid spam)
+      clipState.updateClip(clip.id, {
+        endMs: clip.startMs + clip.durationMs,
+      })
+    }
+    
     recorder.on('clip-added', handleClipRecorded)
     recorder.on('clip-updated', handleClipUpdated)
+    recorder.on('clip-growing', handleClipGrowing)
     
     return () => {
       recorder.off('clip-added', handleClipRecorded)
       recorder.off('clip-updated', handleClipUpdated)
+      recorder.off('clip-growing', handleClipGrowing)
     }
   }, [recorder, clipState])
   
@@ -566,6 +597,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
             // WAVE 2006: Auto-scroll
             followEnabled={followEnabled}
             onFollowToggle={handleFollowToggle}
+            // WAVE 2013: Living Clip - show pulse on growing clip
+            growingClipId={isRecording ? recorder.activeVibeClipId : null}
           />
         </div>
         

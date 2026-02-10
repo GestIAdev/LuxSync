@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 CLIP RENDERER - WAVE 2006: THE INTERACTIVE CANVAS
+ * 🎬 CLIP RENDERER - WAVE 2013: THE LIVING CLIP
  * 
  * Renders timeline clips (vibes, effects) with interaction support.
  * 
@@ -10,9 +10,10 @@
  * - Resize handles (left/right edges)
  * - Hover states
  * - Drag feedback
+ * - WAVE 2013: "Growing" animation for active recording clips
  * 
  * @module chronos/ui/timeline/ClipRenderer
- * @version WAVE 2006
+ * @version WAVE 2013
  */
 
 import React, { useCallback, memo, useState } from 'react'
@@ -40,6 +41,9 @@ export interface ClipRendererProps {
   
   /** Is this clip selected */
   isSelected: boolean
+  
+  /** WAVE 2013: Is this clip actively growing during recording? */
+  isGrowing?: boolean
   
   /** Click handler */
   onSelect: (clipId: string, event: React.MouseEvent) => void
@@ -221,6 +225,7 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
   y,
   height,
   isSelected,
+  isGrowing = false,
   onSelect,
   onDoubleClick,
   onDragStart,
@@ -268,7 +273,7 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
   
   return (
     <g
-      className={`timeline-clip ${clip.type} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
+      className={`timeline-clip ${clip.type} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''} ${isGrowing ? 'growing' : ''}`}
       transform={`translate(${x}, ${y})`}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -277,6 +282,27 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: clip.locked ? 'not-allowed' : 'pointer' }}
     >
+      {/* WAVE 2013: Growing pulse animation (active recording indicator) */}
+      {isGrowing && (
+        <rect
+          x={width - 4}
+          y={0}
+          width={6}
+          height={height}
+          fill="#ff0055"
+          opacity={0.9}
+          rx={2}
+          ry={2}
+        >
+          <animate
+            attributeName="opacity"
+            values="0.9;0.4;0.9"
+            dur="0.5s"
+            repeatCount="indefinite"
+          />
+        </rect>
+      )}
+      
       {/* WAVE 2007: Selection halo glow (behind clip) */}
       {isSelected && (
         <rect

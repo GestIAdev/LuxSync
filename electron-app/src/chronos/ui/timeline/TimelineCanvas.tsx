@@ -55,6 +55,8 @@ export interface TimelineCanvasProps {
   followEnabled?: boolean
   onFollowToggle?: () => void
   onUserScroll?: () => void
+  // WAVE 2013: Living Clip - shows pulse animation for active recording clip
+  growingClipId?: string | null
 }
 
 interface TimelineViewport {
@@ -544,6 +546,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   followEnabled = true,
   onFollowToggle,
   onUserScroll,
+  // WAVE 2013 props
+  growingClipId = null,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 1200, height: 300 })
@@ -979,6 +983,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
               y={y + 2}
               height={height}
               isSelected={selectedClipIds.has(clip.id)}
+              isGrowing={growingClipId === clip.id}
               onSelect={handleClipSelect}
               onDragStart={handleClipDragStart}
               onResizeStart={handleClipResizeStart}

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 CHRONOS RECORDER - WAVE 2012: MIXBUS ROUTING
+ * 🔴 CHRONOS RECORDER - WAVE 2013: THE LIVING CLIP
  * 
  * Motor de grabación en tiempo real para el Timeline.
  * Cuando el modo REC está activo, cada click en un efecto del Arsenal
@@ -11,6 +11,10 @@
  * WAVE 2012: MixBus Routing + Vibe Latch Mode
  *   - FX: Auto-asigna track según MixBus (global→fx1, htp→fx2, ambient→fx3, accent→fx4)
  *   - Vibes: Latch mode (un vibe cierra el anterior automáticamente)
+ * WAVE 2013: THE LIVING CLIP
+ *   - Dynamic growth: Active clips visually extend in real-time during recording
+ *   - tick() method updates activeVibeClipId.durationMs every frame
+ *   - Emits 'clip-growing' event for real-time UI updates
  * 
  * MIXBUS ROUTING:
  * - GLOBAL (strobes, meltdowns) → FX1
@@ -23,7 +27,7 @@
  * No hay demos, no hay mocks.
  * 
  * @module chronos/core/ChronosRecorder
- * @version WAVE 2012
+ * @version WAVE 2013
  */
 
 import { getEffectById, getEffectTrackId, type EffectMeta } from './EffectRegistry'
@@ -103,6 +107,7 @@ export type RecorderEventType =
   | 'clip-added'
   | 'clip-removed'
   | 'clip-updated'   // WAVE 2012: Latch mode - vibe duration changed
+  | 'clip-growing'   // WAVE 2013: Real-time clip growth during recording
   | 'playhead-update'
 
 type EventCallback = (data: any) => void
@@ -230,6 +235,38 @@ export class ChronosRecorder {
   updatePlayhead(positionMs: number): void {
     this.state.playheadMs = positionMs
     this.emit('playhead-update', { playheadMs: positionMs })
+    
+    // 🎬 WAVE 2013: Tick the living clip
+    this.tickActiveClips()
+  }
+  
+  /**
+   * 🎬 WAVE 2013: THE LIVING CLIP - Tick active clips
+   * Updates the duration of any "growing" clips in real-time.
+   * Called automatically from updatePlayhead during recording.
+   */
+  private tickActiveClips(): void {
+    if (!this.state.isRecording) return
+    
+    // Update active Vibe clip (Latch mode - grows until replaced)
+    if (this.state.activeVibeClipId) {
+      const vibeClip = this.state.clips.find(c => c.id === this.state.activeVibeClipId)
+      if (vibeClip) {
+        const newDuration = this.state.playheadMs - vibeClip.startMs
+        if (newDuration > 0 && newDuration !== vibeClip.durationMs) {
+          vibeClip.durationMs = newDuration
+          // Emit growing event for real-time visual update
+          this.emit('clip-growing', { clip: vibeClip })
+        }
+      }
+    }
+  }
+  
+  /**
+   * 🎯 Get current active vibe clip ID (for UI indicators)
+   */
+  get activeVibeClipId(): string | null {
+    return this.state.activeVibeClipId
   }
   
   /**

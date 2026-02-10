@@ -1131,6 +1131,35 @@ export class TitanEngine extends EventEmitter {
   }
   
   /**
+   * 🎨 WAVE 2019.6: Force Palette Refresh
+   * 
+   * Regenera la paleta usando el color constitution del Vibe activo.
+   * Útil para sincronizar Stage color cuando el Timeline cambia de Vibe.
+   * 
+   * NO requiere audio - usa energía simulada para generar paleta "idle" del Vibe.
+   */
+  public forcePaletteRefresh(): void {
+    const vibeProfile = this.vibeManager.getActiveVibe()
+    const constitution = this.vibeManager.getColorConstitution()
+    
+    // Generar paleta con energía neutral (0.3) para obtener "color base" del Vibe
+    const mockAudio: ExtendedAudioAnalysis = {
+      energy: 0.3,
+      mood: 'neutral',
+      bass: 0.2,
+      mid: 0.3,
+      treble: 0.2,
+    }
+    
+    const selenePalette = SeleneColorEngine.generate(mockAudio, constitution)
+    const palette = this.selenePaletteToColorPalette(selenePalette)
+    this.state.lastPalette = palette
+    
+    console.log(`[TitanEngine] 🎨 FORCED PALETTE REFRESH for vibe: ${vibeProfile.id}`)
+    console.log(`[TitanEngine] 🎨 New palette: primary=${selenePalette.primary.h.toFixed(0)}° accent=${selenePalette.accent.h.toFixed(0)}°`)
+  }
+  
+  /**
    * 🧬 WAVE 500: Kill Switch para la Consciencia
    * 
    * Cuando enabled = false, Selene V2 se apaga y el sistema vuelve

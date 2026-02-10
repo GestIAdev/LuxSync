@@ -1289,6 +1289,19 @@ export class TitanOrchestrator {
       }
     }
   }
+  
+  /**
+   * 🎨 WAVE 2019.6: Force Palette Sync
+   * 
+   * Regenera la paleta del Engine usando el color constitution del Vibe activo.
+   * Usado por Chronos Timeline para sincronizar Stage color al cambiar Vibe.
+   */
+  forcePaletteSync(): void {
+    if (this.engine) {
+      this.engine.forcePaletteRefresh()
+      console.log(`[TitanOrchestrator] 🎨 Palette forcefully synced to current vibe`)
+    }
+  }
 
   /**
    * 🎭 WAVE 700.5.4: Set the current mood (calm/balanced/punk)

@@ -179,11 +179,18 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
    * 🎭 chronos:setVibe
    * Called from ChronosIPCBridge when a vibe-change clip is reached.
    * Same as lux:setVibe but with Chronos-specific logging.
+   * 
+   * 🎨 WAVE 2019.6: Also forces palette sync to match new Vibe color
    */
   ipcMain.handle('chronos:setVibe', (_event, vibeId: string) => {
     console.log('[Chronos→Stage] 🎭 VIBE CHANGE:', vibeId)
     if (titanOrchestrator) {
+      // 1. Cambiar la Vibe lógica (Movimiento/Comportamiento)
       titanOrchestrator.setVibe(vibeId as any)
+      
+      // 2. 🎨 WAVE 2019.6: Forzar sincronización de paleta
+      titanOrchestrator.forcePaletteSync()
+      console.log('[Chronos→Stage] 🎨 Palette synced to new vibe')
     }
     return { success: true }
   })

@@ -55,8 +55,13 @@ export interface TimelineCanvasProps {
   followEnabled?: boolean
   onFollowToggle?: () => void
   onUserScroll?: () => void
-  // WAVE 2013: Living Clip - shows pulse animation for active recording clip
+  // WAVE 2013.6: Living Clip - shows pulse animation for active recording clip
   growingClipId?: string | null
+  // WAVE 2013.6: Live duration override for growing clip (in ms)
+  // This bypasses React state and provides real-time duration from recorder
+  growingClipEndMs?: number | null
+  // WAVE 2013.6: Is recording active? (for force-update during recording)
+  isRecording?: boolean
 }
 
 interface TimelineViewport {
@@ -546,8 +551,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   followEnabled = true,
   onFollowToggle,
   onUserScroll,
-  // WAVE 2013 props
+  // WAVE 2013.6 props
   growingClipId = null,
+  growingClipEndMs = null,
+  isRecording = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 1200, height: 300 })
@@ -972,26 +979,33 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           )
         })}
         
-        {/* WAVE 2006: Render Clips */}
+        {/* WAVE 2006 + 2013.6: Render Clips (with live duration for growing clip) */}
         {clips.map(clip => {
+          // WAVE 2013.6: THE ADRENALINE SHOT
+          // If this is the growing clip and we have a live endMs, use it instead of stale state
+          const isThisClipGrowing = growingClipId === clip.id
+          const liveEndMs = (isThisClipGrowing && growingClipEndMs !== null) 
+            ? growingClipEndMs 
+            : clip.endMs
+          
           const x = TRACK_LABEL_WIDTH + ((clip.startMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond
-          const width = ((clip.endMs - clip.startMs) / 1000) * viewport.pixelsPerSecond
+          const width = ((liveEndMs - clip.startMs) / 1000) * viewport.pixelsPerSecond
           const y = getTrackYOffset(clip.trackId)
           const height = getTrackHeight(clip.trackId) - 4 // Padding
           
-          // Skip if completely outside viewport
-          if (x + width < TRACK_LABEL_WIDTH || x > dimensions.width) return null
+          // Skip if completely outside viewport (but never skip growing clip)
+          if (!isThisClipGrowing && (x + width < TRACK_LABEL_WIDTH || x > dimensions.width)) return null
           
           return (
             <ClipRenderer
               key={clip.id}
               clip={clip}
               x={Math.max(TRACK_LABEL_WIDTH, x)}
-              width={width}
+              width={Math.max(4, width)} // Minimum 4px to always be visible
               y={y + 2}
               height={height}
               isSelected={selectedClipIds.has(clip.id)}
-              isGrowing={growingClipId === clip.id}
+              isGrowing={isThisClipGrowing}
               onSelect={handleClipSelect}
               onDragStart={handleClipDragStart}
               onResizeStart={handleClipResizeStart}

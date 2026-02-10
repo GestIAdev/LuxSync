@@ -1,17 +1,18 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏯️ TRANSPORT BAR - WAVE 2005: THE COCKPIT
- * Master control panel for Chronos Studio playback and recording
+ * ⏯️ TRANSPORT BAR - WAVE 2005 + 2014: THE COCKPIT + MEMORY CORE
+ * Master control panel for Chronos Studio playback, recording, and persistence
  * 
  * Layout:
  * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ [⏮] [⏹] [▶/⏸] [⏺] │ 00:00:00.000 │ ⊙ 120 BPM │ [QUANT] [SNAP] [LOOP] │
+ * │ [📁] [💾] │ [⏮] [⏹] [▶/⏸] [⏺] │ 00:00:00.000 │ ⊙ 120 BPM │ [QUANT]...│
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * WAVE 2005: Added audio file indicator and load button
+ * WAVE 2014: Added project save/load buttons and dirty indicator
  * 
  * @module chronos/ui/transport/TransportBar
- * @version WAVE 2005
+ * @version WAVE 2014
  */
 
 import React, { useCallback, memo } from 'react'
@@ -36,6 +37,12 @@ export interface TransportBarProps {
   onLoadAudio?: () => void
   // 👻 WAVE 2005.3: Close audio to load another
   onCloseAudio?: () => void
+  // 💾 WAVE 2014: Project persistence
+  projectName?: string
+  hasUnsavedChanges?: boolean
+  onSaveProject?: () => void
+  onLoadProject?: () => void
+  onNewProject?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,6 +116,12 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   audioFileName,
   onLoadAudio,
   onCloseAudio,
+  // 💾 WAVE 2014: Project persistence
+  projectName,
+  hasUnsavedChanges = false,
+  onSaveProject,
+  onLoadProject,
+  onNewProject,
 }) => {
   // BPM adjustment handlers
   const handleBpmDecrease = useCallback(() => {
@@ -135,7 +148,54 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   return (
     <div className="transport-bar">
       {/* ═══════════════════════════════════════════════════════════════════
-       * TRANSPORT CONTROLS (Left)
+       * 💾 WAVE 2014: PROJECT CONTROLS (Far Left)
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <div className="transport-project">
+        {/* New Project */}
+        {onNewProject && (
+          <button
+            className="project-btn new"
+            onClick={onNewProject}
+            title="New Project (Ctrl+N)"
+          >
+            <span className="project-icon">📄</span>
+          </button>
+        )}
+        
+        {/* Open Project */}
+        {onLoadProject && (
+          <button
+            className="project-btn open"
+            onClick={onLoadProject}
+            title="Open Project (Ctrl+O)"
+          >
+            <span className="project-icon">📂</span>
+          </button>
+        )}
+        
+        {/* Save Project */}
+        {onSaveProject && (
+          <button
+            className={`project-btn save ${hasUnsavedChanges ? 'dirty' : ''}`}
+            onClick={onSaveProject}
+            title={hasUnsavedChanges ? 'Save Project* (Ctrl+S)' : 'Save Project (Ctrl+S)'}
+          >
+            <span className="project-icon">💾</span>
+            {hasUnsavedChanges && <span className="dirty-indicator">•</span>}
+          </button>
+        )}
+        
+        {/* Project Name */}
+        {projectName && (
+          <span className="project-name" title={projectName}>
+            {projectName.length > 18 ? projectName.slice(0, 15) + '...' : projectName}
+            {hasUnsavedChanges && ' •'}
+          </span>
+        )}
+      </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * TRANSPORT CONTROLS
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="transport-controls">
         {/* Rewind */}

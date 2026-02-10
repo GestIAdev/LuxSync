@@ -212,8 +212,8 @@ const api = {
   },
 
   // ============================================
-  // 👻 CHRONOS - WAVE 2005.3: THE PHANTOM WORKER
-  // Audio analysis via isolated BrowserWindow
+  // 👻 CHRONOS - WAVE 2005.3 & 2014: THE PHANTOM WORKER + MEMORY CORE
+  // Audio analysis and project persistence
   // ============================================
   chronos: {
     /** Analyze audio file via Phantom Worker (crash-isolated process) 
@@ -243,6 +243,26 @@ const api = {
       ipcRenderer.on('chronos:analysis-error', handler)
       return () => ipcRenderer.removeListener('chronos:analysis-error', handler)
     },
+    
+    // ─────────────────────────────────────────────────────────────────────
+    // 💾 WAVE 2014: PROJECT PERSISTENCE - THE MEMORY CORE
+    // ─────────────────────────────────────────────────────────────────────
+    
+    /** Save project to .lux file via native dialog */
+    saveProject: (request: { json: string; currentPath: string | null; defaultName: string }) =>
+      ipcRenderer.invoke('chronos:save-project', request),
+    
+    /** Load project from .lux file via native dialog */
+    loadProject: (request?: { path?: string }) =>
+      ipcRenderer.invoke('chronos:load-project', request || {}),
+    
+    /** Check if a file exists (for audio path validation) */
+    checkFileExists: (filePath: string): Promise<boolean> =>
+      ipcRenderer.invoke('chronos:check-file-exists', filePath),
+    
+    /** Browse for audio file (to replace missing audio) */
+    browseAudio: (): Promise<{ path: string } | null> =>
+      ipcRenderer.invoke('chronos:browse-audio'),
   },
 }
 

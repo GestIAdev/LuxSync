@@ -365,6 +365,83 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * 💾 PROJECT CONTROLS - WAVE 2014: THE MEMORY CORE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.transport-project {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+
+.project-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.project-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-interactive);
+}
+
+.project-btn:active {
+  transform: scale(0.95);
+}
+
+.project-icon {
+  font-size: 14px;
+}
+
+/* Dirty (unsaved) state */
+.project-btn.save.dirty {
+  animation: pulse-save 2s infinite;
+}
+
+.project-btn.save.dirty .dirty-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: #ff6b35;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+@keyframes pulse-save {
+  0%, 100% {
+    background: transparent;
+  }
+  50% {
+    background: rgba(255, 107, 53, 0.15);
+  }
+}
+
+/* Project name */
+.project-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 6px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * RESPONSIVE
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -389,5 +466,9 @@
     order: 2;
     width: 100%;
     justify-content: center;
+  }
+  
+  .project-name {
+    display: none;
   }
 }

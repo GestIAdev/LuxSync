@@ -48,6 +48,8 @@ import { useTimelineKeyboard } from '../hooks/useTimelineKeyboard'
 import { getChronosRecorder, type RecordedClip } from '../core/ChronosRecorder'
 // 🚀 WAVE 2013: ChronosInjector for Stage Simulator link
 import { getChronosInjector } from '../core/ChronosInjector'
+// 💾 WAVE 2014: Project persistence (The Memory Core)
+import { useChronosProject } from '../hooks/useChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import './ChronosLayout.css'
@@ -93,6 +95,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   
   // 🎵 WAVE 2005.4: Streaming playback (constant ~5MB RAM, no decode to memory)
   const streaming = useStreamingPlayback()
+  
+  // 💾 WAVE 2014: Project persistence (The Memory Core)
+  const project = useChronosProject()
   
   // Transport state (recording is still local)
   const [isRecording, setIsRecording] = useState(false)
@@ -186,6 +191,25 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       injector.reset()
     }
   }, [streaming.isPlaying, injector])
+  
+  // 💾 WAVE 2014: Sync clips to project store for persistence
+  useEffect(() => {
+    const audio = audioLoader.result ? {
+      name: audioLoader.result.fileName,
+      path: audioLoader.result.audioPath,
+      bpm,
+      durationMs: audioLoader.result.durationMs,
+    } : null
+    
+    project.updateFromSession(clipState.clips, audio, streaming.currentTimeMs)
+  }, [clipState.clips, audioLoader.result, bpm, project])
+  
+  // 💾 WAVE 2014: Mark project dirty on any clip operation
+  useEffect(() => {
+    if (clipState.clips.length > 0) {
+      project.markDirty()
+    }
+  }, [clipState.clips, project])
   
   // 🎬 WAVE 2010: Subscribe to recorded clips and add them to timeline
   useEffect(() => {
@@ -528,6 +552,12 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         audioFileName={audioLoader.result?.fileName}
         onLoadAudio={handleLoadAudioClick}
         onCloseAudio={handleCloseAudio}
+        // 💾 WAVE 2014: Project persistence
+        projectName={project.projectName}
+        hasUnsavedChanges={project.hasUnsavedChanges}
+        onSaveProject={project.save}
+        onLoadProject={project.load}
+        onNewProject={project.newProject}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════
@@ -597,8 +627,10 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
             // WAVE 2006: Auto-scroll
             followEnabled={followEnabled}
             onFollowToggle={handleFollowToggle}
-            // WAVE 2013.5: Living Clip - only VIBE clips grow (activeVibeClipId)
+            // WAVE 2013.6: THE ADRENALINE SHOT - Live growing clip
+            isRecording={isRecording}
             growingClipId={isRecording ? recorder.activeVibeClipId : null}
+            growingClipEndMs={isRecording ? recorder.activeVibeClipEndMs : null}
           />
         </div>
         

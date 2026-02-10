@@ -276,6 +276,17 @@ export class ChronosRecorder {
   }
   
   /**
+   * 🎬 WAVE 2013.6: Get live endMs of the active growing clip
+   * This provides real-time duration bypass for the TimelineCanvas
+   */
+  get activeVibeClipEndMs(): number | null {
+    if (!this.state.activeVibeClipId) return null
+    const clip = this.state.clips.find(c => c.id === this.state.activeVibeClipId)
+    if (!clip) return null
+    return clip.startMs + clip.durationMs
+  }
+  
+  /**
    * 🎵 Set BPM for quantize calculations
    */
   setBpm(bpm: number): void {

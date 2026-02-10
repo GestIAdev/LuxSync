@@ -240,7 +240,8 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
     })
     
     // Draw fixtures
-    const fixtureRadius = Math.min(width, height) * 0.04
+    // 🎯 WAVE 2019.1: Increased fixture size from 0.04 to 0.06 for better visibility
+    const fixtureRadius = Math.min(width, height) * 0.06
     
     byZone.forEach((zoneFixtures, zone) => {
       const yPos = ZONE_POSITIONS[zone as keyof typeof ZONE_POSITIONS] || 0.5

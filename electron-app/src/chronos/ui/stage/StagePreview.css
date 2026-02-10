@@ -7,9 +7,9 @@
   position: relative;
   width: 100%;
   height: 100%;
-  /* 🎯 WAVE 2015.5: Compact mode - max 140px */
-  max-height: 140px;
-  min-height: 100px;
+  /* 🎯 WAVE 2019.1: Expanded for better fixture visibility - 240px */
+  max-height: 240px;
+  min-height: 180px;
   /* 🎯 WAVE 2015.5: Semi-transparent for integration */
   background: rgba(10, 10, 15, 0.85);
   border-radius: 8px;
@@ -54,7 +54,7 @@
 /* Responsive sizing */
 @media (max-height: 800px) {
   .stage-preview {
-    max-height: 100px;
-    min-height: 80px;
+    max-height: 180px;
+    min-height: 140px;
   }
 }

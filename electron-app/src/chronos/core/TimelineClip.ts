@@ -18,15 +18,16 @@
 
 export type ClipType = 'vibe' | 'fx'
 
+/**
+ * 🎯 WAVE 2019.8: VibeType must match VibeId from engine/vibe/profiles/index.ts
+ * Valid backend IDs: fiesta-latina, techno-club, chill-lounge, pop-rock, idle
+ */
 export type VibeType = 
-  | 'chillout' 
-  | 'techno' 
-  | 'ambient' 
-  | 'rock' 
-  | 'electronic' 
-  | 'ballad'
-  | 'fiesta-latina'
-  | 'hiphop'
+  | 'fiesta-latina'  // 🎉 Fiesta Latina (default)
+  | 'techno-club'    // ⚡ Techno / Electronic / Build-ups
+  | 'chill-lounge'   // 🌊 Chillout / Ambient / Ballad
+  | 'pop-rock'       // 🎸 Rock / Hip-hop / Pop
+  | 'idle'           // 💤 Static / No movement
 
 export type FXType = 
   | 'strobe' 
@@ -132,15 +133,15 @@ export type TimelineClip = VibeClip | FXClip
 // CLIP COLORS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * 🎨 WAVE 2019.8: Vibe colors mapped to real VibeIds
+ */
 export const VIBE_COLORS: Record<VibeType, string> = {
-  'chillout': '#22d3ee',      // Cyan
-  'techno': '#a855f7',        // Purple
-  'ambient': '#3b82f6',       // Blue
-  'rock': '#ef4444',          // Red
-  'electronic': '#ec4899',    // Pink
-  'ballad': '#8b5cf6',        // Violet
-  'fiesta-latina': '#f59e0b', // Orange
-  'hiphop': '#10b981',        // Green
+  'fiesta-latina': '#f59e0b', // 🎉 Orange - Fiesta Latina
+  'techno-club': '#a855f7',   // ⚡ Purple - Techno Club
+  'chill-lounge': '#22d3ee',  // 🌊 Cyan - Chill Lounge
+  'pop-rock': '#ef4444',      // 🎸 Red - Pop Rock
+  'idle': '#6b7280',          // 💤 Gray - Idle
 }
 
 export const FX_COLORS: Record<FXType, string> = {

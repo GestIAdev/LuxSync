@@ -75,14 +75,13 @@ interface ArsenalVibeItemProps {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const VIBE_ITEMS: ArsenalVibeItemProps[] = [
-  { id: 'vibe-chillout', label: 'CHILLOUT', color: VIBE_COLORS.chillout, subType: 'chillout', icon: '🌊' },
-  { id: 'vibe-techno', label: 'TECHNO', color: VIBE_COLORS.techno, subType: 'techno', icon: '⚡' },
-  { id: 'vibe-ambient', label: 'AMBIENT', color: VIBE_COLORS.ambient, subType: 'ambient', icon: '🌙' },
-  { id: 'vibe-rock', label: 'ROCK', color: VIBE_COLORS.rock, subType: 'rock', icon: '🎸' },
-  { id: 'vibe-electronic', label: 'ELECTRONIC', color: VIBE_COLORS.electronic, subType: 'electronic', icon: '🎹' },
-  { id: 'vibe-ballad', label: 'BALLAD', color: VIBE_COLORS.ballad, subType: 'ballad', icon: '💜' },
-  { id: 'vibe-fiesta', label: 'FIESTA', color: VIBE_COLORS['fiesta-latina'], subType: 'fiesta-latina', icon: '🎉' },
-  { id: 'vibe-hiphop', label: 'HIP-HOP', color: VIBE_COLORS.hiphop, subType: 'hiphop', icon: '🎤' },
+  // 🎯 WAVE 2019.8: subType must match VibeId from vibe/profiles/index.ts
+  // Available backend vibes: fiesta-latina, techno-club, chill-lounge, pop-rock, idle
+  { id: 'vibe-fiesta', label: 'FIESTA', color: VIBE_COLORS['fiesta-latina'], subType: 'fiesta-latina', icon: '�' },
+  { id: 'vibe-techno', label: 'TECHNO', color: VIBE_COLORS['techno-club'], subType: 'techno-club', icon: '⚡' },
+  { id: 'vibe-chill', label: 'CHILL', color: VIBE_COLORS['chill-lounge'], subType: 'chill-lounge', icon: '�' },
+  { id: 'vibe-rock', label: 'ROCK', color: VIBE_COLORS['pop-rock'], subType: 'pop-rock', icon: '�' },
+  { id: 'vibe-idle', label: 'IDLE', color: VIBE_COLORS['idle'], subType: 'idle', icon: '💤' },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

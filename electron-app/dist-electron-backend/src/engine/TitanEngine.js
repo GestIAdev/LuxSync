@@ -612,12 +612,12 @@ export class TitanEngine extends EventEmitter {
         // ─────────────────────────────────────────────────────────────────────
         // 🧨 WAVE 610: Procesar manual strike si está pendiente (prioridad sobre AI)
         if (this.manualStrikePending) {
-            const { effect, intensity } = this.manualStrikePending;
+            const { effect, intensity, source } = this.manualStrikePending;
             this.effectManager.trigger({
                 effectType: effect,
                 intensity,
-                source: 'manual',
-                reason: 'Manual strike from FORCE STRIKE button',
+                source: source || 'manual', // 🧠 WAVE 2019.3: Dynamic source (chronos bypasses Shield)
+                reason: source === 'chronos' ? 'Chronos timeline trigger' : 'Manual strike from FORCE STRIKE button',
             });
             console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}`);
             this.manualStrikePending = null; // Consumir la flag
@@ -858,6 +858,31 @@ export class TitanEngine extends EventEmitter {
         this.vibeManager.setActiveVibe(vibeId);
         console.log(`[TitanEngine] 🎭 Vibe changed to: ${vibeId}`);
         this.emit('vibe-changed', vibeId);
+    }
+    /**
+     * 🎨 WAVE 2019.6: Force Palette Refresh
+     *
+     * Regenera la paleta usando el color constitution del Vibe activo.
+     * Útil para sincronizar Stage color cuando el Timeline cambia de Vibe.
+     *
+     * NO requiere audio - usa energía simulada para generar paleta "idle" del Vibe.
+     */
+    forcePaletteRefresh() {
+        const vibeProfile = this.vibeManager.getActiveVibe();
+        const constitution = this.vibeManager.getColorConstitution();
+        // Generar paleta con energía neutral (0.3) para obtener "color base" del Vibe
+        const mockAudio = {
+            energy: 0.3,
+            mood: 'neutral',
+            bass: 0.2,
+            mid: 0.3,
+            treble: 0.2,
+        };
+        const selenePalette = SeleneColorEngine.generate(mockAudio, constitution);
+        const palette = this.selenePaletteToColorPalette(selenePalette);
+        this.state.lastPalette = palette;
+        console.log(`[TitanEngine] 🎨 FORCED PALETTE REFRESH for vibe: ${vibeProfile.id}`);
+        console.log(`[TitanEngine] 🎨 New palette: primary=${selenePalette.primary.h.toFixed(0)}° accent=${selenePalette.accent.h.toFixed(0)}°`);
     }
     /**
      * 🧬 WAVE 500: Kill Switch para la Consciencia
@@ -1114,12 +1139,12 @@ export class TitanEngine extends EventEmitter {
      * Fuerza un disparo de efecto en el próximo frame, sin esperar decisión del HuntEngine.
      * Útil para testeo manual de efectos sin alterar umbrales de algoritmos.
      *
-     * @param config - { effect: string, intensity: number }
+     * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
      * @example engine.forceStrikeNextFrame({ effect: 'solar_flare', intensity: 1.0 })
      */
     forceStrikeNextFrame(config) {
         this.manualStrikePending = config;
-        console.log(`[TitanEngine] 🧨 Manual strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`);
+        console.log(`[TitanEngine] 🧨 ${config.source === 'chronos' ? 'CHRONOS' : 'Manual'} strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`);
     }
     /**
      * Obtiene el intent actual (para UI/debug).

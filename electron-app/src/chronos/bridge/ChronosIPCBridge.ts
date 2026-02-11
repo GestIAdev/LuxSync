@@ -68,14 +68,20 @@ async function handleVibeChange(command: StageCommand): Promise<void> {
   bridgeState.currentVibeId = vibeId
   
   try {
-    // Call IPC - the bridge to the backend
-    // Use the existing lux.setVibe since window.lux.chronos may not be augmented yet
-    const result = await (window as any).lux.chronos?.setVibe?.(vibeId) 
-      || await (window as any).lux?.setVibe?.(vibeId)
-      || { success: false }
+    // Call IPC - ONLY use chronos:setVibe (no fallback to lux:setVibe)
+    // chronos:setVibe has proper logging and palette sync
+    const chronosAPI = (window as any).lux?.chronos
+    if (!chronosAPI?.setVibe) {
+      console.error('[ChronosBridge] ❌ window.lux.chronos.setVibe not available!')
+      return
+    }
+    
+    const result = await chronosAPI.setVibe(vibeId)
     
     if (result.success) {
       console.log(`[ChronosBridge] ✅ Vibe set to: ${vibeId}`)
+    } else {
+      console.warn(`[ChronosBridge] ⚠️ Vibe set returned: ${JSON.stringify(result)}`)
     }
   } catch (err) {
     console.error('[ChronosBridge] ❌ Failed to set vibe:', err)

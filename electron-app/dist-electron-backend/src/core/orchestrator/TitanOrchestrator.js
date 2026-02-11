@@ -1126,6 +1126,18 @@ export class TitanOrchestrator {
         }
     }
     /**
+     * 🎨 WAVE 2019.6: Force Palette Sync
+     *
+     * Regenera la paleta del Engine usando el color constitution del Vibe activo.
+     * Usado por Chronos Timeline para sincronizar Stage color al cambiar Vibe.
+     */
+    forcePaletteSync() {
+        if (this.engine) {
+            this.engine.forcePaletteRefresh();
+            console.log(`[TitanOrchestrator] 🎨 Palette forcefully synced to current vibe`);
+        }
+    }
+    /**
      * 🎭 WAVE 700.5.4: Set the current mood (calm/balanced/punk)
      *
      * Mood controls effect frequency and intensity:
@@ -1202,15 +1214,16 @@ export class TitanOrchestrator {
      * 3. Este método llama engine's forceStrikeNextFrame(config)
      * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
      *
-     * @param config - { effect: string, intensity: number }
+     * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
      */
     forceStrikeNextFrame(config) {
         if (!this.engine) {
             console.warn('[TitanOrchestrator] 🧨 Cannot force strike - Engine not initialized');
             return;
         }
-        console.log(`[TitanOrchestrator] 🧨 FORCE STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`);
-        this.log('Effect', `🧨 Manual Strike: ${config.effect}`, { intensity: config.intensity });
+        const sourceLabel = config.source === 'chronos' ? 'CHRONOS' : 'Manual';
+        console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`);
+        this.log('Effect', `🧨 ${sourceLabel} Strike: ${config.effect}`, { intensity: config.intensity });
         // Delegar al TitanEngine
         this.engine.forceStrikeNextFrame(config);
     }

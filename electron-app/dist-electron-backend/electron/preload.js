@@ -140,8 +140,8 @@ const api = {
         setMovement: (params) => ipcRenderer.invoke('controls:setMovement', params),
     },
     // ============================================
-    // 👻 CHRONOS - WAVE 2005.3: THE PHANTOM WORKER
-    // Audio analysis via isolated BrowserWindow
+    // 👻 CHRONOS - WAVE 2005.3 & 2014: THE PHANTOM WORKER + MEMORY CORE
+    // Audio analysis and project persistence
     // ============================================
     chronos: {
         /** Analyze audio file via Phantom Worker (crash-isolated process)
@@ -167,6 +167,51 @@ const api = {
             ipcRenderer.on('chronos:analysis-error', handler);
             return () => ipcRenderer.removeListener('chronos:analysis-error', handler);
         },
+        // ─────────────────────────────────────────────────────────────────────
+        // 💾 WAVE 2014: PROJECT PERSISTENCE - THE MEMORY CORE
+        // ─────────────────────────────────────────────────────────────────────
+        /** Save project to .lux file via native dialog */
+        saveProject: (request) => ipcRenderer.invoke('chronos:save-project', request),
+        /** Load project from .lux file via native dialog */
+        loadProject: (request) => ipcRenderer.invoke('chronos:load-project', request || {}),
+        /** Check if a file exists (for audio path validation) */
+        checkFileExists: (filePath) => ipcRenderer.invoke('chronos:check-file-exists', filePath),
+        /** Browse for audio file (to replace missing audio) */
+        browseAudio: () => ipcRenderer.invoke('chronos:browse-audio'),
+        // ─────────────────────────────────────────────────────────────────────
+        // 🛡️ WAVE 2017: PROJECT LAZARUS - Auto-Save & Recovery
+        // ─────────────────────────────────────────────────────────────────────
+        /** Write auto-save file (shadow copy) */
+        writeAutoSave: (request) => ipcRenderer.invoke('chronos:write-auto-save', request),
+        /** Check if auto-save file exists */
+        checkAutoSave: (request) => ipcRenderer.invoke('chronos:check-auto-save', request),
+        /** Load auto-save file for recovery */
+        loadAutoSave: (request) => ipcRenderer.invoke('chronos:load-auto-save', request),
+        /** Delete auto-save file (after successful manual save) */
+        deleteAutoSave: (request) => ipcRenderer.invoke('chronos:delete-auto-save', request),
+        // ─────────────────────────────────────────────────────────────────────
+        // 🎯 WAVE 2019: THE PULSE - Timeline → Stage Commands
+        // ─────────────────────────────────────────────────────────────────────
+        /**
+         * 🎭 Set Vibe from Chronos timeline
+         * Triggered when a vibe-change clip is reached during playback.
+         * @param vibeId - The target vibe (techno-club, fiesta-latina, etc.)
+         */
+        setVibe: (vibeId) => ipcRenderer.invoke('chronos:setVibe', vibeId),
+        /**
+         * 🧨 Trigger FX from Chronos timeline
+         * Fires a mapped effect when an FX clip starts during playback.
+         * @param effectId - BaseEffect ID (from FXMapper)
+         * @param intensity - Effect intensity 0-1
+         * @param durationMs - Optional duration override
+         */
+        triggerFX: (effectId, intensity, durationMs) => ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+        /**
+         * 🛑 Stop FX from Chronos timeline
+         * Called when a clip ends or playback stops.
+         * @param effectId - BaseEffect ID to stop
+         */
+        stopFX: (effectId) => ipcRenderer.invoke('chronos:stopFX', effectId),
     },
 };
 // ============================================================================

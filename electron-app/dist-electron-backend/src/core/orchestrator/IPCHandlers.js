@@ -94,6 +94,65 @@ function setupSeleneLuxHandlers(deps) {
         }
         return { success: true };
     });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2019: THE PULSE - Chronos Timeline → Stage Commands
+    // ═══════════════════════════════════════════════════════════════════════════
+    /**
+     * 🎭 chronos:setVibe
+     * Called from ChronosIPCBridge when a vibe-change clip is reached.
+     * Same as lux:setVibe but with Chronos-specific logging.
+     *
+     * 🎨 WAVE 2019.6: Also forces palette sync to match new Vibe color
+     */
+    ipcMain.handle('chronos:setVibe', (_event, vibeId) => {
+        console.log('[Chronos→Stage] 🎭 VIBE CHANGE:', vibeId);
+        if (titanOrchestrator) {
+            // 🔍 WAVE 2019.8: Log engine state before
+            const engine = titanOrchestrator.engine;
+            const beforeVibe = engine?.getCurrentVibe?.() || 'unknown';
+            console.log(`[Chronos→Stage] 🔍 Before: engine.vibeManager=${beforeVibe}`);
+            // 1. Cambiar la Vibe lógica (Movimiento/Comportamiento)
+            titanOrchestrator.setVibe(vibeId);
+            // 🔍 WAVE 2019.8: Confirm change
+            const afterVibe = engine?.getCurrentVibe?.() || 'unknown';
+            console.log(`[Chronos→Stage] 🔍 After: engine.vibeManager=${afterVibe}`);
+            // 2. 🎨 WAVE 2019.6: Forzar sincronización de paleta
+            titanOrchestrator.forcePaletteSync();
+            console.log('[Chronos→Stage] 🎨 Palette synced to new vibe');
+        }
+        else {
+            console.error('[Chronos→Stage] ❌ titanOrchestrator is NULL!');
+        }
+        return { success: true };
+    });
+    /**
+     * 🧨 chronos:triggerFX
+     * Called from ChronosIPCBridge when an FX clip starts.
+     * Maps to forceStrikeNextFrame with the effect from FXMapper.
+     * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
+     */
+    ipcMain.handle('chronos:triggerFX', (_event, config) => {
+        console.log('[Chronos→Stage] 🧨 FX TRIGGER:', config.effectId, `@ ${(config.intensity * 100).toFixed(0)}%`);
+        if (titanOrchestrator) {
+            titanOrchestrator.forceStrikeNextFrame({
+                effect: config.effectId,
+                intensity: config.intensity,
+                source: 'chronos', // 🧠 WAVE 2019.3: Bypass Shield for timeline-triggered effects
+            });
+        }
+        return { success: true };
+    });
+    /**
+     * 🛑 chronos:stopFX
+     * Called from ChronosIPCBridge when an FX clip ends.
+     * Currently a placeholder - most effects auto-expire.
+     * Future: Can cancel specific running effects.
+     */
+    ipcMain.handle('chronos:stopFX', (_event, effectId) => {
+        console.log('[Chronos→Stage] 🛑 FX STOP:', effectId);
+        // Future implementation: titanOrchestrator.cancelEffect(effectId)
+        return { success: true };
+    });
     // 🎭 WAVE 700.5.4: MOOD CONTROL
     ipcMain.handle('lux:setMood', (_event, moodId) => {
         console.log('[IPC] 🎭 lux:setMood:', moodId);

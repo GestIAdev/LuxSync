@@ -30,6 +30,7 @@ import {
   DEFAULT_VIBE,
   getVibePreset,
   isValidVibeId,
+  normalizeVibeId,
 } from './profiles/index';
 
 import { getColorConstitution as getConstitution } from '../color/colorConstitutions';
@@ -114,27 +115,28 @@ export class VibeManager {
   /**
    * Cambia el Vibe activo con transición suave.
    * 
-   * @param vibeId - ID del vibe a activar
+   * @param vibeId - ID del vibe a activar (supports legacy aliases)
    * @param frameCount - Frame actual (opcional, usa interno si no se provee)
    * @returns true si el cambio fue iniciado, false si el vibe no existe o ya está activo
    */
   public setActiveVibe(vibeId: VibeId | string, frameCount?: number): boolean {
-    // Validar ID
-    if (!isValidVibeId(vibeId)) {
-      console.warn(`[VibeManager] Invalid vibe ID: '${vibeId}'`);
+    // 🔄 WAVE 2019.10: Normalize ID (handles legacy aliases like 'techno' → 'techno-club')
+    const normalizedId = normalizeVibeId(vibeId)
+    if (!normalizedId) {
+      console.warn(`[VibeManager] Invalid vibe ID: '${vibeId}' (no alias found)`);
       return false;
     }
 
-    const newVibe = getVibePreset(vibeId);
+    const newVibe = getVibePreset(normalizedId);
     if (!newVibe) {
-      console.warn(`[VibeManager] Vibe not found: '${vibeId}'`);
+      console.warn(`[VibeManager] Vibe not found: '${normalizedId}'`);
       return false;
     }
 
     // No hacer nada si ya es el vibe activo
     if (newVibe.id === this.currentVibe.id) {
       // 🐛 WAVE 69.1: Log para debug - no es un error, solo idempotencia
-      console.log(`[VibeManager] Vibe already active: '${vibeId}' (no transition needed)`);
+      console.log(`[VibeManager] Vibe already active: '${normalizedId}' (no transition needed)`);
       return false;
     }
 
@@ -152,11 +154,13 @@ export class VibeManager {
    * Cambio instantáneo sin transición (para emergencias o inicio).
    */
   public setActiveVibeImmediate(vibeId: VibeId | string): boolean {
-    if (!isValidVibeId(vibeId)) {
+    // 🔄 WAVE 2019.10: Normalize ID
+    const normalizedId = normalizeVibeId(vibeId)
+    if (!normalizedId) {
       return false;
     }
 
-    const newVibe = getVibePreset(vibeId);
+    const newVibe = getVibePreset(normalizedId);
     if (!newVibe) {
       return false;
     }

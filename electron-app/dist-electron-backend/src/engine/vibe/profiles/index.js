@@ -36,6 +36,46 @@ export const VIBE_REGISTRY = {
     'idle': VIBE_IDLE,
 };
 /**
+ * 🔄 WAVE 2019.10: VIBE ALIAS MAP
+ *
+ * Maps legacy vibe IDs to current valid IDs.
+ * This allows old clips/projects to work with the new system.
+ */
+export const VIBE_ALIAS_MAP = {
+    // Legacy Chronos IDs → Current backend IDs
+    'techno': 'techno-club',
+    'chillout': 'chill-lounge',
+    'rock': 'pop-rock',
+    'ambient': 'chill-lounge',
+    'electronic': 'techno-club',
+    'ballad': 'chill-lounge',
+    'hiphop': 'pop-rock',
+    'latin': 'fiesta-latina',
+    'fiesta': 'fiesta-latina',
+    // Direct mappings (already valid)
+    'fiesta-latina': 'fiesta-latina',
+    'techno-club': 'techno-club',
+    'chill-lounge': 'chill-lounge',
+    'pop-rock': 'pop-rock',
+    'idle': 'idle',
+};
+/**
+ * 🔄 WAVE 2019.10: Normalizes a vibe ID (handles aliases)
+ */
+export function normalizeVibeId(vibeId) {
+    // Check direct registry first
+    if (vibeId in VIBE_REGISTRY) {
+        return vibeId;
+    }
+    // Check alias map
+    const mapped = VIBE_ALIAS_MAP[vibeId.toLowerCase()];
+    if (mapped) {
+        console.log(`[VibeManager] 🔄 Mapped legacy ID: '${vibeId}' → '${mapped}'`);
+        return mapped;
+    }
+    return null;
+}
+/**
  * Vibe por defecto cuando no se ha seleccionado ninguno
  */
 export const DEFAULT_VIBE = 'fiesta-latina';

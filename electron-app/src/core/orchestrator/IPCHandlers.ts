@@ -185,12 +185,23 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   ipcMain.handle('chronos:setVibe', (_event, vibeId: string) => {
     console.log('[Chronos→Stage] 🎭 VIBE CHANGE:', vibeId)
     if (titanOrchestrator) {
+      // 🔍 WAVE 2019.8: Log engine state before
+      const engine = (titanOrchestrator as any).engine
+      const beforeVibe = engine?.getCurrentVibe?.() || 'unknown'
+      console.log(`[Chronos→Stage] 🔍 Before: engine.vibeManager=${beforeVibe}`)
+      
       // 1. Cambiar la Vibe lógica (Movimiento/Comportamiento)
       titanOrchestrator.setVibe(vibeId as any)
+      
+      // 🔍 WAVE 2019.8: Confirm change
+      const afterVibe = engine?.getCurrentVibe?.() || 'unknown'
+      console.log(`[Chronos→Stage] 🔍 After: engine.vibeManager=${afterVibe}`)
       
       // 2. 🎨 WAVE 2019.6: Forzar sincronización de paleta
       titanOrchestrator.forcePaletteSync()
       console.log('[Chronos→Stage] 🎨 Palette synced to new vibe')
+    } else {
+      console.error('[Chronos→Stage] ❌ titanOrchestrator is NULL!')
     }
     return { success: true }
   })

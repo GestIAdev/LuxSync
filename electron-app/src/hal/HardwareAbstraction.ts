@@ -973,6 +973,34 @@ export class HardwareAbstraction {
         // Strobes only on beat with high bass
         return (audio.bassPulse > 0.8) ? 1.0 : 0
       
+      // 🌊 WAVE 2020.1: AIR ZONE FALLBACK
+      // Hereda comportamiento de MOVING_RIGHT (treble-driven) con decay acelerado
+      // Futuro: Conectar a God Ear ultraAir band (16k-22kHz)
+      case 'AIR': {
+        const hystKey = `${zone}-hyst`
+        const wasOn = this.physics.getMoverHysteresisState(hystKey)
+        
+        const result = this.physics.calculateMoverTarget({
+          moverKey: hystKey,
+          presetName: 'Default',
+          melodyThreshold: this.currentPreset.melodyThreshold,
+          rawMid: audio.rawMid,
+          rawBass: audio.rawBass,
+          rawTreble: audio.rawTreble,
+          moverState: wasOn,
+          isRealSilence: audio.isRealSilence,
+          isAGCTrap: audio.isAGCTrap,
+        })
+        
+        // Aplicar decay acelerado para respuesta rápida (cymbal wash)
+        return result.intensity * 0.8
+      }
+      
+      // 🌊 WAVE 2020.1: CENTER ZONE FALLBACK
+      // Hereda comportamiento de STROBES (beat-driven)
+      case 'CENTER':
+        return (audio.bassPulse > 0.8) ? 1.0 : 0
+      
       default:
         return audio.melodySignal * 0.5
     }

@@ -4,11 +4,14 @@
  * Centraliza todos los handlers IPC.
  * Recibe dependencias directamente desde main.ts V2.
  * 
+ * ⚒️ WAVE 2030.4: Hephaestus integration for curve automation
+ * 
  * @module IPCHandlers
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
 import type { TitanOrchestrator } from './TitanOrchestrator'
+import { deserializeHephClip, type HephAutomationClipSerialized } from '../hephaestus/types'
 
 // Type for zone (matches main.ts)
 export type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
@@ -211,14 +214,26 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
    * Called from ChronosIPCBridge when an FX clip starts.
    * Maps to forceStrikeNextFrame with the effect from FXMapper.
    * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
+   * ⚒️ WAVE 2030.4: Forwards hephCurves to EffectManager for curve automation
    */
-  ipcMain.handle('chronos:triggerFX', (_event, config: { effectId: string; intensity: number; durationMs?: number }) => {
-    console.log('[Chronos→Stage] 🧨 FX TRIGGER:', config.effectId, `@ ${(config.intensity * 100).toFixed(0)}%`)
+  ipcMain.handle('chronos:triggerFX', (_event, config: { 
+    effectId: string
+    intensity: number
+    durationMs?: number
+    hephCurves?: HephAutomationClipSerialized  // ⚒️ WAVE 2030.4
+  }) => {
+    // ⚒️ WAVE 2030.4: Deserialize hephCurves if present (Record → Map)
+    const hephClip = config.hephCurves ? deserializeHephClip(config.hephCurves) : undefined
+    const hephTag = hephClip ? ` ⚒️[HEPH: ${hephClip.curves.size} curves]` : ''
+    
+    console.log(`[Chronos→Stage] 🧨 FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`)
+    
     if (titanOrchestrator) {
       titanOrchestrator.forceStrikeNextFrame({
         effect: config.effectId,
         intensity: config.intensity,
         source: 'chronos',  // 🧠 WAVE 2019.3: Bypass Shield for timeline-triggered effects
+        hephCurves: hephClip,  // ⚒️ WAVE 2030.4: Pass deserialized curves
       })
     }
     return { success: true }

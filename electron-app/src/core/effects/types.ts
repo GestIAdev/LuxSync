@@ -248,6 +248,8 @@ export interface MusicalContext {
   energyContext?: import('../protocol/MusicalContext.js').EnergyContext
 }
 
+import type { HephAutomationClip } from '../hephaestus/types'
+
 /**
  * Configuración base para disparar cualquier efecto
  */
@@ -277,6 +279,18 @@ export interface EffectTriggerConfig {
    * 🧨 WAVE 680: Musical context para efectos que respiran
    */
   musicalContext?: MusicalContext
+  
+  /**
+   * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+   * 
+   * Curvas de automatización multi-parámetro.
+   * Si está presente, el EffectManager crea un HephParameterOverlay
+   * que modula el output del efecto base en tiempo real.
+   * 
+   * @see HephAutomationClip
+   * @see HephParameterOverlay
+   */
+  hephCurves?: HephAutomationClip
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

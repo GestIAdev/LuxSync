@@ -28,6 +28,9 @@ import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter'
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage'
 
+// ⚒️ Hephaestus File I/O (WAVE 2030.5)
+import { setupHephIPCHandlers } from '../src/core/hephaestus'
+
 // Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
 import { configManager } from '../src/core/config/ConfigManagerV2'
 
@@ -312,6 +315,12 @@ async function initTitan(): Promise<void> {
   await stagePersistence.init()
   setupStageIPCHandlers(() => mainWindow)
   console.log('[Main] 💾 Stage Persistence V2 initialized')
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
+  // ═══════════════════════════════════════════════════════════════════════════
+  setupHephIPCHandlers()
+  console.log('[Main] ⚒️ Hephaestus File I/O initialized (WAVE 2030.5)')
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis

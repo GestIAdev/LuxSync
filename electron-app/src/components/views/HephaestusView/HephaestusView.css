@@ -111,6 +111,57 @@
 .heph-header__right {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.heph-header__btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.heph-header__btn:hover:not(:disabled) {
+  background: rgba(255, 107, 43, 0.1);
+  border-color: rgba(255, 107, 43, 0.3);
+  color: #ff6b2b;
+}
+
+.heph-header__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.heph-header__btn--dirty {
+  border-color: rgba(255, 107, 43, 0.5);
+  color: #ff6b2b;
+  animation: pulse-dirty 1.5s ease infinite;
+}
+
+.heph-header__btn--toggle {
+  padding: 6px 10px;
+}
+
+@keyframes pulse-dirty {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 43, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(255, 107, 43, 0.3); }
+}
+
+.heph-header__dirty {
+  color: #ff6b2b;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.heph-header__save-message {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
 }
 
 .heph-header__status {
@@ -143,6 +194,250 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * LIBRARY PANEL (WAVE 2030.5 + 2030.6)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-library {
+  width: 220px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.4);
+  border-right: 1px solid rgba(255, 107, 43, 0.1);
+}
+
+.heph-library__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.1);
+}
+
+.heph-library__title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 107, 43, 0.6);
+  text-transform: uppercase;
+}
+
+.heph-library__loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── WAVE 2030.6: Search Bar ── */
+
+.heph-library__search {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 107, 43, 0.08);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.heph-library__search-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.8);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.heph-library__search-input:focus {
+  border-color: rgba(255, 107, 43, 0.4);
+  background: rgba(255, 107, 43, 0.03);
+}
+
+.heph-library__search-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.heph-library__search-clear {
+  margin-left: 6px;
+  padding: 4px 6px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 0.65rem;
+  transition: color 0.15s ease;
+}
+
+.heph-library__search-clear:hover {
+  color: rgba(255, 107, 43, 0.8);
+}
+
+.heph-library__list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+}
+
+.heph-library__empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+/* ── WAVE 2030.6: Category Groups ── */
+
+.heph-library__category {
+  margin-bottom: 6px;
+}
+
+.heph-library__category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(255, 107, 43, 0.03);
+  border: 1px solid rgba(255, 107, 43, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.heph-library__category-header:hover {
+  background: rgba(255, 107, 43, 0.08);
+  border-color: rgba(255, 107, 43, 0.15);
+}
+
+.heph-library__category-icon {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.heph-library__category-name {
+  flex: 1;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 107, 43, 0.6);
+}
+
+.heph-library__category-count {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.heph-library__category-chevron {
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.heph-library__category-items {
+  padding-left: 8px;
+  margin-top: 4px;
+}
+
+/* ── Library Items ── */
+
+.heph-library__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.15s ease;
+  cursor: grab;
+}
+
+.heph-library__item:active {
+  cursor: grabbing;
+}
+
+.heph-library__item:hover {
+  background: rgba(255, 107, 43, 0.05);
+  border-color: rgba(255, 107, 43, 0.2);
+}
+
+.heph-library__item--active {
+  background: rgba(255, 107, 43, 0.1);
+  border-color: rgba(255, 107, 43, 0.3);
+}
+
+.heph-library__item-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.heph-library__item-icon {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.heph-library__item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.heph-library__item-name {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heph-library__item-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.heph-library__item-drag-hint {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.15);
+  letter-spacing: -1px;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.heph-library__item:hover .heph-library__item-drag-hint {
+  color: rgba(255, 107, 43, 0.4);
+}
+
+.heph-library__item-delete {
+  padding: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.heph-library__item-delete:hover {
+  opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

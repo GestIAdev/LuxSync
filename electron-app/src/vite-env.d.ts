@@ -98,6 +98,20 @@ interface DMXDevice {
   confidence: number
 }
 
+// ⚒️ WAVE 2030.5: Hephaestus Clip Metadata (for library listing)
+interface HephClipMetadata {
+  id: string
+  name: string
+  author: string
+  category: string
+  tags: string[]
+  durationMs: number
+  effectType: string
+  paramCount: number
+  filePath: string
+  modifiedAt: number
+}
+
 // ============================================================================
 // WINDOW INTERFACES (Global Extension)
 // ============================================================================
@@ -141,6 +155,24 @@ declare global {
       onDecision: (callback: (decision: unknown) => void) => void
       onMoodChange: (callback: (mood: string) => void) => void
       setMode: (mode: 'flow' | 'selene' | 'locked') => void
+    }
+
+    // ⚒️ WAVE 2030.5: Hephaestus File I/O
+    hephaestus: {
+      /** Save a clip to disk */
+      save: (clipData: unknown) => Promise<{ success: boolean; filePath?: string; id?: string; error?: string }>
+      /** Load a clip by ID or file path */
+      load: (idOrPath: string) => Promise<{ success: boolean; clip?: unknown; error?: string }>
+      /** List all available clips (metadata only) */
+      list: () => Promise<{ success: boolean; clips: HephClipMetadata[]; error?: string }>
+      /** Delete a clip */
+      delete: (idOrPath: string) => Promise<{ success: boolean; deleted?: boolean; error?: string }>
+      /** Check if clip name exists */
+      exists: (name: string) => Promise<{ success: boolean; exists?: boolean }>
+      /** Get effects folder path */
+      getPath: () => Promise<{ success: boolean; path?: string }>
+      /** Generate unique clip ID */
+      generateId: () => Promise<{ id: string }>
     }
 
     // App

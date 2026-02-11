@@ -35,6 +35,7 @@
  */
 
 import type { TimelineClip, VibeClip, FXClip } from './TimelineClip'
+import type { HephAutomationClip } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -62,6 +63,14 @@ export interface StageCommand {
   
   /** Timestamp when this command was generated */
   timestamp: number
+  
+  /**
+   * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+   * 
+   * Curvas de automatización adjuntas al FXClip.
+   * Solo presente cuando type === 'fx-trigger' y el clip tiene hephClip.
+   */
+  hephCurves?: HephAutomationClip
 }
 
 /** Listener for stage commands */
@@ -177,6 +186,7 @@ export class ChronosInjector {
     for (const fx of activeFx) {
       if (!this.prevState.activeFxMap.has(fx.id)) {
         // New FX - trigger it
+        // ⚒️ WAVE 2030.4: Include hephClip if present
         this.emit({
           type: 'fx-trigger',
           effectId: fx.fxType,
@@ -184,10 +194,12 @@ export class ChronosInjector {
           durationMs: fx.endMs - fx.startMs,
           color: fx.color,
           timestamp: Date.now(),
+          hephCurves: fx.hephClip,  // ⚒️ HEPHAESTUS CURVES
         })
         
         if (this.debug) {
-          console.log(`[ChronosInjector] ⚡ FX ON → ${fx.label}`)
+          const hephTag = fx.hephClip ? ' ⚒️[HEPH]' : ''
+          console.log(`[ChronosInjector] ⚡ FX ON → ${fx.label}${hephTag}`)
         }
       }
     }

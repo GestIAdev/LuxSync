@@ -9,8 +9,10 @@
  * - FXClip: Effect with keyframes (STROBE, SWEEP, PULSE, CHASE)
  * 
  * @module chronos/core/TimelineClip
- * @version WAVE 2006
+ * @version WAVE 2006 / WAVE 2030.4 (Hephaestus Integration)
  */
+
+import type { HephAutomationClip } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP TYPES
@@ -124,6 +126,17 @@ export interface FXClip extends BaseClip {
   
   /** Effect parameters */
   params: Record<string, number | string | boolean>
+  
+  /**
+   * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+   * 
+   * Curvas de automatización multi-parámetro creadas en Hephaestus Studio.
+   * Cuando presente, el EffectManager creará un HephParameterOverlay
+   * que modula el output del efecto base en tiempo real.
+   * 
+   * Opcional: clips legacy sin hephClip funcionan normalmente.
+   */
+  hephClip?: HephAutomationClip
 }
 
 // Union type
@@ -275,8 +288,8 @@ export function snapToGrid(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface DragPayload {
-  /** Source of drag (arsenal, timeline) */
-  source: 'arsenal' | 'timeline'
+  /** Source of drag (arsenal, timeline, hephaestus) */
+  source: 'arsenal' | 'timeline' | 'hephaestus'
   
   /** Clip type being dragged */
   clipType: ClipType
@@ -292,6 +305,17 @@ export interface DragPayload {
   
   /** Default duration for new clips */
   defaultDurationMs: number
+
+  // ── WAVE 2030.6: Hephaestus Automation Clip Fields ──
+  
+  /** Hephaestus clip ID (if source === 'hephaestus') */
+  hephClipId?: string
+  
+  /** Path to .lfx file (if source === 'hephaestus') */
+  hephFilePath?: string
+  
+  /** Clip name for display */
+  name?: string
 }
 
 /**

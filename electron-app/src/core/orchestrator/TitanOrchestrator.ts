@@ -1,6 +1,7 @@
 /**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
+ * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
  * 
  * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este módulo solo orquesta el flujo de datos.
@@ -38,11 +39,28 @@ import { BeatDetector } from '../../engine/audio/BeatDetector'
 // 🎭 WAVE 700.5.4: Import MoodController for backend mood control
 import { MoodController } from '../mood/MoodController'
 
+// ⚒️ WAVE 2030.4: Hephaestus types
+import type { HephAutomationClip } from '../hephaestus/types'
+
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
 // 🎨 WAVE 686.10: Import IDMXDriver for external driver injection
 import type { IDMXDriver } from '../../hal/drivers'
+
+/**
+ * ⚒️ WAVE 2030.4: Config for manual/timeline effect triggers
+ */
+export interface ForceStrikeConfig {
+  /** Effect ID to trigger */
+  effect: string
+  /** Intensity 0-1 */
+  intensity: number
+  /** Source of trigger for bypass rules */
+  source?: 'manual' | 'chronos'
+  /** ⚒️ WAVE 2030.4: Hephaestus automation curves */
+  hephCurves?: HephAutomationClip
+}
 
 /**
  * Configuración del orquestador
@@ -1379,6 +1397,7 @@ export class TitanOrchestrator {
   
   /**
    * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+   * ⚒️ WAVE 2030.4: Hephaestus curve automation support
    * 
    * Dispara un efecto manualmente sin esperar decisión de HuntEngine.
    * Útil para testear efectos visuales sin alterar umbrales de los algoritmos.
@@ -1388,17 +1407,19 @@ export class TitanOrchestrator {
    * 2. IPC handler llama titanOrchestrator.forceStrikeNextFrame(config)
    * 3. Este método llama engine's forceStrikeNextFrame(config)
    * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
+   * 5. ⚒️ WAVE 2030.4: Si config.hephCurves existe, EffectManager crea un overlay
    * 
-   * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
+   * @param config - ForceStrikeConfig with effect, intensity, source, and optional hephCurves
    */
-  forceStrikeNextFrame(config: { effect: string; intensity: number; source?: 'manual' | 'chronos' }): void {
+  forceStrikeNextFrame(config: ForceStrikeConfig): void {
     if (!this.engine) {
       console.warn('[TitanOrchestrator] 🧨 Cannot force strike - Engine not initialized')
       return
     }
     
     const sourceLabel = config.source === 'chronos' ? 'CHRONOS' : 'Manual'
-    console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`)
+    const hephTag = config.hephCurves ? ` ⚒️[HEPH: ${config.hephCurves.curves.size}]` : ''
+    console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}${hephTag}`)
     this.log('Effect', `🧨 ${sourceLabel} Strike: ${config.effect}`, { intensity: config.intensity })
     
     // Delegar al TitanEngine

@@ -334,3 +334,86 @@ export function isHSL(value: number | HSL): value is HSL {
 export function isNumericValue(value: number | HSL): value is number {
   return typeof value === 'number'
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SERIALIZATION (IPC-safe)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Versión serializable de HephAutomationClip para IPC.
+ * 
+ * El problema: `Map<>` no se serializa correctamente en IPC de Electron.
+ * Se convierte a `{}` vacío al pasar por JSON.stringify/parse.
+ * 
+ * Esta interface usa `Record<>` en lugar de `Map<>` para que
+ * el clip pueda viajar seguro entre renderer y main process.
+ */
+export interface HephAutomationClipSerialized {
+  id: string
+  name: string
+  author: string
+  category: string
+  tags: string[]
+  vibeCompat: string[]
+  zones: string[]
+  mixBus: 'htp' | 'global'
+  priority: number
+  durationMs: number
+  effectType: string
+  curves: Record<string, HephCurve>  // ← Record, no Map
+  staticParams: Record<string, number | string | boolean>
+}
+
+/**
+ * Serializa un HephAutomationClip para transporte IPC.
+ * Convierte Map → Record.
+ */
+export function serializeHephClip(clip: HephAutomationClip): HephAutomationClipSerialized {
+  const curvesRecord: Record<string, HephCurve> = {}
+  for (const [paramId, curve] of clip.curves) {
+    curvesRecord[paramId] = curve
+  }
+  
+  return {
+    id: clip.id,
+    name: clip.name,
+    author: clip.author,
+    category: clip.category,
+    tags: clip.tags,
+    vibeCompat: clip.vibeCompat,
+    zones: clip.zones as string[],
+    mixBus: clip.mixBus,
+    priority: clip.priority,
+    durationMs: clip.durationMs,
+    effectType: clip.effectType,
+    curves: curvesRecord,
+    staticParams: clip.staticParams,
+  }
+}
+
+/**
+ * Deserializa un HephAutomationClipSerialized de vuelta a HephAutomationClip.
+ * Convierte Record → Map.
+ */
+export function deserializeHephClip(serialized: HephAutomationClipSerialized): HephAutomationClip {
+  const curvesMap = new Map<HephParamId, HephCurve>()
+  for (const [paramId, curve] of Object.entries(serialized.curves)) {
+    curvesMap.set(paramId as HephParamId, curve)
+  }
+  
+  return {
+    id: serialized.id,
+    name: serialized.name,
+    author: serialized.author,
+    category: serialized.category as import('../effects/types').EffectCategory,
+    tags: serialized.tags,
+    vibeCompat: serialized.vibeCompat,
+    zones: serialized.zones as import('../effects/types').EffectZone[],
+    mixBus: serialized.mixBus,
+    priority: serialized.priority,
+    durationMs: serialized.durationMs,
+    effectType: serialized.effectType,
+    curves: curvesMap,
+    staticParams: serialized.staticParams,
+  }
+}

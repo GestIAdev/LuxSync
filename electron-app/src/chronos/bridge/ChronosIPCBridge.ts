@@ -11,15 +11,20 @@
  * AFTER WAVE 2019:
  *   ChronosInjector.emit() → ChronosIPCBridge → IPC → Backend → DMX → LIGHTS!
  * 
+ * WAVE 2030.4: HEPHAESTUS INTEGRATION
+ *   When an FXClip has hephCurves, they are serialized and sent via IPC
+ *   to the backend, where EffectManager creates a HephParameterOverlay.
+ * 
  * AXIOMA ANTI-SIMULACIÓN:
  * Real commands, real IPC calls, real stage control.
  * 
  * @module chronos/bridge/ChronosIPCBridge
- * @version WAVE 2019
+ * @version WAVE 2019 / WAVE 2030.4
  */
 
 import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 import { mapChronosFXToBaseEffect, getFXInfo } from '../core/FXMapper'
+import { serializeHephClip, type HephAutomationClipSerialized } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -91,6 +96,7 @@ async function handleVibeChange(command: StageCommand): Promise<void> {
 /**
  * 🧨 Handle fx-trigger command
  * StageCommand.effectId = fxType for fx-trigger commands
+ * ⚒️ WAVE 2030.4: Also forwards hephCurves if present
  */
 async function handleFXTrigger(command: StageCommand): Promise<void> {
   const fxType = command.effectId
@@ -106,17 +112,26 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
   const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
   
-  console.log(`[ChronosBridge] 🧨 FX: ${fxType} → ${effectId}`, 
+  // ⚒️ WAVE 2030.4: Serialize hephCurves for IPC (Map → Record)
+  let hephCurvesSerialized: HephAutomationClipSerialized | undefined
+  if (command.hephCurves) {
+    hephCurvesSerialized = serializeHephClip(command.hephCurves)
+    console.log(`[ChronosBridge] ⚒️ HEPHAESTUS: Serializing ${command.hephCurves.curves.size} curves`)
+  }
+  
+  const hephTag = hephCurvesSerialized ? ' ⚒️[HEPH]' : ''
+  console.log(`[ChronosBridge] 🧨 FX: ${fxType} → ${effectId}${hephTag}`, 
     fxInfo.isPassthrough ? '(direct)' : fxInfo.vibeSpecific ? '(vibe-specific)' : '(mapped)')
   
   try {
     // Try chronos:triggerFX first, fallback to lux:forceStrike
-    const result = await (window as any).lux.chronos?.triggerFX?.(effectId, intensity, durationMs)
+    // ⚒️ WAVE 2030.4: Include serialized hephCurves in payload
+    const result = await (window as any).lux.chronos?.triggerFX?.(effectId, intensity, durationMs, hephCurvesSerialized)
       || await (window as any).lux?.forceStrike?.({ effect: effectId, intensity })
       || { success: false }
     
     if (result.success) {
-      console.log(`[ChronosBridge] ✅ FX triggered: ${effectId} @ ${(intensity * 100).toFixed(0)}%`)
+      console.log(`[ChronosBridge] ✅ FX triggered: ${effectId} @ ${(intensity * 100).toFixed(0)}%${hephTag}`)
     }
   } catch (err) {
     console.error('[ChronosBridge] ❌ Failed to trigger FX:', err)

@@ -70,9 +70,19 @@ const MAX_STROBE_HZ = 18
  */
 export class HephParameterOverlay {
   private readonly evaluator: CurveEvaluator
+  private readonly durationMs: number
 
   constructor(clip: HephAutomationClip) {
     this.evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+    this.durationMs = clip.durationMs
+  }
+
+  /**
+   * Retorna la duración total del clip en milisegundos.
+   * Útil para cleanup y timing en EffectManager.
+   */
+  getDurationMs(): number {
+    return this.durationMs
   }
 
   /**

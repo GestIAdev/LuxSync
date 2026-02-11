@@ -302,9 +302,10 @@ const api = {
      * @param effectId - BaseEffect ID (from FXMapper)
      * @param intensity - Effect intensity 0-1
      * @param durationMs - Optional duration override
+     * @param hephCurves - ⚒️ WAVE 2030.4: Serialized Hephaestus curves (optional)
      */
-    triggerFX: (effectId: string, intensity: number, durationMs?: number): Promise<{ success: boolean }> =>
-      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+    triggerFX: (effectId: string, intensity: number, durationMs?: number, hephCurves?: unknown): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs, hephCurves }),
     
     /**
      * 🛑 Stop FX from Chronos timeline
@@ -313,6 +314,65 @@ const api = {
      */
     stopFX: (effectId: string): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('chronos:stopFX', effectId),
+  },
+
+  // ============================================
+  // ⚒️ HEPHAESTUS - WAVE 2030.5: THE FORGE FILE I/O
+  // Automation clip persistence (.lfx files)
+  // ============================================
+  hephaestus: {
+    /**
+     * 💾 Save a clip to disk
+     * @param clipData - Serialized clip (Record, not Map)
+     * @returns { success, filePath, id, error }
+     */
+    save: (clipData: unknown): Promise<{ success: boolean; filePath?: string; id?: string; error?: string }> =>
+      ipcRenderer.invoke('heph:save', clipData),
+    
+    /**
+     * 📂 Load a clip by ID or file path
+     * @param idOrPath - Clip ID or full path
+     * @returns { success, clip, error }
+     */
+    load: (idOrPath: string): Promise<{ success: boolean; clip?: unknown; error?: string }> =>
+      ipcRenderer.invoke('heph:load', idOrPath),
+    
+    /**
+     * 📋 List all available clips (metadata only)
+     * @returns { success, clips, error }
+     */
+    list: (): Promise<{ success: boolean; clips: unknown[]; error?: string }> =>
+      ipcRenderer.invoke('heph:list'),
+    
+    /**
+     * 🗑️ Delete a clip
+     * @param idOrPath - Clip ID or full path
+     * @returns { success, deleted, error }
+     */
+    delete: (idOrPath: string): Promise<{ success: boolean; deleted?: boolean; error?: string }> =>
+      ipcRenderer.invoke('heph:delete', idOrPath),
+    
+    /**
+     * ❓ Check if clip name exists
+     * @param name - Clip name
+     * @returns { success, exists }
+     */
+    exists: (name: string): Promise<{ success: boolean; exists?: boolean }> =>
+      ipcRenderer.invoke('heph:exists', name),
+    
+    /**
+     * 📁 Get effects folder path
+     * @returns { success, path }
+     */
+    getPath: (): Promise<{ success: boolean; path?: string }> =>
+      ipcRenderer.invoke('heph:getPath'),
+    
+    /**
+     * 🆔 Generate unique clip ID
+     * @returns { id }
+     */
+    generateId: (): Promise<{ id: string }> =>
+      ipcRenderer.invoke('heph:generateId'),
   },
 }
 
@@ -904,9 +964,10 @@ const luxApi = {
      * @param effectId - BaseEffect ID (from FXMapper)
      * @param intensity - Effect intensity 0-1
      * @param durationMs - Optional duration override
+     * @param hephCurves - ⚒️ WAVE 2030.4: Serialized Hephaestus curves (optional)
      */
-    triggerFX: (effectId: string, intensity: number, durationMs?: number): Promise<{ success: boolean }> =>
-      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+    triggerFX: (effectId: string, intensity: number, durationMs?: number, hephCurves?: unknown): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs, hephCurves }),
     
     /**
      * 🛑 Stop FX from Chronos timeline

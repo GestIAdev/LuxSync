@@ -885,6 +885,36 @@ const luxApi = {
       return () => ipcRenderer.removeListener('lux:stage:loaded', handler)
     },
   },
+
+  // ============================================
+  // 🎯 WAVE 2019.11: CHRONOS TIMELINE → STAGE COMMANDS
+  // Bridge for ChronosIPCBridge to communicate with backend
+  // ============================================
+  chronos: {
+    /** 
+     * 🎭 Set Vibe from Chronos timeline
+     * Triggered when a vibe-change clip is reached during playback.
+     * @param vibeId - The target vibe (techno-club, fiesta-latina, etc.)
+     */
+    setVibe: (vibeId: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:setVibe', vibeId),
+    
+    /**
+     * 🧨 Trigger FX from Chronos timeline
+     * @param effectId - BaseEffect ID (from FXMapper)
+     * @param intensity - Effect intensity 0-1
+     * @param durationMs - Optional duration override
+     */
+    triggerFX: (effectId: string, intensity: number, durationMs?: number): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+    
+    /**
+     * 🛑 Stop FX from Chronos timeline
+     * @param effectId - BaseEffect ID to stop
+     */
+    stopFX: (effectId: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:stopFX', effectId),
+  },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

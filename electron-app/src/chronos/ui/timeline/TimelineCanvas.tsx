@@ -771,6 +771,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()  // 🔧 WAVE 2019.11: Prevent double handling by parent
     setIsDragOver(false)
     setDragTrackId(null)
     setDragTimeMs(null)

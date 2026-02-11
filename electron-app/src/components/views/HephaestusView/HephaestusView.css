@@ -1,0 +1,502 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚒️ HEPHAESTUS VIEW - STYLES
+ * WAVE 2030.3: Cyberpunk Industrial Aesthetic
+ * 
+ * Design Language: Forge + Digital — dark metals with neon accents
+ * Color Scheme: Deep orange/ember (#ff6b2b) with forge heat undertones
+ * Consistent with Chronos (blue) and Forge (orange) visual language
+ * 
+ * Layout:
+ *   Header (56px) → Workspace (flex-1) → Toolbar (48px)
+ *   Workspace = ParamSidebar (200px) + CurveCanvas (flex-1)
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ROOT VIEW
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deepest, #0a0a0f);
+  color: var(--text-primary, #fff);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * HEADER BAR
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 20px;
+  background: linear-gradient(180deg, rgba(255, 107, 43, 0.06) 0%, transparent 100%);
+  border-bottom: 2px solid rgba(255, 107, 43, 0.15);
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Header glow line */
+.heph-header::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #ff6b2b 50%, transparent 100%);
+  box-shadow: 0 0 12px rgba(255, 107, 43, 0.6);
+}
+
+.heph-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heph-header__icon {
+  font-size: 1.4rem;
+  filter: drop-shadow(0 0 6px rgba(255, 107, 43, 0.5));
+}
+
+.heph-header__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #ff6b2b;
+  text-shadow: 0 0 20px rgba(255, 107, 43, 0.4);
+  margin: 0;
+}
+
+.heph-header__subtitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+}
+
+.heph-header__center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono, monospace);
+}
+
+.heph-header__clip-name {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.heph-header__divider {
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.heph-header__duration,
+.heph-header__param-count {
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+}
+
+.heph-header__right {
+  display: flex;
+  align-items: center;
+}
+
+.heph-header__status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.heph-header__status.idle {
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.heph-header__status.playing {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.3);
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WORKSPACE (Sidebar + Canvas)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PARAMETER SIDEBAR
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-param-sidebar {
+  width: 200px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.heph-param-sidebar__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.heph-param-sidebar__title {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+}
+
+.heph-param-sidebar__lanes {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+/* ── Parameter Lane ── */
+
+.param-lane {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  text-align: left;
+}
+
+.param-lane:hover {
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.param-lane--active {
+  background: rgba(255, 107, 43, 0.06);
+  border-left-color: var(--lane-color, #ff6b2b);
+  color: var(--lane-color, #ff6b2b);
+  box-shadow: inset 3px 0 0 var(--lane-color, #ff6b2b);
+}
+
+.param-lane__icon {
+  font-size: 0.9rem;
+  width: 20px;
+  text-align: center;
+}
+
+.param-lane__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.param-lane__label {
+  font-size: 0.65rem;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.param-lane__mode {
+  font-size: 0.5rem;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.param-lane__mini-curve {
+  flex-shrink: 0;
+  display: none; /* Hidden on narrow sidebar, shown on wide */
+}
+
+.param-lane__indicator {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--lane-color, #ff6b2b);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--lane-color, #ff6b2b);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CURVE EDITOR CANVAS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-canvas-container {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.heph-curve-editor {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.heph-curve-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Keyframe node interactions */
+.heph-keyframe {
+  cursor: grab;
+  transition: r 0.1s ease;
+}
+
+.heph-keyframe:hover {
+  r: 8;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.heph-keyframe:active {
+  cursor: grabbing;
+}
+
+/* Bezier handle interactions */
+.heph-handle {
+  cursor: crosshair;
+  transition: r 0.1s ease;
+}
+
+.heph-handle:hover {
+  r: 6;
+  fill: currentColor;
+  fill-opacity: 0.3;
+}
+
+/* Selection ring pulse */
+.heph-kf-ring {
+  animation: heph-ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes heph-ring-pulse {
+  0%, 100% { opacity: 0.4; r: 10; }
+  50% { opacity: 0.15; r: 14; }
+}
+
+/* No curve placeholder */
+.heph-no-curve {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  font-family: var(--font-mono, monospace);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TOOLBAR
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.heph-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heph-toolbar__group-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.heph-toolbar__buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.heph-toolbar__btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.heph-toolbar__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.heph-toolbar__btn.active {
+  background: rgba(255, 107, 43, 0.12);
+  color: #ff6b2b;
+  border-color: rgba(255, 107, 43, 0.3);
+}
+
+.heph-toolbar__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.heph-toolbar__btn-icon {
+  font-size: 0.85rem;
+}
+
+.heph-toolbar__btn-label {
+  text-transform: uppercase;
+}
+
+.heph-toolbar__divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.heph-toolbar__select {
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.65rem;
+  font-family: var(--font-mono, monospace);
+  cursor: pointer;
+  outline: none;
+}
+
+.heph-toolbar__select:focus {
+  border-color: rgba(255, 107, 43, 0.4);
+}
+
+.heph-toolbar__select:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.heph-toolbar__select option {
+  background: #1a1a24;
+  color: #fff;
+}
+
+.heph-toolbar__spacer {
+  flex: 1;
+}
+
+.heph-toolbar__info {
+  display: flex;
+  gap: 16px;
+  font-size: 0.7rem;
+  font-family: var(--font-mono, monospace);
+}
+
+.heph-toolbar__info-item {
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
+}
+
+.heph-toolbar__info-hint {
+  color: rgba(255, 255, 255, 0.15);
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SCROLLBAR STYLING (Sidebar)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.heph-param-sidebar__lanes::-webkit-scrollbar {
+  width: 4px;
+}
+
+.heph-param-sidebar__lanes::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.heph-param-sidebar__lanes::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 43, 0.2);
+  border-radius: 2px;
+}
+
+.heph-param-sidebar__lanes::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 43, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * RESPONSIVE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .heph-param-sidebar {
+    width: 160px;
+    min-width: 160px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .param-lane__mini-curve {
+    display: block;
+  }
+  
+  .heph-param-sidebar {
+    width: 240px;
+    min-width: 240px;
+  }
+}

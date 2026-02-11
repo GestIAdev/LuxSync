@@ -80,7 +80,13 @@ export class ArtNetDriver extends EventEmitter {
   private config: ArtNetConfig
   private socket: dgram.Socket | null = null
   private state: ArtNetState = 'disconnected'
-  private dmxBuffer: Buffer
+  
+  // 🌊 WAVE 2020.2b: MULTI-UNIVERSE SUPPORT
+  // Mantener dmxBuffer para backward compat (universe 0)
+  // Añadir universeBuffers para multi-universe
+  private dmxBuffer: Buffer  // Legacy: universe 0
+  private universeBuffers: Map<number, Buffer> = new Map()  // 🌊 Multi-universe
+  
   private sequence: number = 1  // 1-255, 0 = disabled
   private framesSent: number = 0
   private packetsDropped: number = 0
@@ -102,8 +108,11 @@ export class ArtNetDriver extends EventEmitter {
       debug: config.debug ?? false,
     }
 
-    // Buffer DMX (512 canales)
+    // Buffer DMX (512 canales) - Legacy universe 0
     this.dmxBuffer = Buffer.alloc(DMX_CHANNELS, 0)
+    
+    // 🌊 WAVE 2020.2b: Initialize universe 0 in multi-universe map
+    this.universeBuffers.set(0, this.dmxBuffer)
     
     // Intervalo mínimo entre envíos (rate limiting)
     this.minSendInterval = 1000 / this.config.refreshRate
@@ -191,46 +200,75 @@ export class ArtNetDriver extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Setear un canal DMX (1-512)
+   * 🌊 WAVE 2020.2b: Get or create buffer for a universe
    */
-  setChannel(channel: number, value: number): void {
+  private getUniverseBuffer(universe: number): Buffer {
+    if (!this.universeBuffers.has(universe)) {
+      this.universeBuffers.set(universe, Buffer.alloc(DMX_CHANNELS, 0))
+    }
+    return this.universeBuffers.get(universe)!
+  }
+
+  /**
+   * Setear un canal DMX (1-512)
+   * 🌊 WAVE 2020.2b: Ahora soporta universe parameter (default 0 para backward compat)
+   */
+  setChannel(channel: number, value: number, universe: number = 0): void {
     if (channel >= 1 && channel <= 512) {
-      this.dmxBuffer[channel - 1] = Math.max(0, Math.min(255, value))
+      const buffer = this.getUniverseBuffer(universe)
+      buffer[channel - 1] = Math.max(0, Math.min(255, value))
     }
   }
 
   /**
    * Setear múltiples canales desde una dirección base
+   * 🌊 WAVE 2020.2b: Ahora soporta universe parameter
    */
-  setChannels(startChannel: number, values: number[]): void {
+  setChannels(startChannel: number, values: number[], universe: number = 0): void {
     for (let i = 0; i < values.length; i++) {
-      this.setChannel(startChannel + i, values[i])
+      this.setChannel(startChannel + i, values[i], universe)
     }
   }
 
   /**
    * Copiar buffer DMX completo
+   * 🌊 WAVE 2020.2b: Ahora soporta universe parameter
    */
-  setBuffer(buffer: Buffer | number[]): void {
+  setBuffer(buffer: Buffer | number[], universe: number = 0): void {
+    const targetBuffer = this.getUniverseBuffer(universe)
     if (Buffer.isBuffer(buffer)) {
-      buffer.copy(this.dmxBuffer, 0, 0, Math.min(512, buffer.length))
+      buffer.copy(targetBuffer, 0, 0, Math.min(512, buffer.length))
     } else {
       for (let i = 0; i < Math.min(512, buffer.length); i++) {
-        this.dmxBuffer[i] = Math.max(0, Math.min(255, buffer[i]))
+        targetBuffer[i] = Math.max(0, Math.min(255, buffer[i]))
       }
     }
   }
 
   /**
-   * Enviar frame DMX actual
+   * Enviar frame DMX actual (universe 0 - backward compat)
    * Incluye rate limiting para evitar saturación UDP
+   * 🌊 WAVE 2020.2b: Para multi-universe, usar sendAll()
    */
   send(): boolean {
+    return this.sendUniverse(this.config.universe)
+  }
+
+  /**
+   * 🌊 WAVE 2020.2b: Enviar un universo específico
+   * Rate limiting es PER-UNIVERSE para máximo throughput
+   */
+  sendUniverse(universe: number): boolean {
     if (!this.socket || this.state !== 'ready') {
       return false
     }
 
-    // Rate limiting
+    const buffer = this.universeBuffers.get(universe)
+    if (!buffer) {
+      return false
+    }
+
+    // Rate limiting (global para simplificar - 30Hz total)
     const now = Date.now()
     const elapsed = now - this.lastFrameTime
     if (elapsed < this.minSendInterval) {
@@ -240,15 +278,15 @@ export class ArtNetDriver extends EventEmitter {
     }
     this.lastFrameTime = now
 
-    // Construir paquete Art-DMX
-    const packet = this.buildArtDmxPacket()
+    // Construir paquete Art-DMX para este universo
+    const packet = this.buildArtDmxPacketForUniverse(universe, buffer)
     
     // Enviar UDP
     const sendStart = performance.now()
     
     this.socket.send(packet, this.config.port, this.config.ip, (error) => {
       if (error) {
-        this.log(`❌ Send error: ${error.message}`)
+        this.log(`❌ Send error (uni ${universe}): ${error.message}`)
         this.packetsDropped++
       } else {
         const latency = performance.now() - sendStart
@@ -270,11 +308,86 @@ export class ArtNetDriver extends EventEmitter {
   }
 
   /**
+   * 🌊 WAVE 2020.2b: MULTI-UNIVERSE BATCH SEND
+   * Envía TODOS los universos activos en paralelo usando Promise.all
+   * Este es el método principal para 50+ universos
+   */
+  async sendAll(): Promise<{ success: boolean; universesSent: number; errors: number }> {
+    if (!this.socket || this.state !== 'ready') {
+      return { success: false, universesSent: 0, errors: 0 }
+    }
+
+    // Rate limiting global
+    const now = Date.now()
+    const elapsed = now - this.lastFrameTime
+    if (elapsed < this.minSendInterval) {
+      this.packetsDropped += this.universeBuffers.size
+      return { success: false, universesSent: 0, errors: 0 }
+    }
+    this.lastFrameTime = now
+
+    const promises: Promise<boolean>[] = []
+    const sendStart = performance.now()
+
+    // Crear promesas para cada universo
+    for (const [universe, buffer] of this.universeBuffers) {
+      const packet = this.buildArtDmxPacketForUniverse(universe, buffer)
+      
+      const promise = new Promise<boolean>((resolve) => {
+        this.socket!.send(packet, this.config.port, this.config.ip, (error) => {
+          if (error) {
+            this.log(`❌ Send error (uni ${universe}): ${error.message}`)
+            this.packetsDropped++
+            resolve(false)
+          } else {
+            resolve(true)
+          }
+        })
+      })
+      
+      promises.push(promise)
+    }
+
+    // Esperar a que todos se envíen en paralelo
+    const results = await Promise.all(promises)
+    
+    const successCount = results.filter(r => r).length
+    const errorCount = results.length - successCount
+    
+    // Track metrics
+    const latency = performance.now() - sendStart
+    this.framesSent += successCount
+    this.lastSendTime = now
+    
+    this.sendLatencies.push(latency)
+    if (this.sendLatencies.length > 100) {
+      this.sendLatencies.shift()
+    }
+
+    // Increment sequence
+    this.sequence = this.sequence >= 255 ? 1 : this.sequence + 1
+
+    // Log periodically for debugging
+    if (this.framesSent % 100 === 0 && this.universeBuffers.size > 1) {
+      this.log(`📡 Batch sent ${successCount}/${this.universeBuffers.size} universes in ${latency.toFixed(2)}ms`)
+    }
+
+    return { 
+      success: errorCount === 0, 
+      universesSent: successCount, 
+      errors: errorCount 
+    }
+  }
+
+  /**
    * Blackout - todos los canales a 0
+   * 🌊 WAVE 2020.2b: Ahora limpia TODOS los universos
    */
   blackout(): void {
-    this.dmxBuffer.fill(0)
-    this.send()
+    for (const buffer of this.universeBuffers.values()) {
+      buffer.fill(0)
+    }
+    this.sendAll() // Fire and forget
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -282,7 +395,14 @@ export class ArtNetDriver extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Construir paquete Art-DMX (OpDmx 0x5000)
+   * Construir paquete Art-DMX (OpDmx 0x5000) - Legacy para universe config
+   */
+  private buildArtDmxPacket(): Buffer {
+    return this.buildArtDmxPacketForUniverse(this.config.universe, this.dmxBuffer)
+  }
+
+  /**
+   * 🌊 WAVE 2020.2b: Construir paquete Art-DMX para cualquier universo
    * 
    * Structure:
    * [0-7]   ID: "Art-Net\0"
@@ -295,7 +415,7 @@ export class ArtNetDriver extends EventEmitter {
    * [16-17] Length: 512 (big-endian)
    * [18+]   DMX Data
    */
-  private buildArtDmxPacket(): Buffer {
+  private buildArtDmxPacketForUniverse(universe: number, buffer: Buffer): Buffer {
     const packet = Buffer.alloc(ARTDMX_HEADER_SIZE + DMX_CHANNELS)
     
     // Header
@@ -315,9 +435,8 @@ export class ArtNetDriver extends EventEmitter {
     
     // Universe: SubUni (low byte) + Net (high byte)
     // Art-Net universe = (Net << 8) | SubUni
-    // Para universe 0-255, Net=0, SubUni=universe
-    const subUni = this.config.universe & 0xFF
-    const net = (this.config.universe >> 8) & 0x7F  // 7 bits
+    const subUni = universe & 0xFF
+    const net = (universe >> 8) & 0x7F  // 7 bits
     packet.writeUInt8(subUni, 14)
     packet.writeUInt8(net, 15)
     
@@ -325,9 +444,47 @@ export class ArtNetDriver extends EventEmitter {
     packet.writeUInt16BE(DMX_CHANNELS, 16)
     
     // DMX Data
-    this.dmxBuffer.copy(packet, ARTDMX_HEADER_SIZE)
+    buffer.copy(packet, ARTDMX_HEADER_SIZE)
     
     return packet
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 🌊 WAVE 2020.2b: UNIVERSE MANAGEMENT
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Get number of active universes
+   */
+  getUniverseCount(): number {
+    return this.universeBuffers.size
+  }
+
+  /**
+   * Get list of active universe numbers
+   */
+  getActiveUniverses(): number[] {
+    return Array.from(this.universeBuffers.keys())
+  }
+
+  /**
+   * Clear a specific universe (remove from active set)
+   */
+  clearUniverse(universe: number): void {
+    if (universe !== 0) { // Never remove universe 0 (legacy compat)
+      this.universeBuffers.delete(universe)
+    }
+  }
+
+  /**
+   * Clear all universes except 0
+   */
+  clearAllUniverses(): void {
+    const universe0 = this.universeBuffers.get(0)
+    this.universeBuffers.clear()
+    if (universe0) {
+      this.universeBuffers.set(0, universe0)
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

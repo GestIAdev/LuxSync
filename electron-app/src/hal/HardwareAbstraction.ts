@@ -1066,7 +1066,7 @@ export class HardwareAbstraction {
       return
     }
     
-    // Convert states to DMX packets and send
+    // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
     
     // 🔥 WAVE 1219: Debug first packet values
@@ -1075,9 +1075,21 @@ export class HardwareAbstraction {
       console.log(`[HAL] 📡 DMX OUT: Uni ${p.universe} | Addr ${p.address} | Ch0-5: [${p.channels.slice(0, 6).join(', ')}]`)
     }
     
+    // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
+    // Feed all packets to driver (buffering by universe internally)
     for (const packet of packets) {
       this.driver.send(packet)
     }
+    
+    // 🔥 WAVE 2020.2b: Use sendAll() for parallel UDP dispatch if available
+    // This is the key optimization for 50+ universes
+    if (this.driver.sendAll) {
+      // Fire and forget - we don't await because render loop is sync
+      // sendAll internally handles the Promise
+      void this.driver.sendAll()
+    }
+    // NOTE: Drivers that support sendAll() should buffer in send() and flush in sendAll()
+    // Drivers without sendAll() will send immediately in send() (legacy behavior)
   }
   
   /**

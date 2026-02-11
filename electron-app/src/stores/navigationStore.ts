@@ -21,7 +21,7 @@ import { create } from 'zustand'
 // ============================================
 
 export type StageId = 'dashboard' | 'live' | 'calibration' | 'chronos'
-export type ToolId = 'constructor' | 'forge' | 'nexus' | 'core'
+export type ToolId = 'constructor' | 'forge' | 'hephaestus' | 'nexus' | 'core'
 export type TabId = StageId | ToolId
 
 export interface TabConfig {
@@ -115,6 +115,15 @@ export const TABS: TabConfig[] = [
     shortcut: 'Alt+6',      // WAVE 2004: Shifted
     description: 'Fixture Forge - Create & Edit Definitions',
   },
+  {
+    id: 'hephaestus',
+    label: 'HEPHAESTUS',
+    icon: 'hephaestus',     // IconHephaestus (custom SVG) - WAVE 2030.3
+    customIcon: true,
+    type: 'tool',
+    shortcut: 'Alt+7',
+    description: 'Hephaestus Studio - FX Curve Automation Editor',
+  },
   // {
   //   id: 'setup',
   //   label: 'SETUP',
@@ -130,7 +139,7 @@ export const TABS: TabConfig[] = [
     icon: 'plug',
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+7',      // WAVE 2004: Shifted
+    shortcut: 'Alt+8',      // WAVE 2030.3: Shifted for Hephaestus
     description: 'Visual Patching & Fixture Location',
   },
   {
@@ -139,12 +148,12 @@ export const TABS: TabConfig[] = [
     icon: 'brain',          // IconLuxCore (custom SVG)
     customIcon: true,
     type: 'tool',
-    shortcut: 'Alt+8',      // WAVE 2004: Shifted
+    shortcut: 'Alt+9',      // WAVE 2030.3: Shifted for Hephaestus
     description: 'Selene AI Monitoring & Telemetry',
   },
 ]
 
-const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'constructor', 'forge', 'nexus', 'core']
+const TAB_ORDER: TabId[] = ['dashboard', 'live', 'calibration', 'chronos', 'constructor', 'forge', 'hephaestus', 'nexus', 'core']
 
 // ============================================
 // STORE - WAVE 1112: Added targetFixtureId for Builder -> Forge bridge

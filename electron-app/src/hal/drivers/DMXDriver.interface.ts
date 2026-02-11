@@ -118,6 +118,14 @@ export interface IDMXDriver {
   sendUniverse(universe: number, data: Uint8Array): boolean
   
   /**
+   * 🌊 WAVE 2020.2b: Send ALL active universes in parallel.
+   * This is the high-performance method for 50+ universes.
+   * 
+   * @returns Promise<boolean> - true if all universes sent successfully
+   */
+  sendAll?(): Promise<boolean>
+  
+  /**
    * Blackout all channels (set to 0).
    */
   blackout(): void

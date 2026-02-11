@@ -331,6 +331,51 @@ export const IconChronos: React.FC<IconProps> = ({ size = 20, className = '' }) 
   </svg>
 )
 
+/**
+ * ⚒️ HEPHAESTUS / FX Curve Automation Icon - WAVE 2030.3
+ * Anvil silhouette with bezier curve overlay — The God Forge
+ * Industrial cyberpunk: sharp angles, neon curves, forge heat
+ */
+export const IconHephaestus: React.FC<IconProps> = ({ size = 20, className = '' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Anvil body — industrial base */}
+    <path d="M4 17H20L18 21H6L4 17Z" stroke="currentColor" />
+    <path d="M8 17V15H16V17" stroke="currentColor" />
+    <path d="M10 15H14" stroke="currentColor" opacity="0.6" />
+
+    {/* Bezier automation curve — the soul of Hephaestus */}
+    <path
+      d="M3 13C3 13 7 3 12 8C17 13 21 3 21 3"
+      stroke="currentColor"
+      strokeWidth="2"
+      fill="none"
+    />
+
+    {/* Keyframe nodes on curve */}
+    <circle cx="3" cy="13" r="1.2" stroke="currentColor" fill="currentColor" opacity="0.8" />
+    <circle cx="12" cy="8" r="1.2" stroke="currentColor" fill="currentColor" opacity="0.8" />
+    <circle cx="21" cy="3" r="1.2" stroke="currentColor" fill="currentColor" opacity="0.8" />
+
+    {/* Bezier handle whiskers */}
+    <path d="M3 13L7 5" stroke="currentColor" opacity="0.3" strokeWidth="1" />
+    <path d="M21 3L17 11" stroke="currentColor" opacity="0.3" strokeWidth="1" />
+
+    {/* Forge heat glow beneath anvil */}
+    <path d="M9 21V22.5" stroke="currentColor" opacity="0.3" />
+    <path d="M12 21V23" stroke="currentColor" opacity="0.4" />
+    <path d="M15 21V22.5" stroke="currentColor" opacity="0.3" />
+  </svg>
+)
+
 export default {
   IconDashboard,
   IconLiveStage,
@@ -339,5 +384,6 @@ export default {
   IconConstruct,
   IconSetup,
   IconForge,
-  IconChronos  // WAVE 2004
+  IconChronos,      // WAVE 2004
+  IconHephaestus,   // WAVE 2030.3
 }

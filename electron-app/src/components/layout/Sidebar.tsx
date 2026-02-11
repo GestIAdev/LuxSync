@@ -24,8 +24,9 @@ import {
   IconCalibration,
   IconSetup,
   IconLuxCore,
-  IconForge,  // 🔨 WAVE 1110: Forge icon
-  IconChronos  // ⏱️ WAVE 2004: Chronos icon
+  IconForge,        // 🔨 WAVE 1110: Forge icon
+  IconChronos,      // ⏱️ WAVE 2004: Chronos icon
+  IconHephaestus,   // ⚒️ WAVE 2030.3: Hephaestus icon
 } from './NavigationIcons'
 import './Sidebar.css'
 
@@ -38,6 +39,7 @@ const TAB_COLORS: Record<TabId, string> = {
   'chronos': '#3b82f6',      // Blue-500 (Chronos Studio) - WAVE 2004
   'constructor': '#a855f7',  // Purple (Build)
   'forge': '#f97316',        // Orange (The Blacksmith) - WAVE 1110
+  'hephaestus': '#ff6b2b',   // Deep Orange/Ember (The God Forge) - WAVE 2030.3
   'core': '#f59e0b',         // Amber (AI Monitor)
   'nexus': '#ef4444',
 }
@@ -53,6 +55,7 @@ const TAB_ICONS: Record<string, React.FC<{ size?: number; className?: string }>>
   'plug': IconSetup,          // Nexus (reusing setup icon)
   'brain': IconLuxCore,       // LUX CORE (neural network)
   'forge': IconForge,         // Forge (hammer + anvil) - WAVE 1110
+  'hephaestus': IconHephaestus, // Hephaestus (anvil + bezier curves) - WAVE 2030.3
 }
 
 // Separar tabs por tipo

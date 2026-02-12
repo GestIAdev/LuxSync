@@ -34,8 +34,8 @@ import { EngineStatus } from './header/EngineStatus'
 // 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
 import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
-// � WAVE 2015: Stage Preview (real fixtures, optimized)
-import { StagePreview } from './stage/StagePreview'
+// 🎬 WAVE 2040.1: THE CINEMA SIMULATOR (replaces StagePreview)
+import { StagePreview } from './stage/StageSimulatorCinema'
 // �🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
 import { ArsenalDock } from './arsenal/ArsenalDock'
 // 🔍 WAVE 2007: Inspector and Context Menu

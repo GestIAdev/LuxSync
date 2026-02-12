@@ -1,0 +1,89 @@
+/**
+ * 🎬 STAGE SIMULATOR CINEMA - WAVE 2040.1
+ * Double-buffer canvas with beam vectors, motion trails, and gobo indicators
+ */
+
+.stage-cinema {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 280px;
+  min-height: 180px;
+  background: #08080d;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+/* Hidden state (same contract as old StagePreview) */
+.stage-cinema--hidden {
+  max-height: 0;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DOUBLE BUFFER CANVASES
+   Trails (z:0) → rendered BEHIND fixtures canvas
+   Fixtures (z:1) → cleared and redrawn every frame
+   The fixtures canvas background is opaque, so trails show
+   through the transparent beams/glows painted on it.
+   Actually: trails canvas is BEHIND (lower z), fixtures ON TOP.
+   BUT we paint the fixtures canvas background as opaque, which
+   would hide trails. To solve: we paint the background on
+   fixtures canvas, then composite trails via mix-blend-mode.
+   
+   CORRECTED APPROACH:
+   - Trails canvas on top with mix-blend-mode: screen
+   - Fixtures canvas on bottom with opaque background
+   This way trails ADD light to the scene (screen blending).
+   ═══════════════════════════════════════════════════════════════════ */
+
+.stage-cinema__fixtures {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.stage-cinema__trails {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Badge */
+.stage-cinema__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-tertiary, #555);
+  background: rgba(20, 20, 40, 0.85);
+  border: 1px solid rgba(100, 140, 255, 0.12);
+  border-radius: 4px;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.15em;
+  z-index: 2;
+}
+
+/* Responsive */
+@media (max-height: 800px) {
+  .stage-cinema {
+    max-height: 200px;
+    min-height: 140px;
+  }
+}

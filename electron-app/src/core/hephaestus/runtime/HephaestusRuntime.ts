@@ -77,9 +77,10 @@ interface ActiveHephClip {
  * 
  * SCALING RULES:
  *   - intensity/strobe/white/amber → int 0-255
- *   - pan/tilt → int 0-255
+ *   - pan/tilt → 16-bit: coarse 0-255 + fine 0-255 (val16 = val * 65535)
+ *   - zoom/focus/iris/gobo1/gobo2/prism → int 0-255 (extended DMX params)
  *   - color → { r, g, b } each 0-255
- *   - speed/zoom/width/direction/globalComp → float 0-1 (engine-internal)
+ *   - speed/width/direction/globalComp → float 0-1 (engine-internal)
  */
 export interface HephFixtureOutput {
   fixtureId: string
@@ -89,6 +90,13 @@ export interface HephFixtureOutput {
   value: number
   /** RGB color pre-converted from HSL (only for 'color' parameter) */
   rgb?: { r: number; g: number; b: number }
+  /**
+   * ⚒️ WAVE 2030.24: 16-bit fine channel for pan/tilt.
+   * When parameter is 'pan' or 'tilt', this carries the fine byte (LSB).
+   * `value` carries the coarse byte (MSB).
+   * Together: val16 = (coarse << 8) | fine = original float * 65535
+   */
+  fine?: number
   source: 'hephaestus-runtime'
 }
 
@@ -132,25 +140,66 @@ export function hslToRgb(h: number, s: number, l: number): { r: number; g: numbe
 // DMX SCALING FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Parameters that scale 0-1 → 0-255 (DMX channels) */
+/** Parameters that scale 0-1 → 0-255 (DMX channels, 8-bit standard) */
 const DMX_SCALED_PARAMS = new Set([
-  'intensity', 'strobe', 'white', 'amber', 'pan', 'tilt',
-])
-
-/** Parameters that pass through as 0-1 floats (engine-internal) */
-const FLOAT_PASSTHROUGH_PARAMS = new Set([
-  'speed', 'zoom', 'width', 'direction', 'globalComp',
+  'intensity', 'strobe', 'white', 'amber',
+  'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism',
 ])
 
 /**
- * ⚒️ WAVE 2030.21: Scale a raw 0-1 curve value to DMX format
+ * ⚒️ WAVE 2030.24: 16-bit movement params.
+ * These scale 0-1 → 0-65535 and emit BOTH coarse (MSB) and fine (LSB).
+ */
+const DMX_16BIT_PARAMS = new Set(['pan', 'tilt'])
+
+/** Parameters that pass through as 0-1 floats (engine-internal) */
+const FLOAT_PASSTHROUGH_PARAMS = new Set([
+  'speed', 'width', 'direction', 'globalComp',
+])
+
+/**
+ * ⚒️ WAVE 2030.24: Scale a raw 0-1 curve value to DMX format
+ * 
+ * 16-bit params (pan/tilt): returns coarse byte (0-255).
+ * Use scaleToDMX16 for the full { coarse, fine } pair.
+ * 
+ * 8-bit DMX params: 0-1 → 0-255 (clamped).
+ * Engine params: 0-1 passthrough (clamped).
  */
 export function scaleToDMX(paramId: string, rawValue: number): number {
-  if (DMX_SCALED_PARAMS.has(paramId)) {
-    return Math.round(Math.max(0, Math.min(1, rawValue)) * 255)
+  const clamped = Math.max(0, Math.min(1, rawValue))
+
+  if (DMX_16BIT_PARAMS.has(paramId)) {
+    // 16-bit: return coarse byte (MSB) for backward compatibility
+    const val16 = Math.round(clamped * 65535)
+    return (val16 >> 8) & 0xFF
   }
+
+  if (DMX_SCALED_PARAMS.has(paramId)) {
+    return Math.round(clamped * 255)
+  }
+
   // Engine-internal params: clamp 0-1, no scaling
-  return Math.max(0, Math.min(1, rawValue))
+  return clamped
+}
+
+/**
+ * ⚒️ WAVE 2030.24: 16-bit scaling — returns { coarse, fine } pair.
+ * 
+ * coarse = MSB = (val16 >> 8) & 0xFF
+ * fine   = LSB = val16 & 0xFF
+ * 
+ * Example:
+ *   0.5000 → val16=32768 → coarse=128, fine=0
+ *   0.5019 → val16=32893 → coarse=128, fine=125
+ */
+export function scaleToDMX16(rawValue: number): { coarse: number; fine: number } {
+  const clamped = Math.max(0, Math.min(1, rawValue))
+  const val16 = Math.round(clamped * 65535)
+  return {
+    coarse: (val16 >> 8) & 0xFF,
+    fine: val16 & 0xFF,
+  }
 }
 
 /** Runtime statistics */
@@ -459,13 +508,21 @@ export class HephaestusRuntime {
         const scaledValue = scaleToDMX(paramName, withIntensity)
 
         for (const zone of zones) {
-          outputs.push({
+          const output: HephFixtureOutput = {
             fixtureId: `zone:${zone}`,
             zone,
             parameter: paramName,
             value: scaledValue,
             source: 'hephaestus-runtime',
-          })
+          }
+
+          // ⚒️ WAVE 2030.24: 16-bit fine channel for pan/tilt
+          if (paramName === 'pan' || paramName === 'tilt') {
+            const { fine } = scaleToDMX16(withIntensity)
+            output.fine = fine
+          }
+
+          outputs.push(output)
         }
       }
     }

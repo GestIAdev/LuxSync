@@ -90,9 +90,14 @@ export type HephCurveMode = 'absolute' | 'relative' | 'additive'
  *   'white'      → whiteOverride (0-1)
  *   'amber'      → amberOverride (0-1)
  *   'speed'      → param interno del efecto (0-1 normalizado)
- *   'pan'        → movement.pan (0-1 → se mapea a -1..1)
- *   'tilt'       → movement.tilt (0-1 → se mapea a -1..1)
- *   'zoom'       → param interno del efecto (0-1)
+ *   'pan'        → movement.pan (0-1 → 16-bit: coarse + fine)
+ *   'tilt'       → movement.tilt (0-1 → 16-bit: coarse + fine)
+ *   'zoom'       → zoom (0-1 → 0-255 DMX)
+ *   'focus'      → focus (0-1 → 0-255 DMX)
+ *   'iris'       → iris (0-1 → 0-255 DMX)
+ *   'gobo1'      → gobo wheel 1 (0-1 → 0-255 DMX)
+ *   'gobo2'      → gobo wheel 2 (0-1 → 0-255 DMX)
+ *   'prism'      → prism rotation (0-1 → 0-255 DMX)
  *   'strobe'     → strobeRate (0=off, 1=18Hz max)
  *   'globalComp' → globalComposition (0-1)
  *   'width'      → param interno (beam/chase width, 0-1)
@@ -107,6 +112,11 @@ export type HephParamId =
   | 'pan'
   | 'tilt'
   | 'zoom'
+  | 'focus'
+  | 'iris'
+  | 'gobo1'
+  | 'gobo2'
+  | 'prism'
   | 'strobe'
   | 'globalComp'
   | 'width'

@@ -1116,16 +1116,24 @@ export class TitanOrchestrator {
             }
             
             case 'pan': {
-              // LTP: Hephaestus overwrites (value is already 0-255)
+              // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+              // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
               newF.pan = output.value
               newF.physicalPan = newF.pan
+              // panFine carried in output.fine (if fixture supports 16-bit)
+              if (output.fine !== undefined) {
+                (newF as any).panFine = output.fine
+              }
               break
             }
             
             case 'tilt': {
-              // LTP: Hephaestus overwrites (value is already 0-255)
+              // ⚒️ WAVE 2030.24: LTP with 16-bit precision
               newF.tilt = output.value
               newF.physicalTilt = newF.tilt
+              if (output.fine !== undefined) {
+                (newF as any).tiltFine = output.fine
+              }
               break
             }
             
@@ -1150,8 +1158,41 @@ export class TitanOrchestrator {
               newF.amber = output.value
               break
             }
+
+            // ⚒️ WAVE 2030.24: Extended DMX params (8-bit, LTP overlay)
+            case 'zoom': {
+              newF.zoom = output.value
+              break
+            }
             
-            // speed/zoom/width/direction/globalComp: engine-internal (0-1 float)
+            case 'focus': {
+              newF.focus = output.value
+              break
+            }
+            
+            case 'iris': {
+              // FixtureState doesn't have iris yet — store as dynamic channel
+              (newF as any).iris = output.value
+              break
+            }
+            
+            case 'gobo1': {
+              newF.gobo = output.value
+              break
+            }
+            
+            case 'gobo2': {
+              // Secondary gobo — store as dynamic channel
+              (newF as any).gobo2 = output.value
+              break
+            }
+            
+            case 'prism': {
+              newF.prism = output.value
+              break
+            }
+            
+            // speed/width/direction/globalComp: engine-internal (0-1 float)
             // No DMX channel mapping - consumed by engine subsystems only
           }
         }

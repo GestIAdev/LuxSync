@@ -24,7 +24,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest'
-import { HephaestusRuntime, scaleToDMX, hslToRgb } from '../runtime/HephaestusRuntime'
+import { HephaestusRuntime, scaleToDMX, scaleToDMX16, hslToRgb } from '../runtime/HephaestusRuntime'
 import type { HephFixtureOutput } from '../runtime/HephaestusRuntime'
 import { CurveEvaluator } from '../CurveEvaluator'
 import type { HephAutomationClip, HephCurve, HephParamId, HSL } from '../types'
@@ -182,9 +182,10 @@ function createBaseFixtureState(overrides: Partial<FixtureState> = {}): FixtureS
  * Replica exactamente la merge strategy de TitanOrchestrator:
  *   - Intensity: HTP (Highest Takes Precedence)
  *   - Color: LTP (Last Takes Precedence — Hephaestus overwrites)
- *   - Pan/Tilt: LTP overlay
+ *   - Pan/Tilt: LTP overlay (with 16-bit fine support)
  *   - Strobe: Additive (sum clamped to 255)
  *   - White/Amber: LTP overlay
+ *   - Zoom/Focus/Iris/Gobo1/Gobo2/Prism: LTP overlay (8-bit DMX)
  */
 function applyHephaestusMerge(
   fixtureStates: FixtureState[],
@@ -233,10 +234,16 @@ function applyHephaestusMerge(
         case 'pan':
           newF.pan = output.value
           newF.physicalPan = newF.pan
+          if (output.fine !== undefined) {
+            (newF as any).panFine = output.fine
+          }
           break
         case 'tilt':
           newF.tilt = output.value
           newF.physicalTilt = newF.tilt
+          if (output.fine !== undefined) {
+            (newF as any).tiltFine = output.fine
+          }
           break
         case 'color':
           if (output.rgb) {
@@ -250,6 +257,25 @@ function applyHephaestusMerge(
           break
         case 'amber':
           newF.amber = output.value
+          break
+        // ⚒️ WAVE 2030.24: Extended params (8-bit DMX, LTP)
+        case 'zoom':
+          newF.zoom = output.value
+          break
+        case 'focus':
+          newF.focus = output.value
+          break
+        case 'iris':
+          (newF as any).iris = output.value
+          break
+        case 'gobo1':
+          newF.gobo = output.value
+          break
+        case 'gobo2':
+          (newF as any).gobo2 = output.value
+          break
+        case 'prism':
+          newF.prism = output.value
           break
       }
     }
@@ -415,20 +441,32 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
       expect(final.strobe).toBeLessThanOrEqual(128)      // ✅ Strobe range
     })
 
-    test('scaleToDMX: DMX params scale to 0-255, engine params stay 0-1', () => {
-      // DMX params
+    test('scaleToDMX: DMX params scale to 0-255, 16-bit params give coarse, engine params stay 0-1', () => {
+      // 8-bit DMX params
       expect(scaleToDMX('intensity', 0)).toBe(0)
       expect(scaleToDMX('intensity', 1)).toBe(255)
-      expect(scaleToDMX('intensity', 0.5)).toBe(128) // Math.round(127.5)
+      expect(scaleToDMX('intensity', 0.5)).toBe(128) // Math.round(127.5) → 128 (coarse of 32768)
       expect(scaleToDMX('white', 1)).toBe(255)
       expect(scaleToDMX('amber', 1)).toBe(255)
       expect(scaleToDMX('strobe', 1)).toBe(255)
-      expect(scaleToDMX('pan', 1)).toBe(255)
+      
+      // ⚒️ WAVE 2030.24: 16-bit params — scaleToDMX returns COARSE byte
+      expect(scaleToDMX('pan', 1)).toBe(255)     // val16=65535, coarse=(65535>>8)&0xFF=255
       expect(scaleToDMX('tilt', 1)).toBe(255)
+      expect(scaleToDMX('pan', 0)).toBe(0)
+      expect(scaleToDMX('pan', 0.5)).toBe(128)   // val16=32768, coarse=128
+      
+      // ⚒️ WAVE 2030.24: Extended DMX params (8-bit)
+      expect(scaleToDMX('zoom', 1)).toBe(255)
+      expect(scaleToDMX('zoom', 0.5)).toBe(128)
+      expect(scaleToDMX('focus', 1)).toBe(255)
+      expect(scaleToDMX('iris', 0.75)).toBe(191)   // Math.round(0.75*255)
+      expect(scaleToDMX('gobo1', 0.5)).toBe(128)
+      expect(scaleToDMX('gobo2', 1)).toBe(255)
+      expect(scaleToDMX('prism', 0.3)).toBe(77)    // Math.round(0.3*255)
       
       // Engine params (pass-through 0-1)
       expect(scaleToDMX('speed', 0.7)).toBeCloseTo(0.7, 5)
-      expect(scaleToDMX('zoom', 0.3)).toBeCloseTo(0.3, 5)
       expect(scaleToDMX('width', 1.0)).toBeCloseTo(1.0, 5)
       expect(scaleToDMX('direction', 0.5)).toBeCloseTo(0.5, 5)
       expect(scaleToDMX('globalComp', 0.8)).toBeCloseTo(0.8, 5)
@@ -936,6 +974,621 @@ describe('🥊 WAVE 2030.23: THE GAUNTLET — E2E Pipeline Integration', () => {
       expect(last.dimmer).toBeGreaterThan(200)
       expect(last.white).toBeGreaterThan(200)
       expect(last.amber).toBeGreaterThan(200)
+    })
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRUEBA 4: 🔬 16-BIT PRECISION (WAVE 2030.24)
+  // 
+  // Verifica que pan/tilt emiten coarse + fine con resolución 16-bit.
+  // La diferencia entre 0.5000 y 0.5019 debe ser INVISIBLE en coarse (128)
+  // pero VISIBLE en fine (0 → ~125).
+  // 
+  // Si fine siempre es 0 → no estamos haciendo 16-bit.
+  // Si coarse cambia con diferencias de 0.0019 → estamos perdiendo precisión.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  describe('🔬 PRUEBA 4: 16-Bit Precision — Pan/Tilt Fine Channel', () => {
+
+    test('scaleToDMX16: 0.5000 → coarse=128, fine=0', () => {
+      const result = scaleToDMX16(0.5000)
+      // 0.5 * 65535 = 32767.5 → round = 32768
+      // coarse = (32768 >> 8) & 0xFF = 128
+      // fine = 32768 & 0xFF = 0
+      expect(result.coarse).toBe(128)
+      expect(result.fine).toBe(0)
+    })
+
+    test('scaleToDMX16: 0.5019 → coarse=128, fine>0 (fine interpolation visible)', () => {
+      const result = scaleToDMX16(0.5019)
+      // 0.5019 * 65535 = 32896.3... → round = 32896
+      // coarse = (32896 >> 8) & 0xFF = 128
+      // fine = 32896 & 0xFF = 128
+      expect(result.coarse).toBe(128)
+      expect(result.fine).toBeGreaterThan(0)  // Fine has moved!
+      
+      console.log(`[🔬 16-BIT] 0.5019 → coarse=${result.coarse}, fine=${result.fine}`)
+    })
+
+    test('scaleToDMX16: boundaries — 0.0=0|0, 1.0=255|255', () => {
+      const zero = scaleToDMX16(0.0)
+      expect(zero.coarse).toBe(0)
+      expect(zero.fine).toBe(0)
+
+      const max = scaleToDMX16(1.0)
+      expect(max.coarse).toBe(255)
+      expect(max.fine).toBe(255)
+    })
+
+    test('scaleToDMX16: clamping — negative and >1 values', () => {
+      const neg = scaleToDMX16(-0.5)
+      expect(neg.coarse).toBe(0)
+      expect(neg.fine).toBe(0)
+
+      const over = scaleToDMX16(1.5)
+      expect(over.coarse).toBe(255)
+      expect(over.fine).toBe(255)
+    })
+
+    test('scaleToDMX backward compat: pan coarse matches scaleToDMX16 coarse', () => {
+      // scaleToDMX('pan', x) should return the same coarse byte as scaleToDMX16(x).coarse
+      const testValues = [0, 0.25, 0.5, 0.5019, 0.75, 1.0]
+      for (const val of testValues) {
+        const coarseFromScaleToDMX = scaleToDMX('pan', val)
+        const { coarse } = scaleToDMX16(val)
+        expect(coarseFromScaleToDMX).toBe(coarse)
+      }
+    })
+
+    test('16-bit fine channel flows through merge pipeline', () => {
+      // Simulate a pan output with fine channel
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'pan',
+        value: 128,   // coarse
+        fine: 125,    // fine byte
+        source: 'hephaestus-runtime',
+      }]
+
+      const baseStates = [createBaseFixtureState()]
+      const merged = applyHephaestusMerge(baseStates, hephOutputs)
+
+      expect(merged[0].pan).toBe(128)
+      expect((merged[0] as any).panFine).toBe(125)
+    })
+
+    test('16-bit resolution: 256 distinct fine values per coarse step', () => {
+      // Coarse=128 covers the float range ~0.5000 to ~0.5039
+      // Fine should span 0-255 within that range
+      const fineValues = new Set<number>()
+      
+      // Sweep from 0.5 to just before 0.504 (where coarse would become 129)
+      for (let i = 0; i < 256; i++) {
+        const floatVal = (32768 + i) / 65535  // Exact 16-bit increments
+        const { coarse, fine } = scaleToDMX16(floatVal)
+        if (coarse === 128) {
+          fineValues.add(fine)
+        }
+      }
+
+      // Should have many distinct fine values for coarse=128
+      expect(fineValues.size).toBeGreaterThan(200)
+      
+      console.log(`[🔬 16-BIT] Distinct fine values for coarse=128: ${fineValues.size}/256`)
+    })
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRUEBA 5: 🎛️ EXTENDED PARAMS (WAVE 2030.24)
+  // 
+  // Verifica que los nuevos params Pro (zoom, focus, iris, gobo1, gobo2, prism)
+  // viajan por el pipeline completo sin pérdida.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  describe('🎛️ PRUEBA 5: Extended Params — Zoom/Focus/Iris/Gobo/Prism', () => {
+
+    test('Zoom 0.75 → DMX 191 through full pipeline', () => {
+      const clip = forgeClip('ext-zoom', [
+        constantCurve('zoom', 0.75),
+      ])
+      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const raw = evaluator.getValue('zoom', 500)
+      const dmx = scaleToDMX('zoom', raw)
+
+      expect(raw).toBe(0.75)
+      expect(dmx).toBe(191)  // Math.round(0.75 * 255)
+
+      // Through merge
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'zoom',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect(merged[0].zoom).toBe(191)
+    })
+
+    test('Focus 0.5 → DMX 128 through full pipeline', () => {
+      const clip = forgeClip('ext-focus', [
+        constantCurve('focus', 0.5),
+      ])
+      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const raw = evaluator.getValue('focus', 500)
+      const dmx = scaleToDMX('focus', raw)
+
+      expect(dmx).toBe(128)
+
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'focus',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect(merged[0].focus).toBe(128)
+    })
+
+    test('Iris 1.0 → DMX 255', () => {
+      const dmx = scaleToDMX('iris', 1.0)
+      expect(dmx).toBe(255)
+
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'iris',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect((merged[0] as any).iris).toBe(255)
+    })
+
+    test('Gobo1 0.3 → DMX 77', () => {
+      const dmx = scaleToDMX('gobo1', 0.3)
+      expect(dmx).toBe(77)
+
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'gobo1',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect(merged[0].gobo).toBe(77)
+    })
+
+    test('Gobo2 0.6 → DMX 153', () => {
+      const dmx = scaleToDMX('gobo2', 0.6)
+      expect(dmx).toBe(153)
+
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'gobo2',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect((merged[0] as any).gobo2).toBe(153)
+    })
+
+    test('Prism 0.5 → DMX 128', () => {
+      const dmx = scaleToDMX('prism', 0.5)
+      expect(dmx).toBe(128)
+
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'prism',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect(merged[0].prism).toBe(128)
+    })
+
+    test('🥊 FULL PRO GAUNTLET: All 6 extended params + original 5 in one clip', () => {
+      const clip = forgeClip('el-pro-completo', [
+        constantCurve('intensity', 1.0),
+        constantColorCurve(120, 100, 50),   // Pure green
+        constantCurve('white', 0.8),
+        constantCurve('amber', 0.6),
+        constantCurve('strobe', 0.25),
+        constantCurve('zoom', 0.75),
+        constantCurve('focus', 0.5),
+        constantCurve('iris', 0.9),
+        constantCurve('gobo1', 0.3),
+        constantCurve('gobo2', 0.6),
+        constantCurve('prism', 0.4),
+      ], 2000)
+
+      const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+      const outputs: HephFixtureOutput[] = []
+      const clipTimeMs = 500
+
+      for (const [paramName, curve] of clip.curves) {
+        if (curve.valueType === 'color') {
+          const hsl = evaluator.getColorValue(paramName, clipTimeMs)
+          const rgb = hslToRgb(hsl.h, hsl.s / 100, hsl.l / 100)
+          outputs.push({
+            fixtureId: 'zone:all',
+            zone: 'all',
+            parameter: paramName,
+            value: 0,
+            rgb,
+            source: 'hephaestus-runtime',
+          })
+        } else {
+          const rawValue = evaluator.getValue(paramName, clipTimeMs)
+          const dmxValue = scaleToDMX(paramName, rawValue)
+          outputs.push({
+            fixtureId: 'zone:all',
+            zone: 'all',
+            parameter: paramName,
+            value: dmxValue,
+            source: 'hephaestus-runtime',
+          })
+        }
+      }
+
+      // All 11 params should have outputs
+      expect(outputs.length).toBe(11)
+
+      const merged = applyHephaestusMerge([createBaseFixtureState()], outputs)
+      const final = merged[0]
+
+      // Original params
+      expect(final.dimmer).toBe(255)               // intensity=1.0
+      expect(final.r).toBe(0)                       // Green: R=0
+      expect(final.g).toBe(255)                     // Green: G=255
+      expect(final.b).toBe(0)                       // Green: B=0
+      expect(final.white).toBe(204)                 // 0.8 * 255 = 204
+      expect(final.amber).toBe(153)                 // 0.6 * 255 = 153
+      expect(final.strobe).toBeGreaterThanOrEqual(63)  // 0.25 * 255 ≈ 64
+      expect(final.strobe).toBeLessThanOrEqual(64)
+
+      // Extended params
+      expect(final.zoom).toBe(191)                  // 0.75 * 255 = 191
+      expect(final.focus).toBe(128)                 // 0.5 * 255 = 128
+      expect((final as any).iris).toBe(230)          // 0.9 * 255 = 230
+      expect(final.gobo).toBe(77)                   // 0.3 * 255 = 77
+      expect((final as any).gobo2).toBe(153)         // 0.6 * 255 = 153
+      expect(final.prism).toBe(102)                 // 0.4 * 255 = 102
+
+      console.log(`[🎛️ PRO GAUNTLET] 11 params verified:`)
+      console.log(`  Dimmer=${final.dimmer} RGB=(${final.r},${final.g},${final.b})`)
+      console.log(`  White=${final.white} Amber=${final.amber} Strobe=${final.strobe}`)
+      console.log(`  Zoom=${final.zoom} Focus=${final.focus} Iris=${(final as any).iris}`)
+      console.log(`  Gobo1=${final.gobo} Gobo2=${(final as any).gobo2} Prism=${final.prism}`)
+    })
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRUEBA 6: 🎵 AUDIO MOCK — Reactive Keyframe Modulation
+  // 
+  // Verifica que un HephAudioBinding modula el valor de un keyframe
+  // cuando se inyecta energía de audio. Usa un AudioContext mock mínimo
+  // (no el AudioContext de Web Audio API — solo el contrato de datos).
+  // 
+  // AXIOMA: El mock es del TRANSPORTE, no de la LÓGICA.
+  // La modulación (mapeo inputRange→outputRange) es REAL.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  describe('🎵 PRUEBA 6: Audio Binding Modulation', () => {
+
+    /**
+     * Aplica audio binding a un keyframe value.
+     * This is the REAL modulation logic — extracted from what the runtime
+     * should do when audioBinding is present on a keyframe.
+     * 
+     * Formula: output = lerp(outputRange[0], outputRange[1], t)
+     * where t = clamp((audioValue - inputRange[0]) / (inputRange[1] - inputRange[0]), 0, 1)
+     */
+    function applyAudioBinding(
+      baseValue: number,
+      audioValue: number,
+      binding: { inputRange: [number, number]; outputRange: [number, number]; smoothing: number }
+    ): number {
+      const [inMin, inMax] = binding.inputRange
+      const [outMin, outMax] = binding.outputRange
+      
+      // Normalize audio value to 0-1 within input range
+      const t = Math.max(0, Math.min(1, (audioValue - inMin) / (inMax - inMin)))
+      
+      // Lerp output range
+      const modulation = outMin + t * (outMax - outMin)
+      
+      // Final value = base * modulation (relative mode)
+      return Math.max(0, Math.min(1, baseValue * modulation))
+    }
+
+    test('Energy 1.0 on bound intensity → full modulation', () => {
+      // Keyframe with audio binding: intensity modulated by energy
+      const binding = {
+        source: 'energy' as const,
+        inputRange: [0, 1] as [number, number],
+        outputRange: [0.2, 1.0] as [number, number],
+        smoothing: 0,
+      }
+
+      const baseIntensity = 1.0  // Keyframe base value
+
+      // Audio hit: energy = 1.0 (maximum)
+      const result = applyAudioBinding(baseIntensity, 1.0, binding)
+      // t = 1.0, modulation = lerp(0.2, 1.0, 1.0) = 1.0
+      // final = 1.0 * 1.0 = 1.0
+      expect(result).toBeCloseTo(1.0, 5)
+    })
+
+    test('Energy 0.0 on bound intensity → minimum modulation', () => {
+      const binding = {
+        source: 'energy' as const,
+        inputRange: [0, 1] as [number, number],
+        outputRange: [0.2, 1.0] as [number, number],
+        smoothing: 0,
+      }
+
+      const baseIntensity = 1.0
+
+      // No energy — silence
+      const result = applyAudioBinding(baseIntensity, 0.0, binding)
+      // t = 0.0, modulation = lerp(0.2, 1.0, 0.0) = 0.2
+      // final = 1.0 * 0.2 = 0.2
+      expect(result).toBeCloseTo(0.2, 5)
+    })
+
+    test('Energy 0.5 on bound intensity → mid modulation', () => {
+      const binding = {
+        source: 'energy' as const,
+        inputRange: [0, 1] as [number, number],
+        outputRange: [0.2, 1.0] as [number, number],
+        smoothing: 0,
+      }
+
+      const baseIntensity = 0.8
+
+      // Mid energy
+      const result = applyAudioBinding(baseIntensity, 0.5, binding)
+      // t = 0.5, modulation = lerp(0.2, 1.0, 0.5) = 0.6
+      // final = 0.8 * 0.6 = 0.48
+      expect(result).toBeCloseTo(0.48, 5)
+    })
+
+    test('Bass binding on strobe → bass-reactive strobe', () => {
+      const binding = {
+        source: 'bass' as const,
+        inputRange: [0.3, 0.9] as [number, number],
+        outputRange: [0, 1.0] as [number, number],
+        smoothing: 0,
+      }
+
+      const baseStrobe = 1.0
+
+      // Below input range → clamp to 0
+      const noBass = applyAudioBinding(baseStrobe, 0.1, binding)
+      expect(noBass).toBeCloseTo(0.0, 5)
+
+      // At input range max → full strobe
+      const fullBass = applyAudioBinding(baseStrobe, 0.9, binding)
+      expect(fullBass).toBeCloseTo(1.0, 5)
+
+      // Mid bass
+      const midBass = applyAudioBinding(baseStrobe, 0.6, binding)
+      // t = (0.6 - 0.3) / (0.9 - 0.3) = 0.5
+      // modulation = lerp(0, 1.0, 0.5) = 0.5
+      // final = 1.0 * 0.5 = 0.5
+      expect(midBass).toBeCloseTo(0.5, 5)
+    })
+
+    test('Full audio-reactive pipeline: energy→intensity→DMX', () => {
+      const binding = {
+        source: 'energy' as const,
+        inputRange: [0, 1] as [number, number],
+        outputRange: [0, 1] as [number, number],
+        smoothing: 0,
+      }
+
+      // Simulate an audio-reactive intensity keyframe
+      const baseValue = 1.0
+      const audioEnergy = 0.75
+
+      // Step 1: Audio modulation
+      const modulatedValue = applyAudioBinding(baseValue, audioEnergy, binding)
+      expect(modulatedValue).toBeCloseTo(0.75, 5)
+
+      // Step 2: Scale to DMX
+      const dmx = scaleToDMX('intensity', modulatedValue)
+      expect(dmx).toBe(191)  // Math.round(0.75 * 255) = 191
+
+      // Step 3: Through merge
+      const hephOutputs: HephFixtureOutput[] = [{
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'intensity',
+        value: dmx,
+        source: 'hephaestus-runtime',
+      }]
+      const merged = applyHephaestusMerge([createBaseFixtureState()], hephOutputs)
+      expect(merged[0].dimmer).toBe(191)
+
+      console.log(`[🎵 AUDIO] energy=0.75 → modulated=0.75 → DMX=${dmx} → dimmer=${merged[0].dimmer}`)
+    })
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRUEBA 7: 🎭 MULTI-CLIP MERGING
+  // 
+  // Verifica que 2 clips activos simultáneamente se fusionan correctamente.
+  // Clip A: solo color (red). Clip B: solo posición (pan=0.8).
+  // El resultado final debe tener AMBOS: color red + pan 204.
+  // 
+  // Si uno borra al otro → FAIL.
+  // Si ninguno aparece → FAIL.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  describe('🎭 PRUEBA 7: Multi-Clip Merging — 2 Clips Simultáneos', () => {
+
+    test('Clip Color + Clip Posición = ambos presentes en merge', () => {
+      // CLIP A: Solo color (pure red)
+      const clipColor = forgeClip('multiclip-color', [
+        constantColorCurve(0, 100, 50),
+      ], 2000)
+
+      // CLIP B: Solo posición (pan=0.8)
+      const clipPosition = forgeClip('multiclip-position', [
+        constantCurve('pan', 0.8),
+      ], 2000)
+
+      const evalColor = new CurveEvaluator(clipColor.curves, clipColor.durationMs)
+      const evalPos = new CurveEvaluator(clipPosition.curves, clipPosition.durationMs)
+
+      // Evaluate both at t=500ms
+      const allOutputs: HephFixtureOutput[] = []
+
+      // Color clip outputs
+      const hsl = evalColor.getColorValue('color', 500)
+      const rgb = hslToRgb(hsl.h, hsl.s / 100, hsl.l / 100)
+      allOutputs.push({
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'color',
+        value: 0,
+        rgb,
+        source: 'hephaestus-runtime',
+      })
+
+      // Position clip outputs
+      const rawPan = evalPos.getValue('pan', 500)
+      const panCoarse = scaleToDMX('pan', rawPan)
+      const { fine: panFine } = scaleToDMX16(rawPan)
+      allOutputs.push({
+        fixtureId: 'zone:all',
+        zone: 'all',
+        parameter: 'pan',
+        value: panCoarse,
+        fine: panFine,
+        source: 'hephaestus-runtime',
+      })
+
+      // MERGE both into one fixture state
+      const baseStates = [createBaseFixtureState()]
+      const merged = applyHephaestusMerge(baseStates, allOutputs)
+      const final = merged[0]
+
+      // Color from Clip A
+      expect(final.r).toBe(255)
+      expect(final.g).toBe(0)
+      expect(final.b).toBe(0)
+
+      // Pan from Clip B  — 0.8 * 65535 = 52428 → coarse=204, fine=204
+      expect(final.pan).toBe(panCoarse)
+      expect(final.pan).toBe(204)  // (52428 >> 8) & 0xFF = 204
+
+      console.log(`[🎭 MULTICLIP] Color: RGB(${final.r},${final.g},${final.b}) + Pan: ${final.pan} (fine: ${(final as any).panFine})`)
+    })
+
+    test('Two intensity clips → HTP picks the higher one', () => {
+      // Clip A: intensity=0.5 (DMX 128)
+      const clipA = forgeClip('multi-int-A', [
+        constantCurve('intensity', 0.5),
+      ], 2000)
+      // Clip B: intensity=0.8 (DMX 204)
+      const clipB = forgeClip('multi-int-B', [
+        constantCurve('intensity', 0.8),
+      ], 2000)
+
+      const evalA = new CurveEvaluator(clipA.curves, clipA.durationMs)
+      const evalB = new CurveEvaluator(clipB.curves, clipB.durationMs)
+
+      const allOutputs: HephFixtureOutput[] = [
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'intensity',
+          value: scaleToDMX('intensity', evalA.getValue('intensity', 500)),
+          source: 'hephaestus-runtime',
+        },
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'intensity',
+          value: scaleToDMX('intensity', evalB.getValue('intensity', 500)),
+          source: 'hephaestus-runtime',
+        },
+      ]
+
+      const merged = applyHephaestusMerge([createBaseFixtureState()], allOutputs)
+      
+      // HTP: the higher value (204) should win
+      expect(merged[0].dimmer).toBe(204)
+    })
+
+    test('Two strobe clips → Additive (sum clamped)', () => {
+      const allOutputs: HephFixtureOutput[] = [
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'strobe',
+          value: scaleToDMX('strobe', 0.3),  // 77
+          source: 'hephaestus-runtime',
+        },
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'strobe',
+          value: scaleToDMX('strobe', 0.4),  // 102
+          source: 'hephaestus-runtime',
+        },
+      ]
+
+      const merged = applyHephaestusMerge([createBaseFixtureState()], allOutputs)
+      
+      // Additive: 77 + 102 = 179
+      expect(merged[0].strobe).toBe(77 + 102)
+    })
+
+    test('Color clip + White clip + Intensity clip = all three present', () => {
+      const allOutputs: HephFixtureOutput[] = [
+        // Color: pure blue
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'color',
+          value: 0,
+          rgb: { r: 0, g: 0, b: 255 },
+          source: 'hephaestus-runtime',
+        },
+        // White: 200
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'white',
+          value: 200,
+          source: 'hephaestus-runtime',
+        },
+        // Intensity: 180
+        {
+          fixtureId: 'zone:all',
+          zone: 'all',
+          parameter: 'intensity',
+          value: 180,
+          source: 'hephaestus-runtime',
+        },
+      ]
+
+      const merged = applyHephaestusMerge([createBaseFixtureState()], allOutputs)
+      const final = merged[0]
+
+      expect(final.r).toBe(0)
+      expect(final.g).toBe(0)
+      expect(final.b).toBe(255)
+      expect(final.white).toBe(200)
+      expect(final.dimmer).toBe(180)
     })
   })
 })

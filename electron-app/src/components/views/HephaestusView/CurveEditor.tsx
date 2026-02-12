@@ -255,20 +255,11 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     const plotValue = getPlotValue(value, curve.valueType)
     const _isColorCurve = curve.valueType === 'color'
     
-    // ⚒️ DEBUG: Log for color curves
-    if (_isColorCurve && typeof value === 'object') {
-      console.log('[CurveEditor toY] Color value:', value, '→ plotValue:', plotValue, '→ plotH:', plotH)
-    }
-    
     // For color curves, plotValue is already 0-1 normalized hue
     // For numeric curves, we need to map range to canvas
     if (_isColorCurve) {
       // plotValue is 0-1 → map to canvas height
-      const y = PADDING.top + plotH - plotValue * plotH
-      if (isNaN(y)) {
-        console.error('[CurveEditor toY] NaN detected!', { value, plotValue, plotH, y })
-      }
-      return y
+      return PADDING.top + plotH - plotValue * plotH
     }
     // Standard numeric range transform
     return PADDING.top + plotH - ((plotValue - rangeMin) / rangeSpan) * plotH
@@ -361,10 +352,10 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       startX: pt.x,
       startY: pt.y,
       startTimeMs: kf.timeMs,
-      startValue: kf.value as number,
+      startValue: getPlotValue(kf.value, curve.valueType),  // ⚒️ WAVE 2030.22: Use getPlotValue for color support
       startPanOffset: viewport.panOffsetMs,
     })
-  }, [getSVGPoint, curve.keyframes, onKeyframeSelect, viewport.panOffsetMs])
+  }, [getSVGPoint, curve.keyframes, onKeyframeSelect, viewport.panOffsetMs, curve.valueType])
 
   // ── Bezier handle mousedown ──
   const handleBezierHandleMouseDown = useCallback((
@@ -382,10 +373,10 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       startX: pt.x,
       startY: pt.y,
       startTimeMs: kf.timeMs,
-      startValue: kf.value as number,
+      startValue: getPlotValue(kf.value, curve.valueType),  // ⚒️ WAVE 2030.22: Use getPlotValue for color support
       startPanOffset: viewport.panOffsetMs,
     })
-  }, [getSVGPoint, curve.keyframes, viewport.panOffsetMs])
+  }, [getSVGPoint, curve.keyframes, viewport.panOffsetMs, curve.valueType])
 
   // ── Middle-click: Start pan ──
   const handleMiddleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -424,9 +415,6 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         if (!nextKf) return
 
         const segDx = toX(nextKf.timeMs) - toX(kf.timeMs)
-        // ⚒️ WAVE 2030.22: Use getPlotValue instead of casting to number
-        const kfPlotValue = getPlotValue(kf.value, curve.valueType)
-        const nextKfPlotValue = getPlotValue(nextKf.value, curve.valueType)
         const segDy = toY(nextKf.value) - toY(kf.value)
         if (segDx === 0) return
 

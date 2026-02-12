@@ -587,14 +587,20 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
         intensity: safeIntensity,
         type,
         zone,
-        physicalPan: renderData.physicalPan,
-        physicalTilt: renderData.physicalTilt,
-        zoom: renderData.zoom,
-        focus: renderData.focus,
+        // ═══════════════════════════════════════════════════════════════
+        // 🔧 WAVE 2040.2: REINFORCED NaN GUARD FOR CINEMA RENDERER
+        // Si physicalPan/physicalTilt llegan corruptos (NaN/Infinity),
+        // el canvas NO debe pintarse con valores inválidos.
+        // Fallback: 0.5 (center position)
+        // ═══════════════════════════════════════════════════════════════
+        physicalPan: Number.isFinite(renderData.physicalPan) ? renderData.physicalPan : 0.5,
+        physicalTilt: Number.isFinite(renderData.physicalTilt) ? renderData.physicalTilt : 0.5,
+        zoom: Number.isFinite(renderData.zoom) ? renderData.zoom : 127,
+        focus: Number.isFinite(renderData.focus) ? renderData.focus : 127,
         gobo,
         prism,
-        panVelocity: renderData.panVelocity,
-        tiltVelocity: renderData.tiltVelocity,
+        panVelocity: Number.isFinite(renderData.panVelocity) ? renderData.panVelocity : 0,
+        tiltVelocity: Number.isFinite(renderData.tiltVelocity) ? renderData.tiltVelocity : 0,
       } satisfies CinemaFixture
     }).filter(Boolean) as CinemaFixture[]
     

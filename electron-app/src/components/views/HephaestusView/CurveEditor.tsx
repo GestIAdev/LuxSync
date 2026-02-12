@@ -83,6 +83,26 @@ interface Viewport {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 2030.22: VALUE EXTRACTION HELPER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extract the plottable numeric value from a keyframe value.
+ * For color curves: uses hue (0-360) normalized to 0-1.
+ * For numeric curves: returns the value directly.
+ * 
+ * This prevents NaN in all coordinate calculations.
+ */
+function getPlotValue(value: number | { h: number; s: number; l: number }, valueType: 'number' | 'color'): number {
+  if (valueType === 'color' && typeof value === 'object' && 'h' in value) {
+    // Normalize hue: 0-360 → 0-1 for canvas plotting
+    return value.h / 360
+  }
+  // Numeric value
+  return value as number
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CURVE PATH BUILDER
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -230,17 +250,18 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     return PADDING.left + ((timeMs - visibleStartMs) / visibleDurationMs) * plotW
   }, [visibleStartMs, visibleDurationMs, plotW])
 
-  // WAVE 2030.11: Color-aware Y transform
-  // For color curves, we normalize HSL.h (0-360) to [0,1] for canvas display
+  // ⚒️ WAVE 2030.22: Unified Y transform using getPlotValue
   const toY = useCallback((value: number | typeof curve.keyframes[0]['value']) => {
-    if (isColorCurve && typeof value === 'object' && 'h' in value) {
-      // Normalize hue: 0-360 → 0-1 → canvas Y
-      const normalized = value.h / 360
-      return PADDING.top + plotH - normalized * plotH
+    const plotValue = getPlotValue(value, curve.valueType)
+    // For color curves, plotValue is already 0-1 normalized hue
+    // For numeric curves, we need to map range to canvas
+    if (isColorCurve) {
+      // plotValue is 0-1 → map to canvas height
+      return PADDING.top + plotH - plotValue * plotH
     }
     // Standard numeric range transform
-    return PADDING.top + plotH - ((value as number - rangeMin) / rangeSpan) * plotH
-  }, [plotH, rangeMin, rangeSpan, isColorCurve])
+    return PADDING.top + plotH - ((plotValue - rangeMin) / rangeSpan) * plotH
+  }, [plotH, rangeMin, rangeSpan, isColorCurve, curve.valueType])
 
   const fromX = useCallback((px: number) => {
     return visibleStartMs + ((px - PADDING.left) / plotW) * visibleDurationMs
@@ -392,7 +413,10 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         if (!nextKf) return
 
         const segDx = toX(nextKf.timeMs) - toX(kf.timeMs)
-        const segDy = toY(nextKf.value as number) - toY(kf.value as number)
+        // ⚒️ WAVE 2030.22: Use getPlotValue instead of casting to number
+        const kfPlotValue = getPlotValue(kf.value, curve.valueType)
+        const nextKfPlotValue = getPlotValue(nextKf.value, curve.valueType)
+        const segDy = toY(nextKf.value) - toY(kf.value)
         if (segDx === 0) return
 
         const currentHandles = kf.bezierHandles ?? [0.42, 0, 0.58, 1]
@@ -402,7 +426,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           // CP1 position relative to segment
           const relX = (pt.x - toX(kf.timeMs)) / segDx
           const relY = segDy !== 0
-            ? (pt.y - toY(kf.value as number)) / segDy
+            ? (pt.y - toY(kf.value)) / segDy
             : 0
           newHandles[0] = Math.max(0, Math.min(1, relX))
           newHandles[1] = relY
@@ -410,7 +434,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           // CP2 position relative to segment
           const relX = (pt.x - toX(kf.timeMs)) / segDx
           const relY = segDy !== 0
-            ? (pt.y - toY(kf.value as number)) / segDy
+            ? (pt.y - toY(kf.value)) / segDy
             : 1
           newHandles[2] = Math.max(0, Math.min(1, relX))
           newHandles[3] = relY
@@ -673,9 +697,9 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           const handles = kf.bezierHandles ?? [0.42, 0, 0.58, 1]
 
           const x0 = toX(kf.timeMs)
-          const y0 = toY(kf.value as number)
+          const y0 = toY(kf.value)
           const x1 = toX(nextKf.timeMs)
-          const y1 = toY(nextKf.value as number)
+          const y1 = toY(nextKf.value)
 
           const cp1x = x0 + (x1 - x0) * handles[0]
           const cp1y = y0 + (y1 - y0) * handles[1]

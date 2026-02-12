@@ -282,14 +282,24 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     if (session.audioRealPath) {
       console.log('[SessionKeeper] 🎵 Restoring audio from:', session.audioRealPath)
       
+      // ⚒️ WAVE 2030.22: BUGFIX - Normalize audio path for Windows
+      // Ensure file:/// prefix and forward slashes for fetch()
+      let normalizedPath = session.audioRealPath.replace(/\\/g, '/')
+      if (!normalizedPath.startsWith('file://')) {
+        // Windows absolute path like C:/... needs file:///
+        normalizedPath = `file:///${normalizedPath}`
+      }
+      
+      console.log('[SessionKeeper] 🔧 Normalized path:', normalizedPath)
+      
       // Electron provides File.path - we can recreate File from filesystem path
-      fetch(`file:///${session.audioRealPath.replace(/\\/g, '/')}`)
+      fetch(normalizedPath)
         .then(res => res.blob())
         .then(blob => {
           const file = new File([blob], session.audioFileName || 'restored-audio', {
             type: 'audio/*'
           })
-          // Manually set the path property for Electron
+          // Manually set the path property for Electron (preserve original format)
           Object.defineProperty(file, 'path', {
             value: session.audioRealPath,
             writable: false

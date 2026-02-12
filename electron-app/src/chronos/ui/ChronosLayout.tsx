@@ -148,12 +148,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   
   // 🎵 WAVE 2005.4: Connect streaming to audioLoader result
   // 🎵 WAVE 2019.7: Use blobUrl instead of audioPath
+  // ⚒️ WAVE 2030.22e: Force reconnect on component mount and when audio loads
   useEffect(() => {
-    if (audioLoader.result?.blobUrl) {
-      console.log('[ChronosLayout] 🎵 Loading audio into streaming player')
+    if (audioLoader.result?.blobUrl && !audioLoader.isLoading) {
+      console.log('[ChronosLayout] 🎵 Loading audio into streaming player:', audioLoader.result.blobUrl)
       streaming.loadAudio(audioLoader.result.blobUrl)
     }
-  }, [audioLoader.result?.blobUrl])
+  }, [audioLoader.result, audioLoader.isLoading]) // Trigger on result object change
   
   // Update BPM from analysis if available
   useEffect(() => {

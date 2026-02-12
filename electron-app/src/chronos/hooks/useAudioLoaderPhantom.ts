@@ -117,6 +117,8 @@ interface ChronosAPI {
   onError: (callback: (error: { message: string; code?: string }) => void) => () => void
   // 🧠 WAVE 2014.5: File existence check
   checkFileExists?: (filePath: string) => Promise<boolean>
+  // ⚒️ WAVE 2030.22f: Read audio file buffer
+  readAudioFile?: (filePath: string) => Promise<{ success: boolean; buffer?: ArrayBuffer; error?: string }>
 }
 
 function getChronosAPI(): ChronosAPI | null {
@@ -350,6 +352,19 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
     })
     
     try {
+      // ⚒️ WAVE 2030.22f: Read file buffer via IPC (for Blob URL creation)
+      const fileResponse = await chronos?.readAudioFile?.(filePath)
+      
+      if (!fileResponse?.success || !fileResponse.buffer) {
+        throw new Error(fileResponse?.error || 'Failed to read audio file')
+      }
+      
+      updateState({
+        phase: 'analyzing',
+        progress: 30,
+        message: 'Analyzing audio...',
+      })
+      
       // Send path directly to phantom for analysis
       const response = await chronos?.analyzeAudio({ filePath, fileName })
       
@@ -357,14 +372,22 @@ export function useAudioLoaderPhantom(): UseAudioLoaderPhantomReturn {
         throw new Error(response?.error || 'Analysis failed')
       }
       
-      // Create file:// URL for playback (no memory copy)
-      const fileUrl = `file://${filePath.replace(/\\/g, '/')}`
+      updateState({
+        phase: 'analyzing',
+        progress: 80,
+        message: 'Creating playback URL...',
+      })
+      
+      // ⚒️ WAVE 2030.22f: Create proper Blob URL from buffer (browser-compatible)
+      // This fixes "Not allowed to load local resource" error when restoring sessions
+      const audioBlob = new Blob([fileResponse.buffer], { type: 'audio/mpeg' })
+      const blobUrl = URL.createObjectURL(audioBlob)
       
       const result: AudioLoadResult = {
         fileName,
-        blobUrl: fileUrl, // 🎵 WAVE 2019.7: file:// URL (not blob but same concept)
+        blobUrl, // 🎵 Real blob: URL, not file://
         realPath: filePath, // Actual filesystem path for saving
-        fileSize: 0, // Not available for path-based load
+        fileSize: fileResponse.buffer.byteLength,
         durationMs: response.data?.durationMs || 0,
         analysisData: response.data,
       }

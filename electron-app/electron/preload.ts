@@ -223,6 +223,10 @@ const api = {
     analyzeAudio: (request: { buffer?: ArrayBuffer; filePath?: string; fileName: string }) => 
       ipcRenderer.invoke('chronos:analyze-audio', request),
     
+    /** ⚒️ WAVE 2030.22f: Read audio file buffer (for session restore) */
+    readAudioFile: (filePath: string) =>
+      ipcRenderer.invoke('chronos:read-audio-file', filePath) as Promise<{ success: boolean; buffer?: ArrayBuffer; error?: string }>,
+    
     /** Subscribe to analysis progress updates */
     onProgress: (callback: (data: { progress: number; phase: string }) => void) => {
       const handler = (_: Electron.IpcRendererEvent, data: { progress: number; phase: string }) => callback(data)

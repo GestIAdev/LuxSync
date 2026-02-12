@@ -253,15 +253,26 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   // ⚒️ WAVE 2030.22: Unified Y transform using getPlotValue
   const toY = useCallback((value: number | typeof curve.keyframes[0]['value']) => {
     const plotValue = getPlotValue(value, curve.valueType)
+    const _isColorCurve = curve.valueType === 'color'
+    
+    // ⚒️ DEBUG: Log for color curves
+    if (_isColorCurve && typeof value === 'object') {
+      console.log('[CurveEditor toY] Color value:', value, '→ plotValue:', plotValue, '→ plotH:', plotH)
+    }
+    
     // For color curves, plotValue is already 0-1 normalized hue
     // For numeric curves, we need to map range to canvas
-    if (isColorCurve) {
+    if (_isColorCurve) {
       // plotValue is 0-1 → map to canvas height
-      return PADDING.top + plotH - plotValue * plotH
+      const y = PADDING.top + plotH - plotValue * plotH
+      if (isNaN(y)) {
+        console.error('[CurveEditor toY] NaN detected!', { value, plotValue, plotH, y })
+      }
+      return y
     }
     // Standard numeric range transform
     return PADDING.top + plotH - ((plotValue - rangeMin) / rangeSpan) * plotH
-  }, [plotH, rangeMin, rangeSpan, isColorCurve, curve.valueType])
+  }, [plotH, rangeMin, rangeSpan, curve.valueType])
 
   const fromX = useCallback((px: number) => {
     return visibleStartMs + ((px - PADDING.left) / plotW) * visibleDurationMs

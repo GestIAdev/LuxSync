@@ -229,25 +229,44 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
   const canShowLabel = width > 50
   const canShowIcon = width > 25
   
-  // Generate decorative mini-curve (visual only - no real data yet)
-  const decorativeCurve = React.useMemo(() => {
+  /**
+   * ⚒️ WAVE 2030.21: REAL KEYFRAME CURVE RENDERER
+   * 
+   * Renders the ACTUAL keyframes from the clip, not a fake sine wave.
+   * 
+   * When hephClip is present (future: IPC-loaded curves), we'll iterate
+   * the real Hephaestus curves. For now, uses the FXClip keyframes
+   * which contain the basic shape (3-point envelope from createHephFXClip).
+   * 
+   * TODO WAVE 2030.22+: Load full .lfx curve data via IPC at drop time,
+   * inject into hephClip, and render multi-parameter curves here.
+   */
+  const curvePath = React.useMemo(() => {
     if (width < 40) return null
     
-    // Create a smooth wave pattern for visual appeal
-    const points: string[] = []
-    const segments = Math.min(8, Math.floor(width / 15))
+    const keyframes = clip.keyframes
+    if (!keyframes || keyframes.length === 0) return null
     
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments
-      const x = t * width
-      // Sine wave with slight randomness (deterministic based on position)
-      const phase = (i * 1.3) + (clip.id.charCodeAt(0) % 3)
-      const y = height / 2 + Math.sin(phase) * (height * 0.25)
-      points.push(`${x},${y}`)
+    // Determine time range from clip
+    const clipDurationMs = clip.endMs - clip.startMs
+    if (clipDurationMs <= 0) return null
+    
+    const points: string[] = []
+    const padding = 2 // px padding top/bottom
+    const drawHeight = height - padding * 2
+    
+    for (let i = 0; i < keyframes.length; i++) {
+      const kf = keyframes[i]
+      // Map offsetMs to x position
+      const x = (kf.offsetMs / clipDurationMs) * width
+      // Map value (0-1) to y position (inverted: 0=top, 1=bottom → we want 1=top)
+      const y = padding + drawHeight * (1 - Math.max(0, Math.min(1, kf.value)))
+      points.push(`${x.toFixed(1)},${y.toFixed(1)}`)
     }
     
+    if (points.length < 2) return null
     return `M ${points.join(' L ')}`
-  }, [width, height, clip.id])
+  }, [width, height, clip.keyframes, clip.startMs, clip.endMs])
   
   return (
     <>
@@ -260,15 +279,15 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
         </linearGradient>
       </defs>
       
-      {/* Decorative automation curve (visual flair) */}
-      {decorativeCurve && (
+      {/* Automation curve from real keyframes */}
+      {curvePath && (
         <path
-          d={decorativeCurve}
+          d={curvePath}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.5)"
+          stroke="rgba(255, 255, 255, 0.6)"
           strokeWidth={1.5}
           strokeLinecap="round"
-          strokeDasharray="4 2"
+          strokeLinejoin="round"
         />
       )}
       

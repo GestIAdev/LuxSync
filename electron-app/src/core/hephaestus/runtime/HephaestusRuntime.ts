@@ -35,7 +35,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import type { HephAutomationClip, HephCurve } from '../types'
+import type { HephAutomationClip, HephCurve, HSL } from '../types'
 import type { EffectZone } from '../../effects/types'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../types'
 import { CurveEvaluator } from '../CurveEvaluator'
@@ -71,13 +71,86 @@ interface ActiveHephClip {
   loop: boolean
 }
 
-/** Output values for a fixture parameter */
+/** 
+ * ⚒️ WAVE 2030.21: DMX-READY output from HephaestusRuntime
+ * Values are PRE-SCALED to DMX format. TitanOrchestrator only merges, never scales.
+ * 
+ * SCALING RULES:
+ *   - intensity/strobe/white/amber → int 0-255
+ *   - pan/tilt → int 0-255
+ *   - color → { r, g, b } each 0-255
+ *   - speed/zoom/width/direction/globalComp → float 0-1 (engine-internal)
+ */
 export interface HephFixtureOutput {
   fixtureId: string
   zone: EffectZone | 'all'
   parameter: string
-  value: number  // 0-1 normalized
+  /** DMX-scaled value: 0-255 for DMX params, 0-1 for engine-internal params */
+  value: number
+  /** RGB color pre-converted from HSL (only for 'color' parameter) */
+  rgb?: { r: number; g: number; b: number }
   source: 'hephaestus-runtime'
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HSL → RGB CONVERSION (Pure math, no dependencies)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚒️ WAVE 2030.21: Convert HSL to RGB
+ * Self-contained helper - no external dependency needed.
+ * 
+ * @param h Hue 0-360
+ * @param s Saturation 0-1
+ * @param l Lightness 0-1
+ * @returns { r, g, b } each 0-255
+ */
+export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  // Normalize hue to 0-360
+  const hue = ((h % 360) + 360) % 360
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs((hue / 60) % 2 - 1))
+  const m = l - c / 2
+
+  let r1: number, g1: number, b1: number
+
+  if (hue < 60) { r1 = c; g1 = x; b1 = 0 }
+  else if (hue < 120) { r1 = x; g1 = c; b1 = 0 }
+  else if (hue < 180) { r1 = 0; g1 = c; b1 = x }
+  else if (hue < 240) { r1 = 0; g1 = x; b1 = c }
+  else if (hue < 300) { r1 = x; g1 = 0; b1 = c }
+  else { r1 = c; g1 = 0; b1 = x }
+
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255),
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DMX SCALING FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Parameters that scale 0-1 → 0-255 (DMX channels) */
+const DMX_SCALED_PARAMS = new Set([
+  'intensity', 'strobe', 'white', 'amber', 'pan', 'tilt',
+])
+
+/** Parameters that pass through as 0-1 floats (engine-internal) */
+const FLOAT_PASSTHROUGH_PARAMS = new Set([
+  'speed', 'zoom', 'width', 'direction', 'globalComp',
+])
+
+/**
+ * ⚒️ WAVE 2030.21: Scale a raw 0-1 curve value to DMX format
+ */
+export function scaleToDMX(paramId: string, rawValue: number): number {
+  if (DMX_SCALED_PARAMS.has(paramId)) {
+    return Math.round(Math.max(0, Math.min(1, rawValue)) * 255)
+  }
+  // Engine-internal params: clamp 0-1, no scaling
+  return Math.max(0, Math.min(1, rawValue))
 }
 
 /** Runtime statistics */
@@ -318,6 +391,19 @@ export class HephaestusRuntime {
    * @param currentTimeMs Current system time in ms
    * @returns Array of fixture outputs to apply
    */
+  /**
+   * ⚒️ WAVE 2030.21: THE TRANSLATOR
+   * 
+   * tick() now outputs DMX-READY values. TitanOrchestrator only merges.
+   * 
+   * SCALING PIPELINE:
+   *   1. CurveEvaluator → raw 0-1 (number) or HSL (color)
+   *   2. Apply intensity multiplier
+   *   3. SCALE to target format:
+   *      - DMX params (intensity/strobe/white/amber/pan/tilt) → 0-255
+   *      - Color params → HSL→RGB { r, g, b } each 0-255
+   *      - Engine params (speed/zoom/width/direction/globalComp) → 0-1 float
+   */
   tick(currentTimeMs: number): HephFixtureOutput[] {
     this.lastTickMs = currentTimeMs
     const outputs: HephFixtureOutput[] = []
@@ -338,26 +424,46 @@ export class HephaestusRuntime {
         expiredClips.push(instanceId)
         continue
       }
+
+      // Resolve output zones once per clip
+      const zones: Array<EffectZone | 'all'> = active.clip.zones.length > 0 
+        ? active.clip.zones 
+        : ['all']
       
-      // Evaluate each curve using the pre-created evaluator
-      for (const [paramName, _curve] of active.clip.curves) {
-        // Use the evaluator's getValue() - O(1) with cursor optimization
-        const value = active.evaluator.getValue(paramName, clipTimeMs)
-        
-        // Apply intensity multiplier
-        const finalValue = value * active.intensity
-        
-        // Generate outputs for each zone
-        const zones: Array<EffectZone | 'all'> = active.clip.zones.length > 0 
-          ? active.clip.zones 
-          : ['all']  // Default to all fixtures
-        
+      // Evaluate each curve → scale → output
+      for (const [paramName, curve] of active.clip.curves) {
+
+        // ─── COLOR CURVE PATH ───────────────────────────────────
+        if (curve.valueType === 'color') {
+          const hsl = active.evaluator.getColorValue(paramName, clipTimeMs)
+          // Intensity modulates lightness (dim the color, don't destroy hue/sat)
+          const modulatedL = hsl.l * active.intensity
+          const rgb = hslToRgb(hsl.h, hsl.s, modulatedL)
+
+          for (const zone of zones) {
+            outputs.push({
+              fixtureId: `zone:${zone}`,
+              zone,
+              parameter: paramName,
+              value: 0,  // Not used for color - rgb field carries the data
+              rgb,
+              source: 'hephaestus-runtime',
+            })
+          }
+          continue
+        }
+
+        // ─── NUMERIC CURVE PATH ─────────────────────────────────
+        const rawValue = active.evaluator.getValue(paramName, clipTimeMs)
+        const withIntensity = rawValue * active.intensity
+        const scaledValue = scaleToDMX(paramName, withIntensity)
+
         for (const zone of zones) {
           outputs.push({
-            fixtureId: `zone:${zone}`,  // Zone-based targeting
+            fixtureId: `zone:${zone}`,
             zone,
             parameter: paramName,
-            value: Math.max(0, Math.min(1, finalValue)),  // Clamp 0-1
+            value: scaledValue,
             source: 'hephaestus-runtime',
           })
         }

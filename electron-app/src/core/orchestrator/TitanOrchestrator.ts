@@ -1096,65 +1096,63 @@ export class TitanOrchestrator {
         // Apply each parameter with appropriate merge strategy
         let newF = { ...f }
         
+        // ⚒️ WAVE 2030.21: THE TRANSLATOR
+        // Values arrive PRE-SCALED from HephaestusRuntime.
+        // DMX params: already 0-255. Color: already rgb {r,g,b} 0-255.
+        // TitanOrchestrator ONLY merges. Zero scaling here.
+        
         for (const output of applicableOutputs) {
           switch (output.parameter) {
             case 'intensity': {
-              // HTP: Highest Takes Precedence
-              const hephDimmer = Math.round(output.value * 255)
-              newF.dimmer = Math.max(newF.dimmer, hephDimmer)
+              // HTP: Highest Takes Precedence (value is already 0-255)
+              newF.dimmer = Math.max(newF.dimmer, output.value)
               break
             }
             
             case 'strobe': {
-              // Strobe: Map 0-1 to 0-18Hz, apply to fixture
-              // Most fixtures use 0-255 for strobe speed
-              const strobeValue = Math.round(output.value * 255)
-              newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + strobeValue) }
+              // Additive: sum clamped to 255 (value is already 0-255)
+              newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + output.value) }
               break
             }
             
             case 'pan': {
-              // LTP: Hephaestus overwrites (0-1 → 0-255)
-              newF.pan = Math.round(output.value * 255)
+              // LTP: Hephaestus overwrites (value is already 0-255)
+              newF.pan = output.value
               newF.physicalPan = newF.pan
               break
             }
             
             case 'tilt': {
-              // LTP: Hephaestus overwrites (0-1 → 0-255)
-              newF.tilt = Math.round(output.value * 255)
+              // LTP: Hephaestus overwrites (value is already 0-255)
+              newF.tilt = output.value
               newF.physicalTilt = newF.tilt
               break
             }
             
-            case 'colorHue': {
-              // Color: Convert HSL to RGB and apply as LTP
-              // output.value is hue 0-360, need S and L from other outputs
-              const satOutput = applicableOutputs.find(o => o.parameter === 'colorSaturation')
-              const lumOutput = applicableOutputs.find(o => o.parameter === 'colorLightness')
-              const h = output.value  // 0-360
-              const s = satOutput ? satOutput.value : 1.0
-              const l = lumOutput ? lumOutput.value : 0.5
-              const rgb = this.hslToRgb(h, s, l)
-              newF.r = rgb.r
-              newF.g = rgb.g
-              newF.b = rgb.b
+            case 'color': {
+              // LTP: RGB pre-converted from HSL in Runtime
+              if (output.rgb) {
+                newF.r = output.rgb.r
+                newF.g = output.rgb.g
+                newF.b = output.rgb.b
+              }
               break
             }
             
             case 'white': {
-              // White channel: LTP overlay
-              newF.white = Math.round(output.value * 255)
+              // LTP overlay (value is already 0-255)
+              newF.white = output.value
               break
             }
             
             case 'amber': {
-              // Amber channel: LTP overlay
-              newF.amber = Math.round(output.value * 255)
+              // LTP overlay (value is already 0-255)
+              newF.amber = output.value
               break
             }
             
-            // colorSaturation and colorLightness handled by colorHue
+            // speed/zoom/width/direction/globalComp: engine-internal (0-1 float)
+            // No DMX channel mapping - consumed by engine subsystems only
           }
         }
         

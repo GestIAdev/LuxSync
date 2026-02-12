@@ -1,15 +1,19 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ HEPHAESTUS TOOLBAR - WAVE 2030.3
- * Bottom toolbar for interpolation type, bezier presets, and curve mode
+ * ⚒️ HEPHAESTUS TOOLBAR - WAVE 2030.8
+ * Bottom toolbar for interpolation type, bezier presets, curve templates,
+ * and curve mode selection.
+ * 
+ * WAVE 2030.8: Connected curve templates dropdown for preset generation
  * 
  * @module views/HephaestusView/HephaestusToolbar
- * @version WAVE 2030.3
+ * @version WAVE 2030.8
  */
 
 import React, { useCallback } from 'react'
 import { BEZIER_PRESETS } from '../../../core/hephaestus/types'
-import type { HephCurve, HephInterpolation, HephCurveMode } from '../../../core/hephaestus/types'
+import type { HephCurve, HephInterpolation, HephCurveMode, HephKeyframe } from '../../../core/hephaestus/types'
+import { CURVE_TEMPLATES, createCurveFromTemplate, getCategoryIcon } from './curveTemplates'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -18,8 +22,11 @@ import type { HephCurve, HephInterpolation, HephCurveMode } from '../../../core/
 interface HephaestusToolbarProps {
   activeCurve: HephCurve | null
   selectedKeyframeIdx: number | null
+  clipDurationMs: number  // WAVE 2030.8: Needed for template generation
   onInterpolationChange: (index: number, interpolation: HephInterpolation) => void
   onModeChange: (mode: HephCurveMode) => void
+  onApplyBezierPreset: (index: number, handles: [number, number, number, number]) => void  // WAVE 2030.8
+  onApplyTemplate: (keyframes: HephKeyframe[]) => void  // WAVE 2030.8: Apply template to active curve
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,8 +52,11 @@ const MODE_OPTIONS: { id: HephCurveMode; label: string; desc: string }[] = [
 export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
   activeCurve,
   selectedKeyframeIdx,
+  clipDurationMs,
   onInterpolationChange,
   onModeChange,
+  onApplyBezierPreset,
+  onApplyTemplate,
 }) => {
   const selectedKf = activeCurve && selectedKeyframeIdx !== null
     ? activeCurve.keyframes[selectedKeyframeIdx]
@@ -56,6 +66,50 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
     if (selectedKeyframeIdx === null) return
     onInterpolationChange(selectedKeyframeIdx, interp)
   }, [selectedKeyframeIdx, onInterpolationChange])
+
+  // WAVE 2030.8: Handle bezier preset selection
+  const handleBezierPresetChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (selectedKeyframeIdx === null || !e.target.value) return
+    const preset = BEZIER_PRESETS[e.target.value]
+    if (preset) {
+      onApplyBezierPreset(selectedKeyframeIdx, preset)
+    }
+  }, [selectedKeyframeIdx, onApplyBezierPreset])
+
+  // WAVE 2030.8: Handle curve template selection
+  const handleTemplateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!activeCurve || !e.target.value) return
+    const templateId = e.target.value
+    
+    // Find the template by ID
+    const template = CURVE_TEMPLATES.find(t => t.id === templateId)
+    if (!template) return
+    
+    // Generate curve from template using active curve's paramId
+    // Use 1 cycle by default, 64 resolution for smooth curves
+    const generatedCurve = createCurveFromTemplate(
+      template, 
+      activeCurve.paramId, 
+      clipDurationMs, 
+      1,   // cycles
+      64   // resolution - smooth curves
+    )
+    if (generatedCurve.keyframes.length > 0) {
+      onApplyTemplate(generatedCurve.keyframes)
+    }
+    
+    // Reset select to placeholder
+    e.target.value = ''
+  }, [activeCurve, clipDurationMs, onApplyTemplate])
+
+  // Group templates by category for the dropdown
+  const groupedTemplates = CURVE_TEMPLATES.reduce((acc, template) => {
+    if (!acc[template.category]) {
+      acc[template.category] = []
+    }
+    acc[template.category].push(template)
+    return acc
+  }, {} as Record<string, typeof CURVE_TEMPLATES>)
 
   return (
     <div className="heph-toolbar">
@@ -83,23 +137,41 @@ export const HephaestusToolbar: React.FC<HephaestusToolbarProps> = ({
 
       {/* ── Bezier Presets ── */}
       <div className="heph-toolbar__group">
-        <span className="heph-toolbar__group-label">PRESET</span>
+        <span className="heph-toolbar__group-label">BEZIER</span>
         <select
           className="heph-toolbar__select"
           disabled={selectedKeyframeIdx === null || selectedKf?.interpolation !== 'bezier'}
           value=""
-          onChange={(e) => {
-            if (selectedKeyframeIdx === null || !e.target.value) return
-            const preset = BEZIER_PRESETS[e.target.value]
-            if (preset) {
-              // Apply preset handles
-              onInterpolationChange(selectedKeyframeIdx, 'bezier')
-            }
-          }}
+          onChange={handleBezierPresetChange}
         >
-          <option value="">Select preset...</option>
+          <option value="">Preset...</option>
           {Object.keys(BEZIER_PRESETS).map(name => (
             <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="heph-toolbar__divider" />
+
+      {/* ── Curve Templates - WAVE 2030.8 ── */}
+      <div className="heph-toolbar__group">
+        <span className="heph-toolbar__group-label">TEMPLATE</span>
+        <select
+          className="heph-toolbar__select heph-toolbar__select--template"
+          disabled={!activeCurve}
+          value=""
+          onChange={handleTemplateChange}
+        >
+          <option value="">Apply shape...</option>
+          {Object.entries(groupedTemplates).map(([category, templates]) => (
+            <optgroup key={category} label={`${getCategoryIcon(category)} ${category.toUpperCase()}`}>
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.icon} {t.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>

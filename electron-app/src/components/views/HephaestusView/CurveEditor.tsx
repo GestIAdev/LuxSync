@@ -28,7 +28,8 @@
  */
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
-import type { HephCurve, HephInterpolation } from '../../../core/hephaestus/types'
+import type { HephCurve, HephInterpolation, HephAudioBinding, HephKeyframe } from '../../../core/hephaestus/types'
+import { KeyframeContextMenu } from './KeyframeContextMenu'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -56,6 +57,14 @@ interface CurveEditorProps {
   onInterpolationChange: (index: number, interpolation: HephInterpolation) => void
   onBezierHandleMove: (index: number, handles: [number, number, number, number]) => void
   onKeyframeSelect: (index: number | null) => void
+  onAudioBindingChange: (index: number, binding: HephAudioBinding | undefined) => void
+}
+
+/** WAVE 2030.14: Context menu state */
+interface ContextMenuState {
+  x: number
+  y: number
+  keyframeIndex: number
 }
 
 interface DragState {
@@ -80,20 +89,20 @@ interface Viewport {
 function buildCurvePath(
   curve: HephCurve,
   toX: (timeMs: number) => number,
-  toY: (value: number) => number,
+  toY: (value: number | { h: number; s: number; l: number }) => number,
 ): string {
   const kfs = curve.keyframes
   if (kfs.length === 0) return ''
 
-  let path = `M ${toX(kfs[0].timeMs)} ${toY(kfs[0].value as number)}`
+  let path = `M ${toX(kfs[0].timeMs)} ${toY(kfs[0].value)}`
 
   for (let i = 0; i < kfs.length - 1; i++) {
     const kf0 = kfs[i]
     const kf1 = kfs[i + 1]
     const x0 = toX(kf0.timeMs)
-    const y0 = toY(kf0.value as number)
+    const y0 = toY(kf0.value)
     const x1 = toX(kf1.timeMs)
-    const y1 = toY(kf1.value as number)
+    const y1 = toY(kf1.value)
 
     switch (kf0.interpolation) {
       case 'hold':
@@ -167,6 +176,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   onInterpolationChange,
   onBezierHandleMove,
   onKeyframeSelect,
+  onAudioBindingChange,
 }) => {
   // ── Refs ──
   const svgRef = useRef<SVGSVGElement>(null)
@@ -180,6 +190,12 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
 
   // ── Drag state ──
   const [drag, setDrag] = useState<DragState | null>(null)
+
+  // ── WAVE 2030.11: Color picker state ──
+  const [colorPickerOpen, setColorPickerOpen] = useState<{ keyframeIdx: number; hsl: typeof curve.keyframes[0]['value'] } | null>(null)
+
+  // ── WAVE 2030.14: Context menu state ──
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
 
   // ── ResizeObserver ──
   useEffect(() => {
@@ -204,6 +220,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   const plotH = height - PADDING.top - PADDING.bottom
   const [rangeMin, rangeMax] = curve.range
   const rangeSpan = rangeMax - rangeMin || 1
+  const isColorCurve = curve.valueType === 'color'
 
   const visibleDurationMs = durationMs / viewport.zoom
   const visibleStartMs = viewport.panOffsetMs
@@ -213,17 +230,31 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     return PADDING.left + ((timeMs - visibleStartMs) / visibleDurationMs) * plotW
   }, [visibleStartMs, visibleDurationMs, plotW])
 
-  const toY = useCallback((value: number) => {
-    return PADDING.top + plotH - ((value - rangeMin) / rangeSpan) * plotH
-  }, [plotH, rangeMin, rangeSpan])
+  // WAVE 2030.11: Color-aware Y transform
+  // For color curves, we normalize HSL.h (0-360) to [0,1] for canvas display
+  const toY = useCallback((value: number | typeof curve.keyframes[0]['value']) => {
+    if (isColorCurve && typeof value === 'object' && 'h' in value) {
+      // Normalize hue: 0-360 → 0-1 → canvas Y
+      const normalized = value.h / 360
+      return PADDING.top + plotH - normalized * plotH
+    }
+    // Standard numeric range transform
+    return PADDING.top + plotH - ((value as number - rangeMin) / rangeSpan) * plotH
+  }, [plotH, rangeMin, rangeSpan, isColorCurve])
 
   const fromX = useCallback((px: number) => {
     return visibleStartMs + ((px - PADDING.left) / plotW) * visibleDurationMs
   }, [visibleStartMs, visibleDurationMs, plotW])
 
+  // WAVE 2030.11: Color-aware inverse Y transform
   const fromY = useCallback((py: number) => {
-    return rangeMin + (1 - (py - PADDING.top) / plotH) * rangeSpan
-  }, [plotH, rangeMin, rangeSpan])
+    const normalized = 1 - (py - PADDING.top) / plotH
+    if (isColorCurve) {
+      // Denormalize: 0-1 → 0-360 (hue only, S/L unchanged)
+      return normalized * 360
+    }
+    return rangeMin + normalized * rangeSpan
+  }, [plotH, rangeMin, rangeSpan, isColorCurve])
 
   // ── SVG Path ──
   const curvePath = useMemo(
@@ -282,9 +313,9 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     e.stopPropagation()
     e.preventDefault()
 
-    // Right-click = delete
+    // WAVE 2030.14: Right-click = open context menu
     if (e.button === 2) {
-      onKeyframeDelete(index)
+      setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index })
       return
     }
 
@@ -301,7 +332,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       startValue: kf.value as number,
       startPanOffset: viewport.panOffsetMs,
     })
-  }, [getSVGPoint, curve.keyframes, onKeyframeSelect, onKeyframeDelete, viewport.panOffsetMs])
+  }, [getSVGPoint, curve.keyframes, onKeyframeSelect, viewport.panOffsetMs])
 
   // ── Bezier handle mousedown ──
   const handleBezierHandleMouseDown = useCallback((
@@ -432,6 +463,55 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
   }, [])
+
+  // ── WAVE 2030.11: Color picker handlers ──
+  const hslToHex = useCallback((h: number, s: number, l: number): string => {
+    l /= 100
+    const a = s * Math.min(l, 1 - l) / 100
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+      return Math.round(255 * color).toString(16).padStart(2, '0')
+    }
+    return `#${f(0)}${f(8)}${f(4)}`
+  }, [])
+
+  const hexToHSL = useCallback((hex: string): { h: number; s: number; l: number } => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    if (!result) return { h: 0, s: 0, l: 0 }
+    
+    let r = parseInt(result[1], 16) / 255
+    let g = parseInt(result[2], 16) / 255
+    let b = parseInt(result[3], 16) / 255
+    
+    const max = Math.max(r, g, b), min = Math.min(r, g, b)
+    let h = 0, s = 0, l = (max + min) / 2
+    
+    if (max !== min) {
+      const d = max - min
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+        case g: h = ((b - r) / d + 2) / 6; break
+        case b: h = ((r - g) / d + 4) / 6; break
+      }
+    }
+    
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }
+  }, [])
+
+  const handleKeyframeDoubleClick = useCallback((kfIdx: number, kfValue: typeof curve.keyframes[0]['value']) => {
+    if (typeof kfValue === 'object' && 'h' in kfValue) {
+      setColorPickerOpen({ keyframeIdx: kfIdx, hsl: kfValue })
+    }
+  }, [])
+
+  const handleColorChange = useCallback((hex: string) => {
+    if (!colorPickerOpen) return
+    const hsl = hexToHSL(hex)
+    onKeyframeMove(colorPickerOpen.keyframeIdx, curve.keyframes[colorPickerOpen.keyframeIdx].timeMs, hsl as any)
+    setColorPickerOpen({ keyframeIdx: colorPickerOpen.keyframeIdx, hsl })
+  }, [colorPickerOpen, hexToHSL, onKeyframeMove, curve.keyframes])
 
   // ── Get lane color ──
   const PARAM_COLORS: Record<string, string> = {
@@ -642,8 +722,18 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         {/* ═══ KEYFRAME NODES ═══ */}
         {curve.keyframes.map((kf, i) => {
           const x = toX(kf.timeMs)
-          const y = toY(kf.value as number)
+          const y = toY(kf.value)
           const isSelected = selectedKeyframeIdx === i
+
+          // WAVE 2030.11: Color keyframes render with their actual HSL color
+          const isColorValue = typeof kf.value === 'object' && 'h' in kf.value
+          const fillColor = isColorValue && typeof kf.value === 'object' && 'h' in kf.value
+            ? `hsl(${kf.value.h}, ${kf.value.s}%, ${kf.value.l}%)`
+            : (isSelected ? curveColor : 'var(--bg-deepest, #0a0a0f)')
+
+          // WAVE 2030.14: Audio-bound keyframes get cyan glow
+          const hasAudioBinding = kf.audioBinding && kf.audioBinding.source !== 'none'
+          const keyframeClass = `heph-keyframe${hasAudioBinding ? ' heph-keyframe--audio-bound' : ''}`
 
           // Clip to plot area
           if (x < PADDING.left - KEYFRAME_RADIUS || x > PADDING.left + plotW + KEYFRAME_RADIUS) return null
@@ -667,11 +757,16 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                 cx={x}
                 cy={y}
                 r={KEYFRAME_RADIUS}
-                fill={isSelected ? curveColor : 'var(--bg-deepest, #0a0a0f)'}
+                fill={fillColor}
                 stroke={curveColor}
                 strokeWidth="2"
-                className="heph-keyframe"
+                className={keyframeClass}
                 onMouseDown={(e) => handleKeyframeMouseDown(e, i)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  handleKeyframeDoubleClick(i, kf.value)
+                }}
+                onContextMenu={(e) => e.preventDefault()}
               />
 
               {/* Interpolation type indicator */}
@@ -742,7 +837,98 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         >
           {viewport.zoom.toFixed(1)}x
         </text>
+
+        {/* ═══ UX HINTS - WAVE 2030.9 ═══ */}
+        <text
+          x={PADDING.left + plotW / 2}
+          y={height - PADDING.bottom + 28}
+          textAnchor="middle"
+          fill="rgba(255,255,255,0.4)"
+          fontSize="10"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          fontWeight="500"
+          letterSpacing="0.5"
+        >
+          Double-click to add • Drag to move • Right-click to delete
+        </text>
       </svg>
+
+      {/* ═══ COLOR PICKER MODAL - WAVE 2030.11 ═══ */}
+      {colorPickerOpen && typeof colorPickerOpen.hsl === 'object' && 'h' in colorPickerOpen.hsl && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--bg-surface, #1c1c1e)',
+            border: '1px solid var(--accent-primary, #ff6b2b)',
+            borderRadius: '8px',
+            padding: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+            zIndex: 10000,
+          }}
+        >
+          <div style={{ marginBottom: '12px', color: '#e2e8f0', fontSize: '12px', fontWeight: 500 }}>
+            Edit Color (Keyframe {colorPickerOpen.keyframeIdx + 1})
+          </div>
+          <input
+            type="color"
+            value={hslToHex(colorPickerOpen.hsl.h, colorPickerOpen.hsl.s, colorPickerOpen.hsl.l)}
+            onChange={(e) => handleColorChange(e.target.value)}
+            style={{ width: '200px', height: '40px', cursor: 'pointer', border: 'none', borderRadius: '4px' }}
+          />
+          <button
+            onClick={() => setColorPickerOpen(null)}
+            style={{
+              marginTop: '12px',
+              width: '100%',
+              padding: '8px',
+              background: 'var(--accent-primary, #ff6b2b)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      {/* ═══ WAVE 2030.14: KEYFRAME CONTEXT MENU ═══ */}
+      {contextMenu && curve.keyframes[contextMenu.keyframeIndex] && (
+        <KeyframeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          currentInterpolation={curve.keyframes[contextMenu.keyframeIndex].interpolation}
+          currentAudioBinding={curve.keyframes[contextMenu.keyframeIndex].audioBinding}
+          onClose={() => setContextMenu(null)}
+          onDelete={() => {
+            onKeyframeDelete(contextMenu.keyframeIndex)
+            setContextMenu(null)
+          }}
+          onInterpolationChange={(interp) => {
+            onInterpolationChange(contextMenu.keyframeIndex, interp)
+            setContextMenu(null)
+          }}
+          onAudioBind={(source) => {
+            if (source === 'none') {
+              onAudioBindingChange(contextMenu.keyframeIndex, undefined)
+            } else {
+              onAudioBindingChange(contextMenu.keyframeIndex, {
+                source,
+                inputRange: [0, 1],
+                outputRange: [0, 1],
+                smoothing: 0.1,
+              })
+            }
+            setContextMenu(null)
+          }}
+        />
+      )}
     </div>
   )
 }

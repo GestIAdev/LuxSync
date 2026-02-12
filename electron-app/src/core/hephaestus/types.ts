@@ -117,6 +117,26 @@ export type HephParamId =
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * WAVE 2030.14: Audio Binding Configuration
+ * Links a keyframe's value to real-time audio analysis data.
+ * When bound, the keyframe's static value becomes the BASE,
+ * and audio modulates it according to the mapping.
+ */
+export interface HephAudioBinding {
+  /** Audio source channel */
+  source: 'energy' | 'bass' | 'mids' | 'highs' | 'none'
+  
+  /** Input range from audio analyzer [min, max] (typically 0-1) */
+  inputRange: [number, number]
+  
+  /** Output range for the parameter [min, max] */
+  outputRange: [number, number]
+  
+  /** Smoothing factor (0 = instant, 1 = very slow) */
+  smoothing: number
+}
+
+/**
  * ⚒️ HEPHAESTUS KEYFRAME
  * 
  * Un punto de control en el tiempo.
@@ -162,6 +182,12 @@ export interface HephKeyframe {
    *   snap:        [0.9,  0,    0.1,  1   ]
    */
   bezierHandles?: [number, number, number, number]
+  
+  /**
+   * WAVE 2030.14: Audio binding for reactive keyframes.
+   * When present, the keyframe value is modulated by audio input.
+   */
+  audioBinding?: HephAudioBinding
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

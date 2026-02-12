@@ -137,6 +137,21 @@ export interface FXClip extends BaseClip {
    * Opcional: clips legacy sin hephClip funcionan normalmente.
    */
   hephClip?: HephAutomationClip
+  
+  /**
+   * ⚒️ WAVE 2030.17: THE BRIDGE
+   * 
+   * Path to .lfx file from Hephaestus library.
+   * When present, indicates this is a custom effect from Hephaestus.
+   * The ClipRenderer will apply EMBER styling.
+   */
+  hephFilePath?: string
+  
+  /**
+   * WAVE 2030.17: Indicates this is a Hephaestus custom effect
+   * When true, the clip is rendered with EMBER orange styling
+   */
+  isHephCustom?: boolean
 }
 
 // Union type
@@ -233,6 +248,43 @@ export function createFXClip(
     params: {},
     selected: false,
     locked: false,
+  }
+}
+
+/** 
+ * ⚒️ WAVE 2030.17: THE BRIDGE 
+ * Create a Hephaestus Custom FX Clip from .lfx drag
+ */
+export const HEPH_EMBER_COLOR = '#ff6b2b' // Ember orange
+
+export function createHephFXClip(
+  name: string,
+  filePath: string,
+  startMs: number,
+  durationMs: number,
+  trackId: string,
+  effectType: string = 'custom'
+): FXClip {
+  return {
+    id: generateClipId(),
+    type: 'fx',
+    fxType: 'pulse', // Default type, will be overridden by Heph rendering
+    label: name,
+    startMs,
+    endMs: startMs + durationMs,
+    trackId,
+    color: HEPH_EMBER_COLOR, // EMBER orange for Hephaestus
+    keyframes: [
+      { offsetMs: 0, value: 0, easing: 'ease-in' },
+      { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
+      { offsetMs: durationMs, value: 0, easing: 'linear' },
+    ],
+    params: { effectType },
+    selected: false,
+    locked: false,
+    // ⚒️ HEPHAESTUS MARKERS
+    hephFilePath: filePath,
+    isHephCustom: true,
   }
 }
 

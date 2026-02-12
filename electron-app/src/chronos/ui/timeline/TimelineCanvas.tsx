@@ -716,8 +716,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const types = e.dataTransfer.types
     
     // Detect drag type using TYPE-SPECIFIC mime types
+    // WAVE 2030.17: Added luxsync-heph for Hephaestus custom FX
     const isVibeDrag = types.includes('application/luxsync-vibe')
-    const isFxDrag = types.includes('application/luxsync-fx')
+    const isFxDrag = types.includes('application/luxsync-fx') || types.includes('application/luxsync-heph')
     const isClipDrag = isVibeDrag || isFxDrag
     
     if (!isClipDrag) {
@@ -732,9 +733,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const trackId = getTrackAtY(y)
     const timeMs = getTimeAtX(x)
     
-    // Determine if drop is valid (vibe→vibe, fx→fx)
+    // Determine if drop is valid (vibe→vibe, fx→fx tracks 1-4)
     const isVibeTrack = trackId === 'vibe'
-    const isFxTrack = trackId === 'fx1' || trackId === 'fx2'
+    // WAVE 2030.17: Expanded to all 4 FX tracks
+    const isFxTrack = trackId === 'fx1' || trackId === 'fx2' || trackId === 'fx3' || trackId === 'fx4'
     const isValidDrop = (isVibeDrag && isVibeTrack) || (isFxDrag && isFxTrack)
     const isTrackArea = isVibeTrack || isFxTrack
     
@@ -776,7 +778,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     setDragTrackId(null)
     setDragTimeMs(null)
     
-    const data = e.dataTransfer.getData('application/luxsync-clip')
+    // WAVE 2030.17: Try hephaestus-specific first, then generic clip
+    const data = e.dataTransfer.getData('application/luxsync-heph') 
+               || e.dataTransfer.getData('application/luxsync-clip')
     if (!data) return
     
     const payload = deserializeDragPayload(data)
@@ -793,12 +797,15 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     
     // Validate drop target matches clip type
     const isVibeTrack = trackId === 'vibe'
-    const isFxTrack = trackId === 'fx1' || trackId === 'fx2'
+    // WAVE 2030.17: Expanded to all 4 FX tracks
+    const isFxTrack = trackId === 'fx1' || trackId === 'fx2' || trackId === 'fx3' || trackId === 'fx4'
     
     if ((payload.clipType === 'vibe' && isVibeTrack) || 
         (payload.clipType === 'fx' && isFxTrack)) {
       onClipDrop?.(payload, timeMs, trackId)
-      console.log(`[TimelineCanvas] 🎬 Dropped ${payload.clipType} at ${(timeMs/1000).toFixed(2)}s on track ${trackId}`)
+      // WAVE 2030.17: Enhanced logging for Hephaestus
+      const sourceLabel = payload.source === 'hephaestus' ? '⚒️ HEPH' : '🎹'
+      console.log(`[TimelineCanvas] 🎬 ${sourceLabel} Dropped ${payload.clipType} at ${(timeMs/1000).toFixed(2)}s on track ${trackId}`)
     }
   }, [getTrackAtY, getTimeAtX, onClipDrop])
   

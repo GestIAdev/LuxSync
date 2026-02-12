@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ HEPHAESTUS VIEW - WAVE 2030.6: THE GOD FORGE
+ * ⚒️ HEPHAESTUS VIEW - WAVE 2030.8: THE GOD FORGE
  * First-class View for FX Curve Automation Editor
  * 
  * Layout Architecture:
@@ -20,15 +20,19 @@
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * WAVE 2030.6: Search, Categories, Drag & Drop
+ * WAVE 2030.8: Parameter Management, New Clip Modal, Curve Templates
  * 
  * @module views/HephaestusView
- * @version WAVE 2030.6
+ * @version WAVE 2030.8
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { CurveEditor } from './CurveEditor'
-import { ParameterLane } from './ParameterLane'
+import { ParameterLane, PARAM_META, ALL_PARAM_IDS, PARAM_CATEGORIES } from './ParameterLane'
+import type { ParamCategory } from './ParameterLane'
 import { HephaestusToolbar } from './HephaestusToolbar'
+import { NewClipModal } from './NewClipModal'
+import { ZoneSelector } from './ZoneSelector'
 import { createDummyClip } from './dummyData'
 import { getCategoryIcon } from './curveTemplates'
 import type { 
@@ -37,8 +41,10 @@ import type {
   HephInterpolation, 
   HephCurveMode, 
   HephAutomationClip,
-  HephAutomationClipSerialized 
+  HephAutomationClipSerialized,
+  HephKeyframe 
 } from '../../../core/hephaestus/types'
+import type { EffectZone } from '../../../core/effects/types'
 import { serializeHephClip, deserializeHephClip } from '../../../core/hephaestus/types'
 import './HephaestusView.css'
 
@@ -51,6 +57,7 @@ interface LibraryClip {
   name: string
   author: string
   category: string
+  tags?: string[]  // WAVE 2030.9: Include tags for heph category
   durationMs: number
   paramCount: number
   modifiedAt: number
@@ -88,6 +95,10 @@ const HephaestusView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
+  // ── Modal & Dropdown State (WAVE 2030.8) ──
+  const [showNewClipModal, setShowNewClipModal] = useState(false)
+  const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
+
   // ── Derived ──
   const activeCurve = useMemo(
     () => clip.curves.get(activeParam) ?? null,
@@ -98,6 +109,25 @@ const HephaestusView: React.FC = () => {
     () => Array.from(clip.curves.keys()) as HephParamId[],
     [clip]
   )
+
+  // ── Available params for add dropdown (WAVE 2030.8) ──
+  const availableParams = useMemo<HephParamId[]>(
+    () => ALL_PARAM_IDS.filter((p: HephParamId) => !clip.curves.has(p)),
+    [clip]
+  )
+
+  // ── Group available params by category (WAVE 2030.9) ──
+  const groupedAvailableParams = useMemo(() => {
+    const groups = new Map<ParamCategory, HephParamId[]>()
+    for (const paramId of availableParams) {
+      const cat = PARAM_META[paramId].category
+      if (!groups.has(cat)) {
+        groups.set(cat, [])
+      }
+      groups.get(cat)!.push(paramId)
+    }
+    return groups
+  }, [availableParams])
 
   // ── Filtered & Grouped Library (WAVE 2030.6) ──
   const filteredLibrary = useMemo(() => {
@@ -113,7 +143,10 @@ const HephaestusView: React.FC = () => {
   const groupedLibrary = useMemo(() => {
     const groups = new Map<string, LibraryClip[]>()
     for (const item of filteredLibrary) {
-      const category = item.category || 'uncategorized'
+      // WAVE 2030.9: Extract Heph category from tags (heph:control → control)
+      const hephTag = item.tags?.find(t => t.startsWith('heph:'))
+      const category = hephTag ? hephTag.replace('heph:', '') : (item.category || 'uncategorized')
+      
       if (!groups.has(category)) {
         groups.set(category, [])
       }
@@ -252,14 +285,41 @@ const HephaestusView: React.FC = () => {
   }, [loadLibrary])
 
   const handleNew = useCallback(() => {
-    const newClip = createDummyClip()
-    // Generate unique ID and name
-    const timestamp = Date.now().toString(36)
-    newClip.id = `heph-${timestamp}`
-    newClip.name = `NEW CLIP ${timestamp.toUpperCase()}`
+    // WAVE 2030.8: Open modal instead of creating dummy clip
+    setShowNewClipModal(true)
+  }, [])
+
+  // WAVE 2030.8: Create clip from modal and save immediately
+  const handleCreateClip = useCallback(async (newClip: HephAutomationClip) => {
     setClip(newClip)
-    setIsDirty(true)
+    setActiveParam('intensity')  // Default to intensity
     setSelectedKeyframeIdx(null)
+    setIsDirty(true)
+    
+    // Auto-save immediately
+    if (window.luxsync?.hephaestus?.save) {
+      try {
+        const serialized = serializeHephClip(newClip)
+        const result = await window.luxsync.hephaestus.save(serialized)
+        if (result.success) {
+          console.log(`[Hephaestus] Created & saved new clip: ${newClip.name}`)
+          setSaveMessage('✅ Created!')
+          setIsDirty(false)
+          await loadLibrary()
+        }
+      } catch (error) {
+        console.error('[Hephaestus] Failed to save new clip:', error)
+      }
+    }
+  }, [loadLibrary])
+
+  // WAVE 2030.13: Zone targeting handler
+  const handleZonesChange = useCallback((zones: EffectZone[]) => {
+    setClip(prev => ({
+      ...prev,
+      zones
+    }))
+    setIsDirty(true)
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -366,6 +426,15 @@ const HephaestusView: React.FC = () => {
     })
   }, [activeParam, updateCurve])
 
+  // WAVE 2030.14: Audio binding change handler
+  const handleAudioBindingChange = useCallback((index: number, binding: import('../../../core/hephaestus/types').HephAudioBinding | undefined) => {
+    updateCurve(activeParam, curve => {
+      const newKfs = [...curve.keyframes]
+      newKfs[index] = { ...newKfs[index], audioBinding: binding }
+      return { ...curve, keyframes: newKfs }
+    })
+  }, [activeParam, updateCurve])
+
   const handleBezierHandleMove = useCallback((index: number, handles: [number, number, number, number]) => {
     updateCurve(activeParam, curve => {
       const newKfs = [...curve.keyframes]
@@ -380,6 +449,90 @@ const HephaestusView: React.FC = () => {
 
   const handleModeChange = useCallback((mode: HephCurveMode) => {
     updateCurve(activeParam, curve => ({ ...curve, mode }))
+  }, [activeParam, updateCurve])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2030.8 — Parameter Add/Remove
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const handleAddParam = useCallback((paramId: HephParamId) => {
+    setClip((prev: HephAutomationClip): HephAutomationClip => {
+      // Don't add if already exists
+      if (prev.curves.has(paramId)) return prev
+      
+      // Create new curve with sensible defaults
+      const isColor = paramId === 'color'
+      const newCurve: HephCurve = {
+        paramId,
+        valueType: isColor ? 'color' : 'number',
+        range: [0, 1],
+        defaultValue: isColor ? { h: 0, s: 100, l: 50 } : 0,
+        keyframes: [
+          { timeMs: 0, value: isColor ? { h: 0, s: 100, l: 50 } : 0, interpolation: 'linear' },
+          { timeMs: prev.durationMs, value: isColor ? { h: 0, s: 100, l: 50 } : 1, interpolation: 'hold' },
+        ],
+        mode: 'absolute'
+      }
+      
+      const newCurves = new Map(prev.curves)
+      newCurves.set(paramId, newCurve)
+      return { ...prev, curves: newCurves }
+    })
+    setActiveParam(paramId)
+    setShowAddParamDropdown(false)
+    setIsDirty(true)
+    console.log(`[Hephaestus] Added parameter: ${paramId}`)
+  }, [])
+
+  const handleRemoveParam = useCallback((paramId: HephParamId) => {
+    setClip((prev: HephAutomationClip): HephAutomationClip => {
+      // Don't remove if it's the only curve
+      if (prev.curves.size <= 1) {
+        console.warn('[Hephaestus] Cannot remove last parameter')
+        return prev
+      }
+      
+      const newCurves = new Map(prev.curves)
+      newCurves.delete(paramId)
+      return { ...prev, curves: newCurves }
+    })
+    
+    // If removing active param, switch to another
+    if (activeParam === paramId) {
+      const remaining = Array.from(clip.curves.keys()).filter(p => p !== paramId)
+      if (remaining.length > 0) {
+        setActiveParam(remaining[0] as HephParamId)
+      }
+    }
+    setSelectedKeyframeIdx(null)
+    setIsDirty(true)
+    console.log(`[Hephaestus] Removed parameter: ${paramId}`)
+  }, [activeParam, clip.curves])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2030.8 — Template & Bezier Preset Application
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const handleApplyTemplate = useCallback((keyframes: HephKeyframe[]) => {
+    updateCurve(activeParam, curve => ({
+      ...curve,
+      keyframes
+    }))
+    setSelectedKeyframeIdx(null)
+    console.log(`[Hephaestus] Applied template with ${keyframes.length} keyframes`)
+  }, [activeParam, updateCurve])
+
+  const handleApplyBezierPreset = useCallback((index: number, handles: [number, number, number, number]) => {
+    updateCurve(activeParam, curve => {
+      const newKfs = [...curve.keyframes]
+      newKfs[index] = { 
+        ...newKfs[index], 
+        interpolation: 'bezier',
+        bezierHandles: handles 
+      }
+      return { ...curve, keyframes: newKfs }
+    })
+    console.log(`[Hephaestus] Applied bezier preset to keyframe ${index}`)
   }, [activeParam, updateCurve])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -404,6 +557,14 @@ const HephaestusView: React.FC = () => {
           <span className="heph-header__duration">{(clip.durationMs / 1000).toFixed(1)}s</span>
           <span className="heph-header__divider">│</span>
           <span className="heph-header__param-count">{paramIds.length} PARAMS</span>
+          
+          {/* WAVE 2030.13: Zone Selector */}
+          <ZoneSelector
+            selectedZones={clip.zones}
+            onZonesChange={handleZonesChange}
+            disabled={isSaving}
+          />
+          
           {saveMessage && (
             <>
               <span className="heph-header__divider">│</span>
@@ -560,9 +721,51 @@ const HephaestusView: React.FC = () => {
                 curve={clip.curves.get(paramId)!}
                 isActive={paramId === activeParam}
                 onClick={() => setActiveParam(paramId)}
+                onRemove={paramIds.length > 1 ? handleRemoveParam : undefined}
               />
             ))}
           </div>
+          
+          {/* WAVE 2030.8/2030.9: Add Parameter Section with Categories */}
+          {availableParams.length > 0 && (
+            <div className="heph-add-param">
+              <button 
+                className="heph-add-param__btn"
+                onClick={() => setShowAddParamDropdown(!showAddParamDropdown)}
+                type="button"
+              >
+                <span>+</span>
+                <span>ADD PARAMETER</span>
+              </button>
+              
+              {showAddParamDropdown && (
+                <div className="heph-add-param__dropdown">
+                  {Array.from(groupedAvailableParams.entries()).map(([category, params]) => (
+                    <div key={category} className="heph-add-param__category">
+                      <div className="heph-add-param__category-header">
+                        <span>{PARAM_CATEGORIES[category].icon}</span>
+                        <span>{PARAM_CATEGORIES[category].label}</span>
+                      </div>
+                      {params.map(paramId => {
+                        const meta = PARAM_META[paramId]
+                        return (
+                          <button
+                            key={paramId}
+                            className="heph-add-param__option"
+                            onClick={() => handleAddParam(paramId)}
+                            type="button"
+                          >
+                            <span className="heph-add-param__option-icon">{meta.icon}</span>
+                            <span className="heph-add-param__option-label">{meta.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Curve Editor (main canvas) ── */}
@@ -579,6 +782,7 @@ const HephaestusView: React.FC = () => {
               onInterpolationChange={handleInterpolationChange}
               onBezierHandleMove={handleBezierHandleMove}
               onKeyframeSelect={handleKeyframeSelect}
+              onAudioBindingChange={handleAudioBindingChange}
             />
           ) : (
             <div className="heph-no-curve">
@@ -592,8 +796,18 @@ const HephaestusView: React.FC = () => {
       <HephaestusToolbar
         activeCurve={activeCurve}
         selectedKeyframeIdx={selectedKeyframeIdx}
+        clipDurationMs={clip.durationMs}
         onInterpolationChange={handleInterpolationChange}
         onModeChange={handleModeChange}
+        onApplyBezierPreset={handleApplyBezierPreset}
+        onApplyTemplate={handleApplyTemplate}
+      />
+
+      {/* ═══ NEW CLIP MODAL - WAVE 2030.8 ═══ */}
+      <NewClipModal
+        isOpen={showNewClipModal}
+        onClose={() => setShowNewClipModal(false)}
+        onCreate={handleCreateClip}
       />
     </div>
   )

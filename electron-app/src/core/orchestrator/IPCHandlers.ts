@@ -12,6 +12,21 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import type { TitanOrchestrator } from './TitanOrchestrator'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../hephaestus/types'
+import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime'
+
+// ⚒️ WAVE 2030.18: Singleton runtime for .lfx execution
+let hephaestusRuntime: HephaestusRuntime | null = null
+
+/**
+ * ⚒️ WAVE 2030.18: Get or create the HephaestusRuntime singleton
+ * Exported for use by TitanOrchestrator in processFrame()
+ */
+export function getHephaestusRuntime(): HephaestusRuntime {
+  if (!hephaestusRuntime) {
+    hephaestusRuntime = new HephaestusRuntime()
+  }
+  return hephaestusRuntime
+}
 
 // Type for zone (matches main.ts)
 export type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
@@ -239,6 +254,88 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     return { success: true }
   })
   
+  /**
+   * ⚒️ chronos:triggerHeph (WAVE 2030.18)
+   * Called from ChronosIPCBridge when a CUSTOM Hephaestus .lfx clip starts.
+   * Bypasses FXMapper entirely - uses HephaestusRuntime for dynamic execution.
+   * 
+   * This is THE RUNTIME - evaluates Bezier curves at 60fps for user-created effects.
+   */
+  ipcMain.handle('chronos:triggerHeph', (_event, config: {
+    filePath: string
+    intensity: number
+    durationMs?: number
+    loop?: boolean
+  }) => {
+    console.log(`[Chronos→Stage] ⚒️ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`)
+    
+    // 🔍 DEBUG: Check file before loading
+    const fs = require('fs')
+    if (!fs.existsSync(config.filePath)) {
+      console.error(`[Chronos→Stage] ⚒️ HEPH FILE NOT FOUND: ${config.filePath}`)
+      return { success: false, error: 'File not found' }
+    }
+    
+    const stats = fs.statSync(config.filePath)
+    console.log(`[Chronos→Stage] ⚒️ HEPH FILE SIZE: ${stats.size} bytes`)
+    
+    if (stats.size === 0) {
+      console.error(`[Chronos→Stage] ⚒️ HEPH FILE EMPTY: ${config.filePath}`)
+      return { success: false, error: 'Empty file' }
+    }
+    
+    // Try to read raw content
+    try {
+      const content = fs.readFileSync(config.filePath, 'utf-8')
+      console.log(`[Chronos→Stage] ⚒️ HEPH FILE PREVIEW: ${content.substring(0, 200)}...`)
+    } catch (readErr) {
+      console.error(`[Chronos→Stage] ⚒️ HEPH READ ERROR:`, readErr)
+    }
+    
+    const runtime = getHephaestusRuntime()
+    const instanceId = runtime.play(config.filePath, {
+      intensity: config.intensity,
+      durationOverrideMs: config.durationMs,
+      loop: config.loop ?? false,
+    })
+    
+    if (instanceId) {
+      console.log(`[Chronos→Stage] ⚒️ HEPH PLAYING: ${instanceId}`)
+      return { success: true, instanceId }
+    } else {
+      console.error(`[Chronos→Stage] ⚒️ HEPH FAILED: Could not load ${config.filePath}`)
+      return { success: false, error: 'Failed to load .lfx file' }
+    }
+  })
+  
+  /**
+   * ⚒️ chronos:stopHeph (WAVE 2030.18)
+   * Stop a specific Hephaestus runtime instance or all instances.
+   */
+  ipcMain.handle('chronos:stopHeph', (_event, instanceId?: string) => {
+    const runtime = getHephaestusRuntime()
+    if (instanceId) {
+      const stopped = runtime.stop(instanceId)
+      console.log(`[Chronos→Stage] ⚒️ HEPH STOP: ${instanceId} (${stopped ? 'OK' : 'not found'})`)
+      return { success: stopped }
+    } else {
+      runtime.stopAll()
+      console.log('[Chronos→Stage] ⚒️ HEPH STOP ALL')
+      return { success: true }
+    }
+  })
+  
+  /**
+   * ⚒️ chronos:tickHeph (WAVE 2030.18)
+   * Called from render loop to evaluate all active Hephaestus clips.
+   * Returns output values to be merged with main DMX output.
+   */
+  ipcMain.handle('chronos:tickHeph', (_event, currentTimeMs: number) => {
+    const runtime = getHephaestusRuntime()
+    const outputs = runtime.tick(currentTimeMs)
+    return { success: true, outputs }
+  })
+
   /**
    * 🛑 chronos:stopFX
    * Called from ChronosIPCBridge when an FX clip ends.

@@ -26,6 +26,7 @@ import {
   type DragPayload,
   createVibeClip,
   createFXClip,
+  createHephFXClip, // WAVE 2030.17: THE BRIDGE
   calculateBeatGrid,
   snapToGrid,
   generateClipId,
@@ -225,6 +226,23 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
       selectClip(clip.id)
       return clip
     } else if (payload.clipType === 'fx') {
+      // ⚒️ WAVE 2030.17: THE BRIDGE - Check if this is a Hephaestus custom clip
+      if (payload.source === 'hephaestus' && payload.hephFilePath) {
+        const clip = createHephFXClip(
+          payload.name ?? 'Custom FX',
+          payload.hephFilePath,
+          snappedTime,
+          payload.defaultDurationMs,
+          trackId,
+          payload.subType
+        )
+        addClip(clip)
+        selectClip(clip.id)
+        console.log(`[useTimelineClips] ⚒️ Created Hephaestus clip: ${clip.label}`)
+        return clip
+      }
+      
+      // Standard FX clip from Arsenal
       const clip = createFXClip(
         payload.subType as FXType,
         snappedTime,

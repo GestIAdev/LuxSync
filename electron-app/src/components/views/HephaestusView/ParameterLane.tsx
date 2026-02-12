@@ -1,36 +1,73 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ PARAMETER LANE - WAVE 2030.3
+ * ⚒️ PARAMETER LANE - WAVE 2030.8
  * Sidebar lane showing parameter name, mode, and mini preview
  * 
  * Each lane represents one HephCurve (intensity, speed, strobe, etc.)
  * Click to select as active curve in the CurveEditor canvas.
  * 
+ * WAVE 2030.8: Added delete button for removing parameters
+ * 
  * @module views/HephaestusView/ParameterLane
- * @version WAVE 2030.3
+ * @version WAVE 2030.8
  */
 
 import React, { useMemo } from 'react'
 import type { HephCurve, HephParamId } from '../../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PARAM METADATA
+// PARAM METADATA — Exported for use in other components
+// WAVE 2030.9: Added categories for proper grouping
 // ═══════════════════════════════════════════════════════════════════════════
 
-const PARAM_META: Record<HephParamId, { label: string; color: string; icon: string }> = {
-  intensity:  { label: 'INTENSITY',  color: '#fbbf24', icon: '☀' },
-  color:      { label: 'COLOR',      color: '#a855f7', icon: '🎨' },
-  white:      { label: 'WHITE',      color: '#e2e8f0', icon: '◎' },
-  amber:      { label: 'AMBER',      color: '#f97316', icon: '◉' },
-  speed:      { label: 'SPEED',      color: '#22d3ee', icon: '⚡' },
-  pan:        { label: 'PAN',        color: '#3b82f6', icon: '↔' },
-  tilt:       { label: 'TILT',       color: '#6366f1', icon: '↕' },
-  zoom:       { label: 'ZOOM',       color: '#14b8a6', icon: '⊕' },
-  strobe:     { label: 'STROBE',     color: '#ef4444', icon: '⚡' },
-  globalComp: { label: 'GLOBAL',     color: '#8b5cf6', icon: '◈' },
-  width:      { label: 'WIDTH',      color: '#06b6d4', icon: '⟷' },
-  direction:  { label: 'DIRECTION',  color: '#10b981', icon: '→' },
+export type ParamCategory = 'physical' | 'color' | 'movement' | 'control'
+
+export const PARAM_META: Record<HephParamId, { 
+  label: string
+  color: string
+  icon: string
+  category: ParamCategory 
+}> = {
+  // PHYSICAL - Intensity/brightness controls
+  intensity:  { label: 'INTENSITY',  color: '#fbbf24', icon: '☀', category: 'physical' },
+  strobe:     { label: 'STROBE',     color: '#ef4444', icon: '⚡', category: 'physical' },
+  white:      { label: 'WHITE',      color: '#e2e8f0', icon: '◎', category: 'physical' },
+  amber:      { label: 'AMBER',      color: '#f97316', icon: '◉', category: 'physical' },
+  
+  // COLOR - Chromatic controls
+  color:      { label: 'COLOR',      color: '#a855f7', icon: '🎨', category: 'color' },
+  
+  // MOVEMENT - Pan/Tilt/Zoom only
+  pan:        { label: 'PAN',        color: '#3b82f6', icon: '↔', category: 'movement' },
+  tilt:       { label: 'TILT',       color: '#6366f1', icon: '↕', category: 'movement' },
+  zoom:       { label: 'ZOOM',       color: '#14b8a6', icon: '⊕', category: 'movement' },
+  
+  // CONTROL - Speed, width, direction, global
+  speed:      { label: 'SPEED',      color: '#22d3ee', icon: '⏱', category: 'control' },
+  width:      { label: 'WIDTH',      color: '#06b6d4', icon: '⟷', category: 'control' },
+  direction:  { label: 'DIRECTION',  color: '#10b981', icon: '→', category: 'control' },
+  globalComp: { label: 'GLOBAL',     color: '#8b5cf6', icon: '◈', category: 'control' },
 }
+
+/** Category display info */
+export const PARAM_CATEGORIES: Record<ParamCategory, { label: string; icon: string }> = {
+  physical: { label: 'PHYSICAL', icon: '💡' },
+  color:    { label: 'COLOR',    icon: '🎨' },
+  movement: { label: 'MOVEMENT', icon: '🔄' },
+  control:  { label: 'CONTROL',  icon: '🎛' },
+}
+
+/** All available parameter IDs for the add param dropdown - ordered by category */
+export const ALL_PARAM_IDS: HephParamId[] = [
+  // Physical
+  'intensity', 'strobe', 'white', 'amber',
+  // Color
+  'color',
+  // Movement
+  'pan', 'tilt', 'zoom',
+  // Control
+  'speed', 'width', 'direction', 'globalComp'
+]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MINI CURVE PREVIEW — Tiny SVG sparkline
@@ -74,6 +111,7 @@ interface ParameterLaneProps {
   curve: HephCurve
   isActive: boolean
   onClick: () => void
+  onRemove?: (paramId: HephParamId) => void  // WAVE 2030.8: Delete handler
 }
 
 export const ParameterLane: React.FC<ParameterLaneProps> = ({
@@ -81,8 +119,16 @@ export const ParameterLane: React.FC<ParameterLaneProps> = ({
   curve,
   isActive,
   onClick,
+  onRemove,
 }) => {
   const meta = PARAM_META[paramId] ?? { label: paramId.toUpperCase(), color: '#888', icon: '●' }
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation()  // Don't trigger onClick
+    if (onRemove) {
+      onRemove(paramId)
+    }
+  }
 
   return (
     <button
@@ -97,6 +143,17 @@ export const ParameterLane: React.FC<ParameterLaneProps> = ({
       </div>
       <MiniCurvePreview curve={curve} color={meta.color} />
       {isActive && <span className="param-lane__indicator" />}
+      
+      {/* WAVE 2030.8: Delete button */}
+      {onRemove && (
+        <span 
+          className="param-lane__delete"
+          onClick={handleRemove}
+          title={`Remove ${meta.label} parameter`}
+        >
+          ×
+        </span>
+      )}
     </button>
   )
 }

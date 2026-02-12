@@ -73,21 +73,35 @@ describe('⚒️ HEPHAESTUS: Curve Templates - WAVE 2030.6', () => {
   
   describe('🔢 Mathematical Generators', () => {
     
-    it('sine: generates smooth oscillation 0 → 1 → 0', () => {
+    /**
+     * WAVE 2030.12: Sine now uses optimized Bezier approximation
+     * - 3 keyframes per cycle: valley (0) → peak (1) → valley (0)
+     * - Bezier handles [0.3642, 0, 0.6358, 1] approximate sine curve
+     * - Much cleaner, editable, and mathematically elegant
+     */
+    it('sine: generates smooth oscillation via Bezier approximation', () => {
       const sine = getTemplateById('sine')!
-      const keyframes = sine.generate(1000, 1, 8)
+      const keyframes = sine.generate(1000, 1, 8)  // resolution ignored, always 3 points per cycle
       
-      // Should have multiple keyframes
-      expect(keyframes.length).toBeGreaterThan(4)
+      // WAVE 2030.12: Now uses 3 keyframes for 1 cycle (valley → peak → valley)
+      expect(keyframes.length).toBe(3)
       
-      // First keyframe at t=0 should be value 0.5 (sine starts at 0)
+      // First keyframe at t=0 should be valley (0)
       expect(keyframes[0].timeMs).toBe(0)
-      expect(keyframes[0].value).toBeCloseTo(0.5, 1)
+      expect(keyframes[0].value).toBe(0)
       
-      // Values should be bounded [0, 1]
+      // Peak at midpoint (1)
+      expect(keyframes[1].timeMs).toBe(500)
+      expect(keyframes[1].value).toBe(1)
+      
+      // Final valley at end (0)
+      expect(keyframes[2].timeMs).toBe(1000)
+      expect(keyframes[2].value).toBe(0)
+      
+      // All use bezier interpolation with sine approximation handles
       for (const kf of keyframes) {
-        expect(kf.value).toBeGreaterThanOrEqual(0)
-        expect(kf.value).toBeLessThanOrEqual(1)
+        expect(kf.interpolation).toBe('bezier')
+        expect(kf.bezierHandles).toBeDefined()
       }
       
       // Last keyframe at duration

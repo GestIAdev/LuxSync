@@ -1,30 +1,32 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎹 ARSENAL DOCK - WAVE 2009.6: BALANCED DOCK
+ * 🎹 ARSENAL DOCK - WAVE 2030.7: THE TITANS MEET
  * 
  * Panel horizontal inferior que reemplaza al Command Deck global en Chronos.
  * Diseño PRO con jerarquía visual: VIBES (contenedores) > EFFECTS (items)
  * 
+ * WAVE 2030.7: Hephaestus integration - Custom FX panel added
+ * 
  * LAYOUT (240px height fixed):
- * ┌─────────────────────┬───────────────────────────────────┬─────────────┐
- * │     VIBE CARDS      │         EFFECT GRID               │   TRIGGER   │
- * │      (280px)        │   [2 rows × scroll + CUSTOM]      │    ZONE     │
- * │  ┌──────┬──────┐    │                                   │   (200px)   │
- * │  │  🎺  │  🤖  │    │  ☀️ 🌴 🔥 🌙 ⚡ ... [+ CUSTOM]   │             │
- * │  │LATINA│TECHNO│    │                                   │    🔴 ARM   │
- * │  ├──────┼──────┤    │                                   │             │
- * │  │  🎸  │  🌊  │    │                                   │   MODE:     │
- * │  │ ROCK │CHILL │    │                                   │   DRAG/REC  │
- * │  └──────┴──────┘    │                                   │             │
- * └─────────────────────┴───────────────────────────────────┴─────────────┘
+ * ┌─────────────┬──────────────────────┬──────────────┬─────────────┐
+ * │ VIBE CARDS  │   CORE EFFECT GRID   │  CUSTOM FX   │   TRIGGER   │
+ * │   (280px)   │   [2 rows × scroll]  │  (Heph .lfx) │    ZONE     │
+ * │ ┌────┬────┐ │                      │              │   (200px)   │
+ * │ │ 🎺 │ 🤖 │ │  ☀️ 🌴 🔥 🌙 ⚡ ...   │  ⚒️ Custom   │             │
+ * │ │LATI│TECH│ │                      │  effects     │    🔴 ARM   │
+ * │ ├────┼────┤ │                      │  [+] NEW     │             │
+ * │ │ 🎸 │ 🌊 │ │                      │              │   MODE:     │
+ * │ │ROCK│CHIL│ │                      │              │   DRAG/REC  │
+ * │ └────┴────┘ │                      │              │             │
+ * └─────────────┴──────────────────────┴──────────────┴─────────────┘
  * 
  * JERARQUÍA VISUAL:
  * - VIBES: Tarjetas grandes, oscuras, imponentes (CONTENEDORES)
- * - EFFECTS: Pads pequeños, coloridos (ITEMS)
- * - CUSTOM: Slot fantasma para futuro Effect Creator
+ * - CORE FX: Pads pequeños, cyan border (ITEMS)
+ * - CUSTOM FX: Pads pequeños, EMBER border (HEPHAESTUS)
  * 
  * @module chronos/ui/arsenal/ArsenalDock
- * @version WAVE 2009.6
+ * @version WAVE 2030.7
  */
 
 import React, { useCallback, useMemo, useState, memo } from 'react'
@@ -39,6 +41,7 @@ import {
   type EffectCategoryId,
 } from '../../core/EffectRegistry'
 import { getChronosRecorder } from '../../core/ChronosRecorder'
+import { CustomFXDock } from './CustomFXDock'
 import './ArsenalDock.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -345,7 +348,7 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * CENTER: EFFECT GRID (2 rows × horizontal scroll + CUSTOM SLOT)
+       * CENTER: EFFECT GRID (Core FX - 2 rows × horizontal scroll)
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="dock-grid">
         <div className="grid-header">
@@ -368,19 +371,18 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
                 onClick={onEffectClick}
               />
             ))}
-            
-            {/* CUSTOM FX SLOT - Ghost button for future Effect Creator */}
-            <div 
-              className="effect-pad custom-slot"
-              onClick={() => alert('🎨 Effect Creator coming in WAVE 2012!\n\nCreate your own visual effects with custom parameters.')}
-              title="Create Custom Effect (Coming Soon)"
-            >
-              <span className="pad-icon">+</span>
-              <span className="pad-name">CUSTOM FX</span>
-            </div>
           </div>
         </div>
       </div>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+       * CENTER-RIGHT: CUSTOM FX DOCK (Hephaestus .lfx clips) - WAVE 2030.7
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <CustomFXDock
+        isRecording={effectiveRecording}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      />
       
       {/* ═══════════════════════════════════════════════════════════════════
        * RIGHT: TRIGGER ZONE (200px)

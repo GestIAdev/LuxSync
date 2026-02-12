@@ -314,6 +314,34 @@ const api = {
      */
     stopFX: (effectId: string): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('chronos:stopFX', effectId),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Trigger a Hephaestus .lfx file dynamically
+     * Bypasses FXMapper - uses HephaestusRuntime for real-time curve evaluation.
+     * @param filePath - Path to the .lfx file
+     * @param intensity - Effect intensity 0-1
+     * @param durationMs - Optional duration override
+     * @param loop - Whether to loop the clip
+     * @returns { success, instanceId }
+     */
+    triggerHeph: (filePath: string, intensity: number, durationMs?: number, loop?: boolean): Promise<{ success: boolean; instanceId?: string }> =>
+      ipcRenderer.invoke('chronos:triggerHeph', { filePath, intensity, durationMs, loop }),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Stop a Hephaestus runtime instance
+     * @param instanceId - Optional specific instance ID. If omitted, stops all.
+     */
+    stopHeph: (instanceId?: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:stopHeph', instanceId),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Tick all active Hephaestus clips
+     * Called from render loop at 60fps to get current curve values.
+     * @param currentTimeMs - Current system time in ms
+     * @returns { success, outputs: HephFixtureOutput[] }
+     */
+    tickHeph: (currentTimeMs: number): Promise<{ success: boolean; outputs: unknown[] }> =>
+      ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
   },
 
   // ============================================
@@ -975,6 +1003,34 @@ const luxApi = {
      */
     stopFX: (effectId: string): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('chronos:stopFX', effectId),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Trigger a Hephaestus .lfx file dynamically
+     * Bypasses FXMapper - uses HephaestusRuntime for real-time curve evaluation.
+     * @param filePath - Path to the .lfx file
+     * @param intensity - Effect intensity 0-1
+     * @param durationMs - Optional duration override
+     * @param loop - Whether to loop the clip
+     * @returns { success, instanceId }
+     */
+    triggerHeph: (filePath: string, intensity: number, durationMs?: number, loop?: boolean): Promise<{ success: boolean; instanceId?: string }> =>
+      ipcRenderer.invoke('chronos:triggerHeph', { filePath, intensity, durationMs, loop }),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Stop a Hephaestus runtime instance
+     * @param instanceId - Optional specific instance ID. If omitted, stops all.
+     */
+    stopHeph: (instanceId?: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('chronos:stopHeph', instanceId),
+    
+    /**
+     * ⚒️ WAVE 2030.18: Tick all active Hephaestus clips
+     * Called from render loop at 60fps to get current curve values.
+     * @param currentTimeMs - Current system time in ms
+     * @returns { success, outputs: HephFixtureOutput[] }
+     */
+    tickHeph: (currentTimeMs: number): Promise<{ success: boolean; outputs: unknown[] }> =>
+      ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
   },
 }
 

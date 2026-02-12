@@ -42,6 +42,10 @@ import { MoodController } from '../mood/MoodController'
 // ⚒️ WAVE 2030.4: Hephaestus types
 import type { HephAutomationClip } from '../hephaestus/types'
 
+// ⚒️ WAVE 2030.19: HephaestusRuntime for .lfx execution
+import { getHephaestusRuntime } from './IPCHandlers'
+import type { HephFixtureOutput } from '../hephaestus/runtime/HephaestusRuntime'
+
 // Use inline type to avoid import issues
 type VibeId = 'fiesta-latina' | 'techno-club' | 'pop-rock' | 'chill-lounge' | 'idle'
 
@@ -1045,6 +1049,125 @@ export class TitanOrchestrator {
       })
     }
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
+    // Evaluate all active .lfx clips and merge their outputs with DMX
+    // 
+    // MERGE STRATEGY:
+    //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
+    //   - Color (RGB): LTP (Hephaestus overwrites if present)
+    //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
+    //   - Strobe: Additive (sum clamped to max)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const hephRuntime = getHephaestusRuntime()
+    const hephOutputs = hephRuntime.tick(Date.now())
+    
+    if (hephOutputs.length > 0) {
+      // Group outputs by parameter for efficient processing
+      const hephByZone = new Map<string, HephFixtureOutput[]>()
+      for (const output of hephOutputs) {
+        const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString()
+        if (!hephByZone.has(zoneKey)) {
+          hephByZone.set(zoneKey, [])
+        }
+        hephByZone.get(zoneKey)!.push(output)
+      }
+      
+      // Apply Hephaestus outputs to fixtures
+      fixtureStates = fixtureStates.map((f, index) => {
+        // Find matching outputs for this fixture's zone
+        const fixtureZone = (f.zone || '').toLowerCase()
+        const applicableOutputs: HephFixtureOutput[] = []
+        
+        // Check 'all' zone outputs
+        const allZoneOutputs = hephByZone.get('all')
+        if (allZoneOutputs) applicableOutputs.push(...allZoneOutputs)
+        
+        // Check zone-specific outputs
+        for (const [zoneKey, outputs] of hephByZone) {
+          if (zoneKey === 'all') continue
+          if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
+            applicableOutputs.push(...outputs)
+          }
+        }
+        
+        if (applicableOutputs.length === 0) return f
+        
+        // Apply each parameter with appropriate merge strategy
+        let newF = { ...f }
+        
+        for (const output of applicableOutputs) {
+          switch (output.parameter) {
+            case 'intensity': {
+              // HTP: Highest Takes Precedence
+              const hephDimmer = Math.round(output.value * 255)
+              newF.dimmer = Math.max(newF.dimmer, hephDimmer)
+              break
+            }
+            
+            case 'strobe': {
+              // Strobe: Map 0-1 to 0-18Hz, apply to fixture
+              // Most fixtures use 0-255 for strobe speed
+              const strobeValue = Math.round(output.value * 255)
+              newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + strobeValue) }
+              break
+            }
+            
+            case 'pan': {
+              // LTP: Hephaestus overwrites (0-1 → 0-255)
+              newF.pan = Math.round(output.value * 255)
+              newF.physicalPan = newF.pan
+              break
+            }
+            
+            case 'tilt': {
+              // LTP: Hephaestus overwrites (0-1 → 0-255)
+              newF.tilt = Math.round(output.value * 255)
+              newF.physicalTilt = newF.tilt
+              break
+            }
+            
+            case 'colorHue': {
+              // Color: Convert HSL to RGB and apply as LTP
+              // output.value is hue 0-360, need S and L from other outputs
+              const satOutput = applicableOutputs.find(o => o.parameter === 'colorSaturation')
+              const lumOutput = applicableOutputs.find(o => o.parameter === 'colorLightness')
+              const h = output.value  // 0-360
+              const s = satOutput ? satOutput.value : 1.0
+              const l = lumOutput ? lumOutput.value : 0.5
+              const rgb = this.hslToRgb(h, s, l)
+              newF.r = rgb.r
+              newF.g = rgb.g
+              newF.b = rgb.b
+              break
+            }
+            
+            case 'white': {
+              // White channel: LTP overlay
+              newF.white = Math.round(output.value * 255)
+              break
+            }
+            
+            case 'amber': {
+              // Amber channel: LTP overlay
+              newF.amber = Math.round(output.value * 255)
+              break
+            }
+            
+            // colorSaturation and colorLightness handled by colorHue
+          }
+        }
+        
+        return newF
+      })
+      
+      // Throttled debug log
+      if (this.frameCount % 60 === 0) {
+        const activeClips = hephRuntime.getStats().activeClips
+        console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`)
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
     // The effects processing above can OVERRIDE the arbiter's gate decision.

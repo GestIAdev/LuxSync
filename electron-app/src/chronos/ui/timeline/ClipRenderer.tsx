@@ -215,6 +215,114 @@ const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> =
 FXClipContent.displayName = 'FXClipContent'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 2030.17: HEPHAESTUS CUSTOM FX CLIP RENDERER (EMBER STYLE)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HEPH_EMBER_COLOR = '#ff6b2b'
+const HEPH_EMBER_DARK = '#cc5522'
+
+const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }> = memo(({
+  clip,
+  width,
+  height,
+}) => {
+  const canShowLabel = width > 50
+  const canShowIcon = width > 25
+  
+  // Generate decorative mini-curve (visual only - no real data yet)
+  const decorativeCurve = React.useMemo(() => {
+    if (width < 40) return null
+    
+    // Create a smooth wave pattern for visual appeal
+    const points: string[] = []
+    const segments = Math.min(8, Math.floor(width / 15))
+    
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments
+      const x = t * width
+      // Sine wave with slight randomness (deterministic based on position)
+      const phase = (i * 1.3) + (clip.id.charCodeAt(0) % 3)
+      const y = height / 2 + Math.sin(phase) * (height * 0.25)
+      points.push(`${x},${y}`)
+    }
+    
+    return `M ${points.join(' L ')}`
+  }, [width, height, clip.id])
+  
+  return (
+    <>
+      {/* EMBER gradient background */}
+      <defs>
+        <linearGradient id={`heph-gradient-${clip.id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={HEPH_EMBER_COLOR} stopOpacity={0.9} />
+          <stop offset="50%" stopColor={HEPH_EMBER_DARK} stopOpacity={0.7} />
+          <stop offset="100%" stopColor={HEPH_EMBER_COLOR} stopOpacity={0.5} />
+        </linearGradient>
+      </defs>
+      
+      {/* Decorative automation curve (visual flair) */}
+      {decorativeCurve && (
+        <path
+          d={decorativeCurve}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.5)"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeDasharray="4 2"
+        />
+      )}
+      
+      {/* ⚒️ Hephaestus icon */}
+      {canShowIcon && (
+        <text
+          x={6}
+          y={height - 6}
+          fill="#fff"
+          fontSize="10"
+          opacity={0.7}
+        >
+          ⚒️
+        </text>
+      )}
+      
+      {/* Label */}
+      {canShowLabel && (
+        <text
+          x={width > 60 ? 20 : 6}
+          y={12}
+          fill="#fff"
+          fontSize="9"
+          fontFamily="var(--font-mono)"
+          fontWeight="700"
+          opacity={0.95}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+        >
+          {clip.label}
+        </text>
+      )}
+      
+      {/* CUSTOM badge for very wide clips */}
+      {width > 100 && (
+        <text
+          x={width - 6}
+          y={height - 6}
+          textAnchor="end"
+          fill={HEPH_EMBER_COLOR}
+          fontSize="7"
+          fontFamily="var(--font-mono)"
+          fontWeight="600"
+          opacity={0.6}
+        >
+          HEPH
+        </text>
+      )}
+    </>
+  )
+})
+
+HephClipContent.displayName = 'HephClipContent'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN CLIP RENDERER
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -345,9 +453,11 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
         strokeWidth={isSelected ? 2 : 1}
       />
       
-      {/* Content based on type */}
+      {/* Content based on type - WAVE 2030.17: Hephaestus detection */}
       {clip.type === 'vibe' ? (
         <VibeClipContent clip={clip as VibeClip} width={width} height={height} />
+      ) : (clip as FXClip).isHephCustom ? (
+        <HephClipContent clip={clip as FXClip} width={width} height={height} />
       ) : (
         <FXClipContent clip={clip as FXClip} width={width} height={height} />
       )}

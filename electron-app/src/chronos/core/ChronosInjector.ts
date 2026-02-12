@@ -71,6 +71,20 @@ export interface StageCommand {
    * Solo presente cuando type === 'fx-trigger' y el clip tiene hephClip.
    */
   hephCurves?: HephAutomationClip
+  
+  /**
+   * ⚒️ WAVE 2030.18: THE RUNTIME
+   * 
+   * Path to .lfx file for Hephaestus custom effects.
+   * When present, bypasses FXMapper and uses HephaestusRuntime.
+   */
+  hephFilePath?: string
+  
+  /**
+   * ⚒️ WAVE 2030.18: Flag for Hephaestus custom clips
+   * When true, the bridge should use HephaestusRuntime instead of FXMapper.
+   */
+  isHephCustom?: boolean
 }
 
 /** Listener for stage commands */
@@ -186,7 +200,7 @@ export class ChronosInjector {
     for (const fx of activeFx) {
       if (!this.prevState.activeFxMap.has(fx.id)) {
         // New FX - trigger it
-        // ⚒️ WAVE 2030.4: Include hephClip if present
+        // ⚒️ WAVE 2030.4 + 2030.18: Include hephClip and hephFilePath if present
         this.emit({
           type: 'fx-trigger',
           effectId: fx.fxType,
@@ -194,11 +208,13 @@ export class ChronosInjector {
           durationMs: fx.endMs - fx.startMs,
           color: fx.color,
           timestamp: Date.now(),
-          hephCurves: fx.hephClip,  // ⚒️ HEPHAESTUS CURVES
+          hephCurves: fx.hephClip,      // ⚒️ WAVE 2030.4: HEPHAESTUS CURVES
+          hephFilePath: fx.hephFilePath, // ⚒️ WAVE 2030.18: Path to .lfx file
+          isHephCustom: fx.isHephCustom, // ⚒️ WAVE 2030.18: Runtime bypass flag
         })
         
         if (this.debug) {
-          const hephTag = fx.hephClip ? ' ⚒️[HEPH]' : ''
+          const hephTag = fx.isHephCustom ? ' ⚒️[HEPH RUNTIME]' : fx.hephClip ? ' ⚒️[HEPH]' : ''
           console.log(`[ChronosInjector] ⚡ FX ON → ${fx.label}${hephTag}`)
         }
       }

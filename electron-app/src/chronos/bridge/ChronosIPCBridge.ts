@@ -97,6 +97,7 @@ async function handleVibeChange(command: StageCommand): Promise<void> {
  * 🧨 Handle fx-trigger command
  * StageCommand.effectId = fxType for fx-trigger commands
  * ⚒️ WAVE 2030.4: Also forwards hephCurves if present
+ * ⚒️ WAVE 2030.18: Routes isHephCustom to HephaestusRuntime
  */
 async function handleFXTrigger(command: StageCommand): Promise<void> {
   const fxType = command.effectId
@@ -108,7 +109,31 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
     return
   }
   
-  // Map Chronos FX type to BaseEffect ID
+  // ⚒️ WAVE 2030.18: HEPHAESTUS CUSTOM PATH
+  // If this is a custom .lfx clip, bypass FXMapper entirely
+  if (command.isHephCustom && command.hephFilePath) {
+    console.log(`[ChronosBridge] ⚒️ HEPH CUSTOM: ${command.hephFilePath} @ ${(intensity * 100).toFixed(0)}%`)
+    
+    try {
+      const result = await (window as any).lux.chronos?.triggerHeph?.(
+        command.hephFilePath,
+        intensity,
+        durationMs,
+        false  // No loop for timeline clips
+      ) || { success: false }
+      
+      if (result.success) {
+        console.log(`[ChronosBridge] ✅ HEPH triggered: ${result.instanceId}`)
+      } else {
+        console.error(`[ChronosBridge] ❌ HEPH failed: Could not load ${command.hephFilePath}`)
+      }
+    } catch (err) {
+      console.error('[ChronosBridge] ❌ Failed to trigger HEPH:', err)
+    }
+    return  // Early return - don't go through FXMapper
+  }
+  
+  // STANDARD PATH: Map Chronos FX type to BaseEffect ID
   const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
   const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
   

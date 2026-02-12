@@ -98,6 +98,75 @@
   letter-spacing: 1px;
 }
 
+/* WAVE 2030.26: Editable header — click-to-edit hint */
+.heph-header__clip-name--editable {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.heph-header__clip-name--editable:hover {
+  border-color: rgba(255, 107, 43, 0.3);
+  background: rgba(255, 107, 43, 0.05);
+}
+
+.heph-header__duration--editable {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.heph-header__duration--editable:hover {
+  border-color: rgba(255, 107, 43, 0.3);
+  background: rgba(255, 107, 43, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* WAVE 2030.26: Inline edit inputs */
+.heph-header__edit-input {
+  background: rgba(255, 107, 43, 0.08);
+  border: 1px solid rgba(255, 107, 43, 0.4);
+  border-radius: 3px;
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.heph-header__edit-input:focus {
+  border-color: #ff6b2b;
+  box-shadow: 0 0 0 1px rgba(255, 107, 43, 0.2);
+}
+
+.heph-header__edit-input--name {
+  width: 180px;
+}
+
+.heph-header__edit-input--duration {
+  width: 60px;
+  text-align: right;
+}
+
+.heph-header__edit-duration-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.heph-header__edit-unit {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+}
+
 .heph-header__divider {
   color: rgba(255, 255, 255, 0.1);
 }
@@ -805,69 +874,101 @@
   font-size: 10px;
 }
 
-/* Add param dropdown - uses shared styles */
-.heph-add-param__dropdown {
+/* WAVE 2030.26: Compact Popover — replaces tall dropdown */
+.heph-add-param__popover {
   position: absolute;
   bottom: 100%;
   left: 0;
-  margin-bottom: 8px;
-  width: 200px;
+  right: 0;
+  margin-bottom: 6px;
+  background: #1a1a1f;
+  border: 1px solid rgba(255, 107, 43, 0.35);
+  border-radius: 6px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6),
+              0 0 1px rgba(255, 107, 43, 0.4);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
-.heph-add-param__option {
-  width: 100%;
-  padding: 8px 12px;
+.heph-add-param__popover::-webkit-scrollbar {
+  width: 4px;
+}
+
+.heph-add-param__popover::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 43, 0.2);
+  border-radius: 2px;
+}
+
+.heph-add-param__popover-header {
+  padding: 6px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 107, 43, 0.5);
+  background: rgba(255, 107, 43, 0.04);
+  border-bottom: 1px solid rgba(255, 107, 43, 0.1);
+}
+
+.heph-add-param__popover-body {
+  padding: 4px;
+}
+
+.heph-add-param__group {
+  margin-bottom: 2px;
+}
+
+.heph-add-param__group:last-child {
+  margin-bottom: 0;
+}
+
+.heph-add-param__group-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
-  font-size: 12px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
-}
-
-.heph-add-param__option:last-child {
-  border-bottom: none;
-}
-
-.heph-add-param__option:hover {
-  background: rgba(255, 107, 43, 0.15);
-  box-shadow: inset 0 0 12px rgba(255, 107, 43, 0.3);
-  color: var(--accent-primary, #ff6b2b);
-  transform: translateX(2px);
-}
-
-.heph-add-param__option-icon {
-  font-size: 14px;
-}
-
-.heph-add-param__option-label {
-  flex: 1;
-}
-
-/* WAVE 2030.9: Category headers in dropdown */
-.heph-add-param__category {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.heph-add-param__category:last-child {
-  border-bottom: none;
-}
-
-.heph-add-param__category-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px 4px;
-  color: #64748b;
-  font-size: 10px;
+  gap: 4px;
+  padding: 4px 6px 2px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.25);
   text-transform: uppercase;
+}
+
+.heph-add-param__group-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 2px 4px 4px;
+}
+
+.heph-add-param__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--chip-color, #e2e8f0);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.heph-add-param__chip:hover {
+  background: rgba(255, 107, 43, 0.12);
+  border-color: var(--chip-color, rgba(255, 107, 43, 0.4));
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.heph-add-param__chip-icon {
+  font-size: 11px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

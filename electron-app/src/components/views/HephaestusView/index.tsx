@@ -26,7 +26,7 @@
  * @version WAVE 2030.8
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { CurveEditor } from './CurveEditor'
 import { ParameterLane, PARAM_META, ALL_PARAM_IDS, PARAM_CATEGORIES } from './ParameterLane'
 import type { ParamCategory } from './ParameterLane'
@@ -100,6 +100,17 @@ const HephaestusView: React.FC = () => {
   // ── Modal & Dropdown State (WAVE 2030.8) ──
   const [showNewClipModal, setShowNewClipModal] = useState(false)
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
+
+  // ── WAVE 2030.26: Editable Header State ──
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editNameValue, setEditNameValue] = useState('')
+  const [isEditingDuration, setIsEditingDuration] = useState(false)
+  const [editDurationValue, setEditDurationValue] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const durationInputRef = useRef<HTMLInputElement>(null)
+
+  // ── WAVE 2030.26: Add Param Popover Ref (click-outside dismiss) ──
+  const addParamRef = useRef<HTMLDivElement>(null)
 
   // ── Radar Preview State (WAVE 2030.25) ──
   const [showRadar, setShowRadar] = useState(true)
@@ -542,6 +553,64 @@ const HephaestusView: React.FC = () => {
   }, [activeParam, updateCurve])
 
   // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2030.26 — Editable Header (Name & Duration)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const startEditName = useCallback(() => {
+    setEditNameValue(clip.name)
+    setIsEditingName(true)
+    requestAnimationFrame(() => nameInputRef.current?.select())
+  }, [clip.name])
+
+  const commitEditName = useCallback(() => {
+    const trimmed = editNameValue.trim()
+    if (trimmed.length > 0 && trimmed !== clip.name) {
+      setClip(prev => ({ ...prev, name: trimmed }))
+      setIsDirty(true)
+    }
+    setIsEditingName(false)
+  }, [editNameValue, clip.name])
+
+  const startEditDuration = useCallback(() => {
+    setEditDurationValue(String(clip.durationMs / 1000))
+    setIsEditingDuration(true)
+    requestAnimationFrame(() => durationInputRef.current?.select())
+  }, [clip.durationMs])
+
+  const commitEditDuration = useCallback(() => {
+    const parsed = parseFloat(editDurationValue)
+    if (!isNaN(parsed) && parsed >= 0.1) {
+      const newMs = Math.round(parsed * 1000)
+      if (newMs !== clip.durationMs) {
+        setClip(prev => ({ ...prev, durationMs: newMs }))
+        setIsDirty(true)
+      }
+    }
+    setIsEditingDuration(false)
+  }, [editDurationValue, clip.durationMs])
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WAVE 2030.26 — Click-Outside Dismiss for Add Param Popover
+  // ═══════════════════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    if (!showAddParamDropdown) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addParamRef.current && !addParamRef.current.contains(e.target as Node)) {
+        setShowAddParamDropdown(false)
+      }
+    }
+    // Delay to avoid catching the click that opens it
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 0)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showAddParamDropdown])
+
+  // ═══════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -555,12 +624,57 @@ const HephaestusView: React.FC = () => {
           <span className="heph-header__subtitle">STUDIO</span>
         </div>
         <div className="heph-header__center">
-          <span className="heph-header__clip-name">
-            {clip.name}
-            {isDirty && <span className="heph-header__dirty">*</span>}
-          </span>
+          {/* WAVE 2030.26: Editable clip name */}
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              className="heph-header__edit-input heph-header__edit-input--name"
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              onBlur={commitEditName}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEditName()
+                if (e.key === 'Escape') setIsEditingName(false)
+              }}
+              spellCheck={false}
+            />
+          ) : (
+            <span 
+              className="heph-header__clip-name heph-header__clip-name--editable"
+              onClick={startEditName}
+              title="Click to edit name"
+            >
+              {clip.name}
+              {isDirty && <span className="heph-header__dirty">*</span>}
+            </span>
+          )}
           <span className="heph-header__divider">│</span>
-          <span className="heph-header__duration">{(clip.durationMs / 1000).toFixed(1)}s</span>
+          {/* WAVE 2030.26: Editable duration */}
+          {isEditingDuration ? (
+            <span className="heph-header__edit-duration-wrap">
+              <input
+                ref={durationInputRef}
+                className="heph-header__edit-input heph-header__edit-input--duration"
+                value={editDurationValue}
+                onChange={(e) => setEditDurationValue(e.target.value)}
+                onBlur={commitEditDuration}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitEditDuration()
+                  if (e.key === 'Escape') setIsEditingDuration(false)
+                }}
+                spellCheck={false}
+              />
+              <span className="heph-header__edit-unit">s</span>
+            </span>
+          ) : (
+            <span 
+              className="heph-header__duration heph-header__duration--editable"
+              onClick={startEditDuration}
+              title="Click to edit duration"
+            >
+              {(clip.durationMs / 1000).toFixed(1)}s
+            </span>
+          )}
           <span className="heph-header__divider">│</span>
           <span className="heph-header__param-count">{paramIds.length} PARAMS</span>
           
@@ -739,42 +853,49 @@ const HephaestusView: React.FC = () => {
             ))}
           </div>
           
-          {/* WAVE 2030.8/2030.9: Add Parameter Section with Categories */}
+          {/* WAVE 2030.26: Add Parameter Popover (compact, subcategorized) */}
           {availableParams.length > 0 && (
-            <div className="heph-add-param">
+            <div className="heph-add-param" ref={addParamRef}>
               <button 
                 className="heph-add-param__btn"
                 onClick={() => setShowAddParamDropdown(!showAddParamDropdown)}
                 type="button"
               >
                 <span>+</span>
-                <span>ADD PARAMETER</span>
+                <span>ADD</span>
               </button>
               
               {showAddParamDropdown && (
-                <div className="heph-add-param__dropdown">
-                  {Array.from(groupedAvailableParams.entries()).map(([category, params]) => (
-                    <div key={category} className="heph-add-param__category">
-                      <div className="heph-add-param__category-header">
-                        <span>{PARAM_CATEGORIES[category].icon}</span>
-                        <span>{PARAM_CATEGORIES[category].label}</span>
+                <div className="heph-add-param__popover">
+                  <div className="heph-add-param__popover-header">
+                    ADD PARAMETER
+                  </div>
+                  <div className="heph-add-param__popover-body">
+                    {Array.from(groupedAvailableParams.entries()).map(([category, params]) => (
+                      <div key={category} className="heph-add-param__group">
+                        <div className="heph-add-param__group-label">
+                          {PARAM_CATEGORIES[category].icon} {PARAM_CATEGORIES[category].label}
+                        </div>
+                        <div className="heph-add-param__group-items">
+                          {params.map(paramId => {
+                            const meta = PARAM_META[paramId]
+                            return (
+                              <button
+                                key={paramId}
+                                className="heph-add-param__chip"
+                                onClick={() => handleAddParam(paramId)}
+                                type="button"
+                                style={{ '--chip-color': meta.color } as React.CSSProperties}
+                              >
+                                <span className="heph-add-param__chip-icon">{meta.icon}</span>
+                                {meta.label}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                      {params.map(paramId => {
-                        const meta = PARAM_META[paramId]
-                        return (
-                          <button
-                            key={paramId}
-                            className="heph-add-param__option"
-                            onClick={() => handleAddParam(paramId)}
-                            type="button"
-                          >
-                            <span className="heph-add-param__option-icon">{meta.icon}</span>
-                            <span className="heph-add-param__option-label">{meta.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

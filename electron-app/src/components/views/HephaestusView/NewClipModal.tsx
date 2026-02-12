@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ NEW CLIP MODAL - WAVE 2030.8
+ * ⚒️ NEW CLIP MODAL - WAVE 2030.26
  * Modal for creating new Hephaestus automation clips
  * 
  * FIELDS:
@@ -11,11 +11,16 @@
  * Creates a clean HephAutomationClip and saves immediately to disk.
  * NO MOCKS. NO DEMOS. REAL FILE CREATION.
  * 
+ * WAVE 2030.26: 
+ *  - Form state fully isolated inside modal (no external re-render triggers)
+ *  - Duration input uses text mode + onBlur validation (no mid-typing erasure)
+ *  - Fresh state on every open (useEffect reset)
+ * 
  * @module views/HephaestusView/NewClipModal
- * @version WAVE 2030.8
+ * @version WAVE 2030.26
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import type { HephAutomationClip, HephCurve, HephParamId } from '../../../core/hephaestus/types'
 import type { EffectCategory } from '../../../core/effects/types'
 
@@ -111,13 +116,45 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
   onClose,
   onCreate,
 }) => {
-  // Form state - WAVE 2030.9: Use HephClipCategory for 4 options
+  // ── WAVE 2030.26: Fully isolated form state ──
+  // Text-mode duration string — user types freely, we validate onBlur
   const [name, setName] = useState('')
+  const [durationText, setDurationText] = useState('4000')
   const [durationMs, setDurationMs] = useState(4000)
   const [category, setCategory] = useState<HephClipCategory>('physical')
+  const nameRef = useRef<HTMLInputElement>(null)
 
-  // Validation
+  // Reset form every time modal opens (prevents stale state)
+  useEffect(() => {
+    if (isOpen) {
+      setName('')
+      setDurationText('4000')
+      setDurationMs(4000)
+      setCategory('physical')
+      // Auto-focus name input after mount
+      requestAnimationFrame(() => nameRef.current?.focus())
+    }
+  }, [isOpen])
+
+  // Validation — name must have content, duration >= 100ms
   const isValid = name.trim().length > 0 && durationMs >= 100
+
+  // Commit duration text → number (onBlur or preset click)
+  const commitDuration = useCallback((text: string) => {
+    const parsed = parseInt(text, 10)
+    if (!isNaN(parsed) && parsed >= 100) {
+      setDurationMs(parsed)
+      setDurationText(String(parsed))
+    } else {
+      // Revert to last valid value
+      setDurationText(String(durationMs))
+    }
+  }, [durationMs])
+
+  const handleDurationPreset = useCallback((value: number) => {
+    setDurationMs(value)
+    setDurationText(String(value))
+  }, [])
 
   const handleCreate = useCallback(() => {
     if (!isValid) return
@@ -155,11 +192,6 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
     }
 
     onCreate(newClip)
-
-    // Reset form
-    setName('')
-    setDurationMs(4000)
-    setCategory('physical')
     onClose()
   }, [name, durationMs, category, isValid, onCreate, onClose])
 
@@ -213,7 +245,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My Awesome Effect"
-              autoFocus
+              ref={nameRef}
             />
           </div>
 
@@ -225,12 +257,15 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
             <div className="heph-modal__duration-row">
               <input
                 id="clip-duration"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 className="heph-modal__input heph-modal__input--number"
-                value={durationMs}
-                onChange={(e) => setDurationMs(Math.max(100, parseInt(e.target.value) || 100))}
-                min={100}
-                step={100}
+                value={durationText}
+                onChange={(e) => setDurationText(e.target.value)}
+                onBlur={(e) => commitDuration(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitDuration(durationText)
+                }}
               />
               <span className="heph-modal__unit">ms</span>
             </div>
@@ -240,7 +275,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
                   key={preset.value}
                   type="button"
                   className={`heph-modal__preset ${durationMs === preset.value ? 'heph-modal__preset--active' : ''}`}
-                  onClick={() => setDurationMs(preset.value)}
+                  onClick={() => handleDurationPreset(preset.value)}
                   title={preset.tooltip}
                 >
                   {preset.label}

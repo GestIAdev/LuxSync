@@ -63,6 +63,29 @@ export function calculateFixtureRenderValues(
   let color = truthData?.color || { r: 0, g: 0, b: 0 }
   let intensity = (truthData?.intensity ?? 0) * globalIntensity
   
+  // ⚒️ WAVE 2030.22g: WHITE/AMBER LED channels
+  // These add to the RGB output (white LED = R+G+B simultaneously)
+  const white = truthData?.white ?? 0  // 0-255 DMX
+  const amber = truthData?.amber ?? 0  // 0-255 DMX (warm orange tint)
+  
+  // Add white to all RGB channels (white LED effect)
+  if (white > 0) {
+    color = {
+      r: Math.min(255, color.r + white),
+      g: Math.min(255, color.g + white),
+      b: Math.min(255, color.b + white),
+    }
+  }
+  
+  // Add amber to R and G (warm white tint)
+  if (amber > 0) {
+    color = {
+      r: Math.min(255, color.r + amber),
+      g: Math.min(255, color.g + Math.round(amber * 0.5)), // Less green for warmth
+      b: color.b,  // No blue in amber
+    }
+  }
+  
   // ═══════════════════════════════════════════════════════════════════════
   // 🔧 WAVE 342.6: PAN/TILT YA VIENEN NORMALIZADOS DEL BACKEND
   // El HAL ya normaliza los valores antes de enviarlos.

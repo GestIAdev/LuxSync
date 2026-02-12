@@ -1166,6 +1166,14 @@ export class TitanOrchestrator {
       }
     }
 
+    // ⚒️ WAVE 2030.22g: Send Hephaestus-modified states to DMX
+    // HAL already sent once in renderFromTarget(), but Hephaestus changes
+    // were applied AFTER that initial send. We need to send again with the
+    // parameter overlays applied (white, amber, intensity modulation, etc.)
+    if (hephOutputs.length > 0) {
+      this.hal.sendStates(fixtureStates)
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
     // The effects processing above can OVERRIDE the arbiter's gate decision.
@@ -1357,6 +1365,9 @@ export class TitanOrchestrator {
               // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
               zoom: f.zoom,                     // 0-255 DMX
               focus: f.focus,                   // 0-255 DMX
+              // ⚒️ WAVE 2030.22g: Extended LED channels
+              white: f.white ?? 0,              // 0-255 DMX
+              amber: f.amber ?? 0,              // 0-255 DMX
               // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
               physicalPan: (f.physicalPan ?? f.pan) / 255,   // Normalize 0-255 → 0-1
               physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1

@@ -1053,6 +1053,18 @@ export class HardwareAbstraction {
     }
   }
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎛️ DMX OUTPUT CONTROL
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * ⚒️ WAVE 2030.22g: Public method to send already-processed fixture states
+   * Used by TitanOrchestrator after applying Hephaestus parameter overlays
+   */
+  public sendStates(states: FixtureState[]): void {
+    this.sendToDriver(states)
+  }
+  
   private sendToDriver(states: FixtureState[]): void {
     // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
     // If driver is not connected, silently drop packets.
@@ -1066,6 +1078,13 @@ export class HardwareAbstraction {
       return
     }
     
+    // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
+    const withWhite = states.filter(s => s.white !== undefined && s.white > 0)
+    if (withWhite.length > 0) {
+      const first = withWhite[0]
+      console.log(`[HAL] 🔆 WHITE PRE-DMX: ${first.name} → white=${first.white}, dimmer=${first.dimmer}`)
+    }
+    
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
     
@@ -1073,6 +1092,14 @@ export class HardwareAbstraction {
     if (packets.length > 0 && this.framesRendered % 30 === 0) {
       const p = packets[0]
       console.log(`[HAL] 📡 DMX OUT: Uni ${p.universe} | Addr ${p.address} | Ch0-5: [${p.channels.slice(0, 6).join(', ')}]`)
+    }
+    
+    // ⚒️ WAVE 2030.22g: Debug packets with white channel values
+    for (const packet of packets) {
+      // Check if any channel has non-zero white (assuming white is typically channel 4 or 5)
+      if (packet.channels.length > 4 && (packet.channels[4] > 0 || packet.channels[5] > 0)) {
+        console.log(`[HAL] 📡 DMX PACKET: ${packet.fixtureId} | Addr ${packet.address} | Channels: [${packet.channels.join(', ')}]`)
+      }
     }
     
     // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH

@@ -129,7 +129,7 @@ describe('⚒️ WAVE 2030.21: hslToRgb - HSL → RGB Conversion', () => {
 describe('⚒️ WAVE 2030.21: scaleToDMX - Curve Value → DMX Scaling', () => {
 
   describe('📊 DMX-Scaled Parameters (0-1 → 0-255)', () => {
-    const dmxParams = ['intensity', 'strobe', 'white', 'amber', 'pan', 'tilt']
+    const dmxParams = ['intensity', 'strobe', 'white', 'amber', 'pan', 'tilt', 'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism']
     
     for (const param of dmxParams) {
       it(`${param}: 0 → 0`, () => {
@@ -147,7 +147,7 @@ describe('⚒️ WAVE 2030.21: scaleToDMX - Curve Value → DMX Scaling', () => 
   })
 
   describe('🔧 Float Passthrough Parameters (stay 0-1)', () => {
-    const floatParams = ['speed', 'zoom', 'width', 'direction', 'globalComp']
+    const floatParams = ['speed', 'width', 'direction', 'globalComp']
     
     for (const param of floatParams) {
       it(`${param}: 0.5 stays 0.5`, () => {

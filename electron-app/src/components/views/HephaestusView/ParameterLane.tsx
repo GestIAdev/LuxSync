@@ -37,10 +37,15 @@ export const PARAM_META: Record<HephParamId, {
   // COLOR - Chromatic controls
   color:      { label: 'COLOR',      color: '#a855f7', icon: '🎨', category: 'color' },
   
-  // MOVEMENT - Pan/Tilt/Zoom only
+  // MOVEMENT - Pan/Tilt/Zoom/Focus/Iris/Gobo/Prism
   pan:        { label: 'PAN',        color: '#3b82f6', icon: '↔', category: 'movement' },
   tilt:       { label: 'TILT',       color: '#6366f1', icon: '↕', category: 'movement' },
   zoom:       { label: 'ZOOM',       color: '#14b8a6', icon: '⊕', category: 'movement' },
+  focus:      { label: 'FOCUS',      color: '#0ea5e9', icon: '◎', category: 'movement' },
+  iris:       { label: 'IRIS',       color: '#8b5cf6', icon: '⦿', category: 'movement' },
+  gobo1:      { label: 'GOBO 1',     color: '#d946ef', icon: '⬡', category: 'movement' },
+  gobo2:      { label: 'GOBO 2',     color: '#c026d3', icon: '⬢', category: 'movement' },
+  prism:      { label: 'PRISM',      color: '#f43f5e', icon: '◇', category: 'movement' },
   
   // CONTROL - Speed, width, direction, global
   speed:      { label: 'SPEED',      color: '#22d3ee', icon: '⏱', category: 'control' },
@@ -64,7 +69,7 @@ export const ALL_PARAM_IDS: HephParamId[] = [
   // Color
   'color',
   // Movement
-  'pan', 'tilt', 'zoom',
+  'pan', 'tilt', 'zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism',
   // Control
   'speed', 'width', 'direction', 'globalComp'
 ]

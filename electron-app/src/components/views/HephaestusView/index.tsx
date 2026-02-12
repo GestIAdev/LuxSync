@@ -35,6 +35,8 @@ import { NewClipModal } from './NewClipModal'
 import { ZoneSelector } from './ZoneSelector'
 import { createDummyClip } from './dummyData'
 import { getCategoryIcon } from './curveTemplates'
+import { HephRadar } from './HephRadar'
+import { useHephPreview } from './useHephPreview'
 import type { 
   HephCurve, 
   HephParamId, 
@@ -98,6 +100,10 @@ const HephaestusView: React.FC = () => {
   // ── Modal & Dropdown State (WAVE 2030.8) ──
   const [showNewClipModal, setShowNewClipModal] = useState(false)
   const [showAddParamDropdown, setShowAddParamDropdown] = useState(false)
+
+  // ── Radar Preview State (WAVE 2030.25) ──
+  const [showRadar, setShowRadar] = useState(true)
+  const preview = useHephPreview(clip)
 
   // ── Derived ──
   const activeCurve = useMemo(
@@ -595,6 +601,13 @@ const HephaestusView: React.FC = () => {
           >
             📚
           </button>
+          <button 
+            className={`heph-header__btn heph-header__btn--toggle ${showRadar ? 'heph-header__btn--active' : ''}`}
+            onClick={() => setShowRadar(!showRadar)}
+            title="Toggle Radar Preview"
+          >
+            🛰
+          </button>
         </div>
       </header>
 
@@ -768,25 +781,54 @@ const HephaestusView: React.FC = () => {
           )}
         </div>
 
-        {/* ── Curve Editor (main canvas) ── */}
-        <div className="heph-canvas-container">
-          {activeCurve ? (
-            <CurveEditor
-              curve={activeCurve}
-              durationMs={clip.durationMs}
-              selectedKeyframeIdx={selectedKeyframeIdx}
-              playheadMs={playheadMs}
-              onKeyframeAdd={handleKeyframeAdd}
-              onKeyframeMove={handleKeyframeMove}
-              onKeyframeDelete={handleKeyframeDelete}
-              onInterpolationChange={handleInterpolationChange}
-              onBezierHandleMove={handleBezierHandleMove}
-              onKeyframeSelect={handleKeyframeSelect}
-              onAudioBindingChange={handleAudioBindingChange}
-            />
-          ) : (
-            <div className="heph-no-curve">
-              <span>No curve selected</span>
+        {/* ── Curve Editor + Radar (main area) ── */}
+        <div className="heph-canvas-area">
+          {/* ── CurveEditor ── */}
+          <div className="heph-canvas-area__editor">
+            {activeCurve ? (
+              <CurveEditor
+                curve={activeCurve}
+                durationMs={clip.durationMs}
+                selectedKeyframeIdx={selectedKeyframeIdx}
+                playheadMs={playheadMs}
+                onKeyframeAdd={handleKeyframeAdd}
+                onKeyframeMove={handleKeyframeMove}
+                onKeyframeDelete={handleKeyframeDelete}
+                onInterpolationChange={handleInterpolationChange}
+                onBezierHandleMove={handleBezierHandleMove}
+                onKeyframeSelect={handleKeyframeSelect}
+                onAudioBindingChange={handleAudioBindingChange}
+              />
+            ) : (
+              <div className="heph-no-curve">
+                <span>No curve selected</span>
+              </div>
+            )}
+          </div>
+
+          {/* ── Radar Preview (WAVE 2030.25) ── */}
+          {showRadar && (
+            <div className="heph-canvas-area__radar">
+              <div className="heph-canvas-area__radar-header">
+                <span className="heph-canvas-area__radar-title">🛰 RADAR PREVIEW</span>
+                <button
+                  className="heph-canvas-area__radar-toggle"
+                  onClick={() => setShowRadar(false)}
+                  title="Hide Radar"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="heph-canvas-area__radar-content">
+                <HephRadar
+                  preview={preview}
+                  durationMs={clip.durationMs}
+                  onPlay={preview.play}
+                  onPause={preview.pause}
+                  onStop={preview.stop}
+                  onSeek={preview.seek}
+                />
+              </div>
             </div>
           )}
         </div>

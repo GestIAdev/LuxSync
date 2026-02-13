@@ -162,14 +162,26 @@ export type TimelineClip = VibeClip | FXClip
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🎨 WAVE 2019.8: Vibe colors mapped to real VibeIds
+ * 🎨 WAVE 2019.8 + 2040.11: Vibe colors mapped to real VibeIds
+ * 
+ * WAVE 2040.11: Added 'techno' alias for 'techno-club' to fix EffectCategoryId mismatch.
+ * The EffectRegistry uses 'techno' but VibeType uses 'techno-club', causing black clips.
  */
-export const VIBE_COLORS: Record<VibeType, string> = {
+export const VIBE_COLORS: Record<string, string> = {
   'fiesta-latina': '#f59e0b', // 🎉 Orange - Fiesta Latina
   'techno-club': '#a855f7',   // ⚡ Purple - Techno Club
+  'techno': '#a855f7',        // ⚡ Alias for 'techno-club' (EffectCategoryId compat)
   'chill-lounge': '#22d3ee',  // 🌊 Cyan - Chill Lounge
   'pop-rock': '#ef4444',      // 🎸 Red - Pop Rock
   'idle': '#6b7280',          // 💤 Gray - Idle
+}
+
+/**
+ * 🔧 WAVE 2040.11: Normalize vibe color lookup
+ * Handles both VibeType ('techno-club') and EffectCategoryId ('techno') formats
+ */
+export function getVibeColor(vibeKey: string): string {
+  return VIBE_COLORS[vibeKey] || VIBE_COLORS['idle'] // Fallback to idle gray
 }
 
 export const FX_COLORS: Record<FXType, string> = {
@@ -213,7 +225,7 @@ export function createVibeClip(
     startMs,
     endMs: startMs + durationMs,
     trackId,
-    color: VIBE_COLORS[vibeType],
+    color: getVibeColor(vibeType), // 🔧 WAVE 2040.11: Use normalizer for color lookup
     intensity: 1.0,
     fadeInMs: 500,
     fadeOutMs: 500,

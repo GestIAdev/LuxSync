@@ -624,22 +624,50 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const dragStartRef = useRef<{ x: number; startMs: number; originalEdgeMs: number } | null>(null)
   
   // Track the container size
+  // WAVE 2040.11: Preserve temporal focus on resize (Zen Mode fix)
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
     
+    // Store previous dimensions to detect changes
+    let prevWidth = dimensions.width
+    
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        })
+        const newWidth = entry.contentRect.width
+        const newHeight = entry.contentRect.height
+        
+        // 🔧 WAVE 2040.11: Preserve temporal focus when width changes
+        if (newWidth !== prevWidth && prevWidth > 0) {
+          // Calculate what time was at the center BEFORE resize
+          const visibleDurationMs = (viewport.endTime - viewport.startTime)
+          const centerTimeBeforeResize = viewport.startTime + (visibleDurationMs / 2)
+          
+          // Update dimensions FIRST (triggers viewport recalc)
+          setDimensions({ width: newWidth, height: newHeight })
+          
+          // Schedule scroll adjustment AFTER render (next frame)
+          requestAnimationFrame(() => {
+            const scrollContainer = container.querySelector('.timeline-scroll-container')
+            if (scrollContainer) {
+              // Calculate new scrollLeft to keep centerTimeBeforeResize at center
+              const newScrollLeft = (centerTimeBeforeResize / 1000) * viewport.pixelsPerSecond - (newWidth / 2)
+              scrollContainer.scrollLeft = Math.max(0, newScrollLeft)
+            }
+          })
+          
+          prevWidth = newWidth
+        } else {
+          // Normal resize (height-only or initial)
+          setDimensions({ width: newWidth, height: newHeight })
+          prevWidth = newWidth
+        }
       }
     })
     
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [])
+  }, [viewport.startTime, viewport.endTime, viewport.pixelsPerSecond, dimensions.width])
   
   // Calculate total tracks height
   const totalTracksHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)

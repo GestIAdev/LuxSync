@@ -92,14 +92,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * STAGE PREVIEW — WAVE 2041: CINEMA MODE (45% height, visual priority)
- * The stage simulator gets the star treatment — almost half the viewport.
- * Canvas internal resize handled by ResizeObserver in StageSimulatorCinema.
+ * STAGE PREVIEW — WAVE 2041 + 2040.11: CINEMA MODE + AUTO-FIT
+ * 
+ * WAVE 2041: Cinema layout (45% preferred height, visual priority)
+ * WAVE 2040.11: Changed flex-basis to auto for dynamic fitting
+ * 
+ * The stage simulator gets the star treatment — grows to fill available space
+ * above the timeline. Canvas internal resize handled by ResizeObserver in
+ * StageSimulatorCinema.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-stage-preview {
-  flex: 0 0 45%;
+  flex: 1 1 auto; /* 🔧 WAVE 2040.11: Auto-fit to available space */
   min-height: 350px;
+  max-height: 50%; /* Cap at 50% to leave room for timeline */
   display: flex;
   align-items: center;
   justify-content: center;

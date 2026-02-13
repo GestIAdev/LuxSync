@@ -1057,9 +1057,25 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           // WAVE 2013.6: THE ADRENALINE SHOT
           // If this is the growing clip and we have a live endMs, use it instead of stale state
           const isThisClipGrowing = growingClipId === clip.id
-          const liveEndMs = (isThisClipGrowing && growingClipEndMs !== null) 
+          let liveEndMs = (isThisClipGrowing && growingClipEndMs !== null) 
             ? growingClipEndMs 
             : clip.endMs
+          
+          // 🎭 WAVE 2040.10b: INFINITE VIBE RENDER
+          // Make VIBE clips render continuously until next VIBE clip on same track (or viewport end)
+          if (clip.type === 'vibe' && !isThisClipGrowing) {
+            // Find next VIBE clip on same track
+            const nextVibeClip = clips
+              .filter(c => c.type === 'vibe' && c.trackId === clip.trackId && c.startMs > clip.startMs)
+              .sort((a, b) => a.startMs - b.startMs)[0]
+            
+            if (nextVibeClip) {
+              liveEndMs = nextVibeClip.startMs // Extend to next VIBE
+            } else {
+              // No next VIBE — extend to viewport end + 10 seconds (infinite feel)
+              liveEndMs = viewport.startTime + (dimensions.width * 1000 / viewport.pixelsPerSecond) + 10000
+            }
+          }
           
           const x = TRACK_LABEL_WIDTH + ((clip.startMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond
           const width = ((liveEndMs - clip.startMs) / 1000) * viewport.pixelsPerSecond

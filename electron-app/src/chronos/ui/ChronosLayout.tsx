@@ -195,6 +195,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 🎬 WAVE 2010: Get recorder instance
   const recorder = useMemo(() => getChronosRecorder(), [])
   
+  // 🧲 WAVE 2040.10: Quantize state (read from recorder, toggle via UI)
+  const [quantizeEnabled, setQuantizeEnabled] = useState(recorder.quantizeEnabled)
+  
   // 🚀 WAVE 2013: Get injector instance for Stage Simulator link
   const injector = useMemo(() => getChronosInjector(), [])
   
@@ -202,6 +205,14 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   useEffect(() => {
     recorder.setBpm(bpm)
   }, [bpm, recorder])
+  
+  // 🧲 WAVE 2040.10: Toggle quantize
+  const handleToggleQuantize = useCallback(() => {
+    const newState = !quantizeEnabled
+    recorder.setQuantize(newState)
+    setQuantizeEnabled(newState)
+    console.log(`🧲 [ChronosLayout] Quantize: ${newState ? 'ON' : 'OFF'}`)
+  }, [quantizeEnabled, recorder])
   
   // 🎬 WAVE 2010: Sync playhead with recorder during playback
   useEffect(() => {
@@ -840,6 +851,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         // 🧲 WAVE 2040.5: Snap — single source of truth
         snapEnabled={clipState.snapEnabled}
         onToggleSnap={clipState.toggleSnap}
+        // 🧲 WAVE 2040.10: Quantize — human feel vs beat-locked
+        quantizeEnabled={quantizeEnabled}
+        onToggleQuantize={handleToggleQuantize}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════

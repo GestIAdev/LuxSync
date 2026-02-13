@@ -72,6 +72,9 @@ export interface TransportBarProps {
   // WAVE 2040.5: Snap toggle — single source of truth for timeline magnetic grid
   snapEnabled?: boolean
   onToggleSnap?: () => void
+  // WAVE 2040.10: Quantize toggle — human feel vs beat-locked recording
+  quantizeEnabled?: boolean
+  onToggleQuantize?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -178,6 +181,8 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   onToggleStage,
   snapEnabled = true,
   onToggleSnap,
+  quantizeEnabled = true,
+  onToggleQuantize,
 }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -493,6 +498,16 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
             >
               <MonitorIcon size={13} />
               <span className="ct-mode-label">STAGE</span>
+            </button>
+          )}
+          {onToggleQuantize && (
+            <button
+              className={`ct-mode-btn ${quantizeEnabled ? 'active' : ''}`}
+              onClick={onToggleQuantize}
+              title={quantizeEnabled ? 'Quantize Recording: ON (beat-locked)' : 'Quantize Recording: OFF (human feel)'}
+            >
+              <span style={{ fontSize: '13px', fontWeight: 'bold' }}>⊞</span>
+              <span className="ct-mode-label">QUANT</span>
             </button>
           )}
           {onToggleSnap && (

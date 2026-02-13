@@ -633,6 +633,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // Calculate total tracks height
   const totalTracksHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)
   
+  // WAVE 2040.7: Visible canvas height — fill the container, not just the tracks
+  const visibleCanvasHeight = Math.max(dimensions.height, totalTracksHeight)
+  
   // Zoom handler - Using native event listener to allow preventDefault on wheel
   // React synthetic wheel events are passive by default, which causes the console warning
   useEffect(() => {
@@ -911,17 +914,17 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       <svg
         className="timeline-canvas"
         width={dimensions.width}
-        height={Math.max(dimensions.height, totalTracksHeight)}
+        height={visibleCanvasHeight}
         onClick={handleClick}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        {/* Background - pointer events none to let SVG handle drag */}
+        {/* Background — WAVE 2040.7: Fill entire visible container, not just tracks */}
         <rect
           x={0}
           y={0}
           width={dimensions.width}
-          height={totalTracksHeight}
+          height={visibleCanvasHeight}
           fill="var(--bg-deepest)"
           pointerEvents="none"
         />
@@ -972,7 +975,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
                   x1={barX}
                   y1={32} // Start below ruler
                   x2={barX}
-                  y2={totalTracksHeight}
+                  y2={visibleCanvasHeight}
                   stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.35)'}
                   strokeWidth={isNearDrag ? 2 : 1}
                   opacity={isNearDrag ? 0.9 : 1}
@@ -1001,7 +1004,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
                       x1={beatX}
                       y1={32}
                       x2={beatX}
-                      y2={totalTracksHeight}
+                      y2={visibleCanvasHeight}
                       stroke={isNearDrag ? '#ffffff' : 'rgba(59, 130, 246, 0.12)'}
                       strokeWidth={isNearDrag ? 1.5 : 0.5}
                       opacity={isNearDrag ? 0.8 : 1}
@@ -1079,7 +1082,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
             x1={TRACK_LABEL_WIDTH + ((snapPosition - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
             y1={0}
             x2={TRACK_LABEL_WIDTH + ((snapPosition - viewport.startTime) / 1000) * viewport.pixelsPerSecond}
-            y2={totalTracksHeight}
+            y2={visibleCanvasHeight}
             stroke="#22d3ee"
             strokeWidth={2}
             opacity={0.8}
@@ -1121,7 +1124,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         <Playhead
           currentTime={currentTime}
           viewport={viewport}
-          height={totalTracksHeight}
+          height={visibleCanvasHeight}
         />
         
         {/* Track separator lines */}

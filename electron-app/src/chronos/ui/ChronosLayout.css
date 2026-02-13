@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CHRONOS LAYOUT STYLES - WAVE 2041: CINEMA MODE + CRYSTAL ARSENAL
+ * CHRONOS LAYOUT STYLES - WAVE 2040.7: NEON INJECTION + VOID FILLER
  * Cyberpunk Industrial aesthetic for timeline editor
  * 
  * Layout Structure (CINEMA MODE):
@@ -28,7 +28,7 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * MAIN LAYOUT - WAVE 2041: CINEMA MODE
+ * MAIN LAYOUT - WAVE 2040.7: VOID FILLER
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-layout {
@@ -54,6 +54,7 @@
   flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -162,15 +163,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIMELINE CANVAS — WAVE 2041: CINEMA MODE (flex: 1, internal scroll)
- * Takes remaining space after stage preview. Scroll is internal, never
- * pushes the overall layout. The timeline lives inside its box.
+ * TIMELINE CANVAS — WAVE 2040.7: VOID FILLER (fill remaining space)
+ * Takes ALL remaining space after stage preview. The container MUST grow
+ * to fill the parent — no pixel-fixed heights, pure flex inheritance.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-workspace > .timeline-canvas-container,
 .chronos-workspace > [class*="timeline"] {
   flex: 1 1 0%;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 

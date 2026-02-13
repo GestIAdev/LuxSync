@@ -643,28 +643,28 @@ const EFFECT_CATEGORIES: EffectCategory[] = [
     id: 'fiesta-latina',
     name: 'Fiesta Latina',
     icon: '🎺',
-    color: '#FF6B00',
+    color: '#FF4500',       // WAVE 2040.7: Neon Orange-Red — caliente
     effects: FIESTA_LATINA_EFFECTS,
   },
   {
     id: 'techno',
     name: 'Techno Club',
     icon: '🤖',
-    color: '#00FFFF',
+    color: '#FF00FF',       // WAVE 2040.7: Neon Magenta — the club pulsates
     effects: TECHNO_EFFECTS,
   },
   {
     id: 'pop-rock',
     name: 'Pop-Rock Legends',
     icon: '🎸',
-    color: '#FFD700',
+    color: '#FFE500',       // WAVE 2040.7: Neon Electric Yellow — stadium lights
     effects: POP_ROCK_EFFECTS,
   },
   {
     id: 'chill-lounge',
     name: 'Chill Lounge',
     icon: '🌊',
-    color: '#20B2AA',
+    color: '#00FFCC',       // WAVE 2040.7: Neon Aquamarine — bioluminescent
     effects: CHILL_LOUNGE_EFFECTS,
   },
 ]

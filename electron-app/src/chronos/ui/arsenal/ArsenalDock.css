@@ -1,9 +1,10 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎹 ARSENAL DOCK STYLES - WAVE 2041: THE CRYSTAL ARSENAL
+ * ARSENAL DOCK STYLES - WAVE 2040.7: THE NEON INJECTION
  * 
- * Glassmorphism dark-glass aesthetic — buttons look like laser-cut crystal
- * retroilluminated by their vibe color. Backdrop-blur, neon glow, tactile.
+ * Glassmorphism dark-glass with PURE NEON retroillumination.
+ * Text and icons take the vibe color — NO white text.
+ * Buttons glow with their vibe's identity. The crystal breathes color.
  * 
  * LAYOUT:
  * ┌───────────┬─────────────────────────────────────────────┬─────────────┐
@@ -13,7 +14,7 @@
  * └───────────┴─────────────────────────────────────────────┴─────────────┘
  * 
  * @module chronos/ui/arsenal/ArsenalDock.css
- * @version WAVE 2041
+ * @version WAVE 2040.7
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -87,8 +88,9 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(168, 85, 247, 0.6);
   letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 }
 
 .vibes-hint {
@@ -109,17 +111,22 @@
   padding: 8px;
 }
 
-/* VIBE CARD — Crystal Glass Shard */
+/* VIBE CARD — WAVE 2040.7: Neon Crystal Shard
+   No white text. The vibe color IS the identity. Pure retroillumination. */
 .vibe-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(20, 20, 30, 0.6);
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   border-left: 3px solid var(--vibe-color, #555);
   border-radius: 10px;
   cursor: grab;
@@ -141,12 +148,17 @@
 }
 
 .vibe-card:hover {
-  background: color-mix(in srgb, var(--vibe-color, #555) 15%, rgba(20, 20, 30, 0.6));
-  border-color: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--vibe-color, #555) 15%, rgba(255, 255, 255, 0.05)) 0%,
+    color-mix(in srgb, var(--vibe-color, #555) 10%, rgba(0, 0, 0, 0.4)) 100%
+  );
+  border-color: var(--vibe-color, #555);
   border-left-color: var(--vibe-color, #555);
+  border-top-color: var(--vibe-color, #555);
   transform: translateY(-1px);
   box-shadow: 
-    0 0 15px color-mix(in srgb, var(--vibe-color, #555) 30%, transparent),
+    0 0 15px color-mix(in srgb, var(--vibe-color, #555) 40%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--vibe-color, #555) 15%, transparent),
     0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -155,12 +167,16 @@
 }
 
 .vibe-card.active {
-  border-color: color-mix(in srgb, var(--vibe-color) 50%, transparent);
+  border-color: var(--vibe-color);
   border-left-color: var(--vibe-color);
-  background: color-mix(in srgb, var(--vibe-color, #555) 15%, rgba(20, 20, 30, 0.7));
+  border-top-color: var(--vibe-color);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--vibe-color, #555) 20%, rgba(255, 255, 255, 0.05)) 0%,
+    color-mix(in srgb, var(--vibe-color, #555) 15%, rgba(0, 0, 0, 0.4)) 100%
+  );
   box-shadow: 
-    0 0 25px color-mix(in srgb, var(--vibe-color, #666) 30%, transparent),
-    inset 0 0 40px color-mix(in srgb, var(--vibe-color, #555) 10%, transparent);
+    0 0 25px color-mix(in srgb, var(--vibe-color, #666) 50%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--vibe-color, #555) 15%, transparent);
 }
 
 .vibe-card.active::before {
@@ -177,14 +193,16 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  color: var(--vibe-color, #888);
+  filter: drop-shadow(0 0 6px var(--vibe-color, transparent));
 }
 
 .vibe-card-name {
   font-family: var(--font-mono, monospace);
   font-size: 10px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--vibe-color, #ccc);
+  text-shadow: 0 0 8px var(--vibe-color, transparent);
   text-transform: uppercase;
   letter-spacing: 1px;
   text-align: center;
@@ -194,15 +212,15 @@
   font-family: var(--font-mono, monospace);
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.35);
+  color: color-mix(in srgb, var(--vibe-color, #888) 60%, rgba(255, 255, 255, 0.3));
   background: rgba(0, 0, 0, 0.4);
   padding: 2px 8px;
   border-radius: 8px;
 }
 
 .vibe-card.active .vibe-card-count {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--vibe-color, #555) 10%, transparent);
+  color: var(--vibe-color, #ccc);
 }
 
 /* Drag handle hint */
@@ -211,7 +229,7 @@
   right: 6px;
   top: 6px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.1);
+  color: color-mix(in srgb, var(--vibe-color, #555) 30%, transparent);
   letter-spacing: -2px;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -283,8 +301,9 @@
 .grid-category {
   font-family: var(--font-mono, monospace);
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px currentColor;
 }
 
 .grid-mode {
@@ -343,8 +362,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   EFFECT PAD - 80×80 Crystal Glass Launchpad button
-   WAVE 2041: Glassmorphism with neon glow and tactile translateY
+   EFFECT PAD - 80×80 Neon Crystal Launchpad button
+   WAVE 2040.7: Glass gradient with neon retroillumination + vibe-colored text
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .effect-pad {
@@ -355,10 +374,14 @@
   gap: 4px;
   width: 80px;
   height: 80px;
-  background: rgba(20, 20, 30, 0.6);
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   border-left: 3px solid var(--pad-color, #555);
   border-radius: 8px;
   cursor: grab;
@@ -368,12 +391,17 @@
 }
 
 .effect-pad:hover {
-  background: color-mix(in srgb, var(--pad-color, #555) 15%, rgba(20, 20, 30, 0.6));
-  border-color: color-mix(in srgb, var(--pad-color, #555) 50%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--pad-color, #555) 15%, rgba(255, 255, 255, 0.05)) 0%,
+    color-mix(in srgb, var(--pad-color, #555) 10%, rgba(0, 0, 0, 0.4)) 100%
+  );
+  border-color: var(--pad-color, #555);
   border-left-color: var(--pad-color);
+  border-top-color: var(--pad-color, #555);
   transform: translateY(-1px);
   box-shadow: 
-    0 0 15px color-mix(in srgb, var(--pad-color, #555) 30%, transparent),
+    0 0 15px color-mix(in srgb, var(--pad-color, #555) 40%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--pad-color, #555) 15%, transparent),
     0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -413,13 +441,16 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+  color: var(--pad-color, #888);
+  filter: drop-shadow(0 0 6px var(--pad-color, transparent));
 }
 
 .pad-name {
   font-family: var(--font-mono, monospace);
   font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  font-weight: 800;
+  color: var(--pad-color, #ccc);
+  text-shadow: 0 0 8px var(--pad-color, transparent);
   text-align: center;
   line-height: 1.15;
   max-width: 72px;
@@ -434,7 +465,8 @@
   right: 5px;
   display: flex;
   align-items: center;
-  opacity: 0.4;
+  color: var(--pad-color, #ff0);
+  opacity: 0.5;
 }
 
 .effect-pad.strobe .pad-strobe {
@@ -447,15 +479,19 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CUSTOM FX SLOT - Ghost Crystal Button for Future Effect Creator
+   CUSTOM FX SLOT - Ghost Crystal with violet neon hint
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .effect-pad.custom-slot {
-  background: rgba(20, 20, 30, 0.3);
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 2px dashed rgba(100, 100, 120, 0.3);
   border-left: 2px dashed rgba(100, 100, 120, 0.3);
+  border-top: 2px dashed rgba(100, 100, 120, 0.3);
   cursor: pointer;
   opacity: 0.5;
   transition: all 0.2s ease;

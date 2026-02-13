@@ -104,9 +104,11 @@ function drawFixtureDot(
   const alpha = dimmerAlpha * strobeGate
 
   // Determine color: mix RGB + white + amber
-  let fr = fixture.r
-  let fg = fixture.g
-  let fb = fixture.b
+  // ⚒️ WAVE 2040.20: Sanitize against NaN (color curves can produce NaN
+  // when hslToRgb receives undefined/null from incomplete evaluation)
+  let fr = isNaN(fixture.r) ? 0 : fixture.r
+  let fg = isNaN(fixture.g) ? 0 : fixture.g
+  let fb = isNaN(fixture.b) ? 0 : fixture.b
 
   // White adds to all channels equally
   if (fixture.white > 0) {

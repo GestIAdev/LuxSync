@@ -89,12 +89,27 @@ const MiniCurvePreview: React.FC<{ curve: HephCurve; color: string }> = ({ curve
     const rangeSpan = max - min || 1
 
     const toX = (t: number) => (t / maxT) * w
-    const toY = (v: number) => h - ((v as number - min) / rangeSpan) * h
+    
+    // ⚒️ WAVE 2040.20: Color curves have HSL objects as values, not numbers.
+    // For the mini-preview, we use the hue (0-360) normalized to range.
+    const extractNumericValue = (val: number | { h: number; s: number; l: number }): number => {
+      if (typeof val === 'number') return val
+      if (val && typeof val === 'object' && 'h' in val) {
+        // Normalize hue (0-360) to curve range (typically 0-1)
+        return min + (val.h / 360) * rangeSpan
+      }
+      return min // Safe fallback — bottom of range
+    }
+    
+    const toY = (v: number | { h: number; s: number; l: number }) => {
+      const num = extractNumericValue(v)
+      return h - ((num - min) / rangeSpan) * h
+    }
 
-    let d = `M ${toX(kfs[0].timeMs)} ${toY(kfs[0].value as number)}`
+    let d = `M ${toX(kfs[0].timeMs)} ${toY(kfs[0].value)}`
     for (let i = 1; i < kfs.length; i++) {
       const x = toX(kfs[i].timeMs)
-      const y = toY(kfs[i].value as number)
+      const y = toY(kfs[i].value)
       d += ` L ${x} ${y}`
     }
     return d

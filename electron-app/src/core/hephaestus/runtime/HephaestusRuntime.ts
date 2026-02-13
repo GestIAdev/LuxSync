@@ -408,6 +408,48 @@ export class HephaestusRuntime {
   }
   
   /**
+   * ▶️ WAVE 2040.22: Play from an in-memory HephAutomationClip (Diamond Data)
+   * 
+   * Unlike play(), this doesn't need a file on disk — the curves arrive
+   * inline via the Chronos timeline (serialized in the FXClip, deserialized 
+   * by IPCHandlers). This is the DIAMOND PATH for Hephaestus clips.
+   * 
+   * @param clip Pre-deserialized HephAutomationClip with Map<> curves
+   * @param options Playback options
+   * @returns Instance ID for tracking
+   */
+  playFromClip(clip: HephAutomationClip, options: {
+    intensity?: number
+    durationOverrideMs?: number
+    loop?: boolean
+  } = {}): string {
+    const instanceId = `heph_diamond_${++this.instanceCounter}_${Date.now()}`
+    const now = Date.now()
+    
+    const evaluator = new CurveEvaluator(clip.curves, clip.durationMs)
+    
+    const activeClip: ActiveHephClip = {
+      instanceId,
+      filePath: '<diamond-inline>',  // No file — curves came inline
+      clip,
+      evaluator,
+      startTimeMs: now,
+      durationMs: options.durationOverrideMs ?? clip.durationMs,
+      intensity: options.intensity ?? 1.0,
+      loop: options.loop ?? false,
+    }
+    
+    this.activeClips.set(instanceId, activeClip)
+    this.totalTriggered++
+    
+    if (this.debug) {
+      console.log(`[HephRuntime] ▶️💎 DIAMOND PLAY: ${clip.name} (${activeClip.durationMs}ms) ${clip.curves.size} curves ID=${instanceId}`)
+    }
+    
+    return instanceId
+  }
+  
+  /**
    * ⏹️ Stop a specific clip instance
    */
   stop(instanceId: string): boolean {

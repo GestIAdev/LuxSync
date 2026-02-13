@@ -230,6 +230,7 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
    * Maps to forceStrikeNextFrame with the effect from FXMapper.
    * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
    * ⚒️ WAVE 2030.4: Forwards hephCurves to EffectManager for curve automation
+   * ⚒️ WAVE 2040.22: Heph Diamond clips bypass EffectManager → go to Runtime
    */
   ipcMain.handle('chronos:triggerFX', (_event, config: { 
     effectId: string
@@ -242,6 +243,20 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
     const hephTag = hephClip ? ` ⚒️[HEPH: ${hephClip.curves.size} curves]` : ''
     
     console.log(`[Chronos→Stage] 🧨 FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`)
+    
+    // ⚒️ WAVE 2040.22: DIAMOND PATH — Heph custom clips bypass EffectManager entirely.
+    // EffectManager has no factory for 'heph-custom' (and shouldn't — it's not a Core FX).
+    // Instead, we feed the deserialized curves directly to HephaestusRuntime.
+    if (config.effectId === 'heph-custom' && hephClip) {
+      const runtime = getHephaestusRuntime()
+      const instanceId = runtime.playFromClip(hephClip, {
+        intensity: config.intensity,
+        durationOverrideMs: config.durationMs,
+        loop: false,
+      })
+      console.log(`[Chronos→Stage] ⚒️💎 DIAMOND RUNTIME: ${instanceId} (${hephClip.curves.size} curves)`)
+      return { success: true, instanceId }
+    }
     
     if (titanOrchestrator) {
       titanOrchestrator.forceStrikeNextFrame({
@@ -339,11 +354,20 @@ function setupSeleneLuxHandlers(deps: IPCDependencies): void {
   /**
    * 🛑 chronos:stopFX
    * Called from ChronosIPCBridge when an FX clip ends.
-   * Currently a placeholder - most effects auto-expire.
-   * Future: Can cancel specific running effects.
+   * ⚒️ WAVE 2040.22: Heph Diamond clips → stop all Runtime instances
+   * Standard FX: Currently auto-expire (placeholder for future cancel)
    */
   ipcMain.handle('chronos:stopFX', (_event, effectId: string) => {
     console.log('[Chronos→Stage] 🛑 FX STOP:', effectId)
+    
+    // ⚒️ WAVE 2040.22: Heph clips need explicit Runtime stop
+    if (effectId === 'heph-custom') {
+      const runtime = getHephaestusRuntime()
+      runtime.stopAll()
+      console.log('[Chronos→Stage] ⚒️💎 HEPH DIAMOND: all instances stopped')
+      return { success: true }
+    }
+    
     // Future implementation: titanOrchestrator.cancelEffect(effectId)
     return { success: true }
   })

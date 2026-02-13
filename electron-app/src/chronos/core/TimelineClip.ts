@@ -247,14 +247,14 @@ export function getVibeColor(vibeKey: string): string {
 }
 
 export const FX_COLORS: Record<FXType, string> = {
-  'strobe': '#fef08a',        // Yellow
-  'sweep': '#22d3ee',         // Cyan
-  'pulse': '#f87171',         // Red
-  'chase': '#a78bfa',         // Purple
-  'fade': '#60a5fa',          // Blue
-  'blackout': '#1f2937',      // Dark gray
-  'color-wash': '#34d399',    // Emerald
-  'intensity-ramp': '#fbbf24', // Amber
+  'strobe': '#facc15',        // ⚡ WAVE 2040.19: Vivid gold — strobe demands attention
+  'sweep': '#22d3ee',         // Cyan — punchy enough
+  'pulse': '#f87171',         // Red — punchy enough
+  'chase': '#a78bfa',         // Purple — punchy enough
+  'fade': '#60a5fa',          // Blue — punchy enough
+  'blackout': '#374151',      // ⚡ WAVE 2040.19: Warm charcoal — visible but dark
+  'color-wash': '#34d399',    // Emerald — punchy enough
+  'intensity-ramp': '#fbbf24', // Amber — punchy enough
   'heph-custom': '#ff6b2b',   // Ember orange — Hephaestus signature
 }
 
@@ -389,6 +389,89 @@ function extractVisualKeyframes(
   })
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 2040.19: SHERLOCK MODE — MixBus Auto-Inference
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚒️ WAVE 2040.19: Infer MixBus from serialized clip data.
+ * 
+ * For legacy .lfx files created before the mixBus field existed,
+ * we analyze the clip's curves, name, category, and effectType
+ * to deterministically infer the correct MixBus routing.
+ * 
+ * PRIORITY ORDER (most specific → least specific):
+ * 1. hephClipSerialized.mixBus — explicit field (new files)
+ * 2. Curve analysis — what parameters does the clip automate?
+ * 3. Name/category keyword matching — fallback heuristic
+ * 4. 'global' — safe default (intensity/dimmer routing)
+ * 
+ * DETERMINISTA: No hay random. Resultado depende ÚNICAMENTE
+ * de los datos del clip. Mismo input → mismo output, siempre.
+ */
+type MixBusType = 'global' | 'htp' | 'ambient' | 'accent'
+
+const MOVEMENT_CURVE_KEYS = ['pan', 'tilt']
+const COLOR_CURVE_KEYS = ['color', 'white', 'amber']
+const OPTICS_CURVE_KEYS = ['zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism']
+const PHYSICAL_CURVE_KEYS = ['intensity', 'strobe']
+
+// Name/category keywords → mixBus mapping
+const MOVEMENT_KEYWORDS = ['pan', 'tilt', 'move', 'sweep', 'scanner', 'position', 'track']
+const COLOR_KEYWORDS = ['color', 'rgb', 'hue', 'wash', 'rainbow', 'chromatic', 'amber', 'white']
+const ACCENT_KEYWORDS = ['gobo', 'prism', 'zoom', 'focus', 'iris', 'optic', 'beam', 'spot']
+const GLOBAL_KEYWORDS = ['strobe', 'flash', 'blinder', 'bump', 'pulse', 'dim', 'blackout', 'intensity']
+
+function inferMixBusFromCurves(
+  hephClip: HephAutomationClipSerialized | undefined,
+  name: string,
+  effectType: string,
+): MixBusType {
+  // ── PASS 1: Explicit mixBus in serialized data (new .lfx files)
+  if (hephClip?.mixBus) {
+    return hephClip.mixBus
+  }
+
+  // ── PASS 2: Curve analysis (most reliable for legacy files)
+  if (hephClip?.curves) {
+    const curveKeys = Object.keys(hephClip.curves)
+    
+    const hasMovement = curveKeys.some(k => MOVEMENT_CURVE_KEYS.includes(k))
+    const hasColor = curveKeys.some(k => COLOR_CURVE_KEYS.includes(k))
+    const hasOptics = curveKeys.some(k => OPTICS_CURVE_KEYS.includes(k))
+    const hasPhysical = curveKeys.some(k => PHYSICAL_CURVE_KEYS.includes(k))
+    
+    // Movement curves → HTP bus (movement is high-priority, HTP blending)
+    if (hasMovement && !hasColor && !hasOptics) return 'htp'
+    
+    // Pure color curves → Ambient bus
+    if (hasColor && !hasMovement && !hasOptics) return 'ambient'
+    
+    // Optics curves → Accent bus
+    if (hasOptics) return 'accent'
+    
+    // Only physical (intensity/strobe) → Global bus
+    if (hasPhysical && !hasMovement && !hasColor && !hasOptics) return 'global'
+    
+    // Mixed curves: movement+color → HTP (movement takes priority)
+    if (hasMovement) return 'htp'
+    if (hasColor) return 'ambient'
+  }
+
+  // ── PASS 3: Name + effectType keyword analysis (legacy fallback)
+  const searchText = `${name} ${effectType} ${hephClip?.category || ''}`.toLowerCase()
+  const tags = hephClip?.tags?.map(t => t.toLowerCase()) || []
+  const allText = `${searchText} ${tags.join(' ')}`
+
+  if (MOVEMENT_KEYWORDS.some(kw => allText.includes(kw))) return 'htp'
+  if (COLOR_KEYWORDS.some(kw => allText.includes(kw))) return 'ambient'
+  if (ACCENT_KEYWORDS.some(kw => allText.includes(kw))) return 'accent'
+  if (GLOBAL_KEYWORDS.some(kw => allText.includes(kw))) return 'global'
+
+  // ── PASS 4: Safe default — global bus (intensity/dimmer routing)
+  return 'global'
+}
+
 export function createHephFXClip(
   name: string,
   filePath: string,
@@ -401,11 +484,12 @@ export function createHephFXClip(
   zones?: string[],
   priority?: number,
 ): FXClip {
-  // WAVE 2040.17: Derive color from mixBus (coherent with FX track colors)
-  const color = mixBus ? (MIXBUS_CLIP_COLORS[mixBus] || HEPH_EMBER_COLOR) : HEPH_EMBER_COLOR
+  // ⚒️ WAVE 2040.19: SHERLOCK MODE — Auto-infer mixBus for legacy clips
+  const resolvedMixBus: MixBusType = mixBus || inferMixBusFromCurves(hephClipSerialized, name, effectType)
+  const color = MIXBUS_CLIP_COLORS[resolvedMixBus] || HEPH_EMBER_COLOR
 
-  // 🐛 WAVE 2040.18: DEBUG — Log what mixBus we're getting
-  console.log(`[createHephFXClip] 🎨 "${name}": mixBus=${mixBus || 'undefined'} → color=${color}`)
+  // 🐛 WAVE 2040.19: Log inference result
+  console.log(`[createHephFXClip] 🔍 "${name}": mixBus=${mixBus || 'INFERRED→' + resolvedMixBus} → color=${color}`)
 
   // WAVE 2040.17 P6: Use 'heph-custom' for Hephaestus automation clips.
   // Only coerce to a standard FXType if effectType is actually one.
@@ -436,11 +520,11 @@ export function createHephFXClip(
     params: { effectType },
     selected: false,
     locked: false,
-    // ⚒️ HEPHAESTUS MARKERS — WAVE 2040.17: Full Diamond Data
+    // ⚒️ HEPHAESTUS MARKERS — WAVE 2040.17 + 2040.19: Full Diamond Data
     hephFilePath: portableFilePath,
     isHephCustom: true,
     hephClip: hephClipSerialized,
-    mixBus,
+    mixBus: resolvedMixBus,  // ⚒️ WAVE 2040.19: Always resolved (explicit or inferred)
     zones,
     priority,
   }

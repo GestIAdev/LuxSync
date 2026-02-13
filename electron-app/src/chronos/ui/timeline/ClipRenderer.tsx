@@ -111,7 +111,7 @@ const VibeClipContent: React.FC<{ clip: VibeClip; width: number; height: number 
           fontSize="10"
           fontFamily="var(--font-mono)"
           fontWeight="600"
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+          filter="url(#fx-label-shadow)"
         >
           {clip.label}
         </text>
@@ -162,45 +162,29 @@ const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> =
   const canShowLabel = width > 50
   const canShowIcon = width > 30
   
-  // ⚡ WAVE 2040.18: Get icon for this effect type
+  // ⚡ WAVE 2040.18 → 2040.19: Get icon for this effect type
   const effectIcon = FX_ICONS[clip.fxType] || '⚙️'
+
+  // ⚡ WAVE 2040.19: Hero icon size — proportional to clip height, clamped
+  const heroFontSize = Math.min(Math.max(height * 0.6, 18), 40)
   
   return (
     <>
-      {/* ⚡ WAVE 2040.18: ICON PATTERN instead of fake curve */}
+      {/* ⚡ WAVE 2040.19: HERO ICON — single centered watermark, no macramé */}
       {canShowIcon && (
-        <>
-          {/* Repeating icon pattern for wide clips */}
-          {width > 80 ? (
-            // Multiple icons spaced across width
-            Array.from({ length: Math.floor(width / 40) }).map((_, i) => (
-              <text
-                key={i}
-                x={20 + i * 40}
-                y={height / 2 + 8}
-                textAnchor="middle"
-                fill="rgba(255, 255, 255, 0.15)"
-                fontSize="24"
-              >
-                {effectIcon}
-              </text>
-            ))
-          ) : (
-            // Single centered icon for smaller clips
-            <text
-              x={width / 2}
-              y={height / 2 + 8}
-              textAnchor="middle"
-              fill="rgba(255, 255, 255, 0.2)"
-              fontSize="20"
-            >
-              {effectIcon}
-            </text>
-          )}
-        </>
+        <text
+          x={width / 2}
+          y={height / 2 + heroFontSize * 0.35}
+          textAnchor="middle"
+          fill="rgba(255, 255, 255, 0.22)"
+          fontSize={heroFontSize}
+          style={{ pointerEvents: 'none' }}
+        >
+          {effectIcon}
+        </text>
       )}
       
-      {/* Label */}
+      {/* ⚡ WAVE 2040.19: Label with strong text shadow for legibility */}
       {canShowLabel && (
         <text
           x={6}
@@ -208,8 +192,8 @@ const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> =
           fill="#fff"
           fontSize="9"
           fontFamily="var(--font-mono)"
-          fontWeight="600"
-          opacity={0.9}
+          fontWeight="700"
+          filter="url(#fx-label-shadow)"
         >
           {clip.label}
         </text>
@@ -333,7 +317,7 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
         </text>
       )}
       
-      {/* Label */}
+      {/* Label — WAVE 2040.19: Consistent shadow filter */}
       {canShowLabel && (
         <text
           x={width > 60 ? 20 : 6}
@@ -342,8 +326,7 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
           fontSize="9"
           fontFamily="var(--font-mono)"
           fontWeight="700"
-          opacity={0.95}
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+          filter="url(#fx-label-shadow)"
         >
           {clip.label}
         </text>
@@ -484,6 +467,10 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        {/* ⚡ WAVE 2040.19: Text shadow filter for FX clip labels */}
+        <filter id="fx-label-shadow" x="-10%" y="-30%" width="130%" height="180%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.85" />
+        </filter>
       </defs>
       
       {/* Clip background */}
@@ -495,7 +482,7 @@ export const ClipRenderer: React.FC<ClipRendererProps> = memo(({
         rx={BORDER_RADIUS}
         ry={BORDER_RADIUS}
         fill={clip.color}
-        opacity={isSelected ? 0.95 : 0.75}
+        opacity={isSelected ? 0.97 : 0.88}
         stroke={isSelected ? '#fff' : isHovered ? 'rgba(255,255,255,0.5)' : 'transparent'}
         strokeWidth={isSelected ? 2 : 1}
       />

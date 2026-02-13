@@ -404,6 +404,9 @@ export function createHephFXClip(
   // WAVE 2040.17: Derive color from mixBus (coherent with FX track colors)
   const color = mixBus ? (MIXBUS_CLIP_COLORS[mixBus] || HEPH_EMBER_COLOR) : HEPH_EMBER_COLOR
 
+  // 🐛 WAVE 2040.18: DEBUG — Log what mixBus we're getting
+  console.log(`[createHephFXClip] 🎨 "${name}": mixBus=${mixBus || 'undefined'} → color=${color}`)
+
   // WAVE 2040.17 P6: Use 'heph-custom' for Hephaestus automation clips.
   // Only coerce to a standard FXType if effectType is actually one.
   const resolvedFxType: FXType = toFXType(

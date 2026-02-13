@@ -139,60 +139,66 @@ VibeClipContent.displayName = 'VibeClipContent'
 // FX CLIP RENDERER
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * ⚡ WAVE 2040.18: CORE FX ICON MAPPING
+ * Maps effect types to their visual icons (emojis for now, SVG later)
+ */
+const FX_ICONS: Record<string, string> = {
+  'strobe': '⚡',
+  'sweep': '🌊',
+  'pulse': '💓',
+  'chase': '🎯',
+  'fade': '🌅',
+  'blackout': '⬛',
+  'color-wash': '🎨',
+  'intensity-ramp': '📈',
+}
+
 const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> = memo(({
   clip,
   width,
   height,
 }) => {
   const canShowLabel = width > 50
+  const canShowIcon = width > 30
   
-  // Draw keyframe curve
-  const keyframePath = React.useMemo(() => {
-    if (clip.keyframes.length < 2 || width < 20) return null
-    
-    const clipDuration = clip.endMs - clip.startMs
-    const points = clip.keyframes.map(kf => {
-      const x = (kf.offsetMs / clipDuration) * width
-      const y = height - (kf.value * (height - 8)) - 4
-      return `${x},${y}`
-    })
-    
-    return `M ${points.join(' L ')}`
-  }, [clip.keyframes, clip.endMs, clip.startMs, width, height])
+  // ⚡ WAVE 2040.18: Get icon for this effect type
+  const effectIcon = FX_ICONS[clip.fxType] || '⚙️'
   
   return (
     <>
-      {/* Keyframe automation curve */}
-      {keyframePath && (
-        <path
-          d={keyframePath}
-          fill="none"
-          stroke="#fff"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={0.8}
-        />
+      {/* ⚡ WAVE 2040.18: ICON PATTERN instead of fake curve */}
+      {canShowIcon && (
+        <>
+          {/* Repeating icon pattern for wide clips */}
+          {width > 80 ? (
+            // Multiple icons spaced across width
+            Array.from({ length: Math.floor(width / 40) }).map((_, i) => (
+              <text
+                key={i}
+                x={20 + i * 40}
+                y={height / 2 + 8}
+                textAnchor="middle"
+                fill="rgba(255, 255, 255, 0.15)"
+                fontSize="24"
+              >
+                {effectIcon}
+              </text>
+            ))
+          ) : (
+            // Single centered icon for smaller clips
+            <text
+              x={width / 2}
+              y={height / 2 + 8}
+              textAnchor="middle"
+              fill="rgba(255, 255, 255, 0.2)"
+              fontSize="20"
+            >
+              {effectIcon}
+            </text>
+          )}
+        </>
       )}
-      
-      {/* Keyframe dots */}
-      {width > 40 && clip.keyframes.map((kf, i) => {
-        const clipDuration = clip.endMs - clip.startMs
-        const x = (kf.offsetMs / clipDuration) * width
-        const y = height - (kf.value * (height - 8)) - 4
-        
-        return (
-          <circle
-            key={i}
-            cx={x}
-            cy={y}
-            r={3}
-            fill="#fff"
-            stroke={clip.color}
-            strokeWidth={1.5}
-          />
-        )
-      })}
       
       {/* Label */}
       {canShowLabel && (
@@ -215,11 +221,20 @@ const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> =
 FXClipContent.displayName = 'FXClipContent'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ⚒️ WAVE 2030.17: HEPHAESTUS CUSTOM FX CLIP RENDERER (EMBER STYLE)
+// ⚒️ WAVE 2030.17 → 2040.18: HEPHAESTUS CUSTOM FX CLIP RENDERER
 // ═══════════════════════════════════════════════════════════════════════════
 
-const HEPH_EMBER_COLOR = '#ff6b2b'
-const HEPH_EMBER_DARK = '#cc5522'
+/**
+ * ⚒️ WAVE 2040.17: HEPHAESTUS MIXBUS-AWARE COLOR MAPPING
+ * Each Hephaestus clip gets colored by its MixBus routing.
+ */
+const HEPH_MIXBUS_COLORS: Record<string, string> = {
+  'global':  '#ef4444',  // Red — match FX1 track
+  'htp':     '#f59e0b',  // Orange — match FX2 track
+  'ambient': '#10b981',  // Green — match FX3 track
+  'accent':  '#3b82f6',  // Blue — match FX4 track
+}
+const HEPH_EMBER_COLOR = '#ff6b2b'  // Fallback ember orange
 
 const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }> = memo(({
   clip,
@@ -230,19 +245,20 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
   const canShowIcon = width > 25
   
   /**
-   * ⚒️ WAVE 2030.21: REAL KEYFRAME CURVE RENDERER
-   * 
-   * Renders the ACTUAL keyframes from the clip, not a fake sine wave.
-   * 
-   * When hephClip is present (future: IPC-loaded curves), we'll iterate
-   * the real Hephaestus curves. For now, uses the FXClip keyframes
-   * which contain the basic shape (3-point envelope from createHephFXClip).
-   * 
-   * TODO WAVE 2030.22+: Load full .lfx curve data via IPC at drop time,
-   * inject into hephClip, and render multi-parameter curves here.
+   * ⚒️ WAVE 2040.18: DIAMOND COLOR
+   * Use the clip's actual background color (set by mixBus in createHephFXClip).
+   * No need to recalculate — it's already correct.
    */
+  const displayColor = clip.color
+  
+  /**
+   * ⚒️ WAVE 2040.18: ONLY render curve if hephClip exists (Diamond Data present).
+   * If no Diamond Data, show icon pattern instead (like Core FX).
+   */
+  const hasRealCurves = clip.hephClip && Object.keys(clip.hephClip.curves || {}).length > 0
+  
   const curvePath = React.useMemo(() => {
-    if (width < 40) return null
+    if (!hasRealCurves || width < 40) return null
     
     const keyframes = clip.keyframes
     if (!keyframes || keyframes.length === 0) return null
@@ -266,20 +282,20 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
     
     if (points.length < 2) return null
     return `M ${points.join(' L ')}`
-  }, [width, height, clip.keyframes, clip.startMs, clip.endMs])
+  }, [hasRealCurves, width, height, clip.keyframes, clip.startMs, clip.endMs])
   
   return (
     <>
       {/* EMBER gradient background */}
       <defs>
         <linearGradient id={`heph-gradient-${clip.id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={HEPH_EMBER_COLOR} stopOpacity={0.9} />
-          <stop offset="50%" stopColor={HEPH_EMBER_DARK} stopOpacity={0.7} />
-          <stop offset="100%" stopColor={HEPH_EMBER_COLOR} stopOpacity={0.5} />
+          <stop offset="0%" stopColor={displayColor} stopOpacity={0.9} />
+          <stop offset="50%" stopColor={displayColor} stopOpacity={0.7} />
+          <stop offset="100%" stopColor={displayColor} stopOpacity={0.5} />
         </linearGradient>
       </defs>
       
-      {/* Automation curve from real keyframes */}
+      {/* ⚒️ WAVE 2040.18: ONLY show curve if Diamond Data present */}
       {curvePath && (
         <path
           d={curvePath}
@@ -291,7 +307,20 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
         />
       )}
       
-      {/* ⚒️ Hephaestus icon */}
+      {/* ⚒️ WAVE 2040.18: If no curves, show icon pattern like Core FX */}
+      {!hasRealCurves && canShowIcon && (
+        <text
+          x={width / 2}
+          y={height / 2 + 8}
+          textAnchor="middle"
+          fill="rgba(255, 255, 255, 0.2)"
+          fontSize="20"
+        >
+          ⚒️
+        </text>
+      )}
+      
+      {/* ⚒️ Hephaestus icon badge */}
       {canShowIcon && (
         <text
           x={6}
@@ -326,11 +355,10 @@ const HephClipContent: React.FC<{ clip: FXClip; width: number; height: number }>
           x={width - 6}
           y={height - 6}
           textAnchor="end"
-          fill={HEPH_EMBER_COLOR}
+          fill="rgba(255, 255, 255, 0.5)"
           fontSize="7"
           fontFamily="var(--font-mono)"
           fontWeight="600"
-          opacity={0.6}
         >
           HEPH
         </text>

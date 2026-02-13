@@ -395,6 +395,13 @@ const HephaestusView: React.FC = () => {
     // WAVE 2040.17: Look up full serialized clip from Diamond Cache
     const cachedClip = clipCacheRef.current.get(libraryItem.filePath)
 
+    // 🐛 WAVE 2040.18: DEBUG — What's in the cache?
+    if (cachedClip) {
+      console.log(`[HephDrag] 💎 "${libraryItem.name}": mixBus=${cachedClip.mixBus || 'undefined'}, effectType=${cachedClip.effectType || 'undefined'}, category=${cachedClip.category || 'undefined'}`)
+    } else {
+      console.warn(`[HephDrag] ⚠️ "${libraryItem.name}": NO CACHE — will use fallback metadata`)
+    }
+
     // Build DragPayload with COMPLETE Diamond Data
     const payload = {
       source: 'hephaestus' as const,

@@ -1457,25 +1457,33 @@ export class TitanOrchestrator {
   /**
    * Set the current vibe
    * 🎯 WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
+   * 🔧 WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
    */
   setVibe(vibeId: VibeId): void {
     if (this.engine) {
+      // 1️⃣ Set vibe in engine (normalizes legacy aliases internally)
       this.engine.setVibe(vibeId)
-      console.log(`[TitanOrchestrator] Vibe set to: ${vibeId}`)
+      
+      // 2️⃣ Get the ACTUAL normalized vibe ID from engine
+      // This ensures HAL receives 'techno-club' not 'techno'
+      const normalizedVibeId = this.engine.getCurrentVibe()
+      
+      console.log(`[TitanOrchestrator] Vibe set to: ${normalizedVibeId}`)
       // WAVE 257: Log vibe change to Tactical Log
-      this.log('Mode', `🎭 Vibe changed to: ${vibeId.toUpperCase()}`)
+      this.log('Mode', `🎭 Vibe changed to: ${normalizedVibeId.toUpperCase()}`)
       
       // 🎯 WAVE 289: Propagate vibe to Trinity Workers
       // El SectionTracker en los Workers usará perfiles vibe-aware
       if (this.trinity) {
-        this.trinity.setVibe(vibeId)
+        this.trinity.setVibe(normalizedVibeId)
         console.log(`[TitanOrchestrator] 🎯 WAVE 289: Vibe propagated to Workers`)
       }
       
       // 🎯 WAVE 338: Propagate vibe to HAL for Movement Physics
+      // 🔧 WAVE 2040.3: FIX - Use normalizedVibeId so HAL gets 'techno-club' not 'techno'
       // Los movers usarán física diferente según el vibe
       if (this.hal) {
-        this.hal.setVibe(vibeId)
+        this.hal.setVibe(normalizedVibeId)
         console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`)
       }
     }

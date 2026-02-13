@@ -19,7 +19,7 @@
  * - 🔧 WAVE 338: Vibe-aware physics (dynamic physics config per vibe)
  */
 
-import { getMovementPhysics, type MovementPhysics } from './VibeMovementPresets'
+import { getMovementPhysics, MOVEMENT_PRESETS, type MovementPhysics } from './VibeMovementPresets'
 
 // ============================================================================
 // TYPES

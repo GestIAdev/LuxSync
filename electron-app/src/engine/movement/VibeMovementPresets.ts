@@ -190,7 +190,19 @@ export const MOVEMENT_PRESETS: Record<string, MovementPreset> = {
  * Obtener preset de movimiento por vibe ID
  */
 export function getMovementPreset(vibeId: string): MovementPreset {
-  return MOVEMENT_PRESETS[vibeId] || MOVEMENT_PRESETS['idle']
+  const preset = MOVEMENT_PRESETS[vibeId]
+  
+  // 🚨 WAVE 2040.3: EL CHIVATO - Detect fallback to idle
+  if (!preset) {
+    console.warn(
+      `[VibeMovementPresets] ⚠️ ERROR 404: Preset for vibeId="${vibeId}" NOT FOUND!\n` +
+      `   ├─ Available presets: ${Object.keys(MOVEMENT_PRESETS).join(', ')}\n` +
+      `   └─ Falling back to 'idle' preset (MOVERS WILL FREEZE)`
+    )
+    return MOVEMENT_PRESETS['idle']
+  }
+  
+  return preset
 }
 
 /**

@@ -515,8 +515,12 @@ export const CATEGORY_ICONS: Record<string, string> = {
   'utility': '🔧',
   'strobe': '⚡',
   'color': '🎨',
-  'movement': '🔄',
-  'custom': '✨'
+  'movement': '↔',
+  'physical': '☀',
+  'optics': '◎',
+  'composite': '🧬',
+  'custom': '✨',
+  'control': '🎛',
 }
 
 export function getCategoryIcon(category: string): string {

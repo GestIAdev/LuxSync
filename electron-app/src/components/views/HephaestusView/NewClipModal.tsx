@@ -20,13 +20,20 @@
  * @version WAVE 2030.26
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, memo } from 'react'
 import type { HephAutomationClip, HephCurve, HephParamId } from '../../../core/hephaestus/types'
 import type { EffectCategory } from '../../../core/effects/types'
+import { 
+  IntensityIcon, 
+  ColorIcon, 
+  PositionIcon, 
+  BeamIcon, 
+  BrainNeuralIcon 
+} from '../../icons/LuxIcons'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HEPHAESTUS CLIP CATEGORY & MIXBUS
-// WAVE 2040.9a: TYPE UNIFICATION — Categories and MixBus are now first-class
+// WAVE 2040.9a → 2040.20: TYPE UNIFICATION + LUXICON IDENTITY
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -34,6 +41,17 @@ import type { EffectCategory } from '../../../core/effects/types'
  * Determines which FX track the clip routes to in Chronos.
  */
 type HephMixBus = 'global' | 'htp' | 'ambient' | 'accent'
+
+/**
+ * ⚒️ WAVE 2040.20: Official MixBus neon colors — must match MIXBUS_CLIP_COLORS
+ * in TimelineClip.ts for visual coherence across the entire pipeline.
+ */
+const MIXBUS_NEON: Record<HephMixBus, string> = {
+  'global':  '#ef4444',  // Red — FX1
+  'htp':     '#f59e0b',  // Orange — FX2
+  'ambient': '#10b981',  // Green — FX3
+  'accent':  '#3b82f6',  // Blue — FX4
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CATEGORY → DEFAULT PARAMS MAPPING
@@ -75,26 +93,26 @@ function createDefaultCurve(paramId: HephParamId, durationMs: number): HephCurve
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CATEGORY OPTIONS - WAVE 2030.9: All 4 Hephaestus categories
+// CATEGORY OPTIONS - WAVE 2040.20: LuxIcon identity per category
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CATEGORY_OPTIONS: { value: EffectCategory; label: string; icon: string; desc: string }[] = [
-  { value: 'physical', label: 'Physical', icon: '💡', desc: 'Intensity, Strobe' },
-  { value: 'color', label: 'Color', icon: '🎨', desc: 'Chromatic' },
-  { value: 'movement', label: 'Movement', icon: '🔄', desc: 'Pan, Tilt' },
-  { value: 'optics', label: 'Optics', icon: '🔍', desc: 'Zoom, Focus, Iris, Gobo, Prism' },
-  { value: 'composite', label: 'Composite', icon: '🧬', desc: 'Multi-parameter' },
+const CATEGORY_OPTIONS: { value: EffectCategory; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: 'physical', label: 'Physical', icon: <IntensityIcon size={20} color="#fbbf24" />, desc: 'Intensity, Strobe' },
+  { value: 'color', label: 'Color', icon: <ColorIcon size={20} color="#a855f7" />, desc: 'Chromatic' },
+  { value: 'movement', label: 'Movement', icon: <PositionIcon size={20} color="#3b82f6" />, desc: 'Pan, Tilt' },
+  { value: 'optics', label: 'Optics', icon: <BeamIcon size={20} color="#14b8a6" />, desc: 'Zoom, Focus, Iris, Gobo, Prism' },
+  { value: 'composite', label: 'Composite', icon: <BrainNeuralIcon size={20} color="#f43f5e" />, desc: 'Multi-parameter' },
 ]
 
 /**
- * WAVE 2040.9a: MixBus routing options.
- * The user chooses which FX track this clip routes to in Chronos.
+ * ⚒️ WAVE 2040.20: MixBus routing with official neon colors.
+ * Each button uses its track's neon color for immediate visual association.
  */
-const MIXBUS_OPTIONS: { value: HephMixBus; label: string; icon: string; desc: string }[] = [
-  { value: 'global', label: 'Global', icon: '🔴', desc: 'FX1 — Full takeover (strobes, blinders)' },
-  { value: 'htp', label: 'HTP', icon: '🟡', desc: 'FX2 — High-priority transitional (sweeps, chases)' },
-  { value: 'ambient', label: 'Ambient', icon: '🟢', desc: 'FX3 — Atmospheric background (mist, rain)' },
-  { value: 'accent', label: 'Accent', icon: '🔵', desc: 'FX4 — Short punchy accents (sparks, hits)' },
+const MIXBUS_OPTIONS: { value: HephMixBus; label: string; color: string; desc: string }[] = [
+  { value: 'global', label: 'Global', color: MIXBUS_NEON.global, desc: 'FX1 — Full takeover (strobes, blinders)' },
+  { value: 'htp', label: 'HTP', color: MIXBUS_NEON.htp, desc: 'FX2 — High-priority transitional (sweeps, chases)' },
+  { value: 'ambient', label: 'Ambient', color: MIXBUS_NEON.ambient, desc: 'FX3 — Atmospheric background (washes, fades)' },
+  { value: 'accent', label: 'Accent', color: MIXBUS_NEON.accent, desc: 'FX4 — Short punchy accents (sparks, hits)' },
 ]
 
 // Duration presets (in ms)
@@ -116,7 +134,12 @@ interface NewClipModalProps {
   onCreate: (clip: HephAutomationClip) => void
 }
 
-export const NewClipModal: React.FC<NewClipModalProps> = ({
+/**
+ * ⚒️ WAVE 2040.20: Wrapped in React.memo to prevent re-renders from
+ * AudioEngine/DMX store changes in the parent HephaestusView.
+ * The modal only re-renders when its own props change (isOpen, onClose, onCreate).
+ */
+export const NewClipModal: React.FC<NewClipModalProps> = memo(({
   isOpen,
   onClose,
   onCreate,
@@ -203,12 +226,22 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
   }, [name, durationMs, category, mixBus, isValid, onCreate, onClose])
 
   const handleOverlayClick = (e: React.MouseEvent) => {
+    // ⚒️ WAVE 2040.20: GHOST FIX — Only close on direct overlay click,
+    // never on bubbled clicks from inside the modal
     if (e.target === e.currentTarget) {
       onClose()
     }
   }
 
+  // ⚒️ WAVE 2040.20: Stop ALL events from propagating to parent view.
+  // This prevents AudioEngine/DMX store re-renders from stealing focus
+  // or causing the modal to flicker/close during input.
+  const stopEventPropagation = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation() // ⚒️ WAVE 2040.20: Prevent parent keyboard handlers
     if (e.key === 'Escape') {
       onClose()
     } else if (e.key === 'Enter' && isValid) {
@@ -224,7 +257,14 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
       onClick={handleOverlayClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="heph-modal" role="dialog" aria-modal="true">
+      <div 
+        className="heph-modal" 
+        role="dialog" 
+        aria-modal="true"
+        onClick={stopEventPropagation}
+        onMouseDown={stopEventPropagation}
+        onPointerDown={stopEventPropagation}
+      >
         <header className="heph-modal__header">
           <h2 className="heph-modal__title">
             <span className="heph-modal__icon">⚒️</span>
@@ -311,7 +351,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
             </div>
           </div>
 
-          {/* WAVE 2040.9a: MixBus routing select */}
+          {/* ⚒️ WAVE 2040.20: MixBus routing with official neon colors */}
           <div className="heph-modal__field">
             <label htmlFor="clip-mixbus" className="heph-modal__label">
               Track Routing
@@ -321,12 +361,20 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
                 <button
                   key={bus.value}
                   type="button"
-                  className={`heph-modal__category ${mixBus === bus.value ? 'heph-modal__category--active' : ''}`}
+                  className={`heph-modal__mixbus-btn ${mixBus === bus.value ? 'heph-modal__mixbus-btn--active' : ''}`}
                   onClick={() => setMixBus(bus.value)}
                   title={bus.desc}
+                  style={{ 
+                    '--bus-color': bus.color,
+                    '--bus-color-dim': `${bus.color}33`,
+                    '--bus-color-glow': `${bus.color}40`,
+                  } as React.CSSProperties}
                 >
-                  <span className="heph-modal__category-icon">{bus.icon}</span>
-                  <span className="heph-modal__category-label">{bus.label}</span>
+                  <span 
+                    className="heph-modal__mixbus-dot" 
+                    style={{ background: bus.color }}
+                  />
+                  <span className="heph-modal__mixbus-label">{bus.label}</span>
                 </button>
               ))}
             </div>
@@ -353,4 +401,6 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
       </div>
     </div>
   )
-}
+})
+
+NewClipModal.displayName = 'NewClipModal'

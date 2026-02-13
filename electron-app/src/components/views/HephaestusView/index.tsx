@@ -559,18 +559,16 @@ const HephaestusView: React.FC = () => {
 
   const handleRemoveParam = useCallback((paramId: HephParamId) => {
     setClip((prev: HephAutomationClip): HephAutomationClip => {
-      // Don't remove if it's the only curve
-      if (prev.curves.size <= 1) {
-        console.warn('[Hephaestus] Cannot remove last parameter')
-        return prev
-      }
+      // ⚒️ WAVE 2040.20: HIGHLANDER FIX — 0 params is a valid state.
+      // An empty clip is a blank canvas, not a corrupted state.
+      if (!prev.curves.has(paramId)) return prev
       
       const newCurves = new Map(prev.curves)
       newCurves.delete(paramId)
       return { ...prev, curves: newCurves }
     })
     
-    // If removing active param, switch to another
+    // If removing active param, switch to another (or null)
     if (activeParam === paramId) {
       const remaining = Array.from(clip.curves.keys()).filter(p => p !== paramId)
       if (remaining.length > 0) {
@@ -897,16 +895,25 @@ const HephaestusView: React.FC = () => {
             <span className="heph-param-sidebar__title">PARAMETERS</span>
           </div>
           <div className="heph-param-sidebar__lanes">
-            {paramIds.map(paramId => (
-              <ParameterLane
-                key={paramId}
-                paramId={paramId}
-                curve={clip.curves.get(paramId)!}
-                isActive={paramId === activeParam}
-                onClick={() => setActiveParam(paramId)}
-                onRemove={paramIds.length > 1 ? handleRemoveParam : undefined}
-              />
-            ))}
+            {paramIds.length === 0 ? (
+              /* ⚒️ WAVE 2040.20: EMPTY STATE — No parameters */
+              <div className="heph-param-sidebar__empty">
+                <span className="heph-param-sidebar__empty-icon">⚒️</span>
+                <span className="heph-param-sidebar__empty-text">No parameters</span>
+                <span className="heph-param-sidebar__empty-hint">Click + to add automation</span>
+              </div>
+            ) : (
+              paramIds.map(paramId => (
+                <ParameterLane
+                  key={paramId}
+                  paramId={paramId}
+                  curve={clip.curves.get(paramId)!}
+                  isActive={paramId === activeParam}
+                  onClick={() => setActiveParam(paramId)}
+                  onRemove={handleRemoveParam}
+                />
+              ))
+            )}
           </div>
           
           {/* WAVE 2030.26: Add Parameter Popover (compact, subcategorized) */}

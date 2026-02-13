@@ -187,10 +187,31 @@ export class CurveEvaluator {
     const kfs = curve.keyframes
     const t = this.clampTime(timeMs)
 
+    // ⚒️ WAVE 2040.22c: DEFENSIVE VALIDATION HELPERS
+    const isValidHSL = (v: any): v is HSL =>
+      v && typeof v === 'object' &&
+      typeof v.h === 'number' && Number.isFinite(v.h) &&
+      typeof v.s === 'number' && Number.isFinite(v.s) &&
+      typeof v.l === 'number' && Number.isFinite(v.l)
+
+    const safeDefault = (): HSL =>
+      curve.defaultValue && typeof curve.defaultValue === 'object'
+        ? (curve.defaultValue as HSL)
+        : { h: 0, s: 0, l: 50 }
+
     // ── Edge cases ──────────────────────────────────────────────────────
-    if (kfs.length === 1) return kfs[0].value as HSL
-    if (t <= kfs[0].timeMs) return kfs[0].value as HSL
-    if (t >= kfs[kfs.length - 1].timeMs) return kfs[kfs.length - 1].value as HSL
+    if (kfs.length === 1) {
+      const val = kfs[0].value as HSL
+      return isValidHSL(val) ? val : safeDefault()
+    }
+    if (t <= kfs[0].timeMs) {
+      const val = kfs[0].value as HSL
+      return isValidHSL(val) ? val : safeDefault()
+    }
+    if (t >= kfs[kfs.length - 1].timeMs) {
+      const val = kfs[kfs.length - 1].value as HSL
+      return isValidHSL(val) ? val : safeDefault()
+    }
 
     // ── Encontrar segmento ──────────────────────────────────────────────
     const segIdx = this.findSegment(paramId, t, kfs)
@@ -217,6 +238,12 @@ export class CurveEvaluator {
     // ── Interpolar HSL con shortest-path para Hue ───────────────────────
     const c0 = kf0.value as HSL
     const c1 = kf1.value as HSL
+
+    // ⚒️ WAVE 2040.22c: Validate keyframe values before interpolation
+    if (!isValidHSL(c0) || !isValidHSL(c1)) {
+      console.warn('[CurveEvaluator] Invalid HSL keyframe values detected:', { c0, c1, paramId })
+      return safeDefault()
+    }
 
     return {
       h: this.lerpHue(c0.h, c1.h, easedProgress),

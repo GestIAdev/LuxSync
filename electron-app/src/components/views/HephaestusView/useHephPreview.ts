@@ -97,6 +97,15 @@ function evaluateClipFrame(
   for (const [paramId, curve] of clip.curves) {
     if (curve.valueType === 'color') {
       const hsl = evaluator.getColorValue(paramId, timeMs)
+      
+      // ⚒️ WAVE 2040.22c: DEFENSIVE GUARDS AGAINST NaN/undefined/null HSL VALUES
+      // If any HSL component is invalid, skip color evaluation (use default black)
+      if (!hsl || typeof hsl.h !== 'number' || typeof hsl.s !== 'number' || typeof hsl.l !== 'number' ||
+          !Number.isFinite(hsl.h) || !Number.isFinite(hsl.s) || !Number.isFinite(hsl.l)) {
+        console.warn('[useHephPreview] Invalid HSL from evaluator:', hsl, 'paramId:', paramId)
+        continue  // Skip this color curve, leave RGB at 0
+      }
+      
       // Apply intensity modulation to lightness (consistent with Runtime)
       const intensityCurve = clip.curves.get('intensity')
       let intensityMod = 1.0
@@ -105,9 +114,11 @@ function evaluateClipFrame(
       }
       const modulatedL = (hsl.l / 100) * intensityMod
       const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
-      r = rgb.r
-      g = rgb.g
-      b = rgb.b
+      
+      // ⚒️ WAVE 2040.22c: FINAL NaN GUARD (defense in depth)
+      r = Number.isFinite(rgb.r) ? rgb.r : 0
+      g = Number.isFinite(rgb.g) ? rgb.g : 0
+      b = Number.isFinite(rgb.b) ? rgb.b : 0
       continue
     }
 

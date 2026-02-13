@@ -2242,6 +2242,214 @@ export const UploadIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2041: CUSTOM VIBE ICONS — THE CRYSTAL ARSENAL IDENTITY
+// Each vibe genre gets a unique, personality-rich SVG icon.
+// No generic shapes. These are CHARACTERS.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 🤖 TECHNO — Robot head: angular, aggressive, industrial.
+ *  Square skull with antenna, slit visor eyes, jaw vents. */
+export const RobotVibeIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Antenna */}
+    <line x1="12" y1="1" x2="12" y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <circle cx="12" cy="1" r="1" fill={color} />
+    {/* Head shell */}
+    <rect x="4" y="4" width="16" height="14" rx="2" stroke={color} strokeWidth="1.8" />
+    {/* Visor slit eyes */}
+    <rect x="7" y="8" width="3" height="2" rx="0.5" fill={color} />
+    <rect x="14" y="8" width="3" height="2" rx="0.5" fill={color} />
+    {/* Jaw vents */}
+    <line x1="8" y1="14" x2="11" y2="14" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="13" y1="14" x2="16" y2="14" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Neck connectors */}
+    <line x1="9" y1="18" x2="9" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="18" x2="15" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="7" y1="21" x2="17" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/** 🎺 FIESTA LATINA — Trumpet silhouette: bell flaring out, valves visible.
+ *  Stylized brass horn pointing up-right with energy. */
+export const TrumpetVibeIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Mouthpiece */}
+    <path d="M2 18L4 17" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    {/* Tubing body */}
+    <path
+      d="M4 17L6 16L8 15.5L10 15L12 14"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    {/* Valve section */}
+    <rect x="10" y="11" width="2" height="5" rx="0.5" stroke={color} strokeWidth="1.2" />
+    <rect x="13" y="10" width="2" height="5" rx="0.5" stroke={color} strokeWidth="1.2" />
+    <rect x="16" y="9" width="2" height="5" rx="0.5" stroke={color} strokeWidth="1.2" />
+    {/* Bell flare */}
+    <path
+      d="M18 10C18 10 19 8 20 5C21 3 22 2 22 2"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path
+      d="M18 12C18 12 20 10 22 8"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round"
+    />
+    {/* Sound waves */}
+    <path d="M21 1C22 2 23 4 23 6" stroke={color} strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+  </svg>
+)
+
+/** 🎸 POP-ROCK — Guitar headstock: tuning pegs with angular rock attitude.
+ *  The iconic silhouette that screams "rock stage". */
+export const GuitarVibeIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Neck */}
+    <line x1="12" y1="22" x2="12" y2="8" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    {/* Headstock shape */}
+    <path
+      d="M8 8L8 3C8 2.4 8.4 2 9 2H15C15.6 2 16 2.4 16 3L16 8"
+      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    />
+    {/* Tuning pegs left */}
+    <line x1="5" y1="4" x2="8" y2="4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="5" y1="6.5" x2="8" y2="6.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="4.5" cy="4" r="1" fill={color} />
+    <circle cx="4.5" cy="6.5" r="1" fill={color} />
+    {/* Tuning pegs right */}
+    <line x1="16" y1="4" x2="19" y2="4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="16" y1="6.5" x2="19" y2="6.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="19.5" cy="4" r="1" fill={color} />
+    <circle cx="19.5" cy="6.5" r="1" fill={color} />
+    {/* Nut line */}
+    <line x1="8" y1="8" x2="16" y2="8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Fret markers */}
+    <circle cx="12" cy="13" r="0.8" fill={color} opacity="0.5" />
+    <circle cx="12" cy="17" r="0.8" fill={color} opacity="0.5" />
+  </svg>
+)
+
+/** 🌙 CHILL LOUNGE — Crescent moon with clouds: serene, ambient, oceanic.
+ *  A slim crescent with two small cloud wisps floating near. */
+export const LoungeVibeIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Crescent moon */}
+    <path
+      d="M20 12.5C20 17.2 16.2 21 11.5 21C8.1 21 5.2 19 3.8 16.1C5 16.7 6.4 17 7.8 17C12.3 17 16 13.3 16 8.8C16 6.9 15.3 5.2 14.2 3.8C17.6 4.8 20 8.3 20 12.5Z"
+      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    />
+    {/* Cloud wisp 1 (lower) */}
+    <path
+      d="M1 19C1.5 18.2 2.5 17.5 4 17.5C5 17.5 5.8 18 6 18.5"
+      stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"
+    />
+    {/* Cloud wisp 2 (upper) */}
+    <path
+      d="M17 4C17.8 3.3 19 3 20 3.2C21 3.4 21.5 4 21.5 4"
+      stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"
+    />
+    {/* Star sparkle */}
+    <circle cx="21" cy="7" r="0.6" fill={color} opacity="0.6" />
+    <circle cx="18" cy="2" r="0.4" fill={color} opacity="0.4" />
+  </svg>
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2041: FX ICON MAPPING HELPER
+// Maps effect tags/properties to existing LuxIcons for the Arsenal grid.
+// Used by ArsenalDock to replace emoji with proper SVG icons.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 🔄 MOVEMENT/PAN/TILT — Circular arrows indicating rotation/sweep */
+export const MovementFxIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M4 12C4 7.6 7.6 4 12 4C14.8 4 17.2 5.4 18.7 7.5"
+      stroke={color} strokeWidth="2" strokeLinecap="round"
+    />
+    <path d="M19 4V8H15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M20 12C20 16.4 16.4 20 12 20C9.2 20 6.8 18.6 5.3 16.5"
+      stroke={color} strokeWidth="2" strokeLinecap="round"
+    />
+    <path d="M5 20V16H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** 🌊 COLOR/SWEEP — Wave flowing across (color wash movement) */
+export const WaveFxIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M2 12C4 9 6 14 8 12C10 10 12 15 14 12C16 9 18 14 20 12C21 11 22 12 22 12"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path
+      d="M2 17C4 14 6 19 8 17C10 15 12 20 14 17C16 14 18 19 20 17C21 16 22 17 22 17"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"
+    />
+    <path
+      d="M2 7C4 4 6 9 8 7C10 5 12 10 14 7C16 4 18 9 20 7C21 6 22 7 22 7"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"
+    />
+  </svg>
+)
+
+/** ☀️ DIMMER/INTENSITY — Sun with radiating beams */
+export const SunFxIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <circle cx="12" cy="12" r="4" stroke={color} strokeWidth="2" />
+    <line x1="12" y1="2" x2="12" y2="5" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="12" y1="19" x2="12" y2="22" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="2" y1="12" x2="5" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="19" y1="12" x2="22" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="4.9" y1="4.9" x2="7" y2="7" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="17" y1="17" x2="19.1" y2="19.1" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="4.9" y1="19.1" x2="7" y2="17" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <line x1="17" y1="7" x2="19.1" y2="4.9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+/** 🎹 CHIP/DEFAULT — Integrated circuit chip for uncategorized FX */
+export const ChipFxIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Chip body */}
+    <rect x="6" y="6" width="12" height="12" rx="1" stroke={color} strokeWidth="1.8" />
+    {/* Inner die */}
+    <rect x="9" y="9" width="6" height="6" rx="0.5" stroke={color} strokeWidth="1.2" />
+    {/* Pins top */}
+    <line x1="9" y1="3" x2="9" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="12" y1="3" x2="12" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="3" x2="15" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Pins bottom */}
+    <line x1="9" y1="18" x2="9" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="12" y1="18" x2="12" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="18" x2="15" y2="21" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Pins left */}
+    <line x1="3" y1="9" x2="6" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="3" y1="12" x2="6" y2="12" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="3" y1="15" x2="6" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Pins right */}
+    <line x1="18" y1="9" x2="21" y2="9" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="18" y1="12" x2="21" y2="12" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="18" y1="15" x2="21" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2338,4 +2546,14 @@ export default {
   Zap: ZapIcon,
   Masks: MasksIcon,
   Upload: UploadIcon,
+  // WAVE 2041: Crystal Arsenal — Custom Vibe Icons
+  RobotVibe: RobotVibeIcon,
+  TrumpetVibe: TrumpetVibeIcon,
+  GuitarVibe: GuitarVibeIcon,
+  LoungeVibe: LoungeVibeIcon,
+  // WAVE 2041: FX Category Icons
+  MovementFx: MovementFxIcon,
+  WaveFx: WaveFxIcon,
+  SunFx: SunFxIcon,
+  ChipFx: ChipFxIcon,
 }

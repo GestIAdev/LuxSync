@@ -42,7 +42,91 @@ import {
 } from '../../core/EffectRegistry'
 import { getChronosRecorder } from '../../core/ChronosRecorder'
 import { CustomFXDock } from './CustomFXDock'
+import {
+  RobotVibeIcon,
+  TrumpetVibeIcon,
+  GuitarVibeIcon,
+  LoungeVibeIcon,
+  ZapIcon,
+  WaveFxIcon,
+  MovementFxIcon,
+  SunFxIcon,
+  ChipFxIcon,
+  StrobeIcon,
+} from '../../../components/icons/LuxIcons'
+import type { IconProps } from '../../../components/icons/LuxIcons'
 import './ArsenalDock.css'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2041: VIBE ICON MAP — Custom SVG per category
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VIBE_ICON_MAP: Record<EffectCategoryId, React.FC<IconProps>> = {
+  'fiesta-latina': TrumpetVibeIcon,
+  'techno': RobotVibeIcon,
+  'pop-rock': GuitarVibeIcon,
+  'chill-lounge': LoungeVibeIcon,
+  'universal': ChipFxIcon,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2041: FX ICON MAPPING — Smart switch by effect properties
+// Maps 45+ effects to icon categories instead of emojis.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getEffectIcon(effect: EffectMeta): React.ReactNode {
+  // STROBE / BLINDER → ZapIcon (lightning bolt)
+  if (effect.hasStrobe || effect.id.includes('strobe') || effect.id.includes('blinder')) {
+    return <ZapIcon size={22} />
+  }
+  
+  // COLOR / SWEEP / RAINBOW / WASH → WaveFxIcon
+  if (
+    effect.id.includes('sweep') || effect.id.includes('wave') || 
+    effect.id.includes('rainbow') || effect.id.includes('fiber') ||
+    effect.id.includes('rain') || effect.id.includes('caustic') ||
+    effect.id.includes('shimmer') || effect.id.includes('wash')
+  ) {
+    return <WaveFxIcon size={22} />
+  }
+  
+  // MOVEMENT / PAN / TILT / CHASE / SCAN → MovementFxIcon
+  if (
+    effect.id.includes('chase') || effect.id.includes('scan') ||
+    effect.id.includes('saw') || effect.id.includes('dualism') ||
+    effect.id.includes('gatling') || effect.id.includes('pulse') ||
+    effect.id.includes('rhythm') || effect.id.includes('ping') ||
+    effect.id.includes('current') || effect.id.includes('drift') ||
+    effect.id.includes('school') || effect.id.includes('glitch')
+  ) {
+    return <MovementFxIcon size={22} />
+  }
+  
+  // DIMMER / INTENSITY / SPOTLIGHT / FLARE / FIRE → SunFxIcon
+  if (
+    effect.id.includes('flare') || effect.id.includes('fire') ||
+    effect.id.includes('heat') || effect.id.includes('spark') ||
+    effect.id.includes('spotlight') || effect.id.includes('solo') ||
+    effect.id.includes('thunder') || effect.id.includes('chord') ||
+    effect.id.includes('meltdown') || effect.id.includes('snap')
+  ) {
+    return <SunFxIcon size={22} />
+  }
+  
+  // ATMOSPHERIC / MIST / VOID / BREATH → StrobeIcon (repurpose for atmosphere)
+  if (
+    effect.id.includes('mist') || effect.id.includes('void') ||
+    effect.id.includes('breath') || effect.id.includes('moon') ||
+    effect.id.includes('rise') || effect.id.includes('spore') ||
+    effect.id.includes('jellyfish') || effect.id.includes('whale') ||
+    effect.id.includes('ghost') || effect.id.includes('plankton')
+  ) {
+    return <LoungeVibeIcon size={22} />
+  }
+  
+  // DEFAULT → ChipFxIcon (integrated circuit)
+  return <ChipFxIcon size={22} />
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -105,10 +189,10 @@ const VibeCard: React.FC<VibeCardProps> = memo(({
     e.dataTransfer.setData('application/luxsync-clip', serializeDragPayload(payload))
     e.dataTransfer.effectAllowed = 'copyMove'
     
-    // Drag ghost
+    // Drag ghost (text-only, no emoji)
     const ghost = document.createElement('div')
     ghost.className = 'vibe-drag-ghost'
-    ghost.textContent = `${category.icon} ${category.name} VIBE`
+    ghost.textContent = `\u25C6 ${category.name} VIBE`
     ghost.style.backgroundColor = category.color
     ghost.style.position = 'fixed'
     ghost.style.top = '-100px'
@@ -144,14 +228,16 @@ const VibeCard: React.FC<VibeCardProps> = memo(({
       onDragEnd={onDragEnd}
       style={{ '--vibe-color': category.color } as React.CSSProperties}
       title={isRecording 
-        ? `🔴 Click to RECORD ${category.name} Vibe at playhead` 
+        ? `REC: Click to RECORD ${category.name} Vibe at playhead` 
         : `Click: Select | Drag: Create ${category.name} Vibe`}
     >
-      <span className="vibe-card-icon">{category.icon}</span>
+      <span className="vibe-card-icon">
+        {React.createElement(VIBE_ICON_MAP[category.id] ?? ChipFxIcon, { size: 28, color: category.color })}
+      </span>
       <span className="vibe-card-name">{category.name}</span>
       <span className="vibe-card-count">{category.effects.length} FX</span>
-      {isRecording && <span className="vibe-card-rec-dot">●</span>}
-      <div className="vibe-card-drag-hint">⋮⋮</div>
+      {isRecording && <span className="vibe-card-rec-dot">{'\u25CF'}</span>}
+      <div className="vibe-card-drag-hint">{'\u205E\u205E'}</div>
     </button>
   )
 })
@@ -191,10 +277,10 @@ const EffectPad: React.FC<EffectPadProps> = memo(({
     e.dataTransfer.setData('application/luxsync-clip', serializeDragPayload(payload))
     e.dataTransfer.effectAllowed = 'copyMove'
     
-    // Drag ghost
+    // Drag ghost (text-only, no emoji)
     const ghost = document.createElement('div')
     ghost.className = 'pad-drag-ghost'
-    ghost.textContent = `${effect.icon} ${effect.displayName}`
+    ghost.textContent = `\u25C6 ${effect.displayName}`
     ghost.style.backgroundColor = effect.color
     ghost.style.position = 'fixed'
     ghost.style.top = '-100px'
@@ -229,9 +315,9 @@ const EffectPad: React.FC<EffectPadProps> = memo(({
       style={{ '--pad-color': effect.color } as React.CSSProperties}
       title={`${effect.displayName} - ${effect.description}`}
     >
-      <span className="pad-icon">{effect.icon}</span>
+      <span className="pad-icon">{getEffectIcon(effect)}</span>
       <span className="pad-name">{effect.displayName}</span>
-      {effect.hasStrobe && <span className="pad-strobe">⚡</span>}
+      {effect.hasStrobe && <span className="pad-strobe"><ZapIcon size={11} /></span>}
     </div>
   )
 })
@@ -254,7 +340,7 @@ const ArmButton: React.FC<ArmButtonProps> = memo(({ isArmed, isRecording, onTogg
   const stateLabels = {
     idle: 'ARM',
     armed: 'REC READY',
-    recording: '● REC',
+    recording: '\u25CF REC',
   }
   
   return (
@@ -266,7 +352,7 @@ const ArmButton: React.FC<ArmButtonProps> = memo(({ isArmed, isRecording, onTogg
       <div className="arm-glow" />
       <div className="arm-ring" />
       <div className="arm-core">
-        <span className="arm-icon">●</span>
+        <span className="arm-icon">{'\u25CF'}</span>
       </div>
       <span className="arm-label">{stateLabels[state]}</span>
     </button>
@@ -353,10 +439,11 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
       <div className="dock-grid">
         <div className="grid-header">
           <span className="grid-category" style={{ color: activeCategory.color }}>
-            {activeCategory.icon} {activeCategory.name}
+            {React.createElement(VIBE_ICON_MAP[activeCategory.id] ?? ChipFxIcon, { size: 16, color: activeCategory.color })}
+            {' '}{activeCategory.name}
           </span>
           <span className="grid-mode">
-            {effectiveRecording ? '● CLICK TO RECORD' : '⋮⋮ DRAG TO TIMELINE'}
+            {effectiveRecording ? '\u25CF CLICK TO RECORD' : '\u205E\u205E DRAG TO TIMELINE'}
           </span>
         </div>
         <div className="grid-scroll">

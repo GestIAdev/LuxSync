@@ -33,16 +33,18 @@ import { StagePreview } from './stage/StageSimulatorCinema'
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
-// 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
+// WAVE 2017: THE SESSION KEEPER - State persistence across navigation
 import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
-// 🎬 WAVE 2040.1: THE CINEMA SIMULATOR (replaces StagePreview)
+// WAVE 2040.1: THE CINEMA SIMULATOR (replaces StagePreview)
 import { StagePreview } from './stage/StageSimulatorCinema'
-// �🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
+// WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
 import { ArsenalDock } from './arsenal/ArsenalDock'
-// 🔍 WAVE 2007: Inspector and Context Menu
+// WAVE 2007: Inspector and Context Menu
 import { ClipInspector } from './inspector/ClipInspector'
 import { ContextMenu, CLIP_MENU_ITEMS } from './context/ContextMenu'
+// WAVE 2041: AudioWave icon for drag overlay
+import { AudioWaveIcon } from '../../components/icons/LuxIcons'
 // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
 import { useAudioLoaderPhantom } from '../hooks/useAudioLoaderPhantom'
 // 🎵 WAVE 2005.4: Streaming playback (no RAM bloat)
@@ -863,7 +865,7 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
        * ═══════════════════════════════════════════════════════════════════ */}
       {isDragOver && (
         <div className="chronos-drag-overlay">
-          <div className="drag-icon">🎵</div>
+          <div className="drag-icon"><AudioWaveIcon size={48} /></div>
           <div className="drag-text">DROP AUDIO FILE</div>
           <div className="drag-formats">MP3, WAV, OGG, FLAC, M4A</div>
         </div>

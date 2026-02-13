@@ -21,7 +21,7 @@
  * @version WAVE 2006
  */
 
-import React, { useRef, useState, useCallback, useEffect, memo } from 'react'
+import React, { useRef, useState, useCallback, useEffect, memo, useMemo } from 'react'
 import { WaveformLayer } from './WaveformLayer'
 import { ClipRenderer } from './ClipRenderer'
 import type { AnalysisData } from '../../core/types'
@@ -669,8 +669,49 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     return () => resizeObserver.disconnect()
   }, [viewport.startTime, viewport.endTime, viewport.pixelsPerSecond, dimensions.width])
   
-  // Calculate total tracks height
-  const totalTracksHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution
+  // 
+  // PROBLEM: Canvas taller than track sum → void space at bottom with orphan grid
+  // SOLUTION: Weighted elastic distribution prioritizing AUDIO track
+  // 
+  // ALGORITHM:
+  // 1. Calculate total fixed height from DEFAULT_TRACKS
+  // 2. If container height > fixed → distribute surplus proportionally
+  // 3. AUDIO track gets 50% weight, others share 50% equally
+  // 4. Result: ACCENT track always touches bottom edge, no void space
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const elasticTracks = useMemo(() => {
+    const totalFixedHeight = DEFAULT_TRACKS.reduce((sum, t) => sum + t.height, 0)
+    const availableHeight = dimensions.height
+    
+    // If we have surplus space, distribute it elastically
+    if (availableHeight > totalFixedHeight) {
+      const surplus = availableHeight - totalFixedHeight
+      
+      // AUDIO gets 50% of surplus, rest shared equally among other tracks
+      const audioWeight = 0.5
+      const otherTracksCount = DEFAULT_TRACKS.length - 1 // Exclude audio
+      const otherWeight = (1 - audioWeight) / otherTracksCount
+      
+      return DEFAULT_TRACKS.map(track => {
+        if (track.type === 'waveform') {
+          // AUDIO track absorbs most of the surplus
+          return { ...track, height: track.height + (surplus * audioWeight) }
+        } else {
+          // Other tracks get equal share of remaining surplus
+          return { ...track, height: track.height + (surplus * otherWeight) }
+        }
+      })
+    }
+    
+    // No surplus → use default heights
+    return DEFAULT_TRACKS
+  }, [dimensions.height])
+  
+  // Calculate total tracks height (now using elastic heights)
+  const totalTracksHeight = elasticTracks.reduce((sum, t) => sum + t.height, 0)
   
   // WAVE 2040.7: Visible canvas height — fill the container, not just the tracks
   const visibleCanvasHeight = Math.max(dimensions.height, totalTracksHeight)
@@ -704,7 +745,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         lastUserScrollRef.current = Date.now()  // Mark user scroll time
         const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
         setViewport(prev => {
-          const newStart = Math.max(0, prev.startTime + panAmount)
+          // 🔧 WAVE 2040.12: ZERO MARGIN — Allow negative startTime to compensate for label width
+          // This lets users scroll to see clips starting at ms:0 without left margin loss
+          const minStartTime = -(TRACK_LABEL_WIDTH / prev.pixelsPerSecond) * 1000
+          const newStart = Math.max(minStartTime, prev.startTime + panAmount)
           const duration = prev.endTime - prev.startTime
           return {
             ...prev,
@@ -735,19 +779,19 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   }, [viewport, onSeek])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 2006: DRAG & DROP FROM ARSENAL
+  // WAVE 2006: DRAG & DROP FROM ARSENAL (WAVE 2040.12: Use elastic tracks)
   // ═══════════════════════════════════════════════════════════════════════
   
   const getTrackAtY = useCallback((y: number): string | null => {
     let accY = 0
-    for (const track of DEFAULT_TRACKS) {
+    for (const track of elasticTracks) {
       if (y >= accY && y < accY + track.height) {
         return track.id
       }
       accY += track.height
     }
     return null
-  }, [])
+  }, [elasticTracks])
   
   const getTimeAtX = useCallback((x: number): number => {
     const offsetX = x - TRACK_LABEL_WIDTH
@@ -918,29 +962,29 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   }, [draggingClipId, resizingClip, viewport.pixelsPerSecond, clips, onClipMove, onClipResize])
   
   // ═══════════════════════════════════════════════════════════════════════
-  // WAVE 2006: CLIP RENDERING HELPERS
+  // WAVE 2006: CLIP RENDERING HELPERS (WAVE 2040.12: Use elastic tracks)
   // ═══════════════════════════════════════════════════════════════════════
   
   const getTrackYOffset = useCallback((trackId: string): number => {
     let offset = 0
-    for (const track of DEFAULT_TRACKS) {
+    for (const track of elasticTracks) {
       if (track.id === trackId) return offset
       offset += track.height
     }
     return offset
-  }, [])
+  }, [elasticTracks])
   
   const getTrackHeight = useCallback((trackId: string): number => {
-    const track = DEFAULT_TRACKS.find(t => t.id === trackId)
+    const track = elasticTracks.find(t => t.id === trackId)
     return track?.height ?? 40
-  }, [])
+  }, [elasticTracks])
 
   // Calculate waveform track position (second track, after ruler)
-  const waveformTrackIndex = DEFAULT_TRACKS.findIndex(t => t.type === 'waveform')
+  const waveformTrackIndex = elasticTracks.findIndex(t => t.type === 'waveform')
   const waveformTrackY = waveformTrackIndex >= 0 
-    ? DEFAULT_TRACKS.slice(0, waveformTrackIndex).reduce((sum, t) => sum + t.height, 0)
+    ? elasticTracks.slice(0, waveformTrackIndex).reduce((sum: number, t) => sum + t.height, 0)
     : 0
-  const waveformTrack = waveformTrackIndex >= 0 ? DEFAULT_TRACKS[waveformTrackIndex] : null
+  const waveformTrack = waveformTrackIndex >= 0 ? elasticTracks[waveformTrackIndex] : null
   
   return (
     <div 
@@ -1058,11 +1102,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           return lines
         })()}
         
-        {/* Render tracks */}
-        {DEFAULT_TRACKS.map((track, index) => {
-          const yOffset = DEFAULT_TRACKS
+        {/* Render tracks (WAVE 2040.12: Use elastic heights) */}
+        {elasticTracks.map((track, index) => {
+          const yOffset = elasticTracks
             .slice(0, index)
-            .reduce((sum, t) => sum + t.height, 0)
+            .reduce((sum: number, t) => sum + t.height, 0)
           
           const TrackRenderer = track.type === 'ruler' 
             ? RulerTrackRenderer 
@@ -1182,12 +1226,12 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           height={visibleCanvasHeight}
         />
         
-        {/* Track separator lines */}
-        {DEFAULT_TRACKS.map((_, index) => {
+        {/* Track separator lines (WAVE 2040.12: Use elastic heights) */}
+        {elasticTracks.map((_, index) => {
           if (index === 0) return null
-          const y = DEFAULT_TRACKS
+          const y = elasticTracks
             .slice(0, index)
-            .reduce((sum, t) => sum + t.height, 0)
+            .reduce((sum: number, t) => sum + t.height, 0)
           
           return (
             <line

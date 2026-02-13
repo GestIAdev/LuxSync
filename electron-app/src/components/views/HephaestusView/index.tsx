@@ -458,9 +458,25 @@ const HephaestusView: React.FC = () => {
       const newKfs = [...curve.keyframes]
       // Insert sorted by timeMs
       const insertIdx = newKfs.findIndex(kf => kf.timeMs > timeMs)
+
+      // ⚒️ WAVE 2040.22c: For color curves, the plotted Y-axis is hue (0-1 normalized).
+      // We must reconstruct a full HSL object, not store a bare number.
+      // Use s/l from default or nearest keyframe to preserve color integrity.
+      let kfValue: number | { h: number; s: number; l: number } = value
+      if (curve.valueType === 'color') {
+        // Denormalize hue: 0-1 → 0-360
+        const hue = Math.max(0, Math.min(value * 360, 360))
+        // Inherit s/l from nearest keyframe or default
+        const nearestKf = insertIdx > 0 ? newKfs[insertIdx - 1] : newKfs[0]
+        const refHSL = nearestKf && typeof nearestKf.value === 'object' && 'h' in nearestKf.value
+          ? nearestKf.value
+          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
+        kfValue = { h: hue, s: refHSL.s, l: refHSL.l }
+      }
+
       const newKf = {
         timeMs,
-        value,
+        value: kfValue,
         interpolation: 'linear' as HephInterpolation,
       }
       if (insertIdx === -1) {
@@ -475,7 +491,22 @@ const HephaestusView: React.FC = () => {
   const handleKeyframeMove = useCallback((index: number, timeMs: number, value: number) => {
     updateCurve(activeParam, curve => {
       const newKfs = [...curve.keyframes]
-      newKfs[index] = { ...newKfs[index], timeMs, value }
+      const existing = newKfs[index]
+
+      // ⚒️ WAVE 2040.22c: For color curves, preserve HSL object structure.
+      // The plotted Y-axis represents hue (0-1 normalized), so only hue changes.
+      // Saturation and lightness are preserved from the original keyframe.
+      let kfValue: number | { h: number; s: number; l: number } = value
+      if (curve.valueType === 'color') {
+        const hue = Math.max(0, Math.min(value * 360, 360))
+        // Preserve s/l from original keyframe
+        const origHSL = existing && typeof existing.value === 'object' && 'h' in existing.value
+          ? existing.value
+          : (typeof curve.defaultValue === 'object' ? curve.defaultValue as { h: number; s: number; l: number } : { h: 0, s: 100, l: 50 })
+        kfValue = { h: hue, s: origHSL.s, l: origHSL.l }
+      }
+
+      newKfs[index] = { ...newKfs[index], timeMs, value: kfValue }
       // Re-sort by timeMs to maintain invariant
       newKfs.sort((a, b) => a.timeMs - b.timeMs)
       return { ...curve, keyframes: newKfs }

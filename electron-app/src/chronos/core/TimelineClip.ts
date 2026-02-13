@@ -13,6 +13,7 @@
  */
 
 import type { HephAutomationClip, HephAutomationClipSerialized } from '../../core/hephaestus/types'
+import { getEffectById } from './EffectRegistry'  // WAVE 2040.21b: Registry lookup for Core FX colors
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP TYPES
@@ -310,13 +311,11 @@ export function createFXClip(
   trackId: string,
   effectId?: string  // WAVE 2040.21b: Optional Core Effect ID for registry lookup
 ): FXClip {
-  // 🎨 WAVE 2040.21b: If effectId provided, try to get effect from registry
+  // 🎨 WAVE 2040.21b: If effectId provided, get effect from registry
   let color = FX_COLORS[fxType] || '#666666'
   let label = fxType.toUpperCase().replace('-', ' ')
   
   if (effectId) {
-    // Lazy import to avoid circular dependency
-    const { getEffectById } = require('./EffectRegistry')
     const effect = getEffectById(effectId)
     
     if (effect) {

@@ -37,6 +37,7 @@ import { createDummyClip } from './dummyData'
 import { getCategoryIcon } from './curveTemplates'
 import { HephRadar } from './HephRadar'
 import { useHephPreview } from './useHephPreview'
+import { HephLogoIcon } from '../../icons/LuxIcons'
 import type { 
   HephCurve, 
   HephParamId, 
@@ -619,7 +620,7 @@ const HephaestusView: React.FC = () => {
       {/* ═══ HEADER ═══ */}
       <header className="heph-header">
         <div className="heph-header__left">
-          <span className="heph-header__icon">⚒️</span>
+          <HephLogoIcon size={24} className="heph-header__icon" />
           <h1 className="heph-header__title">HEPHAESTUS</h1>
           <span className="heph-header__subtitle">STUDIO</span>
         </div>

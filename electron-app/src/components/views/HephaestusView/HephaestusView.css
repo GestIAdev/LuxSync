@@ -63,8 +63,13 @@
 }
 
 .heph-header__icon {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 6px rgba(255, 107, 43, 0.5));
+  color: #ff6b2b; /* Forge ember orange */
+  filter: drop-shadow(0 0 8px rgba(255, 107, 43, 0.6));
+  transition: filter 0.2s ease;
+}
+
+.heph-header__icon:hover {
+  filter: drop-shadow(0 0 14px rgba(255, 107, 43, 0.9));
 }
 
 .heph-header__title {

@@ -2450,6 +2450,69 @@ export const ChipFxIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/**
+ * ⚒️ HEPHAESTUS LOGO — WAVE 2040.16: FORGE IDENTITY
+ * Anvil (yunque) + Heavy Hammer (martillo) + Sparks (chispas)
+ * Estilo: Industrial/Cyberpunk, líneas gruesas, ángulos 45°
+ */
+export const HephLogoIcon: React.FC<IconProps> = ({
+  size = 24, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* ANVIL BASE - Trapezoidal industrial shape */}
+    <path
+      d="M 7 18 L 5 20 L 19 20 L 17 18 Z"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinejoin="miter"
+      fill="none"
+    />
+    {/* ANVIL TOP - Flat striking surface */}
+    <path
+      d="M 6 14 L 7 18 L 17 18 L 18 14 Z"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinejoin="miter"
+      fill="none"
+    />
+    {/* ANVIL HORN - Side projection */}
+    <path
+      d="M 18 14 L 20 13 L 20 15 L 18 16"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinejoin="miter"
+      fill="none"
+    />
+    
+    {/* HAMMER HEAD - Heavy square block at 45° */}
+    <rect
+      x="11"
+      y="4"
+      width="5"
+      height="4"
+      stroke={color}
+      strokeWidth="1.8"
+      fill="none"
+      transform="rotate(-45 13.5 6)"
+    />
+    {/* HAMMER HANDLE - Diagonal shaft */}
+    <line
+      x1="9.5"
+      y1="8.5"
+      x2="6"
+      y2="12"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    
+    {/* SPARKS - Impact particles */}
+    <line x1="14" y1="11" x2="16" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="12.5" x2="17.5" y2="12.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="14.5" y1="14" x2="16" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2556,4 +2619,6 @@ export default {
   WaveFx: WaveFxIcon,
   SunFx: SunFxIcon,
   ChipFx: ChipFxIcon,
+  // WAVE 2040.16: Hephaestus Brand Identity
+  HephLogo: HephLogoIcon,
 }

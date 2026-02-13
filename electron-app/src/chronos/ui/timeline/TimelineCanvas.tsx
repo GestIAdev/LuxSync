@@ -86,18 +86,29 @@ interface Track {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * 🎹 WAVE 2012: Track list with 4 FX tracks for Smart Layering
- * FX tracks are thinner to fit more without overwhelming the UI
+ * 🎹 WAVE 2040.9b: SEMANTIC TIMELINE — Track labels match MixBus reality
+ * 
+ * VISUAL MAPPING:
+ *   fx1 → GLOBAL  🔴  Takeovers, blinders, strobes masivos
+ *   fx2 → MOVEMENT 🟡  Pan/tilt, scans, sweeps, chases
+ *   fx3 → AMBIENT  🟢  Niebla, lluvia, auroras, breaths
+ *   fx4 → ACCENT   🔵  Destellos cortos, zoom hits, solos
+ * 
+ * Heights graduales: alta prioridad visual (40) → detalles finos (32)
+ * Colors: coherentes con NewClipModal MixBus selector
+ * 
+ * NOTA: Los trackId internos ('fx1'-'fx4') NO cambian.
+ *       Solo cambian label, height y color. Zero riesgo de rotura.
  */
 const DEFAULT_TRACKS: Track[] = [
   { id: 'ruler', type: 'ruler', label: 'TIME', height: 32, color: '#3b82f6' },
   // 🌊 WAVE 2015: Increased waveform height for spectral effect
   { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 80, color: '#22d3ee' },
   { id: 'vibe', type: 'vibe', label: 'VIBE', height: 48, color: '#a855f7' },
-  { id: 'fx1', type: 'fx', label: 'FX 1', height: 36, color: '#f97316' },
-  { id: 'fx2', type: 'fx', label: 'FX 2', height: 36, color: '#ef4444' },
-  { id: 'fx3', type: 'fx', label: 'FX 3', height: 36, color: '#22d3ee' },
-  { id: 'fx4', type: 'fx', label: 'FX 4', height: 36, color: '#10b981' },
+  { id: 'fx1', type: 'fx', label: 'GLOBAL', height: 40, color: '#ef4444' },
+  { id: 'fx2', type: 'fx', label: 'MOVEMENT', height: 40, color: '#f59e0b' },
+  { id: 'fx3', type: 'fx', label: 'AMBIENT', height: 36, color: '#10b981' },
+  { id: 'fx4', type: 'fx', label: 'ACCENT', height: 32, color: '#3b82f6' },
 ]
 
 const MIN_PIXELS_PER_SECOND = 10

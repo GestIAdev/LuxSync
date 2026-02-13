@@ -512,8 +512,9 @@ const Playhead: React.FC<PlayheadProps> = memo(({
   const position = TRACK_LABEL_WIDTH + 
     ((currentTime - viewport.startTime) / 1000) * viewport.pixelsPerSecond
   
-  // Don't render if outside viewport
-  if (position < TRACK_LABEL_WIDTH || position > 2000) return null
+  // 🔧 WAVE 2040.13: PLAYHEAD ALWAYS VISIBLE (no hardcoded 2000px limit)
+  // SVG viewport will naturally clip if playhead is outside visible area
+  // This fixes: "playhead appears 1s late and disappears 1s early"
   
   return (
     <g className="timeline-playhead" style={{ pointerEvents: 'none' }}>

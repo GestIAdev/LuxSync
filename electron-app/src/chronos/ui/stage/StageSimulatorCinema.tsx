@@ -581,9 +581,15 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
         id: fixtureId,
         x: 0,  // Will be computed in layout pass
         y: 0,
-        r: renderData.color.r,
-        g: renderData.color.g,
-        b: renderData.color.b,
+        // ═══════════════════════════════════════════════════════════════
+        // 🔧 WAVE 2040.22c: NaN GUARD FOR COLOR VALUES
+        // Hephaestus color curves can produce NaN if HSL→RGB conversion
+        // receives malformed input. Canvas will crash on rgba(NaN,...).
+        // Fallback: 0 (black) — safe and visible as "something's wrong"
+        // ═══════════════════════════════════════════════════════════════
+        r: Number.isFinite(renderData.color.r) ? renderData.color.r : 0,
+        g: Number.isFinite(renderData.color.g) ? renderData.color.g : 0,
+        b: Number.isFinite(renderData.color.b) ? renderData.color.b : 0,
         intensity: safeIntensity,
         type,
         zone,

@@ -528,8 +528,9 @@ export class HephaestusRuntime {
         if (curve.valueType === 'color') {
           const hsl = active.evaluator.getColorValue(paramName, clipTimeMs)
           // Intensity modulates lightness (dim the color, don't destroy hue/sat)
-          const modulatedL = hsl.l * active.intensity
-          const rgb = hslToRgb(hsl.h, hsl.s, modulatedL)
+          // ⚒️ WAVE 2040.22c: HSL values are 0-100 (Heph standard), hslToRgb expects 0-1
+          const modulatedL = (hsl.l / 100) * active.intensity
+          const rgb = hslToRgb(hsl.h, hsl.s / 100, modulatedL)
 
           for (const zone of zones) {
             outputs.push({

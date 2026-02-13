@@ -348,15 +348,27 @@ export const MIXBUS_CLIP_COLORS: Record<string, string> = {
 }
 
 /**
- * ⚒️ WAVE 2040.17: Extract visual keyframes from hephClip intensity curve.
- * Creates a summary of the real curve for timeline visualization.
- * If no intensity curve, returns the 3-point default.
+ * ⚒️ WAVE 2040.17 → 2040.21: Extract visual keyframes with PRIORITY CURVE logic.
+ * Creates a summary of the MOST REPRESENTATIVE curve for timeline visualization.
+ * 
+ * WAVE 2040.21: THE TRUTH ENGINE — No more "curva mentirosa".
+ * Priority order (most visually meaningful → least):
+ *   1. intensity — the master dimmer curve IS the clip's visual identity
+ *   2. tilt — vertical movement is the most dramatic spatial axis
+ *   3. pan — horizontal sweep is second-most visible
+ *   4. color — chromatic information has visual weight
+ *   5. ANY other curve — better than nothing
+ *   6. Fallback: generic 3-point envelope
+ * 
+ * DETERMINISTA: Same curves → same visual. Siempre.
  */
+const VISUAL_PRIORITY_CURVE_KEYS = ['intensity', 'tilt', 'pan', 'color', 'white', 'zoom', 'focus']
+
 function extractVisualKeyframes(
   hephClip: HephAutomationClipSerialized | undefined,
   durationMs: number
 ): FXKeyframe[] {
-  if (!hephClip?.curves?.intensity) {
+  if (!hephClip?.curves) {
     // Fallback: generic 3-point envelope
     return [
       { offsetMs: 0, value: 0, easing: 'ease-in' },
@@ -365,8 +377,38 @@ function extractVisualKeyframes(
     ]
   }
 
-  const intensityCurve = hephClip.curves.intensity
-  return intensityCurve.keyframes.map(kf => {
+  const curveKeys = Object.keys(hephClip.curves)
+  if (curveKeys.length === 0) {
+    return [
+      { offsetMs: 0, value: 0, easing: 'ease-in' },
+      { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
+      { offsetMs: durationMs, value: 0, easing: 'linear' },
+    ]
+  }
+
+  // ⚒️ WAVE 2040.21: Pick the PRIORITY curve — the most visually meaningful
+  let selectedKey: string | undefined
+  for (const priorityKey of VISUAL_PRIORITY_CURVE_KEYS) {
+    if (curveKeys.includes(priorityKey)) {
+      selectedKey = priorityKey
+      break
+    }
+  }
+  // If no priority key matched, take the first available curve
+  if (!selectedKey) {
+    selectedKey = curveKeys[0]
+  }
+
+  const selectedCurve = hephClip.curves[selectedKey]
+  if (!selectedCurve?.keyframes || selectedCurve.keyframes.length === 0) {
+    return [
+      { offsetMs: 0, value: 0, easing: 'ease-in' },
+      { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
+      { offsetMs: durationMs, value: 0, easing: 'linear' },
+    ]
+  }
+
+  return selectedCurve.keyframes.map(kf => {
     // Map HephInterpolation → FXKeyframe easing
     let easing: FXKeyframe['easing'] = 'linear'
     if (kf.interpolation === 'hold') easing = 'step'

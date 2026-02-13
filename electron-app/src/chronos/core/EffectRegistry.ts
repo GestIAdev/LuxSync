@@ -1,21 +1,25 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎨 EFFECT REGISTRY - WAVE 2008: THE LIVING ARSENAL
+ * 🎨 EFFECT REGISTRY - WAVE 2040.21: THE CORE PRESET REVAMP
  * 
  * Registro centralizado de TODOS los efectos reales de LuxSync.
  * Generado dinámicamente desde EffectManager.
  * 
  * ARQUITECTURA:
  * - EffectCategory: Agrupa efectos por género/familia
- * - EffectMeta: Metadata de cada efecto (nombre, icon, color, zone)
+ * - EffectMeta: Metadata de cada efecto (nombre, icon, color, zone, mixBus, tags)
  * - getEffectRegistry(): Función que retorna el catálogo completo
+ * 
+ * WAVE 2040.21: Every single effect now carries explicit mixBus + tags.
+ * No more inference needed for Core Effects — the truth is in the data.
+ * The inferMixBus() function remains for legacy/unknown effects.
  * 
  * AXIOMA ANTI-SIMULACIÓN:
  * Estos son los 45+ efectos REALES que existen en el sistema.
  * No hay mocks, no hay demos, no hay aleatorios.
  * 
  * @module chronos/core/EffectRegistry
- * @version WAVE 2008
+ * @version WAVE 2040.21
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -126,6 +130,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Explosión solar para drops épicos',
     suggestedDuration: 3000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'tropical_pulse',
@@ -137,6 +143,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Crescendo bursts como ritmo de conga',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['rhythmic', 'intensity'],
   },
   {
     id: 'salsa_fire',
@@ -148,6 +156,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Flickeo orgánico de fuego',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['rhythmic', 'color'],
   },
   {
     id: 'cumbia_moon',
@@ -159,6 +169,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Respiración suave para breakdowns',
     suggestedDuration: 6000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'clave_rhythm',
@@ -170,6 +182,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Patrón 3-2 con color y movimiento',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['rhythmic', 'movement'],
   },
   {
     id: 'corazon_latino',
@@ -181,6 +195,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Latido de pasión para momentos épicos',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['rhythmic', 'intensity'],
   },
   {
     id: 'amazon_mist',
@@ -192,6 +208,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Neblina amazónica atmosférica',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'machete_spark',
@@ -203,6 +221,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Chispa de machete en la active zone',
     suggestedDuration: 2000,
+    mixBus: 'accent',
+    tags: ['accent', 'intensity'],
   },
   {
     id: 'glitch_guaguanco',
@@ -214,6 +234,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Glitch digital con ritmo cubano',
     suggestedDuration: 3000,
+    mixBus: 'accent',
+    tags: ['accent', 'rhythmic'],
   },
   {
     id: 'latina_meltdown',
@@ -225,6 +247,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'LA BESTIA LATINA para peak zone',
     suggestedDuration: 4000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'strobe_burst',
@@ -236,6 +260,8 @@ const FIESTA_LATINA_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Strobe rítmico para fiesta',
     suggestedDuration: 2000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
 ]
 
@@ -254,6 +280,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Tormenta de strobe para rock/techno',
     suggestedDuration: 2000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'industrial_strobe',
@@ -265,6 +293,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'El martillo que golpea el acero',
     suggestedDuration: 2000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'acid_sweep',
@@ -276,6 +306,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Hoja volumétrica de luz',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['sweep', 'movement'],
   },
   {
     id: 'cyber_dualism',
@@ -287,6 +319,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Los gemelos ping-pong L/R',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['movement', 'rhythmic'],
   },
   {
     id: 'gatling_raid',
@@ -298,6 +332,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Ráfaga de metralleta PAR',
     suggestedDuration: 2000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'sky_saw',
@@ -309,6 +345,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Cortes agresivos de movers',
     suggestedDuration: 3000,
+    mixBus: 'htp',
+    tags: ['movement', 'sweep'],
   },
   {
     id: 'abyssal_rise',
@@ -320,6 +358,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Transición épica de 8 barras',
     suggestedDuration: 16000,
+    mixBus: 'htp',
+    tags: ['transitional', 'intensity'],
   },
   {
     id: 'void_mist',
@@ -331,6 +371,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Niebla púrpura con respiración',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'digital_rain',
@@ -342,6 +384,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Flickeo Matrix cyan/lime',
     suggestedDuration: 6000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'deep_breath',
@@ -353,6 +397,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Respiración orgánica de 4 barras',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'intensity'],
   },
   {
     id: 'ambient_strobe',
@@ -364,6 +410,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Flashes tipo cámara de estadio',
     suggestedDuration: 4000,
+    mixBus: 'global',
+    tags: ['strobe', 'accent'],
   },
   {
     id: 'sonar_ping',
@@ -375,6 +423,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Ping submarino back→front',
     suggestedDuration: 3000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'movement'],
   },
   {
     id: 'binary_glitch',
@@ -386,6 +436,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Tartamudeo de código morse corrupto',
     suggestedDuration: 2000,
+    mixBus: 'accent',
+    tags: ['accent', 'rhythmic'],
   },
   {
     id: 'seismic_snap',
@@ -397,6 +449,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Golpe físico de luz tipo obturador',
     suggestedDuration: 1000,
+    mixBus: 'accent',
+    tags: ['accent', 'intensity'],
   },
   {
     id: 'fiber_optics',
@@ -408,6 +462,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Colores viajeros ambient',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'core_meltdown',
@@ -419,6 +475,8 @@ const TECHNO_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'LA BESTIA - extreme strobe',
     suggestedDuration: 3000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
 ]
 
@@ -437,6 +495,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Stadium blinder para drops',
     suggestedDuration: 2000,
+    mixBus: 'htp',
+    tags: ['intensity', 'accent'],
   },
   {
     id: 'liquid_solo',
@@ -448,6 +508,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Spotlight del guitarrista',
     suggestedDuration: 6000,
+    mixBus: 'htp',
+    tags: ['movement', 'intensity'],
   },
   {
     id: 'amp_heat',
@@ -459,6 +521,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Válvulas calientes respirando',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'arena_sweep',
@@ -470,6 +534,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'El barrido de Wembley',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['sweep', 'movement'],
   },
   {
     id: 'feedback_storm',
@@ -481,6 +547,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Caos visual harshness reactive',
     suggestedDuration: 3000,
+    mixBus: 'global',
+    tags: ['strobe', 'intensity'],
   },
   {
     id: 'power_chord',
@@ -492,6 +560,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Flash + strobe del acorde',
     suggestedDuration: 1000,
+    mixBus: 'global',
+    tags: ['strobe', 'accent'],
   },
   {
     id: 'stage_wash',
@@ -503,6 +573,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Respiro cálido amber',
     suggestedDuration: 6000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'spotlight_pulse',
@@ -514,6 +586,8 @@ const POP_ROCK_EFFECTS: EffectMeta[] = [
     isDynamic: true,
     description: 'Breathing spotlight emotivo',
     suggestedDuration: 4000,
+    mixBus: 'htp',
+    tags: ['intensity', 'rhythmic'],
   },
 ]
 
@@ -532,6 +606,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Ola oceánica suave',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'movement'],
   },
   {
     id: 'ghost_breath',
@@ -543,6 +619,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Respiración fantasmal',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'intensity'],
   },
   {
     id: 'solar_caustics',
@@ -554,6 +632,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Rayos de sol en aguas someras',
     suggestedDuration: 10000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'school_of_fish',
@@ -565,6 +645,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Cardumen cruzando el océano',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'movement'],
   },
   {
     id: 'whale_song',
@@ -576,6 +658,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Canto de ballena zona crepuscular',
     suggestedDuration: 12000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'intensity'],
   },
   {
     id: 'abyssal_jellyfish',
@@ -587,6 +671,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Medusas bioluminiscentes',
     suggestedDuration: 10000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'surface_shimmer',
@@ -598,6 +684,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Brillos de superficie',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
   {
     id: 'plankton_drift',
@@ -609,6 +697,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Partículas a la deriva',
     suggestedDuration: 10000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'movement'],
   },
   {
     id: 'deep_current_pulse',
@@ -620,6 +710,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Corrientes de agua profunda',
     suggestedDuration: 8000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'movement'],
   },
   {
     id: 'bioluminescent_spore',
@@ -631,6 +723,8 @@ const CHILL_LOUNGE_EFFECTS: EffectMeta[] = [
     isDynamic: false,
     description: 'Esporas abisales',
     suggestedDuration: 10000,
+    mixBus: 'ambient',
+    tags: ['atmospheric', 'color'],
   },
 ]
 

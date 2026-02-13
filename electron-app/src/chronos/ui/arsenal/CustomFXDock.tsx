@@ -16,9 +16,10 @@
  * @version WAVE 2030.7
  */
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import type { DragPayload } from '../../core/TimelineClip'
 import { serializeDragPayload } from '../../core/TimelineClip'
+import type { HephAutomationClipSerialized } from '../../../core/hephaestus/types'
 import './CustomFXDock.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -88,6 +89,8 @@ function inferBusNeon(clip: HephClipMetadata): string {
 
 interface CustomFXPadProps {
   clip: HephClipMetadata
+  /** ⚒️ WAVE 2040.18: Pre-cached serialized clip for Diamond Data D&D */
+  cachedClip?: HephAutomationClipSerialized
   isRecording: boolean
   onDragStart?: (payload: DragPayload) => void
   onDragEnd?: () => void
@@ -96,6 +99,7 @@ interface CustomFXPadProps {
 
 const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   clip,
+  cachedClip,
   isRecording,
   onDragStart,
   onDragEnd,
@@ -104,21 +108,27 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   const neonColor = inferBusNeon(clip)
   
   const handleDragStart = useCallback((e: React.DragEvent) => {
-    // 🔥 WAVE 2030.17: THE BRIDGE - Hephaestus payload for timeline
+    // ⚒️ WAVE 2040.18: THE DIAMOND BRIDGE — Full payload with curves
     const payload: DragPayload = {
       source: 'hephaestus',
       clipType: 'fx',
-      subType: clip.effectType,
+      subType: cachedClip?.effectType || clip.effectType,
       hephFilePath: clip.filePath,
       defaultDurationMs: clip.durationMs,
-      name: clip.name, // WAVE 2030.17: Include name for display
+      name: clip.name,
+      // WAVE 2040.18: Diamond Data from cache
+      hephClipSerialized: cachedClip,
+      mixBus: cachedClip?.mixBus as DragPayload['mixBus'],
+      effectType: cachedClip?.effectType || clip.effectType,
+      zones: cachedClip?.zones,
+      priority: cachedClip?.priority,
     }
     
-    // WAVE 2030.17: Send ALL required MIME types for drag recognition
+    // WAVE 2040.18: Send ALL required MIME types for drag recognition
     const serialized = serializeDragPayload(payload)
-    e.dataTransfer.setData('application/luxsync-heph', serialized)   // Hephaestus specific
-    e.dataTransfer.setData('application/luxsync-fx', serialized)     // FX type (timeline recognition)
-    e.dataTransfer.setData('application/luxsync-clip', serialized)   // Generic clip
+    e.dataTransfer.setData('application/luxsync-fx', serialized)     // FX type (timeline recognition) — PRIMARY
+    e.dataTransfer.setData('application/luxsync-clip', serialized)   // Generic clip fallback
+    e.dataTransfer.setData('application/luxsync-heph', serialized)   // Hephaestus marker
     e.dataTransfer.effectAllowed = 'copyMove'
     
     // Drag ghost — WAVE 2040.14: Use neon color instead of emoji
@@ -132,8 +142,16 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     e.dataTransfer.setDragImage(ghost, 0, 0)
     setTimeout(() => document.body.removeChild(ghost), 0)
     
+    // Debug
+    if (cachedClip) {
+      const curveCount = Object.keys(cachedClip.curves || {}).length
+      console.log(`[CustomFXDock] 💎 Diamond drag: ${clip.name} [${curveCount} curves, mixBus=${cachedClip.mixBus || 'none'}]`)
+    } else {
+      console.warn(`[CustomFXDock] ⚠️ Drag without Diamond data: ${clip.name}`)
+    }
+    
     onDragStart?.(payload)
-  }, [clip, neonColor, onDragStart])
+  }, [clip, cachedClip, neonColor, onDragStart])
   
   const handleClick = useCallback(() => {
     // TODO: Preview momentáneo del clip
@@ -205,6 +223,12 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   
+  /**
+   * ⚒️ WAVE 2040.18: DIAMOND CACHE — Pre-cached serialized clips
+   * Mirrors the pattern from HephaestusView for zero-latency D&D.
+   */
+  const clipCacheRef = useRef<Map<string, HephAutomationClipSerialized>>(new Map())
+  
   // Load clips from Hephaestus on mount
   useEffect(() => {
     const loadClips = async () => {
@@ -219,6 +243,23 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
         if (result.success && result.clips) {
           setClips(result.clips)
           console.log(`[CustomFXDock] Loaded ${result.clips.length} custom FX`)
+          
+          // ⚒️ WAVE 2040.18: DIAMOND CACHE — Preload all clips in background
+          if (window.luxsync?.hephaestus?.load) {
+            for (const item of result.clips as HephClipMetadata[]) {
+              if (!clipCacheRef.current.has(item.filePath)) {
+                try {
+                  const loadResult = await window.luxsync.hephaestus.load(item.filePath)
+                  if (loadResult.success && loadResult.clip) {
+                    clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipSerialized)
+                  }
+                } catch (e) {
+                  console.warn(`[CustomFXDock] 💎 Cache miss for ${item.name}:`, e)
+                }
+              }
+            }
+            console.log(`[CustomFXDock] 💎 Diamond cache loaded: ${clipCacheRef.current.size} clips`)
+          }
         }
       } catch (error) {
         console.error('[CustomFXDock] Failed to load clips:', error)
@@ -291,6 +332,7 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
               <CustomFXPad
                 key={clip.id}
                 clip={clip}
+                cachedClip={clipCacheRef.current.get(clip.filePath)}
                 isRecording={isRecording}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}

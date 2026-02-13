@@ -866,8 +866,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     setDragTrackId(null)
     setDragTimeMs(null)
     
-    // WAVE 2030.17: Try hephaestus-specific first, then generic clip
-    const data = e.dataTransfer.getData('application/luxsync-heph') 
+    // WAVE 2040.18: Read the FULL JSON payload, not the ID-only HEPH mime
+    // Priority: luxsync-fx (full JSON with Diamond Data) → luxsync-clip (generic)
+    // NOTE: 'application/luxsync-heph' only carries the clip ID string,
+    // NOT the full JSON payload. Reading it first was causing silent drop failures.
+    const data = e.dataTransfer.getData('application/luxsync-fx')
                || e.dataTransfer.getData('application/luxsync-clip')
     if (!data) return
     

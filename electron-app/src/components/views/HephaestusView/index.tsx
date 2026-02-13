@@ -422,10 +422,12 @@ const HephaestusView: React.FC = () => {
     
     const payloadJson = JSON.stringify(payload)
     
-    // Set BOTH the type-specific mime AND the generic clip data
-    e.dataTransfer.setData(HEPH_DRAG_MIME, libraryItem.id)
-    e.dataTransfer.setData('application/luxsync-fx', payloadJson)
-    e.dataTransfer.setData('application/luxsync-clip', payloadJson)
+    // Set ALL MIME types with FULL JSON payload
+    // WAVE 2040.18 FIX: luxsync-heph MUST have full JSON, not just ID.
+    // TimelineCanvas reads luxsync-fx first, but luxsync-heph is used for type detection.
+    e.dataTransfer.setData('application/luxsync-fx', payloadJson)     // PRIMARY — full payload
+    e.dataTransfer.setData('application/luxsync-clip', payloadJson)   // Generic fallback
+    e.dataTransfer.setData(HEPH_DRAG_MIME, payloadJson)               // Hephaestus marker (full JSON)
     e.dataTransfer.effectAllowed = 'copy'
     
     if (cachedClip) {

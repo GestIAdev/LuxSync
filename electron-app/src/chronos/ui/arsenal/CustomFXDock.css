@@ -1,12 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ CUSTOM FX DOCK STYLES - WAVE 2030.7: THE ARSENAL MEETS HEPHAESTUS
+ * ⚒️ CUSTOM FX DOCK STYLES - WAVE 2040.14: PRISMATIC HEPHAESTUS
  * 
- * Panel de efectos personalizados con borde EMBER (naranja) para distinguir
- * de los efectos Core (cyan). Estilo coherente con ArsenalDock.
+ * Glassmorphism dark-glass with NEON retroillumination per MixBus.
+ * No more hardcoded ember/orange — each pad glows with its bus identity.
+ * Filter tabs: Pill design with colored dot indicator.
  * 
  * @module chronos/ui/arsenal/CustomFXDock.css
- * @version WAVE 2030.7
+ * @version WAVE 2040.14
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -17,12 +18,14 @@
   flex: 1; /* CRITICAL: Crece para llenar el espacio verde completo */
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* CRITICAL: Alinea contenido a la izquierda */
+  align-items: flex-start;
   height: 100%;
-  min-width: 0; /* Permite shrinking si es necesario */
+  min-width: 0;
   background: rgba(8, 8, 12, 0.9);
-  border-left: 1px solid rgba(255, 107, 43, 0.2); /* EMBER border */
-  padding-left: 16px; /* Margen respecto al borde divisor */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  padding-left: 16px;
   position: relative;
 }
 
@@ -34,9 +37,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%; /* CRITICAL: Para que ocupe todo el ancho disponible */
-  padding: 6px 10px 6px 0; /* Padding-left = 0 porque el padre ya tiene 16px */
-  border-bottom: 1px solid rgba(255, 107, 43, 0.15);
+  width: 100%;
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
 }
@@ -45,40 +48,74 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 10px;
   font-weight: 800;
-  color: var(--accent-primary, #ff6b2b);
+  color: rgba(168, 85, 247, 0.7);
   letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 }
 
-/* Filter tabs */
+/* WAVE 2040.14: Filter pills — dot + text, no SVGs/emojis */
 .custom-fx-tabs {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .custom-fx-tab {
-  width: 26px;
-  height: 22px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  padding: 3px 8px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
-  padding: 0;
+}
+
+.custom-fx-tab .tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tab-dot, #888);
+  opacity: 0.5;
+  transition: all 0.15s ease;
+}
+
+.custom-fx-tab .tab-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.5px;
+  transition: color 0.15s ease;
 }
 
 .custom-fx-tab:hover {
-  background: rgba(255, 107, 43, 0.1);
-  border-color: rgba(255, 107, 43, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.custom-fx-tab:hover .tab-dot {
+  opacity: 0.8;
+}
+
+.custom-fx-tab:hover .tab-label {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .custom-fx-tab.active {
-  background: rgba(255, 107, 43, 0.2);
-  border-color: var(--accent-primary, #ff6b2b);
-  box-shadow: 0 0 8px rgba(255, 107, 43, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--tab-dot, #888);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tab-dot, #888) 30%, transparent);
+}
+
+.custom-fx-tab.active .tab-dot {
+  opacity: 1;
+  box-shadow: 0 0 6px var(--tab-dot, #888);
+}
+
+.custom-fx-tab.active .tab-label {
+  color: var(--tab-dot, #ccc);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--tab-dot, #888) 40%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -93,7 +130,7 @@
   padding: 8px 8px 8px 0; /* Sin padding-left porque el padre ya tiene margen */
 }
 
-/* Custom scrollbar - thin ember accent */
+/* Custom scrollbar — subtle neutral */
 .custom-fx-scroll::-webkit-scrollbar {
   height: 4px;
 }
@@ -104,12 +141,12 @@
 }
 
 .custom-fx-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 107, 43, 0.4);
+  background: rgba(168, 85, 247, 0.3);
   border-radius: 2px;
 }
 
 .custom-fx-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 107, 43, 0.6);
+  background: rgba(168, 85, 247, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -129,7 +166,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CUSTOM FX PAD - Individual clip button (EMBER style)
+   CUSTOM FX PAD - WAVE 2040.14: Glassmorphism + MixBus neon identity
+   Each pad glows with its bus color via --fx-neon CSS variable
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .custom-fx-pad {
@@ -140,11 +178,15 @@
   gap: 4px;
   width: 72px;
   height: 72px;
-  background: linear-gradient(145deg,
-    rgba(30, 25, 20, 0.95) 0%,
-    rgba(20, 18, 15, 0.98) 100%
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(0, 0, 0, 0.4) 100%
   );
-  border: 2px solid rgba(255, 107, 43, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 3px solid var(--fx-neon, #a78bfa);
   border-radius: 8px;
   cursor: grab;
   transition: all 0.15s ease;
@@ -152,11 +194,18 @@
 }
 
 .custom-fx-pad:hover {
-  border-color: rgba(255, 107, 43, 0.6);
-  transform: scale(1.03);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--fx-neon, #a78bfa) 12%, rgba(255, 255, 255, 0.05)) 0%,
+    color-mix(in srgb, var(--fx-neon, #a78bfa) 8%, rgba(0, 0, 0, 0.4)) 100%
+  );
+  border-color: var(--fx-neon, #a78bfa);
+  border-left-color: var(--fx-neon, #a78bfa);
+  border-top-color: var(--fx-neon, #a78bfa);
+  transform: translateY(-1px);
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(255, 107, 43, 0.2);
+    0 0 15px color-mix(in srgb, var(--fx-neon, #a78bfa) 40%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--fx-neon, #a78bfa) 12%, transparent),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .custom-fx-pad:active {
@@ -166,6 +215,7 @@
 
 .custom-fx-pad.rec-mode {
   cursor: pointer;
+  border-style: dashed;
   border-color: rgba(233, 30, 99, 0.4);
 }
 
@@ -175,15 +225,18 @@
 }
 
 .custom-fx-icon {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
+  color: var(--fx-neon, #a78bfa);
+  filter: drop-shadow(0 0 6px var(--fx-neon, transparent));
 }
 
 .custom-fx-name {
   font-family: var(--font-mono, monospace);
   font-size: 9px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  color: var(--fx-neon, #ccc);
+  text-shadow: 0 0 8px var(--fx-neon, transparent);
   text-align: center;
   max-width: 64px;
   overflow: hidden;
@@ -195,37 +248,42 @@
   font-family: var(--font-mono, monospace);
   font-size: 8px;
   font-weight: 500;
-  color: var(--accent-primary, #ff6b2b);
-  opacity: 0.7;
+  color: color-mix(in srgb, var(--fx-neon, #a78bfa) 60%, rgba(255, 255, 255, 0.3));
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1px 6px;
+  border-radius: 6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   NEW FX BUTTON - Ghost style, always last
+   NEW FX BUTTON - Ghost crystal with violet neon hint
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .custom-fx-pad.new-fx-button {
   background: transparent;
-  border: 2px dashed rgba(255, 107, 43, 0.4);
+  border: 2px dashed rgba(168, 85, 247, 0.3);
+  border-left-width: 2px;
   cursor: pointer;
 }
 
 .custom-fx-pad.new-fx-button:hover {
-  background: rgba(255, 107, 43, 0.1);
-  border-color: var(--accent-primary, #ff6b2b);
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.6);
   border-style: solid;
   box-shadow: 
-    0 0 20px rgba(255, 107, 43, 0.2),
-    inset 0 0 20px rgba(255, 107, 43, 0.05);
+    0 0 20px rgba(168, 85, 247, 0.2),
+    inset 0 0 20px rgba(168, 85, 247, 0.05);
 }
 
 .custom-fx-pad.new-fx-button .custom-fx-icon {
   font-size: 28px;
-  color: rgba(255, 107, 43, 0.6);
+  color: rgba(168, 85, 247, 0.6);
   font-weight: 300;
+  filter: none;
 }
 
 .custom-fx-pad.new-fx-button .custom-fx-name {
-  color: rgba(255, 107, 43, 0.6);
+  color: rgba(168, 85, 247, 0.6);
+  text-shadow: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -268,13 +326,14 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #ff6b2b 0%, #ff8f5a 100%);
+  background: rgba(20, 20, 25, 0.95);
   color: white;
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   font-weight: 700;
   border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(255, 107, 43, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   pointer-events: none;
 }

@@ -39,30 +39,48 @@ interface HephClipMetadata {
   modifiedAt: number
 }
 
-/** Filter tabs */
+/** Filter tabs — WAVE 2040.14: Pill design with colored dots */
 type FilterTab = 'all' | 'physics' | 'color' | 'movement' | 'control'
 
-const FILTER_TABS: { id: FilterTab; label: string; icon: string }[] = [
-  { id: 'all',      label: 'ALL',  icon: '⚒️' },
-  { id: 'physics',  label: 'PHYS', icon: '🔧' },
-  { id: 'color',    label: 'COL',  icon: '🎨' },
-  { id: 'movement', label: 'MOV',  icon: '💫' },
-  { id: 'control',  label: 'CTRL', icon: '🎛️' },
+const FILTER_TABS: { id: FilterTab; label: string; dotColor: string }[] = [
+  { id: 'all',      label: 'ALL',  dotColor: '#a78bfa' },
+  { id: 'physics',  label: 'PHYS', dotColor: '#ef4444' },
+  { id: 'color',    label: 'COL',  dotColor: '#22d3ee' },
+  { id: 'movement', label: 'MOV',  dotColor: '#f59e0b' },
+  { id: 'control',  label: 'CTRL', dotColor: '#10b981' },
 ]
 
-/** Category to icon mapping */
-const CATEGORY_ICONS: Record<string, string> = {
-  'atmospheric': '🌫️',
-  'strobe':      '⚡',
-  'color':       '🎨',
-  'movement':    '💫',
-  'physics':     '🔧',
-  'control':     '🎛️',
-  'pulse':       '💓',
-  'chase':       '🏃',
-  'fade':        '🌙',
-  'default':     '⚒️',
+/**
+ * 🎹 WAVE 2040.14: MixBus neon color mapping for Custom FX pads
+ * Replaces the hardcoded ember/orange with bus-identity colors.
+ */
+const BUS_NEON_MAP: Record<string, string> = {
+  global:   '#ff0055',
+  htp:      '#ff0055',
+  movement: '#f59e0b',
+  ambient:  '#00ff99',
+  accent:   '#3b82f6',
 }
+
+/** Infer bus color from clip category/tags */
+function inferBusNeon(clip: HephClipMetadata): string {
+  const cat = clip.category.toLowerCase()
+  const tags = clip.tags.map(t => t.toLowerCase())
+  
+  if (cat.includes('move') || cat.includes('chase') || tags.some(t => t.includes('move'))) {
+    return BUS_NEON_MAP.movement
+  }
+  if (cat.includes('color') || clip.effectType === 'color' || tags.some(t => t.includes('color'))) {
+    return BUS_NEON_MAP.ambient
+  }
+  if (cat.includes('control') || tags.some(t => t.includes('control'))) {
+    return BUS_NEON_MAP.accent
+  }
+  // Default: global (physics, strobe, pulse, atmospheric, etc.)
+  return BUS_NEON_MAP.global
+}
+
+// 🔥 WAVE 2040.14: Category icons removed — replaced by bus-colored neon identity
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CUSTOM FX PAD - Individual .lfx clip button
@@ -83,7 +101,7 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
   onDragEnd,
   onClick,
 }) => {
-  const icon = CATEGORY_ICONS[clip.category] ?? CATEGORY_ICONS['default']
+  const neonColor = inferBusNeon(clip)
   
   const handleDragStart = useCallback((e: React.DragEvent) => {
     // 🔥 WAVE 2030.17: THE BRIDGE - Hephaestus payload for timeline
@@ -103,10 +121,11 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     e.dataTransfer.setData('application/luxsync-clip', serialized)   // Generic clip
     e.dataTransfer.effectAllowed = 'copyMove'
     
-    // Drag ghost
+    // Drag ghost — WAVE 2040.14: Use neon color instead of emoji
     const ghost = document.createElement('div')
     ghost.className = 'custom-fx-drag-ghost'
-    ghost.textContent = `${icon} ${clip.name}`
+    ghost.textContent = `\u25C6 ${clip.name}`
+    ghost.style.backgroundColor = neonColor
     ghost.style.position = 'fixed'
     ghost.style.top = '-100px'
     document.body.appendChild(ghost)
@@ -114,7 +133,7 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
     setTimeout(() => document.body.removeChild(ghost), 0)
     
     onDragStart?.(payload)
-  }, [clip, icon, onDragStart])
+  }, [clip, neonColor, onDragStart])
   
   const handleClick = useCallback(() => {
     // TODO: Preview momentáneo del clip
@@ -128,9 +147,10 @@ const CustomFXPad: React.FC<CustomFXPadProps> = memo(({
       onDragStart={isRecording ? undefined : handleDragStart}
       onDragEnd={isRecording ? undefined : onDragEnd}
       onClick={handleClick}
+      style={{ '--fx-neon': neonColor } as React.CSSProperties}
       title={`${clip.name} (${clip.author})\n${clip.paramCount} params • ${Math.round(clip.durationMs / 1000)}s`}
     >
-      <span className="custom-fx-icon">{icon}</span>
+      <span className="custom-fx-icon">{'\u2B22'}</span>
       <span className="custom-fx-name">{clip.name}</span>
       <span className="custom-fx-params">{clip.paramCount}P</span>
     </div>
@@ -250,8 +270,10 @@ export const CustomFXDock: React.FC<CustomFXDockProps> = memo(({
               className={`custom-fx-tab ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
               title={tab.label}
+              style={{ '--tab-dot': tab.dotColor } as React.CSSProperties}
             >
-              {tab.icon}
+              <span className="tab-dot" />
+              <span className="tab-label">{tab.label}</span>
             </button>
           ))}
         </div>

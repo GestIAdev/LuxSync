@@ -150,37 +150,41 @@ function createBarGradient(
   return gradient
 }
 
-// 🌊 WAVE 2015: SPECTRAL GRADIENT COLORS
-// Creates the neon spectral effect: violet edges → cyan middle → white center
-const SPECTRAL_COLORS = {
-  edge: '#6d28d9',    // Violeta oscuro (0%, 100%)
-  middle: '#06b6d4',  // Cyan neón (30%, 70%)
-  center: '#ffffff',  // Blanco puro (50%)
+// 🌊 WAVE 2040.14: AURORA PRISMATIC GRADIENT
+// Deep Purple edges → Violet/Magenta middle → White/Pink center
+// The waveform glows like a neon aurora borealis
+const AURORA_COLORS = {
+  edge: '#4c1d95',    // Deep purple (0%, 100%)
+  middle: '#d946ef',  // Fuchsia/Magenta (30%, 70%)
+  center: '#fce7f3',  // White-pink (50%)
 } as const
 
 /**
- * 🌊 WAVE 2015: Create spectral gradient for waveform fill
+ * 🌊 WAVE 2040.14: Create AURORA gradient for waveform fill
+ * Deep Purple → Violet/Magenta → White/Pink center, mirrored symmetrically
  */
 function createSpectralGradient(
   ctx: CanvasRenderingContext2D,
   height: number,
   intensity: number = 1
 ): CanvasGradient {
-  const centerY = height / 2
   const gradient = ctx.createLinearGradient(0, 0, 0, height)
   
   // Edge opacity scales with intensity
   const edgeOpacity = 0.6 + intensity * 0.3
   const middleOpacity = 0.8 + intensity * 0.2
+  const centerOpacity = 0.9 + intensity * 0.1
   
-  // Top to center
-  gradient.addColorStop(0, `rgba(109, 40, 217, ${edgeOpacity})`)     // Violet edge
-  gradient.addColorStop(0.30, `rgba(6, 182, 212, ${middleOpacity})`) // Cyan
-  gradient.addColorStop(0.48, `rgba(255, 255, 255, ${0.9 + intensity * 0.1})`) // Near-white
-  gradient.addColorStop(0.50, '#ffffff')                              // Pure white center
-  gradient.addColorStop(0.52, `rgba(255, 255, 255, ${0.9 + intensity * 0.1})`) // Near-white
-  gradient.addColorStop(0.70, `rgba(6, 182, 212, ${middleOpacity})`) // Cyan
-  gradient.addColorStop(1, `rgba(109, 40, 217, ${edgeOpacity})`)     // Violet edge
+  // Top → Center → Bottom (mirrored aurora)
+  gradient.addColorStop(0, `rgba(76, 29, 149, ${edgeOpacity})`)       // Deep purple edge
+  gradient.addColorStop(0.20, `rgba(139, 92, 246, ${middleOpacity})`) // Violet transition
+  gradient.addColorStop(0.35, `rgba(217, 70, 239, ${middleOpacity})`) // Fuchsia/Magenta
+  gradient.addColorStop(0.42, `rgba(244, 114, 182, ${centerOpacity})`)// Pink approach
+  gradient.addColorStop(0.50, `rgba(252, 231, 243, ${0.95})`)        // White-pink center
+  gradient.addColorStop(0.58, `rgba(244, 114, 182, ${centerOpacity})`)// Pink approach
+  gradient.addColorStop(0.65, `rgba(217, 70, 239, ${middleOpacity})`) // Fuchsia/Magenta
+  gradient.addColorStop(0.80, `rgba(139, 92, 246, ${middleOpacity})`) // Violet transition
+  gradient.addColorStop(1, `rgba(76, 29, 149, ${edgeOpacity})`)       // Deep purple edge
   
   return gradient
 }
@@ -264,8 +268,10 @@ function renderWaveform(
   // Disable anti-aliasing for chunky look
   ctx.imageSmoothingEnabled = false
   
-  // 🌊 WAVE 2015.5: Create spectral gradient
+  // 🌊 WAVE 2040.14: AURORA gradient + magenta glow halo
   const spectralGradient = createSpectralGradient(ctx, height, 0.7)
+  ctx.shadowColor = '#d946ef'
+  ctx.shadowBlur = 10
   
   // 🔥 LAVA MODE: Draw thick mirrored bars
   for (let i = startSample; i < endSample; i += downsampleFactor) {
@@ -296,9 +302,9 @@ function renderWaveform(
     const heatmapIndex = Math.floor((i * msPerSample) / energyHeatmap.resolutionMs)
     const energy = energyHeatmap.energy[heatmapIndex] ?? 0.3
     
-    // 🔥 Draw PEAK bar (outer, subtle)
+    // 🔥 WAVE 2040.14: Draw PEAK bar (outer, aurora magenta tint)
     if (peakHeight > rmsHeight + 2) {
-      ctx.fillStyle = `rgba(109, 40, 217, ${0.3 + energy * 0.2})`
+      ctx.fillStyle = `rgba(139, 92, 246, ${0.3 + energy * 0.2})`
       // Top peak extension
       ctx.fillRect(x, centerY - peakHeight, barWidth - barGap, peakHeight - rmsHeight)
       // Bottom peak extension (mirror)
@@ -320,8 +326,12 @@ function renderWaveform(
     }
   }
   
-  // 🌊 WAVE 2015.5: Glow center line (thin, subtle)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+  // 🌊 WAVE 2040.14: Reset shadow before drawing center line
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
+  
+  // 🌊 WAVE 2040.14: Aurora center line (pink-white, subtle)
+  ctx.strokeStyle = 'rgba(244, 114, 182, 0.3)'
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.moveTo(leftOffset, centerY)

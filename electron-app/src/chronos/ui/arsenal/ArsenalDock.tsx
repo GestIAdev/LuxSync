@@ -39,6 +39,7 @@ import {
   type EffectMeta, 
   type EffectCategory,
   type EffectCategoryId,
+  inferMixBus,
 } from '../../core/EffectRegistry'
 import { getChronosRecorder } from '../../core/ChronosRecorder'
 import { CustomFXDock } from './CustomFXDock'
@@ -305,15 +306,18 @@ const EffectPad: React.FC<EffectPadProps> = memo(({
     }
   }, [effect, isRecording, onClick])
   
+  // 🎹 WAVE 2040.14: Infer MixBus for prismatic neon class
+  const mixBus = useMemo(() => inferMixBus(effect), [effect])
+  
   return (
     <div
-      className={`effect-pad ${isRecording ? 'rec-mode' : ''} ${effect.hasStrobe ? 'strobe' : ''}`}
+      className={`effect-pad heph-btn ${mixBus} ${isRecording ? 'rec-mode' : ''} ${effect.hasStrobe ? 'strobe' : ''}`}
       draggable={!isRecording}
       onDragStart={isRecording ? undefined : handleDragStart}
       onDragEnd={isRecording ? undefined : onDragEnd}
       onClick={handleClick}
       style={{ '--pad-color': effect.color } as React.CSSProperties}
-      title={`${effect.displayName} - ${effect.description}`}
+      title={`${effect.displayName} - ${effect.description} [${mixBus.toUpperCase()}]`}
     >
       <span className="pad-icon">{getEffectIcon(effect)}</span>
       <span className="pad-name">{effect.displayName}</span>
@@ -438,9 +442,10 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="dock-grid">
         <div className="grid-header">
-          <span className="grid-category" style={{ color: activeCategory.color }}>
-            {React.createElement(VIBE_ICON_MAP[activeCategory.id] ?? ChipFxIcon, { size: 16, color: activeCategory.color })}
-            {' '}{activeCategory.name}
+          {/* 🎹 WAVE 2040.14: Pill design — Color dot + text, no SVG icon */}
+          <span className="grid-category" style={{ '--cat-neon': activeCategory.color } as React.CSSProperties}>
+            <span className="grid-category-dot" />
+            {activeCategory.name}
           </span>
           <span className="grid-mode">
             {effectiveRecording ? '\u25CF CLICK TO RECORD' : '\u205E\u205E DRAG TO TIMELINE'}

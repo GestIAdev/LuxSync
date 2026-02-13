@@ -37,7 +37,9 @@ import {
   MonitorIcon,
   MagnetIcon,
   WaveformIcon,
+  UploadIcon,
 } from '../../../components/icons/LuxIcons'
+import { useStageStore } from '../../../stores/stageStore'
 import { usePowerStore, type SystemPowerState } from '../../../hooks/useSystemPower'
 import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../../stores/controlStore'
 import { getChronosStore } from '../../core/ChronosStore'
@@ -294,6 +296,38 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
     if (!isNaN(value) && value >= 20 && value <= 300) onBpmChange(value)
   }, [onBpmChange])
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // WAVE 2040.5b: LOAD SHOW (absorbed from ActiveSession.tsx)
+  // Opens native file dialog → loads .luxshow → stageStore auto-updates
+  // ─────────────────────────────────────────────────────────────────────────
+  const [isLoadingShow, setIsLoadingShow] = useState(false)
+  const showFile = useStageStore(state => state.showFile)
+  const fixtureCount = useStageStore(state => state.fixtures.length)
+
+  const handleLoadShow = useCallback(async () => {
+    setIsLoadingShow(true)
+    try {
+      const luxApi = (window as any).lux
+      if (!luxApi?.stage?.openDialog) {
+        console.error('[TransportBar] window.lux.stage.openDialog not available')
+        return
+      }
+      const result = await luxApi.stage.openDialog()
+      if (result?.success) {
+        console.log(`[TransportBar] Show loaded: ${result.filePath}`)
+        if (result.migrated) {
+          console.log('[TransportBar] Show migrated from v1 to v2')
+        }
+      } else if (!result?.cancelled) {
+        console.error('[TransportBar] Failed to load show')
+      }
+    } catch (err) {
+      console.error('[TransportBar] Error in load show dialog:', err)
+    } finally {
+      setIsLoadingShow(false)
+    }
+  }, [])
+
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER — THE MASTER TOOLBAR
   // ═══════════════════════════════════════════════════════════════════════
@@ -364,6 +398,23 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
           )}
         </div>
 
+        <span className="ct-divider" />
+
+        {/* WAVE 2040.5b: Load Show (fixtures/stage) */}
+        <div className="ct-show-group">
+          <button
+            className={`ct-show-btn ${showFile ? 'loaded' : 'empty'}`}
+            onClick={handleLoadShow}
+            disabled={isLoadingShow}
+            title={showFile ? `Show: ${showFile.name} (${fixtureCount} fixtures) — Click to load different show` : 'Load Show File (.luxshow)'}
+          >
+            <UploadIcon size={14} />
+            <span className="ct-show-label">
+              {isLoadingShow ? 'LOADING' : showFile ? `${fixtureCount}F` : 'LOAD SHOW'}
+            </span>
+          </button>
+        </div>
+
         {projectName && (
           <span className="ct-project-name" title={projectName}>
             {projectName.length > 18 ? projectName.slice(0, 15) + '\u2026' : projectName}
@@ -411,7 +462,7 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
         </div>
 
         <div className="ct-bpm-group">
-          <button className="ct-bpm-adj" onClick={handleBpmDecrease} title="Decrease BPM">\u2212</button>
+          <button className="ct-bpm-adj" onClick={handleBpmDecrease} title="Decrease BPM">{'\u2212'}</button>
           <div className="ct-bpm-display">
             <input
               type="number"

@@ -2226,6 +2226,22 @@ export const MasksIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/** WAVE 2040.5b: UPLOAD - Import/Load Show file (arrow up from tray) */
+export const UploadIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M12 16V4M12 4L8 8M12 4L16 8"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path
+      d="M4 14V18C4 19.1 4.9 20 6 20H18C19.1 20 20 19.1 20 18V14"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2321,4 +2337,5 @@ export default {
   ChevronLeft: ChevronLeftIcon,
   Zap: ZapIcon,
   Masks: MasksIcon,
+  Upload: UploadIcon,
 }

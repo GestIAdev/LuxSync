@@ -539,6 +539,67 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * WAVE 2040.5b: LOAD SHOW — Stage/Fixture loader
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.ct-show-group {
+  display: flex;
+  align-items: center;
+}
+
+.ct-show-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-mono);
+}
+
+.ct-show-btn:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.ct-show-btn.empty {
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #f97316;
+}
+
+.ct-show-btn.empty:hover {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: #f97316;
+}
+
+.ct-show-btn.loaded {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.ct-show-btn.loaded:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+}
+
+.ct-show-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.ct-show-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * AUDIO — Load / Indicator
  * ═══════════════════════════════════════════════════════════════════════════ */
 

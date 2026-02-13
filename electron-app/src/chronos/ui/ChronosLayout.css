@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏱️ CHRONOS LAYOUT STYLES - WAVE 2009.5: POLISH & POWER
+ * CHRONOS LAYOUT STYLES - WAVE 2040.5b: VIOLET UNIFICATION
  * Cyberpunk Industrial aesthetic for timeline editor
  * 
  * Layout Structure:
@@ -16,13 +16,13 @@
  * │                                                     │                   │
  * ├─────────────────────────────────────────────────────┴───────────────────┤
  * │                    ARSENAL DOCK (240px fixed, flex-shrink: 0)           │
- * │  [🎺 VIBE TABS]  [ EFFECT GRID 2 rows × infinite ]  [🔴 ARM TRIGGER]   │
+ * │  [VIBE TABS]  [ EFFECT GRID 2 rows x infinite ]  [ARM TRIGGER]        │
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * Color Palette:
- * - Primary: #3b82f6 (Electric Blue - temporal/studio feel)
- * - Accents: #7C4DFF (Purple), #00E5FF (Cyan), #f97316 (Orange)
- * - Background: Deep blacks with blue undertones
+ * - Primary: #a855f7 (Violet - unified Hephaestus aesthetic)
+ * - Accents: #a855f7 (Violet), #10b981 (Green), #f97316 (Orange)
+ * - Background: Deep blacks with violet undertones
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -71,7 +71,7 @@
   background: linear-gradient(90deg, 
     transparent 0%, 
     var(--border-subtle) 20%, 
-    #3b82f6 50%, 
+    #a855f7 50%, 
     var(--border-subtle) 80%, 
     transparent 100%
   );
@@ -83,7 +83,7 @@
   background: linear-gradient(180deg, 
     transparent 0%, 
     var(--border-subtle) 20%, 
-    #3b82f6 50%, 
+    #a855f7 50%, 
     var(--border-subtle) 80%, 
     transparent 100%
   );
@@ -100,7 +100,7 @@
   align-items: center;
   justify-content: center;
   background: 
-    linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
     var(--bg-deep);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
@@ -118,15 +118,15 @@
       0deg,
       transparent,
       transparent 50px,
-      rgba(59, 130, 246, 0.02) 50px,
-      rgba(59, 130, 246, 0.02) 51px
+      rgba(168, 85, 247, 0.02) 50px,
+      rgba(168, 85, 247, 0.02) 51px
     ),
     repeating-linear-gradient(
       90deg,
       transparent,
       transparent 50px,
-      rgba(59, 130, 246, 0.02) 50px,
-      rgba(59, 130, 246, 0.02) 51px
+      rgba(168, 85, 247, 0.02) 50px,
+      rgba(168, 85, 247, 0.02) 51px
     );
   pointer-events: none;
 }
@@ -148,7 +148,7 @@
   font-family: var(--font-display);
   font-size: 14px;
   letter-spacing: 2px;
-  color: #3b82f6;
+  color: #a855f7;
   opacity: 0.6;
 }
 
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.1) 0%, transparent 100%);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -214,7 +214,7 @@
   font-family: var(--font-display);
   font-size: 12px;
   letter-spacing: 2px;
-  color: #3b82f6;
+  color: #a855f7;
 }
 
 .arsenal-content {

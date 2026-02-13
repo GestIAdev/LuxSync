@@ -17,6 +17,7 @@
 5. [Propuesta: Clips Infinite-End para Vibes](#5-clips-infinite-end)
 6. [Propuesta: Migración a Semantic Tracks](#6-semantic-tracks)
 7. [Resumen de Decisiones Pendientes](#7-decisiones-pendientes)
+8. [🔴 CRÍTICO: Conflicto de Categorías Hephaestus vs MixBus](#8-conflicto-hephaestus)
 
 ---
 
@@ -437,6 +438,242 @@ Si en el futuro queremos tracks dinámicos (el usuario añade/quita), ahí sí s
 3. D2 (Infinite Vibes)  → 2-3h  → Feature real
 4. D3+D4 (Grid Settings)→ 4-6h  → Requiere nuevo componente UI
 ```
+
+---
+
+## 8. 🔴 CRÍTICO: Conflicto de Categorías Hephaestus vs MixBus {#8-conflicto-hephaestus}
+
+**FECHA DE HALLAZGO:** 2026-02-13  
+**SEVERIDAD:** 🔴 BLOQUEANTE — Afecta toda la arquitectura de tracks FX  
+**HALLAZGO POR:** Radwulf (intuición correctísima)  
+**REGLA:** NO SE TOCA UNA SOLA LÍNEA DE CÓDIGO hasta resolver esto.
+
+### 8.1 El Conflicto
+
+LuxSync tiene **DOS sistemas de categorización de efectos** que no se hablan entre sí:
+
+#### SISTEMA A: EffectCategory (effects/types.ts, línea 29)
+
+```typescript
+export type EffectCategory = 
+  | 'physical'   // Afecta dimmer/strobe (HTP)
+  | 'color'      // Afecta color/saturación
+  | 'movement'   // Afecta pan/tilt
+```
+
+**Son 3 categorías, no 4.** Clasifican efectos por QUÉ PARÁMETROS TOCAN del fixture:
+- `physical` → Dimmer, strobe (intensidad lumínica)
+- `color` → HSL, saturación, color wash
+- `movement` → Pan, tilt, gobos
+
+**Hephaestus USA directamente `EffectCategory`** en su `HephAutomationClip`:
+```typescript
+// hephaestus/types.ts, línea 275
+category: EffectCategory  // ← Importado de '../effects/types'
+```
+
+#### SISTEMA B: MixBus (chronos/core/EffectRegistry.ts, línea 49)
+
+```typescript
+export type MixBus = 'global' | 'htp' | 'ambient' | 'accent'
+```
+
+**Son 4 categorías.** Clasifican efectos por CÓMO SE MEZCLAN en el output:
+- `global` → Takeover total (strobe meltdowns, blinders)
+- `htp` → High-priority transitional (sweeps, chases, scans)
+- `ambient` → Atmósferas de fondo (mists, rain, breath)
+- `accent` → Acentos cortos (sparks, hits, < 2s)
+
+**MixBus es lo que decide el track** → `getEffectTrackId()`:
+```
+global  → FX1
+htp     → FX2
+ambient → FX3
+accent  → FX4
+```
+
+### 8.2 La Foto Completa del Problema
+
+```
+                    SISTEMA A (EffectCategory)          SISTEMA B (MixBus)
+                    ═══════════════════════              ═══════════════════
+                    physical  │ color  │ movement        global │ htp │ ambient │ accent
+                    ──────────┼────────┼─────────        ───────┼─────┼─────────┼───────
+Hephaestus clips:      ✅    │   ✅   │    ✅              ❌   │  ❌ │    ❌   │   ❌
+House effects (45+):   ✅    │   ✅   │    ✅              ✅   │  ✅ │    ✅   │   ✅
+Track routing:         ❌    │   ❌   │    ❌              ✅   │  ✅ │    ✅   │   ✅
+.lfx files:            ✅    │   ✅   │    ✅              ❌*  │  ❌*│    ❌*  │   ❌*
+
+❌* = HephAutomationClip tiene `mixBus: 'htp' | 'global'` — PERO SOLO 2 DE LOS 4 VALORES
+```
+
+### 8.3 Autopsia Detallada del Tipo HephAutomationClip
+
+Del código real en `hephaestus/types.ts` (líneas 260-310):
+
+```typescript
+export interface HephAutomationClip {
+  category: EffectCategory        // ← 'physical' | 'color' | 'movement' (3 valores)
+  mixBus: 'htp' | 'global'       // ← SOLO 2 DE LOS 4 MIXBUS (falta 'ambient', 'accent')
+  effectType: string              // ← 'acid_sweep' o 'heph_custom'
+  curves: Map<HephParamId, HephCurve>  // ← Las curvas de automatización
+  // ...
+}
+```
+
+**TRES problemas simultáneos:**
+
+1. **`EffectCategory` tiene solo 3 valores** (`physical`, `color`, `movement`) — no existe `control`. Radwulf pensaba que había 4 categorías en Hephaestus; hay 3. Pero eso NO resuelve el conflicto, lo hace PEOR: ¿qué categoría tiene un efecto que controla zoom+iris+gobo? ¿Es `physical`? ¿Es `movement`?
+
+2. **`mixBus` en Hephaestus está MUTILADO** — Solo acepta `'htp' | 'global'`, cuando el sistema MixBus real tiene 4 valores (`global | htp | ambient | accent`). Un clip de Hephaestus NUNCA podrá ir a FX3 (ambient) ni FX4 (accent).
+
+3. **`EffectCategory` y `MixBus` clasifican por ejes DIFERENTES** — EffectCategory clasifica por QUÉ PARÁMETRO se toca. MixBus clasifica por CÓMO SE MEZCLA. Son ortogonales. Un efecto `color` puede ser `global` (color wash que domina todo) o `ambient` (tinte sutil de fondo).
+
+### 8.4 Escenario de Desastre (si no se resuelve)
+
+Un técnico profesional crea un efecto en Hephaestus: un Gobo Chase con Color Sweep.
+
+```
+Efecto "Gobo Acid Sweep":
+  - Curvas: gobo1 (rotation), color (HSL sweep), intensity (breath), pan (scan)
+  - ¿EffectCategory? → Usa gobo + color + movement. ¿Cuál eliges? NINGUNA es correcta.
+  - ¿MixBus? → Solo puede ser 'htp' o 'global'. ¿Y si es atmospheric? Mala suerte.
+  - ¿Track? → Va a FX1 o FX2. NUNCA a FX3 ni FX4.
+```
+
+**Resultado:** Los 4 tracks "semánticos" que propusimos en la Sección 6 serían mentira para clips de Hephaestus. El track AMBIENT nunca tendría clips Heph. El track ACCENT nunca tendría clips Heph.
+
+### 8.5 Análisis de Soluciones
+
+#### ❌ OPCIÓN A: Dos sistemas en paralelo
+
+Mantener `EffectCategory` para Hephaestus y `MixBus` para los 45 house effects.
+
+**Por qué NO:** Los tracks se asignan por MixBus. Si Hephaestus no puede hablar MixBus completo, sus clips están condenados a 2 tracks. Además, el nombre del track ("AMBIENT") le mentiría al usuario cuando su clip de niebla custom va a HTP porque el .lfx no puede expresar `ambient`.
+
+#### ❌ OPCIÓN B: Eliminar EffectCategory, usar solo MixBus
+
+Cambiar `HephAutomationClip.category` a usar `MixBus` en lugar de `EffectCategory`.
+
+**Por qué NO:** `EffectCategory` existe por una razón REAL — determina cómo el EffectManager aplica el output (HTP merge para physical, color blending para color, position merge para movement). No es cosmético. Es comportamiento de mezcla en runtime.
+
+#### ✅ OPCIÓN C: AMBOS SON NECESARIOS — Completar lo que falta
+
+`EffectCategory` responde: **¿QUÉ parámetros toca este efecto?** → Determina mezcla en runtime
+`MixBus` responde: **¿CÓMO se mezcla en el timeline?** → Determina routing a tracks
+
+Los dos ejes son ortogonales y AMBOS son necesarios. El problema es que:
+
+1. `EffectCategory` le falta `control` para zoom/iris/gobo/prism/focus
+2. `HephAutomationClip.mixBus` le faltan `'ambient' | 'accent'`
+3. Los house effects infieren MixBus por heurística; Hephaestus debería declararlo explícitamente
+
+**SOLUCIÓN PROPUESTA (Opción C):**
+
+```
+PASO 1: Ampliar EffectCategory
+─────────────────────────────────
+export type EffectCategory = 
+  | 'physical'    // dimmer, strobe (intensity)
+  | 'color'       // HSL, white, amber (chromatic)
+  | 'movement'    // pan, tilt (positional)
+  | 'optics'      // zoom, focus, iris, gobo1, gobo2, prism (beam shaping)
+  | 'composite'   // toca múltiples categorías (nuevo, para efectos complejos)
+
+PASO 2: Ampliar MixBus en HephAutomationClip
+─────────────────────────────────────────────
+// Antes:
+mixBus: 'htp' | 'global'
+
+// Después:
+mixBus: 'global' | 'htp' | 'ambient' | 'accent'  // ← Los 4 completos
+
+PASO 3: Auto-inferir category desde las curvas
+─────────────────────────────────────────────────
+function inferHephCategory(clip: HephAutomationClip): EffectCategory {
+  const paramIds = Array.from(clip.curves.keys())
+  const touchesPhysical = paramIds.some(p => ['intensity', 'strobe'].includes(p))
+  const touchesColor = paramIds.some(p => ['color', 'white', 'amber'].includes(p))
+  const touchesMovement = paramIds.some(p => ['pan', 'tilt'].includes(p))
+  const touchesOptics = paramIds.some(p => ['zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism'].includes(p))
+  
+  const count = [touchesPhysical, touchesColor, touchesMovement, touchesOptics].filter(Boolean).length
+  if (count > 1) return 'composite'
+  if (touchesPhysical) return 'physical'
+  if (touchesColor) return 'color'
+  if (touchesMovement) return 'movement'
+  if (touchesOptics) return 'optics'
+  return 'physical' // fallback
+}
+
+PASO 4: MixBus como campo obligatorio en .lfx
+──────────────────────────────────────────────
+El técnico ELIGE en Hephaestus Studio a qué bus va su efecto.
+UI: selector "Routing: GLOBAL | MOVEMENT | AMBIENT | ACCENT"
+Esto va directo al .lfx. No hay inferencia. Decisión humana.
+```
+
+### 8.6 Impacto de la Opción C en la Sección 6 (Semantic Tracks)
+
+Si implementamos la Opción C, los Semantic Track Labels propuestos en la Sección 6 funcionan CORRECTAMENTE para todo:
+
+```
+TRACK     │ MixBus    │ House Effects (45+)      │ Hephaestus Clips
+──────────┼───────────┼──────────────────────────┼─────────────────────
+GLOBAL    │ global    │ Strobes, blinders ✅      │ Takeover customs ✅
+MOVEMENT  │ htp       │ Sweeps, chases ✅         │ Movement customs ✅
+AMBIENT   │ ambient   │ Mists, rain ✅            │ Atmospheric customs ✅
+ACCENT    │ accent    │ Sparks, hits ✅            │ Punchy customs ✅
+```
+
+**Ambos mundos unificados bajo MixBus como clave de routing universal.**
+
+### 8.7 Archivos Afectados y Esfuerzo
+
+| Archivo | Cambio | Esfuerzo | Riesgo |
+|---------|--------|----------|--------|
+| `core/effects/types.ts` | Añadir `'optics'` y `'composite'` a `EffectCategory` | 🟢 1 línea | 🟡 Medio — revisar consumidores |
+| `core/hephaestus/types.ts` | Cambiar `mixBus: 'htp' \| 'global'` → `'global' \| 'htp' \| 'ambient' \| 'accent'` | 🟢 1 línea | 🟢 Bajo |
+| `core/hephaestus/HephFileIO.ts` | Ninguno — serializa lo que le des | ✅ Nada | ✅ Ninguno |
+| `.lfx files existentes` | **NO HAY NINGUNO** en el workspace. Zero migración. | ✅ Nada | ✅ Ninguno |
+| `chronos/core/EffectRegistry.ts` | Potencialmente mapear `EffectCategory` a `MixBus` para house effects | 🟡 ~20 líneas | 🟡 Medio |
+| `chronos/core/ChronosRecorder.ts` | Ya usa MixBus — si Heph clips traen MixBus completo, zero cambios | ✅ Nada | ✅ Ninguno |
+| Hephaestus Studio UI (futuro) | Selector de MixBus en el panel de propiedades del clip | 🟡 Cuando exista | N/A |
+
+### 8.8 Dato Clave: No Existen Archivos .lfx
+
+```
+$ file_search("**/*.lfx") → 0 resultados
+```
+
+**NO HAY ARCHIVOS .LFX EN EL WORKSPACE.** El formato está definido (`HephFileIO.ts`), el schema está diseñado (`hephaestus/v1`), pero nadie ha guardado un clip todavía. Esto significa:
+
+- **CERO** migración de datos
+- **CERO** backwards compatibility concerns  
+- **CERO** archivos que romper
+
+Es el momento PERFECTO para corregir el tipo. Si lo hacemos ahora, cada .lfx que se genere en el futuro nacerá con el `mixBus` completo de 4 valores. Si esperamos, tendremos .lfx legacy con solo 2 valores y necesitaremos migraciones.
+
+### 8.9 Decisiones Pendientes (Nuevas)
+
+| # | Decisión | Opciones | Mi Recomendación |
+|---|----------|----------|------------------|
+| D7 | **¿Ampliar `EffectCategory` con `optics` y `composite`?** | A) Sí / B) Mantener solo 3 | **A) Sí** — zoom/gobo/iris necesitan casa |
+| D8 | **¿Ampliar `mixBus` en Hephaestus a los 4 valores?** | A) Sí / B) Mantener `htp \| global` | **A) Sí** — es 1 línea y desbloquea todo |
+| D9 | **¿Auto-inferir `category` desde curvas de Heph?** | A) Inferir automático / B) Elegir manual / C) Ambos | **C) Ambos** — inferir como default, override manual |
+| D10 | **¿MixBus como campo del .lfx controlado por el técnico?** | A) Manual / B) Inferir de category | **A) Manual** — el técnico sabe dónde quiere su efecto |
+
+### 8.10 Veredicto Final
+
+> **Radwulf tenía razón.** No podemos construir el sistema de tracks semánticos centrado en los 45 house effects.
+> El trabajo profesional real se hará en Hephaestus, y si esos clips nacen mutilados 
+> (solo 2 de 4 MixBus, sin categoría para óptica), los tracks FX3 y FX4 seguirán 
+> vacíos para siempre — pero ahora de verdad, no por percepción.
+>
+> La corrección es quirúrgica: 1 línea en `hephaestus/types.ts`, 1 línea en `effects/types.ts`.
+> Y el bonus: NO HAY ARCHIVOS .LFX QUE MIGRAR. Ventana perfecta.
+>
+> **PROHIBIDO implementar Semantic Tracks (Sección 6) hasta que D7+D8 estén resueltos.**
 
 ---
 

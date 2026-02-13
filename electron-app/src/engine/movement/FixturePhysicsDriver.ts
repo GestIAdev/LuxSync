@@ -320,40 +320,61 @@ export class FixturePhysicsDriver {
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔧 WAVE 2040.2: PHANTOM MODE PROTECTION - THE MATH EXPLOSION FIX
+    // 🚫 WAVE 2040.2b: ANTI-FREEZE TELEPORT MODE
     // 
     // Cuando Chronos está reproduciendo, el deltaTime puede ser errático:
     // - Pausado: deltaTime = 0 o Infinity
-    // - Saltos: deltaTime > 100ms
-    // - Scrubbing: deltaTime negativo o muy grande
+    // - Saltos pequeños: deltaTime 50-200ms (lag/pausa)
+    // - Saltos grandes: deltaTime > 200ms (usuario saltó timeline de 0s → 2:00)
     // 
-    // Con patterns como square (saltos secos de 180°), un deltaTime grande
-    // combinado con un delta de posición enorme resulta en velocity = Infinity
-    // → NaN Guard activa → fixture congelado.
+    // ESTRATEGIA TRIPLE:
+    // 1. deltaTime < 50ms → Live Mode (single pass physics)
+    // 2. 50ms < deltaTime < 200ms → Iterative Chunking (divide en 16ms)
+    // 3. deltaTime > 200ms → TELEPORT MODE (skip physics, jump instantly)
     // 
-    // SOLUCIÓN: Si deltaTime > 50ms, dividir en pasos iterativos de 16ms.
-    // Esto mantiene el cálculo de velocidad estable sin explosiones matemáticas.
+    // ⚠️ CRÍTICO: Si deltaTime = 120,000ms (2 min), dividir en 7,500 chunks
+    //    congelaría la UI de React. TELEPORT evita el bucle infinito.
     // ═══════════════════════════════════════════════════════════════════════
     let smoothedDMX: Position2D = targetDMX  // Inicializado con target safe
     
-    if (deltaTime > 50) {
-      // Phantom Mode: deltaTime errático - dividir en chunks iterativos
-      const CHUNK_SIZE = 16  // ms por iteración
+    if (deltaTime > 200) {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🚫 TELEPORT MODE: Timeline jump detected (e.g., 0s → 2:00)
+      // Skip physics entirely, jump to target position instantly
+      // Force velocity to 0 to avoid math explosions
+      // ═══════════════════════════════════════════════════════════════════
+      smoothedDMX = targetDMX
+      this.currentPositions.set(fixtureId, targetDMX)
+      this.velocities.set(fixtureId, { pan: 0, tilt: 0 })
+      
+      // Debug log (low frequency to avoid spam)
+      if (Math.random() < 0.05) {
+        console.log(`[🚀 TELEPORT] ${fixtureId} | dt=${deltaTime.toFixed(0)}ms → instant jump (skip physics)`)
+      }
+    } else if (deltaTime > 50) {
+      // ═══════════════════════════════════════════════════════════════════
+      // 🎬 PHANTOM MODE: Iterative chunking for medium deltas (lag/pause)
+      // Divide into 16ms chunks to keep velocity calculation stable
+      // ═══════════════════════════════════════════════════════════════════
+      const CHUNK_SIZE = 16  // ms per iteration
       const iterations = Math.ceil(deltaTime / CHUNK_SIZE)
       const actualChunk = deltaTime / iterations
       
-      // Iterar physics en pasos pequeños
+      // Iterate physics in small steps
       let currentTarget = targetDMX
       for (let i = 0; i < iterations; i++) {
         smoothedDMX = this.applyPhysicsEasing(fixtureId, currentTarget, actualChunk)
         currentTarget = smoothedDMX
       }
       
-      // Debugging solo cada ~60 frames
+      // Debug log (low frequency)
       if (Math.random() < 0.016) {
         console.log(`[🎬 PHANTOM] ${fixtureId} | dt=${deltaTime.toFixed(0)}ms → ${iterations} chunks`)
       }
     } else {
-      // Live Mode: deltaTime normal - single pass
+      // ═══════════════════════════════════════════════════════════════════
+      // ✅ LIVE MODE: Normal deltaTime (< 50ms) - single pass physics
+      // ═══════════════════════════════════════════════════════════════════
       smoothedDMX = this.applyPhysicsEasing(fixtureId, targetDMX, deltaTime)
     }
     

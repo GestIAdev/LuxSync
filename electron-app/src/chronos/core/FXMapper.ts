@@ -156,6 +156,12 @@ export function mapChronosFXToBaseEffect(
     return fxType
   }
   
+  // ⚒️ WAVE 2040.22: Heph custom clips live outside the Core FX taxonomy
+  // They should never reach here (Bridge handles them), but defense in depth.
+  if (fxType === 'heph-custom') {
+    return 'heph-custom'
+  }
+  
   // Check for vibe-specific variant of timeline type
   if (vibeId && VIBE_SPECIFIC_FX[vibeId]?.[fxType]) {
     return VIBE_SPECIFIC_FX[vibeId][fxType]

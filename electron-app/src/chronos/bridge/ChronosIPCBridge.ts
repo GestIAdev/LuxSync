@@ -198,6 +198,21 @@ async function handleFXStop(command: StageCommand): Promise<void> {
     return
   }
   
+  // ⚒️ WAVE 2040.22: Heph Diamond clips bypass FXMapper entirely
+  // The mapper doesn't know about 'heph-custom' — and it shouldn't need to.
+  // Heph clips live outside the Core FX taxonomy.
+  if (command.isHephCustom || fxType === 'heph-custom') {
+    try {
+      const result = await (window as any).lux.chronos?.stopFX?.('heph-custom') || { success: true }
+      if (result.success) {
+        console.log('[ChronosBridge] ✅ ⚒️ HEPH Diamond stopped')
+      }
+    } catch (err) {
+      console.error('[ChronosBridge] ❌ Failed to stop HEPH FX:', err)
+    }
+    return
+  }
+  
   const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
   
   try {

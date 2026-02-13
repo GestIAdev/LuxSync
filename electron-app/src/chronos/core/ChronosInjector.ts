@@ -97,6 +97,8 @@ interface ActiveState {
   activeVibeId: string | null
   /** Map of clipId → fxType for active FX (so we can emit fxType on stop) */
   activeFxMap: Map<string, string>
+  /** WAVE 2040.21: Set of clipIds that are Hephaestus custom clips */
+  hephCustomClipIds: Set<string>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -111,6 +113,7 @@ export class ChronosInjector {
   private prevState: ActiveState = {
     activeVibeId: null,
     activeFxMap: new Map(),
+    hephCustomClipIds: new Set(),
   }
   
   /** Debug mode - logs all commands */
@@ -215,6 +218,11 @@ export class ChronosInjector {
           isHephCustom: fx.isHephCustom, // ⚒️ WAVE 2030.18: Runtime bypass flag
         })
         
+        // ⚒️ WAVE 2040.22: Track Heph custom clip IDs for stop propagation
+        if (fx.isHephCustom) {
+          this.prevState.hephCustomClipIds.add(fx.id)
+        }
+        
         if (this.debug) {
           const hephTag = fx.isHephCustom ? ' ⚒️[HEPH RUNTIME]' : fx.hephClip ? ' ⚒️[HEPH]' : ''
           console.log(`[ChronosInjector] ⚡ FX ON → ${fx.label}${hephTag}`)
@@ -233,16 +241,26 @@ export class ChronosInjector {
     // ═══════════════════════════════════════════════════════════════════════
     for (const [prevId, prevFxType] of this.prevState.activeFxMap) {
       if (!currentFxMap.has(prevId)) {
+        // ⚒️ WAVE 2040.22: Propagate isHephCustom flag on stop
+        const wasHephCustom = this.prevState.hephCustomClipIds.has(prevId)
+        
         // FX ended - emit the fxType, not the clipId!
         this.emit({
           type: 'fx-stop',
           effectId: prevFxType,  // ← FIX: was prevId (clipId), now prevFxType
           displayName: '',
           timestamp: Date.now(),
+          isHephCustom: wasHephCustom, // ⚒️ WAVE 2040.22: Bridge needs this to bypass FXMapper
         })
         
+        // Clean up tracking
+        if (wasHephCustom) {
+          this.prevState.hephCustomClipIds.delete(prevId)
+        }
+        
         if (this.debug) {
-          console.log(`[ChronosInjector] ⬛ FX OFF → ${prevFxType}`)
+          const hephTag = wasHephCustom ? ' ⚒️[HEPH]' : ''
+          console.log(`[ChronosInjector] ⬛ FX OFF → ${prevFxType}${hephTag}`)
         }
       }
     }
@@ -257,17 +275,20 @@ export class ChronosInjector {
   reset(): void {
     // Stop all active FX
     for (const [clipId, fxType] of this.prevState.activeFxMap) {
+      const wasHephCustom = this.prevState.hephCustomClipIds.has(clipId)
       this.emit({
         type: 'fx-stop',
         effectId: fxType,  // ← FIX: emit fxType, not clipId
         displayName: '',
         timestamp: Date.now(),
+        isHephCustom: wasHephCustom, // ⚒️ WAVE 2040.22: Propagate on reset too
       })
     }
     
     this.prevState = {
       activeVibeId: null,
       activeFxMap: new Map(),
+      hephCustomClipIds: new Set(),
     }
     
     if (this.debug) {

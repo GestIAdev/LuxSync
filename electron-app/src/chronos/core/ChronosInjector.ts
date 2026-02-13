@@ -35,7 +35,7 @@
  */
 
 import type { TimelineClip, VibeClip, FXClip } from './TimelineClip'
-import type { HephAutomationClip } from '../../core/hephaestus/types'
+import type { HephAutomationClipSerialized } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -65,12 +65,14 @@ export interface StageCommand {
   timestamp: number
   
   /**
-   * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+   * ⚒️ WAVE 2030.4 → 2040.17: HEPHAESTUS DIAMOND DATA
    * 
-   * Curvas de automatización adjuntas al FXClip.
-   * Solo presente cuando type === 'fx-trigger' y el clip tiene hephClip.
+   * Serialized automation curves attached to the FXClip.
+   * WAVE 2040.17: Now uses HephAutomationClipSerialized (Record<>)
+   * for safe JSON transport. Consumer must deserializeHephClip()
+   * if Map<> access is needed.
    */
-  hephCurves?: HephAutomationClip
+  hephCurves?: HephAutomationClipSerialized
   
   /**
    * ⚒️ WAVE 2030.18: THE RUNTIME

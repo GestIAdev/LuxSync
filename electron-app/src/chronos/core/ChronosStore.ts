@@ -312,10 +312,13 @@ export class ChronosStore {
           return { success: false, error: 'Invalid project file format' }
         }
         
-        // Validate project
+        // Validate project — WAVE 2040.17: Extended Diamond validation
         const validation = validateProject(project)
         if (!validation.valid) {
-          console.warn('[ChronosStore] Project validation warnings:', validation.errors)
+          console.warn('[ChronosStore] ❌ Project validation errors:', validation.errors)
+        }
+        if (validation.warnings.length > 0) {
+          console.warn('[ChronosStore] ⚠️ Project validation warnings:', validation.warnings)
         }
         
         this.project = project
@@ -628,7 +631,7 @@ export class ChronosStore {
         }
         
         const project = deserializeProject(json)
-        if (!project || !validateProject(project)) {
+        if (!project || !validateProject(project).valid) {
           return { success: false, error: 'Recovery data is corrupted' }
         }
         
@@ -651,7 +654,7 @@ export class ChronosStore {
       
       if (result.success && result.json) {
         const project = deserializeProject(result.json)
-        if (!project || !validateProject(project)) {
+        if (!project || !validateProject(project).valid) {
           return { success: false, error: 'Recovery data is corrupted' }
         }
         

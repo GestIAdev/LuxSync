@@ -226,7 +226,8 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
       selectClip(clip.id)
       return clip
     } else if (payload.clipType === 'fx') {
-      // ⚒️ WAVE 2030.17: THE BRIDGE - Check if this is a Hephaestus custom clip
+      // ⚒️ WAVE 2030.17 → 2040.17: THE DIAMOND BRIDGE
+      // Check if this is a Hephaestus custom clip
       if (payload.source === 'hephaestus' && payload.hephFilePath) {
         const clip = createHephFXClip(
           payload.name ?? 'Custom FX',
@@ -234,11 +235,16 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
           snappedTime,
           payload.defaultDurationMs,
           trackId,
-          payload.subType
+          payload.subType,
+          // WAVE 2040.17: Full Diamond Data from DragPayload
+          payload.hephClipSerialized,
+          payload.mixBus,
+          payload.zones,
+          payload.priority,
         )
         addClip(clip)
         selectClip(clip.id)
-        console.log(`[useTimelineClips] ⚒️ Created Hephaestus clip: ${clip.label}`)
+        console.log(`[useTimelineClips] ⚒️💎 Created Hephaestus Diamond clip: ${clip.label} [mixBus=${payload.mixBus || 'none'}, curves=${payload.hephClipSerialized ? Object.keys(payload.hephClipSerialized.curves).length : 0}]`)
         return clip
       }
       

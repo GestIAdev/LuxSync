@@ -65,6 +65,7 @@ interface LibraryClip {
   paramCount: number
   modifiedAt: number
   filePath: string
+  effectType?: string  // WAVE 2040.17: Base effect type from .lfx
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -116,6 +117,14 @@ const HephaestusView: React.FC = () => {
   // ── Radar Preview State (WAVE 2030.25) ──
   const [showRadar, setShowRadar] = useState(true)
   const preview = useHephPreview(clip)
+
+  /**
+   * ⚒️ WAVE 2040.17: DIAMOND CACHE
+   * Pre-cached serialized clips for zero-latency D&D to Chronos.
+   * Key: filePath, Value: HephAutomationClipSerialized
+   * Populated in background after library loads.
+   */
+  const clipCacheRef = useRef<Map<string, HephAutomationClipSerialized>>(new Map())
 
   // ── Derived ──
   const activeCurve = useMemo(
@@ -211,8 +220,28 @@ const HephaestusView: React.FC = () => {
     try {
       const result = await window.luxsync.hephaestus.list()
       if (result.success && result.clips) {
-        setLibrary(result.clips as LibraryClip[])
-        console.log(`[Hephaestus] Loaded ${result.clips.length} clips from library`)
+        const loadedClips = result.clips as LibraryClip[]
+        setLibrary(loadedClips)
+        console.log(`[Hephaestus] Loaded ${loadedClips.length} clips from library`)
+
+        // ⚒️ WAVE 2040.17: DIAMOND CACHE — Preload all clips in background
+        // .lfx files are small (<50KB each). Preloading ensures
+        // zero-latency D&D with full curve data.
+        if (window.luxsync?.hephaestus?.load) {
+          for (const item of loadedClips) {
+            if (!clipCacheRef.current.has(item.filePath)) {
+              try {
+                const loadResult = await window.luxsync.hephaestus.load(item.filePath)
+                if (loadResult.success && loadResult.clip) {
+                  clipCacheRef.current.set(item.filePath, loadResult.clip as HephAutomationClipSerialized)
+                }
+              } catch (e) {
+                console.warn(`[Hephaestus] 💎 Cache miss for ${item.name}:`, e)
+              }
+            }
+          }
+          console.log(`[Hephaestus] 💎 Diamond cache loaded: ${clipCacheRef.current.size} clips`)
+        }
       } else if (result.error) {
         console.error('[Hephaestus] Failed to load library:', result.error)
       }
@@ -357,19 +386,31 @@ const HephaestusView: React.FC = () => {
   }, [])
 
   /**
-   * Start dragging a library clip to Chronos Timeline
-   * Uses the standard LuxSync D&D protocol with HEPH mime type
+   * ⚒️ WAVE 2040.17: DIAMOND DRAG
+   * Start dragging a library clip to Chronos Timeline.
+   * Now includes FULL serialized clip data from the Diamond Cache
+   * for zero-latency deep copy on drop.
    */
   const handleDragStart = useCallback((e: React.DragEvent, libraryItem: LibraryClip) => {
-    // Build DragPayload compatible with TimelineCanvas
+    // WAVE 2040.17: Look up full serialized clip from Diamond Cache
+    const cachedClip = clipCacheRef.current.get(libraryItem.filePath)
+
+    // Build DragPayload with COMPLETE Diamond Data
     const payload = {
       source: 'hephaestus' as const,
       clipType: 'fx' as const,
-      subType: 'heph-automation',
+      subType: cachedClip?.effectType || libraryItem.category || 'heph-automation',
       defaultDurationMs: libraryItem.durationMs,
       hephClipId: libraryItem.id,
       hephFilePath: libraryItem.filePath,
-      name: libraryItem.name
+      name: libraryItem.name,
+      // ⚒️ WAVE 2040.17: Diamond Data — full curve payload
+      hephClipSerialized: cachedClip || undefined,
+      category: cachedClip?.category || libraryItem.category,
+      mixBus: cachedClip?.mixBus,
+      effectType: cachedClip?.effectType || libraryItem.effectType,
+      zones: cachedClip?.zones,
+      priority: cachedClip?.priority,
     }
     
     const payloadJson = JSON.stringify(payload)
@@ -380,7 +421,12 @@ const HephaestusView: React.FC = () => {
     e.dataTransfer.setData('application/luxsync-clip', payloadJson)
     e.dataTransfer.effectAllowed = 'copy'
     
-    console.log(`[Hephaestus] 🎯 Drag started: ${libraryItem.name}`)
+    if (cachedClip) {
+      const curveCount = Object.keys(cachedClip.curves).length
+      console.log(`[Hephaestus] 💎 Diamond drag: ${libraryItem.name} [${curveCount} curves, mixBus=${cachedClip.mixBus}]`)
+    } else {
+      console.warn(`[Hephaestus] ⚠️ Drag without Diamond data (cache miss): ${libraryItem.name}`)
+    }
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════

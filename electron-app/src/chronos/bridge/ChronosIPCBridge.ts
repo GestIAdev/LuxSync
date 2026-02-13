@@ -24,7 +24,7 @@
 
 import { getChronosInjector, type StageCommand } from '../core/ChronosInjector'
 import { mapChronosFXToBaseEffect, getFXInfo } from '../core/FXMapper'
-import { serializeHephClip, type HephAutomationClipSerialized } from '../../core/hephaestus/types'
+import type { HephAutomationClipSerialized } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -109,10 +109,33 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
     return
   }
   
-  // ⚒️ WAVE 2030.18: HEPHAESTUS CUSTOM PATH
-  // If this is a custom .lfx clip, bypass FXMapper entirely
+  // ⚒️ WAVE 2030.18 → WAVE 2040.17: HEPHAESTUS CUSTOM PATH
+  // Priority 1: Use inline Diamond Data (hephCurves) — portable, no file dependency
+  // Priority 2: Fall back to file path (legacy, requires absolute path on disk)
+  if (command.isHephCustom && command.hephCurves) {
+    // WAVE 2040.17: Diamond Data path — curvas inline, no necesita archivo
+    console.log(`[ChronosBridge] ⚒️💎 HEPH DIAMOND: inline curves @ ${(intensity * 100).toFixed(0)}%`)
+    
+    try {
+      const hephCurvesSerialized = command.hephCurves as HephAutomationClipSerialized
+      const result = await (window as any).lux.chronos?.triggerFX?.(
+        'heph-custom', intensity, durationMs, hephCurvesSerialized
+      ) || { success: false }
+      
+      if (result.success) {
+        console.log(`[ChronosBridge] ✅ HEPH Diamond triggered`)
+      } else {
+        console.error(`[ChronosBridge] ❌ HEPH Diamond failed`)
+      }
+    } catch (err) {
+      console.error('[ChronosBridge] ❌ Failed to trigger HEPH Diamond:', err)
+    }
+    return
+  }
+
   if (command.isHephCustom && command.hephFilePath) {
-    console.log(`[ChronosBridge] ⚒️ HEPH CUSTOM: ${command.hephFilePath} @ ${(intensity * 100).toFixed(0)}%`)
+    // Legacy path — requires absolute file path on disk
+    console.log(`[ChronosBridge] ⚒️ HEPH FILE: ${command.hephFilePath} @ ${(intensity * 100).toFixed(0)}%`)
     
     try {
       const result = await (window as any).lux.chronos?.triggerHeph?.(
@@ -137,11 +160,12 @@ async function handleFXTrigger(command: StageCommand): Promise<void> {
   const effectId = mapChronosFXToBaseEffect(fxType, bridgeState.currentVibeId || undefined)
   const fxInfo = getFXInfo(fxType, bridgeState.currentVibeId || undefined)
   
-  // ⚒️ WAVE 2030.4: Serialize hephCurves for IPC (Map → Record)
-  let hephCurvesSerialized: HephAutomationClipSerialized | undefined
-  if (command.hephCurves) {
-    hephCurvesSerialized = serializeHephClip(command.hephCurves)
-    console.log(`[ChronosBridge] ⚒️ HEPHAESTUS: Serializing ${command.hephCurves.curves.size} curves`)
+  // ⚒️ WAVE 2040.17: hephCurves already arrives as HephAutomationClipSerialized (Record<>)
+  // No serialization needed — the Diamond Data flows through directly
+  const hephCurvesSerialized: HephAutomationClipSerialized | undefined = command.hephCurves || undefined
+  if (hephCurvesSerialized) {
+    const curveCount = Object.keys(hephCurvesSerialized.curves).length
+    console.log(`[ChronosBridge] ⚒️💎 HEPHAESTUS Diamond: ${curveCount} curves`)
   }
   
   const hephTag = hephCurvesSerialized ? ' ⚒️[HEPH]' : ''

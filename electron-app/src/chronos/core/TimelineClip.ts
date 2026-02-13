@@ -12,7 +12,7 @@
  * @version WAVE 2006 / WAVE 2030.4 (Hephaestus Integration)
  */
 
-import type { HephAutomationClip } from '../../core/hephaestus/types'
+import type { HephAutomationClip, HephAutomationClipSerialized } from '../../core/hephaestus/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIP TYPES
@@ -40,6 +40,42 @@ export type FXType =
   | 'blackout'
   | 'color-wash'
   | 'intensity-ramp'
+  | 'heph-custom'
+
+/**
+ * WAVE 2040.17 P6: Set of valid FXType values for runtime validation.
+ * Used to safely convert unknown strings (from Recorder, D&D, etc.)
+ * into a type-safe FXType without `as any` casts.
+ */
+export const VALID_FX_TYPES: ReadonlySet<string> = new Set<string>([
+  'strobe', 'sweep', 'pulse', 'chase', 'fade',
+  'blackout', 'color-wash', 'intensity-ramp', 'heph-custom',
+])
+
+/**
+ * WAVE 2040.17 P11: Safely coerce an arbitrary string to FXType.
+ * Returns the string as FXType if it's a valid member, otherwise 'pulse' as fallback.
+ */
+export function toFXType(value: string | undefined): FXType {
+  if (value && VALID_FX_TYPES.has(value)) return value as FXType
+  return 'pulse'
+}
+
+/**
+ * WAVE 2040.17 P11: Set of valid VibeType values for runtime validation.
+ */
+export const VALID_VIBE_TYPES: ReadonlySet<string> = new Set<string>([
+  'fiesta-latina', 'techno-club', 'chill-lounge', 'pop-rock', 'idle',
+])
+
+/**
+ * WAVE 2040.17 P11: Safely coerce an arbitrary string to VibeType.
+ * Returns the string as VibeType if valid, otherwise 'idle' as fallback.
+ */
+export function toVibeType(value: string | undefined): VibeType {
+  if (value && VALID_VIBE_TYPES.has(value)) return value as VibeType
+  return 'idle'
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BASE CLIP INTERFACE
@@ -128,30 +164,56 @@ export interface FXClip extends BaseClip {
   params: Record<string, number | string | boolean>
   
   /**
-   * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+   * ⚒️ WAVE 2040.17: DIAMOND DATA — Deep copy of Hephaestus automation curves
    * 
-   * Curvas de automatización multi-parámetro creadas en Hephaestus Studio.
-   * Cuando presente, el EffectManager creará un HephParameterOverlay
-   * que modula el output del efecto base en tiempo real.
+   * Stored as HephAutomationClipSerialized (Record<>, NOT Map<>)
+   * so it survives JSON.stringify without data loss.
    * 
-   * Opcional: clips legacy sin hephClip funcionan normalmente.
+   * Contains the COMPLETE automation data: all curves, zones, mixBus,
+   * priority, staticParams. The .lux file is self-contained.
+   * The reproductor reads directly from this — no .lfx dependency.
+   * 
+   * Opcional: clips legacy/Arsenal sin hephClip funcionan normalmente.
    */
-  hephClip?: HephAutomationClip
+  hephClip?: HephAutomationClipSerialized
   
   /**
    * ⚒️ WAVE 2030.17: THE BRIDGE
    * 
    * Path to .lfx file from Hephaestus library.
-   * When present, indicates this is a custom effect from Hephaestus.
-   * The ClipRenderer will apply EMBER styling.
+   * WAVE 2040.17: This is now OPTIONAL metadata for "edit original in Hephaestus".
+   * The show does NOT depend on this file — hephClip contains all data.
    */
   hephFilePath?: string
   
   /**
    * WAVE 2030.17: Indicates this is a Hephaestus custom effect
-   * When true, the clip is rendered with EMBER orange styling
+   * When true, the clip is rendered with mixBus-aware coloring
    */
   isHephCustom?: boolean
+
+  /**
+   * ⚒️ WAVE 2040.17: MixBus routing from Hephaestus
+   * Determines which FX track this clip routes to in playback.
+   * 
+   * 'global'  → FX1: Takeover total (strobes, blinders)
+   * 'htp'     → FX2: High-priority transitional (sweeps, chases)
+   * 'ambient' → FX3: Background atmospheres (mists, rain)
+   * 'accent'  → FX4: Short accents (sparks, hits)
+   */
+  mixBus?: 'global' | 'htp' | 'ambient' | 'accent'
+
+  /**
+   * ⚒️ WAVE 2040.17: Effect zones from Hephaestus
+   * Determines which fixtures this effect targets.
+   */
+  zones?: string[]
+
+  /**
+   * ⚒️ WAVE 2040.17: Effect priority (0-100)
+   * Used for conflict resolution when multiple effects overlap.
+   */
+  priority?: number
 }
 
 // Union type
@@ -193,6 +255,7 @@ export const FX_COLORS: Record<FXType, string> = {
   'blackout': '#1f2937',      // Dark gray
   'color-wash': '#34d399',    // Emerald
   'intensity-ramp': '#fbbf24', // Amber
+  'heph-custom': '#ff6b2b',   // Ember orange — Hephaestus signature
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -264,10 +327,67 @@ export function createFXClip(
 }
 
 /** 
- * ⚒️ WAVE 2030.17: THE BRIDGE 
+ * ⚒️ WAVE 2030.17 → WAVE 2040.17: THE DIAMOND BRIDGE
  * Create a Hephaestus Custom FX Clip from .lfx drag
+ * 
+ * WAVE 2040.17: Now accepts full hephClip data (serialized),
+ * mixBus, zones, priority. Color is derived from mixBus.
+ * Keyframes are generated as a visual summary of the intensity curve.
  */
-export const HEPH_EMBER_COLOR = '#ff6b2b' // Ember orange
+export const HEPH_EMBER_COLOR = '#ff6b2b' // Fallback ember orange
+
+/**
+ * ⚒️ WAVE 2040.17: MixBus → Color mapping
+ * Each color matches its corresponding FX track for visual coherence.
+ */
+export const MIXBUS_CLIP_COLORS: Record<string, string> = {
+  'global':  '#ef4444',  // Red — match FX1 track
+  'htp':     '#f59e0b',  // Orange — match FX2 track
+  'ambient': '#10b981',  // Green — match FX3 track
+  'accent':  '#3b82f6',  // Blue — match FX4 track
+}
+
+/**
+ * ⚒️ WAVE 2040.17: Extract visual keyframes from hephClip intensity curve.
+ * Creates a summary of the real curve for timeline visualization.
+ * If no intensity curve, returns the 3-point default.
+ */
+function extractVisualKeyframes(
+  hephClip: HephAutomationClipSerialized | undefined,
+  durationMs: number
+): FXKeyframe[] {
+  if (!hephClip?.curves?.intensity) {
+    // Fallback: generic 3-point envelope
+    return [
+      { offsetMs: 0, value: 0, easing: 'ease-in' },
+      { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
+      { offsetMs: durationMs, value: 0, easing: 'linear' },
+    ]
+  }
+
+  const intensityCurve = hephClip.curves.intensity
+  return intensityCurve.keyframes.map(kf => {
+    // Map HephInterpolation → FXKeyframe easing
+    let easing: FXKeyframe['easing'] = 'linear'
+    if (kf.interpolation === 'hold') easing = 'step'
+    else if (kf.interpolation === 'bezier') {
+      // Approximate bezier to closest CSS easing
+      if (kf.bezierHandles) {
+        const [cx1, , , ] = kf.bezierHandles
+        if (cx1 > 0.3) easing = 'ease-in'
+        else easing = 'ease-out'
+      } else {
+        easing = 'ease-in-out'
+      }
+    }
+
+    return {
+      offsetMs: kf.timeMs,
+      value: typeof kf.value === 'number' ? kf.value : 1,
+      easing,
+    }
+  })
+}
 
 export function createHephFXClip(
   name: string,
@@ -275,28 +395,51 @@ export function createHephFXClip(
   startMs: number,
   durationMs: number,
   trackId: string,
-  effectType: string = 'custom'
+  effectType: string = 'custom',
+  hephClipSerialized?: HephAutomationClipSerialized,
+  mixBus?: 'global' | 'htp' | 'ambient' | 'accent',
+  zones?: string[],
+  priority?: number,
 ): FXClip {
+  // WAVE 2040.17: Derive color from mixBus (coherent with FX track colors)
+  const color = mixBus ? (MIXBUS_CLIP_COLORS[mixBus] || HEPH_EMBER_COLOR) : HEPH_EMBER_COLOR
+
+  // WAVE 2040.17 P6: Use 'heph-custom' for Hephaestus automation clips.
+  // Only coerce to a standard FXType if effectType is actually one.
+  const resolvedFxType: FXType = toFXType(
+    effectType === 'heph_custom' || effectType === 'heph-automation' || effectType === 'custom'
+      ? 'heph-custom'
+      : effectType
+  )
+
+  // WAVE 2040.17 P9: Store only the filename for portability.
+  // The .lux file should NOT depend on absolute paths — it must be
+  // transferable between machines. The filename is enough to relocate
+  // the .lfx file when the library is present.
+  const portableFilePath = filePath
+    ? filePath.replace(/^.*[\\/]/, '') // Extract filename from any OS path
+    : ''
+
   return {
     id: generateClipId(),
     type: 'fx',
-    fxType: 'pulse', // Default type, will be overridden by Heph rendering
+    fxType: resolvedFxType,
     label: name,
     startMs,
     endMs: startMs + durationMs,
     trackId,
-    color: HEPH_EMBER_COLOR, // EMBER orange for Hephaestus
-    keyframes: [
-      { offsetMs: 0, value: 0, easing: 'ease-in' },
-      { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },
-      { offsetMs: durationMs, value: 0, easing: 'linear' },
-    ],
+    color,
+    keyframes: extractVisualKeyframes(hephClipSerialized, durationMs),
     params: { effectType },
     selected: false,
     locked: false,
-    // ⚒️ HEPHAESTUS MARKERS
-    hephFilePath: filePath,
+    // ⚒️ HEPHAESTUS MARKERS — WAVE 2040.17: Full Diamond Data
+    hephFilePath: portableFilePath,
     isHephCustom: true,
+    hephClip: hephClipSerialized,
+    mixBus,
+    zones,
+    priority,
   }
 }
 
@@ -380,6 +523,30 @@ export interface DragPayload {
   
   /** Clip name for display */
   name?: string
+
+  // ── WAVE 2040.17: Diamond Data — Full Hephaestus payload ──
+
+  /**
+   * Complete serialized HephAutomationClip (Record<>, not Map<>).
+   * Carried in the drag payload for zero-latency deep copy on drop.
+   * Typical .lfx files are <50KB — DataTransfer handles this fine.
+   */
+  hephClipSerialized?: HephAutomationClipSerialized
+
+  /** MixBus routing from the Hephaestus clip */
+  mixBus?: 'global' | 'htp' | 'ambient' | 'accent'
+
+  /** Effect category from Hephaestus */
+  category?: string
+
+  /** Effect type from the .lfx file */
+  effectType?: string
+
+  /** Effect zones from Hephaestus */
+  zones?: string[]
+
+  /** Effect priority (0-100) */
+  priority?: number
 }
 
 /**

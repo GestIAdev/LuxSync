@@ -58,6 +58,12 @@ const api = {
   // APP
   // ============================================
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
+
+  /**
+   * WAVE 2040.17 P13: System username for project authorship.
+   * Resolved at preload time — no IPC round-trip needed.
+   */
+  getSystemUser: (): string => process.env.USERNAME || process.env.USER || '',
   
   // ============================================
   // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection

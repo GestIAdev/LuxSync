@@ -68,6 +68,7 @@ import { useOverrideStore } from '../../stores/overrideStore'
 import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
+import { toFXType, toVibeType } from '../core/TimelineClip'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -516,7 +517,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           color: clip.color || '#FF6B35',
           trackId: clip.trackId,
           locked: false,
-          vibeType: clip.effectId as any,
+          // WAVE 2040.17 P11: Safe coercion — no more `as any`
+          vibeType: toVibeType(clip.effectId),
           intensity: 1.0,
           fadeInMs: 500,
           fadeOutMs: 500,
@@ -531,7 +533,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           color: clip.color || '#00D9FF',
           trackId: clip.trackId,
           locked: false,
-          fxType: clip.effectId as any,
+          // WAVE 2040.17 P11: Safe coercion — no more `as any`
+          fxType: toFXType(clip.effectId),
           keyframes: [],
           params: { intensity: 1.0 },
         }

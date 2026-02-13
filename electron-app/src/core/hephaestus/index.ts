@@ -30,6 +30,7 @@ export {
   isNumericValue,
   serializeHephClip,
   deserializeHephClip,
+  inferHephCategory,
 } from './types'
 
 // ── Engine ──────────────────────────────────────────────────────────────

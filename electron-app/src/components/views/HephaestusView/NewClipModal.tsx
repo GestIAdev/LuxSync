@@ -25,34 +25,27 @@ import type { HephAutomationClip, HephCurve, HephParamId } from '../../../core/h
 import type { EffectCategory } from '../../../core/effects/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HEPHAESTUS CLIP CATEGORY
-// WAVE 2030.9: Extended categories for Hephaestus clips
+// HEPHAESTUS CLIP CATEGORY & MIXBUS
+// WAVE 2040.9a: TYPE UNIFICATION — Categories and MixBus are now first-class
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** 
- * Hephaestus uses extended categories beyond EffectCategory.
- * Maps to EffectCategory for storage but provides more granular options.
+/**
+ * WAVE 2040.9a: MixBus type for Hephaestus clips.
+ * Determines which FX track the clip routes to in Chronos.
  */
-type HephClipCategory = 'physical' | 'color' | 'movement' | 'control'
-
-/** Map HephClipCategory to EffectCategory for storage */
-const HEPH_TO_EFFECT_CATEGORY: Record<HephClipCategory, EffectCategory> = {
-  physical: 'physical',
-  color: 'color',
-  movement: 'movement',
-  control: 'physical',  // Control maps to physical for storage
-}
+type HephMixBus = 'global' | 'htp' | 'ambient' | 'accent'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CATEGORY → DEFAULT PARAMS MAPPING
 // WAVE 2030.9: Each category creates sensible default parameters
 // ═══════════════════════════════════════════════════════════════════════════
 
-const DEFAULT_PARAMS_BY_CATEGORY: Record<HephClipCategory, HephParamId[]> = {
+const DEFAULT_PARAMS_BY_CATEGORY: Record<EffectCategory, HephParamId[]> = {
   physical: ['intensity', 'strobe'],
   color: ['color'],
-  movement: ['pan', 'tilt', 'zoom'],
-  control: ['speed', 'width'],
+  movement: ['pan', 'tilt'],
+  optics: ['zoom', 'focus', 'iris'],
+  composite: ['intensity', 'color', 'pan', 'tilt'],
 }
 
 /**
@@ -85,11 +78,23 @@ function createDefaultCurve(paramId: HephParamId, durationMs: number): HephCurve
 // CATEGORY OPTIONS - WAVE 2030.9: All 4 Hephaestus categories
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CATEGORY_OPTIONS: { value: HephClipCategory; label: string; icon: string; desc: string }[] = [
+const CATEGORY_OPTIONS: { value: EffectCategory; label: string; icon: string; desc: string }[] = [
   { value: 'physical', label: 'Physical', icon: '💡', desc: 'Intensity, Strobe' },
   { value: 'color', label: 'Color', icon: '🎨', desc: 'Chromatic' },
-  { value: 'movement', label: 'Movement', icon: '🔄', desc: 'Pan, Tilt, Zoom' },
-  { value: 'control', label: 'Control', icon: '🎛', desc: 'Speed, Width' },
+  { value: 'movement', label: 'Movement', icon: '🔄', desc: 'Pan, Tilt' },
+  { value: 'optics', label: 'Optics', icon: '🔍', desc: 'Zoom, Focus, Iris, Gobo, Prism' },
+  { value: 'composite', label: 'Composite', icon: '🧬', desc: 'Multi-parameter' },
+]
+
+/**
+ * WAVE 2040.9a: MixBus routing options.
+ * The user chooses which FX track this clip routes to in Chronos.
+ */
+const MIXBUS_OPTIONS: { value: HephMixBus; label: string; icon: string; desc: string }[] = [
+  { value: 'global', label: 'Global', icon: '🔴', desc: 'FX1 — Full takeover (strobes, blinders)' },
+  { value: 'htp', label: 'HTP', icon: '🟡', desc: 'FX2 — High-priority transitional (sweeps, chases)' },
+  { value: 'ambient', label: 'Ambient', icon: '🟢', desc: 'FX3 — Atmospheric background (mist, rain)' },
+  { value: 'accent', label: 'Accent', icon: '🔵', desc: 'FX4 — Short punchy accents (sparks, hits)' },
 ]
 
 // Duration presets (in ms)
@@ -121,7 +126,8 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
   const [name, setName] = useState('')
   const [durationText, setDurationText] = useState('4000')
   const [durationMs, setDurationMs] = useState(4000)
-  const [category, setCategory] = useState<HephClipCategory>('physical')
+  const [category, setCategory] = useState<EffectCategory>('physical')
+  const [mixBus, setMixBus] = useState<HephMixBus>('htp')
   const nameRef = useRef<HTMLInputElement>(null)
 
   // Reset form every time modal opens (prevents stale state)
@@ -131,6 +137,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
       setDurationText('4000')
       setDurationMs(4000)
       setCategory('physical')
+      setMixBus('htp')
       // Auto-focus name input after mount
       requestAnimationFrame(() => nameRef.current?.focus())
     }
@@ -164,26 +171,26 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
     const randomSuffix = Math.random().toString(36).substring(2, 8)
     const id = `heph_${timestamp}_${randomSuffix}`
 
-    // WAVE 2030.9: Create curves based on category
+    // WAVE 2040.9a: Create curves based on category (unified types)
     const defaultParams = DEFAULT_PARAMS_BY_CATEGORY[category]
     const curves = new Map<HephParamId, HephCurve>()
     for (const paramId of defaultParams) {
       curves.set(paramId, createDefaultCurve(paramId, durationMs))
     }
 
-    // Map HephClipCategory to EffectCategory for storage
-    const effectCategory = HEPH_TO_EFFECT_CATEGORY[category]
+    // WAVE 2040.9a: Category IS the EffectCategory — no mapping needed
+    // MixBus is selected by the user — full 4-value spectrum
 
     // Create automation clip with category-appropriate params
     const newClip: HephAutomationClip = {
       id,
       name: name.trim(),
       author: 'LuxSync User',
-      category: effectCategory,
-      tags: [`heph:${category}`],  // WAVE 2030.9: Preserve Heph category in tags
+      category,
+      tags: [],
       vibeCompat: [],
       zones: ['all'],
-      mixBus: 'htp',
+      mixBus,
       priority: 50,
       durationMs,
       effectType: 'heph_custom',
@@ -193,7 +200,7 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
 
     onCreate(newClip)
     onClose()
-  }, [name, durationMs, category, isValid, onCreate, onClose])
+  }, [name, durationMs, category, mixBus, isValid, onCreate, onClose])
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -299,6 +306,27 @@ export const NewClipModal: React.FC<NewClipModalProps> = ({
                 >
                   <span className="heph-modal__category-icon">{cat.icon}</span>
                   <span className="heph-modal__category-label">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* WAVE 2040.9a: MixBus routing select */}
+          <div className="heph-modal__field">
+            <label htmlFor="clip-mixbus" className="heph-modal__label">
+              Track Routing
+            </label>
+            <div className="heph-modal__categories">
+              {MIXBUS_OPTIONS.map((bus) => (
+                <button
+                  key={bus.value}
+                  type="button"
+                  className={`heph-modal__category ${mixBus === bus.value ? 'heph-modal__category--active' : ''}`}
+                  onClick={() => setMixBus(bus.value)}
+                  title={bus.desc}
+                >
+                  <span className="heph-modal__category-icon">{bus.icon}</span>
+                  <span className="heph-modal__category-label">{bus.label}</span>
                 </button>
               ))}
             </div>

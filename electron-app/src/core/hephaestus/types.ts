@@ -275,8 +275,18 @@ export interface HephAutomationClip {
   /** Zonas objetivo del efecto */
   zones: EffectZone[]
 
-  /** Mix bus: 'htp' (aditivo) o 'global' (dictador) */
-  mixBus: 'htp' | 'global'
+  /** Mix bus: routing de mezcla para tracks FX del timeline
+   * 
+   * WAVE 2040.9a: TYPE UNIFICATION
+   * Los 4 valores completos del MixBus — antes solo 'htp' | 'global'.
+   * Esto permite que clips de Hephaestus lleguen a los 4 tracks FX.
+   * 
+   * 'global'  → FX1: Takeover total (strobes, blinders, meltdowns)
+   * 'htp'     → FX2: High-priority transitional (sweeps, chases)
+   * 'ambient' → FX3: Atmósferas de fondo (mists, rain, breath)
+   * 'accent'  → FX4: Acentos cortos (sparks, hits, punchy)
+   */
+  mixBus: 'global' | 'htp' | 'ambient' | 'accent'
 
   /** Prioridad del efecto (0-100) */
   priority: number
@@ -392,7 +402,7 @@ export interface HephAutomationClipSerialized {
   tags: string[]
   vibeCompat: string[]
   zones: string[]
-  mixBus: 'htp' | 'global'
+  mixBus: 'global' | 'htp' | 'ambient' | 'accent'  // WAVE 2040.9a: Full MixBus spectrum
   priority: number
   durationMs: number
   effectType: string
@@ -452,4 +462,51 @@ export function deserializeHephClip(serialized: HephAutomationClipSerialized): H
     curves: curvesMap,
     staticParams: serialized.staticParams,
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CATEGORY INFERENCE - WAVE 2040.9a
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Parameter groups for category inference */
+const PHYSICAL_PARAMS: HephParamId[] = ['intensity', 'strobe']
+const COLOR_PARAMS: HephParamId[] = ['color', 'white', 'amber']
+const MOVEMENT_PARAMS: HephParamId[] = ['pan', 'tilt']
+const OPTICS_PARAMS: HephParamId[] = ['zoom', 'focus', 'iris', 'gobo1', 'gobo2', 'prism']
+
+/**
+ * ⚒️ WAVE 2040.9a: Infer EffectCategory from a clip's automated curves.
+ * 
+ * Analiza QUÉ parámetros toca un clip de Hephaestus y determina
+ * su EffectCategory automáticamente. Si toca parámetros de 2+ grupos,
+ * retorna 'composite'.
+ * 
+ * DETERMINISTA: No hay random, no hay heurística ambigua.
+ * El resultado depende ÚNICAMENTE de qué curvas tiene el clip.
+ * 
+ * @param clip - HephAutomationClip con curvas definidas
+ * @returns EffectCategory inferida desde las curvas
+ */
+export function inferHephCategory(clip: HephAutomationClip): import('../effects/types').EffectCategory {
+  const paramIds = Array.from(clip.curves.keys())
+  
+  const touchesPhysical = paramIds.some(p => PHYSICAL_PARAMS.includes(p))
+  const touchesColor = paramIds.some(p => COLOR_PARAMS.includes(p))
+  const touchesMovement = paramIds.some(p => MOVEMENT_PARAMS.includes(p))
+  const touchesOptics = paramIds.some(p => OPTICS_PARAMS.includes(p))
+  
+  const groupCount = [touchesPhysical, touchesColor, touchesMovement, touchesOptics]
+    .filter(Boolean).length
+  
+  // Multi-grupo → composite
+  if (groupCount > 1) return 'composite'
+  
+  // Mono-grupo → categoría específica
+  if (touchesPhysical) return 'physical'
+  if (touchesColor) return 'color'
+  if (touchesMovement) return 'movement'
+  if (touchesOptics) return 'optics'
+  
+  // Parámetros genéricos (speed, width, direction, globalComp) sin grupo específico
+  return 'physical'
 }

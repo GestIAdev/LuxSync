@@ -63,7 +63,7 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
       id: 'test-clip-audio-binding',
       name: 'Test Audio Binding Clip',
       author: 'PunkOpus',
-      category: 'atmospheric' as import('../../effects/types').EffectCategory,
+      category: 'physical' as import('../../effects/types').EffectCategory,
       tags: ['test', 'audio-reactive'],
       vibeCompat: ['high-energy'],
       zones: ['movers_left', 'movers_right'] as import('../../effects/types').EffectZone[],

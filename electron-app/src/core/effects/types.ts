@@ -24,12 +24,25 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Categoría del efecto - determina cómo se aplica
+ * Categoría del efecto - determina qué parámetros del fixture toca
+ * 
+ * WAVE 2040.9a: TYPE UNIFICATION
+ * Expandido para cubrir la realidad física completa de fixtures profesionales.
+ * Hephaestus y el Arsenal usan el mismo tipo.
+ * 
+ * EJES DE CLASIFICACIÓN:
+ * - physical:  Intensidad lumínica (dimmer, strobe) — HTP merge
+ * - color:     Cromático (HSL, white, amber) — Color blending
+ * - movement:  Posicional (pan, tilt) — Position merge
+ * - optics:    Óptica de haz (zoom, focus, iris, gobo, prism) — Beam shaping
+ * - composite: Multi-parámetro (toca 2+ categorías) — Full merge
  */
 export type EffectCategory = 
-  | 'physical'   // Afecta dimmer/strobe (HTP - brilla por encima de todo)
-  | 'color'      // Afecta color/saturación
-  | 'movement'   // Afecta pan/tilt
+  | 'physical'    // Afecta dimmer/strobe (HTP - brilla por encima de todo)
+  | 'color'       // Afecta color/saturación
+  | 'movement'    // Afecta pan/tilt
+  | 'optics'      // Afecta zoom/focus/iris/gobo/prism (WAVE 2040.9a)
+  | 'composite'   // Multi-parámetro complejo (WAVE 2040.9a)
 
 /**
  * Fase actual del efecto

@@ -88,6 +88,51 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * CHRONOS LOGO — WAVE 2040.15: THE CROWN JEWEL
+ * Isotipo + Texto técnico con gradiente violet y glow
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.ct-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 0;
+  cursor: default;
+  user-select: none;
+}
+
+.ct-logo-icon {
+  color: #a855f7;
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6));
+  transition: all 0.3s ease;
+}
+
+.ct-logo:hover .ct-logo-icon {
+  color: #c084fc;
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.8));
+}
+
+.ct-logo-text {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #a855f7 0%, #c084fc 50%, #e9d5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+  transition: all 0.3s ease;
+}
+
+.ct-logo:hover .ct-logo-text {
+  background: linear-gradient(135deg, #c084fc 0%, #e9d5ff 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 0 16px rgba(168, 85, 247, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * ENGINE BUTTONS — Reactor / Data / Synapse (fused from EngineStatus)
  * ═══════════════════════════════════════════════════════════════════════════ */
 

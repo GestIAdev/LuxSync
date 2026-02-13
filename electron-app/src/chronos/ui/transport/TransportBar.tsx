@@ -127,6 +127,60 @@ const EngineButton: React.FC<EngineButtonProps> = memo(({
 EngineButton.displayName = 'EngineButton'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CHRONOS LOGO — WAVE 2040.15: THE CROWN JEWEL
+// Isotipo geométrico (círculo con segmentos) + texto técnico
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ChronosLogo: React.FC = memo(() => (
+  <div className="ct-logo">
+    {/* Isotipo: Círculo con segmentos de tiempo */}
+    <svg 
+      className="ct-logo-icon" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Outer ring */}
+      <circle 
+        cx="12" 
+        cy="12" 
+        r="9" 
+        stroke="currentColor" 
+        strokeWidth="1.5"
+        fill="none"
+      />
+      {/* Time segments (4 quarters) */}
+      <path 
+        d="M12 3 L12 12" 
+        stroke="currentColor" 
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path 
+        d="M12 12 L18 8" 
+        stroke="currentColor" 
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Center dot */}
+      <circle 
+        cx="12" 
+        cy="12" 
+        r="1.5" 
+        fill="currentColor"
+      />
+    </svg>
+    
+    {/* Texto: CHRONOS */}
+    <span className="ct-logo-text">CHRONOS</span>
+  </div>
+))
+
+ChronosLogo.displayName = 'ChronosLogo'
+
+// ═══════════════════════════════════════════════════════════════════════════
 // TRANSPORT BUTTON (Sub-component — now accepts ReactNode icons)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -341,9 +395,14 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
 
       {/* ═══════════════════════════════════════════════════════════════
        * ZONE 1: ENGINE & PROJECT (Left)
-       * [⚡ Reactor] [📡 DMX] [🧠 AI] │ [New] [Open] [Save] │ ProjectName
+       * [CHRONOS LOGO] │ [⚡ Reactor] [📡 DMX] [🧠 AI] │ [New] [Open] [Save] │ ProjectName
        * ═══════════════════════════════════════════════════════════════ */}
       <div className="ct-zone ct-zone-left">
+
+        {/* WAVE 2040.15: CHRONOS Logo — The Crown Jewel */}
+        <ChronosLogo />
+        
+        <span className="ct-divider" />
 
         {/* Engine Triad */}
         <div className="ct-engine-group">

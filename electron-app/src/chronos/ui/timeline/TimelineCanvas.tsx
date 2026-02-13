@@ -1175,14 +1175,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       
       {/* WAVE 2006: Status Bar */}
       <div className="timeline-status-bar">
-        {/* Snap Toggle */}
-        <button 
-          className={`status-btn ${snapEnabled ? 'active' : ''}`}
-          title="Magnetic Grid (Snap to Beats)"
-        >
-          🧲 {snapEnabled ? 'SNAP ON' : 'SNAP OFF'}
-        </button>
-        
         {/* Follow Toggle */}
         <button 
           className={`status-btn ${followEnabled ? 'active' : ''}`}

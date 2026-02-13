@@ -33,8 +33,6 @@ import { StagePreview } from './stage/StageSimulatorCinema'
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { TransportBar } from './transport/TransportBar'
-// ⚡ WAVE 2016.5: Engine Status - Command Center in Chronos
-import { EngineStatus } from './header/EngineStatus'
 // 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
 import { useChronosSession } from '../stores/sessionStore'
 import { TimelineCanvas } from './timeline/TimelineCanvas'
@@ -812,13 +810,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       />
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * ⚡ WAVE 2016.5: ENGINE STATUS - Command Center
-       * Shows POWER/GO/AI states from global stores - control without leaving Chronos
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <EngineStatus />
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * TRANSPORT BAR - The Cockpit
+       * 🎛️ WAVE 2040.4: THE MASTER TOOLBAR
+       * Engine Status fused into TransportBar — single unified cockpit
        * ═══════════════════════════════════════════════════════════════════ */}
       <TransportBar
         isPlaying={streaming.isPlaying}
@@ -842,6 +835,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         // 🎭 WAVE 2015.5: Stage visibility toggle
         stageVisible={stageVisible}
         onToggleStage={() => setStageVisible(v => !v)}
+        // 🧲 WAVE 2040.5: Snap — single source of truth
+        snapEnabled={clipState.snapEnabled}
+        onToggleSnap={clipState.toggleSnap}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════

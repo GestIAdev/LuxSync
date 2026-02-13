@@ -1,30 +1,30 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔍 CLIP INSPECTOR - WAVE 2007: DEEP CONTROL
- * 
- * Property panel for selected clips. Shows editable parameters
+ * 🔍 CLIP INSPECTOR - WAVE 2040.5: VIOLET DEEP CONTROL
+ *
+ * Property panel for selected clips. Editable parameters
  * for vibes and effects.
- * 
- * VIBE PROPERTIES:
- * - Name/Label
- * - Color (from palette)
- * - Intensity (0-100%)
- * - Fade In/Out duration
- * 
- * FX PROPERTIES:
- * - Name/Label
- * - Speed/Rate
- * - Intensity
- * - Color Role (Primary/Secondary/Accent)
- * - Duration
- * 
+ *
+ * DESIGN: Hephaestus ParameterLane aesthetic — labels left, inputs right
+ * ACCENT: Violet (#a855f7) — unified with Master Toolbar
+ * ICONS: All LuxIcons SVGs — zero emojis
+ *
  * @module chronos/ui/inspector/ClipInspector
- * @version WAVE 2007
+ * @version WAVE 2040.5
  */
 
 import React, { useCallback, useMemo, memo } from 'react'
 import type { TimelineClip, VibeClip, FXClip, VibeType, FXType } from '../../core/TimelineClip'
 import { VIBE_COLORS, FX_COLORS } from '../../core/TimelineClip'
+import {
+  ClockIcon,
+  TagIcon,
+  TrashIcon,
+  CopyIcon,
+  ChevronLeftIcon,
+  ZapIcon,
+  MasksIcon,
+} from '../../../components/icons/LuxIcons'
 import './ClipInspector.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -97,7 +97,7 @@ const Slider: React.FC<SliderProps> = memo(({
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           style={{ 
-            background: `linear-gradient(to right, #3b82f6 ${percentage}%, #1e293b ${percentage}%)` 
+            background: `linear-gradient(to right, #a855f7 ${percentage}%, #1e293b ${percentage}%)` 
           }}
         />
       </div>
@@ -203,7 +203,7 @@ const VibeInspector: React.FC<VibeInspectorProps> = memo(({ clip, onUpdate }) =>
   return (
     <div className="inspector-section vibe-inspector">
       <div className="section-header">
-        <span className="section-icon">🎭</span>
+        <span className="section-icon"><MasksIcon size={14} /></span>
         <span className="section-title">VIBE SETTINGS</span>
       </div>
       
@@ -314,7 +314,7 @@ const FXInspector: React.FC<FXInspectorProps> = memo(({ clip, onUpdate }) => {
   return (
     <div className="inspector-section fx-inspector">
       <div className="section-header">
-        <span className="section-icon">⚡</span>
+        <span className="section-icon"><ZapIcon size={14} /></span>
         <span className="section-title">EFFECT SETTINGS</span>
       </div>
       
@@ -414,7 +414,7 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
     return (
       <div className="clip-inspector multi-selection">
         <div className="empty-state">
-          <span className="empty-icon">📦</span>
+          <span className="empty-icon"><CopyIcon size={28} color="var(--text-tertiary)" /></span>
           <span className="empty-text">{selectedCount} CLIPS SELECTED</span>
           <span className="empty-hint">Select a single clip to edit properties</span>
         </div>
@@ -426,7 +426,7 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
     return (
       <div className="clip-inspector empty">
         <div className="empty-state">
-          <span className="empty-icon">🎯</span>
+          <span className="empty-icon"><TagIcon size={28} color="var(--text-tertiary)" /></span>
           <span className="empty-text">Select a clip to edit</span>
         </div>
       </div>
@@ -445,7 +445,7 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
       {/* Header */}
       <div className="inspector-header">
         <button className="back-button" onClick={onBackToLibrary}>
-          ← LIBRARY
+          <ChevronLeftIcon size={12} /> LIBRARY
         </button>
         <span className="header-title">INSPECTOR</span>
       </div>
@@ -457,13 +457,13 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
           style={{ backgroundColor: clip.color }}
         >
           <span className="preview-icon">
-            {clip.type === 'vibe' ? '🎭' : '⚡'}
+            {clip.type === 'vibe' ? <MasksIcon size={20} color="#fff" /> : <ZapIcon size={20} color="#fff" />}
           </span>
         </div>
         <div className="clip-info">
           <span className="clip-name">{clip.label}</span>
           <span className="clip-type">{clip.type.toUpperCase()}</span>
-          <span className="clip-duration">{durationSec}s</span>
+          <span className="clip-duration"><ClockIcon size={11} /> {durationSec}s</span>
         </div>
       </div>
       
@@ -480,14 +480,14 @@ export const ClipInspector: React.FC<ClipInspectorProps> = ({
           className="action-button duplicate"
           onClick={() => onDuplicateClip(clip.id)}
         >
-          <span className="action-icon">📋</span>
+          <CopyIcon size={13} />
           DUPLICATE
         </button>
         <button 
           className="action-button delete"
           onClick={() => onDeleteClip(clip.id)}
         >
-          <span className="action-icon">🗑️</span>
+          <TrashIcon size={13} />
           DELETE
         </button>
       </div>

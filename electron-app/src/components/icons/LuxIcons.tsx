@@ -1981,6 +1981,251 @@ export const SynapseIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2040.4: CHRONOS TRANSPORT & UI ICONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** ▶ PLAY - Triángulo sólido de transporte */
+export const PlayIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 4L20 12L6 20V4Z" fill={color} />
+  </svg>
+)
+
+/** ⏸ PAUSE - Dos barras paralelas */
+export const PauseIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="5" y="4" width="5" height="16" rx="1" fill={color} />
+    <rect x="14" y="4" width="5" height="16" rx="1" fill={color} />
+  </svg>
+)
+
+/** ⏹ STOP - Cuadrado sólido */
+export const StopIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="5" y="5" width="14" height="14" rx="2" fill={color} />
+  </svg>
+)
+
+/** ⏺ RECORD - Círculo sólido */
+export const RecordIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <circle cx="12" cy="12" r="8" fill={color} />
+  </svg>
+)
+
+/** ⏮ REWIND - Doble triángulo con barra */
+export const RewindIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="3" y="5" width="2.5" height="14" rx="0.5" fill={color} />
+    <path d="M20 5L10 12L20 19V5Z" fill={color} />
+  </svg>
+)
+
+/** 📂 FOLDER - Carpeta abierta */
+export const FolderIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M2 6C2 4.9 2.9 4 4 4H9L11 6H20C21.1 6 22 6.9 22 8V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6Z"
+      stroke={color} strokeWidth="1.8" strokeLinejoin="round" fill="none"
+    />
+  </svg>
+)
+
+/** 💾 SAVE - Disquete industrial */
+export const SaveIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M5 3H16L21 8V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3Z"
+      stroke={color} strokeWidth="1.8" strokeLinejoin="round" fill="none"
+    />
+    <rect x="7" y="3" width="8" height="6" rx="0.5" stroke={color} strokeWidth="1.2" fill="none" />
+    <rect x="6" y="14" width="12" height="7" rx="1" stroke={color} strokeWidth="1.2" fill="none" />
+  </svg>
+)
+
+/** 📄+ FILE PLUS - Documento nuevo */
+export const FilePlusIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z"
+      stroke={color} strokeWidth="1.8" strokeLinejoin="round" fill="none"
+    />
+    <path d="M14 2V8H20" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M12 12V18M9 15H15" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)
+
+/** 🎭 MONITOR - Pantalla de stage */
+export const MonitorIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="2" y="3" width="20" height="14" rx="2" stroke={color} strokeWidth="1.8" fill="none" />
+    <path d="M8 21H16M12 17V21" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)
+
+/** ⊞ GRID - Cuadrícula de quantize */
+export const GridIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" fill="none" />
+    <path d="M3 9H21M3 15H21M9 3V21M15 3V21" stroke={color} strokeWidth="1.2" opacity="0.7" />
+  </svg>
+)
+
+/** 🧲 MAGNET - Snap to beats */
+export const MagnetIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M4 8C4 3.6 8 2 12 2C16 2 20 3.6 20 8V14"
+      stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"
+    />
+    <rect x="2" y="14" width="6" height="8" rx="1" fill={color} opacity="0.8" />
+    <rect x="16" y="14" width="6" height="8" rx="1" fill={color} opacity="0.8" />
+    <path d="M2 18H8M16 18H22" stroke="var(--bg-deepest, #0a0a0f)" strokeWidth="1.5" />
+  </svg>
+)
+
+/** 🔁 LOOP - Flechas circulares */
+export const LoopIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M17 2L21 6L17 10"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path
+      d="M3 11V9C3 7.3 3.7 5.8 4.8 4.8C5.8 3.7 7.3 3 9 3H21"
+      stroke={color} strokeWidth="2" strokeLinecap="round"
+    />
+    <path
+      d="M7 22L3 18L7 14"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path
+      d="M21 13V15C21 16.7 20.3 18.2 19.2 19.2C18.2 20.3 16.7 21 15 21H3"
+      stroke={color} strokeWidth="2" strokeLinecap="round"
+    />
+  </svg>
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2040.5: Inspector & Utility Icons
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 🕐 CLOCK - Duration / Time */
+export const ClockIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2" />
+    <path d="M12 7V12L15 15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** 🏷️ TAG - Label / Name */
+export const TagIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M12.586 2.586A2 2 0 0011.172 2H4a2 2 0 00-2 2v7.172a2 2 0 00.586 1.414l8 8a2 2 0 002.828 0l7.172-7.172a2 2 0 000-2.828l-8-8z"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <circle cx="7.5" cy="7.5" r="1.5" fill={color} />
+  </svg>
+)
+
+/** 🗑️ TRASH - Delete */
+export const TrashIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M3 6H5H21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M8 6V4C8 3.47 8.21 2.96 8.59 2.59C8.96 2.21 9.47 2 10 2H14C14.53 2 15.04 2.21 15.41 2.59C15.79 2.96 16 3.47 16 4V6M19 6V20C19 20.53 18.79 21.04 18.41 21.41C18.04 21.79 17.53 22 17 22H7C6.47 22 5.96 21.79 5.59 21.41C5.21 21.04 5 20.53 5 20V6H19Z"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <path d="M10 11V17" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <path d="M14 11V17" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+/** 📋 COPY - Duplicate */
+export const CopyIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="9" y="9" width="13" height="13" rx="2" stroke={color} strokeWidth="2" />
+    <path
+      d="M5 15H4C2.9 15 2 14.1 2 13V4C2 2.9 2.9 2 4 2H13C14.1 2 15 2.9 15 4V5"
+      stroke={color} strokeWidth="2" strokeLinecap="round"
+    />
+  </svg>
+)
+
+/** ← CHEVRON LEFT - Back navigation */
+export const ChevronLeftIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M15 18L9 12L15 6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ⚡ ZAP - Effect / Lightning */
+export const ZapIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** 🎭 MASKS - Vibe / Theater masks */
+export const MasksIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M2 4C2 4 4 2 8 2C12 2 14 4 14 4V12C14 14.2 12.2 16 10 16H6C3.8 16 2 14.2 2 12V4Z"
+      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    />
+    <circle cx="5.5" cy="7.5" r="1" fill={color} />
+    <circle cx="10.5" cy="7.5" r="1" fill={color} />
+    <path d="M5 11C5 11 6.5 12.5 8 12.5C9.5 12.5 11 11 11 11" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <path
+      d="M14 9C14 9 16 7 20 7C22 7 22 8 22 8V14C22 16.2 20.2 18 18 18H16C15 18 14.1 17.6 13.5 17"
+      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"
+    />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2055,4 +2300,25 @@ export default {
   Reactor: ReactorIcon,
   DataStream: DataStreamIcon,
   Synapse: SynapseIcon,
+  // WAVE 2040.4: Chronos Transport & UI icons
+  Play: PlayIcon,
+  Pause: PauseIcon,
+  Stop: StopIcon,
+  Record: RecordIcon,
+  Rewind: RewindIcon,
+  Folder: FolderIcon,
+  Save: SaveIcon,
+  FilePlus: FilePlusIcon,
+  Monitor: MonitorIcon,
+  Grid: GridIcon,
+  Magnet: MagnetIcon,
+  Loop: LoopIcon,
+  // WAVE 2040.5: Inspector & Utility icons
+  Clock: ClockIcon,
+  Tag: TagIcon,
+  Trash: TrashIcon,
+  Copy: CopyIcon,
+  ChevronLeft: ChevronLeftIcon,
+  Zap: ZapIcon,
+  Masks: MasksIcon,
 }

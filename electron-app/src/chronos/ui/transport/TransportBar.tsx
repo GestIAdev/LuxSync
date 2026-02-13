@@ -1,21 +1,46 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏯️ TRANSPORT BAR - WAVE 2005 + 2014: THE COCKPIT + MEMORY CORE
- * Master control panel for Chronos Studio playback, recording, and persistence
- * 
- * Layout:
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ [📁] [💾] │ [⏮] [⏹] [▶/⏸] [⏺] │ 00:00:00.000 │ ⊙ 120 BPM │ [QUANT]...│
- * └─────────────────────────────────────────────────────────────────────────┘
- * 
- * WAVE 2005: Added audio file indicator and load button
- * WAVE 2014: Added project save/load buttons and dirty indicator
- * 
+ * 🎛️ TRANSPORT BAR - WAVE 2040.4: THE MASTER TOOLBAR
+ *
+ * Unified command center: Engine Status + Transport + Modes + Audio
+ * Single bar across 100% width — no more split headers.
+ *
+ * LAYOUT (Left → Right):
+ * ┌──────────────────────────────────────────────────────────────────────────────┐
+ * │ [⚡][�][🧠] │ [New][Open][Save] │ [⏮][⏹][▶][⏺] │ 00:00:00 │ BPM │ [Stage][Quant][Snap] │ [Audio] │
+ * │   ENGINE      │     PROJECT       │    TRANSPORT     │ TIMECODE │     │        MODES        │         │
+ * └──────────────────────────────────────────────────────────────────────────────┘
+ *
+ * DESIGN: Hephaestus-inspired, Violet Cyberpunk (#a855f7)
+ * EXTERMINIO DE EMOJIS: All icons are LuxIcons SVGs
+ *
+ * FUSION: Absorbs EngineStatus.tsx logic (Reactor / Data / Synapse)
+ * NOTE: AI starts OFF by default in Chronos (never pollute manual programming)
+ *
  * @module chronos/ui/transport/TransportBar
- * @version WAVE 2014
+ * @version WAVE 2040.4
  */
 
-import React, { useCallback, memo } from 'react'
+import React, { useCallback, useEffect, useState, memo } from 'react'
+import {
+  ReactorIcon,
+  DataStreamIcon,
+  SynapseIcon,
+  PlayIcon,
+  PauseIcon,
+  StopIcon,
+  RecordIcon,
+  RewindIcon,
+  FilePlusIcon,
+  FolderIcon,
+  SaveIcon,
+  MonitorIcon,
+  MagnetIcon,
+  WaveformIcon,
+} from '../../../components/icons/LuxIcons'
+import { usePowerStore, type SystemPowerState } from '../../../hooks/useSystemPower'
+import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../../stores/controlStore'
+import { getChronosStore } from '../../core/ChronosStore'
 import './TransportBar.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -25,55 +50,83 @@ import './TransportBar.css'
 export interface TransportBarProps {
   isPlaying: boolean
   isRecording: boolean
-  currentTime: number          // in milliseconds
+  currentTime: number
   bpm: number
   onPlay: () => void
   onStop: () => void
   onRecord: () => void
   onBpmChange: (bpm: number) => void
-  // WAVE 2005: Audio state
   audioLoaded?: boolean
   audioFileName?: string
   onLoadAudio?: () => void
-  // 👻 WAVE 2005.3: Close audio to load another
   onCloseAudio?: () => void
-  // 💾 WAVE 2014: Project persistence
   projectName?: string
   hasUnsavedChanges?: boolean
   onSaveProject?: () => void
   onLoadProject?: () => void
   onNewProject?: () => void
-  // 🎭 WAVE 2015.5: Stage visibility toggle
   stageVisible?: boolean
   onToggleStage?: () => void
+  // WAVE 2040.5: Snap toggle — single source of truth for timeline magnetic grid
+  snapEnabled?: boolean
+  onToggleSnap?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
+// HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Format milliseconds to timecode: HH:MM:SS.mmm
- * Ensures clean integers - no floating point artifacts
- */
 function formatTimecode(ms: number): string {
-  // Floor everything to avoid floating point nanosecond display
   const totalMs = Math.floor(ms)
   const totalSeconds = Math.floor(totalMs / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
   const milliseconds = totalMs % 1000
-  
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
 }
 
+function getPowerStatus(state: SystemPowerState): 'off' | 'starting' | 'on' {
+  switch (state) {
+    case 'OFFLINE': return 'off'
+    case 'STARTING': return 'starting'
+    case 'ONLINE': return 'on'
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// TRANSPORT BUTTON COMPONENT
+// ENGINE BUTTON (Sub-component — fused from EngineStatus.tsx)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface EngineButtonProps {
+  icon: React.ReactNode
+  label: string
+  state: 'off' | 'starting' | 'on'
+  onClick: () => void
+  variant: 'power' | 'data' | 'ai'
+}
+
+const EngineButton: React.FC<EngineButtonProps> = memo(({
+  icon, label, state, onClick, variant,
+}) => (
+  <button
+    className={`ct-engine-btn status-${state} variant-${variant}`}
+    onClick={onClick}
+    title={`${label}: ${state.toUpperCase()}`}
+  >
+    <span className="ct-engine-icon">{icon}</span>
+    <span className="ct-engine-glow" />
+  </button>
+))
+
+EngineButton.displayName = 'EngineButton'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRANSPORT BUTTON (Sub-component — now accepts ReactNode icons)
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface TransportButtonProps {
-  icon: string
+  icon: React.ReactNode
   label: string
   onClick: () => void
   active?: boolean
@@ -82,28 +135,23 @@ interface TransportButtonProps {
 }
 
 const TransportButton: React.FC<TransportButtonProps> = memo(({
-  icon,
-  label,
-  onClick,
-  active = false,
-  variant = 'default',
-  disabled = false,
+  icon, label, onClick, active = false, variant = 'default', disabled = false,
 }) => (
   <button
-    className={`transport-btn ${variant} ${active ? 'active' : ''}`}
+    className={`ct-transport-btn ${variant} ${active ? 'active' : ''}`}
     onClick={onClick}
     disabled={disabled}
     title={label}
     aria-label={label}
   >
-    <span className="transport-btn-icon">{icon}</span>
+    {icon}
   </button>
 ))
 
 TransportButton.displayName = 'TransportButton'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
+// MAIN COMPONENT: THE MASTER TOOLBAR
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const TransportBar: React.FC<TransportBarProps> = memo(({
@@ -119,234 +167,316 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   audioFileName,
   onLoadAudio,
   onCloseAudio,
-  // 💾 WAVE 2014: Project persistence
   projectName,
   hasUnsavedChanges = false,
   onSaveProject,
   onLoadProject,
   onNewProject,
-  // 🎭 WAVE 2015.5: Stage visibility toggle
   stageVisible = true,
   onToggleStage,
+  snapEnabled = true,
+  onToggleSnap,
 }) => {
-  // BPM adjustment handlers
-  const handleBpmDecrease = useCallback(() => {
-    onBpmChange(Math.max(20, bpm - 1))
-  }, [bpm, onBpmChange])
-  
-  const handleBpmIncrease = useCallback(() => {
-    onBpmChange(Math.min(300, bpm + 1))
-  }, [bpm, onBpmChange])
-  
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ENGINE STATUS STATE (absorbed from EngineStatus.tsx)
+  // ─────────────────────────────────────────────────────────────────────────
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false)
+
+  const powerState = usePowerStore(s => s.powerState)
+  const setPowerState = usePowerStore(s => s.setPowerState)
+  const outputEnabled = useControlStore(selectOutputEnabled)
+  const setOutputEnabled = useControlStore(s => s.setOutputEnabled)
+  const aiEnabled = useControlStore(selectAIEnabled)
+  const toggleAI = useControlStore(s => s.toggleAI)
+
+  // ── REACTOR (Power ON/OFF) ──
+  const handlePowerToggle = useCallback(async () => {
+    if (powerState === 'STARTING') return
+    if (powerState === 'OFFLINE') {
+      setPowerState('STARTING')
+      try {
+        if (window.lux?.start) {
+          const result = await window.lux.start()
+          if (result?.success || result?.alreadyRunning) {
+            setPowerState('ONLINE')
+            console.log('[TransportBar] ⚡ REACTOR: ONLINE')
+          } else {
+            setPowerState('OFFLINE')
+          }
+        } else {
+          await new Promise(r => setTimeout(r, 500))
+          setPowerState('ONLINE')
+        }
+      } catch (err) {
+        console.error('[TransportBar] Power ON failed:', err)
+        setPowerState('OFFLINE')
+      }
+    } else {
+      try {
+        if (window.lux?.stop) { await window.lux.stop() }
+        setPowerState('OFFLINE')
+        console.log('[TransportBar] ⚡ REACTOR: OFFLINE')
+      } catch (err) {
+        console.error('[TransportBar] Power OFF failed:', err)
+      }
+    }
+  }, [powerState, setPowerState])
+
+  // ── DATA (DMX Output) ──
+  const handleDataToggle = useCallback(async () => {
+    const newState = !outputEnabled
+    try {
+      const result = await window.lux?.arbiter?.setOutputEnabled?.(newState)
+      if (result?.success) {
+        setOutputEnabled(newState)
+        console.log(`[TransportBar] 📡 DATA: ${newState ? 'LIVE' : 'ARMED'}`)
+      }
+    } catch (err) {
+      console.error('[TransportBar] Data toggle failed:', err)
+      setOutputEnabled(newState)
+    }
+  }, [outputEnabled, setOutputEnabled])
+
+  // ── SYNAPSE (AI) — OFF by default in Chronos ──
+  const handleSynapseToggle = useCallback(async () => {
+    const newState = !aiEnabled
+    toggleAI()
+    try {
+      await window.lux?.setConsciousnessEnabled?.(newState)
+      console.log(`[TransportBar] 🧠 SYNAPSE: ${newState ? 'ACTIVE' : 'DORMANT'}`)
+    } catch (err) {
+      console.error('[TransportBar] Synapse toggle failed:', err)
+    }
+  }, [aiEnabled, toggleAI])
+
+  // ── Sync with backend on mount ──
+  useEffect(() => {
+    const syncWithBackend = async () => {
+      try {
+        const status = await window.lux?.arbiter?.status()
+        if (status?.status?.outputEnabled !== undefined) {
+          setOutputEnabled(status.status.outputEnabled)
+        }
+        if (status && powerState === 'OFFLINE') {
+          setPowerState('ONLINE')
+        }
+      } catch { /* Silent — backend might not be ready */ }
+    }
+    syncWithBackend()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-save indicator ──
+  useEffect(() => {
+    const store = getChronosStore()
+    const handleAutoSaveStart = () => { setIsAutoSaving(true); setShowSaveIndicator(true) }
+    const handleAutoSaveComplete = () => { setIsAutoSaving(false); setTimeout(() => setShowSaveIndicator(false), 2000) }
+    const handleAutoSaveError = () => { setIsAutoSaving(false); setShowSaveIndicator(false) }
+
+    store.on('auto-save-start', handleAutoSaveStart)
+    store.on('auto-save-complete', handleAutoSaveComplete)
+    store.on('auto-save-error', handleAutoSaveError)
+    return () => {
+      store.off('auto-save-start', handleAutoSaveStart)
+      store.off('auto-save-complete', handleAutoSaveComplete)
+      store.off('auto-save-error', handleAutoSaveError)
+    }
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TRANSPORT HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleBpmDecrease = useCallback(() => onBpmChange(Math.max(20, bpm - 1)), [bpm, onBpmChange])
+  const handleBpmIncrease = useCallback(() => onBpmChange(Math.min(300, bpm + 1)), [bpm, onBpmChange])
   const handleBpmInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
-    if (!isNaN(value) && value >= 20 && value <= 300) {
-      onBpmChange(value)
-    }
+    if (!isNaN(value) && value >= 20 && value <= 300) onBpmChange(value)
   }, [onBpmChange])
-  
-  // Rewind to start
-  const handleRewind = useCallback(() => {
-    console.log('[TransportBar] ⏮️ Rewind to start')
-    // Will be connected to seek(0) in parent
-  }, [])
-  
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RENDER — THE MASTER TOOLBAR
+  // ═══════════════════════════════════════════════════════════════════════
   return (
-    <div className="transport-bar">
-      {/* ═══════════════════════════════════════════════════════════════════
-       * 💾 WAVE 2014: PROJECT CONTROLS (Far Left)
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-project">
-        {/* New Project */}
-        {onNewProject && (
-          <button
-            className="project-btn new"
-            onClick={onNewProject}
-            title="New Project (Ctrl+N)"
-          >
-            <span className="project-icon">📄</span>
-          </button>
-        )}
-        
-        {/* Open Project */}
-        {onLoadProject && (
-          <button
-            className="project-btn open"
-            onClick={onLoadProject}
-            title="Open Project (Ctrl+O)"
-          >
-            <span className="project-icon">📂</span>
-          </button>
-        )}
-        
-        {/* Save Project */}
-        {onSaveProject && (
-          <button
-            className={`project-btn save ${hasUnsavedChanges ? 'dirty' : ''}`}
-            onClick={onSaveProject}
-            title={hasUnsavedChanges ? 'Save Project* (Ctrl+S)' : 'Save Project (Ctrl+S)'}
-          >
-            <span className="project-icon">💾</span>
-            {hasUnsavedChanges && <span className="dirty-indicator">•</span>}
-          </button>
-        )}
-        
-        {/* Project Name */}
+    <div className="ct-bar">
+
+      {/* ═══════════════════════════════════════════════════════════════
+       * ZONE 1: ENGINE & PROJECT (Left)
+       * [⚡ Reactor] [📡 DMX] [🧠 AI] │ [New] [Open] [Save] │ ProjectName
+       * ═══════════════════════════════════════════════════════════════ */}
+      <div className="ct-zone ct-zone-left">
+
+        {/* Engine Triad */}
+        <div className="ct-engine-group">
+          <EngineButton
+            icon={<ReactorIcon size={16} />}
+            label="Reactor"
+            state={getPowerStatus(powerState)}
+            onClick={handlePowerToggle}
+            variant="power"
+          />
+          <EngineButton
+            icon={<DataStreamIcon size={16} />}
+            label="DMX Output"
+            state={outputEnabled ? 'on' : 'off'}
+            onClick={handleDataToggle}
+            variant="data"
+          />
+          <EngineButton
+            icon={<SynapseIcon size={16} />}
+            label="AI Consciousness"
+            state={aiEnabled ? 'on' : 'off'}
+            onClick={handleSynapseToggle}
+            variant="ai"
+          />
+        </div>
+
+        <span className="ct-divider" />
+
+        {/* Project Controls */}
+        <div className="ct-project-group">
+          {onNewProject && (
+            <button className="ct-project-btn" onClick={onNewProject} title="New Project (Ctrl+N)">
+              <FilePlusIcon size={15} />
+            </button>
+          )}
+          {onLoadProject && (
+            <button className="ct-project-btn" onClick={onLoadProject} title="Open Project (Ctrl+O)">
+              <FolderIcon size={15} />
+            </button>
+          )}
+          {onSaveProject && (
+            <button
+              className={`ct-project-btn ${hasUnsavedChanges ? 'dirty' : ''}`}
+              onClick={onSaveProject}
+              title={hasUnsavedChanges ? 'Save Project* (Ctrl+S)' : 'Save Project (Ctrl+S)'}
+            >
+              <SaveIcon size={15} />
+              {hasUnsavedChanges && <span className="ct-dirty-dot" />}
+            </button>
+          )}
+
+          {/* Auto-save indicator */}
+          {showSaveIndicator && (
+            <span className={`ct-autosave ${isAutoSaving ? 'saving' : 'saved'}`}>
+              {isAutoSaving ? 'SAVING' : 'SAVED'}
+            </span>
+          )}
+        </div>
+
         {projectName && (
-          <span className="project-name" title={projectName}>
-            {projectName.length > 18 ? projectName.slice(0, 15) + '...' : projectName}
-            {hasUnsavedChanges && ' •'}
+          <span className="ct-project-name" title={projectName}>
+            {projectName.length > 18 ? projectName.slice(0, 15) + '\u2026' : projectName}
+            {hasUnsavedChanges && ' \u2022'}
           </span>
         )}
       </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * TRANSPORT CONTROLS
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-controls">
-        {/* Rewind */}
-        <TransportButton
-          icon="⏮"
-          label="Rewind to Start"
-          onClick={handleRewind}
-        />
-        
-        {/* Stop */}
-        <TransportButton
-          icon="⏹"
-          label="Stop"
-          onClick={onStop}
-          variant="stop"
-        />
-        
-        {/* Play/Pause */}
-        <TransportButton
-          icon={isPlaying ? '⏸' : '▶'}
-          label={isPlaying ? 'Pause' : 'Play'}
-          onClick={onPlay}
-          active={isPlaying}
-          variant="play"
-        />
-        
-        {/* Record */}
-        <TransportButton
-          icon="⏺"
-          label="Record Arm"
-          onClick={onRecord}
-          active={isRecording}
-          variant="record"
-        />
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * TIMECODE DISPLAY (Center)
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-timecode">
-        <span className="timecode-value">{formatTimecode(currentTime)}</span>
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * BPM CONTROL (Center-Right)
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-bpm">
-        <button
-          className="bpm-adjust decrease"
-          onClick={handleBpmDecrease}
-          title="Decrease BPM"
-        >
-          −
-        </button>
-        <div className="bpm-display">
-          <input
-            type="number"
-            className="bpm-input"
-            value={bpm}
-            onChange={handleBpmInput}
-            min={20}
-            max={300}
+
+      {/* ═══════════════════════════════════════════════════════════════
+       * ZONE 2: TRANSPORT & TIME (Center)
+       * [⏮] [⏹] [▶/⏸] [⏺] │ 00:00:00.000 │ BPM
+       * ═══════════════════════════════════════════════════════════════ */}
+      <div className="ct-zone ct-zone-center">
+
+        <div className="ct-transport-group">
+          <TransportButton
+            icon={<RewindIcon size={14} />}
+            label="Rewind to Start"
+            onClick={onStop}
           />
-          <span className="bpm-label">BPM</span>
+          <TransportButton
+            icon={<StopIcon size={14} />}
+            label="Stop"
+            onClick={onStop}
+            variant="stop"
+          />
+          <TransportButton
+            icon={isPlaying ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
+            label={isPlaying ? 'Pause' : 'Play'}
+            onClick={onPlay}
+            active={isPlaying}
+            variant="play"
+          />
+          <TransportButton
+            icon={<RecordIcon size={14} />}
+            label="Record Arm"
+            onClick={onRecord}
+            active={isRecording}
+            variant="record"
+          />
         </div>
-        <button
-          className="bpm-adjust increase"
-          onClick={handleBpmIncrease}
-          title="Increase BPM"
-        >
-          +
-        </button>
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * MODE TOGGLES (Right)
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-modes">
-        {/* 🎭 WAVE 2015.5: Stage Preview Toggle */}
-        {onToggleStage && (
-          <button 
-            className={`mode-toggle ${stageVisible ? 'active' : ''}`}
-            onClick={onToggleStage}
-            title={stageVisible ? 'Hide Stage Preview' : 'Show Stage Preview'}
-          >
-            <span className="mode-icon">🎭</span>
-            <span className="mode-label">STAGE</span>
-          </button>
-        )}
-        
-        <button className="mode-toggle" title="Quantize to Grid">
-          <span className="mode-icon">⊞</span>
-          <span className="mode-label">QUANT</span>
-        </button>
-        
-        <button className="mode-toggle" title="Snap to Beats">
-          <span className="mode-icon">🧲</span>
-          <span className="mode-label">SNAP</span>
-        </button>
-        
-        <button className="mode-toggle" title="Loop Playback">
-          <span className="mode-icon">🔁</span>
-          <span className="mode-label">LOOP</span>
-        </button>
-      </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * AUDIO FILE INDICATOR - WAVE 2005 + 2005.3
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-audio">
-        {audioLoaded ? (
-          <div className="audio-loaded" title={audioFileName}>
-            <span className="audio-icon">🎵</span>
-            <span className="audio-name">
-              {audioFileName && audioFileName.length > 20 
-                ? audioFileName.slice(0, 17) + '...' 
-                : audioFileName}
-            </span>
-            {/* 👻 WAVE 2005.3: Close button to load another file */}
-            <button 
-              className="audio-close-btn"
-              onClick={onCloseAudio}
-              title="Close audio and load another"
-            >
-              ✕
-            </button>
+
+        <div className="ct-timecode">
+          <span className="ct-timecode-value">{formatTimecode(currentTime)}</span>
+        </div>
+
+        <div className="ct-bpm-group">
+          <button className="ct-bpm-adj" onClick={handleBpmDecrease} title="Decrease BPM">\u2212</button>
+          <div className="ct-bpm-display">
+            <input
+              type="number"
+              className="ct-bpm-input"
+              value={bpm}
+              onChange={handleBpmInput}
+              min={20}
+              max={300}
+            />
+            <span className="ct-bpm-label">BPM</span>
           </div>
-        ) : (
-          <button 
-            className="audio-load-btn"
-            onClick={onLoadAudio}
-            title="Load Audio File (or drag & drop)"
-          >
-            <span className="audio-icon">📂</span>
-            <span className="audio-label">LOAD AUDIO</span>
-          </button>
-        )}
+          <button className="ct-bpm-adj" onClick={handleBpmIncrease} title="Increase BPM">+</button>
+        </div>
       </div>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-       * CHRONOS BRANDING (Far Right)
-       * ═══════════════════════════════════════════════════════════════════ */}
-      <div className="transport-brand">
-        <span className="brand-icon">⏱</span>
-        <span className="brand-name">CHRONOS</span>
+
+      {/* ═══════════════════════════════════════════════════════════════
+       * ZONE 3: MODES & AUDIO (Right)
+       * [Stage] [Quant] [Snap] │ [Load Audio]
+       * ═══════════════════════════════════════════════════════════════ */}
+      <div className="ct-zone ct-zone-right">
+
+        <div className="ct-modes-group">
+          {onToggleStage && (
+            <button
+              className={`ct-mode-btn ${stageVisible ? 'active' : ''}`}
+              onClick={onToggleStage}
+              title={stageVisible ? 'Hide Stage Preview' : 'Show Stage Preview'}
+            >
+              <MonitorIcon size={13} />
+              <span className="ct-mode-label">STAGE</span>
+            </button>
+          )}
+          {onToggleSnap && (
+            <button
+              className={`ct-mode-btn ${snapEnabled ? 'active' : ''}`}
+              onClick={onToggleSnap}
+              title={snapEnabled ? 'Snap to Beats: ON' : 'Snap to Beats: OFF'}
+            >
+              <MagnetIcon size={13} />
+              <span className="ct-mode-label">SNAP</span>
+            </button>
+          )}
+        </div>
+
+        <span className="ct-divider" />
+
+        {/* Audio */}
+        <div className="ct-audio-group">
+          {audioLoaded ? (
+            <div className="ct-audio-loaded" title={audioFileName}>
+              <WaveformIcon size={14} />
+              <span className="ct-audio-name">
+                {audioFileName && audioFileName.length > 20
+                  ? audioFileName.slice(0, 17) + '\u2026'
+                  : audioFileName}
+              </span>
+              <button className="ct-audio-close" onClick={onCloseAudio} title="Close audio file">{'\u2715'}</button>
+            </div>
+          ) : (
+            <button className="ct-audio-load" onClick={onLoadAudio} title="Load Audio File">
+              <WaveformIcon size={14} />
+              <span className="ct-audio-label">LOAD AUDIO</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

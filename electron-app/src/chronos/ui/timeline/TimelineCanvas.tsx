@@ -596,13 +596,14 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const playheadRelative = currentTime - viewport.startTime
     const playheadPosition = (playheadRelative / 1000) * viewport.pixelsPerSecond
     
-    // Define "safe zone" - playhead should stay in left 80% of viewport
-    const safeZoneEnd = viewportWidth * 0.8
+    // 🚀 WAVE 2040.15: UNCHAINED SCROLL
+    // Safe zone at 95% - playhead can travel almost to the edge before scroll kicks in
+    const safeZoneEnd = viewportWidth * 0.95
     
     // If playhead exits right side of safe zone, scroll so playhead is at 10% from left
     if (playheadPosition > safeZoneEnd || playheadPosition < 0) {
       // Position playhead at 10% from left edge (not center)
-      const targetStart = currentTime - viewportDuration * 0.1
+      const targetStart = currentTime - viewportDuration * 0.05
       const newStart = Math.max(0, targetStart)
       
       setViewport(prev => ({
@@ -746,9 +747,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
         lastUserScrollRef.current = Date.now()  // Mark user scroll time
         const panAmount = e.deltaX * 10 // 10ms per pixel of scroll
         setViewport(prev => {
-          // 🔧 WAVE 2040.12: ZERO MARGIN — Allow negative startTime to compensate for label width
-          // This lets users scroll to see clips starting at ms:0 without left margin loss
-          const minStartTime = -(TRACK_LABEL_WIDTH / prev.pixelsPerSecond) * 1000
+          // 🔧 WAVE 2040.14: VIEWPORT RECALIBRATION — Clamp to t=0, no negative scroll
+          // User should zoom out to see t=0 clips fully, not scroll into negative time
+          const minStartTime = 0
           const newStart = Math.max(minStartTime, prev.startTime + panAmount)
           const duration = prev.endTime - prev.startTime
           return {

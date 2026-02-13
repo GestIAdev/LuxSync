@@ -1,5 +1,9 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════import { useChronosSession } from '../stores/sessionStore'
+import { TimelineCanvas } from './timeline/TimelineCanvas'
+// 🎬 WAVE 2040.1: THE CINEMA SIMULATOR (legacy StagePreview.tsx purged)
+import { StagePreview } from './stage/StageSimulatorCinema'
+// 🎹 WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)════════════════════════════════════════════
  * ⏱️ CHRONOS LAYOUT - WAVE 2009: THE FULL SCREEN EXPERIENCE
  * Main container for Chronos Studio - Offline Timeline Editor
  * 

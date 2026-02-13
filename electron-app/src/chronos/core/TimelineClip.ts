@@ -299,22 +299,46 @@ export function createVibeClip(
 
 /**
  * Create a new FXClip
+ * 
+ * WAVE 2040.21b: If effectId provided, looks up mixBus from EffectRegistry
+ * to automatically color Core FX clips correctly.
  */
 export function createFXClip(
   fxType: FXType,
   startMs: number,
   durationMs: number,
-  trackId: string
+  trackId: string,
+  effectId?: string  // WAVE 2040.21b: Optional Core Effect ID for registry lookup
 ): FXClip {
+  // 🎨 WAVE 2040.21b: If effectId provided, try to get effect from registry
+  let color = FX_COLORS[fxType] || '#666666'
+  let label = fxType.toUpperCase().replace('-', ' ')
+  
+  if (effectId) {
+    // Lazy import to avoid circular dependency
+    const { getEffectById } = require('./EffectRegistry')
+    const effect = getEffectById(effectId)
+    
+    if (effect) {
+      // Use effect's displayName
+      label = effect.displayName
+      
+      // Get color from mixBus
+      if (effect.mixBus) {
+        color = MIXBUS_CLIP_COLORS[effect.mixBus] || color
+      }
+    }
+  }
+  
   return {
     id: generateClipId(),
     type: 'fx',
     fxType,
-    label: fxType.toUpperCase().replace('-', ' '),
+    label,
     startMs,
     endMs: startMs + durationMs,
     trackId,
-    color: FX_COLORS[fxType],
+    color,
     keyframes: [
       { offsetMs: 0, value: 0, easing: 'ease-in' },
       { offsetMs: durationMs / 2, value: 1, easing: 'ease-out' },

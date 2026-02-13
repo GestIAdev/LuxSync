@@ -249,11 +249,13 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
       }
       
       // Standard FX clip from Arsenal
+      // WAVE 2040.21b: Pass effectId to enable registry color lookup
       const clip = createFXClip(
         payload.subType as FXType,
         snappedTime,
         payload.defaultDurationMs,
-        trackId
+        trackId,
+        payload.effectId  // WAVE 2040.21b: Registry lookup for Core FX colors
       )
       addClip(clip)
       selectClip(clip.id)

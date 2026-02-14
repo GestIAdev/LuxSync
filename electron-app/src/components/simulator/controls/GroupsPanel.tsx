@@ -1,5 +1,5 @@
 /**
- * 🐝 GROUPS PANEL - WAVE 432: HIVE MIND
+ * ☀️ HYPERION — Groups Panel
  * UI para gestionar grupos de fixtures
  * 
  * Secciones:
@@ -10,37 +10,23 @@
  * - Click en grupo → Selecciona fixtures + Auto-switch a CONTROLS
  * - Botón X → Borrar grupo de usuario
  * - "Save as Group" → Crea grupo desde selección actual
+ * 
+ * @module components/simulator/controls/GroupsPanel
+ * @since WAVE 2042.1 (Project Hyperion — Phase 0: Zone Colors Fix)
  */
 
 import React, { useMemo, useCallback, useState } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { ZONE_COLORS, ZONE_LABELS, normalizeZone, type CanonicalZone } from '../shared'
 import './GroupsPanel.css'
 
 interface GroupsPanelProps {
   onSwitchToControls: () => void
 }
 
-// Zone colors for visual distinction
-const ZONE_COLORS: Record<string, string> = {
-  'ceiling-front': '#FFDD00',  // Yellow
-  'ceiling-back': '#A855F7',   // Purple
-  'ceiling-left': '#00FFFF',   // Cyan
-  'ceiling-right': '#FF6B6B',  // Coral
-  'ceiling-center': '#4ADE80', // Green
-  'stage-left': '#00FFFF',
-  'stage-right': '#FF6B6B',
-  'stage-center': '#4ADE80',
-  'floor-front': '#FFDD00',
-  'floor-back': '#A855F7',
-  'truss-1': '#F97316',
-  'truss-2': '#06B6D4',
-  'truss-3': '#EC4899',
-  'unassigned': '#666666',
-}
-
-// Type colors
+// Type colors (still local — types don't need normalization)
 const TYPE_COLORS: Record<string, string> = {
   'moving-head': '#00FFFF',
   'par': '#4ADE80',
@@ -111,21 +97,26 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({ onSwitchToControls }) 
       }
     })
     
-    // BY ZONE
-    const zoneMap = new Map<string, string[]>()
+    // BY ZONE — Using canonical zones
+    const zoneMap = new Map<CanonicalZone, string[]>()
     fixtures.forEach((f: any) => {
-      const zone = f.zone || 'unassigned'
+      const zone = normalizeZone(f.zone)  // ☀️ HYPERION: Always normalize
       if (!zoneMap.has(zone)) zoneMap.set(zone, [])
       zoneMap.get(zone)!.push(f.id)
     })
     
     zoneMap.forEach((ids, zone) => {
       if (ids.length > 0 && zone !== 'unassigned') {
+        // Get label from ZONE_LABELS or format zone name
+        const label = ZONE_LABELS[zone] || zone.replace(/-/g, ' ').toUpperCase()
+        // Strip emoji from label for cleaner display
+        const cleanLabel = label.replace(/^[^\w]+/, '').trim()
+        
         groups.push({
           id: `sys-zone-${zone}`,
-          name: zone.replace(/-/g, ' ').toUpperCase(),
+          name: cleanLabel,
           fixtureIds: ids,
-          color: ZONE_COLORS[zone] || '#888888',
+          color: ZONE_COLORS[zone],  // ☀️ HYPERION: Guaranteed to exist
           category: 'zone'
         })
       }

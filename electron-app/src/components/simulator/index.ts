@@ -1,33 +1,65 @@
 /**
- * 🎭 SIMULATOR - WAVE 436: POST-CONSOLIDATION EXPORTS
- * Unified export point for all simulator components
+ * ☀️ HYPERION — Simulator Module Exports
  * 
- * Architecture Post-WAVE 434/435:
- * - views/: Main views (StageViewDual, 2D/3D renderers)
- * - controls/: Control panels (TheProgrammer, GroupsPanel, SceneBrowser, StageSidebar)
- * - widgets/: Reusable UI components (future)
- * - engine/: Simulation hooks and utilities (future)
+ * Unified export point for all simulator components.
  * 
- * WAVE 435 Purge: Removed InspectorControls + legacy sub-widgets (8 files)
+ * WAVE 2042.1: Post-Scorched Earth — Architecture reset.
+ * 
+ * Architecture:
+ * - views/: Main views (HyperionView, TacticalCanvas, VisualizerCanvas) — WIP
+ * - controls/: Control panels (TheProgrammer, GroupsPanel, SceneBrowser, StageSidebar) — PRESERVED
+ * - shared/: Shared utilities (ZoneLayoutEngine, NeonPalette, types) — NEW
+ * - widgets/: Reusable UI components (TimecoderDock) — FUTURE
+ * - engine/: Simulation hooks and utilities — FUTURE
+ * 
+ * @module components/simulator
+ * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 
-// Main Views
-export { StageViewDual } from './views/StageViewDual'
-export { default as SimulateView } from './views/SimulateView'
-export { StageSimulator2 } from './views/SimulateView/StageSimulator2'
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED UTILITIES — Phase 0 Complete
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Default export for lazy loading
-export { StageViewDual as default } from './views/StageViewDual'
+export * from './shared'
 
-// 3D Rendering
-export { Stage3DCanvas } from './views/stage3d'
-export * from './views/stage3d/fixtures'
-export * from './views/stage3d/environment'
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTROLS — PRESERVED (TheCommander)
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Controls
 export { TheProgrammer, TheProgrammerContent, GroupsPanel } from './controls'
 export { StageSidebar } from './controls/sidebar'
 export { SceneBrowser } from './controls/sidebar/SceneBrowser'
 
-// Legacy (to be deprecated)
-// export { InspectorControls } from './controls/sidebar/InspectorControls'
+// ═══════════════════════════════════════════════════════════════════════════
+// VIEWS — TO BE IMPLEMENTED (Phases 1-4)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 🚧 PLACEHOLDER: These exports will be added in subsequent phases:
+//
+// Phase 1 (WAVE 2042.2):
+// export { HyperionView } from './views/HyperionView'
+// export { HyperionView as StageViewDual } from './views/HyperionView'  // Backward compat
+// export { HyperionView as default } from './views/HyperionView'
+//
+// Phase 3 (WAVE 2042.4):
+// export { TacticalCanvas } from './views/tactical/TacticalCanvas'
+// export { TacticalCanvas as StageSimulator2 } from './views/tactical/TacticalCanvas'  // Backward compat
+//
+// Phase 4 (WAVE 2042.5-6):
+// export { VisualizerCanvas } from './views/visualizer/VisualizerCanvas'
+// export { VisualizerCanvas as Stage3DCanvas } from './views/visualizer/VisualizerCanvas'  // Backward compat
+// export * from './views/visualizer/fixtures'
+// export * from './views/visualizer/environment'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGACY EXPORTS — REMOVED (WAVE 2042.0 Scorched Earth)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 💀 ELIMINATED:
+// - StageViewDual → replaced by HyperionView
+// - SimulateView → eliminated
+// - StageSimulator2 → replaced by TacticalCanvas
+// - Stage3DCanvas → replaced by VisualizerCanvas
+// - Fixture3D, MovingHead3D, ParCan3D → replaced by HyperionFixture3D
+// - StageFloor, StageTruss → replaced by NeonFloor, HyperionTruss
+// - layoutGenerator3D → replaced by ZoneLayoutEngine

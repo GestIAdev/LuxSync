@@ -213,7 +213,13 @@ const RulerTrackRenderer: React.FC<TrackRendererProps> = memo(({
   
   // Find first bar in viewport
   const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-  const lastBar = Math.ceil(viewport.endTime / msPerBar)
+  
+  // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate last bar from SCREEN WIDTH
+  // Not from viewport.endTime (which is a logical concept, not visual limit)
+  const visibleWidth = width - TRACK_LABEL_WIDTH
+  const visibleDurationMs = visibleWidth / pixelsPerMs
+  const viewportEnd = viewport.startTime + visibleDurationMs
+  const lastBar = Math.ceil(viewportEnd / msPerBar) + 1  // +1 for safety margin
   
   for (let bar = firstBar; bar <= lastBar; bar++) {
     // Add bar marker
@@ -1014,6 +1020,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
             - Bar lines: Bright blue, full opacity
             - Beat lines: Subtle blue
             - Highlight: When dragging, nearby beats glow white
+            
+            🔥 WAVE 2040.40: INFINITE HORIZON — Grid fills entire viewport width
+            - Previously: Drew only up to viewport.endTime (12s default = cut short)
+            - Now: Draws to edge of physical screen width, regardless of viewport duration
         */}
         {(() => {
           const lines: React.ReactNode[] = []
@@ -1026,7 +1036,13 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           
           // Find first bar in viewport
           const firstBar = Math.max(0, Math.floor(viewport.startTime / msPerBar))
-          const lastBar = Math.ceil(viewport.endTime / msPerBar)
+          
+          // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate last bar from SCREEN WIDTH
+          // Not from viewport.endTime (which might be shorter than visible area)
+          const visibleWidth = dimensions.width - TRACK_LABEL_WIDTH
+          const visibleDurationMs = visibleWidth / pixelsPerMs
+          const viewportEnd = viewport.startTime + visibleDurationMs
+          const lastBar = Math.ceil(viewportEnd / msPerBar) + 1  // +1 for safety margin
           
           // Calculate if we're dragging (for glow effect)
           const isDragging = draggingClipId !== null || resizingClip !== null

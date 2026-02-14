@@ -139,7 +139,7 @@ export class SkySaw extends BaseEffect {
     super.trigger(config)
     
     // SkySaw solo afecta movers
-    this.zones = ['movers']
+    this.zones = ['all-movers']
     
     // Reset state
     this.currentCut = 0
@@ -272,7 +272,7 @@ export class SkySaw extends BaseEffect {
       dimmer: number
       movement?: { pan: number; tilt: number; isAbsolute: boolean; speed: number }
     }> = {
-      'movers_left': {
+      'movers-left': {
         color: this.sawColor,
         dimmer: this.triggerIntensity,
         movement: {
@@ -282,7 +282,7 @@ export class SkySaw extends BaseEffect {
           speed: 1.0  // Máxima velocidad (snap)
         }
       },
-      'movers_right': {
+      'movers-right': {
         color: this.sawColor,
         dimmer: this.triggerIntensity,
         movement: {

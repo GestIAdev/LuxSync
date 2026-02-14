@@ -142,7 +142,7 @@ export class IndustrialStrobe extends BaseEffect {
     super.trigger(config)
     
     // IndustrialStrobe es GLOBAL - afecta todo el escenario
-    this.zones = ['front', 'back', 'movers', 'pars']
+    this.zones = ['front', 'back', 'all-movers', 'all-pars']
     
     // Reset state
     this.currentFlash = 0

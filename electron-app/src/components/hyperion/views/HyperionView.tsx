@@ -15,6 +15,7 @@ import { useAudioStore } from '../../../stores/audioStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
+import { TacticalCanvas } from './tactical'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -235,54 +236,45 @@ export function HyperionView({
           </div>
         )}
 
-        {/* Canvas Container — Aquí irán TacticalCanvas o VisualizerCanvas */}
+        {/* Canvas Container — TacticalCanvas (2D) or VisualizerCanvas (3D) */}
         {!isLoading && !isEmpty && (
           <div className="hyperion-canvas-container">
-            {/* 
-             * 🚧 PLACEHOLDER — Phase 3/4 Implementation
-             * 
-             * {viewMode === '2D' ? (
-             *   <TacticalCanvas 
-             *     quality={qualitySettings}
-             *     onBeat={onBeat}
-             *   />
-             * ) : (
-             *   <VisualizerCanvas 
-             *     quality={qualitySettings}
-             *     onBeat={onBeat}
-             *   />
-             * )}
-             */}
-            
-            {/* Temporary placeholder para Phase 1 */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              color: 'rgba(255,255,255,0.4)',
-              fontFamily: 'var(--h-font-primary)',
-            }}>
-              <div style={{ fontSize: '32px', opacity: 0.3 }}>
-                {viewMode === '2D' ? '🎯' : '🌐'}
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
+            {viewMode === '2D' ? (
+              <TacticalCanvas 
+                quality={qualityMode}
+                showGrid={true}
+                showZoneLabels={true}
+              />
+            ) : (
+              /* 🚧 PLACEHOLDER — Phase 4: VisualizerCanvas (3D) */
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                color: 'rgba(255,255,255,0.4)',
+                fontFamily: 'var(--h-font-primary)',
+                height: '100%',
               }}>
-                {viewMode === '2D' ? 'Tactical Canvas' : 'Visualizer Canvas'}
+                <div style={{ fontSize: '32px', opacity: 0.3 }}>🌐</div>
+                <div style={{ 
+                  fontSize: '12px', 
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                }}>
+                  Visualizer Canvas
+                </div>
+                <div style={{ 
+                  fontSize: '10px', 
+                  opacity: 0.5,
+                  maxWidth: '200px',
+                  textAlign: 'center',
+                }}>
+                  3D View — Coming in Phase 4
+                </div>
               </div>
-              <div style={{ 
-                fontSize: '10px', 
-                opacity: 0.5,
-                maxWidth: '200px',
-                textAlign: 'center',
-              }}>
-                {fixtureCount} fixtures ready • {qualityMode} mode
-              </div>
-            </div>
+            )}
           </div>
         )}
 

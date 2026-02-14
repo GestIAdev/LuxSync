@@ -1,44 +1,64 @@
 /**
- * ☀️ HYPERION — Views Module Index
+ * ☀️ HYPERION — Tactical Canvas Module Index
  * 
- * Main rendering views for the Live View module.
+ * Barrel exports for the 2D tactical view.
  * 
- * WAVE 2042.3: Phase 1 — HyperionView created.
- * WAVE 2042.5: Phase 3 — TacticalCanvas created.
- * 
- * @module components/hyperion/views
- * @since WAVE 2042.1 (Project Hyperion — Phase 0)
+ * @module components/hyperion/views/tactical
+ * @since WAVE 2042.5 (Project Hyperion — Phase 3)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAIN VIEW — Phase 1 Complete
+// MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { HyperionView, StageViewDual } from './HyperionView'
-export { default as HyperionViewDefault } from './HyperionView'
+export { TacticalCanvas } from './TacticalCanvas'
+export type { TacticalCanvasProps } from './TacticalCanvas'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TACTICAL CANVAS (2D) — Phase 3 Complete
+// TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { TacticalCanvas } from './tactical'
-export type { TacticalCanvasProps, TacticalFixture, TacticalCanvasOptions } from './tactical'
+export type {
+  TacticalFixture,
+  HitTestResult,
+  TacticalSelection,
+  TacticalCanvasOptions,
+  RenderMetrics,
+  QualityMode,
+} from './types'
 
-// Re-export for backward compatibility
-export { TacticalCanvas as StageSimulator2 } from './tactical'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🚧 PLACEHOLDER — Views to be added in subsequent phases
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Phase 4 (WAVE 2042.6-7):
-// export { VisualizerCanvas } from './visualizer/VisualizerCanvas'
-// export { VisualizerCanvas as Stage3DCanvas } from './visualizer'  // backward compat
+export { DEFAULT_TACTICAL_OPTIONS } from './types'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 💀 ELIMINATED (WAVE 2042.0 Scorched Earth)
+// HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// - StageViewDual.tsx/.css → HyperionView
-// - SimulateView/ → TacticalCanvas
-// - stage3d/ → VisualizerCanvas
+export { useFixtureData } from './useFixtureData'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HIT TESTING
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { 
+  hitTestFixtures, 
+  hitTestLasso,
+  getCanvasMousePosition,
+  canvasToNormalized,
+} from './HitTestEngine'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LAYERS (for advanced customization)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  renderGridLayer,
+  renderZoneLayer,
+  renderFixtureLayer,
+  renderSelectionLayer,
+  renderHUDLayer,
+  GRID_CONFIG,
+  ZONE_LABEL_CONFIG,
+  FIXTURE_CONFIG,
+  SELECTION_CONFIG,
+  HUD_CONFIG,
+} from './layers'

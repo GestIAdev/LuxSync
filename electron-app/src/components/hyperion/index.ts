@@ -31,10 +31,12 @@ export { StageSidebar } from './controls/sidebar'
 export { SceneBrowser } from './controls/sidebar/SceneBrowser'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// VIEWS — Phase 1 Complete
+// VIEWS — Phase 1 + Phase 3 Complete
 // ═══════════════════════════════════════════════════════════════════════════
 
 export { HyperionView, StageViewDual, HyperionViewDefault } from './views'
+export { TacticalCanvas, StageSimulator2 } from './views'
+export type { TacticalCanvasProps, TacticalFixture, TacticalCanvasOptions } from './views'
 
 // Backward compatibility: default export for lazy loading
 export { HyperionViewDefault as default } from './views'
@@ -45,13 +47,11 @@ export { HyperionViewDefault as default } from './views'
 
 export * from './widgets'
 
-// 🚧 PLACEHOLDER: These exports will be added in subsequent phases:
-//
-// Phase 3 (WAVE 2042.4):
-// export { TacticalCanvas } from './views/tactical/TacticalCanvas'
-// export { TacticalCanvas as StageSimulator2 } from './views/tactical/TacticalCanvas'  // Backward compat
-//
-// Phase 4 (WAVE 2042.5-6):
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚧 PLACEHOLDER: Phase 4 exports (WAVE 2042.6-7)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Phase 4 (WAVE 2042.6-7):
 // export { VisualizerCanvas } from './views/visualizer/VisualizerCanvas'
 // export { VisualizerCanvas as Stage3DCanvas } from './views/visualizer/VisualizerCanvas'  // Backward compat
 // export * from './views/visualizer/fixtures'

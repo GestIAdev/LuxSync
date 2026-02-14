@@ -1,0 +1,112 @@
+/**
+ * ☀️ HYPERION — Tactical Canvas CSS
+ * 
+ * Estilos para el contenedor del canvas 2D.
+ * 
+ * @module components/hyperion/views/tactical/TacticalCanvas
+ * @since WAVE 2042.5 (Project Hyperion — Phase 3)
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CONTAINER
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--hyperion-bg-void, #050508);
+  
+  /* Prevent text selection during drag */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CANVAS ELEMENT
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  
+  /* Crisp rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  
+  /* Cursor states handled by JS */
+  cursor: crosshair;
+}
+
+.tactical-canvas.hovering {
+  cursor: pointer;
+}
+
+.tactical-canvas.dragging {
+  cursor: grabbing;
+}
+
+.tactical-canvas.selecting {
+  cursor: crosshair;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TOOLTIP OVERLAY LAYER
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * LOADING STATE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-canvas-container.loading::after {
+  content: 'INITIALIZING...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--hyperion-font-display, 'Orbitron', monospace);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(0, 240, 255, 0.5);
+  animation: tactical-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tactical-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * NO FIXTURES STATE
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tactical-canvas-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: var(--hyperion-font-primary, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+.tactical-canvas-empty::before {
+  content: '○';
+  display: block;
+  font-size: 32px;
+  margin-bottom: 12px;
+  color: rgba(0, 240, 255, 0.15);
+}

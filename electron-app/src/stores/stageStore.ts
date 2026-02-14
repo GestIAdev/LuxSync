@@ -39,12 +39,14 @@ import {
   Rotation3D,
   PhysicsProfile,
   FixtureZone,
+  CanonicalZone,
   StageDimensions,
   StageVisuals,
   createEmptyShowFile,
   createDefaultFixture,
   createFixtureGroup,
-  DEFAULT_PHYSICS_PROFILES
+  DEFAULT_PHYSICS_PROFILES,
+  normalizeZone
 } from '../core/stage/ShowFileV2'
 import { autoMigrate, parseLegacyScenes } from '../core/stage/ShowFileMigrator'
 
@@ -520,7 +522,8 @@ export const useStageStore = create<StageStore>()(
     },
     
     setFixtureZone: (id, zone) => {
-      get().updateFixture(id, { zone })
+      // 🔥 WAVE 2040.24: Siempre normalizar a canonical antes de persistir
+      get().updateFixture(id, { zone: normalizeZone(zone) })
     },
     
     batchUpdateFixtures: (updates) => {

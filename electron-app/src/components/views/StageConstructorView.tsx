@@ -893,24 +893,24 @@ const PropertiesContent: React.FC = () => {
     }
   }
 
-  // 🧹 WAVE 1040: THE CLEAN SLATE - Only canonical zones
+  // 🔥 WAVE 2040.24: CANONICAL ZONES — fuente única desde ShowFileV2
   // 💡 PARS & BARS: Auto-Stereo L/R via Position X (handled by MasterArbiter)
   // 🏎️ MOVERS: Explicit Stereo (user must choose L or R)
   // ✨ SPECIALS: Air, Ambient, Center
   const ZONES_V2 = [
     // 💡 PARS & BARS (Auto-Stereo L/R via Position X)
-    { value: 'FRONT_PARS',   label: '🔴 FRONT (Main)' },
-    { value: 'BACK_PARS',    label: '🔵 BACK (Counter)' },
-    { value: 'FLOOR_PARS',   label: '⬇️ FLOOR (Uplight)' }, 
+    { value: 'front',         label: '🔴 FRONT (Main)' },
+    { value: 'back',          label: '🔵 BACK (Counter)' },
+    { value: 'floor',         label: '⬇️ FLOOR (Uplight)' }, 
     
     // 🏎️ MOVERS (Explicit Stereo)
-    { value: 'MOVING_LEFT',  label: '🏎️ MOVER LEFT' },
-    { value: 'MOVING_RIGHT', label: '🏎️ MOVER RIGHT' },
+    { value: 'movers-left',   label: '🏎️ MOVER LEFT' },
+    { value: 'movers-right',  label: '🏎️ MOVER RIGHT' },
     
     // ✨ SPECIALS
-    { value: 'AIR',          label: '✨ AIR (Laser/Atmosphere)' },
-    { value: 'AMBIENT',      label: '🌫️ AMBIENT (House)' },
-    { value: 'CENTER',       label: '⚡ CENTER (Strobes/Blinders)' }
+    { value: 'air',           label: '✨ AIR (Laser/Atmosphere)' },
+    { value: 'ambient',       label: '🌫️ AMBIENT (House)' },
+    { value: 'center',        label: '⚡ CENTER (Strobes/Blinders)' }
   ]
   
   // 🔥 WAVE 1041.2: REACTIVE TRUTH - Detect invalid zones

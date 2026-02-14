@@ -772,10 +772,8 @@ export class TitanOrchestrator {
         flareB = rgb.b
       }
       
-      // 🌴 WAVE 700.8.5 → 700.9 → 1080: Filtrado inteligente por zona + FLUID DYNAMICS
-      // Soporta AMBOS sistemas de zonas:
-      //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-      //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
+      // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
+      // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
       const shouldApplyToFixture = (f: typeof fixtureStates[0]): boolean => {
         // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
         if ((effectOutput.globalComposition ?? 0) > 0) return true
@@ -784,31 +782,12 @@ export class TitanOrchestrator {
         const zones = effectOutput.zones || []
         if (zones.length === 0) return false
         
-        const fixtureZone = (f.zone || '').toLowerCase()
+        const fixtureZone = f.zone || ''
         
+        // Usar fixtureMatchesZone() como single source of truth
         for (const zone of zones) {
-          if (zone === 'all') return true
-          
-          // FRONT: floor-front, FRONT_PARS, o cualquier cosa con 'front'
-          if (zone === 'front') {
-            if (fixtureZone.includes('front') || fixtureZone.includes('floor-front')) return true
-          }
-          
-          // BACK: floor-back, BACK_PARS, o cualquier cosa con 'back'
-          if (zone === 'back') {
-            if (fixtureZone.includes('back') || fixtureZone.includes('floor-back')) return true
-          }
-          
-          // MOVERS: ceiling-*, MOVING_* (NO usar pan/tilt porque HAL asigna a todos)
-          if (zone === 'movers') {
-            if (fixtureZone.includes('ceiling') || 
-                fixtureZone.includes('moving')) return true
-          }
-          
-          // PARS: floor-*, *_PARS, pero NO movers
-          if (zone === 'pars') {
-            const isMover = fixtureZone.includes('ceiling') || fixtureZone.includes('moving')
-            if (!isMover && (fixtureZone.includes('floor') || fixtureZone.includes('par'))) return true
+          if (this.fixtureMatchesZone(fixtureZone, zone)) {
+            return true
           }
         }
         return false
@@ -1931,80 +1910,28 @@ export class TitanOrchestrator {
    * @param targetZone Zona objetivo del efecto
    * @returns true si la fixture pertenece a la zona
    */
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2040.25 FASE 2: SIMPLIFIED ZONE MATCHING — Canonical Zones
+  // Reescrito con CanonicalZone. De 60 líneas a 20 líneas.
+  // ═══════════════════════════════════════════════════════════════════════════
   private fixtureMatchesZone(fixtureZone: string, targetZone: string): boolean {
     const fz = fixtureZone.toLowerCase()
     const tz = targetZone.toLowerCase()
     
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 730: MAPEO ESTRICTO DE ZONAS
-    // No más includes() vagos que causan matches falsos
-    // ═══════════════════════════════════════════════════════════════════════
+    // Special group targets
+    if (tz === 'all') return true
+    if (tz === 'all-movers') return fz === 'movers-left' || fz === 'movers-right'
+    if (tz === 'all-pars') return fz === 'front' || fz === 'back' || fz === 'floor'
     
-    switch (tz) {
-      case 'all':
-        return true
-        
-      case 'front':
-        // SOLO front pars, NO movers aunque estén "en frente"
-        return fz === 'front_pars' || fz === 'floor-front'
-      
-      // 🪼 WAVE 1070.3: STEREO PARs support
-      case 'frontl':
-        return fz === 'front_pars' || fz === 'floor-front'  // Front left PARs
-      
-      case 'frontr':
-        return fz === 'front_pars' || fz === 'floor-front'  // Front right PARs
-        
-      case 'back':
-        // SOLO back pars, NO movers aunque estén "atrás"
-        return fz === 'back_pars' || fz === 'floor-back'
-      
-      // 🪼 WAVE 1070.3: STEREO PARs support
-      case 'backl':
-        return fz === 'back_pars' || fz === 'floor-back'  // Back left PARs
-      
-      case 'backr':
-        return fz === 'back_pars' || fz === 'floor-back'  // Back right PARs
-        
-      case 'movers':
-        // SOLO cabezas móviles - CRITICAL: NO incluir pars
-        return fz === 'moving_left' || fz === 'moving_right' || 
-               fz === 'MOVING_LEFT' || fz === 'MOVING_RIGHT' ||  // 🔥 WAVE 810.5: Legacy uppercase
-               fz === 'ceiling-left' || fz === 'ceiling-right' ||
-               fz.startsWith('moving') || fz.startsWith('ceiling')
-      
-      // 🔥 WAVE 810: UNLOCK THE TWINS - Targeting L/R específico
-      case 'movers_left':
-        // SOLO movers del lado izquierdo
-        return fz === 'moving_left' || fz === 'ceiling-left' || fz === 'MOVING_LEFT'  // 🔥 WAVE 810.5: uppercase
-      
-      case 'movers_right':
-        // SOLO movers del lado derecho
-        return fz === 'moving_right' || fz === 'ceiling-right' || fz === 'MOVING_RIGHT'  // 🔥 WAVE 810.5: uppercase
-        
-      case 'pars':
-        // Todos los PARs (front + back) pero NUNCA movers
-        return fz === 'front_pars' || fz === 'back_pars' ||
-               fz === 'floor-front' || fz === 'floor-back'
-        
-      case 'left':
-        // Solo fixtures del lado izquierdo
-        return fz === 'moving_left' || fz === 'ceiling-left'
-        
-      case 'right':
-        // Solo fixtures del lado derecho
-        return fz === 'moving_right' || fz === 'ceiling-right'
-        
-      default:
-        // 🔥 WAVE 730: Sin fallback permisivo
-        // Si no reconocemos la zona, NO ENTREGAMOS NADA
-        console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`)
-        return false
-    }
+    // Direct canonical zone match (front→front, movers-left→movers-left, etc.)
+    if (fz === tz) return true
+    
+    // No match
+    return false
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔊 WAVE 1075.2: STEREO ROUTING - POSITION-BASED (NOT INDEX-BASED)
+  // 🔊 WAVE 2040.25 FASE 2: STEREO ROUTING — Canonical + Position-based
   // Usa position.x del StageBuilder para determinar L/R
   // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
   //             position.x >= 0 = RIGHT (lado derecho del escenario)
@@ -2012,53 +1939,35 @@ export class TitanOrchestrator {
   private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
     const fz = fixtureZone.toLowerCase()
     const tz = targetZone.toLowerCase()
-    const isLeft = positionX < 0  // position.x negativo = lado IZQUIERDO del escenario
+    const isLeft = positionX < 0
     
-    switch (tz) {
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🔊 STEREO PARs - Front
-      // ═══════════════════════════════════════════════════════════════════════
-      case 'frontl':
-      case 'front_left':
-        // Front PARs + debe estar en posición X negativa (izquierda)
-        if (fz === 'front_pars' || fz === 'floor-front') {
-          return isLeft
-        }
-        return false
-        
-      case 'frontr':
-      case 'front_right':
-        // Front PARs + debe estar en posición X positiva/cero (derecha)
-        if (fz === 'front_pars' || fz === 'floor-front') {
-          return !isLeft
-        }
-        return false
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // 🔊 STEREO PARs - Back
-      // ═══════════════════════════════════════════════════════════════════════
-      case 'backl':
-      case 'back_left':
-        // Back PARs + debe estar en posición X negativa (izquierda)
-        if (fz === 'back_pars' || fz === 'floor-back') {
-          return isLeft
-        }
-        return false
-        
-      case 'backr':
-      case 'back_right':
-        // Back PARs + debe estar en posición X positiva/cero (derecha)
-        if (fz === 'back_pars' || fz === 'floor-back') {
-          return !isLeft
-        }
-        return false
-      
-      // ═══════════════════════════════════════════════════════════════════════
-      // Todas las demás zonas: delegar al método original (sin filtro L/R)
-      // ═══════════════════════════════════════════════════════════════════════
-      default:
-        return this.fixtureMatchesZone(fz, tz)
+    // Position-based stereo filtering (all-left / all-right)
+    if (tz === 'all-left') return isLeft
+    if (tz === 'all-right') return !isLeft
+    
+    // Zone match + stereo side check (for PARs with stereo)
+    // Example: targetZone='front' + positionX < 0 → front left PARs
+    // Example: targetZone='movers-left' → zone-based, ignore positionX
+    
+    // If targetZone is already stereo-specific (movers-left, movers-right),
+    // delegate to non-stereo matcher (zone match is enough)
+    if (tz === 'movers-left' || tz === 'movers-right') {
+      return this.fixtureMatchesZone(fz, tz)
     }
+    
+    // For generic zones (front, back, floor), apply position-based stereo filter
+    // This allows stereo routing of PARs without explicit zone split
+    if (tz === 'front' || tz === 'back' || tz === 'floor') {
+      // Check zone match first
+      if (!this.fixtureMatchesZone(fz, tz)) return false
+      // Zone matches, now apply stereo filter (if needed by caller)
+      // NOTE: Caller MUST specify if they want L/R filtering via all-left/all-right
+      // If they just pass 'front', we match ALL front fixtures
+      return true
+    }
+    
+    // Default: delegate to non-stereo matcher
+    return this.fixtureMatchesZone(fz, tz)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

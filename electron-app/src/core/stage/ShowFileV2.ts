@@ -183,23 +183,51 @@ export interface Rotation3D {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Zone identifiers (now explicit strings, not auto-assigned)
+ * 🔥 WAVE 2040.24 FASE 1: CANONICAL ZONE — LA VERDAD ÚNICA
+ * 
+ * 9 valores semánticos, kebab-case, sin gritos, sin ambigüedad.
+ * Toda zona legacy se normaliza a uno de estos 9 valores.
+ * 
+ * Mapping semántico:
+ *   front       → PARs frontales (audience-facing wash)
+ *   back        → PARs traseros (counter/backlight)
+ *   floor       → PARs de suelo (uplight)
+ *   movers-left → Cabezas móviles lado izquierdo
+ *   movers-right→ Cabezas móviles lado derecho
+ *   center      → Strobes/Blinders centrales
+ *   air         → Lásers/Aerials/Atmósfera
+ *   ambient     → House lights/ambiente
+ *   unassigned  → Sin asignar
  */
-// 🧹 WAVE 1042: CANONICAL ZONES V2
-// Reemplaza legacy zones con arquitectura semántica
-export type FixtureZone = 
-  // 💡 PARS & BARS (Auto-Stereo L/R via Position X)
+export type CanonicalZone =
+  | 'front'
+  | 'back'
+  | 'floor'
+  | 'movers-left'
+  | 'movers-right'
+  | 'center'
+  | 'air'
+  | 'ambient'
+  | 'unassigned'
+
+/**
+ * FixtureZone = CanonicalZone + legacy strings para backwards compatibility.
+ * TODO WAVE 2040.24 FASE 4: Eliminar legacy strings cuando toda la migración esté completa.
+ */
+export type FixtureZone = CanonicalZone
+  // 🪦 LEGACY V2 (SCREAMING_CASE) — deprecated, normalizar con normalizeZone()
   | 'FRONT_PARS'
   | 'BACK_PARS'
   | 'FLOOR_PARS'
-  // 🏎️ MOVERS (Explicit Stereo)
   | 'MOVING_LEFT'
   | 'MOVING_RIGHT'
-  // ✨ SPECIALS
   | 'AIR'
   | 'AMBIENT'
   | 'CENTER'
-  // Legacy support (deprecated)
+  | 'STROBES'
+  | 'LASERS'
+  | 'UNASSIGNED'
+  // 🪦 LEGACY V1 (kebab-case viejo) — deprecated
   | 'stage-left'
   | 'stage-right'
   | 'stage-center'
@@ -214,7 +242,273 @@ export type FixtureZone =
   | 'truss-2'
   | 'truss-3'
   | 'custom'
-  | 'unassigned'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CANONICAL ZONE UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔥 WAVE 2040.24: Array canónico de las 9 zonas válidas.
+ * Usado para validación, UI dropdowns y iteración.
+ */
+export const CANONICAL_ZONES: readonly CanonicalZone[] = [
+  'front',
+  'back',
+  'floor',
+  'movers-left',
+  'movers-right',
+  'center',
+  'air',
+  'ambient',
+  'unassigned',
+] as const
+
+/**
+ * 🔥 WAVE 2040.24: Labels para UI — cada zona canónica con su emoji y nombre.
+ */
+export const ZONE_LABELS: Record<CanonicalZone, string> = {
+  'front':        '🔴 FRONT (Main)',
+  'back':         '🔵 BACK (Counter)',
+  'floor':        '⬇️ FLOOR (Uplight)',
+  'movers-left':  '🏎️ MOVER LEFT',
+  'movers-right': '🏎️ MOVER RIGHT',
+  'center':       '⚡ CENTER (Strobes/Blinders)',
+  'air':          '✨ AIR (Laser/Atmosphere)',
+  'ambient':      '🌫️ AMBIENT (House)',
+  'unassigned':   '❓ UNASSIGNED',
+}
+
+/**
+ * 🔥 WAVE 2040.24 FASE 1: NORMALIZER — El traductor universal de zonas.
+ * 
+ * Acepta CUALQUIER string legacy y lo convierte a CanonicalZone.
+ * Determinista, sin side effects, sin excepciones.
+ * Si no reconoce el input → 'unassigned' (nunca crashea).
+ * 
+ * @param zone — Cualquier string de zona (legacy V1, SCREAMING V2, canonical, basura...)
+ * @returns CanonicalZone — Siempre uno de los 9 valores válidos
+ */
+export function normalizeZone(zone: string | undefined | null): CanonicalZone {
+  if (!zone) return 'unassigned'
+
+  const raw = zone.trim().toLowerCase()
+
+  // ── Ya es canónica ────────────────────────────────────────────────────
+  if (CANONICAL_ZONES.includes(raw as CanonicalZone)) {
+    return raw as CanonicalZone
+  }
+
+  // ── Mapa exhaustivo: legacy → canonical ───────────────────────────────
+  const MAP: Record<string, CanonicalZone> = {
+    // SCREAMING_CASE V2
+    'front_pars':    'front',
+    'back_pars':     'back',
+    'floor_pars':    'floor',
+    'moving_left':   'movers-left',
+    'moving_right':  'movers-right',
+    'strobes':       'center',
+    'lasers':        'air',
+
+    // kebab-case legacy V1
+    'stage-left':    'movers-left',
+    'stage-right':   'movers-right',
+    'stage-center':  'center',
+    'ceiling-front': 'front',
+    'ceiling-back':  'back',
+    'ceiling-left':  'movers-left',
+    'ceiling-right': 'movers-right',
+    'ceiling-center':'center',
+    'floor-front':   'front',
+    'floor-back':    'back',
+    'truss-1':       'back',
+    'truss-2':       'back',
+    'truss-3':       'back',
+    'custom':        'unassigned',
+
+    // Aliases cortos (por si llegan del migrador viejo)
+    'left':          'movers-left',
+    'right':         'movers-right',
+    'front':         'front',
+    'back':          'back',
+    'floor':         'floor',
+    'center':        'center',
+    'ceiling':       'center',
+    'truss':         'back',
+    'air':           'air',
+    'ambient':       'ambient',
+    'unassigned':    'unassigned',
+  }
+
+  return MAP[raw] ?? 'unassigned'
+}
+
+/**
+ * 🔥 WAVE 2040.24: Comprueba si un string es una CanonicalZone válida.
+ */
+export function isCanonicalZone(zone: string | undefined | null): zone is CanonicalZone {
+  if (!zone) return false
+  return CANONICAL_ZONES.includes(zone as CanonicalZone)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIXTURE SELECTOR - WAVE 2040.25 FASE 3
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎯 WAVE 2040.25 FASE 3: FixtureSelector — Filtros dinámicos tipo grandMA3
+ * 
+ * Permite targeting avanzado: zona + parity (even/odd) + index range + stereo (L/R).
+ * El selector se resuelve en runtime a una lista concreta de fixture IDs.
+ * 
+ * EJEMPLOS:
+ * - { target: 'front', parity: 'even' } → Front PARs pares
+ * - { target: 'movers-left', indexRange: '1-3' } → Primeros 3 movers izquierdos
+ * - { target: 'all', parity: 'odd', stereoSide: 'left' } → Todos los impares del lado izquierdo
+ * 
+ * FLUJO:
+ * 1. Resolver target (zona o grupo) → lista base de fixtures
+ * 2. Filtrar por parity (even/odd) → índices dentro del grupo
+ * 3. Filtrar por indexRange ('1-3' o '1,3,5') → posiciones específicas
+ * 4. Filtrar por stereoSide (L/R) → position.x < 0 o >= 0
+ * 5. Resultado final → IDs concretos para el efecto
+ */
+export interface FixtureSelector {
+  /** 
+   * Target: zona canónica, grupo ID, o 'all'
+   * Si es una CanonicalZone: resuelve fixtures con esa zona
+   * Si es un group ID: resuelve fixtures del grupo
+   * Si es 'all': todas las fixtures del show
+   */
+  target: CanonicalZone | string
+  
+  /** 
+   * Parity filter (aplicado DESPUÉS de resolver target)
+   * - 'all': Todos (default)
+   * - 'even': Solo fixtures con índice par (0, 2, 4, ...) dentro del grupo
+   * - 'odd': Solo fixtures con índice impar (1, 3, 5, ...) dentro del grupo
+   */
+  parity?: 'all' | 'even' | 'odd'
+  
+  /** 
+   * Index range filter: "1-3" o "1,3,5" (1-based, dentro del grupo resuelto)
+   * Ejemplos:
+   * - "1-3": Primeros 3 fixtures del grupo
+   * - "1,3,5": Fixtures en posiciones 1, 3 y 5
+   * - "2-": Desde la posición 2 hasta el final
+   */
+  indexRange?: string
+  
+  /**
+   * Stereo side filter (basado en position.x de StageBuilder)
+   * - 'left': Solo fixtures con position.x < 0
+   * - 'right': Solo fixtures con position.x >= 0
+   * - undefined: Ambos lados
+   */
+  stereoSide?: 'left' | 'right'
+  
+  /** 
+   * Phase spread: offset de fase por fixture (para wave/chase effects)
+   * 0 = todos en fase, 1 = spread completo (180° entre primero y último)
+   */
+  phaseSpread?: number  // 0-1
+}
+
+/**
+ * 🎯 WAVE 2040.25 FASE 3: Resolver FixtureSelector → lista de IDs
+ * 
+ * Esta función es el CORAZÓN del targeting avanzado.
+ * Convierte un selector abstracto en una lista concreta de fixture IDs.
+ * 
+ * @param selector — El selector a resolver
+ * @param fixtures — Array de todas las fixtures del show (desde stageStore)
+ * @param groups — Array de grupos del show (para resolver group IDs)
+ * @returns Array de fixture IDs que matchean el selector
+ */
+export function resolveFixtureSelector(
+  selector: FixtureSelector,
+  fixtures: FixtureV2[],
+  groups?: FixtureGroup[]
+): string[] {
+  // 1️⃣ Resolver target → lista base
+  let baseFixtures: FixtureV2[] = []
+  
+  if (selector.target === 'all') {
+    baseFixtures = fixtures
+  } else if (isCanonicalZone(selector.target)) {
+    // Es una zona canónica
+    baseFixtures = fixtures.filter(f => f.zone === selector.target)
+  } else {
+    // Intentar resolver como group ID
+    const group = groups?.find(g => g.id === selector.target)
+    if (group) {
+      baseFixtures = fixtures.filter(f => group.fixtureIds.includes(f.id))
+    } else {
+      // Grupo no encontrado, retornar vacío
+      console.warn(`[resolveFixtureSelector] Unknown target: ${selector.target}`)
+      return []
+    }
+  }
+  
+  // 2️⃣ Filtrar por stereoSide (si está definido)
+  if (selector.stereoSide) {
+    if (selector.stereoSide === 'left') {
+      baseFixtures = baseFixtures.filter(f => f.position.x < 0)
+    } else {
+      baseFixtures = baseFixtures.filter(f => f.position.x >= 0)
+    }
+  }
+  
+  // 3️⃣ Filtrar por parity (even/odd)
+  if (selector.parity && selector.parity !== 'all') {
+    baseFixtures = baseFixtures.filter((_, idx) => {
+      if (selector.parity === 'even') return idx % 2 === 0
+      if (selector.parity === 'odd') return idx % 2 !== 0
+      return true
+    })
+  }
+  
+  // 4️⃣ Filtrar por indexRange (si está definido)
+  if (selector.indexRange) {
+    const indices = parseIndexRange(selector.indexRange, baseFixtures.length)
+    baseFixtures = baseFixtures.filter((_, idx) => indices.includes(idx))
+  }
+  
+  // 5️⃣ Retornar IDs finales
+  return baseFixtures.map(f => f.id)
+}
+
+/**
+ * Parse index range string: "1-3" | "1,3,5" | "2-"
+ * Returns 0-based indices array
+ */
+function parseIndexRange(range: string, maxLength: number): number[] {
+  const result: number[] = []
+  
+  // Case: "1-3" → [0, 1, 2] (1-based input → 0-based output)
+  if (range.includes('-')) {
+    const [start, end] = range.split('-').map(s => s.trim())
+    const startIdx = start ? parseInt(start, 10) - 1 : 0
+    const endIdx = end ? parseInt(end, 10) - 1 : maxLength - 1
+    
+    for (let i = Math.max(0, startIdx); i <= Math.min(maxLength - 1, endIdx); i++) {
+      result.push(i)
+    }
+  }
+  // Case: "1,3,5" → [0, 2, 4]
+  else if (range.includes(',')) {
+    const indices = range.split(',').map(s => parseInt(s.trim(), 10) - 1)
+    result.push(...indices.filter(i => i >= 0 && i < maxLength))
+  }
+  // Case: "3" → [2]
+  else {
+    const idx = parseInt(range, 10) - 1
+    if (idx >= 0 && idx < maxLength) {
+      result.push(idx)
+    }
+  }
+  
+  return result
+}
 
 /**
  * 🎯 FIXTURE V2 - The complete fixture definition with all persistence

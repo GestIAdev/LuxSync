@@ -60,10 +60,11 @@ const fixturePhysicsDriver = new FixturePhysicsDriver()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
 // =============================================================================
-// FIXTURE TYPES & ZONING (WAVE 9.6)
+// FIXTURE TYPES & ZONING (WAVE 2040.24: CANONICAL)
 // =============================================================================
 
-type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
+// 🔥 WAVE 2040.24: FixtureZone importado desde fuente canónica
+import type { FixtureZone } from '../src/core/stage/ShowFileV2'
 
 interface FixtureLibraryItem {
   id: string
@@ -209,27 +210,29 @@ function autoAssignZone(fixtureType: string | undefined, fixtureName?: string): 
       nameUpper.includes('5R') || nameUpper.includes('7R') || nameUpper.includes('MOVING')) {
     const currentCount = zoneCounters.moving
     zoneCounters.moving++
-    const zone = currentCount % 2 === 0 ? 'MOVING_LEFT' : 'MOVING_RIGHT'
+    // 🔥 WAVE 2040.24: Canonical zones
+    const zone: FixtureZone = currentCount % 2 === 0 ? 'movers-left' : 'movers-right'
     console.log('[Zoning] Moving Head #' + currentCount + ' "' + fixtureName + '" -> ' + zone)
     return zone
   }
   
-  // Strobes
+  // Strobes → center
   if (typeUpper.includes('STROBE') || nameUpper.includes('STROBE')) {
     zoneCounters.strobe++
-    return 'STROBES'
+    return 'center'
   }
   
-  // Lasers
+  // Lasers → air
   if (typeUpper.includes('LASER') || nameUpper.includes('LASER')) {
     zoneCounters.laser++
-    return 'LASERS'
+    return 'air'
   }
   
-  // PAR/LED/Wash - alternating front/back
+  // PAR/LED/Wash - alternating back/front
   const currentParCount = zoneCounters.par
   zoneCounters.par++
-  const zone = currentParCount % 2 === 0 ? 'BACK_PARS' : 'FRONT_PARS'
+  // 🔥 WAVE 2040.24: Canonical zones
+  const zone: FixtureZone = currentParCount % 2 === 0 ? 'back' : 'front'
   console.log('[Zoning] PAR/LED #' + currentParCount + ' "' + fixtureName + '" -> ' + zone)
   return zone
 }

@@ -24,9 +24,11 @@ export {
   type Rotation3D,
   
   // Types - Fixtures
+  type CanonicalZone,
   type FixtureZone,
   type FixtureV2,
   type FixtureGroup,
+  type FixtureSelector,  // 🔥 WAVE 2040.25 FASE 3
   
   // Types - Scenes
   type FixtureSnapshot,
@@ -45,11 +47,18 @@ export {
   
   // Constants
   DEFAULT_PHYSICS_PROFILES,
+  CANONICAL_ZONES,
+  ZONE_LABELS,
   
   // Factory Functions
   createEmptyShowFile,
   createDefaultFixture,
   createFixtureGroup,
+  
+  // Zone Utilities (WAVE 2040.24)
+  normalizeZone,
+  isCanonicalZone,
+  resolveFixtureSelector,  // 🔥 WAVE 2040.25 FASE 3
   
   // Validation
   validateShowFile,

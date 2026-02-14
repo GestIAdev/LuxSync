@@ -27,7 +27,8 @@ import {
   Rotation3D,
   DEFAULT_PHYSICS_PROFILES,
   createEmptyShowFile,
-  getSchemaVersion
+  getSchemaVersion,
+  normalizeZone
 } from './ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -105,21 +106,16 @@ const STAGE_REF = {
  * These are used ONLY during migration for fixtures without positions
  */
 const ZONE_POSITIONS: Record<string, Position3D> = {
-  'stage-left':      { x: -4.5, y: 3.0, z: 0 },
-  'stage-right':     { x: 4.5, y: 3.0, z: 0 },
-  'stage-center':    { x: 0, y: 3.0, z: 0 },
-  'ceiling-front':   { x: 0, y: 4.5, z: 2 },
-  'ceiling-back':    { x: 0, y: 4.5, z: -2 },
-  'ceiling-left':    { x: -4, y: 4.5, z: 0 },
-  'ceiling-right':   { x: 4, y: 4.5, z: 0 },
-  'ceiling-center':  { x: 0, y: 4.5, z: 0 },
-  'floor-front':     { x: 0, y: 0.3, z: 3 },
-  'floor-back':      { x: 0, y: 0.3, z: -3 },
-  'truss-1':         { x: 0, y: 4.0, z: 2 },
-  'truss-2':         { x: 0, y: 4.0, z: 0 },
-  'truss-3':         { x: 0, y: 4.0, z: -2 },
-  'custom':          { x: 0, y: 3.0, z: 0 },
-  'unassigned':      { x: 0, y: 3.0, z: 0 }
+  // 🔥 WAVE 2040.24: Canonical zone positions
+  'front':         { x: 0, y: 4.5, z: 2 },
+  'back':          { x: 0, y: 4.5, z: -2 },
+  'floor':         { x: 0, y: 0.3, z: 3 },
+  'movers-left':   { x: -4.5, y: 3.0, z: 0 },
+  'movers-right':  { x: 4.5, y: 3.0, z: 0 },
+  'center':        { x: 0, y: 4.5, z: 0 },
+  'air':           { x: 0, y: 3.5, z: -1 },
+  'ambient':       { x: 0, y: 3.0, z: 0 },
+  'unassigned':    { x: 0, y: 3.0, z: 0 }
 }
 
 /**
@@ -141,47 +137,43 @@ function generateMigrationPosition(zone: string, indexInZone: number): Position3
 }
 
 /**
- * Generate default rotation based on zone
+ * Generate default rotation based on zone (WAVE 2040.24: canonical zones)
  */
 function generateMigrationRotation(zone: string): Rotation3D {
-  // Ceiling fixtures point down
-  if (zone.startsWith('ceiling') || zone.startsWith('truss')) {
-    return { pitch: -45, yaw: 0, roll: 0 }
-  }
-  
   // Floor fixtures point up
-  if (zone.startsWith('floor')) {
+  if (zone === 'floor') {
     return { pitch: 45, yaw: 0, roll: 0 }
   }
   
-  // Stage fixtures point forward
+  // Back/air fixtures point down-forward
+  if (zone === 'back' || zone === 'air') {
+    return { pitch: -45, yaw: 0, roll: 0 }
+  }
+  
+  // Center (strobes/blinders) point straight down
+  if (zone === 'center') {
+    return { pitch: -60, yaw: 0, roll: 0 }
+  }
+  
+  // Front pars point down at audience
+  if (zone === 'front') {
+    return { pitch: -30, yaw: 0, roll: 0 }
+  }
+  
+  // Default: forward
   return { pitch: 0, yaw: 0, roll: 0 }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZONE MAPPING
+// ZONE MAPPING (WAVE 2040.24: CANONICAL)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Map old zone string to new FixtureZone type
+ * 🔥 WAVE 2040.24 FASE 6: Map old zone string → CanonicalZone
+ * Delega toda la lógica a normalizeZone() para una sola fuente de verdad.
  */
 function mapZone(oldZone: string): FixtureZone {
-  const zoneMap: Record<string, FixtureZone> = {
-    'stage-left': 'stage-left',
-    'stage-right': 'stage-right',
-    'stage-center': 'stage-center',
-    'left': 'stage-left',
-    'right': 'stage-right',
-    'center': 'stage-center',
-    'front': 'ceiling-front',
-    'back': 'ceiling-back',
-    'ceiling': 'ceiling-center',
-    'floor': 'floor-front',
-    'truss': 'truss-1'
-  }
-  
-  const normalized = oldZone.toLowerCase().trim()
-  return zoneMap[normalized] || 'unassigned'
+  return normalizeZone(oldZone)
 }
 
 /**

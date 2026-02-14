@@ -56,21 +56,18 @@ export type EffectPhase =
 
 /**
  * Zonas que puede afectar un efecto
- * 🔥 WAVE 810: UNLOCK THE TWINS - Movers con targeting L/R
- * 🪼 WAVE 1070.3: ABYSSAL JELLYFISH - Stereo PARs support
+ * 🔥 WAVE 2040.25 FASE 2: Unified with CanonicalZone
+ * EffectZone = CanonicalZone + helper groups ('all', 'all-movers', 'all-pars')
  */
+import type { CanonicalZone } from '../stage/ShowFileV2'
+
 export type EffectZone = 
-  | 'all'
-  | 'front'
-  | 'back'
-  | 'frontL'        // 🪼 WAVE 1070.3: Front left PARs
-  | 'frontR'        // 🪼 WAVE 1070.3: Front right PARs
-  | 'backL'         // 🪼 WAVE 1070.3: Back left PARs
-  | 'backR'         // 🪼 WAVE 1070.3: Back right PARs
-  | 'movers'
-  | 'movers_left'   // 🔥 WAVE 810: Solo movers left (índice par o side='left')
-  | 'movers_right'  // 🔥 WAVE 810: Solo movers right (índice impar o side='right')
-  | 'pars'
+  | CanonicalZone  // 9 canonical values: front, back, floor, movers-left, movers-right, center, air, ambient, unassigned
+  | 'all'          // All fixtures
+  | 'all-movers'   // All moving heads (movers-left + movers-right)
+  | 'all-pars'     // All PARs (front + back + floor)
+  | 'all-left'     // All fixtures with position.x < 0
+  | 'all-right'    // All fixtures with position.x >= 0
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT OUTPUT - Lo que produce cada efecto por frame

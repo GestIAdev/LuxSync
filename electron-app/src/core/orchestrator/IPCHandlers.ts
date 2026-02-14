@@ -13,6 +13,9 @@ import { ipcMain, BrowserWindow } from 'electron'
 import type { TitanOrchestrator } from './TitanOrchestrator'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../hephaestus/types'
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime'
+// 🔥 WAVE 2040.24: FixtureZone viene de la fuente canónica única (ShowFileV2)
+import type { FixtureZone } from '../stage/ShowFileV2'
+export type { FixtureZone }
 
 // ⚒️ WAVE 2030.18: Singleton runtime for .lfx execution
 let hephaestusRuntime: HephaestusRuntime | null = null
@@ -27,9 +30,6 @@ export function getHephaestusRuntime(): HephaestusRuntime {
   }
   return hephaestusRuntime
 }
-
-// Type for zone (matches main.ts)
-export type FixtureZone = 'FRONT_PARS' | 'BACK_PARS' | 'MOVING_LEFT' | 'MOVING_RIGHT' | 'STROBES' | 'LASERS' | 'UNASSIGNED'
 
 /**
  * WAVE 254: Dependencias inyectadas desde main.ts

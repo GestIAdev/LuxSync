@@ -275,6 +275,26 @@ export interface HephAutomationClip {
   /** Zonas objetivo del efecto */
   zones: EffectZone[]
 
+  /**
+   * 🎯 WAVE 2040.25 FASE 3: FixtureSelector avanzado (opcional)
+   * 
+   * Si está presente, REEMPLAZA el targeting por `zones`.
+   * Permite filtros tipo grandMA3: parity (even/odd), indexRange, stereoSide (L/R).
+   * 
+   * Si NO está presente (undefined), usa el targeting legacy por `zones`.
+   * 
+   * EJEMPLO:
+   * ```
+   * selector: {
+   *   target: 'movers-left',
+   *   parity: 'even',
+   *   indexRange: '1-3'
+   * }
+   * // → Primeros 3 movers izquierdos pares
+   * ```
+   */
+  selector?: import('../stage/ShowFileV2').FixtureSelector
+
   /** Mix bus: routing de mezcla para tracks FX del timeline
    * 
    * WAVE 2040.9a: TYPE UNIFICATION

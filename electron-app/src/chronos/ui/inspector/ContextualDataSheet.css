@@ -239,8 +239,11 @@
 }
 
 .datasheet-curve {
-  opacity: 0.9;
-  filter: drop-shadow(0 0 4px currentColor);
+  opacity: 1;
+  filter: drop-shadow(0 0 6px currentColor);
+  /* 🔧 WAVE 2040.35: Make curve more visible */
+  min-width: 80px;
+  min-height: 32px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

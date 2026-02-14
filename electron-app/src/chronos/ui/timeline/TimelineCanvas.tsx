@@ -630,6 +630,12 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // WAVE 2040.11: Preserve temporal focus on resize (Zen Mode fix)
   // 🔧 WAVE 2040.33: Force immediate dimension read on mount (Wake Up Call)
   // 🔧 WAVE 2040.34: Double-tap trick for late layout stabilization
+  // 🔧 WAVE 2040.35: FIX INFINITE LOOP — empty deps, use refs for viewport
+  
+  // Store viewport in ref to access inside ResizeObserver without deps
+  const viewportRef = useRef(viewport)
+  useEffect(() => { viewportRef.current = viewport }, [viewport])
+  
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -652,21 +658,26 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }, 100)
     
     // Store previous dimensions to detect changes
-    let prevWidth = rect.width || dimensions.width
+    let prevWidth = rect.width
+    let prevHeight = rect.height
     
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
-        const newWidth = entry.contentRect.width
-        const newHeight = entry.contentRect.height
+        const newWidth = Math.round(entry.contentRect.width)
+        const newHeight = Math.round(entry.contentRect.height)
+        
+        // 🔧 WAVE 2040.35: Skip if dimensions unchanged (prevents oscillation)
+        if (newWidth === prevWidth && newHeight === prevHeight) return
         
         // Skip invalid dimensions
         if (newWidth === 0 || newHeight === 0) return
         
         // 🔧 WAVE 2040.11: Preserve temporal focus when width changes
+        const vp = viewportRef.current
         if (newWidth !== prevWidth && prevWidth > 0) {
           // Calculate what time was at the center BEFORE resize
-          const visibleDurationMs = (viewport.endTime - viewport.startTime)
-          const centerTimeBeforeResize = viewport.startTime + (visibleDurationMs / 2)
+          const visibleDurationMs = (vp.endTime - vp.startTime)
+          const centerTimeBeforeResize = vp.startTime + (visibleDurationMs / 2)
           
           // Update dimensions FIRST (triggers viewport recalc)
           setDimensions({ width: newWidth, height: newHeight })
@@ -676,17 +687,17 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
             const scrollContainer = container.querySelector('.timeline-scroll-container')
             if (scrollContainer) {
               // Calculate new scrollLeft to keep centerTimeBeforeResize at center
-              const newScrollLeft = (centerTimeBeforeResize / 1000) * viewport.pixelsPerSecond - (newWidth / 2)
+              const newScrollLeft = (centerTimeBeforeResize / 1000) * vp.pixelsPerSecond - (newWidth / 2)
               scrollContainer.scrollLeft = Math.max(0, newScrollLeft)
             }
           })
-          
-          prevWidth = newWidth
         } else {
           // Normal resize (height-only or initial)
           setDimensions({ width: newWidth, height: newHeight })
-          prevWidth = newWidth
         }
+        
+        prevWidth = newWidth
+        prevHeight = newHeight
       }
     })
     
@@ -695,7 +706,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       clearTimeout(doubleTapTimer)  // 🔧 WAVE 2040.34: Cleanup double-tap timer
       resizeObserver.disconnect()
     }
-  }, [viewport.startTime, viewport.endTime, viewport.pixelsPerSecond, dimensions.width])
+  }, [])  // 🔧 WAVE 2040.35: Empty deps — mount once, use refs for state
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution

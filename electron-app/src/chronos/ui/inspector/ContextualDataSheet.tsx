@@ -132,15 +132,14 @@ const CurvePreview: React.FC<{ clip: TimelineClip; color: string }> = memo(({ cl
   }, [clip])
 
   return (
-    <svg width="80" height="32" viewBox="0 0 80 32" className="datasheet-curve">
+    <svg width="80" height="32" viewBox="0 0 80 32" className="datasheet-curve" style={{ color }}>
       <path
         d={path}
         fill="none"
-        stroke={color}
-        strokeWidth="2"
+        stroke="currentColor"
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity="0.8"
       />
     </svg>
   )

@@ -3,7 +3,7 @@
  * 
  * Re-exports de utilidades compartidas entre 2D y 3D.
  * 
- * @module components/simulator/shared
+ * @module components/hyperion/shared
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

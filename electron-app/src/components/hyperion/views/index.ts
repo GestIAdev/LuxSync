@@ -5,7 +5,7 @@
  * 
  * WAVE 2042.1: Post-Scorched Earth — Views to be rebuilt.
  * 
- * @module components/simulator/views
+ * @module components/hyperion/views
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

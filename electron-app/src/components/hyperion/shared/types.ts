@@ -4,7 +4,7 @@
  * Tipos unificados para los componentes de Hyperion.
  * Tanto TacticalCanvas (2D) como VisualizerCanvas (3D) usan estos tipos.
  * 
- * @module components/simulator/shared/types
+ * @module components/hyperion/shared/types
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

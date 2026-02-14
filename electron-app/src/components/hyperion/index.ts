@@ -12,7 +12,7 @@
  * - widgets/: Reusable UI components (TimecoderDock) — FUTURE
  * - engine/: Simulation hooks and utilities — FUTURE
  * 
- * @module components/simulator
+ * @module components/hyperion
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

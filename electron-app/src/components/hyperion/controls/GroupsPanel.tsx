@@ -11,7 +11,7 @@
  * - Botón X → Borrar grupo de usuario
  * - "Save as Group" → Crea grupo desde selección actual
  * 
- * @module components/simulator/controls/GroupsPanel
+ * @module components/hyperion/controls/GroupsPanel
  * @since WAVE 2042.1 (Project Hyperion — Phase 0: Zone Colors Fix)
  */
 

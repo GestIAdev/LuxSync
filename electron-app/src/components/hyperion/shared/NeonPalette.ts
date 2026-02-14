@@ -7,7 +7,7 @@
  * IMPORTANTE: Estos valores se sincronizan con HyperionView.css.
  * Si cambias algo aquí, actualiza también el CSS correspondiente.
  * 
- * @module components/simulator/shared/NeonPalette
+ * @module components/hyperion/shared/NeonPalette
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

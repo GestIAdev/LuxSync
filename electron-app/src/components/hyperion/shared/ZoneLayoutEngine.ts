@@ -5,7 +5,7 @@
  * Usa CanonicalZone de ShowFileV2.ts — los 9 valores canónicos.
  * Alimenta tanto TacticalCanvas (2D) como VisualizerCanvas (3D).
  * 
- * @module components/simulator/shared/ZoneLayoutEngine
+ * @module components/hyperion/shared/ZoneLayoutEngine
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 

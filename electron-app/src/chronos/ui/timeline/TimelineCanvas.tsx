@@ -571,8 +571,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   isRecording = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  // 🔧 WAVE 2040.37: Initial dimensions — will be immediately corrected by effect
-  const [dimensions, setDimensions] = useState({ width: 1, height: 1 })
+  // 🔧 WAVE 2040.38: Generous initial dimensions to cover 4K screens
+  // Will be immediately corrected by useLayoutEffect before paint
+  // Overflow hidden prevents any visual artifacts from oversized SVG
+  const [dimensions, setDimensions] = useState({ width: 3840, height: 800 })
   const [viewport, setViewport] = useState<TimelineViewport>({
     startTime: 0,
     endTime: 12000, // 12 seconds

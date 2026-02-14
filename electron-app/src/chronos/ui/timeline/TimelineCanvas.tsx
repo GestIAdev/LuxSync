@@ -571,10 +571,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   isRecording = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  // 🔧 WAVE 2040.38: Generous initial dimensions to cover 4K screens
-  // Will be immediately corrected by useLayoutEffect before paint
-  // Overflow hidden prevents any visual artifacts from oversized SVG
-  const [dimensions, setDimensions] = useState({ width: 3840, height: 800 })
+  // � WAVE 2040.39: NUCLEAR OPTION — Start with any dimensions
+  // ResizeObserver will fix it BEFORE paint (browser-level timing)
+  const [dimensions, setDimensions] = useState({ width: 1920, height: 400 })
   const [viewport, setViewport] = useState<TimelineViewport>({
     startTime: 0,
     endTime: 12000, // 12 seconds
@@ -630,75 +629,40 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const dragStartRef = useRef<{ x: number; startMs: number; originalEdgeMs: number } | null>(null)
   
   // Track the container size
-  // WAVE 2040.11: Preserve temporal focus on resize (Zen Mode fix)
-  // 🔧 WAVE 2040.33: Force immediate dimension read on mount (Wake Up Call)
-  // 🔧 WAVE 2040.37: Use useLayoutEffect for SYNCHRONOUS dimension read
-  //                   Prevents flash of incorrectly-sized canvas
+  // 🔥 WAVE 2040.39: NUCLEAR OPTION — ResizeObserver at browser level
+  // This executes AFTER layout but BEFORE paint (perfect timing window)
+  // No React tricks, no setTimeout, no useLayoutEffect games
+  // Just pure browser API doing what it does best
   
   // Store viewport in ref to access inside ResizeObserver without deps
   const viewportRef = useRef(viewport)
   useEffect(() => { viewportRef.current = viewport }, [viewport])
   
-  useLayoutEffect(() => {
+  useEffect(() => {
     const container = containerRef.current
     if (!container) return
     
-    // 🔧 WAVE 2040.37: SYNCHRONOUS dimension read — before browser paint
-    // This ensures ZERO visual flash — dimensions are correct before pixels hit screen
-    const rect = container.getBoundingClientRect()
-    if (rect.width > 0 && rect.height > 0) {
-      setDimensions({ width: rect.width, height: rect.height })
-    }
-    
-    // Store previous dimensions to detect changes
-    let prevWidth = rect.width
-    let prevHeight = rect.height
-    
+    // � NUCLEAR: Native ResizeObserver — fires before paint
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const newWidth = Math.round(entry.contentRect.width)
         const newHeight = Math.round(entry.contentRect.height)
         
-        // 🔧 WAVE 2040.35: Skip if dimensions unchanged (prevents oscillation)
-        if (newWidth === prevWidth && newHeight === prevHeight) return
-        
-        // Skip invalid dimensions
+        // Skip invalid or unchanged dimensions
         if (newWidth === 0 || newHeight === 0) return
         
-        // 🔧 WAVE 2040.11: Preserve temporal focus when width changes
-        const vp = viewportRef.current
-        if (newWidth !== prevWidth && prevWidth > 0) {
-          // Calculate what time was at the center BEFORE resize
-          const visibleDurationMs = (vp.endTime - vp.startTime)
-          const centerTimeBeforeResize = vp.startTime + (visibleDurationMs / 2)
-          
-          // Update dimensions FIRST (triggers viewport recalc)
-          setDimensions({ width: newWidth, height: newHeight })
-          
-          // Schedule scroll adjustment AFTER render (next frame)
-          requestAnimationFrame(() => {
-            const scrollContainer = container.querySelector('.timeline-scroll-container')
-            if (scrollContainer) {
-              // Calculate new scrollLeft to keep centerTimeBeforeResize at center
-              const newScrollLeft = (centerTimeBeforeResize / 1000) * vp.pixelsPerSecond - (newWidth / 2)
-              scrollContainer.scrollLeft = Math.max(0, newScrollLeft)
-            }
-          })
-        } else {
-          // Normal resize (height-only or initial)
-          setDimensions({ width: newWidth, height: newHeight })
-        }
-        
-        prevWidth = newWidth
-        prevHeight = newHeight
+        // � SYNCHRONOUS state update — React batches this with current render
+        setDimensions({ width: newWidth, height: newHeight })
       }
     })
     
+    // Observe starts immediately — catches mount + any resize
     resizeObserver.observe(container)
+    
     return () => {
       resizeObserver.disconnect()
     }
-  }, [])  // 🔧 WAVE 2040.35: Empty deps — mount once, use refs for state
+  }, [])  // Mount once, never re-run
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🎹 WAVE 2040.12: ELASTIC TRACKS — Dynamic height distribution

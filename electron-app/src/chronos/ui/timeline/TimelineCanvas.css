@@ -24,13 +24,18 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * SVG CANVAS
+ * SVG CANVAS — WAVE 2040.39: NUCLEAR OPTION (Force 100% via CSS)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-canvas {
   display: block;
   cursor: crosshair;
   user-select: none;
+  
+  /* 🔥 WAVE 2040.39: NUCLEAR OPTION — Force SVG to fill container
+   * No matter what React says, CSS has final word */
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* During drag - show copy cursor, never forbidden */

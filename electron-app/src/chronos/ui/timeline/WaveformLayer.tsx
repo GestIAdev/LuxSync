@@ -238,17 +238,22 @@ function renderWaveform(
   // 🛡️ Early exit if no data
   if (!waveform.peaks || waveform.peaks.length === 0) return
   
+  // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate visible range from CANVAS WIDTH
+  // Not from viewportEndMs (which is a logical concept, not visual limit)
+  const visibleWidth = width - leftOffset
+  const pixelsPerMs = pixelsPerSecond / 1000
+  const visibleDurationMs = visibleWidth / pixelsPerMs
+  const actualViewportEnd = viewportStartMs + visibleDurationMs
+  
   // Calculate visible range in waveform samples
   const msPerSample = 1000 / waveform.samplesPerSecond
   const startSample = Math.max(0, Math.floor(viewportStartMs / msPerSample))
-  const endSample = Math.min(waveform.peaks.length, Math.ceil(viewportEndMs / msPerSample))
+  const endSample = Math.min(waveform.peaks.length, Math.ceil(actualViewportEnd / msPerSample))
   
   // 🛡️ Early exit if nothing to render
   if (startSample >= endSample) return
   
-  // Calculate pixels per sample at current zoom
-  const visibleWidth = width - leftOffset
-  const visibleDurationMs = viewportEndMs - viewportStartMs
+  // 🔥 WAVE 2040.40: Use pre-calculated visibleDurationMs (based on canvas width)
   const pixelsPerSample = (visibleWidth / visibleDurationMs) * msPerSample
   
   // � WAVE 2015.5: LAVA MODE - Fewer, THICKER bars (target ~200 bars max)
@@ -356,9 +361,15 @@ function renderBeatGrid(
   const { width, height } = canvas
   const msPerBeat = 60000 / bpm
   
+  // 🔥 WAVE 2040.40: INFINITE HORIZON — Calculate last beat from CANVAS WIDTH
+  const visibleWidth = width - leftOffset
+  const pixelsPerMs = pixelsPerSecond / 1000
+  const visibleDurationMs = visibleWidth / pixelsPerMs
+  const actualViewportEnd = viewportStartMs + visibleDurationMs
+  
   // Find first beat in viewport
   const firstBeat = Math.floor(viewportStartMs / msPerBeat)
-  const lastBeat = Math.ceil(viewportEndMs / msPerBeat)
+  const lastBeat = Math.ceil(actualViewportEnd / msPerBeat)
   
   ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)' // Blue
   ctx.lineWidth = 1

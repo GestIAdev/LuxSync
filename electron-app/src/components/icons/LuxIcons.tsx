@@ -2195,6 +2195,25 @@ export const ChevronLeftIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+/** → CHEVRON RIGHT - Forward navigation */
+export const ChevronRightIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M9 18L15 12L9 6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ✕ X (Close) - Dismiss / Close panel */
+export const XIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M18 6L6 18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6 6L18 18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 /** ⚡ ZAP - Effect / Lightning */
 export const ZapIcon: React.FC<IconProps> = ({
   size = 20, color = 'currentColor', className
@@ -2606,6 +2625,8 @@ export default {
   Trash: TrashIcon,
   Copy: CopyIcon,
   ChevronLeft: ChevronLeftIcon,
+  ChevronRight: ChevronRightIcon,  // 🔧 WAVE 2040.33: Carousel navigation
+  X: XIcon,                        // 🔧 WAVE 2040.33: Close button
   Zap: ZapIcon,
   Masks: MasksIcon,
   Upload: UploadIcon,

@@ -118,12 +118,18 @@ const BEAM = {
 } as const
 
 /** Visual constants */
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 WAVE 2040.31: LAYOUT POLISHING
+// PARs demasiado invasivos — bajamos glow de 6.0 a 4.5 (presencia sin invasión)
+// ═══════════════════════════════════════════════════════════════════════════
 const CINEMA = {
-  FIXTURE_RADIUS_RATIO: 0.035,  // Fixture dot size relative to min(w,h)
-  GLOW_MULTIPLIER: 2.5,         // Glow radius relative to fixture radius
+  FIXTURE_RADIUS_RATIO: 0.070,  // Fixture dot size — DUPLICADO (↑ from 0.045)
+  GLOW_MULTIPLIER: 4.0,         // Glow radius for MOVERS (↑ from 3.5)
+  PAR_GLOW_MULTIPLIER: 4.5,     // PARs diffuse glow (↓ from 6.0 to reduce invasion)
   GRID_OPACITY: 0.04,           // Tactical grid subtlety
   GRID_SPACING: 24,             // Grid cell size in CSS pixels
   STAGE_LINE_Y: 0.85,           // Front-of-stage line
+  STAGE_PADDING: 0.05,          // Stage edge padding (5% confirmed)
   FPS: 30,                      // Target FPS for preview
   GOBO_SEGMENTS: 6,             // Star pattern segments for gobo indicator
 } as const
@@ -186,35 +192,49 @@ const verticalDistribute = (index: number, count: number): number => {
 
 /**
  * Map backend zone string → CinemaZone
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔧 WAVE 2040.29: CANONICAL ZONE RECOGNITION
+ * El backend usa CanonicalZone (movers-left, movers-right, front, back...)
+ * Pero el Cinema usaba el formato legacy (MOVING_LEFT). Ahora reconoce AMBOS.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 const classifyZone = (raw: string): { zone: CinemaZone; type: CinemaFixture['type'] } => {
-  const upper = (raw || '').toUpperCase()
+  // Normalize: lowercase, replace underscores with hyphens
+  const normalized = (raw || '').toLowerCase().replace(/_/g, '-')
   
-  if (upper.includes('MOVING_LEFT') || upper === 'LEFT') {
+  // MOVERS LEFT: "movers-left", "moving_left", "moving-left", "left"
+  if (normalized.includes('movers-left') || normalized.includes('moving-left') || normalized === 'left') {
     return { zone: 'MOVING_LEFT', type: 'moving' }
   }
-  if (upper.includes('MOVING_RIGHT') || upper === 'RIGHT') {
+  // MOVERS RIGHT: "movers-right", "moving_right", "moving-right", "right"
+  if (normalized.includes('movers-right') || normalized.includes('moving-right') || normalized === 'right') {
     return { zone: 'MOVING_RIGHT', type: 'moving' }
   }
-  if (upper.includes('FRONT')) {
+  // FRONT: "front", "pars-front"
+  if (normalized.includes('front')) {
     return { zone: 'FRONT', type: 'par' }
   }
-  if (upper.includes('BACK')) {
+  // BACK: "back", "pars-back"
+  if (normalized.includes('back')) {
     return { zone: 'BACK', type: 'par' }
   }
-  if (upper.includes('STROBE')) {
+  // STROBE
+  if (normalized.includes('strobe')) {
     return { zone: 'STROBES', type: 'strobe' }
   }
-  if (upper.includes('AMBIENT')) {
+  // AMBIENT
+  if (normalized.includes('ambient')) {
     return { zone: 'AMBIENT', type: 'wash' }
   }
-  if (upper.includes('FLOOR')) {
+  // FLOOR
+  if (normalized.includes('floor')) {
     return { zone: 'FLOOR', type: 'wash' }
   }
-  if (upper.includes('AIR')) {
+  // AIR
+  if (normalized.includes('air')) {
     return { zone: 'AIR', type: 'moving' }
   }
-  // Default: CENTER
+  // CENTER: default fallback
   return { zone: 'CENTER', type: 'par' }
 }
 
@@ -260,13 +280,16 @@ const drawStageLine = (ctx: CanvasRenderingContext2D, w: number, h: number): voi
 
 /**
  * 🔺 BEAM RENDERING: Vectorial triangle projection
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔧 WAVE 2040.29: PAR vs MOVER DIFFERENTIATION
+ * - MOVERS: Beam triangular gordo y brillante con física de pan/tilt
+ * - PARs: SIN haz triangular — solo glow difuso (manejado en drawFixture)
+ * ═══════════════════════════════════════════════════════════════════════════
  * 
  * The beam is a filled triangle from the fixture point to a projected base.
  * - angle = physicalPan mapped to rotation (0→left, 0.5→down, 1→right)
  * - length = physicalTilt mapped to throw distance (0.5=straight down → max)
  * - width = zoom mapped to cone angle
- * 
- * For PARs (no pan/tilt): just a downward wash (tilt=0.5, pan=0.5)
  */
 const drawBeam = (
   ctx: CanvasRenderingContext2D,
@@ -280,20 +303,19 @@ const drawBeam = (
   // No beam if off
   if (intensity < 0.02) return
   
-  // PARs don't have moving beams — just a soft downward wash
-  const isMoving = type === 'moving'
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 2040.29: PARs NO dibujan haz triangular
+  // Los PARs son wash fijos — su luz es DIFUSA, no direccional.
+  // Todo su impacto visual viene del glow en drawFixture().
+  // ═══════════════════════════════════════════════════════════════════════
+  if (type === 'par' || type === 'wash') return
   
-  // Beam angle: pan 0→ -π/2 (left), 0.5→ 0 (straight down), 1→ π/2 (right)
-  // For PARs: always straight down
-  const panAngle = isMoving
-    ? mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
-    : 0
+  // MOVERS: Beam angle: pan 0→ -π/2 (left), 0.5→ 0 (straight down), 1→ π/2 (right)
+  const panAngle = mapRange(physicalPan, 0, 1, -Math.PI * 0.45, Math.PI * 0.45)
   
   // Beam throw: tilt 0→ short, 0.5→ full, 1→ short (tilted back)
   // Parabolic curve: max throw at tilt=0.5
-  const tiltFactor = isMoving
-    ? 1 - Math.abs(physicalTilt - 0.5) * 2 // 0.5→1.0, edges→0.0
-    : 0.7 // PARs have fixed medium throw
+  const tiltFactor = 1 - Math.abs(physicalTilt - 0.5) * 2 // 0.5→1.0, edges→0.0
   const throwLength = canvasH * BEAM.MAX_THROW * Math.max(0.15, tiltFactor)
   
   // Beam cone angle: zoom 0=tight beam, 255=wide wash
@@ -319,19 +341,47 @@ const drawBeam = (
   const rightX = endX + perpX * baseHalf
   const rightY = endY + perpY * baseHalf
   
-  // Create gradient along beam direction
-  const grad = ctx.createLinearGradient(fx, fy, endX, endY)
-  const alpha = intensity * 0.25  // Beams are translucent
-  grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`)
-  grad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${alpha * 0.5})`)
-  grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${edgeAlpha * intensity})`)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔧 WAVE 2040.30: DOUBLE LAYER "LIGHTSABER" BEAM
+  // Capa 1: Cuerpo de color (ancho completo, opacidad 0.7)
+  // Capa 2: Núcleo blanco puro (20% del ancho, opacidad 0.9)
+  // Resultado: Haz que parece cortar el aire con centro caliente
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // LAYER 1: COLOR BODY (full width)
+  const bodyGrad = ctx.createLinearGradient(fx, fy, endX, endY)
+  const bodyAlpha = intensity * 0.70  // Increased opacity (↑ from 0.40)
+  bodyGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${bodyAlpha})`)
+  bodyGrad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${bodyAlpha * 0.6})`)
+  bodyGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${bodyAlpha * 0.2})`)
   
   ctx.beginPath()
   ctx.moveTo(fx, fy)
   ctx.lineTo(leftX, leftY)
   ctx.lineTo(rightX, rightY)
   ctx.closePath()
-  ctx.fillStyle = grad
+  ctx.fillStyle = bodyGrad
+  ctx.fill()
+  
+  // LAYER 2: WHITE HOT CORE (20% width, center line)
+  const coreWidth = baseHalf * 0.20  // Core is 20% of beam width
+  const coreLeftX = endX - perpX * coreWidth
+  const coreLeftY = endY - perpY * coreWidth
+  const coreRightX = endX + perpX * coreWidth
+  const coreRightY = endY + perpY * coreWidth
+  
+  const coreGrad = ctx.createLinearGradient(fx, fy, endX, endY)
+  const coreAlpha = intensity * 0.90  // Near-opaque white core
+  coreGrad.addColorStop(0, `rgba(255, 255, 255, ${coreAlpha})`)
+  coreGrad.addColorStop(0.5, `rgba(255, 255, 255, ${coreAlpha * 0.7})`)
+  coreGrad.addColorStop(1, `rgba(255, 255, 255, ${coreAlpha * 0.3})`)
+  
+  ctx.beginPath()
+  ctx.moveTo(fx, fy)
+  ctx.lineTo(coreLeftX, coreLeftY)
+  ctx.lineTo(coreRightX, coreRightY)
+  ctx.closePath()
+  ctx.fillStyle = coreGrad
   ctx.fill()
 }
 
@@ -406,6 +456,11 @@ const drawPrismIndicator = (
 
 /**
  * Draw a single fixture (core dot + glow)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔧 WAVE 2040.29: PAR vs MOVER VISUAL DIFFERENTIATION
+ * - PARs: Glow grande y difuso (PAR_GLOW_MULTIPLIER) — representan wash
+ * - MOVERs: Glow más compacto (GLOW_MULTIPLIER) — su "luz" es el haz
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 const drawFixture = (
   ctx: CanvasRenderingContext2D,
@@ -414,14 +469,26 @@ const drawFixture = (
   fixture: CinemaFixture,
   fixtureRadius: number
 ): void => {
-  const { r, g, b, intensity, gobo, prism } = fixture
+  const { r, g, b, intensity, gobo, prism, type } = fixture
   
   if (intensity > 0.01) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 2040.29: GLOW SIZE BY FIXTURE TYPE
+    // PARs = wash difuso grande | Movers = glow compacto (su luz es el beam)
+    // ═══════════════════════════════════════════════════════════════════════
+    const isPar = type === 'par' || type === 'wash'
+    const glowMultiplier = isPar ? CINEMA.PAR_GLOW_MULTIPLIER : CINEMA.GLOW_MULTIPLIER
+    
     // === GLOW (outer radial gradient) ===
-    const glowR = fixtureRadius * (CINEMA.GLOW_MULTIPLIER + intensity * 1.5)
+    const glowR = fixtureRadius * (glowMultiplier + intensity * 1.5)
     const glowGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowR)
-    glowGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${intensity * 0.55})`)
-    glowGrad.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${intensity * 0.18})`)
+    
+    // PARs: glow más suave y difuso | Movers: glow más concentrado
+    const innerAlpha = isPar ? intensity * 0.45 : intensity * 0.55
+    const midAlpha = isPar ? intensity * 0.22 : intensity * 0.18
+    
+    glowGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${innerAlpha})`)
+    glowGrad.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${midAlpha})`)
     glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
     
     ctx.beginPath()
@@ -436,11 +503,15 @@ const drawFixture = (
     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(1, intensity + 0.3)})`
     ctx.fill()
     
-    // === GOBO INDICATOR ===
-    drawGoboIndicator(ctx, fx, fy, coreR, gobo, r, g, b)
+    // === GOBO INDICATOR (solo movers) ===
+    if (!isPar) {
+      drawGoboIndicator(ctx, fx, fy, coreR, gobo, r, g, b)
+    }
     
-    // === PRISM INDICATOR ===
-    drawPrismIndicator(ctx, fx, fy, coreR, prism, r, g, b)
+    // === PRISM INDICATOR (solo movers) ===
+    if (!isPar) {
+      drawPrismIndicator(ctx, fx, fy, coreR, prism, r, g, b)
+    }
     
   } else {
     // === OFF STATE ===

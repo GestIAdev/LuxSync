@@ -29,7 +29,7 @@
  * @version WAVE 2030.7
  */
 
-import React, { useCallback, useMemo, useState, memo } from 'react'
+import React, { useCallback, useMemo, useState, useRef, memo } from 'react'
 import { 
   type DragPayload,
   serializeDragPayload 
@@ -54,6 +54,8 @@ import {
   SunFxIcon,
   ChipFxIcon,
   StrobeIcon,
+  ChevronLeftIcon,   // 🔧 WAVE 2040.33: Carousel navigation
+  ChevronRightIcon,  // 🔧 WAVE 2040.33: Carousel navigation
 } from '../../../components/icons/LuxIcons'
 import type { IconProps } from '../../../components/icons/LuxIcons'
 import './ArsenalDock.css'
@@ -366,6 +368,15 @@ const ArmButton: React.FC<ArmButtonProps> = memo(({ isArmed, isRecording, onTogg
 ArmButton.displayName = 'ArmButton'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS — WAVE 2040.34: Carousel pagination (compact diet)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Number of effect columns visible at once (2 rows × N columns) */
+const VISIBLE_COLUMNS = 8     // 🔧 WAVE 2040.34: 6→8 cols fit with smaller pads
+/** Pixel width per effect pad column (64px pad + 4px gap) */
+const COLUMN_WIDTH = 68       // 🔧 WAVE 2040.34: 86→68px (64+4)
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -384,6 +395,10 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
   // Active category tab
   const [activeCategoryId, setActiveCategoryId] = useState<EffectCategoryId>('fiesta-latina')
   
+  // 🔧 WAVE 2040.33: Carousel pagination state
+  const [carouselPage, setCarouselPage] = useState(0)
+  const gridPadsRef = useRef<HTMLDivElement>(null)
+  
   // Internal armed state if no external control
   const [internalArmed, setInternalArmed] = useState(false)
   const effectiveArmed = onArmToggle ? isArmed : internalArmed
@@ -394,6 +409,27 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
     () => categories.find(c => c.id === activeCategoryId) ?? categories[0],
     [categories, activeCategoryId]
   )
+  
+  // 🔧 WAVE 2040.33: Calculate carousel metrics
+  const totalColumns = Math.ceil(activeCategory.effects.length / 2) // 2 rows
+  const maxPage = Math.max(0, totalColumns - VISIBLE_COLUMNS)
+  
+  // Reset carousel page when category changes
+  useMemo(() => {
+    setCarouselPage(0)
+  }, [activeCategoryId])
+  
+  // 🔧 WAVE 2040.33: Carousel navigation handlers
+  const handlePrevPage = useCallback(() => {
+    setCarouselPage(prev => Math.max(0, prev - VISIBLE_COLUMNS))
+  }, [])
+  
+  const handleNextPage = useCallback(() => {
+    setCarouselPage(prev => Math.min(maxPage, prev + VISIBLE_COLUMNS))
+  }, [maxPage])
+  
+  // Calculate transform offset for carousel slide
+  const carouselOffset = carouselPage * COLUMN_WIDTH
   
   // Handle ARM toggle - cycles through: idle → armed → recording → idle
   const handleArmToggle = useCallback(() => {
@@ -438,7 +474,8 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════
-       * CENTER: EFFECT GRID (Core FX - 2 rows × horizontal scroll)
+       * CENTER: EFFECT GRID (Core FX - 2 rows × CAROUSEL NAVIGATION)
+       * 🔧 WAVE 2040.33: No scrollbar — arrow buttons slide the grid
        * ═══════════════════════════════════════════════════════════════════ */}
       <div className="dock-grid">
         <div className="grid-header">
@@ -451,19 +488,48 @@ export const ArsenalDock: React.FC<ArsenalDockProps> = memo(({
             {effectiveRecording ? '\u25CF CLICK TO RECORD' : '\u205E\u205E DRAG TO TIMELINE'}
           </span>
         </div>
-        <div className="grid-scroll">
-          <div className="grid-pads">
-            {activeCategory.effects.map(effect => (
-              <EffectPad
-                key={effect.id}
-                effect={effect}
-                isRecording={effectiveRecording}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-                onClick={onEffectClick}
-              />
-            ))}
+        
+        {/* 🔧 WAVE 2040.33: Carousel with navigation arrows */}
+        <div className="grid-carousel">
+          {/* Left arrow */}
+          <button
+            className="grid-nav"
+            onClick={handlePrevPage}
+            disabled={carouselPage === 0}
+            title="Previous effects"
+          >
+            <ChevronLeftIcon size={16} />
+          </button>
+          
+          {/* Scrollable grid container */}
+          <div className="grid-scroll">
+            <div
+              ref={gridPadsRef}
+              className="grid-pads"
+              style={{ transform: `translateX(-${carouselOffset}px)` }}
+            >
+              {activeCategory.effects.map(effect => (
+                <EffectPad
+                  key={effect.id}
+                  effect={effect}
+                  isRecording={effectiveRecording}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  onClick={onEffectClick}
+                />
+              ))}
+            </div>
           </div>
+          
+          {/* Right arrow */}
+          <button
+            className="grid-nav"
+            onClick={handleNextPage}
+            disabled={carouselPage >= maxPage}
+            title="More effects"
+          >
+            <ChevronRightIcon size={16} />
+          </button>
         </div>
       </div>
       

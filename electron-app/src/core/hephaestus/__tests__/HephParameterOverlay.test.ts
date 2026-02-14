@@ -404,7 +404,7 @@ describe('⚒️ HEPHAESTUS: HephParameterOverlay - The Invisible Hand', () => {
         category: 'color',
         phase: 'decay',
         progress: 0.9,
-        zones: ['front', 'movers'],
+        zones: ['front', 'all-movers'],
       })
       const result = overlay.apply(raw, 500)
 
@@ -412,7 +412,7 @@ describe('⚒️ HEPHAESTUS: HephParameterOverlay - The Invisible Hand', () => {
       expect(result.category).toBe('color')
       expect(result.phase).toBe('decay')
       expect(result.progress).toBe(0.9)
-      expect(result.zones).toEqual(['front', 'movers'])
+      expect(result.zones).toEqual(['front', 'all-movers'])
     })
   })
 

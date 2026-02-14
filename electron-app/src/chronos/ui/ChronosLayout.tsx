@@ -40,9 +40,10 @@ import { TimelineCanvas } from './timeline/TimelineCanvas'
 import { StagePreview } from './stage/StageSimulatorCinema'
 // WAVE 2009: Arsenal Dock (bottom) replaces Arsenal Panel (sidebar)
 import { ArsenalDock } from './arsenal/ArsenalDock'
-// WAVE 2007: Inspector and Context Menu
-import { ClipInspector } from './inspector/ClipInspector'
+// WAVE 2007: Context Menu
 import { ContextMenu, CLIP_MENU_ITEMS } from './context/ContextMenu'
+// 🔧 WAVE 2040.32: ContextualDataSheet replaces ClipInspector
+import { ContextualDataSheet } from './inspector/ContextualDataSheet'
 // WAVE 2041: AudioWave icon for drag overlay
 import { AudioWaveIcon } from '../../components/icons/LuxIcons'
 // 👻 WAVE 2005.3: Use Phantom Worker for audio analysis (zero renderer memory)
@@ -69,6 +70,8 @@ import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import { toFXType, toVibeType } from '../core/TimelineClip'
+// 🔧 WAVE 2040.34: Navigation store for Hephaestus routing
+import { useNavigationStore } from '../../stores/navigationStore'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -102,6 +105,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 🧠 WAVE 2017: THE SESSION KEEPER - State persistence across navigation
   const sessionStore = useChronosSession()
   const sessionRestoredRef = useRef(false)
+  
+  // 🔧 WAVE 2040.34: Navigation for Hephaestus routing
+  const { setActiveTab } = useNavigationStore()
   
   // 🧠 WAVE 2017 FIX: Use refs to keep track of current state for unmount cleanup
   // This avoids stale closures in the cleanup function
@@ -724,9 +730,14 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     clipState.duplicateClip(clipId)
   }, [clipState])
   
-  const handleBackToLibrary = useCallback(() => {
+  // 🔧 WAVE 2040.34: Navigate to Hephaestus for clip editing
+  // Opens Hephaestus view where user can load the clip from library
+  // Future: Pass clipId for auto-load via navigationStore.targetClipId
+  const handleEditInHephaestus = useCallback((clipId: string) => {
+    console.log(`[ChronosLayout] ⚒️ Opening Hephaestus to edit clip: ${clipId}`)
     clipState.deselectAll()
-  }, [clipState])
+    setActiveTab('hephaestus')
+  }, [clipState, setActiveTab])
   
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2007: CONTEXT MENU CALLBACKS
@@ -899,54 +910,46 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           onBlur={() => setIsTimelineFocused(false)}
           tabIndex={0}
         >
-          {/* Stage Preview (30% height) - WAVE 2015: Real fixtures, WAVE 2015.5: Toggle */}
+          {/* Stage Preview — WAVE 2040.32: Grid Row 1 (50%) */}
           <StagePreview visible={stageVisible} />
           
-          {/* Horizontal Divider */}
-          <div className="chronos-divider horizontal" />
-          
-          {/* Timeline Canvas (70% height) - WAVE 2006: Interactive */}
-          <TimelineCanvas
-            currentTime={streaming.currentTimeMs}
-            bpm={bpm}
-            isPlaying={streaming.isPlaying}
-            onSeek={handleSeek}
-            analysisData={audioLoader.result?.analysisData ?? null}
-            durationMs={durationMs}
-            // WAVE 2006: Clips & Interaction
-            clips={clipState.clips}
-            selectedClipIds={clipState.selectedIds}
-            snapEnabled={clipState.snapEnabled}
-            snapPosition={clipState.snapPosition}
-            onClipSelect={handleClipSelect}
-            onClipMove={handleClipMove}
-            onClipResize={handleClipResize}
-            onClipDrop={handleClipDrop}
-            onClipContextMenu={handleClipContextMenu}
-            // WAVE 2006: Auto-scroll
-            followEnabled={followEnabled}
-            onFollowToggle={handleFollowToggle}
-            // WAVE 2013.6: THE ADRENALINE SHOT - Live growing clip
-            isRecording={isRecording}
-            growingClipId={isRecording ? recorder.activeVibeClipId : null}
-            growingClipEndMs={isRecording ? recorder.activeVibeClipEndMs : null}
-          />
+          {/* Timeline Canvas — WAVE 2040.32: Grid Row 2 (50%) */}
+          <div className="chronos-timeline-wrapper">
+            <TimelineCanvas
+              currentTime={streaming.currentTimeMs}
+              bpm={bpm}
+              isPlaying={streaming.isPlaying}
+              onSeek={handleSeek}
+              analysisData={audioLoader.result?.analysisData ?? null}
+              durationMs={durationMs}
+              // WAVE 2006: Clips & Interaction
+              clips={clipState.clips}
+              selectedClipIds={clipState.selectedIds}
+              snapEnabled={clipState.snapEnabled}
+              snapPosition={clipState.snapPosition}
+              onClipSelect={handleClipSelect}
+              onClipMove={handleClipMove}
+              onClipResize={handleClipResize}
+              onClipDrop={handleClipDrop}
+              onClipContextMenu={handleClipContextMenu}
+              // WAVE 2006: Auto-scroll
+              followEnabled={followEnabled}
+              onFollowToggle={handleFollowToggle}
+              // WAVE 2013.6: THE ADRENALINE SHOT - Live growing clip
+              isRecording={isRecording}
+              growingClipId={isRecording ? recorder.activeVibeClipId : null}
+              growingClipEndMs={isRecording ? recorder.activeVibeClipEndMs : null}
+            />
+            {/* 🔧 WAVE 2040.32/33/34: ContextualDataSheet — floating HUD bottom-right */}
+            <ContextualDataSheet
+              clip={selectedClip}
+              onClose={clipState.deselectAll}
+              onEditInHephaestus={handleEditInHephaestus}
+            />
+          </div>
         </div>
         
-        {/* Vertical Divider */}
-        <div className="chronos-divider vertical" />
-        
-        {/* Right: Inspector Panel - WAVE 2009: Always visible, wider */}
-        <div className="chronos-inspector-panel">
-          <ClipInspector
-            clip={selectedClip}
-            selectedCount={clipState.selectedIds.size}
-            onUpdateClip={handleUpdateClip}
-            onDeleteClip={handleDeleteClip}
-            onDuplicateClip={handleDuplicateClip}
-            onBackToLibrary={handleBackToLibrary}
-          />
-        </div>
+        {/* 🔧 WAVE 2040.32: Inspector DEMOLISHED — Workspace takes 100% width */}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════

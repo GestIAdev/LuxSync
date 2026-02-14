@@ -908,9 +908,10 @@ const PropertiesContent: React.FC = () => {
     { value: 'movers-right',  label: '🏎️ MOVER RIGHT' },
     
     // ✨ SPECIALS
+    { value: 'center',        label: '⚡ CENTER (Strobes/Blinders)' },
     { value: 'air',           label: '✨ AIR (Laser/Atmosphere)' },
     { value: 'ambient',       label: '🌫️ AMBIENT (House)' },
-    { value: 'center',        label: '⚡ CENTER (Strobes/Blinders)' }
+    { value: 'unassigned',    label: '❓ UNASSIGNED' }
   ]
   
   // 🔥 WAVE 1041.2: REACTIVE TRUTH - Detect invalid zones

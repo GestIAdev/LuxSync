@@ -1,0 +1,292 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📄 CONTEXTUAL DATA SHEET V2 — WAVE 2040.33: THE HOLOGRAM HUD 🤖✨
+ * 
+ * Floating holographic HUD — cyberpunk glassmorphism aesthetic.
+ * 
+ * UPGRADES:
+ * - Black 90% + 32px blur (deep glass)
+ * - Animated neon border (gradient rotation)
+ * - Close button (X) — top right corner
+ * - Click trap protection (handled in TSX)
+ * - Enhanced curve preview
+ * 
+ * @module chronos/ui/inspector/ContextualDataSheet.css
+ * @version WAVE 2040.33
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER — Holographic floating card
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.datasheet {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 50;
+  width: 240px;
+  
+  /* 🔧 WAVE 2040.33: Deep black glass + strong blur */
+  background: rgba(6, 6, 10, 0.92);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  
+  /* 🔧 WAVE 2040.33: Cyberpunk neon border */
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background-clip: padding-box;
+  
+  box-shadow: 
+    0 0 20px rgba(168, 85, 247, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* Allow pseudo-element to show */
+  
+  pointer-events: auto;
+  animation: datasheet-in 0.2s ease-out;
+}
+
+/* 🔧 WAVE 2040.33: Animated neon border glow */
+.datasheet::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: 11px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.6) 0%,
+    rgba(236, 72, 153, 0.4) 25%,
+    rgba(59, 130, 246, 0.4) 50%,
+    rgba(16, 185, 129, 0.4) 75%,
+    rgba(168, 85, 247, 0.6) 100%
+  );
+  background-size: 400% 400%;
+  animation: neon-border-shift 6s ease infinite;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+}
+
+@keyframes neon-border-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes datasheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔧 WAVE 2040.33: CLOSE BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.datasheet-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.datasheet-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.datasheet-close:active {
+  transform: scale(0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER — Name + Category + Icon
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.datasheet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-right: 28px; /* Space for close button */
+  border-bottom: 1px solid rgba(168, 85, 247, 0.15);
+  background: linear-gradient(180deg,
+    rgba(168, 85, 247, 0.08) 0%,
+    transparent 100%
+  );
+}
+
+.datasheet-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: #a855f7;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5));
+}
+
+.datasheet-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.datasheet-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.datasheet-name {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #e0e0e0);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.datasheet-category {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY — Data Rows
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.datasheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.datasheet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+}
+
+.datasheet-row svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: rgba(168, 85, 247, 0.5);
+  filter: drop-shadow(0 0 3px rgba(168, 85, 247, 0.3));
+}
+
+.datasheet-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(168, 85, 247, 0.6);
+  letter-spacing: 1.5px;
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.datasheet-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary, #bbb);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Curve row — full width chart */
+.datasheet-row--curve {
+  justify-content: center;
+  padding: 6px 0;
+  height: auto;
+  margin-top: 4px;
+  border-top: 1px solid rgba(168, 85, 247, 0.1);
+}
+
+.datasheet-curve {
+  opacity: 0.9;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER — Edit Button
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.datasheet-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0;
+  
+  background: linear-gradient(180deg,
+    rgba(168, 85, 247, 0.15) 0%,
+    rgba(168, 85, 247, 0.08) 100%
+  );
+  border: none;
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.datasheet-edit svg {
+  width: 14px;
+  height: 14px;
+  filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.5));
+}
+
+.datasheet-edit:hover {
+  background: linear-gradient(180deg,
+    rgba(168, 85, 247, 0.25) 0%,
+    rgba(168, 85, 247, 0.15) 100%
+  );
+  color: #c084fc;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+}
+
+.datasheet-edit:active {
+  transform: scale(0.97);
+}

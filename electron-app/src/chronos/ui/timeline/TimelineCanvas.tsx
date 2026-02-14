@@ -102,9 +102,10 @@ interface Track {
  */
 const DEFAULT_TRACKS: Track[] = [
   { id: 'ruler', type: 'ruler', label: 'TIME', height: 32, color: '#3b82f6' },
-  // 🌊 WAVE 2015: Increased waveform height for spectral effect
-  { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 80, color: '#22d3ee' },
-  { id: 'vibe', type: 'vibe', label: 'VIBE', height: 48, color: '#a855f7' },
+  // 🔧 WAVE 2040.31: Audio track diet — reduced from 80px to 64px for vertical space
+  { id: 'waveform', type: 'waveform', label: 'AUDIO', height: 64, color: '#22d3ee' },
+  // 🔧 WAVE 2040.30: DIETA DE VIBES — reducimos height de 48 a 32px para liberar espacio vertical
+  { id: 'vibe', type: 'vibe', label: 'VIBE', height: 32, color: '#a855f7' },
   { id: 'fx1', type: 'fx', label: 'GLOBAL', height: 40, color: '#ef4444' },
   { id: 'fx2', type: 'fx', label: 'MOVEMENT', height: 40, color: '#f59e0b' },
   { id: 'fx3', type: 'fx', label: 'AMBIENT', height: 36, color: '#10b981' },
@@ -627,17 +628,39 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   
   // Track the container size
   // WAVE 2040.11: Preserve temporal focus on resize (Zen Mode fix)
+  // 🔧 WAVE 2040.33: Force immediate dimension read on mount (Wake Up Call)
+  // 🔧 WAVE 2040.34: Double-tap trick for late layout stabilization
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
     
+    // 🔧 WAVE 2040.33: WAKE UP CALL — Read dimensions immediately on mount
+    // Don't wait for resize event. Force the first render NOW.
+    const rect = container.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      setDimensions({ width: rect.width, height: rect.height })
+    }
+    
+    // 🔧 WAVE 2040.34: DOUBLE-TAP — Read again after 100ms for late layout
+    // Some CSS Grid layouts don't stabilize until after first paint.
+    // Dirty trick but infallible. — Radwulf
+    const doubleTapTimer = setTimeout(() => {
+      const finalRect = container.getBoundingClientRect()
+      if (finalRect.width > 0 && finalRect.height > 0) {
+        setDimensions({ width: finalRect.width, height: finalRect.height })
+      }
+    }, 100)
+    
     // Store previous dimensions to detect changes
-    let prevWidth = dimensions.width
+    let prevWidth = rect.width || dimensions.width
     
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const newWidth = entry.contentRect.width
         const newHeight = entry.contentRect.height
+        
+        // Skip invalid dimensions
+        if (newWidth === 0 || newHeight === 0) return
         
         // 🔧 WAVE 2040.11: Preserve temporal focus when width changes
         if (newWidth !== prevWidth && prevWidth > 0) {
@@ -668,7 +691,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     })
     
     resizeObserver.observe(container)
-    return () => resizeObserver.disconnect()
+    return () => {
+      clearTimeout(doubleTapTimer)  // 🔧 WAVE 2040.34: Cleanup double-tap timer
+      resizeObserver.disconnect()
+    }
   }, [viewport.startTime, viewport.endTime, viewport.pixelsPerSecond, dimensions.width])
   
   // ═══════════════════════════════════════════════════════════════════════

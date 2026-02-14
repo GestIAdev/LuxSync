@@ -1,23 +1,29 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * CHRONOS LAYOUT STYLES - WAVE 2040.7: NEON INJECTION + VOID FILLER
+ * CHRONOS LAYOUT STYLES - WAVE 2040.32: SPACE OPTIMIZATION
  * Cyberpunk Industrial aesthetic for timeline editor
  * 
- * Layout Structure (CINEMA MODE):
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │                    TRANSPORT BAR (fixed top, 56px)                      │
- * ├─────────────────────────────────────────────────────┬───────────────────┤
- * │                                                     │                   │
- * │          STAGE PREVIEW (45% height, CINEMA)         │    INSPECTOR      │
- * │          [Full-width simulator priority]             │    (280px)        │
- * │                                                     │                   │
- * ├─────────────────────────────────────────────────────┤                   │
- * │          TIMELINE CANVAS (flex: 1)                  │                   │
- * │          [Internal scroll, no layout push]          │                   │
- * ├─────────────────────────────────────────────────────┴───────────────────┤
- * │                    ARSENAL DOCK (240px fixed, flex-shrink: 0)           │
- * │  [VIBE ICONS] [ CRYSTAL FX GRID 2 rows ] [ARM TRIGGER]                │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * Layout Structure (POST-INSPECTOR ERA):
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │                    TRANSPORT BAR (fixed top, 56px)                   │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │                                                                      │
+ * │          STAGE PREVIEW (CSS Grid: 1fr = 50%)                        │
+ * │          [Full-width cinema simulator]                               │
+ * │                                                                      │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │                                                                      │
+ * │          TIMELINE CANVAS (CSS Grid: 1fr = 50%)                      │
+ * │          [Internal scroll, no layout push]                           │
+ * │                                                                      │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │          ARSENAL DOCK (240px fixed, flex-shrink: 0)                  │
+ * │  [VIBE ICONS] [ CRYSTAL FX GRID 2 rows ] [ARM TRIGGER]             │
+ * └──────────────────────────────────────────────────────────────────────┘
+ * 
+ * WAVE 2040.32: Inspector DEMOLISHED. Workspace = 100% width.
+ *               CSS Grid enforces strict 50/50 split (1fr 1fr).
+ *               ContextualDataSheet replaces inspector (floating panel).
  * 
  * Color Palette:
  * - Primary: #a855f7 (Violet - unified Hephaestus aesthetic)
@@ -28,7 +34,9 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * MAIN LAYOUT - WAVE 2040.7: VOID FILLER
+ * MAIN LAYOUT - WAVE 2040.30: ZERO WASTE & 50/50 EQUILIBRIUM
+ * Eliminación total de espacios muertos. Stage y Timeline compiten por espacio
+ * en igualdad de condiciones (flex: 1).
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-layout {
@@ -39,6 +47,8 @@
   background: var(--bg-deepest);
   color: var(--text-primary);
   overflow: hidden;
+  margin: 0;        /* 🔧 WAVE 2040.30: ZERO WASTE */
+  padding: 0;       /* 🔧 WAVE 2040.30: ZERO WASTE */
 }
 
 .chronos-main {
@@ -48,14 +58,33 @@
   overflow: hidden;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🔧 WAVE 2040.32: CSS GRID ENFORCER — 50/50 STRICT EQUILIBRIUM
+ * 
+ * Flex was "suggesting" — Grid ENFORCES. 1fr 1fr = exactly 50/50.
+ * Inspector demolished — Workspace takes 100% width.
+ * 
+ * Layout:
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │                    TRANSPORT BAR (fixed top)                         │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │                 STAGE PREVIEW (1fr = 50%)                           │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │                 TIMELINE CANVAS (1fr = 50%)                         │
+ * ├──────────────────────────────────────────────────────────────────────┤
+ * │                 ARSENAL DOCK (fixed height)                         │
+ * └──────────────────────────────────────────────────────────────────────┘
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
 .chronos-workspace {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 1fr 1fr;  /* 🔧 WAVE 2040.32: STRICT 50/50 SPLIT */
   flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  gap: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -92,20 +121,12 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * STAGE PREVIEW — WAVE 2041 + 2040.11: CINEMA MODE + AUTO-FIT
- * 
- * WAVE 2041: Cinema layout (45% preferred height, visual priority)
- * WAVE 2040.11: Changed flex-basis to auto for dynamic fitting
- * 
- * The stage simulator gets the star treatment — grows to fill available space
- * above the timeline. Canvas internal resize handled by ResizeObserver in
- * StageSimulatorCinema.
+ * STAGE PREVIEW — WAVE 2040.32: GRID CHILD (Row 1)
+ * Inside CSS Grid, stage takes exactly its 1fr row. No flex fighting needed.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-stage-preview {
-  flex: 1 1 auto; /* 🔧 WAVE 2040.11: Auto-fit to available space */
-  min-height: 350px;
-  max-height: 50%; /* Cap at 50% to leave room for timeline */
+  min-height: 0;    /* 🔧 Grid children MUST have min-height: 0 to respect row size */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,7 +135,7 @@
     var(--bg-deep);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
-  margin: 8px;
+  margin: 4px;
   position: relative;
   overflow: hidden;
 }
@@ -169,43 +190,44 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * TIMELINE CANVAS — WAVE 2040.7: VOID FILLER (fill remaining space)
- * Takes ALL remaining space after stage preview. The container MUST grow
- * to fill the parent — no pixel-fixed heights, pure flex inheritance.
+ * TIMELINE WRAPPER — WAVE 2040.32: position context for DataSheet
+ * Wraps TimelineCanvas + ContextualDataSheet. The DataSheet uses
+ * absolute positioning relative to this wrapper.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-timeline-wrapper {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TIMELINE CANVAS — WAVE 2040.32: Inside wrapper, fills 100%
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-workspace > .timeline-canvas-container,
 .chronos-workspace > [class*="timeline"] {
-  flex: 1 1 0%;
-  min-height: 0;
-  height: 100%;
+  min-height: 0;    /* 🔧 Grid children MUST have min-height: 0 */
   overflow: hidden;
+  position: relative;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * SIDE PANEL → INSPECTOR PANEL (WAVE 2009: Always visible on right)
+ * 🔧 WAVE 2040.32: INSPECTOR DEMOLISHED — Panel removed from layout
+ * Workspace now takes 100% width. ContextualDataSheet replaces inspector.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-.chronos-inspector-panel {
-  width: 280px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-deep);
-  border-left: 1px solid var(--border-subtle);
-  overflow-y: auto;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
- * ARSENAL DOCK CONTAINER (WAVE 2009.5: 240px Fixed Height)
+ * ARSENAL DOCK CONTAINER — WAVE 2040.33: Carousel-friendly (200px)
+ * Fixed height, never grows. Pagination arrows instead of scrollbar.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .chronos-arsenal-dock-container {
-  height: 240px;
+  height: 200px;       /* 🔧 WAVE 2040.33: 180→200px, room to breathe */
   flex-shrink: 0;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-deep);
-  overflow: hidden;
+  overflow: hidden;    /* NEVER let content push height — NO SCROLLBAR */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

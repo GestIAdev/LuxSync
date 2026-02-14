@@ -774,7 +774,8 @@ export class TitanOrchestrator {
       
       // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
       // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
-      const shouldApplyToFixture = (f: typeof fixtureStates[0]): boolean => {
+      // 🔊 WAVE 2040.27: Added stereo support for frontL/R, backL/R (Chill effects)
+      const shouldApplyToFixture = (f: typeof fixtureStates[0], index: number): boolean => {
         // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
         if ((effectOutput.globalComposition ?? 0) > 0) return true
         
@@ -783,11 +784,23 @@ export class TitanOrchestrator {
         if (zones.length === 0) return false
         
         const fixtureZone = f.zone || ''
+        const positionX = this.fixtures[index]?.position?.x ?? 0
         
-        // Usar fixtureMatchesZone() como single source of truth
+        // Check if any target zone matches this fixture
+        // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
         for (const zone of zones) {
-          if (this.fixtureMatchesZone(fixtureZone, zone)) {
-            return true
+          const tz = zone.toLowerCase()
+          // Stereo zones need position-based matching
+          if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' || 
+              tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
+            if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
+              return true
+            }
+          } else {
+            // Non-stereo zones
+            if (this.fixtureMatchesZone(fixtureZone, zone)) {
+              return true
+            }
           }
         }
         return false
@@ -800,8 +813,8 @@ export class TitanOrchestrator {
       const globalComp = effectOutput.globalComposition ?? 0
       const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0
       
-      fixtureStates = fixtureStates.map(f => {
-        const shouldApply = shouldApplyToFixture(f)
+      fixtureStates = fixtureStates.map((f, index) => {
+        const shouldApply = shouldApplyToFixture(f, index)
         if (!shouldApply) return f  // No afectar esta fixture
         
         if (isGlobalMode) {
@@ -1935,6 +1948,7 @@ export class TitanOrchestrator {
   // Usa position.x del StageBuilder para determinar L/R
   // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
   //             position.x >= 0 = RIGHT (lado derecho del escenario)
+  // 🔊 WAVE 2040.27: Added support for frontL/R, backL/R (Chill effects)
   // ═══════════════════════════════════════════════════════════════════════════
   private fixtureMatchesZoneStereo(fixtureZone: string, targetZone: string, positionX: number): boolean {
     const fz = fixtureZone.toLowerCase()
@@ -1944,6 +1958,15 @@ export class TitanOrchestrator {
     // Position-based stereo filtering (all-left / all-right)
     if (tz === 'all-left') return isLeft
     if (tz === 'all-right') return !isLeft
+    
+    // 🌊 WAVE 2040.27: Stereo PARs (frontL/R, backL/R, floorL/R)
+    // Used by Chill effects for position-based L/R routing
+    if (tz === 'frontl') return fz === 'front' && isLeft
+    if (tz === 'frontr') return fz === 'front' && !isLeft
+    if (tz === 'backl') return fz === 'back' && isLeft
+    if (tz === 'backr') return fz === 'back' && !isLeft
+    if (tz === 'floorl') return fz === 'floor' && isLeft
+    if (tz === 'floorr') return fz === 'floor' && !isLeft
     
     // Zone match + stereo side check (for PARs with stereo)
     // Example: targetZone='front' + positionX < 0 → front left PARs

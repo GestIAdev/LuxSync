@@ -1,17 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🗺️ ZONE OVERLAY - WAVE 363 + WAVE 1036: 6-ZONE LAYOUT
- * "El Territorio Visual - Ver para Dominar"
+ * 🗺️ ZONE OVERLAY - WAVE 2040.27a: THE ARCHITECT'S VISION
+ * "El Territorio Visual - CanonicalZone Native"
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * WAVE 1036: Simplificado a 6 zonas claras para arquitectura estéreo:
- * - MOVER LEFT (columna izquierda)
- * - FRONT LEFT / FRONT RIGHT (centro superior)
- * - BACK LEFT / BACK RIGHT (centro inferior)  
- * - MOVER RIGHT (columna derecha)
+ * WAVE 2040.27a: Layout basado en CanonicalZone (arquitectura "Fútbol"):
+ * - MOVERS-LEFT  (columna izquierda) - Cyan
+ * - MOVERS-RIGHT (columna derecha)   - Cyan
+ * - FRONT        (franja inferior)   - Purple
+ * - BACK         (franja superior)   - Blue/Purple
+ * - FLOOR        (suelo/ground)      - Green
+ * - CENTER       (impacto central)   - Red
+ * - AIR          (atmósfera/laser)   - White alpha
  * 
  * @module components/views/StageConstructor/ZoneOverlay
- * @version 1036.0.0
+ * @version 2040.27.0
  */
 
 import React, { useMemo } from 'react'
@@ -20,7 +23,7 @@ import type { FixtureZone } from '../../../core/stage/ShowFileV2'
 import * as THREE from 'three'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZONE DEFINITIONS - 🌊 WAVE 1036: 6-ZONE STEREO LAYOUT
+// ZONE DEFINITIONS - 🌊 WAVE 2040.27a: CANONICAL ZONE LAYOUT
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ZoneDefinition {
@@ -29,95 +32,129 @@ interface ZoneDefinition {
   color: string
   position: [number, number, number]  // Centro de la zona [x, y, z]
   size: [number, number]              // [width, depth] en metros
-  /** 🌊 WAVE 1036: Canal estéreo que asigna esta zona */
-  stereoChannel: 'frontL' | 'frontR' | 'backL' | 'backR' | 'moverL' | 'moverR'
+  /** 🌊 WAVE 2040.27a: Canal estéreo que asigna esta zona */
+  stereoChannel: 'frontL' | 'frontR' | 'backL' | 'backR' | 'moverL' | 'moverR' | 'center' | 'floor' | 'air'
 }
 
 /**
- * 🌊 WAVE 1036: 6-ZONE STEREO LAYOUT
+ * 🌊 WAVE 2040.27a: CANONICAL ZONE LAYOUT ("Fútbol" Architecture)
  * 
  * Layout Visual (vista desde arriba, audiencia abajo):
  * 
- *        Z- (BACK/Fondo)
- *   ┌─────┬───────┬───────┬─────┐
- *   │     │ BACK  │ BACK  │     │
- *   │ MOV │  Ⓛ   │  Ⓡ   │ MOV │
- *   │  Ⓛ  │       │       │  Ⓡ  │
- *   │     ├───────┼───────┤     │
- *   │     │ FRONT │ FRONT │     │
- *   │     │  Ⓛ   │  Ⓡ   │     │
- *   └─────┴───────┴───────┴─────┘
+ *        Z- (BACK/Fondo del escenario)
+ *   ┌─────────┬─────────────────┬─────────┐
+ *   │         │                 │         │
+ *   │ MOVERS  │      BACK       │ MOVERS  │
+ *   │   Ⓛ    │   (wash/pars)   │   Ⓡ    │
+ *   │         │                 │         │
+ *   │         ├───────┬─────────┤         │
+ *   │  (cyan) │ CENTER│  FLOOR  │ (cyan)  │
+ *   │         │ (red) │ (green) │         │
+ *   │         ├───────┴─────────┤         │
+ *   │         │                 │         │
+ *   │         │      FRONT      │         │
+ *   │         │   (wash/pars)   │         │
+ *   └─────────┴─────────────────┴─────────┘
  *        Z+ (FRONT/Audiencia)
  *   
- *   X-          X=0          X+
+ *   X-              X=0              X+
  */
 const ZONE_DEFINITIONS: ZoneDefinition[] = [
   // ═══════════════════════════════════════════════════════════════════════
-  // COLUMNA IZQUIERDA - MOVER LEFT (Expanded +50%)
+  // COLUMNA IZQUIERDA - MOVERS-LEFT (Moving Heads)
   // ═══════════════════════════════════════════════════════════════════════
   {
-    id: 'ceiling-left',
+    id: 'movers-left',
     name: 'MOVER Ⓛ',
-    color: '#22d3ee',      // Cyan
-    position: [-7, 0.02, 0],
-    size: [3, 9],          // Was [2, 6] - Now +50%
+    color: '#22d3ee',      // Cyan = Motion
+    position: [-6, 0.02, 0],
+    size: [2.5, 9],
     stereoChannel: 'moverL'
   },
   
   // ═══════════════════════════════════════════════════════════════════════
-  // BLOQUE CENTRAL - 4 CUADRANTES STEREO (Expanded +50%)
-  // ═══════════════════════════════════════════════════════════════════════
-  
-  // BACK LEFT (arriba-izquierda = fondo del escenario, lado izquierdo)
-  {
-    id: 'floor-back',      // Reusing existing zone ID for compatibility
-    name: 'BACK Ⓛ',
-    color: '#a855f7',      // Purple
-    position: [-2.5, 0.02, -2.5],
-    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
-    stereoChannel: 'backL'
-  },
-  
-  // BACK RIGHT (arriba-derecha = fondo del escenario, lado derecho)
-  {
-    id: 'ceiling-back',    // Reusing existing zone ID for compatibility
-    name: 'BACK Ⓡ',
-    color: '#d946ef',      // Fuchsia
-    position: [2.5, 0.02, -2.5],
-    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
-    stereoChannel: 'backR'
-  },
-  
-  // FRONT LEFT (abajo-izquierda = cerca de audiencia, lado izquierdo)
-  {
-    id: 'floor-front',     // Reusing existing zone ID for compatibility
-    name: 'FRONT Ⓛ',
-    color: '#a855f7',      // Purple
-    position: [-2.5, 0.02, 2],
-    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
-    stereoChannel: 'frontL'
-  },
-  
-  // FRONT RIGHT (abajo-derecha = cerca de audiencia, lado derecho)
-  {
-    id: 'ceiling-front',   // Reusing existing zone ID for compatibility
-    name: 'FRONT Ⓡ',
-    color: '#d946ef',      // Fuchsia
-    position: [2.5, 0.02, 2],
-    size: [5, 4],          // Was [3.5, 2.5] - Now +40%
-    stereoChannel: 'frontR'
-  },
-  
-  // ═══════════════════════════════════════════════════════════════════════
-  // COLUMNA DERECHA - MOVER RIGHT (Expanded +50%)
+  // COLUMNA DERECHA - MOVERS-RIGHT (Moving Heads)
   // ═══════════════════════════════════════════════════════════════════════
   {
-    id: 'ceiling-right',
+    id: 'movers-right',
     name: 'MOVER Ⓡ',
-    color: '#22d3ee',      // Cyan
-    position: [7, 0.02, 0],
-    size: [3, 9],          // Was [2, 6] - Now +50%
+    color: '#22d3ee',      // Cyan = Motion
+    position: [6, 0.02, 0],
+    size: [2.5, 9],
     stereoChannel: 'moverR'
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // BACK - Franja superior (fondo del escenario, Z < -1)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    id: 'back',
+    name: 'BACK',
+    color: '#8b5cf6',      // Purple/Violet = Wash
+    position: [0, 0.02, -2.5],  // Centro de la franja back (Z=-2.5)
+    size: [9, 3],               // Ancho 9m (entre movers), profundidad 3m (Z=-4 a Z=-1)
+    stereoChannel: 'backL'      // Default L, position.x determines actual stereo
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // FRONT - Franja inferior (cerca de audiencia, Z > 1)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    id: 'front',
+    name: 'FRONT',
+    color: '#a855f7',      // Purple = Wash
+    position: [0, 0.02, 2],     // Centro de la franja front (Z=2)
+    size: [9, 2],               // Ancho 9m, profundidad 2m (Z=1 a Z=3)
+    stereoChannel: 'frontL'     // Default L, position.x determines actual stereo
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2040.27b: CENTER - Zona central (X: -2 a 2, Z: -1 a 1)
+  // Para strobes/blinders en el corazón del escenario
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    id: 'center',
+    name: 'CENTER',
+    color: '#ef4444',      // Red = Strobe/Impact
+    position: [0, 0.02, 0],     // Centro exacto del escenario
+    size: [4, 2],               // 4m ancho (X=-2 a X=2), 2m profundidad (Z=-1 a Z=1)
+    stereoChannel: 'center'
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎯 WAVE 2040.27b: FLOOR - Zonas laterales del centro (Z: -1 a 1, X fuera de ±2)
+  // Para uplights, floor PARs en los lados
+  // Se divide en 2 rectángulos: LEFT y RIGHT
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    id: 'floor',
+    name: 'FLOOR L',
+    color: '#22c55e',      // Green = Ground level
+    position: [-3.5, 0.02, 0],  // Lado izquierdo (X=-5 a X=-2)
+    size: [3, 2],               // 3m ancho, 2m profundidad (Z=-1 a Z=1)
+    stereoChannel: 'floor'
+  },
+  
+  // FLOOR RIGHT (para visual, mismo ID 'floor' en lógica)
+  {
+    id: 'floor',
+    name: 'FLOOR R',
+    color: '#22c55e',      // Green = Ground level
+    position: [3.5, 0.02, 0],   // Lado derecho (X=2 a X=5)
+    size: [3, 2],               // 3m ancho, 2m profundidad (Z=-1 a Z=1)
+    stereoChannel: 'floor'
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // AIR - Atmósfera (lasers, haze, aerials) - Overlay sutil
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    id: 'air',
+    name: 'AIR',
+    color: '#ffffff',      // White/Alpha = Atmosphere
+    position: [0, 0.01, 0],  // Ligeramente más bajo para estar detrás
+    size: [12, 10],
+    stereoChannel: 'air'
   },
 ]
 

@@ -7,7 +7,7 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * CONTAINER — WAVE 2040.7: Full-height flex child, no fixed min-height
+ * CONTAINER — WAVE 2040.31: ZERO WASTE — eliminación de padding/margin
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .timeline-canvas-container {
@@ -18,8 +18,8 @@
   overflow: hidden;
   background: var(--bg-deepest);
   border-radius: 4px;
-  margin: 8px;
-  margin-top: 0;
+  margin: 0;         /* 🔧 WAVE 2040.31: Eliminación de costuras (was 8px) */
+  padding: 0;        /* 🔧 WAVE 2040.31: Zero internal padding */
   border: 1px solid var(--border-subtle);
 }
 

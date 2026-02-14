@@ -57,7 +57,7 @@ export type EffectPhase =
 /**
  * Zonas que puede afectar un efecto
  * 🔥 WAVE 2040.25 FASE 2: Unified with CanonicalZone
- * EffectZone = CanonicalZone + helper groups ('all', 'all-movers', 'all-pars')
+ * EffectZone = CanonicalZone + helper groups + stereo PARs
  */
 import type { CanonicalZone } from '../stage/ShowFileV2'
 
@@ -68,6 +68,10 @@ export type EffectZone =
   | 'all-pars'     // All PARs (front + back + floor)
   | 'all-left'     // All fixtures with position.x < 0
   | 'all-right'    // All fixtures with position.x >= 0
+  // Stereo PARs (used by Chill effects for position-based L/R routing)
+  | 'frontL' | 'frontR'  // Front PARs left/right
+  | 'backL' | 'backR'    // Back PARs left/right
+  | 'floorL' | 'floorR'  // Floor PARs left/right (future)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT OUTPUT - Lo que produce cada efecto por frame

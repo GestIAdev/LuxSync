@@ -1,18 +1,20 @@
 /**
- * 🎬 STAGE SIMULATOR CINEMA - WAVE 2040.1
+ * 🎬 STAGE SIMULATOR CINEMA - WAVE 2040.33: FILL THE VOID
  * Double-buffer canvas with beam vectors, motion trails, and gobo indicators
+ * 
+ * 🔧 WAVE 2040.33: Removed max-height cap. Canvas fills 100% of container.
+ *                  Grid parent (50% via 1fr) controls actual height.
  */
 
 .stage-cinema {
   position: relative;
   width: 100%;
-  height: 100%;
-  max-height: 280px;
-  min-height: 180px;
+  height: 100%;       /* 🔧 WAVE 2040.33: Fill parent (grid 1fr) */
+  min-height: 0;      /* 🔧 WAVE 2040.33: Grid child MUST have min-height: 0 */
   background: #08080d;
-  border-radius: 8px;
+  border-radius: 0;   /* 🔧 WAVE 2040.33: No rounded corners (edge-to-edge) */
   overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 /* Hidden state (same contract as old StagePreview) */
@@ -80,10 +82,5 @@
   z-index: 2;
 }
 
-/* Responsive */
-@media (max-height: 800px) {
-  .stage-cinema {
-    max-height: 200px;
-    min-height: 140px;
-  }
-}
+/* 🔧 WAVE 2040.33: Removed responsive max-height constraints.
+   Grid parent controls size via 1fr. Cinema fills what it gets. */

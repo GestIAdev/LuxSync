@@ -49,25 +49,76 @@ import * as THREE from 'three'
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🧹 WAVE 1042: ZONE NORMALIZER
-// Asegura que al soltar, la zona sea V2 y no una legacy extraña
+// 🎯 WAVE 2040.27b: ZONE NORMALIZER (Precision Overhaul)
+// Jerarquía: TIPO → POSICIÓN (con límites matemáticos claros)
 // ═══════════════════════════════════════════════════════════════════════════
 const normalizeZone = (rawZone: string, x: number, z: number, type: string): FixtureZone => {
-  const zone = rawZone?.toLowerCase() || ''
-  const isMover = type.includes('moving') || type.includes('head')
+  const typeLower = type.toLowerCase()
   
-  // 1. Movers tienen prioridad lateral
-  if (isMover) {
-    if (x < -0.1) return 'MOVING_LEFT'
-    if (x > 0.1) return 'MOVING_RIGHT'
+  // ═══════════════════════════════════════════════════════════════════════
+  // NIVEL 1: TIPO ESPECIAL (override de posición)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 1.1. Laser/Atmosphere → AIR (siempre, independiente de posición)
+  if (typeLower.includes('laser') || typeLower.includes('aerial') || typeLower.includes('haze')) {
+    return 'air'
   }
   
-  // 2. Pars dependen de profundidad (Z)
-  // El "Ceiling" visual sigue existiendo, pero la zona DMX es Front o Back
-  if (z < -0.5) return 'BACK_PARS'
-  if (z >= -0.5) return 'FRONT_PARS' // Default seguro para todo lo que está adelante
+  // 1.2. Strobe/Blinder → CENTER (si está cerca del centro X)
+  if (typeLower.includes('strobe') || typeLower.includes('blinder')) {
+    // Si está en la zona central (X entre -2 y 2), asignar CENTER
+    if (x >= -2 && x <= 2) {
+      return 'center'
+    }
+    // Si está muy lateral, caer a lógica de PARs (front/back)
+  }
   
-  return 'FRONT_PARS' // Fallback final
+  // 1.3. Moving Heads → MOVERS-LEFT / MOVERS-RIGHT (por columna)
+  if (typeLower.includes('moving') || typeLower.includes('head')) {
+    // Umbral más estricto: x < -4 o x > 4 para ser "columna lateral"
+    if (x < -4) return 'movers-left'
+    if (x > 4) return 'movers-right'
+    // Si un mover está más al centro (raro), caer a lógica de posición
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // NIVEL 2: POSICIÓN (para PARs, Wash, Bar, Generic)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // 2.1. BACK: Fondo del escenario (Z < -1)
+  if (z < -1) {
+    return 'back'
+  }
+  
+  // 2.2. FRONT: Cerca de audiencia (Z > 1)
+  if (z > 1) {
+    return 'front'
+  }
+  
+  // 2.3. ZONA MEDIA (Z entre -1 y 1): FLOOR vs CENTER vs BACK
+  // Aquí es donde necesitamos más precisión
+  
+  // Si está en el suelo (Y < 0.5m), es FLOOR (uplights, floor PARs)
+  // NOTA: En el grid 3D, Y=0 es el suelo. Si el usuario lo baja manualmente,
+  // Y puede ser negativo. Pero el drop default es Y=0, así que Y < 0.5 es suelo.
+  // Para fixtures con Y explícito (manual move), si Y < 0.5 → FLOOR
+  // Pero esto solo aplica si ya tienen Y seteado. En drop inicial, Y=0 default.
+  
+  // 🪜 WAVE 2040.27b: Usar proximidad al centro para desambiguar FLOOR vs CENTER
+  // Si está MUY central (X entre -2 y 2) y en zona media (Z entre -1 y 1) → CENTER
+  if (x >= -2 && x <= 2 && z >= -1 && z <= 1) {
+    return 'center'
+  }
+  
+  // Si está lateral (X > 2 o X < -2) pero en zona media → FLOOR
+  if ((x < -2 || x > 2) && z >= -1 && z <= 1) {
+    return 'floor'
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // FALLBACK: Si nada matchea (no debería pasar), default a BACK
+  // ═══════════════════════════════════════════════════════════════════════
+  return 'back'
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -127,7 +178,7 @@ const CameraBridge: React.FC<CameraBridgeProps> = ({ onCameraReady }) => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌊 WAVE 1035: STEREO ZONE INDICATOR
+// 🌊 WAVE 2040.27a: STEREO ZONE INDICATOR (CanonicalZone Native)
 // Helper function to show L/R indicator for stereo-capable zones
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -139,19 +190,23 @@ const CameraBridge: React.FC<CameraBridgeProps> = ({ onCameraReady }) => {
 const getStereoZoneLabel = (fixture: FixtureV2): string => {
   const zone = fixture.zone?.toLowerCase() || '';
   const posX = fixture.position?.x ?? 0;
+  const side = posX < 0 ? 'Ⓛ' : 'Ⓡ';  // Left / Right indicators
   
-  // Solo zonas front/back son stereo-capable
-  if (zone.includes('front') || zone.includes('back')) {
-    const side = posX < 0 ? 'Ⓛ' : 'Ⓡ';  // Left / Right indicators
-    const zoneName = zone.includes('front') ? 'FRONT' : 'BACK';
-    return `${zoneName} ${side}`;
-  }
+  // Movers ya tienen L/R en el nombre de zona
+  if (zone === 'movers-left') return 'MOVER Ⓛ';
+  if (zone === 'movers-right') return 'MOVER Ⓡ';
   
-  // Movers ya tienen L/R por defecto
-  if (zone.includes('left')) return 'MOV Ⓛ';
-  if (zone.includes('right')) return 'MOV Ⓡ';
+  // Front/Back muestran stereo basado en posición X
+  if (zone === 'front') return `FRONT ${side}`;
+  if (zone === 'back') return `BACK ${side}`;
   
-  // Default: mostrar zona raw
+  // Zonas centrales/especiales
+  if (zone === 'center') return 'CENTER';
+  if (zone === 'floor') return `FLOOR ${side}`;
+  if (zone === 'air') return 'AIR';
+  if (zone === 'ambient') return 'AMBIENT';
+  
+  // Fallback: mostrar zona raw en mayúsculas
   return fixture.zone?.toUpperCase() || 'ZONE?';
 };
 

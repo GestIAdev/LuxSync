@@ -1,37 +1,23 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚒️ ZONE SELECTOR - WAVE 2030.13
- * Chip-style zone targeting for Hephaestus automation clips
+ * ⚒️ ZONE SELECTOR - WAVE 2040.28: THE DUALITY
  * 
- * Allows clips to specify which fixture zones they affect.
- * Empty selection = ALL ZONES (default behavior).
+ * Header Badge + Popover architecture:
+ * - Normal state: Compact badge showing "🎯 MOVERS (L) [Edit]"
+ * - On click: Opens a floating popover with SmartZoneSelector (compact mode)
+ * 
+ * Uses LuxIcons exclusively — no generic chips.
  * 
  * @module views/HephaestusView/ZoneSelector
- * @version WAVE 2030.13
+ * @version WAVE 2040.28
  */
 
-import React from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { EffectZone } from '../../../core/effects/types'
+import { SmartZoneSelector, getZoneBadgeText, getZoneBadgeIcon } from './SmartZoneSelector'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ZONE DEFINITIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Available zones for Hephaestus targeting.
- * These map to the fixture zones defined in the LuxSync system.
- */
-export const HEPH_ZONES: { id: EffectZone; label: string; icon: string }[] = [
-  { id: 'movers_left',  label: 'L',     icon: '◀' },
-  { id: 'movers_right', label: 'R',     icon: '▶' },
-  { id: 'front',        label: 'FRONT', icon: '🎯' },
-  { id: 'back',         label: 'BACK',  icon: '🔙' },
-  { id: 'movers',       label: 'AIR',   icon: '✈️' },
-  { id: 'pars',         label: 'PARS',  icon: '💡' },
-]
-
-// ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT
+// COMPONENT — Header Badge with Popover
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ZoneSelectorProps {
@@ -48,59 +34,70 @@ export const ZoneSelector: React.FC<ZoneSelectorProps> = ({
   onZonesChange,
   disabled = false,
 }) => {
-  const isAllZones = selectedZones.length === 0
+  const [isOpen, setIsOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const badgeRef = useRef<HTMLButtonElement>(null)
 
-  const toggleZone = (zoneId: EffectZone) => {
-    if (disabled) return
+  // Click-outside to close popover
+  useEffect(() => {
+    if (!isOpen) return
 
-    if (selectedZones.includes(zoneId)) {
-      // Remove zone
-      onZonesChange(selectedZones.filter(z => z !== zoneId))
-    } else {
-      // Add zone
-      onZonesChange([...selectedZones, zoneId])
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        badgeRef.current && !badgeRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false)
+      }
     }
-  }
 
-  const selectAll = () => {
-    if (disabled) return
-    onZonesChange([])  // Empty array = ALL zones
-  }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  // Trap keyboard events inside popover
+  const handlePopoverKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation()
+    if (e.key === 'Escape') setIsOpen(false)
+  }, [])
+
+  const badgeText = getZoneBadgeText(selectedZones)
+  const badgeIcon = getZoneBadgeIcon(selectedZones)
 
   return (
-    <div className="heph-zones">
-      {/* ALL button */}
+    <div className="heph-zone-badge-wrap">
+      {/* Badge Button */}
       <button
-        className={`heph-zones__chip ${isAllZones ? 'heph-zones__chip--active' : ''}`}
-        onClick={selectAll}
+        ref={badgeRef}
+        className={`heph-zone-badge ${isOpen ? 'heph-zone-badge--open' : ''}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        title="Target all zones"
+        title="Click to edit zone targeting"
       >
-        ALL
+        <span className="heph-zone-badge__icon">{badgeIcon}</span>
+        <span className="heph-zone-badge__text">{badgeText}</span>
+        <span className="heph-zone-badge__edit">Edit</span>
       </button>
 
-      {/* Zone chips */}
-      {HEPH_ZONES.map(zone => {
-        const isActive = selectedZones.includes(zone.id)
-        return (
-          <button
-            key={zone.id}
-            className={`heph-zones__chip ${isActive ? 'heph-zones__chip--active' : ''}`}
-            onClick={() => toggleZone(zone.id)}
+      {/* Popover */}
+      {isOpen && (
+        <div 
+          ref={popoverRef} 
+          className="heph-zone-popover"
+          onKeyDown={handlePopoverKeyDown}
+          onKeyUp={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="heph-zone-popover__header">
+            <span className="heph-zone-popover__title">ZONE TARGET</span>
+          </div>
+          <SmartZoneSelector
+            selectedZones={selectedZones}
+            onZonesChange={onZonesChange}
             disabled={disabled}
-            title={`Target ${zone.label} zone`}
-          >
-            <span className="heph-zones__chip-icon">{zone.icon}</span>
-            <span className="heph-zones__chip-label">{zone.label}</span>
-          </button>
-        )
-      })}
-
-      {/* Visual indicator when specific zones selected */}
-      {!isAllZones && (
-        <span className="heph-zones__count">
-          {selectedZones.length} zone{selectedZones.length !== 1 ? 's' : ''}
-        </span>
+            compact
+          />
+        </div>
       )}
     </div>
   )

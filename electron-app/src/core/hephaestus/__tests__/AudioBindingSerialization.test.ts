@@ -66,7 +66,7 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
       category: 'physical' as import('../../effects/types').EffectCategory,
       tags: ['test', 'audio-reactive'],
       vibeCompat: ['high-energy'],
-      zones: ['movers_left', 'movers_right'] as import('../../effects/types').EffectZone[],
+      zones: ['movers-left', 'movers-right'] as import('../../effects/types').EffectZone[],
       mixBus: 'htp',
       priority: 5,
       durationMs: 2000,

@@ -24,7 +24,7 @@
 .arsenal-dock {
   display: flex;
   align-items: stretch;
-  height: 240px;
+  height: 200px;       /* 🔧 WAVE 2040.33: 180→200px, room to breathe */
   width: 100%;
   background: rgba(12, 12, 18, 0.75);
   backdrop-filter: blur(20px);
@@ -66,8 +66,8 @@
 .dock-vibes {
   display: flex;
   flex-direction: column;
-  width: 280px;
-  min-width: 280px;
+  width: 220px;               /* 🔧 WAVE 2040.34: 280→220px compact */
+  min-width: 220px;           /* 🔧 WAVE 2040.34: 280→220px */
   flex-shrink: 0;
   background: rgba(8, 8, 12, 0.6);
   backdrop-filter: blur(12px);
@@ -79,7 +79,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 4px 8px;           /* 🔧 WAVE 2040.34: 8px 12px → 4px 8px compact */
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(0, 0, 0, 0.25);
 }
@@ -106,9 +106,9 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 6px;
+  gap: 4px;                   /* 🔧 WAVE 2040.34: 6→4px tight */
   flex: 1;
-  padding: 8px;
+  padding: 4px;               /* 🔧 WAVE 2040.34: 8→4px compact */
 }
 
 /* VIBE CARD — WAVE 2040.7: Neon Crystal Shard
@@ -118,7 +118,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 3px;                   /* 🔧 WAVE 2040.34: 6→3px compact */
   background: linear-gradient(180deg,
     rgba(255, 255, 255, 0.05) 0%,
     rgba(0, 0, 0, 0.4) 100%
@@ -127,8 +127,8 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-top: 1px solid rgba(255, 255, 255, 0.3);
-  border-left: 3px solid var(--vibe-color, #555);
-  border-radius: 10px;
+  border-left: 2px solid var(--vibe-color, #555);  /* 🔧 3→2px thinner */
+  border-radius: 8px;         /* 🔧 10→8px tighter */
   cursor: grab;
   transition: all 0.18s ease;
   position: relative;
@@ -285,7 +285,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 4px 8px;           /* 🔧 WAVE 2040.34: 8px 12px → 4px 8px compact */
   min-width: 0;
   overflow: hidden;
 }
@@ -294,7 +294,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 4px;         /* 🔧 WAVE 2040.34: 8→4px tight */
   flex-shrink: 0;
 }
 
@@ -342,12 +342,62 @@
   50% { opacity: 0.5; }
 }
 
-/* Scroll container */
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔧 WAVE 2040.33: CAROUSEL SYSTEM — No scrollbar, pagination arrows
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Grid container with arrows layout */
+.grid-carousel {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Navigation arrow buttons */
+.grid-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex-shrink: 0;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 6px;
+  color: rgba(168, 85, 247, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.grid-nav:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.grid-nav:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.grid-nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.grid-nav svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Scroll container — HIDDEN SCROLLBAR (carousel handles navigation) */
 .grid-scroll {
   flex: 1;
-  overflow-x: auto;
+  overflow-x: hidden;      /* 🔧 WAVE 2040.33: NO SCROLLBAR */
   overflow-y: hidden;
-  padding-bottom: 4px;
+  padding-bottom: 0;
 }
 
 /* Grid: 2 rows, horizontal flow */
@@ -355,28 +405,10 @@
   display: grid;
   grid-template-rows: repeat(2, 1fr);
   grid-auto-flow: column;
-  grid-auto-columns: 80px;
-  gap: 6px;
+  grid-auto-columns: 64px;   /* 🔧 WAVE 2040.34: 80→64px compact */
+  gap: 4px;                   /* 🔧 WAVE 2040.34: 6→4px tight */
   min-height: 100%;
-}
-
-/* Custom scrollbar */
-.grid-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.grid-scroll::-webkit-scrollbar-track {
-  background: rgba(20, 20, 25, 0.6);
-  border-radius: 3px;
-}
-
-.grid-scroll::-webkit-scrollbar-thumb {
-  background: rgba(100, 100, 110, 0.4);
-  border-radius: 3px;
-}
-
-.grid-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(130, 130, 140, 0.5);
+  transition: transform 0.3s ease;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -397,9 +429,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 80px;
-  height: 80px;
+  gap: 2px;                   /* 🔧 WAVE 2040.34: 4→2px compact */
+  width: 64px;                /* 🔧 WAVE 2040.34: 80→64px */
+  height: 64px;               /* 🔧 WAVE 2040.34: 80→64px */
   background: linear-gradient(180deg,
     rgba(255, 255, 255, 0.05) 0%,
     rgba(0, 0, 0, 0.4) 100%
@@ -408,14 +440,14 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--fx-neon, var(--pad-color, #555)) 30%, rgba(255, 255, 255, 0.08));
   border-top: 1px solid color-mix(in srgb, var(--fx-neon, var(--pad-color, #555)) 20%, rgba(255, 255, 255, 0.2));
-  border-left: 3px solid var(--fx-neon, var(--pad-color, #555));
-  border-radius: 8px;
+  border-left: 2px solid var(--fx-neon, var(--pad-color, #555));  /* 🔧 3→2px thinner accent */
+  border-radius: 6px;         /* 🔧 8→6px tighter corners */
   cursor: grab;
   transition: all 0.15s ease;
   position: relative;
   user-select: none;
   box-shadow: 
-    inset 0 0 8px color-mix(in srgb, var(--fx-neon, var(--pad-color, #555)) 8%, transparent);
+    inset 0 0 6px color-mix(in srgb, var(--fx-neon, var(--pad-color, #555)) 8%, transparent);
 }
 
 .effect-pad:hover {

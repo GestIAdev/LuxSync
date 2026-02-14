@@ -39,6 +39,12 @@ export { HyperionView, StageViewDual, HyperionViewDefault } from './views'
 // Backward compatibility: default export for lazy loading
 export { HyperionViewDefault as default } from './views'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WIDGETS — Phase 2 Complete (HUD Táctico)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export * from './widgets'
+
 // 🚧 PLACEHOLDER: These exports will be added in subsequent phases:
 //
 // Phase 3 (WAVE 2042.4):

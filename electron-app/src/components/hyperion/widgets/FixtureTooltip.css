@@ -1,0 +1,379 @@
+/**
+ * ☀️ HYPERION — Fixture Tactical Tooltip
+ * 
+ * HUD flotante que aparece al hover sobre un fixture.
+ * Estética: HUD de caza militar + neon cyberpunk.
+ * 
+ * @module components/hyperion/widgets/FixtureTooltip.css
+ * @since WAVE 2042.4 (Project Hyperion — Phase 2)
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * TOOLTIP CONTAINER
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.fixture-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  width: 260px;
+  background: rgba(5, 5, 10, 0.94);
+  border: 1px solid rgba(0, 240, 255, 0.30);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 0 20px rgba(0, 240, 255, 0.12),
+    0 4px 30px rgba(0, 0, 0, 0.6);
+  
+  /* Entrada suave */
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition: 
+    opacity 0.15s ease, 
+    transform 0.15s ease;
+}
+
+.fixture-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ── Position Variants ──────────────────────────────────────────────────── */
+
+.fixture-tooltip.position-above {
+  transform-origin: bottom center;
+}
+
+.fixture-tooltip.position-below {
+  transform-origin: top center;
+}
+
+.fixture-tooltip.position-above.visible {
+  transform: translateY(0) scale(1);
+}
+
+.fixture-tooltip.position-below.visible {
+  transform: translateY(0) scale(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * HEADER — Fixture Name + Zone Badge
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.12);
+  margin-bottom: 10px;
+}
+
+.tooltip-fixture-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-fixture-icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.tooltip-fixture-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #00F0FF;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-fixture-type {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-zone-badge {
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  color: var(--zone-color, #00F0FF);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * DATA ROWS — Labels + Values
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.tooltip-row:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-label {
+  color: rgba(255, 255, 255, 0.40);
+  font-weight: 600;
+  min-width: 36px;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-value {
+  color: #E0E0E8;
+  font-weight: 500;
+  flex: 1;
+}
+
+.tooltip-value.highlight {
+  color: #00F0FF;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * INTENSITY BAR — Barra de dimmer
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-intensity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tooltip-dim-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.tooltip-dim-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.1s ease;
+  /* Color dinámico del fixture */
+  background: var(--fixture-color, #00F0FF);
+  box-shadow: 0 0 10px var(--fixture-color, #00F0FF);
+}
+
+.tooltip-dim-value {
+  min-width: 36px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fixture-color, #00F0FF);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * COLOR ROW — RGB + Swatch
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tooltip-color-values {
+  display: flex;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 0 8px var(--fixture-color, #000),
+    inset 0 0 2px rgba(255, 255, 255, 0.2);
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * POSITION ROW — Pan / Tilt (solo movers)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-position-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.tooltip-position-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltip-position-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-position-value {
+  font-size: 11px;
+  color: #E0E0E8;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * OPTICS ROW — Zoom / Focus (solo movers)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-optics-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.tooltip-optic-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltip-optic-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-optic-value {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * DMX ADDRESS — Footer
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-dmx-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 240, 255, 0.08);
+}
+
+.tooltip-dmx-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.30);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tooltip-dmx-value {
+  font-size: 10px;
+  color: rgba(0, 240, 255, 0.7);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * OVERRIDE INDICATOR — Manual override activo
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.tooltip-override-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 6px;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 2px;
+  font-size: 8px;
+  color: #FFD700;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.tooltip-override-badge::before {
+  content: '⚡';
+  font-size: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SELECTED INDICATOR — Fixture seleccionado
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.fixture-tooltip.selected {
+  border-color: rgba(0, 240, 255, 0.5);
+  box-shadow: 
+    0 0 25px rgba(0, 240, 255, 0.2),
+    0 4px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * OFF STATE — Fixture apagado
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.fixture-tooltip.off .tooltip-fixture-name {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.fixture-tooltip.off .tooltip-dim-fill {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ANIMATIONS
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes tooltip-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 4px 30px rgba(0, 0, 0, 0.6); }
+  50% { box-shadow: 0 0 25px rgba(0, 240, 255, 0.18), 0 4px 30px rgba(0, 0, 0, 0.6); }
+}
+
+.fixture-tooltip.selected.visible {
+  animation: tooltip-pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ACCESSIBILITY — Reducir movimiento
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .fixture-tooltip {
+    transition: opacity 0.1s ease;
+    transform: none !important;
+  }
+
+  .fixture-tooltip.visible {
+    transform: none !important;
+  }
+
+  .fixture-tooltip.selected.visible {
+    animation: none;
+  }
+}

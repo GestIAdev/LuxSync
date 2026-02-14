@@ -21,7 +21,7 @@
  * @version WAVE 2006
  */
 
-import React, { useRef, useState, useCallback, useEffect, memo, useMemo } from 'react'
+import React, { useRef, useState, useCallback, useEffect, useLayoutEffect, memo, useMemo } from 'react'
 import { WaveformLayer } from './WaveformLayer'
 import { ClipRenderer } from './ClipRenderer'
 import type { AnalysisData } from '../../core/types'
@@ -571,7 +571,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   isRecording = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 1200, height: 300 })
+  // 🔧 WAVE 2040.37: Initial dimensions — will be immediately corrected by effect
+  const [dimensions, setDimensions] = useState({ width: 1, height: 1 })
   const [viewport, setViewport] = useState<TimelineViewport>({
     startTime: 0,
     endTime: 12000, // 12 seconds
@@ -629,34 +630,23 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   // Track the container size
   // WAVE 2040.11: Preserve temporal focus on resize (Zen Mode fix)
   // 🔧 WAVE 2040.33: Force immediate dimension read on mount (Wake Up Call)
-  // 🔧 WAVE 2040.34: Double-tap trick for late layout stabilization
-  // 🔧 WAVE 2040.35: FIX INFINITE LOOP — empty deps, use refs for viewport
+  // 🔧 WAVE 2040.37: Use useLayoutEffect for SYNCHRONOUS dimension read
+  //                   Prevents flash of incorrectly-sized canvas
   
   // Store viewport in ref to access inside ResizeObserver without deps
   const viewportRef = useRef(viewport)
   useEffect(() => { viewportRef.current = viewport }, [viewport])
   
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current
     if (!container) return
     
-    // 🔧 WAVE 2040.33: WAKE UP CALL — Read dimensions immediately on mount
-    // Don't wait for resize event. Force the first render NOW.
+    // 🔧 WAVE 2040.37: SYNCHRONOUS dimension read — before browser paint
+    // This ensures ZERO visual flash — dimensions are correct before pixels hit screen
     const rect = container.getBoundingClientRect()
     if (rect.width > 0 && rect.height > 0) {
       setDimensions({ width: rect.width, height: rect.height })
     }
-    
-    // 🔧 WAVE 2040.34: DOUBLE-TAP — Read again after 200ms for late layout
-    // Some CSS Grid layouts don't stabilize until after first paint.
-    // Increased to 200ms to ensure waveform also catches the resize.
-    // Dirty trick but infallible. — Radwulf
-    const doubleTapTimer = setTimeout(() => {
-      const finalRect = container.getBoundingClientRect()
-      if (finalRect.width > 0 && finalRect.height > 0) {
-        setDimensions({ width: finalRect.width, height: finalRect.height })
-      }
-    }, 200)
     
     // Store previous dimensions to detect changes
     let prevWidth = rect.width
@@ -704,7 +694,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     
     resizeObserver.observe(container)
     return () => {
-      clearTimeout(doubleTapTimer)  // 🔧 WAVE 2040.34: Cleanup double-tap timer
       resizeObserver.disconnect()
     }
   }, [])  // 🔧 WAVE 2040.35: Empty deps — mount once, use refs for state

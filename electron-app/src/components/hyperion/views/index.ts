@@ -1,20 +1,24 @@
 /**
  * ☀️ HYPERION — Views Module Index
  * 
- * Main rendering views for the simulator.
+ * Main rendering views for the Live View module.
  * 
- * WAVE 2042.1: Post-Scorched Earth — Views to be rebuilt.
+ * WAVE 2042.3: Phase 1 — HyperionView created.
  * 
  * @module components/hyperion/views
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🚧 PLACEHOLDER — Views will be added in subsequent phases
+// MAIN VIEW — Phase 1 Complete
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Phase 1 (WAVE 2042.2):
-// export { HyperionView } from './HyperionView'
+export { HyperionView, StageViewDual } from './HyperionView'
+export { default as HyperionViewDefault } from './HyperionView'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚧 PLACEHOLDER — Views to be added in subsequent phases
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Phase 3 (WAVE 2042.4):
 // export { TacticalCanvas } from './tactical/TacticalCanvas'

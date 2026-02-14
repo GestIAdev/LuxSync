@@ -31,15 +31,15 @@ export { StageSidebar } from './controls/sidebar'
 export { SceneBrowser } from './controls/sidebar/SceneBrowser'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// VIEWS — TO BE IMPLEMENTED (Phases 1-4)
+// VIEWS — Phase 1 Complete
 // ═══════════════════════════════════════════════════════════════════════════
 
+export { HyperionView, StageViewDual, HyperionViewDefault } from './views'
+
+// Backward compatibility: default export for lazy loading
+export { HyperionViewDefault as default } from './views'
+
 // 🚧 PLACEHOLDER: These exports will be added in subsequent phases:
-//
-// Phase 1 (WAVE 2042.2):
-// export { HyperionView } from './views/HyperionView'
-// export { HyperionView as StageViewDual } from './views/HyperionView'  // Backward compat
-// export { HyperionView as default } from './views/HyperionView'
 //
 // Phase 3 (WAVE 2042.4):
 // export { TacticalCanvas } from './views/tactical/TacticalCanvas'

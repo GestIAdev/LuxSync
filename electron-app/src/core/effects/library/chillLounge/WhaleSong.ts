@@ -201,7 +201,7 @@ export class WhaleSong extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers-left', 'movers-right'],
       intensity: effectiveIntensity * envelope * this.config.peakIntensity,
       zoneOverrides: {},
     }
@@ -245,8 +245,8 @@ export class WhaleSong extends BaseEffect {
     }
     
     // 🐋 Movers con movimiento ULTRA LENTO + EASING
-    output.zoneOverrides!['movers_left'] = {
-      ...output.zoneOverrides!['movers_left'],
+    output.zoneOverrides!['movers-left'] = {
+      ...output.zoneOverrides!['movers-left'],
       movement: { 
         pan: moverPan - 12, 
         tilt: moverTilt,
@@ -254,8 +254,8 @@ export class WhaleSong extends BaseEffect {
         speed: 0.12,
       },
     }
-    output.zoneOverrides!['movers_right'] = {
-      ...output.zoneOverrides!['movers_right'],
+    output.zoneOverrides!['movers-right'] = {
+      ...output.zoneOverrides!['movers-right'],
       movement: { 
         pan: moverPan + 12, 
         tilt: moverTilt,

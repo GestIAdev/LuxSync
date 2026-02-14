@@ -170,7 +170,7 @@ export class StaticPulse extends BaseEffect {
       
       // Decidir qué zones flashean (probabilistic)
       this.activeFlashZones.clear()
-      const zones: EffectZone[] = ['front', 'pars', 'back']
+      const zones: EffectZone[] = ['front', 'all-pars', 'back']
       zones.forEach(zone => {
         if (Math.random() < this.config.flashProbability) {
           this.activeFlashZones.add(zone)
@@ -248,7 +248,7 @@ export class StaticPulse extends BaseEffect {
     // PARS: Flash en zones activas
     // ═════════════════════════════════════════════════════════════════════
     this.activeFlashZones.forEach(zone => {
-      if (zone !== 'movers') {
+      if (zone !== 'all-movers') {
         output.zoneOverrides![zone] = {
           dimmer: this.config.flashIntensity,
           color,

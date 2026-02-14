@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📸 AMBIENT STROBE - STADIUM FLASHBULBS
  * ═══════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ const DEFAULT_CONFIG: AmbientStrobeConfig = {
 }
 
 // Zonas disponibles para flashes
-const FLASH_ZONES: EffectZone[] = ['front', 'pars', 'back']
+const FLASH_ZONES: EffectZone[] = ['front', 'all-pars', 'back']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 📸 AMBIENT STROBE CLASS

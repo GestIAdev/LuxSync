@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚡ THUNDER_STRUCK - EL BLINDER DE ESTADIO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -302,7 +302,7 @@ export class ThunderStruck extends BaseEffect {
     const zoneOverrides = {
       'back': backOverride,
       'front': frontOverride,
-      'movers': moverOverride,
+      'all-movers': moverOverride,
     }
     
     return {

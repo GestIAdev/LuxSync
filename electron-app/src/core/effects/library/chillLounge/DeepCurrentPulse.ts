@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🌀 DEEP CURRENT PULSE - Pulsos de Corriente Profunda en TWILIGHT (3000-6000m)
  * WAVE 1072: AMBIENT FAUNA - Tier 2 (Frequent/Subtle)
  * 
@@ -135,7 +135,7 @@ export class DeepCurrentPulse extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers-left', 'movers-right'],
       // 🌀 WAVE 1083.1: RESCATE LUMÍNICO
       // baseIntensity YA contiene effectiveIntensity - NO multiplicar de nuevo
       intensity: baseIntensity,
@@ -168,7 +168,7 @@ export class DeepCurrentPulse extends BaseEffect {
     const moverPan = (wavePosition - 0.5) * 40  // ±40° de pan
     const moverTilt = Math.sin(progress * Math.PI) * 10 + 20  // Ligera ondulación
     
-    output.zoneOverrides!['movers_left'] = {
+    output.zoneOverrides!['movers-left'] = {
       dimmer: baseIntensity * getFlowIntensity(zoneFlowPositions.movers_left),
       color: currentColor,
       blendMode: 'max' as const,
@@ -179,7 +179,7 @@ export class DeepCurrentPulse extends BaseEffect {
         speed: 0.3,  // Muy lento
       }
     }
-    output.zoneOverrides!['movers_right'] = {
+    output.zoneOverrides!['movers-right'] = {
       dimmer: baseIntensity * getFlowIntensity(zoneFlowPositions.movers_right),
       color: currentColor,
       blendMode: 'max' as const,

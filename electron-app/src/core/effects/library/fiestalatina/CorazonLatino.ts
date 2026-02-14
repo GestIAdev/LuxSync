@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ❤️ CORAZÓN LATINO - AMBIENT HEARTBEAT
  * ═══════════════════════════════════════════════════════════════════════════
@@ -377,7 +377,7 @@ export class CorazonLatino extends BaseEffect {
     // 🚨 WAVE 1004.2: MOVER LAW applied to moverOverride (no color)
     const zoneOverrides = {
       'back': { ...backOverride, blendMode: 'max' as const },
-      'movers': { ...moverOverride, blendMode: 'max' as const },
+      'all-movers': { ...moverOverride, blendMode: 'max' as const },
       'front': { ...frontOverride, blendMode: 'max' as const },
     }
     

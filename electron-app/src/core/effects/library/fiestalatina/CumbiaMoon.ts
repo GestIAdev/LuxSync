@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌙 CUMBIA MOON - OLA DE LUZ SUAVE
  * ═══════════════════════════════════════════════════════════════════════════
@@ -230,7 +230,7 @@ export class CumbiaMoon extends BaseEffect {
         blendMode: 'max',
       },
       // � WAVE 1010.6: MOVERS reciben BLANCO - HAL traduce a DMX seguro
-      'movers': {
+      'all-movers': {
         color: moonWhite,  // ✅ BLANCO lunar para movers (HAL traduce a Color Wheel)
         dimmer: this.currentIntensity * 0.5,  // Movers muy sutiles (luna suave)
         blendMode: 'max',

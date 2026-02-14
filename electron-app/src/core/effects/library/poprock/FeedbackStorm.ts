@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 😵 FEEDBACK_STORM - LA DISTORSIÓN VISUAL
  * ═══════════════════════════════════════════════════════════════════════════
@@ -341,8 +341,8 @@ export class FeedbackStorm extends BaseEffect {
     const zoneOverrides = {
       'back': backOverride,
       'front': frontOverride,
-      'movers_left': moverLeftOverride,
-      'movers_right': moverRightOverride,
+      'movers-left': moverLeftOverride,
+      'movers-right': moverRightOverride,
     }
     
     return {

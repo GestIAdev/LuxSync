@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 💡 SPOTLIGHT_PULSE - PULSO DE SPOTLIGHT
  * ═══════════════════════════════════════════════════════════════════════════
@@ -173,8 +173,8 @@ export class SpotlightPulse extends BaseEffect {
     }
     
     const zoneOverrides = {
-      'movers_left': moverOverride,
-      'movers_right': moverOverride,
+      'movers-left': moverOverride,
+      'movers-right': moverOverride,
       'back': parOverride,
       'front': parOverride,
     }

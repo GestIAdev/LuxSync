@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🫁 DEEP BREATH - RESPIRACIÓN PROFUNDA
  * ═══════════════════════════════════════════════════════════════════════════
@@ -150,7 +150,7 @@ export class DeepBreath extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['front', 'pars', 'back', 'movers'],
+      zones: ['front', 'all-pars', 'back', 'all-movers'],
       intensity: this.triggerIntensity * breathIntensity,
       zoneOverrides: {},
     }
@@ -158,7 +158,7 @@ export class DeepBreath extends BaseEffect {
     // ═════════════════════════════════════════════════════════════════════
     // PARS: Dimmer sincronizado con respiración
     // ═════════════════════════════════════════════════════════════════════
-    const parZones = ['front', 'pars', 'back'] as const
+    const parZones = ['front', 'all-pars', 'back'] as const
     
     parZones.forEach(zone => {
       output.zoneOverrides![zone] = {
@@ -180,7 +180,7 @@ export class DeepBreath extends BaseEffect {
     // Por ahora usamos 0° (centro)
     const pan = 0
 
-    output.zoneOverrides!['movers'] = {
+    output.zoneOverrides!['all-movers'] = {
       dimmer,
       // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
       blendMode: 'max' as const,

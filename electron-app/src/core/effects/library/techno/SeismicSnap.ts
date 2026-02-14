@@ -106,7 +106,7 @@ const COLORS = {
 }
 
 // Zonas para el efecto
-const SNAP_ZONES: EffectZone[] = ['front', 'pars', 'back', 'movers']
+const SNAP_ZONES: EffectZone[] = ['front', 'all-pars', 'back', 'all-movers']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FASES DEL EFECTO - WAVE 997.6

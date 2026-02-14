@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🐟 SCHOOL OF FISH - Banco de Peces en OCEAN (1000-3000m)
  * ═══════════════════════════════════════════════════════════════════════════
  * WAVE 1073: OCEANIC CALIBRATION - Movimiento más LENTO y FLOTANTE
@@ -153,7 +153,7 @@ export class SchoolOfFish extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+      zones: ['frontL', 'frontR', 'backL', 'backR', 'movers-left', 'movers-right'],
       intensity: effectiveIntensity * envelope * this.config.peakIntensity,
       zoneOverrides: {},
     }
@@ -180,7 +180,7 @@ export class SchoolOfFish extends BaseEffect {
       blendMode: 'max' as const,
     }
     // 🌊 WAVE 1085: Movers con atmospheric bed + easing en movimiento
-    output.zoneOverrides!['movers_left'] = {
+    output.zoneOverrides!['movers-left'] = {
       dimmer: Math.max(getZoneIntensity(zonePositions.movers_left) * envelope * finalPeakIntensity * 0.90, atmosphericAmbient),
       color: getZoneIntensity(zonePositions.movers_left) > atmosphericAmbient ? getZoneColor(zonePositions.movers_left) : atmosphericColor,
       blendMode: 'max' as const,
@@ -191,7 +191,7 @@ export class SchoolOfFish extends BaseEffect {
         speed: 0.2,
       },
     }
-    output.zoneOverrides!['movers_right'] = {
+    output.zoneOverrides!['movers-right'] = {
       dimmer: Math.max(getZoneIntensity(zonePositions.movers_right) * envelope * finalPeakIntensity * 0.90, atmosphericAmbient),
       color: getZoneIntensity(zonePositions.movers_right) > atmosphericAmbient ? getZoneColor(zonePositions.movers_right) : atmosphericColor,
       blendMode: 'max' as const,

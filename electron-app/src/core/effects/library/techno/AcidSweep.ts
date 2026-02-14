@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🧪 ACID SWEEP - THE BLADE OF LIGHT
  * ═══════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ const DEFAULT_CONFIG: AcidSweepConfig = {
 }
 
 // Zonas en orden espacial (front a back)
-const ZONE_ORDER: EffectZone[] = ['front', 'pars', 'back', 'movers']
+const ZONE_ORDER: EffectZone[] = ['front', 'all-pars', 'back', 'all-movers']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🧪 ACID SWEEP CLASS

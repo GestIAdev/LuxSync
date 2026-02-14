@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚔️ MACHETE SPARK - EL CORTE DEL ACERO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -153,7 +153,7 @@ export class MacheteSpark extends BaseEffect {
     super.trigger(config)
     
     // GLOBAL - Afecta todo el escenario
-    this.zones = ['front', 'back', 'movers']
+    this.zones = ['front', 'back', 'all-movers']
     
     // Reset state
     this.currentCut = 0
@@ -256,9 +256,9 @@ export class MacheteSpark extends BaseEffect {
     // Determinar zonas según el lado del swing
     const activeZones: EffectZone[] = this.cutPhase === 'spark' && this.config.alternateSides
       ? (this.currentSide === 'left' 
-          ? ['front', 'movers_left'] 
-          : ['back', 'movers_right'])
-      : ['front', 'back', 'movers']
+          ? ['front', 'movers-left'] 
+          : ['back', 'movers-right'])
+      : ['front', 'back', 'all-movers']
     
     return {
       effectId: this.id,

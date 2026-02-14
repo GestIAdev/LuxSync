@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌊 TIDAL WAVE - SPATIAL PHASE SWEEP
  * ═════════════════════════════════════════════════════════    // 🌊 WAVE 1009: FREEDOM DAY - Movers reciben COLOR
@@ -90,7 +90,7 @@ const DEFAULT_CONFIG: TidalWaveConfig = {
 }
 
 // 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
-const ZONE_ORDER: EffectZone[] = ['front', 'pars', 'back', 'movers']
+const ZONE_ORDER: EffectZone[] = ['front', 'all-pars', 'back', 'all-movers']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIDAL WAVE CLASS

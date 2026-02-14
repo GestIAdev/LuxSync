@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔵 SONAR PING - SUBMARINE TENSION
  * ═══════════════════════════════════════════════════════════════════════════
@@ -79,7 +79,7 @@ const DEFAULT_CONFIG: SonarPingConfig = {
 }
 
 // Secuencia espacial: back → pars → front
-const ZONE_SEQUENCE: EffectZone[] = ['back', 'pars', 'front']
+const ZONE_SEQUENCE: EffectZone[] = ['back', 'all-pars', 'front']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔵 SONAR PING CLASS

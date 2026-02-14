@@ -86,7 +86,7 @@ const COLORS = {
 }
 
 // TODAS las zonas - La Bestia no perdona a nadie
-const ALL_ZONES: EffectZone[] = ['front', 'pars', 'back', 'movers', 'movers_left', 'movers_right']
+const ALL_ZONES: EffectZone[] = ['front', 'all-pars', 'back', 'all-movers', 'movers-left', 'movers-right']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ☢️ CORE MELTDOWN CLASS

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔥 LATINA MELTDOWN - NUCLEAR SALSA
  * ═══════════════════════════════════════════════════════════════════════════
@@ -153,7 +153,7 @@ export class LatinaMeltdown extends BaseEffect {
     super.trigger(config)
     
     // GLOBAL - Afecta TODO el escenario
-    this.zones = ['front', 'back', 'movers']
+    this.zones = ['front', 'back', 'all-movers']
     
     // Reset state
     this.currentHit = 0

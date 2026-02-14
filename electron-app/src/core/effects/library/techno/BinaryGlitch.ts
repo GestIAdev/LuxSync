@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚡ BINARY GLITCH - CÓDIGO MORSE CORRUPTO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -188,7 +188,7 @@ const COLORS = {
 }
 
 // Zonas para el efecto
-const GLITCH_ZONES: EffectZone[] = ['front', 'pars', 'back', 'movers']
+const GLITCH_ZONES: EffectZone[] = ['front', 'all-pars', 'back', 'all-movers']
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚡ BINARY GLITCH CLASS

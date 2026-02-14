@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌊 STAGE_WASH - LAVADO DE ESCENARIO CÁLIDO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -144,8 +144,8 @@ export class StageWash extends BaseEffect {
     }
     
     const zoneOverrides = {
-      'movers_left': washOverride,
-      'movers_right': washOverride,
+      'movers-left': washOverride,
+      'movers-right': washOverride,
       'back': washOverride,
       'front': washOverride,
     }

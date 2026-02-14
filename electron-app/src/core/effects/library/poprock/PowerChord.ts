@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ⚡ POWER_CHORD - EL GOLPE DEL ACORDE
  * ═══════════════════════════════════════════════════════════════════════════
@@ -196,8 +196,8 @@ export class PowerChord extends BaseEffect {
     }
     
     const zoneOverrides = {
-      'movers_left': moverOverride,
-      'movers_right': moverOverride,
+      'movers-left': moverOverride,
+      'movers-right': moverOverride,
       'back': parOverride,
       'front': parOverride,
     }

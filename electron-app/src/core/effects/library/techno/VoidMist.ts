@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌫️ VOID MIST - NEBLINA DEL VACÍO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -113,7 +113,7 @@ export class VoidMist extends BaseEffect {
     this.breathOffsets.clear()
     
     // Generar offsets aleatorios para cada zona (0-2π)
-    const zones = ['front', 'pars', 'back', 'movers']
+    const zones = ['front', 'all-pars', 'back', 'all-movers']
     zones.forEach(zone => {
       this.breathOffsets.set(zone, Math.random() * 2 * Math.PI)
     })
@@ -151,7 +151,7 @@ export class VoidMist extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['front', 'pars', 'back', 'movers'],
+      zones: ['front', 'all-pars', 'back', 'all-movers'],
       intensity: this.triggerIntensity,
       zoneOverrides: {},
     }
@@ -166,7 +166,7 @@ export class VoidMist extends BaseEffect {
     // PARS: Respiración independiente por zona
     // 🔪 WAVE 976: Respiración sinusoidal orgánica con offsets aleatorios
     // ═════════════════════════════════════════════════════════════════════
-    const parZones = ['front', 'pars', 'back'] as const
+    const parZones = ['front', 'all-pars', 'back'] as const
     
     parZones.forEach(zone => {
       const offset = this.breathOffsets.get(zone) || 0
@@ -188,7 +188,7 @@ export class VoidMist extends BaseEffect {
     // ═════════════════════════════════════════════════════════════════════
     // MOVERS: Pan oscilante lento, Tilt horizontal, respiración propia
     // ═════════════════════════════════════════════════════════════════════
-    const moverOffset = this.breathOffsets.get('movers') || 0
+    const moverOffset = this.breathOffsets.get('all-movers') || 0
     const moverBreathPhase = (this.elapsedMs / this.config.breathPeriodMs) * 2 * Math.PI + moverOffset
     const moverBreathIntensity = (Math.sin(moverBreathPhase) + 1) / 2
     const moverDimmer = this.config.minIntensity + 
@@ -199,7 +199,7 @@ export class VoidMist extends BaseEffect {
     // "Si dura >2s, los Movers tienen PROHIBIDO modular color"
     // Solo dimmer + movement, sin color (transparente a física)
     // ═══════════════════════════════════════════════════════════════════════
-    output.zoneOverrides!['movers'] = {
+    output.zoneOverrides!['all-movers'] = {
       dimmer: moverDimmer,
       // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
       blendMode: 'max' as const,

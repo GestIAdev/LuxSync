@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌊 ARENA_SWEEP - EL BARRIDO DE ROCK
  * ═══════════════════════════════════════════════════════════════════════════
@@ -298,8 +298,8 @@ export class ArenaSweep extends BaseEffect {
     }
     
     const zoneOverrides = {
-      'movers_left': moverLeftOverride,
-      'movers_right': moverRightOverride,
+      'movers-left': moverLeftOverride,
+      'movers-right': moverRightOverride,
       'back': backOverride,
       'front': frontOverride,
     }

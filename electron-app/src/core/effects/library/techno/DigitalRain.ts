@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🌧️ DIGITAL RAIN - MATRIX VIBES
  * ══════════════════════════════════════════════════════════    // ═════════════════════════════════════════════════════════════════════
@@ -11,7 +11,7 @@
       : 0
     
     // 🛡️ WAVE 994: SIEMPRE enviar override (nunca soltar el micro)
-    output.zoneOverrides!['movers'] = {
+    output.zoneOverrides!['all-movers'] = {
       dimmer: moverDimmer,  // Puede ser 0 (darkness) o >0 (flash)
       // 🚫 NO COLOR - Transparente a rueda mecánica (física decide)
       blendMode: 'replace' as const,  // 🌧️ WAVE 987: max→replace (cortar bombo)
@@ -153,7 +153,7 @@ export class DigitalRain extends BaseEffect {
       category: this.category,
       phase: this.phase,
       progress,
-      zones: ['front', 'pars', 'back', 'movers'],
+      zones: ['front', 'all-pars', 'back', 'all-movers'],
       intensity: this.triggerIntensity,
       zoneOverrides: {},
     }
@@ -162,7 +162,7 @@ export class DigitalRain extends BaseEffect {
     // PARS: Flicker aleatorio con colores CYAN/LIME
     // 🛡️ WAVE 994: THE HOLDING PATTERN - Nunca suelta el control
     // ═════════════════════════════════════════════════════════════════════
-    const parZones = ['front', 'pars', 'back'] as const
+    const parZones = ['front', 'all-pars', 'back'] as const
     
     parZones.forEach(zone => {
       const dimmerValue = Math.random() < this.config.flickerProbability
@@ -210,7 +210,7 @@ export class DigitalRain extends BaseEffect {
         ? { h: 180, s: 100, l: 50 } // CYAN
         : { h: 120, s: 100, l: 50 } // LIME
       
-      output.zoneOverrides!['movers'] = {
+      output.zoneOverrides!['all-movers'] = {
         color: moverColor,  // 🔓 ¡LIBERTAD! Cyan/Lime para movers
         dimmer: moverDimmer,
         blendMode: 'replace' as const,

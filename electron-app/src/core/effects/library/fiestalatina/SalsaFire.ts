@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔥 SALSA FIRE - FUEGO DE PASIÓN
  * ═══════════════════════════════════════════════════════════════════════════
@@ -255,7 +255,7 @@ export class SalsaFire extends BaseEffect {
         blendMode: 'max',
       },
       // � WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
-      'movers': {
+      'all-movers': {
         color: this.currentColor,  // 🔓 ¡LIBERTAD! Rojo fuego para movers
         dimmer: this.currentIntensity * 0.6,  // Movers más sutiles que PARs
         blendMode: 'max',

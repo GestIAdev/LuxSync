@@ -647,15 +647,16 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       setDimensions({ width: rect.width, height: rect.height })
     }
     
-    // 🔧 WAVE 2040.34: DOUBLE-TAP — Read again after 100ms for late layout
+    // 🔧 WAVE 2040.34: DOUBLE-TAP — Read again after 200ms for late layout
     // Some CSS Grid layouts don't stabilize until after first paint.
+    // Increased to 200ms to ensure waveform also catches the resize.
     // Dirty trick but infallible. — Radwulf
     const doubleTapTimer = setTimeout(() => {
       const finalRect = container.getBoundingClientRect()
       if (finalRect.width > 0 && finalRect.height > 0) {
         setDimensions({ width: finalRect.width, height: finalRect.height })
       }
-    }, 100)
+    }, 200)
     
     // Store previous dimensions to detect changes
     let prevWidth = rect.width

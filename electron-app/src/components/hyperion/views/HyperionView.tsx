@@ -16,6 +16,7 @@ import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
+import { VisualizerCanvas } from './visualizer'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -246,34 +247,12 @@ export function HyperionView({
                 showZoneLabels={true}
               />
             ) : (
-              /* 🚧 PLACEHOLDER — Phase 4: VisualizerCanvas (3D) */
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                color: 'rgba(255,255,255,0.4)',
-                fontFamily: 'var(--h-font-primary)',
-                height: '100%',
-              }}>
-                <div style={{ fontSize: '32px', opacity: 0.3 }}>🌐</div>
-                <div style={{ 
-                  fontSize: '12px', 
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                }}>
-                  Visualizer Canvas
-                </div>
-                <div style={{ 
-                  fontSize: '10px', 
-                  opacity: 0.5,
-                  maxWidth: '200px',
-                  textAlign: 'center',
-                }}>
-                  3D View — Coming in Phase 4
-                </div>
-              </div>
+              <VisualizerCanvas
+                quality={qualityMode}
+                showFloorGrid={true}
+                showTruss={true}
+                showBeams={true}
+              />
             )}
           </div>
         )}

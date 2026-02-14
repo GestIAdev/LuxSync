@@ -5,6 +5,7 @@
  * 
  * WAVE 2042.3: Phase 1 — HyperionView created.
  * WAVE 2042.5: Phase 3 — TacticalCanvas created.
+ * WAVE 2042.6: Phase 4 — VisualizerCanvas created.
  * 
  * @module components/hyperion/views
  * @since WAVE 2042.1 (Project Hyperion — Phase 0)
@@ -28,12 +29,16 @@ export type { TacticalCanvasProps, TacticalFixture, TacticalCanvasOptions } from
 export { TacticalCanvas as StageSimulator2 } from './tactical'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🚧 PLACEHOLDER — Views to be added in subsequent phases
+// VISUALIZER CANVAS (3D) — Phase 4 Complete
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Phase 4 (WAVE 2042.6-7):
-// export { VisualizerCanvas } from './visualizer/VisualizerCanvas'
-// export { VisualizerCanvas as Stage3DCanvas } from './visualizer'  // backward compat
+export { VisualizerCanvas, Stage3DCanvas } from './visualizer'
+export type { 
+  Fixture3DData, 
+  StageConfig3D, 
+  VisualizerOptions, 
+  Visualizer3DMetrics 
+} from './visualizer'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 💀 ELIMINATED (WAVE 2042.0 Scorched Earth)

@@ -6,6 +6,7 @@
  * Wave 33.3: Cleaned up legacy components (moved to StageViewDual)
  * WAVE 264.6: Eliminado useAudioCapture duplicado - TrinityProvider maneja audio
  * WAVE 377: Added TitanSyncBridge for auto-sync stageStore → Backend
+ * 🔌 WAVE 2042.25: Device persistence - Auto-connect USB DMX on startup
  */
 
 import { useEffect } from 'react'
@@ -19,6 +20,7 @@ import { initializeLogIPC } from './stores/logStore'
 import { initializeTruthIPC } from './stores/truthStore'  // 🔌 WAVE 2042.13.16
 import { TitanSyncBridge } from './core/sync'
 import { useShallow } from 'zustand/shallow'
+import { useDevicePersistence } from './hooks/useDevicePersistence'  // 🔌 WAVE 2042.25
 
 function App() {
   // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
@@ -26,6 +28,9 @@ function App() {
   // 🛡️ WAVE 2042.13.4: Use stable selector to prevent infinite loops
   const audioMetrics = useAudioStore(useShallow(selectAudioMetrics))
   const { start: startSelene, isRunning } = useSelene()
+  
+  // 🔌 WAVE 2042.25: Auto-connect devices on startup (DMX + Audio)
+  useDevicePersistence()
 
   // Iniciar Selene al montar
   // 🔧 WAVE 264.6: Audio capture ahora es responsabilidad de TrinityProvider

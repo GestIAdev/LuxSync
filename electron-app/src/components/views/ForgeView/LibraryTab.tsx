@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import './LibraryTab.css'
 import { 
   Search, 
@@ -31,7 +32,7 @@ import {
   RefreshCw,
   Loader
 } from 'lucide-react'
-import { useLibraryStore, LibraryFixture } from '../../../stores/libraryStore'
+import { useLibraryStore, LibraryFixture, selectLibraryTab } from '../../../stores/libraryStore'
 import { FixtureDefinition } from '../../../types/FixtureDefinition'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -96,6 +97,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   
   // Store
+  // 🛡️ WAVE 2042.13.9: useShallow for stable reference
   const { 
     systemFixtures,
     userFixtures,
@@ -105,7 +107,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({
     deleteUserFixture, 
     saveUserFixture,
     // Note: isSystemFixture not used - we check fixture.source directly
-  } = useLibraryStore()
+  } = useLibraryStore(useShallow(selectLibraryTab))
   
   // Load fixtures on mount
   useEffect(() => {

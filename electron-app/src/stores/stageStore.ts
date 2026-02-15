@@ -717,6 +717,20 @@ export const selectFixturesInGroup = (groupId: string) => (state: StageStore) =>
 export const selectMovingHeads = (state: StageStore) =>
   state.fixtures.filter(f => f.type === 'moving-head')
 
+// 🛡️ WAVE 2042.13.9: React 19 Fix - Consolidated selectors
+/** Selector: VisualPatcher - fixtures + actions */
+export const selectVisualPatcher = (state: StageStore) => ({
+  fixtures: state.fixtures,
+  updateFixture: state.updateFixture,
+  saveShow: state.saveShow,
+})
+
+/** Selector: ForgeView - fixtures + addFixture */
+export const selectForgeView = (state: StageStore) => ({
+  fixtures: state.fixtures,
+  addFixture: state.addFixture,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOKS
 // ═══════════════════════════════════════════════════════════════════════════

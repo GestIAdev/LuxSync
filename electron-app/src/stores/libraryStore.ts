@@ -298,3 +298,27 @@ console.log('[LibraryStore] 📚 WAVE 1113: Library Store initialized (IPC-based
 
 // Note: loadFromDisk() should be called by the component that needs the data
 // This avoids loading on app startup when the IPC bridge might not be ready
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.9: React 19 Fix - Stable Selectors
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: LibraryTab - all library data and actions */
+export const selectLibraryTab = (state: LibraryState) => ({
+  systemFixtures: state.systemFixtures,
+  userFixtures: state.userFixtures,
+  isLoading: state.isLoading,
+  lastError: state.lastError,
+  loadFromDisk: state.loadFromDisk,
+  deleteUserFixture: state.deleteUserFixture,
+  saveUserFixture: state.saveUserFixture,
+})
+
+/** Selector: FixtureForgeEmbedded - save + library check */
+export const selectFixtureForge = (state: LibraryState) => ({
+  userFixtures: state.userFixtures,
+  saveUserFixture: state.saveUserFixture,
+  loadFromDisk: state.loadFromDisk,
+  isSystemFixture: state.isSystemFixture,
+  getFixtureById: state.getFixtureById,
+})

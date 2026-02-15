@@ -21,9 +21,10 @@
  */
 
 import React, { Suspense, lazy, useState, useCallback, useEffect, createContext, useContext, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useStageStore } from '../../stores/stageStore'
 import { useSelectionStore } from '../../stores/selectionStore'
-import { useNavigationStore } from '../../stores/navigationStore'
+import { useNavigationStore, selectStageConstructorNav } from '../../stores/navigationStore'
 import { Box, Layers, Move3D, Save, FolderOpen, Plus, Trash2, Magnet, MousePointer2, BoxSelect, Users, Map, Wrench, RefreshCcw, Upload, ChevronRight, ChevronDown, FilePlus, Pencil } from 'lucide-react'
 import { createDefaultFixture, DEFAULT_PHYSICS_PROFILES, mapLibraryTypeToFixtureType } from '../../core/stage/ShowFileV2'
 import type { FixtureV2, FixtureZone, PhysicsProfile } from '../../core/stage/ShowFileV2'
@@ -747,7 +748,8 @@ const StageConstructorView: React.FC = () => {
   const [showGroupCreateModal, setShowGroupCreateModal] = useState(false)
   
   // WAVE 1117: DELETED - Forge modal state removed, now uses /forge view
-  const { setActiveTab, editFixture } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.9: useShallow for stable reference
+  const { setActiveTab, editFixture } = useNavigationStore(useShallow(selectStageConstructorNav))
   
   // WAVE 389: Ref to call library reload from child component
   const reloadLibraryRef = useRef<(() => Promise<void>) | null>(null)

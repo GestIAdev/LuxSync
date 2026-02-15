@@ -16,7 +16,8 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useStageStore } from '../../../stores/stageStore';
+import { useShallow } from 'zustand/react/shallow';
+import { useStageStore, selectVisualPatcher } from '../../../stores/stageStore';
 import type { FixtureV2 } from '../../../core/stage/ShowFileV2';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -564,8 +565,8 @@ const s = {
 
 export const VisualPatcher: React.FC = () => {
   // --- 🧠 STORE ---
-  // 🎯 WAVE 1218: Connected saveShow for persistence!
-  const { fixtures, updateFixture, saveShow } = useStageStore();
+  // 🛡️ WAVE 2042.13.9: useShallow for stable reference
+  const { fixtures, updateFixture, saveShow } = useStageStore(useShallow(selectVisualPatcher));
   
   // --- 📊 STATE ---
   // 🐝 WAVE 1213: Multi-selection support (THE SWARM CONTROL)

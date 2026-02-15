@@ -19,7 +19,8 @@
  */
 
 import React, { useState, useCallback, Suspense, lazy } from 'react'
-import { useStageStore } from '../../../stores/stageStore'
+import { useShallow } from 'zustand/react/shallow'
+import { useStageStore, selectForgeView } from '../../../stores/stageStore'
 import type { FixtureDefinition } from '../../../types/FixtureDefinition'
 import type { PhysicsProfile, FixtureV2 } from '../../../core/stage/ShowFileV2'
 import './ForgeView.css'
@@ -41,7 +42,8 @@ const ForgeFallback: React.FC = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ForgeView: React.FC = () => {
-  const { addFixture, fixtures } = useStageStore()
+  // 🛡️ WAVE 2042.13.9: useShallow for stable reference
+  const { addFixture, fixtures } = useStageStore(useShallow(selectForgeView))
   
   // State for editing existing fixture
   const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null)

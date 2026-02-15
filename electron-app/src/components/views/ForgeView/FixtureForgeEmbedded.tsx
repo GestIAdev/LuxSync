@@ -58,8 +58,9 @@ import {
 import { FixtureDefinition, ChannelType, FixtureChannel, ColorEngineType, WheelColor, FixtureType, deriveCapabilities, DerivedCapabilities } from '../../../types/FixtureDefinition'
 import { FixtureFactory } from '../../../utils/FixtureFactory'
 import { useStageStore } from '../../../stores/stageStore'
-import { useLibraryStore } from '../../../stores/libraryStore'
-import { useNavigationStore } from '../../../stores/navigationStore'
+import { useShallow } from 'zustand/react/shallow'
+import { useLibraryStore, selectFixtureForge } from '../../../stores/libraryStore'
+import { useNavigationStore, selectFixtureForgeNav } from '../../../stores/navigationStore'
 // WAVE 1117: Recovered CSS from deleted modal (contains PhysicsTuner styles)
 import './FixtureForge.css'
 import './FixtureForgeEmbedded.css'  // Standalone styles for embedded mode
@@ -293,15 +294,16 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
 }) => {
   // ═══════════════════════════════════════════════════════════════════════
   // STORES - WAVE 1113: Updated to async library store
+  // 🛡️ WAVE 2042.13.9: useShallow for stable references
   // ═══════════════════════════════════════════════════════════════════════
   
   const { 
     saveUserFixture, 
     isSystemFixture, 
+    loadFromDisk,
     getFixtureById,
-    loadFromDisk 
-  } = useLibraryStore()
-  const { targetFixtureId, clearTargetFixture } = useNavigationStore()
+  } = useLibraryStore(useShallow(selectFixtureForge))
+  const { targetFixtureId, clearTargetFixture } = useNavigationStore(useShallow(selectFixtureForgeNav))
   
   // ═══════════════════════════════════════════════════════════════════════
   // STATE

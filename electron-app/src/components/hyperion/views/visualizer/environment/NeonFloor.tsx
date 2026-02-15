@@ -73,12 +73,14 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
   }, [width, depth])
 
   // ── Materials ─────────────────────────────────────────────────────────────
-  // 🛡️ WAVE 2042.14.3: Floor MUST be opaque to block beam cones
+  // 🛡️ WAVE 2042.15.2: Floor MUST be SOLID to block beam cones
   const floorMaterial = useMemo(() => (
     <meshStandardMaterial
       color="#080810"
       metalness={0.3}
       roughness={0.8}
+      depthWrite={true}
+      depthTest={true}
     />
   ), [])
 
@@ -108,8 +110,14 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
 
   return (
     <group>
-      {/* Floor plane */}
-      <mesh ref={floorRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+      {/* Floor plane - SOLID, renders first to block beams */}
+      <mesh 
+        ref={floorRef} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        position={[0, 0, 0]} 
+        receiveShadow
+        renderOrder={-1}
+      >
         <planeGeometry args={[width, depth]} />
         {floorMaterial}
       </mesh>

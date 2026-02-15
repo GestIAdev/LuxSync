@@ -63,8 +63,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   
   const targetPanAngle = (pan - 0.5) * PAN_RANGE
   const targetTiltAngle = -(tilt - 0.5) * TILT_RANGE
-  // 🎨 WAVE 2042.15.1: Tighter beam width for more focused look
-  const beamWidth = 0.03 + zoom * 0.08
+  // 🎨 WAVE 2042.15.2: TIGHT beam for MovingHeads (spot light, not wash)
+  const beamWidth = 0.06 + zoom * 0.04
   const beamLength = 3 + intensity * 2
 
   // ── Animation ─────────────────────────────────────────────────────────────
@@ -82,16 +82,16 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     if (yokeRef.current) yokeRef.current.quaternion.copy(currentYokeQuat.current)
     if (headRef.current) headRef.current.quaternion.copy(currentHeadQuat.current)
 
-    // Update lens - simple color modulation
+    // Update lens - MORE BRIGHTNESS
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.opacity = 0.3 + intensity * 0.7
+      lensMaterialRef.current.opacity = 0.7 + intensity * 0.3
     }
     
-    // Update beam
+    // Update beam - MORE OPACITY
     if (beamMaterialRef.current && showBeam) {
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.12
+      beamMaterialRef.current.opacity = intensity * 0.25
     }
   })
 

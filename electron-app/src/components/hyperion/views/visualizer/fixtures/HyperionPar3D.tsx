@@ -49,16 +49,16 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
-    // Update lens - simple MeshBasicMaterial with color modulation
+    // Update lens - MORE BRIGHTNESS
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.opacity = 0.3 + intensity * 0.7
+      lensMaterialRef.current.opacity = 0.7 + intensity * 0.3
     }
     
-    // Update beam - additive blending
+    // Update beam - MORE OPACITY
     if (beamMaterialRef.current && showBeam) {
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.15
+      beamMaterialRef.current.opacity = intensity * 0.3
     }
   })
 
@@ -97,18 +97,18 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       </mesh>
 
       {/* Beam cone — AdditiveBlending for glow effect 
-          🎨 WAVE 2042.15.1: Tight beam - reduced width for more focused look */}
+          🎨 WAVE 2042.15.2: WIDE beam for PARs (wash light, not spot) */}
       {showBeam && intensity > 0.01 && (
         <mesh
           position={[0, -beamLength / 2 - 0.06, 0]}
           rotation={[0, 0, 0]}
         >
-          <coneGeometry args={[0.15 + intensity * 0.1, beamLength, 16, 1, true]} />
+          <coneGeometry args={[0.25 + intensity * 0.15, beamLength, 16, 1, true]} />
           <meshBasicMaterial
             ref={beamMaterialRef}
             color={color}
             transparent
-            opacity={0.15}
+            opacity={0.3}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}

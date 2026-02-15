@@ -30,6 +30,7 @@
 
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { useShallow } from 'zustand/shallow'
 import {
   ShowFileV2,
   FixtureV2,
@@ -736,9 +737,10 @@ export function useGroupFixtures(groupId: string): FixtureV2[] {
 
 /**
  * Get all moving heads
+ * 🛡️ WAVE 2042.13: React 19 stable hook (useShallow wrapper)
  */
 export function useMovingHeads(): FixtureV2[] {
-  return useStageStore(selectMovingHeads)
+  return useStageStore(useShallow(selectMovingHeads))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

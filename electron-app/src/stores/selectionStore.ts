@@ -288,6 +288,15 @@ export const selectIsSelected = (id: string) => (state: SelectionState) =>
 export const selectSelectedArray = (state: SelectionState) => [...state.selectedIds]
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13: REACT 19 FIX - Stable Hook for selectSelectedArray
+// ═══════════════════════════════════════════════════════════════════════════
+import { useShallow } from 'zustand/shallow'
+
+export const useSelectedArray = () => {
+  return useSelectionStore(useShallow(selectSelectedArray))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HOOKS HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 

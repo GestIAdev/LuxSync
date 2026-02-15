@@ -221,6 +221,14 @@ export const useAudio = () => {
   return useTruthStore(useShallow(selectAudio))
 }
 
+export const useBeat = () => {
+  return useTruthStore(useShallow(selectBeat))
+}
+
+export const useRhythm = () => {
+  return useTruthStore(useShallow(selectRhythm))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Exponer en window para debugging desde consola

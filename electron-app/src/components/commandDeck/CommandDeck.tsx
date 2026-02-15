@@ -15,7 +15,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { Zap, Sparkles, Power } from 'lucide-react'
-import { useEffectsStore } from '../../stores/effectsStore'
+import { useEffectsStore, selectBlackout } from '../../stores/effectsStore'
 import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../stores/controlStore'
 import { GrandMasterSlider } from './GrandMasterSlider'
 import { VibeSelectorCompact } from './VibeSelectorCompact'
@@ -24,7 +24,8 @@ import { BlackoutButton } from './BlackoutButton'
 import './CommandDeck.css'
 
 export const CommandDeck: React.FC = () => {
-  const { blackout } = useEffectsStore()
+  // 🛡️ WAVE 2042.13.8: Primitive selector (stable)
+  const blackout = useEffectsStore(selectBlackout)
   
   // 🧬 WAVE 500: Kill Switch - Consciencia ON/OFF
   const aiEnabled = useControlStore(selectAIEnabled)

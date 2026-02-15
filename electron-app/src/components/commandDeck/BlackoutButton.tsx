@@ -5,12 +5,14 @@
  */
 
 import React, { useCallback, useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { Square } from 'lucide-react'
-import { useEffectsStore } from '../../stores/effectsStore'
+import { useEffectsStore, selectBlackoutButton } from '../../stores/effectsStore'
 import './CommandDeck.css'
 
 export const BlackoutButton: React.FC = () => {
-  const { blackout, toggleBlackout } = useEffectsStore()
+  // 🛡️ WAVE 2042.13.8: useShallow for stable reference
+  const { blackout, toggleBlackout } = useEffectsStore(useShallow(selectBlackoutButton))
   
   const handleBlackout = useCallback(async () => {
     // Toggle local state

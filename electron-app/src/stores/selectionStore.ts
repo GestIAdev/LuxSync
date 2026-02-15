@@ -296,6 +296,14 @@ export const useSelectedArray = () => {
   return useSelectionStore(useShallow(selectSelectedArray))
 }
 
+/** Selector: VisualizerCanvas - selection actions */
+export const selectVisualizerActions = (state: SelectionState) => ({
+  toggleSelection: state.toggleSelection,
+  select: state.select,
+  selectMultiple: state.selectMultiple,
+  deselectAll: state.deselectAll,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOKS HELPERS
 // ═══════════════════════════════════════════════════════════════════════════

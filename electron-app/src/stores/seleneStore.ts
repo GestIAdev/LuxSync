@@ -365,4 +365,10 @@ export const selectTrinitySeleneActions = (state: SeleneStoreState) => ({
   addLogEntry: state.addLogEntry,
 })
 
+/** Selector: AppCommander - session init actions */
+export const selectAppCommanderActions = (state: SeleneStoreState) => ({
+  startSession: state.startSession,
+  addLogEntry: state.addLogEntry,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════

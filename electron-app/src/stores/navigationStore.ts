@@ -236,4 +236,22 @@ export const selectSidebarNav = (state: NavigationState) => ({
   setActiveTab: state.setActiveTab,
 })
 
+/** Selector: KeyboardProvider - tab navigation */
+export const selectKeyboardNav = (state: NavigationState) => ({
+  nextTab: state.nextTab,
+  prevTab: state.prevTab,
+})
+
+/** Selector: StageConstructor - tab + fixture editing */
+export const selectStageConstructorNav = (state: NavigationState) => ({
+  setActiveTab: state.setActiveTab,
+  editFixture: state.editFixture,
+})
+
+/** Selector: FixtureForge - target fixture navigation */
+export const selectFixtureForgeNav = (state: NavigationState) => ({
+  targetFixtureId: state.targetFixtureId,
+  clearTargetFixture: state.clearTargetFixture,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════

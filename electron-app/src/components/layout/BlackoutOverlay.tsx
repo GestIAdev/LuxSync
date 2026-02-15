@@ -4,11 +4,12 @@
  */
 
 import React from 'react'
-import { useEffectsStore } from '../../stores/effectsStore'
+import { useEffectsStore, selectToggleBlackout } from '../../stores/effectsStore'
 import './BlackoutOverlay.css'
 
 const BlackoutOverlay: React.FC = () => {
-  const { toggleBlackout } = useEffectsStore()
+  // 🛡️ WAVE 2042.13.8: Function selector (stable reference)
+  const toggleBlackout = useEffectsStore(selectToggleBlackout)
 
   return (
     <div className="blackout-overlay" onClick={toggleBlackout}>

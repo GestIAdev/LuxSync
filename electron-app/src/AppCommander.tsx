@@ -8,18 +8,20 @@
  */
 
 import { useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import MainLayout from './components/layout/MainLayout'
 import KeyboardProvider from './providers/KeyboardProvider'
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
-import { useSeleneStore } from './stores/seleneStore'
+import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
 import { initializeLogIPC } from './stores/logStore' // 📜 WAVE 1198: THE WARLOG HEARTBEAT
 import './styles/globals.css'
 
 function AppContent() {
-  const { startSession, addLogEntry } = useSeleneStore()
+  // 🛡️ WAVE 2042.13.8: useShallow for stable reference
+  const { startSession, addLogEntry } = useSeleneStore(useShallow(selectAppCommanderActions))
   
   // Connect to Universal Truth Protocol (SeleneBroadcast @ 30fps)
   useSeleneTruth()

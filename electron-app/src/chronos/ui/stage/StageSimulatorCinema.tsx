@@ -30,11 +30,12 @@
  */
 
 import React, { useRef, useEffect, useMemo, useCallback, memo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useHardware } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender'
-import { useControlStore } from '../../../stores/controlStore'
-import { useOverrideStore } from '../../../stores/overrideStore'
+import { useControlStore, selectCinemaControl } from '../../../stores/controlStore'
+import { useOverrideStore, selectOverrides } from '../../../stores/overrideStore'
 import './StageSimulatorCinema.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -576,14 +577,19 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
   
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const stageFixtures = useStageStore(state => state.fixtures)
-  const globalMode = useControlStore(state => state.globalMode)
-  const flowParams = useControlStore(state => state.flowParams)
-  const activePaletteId = useControlStore(state => state.activePalette)
-  const globalIntensity = useControlStore(state => state.globalIntensity)
-  const globalSaturation = useControlStore(state => state.globalSaturation)
-  const targetPalette = useControlStore(state => state.targetPalette)
-  const transitionProgress = useControlStore(state => state.transitionProgress)
-  const overrides = useOverrideStore(state => state.overrides)
+  
+  // 🛡️ WAVE 2042.13.8: Consolidated selector with useShallow
+  const {
+    globalMode,
+    flowParams,
+    activePaletteId,
+    globalIntensity,
+    globalSaturation,
+    targetPalette,
+    transitionProgress,
+  } = useControlStore(useShallow(selectCinemaControl))
+  
+  const overrides = useOverrideStore(selectOverrides)
   
   // ═══════════════════════════════════════════════════════════════════════
   // RUNTIME STATE MAP (backend fixtures by ID)

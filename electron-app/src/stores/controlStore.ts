@@ -375,3 +375,14 @@ export const selectOutputEnabled = (state: ControlState) => state.outputEnabled
 export const selectActivePalette = (state: ControlState) => state.activePalette
 export const selectGlobalSaturation = (state: ControlState) => state.globalSaturation
 export const selectGlobalIntensity = (state: ControlState) => state.globalIntensity
+
+// 🛡️ WAVE 2042.13.8: Cinema simulator selector (useShallow required!)
+export const selectCinemaControl = (state: ControlState) => ({
+  globalMode: state.globalMode,
+  flowParams: state.flowParams,
+  activePaletteId: state.activePalette,
+  globalIntensity: state.globalIntensity,
+  globalSaturation: state.globalSaturation,
+  targetPalette: state.targetPalette,
+  transitionProgress: state.transitionProgress,
+})

@@ -16,12 +16,13 @@
  */
 
 import React, { Suspense, useMemo, useCallback, useRef, useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 
 import { useAudioStore } from '../../../../stores/audioStore'
-import { useSelectionStore } from '../../../../stores/selectionStore'
+import { useSelectionStore, selectVisualizerActions } from '../../../../stores/selectionStore'
 import { useFixture3DData } from './useFixture3DData'
 import { HyperionMovingHead3D, HyperionPar3D } from './fixtures'
 import { NeonFloor, HyperionTruss } from './environment'
@@ -309,7 +310,8 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({
   className = '',
 }) => {
   // ── Selection Handling ────────────────────────────────────────────────────
-  const { toggleSelection, select, selectMultiple, deselectAll } = useSelectionStore()
+  // 🛡️ WAVE 2042.13.8: useShallow for stable reference
+  const { toggleSelection, select, selectMultiple, deselectAll } = useSelectionStore(useShallow(selectVisualizerActions))
 
   const handleFixtureSelect = useCallback((id: string, shift: boolean, ctrl: boolean) => {
     if (shift) {

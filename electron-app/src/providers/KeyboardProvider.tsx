@@ -6,8 +6,9 @@
  */
 
 import React, { useEffect, useCallback } from 'react'
-import { useEffectsStore, EffectId } from '../stores/effectsStore'
-import { useNavigationStore } from '../stores/navigationStore'
+import { useShallow } from 'zustand/react/shallow'
+import { useEffectsStore, EffectId, selectKeyboardEffects } from '../stores/effectsStore'
+import { useNavigationStore, selectKeyboardNav } from '../stores/navigationStore'
 
 // Mapeo de teclas a efectos
 const EFFECT_KEYS: Record<string, EffectId> = {
@@ -27,8 +28,9 @@ interface KeyboardProviderProps {
 }
 
 const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
-  const { toggleBlackout, toggleEffect } = useEffectsStore()
-  const { nextTab, prevTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.8: useShallow for stable references
+  const { toggleBlackout, toggleEffect } = useEffectsStore(useShallow(selectKeyboardEffects))
+  const { nextTab, prevTab } = useNavigationStore(useShallow(selectKeyboardNav))
 
   // Check if user is typing in an input
   const isTypingInInput = useCallback((e: KeyboardEvent): boolean => {

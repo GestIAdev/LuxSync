@@ -223,4 +223,19 @@ export const selectQuickActions = (state: EffectsState) => ({
   toggleEffect: state.toggleEffect,
 })
 
+/** Selector: KeyboardProvider - toggle functions */
+export const selectKeyboardEffects = (state: EffectsState) => ({
+  toggleBlackout: state.toggleBlackout,
+  toggleEffect: state.toggleEffect,
+})
+
+/** Selector: BlackoutButton - state + action */
+export const selectBlackoutButton = (state: EffectsState) => ({
+  blackout: state.blackout,
+  toggleBlackout: state.toggleBlackout,
+})
+
+/** Selector: CommandDeck - just blackout state */
+export const selectCommandDeckBlackout = (state: EffectsState) => state.blackout
+
 // ═══════════════════════════════════════════════════════════════════════════

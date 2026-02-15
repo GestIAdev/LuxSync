@@ -314,15 +314,17 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       pattern = 'circle'
     }
 
-    // Get current positions as pattern center
+    // 🔧 WAVE 2042.24: Get current positions as pattern center (DMX 0-255 scale)
     // Use first fixture's position as the center point
     const firstFixture = masterArbiter.getManualOverride(fixtureIds[0])
-    const centerPan = firstFixture?.controls.pan ?? 32768  // Default center (50%)
-    const centerTilt = firstFixture?.controls.tilt ?? 32768
+    const centerPan = firstFixture?.controls.pan ?? 128   // Default center (50% of 255)
+    const centerTilt = firstFixture?.controls.tilt ?? 128
 
     // Convert UI values (0-100) to engine values (0-1)
-    const speedNormalized = speed / 100 * 0.5  // 0-0.5 Hz (0.5 = one cycle per 2 seconds)
-    const sizeNormalized = amplitude / 100 * 0.3  // 0-0.3 of range (30% max amplitude)
+    // Speed: 0-100 → 0-0.5 Hz (0.5 = one cycle per 2 seconds)
+    // Size: 0-100 → 0-1 (multiplied by 128 DMX units in render)
+    const speedNormalized = (speed / 100) * 0.5
+    const sizeNormalized = amplitude / 100  // 🔧 Changed: Full range 0-1, scaled in render
 
     masterArbiter.setPattern(fixtureIds, {
       type: pattern as 'circle' | 'eight' | 'sweep',

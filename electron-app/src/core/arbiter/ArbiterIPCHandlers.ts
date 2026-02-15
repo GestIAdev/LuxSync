@@ -18,6 +18,11 @@ import type { MasterArbiter } from './MasterArbiter'
 import type { Layer2_Manual } from './types'
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager'
+import { ColorTranslator } from '../../hal/translation/ColorTranslator'
+import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles'
+
+// 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
+const colorTranslator = new ColorTranslator()
 
 /**
  * Register all Arbiter IPC handlers
@@ -173,6 +178,46 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       finalControls.speed = controls.speed ?? 0  // 0 = fastest movement
       finalChannels.push('speed')
       console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎨 WAVE 2042.32: COLOR TRANSLATION - RGB → Color Wheel
+    // Commander sends RGB, but fixtures might have color wheels.
+    // Detect and translate automatically using ColorTranslator.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const hasRGB = channels.includes('red') && channels.includes('green') && channels.includes('blue')
+    
+    if (hasRGB) {
+      // Get first fixture to check profile
+      const firstFixture = masterArbiter.getFixture(fixtureIds[0])
+      
+      if (firstFixture) {
+        const profile = getProfile(firstFixture.profileId || '')
+        
+        // Check if fixture needs color translation (has color wheel, not RGB)
+        if (profile && needsColorTranslation(profile)) {
+          const targetRGB = {
+            r: controls.red || 0,
+            g: controls.green || 0,
+            b: controls.blue || 0
+          }
+          
+          const translation = colorTranslator.translate(targetRGB, profile)
+          
+          console.log(`[Arbiter] 🎨 COLOR TRANSLATION: RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`)
+          
+          // Replace RGB controls with color_wheel
+          finalControls = { ...finalControls }
+          delete finalControls.red
+          delete finalControls.green
+          delete finalControls.blue
+          finalControls.color_wheel = translation.colorWheelDmx || 0
+          
+          // Replace RGB channels with color_wheel
+          finalChannels = finalChannels.filter(ch => !['red', 'green', 'blue'].includes(ch))
+          finalChannels.push('color_wheel')
+        }
+      }
     }
     
     const overrideCount = fixtureIds.length

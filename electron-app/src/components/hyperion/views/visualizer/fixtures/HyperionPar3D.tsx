@@ -74,19 +74,19 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
-    // 🎨 WAVE 2042.14.1: CONSERVATIVE VALUES - No bloom explosion
+    // 🎨 WAVE 2042.14.4: MINIMAL EMISSIVE - No HDR, no toneMapped bypass
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
       lensMaterialRef.current.emissive.copy(color)
-      // Conservative: 0.2 base + up to 0.8 max = total 1.0 max
-      lensMaterialRef.current.emissiveIntensity = 0.2 + intensity * 0.6 + beatIntensity * 0.15
-      lensMaterialRef.current.opacity = 0.5 + intensity * 0.3
+      // Ultra-conservative: 0.1 base + up to 0.4 max = total 0.5 max
+      lensMaterialRef.current.emissiveIntensity = 0.1 + intensity * 0.3 + beatIntensity * 0.08
+      lensMaterialRef.current.opacity = 0.4 + intensity * 0.2
     }
     
     if (beamMaterialRef.current) {
-      // 🎨 WAVE 2042.14.1: Very subtle beam
+      // 🎨 WAVE 2042.14.4: Ultra-subtle beam
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.06 + beatIntensity * 0.02
+      beamMaterialRef.current.opacity = intensity * 0.04 + beatIntensity * 0.01
     }
   })
 
@@ -119,10 +119,9 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
           ref={lensMaterialRef}
           color={color}
           emissive={color}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.1}
           transparent
-          opacity={0.5}
-          toneMapped={false}
+          opacity={0.4}
         />
       </mesh>
 

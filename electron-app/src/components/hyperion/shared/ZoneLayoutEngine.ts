@@ -313,11 +313,17 @@ export function groupByCanonicalZone<T extends { zone?: string }>(
  * Genera la posición 2D de un fixture basado en su zona y índice dentro de la zona.
  * Usado por TacticalCanvas para posicionar fixtures en el canvas.
  * 
+ * 🚦 WAVE 2042.16: TRAFFIC CONTROL - Type-based Y offset
+ * Añade separación vertical entre tipos de fixtures para evitar colisiones visuales.
+ * - MovingHeads: -60px (más arriba, "atrás" en el escenario)
+ * - PARs/Static: +60px (más abajo, "adelante" en el escenario)
+ * 
  * @param zone — Zona canónica del fixture
  * @param index — Índice del fixture dentro de su zona
  * @param totalInZone — Total de fixtures en esta zona
  * @param canvasWidth — Ancho del canvas en píxeles
  * @param canvasHeight — Alto del canvas en píxeles
+ * @param fixtureType — Tipo de fixture para offset ('movingHead', 'par', 'bar', etc.)
  * @returns Coordenadas {x, y} en píxeles
  */
 export function calculatePosition2D(
@@ -325,12 +331,21 @@ export function calculatePosition2D(
   index: number,
   totalInZone: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  fixtureType?: string
 ): { x: number; y: number } {
   const layout = ZONE_LAYOUT_2D[zone]
   
   let x: number
-  const y = layout.y * canvasHeight
+  let y = layout.y * canvasHeight
+  
+  // 🚦 WAVE 2042.16: TYPE-BASED Y OFFSET (Traffic Control)
+  // Separa visualmente movers (atrás) de PARs (adelante)
+  if (fixtureType === 'movingHead') {
+    y -= 60  // Movers hacia arriba (atrás del escenario)
+  } else if (fixtureType === 'par' || fixtureType === 'bar') {
+    y += 60  // PARs/Static hacia abajo (adelante del escenario)
+  }
   
   if (layout.fixedX !== undefined) {
     // Zona lateral (movers): X fijo, distribuir en Y

@@ -232,6 +232,14 @@ export function useFixtureData(): TacticalFixture[] {
           const [xMin, xMax] = layout.xRange
           fixture.x = distributeInRange(localIdx, count, xMin, xMax)
           fixture.y = layout.y
+          
+          // 🚦 WAVE 2042.16: TRAFFIC CONTROL - Type-based Y offset
+          // Separate movers (back) from PARs (front) visually
+          if (fixture.type === 'moving') {
+            fixture.y -= 0.06  // Movers higher (back of stage)
+          } else if (fixture.type === 'par' || fixture.type === 'wash') {
+            fixture.y += 0.06  // PARs/Wash lower (front of stage)
+          }
         }
       })
     })

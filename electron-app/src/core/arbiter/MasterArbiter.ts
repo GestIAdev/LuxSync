@@ -63,6 +63,7 @@ interface ArbiterEvents {
   'blackout': (active: boolean) => void
   'effectStart': (effect: Layer3_Effect) => void
   'effectEnd': (effectType: string) => void
+  'originChanged': (fixtureId: string, origin: { pan: number; tilt: number }) => void  // 👻 WAVE 2042.21
   'error': (error: Error) => void
 }
 
@@ -117,6 +118,10 @@ export class MasterArbiter extends EventEmitter {
   // 🥶 WAVE 1165: GHOST PROTOCOL - Last known position cache
   // Used to freeze fixtures in place during blackout/silence instead of whipping to center
   private lastKnownPositions: Map<string, { pan: number; tilt: number }> = new Map()
+  
+  // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
+  // When operator releases manual control, we store the position here so AI adopts it as "home"
+  private fixtureOrigins: Map<string, { pan: number; tilt: number; timestamp: number }> = new Map()
   
   // Grand Master (WAVE 376)
   private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
@@ -461,6 +466,37 @@ export class MasterArbiter extends EventEmitter {
    */
   getManualOverrideFixtures(): string[] {
     return Array.from(this.layer2_manualOverrides.keys())
+  }
+  
+  /**
+   * 👻 WAVE 2042.21: GHOST HANDOFF - Set fixture origin for soft release
+   * 
+   * When the operator releases manual control, this method sets the current position
+   * as the new "home" for the AI movement system. This prevents the fixture from
+   * jumping to a random position when AI takes over.
+   * 
+   * @param fixtureId - The fixture to update
+   * @param pan - Pan value in DMX (0-255)
+   * @param tilt - Tilt value in DMX (0-255)
+   */
+  setFixtureOrigin(fixtureId: string, pan: number, tilt: number): void {
+    // Store the origin position for this fixture
+    // This will be used by getTitanValuesForFixture as a baseline
+    this.fixtureOrigins.set(fixtureId, { pan, tilt, timestamp: performance.now() })
+    
+    if (this.config.debug) {
+      console.log(`[MasterArbiter] 👻 Origin set: ${fixtureId} → P${pan}/T${tilt}`)
+    }
+    
+    // Emit event for any listeners (e.g., movement manager)
+    this.emit('originChanged', fixtureId, { pan, tilt })
+  }
+  
+  /**
+   * 👻 WAVE 2042.21: Get fixture origin (for AI movement baseline)
+   */
+  getFixtureOrigin(fixtureId: string): { pan: number; tilt: number } | null {
+    return this.fixtureOrigins.get(fixtureId) ?? null
   }
   
   // ═══════════════════════════════════════════════════════════════════════

@@ -280,7 +280,61 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`)
     return { success: true, pattern }
   })
-  
+
+  /**
+   * 🔄 WAVE 2042.22: Apply manual pattern to specific fixtures
+   * This injects the pattern into MasterArbiter.activePatterns
+   * so it gets applied in getAdjustedPosition() during render loop
+   */
+  ipcMain.handle('lux:arbiter:setManualFixturePattern', (
+    _event,
+    {
+      fixtureIds,
+      pattern,
+      speed,      // 0-100
+      amplitude,  // 0-100
+    }: {
+      fixtureIds: string[]
+      pattern: string | null  // 'circle', 'eight', 'sweep', 'static', or null
+      speed: number
+      amplitude: number
+    }
+  ) => {
+    if (!pattern || pattern === 'static' || pattern === 'hold') {
+      // Clear pattern from fixtures
+      masterArbiter.clearPattern(fixtureIds)
+      console.log(`[Arbiter IPC] 🛑 Pattern CLEARED for ${fixtureIds.length} fixtures`)
+      return { success: true, cleared: true }
+    }
+
+    // Validate pattern type
+    const validPatterns = ['circle', 'eight', 'sweep']
+    if (!validPatterns.includes(pattern)) {
+      console.warn(`[Arbiter IPC] Invalid pattern: ${pattern}, using 'circle'`)
+      pattern = 'circle'
+    }
+
+    // Get current positions as pattern center
+    // Use first fixture's position as the center point
+    const firstFixture = masterArbiter.getManualOverride(fixtureIds[0])
+    const centerPan = firstFixture?.controls.pan ?? 32768  // Default center (50%)
+    const centerTilt = firstFixture?.controls.tilt ?? 32768
+
+    // Convert UI values (0-100) to engine values (0-1)
+    const speedNormalized = speed / 100 * 0.5  // 0-0.5 Hz (0.5 = one cycle per 2 seconds)
+    const sizeNormalized = amplitude / 100 * 0.3  // 0-0.3 of range (30% max amplitude)
+
+    masterArbiter.setPattern(fixtureIds, {
+      type: pattern as 'circle' | 'eight' | 'sweep',
+      speed: speedNormalized,
+      size: sizeNormalized,
+      center: { pan: centerPan, tilt: centerTilt },
+    })
+
+    console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} applied to ${fixtureIds.length} fixtures (speed=${speed}%, amp=${amplitude}%)`)
+    return { success: true, pattern, fixtureIds: fixtureIds.length }
+  })
+
   // ═══════════════════════════════════════════════════════════════════════
   // 🧠 WAVE 999.6: STATE HYDRATION - Get current fixture state for UI sync
   // ═══════════════════════════════════════════════════════════════════════

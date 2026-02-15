@@ -345,11 +345,48 @@ export class VibeMovementManager {
       : `[CHOREO] Amplitude -> AI control`)
   }
   
+  // UI Pattern → GoldenPattern Translation Map
+  // Babel Fish: traduce nombres legibles de UI a los nombres internos del backend
+  private static readonly UI_TO_GOLDEN_PATTERN: Record<string, GoldenPattern> = {
+    // Mappings directos
+    'circle': 'circle_big',
+    'eight': 'figure8',
+    'sweep': 'scan_x',
+    'spiral': 'ballyhoo',
+    'wave': 'wave_y',
+    'bounce': 'botstep',
+    'random': 'drift',
+    // Aliases adicionales por si acaso
+    'figure8': 'figure8',
+    'circle_big': 'circle_big',
+    'scan_x': 'scan_x',
+    // Hold/Static → devolvemos null para que Selene tome control
+  }
+
   setManualPattern(pattern: string | null): void {
-    this.manualPatternOverride = pattern
-    console.log(pattern !== null 
-      ? `[CHOREO] Manual PATTERN: ${pattern}`
-      : `[CHOREO] Pattern -> AI control`)
+    if (pattern === null || pattern === 'static') {
+      // Liberar a Selene
+      this.manualPatternOverride = null
+      console.log(`[CHOREO] Pattern → AI control (Selene)`)
+      return
+    }
+
+    // Traducir UI pattern → GoldenPattern
+    const goldenPattern = VibeMovementManager.UI_TO_GOLDEN_PATTERN[pattern]
+    
+    if (goldenPattern) {
+      this.manualPatternOverride = goldenPattern
+      console.log(`[CHOREO] Manual PATTERN: ${pattern} → ${goldenPattern}`)
+    } else {
+      // Pattern no reconocido - intentar usar directo (por si ya es GoldenPattern)
+      if (PATTERNS[pattern as GoldenPattern]) {
+        this.manualPatternOverride = pattern
+        console.log(`[CHOREO] Manual PATTERN: ${pattern} (direct)`)
+      } else {
+        console.warn(`[CHOREO] Unknown pattern: ${pattern}, falling back to circle_big`)
+        this.manualPatternOverride = 'circle_big'
+      }
+    }
   }
   
   getManualOverrides() {

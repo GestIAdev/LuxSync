@@ -14,6 +14,10 @@
  * - Patterns: Circle, Eight, Sweep (procedural movement)
  * - Precision: Numeric inputs for exact values
  * 
+ * 👻 WAVE 2042.21: GHOST HANDOFF
+ * - Pattern change now resyncs speed/amplitude immediately
+ * - Release injects current position as AI origin (no jump on unlock)
+ * 
  * Connected to MasterArbiter via window.lux.arbiter.setManual()
  */
 
@@ -245,6 +249,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * HOLD ('static' en UI) → setMovementPattern('hold') → INMOVILIDAD TOTAL
    * Circle/Eight/Sweep → setMovementPattern(pattern) → Override activo
    * UNLOCK ALL → setMovementPattern(null) → Release a AI
+   * 
+   * 🔥 WAVE 2042.21: GHOST HANDOFF - Resync movement parameters after pattern change
    */
   const handlePatternChange = useCallback(async (pattern: PatternType) => {
     setActivePattern(pattern)
@@ -257,19 +263,38 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     
     try {
       await window.lux?.arbiter?.setMovementPattern(enginePattern)
-      if (pattern === 'static') {
-        console.log(`[Position] 🛑 HOLD: Freno de mano activado (offset 0,0)`)
+      
+      // 2️⃣ 🔄 WAVE 2042.22: INJECT pattern into MasterArbiter activePatterns
+      //    This makes the pattern actually execute on the fixtures
+      const electron = (window as any).electron
+      if (electron?.ipcRenderer?.invoke) {
+        await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
+          fixtureIds: selectedIds,
+          pattern: pattern,  // Use UI pattern name ('circle', 'eight', 'sweep')
+          speed: patternSpeed,
+          amplitude: patternSize,
+        })
+      }
+      
+      // 🔥 WAVE 2042.21: RESYNC MOVEMENT DYNAMICS
+      // Si venimos de mover el pad manualmente, la velocidad interna estará en 0 (instant).
+      // Hay que empujar los valores de los sliders al motor de patrones inmediatamente.
+      if (pattern !== 'static') {
+        await window.lux?.arbiter?.setMovementParameter('speed', patternSpeed)
+        await window.lux?.arbiter?.setMovementParameter('amplitude', patternSize)
+        console.log(`[Position] � Pattern ${pattern} ARMED: Speed=${patternSpeed}% Amp=${patternSize}%`)
       } else {
-        console.log(`[Position] 🎯 Pattern LOCKED: ${pattern}`)
+        console.log(`[Position] 🛑 HOLD: Freno de mano activado (offset 0,0)`)
       }
     } catch (err) {
       console.error('[Position] Pattern error:', err)
     }
-  }, [selectedIds, onOverrideChange])
+  }, [selectedIds, onOverrideChange, patternSpeed, patternSize])
   
   /**
    * Pattern speed/size change
    * 🎚️ WAVE 999: Now calls setMovementParameter to affect VibeMovementManager directly
+   * 🔄 WAVE 2042.22: Also update MasterArbiter activePatterns
    */
   const handlePatternParamsChange = useCallback(async (speed: number, size: number) => {
     setPatternSpeed(speed)
@@ -279,6 +304,20 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     try {
       await window.lux?.arbiter?.setMovementParameter('speed', speed)
       await window.lux?.arbiter?.setMovementParameter('amplitude', size)
+      
+      // 🔄 WAVE 2042.22: Update MasterArbiter pattern config
+      if (activePattern !== 'static') {
+        const electron = (window as any).electron
+        if (electron?.ipcRenderer?.invoke) {
+          await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
+            fixtureIds: selectedIds,
+            pattern: activePattern,
+            speed: speed,
+            amplitude: size,
+          })
+        }
+      }
+      
       console.log(`[Position] 🎚️ Movement params: Speed=${speed}% Amplitude=${size}%`)
     } catch (err) {
       console.error('[Position] Movement params error:', err)
@@ -344,22 +383,54 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * Release position back to AI
+   * 
+   * 👻 WAVE 2042.21: GHOST HANDOFF
+   * Antes de soltar, le decimos a la IA: "Tu nuevo Home es aquí"
+   * Así el fixture no salta a una posición random, sino que Selene
+   * empieza a modificarlo sutilmente desde donde el operador lo dejó.
    */
   const handleRelease = useCallback(async () => {
+    // 1. Actualizar estado UI inmediatamente
     onOverrideChange(false)
-    setActivePattern('static')
+    // 🔄 WAVE 2042.22: NO CLEAR pattern - let it continue running
+    // setActivePattern('static')  // ❌ OLD: This killed the pattern
     setIsCalibrating(false)
     
     try {
+      // 👻 WAVE 2042.21: GHOST HANDOFF - Inject current position as AI origin
+      // Antes de liberar, comunicamos la posición actual al backend
+      // para que Selene adopte este punto como nuevo "home"
+      if (selectedIds.length > 0) {
+        // Convertir grados a DMX (0-255)
+        // pan: 0-540° → 0-255 DMX
+        // tilt: 0-270° → 0-255 DMX
+        const panDmx = Math.round((pan / 540) * 255)
+        const tiltDmx = Math.round((tilt / 270) * 255)
+        
+        // Notificar al Arbiter la nueva posición de origen
+        // Usamos setManual con un flag especial de "soft release"
+        // que indica: "usa estos valores como punto de partida, no como override"
+        const electron = (window as any).electron
+        if (electron?.ipcRenderer?.invoke) {
+          await electron.ipcRenderer.invoke('lux:arbiter:setContextOrigin', {
+            fixtureIds: selectedIds,
+            origin: { pan: panDmx, tilt: tiltDmx }
+          })
+          console.log(`[Position] 👻 GHOST HANDOFF: AI adopts P${panDmx}/T${tiltDmx} as new origin`)
+        }
+      }
+      
+      // 2. Ahora sí, liberamos el override manual de PAN/TILT
+      // 🔄 WAVE 2042.22: PATTERN PERSISTE - Solo liberamos pan/tilt, el pattern sigue
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
         channels: ['pan', 'tilt'],
       })
-      console.log(`[Position] 🔓 Released for ${selectedIds.length} fixtures`)
+      console.log(`[Position] 🔓 Released pan/tilt for ${selectedIds.length} fixtures (pattern continues)`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }
-  }, [selectedIds, onOverrideChange])
+  }, [selectedIds, onOverrideChange, pan, tilt])  // ⚠️ NO incluir activePattern en deps
   
   /**
    * WAVE 377: Toggle calibration mode

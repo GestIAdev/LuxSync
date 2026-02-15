@@ -162,20 +162,49 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           (f: FixtureState) => f.id === fixture.id
         )
         
+        // 🔬 WAVE 2042.13.18: DEBUG - Check ID matching (REMOVE AFTER FIX CONFIRMED)
+        if (index === 0 && zoneFixtures.length > 0) {
+          const firstMatch = hardwareState?.fixtures?.find((f: FixtureState) => f.id === fixture.id)
+          console.log(`[🔬 useFixture3DData] VALUES:`, {
+            stageFixtureId: fixture.id,
+            rawDimmer: firstMatch?.dimmer,  // Should be 0-1 from backend
+            rawPan: firstMatch?.pan,        // Should be 0-1 from backend
+            colorR: firstMatch?.color?.r,   // 0-255
+            // CRITICAL: This should now be the same as rawDimmer (not divided again!)
+            willUseIntensity: firstMatch?.dimmer ?? 0,
+          })
+        }
+        
         // ── Apply overrides if present ──────────────────────────────────────
         const override = overrides.get(fixture.id)
         
         // ── Resolve final values ────────────────────────────────────────────
-        // Override.values has: dimmer, r, g, b, pan, tilt
-        // FixtureState has: dimmer, color.r, color.g, color.b, pan, tilt
-        const intensity = (override?.values?.dimmer ?? fixtureState?.dimmer ?? 0) / 255
+        // 🛡️ WAVE 2042.13.18: FIX - Backend already normalizes dimmer to 0-1
+        // truthStore receives: dimmer: f.dimmer / 255 (see TitanOrchestrator.ts:1389)
+        // Override.values has: dimmer (0-255), r, g, b, pan, tilt
+        // FixtureState has: dimmer (0-1 NORMALIZED!), color.r (0-255), pan (0-1)
+        
+        // Dimmer: override is 0-255, fixtureState is 0-1
+        const intensity = override?.values?.dimmer !== undefined 
+          ? override.values.dimmer / 255  // Override: convert 0-255 → 0-1
+          : (fixtureState?.dimmer ?? 0)   // FixtureState: already 0-1
+        
+        // Colors: both are 0-255
         const r = override?.values?.r ?? fixtureState?.color?.r ?? 255
         const g = override?.values?.g ?? fixtureState?.color?.g ?? 255
         const b = override?.values?.b ?? fixtureState?.color?.b ?? 255
-        const pan = (override?.values?.pan ?? fixtureState?.pan ?? 127.5) / 255
-        const tilt = (override?.values?.tilt ?? fixtureState?.tilt ?? 127.5) / 255
-        const zoom = (fixtureState?.zoom ?? 127) / 255
-        const focus = (fixtureState?.focus ?? 127) / 255
+        
+        // Pan/Tilt: override is 0-255, fixtureState is 0-1 normalized
+        const pan = override?.values?.pan !== undefined
+          ? override.values.pan / 255     // Override: convert 0-255 → 0-1
+          : (fixtureState?.pan ?? 0.5)    // FixtureState: already 0-1
+        const tilt = override?.values?.tilt !== undefined
+          ? override.values.tilt / 255    // Override: convert 0-255 → 0-1
+          : (fixtureState?.tilt ?? 0.5)   // FixtureState: already 0-1
+          
+        // Zoom/Focus: fixtureState is 0-1 normalized
+        const zoom = fixtureState?.zoom ?? 0.5
+        const focus = fixtureState?.focus ?? 0.5
 
         // ── Create THREE.Color ──────────────────────────────────────────────
         const color = new THREE.Color(r / 255, g / 255, b / 255)

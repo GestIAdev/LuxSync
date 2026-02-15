@@ -18,9 +18,10 @@
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { useHardware, useAudio } from '../../../../stores/truthStore'
-import { useSetupStore } from '../../../../stores/setupStore'
+import { useSetupStore, selectUsbDmxPanel } from '../../../../stores/setupStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
+import { useShallow } from 'zustand/shallow'
 import './SystemsCheck.css'
 
 // 🎨 WAVE 686: ArtNet API access
@@ -245,7 +246,8 @@ interface DetectedPort {
 }
 
 const UsbDmxPanel: React.FC = () => {
-  const { dmxComPort, detectedDmxPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore()
+  // 🛡️ WAVE 2042.13.2: Use stable selector to prevent infinite loops
+  const { dmxComPort, detectedDmxPorts, isDmxScanning, setDmxPort, setDetectedDmxPorts, setDmxScanning } = useSetupStore(useShallow(selectUsbDmxPanel))
   const [autoConnect, setAutoConnect] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

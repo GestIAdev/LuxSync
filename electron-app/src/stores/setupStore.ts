@@ -148,3 +148,13 @@ export const selectAudioConfig = (state: SetupState) => ({
   deviceName: state.audioDeviceName,
   source: state.audioSource,
 })
+
+// 🛡️ WAVE 2042.13.2: React 19 stable selector for UsbDmxPanel
+export const selectUsbDmxPanel = (state: SetupState) => ({
+  dmxComPort: state.dmxComPort,
+  detectedDmxPorts: state.detectedDmxPorts,
+  isDmxScanning: state.isDmxScanning,
+  setDmxPort: state.setDmxPort,
+  setDetectedDmxPorts: state.setDetectedDmxPorts,
+  setDmxScanning: state.setDmxScanning,
+})

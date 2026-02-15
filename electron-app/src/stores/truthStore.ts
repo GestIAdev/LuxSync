@@ -265,6 +265,40 @@ export const useSection = () => {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔌 WAVE 2042.13.16: THE MISSING CABLE
+// Connect IPC channel 'selene:truth' → truthStore.setTruth
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize IPC listener for selene:truth broadcasts from backend.
+ * Call this ONCE during app initialization (e.g., in App.tsx useEffect).
+ * 
+ * Returns cleanup function to remove listener on unmount.
+ */
+export function initializeTruthIPC(): () => void {
+  if (typeof window === 'undefined' || !window.lux?.onTruthUpdate) {
+    console.warn('[TruthStore] ⚠️ No IPC available - running in non-Electron environment')
+    return () => {}
+  }
+
+  console.log('[TruthStore] 🔌 CABLE CONNECTED: selene:truth → truthStore')
+  
+  const unsubscribe = window.lux.onTruthUpdate((truth: SeleneTruth) => {
+    // Update store with incoming truth data
+    useTruthStore.getState().setTruth(truth)
+  })
+  
+  // Mark as connected
+  useTruthStore.getState().setConnected(true)
+  
+  return () => {
+    console.log('[TruthStore] 🔌 CABLE DISCONNECTED')
+    useTruthStore.getState().setConnected(false)
+    unsubscribe()
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Exponer en window para debugging desde consola
 if (typeof window !== 'undefined') {

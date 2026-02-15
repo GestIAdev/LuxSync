@@ -16,6 +16,7 @@ import { useLuxSyncStore, selectAppMain } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
 import { useAudioStore, selectAudioMetrics } from './stores/audioStore'
 import { initializeLogIPC } from './stores/logStore'
+import { initializeTruthIPC } from './stores/truthStore'  // 🔌 WAVE 2042.13.16
 import { TitanSyncBridge } from './core/sync'
 import { useShallow } from 'zustand/shallow'
 
@@ -35,6 +36,9 @@ function App() {
       // 📜 WAVE 25.7: Initialize Log IPC listener
       const cleanupLogs = initializeLogIPC()
       
+      // 🔌 WAVE 2042.13.16: Initialize Truth IPC listener (THE MISSING CABLE)
+      const cleanupTruth = initializeTruthIPC()
+      
       // Iniciar Selene en Main Process
       if (window.lux) {
         await startSelene()
@@ -44,7 +48,10 @@ function App() {
       // 🔧 WAVE 264.6: Audio capture se inicia en TrinityProvider, no aquí
       console.log('[App] 📡 Waiting for TrinityProvider to start audio capture...')
       
-      return cleanupLogs
+      return () => {
+        cleanupLogs()
+        cleanupTruth()
+      }
     }
 
     initSystem()

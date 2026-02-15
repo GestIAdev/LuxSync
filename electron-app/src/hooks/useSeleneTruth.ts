@@ -130,7 +130,61 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.11: STABLE SELECTORS (React 19 + Zustand 5 requirement)
+// Selectors MUST be defined outside of hooks to prevent recreation on each render
+// ═══════════════════════════════════════════════════════════════════════════
+import type { TruthState } from '../stores/truthStore'
+
+const selectSensoryAudio = (state: TruthState) => state.truth.sensory.audio
+const selectSensoryBeat = (state: TruthState) => state.truth.sensory.beat
+const selectIntentPalette = (state: TruthState) => state.truth.intent.palette
+const selectContextGenre = (state: TruthState) => state.truth.context.genre
+const selectContextSection = (state: TruthState) => state.truth.context.section
+const selectRhythm = (state: TruthState) => ({
+  bpm: state.truth.context.bpm,
+  syncopation: state.truth.context.syncopation,
+  beatPhase: state.truth.context.beatPhase,
+  confidence: state.truth.context.confidence
+})
+const selectConsciousness = (state: TruthState) => state.truth.consciousness
+const selectSystem = (state: TruthState) => state.truth.system
+const selectIntentMovement = (state: TruthState) => state.truth.intent.movement
+const selectIntentEffects = (state: TruthState) => state.truth.intent.effects
+const selectColorParams = (state: TruthState) => ({
+  intensity: state.truth.intent.masterIntensity,
+  saturation: 1,
+})
+const selectSensory = (state: TruthState) => state.truth.sensory
+const selectContext = (state: TruthState) => state.truth.context
+const selectHardware = (state: TruthState) => state.truth.hardware
+const selectIntent = (state: TruthState) => state.truth.intent
+const selectMusicalDNA = (state: TruthState) => ({
+  genre: state.truth.context.genre,
+  section: state.truth.context.section,
+  bpm: state.truth.context.bpm,
+  energy: state.truth.context.energy,
+  mood: state.truth.context.mood,
+  key: state.truth.context.key,
+  mode: state.truth.context.mode,
+  rhythm: {
+    bpm: state.truth.context.bpm,
+    beatPhase: state.truth.context.beatPhase,
+    syncopation: state.truth.context.syncopation
+  },
+  prediction: {
+    huntStatus: {
+      phase: state.truth.consciousness.mood,
+      targetType: state.truth.context.genre?.macro ?? 'UNKNOWN',
+      lockPercentage: state.truth.context.confidence * 100
+    },
+    confidence: state.truth.context.confidence
+  }
+})
+const selectAI = (state: TruthState) => state.truth.consciousness.ai
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONVENIENCE HOOKS (Para uso directo en componentes) - WAVE 248 REMAPPED
+// 🛡️ WAVE 2042.13.11: All hooks now use stable external selectors
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -138,7 +192,7 @@ export function useSeleneTruth(options: UseSeleneTruthOptions = {}) {
  * @returns { energy, bass, mid, high, peak, average }
  */
 export function useTruthAudio() {
-  return useTruthStore(useShallow((state) => state.truth.sensory.audio))
+  return useTruthStore(useShallow(selectSensoryAudio))
 }
 
 /**
@@ -146,7 +200,7 @@ export function useTruthAudio() {
  * @returns { bpm, onBeat, confidence, beatPhase, barPhase }
  */
 export function useTruthBeat() {
-  return useTruthStore(useShallow((state) => state.truth.sensory.beat))
+  return useTruthStore(useShallow(selectSensoryBeat))
 }
 
 /**
@@ -154,7 +208,7 @@ export function useTruthBeat() {
  * @returns palette object
  */
 export function useTruthPalette() {
-  return useTruthStore(useShallow((state) => state.truth.intent.palette))
+  return useTruthStore(useShallow(selectIntentPalette))
 }
 
 /**
@@ -163,13 +217,12 @@ export function useTruthPalette() {
  * @returns palette object
  */
 export function useTruthPaletteThrottled() {
-  const palette = useTruthStore(useShallow((state) => state.truth.intent.palette))
+  const palette = useTruthStore(useShallow(selectIntentPalette))
   const [throttledPalette, setThrottledPalette] = useState(palette)
   const lastUpdateRef = useRef(0)
   
   useEffect(() => {
     const now = Date.now()
-    // Solo actualizar si ha pasado más de 1 segundo
     if (now - lastUpdateRef.current >= 1000) {
       lastUpdateRef.current = now
       setThrottledPalette(palette)
@@ -184,7 +237,7 @@ export function useTruthPaletteThrottled() {
  * @returns { macro, subGenre, confidence }
  */
 export function useTruthGenre() {
-  return useTruthStore(useShallow((state) => state.truth.context.genre))
+  return useTruthStore(useShallow(selectContextGenre))
 }
 
 /**
@@ -192,7 +245,7 @@ export function useTruthGenre() {
  * @returns { type, confidence, duration, isTransition }
  */
 export function useTruthSection() {
-  return useTruthStore(useShallow((state) => state.truth.context.section))
+  return useTruthStore(useShallow(selectContextSection))
 }
 
 /**
@@ -200,12 +253,7 @@ export function useTruthSection() {
  * @returns { bpm, syncopation, beatPhase }
  */
 export function useTruthRhythm() {
-  return useTruthStore(useShallow((state) => ({
-    bpm: state.truth.context.bpm,
-    syncopation: state.truth.context.syncopation,
-    beatPhase: state.truth.context.beatPhase,
-    confidence: state.truth.context.confidence
-  })))
+  return useTruthStore(useShallow(selectRhythm))
 }
 
 /**
@@ -213,7 +261,7 @@ export function useTruthRhythm() {
  * @returns { mood, consciousnessLevel, evolution, dream, zodiac, beauty }
  */
 export function useTruthCognitive() {
-  return useTruthStore(useShallow((state) => state.truth.consciousness))
+  return useTruthStore(useShallow(selectConsciousness))
 }
 
 /**
@@ -221,7 +269,7 @@ export function useTruthCognitive() {
  * @returns { mode, brainStatus, fps, uptime, performance }
  */
 export function useTruthSystem() {
-  return useTruthStore(useShallow((state) => state.truth.system))
+  return useTruthStore(useShallow(selectSystem))
 }
 
 /**
@@ -229,7 +277,7 @@ export function useTruthSystem() {
  * @returns { pattern, speed, amplitude, centerX, centerY, beatSync }
  */
 export function useTruthMovement() {
-  return useTruthStore(useShallow((state) => state.truth.intent.movement))
+  return useTruthStore(useShallow(selectIntentMovement))
 }
 
 /**
@@ -237,7 +285,7 @@ export function useTruthMovement() {
  * @returns effects array
  */
 export function useTruthEffects() {
-  return useTruthStore(useShallow((state) => state.truth.intent.effects))
+  return useTruthStore(useShallow(selectIntentEffects))
 }
 
 /**
@@ -245,10 +293,7 @@ export function useTruthEffects() {
  * @returns { intensity, saturation }
  */
 export function useTruthColorParams() {
-  return useTruthStore(useShallow((state) => ({
-    intensity: state.truth.intent.masterIntensity,
-    saturation: 1, // WAVE 248: saturation is now part of palette
-  })))
+  return useTruthStore(useShallow(selectColorParams))
 }
 
 /**
@@ -276,7 +321,7 @@ export function useTruthFPS() {
  * @returns { audio, beat, input, fft }
  */
 export function useTruthSensory() {
-  return useTruthStore(useShallow((state) => state.truth.sensory))
+  return useTruthStore(useShallow(selectSensory))
 }
 
 /**
@@ -284,7 +329,7 @@ export function useTruthSensory() {
  * @returns MusicalContext
  */
 export function useTruthContext() {
-  return useTruthStore(useShallow((state) => state.truth.context))
+  return useTruthStore(useShallow(selectContext))
 }
 
 /**
@@ -292,7 +337,7 @@ export function useTruthContext() {
  * @returns CognitiveData
  */
 export function useTruthConsciousness() {
-  return useTruthStore(useShallow((state) => state.truth.consciousness))
+  return useTruthStore(useShallow(selectConsciousness))
 }
 
 /**
@@ -300,7 +345,7 @@ export function useTruthConsciousness() {
  * @returns HardwareState
  */
 export function useTruthHardware() {
-  return useTruthStore(useShallow((state) => state.truth.hardware))
+  return useTruthStore(useShallow(selectHardware))
 }
 
 /**
@@ -308,7 +353,7 @@ export function useTruthHardware() {
  * @returns LightingIntent
  */
 export function useTruthIntent() {
-  return useTruthStore(useShallow((state) => state.truth.intent))
+  return useTruthStore(useShallow(selectIntent))
 }
 
 /**
@@ -317,31 +362,7 @@ export function useTruthIntent() {
  * @returns { genre, section, bpm, key, rhythm, mode, prediction }
  */
 export function useTruthMusicalDNA() {
-  return useTruthStore(useShallow((state) => ({
-    // Musical context
-    genre: state.truth.context.genre,
-    section: state.truth.context.section,
-    bpm: state.truth.context.bpm,
-    energy: state.truth.context.energy,
-    mood: state.truth.context.mood,
-    // Additional context fields
-    key: state.truth.context.key,
-    mode: state.truth.context.mode,
-    rhythm: {
-      bpm: state.truth.context.bpm,
-      beatPhase: state.truth.context.beatPhase,
-      syncopation: state.truth.context.syncopation
-    },
-    // Prediction data from consciousness/beauty analysis
-    prediction: {
-      huntStatus: {
-        phase: state.truth.consciousness.mood,
-        targetType: state.truth.context.genre?.macro ?? 'UNKNOWN',
-        lockPercentage: state.truth.context.confidence * 100
-      },
-      confidence: state.truth.context.confidence
-    }
-  })))
+  return useTruthStore(useShallow(selectMusicalDNA))
 }
 
 /**
@@ -349,7 +370,7 @@ export function useTruthMusicalDNA() {
  * @returns AI telemetry data from SeleneTitanConscious
  */
 export function useTruthAI() {
-  return useTruthStore(useShallow((state) => state.truth.consciousness.ai))
+  return useTruthStore(useShallow(selectAI))
 }
 
 // Default export para conveniencia

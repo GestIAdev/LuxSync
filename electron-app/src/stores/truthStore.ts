@@ -33,7 +33,8 @@ import {
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-interface TruthState {
+// 🛡️ WAVE 2042.13.11: Exported for stable selectors in useSeleneTruth.ts
+export interface TruthState {
   /** 🌙 La Verdad Universal - TODO el estado de Selene */
   truth: SeleneTruth
   

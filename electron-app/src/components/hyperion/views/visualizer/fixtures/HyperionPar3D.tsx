@@ -68,25 +68,25 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   useFrame(() => {
     // Update beam visibility and scale
     if (beamRef.current && showBeam) {
-      const beamScale = 1 + beatIntensity * 0.15
+      const beamScale = 1 + beatIntensity * 0.08
       beamRef.current.scale.set(beamScale, 1, beamScale)
       beamRef.current.visible = intensity > 0.01
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
-    // 🎨 WAVE 2042.14: NEON TUNING - Balanced emissive for HDR bloom
+    // 🎨 WAVE 2042.14.1: CONSERVATIVE VALUES - No bloom explosion
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
       lensMaterialRef.current.emissive.copy(color)
-      // PARs slightly brighter than movers (they're wash lights)
-      lensMaterialRef.current.emissiveIntensity = 0.6 + intensity * 1.2 + beatIntensity * 0.3
-      lensMaterialRef.current.opacity = 0.6 + intensity * 0.4
+      // Conservative: 0.2 base + up to 0.8 max = total 1.0 max
+      lensMaterialRef.current.emissiveIntensity = 0.2 + intensity * 0.6 + beatIntensity * 0.15
+      lensMaterialRef.current.opacity = 0.5 + intensity * 0.3
     }
     
     if (beamMaterialRef.current) {
-      // 🎨 WAVE 2042.14: Beam opacity tuned for additive blending
+      // 🎨 WAVE 2042.14.1: Very subtle beam
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.12 + beatIntensity * 0.04
+      beamMaterialRef.current.opacity = intensity * 0.06 + beatIntensity * 0.02
     }
   })
 
@@ -112,33 +112,33 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         {bodyMaterial}
       </mesh>
 
-      {/* Lens — Front face */}
-      <mesh position={[0, 0, 0.06]} rotation={[0, 0, 0]}>
+      {/* Lens — Front face (pointing down -Y) */}
+      <mesh position={[0, -0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.11, 32]} />
         <meshStandardMaterial
           ref={lensMaterialRef}
           color={color}
           emissive={color}
-          emissiveIntensity={intensity * 2.5 + beatIntensity * 0.5}
+          emissiveIntensity={0.3}
           transparent
-          opacity={0.4 + intensity * 0.6}
+          opacity={0.5}
           toneMapped={false}
         />
       </mesh>
 
-      {/* Beam cone — Pointing down (default PAR orientation) */}
+      {/* Beam cone — Pointing DOWN (-Y), starts below fixture */}
       {showBeam && intensity > 0.01 && (
         <mesh
           ref={beamRef}
-          position={[0, -beamLength / 2 - 0.05, 0]}
-          rotation={[0, 0, 0]}
+          position={[0, -beamLength / 2 - 0.08, 0]}
+          rotation={[Math.PI, 0, 0]}
         >
           <coneGeometry args={[0.3 + intensity * 0.2, beamLength, 16, 1, true]} />
           <meshBasicMaterial
             ref={beamMaterialRef}
             color={color}
             transparent
-            opacity={intensity * 0.3}
+            opacity={0.08}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}

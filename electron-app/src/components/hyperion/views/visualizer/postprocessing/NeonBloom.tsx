@@ -51,16 +51,16 @@ interface NeonBloomProps {
  */
 export const NeonBloom: React.FC<NeonBloomProps> = ({
   enabled = true,
-  intensity = 1.0,
-  luminanceThreshold = 0.8,
-  luminanceSmoothing = 0.4,
-  radius = 0.6,
+  intensity = 0.8,
+  luminanceThreshold = 0.9,
+  luminanceSmoothing = 0.3,
+  radius = 0.5,
   beatIntensity = 0,
 }) => {
   if (!enabled) return null
 
-  // Subtle beat modulation - don't go crazy
-  const adjustedIntensity = intensity + beatIntensity * 0.2
+  // Very subtle beat modulation
+  const adjustedIntensity = intensity + beatIntensity * 0.1
 
   return (
     <EffectComposer multisampling={0}>

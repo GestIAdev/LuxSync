@@ -149,33 +149,32 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
     // Update beam scale with intensity + beat
     if (beamRef.current && showBeam) {
-      const beatScale = 1 + beatIntensity * 0.1
+      const beatScale = 1 + beatIntensity * 0.05
       beamRef.current.scale.set(
-        (beamWidth + beatIntensity * 0.02) * beatScale,
+        (beamWidth + beatIntensity * 0.01) * beatScale,
         beamLength * intensity,
-        (beamWidth + beatIntensity * 0.02) * beatScale
+        (beamWidth + beatIntensity * 0.01) * beatScale
       )
       beamRef.current.visible = intensity > 0.01
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
     // useMemo doesn't trigger material updates in R3F - we need manual updates
-    // 🎨 WAVE 2042.14: NEON TUNING - Balanced emissive for HDR bloom
+    // 🎨 WAVE 2042.14.1: CONSERVATIVE VALUES - No bloom explosion
     if (lensMaterialRef.current) {
       // Update lens color (keep pure, bloom handles glow)
       lensMaterialRef.current.color.copy(color)
       // Emissive: pure color, let emissiveIntensity control brightness
       lensMaterialRef.current.emissive.copy(color)
-      // Intensity range: 0.5-1.5 (subtle to bright, bloom amplifies)
-      lensMaterialRef.current.emissiveIntensity = 0.5 + intensity * 1.0 + beatIntensity * 0.3
-      lensMaterialRef.current.opacity = 0.6 + intensity * 0.4
+      // Conservative: 0.2 base + up to 0.6 max = total 0.8 max
+      lensMaterialRef.current.emissiveIntensity = 0.2 + intensity * 0.5 + beatIntensity * 0.1
+      lensMaterialRef.current.opacity = 0.5 + intensity * 0.3
     }
     
     if (beamMaterialRef.current) {
-      // 🎨 WAVE 2042.14: Beam opacity tuned for additive blending
-      // Lower base opacity so beams don't wash out the scene
+      // 🎨 WAVE 2042.14.1: Very subtle beam
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.15 + beatIntensity * 0.05
+      beamMaterialRef.current.opacity = intensity * 0.05 + beatIntensity * 0.02
     }
   })
 
@@ -228,9 +227,9 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
               ref={lensMaterialRef}
               color={color}
               emissive={color}
-              emissiveIntensity={intensity * 2.0 + beatIntensity * 0.5}
+              emissiveIntensity={0.3}
               transparent
-              opacity={0.3 + intensity * 0.7}
+              opacity={0.5}
               toneMapped={false}
             />
           </mesh>
@@ -240,14 +239,14 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
             <mesh
               ref={beamRef}
               position={[0, -beamLength / 2 - 0.1, 0]}
-              rotation={[0, 0, 0]}
+              rotation={[Math.PI, 0, 0]}
             >
               <coneGeometry args={[beamWidth, beamLength, 16, 1, true]} />
               <meshBasicMaterial
                 ref={beamMaterialRef}
                 color={color}
                 transparent
-                opacity={intensity * 0.4}
+                opacity={0.08}
                 side={THREE.DoubleSide}
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}

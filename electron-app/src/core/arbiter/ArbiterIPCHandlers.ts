@@ -142,18 +142,6 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     // 🔥 WAVE 1008.4: Debug log BEFORE validation
     console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed })
     
-    // 🎨 WAVE 2042.29: Debug log for color commands
-    const hasColor = channels.some(ch => ['red', 'green', 'blue'].includes(ch))
-    if (hasColor) {
-      console.log(`[Arbiter] 🎨 COLOR COMMAND:`, {
-        fixtureIds,
-        red: controls.red,
-        green: controls.green,
-        blue: controls.blue,
-        channels
-      })
-    }
-    
     // Validate required parameters
     if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
       console.error('[Arbiter] setManual: Invalid or empty fixtureIds', { fixtureIds, controls, channels })

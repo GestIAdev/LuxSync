@@ -22,8 +22,6 @@ const getDmxApi = () => (window as any).lux?.dmx
 let _hasInitialized = false
 
 export function useDevicePersistence() {
-  console.log('[DevicePersistence] 🎯 Hook mounted')
-  
   const trinity = useTrinity()
   // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { 
@@ -91,12 +89,8 @@ export function useDevicePersistence() {
     // 🔌 WAVE 2042.25: Si no hay config guardada, hacer auto-connect
     if (!config?.dmx) {
       console.log('[DevicePersistence] 📡 No saved DMX config, trying auto-connect...')
-      console.log('[DevicePersistence] 🎯 dmxApi available:', !!dmxApi)
-      console.log('[DevicePersistence] 🎯 dmxApi.autoConnect available:', !!(dmxApi as any).autoConnect)
       try {
-        console.log('[DevicePersistence] 🚀 Calling dmxApi.autoConnect()...')
         const result = await dmxApi.autoConnect()
-        console.log('[DevicePersistence] 🔌 Auto-connect result:', result)
         if (result.success) {
           setDmxDriver('usb-serial')
           console.log('[DevicePersistence] ✅ Auto-connected to USB DMX')

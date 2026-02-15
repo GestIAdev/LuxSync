@@ -1210,19 +1210,8 @@ export class HardwareAbstraction {
     // Convert states to DMX packets
     const packets = this.mapper.statesToDMXPackets(states)
     
-    // 🔥 WAVE 1219: Debug first packet values
-    if (packets.length > 0 && this.framesRendered % 30 === 0) {
-      const p = packets[0]
-      console.log(`[HAL] 📡 DMX OUT: Uni ${p.universe} | Addr ${p.address} | Ch0-5: [${p.channels.slice(0, 6).join(', ')}]`)
-    }
-    
-    // ⚒️ WAVE 2030.22g: Debug packets with white channel values
-    for (const packet of packets) {
-      // Check if any channel has non-zero white (assuming white is typically channel 4 or 5)
-      if (packet.channels.length > 4 && (packet.channels[4] > 0 || packet.channels[5] > 0)) {
-        console.log(`[HAL] 📡 DMX PACKET: ${packet.fixtureId} | Addr ${packet.address} | Channels: [${packet.channels.join(', ')}]`)
-      }
-    }
+    // Debug output silenced - Wave 2042.29
+    // (was spamming console every frame)
     
     // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
     // Feed all packets to driver (buffering by universe internally)

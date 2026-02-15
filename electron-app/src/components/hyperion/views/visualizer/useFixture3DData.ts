@@ -11,7 +11,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { useStageStore } from '../../../../stores/stageStore'
-import { useTruthStore } from '../../../../stores/truthStore'
+import { useHardware } from '../../../../stores/truthStore'
 import { useSelectionStore } from '../../../../stores/selectionStore'
 import { useOverrideStore, type Override } from '../../../../stores/overrideStore'
 import { 
@@ -96,6 +96,10 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
   const selectedIds = useSelectionStore(state => state.selectedIds)
   const overrides = useOverrideStore(state => state.overrides)
   
+  // 🛡️ WAVE 2042.13.15: Use reactive hook instead of getState()
+  // This subscribes to truthStore updates (60fps) so fixtures light up in real-time
+  const hardwareState = useHardware()
+  
   // ── Stage Dimensions ──────────────────────────────────────────────────────
   const halfWidth = options.stageConfig?.width 
     ? options.stageConfig.width / 2 
@@ -152,9 +156,9 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
         }
 
         // ── Get live DMX values from truthStore ─────────────────────────────
-        // truth.hardware.fixtures contains live FixtureState[]
-        const truthState = useTruthStore.getState()
-        const fixtureState = truthState.truth.hardware.fixtures.find(
+        // 🛡️ WAVE 2042.13.15: Use reactive hardwareState from useHardware()
+        // hardwareState.fixtures contains live FixtureState[] updated at 60fps
+        const fixtureState = hardwareState?.fixtures?.find(
           (f: FixtureState) => f.id === fixture.id
         )
         
@@ -197,7 +201,7 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
     }
 
     return result
-  }, [fixtures, fixturesByZone, selectedIds, overrides, halfWidth, halfDepth, trussHeight])
+  }, [fixtures, fixturesByZone, selectedIds, overrides, hardwareState, halfWidth, halfDepth, trussHeight])
 
   // ── Separate by type for instancing ───────────────────────────────────────
   const movingHeads = useMemo(

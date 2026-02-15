@@ -65,6 +65,10 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   const headRef = useRef<THREE.Group>(null)
   const beamRef = useRef<THREE.Mesh>(null)
   const lensRef = useRef<THREE.Mesh>(null)
+  
+  // 🛡️ WAVE 2042.13.17: Material refs to update properties in useFrame
+  const lensMaterialRef = useRef<THREE.MeshStandardMaterial>(null)
+  const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
 
   // Quaternion refs for SLERP interpolation
   const targetYokeQuat = useRef(new THREE.Quaternion())
@@ -114,36 +118,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     />
   ), [hasOverride])
 
-  const lensMaterial = useMemo(() => {
-    const baseColor = color.clone()
-    const emissiveColor = baseColor.clone().multiplyScalar(intensity)
-    
-    return (
-      <meshStandardMaterial
-        color={baseColor}
-        emissive={emissiveColor}
-        emissiveIntensity={intensity * 2.0 + beatIntensity * 0.5}
-        transparent
-        opacity={0.3 + intensity * 0.7}
-        toneMapped={false}
-      />
-    )
-  }, [color, intensity, beatIntensity])
-
-  const beamMaterial = useMemo(() => {
-    const beamColor = color.clone()
-    
-    return (
-      <meshBasicMaterial
-        color={beamColor}
-        transparent
-        opacity={intensity * 0.4}
-        side={THREE.DoubleSide}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    )
-  }, [color, intensity])
+  // 🛡️ WAVE 2042.13.17: lensMaterial and beamMaterial removed from useMemo
+  // Now using refs + direct property updates in useFrame for real-time reactivity
 
   // ── Animation Frame ───────────────────────────────────────────────────────
   useFrame((_, delta) => {
@@ -180,6 +156,22 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
         (beamWidth + beatIntensity * 0.02) * beatScale
       )
       beamRef.current.visible = intensity > 0.01
+    }
+    
+    // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
+    // useMemo doesn't trigger material updates in R3F - we need manual updates
+    if (lensMaterialRef.current) {
+      // Update lens color and emissive intensity
+      lensMaterialRef.current.color.copy(color)
+      lensMaterialRef.current.emissive.copy(color).multiplyScalar(intensity)
+      lensMaterialRef.current.emissiveIntensity = intensity * 2.0 + beatIntensity * 0.5
+      lensMaterialRef.current.opacity = 0.3 + intensity * 0.7
+    }
+    
+    if (beamMaterialRef.current) {
+      // Update beam color and opacity
+      beamMaterialRef.current.color.copy(color)
+      beamMaterialRef.current.opacity = intensity * 0.4
     }
   })
 
@@ -228,7 +220,15 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
           {/* Lens — Emits light */}
           <mesh ref={lensRef} position={[0, -0.08, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <circleGeometry args={[0.055, 32]} />
-            {lensMaterial}
+            <meshStandardMaterial
+              ref={lensMaterialRef}
+              color={color}
+              emissive={color}
+              emissiveIntensity={intensity * 2.0 + beatIntensity * 0.5}
+              transparent
+              opacity={0.3 + intensity * 0.7}
+              toneMapped={false}
+            />
           </mesh>
 
           {/* Beam cone — Only visible when light is on */}
@@ -239,7 +239,15 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
               rotation={[0, 0, 0]}
             >
               <coneGeometry args={[beamWidth, beamLength, 16, 1, true]} />
-              {beamMaterial}
+              <meshBasicMaterial
+                ref={beamMaterialRef}
+                color={color}
+                transparent
+                opacity={intensity * 0.4}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
             </mesh>
           )}
         </group>

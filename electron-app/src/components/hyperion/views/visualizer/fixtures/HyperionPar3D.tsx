@@ -44,6 +44,10 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   const groupRef = useRef<THREE.Group>(null)
   const beamRef = useRef<THREE.Mesh>(null)
   
+  // 🛡️ WAVE 2042.13.17: Material refs to update properties in useFrame
+  const lensMaterialRef = useRef<THREE.MeshStandardMaterial>(null)
+  const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  
   const { id, intensity, color, selected, hasOverride } = fixture
 
   // ── Materials ─────────────────────────────────────────────────────────────
@@ -57,36 +61,8 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     />
   ), [selected, hasOverride])
 
-  const lensMaterial = useMemo(() => {
-    const baseColor = color.clone()
-    const emissiveColor = baseColor.clone().multiplyScalar(intensity)
-    
-    return (
-      <meshStandardMaterial
-        color={baseColor}
-        emissive={emissiveColor}
-        emissiveIntensity={intensity * 2.5 + beatIntensity * 0.5}
-        transparent
-        opacity={0.4 + intensity * 0.6}
-        toneMapped={false}
-      />
-    )
-  }, [color, intensity, beatIntensity])
-
-  const beamMaterial = useMemo(() => {
-    const beamColor = color.clone()
-    
-    return (
-      <meshBasicMaterial
-        color={beamColor}
-        transparent
-        opacity={intensity * 0.3}
-        side={THREE.DoubleSide}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    )
-  }, [color, intensity])
+  // 🛡️ WAVE 2042.13.17: lensMaterial and beamMaterial removed from useMemo
+  // Now using refs + direct property updates in useFrame for real-time reactivity
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
@@ -95,6 +71,19 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       const beamScale = 1 + beatIntensity * 0.15
       beamRef.current.scale.set(beamScale, 1, beamScale)
       beamRef.current.visible = intensity > 0.01
+    }
+    
+    // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
+    if (lensMaterialRef.current) {
+      lensMaterialRef.current.color.copy(color)
+      lensMaterialRef.current.emissive.copy(color).multiplyScalar(intensity)
+      lensMaterialRef.current.emissiveIntensity = intensity * 2.5 + beatIntensity * 0.5
+      lensMaterialRef.current.opacity = 0.4 + intensity * 0.6
+    }
+    
+    if (beamMaterialRef.current) {
+      beamMaterialRef.current.color.copy(color)
+      beamMaterialRef.current.opacity = intensity * 0.3
     }
   })
 
@@ -123,7 +112,15 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       {/* Lens — Front face */}
       <mesh position={[0, 0, 0.06]} rotation={[0, 0, 0]}>
         <circleGeometry args={[0.11, 32]} />
-        {lensMaterial}
+        <meshStandardMaterial
+          ref={lensMaterialRef}
+          color={color}
+          emissive={color}
+          emissiveIntensity={intensity * 2.5 + beatIntensity * 0.5}
+          transparent
+          opacity={0.4 + intensity * 0.6}
+          toneMapped={false}
+        />
       </mesh>
 
       {/* Beam cone — Pointing down (default PAR orientation) */}
@@ -134,7 +131,15 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
           rotation={[0, 0, 0]}
         >
           <coneGeometry args={[0.3 + intensity * 0.2, beamLength, 16, 1, true]} />
-          {beamMaterial}
+          <meshBasicMaterial
+            ref={beamMaterialRef}
+            color={color}
+            transparent
+            opacity={intensity * 0.3}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
         </mesh>
       )}
 

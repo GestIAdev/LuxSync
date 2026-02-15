@@ -120,76 +120,74 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     
     const hydrateState = async () => {
       // ═══════════════════════════════════════════════════════════════════
-      // 🧼 PASO 1: FLUSH INMEDIATO - Limpiar estado local ANTES de fetch
+      // 🔄 WAVE 2042.22: HYDRATE-FIRST STRATEGY
+      // OLD: Flush → Hydrate (pattern se perdía en el flush)
+      // NEW: Hydrate → Apply defaults only to nulls
       // ═══════════════════════════════════════════════════════════════════
-      // 🛡️ WAVE 1008.3: Use safe center (95% of physical max)
-      setPan(256)           // Centro seguro (513/2 ≈ 256°)
-      setTilt(128)          // Centro seguro (256/2 = 128°)
-      setActivePattern('static')  // Ningún patrón activo
-      setPatternSpeed(50)   // Default
-      setPatternSize(50)    // Default
       
-      // Si no hay selección, ya terminamos con el flush
+      // Si no hay selección, aplicar defaults y salir
       if (selectedIds.length === 0) {
+        setPan(256)           // Centro seguro (513/2 ≈ 256°)
+        setTilt(128)          // Centro seguro (256/2 = 128°)
+        setActivePattern('static')
+        setPatternSpeed(50)
+        setPatternSize(50)
         console.log(`[Position] 🧼 FLUSH: No selection, defaults applied`)
         return
       }
       
       // ═══════════════════════════════════════════════════════════════════
-      // 🧠 PASO 2: HIDRATAR - Pedir estado real al Arbiter
+      // 🧠 PASO 1: HIDRATAR PRIMERO - Pedir estado real al Arbiter
       // ═══════════════════════════════════════════════════════════════════
       try {
         const result = await window.lux?.arbiter?.getFixturesState(selectedIds)
         
         if (!isMounted) return
         
-        // Si el backend no responde, mantener defaults del flush
+        // Si el backend no responde, aplicar defaults
         if (!result?.success || !result?.state) {
-          console.log(`[Position] 🧼 FLUSH: No backend state, keeping defaults`)
+          setPan(256)
+          setTilt(128)
+          setActivePattern('static')
+          setPatternSpeed(50)
+          setPatternSize(50)
+          console.log(`[Position] 🧼 FLUSH: No backend state, applying defaults`)
           return
         }
         
         const { state } = result
         
         // ═══════════════════════════════════════════════════════════════════
-        // 🎯 PASO 3: APLICAR solo los valores que tienen OVERRIDE MANUAL
-        // Si es null = AI control = mantener el default del flush
+        // 🎯 PASO 2: APLICAR valores con DEFAULTS CONDICIONALES
+        // Si viene del backend (no null) = usar ese valor
+        // Si es null (AI control) = aplicar default
         // ═══════════════════════════════════════════════════════════════════
         
-        // --- POSITION (Individual Logic) ---
-        if (state.pan !== null) {
-          setPan(state.pan)
-        }
-        // else: mantiene 270 del flush (AI control)
+        // --- POSITION ---
+        setPan(state.pan !== null ? state.pan : 256)
+        setTilt(state.tilt !== null ? state.tilt : 128)
         
-        if (state.tilt !== null) {
-          setTilt(state.tilt)
-        }
-        // else: mantiene 135 del flush (AI control)
-        
-        // --- PATTERN (Hybrid Logic) ---
+        // --- PATTERN ---
         if (state.pattern !== null) {
-          // map 'hold' back to 'static' for UI button
           const uiPattern = state.pattern === 'hold' ? 'static' : state.pattern
           setActivePattern(uiPattern as PatternType)
+        } else {
+          setActivePattern('static')
         }
-        // else: mantiene 'static' del flush (AI control = HOLD visual)
         
         // --- DYNAMICS ---
-        if (state.speed !== null) {
-          setPatternSpeed(state.speed)
-        }
-        // else: mantiene 50 del flush
-        
-        if (state.amplitude !== null) {
-          setPatternSize(state.amplitude)
-        }
-        // else: mantiene 50 del flush
+        setPatternSpeed(state.speed !== null ? state.speed : 50)
+        setPatternSize(state.amplitude !== null ? state.amplitude : 50)
         
         console.log(`[Position] 🧠 Hydrated fixture ${selectedIds[0]} - Pattern: ${state.pattern ?? 'AI'}`)
       } catch (err) {
         console.error('[Position] Hydration error:', err)
-        // En caso de error, los defaults del flush ya están aplicados
+        // En caso de error, aplicar defaults
+        setPan(256)
+        setTilt(128)
+        setActivePattern('static')
+        setPatternSpeed(50)
+        setPatternSize(50)
       }
     }
     

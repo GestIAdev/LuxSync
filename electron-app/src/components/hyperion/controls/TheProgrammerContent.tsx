@@ -172,13 +172,17 @@ export const TheProgrammerContent: React.FC = () => {
     setCurrentColor({ r: 128, g: 128, b: 128 })
     
     try {
-      // Clear fixture manual overrides
+      // Clear fixture manual overrides (dimmer, color, pan, tilt, etc.)
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
-      // 🎚️ WAVE 999.7: Also clear movement parameter overrides (speed/amplitude)
-      await window.lux?.arbiter?.clearMovementOverrides?.()
-      console.log(`[Programmer] 🔓 UNLOCK ALL: Released ${selectedIds.length} fixtures + movement params`)
+      
+      // 🔄 WAVE 2042.22: PATTERN PERSISTENCE
+      // OLD: clearMovementOverrides() → Killed pattern on unlock
+      // NEW: Let pattern continue running (user can click HOLD to stop)
+      // Movement params (speed/amplitude) also persist as "suggestions" to AI
+      
+      console.log(`[Programmer] 🔓 UNLOCK ALL: Released ${selectedIds.length} fixtures (pattern persists)`)
     } catch (err) {
       console.error('[Programmer] Unlock all error:', err)
     }

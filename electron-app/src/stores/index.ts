@@ -39,6 +39,7 @@ export * from './overrideStore'
 export * from './sceneStore'
 
 // 🌙 WAVE 248: Universal Truth Protocol - TITAN 2.0 FUSION
+// 🛡️ WAVE 2042.13.12: Fixed selectors that created new objects
 export { 
   useTruthStore,
   selectAudio,
@@ -46,7 +47,11 @@ export {
   selectPalette,
   selectGenre,
   selectSection,
-  selectRhythm,
+  // 🛡️ WAVE 2042.13.12: selectRhythm removed - use individual selectors
+  selectBPM,
+  selectSyncopation,
+  selectBeatPhase,
+  selectRhythmConfidence,
   selectMovement,
   selectEffects,
   selectSystem,
@@ -54,7 +59,8 @@ export {
   selectConsciousness,
   selectContext,
   selectHardware,
-  selectColorParams,
+  // 🛡️ WAVE 2042.13.12: selectColorParams removed - use selectMasterIntensity
+  selectMasterIntensity,
   selectFPS,
   selectMode,
   selectBrainStatus,
@@ -67,10 +73,15 @@ export {
   debugTruth,
   // 🛡️ WAVE 2042.12/2042.13: React 19 stable hooks
   useHardware,
-  useColorParams,
+  useColorParams,  // Deprecated but kept for compatibility
+  useMasterIntensity,
   useAudio,
   useBeat,
-  useRhythm,
+  useRhythm,  // Deprecated but kept for compatibility
+  useBPM,
+  useSyncopation,
+  useBeatPhase,
+  useRhythmConfidence,
   useCognitive,
   useSection,
 } from './truthStore'

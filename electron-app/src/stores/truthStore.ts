@@ -103,13 +103,14 @@ export const selectGenre = (state: TruthState) => state.truth.context.genre
 /** Selector: Section (from context layer) */
 export const selectSection = (state: TruthState) => state.truth.context.section
 
-/** Selector: Rhythm info (from context layer - bpm, syncopation, beatPhase) */
-export const selectRhythm = (state: TruthState) => ({
-  bpm: state.truth.context.bpm,
-  syncopation: state.truth.context.syncopation,
-  beatPhase: state.truth.context.beatPhase,
-  confidence: state.truth.context.confidence
-})
+/** 
+ * 🛡️ WAVE 2042.13.12: Individual rhythm selectors (primitives - no object creation)
+ * Use these instead of selectRhythm to avoid infinite re-renders in React 19
+ */
+export const selectBPM = (state: TruthState) => state.truth.context.bpm
+export const selectSyncopation = (state: TruthState) => state.truth.context.syncopation
+export const selectBeatPhase = (state: TruthState) => state.truth.context.beatPhase
+export const selectRhythmConfidence = (state: TruthState) => state.truth.context.confidence
 
 /** Selector: Movement (from intent layer) */
 export const selectMovement = (state: TruthState) => state.truth.intent.movement
@@ -131,21 +132,17 @@ export const selectContext = (state: TruthState) => state.truth.context
 
 /** 
  * Selector: Hardware state
- * 🔧 WAVE 347.8: Returns a SHALLOW COPY to force React re-renders
- * The backend mutates fixture properties (pan, tilt) but keeps same array reference
- * By returning { ...hardware, fixtures: [...fixtures] }, we ensure React detects changes
+ * �️ WAVE 2042.13.12: Fixed - returns direct reference, useShallow handles comparison
+ * DO NOT create new objects/arrays here - it breaks React 19's getSnapshot caching
  */
-export const selectHardware = (state: TruthState) => {
-  const hardware = state.truth.hardware
-  // Force new reference for fixtures array so React re-renders
-  return hardware ? { ...hardware, fixtures: [...(hardware.fixtures || [])] } : hardware
-}
+export const selectHardware = (state: TruthState) => state.truth.hardware
 
-/** Selector: Intensity & Saturation (from intent) */
-export const selectColorParams = (state: TruthState) => ({
-  intensity: state.truth.intent.masterIntensity,
-  saturation: 1, // WAVE 248: saturation ahora es parte de palette
-})
+/** 
+ * Selector: Master Intensity (from intent)
+ * 🛡️ WAVE 2042.13.12: Returns primitive to avoid new object creation
+ * For saturation, use palette directly - it's always derived from palette now
+ */
+export const selectMasterIntensity = (state: TruthState) => state.truth.intent.masterIntensity
 
 /** Selector: FPS tracking */
 export const selectFPS = (state: TruthState) => state.truth.system.actualFPS
@@ -214,8 +211,20 @@ export const useHardware = () => {
   return useTruthStore(useShallow(selectHardware))
 }
 
+/**
+ * 🛡️ WAVE 2042.13.12: Changed to return primitive intensity value
+ * If components need { intensity, saturation } object, destructure from intent directly
+ */
+export const useMasterIntensity = () => {
+  return useTruthStore(selectMasterIntensity) // Primitive - no useShallow needed
+}
+
+// DEPRECATED: useColorParams - use useMasterIntensity instead
+// Keeping for backwards compatibility but will cause warnings
 export const useColorParams = () => {
-  return useTruthStore(useShallow(selectColorParams))
+  console.warn('useColorParams is deprecated. Use useMasterIntensity() instead.')
+  const intensity = useTruthStore(selectMasterIntensity)
+  return { intensity, saturation: 1 }
 }
 
 export const useAudio = () => {
@@ -226,8 +235,25 @@ export const useBeat = () => {
   return useTruthStore(useShallow(selectBeat))
 }
 
+/**
+ * 🛡️ WAVE 2042.13.12: Returns individual primitive hooks
+ * Creating an object here would cause infinite re-renders in React 19
+ * If you need all rhythm values, call each hook individually
+ */
+export const useBPM = () => useTruthStore(selectBPM)
+export const useSyncopation = () => useTruthStore(selectSyncopation)
+export const useBeatPhase = () => useTruthStore(selectBeatPhase)
+export const useRhythmConfidence = () => useTruthStore(selectRhythmConfidence)
+
+// DEPRECATED: useRhythm - use individual hooks instead
+// Keeping for backwards compatibility with console warning
 export const useRhythm = () => {
-  return useTruthStore(useShallow(selectRhythm))
+  console.warn('useRhythm is deprecated. Use useBPM(), useSyncopation(), useBeatPhase() instead.')
+  const bpm = useTruthStore(selectBPM)
+  const syncopation = useTruthStore(selectSyncopation)
+  const beatPhase = useTruthStore(selectBeatPhase)
+  const confidence = useTruthStore(selectRhythmConfidence)
+  return { bpm, syncopation, beatPhase, confidence }
 }
 
 export const useCognitive = () => {

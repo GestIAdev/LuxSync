@@ -4,14 +4,13 @@
  * Bloom selectivo que hace brillar los fixtures encendidos.
  * Solo se activa en modo HQ — desactivado en LQ para performance.
  * 
- * NOTA: Requiere @react-three/postprocessing instalado.
- * Si no está disponible, este componente retorna null silenciosamente.
- * 
  * @module components/hyperion/views/visualizer/postprocessing/NeonBloom
  * @since WAVE 2042.6 (Project Hyperion — Phase 4)
+ * @updated WAVE 2042.10 — Post-processing packages installed
  */
 
-import React, { useMemo } from 'react'
+import React from 'react'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -33,21 +32,14 @@ interface NeonBloomProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT (Placeholder - requires @react-three/postprocessing)
+// COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * NeonBloom Post-Processing
  * 
- * Este componente es un placeholder que se activa cuando
- * @react-three/postprocessing está instalado.
- * 
- * Para activar el bloom completo, ejecuta:
- * ```bash
- * npm install @react-three/postprocessing postprocessing
- * ```
- * 
- * Luego descomenta el código real en este archivo.
+ * Bloom HDR que hace brillar los fixtures con emissive materials.
+ * Ajusta intensidad con el beat para pulsación dinámica.
  */
 export const NeonBloom: React.FC<NeonBloomProps> = ({
   enabled = true,
@@ -57,30 +49,11 @@ export const NeonBloom: React.FC<NeonBloomProps> = ({
   radius = 0.4,
   beatIntensity = 0,
 }) => {
-  // ═══════════════════════════════════════════════════════════════════════
-  // PLACEHOLDER IMPLEMENTATION
-  // El post-processing real requiere el paquete instalado.
-  // Por ahora retornamos null para no bloquear el render.
-  // ═══════════════════════════════════════════════════════════════════════
-  
   if (!enabled) return null
 
-  // Log para desarrollo
-  if (process.env.NODE_ENV === 'development') {
-    // console.debug('[NeonBloom] Post-processing placeholder active. Install @react-three/postprocessing for full effect.')
-  }
-
-  // Placeholder: no post-processing sin el paquete
-  return null
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // REAL IMPLEMENTATION (uncomment when postprocessing is installed)
-  // ═══════════════════════════════════════════════════════════════════════
-  /*
-  import { EffectComposer, Bloom } from '@react-three/postprocessing'
-  
+  // Ajustar intensidad con beat (pulsación dinámica)
   const adjustedIntensity = intensity + beatIntensity * 0.3
-  
+
   return (
     <EffectComposer>
       <Bloom
@@ -92,7 +65,6 @@ export const NeonBloom: React.FC<NeonBloomProps> = ({
       />
     </EffectComposer>
   )
-  */
 }
 
 export default NeonBloom

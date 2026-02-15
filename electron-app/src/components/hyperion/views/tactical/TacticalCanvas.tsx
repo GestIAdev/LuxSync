@@ -101,6 +101,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
   const fpsHistoryRef = useRef<number[]>([])
   const lastFrameTimeRef = useRef<number>(0)
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PHYSICS MEMORY — Inercia táctica para pan/tilt suaves
+  // Sin esto: saltos de 180° en 1 frame → triple-haz ghosting
+  // Con esto: interpolación suave (mantequilla) → cinematografía real
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const physicsStoreRef = useRef<Map<string, { pan: number; tilt: number; zoom: number }>>(new Map())
+
   // ── State ───────────────────────────────────────────────────────────────
   
   const [isReady, setIsReady] = useState(false)
@@ -261,15 +268,57 @@ export const TacticalCanvas = memo(function TacticalCanvas({
         })
       }
 
-      // ── LAYER 3: FIXTURES ─────────────────────────────────────────────
-      renderFixtureLayer(ctx, width, height, fixtures, {
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PHYSICS INTERPOLATION — Smooth pan/tilt/zoom (Inercia Táctica)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PROBLEMA: DMX values jump instantly (0° → 180° in 1 frame)
+      // SOLUCIÓN: Remember previous values, interpolate smoothly
+      // RESULTADO: Beams move like butter (cinematographic), no ghosting
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      const SMOOTHING_FACTOR = 0.15  // 0.1 = slow/heavy, 0.3 = fast/snappy
+      
+      const smoothedFixtures = fixtures.map(fixture => {
+        // Get or initialize physics state for this fixture
+        let state = physicsStoreRef.current.get(fixture.id)
+        
+        if (!state) {
+          // First frame: initialize with current values (no interpolation)
+          state = {
+            pan: fixture.physicalPan,
+            tilt: fixture.physicalTilt,
+            zoom: fixture.zoom,
+          }
+          physicsStoreRef.current.set(fixture.id, state)
+        }
+
+        // Interpolate towards target (exponential smoothing)
+        // This creates the "inercia" effect — fixture remembers momentum
+        state.pan += (fixture.physicalPan - state.pan) * SMOOTHING_FACTOR
+        state.tilt += (fixture.physicalTilt - state.tilt) * SMOOTHING_FACTOR
+        state.zoom += (fixture.zoom - state.zoom) * SMOOTHING_FACTOR
+
+        // Update physics memory for next frame
+        physicsStoreRef.current.set(fixture.id, state)
+
+        // Return fixture with SMOOTHED values (not raw DMX)
+        return {
+          ...fixture,
+          physicalPan: state.pan,
+          physicalTilt: state.tilt,
+          zoom: state.zoom,
+        }
+      })
+
+      // ── LAYER 3: FIXTURES (with smoothed physics) ────────────────────
+      renderFixtureLayer(ctx, width, height, smoothedFixtures, {
         quality,
         onBeat,
         beatIntensity,
       })
 
       // ── LAYER 4: SELECTION ────────────────────────────────────────────
-      renderSelectionLayer(ctx, width, height, fixtures, baseRadius, {
+      renderSelectionLayer(ctx, width, height, smoothedFixtures, baseRadius, {
         selectedIds,
         hoveredId: hoveredFixtureId,
         lassoBounds,

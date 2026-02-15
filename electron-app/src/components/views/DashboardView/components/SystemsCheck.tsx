@@ -18,7 +18,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react'
 import { useHardware, useAudio } from '../../../../stores/truthStore'
-import { useSetupStore, selectUsbDmxPanel } from '../../../../stores/setupStore'
+import { useSetupStore, selectUsbDmxPanel, selectSystemsCheckConfig } from '../../../../stores/setupStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
 import { useShallow } from 'zustand/shallow'
@@ -358,7 +358,8 @@ const UsbDmxPanel: React.FC = () => {
 export const SystemsCheck: React.FC = () => {
   // 🔥 WAVE 1003: Trinity integration for REAL audio connection
   const trinity = useTrinityOptional()
-  const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore()
+  // 🛡️ WAVE 2042.13.3: React 19 fix - Use stable selector to prevent infinite loops
+  const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore(useShallow(selectSystemsCheckConfig))
   // 🛡️ WAVE 2042.12: React 19 fix - Use stable hook to prevent infinite loops
   const hardware = useHardware()
   

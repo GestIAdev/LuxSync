@@ -158,3 +158,11 @@ export const selectUsbDmxPanel = (state: SetupState) => ({
   setDetectedDmxPorts: state.setDetectedDmxPorts,
   setDmxScanning: state.setDmxScanning,
 })
+
+// 🛡️ WAVE 2042.13.3: React 19 stable selector for SystemsCheck main component
+export const selectSystemsCheckConfig = (state: SetupState) => ({
+  audioSource: state.audioSource,
+  dmxDriver: state.dmxDriver,
+  setAudioSource: state.setAudioSource,
+  setDmxDriver: state.setDmxDriver,
+})

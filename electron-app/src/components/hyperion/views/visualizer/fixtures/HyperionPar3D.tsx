@@ -126,12 +126,16 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         />
       </mesh>
 
-      {/* Beam cone — Pointing DOWN (-Y), starts below fixture */}
+      {/* Beam cone — THREE.js cone points UP by default, we flip it with rotation
+          The cone geometry creates a cone with tip at origin pointing up.
+          We rotate it PI around X to flip it so tip is at origin pointing DOWN.
+          Then position it so the tip is at fixture lens level.
+      */}
       {showBeam && intensity > 0.01 && (
         <mesh
           ref={beamRef}
-          position={[0, -beamLength / 2 - 0.08, 0]}
-          rotation={[Math.PI, 0, 0]}
+          position={[0, -beamLength / 2 - 0.06, 0]}
+          rotation={[0, 0, 0]}
         >
           <coneGeometry args={[0.3 + intensity * 0.2, beamLength, 16, 1, true]} />
           <meshBasicMaterial

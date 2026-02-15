@@ -234,12 +234,15 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
             />
           </mesh>
 
-          {/* Beam cone — Only visible when light is on */}
+          {/* Beam cone — THREE.js cone tip is at Y=+height/2 by default (centered)
+              We don't need rotation - the cone points from center outward.
+              Position it so the wide base is at the lens and tip extends down.
+          */}
           {showBeam && intensity > 0.01 && (
             <mesh
               ref={beamRef}
-              position={[0, -beamLength / 2 - 0.1, 0]}
-              rotation={[Math.PI, 0, 0]}
+              position={[0, -beamLength / 2 - 0.08, 0]}
+              rotation={[0, 0, 0]}
             >
               <coneGeometry args={[beamWidth, beamLength, 16, 1, true]} />
               <meshBasicMaterial

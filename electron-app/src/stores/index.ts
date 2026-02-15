@@ -71,5 +71,7 @@ export {
   useAudio,
   useBeat,
   useRhythm,
+  useCognitive,
+  useSection,
 } from './truthStore'
 

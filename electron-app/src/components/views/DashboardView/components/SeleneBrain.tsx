@@ -11,10 +11,10 @@
 
 import React, { useEffect, useRef, useMemo } from 'react'
 import { 
-  useTruthStore, 
-  selectCognitive, 
-  selectSection,
-  selectMode
+  useCognitive,
+  useSection,
+  selectMode,
+  useTruthStore,
 } from '../../../../stores/truthStore'
 import { useLogStore, selectLogs, LogEntry } from '../../../../stores/logStore'
 import { useControlStore } from '../../../../stores/controlStore'
@@ -51,9 +51,9 @@ export const SeleneBrain: React.FC<{ className?: string }> = ({ className = '' }
   const allLogs = useLogStore(selectLogs)
   
   // TruthStore for AI state display
-  const cognitive = useTruthStore(selectCognitive)
-  const section = useTruthStore(selectSection)
-  const truthMode = useTruthStore(selectMode)
+  const cognitive = useCognitive() // 🛡️ WAVE 2042.13: React 19 stable hook
+  const section = useSection() // 🛡️ WAVE 2042.13: React 19 stable hook
+  const truthMode = useTruthStore(selectMode) // primitive string - safe
   const globalMode = useControlStore(state => state.globalMode)
   
   // Real data from truth store

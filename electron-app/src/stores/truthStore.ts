@@ -229,6 +229,14 @@ export const useRhythm = () => {
   return useTruthStore(useShallow(selectRhythm))
 }
 
+export const useCognitive = () => {
+  return useTruthStore(useShallow(selectCognitive))
+}
+
+export const useSection = () => {
+  return useTruthStore(useShallow(selectSection))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Exponer en window para debugging desde consola

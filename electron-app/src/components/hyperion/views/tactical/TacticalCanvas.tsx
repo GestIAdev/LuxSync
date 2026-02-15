@@ -276,7 +276,7 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       // RESULTADO: Beams move like butter (cinematographic), no ghosting
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       
-      const SMOOTHING_FACTOR = 0.15  // 0.1 = slow/heavy, 0.3 = fast/snappy
+      const SMOOTHING_FACTOR = 0.10  // 0.1 = slow/heavy, 0.3 = fast/snappy
       
       const smoothedFixtures = fixtures.map(fixture => {
         // Get or initialize physics state for this fixture

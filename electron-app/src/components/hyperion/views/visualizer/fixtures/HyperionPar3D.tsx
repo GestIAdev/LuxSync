@@ -96,13 +96,14 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         />
       </mesh>
 
-      {/* Beam cone — AdditiveBlending for glow effect */}
+      {/* Beam cone — AdditiveBlending for glow effect 
+          🎨 WAVE 2042.15.1: Tight beam - reduced width for more focused look */}
       {showBeam && intensity > 0.01 && (
         <mesh
           position={[0, -beamLength / 2 - 0.06, 0]}
           rotation={[0, 0, 0]}
         >
-          <coneGeometry args={[0.3 + intensity * 0.2, beamLength, 16, 1, true]} />
+          <coneGeometry args={[0.15 + intensity * 0.1, beamLength, 16, 1, true]} />
           <meshBasicMaterial
             ref={beamMaterialRef}
             color={color}

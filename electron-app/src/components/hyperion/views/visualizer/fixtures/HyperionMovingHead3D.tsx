@@ -63,7 +63,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   
   const targetPanAngle = (pan - 0.5) * PAN_RANGE
   const targetTiltAngle = -(tilt - 0.5) * TILT_RANGE
-  const beamWidth = 0.05 + zoom * 0.2
+  // 🎨 WAVE 2042.15.1: Tighter beam width for more focused look
+  const beamWidth = 0.03 + zoom * 0.08
   const beamLength = 3 + intensity * 2
 
   // ── Animation ─────────────────────────────────────────────────────────────

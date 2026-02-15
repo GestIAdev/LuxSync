@@ -147,15 +147,19 @@ export class UniversalDMXDriver extends EventEmitter {
    * En modo promiscuo, incluye cualquier puerto serie
    */
   async listDevices(): Promise<DMXDevice[]> {
+    console.log('[UniversalDMX] 📋 listDevices() CALLED')
     const devices: DMXDevice[] = []
 
     try {
       // Importar serialport dinámicamente
+      console.log('[UniversalDMX] 📦 Importing serialport module...')
       const serialportModule = await import('serialport')
       this.SerialPort = serialportModule.SerialPort as unknown as SerialPortModule['SerialPort']
       
+      console.log('[UniversalDMX] 📡 Calling SerialPort.list()...')
       const ports = await serialportModule.SerialPort.list()
       
+      console.log(`[UniversalDMX] 🔍 Found ${ports.length} serial ports`)
       this.log(`🔍 Scanning ${ports.length} serial ports...`)
       
       for (const port of ports) {
@@ -228,13 +232,18 @@ export class UniversalDMXDriver extends EventEmitter {
       // Ordenar por confianza (mayor primero)
       devices.sort((a, b) => b.confidence - a.confidence)
       
+      console.log(`[UniversalDMX] ✅ Detected ${devices.length} potential DMX devices:`)
+      devices.forEach(d => console.log(`  - ${d.friendlyName} (${d.confidence}% confidence)`))
+      
       this.log(`🔍 Found ${devices.length} potential DMX devices`)
       
     } catch (err) {
       console.error('[UniversalDMX] ❌ Error listing devices:', err)
+      console.error('[UniversalDMX] ❌ Stack:', (err as Error).stack)
       this.lastError = `Failed to list devices: ${err}`
     }
 
+    console.log('[UniversalDMX] 📋 listDevices() RETURNING:', devices.length, 'devices')
     return devices
   }
 
@@ -243,6 +252,9 @@ export class UniversalDMXDriver extends EventEmitter {
    * Asigna universos incrementalmente (0, 1, 2...)
    */
   async autoConnect(): Promise<boolean> {
+    console.log('[UniversalDMX] 🚀 autoConnect() CALLED')
+    console.log('[UniversalDMX] 📊 Current state: isScanning=', this.isScanning, 'ports=', this.ports.size)
+    
     if (this.isScanning) {
       this.log('⚠️ Already scanning...')
       return false
@@ -250,6 +262,7 @@ export class UniversalDMXDriver extends EventEmitter {
     
     this.isScanning = true
     this.log('🔍 Hydra: Scanning for ALL compatible devices...')
+    console.log('[UniversalDMX] 🔍 Starting device scan...')
     
     const devices = await this.listDevices()
     

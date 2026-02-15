@@ -91,12 +91,17 @@ export function useDevicePersistence() {
     // 🔌 WAVE 2042.25: Si no hay config guardada, hacer auto-connect
     if (!config?.dmx) {
       console.log('[DevicePersistence] 📡 No saved DMX config, trying auto-connect...')
+      console.log('[DevicePersistence] 🎯 dmxApi available:', !!dmxApi)
+      console.log('[DevicePersistence] 🎯 dmxApi.autoConnect available:', !!(dmxApi as any).autoConnect)
       try {
+        console.log('[DevicePersistence] 🚀 Calling dmxApi.autoConnect()...')
         const result = await dmxApi.autoConnect()
         console.log('[DevicePersistence] 🔌 Auto-connect result:', result)
         if (result.success) {
           setDmxDriver('usb-serial')
           console.log('[DevicePersistence] ✅ Auto-connected to USB DMX')
+        } else {
+          console.warn('[DevicePersistence] ⚠️ Auto-connect returned success=false')
         }
       } catch (err) {
         console.error('[DevicePersistence] ❌ Auto-connect failed:', err)

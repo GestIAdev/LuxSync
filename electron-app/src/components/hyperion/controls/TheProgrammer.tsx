@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
-import { useSelectionStore } from '../../../stores/selectionStore'
+import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
@@ -35,8 +35,8 @@ interface OverrideState {
 }
 
 export const TheProgrammer: React.FC = () => {
-  // Selection store
-  const selectedIds = useSelectionStore(state => [...state.selectedIds])
+  // 🛡️ WAVE 2042.13.13: Fixed - Use stable hooks
+  const selectedIds = useSelectedArray()
   const deselectAll = useSelectionStore(state => state.deselectAll)
   
   // Hardware info

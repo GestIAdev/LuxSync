@@ -18,7 +18,7 @@
  */
 
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
-import { useSelectionStore } from '../../../stores/selectionStore'
+import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { XYPad, RadarXY, type GhostPoint } from './controls'
 import { PatternSelector, type PatternType } from './controls'
@@ -37,8 +37,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   onToggle,
   onOverrideChange,
 }) => {
-  // Selection
-  const selectedIds = useSelectionStore(state => [...state.selectedIds])
+  // 🛡️ WAVE 2042.13.13: Fixed - Use stable hook
+  const selectedIds = useSelectedArray()
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Local state

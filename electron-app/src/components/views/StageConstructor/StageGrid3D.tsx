@@ -34,7 +34,7 @@ import {
   PerspectiveCamera
 } from '@react-three/drei'
 import { useStageStore, selectFixtures } from '../../../stores/stageStore'
-import { useSelectionStore } from '../../../stores/selectionStore'
+import { useSelectionStore, useSelectedArray } from '../../../stores/selectionStore'
 import { shallow } from 'zustand/shallow'
 import { useConstructorContext } from '../StageConstructorView'
 import { createDefaultFixture, mapLibraryTypeToFixtureType, MotorType } from '../../../core/stage/ShowFileV2'
@@ -689,9 +689,9 @@ const StageGrid3D: React.FC = () => {
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
   const deselectAll = useSelectionStore(state => state.deselectAll)  // 🪜 WAVE 1036
   
-  // WAVE 369.6 FIX: Subscribe to selection changes with a simple primitive selector
+  // 🛡️ WAVE 2042.13.13: Fixed - Use stable hook + primitive selector
   const selectionVersion = useSelectionStore(state => state.selectedIds.size)
-  const selectedIdsArray = useSelectionStore(state => [...state.selectedIds])
+  const selectedIdsArray = useSelectedArray()
   
   // Keep Set for local operations that need .has()
   const selectedIds = useMemo(() => new Set(selectedIdsArray), [selectionVersion])

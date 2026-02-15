@@ -14,7 +14,7 @@
  */
 
 import React, { useCallback, useState, useMemo } from 'react'
-import { useSelectionStore } from '../../../stores/selectionStore'
+import { useSelectedArray } from '../../../stores/selectionStore'
 import { useHardware } from '../../../stores/truthStore'
 import { BeamIcon } from '../../icons/LuxIcons'
 
@@ -43,8 +43,8 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
   onToggle,
   onOverrideChange,
 }) => {
-  // Selection
-  const selectedIds = useSelectionStore(state => [...state.selectedIds])
+  // 🛡️ WAVE 2042.13.13: Fixed - Use stable hook
+  const selectedIds = useSelectedArray()
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Local state

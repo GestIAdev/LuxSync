@@ -73,13 +73,12 @@ export const NeonFloor: React.FC<NeonFloorProps> = ({
   }, [width, depth])
 
   // ── Materials ─────────────────────────────────────────────────────────────
+  // 🛡️ WAVE 2042.14.3: Floor MUST be opaque to block beam cones
   const floorMaterial = useMemo(() => (
     <meshStandardMaterial
       color="#080810"
       metalness={0.3}
       roughness={0.8}
-      transparent
-      opacity={0.95}
     />
   ), [])
 

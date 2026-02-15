@@ -282,17 +282,17 @@ const Scene: React.FC<{
 
       {/* ═══════════════════════════════════════════════════════════════════
        * POST-PROCESSING (HQ only)
-       * ✅ ACTIVADO: React 19 + R3F v9 + postprocessing v3
-       * 🎨 WAVE 2042.14.2: Conservative bloom settings
+       * 🚫 WAVE 2042.14.3: BLOOM DISABLED until fixtures are properly calibrated
+       * The bloom was causing the "cosmic ocean" effect bleeding into the sky
        * ═══════════════════════════════════════════════════════════════════ */}
-      {qualitySettings.postProcessing && (
+      {/* DISABLED: qualitySettings.postProcessing && (
         <NeonBloom
           enabled={true}
           intensity={0.5}
           luminanceThreshold={0.95}
           beatIntensity={beatIntensity * 0.3}
         />
-      )}
+      ) */}
     </>
   )
 }

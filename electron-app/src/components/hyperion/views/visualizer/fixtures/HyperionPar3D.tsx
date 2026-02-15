@@ -74,19 +74,17 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
-    // 🎨 WAVE 2042.14.4: MINIMAL EMISSIVE - No HDR, no toneMapped bypass
+    // 🎨 WAVE 2042.14.5: SIMPLE AND CLEAR - Just modulate the color and intensity
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
       lensMaterialRef.current.emissive.copy(color)
-      // Ultra-conservative: 0.1 base + up to 0.4 max = total 0.5 max
-      lensMaterialRef.current.emissiveIntensity = 0.1 + intensity * 0.3 + beatIntensity * 0.08
-      lensMaterialRef.current.opacity = 0.4 + intensity * 0.2
+      // Intensity scales from 0.5 to 2.5 (PARs are brighter)
+      lensMaterialRef.current.emissiveIntensity = 0.5 + intensity * 2.0
     }
     
     if (beamMaterialRef.current) {
-      // 🎨 WAVE 2042.14.4: Ultra-subtle beam
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.04 + beatIntensity * 0.01
+      beamMaterialRef.current.opacity = intensity * 0.25
     }
   })
 
@@ -117,11 +115,9 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
         <circleGeometry args={[0.11, 32]} />
         <meshStandardMaterial
           ref={lensMaterialRef}
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.1}
-          transparent
-          opacity={0.4}
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={1.0}
         />
       </mesh>
 

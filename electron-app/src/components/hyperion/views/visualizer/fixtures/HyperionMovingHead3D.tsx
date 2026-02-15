@@ -159,22 +159,18 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
-    // useMemo doesn't trigger material updates in R3F - we need manual updates
-    // 🎨 WAVE 2042.14.4: MINIMAL EMISSIVE - toneMapped=true means values bloom fast
+    // 🎨 WAVE 2042.14.5: SIMPLE AND CLEAR - Just modulate the color and intensity
     if (lensMaterialRef.current) {
-      // Update lens color (keep pure, bloom handles glow)
+      // Color FROM the fixture data
       lensMaterialRef.current.color.copy(color)
-      // Emissive: pure color, let emissiveIntensity control brightness
       lensMaterialRef.current.emissive.copy(color)
-      // VERY conservative: 0.1 base + up to 0.3 max = total 0.4 max
-      lensMaterialRef.current.emissiveIntensity = 0.1 + intensity * 0.2 + beatIntensity * 0.05
-      lensMaterialRef.current.opacity = 0.4 + intensity * 0.2
+      // Intensity scales from 0.5 to 2.0 (visible but not crazy)
+      lensMaterialRef.current.emissiveIntensity = 0.5 + intensity * 1.5
     }
     
     if (beamMaterialRef.current) {
-      // 🎨 WAVE 2042.14.4: Ultra-subtle beam
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.03 + beatIntensity * 0.01
+      beamMaterialRef.current.opacity = intensity * 0.2
     }
   })
 
@@ -225,11 +221,9 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
             <circleGeometry args={[0.055, 32]} />
             <meshStandardMaterial
               ref={lensMaterialRef}
-              color={color}
-              emissive={color}
-              emissiveIntensity={0.1}
-              transparent
-              opacity={0.4}
+              color="#ffffff"
+              emissive="#ffffff"
+              emissiveIntensity={1.0}
             />
           </mesh>
 

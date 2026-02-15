@@ -154,6 +154,9 @@ export const TacticalCanvas = memo(function TacticalCanvas({
 
       const ctx = canvas.getContext('2d')
       if (ctx) {
+        // CRITICAL: Reset transform to identity BEFORE scaling
+        // Otherwise scale accumulates on each resize → ghosting/triple-haz
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.scale(dpr, dpr)
       }
     }
@@ -233,7 +236,13 @@ export const TacticalCanvas = memo(function TacticalCanvas({
       const width = rect.width
       const height = rect.height
 
-      // Clear canvas
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // CRITICAL: Save context state BEFORE rendering
+      // This prevents transform accumulation (ghosting/triple-haz bug)
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ctx.save()
+
+      // Clear canvas (must happen AFTER save, uses current transform)
       ctx.clearRect(0, 0, width, height)
 
       // ── LAYER 1: GRID ─────────────────────────────────────────────────
@@ -269,6 +278,12 @@ export const TacticalCanvas = memo(function TacticalCanvas({
 
       // ── LAYER 5: HUD ──────────────────────────────────────────────────
       renderHUDLayer(ctx, width, height, metricsRef.current, quality)
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // CRITICAL: Restore context state AFTER rendering
+      // Paired with ctx.save() at frame start
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ctx.restore()
 
       // Schedule next frame
       animationRef.current = requestAnimationFrame(render)

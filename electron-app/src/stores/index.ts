@@ -65,5 +65,8 @@ export {
   selectEvolution,
   selectDropState,
   debugTruth,
+  // 🛡️ WAVE 2042.12: React 19 stable hooks
+  useHardware,
+  useColorParams,
 } from './truthStore'
 

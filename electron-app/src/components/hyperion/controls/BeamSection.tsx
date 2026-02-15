@@ -15,7 +15,7 @@
 
 import React, { useCallback, useState, useMemo } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import { BeamIcon } from '../../icons/LuxIcons'
 
 export interface BeamSectionProps {
@@ -45,7 +45,7 @@ export const BeamSection: React.FC<BeamSectionProps> = ({
 }) => {
   // Selection
   const selectedIds = useSelectionStore(state => [...state.selectedIds])
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Local state
   const [gobo, setGobo] = useState(0)           // 0-255

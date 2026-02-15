@@ -281,10 +281,9 @@ const Scene: React.FC<{
 
       {/* ═══════════════════════════════════════════════════════════════════
        * POST-PROCESSING (HQ only)
-       * NOTA: Temporalmente deshabilitado por incompatibilidad R3F v8 / postprocessing v3
-       * TODO: Upgrade R3F v8 → v9 para activar NeonBloom
+       * ✅ ACTIVADO: React 19 + R3F v9 + postprocessing v3
        * ═══════════════════════════════════════════════════════════════════ */}
-      {false && qualitySettings.postProcessing && (
+      {qualitySettings.postProcessing && (
         <NeonBloom
           enabled={true}
           intensity={0.8}

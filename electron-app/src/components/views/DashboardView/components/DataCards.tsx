@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { useTruthStore, selectHardware, selectBeat, selectAudio } from '../../../../stores/truthStore'
+import { useTruthStore, useHardware, selectBeat, selectAudio } from '../../../../stores/truthStore'
 import {
   IconBpmPulse,
   IconFixture,
@@ -53,7 +53,7 @@ export const DataCards: React.FC<{ className?: string }> = ({ className = '' }) 
   const [frameCount, setFrameCount] = useState(0)
   
   // Store data - REAL from truthStore
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const beat = useTruthStore(selectBeat)
   const audio = useTruthStore(selectAudio)
   

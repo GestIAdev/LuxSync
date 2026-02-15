@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useState, useEffect } from 'react'
-import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
+import { useHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import './DMXConfig.css'
 
@@ -186,7 +186,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 // ============================================
 
 export const DMXConfig: React.FC = () => {
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const { 
     dmxDriver, 
     dmxComPort,

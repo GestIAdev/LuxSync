@@ -19,7 +19,7 @@
 
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import { XYPad, RadarXY, type GhostPoint } from './controls'
 import { PatternSelector, type PatternType } from './controls'
 import { PositionIcon } from '../../icons/LuxIcons'
@@ -39,7 +39,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
 }) => {
   // Selection
   const selectedIds = useSelectionStore(state => [...state.selectedIds])
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Local state
   const [pan, setPan] = useState(270)    // 0-540 degrees

@@ -9,7 +9,7 @@
  */
 
 import React from 'react'
-import { useTruthStore, selectAudio, selectHardware } from '../../../stores/truthStore'
+import { useTruthStore, selectAudio, useHardware } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
 import './SetupStatusBar.css'
 
@@ -75,7 +75,7 @@ const DmxStatus: React.FC<DmxStatusProps> = ({ connected, fps }) => {
 
 export const SetupStatusBar: React.FC = () => {
   const audio = useTruthStore(selectAudio)
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   // WAVE 370: Connected to REAL showFile from stageStore
   const showFileName = useStageStore((s) => s.showFile?.name)
   

@@ -196,6 +196,29 @@ export const debugTruth = () => {
   return state.truth
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.12: REACT 19 FIX - Stable Hooks
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * useShallow wrapper for selectHardware to prevent infinite loops in React 19.
+ * 
+ * PROBLEM: selectHardware returns new object/array every call → React 19 infinite loop
+ * SOLUTION: useShallow hook provides stable reference
+ * 
+ * USE THIS instead of: useTruthStore(selectHardware)
+ */
+import { useShallow } from 'zustand/shallow'
+
+export const useHardware = () => {
+  return useTruthStore(useShallow(selectHardware))
+}
+
+export const useColorParams = () => {
+  return useTruthStore(useShallow(selectColorParams))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+
 // Exponer en window para debugging desde consola
 if (typeof window !== 'undefined') {
   (window as any).debugTruth = debugTruth

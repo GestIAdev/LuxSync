@@ -18,7 +18,7 @@
 import React, { useMemo, useCallback, useState } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
 import { useStageStore } from '../../../stores/stageStore'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import { ZONE_COLORS, ZONE_LABELS, normalizeZone, type CanonicalZone } from '../shared'
 import './GroupsPanel.css'
 
@@ -41,7 +41,7 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({ onSwitchToControls }) 
   // Stores
   const selectedIds = useSelectionStore(state => [...state.selectedIds])
   const selectMultiple = useSelectionStore(state => state.selectMultiple)
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const userGroups = useStageStore(state => state.groups)
   const createGroup = useStageStore(state => state.createGroup)
   const deleteGroup = useStageStore(state => state.deleteGroup)

@@ -14,7 +14,7 @@
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
@@ -35,7 +35,7 @@ export const TheProgrammerContent: React.FC = () => {
   const selectedIds = useSelectionStore(state => [...state.selectedIds])
   
   // Hardware info
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Track which channels have manual overrides
   const [overrideState, setOverrideState] = useState<OverrideState>({

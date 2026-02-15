@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
-import { useTruthStore, selectAudio, selectHardware } from '../../../../stores/truthStore'
+import { useTruthStore, selectAudio, useHardware } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
@@ -356,7 +356,8 @@ export const SystemsCheck: React.FC = () => {
   // 🔥 WAVE 1003: Trinity integration for REAL audio connection
   const trinity = useTrinityOptional()
   const { audioSource, dmxDriver, setAudioSource, setDmxDriver } = useSetupStore()
-  const hardware = useTruthStore(selectHardware)
+  // 🛡️ WAVE 2042.12: React 19 fix - Use stable hook to prevent infinite loops
+  const hardware = useHardware()
   
   // 🪗 WAVE 1203: ACCORDION STATE (Mutex behavior - null = todas cerradas)
   const [activeSection, setActiveSection] = useState<AccordionSection | null>('dmx')

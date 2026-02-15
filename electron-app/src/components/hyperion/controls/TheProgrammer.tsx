@@ -12,7 +12,7 @@
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { useSelectionStore } from '../../../stores/selectionStore'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import { IntensitySection } from './IntensitySection'
 import { ColorSection } from './ColorSection'
 import { PositionSection } from './PositionSection'
@@ -40,7 +40,7 @@ export const TheProgrammer: React.FC = () => {
   const deselectAll = useSelectionStore(state => state.deselectAll)
   
   // Hardware info
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // WAVE 432: TAB NAVIGATION
   const [activeTab, setActiveTab] = useState<ProgrammerTab>('controls')

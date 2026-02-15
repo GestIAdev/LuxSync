@@ -15,7 +15,7 @@ import { useDMXStore } from '../../../stores/dmxStore'
 import { useSeleneStore } from '../../../stores/seleneStore'
 import { useNavigationStore } from '../../../stores/navigationStore'
 import { useTrinity } from '../../../providers/TrinityProvider'
-import { useTruthStore, selectHardware } from '../../../stores/truthStore'
+import { useHardware } from '../../../stores/truthStore'
 import './SetupView.css'
 
 // 🚨 WAVE 14.9: FLAGS GLOBALES (sobreviven React Strict Mode)
@@ -135,7 +135,7 @@ const SetupView: React.FC = () => {
   useSeleneStore()
   
   // 🌙 WAVE 25: Hardware State from Truth (real-time fixture colors/state)
-  const hardwareState = useTruthStore(selectHardware)
+  const hardwareState = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   // Create a map of dmxAddress → live fixture state for quick lookup
   const liveFixtureMap = useMemo(() => {

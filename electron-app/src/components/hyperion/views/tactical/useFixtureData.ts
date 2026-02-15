@@ -9,7 +9,7 @@
  */
 
 import { useMemo } from 'react'
-import { useTruthStore, selectHardware } from '../../../../stores/truthStore'
+import { useHardware } from '../../../../stores/truthStore'
 import { useStageStore } from '../../../../stores/stageStore'
 import { useControlStore } from '../../../../stores/controlStore'
 import { useOverrideStore } from '../../../../stores/overrideStore'
@@ -103,7 +103,7 @@ function distributeVertically(
 export function useFixtureData(): TacticalFixture[] {
   // ── Store Subscriptions ─────────────────────────────────────────────────
   
-  const hardware = useTruthStore(selectHardware)
+  const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
   const stageFixtures = useStageStore(state => state.fixtures)
   const globalMode = useControlStore(state => state.globalMode)
   const flowParams = useControlStore(state => state.flowParams)

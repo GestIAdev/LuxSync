@@ -22,6 +22,8 @@ const getDmxApi = () => (window as any).lux?.dmx
 let _hasInitialized = false
 
 export function useDevicePersistence() {
+  console.log('[DevicePersistence] 🎯 Hook mounted')
+  
   const trinity = useTrinity()
   // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { 
@@ -34,6 +36,8 @@ export function useDevicePersistence() {
   const setInputGain = useAudioStore(selectSetInputGain)
   
   const isInitializing = useRef(false)
+  
+  console.log('[DevicePersistence] 🔍 _hasInitialized:', _hasInitialized)
   
   // Restore audio configuration
   const restoreAudio = useCallback(async (config: any) => {
@@ -147,7 +151,12 @@ export function useDevicePersistence() {
   
   // Main initialization effect
   useEffect(() => {
-    if (_hasInitialized || isInitializing.current) return
+    console.log('[DevicePersistence] 🎬 useEffect triggered')
+    
+    if (_hasInitialized || isInitializing.current) {
+      console.log('[DevicePersistence] ⏭️ Skipping (already initialized or in progress)')
+      return
+    }
     
     const initialize = async () => {
       isInitializing.current = true
@@ -158,8 +167,9 @@ export function useDevicePersistence() {
       try {
         // Load config from backend
         if (window.lux?.getConfig) {
+          console.log('[DevicePersistence] 📡 Fetching config from backend...')
           const config = await window.lux.getConfig()
-          console.log('[DevicePersistence] Loaded config:', config)
+          console.log('[DevicePersistence] 📦 Loaded config:', JSON.stringify(config, null, 2))
           
           // Restore in parallel
           await Promise.all([

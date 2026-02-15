@@ -7,7 +7,7 @@
  */
 
 import React, { useRef, useEffect, useCallback } from 'react'
-import { useTruthStore, selectBeat, selectAudio } from '../../../../stores/truthStore'
+import { useTruthStore, selectBeat, useAudio } from '../../../../stores/truthStore'
 import './AudioReactorRing.css'
 
 interface AudioReactorRingProps {
@@ -26,7 +26,7 @@ export const AudioReactorRing: React.FC<AudioReactorRingProps> = ({
   
   // Audio data from truth store - REAL DATA
   const beat = useTruthStore(selectBeat)
-  const audio = useTruthStore(selectAudio)
+  const audio = useAudio() // 🛡️ WAVE 2042.12: React 19 stable hook
   
   const bpm = beat?.bpm || 120
   const energy = audio?.energy || 0.5  // Real energy from audio analysis

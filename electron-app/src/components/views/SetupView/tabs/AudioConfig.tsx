@@ -13,7 +13,7 @@
 
 import React, { useCallback, useState } from 'react'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
-import { useTruthStore, selectAudio } from '../../../../stores/truthStore'
+import { useAudio } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import './AudioConfig.css'
 
@@ -140,7 +140,7 @@ const VuMeter: React.FC<VuMeterProps> = ({ energy, bass, mid, treble }) => {
 export const AudioConfig: React.FC = () => {
   // WAVE 429: Use optional Trinity hook - graceful null if context not ready
   const trinity = useTrinityOptional()
-  const audio = useTruthStore(selectAudio)
+  const audio = useAudio() // 🛡️ WAVE 2042.12: React 19 stable hook
   const { setAudioSource: setStoreSource, audioSource } = useSetupStore()
   
   const [isConnecting, setIsConnecting] = useState(false)

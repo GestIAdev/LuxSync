@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
-import { useTruthStore, selectAudio, useHardware } from '../../../../stores/truthStore'
+import { useHardware, useAudio } from '../../../../stores/truthStore'
 import { useSetupStore } from '../../../../stores/setupStore'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { AudioWaveIcon, NetworkIcon, ControlsIcon } from '../../../icons/LuxIcons'
@@ -55,7 +55,8 @@ interface ArtNetStatus {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const MiniVisualizer: React.FC = () => {
-  const audio = useTruthStore(selectAudio)
+  // 🛡️ WAVE 2042.12: Use stable hook to prevent infinite loops (audio mutates every frame)
+  const audio = useAudio()
   const energy = audio?.energy || 0
   const bass = audio?.bass || 0
   const mid = audio?.mid || 0

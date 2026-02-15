@@ -68,5 +68,6 @@ export {
   // 🛡️ WAVE 2042.12: React 19 stable hooks
   useHardware,
   useColorParams,
+  useAudio,
 } from './truthStore'
 

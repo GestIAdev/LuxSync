@@ -217,6 +217,10 @@ export const useColorParams = () => {
   return useTruthStore(useShallow(selectColorParams))
 }
 
+export const useAudio = () => {
+  return useTruthStore(useShallow(selectAudio))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Exponer en window para debugging desde consola

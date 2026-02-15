@@ -162,19 +162,6 @@ export function useFixture3DData(options: UseFixture3DDataOptions = {}) {
           (f: FixtureState) => f.id === fixture.id
         )
         
-        // 🔬 WAVE 2042.13.18: DEBUG - Check ID matching (REMOVE AFTER FIX CONFIRMED)
-        if (index === 0 && zoneFixtures.length > 0) {
-          const firstMatch = hardwareState?.fixtures?.find((f: FixtureState) => f.id === fixture.id)
-          console.log(`[🔬 useFixture3DData] VALUES:`, {
-            stageFixtureId: fixture.id,
-            rawDimmer: firstMatch?.dimmer,  // Should be 0-1 from backend
-            rawPan: firstMatch?.pan,        // Should be 0-1 from backend
-            colorR: firstMatch?.color?.r,   // 0-255
-            // CRITICAL: This should now be the same as rawDimmer (not divided again!)
-            willUseIntensity: firstMatch?.dimmer ?? 0,
-          })
-        }
-        
         // ── Apply overrides if present ──────────────────────────────────────
         const override = overrides.get(fixture.id)
         

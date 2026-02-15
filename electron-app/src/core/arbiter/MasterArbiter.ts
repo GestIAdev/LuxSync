@@ -340,6 +340,17 @@ export class MasterArbiter extends EventEmitter {
       console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
     }
     
+    // 🎨 WAVE 2042.29: Debug log for color overrides
+    const hasColor = override.overrideChannels.some(ch => ['red', 'green', 'blue'].includes(ch))
+    if (hasColor) {
+      console.log(`[MasterArbiter] 🎨 COLOR Override: ${override.fixtureId}`, {
+        channels: override.overrideChannels,
+        red: override.controls.red,
+        green: override.controls.green,
+        blue: override.controls.blue
+      })
+    }
+    
     // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)
     
@@ -974,6 +985,11 @@ export class MasterArbiter extends EventEmitter {
     if (manualOverride && manualOverride.overrideChannels.includes(channel)) {
       const manualValue = this.getManualChannelValue(manualOverride, channel)
       controlSources[channel] = ControlLayer.MANUAL
+      
+      // 🎨 WAVE 2042.29: Debug log for color channels
+      if (['red', 'green', 'blue'].includes(channel)) {
+        console.log(`[MasterArbiter] 🎨 APPLYING ${channel}: ${manualValue} for ${fixtureId}`)
+      }
       
       // DIRECT RETURN - Manual wins, skip merge entirely
       return manualValue

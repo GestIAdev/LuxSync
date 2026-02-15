@@ -9,7 +9,7 @@
  */
 
 import React, { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Fixture3DData } from '../types'
 
@@ -99,9 +99,10 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   })
 
   // ── Event Handlers ────────────────────────────────────────────────────────
-  const handleClick = (e: { stopPropagation: () => void; nativeEvent?: { shiftKey?: boolean; ctrlKey?: boolean } }) => {
+  // 🛡️ WAVE 2042.13.14: Fixed ThreeEvent type for R3F v9
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    onSelect?.(id, e.nativeEvent?.shiftKey ?? false, e.nativeEvent?.ctrlKey ?? false)
+    onSelect?.(id, e.shiftKey, e.ctrlKey || e.metaKey)
   }
 
   const beamLength = 1.5 + intensity * 1.5

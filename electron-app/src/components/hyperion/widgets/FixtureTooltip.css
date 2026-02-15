@@ -13,10 +13,12 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .fixture-tooltip {
-  position: absolute;
+  /* 🌀 WAVE 2042.18: Portal rendering con position:fixed */
+  position: fixed;
   pointer-events: none;
-  z-index: 100;
-  width: 260px;
+  user-select: none;
+  z-index: 999999; /* Máxima visibilidad por encima de TODO */
+  width: 280px; /* Ancho fijo para cálculos de boundary */
   background: rgba(5, 5, 10, 0.94);
   border: 1px solid rgba(0, 240, 255, 0.30);
   border-radius: 4px;
@@ -27,17 +29,16 @@
     0 0 20px rgba(0, 240, 255, 0.12),
     0 4px 30px rgba(0, 0, 0, 0.6);
   
-  /* Entrada suave */
+  /* 🚀 WAVE 2042.17: Solo transicionar opacidad, NUNCA posición */
   opacity: 0;
-  transform: translateY(8px) scale(0.98);
-  transition: 
-    opacity 0.15s ease, 
-    transform 0.15s ease;
+  transition: opacity 0.12s ease;
+  
+  /* GPU acceleration */
+  will-change: transform, opacity;
 }
 
 .fixture-tooltip.visible {
   opacity: 1;
-  transform: translateY(0) scale(1);
 }
 
 /* ── Position Variants ──────────────────────────────────────────────────── */

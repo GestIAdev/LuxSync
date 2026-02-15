@@ -18,9 +18,11 @@
  * 
  * @module components/hyperion/widgets/FixtureTooltip
  * @since WAVE 2042.4 (Project Hyperion — Phase 2)
+ * @updated WAVE 2042.18 — Boundary checking + React Portal
  */
 
 import React, { useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { ZONE_COLORS, ZONE_LABELS, type CanonicalZone } from '../shared/ZoneLayoutEngine'
 import './FixtureTooltip.css'
 
@@ -73,17 +75,11 @@ export interface FixtureTooltipProps {
   /** Datos del fixture a mostrar */
   data: FixtureTooltipData | null
   
-  /** Posición del tooltip (CSS pixels, relativo al viewport container) */
+  /** Posición del tooltip (CSS pixels, coordenadas absolutas en viewport) */
   position: { x: number; y: number }
   
   /** ¿Está visible? */
   visible: boolean
-  
-  /** Posición preferida: arriba o abajo del fixture */
-  preferredPosition?: 'above' | 'below'
-  
-  /** Altura del contenedor (para calcular si cabe arriba) */
-  containerHeight?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,8 +156,6 @@ export function FixtureTooltip({
   data,
   position,
   visible,
-  preferredPosition = 'above',
-  containerHeight = 600,
 }: FixtureTooltipProps) {
   // ── Early Return ──────────────────────────────────────────────────────────
   if (!data) return null
@@ -190,41 +184,62 @@ export function FixtureTooltip({
   const zoneColor = ZONE_COLORS[zone]
   const zoneLabel = ZONE_LABELS[zone]
 
-  // ── Position Calculation ──────────────────────────────────────────────────
-  // Tooltip tiene ~200px de altura aprox. 
-  // Si está muy arriba, lo ponemos abajo
-  const tooltipHeight = 180
-  const margin = 12
+  // ── 🎯 WAVE 2042.18: INTELLIGENT BOUNDARY CHECKING ─────────────────────────
+  // Dimensiones aproximadas del tooltip
+  const TOOLTIP_WIDTH = 280
+  const TOOLTIP_HEIGHT = 200
+  const OFFSET = 12 // Pegado al fixture, 12px de margen
+
+  const smartPosition = useMemo(() => {
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }
+
+    // Decisiones horizontales: ¿Tooltip a la derecha o izquierda?
+    let horizontal: 'right' | 'left' = 'right'
+    let left = position.x + OFFSET
+    
+    if (position.x + TOOLTIP_WIDTH + OFFSET > viewport.width) {
+      // No cabe a la derecha → Colocar a la IZQUIERDA
+      horizontal = 'left'
+      left = position.x - TOOLTIP_WIDTH - OFFSET
+    }
+
+    // Decisiones verticales: ¿Tooltip arriba o abajo?
+    let vertical: 'above' | 'below' = 'above'
+    let top = position.y - TOOLTIP_HEIGHT - OFFSET
+    
+    if (position.y < TOOLTIP_HEIGHT + OFFSET) {
+      // No cabe arriba → Colocar ABAJO
+      vertical = 'below'
+      top = position.y + OFFSET
+    }
+
+    // Clamp final para seguridad (nunca salir del viewport)
+    left = Math.max(10, Math.min(left, viewport.width - TOOLTIP_WIDTH - 10))
+    top = Math.max(10, Math.min(top, viewport.height - TOOLTIP_HEIGHT - 10))
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      horizontal,
+      vertical,
+    }
+  }, [position.x, position.y])
   
-  const actualPosition = useMemo(() => {
-    if (preferredPosition === 'above' && position.y > tooltipHeight + margin) {
-      return 'above'
-    }
-    if (preferredPosition === 'below' && position.y + tooltipHeight + margin < containerHeight) {
-      return 'below'
-    }
-    // Fallback: donde haya más espacio
-    return position.y > containerHeight / 2 ? 'above' : 'below'
-  }, [position.y, preferredPosition, containerHeight])
-
-  // ── Style Calculation ─────────────────────────────────────────────────────
-  const tooltipStyle = useMemo(() => {
-    const style: React.CSSProperties = {
-      left: position.x,
-      '--fixture-color': fixtureColor,
-      '--zone-color': zoneColor,
-    } as React.CSSProperties
-
-    if (actualPosition === 'above') {
-      style.bottom = containerHeight - position.y + margin
-      style.transform = 'translateX(-50%)'
-    } else {
-      style.top = position.y + margin
-      style.transform = 'translateX(-50%)'
-    }
-
-    return style
-  }, [position, actualPosition, containerHeight, fixtureColor, zoneColor])
+  const tooltipStyle: React.CSSProperties = {
+    position: 'fixed', // 🚨 FIXED para portal en document.body
+    left: smartPosition.left,
+    top: smartPosition.top,
+    zIndex: 999999, // 🛡️ MÁXIMA VISIBILIDAD (por encima de TODO)
+    pointerEvents: 'none', // 🛡️ NO MOUSE CAPTURE
+    willChange: 'transform, opacity', // 🚀 GPU ACCELERATION
+    
+    // Custom properties
+    '--fixture-color': fixtureColor,
+    '--zone-color': zoneColor,
+  } as React.CSSProperties
 
   // ── CSS Classes ───────────────────────────────────────────────────────────
   const tooltipClasses = [
@@ -232,11 +247,10 @@ export function FixtureTooltip({
     visible && 'visible',
     selected && 'selected',
     isOff && 'off',
-    `position-${actualPosition}`,
   ].filter(Boolean).join(' ')
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  return (
+  // ── Render (PORTAL para evitar overflow:hidden) ───────────────────────────
+  const tooltipContent = (
     <div className={tooltipClasses} style={tooltipStyle}>
       {/* Header */}
       <div className="tooltip-header">
@@ -312,6 +326,9 @@ export function FixtureTooltip({
       </div>
     </div>
   )
+
+  // 🌀 PORTAL: Renderizar en document.body para evitar overflow:hidden
+  return createPortal(tooltipContent, document.body)
 }
 
 export default FixtureTooltip

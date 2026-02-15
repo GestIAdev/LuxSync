@@ -198,3 +198,23 @@ export const useEffectsStore = create<EffectsState>((set, get) => ({
     return get().activeEffects.has(effect)
   },
 }))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.4: REACT 19 FIX - Stable Selectors
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: Blackout state only (boolean - stable) */
+export const selectBlackout = (state: EffectsState) => state.blackout
+
+/** Selector: Toggle blackout function (stable reference) */
+export const selectToggleBlackout = (state: EffectsState) => state.toggleBlackout
+
+/** Selector: Active effects (Set reference changes on toggle) */
+export const selectActiveEffects = (state: EffectsState) => state.activeEffects
+
+/** Selector: MainLayout needs blackout boolean */
+export const selectMainLayoutEffects = (state: EffectsState) => ({
+  blackout: state.blackout,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════

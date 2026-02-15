@@ -14,7 +14,7 @@
  */
 
 import React, { useCallback, useState, useEffect } from 'react'
-import { useNavigationStore } from '../../../../stores/navigationStore'
+import { useNavigationStore, selectSetActiveTab } from '../../../../stores/navigationStore'
 import { useStageStore } from '../../../../stores/stageStore'
 import { FileIcon } from '../../../icons/LuxIcons'
 import './ActiveSession.css'
@@ -28,7 +28,8 @@ interface ShowInfo {
 }
 
 export const ActiveSession: React.FC = () => {
-  const { setActiveTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.4: Use stable selector (function only)
+  const setActiveTab = useNavigationStore(selectSetActiveTab)
   const showFile = useStageStore(state => state.showFile)
   const fixtures = useStageStore(state => state.fixtures)
   

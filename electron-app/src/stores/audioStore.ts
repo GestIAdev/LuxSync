@@ -139,3 +139,19 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     })
   },
 }))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.4: REACT 19 FIX - Stable Selectors
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: Audio metrics for display/sync */
+export const selectAudioMetrics = (state: AudioState) => ({
+  isConnected: state.isConnected,
+  bass: state.bass,
+  mid: state.mid,
+  treble: state.treble,
+  bpm: state.bpm,
+  onBeat: state.onBeat,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════

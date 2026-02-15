@@ -6,7 +6,7 @@
  */
 
 import React from 'react'
-import { useNavigationStore } from '../../../../stores/navigationStore'
+import { useNavigationStore, selectSetActiveTab } from '../../../../stores/navigationStore'
 import { IconLiveStage, IconCalibration, IconLuxCore } from '../../../layout/NavigationIcons'
 import './QuickLinks.css'
 
@@ -47,7 +47,8 @@ const QuickLinkCard: React.FC<QuickLinkCardProps> = ({
 )
 
 export const QuickLinks: React.FC = () => {
-  const { setActiveTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.4: Use stable selector (function only)
+  const setActiveTab = useNavigationStore(selectSetActiveTab)
 
   return (
     <div className="quick-links-container">

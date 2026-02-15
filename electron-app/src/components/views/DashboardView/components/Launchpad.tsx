@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback } from 'react'
-import { useNavigationStore } from '../../../../stores/navigationStore'
+import { useNavigationStore, selectSetActiveTab } from '../../../../stores/navigationStore'
 import { 
   PlayCircleIcon, 
   BrainNeuralIcon, 
@@ -69,7 +69,8 @@ const LaunchCard: React.FC<LaunchCardProps> = ({
 )
 
 export const Launchpad: React.FC = () => {
-  const { setActiveTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.4: Use stable selector (function only, no state object)
+  const setActiveTab = useNavigationStore(selectSetActiveTab)
   
   const handleLive = useCallback(() => setActiveTab('live'), [setActiveTab])
   const handleNeural = useCallback(() => setActiveTab('core'), [setActiveTab])

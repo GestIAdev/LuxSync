@@ -14,13 +14,15 @@ import ContentArea from './ContentArea'
 import { CommandDeck } from '../commandDeck'
 import BlackoutOverlay from './BlackoutOverlay'
 import TitleBar from './TitleBar'
-import { useEffectsStore } from '../../stores'
-import { useNavigationStore } from '../../stores/navigationStore'
+import { useEffectsStore, selectMainLayoutEffects } from '../../stores'
+import { useNavigationStore, selectMainLayoutNav } from '../../stores/navigationStore'
+import { useShallow } from 'zustand/shallow'
 import './MainLayout.css'
 
 const MainLayout: React.FC = () => {
-  const { blackout } = useEffectsStore()
-  const { activeTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.4: Use stable selectors to prevent infinite loops
+  const { blackout } = useEffectsStore(useShallow(selectMainLayoutEffects))
+  const { activeTab } = useNavigationStore(useShallow(selectMainLayoutNav))
   
   // 🎬 WAVE 2009: Chronos is a full-screen experience
   const isChronosView = activeTab === 'chronos'

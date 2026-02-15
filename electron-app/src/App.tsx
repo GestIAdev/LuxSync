@@ -14,15 +14,15 @@ import BigSwitch from './components/BigSwitch'
 import EffectsBar from './components/EffectsBar'
 import { useLuxSyncStore } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
-import { useAudioStore } from './stores/audioStore'
+import { useAudioStore, selectAudioMetrics } from './stores/audioStore'
 import { initializeLogIPC } from './stores/logStore'
 import { TitanSyncBridge } from './core/sync'
+import { useShallow } from 'zustand/shallow'
 
 function App() {
   const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore()
-  // 🔧 WAVE 264.6: Leer de audioStore en lugar de useAudioCapture
-  // TrinityProvider es el ÚNICO que debe usar useAudioCapture
-  const audioMetrics = useAudioStore()
+  // �️ WAVE 2042.13.4: Use stable selector to prevent infinite loops
+  const audioMetrics = useAudioStore(useShallow(selectAudioMetrics))
   const { start: startSelene, isRunning } = useSelene()
 
   // Iniciar Selene al montar

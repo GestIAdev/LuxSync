@@ -16,7 +16,8 @@
  */
 
 import React from 'react'
-import { useNavigationStore, TABS, TabId, TabConfig } from '../../stores/navigationStore'
+import { useNavigationStore, TABS, TabId, TabConfig, selectSidebarNav } from '../../stores/navigationStore'
+import { useShallow } from 'zustand/shallow'
 import { 
   IconDashboard, 
   IconConstruct,
@@ -91,7 +92,8 @@ const NavTab: React.FC<NavTabProps> = ({ tab, isActive, onClick, variant }) => {
 }
 
 const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.4: Use stable selector to prevent infinite loops
+  const { activeTab, setActiveTab } = useNavigationStore(useShallow(selectSidebarNav))
 
   return (
     <>

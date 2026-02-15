@@ -214,3 +214,26 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
     set({ targetFixtureId: null })
   },
 }))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.4: REACT 19 FIX - Stable Selectors
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: Active tab (string - stable) */
+export const selectActiveTab = (state: NavigationState) => state.activeTab
+
+/** Selector: setActiveTab function (stable reference) */
+export const selectSetActiveTab = (state: NavigationState) => state.setActiveTab
+
+/** Selector: MainLayout needs activeTab */
+export const selectMainLayoutNav = (state: NavigationState) => ({
+  activeTab: state.activeTab,
+})
+
+/** Selector: Sidebar needs activeTab + setActiveTab */
+export const selectSidebarNav = (state: NavigationState) => ({
+  activeTab: state.activeTab,
+  setActiveTab: state.setActiveTab,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════

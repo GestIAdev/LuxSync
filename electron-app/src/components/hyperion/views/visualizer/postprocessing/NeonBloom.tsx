@@ -1,16 +1,23 @@
 /**
  * ☀️ HYPERION — NeonBloom Post-Processing
  * 
- * Bloom selectivo que hace brillar los fixtures encendidos.
+ * Bloom selectivo HDR que hace brillar los fixtures encendidos.
  * Solo se activa en modo HQ — desactivado en LQ para performance.
+ * 
+ * 🎨 WAVE 2042.14: NEON TUNING
+ * - luminanceThreshold alto (0.8) = solo brilla lo muy brillante
+ * - radius grande (0.6) = glow suave y difuso
+ * - mipmapBlur = calidad cinematográfica
+ * - Beat modulation sutil para no saturar
  * 
  * @module components/hyperion/views/visualizer/postprocessing/NeonBloom
  * @since WAVE 2042.6 (Project Hyperion — Phase 4)
- * @updated WAVE 2042.10 — Post-processing packages installed
+ * @updated WAVE 2042.14 — Neon tuning for professional look
  */
 
-import React from 'react'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import React, { useMemo } from 'react'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -21,11 +28,11 @@ interface NeonBloomProps {
   enabled?: boolean
   /** Intensidad del bloom (0-2) */
   intensity?: number
-  /** Threshold de luminancia (0-1) */
+  /** Threshold de luminancia (0-1) - higher = only brightest glow */
   luminanceThreshold?: number
   /** Suavizado de luminancia (0-1) */
   luminanceSmoothing?: number
-  /** Radio del bloom */
+  /** Radio del bloom - larger = softer glow */
   radius?: number
   /** Intensidad del beat (para pulsación) */
   beatIntensity?: number
@@ -38,30 +45,40 @@ interface NeonBloomProps {
 /**
  * NeonBloom Post-Processing
  * 
- * Bloom HDR que hace brillar los fixtures con emissive materials.
- * Ajusta intensidad con el beat para pulsación dinámica.
+ * 🎨 WAVE 2042.14: Professional HDR bloom stack
+ * - Bloom: Soft glow from emissive materials
+ * - Vignette: Subtle darkening at edges for cinematic feel
  */
 export const NeonBloom: React.FC<NeonBloomProps> = ({
   enabled = true,
-  intensity = 0.8,
-  luminanceThreshold = 0.6,
-  luminanceSmoothing = 0.3,
-  radius = 0.4,
+  intensity = 1.0,
+  luminanceThreshold = 0.8,
+  luminanceSmoothing = 0.4,
+  radius = 0.6,
   beatIntensity = 0,
 }) => {
   if (!enabled) return null
 
-  // Ajustar intensidad con beat (pulsación dinámica)
-  const adjustedIntensity = intensity + beatIntensity * 0.3
+  // Subtle beat modulation - don't go crazy
+  const adjustedIntensity = intensity + beatIntensity * 0.2
 
   return (
-    <EffectComposer>
+    <EffectComposer multisampling={0}>
+      {/* 🌟 BLOOM - The main glow effect */}
       <Bloom
         intensity={adjustedIntensity}
         luminanceThreshold={luminanceThreshold}
         luminanceSmoothing={luminanceSmoothing}
         radius={radius}
         mipmapBlur
+        levels={5}
+      />
+      
+      {/* 🎬 VIGNETTE - Subtle edge darkening for cinematic look */}
+      <Vignette
+        offset={0.3}
+        darkness={0.4}
+        blendFunction={BlendFunction.NORMAL}
       />
     </EffectComposer>
   )

@@ -74,16 +74,19 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
     }
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
+    // 🎨 WAVE 2042.14: NEON TUNING - Balanced emissive for HDR bloom
     if (lensMaterialRef.current) {
       lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.emissive.copy(color).multiplyScalar(intensity)
-      lensMaterialRef.current.emissiveIntensity = intensity * 2.5 + beatIntensity * 0.5
-      lensMaterialRef.current.opacity = 0.4 + intensity * 0.6
+      lensMaterialRef.current.emissive.copy(color)
+      // PARs slightly brighter than movers (they're wash lights)
+      lensMaterialRef.current.emissiveIntensity = 0.6 + intensity * 1.2 + beatIntensity * 0.3
+      lensMaterialRef.current.opacity = 0.6 + intensity * 0.4
     }
     
     if (beamMaterialRef.current) {
+      // 🎨 WAVE 2042.14: Beam opacity tuned for additive blending
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.3
+      beamMaterialRef.current.opacity = intensity * 0.12 + beatIntensity * 0.04
     }
   })
 

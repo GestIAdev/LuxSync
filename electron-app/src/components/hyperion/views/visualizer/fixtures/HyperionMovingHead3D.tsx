@@ -160,18 +160,22 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
     
     // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
     // useMemo doesn't trigger material updates in R3F - we need manual updates
+    // 🎨 WAVE 2042.14: NEON TUNING - Balanced emissive for HDR bloom
     if (lensMaterialRef.current) {
-      // Update lens color and emissive intensity
+      // Update lens color (keep pure, bloom handles glow)
       lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.emissive.copy(color).multiplyScalar(intensity)
-      lensMaterialRef.current.emissiveIntensity = intensity * 2.0 + beatIntensity * 0.5
-      lensMaterialRef.current.opacity = 0.3 + intensity * 0.7
+      // Emissive: pure color, let emissiveIntensity control brightness
+      lensMaterialRef.current.emissive.copy(color)
+      // Intensity range: 0.5-1.5 (subtle to bright, bloom amplifies)
+      lensMaterialRef.current.emissiveIntensity = 0.5 + intensity * 1.0 + beatIntensity * 0.3
+      lensMaterialRef.current.opacity = 0.6 + intensity * 0.4
     }
     
     if (beamMaterialRef.current) {
-      // Update beam color and opacity
+      // 🎨 WAVE 2042.14: Beam opacity tuned for additive blending
+      // Lower base opacity so beams don't wash out the scene
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.4
+      beamMaterialRef.current.opacity = intensity * 0.15 + beatIntensity * 0.05
     }
   })
 

@@ -252,7 +252,19 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * VIEWPORT — El Escenario donde ocurre la magia
+ * MAIN CONTENT — Viewport + Sidebar (flex row)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.hyperion-main-content {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * VIEWPORT — El Escenario donde ocurre la magia (ahora toma el espacio restante)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 .hyperion-viewport {
@@ -577,4 +589,20 @@
   .hyperion-viewport-border {
     display: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SIDEBAR CONTAINER — The Commander (450px fixed width, matches StageSidebar)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.hyperion-sidebar-container {
+  width: 450px;
+  flex-shrink: 0;
+  border-left: var(--h-border-normal);
+  background: var(--h-bg-surface);
+  overflow: hidden;
+  z-index: 5;
+
+  /* Glow izquierdo sutil — separa sidebar del viewport */
+  box-shadow: -2px 0 20px rgba(0, 240, 255, 0.04);
 }

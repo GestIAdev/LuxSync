@@ -17,6 +17,7 @@ import { useSelectionStore } from '../../../stores/selectionStore'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
+import { StageSidebar } from '../controls/sidebar/StageSidebar'
 import './HyperionView.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -211,63 +212,75 @@ export function HyperionView({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-       * VIEWPORT — El Escenario
+       * MAIN CONTENT — Viewport + Sidebar (flex row)
        * ═══════════════════════════════════════════════════════════════════ */}
-      <div className={`hyperion-viewport ${onBeat ? 'on-beat' : ''}`}>
-        {/* Animated Border */}
-        <div className="hyperion-viewport-border" />
+      <div className="hyperion-main-content">
+        {/* ═══════════════════════════════════════════════════════════════════
+         * VIEWPORT — El Escenario
+         * ═══════════════════════════════════════════════════════════════════ */}
+        <div className={`hyperion-viewport ${onBeat ? 'on-beat' : ''}`}>
+          {/* Animated Border */}
+          <div className="hyperion-viewport-border" />
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="hyperion-loading">
-            <div className="hyperion-loading__spinner" />
-            <div className="hyperion-loading__text">Initializing Hyperion</div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && isEmpty && (
-          <div className="hyperion-empty-state">
-            <div className="hyperion-empty-state__icon">☀️</div>
-            <div className="hyperion-empty-state__title">No Fixtures</div>
-            <div className="hyperion-empty-state__subtitle">
-              Load a show file or add fixtures to see them here.
-              The stage awaits your vision.
+          {/* Loading State */}
+          {isLoading && (
+            <div className="hyperion-loading">
+              <div className="hyperion-loading__spinner" />
+              <div className="hyperion-loading__text">Initializing Hyperion</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Canvas Container — TacticalCanvas (2D) or VisualizerCanvas (3D) */}
-        {!isLoading && !isEmpty && (
-          <div className="hyperion-canvas-container">
-            {viewMode === '2D' ? (
-              <TacticalCanvas 
-                quality={qualityMode}
-                showGrid={true}
-                showZoneLabels={true}
-              />
-            ) : (
-              <VisualizerCanvas
-                quality={qualityMode}
-                showFloorGrid={true}
-                showTruss={true}
-                showBeams={true}
-              />
-            )}
-          </div>
-        )}
+          {/* Empty State */}
+          {!isLoading && isEmpty && (
+            <div className="hyperion-empty-state">
+              <div className="hyperion-empty-state__icon">☀️</div>
+              <div className="hyperion-empty-state__title">No Fixtures</div>
+              <div className="hyperion-empty-state__subtitle">
+                Load a show file or add fixtures to see them here.
+                The stage awaits your vision.
+              </div>
+            </div>
+          )}
 
-        {/* Mode Badge */}
-        <div className="hyperion-mode-badge">
-          {viewMode === '2D' ? 'TACTICAL' : 'VISUALIZER'}
+          {/* Canvas Container — TacticalCanvas (2D) or VisualizerCanvas (3D) */}
+          {!isLoading && !isEmpty && (
+            <div className="hyperion-canvas-container">
+              {viewMode === '2D' ? (
+                <TacticalCanvas 
+                  quality={qualityMode}
+                  showGrid={true}
+                  showZoneLabels={true}
+                />
+              ) : (
+                <VisualizerCanvas
+                  quality={qualityMode}
+                  showFloorGrid={true}
+                  showTruss={true}
+                  showBeams={true}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Mode Badge */}
+          <div className="hyperion-mode-badge">
+            {viewMode === '2D' ? 'TACTICAL' : 'VISUALIZER'}
+          </div>
+
+          {/* Fixture Count Badge */}
+          {!isEmpty && (
+            <div className="hyperion-fixture-count">
+              <span className="hyperion-fixture-count__number">{fixtureCount}</span> fixtures
+            </div>
+          )}
         </div>
 
-        {/* Fixture Count Badge */}
-        {!isEmpty && (
-          <div className="hyperion-fixture-count">
-            <span className="hyperion-fixture-count__number">{fixtureCount}</span> fixtures
-          </div>
-        )}
+        {/* ═══════════════════════════════════════════════════════════════════
+         * SIDEBAR — The Commander (Controles)
+         * ═══════════════════════════════════════════════════════════════════ */}
+        <div className="hyperion-sidebar-container">
+          <StageSidebar />
+        </div>
       </div>
     </div>
   )

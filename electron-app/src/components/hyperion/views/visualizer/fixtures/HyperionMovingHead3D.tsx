@@ -27,8 +27,12 @@ const PAN_RANGE = Math.PI * 2  // 360°
 /** Tilt range: 0-1 normalized → -90° to +90° */
 const TILT_RANGE = Math.PI     // 180°
 
-/** SLERP interpolation speed (higher = snappier) */
-const SLERP_SPEED = 8.0
+/** SLERP interpolation speed (2.0 = maquinaria pesada, no puntero láser) */
+const SLERP_SPEED = 2.0
+
+/** Delta time limits — cap FPS spikes and prevent float errors */
+const MAX_DELTA = 1 / 30    // 33ms — evita saltos en lagazos
+const MIN_DELTA = 1 / 144   // 7ms  — evita errores de coma flotante
 
 /** Neon colors */
 const NEON_CYAN = '#00F0FF'
@@ -143,13 +147,18 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
 
   // ── Animation Frame ───────────────────────────────────────────────────────
   useFrame((_, delta) => {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // DELTA TIME CAP — No confíes en R3F a ciegas (FPS spikes = física rota)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const dt = Math.max(MIN_DELTA, Math.min(delta, MAX_DELTA))
+
     // Calculate target quaternions from angles
     targetYokeQuat.current.setFromAxisAngle(PAN_AXIS, targetPanAngle)
     targetHeadQuat.current.setFromAxisAngle(TILT_AXIS, targetTiltAngle)
 
     // SLERP interpolation — smooth, no gimbal lock
     // Exponential decay for frame-independent smoothing
-    const t = 1 - Math.exp(-SLERP_SPEED * delta)
+    const t = 1 - Math.exp(-SLERP_SPEED * dt)
 
     currentYokeQuat.current.slerp(targetYokeQuat.current, t)
     currentHeadQuat.current.slerp(targetHeadQuat.current, t)

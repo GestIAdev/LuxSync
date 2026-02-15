@@ -308,12 +308,22 @@ export const selectVisualizerActions = (state: SelectionState) => ({
 // HOOKS HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Selector: Selection click actions */
+export const selectSelectionClickActions = (state: SelectionState) => ({
+  select: state.select,
+  toggleSelection: state.toggleSelection,
+  selectRange: state.selectRange,
+  lastSelectedId: state.lastSelectedId,
+  getSelectedArray: state.getSelectedArray,
+})
+
 /**
  * Hook para manejar click con modificadores (Ctrl, Shift)
  * @returns Función handler para onClick
  */
 export const useSelectionClick = () => {
-  const { select, toggleSelection, selectRange, lastSelectedId, getSelectedArray } = useSelectionStore()
+  // 🛡️ WAVE 2042.13.9: useShallow for stable reference
+  const { select, toggleSelection, selectRange, lastSelectedId, getSelectedArray } = useSelectionStore(useShallow(selectSelectionClickActions))
   
   return (id: string, event: React.MouseEvent | MouseEvent, allIds: string[]) => {
     if (event.shiftKey && lastSelectedId) {

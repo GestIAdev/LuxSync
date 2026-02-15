@@ -11,9 +11,10 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAudioStore } from '../../../stores/audioStore'
+import { useAudioStore, selectHyperionAudio } from '../../../stores/audioStore'
 import { useStageStore } from '../../../stores/stageStore'
 import { useSelectionStore } from '../../../stores/selectionStore'
+import { useShallow } from 'zustand/shallow'
 import { QUALITY_PRESETS, type QualityMode, type ViewMode } from '../shared/types'
 import { TacticalCanvas } from './tactical'
 import { VisualizerCanvas } from './visualizer'
@@ -86,7 +87,8 @@ export function HyperionView({
   const [isLoading, setIsLoading] = useState(true)
 
   // ── Stores ────────────────────────────────────────────────────────────────
-  const { bpm, bpmConfidence, onBeat } = useAudioStore()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { bpm, bpmConfidence, onBeat } = useAudioStore(useShallow(selectHyperionAudio))
   const fixtures = useStageStore(state => state.fixtures)
   const selectedIds = useSelectionStore(state => state.selectedIds)
 

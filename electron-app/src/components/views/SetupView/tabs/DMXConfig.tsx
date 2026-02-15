@@ -12,7 +12,8 @@
 
 import React, { useCallback, useState, useEffect } from 'react'
 import { useHardware } from '../../../../stores/truthStore'
-import { useSetupStore } from '../../../../stores/setupStore'
+import { useSetupStore, selectDMXConfigFull } from '../../../../stores/setupStore'
+import { useShallow } from 'zustand/shallow'
 import './DMXConfig.css'
 
 // Helper to access dmx API (typed in preload.ts but accessed dynamically)
@@ -187,6 +188,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
 export const DMXConfig: React.FC = () => {
   const hardware = useHardware() // 🛡️ WAVE 2042.12: React 19 stable hook
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { 
     dmxDriver, 
     dmxComPort,
@@ -196,7 +198,7 @@ export const DMXConfig: React.FC = () => {
     setDmxPort,
     setDetectedDmxPorts,
     setDmxScanning,
-  } = useSetupStore()
+  } = useSetupStore(useShallow(selectDMXConfigFull))
   
   const [autoConnect, setAutoConnect] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -14,7 +14,8 @@
 import React, { useCallback, useState } from 'react'
 import { useTrinityOptional } from '../../../../providers/TrinityProvider'
 import { useAudio } from '../../../../stores/truthStore'
-import { useSetupStore } from '../../../../stores/setupStore'
+import { useSetupStore, selectAudioConfigFull } from '../../../../stores/setupStore'
+import { useShallow } from 'zustand/shallow'
 import './AudioConfig.css'
 
 // ============================================
@@ -141,7 +142,8 @@ export const AudioConfig: React.FC = () => {
   // WAVE 429: Use optional Trinity hook - graceful null if context not ready
   const trinity = useTrinityOptional()
   const audio = useAudio() // 🛡️ WAVE 2042.12: React 19 stable hook
-  const { setAudioSource: setStoreSource, audioSource } = useSetupStore()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { audioSource, setAudioSource: setStoreSource } = useSetupStore(useShallow(selectAudioConfigFull))
   
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)

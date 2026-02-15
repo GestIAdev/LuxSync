@@ -7,7 +7,8 @@
 import React, { useCallback } from 'react'
 import { StrobeIcon, BlinderIcon, SmokeIcon } from '../icons/LuxIcons'
 import { Sparkles } from 'lucide-react'
-import { useEffectsStore, EffectId } from '../../stores/effectsStore'
+import { useEffectsStore, EffectId, selectQuickActions } from '../../stores/effectsStore'
+import { useShallow } from 'zustand/shallow'
 import './CommandDeck.css'
 
 // Panic effects + placeholder for future FX drawer
@@ -23,7 +24,8 @@ interface QuickActionsProps {
 }
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ disabled }) => {
-  const { activeEffects, toggleEffect } = useEffectsStore()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { activeEffects, toggleEffect } = useEffectsStore(useShallow(selectQuickActions))
   
   const handleEffectClick = useCallback(async (effectId: EffectId | 'more_fx') => {
     // Placeholder button - do nothing for now

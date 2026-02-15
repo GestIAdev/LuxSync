@@ -12,7 +12,7 @@ import { useEffect } from 'react'
 import Header from './components/Header'
 import BigSwitch from './components/BigSwitch'
 import EffectsBar from './components/EffectsBar'
-import { useLuxSyncStore } from './stores/luxsyncStore'
+import { useLuxSyncStore, selectAppMain } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
 import { useAudioStore, selectAudioMetrics } from './stores/audioStore'
 import { initializeLogIPC } from './stores/logStore'
@@ -20,8 +20,9 @@ import { TitanSyncBridge } from './core/sync'
 import { useShallow } from 'zustand/shallow'
 
 function App() {
-  const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore()
-  // �️ WAVE 2042.13.4: Use stable selector to prevent infinite loops
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { blackout, toggleBlackout, updateAudio } = useLuxSyncStore(useShallow(selectAppMain))
+  // 🛡️ WAVE 2042.13.4: Use stable selector to prevent infinite loops
   const audioMetrics = useAudioStore(useShallow(selectAudioMetrics))
   const { start: startSelene, isRunning } = useSelene()
 

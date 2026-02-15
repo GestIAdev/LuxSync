@@ -217,4 +217,10 @@ export const selectMainLayoutEffects = (state: EffectsState) => ({
   blackout: state.blackout,
 })
 
+/** Selector: QuickActions - needs activeEffects + toggleEffect */
+export const selectQuickActions = (state: EffectsState) => ({
+  activeEffects: state.activeEffects,
+  toggleEffect: state.toggleEffect,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════

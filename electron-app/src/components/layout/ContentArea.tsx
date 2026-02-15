@@ -14,7 +14,7 @@
  */
 
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react'
-import { useNavigationStore } from '../../stores/navigationStore'
+import { useNavigationStore, selectActiveTab } from '../../stores/navigationStore'
 import './ContentArea.css'
 
 // Lazy load views for better performance
@@ -51,7 +51,8 @@ const WEBGL_VIEWS = ['live', 'calibration', 'constructor', 'nexus']
 const GPU_HANDOFF_DELAY = 150
 
 const ContentArea: React.FC = () => {
-  const { activeTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.5: Selector directo (string - estable)
+  const activeTab = useNavigationStore(selectActiveTab)
   
   // WAVE 379.4: ATOMIC HANDOFF STATE
   const [renderedTab, setRenderedTab] = useState<string | null>(activeTab)

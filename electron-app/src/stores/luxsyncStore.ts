@@ -366,3 +366,37 @@ export const useLuxSyncStore = create<LuxSyncStore>((set) => ({
   masterDimmer: 1.0,
   setMasterDimmer: (value: number) => set({ masterDimmer: value }),
 }))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.5: REACT 19 FIX - Stable Selectors for useLuxSyncStore
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: BigSwitch - selene.mode + setSeleneMode */
+export const selectBigSwitch = (state: LuxSyncStore) => ({
+  seleneMode: state.selene.mode,
+  setSeleneMode: state.setSeleneMode,
+})
+
+/** Selector: EffectsBar - effects.active + toggle functions */
+export const selectEffectsBar = (state: LuxSyncStore) => ({
+  activeEffects: state.effects.active,
+  toggleEffect: state.toggleEffect,
+  triggerEffect: state.triggerEffect,
+})
+
+/** Selector: App.tsx - blackout + updateAudio */
+export const selectAppMain = (state: LuxSyncStore) => ({
+  blackout: state.blackout,
+  toggleBlackout: state.toggleBlackout,
+  updateAudio: state.updateAudio,
+})
+
+/** Selector: Header.tsx - display info only */
+export const selectHeader = (state: LuxSyncStore) => ({
+  activePalette: state.activePalette,
+  seleneGeneration: state.selene.generation,
+  masterDimmer: state.masterDimmer,
+  setMasterDimmer: state.setMasterDimmer,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════

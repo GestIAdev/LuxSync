@@ -9,9 +9,10 @@
  * 🎭 WAVE 66: Mood now from cognitive.stableEmotion (BRIGHT/DARK/NEUTRAL)
  */
 
-import { useLuxSyncStore, PALETTES } from '../stores/luxsyncStore'
+import { useLuxSyncStore, PALETTES, selectHeader } from '../stores/luxsyncStore'
 import { useControlStore, GlobalMode } from '../stores/controlStore'
 import { useTruthSensory, useTruthCognitive } from '../hooks'
+import { useShallow } from 'zustand/shallow'
 
 // 🎭 WAVE 66: StableEmotion labels (matches MoodArbiter output)
 const EMOTION_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -43,12 +44,13 @@ const MODES: { id: GlobalMode; label: string; icon: string; color: string }[] = 
 ]
 
 export default function Header() {
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { 
     activePalette,
-    selene,  // Keep for generation display
+    seleneGeneration,
     masterDimmer, 
     setMasterDimmer 
-  } = useLuxSyncStore()
+  } = useLuxSyncStore(useShallow(selectHeader))
 
   // 🎨 WAVE 33.2: Control mode from controlStore
   const globalMode = useControlStore(state => state.globalMode)
@@ -128,7 +130,7 @@ export default function Header() {
         {/* Selene Generation indicator */}
         <div className="header-item selene-gen-item">
           <span style={{ color: currentModeConfig.color }}>●</span>
-          <span className="selene-gen">Gen {selene.generation}</span>
+          <span className="selene-gen">Gen {seleneGeneration}</span>
         </div>
 
         {/* Master Volume - Con espacio para botones de ventana */}

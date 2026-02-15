@@ -154,4 +154,14 @@ export const selectAudioMetrics = (state: AudioState) => ({
   onBeat: state.onBeat,
 })
 
+/** Selector: HyperionView - BPM display only */
+export const selectHyperionAudio = (state: AudioState) => ({
+  bpm: state.bpm,
+  bpmConfidence: state.bpmConfidence,
+  onBeat: state.onBeat,
+})
+
+/** Selector: setInputGain function only (for useDevicePersistence) */
+export const selectSetInputGain = (state: AudioState) => state.setInputGain
+
 // ═══════════════════════════════════════════════════════════════════════════

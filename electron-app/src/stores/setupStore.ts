@@ -166,3 +166,29 @@ export const selectSystemsCheckConfig = (state: SetupState) => ({
   setAudioSource: state.setAudioSource,
   setDmxDriver: state.setDmxDriver,
 })
+
+// 🛡️ WAVE 2042.13.5: React 19 stable selector for DMXConfig tab
+export const selectDMXConfigFull = (state: SetupState) => ({
+  dmxDriver: state.dmxDriver,
+  dmxComPort: state.dmxComPort,
+  detectedDmxPorts: state.detectedDmxPorts,
+  isDmxScanning: state.isDmxScanning,
+  setDmxDriver: state.setDmxDriver,
+  setDmxPort: state.setDmxPort,
+  setDetectedDmxPorts: state.setDetectedDmxPorts,
+  setDmxScanning: state.setDmxScanning,
+})
+
+// 🛡️ WAVE 2042.13.5: React 19 stable selector for AudioConfig tab
+export const selectAudioConfigFull = (state: SetupState) => ({
+  audioSource: state.audioSource,
+  setAudioSource: state.setAudioSource,
+})
+
+// 🛡️ WAVE 2042.13.5: React 19 stable selector for useDevicePersistence
+export const selectDevicePersistence = (state: SetupState) => ({
+  setAudioSource: state.setAudioSource,
+  setDmxDriver: state.setDmxDriver,
+  setDmxPort: state.setDmxPort,
+  setDetectedDmxPorts: state.setDetectedDmxPorts,
+})

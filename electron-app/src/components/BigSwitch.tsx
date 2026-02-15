@@ -3,7 +3,8 @@
  * Power + Modos en columna izquierda
  */
 
-import { useLuxSyncStore, SeleneMode } from '../stores/luxsyncStore'
+import { useLuxSyncStore, SeleneMode, selectBigSwitch } from '../stores/luxsyncStore'
+import { useShallow } from 'zustand/shallow'
 import { useState } from 'react'
 
 // WAVE 422: MODES simplificados - 'flow' eliminado (Auto-Override System)
@@ -13,7 +14,8 @@ const MODES: { mode: SeleneMode; label: string; color: string; desc: string; ico
 ]
 
 export default function BigSwitch() {
-  const { selene, setSeleneMode } = useLuxSyncStore()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { seleneMode, setSeleneMode } = useLuxSyncStore(useShallow(selectBigSwitch))
   const [isActive, setIsActive] = useState(true)
 
   return (
@@ -33,7 +35,7 @@ export default function BigSwitch() {
       <div className="mode-selector">
         <span className="mode-title">MODE</span>
         {MODES.map(({ mode, label, color, desc, icon }) => {
-          const isModeActive = selene.mode === mode
+          const isModeActive = seleneMode === mode
           return (
             <button
               key={mode}

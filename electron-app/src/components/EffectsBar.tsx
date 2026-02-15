@@ -7,7 +7,8 @@
  */
 
 import { useState, useCallback } from 'react'
-import { useLuxSyncStore, EffectId, EFFECTS } from '../stores/luxsyncStore'
+import { useLuxSyncStore, EffectId, EFFECTS, selectEffectsBar } from '../stores/luxsyncStore'
+import { useShallow } from 'zustand/shallow'
 import { BeamIcon, PrismIcon, StrobeIcon, BlinderIcon, SmokeIcon, RainbowIcon, PoliceIcon, LaserIcon } from './icons/LuxIcons'
 // 🌙 WAVE 25.5: Truth hook para lectura de estado real
 import { useTruthEffects } from '../hooks'
@@ -39,7 +40,8 @@ const EFFECT_BUTTONS: EffectButton[] = [
 ]
 
 export default function EffectsBar() {
-  const { effects, toggleEffect, triggerEffect } = useLuxSyncStore()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
+  const { activeEffects, toggleEffect, triggerEffect } = useLuxSyncStore(useShallow(selectEffectsBar))
   const [holdingEffects, setHoldingEffects] = useState<Set<EffectId>>(new Set())
   
   // 🌙 WAVE 25.5: Estado REAL de efectos desde el backend
@@ -103,16 +105,16 @@ export default function EffectsBar() {
   // Toggle handler (click)
   const handleClick = useCallback((id: EffectId, mode: EffectMode) => {
     if (mode === 'toggle') {
-      const isActive = effects.active.has(id)
+      const isActive = activeEffects.has(id)
       toggleEffect(id)
       sendEffectToBackend(id, !isActive)
     }
-  }, [effects.active, toggleEffect, sendEffectToBackend])
+  }, [activeEffects, toggleEffect, sendEffectToBackend])
 
   return (
     <div className="effects-bar">
       {EFFECT_BUTTONS.map(({ id, icon, label, color, mode, shortcut }) => {
-        const isActive = effects.active.has(id) || holdingEffects.has(id)
+        const isActive = activeEffects.has(id) || holdingEffects.has(id)
         const isHoldMode = mode === 'hold'
         
         // 🌙 WAVE 25.5: Verificar estado real del backend

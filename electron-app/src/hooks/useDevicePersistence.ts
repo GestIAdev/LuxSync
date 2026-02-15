@@ -11,8 +11,9 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { useTrinity } from '../providers/TrinityProvider'
-import { useSetupStore } from '../stores/setupStore'
-import { useAudioStore } from '../stores/audioStore'
+import { useSetupStore, selectDevicePersistence } from '../stores/setupStore'
+import { useAudioStore, selectSetInputGain } from '../stores/audioStore'
+import { useShallow } from 'zustand/shallow'
 
 // Helper to access dmx API
 const getDmxApi = () => (window as any).lux?.dmx
@@ -22,13 +23,15 @@ let _hasInitialized = false
 
 export function useDevicePersistence() {
   const trinity = useTrinity()
+  // 🛡️ WAVE 2042.13.5: useShallow para evitar infinite loop
   const { 
     setAudioSource, 
     setDmxDriver, 
     setDmxPort,
     setDetectedDmxPorts,
-  } = useSetupStore()
-  const { setInputGain } = useAudioStore()
+  } = useSetupStore(useShallow(selectDevicePersistence))
+  // 🛡️ WAVE 2042.13.5: Selector directo (función - estable)
+  const setInputGain = useAudioStore(selectSetInputGain)
   
   const isInitializing = useRef(false)
   

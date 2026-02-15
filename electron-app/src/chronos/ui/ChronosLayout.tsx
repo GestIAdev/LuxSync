@@ -71,7 +71,7 @@ import type { AnalysisData } from '../core/types'
 import type { DragPayload, TimelineClip } from '../core/TimelineClip'
 import { toFXType, toVibeType } from '../core/TimelineClip'
 // 🔧 WAVE 2040.34: Navigation store for Hephaestus routing
-import { useNavigationStore } from '../../stores/navigationStore'
+import { useNavigationStore, selectSetActiveTab } from '../../stores/navigationStore'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -107,7 +107,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   const sessionRestoredRef = useRef(false)
   
   // 🔧 WAVE 2040.34: Navigation for Hephaestus routing
-  const { setActiveTab } = useNavigationStore()
+  // 🛡️ WAVE 2042.13.5: Selector directo (función - estable)
+  const setActiveTab = useNavigationStore(selectSetActiveTab)
   
   // 🧠 WAVE 2017 FIX: Use refs to keep track of current state for unmount cleanup
   // This avoids stale closures in the cleanup function

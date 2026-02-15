@@ -1,14 +1,14 @@
 /**
- * ☀️ HYPERION — HyperionPar3D v2
+ * ☀️ HYPERION — HyperionPar3D
  * 
- * CLEAN REWRITE - No más parches sobre parches
- * Simple PAR fixture con geometría básica y materiales que FUNCIONAN.
+ * PAR fixture simple con materiales emissive neon.
+ * Diseñado para ser usado tanto individualmente como en InstancedMesh.
  * 
  * @module components/hyperion/views/visualizer/fixtures/HyperionPar3D
- * @since WAVE 2042.15 (Clean Rewrite)
+ * @since WAVE 2042.6 (Project Hyperion — Phase 4)
  */
 
-import React, { useRef } from 'react'
+import React, { useRef, useMemo } from 'react'
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Fixture3DData } from '../types'
@@ -18,6 +18,7 @@ import type { Fixture3DData } from '../types'
 // ═══════════════════════════════════════════════════════════════════════════
 
 const NEON_CYAN = '#00F0FF'
+const NEON_MAGENTA = '#FF00E5'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -41,32 +42,60 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
   beatIntensity = 0,
 }) => {
   const groupRef = useRef<THREE.Group>(null)
-  const lensMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const beamRef = useRef<THREE.Mesh>(null)
+  
+  // 🛡️ WAVE 2042.13.17: Material refs to update properties in useFrame
+  const lensMaterialRef = useRef<THREE.MeshStandardMaterial>(null)
   const beamMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
   
   const { id, intensity, color, selected, hasOverride } = fixture
-  const beamLength = 1.5 + intensity * 1.5
+
+  // ── Materials ─────────────────────────────────────────────────────────────
+  const bodyMaterial = useMemo(() => (
+    <meshStandardMaterial
+      color="#1a1a2e"
+      metalness={0.8}
+      roughness={0.2}
+      emissive={selected ? NEON_CYAN : (hasOverride ? NEON_MAGENTA : '#1a1a2e')}
+      emissiveIntensity={selected ? 0.4 : (hasOverride ? 0.2 : 0)}
+    />
+  ), [selected, hasOverride])
+
+  // 🛡️ WAVE 2042.13.17: lensMaterial and beamMaterial removed from useMemo
+  // Now using refs + direct property updates in useFrame for real-time reactivity
 
   // ── Animation ─────────────────────────────────────────────────────────────
   useFrame(() => {
-    // Update lens - simple MeshBasicMaterial with color modulation
-    if (lensMaterialRef.current) {
-      lensMaterialRef.current.color.copy(color)
-      lensMaterialRef.current.opacity = 0.3 + intensity * 0.7
+    // Update beam visibility and scale
+    if (beamRef.current && showBeam) {
+      const beamScale = 1 + beatIntensity * 0.08
+      beamRef.current.scale.set(beamScale, 1, beamScale)
+      beamRef.current.visible = intensity > 0.01
     }
     
-    // Update beam - additive blending
-    if (beamMaterialRef.current && showBeam) {
+    // 🛡️ WAVE 2042.13.17: Update material properties directly every frame
+    // 🎨 WAVE 2042.14.5: SIMPLE AND CLEAR - Just modulate the color and intensity
+    if (lensMaterialRef.current) {
+      lensMaterialRef.current.color.copy(color)
+      lensMaterialRef.current.emissive.copy(color)
+      // Intensity scales from 0.5 to 2.5 (PARs are brighter)
+      lensMaterialRef.current.emissiveIntensity = 0.5 + intensity * 2.0
+    }
+    
+    if (beamMaterialRef.current) {
       beamMaterialRef.current.color.copy(color)
-      beamMaterialRef.current.opacity = intensity * 0.15
+      beamMaterialRef.current.opacity = intensity * 0.25
     }
   })
 
   // ── Event Handlers ────────────────────────────────────────────────────────
+  // 🛡️ WAVE 2042.13.14: Fixed ThreeEvent type for R3F v9
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
     onSelect?.(id, e.shiftKey, e.ctrlKey || e.metaKey)
   }
+
+  const beamLength = 1.5 + intensity * 1.5
 
   return (
     <group 
@@ -75,30 +104,31 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       onClick={handleClick}
       userData={{ fixtureId: id }}
     >
-      {/* PAR Body — Simple cylinder */}
+      {/* PAR Body — Cylinder */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.12, 0.15, 0.10, 16]} />
-        <meshStandardMaterial
-          color={selected ? NEON_CYAN : (hasOverride ? '#FF00E5' : '#1a1a2e')}
-          metalness={0.8}
-          roughness={0.2}
-        />
+        {bodyMaterial}
       </mesh>
 
-      {/* Lens — Bright colored circle (MeshBasicMaterial = no lighting calculations) */}
+      {/* Lens — Front face (pointing down -Y) */}
       <mesh position={[0, -0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.11, 32]} />
-        <meshBasicMaterial
+        <meshStandardMaterial
           ref={lensMaterialRef}
-          color={color}
-          transparent
-          opacity={1.0}
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={1.0}
         />
       </mesh>
 
-      {/* Beam cone — AdditiveBlending for glow effect */}
+      {/* Beam cone — THREE.js cone points UP by default, we flip it with rotation
+          The cone geometry creates a cone with tip at origin pointing up.
+          We rotate it PI around X to flip it so tip is at origin pointing DOWN.
+          Then position it so the tip is at fixture lens level.
+      */}
       {showBeam && intensity > 0.01 && (
         <mesh
+          ref={beamRef}
           position={[0, -beamLength / 2 - 0.06, 0]}
           rotation={[0, 0, 0]}
         >
@@ -107,7 +137,7 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
             ref={beamMaterialRef}
             color={color}
             transparent
-            opacity={0.15}
+            opacity={0.08}
             side={THREE.DoubleSide}
             depthWrite={false}
             blending={THREE.AdditiveBlending}

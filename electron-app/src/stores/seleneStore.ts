@@ -351,3 +351,18 @@ export function initializeSeleneStoreIPC(): () => void {
     unsubscribers.forEach(unsub => unsub())
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛡️ WAVE 2042.13.6: REACT 19 FIX - Stable Selectors
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Selector: TrinityProvider - action functions only */
+export const selectTrinitySeleneActions = (state: SeleneStoreState) => ({
+  setConnected: state.setConnected,
+  setInitialized: state.setInitialized,
+  updateBrainMetrics: state.updateBrainMetrics,
+  incrementFrames: state.incrementFrames,
+  addLogEntry: state.addLogEntry,
+})
+
+// ═══════════════════════════════════════════════════════════════════════════

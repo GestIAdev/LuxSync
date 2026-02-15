@@ -12,12 +12,13 @@
 
 import { createContext, useContext, useEffect, useRef, ReactNode, useCallback, useState } from 'react'
 import { useAudioCapture, AudioMetrics } from '../hooks/useAudioCapture'
-import { useAudioStore } from '../stores/audioStore'
-import { useSeleneStore, LogEntryType } from '../stores/seleneStore'
-import { useDMXStore, FixtureValues } from '../stores/dmxStore'
-import { useLuxSyncStore, EffectId } from '../stores/luxsyncStore'  // 🔥 WAVE 10.7: Effects sync
+import { useAudioStore, selectTrinityAudioActions } from '../stores/audioStore'
+import { useSeleneStore, LogEntryType, selectTrinitySeleneActions } from '../stores/seleneStore'
+import { useDMXStore, FixtureValues, selectUpdateFixtureValues } from '../stores/dmxStore'
+import { useLuxSyncStore, EffectId, selectTrinityEffectsSync } from '../stores/luxsyncStore'  // 🔥 WAVE 10.7: Effects sync
 import { usePowerStore } from '../hooks/useSystemPower'  // 🔌 WAVE 63.8: Power control
 import { useControlStore, GlobalMode } from '../stores/controlStore'  // 🔥 WAVE 74: Mode sync
+import { useShallow } from 'zustand/shallow'
 
 // ============================================================================
 // TYPES
@@ -158,17 +159,18 @@ export function TrinityProvider({ children }: TrinityProviderProps) {
     startMicrophone,
   } = useAudioCapture()
   
-  // Stores
-  const { updateMetrics: updateAudioStore, registerBeat } = useAudioStore()
+  // 🛡️ WAVE 2042.13.6: React 19 fix - Stable selectors to prevent infinite loops
+  // Stores - using selectors for action functions
+  const { updateMetrics: updateAudioStore, registerBeat } = useAudioStore(useShallow(selectTrinityAudioActions))
   const {
     setConnected,
     setInitialized,
     updateBrainMetrics,
     incrementFrames,
     addLogEntry,
-  } = useSeleneStore()
-  const { updateFixtureValues } = useDMXStore()  // WAVE 9.6.3
-  const { setActiveEffects, setBlackout } = useLuxSyncStore()  // 🔥 WAVE 10.7: Effects sync
+  } = useSeleneStore(useShallow(selectTrinitySeleneActions))
+  const updateFixtureValues = useDMXStore(selectUpdateFixtureValues)
+  const { setActiveEffects, setBlackout } = useLuxSyncStore(useShallow(selectTrinityEffectsSync))
   
   // Local state
   const [state, setState] = useState<TrinityState>({

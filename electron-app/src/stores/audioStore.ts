@@ -164,4 +164,10 @@ export const selectHyperionAudio = (state: AudioState) => ({
 /** Selector: setInputGain function only (for useDevicePersistence) */
 export const selectSetInputGain = (state: AudioState) => state.setInputGain
 
+/** Selector: TrinityProvider - update functions only */
+export const selectTrinityAudioActions = (state: AudioState) => ({
+  updateMetrics: state.updateMetrics,
+  registerBeat: state.registerBeat,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════

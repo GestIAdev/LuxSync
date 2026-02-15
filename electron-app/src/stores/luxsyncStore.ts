@@ -399,4 +399,10 @@ export const selectHeader = (state: LuxSyncStore) => ({
   setMasterDimmer: state.setMasterDimmer,
 })
 
+/** Selector: TrinityProvider - effects sync functions only */
+export const selectTrinityEffectsSync = (state: LuxSyncStore) => ({
+  setActiveEffects: state.setActiveEffects,
+  setBlackout: state.setBlackout,
+})
+
 // ═══════════════════════════════════════════════════════════════════════════

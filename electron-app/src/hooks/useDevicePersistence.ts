@@ -78,17 +78,31 @@ export function useDevicePersistence() {
   
   // Restore DMX configuration
   const restoreDMX = useCallback(async (config: any) => {
-    if (!config?.dmx) return
+    const dmxApi = getDmxApi()
+    if (!dmxApi) {
+      console.warn('[DevicePersistence] ❌ DMX API not available')
+      return
+    }
+    
+    // 🔌 WAVE 2042.25: Si no hay config guardada, hacer auto-connect
+    if (!config?.dmx) {
+      console.log('[DevicePersistence] 📡 No saved DMX config, trying auto-connect...')
+      try {
+        const result = await dmxApi.autoConnect()
+        console.log('[DevicePersistence] 🔌 Auto-connect result:', result)
+        if (result.success) {
+          setDmxDriver('usb-serial')
+          console.log('[DevicePersistence] ✅ Auto-connected to USB DMX')
+        }
+      } catch (err) {
+        console.error('[DevicePersistence] ❌ Auto-connect failed:', err)
+      }
+      return
+    }
     
     const { driver, comPort } = config.dmx
     
     console.log('[DevicePersistence] Restoring DMX:', { driver, comPort })
-    
-    const dmxApi = getDmxApi()
-    if (!dmxApi) {
-      console.warn('[DevicePersistence] DMX API not available')
-      return
-    }
     
     try {
       if (driver === 'virtual') {
@@ -100,28 +114,34 @@ export function useDevicePersistence() {
         setDmxDriver('usb-serial')
         
         // Scan for devices first
+        console.log('[DevicePersistence] 🔍 Scanning for USB DMX devices...')
         const devices = await dmxApi.listDevices()
+        console.log('[DevicePersistence] 📡 Found', devices?.length || 0, 'devices')
         setDetectedDmxPorts(devices || [])
         
         // Try to connect to saved port
         if (comPort) {
           const portStillExists = devices?.some((d: any) => d.path === comPort)
           if (portStillExists) {
+            console.log('[DevicePersistence] 🔌 Connecting to saved port:', comPort)
             await dmxApi.connect(comPort)
             setDmxPort(comPort)
             console.log('[DevicePersistence] ✅ Restored USB DMX:', comPort)
           } else {
             // Port no longer exists, try auto-connect
-            console.log('[DevicePersistence] Saved port not found, trying auto-connect')
-            await dmxApi.autoConnect()
+            console.log('[DevicePersistence] ⚠️ Saved port not found, trying auto-connect')
+            const result = await dmxApi.autoConnect()
+            console.log('[DevicePersistence] 🔌 Auto-connect result:', result)
           }
         } else {
           // No saved port, try auto-connect
-          await dmxApi.autoConnect()
+          console.log('[DevicePersistence] 📡 No saved port, trying auto-connect')
+          const result = await dmxApi.autoConnect()
+          console.log('[DevicePersistence] 🔌 Auto-connect result:', result)
         }
       }
     } catch (err) {
-      console.warn('[DevicePersistence] DMX restore failed:', err)
+      console.error('[DevicePersistence] ❌ DMX restore failed:', err)
     }
   }, [setDmxDriver, setDmxPort, setDetectedDmxPorts])
   

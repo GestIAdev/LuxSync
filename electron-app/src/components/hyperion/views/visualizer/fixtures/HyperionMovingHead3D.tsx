@@ -63,8 +63,8 @@ export const HyperionMovingHead3D: React.FC<HyperionMovingHead3DProps> = ({
   
   const targetPanAngle = (pan - 0.5) * PAN_RANGE
   const targetTiltAngle = -(tilt - 0.5) * TILT_RANGE
-  // 🎨 WAVE 2042.15.2: TIGHT beam for MovingHeads (spot light, not wash)
-  const beamWidth = 0.06 + zoom * 0.04
+  // 🎨 WAVE 2042.15.3: ULTRA TIGHT beam for MovingHeads (precision spot)
+  const beamWidth = 0.04 + zoom * 0.02
   const beamLength = 3 + intensity * 2
 
   // ── Animation ─────────────────────────────────────────────────────────────

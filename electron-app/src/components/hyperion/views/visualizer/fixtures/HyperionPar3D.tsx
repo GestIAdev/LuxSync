@@ -97,13 +97,13 @@ export const HyperionPar3D: React.FC<HyperionPar3DProps> = ({
       </mesh>
 
       {/* Beam cone — AdditiveBlending for glow effect 
-          🎨 WAVE 2042.15.2: WIDE beam for PARs (wash light, not spot) */}
+          🎨 WAVE 2042.15.3: EXTRA WIDE beam for PARs (full wash light) */}
       {showBeam && intensity > 0.01 && (
         <mesh
           position={[0, -beamLength / 2 - 0.06, 0]}
           rotation={[0, 0, 0]}
         >
-          <coneGeometry args={[0.25 + intensity * 0.15, beamLength, 16, 1, true]} />
+          <coneGeometry args={[0.35 + intensity * 0.2, beamLength, 16, 1, true]} />
           <meshBasicMaterial
             ref={beamMaterialRef}
             color={color}

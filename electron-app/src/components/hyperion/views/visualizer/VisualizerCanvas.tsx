@@ -159,6 +159,30 @@ const PerformanceMonitor: React.FC<{
 }
 
 /**
+ * ClippingPlaneSetup
+ * 
+ * 🎨 WAVE 2042.15.3: Global clipping plane at Y=0
+ * Prevents rendering anything below the floor (kills beam penetration visually)
+ */
+const ClippingPlaneSetup: React.FC = () => {
+  const { gl } = useThree()
+  
+  React.useEffect(() => {
+    // Clipping plane at Y=0 with normal pointing UP
+    const clippingPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    gl.clippingPlanes = [clippingPlane]
+    gl.localClippingEnabled = true
+    
+    return () => {
+      gl.clippingPlanes = []
+      gl.localClippingEnabled = false
+    }
+  }, [gl])
+  
+  return null
+}
+
+/**
  * Scene — The actual 3D scene contents
  */
 const Scene: React.FC<{
@@ -184,6 +208,12 @@ const Scene: React.FC<{
 
   return (
     <>
+      {/* ═══════════════════════════════════════════════════════════════════
+       * CLIPPING PLANE - Cut everything below Y=0 (floor level)
+       * 🎨 WAVE 2042.15.3: Kill beam rendering below floor
+       * ═══════════════════════════════════════════════════════════════════ */}
+      <ClippingPlaneSetup />
+
       {/* ═══════════════════════════════════════════════════════════════════
        * HELPERS & HANDLERS
        * ═══════════════════════════════════════════════════════════════════ */}
@@ -282,17 +312,17 @@ const Scene: React.FC<{
 
       {/* ═══════════════════════════════════════════════════════════════════
        * POST-PROCESSING (HQ only)
-       * 🚫 WAVE 2042.14.3: BLOOM DISABLED until fixtures are properly calibrated
-       * The bloom was causing the "cosmic ocean" effect bleeding into the sky
+       * 🎨 WAVE 2042.15.3: RE-ENABLE BLOOM with conservative settings
+       * Let's see if it works now with MeshBasicMaterial fixtures
        * ═══════════════════════════════════════════════════════════════════ */}
-      {/* DISABLED: qualitySettings.postProcessing && (
+      {qualitySettings.postProcessing && (
         <NeonBloom
           enabled={true}
-          intensity={0.5}
-          luminanceThreshold={0.95}
-          beatIntensity={beatIntensity * 0.3}
+          intensity={0.4}
+          luminanceThreshold={0.85}
+          beatIntensity={beatIntensity * 0.15}
         />
-      ) */}
+      )}
     </>
   )
 }

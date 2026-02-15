@@ -18,7 +18,7 @@
  * @version 1112.0.0
  */
 
-import React, { useState, useCallback, useEffect, DragEvent, Suspense } from 'react'
+import React, { useState, useCallback, useEffect, DragEvent, Suspense, type ReactNode } from 'react'
 import './FixtureForgeEmbedded.css'
 import { 
   GripVertical, 
@@ -155,7 +155,7 @@ const FUNCTION_PALETTE: Record<string, FunctionDef[]> = {
 interface FixtureTypeConfig {
   value: FixtureType
   label: string
-  icon: JSX.Element
+  icon: ReactNode
   color: string
 }
 
@@ -229,7 +229,7 @@ const FIXTURE_TYPES: FixtureTypeConfig[] = [
 interface CapabilityBadge {
   key: keyof DerivedCapabilities
   label: string
-  icon: JSX.Element
+  icon: ReactNode
   color: string
 }
 

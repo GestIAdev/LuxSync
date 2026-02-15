@@ -16,8 +16,14 @@
  * 3. Mapper → Convert to fixture states
  * 4. Driver → Send DMX
  * 
+ * 🐟 WAVE 2042.20: BABEL FISH - Color Translation Layer
+ * - ColorTranslator integration in renderFromTarget()
+ * - Automatic RGB → ColorWheel DMX translation
+ * - Profile-based detection of wheel fixtures
+ * - Safety layer for debounce/strobe delegation
+ * 
  * @layer HAL
- * @version TITAN 2.0
+ * @version TITAN 2.0 + BABEL FISH
  */
 
 import {
@@ -32,7 +38,21 @@ import { ZoneRouter, type PhysicalZone, type VibeRouteConfig, type ZoneIntensity
 import { FixtureMapper, type PatchedFixture, type FixtureState, type MovementState } from './mapping/FixtureMapper'
 import { type IDMXDriver, type DriverType, MockDMXDriver } from './drivers'
 
-// 🔧 WAVE 338: Movement Physics Driver
+// � WAVE 2042.20: BABEL FISH - Color Translation Layer
+import { 
+  getColorTranslator, 
+  type RGB,
+  type ColorTranslationResult 
+} from './translation/ColorTranslator'
+import { 
+  getProfile, 
+  getProfileByModel,
+  needsColorTranslation,
+  type FixtureProfile 
+} from './translation'
+import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer'
+
+// �🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver'
 import { getOpticsConfig, type OpticsConfig } from '../engine/movement/VibeMovementPresets'
 
@@ -85,7 +105,12 @@ export class HardwareAbstraction {
   private currentVibeId: string = 'idle'
   private currentOptics: OpticsConfig
   
-  // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
+  // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
+  private colorTranslator = getColorTranslator()
+  private safetyLayer = getHardwareSafetyLayer()
+  private profileCache = new Map<string, FixtureProfile | null>()
+  
+  // �🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
   private smoothedZoomMod: number = 0
   private smoothedFocusMod: number = 0
   
@@ -792,7 +817,7 @@ export class HardwareAbstraction {
       
       if (fixtureTarget) {
         // Use arbitrated values directly
-        const state: FixtureState = {
+        const baseState: FixtureState = {
           name: fixture.name,
           type: fixture.type || 'generic',
           zone,
@@ -819,7 +844,16 @@ export class HardwareAbstraction {
           strobe: 0,
         }
         
-        return state
+        // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
+        // This is the KEY integration point: if fixture has color wheel profile,
+        // convert the RGB values from Selene/Arbiter to the nearest wheel color DMX
+        const translatedState = this.translateColorToWheel(
+          baseState, 
+          fixture, 
+          fixtureTarget.color_wheel
+        )
+        
+        return translatedState
       }
       
       // Fallback: fixture not in arbiter output (shouldn't happen)
@@ -927,6 +961,94 @@ export class HardwareAbstraction {
     }
     
     return statesWithPhysics
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
+  // Translates RGB commands to Color Wheel DMX for fixtures that need it
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🐟 BABEL FISH: Get or create fixture profile (cached)
+   */
+  private getFixtureProfileCached(fixture: PatchedFixture): FixtureProfile | null {
+    const cacheKey = fixture.profileId || fixture.name || fixture.id || 'unknown'
+    
+    if (this.profileCache.has(cacheKey)) {
+      return this.profileCache.get(cacheKey) ?? null
+    }
+    
+    // Try to find profile by ID or model name
+    const profile = fixture.profileId 
+      ? getProfile(fixture.profileId)
+      : getProfileByModel(fixture.name)
+    
+    this.profileCache.set(cacheKey, profile ?? null)
+    return profile ?? null
+  }
+  
+  /**
+   * 🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
+   * @returns Modified state with colorWheel set (or original state if no translation needed)
+   */
+  private translateColorToWheel(
+    state: FixtureState, 
+    fixture: PatchedFixture,
+    existingColorWheel: number
+  ): FixtureState {
+    // If already has a manual color_wheel override, don't translate
+    if (existingColorWheel > 0) {
+      return state
+    }
+    
+    // Get fixture profile
+    const profile = this.getFixtureProfileCached(fixture)
+    if (!profile) {
+      return state // No profile = assume RGB fixture, pass-through
+    }
+    
+    // Check if fixture needs color translation (has color wheel)
+    if (!needsColorTranslation(profile)) {
+      return state // RGB/CMY fixture, no translation needed
+    }
+    
+    // 🐟 TRANSLATE RGB → COLOR WHEEL DMX
+    const targetRGB: RGB = { r: state.r, g: state.g, b: state.b }
+    const translation = this.colorTranslator.translate(targetRGB, profile)
+    
+    // If not translated (shouldn't happen if needsColorTranslation=true), pass-through
+    if (!translation.wasTranslated) {
+      return state
+    }
+    
+    // Apply safety filter (debounce, latch, strobe delegation)
+    const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`
+    const safetyResult = this.safetyLayer.filter(
+      fixtureId,
+      translation.colorWheelDmx ?? 0,
+      profile,
+      state.dimmer
+    )
+    
+    // Debug logging (throttled - every ~2 seconds per fixture)
+    const now = Date.now()
+    if (now - this.lastDebugTime > 2000) {
+      this.lastDebugTime = now
+      console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}`)
+    }
+    
+    // Return translated state
+    return {
+      ...state,
+      // 🎨 Replace RGB with translated color's actual RGB (for UI consistency)
+      r: translation.outputRGB.r,
+      g: translation.outputRGB.g,
+      b: translation.outputRGB.b,
+      // 🎨 Set color wheel DMX value (THE KEY!)
+      colorWheel: safetyResult.finalColorDmx,
+      // 🛡️ Handle strobe delegation (if color is changing too fast)
+      strobe: safetyResult.delegateToStrobe ? safetyResult.suggestedShutter : state.strobe,
+    }
   }
   
   // ═══════════════════════════════════════════════════════════════════════

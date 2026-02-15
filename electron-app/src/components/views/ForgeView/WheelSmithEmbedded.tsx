@@ -13,8 +13,14 @@
  * - State bridged to parent Forge (onWheelChange callback)
  * - Auto-discovery of color_wheel channel
  * 
+ * 🔥 WAVE 2042.19: REAL COLOR - DMX targeting to actual fixture
+ * - fixtureId prop para targeting real
+ * - channelIndex prop para canal color_wheel específico
+ * - sendDirectDMX() portado de TestPanel.tsx
+ * - Fallback a Arbiter si no hay lux.sendDmxChannel
+ * 
  * @module components/views/ForgeView/WheelSmithEmbedded
- * @version WAVE 1111.0.0
+ * @version WAVE 2042.19
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
@@ -31,6 +37,7 @@ import {
   Server,
   ArrowRight
 } from 'lucide-react'
+import { useStageStore } from '../../../stores/stageStore'
 import './WheelSmithEmbedded.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -55,6 +62,12 @@ export interface WheelSmithEmbeddedProps {
   onNavigateToRack: () => void
   /** Optional: Send DMX value for live testing */
   onTestDmx?: (value: number) => void
+  
+  // 🔥 WAVE 2042.19: Real DMX targeting
+  /** ID del fixture que estamos calibrando (null si solo editamos librería) */
+  fixtureId?: string | null
+  /** Índice del canal color_wheel en el fixture (0-based) */
+  channelIndex?: number
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -111,7 +124,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   onColorsChange,
   hasColorWheelChannel,
   onNavigateToRack,
-  onTestDmx
+  onTestDmx,
+  fixtureId,
+  channelIndex = 0,
 }) => {
   // ═══════════════════════════════════════════════════════════════════════
   // STATE
@@ -119,6 +134,63 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   
   const [validationError, setValidationError] = useState<string | null>(null)
   const [probeValue, setProbeValue] = useState<number>(0)
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2042.19: REAL DMX TARGETING - Fixture from Store
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const fixture = useStageStore(state => {
+    if (!fixtureId) return null
+    const fixtures = state.fixtures || []
+    return fixtures.find(f => f.id === fixtureId) || null
+  })
+  
+  const dmxBaseAddress = fixture?.address ?? null
+  const universe = fixture?.universe ?? 0
+  
+  /**
+   * 🔥 WAVE 2042.19: DIRECT DMX SEND - Copiado de TestPanel
+   * Envía DMX directo al canal correcto del fixture
+   */
+  const sendDirectDMX = useCallback(async (dmxValue: number) => {
+    // Si no hay fixture, solo loguear (modo librería sin fixture real)
+    if (!fixtureId || dmxBaseAddress === null) {
+      console.log(`[WheelSmith] 📭 No fixture connected - DMX value: ${dmxValue} (not sent)`)
+      return
+    }
+    
+    // 🔥 CRITICAL: channelIndex es 0-based, dmxBaseAddress es la dirección inicial del fixture
+    const absoluteAddress = dmxBaseAddress + channelIndex
+    
+    console.log(`[WheelSmith] 🎛️ DMX OUT: Universe ${universe}, ColorWheel CH${channelIndex} → DMX ${absoluteAddress} = ${dmxValue}`)
+    
+    // Try direct DMX first (window.lux API)
+    const lux = window.lux as any
+    if (lux?.sendDmxChannel) {
+      lux.sendDmxChannel(universe, absoluteAddress, dmxValue)
+      return
+    }
+    if (lux?.dmx?.sendDirect) {
+      lux.dmx.sendDirect(universe, absoluteAddress, dmxValue)
+      return
+    }
+    
+    // 🔥 FALLBACK: Use Arbiter.setManual for color_wheel type
+    if (lux?.arbiter?.setManual) {
+      try {
+        await lux.arbiter.setManual({
+          fixtureIds: [fixtureId],
+          controls: { color_wheel: dmxValue },
+          channels: ['color_wheel'],
+        })
+        console.log(`[WheelSmith] 🎯 Arbiter fallback: color_wheel = ${dmxValue}`)
+      } catch (err) {
+        console.error('[WheelSmith] ❌ Arbiter error:', err)
+      }
+    } else {
+      console.warn('[WheelSmith] ⚠️ No DMX API available (lux.sendDmxChannel or arbiter)')
+    }
+  }, [fixtureId, dmxBaseAddress, channelIndex, universe])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS
@@ -226,38 +298,20 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
     const clampedValue = Math.max(0, Math.min(255, value))
     setProbeValue(clampedValue)
     
-    // WAVE 1114 FIX: Use window.luxsync.sendDmxChannel (WORKS in ColorWheelEditor)
-    // This hits the UniversalDMX driver which routes to ArtNet if configured
-    if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
-      try {
-        // Universe 0, Channel 8 (typical color wheel channel)
-        await (window as any).luxsync.sendDmxChannel(0, 8, clampedValue)
-        console.log(`[WheelSmith] ✅ DMX OUT: Ch8 → ${clampedValue}`)
-      } catch (err) {
-        console.error('[WheelSmith] ❌ DMX Send failed:', err)
-      }
-    } else {
-      console.warn('[WheelSmith] ⚠️ luxsync.sendDmxChannel not available')
-    }
+    // 🔥 WAVE 2042.19: Use sendDirectDMX (real fixture targeting)
+    await sendDirectDMX(clampedValue)
     
     // Also call parent callback if provided
     if (onTestDmx) {
       onTestDmx(clampedValue)
     }
-  }, [onTestDmx])
+  }, [onTestDmx, sendDirectDMX])
   
   const handleAutoJump = useCallback(async (dmxValue: number) => {
     setProbeValue(dmxValue)
     
-    // WAVE 1114 FIX: Use window.luxsync.sendDmxChannel (WORKS in ColorWheelEditor)
-    if (typeof window !== 'undefined' && (window as any).luxsync?.sendDmxChannel) {
-      try {
-        await (window as any).luxsync.sendDmxChannel(0, 8, dmxValue)
-        console.log(`[WheelSmith] ✅ Auto-jump: Ch8 → ${dmxValue}`)
-      } catch (err) {
-        console.error('[WheelSmith] ❌ Auto-jump failed:', err)
-      }
-    }
+    // 🔥 WAVE 2042.19: Use sendDirectDMX (real fixture targeting)
+    await sendDirectDMX(dmxValue)
     
     if (onTestDmx) {
       onTestDmx(dmxValue)

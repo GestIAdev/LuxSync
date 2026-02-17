@@ -290,24 +290,41 @@ export default function NetIndicator() {
 
       <style>{`
         /* ═══════════════════════════════════════════════════════════════ */
-        /* NET INDICATOR BADGE                                           */
+        /* NET INDICATOR BADGE - WAVE 2048.2: GLOBAL FLOATING BEACON     */
         /* ═══════════════════════════════════════════════════════════════ */
         .net-indicator {
+          /* 🚀 MODO DIOS: Posición absoluta, Z-index supremo */
+          position: fixed !important;
+          top: 14px;
+          right: 240px;
+          z-index: 99999;
+          
+          /* 🎨 Pill flotante con efecto glass */
+          background: rgba(10, 10, 15, 0.85);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(0, 240, 255, 0.3);
+          border-radius: 20px;
+          padding: 6px 14px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
+                      0 0 20px rgba(0, 240, 255, 0.1);
+          
+          /* Layout interno */
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 8px;
           cursor: pointer;
-          padding: 2px 6px;
-          border-radius: var(--radius-sm, 4px);
-          transition: background 0.2s ease;
           user-select: none;
-          margin-left: 8px;
-          border-left: 1px solid var(--border-subtle, #333);
-          padding-left: 10px;
+          
+          /* Transiciones suaves */
+          transition: all 0.2s ease;
         }
 
         .net-indicator:hover {
-          background: rgba(255, 255, 255, 0.06);
+          background: rgba(10, 10, 15, 0.95);
+          border-color: rgba(0, 240, 255, 0.5);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6),
+                      0 0 30px rgba(0, 240, 255, 0.2);
+          transform: translateY(-1px);
         }
 
         .net-dot {
@@ -362,15 +379,17 @@ export default function NetIndicator() {
         /* ═══════════════════════════════════════════════════════════════ */
         .net-panel {
           position: fixed;
-          bottom: 40px;
-          left: var(--space-md, 16px);
-          width: 360px;
-          max-height: 420px;
-          background: var(--bg-surface, #1a1a2e);
-          border: 1px solid var(--border-subtle, #333);
-          border-radius: var(--radius-lg, 8px);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-          z-index: 200;
+          top: 54px;  /* Debajo del badge (14px + 40px badge height) */
+          right: 20px;  /* Alineado a la derecha */
+          width: 380px;
+          max-height: 520px;
+          background: rgba(10, 10, 15, 0.95);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(0, 240, 255, 0.3);
+          border-radius: var(--radius-lg, 12px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6),
+                      0 0 40px rgba(0, 240, 255, 0.15);
+          z-index: 99998;  /* Justo debajo del badge */
           display: flex;
           flex-direction: column;
           overflow: hidden;

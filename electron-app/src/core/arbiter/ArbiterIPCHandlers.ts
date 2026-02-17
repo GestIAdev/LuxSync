@@ -72,8 +72,13 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       }
     }
   ) => {
-    masterArbiter.setPattern(fixtureIds, pattern)
-    return { success: true, patternType: pattern.type, fixtureCount: fixtureIds.length }
+    // WAVE 2050.2: Wildcard expansion for setPattern
+    const resolvedIds = fixtureIds.includes('*')
+      ? masterArbiter.getFixtureIds()
+      : fixtureIds
+    
+    masterArbiter.setPattern(resolvedIds, pattern)
+    return { success: true, patternType: pattern.type, fixtureCount: resolvedIds.length }
   })
   
   /**
@@ -83,8 +88,13 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     _event,
     { fixtureIds }: { fixtureIds: string[] }
   ) => {
-    masterArbiter.clearPattern(fixtureIds)
-    return { success: true, clearedCount: fixtureIds.length }
+    // WAVE 2050.2: Wildcard expansion for clearPattern
+    const resolvedIds = fixtureIds.includes('*')
+      ? masterArbiter.getFixtureIds()
+      : fixtureIds
+    
+    masterArbiter.clearPattern(resolvedIds)
+    return { success: true, clearedCount: resolvedIds.length }
   })
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -164,6 +174,24 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
+    // 🌐 WAVE 2050.2: WILDCARD EXPANSION
+    // Scene player sends fixtureIds: ['*'] for global events.
+    // Expand '*' to ALL registered fixture IDs in the arbiter.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const resolvedFixtureIds = fixtureIds.includes('*')
+      ? masterArbiter.getFixtureIds()
+      : fixtureIds
+    
+    if (fixtureIds.includes('*')) {
+      console.log(`[Arbiter] 🌐 Wildcard '*' expanded → ${resolvedFixtureIds.length} fixtures`)
+    }
+    
+    if (resolvedFixtureIds.length === 0) {
+      console.warn('[Arbiter] setManual: Wildcard expanded to 0 fixtures (no fixtures registered)')
+      return { success: false, error: 'No fixtures registered for wildcard' }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 1219: AUTO-INJECT SPEED FOR MOVEMENT COMMANDS
     // Moving heads require speed channel to be set for pan/tilt to work.
     // If pan or tilt is being controlled but speed is not specified, inject speed=0 (fast)
@@ -189,7 +217,7 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     
     if (hasRGB) {
       // Get first fixture to check profile
-      const firstFixture = masterArbiter.getFixture(fixtureIds[0])
+      const firstFixture = masterArbiter.getFixture(resolvedFixtureIds[0])
       
       if (firstFixture) {
         const profile = getProfile(firstFixture.profileId || '')
@@ -220,9 +248,9 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       }
     }
     
-    const overrideCount = fixtureIds.length
+    const overrideCount = resolvedFixtureIds.length
     
-    for (const fixtureId of fixtureIds) {
+    for (const fixtureId of resolvedFixtureIds) {
       const override: Layer2_Manual = {
         fixtureId,
         controls: finalControls as any,
@@ -255,9 +283,18 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       channels?: string[]
     }
   ) => {
-    const releaseCount = fixtureIds.length
+    // WAVE 2050.2: Wildcard expansion for clearManual
+    const resolvedIds = fixtureIds.includes('*')
+      ? masterArbiter.getFixtureIds()
+      : fixtureIds
     
-    for (const fixtureId of fixtureIds) {
+    if (fixtureIds.includes('*')) {
+      console.log(`[Arbiter] 🌐 clearManual: Wildcard '*' expanded → ${resolvedIds.length} fixtures`)
+    }
+    
+    const releaseCount = resolvedIds.length
+    
+    for (const fixtureId of resolvedIds) {
       masterArbiter.releaseManualOverride(fixtureId, channels as any)
     }
     

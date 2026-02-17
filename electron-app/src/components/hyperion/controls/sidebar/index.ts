@@ -29,7 +29,6 @@ export { StageSidebar } from './StageSidebar'
 
 // Scene Management
 export { SceneBrowser } from './SceneBrowser'
-export type { SceneBrowserProps } from './SceneBrowser'
 
 // 🗑️ WAVE 435: LEGACY REMOVED
 // The following components were deprecated and deleted:

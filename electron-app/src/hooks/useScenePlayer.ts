@@ -276,66 +276,201 @@ export function useScenePlayer() {
     const clipDurationMs = fx.endMs - fx.startMs
     const t = clipDurationMs > 0 ? localTimeMs / clipDurationMs : 0
 
-    // Interpolate keyframes
-    const intensity = interpolateKeyframes(fx.keyframes, localTimeMs)
-
     // Build controls based on FX type
     const controls: Record<string, number> = {}
     const channels: string[] = []
 
-    switch (fx.fxType) {
-      case 'strobe':
-        controls.dimmer = intensity > 0.5 ? 1 : 0
-        channels.push('dimmer')
-        break
-
-      case 'blackout':
-        controls.dimmer = 0
-        channels.push('dimmer')
-        break
-
-      case 'color-wash': {
-        // Use params for RGB if available
-        const r = typeof fx.params?.red === 'number' ? fx.params.red as number : 255
-        const g = typeof fx.params?.green === 'number' ? fx.params.green as number : 0
-        const b = typeof fx.params?.blue === 'number' ? fx.params.blue as number : 255
-        controls.red = r * intensity
-        controls.green = g * intensity
-        controls.blue = b * intensity
-        controls.dimmer = intensity
-        channels.push('red', 'green', 'blue', 'dimmer')
-        break
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2050.4: HEPHAESTUS CUSTOM CLIPS (.lfx)
+    // These have their own curve system in hephClip.curves
+    // ═══════════════════════════════════════════════════════════════════════
+    if (fx.fxType === 'heph-custom' && (fx as any).hephClip?.curves) {
+      const curves = (fx as any).hephClip.curves as Record<string, {
+        keyframes: Array<{ timeMs: number; value: number; interpolation?: string }>
+      }>
+      
+      // Process each curve
+      for (const [paramId, curve] of Object.entries(curves)) {
+        if (!curve.keyframes || curve.keyframes.length === 0) continue
+        
+        const value = interpolateHephKeyframes(curve.keyframes, localTimeMs)
+        
+        // Map paramId to DMX channel
+        switch (paramId) {
+          case 'intensity':
+          case 'dimmer':
+            controls.dimmer = value
+            if (!channels.includes('dimmer')) channels.push('dimmer')
+            break
+          case 'white':
+            // White = RGB(255,255,255) * value
+            controls.red = 255 * value
+            controls.green = 255 * value
+            controls.blue = 255 * value
+            controls.dimmer = Math.max(controls.dimmer ?? 0, value)
+            if (!channels.includes('red')) channels.push('red')
+            if (!channels.includes('green')) channels.push('green')
+            if (!channels.includes('blue')) channels.push('blue')
+            if (!channels.includes('dimmer')) channels.push('dimmer')
+            break
+          case 'red':
+            controls.red = 255 * value
+            if (!channels.includes('red')) channels.push('red')
+            break
+          case 'green':
+            controls.green = 255 * value
+            if (!channels.includes('green')) channels.push('green')
+            break
+          case 'blue':
+            controls.blue = 255 * value
+            if (!channels.includes('blue')) channels.push('blue')
+            break
+          case 'pan':
+            controls.pan = 255 * value
+            if (!channels.includes('pan')) channels.push('pan')
+            break
+          case 'tilt':
+            controls.tilt = 255 * value
+            if (!channels.includes('tilt')) channels.push('tilt')
+            break
+          case 'gobo':
+          case 'gobo_wheel':
+            controls.gobo_wheel = 255 * value
+            if (!channels.includes('gobo_wheel')) channels.push('gobo_wheel')
+            break
+          case 'strobe':
+            controls.strobe = 255 * value
+            if (!channels.includes('strobe')) channels.push('strobe')
+            break
+          default:
+            // Unknown param — pass through as normalized
+            controls[paramId] = value
+            if (!channels.includes(paramId)) channels.push(paramId)
+        }
       }
+    } else {
+      // ═════════════════════════════════════════════════════════════════════
+      // STANDARD FX CLIPS (legacy keyframes)
+      // ═════════════════════════════════════════════════════════════════════
+      const intensity = interpolateKeyframes(fx.keyframes, localTimeMs)
+      
+      // Cast to string for dynamic core effects (not in FXType union)
+      const fxTypeStr = fx.fxType as string
 
-      case 'intensity-ramp':
-        controls.dimmer = intensity
-        channels.push('dimmer')
-        break
+      switch (fxTypeStr) {
+        case 'strobe':
+          controls.dimmer = intensity > 0.5 ? 1 : 0
+          channels.push('dimmer')
+          break
 
-      case 'sweep':
-        controls.pan = t * 255
-        controls.dimmer = intensity
-        channels.push('pan', 'dimmer')
-        break
+        case 'blackout':
+          controls.dimmer = 0
+          channels.push('dimmer')
+          break
 
-      case 'chase':
-        controls.dimmer = intensity
-        channels.push('dimmer')
-        break
+        case 'color-wash': {
+          const r = typeof fx.params?.red === 'number' ? fx.params.red as number : 255
+          const g = typeof fx.params?.green === 'number' ? fx.params.green as number : 0
+          const b = typeof fx.params?.blue === 'number' ? fx.params.blue as number : 255
+          controls.red = r * intensity
+          controls.green = g * intensity
+          controls.blue = b * intensity
+          controls.dimmer = intensity
+          channels.push('red', 'green', 'blue', 'dimmer')
+          break
+        }
 
-      case 'pulse':
-        controls.dimmer = intensity
-        channels.push('dimmer')
-        break
+        case 'intensity-ramp':
+        case 'fade':
+        case 'pulse':
+        case 'chase':
+          controls.dimmer = intensity
+          channels.push('dimmer')
+          break
 
-      case 'fade':
-        controls.dimmer = intensity
-        channels.push('dimmer')
-        break
+        case 'sweep':
+          controls.pan = t * 255
+          controls.dimmer = intensity
+          channels.push('pan', 'dimmer')
+          break
 
-      default:
-        controls.dimmer = intensity
-        channels.push('dimmer')
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 WAVE 2050.4: CORE EFFECTS — Default intense white behaviors
+        // ═══════════════════════════════════════════════════════════════════
+        case 'core_meltdown':
+          // Meltdown: pulsing white heat with intensity
+          controls.dimmer = intensity
+          controls.red = 255 * intensity
+          controls.green = 200 * intensity  // Slightly warm
+          controls.blue = 150 * intensity
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        case 'industrial_strobe':
+          // Harsh white strobe
+          controls.dimmer = intensity > 0.3 ? 1 : 0
+          controls.red = 255
+          controls.green = 255
+          controls.blue = 255
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        case 'void_mist':
+          // Deep blue atmospheric
+          controls.dimmer = intensity * 0.6  // Softer
+          controls.red = 50 * intensity
+          controls.green = 100 * intensity
+          controls.blue = 255 * intensity
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        case 'neon_surge':
+          // Vibrant magenta
+          controls.dimmer = intensity
+          controls.red = 255 * intensity
+          controls.green = 0
+          controls.blue = 255 * intensity
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        case 'solar_flare':
+          // Warm orange burst
+          controls.dimmer = intensity
+          controls.red = 255 * intensity
+          controls.green = 150 * intensity
+          controls.blue = 0
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        case 'thunder_crack':
+          // White flash
+          controls.dimmer = intensity > 0.5 ? 1 : 0
+          controls.red = 255
+          controls.green = 255
+          controls.blue = 255
+          channels.push('dimmer', 'red', 'green', 'blue')
+          break
+
+        default:
+          controls.dimmer = intensity
+          channels.push('dimmer')
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎨 WAVE 2050.4: AUTO-WHITE INJECTION
+    // If we're sending dimmer > 0 but NO color, inject pure white.
+    // Prevents "invisible" intensity without color.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (controls.dimmer !== undefined && controls.dimmer > 0) {
+      if (controls.red === undefined && controls.green === undefined && controls.blue === undefined) {
+        controls.red = 255
+        controls.green = 255
+        controls.blue = 255
+        if (!channels.includes('red')) channels.push('red')
+        if (!channels.includes('green')) channels.push('green')
+        if (!channels.includes('blue')) channels.push('blue')
+      }
     }
 
     // Get target fixtures from zones or ALL
@@ -353,6 +488,54 @@ export function useScenePlayer() {
     }).catch(() => {
       // Silent fail — arbiter might not be running
     })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // HEPHAESTUS KEYFRAME INTERPOLATION (timeMs based, not offsetMs)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function interpolateHephKeyframes(
+    keyframes: Array<{ timeMs: number; value: number; interpolation?: string }>,
+    localTimeMs: number
+  ): number {
+    if (!keyframes || keyframes.length === 0) return 0
+
+    // Before first keyframe
+    if (localTimeMs <= keyframes[0].timeMs) return keyframes[0].value
+
+    // After last keyframe
+    if (localTimeMs >= keyframes[keyframes.length - 1].timeMs) {
+      return keyframes[keyframes.length - 1].value
+    }
+
+    // Find surrounding keyframes
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const k1 = keyframes[i]
+      const k2 = keyframes[i + 1]
+
+      if (localTimeMs >= k1.timeMs && localTimeMs < k2.timeMs) {
+        const range = k2.timeMs - k1.timeMs
+        const t = range > 0 ? (localTimeMs - k1.timeMs) / range : 0
+
+        // Hephaestus uses interpolation field
+        switch (k1.interpolation) {
+          case 'hold':
+          case 'step':
+            return k1.value
+          case 'linear':
+            return k1.value + (k2.value - k1.value) * t
+          case 'bezier': {
+            // Approximated ease-in-out for bezier
+            const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+            return k1.value + (k2.value - k1.value) * ease
+          }
+          default:
+            return k1.value + (k2.value - k1.value) * t
+        }
+      }
+    }
+
+    return keyframes[keyframes.length - 1].value
   }
 
   // ═══════════════════════════════════════════════════════════════════════

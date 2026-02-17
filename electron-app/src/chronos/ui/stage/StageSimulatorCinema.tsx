@@ -29,10 +29,11 @@
  * @version WAVE 2040.1
  */
 
-import React, { useRef, useEffect, useMemo, useCallback, memo } from 'react'
+import React, { useRef, useEffect, useMemo, useCallback, memo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useHardware } from '../../../stores/truthStore'
 import { useStageStore } from '../../../stores/stageStore'
+import { useSelectionStore, useSelectionClick } from '../../../stores/selectionStore'
 import { calculateFixtureRenderValues } from '../../../hooks/useFixtureRender'
 import { useControlStore, selectCinemaControl } from '../../../stores/controlStore'
 import { useOverrideStore, selectOverrides } from '../../../stores/overrideStore'
@@ -142,6 +143,30 @@ const COLORS = {
   fixtureOff: '#14142a',
   fixtureOffStroke: '#252550',
   beamEdge: 0.04,                // Beam edge alpha falloff
+} as const
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 2046: HIT-TEST CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Hit-test radius in normalized space (0-1). 
+ *  If distance(click, fixture) < this → CONTACT */
+const HIT_RADIUS = 0.055
+
+/** Selection ring visual constants */
+const SELECTION = {
+  /** Ring color (cyan neon) */
+  RING_COLOR: '#00F0FF',
+  /** Hover ring color (magenta) */
+  HOVER_COLOR: '#FF00E5',
+  /** Ring line width in CSS pixels */
+  RING_WIDTH: 2.5,
+  /** Ring radius multiplier over fixture radius */
+  RING_RADIUS_FACTOR: 1.8,
+  /** Hover ring radius (slightly larger) */
+  HOVER_RADIUS_FACTOR: 2.0,
+  /** Glow size for selected fixtures */
+  GLOW_SIZE: 8,
 } as const
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -555,6 +580,71 @@ const drawTrailEcho = (
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🧠 WAVE 2046: SELECTION & HOVER RING RENDERING
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Draw selection ring around a fixture (cyan neon pulsing ring)
+ */
+const drawSelectionRing = (
+  ctx: CanvasRenderingContext2D,
+  fx: number,
+  fy: number,
+  fixtureRadius: number,
+): void => {
+  const ringRadius = fixtureRadius * SELECTION.RING_RADIUS_FACTOR
+  
+  // Outer glow
+  ctx.beginPath()
+  ctx.arc(fx, fy, ringRadius + 2, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(0, 240, 255, 0.15)`
+  ctx.lineWidth = SELECTION.GLOW_SIZE
+  ctx.stroke()
+  
+  // Main ring
+  ctx.beginPath()
+  ctx.arc(fx, fy, ringRadius, 0, Math.PI * 2)
+  ctx.strokeStyle = SELECTION.RING_COLOR
+  ctx.lineWidth = SELECTION.RING_WIDTH
+  ctx.stroke()
+  
+  // Inner accent (thin white)
+  ctx.beginPath()
+  ctx.arc(fx, fy, ringRadius - 2, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(255, 255, 255, 0.25)`
+  ctx.lineWidth = 0.5
+  ctx.stroke()
+}
+
+/**
+ * Draw hover ring around a fixture (magenta neon ring)
+ */
+const drawHoverRing = (
+  ctx: CanvasRenderingContext2D,
+  fx: number,
+  fy: number,
+  fixtureRadius: number,
+): void => {
+  const ringRadius = fixtureRadius * SELECTION.HOVER_RADIUS_FACTOR
+  
+  // Glow
+  ctx.beginPath()
+  ctx.arc(fx, fy, ringRadius + 1, 0, Math.PI * 2)
+  ctx.strokeStyle = `rgba(255, 0, 229, 0.12)`
+  ctx.lineWidth = 6
+  ctx.stroke()
+  
+  // Main ring (dashed)
+  ctx.setLineDash([4, 3])
+  ctx.beginPath()
+  ctx.arc(fx, fy, ringRadius, 0, Math.PI * 2)
+  ctx.strokeStyle = SELECTION.HOVER_COLOR
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -570,6 +660,23 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
   const lastFrameRef = useRef<number>(0)
   
   const FRAME_INTERVAL = 1000 / CINEMA.FPS
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 2046: SELECTION & HOVER STATE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const selectedIds = useSelectionStore(state => state.selectedIds)
+  const hoveredId = useSelectionStore(state => state.hoveredId)
+  const setHovered = useSelectionStore(state => state.setHovered)
+  const handleSelectionClick = useSelectionClick()
+  
+  // Ref para acceder a fixtures en event handlers sin re-render
+  const fixturesRef = useRef<CinemaFixture[]>([])
+  
+  // All fixture IDs for Shift+Click range selection
+  const allFixtureIds = useMemo(() => {
+    return fixturesRef.current.map(f => f.id)
+  }, [fixturesRef.current])
   
   // ═══════════════════════════════════════════════════════════════════════
   // STORE SUBSCRIPTIONS
@@ -721,6 +828,110 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
     activePaletteId, globalIntensity, globalSaturation, targetPalette, transitionProgress
   ])
   
+  // Keep fixturesRef in sync for event handlers (avoids stale closure)
+  useEffect(() => {
+    fixturesRef.current = fixtures
+  }, [fixtures])
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 2046: HIT-TEST ENGINE
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Hit-test: Find the closest fixture to a normalized click point.
+   * Returns the fixture ID if within HIT_RADIUS, or null if clicked on empty space.
+   * 
+   * Uses euclidean distance with aspect ratio correction:
+   *   dist = sqrt((fx.x - mx)² + (fx.y - my)²)
+   *   if dist < HIT_RADIUS → CONTACT
+   * 
+   * When multiple fixtures overlap, returns the NEAREST one (shortest distance).
+   */
+  const hitTest = useCallback((normalizedX: number, normalizedY: number): CinemaFixture | null => {
+    const currentFixtures = fixturesRef.current
+    if (currentFixtures.length === 0) return null
+    
+    let closestFixture: CinemaFixture | null = null
+    let closestDist = Infinity
+    
+    for (const fixture of currentFixtures) {
+      const dx = fixture.x - normalizedX
+      const dy = fixture.y - normalizedY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      
+      if (dist < HIT_RADIUS && dist < closestDist) {
+        closestDist = dist
+        closestFixture = fixture
+      }
+    }
+    
+    return closestFixture
+  }, [])
+  
+  /**
+   * Convert mouse event to normalized coordinates (0-1)
+   */
+  const eventToNormalized = useCallback((e: React.MouseEvent): { x: number; y: number } | null => {
+    const container = containerRef.current
+    if (!container) return null
+    
+    const rect = container.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return null
+    
+    return {
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+    }
+  }, [])
+  
+  /**
+   * 🖱️ CLICK HANDLER: Select fixture or deselect all
+   * - Normal click: Replace selection with clicked fixture
+   * - Ctrl/Cmd + Click: Toggle individual fixture
+   * - Shift + Click: Range selection (between last selected and clicked)
+   * - Click on empty space: Deselect all
+   */
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    const point = eventToNormalized(e)
+    if (!point) return
+    
+    const hit = hitTest(point.x, point.y)
+    
+    if (hit) {
+      // Fixture hit → delegate to selection handler (handles Shift, Ctrl, normal click)
+      const ids = fixturesRef.current.map(f => f.id)
+      handleSelectionClick(hit.id, e, ids)
+    } else {
+      // Empty space click → deselect all
+      useSelectionStore.getState().deselectAll()
+    }
+  }, [eventToNormalized, hitTest, handleSelectionClick])
+  
+  /**
+   * 🖱️ HOVER HANDLER: Update hoveredId for visual feedback
+   */
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    const point = eventToNormalized(e)
+    if (!point) return
+    
+    const hit = hitTest(point.x, point.y)
+    const newHoveredId = hit?.id ?? null
+    
+    // Only update store if hoveredId actually changed (avoid re-renders)
+    if (newHoveredId !== useSelectionStore.getState().hoveredId) {
+      setHovered(newHoveredId)
+    }
+  }, [eventToNormalized, hitTest, setHovered])
+  
+  /**
+   * 🖱️ MOUSE LEAVE: Clear hover
+   */
+  const handleCanvasMouseLeave = useCallback(() => {
+    if (useSelectionStore.getState().hoveredId !== null) {
+      setHovered(null)
+    }
+  }, [setHovered])
+  
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER FRAME
   // ═══════════════════════════════════════════════════════════════════════
@@ -780,6 +991,32 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
       const fy = fixture.y * h
       drawFixture(fixturesCtx, fx, fy, fixture, fixtureRadius)
     })
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧠 WAVE 2046: SELECTION & HOVER RINGS (drawn on top of everything)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    // Read current selection state directly (avoid stale closure)
+    const currentSelectedIds = useSelectionStore.getState().selectedIds
+    const currentHoveredId = useSelectionStore.getState().hoveredId
+    
+    // Draw selection rings
+    fixtures.forEach(fixture => {
+      if (!currentSelectedIds.has(fixture.id)) return
+      const fx = fixture.x * w
+      const fy = fixture.y * h
+      drawSelectionRing(fixturesCtx, fx, fy, fixtureRadius)
+    })
+    
+    // Draw hover ring (only if not already selected — avoid double ring)
+    if (currentHoveredId && !currentSelectedIds.has(currentHoveredId)) {
+      const hoveredFixture = fixtures.find(f => f.id === currentHoveredId)
+      if (hoveredFixture) {
+        const fx = hoveredFixture.x * w
+        const fy = hoveredFixture.y * h
+        drawHoverRing(fixturesCtx, fx, fy, fixtureRadius)
+      }
+    }
   }, [fixtures])
   
   // ═══════════════════════════════════════════════════════════════════════
@@ -855,6 +1092,12 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
   }, [])
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🧠 WAVE 2046: CURSOR STYLE (pointer when hovering over a fixture)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const cursorStyle = hoveredId ? 'pointer' : 'default'
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // JSX
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -868,6 +1111,14 @@ export const StagePreview: React.FC<StagePreviewProps> = memo(({
     <div className={containerClasses} ref={containerRef}>
       <canvas ref={trailsCanvasRef} className="stage-cinema__trails" />
       <canvas ref={fixturesCanvasRef} className="stage-cinema__fixtures" />
+      {/* 🧠 WAVE 2046: Hit-test overlay — captures mouse events without interfering with render */}
+      <div
+        className="stage-cinema__interaction"
+        style={{ cursor: cursorStyle }}
+        onClick={handleCanvasClick}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseLeave={handleCanvasMouseLeave}
+      />
       <div className="stage-cinema__badge">CINEMA</div>
     </div>
   )

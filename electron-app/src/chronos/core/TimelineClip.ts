@@ -387,7 +387,7 @@ export const MIXBUS_CLIP_COLORS: Record<string, string> = {
  */
 const VISUAL_PRIORITY_CURVE_KEYS = ['intensity', 'tilt', 'pan', 'color', 'white', 'zoom', 'focus']
 
-function extractVisualKeyframes(
+export function extractVisualKeyframes(
   hephClip: HephAutomationClipSerialized | undefined,
   durationMs: number
 ): FXKeyframe[] {

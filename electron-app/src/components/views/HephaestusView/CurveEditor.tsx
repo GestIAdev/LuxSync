@@ -29,7 +29,7 @@
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import type { HephCurve, HephInterpolation, HephAudioBinding, HephKeyframe } from '../../../core/hephaestus/types'
-import { KeyframeContextMenu } from './KeyframeContextMenu'
+import { KeyframeContextMenu, BackgroundContextMenu, MultiSelectionContextMenu } from './KeyframeContextMenu'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -58,17 +58,70 @@ interface CurveEditorProps {
   onBezierHandleMove: (index: number, handles: [number, number, number, number]) => void
   onKeyframeSelect: (index: number | null) => void
   onAudioBindingChange: (index: number, binding: HephAudioBinding | undefined) => void
+
+  /** ⚒️ WAVE 2043: Called when a drag operation begins (mouseDown on keyframe/handle).
+   *  The parent captures a temporal snapshot BEFORE the continuous mutation starts. */
+  onDragStart?: () => void
+
+  /** ⚒️ WAVE 2043: Set of selected keyframe indices for multi-selection */
+  selectedIndices?: Set<number>
+
+  /** ⚒️ WAVE 2043: Called when multi-selection changes (Shift+Click, Rubber Band) */
+  onMultiSelect?: (indices: Set<number>) => void
+
+  /** ⚒️ WAVE 2043.2: Batch move — deltaTimeMs and deltaValue from drag start position.
+   *  Called instead of onKeyframeMove when dragging a multi-selected keyframe. */
+  onBatchKeyframeMove: (deltaTimeMs: number, deltaValue: number) => void
+
+  /** ⚒️ WAVE 2043.4: Enable magnetic snap-to-grid. Default: true */
+  snapEnabled?: boolean
+
+  /** ⚒️ WAVE 2043.4: Beat grid divisions. Default: 8 (corcheas). Use 4 for negras. */
+  beatDivisions?: number
+
+  /** ⚒️ WAVE 2044: BPM INJECTION — Real BPM from Pacemaker/Chronos.
+   *  When > 0, overrides beatDivisions with musically-accurate grid.
+   *  beatMs = 60000/bpm → divisions = (durationMs / beatMs) * 2 (corcheas) */
+  bpm?: number
+
+  /** ⚒️ WAVE 2043.5: Scrub callback — click/drag on ruler area moves playhead */
+  onScrub?: (timeMs: number) => void
+
+  /** ⚒️ WAVE 2043.5: Copy selected keyframes (context menu trigger) */
+  onCopyKeyframes?: () => void
+
+  /** ⚒️ WAVE 2043.5: Paste keyframes at a specific time (context menu "Paste Here") */
+  onPasteAtTime?: (timeMs: number) => void
+
+  /** ⚒️ WAVE 2043.5: Whether clipboard has content (to enable/disable Paste option) */
+  hasClipboard?: boolean
+
+  /** ⚒️ WAVE 2043.8: Initial viewport state (zoom + scrollX) from persistence layer */
+  initialViewport?: { zoom: number; scrollX: number }
+
+  /** ⚒️ WAVE 2043.8: Callback to save viewport state when unmounting or changing channel */
+  onViewportChange?: (viewport: { zoom: number; scrollX: number }) => void
+
+  /** ⚒️ WAVE 2043.11: Apply mathematical shape to multi-selection time/value window */
+  onApplyShapeToSelection?: (shapeId: string) => void
+
+  /** ⚒️ WAVE 2043.12: Batch audio bind for all selected keyframes */
+  onBatchAudioBind?: (source: import('../../../core/hephaestus/types').HephAudioBinding['source']) => void
 }
 
-/** WAVE 2030.14: Context menu state */
+/** WAVE 2030.14 / 2043.5: Context menu state */
 interface ContextMenuState {
   x: number
   y: number
   keyframeIndex: number
+  /** ⚒️ WAVE 2043.5 / 2043.11: Menu type — 'keyframe' | 'background' | 'multi-selection' */
+  menuType: 'keyframe' | 'background' | 'multi-selection'
+  /** ⚒️ WAVE 2043.5: Timeline position (ms) where the right-click happened — used for "Paste Here" */
+  clickTimeMs?: number
 }
 
 interface DragState {
-  type: 'keyframe' | 'handle-cp1' | 'handle-cp2' | 'pan'
+  type: 'keyframe' | 'handle-cp1' | 'handle-cp2' | 'pan' | 'rubber-band' | 'scrub'
   index: number
   startX: number
   startY: number
@@ -163,22 +216,13 @@ function formatTimeLabel(ms: number): string {
   return `${ms}ms`
 }
 
-function generateTimeGridLines(
-  visibleStartMs: number,
-  visibleEndMs: number,
-  targetCount: number,
-): number[] {
-  const range = visibleEndMs - visibleStartMs
-  // Choose a "nice" interval
-  const rawInterval = range / targetCount
-  const niceIntervals = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000]
-  const interval = niceIntervals.find(i => i >= rawInterval) ?? rawInterval
-  const lines: number[] = []
-  const start = Math.ceil(visibleStartMs / interval) * interval
-  for (let t = start; t <= visibleEndMs; t += interval) {
-    lines.push(t)
-  }
-  return lines
+/**
+ * ⚒️ WAVE 2043.7: SHEET MUSIC — Musical notation formatter.
+ * Assumes clip is 1 bar (4/4 time signature standard loop).
+ * Returns beat number: 1, 2, 3, 4
+ */
+function formatMusicalLabel(beatIndex: number): string {
+  return `${beatIndex + 1}`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -197,6 +241,21 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   onBezierHandleMove,
   onKeyframeSelect,
   onAudioBindingChange,
+  onDragStart,
+  selectedIndices = new Set<number>(),
+  onMultiSelect,
+  onBatchKeyframeMove,
+  snapEnabled = true,
+  beatDivisions: beatDivisionsProp = 8,
+  bpm = 0,
+  onScrub,
+  onCopyKeyframes,
+  onPasteAtTime,
+  hasClipboard = false,
+  initialViewport,
+  onViewportChange,
+  onApplyShapeToSelection,
+  onBatchAudioBind,
 }) => {
   // ── Refs ──
   const svgRef = useRef<SVGSVGElement>(null)
@@ -206,16 +265,48 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 })
 
   // ── Viewport (zoom/pan) ──
-  const [viewport, setViewport] = useState<Viewport>({ panOffsetMs: 0, zoom: 1 })
+  // ⚒️ WAVE 2043.8: Initialize from persistence layer if available
+  const [viewport, setViewport] = useState<Viewport>(() => {
+    if (initialViewport) {
+      // Start with persisted zoom, panOffsetMs will be restored in useEffect after dimensions load
+      return { panOffsetMs: 0, zoom: initialViewport.zoom }
+    }
+    return { panOffsetMs: 0, zoom: 1 }
+  })
+
+  // ── Track if we've restored viewport from initialViewport (do it only once) ──
+  const viewportRestoredRef = useRef(false)
 
   // ── Drag state ──
   const [drag, setDrag] = useState<DragState | null>(null)
+
+  // ── WAVE 2043.4: Track if currently snapping (for visual feedback) ──
+  const [isSnapping, setIsSnapping] = useState(false)
+  const [snapLineX, setSnapLineX] = useState<number | null>(null)
 
   // ── WAVE 2030.11: Color picker state ──
   const [colorPickerOpen, setColorPickerOpen] = useState<{ keyframeIdx: number; hsl: typeof curve.keyframes[0]['value'] } | null>(null)
 
   // ── WAVE 2030.14: Context menu state ──
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+
+  // ── WAVE 2043: Rubber band current position for rendering ──
+  const [rubberBandEnd, setRubberBandEnd] = useState<{ x: number; y: number } | null>(null)
+
+  // ── WAVE 2043.2: Track if a rubber band drag just completed (suppress click-deselect) ──
+  const rubberBandJustEndedRef = useRef(false)
+
+  // ── ⚒️ WAVE 2043.12: Track if keyframe context menu was just opened (suppress background menu) ──
+  const keyframeContextMenuOpenedRef = useRef(false)
+
+  // ── ⚒️ WAVE 2043.11: GHOST TRACKING — SVG path of the curve "as it would be" during drag ──
+  const [ghostPath, setGhostPath] = useState<string | null>(null)
+
+  // ── ⚒️ WAVE 2043.11: Capture original curve path at drag start for ghost contrast ──
+  const ghostOriginPathRef = useRef<string | null>(null)
+
+  // ── ⚒️ WAVE 2043.11: Original keyframe screen positions for ghost dots ──
+  const ghostKeyframePositionsRef = useRef<Array<{ x: number; y: number }>>([])
 
   // ── ResizeObserver ──
   useEffect(() => {
@@ -233,6 +324,36 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     observer.observe(container)
     return () => observer.disconnect()
   }, [])
+
+  // ⚒️ WAVE 2043.8: OPERATION TOTAL RECALL — Viewport Persistence
+  // Restore viewport from initialViewport ONCE when dimensions are ready
+  useEffect(() => {
+    if (!initialViewport || viewportRestoredRef.current || dimensions.width === 0) return
+    
+    // Convert scrollX (px) to panOffsetMs (ms)
+    // scrollX = panOffsetMs * (width / durationMs)
+    // panOffsetMs = scrollX * (durationMs / width)
+    const restoredPanOffsetMs = (initialViewport.scrollX * durationMs) / dimensions.width
+    
+    setViewport({
+      zoom: initialViewport.zoom,
+      panOffsetMs: Math.max(0, restoredPanOffsetMs), // Clamp to non-negative
+    })
+    
+    viewportRestoredRef.current = true
+  }, [initialViewport, dimensions.width, durationMs])
+
+  // ⚒️ WAVE 2043.8: Save viewport state on unmount or when channel changes
+  useEffect(() => {
+    return () => {
+      if (onViewportChange) {
+        // Convert panOffsetMs (ms) to scrollX (px)
+        // scrollX = panOffsetMs * (width / durationMs)
+        const scrollX = (viewport.panOffsetMs * dimensions.width) / durationMs
+        onViewportChange({ zoom: viewport.zoom, scrollX })
+      }
+    }
+  }, [viewport, dimensions.width, durationMs, onViewportChange])
 
   // ── Coordinate transforms ──
   const { width, height } = dimensions
@@ -286,11 +407,6 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   )
 
   // ── Grid lines ──
-  const timeGridLines = useMemo(
-    () => generateTimeGridLines(visibleStartMs, visibleEndMs, 12),
-    [visibleStartMs, visibleEndMs]
-  )
-
   const valueGridLines = useMemo(() => {
     const lines: number[] = []
     for (let i = 0; i <= GRID_LINES_Y; i++) {
@@ -298,6 +414,95 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     }
     return lines
   }, [rangeMin, rangeSpan])
+
+  /**
+   * ⚒️ WAVE 2044: BPM INJECTION — Derive beat divisions from real BPM.
+   * 
+   * When bpm > 0, we calculate how many 8th-note subdivisions (corcheas)
+   * fit in the clip's duration. This gives a musically-accurate grid
+   * instead of arbitrary equal divisions.
+   * 
+   * Formula: beatMs = 60000 / bpm
+   *          totalBeats = durationMs / beatMs
+   *          corcheas = totalBeats * 2 (two subdivisions per beat)
+   * 
+   * Falls back to beatDivisionsProp (default 8) when no BPM available.
+   */
+  const beatDivisions = useMemo(() => {
+    // 🔍 WAVE 2044.4: GRIDLOCK DEBUG — Verify BPM propagation
+    console.log(`[CurveEditor] 🔍 beatDivisions recalc → bpm=${bpm}, duration=${durationMs}`)
+    
+    if (bpm > 0) {
+      const beatMs = 60000 / bpm
+      const totalBeats = durationMs / beatMs
+      // Corcheas (8th notes) = 2 per beat. Minimum 2 divisions.
+      const result = Math.max(2, Math.round(totalBeats * 2))
+      console.log(`[CurveEditor] 🎵 Musical grid → ${result} divisions (from ${bpm} BPM)`)
+      return result
+    }
+    console.log(`[CurveEditor] ⚠️ No BPM → using fallback: ${beatDivisionsProp} divisions`)
+    return beatDivisionsProp
+  }, [bpm, durationMs, beatDivisionsProp])
+
+  /**
+   * ⚒️ WAVE 2043.6: METRONOME — Musical beat grid with TWO hierarchy levels.
+   * 
+   * PRIMARY (Negras / Beat): durationMs / 4 → bold, visible
+   * SECONDARY (Corcheas / Subdivision): durationMs / 8 → subtle, dashed
+   * 
+   * beatDivisions prop controls the SECONDARY grid (default 8).
+   * Primary is always beatDivisions / 2 (half = beats).
+   * 
+   * Snap targets ALL lines (primary + secondary).
+   * Returns both arrays for visual differentiation.
+   */
+  const beatGridPrimary = useMemo(() => {
+    const primaryDivisions = Math.max(1, Math.floor(beatDivisions / 2))
+    const interval = durationMs / primaryDivisions
+    const lines: number[] = []
+    for (let i = 0; i <= primaryDivisions; i++) {
+      lines.push(Math.round(i * interval))
+    }
+    return lines
+  }, [durationMs, beatDivisions])
+
+  const beatGridSecondary = useMemo(() => {
+    if (beatDivisions <= 0) return []
+    const interval = durationMs / beatDivisions
+    const lines: number[] = []
+    for (let i = 0; i <= beatDivisions; i++) {
+      const t = Math.round(i * interval)
+      // Exclude primary lines (beats) — only keep subdivisions
+      const isPrimary = beatGridPrimary.some(p => Math.abs(p - t) < 1)
+      if (!isPrimary) {
+        lines.push(t)
+      }
+    }
+    return lines
+  }, [durationMs, beatDivisions, beatGridPrimary])
+
+  /** All snap-eligible grid lines (primary + secondary combined) */
+  const beatGridLinesMs = useMemo(() => {
+    return [...beatGridPrimary, ...beatGridSecondary].sort((a, b) => a - b)
+  }, [beatGridPrimary, beatGridSecondary])
+
+  /**
+   * ⚒️ WAVE 2043.4: Find nearest beat grid line to a given timeMs.
+   * Returns { timeMs, distance } or null if no grid.
+   */
+  const findNearestBeatGrid = useCallback((timeMs: number) => {
+    if (beatGridLinesMs.length === 0) return null
+    let nearest = beatGridLinesMs[0]
+    let minDist = Math.abs(timeMs - nearest)
+    for (const line of beatGridLinesMs) {
+      const dist = Math.abs(timeMs - line)
+      if (dist < minDist) {
+        minDist = dist
+        nearest = line
+      }
+    }
+    return { timeMs: nearest, distance: minDist }
+  }, [beatGridLinesMs])
 
   // ── Get cursor position relative to SVG ──
   const getSVGPoint = useCallback((e: React.MouseEvent | MouseEvent) => {
@@ -324,12 +529,38 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   }, [getSVGPoint, fromX, fromY, durationMs, rangeMin, rangeMax, onKeyframeAdd])
 
   // ── Click on empty space: Deselect ──
-  const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
-    // Only if clicking directly on the background (not a keyframe)
-    if ((e.target as HTMLElement).classList.contains('heph-curve-bg')) {
-      onKeyframeSelect(null)
+  // NOTE: Keyframes call e.stopPropagation(), so clicks that reach the SVG
+  // are guaranteed to be on empty space (background, grid, labels, etc.)
+  const handleBackgroundClick = useCallback((_e: React.MouseEvent) => {
+    // Suppress deselect if a rubber band drag just resolved
+    if (rubberBandJustEndedRef.current) {
+      rubberBandJustEndedRef.current = false
+      return
     }
-  }, [onKeyframeSelect])
+    onKeyframeSelect(null)
+    onMultiSelect?.(new Set())
+  }, [onKeyframeSelect, onMultiSelect])
+
+  // ── WAVE 2043.2: Background mousedown → Start rubber band selection ──
+  // Keyframe/handle mouseDown calls e.stopPropagation(), so any mouseDown
+  // that reaches the SVG element is guaranteed to be on empty space.
+  // No className filtering needed.
+  const handleBackgroundMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only left click starts rubber band
+    if (e.button !== 0) return
+
+    const pt = getSVGPoint(e)
+    setDrag({
+      type: 'rubber-band',
+      index: -1,
+      startX: pt.x,
+      startY: pt.y,
+      startTimeMs: 0,
+      startValue: 0,
+      startPanOffset: viewport.panOffsetMs,
+    })
+    setRubberBandEnd(pt)
+  }, [getSVGPoint, viewport.panOffsetMs])
 
   // ── Keyframe mousedown: Start drag ──
   const handleKeyframeMouseDown = useCallback((e: React.MouseEvent, index: number) => {
@@ -338,11 +569,50 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
 
     // WAVE 2030.14: Right-click = open context menu
     if (e.button === 2) {
-      setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index })
+      // ⚒️ WAVE 2043.12: Mark that keyframe handled the context menu (suppress background menu)
+      keyframeContextMenuOpenedRef.current = true
+      
+      // ⚒️ WAVE 2043.11: If right-clicking a keyframe that belongs to a multi-selection → multi-selection menu
+      if (selectedIndices.size > 1 && selectedIndices.has(index)) {
+        setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index, menuType: 'multi-selection' })
+      } else {
+        setContextMenu({ x: e.clientX, y: e.clientY, keyframeIndex: index, menuType: 'keyframe' })
+      }
       return
     }
 
-    onKeyframeSelect(index)
+    // ⚒️ WAVE 2043: Shift+Click = toggle in multi-selection
+    if (e.shiftKey && onMultiSelect) {
+      const next = new Set(selectedIndices)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      onMultiSelect(next)
+      return
+    }
+
+    // ⚒️ WAVE 2043.3: STICKY FINGERS — If clicking a keyframe that's already in multi-selection,
+    // DON'T update selection (would destroy the group). Just start drag with the full group.
+    // Only update selection if clicking a keyframe that's NOT part of the current group.
+    const isClickingSelectedGroup = selectedIndices.size > 1 && selectedIndices.has(index)
+
+    // ⚒️ WAVE 2043: Capture temporal snapshot before drag begins
+    onDragStart?.()
+
+    // ⚒️ WAVE 2043.11: GHOST TRACKING — Capture original curve path before mutation begins
+    ghostOriginPathRef.current = buildCurvePath(curve, toX, toY)
+    setGhostPath(buildCurvePath(curve, toX, toY))
+    ghostKeyframePositionsRef.current = curve.keyframes.map(kf => ({
+      x: toX(kf.timeMs),
+      y: toY(kf.value),
+    }))
+
+    // Only update selection if NOT clicking a member of the current multi-selection
+    if (!isClickingSelectedGroup) {
+      onKeyframeSelect(index)
+    }
 
     const pt = getSVGPoint(e)
     const kf = curve.keyframes[index]
@@ -355,7 +625,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       startValue: getPlotValue(kf.value, curve.valueType),  // ⚒️ WAVE 2030.22: Use getPlotValue for color support
       startPanOffset: viewport.panOffsetMs,
     })
-  }, [getSVGPoint, curve.keyframes, onKeyframeSelect, viewport.panOffsetMs, curve.valueType])
+  }, [getSVGPoint, curve, onKeyframeSelect, viewport.panOffsetMs, onDragStart, selectedIndices, onMultiSelect, toX, toY])
 
   // ── Bezier handle mousedown ──
   const handleBezierHandleMouseDown = useCallback((
@@ -365,6 +635,18 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
   ) => {
     e.stopPropagation()
     e.preventDefault()
+
+    // ⚒️ WAVE 2043: Capture temporal snapshot before bezier drag begins
+    onDragStart?.()
+
+    // ⚒️ WAVE 2043.11: GHOST TRACKING — Capture original curve for bezier handle drags too
+    ghostOriginPathRef.current = buildCurvePath(curve, toX, toY)
+    setGhostPath(buildCurvePath(curve, toX, toY))
+    ghostKeyframePositionsRef.current = curve.keyframes.map(kf => ({
+      x: toX(kf.timeMs),
+      y: toY(kf.value),
+    }))
+
     const pt = getSVGPoint(e)
     const kf = curve.keyframes[index]
     setDrag({
@@ -376,7 +658,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       startValue: getPlotValue(kf.value, curve.valueType),  // ⚒️ WAVE 2030.22: Use getPlotValue for color support
       startPanOffset: viewport.panOffsetMs,
     })
-  }, [getSVGPoint, curve.keyframes, viewport.panOffsetMs, curve.valueType])
+  }, [getSVGPoint, curve, viewport.panOffsetMs, onDragStart, toX, toY])
 
   // ── Middle-click: Start pan ──
   const handleMiddleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -394,6 +676,41 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     })
   }, [getSVGPoint, viewport.panOffsetMs])
 
+  // ── ⚒️ WAVE 2043.5: SCRUB — Click/drag on ruler area moves playhead ──
+  const handleRulerMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 || !onScrub) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const pt = getSVGPoint(e)
+    const timeMs = Math.max(0, Math.min(fromX(pt.x), durationMs))
+    onScrub(Math.round(timeMs))
+
+    setDrag({
+      type: 'scrub',
+      index: -1,
+      startX: pt.x,
+      startY: pt.y,
+      startTimeMs: timeMs,
+      startValue: 0,
+      startPanOffset: viewport.panOffsetMs,
+    })
+  }, [getSVGPoint, fromX, durationMs, onScrub, viewport.panOffsetMs])
+
+  // ── WAVE 2043: Combined mouseDown handler for SVG ──
+  const handleSVGMouseDown = useCallback((e: React.MouseEvent) => {
+    // Middle-click → pan
+    if (e.button === 1) {
+      handleMiddleMouseDown(e)
+      return
+    }
+    // Left-click on background → rubber band
+    if (e.button === 0) {
+      handleBackgroundMouseDown(e)
+      return
+    }
+  }, [handleMiddleMouseDown, handleBackgroundMouseDown])
+
   // ── Global mousemove ──
   useEffect(() => {
     if (!drag) return
@@ -404,9 +721,36 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       if (drag.type === 'keyframe') {
         const deltaXMs = ((pt.x - drag.startX) / plotW) * visibleDurationMs
         const deltaYVal = -((pt.y - drag.startY) / plotH) * rangeSpan
-        const newTimeMs = Math.max(0, Math.min(drag.startTimeMs + deltaXMs, durationMs))
+        let newTimeMs = Math.max(0, Math.min(drag.startTimeMs + deltaXMs, durationMs))
         const newValue = Math.max(rangeMin, Math.min(drag.startValue + deltaYVal, rangeMax))
-        onKeyframeMove(drag.index, Math.round(newTimeMs), parseFloat(newValue.toFixed(4)))
+
+        // ⚒️ WAVE 2043.4: MAGNETO — Snap to beat grid (unless Shift is held)
+        let didSnap = false
+        if (snapEnabled && !e.shiftKey) {
+          const nearest = findNearestBeatGrid(newTimeMs)
+          // Threshold: 2% of visible duration or 50ms, whichever is smaller
+          const snapThresholdMs = Math.min(visibleDurationMs * 0.02, 50)
+          if (nearest && nearest.distance < snapThresholdMs) {
+            newTimeMs = nearest.timeMs
+            didSnap = true
+            setSnapLineX(toX(nearest.timeMs))
+          }
+        }
+
+        if (!didSnap) {
+          setSnapLineX(null)
+        }
+        setIsSnapping(didSnap)
+
+        // ⚒️ WAVE 2043.2: Batch move — send DELTA from drag origin, NOT absolute position.
+        // This avoids the exponential drift bug where delta was calculated from already-mutated state.
+        if (selectedIndices.size > 1 && selectedIndices.has(drag.index)) {
+          const deltaTimeMs = newTimeMs - drag.startTimeMs
+          const deltaValue = newValue - drag.startValue
+          onBatchKeyframeMove(deltaTimeMs, deltaValue)
+        } else {
+          onKeyframeMove(drag.index, Math.round(newTimeMs), parseFloat(newValue.toFixed(4)))
+        }
       }
 
       if (drag.type === 'handle-cp1' || drag.type === 'handle-cp2') {
@@ -450,9 +794,63 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         ))
         setViewport(prev => ({ ...prev, panOffsetMs: newPan }))
       }
+
+      // ⚒️ WAVE 2043: Rubber band selection — update rect endpoint
+      if (drag.type === 'rubber-band') {
+        setRubberBandEnd(pt)
+      }
+
+      // ⚒️ WAVE 2043.5: Scrub — continuous playhead drag
+      if (drag.type === 'scrub' && onScrub) {
+        const timeMs = Math.max(0, Math.min(fromX(pt.x), durationMs))
+        onScrub(Math.round(timeMs))
+      }
     }
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // ⚒️ WAVE 2043: Rubber band selection — resolve on mouseUp
+      if (drag.type === 'rubber-band' && onMultiSelect) {
+        const pt = getSVGPoint(e)
+        const rectX1 = Math.min(drag.startX, pt.x)
+        const rectY1 = Math.min(drag.startY, pt.y)
+        const rectX2 = Math.max(drag.startX, pt.x)
+        const rectY2 = Math.max(drag.startY, pt.y)
+
+        // Only consider it a selection if the rect is at least 4px in any dimension
+        const isSignificantDrag = (rectX2 - rectX1 > 4) || (rectY2 - rectY1 > 4)
+
+        if (isSignificantDrag) {
+          // Find all keyframes inside the rubber band rect
+          const hitIndices = new Set<number>()
+          for (let i = 0; i < curve.keyframes.length; i++) {
+            const kf = curve.keyframes[i]
+            const kx = toX(kf.timeMs)
+            const ky = toY(kf.value)
+            if (kx >= rectX1 && kx <= rectX2 && ky >= rectY1 && ky <= rectY2) {
+              hitIndices.add(i)
+            }
+          }
+          onMultiSelect(hitIndices)
+        } else {
+          // Tiny drag = deselect all
+          onMultiSelect(new Set())
+          onKeyframeSelect(null)
+        }
+
+        setRubberBandEnd(null)
+        // Suppress the click event that fires after mouseUp
+        rubberBandJustEndedRef.current = true
+      }
+
+      // ⚒️ WAVE 2043.4: Clear snap visual state on mouseUp
+      setIsSnapping(false)
+      setSnapLineX(null)
+
+      // ⚒️ WAVE 2043.11: Clear ghost path on drag end
+      setGhostPath(null)
+      ghostOriginPathRef.current = null
+      ghostKeyframePositionsRef.current = []
+
       setDrag(null)
     }
 
@@ -462,7 +860,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint])
+  }, [drag, plotW, plotH, visibleDurationMs, rangeSpan, rangeMin, rangeMax, durationMs, curve.keyframes, toX, toY, onKeyframeMove, onBezierHandleMove, getSVGPoint, onMultiSelect, onKeyframeSelect, onBatchKeyframeMove, selectedIndices, snapEnabled, findNearestBeatGrid, onScrub, fromX])
 
   // ── Wheel: Zoom ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -482,10 +880,33 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
     })
   }, [getSVGPoint, fromX, durationMs, visibleDurationMs])
 
-  // ── Right-click prevention ──
+  // ── Right-click prevention / ⚒️ WAVE 2043.5: Background context menu ──
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-  }, [])
+
+    // ⚒️ WAVE 2043.12: If a keyframe already handled this right-click, suppress background menu
+    if (keyframeContextMenuOpenedRef.current) {
+      keyframeContextMenuOpenedRef.current = false
+      return
+    }
+
+    // ⚒️ WAVE 2043.5: Right-click on background opens "Paste Here" context menu
+    if (onPasteAtTime) {
+      const pt = getSVGPoint(e)
+      // Only if click is within the plot area
+      if (pt.x >= PADDING.left && pt.x <= PADDING.left + plotW &&
+          pt.y >= PADDING.top && pt.y <= PADDING.top + plotH) {
+        const clickTimeMs = Math.max(0, Math.min(fromX(pt.x), durationMs))
+        setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          keyframeIndex: -1,
+          menuType: 'background',
+          clickTimeMs: Math.round(clickTimeMs),
+        })
+      }
+    }
+  }, [getSVGPoint, plotW, plotH, fromX, durationMs, onPasteAtTime])
 
   // ── WAVE 2030.11: Color picker handlers ──
   const hslToHex = useCallback((h: number, s: number, l: number): string => {
@@ -558,7 +979,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         className="heph-curve-svg"
         onDoubleClick={handleDoubleClick}
         onClick={handleBackgroundClick}
-        onMouseDown={handleMiddleMouseDown}
+        onMouseDown={handleSVGMouseDown}
         onWheel={handleWheel}
         onContextMenu={handleContextMenu}
       >
@@ -638,18 +1059,23 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           )
         })}
 
-        {/* ═══ VERTICAL GRID LINES (time axis) ═══ */}
-        {timeGridLines.map((t, i) => {
+        {/* ═══ ⚒️ WAVE 2043.6: METRONOME — MUSICAL GRID (replaces arbitrary time grid) ═══ */}
+        {/* ⚒️ WAVE 2043.7: SHEET MUSIC — Musical notation + visual hierarchy */}
+        
+        {/* PRIMARY: Negras (Beats) — solid, MORE visible, musical labels */}
+        {beatGridPrimary.map((t, i) => {
           const x = toX(t)
           if (x < PADDING.left || x > PADDING.left + plotW) return null
+          // Skip first and last (they're the clip boundaries)
+          if (t === 0 || t === durationMs) return null
           return (
-            <g key={`vgrid-${i}`}>
+            <g key={`beat-p-${i}`}>
               <line
                 x1={x}
                 y1={PADDING.top}
                 x2={x}
                 y2={PADDING.top + plotH}
-                stroke="rgba(255,255,255,0.04)"
+                stroke="rgba(255,255,255,0.20)"
                 strokeWidth="1"
               />
               <text
@@ -657,15 +1083,62 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                 y={height - PADDING.bottom + 16}
                 textAnchor="middle"
                 className="heph-grid-label"
-                fill="rgba(255,255,255,0.25)"
-                fontSize="10"
+                fill="rgba(255,255,255,0.35)"
+                fontSize="11"
                 fontFamily="monospace"
+                fontWeight="500"
               >
-                {formatTimeLabel(t)}
+                {formatMusicalLabel(i)}
               </text>
             </g>
           )
         })}
+
+        {/* SECONDARY: Corcheas (Subdivisions) — dashed, MORE subtle */}
+        {beatGridSecondary.map((t, i) => {
+          const x = toX(t)
+          if (x < PADDING.left || x > PADDING.left + plotW) return null
+          return (
+            <line
+              key={`beat-s-${i}`}
+              x1={x}
+              y1={PADDING.top}
+              x2={x}
+              y2={PADDING.top + plotH}
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="0.5"
+              strokeDasharray="4 4"
+            />
+          )
+        })}
+
+        {/* ⚒️ WAVE 2043.4: MAGNETO — Active snap line (bright, when snapping) */}
+        {isSnapping && snapLineX !== null && (
+          <line
+            x1={snapLineX}
+            y1={PADDING.top}
+            x2={snapLineX}
+            y2={PADDING.top + plotH}
+            stroke="rgba(255,107,43,0.9)"
+            strokeWidth="2"
+            strokeDasharray="none"
+            style={{ filter: 'drop-shadow(0 0 4px rgba(255,107,43,0.6))' }}
+          />
+        )}
+
+        {/* ═══ ⚒️ WAVE 2043.11: GHOST PATH — Original curve silhouette during drag ═══ */}
+        {ghostPath && drag && (drag.type === 'keyframe' || drag.type === 'handle-cp1' || drag.type === 'handle-cp2') && (
+          <path
+            d={ghostPath}
+            fill="none"
+            stroke="rgba(255,255,255,0.25)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="6 4"
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
 
         {/* ═══ CURVE PATH (glow layer) ═══ */}
         <path
@@ -705,7 +1178,7 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           const cp2x = x0 + (x1 - x0) * handles[2]
           const cp2y = y0 + (y1 - y0) * handles[3]
 
-          const isSelected = selectedKeyframeIdx === i
+          const isSelected = selectedKeyframeIdx === i || selectedIndices.has(i)
 
           return (
             <g key={`handles-${i}`} opacity={isSelected ? 1 : 0.3}>
@@ -742,11 +1215,28 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           )
         })}
 
+        {/* ═══ ⚒️ WAVE 2043.11: GHOST KEYFRAME DOTS — Original positions during drag ═══ */}
+        {ghostPath && drag && (drag.type === 'keyframe' || drag.type === 'handle-cp1' || drag.type === 'handle-cp2') &&
+          ghostKeyframePositionsRef.current.map((pos, i) => (
+            <circle
+              key={`ghost-kf-${i}`}
+              cx={pos.x}
+              cy={pos.y}
+              r={KEYFRAME_RADIUS - 1}
+              fill="none"
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+              style={{ pointerEvents: 'none' }}
+            />
+          ))
+        }
+
         {/* ═══ KEYFRAME NODES ═══ */}
         {curve.keyframes.map((kf, i) => {
           const x = toX(kf.timeMs)
           const y = toY(kf.value)
-          const isSelected = selectedKeyframeIdx === i
+          const isSelected = selectedKeyframeIdx === i || selectedIndices.has(i)
 
           // WAVE 2030.11: Color keyframes render with their actual HSL color
           const isColorValue = typeof kf.value === 'object' && 'h' in kf.value
@@ -789,7 +1279,11 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
                   e.stopPropagation()
                   handleKeyframeDoubleClick(i, kf.value)
                 }}
-                onContextMenu={(e) => e.preventDefault()}
+                onContextMenu={(e) => {
+                  // ⚒️ WAVE 2043.12: Stop context menu from bubbling to SVG background
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
               />
 
               {/* Interpolation type indicator */}
@@ -804,9 +1298,38 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
           )
         })}
 
+        {/* ═══ WAVE 2043: RUBBER BAND SELECTION RECT ═══ */}
+        {drag?.type === 'rubber-band' && rubberBandEnd && (
+          <rect
+            x={Math.min(drag.startX, rubberBandEnd.x)}
+            y={Math.min(drag.startY, rubberBandEnd.y)}
+            width={Math.abs(rubberBandEnd.x - drag.startX)}
+            height={Math.abs(rubberBandEnd.y - drag.startY)}
+            fill="rgba(59, 130, 246, 0.12)"
+            stroke="rgba(59, 130, 246, 0.6)"
+            strokeWidth="1"
+            strokeDasharray="4,2"
+            pointerEvents="none"
+            rx="2"
+          />
+        )}
+
+        {/* ═══ ⚒️ WAVE 2043.5: RULER SCRUB AREA — Clickeable/draggable zone above the plot ═══ */}
+        {onScrub && (
+          <rect
+            x={PADDING.left}
+            y={0}
+            width={plotW}
+            height={PADDING.top}
+            fill="transparent"
+            style={{ cursor: 'col-resize' }}
+            onMouseDown={handleRulerMouseDown}
+          />
+        )}
+
         {/* ═══ PLAYHEAD ═══ */}
         {playheadMs >= visibleStartMs && playheadMs <= visibleEndMs && (
-          <g>
+          <g pointerEvents="none">
             <line
               x1={toX(playheadMs)}
               y1={PADDING.top}
@@ -921,8 +1444,8 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
         </div>
       )}
 
-      {/* ═══ WAVE 2030.14: KEYFRAME CONTEXT MENU ═══ */}
-      {contextMenu && curve.keyframes[contextMenu.keyframeIndex] && (
+      {/* ═══ WAVE 2030.14 / 2043.5: KEYFRAME CONTEXT MENU ═══ */}
+      {contextMenu && contextMenu.menuType === 'keyframe' && curve.keyframes[contextMenu.keyframeIndex] && (
         <KeyframeContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -950,6 +1473,55 @@ export const CurveEditor: React.FC<CurveEditorProps> = ({
             }
             setContextMenu(null)
           }}
+          onCopy={onCopyKeyframes ? () => {
+            onCopyKeyframes()
+            setContextMenu(null)
+          } : undefined}
+        />
+      )}
+
+      {/* ═══ ⚒️ WAVE 2043.5: BACKGROUND CONTEXT MENU (Paste Here) ═══ */}
+      {contextMenu && contextMenu.menuType === 'background' && (
+        <BackgroundContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          clickTimeMs={contextMenu.clickTimeMs ?? 0}
+          hasClipboard={hasClipboard}
+          onPasteHere={(timeMs) => {
+            onPasteAtTime?.(timeMs)
+            setContextMenu(null)
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* ═══ ⚒️ WAVE 2043.11: MULTI-SELECTION CONTEXT MENU (Apply Shape) ═══ */}
+      {contextMenu && contextMenu.menuType === 'multi-selection' && onApplyShapeToSelection && (
+        <MultiSelectionContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          selectionCount={selectedIndices.size}
+          onApplyShape={(shapeId) => {
+            onApplyShapeToSelection(shapeId)
+            setContextMenu(null)
+          }}
+          onDelete={() => {
+            // Delete all selected keyframes (highest index first to preserve ordering)
+            const sorted = Array.from(selectedIndices).sort((a, b) => b - a)
+            for (const idx of sorted) {
+              onKeyframeDelete(idx)
+            }
+            setContextMenu(null)
+          }}
+          onCopy={onCopyKeyframes ? () => {
+            onCopyKeyframes()
+            setContextMenu(null)
+          } : undefined}
+          onBatchAudioBind={onBatchAudioBind ? (source) => {
+            onBatchAudioBind(source)
+            setContextMenu(null)
+          } : undefined}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </div>

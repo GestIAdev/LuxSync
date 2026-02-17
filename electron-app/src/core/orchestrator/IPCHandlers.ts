@@ -13,6 +13,8 @@ import { ipcMain, BrowserWindow } from 'electron'
 import type { TitanOrchestrator } from './TitanOrchestrator'
 import { deserializeHephClip, type HephAutomationClipSerialized } from '../hephaestus/types'
 import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime'
+// 📡 WAVE 2048: Art-Net Network Discovery
+import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery'
 // 🔥 WAVE 2040.24: FixtureZone viene de la fuente canónica única (ShowFileV2)
 import type { FixtureZone } from '../stage/ShowFileV2'
 export type { FixtureZone }
@@ -1550,5 +1552,60 @@ function setupArtNetHandlers(deps: IPCDependencies): void {
     } catch (err) {
       return { success: false, error: String(err) }
     }
+  })
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📡 WAVE 2048: ART-NET DISCOVERY (ArtPoll/ArtPollReply)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const discovery = getArtNetDiscovery()
+
+  ipcMain.handle('artnet:discovery:start', async () => {
+    try {
+      const success = await discovery.start()
+      return { success, status: discovery.getStatus() }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
+
+  ipcMain.handle('artnet:discovery:stop', async () => {
+    try {
+      await discovery.stop()
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
+
+  ipcMain.handle('artnet:discovery:getStatus', () => {
+    return discovery.getStatus()
+  })
+
+  ipcMain.handle('artnet:discovery:pollNow', () => {
+    discovery.pollNow()
+    return { success: true }
+  })
+
+  ipcMain.handle('artnet:discovery:setBroadcast', (_event, address: string) => {
+    discovery.setBroadcastAddress(address)
+    return { success: true }
+  })
+
+  // Forward discovery events to renderer
+  discovery.on('node-discovered', (node) => {
+    deps.mainWindow?.webContents.send('artnet:discovery:node-discovered', node)
+  })
+
+  discovery.on('node-lost', (ip) => {
+    deps.mainWindow?.webContents.send('artnet:discovery:node-lost', ip)
+  })
+
+  discovery.on('node-updated', (node) => {
+    deps.mainWindow?.webContents.send('artnet:discovery:node-updated', node)
+  })
+
+  discovery.on('state-change', (state) => {
+    deps.mainWindow?.webContents.send('artnet:discovery:state-change', state)
   })
 }

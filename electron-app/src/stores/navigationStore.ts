@@ -42,6 +42,12 @@ export interface NavigationState {
   // WAVE 1112: Target fixture for Forge
   targetFixtureId: string | null
   
+  // WAVE 2044: Target Hephaestus clip for Chronos → Hephaestus bridge
+  targetHephClipId: string | null
+  
+  // WAVE 2044.5: BPM UNITY — Pass BPM from Chronos to Hephaestus via THE HANDOFF
+  targetBpm: number | null
+  
   // Actions
   setActiveTab: (tab: TabId) => void
   goBack: () => void
@@ -51,6 +57,11 @@ export interface NavigationState {
   // WAVE 1112: Edit fixture action (Builder -> Forge bridge)
   editFixture: (fixtureId: string) => void
   clearTargetFixture: () => void
+  
+  // WAVE 2044: Edit clip in Hephaestus (Chronos -> Hephaestus bridge)
+  editInHephaestus: (clipId: string) => void
+  editInHephaestusWithBpm: (clipId: string, bpm: number) => void  // WAVE 2044.5
+  clearTargetHephClip: () => void
 }
 
 // ============================================
@@ -167,6 +178,12 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   // WAVE 1112: Target fixture for Forge
   targetFixtureId: null,
   
+  // WAVE 2044: Target Hephaestus clip for Chronos → Hephaestus bridge
+  targetHephClipId: null,
+  
+  // WAVE 2044.5: BPM UNITY — Pass BPM from Chronos to Hephaestus
+  targetBpm: null,
+  
   setActiveTab: (tab: TabId) => {
     const { activeTab, tabHistory } = get()
     if (tab === activeTab) return
@@ -213,6 +230,25 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   clearTargetFixture: () => {
     set({ targetFixtureId: null })
   },
+  
+  // WAVE 2044: Edit clip in Hephaestus — Chronos → Hephaestus bridge
+  // Mirrors editFixture pattern: store targetId → navigate to tab → consumer auto-loads
+  editInHephaestus: (clipId: string) => {
+    console.log(`[NavigationStore] ⚒️ Navigating to Hephaestus with clip: ${clipId}`)
+    set({ targetHephClipId: clipId })
+    get().setActiveTab('hephaestus')
+  },
+  
+  // WAVE 2044.5: BPM UNITY — Edit clip with BPM context
+  editInHephaestusWithBpm: (clipId: string, bpm: number) => {
+    console.log(`[NavigationStore] ⚒️ Navigating to Hephaestus with clip: ${clipId}, BPM: ${bpm}`)
+    set({ targetHephClipId: clipId, targetBpm: bpm })
+    get().setActiveTab('hephaestus')
+  },
+  
+  clearTargetHephClip: () => {
+    set({ targetHephClipId: null, targetBpm: null })  // WAVE 2044.5: Clear BPM too
+  },
 }))
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -252,6 +288,18 @@ export const selectStageConstructorNav = (state: NavigationState) => ({
 export const selectFixtureForgeNav = (state: NavigationState) => ({
   targetFixtureId: state.targetFixtureId,
   clearTargetFixture: state.clearTargetFixture,
+})
+
+/** Selector: HephaestusView - target clip navigation (WAVE 2044: TIME BRIDGE) */
+export const selectHephaestusNav = (state: NavigationState) => ({
+  targetHephClipId: state.targetHephClipId,
+  clearTargetHephClip: state.clearTargetHephClip,
+})
+
+/** Selector: ChronosLayout - editInHephaestus action (WAVE 2044: TIME BRIDGE) */
+export const selectChronosHephBridge = (state: NavigationState) => ({
+  setActiveTab: state.setActiveTab,
+  editInHephaestus: state.editInHephaestus,
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

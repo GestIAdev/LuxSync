@@ -68,10 +68,19 @@ import { useControlStore, type LivingPaletteId } from '../../stores/controlStore
 import { useOverrideStore } from '../../stores/overrideStore'
 import type { LuxProject } from '../core/ChronosProject'
 import type { AnalysisData } from '../core/types'
-import type { DragPayload, TimelineClip } from '../core/TimelineClip'
-import { toFXType, toVibeType } from '../core/TimelineClip'
-// 🔧 WAVE 2040.34: Navigation store for Hephaestus routing
-import { useNavigationStore, selectSetActiveTab } from '../../stores/navigationStore'
+import type { DragPayload, TimelineClip, FXClip } from '../core/TimelineClip'
+import { toFXType, toVibeType, extractVisualKeyframes } from '../core/TimelineClip'
+import type { HephAutomationClipSerialized } from '../../core/hephaestus/types'
+// 🔧 WAVE 2044: Navigation store for Hephaestus routing
+import { useNavigationStore } from '../../stores/navigationStore'
+// 🎵 WAVE 2044.5: BPM UNITY — Sync Chronos BPM to global audioStore
+import { useAudioStore } from '../../stores/audioStore'
+// 🎹 WAVE 2045: UMBILICAL CORD — External connectivity
+import { useMIDIClock } from '../hooks/useMIDIClock'
+import { useLiveAudioInput } from '../hooks/useLiveAudioInput'
+import { useFreeRunClock } from '../hooks/useFreeRunClock'
+// 🎛️ WAVE 2046.2: THE INJERTO — Live Rack (TheProgrammer adapted for Chronos)
+import { ChronosLiveRack } from './rack/ChronosLiveRack'
 import './ChronosLayout.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -99,6 +108,21 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   // 🎵 WAVE 2005.4: Streaming playback (constant ~5MB RAM, no decode to memory)
   const streaming = useStreamingPlayback()
   
+  // ⏰ WAVE 2045.2: Free Run Clock — infinite playback for LIVE mode
+  const freeRunClock = useFreeRunClock()
+  
+  // 🎹 WAVE 2045: MIDI Clock — external BPM source
+  const midiClock = useMIDIClock()
+  
+  // 🎤 WAVE 2045: Live Audio Input — microphone/line-in
+  const liveAudio = useLiveAudioInput()
+  
+  // 🎚️ WAVE 2045: Audio source mode (file | live)
+  const [audioSourceMode, setAudioSourceMode] = useState<'file' | 'live'>('file')
+  
+  // 🎛️ WAVE 2046.2: Live Rack visibility toggle
+  const [showLiveControls, setShowLiveControls] = useState(false)
+  
   // 💾 WAVE 2014: Project persistence (The Memory Core)
   const project = useChronosProject()
   
@@ -106,9 +130,11 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
   const sessionStore = useChronosSession()
   const sessionRestoredRef = useRef(false)
   
-  // 🔧 WAVE 2040.34: Navigation for Hephaestus routing
-  // 🛡️ WAVE 2042.13.5: Selector directo (función - estable)
-  const setActiveTab = useNavigationStore(selectSetActiveTab)
+  // 🔧 WAVE 2044: Navigation for Hephaestus routing (THE TIME BRIDGE)
+  // � WAVE 2044.2: CHRONOS LOOP FIX — Individual selectors prevent infinite loop
+  const setActiveTab = useNavigationStore(state => state.setActiveTab)
+  const editInHephaestus = useNavigationStore(state => state.editInHephaestus)
+  const editInHephaestusWithBpm = useNavigationStore(state => state.editInHephaestusWithBpm)  // WAVE 2044.5
   
   // 🧠 WAVE 2017 FIX: Use refs to keep track of current state for unmount cleanup
   // This avoids stale closures in the cleanup function
@@ -175,6 +201,13 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader.result])
   
+  // 🎵 WAVE 2044.5: BPM UNITY — Sync Chronos local BPM → audioStore (global)
+  // This ensures Hephaestus always sees current BPM when navigating from Chronos
+  useEffect(() => {
+    useAudioStore.getState().updateMetrics({ bpm })
+    console.log(`[ChronosLayout] 🎵 BPM synced to audioStore → ${bpm}`)
+  }, [bpm])
+  
   // 🧠 WAVE 2017: Sync audio to session store when loaded (for persistence)
   useEffect(() => {
     if (audioLoader.result?.realPath && sessionRestoredRef.current) {
@@ -189,18 +222,105 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     }
   }, [audioLoader.result])
   
-  // 🎵 WAVE 2005.4: Transport controls now use streaming hook
+  // 🎵 WAVE 2005.4 + WAVE 2045.2: Transport controls
+  // - FILE mode: use streaming.togglePlay()
+  // - LIVE mode: use freeRunClock.start/pause
   const handlePlay = useCallback(() => {
-    streaming.togglePlay()
-    console.log('[ChronosLayout] ▶️ Play toggled')
-  }, [streaming])
+    if (audioSourceMode === 'live') {
+      // LIVE mode: Free Run Clock (infinite tape)
+      if (freeRunClock.isRunning) {
+        freeRunClock.pause()
+        console.log('[ChronosLayout] ⏸️ LIVE paused')
+      } else {
+        if (freeRunClock.currentTimeMs > 0) {
+          freeRunClock.resume()
+          console.log('[ChronosLayout] ▶️ LIVE resumed')
+        } else {
+          freeRunClock.start()
+          console.log('[ChronosLayout] ▶️ LIVE started')
+        }
+      }
+    } else {
+      // FILE mode: HTMLAudioElement streaming
+      streaming.togglePlay()
+      console.log('[ChronosLayout] ▶️ FILE play toggled')
+    }
+  }, [audioSourceMode, streaming, freeRunClock])
   
   const handleStop = useCallback(() => {
-    streaming.stop()
-    console.log('[ChronosLayout] ⏹️ Stop')
-  }, [streaming])
+    if (audioSourceMode === 'live') {
+      // LIVE mode: stop free run clock and reset to 0
+      freeRunClock.stop()
+      console.log('[ChronosLayout] ⏹️ LIVE stopped')
+    } else {
+      // FILE mode: stop streaming playback
+      streaming.stop()
+      console.log('[ChronosLayout] ⏹️ FILE stopped')
+    }
+  }, [audioSourceMode, streaming, freeRunClock])
   
-  // 🎬 WAVE 2010: Get recorder instance
+  // 🎹 WAVE 2045: MIDI Clock toggle
+  const handleToggleMidiClock = useCallback(async () => {
+    await midiClock.toggleSource()
+  }, [midiClock])
+  
+  // 🎹 WAVE 2045: When MIDI clock provides BPM, override local BPM
+  useEffect(() => {
+    if (midiClock.source === 'midi' && midiClock.midiBpm > 0) {
+      const roundedBpm = Math.round(midiClock.midiBpm)
+      setBpm(roundedBpm)
+      console.log(`[ChronosLayout] 🎹 MIDI Clock → BPM: ${roundedBpm}`)
+    }
+  }, [midiClock.source, midiClock.midiBpm])
+  
+  // 🎹 WAVE 2045: When MIDI sends Start/Stop, control transport
+  useEffect(() => {
+    if (midiClock.source !== 'midi') return
+    
+    if (midiClock.isExternalPlaying && !streaming.isPlaying) {
+      streaming.play()
+      console.log('[ChronosLayout] 🎹 MIDI START → Play')
+    } else if (!midiClock.isExternalPlaying && streaming.isPlaying) {
+      streaming.stop()
+      console.log('[ChronosLayout] 🎹 MIDI STOP → Stop')
+    }
+  }, [midiClock.source, midiClock.isExternalPlaying, streaming])
+  
+  // 🎤 WAVE 2045: Toggle audio source mode (FILE ↔ LIVE)
+  const handleToggleAudioSource = useCallback(async () => {
+    if (audioSourceMode === 'file') {
+      // Switch to LIVE
+      console.log('[ChronosLayout] 🎤 Switching to LIVE audio mode')
+      
+      // Stop file playback
+      streaming.stop()
+      
+      // Start live capture
+      await liveAudio.start('microphone')
+      
+      setAudioSourceMode('live')
+      console.log('[ChronosLayout] 🎤 LIVE mode ACTIVE')
+    } else {
+      // Switch to FILE
+      console.log('[ChronosLayout] 📁 Switching to FILE audio mode')
+      
+      // Stop live capture
+      liveAudio.stop()
+      
+      setAudioSourceMode('file')
+      console.log('[ChronosLayout] 📁 FILE mode ACTIVE')
+    }
+  }, [audioSourceMode, streaming, liveAudio])
+  
+  // �️ WAVE 2046.2: Toggle Live Rack visibility
+  const handleToggleLiveControls = useCallback(() => {
+    setShowLiveControls(prev => !prev)
+  }, [])
+  
+  // 🎛️ WAVE 2046.2: Derived — show rack when recording OR manually toggled
+  const showRack = isRecording || showLiveControls
+  
+  // �🎬 WAVE 2010: Get recorder instance
   const recorder = useMemo(() => getChronosRecorder(), [])
   
   // 🧲 WAVE 2040.10: Quantize state (read from recorder, toggle via UI)
@@ -268,6 +388,51 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
       }
     }
   }, [])
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚒️ WAVE 2044: HOT-RELOAD — Listen for Hephaestus clip saves
+  // When a clip is saved in Hephaestus, update any FXClip in the timeline
+  // whose hephClip.id matches. Re-embeds the Diamond Data in-place.
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    const handleHephClipSaved = (e: Event) => {
+      const { clipId, clip: updatedClipSerialized } = (e as CustomEvent<{
+        clipId: string
+        clip: HephAutomationClipSerialized
+      }>).detail
+      
+      console.log(`[ChronosLayout] ⚒️ HOT-RELOAD: Received heph-clip-saved → ${clipId}`)
+      
+      // Find all FXClips that reference this heph clip
+      let updatedCount = 0
+      for (const timelineClip of clipState.clips) {
+        if (timelineClip.type !== 'fx') continue
+        const fxClip = timelineClip as FXClip
+        
+        // Match by hephClip.id (primary) or by hephFilePath containing the name
+        const isMatch = fxClip.hephClip?.id === clipId
+        
+        if (isMatch) {
+          // Re-embed the updated Diamond Data
+          const clipDurationMs = fxClip.endMs - fxClip.startMs
+          clipState.updateClip(fxClip.id, {
+            hephClip: updatedClipSerialized,
+            keyframes: extractVisualKeyframes(updatedClipSerialized, clipDurationMs),
+            label: updatedClipSerialized.name || fxClip.label,
+          })
+          updatedCount++
+        }
+      }
+      
+      if (updatedCount > 0) {
+        console.log(`[ChronosLayout] ⚒️ HOT-RELOAD: Updated ${updatedCount} clip(s) with fresh Diamond Data`)
+      }
+    }
+    
+    window.addEventListener('luxsync:heph-clip-saved', handleHephClipSaved)
+    return () => window.removeEventListener('luxsync:heph-clip-saved', handleHephClipSaved)
+  }, [clipState])
   
   // ═══════════════════════════════════════════════════════════════════════════
   // 🧠 WAVE 2017: THE SESSION KEEPER - Restore & Save Logic
@@ -731,14 +896,44 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
     clipState.duplicateClip(clipId)
   }, [clipState])
   
-  // 🔧 WAVE 2040.34: Navigate to Hephaestus for clip editing
-  // Opens Hephaestus view where user can load the clip from library
-  // Future: Pass clipId for auto-load via navigationStore.targetClipId
+  // ⚒️ WAVE 2044: THE HANDOFF — Navigate to Hephaestus with auto-load
+  // 🎵 WAVE 2044.5: BPM UNITY — Pass current BPM to Hephaestus via navigationStore
+  // Extracts the hephClip.id from the FXClip and passes it through navigationStore.
+  // HephaestusView detects targetHephClipId on mount → auto-loads via IPC.
   const handleEditInHephaestus = useCallback((clipId: string) => {
-    console.log(`[ChronosLayout] ⚒️ Opening Hephaestus to edit clip: ${clipId}`)
+    // Find the FXClip in clipState to extract heph data
+    const fxClip = clipState.getClipById(clipId)
+    
+    if (fxClip && fxClip.type === 'fx') {
+      // Priority: hephClip.id (UUID match) > hephFilePath (filename match)
+      const hephId = fxClip.hephClip?.id || fxClip.hephFilePath
+      
+      if (hephId) {
+        console.log(`[ChronosLayout] ⚒️ THE HANDOFF: Sending clip to Hephaestus → ${hephId}, BPM: ${bpm}`)
+        clipState.deselectAll()
+        editInHephaestusWithBpm(hephId, bpm)  // WAVE 2044.5: Pass BPM
+        return
+      }
+    }
+    
+    // Fallback: legacy clip without heph data — just navigate
+    console.log(`[ChronosLayout] ⚒️ Opening Hephaestus (no heph data for clip: ${clipId})`)
     clipState.deselectAll()
     setActiveTab('hephaestus')
-  }, [clipState, setActiveTab])
+  }, [clipState, setActiveTab, editInHephaestusWithBpm, bpm])  // WAVE 2044.5: Add bpm dependency
+  
+  // 🎯 WAVE 2044.3: SYNAPSE REPAIR — Double-click Heph clips to edit
+  // RULE: Only works for fx clips with isHephCustom === true
+  const handleDoubleClickHephClip = useCallback((clipId: string) => {
+    const clip = clipState.getClipById(clipId)
+    
+    // GUARD: Only heph-created clips (fx + isHephCustom) support double-click edit
+    if (clip?.type === 'fx' && clip.isHephCustom) {
+      console.log(`[ChronosLayout] 🎯 Double-click → Opening Heph clip: ${clipId}`)
+      handleEditInHephaestus(clipId)
+    }
+    // Else: ignore double-click (normal clips, vibe clips, etc.)
+  }, [clipState, handleEditInHephaestus])
   
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 2007: CONTEXT MENU CALLBACKS
@@ -842,9 +1037,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
        * Engine Status fused into TransportBar — single unified cockpit
        * ═══════════════════════════════════════════════════════════════════ */}
       <TransportBar
-        isPlaying={streaming.isPlaying}
+        isPlaying={audioSourceMode === 'live' ? freeRunClock.isRunning : streaming.isPlaying}
         isRecording={isRecording}
-        currentTime={streaming.currentTimeMs}
+        currentTime={audioSourceMode === 'live' ? freeRunClock.currentTimeMs : streaming.currentTimeMs}
         bpm={bpm}
         onPlay={handlePlay}
         onStop={handleStop}
@@ -869,6 +1064,19 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
         // 🧲 WAVE 2040.10: Quantize — human feel vs beat-locked
         quantizeEnabled={quantizeEnabled}
         onToggleQuantize={handleToggleQuantize}
+        // 🎹 WAVE 2045: MIDI Clock
+        midiClockSource={midiClock.source}
+        midiSignalQuality={midiClock.signalQuality}
+        midiBpm={midiClock.midiBpm}
+        onToggleMidiClock={handleToggleMidiClock}
+        // 🎤 WAVE 2045: Audio Source
+        audioSourceMode={audioSourceMode}
+        isLiveActive={liveAudio.isActive}
+        liveLevel={liveAudio.metrics.level}
+        onToggleAudioSource={handleToggleAudioSource}
+        // 🎛️ WAVE 2046.2: Live Rack toggle
+        showLiveControls={showLiveControls}
+        onToggleLiveControls={handleToggleLiveControls}
       />
       
       {/* ═══════════════════════════════════════════════════════════════════
@@ -917,9 +1125,9 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
           {/* Timeline Canvas — WAVE 2040.32: Grid Row 2 (50%) */}
           <div className="chronos-timeline-wrapper">
             <TimelineCanvas
-              currentTime={streaming.currentTimeMs}
+              currentTime={audioSourceMode === 'live' ? freeRunClock.currentTimeMs : streaming.currentTimeMs}
               bpm={bpm}
-              isPlaying={streaming.isPlaying}
+              isPlaying={audioSourceMode === 'live' ? freeRunClock.isRunning : streaming.isPlaying}
               onSeek={handleSeek}
               analysisData={audioLoader.result?.analysisData ?? null}
               durationMs={durationMs}
@@ -933,6 +1141,8 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
               onClipResize={handleClipResize}
               onClipDrop={handleClipDrop}
               onClipContextMenu={handleClipContextMenu}
+              onClipDoubleClick={handleDoubleClickHephClip}  // WAVE 2044.3
+              onClipClone={clipState.cloneClip}             // ⚡ WAVE 2045.1.2: Alt+Drag clone
               // WAVE 2006: Auto-scroll
               followEnabled={followEnabled}
               onFollowToggle={handleFollowToggle}
@@ -940,17 +1150,22 @@ const ChronosLayout: React.FC<ChronosLayoutProps> = ({ className = '' }) => {
               isRecording={isRecording}
               growingClipId={isRecording ? recorder.activeVibeClipId : null}
               growingClipEndMs={isRecording ? recorder.activeVibeClipEndMs : null}
+              // WAVE 2045.2: Audio source mode for live recording indicator
+              audioSourceMode={audioSourceMode}
             />
-            {/* 🔧 WAVE 2040.32/33/34: ContextualDataSheet — floating HUD bottom-right */}
-            <ContextualDataSheet
-              clip={selectedClip}
-              onClose={clipState.deselectAll}
-              onEditInHephaestus={handleEditInHephaestus}
-            />
+            {/* 🔧 WAVE 2040.32/33/34 → 2046.2: ContextualDataSheet — only when rack is hidden */}
+            {!showRack && (
+              <ContextualDataSheet
+                clip={selectedClip}
+                onClose={clipState.deselectAll}
+                onEditInHephaestus={handleEditInHephaestus}
+              />
+            )}
           </div>
         </div>
         
-        {/* 🔧 WAVE 2040.32: Inspector DEMOLISHED — Workspace takes 100% width */}
+        {/* 🎛️ WAVE 2046.2: LIVE RACK — TheProgrammer adapted for Chronos */}
+        {showRack && <ChronosLiveRack />}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════════

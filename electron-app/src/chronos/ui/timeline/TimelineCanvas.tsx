@@ -24,6 +24,7 @@
 import React, { useRef, useState, useCallback, useEffect, useLayoutEffect, memo, useMemo } from 'react'
 import { WaveformLayer } from './WaveformLayer'
 import { ClipRenderer } from './ClipRenderer'
+import { LiveRecordingIndicator } from './LiveRecordingIndicator'
 import type { AnalysisData } from '../../core/types'
 import type { TimelineClip, DragPayload } from '../../core/TimelineClip'
 import { deserializeDragPayload } from '../../core/TimelineClip'
@@ -51,6 +52,8 @@ export interface TimelineCanvasProps {
   onClipResize?: (clipId: string, edge: 'left' | 'right', newTimeMs: number) => void
   onClipDrop?: (payload: DragPayload, timeMs: number, trackId: string) => void
   onClipContextMenu?: (clipId: string, event: React.MouseEvent) => void
+  onClipDoubleClick?: (clipId: string) => void  // WAVE 2044.3: Open in Hephaestus
+  onClipClone?: (clipId: string) => TimelineClip | null  // ⚡ WAVE 2045.1.2: Alt+Drag clone
   // WAVE 2006: Auto-scroll
   followEnabled?: boolean
   onFollowToggle?: () => void
@@ -62,6 +65,8 @@ export interface TimelineCanvasProps {
   growingClipEndMs?: number | null
   // WAVE 2013.6: Is recording active? (for force-update during recording)
   isRecording?: boolean
+  // WAVE 2045.2: Audio source mode (file | live)
+  audioSourceMode?: 'file' | 'live'
 }
 
 interface TimelineViewport {
@@ -568,6 +573,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   onClipResize,
   onClipDrop,
   onClipContextMenu,
+  onClipDoubleClick,  // WAVE 2044.3
+  onClipClone,        // ⚡ WAVE 2045.1.2: Alt+Drag clone
   followEnabled = true,
   onFollowToggle,
   onUserScroll,
@@ -575,6 +582,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   growingClipId = null,
   growingClipEndMs = null,
   isRecording = false,
+  // WAVE 2045.2 props
+  audioSourceMode = 'file',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   // � WAVE 2040.39: NUCLEAR OPTION — Start with any dimensions
@@ -633,6 +642,12 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
   const [draggingClipId, setDraggingClipId] = useState<string | null>(null)
   const [resizingClip, setResizingClip] = useState<{ id: string; edge: 'left' | 'right' } | null>(null)
   const dragStartRef = useRef<{ x: number; startMs: number; originalEdgeMs: number } | null>(null)
+  
+  // ⚡ WAVE 2045.1: CLONE WARS — Alt+Drag ghost clone state
+  const [isCloning, setIsCloning] = useState(false)
+  const [cloneGhostPosition, setCloneGhostPosition] = useState<{ x: number; y: number; clipId: string } | null>(null)
+  // ⚡ WAVE 2045.1.1: HOTFIX "SEPARATION ANXIETY" — Store calculated position during drag
+  const cloneTargetTimeRef = useRef<number>(0)
   
   // Track the container size
   // 🔥 WAVE 2040.39: NUCLEAR OPTION — ResizeObserver at browser level
@@ -911,9 +926,18 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const clip = clips.find(c => c.id === clipId)
     if (!clip) return
     
+    // ⚡ WAVE 2045.1: Detect Alt key for clone mode
+    const isAltPressed = e.altKey
+    
     setDraggingClipId(clipId)
+    setIsCloning(isAltPressed)
+    
     // WAVE 2013.5: Store original position for correct delta calculation
     dragStartRef.current = { x: e.clientX, startMs: clip.startMs, originalEdgeMs: 0 }
+    
+    if (isAltPressed) {
+      console.log(`[TimelineCanvas] ⚡ CLONE WARS: Alt+Drag initiated for clip ${clipId}`)
+    }
   }, [clips])
   
   const handleClipResizeStart = useCallback((clipId: string, edge: 'left' | 'right', e: React.MouseEvent) => {
@@ -933,6 +957,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return
       
+      // ⚡ WAVE 2045.1: Track mouse position globally for clone detection
+      (window as any).lastMouseX = e.clientX
+      
       // WAVE 2013.5: Correct delta calculation
       // deltaX is in pixels, convert to milliseconds using zoom level
       const deltaX = e.clientX - dragStartRef.current.x
@@ -941,7 +968,27 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
       if (draggingClipId) {
         // MOVE: Calculate new position from ORIGINAL startMs + delta
         const newStartMs = Math.max(0, dragStartRef.current.startMs + deltaMs)
-        onClipMove?.(draggingClipId, newStartMs)
+        
+        // ⚡ WAVE 2045.1: If cloning, just update ghost position (don't move original)
+        if (isCloning) {
+          // ⚡ WAVE 2045.1.1: HOTFIX — Store this calculated time for mouseUp
+          cloneTargetTimeRef.current = newStartMs
+          
+          const clip = clips.find(c => c.id === draggingClipId)
+          if (clip) {
+            const trackY = getTrackYOffset(clip.trackId)
+            const x = TRACK_LABEL_WIDTH + ((newStartMs - viewport.startTime) / 1000) * viewport.pixelsPerSecond
+            setCloneGhostPosition({ x, y: trackY, clipId: draggingClipId })
+            
+            // ⚡ DEBUG: Verify ghost is being updated
+            if (Math.random() < 0.01) { // Log 1% of the time to avoid spam
+              console.log('[TimelineCanvas] 👻 Ghost position:', { x, y: trackY, time: (newStartMs/1000).toFixed(2) })
+            }
+          }
+        } else {
+          // Normal move
+          onClipMove?.(draggingClipId, newStartMs)
+        }
       } else if (resizingClip) {
         // RESIZE: Calculate new edge time from ORIGINAL edge position + delta
         // This prevents drift by always calculating from the fixed starting point
@@ -951,9 +998,28 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
     }
     
     const handleMouseUp = () => {
+      // ⚡ WAVE 2045.1: If cloning, duplicate clip at ghost position
+      if (isCloning && draggingClipId) {
+        // ⚡ WAVE 2045.1.2: HOTFIX "SEPARATION ANXIETY"
+        // Use cloneClip (overlapping) not duplicateClip (adjacent)
+        // Use the STORED time from handleMouseMove, not a recalculation
+        const newStartMs = cloneTargetTimeRef.current
+        
+        // Clone the clip (creates at original position)
+        const cloned = onClipClone?.(draggingClipId)
+        if (cloned) {
+          // Move the clone to the ghost's position
+          onClipMove?.(cloned.id, newStartMs)
+          console.log(`[TimelineCanvas] ⚡ CLONE WARS: Clone created at ${(newStartMs/1000).toFixed(2)}s (ghost position)`)
+        }
+      }
+      
       setDraggingClipId(null)
       setResizingClip(null)
+      setIsCloning(false)
+      setCloneGhostPosition(null)
       dragStartRef.current = null
+      cloneTargetTimeRef.current = 0  // Reset
     }
     
     document.addEventListener('mousemove', handleMouseMove)
@@ -1171,6 +1237,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           // Skip if completely outside viewport (but never skip growing clip)
           if (!isThisClipGrowing && (x + width < TRACK_LABEL_WIDTH || x > dimensions.width)) return null
           
+          // ⚡ WAVE 2045.1.3: Hide original clip during Alt+Drag clone
+          // This makes the ghost visible (otherwise original blocks view)
+          const isBeingCloned = isCloning && draggingClipId === clip.id
+          if (isBeingCloned) return null  // Don't render original during clone drag
+          
           return (
             <ClipRenderer
               key={clip.id}
@@ -1185,9 +1256,54 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
               onDragStart={handleClipDragStart}
               onResizeStart={handleClipResizeStart}
               onContextMenu={onClipContextMenu}
+              onDoubleClick={onClipDoubleClick}  // WAVE 2044.3
             />
           )
         })}
+        
+        {/* ⚡ WAVE 2045.1: CLONE WARS — Ghost clone preview during Alt+Drag */}
+        {isCloning && cloneGhostPosition && draggingClipId && (
+          (() => {
+            const originalClip = clips.find(c => c.id === draggingClipId)
+            if (!originalClip) return null
+            
+            // ⚡ DEBUG: Log when ghost is rendering
+            console.log('[TimelineCanvas] 🎨 Rendering ghost at:', cloneGhostPosition)
+            
+            const width = ((originalClip.endMs - originalClip.startMs) / 1000) * viewport.pixelsPerSecond
+            const height = getTrackHeight(originalClip.trackId) - 4
+            
+            return (
+              <g opacity={0.5}>
+                <ClipRenderer
+                  clip={originalClip}
+                  x={cloneGhostPosition.x}
+                  width={width}
+                  y={cloneGhostPosition.y + 2}
+                  height={height}
+                  isSelected={false}
+                  onSelect={() => {}}
+                  onDragStart={() => {}}
+                  onResizeStart={() => {}}
+                />
+                {/* Ghost outline */}
+                <rect
+                  x={cloneGhostPosition.x}
+                  y={cloneGhostPosition.y + 2}
+                  width={width}
+                  height={height}
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  rx={4}
+                  ry={4}
+                  opacity={0.8}
+                />
+              </g>
+            )
+          })()
+        )}
         
         {/* WAVE 2006: Snap Indicator Line */}
         {snapEnabled && snapPosition !== null && (
@@ -1288,6 +1404,28 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = memo(({
           />
         </div>
       )}
+      
+      {/* 🔴 WAVE 2045.2: Live Recording Indicator — Red block that grows while recording in LIVE mode */}
+      <svg
+        style={{
+          position: 'absolute',
+          top: waveformTrackY,
+          left: TRACK_LABEL_WIDTH,
+          width: dimensions.width - TRACK_LABEL_WIDTH,
+          height: waveformTrack?.height ?? 64,
+          pointerEvents: 'none',
+          zIndex: 10,
+        }}
+      >
+        <LiveRecordingIndicator
+          currentTimeMs={currentTime}
+          viewport={viewport}
+          trackY={0}
+          trackHeight={waveformTrack?.height ?? 64}
+          isRecording={isRecording}
+          audioSourceMode={audioSourceMode}
+        />
+      </svg>
       
       {/* WAVE 2006: Status Bar */}
       <div className="timeline-status-bar">

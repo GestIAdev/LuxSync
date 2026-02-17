@@ -13,6 +13,7 @@ import { useEffect } from 'react'
 import Header from './components/Header'
 import BigSwitch from './components/BigSwitch'
 import EffectsBar from './components/EffectsBar'
+import NetIndicator from './components/NetIndicator'  // 📡 WAVE 2048
 import { useLuxSyncStore, selectAppMain } from './stores/luxsyncStore'
 import { useSelene } from './hooks'
 import { useAudioStore, selectAudioMetrics } from './stores/audioStore'
@@ -115,6 +116,8 @@ function App() {
         {audioMetrics.isConnected && (
           <span className="audio-indicator">🎵</span>
         )}
+        {/* 📡 WAVE 2048: Art-Net Network Discovery Indicator */}
+        <NetIndicator />
       </div>
 
       {/* Blackout Overlay */}

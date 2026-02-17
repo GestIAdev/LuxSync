@@ -526,3 +526,51 @@ export const CATEGORY_ICONS: Record<string, string> = {
 export function getCategoryIcon(category: string): string {
   return CATEGORY_ICONS[category] ?? '📦'
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚒️ WAVE 2043.11: CONTEXTUAL SHAPE GENERATOR
+// Generate a shape within an arbitrary time/value window.
+// Used by multi-selection context menu to paint mathematical shapes
+// over the selected keyframes' time and value extent.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate keyframes for a mathematical shape within a specific time/value window.
+ * The shape is normalized from the template generator (0-1 range, 0-durationMs range)
+ * and then mapped into the target window [startTimeMs..endTimeMs] × [minValue..maxValue].
+ *
+ * @param shapeId - Template ID ('sine', 'triangle', 'sawtooth', 'square', 'pulse', 'bounce')
+ * @param startTimeMs - Start of the time window
+ * @param endTimeMs - End of the time window
+ * @param minValue - Minimum value in the target range
+ * @param maxValue - Maximum value in the target range
+ * @param cycles - Number of oscillation cycles (default 1)
+ * @returns HephKeyframe[] — Keyframes mapped into the target window
+ */
+export function generateShapeInWindow(
+  shapeId: string,
+  startTimeMs: number,
+  endTimeMs: number,
+  minValue: number,
+  maxValue: number,
+  cycles: number = 1,
+): HephKeyframe[] {
+  const template = getTemplateById(shapeId)
+  if (!template) return []
+
+  // Duration of the selection window
+  const windowDurationMs = endTimeMs - startTimeMs
+  if (windowDurationMs <= 0) return []
+
+  // Generate keyframes in normalized space (0..windowDurationMs, values 0..1)
+  const resolution = 16
+  const rawKeyframes = template.generate(windowDurationMs, cycles, resolution)
+
+  // Map from normalized space into the target window
+  const valueSpan = maxValue - minValue
+  return rawKeyframes.map(kf => ({
+    ...kf,
+    timeMs: Math.round(kf.timeMs + startTimeMs),
+    value: minValue + (kf.value as number) * valueSpan,
+  }))
+}

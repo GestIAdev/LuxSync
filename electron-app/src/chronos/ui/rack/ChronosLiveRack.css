@@ -1,0 +1,267 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🎛️ CHRONOS LIVE RACK — WAVE 2046.2: EL INJERTO
+ * 
+ * Adapta TheProgrammerContent al layout horizontal de Chronos.
+ * 
+ * STRATEGY:
+ * - El rack es un panel lateral derecho (320px) dentro de chronos-main
+ * - .rack-body contiene TheProgrammerContent — hereda sus propios estilos
+ * - Scoped overrides (.chronos-live-rack .programmer-content) neutralizan
+ *   cualquier conflicto dimensional sin tocar los archivos originales
+ * 
+ * @module chronos/ui/rack/ChronosLiveRack.css
+ * @version WAVE 2046.2
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTAINER — Panel lateral derecho
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-live-rack {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  height: 100%;
+  background: linear-gradient(180deg, #0a0a10 0%, #06060a 100%);
+  border-left: 1px solid rgba(168, 85, 247, 0.15);
+  overflow: hidden;
+  flex-shrink: 0;
+
+  /* Entrada suave */
+  animation: rack-slide-in 0.25s ease-out;
+}
+
+@keyframes rack-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLLAPSED STATE — Thin vertical strip (32px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chronos-live-rack--collapsed {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #0a0a10 0%, #06060a 100%);
+  border-left: 1px solid rgba(168, 85, 247, 0.1);
+  transition: background 0.2s ease;
+}
+
+.chronos-live-rack--collapsed:hover {
+  background: linear-gradient(180deg, #0e0e18 0%, #08080e 100%);
+  border-left-color: rgba(168, 85, 247, 0.3);
+}
+
+.rack-collapsed-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}
+
+.rack-collapsed-icon {
+  font-size: 14px;
+  writing-mode: horizontal-tb;
+}
+
+.rack-collapsed-text {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(168, 85, 247, 0.6);
+  writing-mode: vertical-lr;
+}
+
+.rack-collapsed-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: rgba(0, 255, 255, 0.2);
+  border-radius: 50%;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: #00FFFF;
+  writing-mode: horizontal-tb;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER — Rack title bar
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.12);
+  flex-shrink: 0;
+}
+
+.rack-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rack-icon {
+  font-size: 14px;
+}
+
+.rack-title {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #a855f7;
+}
+
+.rack-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: rgba(0, 255, 255, 0.2);
+  border-radius: 9px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 700;
+  color: #00FFFF;
+}
+
+.rack-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rack-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY — Scrollable container for TheProgrammerContent
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rack-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCOPED OVERRIDES — Neutralize TheProgrammer.css conflicts
+   
+   TheProgrammerContent renders <div class="programmer-content"> which
+   inherits styles from TheProgrammer.css. Some of those styles assume
+   a 450px-wide StageSidebar context. We override them here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* programmer-content inside rack: inherit rack dimensions, don't fight */
+.chronos-live-rack .programmer-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Empty state fits the narrower rack */
+.chronos-live-rack .programmer-content.empty-state {
+  padding: 24px 16px;
+}
+
+.chronos-live-rack .empty-state-content {
+  text-align: center;
+}
+
+.chronos-live-rack .empty-state-icon {
+  font-size: 28px;
+}
+
+.chronos-live-rack .empty-state-title {
+  font-size: 12px;
+}
+
+.chronos-live-rack .empty-state-hint {
+  font-size: 10px;
+}
+
+/* Header compacts for 320px */
+.chronos-live-rack .programmer-header {
+  padding: 5px 8px 4px 8px;
+}
+
+.chronos-live-rack .fixture-count {
+  font-size: 16px;
+}
+
+/* Accordion sections: breathe in tighter space */
+.chronos-live-rack .accordion-section {
+  margin: 0;
+}
+
+.chronos-live-rack .accordion-header {
+  padding: 6px 8px;
+}
+
+.chronos-live-rack .accordion-body {
+  padding: 6px 8px;
+}
+
+/* Override indicator: compact */
+.chronos-live-rack .override-indicator {
+  padding: 4px 8px;
+  font-size: 9px;
+}
+
+/* Scrollbar styling — thin, subtle */
+.rack-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.rack-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rack-body::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.2);
+  border-radius: 2px;
+}
+
+.rack-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.4);
+}

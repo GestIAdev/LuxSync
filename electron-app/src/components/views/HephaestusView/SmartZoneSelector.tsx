@@ -82,14 +82,20 @@ const ALL_TILES = [...TARGET_TILES, ...POSITION_TILES, ...MODIFIER_TILES]
 /**
  * Generate a human-readable summary badge text from zone selection.
  * Examples: "ALL", "MOVERS (L)", "FRONT + BACK (Even)", etc.
+ * 
+ * ⚒️ WAVE 2043.9: ALL is exclusive — ignore 'all' if other zones exist (zombie killer)
  */
 export function getZoneBadgeText(zones: EffectZone[]): string {
+  // Empty or only 'all' → show "ALL"
   if (zones.length === 0 || (zones.length === 1 && zones[0] === 'all')) return 'ALL'
+
+  // ⚒️ WAVE 2043.9: Filter out 'all' if other zones exist (zombie state protection)
+  const cleanedZones = zones.filter(z => z !== 'all')
 
   const parts: string[] = []
   const modifiers: string[] = []
 
-  for (const z of zones) {
+  for (const z of cleanedZones) {
     const tile = ALL_TILES.find(t => t.id === z)
     if (!tile) continue
     if (tile.row === 'parity') {
@@ -106,13 +112,19 @@ export function getZoneBadgeText(zones: EffectZone[]): string {
 
 /**
  * Get the primary LuxIcon for the current zone selection (for the header badge).
+ * 
+ * ⚒️ WAVE 2043.9: ALL is exclusive — ignore 'all' if other zones exist
  */
 export function getZoneBadgeIcon(zones: EffectZone[]): React.ReactNode {
   if (zones.length === 0 || (zones.length === 1 && zones[0] === 'all')) {
     return <TargetIcon size={14} color="#f97316" />
   }
+
+  // ⚒️ WAVE 2043.9: Filter out 'all' if other zones exist (zombie state protection)
+  const cleanedZones = zones.filter(z => z !== 'all')
+
   // Find the first target/position tile
-  const firstTarget = zones.find(z => {
+  const firstTarget = cleanedZones.find(z => {
     const tile = ALL_TILES.find(t => t.id === z)
     return tile && tile.row !== 'parity'
   })
@@ -147,21 +159,32 @@ export const SmartZoneSelector: React.FC<SmartZoneSelectorProps> = ({
   const toggleZone = (zoneId: EffectZone) => {
     if (disabled) return
 
-    // Special: clicking ALL clears everything
+    // ⚒️ WAVE 2043.9: ZOMBIE KILLER — ALL is exclusive
     if (zoneId === 'all') {
-      onZonesChange([])
+      // Clicking ALL → clear everything else, set to ['all']
+      onZonesChange(['all'])
       return
     }
 
-    // Toggle
-    if (selectedZones.includes(zoneId)) {
-      const next = selectedZones.filter(z => z !== zoneId)
-      onZonesChange(next)
+    // Clicking any other zone → KILL 'all' automatically
+    let next: EffectZone[] = selectedZones.filter(z => z !== 'all')
+
+    // Toggle the zone
+    if (next.includes(zoneId)) {
+      next = next.filter(z => z !== zoneId)
     } else {
-      // Remove 'all' if present, add new zone
-      const next = selectedZones.filter(z => z !== 'all')
-      onZonesChange([...next, zoneId])
+      next = [...next, zoneId]
     }
+
+    // ⚒️ WAVE 2043.10: GHOSTBUSTER FALLBACK
+    // If user deselects the last zone → auto-fallback to ['all']
+    // (An effect without a target is useless, default = Global)
+    if (next.length === 0) {
+      onZonesChange(['all'])
+      return
+    }
+
+    onZonesChange(next)
   }
 
   const isActive = (zoneId: EffectZone): boolean => {

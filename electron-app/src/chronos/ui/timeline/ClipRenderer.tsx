@@ -176,7 +176,7 @@ const FXClipContent: React.FC<{ clip: FXClip; width: number; height: number }> =
           x={width / 2}
           y={height / 2 + heroFontSize * 0.35}
           textAnchor="middle"
-          fill="rgba(255, 255, 255, 0.22)"
+          fill="rgba(255, 255, 255, 0.60)"
           fontSize={heroFontSize}
           style={{ pointerEvents: 'none' }}
         >

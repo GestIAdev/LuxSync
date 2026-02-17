@@ -79,7 +79,24 @@
   pointer-events: none;
   user-select: none;
   letter-spacing: 0.15em;
+  z-index: 3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🧠 WAVE 2046: INTERACTION OVERLAY
+   Transparent div on top of everything that captures mouse events.
+   Cursor changes to pointer when hovering over a fixture.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.stage-cinema__interaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 2;
+  background: transparent;
+  /* Allow badge to stay above but clicks go through to this layer */
 }
 
 /* 🔧 WAVE 2040.33: Removed responsive max-height constraints.

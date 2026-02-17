@@ -38,11 +38,15 @@ import {
   MagnetIcon,
   WaveformIcon,
   UploadIcon,
+  MidiClockIcon,
+  MicrophoneIcon,
+  LiveSignalIcon,
 } from '../../../components/icons/LuxIcons'
 import { useStageStore } from '../../../stores/stageStore'
 import { usePowerStore, type SystemPowerState } from '../../../hooks/useSystemPower'
 import { useControlStore, selectAIEnabled, selectOutputEnabled } from '../../../stores/controlStore'
 import { getChronosStore } from '../../core/ChronosStore'
+import type { MIDIClockSource } from '../../hooks/useMIDIClock'
 import './TransportBar.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,6 +79,19 @@ export interface TransportBarProps {
   // WAVE 2040.10: Quantize toggle — human feel vs beat-locked recording
   quantizeEnabled?: boolean
   onToggleQuantize?: () => void
+  // 🎹 WAVE 2045: MIDI Clock source control
+  midiClockSource?: MIDIClockSource
+  midiSignalQuality?: 'none' | 'weak' | 'stable'
+  midiBpm?: number
+  onToggleMidiClock?: () => void
+  // 🎤 WAVE 2045: Audio source selector (FILE | LIVE)
+  audioSourceMode?: 'file' | 'live'
+  isLiveActive?: boolean
+  liveLevel?: number
+  onToggleAudioSource?: () => void
+  // 🎛️ WAVE 2046.2: Live Rack toggle (TheProgrammer in Chronos)
+  showLiveControls?: boolean
+  onToggleLiveControls?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -237,6 +254,19 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
   onToggleSnap,
   quantizeEnabled = true,
   onToggleQuantize,
+  // 🎹 WAVE 2045: MIDI Clock
+  midiClockSource = 'internal',
+  midiSignalQuality = 'none',
+  midiBpm = 0,
+  onToggleMidiClock,
+  // 🎤 WAVE 2045: Audio Source
+  audioSourceMode = 'file',
+  isLiveActive = false,
+  liveLevel = 0,
+  onToggleAudioSource,
+  // 🎛️ WAVE 2046.2: Live Rack
+  showLiveControls = false,
+  onToggleLiveControls,
 }) => {
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -540,6 +570,25 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
           </div>
           <button className="ct-bpm-adj" onClick={handleBpmIncrease} title="Increase BPM">+</button>
         </div>
+
+        {/* 🎹 WAVE 2045: MIDI Clock Source Toggle */}
+        {onToggleMidiClock && (
+          <button
+            className={`ct-midi-btn ${midiClockSource === 'midi' ? 'active' : ''} signal-${midiSignalQuality}`}
+            onClick={onToggleMidiClock}
+            title={midiClockSource === 'midi' 
+              ? `MIDI Clock: ${midiBpm > 0 ? `${midiBpm} BPM` : 'Waiting for signal...'} (Click to switch to Internal)`
+              : 'Internal Clock (Click to enable MIDI Clock)'}
+          >
+            <MidiClockIcon size={13} />
+            <span className="ct-midi-label">
+              {midiClockSource === 'midi' ? 'MIDI' : 'INT'}
+            </span>
+            {midiClockSource === 'midi' && midiSignalQuality !== 'none' && (
+              <span className={`ct-midi-signal signal-${midiSignalQuality}`} />
+            )}
+          </button>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -579,7 +628,48 @@ export const TransportBar: React.FC<TransportBarProps> = memo(({
               <span className="ct-mode-label">SNAP</span>
             </button>
           )}
+          {/* 🎛️ WAVE 2046.2: Live Rack toggle */}
+          {onToggleLiveControls && (
+            <button
+              className={`ct-mode-btn ${showLiveControls ? 'active' : ''}`}
+              onClick={onToggleLiveControls}
+              title={showLiveControls ? 'Hide Live Rack' : 'Show Live Rack (fixture controls)'}
+            >
+              <span style={{ fontSize: '13px' }}>🎛️</span>
+              <span className="ct-mode-label">RACK</span>
+            </button>
+          )}
         </div>
+
+        <span className="ct-divider" />
+
+        {/* 🎤 WAVE 2045: Audio Source Toggle — FILE | LIVE */}
+        {onToggleAudioSource && (
+          <div className="ct-source-group">
+            <button
+              className={`ct-source-btn ${audioSourceMode === 'live' ? 'live' : 'file'}`}
+              onClick={onToggleAudioSource}
+              title={audioSourceMode === 'file' 
+                ? 'Source: FILE (Click for LIVE audio input)'
+                : 'Source: LIVE (Click for FILE mode)'}
+            >
+              {audioSourceMode === 'live' ? (
+                <>
+                  <LiveSignalIcon size={13} />
+                  <span className="ct-source-label">LIVE</span>
+                  {isLiveActive && (
+                    <span className="ct-source-level" style={{ width: `${liveLevel * 100}%` }} />
+                  )}
+                </>
+              ) : (
+                <>
+                  <WaveformIcon size={13} />
+                  <span className="ct-source-label">FILE</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         <span className="ct-divider" />
 

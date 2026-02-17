@@ -141,7 +141,39 @@ const api = {
   },
 
   // ============================================
-  // 🕹️ WAVE 153.6: MANUAL OVERRIDE (UI → DMX)
+  // � WAVE 2048: ART-NET NETWORK DISCOVERY
+  // ============================================
+  discovery: {
+    start: () => ipcRenderer.invoke('artnet:discovery:start'),
+    stop: () => ipcRenderer.invoke('artnet:discovery:stop'),
+    getStatus: () => ipcRenderer.invoke('artnet:discovery:getStatus'),
+    pollNow: () => ipcRenderer.invoke('artnet:discovery:pollNow'),
+    setBroadcast: (address: string) => ipcRenderer.invoke('artnet:discovery:setBroadcast', address),
+    // Events
+    onNodeDiscovered: (callback: (node: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, node: any) => callback(node)
+      ipcRenderer.on('artnet:discovery:node-discovered', handler)
+      return () => ipcRenderer.removeListener('artnet:discovery:node-discovered', handler)
+    },
+    onNodeLost: (callback: (ip: string) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, ip: string) => callback(ip)
+      ipcRenderer.on('artnet:discovery:node-lost', handler)
+      return () => ipcRenderer.removeListener('artnet:discovery:node-lost', handler)
+    },
+    onNodeUpdated: (callback: (node: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, node: any) => callback(node)
+      ipcRenderer.on('artnet:discovery:node-updated', handler)
+      return () => ipcRenderer.removeListener('artnet:discovery:node-updated', handler)
+    },
+    onStateChange: (callback: (state: string) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, state: string) => callback(state)
+      ipcRenderer.on('artnet:discovery:state-change', handler)
+      return () => ipcRenderer.removeListener('artnet:discovery:state-change', handler)
+    },
+  },
+
+  // ============================================
+  // �🕹️ WAVE 153.6: MANUAL OVERRIDE (UI → DMX)
   // ============================================
   override: {
     /** Set override para un fixture específico */

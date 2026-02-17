@@ -161,6 +161,9 @@ export const selectHyperionAudio = (state: AudioState) => ({
   onBeat: state.onBeat,
 })
 
+/** Selector: HephaestusView - BPM for musical grid (WAVE 2044: BPM INJECTION) */
+export const selectHephBpm = (state: AudioState) => state.bpm
+
 /** Selector: setInputGain function only (for useDevicePersistence) */
 export const selectSetInputGain = (state: AudioState) => state.setInputGain
 

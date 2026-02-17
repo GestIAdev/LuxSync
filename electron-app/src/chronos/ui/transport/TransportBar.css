@@ -727,6 +727,144 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * 🎹 WAVE 2045: MIDI CLOCK BUTTON
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.ct-midi-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  margin-left: 6px;
+}
+
+.ct-midi-btn:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.ct-midi-btn.active {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.ct-midi-btn.active.signal-stable {
+  border-color: #22c55e;
+  color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+}
+
+.ct-midi-btn.active.signal-weak {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.ct-midi-btn.active.signal-none {
+  border-color: #ef4444;
+  color: #ef4444;
+  animation: ct-midi-pulse 1.5s ease-in-out infinite;
+}
+
+.ct-midi-label {
+  font-weight: 600;
+}
+
+.ct-midi-signal {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-left: 2px;
+}
+
+.ct-midi-signal.signal-stable {
+  background: #22c55e;
+  box-shadow: 0 0 4px #22c55e;
+}
+
+.ct-midi-signal.signal-weak {
+  background: #f59e0b;
+  animation: ct-midi-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ct-midi-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 🎤 WAVE 2045: AUDIO SOURCE TOGGLE (FILE | LIVE)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.ct-source-group {
+  display: flex;
+  align-items: center;
+}
+
+.ct-source-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 64px;
+}
+
+.ct-source-btn:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.ct-source-btn.live {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.ct-source-btn.live:hover {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #4ade80;
+}
+
+.ct-source-label {
+  font-weight: 700;
+  z-index: 1;
+}
+
+/* VU meter bar — fills behind the button content */
+.ct-source-level {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: #22c55e;
+  transition: width 0.05s linear;
+  border-radius: 0 0 3px 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * RESPONSIVE — Compact mode for small viewports
  * ═══════════════════════════════════════════════════════════════════════════ */
 

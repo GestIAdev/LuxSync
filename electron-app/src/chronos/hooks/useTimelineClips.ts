@@ -81,6 +81,7 @@ export interface UseTimelineClipsReturn {
   // WAVE 2007: Advanced operations
   duplicateSelected: () => void
   duplicateClip: (clipId: string) => TimelineClip | null
+  cloneClip: (clipId: string) => TimelineClip | null  // ⚡ WAVE 2045.1.2: Alt+Drag clone
   pasteClips: (clips: TimelineClip[], targetTimeMs: number) => void
   splitClipAtTime: (clipId: string, timeMs: number) => void
   
@@ -316,8 +317,29 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
     const newClip: TimelineClip = {
       ...original,
       id: generateClipId(),
-      startMs: original.endMs,
+      startMs: original.endMs,  // ← Ctrl+D behavior: adjacent to original
       endMs: original.endMs + duration,
+      selected: false,
+    }
+    
+    setClips(prev => [...prev, newClip])
+    selectClip(newClip.id)
+    
+    return newClip
+  }, [clips, selectClip])
+  
+  // ⚡ WAVE 2045.1.2: HOTFIX "SEPARATION ANXIETY" — Clone for Alt+Drag
+  // Creates clone at ORIGINAL position (overlapping), then caller moves it
+  const cloneClip = useCallback((clipId: string): TimelineClip | null => {
+    const original = clips.find(c => c.id === clipId)
+    if (!original) return null
+    
+    const duration = original.endMs - original.startMs
+    const newClip: TimelineClip = {
+      ...original,
+      id: generateClipId(),
+      startMs: original.startMs,  // ← Alt+Drag: clone at SAME position
+      endMs: original.startMs + duration,
       selected: false,
     }
     
@@ -417,6 +439,7 @@ export function useTimelineClips(options: UseTimelineClipsOptions): UseTimelineC
     // WAVE 2007: Advanced operations
     duplicateSelected,
     duplicateClip,
+    cloneClip,  // ⚡ WAVE 2045.1.2: Clone for Alt+Drag (overlapping)
     pasteClips,
     splitClipAtTime,
     

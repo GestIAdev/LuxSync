@@ -2532,6 +2532,69 @@ export const HephLogoIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🎹 WAVE 2045: UMBILICAL CORD — External Connectivity Icons
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🎹 MIDI CLOCK - DIN-5 connector + clock pulse
+ * For: MIDI Clock source indicator in TransportBar
+ */
+export const MidiClockIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* DIN connector circle */}
+    <circle cx="12" cy="12" r="8" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* 5 DIN pins */}
+    <circle cx="9" cy="10" r="1" fill={color} />
+    <circle cx="15" cy="10" r="1" fill={color} />
+    <circle cx="8" cy="14" r="1" fill={color} />
+    <circle cx="16" cy="14" r="1" fill={color} />
+    <circle cx="12" cy="15" r="1" fill={color} />
+    {/* Clock tick mark (top) */}
+    <line x1="12" y1="4" x2="12" y2="6" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 🎤 MICROPHONE - Live audio input
+ * For: Live Audio source indicator in TransportBar
+ */
+export const MicrophoneIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Microphone body */}
+    <rect x="9" y="3" width="6" height="11" rx="3" stroke={color} strokeWidth="1.5" fill="none" />
+    {/* Stand arc */}
+    <path d="M6 13C6 16.3137 8.68629 19 12 19C15.3137 19 18 16.3137 18 13" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    {/* Stand pole */}
+    <line x1="12" y1="19" x2="12" y2="22" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    {/* Stand base */}
+    <line x1="9" y1="22" x2="15" y2="22" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * 📡 LIVE SIGNAL - Pulsing radio wave
+ * For: Live mode indicator (active streaming)
+ */
+export const LiveSignalIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Center dot */}
+    <circle cx="12" cy="12" r="2" fill={color} />
+    {/* Inner wave */}
+    <path d="M8.5 8.5C10.4 6.6 13.6 6.6 15.5 8.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    <path d="M8.5 15.5C10.4 17.4 13.6 17.4 15.5 15.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    {/* Outer wave */}
+    <path d="M5.5 5.5C8.8 2.2 15.2 2.2 18.5 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    <path d="M5.5 18.5C8.8 21.8 15.2 21.8 18.5 18.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2642,4 +2705,8 @@ export default {
   ChipFx: ChipFxIcon,
   // WAVE 2040.16: Hephaestus Brand Identity
   HephLogo: HephLogoIcon,
+  // WAVE 2045: Umbilical Cord — External connectivity icons
+  MidiClock: MidiClockIcon,
+  Microphone: MicrophoneIcon,
+  LiveSignal: LiveSignalIcon,
 }

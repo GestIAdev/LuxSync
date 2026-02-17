@@ -71,12 +71,58 @@ export interface HephPreviewState {
 // DEFAULT ZONES — Virtual fixtures for radar display
 // ═══════════════════════════════════════════════════════════════════════════
 
-const MULTI_ZONE_LAYOUT: { zone: EffectZone; label: string; x: number; y: number }[] = [
-  { zone: 'front' as EffectZone, label: 'FRONT',  x: 0.5, y: 0.2 },
-  { zone: 'back' as EffectZone,  label: 'BACK',   x: 0.5, y: 0.8 },
-  { zone: 'left' as EffectZone,  label: 'LEFT',   x: 0.15, y: 0.5 },
-  { zone: 'right' as EffectZone, label: 'RIGHT',  x: 0.85, y: 0.5 },
-]
+/**
+ * ⚒️ WAVE 2043.10: OPERATION GHOSTBUSTER (Expanded)
+ * 
+ * Complete zone-to-radar-position mapping.
+ * Every zone from SmartZoneSelector gets a meaningful spatial position.
+ * 
+ * SPATIAL LAYOUT (Radar = top-down stage view):
+ * 
+ *         0.5
+ *     ┌────●────┐  ← FRONT (y=0.2)
+ *     │         │
+ *  L ●│    ●    │● R    ← CENTER (y=0.5), LEFT (x=0.15), RIGHT (x=0.85)
+ *     │         │
+ *     └────●────┘  ← BACK (y=0.8)
+ *          ●       ← FLOOR (y=0.9)
+ *     ●         ●  ← ODD/EVEN (y=0.65)
+ *          ●       ← AIR (y=0.1)
+ */
+const ZONE_RADAR_POSITIONS: Record<string, { label: string; x: number; y: number }> = {
+  // ── Target zones ──
+  'all-movers':   { label: 'MOV',    x: 0.5,  y: 0.35 },
+  'all-pars':     { label: 'PAR',    x: 0.5,  y: 0.65 },
+  'air':          { label: 'AIR',    x: 0.5,  y: 0.1  },
+
+  // ── Position zones ──
+  'front':        { label: 'FRONT',  x: 0.5,  y: 0.2  },
+  'back':         { label: 'BACK',   x: 0.5,  y: 0.8  },
+  'floor':        { label: 'FLOOR',  x: 0.5,  y: 0.92 },
+  'center':       { label: 'CTR',    x: 0.5,  y: 0.5  },
+
+  // ── Side / Stereo zones ──
+  'all-left':     { label: 'LEFT',   x: 0.15, y: 0.5  },
+  'all-right':    { label: 'RIGHT',  x: 0.85, y: 0.5  },
+  'left':         { label: 'LEFT',   x: 0.15, y: 0.5  },
+  'right':        { label: 'RIGHT',  x: 0.85, y: 0.5  },
+
+  // ── Parity zones ──
+  'movers-left':  { label: 'ODD',    x: 0.3,  y: 0.65 },
+  'movers-right': { label: 'EVEN',   x: 0.7,  y: 0.65 },
+
+  // ── Canonical zones (from ShowFileV2) ──
+  'ambient':      { label: 'AMB',    x: 0.5,  y: 0.5  },
+  'unassigned':   { label: 'UNASN',  x: 0.5,  y: 0.5  },
+
+  // ── Stereo PARs ──
+  'frontL':       { label: 'FRT-L',  x: 0.25, y: 0.2  },
+  'frontR':       { label: 'FRT-R',  x: 0.75, y: 0.2  },
+  'backL':        { label: 'BCK-L',  x: 0.25, y: 0.8  },
+  'backR':        { label: 'BCK-R',  x: 0.75, y: 0.8  },
+  'floorL':       { label: 'FLR-L',  x: 0.25, y: 0.92 },
+  'floorR':       { label: 'FLR-R',  x: 0.75, y: 0.92 },
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVALUATOR — Pure math, no Runtime dependency
@@ -207,29 +253,58 @@ export function useHephPreview(clip: HephAutomationClip): HephPreviewState & {
 
   /**
    * Resolve fixtures based on clip zones.
-   * 1 zone or 'all' → 1 big fixture.
-   * Multiple zones → 4 distributed fixtures with slight delay offsets.
+   * 
+   * ⚒️ WAVE 2043.10: OPERATION GHOSTBUSTER
+   * Only render fixtures for zones that are ACTUALLY selected.
+   * Uses ZONE_RADAR_POSITIONS for spatial mapping of ALL zone types.
+   * 
+   * - 'all' or empty → 1 big fixture (center of radar)
+   * - Specific zones → Only show those zones with correct radar positions
    */
   const resolveFixtures = useCallback(
     (c: HephAutomationClip, ev: CurveEvaluator, timeMs: number): PreviewFixtureState[] => {
-      if (c.zones.length <= 1 || c.zones.includes('all' as EffectZone)) {
-        // Single fixture — center of radar
+      // If 'all' is selected → Single fixture at center
+      if (c.zones.includes('all' as EffectZone)) {
         const f = evaluateClipFrame(c, ev, timeMs)
         return [f]
       }
 
-      // Multi-zone: evaluate each zone with a tiny phase offset for visual variety
-      return MULTI_ZONE_LAYOUT.map((layout, idx) => {
+      // No zones selected → Fallback to 'all' (single fixture)
+      if (c.zones.length === 0) {
+        const f = evaluateClipFrame(c, ev, timeMs)
+        return [f]
+      }
+
+      // Multi-zone: Build layout from ZONE_RADAR_POSITIONS for each selected zone
+      const fixtures: PreviewFixtureState[] = []
+
+      for (let i = 0; i < c.zones.length; i++) {
+        const zoneId = c.zones[i]
+        const pos = ZONE_RADAR_POSITIONS[zoneId as string]
+
         // Phase offset per zone: 0, 50ms, 100ms, 150ms — shows propagation delay
-        const phaseOffset = idx * 50
+        const phaseOffset = i * 50
         const offsetTime = Math.max(0, timeMs - phaseOffset)
         const f = evaluateClipFrame(c, ev, offsetTime)
-        return {
-          ...f,
-          zone: layout.zone,
-          label: layout.label,
+
+        if (pos) {
+          // Known zone → use its mapped radar position
+          fixtures.push({
+            ...f,
+            zone: zoneId,
+            label: pos.label,
+          })
+        } else {
+          // Unknown zone → still show it at center (graceful fallback)
+          fixtures.push({
+            ...f,
+            zone: zoneId,
+            label: (zoneId as string).toUpperCase(),
+          })
         }
-      })
+      }
+
+      return fixtures
     },
     [],
   )

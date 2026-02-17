@@ -36,6 +36,8 @@ interface LoadedScene {
   project: LuxProject
   audioUrl: string | null
   fileName: string
+  /** WAVE 2050.1: Resolved display name (smart title parsing) */
+  displayName: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -89,6 +91,22 @@ const EjectIcon: React.FC<{ size?: number; className?: string }> = ({ size = 14,
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
     <polygon points="12 4 2 14 22 14" />
     <rect x="2" y="17" width="20" height="3" rx="1" />
+  </svg>
+)
+
+const MuteIcon: React.FC<{ size?: number; className?: string }> = ({ size = 14, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+    <line x1="23" y1="9" x2="17" y2="15" />
+    <line x1="17" y1="9" x2="23" y2="15" />
+  </svg>
+)
+
+const AudioOnIcon: React.FC<{ size?: number; className?: string }> = ({ size = 14, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
   </svg>
 )
 
@@ -148,6 +166,7 @@ export const SceneBrowser: React.FC = () => {
         project,
         audioUrl,
         fileName: file.name,
+        displayName: resolveProjectName(project, file.name),
       }
 
       setScenes(prev => [...prev, newScene])
@@ -157,7 +176,7 @@ export const SceneBrowser: React.FC = () => {
       await loadScene(project, audioUrl || undefined)
 
       console.log(
-        `[SceneBrowser] 🎬 Imported: "${project.meta.name}" ` +
+        `[SceneBrowser] 🎬 Imported: "${newScene.displayName}" ` +
         `(${project.timeline.clips.length} clips, ${formatTime(project.meta.durationMs)})`
       )
     } catch (err) {
@@ -282,7 +301,7 @@ export const SceneBrowser: React.FC = () => {
                 <FileIcon size={14} />
               </div>
               <div className="scene-item-info">
-                <span className="scene-item-name">{scene.project.meta.name}</span>
+                <span className="scene-item-name">{scene.displayName}</span>
                 <span className="scene-item-meta">
                   {scene.project.timeline.clips.length} clips · {formatTime(scene.project.meta.durationMs)}
                 </span>
@@ -314,7 +333,13 @@ export const SceneBrowser: React.FC = () => {
           {/* Title */}
           <div className="now-playing-header">
             <BoltIcon size={12} className="now-playing-bolt" />
-            <span className="now-playing-title">{selectedScene.project.meta.name}</span>
+            <span className="now-playing-title">{selectedScene.displayName}</span>
+            {/* Audio status indicator */}
+            {status.hasAudio ? (
+              <AudioOnIcon size={12} className="audio-badge on" />
+            ) : (
+              <MuteIcon size={12} className="audio-badge mute" />
+            )}
             <button
               className="now-playing-eject"
               onClick={() => { unloadScene(); setSelectedId(null) }}
@@ -406,6 +431,35 @@ function getStateLabel(state: PlayerState): string {
     case 'playing': return 'PLAYING'
     case 'paused': return 'PAUSED'
   }
+}
+
+/**
+ * WAVE 2050.1: Smart Title Parsing
+ * Busca el nombre en múltiples rutas del JSON del proyecto.
+ * Diferentes versiones de .lux pueden tener el nombre en distintos campos.
+ */
+function resolveProjectName(project: LuxProject, fileName: string): string {
+  // Cast through unknown for safe property probing on variant JSON shapes
+  const raw = project as unknown as Record<string, unknown>
+  const meta = raw.meta as Record<string, unknown> | undefined
+  const header = raw.header as Record<string, unknown> | undefined
+
+  // Priority chain: meta.name > top-level name > header.name > meta.title > fileName sans extension
+  const candidates = [
+    meta?.name,
+    raw.name,
+    header?.name,
+    meta?.title,
+  ]
+
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim() && c !== 'Untitled Project' && c !== 'Untitled') {
+      return c.trim()
+    }
+  }
+
+  // Fallback: nombre del archivo sin extensión
+  return fileName.replace(/\.(lux|json)$/i, '') || 'Untitled'
 }
 
 export default SceneBrowser

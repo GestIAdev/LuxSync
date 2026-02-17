@@ -1,26 +1,25 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 🎬 USE SCENE PLAYER - WAVE 2050: HYPERION SCENE PLAYER ENGINE
+ * 🎬 USE SCENE PLAYER - WAVE 2050.1: HYBRID CLOCK ENGINE
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Reproduce escenas .lux exportadas desde Chronos directamente en Hyperion.
  * 
  * ARQUITECTURA:
- * - HTMLAudioElement para audio (no AudioContext — más simple y fiable)
+ * - DUAL CLOCK: Audio clock (si disponible) o performance.now() fallback
  * - requestAnimationFrame loop para sync visual
  * - En cada frame: busca clips activos, envía comandos al MasterArbiter
  * - Respeta GrandMaster de Hyperion (multiplica, no sobrescribe)
  * - Source of truth: el .lux file es autosuficiente
  * 
- * FLUJO:
- * 1. Importar .lux → parseado a LuxProject
- * 2. loadScene(project) → carga audio + prepara timeline
- * 3. play() → inicia audio + rAF loop
- * 4. Cada frame: evalúa clips → despacha a Arbiter
- * 5. stop() → limpia todo
+ * WAVE 2050.1 FIX — HYBRID CLOCK:
+ * El audio de un .lux viene como ruta/blob que puede ser inválida.
+ * Si no hay audio o falla la carga → "Silent Playback" mode:
+ * performance.now() - startTime = currentTimeMs.
+ * Las luces se mueven SIEMPRE, con o sin audio.
  * 
  * @module hooks/useScenePlayer
- * @version WAVE 2050
+ * @version WAVE 2050.1
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
@@ -50,6 +49,8 @@ export interface ScenePlayerStatus {
   activeVibe: string | null
   /** Número de clips activos en este frame */
   activeClipCount: number
+  /** ¿Tiene audio válido cargado? (false = silent playback mode) */
+  hasAudio: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,6 +80,7 @@ export function useScenePlayer() {
     loop: false,
     activeVibe: null,
     activeClipCount: 0,
+    hasAudio: false,
   })
 
   // ── Refs (no re-render) ──
@@ -88,6 +90,12 @@ export function useScenePlayer() {
   const loopRef = useRef(false)
   const lastVibeRef = useRef<string | null>(null)
   const lastFxSetRef = useRef<Set<string>>(new Set())
+
+  // ── Silent Clock refs (performance.now() based) ──
+  const silentModeRef = useRef(false)
+  const clockStartRef = useRef(0)       // performance.now() when play() was called
+  const clockOffsetRef = useRef(0)      // accumulated time before last pause (ms)
+  const pauseStampRef = useRef(0)       // performance.now() at pause moment
 
   // ═══════════════════════════════════════════════════════════════════════
   // LOAD SCENE
@@ -100,20 +108,34 @@ export function useScenePlayer() {
     projectRef.current = project
     lastVibeRef.current = null
     lastFxSetRef.current = new Set()
+    silentModeRef.current = true  // Default: silent until audio proves valid
+    clockOffsetRef.current = 0
+    pauseStampRef.current = 0
 
     // Preparar audio si existe
+    let audioLoaded = false
     if (audioUrl) {
-      const audio = new Audio(audioUrl)
-      audio.preload = 'auto'
-      audioRef.current = audio
+      try {
+        const audio = new Audio(audioUrl)
+        audio.preload = 'auto'
 
-      // Esperar a que cargue
-      await new Promise<void>((resolve, reject) => {
-        audio.oncanplaythrough = () => resolve()
-        audio.onerror = () => reject(new Error('Failed to load audio'))
-        // Timeout safety
-        setTimeout(() => resolve(), 5000)
-      })
+        await new Promise<void>((resolve, reject) => {
+          audio.oncanplaythrough = () => resolve()
+          audio.onerror = () => reject(new Error('Audio load failed'))
+          // Timeout: si en 3s no carga, seguimos sin audio
+          setTimeout(() => reject(new Error('Audio load timeout')), 3000)
+        })
+
+        audioRef.current = audio
+        silentModeRef.current = false
+        audioLoaded = true
+        console.log('[ScenePlayer] 🔊 Audio loaded OK')
+      } catch (err) {
+        // Audio muerto — no pasa nada, entramos en Silent Playback
+        console.warn(`[ScenePlayer] 🔇 Audio unavailable: ${(err as Error).message}. Silent playback mode.`)
+        audioRef.current = null
+        silentModeRef.current = true
+      }
     }
 
     const durationMs = project.meta.durationMs ||
@@ -128,9 +150,14 @@ export function useScenePlayer() {
       loop: loopRef.current,
       activeVibe: null,
       activeClipCount: 0,
+      hasAudio: audioLoaded,
     })
 
-    console.log(`[ScenePlayer] 🎬 Loaded: "${project.meta.name}" (${Math.round(durationMs / 1000)}s, ${project.timeline.clips.length} clips)`)
+    console.log(
+      `[ScenePlayer] 🎬 Loaded: "${project.meta.name}" ` +
+      `(${Math.round(durationMs / 1000)}s, ${project.timeline.clips.length} clips, ` +
+      `audio: ${audioLoaded ? 'YES' : 'SILENT'})`
+    )
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -141,16 +168,37 @@ export function useScenePlayer() {
     const project = projectRef.current
     if (!project) return
 
+    // ── HYBRID CLOCK: Audio clock OR performance.now() ──
+    let currentTimeMs: number
     const audio = audioRef.current
-    const currentTimeMs = audio ? audio.currentTime * 1000 : 0
+
+    if (!silentModeRef.current && audio) {
+      // Audio mode: use audio.currentTime as master clock
+      currentTimeMs = audio.currentTime * 1000
+    } else {
+      // Silent mode: performance.now() based clock
+      currentTimeMs = clockOffsetRef.current + (performance.now() - clockStartRef.current)
+    }
+
     const durationMs = project.meta.durationMs ||
-      (audio ? audio.duration * 1000 : 60000)
+      (audio && !silentModeRef.current ? audio.duration * 1000 : 60000)
 
     // ── Check for end ──
-    if (audio && audio.ended) {
+    const hasEnded = silentModeRef.current
+      ? currentTimeMs >= durationMs
+      : (audio?.ended ?? currentTimeMs >= durationMs)
+
+    if (hasEnded) {
       if (loopRef.current) {
-        audio.currentTime = 0
-        audio.play()
+        // Reset clock for loop
+        if (!silentModeRef.current && audio) {
+          audio.currentTime = 0
+          audio.play()
+        } else {
+          clockStartRef.current = performance.now()
+          clockOffsetRef.current = 0
+        }
+        currentTimeMs = 0
       } else {
         stopPlayback()
         return
@@ -358,23 +406,37 @@ export function useScenePlayer() {
     if (!project) return
 
     const audio = audioRef.current
-    if (audio) {
+    if (!silentModeRef.current && audio) {
       audio.play().catch(err => {
-        console.warn('[ScenePlayer] Audio play failed:', err.message)
+        console.warn('[ScenePlayer] Audio play failed, switching to silent mode:', err.message)
+        // Audio falló en play — switch a silent mode
+        silentModeRef.current = true
+        audioRef.current = null
       })
     }
+
+    // Start silent clock (always set — it's the fallback)
+    clockStartRef.current = performance.now()
+    // clockOffsetRef ya tiene el offset acumulado si estamos resumiendo de pause
 
     // Start rAF loop
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(tick)
 
-    setStatus(prev => ({ ...prev, state: 'playing' }))
-    console.log('[ScenePlayer] ▶ Play')
+    setStatus(prev => ({ ...prev, state: 'playing', hasAudio: !silentModeRef.current }))
+    console.log(`[ScenePlayer] ▶ Play (${silentModeRef.current ? 'silent' : 'audio'} mode)`)
   }, [tick])
 
   const pause = useCallback(() => {
     const audio = audioRef.current
-    if (audio) audio.pause()
+    if (!silentModeRef.current && audio) {
+      audio.pause()
+    }
+
+    // Save accumulated time for silent clock resume
+    if (silentModeRef.current) {
+      clockOffsetRef.current += performance.now() - clockStartRef.current
+    }
 
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current)
@@ -391,6 +453,10 @@ export function useScenePlayer() {
       audio.pause()
       audio.currentTime = 0
     }
+
+    // Reset silent clock
+    clockStartRef.current = 0
+    clockOffsetRef.current = 0
 
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current)
@@ -422,9 +488,13 @@ export function useScenePlayer() {
 
   const seek = useCallback((timeMs: number) => {
     const audio = audioRef.current
-    if (audio) {
+    if (!silentModeRef.current && audio) {
       audio.currentTime = timeMs / 1000
     }
+    // Reset silent clock to this position
+    clockOffsetRef.current = timeMs
+    clockStartRef.current = performance.now()
+
     setStatus(prev => ({
       ...prev,
       currentTimeMs: timeMs,
@@ -447,6 +517,7 @@ export function useScenePlayer() {
       audioRef.current = null
     }
     projectRef.current = null
+    silentModeRef.current = false
     
     setStatus({
       state: 'idle',
@@ -457,6 +528,7 @@ export function useScenePlayer() {
       loop: false,
       activeVibe: null,
       activeClipCount: 0,
+      hasAudio: false,
     })
   }, [stopPlayback])
 

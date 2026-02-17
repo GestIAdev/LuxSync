@@ -399,6 +399,27 @@
   background: rgba(255, 68, 68, 0.1);
 }
 
+/* ── Audio Badge (WAVE 2050.1) ── */
+
+.audio-badge {
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.audio-badge.on {
+  color: rgba(0, 255, 136, 0.6);
+}
+
+.audio-badge.mute {
+  color: rgba(255, 170, 0, 0.5);
+  animation: mute-blink 2s ease-in-out infinite;
+}
+
+@keyframes mute-blink {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.25; }
+}
+
 /* ── Progress Bar ── */
 
 .progress-container {

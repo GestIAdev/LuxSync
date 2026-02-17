@@ -309,6 +309,15 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     return { success: true }
   })
   
+  /**
+   * WAVE 2050.3: Alias for releaseAll — Scene Player uses this name
+   */
+  ipcMain.handle('lux:arbiter:clearAllManual', () => {
+    console.log('[Arbiter] 🧹 clearAllManual → releasing all overrides')
+    masterArbiter.releaseAllManualOverrides()
+    return { success: true }
+  })
+  
   // ═══════════════════════════════════════════════════════════════════════
   // 🎚️ WAVE 999: MOVEMENT PARAMETERS (Speed & Amplitude)
   // ═══════════════════════════════════════════════════════════════════════

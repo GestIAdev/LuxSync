@@ -339,11 +339,13 @@ export function useScenePlayer() {
     }
 
     // Get target fixtures from zones or ALL
+    // WAVE 2050.3: Fix empty array — [] is truthy but means "all fixtures"
     const zones = fx.zones
+    const targetFixtures = zones && zones.length > 0 ? zones : ['*']
     
     // Dispatch to arbiter — zones handled server-side
     arbiter.setManual({
-      fixtureIds: zones || ['*'],
+      fixtureIds: targetFixtures,
       controls,
       channels,
       source: 'scene_player',

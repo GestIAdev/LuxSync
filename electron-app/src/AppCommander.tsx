@@ -14,6 +14,8 @@ import KeyboardProvider from './providers/KeyboardProvider'
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
 import NetIndicator from './components/NetIndicator' // 📡 WAVE 2048: Art-Net Discovery
+import MidiLearnOverlay from './components/MidiLearnOverlay' // 🎹 WAVE 2047: MIDI Learn
+import { useMidiLearn } from './hooks/useMidiLearn' // 🎹 WAVE 2047: MIDI Input Runtime
 import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
@@ -26,6 +28,9 @@ function AppContent() {
   
   // Connect to Universal Truth Protocol (SeleneBroadcast @ 30fps)
   useSeleneTruth()
+
+  // 🎹 WAVE 2047: Global MIDI input handler (Learn + Runtime dispatch)
+  useMidiLearn()
 
   // Initialize system on mount
   useEffect(() => {
@@ -58,6 +63,9 @@ function AppContent() {
       
       {/* 📡 WAVE 2048: Art-Net Network Discovery (Fixed Position Overlay) */}
       <NetIndicator />
+      
+      {/* 🎹 WAVE 2047: MIDI Learn Floating Button + Overlay */}
+      <MidiLearnOverlay />
     </KeyboardProvider>
   )
 }

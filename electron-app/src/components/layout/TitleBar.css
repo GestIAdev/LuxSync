@@ -2,6 +2,7 @@
  * 🪟 TITLE BAR - WAVE 35.3: Global Window Drag Region
  * WAVE 39.9: FLEXBOX STRUCTURAL - No more position:fixed
  * WAVE 375: Zen Mode Toggle Button
+ * WAVE 2049: Status Badges Container (MIDI + Network)
  * Always visible, physically occupies space in DOM
  */
 
@@ -97,6 +98,15 @@
   color: rgba(0, 255, 255, 0.5);
   text-transform: uppercase;
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+/* 🎹📡 WAVE 2049: Status Badges Container */
+.title-bar-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  -webkit-app-region: no-drag;
 }
 
 /* Safe zone for native window controls (Windows: ~140px, Mac: ~80px) */

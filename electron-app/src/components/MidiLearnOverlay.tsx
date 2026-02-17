@@ -47,13 +47,11 @@ export default function MidiLearnOverlay() {
     exitLearnMode,
     startListening,
     removeMapping,
-    clearAll,
   } = useMidiMapStore(useShallow((s) => ({
     enterLearnMode: s.enterLearnMode,
     exitLearnMode: s.exitLearnMode,
     startListening: s.startListening,
     removeMapping: s.removeMapping,
-    clearAll: s.clearAll,
   })))
 
   const mappingCount = Object.keys(mappings).length
@@ -91,6 +89,22 @@ export default function MidiLearnOverlay() {
     e.preventDefault()
     removeMapping(controlId)
   }, [removeMapping])
+
+  // ── Clear all mappings with confirmation (WAVE 2049) ──
+  const handleClearAll = useCallback(() => {
+    const count = Object.keys(mappings).length
+    if (count === 0) return
+    
+    const confirmed = window.confirm(
+      `⚠️ MIDI LEARN: Clear All Mappings\n\n` +
+      `This will remove ${count} mapping${count === 1 ? '' : 's'}.\n\n` +
+      `Are you sure?`
+    )
+    
+    if (confirmed) {
+      useMidiMapStore.getState().clearAll()
+    }
+  }, [mappings])
 
   // ── Format binding for display ──
   function formatBinding(b: MidiBinding): string {
@@ -138,7 +152,7 @@ export default function MidiLearnOverlay() {
                 <span className="ml-subtitle">Click a control, then move a MIDI fader/pad</span>
               </div>
               <div className="ml-header-right">
-                <button className="ml-clear-btn" onClick={clearAll} title="Clear all mappings">
+                <button className="ml-clear-btn" onClick={handleClearAll} title="Clear all mappings">
                   ✕ CLEAR ALL
                 </button>
                 <button className="ml-close-btn" onClick={exitLearnMode}>
@@ -221,30 +235,28 @@ export default function MidiLearnOverlay() {
 
       <style>{`
         /* ═══════════════════════════════════════════════════════════════ */
-        /* MIDI LEARN BUTTON (Floating, Global)                          */
+        /* MIDI LEARN BUTTON - WAVE 2049: TITLE BAR INTEGRATION          */
         /* ═══════════════════════════════════════════════════════════════ */
         .ml-btn {
-          position: fixed !important;
-          top: 14px;
-          right: 380px;
-          z-index: 99999;
-          
-          background: rgba(10, 10, 15, 0.85);
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(160, 80, 255, 0.3);
-          border-radius: 20px;
-          padding: 6px 14px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 20px rgba(160, 80, 255, 0.1);
-          
+          /* 🎹 INLINE badge en TitleBar (no position:fixed) */
           display: flex;
           align-items: center;
           gap: 6px;
+          
+          /* Estilo minimalista tipo nativo */
+          background: transparent;
+          backdrop-filter: blur(6px);
+          border: 1px solid rgba(160, 80, 255, 0.25);
+          border-radius: 12px;
+          padding: 3px 8px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+          
+          /* Interacción */
           cursor: pointer;
           user-select: none;
           color: var(--text-secondary, #aaa);
           font-family: var(--font-mono, monospace);
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           letter-spacing: 0.08em;
           font-weight: 600;
           
@@ -252,10 +264,10 @@ export default function MidiLearnOverlay() {
         }
 
         .ml-btn:hover {
-          background: rgba(10, 10, 15, 0.95);
+          background: rgba(10, 10, 15, 0.85);
           border-color: rgba(160, 80, 255, 0.5);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6),
-                      0 0 30px rgba(160, 80, 255, 0.2);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
+                      0 0 20px rgba(160, 80, 255, 0.2);
           transform: translateY(-1px);
           color: var(--text-primary, #e0e0e0);
         }

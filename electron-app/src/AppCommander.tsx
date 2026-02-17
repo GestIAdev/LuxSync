@@ -5,6 +5,7 @@
  * Arquitectura: Sidebar + Tabs + Global Effects
  * WAVE 377: Added TitanSyncBridge for stageStore → Backend sync
  * WAVE 438: Setup stageStore IPC listeners for show loading
+ * WAVE 2049: NetIndicator + MidiLearnOverlay moved to TitleBar
  */
 
 import { useEffect } from 'react'
@@ -13,8 +14,6 @@ import MainLayout from './components/layout/MainLayout'
 import KeyboardProvider from './providers/KeyboardProvider'
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
-import NetIndicator from './components/NetIndicator' // 📡 WAVE 2048: Art-Net Discovery
-import MidiLearnOverlay from './components/MidiLearnOverlay' // 🎹 WAVE 2047: MIDI Learn
 import { useMidiLearn } from './hooks/useMidiLearn' // 🎹 WAVE 2047: MIDI Input Runtime
 import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
@@ -59,13 +58,8 @@ function AppContent() {
       {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
       <TitanSyncBridge />
       
+      {/* 🎯 WAVE 2049: MainLayout now includes TitleBar with NetIndicator + MidiLearnOverlay */}
       <MainLayout />
-      
-      {/* 📡 WAVE 2048: Art-Net Network Discovery (Fixed Position Overlay) */}
-      <NetIndicator />
-      
-      {/* 🎹 WAVE 2047: MIDI Learn Floating Button + Overlay */}
-      <MidiLearnOverlay />
     </KeyboardProvider>
   )
 }

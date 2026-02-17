@@ -290,40 +290,33 @@ export default function NetIndicator() {
 
       <style>{`
         /* ═══════════════════════════════════════════════════════════════ */
-        /* NET INDICATOR BADGE - WAVE 2048.2: GLOBAL FLOATING BEACON     */
+        /* NET INDICATOR BADGE - WAVE 2049: TITLE BAR INTEGRATION       */
         /* ═══════════════════════════════════════════════════════════════ */
         .net-indicator {
-          /* 🚀 MODO DIOS: Posición absoluta, Z-index supremo */
-          position: fixed !important;
-          top: 14px;
-          right: 240px;
-          z-index: 99999;
-          
-          /* 🎨 Pill flotante con efecto glass */
-          background: rgba(10, 10, 15, 0.85);
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(0, 240, 255, 0.3);
-          border-radius: 20px;
-          padding: 6px 14px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-                      0 0 20px rgba(0, 240, 255, 0.1);
-          
-          /* Layout interno */
+          /* 🎨 INLINE badge en TitleBar (no position:fixed) */
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          
+          /* Estilo minimalista tipo nativo */
+          background: transparent;
+          backdrop-filter: blur(6px);
+          border: 1px solid rgba(0, 240, 255, 0.25);
+          border-radius: 12px;
+          padding: 3px 8px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+          
+          /* Interacción */
           cursor: pointer;
           user-select: none;
-          
-          /* Transiciones suaves */
           transition: all 0.2s ease;
         }
 
         .net-indicator:hover {
-          background: rgba(10, 10, 15, 0.95);
+          background: rgba(10, 10, 15, 0.85);
           border-color: rgba(0, 240, 255, 0.5);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6),
-                      0 0 30px rgba(0, 240, 255, 0.2);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
+                      0 0 20px rgba(0, 240, 255, 0.2);
           transform: translateY(-1px);
         }
 
@@ -353,7 +346,7 @@ export default function NetIndicator() {
 
         .net-label {
           font-family: var(--font-mono, monospace);
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           color: var(--text-muted, #888);
           letter-spacing: 0.08em;
           font-weight: 600;
@@ -361,7 +354,7 @@ export default function NetIndicator() {
 
         .net-count {
           font-family: var(--font-mono, monospace);
-          font-size: 0.6rem;
+          font-size: 0.55rem;
           color: #10b981;
           background: rgba(16, 185, 129, 0.15);
           padding: 0 4px;

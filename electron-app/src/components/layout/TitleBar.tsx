@@ -1,16 +1,20 @@
 /**
  * 🪟 TITLE BAR - WAVE 35.3: Global Window Controls & Drag Region
  * WAVE 375: Zen Mode Toggle Button
+ * WAVE 2049: NetIndicator + MidiLearn Badge Integration
  * 
  * Sistema de controles de ventana para Electron
  * - Drag region para mover la ventana
  * - Safe zone para evitar overlapping con controles nativos
  * - GLOBAL: Siempre visible en todas las vistas
  * - ZEN MODE: Toggle button para colapsar sidebar
+ * - BADGES: MIDI Learn + Art-Net Discovery (right side)
  */
 
 import React from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
+import NetIndicator from '../NetIndicator'
+import MidiLearnOverlay from '../MidiLearnOverlay'
 import './TitleBar.css'
 
 interface TitleBarProps {
@@ -43,6 +47,12 @@ const TitleBar: React.FC<TitleBarProps> = ({
       <div className="title-bar-drag">
         <span className="title-bar-text">{title}</span>
         {isZenMode && <span className="zen-mode-indicator">ZEN</span>}
+      </div>
+      
+      {/* 🎹📡 WAVE 2049: Status Badges (MIDI + Network) */}
+      <div className="title-bar-badges">
+        <MidiLearnOverlay />
+        <NetIndicator />
       </div>
       
       {/* Safe zone spacer for native window controls (Win/Mac) */}

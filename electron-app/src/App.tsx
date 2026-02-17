@@ -116,8 +116,6 @@ function App() {
         {audioMetrics.isConnected && (
           <span className="audio-indicator">🎵</span>
         )}
-        {/* 📡 WAVE 2048: Art-Net Network Discovery Indicator */}
-        <NetIndicator />
       </div>
 
       {/* Blackout Overlay */}

@@ -13,6 +13,7 @@ import MainLayout from './components/layout/MainLayout'
 import KeyboardProvider from './providers/KeyboardProvider'
 import { TrinityProvider } from './providers/TrinityProvider'
 import { TitanSyncBridge } from './core/sync'
+import NetIndicator from './components/NetIndicator' // 📡 WAVE 2048: Art-Net Discovery
 import { useSeleneStore, selectAppCommanderActions } from './stores/seleneStore'
 import { useSeleneTruth } from './hooks/useSeleneTruth'
 import { setupStageStoreListeners } from './stores/stageStore'
@@ -52,7 +53,11 @@ function AppContent() {
     <KeyboardProvider>
       {/* 🌉 WAVE 377: Invisible Sync Bridge - stageStore → Backend */}
       <TitanSyncBridge />
+      
       <MainLayout />
+      
+      {/* 📡 WAVE 2048: Art-Net Network Discovery (Fixed Position Overlay) */}
+      <NetIndicator />
     </KeyboardProvider>
   )
 }

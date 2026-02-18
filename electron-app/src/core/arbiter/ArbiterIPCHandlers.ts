@@ -155,7 +155,8 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
   ) => {
     // 🔥 WAVE 1008.4: Debug log BEFORE validation
-    console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed })
+    // Disabled: WAVE 2052 - Too spammy (60 FPS × 12 fixtures per frame)
+    // console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed })
     
     // Validate required parameters
     if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
@@ -182,9 +183,10 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       ? masterArbiter.getFixtureIds()
       : fixtureIds
     
-    if (fixtureIds.includes('*')) {
-      console.log(`[Arbiter] 🌐 Wildcard '*' expanded → ${resolvedFixtureIds.length} fixtures`)
-    }
+    // Disabled: WAVE 2052 - Too spammy (once per frame)
+    // if (fixtureIds.includes('*')) {
+    //   console.log(`[Arbiter] 🌐 Wildcard '*' expanded → ${resolvedFixtureIds.length} fixtures`)
+    // }
     
     if (resolvedFixtureIds.length === 0) {
       console.warn('[Arbiter] setManual: Wildcard expanded to 0 fixtures (no fixtures registered)')
@@ -288,9 +290,10 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       ? masterArbiter.getFixtureIds()
       : fixtureIds
     
-    if (fixtureIds.includes('*')) {
-      console.log(`[Arbiter] 🌐 clearManual: Wildcard '*' expanded → ${resolvedIds.length} fixtures`)
-    }
+    // Disabled: WAVE 2052 - Too spammy
+    // if (fixtureIds.includes('*')) {
+    //   console.log(`[Arbiter] 🌐 clearManual: Wildcard '*' expanded → ${resolvedIds.length} fixtures`)
+    // }
     
     const releaseCount = resolvedIds.length
     

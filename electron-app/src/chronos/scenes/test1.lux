@@ -3,9 +3,9 @@
     "version": "2.0",
     "author": "Raulacate",
     "created": 1771351945849,
-    "modified": 1771357277745,
+    "modified": 1771377593929,
     "durationMs": 264239.9791666667,
-    "name": "Untitled Project"
+    "name": "test1"
   },
   "audio": {
     "name": "Spectral Drift.wav",
@@ -152,13 +152,13 @@
         "priority": 50
       },
       {
-        "id": "clip-1771357251294-4",
+        "id": "clip-1771374428395-2",
         "type": "fx",
         "fxType": "core_meltdown",
         "label": "Core Meltdown",
-        "startMs": 3200,
-        "endMs": 6200,
-        "trackId": "fx3",
+        "startMs": 14400,
+        "endMs": 17400,
+        "trackId": "fx1",
         "color": "#ef4444",
         "keyframes": [
           {
@@ -182,12 +182,42 @@
         "locked": false
       },
       {
-        "id": "clip-1771357260557-5",
+        "id": "clip-1771377253329-1",
         "type": "fx",
-        "fxType": "industrial_strobe",
-        "label": "Industrial Strobe",
+        "fxType": "fiber_optics",
+        "label": "Fiber Optics",
         "startMs": 6400,
-        "endMs": 8400,
+        "endMs": 14400,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771377280247-3",
+        "type": "fx",
+        "fxType": "gatling_raid",
+        "label": "Gatling Raid",
+        "startMs": 3200,
+        "endMs": 5200,
         "trackId": "fx1",
         "color": "#ef4444",
         "keyframes": [
@@ -212,14 +242,14 @@
         "locked": false
       },
       {
-        "id": "clip-1771357267866-6",
+        "id": "clip-1771377292248-4",
         "type": "fx",
-        "fxType": "void_mist",
-        "label": "Void Mist",
-        "startMs": 8400,
-        "endMs": 16400,
-        "trackId": "fx3",
-        "color": "#10b981",
+        "fxType": "cyber_dualism",
+        "label": "Cyber Dualism",
+        "startMs": 8000,
+        "endMs": 12000,
+        "trackId": "fx2",
+        "color": "#f59e0b",
         "keyframes": [
           {
             "offsetMs": 0,
@@ -227,12 +257,12 @@
             "easing": "ease-in"
           },
           {
-            "offsetMs": 4000,
+            "offsetMs": 2000,
             "value": 1,
             "easing": "ease-out"
           },
           {
-            "offsetMs": 8000,
+            "offsetMs": 4000,
             "value": 0,
             "easing": "linear"
           }
@@ -242,7 +272,7 @@
         "locked": false
       }
     ],
-    "playheadMs": 2089.9990000000003,
+    "playheadMs": 0,
     "viewportStartMs": 0,
     "pixelsPerSecond": 100
   },

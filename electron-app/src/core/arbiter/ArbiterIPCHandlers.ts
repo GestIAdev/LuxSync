@@ -207,7 +207,8 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     if (hasMovement && !hasSpeed) {
       finalControls.speed = controls.speed ?? 0  // 0 = fastest movement
       finalChannels.push('speed')
-      console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
+      // Disabled: WAVE 2052 - Too spammy (60 FPS)
+      // console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
     }
     
     // ═══════════════════════════════════════════════════════════════════════════

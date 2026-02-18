@@ -336,9 +336,10 @@ export class MasterArbiter extends EventEmitter {
     }
     
     // 🔥 WAVE 1219: Debug log for successful override (only with controls for movement)
-    if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
-      console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
-    }
+    // Disabled: WAVE 2052 - Too spammy (60 FPS, every fixture with pan/tilt override)
+    // if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
+    //   console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
+    // }
     
     // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
     const existingOverride = this.layer2_manualOverrides.get(override.fixtureId)

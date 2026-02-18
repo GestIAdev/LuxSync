@@ -387,6 +387,40 @@ const api = {
   },
 
   // ============================================
+  // 🎬 PLAYBACK - WAVE 2053.1: TIMELINE ENGINE
+  // Backend playback: load project, tick, stop.
+  // Frontend is DUMB — sends timeMs, engine does physics.
+  // ============================================
+  playback: {
+    /**
+     * 📀 Load a LuxProject into the TimelineEngine
+     * @param project - Full LuxProject object
+     */
+    load: (project: unknown): Promise<{ success: boolean; state?: unknown; error?: string }> =>
+      ipcRenderer.invoke('lux:playback:load', project),
+
+    /**
+     * ⏱ Tick the engine with current playhead time (fire-and-forget, 60fps)
+     * @param timeMs - Current playback position in milliseconds
+     */
+    tick: (timeMs: number): void => {
+      ipcRenderer.send('lux:playback:tick', timeMs)
+    },
+
+    /**
+     * ⏹ Stop playback and clean up all effects + arbiter overrides
+     */
+    stop: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('lux:playback:stop'),
+
+    /**
+     * 📊 Query current engine state
+     */
+    getState: (): Promise<{ loaded: boolean; playing: boolean; projectName: string | null; clipCount: number; activeClipCount: number; lastTickMs: number }> =>
+      ipcRenderer.invoke('lux:playback:state'),
+  },
+
+  // ============================================
   // ⚒️ HEPHAESTUS - WAVE 2030.5: THE FORGE FILE I/O
   // Automation clip persistence (.lfx files)
   // ============================================

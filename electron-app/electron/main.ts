@@ -47,6 +47,8 @@ import { FXTParser, fxtParser } from '../src/core/library/FXTParser'
 // 👻 WAVE 2005.3: Phantom Worker for audio analysis
 import { getPhantomWorker, destroyPhantomWorker } from './workers/PhantomWorkerManager'
 import { setupChronosIPCHandlers, cleanupChronosIPC } from './ipc/ChronosIPCHandlers'
+// 🎬 WAVE 2053.1: TimelineEngine playback IPC
+import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCHandlers'
 
 // =============================================================================
 // GLOBAL STATE
@@ -332,7 +334,9 @@ async function initTitan(): Promise<void> {
     const phantom = getPhantomWorker()
     await phantom.init()
     setupChronosIPCHandlers(mainWindow!)
+    setupPlaybackIPCHandlers()
     console.log('[Main] 👻 Phantom Worker initialized (WAVE 2005.3)')
+    console.log('[Main] 🎬 TimelineEngine playback initialized (WAVE 2053.1)')
   } catch (err) {
     console.error('[Main] ❌ Failed to initialize Phantom Worker:', err)
     // Non-fatal - Chronos will work without audio analysis
@@ -595,7 +599,8 @@ app.on('before-quit', async () => {
   // 👻 WAVE 2005.3: Cleanup Phantom Worker
   destroyPhantomWorker()
   await cleanupChronosIPC()
-  console.log('[Main] Config saved, TITAN stopped, Phantom destroyed')
+  cleanupPlaybackIPC()
+  console.log('[Main] Config saved, TITAN stopped, Phantom destroyed, Playback cleaned')
 })
 
 app.on('window-all-closed', () => {

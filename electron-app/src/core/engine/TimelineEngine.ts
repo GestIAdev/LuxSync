@@ -817,7 +817,7 @@ export class TimelineEngine {
         mode: 'absolute',
         source: 'ui_programmer',
         priority: options.priority ?? 100,
-        autoReleaseMs: options.autoReleaseMs ?? 100,
+        autoReleaseMs: options.autoReleaseMs ?? 5000,  // 🔥 WAVE 2054.2: 5s instead of 100ms (playback needs persistence)
         releaseTransitionMs: options.releaseTransitionMs ?? 50,
         timestamp: performance.now(),
       })
@@ -835,8 +835,9 @@ export class TimelineEngine {
     }
     this.activeClips.delete(clipId)
 
-    // Release arbiter overrides
-    masterArbiter.releaseAllManualOverrides()
+    // 🔥 WAVE 2054.2: DON'T release arbiter overrides on clip end!
+    // Other clips may still be active. Only release on full stop().
+    // masterArbiter.releaseAllManualOverrides() // ← REMOVED
   }
 
   // ═══════════════════════════════════════════════════════════════════════

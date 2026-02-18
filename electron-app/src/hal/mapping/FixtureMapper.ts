@@ -643,6 +643,8 @@ export class FixtureMapper {
       'STROBES': 'accent',
       'AMBIENT': 'ambient',
       'FLOOR': 'primary',
+      'AIR': 'secondary',
+      'CENTER': 'primary',
       'UNASSIGNED': 'primary',
     }
     return roleMap[zone] || 'primary'

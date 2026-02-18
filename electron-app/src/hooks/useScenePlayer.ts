@@ -299,7 +299,7 @@ export function useScenePlayer() {
         switch (paramId) {
           case 'intensity':
           case 'dimmer':
-            controls.dimmer = value
+            controls.dimmer = value * 255  // WAVE 2050.5: Scale to DMX
             if (!channels.includes('dimmer')) channels.push('dimmer')
             break
           case 'white':
@@ -307,7 +307,7 @@ export function useScenePlayer() {
             controls.red = 255 * value
             controls.green = 255 * value
             controls.blue = 255 * value
-            controls.dimmer = Math.max(controls.dimmer ?? 0, value)
+            controls.dimmer = Math.max(controls.dimmer ?? 0, value * 255)  // WAVE 2050.5
             if (!channels.includes('red')) channels.push('red')
             if (!channels.includes('green')) channels.push('green')
             if (!channels.includes('blue')) channels.push('blue')
@@ -359,7 +359,7 @@ export function useScenePlayer() {
 
       switch (fxTypeStr) {
         case 'strobe':
-          controls.dimmer = intensity > 0.5 ? 1 : 0
+          controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255  // WAVE 2050.5
           channels.push('dimmer')
           break
 
@@ -375,7 +375,7 @@ export function useScenePlayer() {
           controls.red = r * intensity
           controls.green = g * intensity
           controls.blue = b * intensity
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           channels.push('red', 'green', 'blue', 'dimmer')
           break
         }
@@ -384,13 +384,13 @@ export function useScenePlayer() {
         case 'fade':
         case 'pulse':
         case 'chase':
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           channels.push('dimmer')
           break
 
         case 'sweep':
           controls.pan = t * 255
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           channels.push('pan', 'dimmer')
           break
 
@@ -399,7 +399,7 @@ export function useScenePlayer() {
         // ═══════════════════════════════════════════════════════════════════
         case 'core_meltdown':
           // Meltdown: pulsing white heat with intensity
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5: DMX scale
           controls.red = 255 * intensity
           controls.green = 200 * intensity  // Slightly warm
           controls.blue = 150 * intensity
@@ -408,7 +408,7 @@ export function useScenePlayer() {
 
         case 'industrial_strobe':
           // Harsh white strobe
-          controls.dimmer = intensity > 0.3 ? 1 : 0
+          controls.dimmer = (intensity > 0.3 ? 1 : 0) * 255  // WAVE 2050.5
           controls.red = 255
           controls.green = 255
           controls.blue = 255
@@ -417,7 +417,7 @@ export function useScenePlayer() {
 
         case 'void_mist':
           // Deep blue atmospheric
-          controls.dimmer = intensity * 0.6  // Softer
+          controls.dimmer = intensity * 0.6 * 255  // WAVE 2050.5: Softer + DMX
           controls.red = 50 * intensity
           controls.green = 100 * intensity
           controls.blue = 255 * intensity
@@ -426,7 +426,7 @@ export function useScenePlayer() {
 
         case 'neon_surge':
           // Vibrant magenta
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           controls.red = 255 * intensity
           controls.green = 0
           controls.blue = 255 * intensity
@@ -435,7 +435,7 @@ export function useScenePlayer() {
 
         case 'solar_flare':
           // Warm orange burst
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           controls.red = 255 * intensity
           controls.green = 150 * intensity
           controls.blue = 0
@@ -444,7 +444,7 @@ export function useScenePlayer() {
 
         case 'thunder_crack':
           // White flash
-          controls.dimmer = intensity > 0.5 ? 1 : 0
+          controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255  // WAVE 2050.5
           controls.red = 255
           controls.green = 255
           controls.blue = 255
@@ -452,7 +452,7 @@ export function useScenePlayer() {
           break
 
         default:
-          controls.dimmer = intensity
+          controls.dimmer = intensity * 255  // WAVE 2050.5
           channels.push('dimmer')
       }
     }

@@ -131,6 +131,7 @@ export const SceneBrowser: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioFileInputRef = useRef<HTMLInputElement>(null)  // WAVE 2051: Audio picker
 
   // ── Derived ──
   const selectedScene = scenes.find(s => s.id === selectedId)
@@ -246,6 +247,44 @@ export const SceneBrowser: React.FC = () => {
   }, [selectedId, unloadScene])
 
   // ─────────────────────────────────────────────────────────────────────────
+  // 💿 WAVE 2051: LINK AUDIO — Manual audio file selection for scene
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleLinkAudioClick = useCallback(() => {
+    audioFileInputRef.current?.click()
+  }, [])
+
+  const handleAudioFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedId) return
+
+    try {
+      // Create Blob URL for audio file
+      const audioUrl = URL.createObjectURL(file)
+
+      // Update scene with new audio URL
+      setScenes(prev => prev.map(scene => {
+        if (scene.id === selectedId) {
+          return { ...scene, audioUrl }
+        }
+        return scene
+      }))
+
+      // Reload scene with new audio
+      const updatedScene = scenes.find(s => s.id === selectedId)
+      if (updatedScene) {
+        await loadScene(updatedScene.project, audioUrl)
+        console.log(`[SceneBrowser] 🔊 Audio linked: ${file.name}`)
+      }
+    } catch (err) {
+      console.error('[SceneBrowser] Audio link failed:', err)
+    }
+
+    // Reset input
+    if (audioFileInputRef.current) audioFileInputRef.current.value = ''
+  }, [selectedId, scenes, loadScene])
+
+  // ─────────────────────────────────────────────────────────────────────────
   // 🎨 RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -340,6 +379,21 @@ export const SceneBrowser: React.FC = () => {
             ) : (
               <MuteIcon size={12} className="audio-badge mute" />
             )}
+            {/* WAVE 2051: Link Audio Button */}
+            <button
+              className="link-audio-btn"
+              onClick={handleLinkAudioClick}
+              title={status.hasAudio ? "Replace audio file" : "Link audio file"}
+            >
+              {status.hasAudio ? '🔄' : '💿'} AUDIO
+            </button>
+            <input
+              ref={audioFileInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.ogg,.m4a"
+              onChange={handleAudioFileChange}
+              style={{ display: 'none' }}
+            />
             <button
               className="now-playing-eject"
               onClick={() => { unloadScene(); setSelectedId(null) }}

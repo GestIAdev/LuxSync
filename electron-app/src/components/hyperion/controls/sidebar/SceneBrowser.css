@@ -420,6 +420,37 @@
   50% { opacity: 0.25; }
 }
 
+/* ── Link Audio Button (WAVE 2051) ── */
+
+.link-audio-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: rgba(138, 43, 226, 0.15);
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  border-radius: 4px;
+  color: rgba(186, 85, 211, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.link-audio-btn:hover {
+  background: rgba(138, 43, 226, 0.25);
+  border-color: rgba(186, 85, 211, 0.6);
+  color: rgba(186, 85, 211, 1);
+  transform: translateY(-1px);
+}
+
+.link-audio-btn:active {
+  transform: translateY(0);
+}
+
 /* ── Progress Bar ── */
 
 .progress-container {

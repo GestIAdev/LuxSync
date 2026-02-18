@@ -96,9 +96,17 @@ export const StageSidebar: React.FC<StageSidebarProps> = ({
       
       {/* CONTENT */}
       <div className="sidebar-content">
-        {activeTab === 'controls' && <TheProgrammerContent />}
-        {activeTab === 'groups' && <GroupsPanel onSwitchToControls={handleSwitchToControls} />}
-        {activeTab === 'scenes' && <SceneBrowser />}
+        {/* WAVE 2051: IMMORTALITY — Keep all tabs mounted, toggle visibility
+            Scene player must stay alive when switching tabs (audio/clock persist) */}
+        <div style={{ display: activeTab === 'controls' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <TheProgrammerContent />
+        </div>
+        <div style={{ display: activeTab === 'groups' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <GroupsPanel onSwitchToControls={handleSwitchToControls} />
+        </div>
+        <div style={{ display: activeTab === 'scenes' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <SceneBrowser />
+        </div>
       </div>
     </div>
   )

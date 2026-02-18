@@ -423,9 +423,6 @@ export const SceneBrowser: React.FC = () => {
               <span className="active-clips">
                 {status.activeClipCount} clip{status.activeClipCount !== 1 ? 's' : ''} active
               </span>
-              {status.activeVibe && (
-                <span className="active-vibe">{status.activeVibe}</span>
-              )}
             </div>
           )}
 

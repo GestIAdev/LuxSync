@@ -216,6 +216,19 @@ export class TimelineEngine {
   // ── Last active set for cleanup ──
   private previousActiveIds = new Set<string>()
 
+  // ── 🔥 WAVE 2056: Frame accumulator for Direct Drive ──
+  private frameAccumulator = new Map<string, {
+    dimmer: number
+    red: number
+    green: number
+    blue: number
+    white: number
+    pan: number
+    tilt: number
+    zoom: number
+    speed: number
+  }>()
+
   // ═══════════════════════════════════════════════════════════════════════
   // LOAD PROJECT
   // ═══════════════════════════════════════════════════════════════════════
@@ -236,9 +249,16 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // TICK — Called every frame from frontend via IPC
+  // 🔥 WAVE 2056: TICK — Direct Drive Frame Construction
   // ═══════════════════════════════════════════════════════════════════════
-
+  
+  /**
+   * Called every frame from frontend via IPC.
+   * 
+   * 🔥 WAVE 2056: SCORCHED EARTH
+   * Build complete frame with ALL fixtures, send once to Arbiter.
+   * Uses existing effect logic but collects results into frame buffer.
+   */
   tick(timeMs: number): void {
     if (!this.playing || !this.project) return
 
@@ -246,22 +266,57 @@ export class TimelineEngine {
     const deltaMs = this.lastTickMs > 0 ? timeMs - this.lastTickMs : 16.67
     this.lastTickMs = timeMs
 
+    // ── Initialize frame accumulator ──
+    const allFixtureIds = masterArbiter.getFixtureIds()
+    this.frameAccumulator.clear()
+    
+    for (const fixtureId of allFixtureIds) {
+      this.frameAccumulator.set(fixtureId, {
+        dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
+        pan: 127, tilt: 127, zoom: 0, speed: 0,
+      })
+    }
+
     // ── Find active FX clips at this timeMs ──
     const nowActiveIds = new Set<string>()
 
     for (const clip of this.fxClips) {
       if (timeMs >= clip.startMs && timeMs < clip.endMs) {
         nowActiveIds.add(clip.id)
-        this.processClip(clip, timeMs, deltaMs)
+        this.processClip(clip, timeMs, deltaMs)  // Uses existing logic
       }
     }
 
-    // ── Process active Vibe clips (global color/mood) ──
+    // ── Process active Vibe clips ──
     for (const vibeClip of this.vibeClips) {
       if (timeMs >= vibeClip.startMs && timeMs < vibeClip.endMs) {
-        this.processVibeClip(vibeClip, timeMs)
+        this.processVibeClip(vibeClip, timeMs)  // Uses existing logic
       }
     }
+
+    // ── Convert frame accumulator to FixtureLightingTarget[] ──
+    const fixtureTargets = allFixtureIds.map(fixtureId => {
+      const state = this.frameAccumulator.get(fixtureId)!
+      return {
+        fixtureId,
+        dimmer: state.dimmer,
+        color: { r: state.red, g: state.green, b: state.blue },
+        pan: state.pan,
+        tilt: state.tilt,
+        zoom: state.zoom,
+        focus: 0,
+        speed: state.speed,
+        color_wheel: 0,
+        strobe: 0,
+        prism: 0,
+        gobo: 0,
+        controlSources: {},
+        appliedLayers: [],
+      }
+    })
+
+    // ── Send complete frame to Arbiter (Direct Drive) ──
+    masterArbiter.setPlaybackFrame(fixtureTargets as any)
 
     // ── Cleanup clips that ended ──
     Array.from(this.previousActiveIds).forEach(prevId => {
@@ -288,8 +343,8 @@ export class TimelineEngine {
     this.activeClips.clear()
     this.previousActiveIds.clear()
 
-    // Clear arbiter overrides
-    masterArbiter.releaseAllManualOverrides()
+    // 🔥 WAVE 2056: Stop playback mode in Arbiter
+    masterArbiter.stopPlayback()
 
     this.playing = false
     this.lastTickMs = 0
@@ -297,7 +352,7 @@ export class TimelineEngine {
     this.fxClips = []
     this.vibeClips = []
 
-    console.log(`[TimelineEngine] ⏹ Stopped — ${abortedCount} effects aborted, arbiter cleared`)
+    console.log(`[TimelineEngine] ⏹ Stopped — ${abortedCount} effects aborted, arbiter playback cleared`)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -772,12 +827,17 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // PRIVATE: Arbiter Dispatcher — The Handshake Protocol
+  // 🔥 WAVE 2056: Frame Accumulator — Direct Drive
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
-   * Central dispatch helper that speaks the Arbiter's language.
-   * Expands wildcards, builds proper Layer2_Manual objects, sends one-by-one.
+   * 🔥 WAVE 2056: SCORCHED EARTH
+   * 
+   * Instead of sending commands to Arbiter, accumulate them in frameAccumulator.
+   * This builds the complete frame that will be sent once at end of tick().
+   * 
+   * OLD: dispatchToArbiter() → masterArbiter.setManualOverride() per fixture
+   * NEW: dispatchToArbiter() → frameAccumulator.set() per fixture
    */
   private dispatchToArbiter(
     targetIds: string[],
@@ -788,7 +848,7 @@ export class TimelineEngine {
       releaseTransitionMs?: number
     } = {}
   ): void {
-    // A. Expansión de Wildcard '*' → Todos los IDs reales
+    // A. Expand wildcard '*' → All fixture IDs
     let finalIds = targetIds
     if (targetIds.includes('*')) {
       finalIds = masterArbiter.getFixtureIds()
@@ -798,29 +858,29 @@ export class TimelineEngine {
       }
     }
 
-    // B. Detectar qué canales estamos tocando
-    const overrideChannels = Object.keys(controls).filter(k =>
-      ['dimmer', 'red', 'green', 'blue', 'white', 'pan', 'tilt', 'zoom', 'shutter', 'strobe', 'speed'].includes(k)
-    ) as any[]
-
-    if (overrideChannels.length === 0) {
-      console.warn('[TimelineEngine] ⚠️ No valid channels in controls:', controls)
-      return
-    }
-
-    // C. Enviar UNO A UNO (El Arbiter es estricto)
+    // B. Accumulate controls into frame buffer (HTP for dimmer, LTP for others)
     for (const fixtureId of finalIds) {
-      masterArbiter.setManualOverride({
-        fixtureId,
-        controls: controls as any,
-        overrideChannels,
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: options.priority ?? 100,
-        autoReleaseMs: options.autoReleaseMs ?? 5000,  // 🔥 WAVE 2054.2: 5s instead of 100ms (playback needs persistence)
-        releaseTransitionMs: options.releaseTransitionMs ?? 50,
-        timestamp: performance.now(),
-      })
+      const currentState = this.frameAccumulator.get(fixtureId)
+      if (!currentState) continue
+
+      // HTP for dimmer (Highest Takes Precedence)
+      if (controls.dimmer !== undefined) {
+        currentState.dimmer = Math.max(currentState.dimmer, controls.dimmer)
+      }
+
+      // LTP for color (Latest Takes Precedence)
+      if (controls.red !== undefined) currentState.red = controls.red
+      if (controls.green !== undefined) currentState.green = controls.green
+      if (controls.blue !== undefined) currentState.blue = controls.blue
+      if (controls.white !== undefined) currentState.white = controls.white
+
+      // LTP for position
+      if (controls.pan !== undefined) currentState.pan = controls.pan
+      if (controls.tilt !== undefined) currentState.tilt = controls.tilt
+
+      // LTP for optics
+      if (controls.zoom !== undefined) currentState.zoom = controls.zoom
+      if (controls.speed !== undefined) currentState.speed = controls.speed
     }
   }
 
@@ -835,9 +895,8 @@ export class TimelineEngine {
     }
     this.activeClips.delete(clipId)
 
-    // 🔥 WAVE 2054.2: DON'T release arbiter overrides on clip end!
-    // Other clips may still be active. Only release on full stop().
-    // masterArbiter.releaseAllManualOverrides() // ← REMOVED
+    // 🔥 WAVE 2056: No longer needs to release arbiter overrides
+    // Playback uses setPlaybackFrame() which is completely replaced each tick
   }
 
   // ═══════════════════════════════════════════════════════════════════════

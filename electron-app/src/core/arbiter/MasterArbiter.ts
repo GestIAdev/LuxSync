@@ -123,6 +123,14 @@ export class MasterArbiter extends EventEmitter {
   // When operator releases manual control, we store the position here so AI adopts it as "home"
   private fixtureOrigins: Map<string, { pan: number; tilt: number; timestamp: number }> = new Map()
   
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2056: DIRECT DRIVE - Playback Bypass
+  // When TimelineEngine is playing, it sends complete frames here.
+  // During playback, we IGNORE Titan + Manual layers (Scorched Earth).
+  // ═══════════════════════════════════════════════════════════════════════
+  private playbackActive: boolean = false
+  private currentPlaybackFrame: Map<string, FixtureLightingTarget> = new Map()
+  
   // Grand Master (WAVE 376)
   private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
   
@@ -775,6 +783,52 @@ export class MasterArbiter extends EventEmitter {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2056: DIRECT DRIVE - Playback Frame Injection
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  /**
+   * 🔥 WAVE 2056: SCORCHED EARTH PROTOCOL
+   * 
+   * Inject a complete playback frame from TimelineEngine.
+   * When playback is active, arbitrate() returns this frame DIRECTLY,
+   * bypassing Titan AI, Manual Overrides, and all layer merging.
+   * 
+   * This is how video rendering works: absolute frame data, no negotiation.
+   * 
+   * @param fixtures Array of complete fixture states from TimelineEngine
+   */
+  setPlaybackFrame(fixtures: FixtureLightingTarget[]): void {
+    this.currentPlaybackFrame.clear()
+    
+    for (const fixture of fixtures) {
+      this.currentPlaybackFrame.set(fixture.fixtureId, fixture)
+    }
+    
+    // Activate playback mode (bypasses all other layers)
+    this.playbackActive = true
+    
+    if (this.config.debug && this.frameNumber % 60 === 0) {
+      console.log(`[MasterArbiter] 🔥 DIRECT DRIVE: ${fixtures.length} fixtures in playback frame`)
+    }
+  }
+  
+  /**
+   * Stop playback mode and return to normal layer arbitration
+   */
+  stopPlayback(): void {
+    this.playbackActive = false
+    this.currentPlaybackFrame.clear()
+    console.log('[MasterArbiter] 🔥 DIRECT DRIVE: Playback stopped, returning to layer arbitration')
+  }
+  
+  /**
+   * Check if playback is active
+   */
+  isPlaybackActive(): boolean {
+    return this.playbackActive
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // MAIN ARBITRATION
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -784,11 +838,54 @@ export class MasterArbiter extends EventEmitter {
    * Merges all layers and produces final lighting target.
    * Call this every frame to get the output for HAL.
    * 
+   * 🔥 WAVE 2056: SCORCHED EARTH - If playback is active, returns playback frame DIRECTLY
+   * 
    * @returns Final lighting target ready for HAL
    */
   arbitrate(): FinalLightingTarget {
     const now = performance.now()
     this.frameNumber++
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2056: DIRECT DRIVE BYPASS
+    // If playback is active, return the playback frame DIRECTLY.
+    // NO layer merging, NO Titan AI, NO manual overrides.
+    // Like video rendering: frame data is absolute truth.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (this.playbackActive && this.currentPlaybackFrame.size > 0) {
+      const fixtureTargets = Array.from(this.currentPlaybackFrame.values())
+      
+      const output: FinalLightingTarget = {
+        fixtures: fixtureTargets,
+        globalEffects: {
+          strobeActive: false,
+          strobeSpeed: 0,
+          blinderActive: false,
+          blinderIntensity: 0,
+          blackoutActive: false,
+          freezeActive: false,
+        },
+        timestamp: now,
+        frameNumber: this.frameNumber,
+        _layerActivity: {
+          titanActive: false,
+          titanVibeId: 'PLAYBACK_DIRECT_DRIVE',
+          consciousnessActive: false,
+          consciousnessStatus: undefined,
+          manualOverrideCount: 0,
+          manualFixtureIds: [],
+          activeEffects: [],
+        }
+      }
+      
+      this.lastOutputTimestamp = now
+      this.emit('output', output)
+      return output
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // NORMAL LAYER ARBITRATION (when playback is NOT active)
+    // ═══════════════════════════════════════════════════════════════════════
     
     // Clean up expired effects
     this.cleanupExpiredEffects()

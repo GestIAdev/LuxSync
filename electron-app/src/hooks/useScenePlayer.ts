@@ -29,6 +29,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { LuxProject } from '../chronos/core/ChronosProject'
+import { useStageStore } from '../stores/stageStore'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -142,6 +143,20 @@ export function useScenePlayer() {
       }
     } else {
       console.error('[ScenePlayer] ❌ NO PLAYBACK API AVAILABLE — window.lux.playback is undefined!')
+    }
+
+    // ── Sync fixtures to backend Arbiter (WAVE 2054) ──
+    try {
+      const fixtures = useStageStore.getState().fixtures
+      if (fixtures && fixtures.length > 0) {
+        console.log(`[ScenePlayer] 🎭 Syncing ${fixtures.length} fixtures to backend Arbiter...`)
+        ;(window as any).lux?.stage?.syncFixtures?.(fixtures)
+        console.log(`[ScenePlayer] ✅ Fixtures synced to backend`)
+      } else {
+        console.warn('[ScenePlayer] ⚠️ No fixtures in stageStore — backend Arbiter will be empty!')
+      }
+    } catch (err) {
+      console.error('[ScenePlayer] ❌ Fixture sync failed:', err)
     }
 
     setStatus({

@@ -20,13 +20,32 @@
 
 import { ipcMain } from 'electron'
 import { timelineEngine } from '../../src/core/engine/TimelineEngine'
+import { masterArbiter } from '../../src/core/arbiter'
 import type { LuxProject } from '../../src/chronos/core/ChronosProject'
+import type { BrowserWindow } from 'electron'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FixtureInstance {
+  id: string
+  name: string
+  type: string
+  universe: number
+  address: number
+  channels: number
+  [key: string]: any
+}
+
+let mainWindow: BrowserWindow | null = null
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function setupPlaybackIPCHandlers(): void {
+export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
+  if (window) mainWindow = window
 
   // ─── LOAD PROJECT ───
   ipcMain.handle('lux:playback:load', (_event, project: LuxProject) => {
@@ -63,7 +82,39 @@ export function setupPlaybackIPCHandlers(): void {
     return timelineEngine.getState()
   })
 
-  console.log('[PlaybackIPC] 🎬 Playback handlers registered (WAVE 2053.1)')
+  // ─── FIXTURE SYNC (Frontend → Backend) ───
+  ipcMain.on('lux:stage:sync', (_event, fixtures: FixtureInstance[]) => {
+    try {
+      console.log(`[PlaybackIPC] 🎭 Syncing ${fixtures.length} fixtures to Arbiter...`)
+      
+      // Map FixtureInstance to ArbiterFixture format
+      const arbiterFixtures = fixtures.map(f => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        dmxAddress: f.address, // FixtureInstance.address → ArbiterFixture.dmxAddress
+        universe: f.universe,
+        zone: f.zone,
+        position: f.position,
+        capabilities: f.capabilities,
+      }))
+      
+      masterArbiter.setFixtures(arbiterFixtures as any)
+      console.log(`[PlaybackIPC] ✅ ${fixtures.length} fixtures synced to Arbiter`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[PlaybackIPC] ❌ Fixture sync failed: ${msg}`)
+    }
+  })
+
+  // ─── ARBITER OUTPUT FEEDBACK (Backend → Frontend) ───
+  masterArbiter.on('output', (data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('lux:arbiter:output', data)
+    }
+  })
+
+  console.log('[PlaybackIPC] 🎬 Playback handlers registered (WAVE 2054)')
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,5 +127,7 @@ export function cleanupPlaybackIPC(): void {
   ipcMain.removeAllListeners('lux:playback:tick')
   ipcMain.removeHandler('lux:playback:stop')
   ipcMain.removeHandler('lux:playback:state')
+  ipcMain.removeAllListeners('lux:stage:sync')
+  mainWindow = null
   console.log('[PlaybackIPC] 🧹 Handlers cleaned up')
 }

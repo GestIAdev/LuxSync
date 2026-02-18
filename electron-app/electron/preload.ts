@@ -1014,10 +1014,15 @@ const luxApi = {
       ipcRenderer.on('lux:stage:loaded', handler)
       return () => ipcRenderer.removeListener('lux:stage:loaded', handler)
     },
+
+    /** Sync fixtures to backend Arbiter (WAVE 2054) */
+    syncFixtures: (fixtures: any[]) => 
+      ipcRenderer.send('lux:stage:sync', fixtures),
   },
 
   // ============================================
   // 🎯 WAVE 2019.11: CHRONOS TIMELINE → STAGE COMMANDS
+  // ============================================
   // Bridge for ChronosIPCBridge to communicate with backend
   // ============================================
   chronos: {

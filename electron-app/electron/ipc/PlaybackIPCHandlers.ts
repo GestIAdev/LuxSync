@@ -34,7 +34,16 @@ interface FixtureInstance {
   type: string
   universe: number
   address: number
-  channels: number
+  channels?: Array<{
+    index: number
+    name: string
+    type: string
+    is16bit: boolean
+    defaultValue?: number
+  }>
+  zone?: string
+  position?: any
+  capabilities?: any
   [key: string]: any
 }
 
@@ -88,19 +97,33 @@ export function setupPlaybackIPCHandlers(window?: BrowserWindow): void {
       console.log(`[PlaybackIPC] 🎭 Syncing ${fixtures.length} fixtures to Arbiter...`)
       
       // Map FixtureInstance to ArbiterFixture format
-      const arbiterFixtures = fixtures.map(f => ({
-        id: f.id,
-        name: f.name,
-        type: f.type,
-        dmxAddress: f.address, // FixtureInstance.address → ArbiterFixture.dmxAddress
-        universe: f.universe,
-        zone: f.zone,
-        position: f.position,
-        capabilities: f.capabilities,
-      }))
+      const arbiterFixtures = fixtures.map(f => {
+        const mapped = {
+          id: f.id,
+          name: f.name,
+          type: f.type,
+          dmxAddress: f.address, // FixtureInstance.address → ArbiterFixture.dmxAddress
+          universe: f.universe,
+          zone: f.zone,
+          position: f.position,
+          capabilities: f.capabilities,
+          channels: f.channels, // 🔥 CRITICAL: Include channels array!
+        }
+        
+        // Debug: Verify channels are present
+        if (!f.channels || f.channels.length === 0) {
+          console.warn(`[PlaybackIPC] ⚠️ Fixture ${f.id} has NO CHANNELS!`)
+        } else {
+          console.log(`[PlaybackIPC] ✅ Fixture ${f.id}: ${f.channels.length} channels`)
+        }
+        
+        return mapped
+      })
       
       masterArbiter.setFixtures(arbiterFixtures as any)
-      console.log(`[PlaybackIPC] ✅ ${fixtures.length} fixtures synced to Arbiter`)
+      
+      const totalChannels = arbiterFixtures.reduce((sum, f) => sum + (f.channels?.length || 0), 0)
+      console.log(`[PlaybackIPC] ✅ ${fixtures.length} fixtures synced (${totalChannels} total channels)`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error(`[PlaybackIPC] ❌ Fixture sync failed: ${msg}`)

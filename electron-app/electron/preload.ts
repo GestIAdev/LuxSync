@@ -943,6 +943,16 @@ const luxApi = {
     getFixturesState: (fixtureIds: string[]) =>
       ipcRenderer.invoke('lux:arbiter:getFixturesState', { fixtureIds }),
     
+    /** 
+     * Subscribe to arbiter output events (WAVE 2054)
+     * Real-time lighting state for visual feedback
+     */
+    onOutput: (callback: (data: any) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: any) => callback(data)
+      ipcRenderer.on('lux:arbiter:output', handler)
+      return () => ipcRenderer.removeListener('lux:arbiter:output', handler)
+    },
+    
     // ============================================
     // 🌉 WAVE 377: FIXTURE SYNC (TitanSyncBridge)
     // ============================================

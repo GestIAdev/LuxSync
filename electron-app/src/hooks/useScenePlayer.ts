@@ -19,12 +19,14 @@
  * Las luces se mueven SIEMPRE, con o sin audio.
  * 
  * @module hooks/useScenePlayer
- * @version WAVE 2050.1
+ * @version WAVE 2052
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { LuxProject } from '../chronos/core/ChronosProject'
 import type { TimelineClip, VibeClip, FXClip } from '../chronos/core/TimelineClip'
+import type { ILightEffect, EffectZone } from '../core/effects/types'
+import { hasCoreEffect, createCoreEffect, hslToRgb } from './SceneEffectFactory'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -90,6 +92,10 @@ export function useScenePlayer() {
   const loopRef = useRef(false)
   const lastVibeRef = useRef<string | null>(null)
   const lastFxSetRef = useRef<Set<string>>(new Set())
+
+  // ── WAVE 2052: Procedural FX Runtime ──
+  const effectCacheRef = useRef<Map<string, ILightEffect>>(new Map())
+  const lastTickMsRef = useRef(0)
 
   // ── Silent Clock refs (performance.now() based) ──
   const silentModeRef = useRef(false)
@@ -239,6 +245,12 @@ export function useScenePlayer() {
         if (arbiter?.clearAllManual) {
           arbiter.clearAllManual().catch(() => {})
         }
+        // WAVE 2052: Destroy procedural effect instance
+        const effect = effectCacheRef.current.get(prevId)
+        if (effect) {
+          effect.abort()
+          effectCacheRef.current.delete(prevId)
+        }
       }
     }
     lastFxSetRef.current = currentFxIds
@@ -350,110 +362,150 @@ export function useScenePlayer() {
       }
     } else {
       // ═════════════════════════════════════════════════════════════════════
-      // STANDARD FX CLIPS (legacy keyframes)
+      // STANDARD FX CLIPS (legacy keyframes + PROCEDURAL CORE EFFECTS)
       // ═════════════════════════════════════════════════════════════════════
       const intensity = interpolateKeyframes(fx.keyframes, localTimeMs)
       
       // Cast to string for dynamic core effects (not in FXType union)
       const fxTypeStr = fx.fxType as string
 
-      switch (fxTypeStr) {
-        case 'strobe':
-          controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255  // WAVE 2050.5
-          channels.push('dimmer')
-          break
-
-        case 'blackout':
-          controls.dimmer = 0
-          channels.push('dimmer')
-          break
-
-        case 'color-wash': {
-          const r = typeof fx.params?.red === 'number' ? fx.params.red as number : 255
-          const g = typeof fx.params?.green === 'number' ? fx.params.green as number : 0
-          const b = typeof fx.params?.blue === 'number' ? fx.params.blue as number : 255
-          controls.red = r * intensity
-          controls.green = g * intensity
-          controls.blue = b * intensity
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          channels.push('red', 'green', 'blue', 'dimmer')
-          break
+      // ═══════════════════════════════════════════════════════════════════
+      // 🔥 WAVE 2052: PROCEDURAL FX RUNTIME
+      // Core effects are REAL classes with update(deltaMs)/getOutput().
+      // No more hardcoded colors — the effect class drives everything.
+      // CoreMeltdown strobes at 12Hz magenta/white, IndustrialStrobe
+      // hammers at its own rate, VoidMist breathes deep blue, etc.
+      // The keyframe envelope acts as a MASTER DIMMER multiplier.
+      // ═══════════════════════════════════════════════════════════════════
+      if (hasCoreEffect(fxTypeStr)) {
+        // Get or create effect instance (one per clip ID)
+        let effect = effectCacheRef.current.get(fx.id)
+        if (!effect) {
+          const created = createCoreEffect(fxTypeStr)
+          if (created) {
+            effect = created
+            // Trigger the effect — it starts its internal lifecycle
+            effect.trigger({
+              effectType: fxTypeStr,
+              intensity: 1,
+              source: 'chronos',
+              zones: (fx.zones && fx.zones.length > 0) ? fx.zones as EffectZone[] : ['all'],
+              reason: `scene_player:${fxTypeStr}`,
+            })
+            effectCacheRef.current.set(fx.id, effect)
+            lastTickMsRef.current = performance.now()
+          }
         }
 
-        case 'intensity-ramp':
-        case 'fade':
-        case 'pulse':
-        case 'chase':
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          channels.push('dimmer')
-          break
+        if (effect) {
+          // Calculate deltaMs for procedural update
+          const now = performance.now()
+          const deltaMs = lastTickMsRef.current > 0 ? now - lastTickMsRef.current : 16.67
+          lastTickMsRef.current = now
 
-        case 'sweep':
-          controls.pan = t * 255
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          channels.push('pan', 'dimmer')
-          break
+          // Tick the effect's internal state machine
+          effect.update(deltaMs)
 
-        // ═══════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 2050.4: CORE EFFECTS — Default intense white behaviors
-        // ═══════════════════════════════════════════════════════════════════
-        case 'core_meltdown':
-          // Meltdown: pulsing white heat with intensity
-          controls.dimmer = intensity * 255  // WAVE 2050.5: DMX scale
-          controls.red = 255 * intensity
-          controls.green = 200 * intensity  // Slightly warm
-          controls.blue = 150 * intensity
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+          // Read the procedural output
+          const output = effect.getOutput()
+          if (output) {
+            // Color: effect drives color via colorOverride (HSL → RGB)
+            if (output.colorOverride) {
+              const rgb = hslToRgb(
+                output.colorOverride.h,
+                output.colorOverride.s,
+                output.colorOverride.l
+              )
+              controls.red = rgb.r
+              controls.green = rgb.g
+              controls.blue = rgb.b
+              channels.push('red', 'green', 'blue')
+            } else if (output.whiteOverride !== undefined) {
+              // Pure white channel
+              const w = output.whiteOverride * 255
+              controls.red = w
+              controls.green = w
+              controls.blue = w
+              channels.push('red', 'green', 'blue')
+            }
 
-        case 'industrial_strobe':
-          // Harsh white strobe
-          controls.dimmer = (intensity > 0.3 ? 1 : 0) * 255  // WAVE 2050.5
-          controls.red = 255
-          controls.green = 255
-          controls.blue = 255
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+            // Dimmer: effect's dimmerOverride × keyframe intensity envelope × 255
+            const effectDimmer = output.dimmerOverride ?? output.intensity
+            controls.dimmer = effectDimmer * intensity * 255
+            channels.push('dimmer')
 
-        case 'void_mist':
-          // Deep blue atmospheric
-          controls.dimmer = intensity * 0.6 * 255  // WAVE 2050.5: Softer + DMX
-          controls.red = 50 * intensity
-          controls.green = 100 * intensity
-          controls.blue = 255 * intensity
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+            // Strobe: if the effect declares a strobe rate, pass it through
+            if (output.strobeRate !== undefined && output.strobeRate > 0) {
+              controls.strobe = Math.min(output.strobeRate / 25 * 255, 255) // Normalize Hz→DMX
+              channels.push('strobe')
+            }
 
-        case 'neon_surge':
-          // Vibrant magenta
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          controls.red = 255 * intensity
-          controls.green = 0
-          controls.blue = 255 * intensity
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+            // Movement overrides (pan/tilt from effects like TidalWave)
+            if (output.movement) {
+              const mv = output.movement as { pan?: number; tilt?: number }
+              if (mv.pan !== undefined) {
+                controls.pan = mv.pan * 255
+                channels.push('pan')
+              }
+              if (mv.tilt !== undefined) {
+                controls.tilt = mv.tilt * 255
+                channels.push('tilt')
+              }
+            }
+          }
 
-        case 'solar_flare':
-          // Warm orange burst
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          controls.red = 255 * intensity
-          controls.green = 150 * intensity
-          controls.blue = 0
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+          // If the effect finished its cycle, remove from cache
+          // (next frame will re-trigger if clip is still active)
+          if (effect.isFinished()) {
+            effectCacheRef.current.delete(fx.id)
+          }
+        }
+      } else {
+        // ═════════════════════════════════════════════════════════════════
+        // LEGACY FX TYPES (strobe, blackout, color-wash, etc.)
+        // Simple parametric behaviors — no procedural class needed.
+        // ═════════════════════════════════════════════════════════════════
+        switch (fxTypeStr) {
+          case 'strobe':
+            controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255
+            channels.push('dimmer')
+            break
 
-        case 'thunder_crack':
-          // White flash
-          controls.dimmer = (intensity > 0.5 ? 1 : 0) * 255  // WAVE 2050.5
-          controls.red = 255
-          controls.green = 255
-          controls.blue = 255
-          channels.push('dimmer', 'red', 'green', 'blue')
-          break
+          case 'blackout':
+            controls.dimmer = 0
+            channels.push('dimmer')
+            break
 
-        default:
-          controls.dimmer = intensity * 255  // WAVE 2050.5
-          channels.push('dimmer')
+          case 'color-wash': {
+            const r = typeof fx.params?.red === 'number' ? fx.params.red as number : 255
+            const g = typeof fx.params?.green === 'number' ? fx.params.green as number : 0
+            const b = typeof fx.params?.blue === 'number' ? fx.params.blue as number : 255
+            controls.red = r * intensity
+            controls.green = g * intensity
+            controls.blue = b * intensity
+            controls.dimmer = intensity * 255
+            channels.push('red', 'green', 'blue', 'dimmer')
+            break
+          }
+
+          case 'intensity-ramp':
+          case 'fade':
+          case 'pulse':
+          case 'chase':
+            controls.dimmer = intensity * 255
+            channels.push('dimmer')
+            break
+
+          case 'sweep':
+            controls.pan = t * 255
+            controls.dimmer = intensity * 255
+            channels.push('pan', 'dimmer')
+            break
+
+          default:
+            controls.dimmer = intensity * 255
+            channels.push('dimmer')
+        }
       }
     }
 
@@ -656,6 +708,13 @@ export function useScenePlayer() {
 
     lastVibeRef.current = null
     lastFxSetRef.current = new Set()
+
+    // WAVE 2052: Abort and clear all procedural effect instances
+    for (const effect of effectCacheRef.current.values()) {
+      effect.abort()
+    }
+    effectCacheRef.current.clear()
+    lastTickMsRef.current = 0
 
     setStatus(prev => ({
       ...prev,

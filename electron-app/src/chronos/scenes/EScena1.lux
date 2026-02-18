@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "version": "2.0",
+    "author": "",
+    "created": 1770759004842,
+    "modified": 1770759953498,
+    "durationMs": 264239.9791666667,
+    "name": "Untitled Project"
+  },
+  "audio": {
+    "name": "Spectral Drift.wav",
+    "path": "",
+    "bpm": 150,
+    "offsetMs": 0,
+    "durationMs": 264239.9791666667
+  },
+  "timeline": {
+    "clips": [
+      {
+        "id": "clip-1770759009510-1",
+        "type": "vibe",
+        "vibeType": "techno",
+        "label": "TECHNO",
+        "startMs": 3850,
+        "endMs": 11850,
+        "trackId": "vibe",
+        "color": "#a855f7",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770759009511-2",
+        "type": "vibe",
+        "vibeType": "techno",
+        "label": "TECHNO",
+        "startMs": 3860,
+        "endMs": 11860,
+        "trackId": "vibe",
+        "color": "#a855f7",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770759193650-19",
+        "type": "vibe",
+        "vibeType": "fiesta-latina",
+        "label": "FIESTA LATINA",
+        "startMs": 86917.24567953074,
+        "endMs": 94917.24567953074,
+        "trackId": "vibe",
+        "color": "#f59e0b",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770759193650-20",
+        "type": "vibe",
+        "vibeType": "fiesta-latina",
+        "label": "FIESTA LATINA",
+        "startMs": 86965.57970002329,
+        "endMs": 94965.57970002329,
+        "trackId": "vibe",
+        "color": "#f59e0b",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "rec-vibe-techno-1770759520639",
+        "type": "vibe",
+        "label": "Techno Club",
+        "startMs": 3200,
+        "endMs": 44800,
+        "color": "#00FFFF",
+        "trackId": "vibe",
+        "locked": false,
+        "vibeType": "techno",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500
+      },
+      {
+        "id": "rec-fx-gatling_raid-1770759539833",
+        "type": "fx",
+        "label": "Gatling Raid",
+        "startMs": 22400,
+        "endMs": 24400,
+        "color": "#FF4500",
+        "trackId": "fx1",
+        "locked": false,
+        "fxType": "gatling_raid",
+        "keyframes": [],
+        "params": {
+          "intensity": 1
+        }
+      },
+      {
+        "id": "rec-fx-seismic_snap-1770759545957",
+        "type": "fx",
+        "label": "Seismic Snap",
+        "startMs": 28400,
+        "endMs": 29400,
+        "color": "#FF6347",
+        "trackId": "fx4",
+        "locked": false,
+        "fxType": "seismic_snap",
+        "keyframes": [],
+        "params": {
+          "intensity": 1
+        }
+      },
+      {
+        "id": "rec-fx-sonar_ping-1770759554165",
+        "type": "fx",
+        "label": "Sonar Ping",
+        "startMs": 36400,
+        "endMs": 39400,
+        "color": "#1E90FF",
+        "trackId": "fx3",
+        "locked": false,
+        "fxType": "sonar_ping",
+        "keyframes": [],
+        "params": {
+          "intensity": 1
+        }
+      },
+      {
+        "id": "rec-fx-core_meltdown-1770759558136",
+        "type": "fx",
+        "label": "Core Meltdown",
+        "startMs": 40400,
+        "endMs": 43400,
+        "color": "#FF0000",
+        "trackId": "fx1",
+        "locked": false,
+        "fxType": "core_meltdown",
+        "keyframes": [],
+        "params": {
+          "intensity": 1
+        }
+      }
+    ],
+    "playheadMs": 0,
+    "viewportStartMs": 0,
+    "pixelsPerSecond": 100
+  },
+  "library": {
+    "customEffects": [],
+    "presets": []
+  }
+}

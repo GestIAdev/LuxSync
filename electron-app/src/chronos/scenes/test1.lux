@@ -1,0 +1,261 @@
+{
+  "meta": {
+    "version": "2.0",
+    "author": "Raulacate",
+    "created": 1771351945849,
+    "modified": 1771357277745,
+    "durationMs": 264239.9791666667,
+    "name": "Untitled Project"
+  },
+  "audio": {
+    "name": "Spectral Drift.wav",
+    "path": "C:\\Users\\Raulacate\\Desktop\\musica\\Spectral Drift.wav",
+    "bpm": 150,
+    "offsetMs": 0,
+    "durationMs": 264239.9791666667
+  },
+  "timeline": {
+    "clips": [
+      {
+        "id": "clip-1771357157692-1",
+        "type": "vibe",
+        "vibeType": "techno",
+        "label": "TECHNO",
+        "startMs": 0,
+        "endMs": 8000,
+        "trackId": "vibe",
+        "color": "#a855f7",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771357229662-3",
+        "type": "fx",
+        "fxType": "heph-custom",
+        "label": "strobestest",
+        "startMs": 2000,
+        "endMs": 3000,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 500,
+            "value": 1,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 0,
+            "easing": "ease-in"
+          }
+        ],
+        "params": {
+          "effectType": "heph_custom"
+        },
+        "selected": false,
+        "locked": false,
+        "hephFilePath": "strobestest.lfx",
+        "isHephCustom": true,
+        "hephClip": {
+          "id": "heph_1771009922037_dellvs",
+          "name": "strobestest",
+          "author": "LuxSync User",
+          "category": "physical",
+          "tags": [],
+          "vibeCompat": [],
+          "zones": [],
+          "mixBus": "global",
+          "priority": 50,
+          "durationMs": 1000,
+          "effectType": "heph_custom",
+          "curves": {
+            "intensity": {
+              "paramId": "intensity",
+              "valueType": "number",
+              "range": [
+                0,
+                1
+              ],
+              "defaultValue": 0,
+              "keyframes": [
+                {
+                  "timeMs": 0,
+                  "value": 0,
+                  "interpolation": "bezier",
+                  "bezierHandles": [
+                    0.3642,
+                    0,
+                    0.6358,
+                    1
+                  ]
+                },
+                {
+                  "timeMs": 500,
+                  "value": 1,
+                  "interpolation": "bezier",
+                  "bezierHandles": [
+                    0.3642,
+                    0,
+                    0.6358,
+                    1
+                  ]
+                },
+                {
+                  "timeMs": 1000,
+                  "value": 0,
+                  "interpolation": "bezier",
+                  "bezierHandles": [
+                    0.42,
+                    0,
+                    0.58,
+                    1
+                  ]
+                }
+              ],
+              "mode": "absolute"
+            },
+            "white": {
+              "paramId": "white",
+              "valueType": "number",
+              "range": [
+                0,
+                1
+              ],
+              "defaultValue": 0,
+              "keyframes": [
+                {
+                  "timeMs": 0,
+                  "value": 1,
+                  "interpolation": "linear"
+                },
+                {
+                  "timeMs": 1000,
+                  "value": 1,
+                  "interpolation": "hold"
+                }
+              ],
+              "mode": "absolute"
+            }
+          },
+          "staticParams": {}
+        },
+        "mixBus": "global",
+        "zones": [],
+        "priority": 50
+      },
+      {
+        "id": "clip-1771357251294-4",
+        "type": "fx",
+        "fxType": "core_meltdown",
+        "label": "Core Meltdown",
+        "startMs": 3200,
+        "endMs": 6200,
+        "trackId": "fx3",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1500,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 3000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771357260557-5",
+        "type": "fx",
+        "fxType": "industrial_strobe",
+        "label": "Industrial Strobe",
+        "startMs": 6400,
+        "endMs": 8400,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771357267866-6",
+        "type": "fx",
+        "fxType": "void_mist",
+        "label": "Void Mist",
+        "startMs": 8400,
+        "endMs": 16400,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      }
+    ],
+    "playheadMs": 2089.9990000000003,
+    "viewportStartMs": 0,
+    "pixelsPerSecond": 100
+  },
+  "library": {
+    "customEffects": [
+      {
+        "fileName": "strobestest.lfx",
+        "name": "strobestest",
+        "effectType": "heph_custom",
+        "mixBus": "global",
+        "curveCount": 2
+      }
+    ],
+    "presets": []
+  }
+}

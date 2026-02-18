@@ -1,0 +1,232 @@
+{
+  "meta": {
+    "version": "2.0",
+    "author": "",
+    "created": 1770753314999,
+    "modified": 1770753409932,
+    "durationMs": 264239.9791666667,
+    "name": "Untitled Project"
+  },
+  "audio": {
+    "name": "Spectral Drift.wav",
+    "path": "",
+    "bpm": 150,
+    "offsetMs": 0,
+    "durationMs": 264239.9791666667
+  },
+  "timeline": {
+    "clips": [
+      {
+        "id": "clip-1770753350990-1",
+        "type": "vibe",
+        "vibeType": "fiesta-latina",
+        "label": "FIESTA LATINA",
+        "startMs": 2000,
+        "endMs": 10000,
+        "trackId": "vibe",
+        "color": "#f59e0b",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753350991-2",
+        "type": "vibe",
+        "vibeType": "fiesta-latina",
+        "label": "FIESTA LATINA",
+        "startMs": 2000,
+        "endMs": 10000,
+        "trackId": "vibe",
+        "color": "#f59e0b",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753373014-3",
+        "type": "fx",
+        "fxType": "salsa_fire",
+        "label": "SALSA_FIRE",
+        "startMs": 3740,
+        "endMs": 7740,
+        "trackId": "fx2",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753373014-4",
+        "type": "fx",
+        "fxType": "salsa_fire",
+        "label": "SALSA_FIRE",
+        "startMs": 3750,
+        "endMs": 7750,
+        "trackId": "fx2",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753387877-5",
+        "type": "fx",
+        "fxType": "amazon_mist",
+        "label": "AMAZON_MIST",
+        "startMs": 8400,
+        "endMs": 16400,
+        "trackId": "fx1",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753387877-6",
+        "type": "fx",
+        "fxType": "amazon_mist",
+        "label": "AMAZON_MIST",
+        "startMs": 8400,
+        "endMs": 16400,
+        "trackId": "fx1",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753397861-7",
+        "type": "fx",
+        "fxType": "strobe_burst",
+        "label": "STROBE_BURST",
+        "startMs": 8400,
+        "endMs": 10400,
+        "trackId": "fx2",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1770753397862-8",
+        "type": "fx",
+        "fxType": "strobe_burst",
+        "label": "STROBE_BURST",
+        "startMs": 8400,
+        "endMs": 10400,
+        "trackId": "fx2",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      }
+    ],
+    "playheadMs": 0,
+    "viewportStartMs": 0,
+    "pixelsPerSecond": 100
+  },
+  "library": {
+    "customEffects": [],
+    "presets": []
+  }
+}

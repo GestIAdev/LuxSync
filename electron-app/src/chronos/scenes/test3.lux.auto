@@ -3,7 +3,7 @@
     "version": "2.0",
     "author": "Raulacate",
     "created": 1771420877316,
-    "modified": 1771420975870,
+    "modified": 1771422317651,
     "durationMs": 264239.9791666667,
     "name": "test3"
   },
@@ -118,6 +118,126 @@
         "intensity": 1,
         "fadeInMs": 500,
         "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420985854-5",
+        "type": "fx",
+        "fxType": "strobe_burst",
+        "label": "Strobe Burst",
+        "startMs": 19705.07366486989,
+        "endMs": 21705.07366486989,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420999048-6",
+        "type": "fx",
+        "fxType": "gatling_raid",
+        "label": "Gatling Raid",
+        "startMs": 23884.937775599865,
+        "endMs": 25884.937775599865,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771421007109-7",
+        "type": "fx",
+        "fxType": "deep_breath",
+        "label": "Deep Breath",
+        "startMs": 28800,
+        "endMs": 36800,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771421014245-8",
+        "type": "fx",
+        "fxType": "digital_rain",
+        "label": "Digital Rain",
+        "startMs": 38400,
+        "endMs": 44400,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 3000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 6000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
         "selected": false,
         "locked": false
       }

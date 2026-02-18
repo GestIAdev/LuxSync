@@ -475,23 +475,8 @@ export class TimelineEngine {
       // Skip if nothing to send
       if (channels.length === 0 || controls.dimmer === 0) continue
 
-      // Dispatch to ALL fixtures (the Arbiter doesn't do zone→fixture resolution,
-      // that's for the Orchestrator. For Scene Player, we apply globally and
-      // let the merge sort it out — better to over-illuminate than miss fixtures)
-      const fixtureIds = masterArbiter.getFixtureIds()
-      for (const fixtureId of fixtureIds) {
-        masterArbiter.setManualOverride({
-          fixtureId,
-          controls: controls as any,
-          overrideChannels: channels as any,
-          mode: 'absolute',
-          source: 'ui_programmer',
-          priority: 100,
-          autoReleaseMs: 100,
-          releaseTransitionMs: 50,
-          timestamp: performance.now(),
-        })
-      }
+      // Dispatch via centralized helper
+      this.dispatchToArbiter(['*'], controls)
     }
   }
 
@@ -565,20 +550,8 @@ export class TimelineEngine {
     // Skip if nothing meaningful
     if (channels.length === 0) return
 
-    // Dispatch to all target fixtures
-    for (const fixtureId of fixtureIds) {
-      masterArbiter.setManualOverride({
-        fixtureId,
-        controls: controls as any,
-        overrideChannels: channels as any,
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: 100,
-        autoReleaseMs: 100,
-        releaseTransitionMs: 50,
-        timestamp: performance.now(),
-      })
-    }
+    // Dispatch via centralized helper
+    this.dispatchToArbiter(fixtureIds, controls)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -663,19 +636,7 @@ export class TimelineEngine {
     if (channels.length === 0) return
 
     const fixtureIds = this.resolveFixtureIds(clip)
-    for (const fixtureId of fixtureIds) {
-      masterArbiter.setManualOverride({
-        fixtureId,
-        controls: controls as any,
-        overrideChannels: channels as any,
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: 100,
-        autoReleaseMs: 100,
-        releaseTransitionMs: 50,
-        timestamp: performance.now(),
-      })
-    }
+    this.dispatchToArbiter(fixtureIds, controls)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -747,19 +708,7 @@ export class TimelineEngine {
     if (channels.length === 0) return
 
     const fixtureIds = this.resolveFixtureIds(clip)
-    for (const fixtureId of fixtureIds) {
-      masterArbiter.setManualOverride({
-        fixtureId,
-        controls: controls as any,
-        overrideChannels: channels as any,
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: 100,
-        autoReleaseMs: 100,
-        releaseTransitionMs: 50,
-        timestamp: performance.now(),
-      })
-    }
+    this.dispatchToArbiter(fixtureIds, controls)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -782,26 +731,17 @@ export class TimelineEngine {
     // Resolve color (Hex → RGB)
     const rgb = this.hexToRgb(clip.color || '#ffffff')
 
-    // Dispatch to ALL fixtures (wildcard '*')
-    const fixtureIds = masterArbiter.getFixtureIds()
-    for (const fixtureId of fixtureIds) {
-      masterArbiter.setManualOverride({
-        fixtureId,
-        controls: {
-          red: rgb.r,
-          green: rgb.g,
-          blue: rgb.b,
-          dimmer: (clip.intensity ?? 1) * envelope * 255,
-        },
-        overrideChannels: ['red', 'green', 'blue', 'dimmer'],
-        mode: 'absolute',
-        source: 'ui_programmer',
-        priority: 90, // Lower priority than FX clips
-        autoReleaseMs: 100,
-        releaseTransitionMs: 50,
-        timestamp: performance.now(),
-      })
-    }
+    // Dispatch via centralized helper (wildcard → all fixtures, priority 90)
+    this.dispatchToArbiter(
+      ['*'],
+      {
+        red: rgb.r,
+        green: rgb.g,
+        blue: rgb.b,
+        dimmer: (clip.intensity ?? 1) * envelope * 255,
+      },
+      { priority: 90 } // Lower priority than FX clips
+    )
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -829,6 +769,59 @@ export class TimelineEngine {
     
     // Default: all fixtures
     return masterArbiter.getFixtureIds()
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRIVATE: Arbiter Dispatcher — The Handshake Protocol
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Central dispatch helper that speaks the Arbiter's language.
+   * Expands wildcards, builds proper Layer2_Manual objects, sends one-by-one.
+   */
+  private dispatchToArbiter(
+    targetIds: string[],
+    controls: Record<string, number>,
+    options: {
+      priority?: number
+      autoReleaseMs?: number
+      releaseTransitionMs?: number
+    } = {}
+  ): void {
+    // A. Expansión de Wildcard '*' → Todos los IDs reales
+    let finalIds = targetIds
+    if (targetIds.includes('*')) {
+      finalIds = masterArbiter.getFixtureIds()
+      if (finalIds.length === 0) {
+        console.warn('[TimelineEngine] ⚠️ No fixtures registered in Arbiter!')
+        return
+      }
+    }
+
+    // B. Detectar qué canales estamos tocando
+    const overrideChannels = Object.keys(controls).filter(k =>
+      ['dimmer', 'red', 'green', 'blue', 'white', 'pan', 'tilt', 'zoom', 'shutter', 'strobe', 'speed'].includes(k)
+    ) as any[]
+
+    if (overrideChannels.length === 0) {
+      console.warn('[TimelineEngine] ⚠️ No valid channels in controls:', controls)
+      return
+    }
+
+    // C. Enviar UNO A UNO (El Arbiter es estricto)
+    for (const fixtureId of finalIds) {
+      masterArbiter.setManualOverride({
+        fixtureId,
+        controls: controls as any,
+        overrideChannels,
+        mode: 'absolute',
+        source: 'ui_programmer',
+        priority: options.priority ?? 100,
+        autoReleaseMs: options.autoReleaseMs ?? 100,
+        releaseTransitionMs: options.releaseTransitionMs ?? 50,
+        timestamp: performance.now(),
+      })
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════

@@ -256,6 +256,13 @@ export class TimelineEngine {
       }
     }
 
+    // ── Process active Vibe clips (global color/mood) ──
+    for (const vibeClip of this.vibeClips) {
+      if (timeMs >= vibeClip.startMs && timeMs < vibeClip.endMs) {
+        this.processVibeClip(vibeClip, timeMs)
+      }
+    }
+
     // ── Cleanup clips that ended ──
     Array.from(this.previousActiveIds).forEach(prevId => {
       if (!nowActiveIds.has(prevId)) {
@@ -271,8 +278,10 @@ export class TimelineEngine {
 
   stop(): void {
     // Abort all active effect instances
-    Array.from(this.activeClips.entries()).forEach(([_id, state]) => {
+    const abortedCount = this.activeClips.size
+    Array.from(this.activeClips.entries()).forEach(([id, state]) => {
       if (state.effect) {
+        console.log(`[TimelineEngine] 🧹 Aborting effect: ${state.clip.fxType} (clip: ${id})`)
         state.effect.abort()
       }
     })
@@ -288,7 +297,7 @@ export class TimelineEngine {
     this.fxClips = []
     this.vibeClips = []
 
-    console.log('[TimelineEngine] ⏹ Stopped — all effects aborted, arbiter cleared')
+    console.log(`[TimelineEngine] ⏹ Stopped — ${abortedCount} effects aborted, arbiter cleared`)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -341,9 +350,18 @@ export class TimelineEngine {
 
     if (!state) {
       const factory = EFFECT_FACTORIES.get(clip.fxType as string)
-      if (!factory) return
+      if (!factory) {
+        console.error(`[TimelineEngine] ❌ No factory found for effect: ${clip.fxType}`)
+        return
+      }
 
       const effect = factory()
+      if (!effect) {
+        console.error(`[TimelineEngine] ❌ Factory returned null for effect: ${clip.fxType}`)
+        return
+      }
+
+      console.log(`[TimelineEngine] ✅ Created effect instance: ${clip.fxType} (clip: ${clip.id})`)
       state = { clip, effect, triggered: false }
       this.activeClips.set(clip.id, state)
     }
@@ -745,17 +763,71 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🌈 VIBE CLIPS — Global color/mood overrides
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private processVibeClip(clip: VibeClip, timeMs: number): void {
+    const localTimeMs = timeMs - clip.startMs
+    const clipDurationMs = clip.endMs - clip.startMs
+
+    // Calculate envelope (fade in/out)
+    let envelope = 1
+    if (localTimeMs < clip.fadeInMs) {
+      envelope = localTimeMs / clip.fadeInMs
+    } else if (localTimeMs > clipDurationMs - clip.fadeOutMs) {
+      envelope = (clipDurationMs - localTimeMs) / clip.fadeOutMs
+    }
+    if (envelope <= 0) return
+
+    // Resolve color (Hex → RGB)
+    const rgb = this.hexToRgb(clip.color || '#ffffff')
+
+    // Dispatch to ALL fixtures (wildcard '*')
+    const fixtureIds = masterArbiter.getFixtureIds()
+    for (const fixtureId of fixtureIds) {
+      masterArbiter.setManualOverride({
+        fixtureId,
+        controls: {
+          red: rgb.r,
+          green: rgb.g,
+          blue: rgb.b,
+          dimmer: (clip.intensity ?? 1) * envelope * 255,
+        },
+        overrideChannels: ['red', 'green', 'blue', 'dimmer'],
+        mode: 'absolute',
+        source: 'ui_programmer',
+        priority: 90, // Lower priority than FX clips
+        autoReleaseMs: 100,
+        releaseTransitionMs: 50,
+        timestamp: performance.now(),
+      })
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // PRIVATE: Fixture resolution
   // ═══════════════════════════════════════════════════════════════════════
 
   private resolveFixtureIds(clip: FXClip): string[] {
-    // If clip has zones, use those (future: resolve zone→fixture mapping)
-    // For now: all fixtures (wildcard). The Arbiter handles the merge.
     const zones = clip.zones
+    
+    // If clip specifies zones, use them (with fallback logic)
     if (zones && zones.length > 0) {
-      // TODO WAVE 2053.2: Implement zone→fixture resolution
-      // For now, return all fixtures
+      // Check for wildcard
+      if (zones.includes('all') || zones.includes('*')) {
+        return masterArbiter.getFixtureIds()
+      }
+      
+      // 🚑 FALLBACK DE EMERGENCIA:
+      // Si el efecto pide una zona específica pero no tenemos un mapa zone→fixture,
+      // mejor iluminar TODO que iluminar NADA.
+      // Esto arregla el "CoreMeltdown invisible" si falló el mapping.
+      console.warn(
+        `[TimelineEngine] ⚠️ Zone mapping not implemented for zones: ${zones.join(', ')} — falling back to wildcard '*'`
+      )
     }
+    
+    // Default: all fixtures
     return masterArbiter.getFixtureIds()
   }
 
@@ -859,6 +931,23 @@ export class TimelineEngine {
     }
 
     return keyframes[keyframes.length - 1].value
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRIVATE: Color conversion utilities
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private hexToRgb(hex: string): { r: number; g: number; b: number } {
+    // Remove # if present
+    const cleanHex = hex.replace('#', '')
+    
+    // Parse hex to RGB
+    const bigint = parseInt(cleanHex, 16)
+    const r = (bigint >> 16) & 255
+    const g = (bigint >> 8) & 255
+    const b = bigint & 255
+    
+    return { r, g, b }
   }
 }
 

@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "version": "2.0",
+    "author": "Raulacate",
+    "created": 1771420877316,
+    "modified": 1771421023572,
+    "durationMs": 264239.9791666667,
+    "name": "test3"
+  },
+  "audio": {
+    "name": "Spectral Drift.wav",
+    "path": "C:\\Users\\Raulacate\\Desktop\\Proyectos programacion\\LuxSync\\electron-app\\src\\chronos\\scenes\\Spectral Drift.wav",
+    "bpm": 150,
+    "offsetMs": 0,
+    "durationMs": 264239.9791666667
+  },
+  "timeline": {
+    "clips": [
+      {
+        "id": "clip-1771420912550-1",
+        "type": "fx",
+        "fxType": "solar_flare",
+        "label": "Solar Flare",
+        "startMs": 3200,
+        "endMs": 6200,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1500,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 3000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420922077-2",
+        "type": "fx",
+        "fxType": "salsa_fire",
+        "label": "Salsa Fire",
+        "startMs": 8000,
+        "endMs": 12000,
+        "trackId": "fx2",
+        "color": "#f59e0b",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420936039-3",
+        "type": "fx",
+        "fxType": "cumbia_moon",
+        "label": "Cumbia Moon",
+        "startMs": 12800,
+        "endMs": 18800,
+        "trackId": "fx1",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 3000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 6000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420941285-4",
+        "type": "vibe",
+        "vibeType": "techno",
+        "label": "TECHNO",
+        "startMs": 0,
+        "endMs": 8000,
+        "trackId": "vibe",
+        "color": "#a855f7",
+        "intensity": 1,
+        "fadeInMs": 500,
+        "fadeOutMs": 500,
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420985854-5",
+        "type": "fx",
+        "fxType": "strobe_burst",
+        "label": "Strobe Burst",
+        "startMs": 19705.07366486989,
+        "endMs": 21705.07366486989,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771420999048-6",
+        "type": "fx",
+        "fxType": "gatling_raid",
+        "label": "Gatling Raid",
+        "startMs": 23884.937775599865,
+        "endMs": 25884.937775599865,
+        "trackId": "fx1",
+        "color": "#ef4444",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 1000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 2000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771421007109-7",
+        "type": "fx",
+        "fxType": "deep_breath",
+        "label": "Deep Breath",
+        "startMs": 28800,
+        "endMs": 36800,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 4000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 8000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      },
+      {
+        "id": "clip-1771421014245-8",
+        "type": "fx",
+        "fxType": "digital_rain",
+        "label": "Digital Rain",
+        "startMs": 38400,
+        "endMs": 44400,
+        "trackId": "fx3",
+        "color": "#10b981",
+        "keyframes": [
+          {
+            "offsetMs": 0,
+            "value": 0,
+            "easing": "ease-in"
+          },
+          {
+            "offsetMs": 3000,
+            "value": 1,
+            "easing": "ease-out"
+          },
+          {
+            "offsetMs": 6000,
+            "value": 0,
+            "easing": "linear"
+          }
+        ],
+        "params": {},
+        "selected": false,
+        "locked": false
+      }
+    ],
+    "playheadMs": 0,
+    "viewportStartMs": 0,
+    "pixelsPerSecond": 100
+  },
+  "library": {
+    "customEffects": [],
+    "presets": []
+  }
+}

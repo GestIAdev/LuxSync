@@ -161,6 +161,33 @@ export function setupChronosIPCHandlers(mainWindow) {
     ipcMain.handle('chronos:cleanup-temp-audio', async (event, filePath) => {
         await cleanupTempFile(filePath);
     });
+    // ─────────────────────────────────────────────────────────────────────────
+    // ⚒️ WAVE 2030.22f: HANDLER: chronos:read-audio-file
+    // Read audio file and return buffer (for session restore)
+    // ─────────────────────────────────────────────────────────────────────────
+    ipcMain.handle('chronos:read-audio-file', async (event, filePath) => {
+        try {
+            console.log(`[ChronosIPC] 📂 Reading audio file: ${filePath}`);
+            // Verify file exists
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`File not found: ${filePath}`);
+            }
+            // Read file to buffer
+            const buffer = await fs.promises.readFile(filePath);
+            console.log(`[ChronosIPC] ✅ Read ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
+            return {
+                success: true,
+                buffer: buffer.buffer, // Return ArrayBuffer not Node Buffer
+            };
+        }
+        catch (err) {
+            console.error(`[ChronosIPC] ❌ Read error:`, err);
+            return {
+                success: false,
+                error: err instanceof Error ? err.message : String(err),
+            };
+        }
+    });
     console.log('[ChronosIPC] ✅ Chronos IPC handlers ready');
     // ─────────────────────────────────────────────────────────────────────────
     // 💾 WAVE 2014: PROJECT FILE HANDLERS

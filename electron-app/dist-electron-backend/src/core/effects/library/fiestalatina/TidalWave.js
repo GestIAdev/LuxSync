@@ -50,7 +50,7 @@ const DEFAULT_CONFIG = {
     intensityFloor: 0.0, // 🌊 WAVE 805.2: NEGRO TOTAL en valles (era 0.1)
 };
 // 🌊 WAVE 691.5: TODAS las zonas participan, no solo front
-const ZONE_ORDER = ['front', 'pars', 'back', 'movers'];
+const ZONE_ORDER = ['front', 'all-pars', 'back', 'all-movers'];
 // ═══════════════════════════════════════════════════════════════════════════
 // TIDAL WAVE CLASS
 // ═══════════════════════════════════════════════════════════════════════════

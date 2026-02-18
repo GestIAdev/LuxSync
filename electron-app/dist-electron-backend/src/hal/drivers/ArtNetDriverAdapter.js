@@ -49,7 +49,7 @@ export class ArtNetDriverAdapter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     /**
      * Envía un DMXPacket al driver ArtNet.
-     * Traduce el formato DMXPacket a los métodos nativos de ArtNetDriver.
+     * 🌊 WAVE 2020.2b: Ahora usa multi-universe support
      *
      * OPTIMIZACIÓN: Acumula packets y envía en el próximo tick para batch processing
      */
@@ -59,8 +59,8 @@ export class ArtNetDriverAdapter extends EventEmitter {
             return false;
         }
         // DMXPacket tiene: { universe, address, channels }
-        // Escribir inmediatamente al buffer interno de ArtNet
-        this.artnet.setChannels(packet.address, packet.channels);
+        // 🌊 WAVE 2020.2b: Ahora pasamos el universe al driver
+        this.artnet.setChannels(packet.address, packet.channels, packet.universe ?? 0);
         // Schedule flush en el próximo tick si no está ya programado
         if (!this.sendTimer) {
             this.sendTimer = setImmediate(() => {
@@ -71,6 +71,7 @@ export class ArtNetDriverAdapter extends EventEmitter {
     }
     /**
      * Flush: envía el frame DMX acumulado
+     * 🌊 WAVE 2020.2b: Ahora usa sendAll() para multi-universe
      */
     flush() {
         this.sendTimer = null;
@@ -78,12 +79,12 @@ export class ArtNetDriverAdapter extends EventEmitter {
             console.warn('[ArtNetAdapter] ⚠️ flush() called but not connected');
             return;
         }
-        // Enviar el frame completo
-        this.artnet.send();
+        // 🌊 WAVE 2020.2b: Enviar TODOS los universos en paralelo
+        this.artnet.sendAll();
     }
     /**
      * Envía un universo completo (512 canales).
-     * ArtNet driver ya tiene setBuffer() que acepta arrays.
+     * 🌊 WAVE 2020.2b: Ahora correctamente pasa el universe
      */
     sendUniverse(universe, data) {
         if (!this.isConnected) {
@@ -91,8 +92,19 @@ export class ArtNetDriverAdapter extends EventEmitter {
         }
         // Convertir Uint8Array a number[]
         const buffer = Array.from(data);
-        this.artnet.setBuffer(buffer);
-        return this.artnet.send();
+        this.artnet.setBuffer(buffer, universe);
+        return this.artnet.sendUniverse(universe);
+    }
+    /**
+     * 🌊 WAVE 2020.2b: Enviar TODOS los universos activos en paralelo
+     * Este es el método de alto rendimiento para 50+ universos
+     */
+    async sendAll() {
+        if (!this.isConnected) {
+            return false;
+        }
+        const result = await this.artnet.sendAll();
+        return result.success;
     }
     /**
      * Blackout - todos los canales a 0

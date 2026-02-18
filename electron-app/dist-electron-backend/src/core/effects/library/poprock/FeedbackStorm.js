@@ -257,8 +257,8 @@ export class FeedbackStorm extends BaseEffect {
         const zoneOverrides = {
             'back': backOverride,
             'front': frontOverride,
-            'movers_left': moverLeftOverride,
-            'movers_right': moverRightOverride,
+            'movers-left': moverLeftOverride,
+            'movers-right': moverRightOverride,
         };
         return {
             effectId: this.id,

@@ -139,7 +139,7 @@ export class GlitchGuaguanco extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // GLOBAL - Infecta TODO el escenario
-        this.zones = ['front', 'back', 'movers'];
+        this.zones = ['front', 'back', 'all-movers'];
         // Crear chaos engine con seed del timestamp
         // 🚨 DETERMINISTA: Si se triggerea al mismo ms, produce misma secuencia
         const seed = Date.now() % 1000000; // Usar últimos 6 dígitos para seed

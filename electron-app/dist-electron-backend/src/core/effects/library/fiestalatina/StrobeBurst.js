@@ -82,7 +82,7 @@ export class StrobeBurst extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // StrobeBurst es GLOBAL - afecta todo el escenario
-        this.zones = ['front', 'back', 'movers'];
+        this.zones = ['front', 'back', 'all-movers'];
         this.currentFlash = 0;
         this.isFlashOn = true;
         this.flashTimer = 0;

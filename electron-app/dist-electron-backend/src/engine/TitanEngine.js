@@ -86,7 +86,7 @@ export class TitanEngine extends EventEmitter {
         };
         // 🧬 WAVE 550: Cached consciousness output for telemetry HUD
         this.lastConsciousnessOutput = null;
-        // 🧨 WAVE 610: Manual strike trigger (force effect without HuntEngine decision)
+        // 🧨 WAVE 610 + ⚒️ WAVE 2030.4: Manual strike trigger with Hephaestus support
         this.manualStrikePending = null;
         // 🎨 WAVE 1196: Dream history buffer (last 3 effects launched)
         this.dreamHistoryBuffer = [];
@@ -611,15 +611,18 @@ export class TitanEngine extends EventEmitter {
         // 🧨 WAVE 600: EFFECT ARSENAL - Procesar Effects
         // ─────────────────────────────────────────────────────────────────────
         // 🧨 WAVE 610: Procesar manual strike si está pendiente (prioridad sobre AI)
+        // ⚒️ WAVE 2030.4: Incluye soporte para Hephaestus automation curves
         if (this.manualStrikePending) {
-            const { effect, intensity, source } = this.manualStrikePending;
+            const { effect, intensity, source, hephCurves } = this.manualStrikePending;
             this.effectManager.trigger({
                 effectType: effect,
                 intensity,
                 source: source || 'manual', // 🧠 WAVE 2019.3: Dynamic source (chronos bypasses Shield)
                 reason: source === 'chronos' ? 'Chronos timeline trigger' : 'Manual strike from FORCE STRIKE button',
+                hephCurves, // ⚒️ WAVE 2030.4: Pass automation curves to EffectManager
             });
-            console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}`);
+            const hephTag = hephCurves ? ` ⚒️[HEPH]` : '';
+            console.log(`[TitanEngine] 🧨 MANUAL STRIKE: ${effect} @ ${intensity.toFixed(2)}${hephTag}`);
             this.manualStrikePending = null; // Consumir la flag
         }
         // Si la consciencia decidió disparar un efecto, hacerlo (solo si no hay manual strike)
@@ -1135,16 +1138,18 @@ export class TitanEngine extends EventEmitter {
     }
     /**
      * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+     * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION - Supports automation curves
      *
      * Fuerza un disparo de efecto en el próximo frame, sin esperar decisión del HuntEngine.
      * Útil para testeo manual de efectos sin alterar umbrales de algoritmos.
      *
-     * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
+     * @param config - ForceStrikeConfig with effect, intensity, source, and optional hephCurves
      * @example engine.forceStrikeNextFrame({ effect: 'solar_flare', intensity: 1.0 })
      */
     forceStrikeNextFrame(config) {
         this.manualStrikePending = config;
-        console.log(`[TitanEngine] 🧨 ${config.source === 'chronos' ? 'CHRONOS' : 'Manual'} strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}`);
+        const hephTag = config.hephCurves ? ` ⚒️[HEPH: ${config.hephCurves.curves.size}]` : '';
+        console.log(`[TitanEngine] 🧨 ${config.source === 'chronos' ? 'CHRONOS' : 'Manual'} strike queued: ${config.effect} @ ${config.intensity.toFixed(2)}${hephTag}`);
     }
     /**
      * Obtiene el intent actual (para UI/debug).

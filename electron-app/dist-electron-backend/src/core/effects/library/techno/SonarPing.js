@@ -43,7 +43,7 @@ const DEFAULT_CONFIG = {
     randomizeColor: false, // Color consistente por efecto
 };
 // Secuencia espacial: back → pars → front
-const ZONE_SEQUENCE = ['back', 'pars', 'front'];
+const ZONE_SEQUENCE = ['back', 'all-pars', 'front'];
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔵 SONAR PING CLASS
 // ═══════════════════════════════════════════════════════════════════════════

@@ -216,6 +216,28 @@ export class ZoneRouter {
             gainMultiplier: 1.8,
             maxIntensity: 0.70
         });
+        // 🌊 WAVE 2020.1: AIR ZONE (Lasers/Aerials)
+        // Target: God Ear ultraAir band (16kHz-22kHz)
+        // Fallback: Copia MOVING_RIGHT con decay acelerado
+        config.set('AIR', {
+            zone: 'AIR',
+            respondsTo: 'beat', // O futuro: 'ultraHighFreq'
+            physics: { type: 'PAR', decayMultiplier: 0.8, colorRole: 'accent' },
+            gateThreshold: 0.15, // Bajo gate (frecuencias altas)
+            gainMultiplier: 2.0, // Alta sensibilidad
+            maxIntensity: 0.90
+        });
+        // 🌊 WAVE 2020.1: CENTER ZONE (Blinders/Strobes centrales)
+        // Target: Beat percusivo
+        // Fallback: Copia STROBES
+        config.set('CENTER', {
+            zone: 'CENTER',
+            respondsTo: 'beat',
+            physics: { type: 'PAR', decayMultiplier: 0.2, colorRole: 'accent' },
+            gateThreshold: 0.80, // Alto gate (solo beat fuerte)
+            gainMultiplier: 1.0,
+            maxIntensity: 1.0
+        });
         config.set('UNASSIGNED', {
             zone: 'UNASSIGNED',
             respondsTo: 'ambient',

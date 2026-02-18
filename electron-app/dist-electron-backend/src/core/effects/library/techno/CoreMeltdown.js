@@ -52,7 +52,7 @@ const COLORS = {
     absoluteBlack: { h: 0, s: 0, l: 0 },
 };
 // TODAS las zonas - La Bestia no perdona a nadie
-const ALL_ZONES = ['front', 'pars', 'back', 'movers', 'movers_left', 'movers_right'];
+const ALL_ZONES = ['front', 'all-pars', 'back', 'all-movers', 'movers-left', 'movers-right'];
 // ═══════════════════════════════════════════════════════════════════════════
 // ☢️ CORE MELTDOWN CLASS
 // ═══════════════════════════════════════════════════════════════════════════

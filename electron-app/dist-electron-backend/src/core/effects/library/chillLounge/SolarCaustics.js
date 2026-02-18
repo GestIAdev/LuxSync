@@ -294,7 +294,7 @@ export class SolarCaustics extends BaseEffect {
             category: this.category,
             phase: this.phase,
             progress,
-            zones: ['frontL', 'frontR', 'backL', 'backR', 'movers_left', 'movers_right'],
+            zones: ['frontL', 'frontR', 'backL', 'backR', 'movers-left', 'movers-right'],
             intensity: finalIntensity,
             globalComposition, // 🌊 WAVE 1080: Alpha de opacidad (0-1)
             zoneOverrides: {},
@@ -302,7 +302,7 @@ export class SolarCaustics extends BaseEffect {
         // ☀️ WAVE 1081: Aplicar volumetric fill (MAX entre rayo y ambiente)
         // Cada zona brilla por el rayo O por el ambiente dorado base
         // MOVERS: Rayos de sol desde ARRIBA - ULTRA LENTO
-        output.zoneOverrides['movers_left'] = {
+        output.zoneOverrides['movers-left'] = {
             dimmer: Math.max(intensities.movers_left * shimmerL * finalIntensity, volumetricAmbient),
             color: colorMovers,
             blendMode: 'replace', // 🌊 WAVE 1073: REPLACE = El rayo manda
@@ -313,7 +313,7 @@ export class SolarCaustics extends BaseEffect {
                 speed: 0.15, // 🌊 WAVE 1073: ULTRA LENTO (protección movers chinos)
             },
         };
-        output.zoneOverrides['movers_right'] = {
+        output.zoneOverrides['movers-right'] = {
             dimmer: Math.max(intensities.movers_right * shimmerR * finalIntensity, volumetricAmbient),
             color: colorMovers,
             blendMode: 'replace',

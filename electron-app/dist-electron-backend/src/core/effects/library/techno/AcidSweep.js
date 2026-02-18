@@ -40,7 +40,7 @@ const DEFAULT_CONFIG = {
     harshnessThreshold: 0.6, // Umbral para verde tóxico
 };
 // Zonas en orden espacial (front a back)
-const ZONE_ORDER = ['front', 'pars', 'back', 'movers'];
+const ZONE_ORDER = ['front', 'all-pars', 'back', 'all-movers'];
 // ═══════════════════════════════════════════════════════════════════════════
 // 🧪 ACID SWEEP CLASS
 // ═══════════════════════════════════════════════════════════════════════════

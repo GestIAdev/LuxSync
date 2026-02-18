@@ -121,8 +121,8 @@ export class SpotlightPulse extends BaseEffect {
             blendMode: 'max',
         };
         const zoneOverrides = {
-            'movers_left': moverOverride,
-            'movers_right': moverOverride,
+            'movers-left': moverOverride,
+            'movers-right': moverOverride,
             'back': parOverride,
             'front': parOverride,
         };

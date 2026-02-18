@@ -16,15 +16,25 @@
  * 3. Mapper → Convert to fixture states
  * 4. Driver → Send DMX
  *
+ * 🐟 WAVE 2042.20: BABEL FISH - Color Translation Layer
+ * - ColorTranslator integration in renderFromTarget()
+ * - Automatic RGB → ColorWheel DMX translation
+ * - Profile-based detection of wheel fixtures
+ * - Safety layer for debounce/strobe delegation
+ *
  * @layer HAL
- * @version TITAN 2.0
+ * @version TITAN 2.0 + BABEL FISH
  */
 import { hslToRgb, createEmptyUniverse, } from '../core/protocol';
 import { PhysicsEngine } from './physics/PhysicsEngine';
 import { ZoneRouter } from './mapping/ZoneRouter';
 import { FixtureMapper } from './mapping/FixtureMapper';
 import { MockDMXDriver } from './drivers';
-// 🔧 WAVE 338: Movement Physics Driver
+// � WAVE 2042.20: BABEL FISH - Color Translation Layer
+import { getColorTranslator } from './translation/ColorTranslator';
+import { getProfile, getProfileByModel, needsColorTranslation } from './translation';
+import { getHardwareSafetyLayer } from './translation/HardwareSafetyLayer';
+// �🔧 WAVE 338: Movement Physics Driver
 import { FixturePhysicsDriver } from '../engine/movement/FixturePhysicsDriver';
 import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -33,7 +43,11 @@ import { getOpticsConfig } from '../engine/movement/VibeMovementPresets';
 export class HardwareAbstraction {
     constructor(config = {}) {
         this.currentVibeId = 'idle';
-        // 🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
+        // � WAVE 2042.20: BABEL FISH - Color Translation Singletons
+        this.colorTranslator = getColorTranslator();
+        this.safetyLayer = getHardwareSafetyLayer();
+        this.profileCache = new Map();
+        // �🔧 WAVE 340.2: Smoothed optics state (evita saltos bruscos)
         this.smoothedZoomMod = 0;
         this.smoothedFocusMod = 0;
         // State
@@ -608,7 +622,7 @@ export class HardwareAbstraction {
             const fixtureTarget = target.fixtures.find(t => t.fixtureId === fixtureId);
             if (fixtureTarget) {
                 // Use arbitrated values directly
-                const state = {
+                const baseState = {
                     name: fixture.name,
                     type: fixture.type || 'generic',
                     zone,
@@ -634,7 +648,11 @@ export class HardwareAbstraction {
                     prism: 0,
                     strobe: 0,
                 };
-                return state;
+                // 🐟 WAVE 2042.20: BABEL FISH - Translate RGB to Color Wheel if needed
+                // This is the KEY integration point: if fixture has color wheel profile,
+                // convert the RGB values from Selene/Arbiter to the nearest wheel color DMX
+                const translatedState = this.translateColorToWheel(baseState, fixture, fixtureTarget.color_wheel);
+                return translatedState;
             }
             // Fallback: fixture not in arbiter output (shouldn't happen)
             return {
@@ -729,6 +747,72 @@ export class HardwareAbstraction {
         return statesWithPhysics;
     }
     // ═══════════════════════════════════════════════════════════════════════
+    // 🐟 WAVE 2042.20: BABEL FISH - COLOR TRANSLATION LAYER
+    // Translates RGB commands to Color Wheel DMX for fixtures that need it
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * 🐟 BABEL FISH: Get or create fixture profile (cached)
+     */
+    getFixtureProfileCached(fixture) {
+        const cacheKey = fixture.profileId || fixture.name || fixture.id || 'unknown';
+        if (this.profileCache.has(cacheKey)) {
+            return this.profileCache.get(cacheKey) ?? null;
+        }
+        // Try to find profile by ID or model name
+        const profile = fixture.profileId
+            ? getProfile(fixture.profileId)
+            : getProfileByModel(fixture.name);
+        this.profileCache.set(cacheKey, profile ?? null);
+        return profile ?? null;
+    }
+    /**
+     * 🐟 BABEL FISH: Translate RGB to Color Wheel DMX if fixture needs it
+     * @returns Modified state with colorWheel set (or original state if no translation needed)
+     */
+    translateColorToWheel(state, fixture, existingColorWheel) {
+        // If already has a manual color_wheel override, don't translate
+        if (existingColorWheel > 0) {
+            return state;
+        }
+        // Get fixture profile
+        const profile = this.getFixtureProfileCached(fixture);
+        if (!profile) {
+            return state; // No profile = assume RGB fixture, pass-through
+        }
+        // Check if fixture needs color translation (has color wheel)
+        if (!needsColorTranslation(profile)) {
+            return state; // RGB/CMY fixture, no translation needed
+        }
+        // 🐟 TRANSLATE RGB → COLOR WHEEL DMX
+        const targetRGB = { r: state.r, g: state.g, b: state.b };
+        const translation = this.colorTranslator.translate(targetRGB, profile);
+        // If not translated (shouldn't happen if needsColorTranslation=true), pass-through
+        if (!translation.wasTranslated) {
+            return state;
+        }
+        // Apply safety filter (debounce, latch, strobe delegation)
+        const fixtureId = fixture.id || fixture.name || `fixture-${state.dmxAddress}`;
+        const safetyResult = this.safetyLayer.filter(fixtureId, translation.colorWheelDmx ?? 0, profile, state.dimmer);
+        // Debug logging (throttled - every ~2 seconds per fixture)
+        const now = Date.now();
+        if (now - this.lastDebugTime > 2000) {
+            this.lastDebugTime = now;
+            console.log(`[🐟 BABEL FISH] ${fixture.name}: RGB(${state.r},${state.g},${state.b}) → ${translation.colorName} (DMX ${safetyResult.finalColorDmx})${safetyResult.wasBlocked ? ' [BLOCKED]' : ''}`);
+        }
+        // Return translated state
+        return {
+            ...state,
+            // 🎨 Replace RGB with translated color's actual RGB (for UI consistency)
+            r: translation.outputRGB.r,
+            g: translation.outputRGB.g,
+            b: translation.outputRGB.b,
+            // 🎨 Set color wheel DMX value (THE KEY!)
+            colorWheel: safetyResult.finalColorDmx,
+            // 🛡️ Handle strobe delegation (if color is changing too fast)
+            strobe: safetyResult.delegateToStrobe ? safetyResult.suggestedShutter : state.strobe,
+        };
+    }
+    // ═══════════════════════════════════════════════════════════════════════
     // ZONE INTENSITY CALCULATION
     // ═══════════════════════════════════════════════════════════════════════
     calculateZoneIntensity(zone, audio) {
@@ -763,6 +847,30 @@ export class HardwareAbstraction {
             }
             case 'STROBES':
                 // Strobes only on beat with high bass
+                return (audio.bassPulse > 0.8) ? 1.0 : 0;
+            // 🌊 WAVE 2020.1: AIR ZONE FALLBACK
+            // Hereda comportamiento de MOVING_RIGHT (treble-driven) con decay acelerado
+            // Futuro: Conectar a God Ear ultraAir band (16k-22kHz)
+            case 'AIR': {
+                const hystKey = `${zone}-hyst`;
+                const wasOn = this.physics.getMoverHysteresisState(hystKey);
+                const result = this.physics.calculateMoverTarget({
+                    moverKey: hystKey,
+                    presetName: 'Default',
+                    melodyThreshold: this.currentPreset.melodyThreshold,
+                    rawMid: audio.rawMid,
+                    rawBass: audio.rawBass,
+                    rawTreble: audio.rawTreble,
+                    moverState: wasOn,
+                    isRealSilence: audio.isRealSilence,
+                    isAGCTrap: audio.isAGCTrap,
+                });
+                // Aplicar decay acelerado para respuesta rápida (cymbal wash)
+                return result.intensity * 0.8;
+            }
+            // 🌊 WAVE 2020.1: CENTER ZONE FALLBACK
+            // Hereda comportamiento de STROBES (beat-driven)
+            case 'CENTER':
                 return (audio.bassPulse > 0.8) ? 1.0 : 0;
             default:
                 return audio.melodySignal * 0.5;
@@ -808,6 +916,16 @@ export class HardwareAbstraction {
                 return new MockDMXDriver({ debug: false });
         }
     }
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎛️ DMX OUTPUT CONTROL
+    // ═══════════════════════════════════════════════════════════════════════
+    /**
+     * ⚒️ WAVE 2030.22g: Public method to send already-processed fixture states
+     * Used by TitanOrchestrator after applying Hephaestus parameter overlays
+     */
+    sendStates(states) {
+        this.sendToDriver(states);
+    }
     sendToDriver(states) {
         // 🧟 WAVE 1208: ZOMBIE KILLER - NO auto-connect!
         // If driver is not connected, silently drop packets.
@@ -820,16 +938,30 @@ export class HardwareAbstraction {
             }
             return;
         }
-        // Convert states to DMX packets and send
-        const packets = this.mapper.statesToDMXPackets(states);
-        // 🔥 WAVE 1219: Debug first packet values
-        if (packets.length > 0 && this.framesRendered % 30 === 0) {
-            const p = packets[0];
-            console.log(`[HAL] 📡 DMX OUT: Uni ${p.universe} | Addr ${p.address} | Ch0-5: [${p.channels.slice(0, 6).join(', ')}]`);
+        // ⚒️ WAVE 2030.22g: Debug white values before DMX conversion
+        const withWhite = states.filter(s => s.white !== undefined && s.white > 0);
+        if (withWhite.length > 0) {
+            const first = withWhite[0];
+            console.log(`[HAL] 🔆 WHITE PRE-DMX: ${first.name} → white=${first.white}, dimmer=${first.dimmer}`);
         }
+        // Convert states to DMX packets
+        const packets = this.mapper.statesToDMXPackets(states);
+        // Debug output silenced - Wave 2042.29
+        // (was spamming console every frame)
+        // 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL DISPATCH
+        // Feed all packets to driver (buffering by universe internally)
         for (const packet of packets) {
             this.driver.send(packet);
         }
+        // 🔥 WAVE 2020.2b: Use sendAll() for parallel UDP dispatch if available
+        // This is the key optimization for 50+ universes
+        if (this.driver.sendAll) {
+            // Fire and forget - we don't await because render loop is sync
+            // sendAll internally handles the Promise
+            void this.driver.sendAll();
+        }
+        // NOTE: Drivers that support sendAll() should buffer in send() and flush in sendAll()
+        // Drivers without sendAll() will send immediately in send() (legacy behavior)
     }
     /**
      * Connect to DMX hardware.

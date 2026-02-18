@@ -97,6 +97,24 @@ export class MockDMXDriver {
             buffer.fill(0);
         });
     }
+    /**
+     * 🔥 WAVE 2020.2b: MULTI-UNIVERSE PARALLEL FLUSH
+     *
+     * Mock implementation - just records that all universes were "sent".
+     * In reality this is a no-op since MockDriver doesn't send anywhere.
+     */
+    async sendAll() {
+        if (this._state !== 'connected')
+            return false;
+        // Mock: Just increment stats for each universe
+        const universeCount = this.universeBuffers.size;
+        this.framesSent += universeCount;
+        this.lastSendTime = Date.now();
+        if (this.verbose && universeCount > 1) {
+            console.log(`[MockDMX] 📡 FLUSH: ${universeCount} universes sent in parallel`);
+        }
+        return true;
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // STATUS
     // ─────────────────────────────────────────────────────────────────────────

@@ -218,8 +218,8 @@ export class ArenaSweep extends BaseEffect {
             blendMode: 'max',
         };
         const zoneOverrides = {
-            'movers_left': moverLeftOverride,
-            'movers_right': moverRightOverride,
+            'movers-left': moverLeftOverride,
+            'movers-right': moverRightOverride,
             'back': backOverride,
             'front': frontOverride,
         };

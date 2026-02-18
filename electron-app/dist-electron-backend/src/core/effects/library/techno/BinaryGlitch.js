@@ -159,7 +159,7 @@ const COLORS = {
     hotCyan: { h: 180, s: 85, l: 55 }, // 🔧 Cian caliente saturado (contraste alto)
 };
 // Zonas para el efecto
-const GLITCH_ZONES = ['front', 'pars', 'back', 'movers'];
+const GLITCH_ZONES = ['front', 'all-pars', 'back', 'all-movers'];
 // ═══════════════════════════════════════════════════════════════════════════
 // ⚡ BINARY GLITCH CLASS
 // ═══════════════════════════════════════════════════════════════════════════

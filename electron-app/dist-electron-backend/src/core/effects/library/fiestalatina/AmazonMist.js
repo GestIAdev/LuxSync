@@ -86,7 +86,7 @@ export class AmazonMist extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // Zonas: Front y Back solamente (movers en MODO FANTASMA)
-        this.zones = ['front', 'back', 'movers'];
+        this.zones = ['front', 'back', 'all-movers'];
         // Reset state
         this.currentIntensity = 0;
         this.breathPhase = 0;

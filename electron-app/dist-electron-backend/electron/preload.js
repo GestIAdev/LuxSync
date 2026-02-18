@@ -12,6 +12,11 @@ const api = {
     // APP
     // ============================================
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    /**
+     * WAVE 2040.17 P13: System username for project authorship.
+     * Resolved at preload time — no IPC round-trip needed.
+     */
+    getSystemUser: () => process.env.USERNAME || process.env.USER || '',
     // ============================================
     // 🎛️ WAVE 1007: THE NERVE LINK - Top-level DMX injection
     // Shortcut for calibration tools (ColorWheelEditor, etc.)
@@ -80,7 +85,38 @@ const api = {
         },
     },
     // ============================================
-    // 🕹️ WAVE 153.6: MANUAL OVERRIDE (UI → DMX)
+    // � WAVE 2048: ART-NET NETWORK DISCOVERY
+    // ============================================
+    discovery: {
+        start: () => ipcRenderer.invoke('artnet:discovery:start'),
+        stop: () => ipcRenderer.invoke('artnet:discovery:stop'),
+        getStatus: () => ipcRenderer.invoke('artnet:discovery:getStatus'),
+        pollNow: () => ipcRenderer.invoke('artnet:discovery:pollNow'),
+        setBroadcast: (address) => ipcRenderer.invoke('artnet:discovery:setBroadcast', address),
+        // Events
+        onNodeDiscovered: (callback) => {
+            const handler = (_, node) => callback(node);
+            ipcRenderer.on('artnet:discovery:node-discovered', handler);
+            return () => ipcRenderer.removeListener('artnet:discovery:node-discovered', handler);
+        },
+        onNodeLost: (callback) => {
+            const handler = (_, ip) => callback(ip);
+            ipcRenderer.on('artnet:discovery:node-lost', handler);
+            return () => ipcRenderer.removeListener('artnet:discovery:node-lost', handler);
+        },
+        onNodeUpdated: (callback) => {
+            const handler = (_, node) => callback(node);
+            ipcRenderer.on('artnet:discovery:node-updated', handler);
+            return () => ipcRenderer.removeListener('artnet:discovery:node-updated', handler);
+        },
+        onStateChange: (callback) => {
+            const handler = (_, state) => callback(state);
+            ipcRenderer.on('artnet:discovery:state-change', handler);
+            return () => ipcRenderer.removeListener('artnet:discovery:state-change', handler);
+        },
+    },
+    // ============================================
+    // �🕹️ WAVE 153.6: MANUAL OVERRIDE (UI → DMX)
     // ============================================
     override: {
         /** Set override para un fixture específico */
@@ -149,6 +185,8 @@ const api = {
          *                  or { filePath: string, fileName: string } for files on disk
          */
         analyzeAudio: (request) => ipcRenderer.invoke('chronos:analyze-audio', request),
+        /** ⚒️ WAVE 2030.22f: Read audio file buffer (for session restore) */
+        readAudioFile: (filePath) => ipcRenderer.invoke('chronos:read-audio-file', filePath),
         /** Subscribe to analysis progress updates */
         onProgress: (callback) => {
             const handler = (_, data) => callback(data);
@@ -204,14 +242,109 @@ const api = {
          * @param effectId - BaseEffect ID (from FXMapper)
          * @param intensity - Effect intensity 0-1
          * @param durationMs - Optional duration override
+         * @param hephCurves - ⚒️ WAVE 2030.4: Serialized Hephaestus curves (optional)
          */
-        triggerFX: (effectId, intensity, durationMs) => ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+        triggerFX: (effectId, intensity, durationMs, hephCurves) => ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs, hephCurves }),
         /**
          * 🛑 Stop FX from Chronos timeline
          * Called when a clip ends or playback stops.
          * @param effectId - BaseEffect ID to stop
          */
         stopFX: (effectId) => ipcRenderer.invoke('chronos:stopFX', effectId),
+        /**
+         * ⚒️ WAVE 2030.18: Trigger a Hephaestus .lfx file dynamically
+         * Bypasses FXMapper - uses HephaestusRuntime for real-time curve evaluation.
+         * @param filePath - Path to the .lfx file
+         * @param intensity - Effect intensity 0-1
+         * @param durationMs - Optional duration override
+         * @param loop - Whether to loop the clip
+         * @returns { success, instanceId }
+         */
+        triggerHeph: (filePath, intensity, durationMs, loop) => ipcRenderer.invoke('chronos:triggerHeph', { filePath, intensity, durationMs, loop }),
+        /**
+         * ⚒️ WAVE 2030.18: Stop a Hephaestus runtime instance
+         * @param instanceId - Optional specific instance ID. If omitted, stops all.
+         */
+        stopHeph: (instanceId) => ipcRenderer.invoke('chronos:stopHeph', instanceId),
+        /**
+         * ⚒️ WAVE 2030.18: Tick all active Hephaestus clips
+         * Called from render loop at 60fps to get current curve values.
+         * @param currentTimeMs - Current system time in ms
+         * @returns { success, outputs: HephFixtureOutput[] }
+         */
+        tickHeph: (currentTimeMs) => ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
+    },
+    // ============================================
+    // 🎬 PLAYBACK - WAVE 2053.1: TIMELINE ENGINE
+    // Backend playback: load project, tick, stop.
+    // Frontend is DUMB — sends timeMs, engine does physics.
+    // ============================================
+    playback: {
+        /**
+         * 📀 Load a LuxProject into the TimelineEngine
+         * @param project - Full LuxProject object
+         */
+        load: (project) => ipcRenderer.invoke('lux:playback:load', project),
+        /**
+         * ⏱ Tick the engine with current playhead time (fire-and-forget, 60fps)
+         * @param timeMs - Current playback position in milliseconds
+         */
+        tick: (timeMs) => {
+            ipcRenderer.send('lux:playback:tick', timeMs);
+        },
+        /**
+         * ⏹ Stop playback and clean up all effects + arbiter overrides
+         */
+        stop: () => ipcRenderer.invoke('lux:playback:stop'),
+        /**
+         * 📊 Query current engine state
+         */
+        getState: () => ipcRenderer.invoke('lux:playback:state'),
+    },
+    // ============================================
+    // ⚒️ HEPHAESTUS - WAVE 2030.5: THE FORGE FILE I/O
+    // Automation clip persistence (.lfx files)
+    // ============================================
+    hephaestus: {
+        /**
+         * 💾 Save a clip to disk
+         * @param clipData - Serialized clip (Record, not Map)
+         * @returns { success, filePath, id, error }
+         */
+        save: (clipData) => ipcRenderer.invoke('heph:save', clipData),
+        /**
+         * 📂 Load a clip by ID or file path
+         * @param idOrPath - Clip ID or full path
+         * @returns { success, clip, error }
+         */
+        load: (idOrPath) => ipcRenderer.invoke('heph:load', idOrPath),
+        /**
+         * 📋 List all available clips (metadata only)
+         * @returns { success, clips, error }
+         */
+        list: () => ipcRenderer.invoke('heph:list'),
+        /**
+         * 🗑️ Delete a clip
+         * @param idOrPath - Clip ID or full path
+         * @returns { success, deleted, error }
+         */
+        delete: (idOrPath) => ipcRenderer.invoke('heph:delete', idOrPath),
+        /**
+         * ❓ Check if clip name exists
+         * @param name - Clip name
+         * @returns { success, exists }
+         */
+        exists: (name) => ipcRenderer.invoke('heph:exists', name),
+        /**
+         * 📁 Get effects folder path
+         * @returns { success, path }
+         */
+        getPath: () => ipcRenderer.invoke('heph:getPath'),
+        /**
+         * 🆔 Generate unique clip ID
+         * @returns { id }
+         */
+        generateId: () => ipcRenderer.invoke('heph:generateId'),
     },
 };
 // ============================================================================
@@ -623,13 +756,36 @@ const luxApi = {
          * @param effectId - BaseEffect ID (from FXMapper)
          * @param intensity - Effect intensity 0-1
          * @param durationMs - Optional duration override
+         * @param hephCurves - ⚒️ WAVE 2030.4: Serialized Hephaestus curves (optional)
          */
-        triggerFX: (effectId, intensity, durationMs) => ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs }),
+        triggerFX: (effectId, intensity, durationMs, hephCurves) => ipcRenderer.invoke('chronos:triggerFX', { effectId, intensity, durationMs, hephCurves }),
         /**
          * 🛑 Stop FX from Chronos timeline
          * @param effectId - BaseEffect ID to stop
          */
         stopFX: (effectId) => ipcRenderer.invoke('chronos:stopFX', effectId),
+        /**
+         * ⚒️ WAVE 2030.18: Trigger a Hephaestus .lfx file dynamically
+         * Bypasses FXMapper - uses HephaestusRuntime for real-time curve evaluation.
+         * @param filePath - Path to the .lfx file
+         * @param intensity - Effect intensity 0-1
+         * @param durationMs - Optional duration override
+         * @param loop - Whether to loop the clip
+         * @returns { success, instanceId }
+         */
+        triggerHeph: (filePath, intensity, durationMs, loop) => ipcRenderer.invoke('chronos:triggerHeph', { filePath, intensity, durationMs, loop }),
+        /**
+         * ⚒️ WAVE 2030.18: Stop a Hephaestus runtime instance
+         * @param instanceId - Optional specific instance ID. If omitted, stops all.
+         */
+        stopHeph: (instanceId) => ipcRenderer.invoke('chronos:stopHeph', instanceId),
+        /**
+         * ⚒️ WAVE 2030.18: Tick all active Hephaestus clips
+         * Called from render loop at 60fps to get current curve values.
+         * @param currentTimeMs - Current system time in ms
+         * @returns { success, outputs: HephFixtureOutput[] }
+         */
+        tickHeph: (currentTimeMs) => ipcRenderer.invoke('chronos:tickHeph', currentTimeMs),
     },
 };
 // ═══════════════════════════════════════════════════════════════════════════

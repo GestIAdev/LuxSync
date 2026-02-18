@@ -13,9 +13,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 export { 
 // Constants
-DEFAULT_PHYSICS_PROFILES, 
+DEFAULT_PHYSICS_PROFILES, CANONICAL_ZONES, ZONE_LABELS, 
 // Factory Functions
 createEmptyShowFile, createDefaultFixture, createFixtureGroup, 
+// Zone Utilities (WAVE 2040.24)
+normalizeZone, isCanonicalZone, resolveFixtureSelector, // 🔥 WAVE 2040.25 FASE 3
 // Validation
 validateShowFile, getSchemaVersion } from './ShowFileV2';
 // ═══════════════════════════════════════════════════════════════════════════

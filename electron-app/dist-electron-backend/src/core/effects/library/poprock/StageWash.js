@@ -103,8 +103,8 @@ export class StageWash extends BaseEffect {
             blendMode: 'max',
         };
         const zoneOverrides = {
-            'movers_left': washOverride,
-            'movers_right': washOverride,
+            'movers-left': washOverride,
+            'movers-right': washOverride,
             'back': washOverride,
             'front': washOverride,
         };

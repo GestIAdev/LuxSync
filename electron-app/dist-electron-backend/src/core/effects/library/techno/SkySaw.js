@@ -87,7 +87,7 @@ export class SkySaw extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // SkySaw solo afecta movers
-        this.zones = ['movers'];
+        this.zones = ['all-movers'];
         // Reset state
         this.currentCut = 0;
         this.cutPhase = 'rising';
@@ -197,7 +197,7 @@ export class SkySaw extends BaseEffect {
         }
         // Construir zone overrides para movers L y R
         const zoneOverrides = {
-            'movers_left': {
+            'movers-left': {
                 color: this.sawColor,
                 dimmer: this.triggerIntensity,
                 movement: {
@@ -207,7 +207,7 @@ export class SkySaw extends BaseEffect {
                     speed: 1.0 // Máxima velocidad (snap)
                 }
             },
-            'movers_right': {
+            'movers-right': {
                 color: this.sawColor,
                 dimmer: this.triggerIntensity,
                 movement: {

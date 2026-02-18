@@ -287,7 +287,7 @@ export class CorazonLatino extends BaseEffect {
         // 🚨 WAVE 1004.2: MOVER LAW applied to moverOverride (no color)
         const zoneOverrides = {
             'back': { ...backOverride, blendMode: 'max' },
-            'movers': { ...moverOverride, blendMode: 'max' },
+            'all-movers': { ...moverOverride, blendMode: 'max' },
             'front': { ...frontOverride, blendMode: 'max' },
         };
         return {

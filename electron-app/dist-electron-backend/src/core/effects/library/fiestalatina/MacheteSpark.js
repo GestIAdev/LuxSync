@@ -99,7 +99,7 @@ export class MacheteSpark extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // GLOBAL - Afecta todo el escenario
-        this.zones = ['front', 'back', 'movers'];
+        this.zones = ['front', 'back', 'all-movers'];
         // Reset state
         this.currentCut = 0;
         this.cutPhase = 'pre-blackout';
@@ -185,9 +185,9 @@ export class MacheteSpark extends BaseEffect {
         // Determinar zonas según el lado del swing
         const activeZones = this.cutPhase === 'spark' && this.config.alternateSides
             ? (this.currentSide === 'left'
-                ? ['front', 'movers_left']
-                : ['back', 'movers_right'])
-            : ['front', 'back', 'movers'];
+                ? ['front', 'movers-left']
+                : ['back', 'movers-right'])
+            : ['front', 'back', 'all-movers'];
         return {
             effectId: this.id,
             category: this.category,

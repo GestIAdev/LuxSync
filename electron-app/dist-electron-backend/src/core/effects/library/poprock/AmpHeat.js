@@ -175,7 +175,7 @@ export class AmpHeat extends BaseEffect {
         const zoneOverrides = {
             'back': backOverride,
             'front': frontOverride,
-            'movers': moverOverride,
+            'all-movers': moverOverride,
         };
         return {
             effectId: this.id,

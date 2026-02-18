@@ -1,6 +1,7 @@
 /**
  * WAVE 243.5: TITAN ORCHESTRATOR - SIMPLIFIED V2
  * WAVE 374: MASTER ARBITER INTEGRATION
+ * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
  *
  * Orquesta Brain -> Engine -> Arbiter -> HAL pipeline.
  * main.ts se encarga de IPC handlers, este módulo solo orquesta el flujo de datos.
@@ -21,6 +22,8 @@ import { getEffectManager } from '../effects/EffectManager';
 import { BeatDetector } from '../../engine/audio/BeatDetector';
 // 🎭 WAVE 700.5.4: Import MoodController for backend mood control
 import { MoodController } from '../mood/MoodController';
+// ⚒️ WAVE 2030.19: HephaestusRuntime for .lfx execution
+import { getHephaestusRuntime } from './IPCHandlers';
 /**
  * TitanOrchestrator - Simple orchestration of Brain -> Engine -> HAL
  */
@@ -616,11 +619,10 @@ export class TitanOrchestrator {
                 flareG = rgb.g;
                 flareB = rgb.b;
             }
-            // 🌴 WAVE 700.8.5 → 700.9 → 1080: Filtrado inteligente por zona + FLUID DYNAMICS
-            // Soporta AMBOS sistemas de zonas:
-            //   - Legacy canvas: FRONT_PARS, BACK_PARS, MOVING_LEFT, MOVING_RIGHT
-            //   - Constructor 3D: ceiling-left, ceiling-right, floor-front, floor-back
-            const shouldApplyToFixture = (f) => {
+            // 🌴 WAVE 700.8.5 → 700.9 → 2040.25: Filtrado inteligente por zona
+            // 🔥 WAVE 2040.25 FASE 2: Delega a fixtureMatchesZone() para canonical matching
+            // 🔊 WAVE 2040.27: Added stereo support for frontL/R, backL/R (Chill effects)
+            const shouldApplyToFixture = (f, index) => {
                 // 🌊 WAVE 1080: Si hay globalComposition > 0, afecta a todas las fixtures
                 if ((effectOutput.globalComposition ?? 0) > 0)
                     return true;
@@ -628,31 +630,24 @@ export class TitanOrchestrator {
                 const zones = effectOutput.zones || [];
                 if (zones.length === 0)
                     return false;
-                const fixtureZone = (f.zone || '').toLowerCase();
+                const fixtureZone = f.zone || '';
+                const positionX = this.fixtures[index]?.position?.x ?? 0;
+                // Check if any target zone matches this fixture
+                // For stereo zones (frontL/R, backL/R), use fixtureMatchesZoneStereo()
                 for (const zone of zones) {
-                    if (zone === 'all')
-                        return true;
-                    // FRONT: floor-front, FRONT_PARS, o cualquier cosa con 'front'
-                    if (zone === 'front') {
-                        if (fixtureZone.includes('front') || fixtureZone.includes('floor-front'))
+                    const tz = zone.toLowerCase();
+                    // Stereo zones need position-based matching
+                    if (tz === 'frontl' || tz === 'frontr' || tz === 'backl' || tz === 'backr' ||
+                        tz === 'floorl' || tz === 'floorr' || tz === 'all-left' || tz === 'all-right') {
+                        if (this.fixtureMatchesZoneStereo(fixtureZone, zone, positionX)) {
                             return true;
+                        }
                     }
-                    // BACK: floor-back, BACK_PARS, o cualquier cosa con 'back'
-                    if (zone === 'back') {
-                        if (fixtureZone.includes('back') || fixtureZone.includes('floor-back'))
+                    else {
+                        // Non-stereo zones
+                        if (this.fixtureMatchesZone(fixtureZone, zone)) {
                             return true;
-                    }
-                    // MOVERS: ceiling-*, MOVING_* (NO usar pan/tilt porque HAL asigna a todos)
-                    if (zone === 'movers') {
-                        if (fixtureZone.includes('ceiling') ||
-                            fixtureZone.includes('moving'))
-                            return true;
-                    }
-                    // PARS: floor-*, *_PARS, pero NO movers
-                    if (zone === 'pars') {
-                        const isMover = fixtureZone.includes('ceiling') || fixtureZone.includes('moving');
-                        if (!isMover && (fixtureZone.includes('floor') || fixtureZone.includes('par')))
-                            return true;
+                        }
                     }
                 }
                 return false;
@@ -663,8 +658,8 @@ export class TitanOrchestrator {
             // globalComposition → Alpha de mezcla (0-1) para transiciones suaves
             const globalComp = effectOutput.globalComposition ?? 0;
             const isGlobalMode = effectOutput.mixBus === 'global' || globalComp > 0;
-            fixtureStates = fixtureStates.map(f => {
-                const shouldApply = shouldApplyToFixture(f);
+            fixtureStates = fixtureStates.map((f, index) => {
+                const shouldApply = shouldApplyToFixture(f, index);
                 if (!shouldApply)
                     return f; // No afectar esta fixture
                 if (isGlobalMode) {
@@ -876,6 +871,150 @@ export class TitanOrchestrator {
             });
         }
         // ═══════════════════════════════════════════════════════════════════════════
+        // ⚒️ WAVE 2030.19: THE MERGER - HephaestusRuntime Integration
+        // Evaluate all active .lfx clips and merge their outputs with DMX
+        // 
+        // MERGE STRATEGY:
+        //   - Intensity/Dimmer: HTP (Highest Takes Precedence)
+        //   - Color (RGB): LTP (Hephaestus overwrites if present)
+        //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
+        //   - Strobe: Additive (sum clamped to max)
+        // ═══════════════════════════════════════════════════════════════════════════
+        const hephRuntime = getHephaestusRuntime();
+        const hephOutputs = hephRuntime.tick(Date.now());
+        if (hephOutputs.length > 0) {
+            // Group outputs by parameter for efficient processing
+            const hephByZone = new Map();
+            for (const output of hephOutputs) {
+                const zoneKey = output.zone === 'all' ? 'all' : output.zone.toString();
+                if (!hephByZone.has(zoneKey)) {
+                    hephByZone.set(zoneKey, []);
+                }
+                hephByZone.get(zoneKey).push(output);
+            }
+            // Apply Hephaestus outputs to fixtures
+            fixtureStates = fixtureStates.map((f, index) => {
+                // Find matching outputs for this fixture's zone
+                const fixtureZone = (f.zone || '').toLowerCase();
+                const applicableOutputs = [];
+                // Check 'all' zone outputs
+                const allZoneOutputs = hephByZone.get('all');
+                if (allZoneOutputs)
+                    applicableOutputs.push(...allZoneOutputs);
+                // Check zone-specific outputs
+                for (const [zoneKey, outputs] of hephByZone) {
+                    if (zoneKey === 'all')
+                        continue;
+                    if (this.fixtureMatchesZone(fixtureZone, zoneKey)) {
+                        applicableOutputs.push(...outputs);
+                    }
+                }
+                if (applicableOutputs.length === 0)
+                    return f;
+                // Apply each parameter with appropriate merge strategy
+                let newF = { ...f };
+                // ⚒️ WAVE 2030.21: THE TRANSLATOR
+                // Values arrive PRE-SCALED from HephaestusRuntime.
+                // DMX params: already 0-255. Color: already rgb {r,g,b} 0-255.
+                // TitanOrchestrator ONLY merges. Zero scaling here.
+                for (const output of applicableOutputs) {
+                    switch (output.parameter) {
+                        case 'intensity': {
+                            // HTP: Highest Takes Precedence (value is already 0-255)
+                            newF.dimmer = Math.max(newF.dimmer, output.value);
+                            break;
+                        }
+                        case 'strobe': {
+                            // Additive: sum clamped to 255 (value is already 0-255)
+                            newF = { ...newF, strobe: Math.min(255, (newF.strobe || 0) + output.value) };
+                            break;
+                        }
+                        case 'pan': {
+                            // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+                            // value = coarse (MSB), fine = LSB. Together: (coarse << 8) | fine
+                            newF.pan = output.value;
+                            newF.physicalPan = newF.pan;
+                            // panFine carried in output.fine (if fixture supports 16-bit)
+                            if (output.fine !== undefined) {
+                                newF.panFine = output.fine;
+                            }
+                            break;
+                        }
+                        case 'tilt': {
+                            // ⚒️ WAVE 2030.24: LTP with 16-bit precision
+                            newF.tilt = output.value;
+                            newF.physicalTilt = newF.tilt;
+                            if (output.fine !== undefined) {
+                                newF.tiltFine = output.fine;
+                            }
+                            break;
+                        }
+                        case 'color': {
+                            // LTP: RGB pre-converted from HSL in Runtime
+                            if (output.rgb) {
+                                newF.r = output.rgb.r;
+                                newF.g = output.rgb.g;
+                                newF.b = output.rgb.b;
+                            }
+                            break;
+                        }
+                        case 'white': {
+                            // LTP overlay (value is already 0-255)
+                            newF.white = output.value;
+                            break;
+                        }
+                        case 'amber': {
+                            // LTP overlay (value is already 0-255)
+                            newF.amber = output.value;
+                            break;
+                        }
+                        // ⚒️ WAVE 2030.24: Extended DMX params (8-bit, LTP overlay)
+                        case 'zoom': {
+                            newF.zoom = output.value;
+                            break;
+                        }
+                        case 'focus': {
+                            newF.focus = output.value;
+                            break;
+                        }
+                        case 'iris': {
+                            // FixtureState doesn't have iris yet — store as dynamic channel
+                            newF.iris = output.value;
+                            break;
+                        }
+                        case 'gobo1': {
+                            newF.gobo = output.value;
+                            break;
+                        }
+                        case 'gobo2': {
+                            // Secondary gobo — store as dynamic channel
+                            newF.gobo2 = output.value;
+                            break;
+                        }
+                        case 'prism': {
+                            newF.prism = output.value;
+                            break;
+                        }
+                        // speed/width/direction/globalComp: engine-internal (0-1 float)
+                        // No DMX channel mapping - consumed by engine subsystems only
+                    }
+                }
+                return newF;
+            });
+            // Throttled debug log
+            if (this.frameCount % 60 === 0) {
+                const activeClips = hephRuntime.getStats().activeClips;
+                console.log(`[TitanOrchestrator ⚒️] HEPHAESTUS: ${activeClips} clips, ${hephOutputs.length} outputs`);
+            }
+        }
+        // ⚒️ WAVE 2030.22g: Send Hephaestus-modified states to DMX
+        // HAL already sent once in renderFromTarget(), but Hephaestus changes
+        // were applied AFTER that initial send. We need to send again with the
+        // parameter overlays applied (white, amber, intensity modulation, etc.)
+        if (hephOutputs.length > 0) {
+            this.hal.sendStates(fixtureStates);
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1133: VISUAL GATE - SIMULATOR BLACKOUT
         // The effects processing above can OVERRIDE the arbiter's gate decision.
         // This is the FINAL FILTER: if output is disabled (ARMED state), 
@@ -1061,6 +1200,9 @@ export class TitanOrchestrator {
                             // 🔍 WAVE 339: Optics (from HAL/FixtureMapper)
                             zoom: f.zoom, // 0-255 DMX
                             focus: f.focus, // 0-255 DMX
+                            // ⚒️ WAVE 2030.22g: Extended LED channels
+                            white: f.white ?? 0, // 0-255 DMX
+                            amber: f.amber ?? 0, // 0-255 DMX
                             // 🎛️ WAVE 339: Physics (interpolated positions from FixturePhysicsDriver)
                             physicalPan: (f.physicalPan ?? f.pan) / 255, // Normalize 0-255 → 0-1
                             physicalTilt: (f.physicalTilt ?? f.tilt) / 255, // Normalize 0-255 → 0-1
@@ -1104,23 +1246,29 @@ export class TitanOrchestrator {
     /**
      * Set the current vibe
      * 🎯 WAVE 289: Propagate vibe to Workers for Vibe-Aware Section Tracking
+     * 🔧 WAVE 2040.3: Fixed HAL receiving legacy alias instead of normalized ID
      */
     setVibe(vibeId) {
         if (this.engine) {
+            // 1️⃣ Set vibe in engine (normalizes legacy aliases internally)
             this.engine.setVibe(vibeId);
-            console.log(`[TitanOrchestrator] Vibe set to: ${vibeId}`);
+            // 2️⃣ Get the ACTUAL normalized vibe ID from engine
+            // This ensures HAL receives 'techno-club' not 'techno'
+            const normalizedVibeId = this.engine.getCurrentVibe();
+            console.log(`[TitanOrchestrator] Vibe set to: ${normalizedVibeId}`);
             // WAVE 257: Log vibe change to Tactical Log
-            this.log('Mode', `🎭 Vibe changed to: ${vibeId.toUpperCase()}`);
+            this.log('Mode', `🎭 Vibe changed to: ${normalizedVibeId.toUpperCase()}`);
             // 🎯 WAVE 289: Propagate vibe to Trinity Workers
             // El SectionTracker en los Workers usará perfiles vibe-aware
             if (this.trinity) {
-                this.trinity.setVibe(vibeId);
+                this.trinity.setVibe(normalizedVibeId);
                 console.log(`[TitanOrchestrator] 🎯 WAVE 289: Vibe propagated to Workers`);
             }
             // 🎯 WAVE 338: Propagate vibe to HAL for Movement Physics
+            // 🔧 WAVE 2040.3: FIX - Use normalizedVibeId so HAL gets 'techno-club' not 'techno'
             // Los movers usarán física diferente según el vibe
             if (this.hal) {
-                this.hal.setVibe(vibeId);
+                this.hal.setVibe(normalizedVibeId);
                 console.log(`[TitanOrchestrator] 🎛️ WAVE 338: Movement physics updated for vibe`);
             }
         }
@@ -1204,6 +1352,7 @@ export class TitanOrchestrator {
     }
     /**
      * 🧨 WAVE 610: FORCE STRIKE - Manual Effect Detonator
+     * ⚒️ WAVE 2030.4: Hephaestus curve automation support
      *
      * Dispara un efecto manualmente sin esperar decisión de HuntEngine.
      * Útil para testear efectos visuales sin alterar umbrales de los algoritmos.
@@ -1213,8 +1362,9 @@ export class TitanOrchestrator {
      * 2. IPC handler llama titanOrchestrator.forceStrikeNextFrame(config)
      * 3. Este método llama engine's forceStrikeNextFrame(config)
      * 4. TitanEngine fuerza un trigger de EffectManager en el próximo frame
+     * 5. ⚒️ WAVE 2030.4: Si config.hephCurves existe, EffectManager crea un overlay
      *
-     * @param config - { effect: string, intensity: number, source?: 'manual' | 'chronos' }
+     * @param config - ForceStrikeConfig with effect, intensity, source, and optional hephCurves
      */
     forceStrikeNextFrame(config) {
         if (!this.engine) {
@@ -1222,7 +1372,8 @@ export class TitanOrchestrator {
             return;
         }
         const sourceLabel = config.source === 'chronos' ? 'CHRONOS' : 'Manual';
-        console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}`);
+        const hephTag = config.hephCurves ? ` ⚒️[HEPH: ${config.hephCurves.curves.size}]` : '';
+        console.log(`[TitanOrchestrator] 🧨 ${sourceLabel} STRIKE: ${config.effect} @ ${config.intensity.toFixed(2)}${hephTag}`);
         this.log('Effect', `🧨 ${sourceLabel} Strike: ${config.effect}`, { intensity: config.intensity });
         // Delegar al TitanEngine
         this.engine.forceStrikeNextFrame(config);
@@ -1511,113 +1662,77 @@ export class TitanOrchestrator {
      * @param targetZone Zona objetivo del efecto
      * @returns true si la fixture pertenece a la zona
      */
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2040.25 FASE 2: SIMPLIFIED ZONE MATCHING — Canonical Zones
+    // Reescrito con CanonicalZone. De 60 líneas a 20 líneas.
+    // ═══════════════════════════════════════════════════════════════════════════
     fixtureMatchesZone(fixtureZone, targetZone) {
         const fz = fixtureZone.toLowerCase();
         const tz = targetZone.toLowerCase();
-        // ═══════════════════════════════════════════════════════════════════════
-        // 🔥 WAVE 730: MAPEO ESTRICTO DE ZONAS
-        // No más includes() vagos que causan matches falsos
-        // ═══════════════════════════════════════════════════════════════════════
-        switch (tz) {
-            case 'all':
-                return true;
-            case 'front':
-                // SOLO front pars, NO movers aunque estén "en frente"
-                return fz === 'front_pars' || fz === 'floor-front';
-            // 🪼 WAVE 1070.3: STEREO PARs support
-            case 'frontl':
-                return fz === 'front_pars' || fz === 'floor-front'; // Front left PARs
-            case 'frontr':
-                return fz === 'front_pars' || fz === 'floor-front'; // Front right PARs
-            case 'back':
-                // SOLO back pars, NO movers aunque estén "atrás"
-                return fz === 'back_pars' || fz === 'floor-back';
-            // 🪼 WAVE 1070.3: STEREO PARs support
-            case 'backl':
-                return fz === 'back_pars' || fz === 'floor-back'; // Back left PARs
-            case 'backr':
-                return fz === 'back_pars' || fz === 'floor-back'; // Back right PARs
-            case 'movers':
-                // SOLO cabezas móviles - CRITICAL: NO incluir pars
-                return fz === 'moving_left' || fz === 'moving_right' ||
-                    fz === 'MOVING_LEFT' || fz === 'MOVING_RIGHT' || // 🔥 WAVE 810.5: Legacy uppercase
-                    fz === 'ceiling-left' || fz === 'ceiling-right' ||
-                    fz.startsWith('moving') || fz.startsWith('ceiling');
-            // 🔥 WAVE 810: UNLOCK THE TWINS - Targeting L/R específico
-            case 'movers_left':
-                // SOLO movers del lado izquierdo
-                return fz === 'moving_left' || fz === 'ceiling-left' || fz === 'MOVING_LEFT'; // 🔥 WAVE 810.5: uppercase
-            case 'movers_right':
-                // SOLO movers del lado derecho
-                return fz === 'moving_right' || fz === 'ceiling-right' || fz === 'MOVING_RIGHT'; // 🔥 WAVE 810.5: uppercase
-            case 'pars':
-                // Todos los PARs (front + back) pero NUNCA movers
-                return fz === 'front_pars' || fz === 'back_pars' ||
-                    fz === 'floor-front' || fz === 'floor-back';
-            case 'left':
-                // Solo fixtures del lado izquierdo
-                return fz === 'moving_left' || fz === 'ceiling-left';
-            case 'right':
-                // Solo fixtures del lado derecho
-                return fz === 'moving_right' || fz === 'ceiling-right';
-            default:
-                // 🔥 WAVE 730: Sin fallback permisivo
-                // Si no reconocemos la zona, NO ENTREGAMOS NADA
-                console.warn(`[fixtureMatchesZone] Unknown target zone: '${tz}' for fixture zone: '${fz}'`);
-                return false;
-        }
+        // Special group targets
+        if (tz === 'all')
+            return true;
+        if (tz === 'all-movers')
+            return fz === 'movers-left' || fz === 'movers-right';
+        if (tz === 'all-pars')
+            return fz === 'front' || fz === 'back' || fz === 'floor';
+        // Direct canonical zone match (front→front, movers-left→movers-left, etc.)
+        if (fz === tz)
+            return true;
+        // No match
+        return false;
     }
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🔊 WAVE 1075.2: STEREO ROUTING - POSITION-BASED (NOT INDEX-BASED)
+    // 🔊 WAVE 2040.25 FASE 2: STEREO ROUTING — Canonical + Position-based
     // Usa position.x del StageBuilder para determinar L/R
     // Convención: position.x < 0 = LEFT (lado izquierdo del escenario)
     //             position.x >= 0 = RIGHT (lado derecho del escenario)
+    // 🔊 WAVE 2040.27: Added support for frontL/R, backL/R (Chill effects)
     // ═══════════════════════════════════════════════════════════════════════════
     fixtureMatchesZoneStereo(fixtureZone, targetZone, positionX) {
         const fz = fixtureZone.toLowerCase();
         const tz = targetZone.toLowerCase();
-        const isLeft = positionX < 0; // position.x negativo = lado IZQUIERDO del escenario
-        switch (tz) {
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔊 STEREO PARs - Front
-            // ═══════════════════════════════════════════════════════════════════════
-            case 'frontl':
-            case 'front_left':
-                // Front PARs + debe estar en posición X negativa (izquierda)
-                if (fz === 'front_pars' || fz === 'floor-front') {
-                    return isLeft;
-                }
-                return false;
-            case 'frontr':
-            case 'front_right':
-                // Front PARs + debe estar en posición X positiva/cero (derecha)
-                if (fz === 'front_pars' || fz === 'floor-front') {
-                    return !isLeft;
-                }
-                return false;
-            // ═══════════════════════════════════════════════════════════════════════
-            // 🔊 STEREO PARs - Back
-            // ═══════════════════════════════════════════════════════════════════════
-            case 'backl':
-            case 'back_left':
-                // Back PARs + debe estar en posición X negativa (izquierda)
-                if (fz === 'back_pars' || fz === 'floor-back') {
-                    return isLeft;
-                }
-                return false;
-            case 'backr':
-            case 'back_right':
-                // Back PARs + debe estar en posición X positiva/cero (derecha)
-                if (fz === 'back_pars' || fz === 'floor-back') {
-                    return !isLeft;
-                }
-                return false;
-            // ═══════════════════════════════════════════════════════════════════════
-            // Todas las demás zonas: delegar al método original (sin filtro L/R)
-            // ═══════════════════════════════════════════════════════════════════════
-            default:
-                return this.fixtureMatchesZone(fz, tz);
+        const isLeft = positionX < 0;
+        // Position-based stereo filtering (all-left / all-right)
+        if (tz === 'all-left')
+            return isLeft;
+        if (tz === 'all-right')
+            return !isLeft;
+        // 🌊 WAVE 2040.27: Stereo PARs (frontL/R, backL/R, floorL/R)
+        // Used by Chill effects for position-based L/R routing
+        if (tz === 'frontl')
+            return fz === 'front' && isLeft;
+        if (tz === 'frontr')
+            return fz === 'front' && !isLeft;
+        if (tz === 'backl')
+            return fz === 'back' && isLeft;
+        if (tz === 'backr')
+            return fz === 'back' && !isLeft;
+        if (tz === 'floorl')
+            return fz === 'floor' && isLeft;
+        if (tz === 'floorr')
+            return fz === 'floor' && !isLeft;
+        // Zone match + stereo side check (for PARs with stereo)
+        // Example: targetZone='front' + positionX < 0 → front left PARs
+        // Example: targetZone='movers-left' → zone-based, ignore positionX
+        // If targetZone is already stereo-specific (movers-left, movers-right),
+        // delegate to non-stereo matcher (zone match is enough)
+        if (tz === 'movers-left' || tz === 'movers-right') {
+            return this.fixtureMatchesZone(fz, tz);
         }
+        // For generic zones (front, back, floor), apply position-based stereo filter
+        // This allows stereo routing of PARs without explicit zone split
+        if (tz === 'front' || tz === 'back' || tz === 'floor') {
+            // Check zone match first
+            if (!this.fixtureMatchesZone(fz, tz))
+                return false;
+            // Zone matches, now apply stereo filter (if needed by caller)
+            // NOTE: Caller MUST specify if they want L/R filtering via all-left/all-right
+            // If they just pass 'front', we match ALL front fixtures
+            return true;
+        }
+        // Default: delegate to non-stereo matcher
+        return this.fixtureMatchesZone(fz, tz);
     }
     // ═══════════════════════════════════════════════════════════════════════════
     // 🌊 WAVE 1011.5: THE DAM - Exponential Moving Average Smoothing

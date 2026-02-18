@@ -72,6 +72,193 @@ export const DEFAULT_PHYSICS_PROFILES = {
     }
 };
 // ═══════════════════════════════════════════════════════════════════════════
+// CANONICAL ZONE UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * 🔥 WAVE 2040.24: Array canónico de las 9 zonas válidas.
+ * Usado para validación, UI dropdowns y iteración.
+ */
+export const CANONICAL_ZONES = [
+    'front',
+    'back',
+    'floor',
+    'movers-left',
+    'movers-right',
+    'center',
+    'air',
+    'ambient',
+    'unassigned',
+];
+/**
+ * 🔥 WAVE 2040.24: Labels para UI — cada zona canónica con su emoji y nombre.
+ */
+export const ZONE_LABELS = {
+    'front': '🔴 FRONT (Main)',
+    'back': '🔵 BACK (Counter)',
+    'floor': '⬇️ FLOOR (Uplight)',
+    'movers-left': '🏎️ MOVER LEFT',
+    'movers-right': '🏎️ MOVER RIGHT',
+    'center': '⚡ CENTER (Strobes/Blinders)',
+    'air': '✨ AIR (Laser/Atmosphere)',
+    'ambient': '🌫️ AMBIENT (House)',
+    'unassigned': '❓ UNASSIGNED',
+};
+/**
+ * 🔥 WAVE 2040.24 FASE 1: NORMALIZER — El traductor universal de zonas.
+ *
+ * Acepta CUALQUIER string legacy y lo convierte a CanonicalZone.
+ * Determinista, sin side effects, sin excepciones.
+ * Si no reconoce el input → 'unassigned' (nunca crashea).
+ *
+ * @param zone — Cualquier string de zona (legacy V1, SCREAMING V2, canonical, basura...)
+ * @returns CanonicalZone — Siempre uno de los 9 valores válidos
+ */
+export function normalizeZone(zone) {
+    if (!zone)
+        return 'unassigned';
+    const raw = zone.trim().toLowerCase();
+    // ── Ya es canónica ────────────────────────────────────────────────────
+    if (CANONICAL_ZONES.includes(raw)) {
+        return raw;
+    }
+    // ── Mapa exhaustivo: legacy → canonical ───────────────────────────────
+    const MAP = {
+        // SCREAMING_CASE V2
+        'front_pars': 'front',
+        'back_pars': 'back',
+        'floor_pars': 'floor',
+        'moving_left': 'movers-left',
+        'moving_right': 'movers-right',
+        'strobes': 'center',
+        'lasers': 'air',
+        // kebab-case legacy V1
+        'stage-left': 'movers-left',
+        'stage-right': 'movers-right',
+        'stage-center': 'center',
+        'ceiling-front': 'front',
+        'ceiling-back': 'back',
+        'ceiling-left': 'movers-left',
+        'ceiling-right': 'movers-right',
+        'ceiling-center': 'center',
+        'floor-front': 'front',
+        'floor-back': 'back',
+        'truss-1': 'back',
+        'truss-2': 'back',
+        'truss-3': 'back',
+        'custom': 'unassigned',
+        // Aliases cortos (por si llegan del migrador viejo)
+        'left': 'movers-left',
+        'right': 'movers-right',
+        'front': 'front',
+        'back': 'back',
+        'floor': 'floor',
+        'center': 'center',
+        'ceiling': 'center',
+        'truss': 'back',
+        'air': 'air',
+        'ambient': 'ambient',
+        'unassigned': 'unassigned',
+    };
+    return MAP[raw] ?? 'unassigned';
+}
+/**
+ * 🔥 WAVE 2040.24: Comprueba si un string es una CanonicalZone válida.
+ */
+export function isCanonicalZone(zone) {
+    if (!zone)
+        return false;
+    return CANONICAL_ZONES.includes(zone);
+}
+/**
+ * 🎯 WAVE 2040.25 FASE 3: Resolver FixtureSelector → lista de IDs
+ *
+ * Esta función es el CORAZÓN del targeting avanzado.
+ * Convierte un selector abstracto en una lista concreta de fixture IDs.
+ *
+ * @param selector — El selector a resolver
+ * @param fixtures — Array de todas las fixtures del show (desde stageStore)
+ * @param groups — Array de grupos del show (para resolver group IDs)
+ * @returns Array de fixture IDs que matchean el selector
+ */
+export function resolveFixtureSelector(selector, fixtures, groups) {
+    // 1️⃣ Resolver target → lista base
+    let baseFixtures = [];
+    if (selector.target === 'all') {
+        baseFixtures = fixtures;
+    }
+    else if (isCanonicalZone(selector.target)) {
+        // Es una zona canónica
+        baseFixtures = fixtures.filter(f => f.zone === selector.target);
+    }
+    else {
+        // Intentar resolver como group ID
+        const group = groups?.find(g => g.id === selector.target);
+        if (group) {
+            baseFixtures = fixtures.filter(f => group.fixtureIds.includes(f.id));
+        }
+        else {
+            // Grupo no encontrado, retornar vacío
+            console.warn(`[resolveFixtureSelector] Unknown target: ${selector.target}`);
+            return [];
+        }
+    }
+    // 2️⃣ Filtrar por stereoSide (si está definido)
+    if (selector.stereoSide) {
+        if (selector.stereoSide === 'left') {
+            baseFixtures = baseFixtures.filter(f => f.position.x < 0);
+        }
+        else {
+            baseFixtures = baseFixtures.filter(f => f.position.x >= 0);
+        }
+    }
+    // 3️⃣ Filtrar por parity (even/odd)
+    if (selector.parity && selector.parity !== 'all') {
+        baseFixtures = baseFixtures.filter((_, idx) => {
+            if (selector.parity === 'even')
+                return idx % 2 === 0;
+            if (selector.parity === 'odd')
+                return idx % 2 !== 0;
+            return true;
+        });
+    }
+    // 4️⃣ Filtrar por indexRange (si está definido)
+    if (selector.indexRange) {
+        const indices = parseIndexRange(selector.indexRange, baseFixtures.length);
+        baseFixtures = baseFixtures.filter((_, idx) => indices.includes(idx));
+    }
+    // 5️⃣ Retornar IDs finales
+    return baseFixtures.map(f => f.id);
+}
+/**
+ * Parse index range string: "1-3" | "1,3,5" | "2-"
+ * Returns 0-based indices array
+ */
+function parseIndexRange(range, maxLength) {
+    const result = [];
+    // Case: "1-3" → [0, 1, 2] (1-based input → 0-based output)
+    if (range.includes('-')) {
+        const [start, end] = range.split('-').map(s => s.trim());
+        const startIdx = start ? parseInt(start, 10) - 1 : 0;
+        const endIdx = end ? parseInt(end, 10) - 1 : maxLength - 1;
+        for (let i = Math.max(0, startIdx); i <= Math.min(maxLength - 1, endIdx); i++) {
+            result.push(i);
+        }
+    }
+    // Case: "1,3,5" → [0, 2, 4]
+    else if (range.includes(',')) {
+        const indices = range.split(',').map(s => parseInt(s.trim(), 10) - 1);
+        result.push(...indices.filter(i => i >= 0 && i < maxLength));
+    }
+    // Case: "3" → [2]
+    else {
+        const idx = parseInt(range, 10) - 1;
+        if (idx >= 0 && idx < maxLength) {
+            result.push(idx);
+        }
+    }
+    return result;
+}
+// ═══════════════════════════════════════════════════════════════════════════
 // 🔥 WAVE 384: TYPE MAPPING HELPER
 // ═══════════════════════════════════════════════════════════════════════════
 /**

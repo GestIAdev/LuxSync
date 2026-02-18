@@ -22,7 +22,7 @@
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { validateShowFile, getSchemaVersion, createEmptyShowFile } from './ShowFileV2';
+import { validateShowFile, getSchemaVersion, createEmptyShowFile, normalizeZone } from './ShowFileV2';
 import { autoMigrate } from './ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -148,9 +148,30 @@ export class StagePersistence {
             if (version === '2.0.0') {
                 // Already V2, validate and return
                 if (validateShowFile(data)) {
+                    const showFile = data;
+                    // 🔥 WAVE 2040.24 FASE 6: Normalizar zonas legacy en archivos V2 existentes
+                    // Un .luxshow puede tener 'FRONT_PARS', 'stage-left', etc.
+                    // Los normalizamos a canonical ('front', 'movers-left', etc.) transparentemente.
+                    let zonesNormalized = 0;
+                    for (const fixture of showFile.fixtures) {
+                        const canonical = normalizeZone(fixture.zone);
+                        if (fixture.zone !== canonical) {
+                            console.log(`[StagePersistence] 🔄 Zone normalized: "${fixture.zone}" → "${canonical}" (fixture: ${fixture.id})`);
+                            fixture.zone = canonical;
+                            zonesNormalized++;
+                        }
+                    }
+                    if (zonesNormalized > 0) {
+                        console.log(`[StagePersistence] ✅ Normalized ${zonesNormalized} fixture zones to canonical`);
+                        // Auto-save con zonas normalizadas
+                        showFile.modifiedAt = new Date().toISOString();
+                        const targetSavePath = filePath || this.getActiveShowPath();
+                        fs.writeFileSync(targetSavePath, JSON.stringify(showFile, null, 2), 'utf-8');
+                        console.log(`[StagePersistence] 💾 Auto-saved with normalized zones`);
+                    }
                     this.addToRecentShows(targetPath);
-                    console.log(`[StagePersistence] 📂 Loaded V2 show: ${data.name}`);
-                    return { success: true, showFile: data, migrated: false };
+                    console.log(`[StagePersistence] 📂 Loaded V2 show: ${showFile.name}`);
+                    return { success: true, showFile, migrated: false };
                 }
                 else {
                     return { success: false, error: 'Show file validation failed' };

@@ -55,6 +55,9 @@ export class MasterArbiter extends EventEmitter {
         // 🥶 WAVE 1165: GHOST PROTOCOL - Last known position cache
         // Used to freeze fixtures in place during blackout/silence instead of whipping to center
         this.lastKnownPositions = new Map();
+        // 👻 WAVE 2042.21: GHOST HANDOFF - Fixture origin positions
+        // When operator releases manual control, we store the position here so AI adopts it as "home"
+        this.fixtureOrigins = new Map();
         // Grand Master (WAVE 376)
         this.grandMaster = 1.0; // 0-1, multiplies dimmer globally
         // Pattern Engine (WAVE 376)
@@ -231,9 +234,10 @@ export class MasterArbiter extends EventEmitter {
             return;
         }
         // 🔥 WAVE 1219: Debug log for successful override (only with controls for movement)
-        if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
-            console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls);
-        }
+        // Disabled: WAVE 2052 - Too spammy (60 FPS, every fixture with pan/tilt override)
+        // if (override.overrideChannels.includes('pan') || override.overrideChannels.includes('tilt')) {
+        //   console.log(`[MasterArbiter] ✅ Override accepted: ${override.fixtureId}`, override.overrideChannels, override.controls)
+        // }
         // WAVE 440: MEMORY MERGE - Fuse with existing override instead of replacing
         const existingOverride = this.layer2_manualOverrides.get(override.fixtureId);
         if (existingOverride) {
@@ -342,6 +346,33 @@ export class MasterArbiter extends EventEmitter {
      */
     getManualOverrideFixtures() {
         return Array.from(this.layer2_manualOverrides.keys());
+    }
+    /**
+     * 👻 WAVE 2042.21: GHOST HANDOFF - Set fixture origin for soft release
+     *
+     * When the operator releases manual control, this method sets the current position
+     * as the new "home" for the AI movement system. This prevents the fixture from
+     * jumping to a random position when AI takes over.
+     *
+     * @param fixtureId - The fixture to update
+     * @param pan - Pan value in DMX (0-255)
+     * @param tilt - Tilt value in DMX (0-255)
+     */
+    setFixtureOrigin(fixtureId, pan, tilt) {
+        // Store the origin position for this fixture
+        // This will be used by getTitanValuesForFixture as a baseline
+        this.fixtureOrigins.set(fixtureId, { pan, tilt, timestamp: performance.now() });
+        if (this.config.debug) {
+            console.log(`[MasterArbiter] 👻 Origin set: ${fixtureId} → P${pan}/T${tilt}`);
+        }
+        // Emit event for any listeners (e.g., movement manager)
+        this.emit('originChanged', fixtureId, { pan, tilt });
+    }
+    /**
+     * 👻 WAVE 2042.21: Get fixture origin (for AI movement baseline)
+     */
+    getFixtureOrigin(fixtureId) {
+        return this.fixtureOrigins.get(fixtureId) ?? null;
     }
     // ═══════════════════════════════════════════════════════════════════════
     // LAYER 3: EFFECTS
@@ -486,16 +517,18 @@ export class MasterArbiter extends EventEmitter {
             ...pattern,
             startTime: performance.now(),
         };
+        // 🔍 DEBUG: Log fixture registration status
+        console.log(`[MasterArbiter] 🔍 setPattern called for ${fixtureIds.length} fixtures. Known fixtures: ${this.fixtures.size}`);
         for (const fixtureId of fixtureIds) {
             if (!this.fixtures.has(fixtureId)) {
-                console.warn(`[MasterArbiter] Unknown fixture for pattern: ${fixtureId}`);
+                console.warn(`[MasterArbiter] ❌ Unknown fixture for pattern: ${fixtureId}`);
+                console.warn(`[MasterArbiter] 📋 Known fixture IDs: ${Array.from(this.fixtures.keys()).slice(0, 5).join(', ')}...`);
                 continue;
             }
             this.activePatterns.set(fixtureId, config);
+            console.log(`[MasterArbiter] ✅ Pattern ${pattern.type} injected for fixture ${fixtureId}`);
         }
-        if (this.config.debug) {
-            console.log(`[MasterArbiter] Pattern set (${pattern.type}): ${fixtureIds.length} fixtures`);
-        }
+        console.log(`[MasterArbiter] 📊 activePatterns now has ${this.activePatterns.size} entries`);
     }
     /**
      * Clear pattern for fixtures
@@ -766,29 +799,31 @@ export class MasterArbiter extends EventEmitter {
     /**
      * Calculate pattern offset (Circle, Eight, Sweep)
      * Returns pan/tilt offset as fractions (-1 to +1)
+     * 🔧 WAVE 2042.24: Simplified - size already normalized 0-1
      */
     calculatePatternOffset(pattern, now) {
         const elapsedMs = now - pattern.startTime;
-        const cycleDurationMs = (1000 / pattern.speed); // speed = cycles per second
+        const cycleDurationMs = (1000 / Math.max(0.01, pattern.speed)); // speed = cycles per second, prevent div by 0
         const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs;
         const t = phase * 2 * Math.PI; // 0 to 2π
-        const amplitude = pattern.size * 0.3; // 30% max swing of range
+        // 🔧 WAVE 2042.24: Size is already 0-1, applied in getAdjustedPosition
+        // Here we just generate the shape with amplitude -1 to +1
         let panOffset = 0;
         let tiltOffset = 0;
         switch (pattern.type) {
             case 'circle':
                 // Circle: x = cos(t), y = sin(t)
-                panOffset = Math.cos(t) * amplitude;
-                tiltOffset = Math.sin(t) * amplitude;
+                panOffset = Math.cos(t);
+                tiltOffset = Math.sin(t);
                 break;
             case 'eight':
                 // Eight: x = sin(t), y = sin(2t) / 2
-                panOffset = Math.sin(t) * amplitude;
-                tiltOffset = (Math.sin(t * 2) / 2) * amplitude;
+                panOffset = Math.sin(t);
+                tiltOffset = Math.sin(t * 2) / 2;
                 break;
             case 'sweep':
                 // Sweep: x = sin(t), y = 0
-                panOffset = Math.sin(t) * amplitude;
+                panOffset = Math.sin(t);
                 tiltOffset = 0;
                 break;
         }
@@ -796,17 +831,23 @@ export class MasterArbiter extends EventEmitter {
     }
     /**
      * Get adjusted position with patterns and formations applied
+     * 🔧 WAVE 2042.24: Fixed scale - All values in DMX 0-255 range
      */
     getAdjustedPosition(fixtureId, titanValues, manualOverride, now) {
-        // Get base position
+        // Get base position (DMX 0-255)
         const basePan = manualOverride?.controls.pan ?? titanValues.pan;
         const baseTilt = manualOverride?.controls.tilt ?? titanValues.tilt;
         // Apply pattern if active
         const pattern = this.activePatterns.get(fixtureId);
         if (pattern) {
             const offset = this.calculatePatternOffset(pattern, now);
-            const adjustedPan = basePan + (offset.panOffset * 65535);
-            const adjustedTilt = baseTilt + (offset.tiltOffset * 65535);
+            // 🔧 WAVE 2042.24: Scale offset to DMX range (0-255), not 16-bit
+            // offset is -1 to 1, size is already normalized 0-1
+            // Max movement = 128 DMX units (half range) * size
+            const panMovement = offset.panOffset * 128 * pattern.size;
+            const tiltMovement = offset.tiltOffset * 128 * pattern.size;
+            const adjustedPan = pattern.center.pan + panMovement;
+            const adjustedTilt = pattern.center.tilt + tiltMovement;
             return { pan: adjustedPan, tilt: adjustedTilt };
         }
         // Apply group formation if active

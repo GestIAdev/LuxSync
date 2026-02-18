@@ -4,9 +4,27 @@
  * Centraliza todos los handlers IPC.
  * Recibe dependencias directamente desde main.ts V2.
  *
+ * ⚒️ WAVE 2030.4: Hephaestus integration for curve automation
+ *
  * @module IPCHandlers
  */
 import { ipcMain } from 'electron';
+import { deserializeHephClip } from '../hephaestus/types';
+import { HephaestusRuntime } from '../hephaestus/runtime/HephaestusRuntime';
+// 📡 WAVE 2048: Art-Net Network Discovery
+import { getArtNetDiscovery } from '../../hal/drivers/ArtNetDiscovery';
+// ⚒️ WAVE 2030.18: Singleton runtime for .lfx execution
+let hephaestusRuntime = null;
+/**
+ * ⚒️ WAVE 2030.18: Get or create the HephaestusRuntime singleton
+ * Exported for use by TitanOrchestrator in processFrame()
+ */
+export function getHephaestusRuntime() {
+    if (!hephaestusRuntime) {
+        hephaestusRuntime = new HephaestusRuntime();
+    }
+    return hephaestusRuntime;
+}
 /**
  * Registra todos los handlers IPC
  */
@@ -130,26 +148,123 @@ function setupSeleneLuxHandlers(deps) {
      * Called from ChronosIPCBridge when an FX clip starts.
      * Maps to forceStrikeNextFrame with the effect from FXMapper.
      * 🧠 WAVE 2019.3: source: 'chronos' bypasses Shield blocking in IDLE
+     * ⚒️ WAVE 2030.4: Forwards hephCurves to EffectManager for curve automation
+     * ⚒️ WAVE 2040.22: Heph Diamond clips bypass EffectManager → go to Runtime
      */
     ipcMain.handle('chronos:triggerFX', (_event, config) => {
-        console.log('[Chronos→Stage] 🧨 FX TRIGGER:', config.effectId, `@ ${(config.intensity * 100).toFixed(0)}%`);
+        // ⚒️ WAVE 2030.4: Deserialize hephCurves if present (Record → Map)
+        const hephClip = config.hephCurves ? deserializeHephClip(config.hephCurves) : undefined;
+        const hephTag = hephClip ? ` ⚒️[HEPH: ${hephClip.curves.size} curves]` : '';
+        console.log(`[Chronos→Stage] 🧨 FX TRIGGER: ${config.effectId} @ ${(config.intensity * 100).toFixed(0)}%${hephTag}`);
+        // ⚒️ WAVE 2040.22: DIAMOND PATH — Heph custom clips bypass EffectManager entirely.
+        // EffectManager has no factory for 'heph-custom' (and shouldn't — it's not a Core FX).
+        // Instead, we feed the deserialized curves directly to HephaestusRuntime.
+        if (config.effectId === 'heph-custom' && hephClip) {
+            const runtime = getHephaestusRuntime();
+            const instanceId = runtime.playFromClip(hephClip, {
+                intensity: config.intensity,
+                durationOverrideMs: config.durationMs,
+                loop: false,
+            });
+            console.log(`[Chronos→Stage] ⚒️💎 DIAMOND RUNTIME: ${instanceId} (${hephClip.curves.size} curves)`);
+            return { success: true, instanceId };
+        }
         if (titanOrchestrator) {
             titanOrchestrator.forceStrikeNextFrame({
                 effect: config.effectId,
                 intensity: config.intensity,
                 source: 'chronos', // 🧠 WAVE 2019.3: Bypass Shield for timeline-triggered effects
+                hephCurves: hephClip, // ⚒️ WAVE 2030.4: Pass deserialized curves
             });
         }
         return { success: true };
     });
     /**
+     * ⚒️ chronos:triggerHeph (WAVE 2030.18)
+     * Called from ChronosIPCBridge when a CUSTOM Hephaestus .lfx clip starts.
+     * Bypasses FXMapper entirely - uses HephaestusRuntime for dynamic execution.
+     *
+     * This is THE RUNTIME - evaluates Bezier curves at 60fps for user-created effects.
+     */
+    ipcMain.handle('chronos:triggerHeph', (_event, config) => {
+        console.log(`[Chronos→Stage] ⚒️ HEPH TRIGGER: ${config.filePath} @ ${(config.intensity * 100).toFixed(0)}%`);
+        // 🔍 DEBUG: Check file before loading
+        const fs = require('fs');
+        if (!fs.existsSync(config.filePath)) {
+            console.error(`[Chronos→Stage] ⚒️ HEPH FILE NOT FOUND: ${config.filePath}`);
+            return { success: false, error: 'File not found' };
+        }
+        const stats = fs.statSync(config.filePath);
+        console.log(`[Chronos→Stage] ⚒️ HEPH FILE SIZE: ${stats.size} bytes`);
+        if (stats.size === 0) {
+            console.error(`[Chronos→Stage] ⚒️ HEPH FILE EMPTY: ${config.filePath}`);
+            return { success: false, error: 'Empty file' };
+        }
+        // Try to read raw content
+        try {
+            const content = fs.readFileSync(config.filePath, 'utf-8');
+            console.log(`[Chronos→Stage] ⚒️ HEPH FILE PREVIEW: ${content.substring(0, 200)}...`);
+        }
+        catch (readErr) {
+            console.error(`[Chronos→Stage] ⚒️ HEPH READ ERROR:`, readErr);
+        }
+        const runtime = getHephaestusRuntime();
+        const instanceId = runtime.play(config.filePath, {
+            intensity: config.intensity,
+            durationOverrideMs: config.durationMs,
+            loop: config.loop ?? false,
+        });
+        if (instanceId) {
+            console.log(`[Chronos→Stage] ⚒️ HEPH PLAYING: ${instanceId}`);
+            return { success: true, instanceId };
+        }
+        else {
+            console.error(`[Chronos→Stage] ⚒️ HEPH FAILED: Could not load ${config.filePath}`);
+            return { success: false, error: 'Failed to load .lfx file' };
+        }
+    });
+    /**
+     * ⚒️ chronos:stopHeph (WAVE 2030.18)
+     * Stop a specific Hephaestus runtime instance or all instances.
+     */
+    ipcMain.handle('chronos:stopHeph', (_event, instanceId) => {
+        const runtime = getHephaestusRuntime();
+        if (instanceId) {
+            const stopped = runtime.stop(instanceId);
+            console.log(`[Chronos→Stage] ⚒️ HEPH STOP: ${instanceId} (${stopped ? 'OK' : 'not found'})`);
+            return { success: stopped };
+        }
+        else {
+            runtime.stopAll();
+            console.log('[Chronos→Stage] ⚒️ HEPH STOP ALL');
+            return { success: true };
+        }
+    });
+    /**
+     * ⚒️ chronos:tickHeph (WAVE 2030.18)
+     * Called from render loop to evaluate all active Hephaestus clips.
+     * Returns output values to be merged with main DMX output.
+     */
+    ipcMain.handle('chronos:tickHeph', (_event, currentTimeMs) => {
+        const runtime = getHephaestusRuntime();
+        const outputs = runtime.tick(currentTimeMs);
+        return { success: true, outputs };
+    });
+    /**
      * 🛑 chronos:stopFX
      * Called from ChronosIPCBridge when an FX clip ends.
-     * Currently a placeholder - most effects auto-expire.
-     * Future: Can cancel specific running effects.
+     * ⚒️ WAVE 2040.22: Heph Diamond clips → stop all Runtime instances
+     * Standard FX: Currently auto-expire (placeholder for future cancel)
      */
     ipcMain.handle('chronos:stopFX', (_event, effectId) => {
         console.log('[Chronos→Stage] 🛑 FX STOP:', effectId);
+        // ⚒️ WAVE 2040.22: Heph clips need explicit Runtime stop
+        if (effectId === 'heph-custom') {
+            const runtime = getHephaestusRuntime();
+            runtime.stopAll();
+            console.log('[Chronos→Stage] ⚒️💎 HEPH DIAMOND: all instances stopped');
+            return { success: true };
+        }
         // Future implementation: titanOrchestrator.cancelEffect(effectId)
         return { success: true };
     });
@@ -1161,5 +1276,51 @@ function setupArtNetHandlers(deps) {
         catch (err) {
             return { success: false, error: String(err) };
         }
+    });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📡 WAVE 2048: ART-NET DISCOVERY (ArtPoll/ArtPollReply)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const discovery = getArtNetDiscovery();
+    ipcMain.handle('artnet:discovery:start', async () => {
+        try {
+            const success = await discovery.start();
+            return { success, status: discovery.getStatus() };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
+    ipcMain.handle('artnet:discovery:stop', async () => {
+        try {
+            await discovery.stop();
+            return { success: true };
+        }
+        catch (err) {
+            return { success: false, error: String(err) };
+        }
+    });
+    ipcMain.handle('artnet:discovery:getStatus', () => {
+        return discovery.getStatus();
+    });
+    ipcMain.handle('artnet:discovery:pollNow', () => {
+        discovery.pollNow();
+        return { success: true };
+    });
+    ipcMain.handle('artnet:discovery:setBroadcast', (_event, address) => {
+        discovery.setBroadcastAddress(address);
+        return { success: true };
+    });
+    // Forward discovery events to renderer
+    discovery.on('node-discovered', (node) => {
+        deps.mainWindow?.webContents.send('artnet:discovery:node-discovered', node);
+    });
+    discovery.on('node-lost', (ip) => {
+        deps.mainWindow?.webContents.send('artnet:discovery:node-lost', ip);
+    });
+    discovery.on('node-updated', (node) => {
+        deps.mainWindow?.webContents.send('artnet:discovery:node-updated', node);
+    });
+    discovery.on('state-change', (state) => {
+        deps.mainWindow?.webContents.send('artnet:discovery:state-change', state);
     });
 }

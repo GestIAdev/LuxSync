@@ -54,7 +54,7 @@ const FIBER_COLORS = [
     { h: 170, s: 85, l: 45 }, // Turquesa profundo
 ];
 // Zonas de PARs para el traveling wave
-const PAR_ZONES = ['back', 'pars', 'front'];
+const PAR_ZONES = ['back', 'all-pars', 'front'];
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌈 FIBER OPTICS CLASS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -174,7 +174,7 @@ export class FiberOptics extends BaseEffect {
         // 🔓 WAVE 1009: FREEDOM DAY - Movers RECIBEN COLOR
         // El HAL traduce Cyan/Azul → Color Wheel DMX automáticamente
         // ═════════════════════════════════════════════════════════════════════
-        zoneOverrides['movers'] = {
+        zoneOverrides['all-movers'] = {
             color: FIBER_COLORS[0], // 🔓 ¡LIBERTAD! Cian brillante para movers
             dimmer: this.config.moverIntensity * envelope,
             blendMode: 'replace',
@@ -184,7 +184,7 @@ export class FiberOptics extends BaseEffect {
             category: this.category,
             phase: this.phase,
             progress,
-            zones: [...PAR_ZONES, 'movers'],
+            zones: [...PAR_ZONES, 'all-movers'],
             intensity: this.config.parIntensity * envelope,
             zoneOverrides,
             // Movement override para movers: pan lento

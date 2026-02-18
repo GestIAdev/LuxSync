@@ -319,11 +319,20 @@ export class FixtureMapper {
             // COLOR CHANNELS
             // ═══════════════════════════════════════════════════════════════════
             case 'red':
-                return Math.round(state.r);
+                const redValue = Math.round(state.r);
+                if (redValue > 0)
+                    console.log(`[Mapper] 🔴 RED=${redValue} for ${state.fixtureId}`);
+                return redValue;
             case 'green':
-                return Math.round(state.g);
+                const greenValue = Math.round(state.g);
+                if (greenValue > 0)
+                    console.log(`[Mapper] 🟢 GREEN=${greenValue} for ${state.fixtureId}`);
+                return greenValue;
             case 'blue':
-                return Math.round(state.b);
+                const blueValue = Math.round(state.b);
+                if (blueValue > 0)
+                    console.log(`[Mapper] 🔵 BLUE=${blueValue} for ${state.fixtureId}`);
+                return blueValue;
             case 'white':
                 return state.white ?? (channel.defaultValue ?? 0);
             case 'amber':

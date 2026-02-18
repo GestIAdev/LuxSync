@@ -133,10 +133,15 @@ export function useScenePlayer() {
     // ── Send project to backend TimelineEngine ──
     const api = getPlaybackApi()
     if (api?.load) {
+      console.log('[ScenePlayer] 🎬 Sending project to backend TimelineEngine...')
       const result = await api.load(project)
       if (!result.success) {
         console.error(`[ScenePlayer] ❌ Backend load failed: ${result.error}`)
+      } else {
+        console.log('[ScenePlayer] ✅ Backend loaded successfully:', result.state)
       }
+    } else {
+      console.error('[ScenePlayer] ❌ NO PLAYBACK API AVAILABLE — window.lux.playback is undefined!')
     }
 
     setStatus({
@@ -203,6 +208,8 @@ export function useScenePlayer() {
     const api = getPlaybackApi()
     if (api?.tick) {
       api.tick(currentTimeMs)
+    } else {
+      console.error('[ScenePlayer] ❌ tick() failed — no playback API')
     }
 
     // ── Update UI status (visual sync only) ──

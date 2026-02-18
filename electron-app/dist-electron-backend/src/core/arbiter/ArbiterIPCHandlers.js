@@ -15,6 +15,10 @@
 import { ipcMain } from 'electron';
 import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator';
 import { vibeMovementManager } from '../../engine/movement/VibeMovementManager';
+import { ColorTranslator } from '../../hal/translation/ColorTranslator';
+import { getProfile, needsColorTranslation } from '../../hal/translation/FixtureProfiles';
+// 🎨 WAVE 2042.32: ColorTranslator instance for RGB → Color Wheel translation
+const colorTranslator = new ColorTranslator();
 /**
  * Register all Arbiter IPC handlers
  * Call this from main.ts during initialization
@@ -44,15 +48,23 @@ export function registerArbiterHandlers(masterArbiter) {
      * Set pattern for fixtures (Circle, Eight, Sweep)
      */
     ipcMain.handle('lux:arbiter:setPattern', (_event, { fixtureIds, pattern, }) => {
-        masterArbiter.setPattern(fixtureIds, pattern);
-        return { success: true, patternType: pattern.type, fixtureCount: fixtureIds.length };
+        // WAVE 2050.2: Wildcard expansion for setPattern
+        const resolvedIds = fixtureIds.includes('*')
+            ? masterArbiter.getFixtureIds()
+            : fixtureIds;
+        masterArbiter.setPattern(resolvedIds, pattern);
+        return { success: true, patternType: pattern.type, fixtureCount: resolvedIds.length };
     });
     /**
      * Clear pattern for fixtures
      */
     ipcMain.handle('lux:arbiter:clearPattern', (_event, { fixtureIds }) => {
-        masterArbiter.clearPattern(fixtureIds);
-        return { success: true, clearedCount: fixtureIds.length };
+        // WAVE 2050.2: Wildcard expansion for clearPattern
+        const resolvedIds = fixtureIds.includes('*')
+            ? masterArbiter.getFixtureIds()
+            : fixtureIds;
+        masterArbiter.clearPattern(resolvedIds);
+        return { success: true, clearedCount: resolvedIds.length };
     });
     // ═══════════════════════════════════════════════════════════════════════
     // GROUP FORMATIONS
@@ -81,7 +93,8 @@ export function registerArbiterHandlers(masterArbiter) {
      */
     ipcMain.handle('lux:arbiter:setManual', (_event, { fixtureIds, controls, channels, }) => {
         // 🔥 WAVE 1008.4: Debug log BEFORE validation
-        console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed });
+        // Disabled: WAVE 2052 - Too spammy (60 FPS × 12 fixtures per frame)
+        // console.log(`[Arbiter] 📥 setManual RAW:`, { fixtureIds, controls, channels, speed: controls?.speed })
         // Validate required parameters
         if (!fixtureIds || !Array.isArray(fixtureIds) || fixtureIds.length === 0) {
             console.error('[Arbiter] setManual: Invalid or empty fixtureIds', { fixtureIds, controls, channels });
@@ -96,6 +109,22 @@ export function registerArbiterHandlers(masterArbiter) {
             return { success: false, error: 'Invalid or empty channels' };
         }
         // ═══════════════════════════════════════════════════════════════════════════
+        // 🌐 WAVE 2050.2: WILDCARD EXPANSION
+        // Scene player sends fixtureIds: ['*'] for global events.
+        // Expand '*' to ALL registered fixture IDs in the arbiter.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const resolvedFixtureIds = fixtureIds.includes('*')
+            ? masterArbiter.getFixtureIds()
+            : fixtureIds;
+        // Disabled: WAVE 2052 - Too spammy (once per frame)
+        // if (fixtureIds.includes('*')) {
+        //   console.log(`[Arbiter] 🌐 Wildcard '*' expanded → ${resolvedFixtureIds.length} fixtures`)
+        // }
+        if (resolvedFixtureIds.length === 0) {
+            console.warn('[Arbiter] setManual: Wildcard expanded to 0 fixtures (no fixtures registered)');
+            return { success: false, error: 'No fixtures registered for wildcard' };
+        }
+        // ═══════════════════════════════════════════════════════════════════════════
         // 🔥 WAVE 1219: AUTO-INJECT SPEED FOR MOVEMENT COMMANDS
         // Moving heads require speed channel to be set for pan/tilt to work.
         // If pan or tilt is being controlled but speed is not specified, inject speed=0 (fast)
@@ -107,10 +136,43 @@ export function registerArbiterHandlers(masterArbiter) {
         if (hasMovement && !hasSpeed) {
             finalControls.speed = controls.speed ?? 0; // 0 = fastest movement
             finalChannels.push('speed');
-            console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`);
+            // Disabled: WAVE 2052 - Too spammy (60 FPS)
+            // console.log(`[Arbiter] 🚀 AUTO-INJECT speed=0 for movement command`)
         }
-        const overrideCount = fixtureIds.length;
-        for (const fixtureId of fixtureIds) {
+        // ═══════════════════════════════════════════════════════════════════════════
+        // 🎨 WAVE 2042.32: COLOR TRANSLATION - RGB → Color Wheel
+        // Commander sends RGB, but fixtures might have color wheels.
+        // Detect and translate automatically using ColorTranslator.
+        // ═══════════════════════════════════════════════════════════════════════════
+        const hasRGB = channels.includes('red') && channels.includes('green') && channels.includes('blue');
+        if (hasRGB) {
+            // Get first fixture to check profile
+            const firstFixture = masterArbiter.getFixture(resolvedFixtureIds[0]);
+            if (firstFixture) {
+                const profile = getProfile(firstFixture.profileId || '');
+                // Check if fixture needs color translation (has color wheel, not RGB)
+                if (profile && needsColorTranslation(profile)) {
+                    const targetRGB = {
+                        r: controls.red || 0,
+                        g: controls.green || 0,
+                        b: controls.blue || 0
+                    };
+                    const translation = colorTranslator.translate(targetRGB, profile);
+                    console.log(`[Arbiter] 🎨 COLOR TRANSLATION: RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) → Wheel=${translation.colorWheelDmx} (${translation.colorName})`);
+                    // Replace RGB controls with color_wheel
+                    finalControls = { ...finalControls };
+                    delete finalControls.red;
+                    delete finalControls.green;
+                    delete finalControls.blue;
+                    finalControls.color_wheel = translation.colorWheelDmx || 0;
+                    // Replace RGB channels with color_wheel
+                    finalChannels = finalChannels.filter(ch => !['red', 'green', 'blue'].includes(ch));
+                    finalChannels.push('color_wheel');
+                }
+            }
+        }
+        const overrideCount = resolvedFixtureIds.length;
+        for (const fixtureId of resolvedFixtureIds) {
             const override = {
                 fixtureId,
                 controls: finalControls,
@@ -131,8 +193,16 @@ export function registerArbiterHandlers(masterArbiter) {
      * Starts crossfade back to AI control
      */
     ipcMain.handle('lux:arbiter:clearManual', (_event, { fixtureIds, channels, }) => {
-        const releaseCount = fixtureIds.length;
-        for (const fixtureId of fixtureIds) {
+        // WAVE 2050.2: Wildcard expansion for clearManual
+        const resolvedIds = fixtureIds.includes('*')
+            ? masterArbiter.getFixtureIds()
+            : fixtureIds;
+        // Disabled: WAVE 2052 - Too spammy
+        // if (fixtureIds.includes('*')) {
+        //   console.log(`[Arbiter] 🌐 clearManual: Wildcard '*' expanded → ${resolvedIds.length} fixtures`)
+        // }
+        const releaseCount = resolvedIds.length;
+        for (const fixtureId of resolvedIds) {
             masterArbiter.releaseManualOverride(fixtureId, channels);
         }
         return { success: true, releaseCount };
@@ -141,6 +211,14 @@ export function registerArbiterHandlers(masterArbiter) {
      * Release ALL manual overrides (panic button - ESC key)
      */
     ipcMain.handle('lux:arbiter:releaseAll', () => {
+        masterArbiter.releaseAllManualOverrides();
+        return { success: true };
+    });
+    /**
+     * WAVE 2050.3: Alias for releaseAll — Scene Player uses this name
+     */
+    ipcMain.handle('lux:arbiter:clearAllManual', () => {
+        console.log('[Arbiter] 🧹 clearAllManual → releasing all overrides');
         masterArbiter.releaseAllManualOverrides();
         return { success: true };
     });
@@ -177,6 +255,45 @@ export function registerArbiterHandlers(masterArbiter) {
         vibeMovementManager.setManualPattern(pattern);
         console.log(`[Arbiter IPC] 🎯 Movement PATTERN: ${pattern === null ? 'RELEASED → AI' : pattern}`);
         return { success: true, pattern };
+    });
+    /**
+     * 🔄 WAVE 2042.22: Apply manual pattern to specific fixtures
+     * This injects the pattern into MasterArbiter.activePatterns
+     * so it gets applied in getAdjustedPosition() during render loop
+     */
+    ipcMain.handle('lux:arbiter:setManualFixturePattern', (_event, { fixtureIds, pattern, speed, // 0-100
+    amplitude, // 0-100
+     }) => {
+        if (!pattern || pattern === 'static' || pattern === 'hold') {
+            // Clear pattern from fixtures
+            masterArbiter.clearPattern(fixtureIds);
+            console.log(`[Arbiter IPC] 🛑 Pattern CLEARED for ${fixtureIds.length} fixtures`);
+            return { success: true, cleared: true };
+        }
+        // Validate pattern type
+        const validPatterns = ['circle', 'eight', 'sweep'];
+        if (!validPatterns.includes(pattern)) {
+            console.warn(`[Arbiter IPC] Invalid pattern: ${pattern}, using 'circle'`);
+            pattern = 'circle';
+        }
+        // 🔧 WAVE 2042.24: Get current positions as pattern center (DMX 0-255 scale)
+        // Use first fixture's position as the center point
+        const firstFixture = masterArbiter.getManualOverride(fixtureIds[0]);
+        const centerPan = firstFixture?.controls.pan ?? 128; // Default center (50% of 255)
+        const centerTilt = firstFixture?.controls.tilt ?? 128;
+        // Convert UI values (0-100) to engine values (0-1)
+        // Speed: 0-100 → 0-0.5 Hz (0.5 = one cycle per 2 seconds)
+        // Size: 0-100 → 0-1 (multiplied by 128 DMX units in render)
+        const speedNormalized = (speed / 100) * 0.5;
+        const sizeNormalized = amplitude / 100; // 🔧 Changed: Full range 0-1, scaled in render
+        masterArbiter.setPattern(fixtureIds, {
+            type: pattern,
+            speed: speedNormalized,
+            size: sizeNormalized,
+            center: { pan: centerPan, tilt: centerTilt },
+        });
+        console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} applied to ${fixtureIds.length} fixtures (speed=${speed}%, amp=${amplitude}%)`);
+        return { success: true, pattern, fixtureIds: fixtureIds.length };
     });
     // ═══════════════════════════════════════════════════════════════════════
     // 🧠 WAVE 999.6: STATE HYDRATION - Get current fixture state for UI sync

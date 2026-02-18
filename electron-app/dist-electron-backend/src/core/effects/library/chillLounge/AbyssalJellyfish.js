@@ -43,7 +43,7 @@ const ZONE_POSITIONS = {
     backR: 0.80,
     frontR: 1.0,
 };
-const ZONE_NAMES = ['frontL', 'backL', 'movers_left', 'movers_right', 'backR', 'frontR'];
+const ZONE_NAMES = ['frontL', 'backL', 'movers-left', 'movers-right', 'backR', 'frontR'];
 export class AbyssalJellyfish extends BaseEffect {
     constructor(config) {
         super('abyssal_jellyfish');
@@ -169,8 +169,8 @@ export class AbyssalJellyfish extends BaseEffect {
         const moverLeftPan = (magentaPos - 0.5) * 18;
         const moverRightPan = (cyanPos - 0.5) * 18;
         const moverTilt = Math.sin(easedProgress * Math.PI * 1.2) * 6;
-        output.zoneOverrides['movers_left'] = {
-            ...output.zoneOverrides['movers_left'],
+        output.zoneOverrides['movers-left'] = {
+            ...output.zoneOverrides['movers-left'],
             movement: {
                 pan: moverLeftPan,
                 tilt: moverTilt + 5,
@@ -178,8 +178,8 @@ export class AbyssalJellyfish extends BaseEffect {
                 speed: 0.06,
             },
         };
-        output.zoneOverrides['movers_right'] = {
-            ...output.zoneOverrides['movers_right'],
+        output.zoneOverrides['movers-right'] = {
+            ...output.zoneOverrides['movers-right'],
             movement: {
                 pan: moverRightPan,
                 tilt: moverTilt - 3,

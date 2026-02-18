@@ -67,7 +67,7 @@ const COLORS = {
     warmWhite: { h: 40, s: 30, l: 95 }, // Blanco cálido (flash foto)
 };
 // Zonas para el efecto
-const SNAP_ZONES = ['front', 'pars', 'back', 'movers'];
+const SNAP_ZONES = ['front', 'all-pars', 'back', 'all-movers'];
 // ═══════════════════════════════════════════════════════════════════════════
 // 💥 SEISMIC SNAP CLASS
 // ═══════════════════════════════════════════════════════════════════════════

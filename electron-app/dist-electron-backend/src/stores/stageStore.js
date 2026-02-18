@@ -29,7 +29,8 @@
  */
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { createEmptyShowFile, createFixtureGroup } from '../core/stage/ShowFileV2';
+import { useShallow } from 'zustand/shallow';
+import { createEmptyShowFile, createFixtureGroup, normalizeZone } from '../core/stage/ShowFileV2';
 import { autoMigrate } from '../core/stage/ShowFileMigrator';
 // ═══════════════════════════════════════════════════════════════════════════
 // ID GENERATION (DETERMINISTIC, NOT RANDOM)
@@ -310,7 +311,8 @@ export const useStageStore = create()(subscribeWithSelector((set, get) => ({
         get()._setDirty();
     },
     setFixtureZone: (id, zone) => {
-        get().updateFixture(id, { zone });
+        // 🔥 WAVE 2040.24: Siempre normalizar a canonical antes de persistir
+        get().updateFixture(id, { zone: normalizeZone(zone) });
     },
     batchUpdateFixtures: (updates) => {
         const { showFile } = get();
@@ -468,6 +470,18 @@ export const selectFixturesInGroup = (groupId) => (state) => {
     return state.fixtures.filter(f => group.fixtureIds.includes(f.id));
 };
 export const selectMovingHeads = (state) => state.fixtures.filter(f => f.type === 'moving-head');
+// 🛡️ WAVE 2042.13.9: React 19 Fix - Consolidated selectors
+/** Selector: VisualPatcher - fixtures + actions */
+export const selectVisualPatcher = (state) => ({
+    fixtures: state.fixtures,
+    updateFixture: state.updateFixture,
+    saveShow: state.saveShow,
+});
+/** Selector: ForgeView - fixtures + addFixture */
+export const selectForgeView = (state) => ({
+    fixtures: state.fixtures,
+    addFixture: state.addFixture,
+});
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOKS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -485,9 +499,10 @@ export function useGroupFixtures(groupId) {
 }
 /**
  * Get all moving heads
+ * 🛡️ WAVE 2042.13: React 19 stable hook (useShallow wrapper)
  */
 export function useMovingHeads() {
-    return useStageStore(selectMovingHeads);
+    return useStageStore(useShallow(selectMovingHeads));
 }
 // ═══════════════════════════════════════════════════════════════════════════
 // INITIALIZATION (WAVE 365: Auto-load on startup)

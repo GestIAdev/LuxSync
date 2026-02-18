@@ -231,12 +231,12 @@ export class ClaveRhythm extends BaseEffect {
                 category: this.category,
                 phase: this.phase,
                 progress: this.elapsedMs / this.totalDurationMs,
-                zones: ['movers'],
+                zones: ['all-movers'],
                 intensity: 0,
                 dimmerOverride: undefined,
                 colorOverride: undefined,
                 zoneOverrides: {
-                    'movers': {
+                    'all-movers': {
                         color: { h: 0, s: 0, l: 0 },
                         dimmer: 0, // Movers apagados durante silencio
                         movement: {
@@ -264,7 +264,7 @@ export class ClaveRhythm extends BaseEffect {
         // ClaveRhythm es LONG (>2s) → Solo dimmer, NO color en movers
         // El color lo decide la física/rueda mecánica
         const zoneOverrides = {
-            'movers': {
+            'all-movers': {
                 // 🚨 WAVE 1004.2: NO COLOR - Solo dimmer (Mover Law)
                 dimmer: this.currentIntensity,
                 ...goldenFlash, // 🥁 WAVE 755: Flash dorado en cada golpe (white/amber SÍ permitido)

@@ -83,12 +83,18 @@ export class VibeManager {
         // 🔄 WAVE 2019.10: Normalize ID (handles legacy aliases like 'techno' → 'techno-club')
         const normalizedId = normalizeVibeId(vibeId);
         if (!normalizedId) {
-            console.warn(`[VibeManager] Invalid vibe ID: '${vibeId}' (no alias found)`);
+            // 🚨 WAVE 2040.3: EL CHIVATO - Enhanced 404 warning
+            console.warn(`[VibeManager] ⚠️ ERROR 404: Vibe '${vibeId}' no existe en registry.\n` +
+                `   ├─ IDs válidos: fiesta-latina, techno-club, chill-lounge, pop-rock, idle\n` +
+                `   ├─ Aliases legacy: techno → techno-club, chill → chill-lounge, rock → pop-rock\n` +
+                `   └─ Manteniendo el Vibe actual: '${this.currentVibe.id}'`);
             return false;
         }
         const newVibe = getVibePreset(normalizedId);
         if (!newVibe) {
-            console.warn(`[VibeManager] Vibe not found: '${normalizedId}'`);
+            // 🚨 WAVE 2040.3: Secondary check (should never happen if normalizeVibeId passed)
+            console.warn(`[VibeManager] ⚠️ ERROR 500: Vibe '${normalizedId}' pasó normalización pero no existe en VIBE_REGISTRY.\n` +
+                `   └─ Esto es un bug interno. Manteniendo el Vibe actual: '${this.currentVibe.id}'`);
             return false;
         }
         // No hacer nada si ya es el vibe activo

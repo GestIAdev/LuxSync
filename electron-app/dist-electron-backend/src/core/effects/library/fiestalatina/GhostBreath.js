@@ -84,7 +84,7 @@ export class GhostBreath extends BaseEffect {
         super.trigger(config);
         // � WAVE 725: Ghost Breath solo afecta BACK y MOVERS
         // El fantasma está DETRÁS del escenario - Front queda intacto
-        this.zones = ['back', 'movers'];
+        this.zones = ['back', 'all-movers'];
         this.breathPhase = 0;
         this.breathsCompleted = 0;
         this.currentIntensity = this.config.intensityFloor;
@@ -135,7 +135,7 @@ export class GhostBreath extends BaseEffect {
                 blendMode: 'replace', // 🎚️ WAVE 780: LTP - La respiración manda
             },
             // � WAVE 1009: FREEDOM DAY - Movers reciben color fantasmal
-            'movers': {
+            'all-movers': {
                 color: ghostColor, // 🔓 ¡LIBERTAD! Color UV/Cyan para movers
                 dimmer: scaledIntensity * 0.7, // Movers más sutiles
                 blendMode: 'replace', // 🎚️ WAVE 780: LTP - La respiración manda

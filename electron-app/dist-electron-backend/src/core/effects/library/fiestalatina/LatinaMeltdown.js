@@ -94,7 +94,7 @@ export class LatinaMeltdown extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // GLOBAL - Afecta TODO el escenario
-        this.zones = ['front', 'back', 'movers'];
+        this.zones = ['front', 'back', 'all-movers'];
         // Reset state
         this.currentHit = 0;
         this.hitPhase = 'pre-blackout';

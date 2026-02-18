@@ -23,6 +23,8 @@ import { TitanOrchestrator, setupIPCHandlers, registerTitanOrchestrator } from '
 import { registerArbiterHandlers, masterArbiter } from '../src/core/arbiter';
 // Stage Persistence (WAVE 365)
 import { stagePersistence, setupStageIPCHandlers } from '../src/core/stage';
+// ⚒️ Hephaestus File I/O (WAVE 2030.5)
+import { setupHephIPCHandlers } from '../src/core/hephaestus';
 // Config Manager V2 (WAVE 367) - PREFERENCES ONLY, NO FIXTURES
 import { configManager } from '../src/core/config/ConfigManagerV2';
 // External Services
@@ -37,6 +39,8 @@ import { fxtParser } from '../src/core/library/FXTParser';
 // 👻 WAVE 2005.3: Phantom Worker for audio analysis
 import { getPhantomWorker, destroyPhantomWorker } from './workers/PhantomWorkerManager';
 import { setupChronosIPCHandlers, cleanupChronosIPC } from './ipc/ChronosIPCHandlers';
+// 🎬 WAVE 2053.1: TimelineEngine playback IPC
+import { setupPlaybackIPCHandlers, cleanupPlaybackIPC } from './ipc/PlaybackIPCHandlers';
 // =============================================================================
 // GLOBAL STATE
 // =============================================================================
@@ -126,24 +130,26 @@ function autoAssignZone(fixtureType, fixtureName) {
         nameUpper.includes('5R') || nameUpper.includes('7R') || nameUpper.includes('MOVING')) {
         const currentCount = zoneCounters.moving;
         zoneCounters.moving++;
-        const zone = currentCount % 2 === 0 ? 'MOVING_LEFT' : 'MOVING_RIGHT';
+        // 🔥 WAVE 2040.24: Canonical zones
+        const zone = currentCount % 2 === 0 ? 'movers-left' : 'movers-right';
         console.log('[Zoning] Moving Head #' + currentCount + ' "' + fixtureName + '" -> ' + zone);
         return zone;
     }
-    // Strobes
+    // Strobes → center
     if (typeUpper.includes('STROBE') || nameUpper.includes('STROBE')) {
         zoneCounters.strobe++;
-        return 'STROBES';
+        return 'center';
     }
-    // Lasers
+    // Lasers → air
     if (typeUpper.includes('LASER') || nameUpper.includes('LASER')) {
         zoneCounters.laser++;
-        return 'LASERS';
+        return 'air';
     }
-    // PAR/LED/Wash - alternating front/back
+    // PAR/LED/Wash - alternating back/front
     const currentParCount = zoneCounters.par;
     zoneCounters.par++;
-    const zone = currentParCount % 2 === 0 ? 'BACK_PARS' : 'FRONT_PARS';
+    // 🔥 WAVE 2040.24: Canonical zones
+    const zone = currentParCount % 2 === 0 ? 'back' : 'front';
     console.log('[Zoning] PAR/LED #' + currentParCount + ' "' + fixtureName + '" -> ' + zone);
     return zone;
 }
@@ -221,13 +227,20 @@ async function initTitan() {
     setupStageIPCHandlers(() => mainWindow);
     console.log('[Main] 💾 Stage Persistence V2 initialized');
     // ═══════════════════════════════════════════════════════════════════════════
+    // ⚒️ WAVE 2030.5: Initialize Hephaestus File I/O
+    // ═══════════════════════════════════════════════════════════════════════════
+    setupHephIPCHandlers();
+    console.log('[Main] ⚒️ Hephaestus File I/O initialized (WAVE 2030.5)');
+    // ═══════════════════════════════════════════════════════════════════════════
     // 👻 WAVE 2005.3: Initialize Phantom Worker for audio analysis
     // ═══════════════════════════════════════════════════════════════════════════
     try {
         const phantom = getPhantomWorker();
         await phantom.init();
         setupChronosIPCHandlers(mainWindow);
+        setupPlaybackIPCHandlers();
         console.log('[Main] 👻 Phantom Worker initialized (WAVE 2005.3)');
+        console.log('[Main] 🎬 TimelineEngine playback initialized (WAVE 2053.1)');
     }
     catch (err) {
         console.error('[Main] ❌ Failed to initialize Phantom Worker:', err);
@@ -458,7 +471,8 @@ app.on('before-quit', async () => {
     // 👻 WAVE 2005.3: Cleanup Phantom Worker
     destroyPhantomWorker();
     await cleanupChronosIPC();
-    console.log('[Main] Config saved, TITAN stopped, Phantom destroyed');
+    cleanupPlaybackIPC();
+    console.log('[Main] Config saved, TITAN stopped, Phantom destroyed, Playback cleaned');
 });
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {

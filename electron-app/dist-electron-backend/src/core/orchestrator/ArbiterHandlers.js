@@ -116,6 +116,25 @@ export function setupArbiterHandlers() {
             hasOverride: masterArbiter.hasManualOverride(fixtureId, channel)
         };
     });
+    /**
+     * 👻 WAVE 2042.21: GHOST HANDOFF - Set context origin for soft release
+     *
+     * When the operator releases manual control, we inject the current position
+     * as the new "home" for the AI, so it doesn't jump to a random position.
+     *
+     * @param fixtureIds - Array of fixture IDs to update
+     * @param origin - { pan, tilt } in DMX values (0-255)
+     */
+    ipcMain.handle('lux:arbiter:setContextOrigin', (_event, args) => {
+        const { fixtureIds, origin } = args;
+        // Tell the arbiter to adopt this position as the new AI origin
+        // This sets the "home" position for VibeMovementManager
+        for (const fixtureId of fixtureIds) {
+            masterArbiter.setFixtureOrigin(fixtureId, origin.pan, origin.tilt);
+        }
+        console.log(`[ArbiterHandlers] 👻 GHOST HANDOFF: ${fixtureIds.length} fixtures → P${origin.pan}/T${origin.tilt}`);
+        return { success: true, fixtureIds, origin };
+    });
     // ═══════════════════════════════════════════════════════════════════════
     // BLACKOUT
     // ═══════════════════════════════════════════════════════════════════════

@@ -160,8 +160,8 @@ export class LiquidSolo extends BaseEffect {
             blendMode: 'max',
         };
         const zoneOverrides = {
-            'movers_left': moverOverride,
-            'movers_right': moverOverride, // Ambos movers hacen el MISMO sweep
+            'movers-left': moverOverride,
+            'movers-right': moverOverride, // Ambos movers hacen el MISMO sweep
             'back': backOverride,
             'front': frontOverride,
         };

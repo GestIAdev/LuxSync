@@ -1,5 +1,5 @@
 /**
- * 🌪️ UniversalDMXDriver.ts - WAVE 11: Driver DMX Universal
+ * 🌪️ UniversalDMXDriver.ts - WAVE 2020.2c: USB MULTI-HEAD HYDRA
  *
  * Driver profesional para CUALQUIER interfaz DMX USB:
  * - FTDI (Enttec Open DMX, Tornado, etc.)
@@ -9,12 +9,13 @@
  * - Cualquier otro adaptador serial
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * CARACTERÍSTICAS WAVE 11:
+ * 🔥 WAVE 2020.2c: MULTI-UNIVERSE USB HYDRA
+ * - Soporta MÚLTIPLES dongles conectados simultáneamente
+ * - Asignación automática: Dongle 1 → Univ 0, Dongle 2 → Univ 1...
+ * - Salida paralela con sendAll() (WAVE 2020.2b compliant)
  * - Autodetección AGRESIVA de cualquier chip serial
- * - Watchdog USB con eventos disconnect/reconnect
- * - Reconexión automática cada 2s
- * - Emite eventos IPC para UI (dmx:status)
- * - Mode promiscuo: intenta conectar a cualquier puerto serie
+ * - Watchdog USB con eventos disconnect/reconnect por universo
+ * - Reconexión automática inteligente
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { EventEmitter } from 'events';
@@ -40,21 +41,21 @@ const KNOWN_CHIPS = {
 const DMX_CHANNELS = 512;
 const DMX_START_CODE = 0x00;
 // ─────────────────────────────────────────────────────────────────────────────
-// DRIVER PRINCIPAL
+// DRIVER HIDRA (MULTI-HEAD)
 // ─────────────────────────────────────────────────────────────────────────────
 export class UniversalDMXDriver extends EventEmitter {
     constructor(config = {}) {
         super();
-        this.state = 'disconnected';
-        this.port = null;
+        // 🔥 WAVE 2020.2c: MULTI-UNIVERSE MAPS (en lugar de variables singulares)
+        this.ports = new Map();
+        this.universeBuffers = new Map();
+        this.connectedDevices = new Map();
         this.outputLoop = null;
-        this.reconnectTimer = null;
         this.watchdogTimer = null;
-        this.currentDevice = null;
+        this.reconnectTimer = null;
         this.SerialPort = null;
         this.lastError = null;
-        this.lastPath = null; // Para reconexión
-        this.consecutiveErrors = 0;
+        this.isScanning = false;
         // ═══════════════════════════════════════════════════════════════════════
         // 🛡️ WAVE 1101: PARANOIA PROTOCOL - DMX THROTTLING
         // 
@@ -72,10 +73,20 @@ export class UniversalDMXDriver extends EventEmitter {
             debug: config.debug ?? true, // Debug ON por defecto
             promiscuousMode: config.promiscuousMode ?? true, // Intentar todo
         };
-        // Inicializar buffer DMX (513 bytes: start code + 512 canales)
-        this.dmxBuffer = Buffer.alloc(DMX_CHANNELS + 1, 0);
-        this.dmxBuffer[0] = DMX_START_CODE;
-        this.log('🌪️ UniversalDMXDriver initialized (WAVE 11)');
+        // Inicializar Universo 0 por defecto (para compatibilidad con código legacy)
+        this.initBuffer(0);
+        this.log('🌪️ UniversalDMXDriver (WAVE 2020.2c: Multi-Head Hydra) initialized');
+    }
+    /**
+     * Inicializa un buffer DMX para un universo específico
+     */
+    initBuffer(universe) {
+        if (!this.universeBuffers.has(universe)) {
+            const buf = Buffer.alloc(DMX_CHANNELS + 1, 0);
+            buf[0] = DMX_START_CODE;
+            this.universeBuffers.set(universe, buf);
+            this.log(`📦 Buffer initialized for Universe ${universe}`);
+        }
     }
     // ─────────────────────────────────────────────────────────────────────────
     // DETECCIÓN DE DISPOSITIVOS (AGRESIVA)
@@ -164,42 +175,67 @@ export class UniversalDMXDriver extends EventEmitter {
         return devices;
     }
     /**
-     * 🎯 Autodetecta y conecta al mejor dispositivo DMX
+     * 🎯 WAVE 2020.2c: Escanea y conecta TODOS los dispositivos disponibles
+     * Asigna universos incrementalmente (0, 1, 2...)
      */
     async autoConnect() {
-        this.log('🔍 Auto-detecting DMX device...');
+        if (this.isScanning) {
+            this.log('⚠️ Already scanning...');
+            return false;
+        }
+        this.isScanning = true;
+        this.log('🔍 Hydra: Scanning for ALL compatible devices...');
         const devices = await this.listDevices();
         if (devices.length === 0) {
             this.log('⚠️ No serial devices found');
-            this.setState('disconnected');
             this.emit('no-devices');
+            this.isScanning = false;
             return false;
         }
-        // Intentar conectar al de mayor confianza
-        for (const device of devices) {
-            this.log(`🔌 Trying ${device.friendlyName} (${device.confidence}% confidence)...`);
-            const success = await this.connect(device.path);
+        // Filtrar dispositivos que ya están conectados
+        const connectedPaths = Array.from(this.connectedDevices.values()).map(d => d.path);
+        const newDevices = devices.filter(d => !connectedPaths.includes(d.path));
+        if (newDevices.length === 0 && this.ports.size > 0) {
+            this.log('✅ All available devices already connected');
+            this.isScanning = false;
+            return true;
+        }
+        // Buscar el siguiente universo libre
+        let nextUniverse = 0;
+        while (this.ports.has(nextUniverse)) {
+            nextUniverse++;
+        }
+        let connectedCount = 0;
+        // Intentar conectar cada dispositivo nuevo
+        for (const device of newDevices) {
+            this.log(`🔌 Hydra: Found ${device.friendlyName} (${device.confidence}%), assigning Universe ${nextUniverse}...`);
+            const success = await this.connect(device.path, nextUniverse);
             if (success) {
-                return true;
+                connectedCount++;
+                nextUniverse++;
             }
+        }
+        this.isScanning = false;
+        if (this.ports.size > 0) {
+            this.log(`✅ 🐙 Hydra Active: ${this.ports.size} universe(s) online`);
+            this.emit('hydra-ready', { universes: this.ports.size });
+            return true;
         }
         this.log('❌ Could not connect to any device');
         return false;
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // CONEXIÓN
+    // CONEXIÓN MULTI-CABEZA
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * 🔌 Conecta a un dispositivo DMX específico
+     * 🔌 WAVE 2020.2c: Conecta un dispositivo a un Universo específico
      */
-    async connect(portPath) {
-        if (this.state === 'connected') {
-            this.log('⚠️ Already connected, disconnecting first...');
-            await this.disconnect();
+    async connect(portPath, universe = 0) {
+        if (this.ports.has(universe)) {
+            this.log(`⚠️ Universe ${universe} already occupied, skipping ${portPath}`);
+            return false;
         }
-        this.setState('connecting');
-        this.lastPath = portPath;
-        this.log(`🔌 Connecting to ${portPath}...`);
+        this.log(`🔌 [Univ ${universe}] Connecting to ${portPath}...`);
         try {
             // Importar serialport si no está cargado
             if (!this.SerialPort) {
@@ -210,11 +246,8 @@ export class UniversalDMXDriver extends EventEmitter {
             const availableDevices = await this.listDevices();
             const targetDevice = availableDevices.find(d => d.path === portPath);
             const isIMC_UD7S = targetDevice?.deviceType === 'imc-ud7s';
-            // 🔌 IMC UD 7S: Configuración específica
-            // - Baud rate: 250000 (estándar DMX)
-            // - 8 data bits, no parity, 2 stop bits (8N2)
-            // - Flow control: none (importante para UD 7S)
-            this.port = new this.SerialPort({
+            // Configuración estándar DMX (250000 baud, 8N2)
+            const port = new this.SerialPort({
                 path: portPath,
                 baudRate: 250000,
                 dataBits: 8,
@@ -223,53 +256,41 @@ export class UniversalDMXDriver extends EventEmitter {
                 autoOpen: false,
             });
             if (isIMC_UD7S) {
-                this.log('🎯 IMC UD 7S detected - using optimized configuration');
+                this.log(`🎯 [Univ ${universe}] IMC UD 7S detected - optimized config`);
             }
-            // Promesa para esperar apertura
+            // Promesa para esperar apertura con timeout
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Connection timeout')), 5000);
-                this.port.open((err) => {
+                const timeout = setTimeout(() => reject(new Error('Connection timeout')), 3000);
+                port.open((err) => {
                     clearTimeout(timeout);
-                    if (err) {
-                        reject(err);
-                    }
-                    else {
-                        resolve();
-                    }
+                    err ? reject(err) : resolve();
                 });
             });
-            // Usar el dispositivo ya detectado o fallback
-            this.currentDevice = targetDevice || {
+            // Registrar conexión en el Map
+            this.ports.set(universe, port);
+            this.initBuffer(universe);
+            // Guardar info del dispositivo
+            const deviceInfo = targetDevice || {
                 path: portPath,
                 deviceType: 'generic',
                 friendlyName: portPath,
                 confidence: 50,
             };
-            // 🛡️ WAVE 11: Manejar errores y desconexiones con watchdog
-            this.port.on('error', (err) => {
-                console.error('[UniversalDMX] ❌ Port error:', err);
-                this.consecutiveErrors++;
-                this.lastError = `Port error: ${err.message}`;
-                this.handleDisconnect('error');
-            });
-            this.port.on('close', () => {
-                this.log('🔌 Port closed unexpectedly');
-                this.handleDisconnect('closed');
-            });
-            this.consecutiveErrors = 0;
-            this.setState('connected');
-            this.log(`✅ Connected to ${portPath} (${this.currentDevice.friendlyName})`);
-            // Iniciar loop de salida DMX
+            this.connectedDevices.set(universe, deviceInfo);
+            // 🛡️ Eventos de error individuales por universo
+            port.on('error', (err) => this.handlePortError(universe, err));
+            port.on('close', () => this.handlePortClose(universe));
+            this.log(`✅ [Univ ${universe}] Connected to ${deviceInfo.friendlyName}`);
+            // Asegurar que el loop de salida corre
             this.startOutputLoop();
-            // Iniciar watchdog
+            // Asegurar watchdog activo
             this.startWatchdog();
-            this.emit('connected', this.currentDevice);
+            this.emit('connected', { universe, device: deviceInfo });
             return true;
         }
         catch (err) {
-            console.error('[UniversalDMX] ❌ Connection failed:', err);
-            this.lastError = `Connection failed: ${err}`;
-            this.setState('error');
+            this.log(`❌ [Univ ${universe}] Connection failed to ${portPath}: ${err}`);
+            this.lastError = `[Univ ${universe}] ${err}`;
             if (this.config.autoReconnect) {
                 this.scheduleReconnect();
             }
@@ -277,90 +298,134 @@ export class UniversalDMXDriver extends EventEmitter {
         }
     }
     /**
-     * 🔌 Desconecta del dispositivo
+     * Maneja errores de puerto para un universo específico
+     */
+    handlePortError(universe, err) {
+        this.log(`❌ [Univ ${universe}] Port error: ${err.message}`);
+        this.disconnectUniverse(universe);
+    }
+    /**
+     * Maneja cierre de puerto para un universo específico
+     */
+    handlePortClose(universe) {
+        this.log(`⚠️ [Univ ${universe}] Port closed`);
+        this.disconnectUniverse(universe);
+    }
+    /**
+     * Desconecta un universo específico
+     */
+    async disconnectUniverse(universe) {
+        const port = this.ports.get(universe);
+        const device = this.connectedDevices.get(universe);
+        if (port) {
+            try {
+                if (port.isOpen) {
+                    await new Promise(r => port.close(() => r()));
+                }
+            }
+            catch (err) {
+                this.log(`⚠️ [Univ ${universe}] Error closing port: ${err}`);
+            }
+            this.ports.delete(universe);
+            this.connectedDevices.delete(universe);
+            this.emit('disconnected', { universe, device });
+            this.log(`🔌 [Univ ${universe}] Disconnected`);
+            // Si no quedan puertos conectados, intentar reconectar
+            if (this.ports.size === 0 && this.config.autoReconnect) {
+                this.log('⚠️ All universes disconnected, scheduling reconnect...');
+                this.scheduleReconnect();
+            }
+        }
+    }
+    /**
+     * 🔌 Desconecta TODOS los universos
      */
     async disconnect() {
-        this.log('🔌 Disconnecting...');
+        this.log('🔌 Disconnecting all universes...');
         this.stopOutputLoop();
         this.stopWatchdog();
         this.clearReconnectTimer();
-        if (this.port && this.port.isOpen) {
-            await new Promise((resolve) => {
-                this.port.close(() => resolve());
-            });
+        // Cerrar todos los puertos
+        const closePromises = [];
+        for (const [universe, port] of this.ports) {
+            if (port && port.isOpen) {
+                const promise = new Promise((resolve) => {
+                    port.close(() => resolve());
+                });
+                closePromises.push(promise);
+            }
         }
-        this.port = null;
-        this.currentDevice = null;
-        this.setState('disconnected');
-        this.emit('disconnected');
+        await Promise.all(closePromises);
+        this.ports.clear();
+        this.connectedDevices.clear();
+        this.log('🔌 All universes disconnected');
+        this.emit('all-disconnected');
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // 🛡️ WAVE 11: WATCHDOG USB
+    // 🛡️ WAVE 2020.2c: WATCHDOG USB (Multi-Universe)
     // ─────────────────────────────────────────────────────────────────────────
     startWatchdog() {
         if (this.watchdogTimer)
             return;
         this.watchdogTimer = setInterval(() => {
-            // Verificar que el puerto sigue abierto
-            if (!this.port || !this.port.isOpen) {
-                this.log('🐕 Watchdog: Port not open!');
-                this.handleDisconnect('watchdog');
+            // Verificar que todos los puertos siguen abiertos
+            for (const [universe, port] of this.ports) {
+                if (!port || !port.isOpen) {
+                    this.log(`🐕 Watchdog: Universe ${universe} port not open!`);
+                    this.disconnectUniverse(universe);
+                }
             }
         }, this.config.watchdogInterval);
-        this.log('🐕 Watchdog started');
+        this.log('🐕 Watchdog started (multi-universe mode)');
     }
     stopWatchdog() {
         if (this.watchdogTimer) {
             clearInterval(this.watchdogTimer);
             this.watchdogTimer = null;
-        }
-    }
-    handleDisconnect(reason) {
-        this.log(`⚠️ Disconnect detected: ${reason}`);
-        this.stopOutputLoop();
-        this.stopWatchdog();
-        this.port = null;
-        this.setState('disconnected');
-        this.emit('disconnected', { reason, lastDevice: this.currentDevice });
-        if (this.config.autoReconnect) {
-            this.setState('reconnecting');
-            this.emit('reconnecting', { lastPath: this.lastPath });
-            this.scheduleReconnect();
+            this.log('🐕 Watchdog stopped');
         }
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // SALIDA DMX
+    // SALIDA DMX PARALELA (WAVE 2020.2c HYDRA)
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * 🎚️ Establece el valor de un canal DMX (1-512)
+     * 🎚️ Establece el valor de un canal DMX (1-512) en un universo
      */
-    setChannel(channel, value) {
+    setChannel(channel, value, universe = 0) {
         if (channel < 1 || channel > DMX_CHANNELS)
             return;
-        this.dmxBuffer[channel] = Math.max(0, Math.min(255, Math.round(value)));
+        const buf = this.universeBuffers.get(universe);
+        if (buf) {
+            buf[channel] = Math.max(0, Math.min(255, Math.round(value)));
+        }
     }
     /**
-     * 🎚️ Establece múltiples canales desde un offset
+     * 🎚️ Establece múltiples canales desde un offset en un universo
      */
-    setChannels(startChannel, values) {
+    setChannels(startChannel, values, universe = 0) {
+        const buf = this.universeBuffers.get(universe);
+        if (!buf)
+            return;
         for (let i = 0; i < values.length; i++) {
             const channel = startChannel + i;
             if (channel <= DMX_CHANNELS) {
-                this.setChannel(channel, values[i]);
+                buf[channel] = Math.max(0, Math.min(255, Math.round(values[i])));
             }
         }
     }
     /**
-     * 🎚️ Establece todo el buffer DMX de una vez
+     * 🎚️ Establece todo el buffer DMX de un universo de una vez
      */
-    setUniverse(values) {
+    setUniverse(values, universe = 0) {
+        this.initBuffer(universe);
+        const buf = this.universeBuffers.get(universe);
         const len = Math.min(values.length, DMX_CHANNELS);
         for (let i = 0; i < len; i++) {
-            this.dmxBuffer[i + 1] = values[i];
+            buf[i + 1] = values[i];
         }
     }
     /**
-     * 🔄 Inicia el loop de salida DMX
+     * 🔄 Inicia el loop de salida DMX (opcional - sendAll desde HAL es mejor)
      */
     startOutputLoop() {
         if (this.outputLoop)
@@ -382,48 +447,51 @@ export class UniversalDMXDriver extends EventEmitter {
         }
     }
     /**
-     * 📤 Envía un frame DMX al dispositivo
+     * 📤 WAVE 2020.2c: El método mágico que el HAL necesita
+     * Envía TODOS los universos en paralelo sin bloquear
+     *
+     * Compatible con IDMXDriver (WAVE 2020.2b)
+     */
+    async sendAll() {
+        if (this.ports.size === 0)
+            return false;
+        const promises = [];
+        for (const [universe, port] of this.ports) {
+            const buffer = this.universeBuffers.get(universe);
+            if (port.isOpen && buffer) {
+                // Envolver write en promesa para paralelizar
+                const p = new Promise((resolve) => {
+                    port.write(buffer, (err) => {
+                        if (err) {
+                            this.log(`❌ [Univ ${universe}] Write error: ${err.message}`);
+                        }
+                        resolve(); // Resolvemos siempre para no bloquear Promise.all
+                    });
+                });
+                promises.push(p);
+            }
+        }
+        await Promise.all(promises);
+        return true;
+    }
+    /**
+     * 📤 Envía un frame DMX a TODOS los dispositivos (loop interno)
+     * Compatibility method - sendAll() es preferido
      */
     sendDMXFrame() {
-        if (!this.port || !this.port.isOpen)
-            return;
-        try {
-            this.port.write(this.dmxBuffer, (err) => {
-                if (err) {
-                    this.consecutiveErrors++;
-                    if (this.consecutiveErrors > 10) {
-                        this.log('❌ Too many write errors, disconnecting...');
-                        this.handleDisconnect('write-errors');
-                    }
-                }
-                else {
-                    this.consecutiveErrors = 0;
-                }
-            });
-        }
-        catch (err) {
-            console.error('[UniversalDMX] ❌ Frame send error:', err);
-        }
+        // Simplemente llamar sendAll (fire and forget)
+        void this.sendAll();
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // RECONEXIÓN AUTOMÁTICA
+    // RECONEXIÓN AUTOMÁTICA (WAVE 2020.2c HYDRA)
     // ─────────────────────────────────────────────────────────────────────────
     scheduleReconnect() {
         this.clearReconnectTimer();
         this.log(`⏰ Reconnecting in ${this.config.reconnectDelay}ms...`);
         this.reconnectTimer = setTimeout(async () => {
-            if (this.lastPath) {
-                this.log('🔄 Attempting reconnect to last device...');
-                const success = await this.connect(this.lastPath);
-                if (!success) {
-                    // Intentar autodetectar otro dispositivo
-                    this.log('🔍 Last device unavailable, scanning for alternatives...');
-                    await this.autoConnect();
-                }
-            }
-            else {
-                await this.autoConnect();
-            }
+            // Intentar reconectar todos los dispositivos disponibles
+            this.log('� Attempting hydra reconnect...');
+            await this.autoConnect();
         }, this.config.reconnectDelay);
     }
     clearReconnectTimer() {
@@ -432,24 +500,13 @@ export class UniversalDMXDriver extends EventEmitter {
             this.reconnectTimer = null;
         }
     }
-    // ─────────────────────────────────────────────────────────────────────────
-    // ESTADO Y UTILIDADES
-    // ─────────────────────────────────────────────────────────────────────────
-    setState(state) {
-        if (this.state !== state) {
-            const oldState = this.state;
-            this.state = state;
-            this.log(`📊 State: ${oldState} → ${state}`);
-            this.emit('state', state, oldState);
-        }
-    }
     log(message) {
         if (this.config.debug) {
             console.log(`[UniversalDMX] ${message}`);
         }
     }
     // ─────────────────────────────────────────────────────────────────────────
-    // WAVE 688: ALIASES PARA COMPATIBILIDAD IPC
+    // WAVE 2020.2c: GETTERS Y MÉTODOS PÚBLICOS (HYDRA)
     // ─────────────────────────────────────────────────────────────────────────
     /**
      * 🔍 Alias for listDevices() - used by IPC handlers
@@ -459,88 +516,99 @@ export class UniversalDMXDriver extends EventEmitter {
     }
     /**
      * 📤 Alias for setUniverse() - used by IPC handlers
-     * Sends a complete DMX frame
      */
-    sendFrame(frame) {
-        this.setUniverse(frame);
+    sendFrame(frame, universe = 0) {
+        this.setUniverse(frame, universe);
     }
     // Getters públicos
     get isConnected() {
-        return this.state === 'connected';
+        return this.ports.size > 0;
     }
-    get currentState() {
-        return this.state;
+    get connectedUniverses() {
+        return this.ports.size;
     }
-    get device() {
-        return this.currentDevice;
+    get devices() {
+        return this.connectedDevices;
     }
     get error() {
         return this.lastError;
     }
-    get buffer() {
-        return this.dmxBuffer;
+    /**
+     * Get buffer for a specific universe
+     */
+    getBuffer(universe = 0) {
+        return this.universeBuffers.get(universe);
     }
     /**
-     * 📊 Obtiene estadísticas del driver
+     * 📊 Obtiene estadísticas del driver (Multi-Universe)
      */
     getStats() {
-        let activeChannels = 0;
-        for (let i = 1; i <= DMX_CHANNELS; i++) {
-            if (this.dmxBuffer[i] > 0)
-                activeChannels++;
+        let totalActive = 0;
+        // Contar canales activos en todos los universos
+        for (const [universe, buffer] of this.universeBuffers) {
+            if (this.ports.has(universe)) {
+                for (let i = 1; i <= DMX_CHANNELS; i++) {
+                    if (buffer[i] > 0)
+                        totalActive++;
+                }
+            }
         }
+        const deviceList = Array.from(this.connectedDevices.entries()).map(([universe, device]) => ({
+            universe,
+            device,
+        }));
         return {
-            state: this.state,
-            device: this.currentDevice,
+            universes: this.ports.size,
+            devices: deviceList,
             refreshRate: this.config.refreshRate,
-            channelsActive: activeChannels,
+            totalChannelsActive: totalActive,
             lastError: this.lastError,
-            consecutiveErrors: this.consecutiveErrors,
         };
     }
     /**
-     * 🧹 Blackout: todos los canales a 0
+     * 🧹 Blackout: todos los canales a 0 en TODOS los universos
      */
     blackout() {
-        for (let i = 1; i <= DMX_CHANNELS; i++) {
-            this.dmxBuffer[i] = 0;
+        for (const [universe, buffer] of this.universeBuffers) {
+            for (let i = 1; i <= DMX_CHANNELS; i++) {
+                buffer[i] = 0;
+            }
         }
-        this.log('🌑 Blackout');
+        this.log(`🌑 Blackout (${this.universeBuffers.size} universes)`);
     }
     /**
-     * ☀️ Full on: todos los canales a 255
+     * ☀️ Full on: todos los canales a 255 en TODOS los universos
      */
     fullOn() {
-        for (let i = 1; i <= DMX_CHANNELS; i++) {
-            this.dmxBuffer[i] = 255;
+        for (const [universe, buffer] of this.universeBuffers) {
+            for (let i = 1; i <= DMX_CHANNELS; i++) {
+                buffer[i] = 255;
+            }
         }
-        this.log('☀️ Full on');
+        this.log(`☀️ Full on (${this.universeBuffers.size} universes)`);
     }
     /**
-     * 🔦 WAVE 11: Highlight - Enciende solo un fixture específico
-     * @param startChannel Canal inicial del fixture
-     * @param channelCount Número de canales del fixture
-     * @param isMovingHead Si es cabeza móvil, hacer movimiento de prueba
+     * 🔦 WAVE 2020.2c: Highlight - Enciende solo un fixture específico
      */
-    highlightFixture(startChannel, channelCount, isMovingHead = false) {
+    highlightFixture(startChannel, channelCount, universe = 0, isMovingHead = false) {
         // Primero blackout
         this.blackout();
         // Encender dimmer del fixture (primer canal suele ser dimmer)
-        this.setChannel(startChannel, 255);
+        this.setChannel(startChannel, 255, universe);
         // Si tiene RGB, ponerlo en blanco
         if (channelCount >= 4) {
-            this.setChannel(startChannel + 1, 255); // R
-            this.setChannel(startChannel + 2, 255); // G
-            this.setChannel(startChannel + 3, 255); // B
+            this.setChannel(startChannel + 1, 255, universe); // R
+            this.setChannel(startChannel + 2, 255, universe); // G
+            this.setChannel(startChannel + 3, 255, universe); // B
         }
         // Si es moving head, mover lentamente
         if (isMovingHead && channelCount >= 6) {
             // Pan al 50% (centro)
-            this.setChannel(startChannel + 4, 128);
+            this.setChannel(startChannel + 4, 128, universe);
             // Tilt al 50% (centro)
-            this.setChannel(startChannel + 5, 128);
+            this.setChannel(startChannel + 5, 128, universe);
         }
-        this.log(`🔦 Highlighting fixture at DMX ${startChannel} (${channelCount}ch, moving: ${isMovingHead})`);
+        this.log(`🔦 Highlighting fixture at Univ ${universe} / DMX ${startChannel} (${channelCount}ch)`);
     }
 }
 // Exportar instancia singleton

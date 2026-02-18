@@ -105,7 +105,7 @@ export class AbyssalRise extends BaseEffect {
     trigger(config) {
         super.trigger(config);
         // Afecta TODO (global override)
-        this.zones = ['front', 'back', 'pars', 'movers'];
+        this.zones = ['front', 'back', 'all-pars', 'all-movers'];
         // Reset state
         this.currentPhase = 'pressure';
         // Ajustar duración si viene BPM del contexto
@@ -186,13 +186,13 @@ export class AbyssalRise extends BaseEffect {
             globalComposition: fadeOpacity, // 🌊 WAVE 1090
             zoneOverrides: {
                 // MOVERS: Azul fijo (respeta Mover Law - sin cambio de color rápido)
-                'movers': {
+                'all-movers': {
                     color: COLORS.deepBlue, // Azul profundo FIJO
                     dimmer: 1.0, // Full dimmer (el color es oscuro)
                     blendMode: 'replace'
                 },
                 // PARS: UV/Purple vibrando con el flicker
-                'pars': {
+                'all-pars': {
                     color: COLORS.uvPurple, // UV/Purple
                     dimmer: flicker * 0.8, // Intensidad variable (flicker)
                     blendMode: 'replace'
@@ -235,12 +235,12 @@ export class AbyssalRise extends BaseEffect {
             zones: this.zones,
             globalComposition: fadeOpacity, // 🌊 WAVE 1090
             zoneOverrides: {
-                'movers': {
+                'all-movers': {
                     color: COLORS.cyanElectric,
                     dimmer: strobe,
                     blendMode: 'replace'
                 },
-                'pars': {
+                'all-pars': {
                     color: COLORS.cyanElectric,
                     dimmer: strobe,
                     blendMode: 'replace'
@@ -271,8 +271,8 @@ export class AbyssalRise extends BaseEffect {
             zones: this.zones,
             globalComposition: fadeOpacity, // 🌊 WAVE 1090
             zoneOverrides: {
-                'movers': { dimmer: 0, blendMode: 'replace' },
-                'pars': { dimmer: 0, blendMode: 'replace' },
+                'all-movers': { dimmer: 0, blendMode: 'replace' },
+                'all-pars': { dimmer: 0, blendMode: 'replace' },
                 'front': { dimmer: 0, blendMode: 'replace' },
                 'back': { dimmer: 0, blendMode: 'replace' }
             }

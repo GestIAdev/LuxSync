@@ -143,14 +143,14 @@ export class CyberDualism extends BaseEffect {
         }
         // 🔥 WAVE 810: TARGETING QUIRÚRGICO
         // Siempre afectamos AMBOS lados: uno ON, otro OFF
-        const activeZone = this.currentSide === 'left' ? 'movers_left' : 'movers_right';
-        const darkZone = this.currentSide === 'left' ? 'movers_right' : 'movers_left';
+        const activeZone = this.currentSide === 'left' ? 'movers-left' : 'movers-right';
+        const darkZone = this.currentSide === 'left' ? 'movers-right' : 'movers-left';
         const output = {
             effectId: this.id,
             category: this.category,
             phase: this.phase,
             progress: this.currentCycle / this.config.cycles,
-            zones: ['movers_left', 'movers_right'], // 🔦 AMBOS LADOS SIEMPRE
+            zones: ['movers-left', 'movers-right'], // 🔦 AMBOS LADOS SIEMPRE
             intensity,
             // 🤖 Zone overrides con Dimmer Lock
             zoneOverrides: {

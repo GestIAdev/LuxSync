@@ -199,8 +199,63 @@ export class FixturePhysicsDriver {
         const safePan = Math.max(0, Math.min(255, targetPanDMX));
         const safeTilt = Math.max(config.limits.tiltMin, Math.min(config.limits.tiltMax, targetTiltDMX));
         const targetDMX = { pan: safePan, tilt: safeTilt };
-        // Aplicar física de interpolación
-        const smoothedDMX = this.applyPhysicsEasing(fixtureId, targetDMX, deltaTime);
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🔧 WAVE 2040.2: PHANTOM MODE PROTECTION - THE MATH EXPLOSION FIX
+        // 🚫 WAVE 2040.2b: ANTI-FREEZE TELEPORT MODE
+        // 
+        // Cuando Chronos está reproduciendo, el deltaTime puede ser errático:
+        // - Pausado: deltaTime = 0 o Infinity
+        // - Saltos pequeños: deltaTime 50-200ms (lag/pausa)
+        // - Saltos grandes: deltaTime > 200ms (usuario saltó timeline de 0s → 2:00)
+        // 
+        // ESTRATEGIA TRIPLE:
+        // 1. deltaTime < 50ms → Live Mode (single pass physics)
+        // 2. 50ms < deltaTime < 200ms → Iterative Chunking (divide en 16ms)
+        // 3. deltaTime > 200ms → TELEPORT MODE (skip physics, jump instantly)
+        // 
+        // ⚠️ CRÍTICO: Si deltaTime = 120,000ms (2 min), dividir en 7,500 chunks
+        //    congelaría la UI de React. TELEPORT evita el bucle infinito.
+        // ═══════════════════════════════════════════════════════════════════════
+        let smoothedDMX = targetDMX; // Inicializado con target safe
+        if (deltaTime > 200) {
+            // ═══════════════════════════════════════════════════════════════════
+            // 🚫 TELEPORT MODE: Timeline jump detected (e.g., 0s → 2:00)
+            // Skip physics entirely, jump to target position instantly
+            // Force velocity to 0 to avoid math explosions
+            // ═══════════════════════════════════════════════════════════════════
+            smoothedDMX = targetDMX;
+            this.currentPositions.set(fixtureId, targetDMX);
+            this.velocities.set(fixtureId, { pan: 0, tilt: 0 });
+            // Debug log (low frequency to avoid spam)
+            if (Math.random() < 0.05) {
+                console.log(`[🚀 TELEPORT] ${fixtureId} | dt=${deltaTime.toFixed(0)}ms → instant jump (skip physics)`);
+            }
+        }
+        else if (deltaTime > 50) {
+            // ═══════════════════════════════════════════════════════════════════
+            // 🎬 PHANTOM MODE: Iterative chunking for medium deltas (lag/pause)
+            // Divide into 16ms chunks to keep velocity calculation stable
+            // ═══════════════════════════════════════════════════════════════════
+            const CHUNK_SIZE = 16; // ms per iteration
+            const iterations = Math.ceil(deltaTime / CHUNK_SIZE);
+            const actualChunk = deltaTime / iterations;
+            // Iterate physics in small steps
+            let currentTarget = targetDMX;
+            for (let i = 0; i < iterations; i++) {
+                smoothedDMX = this.applyPhysicsEasing(fixtureId, currentTarget, actualChunk);
+                currentTarget = smoothedDMX;
+            }
+            // Debug log (low frequency)
+            if (Math.random() < 0.016) {
+                console.log(`[🎬 PHANTOM] ${fixtureId} | dt=${deltaTime.toFixed(0)}ms → ${iterations} chunks`);
+            }
+        }
+        else {
+            // ═══════════════════════════════════════════════════════════════════
+            // ✅ LIVE MODE: Normal deltaTime (< 50ms) - single pass physics
+            // ═══════════════════════════════════════════════════════════════════
+            smoothedDMX = this.applyPhysicsEasing(fixtureId, targetDMX, deltaTime);
+        }
         // NaN guard
         const finalPan = Number.isFinite(smoothedDMX.pan) ? smoothedDMX.pan : config.home.pan;
         const finalTilt = Number.isFinite(smoothedDMX.tilt) ? smoothedDMX.tilt : config.home.tilt;
@@ -464,9 +519,20 @@ export class FixturePhysicsDriver {
             deltaTilt = Math.max(-REV_LIMIT_TILT, Math.min(REV_LIMIT_TILT, deltaTilt));
             newPos.pan = current.pan + deltaPan;
             newPos.tilt = current.tilt + deltaTilt;
-            // Calcular velocidad para stats
-            newVel.pan = deltaPan / dt;
-            newVel.tilt = deltaTilt / dt;
+            // ═══════════════════════════════════════════════════════════════════════
+            // 🔧 WAVE 2040.2: REINFORCED NaN GUARD - Velocity Explosion Protection
+            // 
+            // Si dt es muy pequeño (< 1ms) o deltaPan/deltaTilt son enormes (saltos square),
+            // la división puede resultar en Infinity → NaN Guard debe resetear velocidad.
+            // ═══════════════════════════════════════════════════════════════════════
+            const safeVelPan = dt > 0.1 ? deltaPan / dt : 0;
+            const safeVelTilt = dt > 0.1 ? deltaTilt / dt : 0;
+            newVel.pan = Number.isFinite(safeVelPan) ? safeVelPan : 0;
+            newVel.tilt = Number.isFinite(safeVelTilt) ? safeVelTilt : 0;
+            // Debugging: alertar si se detectó explosión
+            if (!Number.isFinite(safeVelPan) || !Number.isFinite(safeVelTilt)) {
+                console.warn(`[PhysicsDriver] 🔧 WAVE 2040.2: Velocity explosion detected! dt=${dt.toFixed(2)}ms, deltaPan=${deltaPan.toFixed(1)}, deltaTilt=${deltaTilt.toFixed(1)} → velocity reset to 0`);
+            }
             this.currentPositions.set(fixtureId, newPos);
             this.velocities.set(fixtureId, newVel);
             return newPos;

@@ -44,7 +44,7 @@ const DEFAULT_CONFIG = {
     bpmSync: false, // NO sync - queremos dispersión orgánica
 };
 // Zonas disponibles para flashes
-const FLASH_ZONES = ['front', 'pars', 'back'];
+const FLASH_ZONES = ['front', 'all-pars', 'back'];
 // ═══════════════════════════════════════════════════════════════════════════
 // 📸 AMBIENT STROBE CLASS
 // ═══════════════════════════════════════════════════════════════════════════

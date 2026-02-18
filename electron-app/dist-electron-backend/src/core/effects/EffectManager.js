@@ -5,6 +5,7 @@
  *
  * WAVE 600: EFFECT ARSENAL
  * WAVE 680: THE ARSENAL & THE SHIELD
+ * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION - Curve automation overlays
  *
  * El EffectManager es el orquestador central de todos los efectos.
  * Mantiene la lista de efectos activos, los actualiza cada frame,
@@ -14,6 +15,11 @@
  * Antes de disparar cualquier efecto, consulta las restricciones del Vibe activo.
  * Si el efecto está prohibido, se bloquea. Si está degradado, se ajusta.
  *
+ * ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+ * When an effect is triggered with hephCurves, we create a HephParameterOverlay
+ * that modulates the effect's output in real-time based on automation curves.
+ * The overlay sits ABOVE the effect and transforms its output transparently.
+ *
  * RESPONSABILIDADES:
  * 1. Registry de tipos de efectos disponibles
  * 2. Instanciar y disparar efectos bajo demanda
@@ -21,13 +27,16 @@
  * 4. Actualizar efectos activos cada frame
  * 5. Combinar outputs (HTP para dimmer, LTP para color)
  * 6. Limpiar efectos terminados
+ * 7. ⚒️ Aplicar HephParameterOverlay a efectos con curvas
  *
  * SINGLETON: Solo hay un EffectManager global
  *
  * @module core/effects/EffectManager
- * @version WAVE 680
+ * @version WAVE 680 / WAVE 2030.4
  */
 import { EventEmitter } from 'events';
+// ⚒️ WAVE 2030.4: HEPHAESTUS INTEGRATION
+import { HephParameterOverlay } from '../hephaestus/HephParameterOverlay';
 // Import effect library
 import { SolarFlare } from './library/fiestalatina/SolarFlare';
 import { StrobeStorm } from './library/fiestalatina/StrobeStorm';
@@ -291,6 +300,14 @@ export class EffectManager extends EventEmitter {
         this.effectFactories = new Map();
         /** Efectos actualmente activos */
         this.activeEffects = new Map();
+        /**
+         * ⚒️ WAVE 2030.4: HEPHAESTUS OVERLAYS
+         *
+         * Map de effectId → HephParameterOverlay
+         * Cuando un efecto tiene curvas de automatización, su overlay
+         * se guarda aquí y se aplica sobre el output en getCombinedOutput().
+         */
+        this.overlays = new Map();
         /** Stats */
         this.stats = {
             totalTriggered: 0,
@@ -300,7 +317,7 @@ export class EffectManager extends EventEmitter {
         /** Frame timing */
         this.lastUpdateTime = Date.now();
         this.registerBuiltinEffects();
-        console.log('[EffectManager 🎛️] Initialized with built-in effects');
+        console.log('[EffectManager 🎛️] Initialized with built-in effects ⚒️ Hephaestus overlay support enabled');
     }
     // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -369,6 +386,12 @@ export class EffectManager extends EventEmitter {
         effect.trigger(config);
         // Registrar como activo
         this.activeEffects.set(effect.id, effect);
+        // ⚒️ WAVE 2030.4: HEPHAESTUS - Crear overlay si hay curvas de automatización
+        if (config.hephCurves) {
+            const overlay = new HephParameterOverlay(config.hephCurves);
+            this.overlays.set(effect.id, overlay);
+            console.log(`[EffectManager ⚒️] HEPHAESTUS: Overlay created for ${effect.id} with ${config.hephCurves.curves.size} curves`);
+        }
         // Stats
         this.stats.totalTriggered++;
         this.stats.lastTriggered = config.effectType;
@@ -381,6 +404,7 @@ export class EffectManager extends EventEmitter {
             source: config.source,
             vibeId,
             degraded: shieldResult.degraded,
+            hephEnabled: !!config.hephCurves, // ⚒️ WAVE 2030.4
         });
         // 🛡️ WAVE 811: Log ÚNICO de ejecución - LA VOZ DEL EJECUTOR
         // Incluye: efecto, vibe, source, degraded, intensidad, z-score
@@ -389,7 +413,8 @@ export class EffectManager extends EventEmitter {
             ? `Z:${config.musicalContext.zScore.toFixed(1)}`
             : '';
         const sourceTag = config.source ? `[${config.source}]` : '';
-        console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus} | I:${config.intensity.toFixed(2)} ${zInfo}`);
+        const hephTag = config.hephCurves ? ' ⚒️[HEPH]' : '';
+        console.log(`[EffectManager 🔥] ${config.effectType} FIRED ${sourceTag} in ${vibeId} ${shieldStatus}${hephTag} | I:${config.intensity.toFixed(2)} ${zInfo}`);
         // ═══════════════════════════════════════════════════════════════════════
         // 🌊 WAVE 1071: COOLDOWN REGISTRATION - Informar al ContextualEffectSelector
         // Esto asegura que CUALQUIER sistema que quiera disparar este efecto
@@ -504,9 +529,19 @@ export class EffectManager extends EventEmitter {
         // Estructura: { [zoneId]: { color?, dimmer?, white?, amber?, movement?, priority } }
         const combinedZoneOverrides = {};
         for (const [id, effect] of this.activeEffects) {
-            const output = effect.getOutput();
+            let output = effect.getOutput();
             if (!output)
                 continue;
+            // ⚒️ WAVE 2030.4: HEPHAESTUS - Aplicar overlay de curvas si existe
+            const overlay = this.overlays.get(id);
+            if (overlay) {
+                // Calcular timeMs desde el progreso del efecto
+                const progress = effect.isFinished() ? 1 : (output.progress ?? 0);
+                const durationMs = overlay.getDurationMs();
+                const timeMs = progress * durationMs;
+                // Aplicar transformación del overlay
+                output = overlay.apply(output, timeMs);
+            }
             contributing.push(id);
             // HTP for dimmer
             if (output.dimmerOverride !== undefined && output.dimmerOverride > maxDimmer) {

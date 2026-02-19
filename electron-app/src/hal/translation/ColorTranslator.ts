@@ -141,59 +141,50 @@ export class ColorTranslator {
    * @param profile - Perfil del fixture (define sus capacidades)
    * @returns Resultado de la traducción
    */
-  public translate(targetRGB: RGB, profile: FixtureProfile | undefined): ColorTranslationResult {
-    // ═══════════════════════════════════════════════════════════════════
-    // CASO 1: Sin perfil conocido → Pass-through (asume RGB)
-    // ═══════════════════════════════════════════════════════════════════
+  public translate(targetRGB: RGB, profile: any): ColorTranslationResult {
+    // CASO 1: Sin perfil
     if (!profile) {
-      return {
-        outputRGB: targetRGB,
-        colorDistance: 0,
-        wasTranslated: false,
-        poorMatch: false,
-      }
+      return { outputRGB: targetRGB, colorDistance: 0, wasTranslated: false, poorMatch: false }
     }
     
-    // ═══════════════════════════════════════════════════════════════════
-    // CASO 2: Fixture RGB/RGBW/CMY → Pass-through (puede hacer cualquier color)
-    // ═══════════════════════════════════════════════════════════════════
-    if (!needsColorTranslation(profile)) {
-      return {
-        outputRGB: targetRGB,
-        colorDistance: 0,
-        wasTranslated: false,
-        poorMatch: false,
-      }
+    // 🚑 WAVE 2058: EXTRACCIÓN SEGURA (Puente entre Forja V1 y V2)
+    // Detectamos si es un fixture de rueda mirando en el formato nuevo y en el viejo
+    const isWheelEngine = profile.capabilities?.colorEngine === 'wheel' || 
+                          profile.colorEngine === 'wheel' ||
+                          profile.colorEngine?.mixing === 'wheel';
+                          
+    // Buscamos dónde están guardados los colores exactamente
+    const colorWheel = profile.capabilities?.colorWheel || 
+                       profile.wheels || 
+                       profile.colorEngine?.colorWheel;
+
+    const hasWheelData = colorWheel && colorWheel.colors && colorWheel.colors.length > 0;
+
+    // CASO 2: Si es RGB puro (no es rueda), pass-through directo sin tocar el DMX
+    if (!isWheelEngine && !hasWheelData) {
+      return { outputRGB: targetRGB, colorDistance: 0, wasTranslated: false, poorMatch: false }
     }
     
-    // ═══════════════════════════════════════════════════════════════════
-    // CASO 3: Fixture con rueda de colores → Buscar vecino más cercano
-    // ═══════════════════════════════════════════════════════════════════
-    const colorWheel = profile.colorEngine.colorWheel
-    if (!colorWheel || colorWheel.colors.length === 0) {
-      // Perfil mal configurado, usar blanco como fallback
-      console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} has no color wheel defined`)
+    // CASO 3: Es rueda, pero está vacía (Fallback a blanco)
+    if (!hasWheelData) {
+      console.warn(`[ColorTranslator] ⚠️ Profile ${profile.id} is 'wheel' but has no colors mapped`)
       return {
         outputRGB: { r: 255, g: 255, b: 255 },
         colorWheelDmx: 0,
         colorName: 'Open (Fallback)',
-        colorDistance: 441, // Máxima distancia
+        colorDistance: 441,
         wasTranslated: true,
         poorMatch: true,
       }
     }
     
-    // Check cache
+    // CASO 4: Traducción real a la rueda (Encontramos los datos)
     const cacheKey = this.getCacheKey(targetRGB, profile.id)
     const cached = this.translationCache.get(cacheKey)
-    if (cached) {
-      return cached
-    }
+    if (cached) return cached
     
-    // Buscar el color más cercano
+    // Buscar el color más cercano usando nuestro array de colores
     const result = this.findNearestColor(targetRGB, colorWheel)
-    
-    // Guardar en cache
     this.cacheResult(cacheKey, result)
     
     return result
@@ -281,10 +272,13 @@ export class ColorTranslator {
   /**
    * Obtiene todos los colores disponibles en un perfil
    */
-  public getAvailableColors(profile: FixtureProfile): WheelColor[] {
-    if (profile.colorEngine.mixing === 'wheel' || profile.colorEngine.mixing === 'hybrid') {
-      return profile.colorEngine.colorWheel?.colors ?? []
+  public getAvailableColors(profile: any): WheelColor[] {
+    const colorWheel = profile?.capabilities?.colorWheel || profile?.wheels || profile?.colorEngine?.colorWheel;
+    
+    if (colorWheel && colorWheel.colors && colorWheel.colors.length > 0) {
+      return colorWheel.colors;
     }
+    
     // Para RGB, devolvemos colores primarios y secundarios como referencia
     return [
       { dmx: 0,   name: 'Red',     rgb: { r: 255, g: 0,   b: 0   } },

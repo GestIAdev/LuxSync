@@ -1535,6 +1535,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+  margin-bottom: 16px; /* 🔥 WAVE 1121: Fix Fixture Class section overflow */
 }
 
 .type-selector-btn {

@@ -329,6 +329,8 @@ export class MasterArbiter extends EventEmitter {
    * WAVE 440: Now MERGES with existing override instead of replacing.
    */
   setManualOverride(override: Layer2_Manual): void {
+    console.log(`[RADAR 1 - ENTRADA] UI mandó control a ${override.fixtureId}:`, override.controls);
+    
     // Check limit
     if (this.layer2_manualOverrides.size >= this.config.maxManualOverrides &&
         !this.layer2_manualOverrides.has(override.fixtureId)) {
@@ -1011,6 +1013,10 @@ export class MasterArbiter extends EventEmitter {
     
     // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
     this.lastKnownPositions.set(fixtureId, { pan: target.pan, tilt: target.tilt })
+    
+    if (manualOverride && manualOverride.overrideChannels.includes('red')) {
+      console.log(`[RADAR 2 - SALIDA] Arbiter mezcló -> RGB(${target.color.r},${target.color.g},${target.color.b}) | Wheel: ${target.color_wheel}`);
+    }
     
     return target
   }

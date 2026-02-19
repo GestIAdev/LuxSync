@@ -250,13 +250,43 @@ const CAPABILITY_BADGES: CapabilityBadge[] = [
   { key: 'is16bit', label: '16-BIT', color: '#22c55e', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="6" width="16" height="12" rx="2"/><text x="12" y="15" fontSize="8" fill="currentColor" textAnchor="middle">16</text></svg> },
 ]
 
-const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description: string; icon: string }[] = [
-  { value: 'rgb', label: 'RGB LEDs', description: 'Red/Green/Blue mixing (PARs, Washes)', icon: '🔴🟢🔵' },
-  { value: 'rgbw', label: 'RGBW LEDs', description: 'RGB + White LED', icon: '🔴🟢🔵⚪' },
-  { value: 'wheel', label: 'Color Wheel', description: 'Mechanical wheel (Beams, Spots)', icon: '🎨' },
-  { value: 'cmy', label: 'CMY Mixing', description: 'Cyan/Magenta/Yellow flags', icon: '🩵🩷💛' },
-  { value: 'hybrid', label: 'Hybrid', description: 'Wheel + LEDs combined', icon: '🎨+🔴' },
-  { value: 'none', label: 'No Color', description: 'Dimmer only (Strobes, etc)', icon: '⬜' },
+const COLOR_ENGINE_OPTIONS: { value: ColorEngineType; label: string; description: string; icon: ReactNode }[] = [
+  { 
+    value: 'rgb', 
+    label: 'RGB LEDs', 
+    description: 'Red/Green/Blue mixing (PARs, Washes)', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="5"/><circle cx="8" cy="16" r="5"/><circle cx="16" cy="16" r="5"/></svg> 
+  },
+  { 
+    value: 'rgbw', 
+    label: 'RGBW LEDs', 
+    description: 'RGB + White LED', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="4"/><circle cx="16" cy="8" r="4"/><circle cx="8" cy="16" r="4"/><circle cx="16" cy="16" r="4"/></svg> 
+  },
+  { 
+    value: 'wheel', 
+    label: 'Color Wheel', 
+    description: 'Mechanical wheel (Beams, Spots)', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4L18.4 5.6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg> 
+  },
+  { 
+    value: 'cmy', 
+    label: 'CMY Mixing', 
+    description: 'Cyan/Magenta/Yellow flags', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="16" r="5"/><circle cx="8" cy="8" r="5"/><circle cx="16" cy="8" r="5"/></svg> 
+  },
+  { 
+    value: 'hybrid', 
+    label: 'Hybrid', 
+    description: 'Wheel + LEDs combined', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="12" r="6"/><circle cx="18" cy="12" r="3"/><path d="M8 6v12M2 12h12"/></svg> 
+  },
+  { 
+    value: 'none', 
+    label: 'No Color', 
+    description: 'Dimmer only (Strobes, etc)', 
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> 
+  },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

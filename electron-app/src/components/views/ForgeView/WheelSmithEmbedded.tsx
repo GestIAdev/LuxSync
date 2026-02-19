@@ -270,6 +270,10 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   
   const [dmxConnected, setDmxConnected] = useState<boolean>(false)
   
+  // WAVE 2042.19 FIX: Considerar Arbiter como conexión válida, pero exigir fixtureId para LIVE
+  const hasDmxEngine = !!(window.lux as any)?.sendDmxChannel || !!window.lux?.arbiter
+  const canSendLive = dmxConnected && hasDmxEngine && !!fixtureId
+  
   // Check DMX status on mount and periodically
   useEffect(() => {
     const checkDMXStatus = async () => {
@@ -557,10 +561,12 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
             Create Slot
           </button>
         </div>
-        {/* WAVE 1114: Offline warning (non-blocking) */}
-        {!dmxConnected && (
-          <div className="probe-offline-warning">
-            ⚠️ DMX Offline - slider moves but won't output
+        {/* WAVE 1114.2: Smart Offline warning */}
+        {!canSendLive && (
+          <div className="probe-offline-warning" style={{ fontSize: '11px', color: '#fb923c' }}>
+            {!hasDmxEngine 
+              ? "⚠️ DMX Engine Offline" 
+              : "⚠️ LIVE PREVIEW OFF: Open this profile from a patched fixture to test DMX"}
           </div>
         )}
       </div>

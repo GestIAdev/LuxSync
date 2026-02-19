@@ -361,9 +361,12 @@ export function needsColorTranslation(profile: any): boolean {
 
 /**
  * Detecta si un fixture es mecánico (necesita protección de velocidad)
+ * 🚑 WAVE 2061: Safe against live profiles (fixture as profile)
  */
-export function isMechanicalFixture(profile: FixtureProfile | undefined): boolean {
+export function isMechanicalFixture(profile: any): boolean {
   if (!profile) return false
+  // Si no tiene estructura de perfil, no es mecánico (live profile fallback)
+  if (!profile.shutter || !profile.safety) return false
   return profile.shutter.type === 'mechanical' || profile.safety.isDischarge
 }
 

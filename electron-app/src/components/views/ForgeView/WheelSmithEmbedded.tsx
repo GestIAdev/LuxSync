@@ -265,38 +265,16 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   
   // Live Probe handlers
   // ═══════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
   // WAVE 1113: Live Probe with REAL DMX via IPC
   // ═══════════════════════════════════════════════════════════════════════
   
-  const [dmxConnected, setDmxConnected] = useState<boolean>(false)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 2042.21: LIVE PROBE STATUS (Robado de TestPanel - Sincrónico)
+  // ═══════════════════════════════════════════════════════════════════════════
   
-  // WAVE 2042.20: Lógica robada del TestPanel (Directa y funcional)
-  const hasDmxEngine = !!(window.lux as any)?.sendDmxChannel || !!window.lux?.arbiter
+  const hasDmxEngine = !!(window.lux as any)?.sendDmxChannel || !!(window.lux as any)?.arbiter
   const canSendLive = hasDmxEngine && !!fixtureId
-  
-  // Check DMX status on mount and periodically
-  useEffect(() => {
-    const checkDMXStatus = async () => {
-      // WAVE 1116.3: Enhanced DMX status check with logging
-      if (typeof window !== 'undefined' && window.lux?.library?.dmxStatus) {
-        try {
-          const status = await window.lux.library.dmxStatus()
-          console.log(`[WheelSmith] 📡 DMX Status: connected=${status.connected}, device=${status.device}`)
-          setDmxConnected(status.connected)
-        } catch (err) {
-          console.error('[WheelSmith] ❌ DMX Status check failed:', err)
-          setDmxConnected(false)
-        }
-      } else {
-        console.warn('[WheelSmith] ⚠️ window.lux.library.dmxStatus not available')
-        setDmxConnected(false)
-      }
-    }
-    
-    checkDMXStatus()
-    const interval = setInterval(checkDMXStatus, 5000) // Check every 5s
-    return () => clearInterval(interval)
-  }, [])
   
   const handleProbeChange = useCallback(async (value: number) => {
     const clampedValue = Math.max(0, Math.min(255, value))
@@ -529,10 +507,10 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
           <span className="probe-subtitle">(Channel Output)</span>
           {/* WAVE 1114: DMX Status Indicator - Always show */}
           <span 
-            className={`probe-dmx-status ${dmxConnected ? 'connected' : 'offline'}`}
-            title={dmxConnected ? 'DMX Connected' : 'DMX Offline'}
+            className={`probe-dmx-status ${canSendLive ? 'connected' : 'offline'}`}
+            title={canSendLive ? 'DMX Connected' : 'Offline (Open from Stage)'}
           >
-            {dmxConnected ? '🟢' : '🔴'}
+            {canSendLive ? '🟢' : '🔴'}
           </span>
         </div>
         <div className="probe-controls">

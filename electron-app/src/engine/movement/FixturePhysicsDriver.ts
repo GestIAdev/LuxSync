@@ -528,25 +528,34 @@ export class FixturePhysicsDriver {
     // Nivel 3: Hardware Limit (lo que aguanta el fixture)
     // Solo aplica si el fixture tiene physicsProfile definido
     if (profile) {
+      // 📐 WAVE 2062: EL CONVERSOR DE BABEL (Grados -> DMX)
+      // El JSON (Forja) usa Grados/s. El motor usa DMX/s.
+      // Ej: 255 DMX = 540 Grados -> Multiplicador = 255 / 540 = 0.472
+      const degToDmxFactor = 255 / (config.range.pan || 540);
+
       if (profile.maxAcceleration !== undefined) {
-        effectiveMaxAccel = Math.min(effectiveMaxAccel, profile.maxAcceleration)
+        // Convertimos tus 1500 Grados/s² a ~708 DMX/s²
+        const accDMX = profile.maxAcceleration * degToDmxFactor;
+        effectiveMaxAccel = Math.min(effectiveMaxAccel, accDMX)
       }
       if (profile.maxVelocity !== undefined) {
-        effectiveMaxVel = Math.min(effectiveMaxVel, profile.maxVelocity)
+        // Convertimos tus 250 Grados/s a ~118 DMX/s
+        const velDMX = profile.maxVelocity * degToDmxFactor;
+        effectiveMaxVel = Math.min(effectiveMaxVel, velDMX)
       }
       
       // 🏗️ Auto-tune basado en qualityTier si no hay valores explícitos
       if (profile.qualityTier && !profile.maxAcceleration && !profile.maxVelocity) {
         switch (profile.qualityTier) {
           case 'budget':
-            // Movers chinos de $50-150 - motores lentos
-            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200)
-            effectiveMaxVel = Math.min(effectiveMaxVel, 400)
+            // Movers chinos de $50-150 - motores lentos (1200°/s² -> ~566 DMX/s²)
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1200 * degToDmxFactor)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 400 * degToDmxFactor)
             break
           case 'mid':
-            // Movers de $200-500 - motores decentes
-            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800)
-            effectiveMaxVel = Math.min(effectiveMaxVel, 600)
+            // Movers de $200-500 - motores decentes (1800°/s² -> ~849 DMX/s²)
+            effectiveMaxAccel = Math.min(effectiveMaxAccel, 1800 * degToDmxFactor)
+            effectiveMaxVel = Math.min(effectiveMaxVel, 600 * degToDmxFactor)
             break
           case 'pro':
             // Movers de $1000+ - motores rápidos

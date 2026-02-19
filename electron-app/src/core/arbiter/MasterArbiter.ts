@@ -1205,6 +1205,14 @@ export class MasterArbiter extends EventEmitter {
    * NOW WITH: Zone-based color mapping + Individual mover movement
    */
   private getTitanValuesForFixture(fixtureId: string): Record<ChannelType, number> {
+    const fixture = this.fixtures.get(fixtureId)
+    
+    // 🏎️ WAVE 2062: EL FRENO DE MANO DE HARDWARE
+    // Buscamos el canal de velocidad en tu JSON para no enviar 0 (violencia máxima)
+    // channels es Array<{ index, name, type, is16bit, defaultValue }>
+    const speedChannel = (fixture?.channels as any)?.find((c: any) => c.type === 'speed')
+    const defaultSpeed = speedChannel?.defaultValue ?? 0
+
     const defaults: Record<ChannelType, number> = {
       dimmer: 0,
       red: 0,
@@ -1217,7 +1225,7 @@ export class MasterArbiter extends EventEmitter {
       focus: 128,
       gobo: 0,
       prism: 0,
-      speed: 0,      // 0 = fast movement (critical for movers!)
+      speed: defaultSpeed, // 🚀 MAGIA: Usamos el 127 de tu molde en vez de forzar 0
       strobe: 0,
       color_wheel: 0,
       amber: 0,
@@ -1227,7 +1235,6 @@ export class MasterArbiter extends EventEmitter {
     if (!this.layer0_titan?.intent) return defaults
     
     const intent = this.layer0_titan.intent
-    const fixture = this.fixtures.get(fixtureId)
     
     // ═══════════════════════════════════════════════════════════════════════
     // 🔦 WAVE 411 FIX: OPTICS HANDOFF

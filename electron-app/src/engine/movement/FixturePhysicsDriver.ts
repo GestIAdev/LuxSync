@@ -170,12 +170,14 @@ export class FixturePhysicsDriver {
   // Los movers chinos baratos no soportan aceleraciones extremas.
   // Sin importar lo que diga VibeMovementPresets, este cap protege el hardware.
   // 
-  // 2500 = límite conservador para movers de $50-200
-  // Si tienes movers de $1000+, puedes subirlo a 4000
+  // 🏎️ WAVE 2062: RESTORE HARDWARE SAFETY - EL GRAN FRENO
+  // Reduced from 2500 to 900 to force CLASSIC PHYSICS mode always
+  // (SNAP mode activates when accel > 1000, causing violent uncontrolled movement)
+  // 900 = safe zone for all Chinese movers (Beam 2R, Neo 250, etc)
   // ═══════════════════════════════════════════════════════════════════════
   private readonly SAFETY_CAP = {
-    maxAcceleration: 2500,  // DMX units/s² - NUNCA exceder
-    maxVelocity: 800,       // DMX units/s - NUNCA exceder
+    maxAcceleration: 900,   // DMX units/s² - NUNCA exceder (Classic Physics always)
+    maxVelocity: 400,       // DMX units/s - NUNCA exceder (reduced from 800)
   }
 
   // ═══════════════════════════════════════════════════════════════════════

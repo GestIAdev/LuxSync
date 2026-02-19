@@ -142,8 +142,7 @@ export class ColorTranslator {
    * @returns Resultado de la traducción
    */
   public translate(targetRGB: RGB, profile: any): ColorTranslationResult {
-    console.log(`[RADAR 3 - HAL] Traductor recibió RGB(${targetRGB.r},${targetRGB.g},${targetRGB.b}) para perfil: ${profile?.name || 'DESCONOCIDO'}`);
-    
+   
     // CASO 1: Sin perfil
     if (!profile) {
       return { outputRGB: targetRGB, colorDistance: 0, wasTranslated: false, poorMatch: false }

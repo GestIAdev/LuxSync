@@ -14,8 +14,12 @@
  * - English labels (WAVE 1110 localization)
  * - LIBRARY tab for fixture browsing (WAVE 1112)
  * 
+ * 🔥 WAVE 1121: COLOR ENGINE SELECTOR RESTORED
+ * - Added COLOR ENGINE selector grid below FIXTURE CLASS
+ * - CSS override in FixtureForgeEmbedded.css with !important
+ * 
  * @module components/views/ForgeView/FixtureForgeEmbedded
- * @version 1112.0.0
+ * @version 1121.0.0
  */
 
 import React, { useState, useCallback, useEffect, DragEvent, Suspense, type ReactNode } from 'react'
@@ -783,29 +787,6 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   </button>
                 ))}
               </div>
-
-              {/* ═══════════════════════════════════════════════════════════════
-                  🔥 WAVE 1121: THE MISSING COLOR ENGINE SELECTOR
-                  ═══════════════════════════════════════════════════════════════ */}
-              <div className="cockpit-section-header" style={{ marginTop: '16px' }}>
-                <Palette size={16} />
-                <span>COLOR ENGINE</span>
-              </div>
-              
-              <div className="type-selector-grid">
-                {COLOR_ENGINE_OPTIONS.map(engineConfig => (
-                  <button
-                    key={engineConfig.value}
-                    className={`type-selector-btn ${colorEngine === engineConfig.value ? 'active' : ''}`}
-                    style={{ '--type-color': '#f59e0b' } as React.CSSProperties}
-                    onClick={() => setColorEngine(engineConfig.value)}
-                    title={engineConfig.description}
-                  >
-                    <span className="type-icon">{engineConfig.icon}</span>
-                    <span className="type-label">{engineConfig.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
             
             {/* ═══════════════════════════════════════════════════════════════
@@ -847,6 +828,29 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   </div>
                 )
               })()}
+
+              {/* ═══════════════════════════════════════════════════════════════
+                  🔥 WAVE 1122.3: COLOR ENGINE MUDADO AL CENTRO (Donde hay espacio)
+                  ═══════════════════════════════════════════════════════════════ */}
+              <div className="cockpit-section-header" style={{ marginTop: '32px' }}>
+                <Palette size={16} />
+                <span>COLOR ENGINE</span>
+              </div>
+
+              <div className="type-selector-grid columns-3">
+                {COLOR_ENGINE_OPTIONS.map(engineConfig => (
+                  <button
+                    key={engineConfig.value}
+                    className={`type-selector-btn ${colorEngine === engineConfig.value ? 'active' : ''}`}
+                    style={{ '--type-color': '#f59e0b' } as React.CSSProperties}
+                    onClick={() => setColorEngine(engineConfig.value)}
+                    title={engineConfig.description}
+                  >
+                    <span className="type-icon">{engineConfig.icon}</span>
+                    <span className="type-label">{engineConfig.label}</span>
+                  </button>
+                ))}
+              </div>
               
               {/* ENGINE SPECS - Physics Preview (Read-only) */}
               <div className="engine-specs">

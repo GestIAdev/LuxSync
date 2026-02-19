@@ -272,6 +272,16 @@ export class FixturePhysicsDriver {
     return this
   }
 
+  /** 🏗️ WAVE 2061: Inyectar perfil físico en vivo desde el HAL */
+  updatePhysicsProfile(fixtureId: string, profile: PhysicsProfile): void {
+    const config = this.configs.get(fixtureId)
+    // Solo actualizar si no tiene uno o si forzamos el cambio
+    if (config && !config.physicsProfile) {
+      config.physicsProfile = profile
+      console.log(`[PhysicsDriver] 🧠 Perfil físico inyectado para "${fixtureId}":`, profile)
+    }
+  }
+
   /** Aplica un preset de instalación a un fixture */
   applyPreset(fixtureId: string, presetName: string): this {
     const preset = this.INSTALLATION_PRESETS[presetName]

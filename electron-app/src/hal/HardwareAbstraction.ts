@@ -643,6 +643,14 @@ export class HardwareAbstraction {
       const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod))
       
       if (isMovingFixture) {
+        // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
+        // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+        const profile = this.getFixtureProfileCached(fixture)
+        const physicsData = profile?.physics || (profile as any)?.physicsProfile
+        if (physicsData) {
+          this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData)
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // 🔧 WAVE 340.6: DIRECT DMX INTERPOLATION
         // TitanEngine already generates target positions in DMX space (0-255)
@@ -912,6 +920,14 @@ export class HardwareAbstraction {
       const finalFocus = Math.max(0, Math.min(255, state.focus + opticsMod.focusMod))
       
       if (isMovingFixture) {
+        // 🧠 WAVE 2061: INYECCIÓN DE PERFIL FÍSICO
+        // Le pasamos el JSON de la Forja al motor de físicas para que respete los límites
+        const profile = this.getFixtureProfileCached(fixture)
+        const physicsData = profile?.physics || (profile as any)?.physicsProfile
+        if (physicsData) {
+          this.movementPhysics.updatePhysicsProfile(fixtureId, physicsData)
+        }
+
         // Apply physics interpolation
         this.movementPhysics.translateDMX(fixtureId, state.pan, state.tilt, 16)
         const physicsState = this.movementPhysics.getPhysicsState(fixtureId)

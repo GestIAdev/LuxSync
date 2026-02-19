@@ -971,17 +971,27 @@ export class HardwareAbstraction {
   /**
    * 🐟 BABEL FISH: Get or create fixture profile (cached)
    */
-  private getFixtureProfileCached(fixture: PatchedFixture): FixtureProfile | null {
+  private getFixtureProfileCached(fixture: PatchedFixture): any {
+    // 🚑 WAVE 2059: AUTO-PERFIL (Si el frontend nos mandó tu JSON custom de la Forja, lo usamos directo)
+    if ((fixture as any).capabilities || (fixture as any).wheels || (fixture as any).colorEngine) {
+      return fixture;
+    }
+    
     const cacheKey = fixture.profileId || fixture.name || fixture.id || 'unknown'
     
     if (this.profileCache.has(cacheKey)) {
       return this.profileCache.get(cacheKey) ?? null
     }
     
-    // Try to find profile by ID or model name
-    const profile = fixture.profileId 
-      ? getProfile(fixture.profileId)
-      : getProfileByModel(fixture.name)
+    // 1. Intentar por ID (fallará para los "user-xxx")
+    let profile = fixture.profileId ? getProfile(fixture.profileId) : undefined;
+    
+    // 2. 🚑 WAVE 2059: EL SALVAVIDAS (Si falla el ID, buscar por nombre)
+    // El regex /beam.?2r/i detectará "beam 2r (User Copy)" y cargará un perfil de emergencia
+    if (!profile && fixture.name) {
+      profile = getProfileByModel(fixture.name);
+      if (profile) console.log(`[HAL] 🔍 Heuristic match: "${fixture.name}" -> ${profile.id}`);
+    }
     
     this.profileCache.set(cacheKey, profile ?? null)
     return profile ?? null

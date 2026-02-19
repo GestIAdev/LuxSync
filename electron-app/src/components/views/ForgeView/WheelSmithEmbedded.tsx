@@ -135,6 +135,9 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [probeValue, setProbeValue] = useState<number>(0)
   
+  // WAVE 2042.23: Dirección DMX para inyección en frío (Test de Moldes)
+  const [testAddress, setTestAddress] = useState<number>(1)
+  
   // ═══════════════════════════════════════════════════════════════════════
   // 🔥 WAVE 2042.19: REAL DMX TARGETING - Fixture from Store
   // ═══════════════════════════════════════════════════════════════════════
@@ -148,49 +151,51 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   const dmxBaseAddress = fixture?.address ?? null
   const universe = fixture?.universe ?? 0
   
-  /**
-   * 🔥 WAVE 2042.19: DIRECT DMX SEND - Copiado de TestPanel
-   * Envía DMX directo al canal correcto del fixture
-   */
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAVE 2042.23: LIVE PROBE (Inyector Universal - Raw + Arbiter)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const lux = (typeof window !== 'undefined' ? window.lux : null) as any
+  const hasDmxEngine = !!lux?.sendDmxChannel || !!lux?.dmx?.sendDirect || !!lux?.arbiter
+  const canSendLive = hasDmxEngine // ¡Ya no exigimos fixtureId!
+
   const sendDirectDMX = useCallback(async (dmxValue: number) => {
-    // Si no hay fixture, solo loguear (modo librería sin fixture real)
-    if (!fixtureId || dmxBaseAddress === null) {
-      console.log(`[WheelSmith] 📭 No fixture connected - DMX value: ${dmxValue} (not sent)`)
-      return
-    }
+    const isMoldTest = !fixtureId || dmxBaseAddress === null
+    const effectiveUniverse = isMoldTest ? 0 : universe
+    const effectiveBaseAddress = isMoldTest ? testAddress : dmxBaseAddress
     
-    // 🔥 CRITICAL: channelIndex es 0-based, dmxBaseAddress es la dirección inicial del fixture
-    const absoluteAddress = dmxBaseAddress + channelIndex
+    // Si no tenemos ni base ni test, abortar
+    if (effectiveBaseAddress === null) return
+
+    const absoluteAddress = effectiveBaseAddress + (channelIndex || 0)
     
-    console.log(`[WheelSmith] 🎛️ DMX OUT: Universe ${universe}, ColorWheel CH${channelIndex} → DMX ${absoluteAddress} = ${dmxValue}`)
+    console.log(`[WheelSmith] 🎛️ DMX OUT: Universe ${effectiveUniverse}, ColorWheel CH${channelIndex} → DMX ${absoluteAddress} = ${dmxValue}`)
     
-    // Try direct DMX first (window.lux API)
-    const lux = window.lux as any
+    // 1. INYECCIÓN CRUDA: Ideal para testear moldes en frío en la Forja
     if (lux?.sendDmxChannel) {
-      lux.sendDmxChannel(universe, absoluteAddress, dmxValue)
+      lux.sendDmxChannel(effectiveUniverse, absoluteAddress, dmxValue)
       return
     }
     if (lux?.dmx?.sendDirect) {
-      lux.dmx.sendDirect(universe, absoluteAddress, dmxValue)
+      lux.dmx.sendDirect(effectiveUniverse, absoluteAddress, dmxValue)
       return
     }
     
-    // 🔥 FALLBACK: Use Arbiter.setManual for color_wheel type
-    if (lux?.arbiter?.setManual) {
+    // 2. FALLBACK ARBITER: Solo funciona si el aparato ya está en el escenario
+    if (!isMoldTest && lux?.arbiter?.setManual) {
       try {
         await lux.arbiter.setManual({
           fixtureIds: [fixtureId],
           controls: { color_wheel: dmxValue },
           channels: ['color_wheel'],
         })
-        console.log(`[WheelSmith] 🎯 Arbiter fallback: color_wheel = ${dmxValue}`)
       } catch (err) {
         console.error('[WheelSmith] ❌ Arbiter error:', err)
       }
-    } else {
-      console.warn('[WheelSmith] ⚠️ No DMX API available (lux.sendDmxChannel or arbiter)')
+    } else if (isMoldTest) {
+      console.warn('[WheelSmith] ⚠️ Imposible inyectar en frío: API DMX directa no disponible.')
     }
-  }, [fixtureId, dmxBaseAddress, channelIndex, universe])
+  }, [fixtureId, dmxBaseAddress, channelIndex, universe, testAddress, lux])
   
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS
@@ -268,13 +273,6 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
   // ═══════════════════════════════════════════════════════════════════════
   // WAVE 1113: Live Probe with REAL DMX via IPC
   // ═══════════════════════════════════════════════════════════════════════
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // WAVE 2042.21: LIVE PROBE STATUS (Robado de TestPanel - Sincrónico)
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  const hasDmxEngine = !!(window.lux as any)?.sendDmxChannel || !!(window.lux as any)?.arbiter
-  const canSendLive = hasDmxEngine && !!fixtureId
   
   const handleProbeChange = useCallback(async (value: number) => {
     const clampedValue = Math.max(0, Math.min(255, value))
@@ -539,14 +537,25 @@ export const WheelSmithEmbedded: React.FC<WheelSmithEmbeddedProps> = ({
             Create Slot
           </button>
         </div>
-        {/* WAVE 1114.3: Smart Offline warning */}
-        {!canSendLive && (
-          <div className="probe-offline-warning" style={{ fontSize: '11px', color: '#fb923c' }}>
-            {!hasDmxEngine 
-              ? "⚠️ DMX Engine Offline" 
-              : "⚠️ LIVE PREVIEW OFF: Open from patched fixture"}
+        {/* WAVE 1114.4: Inyector en frío y advertencias */}
+        {!hasDmxEngine ? (
+          <div className="probe-offline-warning" style={{ fontSize: '11px', color: '#ef4444' }}>
+            ⚠️ DMX Engine Offline
           </div>
-        )}
+        ) : !fixtureId ? (
+          <div className="probe-test-address" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '11px', color: '#a1a1aa', padding: '8px', background: 'rgba(34, 211, 238, 0.05)', borderRadius: '6px', border: '1px solid rgba(34, 211, 238, 0.2)' }}>
+            <span style={{ color: '#22d3ee' }}>🧪 TEST EN FRÍO:</span>
+            <span>Dirección DMX:</span>
+            <input 
+              type="number" 
+              min={1} max={512} 
+              value={testAddress}
+              onChange={(e) => setTestAddress(parseInt(e.target.value) || 1)}
+              style={{ width: '60px', background: 'rgba(0,0,0,0.5)', border: '1px solid #3f3f46', color: '#fff', padding: '4px', borderRadius: '4px', textAlign: 'center' }}
+              title="DMX Address del aparato físico para inyección cruda"
+            />
+          </div>
+        ) : null}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}

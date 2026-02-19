@@ -1014,10 +1014,6 @@ export class MasterArbiter extends EventEmitter {
     // 🥶 WAVE 1165: GHOST PROTOCOL - Cache last known position for freeze-on-blackout
     this.lastKnownPositions.set(fixtureId, { pan: target.pan, tilt: target.tilt })
     
-    if (manualOverride && manualOverride.overrideChannels.includes('red')) {
-      console.log(`[RADAR 2 - SALIDA] Arbiter mezcló -> RGB(${target.color.r},${target.color.g},${target.color.b}) | Wheel: ${target.color_wheel}`);
-    }
-    
     return target
   }
   

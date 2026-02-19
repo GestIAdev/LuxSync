@@ -340,10 +340,23 @@ export function getProfileByModel(modelName: string): FixtureProfile | undefined
 
 /**
  * Detecta si un fixture necesita traducción de color (tiene rueda)
+ * 🚑 WAVE 2058: Compatibilidad con Forja V1 y V2
  */
-export function needsColorTranslation(profile: FixtureProfile | undefined): boolean {
+export function needsColorTranslation(profile: any): boolean {
   if (!profile) return false
-  return profile.colorEngine.mixing === 'wheel' || profile.colorEngine.mixing === 'hybrid'
+  
+  // 1. Formato Forja V2 (Nueva)
+  const capEngine = profile.capabilities?.colorEngine
+  if (capEngine === 'wheel' || capEngine === 'hybrid') return true
+  
+  // 2. Formato Forja V1 (Vieja)
+  const mixEngine = profile.colorEngine?.mixing
+  if (mixEngine === 'wheel' || mixEngine === 'hybrid') return true
+  
+  // 3. Fallback string directo
+  if (profile.colorEngine === 'wheel' || profile.colorEngine === 'hybrid') return true
+  
+  return false
 }
 
 /**

@@ -278,7 +278,8 @@ export class FixturePhysicsDriver {
     // Solo actualizar si no tiene uno o si forzamos el cambio
     if (config && !config.physicsProfile) {
       config.physicsProfile = profile
-      console.log(`[PhysicsDriver] 🧠 Perfil físico inyectado para "${fixtureId}":`, profile)
+      // 🔇 SILENCIO: No loguear aquí, se llama 60/seg desde renderFromTarget
+      // console.log(`[PhysicsDriver] 🧠 Perfil físico inyectado para "${fixtureId}":`, profile)
     }
   }
 

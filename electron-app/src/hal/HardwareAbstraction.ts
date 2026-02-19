@@ -988,36 +988,31 @@ export class HardwareAbstraction {
    * 🐟 BABEL FISH: Get or create fixture profile (cached)
    */
   private getFixtureProfileCached(fixture: PatchedFixture): any {
-    // 🚑 WAVE 2061.1: AUTO-PERFIL MEJORADO
-    // Si viene con estructura de perfil completa (shutter, safety), úsalo directo
-    if ((fixture as any).shutter && (fixture as any).safety) {
-      return fixture;
-    }
-    
-    // Si tiene capabilities/wheels/colorEngine PERO NO shutter/safety,
-    // es un JSON parcial de la Forja - buscar perfil completo
-    if ((fixture as any).capabilities || (fixture as any).wheels || (fixture as any).colorEngine) {
-      // Continuar para buscar perfil completo, NO retornar aquí
-      console.log(`[HAL] 📦 Partial live profile detected for ${fixture.name}, searching full profile...`);
-    }
-    
     const cacheKey = fixture.profileId || fixture.name || fixture.id || 'unknown'
     
+    // Si ya lo procesamos, devolverlo de la caché silenciosamente (ADIÓS SPAM)
     if (this.profileCache.has(cacheKey)) {
-      return this.profileCache.get(cacheKey) ?? null
+      return this.profileCache.get(cacheKey)
     }
     
-    // 1. Intentar por ID (fallará para los "user-xxx")
-    let profile = fixture.profileId ? getProfile(fixture.profileId) : undefined;
+    let profile: FixtureProfile | null = null;
     
-    // 2. 🚑 WAVE 2061: EL SALVAVIDAS (Si falla el ID, buscar por nombre)
-    if (!profile && fixture.name) {
-      profile = getProfileByModel(fixture.name);
-      if (profile) console.log(`[HAL] 🔍 Heuristic match: "${fixture.name}" -> ${profile.id}`);
+    // 1. JSON inyectado en vivo desde la Forja
+    if ((fixture as any).capabilities || (fixture as any).wheels || (fixture as any).colorEngine || (fixture as any).physics) {
+      profile = fixture as any;
+    } 
+    // 2. Búsqueda por ID formal
+    else if (fixture.profileId) {
+      profile = getProfile(fixture.profileId) ?? null;
+    } 
+    // 3. Heurística por nombre (Salvavidas)
+    else if (fixture.name) {
+      profile = getProfileByModel(fixture.name) ?? null;
     }
     
-    this.profileCache.set(cacheKey, profile ?? null)
-    return profile ?? null
+    // Guardar en caché para no volver a calcularlo ni printearlo en el próximo frame
+    this.profileCache.set(cacheKey, profile);
+    return profile;
   }
   
   /**

@@ -151,7 +151,7 @@ export const TheProgrammer: React.FC = () => {
     try {
       await window.lux?.arbiter?.setManual({
         fixtureIds: selectedIds,
-        controls: { r, g, b },
+        controls: { red: r, green: g, blue: b }, // ✅ Nombres completos que espera el Arbiter
         channels: ['red', 'green', 'blue'],
         source: 'ui_programmer',
       })

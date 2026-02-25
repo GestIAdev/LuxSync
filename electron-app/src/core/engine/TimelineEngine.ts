@@ -270,16 +270,21 @@ export class TimelineEngine {
     const deltaMs = this.lastTickMs > 0 ? timeMs - this.lastTickMs : 16.67
     this.lastTickMs = timeMs
 
-    // ── Initialize frame accumulator ──
-    const allFixtureIds = masterArbiter.getFixtureIds()
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2065: SPARSE FRAME ACCUMULATOR — The Transparent Overlay
+    // 
+    // OLD: Initialize ALL fixtures with zeros → gaps between effects send BLACK
+    //      → Titan/Selene vibe gets KILLED in those gaps
+    // 
+    // NEW: Start EMPTY. Only fixtures TOUCHED by an active effect get added.
+    //      Fixtures not in the accumulator = "Chronos has nothing to say"
+    //      → Arbiter leaves them 100% under Titan/Selene control.
+    //
+    // This is the paradigm shift: Chronos is a TRANSPARENT OVERLAY, not a
+    // replacement. The Vibe is the canvas, Chronos paints ON TOP of it.
+    // ═══════════════════════════════════════════════════════════════════════
     this.frameAccumulator.clear()
-    
-    for (const fixtureId of allFixtureIds) {
-      this.frameAccumulator.set(fixtureId, {
-        dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
-        pan: 127, tilt: 127, zoom: 0, speed: 0,
-      })
-    }
+    // NOTE: No pre-population! Effects add fixtures as they dispatch.
 
     // ── Find active FX clips at this timeMs ──
     const nowActiveIds = new Set<string>()
@@ -306,10 +311,23 @@ export class TimelineEngine {
       this.currentPlaybackVibeId = null
     }
 
-    // ── Convert frame accumulator to FixtureLightingTarget[] ──
-    const fixtureTargets = allFixtureIds.map(fixtureId => {
-      const state = this.frameAccumulator.get(fixtureId)!
-      return {
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2065: SPARSE CONVERSION — Only touched fixtures go to Arbiter
+    // 
+    // The accumulator now only contains fixtures that an active FX clip touched.
+    // Untouched fixtures are NOT in the map → Arbiter won't override them.
+    // ═══════════════════════════════════════════════════════════════════════
+    const fixtureTargets: Array<{
+      fixtureId: string
+      dimmer: number
+      color: { r: number; g: number; b: number }
+      pan: number; tilt: number; zoom: number; focus: number; speed: number
+      color_wheel: number; strobe: number; prism: number; gobo: number
+      controlSources: Record<string, unknown>; appliedLayers: unknown[]
+    }> = []
+    
+    for (const [fixtureId, state] of this.frameAccumulator.entries()) {
+      fixtureTargets.push({
         fixtureId,
         dimmer: state.dimmer,
         color: { r: state.red, g: state.green, b: state.blue },
@@ -324,15 +342,15 @@ export class TimelineEngine {
         gobo: 0,
         controlSources: {},
         appliedLayers: [],
-      }
-    })
+      })
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎬 WAVE 2063: HYBRID MODE — Smart Override instead of Scorched Earth
-    // 
-    // Send frame to Arbiter with metadata about WHICH channels Chronos controls.
-    // If a Vibe is active, Titan handles pan/tilt/speed.
-    // Chronos ALWAYS controls: dimmer, color (R/G/B/W), color_wheel.
+    // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY
+    //
+    // Chronos is a painter, not a dictator. Only the fixtures it explicitly
+    // touches are sent to the Arbiter. Everything else stays under Titan/Selene.
+    // If no FX clip is active → fixtureTargets is EMPTY → Titan reigns supreme.
     // ═══════════════════════════════════════════════════════════════════════
 
     masterArbiter.setPlaybackFrame(fixtureTargets as any, {
@@ -858,7 +876,7 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🌈 VIBE CLIPS — Global color/mood overrides
+  // 🌈 VIBE CLIPS — Vibe Handoff to Titan (WAVE 2065)
   // ═══════════════════════════════════════════════════════════════════════
 
   private processVibeClip(clip: VibeClip, timeMs: number): void {
@@ -875,9 +893,18 @@ export class TimelineEngine {
     if (envelope <= 0) return
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎬 WAVE 2063: VIBE RESURRECTION — Enviar vibeId a Titan
-    // El VibeClip no solo pinta colores, también ACTIVA el motor de movimiento.
-    // Titan genera pan/tilt/physics en su capa — Chronos solo override color/dimmer.
+    // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY — Vibe Handoff ONLY
+    //
+    // The VibeClip's ONLY job is to tell Titan which vibe to run.
+    // The COLOR and MOVEMENT of the vibe come from Selene/Titan's reactive
+    // engine — they are the CANVAS. Chronos does NOT paint the base color.
+    //
+    // OLD (WAVE 2063): VibeClip wrote color+dimmer to accumulator → 
+    //   This made Chronos "own" all fixtures even in gaps → killed Titan
+    //
+    // NEW: VibeClip sends vibeId to Titan and NOTHING to the accumulator.
+    //   The vibe's procedural colors flow through Titan → HAL → DMX unimpeded.
+    //   FX clips are the only things that paint on top.
     // ═══════════════════════════════════════════════════════════════════════
     const vibeId = clip.vibeType
     if (vibeId && vibeId !== this.currentPlaybackVibeId) {
@@ -885,27 +912,13 @@ export class TimelineEngine {
       try {
         const orchestrator = getTitanOrchestrator()
         orchestrator.setVibe(vibeId as any)
-        console.log(`[TimelineEngine] 🎭 WAVE 2063: Vibe handoff → Titan "${vibeId}" (movement will flow)`)
+        console.log(`[TimelineEngine] 🎭 WAVE 2065: Vibe handoff → Titan "${vibeId}" (Selene paints the canvas)`)
       } catch (err) {
         console.warn(`[TimelineEngine] ⚠️ Could not set vibe on Titan:`, err)
       }
     }
 
-    // Resolve color (Hex → RGB)
-    const rgb = this.hexToRgb(clip.color || '#ffffff')
-
-    // Dispatch color+dimmer to frame accumulator (wildcard → all fixtures, priority 90)
-    // PAN/TILT are NOT set here — Titan handles them via its normal flow
-    this.dispatchToArbiter(
-      ['*'],
-      {
-        red: rgb.r,
-        green: rgb.g,
-        blue: rgb.b,
-        dimmer: (clip.intensity ?? 1) * envelope * 255,
-      },
-      { priority: 90 } // Lower priority than FX clips
-    )
+    // NOTE: No dispatchToArbiter here! The vibe's color comes from Selene.
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -936,17 +949,17 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2056: Frame Accumulator — Direct Drive
+  // 🎬 WAVE 2065: Frame Accumulator — Sparse Overlay
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
-   * 🔥 WAVE 2056: SCORCHED EARTH
+   * 🎬 WAVE 2065: SPARSE OVERLAY
    * 
-   * Instead of sending commands to Arbiter, accumulate them in frameAccumulator.
-   * This builds the complete frame that will be sent once at end of tick().
+   * Accumulate effect outputs into the frameAccumulator.
+   * Only fixtures that are TOUCHED by an effect end up in the accumulator.
    * 
-   * OLD: dispatchToArbiter() → masterArbiter.setManualOverride() per fixture
-   * NEW: dispatchToArbiter() → frameAccumulator.set() per fixture
+   * WAVE 2056 (old): Pre-filled ALL fixtures with zeros → gaps sent BLACK
+   * WAVE 2065 (new): Empty start, create entries on-demand → gaps are TRANSPARENT
    */
   private dispatchToArbiter(
     targetIds: string[],
@@ -969,8 +982,15 @@ export class TimelineEngine {
 
     // B. Accumulate controls into frame buffer (HTP for dimmer, LTP for others)
     for (const fixtureId of finalIds) {
-      const currentState = this.frameAccumulator.get(fixtureId)
-      if (!currentState) continue
+      // 🎬 WAVE 2065: Create entry on-demand (sparse accumulator)
+      let currentState = this.frameAccumulator.get(fixtureId)
+      if (!currentState) {
+        currentState = {
+          dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
+          pan: 127, tilt: 127, zoom: 0, speed: 0,
+        }
+        this.frameAccumulator.set(fixtureId, currentState)
+      }
 
       // HTP for dimmer (Highest Takes Precedence)
       if (controls.dimmer !== undefined) {

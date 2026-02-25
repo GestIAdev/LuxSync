@@ -585,20 +585,26 @@ export class TitanOrchestrator {
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🎬 WAVE 2063: CHRONOS PROTECTION GATE
-    // When Chronos Playback is active, the Arbiter already contains the correct
-    // color/dimmer from the timeline. The EffectManager and HephaestusRuntime
-    // must NOT overwrite those values — they are the SOURCE OF TRUTH during playback.
-    // Only the Stereo Movement and Movement Override sections are allowed through,
-    // as they affect pan/tilt (which Titan may be controlling during hybrid mode).
+    // 🎬 WAVE 2065: SMART PROTECTION GATE (per-fixture)
+    //
+    // OLD (WAVE 2063): Binary gate — Chronos playing? Block ALL effects everywhere.
+    //   → This killed Selene's reactive colors for the ENTIRE stage during gaps.
+    //
+    // NEW: Chronos only protects the SPECIFIC fixtures it's painting right now.
+    //   Fixtures NOT in the Chronos frame are FREE for EffectManager/Hephaestus.
+    //   This means Selene's music-reactive physics keep working on untouched fixtures.
+    //
+    // The Set<string> contains ONLY the fixture IDs that Chronos is controlling
+    // in THIS exact frame. An empty set = Chronos has nothing to say = full freedom.
     // ═══════════════════════════════════════════════════════════════════════
     const isChronosPlaying = masterArbiter.isPlaybackActive()
+    const chronosFixtureIds = masterArbiter.getPlaybackAffectedFixtureIds()
     
-    // 🔬 WAVE 2063.3: DIAGNOSTIC — Confirm Protection Gate is active
+    // 🔬 WAVE 2065: Telemetry (1 sample every 5s)
     if (isChronosPlaying && this.frameCount % 300 === 1) {
       const f0 = fixtureStates[0]
       console.log(
-        `[TitanOrchestrator 🎬] CHRONOS Protection Gate ACTIVE | ` +
+        `[TitanOrchestrator 🎬] CHRONOS OVERLAY: ${chronosFixtureIds.size}/${fixtureStates.length} fixtures protected | ` +
         `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b})`
       )
     }
@@ -613,7 +619,8 @@ export class TitanOrchestrator {
     // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
     // Si no, usar la lógica legacy con colorOverride global
     
-    if (!isChronosPlaying && effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+    // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — now per-fixture inside loop
+    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
       // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
       // Los logs de zoneOverrides están en el EffectManager, no aquí
       
@@ -641,7 +648,9 @@ export class TitanOrchestrator {
           const positionX = this.fixtures[index]?.position?.x ?? 0
           
           if (this.fixtureMatchesZoneStereo(fixtureZone, zoneId, positionX)) {
-            // 🔥 WAVE 930.1: DEBUG REMOVED - Spam removed
+            // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+            const fixtureId = this.fixtures[index]?.id
+            if (fixtureId && chronosFixtureIds.has(fixtureId)) return
             
             // Esta fixture SÍ pertenece a la zona activa - MODIFICAR
             affectedFixtureIndices.add(index)
@@ -773,9 +782,10 @@ export class TitanOrchestrator {
       // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
       // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
       
-    } else if (!isChronosPlaying && effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+    } else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
       // ═══════════════════════════════════════════════════════════════════════
       // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
+      // 🎬 WAVE 2065: Removed `!isChronosPlaying` gate — per-fixture check inside
       // ═══════════════════════════════════════════════════════════════════════
       const flareIntensity = effectOutput.dimmerOverride  // 0-1
       
@@ -835,6 +845,10 @@ export class TitanOrchestrator {
       fixtureStates = fixtureStates.map((f, index) => {
         const shouldApply = shouldApplyToFixture(f, index)
         if (!shouldApply) return f  // No afectar esta fixture
+        
+        // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+        const fixtureId = this.fixtures[index]?.id
+        if (fixtureId && chronosFixtureIds.has(fixtureId)) return f
         
         if (isGlobalMode) {
           // ═══════════════════════════════════════════════════════════════════════
@@ -1069,9 +1083,11 @@ export class TitanOrchestrator {
     //   - Color (RGB): LTP (Hephaestus overwrites if present)
     //   - Pan/Tilt: Overlay (Hephaestus controls movement if present)
     //   - Strobe: Additive (sum clamped to max)
+    //
+    // 🎬 WAVE 2065: Heph always runs. Per-fixture Chronos check applied inside.
     // ═══════════════════════════════════════════════════════════════════════════
     const hephRuntime = getHephaestusRuntime()
-    const hephOutputs = isChronosPlaying ? [] : hephRuntime.tick(Date.now())
+    const hephOutputs = hephRuntime.tick(Date.now())
     
     if (hephOutputs.length > 0) {
       // Group outputs by parameter for efficient processing
@@ -1086,6 +1102,10 @@ export class TitanOrchestrator {
       
       // Apply Hephaestus outputs to fixtures
       fixtureStates = fixtureStates.map((f, index) => {
+        // 🎬 WAVE 2065: Skip fixtures that Chronos is currently painting
+        const fixtureId = this.fixtures[index]?.id
+        if (fixtureId && chronosFixtureIds.has(fixtureId)) return f
+        
         // Find matching outputs for this fixture's zone
         const fixtureZone = (f.zone || '').toLowerCase()
         const applicableOutputs: HephFixtureOutput[] = []

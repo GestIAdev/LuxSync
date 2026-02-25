@@ -843,6 +843,20 @@ export class MasterArbiter extends EventEmitter {
   isPlaybackActive(): boolean {
     return this.playbackActive
   }
+
+  /**
+   * 🎬 WAVE 2065: Get the fixture IDs that Chronos is CURRENTLY controlling.
+   * 
+   * In Transparent Overlay mode, Chronos only controls fixtures that have
+   * an active FX clip painting them RIGHT NOW. All other fixtures are free.
+   * 
+   * Used by TitanOrchestrator to decide which fixtures to gate from
+   * EffectManager/HephaestusRuntime (only the ones Chronos is touching).
+   */
+  getPlaybackAffectedFixtureIds(): Set<string> {
+    if (!this.playbackActive) return new Set()
+    return new Set(this.currentPlaybackFrame.keys())
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // MAIN ARBITRATION
@@ -877,48 +891,74 @@ export class MasterArbiter extends EventEmitter {
     // This fixes:
     //   - GRAY BUG: Frames now go through normal HAL → translateColorToWheel()
     //   - DEAD VIBE: Titan runs normally → FixturePhysicsDriver gets pan/tilt targets
+    //
+    // 🎬 WAVE 2065: THE TRANSPARENT OVERLAY
+    //   Chronos frame is now SPARSE — only contains fixtures actively touched by FX.
+    //   Untouched fixtures → pure Titan. Touched fixtures → HTP blend.
+    //   The Vibe is the canvas, Chronos paints ON TOP of it.
     // ═══════════════════════════════════════════════════════════════════════
-    if (this.playbackActive && this.currentPlaybackFrame.size > 0) {
-      // STEP 1: Run normal arbitration for ALL fixtures (Titan lives!)
+    if (this.playbackActive) {
+      // STEP 1: Run normal arbitration for ALL fixtures (Titan/Selene lives!)
       this.cleanupExpiredEffects()
       
       const allFixtureIds = Array.from(this.fixtures.keys())
       const hybridTargets: FixtureLightingTarget[] = []
       
       for (const fixtureId of allFixtureIds) {
-        // Get Titan's full arbitration (includes movement from vibe)
+        // Get Titan's full arbitration (includes vibe color + movement)
         const titanTarget = this.arbitrateFixture(fixtureId, now)
         
-        // Get Chronos' frame data (color/dimmer from timeline)
+        // Get Chronos' frame data (only present if an FX clip is touching this fixture)
         const chronosData = this.currentPlaybackFrame.get(fixtureId)
         
         if (chronosData) {
-          // STEP 2: OVERLAY — Chronos controls color, Titan controls movement
+          // ═══════════════════════════════════════════════════════════════════
+          // 🎬 WAVE 2065: HTP OVERLAY — Chronos paints over Titan, additively
+          //
+          // DIMMER: HTP (Highest Takes Precedence) — the brighter one wins.
+          //   A strobe at dim=255 blasts through; a subtle glow at dim=30 
+          //   won't darken a Titan vibe that's already at dim=180.
+          //
+          // COLOR: Chronos takes control ONLY if it has real color data.
+          //   If Chronos sends RGB(0,0,0) it means the effect is in a black
+          //   moment — but we still let dimmer HTP decide visibility.
+          //
+          // MOVEMENT: Always from Titan (the vibe owns choreography).
+          //   Only if NO vibe is active, Chronos may set pan/tilt.
+          // ═══════════════════════════════════════════════════════════════════
+          
+          const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster)
+          const titanDim = titanTarget.dimmer
+          
+          // HTP: The brighter source wins
+          const finalDimmer = Math.max(chronosDim, titanDim)
+          
+          // COLOR: Chronos has authority when it has non-zero color
+          const chronosHasColor = chronosData.color.r > 0 || chronosData.color.g > 0 || chronosData.color.b > 0
+          const finalColor = chronosHasColor
+            ? { r: clampDMX(chronosData.color.r), g: clampDMX(chronosData.color.g), b: clampDMX(chronosData.color.b) }
+            : titanTarget.color  // Effect has dimmer but no color → use Titan's vibe color
+          
           const hybridTarget: FixtureLightingTarget = {
             fixtureId,
             
-            // ── COLOR CHANNELS: Chronos is the color director ──
-            dimmer: clampDMX(chronosData.dimmer * this.grandMaster),
-            color: {
-              r: clampDMX(chronosData.color.r),
-              g: clampDMX(chronosData.color.g),
-              b: clampDMX(chronosData.color.b),
-            },
+            dimmer: finalDimmer,
+            color: finalColor,
             
-            // ── MOVEMENT CHANNELS: Titan is the movement director (when vibe active) ──
-            pan: this._playbackMeta.hasActiveVibe ? titanTarget.pan : clampDMX(chronosData.pan),
-            tilt: this._playbackMeta.hasActiveVibe ? titanTarget.tilt : clampDMX(chronosData.tilt),
-            zoom: this._playbackMeta.hasActiveVibe ? titanTarget.zoom : clampDMX(chronosData.zoom),
-            speed: this._playbackMeta.hasActiveVibe ? titanTarget.speed : clampDMX(chronosData.speed),
+            // ── MOVEMENT: Titan always owns choreography ──
+            pan: titanTarget.pan,
+            tilt: titanTarget.tilt,
+            zoom: titanTarget.zoom,
+            speed: titanTarget.speed,
             focus: titanTarget.focus,
             
-            // ── MECHANICAL CHANNELS: Always from Chronos if present, else Titan ──
+            // ── MECHANICAL CHANNELS: Chronos if present, else Titan ──
             color_wheel: chronosData.color_wheel ?? titanTarget.color_wheel,
             
             // ── Metadata ──
             _controlSources: {
               ...titanTarget._controlSources,
-              dimmer: ControlLayer.EFFECTS,  // Mark as "from playback"
+              dimmer: ControlLayer.EFFECTS,
               red: ControlLayer.EFFECTS,
               green: ControlLayer.EFFECTS,
               blue: ControlLayer.EFFECTS,
@@ -929,20 +969,22 @@ export class MasterArbiter extends EventEmitter {
           
           hybridTargets.push(hybridTarget)
           
-          // 🔬 WAVE 2063.3: Hybrid Mode telemetry (1 fixture sample every 5s)
-          if (this.frameNumber % 300 === 1 && hybridTargets.length === 0) {
+          // 🔬 WAVE 2065: Overlay telemetry (1 sample every 5s)
+          if (this.frameNumber % 300 === 1 && hybridTargets.length === 1) {
             console.log(
-              `[MasterArbiter 🎬 HYBRID] f=${fixtureId} | ` +
-              `chronos: dim=${chronosData.dimmer.toFixed(0)} RGB(${chronosData.color.r.toFixed(0)},${chronosData.color.g.toFixed(0)},${chronosData.color.b.toFixed(0)}) | ` +
-              `titan: pan=${titanTarget.pan} tilt=${titanTarget.tilt} | ` +
-              `vibe=${this._playbackMeta.hasActiveVibe}`
+              `[MasterArbiter 🎬 OVERLAY] f=${fixtureId} | ` +
+              `chronos: dim=${chronosDim} RGB(${chronosData.color.r.toFixed(0)},${chronosData.color.g.toFixed(0)},${chronosData.color.b.toFixed(0)}) | ` +
+              `titan: dim=${titanDim} RGB(${titanTarget.color.r},${titanTarget.color.g},${titanTarget.color.b}) pan=${titanTarget.pan} tilt=${titanTarget.tilt} | ` +
+              `FINAL: dim=${finalDimmer} ${chronosHasColor ? 'chronosColor' : 'titanColor'} | ` +
+              `overlay=${this.currentPlaybackFrame.size}/${allFixtureIds.length} fixtures`
             )
           }
           
           // Cache position for Ghost Protocol
           this.lastKnownPositions.set(fixtureId, { pan: hybridTarget.pan, tilt: hybridTarget.tilt })
         } else {
-          // Fixture not in Chronos frame → pure Titan control
+          // 🎬 WAVE 2065: Fixture NOT in Chronos frame → 100% Titan/Selene
+          // The vibe paints this fixture with its full reactive color + movement.
           hybridTargets.push(titanTarget)
         }
       }

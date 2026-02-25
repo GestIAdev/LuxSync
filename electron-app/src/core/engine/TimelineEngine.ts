@@ -447,24 +447,6 @@ export class TimelineEngine {
   // ═══════════════════════════════════════════════════════════════════════
 
   private processCoreEffect(clip: FXClip, localTimeMs: number, deltaMs: number): void {
-    // 🎛️ WAVE 2066: Resolve blendMode EARLY — needed for both normal + re-trigger paths
-    const LTP_CORE_EFFECTS = new Set([
-      'industrial_strobe', 'ambient_strobe', 'core_meltdown', 'latina_meltdown',
-      'strobe_burst', 'strobe_storm', 'gatling_raid', 'binary_glitch',
-    ])
-    const ADD_CORE_EFFECTS = new Set([
-      'void_mist', 'deep_breath', 'amazon_mist', 'ghost_breath',
-      'plankton_drift', 'bioluminescent_spore',
-    ])
-    const fxType = clip.fxType as string
-    const clipMixBus = clip.mixBus
-    let blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
-    if (clipMixBus === 'global' || LTP_CORE_EFFECTS.has(fxType)) {
-      blendMode = 'LTP'
-    } else if (clipMixBus === 'ambient' || clipMixBus === 'accent' || ADD_CORE_EFFECTS.has(fxType)) {
-      blendMode = 'ADD'
-    }
-
     // Get or create active clip state
     let state = this.activeClips.get(clip.id)
 
@@ -487,6 +469,13 @@ export class TimelineEngine {
     }
 
     const effect = state.effect!
+
+    // 🎛️ WAVE 2066.1: Read blendMode DIRECTLY from the effect instance
+    // Each Core Effect declares its own mixBus ('global' | 'htp') via readonly property.
+    // No hardcoded lists needed — the effect knows what it needs.
+    // clip.mixBus override takes precedence (user can override in timeline)
+    const effectMixBus = clip.mixBus ?? (effect as any).mixBus ?? 'htp'
+    const blendMode: 'HTP' | 'LTP' | 'ADD' = effectMixBus === 'global' ? 'LTP' : 'HTP'
 
     // Trigger on first activation
     if (!state.triggered) {

@@ -913,31 +913,81 @@ export class MasterArbiter extends EventEmitter {
         
         if (chronosData) {
           // ═══════════════════════════════════════════════════════════════════
-          // 🎬 WAVE 2065: HTP OVERLAY — Chronos paints over Titan, additively
+          // �️ WAVE 2066: THE SMART MIXBUS — Dynamic Blend Mode Arbitration
           //
-          // DIMMER: HTP (Highest Takes Precedence) — the brighter one wins.
-          //   A strobe at dim=255 blasts through; a subtle glow at dim=30 
-          //   won't darken a Titan vibe that's already at dim=180.
+          // The playback frame now carries a per-fixture blendMode.
+          // Each effect declares its mixing intent:
           //
-          // COLOR: Chronos takes control ONLY if it has real color data.
-          //   If Chronos sends RGB(0,0,0) it means the effect is in a black
-          //   moment — but we still let dimmer HTP decide visibility.
+          //   'HTP' → Highest Takes Precedence (washes, color fills)
+          //           Math.max(titanDim, chronosDim) — brighter wins
+          //           The vibe canvas shines through if it's brighter.
           //
+          //   'LTP' → Last Takes Precedence / Override (strobes, blackouts, meltdowns)
+          //           chronosDim directly replaces titanDim — ABSOLUTE AUTHORITY
+          //           A strobe at 0 WILL kill the vibe. A blackout IS a blackout.
+          //
+          //   'ADD' → Additive (ambient mists, accents, atmospheric)
+          //           Math.min(255, titanDim + chronosDim) — both contribute
+          //           Subtle effects ADD to the existing vibe canvas.
+          //
+          // COLOR: Same logic applies per blendMode.
           // MOVEMENT: Always from Titan (the vibe owns choreography).
-          //   Only if NO vibe is active, Chronos may set pan/tilt.
           // ═══════════════════════════════════════════════════════════════════
           
           const chronosDim = clampDMX(chronosData.dimmer * this.grandMaster)
           const titanDim = titanTarget.dimmer
           
-          // HTP: The brighter source wins
-          const finalDimmer = Math.max(chronosDim, titanDim)
+          // 🎛️ WAVE 2066: Read blendMode from the enriched frame
+          const blendMode: string = (chronosData as any).blendMode ?? 'HTP'
           
-          // COLOR: Chronos has authority when it has non-zero color
+          // ── DIMMER: Switch by blend mode ──
+          let finalDimmer: number
+          switch (blendMode) {
+            case 'LTP':
+              // ABSOLUTE OVERRIDE — Chronos dictates dimmer.
+              // Strobes, blackouts, meltdowns: the zero IS the zero.
+              finalDimmer = chronosDim
+              break
+            case 'ADD':
+              // ADDITIVE — Both sources contribute, capped at 255
+              finalDimmer = clampDMX(titanDim + chronosDim)
+              break
+            case 'HTP':
+            default:
+              // HIGHEST TAKES PRECEDENCE — The brighter one wins
+              finalDimmer = Math.max(chronosDim, titanDim)
+              break
+          }
+          
+          // ── COLOR: Blend mode aware ──
           const chronosHasColor = chronosData.color.r > 0 || chronosData.color.g > 0 || chronosData.color.b > 0
-          const finalColor = chronosHasColor
-            ? { r: clampDMX(chronosData.color.r), g: clampDMX(chronosData.color.g), b: clampDMX(chronosData.color.b) }
-            : titanTarget.color  // Effect has dimmer but no color → use Titan's vibe color
+          let finalColor: { r: number; g: number; b: number }
+          
+          if (blendMode === 'LTP') {
+            // LTP: Chronos color IS the final color (even if black → that's intentional)
+            finalColor = {
+              r: clampDMX(chronosData.color.r),
+              g: clampDMX(chronosData.color.g),
+              b: clampDMX(chronosData.color.b),
+            }
+          } else if (blendMode === 'ADD' && chronosHasColor) {
+            // ADD: Additive color mixing (both contribute)
+            finalColor = {
+              r: clampDMX(titanTarget.color.r + chronosData.color.r),
+              g: clampDMX(titanTarget.color.g + chronosData.color.g),
+              b: clampDMX(titanTarget.color.b + chronosData.color.b),
+            }
+          } else if (chronosHasColor) {
+            // HTP with real color: Chronos color wins
+            finalColor = {
+              r: clampDMX(chronosData.color.r),
+              g: clampDMX(chronosData.color.g),
+              b: clampDMX(chronosData.color.b),
+            }
+          } else {
+            // No Chronos color → Titan's vibe color passes through
+            finalColor = titanTarget.color
+          }
           
           const hybridTarget: FixtureLightingTarget = {
             fixtureId,
@@ -969,13 +1019,13 @@ export class MasterArbiter extends EventEmitter {
           
           hybridTargets.push(hybridTarget)
           
-          // 🔬 WAVE 2065: Overlay telemetry (1 sample every 5s)
+          // 🔬 WAVE 2066: Smart MixBus telemetry (1 sample every 5s)
           if (this.frameNumber % 300 === 1 && hybridTargets.length === 1) {
             console.log(
-              `[MasterArbiter 🎬 OVERLAY] f=${fixtureId} | ` +
+              `[MasterArbiter �️ MIXBUS] f=${fixtureId} mode=${blendMode} | ` +
               `chronos: dim=${chronosDim} RGB(${chronosData.color.r.toFixed(0)},${chronosData.color.g.toFixed(0)},${chronosData.color.b.toFixed(0)}) | ` +
-              `titan: dim=${titanDim} RGB(${titanTarget.color.r},${titanTarget.color.g},${titanTarget.color.b}) pan=${titanTarget.pan} tilt=${titanTarget.tilt} | ` +
-              `FINAL: dim=${finalDimmer} ${chronosHasColor ? 'chronosColor' : 'titanColor'} | ` +
+              `titan: dim=${titanDim} RGB(${titanTarget.color.r},${titanTarget.color.g},${titanTarget.color.b}) | ` +
+              `FINAL: dim=${finalDimmer} color=${chronosHasColor ? (blendMode === 'ADD' ? 'additive' : 'chronos') : 'titan'} | ` +
               `overlay=${this.currentPlaybackFrame.size}/${allFixtureIds.length} fixtures`
             )
           }

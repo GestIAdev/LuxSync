@@ -221,6 +221,7 @@ export class TimelineEngine {
   private currentPlaybackVibeId: string | null = null
 
   // ── 🔥 WAVE 2056: Frame accumulator for Direct Drive ──
+  // 🎛️ WAVE 2066: Added blendMode per-fixture for Smart MixBus
   private frameAccumulator = new Map<string, {
     dimmer: number
     red: number
@@ -231,6 +232,7 @@ export class TimelineEngine {
     tilt: number
     zoom: number
     speed: number
+    blendMode: 'HTP' | 'LTP' | 'ADD'
   }>()
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -323,6 +325,7 @@ export class TimelineEngine {
       color: { r: number; g: number; b: number }
       pan: number; tilt: number; zoom: number; focus: number; speed: number
       color_wheel: number; strobe: number; prism: number; gobo: number
+      blendMode: 'HTP' | 'LTP' | 'ADD'  // 🎛️ WAVE 2066: Smart MixBus
       controlSources: Record<string, unknown>; appliedLayers: unknown[]
     }> = []
     
@@ -340,6 +343,7 @@ export class TimelineEngine {
         strobe: 0,
         prism: 0,
         gobo: 0,
+        blendMode: state.blendMode,  // 🎛️ WAVE 2066: Smart MixBus
         controlSources: {},
         appliedLayers: [],
       })
@@ -443,6 +447,24 @@ export class TimelineEngine {
   // ═══════════════════════════════════════════════════════════════════════
 
   private processCoreEffect(clip: FXClip, localTimeMs: number, deltaMs: number): void {
+    // 🎛️ WAVE 2066: Resolve blendMode EARLY — needed for both normal + re-trigger paths
+    const LTP_CORE_EFFECTS = new Set([
+      'industrial_strobe', 'ambient_strobe', 'core_meltdown', 'latina_meltdown',
+      'strobe_burst', 'strobe_storm', 'gatling_raid', 'binary_glitch',
+    ])
+    const ADD_CORE_EFFECTS = new Set([
+      'void_mist', 'deep_breath', 'amazon_mist', 'ghost_breath',
+      'plankton_drift', 'bioluminescent_spore',
+    ])
+    const fxType = clip.fxType as string
+    const clipMixBus = clip.mixBus
+    let blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
+    if (clipMixBus === 'global' || LTP_CORE_EFFECTS.has(fxType)) {
+      blendMode = 'LTP'
+    } else if (clipMixBus === 'ambient' || clipMixBus === 'accent' || ADD_CORE_EFFECTS.has(fxType)) {
+      blendMode = 'ADD'
+    }
+
     // Get or create active clip state
     let state = this.activeClips.get(clip.id)
 
@@ -521,7 +543,7 @@ export class TimelineEngine {
 
         const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs)
         const fixtureIds = this.resolveFixtureIds(clip)
-        this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds)
+        this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode)
         return
       }
     }
@@ -543,7 +565,7 @@ export class TimelineEngine {
 
     // ── Process output → Arbiter ──
     const fixtureIds = this.resolveFixtureIds(clip)
-    this.dispatchEffectOutput(output, envelope, fixtureIds)
+    this.dispatchEffectOutput(output, envelope, fixtureIds, blendMode)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -563,21 +585,22 @@ export class TimelineEngine {
   private dispatchEffectOutput(
     output: EffectFrameOutput,
     envelope: number,
-    fixtureIds: string[]
+    fixtureIds: string[],
+    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
   ): void {
     const hasZoneColors = output.zoneOverrides && 
       Object.values(output.zoneOverrides).some((z: any) => z.color || z.dimmer !== undefined)
 
     if (hasZoneColors) {
       // ZONE PATH: Spatial effects with per-zone color — zones are authoritative
-      this.dispatchZoneOverrides(output, envelope, fixtureIds)
+      this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode)
       // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
     } else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
       // GLOBAL PATH: Effects with direct color/dimmer overrides
-      this.dispatchGlobalOutput(output, envelope, fixtureIds)
+      this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode)
     } else {
       // FALLBACK: intensity-only effects → global output handles auto-white correctly
-      this.dispatchGlobalOutput(output, envelope, fixtureIds)
+      this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode)
     }
   }
 
@@ -588,7 +611,8 @@ export class TimelineEngine {
   private dispatchZoneOverrides(
     output: EffectFrameOutput,
     envelope: number,
-    _allFixtureIds: string[]
+    _allFixtureIds: string[],
+    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
   ): void {
     if (!output.zoneOverrides) return
 
@@ -640,7 +664,7 @@ export class TimelineEngine {
       if (channels.length === 0 || controls.dimmer === 0) continue
 
       // Dispatch via centralized helper
-      this.dispatchToArbiter(['*'], controls)
+      this.dispatchToArbiter(['*'], controls, { blendMode })
     }
   }
 
@@ -651,7 +675,8 @@ export class TimelineEngine {
   private dispatchGlobalOutput(
     output: EffectFrameOutput,
     envelope: number,
-    fixtureIds: string[]
+    fixtureIds: string[],
+    blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
   ): void {
     const controls: Record<string, number> = {}
     const channels: string[] = []
@@ -715,7 +740,7 @@ export class TimelineEngine {
     if (channels.length === 0) return
 
     // Dispatch via centralized helper
-    this.dispatchToArbiter(fixtureIds, controls)
+    this.dispatchToArbiter(fixtureIds, controls, { blendMode })
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -799,8 +824,17 @@ export class TimelineEngine {
 
     if (channels.length === 0) return
 
+    // 🎛️ WAVE 2066: Resolve blendMode from Hephaestus clip's mixBus
+    // 'global' → LTP (takeover: strobes, blinders, meltdowns)
+    // 'htp'    → HTP (cooperative: sweeps, chases)
+    // 'ambient'/'accent' → ADD (additive: atmospheres, accents)
+    const mixBus = clip.mixBus ?? (clip as any).hephClip?.mixBus ?? 'htp'
+    let blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
+    if (mixBus === 'global') blendMode = 'LTP'
+    else if (mixBus === 'ambient' || mixBus === 'accent') blendMode = 'ADD'
+
     const fixtureIds = this.resolveFixtureIds(clip)
-    this.dispatchToArbiter(fixtureIds, controls)
+    this.dispatchToArbiter(fixtureIds, controls, { blendMode })
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -871,8 +905,14 @@ export class TimelineEngine {
 
     if (channels.length === 0) return
 
+    // 🎛️ WAVE 2066: Resolve blendMode from legacy fx type
+    // Strobes and blackouts MUST override the vibe (LTP/absolute authority)
+    // Everything else cooperates with the vibe canvas (HTP)
+    const LTP_EFFECTS = new Set(['strobe', 'blackout'])
+    const blendMode: 'HTP' | 'LTP' | 'ADD' = LTP_EFFECTS.has(fxType) ? 'LTP' : 'HTP'
+
     const fixtureIds = this.resolveFixtureIds(clip)
-    this.dispatchToArbiter(fixtureIds, controls)
+    this.dispatchToArbiter(fixtureIds, controls, { blendMode })
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -960,6 +1000,7 @@ export class TimelineEngine {
    * 
    * WAVE 2056 (old): Pre-filled ALL fixtures with zeros → gaps sent BLACK
    * WAVE 2065 (new): Empty start, create entries on-demand → gaps are TRANSPARENT
+   * WAVE 2066: blendMode per-fixture for Smart MixBus arbitration
    */
   private dispatchToArbiter(
     targetIds: string[],
@@ -968,8 +1009,11 @@ export class TimelineEngine {
       priority?: number
       autoReleaseMs?: number
       releaseTransitionMs?: number
+      blendMode?: 'HTP' | 'LTP' | 'ADD'
     } = {}
   ): void {
+    const blendMode = options.blendMode ?? 'HTP'
+
     // A. Expand wildcard '*' → All fixture IDs
     let finalIds = targetIds
     if (targetIds.includes('*')) {
@@ -988,9 +1032,22 @@ export class TimelineEngine {
         currentState = {
           dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
           pan: 127, tilt: 127, zoom: 0, speed: 0,
+          blendMode: 'HTP',
         }
         this.frameAccumulator.set(fixtureId, currentState)
       }
+
+      // 🎛️ WAVE 2066: LTP wins for blendMode — if an LTP effect overwrites an HTP,
+      // the fixture becomes LTP for this frame. This is correct because:
+      // - A strobe (LTP) MUST kill the vibe dimmer, even if a wash (HTP) is also active
+      // - A blackout (LTP) MUST override everything
+      // Priority: LTP > ADD > HTP
+      if (blendMode === 'LTP') {
+        currentState.blendMode = 'LTP'
+      } else if (blendMode === 'ADD' && currentState.blendMode !== 'LTP') {
+        currentState.blendMode = 'ADD'
+      }
+      // HTP is default, only set if nothing else has claimed it
 
       // HTP for dimmer (Highest Takes Precedence)
       if (controls.dimmer !== undefined) {

@@ -380,6 +380,35 @@ export interface ILightEffect {
    * Fase actual del efecto
    */
   getPhase(): EffectPhase
+
+  /**
+   * 📏 WAVE 2067: NATIVE DURATION
+   * 
+   * Devuelve la duración nativa del efecto en milisegundos.
+   * Esto es la duración REAL del ciclo completo del efecto, no la duración del clip.
+   * 
+   * Cronos usa esto para:
+   * 1. Smart Sizing: Crear clips del tamaño correcto al hacer drag
+   * 2. OneShot: No re-triggear efectos que duran menos que el clip
+   * 
+   * @returns Duración en ms (ej: SolarFlare=700, DigitalRain=4000)
+   */
+  getDurationMs(): number
+
+  /**
+   * 🎯 WAVE 2067: ONESHOT FLAG
+   * 
+   * ¿Es este efecto un disparo único (no debe re-triggerearse en loop)?
+   * 
+   * TRUE = Efecto corto que hace UN golpe y muere (SolarFlare, MacheteSpark, GatlingRaid)
+   *        Chronos NO debe re-crearlo cuando termina dentro de un clip largo.
+   *        
+   * FALSE = Efecto ambiental que puede/debe loopearse (DigitalRain, VoidMist, CumbiaMoon)
+   *         Seamless Re-Trigger de WAVE 2063.5 sigue activo.
+   * 
+   * Default: false (loopeable por defecto)
+   */
+  readonly isOneShot: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

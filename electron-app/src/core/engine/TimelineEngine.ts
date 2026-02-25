@@ -501,15 +501,24 @@ export class TimelineEngine {
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🔥 WAVE 2063.5: SEAMLESS RE-TRIGGER
+    // 🎯 WAVE 2067: ONESHOT GATE — isOneShot effects fire ONCE and die.
     // 
     // If effect finished mid-clip, re-create AND re-trigger in the SAME frame.
     // This eliminates the 1-frame "dead gap" between effect cycles that caused
     // the accumulator to go empty and Chronos to send dim=0 RGB(0,0,0).
     // 
-    // OLD: finish → set triggered=false → NEXT frame: re-trigger (1 frame gap!)
-    // NEW: finish → re-create → trigger → update → getOutput (0 frame gap)
+    // WAVE 2067: OneShot effects (SolarFlare, GatlingRaid, CoreMeltdown, etc.)
+    // are NOT re-triggered. They fire once and the clip goes silent.
+    // This prevents a 700ms SolarFlare from firing 4+ times in a 3s clip.
     // ═══════════════════════════════════════════════════════════════════════
+    const isOneShot = (effect as any).isOneShot === true
+    
     if (!output && effect.isFinished()) {
+      // 🎯 WAVE 2067: OneShot → clip is done. No re-trigger, no pre-stage.
+      if (isOneShot) {
+        return // Silence until clip ends. The effect spoke once.
+      }
+
       const factory = EFFECT_FACTORIES.get(clip.fxType as string)
       if (factory) {
         const newEffect = factory()
@@ -540,7 +549,7 @@ export class TimelineEngine {
     if (!output) return
 
     // If the effect finished after getOutput (will be caught next frame by seamless re-trigger)
-    if (effect.isFinished()) {
+    if (effect.isFinished() && !isOneShot) {
       // Pre-stage re-creation so next frame triggers immediately
       const factory = EFFECT_FACTORIES.get(clip.fxType as string)
       if (factory) {
@@ -594,7 +603,19 @@ export class TimelineEngine {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 🎨 ZONE OVERRIDES → ARBITER (spatial effects like FiberOptics)
+  // 🎨 ZONE OVERRIDES → ARBITER (spatial effects like FiberOptics, DigitalRain, GatlingRaid)
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // 🎯 WAVE 2067: ZONE-AWARE DISPATCH
+  //
+  // OLD BUG: Every zone override was dispatched to ['*'] (ALL fixtures).
+  //          Result: last zone in the loop overwrote all previous zones.
+  //          DigitalRain: front=Cyan, back=Lime, movers=dim → only movers survived.
+  //          GatlingRaid: front_left=WHITE, back=BLACK → BLACK killed everything.
+  //
+  // NEW: Each zoneId is resolved to its ACTUAL fixture IDs via MasterArbiter.
+  //      'front' → only front fixtures, 'all-movers' → only movers, etc.
+  //      Each zone paints ONLY its own fixtures. No more friendly fire.
   // ═══════════════════════════════════════════════════════════════════════
 
   private dispatchZoneOverrides(
@@ -605,8 +626,8 @@ export class TimelineEngine {
   ): void {
     if (!output.zoneOverrides) return
 
-    // For each zone override, build controls and dispatch
-    for (const [_zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
+    // For each zone override, build controls and dispatch to THAT ZONE's fixtures only
+    for (const [zoneId, zoneData] of Object.entries(output.zoneOverrides)) {
       const controls: Record<string, number> = {}
       const channels: string[] = []
 
@@ -652,8 +673,10 @@ export class TimelineEngine {
       // Skip if nothing to send
       if (channels.length === 0 || controls.dimmer === 0) continue
 
-      // Dispatch via centralized helper
-      this.dispatchToArbiter(['*'], controls, { blendMode })
+      // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
+      // Each zone paints ONLY its own fixtures. No more ['*'] massacre.
+      const zoneFixtureIds = masterArbiter.getFixtureIdsByZone(zoneId)
+      this.dispatchToArbiter(zoneFixtureIds, controls, { blendMode })
     }
   }
 

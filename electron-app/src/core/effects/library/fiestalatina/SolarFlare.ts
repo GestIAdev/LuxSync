@@ -141,7 +141,8 @@ export class SolarFlare implements ILightEffect {
   readonly name = 'Solar Flare'
   readonly category: EffectCategory = 'physical'
   readonly priority = 100  // Alta prioridad - brilla sobre todo
-  readonly mixBus = 'htp' as const  // � WAVE 790: HTP - Let physics breathe during decay
+  readonly mixBus = 'htp' as const  // 🔥 WAVE 790: HTP - Let physics breathe during decay
+  readonly isOneShot = true  // 🎯 WAVE 2067: One-hit wonder — NO re-trigger
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state
@@ -340,6 +341,16 @@ export class SolarFlare implements ILightEffect {
    */
   getPhase(): EffectPhase {
     return this.phase
+  }
+
+  /**
+   * 📏 WAVE 2067: NATIVE DURATION
+   * 
+   * SolarFlare's real duration = preBlackout + attack + sustain + decay
+   * With defaults: 50 + 0 + 150 + 500 = 700ms (NOT the registry's 3000ms!)
+   */
+  getDurationMs(): number {
+    return this.config.preBlackoutMs + this.config.attackMs + this.config.sustainMs + this.config.decayMs
   }
   
   // ─────────────────────────────────────────────────────────────────────────

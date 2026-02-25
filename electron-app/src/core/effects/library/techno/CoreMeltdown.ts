@@ -102,6 +102,7 @@ export class CoreMeltdown extends BaseEffect {
   readonly category: EffectCategory = 'physical'
   readonly priority = 100  // MÁXIMA PRIORIDAD - LA BESTIA DOMINA TODO
   readonly mixBus = 'global' as const  // ☢️ DICTADOR ABSOLUTO
+  readonly isOneShot = true  // 🎯 WAVE 2067: Meltdown único — NO re-trigger
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

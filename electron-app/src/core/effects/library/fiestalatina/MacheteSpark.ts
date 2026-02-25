@@ -112,6 +112,7 @@ export class MacheteSpark extends BaseEffect {
   readonly category: EffectCategory = 'physical'
   readonly priority = 78  // Alta pero no máxima
   readonly mixBus = 'global' as const  // Global override durante el corte
+  readonly isOneShot = true  // 🎯 WAVE 2067: Chispazo único — NO re-trigger
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

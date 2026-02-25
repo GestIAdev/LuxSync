@@ -89,6 +89,7 @@ export class ThunderStruck extends BaseEffect {
   readonly category: EffectCategory = 'physical'
   readonly priority = 95  // Alta prioridad - es un BLINDER
   readonly mixBus = 'global' as const  // Dictador - necesita el impacto completo
+  readonly isOneShot = true  // 🎯 WAVE 2067: Trueno único — NO re-trigger
   
   private config: ThunderStruckConfig
   private currentFlash = 0

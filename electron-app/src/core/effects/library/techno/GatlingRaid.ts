@@ -112,6 +112,7 @@ export class GatlingRaid extends BaseEffect {
   readonly category: EffectCategory = 'physical'
   readonly priority = 92  // Alta pero menor que industrial_strobe
   readonly mixBus = 'global' as const  // 🚂 DICTADOR - necesita negro entre balas
+  readonly isOneShot = true  // 🎯 WAVE 2067: Ráfaga única — NO re-trigger
   
   // ─────────────────────────────────────────────────────────────────────────
   // Internal state

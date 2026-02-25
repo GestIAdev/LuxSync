@@ -271,6 +271,92 @@ export class MasterArbiter extends EventEmitter {
   getFixtureIds(): string[] {
     return Array.from(this.fixtures.keys())
   }
+
+  /**
+   * 🎯 WAVE 2067: ZONE-AWARE FIXTURE RESOLUTION
+   * 
+   * Maps effect zone IDs (from EffectFrameOutput.zoneOverrides) to real fixture IDs.
+   * Effects use abstract zones like 'front', 'back', 'all-pars', 'all-movers'.
+   * This resolves them to the actual fixtures registered in the Arbiter.
+   * 
+   * ZONE VOCABULARY:
+   * ┌─────────────────────┬──────────────────────────────────────────────────┐
+   * │ Effect Zone         │ Maps To (CanonicalZones)                        │
+   * ├─────────────────────┼──────────────────────────────────────────────────┤
+   * │ 'front'             │ front                                           │
+   * │ 'back'              │ back                                            │
+   * │ 'floor'             │ floor                                           │
+   * │ 'all-pars' / 'pars' │ front + back + floor                            │
+   * │ 'all-movers'/'movers│ movers-left + movers-right                     │
+   * │ 'center'            │ center                                          │
+   * │ 'air'               │ air                                             │
+   * │ 'all' / '*'         │ ALL fixtures                                    │
+   * │ 'front_left' etc.   │ front (positional subset - future)             │
+   * └─────────────────────┴──────────────────────────────────────────────────┘
+   * 
+   * @param effectZone Zone ID from the effect's zoneOverrides
+   * @returns Array of fixture IDs belonging to that zone
+   */
+  getFixtureIdsByZone(effectZone: string): string[] {
+    const zone = effectZone.toLowerCase().trim()
+
+    // Wildcard → everything
+    if (zone === 'all' || zone === '*') {
+      return this.getFixtureIds()
+    }
+
+    // Composite zones → union of canonical zones
+    const COMPOSITE_ZONES: Record<string, string[]> = {
+      'all-pars':   ['front', 'back', 'floor'],
+      'pars':       ['front', 'back', 'floor'],
+      'all-movers': ['movers-left', 'movers-right'],
+      'movers':     ['movers-left', 'movers-right'],
+    }
+
+    const canonicalTargets = COMPOSITE_ZONES[zone]
+      ? COMPOSITE_ZONES[zone]
+      : [zone] // Single zone — use as-is
+
+    // Resolve: fixture.zone matches any of the canonical targets
+    const result: string[] = []
+    for (const [id, fixture] of this.fixtures) {
+      const fixtureZone = (fixture.zone || 'unassigned').toLowerCase()
+      if (canonicalTargets.includes(fixtureZone)) {
+        result.push(id)
+      }
+    }
+
+    // Positional sub-zones (GatlingRaid style): front_left, back_center, etc.
+    // These need stereo/position resolution — match by zone prefix + position
+    if (result.length === 0 && zone.includes('_')) {
+      const [zoneBase, side] = zone.split('_')
+      for (const [id, fixture] of this.fixtures) {
+        const fixtureZone = (fixture.zone || '').toLowerCase()
+        if (!fixtureZone.startsWith(zoneBase)) continue
+
+        // Match by name/position hints
+        const name = (fixture.name || '').toLowerCase()
+        if (side === 'left' && (name.includes('left') || name.includes(' l ') || fixtureZone.includes('left'))) {
+          result.push(id)
+        } else if (side === 'right' && (name.includes('right') || name.includes(' r ') || fixtureZone.includes('right'))) {
+          result.push(id)
+        } else if (side === 'center' && (name.includes('center') || name.includes('centre') || fixtureZone === zoneBase)) {
+          result.push(id)
+        }
+      }
+    }
+
+    // FALLBACK: If zone resolved to NOTHING, return ALL fixtures rather than silence.
+    // Better to light everything than light nothing.
+    if (result.length === 0) {
+      console.warn(
+        `[MasterArbiter] ⚠️ WAVE 2067: Zone "${effectZone}" matched 0 fixtures — falling back to wildcard`
+      )
+      return this.getFixtureIds()
+    }
+
+    return result
+  }
   
   // ═══════════════════════════════════════════════════════════════════════
   // LAYER 0: TITAN AI INPUT

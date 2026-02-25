@@ -584,6 +584,16 @@ export class TitanOrchestrator {
     // Now using the new renderFromTarget method that accepts FinalLightingTarget
     let fixtureStates = this.hal.renderFromTarget(arbitratedTarget, this.fixtures, halAudioMetrics)
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2063: CHRONOS PROTECTION GATE
+    // When Chronos Playback is active, the Arbiter already contains the correct
+    // color/dimmer from the timeline. The EffectManager and HephaestusRuntime
+    // must NOT overwrite those values — they are the SOURCE OF TRUTH during playback.
+    // Only the Stereo Movement and Movement Override sections are allowed through,
+    // as they affect pan/tilt (which Titan may be controlling during hybrid mode).
+    // ═══════════════════════════════════════════════════════════════════════
+    const isChronosPlaying = masterArbiter.isPlaybackActive()
+    
     // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
     // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
     // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)
@@ -594,7 +604,7 @@ export class TitanOrchestrator {
     // Nueva arquitectura: si hay zoneOverrides, procesar por zona específica
     // Si no, usar la lógica legacy con colorOverride global
     
-    if (effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
+    if (!isChronosPlaying && effectOutput.hasActiveEffects && effectOutput.zoneOverrides) {
       // 🔥 WAVE 930.1: DEBUG REMOVED - Era spam de 600 líneas por frame
       // Los logs de zoneOverrides están en el EffectManager, no aquí
       
@@ -754,7 +764,7 @@ export class TitanOrchestrator {
       // 🛑 WAVE 740: STOP. Las fixtures fuera de activeZones mantienen su estado BASE.
       // NO hay fallback, NO hay "relleno de huecos", NO hay blanco por defecto.
       
-    } else if (effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
+    } else if (!isChronosPlaying && effectOutput.hasActiveEffects && effectOutput.dimmerOverride !== undefined) {
       // ═══════════════════════════════════════════════════════════════════════
       // LEGACY: BROCHA GORDA - Un solo color para todas las zonas afectadas
       // ═══════════════════════════════════════════════════════════════════════
@@ -1052,7 +1062,7 @@ export class TitanOrchestrator {
     //   - Strobe: Additive (sum clamped to max)
     // ═══════════════════════════════════════════════════════════════════════════
     const hephRuntime = getHephaestusRuntime()
-    const hephOutputs = hephRuntime.tick(Date.now())
+    const hephOutputs = isChronosPlaying ? [] : hephRuntime.tick(Date.now())
     
     if (hephOutputs.length > 0) {
       // Group outputs by parameter for efficient processing

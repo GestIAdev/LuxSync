@@ -334,6 +334,31 @@ export class TimelineEngine {
     // If a Vibe is active, Titan handles pan/tilt/speed.
     // Chronos ALWAYS controls: dimmer, color (R/G/B/W), color_wheel.
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // 🔬 WAVE 2063.4: DEEP DIAGNOSTIC — What's in the accumulator?
+    const tickNumber = Math.floor(timeMs / 16.67)
+    if (tickNumber % 120 === 1) {
+      const accEntries = Array.from(this.frameAccumulator.entries())
+      const nonZero = accEntries.filter(([_, s]) => s.dimmer > 0 || s.red > 0 || s.green > 0 || s.blue > 0)
+      const activeClipNames = Array.from(this.activeClips.entries()).map(([id, s]) => `${s.clip.fxType}(${id.substring(0, 12)})`)
+      console.log(
+        `[TimelineEngine 🔬] tick=${timeMs.toFixed(0)}ms | ` +
+        `fxClips=${this.fxClips.length} vibeClips=${this.vibeClips.length} | ` +
+        `nowActive=${nowActiveIds.size} activeInstances=${this.activeClips.size} | ` +
+        `accumulator: ${accEntries.length} fixtures, ${nonZero.length} with data | ` +
+        `activeEffects=[${activeClipNames.join(', ')}]`
+      )
+      if (nonZero.length > 0) {
+        const [id, s] = nonZero[0]
+        console.log(`[TimelineEngine 🔬] sample: fixture=${id} dim=${s.dimmer.toFixed(0)} RGB(${s.red.toFixed(0)},${s.green.toFixed(0)},${s.blue.toFixed(0)})`)
+      }
+      if (nonZero.length === 0 && this.fxClips.length > 0) {
+        // Show clip time ranges to diagnose if timeMs falls within any clip
+        const clipRanges = this.fxClips.slice(0, 5).map(c => `${c.fxType}[${c.startMs}-${c.endMs}]`)
+        console.log(`[TimelineEngine 🔬] NO DATA! Clip ranges: ${clipRanges.join(', ')} | timeMs=${timeMs.toFixed(0)}`)
+      }
+    }
+
     masterArbiter.setPlaybackFrame(fixtureTargets as any, {
       hasActiveVibe,
       vibeId: this.currentPlaybackVibeId,

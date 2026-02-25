@@ -51,6 +51,7 @@ import {
 } from './types'
 import { mergeChannel, clampDMX } from './merge/MergeStrategies'
 import { CrossfadeEngine } from './CrossfadeEngine'
+import { normalizeZone } from '../stage/ShowFileV2'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -317,10 +318,12 @@ export class MasterArbiter extends EventEmitter {
       ? COMPOSITE_ZONES[zone]
       : [zone] // Single zone — use as-is
 
-    // Resolve: fixture.zone matches any of the canonical targets
+    // 🎯 WAVE 2067.1: Resolve via normalizeZone() — handles ALL legacy formats
+    // BEFORE: fixture.zone.toLowerCase() → 'front_pars' ≠ 'front' → MISS
+    // NOW:    normalizeZone('FRONT_PARS') → 'front' → MATCH
     const result: string[] = []
     for (const [id, fixture] of this.fixtures) {
-      const fixtureZone = (fixture.zone || 'unassigned').toLowerCase()
+      const fixtureZone = normalizeZone(fixture.zone)
       if (canonicalTargets.includes(fixtureZone)) {
         result.push(id)
       }
@@ -331,7 +334,7 @@ export class MasterArbiter extends EventEmitter {
     if (result.length === 0 && zone.includes('_')) {
       const [zoneBase, side] = zone.split('_')
       for (const [id, fixture] of this.fixtures) {
-        const fixtureZone = (fixture.zone || '').toLowerCase()
+        const fixtureZone = normalizeZone(fixture.zone)
         if (!fixtureZone.startsWith(zoneBase)) continue
 
         // Match by name/position hints

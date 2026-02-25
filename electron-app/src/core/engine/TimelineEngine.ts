@@ -586,18 +586,39 @@ export class TimelineEngine {
     fixtureIds: string[],
     blendMode: 'HTP' | 'LTP' | 'ADD' = 'HTP'
   ): void {
-    const hasZoneColors = output.zoneOverrides && 
-      Object.values(output.zoneOverrides).some((z: any) => z.color || z.dimmer !== undefined)
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎯 WAVE 2067.1: COLOR CABLE CUT
+    //
+    // The effect output has 3 possible "color authority" signals:
+    //   1. zoneOverrides with color/dimmer → ZONE PATH (spatial)
+    //   2. colorOverride / whiteOverride   → GLOBAL PATH (uniform)
+    //   3. None of the above               → FALLBACK (intensity-only)
+    //
+    // OLD BUG: The FALLBACK path sent intensity-only outputs through
+    //   dispatchGlobalOutput, which auto-injects RGB(255,255,255).
+    //   Effects that have zoneOverrides but no color THIS FRAME
+    //   (e.g., between flickers of DigitalRain) got white-washed.
+    //
+    // NEW: If the effect emits zoneOverrides AT ALL, it owns its colors.
+    //   Even frames with only dimmer data in zones go through ZONE PATH.
+    //   Auto-white ONLY fires for truly colorless, zoneless outputs
+    //   (pure dimmer/intensity modulators).
+    // ═══════════════════════════════════════════════════════════════════
 
-    if (hasZoneColors) {
-      // ZONE PATH: Spatial effects with per-zone color — zones are authoritative
+    const hasZoneOverrides = output.zoneOverrides && Object.keys(output.zoneOverrides).length > 0
+
+    if (hasZoneOverrides) {
+      // ZONE PATH: Effect has spatial authority — zones are the law.
+      // Even dimmer-only zones must dispatch (DigitalRain blackout zones).
       this.dispatchZoneOverrides(output, envelope, fixtureIds, blendMode)
       // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
     } else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
       // GLOBAL PATH: Effects with direct color/dimmer overrides
       this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode)
     } else {
-      // FALLBACK: intensity-only effects → global output handles auto-white correctly
+      // FALLBACK: Pure intensity modulators → global output with auto-white
+      // Only reaches here if: no zoneOverrides, no colorOverride, no whiteOverride, no dimmerOverride
+      // These are truly "colorless" effects that just modulate brightness → white is correct
       this.dispatchGlobalOutput(output, envelope, fixtureIds, blendMode)
     }
   }
@@ -670,8 +691,11 @@ export class TimelineEngine {
         }
       }
 
-      // Skip if nothing to send
-      if (channels.length === 0 || controls.dimmer === 0) continue
+      // Skip if nothing to send (no channels at all)
+      // 🎯 WAVE 2067.1: Do NOT skip dimmer=0 — intentional blackout zones
+      // (e.g., DigitalRain sends dimmer:0 + blendMode:'replace' to darken zones)
+      // Those MUST reach the arbiter to suppress underlying layers.
+      if (channels.length === 0) continue
 
       // 🎯 WAVE 2067: Resolve zone → actual fixture IDs
       // Each zone paints ONLY its own fixtures. No more ['*'] massacre.

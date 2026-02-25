@@ -929,6 +929,16 @@ export class MasterArbiter extends EventEmitter {
           
           hybridTargets.push(hybridTarget)
           
+          // 🔬 WAVE 2063.3: DIAGNOSTIC LOG — Verify Hybrid Mode data flow
+          if (this.frameNumber % 120 === 1) {
+            console.log(
+              `[MasterArbiter 🎬 HYBRID] fixture=${fixtureId} | ` +
+              `chronos: dim=${chronosData.dimmer.toFixed(0)} RGB(${chronosData.color.r.toFixed(0)},${chronosData.color.g.toFixed(0)},${chronosData.color.b.toFixed(0)}) | ` +
+              `titan: pan=${titanTarget.pan} tilt=${titanTarget.tilt} | ` +
+              `vibeActive=${this._playbackMeta.hasActiveVibe}`
+            )
+          }
+          
           // Cache position for Ghost Protocol
           this.lastKnownPositions.set(fixtureId, { pan: hybridTarget.pan, tilt: hybridTarget.tilt })
         } else {

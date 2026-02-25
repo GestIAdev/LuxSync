@@ -594,6 +594,16 @@ export class TitanOrchestrator {
     // ═══════════════════════════════════════════════════════════════════════
     const isChronosPlaying = masterArbiter.isPlaybackActive()
     
+    // 🔬 WAVE 2063.3: DIAGNOSTIC — Confirm Protection Gate is active
+    if (isChronosPlaying && this.frameCount % 120 === 1) {
+      const f0 = fixtureStates[0]
+      console.log(
+        `[TitanOrchestrator 🎬] CHRONOS PLAYING — Protection Gate ACTIVE | ` +
+        `f0: dim=${f0?.dimmer} RGB(${f0?.r},${f0?.g},${f0?.b}) | ` +
+        `EffectManager BYPASSED, HephaestusRuntime BYPASSED`
+      )
+    }
+    
     // 🧨 WAVE 635 → WAVE 692.2 → WAVE 700.8.5: EFFECT COLOR OVERRIDE
     // Si hay un efecto activo con globalComposition>0, usar SU color (no hardcoded dorado)
     // Si globalComposition=0, MEZCLAR con lo que ya renderizó el HAL (no machacar)

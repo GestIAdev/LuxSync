@@ -32,6 +32,7 @@ import type { LuxProject } from '../../chronos/core/ChronosProject'
 import type { FXClip, FXKeyframe, VibeClip } from '../../chronos/core/TimelineClip'
 import type { Layer2_Manual } from '../arbiter/types'
 import { masterArbiter } from '../arbiter'
+import { getTitanOrchestrator } from '../orchestrator/TitanOrchestrator'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EFFECT FACTORY IMPORTS — The Full Arsenal
@@ -216,6 +217,9 @@ export class TimelineEngine {
   // ── Last active set for cleanup ──
   private previousActiveIds = new Set<string>()
 
+  // ── 🎬 WAVE 2063: Active vibe tracking for Titan handoff ──
+  private currentPlaybackVibeId: string | null = null
+
   // ── 🔥 WAVE 2056: Frame accumulator for Direct Drive ──
   private frameAccumulator = new Map<string, {
     dimmer: number
@@ -288,10 +292,18 @@ export class TimelineEngine {
     }
 
     // ── Process active Vibe clips ──
+    // 🎬 WAVE 2063: Track if any vibe is active this frame
+    let hasActiveVibe = false
     for (const vibeClip of this.vibeClips) {
       if (timeMs >= vibeClip.startMs && timeMs < vibeClip.endMs) {
-        this.processVibeClip(vibeClip, timeMs)  // Uses existing logic
+        hasActiveVibe = true
+        this.processVibeClip(vibeClip, timeMs)  // Now also sends vibeId to Titan
       }
+    }
+
+    // 🎬 WAVE 2063: If no vibe clip is active, clear the tracked vibe
+    if (!hasActiveVibe && this.currentPlaybackVibeId) {
+      this.currentPlaybackVibeId = null
     }
 
     // ── Convert frame accumulator to FixtureLightingTarget[] ──
@@ -315,8 +327,17 @@ export class TimelineEngine {
       }
     })
 
-    // ── Send complete frame to Arbiter (Direct Drive) ──
-    masterArbiter.setPlaybackFrame(fixtureTargets as any)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2063: HYBRID MODE — Smart Override instead of Scorched Earth
+    // 
+    // Send frame to Arbiter with metadata about WHICH channels Chronos controls.
+    // If a Vibe is active, Titan handles pan/tilt/speed.
+    // Chronos ALWAYS controls: dimmer, color (R/G/B/W), color_wheel.
+    // ═══════════════════════════════════════════════════════════════════════
+    masterArbiter.setPlaybackFrame(fixtureTargets as any, {
+      hasActiveVibe,
+      vibeId: this.currentPlaybackVibeId,
+    })
 
     // ── Cleanup clips that ended ──
     Array.from(this.previousActiveIds).forEach(prevId => {
@@ -345,6 +366,9 @@ export class TimelineEngine {
 
     // 🔥 WAVE 2056: Stop playback mode in Arbiter
     masterArbiter.stopPlayback()
+
+    // 🎬 WAVE 2063: Clear tracked vibe
+    this.currentPlaybackVibeId = null
 
     this.playing = false
     this.lastTickMs = 0
@@ -783,10 +807,28 @@ export class TimelineEngine {
     }
     if (envelope <= 0) return
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎬 WAVE 2063: VIBE RESURRECTION — Enviar vibeId a Titan
+    // El VibeClip no solo pinta colores, también ACTIVA el motor de movimiento.
+    // Titan genera pan/tilt/physics en su capa — Chronos solo override color/dimmer.
+    // ═══════════════════════════════════════════════════════════════════════
+    const vibeId = clip.vibeType
+    if (vibeId && vibeId !== this.currentPlaybackVibeId) {
+      this.currentPlaybackVibeId = vibeId
+      try {
+        const orchestrator = getTitanOrchestrator()
+        orchestrator.setVibe(vibeId as any)
+        console.log(`[TimelineEngine] 🎭 WAVE 2063: Vibe handoff → Titan "${vibeId}" (movement will flow)`)
+      } catch (err) {
+        console.warn(`[TimelineEngine] ⚠️ Could not set vibe on Titan:`, err)
+      }
+    }
+
     // Resolve color (Hex → RGB)
     const rgb = this.hexToRgb(clip.color || '#ffffff')
 
-    // Dispatch via centralized helper (wildcard → all fixtures, priority 90)
+    // Dispatch color+dimmer to frame accumulator (wildcard → all fixtures, priority 90)
+    // PAN/TILT are NOT set here — Titan handles them via its normal flow
     this.dispatchToArbiter(
       ['*'],
       {

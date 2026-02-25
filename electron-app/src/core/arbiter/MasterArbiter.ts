@@ -124,12 +124,12 @@ export class MasterArbiter extends EventEmitter {
   private fixtureOrigins: Map<string, { pan: number; tilt: number; timestamp: number }> = new Map()
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🔥 WAVE 2056: DIRECT DRIVE - Playback Bypass
-  // When TimelineEngine is playing, it sends complete frames here.
-  // During playback, we IGNORE Titan + Manual layers (Scorched Earth).
+  // 🎬 WAVE 2063: HYBRID MODE - Playback with Titan coexistence
+  // Chronos controls color/dimmer. Titan controls movement (when vibe active).
   // ═══════════════════════════════════════════════════════════════════════
   private playbackActive: boolean = false
   private currentPlaybackFrame: Map<string, FixtureLightingTarget> = new Map()
+  private _playbackMeta: { hasActiveVibe: boolean; vibeId: string | null } = { hasActiveVibe: false, vibeId: null }
   
   // Grand Master (WAVE 376)
   private grandMaster: number = 1.0  // 0-1, multiplies dimmer globally
@@ -792,25 +792,38 @@ export class MasterArbiter extends EventEmitter {
    * 🔥 WAVE 2056: SCORCHED EARTH PROTOCOL
    * 
    * Inject a complete playback frame from TimelineEngine.
-   * When playback is active, arbitrate() returns this frame DIRECTLY,
-   * bypassing Titan AI, Manual Overrides, and all layer merging.
+   * ═══════════════════════════════════════════════════════════════════════
+   * 🎬 WAVE 2063: HYBRID MODE — Smart Override, NOT Scorched Earth
+   * ═══════════════════════════════════════════════════════════════════════
    * 
-   * This is how video rendering works: absolute frame data, no negotiation.
+   * When playback is active, Chronos controls COLOR channels (dimmer, RGB, white, color_wheel).
+   * If a Vibe is active, Titan KEEPS control of MOVEMENT channels (pan, tilt, zoom, speed).
    * 
-   * @param fixtures Array of complete fixture states from TimelineEngine
+   * This is NOT video rendering anymore — it's a smart layer overlay.
+   * Chronos is a color director. Titan is a movement director. They coexist.
+   * 
+   * @param fixtures Array of fixture states from TimelineEngine
+   * @param meta Hybrid metadata: whether a vibe is active, and which vibe
    */
-  setPlaybackFrame(fixtures: FixtureLightingTarget[]): void {
+  setPlaybackFrame(
+    fixtures: FixtureLightingTarget[],
+    meta?: { hasActiveVibe: boolean; vibeId: string | null }
+  ): void {
     this.currentPlaybackFrame.clear()
     
     for (const fixture of fixtures) {
       this.currentPlaybackFrame.set(fixture.fixtureId, fixture)
     }
     
-    // Activate playback mode (bypasses all other layers)
+    // Activate playback mode
     this.playbackActive = true
     
+    // 🎬 WAVE 2063: Store hybrid metadata
+    this._playbackMeta = meta ?? { hasActiveVibe: false, vibeId: null }
+    
     if (this.config.debug && this.frameNumber % 60 === 0) {
-      console.log(`[MasterArbiter] 🔥 DIRECT DRIVE: ${fixtures.length} fixtures in playback frame`)
+      const mode = this._playbackMeta.hasActiveVibe ? 'HYBRID (Titan+Chronos)' : 'COLOR ONLY'
+      console.log(`[MasterArbiter] 🎬 PLAYBACK ${mode}: ${fixtures.length} fixtures | vibe: ${this._playbackMeta.vibeId ?? 'none'}`)
     }
   }
   
@@ -820,7 +833,8 @@ export class MasterArbiter extends EventEmitter {
   stopPlayback(): void {
     this.playbackActive = false
     this.currentPlaybackFrame.clear()
-    console.log('[MasterArbiter] 🔥 DIRECT DRIVE: Playback stopped, returning to layer arbitration')
+    this._playbackMeta = { hasActiveVibe: false, vibeId: null }
+    console.log('[MasterArbiter] 🎬 PLAYBACK STOPPED: Returning to normal layer arbitration')
   }
   
   /**
@@ -840,7 +854,8 @@ export class MasterArbiter extends EventEmitter {
    * Merges all layers and produces final lighting target.
    * Call this every frame to get the output for HAL.
    * 
-   * 🔥 WAVE 2056: SCORCHED EARTH - If playback is active, returns playback frame DIRECTLY
+   * 🎬 WAVE 2063: HYBRID MODE — When playback is active, Chronos controls color
+   * and Titan controls movement. Both directors coexist. No more scorched earth.
    * 
    * @returns Final lighting target ready for HAL
    */
@@ -849,16 +864,81 @@ export class MasterArbiter extends EventEmitter {
     this.frameNumber++
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 🔥 WAVE 2056: DIRECT DRIVE BYPASS
-    // If playback is active, return the playback frame DIRECTLY.
-    // NO layer merging, NO Titan AI, NO manual overrides.
-    // Like video rendering: frame data is absolute truth.
+    // 🎬 WAVE 2063: HYBRID MODE — Chronos + Titan coexistence
+    // 
+    // OLD (WAVE 2056): Direct Drive returned raw frames, killing Titan.
+    // NEW: Chronos is a COLOR DIRECTOR, Titan is a MOVEMENT DIRECTOR.
+    //
+    // When playback active:
+    //   1. Run NORMAL arbitration (Titan generates pan/tilt/zoom/speed)
+    //   2. OVERLAY Chronos color data (dimmer, R, G, B, white, color_wheel)
+    //   3. If vibe is active → Titan keeps movement. If not → Chronos movement wins.
+    //
+    // This fixes:
+    //   - GRAY BUG: Frames now go through normal HAL → translateColorToWheel()
+    //   - DEAD VIBE: Titan runs normally → FixturePhysicsDriver gets pan/tilt targets
     // ═══════════════════════════════════════════════════════════════════════
     if (this.playbackActive && this.currentPlaybackFrame.size > 0) {
-      const fixtureTargets = Array.from(this.currentPlaybackFrame.values())
+      // STEP 1: Run normal arbitration for ALL fixtures (Titan lives!)
+      this.cleanupExpiredEffects()
+      
+      const allFixtureIds = Array.from(this.fixtures.keys())
+      const hybridTargets: FixtureLightingTarget[] = []
+      
+      for (const fixtureId of allFixtureIds) {
+        // Get Titan's full arbitration (includes movement from vibe)
+        const titanTarget = this.arbitrateFixture(fixtureId, now)
+        
+        // Get Chronos' frame data (color/dimmer from timeline)
+        const chronosData = this.currentPlaybackFrame.get(fixtureId)
+        
+        if (chronosData) {
+          // STEP 2: OVERLAY — Chronos controls color, Titan controls movement
+          const hybridTarget: FixtureLightingTarget = {
+            fixtureId,
+            
+            // ── COLOR CHANNELS: Chronos is the color director ──
+            dimmer: clampDMX(chronosData.dimmer * this.grandMaster),
+            color: {
+              r: clampDMX(chronosData.color.r),
+              g: clampDMX(chronosData.color.g),
+              b: clampDMX(chronosData.color.b),
+            },
+            
+            // ── MOVEMENT CHANNELS: Titan is the movement director (when vibe active) ──
+            pan: this._playbackMeta.hasActiveVibe ? titanTarget.pan : clampDMX(chronosData.pan),
+            tilt: this._playbackMeta.hasActiveVibe ? titanTarget.tilt : clampDMX(chronosData.tilt),
+            zoom: this._playbackMeta.hasActiveVibe ? titanTarget.zoom : clampDMX(chronosData.zoom),
+            speed: this._playbackMeta.hasActiveVibe ? titanTarget.speed : clampDMX(chronosData.speed),
+            focus: titanTarget.focus,
+            
+            // ── MECHANICAL CHANNELS: Always from Chronos if present, else Titan ──
+            color_wheel: chronosData.color_wheel ?? titanTarget.color_wheel,
+            
+            // ── Metadata ──
+            _controlSources: {
+              ...titanTarget._controlSources,
+              dimmer: ControlLayer.EFFECTS,  // Mark as "from playback"
+              red: ControlLayer.EFFECTS,
+              green: ControlLayer.EFFECTS,
+              blue: ControlLayer.EFFECTS,
+            },
+            _crossfadeActive: titanTarget._crossfadeActive,
+            _crossfadeProgress: titanTarget._crossfadeProgress,
+          }
+          
+          hybridTargets.push(hybridTarget)
+          
+          // Cache position for Ghost Protocol
+          this.lastKnownPositions.set(fixtureId, { pan: hybridTarget.pan, tilt: hybridTarget.tilt })
+        } else {
+          // Fixture not in Chronos frame → pure Titan control
+          hybridTargets.push(titanTarget)
+        }
+      }
       
       const output: FinalLightingTarget = {
-        fixtures: fixtureTargets,
+        fixtures: hybridTargets,
         globalEffects: {
           strobeActive: false,
           strobeSpeed: 0,
@@ -870,13 +950,13 @@ export class MasterArbiter extends EventEmitter {
         timestamp: now,
         frameNumber: this.frameNumber,
         _layerActivity: {
-          titanActive: false,
-          titanVibeId: 'PLAYBACK_DIRECT_DRIVE',
+          titanActive: this._playbackMeta.hasActiveVibe,
+          titanVibeId: this._playbackMeta.vibeId ?? 'PLAYBACK_COLOR_ONLY',
           consciousnessActive: false,
           consciousnessStatus: undefined,
           manualOverrideCount: 0,
           manualFixtureIds: [],
-          activeEffects: [],
+          activeEffects: [],  // Chronos is not a layer effect, it's a playback overlay
         }
       }
       

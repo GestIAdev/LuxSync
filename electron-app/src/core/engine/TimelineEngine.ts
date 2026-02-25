@@ -334,30 +334,6 @@ export class TimelineEngine {
     // If a Vibe is active, Titan handles pan/tilt/speed.
     // Chronos ALWAYS controls: dimmer, color (R/G/B/W), color_wheel.
     // ═══════════════════════════════════════════════════════════════════════
-    
-    // 🔬 WAVE 2063.4: DEEP DIAGNOSTIC — What's in the accumulator?
-    const tickNumber = Math.floor(timeMs / 16.67)
-    if (tickNumber % 120 === 1) {
-      const accEntries = Array.from(this.frameAccumulator.entries())
-      const nonZero = accEntries.filter(([_, s]) => s.dimmer > 0 || s.red > 0 || s.green > 0 || s.blue > 0)
-      const activeClipNames = Array.from(this.activeClips.entries()).map(([id, s]) => `${s.clip.fxType}(${id.substring(0, 12)})`)
-      console.log(
-        `[TimelineEngine 🔬] tick=${timeMs.toFixed(0)}ms | ` +
-        `fxClips=${this.fxClips.length} vibeClips=${this.vibeClips.length} | ` +
-        `nowActive=${nowActiveIds.size} activeInstances=${this.activeClips.size} | ` +
-        `accumulator: ${accEntries.length} fixtures, ${nonZero.length} with data | ` +
-        `activeEffects=[${activeClipNames.join(', ')}]`
-      )
-      if (nonZero.length > 0) {
-        const [id, s] = nonZero[0]
-        console.log(`[TimelineEngine 🔬] sample: fixture=${id} dim=${s.dimmer.toFixed(0)} RGB(${s.red.toFixed(0)},${s.green.toFixed(0)},${s.blue.toFixed(0)})`)
-      }
-      if (nonZero.length === 0 && this.fxClips.length > 0) {
-        // Show clip time ranges to diagnose if timeMs falls within any clip
-        const clipRanges = this.fxClips.slice(0, 5).map(c => `${c.fxType}[${c.startMs}-${c.endMs}]`)
-        console.log(`[TimelineEngine 🔬] NO DATA! Clip ranges: ${clipRanges.join(', ')} | timeMs=${timeMs.toFixed(0)}`)
-      }
-    }
 
     masterArbiter.setPlaybackFrame(fixtureTargets as any, {
       hasActiveVibe,
@@ -493,31 +469,97 @@ export class TimelineEngine {
 
     // Read procedural output
     const output = effect.getOutput()
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2063.5: SEAMLESS RE-TRIGGER
+    // 
+    // If effect finished mid-clip, re-create AND re-trigger in the SAME frame.
+    // This eliminates the 1-frame "dead gap" between effect cycles that caused
+    // the accumulator to go empty and Chronos to send dim=0 RGB(0,0,0).
+    // 
+    // OLD: finish → set triggered=false → NEXT frame: re-trigger (1 frame gap!)
+    // NEW: finish → re-create → trigger → update → getOutput (0 frame gap)
+    // ═══════════════════════════════════════════════════════════════════════
+    if (!output && effect.isFinished()) {
+      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
+      if (factory) {
+        const newEffect = factory()
+        const zones: EffectZone[] = (clip.zones && clip.zones.length > 0)
+          ? clip.zones as EffectZone[]
+          : ['all']
+        newEffect.trigger({
+          effectType: clip.fxType as string,
+          intensity: 1,
+          source: 'chronos',
+          zones,
+          reason: `timeline:${clip.fxType}:${clip.id}:retrigger`,
+        })
+        newEffect.update(deltaMs)
+        state.effect = newEffect
+        state.triggered = true
+
+        const retriggeredOutput = newEffect.getOutput()
+        if (!retriggeredOutput) return
+
+        const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs)
+        const fixtureIds = this.resolveFixtureIds(clip)
+        this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds)
+        return
+      }
+    }
+
     if (!output) return
+
+    // If the effect finished after getOutput (will be caught next frame by seamless re-trigger)
+    if (effect.isFinished()) {
+      // Pre-stage re-creation so next frame triggers immediately
+      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
+      if (factory) {
+        state.effect = factory()
+        state.triggered = false
+      }
+    }
 
     // Keyframe envelope acts as master dimmer multiplier
     const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs)
 
     // ── Process output → Arbiter ──
     const fixtureIds = this.resolveFixtureIds(clip)
+    this.dispatchEffectOutput(output, envelope, fixtureIds)
+  }
 
-    // Check if this effect uses zoneOverrides (spatial effects)
-    if (output.zoneOverrides && Object.keys(output.zoneOverrides).length > 0) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔥 WAVE 2063.5: UNIFIED EFFECT DISPATCH
+  // 
+  // Replaces the old dual-call pattern (dispatchZoneOverrides + dispatchGlobalOutput)
+  // with a single smart dispatcher that avoids the "auto-white overwrite" bug.
+  //
+  // OLD BUG: Effects with zoneOverrides (like SalsaFire) would dispatch colored zones,
+  //          then dispatchGlobalOutput would overwrite them with RGB(255,255,255) via
+  //          auto-white injection because colorOverride=undefined.
+  //
+  // NEW: If zoneOverrides have color → use those exclusively (no global fallback).
+  //      If no zoneOverrides → use global colorOverride/dimmerOverride/auto-white.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  private dispatchEffectOutput(
+    output: EffectFrameOutput,
+    envelope: number,
+    fixtureIds: string[]
+  ): void {
+    const hasZoneColors = output.zoneOverrides && 
+      Object.values(output.zoneOverrides).some((z: any) => z.color || z.dimmer !== undefined)
+
+    if (hasZoneColors) {
+      // ZONE PATH: Spatial effects with per-zone color — zones are authoritative
       this.dispatchZoneOverrides(output, envelope, fixtureIds)
-    }
-
-    // Also dispatch the global fallback (colorOverride, dimmerOverride)
-    this.dispatchGlobalOutput(output, envelope, fixtureIds)
-
-    // If the effect finished, let it re-trigger on next frame
-    // (clips can be longer than a single effect cycle)
-    if (effect.isFinished()) {
-      state.triggered = false
-      // Re-create effect for next cycle
-      const factory = EFFECT_FACTORIES.get(clip.fxType as string)
-      if (factory) {
-        state.effect = factory()
-      }
+      // Do NOT call dispatchGlobalOutput — it would overwrite zone colors with auto-white
+    } else if (output.colorOverride || output.dimmerOverride !== undefined || output.whiteOverride !== undefined) {
+      // GLOBAL PATH: Effects with direct color/dimmer overrides
+      this.dispatchGlobalOutput(output, envelope, fixtureIds)
+    } else {
+      // FALLBACK: intensity-only effects → global output handles auto-white correctly
+      this.dispatchGlobalOutput(output, envelope, fixtureIds)
     }
   }
 

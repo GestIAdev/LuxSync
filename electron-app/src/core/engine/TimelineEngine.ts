@@ -233,6 +233,10 @@ export class TimelineEngine {
     zoom: number
     speed: number
     blendMode: 'HTP' | 'LTP' | 'ADD'
+    // 🎭 WAVE 2070: COLOR TOUCHED — Tracks if ANY effect explicitly sent color
+    // false = no effect touched color → arbiter should let Titan's color through
+    // true = at least one effect sent RGB values → arbiter uses Chronos color
+    colorTouched: boolean
   }>()
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -340,6 +344,7 @@ export class TimelineEngine {
       fixtureId: string
       dimmer: number
       color: { r: number; g: number; b: number }
+      colorTouched: boolean  // 🎭 WAVE 2070: Did any effect explicitly send color?
       pan: number; tilt: number; zoom: number; focus: number; speed: number
       color_wheel: number; strobe: number; prism: number; gobo: number
       blendMode: 'HTP' | 'LTP' | 'ADD'  // 🎛️ WAVE 2066: Smart MixBus
@@ -351,6 +356,7 @@ export class TimelineEngine {
         fixtureId,
         dimmer: state.dimmer,
         color: { r: state.red, g: state.green, b: state.blue },
+        colorTouched: state.colorTouched,  // 🎭 WAVE 2070: Propagate flag
         pan: state.pan,
         tilt: state.tilt,
         zoom: state.zoom,
@@ -1105,6 +1111,7 @@ export class TimelineEngine {
           dimmer: 0, red: 0, green: 0, blue: 0, white: 0,
           pan: 127, tilt: 127, zoom: 0, speed: 0,
           blendMode: 'HTP',
+          colorTouched: false,  // 🎭 WAVE 2070: No effect has sent color yet
         }
         this.frameAccumulator.set(fixtureId, currentState)
       }
@@ -1138,6 +1145,9 @@ export class TimelineEngine {
       const hasIncomingColor = (controls.red !== undefined || controls.green !== undefined || controls.blue !== undefined)
 
       if (hasIncomingColor) {
+        // 🎭 WAVE 2070: Mark that color was EXPLICITLY touched by an effect
+        currentState.colorTouched = true
+
         const r = controls.red ?? 0
         const g = controls.green ?? 0
         const b = controls.blue ?? 0

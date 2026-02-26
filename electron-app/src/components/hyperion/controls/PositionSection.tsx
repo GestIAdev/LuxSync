@@ -390,45 +390,41 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   const handleRelease = useCallback(async () => {
     // 1. Actualizar estado UI inmediatamente
     onOverrideChange(false)
-    // 🔄 WAVE 2042.22: NO CLEAR pattern - let it continue running
-    // setActivePattern('static')  // ❌ OLD: This killed the pattern
+    // � WAVE 2070.3: EXORCISM — Reset pattern on UNLOCK.
+    // WAVE 2042.22 had this commented out to "let pattern continue running",
+    // but that caused pattern to persist forever, secuestrating the fixture.
+    // Backend now also purges activePatterns on release (see MasterArbiter).
+    setActivePattern('static')
     setIsCalibrating(false)
     
     try {
-      // 👻 WAVE 2042.21: GHOST HANDOFF - Inject current position as AI origin
-      // Antes de liberar, comunicamos la posición actual al backend
-      // para que Selene adopte este punto como nuevo "home"
-      if (selectedIds.length > 0) {
-        // Convertir grados a DMX (0-255)
-        // pan: 0-540° → 0-255 DMX
-        // tilt: 0-270° → 0-255 DMX
-        const panDmx = Math.round((pan / 540) * 255)
-        const tiltDmx = Math.round((tilt / 270) * 255)
-        
-        // Notificar al Arbiter la nueva posición de origen
-        // Usamos setManual con un flag especial de "soft release"
-        // que indica: "usa estos valores como punto de partida, no como override"
-        const electron = (window as any).electron
-        if (electron?.ipcRenderer?.invoke) {
-          await electron.ipcRenderer.invoke('lux:arbiter:setContextOrigin', {
-            fixtureIds: selectedIds,
-            origin: { pan: panDmx, tilt: tiltDmx }
-          })
-          console.log(`[Position] 👻 GHOST HANDOFF: AI adopts P${panDmx}/T${tiltDmx} as new origin`)
-        }
+      // 🔧 WAVE 2070.3: Clear patterns FIRST, then release manual
+      // This ensures the backend stops driving position via activePatterns
+      const electron = (window as any).electron
+      if (electron?.ipcRenderer?.invoke) {
+        await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
+          fixtureIds: selectedIds,
+          pattern: null,  // null = clear pattern
+          speed: 0,
+          amplitude: 0,
+        })
       }
       
-      // 2. Ahora sí, liberamos el override manual de PAN/TILT
-      // 🔄 WAVE 2042.22: PATTERN PERSISTE - Solo liberamos pan/tilt, el pattern sigue
+      // Clear movement overrides in VibeMovementManager too
+      await window.lux?.arbiter?.setMovementPattern(null)
+      await window.lux?.arbiter?.clearMovementOverrides()
+      
+      // 2. Release manual override — returns control to Titan/Selene
+      // � WAVE 2070.3: Release ALL channels, not just pan/tilt
+      // Partial release left orphaned overrides that blocked Titan
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
-        channels: ['pan', 'tilt'],
       })
-      console.log(`[Position] 🔓 Released pan/tilt for ${selectedIds.length} fixtures (pattern continues)`)
+      console.log(`[Position] 🔓 FULL RELEASE for ${selectedIds.length} fixtures — back to AI`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }
-  }, [selectedIds, onOverrideChange, pan, tilt])  // ⚠️ NO incluir activePattern en deps
+  }, [selectedIds, onOverrideChange])
   
   /**
    * WAVE 377: Toggle calibration mode

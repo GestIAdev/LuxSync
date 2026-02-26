@@ -490,6 +490,9 @@ export class MasterArbiter extends EventEmitter {
   /**
    * Release manual override for a fixture
    * Starts crossfade transition back to AI control.
+   * 🔧 WAVE 2070.3: EXORCISM — Also purge patterns and origins for released fixtures.
+   *   Without this, activePatterns stayed orphaned after UNLOCK, keeping the fixture
+   *   locked on pattern.center instead of returning to Titan/Selene.
    */
   releaseManualOverride(fixtureId: string, channels?: ChannelType[]): void {
     const override = this.layer2_manualOverrides.get(fixtureId)
@@ -511,6 +514,22 @@ export class MasterArbiter extends EventEmitter {
         targetValue,
         override.releaseTransitionMs || this.config.defaultCrossfadeMs
       )
+    }
+    
+    // 🔧 WAVE 2070.3: If releasing pan/tilt, also purge pattern and origin
+    // Without this, the pattern keeps driving position even after UNLOCK
+    const releasingMovement = channelsToRelease.includes('pan' as ChannelType) || 
+                               channelsToRelease.includes('tilt' as ChannelType)
+    if (releasingMovement || !channels) {
+      // Purge active pattern for this fixture
+      if (this.activePatterns.has(fixtureId)) {
+        this.activePatterns.delete(fixtureId)
+        console.log(`[MasterArbiter] 🧹 Pattern PURGED on release: ${fixtureId}`)
+      }
+      // Purge ghost origin
+      if (this.fixtureOrigins.has(fixtureId)) {
+        this.fixtureOrigins.delete(fixtureId)
+      }
     }
     
     // Update or remove override
@@ -1436,12 +1455,18 @@ export class MasterArbiter extends EventEmitter {
    * Calculate pattern offset (Circle, Eight, Sweep)
    * Returns pan/tilt offset as fractions (-1 to +1) 
    * 🔧 WAVE 2042.24: Simplified - size already normalized 0-1
+   * 🔧 WAVE 2070.3: Added diagnostic logging every 60 frames
    */
   private calculatePatternOffset(pattern: PatternConfig, now: number): { panOffset: number; tiltOffset: number } {
     const elapsedMs = now - pattern.startTime
     const cycleDurationMs = (1000 / Math.max(0.01, pattern.speed))  // speed = cycles per second, prevent div by 0
     const phase = (elapsedMs % cycleDurationMs) / cycleDurationMs
     const t = phase * 2 * Math.PI  // 0 to 2π
+    
+    // 🔧 WAVE 2070.3: Diagnostic — log every 60 frames to see actual values
+    if (this.frameNumber % 60 === 0) {
+      console.log(`[Pattern] 🔄 type=${pattern.type} speed=${pattern.speed.toFixed(3)}Hz size=${pattern.size.toFixed(3)} elapsed=${(elapsedMs/1000).toFixed(1)}s cycle=${(cycleDurationMs/1000).toFixed(2)}s phase=${phase.toFixed(3)} t=${t.toFixed(3)}`)
+    }
     
     // 🔧 WAVE 2042.24: Size is already 0-1, applied in getAdjustedPosition
     // Here we just generate the shape with amplitude -1 to +1
@@ -1497,6 +1522,11 @@ export class MasterArbiter extends EventEmitter {
       
       const adjustedPan = pattern.center.pan + panMovement
       const adjustedTilt = pattern.center.tilt + tiltMovement
+      
+      // 🔧 WAVE 2070.3: Diagnostic — show final position vs center
+      if (this.frameNumber % 60 === 0) {
+        console.log(`[Position] 📍 ${fixtureId.substring(0,8)} center=P${pattern.center.pan.toFixed(0)}/T${pattern.center.tilt.toFixed(0)} → adjusted=P${adjustedPan.toFixed(1)}/T${adjustedTilt.toFixed(1)} (move=±${panMovement.toFixed(1)}/${tiltMovement.toFixed(1)}) hasOverride=${!!manualOverride}`)
+      }
       
       return { pan: adjustedPan, tilt: adjustedTilt }
     }
@@ -1808,30 +1838,21 @@ export class MasterArbiter extends EventEmitter {
     // ═══════════════════════════════════════════════════════════════════════
     
     // ═══════════════════════════════════════════════════════════════════════
-    // 👻 WAVE 2070.2: GHOST HANDOFF — Smooth crossfade from manual → AI
+    // 👻 WAVE 2070.2: GHOST HANDOFF — DISABLED (WAVE 2070.3 EXORCISM)
     // ═══════════════════════════════════════════════════════════════════════
-    // When operator releases manual control, setFixtureOrigin() stores their
-    // last position. Here we interpolate from that origin toward Titan's
-    // calculated target over GHOST_TRANSITION_MS, preventing a hard jump.
-    // After the transition expires, we delete the origin → zero overhead.
+    // The interpolation was contaminating the Titan → getAdjustedPosition pipeline.
+    // When operator releases manual control, we now do a HARD CUT back to Titan.
+    // The smooth crossfade was causing the fixture to appear "stuck" because:
+    //   1. Origin values overwrote Titan values fed to getAdjustedPosition
+    //   2. Patterns used contaminated base positions
+    //   3. UNLOCK couldn't complete because interpolation held position
+    //
+    // TODO: Re-enable with proper architecture that doesn't touch Titan values
+    //       but instead operates AFTER getAdjustedPosition as a post-process.
     // ═══════════════════════════════════════════════════════════════════════
-    const GHOST_TRANSITION_MS = 2000  // 2 seconds of smooth crossfade
-    const origin = this.fixtureOrigins.get(fixtureId)
-    if (origin) {
-      const elapsed = performance.now() - origin.timestamp
-      if (elapsed < GHOST_TRANSITION_MS) {
-        // Smooth ease-out interpolation: starts fast, decelerates
-        const t = elapsed / GHOST_TRANSITION_MS
-        const eased = 1 - (1 - t) * (1 - t)  // Quadratic ease-out
-        
-        // Lerp from manual origin → Titan target
-        defaults.pan = origin.pan + (defaults.pan - origin.pan) * eased
-        defaults.tilt = origin.tilt + (defaults.tilt - origin.tilt) * eased
-      } else {
-        // Transition complete — purge origin, zero future overhead
-        this.fixtureOrigins.delete(fixtureId)
-      }
-    }
+    // const GHOST_TRANSITION_MS = 2000
+    // const origin = this.fixtureOrigins.get(fixtureId)
+    // if (origin) { ... }
     
     return defaults
   }

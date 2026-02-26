@@ -236,6 +236,23 @@ export class TimelineEngine {
   }>()
 
   // ═══════════════════════════════════════════════════════════════════════
+  // 🔒 WAVE 2069: COLOR LATCH — Sustained Palette for Mechanical Wheels
+  //
+  // Movers with mechanical color wheels (stepper motors) CANNOT change color
+  // at strobe speeds (15Hz+). When a strobe effect alternates between
+  // RGB(Cyan) and RGB(0,0,0), the HAL translates the zeros to color_wheel=0
+  // (Open/White). The stepper motor gets whiplashed between Cyan and White
+  // at 15Hz → firmware locks the wheel → color dies.
+  //
+  // THE LATCH: Cache the last POSITIVE color seen per fixture. During
+  // micro-blackouts (dimmer=0, RGB=0,0,0), re-inject the latched color.
+  // The strobe modulates ONLY the dimmer. The color stays parked.
+  //
+  // LIFECYCLE: Written when a positive color arrives. Read when RGB is zero.
+  // Cleared when the clip ends (releaseClip) or playback stops (stop).
+  // ═══════════════════════════════════════════════════════════════════════
+  private colorLatch = new Map<string, { r: number; g: number; b: number }>()
+  // ═══════════════════════════════════════════════════════════════════════
   // LOAD PROJECT
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -387,7 +404,10 @@ export class TimelineEngine {
     this.activeClips.clear()
     this.previousActiveIds.clear()
 
-    // 🔥 WAVE 2056: Stop playback mode in Arbiter
+    // � WAVE 2069: Clear color latch — no stale colors after stop
+    this.colorLatch.clear()
+
+    // �🔥 WAVE 2056: Stop playback mode in Arbiter
     masterArbiter.stopPlayback()
 
     // 🎬 WAVE 2063: Clear tracked vibe
@@ -1107,9 +1127,46 @@ export class TimelineEngine {
       }
 
       // LTP for color (Latest Takes Precedence)
-      if (controls.red !== undefined) currentState.red = controls.red
-      if (controls.green !== undefined) currentState.green = controls.green
-      if (controls.blue !== undefined) currentState.blue = controls.blue
+      // 🔒 WAVE 2069: COLOR LATCH — Park the color for mechanical wheels
+      //
+      // If the effect sends a POSITIVE color → cache it in the latch.
+      // If the effect sends RGB(0,0,0) (strobe micro-blackout) → re-inject
+      // the latched color so the color_wheel stays parked.
+      //
+      // This prevents stepper motor whiplash on movers.
+      // The strobe modulates ONLY the dimmer channel. Color stays constant.
+      const hasIncomingColor = (controls.red !== undefined || controls.green !== undefined || controls.blue !== undefined)
+
+      if (hasIncomingColor) {
+        const r = controls.red ?? 0
+        const g = controls.green ?? 0
+        const b = controls.blue ?? 0
+        const isPositiveColor = (r > 0 || g > 0 || b > 0)
+
+        if (isPositiveColor) {
+          // Positive color → WRITE to latch + apply normally
+          this.colorLatch.set(fixtureId, { r, g, b })
+          currentState.red = r
+          currentState.green = g
+          currentState.blue = b
+        } else {
+          // RGB(0,0,0) → CHECK latch. If latched color exists, re-inject it.
+          // The dimmer is already 0 from the strobe curve, so the fixture
+          // will be dark. But the color_wheel stays parked on the right gel.
+          const latched = this.colorLatch.get(fixtureId)
+          if (latched) {
+            currentState.red = latched.r
+            currentState.green = latched.g
+            currentState.blue = latched.b
+          } else {
+            // No latch → pass through zeros (first frame, or pure intensity effect)
+            currentState.red = 0
+            currentState.green = 0
+            currentState.blue = 0
+          }
+        }
+      }
+
       if (controls.white !== undefined) currentState.white = controls.white
 
       // LTP for position

@@ -48,7 +48,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   // Local state
   const [pan, setPan] = useState(270)    // 0-540 degrees
   const [tilt, setTilt] = useState(135)  // 0-270 degrees
-  const [activePattern, setActivePattern] = useState<PatternType>('static')
+  const [activePattern, setActivePattern] = useState<PatternType>('none')
   const [patternSpeed, setPatternSpeed] = useState(50)  // 0-100
   const [patternSize, setPatternSize] = useState(50)    // 0-100
   
@@ -169,10 +169,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         
         // --- PATTERN ---
         if (state.pattern !== null) {
+          // 'hold' from engine = 'static' in UI (Hold button lit)
+          // actual pattern names pass through
           const uiPattern = state.pattern === 'hold' ? 'static' : state.pattern
           setActivePattern(uiPattern as PatternType)
         } else {
-          setActivePattern('static')
+          // No pattern active → 'none' (no button highlighted)
+          setActivePattern('none')
         }
         
         // --- DYNAMICS ---
@@ -262,14 +265,13 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     
     onOverrideChange(true)
     
-    // 🔧 WAVE 2070.4: GREMLIN #1 — Map UI string to engine string EXPLICITLY.
-    // 'static' in UI = 'hold' in engine (clears pattern). Everything else passes through.
-    const enginePattern = pattern === 'static' ? 'hold' : pattern
+    // 🔧 WAVE 2071.2: UX POLISH — Map UI string to engine string.
+    // 'none' = user deselected pattern → send 'hold' to kill active pattern but keep anchor
+    // 'static' (Hold button) = freeze → send 'hold' to create anchor without pattern
+    // circle/eight/sweep = real pattern → pass through
+    const enginePattern = (pattern === 'none' || pattern === 'static') ? 'hold' : pattern
     
     try {
-      // 🔧 WAVE 2071.1: Use preload bridge (window.lux.arbiter), NOT raw ipcRenderer.
-      // The raw (window as any).electron.ipcRenderer.invoke was NEVER exposed by contextBridge.
-      // Calls were silently failing — the root cause of "frontend sends, backend deaf".
       await window.lux?.arbiter?.setManualFixturePattern({
         fixtureIds: selectedIds,
         pattern: enginePattern,
@@ -277,10 +279,12 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         amplitude: patternSize,
       })
       
-      if (enginePattern !== 'hold') {
-        console.log(`[Position] 🎯 Pattern ${enginePattern} ARMED (Layer 2 only): Speed=${patternSpeed}% Amp=${patternSize}%`)
+      if (pattern === 'none') {
+        console.log(`[Position] ⬜ Pattern DESELECTED — anchor maintained`)
+      } else if (pattern === 'static') {
+        console.log(`[Position] 🧊 HOLD: Fixture frozen at anchor`)
       } else {
-        console.log(`[Position] 🛑 HOLD: Pattern frozen`)
+        console.log(`[Position] 🎯 Pattern ${pattern} ARMED: Speed=${patternSpeed}% Amp=${patternSize}%`)
       }
     } catch (err) {
       console.error('[Position] Pattern error:', err)
@@ -297,8 +301,8 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setPatternSize(size)
     
     try {
-      // 🔧 WAVE 2071.1: Use preload bridge, not raw ipcRenderer
-      if (activePattern !== 'static') {
+      // Only send params if a real motion pattern is active (not 'none' or 'static')
+      if (activePattern !== 'none' && activePattern !== 'static') {
         await window.lux?.arbiter?.setManualFixturePattern({
           fixtureIds: selectedIds,
           pattern: activePattern,
@@ -374,13 +378,17 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * empieza a modificarlo sutilmente desde donde el operador lo dejó.
    */
   const handleRelease = useCallback(async () => {
-    // 1. UI state reset
+    // 1. UI state reset — 'none' so no button is highlighted
     onOverrideChange(false)
-    setActivePattern('static')
+    setActivePattern('none')
     setIsCalibrating(false)
     
+    // 🔧 WAVE 2071.2: Reset radar to physical center so it has full range next time
+    setPan(270)   // Center of 0-540° range
+    setTilt(135)  // Center of 0-270° range
+    
     try {
-      // 🔧 WAVE 2071.1: Use preload bridge — destroy pattern in backend
+      // Step 1: Destroy pattern in backend
       await window.lux?.arbiter?.setManualFixturePattern({
         fixtureIds: selectedIds,
         pattern: null,
@@ -393,7 +401,7 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
-      console.log(`[Position] 🔓 RELEASE: Pattern destroyed + overrides cleared for ${selectedIds.length} fixtures`)
+      console.log(`[Position] 🔓 RELEASE: Pattern destroyed + overrides cleared + radar reset for ${selectedIds.length} fixtures`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }

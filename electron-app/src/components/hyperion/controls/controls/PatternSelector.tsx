@@ -13,7 +13,7 @@
 
 import React, { useCallback } from 'react'
 
-export type PatternType = 'static' | 'circle' | 'eight' | 'sweep' | 'spiral' | 'random' | 'bounce' | 'wave'
+export type PatternType = 'none' | 'static' | 'circle' | 'eight' | 'sweep' | 'spiral' | 'random' | 'bounce' | 'wave'
 
 export interface PatternSelectorProps {
   activePattern: PatternType
@@ -78,7 +78,7 @@ export const PatternSelector: React.FC<PatternSelectorProps> = ({
     onParamsChange(speed, newSize)
   }, [speed, onParamsChange])
   
-  const isPatternActive = activePattern !== 'static'
+  const isPatternActive = activePattern !== 'none' && activePattern !== 'static'
   
   return (
     <div className={`pattern-selector ${disabled ? 'disabled' : ''}`}>

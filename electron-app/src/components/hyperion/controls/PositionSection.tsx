@@ -257,21 +257,25 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     
     onOverrideChange(true)
     
+    // 🔧 WAVE 2070.4: GREMLIN #1 — Map UI string to engine string EXPLICITLY.
+    // 'static' in UI = 'hold' in engine (clears pattern). Everything else passes through.
+    const enginePattern = pattern === 'static' ? 'hold' : pattern
+    
     try {
-      // � WAVE 2070.3b: ONLY inject into MasterArbiter activePatterns (Layer 2)
+      // WAVE 2070.3b: ONLY inject into MasterArbiter activePatterns (Layer 2)
       // DO NOT call setMovementPattern → that's CHOREO (Layer 0) territory
       const electron = (window as any).electron
       if (electron?.ipcRenderer?.invoke) {
         await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
           fixtureIds: selectedIds,
-          pattern: pattern === 'static' ? 'hold' : pattern,
+          pattern: enginePattern,
           speed: patternSpeed,
           amplitude: patternSize,
         })
       }
       
-      if (pattern !== 'static') {
-        console.log(`[Position] 🎯 Pattern ${pattern} ARMED (Layer 2 only): Speed=${patternSpeed}% Amp=${patternSize}%`)
+      if (enginePattern !== 'hold') {
+        console.log(`[Position] 🎯 Pattern ${enginePattern} ARMED (Layer 2 only): Speed=${patternSpeed}% Amp=${patternSize}%`)
       } else {
         console.log(`[Position] 🛑 HOLD: Pattern frozen`)
       }

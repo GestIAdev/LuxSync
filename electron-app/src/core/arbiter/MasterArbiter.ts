@@ -516,15 +516,16 @@ export class MasterArbiter extends EventEmitter {
       )
     }
     
-    // 🔧 WAVE 2070.3: If releasing pan/tilt, also purge pattern and origin
-    // Without this, the pattern keeps driving position even after UNLOCK
+    // 🔧 WAVE 2070.3 + 2070.4: MANDATORY pattern purge on pan/tilt release
+    // If channels is undefined (full release) OR contains 'pan'/'tilt',
+    // the pattern MUST die. No zombies. No orphans.
     const releasingMovement = channelsToRelease.includes('pan' as ChannelType) || 
                                channelsToRelease.includes('tilt' as ChannelType)
-    if (releasingMovement || !channels) {
-      // Purge active pattern for this fixture
+    if (!channels || releasingMovement) {
+      // OBLIGATORY: Annihilate active pattern for this fixture
       if (this.activePatterns.has(fixtureId)) {
         this.activePatterns.delete(fixtureId)
-        console.log(`[MasterArbiter] 🧹 Pattern PURGED on release: ${fixtureId}`)
+        console.log(`[MasterArbiter] 🧹 WAVE 2070.4: Pattern ANNIHILATED on release: ${fixtureId} (fullRelease=${!channels}, movement=${releasingMovement})`)
       }
       // Purge ghost origin
       if (this.fixtureOrigins.has(fixtureId)) {

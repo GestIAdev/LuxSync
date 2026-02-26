@@ -2595,6 +2595,58 @@ export const LiveSignalIcon: React.FC<IconProps> = ({
   </svg>
 )
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WAVE 2072: WHEELSMITH OVERHAUL - Missing utility icons
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** ➕ PLUS - Add / Create new */
+export const PlusIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 5V19M5 12H19" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+  </svg>
+)
+
+/** ▲ CHEVRON UP - Move up / Collapse */
+export const ChevronUpIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 15L12 9L18 15" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ▼ CHEVRON DOWN - Move down / Expand */
+export const ChevronDownIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 9L12 15L18 9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** ⚠️ ALERT - Warning / Error indicator */
+export const AlertIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 2L2 20H22L12 2Z" stroke={color} strokeWidth="2" strokeLinejoin="round" fill="none" />
+    <path d="M12 9V13" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="12" cy="17" r="1.2" fill={color} />
+  </svg>
+)
+
+/** 🔄 RESET - Undo / Clear all */
+export const ResetIcon: React.FC<IconProps> = ({
+  size = 20, color = 'currentColor', className = ''
+}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M3 12C3 7.03 7.03 3 12 3C16.97 3 21 7.03 21 12C21 16.97 16.97 21 12 21C8.54 21 5.55 19.08 4 16.25" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <path d="M3 7V12H8" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 export default {
   Intensity: IntensityIcon,
   Color: ColorIcon,
@@ -2709,4 +2761,10 @@ export default {
   MidiClock: MidiClockIcon,
   Microphone: MicrophoneIcon,
   LiveSignal: LiveSignalIcon,
+  // WAVE 2072: WheelSmith utility icons
+  Plus: PlusIcon,
+  ChevronUp: ChevronUpIcon,
+  ChevronDown: ChevronDownIcon,
+  Alert: AlertIcon,
+  Reset: ResetIcon,
 }

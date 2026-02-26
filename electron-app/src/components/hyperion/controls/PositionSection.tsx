@@ -248,41 +248,32 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * Circle/Eight/Sweep → setMovementPattern(pattern) → Override activo
    * UNLOCK ALL → setMovementPattern(null) → Release a AI
    * 
-   * 🔥 WAVE 2042.21: GHOST HANDOFF - Resync movement parameters after pattern change
+   * � WAVE 2070.3b: THE HIGHLANDER — Only one motor commands patterns.
+   * Patterns live EXCLUSIVELY in MasterArbiter Layer 2 (activePatterns).
+   * CHOREO (VibeMovementManager / Layer 0) is NOT touched from here.
    */
   const handlePatternChange = useCallback(async (pattern: PatternType) => {
     setActivePattern(pattern)
     
-    // 🛑 WAVE 999.5: HOLD es un OVERRIDE ACTIVO, no un release
-    // El botón "HOLD" en UI tiene id 'static', pero enviamos 'hold' al engine
-    const enginePattern = pattern === 'static' ? 'hold' : pattern
-    
     onOverrideChange(true)
     
     try {
-      await window.lux?.arbiter?.setMovementPattern(enginePattern)
-      
-      // 2️⃣ 🔄 WAVE 2042.22: INJECT pattern into MasterArbiter activePatterns
-      //    This makes the pattern actually execute on the fixtures
+      // � WAVE 2070.3b: ONLY inject into MasterArbiter activePatterns (Layer 2)
+      // DO NOT call setMovementPattern → that's CHOREO (Layer 0) territory
       const electron = (window as any).electron
       if (electron?.ipcRenderer?.invoke) {
         await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
           fixtureIds: selectedIds,
-          pattern: pattern,  // Use UI pattern name ('circle', 'eight', 'sweep')
+          pattern: pattern === 'static' ? 'hold' : pattern,
           speed: patternSpeed,
           amplitude: patternSize,
         })
       }
       
-      // 🔥 WAVE 2042.21: RESYNC MOVEMENT DYNAMICS
-      // Si venimos de mover el pad manualmente, la velocidad interna estará en 0 (instant).
-      // Hay que empujar los valores de los sliders al motor de patrones inmediatamente.
       if (pattern !== 'static') {
-        await window.lux?.arbiter?.setMovementParameter('speed', patternSpeed)
-        await window.lux?.arbiter?.setMovementParameter('amplitude', patternSize)
-        console.log(`[Position] � Pattern ${pattern} ARMED: Speed=${patternSpeed}% Amp=${patternSize}%`)
+        console.log(`[Position] 🎯 Pattern ${pattern} ARMED (Layer 2 only): Speed=${patternSpeed}% Amp=${patternSize}%`)
       } else {
-        console.log(`[Position] 🛑 HOLD: Freno de mano activado (offset 0,0)`)
+        console.log(`[Position] 🛑 HOLD: Pattern frozen`)
       }
     } catch (err) {
       console.error('[Position] Pattern error:', err)
@@ -291,21 +282,16 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
   
   /**
    * Pattern speed/size change
-   * 🎚️ WAVE 999: Now calls setMovementParameter to affect VibeMovementManager directly
-   * 🔄 WAVE 2042.22: Also update MasterArbiter activePatterns
-   * 🔧 WAVE 2070.2: Single IPC call only — removed legacy double-call that reset phase
+   * 🔧 WAVE 2070.3b: THE HIGHLANDER — Only updates MasterArbiter Layer 2.
+   * Does NOT touch CHOREO/VibeMovementManager (Layer 0).
    */
   const handlePatternParamsChange = useCallback(async (speed: number, size: number) => {
     setPatternSpeed(speed)
     setPatternSize(size)
     
     try {
-      // 🎚️ WAVE 999: Send to VibeMovementManager via IPC
-      await window.lux?.arbiter?.setMovementParameter('speed', speed)
-      await window.lux?.arbiter?.setMovementParameter('amplitude', size)
-      
-      // 🔄 WAVE 2070.2: Single call to IPC — handler is smart enough to UPDATE
-      // existing patterns without resetting startTime/phase
+      // 🔧 WAVE 2070.3b: ONLY update MasterArbiter pattern params (Layer 2)
+      // The IPC handler is smart: same pattern type → updatePatternParams (no phase reset)
       if (activePattern !== 'static') {
         const electron = (window as any).electron
         if (electron?.ipcRenderer?.invoke) {
@@ -318,13 +304,10 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         }
       }
       
-      console.log(`[Position] 🎚️ Movement params: Speed=${speed}% Amplitude=${size}%`)
+      console.log(`[Position] 🎚️ Params updated (Layer 2 only): Speed=${speed}% Amp=${size}%`)
     } catch (err) {
       console.error('[Position] Movement params error:', err)
     }
-    // 🔧 WAVE 2070.2: REMOVED legacy handlePatternChange() re-call
-    // That was the double-reset: it created a NEW pattern with startTime=now(),
-    // nuking the phase of the running pattern on every slider tick.
   }, [activePattern, selectedIds])
   
   /**
@@ -388,39 +371,30 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * empieza a modificarlo sutilmente desde donde el operador lo dejó.
    */
   const handleRelease = useCallback(async () => {
-    // 1. Actualizar estado UI inmediatamente
+    // 1. UI state reset
     onOverrideChange(false)
-    // � WAVE 2070.3: EXORCISM — Reset pattern on UNLOCK.
-    // WAVE 2042.22 had this commented out to "let pattern continue running",
-    // but that caused pattern to persist forever, secuestrating the fixture.
-    // Backend now also purges activePatterns on release (see MasterArbiter).
     setActivePattern('static')
     setIsCalibrating(false)
     
     try {
-      // 🔧 WAVE 2070.3: Clear patterns FIRST, then release manual
-      // This ensures the backend stops driving position via activePatterns
+      // WAVE 2070.3b: THE HIGHLANDER - Clean Layer 2 ONLY, no CHOREO
+      // Step 1: Clear pattern in MasterArbiter activePatterns
       const electron = (window as any).electron
       if (electron?.ipcRenderer?.invoke) {
         await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
           fixtureIds: selectedIds,
-          pattern: null,  // null = clear pattern
+          pattern: null,
           speed: 0,
           amplitude: 0,
         })
       }
       
-      // Clear movement overrides in VibeMovementManager too
-      await window.lux?.arbiter?.setMovementPattern(null)
-      await window.lux?.arbiter?.clearMovementOverrides()
-      
-      // 2. Release manual override — returns control to Titan/Selene
-      // � WAVE 2070.3: Release ALL channels, not just pan/tilt
-      // Partial release left orphaned overrides that blocked Titan
+      // Step 2: Release ALL manual overrides - total amnesty
+      // Backend also purges activePatterns + fixtureOrigins (WAVE 2070.3)
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
-      console.log(`[Position] 🔓 FULL RELEASE for ${selectedIds.length} fixtures — back to AI`)
+      console.log(`[Position] HIGHLANDER RELEASE for ${selectedIds.length} fixtures - Layer 2 fully cleared`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }

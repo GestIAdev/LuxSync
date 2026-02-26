@@ -1520,12 +1520,20 @@ export class MasterArbiter extends EventEmitter {
       const panMovement = offset.panOffset * 128 * pattern.size
       const tiltMovement = offset.tiltOffset * 128 * pattern.size
       
-      const adjustedPan = pattern.center.pan + panMovement
-      const adjustedTilt = pattern.center.tilt + tiltMovement
+      // 🔧 WAVE 2070.3b: THE HIGHLANDER — Use LIVE base position as center,
+      // not the static pattern.center captured at creation time.
+      // This way: if the user moves the XY pad while a pattern is running,
+      // the pattern orbits around the NEW position, not the old frozen one.
+      // basePan = manualOverride.controls.pan (if user moved pad) ?? titanValues.pan
+      const liveCenterPan = basePan
+      const liveCenterTilt = baseTilt
+      
+      const adjustedPan = liveCenterPan + panMovement
+      const adjustedTilt = liveCenterTilt + tiltMovement
       
       // 🔧 WAVE 2070.3: Diagnostic — show final position vs center
       if (this.frameNumber % 60 === 0) {
-        console.log(`[Position] 📍 ${fixtureId.substring(0,8)} center=P${pattern.center.pan.toFixed(0)}/T${pattern.center.tilt.toFixed(0)} → adjusted=P${adjustedPan.toFixed(1)}/T${adjustedTilt.toFixed(1)} (move=±${panMovement.toFixed(1)}/${tiltMovement.toFixed(1)}) hasOverride=${!!manualOverride}`)
+        console.log(`[Position] 📍 ${fixtureId.substring(0,8)} liveCenter=P${liveCenterPan.toFixed(0)}/T${liveCenterTilt.toFixed(0)} → adjusted=P${adjustedPan.toFixed(1)}/T${adjustedTilt.toFixed(1)} (move=±${panMovement.toFixed(1)}/${tiltMovement.toFixed(1)}) hasOverride=${!!manualOverride}`)
       }
       
       return { pan: adjustedPan, tilt: adjustedTilt }

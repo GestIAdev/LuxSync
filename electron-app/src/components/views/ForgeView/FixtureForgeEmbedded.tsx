@@ -786,14 +786,34 @@ export const FixtureForgeEmbedded: React.FC<FixtureForgeEmbeddedProps> = ({
                   />
                 </div>
                 
-                <div className="cockpit-input-group">
-                  <label>Model Name *</label>
-                  <input
-                    type="text"
-                    placeholder="Vizi Beam 5RX"
-                    value={fixture.name || ''}
-                    onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
-                  />
+                {/* 🔥 HOTFIX WAVE 2070.1: Restauración del Selector de Canales
+                    El input de totalChannels se perdió durante la migración al diseño Cockpit.
+                    Se incrusta junto a Model Name en un flex row para no romper el layout. */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div className="cockpit-input-group" style={{ flex: 1 }}>
+                    <label>Model Name *</label>
+                    <input
+                      type="text"
+                      placeholder="Vizi Beam 5RX"
+                      value={fixture.name || ''}
+                      onChange={(e) => setFixture(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="cockpit-input-group" style={{ width: '70px' }}>
+                    <label>CHs</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="512"
+                      value={totalChannels}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value)
+                        if (!isNaN(val)) setTotalChannels(Math.min(512, Math.max(1, val)))
+                      }}
+                      style={{ textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" }}
+                    />
+                  </div>
                 </div>
               </div>
               

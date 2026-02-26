@@ -380,6 +380,12 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
    * 🔄 WAVE 2042.22: Apply manual pattern to specific fixtures
    * This injects the pattern into MasterArbiter.activePatterns
    * so it gets applied in getAdjustedPosition() during render loop
+   * 
+   * 🔧 WAVE 2071: THE ANCHOR — Every pattern/hold command now:
+   *   1. Snapshots current position (Titan or existing override)
+   *   2. Creates a manualOverride for pan/tilt with that snapshot
+   *   3. THEN sets the pattern (which orbits around the anchored center)
+   *   Without step 2, the pattern orbits around a moving Titan = chaos.
    */
   ipcMain.handle('lux:arbiter:setManualFixturePattern', (
     _event,
@@ -390,18 +396,63 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       amplitude,  // 0-100
     }: {
       fixtureIds: string[]
-      pattern: string | null  // 'circle', 'eight', 'sweep', 'static', or null
+      pattern: string | null  // 'circle', 'eight', 'sweep', 'hold', or null
       speed: number
       amplitude: number
     }
   ) => {
-    if (!pattern || pattern === 'static' || pattern === 'hold') {
-      // Clear pattern from fixtures
+    // ═══════════════════════════════════════════════════════════════════════
+    // NULL = DESTROY — Full cleanup, pattern + override removed by clearManual
+    // This is called from handleRelease, right before clearManual
+    // ═══════════════════════════════════════════════════════════════════════
+    if (pattern === null || pattern === 'static') {
       masterArbiter.clearPattern(fixtureIds)
-      console.log(`[Arbiter IPC] 🛑 Pattern CLEARED for ${fixtureIds.length} fixtures`)
+      console.log(`[Arbiter IPC] 🛑 Pattern DESTROYED for ${fixtureIds.length} fixtures`)
       return { success: true, cleared: true }
     }
-
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔧 WAVE 2071: THE ANCHOR — Snapshot current position and create override
+    // This is the CRITICAL fix. Without this, the pattern center is Titan's
+    // position which moves every frame with the music = parasitic chaos.
+    // ═══════════════════════════════════════════════════════════════════════
+    for (const fixtureId of fixtureIds) {
+      const currentPos = masterArbiter.getCurrentPosition(fixtureId)
+      
+      const anchorOverride: Layer2_Manual = {
+        fixtureId,
+        controls: {
+          pan: currentPos.pan,
+          tilt: currentPos.tilt,
+          speed: 0,  // Fast movement for moving heads
+        } as any,
+        overrideChannels: ['pan', 'tilt', 'speed'] as any,
+        mode: 'absolute',
+        source: 'ui_programmer',
+        priority: 100,
+        autoReleaseMs: 0,
+        releaseTransitionMs: 500,
+        timestamp: performance.now(),
+      }
+      
+      masterArbiter.setManualOverride(anchorOverride)
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // HOLD = FREEZE — Override anchored, no pattern. Fixture stays put.
+    // Titan can't move it because manualOverride for pan/tilt wins.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (pattern === 'hold') {
+      masterArbiter.clearPattern(fixtureIds)
+      const pos = masterArbiter.getCurrentPosition(fixtureIds[0])
+      console.log(`[Arbiter IPC] 🧊 HOLD ANCHORED at P${pos.pan.toFixed(0)}/T${pos.tilt.toFixed(0)} for ${fixtureIds.length} fixtures — Titan BLOCKED`)
+      return { success: true, hold: true }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // PATTERN = ORBIT — Override anchored + pattern running around it
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // Validate pattern type
     const validPatterns = ['circle', 'eight', 'sweep']
     if (!validPatterns.includes(pattern)) {
@@ -410,35 +461,29 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
     }
 
     // Convert UI values (0-100) to engine values
-    // 🔧 WAVE 2070.2: Speed: 0-100 → 0-3 Hz (was 0-0.5 Hz — imperceptibly slow)
-    // Size: 0-100 → 0-1 (multiplied by 128 DMX units in render)
+    // Speed: 0-100 → 0-3 Hz | Size: 0-100 → 0-1
     const speedNormalized = (speed / 100) * 3
     const sizeNormalized = amplitude / 100
 
-    // 🔧 WAVE 2070.2: If pattern already exists for these fixtures, UPDATE speed/size
-    // without resetting startTime. This prevents phase reset on slider changes.
+    // If pattern already exists with same type → hot-update (no phase reset)
     const existingPattern = masterArbiter.getPattern(fixtureIds[0])
     if (existingPattern && existingPattern.type === pattern) {
-      // Same pattern type → hot-update params only
       masterArbiter.updatePatternParams(fixtureIds, speedNormalized, sizeNormalized)
-      console.log(`[Arbiter IPC] 🔧 Pattern ${pattern} UPDATED for ${fixtureIds.length} fixtures (speed=${speed}%, amp=${amplitude}%) — NO phase reset`)
+      console.log(`[Arbiter IPC] 🔧 Pattern ${pattern} UPDATED (speed=${speed}%, amp=${amplitude}%) — NO phase reset`)
       return { success: true, pattern, updated: true }
     }
 
-    // New pattern or different type → full creation
-    // 🔧 WAVE 2042.24: Get current positions as pattern center (DMX 0-255 scale)
-    const firstFixture = masterArbiter.getManualOverride(fixtureIds[0])
-    const centerPan = firstFixture?.controls.pan ?? 128
-    const centerTilt = firstFixture?.controls.tilt ?? 128
-
+    // New pattern → full creation with anchored center
+    const anchorPos = masterArbiter.getCurrentPosition(fixtureIds[0])
+    
     masterArbiter.setPattern(fixtureIds, {
       type: pattern as 'circle' | 'eight' | 'sweep',
       speed: speedNormalized,
       size: sizeNormalized,
-      center: { pan: centerPan, tilt: centerTilt },
+      center: { pan: anchorPos.pan, tilt: anchorPos.tilt },
     })
 
-    console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} applied to ${fixtureIds.length} fixtures (speed=${speed}%, amp=${amplitude}%)`)
+    console.log(`[Arbiter IPC] 🔄 Pattern ${pattern} ANCHORED at P${anchorPos.pan.toFixed(0)}/T${anchorPos.tilt.toFixed(0)} (speed=${speed}%, amp=${amplitude}%) for ${fixtureIds.length} fixtures`)
     return { success: true, pattern, fixtureIds: fixtureIds.length }
   })
 

@@ -215,11 +215,6 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setTilt(safeTilt)
     onOverrideChange(true)
     
-    // Clear any active pattern when manually positioning
-    if (activePattern !== 'static') {
-      setActivePattern('static')
-    }
-    
     try {
       // Convert to DMX with safety cap
       const panDmx = Math.min(242, Math.round((safePan / 540) * 255))
@@ -234,7 +229,17 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
         },
         channels: ['pan', 'tilt', 'speed'],
       })
-      console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
+      
+      // 🔧 WAVE 2071: If a pattern is running, DON'T kill it.
+      // The XY pad updates the manualOverride, and getAdjustedPosition
+      // uses that as basePan/baseTilt — so the pattern re-anchors
+      // around the new position automatically. Beautiful.
+      // Only log, don't touch activePattern state.
+      if (activePattern !== 'static') {
+        console.log(`[Position] 🕹️ RE-ANCHOR: Pattern ${activePattern} now orbits P${panDmx}/T${tiltDmx}`)
+      } else {
+        console.log(`[Position] 🕹️ Pan: ${safePan}° (DMX ${panDmx}) Tilt: ${safeTilt}° (DMX ${tiltDmx})`)
+      }
     } catch (err) {
       console.error('[Position] Error:', err)
     }

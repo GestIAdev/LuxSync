@@ -841,6 +841,25 @@ export class MasterArbiter extends EventEmitter {
     return this.activePatterns.get(fixtureId)
   }
   
+  /**
+   * 🔧 WAVE 2071: THE ANCHOR — Get current effective position for a fixture.
+   * 
+   * Returns the REAL position the fixture is at RIGHT NOW:
+   *   1. If manualOverride has pan/tilt → use that (user moved XY pad)
+   *   2. Otherwise → snapshot Titan's current position (AI is driving)
+   * 
+   * This is the ONLY correct way to capture an anchor point for patterns.
+   * Without this, patterns orbit around a moving center (Titan) = chaos.
+   */
+  getCurrentPosition(fixtureId: string): { pan: number; tilt: number } {
+    const override = this.layer2_manualOverrides.get(fixtureId)
+    if (override?.controls.pan !== undefined && override?.controls.tilt !== undefined) {
+      return { pan: override.controls.pan, tilt: override.controls.tilt }
+    }
+    const titanValues = this.getTitanValuesForFixture(fixtureId)
+    return { pan: titanValues.pan, tilt: titanValues.tilt }
+  }
+  
   // ═══════════════════════════════════════════════════════════════════════
   // GROUP FORMATION (WAVE 376)
   // ═══════════════════════════════════════════════════════════════════════

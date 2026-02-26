@@ -936,6 +936,23 @@ const luxApi = {
       ipcRenderer.invoke('lux:arbiter:clearMovementOverrides'),
     
     /**
+     * 🔧 WAVE 2071: THE ANCHOR — Set manual pattern for specific fixtures
+     * This is the Layer 2 pattern command (MasterArbiter.activePatterns).
+     * NOT to be confused with setMovementPattern which is Layer 0 (CHOREO).
+     * 
+     * @param fixtureIds - Fixture IDs to apply pattern to
+     * @param pattern - 'circle'|'eight'|'sweep'|'hold'|null (null = destroy)
+     * @param speed - 0-100 UI scale
+     * @param amplitude - 0-100 UI scale  
+     */
+    setManualFixturePattern: (args: {
+      fixtureIds: string[]
+      pattern: string | null
+      speed: number
+      amplitude: number
+    }) => ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', args),
+    
+    /**
      * 🧠 WAVE 999.6: Get unified state for UI hydration
      * @param fixtureIds Array of fixture IDs (uses first as "Leader")
      * @returns State snapshot with null for AI-controlled channels

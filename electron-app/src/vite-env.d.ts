@@ -558,6 +558,25 @@ declare global {
       }>
       
       /**
+       * 🔧 WAVE 2071: THE ANCHOR — Set manual pattern for specific fixtures (Layer 2)
+       * NOT to be confused with setMovementPattern (Layer 0 / CHOREO).
+       * This creates an anchored manualOverride + pattern in MasterArbiter.
+       */
+      setManualFixturePattern: (args: {
+        fixtureIds: string[]
+        pattern: string | null
+        speed: number
+        amplitude: number
+      }) => Promise<{
+        success: boolean
+        pattern?: string
+        cleared?: boolean
+        hold?: boolean
+        updated?: boolean
+        fixtureIds?: number
+      }>
+      
+      /**
        * 🧠 WAVE 999.6: Get unified state for UI hydration
        * Returns state snapshot with null for AI-controlled channels
        */

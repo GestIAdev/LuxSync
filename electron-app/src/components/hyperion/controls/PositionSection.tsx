@@ -267,17 +267,15 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     const enginePattern = pattern === 'static' ? 'hold' : pattern
     
     try {
-      // WAVE 2070.3b: ONLY inject into MasterArbiter activePatterns (Layer 2)
-      // DO NOT call setMovementPattern → that's CHOREO (Layer 0) territory
-      const electron = (window as any).electron
-      if (electron?.ipcRenderer?.invoke) {
-        await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
-          fixtureIds: selectedIds,
-          pattern: enginePattern,
-          speed: patternSpeed,
-          amplitude: patternSize,
-        })
-      }
+      // 🔧 WAVE 2071.1: Use preload bridge (window.lux.arbiter), NOT raw ipcRenderer.
+      // The raw (window as any).electron.ipcRenderer.invoke was NEVER exposed by contextBridge.
+      // Calls were silently failing — the root cause of "frontend sends, backend deaf".
+      await window.lux?.arbiter?.setManualFixturePattern({
+        fixtureIds: selectedIds,
+        pattern: enginePattern,
+        speed: patternSpeed,
+        amplitude: patternSize,
+      })
       
       if (enginePattern !== 'hold') {
         console.log(`[Position] 🎯 Pattern ${enginePattern} ARMED (Layer 2 only): Speed=${patternSpeed}% Amp=${patternSize}%`)
@@ -299,18 +297,14 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setPatternSize(size)
     
     try {
-      // 🔧 WAVE 2070.3b: ONLY update MasterArbiter pattern params (Layer 2)
-      // The IPC handler is smart: same pattern type → updatePatternParams (no phase reset)
+      // 🔧 WAVE 2071.1: Use preload bridge, not raw ipcRenderer
       if (activePattern !== 'static') {
-        const electron = (window as any).electron
-        if (electron?.ipcRenderer?.invoke) {
-          await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
-            fixtureIds: selectedIds,
-            pattern: activePattern,
-            speed: speed,
-            amplitude: size,
-          })
-        }
+        await window.lux?.arbiter?.setManualFixturePattern({
+          fixtureIds: selectedIds,
+          pattern: activePattern,
+          speed: speed,
+          amplitude: size,
+        })
       }
       
       console.log(`[Position] 🎚️ Params updated (Layer 2 only): Speed=${speed}% Amp=${size}%`)
@@ -386,24 +380,20 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     setIsCalibrating(false)
     
     try {
-      // WAVE 2070.3b: THE HIGHLANDER - Clean Layer 2 ONLY, no CHOREO
-      // Step 1: Clear pattern in MasterArbiter activePatterns
-      const electron = (window as any).electron
-      if (electron?.ipcRenderer?.invoke) {
-        await electron.ipcRenderer.invoke('lux:arbiter:setManualFixturePattern', {
-          fixtureIds: selectedIds,
-          pattern: null,
-          speed: 0,
-          amplitude: 0,
-        })
-      }
+      // 🔧 WAVE 2071.1: Use preload bridge — destroy pattern in backend
+      await window.lux?.arbiter?.setManualFixturePattern({
+        fixtureIds: selectedIds,
+        pattern: null,
+        speed: 0,
+        amplitude: 0,
+      })
       
       // Step 2: Release ALL manual overrides - total amnesty
       // Backend also purges activePatterns + fixtureOrigins (WAVE 2070.3)
       await window.lux?.arbiter?.clearManual({
         fixtureIds: selectedIds,
       })
-      console.log(`[Position] HIGHLANDER RELEASE for ${selectedIds.length} fixtures - Layer 2 fully cleared`)
+      console.log(`[Position] 🔓 RELEASE: Pattern destroyed + overrides cleared for ${selectedIds.length} fixtures`)
     } catch (err) {
       console.error('[Position] Release error:', err)
     }

@@ -1049,11 +1049,26 @@ export class MasterArbiter extends EventEmitter {
           }
           
           // ── COLOR: Blend mode aware ──
+          // 🔥 WAVE 2068: THE COLOR SHIELD — LTP color is ABSOLUTE and BINARY.
+          //
+          // When blendMode === 'LTP' (Override/Dictator effects):
+          //   - Color channels are LAW. No mixing, no averaging, no bleeding.
+          //   - Even RGB(0,0,0) is intentional (blackout IS blackout).
+          //   - Color is NOT scaled by dimmer — a dim red strobe is still RED.
+          //   - color_wheel is forced to open (0) unless explicitly set by effect,
+          //     preventing mechanical color wheels from contaminating RGB output.
+          //
+          // HTP effects: Chronos color wins if present, Titan bleeds through if not.
+          // ADD effects: Both colors contribute additively.
+          //
+          // THE RULE: If the effect is a Dictator (LTP), its color is untouchable.
+          //           Only the Dimmer can scale. Color is absolute.
           const chronosHasColor = chronosData.color.r > 0 || chronosData.color.g > 0 || chronosData.color.b > 0
           let finalColor: { r: number; g: number; b: number }
           
           if (blendMode === 'LTP') {
             // LTP: Chronos color IS the final color (even if black → that's intentional)
+            // NO multiplication by dimmer. NO blending with Titan. ABSOLUTE.
             finalColor = {
               r: clampDMX(chronosData.color.r),
               g: clampDMX(chronosData.color.g),
@@ -1077,6 +1092,14 @@ export class MasterArbiter extends EventEmitter {
             // No Chronos color → Titan's vibe color passes through
             finalColor = titanTarget.color
           }
+
+          // 🔥 WAVE 2068: LTP Dictator owns ALL chromatic channels.
+          // color_wheel: If LTP effect didn't specify → force OPEN (0)
+          // This prevents Titan's color wheel position from contaminating
+          // the RGB output. A red strobe must NOT show through a blue gel.
+          const finalColorWheel = blendMode === 'LTP'
+            ? (chronosData.color_wheel ?? 0)   // LTP: force open if not specified
+            : (chronosData.color_wheel ?? titanTarget.color_wheel)  // HTP/ADD: Titan fallback
           
           const hybridTarget: FixtureLightingTarget = {
             fixtureId,
@@ -1091,8 +1114,8 @@ export class MasterArbiter extends EventEmitter {
             speed: titanTarget.speed,
             focus: titanTarget.focus,
             
-            // ── MECHANICAL CHANNELS: Chronos if present, else Titan ──
-            color_wheel: chronosData.color_wheel ?? titanTarget.color_wheel,
+            // ── MECHANICAL CHANNELS: Wave 2068 color shield aware ──
+            color_wheel: finalColorWheel,
             
             // ── Metadata ──
             _controlSources: {

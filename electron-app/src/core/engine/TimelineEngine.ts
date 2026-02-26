@@ -539,7 +539,8 @@ export class TimelineEngine {
         const retriggeredOutput = newEffect.getOutput()
         if (!retriggeredOutput) return
 
-        const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs)
+        // 🔥 WAVE 2068: Core FX own their intensity — no keyframe envelope on retrigger either
+        const envelope = 1.0
         const fixtureIds = this.resolveFixtureIds(clip)
         this.dispatchEffectOutput(retriggeredOutput, envelope, fixtureIds, blendMode)
         return
@@ -558,8 +559,23 @@ export class TimelineEngine {
       }
     }
 
-    // Keyframe envelope acts as master dimmer multiplier
-    const envelope = this.interpolateKeyframes(clip.keyframes, localTimeMs)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🔥 WAVE 2068: THE DICTATOR'S WRATH — Anti Double-Envelope
+    //
+    // Core FX (ILightEffect instances) have their own ADSR curves.
+    // SolarFlare has attack/sustain/decay. GatlingRaid has burst timing.
+    // DigitalRain has internal flicker dynamics.
+    //
+    // The UI keyframes (Chronos timeline) add ANOTHER envelope on top:
+    // a default 0→1 fade-in over ~1.5s. This strangles the effect:
+    //   effect.intensity(0.9) × keyframeEnvelope(0.1) = 0.09 → pathetic
+    //
+    // FIX: Core FX bypass the keyframe envelope entirely. envelope = 1.0.
+    // The clip dictates WHEN the effect fires, the effect dictates HOW HARD.
+    // Only Hephaestus custom clips (processHephClip) use keyframe envelopes,
+    // because those are manually authored curves by the user.
+    // ═══════════════════════════════════════════════════════════════════════
+    const envelope = 1.0  // Core FX own their intensity. Chronos doesn't touch it.
 
     // ── Process output → Arbiter ──
     const fixtureIds = this.resolveFixtureIds(clip)

@@ -409,17 +409,27 @@ export function registerArbiterHandlers(masterArbiter: MasterArbiter): void {
       pattern = 'circle'
     }
 
-    // 🔧 WAVE 2042.24: Get current positions as pattern center (DMX 0-255 scale)
-    // Use first fixture's position as the center point
-    const firstFixture = masterArbiter.getManualOverride(fixtureIds[0])
-    const centerPan = firstFixture?.controls.pan ?? 128   // Default center (50% of 255)
-    const centerTilt = firstFixture?.controls.tilt ?? 128
-
-    // Convert UI values (0-100) to engine values (0-1)
-    // Speed: 0-100 → 0-0.5 Hz (0.5 = one cycle per 2 seconds)
+    // Convert UI values (0-100) to engine values
+    // 🔧 WAVE 2070.2: Speed: 0-100 → 0-3 Hz (was 0-0.5 Hz — imperceptibly slow)
     // Size: 0-100 → 0-1 (multiplied by 128 DMX units in render)
-    const speedNormalized = (speed / 100) * 0.5
-    const sizeNormalized = amplitude / 100  // 🔧 Changed: Full range 0-1, scaled in render
+    const speedNormalized = (speed / 100) * 3
+    const sizeNormalized = amplitude / 100
+
+    // 🔧 WAVE 2070.2: If pattern already exists for these fixtures, UPDATE speed/size
+    // without resetting startTime. This prevents phase reset on slider changes.
+    const existingPattern = masterArbiter.getPattern(fixtureIds[0])
+    if (existingPattern && existingPattern.type === pattern) {
+      // Same pattern type → hot-update params only
+      masterArbiter.updatePatternParams(fixtureIds, speedNormalized, sizeNormalized)
+      console.log(`[Arbiter IPC] 🔧 Pattern ${pattern} UPDATED for ${fixtureIds.length} fixtures (speed=${speed}%, amp=${amplitude}%) — NO phase reset`)
+      return { success: true, pattern, updated: true }
+    }
+
+    // New pattern or different type → full creation
+    // 🔧 WAVE 2042.24: Get current positions as pattern center (DMX 0-255 scale)
+    const firstFixture = masterArbiter.getManualOverride(fixtureIds[0])
+    const centerPan = firstFixture?.controls.pan ?? 128
+    const centerTilt = firstFixture?.controls.tilt ?? 128
 
     masterArbiter.setPattern(fixtureIds, {
       type: pattern as 'circle' | 'eight' | 'sweep',

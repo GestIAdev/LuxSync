@@ -795,6 +795,24 @@ export class MasterArbiter extends EventEmitter {
       console.log(`[MasterArbiter] Pattern cleared: ${fixtureIds.length} fixtures`)
     }
   }
+
+  /**
+   * 🔧 WAVE 2070.2: Update pattern speed/size WITHOUT resetting startTime.
+   * 
+   * The old flow re-created the entire PatternConfig on every slider change,
+   * which reset startTime = performance.now() → phase = 0 → pattern never
+   * completes a cycle. Now we surgically update speed/size in-place.
+   */
+  updatePatternParams(fixtureIds: string[], speed: number, size: number): void {
+    for (const fixtureId of fixtureIds) {
+      const existing = this.activePatterns.get(fixtureId)
+      if (existing) {
+        existing.speed = speed
+        existing.size = size
+        // startTime stays untouched → phase continues uninterrupted
+      }
+    }
+  }
   
   /**
    * Get pattern for a fixture
@@ -1788,6 +1806,32 @@ export class MasterArbiter extends EventEmitter {
     //
     // if ((intent as any).mechanics?.colorOverride) { ... }  // REMOVED
     // ═══════════════════════════════════════════════════════════════════════
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 👻 WAVE 2070.2: GHOST HANDOFF — Smooth crossfade from manual → AI
+    // ═══════════════════════════════════════════════════════════════════════
+    // When operator releases manual control, setFixtureOrigin() stores their
+    // last position. Here we interpolate from that origin toward Titan's
+    // calculated target over GHOST_TRANSITION_MS, preventing a hard jump.
+    // After the transition expires, we delete the origin → zero overhead.
+    // ═══════════════════════════════════════════════════════════════════════
+    const GHOST_TRANSITION_MS = 2000  // 2 seconds of smooth crossfade
+    const origin = this.fixtureOrigins.get(fixtureId)
+    if (origin) {
+      const elapsed = performance.now() - origin.timestamp
+      if (elapsed < GHOST_TRANSITION_MS) {
+        // Smooth ease-out interpolation: starts fast, decelerates
+        const t = elapsed / GHOST_TRANSITION_MS
+        const eased = 1 - (1 - t) * (1 - t)  // Quadratic ease-out
+        
+        // Lerp from manual origin → Titan target
+        defaults.pan = origin.pan + (defaults.pan - origin.pan) * eased
+        defaults.tilt = origin.tilt + (defaults.tilt - origin.tilt) * eased
+      } else {
+        // Transition complete — purge origin, zero future overhead
+        this.fixtureOrigins.delete(fixtureId)
+      }
+    }
     
     return defaults
   }

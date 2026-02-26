@@ -293,17 +293,19 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
    * Pattern speed/size change
    * 🎚️ WAVE 999: Now calls setMovementParameter to affect VibeMovementManager directly
    * 🔄 WAVE 2042.22: Also update MasterArbiter activePatterns
+   * 🔧 WAVE 2070.2: Single IPC call only — removed legacy double-call that reset phase
    */
   const handlePatternParamsChange = useCallback(async (speed: number, size: number) => {
     setPatternSpeed(speed)
     setPatternSize(size)
     
-    // 🎚️ WAVE 999: Send to VibeMovementManager via IPC
     try {
+      // 🎚️ WAVE 999: Send to VibeMovementManager via IPC
       await window.lux?.arbiter?.setMovementParameter('speed', speed)
       await window.lux?.arbiter?.setMovementParameter('amplitude', size)
       
-      // 🔄 WAVE 2042.22: Update MasterArbiter pattern config
+      // 🔄 WAVE 2070.2: Single call to IPC — handler is smart enough to UPDATE
+      // existing patterns without resetting startTime/phase
       if (activePattern !== 'static') {
         const electron = (window as any).electron
         if (electron?.ipcRenderer?.invoke) {
@@ -320,12 +322,10 @@ export const PositionSection: React.FC<PositionSectionProps> = ({
     } catch (err) {
       console.error('[Position] Movement params error:', err)
     }
-    
-    if (activePattern !== 'static') {
-      // Re-send pattern with new params (legacy)
-      await handlePatternChange(activePattern)
-    }
-  }, [activePattern, handlePatternChange])
+    // 🔧 WAVE 2070.2: REMOVED legacy handlePatternChange() re-call
+    // That was the double-reset: it created a NEW pattern with startTime=now(),
+    // nuking the phase of the running pattern on every slider tick.
+  }, [activePattern, selectedIds])
   
   /**
    * Center position

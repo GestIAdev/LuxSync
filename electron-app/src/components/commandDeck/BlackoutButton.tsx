@@ -5,9 +5,11 @@
  * 
  * WAVE 2073 FIX: Was calling window.lux.setBlackout() → IPC 'lux:set-blackout' (NO HANDLER)
  * Now calls window.lux.arbiter.toggleBlackout() → IPC 'lux:arbiter:toggleBlackout' (CONNECTED)
+ * 
+ * WAVE 2074: Sync store with backend response + rollback on failure
  */
 
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { BlackoutIcon } from '../icons/LuxIcons'
 import { useEffectsStore, selectBlackoutButton } from '../../stores/effectsStore'
@@ -22,32 +24,25 @@ export const BlackoutButton: React.FC = () => {
     toggleBlackout()
     
     // 🔧 WAVE 2073 FIX: Use arbiter.toggleBlackout (correct IPC channel)
-    // OLD (BROKEN): window.lux?.setBlackout(newState) → 'lux:set-blackout' → NO HANDLER
-    // NEW (FIXED):  window.lux?.arbiter?.toggleBlackout() → 'lux:arbiter:toggleBlackout' → masterArbiter.toggleBlackout()
+    // 🔧 WAVE 2074: Rollback on failure — no more phantom overlays
     try {
       const result = await window.lux?.arbiter?.toggleBlackout()
       if (result?.success) {
         console.log(`[BlackoutButton] 🔴 Blackout: ${result.active ? 'ON' : 'OFF'}`)
       } else {
         console.error('[BlackoutButton] toggleBlackout returned no success:', result)
+        // Rollback: undo the optimistic toggle
+        toggleBlackout()
       }
     } catch (err) {
       console.error('[BlackoutButton] Blackout IPC error:', err)
+      // Rollback on error
+      toggleBlackout()
     }
   }, [toggleBlackout])
   
-  // SPACE key always triggers blackout
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && e.target === document.body) {
-        e.preventDefault()
-        handleBlackout()
-      }
-    }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleBlackout])
+  // ⚡ WAVE 2074: SPACE key listener REMOVED from here
+  // KeyboardProvider handles SPACE globally with proper IPC — no more duplicate listeners
   
   return (
     <button

@@ -1,6 +1,7 @@
 /**
  * 🎹 KEYBOARD PROVIDER - Global Keyboard Shortcuts
  * WAVE 9: Space=Blackout, 1-6=Effects, Tab=Navigation
+ * WAVE 2074: Space/ESC now call REAL IPC blackout toggle (not just store)
  * 
  * CRÍTICO: Blackout SIEMPRE funciona, en cualquier pestaña!
  */
@@ -39,6 +40,24 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
     return tagName === 'input' || tagName === 'textarea' || target.isContentEditable
   }, [])
 
+  // ⚡ WAVE 2074: Real blackout toggle — IPC + store in one action
+  // This is THE canonical blackout handler for keyboard shortcuts
+  const handleBlackoutToggle = useCallback(async () => {
+    toggleBlackout() // Optimistic UI
+    try {
+      const result = await window.lux?.arbiter?.toggleBlackout()
+      if (result?.success) {
+        console.log(`[Keyboard] 🔴 Blackout: ${result.active ? 'ON' : 'OFF'}`)
+      } else {
+        console.error('[Keyboard] Blackout IPC failed:', result)
+        toggleBlackout() // Rollback
+      }
+    } catch (err) {
+      console.error('[Keyboard] Blackout IPC error:', err)
+      toggleBlackout() // Rollback
+    }
+  }, [toggleBlackout])
+
   // Main keyboard handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const isTyping = isTypingInInput(e)
@@ -48,8 +67,7 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
       // Solo prevenir si no está escribiendo
       if (!isTyping) {
         e.preventDefault()
-        toggleBlackout()
-        console.log('[Keyboard] 🔴 BLACKOUT toggled')
+        handleBlackoutToggle()
       }
       return
     }
@@ -79,13 +97,12 @@ const KeyboardProvider: React.FC<KeyboardProviderProps> = ({ children }) => {
     if (e.code === 'Escape') {
       const { blackout } = useEffectsStore.getState()
       if (blackout) {
-        toggleBlackout()
-        console.log('[Keyboard] 🔴 BLACKOUT released via ESC')
+        handleBlackoutToggle()
       }
       return
     }
 
-  }, [toggleBlackout, toggleEffect, nextTab, prevTab, isTypingInInput])
+  }, [handleBlackoutToggle, toggleEffect, nextTab, prevTab, isTypingInInput])
 
   // Setup global listener
   useEffect(() => {

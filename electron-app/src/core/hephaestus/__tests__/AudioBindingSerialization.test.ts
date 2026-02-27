@@ -133,7 +133,7 @@ describe('WAVE 2030.14: Audio Binding Serialization', () => {
     const serialized = serializeHephClip(clip)
     const restored = deserializeHephClip(serialized)
 
-    expect(restored.zones).toEqual(['movers_left', 'movers_right'])
+    expect(restored.zones).toEqual(['movers-left', 'movers-right'])
   })
 
   test('should handle empty zones (meaning ALL zones)', () => {

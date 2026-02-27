@@ -2,7 +2,7 @@
 ## Auditoría Técnica Completa del Editor de Curvas de Automatización
 
 **Auditor**: PunkOpus  
-**Fecha**: 16 Febrero 2026  
+**Fecha**: 27 Febrero 2026 (Revisión 2 — Correcciones factuales)  
 **Scope**: Módulo Hephaestus + Integración con Chronos  
 **Propósito**: Speech de venta técnico - Features, fortalezas y carencias  
 
@@ -31,10 +31,11 @@
 
 ### Estado del Módulo
 
-- **Status**: ✅ Producción (WAVE 2030.26 - Febrero 2026)
-- **Tests**: 206/206 pasando
+- **Status**: ✅ Producción (WAVE 2044 - Febrero 2026)
+- **Tests**: 185/185 pasando (5 suites, 0 fallos)
 - **Arquitectura**: Completa y estable
 - **Integración**: 100% funcional con Chronos Timeline
+- **UX Completo**: Undo/Redo, Multi-Select, Copy/Paste, Beat Grid BPM, Zoom Persist
 
 ### Lo que lo hace único
 
@@ -436,10 +437,10 @@ No necesitas **multiple playbacks** para un efecto complejo. Un solo clip `.lfx`
 ### 5.2 🟡 Carencias Importantes (Limitan Workflow)
 
 #### 5. No hay Cuantización a Beat Grid
-- **Status**: ✅ RESUELTO — WAVE 2043.4 + 2043.6 (MAGNETO + METRONOME)
+- **Status**: ✅ RESUELTO — WAVE 2043.4 + 2043.6 (MAGNETO + METRONOME) + WAVE 2044 (BPM INJECTION)
 - **Solución**: Grid musical con 2 niveles (negras/corcheas), snap magnético, Shift override
 - **Impacto**: Resuelto
-- **Nota**: Grid visual y snap funcional. Falta integración BPM con Chronos (beat = user-defined).
+- **BPM automático**: WAVE 2044 inyecta BPM real desde Pacemaker/Chronos vía `useAudioStore`. Fórmula: `beatMs = 60000/bpm → corcheas = totalBeats * 2`. Cadena de prioridad: `capturedBpm (HANDOFF) > audioStoreBpm > 120 fallback`. El snap a grid musical es automático (`snapEnabled = true` por defecto).
 
 #### 6. No hay Curvas Relativas a Fixture Position
 - **Status**: ❌ Pan/Tilt son absolutos (0-1)
@@ -465,10 +466,10 @@ No necesitas **multiple playbacks** para un efecto complejo. Un solo clip `.lfx`
 ### 5.3 🟢 Carencias Menores (Nice to Have)
 
 #### 9. No hay Templates de Efectos Completos
-- **Status**: ❌ Solo hay curve templates
-- **Problema**: No puedes cargar "Preset: Rainbow Chase" con 5 curvas pre-armadas
-- **Impacto**: Bajo — los curve templates cubren el 80%
-- **Complejidad fix**: Baja (factory presets .lfx)
+- **Status**: ⚠️ PARCIALMENTE CUBIERTO
+- **Realidad**: LuxSync tiene 45 efectos core presetados para Chronos y Selene IA. Los clips `.lfx` incluyen metadata de autoría (`author`, `category`, `effectType`) y son compartibles entre usuarios (JSON abierto). Además hay 11 curve templates matemáticos (sine, triangle, sawtooth, square, pulse, bounce, ease-in-out, ramp-up, ramp-down, constant).
+- **Lo que falta**: Factory preset packs `.lfx` específicos por género (EDM, Corporate, Theatre) para un one-click "empezar aquí"
+- **Impacto**: Bajo — el ecosistema de efectos ya es rico
 - **Prioridad**: Baja
 
 #### 10. No hay Markers/Labels en Timeline
@@ -497,13 +498,14 @@ No necesitas **multiple playbacks** para un efecto complejo. Un solo clip `.lfx`
 | 6 | Relative Position | 🟡 Medio | Alta | 🟢 Baja | ❌ Pendiente | 5-7 días |
 | 7 | Multi-Fixture Preview | 🟡 Bajo-Medio | Alta | 🟢 Baja | ❌ Pendiente | 4-5 días |
 | 8 | Color Gradient Mode | 🟢 Bajo | Media | 🟢 Baja | ❌ Pendiente | 2-3 días |
-| 9 | Effect Templates | 🟢 Bajo | Baja | 🟢 Baja | ❌ Pendiente | 1-2 días |
+| 9 | Effect Templates | 🟢 Bajo | Baja | 🟢 Baja | ⚠️ PARCIAL (45 efectos core + 11 curve templates, falta factory packs .lfx) | 1-2 días |
 | 10 | Timeline Markers | 🟢 Muy Bajo | Baja | 🟢 Muy Baja | ❌ Pendiente | 1 día |
 | 11 | Export Video | 🟢 Muy Bajo | Alta | 🟢 Muy Baja | ❌ Pendiente | 7-10 días |
 
-**WAVE 2043 Series Status**: 5/11 carencias resueltas (todas las críticas + importantes).  
-**Total esfuerzo ejecutado**: ~14 días de desarrollo.  
-**Carencias críticas restantes**: 0 (todas resueltas).
+**WAVE 2043 + 2044 Series Status**: 6/11 carencias resueltas (todas las críticas + importantes + beat grid BPM).  
+**Total esfuerzo ejecutado**: ~18 días de desarrollo.  
+**Carencias críticas restantes**: 0 (todas resueltas).  
+**Carencias parcialmente cubiertas**: 1 (effect templates — 45 efectos + 11 curve templates ya existen).
 
 ---
 
@@ -637,16 +639,16 @@ clip.curves = { pan: [...], tilt: [...], color: [...], intensity: [...] }
 
 | Tool | Uso | Coverage |
 |------|-----|----------|
-| **Vitest** | Unit testing | 206 tests |
+| **Vitest** | Unit testing | 185 tests, 5 suites |
 | **@vitest/ui** | Visual test runner | Report HTML |
 | **TypeScript** | Compile-time checks | 0 type errors |
 
 **Test categories**:
-- CurveEvaluator: 30 tests (interpolation math)
-- HephaestusRuntime: 50 tests (DMX scaling, merging)
-- Curve Templates: 24 tests (determinism)
-- Audio Binding: 5 tests (serialization)
-- E2E Integration: 97 tests (full pipeline)
+- CurveEvaluator: 38 tests (interpolation math, cache, seek, stress)
+- HephParameterOverlay: 20 tests (immutability, modes, overlay types)
+- HephaestusE2E: 50 tests (full pipeline from curve to DMX to merge)
+- HephTranslator: 72 tests (hslToRgb, scaleToDMX, all 17 params)
+- AudioBindingSerialization: 5 tests (roundtrip serialization)
 
 ---
 
@@ -735,47 +737,59 @@ const newClip = { ...clip, curves: new Map(clip.curves) }  // ✅ Rápido
 ### 9.1 Test Suites
 
 ```
-Hephaestus Test Coverage: 206/206 tests passing
-├─ CurveEvaluator.test.ts ................... 30 tests
-│  ├─ Edge cases (empty curves, single KF)
-│  ├─ Linear interpolation
-│  ├─ Hold (step function)
-│  ├─ Cubic Bézier (Newton-Raphson)
-│  ├─ Color HSL (shortest-path)
-│  ├─ Cursor cache (O(1) playback)
-│  └─ Binary search (seek)
+Hephaestus Test Coverage: 185/185 tests passing (5 suites, 441ms)
+├─ CurveEvaluator.test.ts ................... 38 tests
+│  ├─ Edge cases (empty curves, single KF, clamp, zero-duration)
+│  ├─ Linear interpolation (midpoint, quarter, descending, multi-segment)
+│  ├─ Hold (step function, color hold)
+│  ├─ Cubic Bézier (ease-in, ease-out, ease-in-out, overshoot, fallback)
+│  ├─ Color HSL (shortest-path hue, both directions, long path, endpoints)
+│  ├─ Cursor cache (O(1) sequential, correct values with cache)
+│  ├─ Binary search (backward seek, random seek, reset)
+│  ├─ Snapshot (multi-parameter, only registered curves)
+│  ├─ Curve mode (getCurveMode returns correct mode)
+│  └─ Stress test (100 keyframes mixed, 12 simultaneous params)
 │
 ├─ HephaestusE2E.test.ts .................... 50 tests
-│  ├─ DMX scaling (scaleToDMX)
-│  ├─ 16-bit precision (scaleToDMX16)
-│  ├─ Extended params (zoom, focus, iris, gobo, prism)
-│  ├─ Audio binding (modulation pipeline)
-│  └─ Multi-clip merging (HTP/LTP rules)
+│  ├─ 🌈 Arcoíris Completo (all 5 base params passthrough)
+│  ├─ 🏋️ Duelo de Física (movement safety, tilt limits)
+│  ├─ 🧟 Zombie Check (layer precedence, recovery, HTP/LTP/additive)
+│  ├─ 🔬 16-bit Precision (scaleToDMX16, fine channel, 256 distinct values)
+│  ├─ 🎛️ Extended Params (zoom/focus/iris/gobo1/gobo2/prism + FULL PRO GAUNTLET)
+│  ├─ 🎵 Audio Binding (energy/bass modulation pipeline, DMX→merge)
+│  └─ 🎭 Multi-Clip Merging (color+position, HTP intensity, additive strobe, triple)
 │
-├─ curveTemplates.test.ts ................... 24 tests
-│  ├─ Sine (Bézier approximation)
-│  ├─ Triangle, Sawtooth, Square
-│  ├─ Determinism guarantee
-│  └─ Edge cases (0 duration, invalid cycles)
+├─ HephParameterOverlay.test.ts ............. 20 tests
+│  ├─ Immutability (no mutation, new object)
+│  ├─ Absolute mode (intensity, white, strobe, globalComp)
+│  ├─ Relative mode (multiply, pass-through, zero-kill)
+│  ├─ Additive mode (sum, clamp max/min)
+│  ├─ Color overlay (HSL injection)
+│  ├─ Movement overlay (pan/tilt mapping, isAbsolute, preserve)
+│  ├─ Pass-through (unaffected params, metadata preserved)
+│  └─ Multi-parameter overlay (simultaneous)
 │
-├─ AudioBindingSerialization.test.ts ........ 5 tests
-│  ├─ Serialize → Deserialize cycle
-│  ├─ All audio sources (energy, bass, mids, highs)
-│  └─ Coexistence with bezierHandles
+├─ HephTranslator.test.ts ................... 72 tests
+│  ├─ hslToRgb: Primary/secondary/achromatic colors, hue wrapping, negative hue
+│  ├─ DMX-relevant colors (amber, violet, low lightness)
+│  ├─ scaleToDMX: All 17 params (DMX 0-255 + float passthrough)
+│  └─ Clamping/edge cases (negative, overflow, rounding, unknown params)
 │
-└─ Integration tests (spread across modules) . 97 tests
-   ├─ File I/O (.lfx save/load)
-   ├─ Chronos bridge (DragPayload, IPC)
-   └─ Orchestrator merge (HTP/LTP)
+└─ AudioBindingSerialization.test.ts ........ 5 tests
+   ├─ Serialize → Deserialize cycle
+   ├─ All audio sources (energy, bass, mids, highs, none)
+   ├─ Zones preservation (array roundtrip, empty zones)
+   └─ Coexistence with bezierHandles
 ```
 
 ### 9.2 Métricas de Calidad
 
 | Métrica | Valor |
 |---------|-------|
-| Tests totales | 206 |
-| Tests pasando | 206 (100%) |
-| Code coverage | ~85% (core modules) |
+| Tests totales Hephaestus | 185 |
+| Tests pasando | 185 (100%) |
+| Suites | 5 (CurveEvaluator, E2E, Overlay, Translator, AudioBinding) |
+| Tiempo total | 441ms |
 | TypeScript errors | 0 |
 | Math.random() calls | 0 (Axioma Anti-Simulación) |
 | External dependencies (editor) | 0 |
@@ -897,19 +911,19 @@ const realFixture = createTestFixture({ id: 'test-fx-1', pan: 0.5 })
 
 ### 10.6 Roadmap Visible (Features Venideros)
 
-**Q2 2026:**
-- Undo/Redo (carencia #1)
-- Multi-select keyframes (carencia #2)
-- Beat grid snap (carencia #5)
+**Q2 2026 — Polish & Edge Cases:**
+- Relative position curves (pan/tilt relativos al fixture calibrado)
+- Color gradient interpolation mode (arcoíris completo forzado)
+- Timeline markers/labels ("aquí empieza el drop")
 
-**Q3 2026:**
-- Relative position curves (fixtures calibrados)
-- Export to video (preview mp4)
-- Effect templates library (factory presets)
+**Q3 2026 — Expansión:**
+- Export to video (preview mp4 para mostrar al cliente)
+- Factory preset packs (genre-specific: EDM, Corporate, Theatre)
+- MIDI controller mapping para Hephaestus (control hands-on)
 
-**Q4 2026:**
+**Q4 2026 — Escala:**
 - Multi-user collaboration (real-time editing)
-- Cloud library (share clips entre usuarios)
+- Cloud library (share clips entre usuarios — infraestructura, los clips ya son compartibles)
 - Mobile app (control playback desde tablet)
 
 ### 10.7 Pricing Strategy Sugerido (NO INCLUIDO EN AUDIT)
@@ -931,23 +945,45 @@ const realFixture = createTestFixture({ id: 'test-fx-1', pan: 0.5 })
 ## 📊 SCORECARD FINAL
 
 ### Fortalezas (Lo que puedes destacar sin miedo)
-✅ Curvas Bézier profesionales  
-✅ Audio-reactivity única en mercado DMX  
-✅ Preview sin hardware (The Lab)  
-✅ 17 parámetros simultáneos  
-✅ Resolución 16-bit pan/tilt  
+✅ Curvas Bézier profesionales (Newton-Raphson, handles visuales)  
+✅ Audio-reactivity única en mercado DMX (bass/mids/highs/energy → keyframe modulation)  
+✅ Preview sin hardware (The Hephaestus Lab — Radar 2D Canvas)  
+✅ 17 parámetros simultáneos en un solo clip  
+✅ Resolución 16-bit pan/tilt (65536 steps)  
 ✅ Zero costo de entrada  
 ✅ Workflow 5x más rápido que consolas pro  
-✅ Formato abierto (.lfx)  
-✅ 206 tests, 0 fallos  
+✅ Formato abierto (.lfx JSON con SHA-256 checksums)  
+✅ 185 tests, 0 fallos, 441ms total  
+✅ Undo/Redo completo (50-step history, `Ctrl+Z`/`Ctrl+Shift+Z`)  
+✅ Multi-select keyframes (Shift+Click, Rubber Band, Batch move)  
+✅ Beat Grid musical automático (BPM injection desde Pacemaker/Chronos)  
+✅ Copy/Paste curvas (`Ctrl+C/V`, relative time, context menu)  
+✅ 11 Curve Templates matemáticos deterministas (sine, triangle, sawtooth, square, pulse, bounce, ease-in-out, ramp-up/down, constant)  
+✅ 10 Bezier Presets (ease-in, ease-out, ease-in-out, overshoot, bounce, snap, smooth, sharp-in, sharp-out, linear)  
+✅ 45 efectos core presetados (Chronos + Selene IA)  
+✅ Metadata de autoría (author, category, effectType) para compartir clips entre usuarios  
+✅ Zoom/Pan viewport persistente entre sesiones  
+✅ SmartZoneSelector (target/position/parity — 12 zonas)  
+✅ Overlay transparente (efecto base no sabe que Hephaestus existe)  
+✅ Chronos↔Hephaestus bridge (THE HANDOFF — bidireccional con BPM)  
+✅ Zero dependencias externas para el editor (SVG puro, Canvas puro)
 
 ### Debilidades (Ser honesto)
-❌ No hay undo/redo (pero se puede solucionar en 5 días)  
-❌ Multi-select limitado (fix: 6 días)  
-❌ Preview no es literal (es conceptual)  
-❌ Beat grid snap no automático (fix: 4 días)  
+⚠️ Preview Lab es conceptual 2D, no literal 3D (trade-off consciente: velocidad de iteración > fotorrealismo)  
 ⚠️ No es hardware físico (algunos clientes lo requieren)  
-⚠️ Curva de adopción existe (aunque menor que GrandMA)  
+⚠️ Curva de adopción existe (aunque menor que GrandMA — ~30 minutos)  
+⚠️ No hay curvas relativas a fixture position (pan/tilt absolutos, no "±10° del actual")  
+⚠️ No hay interpolación color por gradiente forzado (solo shortest-path HSL)  
+
+### Capacidades confirmadas que NO son carencias
+✅ Undo/Redo completo — WAVE 2043 `useTemporalStore`: 50-step history, `structuredClone`, `Ctrl+Z` / `Ctrl+Shift+Z`, botones UI  
+✅ Multi-select keyframes — WAVE 2043.2/2043.3: `Shift+Click`, Rubber Band, Batch move con delta origin, Context menu multi-selection  
+✅ Beat grid snap automático — WAVE 2043.4+2043.6+2044: Grid musical 2 niveles (negras/corcheas), snap magnético, BPM live injection desde Pacemaker/Chronos  
+✅ Copy/Paste curvas — WAVE 2043.4+2043.5: `Ctrl+C/V`, relative time clipboard, Context menu "Paste Here"  
+✅ Zoom/Pan persistente — WAVE 2043.8: viewport state restaurado en mount/unmount  
+✅ Librería de 45 efectos core presetados (Chronos + Selene IA), con metadata de autoría y categoría  
+✅ Clips `.lfx` compartibles entre usuarios (JSON abierto con `author`, `category`, `effectType`)  
+✅ 11 curve templates matemáticos (sine, triangle, sawtooth, square, pulse, bounce, ease-in-out, ramp-up, ramp-down, constant) + generador contextual para multi-selection  
 
 ### Recomendación
 **Posiciona Hephaestus como**:

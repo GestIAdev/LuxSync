@@ -632,14 +632,46 @@ export interface HeatmapData {
   /** Energy por sample (0-1) */
   energy: number[]
   
-  /** Bass energy (0-1) */
+  /** Bass energy (0-1) — legacy: subBass + bass combined */
   bass: number[]
   
-  /** High frequency energy (0-1) */
+  /** High frequency energy (0-1) — legacy: treble + ultraAir combined */
   high: number[]
   
   /** Spectral flux (cambio espectral) */
   flux: number[]
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // 🩻 WAVE 2077: GOD EAR TACTICAL BANDS (7-band real FFT)
+  // Optional for backwards compatibility — populated when GodEarFFT available
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /** 20-60Hz — Presión de aire pura (kicks sísmicos, 808 rumble) */
+  subBass?: number[]
+  
+  /** 60-250Hz — Cuerpo rítmico (bajos, kick body, toms) */
+  bassReal?: number[]
+  
+  /** 250-500Hz — Calor/Mud zone */
+  lowMid?: number[]
+  
+  /** 500-2000Hz — Voces/Snare/Lead (corazón musical) */
+  mid?: number[]
+  
+  /** 2000-6000Hz — Crunch/Ataque/Presencia */
+  highMid?: number[]
+  
+  /** 6000-16000Hz — Brillo/Hi-Hats/Aire */
+  treble?: number[]
+  
+  /** 16000-22000Hz — Armónicos superiores */
+  ultraAir?: number[]
+  
+  /** Hz — Centro de masa espectral per frame (brillo tonal) */
+  spectralCentroid?: number[]
+  
+  /** 0-1 — Spectral flatness per frame (tonal vs noise) */
+  spectralFlatness?: number[]
 }
 
 /**

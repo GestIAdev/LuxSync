@@ -31,20 +31,57 @@
     /**
      * ═══════════════════════════════════════════════════════════════════════════
      * 👻 PHANTOM ANALYZER - WAVE 2005.3: THE PHANTOM WORKER
+     * 🩻 WAVE 2077: THE TRANSPLANT — Real GodEarFFT Integration
      * 
      * Este script corre en una BrowserWindow OCULTA.
      * Procesa audio sin afectar la UI principal.
      * 
-     * VENTAJAS:
-     * - AudioContext NATIVO de Chromium (cero dependencias)
-     * - Memoria aislada del renderer principal
-     * - Si crashea, la UI sigue viva
-     * - Soporta todos los formatos que soporta Chrome
+     * WAVE 2077: Now uses REAL Cooley-Tukey FFT with:
+     * - Blackman-Harris 4-term windowing (-92dB sidelobes)
+     * - Linkwitz-Riley 4th order digital crossovers (24dB/oct)
+     * - 7 tactical bands with ZERO overlap
+     * - Spectral centroid + flatness per frame
      * 
-     * @version WAVE 2005.3
+     * @version WAVE 2077
      */
     
     const { ipcRenderer } = require('electron')
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🩻 WAVE 2077: Load GodEarFFT from compiled backend
+    // The phantom has nodeIntegration: true, so require() works
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    let GodEarAnalyzer = null
+    try {
+      // Try loading from dist-electron-backend (production build)
+      const path = require('path')
+      const possiblePaths = [
+        path.join(__dirname, '..', '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js'),
+        path.join(__dirname, '..', 'dist-electron-backend', 'src', 'workers', 'GodEarFFT.js'),
+        // Fallback: source via ts-node or similar
+      ]
+      
+      for (const p of possiblePaths) {
+        try {
+          const fs = require('fs')
+          if (fs.existsSync(p)) {
+            const godEarModule = require(p)
+            GodEarAnalyzer = godEarModule.GodEarAnalyzer || godEarModule.default
+            console.log('[PhantomAnalyzer] 🩻 GodEarFFT loaded from:', p)
+            break
+          }
+        } catch (e) {
+          // Try next path
+        }
+      }
+      
+      if (!GodEarAnalyzer) {
+        console.warn('[PhantomAnalyzer] ⚠️ GodEarFFT not found, falling back to zero-crossing')
+      }
+    } catch (e) {
+      console.warn('[PhantomAnalyzer] ⚠️ Cannot load GodEarFFT:', e.message)
+    }
     
     // ═══════════════════════════════════════════════════════════════════════════
     // LOGGING
@@ -149,7 +186,8 @@
     }
     
     /**
-     * Extract energy heatmap
+     * 🩻 WAVE 2077: Extract energy heatmap with REAL FFT (GodEarAnalyzer)
+     * Falls back to zero-crossing if GodEarFFT not available
      */
     function extractEnergyHeatmap(samples, sampleRate, config, reportProgress) {
       const resolutionSamples = Math.floor(sampleRate * config.heatmapResolutionMs / 1000)
@@ -160,40 +198,110 @@
       const high = new Array(numPoints)
       const flux = new Array(numPoints)
       
-      let prevEnergy = 0
+      // 🩻 WAVE 2077: Tactical band arrays (only when GodEarFFT available)
+      let subBass, bassReal, lowMid, mid, highMid, treble, ultraAir
+      let spectralCentroid, spectralFlatness
       
-      for (let i = 0; i < numPoints; i++) {
-        const start = i * resolutionSamples
-        const end = Math.min(start + resolutionSamples, samples.length)
+      if (GodEarAnalyzer) {
+        // ═══════════════════════════════════════════════════════════════
+        // 🩻 REAL FFT PATH — Cooley-Tukey + Blackman-Harris + LR4
+        // ═══════════════════════════════════════════════════════════════
+        const fftSize = 2048
+        const analyzer = new GodEarAnalyzer(sampleRate, fftSize)
+        analyzer.configure({ useAGC: false, useStereo: false })
         
-        let sumSquares = 0
-        let prevSample = 0
-        let zeroCrossings = 0
+        subBass = new Array(numPoints)
+        bassReal = new Array(numPoints)
+        lowMid = new Array(numPoints)
+        mid = new Array(numPoints)
+        highMid = new Array(numPoints)
+        treble = new Array(numPoints)
+        ultraAir = new Array(numPoints)
+        spectralCentroid = new Array(numPoints)
+        spectralFlatness = new Array(numPoints)
         
-        for (let j = start; j < end; j++) {
-          const val = samples[j]
-          sumSquares += val * val
+        let prevTotalEnergy = 0
+        
+        for (let i = 0; i < numPoints; i++) {
+          const start = i * resolutionSamples
           
-          if ((val >= 0 && prevSample < 0) || (val < 0 && prevSample >= 0)) {
-            zeroCrossings++
+          // Extract window for FFT
+          const window = new Float32Array(fftSize)
+          const copyEnd = Math.min(start + fftSize, samples.length)
+          for (let j = start; j < copyEnd; j++) {
+            window[j - start] = samples[j]
           }
-          prevSample = val
+          
+          // Run REAL FFT
+          const spectrum = analyzer.analyze(window)
+          
+          // 7 tactical bands
+          subBass[i] = spectrum.bands.subBass
+          bassReal[i] = spectrum.bands.bass
+          lowMid[i] = spectrum.bands.lowMid
+          mid[i] = spectrum.bands.mid
+          highMid[i] = spectrum.bands.highMid
+          treble[i] = spectrum.bands.treble
+          ultraAir[i] = spectrum.bands.ultraAir
+          
+          // Spectral metrics
+          spectralCentroid[i] = spectrum.spectral.centroid
+          spectralFlatness[i] = spectrum.spectral.flatness
+          
+          // Legacy fields
+          bass[i] = Math.min(1, (spectrum.bands.subBass + spectrum.bands.bass) * 2)
+          high[i] = Math.min(1, (spectrum.bands.treble + spectrum.bands.ultraAir) * 2)
+          energy[i] = Math.min(1, spectrum.totalEnergy * 3)
+          flux[i] = Math.abs(spectrum.totalEnergy - prevTotalEnergy)
+          prevTotalEnergy = spectrum.totalEnergy
+          
+          if (i % Math.ceil(numPoints / 10) === 0) {
+            reportProgress('energy', Math.round((i / numPoints) * 100))
+          }
         }
         
-        const blockSize = end - start
-        const blockEnergy = Math.sqrt(sumSquares / blockSize)
+        analyzer.reset()
+        log('🩻 Energy heatmap extracted with REAL GodEarFFT (7 tactical bands)')
         
-        energy[i] = Math.min(1, blockEnergy * 3)
+      } else {
+        // ═══════════════════════════════════════════════════════════════
+        // FALLBACK: Zero-crossing approximation (pre-WAVE 2077)
+        // ═══════════════════════════════════════════════════════════════
+        let prevEnergy = 0
         
-        const zcRate = zeroCrossings / blockSize
-        bass[i] = Math.min(1, blockEnergy * 3 * Math.max(0, 1 - zcRate * 50))
-        high[i] = Math.min(1, blockEnergy * 3 * Math.min(1, zcRate * 20))
-        flux[i] = Math.abs(blockEnergy - prevEnergy)
-        prevEnergy = blockEnergy
-        
-        if (i % Math.ceil(numPoints / 10) === 0) {
-          reportProgress('energy', Math.round((i / numPoints) * 100))
+        for (let i = 0; i < numPoints; i++) {
+          const start = i * resolutionSamples
+          const end = Math.min(start + resolutionSamples, samples.length)
+          
+          let sumSquares = 0
+          let prevSample = 0
+          let zeroCrossings = 0
+          
+          for (let j = start; j < end; j++) {
+            const val = samples[j]
+            sumSquares += val * val
+            if ((val >= 0 && prevSample < 0) || (val < 0 && prevSample >= 0)) {
+              zeroCrossings++
+            }
+            prevSample = val
+          }
+          
+          const blockSize = end - start
+          const blockEnergy = Math.sqrt(sumSquares / blockSize)
+          
+          energy[i] = Math.min(1, blockEnergy * 3)
+          const zcRate = zeroCrossings / blockSize
+          bass[i] = Math.min(1, blockEnergy * 3 * Math.max(0, 1 - zcRate * 50))
+          high[i] = Math.min(1, blockEnergy * 3 * Math.min(1, zcRate * 20))
+          flux[i] = Math.abs(blockEnergy - prevEnergy)
+          prevEnergy = blockEnergy
+          
+          if (i % Math.ceil(numPoints / 10) === 0) {
+            reportProgress('energy', Math.round((i / numPoints) * 100))
+          }
         }
+        
+        log('⚠️ Energy heatmap extracted with FALLBACK zero-crossing (GodEarFFT not loaded)')
       }
       
       // Normalize flux
@@ -204,17 +312,32 @@
         }
       }
       
-      return {
+      const result = {
         resolutionMs: config.heatmapResolutionMs,
         energy,
         bass,
         high,
         flux,
       }
+      
+      // Add tactical bands if available
+      if (subBass) {
+        result.subBass = subBass
+        result.bassReal = bassReal
+        result.lowMid = lowMid
+        result.mid = mid
+        result.highMid = highMid
+        result.treble = treble
+        result.ultraAir = ultraAir
+        result.spectralCentroid = spectralCentroid
+        result.spectralFlatness = spectralFlatness
+      }
+      
+      return result
     }
     
     /**
-     * Detect beats from energy heatmap
+     * 🩻 WAVE 2077: Detect beats using real FFT bands when available
      */
     function detectBeats(samples, sampleRate, heatmap, config, reportProgress) {
       reportProgress('beats', 0)
@@ -228,8 +351,12 @@
         const next = heatmap.flux[i + 1]
         
         if (curr > prev && curr > next && curr > threshold) {
-          const bassWeight = 1 + heatmap.bass[i] * 0.5
-          if (curr * bassWeight > threshold) {
+          // 🩻 WAVE 2077: Use real subBass (20-60Hz kicks) when available
+          const kickWeight = heatmap.subBass
+            ? 1 + (heatmap.subBass[i] + (heatmap.bassReal ? heatmap.bassReal[i] : 0)) * 0.8
+            : 1 + heatmap.bass[i] * 0.5
+          
+          if (curr * kickWeight > threshold) {
             onsets.push(i * heatmap.resolutionMs)
           }
         }
@@ -296,13 +423,14 @@
     }
     
     /**
-     * Detect sections
+     * 🩻 WAVE 2077: Detect sections with spectral metrics when available
      */
     function detectSections(heatmap, beatGrid, duration, config, reportProgress) {
       reportProgress('sections', 0)
       
       const sections = []
       const minDuration = config.sectionMinDurationMs
+      const hasSubBass = heatmap.subBass && heatmap.subBass.length > 0
       
       // Simple section detection based on energy changes
       const smoothedEnergy = []
@@ -341,16 +469,25 @@
         const startIdx = Math.floor(startMs / heatmap.resolutionMs)
         const endIdx = Math.ceil(endMs / heatmap.resolutionMs)
         let avgEnergy = 0
+        let avgSubBass = 0
         for (let j = startIdx; j < endIdx && j < heatmap.energy.length; j++) {
           avgEnergy += heatmap.energy[j]
+          if (hasSubBass) avgSubBass += heatmap.subBass[j]
         }
-        avgEnergy /= (endIdx - startIdx) || 1
+        const count = (endIdx - startIdx) || 1
+        avgEnergy /= count
+        avgSubBass /= count
         
-        // Determine section type
+        // 🩻 WAVE 2077: Enhanced section type detection
         let type = 'verse'
-        if (avgEnergy > 0.7) type = 'drop'
-        else if (avgEnergy > 0.5) type = 'chorus'
-        else if (avgEnergy < 0.2) type = 'intro'
+        if (avgEnergy > 0.7) {
+          // High energy: drop (heavy subBass) or chorus
+          type = (hasSubBass && avgSubBass > 0.3) ? 'drop' : 'chorus'
+        } else if (avgEnergy > 0.5) {
+          type = 'chorus'
+        } else if (avgEnergy < 0.2) {
+          type = i === 0 ? 'intro' : 'breakdown'
+        }
         
         sections.push({
           startMs,
@@ -366,36 +503,61 @@
     }
     
     /**
-     * Detect transients for snap points
+     * 🩻 WAVE 2077: Slope-based transient detection
      */
     function detectTransients(samples, sampleRate, config, reportProgress) {
       reportProgress('transients', 0)
       
       const transients = []
       const windowSize = Math.floor(sampleRate * 0.01) // 10ms windows
-      const numWindows = Math.floor(samples.length / windowSize)
+      const hopSize = Math.floor(windowSize / 2)
+      const numWindows = Math.floor(samples.length / hopSize)
       
-      let prevEnergy = 0
+      // Circular history buffer for slope detection
+      const historyLength = 8
+      const energyHistory = new Float32Array(historyLength)
+      let historyIndex = 0
       
       for (let i = 0; i < numWindows; i++) {
-        const start = i * windowSize
-        const end = start + windowSize
+        const start = i * hopSize
+        const end = Math.min(start + windowSize, samples.length)
         
-        let energy = 0
+        let sum = 0
         for (let j = start; j < end; j++) {
-          energy += samples[j] * samples[j]
+          sum += samples[j] * samples[j]
         }
-        energy = Math.sqrt(energy / windowSize)
+        const currentEnergy = Math.sqrt(sum / (end - start))
         
-        const diff = energy - prevEnergy
-        if (diff > config.transientThreshold * prevEnergy && diff > 0.05) {
-          transients.push({
-            timeMs: (start / sampleRate) * 1000,
-            strength: Math.min(1, diff * 5),
-          })
+        // Store in circular buffer
+        energyHistory[historyIndex] = currentEnergy
+        historyIndex = (historyIndex + 1) % historyLength
+        
+        // Slope-based detection (need a few frames of history)
+        if (i >= 4) {
+          const previous = energyHistory[(historyIndex + historyLength - 2) % historyLength]
+          const older = energyHistory[(historyIndex + historyLength - 4) % historyLength]
+          
+          const shortSlope = currentEnergy - previous
+          const longSlope = currentEnergy - older
+          
+          // Average energy from history
+          let avgEnergy = 0
+          for (let h = 0; h < historyLength; h++) avgEnergy += energyHistory[h]
+          avgEnergy /= historyLength
+          
+          const slopeThreshold = Math.max(0.05, avgEnergy * 0.3)
+          
+          if (shortSlope > slopeThreshold && longSlope > slopeThreshold * 0.5) {
+            const timeMs = (start / sampleRate) * 1000
+            // Debounce 50ms
+            if (transients.length === 0 || timeMs - transients[transients.length - 1].timeMs > 50) {
+              transients.push({
+                timeMs,
+                strength: Math.min(1, shortSlope * 5),
+              })
+            }
+          }
         }
-        
-        prevEnergy = energy
         
         if (i % Math.ceil(numWindows / 10) === 0) {
           reportProgress('transients', Math.round((i / numWindows) * 100))

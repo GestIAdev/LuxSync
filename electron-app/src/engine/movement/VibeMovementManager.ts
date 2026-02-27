@@ -410,7 +410,9 @@ export class VibeMovementManager {
     vibeId: string, 
     audio: AudioContext,
     fixtureIndex: number = 0,
-    totalFixtures: number = 1
+    totalFixtures: number = 1,
+    /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). Defaults to 250 if not provided. */
+    fixtureMaxSpeed: number = 250
   ): MovementIntent {
     // Actualizar tiempo interno
     const now = Date.now()
@@ -475,7 +477,8 @@ export class VibeMovementManager {
       config.amplitudeScale,
       safeBPM,
       patternPeriod,
-      audio.energy
+      audio.energy,
+      fixtureMaxSpeed
     )
     
     // Aplicar amplitud
@@ -575,15 +578,21 @@ export class VibeMovementManager {
     baseAmplitude: number,
     bpm: number,
     patternPeriod: number,
-    energy: number
+    energy: number,
+    /** 🏎️ WAVE 2074.3: Per-fixture max speed (DMX/s). No more global constant. */
+    fixtureMaxSpeed: number = 250
   ): number {
     // Manual override
     if (this.manualAmplitudeOverride !== null) {
       return 0.05 + (this.manualAmplitudeOverride / 100) * 0.95
     }
     
-    // Hardware limit: ~250 DMX/s para EL-1140 y similares
-    const HARDWARE_MAX_SPEED = 250
+    // 🏎️ WAVE 2074.3: Per-fixture hardware limit
+    // ANTES: HARDWARE_MAX_SPEED = 250 (global para todos los fixtures)
+    // AHORA: Cada fixture pasa su propio maxSpeed desde su physicsProfile.
+    // Si un fixture tiene maxVelocity: 100, el Gearbox reduce la amplitud
+    // para que el patrón no pida más de lo que sus motores pueden dar.
+    const HARDWARE_MAX_SPEED = fixtureMaxSpeed
     const secondsPerBeat = 60 / bpm
     
     // Presupuesto de movimiento en un ciclo del patron

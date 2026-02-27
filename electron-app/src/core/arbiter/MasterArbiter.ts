@@ -125,6 +125,28 @@ export class MasterArbiter extends EventEmitter {
   private fixtureOrigins: Map<string, { pan: number; tilt: number; timestamp: number }> = new Map()
   
   // ═══════════════════════════════════════════════════════════════════════
+  // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — THE SOFT HANDOFF
+  //
+  // Cuando el operador suelta el XY pad (manual release), los canales de
+  // dimmer/color ya tienen crossfade via CrossfadeEngine. Pero pan/tilt
+  // pasan por getAdjustedPosition() que devuelve HARD CUT al titan value.
+  //
+  // SOLUCIÓN: Post-process DESPUÉS de getAdjustedPosition().
+  // Se captura la última posición manual al momento del release y se
+  // interpola linealmente hacia la posición Titan durante POSITION_RELEASE_MS.
+  //
+  // Esto es un POST-PROCESS — NO contamina Titan values (ese era el bug
+  // del Ghost Handoff original que se tuvo que exorcizar en WAVE 2070.3).
+  // ═══════════════════════════════════════════════════════════════════════
+  private positionReleaseFades: Map<string, {
+    fromPan: number
+    fromTilt: number
+    startTime: number
+    durationMs: number
+  }> = new Map()
+  private readonly POSITION_RELEASE_MS = 500  // Fade suave de medio segundo
+  
+  // ═══════════════════════════════════════════════════════════════════════
   // 🎬 WAVE 2063: HYBRID MODE - Playback with Titan coexistence
   // Chronos controls color/dimmer. Titan controls movement (when vibe active).
   // ═══════════════════════════════════════════════════════════════════════
@@ -522,6 +544,19 @@ export class MasterArbiter extends EventEmitter {
     const releasingMovement = channelsToRelease.includes('pan' as ChannelType) || 
                                channelsToRelease.includes('tilt' as ChannelType)
     if (!channels || releasingMovement) {
+      // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — Capture manual position for soft handoff
+      // BEFORE purging the override, grab the current position for interpolation.
+      // This operates AFTER getAdjustedPosition (post-process) — does NOT contaminate Titan.
+      const lastManualPan = override.controls.pan ?? 128
+      const lastManualTilt = override.controls.tilt ?? 128
+      this.positionReleaseFades.set(fixtureId, {
+        fromPan: lastManualPan,
+        fromTilt: lastManualTilt,
+        startTime: Date.now(),
+        durationMs: this.POSITION_RELEASE_MS,
+      })
+      console.log(`[MasterArbiter] 🏎️ WAVE 2074.3: Position release fade started: ${fixtureId} from P${lastManualPan.toFixed(0)}/T${lastManualTilt.toFixed(0)} (${this.POSITION_RELEASE_MS}ms)`)
+      
       // OBLIGATORY: Annihilate active pattern for this fixture
       if (this.activePatterns.has(fixtureId)) {
         this.activePatterns.delete(fixtureId)
@@ -1334,7 +1369,37 @@ export class MasterArbiter extends EventEmitter {
     const blue = this.mergeChannelForFixture(fixtureId, 'blue', titanValues, manualOverride, now, controlSources)
     
     // Get position (with pattern/formation applied)
-    const { pan, tilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
+    const { pan: rawPan, tilt: rawTilt } = this.getAdjustedPosition(fixtureId, titanValues, manualOverride, now)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🏎️ WAVE 2074.3: POSITION RELEASE FADE — POST-PROCESS
+    //
+    // Si hay un fade activo para este fixture, interpolamos entre la última
+    // posición manual (fromPan/fromTilt) y la posición Titan (rawPan/rawTilt).
+    //
+    // Esto es un POST-PROCESS: getAdjustedPosition ya devolvió el valor
+    // correcto de Titan. Nosotros solo lo suavizamos temporalmente.
+    // NO contaminamos Titan values. NO creamos zombies.
+    // Después de durationMs, el fade se auto-purga.
+    // ═══════════════════════════════════════════════════════════════════════
+    let pan = rawPan
+    let tilt = rawTilt
+    
+    const releaseFade = this.positionReleaseFades.get(fixtureId)
+    if (releaseFade) {
+      const elapsed = now - releaseFade.startTime
+      if (elapsed >= releaseFade.durationMs) {
+        // Fade completado — purgar
+        this.positionReleaseFades.delete(fixtureId)
+      } else {
+        // Interpolación lineal: from → to (rawPan/rawTilt = posición Titan actual)
+        const t = elapsed / releaseFade.durationMs
+        // Curva ease-out: t² × (3 - 2t) — suave al final, no al principio
+        const smoothT = t * t * (3 - 2 * t)
+        pan = releaseFade.fromPan + (rawPan - releaseFade.fromPan) * smoothT
+        tilt = releaseFade.fromTilt + (rawTilt - releaseFade.fromTilt) * smoothT
+      }
+    }
     
     const zoom = this.mergeChannelForFixture(fixtureId, 'zoom', titanValues, manualOverride, now, controlSources)
     const focus = this.mergeChannelForFixture(fixtureId, 'focus', titanValues, manualOverride, now, controlSources)

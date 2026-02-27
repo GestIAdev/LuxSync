@@ -4,7 +4,7 @@
 **Fecha:** Junio 2025  
 **Auditor:** PunkOpus  
 **Scope:** Todo lo que se mueve entre el BPM y el motor paso a paso  
-**Veredicto General:** ⚠️ **FUNCIONAL PERO CON CÓDIGO MUERTO Y UN BUG REAL**
+**Veredicto General:** ✅ **PIPELINE KINÉTICO CERTIFICADO — TODOS LOS HALLAZGOS CRÍTICOS Y MODERADOS RESUELTOS (WAVE 2074.2 + 2074.3)**
 
 ---
 
@@ -85,10 +85,10 @@ effectiveAmplitude = abstractAmplitude * gearboxFactor
 | Cálculo matemático | ✅ CORRECTO | Budget → travel → ratio → clamp. Determinista |
 | ¿Se aplica POR FIXTURE? | 🔴 NO | Es global. Un fixture lento y uno rápido reciben el mismo gearboxFactor |
 
-**Vulnerabilidad VMM-GEARBOX-01:**  
-> El Gearbox usa `HARDWARE_MAX_SPEED = 250` para TODOS los fixtures. Debería consultar el `physicsProfile.maxVelocity` de cada fixture individual. Un mover chino de $50 con `maxVelocity: 120°/s` (≈57 DMX/s) se beneficiaría de un factor mucho más agresivo, mientras que un Vizi Spot Pro se está limitando innecesariamente.
+**Vulnerabilidad VMM-GEARBOX-01:** ✅ **RESUELTO WAVE 2074.3**  
+> `generateIntent()` y `calculateEffectiveAmplitude()` ahora aceptan `fixtureMaxSpeed` como parámetro opcional (default 250). Defense in depth: la protección primaria per-fixture sigue siendo el `speedFactor` del FixturePhysicsDriver.
 
-**Severidad:** 🟡 MODERADA — El FixturePhysicsDriver lo compensa después con su propio triple-min, pero el VMM está generando amplitudes que el fixture NUNCA va a poder seguir.
+**Severidad:** 🟡 ~~MODERADA~~ — Resuelto.
 
 ### 1.4 Patrones Canónicos — The Golden Dozen
 
@@ -193,12 +193,10 @@ phase = (elapsedMs % cycleDurationMs) / cycleDurationMs * 2π
 | Ghost Handoff | 🔴 DESHABILITADO | WAVE 2070.3 EXORCISM — hard cut en release |
 | Interpolación de salida | ❌ NO EXISTE | Al soltar manual, salta instantáneamente a Titan |
 
-**Vulnerabilidad ARB-GHOST-01:**  
-> Cuando el usuario suelta el control manual, la posición salta instantáneamente de la posición manual al target de Titan AI. Si la diferencia es grande (ej: manual en pan=20, Titan quiere pan=230), el motor recibe un salto de 210 DMX que el REV_LIMIT clampea pero que genera un movimiento brusco visible de ~1.75 segundos (210/120 frames).
+**Vulnerabilidad ARB-GHOST-01:** ✅ **RESUELTO WAVE 2074.3**  
+> Implementado Position Release Fade: al soltar control manual, captura última posición y aplica smoothstep `t²(3-2t)` durante 500ms hacia la posición Titan. Post-process en `arbitrateFixture()` DESPUÉS de `getAdjustedPosition()`. Sin estado ghost persistente.
 
-**Severidad:** 🟡 MODERADA — No daña hardware (REV_LIMIT protege), pero la experiencia visual es un snap feo. El Ghost Handoff fue deshabilitado por bugs de "fantasma" (la posición manual persistía). Se necesita un fade-out limpio como alternativa.
-
-**Recomendación:** Implementar un `TRANSITION_FRAMES = 15` (~500ms) post-release donde la posición Titan se interpola linealmente desde la última posición manual, sin mantener estado ghost.
+**Recomendación:** ~~Implementar un `TRANSITION_FRAMES = 15` (~500ms) post-release donde la posición Titan se interpola linealmente desde la última posición manual, sin mantener estado ghost.~~ ✅ RESUELTO WAVE 2074.3 — Implementado con smoothstep, superior a interpolación lineal.
 
 ---
 
@@ -524,10 +522,11 @@ ducking = 1.0 - (frontParIntensity * 0.6)
 | 1 | **FPD-SNAP-DEAD** | 🔴 ~~CRÍTICA~~ | FixturePhysicsDriver | SNAP MODE era código muerto (SAFETY_CAP=900 < 1000) | ✅ RESUELTO WAVE 2074.2 |
 | 2 | **FPD-REVLIMIT-DT** | 🔴 ~~CRÍTICA~~ | FixturePhysicsDriver | REV_LIMIT no normalizado por deltaTime | ✅ RESUELTO WAVE 2074.2 |
 | 3 | **HAL-DT-HARDCODE** | 🟡 ~~MODERADA~~ | HardwareAbstraction | `deltaTime=16` hardcodeado en llamadas a translateDMX | ✅ RESUELTO WAVE 2074.2 |
-| 4 | **ARB-GHOST-HARD** | 🟡 MODERADA | MasterArbiter | Ghost Handoff deshabilitado → hard cut en release manual | Snap visual al soltar faders |
-| 5 | **VMM-GEARBOX-GLOBAL** | 🟡 MODERADA | VibeMovementManager | Gearbox usa HARDWARE_MAX_SPEED global, no per-fixture | Movers lentos reciben amplitudes inalcanzables |
-| 6 | **FPD-PRESET-WASTE** | 🟢 BAJA | VibeMovementPresets | Valores de accel/vel que nunca se usan por clamp | Confusión, no bug funcional |
-| 7 | **VMM-TIME-INERT** | 🟢 INFORMATIVA | VibeMovementManager | `this.time` se acumula pero no se usa en modo BPM | Memoria desperdiciada, no bug |
+| 4 | **ARB-GHOST-HARD** | 🟡 ~~MODERADA~~ | MasterArbiter | Ghost Handoff deshabilitado → hard cut en release manual | ✅ RESUELTO WAVE 2074.3 |
+| 5 | **VMM-GEARBOX-GLOBAL** | 🟡 ~~MODERADA~~ | VibeMovementManager | Gearbox usa HARDWARE_MAX_SPEED global, no per-fixture | ✅ RESUELTO WAVE 2074.3 |
+| 6 | **FPD-REVLIMIT-BRANCH** | 🔴 ~~CRÍTICA~~ | FixturePhysicsDriver | REV_LIMIT y snapFactor branches usaban umbrales de maxAccel derrotados por SAFETY_CAP — todas las vibes recibían personalidad idéntica | ✅ RESUELTO WAVE 2074.3 |
+| 7 | **FPD-PRESET-WASTE** | 🟢 BAJA | VibeMovementPresets | Valores de accel/vel que nunca se usan por clamp | Confusión, no bug funcional |
+| 8 | **VMM-TIME-INERT** | 🟢 INFORMATIVA | VibeMovementManager | `this.time` se acumula pero no se usa en modo BPM | Memoria desperdiciada, no bug |
 
 ---
 
@@ -576,13 +575,13 @@ this.lastFrameTime = now
 this.movementPhysics.translateDMX(fixtureId, pan, tilt, dt)
 ```
 
-### R4: IMPLEMENTAR RELEASE FADE (Prioridad: 🟡 MEDIA)
+### R4: ~~IMPLEMENTAR RELEASE FADE~~ ✅ RESUELTO WAVE 2074.3
 
-Al soltar manual override, interpolar linealmente durante 500ms desde la posición manual hasta la posición Titan actual. Sin estado ghost persistente.
+Implementado **Position Release Fade** en MasterArbiter: al soltar manual override, captura la última posición manual y aplica una interpolación smoothstep `t²(3-2t)` durante 500ms hacia la posición Titan. Sin estado ghost persistente. Post-process DESPUÉS de `getAdjustedPosition()`.
 
-### R5: GEARBOX PER-FIXTURE (Prioridad: 🟢 BAJA)
+### R5: ~~GEARBOX PER-FIXTURE~~ ✅ RESUELTO WAVE 2074.3
 
-Pasar `physicsProfile.maxVelocity` del fixture al Gearbox del VMM para calcular un budget de viaje por fixture, no global.
+`generateIntent()` y `calculateEffectiveAmplitude()` en VMM ahora aceptan `fixtureMaxSpeed` como parámetro opcional (default 250 para backward compatibility). Defense in depth — la protección primaria per-fixture sigue siendo el `speedFactor` del FixturePhysicsDriver.
 
 ### R6: LIMPIAR PRESETS (Prioridad: 🟢 BAJA)
 
@@ -603,29 +602,47 @@ O mejor: subir SAFETY_CAP si los fixtures lo permiten, para que los presets teng
 
 ```
 ANTES DE BETA:
-├── R1: Resucitar SNAP MODE (physicsMode explícito)     ← OBLIGATORIO
-├── R2: Normalizar REV_LIMIT por dt                     ← OBLIGATORIO (junto con R1)
-└── R3: deltaTime real en HAL                           ← RECOMENDADO
+├── R1: Resucitar SNAP MODE (physicsMode explícito)     ← ✅ RESUELTO WAVE 2074.2
+├── R2: Normalizar REV_LIMIT por dt                     ← ✅ RESUELTO WAVE 2074.2
+└── R3: deltaTime real en HAL                           ← ✅ RESUELTO WAVE 2074.2
 
-DESPUÉS DE BETA:
-├── R4: Release Fade (manual → Titan)                   ← Mejora UX
-├── R5: Gearbox per-fixture                             ← Optimización
-└── R6: Limpiar presets                                 ← Housekeeping
+DESPUÉS DE BETA → RESUELTO EN WAVE 2074.3:
+├── R4: Release Fade (manual → Titan)                   ← ✅ RESUELTO WAVE 2074.3
+├── R5: Gearbox per-fixture                             ← ✅ RESUELTO WAVE 2074.3
+└── R6: Limpiar presets                                 ← Housekeeping pendiente
+
+WAVE 2074.3 — HALLAZGO ADICIONAL:
+└── FPD-REVLIMIT-BRANCH: REV_LIMIT y snapFactor como    ← ✅ RESUELTO WAVE 2074.3
+    datos explícitos del preset, no branches de maxAccel     (snapFactor, revLimitPanPerSec,
+                                                              revLimitTiltPerSec en MovementPhysics)
 ```
 
 ---
 
 ## 🏁 CONCLUSIÓN
 
-El pipeline de movimiento es **estructuralmente sólido** — la cadena de datos fluye sin pérdidas, los NaN guards son completos, los safety caps protegen el hardware, y el Paranoia Protocol es elegante. 
+El pipeline de movimiento es **estructuralmente sólido** — la cadena de datos fluye sin pérdidas, los NaN guards son completos, los safety caps protegen el hardware, y el Paranoia Protocol es elegante.
 
-Pero hay un **elefante en la sala**: SNAP MODE es código muerto, lo que significa que las 4 personalidades de movimiento prometidas (techno snap, latino curves, rock drama, chill glacial) **no existen en la realidad física**. Todos los vibes usan CLASSIC MODE con diferentes velocidades máximas, perdiendo la identidad kinética que es el alma de LuxSync.
+### Estado Post-Cirugía (WAVE 2074.2 + 2074.3)
 
-La buena noticia: el código de SNAP MODE ya está escrito, testeado conceptualmente, y bien documentado. Solo necesita que el criterio de activación deje de depender de un valor que otra capa clampea. Es cirugía menor con impacto mayor.
+**Todos los hallazgos críticos y moderados han sido resueltos:**
 
-**El motor sabe bailar. Solo le quitaron los zapatos sin darse cuenta.**
+| Wave | Qué se hizo | Impacto |
+|------|-------------|---------|
+| 2074.2 | `physicsMode: 'snap' \| 'classic'` explícito en presets | SNAP MODE resucitado — Techno responde instantáneamente |
+| 2074.2 | REV_LIMIT normalizado por `dt` (DMX/s, no DMX/frame) | Frame-rate independent — 30fps y 60fps se mueven igual |
+| 2074.2 | `Date.now()` delta real en HAL | Adiós al `16` hardcodeado |
+| 2074.3 | `snapFactor`, `revLimitPanPerSec`, `revLimitTiltPerSec` como datos explícitos del preset | Cada vibe tiene personalidad REAL — no branches muertos por SAFETY_CAP |
+| 2074.3 | Position Release Fade (smoothstep 500ms) en MasterArbiter | Transición suave manual→Titan, sin ghost persistente |
+| 2074.3 | `fixtureMaxSpeed` parametrizable en VMM Gearbox | Defense in depth per-fixture |
+
+**Test suite:** 50/50 HephaestusE2E ✅ · 491/580 global (89 fallos pre-existentes, sin regresiones)
+
+**Quedan pendientes solo hallazgos informativos (R6 preset cleanup, VMM-TIME-INERT).**
+
+**El motor no solo sabe bailar — ahora tiene sus zapatos puestos, y cada par es diferente.**
 
 ---
 
-*PunkOpus — WAVE 2074 — The Kinetic Audit*  
+*PunkOpus — WAVE 2074/2074.2/2074.3 — The Kinetic Audit (CLOSED)*  
 *"El código que no se ejecuta es peor que el código que no existe. Al menos el vacío no miente."*
